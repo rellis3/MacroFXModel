@@ -1,0 +1,2545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volatility Forecast Dashboard v2</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+/* ── v2 Page layout ──────────────────────────────────────────────────────────── */
+#v2App { padding: 0 20px 40px; max-width: 1280px; margin: 0 auto; }
+
+/* ── v2 Header ───────────────────────────────────────────────────────────────── */
+.v2-sticky { position: sticky; top: 0; z-index: 200; background: var(--bg); padding-top: 14px; }
+.v2-header {
+  display: flex; align-items: center; gap: 14px;
+  padding-bottom: 12px; border-bottom: 1.5px solid var(--border);
+}
+.v2-title-group { display: flex; flex-direction: column; }
+.v2-title { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+.v2-subtitle { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.v2-header-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.v2-auto-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; cursor: pointer; }
+.v2-auto-toggle input[type=checkbox] { accent-color: var(--blue); cursor: pointer; }
+
+/* ── v2 Tab bar ──────────────────────────────────────────────────────────────── */
+.v2-tabbar {
+  display: flex; align-items: center; gap: 0;
+  border-bottom: 1.5px solid var(--border); margin-bottom: 0; padding-top: 6px;
+}
+.v2-tab {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; color: var(--text3);
+  padding: 8px 16px 9px; cursor: pointer; border-bottom: 2.5px solid transparent;
+  transition: color .15s, border-color .15s; font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+.v2-tab:hover { color: var(--text2); }
+.v2-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+.v2-tab-dot { font-size: 7px; }
+.v2-tab-right { margin-left: auto; display: flex; align-items: center; gap: 8px; padding-bottom: 4px; }
+.v2-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.v2-status-dot.ok { background: var(--green); }
+.v2-status-dot.spin { background: var(--blue); animation: blink .5s infinite; }
+.v2-status-dot.err { background: var(--red); }
+
+/* ── v2 Date row ─────────────────────────────────────────────────────────────── */
+.v2-date-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 0 6px;
+}
+.v2-date-heading {
+  font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -.02em;
+}
+.v2-news-badge {
+  background: var(--amber-bg); border: 1px solid var(--amber-bd);
+  color: var(--amber); font-size: 11px; font-weight: 600;
+  font-family: 'DM Mono', monospace; padding: 3px 10px; border-radius: 12px;
+}
+.v2-session-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+
+/* ── v2 Instrument grid ──────────────────────────────────────────────────────── */
+.v2-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+@media (max-width: 1100px) and (min-width: 701px) { .v2-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) { .v2-grid { grid-template-columns: 1fr; } }
+
+/* ── v2 Card ─────────────────────────────────────────────────────────────────── */
+.v2-card {
+  background: var(--s1);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rl);
+  padding: 16px 18px 14px;
+  display: flex; flex-direction: column; gap: 12px;
+  transition: border-color .2s;
+}
+.v2-card:hover { border-color: var(--border2); }
+.v2-card.live { border-color: var(--blue-bd); }
+
+/* ── v2 Card Header ──────────────────────────────────────────────────────────── */
+.v2-card-hdr {
+  display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;
+}
+.v2-inst-name {
+  font-size: 17px; font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: .03em; color: var(--text);
+  flex-shrink: 0;
+}
+.v2-hdr-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.v2-vol-pill {
+  background: var(--blue-bg); border: 1px solid var(--blue-bd);
+  color: var(--blue); font-size: 12px; font-weight: 600;
+  font-family: 'DM Mono', monospace; padding: 3px 9px; border-radius: 20px;
+}
+.v2-vol-pill.hi { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
+.v2-vol-pill.lo { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.v2-pct-badge {
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  padding: 2px 7px; border-radius: 10px;
+  background: var(--s2); border: 1px solid var(--border); color: var(--text3);
+}
+.v2-pct-badge.hi { color: var(--red); border-color: var(--red-bd); background: var(--red-bg); }
+.v2-pct-badge.lo { color: var(--green); border-color: var(--green-bd); background: var(--green-bg); }
+.v2-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: .07em;
+  padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
+}
+.v2-badge.live-badge { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd); }
+.v2-badge.derived-badge { background: var(--s2); color: var(--text3); border: 1px solid var(--border); }
+
+/* ── v2 Range Map ────────────────────────────────────────────────────────────── */
+.v2-range-map {
+  position: relative; height: 56px;
+  background: var(--s2); border-radius: 6px;
+  overflow: visible;
+}
+.v2-rm-track {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  height: 4px; background: var(--border); border-radius: 2px;
+}
+.v2-rm-bar {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  height: 10px; background: var(--blue); opacity: .35;
+  border-radius: 3px; transition: left .4s, width .4s;
+}
+.v2-rm-bar.complete { opacity: .55; background: var(--green); }
+.v2-rm-tick {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+}
+.v2-rm-tick.med { background: var(--blue); }
+.v2-rm-tick.p75 { background: var(--amber); border-right: 1px dashed var(--amber); }
+.v2-rm-center {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: var(--text2); opacity: .5; transform: translateX(-50%);
+}
+.v2-rm-price-dot {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text); border: 2px solid var(--s1);
+  transition: left .4s;
+  z-index: 2;
+}
+.v2-rm-labels {
+  display: flex; justify-content: space-between;
+  font-size: 9px; font-family: 'DM Mono', monospace;
+  color: var(--text3); padding: 4px 2px 0; position: relative;
+}
+.v2-rm-lbl { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.v2-rm-lbl .tag { font-size: 8px; opacity: .7; }
+.v2-rm-lbl .val { font-size: 9px; font-weight: 500; color: var(--text2); }
+.v2-rm-lbl.center .tag { color: var(--text2); }
+.v2-rm-lbl.center .val { color: var(--text); font-weight: 700; }
+
+/* ── v2 Metric bars ──────────────────────────────────────────────────────────── */
+.v2-metric-bars { display: flex; flex-direction: column; gap: 7px; }
+.v2-mbar-row { display: flex; align-items: center; gap: 8px; }
+.v2-mbar-lbl { width: 26px; font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); flex-shrink: 0; text-align: right; }
+.v2-mbar-track {
+  flex: 1; height: 10px; background: var(--s2); border-radius: 5px;
+  position: relative; overflow: visible;
+}
+.v2-mbar-fill {
+  height: 100%; border-radius: 5px;
+  background: var(--amber); transition: width .5s ease;
+}
+.v2-mbar-fill.reached { background: var(--green); }
+.v2-mbar-med-mark {
+  position: absolute; top: -2px; bottom: -2px; width: 2px;
+  background: var(--blue); border-radius: 1px; opacity: .8;
+}
+.v2-mbar-75-mark {
+  position: absolute; top: -2px; bottom: -2px; width: 2px;
+  background: var(--amber); border-radius: 1px; opacity: .7;
+}
+.v2-mbar-val {
+  font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace;
+  color: var(--text); width: 44px; text-align: right; flex-shrink: 0;
+}
+.v2-mbar-pct {
+  font-size: 9px; font-family: 'DM Mono', monospace;
+  color: var(--text3); width: 52px; flex-shrink: 0;
+}
+
+/* ── v2 Metric tiles ─────────────────────────────────────────────────────────── */
+.v2-metric-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.v2-tile {
+  background: var(--amber-bg); border: 1px solid var(--amber-bd);
+  border-radius: var(--r); padding: 7px 8px; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+}
+.v2-tile.reached { background: var(--green-bg); border-color: var(--green-bd); }
+.v2-tile-lbl { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; }
+.v2-tile-val { font-size: 13px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--amber); }
+.v2-tile.reached .v2-tile-val { color: var(--green); }
+.v2-tile-check { font-size: 10px; color: var(--green); }
+
+/* ── v2 Tools bar ────────────────────────────────────────────────────────────── */
+.v2-tools-bar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 10px 0; margin-top: 14px;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.v2-tool-btn {
+  background: none; border: 1.5px solid var(--border); border-radius: 20px;
+  padding: 4px 12px; cursor: pointer; font-size: 11px; font-weight: 500;
+  color: var(--text2); font-family: 'DM Sans', sans-serif;
+  transition: all .2s; white-space: nowrap;
+}
+.v2-tool-btn:hover { border-color: var(--blue); color: var(--blue); }
+.v2-tool-btn:disabled { opacity: .4; cursor: not-allowed; }
+.v2-tool-btn.active { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+.v2-tool-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+/* ── v2 Export bar ───────────────────────────────────────────────────────────── */
+.v2-export-bar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 8px 0;
+}
+.v2-exp-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; flex-shrink: 0; }
+
+/* ── v2 Secondary panels ─────────────────────────────────────────────────────── */
+.v2-panel {
+  background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: var(--rl); overflow: hidden; margin-top: 14px;
+}
+.v2-panel-nav {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.v2-panel-title {
+  font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600;
+  color: var(--text2); text-transform: uppercase; letter-spacing: .06em;
+}
+.v2-panel-sub { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); flex: 1; }
+.v2-panel-age { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); }
+
+/* ── v2 Position bar ─────────────────────────────────────────────────────────── */
+.v2-pos-bar {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 10px 16px; margin-top: 14px; flex-wrap: wrap;
+}
+.v2-pos-bar-lbl {
+  font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace;
+  color: var(--text2); text-transform: uppercase; letter-spacing: .06em; flex-shrink: 0;
+}
+.v2-pos-bar-inputs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.v2-pos-bar-inputs label { display: flex; align-items: center; gap: 5px; font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.v2-pos-input {
+  background: var(--s2); border: 1px solid var(--border); color: var(--text);
+  font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 8px;
+  border-radius: 4px; outline: none; width: 90px;
+}
+.v2-pos-input:focus { border-color: var(--blue-bd); }
+.v2-pos-risk-amt { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--blue); font-weight: 600; }
+
+/* ── v2 Per-card position result ─────────────────────────────────────────────── */
+.vf-pos-result {
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  padding: 6px 0 2px; border-top: 1px solid var(--border);
+}
+.vf-pos-result-lbl { font-size: 9px; font-weight: 600; letter-spacing: .10em; text-transform: uppercase; color: var(--text3); width: 100%; margin-bottom: 2px; }
+.vf-pos-item { display: flex; align-items: baseline; gap: 4px; }
+.vf-pos-key { color: var(--text3); }
+.vf-pos-val { font-weight: 600; color: var(--text); }
+.vf-pos-sub { color: var(--text3); font-size: 9px; }
+
+/* ── Reuse v1 table styles ───────────────────────────────────────────────────── */
+.vf-hist-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.vf-hist-table th { padding: 8px 12px; text-align: right; color: var(--text3); font-family: 'DM Mono', monospace; font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vf-hist-table th:first-child { text-align: left; }
+.vf-hist-table td { padding: 9px 12px; text-align: right; font-family: 'DM Mono', monospace; color: var(--text); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vf-hist-table td:first-child { text-align: left; color: var(--text2); font-size: 10px; }
+.vf-hist-table tr:last-child td { border-bottom: none; }
+.vf-hist-table tbody tr:hover td { background: var(--s2); cursor: pointer; }
+
+.vf-arch-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.vf-arch-table th { padding: 8px 12px; text-align: right; color: var(--text3); font-family: 'DM Mono', monospace; font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vf-arch-table th:first-child { text-align: left; }
+.vf-arch-table td { padding: 8px 12px; text-align: right; font-family: 'DM Mono', monospace; color: var(--text); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vf-arch-table td:first-child { text-align: left; color: var(--text2); font-size: 10px; }
+.vf-arch-table tr:last-child td { border-bottom: none; }
+.vf-arch-table tbody tr:hover td { background: var(--s2); }
+.vf-arch-empty { padding: 18px; font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.vf-wk-bias { display: inline-block; font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 7px; border-radius: 4px; font-weight: 600; background: var(--s2); border: 1px solid var(--border); color: var(--text2); white-space: nowrap; }
+.vf-wk-bias.bull { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.vf-wk-bias.bear { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
+.vf-wk-bar-wrap { display: flex; align-items: center; gap: 5px; min-width: 100px; }
+.vf-wk-bar-track { flex: 1; height: 5px; background: var(--s2); border-radius: 3px; overflow: hidden; }
+.vf-wk-bar-fill { height: 100%; border-radius: 3px; background: var(--blue); transition: width .4s; }
+.vf-wk-bar-fill.hi { background: var(--amber); }
+.vf-wk-pct { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); flex-shrink: 0; }
+
+.vf-ccy-strip { display: flex; align-items: center; gap: 8px; background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); padding: 8px 16px; margin-top: 14px; flex-wrap: wrap; }
+.vf-ccy-label { font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .07em; flex-shrink: 0; }
+.vf-ccy-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--text2); white-space: nowrap; }
+.vf-ccy-pill.bull { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.vf-ccy-pill.bear { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
+.vf-ccy-pill.neut { opacity: .55; }
+.vf-ccy-score { font-size: 9px; font-weight: 400; opacity: .75; }
+
+.vf-levels-view { margin-top: 14px; background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.vf-levels-nav { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.vf-levels-title { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text2); }
+.vf-levels-sub { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); flex: 1; }
+.vf-levels-scroll { overflow-x: auto; }
+.vf-levels-tbl { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'DM Mono', monospace; white-space: nowrap; }
+.vf-levels-tbl th { padding: 5px 8px; text-align: center; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+.vf-levels-tbl th:first-child { text-align: left; padding-left: 16px; }
+.vf-levels-tbl th:hover { color: var(--text2); }
+.vf-levels-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: center; vertical-align: middle; }
+.vf-levels-tbl td:first-child { text-align: left; padding-left: 16px; font-weight: 700; font-size: 11px; }
+.vf-levels-tbl tr:last-child td { border-bottom: none; }
+.vf-levels-tbl tr:hover td { background: var(--s2); }
+.vf-lv-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.2; }
+.vf-lv-price { font-size: 10px; font-weight: 600; color: var(--text2); }
+.vf-lv-time { font-size: 9px; color: var(--green); }
+.vf-lv-rem { font-size: 9px; color: var(--text3); }
+.vf-lv-cell.hit .vf-lv-price { color: var(--green); text-decoration: line-through; opacity: .7; }
+.vf-lv-cell.near .vf-lv-price { color: var(--amber); }
+.vf-consumed-bar { display: flex; align-items: center; gap: 4px; }
+.vf-consumed-track { width: 44px; height: 4px; background: var(--s2); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+.vf-consumed-fill { height: 100%; border-radius: 2px; background: var(--blue); }
+.vf-consumed-fill.hi { background: var(--amber); }
+.vf-setup-dots { display: flex; gap: 2px; justify-content: center; }
+.vf-setup-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); }
+.vf-setup-dot.on { background: var(--blue); }
+.vf-setup-dot.on.strong { background: var(--green); }
+
+.vf-bias-chip { font-size: 10px; font-family: 'DM Mono', monospace; padding: 3px 7px; border-radius: 4px; background: var(--s2); border: 1px solid var(--border); color: var(--text2); }
+.vf-bias-chip.bear { border-color: var(--red-bd); background: var(--red-bg); color: var(--red); }
+.vf-bias-chip.bull { border-color: var(--green-bd); background: var(--green-bg); color: var(--green); }
+.vf-bias-chip.ambi { border-color: var(--amber-bd); background: var(--amber-bg); color: var(--amber); }
+
+.vf-lhist-panel { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); margin-top: 14px; overflow: hidden; }
+.vf-lhist-nav { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.vf-lhist-title { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text2); }
+.vf-lhist-sub { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); flex: 1; }
+.vf-lhist-scroll { overflow-x: auto; }
+.vf-lhist-tbl { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'DM Mono', monospace; white-space: nowrap; }
+.vf-lhist-tbl th { padding: 5px 10px; text-align: center; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); }
+.vf-lhist-tbl th:first-child { text-align: left; }
+.vf-lhist-tbl td { padding: 5px 10px; text-align: center; border-bottom: 1px solid var(--border); }
+.vf-lhist-tbl td:first-child { text-align: left; font-weight: 600; color: var(--text2); }
+.vf-lhist-tbl tr:last-child td { border-bottom: none; }
+.vf-hr-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.vf-hr-rate { font-weight: 600; }
+.vf-hr-rate.hi { color: var(--green); }
+.vf-hr-rate.med { color: var(--amber); }
+.vf-hr-rate.lo { color: var(--text3); }
+.vf-hr-time { font-size: 8px; color: var(--text3); }
+.vf-lhist-inst-tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 16px 0; border-bottom: 1px solid var(--border); }
+.vf-lhist-tab { font-size: 10px; font-family: 'DM Mono', monospace; padding: 3px 8px; border-radius: 4px 4px 0 0; border: 1px solid var(--border); border-bottom: none; background: var(--s2); color: var(--text3); cursor: pointer; }
+.vf-lhist-tab.active { background: var(--s1); color: var(--text); font-weight: 600; }
+
+.vf-brief-panel { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); margin-top: 14px; overflow: hidden; }
+.vf-brief-nav { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.vf-brief-nav-title { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text2); }
+.vf-brief-filters { display: flex; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.vf-brief-filter { font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 9px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--text3); cursor: pointer; transition: all .12s; }
+.vf-brief-filter.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.vf-brief-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 10px; padding: 12px 14px; }
+.vf-brief-card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.vf-brief-card-hdr { display: flex; align-items: center; gap: 6px; padding: 7px 10px 6px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.vf-brief-name { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+.vf-brief-ac { font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; background: var(--s1); border: 1px solid var(--border); color: var(--text3); }
+.vf-brief-regime { font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 3px; }
+.vf-brief-regime.rng { background: #1d4ed822; color: #60a5fa; border: 1px solid #1d4ed844; }
+.vf-brief-regime.bull { background: #16653422; color: #4ade80; border: 1px solid #16653444; }
+.vf-brief-regime.bear { background: #7f1d1d22; color: #f87171; border: 1px solid #7f1d1d44; }
+.vf-brief-regime.amb { background: var(--s1); color: var(--text3); border: 1px solid var(--border); }
+.vf-brief-news { font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 3px; background: #92400e22; color: #fbbf24; border: 1px solid #92400e44; }
+.vf-brief-price { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text2); }
+.vf-brief-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 10px; }
+.vf-brief-tbl-hdr td { font-size: 9px; color: var(--text3); padding: 4px 8px 3px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing:.04em; }
+.vf-brief-tbl td { padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.vf-brief-tbl tr:last-child td { border-bottom: none; }
+.vf-brief-lbl { color: var(--text3); white-space: nowrap; }
+.vf-brief-val { font-weight: 600; color: var(--text); white-space: nowrap; }
+.vf-brief-hit { text-align: right; white-space: nowrap; }
+.vf-brief-hit span { font-size: 9px; padding: 1px 4px; border-radius: 3px; }
+.vf-brief-hit .hi { color: #4ade80; background: #16653420; }
+.vf-brief-hit .mi { color: #fbbf24; background: #92400e20; }
+.vf-brief-hit .lo { color: var(--text3); }
+.vf-brief-time { font-size: 9px; color: var(--text3); text-align: right; white-space: nowrap; }
+.vf-brief-divider td { padding: 0; height: 6px; border-bottom: 1px solid var(--border); background: var(--s1); }
+.vf-brief-footer { display: flex; gap: 10px; align-items: center; padding: 5px 10px 7px; border-top: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 9px; color: var(--text3); flex-wrap: wrap; }
+.vf-brief-sz { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; }
+.vf-brief-sz.full { color: #4ade80; background: #16653420; }
+.vf-brief-sz.mod { color: #fbbf24; background: #92400e20; }
+.vf-brief-sz.low { color: #f87171; background: #7f1d1d20; }
+.vf-brief-warn { font-size: 10px; color: #fbbf24; padding: 4px 14px; }
+
+.vf-profile-panel { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); margin-top: 14px; overflow: hidden; }
+.vf-profile-nav { display: flex; align-items: center; gap: 10px; padding: 10px 16px 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.vf-profile-title { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+.vf-profile-sub { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); flex: 1; }
+.vf-profile-body { overflow-x: auto; padding: 12px 16px 14px; }
+.vf-profile-chart { display: flex; align-items: flex-end; gap: 2px; height: 60px; min-width: 600px; }
+.vf-profile-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; justify-content: flex-end; }
+.vf-profile-bar { width: 100%; border-radius: 2px 2px 0 0; background: var(--blue); transition: height .3s; min-height: 2px; cursor: default; }
+.vf-profile-bar.session-asia { background: #7c3aed88; }
+.vf-profile-bar.session-london { background: var(--blue); }
+.vf-profile-bar.session-ny { background: #0891b288; }
+.vf-profile-hour { font-size: 8px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.vf-profile-legend { display: flex; gap: 14px; margin-top: 8px; font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.vf-profile-legend span::before { content: '■ '; }
+.vf-profile-legend .asia { color: #7c3aed; }
+.vf-profile-legend .london { color: var(--blue); }
+.vf-profile-legend .ny { color: #0891b2; }
+.vf-profile-inst-tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 16px 0; border-bottom: 1px solid var(--border); }
+.vf-profile-tab { font-size: 10px; font-family: 'DM Mono', monospace; padding: 3px 8px; border-radius: 4px 4px 0 0; border: 1px solid var(--border); border-bottom: none; background: var(--s2); color: var(--text3); cursor: pointer; }
+.vf-profile-tab.active { background: var(--s1); color: var(--text); font-weight: 600; }
+
+.vf-event-panel { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); margin-top: 14px; }
+.vf-event-nav { display: flex; align-items: center; gap: 10px; padding: 10px 16px 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.vf-event-title { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+.vf-event-sub { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); flex: 1; }
+.vf-event-scroll { overflow-x: auto; }
+.vf-event-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'DM Mono', monospace; }
+.vf-event-table th { padding: 6px 10px; text-align: center; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vf-event-table th:first-child { text-align: left; }
+.vf-event-table td { padding: 5px 10px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.vf-event-table td:first-child { text-align: left; font-weight: 600; color: var(--text2); }
+.vf-event-table tr:last-child td { border-bottom: none; }
+.vf-event-cell { color: var(--text3); }
+.vf-event-cell.lo { color: var(--text2); }
+.vf-event-cell.md { color: var(--amber); font-weight: 600; }
+.vf-event-cell.hi { color: var(--red); font-weight: 600; }
+.vf-event-empty { padding: 20px 16px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); text-align: center; }
+
+.vf-hist-banner { display: flex; align-items: center; gap: 12px; background: var(--amber-bg); border: 1px solid var(--amber-bd); border-radius: var(--r); padding: 8px 16px; margin-top: 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--amber); flex-wrap: wrap; }
+
+.vfh-section { margin-bottom: 20px; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; }
+.vfh-title { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
+.vfh-section p { font-size: 11px; color: var(--text3); margin: 0 0 6px; line-height: 1.6; }
+.vfh-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; color: var(--text3); }
+.vfh-tbl td { padding: 4px 6px; vertical-align: top; border-bottom: 1px solid var(--border); line-height: 1.55; }
+.vfh-tbl tr:last-child td { border-bottom: none; }
+.vfh-tbl td:first-child { color: var(--text2); font-weight: 600; white-space: nowrap; padding-right: 14px; width: 140px; }
+
+.vf-extend-row { display: flex; align-items: center; gap: 6px; padding: 3px 0 1px; font-size: 10px; font-family: 'DM Mono', monospace; }
+.vf-extend-lbl { color: var(--text3); width: 74px; flex-shrink: 0; }
+.vf-extend-pct { font-weight: 600; color: var(--text2); min-width: 28px; }
+.vf-extend-pct.hi { color: var(--amber); }
+.vf-extend-pct.low { color: var(--green); }
+.vf-extend-note { color: var(--text3); font-size: 9px; }
+
+/* v2 hist nav */
+.v2-hist-nav { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.v2-hist-date { background: var(--s2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 8px; border-radius: 4px; outline: none; }
+.v2-hist-date:focus { border-color: var(--blue-bd); }
+</style>
+</head>
+<body class="dark">
+<div id="v2App">
+
+<!-- STICKY HEADER -->
+<div class="v2-sticky" id="vfHeader">
+
+  <!-- Header row -->
+  <div class="v2-header">
+    <div style="width:32px;height:32px;background:linear-gradient(135deg,#1847c2,#7c3aed);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg viewBox="0 0 17 17" width="16" height="16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 12 L5 7 L8 9 L11 5 L14 7"/>
+        <line x1="14" y1="4" x2="14" y2="8"/>
+        <line x1="3" y1="14" x2="15" y2="14"/>
+      </svg>
+    </div>
+    <div class="v2-title-group">
+      <div class="v2-title">Volatility Forecast Dashboard</div>
+      <div class="v2-subtitle">Last updated: <span id="vfUpdated">—</span> London</div>
+    </div>
+    <div class="v2-header-right">
+      <label class="v2-auto-toggle">
+        <input type="checkbox" id="vfAutoRefresh" checked onchange="toggleAutoRefresh(this.checked)">
+        Auto-refresh
+      </label>
+      <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
+      <div class="live-pill" id="vfLivePill"><div class="live-dot"></div>Live</div>
+    </div>
+  </div>
+
+  <!-- Tab navigation -->
+  <div class="v2-tabbar">
+    <div class="v2-tab active" id="vfTabToday" onclick="switchTab('today', this)">
+      <span style="color:var(--green);font-size:8px">●</span> Today Live
+    </div>
+    <div class="v2-tab" id="vfTabYesterday" onclick="switchTab('yesterday', this)">
+      <span style="font-size:8px">■</span> Yesterday
+    </div>
+    <div class="v2-tab" id="vfTabLast30" onclick="switchTab('last30', this)">
+      <span style="font-size:8px">■</span> Last 30 Days
+    </div>
+    <div class="v2-tab-right">
+      <div class="v2-status-dot" id="vfSdot"></div>
+      <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace" id="vfStxt">Loading…</span>
+      <div class="data-pills">
+        <span class="dpill" id="pillCount">— pairs</span>
+        <span class="dpill" id="pillNews">NEWS</span>
+      </div>
+    </div>
+  </div>
+</div><!-- /v2-sticky -->
+
+<!-- HISTORICAL VIEW BANNER -->
+<div class="vf-hist-banner" id="vfHistBanner" style="display:none">
+  <span id="vfHistBannerTxt">Viewing historical forecast</span>
+  <div style="flex:1"></div>
+  <input type="date" class="v2-hist-date" id="vfHistDatePicker" onchange="histNavGoto(this.value)">
+  <button class="dark-btn" style="padding:4px 10px;font-size:11px" onclick="histNavPrev()">← Older</button>
+  <button class="dark-btn" style="padding:4px 10px;font-size:11px" onclick="histNavNext()">Newer →</button>
+  <button class="dark-btn" style="padding:4px 12px;font-size:11px" onclick="returnToToday()">↩ Today</button>
+</div>
+
+<!-- DATE ROW -->
+<div class="v2-date-row">
+  <div class="v2-date-heading" id="vfSessionLabel">Loading…</div>
+  <div class="v2-news-badge" id="vfNewsBadge" style="display:none"></div>
+  <div class="v2-session-meta" id="vfComputedAt">—</div>
+</div>
+
+<!-- INSTRUMENT GRID -->
+<div class="v2-grid" id="vfGrid">
+  <!-- populated by JS -->
+</div>
+
+<!-- TOOLS BAR -->
+<div class="v2-tools-bar">
+  <button class="v2-tool-btn" id="vfLevelsBtn"   onclick="toggleLevelsView()"    disabled>Levels</button>
+  <button class="v2-tool-btn" id="vfHitRatesBtn" onclick="toggleHitRates()">Hit Rates</button>
+  <button class="v2-tool-btn" id="vfBriefBtn"    onclick="toggleBrief()">Brief</button>
+  <button class="v2-tool-btn" id="vfWeeklyBtn"   onclick="toggleWeekly()"        disabled>Weekly</button>
+  <button class="v2-tool-btn" id="vfProfileBtn"  onclick="toggleProfile()">Profile</button>
+  <button class="v2-tool-btn" id="vfEventBtn"    onclick="toggleEventImpact()">Events</button>
+  <button class="v2-tool-btn" id="vfRefDataBtn"  onclick="toggleRefPanel()">Ref Data</button>
+  <button class="v2-tool-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()">Session Stats</button>
+  <button class="v2-tool-btn" id="vfHelpBtn"     onclick="toggleHelp()">? Help</button>
+  <div class="v2-tool-sep"></div>
+  <a href="index.html" style="text-decoration:none"><button class="v2-tool-btn">→ Dashboard</button></a>
+</div>
+
+<!-- EXPORT BAR -->
+<div class="v2-export-bar">
+  <span class="v2-exp-lbl">Export:</span>
+  <button class="v2-tool-btn" id="vfExportBtn"        onclick="exportForecast()"  disabled>⬇ Export</button>
+  <button class="v2-tool-btn" id="vfSessionExportBtn" onclick="exportSession()"   disabled>⬇ Session</button>
+  <button class="v2-tool-btn" id="vfV3ExportBtn"      onclick="exportV3()"        disabled>⬇ V+S</button>
+  <button class="v2-tool-btn" id="vfExtendedBtn"      onclick="exportExtended()"  disabled>⬇ Extended</button>
+  <button class="v2-tool-btn" id="vfWeeklyExportBtn"  onclick="exportWeekly()"    disabled>⬇ Weekly</button>
+  <button class="v2-tool-btn" id="vfHistoryBtn"       onclick="toggleHistory()"   disabled>⊞ History</button>
+</div>
+
+<!-- POSITION SIZING -->
+<div class="v2-pos-bar" id="vfPosBar">
+  <span class="v2-pos-bar-lbl">Position Sizing</span>
+  <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);flex:1">Stop = H-L median — notional = risk ÷ hl%</span>
+  <div class="v2-pos-bar-inputs">
+    <label>Account <input id="posAccount" type="number" min="0" step="1000" placeholder="10000" class="v2-pos-input" oninput="updatePositionSizes()"></label>
+    <label>Risk % <input id="posRisk" type="number" min="0.1" max="20" step="0.1" placeholder="1.0" class="v2-pos-input" style="width:64px" oninput="updatePositionSizes()"></label>
+  </div>
+  <span id="posRiskAmt" class="v2-pos-risk-amt"></span>
+</div>
+
+<!-- LEVELS VIEW (toggled) -->
+<div class="vf-levels-view" id="vfLevelsView" style="display:none">
+  <div class="vf-levels-nav">
+    <span class="vf-levels-title">Today's Forecast Levels</span>
+    <span class="vf-levels-sub" id="vfLevelsSub">Price targets from open + forecast%. Green = hit.</span>
+    <select id="vfLevelsSort" onchange="sortLevelsTable(this.value)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;border-radius:4px">
+      <option value="opportunity">Sort: Most opportunity</option>
+      <option value="setup">Sort: Setup score</option>
+      <option value="consumed_asc">Sort: Least consumed</option>
+      <option value="consumed_desc">Sort: Most consumed</option>
+      <option value="alpha">Sort: Alphabetical</option>
+    </select>
+  </div>
+  <div class="vf-levels-scroll">
+    <table class="vf-levels-tbl" id="vfLevelsTbl">
+      <thead id="vfLevelsThead"></thead>
+      <tbody id="vfLevelsTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CCY STRENGTH STRIP -->
+<div class="vf-ccy-strip" id="vfCcyStrip" style="display:none">
+  <span class="vf-ccy-label">Currency Strength</span>
+  <span id="vfCcyPills">—</span>
+  <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-left:auto" id="vfCcyNote"></span>
+</div>
+
+<!-- WEEKLY PANEL -->
+<div class="v2-panel" id="vfWeeklyPanel" style="display:none">
+  <div class="v2-panel-nav">
+    <span class="v2-panel-title" id="vfWeeklyLabel">Weekly Range Tracker</span>
+    <span class="v2-panel-sub" id="vfWeeklyStatus"></span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="vf-hist-table" id="vfWeeklyTable">
+      <thead id="vfWeeklyHead"></thead>
+      <tbody id="vfWeeklyBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- HISTORY TABLE -->
+<div class="v2-panel" id="vfHistory" style="display:none">
+  <div class="v2-hist-nav">
+    <span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;flex:1">Session History — Annualised Vol%</span>
+    <button class="dark-btn" style="padding:4px 10px;font-size:11px" onclick="histNavPrev()">← Older</button>
+    <input type="date" class="v2-hist-date" id="vfHistDatePickerPanel" onchange="histNavGoto(this.value)">
+    <button class="dark-btn" style="padding:4px 10px;font-size:11px" onclick="histNavNext()">Newer →</button>
+    <button class="dark-btn" style="padding:4px 10px;font-size:11px" onclick="histNavToday()">Today</button>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="vf-hist-table">
+      <thead id="vfHistHead"></thead>
+      <tbody id="vfHistBody"></tbody>
+    </table>
+  </div>
+  <div id="vfHistMsg" style="padding:8px 18px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);display:none"></div>
+</div>
+
+<!-- HIT RATES PANEL -->
+<div class="vf-lhist-panel" id="vfHitRatesPanel" style="display:none">
+  <div class="vf-lhist-nav">
+    <span class="vf-lhist-title">Forecast Level Hit Rates</span>
+    <span class="vf-lhist-sub">% of days each forecast level was touched · median UTC time</span>
+    <span class="vf-panel-age" id="vfLHistAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="computeHitRates()" id="vfHitRatesComputeBtn">↻ Compute</button>
+    <select id="vfHRComputeDays" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:2px 5px;border-radius:4px;outline:none">
+      <option value="90">90 days</option>
+      <option value="180">6 months</option>
+      <option value="365">1 year</option>
+    </select>
+    <a class="dark-btn" style="padding:3px 10px;font-size:10px;text-decoration:none" href="/api/vol-forecast/hit-rates/export.txt" download>⬇ TXT</a>
+    <span style="font-size:9px;color:var(--text3);margin-left:8px">SL ×</span>
+    <input type="number" id="vfHRSLMult" value="1.0" min="0.1" max="10" step="0.1" style="width:44px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px;border-radius:3px" onchange="_buildHRPanel()">
+    <span style="font-size:9px;color:var(--text3)">TP ×</span>
+    <input type="number" id="vfHRTPMult" value="2.0" min="0.1" max="10" step="0.1" style="width:44px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px;border-radius:3px" onchange="_buildHRPanel()">
+    <span style="font-size:9px;color:var(--text3)">ATR30</span>
+    <span style="font-size:9px;color:var(--text3);padding:0 4px;opacity:.35">|</span>
+    <button id="vfHRModeTpsl" onclick="_hrSetDisplayMode('tpsl')" class="dark-btn" style="padding:2px 8px;font-size:10px;color:var(--blue);border-color:var(--blue-bd)">TP/SL</button>
+    <button id="vfHRModeTiming" onclick="_hrSetDisplayMode('timing')" class="dark-btn" style="padding:2px 8px;font-size:10px">Hit Timing</button>
+    <div class="vf-lhist-inst-tabs" id="vfHRViewTabsContainer" style="margin-left:auto">
+      <div class="vf-lhist-tab active" id="vfHRTabOverview" onclick="_hrSetView('overview',this)">Overview</div>
+      <div class="vf-lhist-tab" id="vfHRTabDay" onclick="_hrSetView('day',this)">Day Log</div>
+    </div>
+  </div>
+  <div id="vfHROverview" class="vf-lhist-scroll">
+    <div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">Click ↻ Compute to run the historical price scan.</div>
+  </div>
+  <div id="vfHRDayBrowser" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="_hrDayPrev()">← Prev</button>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--text)" id="vfHRDayLabel">—</span>
+      <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="_hrDayNext()">Next →</button>
+      <button class="dark-btn" style="padding:2px 8px;font-size:10px;margin-left:auto" onclick="_hrCopyDay()">📋 Copy</button>
+    </div>
+    <div class="vf-lhist-scroll" id="vfHRDayBody"></div>
+  </div>
+  <div id="vfHRTimingView" style="display:none">
+    <div style="display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid var(--border)">
+      <div class="vf-lhist-tab active" id="vfHRTim90d" onclick="_hrTimingPeriod('90d',this)">90 Days</div>
+      <div class="vf-lhist-tab" id="vfHRTim6m" onclick="_hrTimingPeriod('6m',this)">6 Months</div>
+      <div class="vf-lhist-tab" id="vfHRTim1y" onclick="_hrTimingPeriod('1y',this)">1 Year</div>
+    </div>
+    <div class="vf-lhist-scroll" id="vfHRTimingBody">
+      <div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">Click ↻ Compute then switch to Hit Timing.</div>
+    </div>
+  </div>
+</div>
+
+<!-- DAILY BRIEF -->
+<div class="vf-brief-panel" id="vfBriefPanel" style="display:none">
+  <div class="vf-brief-nav">
+    <span class="vf-brief-nav-title">Daily Brief</span>
+    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);flex:1">Today's price targets · hit probability · regime · sizing</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfBriefAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="refreshBrief()">↻ Refresh</button>
+  </div>
+  <div id="vfBriefWarns"></div>
+  <div class="vf-brief-filters">
+    <button class="vf-brief-filter active" onclick="_briefSetFilter('all',this)">All</button>
+    <button class="vf-brief-filter" onclick="_briefSetFilter('fx',this)">FX</button>
+    <button class="vf-brief-filter" onclick="_briefSetFilter('index',this)">Indices</button>
+    <button class="vf-brief-filter" onclick="_briefSetFilter('commodity',this)">Commodities</button>
+  </div>
+  <div id="vfBriefBody"><div style="padding:20px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">Loading…</div></div>
+</div>
+
+<!-- INTRADAY PROFILE -->
+<div class="vf-profile-panel" id="vfProfilePanel" style="display:none">
+  <div class="vf-profile-nav">
+    <span class="vf-profile-title">Intraday Vol Profile</span>
+    <span class="vf-profile-sub" id="vfProfileSub">Which UTC hours historically produce the most range</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfProfileAge"></span>
+  </div>
+  <div class="vf-profile-inst-tabs" id="vfProfileTabs"></div>
+  <div class="vf-profile-body">
+    <div class="vf-profile-chart" id="vfProfileChart"></div>
+    <div class="vf-profile-legend">
+      <span class="asia">Asia 00–07</span>
+      <span class="london">London 07–13</span>
+      <span class="ny">NY 13–22</span>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT IMPACT -->
+<div class="vf-event-panel" id="vfEventPanel" style="display:none">
+  <div class="vf-event-nav">
+    <span class="vf-event-title">Event Vol Impact</span>
+    <span class="vf-event-sub" id="vfEventSub">Historical range expansion on high-impact US event days</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfEventAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="refreshEventImpact()" id="vfEventRefreshBtn">↻ Compute</button>
+  </div>
+  <div class="vf-event-scroll">
+    <div id="vfEventBody"><div class="vf-event-empty">Click ↻ Compute to run the event impact study.</div></div>
+  </div>
+</div>
+
+<!-- REFERENCE DATA PANEL -->
+<div class="vf-event-panel" id="vfRefPanel" style="display:none">
+  <div class="vf-event-nav">
+    <span class="vf-event-title">Reference Forecast Data</span>
+    <span class="vf-event-sub" id="vfRefSub">Paste today's reference export — stored in KV for comparison.</span>
+    <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfRefAge"></span>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="compareRefData()" id="vfRefCmpBtn">⇄ Compare</button>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="saveRefData()" id="vfRefSaveBtn">💾 Save</button>
+  </div>
+  <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <label style="font-size:10px;color:var(--text3);white-space:nowrap">Date:</label>
+      <input type="date" id="vfRefDate" onchange="loadRefData()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 8px;border-radius:4px">
+      <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="loadRefData()">📂 Load</button>
+    </div>
+    <textarea id="vfRefText" placeholder="Paste reference export here..." style="background:var(--s1);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:8px;border-radius:4px;resize:vertical;height:160px;width:100%;box-sizing:border-box"></textarea>
+    <div id="vfRefStatus" style="font-size:10px;color:var(--text3);min-height:14px"></div>
+    <div id="vfRefCmpWrap" style="display:none">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:6px">
+        Δ = (ref÷val − 1)×100. <span style="color:var(--green)">Green ≤ 3%</span> · <span style="color:var(--amber)">Amber 3–8%</span> · <span style="color:var(--red)">Red &gt; 8%</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="vfRefCmpTbl" style="width:100%;border-collapse:collapse;font-size:10px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="color:var(--text2)">
+              <th rowspan="2" style="text-align:left;padding:3px 8px;vertical-align:bottom;border-bottom:2px solid var(--border)">Instrument</th>
+              <th colspan="11" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">Ann Vol %</th>
+              <th colspan="11" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">HL Median %</th>
+              <th colspan="11" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">OC Median %</th>
+            </tr>
+            <tr style="border-bottom:2px solid var(--border);color:var(--text3)">
+              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th>
+              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th>
+              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th>
+            </tr>
+          </thead>
+          <tbody id="vfRefCmpBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ARCHIVE TABLE -->
+<div class="v2-panel" style="margin-top:22px" id="vfArchiveBox">
+  <div class="v2-panel-nav"><span class="v2-panel-title">Archive — Past Forecasts</span></div>
+  <div style="overflow-x:auto">
+    <div class="vf-arch-empty" id="vfArchiveEmpty">Loading…</div>
+    <table class="vf-arch-table" id="vfArchiveTable" style="display:none">
+      <thead id="vfArchiveThead"></thead>
+      <tbody id="vfArchiveTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /v2App -->
+
+<!-- HELP MODAL -->
+<div id="vfHelpOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);overflow-y:auto;padding:24px 16px">
+  <div style="max-width:760px;margin:0 auto;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:24px 28px;font-family:'DM Mono',monospace;color:var(--text)">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <span style="font-size:15px;font-weight:600;letter-spacing:.03em">Vol & Range Forecaster — Feature Guide</span>
+      <button onclick="toggleHelp()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:13px;padding:4px 12px;border-radius:4px;cursor:pointer">✕ Close</button>
+    </div>
+
+    <!-- CORE FORECAST -->
+    <div class="vfh-section">
+      <div class="vfh-title">Instrument Cards — Core Forecast</div>
+      <p>Each card is one instrument's daily vol forecast. All values are <strong>percentages of price</strong> (e.g. 0.65% means 65 pips on a 10,000-pip pair).</p>
+      <table class="vfh-tbl">
+        <tr><td>Vol %</td><td>Today's estimated 1-day volatility (annualised ÷ √252). This is σ — the engine behind all range forecasts.</td></tr>
+        <tr><td>H-L Median / 75th</td><td>Expected high-low range for the full day. Median = 50% of days historically exceed this. 75th = wider target reached ~25% of days.</td></tr>
+        <tr><td>O-C Median / 75th</td><td>Expected close-to-open move (directional). Same percentile logic. Use for stop/target sizing when you have a directional bias.</td></tr>
+        <tr><td>O-H / O-L</td><td>How far price is expected to travel from the open upside (O-H) or downside (O-L). Same magnitude as O-C by Brownian motion reflection principle.</td></tr>
+        <tr><td>5-day / 20-day</td><td>Multi-day range scaled by √N (random walk). Useful for swing and position sizing.</td></tr>
+        <tr><td>Vol Percentile pill</td><td>Where today's σ sits in the trailing 252-day distribution. Red = top quartile (high vol), green = bottom quartile (quiet). Grey = mid-range.</td></tr>
+        <tr><td>News chip  📅</td><td>Shown when a high-impact US event is detected today (FOMC ×1.35, NFP ×1.30, CPI ×1.25, PCE ×1.20, GDP/PPI ×1.15). The multiplier is applied to σ before computing ranges, so all forecasts on that row already reflect the expected event expansion.</td></tr>
+      </table>
+    </div>
+
+    <!-- VOL CONE + VOV -->
+    <div class="vfh-section">
+      <div class="vfh-title">Vol Cone Strip &amp; Vol-of-Vol Badge</div>
+      <p>Shown on each card beneath the percentile pill. Answers <em>"is vol expanding or contracting?"</em> and <em>"how reliable is this forecast?"</em></p>
+      <table class="vfh-tbl">
+        <tr><td>5d / 21d / 63d / 252d</td><td>Percentile of today's σ inside each lookback window. If 5d &gt; 252d the short-term is above its own history — vol is <strong>expanding</strong> (green). If 5d &lt; 252d vol is <strong>contracting</strong> (amber). Flat = no regime signal.</td></tr>
+        <tr><td>Vol Stable / Moderate / Unstable</td><td>Vol-of-vol: coefficient of variation of the last 20 daily σ readings. Stable (&lt;10% CV) = forecasts are reliable. Unstable (&gt;20% CV) = σ is jumping day-to-day and the range estimate has wider uncertainty.</td></tr>
+      </table>
+    </div>
+
+    <!-- SESSION TRACKER -->
+    <div class="vfh-section">
+      <div class="vfh-title">Session Tracker (inside each card)</div>
+      <p>The intraday progress bar and reach-time stamps track how far today's price action has moved against the forecast levels in real time.</p>
+      <table class="vfh-tbl">
+        <tr><td>Consumed bar</td><td>How much of the median H-L forecast has been used up so far today. Green dot at the median mark, amber at the 75th. Fills left-to-right as range builds.</td></tr>
+        <tr><td>Breakout probability</td><td>Brownian motion estimate of whether price will extend further given how much range is left and how much of the day has passed. High early in the day = range is not yet "used up". Falls as the session progresses and range is consumed.</td></tr>
+        <tr><td>Level reach times</td><td>The UTC time each forecast level was first hit today: O-H med/75th (upside), O-L med/75th (downside), H-L med/75th (full range). Blank = not yet reached.</td></tr>
+      </table>
+    </div>
+
+    <!-- SETUP SCORE -->
+    <div class="vfh-section">
+      <div class="vfh-title">Setup Score (0–8)</div>
+      <p>Shown in the <strong>📋 Levels</strong> table. A quick synthesis of conditions favouring a tradeable move today.</p>
+      <table class="vfh-tbl">
+        <tr><td>+2 Vol expanding</td><td>5-day cone above 63-day cone — short-term vol above medium-term average.</td></tr>
+        <tr><td>+1 VoV stable</td><td>Vol-of-vol is Stable — forecast is reliable, not noisy.</td></tr>
+        <tr><td>+1 Weekly bias</td><td>WTD pair direction aligns with the broader weekly trend.</td></tr>
+        <tr><td>+2 Range unconsumed</td><td>Less than 40% of the median H-L has been consumed — most of the day's move is still ahead.</td></tr>
+        <tr><td>+2 Session active</td><td>Current London/NY session hours are within the historically high-activity window.</td></tr>
+      </table>
+    </div>
+
+    <!-- CURRENCY STRENGTH -->
+    <div class="vfh-section">
+      <div class="vfh-title">Currency Strength Strip</div>
+      <p>Shown across the top of the card grid. Aggregates the week-to-date directional bias of all cross pairs to score each major currency (EUR, USD, GBP, JPY, AUD, NZD, CHF, CAD) from bull to bear. Helps identify which side of a pair has momentum when sizing a directional trade.</p>
+    </div>
+
+    <!-- LEVELS TABLE -->
+    <div class="vfh-section">
+      <div class="vfh-title">📋 Levels — Compact All-Instrument View</div>
+      <p>Flip between the card grid and this table with <strong>📋 Levels</strong>. All 26 instruments on one screen with actual price targets computed from today's open.</p>
+      <table class="vfh-tbl">
+        <tr><td>↑ Med / ↑ 75th</td><td>Open + O-H median/75th target in price (not %). Green highlight = already hit today.</td></tr>
+        <tr><td>↓ Med / ↓ 75th</td><td>Open − O-L median/75th target. Same hit colouring.</td></tr>
+        <tr><td>H-L vs Med / 75th</td><td>Whether today's actual high-low range has reached the median or 75th forecast yet. Shows hit time if yes.</td></tr>
+        <tr><td>Consumed bar</td><td>Visual fill of today's range consumption vs median forecast.</td></tr>
+        <tr><td>Sort options</td><td>Most opportunity (fewest levels hit — most range still available), Setup score, Least/Most consumed, Alphabetical.</td></tr>
+      </table>
+      <p style="margin-top:6px">Click any row instrument name to jump directly to that card.</p>
+    </div>
+
+    <!-- HIT RATES -->
+    <div class="vfh-section">
+      <div class="vfh-title">📊 Hit Rates — Historical Level Reach Statistics</div>
+      <p>Answers: <em>"on what % of days does price actually reach each forecast level, and how quickly?"</em></p>
+      <table class="vfh-tbl">
+        <tr><td>Hit rate %</td><td>Fraction of past trading days on which that level was reached (from stored session audits). Higher = more reliable level for entries/targets.</td></tr>
+        <tr><td>Median reach time</td><td>UTC time at which the level is typically first hit on days it is reached. Tells you when to expect the move during the session.</td></tr>
+        <tr><td>Earliest / Latest</td><td>The earliest and latest the level has been hit across the sample — range of when to watch for it.</td></tr>
+      </table>
+      <p style="margin-top:6px">Data accumulates automatically as each day's session is saved. The more days in the archive, the more reliable the hit rates.</p>
+    </div>
+
+    <!-- INTRADAY PROFILE -->
+    <div class="vfh-section">
+      <div class="vfh-title">📊 Profile — Intraday Vol Profile</div>
+      <p>Bar chart of which UTC hours historically contribute the most to daily range, computed from 5 years of H1 Oanda data. Each bar = that hour's average contribution as a % of the full-day H-L. Use it to time entries: high bars = high-activity hours where levels are typically reached fastest.</p>
+      <p style="margin-top:4px">Requires Session Stats to have been computed (click <strong>⟳ Session Stats</strong> if bars are empty).</p>
+    </div>
+
+    <!-- EVENT IMPACT -->
+    <div class="vfh-section">
+      <div class="vfh-title">📅 Events — Event Vol Impact Study</div>
+      <p>Shows how much actual range expanded vs the base forecast on historical high-impact US event days (CPI, NFP, FOMC, PCE, GDP, PPI). Built from your own stored session audits cross-referenced against the Finnhub economic calendar.</p>
+      <table class="vfh-tbl">
+        <tr><td>×1.25 n=8</td><td>On CPI days, actual range averaged 1.25× the forecast. Based on 8 stored event days in your archive.</td></tr>
+      </table>
+      <p style="margin-top:6px">Click <strong>↻ Compute</strong> to run the study. Gets more accurate as your session audit archive grows. The current-day news multiplier (applied to today's forecast) is derived from this data.</p>
+    </div>
+
+    <!-- REF DATA -->
+    <div class="vfh-section">
+      <div class="vfh-title">📌 Ref Data — Reference Forecast Storage</div>
+      <p>Paste your external reference forecast export here and hit <strong>💾 Save</strong>. It is stored in KV alongside our forecast so both are always available regardless of conversation resets. Pick any past date with the date picker to load a previously saved reference. Used for ongoing calibration: compare reference vs our export to identify systematic gaps and correct them.</p>
+    </div>
+
+    <!-- SESSION STATS -->
+    <div class="vfh-section">
+      <div class="vfh-title">⟳ Session Stats — Recompute Session Consumption</div>
+      <p>Fetches 5 years of H1 bars from Oanda for all instruments and computes what fraction of the daily H-L range each session (Asia 00:00–06:00, London 08:00–13:00, NY 13:00–21:00 London time) historically consumes. Takes 3–5 minutes. Results are stored in KV and used by the Intraday Profile panel. Run this once, or again after significant market regime changes.</p>
+    </div>
+
+    <!-- EXPORTS -->
+    <div class="vfh-section">
+      <div class="vfh-title">⬇ Export Buttons</div>
+      <table class="vfh-tbl">
+        <tr><td>⬇ Export</td><td>Plain-text vol forecast for all instruments — paste into your trading journal or Pine Script.</td></tr>
+        <tr><td>⬇ Session</td><td>Asia/London/NY session consumption stats block (median and 75th percentile % of daily range per session). For the v2 Pine Script session indicator.</td></tr>
+        <tr><td>⬇ V+S</td><td>Combined: vol forecast + session stats in one paste. For the v3 Pine Script indicator.</td></tr>
+        <tr><td>⬇ Extended</td><td>Full export: includes vol percentile, O-H/O-L legs, 5-day and 20-day ranges, vol cone, vol-of-vol.</td></tr>
+        <tr><td>⬇ Weekly</td><td>WTD range consumption, directional bias, 5-day and 20-day forecasts per instrument.</td></tr>
+      </table>
+    </div>
+
+    <!-- METHODOLOGY -->
+    <div class="vfh-section">
+      <div class="vfh-title">Methodology Notes</div>
+      <table class="vfh-tbl">
+        <tr><td>Gold (commodity)</td><td>Rogers-Satchell EWMA (λ=0.94) on daily OHLC. Handles trending markets without understating vol — unlike close-to-close estimators it doesn't subtract the directional component.</td></tr>
+        <tr><td>Indices (NQ, SPX, DE30…)</td><td>GARCH(1,1): α=0.06, β=0.91, ω=4.76e-6 (~20% long-run floor). Responds quickly to vol spikes (α), mean-reverts over ~23 days (β), and can't collapse in quiet patches (ω floor).</td></tr>
+        <tr><td>FX pairs</td><td>GARCH(1,1): same α/β, ω=3.60e-7 (~5% long-run floor). Lower floor reflects calmer FX baseline vs equity indices.</td></tr>
+        <tr><td>Range distribution</td><td>Brownian motion: H-L P50 = 1.572σ, P75 = 2.049σ. O-C P50 = 0.675σ (half-normal). Per-asset correction factors calibrated against reference system.</td></tr>
+        <tr><td>Multi-day scaling</td><td>σ_N = σ_1 × √N (independent days). Not ×N — range partially cancels across days for a random walk.</td></tr>
+      </table>
+    </div>
+
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="toggleHelp()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:12px;padding:6px 20px;border-radius:4px;cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentForecast   = null;
+let liveForecast      = null;
+let currentSession    = null;
+let currentWeekly     = null;
+let currentProfile    = null;
+let currentBrief      = null;
+let _briefFilter      = 'all';
+let currentEventData  = null;
+let currentLevelsData = null;
+let levelsViewActive  = false;
+let levelsSortMode    = 'opportunity';
+let refreshTimer      = null;
+let viewingDate       = null;
+const POLL_MS         = 5 * 60 * 1000;
+let currentSessionStats = null;
+let _hitRateData      = null;
+let _hrDayIndex       = {};
+let _hrDates          = [];
+let _hrDayPos         = 0;
+let _hrView           = 'overview';
+let _hrDisplayMode    = 'tpsl';
+let _hrTimingPeriodCurrent = '90d';
+let _autoRefresh      = true;
+let _activeTab        = 'today';
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.body.classList.toggle('dark', true);
+  _loadPosSettings();
+  loadForecast();
+  loadHistory();
+  loadSession();
+  loadSessionStats();
+  loadWeekly();
+  loadArchiveTable();
+  loadIntradayProfile();
+  loadEventImpact();
+  loadHitRates();
+  loadDailyBrief();
+  scheduleRefresh();
+  const today = new Date().toISOString().slice(0,10);
+  const dp = document.getElementById('vfHistDatePicker');
+  if (dp) dp.value = today;
+  const dp2 = document.getElementById('vfHistDatePickerPanel');
+  if (dp2) dp2.value = today;
+});
+
+// ── scheduleRefresh ───────────────────────────────────────────────────────────
+function scheduleRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  if (!_autoRefresh) return;
+  refreshTimer = setInterval(() => {
+    if (_autoRefresh && _activeTab === 'today') {
+      loadForecast();
+      loadSession();
+      loadWeekly();
+    }
+  }, POLL_MS);
+}
+
+// ── toggleAutoRefresh ─────────────────────────────────────────────────────────
+function toggleAutoRefresh(checked) {
+  _autoRefresh = !!checked;
+  scheduleRefresh();
+}
+
+// ── switchTab ─────────────────────────────────────────────────────────────────
+function switchTab(tab, el) {
+  _activeTab = tab;
+
+  // Update tab active states
+  document.querySelectorAll('.v2-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  if (tab === 'today') {
+    viewingDate = null;
+    document.getElementById('vfHistBanner').style.display = 'none';
+    loadForecast();
+    loadSession();
+    loadWeekly();
+  } else if (tab === 'yesterday') {
+    const d = new Date();
+    // Step back to previous weekday
+    d.setDate(d.getDate() - 1);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+    viewingDate = d.toISOString().slice(0, 10);
+    const banner = document.getElementById('vfHistBanner');
+    const bannerTxt = document.getElementById('vfHistBannerTxt');
+    if (banner) banner.style.display = 'flex';
+    if (bannerTxt) bannerTxt.textContent = 'Viewing historical forecast: ' + viewingDate;
+    const dp = document.getElementById('vfHistDatePicker');
+    if (dp) dp.value = viewingDate;
+    loadForecast(viewingDate);
+    loadSession(viewingDate);
+  } else if (tab === 'last30') {
+    viewingDate = null;
+    document.getElementById('vfHistBanner').style.display = 'none';
+    // Show the history panel for last 30 days
+    const histPanel = document.getElementById('vfHistory');
+    if (histPanel) {
+      histPanel.style.display = 'block';
+      const btn = document.getElementById('vfHistoryBtn');
+      if (btn) btn.classList.add('active');
+    }
+    loadHistory();
+  }
+}
+
+// ── loadForecast ──────────────────────────────────────────────────────────────
+function loadForecast(date) {
+  const sdot = document.getElementById('vfSdot');
+  const stxt = document.getElementById('vfStxt');
+  if (sdot) { sdot.className = 'v2-status-dot spin'; }
+  if (stxt) stxt.textContent = 'Loading…';
+
+  const url = date
+    ? `/api/vol-forecast?date=${date}`
+    : '/api/vol-forecast';
+
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      currentForecast = data;
+      if (!date) liveForecast = data;
+
+      if (sdot) sdot.className = 'v2-status-dot ok';
+      if (stxt) stxt.textContent = 'OK';
+
+      // Update header timestamps
+      const upd = document.getElementById('vfUpdated');
+      if (upd && data.computed_at) {
+        const t = new Date(data.computed_at);
+        upd.textContent = t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+      }
+
+      // Session label / date heading
+      const lbl = document.getElementById('vfSessionLabel');
+      if (lbl) {
+        const ds = date || (data.date || new Date().toISOString().slice(0,10));
+        const d = new Date(ds + 'T12:00:00Z');
+        lbl.textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      }
+
+      // Computed at meta
+      const cat = document.getElementById('vfComputedAt');
+      if (cat && data.computed_at) {
+        cat.textContent = 'Computed ' + new Date(data.computed_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' London';
+      }
+
+      // News badge
+      const nb = document.getElementById('vfNewsBadge');
+      if (nb) {
+        if (data.news_event) {
+          nb.textContent = data.news_event;
+          nb.style.display = 'inline-block';
+        } else {
+          nb.style.display = 'none';
+        }
+      }
+
+      // Count pill
+      const pc = document.getElementById('pillCount');
+      if (pc && data.instruments) pc.textContent = Object.keys(data.instruments).length + ' pairs';
+
+      // News pill
+      const pn = document.getElementById('pillNews');
+      if (pn) {
+        if (data.news_event) {
+          pn.style.display = 'inline-block';
+          pn.textContent = data.news_event;
+        } else {
+          pn.style.display = 'none';
+        }
+      }
+
+      // Enable export/tools buttons
+      ['vfExportBtn','vfExtendedBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = false;
+      });
+
+      // Build the instrument grid
+      renderV2Grid(data);
+
+      // Update levels if open
+      if (levelsViewActive) buildLevelsTable();
+
+      // Update ccy strip
+      buildCcyStrip(data);
+    })
+    .catch(err => {
+      if (sdot) sdot.className = 'v2-status-dot err';
+      if (stxt) stxt.textContent = 'Error: ' + err.message;
+      console.error('loadForecast error:', err);
+    });
+}
+
+// ── loadHistory ───────────────────────────────────────────────────────────────
+function loadHistory(date) {
+  const url = date
+    ? `/api/vol-forecast/history?date=${date}`
+    : '/api/vol-forecast/history';
+
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      renderHistoryTable(data);
+    })
+    .catch(err => {
+      const msg = document.getElementById('vfHistMsg');
+      if (msg) { msg.textContent = 'Error loading history: ' + err.message; msg.style.display = 'block'; }
+      console.error('loadHistory error:', err);
+    });
+}
+
+// ── toggleHistory ─────────────────────────────────────────────────────────────
+function toggleHistory() {
+  const panel = document.getElementById('vfHistory');
+  const btn   = document.getElementById('vfHistoryBtn');
+  if (!panel) return;
+  const visible = panel.style.display !== 'none';
+  panel.style.display = visible ? 'none' : 'block';
+  if (btn) btn.classList.toggle('active', !visible);
+}
+
+// ── loadSession ───────────────────────────────────────────────────────────────
+function loadSession(date) {
+  const url = date
+    ? `/api/vol-forecast/session?date=${date}`
+    : '/api/vol-forecast/session';
+
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      currentSession = data;
+
+      // Enable session export buttons
+      ['vfSessionExportBtn','vfV3ExportBtn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = false;
+      });
+
+      // Update each instrument card with session data
+      if (data && data.instruments) {
+        for (const [name, s] of Object.entries(data.instruments)) {
+          updateV2CardSession(name, s, data);
+        }
+      }
+
+      // Update levels if open
+      if (levelsViewActive) renderLevelsTable();
+    })
+    .catch(err => {
+      console.error('loadSession error:', err);
+    });
+}
+
+// ── triggerRefresh ────────────────────────────────────────────────────────────
+function triggerRefresh() {
+  const btn = document.getElementById('vfRefreshBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '↻ Refreshing…';
+  }
+
+  const date = viewingDate || null;
+
+  Promise.all([
+    fetch(date ? `/api/vol-forecast?date=${date}` : '/api/vol-forecast').then(r => r.json()),
+    fetch(date ? `/api/vol-forecast/session?date=${date}` : '/api/vol-forecast/session').then(r => r.json())
+  ])
+  .then(([forecast, session]) => {
+    currentForecast = forecast;
+    if (!date) liveForecast = forecast;
+    currentSession  = session;
+    renderV2Grid(forecast);
+    if (session && session.instruments) {
+      for (const [name, s] of Object.entries(session.instruments)) {
+        updateV2CardSession(name, s, session);
+      }
+    }
+    if (levelsViewActive) renderLevelsTable();
+    renderCurrencyStrength(currentWeekly);
+  })
+  .catch(err => {
+    console.error('triggerRefresh error:', err);
+  })
+  .finally(() => {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '↻ Refresh';
+    }
+  });
+}
+
+// ── loadSessionStats ──────────────────────────────────────────────────────────
+function loadSessionStats() {
+  fetch('/api/vol-forecast/session-stats')
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      currentSessionStats = data;
+
+      // Build the intraday profile if panel is open
+      if (document.getElementById('vfProfilePanel').style.display !== 'none') {
+        buildIntradayProfile(data);
+      }
+
+      // Update profile age label
+      const age = document.getElementById('vfProfileAge');
+      if (age && data.computed_at) {
+        const d = new Date(data.computed_at);
+        const h = Math.round((Date.now() - d.getTime()) / 3600000);
+        age.textContent = h < 24 ? h + 'h ago' : Math.round(h/24) + 'd ago';
+      }
+    })
+    .catch(err => {
+      console.error('loadSessionStats error:', err);
+    });
+}
+
+// ── triggerSessionStats ───────────────────────────────────────────────────────
+function triggerSessionStats() {
+  const btn = document.getElementById('vfSessionComputeBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Computing…';
+  }
+
+  fetch('/api/vol-forecast/session-stats/compute', { method: 'POST' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      currentSessionStats = data;
+      if (document.getElementById('vfProfilePanel').style.display !== 'none') {
+        buildIntradayProfile(data);
+      }
+      const age = document.getElementById('vfProfileAge');
+      if (age) age.textContent = 'just now';
+    })
+    .catch(err => {
+      console.error('triggerSessionStats error:', err);
+      alert('Session stats compute failed: ' + err.message);
+    })
+    .finally(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Session Stats';
+      }
+    });
+}
+
+// ── Aliases (called by already-written functions) ─────────────────────────────
+function renderForecast(data, isHistorical = false) { renderV2Grid(data, isHistorical); }
+function buildLevelsTable() { renderLevelsTable(); }
+function buildCcyStrip(data) { renderCurrencyStrength(data); }
+function renderHistoryTable(data) {
+  if (data?.ok && data.forecasts?.length) renderHistory(data.forecasts);
+}
+
+// ── V2 Grid ────────────────────────────────────────────────────────────────────
+function renderV2Grid(data, isHistorical = false) {
+  const grid = document.getElementById('vfGrid');
+  if (!grid) return;
+
+  // Session label (large date heading)
+  const lbl = document.getElementById('vfSessionLabel');
+  if (lbl) {
+    const ds = data.session_date || data.date || '';
+    if (ds) {
+      try {
+        const d = new Date(ds + 'T12:00:00Z');
+        lbl.textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      } catch { lbl.textContent = data.session_label || ds; }
+    } else {
+      lbl.textContent = data.session_label || '';
+    }
+  }
+
+  const cat = document.getElementById('vfComputedAt');
+  if (cat && data.computed_at) {
+    cat.textContent = 'Computed ' + new Date(data.computed_at).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/London' }) + ' London';
+  }
+
+  const upd = document.getElementById('vfUpdated');
+  if (upd && data.computed_at) upd.textContent = isHistorical ? 'Historical' : timeAgo(new Date(data.computed_at));
+
+  // News badge
+  const nb = document.getElementById('vfNewsBadge');
+  const nf = data.meta?.news_flag || data.news_event;
+  const nm = data.meta?.news_mult;
+  if (nb) {
+    if (nf) { nb.textContent = nm ? `📅 ${nf} ×${nm.toFixed(2)}` : `📅 ${nf}`; nb.style.display = ''; }
+    else nb.style.display = 'none';
+  }
+  const pn = document.getElementById('pillNews');
+  if (pn) { pn.className = nf ? 'dpill ok' : 'dpill'; pn.textContent = nf || 'NEWS'; }
+
+  const entries = Object.entries(data.instruments ?? {});
+  const pc = document.getElementById('pillCount');
+  if (pc) { pc.textContent = `${entries.length} pairs`; pc.className = entries.length > 0 ? 'dpill ok' : 'dpill err'; }
+
+  grid.innerHTML = '';
+  for (const [name, f] of entries) grid.appendChild(buildV2Card(name, f, data.meta, isHistorical));
+
+  if (levelsViewActive) renderLevelsTable();
+  const en = ['vfExportBtn','vfExtendedBtn','vfLevelsBtn'];
+  en.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
+}
+
+// ── V2 Card ────────────────────────────────────────────────────────────────────
+function buildV2Card(name, f, meta, isHistorical = false) {
+  const card = document.createElement('div');
+  card.className = 'v2-card';
+  card.id = `v2card-${name}`;
+
+  const volClass = f.vol_annual > 20 ? 'hi' : f.vol_annual < 8 ? 'lo' : '';
+  const pct = f.vol_pct ?? null;
+  const pctClass = pct != null ? (pct >= 80 ? 'hi' : pct <= 20 ? 'lo' : '') : '';
+
+  // Compact cone strip
+  const coneHtml = (() => {
+    if (f.cone_5d == null && f.cone_21d == null) return '';
+    const c252 = f.vol_pct ?? 0;
+    const expanding = (f.cone_5d ?? c252) > c252;
+    const contracting = (f.cone_5d ?? c252) < c252;
+    const tCol = expanding ? 'var(--green)' : contracting ? 'var(--amber)' : 'var(--text3)';
+    const trend = expanding ? '↑ exp' : contracting ? '↓ ctr' : '→ stbl';
+    const items = [
+      f.cone_5d  != null ? `5d:<b>${f.cone_5d}th</b>` : null,
+      f.cone_21d != null ? `21d:<b>${f.cone_21d}th</b>` : null,
+      f.cone_63d != null ? `63d:<b>${f.cone_63d}th</b>` : null,
+      c252       != null ? `252d:<b>${c252}th</b>` : null,
+    ].filter(Boolean).join(' · ');
+    const vov = f.vol_vov_label
+      ? `<span style="margin-left:4px;font-size:9px;padding:1px 5px;border-radius:3px;border:1px solid var(--border);background:var(--s2);color:var(--text3)">Vol ${f.vol_vov_label}</span>`
+      : '';
+    return `<div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      ${items} <span style="color:${tCol};font-weight:600">${trend}</span>${vov}</div>`;
+  })();
+
+  const hlMax = (f.hl_75 || 1) * 1.1;
+  const ocMax = (f.oc_75 || 1) * 1.1;
+
+  const pctBadge = pct != null
+    ? `<span class="v2-pct-badge ${pctClass}" title="Vol higher than ${pct}% of 252-day history">${pct}th</span>` : '';
+  const liveHtml = isHistorical ? '' : `<span class="v2-badge live-badge" id="v2live-${name}" style="display:none">LIVE</span>`;
+
+  const newsChip = meta?.news_flag
+    ? `<div style="margin-top:2px"><span style="font-size:9px;font-family:'DM Mono',monospace;font-weight:600;padding:2px 7px;border-radius:3px;background:#92400e22;color:#fbbf24;border:1px solid #92400e44">📅 ${meta.news_flag} ×${(meta.news_mult??1).toFixed(2)}</span></div>` : '';
+
+  card.innerHTML = `
+    <div class="v2-card-hdr">
+      <span class="v2-inst-name">${name}</span>
+      <div class="v2-hdr-pills">${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
+    </div>
+    ${coneHtml}
+    ${buildRangeMap(name, f)}
+    <div class="v2-metric-bars" id="mbars-${name}">
+      ${v2MetricBar('H-L', f.hl_median, f.hl_75, hlMax)}
+      ${v2MetricBar('O-C', f.oc_median, f.oc_75, ocMax)}
+    </div>
+    <div class="v2-metric-tiles">
+      <div class="v2-tile" id="tile-hl75-${name}"><div class="v2-tile-val">${f.hl_75.toFixed(2)}%</div><div class="v2-tile-lbl">H-L 75th</div></div>
+      <div class="v2-tile" id="tile-hlmed-${name}"><div class="v2-tile-val">${f.hl_median.toFixed(2)}%</div><div class="v2-tile-lbl">H-L Med</div></div>
+      <div class="v2-tile" id="tile-oc75-${name}"><div class="v2-tile-val">${f.oc_75.toFixed(2)}%</div><div class="v2-tile-lbl">O-C 75th</div></div>
+      <div class="v2-tile" id="tile-ocmed-${name}"><div class="v2-tile-val">${f.oc_median.toFixed(2)}%</div><div class="v2-tile-lbl">O-C Med</div></div>
+    </div>
+    ${newsChip}
+    <div id="vf-pos-${name}" class="vf-pos-result" style="display:none"></div>
+    ${isHistorical ? '' : `<div id="vf-sess-${name}" style="display:none"></div>`}
+  `;
+  return card;
+}
+
+function buildRangeMap(name, f) {
+  const scale = (f.oc_75 || 0.5) * 1.15;
+  const pos = v => Math.max(2, Math.min(98, 50 + (v / scale) * 50)).toFixed(1);
+  const ocMedUp = pos(f.oc_median), oc75Up = pos(f.oc_75);
+  const ocMedDn = pos(-f.oc_median), oc75Dn = pos(-f.oc_75);
+  const mono = "font-size:8px;font-family:'DM Mono',monospace;color:var(--text3)";
+  return `<div class="v2-range-map" id="rmap-${name}">
+    <div class="v2-rm-track">
+      <div class="v2-rm-center" style="left:50%"></div>
+      <div class="v2-rm-tick p75" style="left:${oc75Dn}%"  title="O-C 75th dn"></div>
+      <div class="v2-rm-tick med" style="left:${ocMedDn}%" title="O-C Med dn"></div>
+      <div class="v2-rm-tick med" style="left:${ocMedUp}%" title="O-C Med up"></div>
+      <div class="v2-rm-tick p75" style="left:${oc75Up}%"  title="O-C 75th up"></div>
+    </div>
+    <div style="position:relative;height:14px;margin-top:2px">
+      <span style="position:absolute;left:${oc75Dn}%;transform:translateX(-50%);${mono}">−75th</span>
+      <span style="position:absolute;left:${ocMedDn}%;transform:translateX(-50%);${mono}">−med</span>
+      <span style="position:absolute;left:50%;transform:translateX(-50%);font-size:8px;font-family:'DM Mono',monospace;color:var(--text2);font-weight:600">O</span>
+      <span style="position:absolute;left:${ocMedUp}%;transform:translateX(-50%);${mono}">+med</span>
+      <span style="position:absolute;left:${oc75Up}%;transform:translateX(-50%);${mono}">+75th</span>
+    </div>
+  </div>`;
+}
+
+function v2MetricBar(label, medVal, p75Val, maxVal, actualVal, hitP75, subLbl) {
+  const medW = Math.min(100, (medVal / maxVal) * 100).toFixed(1);
+  const p75W = Math.min(100, (p75Val / maxVal) * 100).toFixed(1);
+  if (actualVal != null) {
+    const actW   = Math.min(100, (actualVal / maxVal) * 100).toFixed(1);
+    const actCls = hitP75 ? 'reached' : '';
+    return `<div class="v2-mbar-row">
+      <span class="v2-mbar-lbl">${label}</span>
+      <div class="v2-mbar-track">
+        <div class="v2-mbar-fill ${actCls}" style="width:${actW}%"></div>
+        <div class="v2-mbar-med-mark" style="left:${medW}%" title="Med ${medVal.toFixed(2)}%"></div>
+        <div class="v2-mbar-75-mark" style="left:${p75W}%" title="75th ${p75Val.toFixed(2)}%"></div>
+      </div>
+      <span class="v2-mbar-val">${actualVal.toFixed(2)}%</span>
+      <span class="v2-mbar-pct">${subLbl || ''}</span>
+    </div>`;
+  }
+  return `<div class="v2-mbar-row">
+    <span class="v2-mbar-lbl">${label}</span>
+    <div class="v2-mbar-track">
+      <div class="v2-mbar-fill" style="width:${medW}%"></div>
+      <div class="v2-mbar-75-mark" style="left:${p75W}%" title="75th ${p75Val.toFixed(2)}%"></div>
+    </div>
+    <span class="v2-mbar-val">${medVal.toFixed(2)}%</span>
+    <span class="v2-mbar-pct">75th ${p75Val.toFixed(2)}%</span>
+  </div>`;
+}
+
+// ── Update card with live session data ─────────────────────────────────────────
+function updateV2CardSession(name, s, data) {
+  if (!s || s.error) return;
+  const card = document.getElementById(`v2card-${name}`);
+  if (!card) return;
+  const fc = s.forecast || currentForecast?.instruments?.[name];
+  if (!fc) return;
+
+  card.classList.add('live');
+  const lb = document.getElementById(`v2live-${name}`);
+  if (lb) lb.style.display = '';
+
+  // Update range map
+  const rmap = document.getElementById(`rmap-${name}`);
+  if (rmap && s.oh != null && s.ol != null) {
+    const scale = (fc.oc_75 || 0.5) * 1.15;
+    const pos = v => Math.max(2, Math.min(98, 50 + (v / scale) * 50));
+    const bL = pos(-s.ol), bR = pos(s.oh), bW = bR - bL;
+    const cP = pos(s.oc ?? 0);
+    const track = rmap.querySelector('.v2-rm-track');
+    if (track) {
+      track.querySelectorAll('.v2-rm-bar,.v2-rm-price-dot').forEach(e => e.remove());
+      const bar = document.createElement('div');
+      bar.className = 'v2-rm-bar' + (s.complete ? ' complete' : '');
+      bar.style.cssText = `left:${bL.toFixed(1)}%;width:${bW.toFixed(1)}%`;
+      bar.title = `O-H ${s.oh.toFixed(2)}% · O-L ${s.ol.toFixed(2)}% · O-C ${s.oc>=0?'+':''}${s.oc.toFixed(2)}%`;
+      track.appendChild(bar);
+      const dot = document.createElement('div');
+      dot.className = 'v2-rm-price-dot';
+      dot.style.left = cP.toFixed(1) + '%';
+      dot.title = `O-C: ${s.oc>=0?'+':''}${s.oc.toFixed(2)}%`;
+      track.appendChild(dot);
+    }
+  }
+
+  // Rebuild metric bars with actual data
+  const mb = document.getElementById(`mbars-${name}`);
+  if (mb && s.hl != null) {
+    const hlMax = (fc.hl_75 || 1) * 1.1, ocMax = (fc.oc_75 || 1) * 1.1;
+    const ocAbs = Math.abs(s.oc ?? 0);
+    const hlPct = fc.hl_median > 0 ? Math.round(s.hl / fc.hl_median * 100) : null;
+    const ocPct = fc.oc_median > 0 ? Math.round(ocAbs / fc.oc_median * 100) : null;
+    mb.innerHTML =
+      v2MetricBar('H-L', fc.hl_median, fc.hl_75, hlMax, s.hl,   s.hl>=fc.hl_75,        hlPct ? `${hlPct}% med` : '') +
+      v2MetricBar('O-C', fc.oc_median, fc.oc_75, ocMax, ocAbs,  ocAbs>=fc.oc_75,        ocPct ? `${ocPct}% med` : '') +
+      v2MetricBar('O-H', fc.oc_median, fc.oc_75, ocMax, s.oh,   s.oh>=fc.oc_75,         s.oh_reached_at ? '✓' : '') +
+      v2MetricBar('O-L', fc.oc_median, fc.oc_75, ocMax, s.ol,   s.ol>=fc.oc_75,         s.ol_reached_at ? '✓' : '');
+  }
+
+  // Update tiles
+  if (s.hl != null) {
+    const ocAbs = Math.abs(s.oc ?? 0);
+    [['hl75', s.hl>=fc.hl_75], ['hlmed', s.hl>=fc.hl_median], ['oc75', ocAbs>=fc.oc_75], ['ocmed', ocAbs>=fc.oc_median]].forEach(([k, hit]) => {
+      const t = document.getElementById(`tile-${k}-${name}`);
+      if (!t) return;
+      t.classList.toggle('reached', hit);
+      if (hit && !t.querySelector('.v2-tile-check')) {
+        const chk = document.createElement('div');
+        chk.className = 'v2-tile-check'; chk.textContent = '✓ HIT';
+        t.appendChild(chk);
+      }
+    });
+  }
+}
+
+// ── buildSessionHtml (reused from v1 for compat) ───────────────────────────────
+function buildSessionHtml(name, s, data) {
+  if (s.error) return `<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">No data: ${s.error}</div>`;
+  const fc = s.forecast;
+  const p2 = x => x.toFixed(2);
+  const timeStr   = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
+  const anchorStr = s.anchor_time ? new Date(s.anchor_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC anchor') : '00:00 UTC anchor';
+  const dotCls = s.complete ? 'vf-live-dot closed' : 'vf-live-dot';
+  const fmtRT = iso => iso ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC') : null;
+  const remLabel = (rem, actual, reachedAt) => {
+    const t = fmtRT(reachedAt);
+    if (actual >= fc.oc_75) return `<span class="vf-srow-rem exceeded">75th reached${t?' '+t:'!'}</span>`;
+    if (rem <= 0)            return `<span class="vf-srow-rem reached">reached${t?' '+t:''}</span>`;
+    return `<span class="vf-srow-rem ok">${p2(rem)}% rem</span>`;
+  };
+  const biasCls = s.bias.toLowerCase().includes('bear') ? 'bear' : s.bias.toLowerCase().includes('bull') ? 'bull' : s.bias.toLowerCase().includes('two') ? 'ambi' : '';
+  const dirFill = Math.min(100, s.dir).toFixed(1);
+  const expMark = Math.min(100, data.expected_dir).toFixed(1);
+  const vsM = s.hl_vs_med >= 0 ? `<span class="pos">+${p2(s.hl_vs_med)}%</span>` : `<span class="neg">${p2(s.hl_vs_med)}%</span>`;
+  const vsP = s.hl_vs_75  >= 0 ? `<span class="pos">+${p2(s.hl_vs_75)}%</span>`  : `<span class="neg">${p2(s.hl_vs_75)}%</span>`;
+  const ocSign = s.oc >= 0 ? '+' : '', ocCls = s.oc >= 0 ? 'pos' : 'neg';
+  return `<div class="vf-live-hdr"><div class="${dotCls}"></div>TODAY'S SESSION<span class="vf-live-time">${anchorStr} · as of ${timeStr}</span></div>
+    <div class="vf-srow"><span class="vf-srow-lbl">H-L</span><span class="vf-srow-val">${p2(s.hl)}%</span><span class="vf-srow-fc">med ${p2(fc.hl_median)}% · 75th ${p2(fc.hl_75)}%</span></div>
+    <div class="vf-srow-vs">vs med ${vsM} · vs 75th ${vsP}</div>
+    ${_breakoutProbHtml(s, fc)}
+    <div class="vf-srow"><span class="vf-srow-lbl">O-C</span><span class="vf-srow-val ${ocCls}">${ocSign}${p2(s.oc)}%</span><span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>${remLabel(s.oc_rem,Math.abs(s.oc),s.oc_reached_at)}</div>
+    <div class="vf-srow"><span class="vf-srow-lbl">O-H</span><span class="vf-srow-val">${p2(s.oh)}%</span><span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>${remLabel(s.oh_rem,s.oh,s.oh_reached_at)}</div>
+    <div class="vf-srow"><span class="vf-srow-lbl">O-L</span><span class="vf-srow-val">${p2(s.ol)}%</span><span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>${remLabel(s.ol_rem,s.ol,s.ol_reached_at)}</div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="vf-bias-chip ${biasCls}">${s.bias}</span><span class="vf-bias-detail">${s.bias_detail}</span></div>
+    <div class="vf-dir-row"><span class="vf-dir-lbl">Dir</span><div class="vf-dir-track"><div class="vf-dir-fill" style="width:${dirFill}%"></div><div class="vf-dir-mark" style="left:${expMark}%"></div></div><span class="vf-dir-lbl"><b>${p2(s.dir)}%</b> · ${s.shape}</span></div>
+    <div class="vf-outlook">${s.outlook}</div>`;
+}
+
+function barRow(label, value, maxValue, fillClass) {
+  const w = Math.min(100, (value / maxValue) * 100).toFixed(1);
+  return `<div class="vf-row"><div class="vf-row-label">${label}</div><div class="vf-bar-track"><div class="vf-bar-fill ${fillClass}" style="width:${w}%"></div></div><div class="vf-row-val">${value.toFixed(2)}%</div></div>`;
+}
+
+function setStatus(level, msg) {
+  const dot = document.getElementById('vfSdot'), txt = document.getElementById('vfStxt');
+  if (dot) dot.className = `v2-status-dot ${level}`;
+  if (txt) txt.textContent = msg;
+}
+
+function timeAgo(date) {
+  const secs = Math.floor((Date.now() - date) / 1000);
+  if (secs < 60)    return `${secs}s ago`;
+  if (secs < 3600)  return `${Math.floor(secs/60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs/3600)}h ago`;
+  return date.toLocaleDateString();
+}
+
+// ── Export functions ───────────────────────────────────────────────────────────
+function buildExportText(data) {
+  const LINE_WIDTH = 29;
+  const divider = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
+    lines.push(`High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th Percentile`);
+    lines.push(`Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th Percentile`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function exportForecast() {
+  if (!currentForecast) return;
+  const text = buildExportText(currentForecast), btn = document.getElementById('vfExportBtn');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text], {type:'text/plain'})), download: `vol-forecast-${currentForecast.session_date}.txt` });
+    a.click();
+  });
+}
+
+function buildSessionText(data) {
+  const lines = ['**VOL & RANGE FORECAST — LIVE SESSION STATUS**', `**Session: ${data.session_label}**`, `Fetched: ${new Date(data.fetched_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')}`, ''];
+  const p2 = x => (typeof x === 'number' ? x.toFixed(2) : '—');
+  const LW = 29, div = n => { const p=`──── ${n} `; return p+'─'.repeat(Math.max(0,LW-p.length)); };
+  for (const [name, s] of Object.entries(data.instruments ?? {})) {
+    if (s.error) { lines.push(div(name), `Error: ${s.error}`, ''); continue; }
+    const fc = s.forecast, t = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
+    const fmtT = iso => iso ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC') : null;
+    const remTxt = (rem, actual, fc75, reachedAt) => {
+      const tt = fmtT(reachedAt);
+      if (actual >= fc75) return `75th reached${tt?' '+tt:''}`;
+      if (rem <= 0) return `reached${tt?' '+tt:''}`;
+      return `${p2(rem)}% remaining`;
+    };
+    lines.push(div(name), `${name} Status — ${t}${s.complete?' (session closed)':''}`, '');
+    lines.push(`H-L:  ${p2(s.hl)}%  (med ${p2(fc.hl_median)}%  |  75th ${p2(fc.hl_75)}%)`);
+    const vsM = s.hl_vs_med>=0?`+${p2(s.hl_vs_med)}`:p2(s.hl_vs_med), vsP = s.hl_vs_75>=0?`+${p2(s.hl_vs_75)}`:p2(s.hl_vs_75);
+    lines.push(`  vs median  ${vsM}%  |  vs 75th  ${vsP}%`, '');
+    const ocSign = s.oc>=0?'+':'';
+    lines.push(`O-C:  ${ocSign}${p2(s.oc)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.oc_rem,Math.abs(s.oc),fc.oc_75,s.oc_reached_at)}`);
+    lines.push(`O-H:  ${p2(s.oh)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.oh_rem,s.oh,fc.oc_75,s.oh_reached_at)}`);
+    lines.push(`O-L:  ${p2(s.ol)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.ol_rem,s.ol,fc.oc_75,s.ol_reached_at)}`, '');
+    lines.push(`Bias:  ${s.bias} — ${s.bias_detail}`);
+    lines.push(`  O-H ${s.oh.toFixed(3)}% / ${fc.oc_median.toFixed(3)}% forecast (${Math.round(s.oh_ratio)}%)  |  O-L ${s.ol.toFixed(3)}% / ${fc.oc_median.toFixed(3)}% forecast (${Math.round(s.ol_ratio)}%)`, '');
+    lines.push(`Directionality:  ${p2(s.dir)}%  (expected ~${p2(data.expected_dir)}%)`);
+    lines.push(`Shape:  ${s.shape}`, '', `Outlook:  ${s.outlook}`, '');
+  }
+  return lines.join('\n');
+}
+
+function exportSession() {
+  if (!currentSession) return;
+  const text = buildSessionText(currentSession), btn = document.getElementById('vfSessionExportBtn');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text],{type:'text/plain'})), download: `session-${currentSession.session_date}.txt` });
+    a.click();
+  });
+}
+
+function buildV3Text(forecastData, statsData) {
+  const lines = buildExportText(forecastData).split('\n');
+  const LW=34, div=n=>{const p=`──── ${n} `;return p+'─'.repeat(Math.max(0,LW-p.length));};
+  lines.push('', div('SESSION STATS'), '');
+  for (const [name, stats] of Object.entries(statsData.instruments ?? {})) {
+    if (!stats?.asia || !stats?.london) continue;
+    const a=stats.asia, l=stats.london, fc=forecastData.instruments?.[name];
+    const eff=(c,v)=>fc&&v?` (≈${(c*v/100).toFixed(2)}% of price)` : '';
+    lines.push(name);
+    lines.push(`Asia range      : ${a.p50}% of daily · ${a.p75}% 75th${eff(a.p50,fc?.hl_median)}`);
+    if (stats.asia_oc) { const ao=stats.asia_oc; lines.push(`Asia O-C        : ${ao.p50}% of daily · ${ao.p75}% 75th${eff(ao.p50,fc?.hl_median)}`); }
+    lines.push(`London range    : ${l.p50}% of daily · ${l.p75}% 75th${eff(l.p50,fc?.hl_median)}`);
+    if (stats.london_oc) { const lo=stats.london_oc; lines.push(`London O-C      : ${lo.p50}% of daily · ${lo.p75}% 75th${eff(lo.p50,fc?.hl_median)}`); }
+    if (stats.ny) { const ny=stats.ny; lines.push(`NY range        : ${ny.p50}% of daily · ${ny.p75}% 75th${eff(ny.p50,fc?.hl_median)}`); }
+    if (stats.ny_oc) { const nyo=stats.ny_oc; lines.push(`NY O-C          : ${nyo.p50}% of daily · ${nyo.p75}% 75th${eff(nyo.p50,fc?.hl_median)}`); }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function exportV3() {
+  if (!currentForecast || !currentSessionStats) return;
+  const text = buildV3Text(currentForecast, currentSessionStats), btn = document.getElementById('vfV3ExportBtn');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text],{type:'text/plain'})), download: `vol-v3-${currentForecast.session_date}.txt` }); a.click();
+  });
+}
+
+function buildExtendedText(data) {
+  const LW=29, div=n=>{const p=`──── ${n} `;return p+'─'.repeat(Math.max(0,LW-p.length));}, f2=x=>(typeof x==='number'?x.toFixed(2):'—');
+  const lines = ['**VOL & RANGE FORECAST — EXTENDED**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    lines.push(div(name));
+    lines.push(`Vol (ann)       : ${f2(f.vol_annual)}%  [${f.vol_pct??'—'}th pct of 252-day history]`);
+    lines.push(`H-L median      : ${f2(f.hl_median)}%  (75th ${f2(f.hl_75)}%)`);
+    lines.push(`O-C median      : ${f2(f.oc_median)}%  (75th ${f2(f.oc_75)}%)`);
+    lines.push(`O-H median      : ${f2(f.oh_median)}%  (75th ${f2(f.oh_75)}%)`);
+    lines.push(`O-L median      : ${f2(f.ol_median)}%  (75th ${f2(f.ol_75)}%)`);
+    lines.push(`5-day H-L       : ${f2(f.hl_5d)}%`, `20-day H-L      : ${f2(f.hl_20d)}%`);
+    lines.push(`5-day O-C       : ${f2(f.oc_5d)}%`, `20-day O-C      : ${f2(f.oc_20d)}%`, '');
+  }
+  return lines.join('\n');
+}
+
+function exportExtended() {
+  if (!currentForecast) return;
+  const text = buildExtendedText(currentForecast), btn = document.getElementById('vfExtendedBtn');
+  const fname = `vol-extended-${currentForecast.session_date??viewingDate??'latest'}.txt`;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text],{type:'text/plain'})), download: fname }); a.click();
+  });
+}
+
+// ── Archive ────────────────────────────────────────────────────────────────────
+const ARCHIVE_COLS = ['GOLD', 'NQ', 'EURUSD', 'GBPUSD', 'USDJPY'];
+
+async function loadArchiveTable() {
+  const empty = document.getElementById('vfArchiveEmpty'), table = document.getElementById('vfArchiveTable');
+  const thead = document.getElementById('vfArchiveThead'), tbody = document.getElementById('vfArchiveTbody');
+  try {
+    const data = await fetch('/api/vol-forecast/archive').then(r => r.json());
+    if (!data.ok || !data.entries?.length) { empty.textContent = 'No archived forecasts yet.'; return; }
+    thead.innerHTML = `<tr><th>Date</th>${ARCHIVE_COLS.map(s=>`<th>${s} Vol%</th><th>H-L med%</th>`).join('')}<th></th></tr>`;
+    tbody.innerHTML = data.entries.map(entry => {
+      const cols = ARCHIVE_COLS.map(sym => { const f=entry[sym]; return f?`<td>${f.vol.toFixed(2)}</td><td>${f.hl_med.toFixed(2)}</td>`:'<td>—</td><td>—</td>'; }).join('');
+      return `<tr><td>${entry.label??entry.date}</td>${cols}<td><button class="dark-btn" style="font-size:10px;padding:3px 8px" onclick="exportArchiveDate('${entry.date}',this)">⬇ Copy</button></td></tr>`;
+    }).join('');
+    empty.style.display = 'none'; table.style.display = '';
+  } catch (e) { empty.textContent = `Error: ${e.message}`; }
+}
+
+async function exportArchiveDate(date, btn) {
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = '…';
+  try {
+    const res = await fetch(`/api/vol-forecast/archive/${date}`);
+    if (!res.ok) { btn.textContent = '✗ Not found'; setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2000); return; }
+    const data = await res.json(), text = buildExportText(data);
+    await navigator.clipboard.writeText(text).catch(()=>{
+      const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([text],{type:'text/plain'})),download:`vol-forecast-${date}.txt`}); a.click();
+    });
+    btn.textContent = '✓ Copied!'; setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2200);
+  } catch(e) { btn.textContent='✗ Error'; setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2000); }
+}
+
+// ── History ────────────────────────────────────────────────────────────────────
+function renderHistory(forecasts) {
+  const allNames = Object.keys(forecasts[0]?.instruments ?? {});
+  document.getElementById('vfHistHead').innerHTML = '<tr><th>Session</th>' + allNames.map(n=>`<th>${n}</th>`).join('') + '</tr>';
+  const tbody = document.getElementById('vfHistBody');
+  tbody.innerHTML = '';
+  for (const fc of forecasts) {
+    const cells = allNames.map(n=>`<td>${fc.instruments?.[n]?fc.instruments[n].vol_annual.toFixed(2)+'%':'—'}</td>`).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fc.session_date}</td>${cells}`;
+    tr.style.cursor = 'pointer'; tr.title = `Load ${fc.session_date}`;
+    tr.onclick = () => loadDateForecast(fc.session_date);
+    tbody.appendChild(tr);
+  }
+  const btn = document.getElementById('vfHistoryBtn');
+  if (btn) btn.disabled = false;
+}
+
+// ── Weekly ─────────────────────────────────────────────────────────────────────
+async function loadWeekly() {
+  try {
+    const data = await fetch('/api/vol-forecast/weekly').then(r=>r.json());
+    if (!data.ok) return;
+    currentWeekly = data;
+    const btn = document.getElementById('vfWeeklyBtn');
+    if (btn) btn.disabled = false;
+    renderWeekly(data);
+    renderCurrencyStrength(data);
+  } catch { /* silent */ }
+}
+
+function toggleWeekly() {
+  const panel = document.getElementById('vfWeeklyPanel'), btn = document.getElementById('vfWeeklyBtn');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : '';
+  if (btn) btn.classList.toggle('active', !shown);
+  if (!shown && currentWeekly) renderWeekly(currentWeekly);
+}
+
+function renderWeekly(data) {
+  const panel = document.getElementById('vfWeeklyPanel');
+  const names = Object.keys(data.instruments ?? {}).filter(n => !data.instruments[n].error);
+  if (!names.length) return;
+  const lbl = document.getElementById('vfWeeklyLabel'), sub = document.getElementById('vfWeeklyStatus');
+  if (lbl) lbl.textContent = data.is_preview ? `Weekly Forecast Preview — ${data.week_label}` : `Weekly Range Tracker — ${data.week_label}`;
+  if (sub) sub.textContent = data.is_preview ? `preview · computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')}` : `computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/, ' UTC')} · 15 min cache`;
+  document.getElementById('vfWeeklyHead').innerHTML = '<tr><th style="text-align:left">Pair</th><th>Bias</th><th>Regime</th><th>WTD O-C</th><th>Week consumed</th><th>Remaining</th><th>5d H-L</th><th>20d H-L</th></tr>';
+  const tbody = document.getElementById('vfWeeklyBody');
+  tbody.innerHTML = '';
+  const r2 = x => (x!=null?x.toFixed(2):'—'), sgn = x => (x!=null?(x>=0?'+':'')+x.toFixed(2):'—');
+  for (const name of names) {
+    const w = data.instruments[name], tr = document.createElement('tr');
+    const biasCls = w.bias==='Bullish'?'bull':w.bias==='Bearish'?'bear':'';
+    const conf = w.confidence?` <span style="font-size:9px;opacity:.7">${w.confidence}</span>`:'';
+    const reg = [w.hmm_regime, w.hmm5m_regime?`${w.hmm5m_regime} 5m`:null].filter(Boolean).join(' / ') || '—';
+    const consumed = w.hl_consumed_pct??0, isHi = consumed>75, barW = Math.min(100,consumed).toFixed(0);
+    const consumedBar = `<div class="vf-wk-bar-wrap"><div class="vf-wk-bar-track"><div class="vf-wk-bar-fill ${isHi?'hi':''}" style="width:${barW}%"></div></div><span class="vf-wk-pct">${consumed}%</span></div>`;
+    tr.innerHTML = `<td style="font-weight:600;font-family:'DM Mono',monospace">${name}</td>
+      <td><span class="vf-wk-bias ${biasCls}">${w.bias}${conf}</span></td>
+      <td style="font-size:10px;color:var(--text3)">${reg}</td>
+      <td class="${w.wtd_oc_pct>=0?'pos':'neg'}" style="font-weight:600">${sgn(w.wtd_oc_pct)}%</td>
+      <td>${consumedBar}</td><td>${r2(w.hl_remaining_pct)}%</td><td>${r2(w.hl_5d)}%</td><td>${r2(w.hl_20d)}%</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function exportWeekly() {
+  if (!currentWeekly) return;
+  const text = _buildWeeklyText(currentWeekly), btn = document.getElementById('vfWeeklyExportBtn');
+  const fname = `vol-weekly-${(currentWeekly.week_label??'latest').replace(/[^a-z0-9]/gi,'-').toLowerCase()}.txt`;
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig=btn.textContent; btn.textContent='✓ Copied!'; btn.disabled=true;
+    setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2200);
+  }).catch(()=>{ const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([text],{type:'text/plain'})),download:fname}); a.click(); });
+}
+
+function _buildWeeklyText(data) {
+  const LW=29, div=n=>{const p=`──── ${n} `;return p+'─'.repeat(Math.max(0,LW-p.length));};
+  const f2=x=>(x!=null?x.toFixed(2):'—'), sgn=x=>(x!=null?(x>=0?'+':'')+x.toFixed(2):'—');
+  const row=(lbl,med,p75,u='%')=>`${lbl.padEnd(20)}: ${(f2(med)+u).padEnd(10)}  75th: ${f2(p75)}${u}`;
+  const lines = ['**VOL & RANGE FORECAST — WEEKLY**', data.is_preview?`**${data.week_label}  — FORECAST PREVIEW**`:`**${data.week_label}**`, ''];
+  for (const [name, w] of Object.entries(data.instruments??{})) {
+    lines.push(div(name));
+    if (w.error) { lines.push(`Error: ${w.error}`, ''); continue; }
+    lines.push(`Bias                : ${w.bias}  [${w.confidence} confidence]`);
+    const reg=[w.hmm_regime?`${w.hmm_regime} (daily HMM)`:null, w.hmm5m_regime?`${w.hmm5m_regime} (5m HMM)`:null].filter(Boolean);
+    if (reg.length) lines.push(`Regime signals      : ${reg.join(' · ')}`);
+    if (!data.is_preview) {
+      lines.push(`WTD momentum        : ${w.wtd_dir}  (${sgn(w.wtd_oc_pct)}% open→close)`);
+      if (w.hl_consumed_pct!=null) { lines.push(`Range consumed      : ${w.hl_consumed_pct}%  (${f2(w.wtd_hl_pct)}% of ${f2(w.hl_5d)}% budget)`, `Remaining budget    : ${f2(w.hl_remaining_pct)}%  (${w.wtd_days} day${w.wtd_days!==1?'s':''} in)`); }
+    } else { lines.push(`Status              : Forecast preview — week opens Monday`); }
+    lines.push('', '── 5-Day (Weekly)', row('H-L range',w.hl_5d,w.hl_5d_75), row('O→H / O→L',w.oc_5d,w.oc_5d_75), '', '── 20-Day (Monthly)', row('H-L range',w.hl_20d,w.hl_20d_75), row('O→H / O→L',w.oc_20d,w.oc_20d_75), '', `Volatility (ann)    : ${f2(w.vol_annual)}%  [${w.vol_pct??'—'}th pct]`);
+    if (w.note) lines.push(`Note                : ${w.note}`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+// ── Currency Strength Strip ────────────────────────────────────────────────────
+const CCY_PAIRS = {
+  EUR:['EURUSD','EURGBP','EURJPY','EURAUD','EURCAD','EURNZD','EURCHF'],
+  USD:['EURUSD','GBPUSD','AUDUSD','NZDUSD','USDCAD','USDJPY','USDCHF'],
+  GBP:['GBPUSD','EURGBP','GBPJPY','GBPAUD','GBPCAD','GBPNZD','GBPCHF'],
+  JPY:['USDJPY','EURJPY','GBPJPY','AUDJPY','CADJPY','CHFJPY','NZDJPY'],
+  AUD:['AUDUSD','AUDNZD','AUDCAD','AUDJPY','AUDCHF','EURAUD','GBPAUD'],
+  NZD:['NZDUSD','AUDNZD','NZDJPY','EURNZD','GBPNZD'],
+  CHF:['USDCHF','EURCHF','GBPCHF','AUDCHF','CHFJPY'],
+  CAD:['USDCAD','EURCAD','GBPCAD','AUDCAD','CADJPY'],
+};
+const CCY_SIDE = {
+  EUR:{EURUSD:1,EURGBP:1,EURJPY:1,EURAUD:1,EURCAD:1,EURNZD:1,EURCHF:1},
+  USD:{EURUSD:-1,GBPUSD:-1,AUDUSD:-1,NZDUSD:-1,USDCAD:1,USDJPY:1,USDCHF:1},
+  GBP:{GBPUSD:1,EURGBP:-1,GBPJPY:1,GBPAUD:1,GBPCAD:1,GBPNZD:1,GBPCHF:1},
+  JPY:{USDJPY:-1,EURJPY:-1,GBPJPY:-1,AUDJPY:-1,CADJPY:-1,CHFJPY:-1,NZDJPY:-1},
+  AUD:{AUDUSD:1,AUDNZD:1,AUDCAD:1,AUDJPY:1,AUDCHF:1,EURAUD:-1,GBPAUD:-1},
+  NZD:{NZDUSD:1,AUDNZD:-1,NZDJPY:1,EURNZD:-1,GBPNZD:-1},
+  CHF:{USDCHF:-1,EURCHF:-1,GBPCHF:-1,AUDCHF:-1,CHFJPY:1},
+  CAD:{USDCAD:-1,EURCAD:-1,GBPCAD:-1,AUDCAD:-1,CADJPY:1},
+};
+
+function renderCurrencyStrength(weeklyData) {
+  if (!weeklyData?.instruments) return;
+  const insts = weeklyData.instruments, scores = {};
+  for (const [ccy, pairs] of Object.entries(CCY_PAIRS)) {
+    let bull=0, bear=0;
+    for (const pair of pairs) {
+      const w=insts[pair]; if (!w||w.error) continue;
+      const side=CCY_SIDE[ccy]?.[pair]??0, dir=w.wtd_dir==='Bullish'?1:w.wtd_dir==='Bearish'?-1:0;
+      const adj=dir*side; if (adj>0) bull++; else if (adj<0) bear++;
+    }
+    scores[ccy]={bull,bear,net:bull-bear,total:bull+bear};
+  }
+  const container=document.getElementById('vfCcyPills');
+  if (!container) return;
+  const sorted=Object.entries(scores).sort((a,b)=>b[1].net-a[1].net);
+  container.innerHTML=sorted.map(([ccy,s])=>{
+    const cls=s.net>=2?'bull':s.net<=-2?'bear':'neut', sign=s.net>0?`+${s.net}`:`${s.net}`;
+    return `<span class="vf-ccy-pill ${cls}">${ccy} <span class="vf-ccy-score">${sign}</span></span>`;
+  }).join('');
+  const note=document.getElementById('vfCcyNote');
+  if (note) note.textContent=`WTD pair consensus · ${weeklyData.week_label??''}`;
+  const strip=document.getElementById('vfCcyStrip');
+  if (strip) strip.style.display='';
+}
+
+// ── Levels View ────────────────────────────────────────────────────────────────
+function toggleLevelsView() {
+  levelsViewActive = !levelsViewActive;
+  document.getElementById('vfLevelsView').style.display = levelsViewActive ? '' : 'none';
+  document.getElementById('vfGrid').style.display       = levelsViewActive ? 'none' : '';
+  const btn = document.getElementById('vfLevelsBtn');
+  if (btn) { btn.textContent = levelsViewActive ? '✕ Levels' : 'Levels'; btn.classList.toggle('active', levelsViewActive); }
+  if (levelsViewActive) renderLevelsTable();
+}
+
+function _priceDp(open) { if (!open) return 4; if (open>100) return 2; if (open>10) return 3; return 4; }
+function _fmtPrice(val, dp) { if (val==null||isNaN(val)) return '—'; return val.toFixed(dp); }
+function _fmtTime(iso) { if (!iso) return null; return new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1'); }
+
+function _setupScore(f, sessInst, weeklyInst) {
+  let score=0;
+  if (f.cone_5d!=null&&f.vol_pct!=null) { if (f.cone_5d>f.vol_pct+10) score+=2; else if (f.cone_5d<f.vol_pct-10) score-=1; }
+  if (f.vol_vov_label==='Stable') score+=1; if (f.vol_vov_label==='Unstable') score-=1;
+  if (weeklyInst?.bias==='Bullish'||weeklyInst?.bias==='Bearish') score+=1;
+  if (sessInst&&sessInst.hl>0&&f.hl_median>0) { const c=sessInst.hl/f.hl_median; if (c<0.4) score+=2; else if (c>0.9) score-=1; }
+  return Math.max(0,Math.min(8,score));
+}
+
+function sortLevelsTable(mode) { levelsSortMode=mode; renderLevelsTable(); }
+
+function renderLevelsTable() {
+  if (!currentForecast) return;
+  const insts=currentForecast.instruments??{}, sessInsts=currentSession?.instruments??{}, weeklyInsts=currentWeekly?.instruments??{};
+  const rows=Object.entries(insts).map(([name,f])=>{
+    const s=sessInsts[name]??null, w=weeklyInsts[name]??null, score=_setupScore(f,s,w);
+    const consumed=s?.hl&&f.hl_median?s.hl/f.hl_median:0;
+    const levelsHit=[s?.oh_reached_at,s?.ol_reached_at,s?.oh_75_reached_at,s?.ol_75_reached_at,s?.hl_med_reached_at,s?.hl_75_reached_at].filter(Boolean).length;
+    return {name,f,s,w,score,consumed,levelsHit};
+  });
+  rows.sort((a,b)=>{
+    switch(levelsSortMode) {
+      case 'setup': return b.score-a.score;
+      case 'consumed_asc': return a.consumed-b.consumed;
+      case 'consumed_desc': return b.consumed-a.consumed;
+      case 'alpha': return a.name.localeCompare(b.name);
+      default: return (a.levelsHit-b.levelsHit)||(b.score-a.score);
+    }
+  });
+  document.getElementById('vfLevelsThead').innerHTML=`<tr>
+    <th>Pair</th><th title="Setup score">Setup</th><th>Bias</th><th title="Today's open">Open</th>
+    <th title="O-H median">↑ Med</th><th title="O-H 75th">↑ 75th</th>
+    <th title="O-L median">↓ Med</th><th title="O-L 75th">↓ 75th</th>
+    <th title="H-L vs median">H-L vs Med</th><th title="H-L vs 75th">H-L vs 75th</th>
+    <th title="Range consumed">Consumed</th></tr>`;
+  const tbody=document.getElementById('vfLevelsTbody'); tbody.innerHTML='';
+  for (const {name,f,s,w,score} of rows) {
+    const open=s?.anchor_open??null, dp=_priceDp(open);
+    const lvCell=(priceVal,reachedAt,remPct)=>{
+      const hit=!!reachedAt, t=_fmtTime(reachedAt), near=!hit&&remPct!=null&&remPct<0.05, cls=hit?'hit':near?'near':'';
+      const remTxt=!hit&&remPct!=null?`+${(remPct*100).toFixed(2)}%`:'';
+      return `<td><div class="vf-lv-cell ${cls}"><span class="vf-lv-price">${_fmtPrice(priceVal,dp)}</span>${hit?`<span class="vf-lv-time">✓ ${t}</span>`:''}${!hit&&remTxt?`<span class="vf-lv-rem">${remTxt}</span>`:''}</div></td>`;
+    };
+    const ohMedP=open?open+open*f.oc_median/100:null, oh75P=open?open+open*f.oc_75/100:null;
+    const olMedP=open?open-open*f.oc_median/100:null, ol75P=open?open-open*f.oc_75/100:null;
+    const curClose=s?open+(open*s.oc/100):null;
+    const remOhMed=open&&curClose?Math.max(0,(ohMedP-curClose)/ohMedP):null;
+    const remOh75=open&&curClose?Math.max(0,(oh75P-curClose)/oh75P):null;
+    const remOlMed=open&&curClose?Math.max(0,(curClose-olMedP)/olMedP):null;
+    const remOl75=open&&curClose?Math.max(0,(curClose-ol75P)/ol75P):null;
+    const hlConsumPct=s?.hl&&f.hl_median?s.hl/f.hl_median:0;
+    const hlCons75=s?.hl&&f.hl_75?s.hl/f.hl_75:0;
+    const hlCell=(fcPct,reachedAt,remFrac)=>{
+      const hit=!!reachedAt||(fcPct&&s?.hl&&s.hl>=fcPct), t=_fmtTime(reachedAt), near=!hit&&remFrac<0.1, cls=hit?'hit':near?'near':'';
+      const pctTxt=fcPct?`${fcPct.toFixed(2)}%`:'—', remTxt=!hit?`+${(remFrac*100).toFixed(0)}% rem`:'';
+      return `<td><div class="vf-lv-cell ${cls}"><span class="vf-lv-price">${pctTxt}</span>${hit?`<span class="vf-lv-time">✓${t?' '+t:''}</span>`:''}${!hit?`<span class="vf-lv-rem">${remTxt}</span>`:''}</div></td>`;
+    };
+    const pctUsed=Math.min(100,(s?.hl??0)/(f.hl_median||1)*100);
+    const consumedCell=`<td><div class="vf-consumed-bar"><div class="vf-consumed-track"><div class="vf-consumed-fill ${pctUsed>80?'hi':''}" style="width:${pctUsed.toFixed(0)}%"></div></div><span style="font-size:9px;color:var(--text3)">${pctUsed.toFixed(0)}%</span></div></td>`;
+    const biasCls=(s?.bias??'').toLowerCase().includes('bear')?'bear':(s?.bias??'').toLowerCase().includes('bull')?'bull':'';
+    const biasCell=s?.bias?`<td><span class="vf-bias-chip ${biasCls}" style="font-size:9px;padding:1px 5px">${s.bias}</span></td>`:`<td style="color:var(--text3);font-size:9px">—</td>`;
+    const dotsFull=Math.round(score);
+    const dotsHtml=Array.from({length:6},(_,i)=>`<div class="vf-setup-dot${i<dotsFull?' on'+(dotsFull>=4?' strong':''):''}"></div>`).join('');
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="cursor:pointer" onclick="jumpToCard('${name}')">${name}</td>
+      <td><div class="vf-setup-dots">${dotsHtml}</div></td>${biasCell}
+      <td style="font-size:10px;font-weight:600;color:var(--text2)">${open?_fmtPrice(open,dp):'—'}</td>
+      ${lvCell(ohMedP,s?.oh_reached_at,remOhMed)}${lvCell(oh75P,s?.oh_75_reached_at,remOh75)}
+      ${lvCell(olMedP,s?.ol_reached_at,remOlMed)}${lvCell(ol75P,s?.ol_75_reached_at,remOl75)}
+      ${hlCell(f.hl_median,s?.hl_med_reached_at,Math.max(0,1-hlConsumPct))}${hlCell(f.hl_75,s?.hl_75_reached_at,Math.max(0,1-hlCons75))}
+      ${consumedCell}`;
+    tbody.appendChild(tr);
+  }
+  const sub=document.getElementById('vfLevelsSub');
+  if (sub) sub.textContent=`${rows.length} instruments · ${currentSession?.instruments?'live session data':'forecast only'} · sort: ${levelsSortMode}`;
+}
+
+function jumpToCard(name) {
+  if (levelsViewActive) toggleLevelsView();
+  setTimeout(()=>{
+    const card=document.getElementById(`v2card-${name}`);
+    if (card) { card.scrollIntoView({behavior:'smooth',block:'center'}); card.style.outline='2px solid var(--blue)'; setTimeout(()=>{card.style.outline='';},2000); }
+  },100);
+}
+
+// ── Hit Rates ──────────────────────────────────────────────────────────────────
+async function loadHitRates() {
+  try {
+    const res=await fetch('/api/vol-forecast/hit-rates');
+    if (!res.ok) return;
+    const data=await res.json();
+    if (!data.ok||!data.instruments) return;
+    _hitRateData=data;
+    const age=document.getElementById('vfLHistAge');
+    if (data.computed_at&&age) age.textContent=`computed ${new Date(data.computed_at).toLocaleDateString()} · ${data.lookback_days}d lookback`;
+  } catch { /* silent */ }
+}
+
+async function computeHitRates() {
+  const btn=document.getElementById('vfHitRatesComputeBtn');
+  const days=parseInt(document.getElementById('vfHRComputeDays')?.value??'90',10);
+  btn.disabled=true; btn.textContent='Starting…';
+  try {
+    const res=await fetch(`/api/vol-forecast/hit-rates/compute?days=${days}`,{method:'POST'});
+    const j=await res.json();
+    document.getElementById('vfHROverview').innerHTML=`<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${j.message??'Computing…'}<br><br>Fetches H1 data — takes ~5-10 min. Click ↻ Compute again after.</div>`;
+    btn.textContent='⏳ Running…';
+    const poll=setInterval(async()=>{
+      try { const r=await fetch('/api/vol-forecast/hit-rates'); if (r.ok) { const d=await r.json(); if (d.ok&&d.instruments) { clearInterval(poll); _hitRateData=d; _buildHRPanel(); btn.disabled=false; btn.textContent='↻ Compute'; } } } catch { /* wait */ }
+    },30_000);
+  } catch(e) { btn.disabled=false; btn.textContent='↻ Compute'; document.getElementById('vfHROverview').innerHTML=`<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+function toggleHitRates() {
+  const panel=document.getElementById('vfHitRatesPanel'), btn=document.getElementById('vfHitRatesBtn');
+  const shown=panel.style.display!=='none';
+  panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
+  if (!shown) { if (_hitRateData) _buildHRPanel(); else document.getElementById('vfHROverview').innerHTML='<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text2)"><strong>No hit rate data yet.</strong><br><br>Click <strong>↻ Compute (90d)</strong> to run the historical price scan.</div>'; }
+}
+
+function _hrGetConfig() {
+  const sl=parseFloat(document.getElementById('vfHRSLMult')?.value??'1.0')||1.0;
+  const tp=parseFloat(document.getElementById('vfHRTPMult')?.value??'2.0')||2.0;
+  return {sl,tp};
+}
+function _hrSLTP(day,lvl) {
+  if (!day.hits?.[lvl]) return null;
+  const after=day.hits?.[`${lvl}_after`];
+  if (!after||day.atr30_pct==null) return 'nodata';
+  const {sl,tp}=_hrGetConfig(), atrFrac=day.atr30_pct/100;
+  const slHit=after.max_cont>=sl*atrFrac, tpHit=after.max_rev>=tp*atrFrac;
+  if (slHit&&tpHit) return 'both'; if (slHit) return 'sl'; if (tpHit) return 'tp'; return 'open';
+}
+function _hrLevelSLTPStats(name,lvl) {
+  const daily=_hitRateData?.instruments?.[name]?.daily;
+  if (!daily?.length) return null;
+  let hits=0,tps=0,sls=0,boths=0;
+  for (const day of daily) { const r=_hrSLTP(day,lvl); if (r===null||r==='nodata') continue; hits++; if(r==='tp')tps++; if(r==='sl')sls++; if(r==='both')boths++; }
+  if (!hits) return null;
+  return {hits,tp_pct:Math.round(tps/hits*100),sl_pct:Math.round(sls/hits*100),both_pct:Math.round(boths/hits*100)};
+}
+function _hrDeviation(day,lvl) {
+  const {open,day_high:dH,day_low:dL,fc}=day;
+  if (!open||dH==null||dL==null||!fc) return null;
+  const ar=dH-dL;
+  switch(lvl) {
+    case 'oh_med':{const d=open*fc.oc_median/100;return d?(dH-(open+d))/d:null;}
+    case 'oh_75':{const d=open*fc.oc_75/100;return d?(dH-(open+d))/d:null;}
+    case 'ol_med':{const d=open*fc.oc_median/100;return d?((open-d)-dL)/d:null;}
+    case 'ol_75':{const d=open*fc.oc_75/100;return d?((open-d)-dL)/d:null;}
+    case 'hl_med':{const d=open*fc.hl_median/100;return d?(ar-d)/d:null;}
+    case 'hl_75':{const d=open*fc.hl_75/100;return d?(ar-d)/d:null;}
+    default:return null;
+  }
+}
+function _hrMedianDev(name,lvl) {
+  const daily=_hitRateData?.instruments?.[name]?.daily;
+  if (!daily?.length) return null;
+  const vals=daily.map(d=>_hrDeviation(d,lvl)).filter(v=>v!=null);
+  if (!vals.length) return null;
+  const s=[...vals].sort((a,b)=>a-b), m=Math.floor(s.length/2);
+  return s.length%2?s[m]:(s[m-1]+s[m])/2;
+}
+function _fmtDev(v) { if (v==null) return null; const sign=v>=0?'+':''; return `${sign}${Math.round(v*100)}%`; }
+
+const _HR_GROUPS=[
+  {label:'O→H  Open-High',color:'rgba(56,193,114,.07)',keys:['oh_med','oh_75']},
+  {label:'O→L  Open-Low',color:'rgba(239,68,68,.07)',keys:['ol_med','ol_75']},
+  {label:'H-L  Day Range',color:'rgba(250,176,5,.07)',keys:['hl_med','hl_75']},
+];
+const _HR_COLS=_HR_GROUPS.flatMap(g=>g.keys.map((k,i)=>({key:k,grp:g,sub:i===0?'Med':'75th'})));
+
+function _buildHRPanel() {
+  if (!_hitRateData?.instruments) return;
+  _hrDayIndex={};
+  for (const [name,idata] of Object.entries(_hitRateData.instruments)) {
+    for (const day of (idata?.daily??[])) { if (!_hrDayIndex[day.date]) _hrDayIndex[day.date]={}; _hrDayIndex[day.date][name]={...day,name}; }
+  }
+  _hrDates=Object.keys(_hrDayIndex).sort(); _hrDayPos=_hrDates.length-1;
+  const age=document.getElementById('vfLHistAge');
+  if (_hitRateData.computed_at&&age) age.textContent=`computed ${new Date(_hitRateData.computed_at).toLocaleDateString()} · ${_hitRateData.lookback_days??'?'}d`;
+  _renderHROverview();
+  if (_hrDisplayMode==='timing') _renderHRTiming(_hrTimingPeriodCurrent);
+}
+
+function _hrSetView(view,el) {
+  _hrView=view;
+  document.querySelectorAll('#vfHRTabOverview,#vfHRTabDay').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('vfHROverview').style.display=view==='overview'?'':'none';
+  document.getElementById('vfHRDayBrowser').style.display=view==='day'?'':'none';
+  if (view==='day') _renderHRDay();
+}
+
+function _renderHROverview() {
+  const data=_hitRateData; if (!data?.instruments) return;
+  const grpHdr=_HR_GROUPS.map(g=>`<th colspan="2" style="padding:4px 8px;text-align:center;font-size:9px;font-weight:700;letter-spacing:.04em;border-bottom:1px solid var(--border);border-left:2px solid ${g.color.replace('.07','0.4')};background:${g.color};color:var(--text2)">${g.label}</th>`).join('');
+  const subHdr=_HR_COLS.map(c=>`<th style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text3);letter-spacing:.04em;border-bottom:1px solid var(--border);background:${c.grp.color}">${c.sub}</th>`).join('');
+  const hdr=`<thead><tr><th rowspan="2" style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>${grpHdr}</tr><tr>${subHdr}</tr></thead>`;
+  const names=Object.keys(data.instruments).filter(n=>data.instruments[n]);
+  const rows=names.map(name=>{
+    const inst=data.instruments[name];
+    const cells=_HR_COLS.map(({key,grp})=>{
+      const d=inst?.levels?.[key];
+      if (!d) return `<td style="padding:4px 8px;text-align:center;color:var(--text3);background:${grp.color};border-bottom:1px solid var(--border)">—</td>`;
+      const cls=d.hit_pct>=70?'hi':d.hit_pct>=50?'med':'lo';
+      const sltp=_hrLevelSLTPStats(name,key), medDev=_hrMedianDev(name,key), devStr=_fmtDev(medDev);
+      const devCol=medDev==null?'':medDev>=0?'var(--green)':'var(--red)';
+      const sltpHtml=sltp?`<div style="font-size:8px;color:var(--green);line-height:1.2">TP ${sltp.tp_pct}%</div><div style="font-size:8px;color:var(--red);line-height:1.2">SL ${sltp.sl_pct}%</div>`:'';
+      const devHtml=devStr?`<div style="font-size:8px;color:${devCol};line-height:1.4">${devStr}</div>`:'';
+      return `<td style="padding:3px 6px;text-align:center;border-bottom:1px solid var(--border);background:${grp.color}"><div class="vf-hr-rate ${cls}" style="font-size:11px">${d.hit_pct}%</div><div class="vf-hr-time">${d.median_utc??'—'}</div>${devHtml}${sltpHtml}</td>`;
+    }).join('');
+    return `<tr style="cursor:pointer" onclick="_hrJumpToInst('${name}')" onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''"><td style="padding:4px 10px;font-weight:600;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${name}</td>${cells}</tr>`;
+  }).join('');
+  document.getElementById('vfHROverview').innerHTML=`<table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace">${hdr}<tbody>${rows}</tbody></table>`;
+}
+
+function _hrJumpToInst(name) {
+  const date=[..._hrDates].reverse().find(d=>_hrDayIndex[d]?.[name]);
+  if (date) { _hrDayPos=_hrDates.indexOf(date); _hrSetView('day',document.getElementById('vfHRTabDay')); }
+}
+function _hrDayPrev() { if (_hrDayPos>0) { _hrDayPos--; _renderHRDay(); } }
+function _hrDayNext() { if (_hrDayPos<_hrDates.length-1) { _hrDayPos++; _renderHRDay(); } }
+
+function _renderHRDay() {
+  if (!_hrDates.length) { document.getElementById('vfHRDayBody').innerHTML='<div style="padding:20px;font-size:11px;font-family:\'DM Mono\',monospace;color:var(--text3)">No daily data — re-run ↻ Compute.</div>'; return; }
+  const date=_hrDates[_hrDayPos], dayMap=_hrDayIndex[date]??{};
+  document.getElementById('vfHRDayLabel').textContent=date;
+  const LVL=[{key:'oh_med',dir:+1,fcKey:'oc_median',grp:_HR_GROUPS[0]},{key:'oh_75',dir:+1,fcKey:'oc_75',grp:_HR_GROUPS[0]},{key:'ol_med',dir:-1,fcKey:'oc_median',grp:_HR_GROUPS[1]},{key:'ol_75',dir:-1,fcKey:'oc_75',grp:_HR_GROUPS[1]},{key:'hl_med',dir:0,fcKey:'hl_median',grp:_HR_GROUPS[2]},{key:'hl_75',dir:0,fcKey:'hl_75',grp:_HR_GROUPS[2]}];
+  const names=Object.keys(_hitRateData.instruments).filter(n=>dayMap[n]);
+  if (!names.length) { document.getElementById('vfHRDayBody').innerHTML=`<div style="padding:20px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)">No data for ${date}</div>`; return; }
+  const grpHdr=_HR_GROUPS.map(g=>`<th colspan="2" style="padding:4px 8px;text-align:center;font-size:9px;font-weight:700;letter-spacing:.04em;border-bottom:1px solid var(--border);border-left:2px solid ${g.color.replace('.07','0.4')};background:${g.color};color:var(--text2)">${g.label}</th>`).join('');
+  const subHdr2=LVL.map((c,i)=>`<th style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text3);border-bottom:1px solid var(--border);background:${c.grp.color}">${i%2===0?'Med':'75th'}</th>`).join('');
+  const hdr=`<thead><tr><th rowspan="2" style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th><th rowspan="2" style="padding:5px 8px;text-align:right;font-size:9px;color:var(--text3);border-bottom:1px solid var(--border)">Open</th>${grpHdr}</tr><tr>${subHdr2}</tr></thead>`;
+  const rows=names.map(name=>{
+    const day=dayMap[name], open=day.open, fc=day.fc, dp=_priceDp(open);
+    const cells=LVL.map(({key,dir,fcKey,grp})=>{
+      const pct=fc?.[fcKey], hitTime=day.hits?.[key], hit=!!hitTime;
+      let priceStr='—';
+      if (open&&pct!=null) { const abs=open*pct/100; priceStr=dir===0?`${_fmtPrice(abs,dp)}`:_fmtPrice(open+dir*abs,dp); }
+      const cls=hit?'hit':'', outcome=_hrSLTP(day,key), dayDev=_hrDeviation(day,key), devStr=_fmtDev(dayDev), devCol=dayDev==null?'':dayDev>=0?'var(--green)':'var(--red)';
+      const outHtml=(!hit||outcome===null||outcome==='nodata')?'':outcome==='tp'?`<span style="font-size:8px;color:var(--green);font-weight:700">TP ✓</span>`:outcome==='sl'?`<span style="font-size:8px;color:var(--red);font-weight:700">SL ✗</span>`:outcome==='both'?`<span style="font-size:8px;color:var(--amber)">Both</span>`:`<span style="font-size:8px;color:var(--text3)">Open</span>`;
+      return `<td style="padding:3px 6px;border-bottom:1px solid var(--border);background:${grp.color}"><div class="vf-lv-cell ${cls}"><span class="vf-lv-price">${priceStr}</span>${hit?`<span class="vf-lv-time">✓ ${hitTime}</span>`:`<span class="vf-lv-rem">miss</span>`}${devStr?`<span style="font-size:8px;color:${devCol}">${devStr}</span>`:''}${outHtml}</div></td>`;
+    }).join('');
+    return `<tr onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''"><td style="padding:4px 10px;font-weight:600;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${name}</td><td style="padding:4px 8px;font-size:10px;color:var(--text3);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap">${_fmtPrice(open,dp)}</td>${cells}</tr>`;
+  }).join('');
+  document.getElementById('vfHRDayBody').innerHTML=`<table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace">${hdr}<tbody>${rows}</tbody></table>`;
+}
+
+function _hrCopyDay() {
+  if (!_hrDates.length) return;
+  const date=_hrDates[_hrDayPos], dayMap=_hrDayIndex[date]??{};
+  const LW=32, div=n=>{const p=`──── ${n} `;return p+'─'.repeat(Math.max(0,LW-p.length));};
+  const LVL_DEF=[{key:'oh_med',lbl:'O→H Med    ',dir:+1,fcKey:'oc_median'},{key:'oh_75',lbl:'O→H 75th   ',dir:+1,fcKey:'oc_75'},{key:'ol_med',lbl:'O→L Med    ',dir:-1,fcKey:'oc_median'},{key:'ol_75',lbl:'O→L 75th   ',dir:-1,fcKey:'oc_75'},{key:'hl_med',lbl:'H-L Med    ',dir:0,fcKey:'hl_median'},{key:'hl_75',lbl:'H-L 75th   ',dir:0,fcKey:'hl_75'}];
+  const cfg=_hrGetConfig(), lines=[`**HIT RATE LOG — ${date}  (SL ×${cfg.sl} / TP ×${cfg.tp} ATR30)**`,''];
+  const names=Object.keys(_hitRateData.instruments).filter(n=>dayMap[n]);
+  for (const name of names) {
+    const day=dayMap[name], open=day.open, fc=day.fc, dp=_priceDp(open);
+    const atrStr=day.atr30_pct!=null?`  ATR30: ${day.atr30_pct.toFixed(3)}%`:'';
+    lines.push(div(name),`Open: ${_fmtPrice(open,dp)}${atrStr}`);
+    for (const {key,lbl,dir,fcKey} of LVL_DEF) {
+      const pct=fc?.[fcKey]; let price='—';
+      if (open&&pct!=null) { const abs=open*pct/100; price=dir===0?`${_fmtPrice(abs,dp)} pts`:_fmtPrice(open+dir*abs,dp); }
+      const hitTime=day.hits?.[key], outcome=_hrSLTP(day,key), dayDev=_hrDeviation(day,key);
+      const outcomeStr=!hitTime?'':!outcome||outcome==='nodata'?'':outcome==='tp'?'  → TP ✓':outcome==='sl'?'  → SL ✗':outcome==='both'?'  → Both':'  → Open';
+      const devLabel=dayDev!=null?`  dev ${_fmtDev(dayDev)}`:'';
+      lines.push(`${lbl}: ${price.padEnd(12)} ${hitTime?`HIT  ${hitTime} UTC${outcomeStr}${devLabel}`:`MISS —${devLabel}`}`);
+    }
+    lines.push('');
+  }
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>{ const btn=document.querySelector('#vfHRDayBrowser button[onclick="_hrCopyDay()"]'); if (btn) { btn.textContent='✓ Copied'; setTimeout(()=>{btn.textContent='📋 Copy';},2000); } }).catch(()=>alert('Clipboard write failed'));
+}
+
+function _hrSetDisplayMode(mode) {
+  _hrDisplayMode=mode;
+  const isTpsl=mode==='tpsl';
+  const tb=document.getElementById('vfHRModeTpsl'), timb=document.getElementById('vfHRModeTiming');
+  if (tb) { tb.style.color=isTpsl?'var(--blue)':''; tb.style.borderColor=isTpsl?'var(--blue-bd)':''; }
+  if (timb) { timb.style.color=!isTpsl?'var(--blue)':''; timb.style.borderColor=!isTpsl?'var(--blue-bd)':''; }
+  const vtc=document.getElementById('vfHRViewTabsContainer'); if (vtc) vtc.style.display=isTpsl?'':'none';
+  const ov=document.getElementById('vfHROverview'), db=document.getElementById('vfHRDayBrowser'), tv=document.getElementById('vfHRTimingView');
+  if (isTpsl) { if(ov) ov.style.display=_hrView==='overview'?'':'none'; if(db) db.style.display=_hrView==='day'?'':'none'; if(tv) tv.style.display='none'; }
+  else { if(ov) ov.style.display='none'; if(db) db.style.display='none'; if(tv) tv.style.display=''; _renderHRTiming(_hrTimingPeriodCurrent); }
+}
+
+function _hrTimingPeriod(period,el) {
+  _hrTimingPeriodCurrent=period;
+  document.querySelectorAll('#vfHRTim90d,#vfHRTim6m,#vfHRTim1y').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); _renderHRTiming(period);
+}
+
+function _hrPeriodCutoff(period) { const days=period==='90d'?90:period==='6m'?180:365; return new Date(Date.now()-days*86400000).toISOString().slice(0,10); }
+function _hrHourSession(h) { if(h<7)return'Asia'; if(h<13)return'London'; if(h<22)return'NY'; return'Late'; }
+function _hrHourColor(h) { if(h<7)return'#7c3aed'; if(h<13)return'var(--blue)'; if(h<22)return'#0891b2'; return'var(--text3)'; }
+
+function _hrTimingStats(daily,lvl,cutoff) {
+  const filtered=cutoff?daily.filter(d=>d.date>=cutoff):daily;
+  if (!filtered.length) return null;
+  let hitCount=0; const hourFreq={};
+  for (const day of filtered) { const t=day.hits?.[lvl]; if (!t) continue; hitCount++; const h=parseInt(t.split(':')[0],10); if (!isNaN(h)) hourFreq[h]=(hourFreq[h]??0)+1; }
+  if (!hitCount) return {hit_pct:0,hit_count:0,total:filtered.length,modal_hour:null,modal_pct:0};
+  let modal=null,modalFreq=0; for (const [h,f] of Object.entries(hourFreq)) { if (f>modalFreq) { modalFreq=f; modal=parseInt(h,10); } }
+  return {hit_pct:Math.round(hitCount/filtered.length*100),hit_count:hitCount,total:filtered.length,modal_hour:modal,modal_pct:Math.round(modalFreq/hitCount*100)};
+}
+
+function _renderHRTiming(period) {
+  const body=document.getElementById('vfHRTimingBody');
+  if (!_hitRateData?.instruments) { body.innerHTML='<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3)">No hit rate data — click ↻ Compute first.</div>'; return; }
+  const cutoff=_hrPeriodCutoff(period);
+  const GRP_COLORS=['rgba(56,193,114,.07)','rgba(239,68,68,.07)','rgba(250,176,5,.07)'];
+  const GRP_BORDERS=['rgba(56,193,114,0.4)','rgba(239,68,68,0.4)','rgba(250,176,5,0.4)'];
+  const GRP_LABELS=['O→H  Open-High','O→L  Open-Low','H-L  Day Range'];
+  const LEVELS=[{key:'oh_med',sub:'Med',grp:0},{key:'oh_75',sub:'75th',grp:0},{key:'ol_med',sub:'Med',grp:1},{key:'ol_75',sub:'75th',grp:1},{key:'hl_med',sub:'Med',grp:2},{key:'hl_75',sub:'75th',grp:2}];
+  const grpHdr=GRP_LABELS.map((l,i)=>`<th colspan="2" style="padding:4px 8px;text-align:center;font-size:9px;font-weight:700;letter-spacing:.04em;border-bottom:1px solid var(--border);border-left:2px solid ${GRP_BORDERS[i]};background:${GRP_COLORS[i]};color:var(--text2)">${l}</th>`).join('');
+  const subHdr=LEVELS.map(l=>`<th style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text3);letter-spacing:.04em;border-bottom:1px solid var(--border);background:${GRP_COLORS[l.grp]}">${l.sub}</th>`).join('');
+  const hdr=`<thead><tr><th rowspan="2" style="padding:5px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)">Instrument</th>${grpHdr}</tr><tr>${subHdr}</tr></thead>`;
+  const names=Object.keys(_hitRateData.instruments).filter(n=>_hitRateData.instruments[n]);
+  let maxDays=0;
+  const rows=names.map(name=>{
+    const daily=_hitRateData.instruments[name]?.daily??[];
+    const cells=LEVELS.map(l=>{
+      const st=_hrTimingStats(daily,l.key,cutoff);
+      if (!st) return `<td style="padding:4px 8px;text-align:center;color:var(--text3);background:${GRP_COLORS[l.grp]};border-bottom:1px solid var(--border)">—</td>`;
+      if (st.total>maxDays) maxDays=st.total;
+      const rateColor=st.hit_pct>=70?'var(--green)':st.hit_pct>=50?'var(--amber)':'var(--text3)';
+      let hourHtml='<div style="font-size:8px;color:var(--text3)">no hits</div>';
+      if (st.modal_hour!=null) { const h=st.modal_hour, col=_hrHourColor(h), h12=h===0?'12am':h<12?`${h}am`:h===12?'12pm':`${h-12}pm`; hourHtml=`<div style="font-size:9px;font-weight:600;color:${col}">${String(h).padStart(2,'0')}:00 UTC</div><div style="font-size:8px;color:var(--text3)">${h12} · ${_hrHourSession(h)}</div><div style="font-size:8px;color:var(--text3);opacity:.65">${st.modal_pct}% of hits</div>`; }
+      return `<td style="padding:3px 6px;text-align:center;border-bottom:1px solid var(--border);background:${GRP_COLORS[l.grp]}"><div style="font-size:11px;font-weight:600;color:${rateColor}">${st.hit_pct}%</div>${hourHtml}</td>`;
+    }).join('');
+    return `<tr onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''"><td style="padding:4px 10px;font-weight:600;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap">${name}</td>${cells}</tr>`;
+  }).join('');
+  const periodDays=period==='90d'?90:period==='6m'?180:365;
+  const warn=maxDays&&maxDays<Math.round(periodDays*0.65)?`<div style="padding:6px 14px;font-size:10px;font-family:'DM Mono',monospace;color:var(--amber);background:var(--amber-bg);border-bottom:1px solid var(--amber-bd)">⚠ Computed data covers ~${maxDays} days. Re-run Compute for full ${period} coverage.</div>`:'';
+  body.innerHTML=`${warn}<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace">${hdr}<tbody>${rows}</tbody></table></div><div style="padding:5px 12px 8px;font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)">Peak hour = UTC hour where most first-touches occur · <span style="color:#7c3aed">■</span> Asia 00–06 · <span style="color:var(--blue)">■</span> London 07–12 · <span style="color:#0891b2">■</span> NY 13–21</div>`;
+}
+
+// ── Breakout Probability ───────────────────────────────────────────────────────
+function _breakoutProb(consumedFrac, timeFrac) {
+  const remaining=Math.max(0,1-consumedFrac), timeLeft=Math.max(0.01,1-Math.min(0.99,timeFrac)), z=remaining/Math.sqrt(timeLeft);
+  const _phi=x=>{ if(x<0)return 1-_phi(-x); const t=1/(1+0.2316419*x), poly=t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429)))); return 1-(1/Math.sqrt(2*Math.PI))*Math.exp(-0.5*x*x)*poly; };
+  return Math.max(0,Math.min(100,Math.round(2*(1-_phi(z))*100)));
+}
+function _breakoutProbHtml(s,fc) {
+  if (!s.hl||!fc.hl_median||s.complete) return '';
+  const now=new Date(s.bar_time), dayFrac=Math.min(0.99,(now.getUTCHours()*60+now.getUTCMinutes())/(24*60));
+  const consumedFrac=s.hl/fc.hl_median, pct=_breakoutProb(consumedFrac,dayFrac);
+  const cls=pct>=40?'hi':pct<=15?'low':'', note=consumedFrac>=1?'median already exceeded':'chance of exceeding median today';
+  return `<div class="vf-extend-row"><span class="vf-extend-lbl">Extend prob</span><span class="vf-extend-pct ${cls}">${pct}%</span><span class="vf-extend-note">${note}</span></div>`;
+}
+
+// ── Daily Brief ────────────────────────────────────────────────────────────────
+async function loadDailyBrief() {
+  try { const res=await fetch('/api/daily-brief'); currentBrief=await res.json(); } catch {}
+}
+
+function toggleBrief() {
+  const panel=document.getElementById('vfBriefPanel'), btn=document.getElementById('vfBriefBtn');
+  const shown=panel.style.display!=='none';
+  panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
+  if (!shown) { if (!currentBrief) refreshBrief(); else _renderBrief(); }
+}
+
+async function refreshBrief() {
+  document.getElementById('vfBriefBody').innerHTML='<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text3)">Fetching…</div>';
+  try { const res=await fetch('/api/daily-brief'); currentBrief=await res.json(); }
+  catch(e) { currentBrief={ok:false,error:`Network error: ${e.message}`}; }
+  _renderBrief();
+}
+
+function _briefSetFilter(f,el) {
+  _briefFilter=f;
+  document.querySelectorAll('.vf-brief-filter').forEach(b=>b.classList.toggle('active',b===el));
+  _renderBrief();
+}
+
+function _hitCls(pct) { if(pct==null)return'lo'; return pct>=70?'hi':pct>=50?'mi':'lo'; }
+
+function _renderBrief() {
+  const body=document.getElementById('vfBriefBody'), age=document.getElementById('vfBriefAge');
+  if (!currentBrief) { body.innerHTML='<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text2)">No data yet</div>'; return; }
+  if (!currentBrief.ok) { body.innerHTML=`<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${currentBrief.error??'Brief not available'}</div>`; return; }
+  const ts=currentBrief.generated_at?new Date(currentBrief.generated_at).toUTCString().replace(/:\d\d GMT$/, ' UTC'):'';
+  if (age) age.textContent=ts;
+  const warns=[];
+  if (!currentBrief.has_hit_rates) warns.push('No hit rate data — click 📊 Hit Rates → ↻ Compute (90d)');
+  if (!currentBrief.has_regime) warns.push('No regime data — HMM refreshes every 6 hours');
+  const warnEl=document.getElementById('vfBriefWarns');
+  if (warnEl) warnEl.innerHTML=warns.map(w=>`<div class="vf-brief-warn">⚠ ${w}</div>`).join('');
+  const names=Object.keys(currentBrief.instruments).filter(n=>{
+    const ac=currentBrief.instruments[n].ac;
+    if (_briefFilter==='fx') return ac==='fx';
+    if (_briefFilter==='index') return ac==='index';
+    if (_briefFilter==='commodity') return ac==='commodity';
+    return true;
+  });
+  body.innerHTML=names.length?`<div class="vf-brief-grid">${names.map(n=>_renderBriefCard(n,currentBrief.instruments[n])).join('')}</div>`:'<div style="padding:20px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text3)">No instruments match filter</div>';
+}
+
+function _renderBriefCard(name,inst) {
+  const acLbl=inst.ac==='fx'?'FX':inst.ac==='index'?'IDX':'CMDTY';
+  let regPill='';
+  if (inst.regime) { const r=inst.regime,conf=r.label==='RANGE'?r.range_prob:r.trend_prob,lbl=r.label==='RANGE'?`RANGE ${conf}%`:r.trend_dir?`TREND ${r.trend_dir} ${conf}%`:`TREND ${conf}%`,cls=!r.reliable?'amb':r.label==='RANGE'?'rng':r.trend_dir==='BULL'?'bull':'bear'; regPill=`<span class="vf-brief-regime ${cls}">${lbl}${!r.reliable?' ⚠':''}</span>`; }
+  const newsPill=inst.news_flag?`<span class="vf-brief-news">${inst.news_flag} ×${(inst.news_mult??1).toFixed(2)}</span>`:'';
+  const priceStr=inst.current_price!=null?inst.current_price.toFixed(inst.dp):'—';
+  const isTrend=inst.regime?.label==='TREND'&&inst.regime?.reliable;
+  function lvlRow(key,label,isRange) {
+    const l=inst.levels?.[key]??{};
+    const valStr=isRange?(l.range_pts!=null?`${l.range_pts} pts`:`${(l.pct??0).toFixed(2)}%`):(l.price!=null?l.price.toFixed(inst.dp):`${(l.pct??0).toFixed(2)}%`);
+    const hitPct=l.hit_pct, hitStr=hitPct!=null?`${hitPct}%`:'—', cls=_hitCls(hitPct), timeStr=l.median_utc??'—';
+    const extHint=(key==='oh_75'||key==='ol_75')&&isTrend?' <span style="color:#fbbf24;font-size:8px">▶ext</span>':'';
+    return `<tr><td class="vf-brief-lbl">${label}${extHint}</td><td class="vf-brief-val">${valStr}</td><td class="vf-brief-hit"><span class="${cls}">${hitStr}</span></td><td class="vf-brief-time">${timeStr}</td></tr>`;
+  }
+  let footHtml=`<span>Vol ${(inst.vol_annual??0).toFixed(1)}%pa</span>`;
+  if (inst.vol_pct!=null) footHtml+=`<span style="color:var(--text3)">P${inst.vol_pct}</span>`;
+  if (inst.regime?.sizing_label) { const sc=inst.regime.sizing_label==='Full'?'full':inst.regime.sizing_label==='Moderate'?'mod':'low'; footHtml+=`<span class="vf-brief-sz ${sc}">Size: ${inst.regime.sizing_label} ×${inst.regime.sizing_mult}</span>`; }
+  return `<div class="vf-brief-card"><div class="vf-brief-card-hdr"><span class="vf-brief-name">${name}</span><span class="vf-brief-ac">${acLbl}</span>${regPill}${newsPill}<span class="vf-brief-price">${priceStr}</span></div>
+    <table class="vf-brief-tbl"><tr class="vf-brief-tbl-hdr"><td>Level</td><td>Price/Pts</td><td style="text-align:right">Hit%</td><td style="text-align:right">Med UTC</td></tr>
+    ${lvlRow('oh_med','↑ Upper')}${lvlRow('oh_75','↑ Upp 75')}${lvlRow('ol_med','↓ Lower')}${lvlRow('ol_75','↓ Low 75')}
+    <tr class="vf-brief-divider"><td colspan="4"></td></tr>${lvlRow('hl_med','↔ Range',true)}${lvlRow('hl_75','↔ Rng 75',true)}</table>
+    <div class="vf-brief-footer">${footHtml}</div></div>`;
+}
+
+// ── Intraday Profile ───────────────────────────────────────────────────────────
+async function loadIntradayProfile() {
+  try {
+    const data=await fetch('/api/vol-forecast/intraday-profile').then(r=>r.json());
+    if (!data.ok) return;
+    currentProfile=data; _buildProfileTabs(data);
+  } catch { /* silent */ }
+}
+
+function buildIntradayProfile(data) { if (data) _buildProfileTabs(data); }
+
+function toggleProfile() {
+  const panel=document.getElementById('vfProfilePanel'), btn=document.getElementById('vfProfileBtn');
+  const shown=panel.style.display!=='none';
+  panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
+  if (!shown&&!currentProfile) document.getElementById('vfProfileChart').innerHTML='<div style="padding:20px;font-size:11px;color:var(--text2);line-height:1.6"><strong>No profile data yet.</strong><br><br>Click <strong>⟳ Session Stats</strong> to compute the hourly vol profile.<br>Takes ~3–5 minutes once computed.</div>';
+}
+
+function _buildProfileTabs(data) {
+  const names=Object.keys(data.instruments??{}); if (!names.length) return;
+  const tabs=document.getElementById('vfProfileTabs');
+  tabs.innerHTML=names.map((n,i)=>`<div class="vf-profile-tab${i===0?' active':''}" onclick="_selectProfileTab('${n}',this)">${n}</div>`).join('');
+  _renderProfileChart(data.instruments[names[0]],data);
+  const age=document.getElementById('vfProfileAge');
+  if (age&&data.computed_at) age.textContent=`computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/,' UTC')}`;
+}
+
+function _selectProfileTab(name,el) {
+  document.querySelectorAll('.vf-profile-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if (currentProfile?.instruments?.[name]) _renderProfileChart(currentProfile.instruments[name],currentProfile);
+}
+
+function _sessionFor(hour) { if(hour>=0&&hour<7)return'session-asia'; if(hour>=7&&hour<13)return'session-london'; if(hour>=13&&hour<22)return'session-ny'; return''; }
+
+function _renderProfileChart(hourlyArr,data) {
+  const chart=document.getElementById('vfProfileChart');
+  if (!hourlyArr?.length) { chart.innerHTML='<span style="font-size:10px;color:var(--text3)">No hourly data</span>'; return; }
+  const maxMean=Math.max(...hourlyArr.map(h=>h.mean),0.01);
+  chart.innerHTML=hourlyArr.map(h=>{
+    const heightPct=Math.max(4,(h.mean/maxMean)*100).toFixed(1), sessCls=_sessionFor(h.hour), lbl=h.hour%3===0?String(h.hour).padStart(2,'0'):'';
+    return `<div class="vf-profile-bar-wrap" title="${h.hour}:00 UTC — avg ${h.mean}% of daily range"><div class="vf-profile-bar ${sessCls}" style="height:${heightPct}%"></div><div class="vf-profile-hour">${lbl}</div></div>`;
+  }).join('');
+}
+
+// ── Event Impact ───────────────────────────────────────────────────────────────
+async function loadEventImpact() {
+  try { const data=await fetch('/api/vol-forecast/event-impact').then(r=>r.json()); if (!data.ok) return; currentEventData=data; renderEventImpact(data); } catch { /* silent */ }
+}
+
+function toggleEventImpact() {
+  const panel=document.getElementById('vfEventPanel'), btn=document.getElementById('vfEventBtn');
+  const shown=panel.style.display!=='none';
+  panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
+}
+
+async function refreshEventImpact() {
+  const btn=document.getElementById('vfEventRefreshBtn'), body=document.getElementById('vfEventBody');
+  btn.disabled=true; btn.textContent='↻ Computing…';
+  body.innerHTML='<div class="vf-event-empty">Fetching Finnhub calendar…</div>';
+  try {
+    const trigData=await fetch('/api/vol-forecast/event-impact/refresh',{method:'POST'}).then(r=>r.json());
+    if (!trigData.ok) { body.innerHTML=`<div class="vf-event-empty" style="color:var(--amber)">${trigData.error}</div>`; return; }
+    body.innerHTML='<div class="vf-event-empty">Running… (~15s)</div>';
+    await new Promise(r=>setTimeout(r,15_000));
+    const data=await fetch('/api/vol-forecast/event-impact').then(r=>r.json());
+    if (data.ok) { currentEventData=data; renderEventImpact(data); document.getElementById('vfEventAge').textContent=`${data.audits_matched} event sessions · ${data.event_dates_found} event dates found`; }
+    else body.innerHTML=`<div class="vf-event-empty">${data.error??'No matching session audits yet'}</div>`;
+  } catch(e) { body.innerHTML=`<div class="vf-event-empty">Error: ${e.message}</div>`; }
+  finally { btn.disabled=false; btn.textContent='↻ Compute'; }
+}
+
+function renderEventImpact(data) {
+  if (!data?.summary) return;
+  const eventTypes=Object.keys(data.summary);
+  if (!eventTypes.length) { document.getElementById('vfEventBody').innerHTML='<div class="vf-event-empty">No event data yet.</div>'; return; }
+  const instSet=new Set();
+  for (const e of eventTypes) Object.keys(data.summary[e]).forEach(n=>instSet.add(n));
+  const insts=[...instSet].sort();
+  const thead=`<tr><th>Event</th>${insts.map(n=>`<th>${n}</th>`).join('')}</tr>`;
+  const rows=eventTypes.map(evt=>{ const cells=insts.map(n=>{ const cell=data.summary[evt]?.[n]; if (!cell) return `<td class="vf-event-cell">—</td>`; const m=cell.mean, cls=m>=1.4?'hi':m>=1.2?'md':m>=1.05?'lo':''; return `<td class="vf-event-cell ${cls}" title="${n} on ${evt}: avg ×${m} over ${cell.n} event day${cell.n!==1?'s':''}">×${m.toFixed(2)} <span style="font-size:8px;opacity:.6">n=${cell.n}</span></td>`; }).join(''); return `<tr><td>${evt}</td>${cells}</tr>`; }).join('');
+  const note=`${data.audits_matched} session audits matched · ${data.from} → ${data.to}`;
+  document.getElementById('vfEventSub').textContent=note;
+  document.getElementById('vfEventAge').textContent=`computed ${new Date(data.computed_at).toUTCString().replace(/:\d\d GMT$/,' UTC')}`;
+  document.getElementById('vfEventBody').innerHTML=`<div class="vf-event-scroll"><table class="vf-event-table"><thead>${thead}</thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ── Reference Data ─────────────────────────────────────────────────────────────
+function toggleRefPanel() {
+  const panel=document.getElementById('vfRefPanel'), btn=document.getElementById('vfRefDataBtn');
+  const shown=panel.style.display!=='none';
+  panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
+  if (!shown) { const dateEl=document.getElementById('vfRefDate'); if (!dateEl.value) { dateEl.value=new Date().toISOString().slice(0,10); } loadRefData(); }
+}
+
+async function saveRefData() {
+  const date=document.getElementById('vfRefDate').value, text=document.getElementById('vfRefText').value.trim(), status=document.getElementById('vfRefStatus');
+  if (!date) { status.textContent='⚠ Select a date first'; return; }
+  if (!text) { status.textContent='⚠ Paste reference data first'; return; }
+  const btn=document.getElementById('vfRefSaveBtn'); btn.disabled=true; btn.textContent='Saving…';
+  try {
+    const j=await fetch(`/api/vol-forecast/reference/${date}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}).then(r=>r.json());
+    status.style.color=j.ok?'var(--green)':'var(--red)'; status.textContent=j.ok?`✓ Saved reference for ${date}`:`Error: ${j.error}`;
+  } catch(e) { status.style.color='var(--red)'; status.textContent=`Error: ${e.message}`; }
+  finally { btn.disabled=false; btn.textContent='💾 Save'; }
+}
+
+async function loadRefData() {
+  const date=document.getElementById('vfRefDate').value, status=document.getElementById('vfRefStatus'), age=document.getElementById('vfRefAge');
+  if (!date) return;
+  try {
+    const res=await fetch(`/api/vol-forecast/reference/${date}`);
+    if (res.status===404) { document.getElementById('vfRefText').value=''; status.style.color='var(--text3)'; status.textContent='No saved reference for this date — paste and Save.'; if(age) age.textContent=''; return; }
+    const j=await res.json();
+    document.getElementById('vfRefText').value=j.text??''; status.style.color='var(--green)'; status.textContent=`✓ Loaded saved reference for ${date}`;
+    if (age) age.textContent=j.saved_at?`saved ${new Date(j.saved_at).toLocaleString()}`:'';
+  } catch(e) { status.style.color='var(--red)'; status.textContent=`Error: ${e.message}`; }
+}
+
+async function compareRefData() {
+  const date=document.getElementById('vfRefDate').value, status=document.getElementById('vfRefStatus');
+  const wrap=document.getElementById('vfRefCmpWrap'), body=document.getElementById('vfRefCmpBody'), btn=document.getElementById('vfRefCmpBtn');
+  if (!date) { status.textContent='⚠ Select a date first'; return; }
+  btn.disabled=true; btn.textContent='Loading…';
+  try {
+    const j=await fetch(`/api/vol-forecast/compare/${date}`).then(r=>r.json());
+    if (!j.ok) { status.style.color='var(--red)'; status.textContent=`⚠ ${j.error}`; wrap.style.display='none'; return; }
+    const gc=v=>{ if(v==null)return''; const a=Math.abs(v); if(a<=3)return'style="color:var(--green)"'; if(a<=8)return'style="color:var(--amber)"'; return'style="color:var(--red)"'; };
+    const fmt=v=>v!=null?v.toFixed(2):'—', fmtG=v=>v!=null?(v>0?'+':'')+v.toFixed(1)+'%':'—';
+    const bL='border-left:1px solid var(--border);';
+    const rows=j.rows.map(r=>{ const o=r.our,rf=r.ref,g=r.gaps; const c=(s,v)=>`<td style="padding:3px 4px;text-align:center;${s}">${v}</td>`,cL=v=>c(bL,v),cd=v=>c('',v),cg=gval=>`<td style="padding:3px 4px;text-align:center" ${g?gc(g[gval]??null):''}>  ${g?fmtG(g[gval]??null):'—'}</td>`; return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:3px 8px;font-weight:600;color:var(--text2)">${r.name}</td>${cL(o?fmt(o.legacy_vol):'—')}${cd(o?fmt(o.yz_vol):'—')}${cd(o?fmt(o.hv_vol):'—')}${cd(o?fmt(o.ewma_vol):'—')}${cd(rf?fmt(rf.vol):'—')}${cg('legacy_vol')}${cg('yz_vol')}${cg('hv_vol')}${cg('ewma_vol')}${cd(o?fmt(o.vol):'—')}${cg('vol')}${cL(o?fmt(o.legacy_hl):'—')}${cd(o?fmt(o.yz_hl):'—')}${cd(o?fmt(o.hv_hl):'—')}${cd(o?fmt(o.ewma_hl):'—')}${cd(rf?fmt(rf.hl_med):'—')}${cg('legacy_hl')}${cg('yz_hl')}${cg('hv_hl')}${cg('ewma_hl')}${cd(o?fmt(o.hl_med):'—')}${cg('hl_med')}${cL(o?fmt(o.legacy_oc):'—')}${cd(o?fmt(o.yz_oc):'—')}${cd(o?fmt(o.hv_oc):'—')}${cd(o?fmt(o.ewma_oc):'—')}${cd(rf?fmt(rf.oc_med):'—')}${cg('legacy_oc')}${cg('yz_oc')}${cg('hv_oc')}${cg('ewma_oc')}${cd(o?fmt(o.oc_med):'—')}${cg('oc_med')}</tr>`; });
+    body.innerHTML=rows.join(''); wrap.style.display=''; status.style.color='var(--green)'; status.textContent=`✓ ${date} — ${j.rows.filter(r=>r.gaps).length} instruments matched`;
+  } catch(e) { status.style.color='var(--red)'; status.textContent=`Error: ${e.message}`; }
+  finally { btn.disabled=false; btn.textContent='⇄ Compare'; }
+}
+
+// ── Position Sizing ────────────────────────────────────────────────────────────
+function _loadPosSettings() {
+  const acct=localStorage.getItem('vf_pos_account'), risk=localStorage.getItem('vf_pos_risk');
+  const pa=document.getElementById('posAccount'), pr=document.getElementById('posRisk');
+  if (acct&&pa) pa.value=acct; if (risk&&pr) pr.value=risk;
+}
+
+function updatePositionSizes() {
+  const account=parseFloat(document.getElementById('posAccount')?.value)||0;
+  const riskPct=parseFloat(document.getElementById('posRisk')?.value)||0;
+  if (account) localStorage.setItem('vf_pos_account',account);
+  if (riskPct) localStorage.setItem('vf_pos_risk',riskPct);
+  const riskAmt=document.getElementById('posRiskAmt');
+  if (account&&riskPct&&riskAmt) { const rd=account*riskPct/100; riskAmt.textContent=`= $${rd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} risk per trade`; }
+  else if (riskAmt) riskAmt.textContent='';
+  if (!currentForecast||!account||!riskPct) { document.querySelectorAll('.vf-pos-result').forEach(el=>{el.style.display='none';}); return; }
+  const riskDollar=account*riskPct/100, fmt$=n=>'$'+Math.round(n).toLocaleString('en-US');
+  for (const [name,f] of Object.entries(currentForecast.instruments??{})) {
+    const el=document.getElementById(`vf-pos-${name}`);
+    if (!el||!f.hl_median||f.hl_median<=0) continue;
+    const notional=riskDollar/(f.hl_median/100), leverage=notional/account;
+    el.innerHTML=`<div class="vf-pos-result-lbl">Position (stop = H-L median)</div><div class="vf-pos-item"><span class="vf-pos-key">Risk</span><span class="vf-pos-val">${fmt$(riskDollar)}</span></div><span class="vf-pos-sub">·</span><div class="vf-pos-item"><span class="vf-pos-key">Notional</span><span class="vf-pos-val">${fmt$(notional)}</span></div><span class="vf-pos-sub">·</span><div class="vf-pos-item"><span class="vf-pos-val">${leverage.toFixed(2)}×</span><span class="vf-pos-sub"> of acct</span></div>`;
+    el.style.display='flex';
+  }
+}
+
+// ── Historical Navigation ──────────────────────────────────────────────────────
+function _prevTradingDay(dateStr) { const d=new Date(dateStr+'T12:00:00Z'); do{d.setUTCDate(d.getUTCDate()-1);}while(d.getUTCDay()===0||d.getUTCDay()===6); return d.toISOString().slice(0,10); }
+function _nextTradingDay(dateStr) { const d=new Date(dateStr+'T12:00:00Z'); do{d.setUTCDate(d.getUTCDate()+1);}while(d.getUTCDay()===0||d.getUTCDay()===6); return d.toISOString().slice(0,10); }
+
+async function loadDateForecast(dateStr) {
+  setStatus('spin',`Loading forecast for ${dateStr}…`);
+  try {
+    const res=await fetch(`/api/vol-forecast/by-date?date=${encodeURIComponent(dateStr)}`);
+    if (!res.ok) { const body=await res.json().catch(()=>({})); setStatus('err',`No forecast for ${dateStr}: ${body.error??`HTTP ${res.status}`}`); return; }
+    const data=await res.json();
+    if (!data.ok) { setStatus('err',`No forecast stored for ${dateStr}`); return; }
+    viewingDate=dateStr; currentForecast=data;
+    renderV2Grid(data,true); updatePositionSizes();
+    document.getElementById('vfExtendedBtn').disabled=false;
+    const bt=document.getElementById('vfHistBannerTxt'), bn=document.getElementById('vfHistBanner');
+    if (bt) bt.textContent=`Viewing historical forecast — ${data.session_label??dateStr}`;
+    if (bn) bn.style.display='';
+    const dp=document.getElementById('vfHistDatePicker');
+    if (dp) dp.value=dateStr;
+    setStatus('ok',`Historical — ${data.session_label??dateStr}`);
+  } catch(e) { setStatus('err',`Load error: ${e.message}`); }
+}
+
+function returnToToday() {
+  viewingDate=null;
+  const bn=document.getElementById('vfHistBanner'); if (bn) bn.style.display='none';
+  const dp=document.getElementById('vfHistDatePicker'); if (dp) dp.value='';
+  if (liveForecast) { currentForecast=liveForecast; renderV2Grid(liveForecast,false); loadSession(); setStatus('ok',`Forecast ready — session ${liveForecast.session_date}`); }
+  else loadForecast();
+}
+
+function histNavPrev() { const base=viewingDate??liveForecast?.session_date??new Date().toISOString().slice(0,10); loadDateForecast(_prevTradingDay(base)); }
+function histNavNext() { if (!viewingDate) return; const next=_nextTradingDay(viewingDate), latest=liveForecast?.session_date??new Date().toISOString().slice(0,10); if (next>=latest) returnToToday(); else loadDateForecast(next); }
+function histNavGoto(dateStr) { if (!dateStr) return; const latest=liveForecast?.session_date??new Date().toISOString().slice(0,10); if (dateStr>=latest) returnToToday(); else loadDateForecast(dateStr); }
+function histNavToday() { returnToToday(); }
+
+// ── Help ───────────────────────────────────────────────────────────────────────
+function toggleHelp() {
+  const overlay=document.getElementById('vfHelpOverlay'), shown=overlay.style.display!=='none';
+  overlay.style.display=shown?'none':'';
+  const btn=document.getElementById('vfHelpBtn'); if (btn) btn.classList.toggle('active',!shown);
+  if (!shown) overlay.scrollTop=0;
+}
+document.addEventListener('click',e=>{ const overlay=document.getElementById('vfHelpOverlay'); if (overlay&&overlay.style.display!=='none'&&e.target===overlay) toggleHelp(); });
+
+</script>
+</body>
+</html>
