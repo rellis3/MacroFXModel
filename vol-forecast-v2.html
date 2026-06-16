@@ -2623,8 +2623,26 @@ const OANDA_SYM = {
   chfjpy:'CHF/JPY', gold:'XAU/USD',
 };
 
-// Cache H1 data in-session (key = pair name)
+// Cache M5 data in-session (key = pair name)
 const _m5Cache = {};
+
+// Aggregate oldest-first M5 bars into H1 bars (oldest-first output).
+// Groups by the hour prefix of the datetime string (YYYY-MM-DD HH).
+function _aggregateM5toH1(bars) {
+  const map = new Map();
+  for (const b of bars) {
+    const key = b.datetime.substring(0, 13); // "YYYY-MM-DD HH"
+    if (!map.has(key)) {
+      map.set(key, { datetime: b.datetime, open: b.open, high: b.high, low: b.low, close: b.close });
+    } else {
+      const h = map.get(key);
+      if (parseFloat(b.high) > parseFloat(h.high)) h.high = b.high;
+      if (parseFloat(b.low)  < parseFloat(h.low))  h.low  = b.low;
+      h.close = b.close;
+    }
+  }
+  return [...map.values()];
+}
 
 async function loadM5Chart(name, f) {
   const sym = OANDA_SYM[name];
@@ -2638,22 +2656,35 @@ async function loadM5Chart(name, f) {
     const w = freshWrap(); if (!w) return;
     w.innerHTML = `<div class="v2-m5-empty">${msg}</div>`;
   };
-  const _draw = (candles) => {
-    const w = freshWrap(); if (!w) return;
+  const _ensureCanvas = () => {
+    const w = freshWrap(); if (!w) return null;
     let cv = freshCanvas();
     if (!cv || cv.tagName !== 'CANVAS') {
       w.innerHTML = `<canvas id="m5chart-${name}" class="v2-m5-chart"></canvas>`;
-      cv = freshCanvas();
     }
-    if (cv) requestAnimationFrame(() => _drawH1Canvas(cv, candles, f));
+    return freshCanvas();
+  };
+
+  const _draw = (candles) => {
+    _ensureCanvas();
+    // Re-lookup canvas INSIDE rAF so we always get the live element,
+    // even if renderV2Grid rebuilt the grid between fetch resolve and paint.
+    requestAnimationFrame(() => {
+      const canvas = freshCanvas();
+      if (canvas && canvas.tagName === 'CANVAS') _drawH1Canvas(canvas, candles, f);
+    });
   };
 
   try {
     let values;
-    if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < 270_000) {
+    const CACHE_TTL = 270_000; // 4.5 min
+    if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < CACHE_TTL) {
       values = _m5Cache[name].values;
     } else {
-      const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}&granularity=H1`);
+      // Fetch M5 bars and aggregate to H1 client-side — more reliable than
+      // requesting H1 directly because the M5 endpoint is always available
+      // and this avoids the server needing to support ?granularity=H1.
+      const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
       const data = await res.json();
       if (!res.ok || !data?.values?.length) {
         _err(data?.error || (res.ok ? 'no bars' : `HTTP ${res.status}`));
@@ -2663,17 +2694,13 @@ async function loadM5Chart(name, f) {
       values = data.values;
     }
 
-    // values is newest-first; filter to today (London date)
+    // values is newest-first M5 bars; filter to today (London date)
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
-    const todayBars  = values.filter(c => c.datetime?.startsWith(londonDate));
-    if (todayBars.length >= 1) {
-      _draw([...todayBars].reverse()); // oldest-first for left→right rendering
-    } else {
-      // Weekend / pre-market — show most recent 24 bars as context
-      const recent = values.slice(0, 24);
-      if (!recent.length) { _err('no data'); return; }
-      _draw([...recent].reverse());
-    }
+    const todayM5    = values.filter(c => c.datetime?.startsWith(londonDate));
+    // Use today's M5 bars oldest-first; fall back to last 96 bars (8 h) if pre-market
+    const srcBars = todayM5.length >= 1 ? [...todayM5].reverse() : [...values.slice(0, 96)].reverse();
+    if (!srcBars.length) { _err('no data'); return; }
+    _draw(srcBars);
   } catch (e) {
     console.warn('[h1chart]', name, e.message);
     _err(e.message.slice(0, 50));
@@ -2754,7 +2781,7 @@ function _drawH1Canvas(canvas, candles, f) {
   // Candlesticks
   const chartW = W - PAD_R - 4;
   const step   = chartW / n;
-  const bodyW  = Math.max(2, Math.floor(step * 0.65));
+  const bodyW  = Math.max(1, Math.floor(step * 0.65));
 
   for (let i = 0; i < n; i++) {
     const c = candles[i];
@@ -2784,7 +2811,7 @@ function _drawH1Canvas(canvas, candles, f) {
   ctx.fillStyle = clrText3;
   ctx.textBaseline = 'alphabetic';
   ctx.font = `6px 'DM Mono',monospace`;
-  ctx.fillText(`${n}×H1`, 3, H - 3);
+  ctx.fillText(`${n}×M5`, 3, H - 3);
 }
 
 async function loadAllM5Charts(instruments) {
