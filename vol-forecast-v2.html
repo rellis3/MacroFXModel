@@ -6,6 +6,7 @@
 <title>Volatility Forecast Dashboard v2</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 /* ── v2 Page layout ──────────────────────────────────────────────────────────── */
 #v2App { padding: 0 20px 40px; max-width: 1280px; margin: 0 auto; }
@@ -169,12 +170,18 @@
 .v2-rm-lbl.center .tag { color: var(--text2); }
 .v2-rm-lbl.center .val { color: var(--text); font-weight: 700; }
 
-/* ── v2 H1 mini-chart ────────────────────────────────────────────────────────── */
-.v2-m5-wrap { position: relative; margin: 4px 0 2px; }
-.v2-m5-chart { display: block; width: 100%; height: 90px; border-radius: 4px; background: var(--s2); }
+/* ── v2 M5 mini-chart (Lightweight Charts) ───────────────────────────────────── */
+.v2-m5-wrap { position: relative; height: 130px; margin: 4px 0 2px;
+  border-radius: 6px; overflow: hidden; background: var(--s2); }
 .v2-m5-empty { height: 40px; display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text2); background: var(--s2);
   border-radius: 4px; margin: 4px 0 2px; border: 1px solid var(--border); }
+.v2-m5-status { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 2px 0 4px; min-height: 16px; }
+.v2-action-chip { font-size: 9px; font-weight: 600; font-family: 'DM Mono', monospace;
+  padding: 2px 7px; border-radius: 10px; border: 1px solid; white-space: nowrap; }
+.v2-action-chip.hit  { background: rgba(34,197,94,0.12); color: #22c55e; border-color: #22c55e44; }
+.v2-action-chip.near { background: rgba(245,158,11,0.12); color: #f59e0b; border-color: #f59e0b44; }
+.v2-action-chip.prog { background: rgba(79,125,240,0.10); color: #4f7df0; border-color: #4f7df044; }
 
 /* ── v2 Metric bars ──────────────────────────────────────────────────────────── */
 .v2-metric-bars { display: flex; flex-direction: column; gap: 6px; }
@@ -1426,6 +1433,7 @@ function renderV2Grid(data, isHistorical = false) {
   const pc = document.getElementById('pillCount');
   if (pc) { pc.textContent = `${entries.length} pairs`; pc.className = entries.length > 0 ? 'dpill ok' : 'dpill err'; }
 
+  _destroyAllLWCharts();
   grid.innerHTML = '';
   for (const [name, f] of entries) grid.appendChild(buildV2Card(name, f, data.meta, isHistorical));
   if (!isHistorical) loadAllM5Charts(data.instruments);
@@ -1482,7 +1490,8 @@ function buildV2Card(name, f, meta, isHistorical = false) {
       <div class="v2-hdr-pills">${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
     </div>
     ${coneHtml}
-    <div class="v2-m5-wrap" id="m5wrap-${name}"><canvas id="m5chart-${name}" class="v2-m5-chart"></canvas></div>
+    <div class="v2-m5-wrap" id="m5wrap-${name}"></div>
+    <div class="v2-m5-status" id="m5status-${name}"></div>
     ${buildRangeMap(name, f)}
     <div class="v2-metric-bars" id="mbars-${name}">
       ${v2MetricBar('H-L', f.hl_median, f.hl_75, hlMax)}
@@ -2612,7 +2621,7 @@ function histNavNext() { if (!viewingDate) return; const next=_nextTradingDay(vi
 function histNavGoto(dateStr) { if (!dateStr) return; const latest=liveForecast?.session_date??new Date().toISOString().slice(0,10); if (dateStr>=latest) returnToToday(); else loadDateForecast(dateStr); }
 function histNavToday() { returnToToday(); }
 
-// ── H1 Mini-Chart ─────────────────────────────────────────────────────────────
+// ── M5 Mini-Chart (TradingView Lightweight Charts) ────────────────────────────
 const OANDA_SYM = {
   eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
   gbpjpy:'GBP/JPY', audusd:'AUD/USD', usdcad:'USD/CAD', usdchf:'USD/CHF',
@@ -2626,64 +2635,160 @@ const OANDA_SYM = {
 // Cache M5 data in-session (key = pair name)
 const _m5Cache = {};
 
-// Aggregate oldest-first M5 bars into H1 bars (oldest-first output).
-// Groups by the hour prefix of the datetime string (YYYY-MM-DD HH).
-function _aggregateM5toH1(bars) {
-  const map = new Map();
-  for (const b of bars) {
-    const key = b.datetime.substring(0, 13); // "YYYY-MM-DD HH"
-    if (!map.has(key)) {
-      map.set(key, { datetime: b.datetime, open: b.open, high: b.high, low: b.low, close: b.close });
-    } else {
-      const h = map.get(key);
-      if (parseFloat(b.high) > parseFloat(h.high)) h.high = b.high;
-      if (parseFloat(b.low)  < parseFloat(h.low))  h.low  = b.low;
-      h.close = b.close;
-    }
+// Lightweight Charts instances — must be destroyed before grid rebuild
+const _lwCharts = {};
+function _destroyAllLWCharts() {
+  for (const k in _lwCharts) {
+    try { _lwCharts[k].remove(); } catch (_) {}
+    delete _lwCharts[k];
   }
-  return [...map.values()];
+}
+
+// "Close to action" status chip rendered below the chart
+function _m5ActionStatus(name, dayOpen, lastClose, f) {
+  const statusEl = document.getElementById(`m5status-${name}`);
+  if (!statusEl || !dayOpen || !f) return;
+
+  const defs = [
+    { pct: f.oc_75,     side:  1, label: 'OC75↑', color: 'near' },
+    { pct: f.oc_75,     side: -1, label: 'OC75↓', color: 'near' },
+    { pct: f.oc_median, side:  1, label: 'Med↑',  color: 'prog' },
+    { pct: f.oc_median, side: -1, label: 'Med↓',  color: 'prog' },
+    { pct: f.hl_75,     side:  1, label: 'HL75↑', color: 'prog' },
+    { pct: f.hl_75,     side: -1, label: 'HL75↓', color: 'prog' },
+  ];
+
+  const chips = [];
+  for (const { pct, side, label, color } of defs) {
+    if (!pct) continue;
+    const target   = dayOpen * (1 + side * pct / 100);
+    const consumed = (lastClose - dayOpen) / (target - dayOpen) * 100;
+    if (consumed >= 95)  chips.push({ label: `✓ ${label}`, cls: 'hit',  sort: consumed });
+    else if (consumed >= 75) chips.push({ label: `⚡ ${label} ${Math.round(consumed)}%`, cls: 'near', sort: consumed });
+    else if (consumed >= 50) chips.push({ label: `→ ${label} ${Math.round(consumed)}%`, cls: 'prog', sort: consumed });
+  }
+  chips.sort((a, b) => b.sort - a.sort);
+
+  statusEl.innerHTML = chips.slice(0, 3)
+    .map(c => `<span class="v2-action-chip ${c.cls}">${c.label}</span>`)
+    .join('');
 }
 
 async function loadM5Chart(name, f) {
   const sym = OANDA_SYM[name];
   if (!sym) return;
-  if (!document.getElementById(`m5wrap-${name}`)) return;
 
-  const freshWrap   = () => document.getElementById(`m5wrap-${name}`);
-  const freshCanvas = () => document.getElementById(`m5chart-${name}`);
+  const getWrap = () => document.getElementById(`m5wrap-${name}`);
 
   const _err = (msg) => {
-    const w = freshWrap(); if (!w) return;
+    const w = getWrap(); if (!w) return;
+    if (_lwCharts[name]) { try { _lwCharts[name].remove(); } catch (_) {} delete _lwCharts[name]; }
     w.innerHTML = `<div class="v2-m5-empty">${msg}</div>`;
   };
-  const _ensureCanvas = () => {
-    const w = freshWrap(); if (!w) return null;
-    let cv = freshCanvas();
-    if (!cv || cv.tagName !== 'CANVAS') {
-      w.innerHTML = `<canvas id="m5chart-${name}" class="v2-m5-chart"></canvas>`;
-    }
-    return freshCanvas();
-  };
 
-  const _draw = (candles) => {
-    _ensureCanvas();
-    // Re-lookup canvas INSIDE rAF so we always get the live element,
-    // even if renderV2Grid rebuilt the grid between fetch resolve and paint.
-    requestAnimationFrame(() => {
-      const canvas = freshCanvas();
-      if (canvas && canvas.tagName === 'CANVAS') _drawH1Canvas(canvas, candles, f);
-    });
+  const _draw = (bars) => {
+    const w = getWrap(); if (!w) return;
+    if (_lwCharts[name]) { try { _lwCharts[name].remove(); } catch (_) {} delete _lwCharts[name]; }
+    w.innerHTML = '';
+
+    if (!window.LightweightCharts) { w.innerHTML = '<div class="v2-m5-empty">chart lib not loaded</div>'; return; }
+
+    const chartData = bars.map(c => ({
+      // Parse London-local datetime string as UTC for display — times show London local
+      time: Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open: parseFloat(c.open), high: parseFloat(c.high),
+      low:  parseFloat(c.low),  close: parseFloat(c.close),
+    })).filter(b => b.open && !isNaN(b.time));
+
+    if (!chartData.length) { _err('no data'); return; }
+
+    const dayOpen  = chartData[0].open;
+    const lastClose = chartData[chartData.length - 1].close;
+
+    try {
+      const chart = LightweightCharts.createChart(w, {
+        width:  w.clientWidth  || 280,
+        height: 130,
+        layout: {
+          background: { type: 'solid', color: 'transparent' },
+          textColor:  '#6b7280',
+          fontSize:   9,
+          fontFamily: "'DM Mono', monospace",
+        },
+        grid: {
+          vertLines: { color: 'rgba(255,255,255,0.03)' },
+          horzLines: { color: 'rgba(255,255,255,0.05)' },
+        },
+        timeScale: {
+          borderColor:     'rgba(255,255,255,0.08)',
+          timeVisible:     true,
+          secondsVisible:  false,
+          fixLeftEdge:     true,
+          fixRightEdge:    true,
+        },
+        rightPriceScale: {
+          borderColor:  'rgba(255,255,255,0.08)',
+          scaleMargins: { top: 0.08, bottom: 0.08 },
+        },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+          vertLine: { color: 'rgba(255,255,255,0.25)', labelBackgroundColor: '#1e2030' },
+          horzLine: { color: 'rgba(255,255,255,0.25)', labelBackgroundColor: '#1e2030' },
+        },
+        handleScroll: false,
+        handleScale:  false,
+      });
+
+      const series = chart.addCandlestickSeries({
+        upColor:        '#22c55e', downColor:        '#ef4444',
+        borderUpColor:  '#22c55e', borderDownColor:  '#ef4444',
+        wickUpColor:    '#22c55e', wickDownColor:    '#ef4444',
+      });
+      series.setData(chartData);
+
+      // Forecast price lines (absolute price = open ± pct%)
+      const LS = LightweightCharts.LineStyle;
+      const lineDefs = [
+        { pct: f?.oc_75,     side:  1, color: '#f59e0b', width: 1, style: LS.Dashed,      title: 'OC 75↑' },
+        { pct: f?.oc_75,     side: -1, color: '#f59e0b', width: 1, style: LS.Dashed,      title: 'OC 75↓' },
+        { pct: f?.oc_median, side:  1, color: '#4f7df0', width: 1, style: LS.LargeDashed, title: 'Med↑'   },
+        { pct: f?.oc_median, side: -1, color: '#4f7df0', width: 1, style: LS.LargeDashed, title: 'Med↓'   },
+        { pct: f?.hl_75,     side:  1, color: '#5a6380', width: 1, style: LS.Dotted,      title: 'HL 75↑' },
+        { pct: f?.hl_75,     side: -1, color: '#5a6380', width: 1, style: LS.Dotted,      title: 'HL 75↓' },
+      ];
+      for (const { pct, side, color, width, style, title } of lineDefs) {
+        if (!pct || !dayOpen) continue;
+        series.createPriceLine({
+          price: dayOpen * (1 + side * pct / 100),
+          color, lineWidth: width, lineStyle: style,
+          title, axisLabelVisible: false,
+        });
+      }
+
+      chart.timeScale().fitContent();
+      _lwCharts[name] = chart;
+
+      // Resize when card width changes
+      const ro = new ResizeObserver(() => {
+        if (_lwCharts[name] && w.clientWidth > 0) chart.applyOptions({ width: w.clientWidth });
+      });
+      ro.observe(w);
+
+      // Action status
+      _m5ActionStatus(name, dayOpen, lastClose, f);
+
+    } catch (err) {
+      console.error('[lwchart]', name, err);
+      _err('chart error');
+    }
   };
 
   try {
     let values;
-    const CACHE_TTL = 270_000; // 4.5 min
+    const CACHE_TTL = 270_000;
     if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < CACHE_TTL) {
       values = _m5Cache[name].values;
     } else {
-      // Fetch M5 bars and aggregate to H1 client-side — more reliable than
-      // requesting H1 directly because the M5 endpoint is always available
-      // and this avoids the server needing to support ?granularity=H1.
       const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
       const data = await res.json();
       if (!res.ok || !data?.values?.length) {
@@ -2694,124 +2799,15 @@ async function loadM5Chart(name, f) {
       values = data.values;
     }
 
-    // values is newest-first M5 bars; filter to today (London date)
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
     const todayM5    = values.filter(c => c.datetime?.startsWith(londonDate));
-    // Use today's M5 bars oldest-first; fall back to last 96 bars (8 h) if pre-market
-    const srcBars = todayM5.length >= 1 ? [...todayM5].reverse() : [...values.slice(0, 96)].reverse();
+    const srcBars    = todayM5.length >= 1 ? [...todayM5].reverse() : [...values.slice(0, 96)].reverse();
     if (!srcBars.length) { _err('no data'); return; }
     _draw(srcBars);
   } catch (e) {
-    console.warn('[h1chart]', name, e.message);
+    console.warn('[lwchart]', name, e.message);
     _err(e.message.slice(0, 50));
   }
-}
-
-function _showM5Empty(wrap, reason) {
-  const w = typeof wrap === 'string' ? document.getElementById(`m5wrap-${wrap}`) : wrap;
-  if (!w) return;
-  w.innerHTML = `<div class="v2-m5-empty">${reason || 'no data'}</div>`;
-}
-
-function _drawH1Canvas(canvas, candles, f) {
-  const W = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 280;
-  const H = canvas.offsetHeight || 90;
-  if (!W || !H) return;
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-
-  // Resolve dark-mode theme colors via the canvas element (inherits body.dark)
-  const cs = getComputedStyle(canvas);
-  const cv = n => cs.getPropertyValue(n).trim();
-  const clrAmber = cv('--amber')  || '#f59e0b';
-  const clrBlue  = cv('--blue')   || '#4f7df0';
-  const clrText3 = cv('--text3')  || '#5a6380';
-  const clrBg    = cv('--s2')     || '#11121a';
-
-  // Background
-  ctx.fillStyle = clrBg;
-  ctx.fillRect(0, 0, W, H);
-
-  const n = candles.length;
-  if (n < 1) return;
-
-  const dayOpen = parseFloat(candles[0].open);
-  if (!dayOpen) return;
-  const rel = price => (parseFloat(price) / dayOpen - 1) * 100;
-
-  // y scale: fit actual range + 25% headroom, but at least ±oc_75
-  const allH = candles.map(c => rel(c.high));
-  const allL = candles.map(c => rel(c.low));
-  const maxMove = Math.max(...allH.map(Math.abs), ...allL.map(Math.abs), 0.001);
-  const halfRange = Math.max(maxMove * 1.25, (f?.oc_75 || 0.1) * 0.5, 0.01);
-  const toY = v => H * (0.5 - v / (halfRange * 2));
-
-  // Forecast level lines (dashed, with right-edge labels)
-  const PAD_R = 52; // pixels reserved on the right for labels
-  const levels = [
-    { v:  f?.oc_75,    c: clrAmber, w: 1,   d: [4,3], lbl: 'OC 75↑' },
-    { v: -f?.oc_75,    c: clrAmber, w: 1,   d: [4,3], lbl: 'OC 75↓' },
-    { v:  f?.oc_median,c: clrBlue,  w: 0.8, d: [3,4], lbl: 'OC med↑' },
-    { v: -f?.oc_median,c: clrBlue,  w: 0.8, d: [3,4], lbl: 'OC med↓' },
-    { v:  f?.hl_75,    c: clrText3, w: 0.6, d: [2,5], lbl: 'HL 75' },
-    { v: -f?.hl_75,    c: clrText3, w: 0.6, d: [2,5] },
-  ];
-  ctx.textBaseline = 'middle';
-  ctx.font = `7px 'DM Mono',monospace`;
-  for (const { v, c, w, d, lbl } of levels) {
-    if (!v) continue;
-    const y = toY(v);
-    if (y < 1 || y > H - 1) continue;
-    ctx.strokeStyle = c; ctx.lineWidth = w; ctx.setLineDash(d);
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
-    if (lbl) { ctx.fillStyle = c; ctx.fillText(lbl, W - PAD_R + 3, y); }
-  }
-  ctx.setLineDash([]);
-
-  // Zero / open line
-  const y0 = toY(0);
-  if (y0 >= 0 && y0 <= H) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W - PAD_R, y0); ctx.stroke();
-  }
-
-  // Candlesticks
-  const chartW = W - PAD_R - 4;
-  const step   = chartW / n;
-  const bodyW  = Math.max(1, Math.floor(step * 0.65));
-
-  for (let i = 0; i < n; i++) {
-    const c = candles[i];
-    const x = 2 + i * step + (step - bodyW) / 2;
-    const yH = toY(rel(c.high));
-    const yL = toY(rel(c.low));
-    const yO = toY(rel(c.open));
-    const yC = toY(rel(c.close));
-    const isUp = parseFloat(c.close) >= parseFloat(c.open);
-    const color = isUp ? '#22c55e' : '#ef4444';
-
-    // Wick
-    ctx.strokeStyle = color; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(Math.round(x + bodyW / 2) + 0.5, yH);
-    ctx.lineTo(Math.round(x + bodyW / 2) + 0.5, yL);
-    ctx.stroke();
-
-    // Body (min 1px so doji bars still show)
-    const bodyTop = Math.min(yO, yC);
-    const bodyH   = Math.max(1, Math.abs(yO - yC));
-    ctx.fillStyle = color;
-    ctx.fillRect(Math.round(x), Math.round(bodyTop), bodyW, bodyH);
-  }
-
-  // Bar count (bottom-left)
-  ctx.fillStyle = clrText3;
-  ctx.textBaseline = 'alphabetic';
-  ctx.font = `6px 'DM Mono',monospace`;
-  ctx.fillText(`${n}×M5`, 3, H - 3);
 }
 
 async function loadAllM5Charts(instruments) {
