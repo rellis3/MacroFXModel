@@ -6886,9 +6886,10 @@ async function nqFetchNewsRisk(dateStr) {
 // Push gate state to KV so bot-config NQ-QMR tab shows live status
 async function nqPushKv() {
   try {
-    const existing = await kv.get(NQ_MON_KV)
-      .then(v => v ? JSON.parse(v) : {})
-      .catch(() => ({}));
+    const raw = await kv.get(NQ_MON_KV).catch(() => null);
+    const parsed = raw ? JSON.parse(raw) : {};
+    // Handle both wrapped {data:{...},timestamp} and bare object formats
+    const existing = parsed?.data ?? parsed ?? {};
     const g1state = nqMon.gate1 === 'LONG' || nqMon.gate1 === 'SHORT' ? 'PASS'
                   : nqMon.gate1 === 'FLAT' ? 'FAIL' : null;
     const g2state = nqMon.gate2 === 'CONFIRMED' ? 'PASS'
@@ -6906,7 +6907,7 @@ async function nqPushKv() {
       mt5_positions:        existing.mt5_positions        ?? [],
       today_closed_trades:  existing.today_closed_trades  ?? [],
     };
-    await kv.put(NQ_MON_KV, JSON.stringify(payload));
+    await kv.put(NQ_MON_KV, JSON.stringify({ data: payload, timestamp: Date.now() }));
   } catch (e) { console.error('[nq-mon] KV write error:', e.message); }
 }
 
@@ -6916,13 +6917,16 @@ async function nqAuditUpdate(fields) {
     const today = nqMon.date || new Date().toISOString().substring(0, 10);
     const raw   = await kv.get(NQ_AUDIT_KV).catch(() => null);
     let log = [];
-    try { log = raw ? JSON.parse(raw) : []; } catch { log = []; }
-    if (!Array.isArray(log)) log = [];
+    try {
+      const parsed = raw ? JSON.parse(raw) : [];
+      // Handle both wrapped {data:[...],timestamp} and bare array formats
+      log = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
+    } catch { log = []; }
     let idx = log.findIndex(e => e.date === today);
     if (idx === -1) { log.unshift({ date: today }); idx = 0; }
     Object.assign(log[idx], fields);
     if (log.length > 90) log = log.slice(0, 90);
-    await kv.put(NQ_AUDIT_KV, JSON.stringify(log));
+    await kv.put(NQ_AUDIT_KV, JSON.stringify({ data: log, timestamp: Date.now() }));
   } catch (e) { console.error('[nq-audit] write error:', e.message); }
 }
 
@@ -6976,7 +6980,10 @@ async function nqDailyOpen() {
 async function nqLoadMonCfg() {
   try {
     const raw = await kv.get('nq_qmr_config');
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    // Frontend writes via _kvSet which wraps in {data:{...},timestamp}
+    return parsed?.data ?? parsed ?? {};
   } catch { return {}; }
 }
 
