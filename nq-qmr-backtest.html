@@ -172,7 +172,7 @@
 <div class="run-bar">
   <button class="run-btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
   <span class="sdot" id="statusDot"></span>
-  <span id="statusMsg" class="run-lbl">Click Run — fetches 5 years of OANDA H1 NAS100_USD data · defaults: Gate1=0.60 Gate2=0.10% StopMul=0.45× Risk=1.00% TP=1.25% (2.5R) — dynamic stop ≈ O/N range × 0.45</span>
+  <span id="statusMsg" class="run-lbl">Click Run — fetches 5 years of OANDA H1 NAS100_USD data · defaults: Gate1=0.60 Gate2=0.10% StopMul=0.45× Risk=1.00% TP=1.50% (3R) — dynamic stop ≈ O/N range × 0.45</span>
   <span id="cacheLabel" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
 </div>
 
@@ -219,8 +219,8 @@
       </div>
       <div class="cfg-field">
         <label>Take-Profit %</label>
-        <input type="number" id="cfg_tp" value="1.25" min="0" max="5.0" step="0.25">
-        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">0 = EOD only · 1.25 = 2.5R (COG) · 1.5 = 3R</span>
+        <input type="number" id="cfg_tp" value="1.50" min="0" max="5.0" step="0.25">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">0 = EOD only · 1.50 = 3R (MFE optimal) · 1.25 = 2.5R (COG)</span>
       </div>
       <div class="cfg-field">
         <label>Direction</label>

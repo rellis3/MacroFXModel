@@ -2753,7 +2753,7 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 const nqQmrCache = { result: null, bars: null, fetchedAt: null };
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.25, direction: 'both' };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both' };
 
 async function _getNqQmrBars() {
   if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -2848,8 +2848,8 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
       riskPct:         [1.00],
       tpPct:           [0, 0.75, 1.00, 1.25, 1.50, 2.00],  // 0=EOD; 1.0=2R; 1.5=3R; 2.0=4R
     };
-    // Max trades cap: configs with >450 trades (~90/yr) sacrifice selectivity — skip them.
-    const MAX_N = 450;
+    // Max trades cap: configs with >350 trades (~70/yr) sacrifice selectivity — skip them.
+    const MAX_N = 350;
 
     const results = [];
     for (const gate1Threshold of grid.gate1Threshold) {
@@ -7149,7 +7149,7 @@ async function nqEntrySignal() {
     const price   = current.o;
     const dir     = nqMon.direction;
     const stopPct = nqMon.gate1Data?.stopPct ?? cfg.stopPct ?? 0.50;
-    const tpPct   = cfg.tpPct  ?? 1.25;
+    const tpPct   = cfg.tpPct  ?? 1.50;
     const stop    = dir === 'LONG' ? price * (1 - stopPct / 100) : price * (1 + stopPct / 100);
     const tp      = dir === 'LONG' ? price * (1 + tpPct   / 100) : price * (1 - tpPct   / 100);
     const stopPts = Math.abs(price - stop);
