@@ -2192,8 +2192,9 @@ function _computeNqQmr(bars, cfg = {}) {
   const {
     gate1Threshold  = 0.60,  // price must be in top/bottom X% of overnight range
     gate2MinMovePct = 0.10,  // min London move % to confirm direction
-    stopPct         = 0.50,  // stop distance as % of entry price
-    riskPct         = 1.00,  // max account risk per trade (%)
+    stopPct         = 0.50,      // static stop % — used when stopMultiplier = 0
+    stopMultiplier  = 0.45,      // dynamic: stop = rangePct × stopMultiplier (0 = use fixed stopPct)
+    riskPct         = 1.00,      // max account risk per trade (%)
     minRangePct     = 0.15,  // skip day if overnight range < this % (low-vol filter)
     tpPct           = 0,     // take-profit % from entry; 0 = EOD only (e.g. 1.0 = 2R at 0.5% stop)
     direction       = 'both',// 'both' | 'long' | 'short' — filter trade direction
@@ -2226,11 +2227,12 @@ function _computeNqQmr(bars, cfg = {}) {
     ];
     if (overnightBars.length < 4) continue;
 
-    const asiaH = Math.max(...overnightBars.map(b => b.h));
-    const asiaL = Math.min(...overnightBars.map(b => b.l));
-    const range  = asiaH - asiaL;
-    const mid    = (asiaH + asiaL) / 2;
-    if (!mid || (range / mid) * 100 < minRangePct) continue;
+    const asiaH    = Math.max(...overnightBars.map(b => b.h));
+    const asiaL    = Math.min(...overnightBars.map(b => b.l));
+    const range    = asiaH - asiaL;
+    const mid      = (asiaH + asiaL) / 2;
+    const rangePct = mid > 0 ? (range / mid) * 100 : 0;
+    if (!mid || rangePct < minRangePct) continue;
 
     // Gate 1: price at ~09:00 UTC relative to overnight range
     const g1bar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '09');
@@ -2262,10 +2264,13 @@ function _computeNqQmr(bars, cfg = {}) {
                   || (byDate[today] || []).find(b => b.t.substring(11, 13) === '14');
     if (!entryBar) continue;
 
-    const entry = entryBar.o;
+    const entry       = entryBar.o;
+    const effStopPct  = stopMultiplier > 0
+      ? Math.max(+(rangePct * stopMultiplier).toFixed(4), 0.10)
+      : stopPct;
     const stop  = gate2 === 'LONG'
-      ? entry * (1 - stopPct / 100)
-      : entry * (1 + stopPct / 100);
+      ? entry * (1 - effStopPct / 100)
+      : entry * (1 + effStopPct / 100);
     const tp = tpPct > 0
       ? (gate2 === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
       : null;
@@ -2307,11 +2312,12 @@ function _computeNqQmr(bars, cfg = {}) {
     const movePct     = gate2 === 'LONG'
       ? (exit - entry) / entry * 100
       : (entry - exit) / entry * 100;
-    const leverage    = riskPct / stopPct; // 1.8 / 0.5 = 3.6×
+    const leverage    = riskPct / effStopPct; // scales position size to hit riskPct
     const tradeReturn = movePct * leverage;
     equity *= (1 + tradeReturn / 100);
 
     trades.push({ date: today, gate1, gate2, direction: gate2, entry, stop, exit, exitReason,
+                  stopPct: +effStopPct.toFixed(3),
                   movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3), equity: +equity.toFixed(6),
                   mfePct: +mfePct.toFixed(3), maePct: +maePct.toFixed(3) });
     curve.push({ date: today, equity: +equity.toFixed(6) });
@@ -2747,7 +2753,7 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 const nqQmrCache = { result: null, bars: null, fetchedAt: null };
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.25, direction: 'both' };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.25, direction: 'both' };
 
 async function _getNqQmrBars() {
   if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -2837,9 +2843,9 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
     const grid = {
       gate1Threshold:  [0.55, 0.60, 0.65, 0.70, 0.75],
       gate2MinMovePct: [0.08, 0.10, 0.15, 0.20, 0.25],  // 0.05 removed — near-zero disables gate2 selectivity
-      stopPct:         [0.35, 0.40, 0.50, 0.60, 0.70],
+      stopMultiplier:  [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60],
       minRangePct:     [0.10, 0.12, 0.15, 0.20, 0.25],
-      riskPct:         [1.80],
+      riskPct:         [1.00],
       tpPct:           [0, 0.75, 1.00, 1.25, 1.50, 2.00],  // 0=EOD; 1.0=2R; 1.5=3R; 2.0=4R
     };
     // Max trades cap: configs with >450 trades (~90/yr) sacrifice selectivity — skip them.
@@ -2848,11 +2854,11 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
     const results = [];
     for (const gate1Threshold of grid.gate1Threshold) {
       for (const gate2MinMovePct of grid.gate2MinMovePct) {
-        for (const stopPct of grid.stopPct) {
+        for (const stopMultiplier of grid.stopMultiplier) {
           for (const minRangePct of grid.minRangePct) {
             for (const riskPct of grid.riskPct) {
               for (const tpPct of grid.tpPct) {
-                const cfg = { gate1Threshold, gate2MinMovePct, stopPct, minRangePct, riskPct, tpPct };
+                const cfg = { gate1Threshold, gate2MinMovePct, stopMultiplier, minRangePct, riskPct, tpPct };
                 const result = _computeNqQmr(bars, cfg);
                 const s = result.stats;
                 if (s.n < 30 || s.n > MAX_N || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
@@ -2867,7 +2873,7 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
     }
 
     const totalGrid = grid.gate1Threshold.length * grid.gate2MinMovePct.length
-                    * grid.stopPct.length * grid.minRangePct.length
+                    * grid.stopMultiplier.length * grid.minRangePct.length
                     * grid.riskPct.length * grid.tpPct.length;
     results.sort((a, b) => b.score - a.score);
     const top5      = results.slice(0, 5);
@@ -2888,7 +2894,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     const wfGrid = {
       gate1Threshold:  [0.55, 0.60, 0.65, 0.70],
       gate2MinMovePct: [0.08, 0.10, 0.15],
-      stopPct:         [0.35, 0.50, 0.60],
+      stopMultiplier:  [0.35, 0.40, 0.45, 0.50, 0.55],
       minRangePct:     [0.12, 0.15, 0.20],
       riskPct:         [1.00],
       tpPct:           [1.00, 1.25, 1.50],
@@ -2918,11 +2924,11 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       let best = null;
       for (const g1 of wfGrid.gate1Threshold)
       for (const g2 of wfGrid.gate2MinMovePct)
-      for (const sp of wfGrid.stopPct)
+      for (const sm of wfGrid.stopMultiplier)
       for (const mr of wfGrid.minRangePct)
       for (const rp of wfGrid.riskPct)
       for (const tp of wfGrid.tpPct) {
-        const cfg = { gate1Threshold: g1, gate2MinMovePct: g2, stopPct: sp, minRangePct: mr, riskPct: rp, tpPct: tp };
+        const cfg = { gate1Threshold: g1, gate2MinMovePct: g2, stopMultiplier: sm, minRangePct: mr, riskPct: rp, tpPct: tp };
         const r   = _computeNqQmr(subBars, cfg);
         const s   = r.stats;
         if (s.n < 8 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
@@ -7026,8 +7032,12 @@ async function nqGate1Check() {
     const eurDir  = eurOld && eurNew
       ? (eurNew.c > eurOld.c ? '↑ USD weaker (NQ +)' : '↓ USD stronger (NQ -)') : 'N/A';
 
+    const stopMul    = cfg.stopMultiplier ?? 0.45;
+    const stopPctDyn = stopMul > 0
+      ? Math.max(+(rangePct * stopMul).toFixed(3), 0.10)
+      : +(cfg.stopPct ?? 0.50);
     nqMon.gate1     = gate1;
-    nqMon.gate1Data = { price: g1bar.c, asiaH, asiaL, range, rangePct, pos, goldDir, eurDir };
+    nqMon.gate1Data = { price: g1bar.c, asiaH, asiaL, range, rangePct, stopPct: stopPctDyn, pos, goldDir, eurDir };
 
     const icon     = gate1 === 'FLAT' ? '⚫' : '🟡';
     const dirEmoji = gate1 === 'LONG' ? '▲' : gate1 === 'SHORT' ? '▼' : '—';
@@ -7057,6 +7067,7 @@ async function nqGate1Check() {
       price:    g1bar.c,
       asiaH, asiaL,
       rangePct: +rangePct.toFixed(3),
+      stopPct:  stopPctDyn,
       pos:      +pos.toFixed(4),
       goldDir, eurDir,
     }});
@@ -7102,7 +7113,8 @@ async function nqGate2Check() {
       msg += `London open: ${ldnOpen.o.toFixed(1)}  →  Now: ${check.c.toFixed(1)}\n\n`;
       msg += `⚡ <b>BOTH GATES CLEAR</b>\n`;
       msg += `Entry signal at 09:25 ET (13:05 UTC)\n`;
-      msg += `Stop distance: 0.5%  •  Max risk: 1.8% account`;
+      const g2StopPct = nqMon.gate1Data?.stopPct ?? 0.50;
+      msg += `Stop distance: ~${g2StopPct.toFixed(2)}%  •  Max risk: 1.0% account`;
     } else {
       msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
       msg += `London move: ${moveChar} ${Math.abs(ldnMove).toFixed(2)}%\n`;
@@ -7136,7 +7148,7 @@ async function nqEntrySignal() {
 
     const price   = current.o;
     const dir     = nqMon.direction;
-    const stopPct = cfg.stopPct ?? 0.50;
+    const stopPct = nqMon.gate1Data?.stopPct ?? cfg.stopPct ?? 0.50;
     const tpPct   = cfg.tpPct  ?? 1.25;
     const stop    = dir === 'LONG' ? price * (1 - stopPct / 100) : price * (1 + stopPct / 100);
     const tp      = dir === 'LONG' ? price * (1 + tpPct   / 100) : price * (1 - tpPct   / 100);
