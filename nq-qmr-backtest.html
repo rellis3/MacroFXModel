@@ -220,11 +220,11 @@
       <div class="cfg-field">
         <label>Direction</label>
         <select id="cfg_direction" style="background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 8px;width:90px;">
-          <option value="long" selected>Long only</option>
-          <option value="both">Both</option>
+          <option value="both" selected>Both</option>
+          <option value="long">Long only</option>
           <option value="short">Short only</option>
         </select>
-        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">COG = Long only (NAS bull bias)</span>
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">filter by direction for analysis</span>
       </div>
     </div>
     <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
