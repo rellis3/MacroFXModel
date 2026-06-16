@@ -2266,7 +2266,7 @@ function _computeNqQmr(bars, cfg = {}) {
 
     const entry       = entryBar.o;
     const effStopPct  = stopMultiplier > 0
-      ? Math.max(+(rangePct * stopMultiplier).toFixed(4), 0.10)
+      ? Math.max(+(rangePct * stopMultiplier).toFixed(4), 0.20)
       : stopPct;
     const stop  = gate2 === 'LONG'
       ? entry * (1 - effStopPct / 100)
@@ -2848,8 +2848,8 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
       riskPct:         [1.00],
       tpPct:           [0, 0.75, 1.00, 1.25, 1.50, 2.00],  // 0=EOD; 1.0=2R; 1.5=3R; 2.0=4R
     };
-    // Max trades cap: configs with >350 trades (~70/yr) sacrifice selectivity — skip them.
-    const MAX_N = 350;
+    // Max trades cap: configs with >400 trades (~80/yr) sacrifice selectivity — skip them.
+    const MAX_N = 400;
 
     const results = [];
     for (const gate1Threshold of grid.gate1Threshold) {
@@ -7034,7 +7034,7 @@ async function nqGate1Check() {
 
     const stopMul    = cfg.stopMultiplier ?? 0.45;
     const stopPctDyn = stopMul > 0
-      ? Math.max(+(rangePct * stopMul).toFixed(3), 0.10)
+      ? Math.max(+(rangePct * stopMul).toFixed(3), 0.20)
       : +(cfg.stopPct ?? 0.50);
     nqMon.gate1     = gate1;
     nqMon.gate1Data = { price: g1bar.c, asiaH, asiaL, range, rangePct, stopPct: stopPctDyn, pos, goldDir, eurDir };
