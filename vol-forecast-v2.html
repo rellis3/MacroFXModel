@@ -63,11 +63,10 @@
 /* ── v2 Instrument grid ──────────────────────────────────────────────────────── */
 .v2-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-top: 14px;
 }
-@media (max-width: 1100px) and (min-width: 701px) { .v2-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 700px) { .v2-grid { grid-template-columns: 1fr; } }
 
 /* ── v2 Card ─────────────────────────────────────────────────────────────────── */
@@ -171,7 +170,7 @@
 .v2-rm-lbl.center .val { color: var(--text); font-weight: 700; }
 
 /* ── v2 M5 mini-chart (Lightweight Charts) ───────────────────────────────────── */
-.v2-m5-wrap { position: relative; height: 130px; margin: 4px 0 2px;
+.v2-m5-wrap { position: relative; height: 160px; margin: 4px 0 2px;
   border-radius: 6px; overflow: hidden; background: var(--s2); }
 .v2-m5-empty { height: 40px; display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text2); background: var(--s2);
@@ -2628,6 +2627,9 @@ const OANDA_SYM = {
   gbpcad:'GBP/CAD', gbpnzd:'GBP/NZD', audjpy:'AUD/JPY', audnzd:'AUD/NZD',
   audcad:'AUD/CAD', audchf:'AUD/CHF', nzdjpy:'NZD/JPY', cadjpy:'CAD/JPY',
   chfjpy:'CHF/JPY', gold:'XAU/USD',
+  // Indices — OANDA instrument codes (underscore format, no slash)
+  nq:'NAS100_USD', spx500:'SPX500_USD', us30:'US30_USD',
+  us2000:'US2000_USD', uk100:'UK100_GBP', de30:'DE30_EUR',
 };
 
 // Cache M5 data in-session (key = pair name)
@@ -2713,9 +2715,23 @@ async function loadM5Chart(name, f) {
     const lastClose = chartData[chartData.length - 1].close;
 
     try {
+      // Pre-compute forecast level prices so autoscaleInfoProvider can include them
+      const LS = LightweightCharts.LineStyle;
+      const lineDefs = [
+        { pct: f?.oc_75,     side:  1, color: '#f59e0b', style: LS.Dashed,      title: 'OC75↑', axis: true  },
+        { pct: f?.oc_75,     side: -1, color: '#f59e0b', style: LS.Dashed,      title: 'OC75↓', axis: true  },
+        { pct: f?.oc_median, side:  1, color: '#4f7df0', style: LS.LargeDashed, title: 'Med↑',  axis: false },
+        { pct: f?.oc_median, side: -1, color: '#4f7df0', style: LS.LargeDashed, title: 'Med↓',  axis: false },
+        { pct: f?.hl_75,     side:  1, color: '#5a6380', style: LS.Dotted,      title: 'HL75↑', axis: false },
+        { pct: f?.hl_75,     side: -1, color: '#5a6380', style: LS.Dotted,      title: 'HL75↓', axis: false },
+      ];
+      const levelPrices = lineDefs
+        .filter(d => d.pct && dayOpen)
+        .map(d => dayOpen * (1 + d.side * d.pct / 100));
+
       const chart = LightweightCharts.createChart(w, {
         width:  w.clientWidth  || 280,
-        height: 130,
+        height: 160,
         layout: {
           background: { type: 'solid', color: 'transparent' },
           textColor:  '#6b7280',
@@ -2735,7 +2751,7 @@ async function loadM5Chart(name, f) {
         },
         rightPriceScale: {
           borderColor:  'rgba(255,255,255,0.08)',
-          scaleMargins: { top: 0.08, bottom: 0.08 },
+          scaleMargins: { top: 0.1, bottom: 0.1 },
         },
         crosshair: {
           mode: LightweightCharts.CrosshairMode.Normal,
@@ -2747,32 +2763,35 @@ async function loadM5Chart(name, f) {
       });
 
       const series = chart.addCandlestickSeries({
-        upColor:        '#22c55e', downColor:        '#ef4444',
-        borderUpColor:  '#22c55e', borderDownColor:  '#ef4444',
-        wickUpColor:    '#22c55e', wickDownColor:    '#ef4444',
+        upColor:       '#22c55e', downColor:       '#ef4444',
+        borderUpColor: '#22c55e', borderDownColor: '#ef4444',
+        wickUpColor:   '#22c55e', wickDownColor:   '#ef4444',
+        // Force the y-axis to include all forecast level prices so lines are always visible
+        autoscaleInfoProvider: orig => {
+          const r = orig();
+          if (!r || !levelPrices.length) return r;
+          return {
+            priceRange: {
+              minValue: Math.min(r.priceRange.minValue, ...levelPrices),
+              maxValue: Math.max(r.priceRange.maxValue, ...levelPrices),
+            },
+            margins: r.margins,
+          };
+        },
       });
       series.setData(chartData);
 
-      // Forecast price lines (absolute price = open ± pct%)
-      const LS = LightweightCharts.LineStyle;
-      const lineDefs = [
-        { pct: f?.oc_75,     side:  1, color: '#f59e0b', width: 1, style: LS.Dashed,      title: 'OC75↑', axis: true  },
-        { pct: f?.oc_75,     side: -1, color: '#f59e0b', width: 1, style: LS.Dashed,      title: 'OC75↓', axis: true  },
-        { pct: f?.oc_median, side:  1, color: '#4f7df0', width: 1, style: LS.LargeDashed, title: 'Med↑',  axis: false },
-        { pct: f?.oc_median, side: -1, color: '#4f7df0', width: 1, style: LS.LargeDashed, title: 'Med↓',  axis: false },
-        { pct: f?.hl_75,     side:  1, color: '#5a6380', width: 1, style: LS.Dotted,      title: 'HL75↑', axis: false },
-        { pct: f?.hl_75,     side: -1, color: '#5a6380', width: 1, style: LS.Dotted,      title: 'HL75↓', axis: false },
-      ];
-      for (const { pct, side, color, width, style, title, axis } of lineDefs) {
+      // Add price lines (guaranteed in-range by autoscaleInfoProvider above)
+      for (const { pct, side, color, style, title, axis } of lineDefs) {
         if (!pct || !dayOpen) continue;
         series.createPriceLine({
           price: dayOpen * (1 + side * pct / 100),
-          color, lineWidth: width, lineStyle: style,
+          color, lineWidth: 1, lineStyle: style,
           title, axisLabelVisible: axis,
         });
       }
 
-      // Current price line — shows where we are relative to levels
+      // Current price line — solid, coloured by direction vs open
       if (lastClose && dayOpen) {
         const isUp = lastClose >= dayOpen;
         series.createPriceLine({
