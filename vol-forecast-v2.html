@@ -199,6 +199,8 @@
   padding: 2px 7px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--s2); color: var(--text3); white-space: nowrap; }
 .v2-hit-chip b { color: var(--text2); font-weight: 600; }
+.v2-hit-chip.hit { color: var(--green); border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.08); }
+.v2-hit-chip.hit b { color: var(--green); }
 
 /* ── v2 Metric bars ──────────────────────────────────────────────────────────── */
 .v2-metric-bars { display: flex; flex-direction: column; gap: 6px; }
@@ -2647,13 +2649,70 @@ const OANDA_SYM = {
 const _m5Cache = {};
 
 // Lightweight Charts instances — must be destroyed before grid rebuild
-const _lwCharts = {};
+const _lwCharts  = {};
+const _chartMeta = {}; // per-chart state for live rescanning
 function _destroyAllLWCharts() {
   for (const k in _lwCharts) {
     try { _lwCharts[k].remove(); } catch (_) {}
     delete _lwCharts[k];
   }
+  for (const k in _chartMeta) delete _chartMeta[k];
 }
+
+// Render level-hit time chips (green when hit)
+function _renderHitChips(name, dayOpen, lineDefs, chartData) {
+  const hitsEl = document.getElementById(`v2-level-hits-${name}`);
+  if (!hitsEl || !dayOpen) return;
+  const hits = [];
+  for (const { pct, side, title } of lineDefs) {
+    if (!pct) continue;
+    const target = dayOpen * (1 + side * pct / 100);
+    const bar = chartData.find(b => side > 0 ? b.high >= target : b.low <= target);
+    if (bar) {
+      const t = new Date(bar.time * 1000);
+      const hhmm = t.getUTCHours().toString().padStart(2,'0') + ':' + t.getUTCMinutes().toString().padStart(2,'0');
+      hits.push(`<span class="v2-hit-chip hit">${title} <b>${hhmm}</b></span>`);
+    }
+  }
+  hitsEl.innerHTML = hits.join('');
+}
+
+// Live rescan — fetch fresh M5 bars, update latest candle + hit chips (no chart rebuild)
+async function _rescanHits(name) {
+  const meta = _chartMeta[name];
+  if (!meta || !_lwCharts[name]) return;
+  const sym = OANDA_SYM[name.toLowerCase()];
+  if (!sym) return;
+  try {
+    const res = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
+    if (!res.ok) return;
+    const raw = await res.json();
+    if (!raw?.values?.length) return;
+    const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
+    const todayM5 = raw.values.filter(c => c.datetime?.startsWith(londonDate));
+    if (!todayM5.length) return;
+    const chartData = [...todayM5].reverse().map(c => ({
+      time:  Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open:  parseFloat(c.open),  high: parseFloat(c.high),
+      low:   parseFloat(c.low),   close: parseFloat(c.close),
+    })).filter(b => b.open && !isNaN(b.time));
+    if (!chartData.length) return;
+    _m5Cache[name] = { values: raw.values, ts: Date.now() };
+    meta.chartData = chartData;
+    // Push latest bar so chart stays live without full rebuild
+    try { meta.series.update(chartData[chartData.length - 1]); } catch (_) {}
+    _renderHitChips(name, meta.dayOpen, meta.lineDefs, chartData);
+    _m5ActionStatus(name, meta.dayOpen, chartData[chartData.length - 1].close, meta.f);
+  } catch (_) {}
+}
+
+// Refresh hit chips + latest candle every 60 s (much faster than full 5-min rebuild)
+setInterval(() => {
+  if (_activeTab !== 'today') return;
+  for (const name in _chartMeta) {
+    if (_lwCharts[name]) _rescanHits(name).catch(() => {});
+  }
+}, 60_000);
 
 // "Close to action" status chip rendered below the chart
 function _m5ActionStatus(name, dayOpen, lastClose, f) {
@@ -2815,6 +2874,7 @@ async function loadM5Chart(name, f) {
 
       chart.timeScale().fitContent();
       _lwCharts[name] = chart;
+      _chartMeta[name] = { series, dayOpen, lineDefs, chartData, f };
 
       // Resize when card width changes
       const ro = new ResizeObserver(() => {
@@ -2826,21 +2886,7 @@ async function loadM5Chart(name, f) {
       _m5ActionStatus(name, dayOpen, lastClose, f);
 
       // Level hit times — scan bars to find when each level was first touched
-      const hitsEl = document.getElementById(`v2-level-hits-${name}`);
-      if (hitsEl && dayOpen) {
-        const hits = [];
-        for (const { pct, side, title } of lineDefs) {
-          if (!pct) continue;
-          const target = dayOpen * (1 + side * pct / 100);
-          const bar = chartData.find(b => side > 0 ? b.high >= target : b.low <= target);
-          if (bar) {
-            const t = new Date(bar.time * 1000);
-            const hhmm = t.getUTCHours().toString().padStart(2,'0') + ':' + t.getUTCMinutes().toString().padStart(2,'0');
-            hits.push(`<span class="v2-hit-chip">${title} <b>${hhmm}</b></span>`);
-          }
-        }
-        hitsEl.innerHTML = hits.join('');
-      }
+      _renderHitChips(name, dayOpen, lineDefs, chartData);
 
     } catch (err) {
       console.error('[lwchart]', name, err);
