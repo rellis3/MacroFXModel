@@ -2799,22 +2799,26 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
   }
 });
 
-// ── /api/oanda_ohlc5m  — last 1500 M5 bars for any FX/gold pair ──────────────
-// ?symbol=EUR/USD  (or XAU/USD etc.)
+// ── /api/oanda_ohlc5m  — OHLC candles for any FX/gold pair ──────────────────
+// ?symbol=EUR/USD[&granularity=H1]  granularity defaults to M5
 // Returns { values:[{datetime, open, high, low, close}] } newest-first,
-// datetime in London local time (matches _worker.js format used by vol-forecast-v2).
+// datetime in London local time.
 const _m5SrvCache = new Map();
+const _OHLC_GRAN = { M5: { count: 1500, ttl: 4 * 60_000 }, H1: { count: 100, ttl: 10 * 60_000 } };
 app.get('/api/oanda_ohlc5m', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
   const symbol = req.query.symbol;
   if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const gran = (req.query.granularity || 'M5').toUpperCase();
+  if (!_OHLC_GRAN[gran]) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
+  const { count, ttl } = _OHLC_GRAN[gran];
   const instrument = symbol.replace('/', '_');
-  const cacheKey   = `ohlc5m_${instrument}`;
+  const cacheKey   = `ohlc_${gran}_${instrument}`;
   const cached     = _m5SrvCache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < 4 * 60 * 1000) return res.json(cached.data);
+  if (cached && Date.now() - cached.ts < ttl) return res.json(cached.data);
   try {
     const base = _oandaBaseMe();
-    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M5&count=1500&price=M`;
+    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M`;
     const r = await fetch(url, {
       headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
       signal:  AbortSignal.timeout(20_000),
@@ -2829,7 +2833,7 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
         open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
       }))
       .reverse();
-    const result = { values, meta: { symbol, source: 'oanda', granularity: 'M5' } };
+    const result = { values, meta: { symbol, source: 'oanda', granularity: gran } };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
     res.json(result);
   } catch (err) {

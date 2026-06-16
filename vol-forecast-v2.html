@@ -63,7 +63,7 @@
 .v2-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  gap: 12px;
   margin-top: 14px;
 }
 @media (max-width: 1100px) and (min-width: 701px) { .v2-grid { grid-template-columns: 1fr 1fr; } }
@@ -73,29 +73,35 @@
 .v2-card {
   background: var(--s1);
   border: 1.5px solid var(--border);
-  border-radius: var(--rl);
-  padding: 16px 18px 14px;
-  display: flex; flex-direction: column; gap: 12px;
-  transition: border-color .2s;
+  border-radius: 16px;
+  padding: 14px 16px 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  transition: border-color .2s, box-shadow .2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.10);
 }
-.v2-card:hover { border-color: var(--border2); }
-.v2-card.live { border-color: var(--blue-bd); }
+.v2-card:hover { border-color: var(--border2); box-shadow: 0 4px 14px rgba(0,0,0,.16); }
+.v2-card.live {
+  border-color: var(--blue-bd);
+  box-shadow: 0 0 0 1px var(--blue-bd), 0 4px 20px rgba(79,125,240,.14);
+}
 
 /* ── v2 Card Header ──────────────────────────────────────────────────────────── */
 .v2-card-hdr {
-  display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .v2-inst-name {
-  font-size: 17px; font-weight: 700;
+  font-size: 16px; font-weight: 700;
   font-family: 'DM Mono', monospace;
-  letter-spacing: .03em; color: var(--text);
+  letter-spacing: .08em; color: var(--text);
+  text-transform: uppercase;
   flex-shrink: 0;
 }
 .v2-hdr-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 .v2-vol-pill {
   background: var(--blue-bg); border: 1px solid var(--blue-bd);
-  color: var(--blue); font-size: 12px; font-weight: 600;
-  font-family: 'DM Mono', monospace; padding: 3px 9px; border-radius: 20px;
+  color: var(--blue); font-size: 11px; font-weight: 700;
+  font-family: 'DM Mono', monospace; padding: 3px 10px; border-radius: 20px;
+  letter-spacing: .02em;
 }
 .v2-vol-pill.hi { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
 .v2-vol-pill.lo { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
@@ -108,27 +114,34 @@
 .v2-pct-badge.lo { color: var(--green); border-color: var(--green-bd); background: var(--green-bg); }
 .v2-badge {
   font-size: 9px; font-weight: 700; letter-spacing: .07em;
-  padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 20px; text-transform: uppercase;
 }
-.v2-badge.live-badge { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd); }
+.v2-badge.live-badge {
+  background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd);
+  animation: live-pulse 2s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .65; }
+}
 .v2-badge.derived-badge { background: var(--s2); color: var(--text3); border: 1px solid var(--border); }
 
 /* ── v2 Range Map ────────────────────────────────────────────────────────────── */
 .v2-range-map {
-  position: relative; height: 46px;
-  background: var(--s2); border-radius: 6px;
+  position: relative; height: 44px;
+  background: var(--s2); border-radius: 8px;
   overflow: visible;
 }
 .v2-rm-track {
-  position: absolute; left: 4px; right: 4px; top: 50%; transform: translateY(-50%);
-  height: 6px; background: var(--border); border-radius: 3px;
+  position: absolute; left: 6px; right: 6px; top: 50%; transform: translateY(-50%);
+  height: 8px; background: var(--border); border-radius: 4px;
 }
 .v2-rm-bar {
   position: absolute; top: 50%; transform: translateY(-50%);
-  height: 14px; background: var(--blue); opacity: .4;
-  border-radius: 4px; transition: left .4s, width .4s;
+  height: 16px; background: var(--blue); opacity: .35;
+  border-radius: 5px; transition: left .4s, width .4s;
 }
-.v2-rm-bar.complete { opacity: .6; background: var(--green); }
+.v2-rm-bar.complete { opacity: .55; background: var(--green); }
 .v2-rm-tick {
   position: absolute; top: -5px; bottom: -5px; width: 2px; border-radius: 1px;
 }
@@ -156,36 +169,40 @@
 .v2-rm-lbl.center .tag { color: var(--text2); }
 .v2-rm-lbl.center .val { color: var(--text); font-weight: 700; }
 
-/* ── v2 M5 mini-chart ────────────────────────────────────────────────────────── */
+/* ── v2 H1 mini-chart ────────────────────────────────────────────────────────── */
 .v2-m5-wrap { position: relative; margin: 4px 0 2px; }
-.v2-m5-chart { display: block; width: 100%; height: 72px; border-radius: 4px; background: var(--s2); }
+.v2-m5-chart { display: block; width: 100%; height: 90px; border-radius: 4px; background: var(--s2); }
 .v2-m5-empty { height: 40px; display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text2); background: var(--s2);
   border-radius: 4px; margin: 4px 0 2px; border: 1px solid var(--border); }
 
 /* ── v2 Metric bars ──────────────────────────────────────────────────────────── */
-.v2-metric-bars { display: flex; flex-direction: column; gap: 7px; }
+.v2-metric-bars { display: flex; flex-direction: column; gap: 6px; }
 .v2-mbar-row { display: flex; align-items: center; gap: 8px; }
-.v2-mbar-lbl { width: 26px; font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); flex-shrink: 0; text-align: right; }
+.v2-mbar-lbl { width: 26px; font-size: 9.5px; font-family: 'DM Mono', monospace; color: var(--text3); flex-shrink: 0; text-align: right; letter-spacing: .02em; }
 .v2-mbar-track {
-  flex: 1; height: 10px; background: var(--s2); border-radius: 5px;
+  flex: 1; height: 8px; background: var(--s2); border-radius: 4px;
   position: relative; overflow: visible;
+  border: 1px solid var(--border);
 }
 .v2-mbar-fill {
-  height: 100%; border-radius: 5px;
-  background: var(--amber); transition: width .5s ease;
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--amber) 0%, #d97706 100%);
+  transition: width .5s ease;
 }
-.v2-mbar-fill.reached { background: var(--green); }
+.v2-mbar-fill.reached {
+  background: linear-gradient(90deg, var(--green) 0%, #059669 100%);
+}
 .v2-mbar-med-mark {
-  position: absolute; top: -2px; bottom: -2px; width: 2px;
-  background: var(--blue); border-radius: 1px; opacity: .8;
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: var(--blue); border-radius: 1px; opacity: .9;
 }
 .v2-mbar-75-mark {
-  position: absolute; top: -2px; bottom: -2px; width: 2px;
-  background: var(--amber); border-radius: 1px; opacity: .7;
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: var(--amber); border-radius: 1px; opacity: .8;
 }
 .v2-mbar-val {
-  font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace;
+  font-size: 10.5px; font-weight: 700; font-family: 'DM Mono', monospace;
   color: var(--text); width: 44px; text-align: right; flex-shrink: 0;
 }
 .v2-mbar-pct {
@@ -194,17 +211,33 @@
 }
 
 /* ── v2 Metric tiles ─────────────────────────────────────────────────────────── */
-.v2-metric-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.v2-metric-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .v2-tile {
-  background: var(--amber-bg); border: 1px solid var(--amber-bd);
-  border-radius: var(--r); padding: 7px 8px; display: flex; flex-direction: column;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-top: 2.5px solid var(--amber-bd);
+  border-radius: 8px;
+  padding: 8px 6px 6px;
+  display: flex; flex-direction: column;
   align-items: center; gap: 2px;
+  transition: border-color .2s, background .2s;
 }
-.v2-tile.reached { background: var(--green-bg); border-color: var(--green-bd); }
-.v2-tile-lbl { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; }
-.v2-tile-val { font-size: 13px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--amber); }
+.v2-tile.v2-tile-med { border-top-color: var(--blue-bd); }
+.v2-tile.reached {
+  background: var(--green-bg);
+  border-color: var(--green-bd);
+  border-top-color: var(--green);
+}
+.v2-tile-lbl {
+  font-size: 8px; font-family: 'DM Mono', monospace; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .07em; white-space: nowrap;
+}
+.v2-tile-val {
+  font-size: 15px; font-weight: 700; font-family: 'DM Mono', monospace;
+  color: var(--text); line-height: 1.1;
+}
 .v2-tile.reached .v2-tile-val { color: var(--green); }
-.v2-tile-check { font-size: 10px; color: var(--green); }
+.v2-tile-check { font-size: 9px; font-weight: 700; color: var(--green); letter-spacing: .05em; }
 
 /* ── v2 Tools bar ────────────────────────────────────────────────────────────── */
 .v2-tools-bar {
@@ -341,10 +374,39 @@
 .vf-setup-dot.on { background: var(--blue); }
 .vf-setup-dot.on.strong { background: var(--green); }
 
-.vf-bias-chip { font-size: 10px; font-family: 'DM Mono', monospace; padding: 3px 7px; border-radius: 4px; background: var(--s2); border: 1px solid var(--border); color: var(--text2); }
+.vf-bias-chip { font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace; padding: 3px 9px; border-radius: 20px; background: var(--s2); border: 1px solid var(--border); color: var(--text2); }
 .vf-bias-chip.bear { border-color: var(--red-bd); background: var(--red-bg); color: var(--red); }
 .vf-bias-chip.bull { border-color: var(--green-bd); background: var(--green-bg); color: var(--green); }
 .vf-bias-chip.ambi { border-color: var(--amber-bd); background: var(--amber-bg); color: var(--amber); }
+
+/* ── Session section ─────────────────────────────────────────────────────────── */
+.vf-dir-row { display: flex; align-items: center; gap: 8px; }
+.vf-dir-lbl { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); flex-shrink: 0; letter-spacing: .05em; text-transform: uppercase; }
+.vf-dir-track {
+  flex: 1; height: 5px; background: var(--border); border-radius: 3px;
+  position: relative; overflow: hidden;
+}
+.vf-dir-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--blue) 0%, #6366f1 100%); transition: width .4s ease; }
+.vf-dir-mark {
+  position: absolute; top: -2px; width: 2px; height: 9px;
+  background: var(--text3); border-radius: 1px; transform: translateX(-50%);
+}
+.vf-outlook {
+  font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3);
+  line-height: 1.55; padding-top: 1px;
+}
+.vf-live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); flex-shrink: 0; display: inline-block;
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+.vf-live-dot.closed { background: var(--text3); animation: none; }
+.vf-live-hdr { display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text2); }
+.vf-live-time { font-weight: 400; color: var(--text3); margin-left: 4px; }
+.v2-sess-section {
+  border-top: 1px solid var(--border); padding-top: 8px;
+  display: flex; flex-direction: column; gap: 5px;
+}
 
 .vf-lhist-panel { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); margin-top: 14px; overflow: hidden; }
 .vf-lhist-nav { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -1428,13 +1490,13 @@ function buildV2Card(name, f, meta, isHistorical = false) {
     </div>
     <div class="v2-metric-tiles">
       <div class="v2-tile" id="tile-hl75-${name}"><div class="v2-tile-val">${f.hl_75.toFixed(2)}%</div><div class="v2-tile-lbl">H-L 75th</div></div>
-      <div class="v2-tile" id="tile-hlmed-${name}"><div class="v2-tile-val">${f.hl_median.toFixed(2)}%</div><div class="v2-tile-lbl">H-L Med</div></div>
+      <div class="v2-tile v2-tile-med" id="tile-hlmed-${name}"><div class="v2-tile-val">${f.hl_median.toFixed(2)}%</div><div class="v2-tile-lbl">H-L Med</div></div>
       <div class="v2-tile" id="tile-oc75-${name}"><div class="v2-tile-val">${f.oc_75.toFixed(2)}%</div><div class="v2-tile-lbl">O-C 75th</div></div>
-      <div class="v2-tile" id="tile-ocmed-${name}"><div class="v2-tile-val">${f.oc_median.toFixed(2)}%</div><div class="v2-tile-lbl">O-C Med</div></div>
+      <div class="v2-tile v2-tile-med" id="tile-ocmed-${name}"><div class="v2-tile-val">${f.oc_median.toFixed(2)}%</div><div class="v2-tile-lbl">O-C Med</div></div>
     </div>
     ${newsChip}
     <div id="vf-pos-${name}" class="vf-pos-result" style="display:none"></div>
-    ${isHistorical ? '' : `<div id="vf-sess-${name}" style="display:none"></div>`}
+    ${isHistorical ? '' : `<div id="vf-sess-${name}" class="v2-sess-section" style="display:none"></div>`}
   `;
   return card;
 }
@@ -1563,37 +1625,34 @@ function updateV2CardSession(name, s, data) {
   }
 }
 
-// ── buildSessionHtml (reused from v1 for compat) ───────────────────────────────
+// ── buildSessionHtml ───────────────────────────────────────────────────────────
 function buildSessionHtml(name, s, data) {
   if (s.error) return `<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">No data: ${s.error}</div>`;
   const fc = s.forecast;
-  const p2 = x => x.toFixed(2);
-  const timeStr   = new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC');
-  const anchorStr = s.anchor_time ? new Date(s.anchor_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC anchor') : '00:00 UTC anchor';
-  const dotCls = s.complete ? 'vf-live-dot closed' : 'vf-live-dot';
-  const fmtRT = iso => iso ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC') : null;
-  const remLabel = (rem, actual, reachedAt) => {
-    const t = fmtRT(reachedAt);
-    if (actual >= fc.oc_75) return `<span class="vf-srow-rem exceeded">75th reached${t?' '+t:'!'}</span>`;
-    if (rem <= 0)            return `<span class="vf-srow-rem reached">reached${t?' '+t:''}</span>`;
-    return `<span class="vf-srow-rem ok">${p2(rem)}% rem</span>`;
-  };
-  const biasCls = s.bias.toLowerCase().includes('bear') ? 'bear' : s.bias.toLowerCase().includes('bull') ? 'bull' : s.bias.toLowerCase().includes('two') ? 'ambi' : '';
-  const dirFill = Math.min(100, s.dir).toFixed(1);
-  const expMark = Math.min(100, data.expected_dir).toFixed(1);
-  const vsM = s.hl_vs_med >= 0 ? `<span class="pos">+${p2(s.hl_vs_med)}%</span>` : `<span class="neg">${p2(s.hl_vs_med)}%</span>`;
-  const vsP = s.hl_vs_75  >= 0 ? `<span class="pos">+${p2(s.hl_vs_75)}%</span>`  : `<span class="neg">${p2(s.hl_vs_75)}%</span>`;
-  const ocSign = s.oc >= 0 ? '+' : '', ocCls = s.oc >= 0 ? 'pos' : 'neg';
-  return `<div class="vf-live-hdr"><div class="${dotCls}"></div>TODAY'S SESSION<span class="vf-live-time">${anchorStr} · as of ${timeStr}</span></div>
-    <div class="vf-srow"><span class="vf-srow-lbl">H-L</span><span class="vf-srow-val">${p2(s.hl)}%</span><span class="vf-srow-fc">med ${p2(fc.hl_median)}% · 75th ${p2(fc.hl_75)}%</span></div>
-    <div class="vf-srow-vs">vs med ${vsM} · vs 75th ${vsP}</div>
+  const biasCls = s.bias?.toLowerCase().includes('bear') ? 'bear'
+    : s.bias?.toLowerCase().includes('bull') ? 'bull'
+    : s.bias?.toLowerCase().includes('two') ? 'ambi' : '';
+  const dirFill = Math.min(100, s.dir ?? 0).toFixed(1);
+  const expMark = Math.min(100, data?.expected_dir ?? 50).toFixed(1);
+  const timeStr = s.bar_time
+    ? new Date(s.bar_time).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC')
+    : '';
+  return `
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
+      ${s.bias ? `<span class="vf-bias-chip ${biasCls}">${s.bias}</span>` : ''}
+      <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)">
+        <b style="color:var(--text2)">${(s.dir??0).toFixed(1)}%</b> dir · ${s.shape ?? ''}
+      </span>
+      ${timeStr ? `<span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-left:auto">${timeStr}</span>` : ''}
+    </div>
+    <div class="vf-dir-row" style="margin-bottom:5px">
+      <div class="vf-dir-track">
+        <div class="vf-dir-fill" style="width:${dirFill}%"></div>
+        <div class="vf-dir-mark" style="left:${expMark}%"></div>
+      </div>
+    </div>
     ${_breakoutProbHtml(s, fc)}
-    <div class="vf-srow"><span class="vf-srow-lbl">O-C</span><span class="vf-srow-val ${ocCls}">${ocSign}${p2(s.oc)}%</span><span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>${remLabel(s.oc_rem,Math.abs(s.oc),s.oc_reached_at)}</div>
-    <div class="vf-srow"><span class="vf-srow-lbl">O-H</span><span class="vf-srow-val">${p2(s.oh)}%</span><span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>${remLabel(s.oh_rem,s.oh,s.oh_reached_at)}</div>
-    <div class="vf-srow"><span class="vf-srow-lbl">O-L</span><span class="vf-srow-val">${p2(s.ol)}%</span><span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>${remLabel(s.ol_rem,s.ol,s.ol_reached_at)}</div>
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="vf-bias-chip ${biasCls}">${s.bias}</span><span class="vf-bias-detail">${s.bias_detail}</span></div>
-    <div class="vf-dir-row"><span class="vf-dir-lbl">Dir</span><div class="vf-dir-track"><div class="vf-dir-fill" style="width:${dirFill}%"></div><div class="vf-dir-mark" style="left:${expMark}%"></div></div><span class="vf-dir-lbl"><b>${p2(s.dir)}%</b> · ${s.shape}</span></div>
-    <div class="vf-outlook">${s.outlook}</div>`;
+    ${s.outlook ? `<div class="vf-outlook">${s.outlook}</div>` : ''}`;
 }
 
 function barRow(label, value, maxValue, fillClass) {
@@ -2553,7 +2612,7 @@ function histNavNext() { if (!viewingDate) return; const next=_nextTradingDay(vi
 function histNavGoto(dateStr) { if (!dateStr) return; const latest=liveForecast?.session_date??new Date().toISOString().slice(0,10); if (dateStr>=latest) returnToToday(); else loadDateForecast(dateStr); }
 function histNavToday() { returnToToday(); }
 
-// ── M5 Mini-Chart ─────────────────────────────────────────────────────────────
+// ── H1 Mini-Chart ─────────────────────────────────────────────────────────────
 const OANDA_SYM = {
   eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
   gbpjpy:'GBP/JPY', audusd:'AUD/USD', usdcad:'USD/CAD', usdchf:'USD/CHF',
@@ -2564,22 +2623,20 @@ const OANDA_SYM = {
   chfjpy:'CHF/JPY', gold:'XAU/USD',
 };
 
-// Cache M5 data in-session so 26 pairs don't all re-fetch on resize/redraw
+// Cache H1 data in-session (key = pair name)
 const _m5Cache = {};
 
 async function loadM5Chart(name, f) {
   const sym = OANDA_SYM[name];
   if (!sym) return;
-  // Always query by ID — never cache the reference across awaits
   if (!document.getElementById(`m5wrap-${name}`)) return;
 
-  // Helper: re-query wrap fresh every time (prevents stale reference after grid rebuild)
   const freshWrap   = () => document.getElementById(`m5wrap-${name}`);
   const freshCanvas = () => document.getElementById(`m5chart-${name}`);
 
   const _err = (msg) => {
     const w = freshWrap(); if (!w) return;
-    w.innerHTML = `<div class="v2-m5-empty">M5: ${msg}</div>`;
+    w.innerHTML = `<div class="v2-m5-empty">${msg}</div>`;
   };
   const _draw = (candles) => {
     const w = freshWrap(); if (!w) return;
@@ -2588,7 +2645,7 @@ async function loadM5Chart(name, f) {
       w.innerHTML = `<canvas id="m5chart-${name}" class="v2-m5-chart"></canvas>`;
       cv = freshCanvas();
     }
-    if (cv) _drawM5Canvas(cv, candles, f);
+    if (cv) requestAnimationFrame(() => _drawH1Canvas(cv, candles, f));
   };
 
   try {
@@ -2596,7 +2653,7 @@ async function loadM5Chart(name, f) {
     if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < 270_000) {
       values = _m5Cache[name].values;
     } else {
-      const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
+      const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}&granularity=H1`);
       const data = await res.json();
       if (!res.ok || !data?.values?.length) {
         _err(data?.error || (res.ok ? 'no bars' : `HTTP ${res.status}`));
@@ -2606,31 +2663,32 @@ async function loadM5Chart(name, f) {
       values = data.values;
     }
 
+    // values is newest-first; filter to today (London date)
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
     const todayBars  = values.filter(c => c.datetime?.startsWith(londonDate));
-    if (todayBars.length) {
-      _draw([...todayBars].reverse());
+    if (todayBars.length >= 1) {
+      _draw([...todayBars].reverse()); // oldest-first for left→right rendering
     } else {
-      // Weekend / pre-open — draw most recent bars as context
-      const recent = values.slice(0, 100);
-      if (!recent.length) { _err('no bars'); return; }
+      // Weekend / pre-market — show most recent 24 bars as context
+      const recent = values.slice(0, 24);
+      if (!recent.length) { _err('no data'); return; }
       _draw([...recent].reverse());
     }
   } catch (e) {
-    console.warn('[m5chart]', name, e.message);
-    _err(e.message.slice(0, 40));
+    console.warn('[h1chart]', name, e.message);
+    _err(e.message.slice(0, 50));
   }
 }
 
 function _showM5Empty(wrap, reason) {
   const w = typeof wrap === 'string' ? document.getElementById(`m5wrap-${wrap}`) : wrap;
   if (!w) return;
-  w.innerHTML = `<div class="v2-m5-empty">${reason ? `M5: ${reason}` : 'no M5 data'}</div>`;
+  w.innerHTML = `<div class="v2-m5-empty">${reason || 'no data'}</div>`;
 }
 
-function _drawM5Canvas(canvas, candles, f) {
+function _drawH1Canvas(canvas, candles, f) {
   const W = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 280;
-  const H = canvas.offsetHeight || 72;
+  const H = canvas.offsetHeight || 90;
   if (!W || !H) return;
   const dpr = window.devicePixelRatio || 1;
   canvas.width  = W * dpr;
@@ -2638,103 +2696,99 @@ function _drawM5Canvas(canvas, candles, f) {
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 
-  // Compute % close moves from day open
-  const dayOpen = parseFloat(candles[0].open);
-  if (!dayOpen) return;
-  const closes = candles.map(c => (parseFloat(c.close) / dayOpen - 1) * 100);
-  const highs  = candles.map(c => (parseFloat(c.high)  / dayOpen - 1) * 100);
-  const lows   = candles.map(c => (parseFloat(c.low)   / dayOpen - 1) * 100);
+  // Resolve dark-mode theme colors via the canvas element (inherits body.dark)
+  const cs = getComputedStyle(canvas);
+  const cv = n => cs.getPropertyValue(n).trim();
+  const clrAmber = cv('--amber')  || '#f59e0b';
+  const clrBlue  = cv('--blue')   || '#4f7df0';
+  const clrText3 = cv('--text3')  || '#5a6380';
+  const clrBg    = cv('--s2')     || '#11121a';
 
-  // y-scale: ±hl_75 with 20% headroom, but at least ±actual range
-  const maxMove = candles.reduce((m, c) => Math.max(m,
-    Math.abs((parseFloat(c.high)/dayOpen-1)*100),
-    Math.abs((parseFloat(c.low)/dayOpen-1)*100)), 0);
-  const halfRange = Math.max((f.hl_75 || 0.5) * 0.6, maxMove * 1.05, 0.05);
-  const toY = v => H * (0.5 - v / (halfRange * 2));
-
-  // Resolve theme colors with visible fallbacks
-  const cs = getComputedStyle(document.documentElement);
-  const varGet = n => cs.getPropertyValue(n).trim();
-  const clrAmber  = varGet('--amber')  || '#f59e0b';
-  const clrBlue   = varGet('--blue')   || '#3b82f6';
-  const clrBorder = varGet('--border') || '#2a2a2a';
-
-  // Background fill
-  ctx.fillStyle = varGet('--s2') || '#11121a';
+  // Background
+  ctx.fillStyle = clrBg;
   ctx.fillRect(0, 0, W, H);
 
-  // Forecast level lines (dashed)
+  const n = candles.length;
+  if (n < 1) return;
+
+  const dayOpen = parseFloat(candles[0].open);
+  if (!dayOpen) return;
+  const rel = price => (parseFloat(price) / dayOpen - 1) * 100;
+
+  // y scale: fit actual range + 25% headroom, but at least ±oc_75
+  const allH = candles.map(c => rel(c.high));
+  const allL = candles.map(c => rel(c.low));
+  const maxMove = Math.max(...allH.map(Math.abs), ...allL.map(Math.abs), 0.001);
+  const halfRange = Math.max(maxMove * 1.25, (f?.oc_75 || 0.1) * 0.5, 0.01);
+  const toY = v => H * (0.5 - v / (halfRange * 2));
+
+  // Forecast level lines (dashed, with right-edge labels)
+  const PAD_R = 52; // pixels reserved on the right for labels
   const levels = [
-    { v:  f.hl_75,    c: clrBlue,  w: 1,   d: [3,3] },
-    { v: -f.hl_75,    c: clrBlue,  w: 1,   d: [3,3] },
-    { v:  f.oc_75,    c: clrAmber, w: 1,   d: [3,3] },
-    { v: -f.oc_75,    c: clrAmber, w: 1,   d: [3,3] },
-    { v:  f.oc_median,c: '#888',   w: 0.8, d: [2,4] },
-    { v: -f.oc_median,c: '#888',   w: 0.8, d: [2,4] },
+    { v:  f?.oc_75,    c: clrAmber, w: 1,   d: [4,3], lbl: 'OC 75↑' },
+    { v: -f?.oc_75,    c: clrAmber, w: 1,   d: [4,3], lbl: 'OC 75↓' },
+    { v:  f?.oc_median,c: clrBlue,  w: 0.8, d: [3,4], lbl: 'OC med↑' },
+    { v: -f?.oc_median,c: clrBlue,  w: 0.8, d: [3,4], lbl: 'OC med↓' },
+    { v:  f?.hl_75,    c: clrText3, w: 0.6, d: [2,5], lbl: 'HL 75' },
+    { v: -f?.hl_75,    c: clrText3, w: 0.6, d: [2,5] },
   ];
-  for (const { v, c, w, d } of levels) {
+  ctx.textBaseline = 'middle';
+  ctx.font = `7px 'DM Mono',monospace`;
+  for (const { v, c, w, d, lbl } of levels) {
+    if (!v) continue;
     const y = toY(v);
-    if (y < 0 || y > H) continue;
+    if (y < 1 || y > H - 1) continue;
     ctx.strokeStyle = c; ctx.lineWidth = w; ctx.setLineDash(d);
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+    if (lbl) { ctx.fillStyle = c; ctx.fillText(lbl, W - PAD_R + 3, y); }
   }
   ctx.setLineDash([]);
 
-  // Zero line (open price reference)
+  // Zero / open line
   const y0 = toY(0);
-  ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0); ctx.stroke();
-
-  if (closes.length < 2) return;
-  const n = closes.length;
-  const xStep = (W - 4) / (n - 1);
-  const xOf = i => 2 + i * xStep;
-
-  // Filled area: green above open, red below open
-  const lastClose = closes[n - 1];
-  const isUp = lastClose >= 0;
-
-  ctx.beginPath();
-  ctx.moveTo(xOf(0), y0);
-  for (let i = 0; i < n; i++) ctx.lineTo(xOf(i), toY(closes[i]));
-  ctx.lineTo(xOf(n - 1), y0);
-  ctx.closePath();
-  ctx.fillStyle = isUp ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)';
-  ctx.fill();
-
-  // High-low range shadow (very subtle)
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) ctx.lineTo(xOf(i), toY(highs[i]));
-  for (let i = n - 1; i >= 0; i--) ctx.lineTo(xOf(i), toY(lows[i]));
-  ctx.closePath();
-  ctx.fillStyle = isUp ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)';
-  ctx.fill();
-
-  // Price line
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    i === 0 ? ctx.moveTo(xOf(0), toY(closes[0])) : ctx.lineTo(xOf(i), toY(closes[i]));
+  if (y0 >= 0 && y0 <= H) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W - PAD_R, y0); ctx.stroke();
   }
-  ctx.strokeStyle = isUp ? '#22c55e' : '#ef4444';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
 
-  // Current price dot
-  ctx.beginPath();
-  ctx.arc(xOf(n - 1), toY(closes[n - 1]), 3, 0, Math.PI * 2);
-  ctx.fillStyle = isUp ? '#22c55e' : '#ef4444';
-  ctx.fill();
+  // Candlesticks
+  const chartW = W - PAD_R - 4;
+  const step   = chartW / n;
+  const bodyW  = Math.max(2, Math.floor(step * 0.65));
 
-  // Bar count label (bottom-right, confirms function ran)
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.font = `${Math.round(7 * dpr)}px monospace`;
-  ctx.scale(1/dpr, 1/dpr);
-  ctx.fillText(`${n}×M5`, (W - 32) * dpr, (H - 3) * dpr);
+  for (let i = 0; i < n; i++) {
+    const c = candles[i];
+    const x = 2 + i * step + (step - bodyW) / 2;
+    const yH = toY(rel(c.high));
+    const yL = toY(rel(c.low));
+    const yO = toY(rel(c.open));
+    const yC = toY(rel(c.close));
+    const isUp = parseFloat(c.close) >= parseFloat(c.open);
+    const color = isUp ? '#22c55e' : '#ef4444';
+
+    // Wick
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(x + bodyW / 2) + 0.5, yH);
+    ctx.lineTo(Math.round(x + bodyW / 2) + 0.5, yL);
+    ctx.stroke();
+
+    // Body (min 1px so doji bars still show)
+    const bodyTop = Math.min(yO, yC);
+    const bodyH   = Math.max(1, Math.abs(yO - yC));
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(x), Math.round(bodyTop), bodyW, bodyH);
+  }
+
+  // Bar count (bottom-left)
+  ctx.fillStyle = clrText3;
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `6px 'DM Mono',monospace`;
+  ctx.fillText(`${n}×H1`, 3, H - 3);
 }
 
 async function loadAllM5Charts(instruments) {
   if (!instruments) return;
-  // Load in parallel batches of 6 to avoid flooding the worker
   const names = Object.keys(instruments);
   for (let i = 0; i < names.length; i += 6) {
     const batch = names.slice(i, i + 6);
