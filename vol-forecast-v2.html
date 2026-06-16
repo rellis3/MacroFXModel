@@ -159,9 +159,9 @@
 /* ── v2 M5 mini-chart ────────────────────────────────────────────────────────── */
 .v2-m5-wrap { position: relative; margin: 4px 0 2px; }
 .v2-m5-chart { display: block; width: 100%; height: 72px; border-radius: 4px; background: var(--s2); }
-.v2-m5-empty { height: 72px; display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); background: var(--s2);
-  border-radius: 4px; margin: 4px 0 2px; }
+.v2-m5-empty { height: 40px; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text2); background: var(--s2);
+  border-radius: 4px; margin: 4px 0 2px; border: 1px solid var(--border); }
 
 /* ── v2 Metric bars ──────────────────────────────────────────────────────────── */
 .v2-metric-bars { display: flex; flex-direction: column; gap: 7px; }
@@ -2579,18 +2579,32 @@ async function loadM5Chart(name, f) {
     if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < 270_000) {
       values = _m5Cache[name].values;
     } else {
-      const data = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`).then(r => r.json());
-      if (!data?.values?.length) { _showM5Empty(wrap); return; }
+      const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
+      const data = await res.json();
+      if (!res.ok || !data?.values?.length) {
+        _showM5Empty(wrap, data?.error || (res.ok ? 'no bars' : `HTTP ${res.status}`));
+        return;
+      }
       _m5Cache[name] = { values: data.values, ts: Date.now() };
       values = data.values;
     }
 
     // values are newest-first, in London local time ("YYYY-MM-DD HH:MM:SS")
-    // Filter to today's London date
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
     const todayBars = values.filter(c => c.datetime?.startsWith(londonDate));
-    if (!todayBars.length) { _showM5Empty(wrap); return; }
-    // Reverse: oldest-first for charting
+    if (!todayBars.length) {
+      // weekend or pre-open — show most recent available bars instead
+      const recentBars = values.slice(0, 100);
+      if (!recentBars.length) { _showM5Empty(wrap, 'no bars'); return; }
+      const candles = [...recentBars].reverse();
+      let canvas = document.getElementById(`m5chart-${name}`);
+      if (!canvas || canvas.tagName !== 'CANVAS') {
+        wrap.innerHTML = `<canvas id="m5chart-${name}" class="v2-m5-chart"></canvas>`;
+        canvas = document.getElementById(`m5chart-${name}`);
+      }
+      _drawM5Canvas(canvas, candles, f);
+      return;
+    }
     const candles = [...todayBars].reverse();
 
     // Restore canvas if previously replaced by empty message
@@ -2602,16 +2616,16 @@ async function loadM5Chart(name, f) {
     _drawM5Canvas(canvas, candles, f);
   } catch (e) {
     console.warn('[m5chart]', name, e.message);
-    _showM5Empty(wrap);
+    _showM5Empty(wrap, e.message.slice(0, 30));
   }
 }
 
-function _showM5Empty(wrap) {
-  wrap.innerHTML = `<div class="v2-m5-empty">no M5 data</div>`;
+function _showM5Empty(wrap, reason) {
+  wrap.innerHTML = `<div class="v2-m5-empty">${reason ? `M5: ${reason}` : 'no M5 data'}</div>`;
 }
 
 function _drawM5Canvas(canvas, candles, f) {
-  const W = canvas.offsetWidth || 280;
+  const W = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 280;
   const H = canvas.offsetHeight || 72;
   const dpr = window.devicePixelRatio || 1;
   canvas.width  = W * dpr;
@@ -2630,8 +2644,9 @@ function _drawM5Canvas(canvas, candles, f) {
     c: (parseFloat(c.close) / dayOpen - 1) * 100,
   }));
 
-  // Determine y-scale: show ±hl_75 range with 20% headroom
-  const halfRange = Math.max((f.hl_75 || 0.5) * 0.6, Math.max(...pct.map(c => Math.max(Math.abs(c.h), Math.abs(c.l)))) * 1.05);
+  // Determine y-scale using reduce (avoids spread limit on large arrays)
+  const maxMove = pct.reduce((m, c) => Math.max(m, Math.abs(c.h), Math.abs(c.l)), 0);
+  const halfRange = Math.max((f.hl_75 || 0.5) * 0.6, maxMove * 1.05);
   const toY = v => H * (0.5 - v / (halfRange * 2));
 
   // Draw grid line at 0 (open)
