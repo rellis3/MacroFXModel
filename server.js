@@ -2266,7 +2266,7 @@ function _computeNqQmr(bars, cfg = {}) {
 
     const entry       = entryBar.o;
     const effStopPct  = stopMultiplier > 0
-      ? Math.max(+(rangePct * stopMultiplier).toFixed(4), 0.20)
+      ? Math.max(+(rangePct * stopMultiplier).toFixed(4), 0.10)
       : stopPct;
     const stop  = gate2 === 'LONG'
       ? entry * (1 - effStopPct / 100)
@@ -7073,7 +7073,7 @@ async function nqGate1Check() {
 
     const stopMul    = cfg.stopMultiplier ?? 0.45;
     const stopPctDyn = stopMul > 0
-      ? Math.max(+(rangePct * stopMul).toFixed(3), 0.20)
+      ? Math.max(+(rangePct * stopMul).toFixed(3), 0.10)
       : +(cfg.stopPct ?? 0.50);
     nqMon.gate1     = gate1;
     nqMon.gate1Data = { price: g1bar.c, asiaH, asiaL, range, rangePct, stopPct: stopPctDyn, pos, goldDir, eurDir };
