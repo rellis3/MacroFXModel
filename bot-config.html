@@ -2673,10 +2673,18 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
     <!-- ── Open Position ─────────────────────────────────────────────────────── -->
     <div class="card" style="margin-top:10px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <span style="font-size:12px;font-weight:600;color:#f59e0b">Open Position</span>
         <span id="nqPosAge" style="font-size:11px;color:var(--text3)"></span>
-        <button onclick="nqCloseTrade()" id="nqCloseBtn" style="display:none;margin-left:auto;background:transparent;border:1px solid #ef4444;border-radius:6px;color:#ef4444;font-weight:600;padding:4px 14px;cursor:pointer;font-size:12px">Close / Exit</button>
+        <span style="flex:1"></span>
+        <input type="number" id="nq_close_price" placeholder="Exit price" step="0.25" style="display:none;width:100px;font-size:12px">
+        <select id="nq_exit_type" style="display:none;font-size:12px;padding:3px 6px;border-radius:6px;background:var(--s2);color:var(--text2);border:1px solid var(--border)">
+          <option value="MANUAL">Manual close</option>
+          <option value="TP">TP hit</option>
+          <option value="SL">SL hit</option>
+          <option value="EOD">EOD close</option>
+        </select>
+        <button onclick="nqCloseTrade()" id="nqCloseBtn" style="display:none;background:transparent;border:1px solid #ef4444;border-radius:6px;color:#ef4444;font-weight:600;padding:4px 14px;cursor:pointer;font-size:12px">Close / Exit</button>
       </div>
       <div id="nqOpenPos" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">No open NQ-QMR position. Log a trade above to populate.</div>
     </div>
@@ -2687,8 +2695,19 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <div id="nqClosedTrades" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">No closed trades today.</div>
     </div>
 
+    <!-- ── Gate Audit Log ─────────────────────────────────────────────────────── -->
+    <div class="card" style="margin-top:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:12px;font-weight:600;color:var(--text2)">Gate Audit Log</span>
+        <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Daily record of gate outputs and trade outcomes — last 90 days</span>
+        <span style="flex:1"></span>
+        <button onclick="nqLoadAudit()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text3);font-size:11px;padding:3px 10px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div id="nqAuditLog" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">Loading…</div>
+    </div>
+
     <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;padding:8px 0">
-      Gate timestamps and positions are stored in KV under <code>nq_qmr_status</code>. History persists until manually cleared.
+      Gate state in <code>nq_qmr_status</code> · audit history in <code>nq_qmr_audit</code>. Both written automatically by Railway server on each gate check.
     </div>
 
   </div><!-- /tab-nqqmr -->
@@ -3463,29 +3482,39 @@ function _nqRenderGates(gates) {
 }
 
 function _nqRenderOpenPos(positions) {
-  const el = document.getElementById('nqOpenPos');
-  const btn = document.getElementById('nqCloseBtn');
+  const el        = document.getElementById('nqOpenPos');
+  const btn       = document.getElementById('nqCloseBtn');
+  const cpInput   = document.getElementById('nq_close_price');
+  const etSelect  = document.getElementById('nq_exit_type');
   if (!el) return;
   if (!positions.length) {
     el.textContent = 'No open NQ-QMR position. Log a trade above to populate.';
-    if (btn) btn.style.display = 'none';
+    if (btn)      btn.style.display = 'none';
+    if (cpInput)  cpInput.style.display = 'none';
+    if (etSelect) etSelect.style.display = 'none';
     return;
   }
   const p = positions[0];
   const dir = p.direction === 'BUY' ? '▲ LONG' : '▼ SHORT';
   const pnl = (p.profit || 0) + (p.swap || 0);
   const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+  // Estimate TP from entry + 1.25% (default tpPct)
+  const tpEst = p.price_open
+    ? (p.direction === 'BUY' ? p.price_open * 1.0125 : p.price_open * 0.9875)
+    : null;
   el.innerHTML = `<table style="border-collapse:collapse;font-size:12px">
     <tr><td style="padding:4px 14px 4px 0;color:var(--text3)">Symbol</td><td style="font-weight:700">${p.symbol || 'NQ'}</td>
         <td style="padding:4px 24px">Dir</td><td style="font-weight:700;color:${p.direction==='BUY'?'#10b981':'#ef4444'}">${dir}</td></tr>
     <tr><td style="padding:4px 14px 4px 0;color:var(--text3)">Contracts</td><td style="font-weight:700">${p.lots || 1}</td>
         <td style="padding:4px 24px">Entry</td><td>${p.price_open?.toFixed(2) || '—'}</td></tr>
     <tr><td style="padding:4px 14px 4px 0;color:var(--text3)">Stop</td><td>${p.sl?.toFixed(2) || '—'}</td>
-        <td style="padding:4px 24px">P&amp;L</td><td style="font-weight:700;color:${pnlColor}">${pnl>=0?'+':''}${pnl.toFixed(2)}</td></tr>
+        <td style="padding:4px 24px">TP est.</td><td style="color:#10b981">${tpEst?.toFixed(2) || '—'}</td></tr>
     <tr><td style="padding:4px 14px 4px 0;color:var(--text3)">Ticket</td><td>${p.ticket || '—'}</td>
         <td style="padding:4px 24px">Opened</td><td>${p.time ? new Date(p.time*1000).toLocaleString() : '—'}</td></tr>
   </table>`;
-  if (btn) btn.style.display = '';
+  if (btn)      btn.style.display = '';
+  if (cpInput)  { cpInput.style.display = ''; cpInput.placeholder = `Exit price (est. TP ${tpEst?.toFixed(1) || '?'})`; }
+  if (etSelect) etSelect.style.display = '';
 }
 
 function _nqRenderClosed(trades) {
@@ -3560,6 +3589,8 @@ async function nqLogTrade() {
   const sl   = parseFloat(document.getElementById('nq_sl')?.value);
   const tkt  = parseInt(document.getElementById('nq_tkt')?.value) || Math.floor(Date.now() / 1000);
   if (!ep) { document.getElementById('nqLogStatus').textContent = 'Enter entry price first'; return; }
+  const tpPct = 1.25;
+  const tp    = dir === 'BUY' ? ep * (1 + tpPct / 100) : ep * (1 - tpPct / 100);
   const pos = {
     symbol:     sym,
     direction:  dir,
@@ -3569,6 +3600,7 @@ async function nqLogTrade() {
     profit:     0,
     swap:       0,
     sl:         sl || null,
+    tp:         +tp.toFixed(2),
     ticket:     tkt,
     time:       Math.floor(Date.now() / 1000),
   };
@@ -3577,6 +3609,20 @@ async function nqLogTrade() {
   data.mt5_positions = [pos]; // one active position at a time
   data.pushed_at = Math.floor(Date.now() / 1000);
   await _kvSet(NQ_KV_KEY, data);
+  // Write trade entry to audit log
+  try {
+    const today    = new Date().toISOString().slice(0, 10);
+    const auditLog = (await _kvGet(NQ_AUDIT_KEY)) || [];
+    let idx = auditLog.findIndex(e => e.date === today);
+    if (idx === -1) { auditLog.unshift({ date: today }); idx = 0; }
+    auditLog[idx].trade = {
+      direction: dir, lots, entry: ep,
+      stop: sl || null, tp: +tp.toFixed(2),
+      exit: null, exit_type: null, pnl_pts: null,
+      logged_at: Math.floor(Date.now() / 1000), closed_at: null,
+    };
+    await _kvSet(NQ_AUDIT_KEY, auditLog);
+  } catch (_) {}
   const statusEl = document.getElementById('nqLogStatus');
   statusEl.textContent = '✓ Trade logged';
   statusEl.style.color = '#10b981';
@@ -3587,19 +3633,48 @@ async function nqLogTrade() {
 async function nqCloseTrade() {
   const data = await _kvGet(NQ_KV_KEY);
   if (!data?.mt5_positions?.length) return;
-  const pos  = data.mt5_positions[0];
+  const pos       = data.mt5_positions[0];
+  const cpEl      = document.getElementById('nq_close_price');
+  const etEl      = document.getElementById('nq_exit_type');
+  const exitPrice = parseFloat(cpEl?.value) || pos.price;
+  const exitType  = etEl?.value || 'MANUAL';
+  const pnlPts    = pos.direction === 'BUY'
+    ? exitPrice - pos.price_open
+    : pos.price_open - exitPrice;
   const closed = {
     ...pos,
-    price_close: pos.price,
-    closed_at: Math.floor(Date.now() / 1000),
+    price:      exitPrice,
+    price_close: exitPrice,
+    profit:     pnlPts * (pos.lots || 1),
+    exit_type:  exitType,
+    closed_at:  Math.floor(Date.now() / 1000),
     position_id: pos.ticket,
   };
   data.today_closed_trades = [...(data.today_closed_trades || []), closed];
   data.mt5_positions = [];
   data.pushed_at = Math.floor(Date.now() / 1000);
   await _kvSet(NQ_KV_KEY, data);
+  // Update audit log with exit info
+  try {
+    const today    = new Date().toISOString().slice(0, 10);
+    const auditLog = (await _kvGet(NQ_AUDIT_KEY)) || [];
+    const idx = auditLog.findIndex(e => e.date === today);
+    if (idx !== -1) {
+      if (!auditLog[idx].trade) auditLog[idx].trade = {};
+      Object.assign(auditLog[idx].trade, {
+        exit:      exitPrice,
+        exit_type: exitType,
+        pnl_pts:   +pnlPts.toFixed(2),
+        closed_at: Math.floor(Date.now() / 1000),
+      });
+      await _kvSet(NQ_AUDIT_KEY, auditLog);
+    }
+  } catch (_) {}
+  if (cpEl)  { cpEl.value = '';  cpEl.style.display = 'none'; }
+  if (etEl)  etEl.style.display = 'none';
   _nqRenderOpenPos([]);
   _nqRenderClosed(data.today_closed_trades);
+  nqLoadAudit();
 }
 
 // ── NQ-QMR auto-monitor live status renderer ──────────────────────────────────
@@ -3716,6 +3791,82 @@ async function nqSaveConfig() {
   if (el) { el.textContent = '✓ Saved'; el.style.color = '#10b981'; setTimeout(() => { el.textContent = ''; }, 2500); }
 }
 
+// ── NQ-QMR Gate Audit Log ────────────────────────────────────────────────────
+
+const NQ_AUDIT_KEY = 'nq_qmr_audit';
+
+async function nqLoadAudit() {
+  const el = document.getElementById('nqAuditLog');
+  if (!el) return;
+  el.textContent = 'Loading…';
+  const log = await _kvGet(NQ_AUDIT_KEY);
+  if (!log || !log.length) {
+    el.textContent = 'No audit entries yet. Entries are created automatically each trading day when gates fire.';
+    return;
+  }
+  const rows = log.slice(0, 60).map(e => {
+    const g1     = e.gate1  || {};
+    const g2     = e.gate2  || {};
+    const sig    = e.signal || {};
+    const trade  = e.trade  || null;
+
+    const g1Color = g1.state === 'PASS'
+      ? (g1.direction === 'LONG' ? '#10b981' : '#60a5fa') : '#ef4444';
+    const g1Text  = g1.state === 'PASS'
+      ? (g1.direction === 'LONG' ? '▲ LONG' : '▼ SHORT')
+      : g1.state === 'FAIL' ? '— FLAT' : '—';
+
+    const g2Color = g2.state === 'PASS' ? '#10b981' : g2.state === 'FAIL' ? '#ef4444' : 'var(--text3)';
+    const g2Text  = g2.state === 'PASS' ? '✓' : g2.state === 'FAIL' ? '✗' : '—';
+    const ldnStr  = g2.ldnMove != null
+      ? ` ${g2.ldnMove >= 0 ? '+' : ''}${g2.ldnMove.toFixed(2)}%` : '';
+
+    const newsTag = e.news_blocked
+      ? `<span style="color:#f59e0b;font-size:10px;margin-left:4px">⚠️</span>` : '';
+
+    let tradeCells = `<td colspan="4" style="padding:4px 8px;color:var(--text3);font-size:11px">${sig.fired ? 'signal sent · monitoring' : 'no entry signal'}</td>`;
+    if (trade) {
+      const pnl       = trade.pnl_pts;
+      const pnlColor  = pnl == null ? 'var(--text3)' : pnl >= 0 ? '#10b981' : '#ef4444';
+      const pnlStr    = pnl != null ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(1)} pts` : 'open';
+      const exitStr   = trade.exit?.toFixed(1) || (trade.closed_at ? '?' : '—');
+      const typeColor = trade.exit_type === 'TP' ? '#10b981' : trade.exit_type === 'SL' ? '#ef4444' : 'var(--text3)';
+      tradeCells = `
+        <td style="padding:4px 8px;font-size:11px">${trade.entry?.toFixed(1) || '—'}</td>
+        <td style="padding:4px 8px;font-size:11px;color:#ef4444">${trade.stop?.toFixed(1) || '—'}</td>
+        <td style="padding:4px 8px;font-size:11px;color:var(--text3)">${exitStr}</td>
+        <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${pnlColor}">${pnlStr}
+          <span style="font-weight:400;font-size:10px;color:${typeColor};margin-left:4px">${trade.exit_type || ''}</span></td>`;
+    }
+
+    return `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:5px 8px;white-space:nowrap;font-size:11px">${e.date}${newsTag}</td>
+      <td style="padding:4px 8px;color:${g1Color};font-weight:700;font-size:11px">${g1Text}</td>
+      <td style="padding:4px 8px;color:var(--text3);font-size:10px">${g1.rangePct != null ? g1.rangePct.toFixed(2) + '%' : '—'}</td>
+      <td style="padding:4px 8px;color:${g2Color};font-weight:700;font-size:11px">${g2Text}<span style="font-weight:400;font-size:10px;color:var(--text3)">${ldnStr}</span></td>
+      <td style="padding:4px 8px;font-size:11px">${sig.fired ? '🎯' : (g2.state ? '✗' : '—')}</td>
+      ${tradeCells}
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<div style="overflow-x:auto">
+    <table style="border-collapse:collapse;width:100%;min-width:620px">
+      <thead><tr style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">
+        <th style="text-align:left;padding:4px 8px 8px 0;white-space:nowrap">Date</th>
+        <th style="text-align:left;padding:4px 8px 8px">Gate 1</th>
+        <th style="text-align:left;padding:4px 8px 8px">O/N Range</th>
+        <th style="text-align:left;padding:4px 8px 8px">Gate 2</th>
+        <th style="text-align:left;padding:4px 8px 8px">Signal</th>
+        <th style="text-align:left;padding:4px 8px 8px">Entry</th>
+        <th style="text-align:left;padding:4px 8px 8px">Stop</th>
+        <th style="text-align:left;padding:4px 8px 8px">Exit</th>
+        <th style="text-align:left;padding:4px 0 8px">P&amp;L / Type</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
 // Extend nqLoadStatus to also render the auto-monitor panel
 const _nqLoadStatusOrig = nqLoadStatus;
 async function nqLoadStatus() {
@@ -3736,6 +3887,7 @@ async function nqLoadStatus() {
 document.querySelector('.tab-btn[data-tab="nqqmr"]')?.addEventListener('click', () => {
   nqLoadStatus();
   nqLoadConfig();
+  nqLoadAudit();
 });
 
 // ── Positions tab ─────────────────────────────────────────────────────────────

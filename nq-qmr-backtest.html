@@ -217,6 +217,15 @@
         <input type="number" id="cfg_tp" value="1.25" min="0" max="5.0" step="0.25">
         <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">0 = EOD only · 1.25 = 2.5R (COG) · 1.5 = 3R</span>
       </div>
+      <div class="cfg-field">
+        <label>Direction</label>
+        <select id="cfg_direction" style="background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 8px;width:90px;">
+          <option value="both" selected>Both</option>
+          <option value="long">Long only</option>
+          <option value="short">Short only</option>
+        </select>
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">filter by direction for analysis</span>
+      </div>
     </div>
     <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
   </div>
@@ -571,6 +580,7 @@ async function runBacktest() {
     riskPct:         document.getElementById('cfg_risk').value,
     minRangePct:     document.getElementById('cfg_range').value,
     tpPct:           document.getElementById('cfg_tp').value,
+    direction:       document.getElementById('cfg_direction').value,
   });
 
   try {
@@ -1246,12 +1256,13 @@ function renderOptResults(top5) {
 }
 
 function loadCfg(cfg) {
-  document.getElementById('cfg_gate1').value = cfg.gate1Threshold;
-  document.getElementById('cfg_gate2').value = cfg.gate2MinMovePct;
-  document.getElementById('cfg_stop').value  = cfg.stopPct;
-  document.getElementById('cfg_risk').value  = cfg.riskPct;
-  document.getElementById('cfg_range').value = cfg.minRangePct;
-  document.getElementById('cfg_tp').value    = cfg.tpPct ?? 0;
+  document.getElementById('cfg_gate1').value     = cfg.gate1Threshold;
+  document.getElementById('cfg_gate2').value     = cfg.gate2MinMovePct;
+  document.getElementById('cfg_stop').value      = cfg.stopPct;
+  document.getElementById('cfg_risk').value      = cfg.riskPct;
+  document.getElementById('cfg_range').value     = cfg.minRangePct;
+  document.getElementById('cfg_tp').value        = cfg.tpPct ?? 0;
+  document.getElementById('cfg_direction').value = cfg.direction ?? 'both';
   // Expand the config panel so the user can see the loaded values
   const body = document.getElementById('cfgBody');
   if (body && body.style.display === 'none') body.style.display = '';
