@@ -9,7 +9,7 @@
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 /* ── v2 Page layout ──────────────────────────────────────────────────────────── */
-#v2App { padding: 0 20px 40px; max-width: 1280px; margin: 0 auto; }
+#v2App { padding: 0 24px 40px; width: 100%; box-sizing: border-box; }
 
 /* ── v2 Header ───────────────────────────────────────────────────────────────── */
 .v2-sticky { position: sticky; top: 0; z-index: 200; background: var(--bg); padding-top: 14px; }
@@ -2758,8 +2758,8 @@ async function loadM5Chart(name, f) {
           vertLine: { color: 'rgba(255,255,255,0.25)', labelBackgroundColor: '#1e2030' },
           horzLine: { color: 'rgba(255,255,255,0.25)', labelBackgroundColor: '#1e2030' },
         },
-        handleScroll: false,
-        handleScale:  false,
+        handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+        handleScale:  { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
       });
 
       const series = chart.addCandlestickSeries({
