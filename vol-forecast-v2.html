@@ -2682,10 +2682,15 @@ async function loadM5Chart(name, f) {
 
   const getWrap = () => document.getElementById(`m5wrap-${name}`);
 
+  // Show a loading indicator immediately so we know the function was reached
+  const wInit = getWrap();
+  if (wInit) wInit.innerHTML = '<div class="v2-m5-empty" style="color:#6b7280">loading M5…</div>';
+
   const _err = (msg) => {
     const w = getWrap(); if (!w) return;
     if (_lwCharts[name]) { try { _lwCharts[name].remove(); } catch (_) {} delete _lwCharts[name]; }
-    w.innerHTML = `<div class="v2-m5-empty">${msg}</div>`;
+    // Bright error so it's easy to read during debugging
+    w.innerHTML = `<div class="v2-m5-empty" style="color:#f87171;border-color:#f8717144;font-size:10px">${msg}</div>`;
   };
 
   const _draw = (bars) => {
@@ -2693,7 +2698,7 @@ async function loadM5Chart(name, f) {
     if (_lwCharts[name]) { try { _lwCharts[name].remove(); } catch (_) {} delete _lwCharts[name]; }
     w.innerHTML = '';
 
-    if (!window.LightweightCharts) { w.innerHTML = '<div class="v2-m5-empty">chart lib not loaded</div>'; return; }
+    if (!window.LightweightCharts) { w.innerHTML = '<div class="v2-m5-empty" style="color:#f87171;border-color:#f8717144">chart lib not loaded</div>'; return; }
 
     const chartData = bars.map(c => ({
       // Parse London-local datetime string as UTC for display — times show London local
