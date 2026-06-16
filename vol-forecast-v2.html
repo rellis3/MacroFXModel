@@ -182,6 +182,23 @@
 .v2-action-chip.bear { background: rgba(239,68,68,0.12);  color: #ef4444; border-color: #ef444444; }
 .v2-action-chip.near { background: rgba(245,158,11,0.12); color: #f59e0b; border-color: #f59e0b44; }
 .v2-action-chip.prog { background: rgba(79,125,240,0.10); color: #4f7df0; border-color: #4f7df044; }
+/* Trend/vov chips in header */
+.v2-trend-chip { font-size: 9px; font-weight: 600; font-family: 'DM Mono', monospace;
+  padding: 2px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--s2); }
+.v2-vov-chip   { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3);
+  padding: 2px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--s2); }
+/* Range detail toggle */
+.v2-bars-toggle { display: flex; align-items: center; gap: 5px; padding: 3px 8px;
+  font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3);
+  background: var(--s2); border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer; width: fit-content; transition: color .15s, border-color .15s; }
+.v2-bars-toggle:hover { color: var(--text); border-color: var(--border2); }
+/* Level hit times */
+.v2-level-hits { display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
+.v2-hit-chip { font-size: 9px; font-family: 'DM Mono', monospace;
+  padding: 2px 7px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--s2); color: var(--text3); white-space: nowrap; }
+.v2-hit-chip b { color: var(--text2); font-weight: 600; }
 
 /* ── v2 Metric bars ──────────────────────────────────────────────────────────── */
 .v2-metric-bars { display: flex; flex-direction: column; gap: 6px; }
@@ -1450,26 +1467,17 @@ function buildV2Card(name, f, meta, isHistorical = false) {
   const pct = f.vol_pct ?? null;
   const pctClass = pct != null ? (pct >= 80 ? 'hi' : pct <= 20 ? 'lo' : '') : '';
 
-  // Compact cone strip
-  const coneHtml = (() => {
-    if (f.cone_5d == null && f.cone_21d == null) return '';
-    const c252 = f.vol_pct ?? 0;
-    const expanding = (f.cone_5d ?? c252) > c252;
-    const contracting = (f.cone_5d ?? c252) < c252;
-    const tCol = expanding ? 'var(--green)' : contracting ? 'var(--amber)' : 'var(--text3)';
-    const trend = expanding ? '↑ exp' : contracting ? '↓ ctr' : '→ stbl';
-    const items = [
-      f.cone_5d  != null ? `5d:<b>${f.cone_5d}th</b>` : null,
-      f.cone_21d != null ? `21d:<b>${f.cone_21d}th</b>` : null,
-      f.cone_63d != null ? `63d:<b>${f.cone_63d}th</b>` : null,
-      c252       != null ? `252d:<b>${c252}th</b>` : null,
-    ].filter(Boolean).join(' · ');
-    const vov = f.vol_vov_label
-      ? `<span style="margin-left:4px;font-size:9px;padding:1px 5px;border-radius:3px;border:1px solid var(--border);background:var(--s2);color:var(--text3)">Vol ${f.vol_vov_label}</span>`
-      : '';
-    return `<div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      ${items} <span style="color:${tCol};font-weight:600">${trend}</span>${vov}</div>`;
-  })();
+  // Compact cone strip — now just chips for the header, no separate row
+  const volVovChip = f.vol_vov_label
+    ? `<span class="v2-vov-chip">${f.vol_vov_label}</span>` : '';
+  const coneHtml = ''; // row removed — trend/vov moved into header pills below
+
+  const c252 = f.vol_pct ?? 0;
+  const trendDir = (f.cone_5d ?? c252) > c252 ? 'exp' : (f.cone_5d ?? c252) < c252 ? 'ctr' : 'stbl';
+  const trendLabel = trendDir === 'exp' ? '↑ exp' : trendDir === 'ctr' ? '↓ ctr' : '→ stbl';
+  const trendCol   = trendDir === 'exp' ? 'var(--green)' : trendDir === 'ctr' ? 'var(--amber)' : 'var(--text3)';
+  const trendChip  = (f.cone_5d != null || f.cone_21d != null)
+    ? `<span class="v2-trend-chip" style="color:${trendCol}">${trendLabel}</span>` : '';
 
   const hlMax = (f.hl_75 || 1) * 1.1;
   const ocMax = (f.oc_75 || 1) * 1.1;
@@ -1484,13 +1492,15 @@ function buildV2Card(name, f, meta, isHistorical = false) {
   card.innerHTML = `
     <div class="v2-card-hdr">
       <span class="v2-inst-name">${name}</span>
-      <div class="v2-hdr-pills">${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
+      <div class="v2-hdr-pills">${trendChip}${volVovChip}${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
     </div>
-    ${coneHtml}
     <div class="v2-m5-wrap" id="m5wrap-${name}"></div>
     <div class="v2-m5-status" id="m5status-${name}"></div>
     ${buildRangeMap(name, f)}
-    <div class="v2-metric-bars" id="mbars-${name}">
+    <button class="v2-bars-toggle" type="button" onclick="(function(btn){var b=btn.closest('.v2-card').querySelector('.v2-metric-bars');var open=b.style.display!=='none';b.style.display=open?'none':'flex';btn.querySelector('.v2-bars-arrow').textContent=open?'▸':'▾';})(this)">
+      Range detail <span class="v2-bars-arrow">▸</span>
+    </button>
+    <div class="v2-metric-bars" id="mbars-${name}" style="display:none">
       ${v2MetricBar('H-L', f.hl_median, f.hl_75, hlMax)}
       ${v2MetricBar('O-C', f.oc_median, f.oc_75, ocMax)}
     </div>
@@ -1500,6 +1510,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
       <div class="v2-tile" id="tile-oc75-${name}"><div class="v2-tile-val">${f.oc_75.toFixed(2)}%</div><div class="v2-tile-lbl">O-C 75th</div></div>
       <div class="v2-tile v2-tile-med" id="tile-ocmed-${name}"><div class="v2-tile-val">${f.oc_median.toFixed(2)}%</div><div class="v2-tile-lbl">O-C Med</div></div>
     </div>
+    <div id="v2-level-hits-${name}" class="v2-level-hits"></div>
     ${newsChip}
     <div id="vf-pos-${name}" class="vf-pos-result" style="display:none"></div>
     ${isHistorical ? '' : `<div id="vf-sess-${name}" class="v2-sess-section" style="display:none"></div>`}
@@ -2813,6 +2824,23 @@ async function loadM5Chart(name, f) {
 
       // Action status chips + direction indicator
       _m5ActionStatus(name, dayOpen, lastClose, f);
+
+      // Level hit times — scan bars to find when each level was first touched
+      const hitsEl = document.getElementById(`v2-level-hits-${name}`);
+      if (hitsEl && dayOpen) {
+        const hits = [];
+        for (const { pct, side, title } of lineDefs) {
+          if (!pct) continue;
+          const target = dayOpen * (1 + side * pct / 100);
+          const bar = chartData.find(b => side > 0 ? b.high >= target : b.low <= target);
+          if (bar) {
+            const t = new Date(bar.time * 1000);
+            const hhmm = t.getUTCHours().toString().padStart(2,'0') + ':' + t.getUTCMinutes().toString().padStart(2,'0');
+            hits.push(`<span class="v2-hit-chip">${title} <b>${hhmm}</b></span>`);
+          }
+        }
+        hitsEl.innerHTML = hits.join('');
+      }
 
     } catch (err) {
       console.error('[lwchart]', name, err);
