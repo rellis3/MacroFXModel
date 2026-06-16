@@ -2896,7 +2896,7 @@ async function loadM5Chart(name, f) {
 
   try {
     let values;
-    const CACHE_TTL = 270_000;
+    const CACHE_TTL = 40_000; // keep in sync with server-side TTL (45s)
     if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < CACHE_TTL) {
       values = _m5Cache[name].values;
     } else {
@@ -2928,6 +2928,12 @@ async function loadAllM5Charts(instruments) {
     const batch = names.slice(i, i + 6);
     await Promise.all(batch.map(name => loadM5Chart(name, instruments[name]).catch(() => {})));
   }
+  // Immediately rescan after initial draw so hit chips reflect the freshest server data
+  setTimeout(() => {
+    for (const name of names) {
+      if (_lwCharts[name]) _rescanHits(name).catch(() => {});
+    }
+  }, 2000);
 }
 
 // ── Help ───────────────────────────────────────────────────────────────────────

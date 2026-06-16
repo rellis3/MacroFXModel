@@ -2837,7 +2837,7 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
 // Returns { values:[{datetime, open, high, low, close}] } newest-first,
 // datetime in London local time.
 const _m5SrvCache = new Map();
-const _OHLC_GRAN = { M5: { count: 1500, ttl: 4 * 60_000 }, H1: { count: 100, ttl: 10 * 60_000 } };
+const _OHLC_GRAN = { M5: { count: 1500, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 } };
 app.get('/api/oanda_ohlc5m', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
   const symbol = req.query.symbol;
