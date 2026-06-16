@@ -154,7 +154,7 @@
 <div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
   <div>
     <h1 style="font-size:20px;font-weight:700;margin:0;color:#f59e0b;">🎯 NQ-QMR — Pre-Open Momentum</h1>
-    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">NAS100_USD · OANDA H1 data · Two-gate London/Asia continuation filter · 09:25 ET entry</div>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;" id="hdrSubtitle">NAS100_USD · OANDA H1 data · Two-gate London/Asia continuation filter · 09:25 ET entry</div>
   </div>
   <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
     <a href="bot-config.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:#f59e0b;">🎯 NQ Tab →</a>
@@ -171,8 +171,30 @@
 <!-- Run bar -->
 <div class="run-bar">
   <button class="run-btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
+  <select id="cfg_instrument" onchange="onInstrumentChange()" style="background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 10px;cursor:pointer;">
+    <optgroup label="US Indices">
+      <option value="NAS100_USD" selected>NAS100 (Nasdaq)</option>
+      <option value="SPX500_USD">SPX500 (S&amp;P 500)</option>
+      <option value="US30_USD">US30 (Dow Jones)</option>
+    </optgroup>
+    <optgroup label="EU Indices">
+      <option value="DE30_EUR">DE30 (DAX)</option>
+      <option value="UK100_GBP">UK100 (FTSE)</option>
+    </optgroup>
+    <optgroup label="Commodities">
+      <option value="XAU_USD">XAU/USD (Gold)</option>
+    </optgroup>
+    <optgroup label="FX Pairs">
+      <option value="EUR_USD">EUR/USD</option>
+      <option value="GBP_USD">GBP/USD</option>
+      <option value="USD_JPY">USD/JPY</option>
+      <option value="GBP_JPY">GBP/JPY</option>
+      <option value="AUD_USD">AUD/USD</option>
+      <option value="EUR_JPY">EUR/JPY</option>
+    </optgroup>
+  </select>
   <span class="sdot" id="statusDot"></span>
-  <span id="statusMsg" class="run-lbl">Click Run — fetches 5 years of OANDA H1 NAS100_USD data · defaults: Gate1=0.60 Gate2=0.10% StopMul=0.45× Risk=1.00% TP=1.50% (3R) — dynamic stop ≈ O/N range × 0.45</span>
+  <span id="statusMsg" class="run-lbl">Select instrument &amp; click Run — fetches 5 years of OANDA H1 data</span>
   <span id="cacheLabel" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
 </div>
 
@@ -573,12 +595,21 @@ function setStatus(dot, msg) {
   if (m) m.textContent = msg;
 }
 
+function onInstrumentChange() {
+  const inst = document.getElementById('cfg_instrument').value;
+  const isFX = ['EUR_USD','GBP_USD','USD_JPY','GBP_JPY','AUD_USD','EUR_JPY'].includes(inst);
+  const sub = document.getElementById('hdrSubtitle');
+  if (sub) sub.textContent = `${inst} · OANDA H1 data · Two-gate London/Asia continuation filter · ${isFX ? 'FX — recalibrate thresholds for small % ranges' : '09:25 ET entry'}`;
+}
+
 async function runBacktest() {
   const btn = document.getElementById('runBtn');
   btn.disabled = true;
-  setStatus('spin', 'Fetching 5 years of OANDA H1 NAS100_USD — please wait…');
+  const instrument = document.getElementById('cfg_instrument').value;
+  setStatus('spin', `Fetching 5 years of OANDA H1 ${instrument} — please wait…`);
 
   const params = new URLSearchParams({
+    instrument,
     gate1Threshold:  document.getElementById('cfg_gate1').value,
     gate2MinMovePct: document.getElementById('cfg_gate2').value,
     stopPct:         document.getElementById('cfg_stop').value,
@@ -1290,8 +1321,9 @@ function openTv(idx) {
 
   const dir    = trade.direction === 'LONG' ? '▲ LONG' : '▼ SHORT';
   const pnlCls = trade.tradeReturn > 0 ? '#10b981' : '#ef4444';
+  const inst = document.getElementById('cfg_instrument')?.value || 'NAS100_USD';
   document.getElementById('tvTitle').textContent =
-    `NAS100 · ${trade.date} · ${trade.direction} | Entry: ${trade.entry?.toFixed(1)}  Stop: ${trade.stop?.toFixed(1)}  Exit: ${trade.exit?.toFixed(1)} (${trade.exitReason})`;
+    `${inst} · ${trade.date} · ${trade.direction} | Entry: ${trade.entry?.toFixed(2)}  Stop: ${trade.stop?.toFixed(2)}  Exit: ${trade.exit?.toFixed(2)} (${trade.exitReason})`;
 
   const lvl = document.getElementById('tvLevels');
   if (lvl) lvl.innerHTML = `
