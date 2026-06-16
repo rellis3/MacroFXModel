@@ -2697,13 +2697,10 @@ async function loadM5Chart(name, f) {
     // values is newest-first M5 bars; filter to today (London date)
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
     const todayM5    = values.filter(c => c.datetime?.startsWith(londonDate));
-    const srcBars    = todayM5.length >= 1 ? todayM5 : values.slice(0, 96);
+    // Use today's M5 bars oldest-first; fall back to last 96 bars (8 h) if pre-market
+    const srcBars = todayM5.length >= 1 ? [...todayM5].reverse() : [...values.slice(0, 96)].reverse();
     if (!srcBars.length) { _err('no data'); return; }
-
-    // Aggregate M5 → H1 client-side (oldest-first input/output)
-    const h1Bars = _aggregateM5toH1([...srcBars].reverse());
-    if (!h1Bars.length) { _err('no data'); return; }
-    _draw(h1Bars);
+    _draw(srcBars);
   } catch (e) {
     console.warn('[h1chart]', name, e.message);
     _err(e.message.slice(0, 50));
@@ -2784,7 +2781,7 @@ function _drawH1Canvas(canvas, candles, f) {
   // Candlesticks
   const chartW = W - PAD_R - 4;
   const step   = chartW / n;
-  const bodyW  = Math.max(2, Math.floor(step * 0.65));
+  const bodyW  = Math.max(1, Math.floor(step * 0.65));
 
   for (let i = 0; i < n; i++) {
     const c = candles[i];
@@ -2814,7 +2811,7 @@ function _drawH1Canvas(canvas, candles, f) {
   ctx.fillStyle = clrText3;
   ctx.textBaseline = 'alphabetic';
   ctx.font = `6px 'DM Mono',monospace`;
-  ctx.fillText(`${n}×H1`, 3, H - 3);
+  ctx.fillText(`${n}×M5`, 3, H - 3);
 }
 
 async function loadAllM5Charts(instruments) {
