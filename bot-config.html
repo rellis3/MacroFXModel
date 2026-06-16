@@ -2659,9 +2659,14 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <span style="font-size:10px;color:var(--text3)">skip flat overnight sessions</span>
         </div>
         <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:4px;min-width:160px">
-          <span class="form-lbl" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em">Stop Distance %</span>
+          <span class="form-lbl" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em">Stop Multiplier</span>
+          <input type="number" id="nqCfgStopMul" value="0.45" min="0" max="1.5" step="0.05" style="width:90px">
+          <span style="font-size:10px;color:var(--text3)">stop = O/N range × mult (0 = use static)</span>
+        </div>
+        <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:4px;min-width:160px">
+          <span class="form-lbl" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em">Stop Distance % (static)</span>
           <input type="number" id="nqCfgStop" value="0.50" min="0.10" max="2.00" step="0.05" style="width:90px">
-          <span style="font-size:10px;color:var(--text3)">for entry signal display only</span>
+          <span style="font-size:10px;color:var(--text3)">fallback when multiplier = 0</span>
         </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center">
@@ -3774,6 +3779,7 @@ async function nqLoadConfig() {
   set('nqCfgG2Move',     cfg.gate2MinMovePct ?? 0.10);
   set('nqCfgMinRange',   cfg.minRangePct     ?? 0.15);
   set('nqCfgStop',       cfg.stopPct         ?? 0.50);
+  set('nqCfgStopMul',    cfg.stopMultiplier  ?? 0.45);
 }
 
 async function nqSaveConfig() {
@@ -3785,6 +3791,7 @@ async function nqSaveConfig() {
     gate2MinMovePct: get('nqCfgG2Move'),
     minRangePct:     get('nqCfgMinRange'),
     stopPct:         get('nqCfgStop'),
+    stopMultiplier:  get('nqCfgStopMul'),
   };
   await _kvSet(NQ_CFG_KEY, cfg);
   const el = document.getElementById('nqCfgStatus');
@@ -3842,7 +3849,7 @@ async function nqLoadAudit() {
     return `<tr style="border-top:1px solid var(--border)">
       <td style="padding:5px 8px;white-space:nowrap;font-size:11px">${e.date}${newsTag}</td>
       <td style="padding:4px 8px;color:${g1Color};font-weight:700;font-size:11px">${g1Text}</td>
-      <td style="padding:4px 8px;color:var(--text3);font-size:10px">${g1.rangePct != null ? g1.rangePct.toFixed(2) + '%' : '—'}</td>
+      <td style="padding:4px 8px;color:var(--text3);font-size:10px">${g1.stopPct != null ? g1.stopPct.toFixed(2) + '%' : (g1.rangePct != null ? '~' + (g1.rangePct * 0.45).toFixed(2) + '%' : '—')}</td>
       <td style="padding:4px 8px;color:${g2Color};font-weight:700;font-size:11px">${g2Text}<span style="font-weight:400;font-size:10px;color:var(--text3)">${ldnStr}</span></td>
       <td style="padding:4px 8px;font-size:11px">${sig.fired ? '🎯' : (g2.state ? '✗' : '—')}</td>
       ${tradeCells}
@@ -3854,7 +3861,7 @@ async function nqLoadAudit() {
       <thead><tr style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">
         <th style="text-align:left;padding:4px 8px 8px 0;white-space:nowrap">Date</th>
         <th style="text-align:left;padding:4px 8px 8px">Gate 1</th>
-        <th style="text-align:left;padding:4px 8px 8px">O/N Range</th>
+        <th style="text-align:left;padding:4px 8px 8px">Stop%</th>
         <th style="text-align:left;padding:4px 8px 8px">Gate 2</th>
         <th style="text-align:left;padding:4px 8px 8px">Signal</th>
         <th style="text-align:left;padding:4px 8px 8px">Entry</th>
