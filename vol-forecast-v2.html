@@ -156,6 +156,13 @@
 .v2-rm-lbl.center .tag { color: var(--text2); }
 .v2-rm-lbl.center .val { color: var(--text); font-weight: 700; }
 
+/* ── v2 M5 mini-chart ────────────────────────────────────────────────────────── */
+.v2-m5-wrap { position: relative; margin: 4px 0 2px; }
+.v2-m5-chart { display: block; width: 100%; height: 72px; border-radius: 4px; background: var(--s2); }
+.v2-m5-empty { height: 72px; display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); background: var(--s2);
+  border-radius: 4px; margin: 4px 0 2px; }
+
 /* ── v2 Metric bars ──────────────────────────────────────────────────────────── */
 .v2-metric-bars { display: flex; flex-direction: column; gap: 7px; }
 .v2-mbar-row { display: flex; align-items: center; gap: 8px; }
@@ -992,6 +999,11 @@ function scheduleRefresh() {
       loadForecast();
       loadSession();
       loadWeekly();
+      if (currentForecast?.instruments) {
+        // Bust M5 cache so new candles are fetched
+        Object.keys(_m5Cache).forEach(k => delete _m5Cache[k]);
+        loadAllM5Charts(currentForecast.instruments);
+      }
     }
   }, POLL_MS);
 }
@@ -1228,6 +1240,7 @@ function triggerRefresh() {
     }
     if (levelsViewActive) renderLevelsTable();
     renderCurrencyStrength(currentWeekly);
+    loadAllM5Charts(forecast.instruments);
   })
   .catch(err => {
     console.error('triggerRefresh error:', err);
@@ -1353,6 +1366,7 @@ function renderV2Grid(data, isHistorical = false) {
 
   grid.innerHTML = '';
   for (const [name, f] of entries) grid.appendChild(buildV2Card(name, f, data.meta, isHistorical));
+  if (!isHistorical) loadAllM5Charts(data.instruments);
 
   if (levelsViewActive) renderLevelsTable();
   const en = ['vfExportBtn','vfExtendedBtn','vfLevelsBtn'];
@@ -1406,6 +1420,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
       <div class="v2-hdr-pills">${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
     </div>
     ${coneHtml}
+    <div class="v2-m5-wrap" id="m5wrap-${name}"><canvas id="m5chart-${name}" class="v2-m5-chart"></canvas></div>
     ${buildRangeMap(name, f)}
     <div class="v2-metric-bars" id="mbars-${name}">
       ${v2MetricBar('H-L', f.hl_median, f.hl_75, hlMax)}
@@ -1538,6 +1553,13 @@ function updateV2CardSession(name, s, data) {
         t.appendChild(chk);
       }
     });
+  }
+
+  // Show session detail rows (H-L/O-C/O-H/O-L vs forecast + bias/direction)
+  const sessDiv = document.getElementById(`vf-sess-${name}`);
+  if (sessDiv && s.forecast) {
+    sessDiv.innerHTML = buildSessionHtml(name, s, data);
+    sessDiv.style.display = '';
   }
 }
 
@@ -2530,6 +2552,149 @@ function histNavPrev() { const base=viewingDate??liveForecast?.session_date??new
 function histNavNext() { if (!viewingDate) return; const next=_nextTradingDay(viewingDate), latest=liveForecast?.session_date??new Date().toISOString().slice(0,10); if (next>=latest) returnToToday(); else loadDateForecast(next); }
 function histNavGoto(dateStr) { if (!dateStr) return; const latest=liveForecast?.session_date??new Date().toISOString().slice(0,10); if (dateStr>=latest) returnToToday(); else loadDateForecast(dateStr); }
 function histNavToday() { returnToToday(); }
+
+// ── M5 Mini-Chart ─────────────────────────────────────────────────────────────
+const OANDA_SYM = {
+  eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
+  gbpjpy:'GBP/JPY', audusd:'AUD/USD', usdcad:'USD/CAD', usdchf:'USD/CHF',
+  nzdusd:'NZD/USD', eurgbp:'EUR/GBP', euraud:'EUR/AUD', eurchf:'EUR/CHF',
+  eurcad:'EUR/CAD', eurnzd:'EUR/NZD', gbpaud:'GBP/AUD', gbpchf:'GBP/CHF',
+  gbpcad:'GBP/CAD', gbpnzd:'GBP/NZD', audjpy:'AUD/JPY', audnzd:'AUD/NZD',
+  audcad:'AUD/CAD', audchf:'AUD/CHF', nzdjpy:'NZD/JPY', cadjpy:'CAD/JPY',
+  chfjpy:'CHF/JPY', gold:'XAU/USD',
+};
+
+// Cache M5 data in-session so 26 pairs don't all re-fetch on resize/redraw
+const _m5Cache = {};
+
+async function loadM5Chart(name, f) {
+  const sym = OANDA_SYM[name];
+  if (!sym) return;
+  const wrap = document.getElementById(`m5wrap-${name}`);
+  if (!wrap) return;
+
+  try {
+    // Use cached data if fresh enough (< 4.5 min)
+    let values;
+    if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < 270_000) {
+      values = _m5Cache[name].values;
+    } else {
+      const data = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`).then(r => r.json());
+      if (!data?.values?.length) { _showM5Empty(wrap); return; }
+      _m5Cache[name] = { values: data.values, ts: Date.now() };
+      values = data.values;
+    }
+
+    // values are newest-first, in London local time ("YYYY-MM-DD HH:MM:SS")
+    // Filter to today's London date
+    const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
+    const todayBars = values.filter(c => c.datetime?.startsWith(londonDate));
+    if (!todayBars.length) { _showM5Empty(wrap); return; }
+    // Reverse: oldest-first for charting
+    const candles = [...todayBars].reverse();
+
+    // Restore canvas if previously replaced by empty message
+    let canvas = document.getElementById(`m5chart-${name}`);
+    if (!canvas || canvas.tagName !== 'CANVAS') {
+      wrap.innerHTML = `<canvas id="m5chart-${name}" class="v2-m5-chart"></canvas>`;
+      canvas = document.getElementById(`m5chart-${name}`);
+    }
+    _drawM5Canvas(canvas, candles, f);
+  } catch (e) {
+    console.warn('[m5chart]', name, e.message);
+    _showM5Empty(wrap);
+  }
+}
+
+function _showM5Empty(wrap) {
+  wrap.innerHTML = `<div class="v2-m5-empty">no M5 data</div>`;
+}
+
+function _drawM5Canvas(canvas, candles, f) {
+  const W = canvas.offsetWidth || 280;
+  const H = canvas.offsetHeight || 72;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  // Compute % moves from day open
+  const dayOpen = parseFloat(candles[0].open);
+  if (!dayOpen) return;
+  const pct = candles.map(c => ({
+    o: (parseFloat(c.open)  / dayOpen - 1) * 100,
+    h: (parseFloat(c.high)  / dayOpen - 1) * 100,
+    l: (parseFloat(c.low)   / dayOpen - 1) * 100,
+    c: (parseFloat(c.close) / dayOpen - 1) * 100,
+  }));
+
+  // Determine y-scale: show ±hl_75 range with 20% headroom
+  const halfRange = Math.max((f.hl_75 || 0.5) * 0.6, Math.max(...pct.map(c => Math.max(Math.abs(c.h), Math.abs(c.l)))) * 1.05);
+  const toY = v => H * (0.5 - v / (halfRange * 2));
+
+  // Draw grid line at 0 (open)
+  const cs = getComputedStyle(document.documentElement);
+  const clrBorder  = cs.getPropertyValue('--border').trim()  || '#2a2a2a';
+  const clrText3   = cs.getPropertyValue('--text3').trim()   || '#555';
+  const clrAmber   = cs.getPropertyValue('--amber').trim()   || '#f59e0b';
+  const clrBlue    = cs.getPropertyValue('--blue').trim()    || '#3b82f6';
+  const clrGreen   = '#22c55e';
+  const clrRed     = '#ef4444';
+
+  ctx.strokeStyle = clrBorder; ctx.lineWidth = 0.5; ctx.setLineDash([2, 3]);
+  ctx.beginPath(); ctx.moveTo(0, toY(0)); ctx.lineTo(W, toY(0)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw forecast level lines: ±oc_median, ±oc_75, ±hl_75
+  const lvls = [
+    { v:  f.oc_75,    c: clrAmber, w: 0.8, d: [3,3] },
+    { v: -f.oc_75,    c: clrAmber, w: 0.8, d: [3,3] },
+    { v:  f.oc_median,c: clrText3, w: 0.6, d: [2,4] },
+    { v: -f.oc_median,c: clrText3, w: 0.6, d: [2,4] },
+    { v:  f.hl_75,    c: clrBlue,  w: 0.8, d: [3,3] },
+    { v: -f.hl_75,    c: clrBlue,  w: 0.8, d: [3,3] },
+  ];
+  for (const { v, c, w, d } of lvls) {
+    const y = toY(v);
+    if (y < 0 || y > H) continue;
+    ctx.strokeStyle = c; ctx.lineWidth = w; ctx.setLineDash(d);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Draw candles
+  const n = pct.length;
+  const cW = Math.max(1.5, (W - 4) / n);
+  const bodyW = Math.max(1, cW * 0.7);
+  for (let i = 0; i < n; i++) {
+    const bar = pct[i];
+    const isBull = bar.c >= bar.o;
+    const color  = isBull ? clrGreen : clrRed;
+    const cx     = 2 + (i + 0.5) * cW;
+    const yH = toY(bar.h), yL = toY(bar.l);
+    const yO = toY(bar.o), yC = toY(bar.c);
+    const yTop = Math.min(yO, yC), yBot = Math.max(yO, yC);
+
+    ctx.strokeStyle = color; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(cx, yH); ctx.lineTo(cx, yL); ctx.stroke();
+
+    ctx.fillStyle = color;
+    const bodyH = Math.max(1, yBot - yTop);
+    ctx.fillRect(cx - bodyW / 2, yTop, bodyW, bodyH);
+  }
+}
+
+async function loadAllM5Charts(instruments) {
+  if (!instruments) return;
+  // Load in parallel batches of 6 to avoid flooding the worker
+  const names = Object.keys(instruments);
+  for (let i = 0; i < names.length; i += 6) {
+    const batch = names.slice(i, i + 6);
+    await Promise.all(batch.map(name => loadM5Chart(name, instruments[name]).catch(() => {})));
+  }
+}
 
 // ── Help ───────────────────────────────────────────────────────────────────────
 function toggleHelp() {
