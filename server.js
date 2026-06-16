@@ -6826,7 +6826,8 @@ setInterval(async () => {
 // Entry  ~ 13:05 UTC  (09:25 ET — pre-open signal, signal-only for now)
 // EOD    ~ 20:30 UTC  (end-of-day summary)
 
-const NQ_MON_KV = 'nq_qmr_status';
+const NQ_MON_KV   = 'nq_qmr_status';
+const NQ_AUDIT_KV = 'nq_qmr_audit';
 
 const nqMon = {
   date: null, gate1: null, gate2: null, direction: null,
@@ -6903,6 +6904,22 @@ async function nqPushKv() {
   } catch (e) { console.error('[nq-mon] KV write error:', e.message); }
 }
 
+// Upsert today's entry in the rolling audit log (last 90 days)
+async function nqAuditUpdate(fields) {
+  try {
+    const today = nqMon.date || new Date().toISOString().substring(0, 10);
+    const raw   = await kv.get(NQ_AUDIT_KV).catch(() => null);
+    let log = [];
+    try { log = raw ? JSON.parse(raw) : []; } catch { log = []; }
+    if (!Array.isArray(log)) log = [];
+    let idx = log.findIndex(e => e.date === today);
+    if (idx === -1) { log.unshift({ date: today }); idx = 0; }
+    Object.assign(log[idx], fields);
+    if (log.length > 90) log = log.slice(0, 90);
+    await kv.put(NQ_AUDIT_KV, JSON.stringify(log));
+  } catch (e) { console.error('[nq-audit] write error:', e.message); }
+}
+
 async function nqSendTg(msg) {
   if (!state.tg?.token || !state.tg?.chatId) return;
   await sendTelegram(state.tg.token, state.tg.chatId, msg).catch(() => {});
@@ -6941,6 +6958,12 @@ async function nqDailyOpen() {
   await nqSendTg(msg);
   nqMon.sentOpen = true;
   await nqPushKv();
+  await nqAuditUpdate({
+    date:         today,
+    news_blocked: news.blocked,
+    news_events:  news.events.map(e => e.event ?? String(e)).filter(Boolean),
+    gate1: null, gate2: null, signal: null, trade: null,
+  });
   console.log(`[nq-mon] Day open ${today} news_blocked=${news.blocked}`);
 }
 
@@ -7027,6 +7050,16 @@ async function nqGate1Check() {
     await nqSendTg(msg);
     nqMon.sentGate1 = true;
     await nqPushKv();
+    await nqAuditUpdate({ gate1: {
+      state:    gate1 === 'LONG' || gate1 === 'SHORT' ? 'PASS' : 'FAIL',
+      direction: gate1,
+      ts:       Date.now(),
+      price:    g1bar.c,
+      asiaH, asiaL,
+      rangePct: +rangePct.toFixed(3),
+      pos:      +pos.toFixed(4),
+      goldDir, eurDir,
+    }});
     console.log(`[nq-mon] Gate 1 → ${gate1}  pos=${(pos*100).toFixed(0)}%  range=${rangePct.toFixed(2)}%`);
   } catch (e) { console.error('[nq-mon] Gate 1 error:', e.message); }
 }
@@ -7080,6 +7113,13 @@ async function nqGate2Check() {
     await nqSendTg(msg);
     nqMon.sentGate2 = true;
     await nqPushKv();
+    await nqAuditUpdate({ gate2: {
+      state:      gate2 === 'CONFIRMED' ? 'PASS' : 'FAIL',
+      ts:         Date.now(),
+      ldnMove:    +ldnMove.toFixed(4),
+      ldnOpen:    ldnOpen.o,
+      checkPrice: check.c,
+    }});
     console.log(`[nq-mon] Gate 2 → ${gate2}  ldnMove=${ldnMove.toFixed(2)}%`);
   } catch (e) { console.error('[nq-mon] Gate 2 error:', e.message); }
 }
@@ -7089,27 +7129,40 @@ async function nqEntrySignal() {
   if (!process.env.OANDA_KEY) return;
 
   try {
+    const cfg     = await nqLoadMonCfg();
     const bars    = await fetchOandaRecentH1('NAS100_USD', 2);
     const current = bars.slice(-1)[0];
     if (!current) return;
 
     const price   = current.o;
     const dir     = nqMon.direction;
-    const stop    = dir === 'LONG' ? price * (1 - 0.005) : price * (1 + 0.005);
+    const stopPct = cfg.stopPct ?? 0.50;
+    const tpPct   = cfg.tpPct  ?? 1.25;
+    const stop    = dir === 'LONG' ? price * (1 - stopPct / 100) : price * (1 + stopPct / 100);
+    const tp      = dir === 'LONG' ? price * (1 + tpPct   / 100) : price * (1 - tpPct   / 100);
     const stopPts = Math.abs(price - stop);
 
     let msg = `🎯 <b>NQ-QMR | ENTRY SIGNAL</b>\n`;
     msg += `${dir === 'LONG' ? '▲' : '▼'} Direction: <b>${dir}</b>\n`;
     msg += `Time: ≈09:25 ET  (${current.t.substring(11, 16)} UTC)\n\n`;
     msg += `NAS100 price:  <b>${price.toFixed(1)}</b>\n`;
-    msg += `Stop:          ${stop.toFixed(1)}  (${stopPts.toFixed(0)} pts / 0.5%)\n`;
-    msg += `Max risk:      1.8% of account\n\n`;
+    msg += `Stop:          ${stop.toFixed(1)}  (${stopPts.toFixed(0)} pts / ${stopPct}%)\n`;
+    msg += `TP target:     ${tp.toFixed(1)}  (${tpPct}%)\n`;
+    msg += `Max risk:      1.0% of account\n\n`;
     msg += `Use <b>Bot Config → NQ-QMR → Position Sizer</b> for contract count\n`;
     msg += `<i>Signal only — no live orders placed</i>`;
 
     await nqSendTg(msg);
     nqMon.sentEntry = true;
     await nqPushKv();
+    await nqAuditUpdate({ signal: {
+      fired:     true,
+      ts:        Date.now(),
+      direction: dir,
+      entry:     price,
+      stop:      +stop.toFixed(2),
+      tp:        +tp.toFixed(2),
+    }});
     console.log(`[nq-mon] Entry signal → ${dir} @ ${price.toFixed(1)}`);
   } catch (e) { console.error('[nq-mon] Entry error:', e.message); }
 }
@@ -7126,6 +7179,7 @@ async function nqEodSummary() {
   if (nqMon.newsBlocked) msg += `\n⚠️ Suppressed by high-impact news`;
 
   await nqSendTg(msg);
+  await nqAuditUpdate({ eod_ts: Date.now() });
   // Reset for tomorrow
   Object.assign(nqMon, {
     gate1: null, gate2: null, direction: null,
