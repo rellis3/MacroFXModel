@@ -7243,7 +7243,48 @@ async function nqEodSummary() {
 }
 
 // Scheduler — ticks every minute, fires gates at the right UTC times
+// On startup, restore today's gate state from KV so Railway redeploys between
+// gate checks don't lose in-memory nqMon state and silently skip gate2/entry Telegram.
+async function nqRestoreFromKv() {
+  try {
+    const raw = await kv.get(NQ_MON_KV).catch(() => null);
+    if (!raw) return;
+    const parsed   = JSON.parse(raw);
+    const existing = parsed?.data ?? parsed ?? {};
+    if (!existing.pushed_at) return;
+    const storedDate = new Date(existing.pushed_at * 1000).toISOString().substring(0, 10);
+    const today      = new Date().toISOString().substring(0, 10);
+    if (storedDate !== today) return;
+
+    const g1 = existing.gates?.gate1;
+    if (!g1) return;
+
+    nqMon.date        = today;
+    nqMon.gate1       = g1.direction ?? null;
+    nqMon.gate1Data   = g1.data      ?? null;
+    nqMon.newsBlocked = existing.news_blocked ?? false;
+    nqMon.newsEvents  = existing.news_events  ?? [];
+    nqMon.sentOpen    = true;
+    nqMon.sentGate1   = true;
+
+    const g2 = existing.gates?.gate2;
+    if (g2?.state != null) {
+      nqMon.gate2     = g2.state === 'PASS' ? 'CONFIRMED' : 'REJECTED';
+      nqMon.gate2Data = g2.data ?? null;
+      nqMon.direction = nqMon.gate2 === 'CONFIRMED' ? nqMon.gate1 : null;
+      nqMon.sentGate2 = true;
+    }
+
+    console.log(`[nq-mon] Restored from KV: date=${today} gate1=${nqMon.gate1} gate2=${nqMon.gate2 ?? 'pending'}`);
+  } catch (e) {
+    console.error('[nq-mon] KV restore error:', e.message);
+  }
+}
+
 (function scheduleNqQmrMonitor() {
+  // Restore gate state from KV in case this is a mid-day Railway redeploy
+  setTimeout(() => nqRestoreFromKv().catch(e => console.error('[nq-mon]', e.message)), 3_000);
+
   setInterval(async () => {
     const now = new Date();
     const dow = now.getUTCDay();

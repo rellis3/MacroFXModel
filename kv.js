@@ -75,6 +75,9 @@ const _CF_EXACT = new Set([
   'vol_hit_rates',          // historical price-level hit rates — expensive to recompute (~10 min full, ~1 min incremental)
   'event_vol_impact',       // Finnhub event expansion ratios — must survive redeploys
   'session_stats',          // intraday hourly vol profile — 5y H1 pull, ~5 min to recompute
+  'nq_qmr_status',          // NQ-QMR live gate state — must survive redeploys (gate1 lost on restart kills gate2 Telegram)
+  'nq_qmr_audit',           // NQ-QMR 90-day gate audit log — must survive redeploys
+  'nq_qmr_config',          // NQ-QMR user config — must survive redeploys
 ]);
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart
