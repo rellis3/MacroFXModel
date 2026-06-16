@@ -2193,9 +2193,10 @@ function _computeNqQmr(bars, cfg = {}) {
     gate1Threshold  = 0.60,  // price must be in top/bottom X% of overnight range
     gate2MinMovePct = 0.10,  // min London move % to confirm direction
     stopPct         = 0.50,  // stop distance as % of entry price
-    riskPct         = 1.80,  // max account risk per trade (%)
+    riskPct         = 1.00,  // max account risk per trade (%)
     minRangePct     = 0.15,  // skip day if overnight range < this % (low-vol filter)
     tpPct           = 0,     // take-profit % from entry; 0 = EOD only (e.g. 1.0 = 2R at 0.5% stop)
+    direction       = 'both',// 'both' | 'long' | 'short' — filter trade direction
   } = cfg;
 
   // Group H1 bars by UTC date
@@ -2251,6 +2252,10 @@ function _computeNqQmr(bars, cfg = {}) {
     if (ldnMove >  gate2MinMovePct && gate1 === 'LONG')  gate2 = 'LONG';
     else if (ldnMove < -gate2MinMovePct && gate1 === 'SHORT') gate2 = 'SHORT';
     else continue;
+
+    // Direction filter: skip if trade direction doesn't match user preference
+    if (direction === 'long'  && gate2 !== 'LONG')  continue;
+    if (direction === 'short' && gate2 !== 'SHORT') continue;
 
     // Entry: ~09:25 ET ≈ 13:00 UTC EDT / 14:00 UTC EST — try 13 first
     const entryBar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '13')
@@ -2742,7 +2747,7 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 const nqQmrCache = { result: null, bars: null, fetchedAt: null };
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.25 };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.25, direction: 'long' };
 
 async function _getNqQmrBars() {
   if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -2762,10 +2767,16 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
 
   const cfg = {};
   for (const [k, def] of Object.entries(NQ_QMR_DEFAULTS)) {
-    cfg[k] = req.query[k] != null ? parseFloat(req.query[k]) : def;
+    if (typeof def === 'string') {
+      cfg[k] = req.query[k] ?? def;
+    } else {
+      cfg[k] = req.query[k] != null ? parseFloat(req.query[k]) : def;
+    }
   }
 
-  const isDefault = Object.entries(cfg).every(([k, v]) => Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001);
+  const isDefault = Object.entries(cfg).every(([k, v]) =>
+    typeof v === 'string' ? v === NQ_QMR_DEFAULTS[k] : Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001
+  );
   if (isDefault && nqQmrCache.result && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
     return res.json({ ok: true, cached: true, ...nqQmrCache.result });
   }
