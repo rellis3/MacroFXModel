@@ -53,12 +53,20 @@ const HN_P75 = 1.1503;
 //
 // hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
 //   Reset to 1.0 on 2026-06-15 when primaries switched to HV20/EWMA/HV30.
-//   Previous calibration (for GARCH/RS-EWMA) is documented in ESTIMATOR_CHANGE_LOG.md.
-//   New estimators are close enough to reference that pure BM/HN formulas apply.
+// Calibration target: reference system (C.OG) output on Jun-15/16 compare.
+// commodity (GOLD, HV20):
+//   HL: our 2.90% med vs ref 2.71% → over by 6.6%; our 3.79% 75p vs ref 3.33% → over by 12%
+//   OC: our 1.25% med vs ref 1.36% → under by 8.8%; our 2.13% 75p vs ref 2.20% → under by 3.3%
+//   → Pull HL in, push OC up.  Factors derived as ref_value / our_pure_BM_value.
+// fx (EURUSD, YZ — fresh, calibrate after 2-3 days of compare):
+//   OC gap pre-YZ was ~14% under; YZ raises vol by ~7.6%, closing gap to ~5%.
+//   Applying small oc_50_corr=1.06 to close residual; HL held at 1.0 pending YZ data.
+// index (GARCH — reverted tonight, calibrate after fresh compare data):
+//   Hold at 1.0 until we have a GARCH vs reference comparison with current vol regime.
 const ASSET_PARAMS = {
-  commodity: { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0 },
-  index:     { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0, garch_omega: 4.76e-6 },
-  fx:        { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0, garch_omega: 3.60e-7 },
+  commodity: { hl_50_corr: 0.93, hl_75_corr: 0.88, oc_50_corr: 1.09, oc_75_corr: 1.03 },
+  index:     { hl_50_corr: 1.0,  hl_75_corr: 1.0,  oc_50_corr: 1.0,  oc_75_corr: 1.0,  garch_omega: 4.76e-6 },
+  fx:        { hl_50_corr: 1.0,  hl_75_corr: 1.0,  oc_50_corr: 1.06, oc_75_corr: 1.0,  garch_omega: 3.60e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
