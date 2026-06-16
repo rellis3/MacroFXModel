@@ -2750,26 +2750,35 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 });
 
 // ── NQ-QMR backtest endpoint ──────────────────────────────────────────────────
-const nqQmrCache = { result: null, bars: null, fetchedAt: null };
+const nqQmrBarCache    = new Map(); // instrument → { bars, fetchedAt }
+const nqQmrResultCache = { result: null, fetchedAt: null }; // NAS100_USD default only
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
 const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both' };
 
-async function _getNqQmrBars() {
-  if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
-    return nqQmrCache.bars;
+async function _getNqQmrBars(instrument = 'NAS100_USD') {
+  const cached = nqQmrBarCache.get(instrument);
+  if (cached?.bars && cached.fetchedAt && Date.now() - cached.fetchedAt < NQ_QMR_TTL_MS) {
+    return cached.bars;
   }
   const d = new Date(); d.setFullYear(d.getFullYear() - 5);
   const fromDate = d.toISOString().substring(0, 10);
-  console.log('[nq-qmr] fetching OANDA H1 NAS100_USD from', fromDate);
-  const bars = await fetchOandaH1Range('NAS100_USD', fromDate);
-  nqQmrCache.bars      = bars;
-  nqQmrCache.fetchedAt = Date.now();
+  console.log(`[nq-qmr] fetching OANDA H1 ${instrument} from`, fromDate);
+  const bars = await fetchOandaH1Range(instrument, fromDate);
+  nqQmrBarCache.set(instrument, { bars, fetchedAt: Date.now() });
   return bars;
 }
 
+const NQ_QMR_INSTRUMENTS = new Set([
+  'NAS100_USD','SPX500_USD','US30_USD','DE30_EUR','UK100_GBP',
+  'XAU_USD',
+  'EUR_USD','GBP_USD','USD_JPY','GBP_JPY','AUD_USD','EUR_JPY',
+]);
+
 app.get('/api/nq-qmr/backtest', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+
+  const instrument = NQ_QMR_INSTRUMENTS.has(req.query.instrument) ? req.query.instrument : 'NAS100_USD';
 
   const cfg = {};
   for (const [k, def] of Object.entries(NQ_QMR_DEFAULTS)) {
@@ -2780,19 +2789,19 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
     }
   }
 
-  const isDefault = Object.entries(cfg).every(([k, v]) =>
+  const isNasDefault = instrument === 'NAS100_USD' && Object.entries(cfg).every(([k, v]) =>
     typeof v === 'string' ? v === NQ_QMR_DEFAULTS[k] : Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001
   );
-  if (isDefault && nqQmrCache.result && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
-    return res.json({ ok: true, cached: true, ...nqQmrCache.result });
+  if (isNasDefault && nqQmrResultCache.result && nqQmrResultCache.fetchedAt && Date.now() - nqQmrResultCache.fetchedAt < NQ_QMR_TTL_MS) {
+    return res.json({ ok: true, cached: true, ...nqQmrResultCache.result });
   }
 
   try {
-    const bars   = await _getNqQmrBars();
-    console.log(`[nq-qmr] ${bars.length} H1 bars — running backtest`);
+    const bars   = await _getNqQmrBars(instrument);
+    console.log(`[nq-qmr] ${bars.length} H1 bars (${instrument}) — running backtest`);
     const result = _computeNqQmr(bars, cfg);
-    if (isDefault) nqQmrCache.result = result;
-    res.json({ ok: true, cached: false, ...result });
+    if (isNasDefault) { nqQmrResultCache.result = result; nqQmrResultCache.fetchedAt = Date.now(); }
+    res.json({ ok: true, cached: false, instrument, ...result });
   } catch (err) {
     console.error('[nq-qmr]', err.message);
     res.status(500).json({ ok: false, error: err.message });
