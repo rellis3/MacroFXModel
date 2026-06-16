@@ -2742,7 +2742,7 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
 const nqQmrCache = { result: null, bars: null, fetchedAt: null };
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.80, minRangePct: 0.15, tpPct: 0.75 };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.25 };
 
 async function _getNqQmrBars() {
   if (nqQmrCache.bars && nqQmrCache.fetchedAt && Date.now() - nqQmrCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -2876,11 +2876,11 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     const bars = await _getNqQmrBars();
     const wfGrid = {
       gate1Threshold:  [0.55, 0.60, 0.65, 0.70],
-      gate2MinMovePct: [0.05, 0.10, 0.15],
+      gate2MinMovePct: [0.08, 0.10, 0.15],
       stopPct:         [0.35, 0.50, 0.60],
       minRangePct:     [0.12, 0.15, 0.20],
-      riskPct:         [1.80],
-      tpPct:           [0.75, 1.00],
+      riskPct:         [1.00],
+      tpPct:           [1.00, 1.25, 1.50],
     };
     function addMonths(d, m) { const r = new Date(d); r.setUTCMonth(r.getUTCMonth() + m); return r; }
     const allDates  = [...new Set(bars.map(b => b.t.substring(0, 10)))].sort();
