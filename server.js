@@ -3267,6 +3267,48 @@ app.get('/api/vol-forecast/live', async (_req, res) => {
   }
 });
 
+// Session alias used by vol-forecast-v2.html — live today or historical from KV.
+app.get('/api/vol-forecast/session', async (req, res) => {
+  const date = String(req.query.date ?? '');
+  if (date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    try {
+      const raw = await kv.get(`vol_session_${date}`);
+      if (!raw) return res.status(404).json({ ok: false, error: `No session data for ${date}` });
+      return res.json({ ok: true, date, ...JSON.parse(raw) });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  }
+  try {
+    const status = await getSessionStatus();
+    res.json(status);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Session-stats aliases used by vol-forecast-v2.html.
+app.get('/api/vol-forecast/session-stats', (_req, res) => {
+  if (isSessionStatsComputing()) {
+    return res.status(202).json({ ok: false, status: 'computing', message: 'Session stats computation in progress — poll again in 60s.' });
+  }
+  const data = getSessionStats();
+  if (!data) return res.status(202).json({ ok: false, message: 'Session stats not yet computed — POST /api/vol-forecast/session-stats/compute to start.' });
+  res.json(data);
+});
+
+app.post('/api/vol-forecast/session-stats/compute', (_req, res) => {
+  if (isSessionStatsComputing()) {
+    return res.json({ ok: false, message: 'Already computing — poll /api/vol-forecast/session-stats for result.' });
+  }
+  const years = parseInt(_req.query.years) || 5;
+  res.json({ ok: true, message: `Computing session stats (${years}yr H1) — poll /api/vol-forecast/session-stats in ~3–5 min.` });
+  computeSessionStats(years)
+    .then(data => kv.put('session_stats', JSON.stringify(data)))
+    .catch(e => console.error('[SESSION-STATS] Error:', e.message));
+});
+
 // Plain-text live session export — same format as the ⬇ Session button on the dashboard.
 app.get('/api/vol-forecast/live/export', async (_req, res) => {
   try {
