@@ -115,28 +115,28 @@
 
 /* ── v2 Range Map ────────────────────────────────────────────────────────────── */
 .v2-range-map {
-  position: relative; height: 56px;
+  position: relative; height: 46px;
   background: var(--s2); border-radius: 6px;
   overflow: visible;
 }
 .v2-rm-track {
-  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
-  height: 4px; background: var(--border); border-radius: 2px;
+  position: absolute; left: 4px; right: 4px; top: 50%; transform: translateY(-50%);
+  height: 6px; background: var(--border); border-radius: 3px;
 }
 .v2-rm-bar {
   position: absolute; top: 50%; transform: translateY(-50%);
-  height: 10px; background: var(--blue); opacity: .35;
-  border-radius: 3px; transition: left .4s, width .4s;
+  height: 14px; background: var(--blue); opacity: .4;
+  border-radius: 4px; transition: left .4s, width .4s;
 }
-.v2-rm-bar.complete { opacity: .55; background: var(--green); }
+.v2-rm-bar.complete { opacity: .6; background: var(--green); }
 .v2-rm-tick {
-  position: absolute; top: 0; bottom: 0; width: 1px;
+  position: absolute; top: -5px; bottom: -5px; width: 2px; border-radius: 1px;
 }
-.v2-rm-tick.med { background: var(--blue); }
-.v2-rm-tick.p75 { background: var(--amber); border-right: 1px dashed var(--amber); }
+.v2-rm-tick.med { background: var(--blue); opacity: .9; }
+.v2-rm-tick.p75 { background: var(--amber); }
 .v2-rm-center {
-  position: absolute; top: 0; bottom: 0; width: 2px;
-  background: var(--text2); opacity: .5; transform: translateX(-50%);
+  position: absolute; top: -6px; bottom: -6px; width: 2px;
+  background: var(--text2); opacity: .6; transform: translateX(-50%);
 }
 .v2-rm-price-dot {
   position: absolute; top: 50%; transform: translate(-50%, -50%);

@@ -2782,6 +2782,45 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
   }
 });
 
+// ── /api/oanda_ohlc5m  — last 1500 M5 bars for any FX/gold pair ──────────────
+// ?symbol=EUR/USD  (or XAU/USD etc.)
+// Returns { values:[{datetime, open, high, low, close}] } newest-first,
+// datetime in London local time (matches _worker.js format used by vol-forecast-v2).
+const _m5SrvCache = new Map();
+app.get('/api/oanda_ohlc5m', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const instrument = symbol.replace('/', '_');
+  const cacheKey   = `ohlc5m_${instrument}`;
+  const cached     = _m5SrvCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 4 * 60 * 1000) return res.json(cached.data);
+  try {
+    const base = _oandaBaseMe();
+    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M5&count=1500&price=M`;
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+      signal:  AbortSignal.timeout(20_000),
+    });
+    if (!r.ok) { const t = await r.text().catch(() => 'err'); return res.status(502).json({ error: `OANDA ${r.status}: ${t.slice(0,200)}` }); }
+    const data = await r.json();
+    if (!data.candles) return res.status(502).json({ error: 'No candles returned' });
+    const values = data.candles
+      .filter(c => c.complete && c.mid)
+      .map(c => ({
+        datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
+        open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
+      }))
+      .reverse();
+    const result = { values, meta: { symbol, source: 'oanda', granularity: 'M5' } };
+    _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    res.json(result);
+  } catch (err) {
+    console.error('[oanda_ohlc5m]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
 app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
