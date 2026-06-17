@@ -554,7 +554,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
         </div>
         <div style="margin-top:14px;">
           <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Parameter Drift — IS-Best Key Param per Window</div>
-          <div class="bt-tbl-scroll"><table class="bt-tbl" id="tlWFDriftTable"><thead><tr><th>Window</th><th>P1 bandHigh</th><th>P4 trendWin</th><th>P5 lookback</th></tr></thead><tbody id="tlWFDriftBody"></tbody></table></div>
+          <div class="bt-tbl-scroll"><table class="bt-tbl" id="tlWFDriftTable"><thead><tr><th>Window</th><th>P1 bandHigh</th><th>P1 Sizing</th><th>P4 trendWin</th><th>P5 lookback</th></tr></thead><tbody id="tlWFDriftBody"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -724,7 +724,8 @@ const PUB_MONTHLY = 21;
 let _cfg = {
   p1: { wNetliq:0.30, wCurve:0.2333, wCredit:0.2333, wRealyield:0.175, wIsm:0.0583,
         bandHigh:1.00, bandMid:-0.25, bandLow:-0.50,
-        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.15 },
+        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.15,
+        sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
   p2: { thVBull:1.0, thBull:0.25, thNeutral:-0.75, thBear:-2.0,
         allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0 },
   p3: { zWin:60, vixCalm:15, vixStress:25, stressZ:1.5,
@@ -779,6 +780,19 @@ function rollingZ(arr, win = Z_WIN) {
     const mu = slice.reduce((a, b) => a + b, 0) / slice.length;
     const sd = Math.sqrt(slice.reduce((a, b) => a + (b-mu)**2, 0) / slice.length);
     out[i] = sd > 0 ? (arr[i] - mu) / sd : 0;
+  }
+  return out;
+}
+function clip(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+function rollingVolAnnualized(returns, win) {
+  const out = new Array(returns.length).fill(NaN);
+  for (let i = 0; i < returns.length; i++) {
+    const slice = [];
+    for (let j = Math.max(0, i - win); j < i; j++) if (isFinite(returns[j])) slice.push(returns[j]);
+    if (slice.length < Math.floor(win/2)) continue;
+    const mu = slice.reduce((a,b)=>a+b,0) / slice.length;
+    const sd = Math.sqrt(slice.reduce((a,b)=>a+(b-mu)**2,0) / slice.length);
+    out[i] = sd * Math.sqrt(252);
   }
   return out;
 }
@@ -1042,6 +1056,8 @@ function runP1(data) {
 
   // Spy prices (forward-filled)
   const spy = ffill(prices.spy);
+  const c = _cfg.p1;
+  const spyVolAnn = rollingVolAnnualized(pctChange(spy), c.volWin);
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
@@ -1055,14 +1071,24 @@ function runP1(data) {
   for (const idx of monthEnds) {
     // Compute composite score at month-end
     const nz = nlZ[idx], cv = cvZ[idx], cr = crZ[idx], ry = ryZ[idx], iz = izZ[idx];
-    const c = _cfg.p1;
     const score = [nz,cv,cr,ry,iz].every(isFinite)
       ? c.wNetliq*nz + c.wCurve*cv + c.wCredit*(-cr) + c.wRealyield*(-ry) + c.wIsm*iz
       : NaN;
 
-    const newAlloc = isFinite(score)
-      ? (score > c.bandHigh ? c.allocBull : score > c.bandMid ? c.allocNb : score > c.bandLow ? c.allocNbear : c.allocBear)
-      : 0.5;
+    let newAlloc;
+    if (c.sizingMode === 'continuous') {
+      // Linear ramp between the same Bear/Bull endpoints (no discrete steps), then
+      // scaled by target vol / realized SPY vol so exposure responds to current risk, not just signal level.
+      const t = isFinite(score) ? clip((score - c.bandLow) / (c.bandHigh - c.bandLow), 0, 1) : 0.5;
+      const baseAlloc = c.allocBear + (c.allocBull - c.allocBear) * t;
+      const rv = spyVolAnn[idx];
+      const volMult = isFinite(rv) && rv > 0 ? clip(c.volTarget / rv, c.volMinMult, c.volMaxMult) : 1;
+      newAlloc = clip(baseAlloc * volMult, 0, 1);
+    } else {
+      newAlloc = isFinite(score)
+        ? (score > c.bandHigh ? c.allocBull : score > c.bandMid ? c.allocNb : score > c.bandLow ? c.allocNbear : c.allocBear)
+        : 0.5;
+    }
 
     // Compute equity for this month using allocation from previous month
     if (prevMonthEnd >= 0) {
@@ -2182,6 +2208,15 @@ function sysCfgForm(key) {
   const row = (lbl, id, val, step, min, max) =>
     `<div class="form-row" style="padding:4px 0;justify-content:space-between;font-size:11px;font-family:'DM Mono',monospace;">
       <span style="color:var(--text3)">${lbl}</span>${inp(id, val, step, min, max)}</div>`;
+  const sel = (id, val, options) =>
+    `<select id="sc_${id}" onchange="updateSysCfg('${key}')"
+      style="width:110px;background:var(--s2);border:1px solid var(--border);border-radius:4px;
+             color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 6px;">
+      ${options.map(o=>`<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('')}
+    </select>`;
+  const selRow = (lbl, id, val, options) =>
+    `<div class="form-row" style="padding:4px 0;justify-content:space-between;font-size:11px;font-family:'DM Mono',monospace;">
+      <span style="color:var(--text3)">${lbl}</span>${sel(id, val, options)}</div>`;
 
   if (key === 'p1') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
@@ -2202,6 +2237,19 @@ function sysCfgForm(key) {
         ${row('Neutral-bull',  'p1_allocNb',     c.allocNb,     0.05)}
         ${row('Neutral-bear',  'p1_allocNbear',  c.allocNbear,  0.05)}
         ${row('Bear alloc',    'p1_allocBear',   c.allocBear,   0.05)}
+      </div>
+      <div style="grid-column:1/-1;margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Sizing Mode</div>
+        ${selRow('Mode', 'p1_sizingMode', c.sizingMode, ['discrete','continuous'])}
+        ${row('Vol target (ann.)',   'p1_volTarget',  c.volTarget,  0.01, 0.02, 0.40)}
+        ${row('Vol window (days)',   'p1_volWin',     c.volWin,     1, 5, 126)}
+        ${row('Min vol multiplier',  'p1_volMinMult', c.volMinMult, 0.05, 0.1, 1)}
+        ${row('Max vol multiplier',  'p1_volMaxMult', c.volMaxMult, 0.05, 1, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">
+          Discrete: today's 4-bucket step allocation. Continuous: linear ramp between Bear↔Bull
+          across the same Bull/Bear thresholds, then scaled by Vol target ÷ realized SPY vol (clipped
+          to min/max multiplier) so exposure responds to current risk, not just signal level.
+        </div>
       </div>
     </div>`;
 
@@ -2307,6 +2355,9 @@ function updateSysCfg(key) {
     c.wRealyield=n('wRealyield'); c.wIsm=n('wIsm');
     c.bandHigh=n('bandHigh'); c.bandMid=n('bandMid'); c.bandLow=n('bandLow');
     c.allocBull=n('allocBull'); c.allocNb=n('allocNb'); c.allocNbear=n('allocNbear'); c.allocBear=n('allocBear');
+    const sizingModeEl = document.getElementById('sc_p1_sizingMode');
+    if (sizingModeEl) c.sizingMode = sizingModeEl.value;
+    c.volTarget=n('volTarget'); c.volWin=n('volWin'); c.volMinMult=n('volMinMult'); c.volMaxMult=n('volMaxMult');
   } else if (key === 'p2') {
     c.thVBull=n('thVBull'); c.thBull=n('thBull'); c.thNeutral=n('thNeutral'); c.thBear=n('thBear');
     c.allocVBull=n('allocVBull'); c.allocBull=n('allocBull'); c.allocNeutral=n('allocNeutral');
@@ -2349,6 +2400,7 @@ const OPT_GRIDS = {
     bandLow:   [-1.5, -1.0, -0.5],
     allocBull: [0.85, 1.0],
     allocBear: [0.15, 0.25, 0.35],
+    sizingMode:['discrete', 'continuous'],
   },
   p2: {
     thVBull:     [0.75, 1.0, 1.5],
@@ -2786,7 +2838,10 @@ async function runTLWalkForward() {
       wfOOSBySystem[key].rets.push(...oosRets);
       wfOOSBySystem[key].dates.push(...oosDates);
 
-      if (key === 'p1') driftRow.p1_bandHigh = bestEntry?.combo?.bandHigh ?? '—';
+      if (key === 'p1') {
+        driftRow.p1_bandHigh = bestEntry?.combo?.bandHigh ?? '—';
+        driftRow.p1_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
+      }
       if (key === 'p4') driftRow.p4_trendWin = bestEntry?.combo?.trendWin ?? '—';
       if (key === 'p5') driftRow.p5_lookback = bestEntry?.combo?.lookback ?? '—';
     }
@@ -2853,7 +2908,7 @@ async function runTLWalkForward() {
 
   // Drift table
   document.getElementById('tlWFDriftBody').innerHTML = driftRows.map(r =>
-    `<tr><td>${r.window}</td><td class="num">${r.p1_bandHigh??'—'}</td><td class="num">${r.p4_trendWin??'—'}</td><td class="num">${r.p5_lookback??'—'}</td></tr>`
+    `<tr><td>${r.window}</td><td class="num">${r.p1_bandHigh??'—'}</td><td class="num">${r.p1_sizingMode??'—'}</td><td class="num">${r.p4_trendWin??'—'}</td><td class="num">${r.p5_lookback??'—'}</td></tr>`
   ).join('');
 
   progBar.style.width = '100%';
