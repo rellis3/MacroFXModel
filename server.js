@@ -2572,7 +2572,12 @@ app.post('/api/vol-forecast/refresh', async (_req, res) => {
 function _fmtForecastText(data) {
   const LW  = 29;
   const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
-  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`, ''];
+  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`];
+  const newsMult = data.meta?.news_mult ?? 1;
+  if (newsMult > 1) {
+    lines.push(`News: ${data.meta?.news_flag ?? 'Event'} ×${newsMult.toFixed(2)} applied`);
+  }
+  lines.push('');
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     lines.push(
       div(name),
