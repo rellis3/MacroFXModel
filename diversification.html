@@ -185,14 +185,14 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
 
   <div style="padding: 20px 0 10px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
     <h1 style="font-size: 22px; font-weight: 700; margin: 0;">Combined Book Explorer</h1>
-    <span style="font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace;">6 uncorrelated alpha sources · interactive sizing · diversification analytics</span>
+    <span style="font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace;">5 uncorrelated alpha sources · interactive sizing · diversification analytics</span>
     <a href="hub.html" target="_blank" style="margin-left:auto;font-size:11px;font-family:'DM Mono',monospace;font-weight:600;padding:5px 14px;border-radius:6px;border:1px solid #14b8a6;color:#14b8a6;text-decoration:none;">⬡ Risk Hub →</a>
   </div>
 
   <div class="bt-run-bar">
     <button class="bt-run-btn" id="runBtn" onclick="runAll()">Run Backtest</button>
     <span class="sdot" id="statusDot"></span>
-    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute all 6 strategies</span>
+    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute all 5 strategies</span>
     <span style="margin-left:auto;" class="bt-run-lbl" id="cacheLabel"></span>
   </div>
 
@@ -202,8 +202,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <a href="macro-equity-backtest.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #14b8a6; color:#14b8a6; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P1 Macro Regime ↗</a>
     <a href="system-credit-equity.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #ef4444; color:#ef4444; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P2 Credit-Equity ↗</a>
     <a href="system-yield-curve.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #f97316; color:#f97316; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P3 Yield Curve ↗</a>
-    <a href="system-fx-carry.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #3b82f6; color:#3b82f6; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P4 FX Carry ↗</a>
-    <a href="system-fx-momentum.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #a855f7; color:#a855f7; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P5 FX Momentum ↗</a>
+    <a href="system-fx-carry.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #3b82f6; color:#3b82f6; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P4 FX Risk Barometer ↗</a>
     <a href="system-gold-macro.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #eab308; color:#eab308; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P6 Gold Macro ↗</a>
   </div>
 
@@ -217,8 +216,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="sys-legend-item"><span class="swatch" style="background:#14b8a6"></span>P1 Macro Regime</div>
     <div class="sys-legend-item"><span class="swatch" style="background:#ef4444"></span>P2 Credit-Equity</div>
     <div class="sys-legend-item"><span class="swatch" style="background:#f97316"></span>P3 Yield Curve</div>
-    <div class="sys-legend-item"><span class="swatch" style="background:#3b82f6"></span>P4 FX Carry</div>
-    <div class="sys-legend-item"><span class="swatch" style="background:#a855f7"></span>P5 FX Momentum</div>
+    <div class="sys-legend-item"><span class="swatch" style="background:#3b82f6"></span>P4 FX Risk Barometer</div>
     <div class="sys-legend-item"><span class="swatch" style="background:#eab308"></span>P6 Gold Macro</div>
     <div class="sys-legend-item"><span class="swatch" style="background:#ffffff"></span>Combined Book</div>
   </div>
@@ -554,7 +552,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
         </div>
         <div style="margin-top:14px;">
           <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Parameter Drift — IS-Best Key Param per Window</div>
-          <div class="bt-tbl-scroll"><table class="bt-tbl" id="tlWFDriftTable"><thead><tr><th>Window</th><th>P1 bandHigh</th><th>P1 Sizing</th><th>P4 trendWin</th><th>P5 lookback</th></tr></thead><tbody id="tlWFDriftBody"></tbody></table></div>
+          <div class="bt-tbl-scroll"><table class="bt-tbl" id="tlWFDriftTable"><thead><tr><th>Window</th><th>P1 bandHigh</th><th>P1 Sizing</th><th>P4 calmAlloc</th><th>P4 stressAlloc</th></tr></thead><tbody id="tlWFDriftBody"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -697,8 +695,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
       <div class="sys-tab active" data-sys="p1" onclick="switchSys('p1')" style="background:#14b8a6;">P1 Macro Regime</div>
       <div class="sys-tab" data-sys="p2" onclick="switchSys('p2')" style="">P2 Credit-Equity</div>
       <div class="sys-tab" data-sys="p3" onclick="switchSys('p3')" style="">P3 Yield Curve</div>
-      <div class="sys-tab" data-sys="p4" onclick="switchSys('p4')" style="">P4 FX Carry</div>
-      <div class="sys-tab" data-sys="p5" onclick="switchSys('p5')" style="">P5 FX Momentum</div>
+      <div class="sys-tab" data-sys="p4" onclick="switchSys('p4')" style="">P4 FX Risk Barometer</div>
       <div class="sys-tab" data-sys="p6" onclick="switchSys('p6')" style="">P6 Gold Macro</div>
     </div>
     <div id="sys-panel-area"></div>
@@ -710,9 +707,9 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Configuration
 // ═══════════════════════════════════════════════════════════════════════════════
-const SYS_NAMES  = ['P1 Macro Regime', 'P2 Credit-Equity', 'P3 VIX Regime', 'P4 FX Carry', 'P5 FX Momentum', 'P6 Gold Macro'];
-const SYS_KEYS   = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
-const SYS_COLORS = ['#14b8a6', '#ef4444', '#f97316', '#3b82f6', '#a855f7', '#eab308'];
+const SYS_NAMES  = ['P1 Macro Regime', 'P2 Credit-Equity', 'P3 VIX Regime', 'P4 FX Risk Barometer', 'P6 Gold Macro'];
+const SYS_KEYS   = ['p1', 'p2', 'p3', 'p4', 'p6'];
+const SYS_COLORS = ['#14b8a6', '#ef4444', '#f97316', '#3b82f6', '#eab308'];
 const COMBINED_COLOR = '#e2e8f0';
 
 const Z_WIN    = 252;
@@ -730,8 +727,7 @@ let _cfg = {
         allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0 },
   p3: { zWin:60, vixCalm:15, vixStress:25, stressZ:1.5,
         calmSpy:0.9, elevSpy:0.3, elevTlt:0.3, stressTlt:0.8 },
-  p4: { trendWin:378, allocNormal:1.0 },
-  p5: { lookback:189, skip:21, nLong:3, nShort:1 },
+  p4: { calmAlloc:1.0, elevAlloc:0.4, stressAlloc:-0.4 },
   p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:1.0, thVShort:1.5,
         allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
 };
@@ -740,7 +736,7 @@ let _cfg = {
 let _rawData   = null;     // data from /api/diversification/data
 let _results   = {};       // { p1: {dates,equity,monthlyRet,...}, ... }
 let _combined  = null;     // combined equity curve & monthly returns
-let _weights   = [1, 1, 1, 1, 1, 1]; // raw sliders (normalized to 1)
+let _weights   = SYS_KEYS.map(() => 1); // raw sliders (normalized to 1)
 let _charts    = {};       // chart instances to destroy/recreate
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1228,38 +1224,40 @@ function runP3(data) {
   return { key:'p3', name: SYS_NAMES[2], color: SYS_COLORS[2], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
-// P4: USD/JPY Pure Bidirectional Trend — long when price > MA, short when price < MA.
-// No VIX gate: gating longs flat during 2022 USD/JPY rally (elevated VIX from Fed hiking/Ukraine)
-// caused FLAT during the biggest uptrend, then wrong SHORTs on brief dips → cascading losses.
+// P4: FX Risk Barometer — AUD/JPY + NZD/JPY basket (classic high-beta-vs-JPY risk-on/risk-off
+// crosses). Sized off P3's already-validated VIX regime classification (zWin/vixCalm/vixStress/
+// stressZ) instead of an independent threshold, since a second tunable regime detector would
+// just add another overfit-prone knob without a clear extra edge. Calm = long the basket
+// (risk appetite intact); Stressed = short it (high-beta-vs-funding-currency carry unwinds hard
+// in risk-off, e.g. 2008 GFC, Mar 2020, Aug 2024).
 function runP4(data) {
-  const { dateIndex: dates, fx } = data;
+  const { dateIndex: dates, fx, prices } = data;
   const n = dates.length;
-  const usdjpy = ffill(fx.usdjpy);
-  const c4 = _cfg.p4;
-  const tw = c4.trendWin;
-  const usdMA = usdjpy.map((_, i) => {
-    if (i < tw) return NaN;
-    let s = 0, cnt = 0;
-    for (let j = i - tw + 1; j <= i; j++) if (isFinite(usdjpy[j])) { s += usdjpy[j]; cnt++; }
-    return cnt > 0 ? s / cnt : NaN;
-  });
+  const audjpy = ffill(fx.audjpy);
+  const nzdjpy = ffill(fx.nzdjpy);
+  const vixRaw = prices?.vix ? ffill(prices.vix) : null;
+  const c3 = _cfg.p3, c4 = _cfg.p4;
+  const vixZ = vixRaw ? rollingZ(vixRaw, c3.zWin) : null;
+
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let position = 0;
+  let alloc = c4.calmAlloc;
+
   for (const idx of monthEnds) {
-    const maReady = isFinite(usdjpy[idx]) && isFinite(usdMA[idx]);
-    const newPos = maReady ? (usdjpy[idx] > usdMA[idx] ? 1 : -1) : 0;
+    const vv = vixRaw ? vixRaw[idx] : NaN, vz = vixZ ? vixZ[idx] : NaN;
+    let newAlloc;
+    if (!isFinite(vv) || !isFinite(vz)) newAlloc = alloc;
+    else if (vv < c3.vixCalm && vz < 0) newAlloc = c4.calmAlloc;
+    else if (vv > c3.vixStress || vz > c3.stressZ) newAlloc = c4.stressAlloc;
+    else newAlloc = c4.elevAlloc;
+
     if (prevMonthEnd >= 0) {
-      let ret = 0;
-      if (position !== 0) {
-        const u0 = usdjpy[prevMonthEnd], u1 = usdjpy[idx];
-        if (isFinite(u0) && isFinite(u1) && u0 > 0) {
-          ret = c4.allocNormal * position * (u1 - u0) / u0;
-        }
-      }
+      const rAud = isFinite(audjpy[prevMonthEnd])&&isFinite(audjpy[idx])&&audjpy[prevMonthEnd]>0 ? (audjpy[idx]-audjpy[prevMonthEnd])/audjpy[prevMonthEnd] : 0;
+      const rNzd = isFinite(nzdjpy[prevMonthEnd])&&isFinite(nzdjpy[idx])&&nzdjpy[prevMonthEnd]>0 ? (nzdjpy[idx]-nzdjpy[prevMonthEnd])/nzdjpy[prevMonthEnd] : 0;
+      const ret = alloc * (rAud + rNzd) / 2;
       equity *= (1 + ret);
       monthlyRet.push(ret);
       monthlyDates.push(dates[idx]);
@@ -1267,106 +1265,10 @@ function runP4(data) {
     } else {
       equityCurve[idx] = equity;
     }
-    position = newPos;
+    alloc = newAlloc;
     prevMonthEnd = idx;
   }
   return { key:'p4', name: SYS_NAMES[3], color: SYS_COLORS[3], equityCurve, dates, monthlyRet, monthlyDates };
-}
-
-// P5: FX Cross-Sectional Momentum — long top 3, short bottom 3 of 7 USD pairs
-function runP5(data) {
-  const { dateIndex: dates, fx } = data;
-  const n = dates.length;
-
-  // Express all as USD return perspective: EUR/USD etc are already correct;
-  // for USD/JPY, USD/CAD, USD/CHF we invert (1/rate gives currency appreciation vs USD)
-  const eurusd = ffill(fx.eurusd);
-  const gbpusd = ffill(fx.gbpusd);
-  const audusd = ffill(fx.audusd);
-  const nzdusd = ffill(fx.nzdusd);
-  // Convert: 1/usdjpy etc. (not needed since we compute returns)
-  // For USD/JPY: if USD_JPY rises, USD strengthened → JPY weakened → JPY return = negative
-  // We store as returns, so jpyRet = -usdJpyReturn
-  const usdjpy = ffill(fx.usdjpy);
-  const usdcad = ffill(fx.usdcad);
-  const usdchf = ffill(fx.usdchf);
-
-  const PAIRS = [
-    { name:'EUR', arr: eurusd, inverted: false },
-    { name:'GBP', arr: gbpusd, inverted: false },
-    { name:'AUD', arr: audusd, inverted: false },
-    { name:'NZD', arr: nzdusd, inverted: false },
-    { name:'JPY', arr: usdjpy, inverted: true },  // inverted: JPY strength = USD_JPY falling
-    { name:'CAD', arr: usdcad, inverted: true },
-    { name:'CHF', arr: usdchf, inverted: true },
-  ];
-
-  const c5 = _cfg.p5;
-  // 12-1 month momentum: return from lb days ago to skip days ago (skip last month to avoid reversal)
-  function momN(arr, inverted, lb, skip) {
-    return arr.map((v, i) => {
-      if (i < lb) return NaN;
-      const vLong  = arr[i - lb];
-      const vShort = arr[i - skip];
-      if (!isFinite(vLong) || !isFinite(vShort) || vLong === 0) return NaN;
-      const r = (vShort - vLong) / vLong; // return from 12-months-ago to 1-month-ago
-      return inverted ? -r : r;
-    });
-  }
-
-  const monthEnds = monthEndIdx(dates);
-  let equity = 1.0;
-  const equityCurve = new Array(n).fill(NaN);
-  const monthlyRet = [], monthlyDates = [];
-  let prevMonthEnd = -1;
-  let longIdx = [], shortIdx = [];
-
-  for (const idx of monthEnds) {
-    const scores = PAIRS.map((p, pi) => {
-      const m = momN(p.arr, p.inverted, c5.lookback, c5.skip);
-      return { pi, score: m[idx] };
-    }).filter(x => isFinite(x.score)).sort((a,b)=>b.score-a.score);
-
-    const nL = c5.nLong, nS = c5.nShort;
-    if (prevMonthEnd >= 0 && longIdx.length > 0) {
-      let ret = 0;
-      for (const pi of longIdx) {
-        const p = PAIRS[pi];
-        const p0 = p.arr[prevMonthEnd], p1 = p.arr[idx];
-        if (isFinite(p0)&&isFinite(p1)&&p0>0) {
-          const r = (p1-p0)/p0 * (p.inverted ? -1 : 1);
-          ret += r / nL;
-        }
-      }
-      for (const pi of shortIdx) {
-        const p = PAIRS[pi];
-        const p0 = p.arr[prevMonthEnd], p1 = p.arr[idx];
-        if (isFinite(p0)&&isFinite(p1)&&p0>0) {
-          const r = (p1-p0)/p0 * (p.inverted ? -1 : 1);
-          ret -= r / nS;
-        }
-      }
-      equity *= (1 + ret);
-      monthlyRet.push(ret);
-      monthlyDates.push(dates[idx]);
-      for (let i = prevMonthEnd + 1; i <= idx; i++) equityCurve[i] = equity;
-    } else {
-      equityCurve[idx] = equity;
-    }
-
-    // Update longs/shorts — require sufficient spread between best and worst signal
-    const spreadOk = scores.length >= nL + nS &&
-      (scores[0].score - scores[scores.length - 1].score) > 0.04;
-    if (spreadOk) {
-      longIdx  = scores.slice(0, nL).map(x => x.pi);
-      shortIdx = scores.slice(-nS).map(x => x.pi);
-    } else {
-      longIdx = []; shortIdx = [];
-    }
-    prevMonthEnd = idx;
-  }
-
-  return { key:'p5', name: SYS_NAMES[4], color: SYS_COLORS[4], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
 // P6: Gold Macro Divergence — OLS log(GLD) ~ DFII10 + DTWEXBGS residual z-score
@@ -1419,7 +1321,7 @@ function runP6(data) {
     prevMonthEnd = idx;
   }
 
-  return { key:'p6', name: SYS_NAMES[5], color: SYS_COLORS[5], equityCurve, dates, monthlyRet, monthlyDates };
+  return { key:'p6', name: SYS_NAMES[4], color: SYS_COLORS[4], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1665,7 +1567,7 @@ function applyPreset(preset) {
   document.getElementById('preset'+preset.charAt(0).toUpperCase()+preset.slice(1)).classList.add('active');
 
   if (preset === 'ew') {
-    _weights = [1,1,1,1,1,1];
+    _weights = SYS_KEYS.map(() => 1);
   } else if (preset === 'rp') {
     // Risk parity: weight ∝ 1/vol(monthly ret)
     const vols = SYS_KEYS.map(k => {
@@ -1677,7 +1579,7 @@ function applyPreset(preset) {
     });
     const invVols = vols.map(v => 1/v);
     const sumInv = invVols.reduce((a,b)=>a+b);
-    _weights = invVols.map(v => v/sumInv * 6);
+    _weights = invVols.map(v => v/sumInv * SYS_KEYS.length);
   } else if (preset === 'ms') {
     // Max Sharpe: Markowitz tangent portfolio (Σ⁻¹μ), falls back to proportional-Sharpe
     const mkW = maxSharpeMarkowitz(SYS_KEYS);
@@ -1686,7 +1588,7 @@ function applyPreset(preset) {
     } else {
       const sharpes = SYS_KEYS.map(k => Math.max(0, sharpe(_results[k]?.monthlyRet ?? [])));
       const sumS = sharpes.reduce((a,b)=>a+b) || 1;
-      _weights = sharpes.map(s => s/sumS * 6);
+      _weights = sharpes.map(s => s/sumS * SYS_KEYS.length);
     }
   } else if (preset === 'md') {
     // Min Drawdown: weight ∝ 1/|maxDD| (less negative DD = more weight)
@@ -1698,7 +1600,7 @@ function applyPreset(preset) {
     });
     const invDds = dds.map(d => 1/d);
     const sumD = invDds.reduce((a,b)=>a+b);
-    _weights = invDds.map(v => v/sumD * 6);
+    _weights = invDds.map(v => v/sumD * SYS_KEYS.length);
   }
 
   renderSliders();
@@ -2296,30 +2198,15 @@ function sysCfgForm(key) {
   if (key === 'p4') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Trend Filter</div>
-        ${row('MA window (days)', 'p4_trendWin', c.trendWin, 21, 63, 504)}
-        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Long above MA (JPY weakening) · Short below MA (JPY strengthening) · No VIX gate</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Regime Allocations</div>
+        ${row('Calm alloc',    'p4_calmAlloc',   c.calmAlloc,   0.05, -1, 2)}
+        ${row('Elevated alloc','p4_elevAlloc',   c.elevAlloc,   0.05, -1, 2)}
+        ${row('Stress alloc',  'p4_stressAlloc', c.stressAlloc, 0.05, -2, 1)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Applied to an equal-weight AUD/JPY + NZD/JPY basket. Negative = short.</div>
       </div>
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Allocation</div>
-        ${row('Position size', 'p4_allocNormal', c.allocNormal)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Applied ×1 long or ×−1 short.</div>
-      </div>
-    </div>`;
-
-  if (key === 'p5') return `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
-      <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Lookback</div>
-        ${row('Formation window (days)', 'p5_lookback', c.lookback, 5, 10, 504)}
-        ${row('Skip (days, avoids reversal)', 'p5_skip', c.skip, 5, 0, 126)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Signal = return from T−lookback to T−skip</div>
-      </div>
-      <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Portfolio</div>
-        ${row('Number of longs',  'p5_nLong',  c.nLong,  1, 1, 6)}
-        ${row('Number of shorts', 'p5_nShort', c.nShort, 1, 1, 6)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">7 pairs: EUR, GBP, AUD, NZD + JPY, CAD, CHF (inverted)</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Regime Signal</div>
+        <div style="font-size:10px;color:var(--text3);">Reuses P3's VIX classification (Section "P3 VIX Regime" zWin/vixCalm/vixStress/stressZ) instead of an independent threshold — one fewer overfit-prone knob. Calm → long risk-on basket. Stressed → short into the carry unwind. Tune P3's thresholds to affect both systems together.</div>
       </div>
     </div>`;
 
@@ -2366,9 +2253,7 @@ function updateSysCfg(key) {
     c.zWin=n('zWin'); c.vixCalm=n('vixCalm'); c.vixStress=n('vixStress'); c.stressZ=n('stressZ');
     c.calmSpy=n('calmSpy'); c.elevSpy=n('elevSpy'); c.elevTlt=n('elevTlt'); c.stressTlt=n('stressTlt');
   } else if (key === 'p4') {
-    c.trendWin=n('trendWin'); c.allocNormal=n('allocNormal');
-  } else if (key === 'p5') {
-    c.lookback=n('lookback'); c.skip=n('skip'); c.nLong=n('nLong'); c.nShort=n('nShort');
+    c.calmAlloc=n('calmAlloc'); c.elevAlloc=n('elevAlloc'); c.stressAlloc=n('stressAlloc');
   } else if (key === 'p6') {
     c.olsWindow=n('olsWindow'); c.thVLong=n('thVLong'); c.thLong=n('thLong');
     c.thShort=n('thShort'); c.thVShort=n('thVShort');
@@ -2380,7 +2265,7 @@ function updateSysCfg(key) {
 function rerunSystem(key) {
   if (!_rawData) return;
   updateSysCfg(key);
-  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p6:runP6 };
   _results[key] = runners[key](_rawData);
   _combined = computeCombined(_results, _weights);
   renderSystemPanel(key);
@@ -2418,13 +2303,9 @@ const OPT_GRIDS = {
     stressTlt: [0.7, 0.8, 0.9],
   },
   p4: {
-    trendWin: [126, 189, 252, 315, 378],
-  },
-  p5: {
-    lookback: [126, 189, 252],
-    skip:     [10, 21, 42, 63],
-    nLong:    [2, 3, 4],
-    nShort:   [1, 2, 3],
+    calmAlloc:   [0.6, 0.8, 1.0],
+    elevAlloc:   [0.0, 0.2, 0.4],
+    stressAlloc: [-0.6, -0.4, -0.2, 0.0],
   },
   p6: {
     olsWindow:    [63, 126, 252],
@@ -2450,14 +2331,14 @@ function expandGrid(grid) {
 function _validCombo(key, c) {
   if (key === 'p1') return c.bandHigh > c.bandMid && c.bandMid > c.bandLow;
   if (key === 'p2') return c.thVBull > c.thBull && c.thBull > c.thNeutral && c.thNeutral > c.thBear;
-  if (key === 'p4') return true;
+  if (key === 'p4') return c.calmAlloc > c.elevAlloc && c.elevAlloc > c.stressAlloc;
   if (key === 'p6') return c.thVLong < c.thLong;
   return true;
 }
 
 async function optimiseSystem(key) {
   if (!_rawData) return;
-  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p6:runP6 };
   const grid = OPT_GRIDS[key];
   if (!grid) return;
 
@@ -2537,8 +2418,7 @@ function renderSystemPanel(key) {
     'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
     'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
-    'USD/JPY Bidirectional Trend — long when price is above its rolling MA (JPY weakening/carry-on), short when below (JPY strengthening/carry-off). Captures all major USD/JPY trends in both directions: 2008 JPY safe-haven surge (short profits), Abenomics 2012–2015 +50% (long profits), Fed hiking 2021–2024 +45% (long profits), 2024 carry unwind (short profits). VIX Z-score gate only exits LONG positions; shorts remain open during risk-off events where JPY safe-haven demand reinforces the short thesis.',
-    'Cross-sectional momentum across 7 major currencies in USD terms. Long top-2 / short bottom-2 produces a pure momentum factor orthogonal to carry and macro. A minimum 4% spread between best and worst signal gates out low-conviction months. 9-month lookback targets the strongest momentum window.',
+    'AUD/JPY + NZD/JPY risk barometer — equal-weight basket of two classic high-beta-vs-funding-currency crosses. Sized by P3\'s VIX regime classification rather than an independent signal: long the basket when calm (risk appetite intact), trimmed when elevated, short when stressed (these crosses unwind hard in risk-off — 2008 GFC, Mar 2020, Aug 2024). Replaces the old single-pair USD/JPY trend system and the cross-sectional FX momentum system, both of which the Deflated Sharpe Ratio test showed were statistically indistinguishable from noise.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
   const sysPages = [
@@ -2546,7 +2426,6 @@ function renderSystemPanel(key) {
     'system-credit-equity.html',
     'system-yield-curve.html',
     'system-fx-carry.html',
-    'system-fx-momentum.html',
     'system-gold-macro.html',
   ];
 
@@ -2744,7 +2623,7 @@ function renderTLMC() {
 let _comboLibrary = {};
 
 async function buildComboLibrary(key, onProgress) {
-  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p6:runP6 };
   const grid = OPT_GRIDS[key];
   if (!grid) {
     _comboLibrary[key] = [{ combo:{..._cfg[key]}, mr:_results[key].monthlyRet, dates:_results[key].monthlyDates }];
@@ -2842,8 +2721,10 @@ async function runTLWalkForward() {
         driftRow.p1_bandHigh = bestEntry?.combo?.bandHigh ?? '—';
         driftRow.p1_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
       }
-      if (key === 'p4') driftRow.p4_trendWin = bestEntry?.combo?.trendWin ?? '—';
-      if (key === 'p5') driftRow.p5_lookback = bestEntry?.combo?.lookback ?? '—';
+      if (key === 'p4') {
+        driftRow.p4_calmAlloc = bestEntry?.combo?.calmAlloc ?? '—';
+        driftRow.p4_stressAlloc = bestEntry?.combo?.stressAlloc ?? '—';
+      }
     }
     driftRows.push(driftRow);
   }
@@ -2908,7 +2789,7 @@ async function runTLWalkForward() {
 
   // Drift table
   document.getElementById('tlWFDriftBody').innerHTML = driftRows.map(r =>
-    `<tr><td>${r.window}</td><td class="num">${r.p1_bandHigh??'—'}</td><td class="num">${r.p1_sizingMode??'—'}</td><td class="num">${r.p4_trendWin??'—'}</td><td class="num">${r.p5_lookback??'—'}</td></tr>`
+    `<tr><td>${r.window}</td><td class="num">${r.p1_bandHigh??'—'}</td><td class="num">${r.p1_sizingMode??'—'}</td><td class="num">${r.p4_calmAlloc??'—'}</td><td class="num">${r.p4_stressAlloc??'—'}</td></tr>`
   ).join('');
 
   progBar.style.width = '100%';
@@ -3015,8 +2896,7 @@ const CAPACITY_TABLE = [
   { sys:'P1 Macro Regime',  asset:'SPY ETF',          dailyVol:'$25B',  maxAUM:'$5B+',  note:'Monthly rebalance, deep ETF market' },
   { sys:'P2 Credit-Equity', asset:'SPY ETF',           dailyVol:'$25B',  maxAUM:'$5B+',  note:'Same as P1 — broad equity ETFs' },
   { sys:'P3 VIX Regime',    asset:'SPY/TLT/GLD ETF',  dailyVol:'$10B',  maxAUM:'$2B+',  note:'GLD is thinnest at ~$1.5B/day' },
-  { sys:'P4 FX Carry',      asset:'USD/JPY FX spot',  dailyVol:'$120B', maxAUM:'$10B+', note:'Most liquid FX pair globally' },
-  { sys:'P5 FX Momentum',   asset:'FX (7 pairs)',      dailyVol:'$5B',   maxAUM:'$500M', note:'NZD/CHF thinner pairs limit scale' },
+  { sys:'P4 FX Risk Barometer', asset:'AUD/JPY + NZD/JPY FX spot', dailyVol:'$25B', maxAUM:'$3B+', note:'AUD/JPY liquid; thinner NZD/JPY leg caps scale vs USD majors' },
   { sys:'P6 Gold Macro',    asset:'GLD ETF',           dailyVol:'$1.5B', maxAUM:'$300M', note:'GLD daily vol is the binding constraint' },
 ];
 
@@ -3037,8 +2917,7 @@ const TX_COST_PROFILE = {
   p1: { tradesPerYear: 6,  label: '~6 regime flips/yr' },
   p2: { tradesPerYear: 8,  label: '~8 signal changes/yr' },
   p3: { tradesPerYear: 4,  label: '~4 VIX regime changes/yr' },
-  p4: { tradesPerYear: 4,  label: '~4 MA crossovers/yr' },
-  p5: { tradesPerYear: 24, label: '~2 rebalances/mo × ~1 change' },
+  p4: { tradesPerYear: 4,  label: '~4 VIX regime changes/yr (shared w/ P3)' },
   p6: { tradesPerYear: 6,  label: '~6 z-score crossings/yr' },
 };
 
@@ -3172,7 +3051,7 @@ function skewKurt(rets) {
 }
 
 async function computeTrialSharpes(key, onProgress) {
-  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p6:runP6 };
   const grid = OPT_GRIDS[key];
   if (!grid) return [sharpe(_results[key].monthlyRet)];
   const combos = expandGrid(grid).filter(c => _validCombo(key, c));
@@ -3408,7 +3287,7 @@ async function runAll() {
     _rawData = data;
     document.getElementById('cacheLabel').textContent = data.cached ? '(cached)' : '(fresh)';
 
-    setStatus('spin', `Running 6 strategy engines (${data.dateIndex.length} trading days)…`);
+    setStatus('spin', `Running 5 strategy engines (${data.dateIndex.length} trading days)…`);
     await new Promise(r => setTimeout(r, 20));
 
     _results.p1 = runP1(data);
@@ -3418,9 +3297,7 @@ async function runAll() {
     _results.p3 = runP3(data);
     setStatus('spin', 'P3 done · Running P4…'); await new Promise(r=>setTimeout(r,10));
     _results.p4 = runP4(data);
-    setStatus('spin', 'P4 done · Running P5…'); await new Promise(r=>setTimeout(r,10));
-    _results.p5 = runP5(data);
-    setStatus('spin', 'P5 done · Running P6…'); await new Promise(r=>setTimeout(r,10));
+    setStatus('spin', 'P4 done · Running P6…'); await new Promise(r=>setTimeout(r,10));
     _results.p6 = runP6(data);
 
     setStatus('spin', 'Optimising weights…'); await new Promise(r=>setTimeout(r,10));
