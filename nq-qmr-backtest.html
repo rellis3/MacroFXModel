@@ -353,7 +353,7 @@
   </div>
   <div class="card-body">
     <div class="info-box" style="margin-top:0;">
-      Resamples trade returns with replacement 500 times to show the distribution of possible outcomes, including max-drawdown risk and per-trade EV/Kelly edge quality. The fan chart shows p10–p90 of simulated equity paths. The permutation test shuffles returns 5,000 times to measure statistical significance.
+      Resamples trade returns with replacement 500 times to show the distribution of possible outcomes, including max-drawdown risk and per-trade EV/Kelly edge quality. The fan chart shows p10–p90 of simulated equity paths. Statistical significance comes from the same resampled paths — the fraction with Sharpe ≤ 0 is a bootstrap p-value for whether the edge is distinguishable from noise.
     </div>
     <div id="mcResults" style="display:none;">
       <div class="chart-wrap" id="mcChart" style="height:260px;margin-top:12px;"></div>
@@ -1111,18 +1111,23 @@ async function runMonteCarlo() {
   const rets  = _trades.map(t => t.tradeReturn / 100);
   const n     = rets.length;
   const N_SIM = 500;
-  const N_PERM = 5000;
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+  const tpy   = n / Math.max(years, 0.01);
 
-  // Run MC simulations — store final equity + max drawdown + percentile curves
+  // Run MC simulations — store final equity + max drawdown + per-path Sharpe + percentile curves
   const finals  = [];
   const maxDDs  = [];
+  const sharpes = [];
   const curves  = []; // store every 5th sim to build percentile bands
 
   for (let s = 0; s < N_SIM; s++) {
-    let eq = 1.0, peak = 1.0, dd = 0;
+    let eq = 1.0, peak = 1.0, dd = 0, sumR = 0, sumR2 = 0;
     const path = [1.0];
     for (let i = 0; i < n; i++) {
-      eq *= (1 + rets[Math.floor(Math.random() * n)]);
+      const r = rets[Math.floor(Math.random() * n)];
+      sumR += r; sumR2 += r * r;
+      eq *= (1 + r);
       if (eq > peak) peak = eq;
       const curDD = (peak - eq) / peak;
       if (curDD > dd) dd = curDD;
@@ -1131,6 +1136,10 @@ async function runMonteCarlo() {
     finals.push(eq);
     curves.push(path);
     maxDDs.push(dd);
+    const pathMu  = sumR / n;
+    const pathVar = Math.max(sumR2 / n - pathMu * pathMu, 0);
+    const pathSig = Math.sqrt(pathVar);
+    sharpes.push(pathSig > 0 ? (pathMu / pathSig) * Math.sqrt(tpy) : 0);
   }
 
   // Percentile curves (p10, p25, p50, p75, p90) at each step
@@ -1142,14 +1151,15 @@ async function runMonteCarlo() {
     });
   });
 
-  // Final equity + drawdown stats. p is a percentile in 0–100 (NOT a fraction) —
-  // pct(50) is the median, pct(0.50) would index into the bottom ~0.5% of sims.
+  // Final equity + drawdown + Sharpe stats. p is a percentile in 0–100 (NOT a
+  // fraction) — pct(50) is the median, pct(0.50) would index into the bottom
+  // ~0.5% of sims.
   finals.sort((a, b) => a - b);
   maxDDs.sort((a, b) => a - b);
-  const pct   = p => finals[Math.min(finals.length - 1, Math.floor(finals.length * p / 100))];
-  const pctDD = p => maxDDs[Math.min(maxDDs.length - 1, Math.floor(maxDDs.length * p / 100))];
-  const years = _curve.length >= 2
-    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+  sharpes.sort((a, b) => a - b);
+  const pct       = p => finals[Math.min(finals.length - 1, Math.floor(finals.length * p / 100))];
+  const pctDD     = p => maxDDs[Math.min(maxDDs.length - 1, Math.floor(maxDDs.length * p / 100))];
+  const pctSharpe = p => sharpes[Math.min(sharpes.length - 1, Math.floor(sharpes.length * p / 100))];
   const toCAGR = eq => ((Math.pow(eq, 1/Math.max(years,0.01)) - 1) * 100).toFixed(1);
   const probLoss = finals.filter(e => e < 1).length / N_SIM * 100;
   const probDD20 = maxDDs.filter(d => d >= 0.20).length / N_SIM * 100;
@@ -1164,24 +1174,16 @@ async function runMonteCarlo() {
   const evPerTrade = winRate * avgWin - (1 - winRate) * avgLoss;
   const kelly      = payoff > 0 ? winRate - (1 - winRate) / payoff : 0;
 
-  // Permutation test (Sharpe significance)
+  // Bootstrap significance test. Reordering a FIXED set of returns can't change
+  // a mean/std-based Sharpe (mean and variance are order-invariant), so a classic
+  // shuffle-permutation test is meaningless here. Resampling WITH replacement
+  // (the same sims used for the fan chart above) actually varies the mean and
+  // std between paths, so the fraction of paths with Sharpe <= 0 is a real
+  // bootstrap p-value for "is this edge distinguishable from noise."
   const mu  = rets.reduce((s,r)=>s+r,0)/n;
   const sig = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0)/n);
-  const tpy = n / Math.max(years, 0.01);
   const actualSharpe = sig > 0 ? (mu/sig)*Math.sqrt(tpy) : 0;
-  let permBeaten = 0;
-  const shuf = [...rets];
-  for (let p = 0; p < N_PERM; p++) {
-    for (let i = shuf.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuf[i], shuf[j]] = [shuf[j], shuf[i]];
-    }
-    const pm = shuf.reduce((s,r)=>s+r,0)/n;
-    const ps = Math.sqrt(shuf.reduce((s,r)=>s+(r-pm)**2,0)/n);
-    const pSharpe = ps > 0 ? (pm/ps)*Math.sqrt(tpy) : 0;
-    if (pSharpe >= actualSharpe) permBeaten++;
-  }
-  const pValue = permBeaten / N_PERM;
+  const pValue = sharpes.filter(s => s <= 0).length / N_SIM;
 
   // Render fan chart
   const wrap = document.getElementById('mcChart');
@@ -1221,16 +1223,16 @@ async function runMonteCarlo() {
     ['P(DD ≥ 20%)', probDD20.toFixed(1)+'%', probDD20 < 10 ? '#10b981' : '#ef4444'],
   ].map(([l,v,c]) => `<div class="mc-band"><div class="mc-band-lbl">${l}</div><div class="mc-band-val" style="color:${c}">${v}</div></div>`).join('');
 
-  // Permutation test result
+  // Bootstrap significance test result
   const permEl = document.getElementById('mcPermRow');
   if (permEl) {
     const sig5 = pValue < 0.05;
     const sig1 = pValue < 0.01;
     const col  = sig5 ? '#10b981' : '#ef4444';
     permEl.innerHTML = `
-      <div class="sec"><span class="sec-lbl">Permutation Test (5k shuffles)</span><span class="sec-val" style="color:${col}">p=${pValue.toFixed(3)} ${sig1?'★★ p<1%':sig5?'★ p<5%':'not significant'}</span></div>
+      <div class="sec"><span class="sec-lbl">Bootstrap Significance (P[Sharpe ≤ 0])</span><span class="sec-val" style="color:${col}">p=${pValue.toFixed(3)} ${sig1?'★★ p<1%':sig5?'★ p<5%':'not significant'}</span></div>
       <div class="sec"><span class="sec-lbl">Actual Sharpe</span><span class="sec-val">${actualSharpe.toFixed(2)}</span></div>
-      <div class="sec"><span class="sec-lbl">Shuffles beaten by actual</span><span class="sec-val">${((1-pValue)*100).toFixed(1)}%</span></div>
+      <div class="sec"><span class="sec-lbl">Bootstrap Sharpe 90% CI</span><span class="sec-val">${pctSharpe(5).toFixed(2)} – ${pctSharpe(95).toFixed(2)}</span></div>
       <div class="sec"><span class="sec-lbl">Statistical significance</span><span class="sec-val" style="color:${col}">${sig1?'High (p<0.01)':sig5?'Moderate (p<0.05)':'Low (p≥0.05)'}</span></div>
       <div class="sec"><span class="sec-lbl">EV per trade</span><span class="sec-val" style="color:${evPerTrade>0?'#10b981':'#ef4444'}">${(evPerTrade*100).toFixed(2)}%</span></div>
       <div class="sec"><span class="sec-lbl">Payoff ratio (avg win / avg loss)</span><span class="sec-val">${payoff.toFixed(2)}</span></div>
@@ -1238,7 +1240,7 @@ async function runMonteCarlo() {
   }
 
   document.getElementById('mcResults').style.display = '';
-  if (status) status.textContent = `${N_SIM} sims · ${N_PERM} permutations · done`;
+  if (status) status.textContent = `${N_SIM} sims · done`;
   if (btn) btn.disabled = false;
 }
 
