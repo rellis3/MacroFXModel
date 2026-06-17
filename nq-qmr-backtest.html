@@ -353,7 +353,7 @@
   </div>
   <div class="card-body">
     <div class="info-box" style="margin-top:0;">
-      Resamples trade returns with replacement 500 times to show the distribution of possible outcomes. The fan chart shows p10–p90 of simulated equity paths. The permutation test shuffles returns 5,000 times to measure statistical significance.
+      Resamples trade returns with replacement 500 times to show the distribution of possible outcomes, including max-drawdown risk and per-trade EV/Kelly edge quality. The fan chart shows p10–p90 of simulated equity paths. The permutation test shuffles returns 5,000 times to measure statistical significance.
     </div>
     <div id="mcResults" style="display:none;">
       <div class="chart-wrap" id="mcChart" style="height:260px;margin-top:12px;"></div>
@@ -1113,19 +1113,24 @@ async function runMonteCarlo() {
   const N_SIM = 500;
   const N_PERM = 5000;
 
-  // Run MC simulations — store final equity + percentile curves
+  // Run MC simulations — store final equity + max drawdown + percentile curves
   const finals  = [];
+  const maxDDs  = [];
   const curves  = []; // store every 5th sim to build percentile bands
 
   for (let s = 0; s < N_SIM; s++) {
-    let eq = 1.0;
+    let eq = 1.0, peak = 1.0, dd = 0;
     const path = [1.0];
     for (let i = 0; i < n; i++) {
       eq *= (1 + rets[Math.floor(Math.random() * n)]);
+      if (eq > peak) peak = eq;
+      const curDD = (peak - eq) / peak;
+      if (curDD > dd) dd = curDD;
       path.push(eq);
     }
     finals.push(eq);
     curves.push(path);
+    maxDDs.push(dd);
   }
 
   // Percentile curves (p10, p25, p50, p75, p90) at each step
@@ -1137,13 +1142,27 @@ async function runMonteCarlo() {
     });
   });
 
-  // Final equity stats
+  // Final equity + drawdown stats. p is a percentile in 0–100 (NOT a fraction) —
+  // pct(50) is the median, pct(0.50) would index into the bottom ~0.5% of sims.
   finals.sort((a, b) => a - b);
-  const pct = p => finals[Math.floor(finals.length * p / 100)];
+  maxDDs.sort((a, b) => a - b);
+  const pct   = p => finals[Math.min(finals.length - 1, Math.floor(finals.length * p / 100))];
+  const pctDD = p => maxDDs[Math.min(maxDDs.length - 1, Math.floor(maxDDs.length * p / 100))];
   const years = _curve.length >= 2
     ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
   const toCAGR = eq => ((Math.pow(eq, 1/Math.max(years,0.01)) - 1) * 100).toFixed(1);
   const probLoss = finals.filter(e => e < 1).length / N_SIM * 100;
+  const probDD20 = maxDDs.filter(d => d >= 0.20).length / N_SIM * 100;
+
+  // EV / edge quality — from the actual trade sample, not the simulations
+  const winners    = rets.filter(r => r > 0);
+  const losers     = rets.filter(r => r <= 0);
+  const winRate    = rets.length ? winners.length / rets.length : 0;
+  const avgWin     = winners.length ? winners.reduce((s, r) => s + r, 0) / winners.length : 0;
+  const avgLoss    = losers.length  ? Math.abs(losers.reduce((s, r) => s + r, 0) / losers.length) : 0;
+  const payoff     = avgLoss > 0 ? avgWin / avgLoss : 0;
+  const evPerTrade = winRate * avgWin - (1 - winRate) * avgLoss;
+  const kelly      = payoff > 0 ? winRate - (1 - winRate) / payoff : 0;
 
   // Permutation test (Sharpe significance)
   const mu  = rets.reduce((s,r)=>s+r,0)/n;
@@ -1192,11 +1211,14 @@ async function runMonteCarlo() {
   // Stats bands
   const bands = document.getElementById('mcBands');
   if (bands) bands.innerHTML = [
-    ['p10 CAGR', toCAGR(pct(0.10))+'%', '#ef4444'],
-    ['p25 CAGR', toCAGR(pct(0.25))+'%', '#f59e0b'],
-    ['Median CAGR', toCAGR(pct(0.50))+'%', '#f59e0b'],
-    ['p75 CAGR', toCAGR(pct(0.75))+'%', '#10b981'],
+    ['p10 CAGR', toCAGR(pct(10))+'%', '#ef4444'],
+    ['p25 CAGR', toCAGR(pct(25))+'%', '#f59e0b'],
+    ['Median CAGR', toCAGR(pct(50))+'%', '#f59e0b'],
+    ['p75 CAGR', toCAGR(pct(75))+'%', '#10b981'],
     ['P(loss)', probLoss.toFixed(1)+'%', probLoss < 5 ? '#10b981' : '#ef4444'],
+    ['Median MaxDD', (pctDD(50)*100).toFixed(1)+'%', '#f59e0b'],
+    ['p95 MaxDD (worst-case)', (pctDD(95)*100).toFixed(1)+'%', pctDD(95) < 0.30 ? '#10b981' : '#ef4444'],
+    ['P(DD ≥ 20%)', probDD20.toFixed(1)+'%', probDD20 < 10 ? '#10b981' : '#ef4444'],
   ].map(([l,v,c]) => `<div class="mc-band"><div class="mc-band-lbl">${l}</div><div class="mc-band-val" style="color:${c}">${v}</div></div>`).join('');
 
   // Permutation test result
@@ -1209,7 +1231,10 @@ async function runMonteCarlo() {
       <div class="sec"><span class="sec-lbl">Permutation Test (5k shuffles)</span><span class="sec-val" style="color:${col}">p=${pValue.toFixed(3)} ${sig1?'★★ p<1%':sig5?'★ p<5%':'not significant'}</span></div>
       <div class="sec"><span class="sec-lbl">Actual Sharpe</span><span class="sec-val">${actualSharpe.toFixed(2)}</span></div>
       <div class="sec"><span class="sec-lbl">Shuffles beaten by actual</span><span class="sec-val">${((1-pValue)*100).toFixed(1)}%</span></div>
-      <div class="sec"><span class="sec-lbl">Statistical significance</span><span class="sec-val" style="color:${col}">${sig1?'High (p<0.01)':sig5?'Moderate (p<0.05)':'Low (p≥0.05)'}</span></div>`;
+      <div class="sec"><span class="sec-lbl">Statistical significance</span><span class="sec-val" style="color:${col}">${sig1?'High (p<0.01)':sig5?'Moderate (p<0.05)':'Low (p≥0.05)'}</span></div>
+      <div class="sec"><span class="sec-lbl">EV per trade</span><span class="sec-val" style="color:${evPerTrade>0?'#10b981':'#ef4444'}">${(evPerTrade*100).toFixed(2)}%</span></div>
+      <div class="sec"><span class="sec-lbl">Payoff ratio (avg win / avg loss)</span><span class="sec-val">${payoff.toFixed(2)}</span></div>
+      <div class="sec"><span class="sec-lbl">Kelly fraction</span><span class="sec-val" style="color:${kelly>0?'#10b981':'#ef4444'}">${(kelly*100).toFixed(1)}%</span></div>`;
   }
 
   document.getElementById('mcResults').style.display = '';
@@ -1596,21 +1621,29 @@ async function runBlockBootstrap() {
   }
 
   const finals = [];
+  const maxDDs = [];
   for (let s = 0; s < N_SIM; s++) {
-    let eq = 1.0, count = 0;
+    let eq = 1.0, count = 0, peak = 1.0, dd = 0;
     while (count < n) {
       const blk = blocks[Math.floor(Math.random() * blocks.length)];
       for (const r of blk) {
         if (count >= n) break;
         eq *= (1 + r);
+        if (eq > peak) peak = eq;
+        const curDD = (peak - eq) / peak;
+        if (curDD > dd) dd = curDD;
         count++;
       }
     }
     finals.push(eq);
+    maxDDs.push(dd);
   }
 
+  // p is a percentile in 0–100 (NOT a fraction) — pct(50) is the median.
   finals.sort((a, b) => a - b);
-  const pct = p => finals[Math.floor(finals.length * p / 100)];
+  maxDDs.sort((a, b) => a - b);
+  const pct   = p => finals[Math.min(finals.length - 1, Math.floor(finals.length * p / 100))];
+  const pctDD = p => maxDDs[Math.min(maxDDs.length - 1, Math.floor(maxDDs.length * p / 100))];
   const years = _curve.length >= 2
     ? (new Date(_curve[_curve.length - 1].date) - new Date(_curve[0].date)) / (365.25 * 864e5) : 1;
   const toCAGR  = eq => ((Math.pow(eq, 1 / Math.max(years, 0.01)) - 1) * 100).toFixed(1);
@@ -1618,18 +1651,20 @@ async function runBlockBootstrap() {
 
   const bands = document.getElementById('bbBands');
   if (bands) bands.innerHTML = [
-    ['p10 CAGR',    toCAGR(pct(0.10)) + '%', '#ef4444'],
-    ['p25 CAGR',    toCAGR(pct(0.25)) + '%', '#f59e0b'],
-    ['Median CAGR', toCAGR(pct(0.50)) + '%', '#f59e0b'],
-    ['p75 CAGR',    toCAGR(pct(0.75)) + '%', '#10b981'],
+    ['p10 CAGR',    toCAGR(pct(10)) + '%', '#ef4444'],
+    ['p25 CAGR',    toCAGR(pct(25)) + '%', '#f59e0b'],
+    ['Median CAGR', toCAGR(pct(50)) + '%', '#f59e0b'],
+    ['p75 CAGR',    toCAGR(pct(75)) + '%', '#10b981'],
     ['P(loss)',      probLoss.toFixed(1) + '%', probLoss < 5 ? '#10b981' : '#ef4444'],
+    ['Median MaxDD', (pctDD(50)*100).toFixed(1) + '%', '#f59e0b'],
+    ['p95 MaxDD',    (pctDD(95)*100).toFixed(1) + '%', pctDD(95) < 0.30 ? '#10b981' : '#ef4444'],
   ].map(([l, v, c]) => `<div class="mc-band"><div class="mc-band-lbl">${l}</div><div class="mc-band-val" style="color:${c}">${v}</div></div>`).join('');
 
   const statsEl = document.getElementById('bbStats');
   if (statsEl) statsEl.innerHTML = `
     <div class="sec"><span class="sec-lbl">Block size</span><span class="sec-val">${blkSize} trades</span></div>
     <div class="sec"><span class="sec-lbl">Simulations</span><span class="sec-val">${N_SIM}</span></div>
-    <div class="sec"><span class="sec-lbl">p10–p90 range</span><span class="sec-val">${toCAGR(pct(0.10))}% – ${toCAGR(pct(0.90))}%</span></div>
+    <div class="sec"><span class="sec-lbl">p10–p90 range</span><span class="sec-val">${toCAGR(pct(10))}% – ${toCAGR(pct(90))}%</span></div>
     <div class="sec"><span class="sec-lbl">vs IID</span><span class="sec-val" style="color:var(--text3)">wider = more clustering risk</span></div>`;
 
   document.getElementById('bbResults').style.display = '';
