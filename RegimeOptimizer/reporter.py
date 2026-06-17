@@ -15,7 +15,7 @@ _HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<title>V4 Optimizer Report — {pair}</title>
+<title>{bot_label} Optimizer Report — {pair}</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
@@ -59,7 +59,7 @@ _HTML_TEMPLATE = r"""<!DOCTYPE html>
 </style>
 </head>
 <body>
-<h1>V4 Regime Optimizer Report — {pair}</h1>
+<h1>{bot_label} Regime Optimizer Report — {pair}</h1>
 <div class="meta">
   Generated: {generated_at} &nbsp;|&nbsp; Trials: {n_trials:,} &nbsp;|&nbsp;
   Data: {months_data}m &nbsp;|&nbsp;
@@ -234,12 +234,12 @@ DATA.top_results.slice(0, 5).forEach((r, idx) => {{
 }});
 
 // ── Best config diff ───────────────────────────────────────────────────────────
-const V4_DEFAULTS = {v4_defaults_json};
+const BOT_DEFAULTS = {bot_defaults_json};
 const best = DATA.top_results[0];
 const diffGrid = document.getElementById('diff-grid');
 if (best) {{
   Object.entries(best.config).forEach(([k, v]) => {{
-    const def = V4_DEFAULTS[k];
+    const def = BOT_DEFAULTS[k];
     const delta = def != null ? v - def : null;
     let cls = 'no', symbol = '=';
     if (delta != null && delta > 0) {{ cls = 'up'; symbol = '+' + delta.toFixed(2).replace(/\.?0+$/, ''); }}
@@ -280,25 +280,39 @@ if (!imps.length) {{
 """
 
 
+_V4_DEFAULTS = {
+    "entry_conf": 70, "candle_hold": 2, "entry_score_min": 65,
+    "sl_atr_mult": 1.8, "window_start": 7, "window_end": 20,
+    "post_exit_cooldown": 0, "max_range_hold_bars": 30, "mfe_trail_r": 1.0,
+    "mfe_suppress_r": 1.5, "conf_floor": 45, "drop_thresh": 15,
+    "slope_thresh": -5, "slope_bars": 3, "bocpd_thresh": 70,
+    "bocpd_exit_bars": 4, "bocpd_exit_bars_range": 8, "hold_score_min": 40,
+    "score_drop_exit": 30, "score_drop_bars": 2, "mfe_retrace_pct": 0.25,
+    "mfe_min_r": 1.0, "decay_exit": 0.70,
+}
+
+_BOT_LABELS = {"v1": "V1", "v2": "V2", "v4": "V4", "v5": "V5", "v6": "V6"}
+
+
+def _defaults_for_bot(bot: str) -> dict:
+    if bot in ("v1", "v2", "v6"):
+        from backtester_v1v2v6 import V1_DEFAULTS, V2_DEFAULTS, V6_DEFAULTS
+        return {"v1": V1_DEFAULTS, "v2": V2_DEFAULTS, "v6": V6_DEFAULTS}[bot]
+    return _V4_DEFAULTS
+
+
 def generate_report(json_path: str) -> str:
     """Generate HTML report from a results JSON file. Returns the HTML file path."""
     p    = Path(json_path)
     data = json.loads(p.read_text())
 
-    v4_defaults = {
-        "entry_conf": 70, "candle_hold": 2, "entry_score_min": 65,
-        "sl_atr_mult": 1.8, "window_start": 7, "window_end": 20,
-        "post_exit_cooldown": 0, "max_range_hold_bars": 30, "mfe_trail_r": 1.0,
-        "mfe_suppress_r": 1.5, "conf_floor": 45, "drop_thresh": 15,
-        "slope_thresh": -5, "slope_bars": 3, "bocpd_thresh": 70,
-        "bocpd_exit_bars": 4, "bocpd_exit_bars_range": 8, "hold_score_min": 40,
-        "score_drop_exit": 30, "score_drop_bars": 2, "mfe_retrace_pct": 0.25,
-        "mfe_min_r": 1.0, "decay_exit": 0.70,
-    }
+    bot          = data.get("bot", "v4")
+    bot_defaults = _defaults_for_bot(bot)
 
     sb = data.get("split_bars", {})
     html = _HTML_TEMPLATE.format(
         pair=data["pair"],
+        bot_label=_BOT_LABELS.get(bot, bot.upper()),
         generated_at=data.get("generated_at", ""),
         n_trials=data.get("n_trials", 0),
         months_data=data.get("months_data", 0),
@@ -306,7 +320,7 @@ def generate_report(json_path: str) -> str:
         val_bars=sb.get("val", 0),
         test_bars=sb.get("test", 0),
         json_data=json.dumps(data),
-        v4_defaults_json=json.dumps(v4_defaults),
+        bot_defaults_json=json.dumps(bot_defaults),
     )
 
     out_path = p.with_suffix(".html")
