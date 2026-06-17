@@ -591,8 +591,9 @@
     <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto;max-width:420px">
       Warm-started search: starts at the bot's defaults, then mostly nudges parameters around the best
       config found so far (with occasional fully-random trials to explore). Trains on the first 60% of the
-      loaded range, validates on the next 20%, then blind-tests the top 20 on the final 20%. Runs entirely in
-      this tab — large date ranges + high trial counts will take longer and may slow the page down.
+      loaded range, validates on the next 20%, then blind-tests passing configs on the final 20%. Shows the
+      best near-misses (tagged with the gate that blocked them) if nothing fully passes. Runs entirely in this
+      tab — large date ranges + high trial counts will take longer and may slow the page down.
     </span>
   </div>
   <div id="optProgressWrap" style="display:none;margin-bottom:8px">
@@ -604,7 +605,7 @@
   <div class="bt-tbl-scroll" id="optResultsWrap" style="display:none">
     <table class="bt-tbl" id="optResultsTbl">
       <thead><tr>
-        <th>#</th><th class="num">Objective</th>
+        <th>#</th><th>Status</th><th class="num">Objective</th>
         <th class="num">Train So</th><th class="num">Val So</th><th class="num">Test So</th>
         <th class="num">Trades Tr/Va/Te</th><th class="num">Win% Tr/Va</th>
         <th class="num">MaxDD% Va</th><th class="num">RR Va</th><th></th>
@@ -2629,20 +2630,22 @@ function runOptSplit(simFn, candles, signals, trialCfg) {
 }
 
 // Hard gates + objective — mirrors optimizer.py's make_objective() exactly.
+// Returns { score, reason } — reason identifies which gate blocked the trial ('pass' if none did),
+// so the UI can explain *why* trials fail instead of just reporting a count.
 function scoreOptTrial(anTr, anVa, limits) {
-  if (!anTr || anTr.total < OPT_MIN_TRADES) return -1000;
-  if (!anVa || anVa.total < OPT_MIN_TRADES) return -1000;
-  if (anVa.maxDD > OPT_MAX_DD) return -1000;
+  if (!anTr || anTr.total < OPT_MIN_TRADES) return { score: -1000, reason: 'train_trades<20' };
+  if (!anVa || anVa.total < OPT_MIN_TRADES) return { score: -1000, reason: 'val_trades<20' };
+  if (anVa.maxDD > OPT_MAX_DD) return { score: -1000, reason: 'val_maxDD>30%' };
 
   const trSo = optQs(anTr), vaSo = optQs(anVa);
-  if (trSo < 0) return -350;
-  if (trSo > 0 && vaSo < OPT_OVERFIT_GUARD * trSo) return -500;
-  if (anVa.tpy > limits.maxTpy) return -200;
-  if (anVa.avgDurMin < limits.minDur) return -200;
-  if (anVa.winRate < 48 || anTr.winRate < 45) return -300;
-  if (anVa.rrRatio < 1.1) return -150;
+  if (trSo < 0) return { score: -350, reason: 'train_score<0' };
+  if (trSo > 0 && vaSo < OPT_OVERFIT_GUARD * trSo) return { score: -500, reason: 'overfit_guard' };
+  if (anVa.tpy > limits.maxTpy) return { score: -200, reason: 'val_tpy_too_high' };
+  if (anVa.avgDurMin < limits.minDur) return { score: -200, reason: 'val_avgdur_too_short' };
+  if (anVa.winRate < 48 || anTr.winRate < 45) return { score: -300, reason: 'winrate_floor' };
+  if (anVa.rrRatio < 1.1) return { score: -150, reason: 'rr_floor' };
 
-  return 0.7 * vaSo + 0.3 * trSo;
+  return { score: 0.7 * vaSo + 0.3 * trSo, reason: 'pass' };
 }
 
 function setOptProgress(msg, pct) {
@@ -2723,6 +2726,8 @@ async function runClientOptimizer() {
 
     let top = [];
     let bestScore = -Infinity;
+    let passCount = 0;
+    const gateCounts = {}; // reason -> number of trials blocked by that gate (diagnostic only)
     const YIELD_EVERY = 4;
     const GLOBAL_FRAC  = 0.25; // ~25% of trials explore globally, ~75% exploit locally around the incumbent
 
@@ -2736,19 +2741,25 @@ async function runClientOptimizer() {
         : (Math.random() < GLOBAL_FRAC ? sampleOptConfig(params, bools) : sampleOptConfigLocal(params, bools, incumbent));
       const anTr = runOptSplit(simFn, cTr, sTr, trialCfg);
       const anVa = runOptSplit(simFn, cVa, sVa, trialCfg);
-      const score = scoreOptTrial(anTr, anVa, limits);
+      const { score, reason } = scoreOptTrial(anTr, anVa, limits);
 
-      if (score > -100) {
-        top.push({ score, cfg: trialCfg, anTr, anVa });
-        top.sort((a, b) => b.score - a.score);
-        if (top.length > 20) top.length = 20;
-      }
+      gateCounts[reason] = (gateCounts[reason] || 0) + 1;
+      if (reason === 'pass') passCount++;
+
+      // Always keep the best-scoring trials seen so far, even if none passed every gate —
+      // a passing trial's score always outranks a fixed gate-penalty score, so this still
+      // surfaces fully-valid configs first when they exist, and only falls back to showing
+      // the closest near-misses (tagged with their blocking reason) when nothing passes.
+      top.push({ score, reason, cfg: trialCfg, anTr, anVa });
+      top.sort((a, b) => b.score - a.score);
+      if (top.length > 20) top.length = 20;
+
       if (score > bestScore) bestScore = score;
       if (score > incumbentScore) { incumbentScore = score; incumbent = { ...trialCfg }; }
 
       if (i % YIELD_EVERY === 0 || i === nTrials - 1) {
         setOptProgress(
-          `Trial ${i + 1}/${nTrials} · best objective: ${bestScore > -100 ? bestScore.toFixed(3) : '—'} · ${top.length} valid so far`,
+          `Trial ${i + 1}/${nTrials} · best objective: ${bestScore > -100 ? bestScore.toFixed(3) : '—'} · ${passCount} passed so far`,
           (i + 1) / nTrials * 100
         );
         await new Promise(r => setTimeout(r, 0));
@@ -2757,15 +2768,19 @@ async function runClientOptimizer() {
 
     setOptProgress(`Evaluating top ${top.length} config(s) on blind test split…`, 100);
     await new Promise(r => requestAnimationFrame(r));
-    top.forEach(t => { t.anTe = runOptSplit(simFn, cTe, sTe, t.cfg); });
+    top.forEach(t => { t.anTe = t.reason === 'pass' ? runOptSplit(simFn, cTe, sTe, t.cfg) : null; });
 
     optResults = top;
     renderOptResults();
 
-    if (top.length === 0) {
-      setStatus('err', `Optimizer: no trial passed the quality gates (min ${OPT_MIN_TRADES} trades, val max DD ≤ ${OPT_MAX_DD}%) — try a wider date range or more trials`);
+    if (passCount === 0) {
+      const breakdown = Object.entries(gateCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([reason, count]) => `${reason}: ${count}`)
+        .join(', ');
+      setStatus('err', `Optimizer: 0/${nTrials} trials passed every quality gate — showing the ${top.length} closest near-misses below. Blocked by — ${breakdown}`);
     } else {
-      setStatus('ok', `Optimizer: ${optStopFlag ? 'stopped early — ' : ''}${top.length} valid config(s) · best objective ${top[0].score.toFixed(3)}`);
+      setStatus('ok', `Optimizer: ${optStopFlag ? 'stopped early — ' : ''}${passCount} passed config(s) · best objective ${top[0].score.toFixed(3)}`);
     }
   } catch (err) {
     setStatus('err', `Optimizer error: ${err.message}`);
@@ -2789,9 +2804,13 @@ function renderOptResults() {
     const tr = r.anTr, va = r.anVa, te = r.anTe;
     const n  = an => an ? an.total : 0;
     const so = an => an ? an.sortino.toFixed(2) : '—';
+    const statusHtml = r.reason === 'pass'
+      ? `<span style="color:#3fd17e">PASS</span>`
+      : `<span style="color:#e0734f" title="Blocked by: ${r.reason}">FAIL: ${r.reason}</span>`;
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${idx + 1}</td>
+      <td>${statusHtml}</td>
       <td class="num">${r.score.toFixed(3)}</td>
       <td class="num">${so(tr)}</td>
       <td class="num">${so(va)}</td>
