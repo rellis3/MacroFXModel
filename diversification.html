@@ -635,6 +635,55 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
       </div>
     </div>
 
+    <!-- Section 6: Deflated Sharpe Ratio -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">
+        6 — Deflated Sharpe Ratio (Selection-Bias Correction)
+        <button class="bt-run-btn" id="tlDSRBtn" onclick="runTLDeflatedSharpe()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Compute Deflated Sharpe</button>
+      </div>
+      <div class="bt-card-body">
+        <div class="dv-info" style="margin-bottom:10px;">
+          Each system's parameters were chosen from a grid search over N candidate configs — the reported Sharpe is the
+          <em>best of N</em>, which looks good even with zero real skill. The Deflated Sharpe Ratio (Bailey &amp; López de Prado)
+          discounts the observed Sharpe by the expected maximum achievable by chance given N trials, then reports the
+          probability the true Sharpe is still positive after that correction.
+        </div>
+        <div id="tlDSRProgress" style="display:none;padding:4px 0 10px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>System</th><th class="num">N Trials</th><th class="num">Sharpe (current)</th>
+              <th class="num">σ(Sharpe) across trials</th><th class="num">SR₀ (luck threshold)</th>
+              <th class="num">Deflated Sharpe</th><th>Verdict</th>
+            </tr></thead>
+            <tbody id="tlDSRBody"><tr><td colspan="7" style="text-align:center;color:var(--text3);">Click "Compute Deflated Sharpe" to run.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 7: Expected Value by Regime -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">
+        7 — Expected Value by Market Regime (VIX-Conditioned)
+        <button class="bt-run-btn" id="tlEVBtn" onclick="runTLEVByRegime()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Compute EV by Regime</button>
+      </div>
+      <div class="bt-card-body">
+        <div class="dv-info" style="margin-bottom:10px;">
+          Decomposes each system's edge into win-rate × average-win vs. loss-rate × average-loss, bucketed by the VIX-regime
+          classification (Calm / Elevated / Stressed) used in P3. A robust edge shows positive EV across all three regimes;
+          an edge concentrated in one regime is fragile to a regime shift.
+        </div>
+        <div class="bt-chart-wrap"><canvas id="chartTLEVRegime"></canvas></div>
+        <div class="bt-tbl-scroll" style="margin-top:14px;">
+          <table class="bt-tbl" id="tlEVTable">
+            <thead><tr id="tlEVHead"></tr></thead>
+            <tbody id="tlEVBody"><tr><td style="text-align:center;color:var(--text3);">Click "Compute EV by Regime" to run.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ── Tab 9: Systems ─────────────────────────────────────────────────────── -->
@@ -3023,11 +3072,227 @@ function renderTLTxCosts() {
   }).join('');
 }
 
+// ── Section 6: Deflated Sharpe Ratio ──────────────────────────────────────────
+function erf(x) {
+  const sign = x < 0 ? -1 : 1; x = Math.abs(x);
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const t = 1/(1+p*x);
+  const y = 1-(((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t)*Math.exp(-x*x);
+  return sign*y;
+}
+function normCDF(x) { return 0.5*(1+erf(x/Math.SQRT2)); }
+function normInv(p) {
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+  const a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00];
+  const b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01];
+  const c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,-2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00];
+  const d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,3.754408661907416e+00];
+  const plow=0.02425, phigh=1-plow;
+  let q,r;
+  if (p<plow) { q=Math.sqrt(-2*Math.log(p)); return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  if (p<=phigh) { q=p-0.5; r=q*q; return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  q=Math.sqrt(-2*Math.log(1-p));
+  return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+
+function skewKurt(rets) {
+  const fin = rets.filter(isFinite);
+  const n = fin.length;
+  const mu = fin.reduce((a,b)=>a+b,0)/n;
+  const sd = Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/n);
+  if (sd === 0) return { skew:0, kurt:3 };
+  const skew = fin.reduce((a,b)=>a+((b-mu)/sd)**3,0)/n;
+  const kurt = fin.reduce((a,b)=>a+((b-mu)/sd)**4,0)/n;
+  return { skew, kurt };
+}
+
+async function computeTrialSharpes(key, onProgress) {
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const grid = OPT_GRIDS[key];
+  if (!grid) return [sharpe(_results[key].monthlyRet)];
+  const combos = expandGrid(grid).filter(c => _validCombo(key, c));
+  const baseCfg = {..._cfg[key]};
+  const sharpes = [];
+  for (let ci = 0; ci < combos.length; ci++) {
+    Object.assign(_cfg[key], combos[ci]);
+    if (key === 'p1' && 'wNetliq' in combos[ci]) {
+      const rem = 1 - _cfg.p1.wNetliq;
+      const baseRem = baseCfg.wCurve + baseCfg.wCredit + baseCfg.wRealyield + baseCfg.wIsm;
+      const scale = baseRem > 0 ? rem / baseRem : 0.25;
+      _cfg.p1.wCurve = baseCfg.wCurve*scale; _cfg.p1.wCredit = baseCfg.wCredit*scale;
+      _cfg.p1.wRealyield = baseCfg.wRealyield*scale; _cfg.p1.wIsm = baseCfg.wIsm*scale;
+    }
+    sharpes.push(sharpe(runners[key](_rawData).monthlyRet));
+    if (ci % 40 === 39) { onProgress?.(key, ci+1, combos.length); await new Promise(r=>setTimeout(r,0)); }
+  }
+  Object.assign(_cfg[key], baseCfg);
+  return sharpes;
+}
+
+function deflatedSharpe(monthlyRet, trialSharpes) {
+  const fin = monthlyRet.filter(isFinite);
+  const n = fin.length;
+  if (n < 12) return null;
+  const shAnn = sharpe(fin);
+  const shM = shAnn / Math.sqrt(12);          // per-period (monthly) SR
+  const { skew, kurt } = skewKurt(fin);
+
+  const validTrials = trialSharpes.filter(isFinite);
+  const N = Math.max(validTrials.length, 1);
+  const muT = validTrials.reduce((a,b)=>a+b,0)/N;
+  const varT = validTrials.reduce((a,b)=>a+(b-muT)**2,0)/N;
+  const sigmaSRAnn = Math.sqrt(varT);
+  const sigmaSR = sigmaSRAnn / Math.sqrt(12);
+
+  const gammaE = 0.5772156649;
+  let sr0 = 0;
+  if (N > 1 && sigmaSR > 0) {
+    sr0 = sigmaSR * ((1-gammaE)*normInv(1-1/N) + gammaE*normInv(1-1/(N*Math.E)));
+  }
+
+  const denom = Math.sqrt(Math.max(1e-9, 1 - skew*shM + ((kurt-1)/4)*shM*shM));
+  const z = (shM - sr0) * Math.sqrt(n-1) / denom;
+  const dsr = normCDF(z);
+
+  return { shAnn, sr0Ann: sr0*Math.sqrt(12), dsr, nTrials: N, sigmaSRAnn, n };
+}
+
+async function runTLDeflatedSharpe() {
+  if (!_rawData || !_results.p1) return;
+  const btn = document.getElementById('tlDSRBtn');
+  btn.disabled = true;
+  const prog = document.getElementById('tlDSRProgress');
+  prog.style.display = 'block';
+
+  const rows = [];
+  const allTrialSh = [];
+  for (const key of SYS_KEYS) {
+    prog.textContent = `Testing ${key.toUpperCase()} trials…`;
+    await new Promise(r=>setTimeout(r,0));
+    const trialSharpes = await computeTrialSharpes(key, (k,done,total) => {
+      prog.textContent = `Testing ${k.toUpperCase()}: ${done}/${total} combos…`;
+    });
+    allTrialSh.push(...trialSharpes);
+    const res = deflatedSharpe(_results[key].monthlyRet, trialSharpes);
+    rows.push({ name: SYS_NAMES[SYS_KEYS.indexOf(key)], color: SYS_COLORS[SYS_KEYS.indexOf(key)], res });
+  }
+
+  prog.textContent = 'Computing combined book deflated Sharpe…';
+  await new Promise(r=>setTimeout(r,0));
+  const combRes = deflatedSharpe(_combined.monthlyRet, allTrialSh);
+  rows.push({ name: 'Combined Book', color: '#e2e8f0', res: combRes });
+
+  prog.style.display = 'none';
+  btn.disabled = false;
+
+  document.getElementById('tlDSRBody').innerHTML = rows.map(r => {
+    if (!r.res) return `<tr><td>${r.name}</td><td colspan="6" class="num">—</td></tr>`;
+    const { shAnn, sr0Ann, dsr, nTrials, sigmaSRAnn } = r.res;
+    const pct = dsr*100;
+    const verdict = pct>=95 ? 'Real edge (95%+ confidence)' : pct>=70 ? 'Likely real, some luck' : pct>=50 ? 'Marginal — partly luck' : 'Indistinguishable from noise';
+    const vColor = pct>=95?'#22c55e':pct>=70?'#84cc16':pct>=50?'#f97316':'#ef4444';
+    return `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${r.color};margin-right:5px;"></span>${r.name}</td>
+      <td class="num">${nTrials.toLocaleString()}</td>
+      <td class="num ${shAnn>=0.5?'pos':'neg'}">${fmt(shAnn,2)}</td>
+      <td class="num">${fmt(sigmaSRAnn,2)}</td>
+      <td class="num">${fmt(sr0Ann,2)}</td>
+      <td class="num" style="color:${vColor};font-weight:600;">${fmt(pct,1)}%</td>
+      <td style="color:${vColor};">${verdict}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Section 7: Expected Value by Regime ───────────────────────────────────────
+function classifyMonthlyVixRegime() {
+  if (!_rawData) return { dates: [], regime: [] };
+  const { dateIndex: dates, prices } = _rawData;
+  const vixRaw = prices?.vix ? ffill(prices.vix) : null;
+  if (!vixRaw) return { dates: [], regime: [] };
+  const c3 = _cfg.p3;
+  const vixZ = rollingZ(vixRaw, c3.zWin);
+  const monthEnds = monthEndIdx(dates);
+  const regimeDates = [], regimes = [];
+  for (const idx of monthEnds) {
+    const vv = vixRaw[idx], vz = vixZ[idx];
+    let r;
+    if (!isFinite(vv) || !isFinite(vz)) r = null;
+    else if (vv < c3.vixCalm && vz < 0) r = 'CALM';
+    else if (vv > c3.vixStress || vz > c3.stressZ) r = 'STRESSED';
+    else r = 'ELEVATED';
+    if (r) { regimeDates.push(dates[idx]); regimes.push(r); }
+  }
+  return { dates: regimeDates, regime: regimes };
+}
+
+function evByRegime(monthlyRet, monthlyDates, regimeMap) {
+  const buckets = { CALM: [], ELEVATED: [], STRESSED: [] };
+  for (let i = 0; i < monthlyDates.length; i++) {
+    const r = regimeMap.get(monthlyDates[i]);
+    if (r && isFinite(monthlyRet[i])) buckets[r].push(monthlyRet[i]);
+  }
+  const out = {};
+  for (const [regime, rets] of Object.entries(buckets)) {
+    if (rets.length === 0) { out[regime] = null; continue; }
+    const wins = rets.filter(r=>r>0);
+    const losses = rets.filter(r=>r<=0);
+    const winRate = wins.length / rets.length;
+    const avgWin = wins.length ? wins.reduce((a,b)=>a+b,0)/wins.length : 0;
+    const avgLoss = losses.length ? losses.reduce((a,b)=>a+b,0)/losses.length : 0;
+    const ev = winRate*avgWin + (1-winRate)*avgLoss;
+    out[regime] = { n: rets.length, winRate, avgWin, avgLoss, ev };
+  }
+  return out;
+}
+
+function runTLEVByRegime() {
+  if (!_rawData || !_results.p1 || !_combined) return;
+  const { dates: regimeDates, regime } = classifyMonthlyVixRegime();
+  if (!regimeDates.length) return;
+  const regimeMap = new Map(regimeDates.map((d,i)=>[d, regime[i]]));
+
+  const REGIMES = ['CALM','ELEVATED','STRESSED'];
+  const REGIME_COLORS = { CALM:'#22c55e', ELEVATED:'#f97316', STRESSED:'#ef4444' };
+
+  const allSeries = [...SYS_KEYS.map((k,i)=>({ name: SYS_NAMES[i], color: SYS_COLORS[i], mr: _results[k].monthlyRet, dates: _results[k].monthlyDates })),
+    { name: 'Combined Book', color: '#e2e8f0', mr: _combined.monthlyRet, dates: _combined.monthlyDates }];
+
+  const evRows = allSeries.map(s => ({ name: s.name, color: s.color, stats: evByRegime(s.mr, s.dates, regimeMap) }));
+
+  const datasets = REGIMES.map(r => ({
+    label: r,
+    data: evRows.map(row => row.stats[r] ? row.stats[r].ev*100 : null),
+    backgroundColor: REGIME_COLORS[r] + 'cc',
+    borderColor: REGIME_COLORS[r], borderWidth: 1,
+  }));
+  makeChart('chartTLEVRegime', 'bar', evRows.map(r=>r.name), datasets, {
+    animation:{duration:0},
+    plugins:{ legend:{ display:true, position:'top', labels:{color:'#94a3b8',font:{size:10}} } },
+    scales: { x:{ ticks:{color:'#94a3b8',font:{size:9}}, grid:{display:false} },
+              y:{ ticks:{color:'#94a3b8', callback:v=>v.toFixed(2)+'%'}, grid:{color:'rgba(255,255,255,0.06)'}, title:{display:true,text:'EV / month (%)',color:'#64748b',font:{size:10}} } }
+  });
+
+  document.getElementById('tlEVHead').innerHTML = '<th>System</th>' + REGIMES.map(r=>
+    `<th class="num" style="color:${REGIME_COLORS[r]}">${r} N</th><th class="num" style="color:${REGIME_COLORS[r]}">${r} Win%</th><th class="num" style="color:${REGIME_COLORS[r]}">${r} EV/mo</th>`
+  ).join('');
+  document.getElementById('tlEVBody').innerHTML = evRows.map(row => {
+    const cells = REGIMES.map(r => {
+      const s = row.stats[r];
+      if (!s) return `<td class="num">—</td><td class="num">—</td><td class="num">—</td>`;
+      const evColor = s.ev >= 0 ? 'pos' : 'neg';
+      return `<td class="num">${s.n}</td><td class="num">${(s.winRate*100).toFixed(0)}%</td><td class="num ${evColor}">${(s.ev*100).toFixed(2)}%</td>`;
+    }).join('');
+    return `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${row.color};margin-right:5px;"></span>${row.name}</td>${cells}</tr>`;
+  }).join('');
+}
+
 // ── TestLab tab init ──────────────────────────────────────────────────────────
 function initTestLab() {
   renderTLMC();
   renderTLCapacity();
   renderTLTxCosts();
+  runTLEVByRegime();
 }
 
 function switchSys(key) {
