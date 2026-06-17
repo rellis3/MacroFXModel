@@ -6254,6 +6254,7 @@ setInterval(async () => {
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
   const fredKey = process.env.FRED_KEY   ? '✓' : '✗ missing — T1/T2/T4/T6 will show Data unavailable';
+  const finnhub = process.env.FINNHUB_KEY ? '✓' : '✗ missing — news multiplier / event risk disabled';
   const cfKv    = process.env.CF_ACCOUNT_ID ? '✓ CF REST API' : '✗ file only (set CF_ACCOUNT_ID + CF_API_TOKEN)';
   const alerts  = state.cfg?.enabled ? 'ON' : 'OFF (enable in Alerts modal)';
   console.log(`MacroFX Server   http://localhost:${PORT}`);
@@ -6261,6 +6262,7 @@ app.listen(PORT, () => {
   console.log(`Level refresh    every ${REFRESH_LEVELS_MS / 60_000} min`);
   console.log(`OANDA_KEY        ${oanda}`);
   console.log(`FRED_KEY         ${fredKey}`);
+  console.log(`FINNHUB_KEY      ${finnhub}`);
   console.log(`KV persistence   ${cfKv}`);
   console.log(`Data dir         ${process.env.DATA_DIR || path.join(__dirname, 'data')}`);
 });
