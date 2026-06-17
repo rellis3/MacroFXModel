@@ -589,9 +589,10 @@
     <button class="rb-run-btn" id="optRunBtn" onclick="runClientOptimizer()">▶ Run Optimizer</button>
     <button class="rb-metrics-btn" id="optStopBtn" onclick="stopOptimizer()" style="display:none">■ Stop</button>
     <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto;max-width:420px">
-      Random search over the current bot's parameter ranges. Trains on the first 60% of the loaded range,
-      validates on the next 20%, then blind-tests the top 20 on the final 20%. Runs entirely in this tab — large
-      date ranges + high trial counts will take longer and may slow the page down.
+      Warm-started search: starts at the bot's defaults, then mostly nudges parameters around the best
+      config found so far (with occasional fully-random trials to explore). Trains on the first 60% of the
+      loaded range, validates on the next 20%, then blind-tests the top 20 on the final 20%. Runs entirely in
+      this tab — large date ranges + high trial counts will take longer and may slow the page down.
     </span>
   </div>
   <div id="optProgressWrap" style="display:none;margin-bottom:8px">
@@ -2563,18 +2564,49 @@ function optDecimalPlaces(step) {
   return i === -1 ? 0 : s.length - i - 1;
 }
 
-// Random-sample one trial config from a bot's PARAMS (quantized to `step` within [min,max])
-// and BOOLS (50/50 true/false) — the client-side substitute for Optuna's TPE sampler.
+function optQuantize(p, val) {
+  const steps = Math.max(1, Math.round((p.max - p.min) / p.step));
+  const idx   = Math.round((val - p.min) / p.step);
+  const clamped = Math.max(0, Math.min(steps, idx));
+  const dp    = optDecimalPlaces(p.step);
+  const q     = p.min + clamped * p.step;
+  return dp === 0 ? Math.round(q) : parseFloat(q.toFixed(dp));
+}
+
+// Pure-random draw of one param, quantized to `step` within [min,max].
+function optRandomParam(p) {
+  const steps = Math.max(1, Math.round((p.max - p.min) / p.step));
+  const idx   = Math.floor(Math.random() * (steps + 1));
+  return optQuantize(p, p.min + idx * p.step);
+}
+
+// Global uniform random-sample of a full trial config — the exploration half of the sampler.
 function sampleOptConfig(params, bools) {
   const trialCfg = {};
-  params.forEach(p => {
-    const steps = Math.max(1, Math.round((p.max - p.min) / p.step));
-    const idx   = Math.floor(Math.random() * (steps + 1));
-    const dp    = optDecimalPlaces(p.step);
-    const val   = p.min + idx * p.step;
-    trialCfg[p.key] = dp === 0 ? Math.round(val) : parseFloat(val.toFixed(dp));
-  });
+  params.forEach(p => { trialCfg[p.key] = optRandomParam(p); });
   bools.forEach(b => { trialCfg[b.key] = Math.random() < 0.5; });
+  return trialCfg;
+}
+
+// Local jitter-mutate a subset of params/bools around an incumbent config — the exploitation
+// half of the sampler. Optuna's TPE adaptively narrows toward promising regions; since plain
+// uniform random search over a 9+ dimensional space rarely lands in the narrow joint region
+// where every hard gate passes, we approximate that adaptive behaviour with a simple (1+1)-ES:
+// mutate ~40% of dimensions by ±18% of their range around the current best-so-far config.
+const OPT_JITTER_FRAC  = 0.18;
+const OPT_MUTATE_PROB  = 0.40;
+function sampleOptConfigLocal(params, bools, incumbent) {
+  const trialCfg = { ...incumbent };
+  params.forEach(p => {
+    if (Math.random() >= OPT_MUTATE_PROB) return;
+    const span   = (p.max - p.min) * OPT_JITTER_FRAC;
+    const base   = incumbent[p.key] != null ? incumbent[p.key] : p.def;
+    const jitter = (Math.random() * 2 - 1) * span;
+    trialCfg[p.key] = optQuantize(p, base + jitter);
+  });
+  bools.forEach(b => {
+    if (Math.random() < OPT_MUTATE_PROB) trialCfg[b.key] = !((incumbent[b.key] != null) ? incumbent[b.key] : b.def);
+  });
   return trialCfg;
 }
 
@@ -2685,13 +2717,23 @@ async function runClientOptimizer() {
     const mtf    = (currentBot === 'v5' || currentBot === 'v6') ? V5_MTF : 1;
     const limits = optMtfLimits(mtf);
 
+    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS };
+    let incumbent    = { ...(defaultsMap[currentBot] || V2_DEFAULTS) };
+    let incumbentScore = -Infinity;
+
     let top = [];
     let bestScore = -Infinity;
     const YIELD_EVERY = 4;
+    const GLOBAL_FRAC  = 0.25; // ~25% of trials explore globally, ~75% exploit locally around the incumbent
 
     for (let i = 0; i < nTrials; i++) {
       if (optStopFlag) break;
-      const trialCfg = sampleOptConfig(params, bools);
+      // First trial always checks the known-good defaults as-is; thereafter mix global
+      // random exploration with local jitter around the best-so-far incumbent (a simple
+      // (1+1)-ES standing in for Optuna's adaptive TPE sampler used server-side).
+      const trialCfg = i === 0
+        ? { ...incumbent }
+        : (Math.random() < GLOBAL_FRAC ? sampleOptConfig(params, bools) : sampleOptConfigLocal(params, bools, incumbent));
       const anTr = runOptSplit(simFn, cTr, sTr, trialCfg);
       const anVa = runOptSplit(simFn, cVa, sVa, trialCfg);
       const score = scoreOptTrial(anTr, anVa, limits);
@@ -2702,6 +2744,7 @@ async function runClientOptimizer() {
         if (top.length > 20) top.length = 20;
       }
       if (score > bestScore) bestScore = score;
+      if (score > incumbentScore) { incumbentScore = score; incumbent = { ...trialCfg }; }
 
       if (i % YIELD_EVERY === 0 || i === nTrials - 1) {
         setOptProgress(
