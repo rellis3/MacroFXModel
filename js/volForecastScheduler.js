@@ -288,17 +288,25 @@ async function getDailyRV(cfg) {
 async function fetchNewsEvents(targetDate) {
   const key = process.env.FINNHUB_KEY;
   if (!key) return [];
+  const d = targetDate.toISOString().split('T')[0];
   try {
-    const d   = targetDate.toISOString().split('T')[0];
     const url = `https://finnhub.io/api/v1/calendar/economic?from=${d}&to=${d}&token=${key}`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'MacroFXDashboard/1.0' },
       signal:  AbortSignal.timeout(10_000),
     });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.economicCalendar ?? [];
-  } catch {
+    if (!res.ok) {
+      console.error(`[NEWS-EVENTS] Finnhub ${d} HTTP ${res.status}`);
+      return [];
+    }
+    const data   = await res.json();
+    const events = data.economicCalendar ?? [];
+    const usEvents = events.filter(e => e.country === 'US');
+    console.log(`[NEWS-EVENTS] ${d}: ${events.length} total, ${usEvents.length} US — ${
+      usEvents.map(e => `"${e.event}" (${e.impact ?? '?'})`).join(', ') || 'none'}`);
+    return events;
+  } catch (err) {
+    console.error(`[NEWS-EVENTS] Finnhub ${d} fetch failed: ${err.message}`);
     return [];
   }
 }
