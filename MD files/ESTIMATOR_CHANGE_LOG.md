@@ -269,11 +269,22 @@ pass once several more index compare sessions are available.
   "informational only, not applied to ranges" — it is applied (via `sigmaFwd`,
   before BM/HN range calculation); the comment was simply wrong.
 
-### Open item
-Whether `FINNHUB_KEY` is configured in production, and whether Finnhub's economic
-calendar actually carried a Fed Chair speech entry for Jun-18 (so the new pattern
-would have fired), could not be verified from this repo/sandbox — needs production
-log/config check.
+### Open item — UPDATE after manual refresh test
+User ran `POST /api/vol-forecast/refresh` on the live Railway deployment after both
+this fix and the news-visibility export fix (2026-06-18 PR) were merged. The fresh
+output still showed **no `News: ...` line** — GOLD/EURUSD were bit-identical to the
+pre-fix run, NQ/UK100/SPX shifted only by normal bar-data drift. This confirms
+`detectNewsMultiplier()` returned `mult: 1.0` even on a live recompute with the new
+Fed Chair Speech pattern deployed. Two possible causes, not yet disambiguated:
+1. `FINNHUB_KEY` isn't set in Railway — check the startup log line added alongside
+   `OANDA_KEY`/`FRED_KEY` (2026-06-18 PR) to confirm.
+2. The speech was never on Finnhub's *scheduled* economic calendar in the first
+   place (a surprise/off-calendar appearance) — in which case no regex fix can help,
+   since `detectNewsMultiplier()` only ever sees what Finnhub's calendar lists in
+   advance. This would be a structural limitation of calendar-based forward
+   detection, not a pattern-matching bug — catching unscheduled events would need a
+   same-session reactive mechanism (e.g. mid-day re-forecast triggered by realized
+   vol/range already exceeding forecast), not a forward-looking multiplier.
 
 ### Next calibration checkpoints:
 - Confirm the Fed Chair Speech multiplier (1.18) against a clean single-event
