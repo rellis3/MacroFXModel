@@ -48,6 +48,24 @@ from backtester_v4 import (
     simulate_v4,
     simulate_v5,
 )
+from backtester_v1v2v6 import (
+    V1_DEFAULTS,
+    V1_PARAM_SPEC,
+    V2_DEFAULTS,
+    V2_PARAM_SPEC,
+    V6_DEFAULTS,
+    V6_PARAM_SPEC,
+    cfg_from_trial,
+    compute_signals_v1,
+    compute_signals_v2,
+    simulate_v1,
+    simulate_v2,
+    simulate_v6,
+)
+
+_DEFAULTS_BY_BOT = {"v1": V1_DEFAULTS, "v2": V2_DEFAULTS, "v4": V4_DEFAULTS,
+                    "v5": V4_DEFAULTS, "v6": V6_DEFAULTS}
+_PARAM_SPEC_BY_BOT = {"v1": V1_PARAM_SPEC, "v2": V2_PARAM_SPEC, "v6": V6_PARAM_SPEC}
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
@@ -243,15 +261,21 @@ def _split_bars(bars: dict, train_end: int, val_end: int) -> tuple[dict, dict, d
     )
 
 
-def _cfg_from_trial(trial: optuna.Trial, mtf: int = 1) -> dict:
+def _cfg_from_trial(trial: optuna.Trial, mtf: int = 1, bot: str = "v4") -> dict:
     """
     Sample a config from the Optuna trial.
+
+    V1/V2/V6 use a generic (key, kind, low, high, step) spec — see
+    backtester_v1v2v6.py. V4/V5 use the search ranges below.
 
     For MTF > 1 (V5 mode), bar-count params are expressed in MTF-bar units
     (matching the HTML V5 UI) and scaled to M1 bars internally by simulate_v5.
 
     For MTF == 1 (V4 mode), bar-count params are already in M1 bars.
     """
+    if bot in _PARAM_SPEC_BY_BOT:
+        return cfg_from_trial(trial, _PARAM_SPEC_BY_BOT[bot])
+
     if mtf > 1:
         # V5: bar-count params in MTF-bar units, small numeric ranges.
         # Floors are deliberately strict to prevent tiny-SL / quick-breakeven variance gaming.
@@ -310,9 +334,15 @@ def _cfg_from_trial(trial: optuna.Trial, mtf: int = 1) -> dict:
 
 
 def _run_split(bars: dict, signals: list, cfg: dict,
-               spread_pips: float = 1.0, mtf: int = 1) -> Optional[dict]:
+               spread_pips: float = 1.0, mtf: int = 1, bot: str = "v4") -> Optional[dict]:
     """Run backtest on a pre-sliced bars+signals pair. Returns analytics or None."""
-    if mtf > 1:
+    if bot == "v1":
+        trades = simulate_v1(bars, signals, cfg, spread_pips=spread_pips)
+    elif bot == "v2":
+        trades = simulate_v2(bars, signals, cfg, spread_pips=spread_pips)
+    elif bot == "v6":
+        trades = simulate_v6(bars, signals, cfg, mtf_minutes=mtf, spread_pips=spread_pips)
+    elif mtf > 1:
         trades = simulate_v5(bars, signals, cfg, mtf_minutes=mtf, spread_pips=spread_pips)
     else:
         trades = simulate_v4(bars, signals, cfg, spread_pips=spread_pips)
@@ -338,16 +368,16 @@ def _qs(an: Optional[dict]) -> float:
 
 
 def make_objective(bars_train, bars_val, sigs_train, sigs_val,
-                   spread_pips: float = 1.0, mtf: int = 1):
+                   spread_pips: float = 1.0, mtf: int = 1, bot: str = "v4"):
     limits = _mtf_limits(mtf)
     max_tpy     = limits["max_tpy"]
     min_avg_dur = limits["min_avg_dur"]
 
     def objective(trial: optuna.Trial) -> float:
-        cfg = _cfg_from_trial(trial, mtf)
+        cfg = _cfg_from_trial(trial, mtf, bot)
 
-        an_tr = _run_split(bars_train, sigs_train, cfg, spread_pips, mtf)
-        an_va = _run_split(bars_val,   sigs_val,   cfg, spread_pips, mtf)
+        an_tr = _run_split(bars_train, sigs_train, cfg, spread_pips, mtf, bot)
+        an_va = _run_split(bars_val,   sigs_val,   cfg, spread_pips, mtf, bot)
 
         # ── Hard gates — prune immediately ────────────────────────────────────
         if an_tr is None or an_tr["total"] < MIN_TRADES:
@@ -393,13 +423,27 @@ def make_objective(bars_train, bars_val, sigs_train, sigs_val,
 
 def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: int = 18,
                      from_date: Optional[str] = None, to_date: Optional[str] = None,
-                     spread_pips: float = 1.0, mtf: int = 1):
+                     spread_pips: float = 1.0, mtf: int = 1, bot: str = "v4"):
+    if bot == "v6" and mtf <= 1:
+        mtf = 30   # V6 always needs an MTF regime signal — default to 30m if not specified
+    elif bot in ("v1", "v2"):
+        mtf = 1    # V1/V2 are M1-only — ignore any --mtf value so pruning limits stay M1-scaled
+
     RESULTS_DIR.mkdir(exist_ok=True)
     ts_str = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     tag    = f"{pair.replace('/', '')}_{ts_str}"
     db_path = RESULTS_DIR / f"{tag}.db"
 
-    mode_str = f"V5 ({mtf}m regime)" if mtf > 1 else "V4 (M1)"
+    if bot == "v1":
+        mode_str = "V1 (M1, 3-state HMM)"
+    elif bot == "v2":
+        mode_str = "V2 (M1, 4-state HMM)"
+    elif bot == "v6":
+        mode_str = f"V6 ({mtf}m regime)"
+    elif mtf > 1:
+        mode_str = f"V5 ({mtf}m regime)"
+    else:
+        mode_str = "V4 (M1)"
     print(f"\n{'='*60}")
     print(f"  Regime Optimizer [{mode_str}] — {pair}")
     if from_date or to_date:
@@ -425,7 +469,13 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
     tf_str = f"{mtf}m MTF" if mtf > 1 else "M1"
     print(f"  Pre-computing HMM signals ({tf_str}) …")
     t0 = time.time()
-    if mtf > 1:
+    if bot == "v1":
+        sigs_all = compute_signals_v1(bars, pair)
+    elif bot == "v2":
+        sigs_all = compute_signals_v2(bars, pair)
+    elif bot == "v6":
+        sigs_all = compute_signals_v5(bars, pair, mtf_minutes=mtf)
+    elif mtf > 1:
         sigs_all = compute_signals_v5(bars, pair, mtf_minutes=mtf)
     else:
         sigs_all = compute_signals_v4(bars, pair)
@@ -444,7 +494,7 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
         study_name=tag,
         load_if_exists=True,
     )
-    objective = make_objective(bars_train, bars_val, sigs_train, sigs_val, spread_pips, mtf)
+    objective = make_objective(bars_train, bars_val, sigs_train, sigs_val, spread_pips, mtf, bot)
 
     print(f"\n  Starting optimisation (n_trials={n_trials}) …")
     t1 = time.time()
@@ -458,26 +508,37 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
 
     print(f"\n  Evaluating top {len(top_trials)} trials on TEST split …")
 
+    bot_defaults = _DEFAULTS_BY_BOT[bot]
+
     results = []
     for rank, trial in enumerate(top_trials, 1):
         cfg = trial.params.copy()
-        # ensure float types for float params (Optuna stores as suggested)
-        for fp in ("sl_atr_mult","mfe_trail_r","mfe_suppress_r","mfe_retrace_pct","mfe_min_r","decay_exit"):
-            if fp in cfg:
-                cfg[fp] = float(cfg[fp])
-        for ip in ("entry_conf","candle_hold","entry_score_min","window_start","window_end",
-                   "post_exit_cooldown","max_range_hold_bars","conf_floor","drop_thresh",
-                   "slope_thresh","slope_bars","bocpd_thresh","bocpd_exit_bars",
-                   "bocpd_exit_bars_range","hold_score_min","score_drop_exit","score_drop_bars"):
-            if ip in cfg:
-                cfg[ip] = int(cfg[ip])
+        if bot in _PARAM_SPEC_BY_BOT:
+            for key, kind, _lo, _hi, _step in _PARAM_SPEC_BY_BOT[bot]:
+                if key not in cfg:
+                    continue
+                if kind == "float":
+                    cfg[key] = float(cfg[key])
+                elif kind == "int":
+                    cfg[key] = int(cfg[key])
+        else:
+            # ensure float types for float params (Optuna stores as suggested)
+            for fp in ("sl_atr_mult","mfe_trail_r","mfe_suppress_r","mfe_retrace_pct","mfe_min_r","decay_exit"):
+                if fp in cfg:
+                    cfg[fp] = float(cfg[fp])
+            for ip in ("entry_conf","candle_hold","entry_score_min","window_start","window_end",
+                       "post_exit_cooldown","max_range_hold_bars","conf_floor","drop_thresh",
+                       "slope_thresh","slope_bars","bocpd_thresh","bocpd_exit_bars",
+                       "bocpd_exit_bars_range","hold_score_min","score_drop_exit","score_drop_bars"):
+                if ip in cfg:
+                    cfg[ip] = int(cfg[ip])
 
-        an_tr = _run_split(bars_train, sigs_train, cfg, spread_pips, mtf)
-        an_va = _run_split(bars_val,   sigs_val,   cfg, spread_pips, mtf)
-        an_te = _run_split(bars_test,  sigs_test,  cfg, spread_pips, mtf)
+        an_tr = _run_split(bars_train, sigs_train, cfg, spread_pips, mtf, bot)
+        an_va = _run_split(bars_val,   sigs_val,   cfg, spread_pips, mtf, bot)
+        an_te = _run_split(bars_test,  sigs_test,  cfg, spread_pips, mtf, bot)
 
-        diff = {k: round(cfg.get(k, V4_DEFAULTS.get(k)) - V4_DEFAULTS.get(k, 0), 4)
-                for k in cfg if k in V4_DEFAULTS}
+        diff = {k: round(cfg.get(k, bot_defaults.get(k)) - bot_defaults.get(k, 0), 4)
+                for k in cfg if k in bot_defaults}
 
         results.append({
             "rank":          rank,
@@ -502,6 +563,7 @@ def run_optimisation(pair: str, n_trials: int = 1000, n_jobs: int = 1, months: i
     # Write results JSON
     out = {
         "pair":          pair,
+        "bot":           bot,
         "generated_at":  ts_str,
         "n_trials":      n_trials,
         "months_data":   months,
@@ -550,7 +612,7 @@ def _print_row(rank, cfg, an_tr, an_va, an_te):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(
-        description="V4 regime bot parameter optimizer",
+        description="V1/V2/V4/V5/V6 regime bot parameter optimizer",
         epilog=(
             "Examples:\n"
             "  python optimizer.py --pair EURUSD --from 2023-01-01 --to 2024-12-01 --trials 1000\n"
@@ -574,6 +636,9 @@ if __name__ == "__main__":
                     help="Round-trip spread cost in pips (default 1.0 — EUR/USD typical; use 2.0 for Gold)")
     ap.add_argument("--mtf",     type=int, default=1, choices=[1, 15, 30, 60, 240],
                     help="Regime timeframe in minutes: 1=V4 M1 mode, 15/30/60/240=V5 MTF mode (default 1)")
+    ap.add_argument("--bot",     default="v4", choices=["v1", "v2", "v4", "v5", "v6"],
+                    help="Which bot version to optimize (default v4). v5 is v4 run with --mtf>1; "
+                         "v6 always uses the MTF signal pipeline regardless of --mtf")
     ap.add_argument("--report",  action="store_true",    help="Auto-generate HTML report after optimisation")
     args = ap.parse_args()
 
@@ -583,7 +648,7 @@ if __name__ == "__main__":
 
     json_path = run_optimisation(pair, args.trials, args.jobs, args.months,
                                  from_date=args.from_date, to_date=args.to_date,
-                                 spread_pips=args.spread, mtf=args.mtf)
+                                 spread_pips=args.spread, mtf=args.mtf, bot=args.bot)
 
     if args.report:
         from reporter import generate_report
