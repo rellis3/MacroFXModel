@@ -552,7 +552,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
         </div>
         <div style="margin-top:14px;">
           <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Parameter Drift — IS-Best Key Param per Window</div>
-          <div class="bt-tbl-scroll"><table class="bt-tbl" id="tlWFDriftTable"><thead><tr><th>Window</th><th>P1 bandHigh</th><th>P1 Sizing</th><th>P4 calmAlloc</th><th>P4 stressAlloc</th></tr></thead><tbody id="tlWFDriftBody"></tbody></table></div>
+          <div class="bt-tbl-scroll"><table class="bt-tbl" id="tlWFDriftTable"><thead><tr><th>Window</th><th>P1 bandHigh</th><th>P1 Sizing</th><th>P2 Sizing</th><th>P3 Sizing</th><th>P4 calmAlloc</th><th>P4 stressAlloc</th><th>P6 Sizing</th></tr></thead><tbody id="tlWFDriftBody"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -724,12 +724,15 @@ let _cfg = {
         allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.15,
         sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
   p2: { thVBull:1.0, thBull:0.25, thNeutral:-0.75, thBear:-2.0,
-        allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0 },
+        allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0,
+        sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
   p3: { zWin:60, vixCalm:15, vixStress:25, stressZ:1.5,
-        calmSpy:0.9, elevSpy:0.3, elevTlt:0.3, stressTlt:0.8 },
+        calmSpy:0.9, elevSpy:0.3, elevTlt:0.3, stressTlt:0.8,
+        sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
   p4: { calmAlloc:1.0, elevAlloc:0.4, stressAlloc:-0.4 },
   p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:1.0, thVShort:1.5,
-        allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
+        allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0,
+        sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
 };
 
 // State
@@ -1125,6 +1128,8 @@ function runP2(data) {
     return (v - spy[i-21]) / spy[i-21];
   });
   const spyRetZ = rollingZ(spyRet21, 63); // shorter window for returns
+  const c2 = _cfg.p2;
+  const spyVolAnn = rollingVolAnnualized(pctChange(spy), c2.volWin);
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
@@ -1140,9 +1145,18 @@ function runP2(data) {
     let score = NaN;
     if (isFinite(cr) && isFinite(sp)) score = -cr + sp; // positive = bullish divergence
 
-    const c2 = _cfg.p2;
     let newSpyAlloc = 0.6, newTltAlloc = 0.4;
-    if (isFinite(score)) {
+    if (c2.sizingMode === 'continuous') {
+      // Same pattern as P1: ramp SPY weight linearly between the VeryBearish/VeryBullish
+      // endpoints by score (ignoring the intermediate Bull/Neutral/Bear buckets), then scale
+      // by vol target / realized SPY vol so exposure responds to current risk, not just signal level.
+      const t = isFinite(score) ? clip((score - c2.thBear) / (c2.thVBull - c2.thBear), 0, 1) : 0.5;
+      const baseAlloc = c2.allocVBear + (c2.allocVBull - c2.allocVBear) * t;
+      const rv = spyVolAnn[idx];
+      const volMult = isFinite(rv) && rv > 0 ? clip(c2.volTarget / rv, c2.volMinMult, c2.volMaxMult) : 1;
+      newSpyAlloc = clip(baseAlloc * volMult, 0, 1);
+      newTltAlloc = 1 - newSpyAlloc;
+    } else if (isFinite(score)) {
       if (score > c2.thVBull)    { newSpyAlloc = c2.allocVBull;    newTltAlloc = 1-c2.allocVBull; }
       else if (score > c2.thBull){ newSpyAlloc = c2.allocBull;     newTltAlloc = 1-c2.allocBull; }
       else if (score > c2.thNeutral){ newSpyAlloc = c2.allocNeutral; newTltAlloc = 1-c2.allocNeutral; }
@@ -1187,6 +1201,7 @@ function runP3(data) {
   const gld = ffill(prices.gld);
   const c3  = _cfg.p3;
   const vixZ = rollingZ(vixRaw, c3.zWin);
+  const spyVolAnn = c3.sizingMode === 'continuous' ? rollingVolAnnualized(pctChange(spy), c3.volWin) : null;
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
@@ -1199,7 +1214,23 @@ function runP3(data) {
     const vv = vixRaw[idx], vz = vixZ[idx];
     let ns, nt, ng;
     if (!isFinite(vv) || !isFinite(vz)) { ns = sA; nt = tA; ng = gA; }
-    else if (vv < c3.vixCalm && vz < 0) {
+    else if (c3.sizingMode === 'continuous') {
+      // Smooth stress score in [0,1]: 0 at/below the calm thresholds (VIX level AND z both calm,
+      // mirroring the discrete AND-logic), 1 at/above either stress threshold (OR-logic). SPY/TLT
+      // ramp linearly between the same Calm/Stressed endpoints (Elevated bucket folded into the ramp,
+      // same simplification P1 makes for its middle buckets), then SPY alone is scaled by vol target /
+      // realized SPY vol — GLD absorbs whatever weight that scaling frees up or borrows.
+      const tLevel = (vv - c3.vixCalm) / (c3.vixStress - c3.vixCalm);
+      const tZ = vz / c3.stressZ;
+      const t = clip(Math.max(tLevel, tZ), 0, 1);
+      const spyBase = c3.calmSpy * (1 - t);
+      const tltBase = c3.stressTlt * t;
+      const rv = spyVolAnn[idx];
+      const volMult = isFinite(rv) && rv > 0 ? clip(c3.volTarget / rv, c3.volMinMult, c3.volMaxMult) : 1;
+      ns = clip(spyBase * volMult, 0, 1);
+      nt = tltBase;
+      ng = clip(1 - ns - nt, 0, 1);
+    } else if (vv < c3.vixCalm && vz < 0) {
       ns = c3.calmSpy;  nt = 0;           ng = 1 - c3.calmSpy;
     } else if (vv > c3.vixStress || vz > c3.stressZ) {
       ns = 0;           nt = c3.stressTlt; ng = 1 - c3.stressTlt;
@@ -1287,6 +1318,7 @@ function runP6(data) {
   const c6 = _cfg.p6;
   const residuals = rollingOLSResidual(logGld, ryLag, dxyLag, c6.olsWindow);
   const residZ    = rollingZ(residuals, Math.floor(c6.olsWindow/2));
+  const gldVolAnn = c6.sizingMode === 'continuous' ? rollingVolAnnualized(pctChange(gld), c6.volWin) : null;
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
@@ -1298,7 +1330,16 @@ function runP6(data) {
   for (const idx of monthEnds) {
     const rz = residZ[idx];
     let newAlloc = c6.allocNeutral;
-    if (isFinite(rz)) {
+    if (c6.sizingMode === 'continuous') {
+      // Ramp GLD weight linearly between the VeryLong/VeryShort endpoints by residual z-score
+      // (ignoring the intermediate Long/Short buckets, same simplification as P1), then scale by
+      // vol target / realized GLD vol — GLD is the traded asset here, so its own vol is the gauge.
+      const t = isFinite(rz) ? clip((rz - c6.thVLong) / (c6.thVShort - c6.thVLong), 0, 1) : 0.5;
+      const baseAlloc = c6.allocVLong + (c6.allocVShort - c6.allocVLong) * t;
+      const rv = gldVolAnn[idx];
+      const volMult = isFinite(rv) && rv > 0 ? clip(c6.volTarget / rv, c6.volMinMult, c6.volMaxMult) : 1;
+      newAlloc = clip(baseAlloc * volMult, 0, 1);
+    } else if (isFinite(rz)) {
       if (rz < c6.thVLong)      newAlloc = c6.allocVLong;
       else if (rz < c6.thLong)  newAlloc = c6.allocLong;
       else if (rz < c6.thShort) newAlloc = c6.allocNeutral;
@@ -2173,6 +2214,18 @@ function sysCfgForm(key) {
         ${row('Very bearish SPY', 'p2_allocVBear',   c.allocVBear)}
         <div style="font-size:10px;color:var(--text3);margin-top:4px;">TLT = 1 − SPY alloc</div>
       </div>
+      <div style="grid-column:1/-1;margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Sizing Mode</div>
+        ${selRow('Mode', 'p2_sizingMode', c.sizingMode, ['discrete','continuous'])}
+        ${row('Vol target (ann.)',   'p2_volTarget',  c.volTarget,  0.01, 0.02, 0.40)}
+        ${row('Vol window (days)',   'p2_volWin',     c.volWin,     1, 5, 126)}
+        ${row('Min vol multiplier',  'p2_volMinMult', c.volMinMult, 0.05, 0.1, 1)}
+        ${row('Max vol multiplier',  'p2_volMaxMult', c.volMaxMult, 0.05, 1, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">
+          Discrete: today's 5-bucket step allocation. Continuous: linear ramp between Very
+          Bearish↔Very Bullish SPY weight, then scaled by Vol target ÷ realized SPY vol.
+        </div>
+      </div>
     </div>`;
 
   if (key === 'p3') return `
@@ -2192,6 +2245,19 @@ function sysCfgForm(key) {
         ${row('Elevated TLT',  'p3_elevTlt',   c.elevTlt,   0.05)}
         ${row('Stressed TLT',  'p3_stressTlt', c.stressTlt, 0.05)}
         <div style="font-size:10px;color:var(--text3);margin-top:4px;">Calm GLD = 1−SPY · Stressed GLD = 1−TLT · Elevated GLD = 1−SPY−TLT</div>
+      </div>
+      <div style="grid-column:1/-1;margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Sizing Mode</div>
+        ${selRow('Mode', 'p3_sizingMode', c.sizingMode, ['discrete','continuous'])}
+        ${row('Vol target (ann.)',   'p3_volTarget',  c.volTarget,  0.01, 0.02, 0.40)}
+        ${row('Vol window (days)',   'p3_volWin',     c.volWin,     1, 5, 126)}
+        ${row('Min vol multiplier',  'p3_volMinMult', c.volMinMult, 0.05, 0.1, 1)}
+        ${row('Max vol multiplier',  'p3_volMaxMult', c.volMaxMult, 0.05, 1, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">
+          Discrete: today's 3-state Calm/Elevated/Stressed allocation. Continuous: SPY/TLT ramp
+          linearly between the Calm/Stressed endpoints by a smooth VIX stress score, SPY is then
+          scaled by Vol target ÷ realized SPY vol, and GLD absorbs the residual weight.
+        </div>
       </div>
     </div>`;
 
@@ -2229,6 +2295,19 @@ function sysCfgForm(key) {
         ${row('Overvalued',       'p6_allocShort',   c.allocShort)}
         ${row('Very overvalued',  'p6_allocVShort',  c.allocVShort)}
       </div>
+      <div style="grid-column:1/-1;margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Sizing Mode</div>
+        ${selRow('Mode', 'p6_sizingMode', c.sizingMode, ['discrete','continuous'])}
+        ${row('Vol target (ann.)',   'p6_volTarget',  c.volTarget,  0.01, 0.02, 0.40)}
+        ${row('Vol window (days)',   'p6_volWin',     c.volWin,     1, 5, 126)}
+        ${row('Min vol multiplier',  'p6_volMinMult', c.volMinMult, 0.05, 0.1, 1)}
+        ${row('Max vol multiplier',  'p6_volMaxMult', c.volMaxMult, 0.05, 1, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">
+          Discrete: today's 5-bucket step allocation. Continuous: linear ramp between Very
+          Undervalued↔Very Overvalued GLD weight, then scaled by Vol target ÷ realized GLD vol
+          (GLD is the traded asset, so its own vol is the risk gauge here, not SPY's).
+        </div>
+      </div>
     </div>`;
   return '';
 }
@@ -2249,9 +2328,15 @@ function updateSysCfg(key) {
     c.thVBull=n('thVBull'); c.thBull=n('thBull'); c.thNeutral=n('thNeutral'); c.thBear=n('thBear');
     c.allocVBull=n('allocVBull'); c.allocBull=n('allocBull'); c.allocNeutral=n('allocNeutral');
     c.allocBear=n('allocBear'); c.allocVBear=n('allocVBear');
+    const sizingModeEl = document.getElementById('sc_p2_sizingMode');
+    if (sizingModeEl) c.sizingMode = sizingModeEl.value;
+    c.volTarget=n('volTarget'); c.volWin=n('volWin'); c.volMinMult=n('volMinMult'); c.volMaxMult=n('volMaxMult');
   } else if (key === 'p3') {
     c.zWin=n('zWin'); c.vixCalm=n('vixCalm'); c.vixStress=n('vixStress'); c.stressZ=n('stressZ');
     c.calmSpy=n('calmSpy'); c.elevSpy=n('elevSpy'); c.elevTlt=n('elevTlt'); c.stressTlt=n('stressTlt');
+    const sizingModeEl = document.getElementById('sc_p3_sizingMode');
+    if (sizingModeEl) c.sizingMode = sizingModeEl.value;
+    c.volTarget=n('volTarget'); c.volWin=n('volWin'); c.volMinMult=n('volMinMult'); c.volMaxMult=n('volMaxMult');
   } else if (key === 'p4') {
     c.calmAlloc=n('calmAlloc'); c.elevAlloc=n('elevAlloc'); c.stressAlloc=n('stressAlloc');
   } else if (key === 'p6') {
@@ -2259,6 +2344,9 @@ function updateSysCfg(key) {
     c.thShort=n('thShort'); c.thVShort=n('thVShort');
     c.allocVLong=n('allocVLong'); c.allocLong=n('allocLong'); c.allocNeutral=n('allocNeutral');
     c.allocShort=n('allocShort'); c.allocVShort=n('allocVShort');
+    const sizingModeEl = document.getElementById('sc_p6_sizingMode');
+    if (sizingModeEl) c.sizingMode = sizingModeEl.value;
+    c.volTarget=n('volTarget'); c.volWin=n('volWin'); c.volMinMult=n('volMinMult'); c.volMaxMult=n('volMaxMult');
   }
 }
 
@@ -2294,6 +2382,7 @@ const OPT_GRIDS = {
     thBear:      [-2.5, -2.0, -1.5],
     allocNeutral:[0.5, 0.6, 0.7],        // medium regimes drive most P&L
     allocVBear:  [0.0, 0.1],
+    sizingMode:  ['discrete', 'continuous'],
   },
   p3: {
     vixCalm:   [12, 15, 18],
@@ -2301,6 +2390,7 @@ const OPT_GRIDS = {
     stressZ:   [1.0, 1.5, 2.0],
     calmSpy:   [0.8, 0.9, 1.0],
     stressTlt: [0.7, 0.8, 0.9],
+    sizingMode:['discrete', 'continuous'],
   },
   p4: {
     calmAlloc:   [0.6, 0.8, 1.0],
@@ -2313,6 +2403,7 @@ const OPT_GRIDS = {
     thLong:       [-1.25, -1.0, -0.75],
     thShort:      [0.5, 0.75, 1.0],
     allocNeutral: [0.0, 0.2, 0.3],       // range around the newly found optimum
+    sizingMode:   ['discrete', 'continuous'],
   },
 };
 
@@ -2500,7 +2591,8 @@ function renderSystemPanel(key) {
         <td class="num pos">${pos}</td><td class="num neg">${neg}</td>
         <td class="num pos">${fmtPct(best)}</td><td class="num neg">${fmtPct(worst)}</td></tr>`;
     }
-    document.querySelector(`#sysTable${key} tbody`).innerHTML = tbody;
+    const tbodyEl = document.querySelector(`#sysTable${key} tbody`);
+    if (tbodyEl) tbodyEl.innerHTML = tbody;
   }, 50);
 }
 
@@ -2721,9 +2813,18 @@ async function runTLWalkForward() {
         driftRow.p1_bandHigh = bestEntry?.combo?.bandHigh ?? '—';
         driftRow.p1_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
       }
+      if (key === 'p2') {
+        driftRow.p2_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
+      }
+      if (key === 'p3') {
+        driftRow.p3_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
+      }
       if (key === 'p4') {
         driftRow.p4_calmAlloc = bestEntry?.combo?.calmAlloc ?? '—';
         driftRow.p4_stressAlloc = bestEntry?.combo?.stressAlloc ?? '—';
+      }
+      if (key === 'p6') {
+        driftRow.p6_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
       }
     }
     driftRows.push(driftRow);
@@ -2789,7 +2890,7 @@ async function runTLWalkForward() {
 
   // Drift table
   document.getElementById('tlWFDriftBody').innerHTML = driftRows.map(r =>
-    `<tr><td>${r.window}</td><td class="num">${r.p1_bandHigh??'—'}</td><td class="num">${r.p1_sizingMode??'—'}</td><td class="num">${r.p4_calmAlloc??'—'}</td><td class="num">${r.p4_stressAlloc??'—'}</td></tr>`
+    `<tr><td>${r.window}</td><td class="num">${r.p1_bandHigh??'—'}</td><td class="num">${r.p1_sizingMode??'—'}</td><td class="num">${r.p2_sizingMode??'—'}</td><td class="num">${r.p3_sizingMode??'—'}</td><td class="num">${r.p4_calmAlloc??'—'}</td><td class="num">${r.p4_stressAlloc??'—'}</td><td class="num">${r.p6_sizingMode??'—'}</td></tr>`
   ).join('');
 
   progBar.style.width = '100%';
