@@ -79,16 +79,29 @@ const ASSET_PARAMS = {
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
-// Applied to fx/index only — commodity vol is not systematically driven by US events.
+// Applied to all asset classes (commodity included as of 2026-06-18 — see below).
 // Recalibrated 2026-06-12 from Jun 12 reference (CPI day): EURUSD implied ×1.11,
 // NQ implied ×1.07. FOMC/NFP not yet observed in reference data; reduced proportionally.
+//
+// 2026-06-18: new Fed Chair's first speech caused a major repricing in GOLD, NQ,
+// and EURUSD alike (user-confirmed: "huge news day ... price went crazy"). Two gaps
+// fixed by this change:
+//   1. No NEWS_PATTERNS entry matched a Fed Chair speech/testimony calendar event
+//      (only scheduled data releases were covered) — added 'Fed Chair Speech' below.
+//   2. commodity was unconditionally excluded from any news multiplier, on the
+//      assumption gold isn't event-driven — contradicted by Jun-18 data, where GOLD's
+//      reaction was comparable to fx/index. Exclusion removed in computeForecast().
+//   Fed Chair speech mult set at 1.18 (between NFP and FOMC) pending calibration
+//   against a clean single-event reference compare.
 const NEWS_PATTERNS = [
-  { re: /federal\s*fund|fomc.*rate|fed.*rate/i, mult: 1.21, label: 'FOMC Rate' },
-  { re: /non.?farm|nonfarm|payroll/i,           mult: 1.16, label: 'NFP'       },
-  { re: /consumer\s*price|cpi/i,                mult: 1.11, label: 'CPI'       },
-  { re: /personal\s*consumption|pce/i,          mult: 1.08, label: 'PCE'       },
-  { re: /gross\s*domestic|gdp/i,                mult: 1.05, label: 'GDP'       },
-  { re: /producer\s*price|ppi/i,                mult: 1.05, label: 'PPI'       },
+  { re: /federal\s*fund|fomc.*rate|fed.*rate/i,         mult: 1.21, label: 'FOMC Rate'       },
+  { re: /fed\s*chair|fomc\s*press\s*conference|monetary\s*policy\s*testimony|humphrey.?hawkins/i,
+                                                          mult: 1.18, label: 'Fed Chair Speech' },
+  { re: /non.?farm|nonfarm|payroll/i,                   mult: 1.16, label: 'NFP'       },
+  { re: /consumer\s*price|cpi/i,                        mult: 1.11, label: 'CPI'       },
+  { re: /personal\s*consumption|pce/i,                  mult: 1.08, label: 'PCE'       },
+  { re: /gross\s*domestic|gdp/i,                        mult: 1.05, label: 'GDP'       },
+  { re: /producer\s*price|ppi/i,                        mult: 1.05, label: 'PPI'       },
 ];
 
 export function detectNewsMultiplier(events = []) {
@@ -315,8 +328,8 @@ function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
 /**
  * @param {Array<{open,high,low,close}>} ohlc  Daily bars, oldest → newest
  * @param {string}  assetClass  'commodity' | 'index' | 'fx'
- * @param {number}  newsMult    Output of detectNewsMultiplier() — stored in output as
- *                              informational context only, not applied to ranges.
+ * @param {number}  newsMult    Output of detectNewsMultiplier() — when > 1, scales
+ *                              sigmaFwd (and thus all HL/OC ranges) before correction.
  * @returns forecast object — all values are percentages
  */
 export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
@@ -344,8 +357,9 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
     ? rsEwmaVolSeries(ohlc)
     : garch11VolSeries(ohlc, p.garch_omega);
 
-  // US event multiplier applies to fx/index only.
-  const sigmaFwd = (newsMult > 1 && assetClass !== 'commodity')
+  // US event multiplier applies to all asset classes (commodity included as of
+  // 2026-06-18 — Jun-18 Fed Chair speech moved GOLD as much as fx/index).
+  const sigmaFwd = newsMult > 1
     ? volSeries.at(-1) * newsMult
     : volSeries.at(-1);
 
@@ -397,7 +411,7 @@ export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.
     ? ewmaOnRVSeries(rvValues)
     : garchOnRVSeries(rvValues, p.garch_omega);
 
-  const sigmaFwd = (newsMult > 1 && assetClass !== 'commodity')
+  const sigmaFwd = newsMult > 1
     ? volSeries.at(-1) * newsMult
     : volSeries.at(-1);
   return _buildOutput(volSeries, sigmaFwd, assetClass, newsMult);
