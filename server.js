@@ -3233,7 +3233,12 @@ app.post('/api/vol-forecast/refresh', async (_req, res) => {
 function _fmtForecastText(data) {
   const LW  = 29;
   const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
-  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`, ''];
+  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`];
+  const newsMult = data.meta?.news_mult ?? 1;
+  if (newsMult > 1) {
+    lines.push(`News: ${data.meta?.news_flag ?? 'Event'} ×${newsMult.toFixed(2)} applied`);
+  }
+  lines.push('');
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     lines.push(
       div(name),
@@ -7402,6 +7407,7 @@ async function nqRestoreFromKv() {
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
   const fredKey = process.env.FRED_KEY   ? '✓' : '✗ missing — T1/T2/T4/T6 will show Data unavailable';
+  const finnhub = process.env.FINNHUB_KEY ? '✓' : '✗ missing — news multiplier / event risk disabled';
   const cfKv    = process.env.CF_ACCOUNT_ID ? '✓ CF REST API' : '✗ file only (set CF_ACCOUNT_ID + CF_API_TOKEN)';
   const alerts  = state.cfg?.enabled ? 'ON' : 'OFF (enable in Alerts modal)';
   console.log(`MacroFX Server   http://localhost:${PORT}`);
@@ -7409,6 +7415,7 @@ app.listen(PORT, () => {
   console.log(`Level refresh    every ${REFRESH_LEVELS_MS / 60_000} min`);
   console.log(`OANDA_KEY        ${oanda}`);
   console.log(`FRED_KEY         ${fredKey}`);
+  console.log(`FINNHUB_KEY      ${finnhub}`);
   console.log(`KV persistence   ${cfKv}`);
   console.log(`Data dir         ${process.env.DATA_DIR || path.join(__dirname, 'data')}`);
 });
