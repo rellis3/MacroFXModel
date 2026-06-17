@@ -220,3 +220,66 @@ backtests with current primaries, tracked as a separate pending task.
   corrections generalize across the index class, or split per-instrument
 - FX: one more session of compare data to confirm Jun-17 refinement holds
 - Commodity: holding — Jun-17 compare confirms existing factors are accurate
+
+---
+
+## 2026-06-18 — Index whiplash + missed Fed Chair speech event; news multiplier fix
+
+### Context
+Thursday Jun-18 compare showed the Jun-17 NQ-derived `index` corrections had already
+flipped sign one day later (Jun-17: we overestimated by ~22%; Jun-18: gap reversed
+to underestimate). Decomposed the gap using `vol_annual` (uncorrected) vs the
+back-calculated pre-correction HL/OC values: the gap pattern was NOT consistent
+with the BM/HN distributional constants being wrong — it matched a forward-looking
+event the estimator had no way to see coming. Asked the user whether Jun-18 had a
+known high-impact US event; confirmed: **a new Fed Chair gave a speech and price
+"went crazy"** across GOLD, NQ, and EURUSD alike.
+
+### Root cause (two separate bugs)
+1. `NEWS_PATTERNS` only matched scheduled data releases (FOMC rate decision, NFP,
+   CPI, PCE, GDP, PPI) — no pattern matched a Fed Chair speech/testimony/press
+   conference calendar entry, so `detectNewsMultiplier()` returned 1.0 even if
+   Finnhub's calendar carried the event.
+2. `computeForecast()` / `computeForecastFromRV()` unconditionally excluded
+   `commodity` from any news multiplier (`assetClass !== 'commodity'`), on the
+   assumption gold isn't event-driven. Jun-18 contradicts this — GOLD reacted as
+   strongly as fx/index to the speech.
+
+### Important caveat on the Jun-17 index correction factors
+The Jun-17 NQ corrections (`hl_50_corr: 0.81` etc.) were calibrated from a single
+day where GARCH's persistence (α+β=0.97) kept vol elevated after a fading shock.
+One day later that transient had faded and the same factors caused an
+underestimate. This is a single-day-calibration whiplash, not evidence the Jun-17
+factors are wrong in general — but it's a reminder that ASSET_PARAMS corrections
+should eventually be derived from multi-day averages, not single-session
+snapshots. Left unchanged for now; flagged for a future multi-day recalibration
+pass once several more index compare sessions are available.
+
+### Changes applied (2026-06-18), `js/volForecast.js`:
+- Added `Fed Chair Speech` pattern to `NEWS_PATTERNS` (mult 1.18, between NFP 1.16
+  and FOMC Rate 1.21 — placeholder until a clean single-event compare is available):
+  ```javascript
+  { re: /fed\s*chair|fomc\s*press\s*conference|monetary\s*policy\s*testimony|humphrey.?hawkins/i,
+    mult: 1.18, label: 'Fed Chair Speech' },
+  ```
+- Removed the `assetClass !== 'commodity'` exclusion from `sigmaFwd` in both
+  `computeForecast()` and `computeForecastFromRV()` — news multiplier now applies
+  to commodity (GOLD) as well as fx/index.
+- Fixed a stale JSDoc on `computeForecast()` that claimed `newsMult` was
+  "informational only, not applied to ranges" — it is applied (via `sigmaFwd`,
+  before BM/HN range calculation); the comment was simply wrong.
+
+### Open item
+Whether `FINNHUB_KEY` is configured in production, and whether Finnhub's economic
+calendar actually carried a Fed Chair speech entry for Jun-18 (so the new pattern
+would have fired), could not be verified from this repo/sandbox — needs production
+log/config check.
+
+### Next calibration checkpoints:
+- Confirm the Fed Chair Speech multiplier (1.18) against a clean single-event
+  reference compare once one becomes available; adjust mult if Jun-18-scale moves
+  recur and 1.18 proves too low or too high.
+- Re-evaluate Jun-17 index corrections after several more non-event-day sessions
+  to rule out the whiplash being structural rather than event-driven.
+- Verify FINNHUB_KEY / calendar wiring in production so news detection is
+  confirmed live, not just unit-tested.
