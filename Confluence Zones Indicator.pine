@@ -9,12 +9,26 @@ indicator("C.og - Confluence Zones v1", overlay=true, max_lines_count=500, max_l
 // 3. The indicator draws horizontal zones for the
 //    current chart symbol — coloured by confluence
 //    layer count (yellow=2, orange=3, red/purple=4+).
-// 4. Set Alert Proximity Pips and enable alerts via
+// 4. POC and NPOC lines are computed live from the
+//    chart's own daily bars — no paste needed for those.
+// 5. Set Alert Proximity Pips and enable alerts via
 //    TradingView's alert panel (any condition → this
 //    indicator → "CZ Proximity Alert").
 //
 // Refresh the paste each trading day (or after major
-// moves) to keep zones aligned to current prices.
+// moves) to keep C+Z zones aligned to current prices.
+// POC/NPOC update automatically each bar.
+//
+// LEVEL TYPES IN EXPORT:
+//   sr     — Swing pivot S/R (2-bar confirmation, 30-day lookback)
+//   fib    — Fibonacci from identified swing pivot pairs (recursive)
+//   d_open — Previous daily opens (last 5 days)
+//   poc    — Approx POC: daily range midpoint (H+L)/2
+//   npoc   — Naked POC: unvisited daily midpoints
+//   w_piv  — Weekly pivots PP/R1/R2/S1/S2
+//   vol_m  — Vol forecast median absolute levels
+//   vol_75 — Vol forecast 75th-pct absolute levels
+//   round  — Psychological round numbers
 
 // =====================================================
 // INPUTS — TICKER MAPPING (match your chart symbols)
@@ -39,33 +53,47 @@ czText = input.text_area(
 "Generated: 2026-06-18\n" +
 "\n" +
 "GOLD\n" +
-"CZ 2312.50 : 4 fib,prev_h,d_open,w_piv\n" +
-"CZ 2287.30 : 3 fib,d_open,w_piv\n" +
-"CZ 2265.10 : 2 fib,prev_l\n" +
+"CZ 2312.50 : 5 fib,sr,d_open,vol_75\n" +
+"CZ 2287.30 : 4 fib,d_open,w_piv\n" +
+"CZ 2265.10 : 3 fib,round\n" +
 "\n" +
 "EURUSD\n" +
-"CZ 1.08750 : 3 fib,prev_h,d_open\n" +
-"CZ 1.08420 : 2 fib,w_piv"
+"CZ 1.08750 : 4 fib,sr,d_open\n" +
+"CZ 1.08420 : 3 fib,w_piv"
 )
 
 // =====================================================
 // STYLE INPUTS
 // =====================================================
 
-col_4plus  = input.color(color.new(color.fuchsia, 0),  "4+ Layer Zone Colour",  group="Zone Colours")
-col_3      = input.color(color.new(color.orange,  0),  "3 Layer Zone Colour",   group="Zone Colours")
-col_2      = input.color(color.new(color.yellow,  0),  "2 Layer Zone Colour",   group="Zone Colours")
+col_4plus  = input.color(color.new(color.fuchsia, 0),  "4+ Layer Zone Colour",      group="Zone Colours")
+col_3      = input.color(color.new(color.orange,  0),  "3 Layer Zone Colour",       group="Zone Colours")
+col_2      = input.color(color.new(color.yellow,  0),  "2 Layer Zone Colour",       group="Zone Colours")
 
 zone_width = input.int(2, "Line Width", minval=1, maxval=5, group="Zone Colours")
-show_label = input.bool(true, "Show Labels",           group="Zone Colours")
-show_types = input.bool(true, "Show Level Types in Label", group="Zone Colours")
-show_table = input.bool(true, "Show Zone Summary Table",   group="Zone Colours")
+show_label = input.bool(true, "Show Labels",                   group="Zone Colours")
+show_types = input.bool(true, "Show Level Types in Label",     group="Zone Colours")
+show_table = input.bool(true, "Show Zone Summary Table",       group="Zone Colours")
 
-alert_pips    = input.float(3.0, "Alert Proximity (pips)", minval=0.1, step=0.5, group="Alerts",
+alert_pips       = input.float(3.0, "Alert Proximity (pips)", minval=0.1, step=0.5, group="Alerts",
      tooltip="Fire alert when close comes within this many pips of any zone with count ≥ alert_min_count.")
-alert_min_count = input.int(2, "Min Count for Alert", minval=2, maxval=5, group="Alerts",
+alert_min_count  = input.int(2, "Min Count for Alert", minval=2, maxval=5, group="Alerts",
      tooltip="Only alert on zones with this many or more distinct level types.")
 alert_extend_right = input.bool(true, "Extend Lines Right", group="Alerts")
+
+// =====================================================
+// POC / NPOC (computed live from chart's daily bars)
+// =====================================================
+
+show_poc      = input.bool(true,  "Show POC Lines",         group="POC / NPOC",
+     tooltip="Daily range midpoints (H+L)/2 for the last N complete days.")
+show_npoc     = input.bool(true,  "Show NPOC Lines",        group="POC / NPOC",
+     tooltip="Naked POC — midpoints that price has not traded through since the day they formed.")
+poc_days      = input.int(5,      "POC — Recent Days",      minval=1, maxval=20, group="POC / NPOC")
+npoc_lookback = input.int(30,     "NPOC — Lookback (Days)", minval=5, maxval=60,  group="POC / NPOC")
+col_poc       = input.color(color.new(color.lime, 40),  "POC Colour",  group="POC / NPOC")
+col_npoc      = input.color(color.new(color.teal,  0),  "NPOC Colour", group="POC / NPOC")
+poc_lw        = input.int(1, "POC/NPOC Line Width", minval=1, maxval=3, group="POC / NPOC")
 
 // =====================================================
 // SYMBOL NORMALISATION
@@ -120,9 +148,9 @@ f_isKnownTicker(rowUp) =>
      str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
      str.contains(rowUp, "US30"))
 
-var float[] czPrices = array.new_float()
-var int[]   czCounts = array.new_int()
-var string[] czTypes = array.new_string()
+var float[]  czPrices = array.new_float()
+var int[]    czCounts = array.new_int()
+var string[] czTypes  = array.new_string()
 
 if barstate.isfirst
     sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
@@ -130,45 +158,39 @@ if barstate.isfirst
     rows  = str.split(czText, "\n")
     n     = array.size(rows)
 
-    bool inCZSection  = false
-    bool inSymBlock   = false
+    bool inCZSection = false
+    bool inSymBlock  = false
 
     if n > 0
         for i = 0 to n - 1
             rawRow = str.trim(array.get(rows, i))
             if str.length(rawRow) < 2
                 if inSymBlock
-                    inSymBlock := false  // blank line ends a symbol block
+                    inSymBlock := false
                 continue
             rowUp = str.upper(rawRow)
 
-            // Detect the CONFLUENCE ZONES section header
             if str.contains(rowUp, "CONFLUENCE ZONES")
-                inCZSection  := true
-                inSymBlock   := false
+                inCZSection := true
+                inSymBlock  := false
                 continue
 
             if not inCZSection
                 continue
 
-            // Skip metadata lines
             if str.contains(rowUp, "GENERATED:") or str.contains(rowUp, "CONFIG:")
                 continue
 
-            // Detect symbol header line (short line, not a CZ line, is a known ticker)
             if not str.startswith(rawRow, "CZ ") and f_isKnownTicker(rowUp) and str.length(rawRow) <= 12
                 inSymBlock := str.contains(rowUp, symUp)
                 continue
 
-            // Parse CZ lines for the active symbol block
             if inSymBlock and str.startswith(rawRow, "CZ ")
-                // Format: "CZ {price} : {count} {types}"
                 parts = str.split(rawRow, " : ")
                 if array.size(parts) == 2
-                    priceStr    = str.trim(str.replace_all(array.get(parts, 0), "CZ ", ""))
-                    countTypes  = str.trim(array.get(parts, 1))
-                    // Count is first token, types is rest
-                    ctParts     = str.split(countTypes, " ")
+                    priceStr   = str.trim(str.replace_all(array.get(parts, 0), "CZ ", ""))
+                    countTypes = str.trim(array.get(parts, 1))
+                    ctParts    = str.split(countTypes, " ")
                     if array.size(ctParts) >= 2
                         price = str.tonumber(priceStr)
                         cnt   = int(str.tonumber(str.trim(array.get(ctParts, 0))))
@@ -179,17 +201,45 @@ if barstate.isfirst
                             array.push(czTypes,  types)
 
 // =====================================================
+// DAILY BAR ACCUMULATION (runs every bar)
+// Builds a rolling array of each complete day's H/L.
+// Last element = current (possibly incomplete) day.
+// =====================================================
+
+var float[] _dH = array.new_float(0)
+var float[] _dL = array.new_float(0)
+
+bool _newDay = timeframe.change("D") or barstate.isfirst
+
+if _newDay
+    array.push(_dH, high)
+    array.push(_dL, low)
+    int _maxKeep = npoc_lookback + 2
+    while array.size(_dH) > _maxKeep
+        array.shift(_dH)
+        array.shift(_dL)
+else
+    int _nd = array.size(_dH)
+    if _nd > 0
+        array.set(_dH, _nd - 1, math.max(array.get(_dH, _nd - 1), high))
+        array.set(_dL, _nd - 1, math.min(array.get(_dL, _nd - 1), low))
+
+// =====================================================
 // DRAW ZONES + ALERT
 // =====================================================
 
-var line[]  czLines  = array.new_line()
-var label[] czLabels = array.new_label()
+var line[]  czLines    = array.new_line()
+var label[] czLabels   = array.new_label()
+var line[]  pocLines   = array.new_line()
+var label[] pocLabels  = array.new_label()
+var line[]  npocLines  = array.new_line()
+var label[] npocLabels = array.new_label()
 
 f_zoneColour(cnt) =>
     cnt >= 4 ? col_4plus : cnt == 3 ? col_3 : col_2
 
 if barstate.islast
-    // Clean up previous render
+    // ── Cleanup — CZ ──────────────────────────────────────────────────────────
     int _nl = array.size(czLines)
     if _nl > 0
         for i = 0 to _nl - 1
@@ -201,10 +251,35 @@ if barstate.islast
     array.clear(czLines)
     array.clear(czLabels)
 
+    // ── Cleanup — POC ─────────────────────────────────────────────────────────
+    int _npl = array.size(pocLines)
+    if _npl > 0
+        for i = 0 to _npl - 1
+            line.delete(array.get(pocLines, i))
+    array.clear(pocLines)
+    int _npll = array.size(pocLabels)
+    if _npll > 0
+        for i = 0 to _npll - 1
+            label.delete(array.get(pocLabels, i))
+    array.clear(pocLabels)
+
+    // ── Cleanup — NPOC ────────────────────────────────────────────────────────
+    int _nnl = array.size(npocLines)
+    if _nnl > 0
+        for i = 0 to _nnl - 1
+            line.delete(array.get(npocLines, i))
+    array.clear(npocLines)
+    int _nnll = array.size(npocLabels)
+    if _nnll > 0
+        for i = 0 to _nnll - 1
+            label.delete(array.get(npocLabels, i))
+    array.clear(npocLabels)
+
     sym    = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
     pip    = f_pipSize(sym)
     nZones = array.size(czPrices)
 
+    // ── Draw CZ zones from paste block ────────────────────────────────────────
     if nZones > 0
         for i = 0 to nZones - 1
             zPrice = array.get(czPrices, i)
@@ -227,8 +302,58 @@ if barstate.islast
                      size=size.small)
                 array.push(czLabels, lb)
 
+    // ── Draw POC / NPOC from daily bars ───────────────────────────────────────
+    nDays = array.size(_dH)
+    if nDays >= 2
+        lastComplete = nDays - 2  // last element is current incomplete day; skip it
+
+        // POC — last poc_days complete daily midpoints
+        if show_poc
+            pocStart = math.max(0, lastComplete - poc_days + 1)
+            for d = pocStart to lastComplete
+                ph = array.get(_dH, d)
+                pl = array.get(_dL, d)
+                if not na(ph) and not na(pl)
+                    mid = (ph + pl) / 2.0
+                    ln = line.new(bar_index - 1, mid, bar_index, mid,
+                         color=col_poc, width=poc_lw,
+                         style=line.style_dotted, extend=extend.right)
+                    array.push(pocLines, ln)
+                    if show_label
+                        lb = label.new(bar_index + 4, mid, "POC",
+                             style=label.style_label_left,
+                             color=color.new(col_poc, 75), textcolor=col_poc, size=size.small)
+                        array.push(pocLabels, lb)
+
+        // NPOC — scan full lookback; keep midpoints not visited since formation
+        if show_npoc
+            for d = 0 to lastComplete
+                ph = array.get(_dH, d)
+                pl = array.get(_dL, d)
+                if not na(ph) and not na(pl)
+                    mid = (ph + pl) / 2.0
+                    isNaked = true
+                    // Any day after this one (including today's partial bar) trades through → no longer naked
+                    for j = d + 1 to nDays - 1
+                        jh = array.get(_dH, j)
+                        jl = array.get(_dL, j)
+                        if not na(jh) and not na(jl)
+                            if jh >= mid and jl <= mid
+                                isNaked := false
+                                break
+                    if isNaked
+                        ln = line.new(bar_index - 1, mid, bar_index, mid,
+                             color=col_npoc, width=poc_lw,
+                             style=line.style_dashed, extend=extend.right)
+                        array.push(npocLines, ln)
+                        if show_label
+                            lb = label.new(bar_index + 4, mid, "NPOC",
+                                 style=label.style_label_left,
+                                 color=color.new(col_npoc, 75), textcolor=col_npoc, size=size.small)
+                            array.push(npocLabels, lb)
+
 // =====================================================
-// PROXIMITY ALERT
+// PROXIMITY ALERT (CZ paste zones only)
 // =====================================================
 
 f_anyZoneNear() =>
@@ -257,7 +382,7 @@ alertcondition(nearZone, title="CZ Proximity Alert",
 plot(nearZone ? close : na, display=display.none, title="_cz_alert_ref")
 
 // =====================================================
-// SUMMARY TABLE
+// SUMMARY TABLE (CZ paste zones)
 // =====================================================
 
 var table czTable = na
