@@ -2543,11 +2543,11 @@ const OPT_OVERFIT_GUARD = 0.40;   // val qs must be >= 40% of train qs (when tra
 // Per-MTF pruning limits — higher TF = fewer trades expected, longer holds expected.
 // Mirrors optimizer.py's _MTF_LIMITS.
 const OPT_MTF_LIMITS = {
-  1:   { maxTpy: 800, minDur:  60, minRR: 1.1 },
-  15:  { maxTpy: 800, minDur:  60, minRR: 0.6 },
-  30:  { maxTpy: 400, minDur: 120, minRR: 0.5 },
-  60:  { maxTpy: 200, minDur: 240, minRR: 0.4 },
-  240: { maxTpy:  60, minDur: 480, minRR: 0.4 },
+  1:   { maxTpy: 3000, minDur:  60, minRR: 1.1 },  // V1/V2: M1 HMM bots naturally take 800-2000 trades/yr
+  15:  { maxTpy:  800, minDur:  60, minRR: 0.6 },
+  30:  { maxTpy:  400, minDur: 120, minRR: 0.5 },
+  60:  { maxTpy:  200, minDur: 240, minRR: 0.4 },
+  240: { maxTpy:   60, minDur: 480, minRR: 0.4 },
 };
 
 function optMtfLimits(mtf) {
