@@ -1051,6 +1051,7 @@
   <button class="dark-btn" id="vfExportBtn" onclick="exportForecast()" disabled>⬇ Export</button>
   <button class="dark-btn" id="vfSessionExportBtn" onclick="exportSession()" disabled>⬇ Session</button>
   <button class="dark-btn" id="vfV3ExportBtn" onclick="exportV3()" disabled title="Vol forecast + session consumption stats for the v3 Pine Script indicator">⬇ V+S</button>
+  <button class="dark-btn" id="vfCZExportBtn" onclick="exportConfluenceZones()" disabled title="Confluence Zones: Fibonacci + prev highs/lows + weekly pivots + vol levels — paste into the C+Z Pine Script indicator">⬇ C+Z</button>
   <button class="dark-btn" id="vfExtendedBtn" onclick="exportExtended()" disabled title="Extended export: vol percentile, O-H/O-L legs, 5-day and 20-day ranges">⬇ Extended</button>
   <button class="dark-btn" id="vfWeeklyBtn"   onclick="exportWeekly()"   disabled title="Weekly export: WTD range consumption, directional bias, 5-day/20-day forecasts">⬇ Weekly</button>
   <button class="dark-btn" id="vfHistoryBtn" onclick="toggleHistory()" disabled title="Show/hide session history table — click rows to load a past day, use ← Older / Newer → to navigate">⊞ History</button>
@@ -1634,6 +1635,7 @@ async function loadForecast() {
     updatePositionSizes();
     document.getElementById('vfExportBtn').disabled    = false;
     document.getElementById('vfExtendedBtn').disabled = false;
+    document.getElementById('vfCZExportBtn').disabled = false;
     setStatus('ok', `Forecast ready — session ${data.session_date}`);
   } catch (e) {
     setStatus('err', `Fetch error: ${e.message}`);
@@ -1926,6 +1928,29 @@ function exportV3() {
     a.href = url; a.download = `vol-v3-${currentForecast.session_date}.txt`;
     a.click(); URL.revokeObjectURL(url);
   });
+}
+
+async function exportConfluenceZones() {
+  const btn = document.getElementById('vfCZExportBtn');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Computing…'; btn.disabled = true;
+  try {
+    const res = await fetch('/api/vol-forecast/zones');
+    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 120)); }
+    const text = await res.text();
+    await navigator.clipboard.writeText(text).catch(() => {
+      const date = currentForecast?.session_date ?? 'latest';
+      const a    = document.createElement('a');
+      a.href     = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+      a.download = `confluence-zones-${date}.txt`;
+      a.click();
+    });
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  } catch (e) {
+    btn.textContent = '✗ Error'; btn.title = e.message;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; btn.title = 'Confluence Zones: Fibonacci + prev highs/lows + weekly pivots + vol levels'; }, 3000);
+  }
 }
 
 // ── Archive table ─────────────────────────────────────────────────────────────

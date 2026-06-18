@@ -36,6 +36,7 @@ import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
+import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -3312,6 +3313,25 @@ app.get('/api/vol-forecast/export', (_req, res) => {
     return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   }
   res.type('text/plain').send(_fmtForecastText(forecastState.latest));
+});
+
+// Confluence zones export — multi-layer technical levels per instrument.
+// Clusters Fibonacci retracements (3/5/10-day swings), previous daily opens/H/L,
+// weekly pivots, vol forecast absolute levels, and round numbers. Returns zones
+// with 2+ distinct level types. Format: CZ {price} : {count} {type1},{type2},...
+app.get('/api/vol-forecast/zones', (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  if (!forecastState.ohlcCache || !Object.keys(forecastState.ohlcCache).length) {
+    return res.status(202).type('text/plain').send('OHLC cache not yet populated — check back in 60s.');
+  }
+  try {
+    const text = buildConfluenceZoneText(forecastState.ohlcCache, forecastState.latest);
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Zone computation error: ${e.message}`);
+  }
 });
 
 // Live session status — intraday tracking (actual OHLC vs forecast).

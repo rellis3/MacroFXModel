@@ -1,0 +1,285 @@
+//@version=6
+indicator("C.og - Confluence Zones v1", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// =====================================================
+// HOW TO USE
+// =====================================================
+// 1. On the vol-forecast dashboard, click ⬇ C+Z.
+// 2. Paste the copied text into the input below.
+// 3. The indicator draws horizontal zones for the
+//    current chart symbol — coloured by confluence
+//    layer count (yellow=2, orange=3, red/purple=4+).
+// 4. Set Alert Proximity Pips and enable alerts via
+//    TradingView's alert panel (any condition → this
+//    indicator → "CZ Proximity Alert").
+//
+// Refresh the paste each trading day (or after major
+// moves) to keep zones aligned to current prices.
+
+// =====================================================
+// INPUTS — TICKER MAPPING (match your chart symbols)
+// =====================================================
+
+goldChart  = input.string("XAUUSD",    "Gold chart ticker",   group="Symbol Mapping")
+nqChart    = input.string("NQ1!",      "NQ chart ticker",     group="Symbol Mapping")
+spxChart   = input.string("SPX500USD", "SPX500 chart ticker", group="Symbol Mapping")
+de30Chart  = input.string("GER40",     "DE30 chart ticker",   group="Symbol Mapping")
+uk100Chart = input.string("UK100GBP",  "UK100 chart ticker",  group="Symbol Mapping")
+us30Chart  = input.string("US30USD",   "US30 chart ticker",   group="Symbol Mapping")
+us2kChart  = input.string("US2000USD", "US2000 chart ticker", group="Symbol Mapping")
+
+// =====================================================
+// INPUT — PASTE C+Z BLOCK FROM DASHBOARD
+// =====================================================
+
+czText = input.text_area(
+     title  = "Paste C+Z Block (from ⬇ C+Z button)",
+     defval =
+"──── CONFLUENCE ZONES ─────────────────────────────\n" +
+"Generated: 2026-06-18\n" +
+"\n" +
+"GOLD\n" +
+"CZ 2312.50 : 4 fib,prev_h,d_open,w_piv\n" +
+"CZ 2287.30 : 3 fib,d_open,w_piv\n" +
+"CZ 2265.10 : 2 fib,prev_l\n" +
+"\n" +
+"EURUSD\n" +
+"CZ 1.08750 : 3 fib,prev_h,d_open\n" +
+"CZ 1.08420 : 2 fib,w_piv"
+)
+
+// =====================================================
+// STYLE INPUTS
+// =====================================================
+
+col_4plus  = input.color(color.new(color.fuchsia, 0),  "4+ Layer Zone Colour",  group="Zone Colours")
+col_3      = input.color(color.new(color.orange,  0),  "3 Layer Zone Colour",   group="Zone Colours")
+col_2      = input.color(color.new(color.yellow,  0),  "2 Layer Zone Colour",   group="Zone Colours")
+
+zone_width = input.int(2, "Line Width", minval=1, maxval=5, group="Zone Colours")
+show_label = input.bool(true, "Show Labels",           group="Zone Colours")
+show_types = input.bool(true, "Show Level Types in Label", group="Zone Colours")
+show_table = input.bool(true, "Show Zone Summary Table",   group="Zone Colours")
+
+alert_pips    = input.float(3.0, "Alert Proximity (pips)", minval=0.1, step=0.5, group="Alerts",
+     tooltip="Fire alert when close comes within this many pips of any zone with count ≥ alert_min_count.")
+alert_min_count = input.int(2, "Min Count for Alert", minval=2, maxval=5, group="Alerts",
+     tooltip="Only alert on zones with this many or more distinct level types.")
+alert_extend_right = input.bool(true, "Extend Lines Right", group="Alerts")
+
+// =====================================================
+// SYMBOL NORMALISATION
+// =====================================================
+
+f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
+    r = t
+    tU = str.upper(t)
+    if tU == str.upper(goldT) or tU == "XAUUSD" or tU == "GOLD"
+        r := "GOLD"
+    else if tU == str.upper(nqT) or tU == "NQ1!" or tU == "NQ" or tU == "NASDAQ100" or tU == "NAS100USD"
+        r := "NQ"
+    else if tU == str.upper(spxT) or tU == "SPX500USD" or tU == "US500" or tU == "SP1!"
+        r := "SPX500"
+    else if tU == str.upper(de30T) or tU == "GER40" or tU == "GER30" or tU == "DE30EUR" or tU == "FDAX1!"
+        r := "DE30"
+    else if tU == str.upper(uk100T) or tU == "UK100GBP" or tU == "Z1!" or tU == "FTSE100"
+        r := "UK100"
+    else if tU == str.upper(us30T) or tU == "US30USD" or tU == "DJIA" or tU == "YM1!"
+        r := "US30"
+    else if tU == str.upper(us2kT) or tU == "US2000USD" or tU == "RTY1!" or tU == "RUT"
+        r := "US2000"
+    r
+
+// =====================================================
+// PIP SIZE (for alert proximity calculation)
+// =====================================================
+
+f_pipSize(sym) =>
+    symU = str.upper(sym)
+    symU == "GOLD"                                   ? 0.1    :
+     symU == "NQ" or symU == "US30"                 ? 1.0    :
+     symU == "SPX500" or symU == "DE30" or
+      symU == "UK100" or symU == "US2000"            ? 1.0    :
+     str.contains(symU, "JPY")                       ? 0.01   : 0.0001
+
+// =====================================================
+// PARSE C+Z BLOCK
+// =====================================================
+
+// Known ticker names to detect symbol-header lines
+f_isKnownTicker(rowUp) =>
+    str.contains(rowUp, "GOLD")   or str.contains(rowUp, "NQ")     or
+    str.contains(rowUp, "EURUSD") or str.contains(rowUp, "GBPUSD") or
+    str.contains(rowUp, "USDJPY") or str.contains(rowUp, "AUDUSD") or
+    str.contains(rowUp, "NZDUSD") or str.contains(rowUp, "USDCAD") or
+    str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY") or
+    str.contains(rowUp, "EURGBP") or str.contains(rowUp, "EURJPY") or
+    str.contains(rowUp, "EURCHF") or str.contains(rowUp, "GBPCHF") or
+    str.contains(rowUp, "AUDJPY") or str.contains(rowUp, "CADJPY") or
+    str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
+    str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
+    str.contains(rowUp, "US30")
+
+var float[] czPrices = array.new_float()
+var int[]   czCounts = array.new_int()
+var string[] czTypes = array.new_string()
+
+if barstate.isfirst
+    sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
+    symUp = str.upper(sym)
+    rows  = str.split(czText, "\n")
+    n     = array.size(rows)
+
+    bool inCZSection  = false
+    bool inSymBlock   = false
+
+    if n > 0
+        for i = 0 to n - 1
+            rawRow = str.trim(array.get(rows, i))
+            if str.length(rawRow) < 2
+                if inSymBlock
+                    inSymBlock := false  // blank line ends a symbol block
+                continue
+            rowUp = str.upper(rawRow)
+
+            // Detect the CONFLUENCE ZONES section header
+            if str.contains(rowUp, "CONFLUENCE ZONES")
+                inCZSection  := true
+                inSymBlock   := false
+                continue
+
+            if not inCZSection
+                continue
+
+            // Skip metadata lines
+            if str.contains(rowUp, "GENERATED:") or str.contains(rowUp, "CONFIG:")
+                continue
+
+            // Detect symbol header line (short line, not a CZ line, is a known ticker)
+            if not str.startswith(rawRow, "CZ ") and f_isKnownTicker(rowUp) and str.length(rawRow) <= 12
+                inSymBlock := str.contains(rowUp, symUp)
+                continue
+
+            // Parse CZ lines for the active symbol block
+            if inSymBlock and str.startswith(rawRow, "CZ ")
+                // Format: "CZ {price} : {count} {types}"
+                parts = str.split(rawRow, " : ")
+                if array.size(parts) == 2
+                    priceStr    = str.trim(str.replace_all(array.get(parts, 0), "CZ ", ""))
+                    countTypes  = str.trim(array.get(parts, 1))
+                    // Count is first token, types is rest
+                    ctParts     = str.split(countTypes, " ")
+                    if array.size(ctParts) >= 2
+                        price = str.tonumber(priceStr)
+                        cnt   = int(str.tonumber(str.trim(array.get(ctParts, 0))))
+                        types = str.trim(array.get(ctParts, 1))
+                        if not na(price) and not na(cnt) and price > 0
+                            array.push(czPrices, price)
+                            array.push(czCounts, cnt)
+                            array.push(czTypes,  types)
+
+// =====================================================
+// DRAW ZONES + ALERT
+// =====================================================
+
+var line[]  czLines  = array.new_line()
+var label[] czLabels = array.new_label()
+
+f_zoneColour(cnt) =>
+    cnt >= 4 ? col_4plus : cnt == 3 ? col_3 : col_2
+
+if barstate.islast
+    // Clean up previous render
+    for l in czLines  : line.delete(l)
+    for l in czLabels : label.delete(l)
+    array.clear(czLines)
+    array.clear(czLabels)
+
+    sym    = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
+    pip    = f_pipSize(sym)
+    nZones = array.size(czPrices)
+
+    if nZones > 0
+        for i = 0 to nZones - 1
+            zPrice = array.get(czPrices, i)
+            zCount = array.get(czCounts, i)
+            zTypes = array.get(czTypes,  i)
+            zCol   = f_zoneColour(zCount)
+            zExt   = alert_extend_right ? extend.right : extend.none
+
+            ln = line.new(bar_index - 1, zPrice, bar_index + 3, zPrice,
+                 color=zCol, width=zone_width, style=line.style_solid, extend=zExt)
+            array.push(czLines, ln)
+
+            if show_label
+                string lText = str.tostring(zCount) + "L"
+                if show_types
+                    lText := lText + "  " + zTypes
+                lb = label.new(bar_index + 4, zPrice, lText,
+                     style=label.style_label_left,
+                     color=color.new(zCol, 75), textcolor=zCol,
+                     size=size.small)
+                array.push(czLabels, lb)
+
+// =====================================================
+// PROXIMITY ALERT
+// =====================================================
+
+f_anyZoneNear() =>
+    sym  = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
+    pip  = f_pipSize(sym)
+    dist = alert_pips * pip
+    near = false
+    n    = array.size(czPrices)
+    if n > 0
+        for i = 0 to n - 1
+            if array.get(czCounts, i) >= alert_min_count
+                if math.abs(close - array.get(czPrices, i)) <= dist
+                    near := true
+                    break
+    near
+
+bool nearZone = f_anyZoneNear()
+
+if nearZone and not nearZone[1]
+    alert("CZ: price approaching confluence zone on " + syminfo.ticker, alert.freq_once_per_bar_close)
+
+alertcondition(nearZone, title="CZ Proximity Alert",
+     message="Price within {{plot_0}} pips of a confluence zone on {{ticker}}")
+
+// Hidden plot so alertcondition message can reference {{plot_0}}
+plot(nearZone ? close : na, display=display.none, title="_cz_alert_ref")
+
+// =====================================================
+// SUMMARY TABLE
+// =====================================================
+
+var table czTable = na
+
+if show_table and barstate.islast
+    table.delete(czTable)
+    nZones = array.size(czPrices)
+    if nZones > 0
+        czTable := table.new(position.top_left, 3, nZones + 1,
+             bgcolor=color.new(color.black, 60),
+             border_width=1, border_color=color.new(color.gray, 60),
+             frame_width=1,  frame_color=color.new(color.gray, 50))
+
+        table.cell(czTable, 0, 0, "Price",  text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
+        table.cell(czTable, 1, 0, "Layers", text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
+        table.cell(czTable, 2, 0, "Types",  text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
+
+        sym  = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
+        pip  = f_pipSize(sym)
+
+        for i = 0 to nZones - 1
+            zPrice  = array.get(czPrices, i)
+            zCount  = array.get(czCounts, i)
+            zTypes  = array.get(czTypes,  i)
+            zCol    = f_zoneColour(zCount)
+            pipDist = math.round(math.abs(close - zPrice) / pip, 1)
+            bg      = color.new(zCol, 80)
+
+            table.cell(czTable, 0, i + 1, str.tostring(zPrice),  text_color=zCol, text_size=size.tiny, bgcolor=bg)
+            table.cell(czTable, 1, i + 1, str.tostring(zCount),  text_color=zCol, text_size=size.tiny, bgcolor=bg)
+            table.cell(czTable, 2, i + 1, str.tostring(pipDist) + "p " + zTypes, text_color=zCol, text_size=size.tiny, bgcolor=bg)
