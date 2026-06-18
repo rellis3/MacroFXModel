@@ -184,7 +184,8 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
   <!-- Controls -->
   <div class="gz-controls">
     <div class="gz-seg" id="gzTfSeg">
-      <button class="on" data-tf="M30">M30</button>
+      <button class="on" data-tf="M5">5m</button>
+      <button data-tf="M30">M30</button>
       <button data-tf="H4">H4</button>
     </div>
     <div class="gz-seg" id="gzDirSeg">
@@ -197,17 +198,20 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
       <button data-count="10">Top 10</button>
       <button class="on" data-count="all">All</button>
     </div>
-    <label class="gz-check on" id="gzChkSession">
-      <input type="checkbox" id="gzShowSession" checked> Session levels
+    <label class="gz-check" id="gzChkFibs">
+      <input type="checkbox" id="gzShowFibs"> Fib levels
     </label>
-    <label class="gz-check on" id="gzChkAnchors">
-      <input type="checkbox" id="gzShowAnchors" checked> VWAP anchors
+    <label class="gz-check" id="gzChkSwings">
+      <input type="checkbox" id="gzShowSwings"> Swing origins
+    </label>
+    <label class="gz-check" id="gzChkSession">
+      <input type="checkbox" id="gzShowSession"> Session levels
+    </label>
+    <label class="gz-check" id="gzChkAnchors">
+      <input type="checkbox" id="gzShowAnchors"> VWAP anchors
     </label>
     <label class="gz-check" id="gzChkTl">
       <input type="checkbox" id="gzShowTl"> Trendlines
-    </label>
-    <label class="gz-check" id="gzChkSwings">
-      <input type="checkbox" id="gzShowSwings" checked> Swing origins
     </label>
     <button class="gz-refresh-btn" id="gzRefreshBtn">↺ Refresh</button>
   </div>
@@ -251,23 +255,22 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
     <div id="gzChartLoading" class="gz-chart-loading">Loading candles…</div>
     <div id="gzChartHint" class="gz-chart-hint">
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="opacity:.5"><path d="M11 2L4 19H18L11 2Z" stroke="#f4c430" stroke-width="1.5" fill="none"/><line x1="11" y1="9" x2="11" y2="14" stroke="#f4c430" stroke-width="1.5"/><circle cx="11" cy="16" r=".8" fill="#f4c430"/></svg>
-      <div>Click a zone card below to see its fib structure drawn on the chart</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">Session levels and candles are always shown</div>
+      <div>Click a zone card below to draw entry window, SL and TP on the chart</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">Use the checkboxes above to add fib levels, swings or session overlays</div>
     </div>
     <div id="gzChart"></div>
   </div>
 
   <!-- Legend -->
   <div class="gz-legend">
-    <div class="gz-leg-item"><div class="gz-leg-line" style="background:#f4c430"></div> GP zone (.618–.650)</div>
-    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#26c6da"></div> .382 (shallow)</div>
-    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#fff176"></div> .500 midpoint</div>
-    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#ffa726"></div> .786</div>
-    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#ef5350"></div> .886 (deep)</div>
+    <div class="gz-leg-item" style="font-weight:600;color:var(--text2)">Always on:</div>
+    <div class="gz-leg-item"><div class="gz-leg-line" style="background:#f4c430"></div> Entry window (GP band)</div>
+    <div class="gz-leg-item"><div class="gz-leg-line" style="background:#ef5350"></div> SL</div>
+    <div class="gz-leg-item"><div class="gz-leg-line" style="background:#26a69a"></div> TP1 (dashed) / TP2 (solid)</div>
+    <div class="gz-leg-item" style="font-weight:600;color:var(--text2);margin-left:8px">Toggles:</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#ef5350"></div> .886 · <div class="gz-leg-dash" style="border-color:#ffa726;margin-left:4px"></div> .786 · <div class="gz-leg-dash" style="border-color:#26c6da;margin-left:4px"></div> .382</div>
     <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#6b7280"></div> Swing origin/end</div>
-    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#4f7df0"></div> VWAP / Daily open</div>
-    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#ab47bc"></div> POC</div>
-    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#26a69a"></div> VAH (green) / VAL (red)</div>
+    <div class="gz-leg-item"><div class="gz-leg-dash" style="border-color:#4f7df0"></div> VWAP / Session</div>
     <div class="gz-leg-item"><div class="gz-leg-line" style="background:rgba(244,196,48,.3);height:10px;border-radius:2px"></div> Armed zone</div>
   </div>
 
@@ -275,7 +278,7 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
   <div class="gz-zones-header" style="justify-content:space-between;flex-wrap:wrap">
     <span>Active zones (<span id="gzZoneCount">—</span>)</span>
     <span style="font-size:10.5px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">
-      Click a card to draw its fibs on the chart · click again to clear
+      Click a card to draw entry / SL / TP on the chart · click again to clear
     </span>
   </div>
   <div class="gz-zones-grid" id="gzZonesGrid">
@@ -298,21 +301,22 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 // ── State ─────────────────────────────────────────────────────────────
 let _zonesData  = null;   // gold_bot_zones KV payload
 let _statusData = null;   // gold_bot_status KV payload
-let _candles    = [];     // M30 OHLC array
+let _candles    = [];     // OHLC array (period matches _tf)
 let _chart      = null;
 let _cs         = null;   // candlestick series
 let _priceLines = [];     // all active price lines
 let _markers    = [];
 let _selectedZoneId = null;
 
-let _tf       = 'M30';
+let _tf       = 'M5';
 let _dirFilter = 'all';
 let _countFilter = 9999;
 let _currentPrice = null;
-let _showSession = true;
-let _showAnchors = true;
+let _showSession = false;
+let _showAnchors = false;
 let _showTl      = false;
-let _showSwings  = true;
+let _showFibs    = false;
+let _showSwings  = false;
 
 const LS = window.LightweightCharts ? LightweightCharts.LineStyle : { Solid:0, Dotted:1, Dashed:2, LargeDashed:3, SparseDotted:4 };
 
@@ -345,12 +349,13 @@ function _initChart() {
 
 // ── Control bindings ──────────────────────────────────────────────────
 function _bindControls() {
-  // TF selector
-  document.getElementById('gzTfSeg').addEventListener('click', e => {
+  // TF selector — refetch candles on change so period is correct
+  document.getElementById('gzTfSeg').addEventListener('click', async e => {
     const btn = e.target.closest('button[data-tf]'); if (!btn) return;
     document.querySelectorAll('#gzTfSeg button').forEach(b => b.classList.remove('on'));
     btn.classList.add('on');
     _tf = btn.dataset.tf;
+    await _fetchCandles();
     _rebuildChart();
   });
 
@@ -374,12 +379,13 @@ function _bindControls() {
     _renderZoneCards();
   });
 
-  // Checkboxes
+  // Checkboxes — all overlays off by default; each toggle redraws chart
   const checks = [
+    ['gzShowFibs',    v => { _showFibs    = v; document.getElementById('gzChkFibs').classList.toggle('on', v); }],
+    ['gzShowSwings',  v => { _showSwings  = v; document.getElementById('gzChkSwings').classList.toggle('on', v); }],
     ['gzShowSession', v => { _showSession = v; document.getElementById('gzChkSession').classList.toggle('on', v); }],
     ['gzShowAnchors', v => { _showAnchors = v; document.getElementById('gzChkAnchors').classList.toggle('on', v); }],
     ['gzShowTl',      v => { _showTl      = v; document.getElementById('gzChkTl').classList.toggle('on', v); }],
-    ['gzShowSwings',  v => { _showSwings  = v; document.getElementById('gzChkSwings').classList.toggle('on', v); }],
   ];
   checks.forEach(([id, fn]) => {
     document.getElementById(id).addEventListener('change', e => { fn(e.target.checked); _rebuildChart(); });
@@ -428,11 +434,11 @@ async function _load() {
 
 // ── Candle fetch + aggregation ────────────────────────────────────────
 async function _fetchCandles() {
-  const days   = _tf === 'H4' ? 28 : 10;
+  const days   = _tf === 'H4' ? 28 : _tf === 'M30' ? 10 : 2;   // M5: 2 days ≈ 576 bars
   const to     = new Date();
   const from   = new Date(to.getTime() - days * 86400_000);
   const fmt    = d => d.toISOString().slice(0, 10);
-  const period = _tf === 'H4' ? 14400 : 1800;
+  const period = _tf === 'H4' ? 14400 : _tf === 'M30' ? 1800 : 300;  // M5 = 300s
   const el     = document.getElementById('gzChartLoading');
 
   el.textContent = 'Loading candles…';
@@ -522,19 +528,20 @@ function _aggregate(m1, periodSecs) {
 function _rebuildChart() {
   if (!_cs || !_chart) return;
 
-  const candleData = _candles.length ? _candles : _buildSyntheticCandles(_tf === 'H4' ? 14400 : 1800);
+  const period = _tf === 'H4' ? 14400 : _tf === 'M30' ? 1800 : 300;
+  const candleData = _candles.length ? _candles : _buildSyntheticCandles(period);
   try { _cs.setData(candleData); } catch {}
 
   _priceLines.forEach(pl => { try { _cs.removePriceLine(pl); } catch {} });
   _priceLines = [];
   _cs.setMarkers([]);
 
-  const armedId  = _zonesData?.armed_zone || _statusData?.armed_zone_id;
-  const allZones = _filteredZones();
-  const focusId  = _selectedZoneId || armedId;
+  const armedId   = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+  const allZones  = _filteredZones();
+  const focusId   = _selectedZoneId || armedId;
   const focusZone = focusId ? allZones.find(z => z.zone_id === focusId) : null;
 
-  // Session / anchor / trendline levels — filtered to zone price range when focused
+  // Optional overlays
   if (_showSession && _zonesData?.pivot_levels) _drawSessionLevels(_zonesData.pivot_levels, focusZone);
   if (_showAnchors && _zonesData?.vwap_anchors?.length) _drawVwapAnchors(_zonesData.vwap_anchors, focusZone);
   if (_showTl && _zonesData?.trendlines?.length) _drawTrendlines(_zonesData.trendlines);
@@ -547,23 +554,28 @@ function _rebuildChart() {
   }
   if (hint) hint.classList.add('hidden');
 
+  // Primary: always draw entry window + SL + TP
+  _drawTrade(focusZone);
+
+  // Optional: fib levels + swing origins (each controlled by its own checkbox)
   const markers = [];
-  _drawZone(focusZone, true /* always show as prominent */, markers);
+  _drawZoneOverlays(focusZone, markers);
   if (markers.length) _cs.setMarkers(markers.sort((a, b) => a.time - b.time));
 
   _zoomToZone(focusZone);
 }
 
-// Zoom the time axis to show the swing impulse + current price, capped to a sensible bar count
+// Zoom — M5 uses a fixed recent window (swing may be days old, no candles for it)
 function _zoomToZone(z) {
   if (!_chart) return;
   const nowTs  = Math.floor(Date.now() / 1000);
-  const period = _tf === 'H4' ? 14400 : 1800;
-  // Max bars visible: 100 M30 (3 days) or 80 H4 (13 days)
-  const maxBack = period * (_tf === 'H4' ? 80 : 100);
-  const swingTs = z.swing_origin_time > 0 ? z.swing_origin_time : (nowTs - maxBack);
-  const from    = Math.max(swingTs - 8 * period, nowTs - maxBack);
-  const to      = nowTs + 6 * period;
+  const period = _tf === 'H4' ? 14400 : _tf === 'M30' ? 1800 : 300;
+  const maxBars = _tf === 'H4' ? 80 : _tf === 'M30' ? 100 : 144;  // M5: 12 hours
+  const maxBack = period * maxBars;
+  const from = (_tf !== 'M5' && z.swing_origin_time > 0)
+    ? Math.max(z.swing_origin_time - 8 * period, nowTs - maxBack)
+    : nowTs - maxBack;
+  const to = nowTs + 6 * period;
   try {
     _chart.timeScale().setVisibleRange({ from, to });
   } catch {
@@ -571,14 +583,31 @@ function _zoomToZone(z) {
   }
 }
 
-// ── Draw a single zone ──────────────────────────────────────────────
-function _drawZone(z, prominent, markers) {
-  const isLong = z.direction === 'long';
-  const vnt    = z.zone_variant ?? 'gp';
-  const tf     = z.tf ?? 'M30';
-  const suffix = `[${tf} ${vnt}]`;
+// ── Primary trade visualisation (always on when zone is focused) ────────
+function _drawTrade(z) {
+  const isLong  = z.direction === 'long';
+  const atr     = _zonesData?.atr || 10;
+  const entry   = (z.gp_low + z.gp_high) / 2;
+  const maxSl   = 40;
+  const atrBuf  = atr * 0.3;
+  const atrSlMin = atr * 1.5;
 
-  const add = (price, color, title, width=1, style=2) => {
+  // Mirrors bot SL logic (swing_origin anchor after the fix)
+  let sl;
+  if (!isLong) {
+    sl = Math.min(z.swing_origin + atrBuf, entry + maxSl);
+  } else {
+    sl = Math.max(z.swing_origin - atrBuf, entry - maxSl);
+  }
+  let slDist = Math.abs(entry - sl);
+  if (slDist < atrSlMin) { sl = !isLong ? entry + atrSlMin : entry - atrSlMin; slDist = atrSlMin; }
+  if (slDist > maxSl)    { sl = !isLong ? entry + maxSl    : entry - maxSl;    slDist = maxSl;    }
+
+  const sign = isLong ? 1 : -1;
+  const tp1  = entry + sign * slDist * 1.0;
+  const tp2  = entry + sign * slDist * 2.0;
+
+  const add = (price, color, title, width = 2, style = 0) => {
     if (price == null || price <= 0) return;
     try {
       _priceLines.push(_cs.createPriceLine({
@@ -588,50 +617,60 @@ function _drawZone(z, prominent, markers) {
     } catch {}
   };
 
-  // ── Swing high / low reference lines ──────────────────────────────
-  // For LONG: origin = swing LOW (green), end = swing HIGH (red)
-  // For SHORT: origin = swing HIGH (red), end = swing LOW (green)
+  // Entry window (GP zone band)
+  add(z.gp_high, '#f4c430', `${isLong ? '▲' : '▼'} GP HIGH  ${z.gp_high.toFixed(1)}`, 2, 0);
+  add(z.gp_low,  '#f4c430', `${isLong ? '▲' : '▼'} GP LOW   ${z.gp_low.toFixed(1)}`,  2, 0);
+  add(entry, 'rgba(244,196,48,0.55)', `ENTRY ~${entry.toFixed(1)}`, 1, 2);
+
+  // SL
+  add(sl, '#ef5350', `SL  ${sl.toFixed(1)}  (${slDist.toFixed(0)}p)`, 2, 0);
+
+  // TPs
+  add(tp1, 'rgba(38,166,154,0.85)', `TP1  ${tp1.toFixed(1)}  (1R)`, 1, 2);
+  add(tp2, '#26a69a',               `TP2  ${tp2.toFixed(1)}  (2R)`, 2, 0);
+}
+
+// ── Optional overlays: fib levels + swing origins ───────────────────────
+function _drawZoneOverlays(z, markers) {
+  if (!_showFibs && !_showSwings) return;
+  const isLong = z.direction === 'long';
+  const tf     = z.tf ?? 'M30';
+  const suffix = `[${tf} ${z.zone_variant ?? 'gp'}]`;
+
+  const add = (price, color, title, width = 1, style = 2) => {
+    if (price == null || price <= 0) return;
+    try {
+      _priceLines.push(_cs.createPriceLine({
+        price, color, lineWidth: width, lineStyle: style,
+        axisLabelVisible: true, title,
+      }));
+    } catch {}
+  };
+
   if (_showSwings) {
     const originCol = isLong ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)';
     const endCol    = isLong ? 'rgba(239,83,80,0.7)'  : 'rgba(38,166,154,0.7)';
-    add(z.swing_origin, originCol,
-        `${isLong ? '▼ Swing LOW' : '▲ Swing HIGH'} ${tf} (origin)`, 2, 3);
-    add(z.swing_end,    endCol,
-        `${isLong ? '▲ Swing HIGH' : '▼ Swing LOW'} ${tf} (end → fib src)`, 2, 3);
-  }
-
-  // ── All fib retracement levels ─────────────────────────────────────
-  add(z.level_382, '#26c6da', `.382 retrace ${suffix}`, 1, 2);
-  add(z.level_500, '#fff176', `.500 retrace ${suffix}`, 1, 2);
-  add(z.level_786, '#ffa726', `.786 retrace ${suffix}`, 1, 2);
-  add(z.level_886, '#ef5350', `.886 retrace ${suffix}`, 1, 2);
-
-  // ── GP zone — gold, thick solid (the entry window) ─────────────────
-  add(z.gp_low,    '#f4c430', `▲ GP .618 ${suffix}`, 2, 0);
-  add(z.gp_high,   '#f4c430', `▼ GP .650 ${suffix}`, 2, 0);
-  add(z.level_618, 'rgba(244,196,48,0.5)', `.618 ${suffix}`, 1, 1);
-  add(z.level_650, 'rgba(244,196,48,0.5)', `.650 ${suffix}`, 1, 1);
-
-  // ── Swing bar markers ──────────────────────────────────────────────
-  if (z.swing_origin_time > 0) {
-    markers.push({
-      time:     z.swing_origin_time,
-      position: isLong ? 'belowBar' : 'aboveBar',
-      color:    isLong ? '#26a69a' : '#ef5350',
-      shape:    isLong ? 'arrowUp' : 'arrowDown',
-      text:     `${tf} ${isLong ? 'Low' : 'High'} (impulse start)`,
-      size:     2,
+    add(z.swing_origin, originCol, `${isLong ? '▼ Swing LOW' : '▲ Swing HIGH'} ${tf} (origin)`, 2, 3);
+    add(z.swing_end,    endCol,    `${isLong ? '▲ Swing HIGH' : '▼ Swing LOW'} ${tf} (end)`, 2, 3);
+    if (z.swing_origin_time > 0) markers.push({
+      time: z.swing_origin_time, position: isLong ? 'belowBar' : 'aboveBar',
+      color: isLong ? '#26a69a' : '#ef5350', shape: isLong ? 'arrowUp' : 'arrowDown',
+      text: `${tf} ${isLong ? 'Low' : 'High'} (impulse start)`, size: 2,
+    });
+    if (z.swing_end_time > 0) markers.push({
+      time: z.swing_end_time, position: isLong ? 'aboveBar' : 'belowBar',
+      color: isLong ? '#ef5350' : '#26a69a', shape: isLong ? 'arrowDown' : 'arrowUp',
+      text: `${tf} ${isLong ? 'High' : 'Low'} (fib anchor)`, size: 2,
     });
   }
-  if (z.swing_end_time > 0) {
-    markers.push({
-      time:     z.swing_end_time,
-      position: isLong ? 'aboveBar' : 'belowBar',
-      color:    isLong ? '#ef5350' : '#26a69a',
-      shape:    isLong ? 'arrowDown' : 'arrowUp',
-      text:     `${tf} ${isLong ? 'High' : 'Low'} (fib anchor · ${vnt})`,
-      size:     2,
-    });
+
+  if (_showFibs) {
+    add(z.level_382, '#26c6da', `.382 ${suffix}`, 1, 2);
+    add(z.level_500, '#fff176', `.500 ${suffix}`, 1, 2);
+    add(z.level_786, '#ffa726', `.786 ${suffix}`, 1, 2);
+    add(z.level_886, '#ef5350', `.886 ${suffix}`, 1, 2);
+    add(z.level_618, 'rgba(244,196,48,0.5)', `.618 ${suffix}`, 1, 1);
+    add(z.level_650, 'rgba(244,196,48,0.5)', `.650 ${suffix}`, 1, 1);
   }
 }
 

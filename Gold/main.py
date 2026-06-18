@@ -980,6 +980,7 @@ class GoldBot:
         try:
             payload = {
                 'timestamp':      datetime.now(timezone.utc).isoformat(),
+                'atr':            round(self.atr_15m, 2),
                 'htf_bias':       self.htf_bias.bias if self.htf_bias else 'UNKNOWN',
                 'htf_confidence': round(self.htf_bias.confidence, 2) if self.htf_bias else 0.0,
                 'session':        self.sess_lvls.current_session if self.sess_lvls else 'UNKNOWN',
