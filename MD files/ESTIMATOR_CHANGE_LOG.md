@@ -294,3 +294,25 @@ Fed Chair Speech pattern deployed. Two possible causes, not yet disambiguated:
   to rule out the whiplash being structural rather than event-driven.
 - Verify FINNHUB_KEY / calendar wiring in production so news detection is
   confirmed live, not just unit-tested.
+
+## 2026-06-19 — Index GARCH persistence confirmed structural; interim β fix
+
+Jun-19 NQ compare (Δ+33.7%, worse than Jun-17's Δ+22.3%) confirmed the index
+whiplash wasn't event noise: GARCH(α=0.06, β=0.91, α+β=0.97) has a ~23-day
+variance half-life, while the reference's NQ vol appears to nearly fully
+mean-revert within a single session after a shock. Static ASSET_PARAMS hl/oc
+correction factors can't fix a decay-speed mismatch (they only correct
+distribution shape) — confirmed by the Jun-17→18 whiplash when corrections
+fit from one persistence-distorted day flipped sign by the next.
+
+**Change** (`js/volForecast.js`): `garch11VolSeries()` now accepts optional
+alpha/beta overrides. Index's primary estimator uses
+`ASSET_PARAMS.index.{garch_beta_interim: 0.87, garch_omega_interim: 1.11e-5}`
+(half-life 23d → 9.5d, same ~20% long-run anchor); the legacy shadow column
+keeps the original `garch_omega` + global α=0.06/β=0.91 so before/after stays
+comparable. Explicitly labeled provisional — not a refit, a reasoned interim
+step pending a proper grid search once more reference data accumulates.
+
+Full plan, data table, and open items now tracked live in
+`MD files/VOL_CALIBRATION_TRACKER.md` — update that file each session instead
+of waiting for a retrospective entry here.
