@@ -317,6 +317,7 @@ let _showAnchors = false;
 let _showTl      = false;
 let _showFibs    = false;
 let _showSwings  = false;
+let _zonePrimitive = null;   // time-bounded zone box attached to candlestick series
 
 const LS = window.LightweightCharts ? LightweightCharts.LineStyle : { Solid:0, Dotted:1, Dashed:2, LargeDashed:3, SparseDotted:4 };
 
@@ -538,9 +539,51 @@ function _aggregate(m1, periodSecs) {
   return Object.values(buckets).sort((a, b) => a.time - b.time);
 }
 
+// ── Zone box primitive — semi-transparent rectangle from detected_at to now ──
+// LightweightCharts v4.1+ supports attachPrimitive for custom canvas drawing.
+function _makeZoneBoxPrimitive(chart, series, t1, t2, lo, hi, fillColor, edgeColor) {
+  return {
+    updateAllViews() {},
+    paneViews() {
+      return [{
+        zOrder: () => 'normal',
+        renderer: () => ({
+          draw(target) {
+            target.useBitmapCoordinateSpace(scope => {
+              const { context: ctx, horizontalPixelRatio: hr, verticalPixelRatio: vr } = scope;
+              const x1c = chart.timeScale().timeToCoordinate(t1);
+              const x2c = chart.timeScale().timeToCoordinate(t2);
+              const y1c = series.priceToCoordinate(hi);
+              const y2c = series.priceToCoordinate(lo);
+              if (x1c == null || x2c == null || y1c == null || y2c == null) return;
+              const x1 = Math.round(x1c * hr), x2 = Math.round(x2c * hr);
+              const y1 = Math.round(y1c * vr), y2 = Math.round(y2c * vr);
+              ctx.fillStyle = fillColor;
+              ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+              // Dashed left edge marks the moment the zone was detected
+              ctx.strokeStyle = edgeColor;
+              ctx.lineWidth = 2;
+              ctx.setLineDash([5 * hr, 4 * hr]);
+              ctx.beginPath();
+              ctx.moveTo(x1 + 1, y1);
+              ctx.lineTo(x1 + 1, y2);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            });
+          },
+          drawBackground() {}
+        })
+      }];
+    }
+  };
+}
+
 // ── Chart rebuild ──────────────────────────────────────────────────────
 function _rebuildChart() {
   if (!_cs || !_chart) return;
+
+  // Detach zone box primitive before setData (some v4 builds implicitly clear primitives)
+  if (_zonePrimitive) { try { _cs.detachPrimitive(_zonePrimitive); } catch {} _zonePrimitive = null; }
 
   const period = _tf === 'H4' ? 14400 : _tf === 'M30' ? 1800 : 300;
   const candleData = _candles.length ? _candles : _buildSyntheticCandles(period);
@@ -568,11 +611,11 @@ function _rebuildChart() {
   }
   if (hint) hint.classList.add('hidden');
 
-  // Primary: always draw entry window + SL + TP
-  _drawTrade(focusZone);
+  // Primary: always draw entry window + SL + TP + time markers
+  const markers = [];
+  _drawTrade(focusZone, markers);
 
   // Optional: fib levels + swing origins (each controlled by its own checkbox)
-  const markers = [];
   _drawZoneOverlays(focusZone, markers);
   if (markers.length) _cs.setMarkers(markers.sort((a, b) => a.time - b.time));
 
@@ -598,7 +641,7 @@ function _zoomToZone(z) {
 }
 
 // ── Primary trade visualisation (always on when zone is focused) ────────
-function _drawTrade(z) {
+function _drawTrade(z, markers = []) {
   const isLong  = z.direction === 'long';
   const atr     = _zonesData?.atr || 10;
   const entry   = (z.gp_low + z.gp_high) / 2;
@@ -606,7 +649,7 @@ function _drawTrade(z) {
   const atrBuf  = atr * 0.3;
   const atrSlMin = atr * 1.5;
 
-  // Mirrors bot SL logic (swing_origin anchor after the fix)
+  // Mirrors bot SL logic (swing_origin anchor)
   let sl;
   if (!isLong) {
     sl = Math.min(z.swing_origin + atrBuf, entry + maxSl);
@@ -642,6 +685,54 @@ function _drawTrade(z) {
   // TPs
   add(tp1, 'rgba(38,166,154,0.85)', `TP1  ${tp1.toFixed(1)}  (1R)`, 1, 2);
   add(tp2, '#26a69a',               `TP2  ${tp2.toFixed(1)}  (2R)`, 2, 0);
+
+  // ── Time-bounded zone box + detection/armed markers ──────────────────
+  const period = _tf === 'H4' ? 14400 : _tf === 'M30' ? 1800 : 300;
+  const nowTs  = Math.floor(Date.now() / 1000);
+
+  if (z.detected_at) {
+    const detectedTs = Math.floor(new Date(z.detected_at).getTime() / 1000);
+    const detectedBar = Math.floor(detectedTs / period) * period;
+
+    // Semi-transparent rectangle: detected_at → now, gp_low → gp_high
+    const fillColor = isLong ? 'rgba(38,166,154,0.07)' : 'rgba(239,83,80,0.07)';
+    const edgeColor = isLong ? 'rgba(38,166,154,0.5)'  : 'rgba(239,83,80,0.5)';
+    try {
+      _zonePrimitive = _makeZoneBoxPrimitive(
+        _chart, _cs, detectedTs, nowTs, z.gp_low, z.gp_high, fillColor, edgeColor
+      );
+      _cs.attachPrimitive(_zonePrimitive);
+    } catch {}
+
+    // "D" marker on the bar when the zone was first detected
+    if (detectedBar > 0) {
+      markers.push({
+        time: detectedBar,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color: '#7e57c2',
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: 'ZONE',
+        size: 1,
+      });
+    }
+  }
+
+  // "ARMED ⚡" marker when bot entered GP proximity for this zone
+  const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+  if (z.zone_id === armedId) {
+    const armedTs  = _statusData?.zone_gp_entry_time;
+    if (armedTs) {
+      const armedBar = Math.floor(armedTs / period) * period;
+      markers.push({
+        time: armedBar,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color: '#f4c430',
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: '⚡ ARMED',
+        size: 1,
+      });
+    }
+  }
 }
 
 // ── Optional overlays: fib levels + swing origins ───────────────────────
@@ -914,6 +1005,17 @@ function _renderZoneCards() {
         </div>`;
     })() : '';
 
+    // Detected/armed timestamps
+    const detectedStr = z.detected_at
+      ? (() => { const d = new Date(z.detected_at);
+          return d.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) + ' ' +
+                 d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12:false }); })()
+      : null;
+    const armedTs   = _statusData?.zone_gp_entry_time;
+    const armedStr  = (isArmed && armedTs)
+      ? new Date(armedTs * 1000).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12:false })
+      : null;
+
     return `
     <div class="gz-zone-card ${isLong ? 'long' : 'short'} ${isArmed ? 'armed' : ''} ${z.zone_id === _selectedZoneId ? 'selected' : ''}"
          onclick="_selectZone('${z.zone_id}')">
@@ -924,7 +1026,11 @@ function _renderZoneCards() {
           ${z.htf_aligned ? '<span style="font-size:9px;color:var(--cyan);border:1px solid rgba(38,198,218,.3);padding:1px 5px;border-radius:3px">HTF✓</span>' : ''}
           ${z.zone_id === _selectedZoneId ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(244,196,48,.4);padding:1px 6px;border-radius:3px;background:rgba(244,196,48,.08)">▲ on chart</span>' : ''}
         </div>
-        <div class="gz-zone-score ${scoreClass}">${scoreStr}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          <div class="gz-zone-score ${scoreClass}">${scoreStr}</div>
+          ${detectedStr ? `<div style="font-size:9px;color:var(--text3);white-space:nowrap">🔍 ${detectedStr}</div>` : ''}
+          ${armedStr    ? `<div style="font-size:9px;color:var(--gold);white-space:nowrap">⚡ ${armedStr}</div>` : ''}
+        </div>
       </div>
       <div class="gz-zone-window ${isLong ? 'long' : 'short'}">
         ${isArmed ? '⚡ ' : ''}GP: ${z.gp_low?.toFixed(2) ?? '—'} – ${z.gp_high?.toFixed(2) ?? '—'}
