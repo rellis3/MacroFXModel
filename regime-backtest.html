@@ -2751,9 +2751,19 @@ async function runClientOptimizer() {
       // a passing trial's score always outranks a fixed gate-penalty score, so this still
       // surfaces fully-valid configs first when they exist, and only falls back to showing
       // the closest near-misses (tagged with their blocking reason) when nothing passes.
-      top.push({ score, reason, cfg: trialCfg, anTr, anVa });
-      top.sort((a, b) => b.score - a.score);
-      if (top.length > 20) top.length = 20;
+      // Deduplicate by config fingerprint so local jitter rounding to the same quantized
+      // values doesn't fill the top-20 with identical rows.
+      const cfgKey = JSON.stringify(Object.entries(trialCfg).sort((a, b) => a[0] < b[0] ? -1 : 1));
+      if (!top.some(t => t.cfgKey === cfgKey)) {
+        top.push({ score, reason, cfg: trialCfg, anTr, anVa, cfgKey });
+        top.sort((a, b) => b.score - a.score);
+        if (top.length > 20) top.length = 20;
+      } else if (score > top.find(t => t.cfgKey === cfgKey).score) {
+        // Same config found at a better score (shouldn't happen but guard anyway)
+        const existing = top.find(t => t.cfgKey === cfgKey);
+        existing.score = score; existing.reason = reason; existing.anTr = anTr; existing.anVa = anVa;
+        top.sort((a, b) => b.score - a.score);
+      }
 
       if (score > bestScore) bestScore = score;
       if (score > incumbentScore) { incumbentScore = score; incumbent = { ...trialCfg }; }
