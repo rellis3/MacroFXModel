@@ -1346,7 +1346,8 @@ function selectBot(bot) {
   const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS };
   activeMetrics = metricsMap[bot] || V2_METRICS;
   const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS };
-  cfg = { ...(defaultsMap[bot] || V2_DEFAULTS) };
+  const savedDefault = localStorage.getItem(`opt_default_${bot}`);
+  cfg = savedDefault ? JSON.parse(savedDefault) : { ...(defaultsMap[bot] || V2_DEFAULTS) };
   buildConfigPanel();
   buildCheckboxes();
   rebuildMetricPanels();
@@ -1417,6 +1418,7 @@ function resetParam(key, def) {
 
 function resetAllParams() {
   const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS };
+  localStorage.removeItem(`opt_default_${currentBot}`);
   cfg = { ...(resetMap[currentBot] || V2_DEFAULTS) };
   buildConfigPanel();
 }
@@ -2830,7 +2832,10 @@ function renderOptResults() {
       <td class="num">${tr ? tr.winRate.toFixed(0) : '—'}% / ${va ? va.winRate.toFixed(0) : '—'}%</td>
       <td class="num">${va ? va.maxDD.toFixed(1) : '—'}%</td>
       <td class="num">${va ? va.rrRatio.toFixed(2) : '—'}</td>
-      <td><button class="rb-metrics-btn" style="font-size:10px;padding:2px 8px" onclick="loadOptConfig(${idx})">Load</button></td>
+      <td style="white-space:nowrap">
+        <button class="rb-metrics-btn" style="font-size:10px;padding:2px 8px" onclick="loadOptConfig(${idx})">Load</button>
+        ${r.reason === 'pass' ? `<button class="rb-metrics-btn" style="font-size:10px;padding:2px 6px;margin-left:4px;background:#2a3a2a;color:#3fd17e;border-color:#3fd17e44" onclick="setOptDefault(${idx})" title="Save as default config for ${currentBot.toUpperCase()} — applied every time you switch to this bot">★ Default</button>` : ''}
+      </td>
     `;
     body.appendChild(row);
   });
@@ -2843,6 +2848,17 @@ function loadOptConfig(idx) {
   buildConfigPanel();
   document.getElementById('cfgPanel').style.display = '';
   setStatus('ok', `Loaded optimizer config #${idx + 1} into ${currentBot.toUpperCase()} config — click ▶ Load & Run to backtest it on the full range`);
+}
+
+function setOptDefault(idx) {
+  const r = optResults[idx];
+  if (!r || r.reason !== 'pass') return;
+  localStorage.setItem(`opt_default_${currentBot}`, JSON.stringify(r.cfg));
+  cfg = { ...r.cfg };
+  buildConfigPanel();
+  document.getElementById('cfgPanel').style.display = '';
+  setStatus('ok', `★ Config #${idx + 1} saved as ${currentBot.toUpperCase()} default — will load automatically next time you select this bot`);
+}
 }
 
 // ─── Simulation: V1 ──────────────────────────────────────────────────────────
