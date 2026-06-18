@@ -108,17 +108,17 @@ f_pipSize(sym) =>
 
 // Known ticker names to detect symbol-header lines
 f_isKnownTicker(rowUp) =>
-    str.contains(rowUp, "GOLD")   or str.contains(rowUp, "NQ")     or
-    str.contains(rowUp, "EURUSD") or str.contains(rowUp, "GBPUSD") or
-    str.contains(rowUp, "USDJPY") or str.contains(rowUp, "AUDUSD") or
-    str.contains(rowUp, "NZDUSD") or str.contains(rowUp, "USDCAD") or
-    str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY") or
-    str.contains(rowUp, "EURGBP") or str.contains(rowUp, "EURJPY") or
-    str.contains(rowUp, "EURCHF") or str.contains(rowUp, "GBPCHF") or
-    str.contains(rowUp, "AUDJPY") or str.contains(rowUp, "CADJPY") or
-    str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
-    str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
-    str.contains(rowUp, "US30")
+    (str.contains(rowUp, "GOLD")   or str.contains(rowUp, "NQ")     or
+     str.contains(rowUp, "EURUSD") or str.contains(rowUp, "GBPUSD") or
+     str.contains(rowUp, "USDJPY") or str.contains(rowUp, "AUDUSD") or
+     str.contains(rowUp, "NZDUSD") or str.contains(rowUp, "USDCAD") or
+     str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY") or
+     str.contains(rowUp, "EURGBP") or str.contains(rowUp, "EURJPY") or
+     str.contains(rowUp, "EURCHF") or str.contains(rowUp, "GBPCHF") or
+     str.contains(rowUp, "AUDJPY") or str.contains(rowUp, "CADJPY") or
+     str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
+     str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
+     str.contains(rowUp, "US30"))
 
 var float[] czPrices = array.new_float()
 var int[]   czCounts = array.new_int()
@@ -190,8 +190,14 @@ f_zoneColour(cnt) =>
 
 if barstate.islast
     // Clean up previous render
-    for l in czLines  : line.delete(l)
-    for l in czLabels : label.delete(l)
+    int _nl = array.size(czLines)
+    if _nl > 0
+        for i = 0 to _nl - 1
+            line.delete(array.get(czLines, i))
+    int _nlab = array.size(czLabels)
+    if _nlab > 0
+        for i = 0 to _nlab - 1
+            label.delete(array.get(czLabels, i))
     array.clear(czLines)
     array.clear(czLabels)
 

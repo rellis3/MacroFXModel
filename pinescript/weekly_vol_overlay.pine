@@ -68,9 +68,11 @@ col_oc_med_20 = input.color(color.new(color.teal,   55), "20d OC median colour")
 // STYLE INPUTS — SHARED
 // =====================================================
 
-col_wkOpen  = input.color(color.new(color.white, 55), "Week Open colour")
-col_wkHL    = input.color(color.new(color.gray,  30), "Week H/L colour")
-show_table  = input.bool(true,  "Show weekly stats table")
+col_wkOpen  = input.color(color.new(color.white,  55), "Week Open colour")
+col_wkHL    = input.color(color.new(color.gray,   30), "Week H/L colour")
+col_moOpen  = input.color(color.new(color.yellow, 55), "Month Open colour")
+col_moHL    = input.color(color.new(color.yellow, 70), "Month H/L colour")
+show_table  = input.bool(true,  "Show stats table")
 show_labels = input.bool(true,  "Show line labels")
 
 // =====================================================
@@ -102,8 +104,6 @@ f_collapseSpaces(s) =>
     r := str.replace_all(r, "  ", " ")
     r
 
-// Parse the first number that appears after `keyword` in `src`.
-// Used for median (after ": ") and for 75th in old format (after "75th: ").
 f_firstNumAfter(src, keyword) =>
     result = float(na)
     if str.contains(src, keyword)
@@ -116,21 +116,19 @@ f_firstNumAfter(src, keyword) =>
                 result := val
     result
 
-// Parse both the median and the 75th from a forecast line.
-// Handles both formats:
+// Parse median and 75th from a forecast line. Handles both formats:
 //   New: "High to Low range : 1.19% median · 1.45% 75th Percentile"
 //   Old: "H-L range         : 1.19%         75th: 1.45%"
-// Strategy: strip %, known words, and punctuation, then the first two numbers
-// on the line are the median and the 75th.
+// Strip %, keywords, punctuation → first two numbers are median and 75th.
 f_parseRow(src) =>
     c = src
-    c := str.replace_all(c, "%",           " ")
-    c := str.replace_all(c, "75th",        " ")   // prevents "75" being parsed as a value
-    c := str.replace_all(c, "75TH",        " ")
-    c := str.replace_all(c, "Percentile",  " ")
-    c := str.replace_all(c, "PERCENTILE",  " ")
-    c := str.replace_all(c, "median",      " ")
-    c := str.replace_all(c, "MEDIAN",      " ")
+    c := str.replace_all(c, "%",          " ")
+    c := str.replace_all(c, "75th",       " ")
+    c := str.replace_all(c, "75TH",       " ")
+    c := str.replace_all(c, "Percentile", " ")
+    c := str.replace_all(c, "PERCENTILE", " ")
+    c := str.replace_all(c, "median",     " ")
+    c := str.replace_all(c, "MEDIAN",     " ")
     parts = str.split(c, " ")
     nums  = array.new_float(0)
     for j = 0 to array.size(parts) - 1
@@ -149,8 +147,6 @@ f_pctStr(v) =>
 
 // =====================================================
 // PARSE WEEKLY FORECAST
-// Runs once on the first bar. Detects your instrument's block then
-// extracts values from the 5-Day and 20-Day sections.
 // =====================================================
 
 var string bias_text    = "—"
@@ -187,7 +183,6 @@ if barstate.isfirst
             is5DayHdr  = str.contains(rowUp, "5-DAY")  and str.contains(rowUp, "WEEKLY")
             is20DayHdr = str.contains(rowUp, "20-DAY") and str.contains(rowUp, "MONTHLY")
 
-            // Accept both old ("H-L", "O→H") and new ("HIGH TO LOW", "OPEN TO CLOSE") labels
             isHLLine = str.contains(rowUp, "H-L") or str.contains(rowUp, "HIGH TO LOW")
             isOCLine = str.contains(rowUp, "O→H") or str.contains(rowUp, "OPEN TO CLOSE")
 
@@ -271,10 +266,7 @@ if barstate.isfirst
                         month_oc_75  := p
 
 // =====================================================
-// WEEKLY TRACKING — open/high/low anchored at Monday open
-// The H-L projected lines are dynamic: they pin from the
-// running week low (for the upside target) and the running
-// week high (for the downside target), updating each bar.
+// WEEKLY TRACKING — anchored at Monday open (UTC weekofyear)
 // =====================================================
 
 curWkCode = year(time, "UTC") * 100 + weekofyear(time, "UTC")
@@ -296,7 +288,7 @@ else
     wkHigh := math.max(wkHigh, high)
     wkLow  := math.min(wkLow,  low)
 
-// ── Live stats ─────────────────────────────────────────────────────────────────
+// ── Weekly live stats ──────────────────────────────────────────────────────────
 wtd_pct       = not na(wkOpen) ? math.round((close  - wkOpen) / wkOpen * 100, 2) : float(na)
 rangeConsumed = not na(wkOpen) ? math.round((wkHigh - wkLow)  / wkOpen * 100, 2) : float(na)
 pctOfBudget   = not na(rangeConsumed) and not na(week_hl_med) and week_hl_med > 0
@@ -304,50 +296,79 @@ pctOfBudget   = not na(rangeConsumed) and not na(week_hl_med) and week_hl_med > 
 remainBudget  = not na(rangeConsumed) and not na(week_hl_med)
      ? math.max(0.0, math.round(week_hl_med - rangeConsumed, 2)) : float(na)
 
+// =====================================================
+// MONTHLY TRACKING — anchored at 1st trading day of the calendar month
+// 20-day projected levels and OC targets all pin from moOpen/moHigh/moLow.
+// =====================================================
+
+newMonth = barstate.isfirst or month(time, "UTC") != month(time[1], "UTC")
+
+var int   moStartTime = 0
+if newMonth
+    moStartTime := time
+
+var float moOpen = na
+var float moHigh = na
+var float moLow  = na
+
+if newMonth
+    moOpen := open
+    moHigh := high
+    moLow  := low
+else
+    moHigh := math.max(moHigh, high)
+    moLow  := math.min(moLow,  low)
+
+// ── Monthly live stats ─────────────────────────────────────────────────────────
+moRangeConsumed = not na(moOpen) ? math.round((moHigh - moLow) / moOpen * 100, 2) : float(na)
+moPctOfBudget   = not na(moRangeConsumed) and not na(month_hl_med) and month_hl_med > 0
+     ? math.round(moRangeConsumed / month_hl_med * 100, 0) : float(na)
+moRemainBudget  = not na(moRangeConsumed) and not na(month_hl_med)
+     ? math.max(0.0, math.round(month_hl_med - moRangeConsumed, 2)) : float(na)
+
 // ── Display flags ──────────────────────────────────────────────────────────────
 show5d  = display_mode == "5-Day"  or display_mode == "Both"
 show20d = display_mode == "20-Day" or display_mode == "Both"
 
-// ── 5-Day price levels ─────────────────────────────────────────────────────────
-// H-L: dynamic — drawn from running week low (high side) / week high (low side)
+// ── 5-Day price levels (anchored at week open / running week extremes) ─────────
 pH_75     = show5d and not na(week_hl_75)  and not na(wkLow)  ? wkLow  * (1 + week_hl_75  / 100) : na
 pH_med    = show5d and not na(week_hl_med) and not na(wkLow)  ? wkLow  * (1 + week_hl_med / 100) : na
 pL_75     = show5d and not na(week_hl_75)  and not na(wkHigh) ? wkHigh * (1 - week_hl_75  / 100) : na
 pL_med    = show5d and not na(week_hl_med) and not na(wkHigh) ? wkHigh * (1 - week_hl_med / 100) : na
-// O-C: static from week open
 oc_up_75  = show5d and not na(week_oc_75)  and not na(wkOpen) ? wkOpen * (1 + week_oc_75  / 100) : na
 oc_dn_75  = show5d and not na(week_oc_75)  and not na(wkOpen) ? wkOpen * (1 - week_oc_75  / 100) : na
 oc_up_med = show5d and not na(week_oc_med) and not na(wkOpen) ? wkOpen * (1 + week_oc_med / 100) : na
 oc_dn_med = show5d and not na(week_oc_med) and not na(wkOpen) ? wkOpen * (1 - week_oc_med / 100) : na
 
-// ── 20-Day price levels ────────────────────────────────────────────────────────
-mo_pH_75     = show20d and not na(month_hl_75)  and not na(wkLow)  ? wkLow  * (1 + month_hl_75  / 100) : na
-mo_pH_med    = show20d and not na(month_hl_med) and not na(wkLow)  ? wkLow  * (1 + month_hl_med / 100) : na
-mo_pL_75     = show20d and not na(month_hl_75)  and not na(wkHigh) ? wkHigh * (1 - month_hl_75  / 100) : na
-mo_pL_med    = show20d and not na(month_hl_med) and not na(wkHigh) ? wkHigh * (1 - month_hl_med / 100) : na
-mo_oc_up_75  = show20d and not na(month_oc_75)  and not na(wkOpen) ? wkOpen * (1 + month_oc_75  / 100) : na
-mo_oc_dn_75  = show20d and not na(month_oc_75)  and not na(wkOpen) ? wkOpen * (1 - month_oc_75  / 100) : na
-mo_oc_up_med = show20d and not na(month_oc_med) and not na(wkOpen) ? wkOpen * (1 + month_oc_med / 100) : na
-mo_oc_dn_med = show20d and not na(month_oc_med) and not na(wkOpen) ? wkOpen * (1 - month_oc_med / 100) : na
+// ── 20-Day price levels (anchored at MONTH open / running month extremes) ──────
+mo_pH_75     = show20d and not na(month_hl_75)  and not na(moLow)  ? moLow  * (1 + month_hl_75  / 100) : na
+mo_pH_med    = show20d and not na(month_hl_med) and not na(moLow)  ? moLow  * (1 + month_hl_med / 100) : na
+mo_pL_75     = show20d and not na(month_hl_75)  and not na(moHigh) ? moHigh * (1 - month_hl_75  / 100) : na
+mo_pL_med    = show20d and not na(month_hl_med) and not na(moHigh) ? moHigh * (1 - month_hl_med / 100) : na
+mo_oc_up_75  = show20d and not na(month_oc_75)  and not na(moOpen) ? moOpen * (1 + month_oc_75  / 100) : na
+mo_oc_dn_75  = show20d and not na(month_oc_75)  and not na(moOpen) ? moOpen * (1 - month_oc_75  / 100) : na
+mo_oc_up_med = show20d and not na(month_oc_med) and not na(moOpen) ? moOpen * (1 + month_oc_med / 100) : na
+mo_oc_dn_med = show20d and not na(month_oc_med) and not na(moOpen) ? moOpen * (1 - month_oc_med / 100) : na
 
 // =====================================================
-// STATIC PLOTS — step-lines that repaint as week progresses
+// STATIC PLOTS
 // =====================================================
 
 plot(wkOpen,        "Week Open",         color=col_wkOpen,    linewidth=1, style=plot.style_stepline_diamond)
+plot(moOpen,        "Month Open",        color=col_moOpen,    linewidth=1, style=plot.style_stepline_diamond)
 // 5-day O-C bands
 plot(oc_up_75,      "5d OC 75th Up",     color=col_oc_75,     linewidth=2, style=plot.style_stepline)
 plot(oc_dn_75,      "5d OC 75th Dn",     color=col_oc_75,     linewidth=2, style=plot.style_stepline)
 plot(oc_up_med,     "5d OC Med Up",      color=col_oc_med,    linewidth=1, style=plot.style_stepline)
 plot(oc_dn_med,     "5d OC Med Dn",      color=col_oc_med,    linewidth=1, style=plot.style_stepline)
-// 20-day O-C bands
+// 20-day O-C bands (from month open)
 plot(mo_oc_up_75,   "20d OC 75th Up",    color=col_oc_75_20,  linewidth=2, style=plot.style_stepline)
 plot(mo_oc_dn_75,   "20d OC 75th Dn",    color=col_oc_75_20,  linewidth=2, style=plot.style_stepline)
 plot(mo_oc_up_med,  "20d OC Med Up",     color=col_oc_med_20, linewidth=1, style=plot.style_stepline)
 plot(mo_oc_dn_med,  "20d OC Med Dn",     color=col_oc_med_20, linewidth=1, style=plot.style_stepline)
 
 // =====================================================
-// DYNAMIC LINES — redrawn every bar at barstate.islast
+// DYNAMIC LINES
 // =====================================================
 
 var line  ln_pH_75     = na
@@ -356,6 +377,8 @@ var line  ln_pL_75     = na
 var line  ln_pL_med    = na
 var line  ln_wkH       = na
 var line  ln_wkL       = na
+var line  ln_moH       = na
+var line  ln_moL       = na
 var line  ln_mo_pH_75  = na
 var line  ln_mo_pH_med = na
 var line  ln_mo_pL_75  = na
@@ -368,6 +391,9 @@ var label lb_pL_med    = na
 var label lb_wkH       = na
 var label lb_wkL       = na
 var label lb_wkO       = na
+var label lb_moH       = na
+var label lb_moL       = na
+var label lb_moO       = na
 var label lb_ocU_75    = na
 var label lb_ocD_75    = na
 var label lb_ocU_md    = na
@@ -382,15 +408,16 @@ var label lb_mo_ocU_md = na
 var label lb_mo_ocD_md = na
 
 if barstate.islast
-    // Delete stale objects
-    line.delete(ln_pH_75)   ,  line.delete(ln_pH_med)
-    line.delete(ln_pL_75)   ,  line.delete(ln_pL_med)
-    line.delete(ln_wkH)     ,  line.delete(ln_wkL)
-    line.delete(ln_mo_pH_75),  line.delete(ln_mo_pH_med)
-    line.delete(ln_mo_pL_75),  line.delete(ln_mo_pL_med)
+    line.delete(ln_pH_75)    , line.delete(ln_pH_med)
+    line.delete(ln_pL_75)    , line.delete(ln_pL_med)
+    line.delete(ln_wkH)      , line.delete(ln_wkL)
+    line.delete(ln_moH)      , line.delete(ln_moL)
+    line.delete(ln_mo_pH_75) , line.delete(ln_mo_pH_med)
+    line.delete(ln_mo_pL_75) , line.delete(ln_mo_pL_med)
     label.delete(lb_pH_75)   , label.delete(lb_pH_med)
     label.delete(lb_pL_75)   , label.delete(lb_pL_med)
-    label.delete(lb_wkH)     , label.delete(lb_wkL)    , label.delete(lb_wkO)
+    label.delete(lb_wkH)     , label.delete(lb_wkL)   , label.delete(lb_wkO)
+    label.delete(lb_moH)     , label.delete(lb_moL)   , label.delete(lb_moO)
     label.delete(lb_ocU_75)  , label.delete(lb_ocD_75)
     label.delete(lb_ocU_md)  , label.delete(lb_ocD_md)
     label.delete(lb_mo_pH_75), label.delete(lb_mo_pH_med)
@@ -398,14 +425,13 @@ if barstate.islast
     label.delete(lb_mo_ocU_75), label.delete(lb_mo_ocD_75)
     label.delete(lb_mo_ocU_md), label.delete(lb_mo_ocD_md)
 
-    x1 = wkStartTime
     x2 = time
 
     // ── Running week high / low ───────────────────────────────────────────────
-    ln_wkH := line.new(x1, wkHigh, x2, wkHigh,
+    ln_wkH := line.new(wkStartTime, wkHigh, x2, wkHigh,
          color=col_wkHL, width=1, style=line.style_dashed,
          xloc=xloc.bar_time, extend=extend.right)
-    ln_wkL := line.new(x1, wkLow,  x2, wkLow,
+    ln_wkL := line.new(wkStartTime, wkLow, x2, wkLow,
          color=col_wkHL, width=1, style=line.style_dashed,
          xloc=xloc.bar_time, extend=extend.right)
     if show_labels
@@ -419,10 +445,28 @@ if barstate.islast
              style=label.style_label_left, color=color.new(color.white, 75),
              textcolor=color.white, size=size.small)
 
-    // ── 5-Day projected H-L lines ─────────────────────────────────────────────
+    // ── Running month high / low ──────────────────────────────────────────────
+    ln_moH := line.new(moStartTime, moHigh, x2, moHigh,
+         color=col_moHL, width=1, style=line.style_dashed,
+         xloc=xloc.bar_time, extend=extend.right)
+    ln_moL := line.new(moStartTime, moLow, x2, moLow,
+         color=col_moHL, width=1, style=line.style_dashed,
+         xloc=xloc.bar_time, extend=extend.right)
+    if show_labels
+        lb_moH := label.new(bar_index + 2, moHigh, "Month High",
+             style=label.style_label_left, color=color.new(col_moHL, 70),
+             textcolor=col_moHL, size=size.small)
+        lb_moL := label.new(bar_index + 2, moLow, "Month Low",
+             style=label.style_label_left, color=color.new(col_moHL, 70),
+             textcolor=col_moHL, size=size.small)
+        lb_moO := label.new(bar_index + 2, moOpen, "Month Open",
+             style=label.style_label_left, color=color.new(color.yellow, 75),
+             textcolor=color.yellow, size=size.small)
+
+    // ── 5-Day projected H-L (from week extremes, solid lines) ────────────────
     if show5d
         if not na(pH_75)
-            ln_pH_75 := line.new(x1, pH_75, x2, pH_75,
+            ln_pH_75 := line.new(wkStartTime, pH_75, x2, pH_75,
                  color=col_75, width=2, style=line.style_solid,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
@@ -435,7 +479,7 @@ if barstate.islast
                      textcolor=color.white, size=size.small)
 
         if not na(pH_med)
-            ln_pH_med := line.new(x1, pH_med, x2, pH_med,
+            ln_pH_med := line.new(wkStartTime, pH_med, x2, pH_med,
                  color=col_med, width=1, style=line.style_solid,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
@@ -445,7 +489,7 @@ if barstate.islast
                      textcolor=color.white, size=size.small)
 
         if not na(pL_75)
-            ln_pL_75 := line.new(x1, pL_75, x2, pL_75,
+            ln_pL_75 := line.new(wkStartTime, pL_75, x2, pL_75,
                  color=col_75, width=2, style=line.style_solid,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
@@ -458,7 +502,7 @@ if barstate.islast
                      textcolor=color.white, size=size.small)
 
         if not na(pL_med)
-            ln_pL_med := line.new(x1, pL_med, x2, pL_med,
+            ln_pL_med := line.new(wkStartTime, pL_med, x2, pL_med,
                  color=col_med, width=1, style=line.style_solid,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
@@ -489,45 +533,51 @@ if barstate.islast
                      style=label.style_label_left, color=color.new(col_oc_med, 70),
                      textcolor=color.white, size=size.small)
 
-    // ── 20-Day projected H-L lines (dotted to distinguish from 5d) ───────────
+    // ── 20-Day projected H-L (from MONTH extremes, dotted lines) ─────────────
     if show20d
         if not na(mo_pH_75)
-            ln_mo_pH_75 := line.new(x1, mo_pH_75, x2, mo_pH_75,
+            ln_mo_pH_75 := line.new(moStartTime, mo_pH_75, x2, mo_pH_75,
                  color=col_75_20, width=2, style=line.style_dotted,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
+                dMed = f_pctStr(math.round(month_hl_med - moRangeConsumed, 2))
+                d75  = f_pctStr(math.round(month_hl_75  - moRangeConsumed, 2))
                 lb_mo_pH_75 := label.new(bar_index + 2, mo_pH_75,
-                     "20d H 75p  " + f_pctStr(f_pct(mo_pH_75, wkLow)),
+                     "20d H 75p  " + f_pctStr(f_pct(mo_pH_75, moLow)) +
+                     "\nΔMed " + dMed + "  ΔP75 " + d75,
                      style=label.style_label_left, color=color.new(col_75_20, 70),
                      textcolor=color.white, size=size.small)
 
         if not na(mo_pH_med)
-            ln_mo_pH_med := line.new(x1, mo_pH_med, x2, mo_pH_med,
+            ln_mo_pH_med := line.new(moStartTime, mo_pH_med, x2, mo_pH_med,
                  color=col_med_20, width=1, style=line.style_dotted,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
                 lb_mo_pH_med := label.new(bar_index + 2, mo_pH_med,
-                     "20d H med  " + f_pctStr(f_pct(mo_pH_med, wkLow)),
+                     "20d H med  " + f_pctStr(f_pct(mo_pH_med, moLow)),
                      style=label.style_label_left, color=color.new(col_med_20, 70),
                      textcolor=color.white, size=size.small)
 
         if not na(mo_pL_75)
-            ln_mo_pL_75 := line.new(x1, mo_pL_75, x2, mo_pL_75,
+            ln_mo_pL_75 := line.new(moStartTime, mo_pL_75, x2, mo_pL_75,
                  color=col_75_20, width=2, style=line.style_dotted,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
+                dMed = f_pctStr(math.round(month_hl_med - moRangeConsumed, 2))
+                d75  = f_pctStr(math.round(month_hl_75  - moRangeConsumed, 2))
                 lb_mo_pL_75 := label.new(bar_index + 2, mo_pL_75,
-                     "20d L 75p  " + f_pctStr(f_pct(mo_pL_75, wkHigh)),
+                     "20d L 75p  " + f_pctStr(f_pct(mo_pL_75, moHigh)) +
+                     "\nΔMed " + dMed + "  ΔP75 " + d75,
                      style=label.style_label_left, color=color.new(col_75_20, 70),
                      textcolor=color.white, size=size.small)
 
         if not na(mo_pL_med)
-            ln_mo_pL_med := line.new(x1, mo_pL_med, x2, mo_pL_med,
+            ln_mo_pL_med := line.new(moStartTime, mo_pL_med, x2, mo_pL_med,
                  color=col_med_20, width=1, style=line.style_dotted,
                  xloc=xloc.bar_time, extend=extend.none)
             if show_labels
                 lb_mo_pL_med := label.new(bar_index + 2, mo_pL_med,
-                     "20d L med  " + f_pctStr(f_pct(mo_pL_med, wkHigh)),
+                     "20d L med  " + f_pctStr(f_pct(mo_pL_med, moHigh)),
                      style=label.style_label_left, color=color.new(col_med_20, 70),
                      textcolor=color.white, size=size.small)
 
@@ -554,6 +604,39 @@ if barstate.islast
                      textcolor=color.white, size=size.small)
 
 // =====================================================
+// ALERTS
+// Price-level crosses fire when close crosses a projected line.
+// Budget alerts fire once when the live range first exceeds median / 75th.
+// =====================================================
+
+// 5-Day H-L projected lines
+alertcondition(ta.crossover(close,  pH_75),  title="5d H — 75th tagged",    message="{{ticker}} — 5d projected H 75th tagged")
+alertcondition(ta.crossunder(close, pL_75),  title="5d L — 75th tagged",    message="{{ticker}} — 5d projected L 75th tagged")
+alertcondition(ta.crossover(close,  pH_med), title="5d H — median tagged",  message="{{ticker}} — 5d projected H median tagged")
+alertcondition(ta.crossunder(close, pL_med), title="5d L — median tagged",  message="{{ticker}} — 5d projected L median tagged")
+// 5-Day O-C targets
+alertcondition(ta.crossover(close,  oc_up_75),  title="5d OC 75th Up hit",   message="{{ticker}} — 5d OC 75th upside target hit")
+alertcondition(ta.crossunder(close, oc_dn_75),  title="5d OC 75th Dn hit",   message="{{ticker}} — 5d OC 75th downside target hit")
+alertcondition(ta.crossover(close,  oc_up_med), title="5d OC median Up hit", message="{{ticker}} — 5d OC median upside target hit")
+alertcondition(ta.crossunder(close, oc_dn_med), title="5d OC median Dn hit", message="{{ticker}} — 5d OC median downside target hit")
+// Weekly range budget
+alertcondition(ta.crossover(rangeConsumed, week_hl_med), title="WK range — median consumed",  message="{{ticker}} — weekly range hit median budget")
+alertcondition(ta.crossover(rangeConsumed, week_hl_75),  title="WK range — 75th EXTENDED",    message="{{ticker}} — weekly range hit 75th budget (EXTENDED)")
+// 20-Day H-L projected lines (from month extremes)
+alertcondition(ta.crossover(close,  mo_pH_75),  title="20d H — 75th tagged",   message="{{ticker}} — 20d projected H 75th tagged")
+alertcondition(ta.crossunder(close, mo_pL_75),  title="20d L — 75th tagged",   message="{{ticker}} — 20d projected L 75th tagged")
+alertcondition(ta.crossover(close,  mo_pH_med), title="20d H — median tagged", message="{{ticker}} — 20d projected H median tagged")
+alertcondition(ta.crossunder(close, mo_pL_med), title="20d L — median tagged", message="{{ticker}} — 20d projected L median tagged")
+// 20-Day O-C targets
+alertcondition(ta.crossover(close,  mo_oc_up_75),  title="20d OC 75th Up hit",   message="{{ticker}} — 20d OC 75th upside target hit")
+alertcondition(ta.crossunder(close, mo_oc_dn_75),  title="20d OC 75th Dn hit",   message="{{ticker}} — 20d OC 75th downside target hit")
+alertcondition(ta.crossover(close,  mo_oc_up_med), title="20d OC median Up hit", message="{{ticker}} — 20d OC median upside target hit")
+alertcondition(ta.crossunder(close, mo_oc_dn_med), title="20d OC median Dn hit", message="{{ticker}} — 20d OC median downside target hit")
+// Monthly range budget
+alertcondition(ta.crossover(moRangeConsumed, month_hl_med), title="MO range — median consumed", message="{{ticker}} — monthly range hit median budget")
+alertcondition(ta.crossover(moRangeConsumed, month_hl_75),  title="MO range — 75th EXTENDED",   message="{{ticker}} — monthly range hit 75th budget (EXTENDED)")
+
+// =====================================================
 // STATS TABLE
 // =====================================================
 
@@ -561,7 +644,7 @@ var table statsTable = na
 
 if show_table and barstate.islast
     table.delete(statsTable)
-    statsTable := table.new(position.top_right, 2, 12,
+    statsTable := table.new(position.top_right, 2, 14,
          bgcolor=color.new(color.black, 55),
          border_width=1, border_color=color.new(color.gray, 60),
          frame_width=1,  frame_color=color.new(color.gray, 50))
@@ -570,12 +653,14 @@ if show_table and barstate.islast
     headerBg = color.new(color.navy, 35)
     divBg    = color.new(color.gray, 85)
 
+    // Row 0: header
     modeTag = display_mode == "Both" ? "5d+20d" : display_mode
     table.cell(statsTable, 0, 0, "C.og · WEEKLY  [" + modeTag + "]",
          text_color=color.new(color.white, 10), text_size=size.small, bgcolor=headerBg)
     table.cell(statsTable, 1, 0, syminfo.ticker,
          text_color=color.new(color.yellow, 10), text_size=size.small, bgcolor=headerBg)
 
+    // Row 1: Bias
     biasCol = bias_text == "Bullish" ? color.new(color.green, 30) :
               bias_text == "Bearish" ? color.new(color.red,   30) : grayBg
     table.cell(statsTable, 0, 1, "Bias",
@@ -583,19 +668,21 @@ if show_table and barstate.islast
     table.cell(statsTable, 1, 1, bias_text + "  [" + bias_conf + "]",
          text_color=color.white, text_size=size.small, bgcolor=biasCol)
 
+    // Row 2: Regime
     table.cell(statsTable, 0, 2, "Regime",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
     table.cell(statsTable, 1, 2, regime_text,
          text_color=color.new(color.white, 15), text_size=size.small, bgcolor=grayBg)
 
-    wtdBg  = not na(wtd_pct) and wtd_pct > 0.05  ? color.new(color.green, 40) :
-             not na(wtd_pct) and wtd_pct < -0.05 ? color.new(color.red,   40) : grayBg
+    // Row 3: WTD Momentum (live)
+    wtdBg = not na(wtd_pct) and wtd_pct > 0.05  ? color.new(color.green, 40) :
+            not na(wtd_pct) and wtd_pct < -0.05 ? color.new(color.red,   40) : grayBg
     table.cell(statsTable, 0, 3, "WTD Momentum",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 1, 3,
-         not na(wtd_pct) ? f_pctStr(wtd_pct) + " (open→now)" : "—",
+    table.cell(statsTable, 1, 3, not na(wtd_pct) ? f_pctStr(wtd_pct) + " (open→now)" : "—",
          text_color=color.white, text_size=size.small, bgcolor=wtdBg)
 
+    // Row 4: Weekly range consumed (live, green / orange / red vs median / 75th)
     rcBg = not na(rangeConsumed) and not na(week_hl_med) and not na(week_hl_75) ?
          (rangeConsumed >= week_hl_75  ? color.new(color.red,    30) :
           rangeConsumed >= week_hl_med ? color.new(color.orange, 35) :
@@ -603,61 +690,79 @@ if show_table and barstate.islast
     rcStr = not na(pctOfBudget) and not na(rangeConsumed) and not na(week_hl_med)
          ? str.tostring(pctOfBudget) + "%  (" + str.tostring(rangeConsumed) +
            "% of " + str.tostring(week_hl_med) + "% budget)" : "—"
-    table.cell(statsTable, 0, 4, "Range Consumed",
+    table.cell(statsTable, 0, 4, "WK Consumed",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
     table.cell(statsTable, 1, 4, rcStr,
          text_color=color.white, text_size=size.small, bgcolor=rcBg)
 
+    // Row 5: Weekly remaining budget (live)
     remBg = not na(remainBudget) ?
          (remainBudget < 0.15 ? color.new(color.red,    30) :
           remainBudget < 0.40 ? color.new(color.orange, 35) : grayBg) : grayBg
-    table.cell(statsTable, 0, 5, "Remaining Budget",
+    table.cell(statsTable, 0, 5, "WK Remaining",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 1, 5,
-         not na(remainBudget) ? str.tostring(remainBudget) + "%" : "—",
+    table.cell(statsTable, 1, 5, not na(remainBudget) ? str.tostring(remainBudget) + "%" : "—",
          text_color=color.white, text_size=size.small, bgcolor=remBg)
 
-    // Divider
-    table.cell(statsTable, 0, 6, "─── FORECAST ───",
+    // Row 6: Monthly range consumed (live, from 1st of month)
+    morcBg = not na(moRangeConsumed) and not na(month_hl_med) and not na(month_hl_75) ?
+         (moRangeConsumed >= month_hl_75  ? color.new(color.red,    30) :
+          moRangeConsumed >= month_hl_med ? color.new(color.orange, 35) :
+                                            color.new(color.gray,   55)) : grayBg
+    morcStr = not na(moPctOfBudget) and not na(moRangeConsumed) and not na(month_hl_med)
+         ? str.tostring(moPctOfBudget) + "%  (" + str.tostring(moRangeConsumed) +
+           "% of " + str.tostring(month_hl_med) + "% budget)" : "—"
+    table.cell(statsTable, 0, 6, "MO Consumed",
+         text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
+    table.cell(statsTable, 1, 6, morcStr,
+         text_color=color.white, text_size=size.small, bgcolor=morcBg)
+
+    // Row 7: Monthly remaining budget (live)
+    moremBg = not na(moRemainBudget) ?
+         (moRemainBudget < 0.30 ? color.new(color.red,    30) :
+          moRemainBudget < 0.80 ? color.new(color.orange, 35) : grayBg) : grayBg
+    table.cell(statsTable, 0, 7, "MO Remaining",
+         text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
+    table.cell(statsTable, 1, 7, not na(moRemainBudget) ? str.tostring(moRemainBudget) + "%" : "—",
+         text_color=color.white, text_size=size.small, bgcolor=moremBg)
+
+    // Row 8: divider
+    table.cell(statsTable, 0, 8, "─── FORECAST ───",
          text_color=color.new(color.white, 55), text_size=size.tiny, bgcolor=divBg)
-    table.cell(statsTable, 1, 6, "median  /  75th",
+    table.cell(statsTable, 1, 8, "median  /  75th",
          text_color=color.new(color.white, 55), text_size=size.tiny, bgcolor=divBg)
 
-    // 5-day rows (always shown; dimmed text when not displayed on chart)
-    hl5Col = show5d ? color.new(color.orange, 10) : color.new(color.gray, 55)
-    oc5Col = show5d ? color.new(color.aqua,   10) : color.new(color.gray, 55)
-    hlStr5 = not na(week_hl_med) ? str.tostring(week_hl_med) + "%  /  " +
-             (not na(week_hl_75) ? str.tostring(week_hl_75) + "%" : "—") : "—"
-    ocStr5 = not na(week_oc_med) ? str.tostring(week_oc_med) + "%  /  " +
-             (not na(week_oc_75) ? str.tostring(week_oc_75) + "%" : "—") : "—"
-    table.cell(statsTable, 0, 7, "5d H-L",
+    // Rows 9-10: 5-day (dimmed when not displayed on chart)
+    hl5Col  = show5d ? color.new(color.orange, 10) : color.new(color.gray, 55)
+    oc5Col  = show5d ? color.new(color.aqua,   10) : color.new(color.gray, 55)
+    hlStr5  = not na(week_hl_med) ? str.tostring(week_hl_med) + "%  /  " +
+              (not na(week_hl_75) ? str.tostring(week_hl_75) + "%" : "—") : "—"
+    ocStr5  = not na(week_oc_med) ? str.tostring(week_oc_med) + "%  /  " +
+              (not na(week_oc_75) ? str.tostring(week_oc_75) + "%" : "—") : "—"
+    table.cell(statsTable, 0, 9, "5d H-L",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 1, 7, hlStr5,
-         text_color=hl5Col, text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 0, 8, "5d O-C",
+    table.cell(statsTable, 1, 9, hlStr5, text_color=hl5Col, text_size=size.small, bgcolor=grayBg)
+    table.cell(statsTable, 0, 10, "5d O-C",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 1, 8, ocStr5,
-         text_color=oc5Col, text_size=size.small, bgcolor=grayBg)
+    table.cell(statsTable, 1, 10, ocStr5, text_color=oc5Col, text_size=size.small, bgcolor=grayBg)
 
-    // 20-day rows
+    // Rows 11-12: 20-day (dimmed when not displayed on chart)
     hl20Col = show20d ? color.new(color.purple, 10) : color.new(color.gray, 55)
     oc20Col = show20d ? color.new(color.teal,   10) : color.new(color.gray, 55)
     hlStr20 = not na(month_hl_med) ? str.tostring(month_hl_med) + "%  /  " +
               (not na(month_hl_75) ? str.tostring(month_hl_75) + "%" : "—") : "—"
     ocStr20 = not na(month_oc_med) ? str.tostring(month_oc_med) + "%  /  " +
               (not na(month_oc_75) ? str.tostring(month_oc_75) + "%" : "—") : "—"
-    table.cell(statsTable, 0, 9, "20d H-L",
+    table.cell(statsTable, 0, 11, "20d H-L",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 1, 9, hlStr20,
-         text_color=hl20Col, text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 0, 10, "20d O-C",
+    table.cell(statsTable, 1, 11, hlStr20, text_color=hl20Col, text_size=size.small, bgcolor=grayBg)
+    table.cell(statsTable, 0, 12, "20d O-C",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 1, 10, ocStr20,
-         text_color=oc20Col, text_size=size.small, bgcolor=grayBg)
+    table.cell(statsTable, 1, 12, ocStr20, text_color=oc20Col, text_size=size.small, bgcolor=grayBg)
 
-    // Volatility
-    table.cell(statsTable, 0, 11, "Vol (ann)",
+    // Row 13: Volatility
+    table.cell(statsTable, 0, 13, "Vol (ann)",
          text_color=color.new(color.white, 30), text_size=size.small, bgcolor=grayBg)
-    table.cell(statsTable, 1, 11,
+    table.cell(statsTable, 1, 13,
          not na(vol_ann) ? str.tostring(vol_ann) + "%  [" + vol_pct_str + "]" : "—",
          text_color=color.new(color.white, 25), text_size=size.small, bgcolor=grayBg)
