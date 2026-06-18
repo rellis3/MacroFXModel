@@ -357,38 +357,37 @@ mo_oc_up_med = show20d and not na(month_oc_med) and not na(moOpen) ? moOpen * (1
 mo_oc_dn_med = show20d and not na(month_oc_med) and not na(moOpen) ? moOpen * (1 - month_oc_med / 100) : na
 
 // =====================================================
-// STATIC PLOTS
+// SERIES CALCULATIONS (used by alertcondition at global scope)
+// All visual drawing is done inside barstate.islast to ensure the
+// display mode toggle cleanly deletes and redraws only the correct lines.
 // =====================================================
-
-plot(show5d  ? wkOpen : na, "Week Open",  color=col_wkOpen,  linewidth=1, style=plot.style_stepline_diamond)
-plot(show20d ? moOpen : na, "Month Open", color=col_moOpen, linewidth=1, style=plot.style_stepline_diamond)
-// 5-day O-C bands
-plot(oc_up_75,      "5d OC 75th Up",     color=col_oc_75,     linewidth=2, style=plot.style_stepline)
-plot(oc_dn_75,      "5d OC 75th Dn",     color=col_oc_75,     linewidth=2, style=plot.style_stepline)
-plot(oc_up_med,     "5d OC Med Up",      color=col_oc_med,    linewidth=1, style=plot.style_stepline)
-plot(oc_dn_med,     "5d OC Med Dn",      color=col_oc_med,    linewidth=1, style=plot.style_stepline)
-// 20-day O-C bands (from month open)
-plot(mo_oc_up_75,   "Month OC 75th Up",    color=col_oc_75_20,  linewidth=2, style=plot.style_stepline)
-plot(mo_oc_dn_75,   "Month OC 75th Dn",    color=col_oc_75_20,  linewidth=2, style=plot.style_stepline)
-plot(mo_oc_up_med,  "Month OC Med Up",     color=col_oc_med_20, linewidth=1, style=plot.style_stepline)
-plot(mo_oc_dn_med,  "Month OC Med Dn",     color=col_oc_med_20, linewidth=1, style=plot.style_stepline)
 
 // =====================================================
 // DYNAMIC LINES
 // =====================================================
 
-var line  ln_pH_75     = na
-var line  ln_pH_med    = na
-var line  ln_pL_75     = na
-var line  ln_pL_med    = na
-var line  ln_wkH       = na
-var line  ln_wkL       = na
-var line  ln_moH       = na
-var line  ln_moL       = na
-var line  ln_mo_pH_75  = na
-var line  ln_mo_pH_med = na
-var line  ln_mo_pL_75  = na
-var line  ln_mo_pL_med = na
+var line  ln_pH_75      = na
+var line  ln_pH_med     = na
+var line  ln_pL_75      = na
+var line  ln_pL_med     = na
+var line  ln_wkH        = na
+var line  ln_wkL        = na
+var line  ln_wkOpen     = na
+var line  ln_ocU_75     = na
+var line  ln_ocD_75     = na
+var line  ln_ocU_med    = na
+var line  ln_ocD_med    = na
+var line  ln_moH        = na
+var line  ln_moL        = na
+var line  ln_moOpen     = na
+var line  ln_mo_pH_75   = na
+var line  ln_mo_pH_med  = na
+var line  ln_mo_pL_75   = na
+var line  ln_mo_pL_med  = na
+var line  ln_mo_ocU_75  = na
+var line  ln_mo_ocD_75  = na
+var line  ln_mo_ocU_med = na
+var line  ln_mo_ocD_med = na
 
 var label lb_pH_75     = na
 var label lb_pH_med    = na
@@ -414,12 +413,18 @@ var label lb_mo_ocU_md = na
 var label lb_mo_ocD_md = na
 
 if barstate.islast
-    line.delete(ln_pH_75)    , line.delete(ln_pH_med)
-    line.delete(ln_pL_75)    , line.delete(ln_pL_med)
-    line.delete(ln_wkH)      , line.delete(ln_wkL)
-    line.delete(ln_moH)      , line.delete(ln_moL)
-    line.delete(ln_mo_pH_75) , line.delete(ln_mo_pH_med)
-    line.delete(ln_mo_pL_75) , line.delete(ln_mo_pL_med)
+    line.delete(ln_pH_75)      , line.delete(ln_pH_med)
+    line.delete(ln_pL_75)      , line.delete(ln_pL_med)
+    line.delete(ln_wkH)        , line.delete(ln_wkL)
+    line.delete(ln_wkOpen)
+    line.delete(ln_ocU_75)     , line.delete(ln_ocD_75)
+    line.delete(ln_ocU_med)    , line.delete(ln_ocD_med)
+    line.delete(ln_moH)        , line.delete(ln_moL)
+    line.delete(ln_moOpen)
+    line.delete(ln_mo_pH_75)   , line.delete(ln_mo_pH_med)
+    line.delete(ln_mo_pL_75)   , line.delete(ln_mo_pL_med)
+    line.delete(ln_mo_ocU_75)  , line.delete(ln_mo_ocD_75)
+    line.delete(ln_mo_ocU_med) , line.delete(ln_mo_ocD_med)
     label.delete(lb_pH_75)   , label.delete(lb_pH_med)
     label.delete(lb_pL_75)   , label.delete(lb_pL_med)
     label.delete(lb_wkH)     , label.delete(lb_wkL)   , label.delete(lb_wkO)
@@ -433,14 +438,33 @@ if barstate.islast
 
     x2 = time
 
-    // ── Running week high / low ───────────────────────────────────────────────
+    // ── Running week high / low + open reference + OC bands ──────────────────
     if show5d
+        ln_wkOpen := line.new(wkStartTime, wkOpen, x2, wkOpen,
+             color=col_wkOpen, width=1, style=line.style_solid,
+             xloc=xloc.bar_time, extend=extend.right)
         ln_wkH := line.new(wkStartTime, wkHigh, x2, wkHigh,
              color=col_wkHL, width=1, style=line.style_dashed,
              xloc=xloc.bar_time, extend=extend.right)
         ln_wkL := line.new(wkStartTime, wkLow, x2, wkLow,
              color=col_wkHL, width=1, style=line.style_dashed,
              xloc=xloc.bar_time, extend=extend.right)
+        if not na(oc_up_75)
+            ln_ocU_75 := line.new(wkStartTime, oc_up_75, x2, oc_up_75,
+                 color=col_oc_75, width=2, style=line.style_dashed,
+                 xloc=xloc.bar_time, extend=extend.right)
+        if not na(oc_dn_75)
+            ln_ocD_75 := line.new(wkStartTime, oc_dn_75, x2, oc_dn_75,
+                 color=col_oc_75, width=2, style=line.style_dashed,
+                 xloc=xloc.bar_time, extend=extend.right)
+        if not na(oc_up_med)
+            ln_ocU_med := line.new(wkStartTime, oc_up_med, x2, oc_up_med,
+                 color=col_oc_med, width=1, style=line.style_dotted,
+                 xloc=xloc.bar_time, extend=extend.right)
+        if not na(oc_dn_med)
+            ln_ocD_med := line.new(wkStartTime, oc_dn_med, x2, oc_dn_med,
+                 color=col_oc_med, width=1, style=line.style_dotted,
+                 xloc=xloc.bar_time, extend=extend.right)
         if show_labels
             lb_wkH := label.new(bar_index + 2, wkHigh, "Week High",
                  style=label.style_label_left, color=color.new(col_wkHL, 70),
@@ -452,14 +476,33 @@ if barstate.islast
                  style=label.style_label_left, color=color.new(color.white, 75),
                  textcolor=color.white, size=size.small)
 
-    // ── Running month high / low ──────────────────────────────────────────────
+    // ── Running month high / low + open reference + OC bands ─────────────────
     if show20d
+        ln_moOpen := line.new(moStartTime, moOpen, x2, moOpen,
+             color=col_moOpen, width=1, style=line.style_solid,
+             xloc=xloc.bar_time, extend=extend.right)
         ln_moH := line.new(moStartTime, moHigh, x2, moHigh,
              color=col_moHL, width=1, style=line.style_dashed,
              xloc=xloc.bar_time, extend=extend.right)
         ln_moL := line.new(moStartTime, moLow, x2, moLow,
              color=col_moHL, width=1, style=line.style_dashed,
              xloc=xloc.bar_time, extend=extend.right)
+        if not na(mo_oc_up_75)
+            ln_mo_ocU_75 := line.new(moStartTime, mo_oc_up_75, x2, mo_oc_up_75,
+                 color=col_oc_75_20, width=2, style=line.style_dashed,
+                 xloc=xloc.bar_time, extend=extend.right)
+        if not na(mo_oc_dn_75)
+            ln_mo_ocD_75 := line.new(moStartTime, mo_oc_dn_75, x2, mo_oc_dn_75,
+                 color=col_oc_75_20, width=2, style=line.style_dashed,
+                 xloc=xloc.bar_time, extend=extend.right)
+        if not na(mo_oc_up_med)
+            ln_mo_ocU_med := line.new(moStartTime, mo_oc_up_med, x2, mo_oc_up_med,
+                 color=col_oc_med_20, width=1, style=line.style_dotted,
+                 xloc=xloc.bar_time, extend=extend.right)
+        if not na(mo_oc_dn_med)
+            ln_mo_ocD_med := line.new(moStartTime, mo_oc_dn_med, x2, mo_oc_dn_med,
+                 color=col_oc_med_20, width=1, style=line.style_dotted,
+                 xloc=xloc.bar_time, extend=extend.right)
         if show_labels
             lb_moH := label.new(bar_index + 2, moHigh, "Month High",
                  style=label.style_label_left, color=color.new(col_moHL, 70),
