@@ -566,12 +566,73 @@ const DECISION_ADAPTER = {
   },
 };
 
-const ADAPTERS   = { vol: VOL_ADAPTER, gold: GOLD_ADAPTER, decision: DECISION_ADAPTER };
+// ── Yield Spread Z-Score Backtest Adapter ─────────────────────────────────────
+
+const ZSCORE_ADAPTER = {
+  async fetchTrades() {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch('/api/zscore-backtest/trades', { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status} — run the backtester first`);
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Failed to load trades');
+      if (!d.trades?.length) throw new Error('No trades found — run the backtester first');
+      return d.trades.map(t => ({
+        ...t,
+        instrument: t.pair,
+        side:       t.dir === 'LONG' ? 'BUY' : 'SELL',
+        outcome:    t.result === 'TP' ? 'win' : t.result === 'SL' ? 'loss' : 'open',
+      }));
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  async fetchCandles(trade) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 120_000);
+    try {
+      const pair = trade.pair.toLowerCase();
+      const from = _dateOffset(trade.date, -2);
+      const to   = _dateOffset(trade.date, +2);
+      const r = await fetch(`/api/zscore-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (!d.ok || !d.candles?.length) throw new Error(d.error || 'No M1 data');
+      return d.candles;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('M1 data took too long — try again');
+      throw e;
+    } finally { clearTimeout(tid); }
+  },
+
+  getLevels(trade) {
+    if (trade.entry == null) return null;
+    return {
+      entry: trade.entry, sl: trade.sl, tp: trade.tp,
+      asiaHi: trade.asia_high, asiaLo: trade.asia_low,
+    };
+  },
+
+  getDetail(trade) {
+    return {
+      asiaRange: (trade.asia_low != null && trade.asia_high != null)
+        ? `${(+trade.asia_low).toFixed(5)} – ${(+trade.asia_high).toFixed(5)}` : '—',
+      sdLevel:   trade.z != null ? `${trade.z}σ (${trade.zTier})` : '—',
+      volRegime: `Fib ${trade.fibLevel}× · R:R ${trade.rr}:1`,
+    };
+  },
+};
+
+const ADAPTERS   = { vol: VOL_ADAPTER, gold: GOLD_ADAPTER, decision: DECISION_ADAPTER, zscore: ZSCORE_ADAPTER };
 const BACK_LINKS = {
   vol:      { href: 'vol-backtest.html',    label: '← Vol' },
   claude:   { href: 'claude-backtest.html', label: '← Claude' },
   gold:     { href: 'gold-backtest.html',   label: '← Gold Backtest' },
   decision: { href: 'index.html',           label: '← Dashboard' },
+  zscore:   { href: 'zscore-backtest.html', label: '← Z-Score' },
 };
 
 const source  = new URLSearchParams(location.search).get('source') || 'vol';
@@ -659,14 +720,16 @@ function _renderLevels(trade) {
     return _cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title });
   };
   _levelLines = [
-    add(lvl.open,  '#6b7280', 'Open',  LS.Solid),
-    add(lvl.hl75H, '#fbbf24', 'HL75↑', LS.Dashed),
-    add(lvl.hl75L, '#fbbf24', 'HL75↓', LS.Dashed),
-    add(lvl.ocH,   '#4f7df0', 'OC↑',   LS.Dashed),
-    add(lvl.ocL,   '#4f7df0', 'OC↓',   LS.Dashed),
-    add(lvl.entry, trade.side === 'SELL' ? '#ef5350' : '#26a69a', 'Entry', LS.Solid),
-    add(lvl.tp,    '#26a69a', 'TP',    LS.Dotted),
-    add(lvl.sl,    '#ef5350', 'SL',    LS.Dotted),
+    add(lvl.open,   '#6b7280', 'Open',     LS.Solid),
+    add(lvl.hl75H,  '#fbbf24', 'HL75↑',    LS.Dashed),
+    add(lvl.hl75L,  '#fbbf24', 'HL75↓',    LS.Dashed),
+    add(lvl.ocH,    '#4f7df0', 'OC↑',      LS.Dashed),
+    add(lvl.ocL,    '#4f7df0', 'OC↓',      LS.Dashed),
+    add(lvl.asiaHi, '#8b5cf6', 'Asia Hi',  LS.Dashed),
+    add(lvl.asiaLo, '#8b5cf6', 'Asia Lo',  LS.Dashed),
+    add(lvl.entry,  trade.side === 'SELL' ? '#ef5350' : '#26a69a', 'Entry', LS.Solid),
+    add(lvl.tp,     '#26a69a', 'TP',       LS.Dotted),
+    add(lvl.sl,     '#ef5350', 'SL',       LS.Dotted),
   ].filter(Boolean);
 }
 
