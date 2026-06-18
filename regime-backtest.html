@@ -2543,11 +2543,11 @@ const OPT_OVERFIT_GUARD = 0.40;   // val qs must be >= 40% of train qs (when tra
 // Per-MTF pruning limits — higher TF = fewer trades expected, longer holds expected.
 // Mirrors optimizer.py's _MTF_LIMITS.
 const OPT_MTF_LIMITS = {
-  1:   { maxTpy: 800, minDur:  60 },
-  15:  { maxTpy: 800, minDur:  60 },
-  30:  { maxTpy: 400, minDur: 120 },
-  60:  { maxTpy: 200, minDur: 240 },
-  240: { maxTpy:  60, minDur: 480 },
+  1:   { maxTpy: 800, minDur:  60, minRR: 1.1 },
+  15:  { maxTpy: 800, minDur:  60, minRR: 0.6 },
+  30:  { maxTpy: 400, minDur: 120, minRR: 0.5 },
+  60:  { maxTpy: 200, minDur: 240, minRR: 0.4 },
+  240: { maxTpy:  60, minDur: 480, minRR: 0.4 },
 };
 
 function optMtfLimits(mtf) {
@@ -2644,7 +2644,7 @@ function scoreOptTrial(anTr, anVa, limits) {
   if (anVa.tpy > limits.maxTpy) return { score: -200, reason: 'val_tpy_too_high' };
   if (anVa.avgDurMin < limits.minDur) return { score: -200, reason: 'val_avgdur_too_short' };
   if (anVa.winRate < 48 || anTr.winRate < 45) return { score: -300, reason: 'winrate_floor' };
-  if (anVa.rrRatio < 1.1) return { score: -150, reason: 'rr_floor' };
+  if (anVa.rrRatio < (limits.minRR ?? 1.1)) return { score: -150, reason: 'rr_floor' };
 
   return { score: 0.7 * vaSo + 0.3 * trSo, reason: 'pass' };
 }
