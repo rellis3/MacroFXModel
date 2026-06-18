@@ -81,19 +81,25 @@ show_labels = input.bool(true,  "Show line labels")
 
 f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
     r = t
-    if t == str.upper(goldT) or t == "XAUUSD" or t == "GOLD"
+    if t == str.upper(goldT) or t == "XAUUSD" or t == "GOLD" or t == "GC1!" or t == "XAUUSD.PRO"
         r := "GOLD"
-    else if t == str.upper(nqT) or t == "NQ1!" or t == "NQ" or t == "NASDAQ100"
+    else if t == str.upper(nqT) or t == "NQ1!" or t == "NQ" or t == "NASDAQ100" or
+         t == "NAS100USD" or t == "US100" or t == "NAS100" or t == "USNAS100" or t == "USTEC"
         r := "NQ"
-    else if t == str.upper(spxT) or t == "SPX500USD" or t == "US500" or t == "SP1!"
+    else if t == str.upper(spxT) or t == "SPX500USD" or t == "US500" or t == "SP1!" or
+         t == "SPXUSD" or t == "US500USD" or t == "SPX"
         r := "SPX500"
-    else if t == str.upper(de30T) or t == "GER40" or t == "GER30" or t == "DE30EUR" or t == "FDAX1!"
+    else if t == str.upper(de30T) or t == "GER40" or t == "GER30" or t == "DE30EUR" or
+         t == "FDAX1!" or t == "DE40" or t == "GRXEUR" or t == "GER40EUR"
         r := "DE30"
-    else if t == str.upper(uk100T) or t == "UK100GBP" or t == "Z1!" or t == "FTSE100"
+    else if t == str.upper(uk100T) or t == "UK100GBP" or t == "Z1!" or t == "FTSE100" or
+         t == "UK100" or t == "GBRIDXGBP"
         r := "UK100"
-    else if t == str.upper(us30T) or t == "US30USD" or t == "DJIA" or t == "YM1!"
+    else if t == str.upper(us30T) or t == "US30USD" or t == "DJIA" or t == "YM1!" or
+         t == "US30" or t == "DJIA30USD"
         r := "US30"
-    else if t == str.upper(us2kT) or t == "US2000USD" or t == "RTY1!" or t == "RUT"
+    else if t == str.upper(us2kT) or t == "US2000USD" or t == "RTY1!" or t == "RUT" or
+         t == "US2000" or t == "USRUS2000"
         r := "US2000"
     r
 
