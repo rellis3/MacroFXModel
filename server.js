@@ -5768,8 +5768,7 @@ app.post('/api/zscore-backtest/run', (req, res) => {
   const {
     dateFrom = '', dateTo = '', pair = '',
     zWindow = '90', fibLevelMode = 'all', fibProx = '5', entryWindow = '6',
-    ujThreshold = '2.0', euThreshold = '2.5',
-    invertUj = 'false', invertEu = 'false',
+    thresholds = {}, invert = {},
   } = req.body || {};
 
   const opts = {
@@ -5778,14 +5777,10 @@ app.post('/api/zscore-backtest/run', (req, res) => {
     fibLevelMode,
     fibProx:      parseFloat(fibProx)    || 5,
     entryWindow:  parseInt(entryWindow)  || 6,
-    thresholds: {
-      usdjpy: parseFloat(ujThreshold) || 2.0,
-      eurusd: parseFloat(euThreshold) || 2.5,
-    },
-    invert: {
-      usdjpy: invertUj === 'true',
-      eurusd: invertEu === 'true',
-    },
+    thresholds: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, parseFloat(thresholds[k]) || ZSCORE_PAIRS[k].defaultThreshold])),
+    invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, invert[k] === true || invert[k] === 'true'])),
   };
 
   const pairsToRun = pair
@@ -5904,10 +5899,16 @@ app.get('/api/zscore-backtest/diagnose', (_req, res) => {
     ok: true,
     fredKey: !!process.env.FRED_KEY,
     r2:      !!(process.env.R2_ACCESS_KEY && process.env.R2_SECRET_KEY),
-    m1Cached: {
-      usdjpy: m1.pairs.includes('USDJPY'),
-      eurusd: m1.pairs.includes('EURUSD'),
-    },
+    m1Cached: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, m1.pairs.includes(ZSCORE_PAIRS[k].label)])),
+  });
+});
+
+app.get('/api/zscore-backtest/pairs', (_req, res) => {
+  res.json({
+    ok: true,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) =>
+      [k, { label: v.label, pairDisplay: v.pairDisplay, defaultThreshold: v.defaultThreshold }])),
   });
 });
 

@@ -95,7 +95,7 @@
   <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
   <div class="title-block">
     <div class="title" style="font-size:15px;font-weight:700;">Yield Spread Z-Score Backtester</div>
-    <div class="sub">US2Y vs JP/DE short rate · rolling z-score overshoot · Asia-range Fib mean reversion</div>
+    <div class="sub">US2Y vs local short rate · rolling z-score overshoot · Asia-range Fib mean reversion · 6 pairs</div>
   </div>
   <div style="flex:1"></div>
   <span class="upd" id="btComputedAt"></span>
@@ -113,10 +113,8 @@
   <span class="bt-run-lbl">Run Backtest:</span>
   <input type="date" id="runFrom" style="width:130px">
   <input type="date" id="runTo" style="width:130px">
-  <select id="runPair" class="bt-sel">
-    <option value="">Both pairs</option>
-    <option value="usdjpy">USDJPY</option>
-    <option value="eurusd">EURUSD</option>
+  <select id="runPair" class="bt-sel" title="Run a single pair, or All pairs to run every configured pair">
+    <option value="">All pairs</option>
   </select>
   <select id="runZWindow" class="bt-sel" title="Rolling lookback window (calendar days) for the spread z-score">
     <option value="60">Z-window 60d</option>
@@ -124,16 +122,6 @@
     <option value="120">Z-window 120d</option>
     <option value="180">Z-window 180d</option>
     <option value="252">Z-window 252d</option>
-  </select>
-  <select id="runUjThresh" class="bt-sel" title="USDJPY entry threshold — |z| must exceed this">
-    <option value="1.5">UJ z≥1.5</option>
-    <option value="2.0" selected>UJ z≥2.0</option>
-    <option value="2.5">UJ z≥2.5</option>
-  </select>
-  <select id="runEuThresh" class="bt-sel" title="EURUSD entry threshold — needs higher bar than UJ for positive RR">
-    <option value="2.0">EU z≥2.0</option>
-    <option value="2.5" selected>EU z≥2.5</option>
-    <option value="3.0">EU z≥3.0</option>
   </select>
   <select id="runFibMode" class="bt-sel" title="Which Fibonacci extension multiples to trade">
     <option value="all" selected>Fib: all 5 levels</option>
@@ -151,11 +139,19 @@
     <option value="10">Entry 10h</option>
     <option value="14">Entry 14h</option>
   </select>
-  <label class="chk" title="Flip LONG/SHORT for USDJPY"><input type="checkbox" id="runInvertUj"> Invert UJ</label>
-  <label class="chk" title="Flip LONG/SHORT for EURUSD — doc flags this convention as unconfirmed"><input type="checkbox" id="runInvertEu"> Invert EU</label>
+  <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="togglePairSettings()" title="Per-pair entry threshold & direction invert">⚙ Pairs</button>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="toggleHelp()" title="Strategy help">?</button>
   <span id="runStatus" class="bt-run-lbl"></span>
+</div>
+
+<!-- ── Per-pair threshold / invert panel ─────────────────────────────────── -->
+<div id="pairSettings" style="display:none;margin-top:8px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px">
+  <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-family:'DM Mono',monospace">
+    Per-pair entry threshold (|z| ≥) and direction invert — applies on next Run. Only USDJPY's sign has been
+    validated against live results; treat every other pair's default direction as unconfirmed.
+  </div>
+  <div id="pairSettingsBody" style="display:flex;gap:16px;flex-wrap:wrap"></div>
 </div>
 
 <!-- ── Strategy help panel ───────────────────────────────────────────────── -->
@@ -164,9 +160,10 @@
   <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Signal</div>
-      Spread = US 2Y yield (GS2) − local short rate (USDJPY: JP OECD short rate; EURUSD: DE OECD short rate).
+      Spread = US 2Y yield (GS2) − local short rate (JP/DE/GB/AU OECD short rate, or CA/CH for the USD-base pairs).
       A rolling z-score of that spread is computed daily; when |z| exceeds the pair's threshold, the day is "live" and biased
-      LONG (z &gt; +thresh) or SHORT (z &lt; −thresh). EURUSD's higher default threshold reflects negative RR below it.
+      LONG (z &gt; +thresh) or SHORT (z &lt; −thresh). USD-quote pairs (EURUSD/GBPUSD/AUDUSD) default to a higher
+      threshold than USD-base pairs (USDJPY/USDCAD/USDCHF) to offset negative RR below it.
     </div>
     <div>
       <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Entry</div>
@@ -181,9 +178,10 @@
     </div>
   </div>
   <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-    v1 limitations: no spread/commission cost, no notional sizing, all three yield legs are monthly series forward-filled to
-    daily (so the z-score updates in monthly steps, not daily), one entry per level/day, no economic-event filter, and the
-    EURUSD direction sign is unconfirmed — use <strong>Invert EU</strong> to test the flip.
+    v1 limitations: no spread/commission cost, no notional sizing, all yield legs are monthly series forward-filled to
+    daily (so the z-score updates in monthly steps, not daily), one entry per level/day, no economic-event filter, and only
+    USDJPY's direction sign has been validated against live results — use the <strong>⚙ Pairs</strong> panel's Invert
+    checkbox to test the flip on any pair.
   </div>
 </div>
 
@@ -193,15 +191,12 @@
   <span class="stxt" id="btMsg">Loading backtest results…</span>
   <span class="bt-run-lbl" id="pillFred">FRED —</span>
   <span class="bt-run-lbl" id="pillR2">R2 —</span>
-  <span class="bt-run-lbl" id="pillUj">USDJPY M1 —</span>
-  <span class="bt-run-lbl" id="pillEu">EURUSD M1 —</span>
+  <span id="pillM1Group"></span>
 </div>
 
 <!-- ── Pair tabs ─────────────────────────────────────────────────────────── -->
 <div class="tabs" id="pairTabs" style="display:none;margin-top:10px">
   <button class="ptab active" onclick="switchPair('combined',this)">Combined</button>
-  <button class="ptab" onclick="switchPair('usdjpy',this)">USDJPY</button>
-  <button class="ptab" onclick="switchPair('eurusd',this)">EURUSD</button>
 </div>
 
 <!-- ── Primary KPIs ──────────────────────────────────────────────────────── -->
@@ -234,7 +229,7 @@
   <div class="bt-kpi">
     <div class="bt-kpi-label">Trades / Year</div>
     <div class="bt-kpi-value amber" id="kTpy">—</div>
-    <div class="bt-kpi-sub">calibration target ~31/yr (UJ)</div>
+    <div class="bt-kpi-sub">varies by pair &amp; threshold</div>
   </div>
   <div class="bt-kpi">
     <div class="bt-kpi-label">Avg Reward:Risk</div>
@@ -290,7 +285,7 @@
   <div class="bt-filters">
     <span class="bt-filter-lbl">Pair</span>
     <select class="bt-sel" id="fPair" onchange="applyFilters()">
-      <option value="">All</option><option value="USDJPY">USDJPY</option><option value="EURUSD">EURUSD</option>
+      <option value="">All</option>
     </select>
     <span class="bt-filter-lbl">Dir</span>
     <select class="bt-sel" id="fDir" onchange="applyFilters()">
@@ -340,6 +335,8 @@ let _filtTrades = [];
 let _page       = 0;
 let _activePair = 'combined';
 let _eqChart    = null;
+let _pairsMeta  = null;
+let _pairKeys   = [];
 const PAGE_SIZE = 50;
 
 function setStatus(dot, msg) {
@@ -352,14 +349,57 @@ function toggleHelp() {
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
+function togglePairSettings() {
+  const el = document.getElementById('pairSettings');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function loadPairsMeta() {
+  try {
+    const r = await fetch('/api/zscore-backtest/pairs');
+    const d = await r.json();
+    if (!d.ok) return;
+    _pairsMeta = d.pairs;
+    _pairKeys  = Object.keys(d.pairs);
+    buildPairControls();
+  } catch { /* leave static fallbacks */ }
+}
+
+function buildPairControls() {
+  const runPairSel = document.getElementById('runPair');
+  runPairSel.innerHTML = '<option value="">All pairs</option>' +
+    _pairKeys.map(k => `<option value="${k}">${_pairsMeta[k].label}</option>`).join('');
+
+  document.getElementById('pairSettingsBody').innerHTML = _pairKeys.map(k => {
+    const m = _pairsMeta[k];
+    const opts = [1.5, 2.0, 2.5, 3.0].map(v =>
+      `<option value="${v}" ${v === m.defaultThreshold ? 'selected' : ''}>z≥${v}</option>`).join('');
+    return `<div style="display:flex;align-items:center;gap:6px">
+      <span class="bt-run-lbl" style="min-width:56px">${m.label}</span>
+      <select class="bt-sel" id="runThresh_${k}" title="${m.label} entry threshold">${opts}</select>
+      <label class="chk" title="Flip LONG/SHORT for ${m.label}"><input type="checkbox" id="runInvert_${k}"> Invert</label>
+    </div>`;
+  }).join('');
+
+  document.getElementById('pairTabs').innerHTML =
+    '<button class="ptab active" onclick="switchPair(\'combined\',this)">Combined</button>' +
+    _pairKeys.map(k => `<button class="ptab" onclick="switchPair('${k}',this)">${_pairsMeta[k].label}</button>`).join('');
+
+  document.getElementById('fPair').innerHTML = '<option value="">All</option>' +
+    _pairKeys.map(k => `<option value="${_pairsMeta[k].label}">${_pairsMeta[k].label}</option>`).join('');
+}
+
 async function refreshDiagnose() {
   try {
     const r = await fetch('/api/zscore-backtest/diagnose');
     const d = await r.json();
     document.getElementById('pillFred').textContent = `FRED ${d.fredKey ? '✓' : '✗'}`;
     document.getElementById('pillR2').textContent   = `R2 ${d.r2 ? '✓' : '✗'}`;
-    document.getElementById('pillUj').textContent   = `USDJPY M1 ${d.m1Cached?.usdjpy ? '✓' : '✗'}`;
-    document.getElementById('pillEu').textContent   = `EURUSD M1 ${d.m1Cached?.eurusd ? '✓' : '✗'}`;
+    const grp = document.getElementById('pillM1Group');
+    if (grp && d.m1Cached) {
+      grp.innerHTML = Object.entries(d.m1Cached).map(([k, ok]) =>
+        `<span class="bt-run-lbl">${(_pairsMeta?.[k]?.label || k.toUpperCase())} M1 ${ok ? '✓' : '✗'}</span>`).join('');
+    }
   } catch { /* leave placeholders */ }
 }
 
@@ -547,18 +587,23 @@ async function runBacktest() {
   btn.disabled = true;
   document.getElementById('runStatus').textContent = 'Starting…';
 
+  const thresholds = {}, invert = {};
+  for (const k of _pairKeys) {
+    const threshEl = document.getElementById(`runThresh_${k}`);
+    const invEl     = document.getElementById(`runInvert_${k}`);
+    if (threshEl) thresholds[k] = threshEl.value;
+    if (invEl)    invert[k]     = invEl.checked;
+  }
+
   const body = {
     dateFrom: document.getElementById('runFrom').value,
     dateTo:   document.getElementById('runTo').value,
     pair:     document.getElementById('runPair').value,
     zWindow:  document.getElementById('runZWindow').value,
-    ujThreshold: document.getElementById('runUjThresh').value,
-    euThreshold: document.getElementById('runEuThresh').value,
     fibLevelMode: document.getElementById('runFibMode').value,
     fibProx:      document.getElementById('runFibProx').value,
     entryWindow:  document.getElementById('runEntryWindow').value,
-    invertUj: document.getElementById('runInvertUj').checked ? 'true' : 'false',
-    invertEu: document.getElementById('runInvertEu').checked ? 'true' : 'false',
+    thresholds, invert,
   };
 
   try {
@@ -713,8 +758,10 @@ function closeChartModal() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartModal(); });
 
 // ── Boot ──────────────────────────────────────────────────────────────────
-refreshDiagnose();
-loadData();
+loadPairsMeta().then(() => {
+  refreshDiagnose();
+  loadData();
+});
 </script>
 </body>
 </html>

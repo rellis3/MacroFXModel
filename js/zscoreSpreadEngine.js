@@ -1,12 +1,13 @@
 // Yield Spread Z-Score Backtester
 //
-// Strategy: USDJPY and EURUSD mean-revert back into the Asia session range after
-// the US-vs-local 2Y yield spread z-score overshoots an asymmetric threshold and
-// price extends to a Fibonacci projection level outside that range.
+// Strategy: each pair in ZSCORE_PAIRS mean-reverts back into the Asia session range
+// after the US-vs-local 2Y/short-rate yield spread z-score overshoots an asymmetric
+// threshold and price extends to a Fibonacci projection level outside that range.
 //
 // Spread definition (per pair): spread = US2Y - <local short rate>. z > +threshold
-// => LONG, z < -threshold => SHORT. The sign convention for EURUSD is unconfirmed
-// by live results, so `opts.invert.<pairKey>` lets the UI flip it without a redeploy.
+// => LONG, z < -threshold => SHORT. Only USDJPY's sign has been validated against
+// live results — every other pair's convention is unconfirmed, so
+// `opts.invert.<pairKey>` lets the UI flip any of them without a redeploy.
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 
 export const ZSCORE_PAIRS = {
@@ -19,6 +20,26 @@ export const ZSCORE_PAIRS = {
     label: 'EURUSD', pairDisplay: 'EUR/USD',
     baseSeries: 'GS2', quoteSeries: 'IRSTCI01DEM156N',
     pip: 0.0001, defaultThreshold: 2.5,
+  },
+  gbpusd: {
+    label: 'GBPUSD', pairDisplay: 'GBP/USD',
+    baseSeries: 'GS2', quoteSeries: 'IR3TIB01GBM156N',
+    pip: 0.0001, defaultThreshold: 2.5,
+  },
+  audusd: {
+    label: 'AUDUSD', pairDisplay: 'AUD/USD',
+    baseSeries: 'GS2', quoteSeries: 'IR3TIB01AUM156N',
+    pip: 0.0001, defaultThreshold: 2.5,
+  },
+  usdcad: {
+    label: 'USDCAD', pairDisplay: 'USD/CAD',
+    baseSeries: 'GS2', quoteSeries: 'IRSTCI01CAM156N',
+    pip: 0.0001, defaultThreshold: 2.0,
+  },
+  usdchf: {
+    label: 'USDCHF', pairDisplay: 'USD/CHF',
+    baseSeries: 'GS2', quoteSeries: 'IRSTCI01CHM156N',
+    pip: 0.0001, defaultThreshold: 2.0,
   },
 };
 
