@@ -499,6 +499,7 @@
     <button class="rb-toggle-btn" id="btnV4" onclick="selectBot('v4')">V4</button>
     <button class="rb-toggle-btn" id="btnV5" onclick="selectBot('v5')">V5</button>
     <button class="rb-toggle-btn" id="btnV6" onclick="selectBot('v6')">V6</button>
+    <button class="rb-toggle-btn" id="btnV7" onclick="selectBot('v7')">V7</button>
   </div>
   <span class="rb-lbl2" id="v5TfLabel" style="display:none">Regime TF</span>
   <div class="rb-toggle" id="v5TfToggle" style="display:none">
@@ -1219,6 +1220,30 @@ const V6_PARAMS = [
 const V6_BOOLS = [];
 const V6_DEFAULTS = Object.fromEntries([...V6_PARAMS.map(p => [p.key, p.def])]);
 
+// ─── V7 config — V6 + regime exit debounce + optional HTF confirmation ────────
+// Exit debounce: instead of exiting on the first RANGE bar, wait for N consecutive
+// non-trend MTF bars. Each BULL/BEAR bar for the trade direction resets the counter.
+// HTF confirmation: optional gate requiring the 4× HTF regime to agree before entry.
+const V7_PARAMS = [
+  { key:'entry_conf',        label:'Entry Conf (%)',        min:50,  max:95,  step:1,    def:70,   help:'Minimum HMM regime confidence (computed on MTF bars) to enter. Only BULL or BEAR regimes considered.' },
+  { key:'entry_score_min',   label:'Entry Score Min',       min:40,  max:90,  step:1,    def:62,   help:'Minimum V5 composite score to enter. Same 7-component score as V5, computed on MTF bars.' },
+  { key:'sl_atr_mult',       label:'SL ATR Multiplier',     min:0.5, max:5.0, step:0.1,  def:2.0,  help:'Stop-loss = MTF ATR × this. Breakeven fires automatically at 1.0R.' },
+  { key:'candle_hold',       label:'Entry Hold (MTF bars)', min:1,   max:10,  step:1,    def:2,    help:'MTF bars the regime signal must persist before entry fires.' },
+  { key:'conf_floor',        label:'Conf Floor (%)',        min:20,  max:70,  step:1,    def:45,   help:'Exit if MTF confidence drops below this. Emergency exit — should be well below entry_conf.' },
+  { key:'mfe_retrace_pct',   label:'MFE Retrace %',         min:0.05,max:0.60,step:0.01, def:0.25, help:'Exit when price gives back this fraction of peak MFE. Only activates once mfe_min_r is hit.' },
+  { key:'mfe_min_r',         label:'MFE Min R (retrace)',   min:0.5, max:4.0, step:0.1,  def:1.5,  help:'MFE retrace only arms once MFE ≥ this R. Set higher to let trades run before trailing.' },
+  { key:'max_hold_bars',     label:'Max Hold (MTF bars)',   min:4,   max:96,  step:1,    def:24,   help:'Force-close after this many MTF bars. Backstop if debounce exit never fires.' },
+  { key:'exit_regime_bars',  label:'Exit Debounce (MTF)',   min:1,   max:10,  step:1,    def:3,    help:'Consecutive non-trend MTF bars before exiting. Each trend bar resets this counter to 0. E.g. 3 = tolerate up to 3 RANGE bars before closing the trade.' },
+  { key:'window_start',      label:'Window Start (UTC h)',  min:0,   max:12,  step:1,    def:7,    help:'Earliest UTC hour for new entries.' },
+  { key:'window_end',        label:'Window End (UTC h)',    min:12,  max:23,  step:1,    def:20,   help:'Latest UTC hour for new entries. Open trades continue after this.' },
+  { key:'post_exit_cooldown',label:'Cooldown (MTF bars)',   min:0,   max:24,  step:1,    def:4,    help:'Block re-entry for this many MTF bars after any close. 4 = 2h on 30m.' },
+];
+const V7_BOOLS = [
+  { key:'htf_require', label:'Require 4× HTF Confirmation', def:false,
+    help:'Before entering, require the 4× higher timeframe (e.g. 2h on 30m) HMM regime to match the primary regime direction. Reduces false entries in disagreeing HTF context.' },
+];
+const V7_DEFAULTS = Object.fromEntries([...V7_PARAMS.map(p => [p.key, p.def]), ...V7_BOOLS.map(b => [b.key, b.def])]);
+
 // ─── V1/V2/V3/V4/V5 Metrics ──────────────────────────────────────────────────
 
 const V1_METRICS = [
@@ -1270,6 +1295,13 @@ const V5_METRICS = [
 const V6_METRICS = [
   { key:'conf',        label:'m30conf', color:'#2196f3' },
   { key:'v4_score',    label:'v6scr',   color:'#4caf50' },
+  { key:'slope',       label:'m30slp',  color:'#00bcd4' },
+  { key:'bocpd',       label:'m30bcp',  color:'#ff5722' },
+  { key:'decay',       label:'decay',   color:'#f44336' },
+];
+const V7_METRICS = [
+  { key:'conf',        label:'m30conf', color:'#2196f3' },
+  { key:'v4_score',    label:'v7scr',   color:'#4caf50' },
   { key:'slope',       label:'m30slp',  color:'#00bcd4' },
   { key:'bocpd',       label:'m30bcp',  color:'#ff5722' },
   { key:'decay',       label:'decay',   color:'#f44336' },
@@ -1326,9 +1358,9 @@ function setV5TF(minutes) {
 
 function selectBot(bot) {
   currentBot = bot;
-  ['v1','v2','v3','v4','v5','v6'].forEach(v =>
+  ['v1','v2','v3','v4','v5','v6','v7'].forEach(v =>
     document.getElementById('btn' + v.toUpperCase()).classList.toggle('active', bot === v));
-  const isMTF = bot === 'v5' || bot === 'v6';
+  const isMTF = bot === 'v5' || bot === 'v6' || bot === 'v7';
   const tfMin = V5_MTF;
   const tfLbl = tfMin >= 60 ? (tfMin / 60) + 'h' : tfMin + 'm';
   const titles = {
@@ -1336,6 +1368,7 @@ function selectBot(bot) {
     v4: 'V4 Configuration',
     v5: `V5 Configuration (${tfLbl} Regime on M1 bars)`,
     v6: `V6 Configuration (${tfLbl} Regime on M1 bars)`,
+    v7: `V7 Configuration (${tfLbl} Regime + Exit Debounce on M1 bars)`,
   };
   document.getElementById('cfgTitle').textContent = titles[bot] || 'Configuration';
   document.getElementById('hbScoreRow').style.display  = (bot === 'v1') ? 'none' : '';
@@ -1343,9 +1376,9 @@ function selectBot(bot) {
   document.getElementById('v5TfToggle').style.display  = isMTF ? '' : 'none';
   document.getElementById('hmmTrainWrap').style.display  = (bot === 'v2' || bot === 'v3') ? 'flex' : 'none';
   document.getElementById('hmmTrainBadge').style.display = 'none';
-  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS };
+  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS, v7:V7_METRICS };
   activeMetrics = metricsMap[bot] || V2_METRICS;
-  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS };
+  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
   const savedDefault = localStorage.getItem(`opt_default_${bot}`);
   cfg = savedDefault ? JSON.parse(savedDefault) : { ...(defaultsMap[bot] || V2_DEFAULTS) };
   buildConfigPanel();
@@ -1360,8 +1393,8 @@ function selectBot(bot) {
 // ─── Config panel ─────────────────────────────────────────────────────────────
 
 function buildConfigPanel() {
-  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS };
-  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS  };
+  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
   const params = paramsMap[currentBot] || V2_PARAMS;
   const bools  = boolsMap[currentBot]  || V2_BOOLS;
 
@@ -1403,7 +1436,7 @@ function buildConfigPanel() {
 function onSlider(key, val, step) {
   let num = step % 1 === 0 ? parseInt(val) : parseFloat(val);
   if (isNaN(num)) return;
-  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS };
+  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
   const params = paramsMap2[currentBot] || V2_PARAMS;
   const p = params.find(pp => pp.key === key);
   if (p) num = Math.max(p.min, Math.min(p.max, num));
@@ -1417,7 +1450,7 @@ function resetParam(key, def) {
 }
 
 function resetAllParams() {
-  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS };
+  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
   localStorage.removeItem(`opt_default_${currentBot}`);
   cfg = { ...(resetMap[currentBot] || V2_DEFAULTS) };
   buildConfigPanel();
@@ -2446,13 +2479,18 @@ async function loadAndRun() {
     // ── 2. Compute HMM signals on full M1 ───────────────────────────────────
     setStatus('spin', `Computing HMM on ${m1Count.toLocaleString()} M1 bars…`);
     await new Promise(r => requestAnimationFrame(r));
-    let rawSignals;
+    let rawSignals, rawHtfSignals = null;
     if (currentBot === 'v1') {
       rawSignals = computeHMMSignalsV1(rawCandles, pair);
     } else {
       const trainedParams = await fetchTrainedParams();
       if (currentBot === 'v5' || currentBot === 'v6') {
         rawSignals = computeHMMSignalsV5(rawCandles, pair, trainedParams);
+      } else if (currentBot === 'v7') {
+        rawSignals = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, V5_MTF);
+        setStatus('spin', `Computing V7 HTF signals (${V5_MTF * 4}m)…`);
+        await new Promise(r => requestAnimationFrame(r));
+        rawHtfSignals = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, V5_MTF * 4);
       } else if (currentBot === 'v4') {
         rawSignals = computeHMMSignalsV4(rawCandles, pair, trainedParams);
       } else {
@@ -2478,7 +2516,9 @@ async function loadAndRun() {
     setStatus('spin', 'Running simulation…');
     await new Promise(r => requestAnimationFrame(r));
     const simMap = { v1:simulateV1, v2:simulateV2, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
-    allTrades = (simMap[currentBot] || simulateV2)(rawCandles, rawSignals, cfg);
+    allTrades = currentBot === 'v7'
+      ? simulateV7(rawCandles, rawSignals, rawHtfSignals, cfg)
+      : (simMap[currentBot] || simulateV2)(rawCandles, rawSignals, cfg);
 
     // ── 4. Downsample for display if dataset is large ────────────────────────
     // Picks the smallest step (1/5/15/25) that keeps display candles ≤ DISPLAY_CAP
@@ -2695,11 +2735,16 @@ async function runClientOptimizer() {
 
     // Default (non walk-forward-trained) signal path — matches optimizer.py, which never
     // fetches/uses trainedParams either.
-    let rawSignals;
+    let rawSignals, rawHtfSignals = null;
     if (currentBot === 'v1') {
       rawSignals = computeHMMSignalsV1(rawCandles, pair);
     } else if (currentBot === 'v5' || currentBot === 'v6') {
       rawSignals = computeHMMSignalsV5(rawCandles, pair, null);
+    } else if (currentBot === 'v7') {
+      rawSignals = computeHMMSignalsAtMTF(rawCandles, pair, null, V5_MTF);
+      setOptProgress(`Computing V7 HTF signals (${V5_MTF * 4}m)…`, 0);
+      await new Promise(r => requestAnimationFrame(r));
+      rawHtfSignals = computeHMMSignalsAtMTF(rawCandles, pair, null, V5_MTF * 4);
     } else if (currentBot === 'v4') {
       rawSignals = computeHMMSignalsV4(rawCandles, pair, null);
     } else {
@@ -2714,16 +2759,29 @@ async function runClientOptimizer() {
     const cVa = rawCandles.slice(ti, vi), sVa = rawSignals.slice(ti, vi);
     const cTe = rawCandles.slice(vi),     sTe = rawSignals.slice(vi);
 
-    const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS };
-    const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS  };
-    const simMap    = { v1:simulateV1, v2:simulateV2, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+    const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+    const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
     const params = paramsMap[currentBot] || V2_PARAMS;
     const bools  = boolsMap[currentBot]  || V2_BOOLS;
-    const simFn  = simMap[currentBot]    || simulateV2;
-    const mtf    = (currentBot === 'v5' || currentBot === 'v6') ? V5_MTF : 1;
+    // V7 simulate needs htfSignals — use closures so runOptSplit sees same 3-arg signature.
+    // HTF arrays are sliced parallel to the primary signal arrays (same M1 bar indexing).
+    let simFnTr, simFnVa, simFnTe;
+    if (currentBot === 'v7') {
+      const htfTr = rawHtfSignals.slice(0, ti);
+      const htfVa = rawHtfSignals.slice(ti, vi);
+      const htfTe = rawHtfSignals.slice(vi);
+      simFnTr = (c, s, cfg) => simulateV7(c, s, htfTr, cfg);
+      simFnVa = (c, s, cfg) => simulateV7(c, s, htfVa, cfg);
+      simFnTe = (c, s, cfg) => simulateV7(c, s, htfTe, cfg);
+    } else {
+      const simMap = { v1:simulateV1, v2:simulateV2, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+      const fn = simMap[currentBot] || simulateV2;
+      simFnTr = simFnVa = simFnTe = fn;
+    }
+    const mtf    = (currentBot === 'v5' || currentBot === 'v6' || currentBot === 'v7') ? V5_MTF : 1;
     const limits = optMtfLimits(mtf);
 
-    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS };
+    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
     let incumbent    = { ...(defaultsMap[currentBot] || V2_DEFAULTS) };
     let incumbentScore = -Infinity;
 
@@ -2742,8 +2800,8 @@ async function runClientOptimizer() {
       const trialCfg = i === 0
         ? { ...incumbent }
         : (Math.random() < GLOBAL_FRAC ? sampleOptConfig(params, bools) : sampleOptConfigLocal(params, bools, incumbent));
-      const anTr = runOptSplit(simFn, cTr, sTr, trialCfg);
-      const anVa = runOptSplit(simFn, cVa, sVa, trialCfg);
+      const anTr = runOptSplit(simFnTr, cTr, sTr, trialCfg);
+      const anVa = runOptSplit(simFnVa, cVa, sVa, trialCfg);
       const { score, reason } = scoreOptTrial(anTr, anVa, limits);
 
       gateCounts[reason] = (gateCounts[reason] || 0) + 1;
@@ -2781,7 +2839,7 @@ async function runClientOptimizer() {
 
     setOptProgress(`Evaluating top ${top.length} config(s) on blind test split…`, 100);
     await new Promise(r => requestAnimationFrame(r));
-    top.forEach(t => { t.anTe = t.reason === 'pass' ? runOptSplit(simFn, cTe, sTe, t.cfg) : null; });
+    top.forEach(t => { t.anTe = t.reason === 'pass' ? runOptSplit(simFnTe, cTe, sTe, t.cfg) : null; });
 
     optResults = top;
     renderOptResults();
@@ -3395,18 +3453,17 @@ function aggregateToMTF(m1Bars, minutes) {
   return [...map.values()].sort((a, b) => a.time - b.time);
 }
 
-// Compute V5 signals: HMM/V4 score on M30, mapped back to M1 with no look-ahead.
-// A 30m bar closing at T is only available for M1 bars where m1.time >= T + 60s.
-function computeHMMSignalsV5(m1Bars, sym, trainedParams) {
-  const m30Bars    = aggregateToMTF(m1Bars, V5_MTF);
-  const m30Signals = computeHMMSignalsV4(m30Bars, sym, trainedParams);
-  const periodSec  = V5_MTF * 60;
+// Core helper: aggregate M1 → any MTF, run V4 HMM, map signals back to M1 with no look-ahead.
+// A bar closing at T is only available for M1 bars where m1.time >= T + 60s (one bar after close).
+function computeHMMSignalsAtMTF(m1Bars, sym, trainedParams, mtfMin) {
+  const mtfBars    = aggregateToMTF(m1Bars, mtfMin);
+  const mtfSignals = computeHMMSignalsV4(mtfBars, sym, trainedParams);
+  const periodSec  = mtfMin * 60;
 
-  // Build list of (validFrom, signal) — signal valid from the bar AFTER its period closes
   const valid = [];
-  for (let i = 0; i < m30Signals.length; i++) {
-    if (!m30Signals[i]) continue;
-    valid.push({ validFrom: m30Signals[i].ts + periodSec, sig: m30Signals[i] });
+  for (let i = 0; i < mtfSignals.length; i++) {
+    if (!mtfSignals[i]) continue;
+    valid.push({ validFrom: mtfSignals[i].ts + periodSec, sig: mtfSignals[i] });
   }
 
   const N   = m1Bars.length;
@@ -3418,6 +3475,11 @@ function computeHMMSignalsV5(m1Bars, sym, trainedParams) {
     if (vi >= 0) out[i] = { ...valid[vi].sig, ts: t };
   }
   return out;
+}
+
+// Compute V5 signals: HMM/V4 score on M30, mapped back to M1 with no look-ahead.
+function computeHMMSignalsV5(m1Bars, sym, trainedParams) {
+  return computeHMMSignalsAtMTF(m1Bars, sym, trainedParams, V5_MTF);
 }
 
 // V5 simulation: same state machine as V4 but bar-count params scaled M30→M1
@@ -3572,6 +3634,183 @@ function simulateV6(candles, signals, c) {
             entry_score:   score,
           };
           debounce = 0;
+        }
+      } else {
+        debounce = 0;
+      }
+    } else if (!pos) {
+      debounce = 0;
+    }
+  }
+
+  if (pos) {
+    const last = candles[candles.length - 1];
+    trades.push(mkTrade(pos, last.time, last.close, 'END'));
+  }
+  return trades;
+}
+
+// ─── Simulation: V7 ──────────────────────────────────────────────────────────
+// V6 + regime exit debounce + optional 4× HTF confirmation.
+// New exit: instead of holding indefinitely through RANGE, count consecutive
+// non-trend bars — exit when count reaches exit_regime_bars. Each trend bar
+// resets the counter (direction must match position: BULL for LONG, BEAR for SHORT).
+// Opposite-direction flip still exits immediately (regime_flip).
+// HTF gate (optional): if htf_require, only enter when the 4× HTF regime agrees.
+
+function simulateV7(candles, signals, htfSignals, c) {
+  const S     = V5_MTF;
+  const ch    = Math.max(1, Math.round((c.candle_hold        || 2) * S));
+  const coolN = Math.max(0, Math.round((c.post_exit_cooldown || 4) * S));
+  const maxHN = Math.max(1, Math.round((c.max_hold_bars      || 24) * S));
+  const xrbN  = Math.max(1, Math.round((c.exit_regime_bars   || 3) * S));
+
+  const ec   = c.entry_conf        || 70;
+  const esm  = c.entry_score_min   || 62;
+  const slM  = c.sl_atr_mult       || 2.0;
+  const ws   = c.window_start      || 7;
+  const we   = c.window_end        || 20;
+  const cf   = c.conf_floor        || 45;
+  const mrp  = c.mfe_retrace_pct   || 0.25;
+  const mmr  = c.mfe_min_r         || 1.5;
+  const htfR = c.htf_require       || false;
+
+  const trades = [];
+  let pos        = null;
+  let debounce   = 0;
+  let cooldown   = 0;
+  let rangeCount = 0;  // consecutive non-trend bars since last trend bar
+
+  for (let i = WARMUP; i < candles.length; i++) {
+    const sig = signals[i];
+    if (!sig) continue;
+
+    const bar     = candles[i];
+    const effConf = sig.conf * getSessionMult(sig.ts);
+    const score   = sig.v4_score ?? sig.score ?? 0;
+    const utcH    = Math.floor(sig.ts % 86400 / 3600);
+    const inWin   = utcH >= ws && utcH < we;
+
+    if (cooldown > 0) { cooldown--; continue; }
+
+    if (pos) {
+      // ── SL check ────────────────────────────────────────────────────────────
+      const slHit = (pos.direction === 'LONG'  && bar.low  <= pos.sl) ||
+                    (pos.direction === 'SHORT' && bar.high >= pos.sl);
+      if (slHit) {
+        trades.push(mkTrade(pos, bar.time, pos.sl, 'SL'));
+        pos = null; debounce = 0; rangeCount = 0; cooldown = coolN;
+        continue;
+      }
+
+      // ── MFE update ────────────────────────────────────────────────────────
+      const fav = pos.direction === 'LONG'
+        ? bar.high - pos.entry_price
+        : pos.entry_price - bar.low;
+      if (fav > pos.mfe_price) pos.mfe_price = fav;
+      const mfe_r = pos.orig_sl_dist > 0 ? pos.mfe_price / pos.orig_sl_dist : 0;
+
+      // ── Breakeven at 1.0R (hardcoded) ───────────────────────────────────────
+      if (mfe_r >= 1.0) {
+        if (pos.direction === 'LONG'  && pos.sl < pos.entry_price) pos.sl = pos.entry_price;
+        if (pos.direction === 'SHORT' && pos.sl > pos.entry_price) pos.sl = pos.entry_price;
+      }
+
+      const xp = bar.close;
+      let exited = false;
+
+      // ── Exit 1: Regime flips to OPPOSITE direction (immediate, no debounce) ─
+      const oppFlip = (pos.direction === 'LONG'  && sig.regime === 'BEAR') ||
+                      (pos.direction === 'SHORT' && sig.regime === 'BULL');
+      if (oppFlip) {
+        trades.push(mkTrade(pos, bar.time, xp, 'REGIME_FLIP'));
+        exited = true;
+      }
+
+      // ── Exit 2: Confidence floor ─────────────────────────────────────────────
+      if (!exited && sig.conf < cf) {
+        trades.push(mkTrade(pos, bar.time, xp, 'CONF_FLOOR'));
+        exited = true;
+      }
+
+      // ── Exit 3: MFE retrace trailing stop ────────────────────────────────────
+      if (!exited && mfe_r >= mmr && pos.mfe_price > 0) {
+        const peakPrice   = pos.direction === 'LONG'
+          ? pos.entry_price + pos.mfe_price
+          : pos.entry_price - pos.mfe_price;
+        const retraceDist = pos.direction === 'LONG'
+          ? peakPrice - bar.close
+          : bar.close - peakPrice;
+        if (retraceDist / pos.mfe_price >= mrp) {
+          trades.push(mkTrade(pos, bar.time, xp, 'MFE_RETRACE'));
+          exited = true;
+        }
+      }
+
+      // ── Exit 4: Regime exit debounce (V7 core change) ───────────────────────
+      // Trend bar for this direction → reset counter; non-trend → increment.
+      // Exit once counter reaches exit_regime_bars consecutive non-trend bars.
+      if (!exited) {
+        const isTrend = (pos.direction === 'LONG'  && sig.regime === 'BULL') ||
+                        (pos.direction === 'SHORT' && sig.regime === 'BEAR');
+        if (isTrend) {
+          rangeCount = 0;
+        } else {
+          rangeCount++;
+          if (rangeCount >= xrbN) {
+            trades.push(mkTrade(pos, bar.time, xp, 'REGIME_RANGE'));
+            exited = true;
+          }
+        }
+      }
+
+      // ── Exit 5: Max hold timeout (backstop) ──────────────────────────────────
+      if (!exited) {
+        pos.bars_held++;
+        if (pos.bars_held >= maxHN) {
+          trades.push(mkTrade(pos, bar.time, xp, 'MAX_HOLD'));
+          exited = true;
+        }
+      }
+
+      if (exited) { pos = null; debounce = 0; rangeCount = 0; cooldown = coolN; continue; }
+    }
+
+    // ── Entry ──────────────────────────────────────────────────────────────────
+    if (!pos && inWin) {
+      const isDir   = sig.regime === 'BULL' || sig.regime === 'BEAR';
+      const okConf  = effConf >= ec;
+      const okScore = score   >= esm;
+      const okSlope = (sig.regime === 'BULL' && sig.slope > 0) ||
+                      (sig.regime === 'BEAR' && sig.slope < 0);
+
+      // ── HTF confirmation gate (optional, V7 new) ────────────────────────────
+      let okHTF = true;
+      if (htfR && htfSignals && htfSignals[i]) {
+        okHTF = htfSignals[i].regime === sig.regime;
+      }
+
+      if (isDir && okConf && okScore && okSlope && okHTF) {
+        debounce++;
+        if (debounce >= ch && sig.atrSL > 0) {
+          const dir = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep  = bar.close;
+          const osd = sig.atrSL * slM;
+          pos = {
+            direction:      dir,
+            entry_price:    ep,
+            entry_ts:       bar.time,
+            sl:             dir === 'LONG' ? ep - osd : ep + osd,
+            orig_sl_dist:   osd,
+            mfe_price:      0,
+            bars_held:      0,
+            regime:         sig.regime,
+            conf_at_entry:  sig.conf,
+            decay_at_entry: sig.decay || 0,
+            entry_score:    score,
+          };
+          debounce = 0;
+          rangeCount = 0;
         }
       } else {
         debounce = 0;
