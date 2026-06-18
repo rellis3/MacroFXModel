@@ -736,16 +736,63 @@ export default {
           },
           // NAS100 caps (NAS100_USD  -  points, not pips)
           nas100: {
-            oiAtrFrac:    0.12,
-            oiPipCap:     200,  // 200 points cap
-            pivAtrFrac:   0.10,
-            pivPipCap:    150,
-            rngAtrFrac:   0.08,
-            rngPipCap:    100,
-            gexAtrFrac:   0.15,
-            gexPipCap:    250,
-            enhPivAtrFrac:0.10,
-            enhPivPipCap: 150,
+            confluencePips: 100, mergeFactor: 0.30, asiaMinPips: 50,
+            structuralLookbackDays: 30, structuralPivotN: 5,
+            oiAtrFrac:    0.12, oiPipCap:     200,
+            pivAtrFrac:   0.10, pivPipCap:    150,
+            rngAtrFrac:   0.08, rngPipCap:    100,
+            gexAtrFrac:   0.15, gexPipCap:    250,
+            enhPivAtrFrac:0.10, enhPivPipCap: 150,
+          },
+          // SPX500 caps
+          spx500: {
+            confluencePips: 25, mergeFactor: 0.30, asiaMinPips: 15,
+            structuralLookbackDays: 30, structuralPivotN: 5,
+            oiAtrFrac:    0.12, oiPipCap:  50,
+            pivAtrFrac:   0.10, pivPipCap: 40,
+            rngAtrFrac:   0.08, rngPipCap: 25,
+            gexAtrFrac:   0.15, gexPipCap: 60,
+            enhPivAtrFrac:0.10, enhPivPipCap: 40,
+          },
+          // DAX caps
+          de30: {
+            confluencePips: 80, mergeFactor: 0.30, asiaMinPips: 40,
+            structuralLookbackDays: 30, structuralPivotN: 5,
+            oiAtrFrac:    0.12, oiPipCap:  150,
+            pivAtrFrac:   0.10, pivPipCap: 120,
+            rngAtrFrac:   0.08, rngPipCap: 80,
+            gexAtrFrac:   0.15, gexPipCap: 200,
+            enhPivAtrFrac:0.10, enhPivPipCap: 120,
+          },
+          // FTSE100 caps
+          uk100: {
+            confluencePips: 40, mergeFactor: 0.30, asiaMinPips: 25,
+            structuralLookbackDays: 30, structuralPivotN: 5,
+            oiAtrFrac:    0.12, oiPipCap:  80,
+            pivAtrFrac:   0.10, pivPipCap: 60,
+            rngAtrFrac:   0.08, rngPipCap: 40,
+            gexAtrFrac:   0.15, gexPipCap: 100,
+            enhPivAtrFrac:0.10, enhPivPipCap: 60,
+          },
+          // DOW30 caps
+          us30: {
+            confluencePips: 60, mergeFactor: 0.30, asiaMinPips: 30,
+            structuralLookbackDays: 30, structuralPivotN: 5,
+            oiAtrFrac:    0.12, oiPipCap:  100,
+            pivAtrFrac:   0.10, pivPipCap: 80,
+            rngAtrFrac:   0.08, rngPipCap: 60,
+            gexAtrFrac:   0.15, gexPipCap: 120,
+            enhPivAtrFrac:0.10, enhPivPipCap: 80,
+          },
+          // Russell 2000 caps
+          us2000: {
+            confluencePips: 15, mergeFactor: 0.30, asiaMinPips: 10,
+            structuralLookbackDays: 30, structuralPivotN: 5,
+            oiAtrFrac:    0.12, oiPipCap:  30,
+            pivAtrFrac:   0.10, pivPipCap: 25,
+            rngAtrFrac:   0.08, rngPipCap: 15,
+            gexAtrFrac:   0.15, gexPipCap: 35,
+            enhPivAtrFrac:0.10, enhPivPipCap: 25,
           },
           updatedAt: null,
         };
@@ -760,6 +807,11 @@ export default {
             fx:     { ...DEFAULTS.fx,     ...(parsed.fx     || {}) },
             gold:   { ...DEFAULTS.gold,   ...(parsed.gold   || {}) },
             nas100: { ...DEFAULTS.nas100, ...(parsed.nas100 || {}) },
+            spx500: { ...DEFAULTS.spx500, ...(parsed.spx500 || {}) },
+            de30:   { ...DEFAULTS.de30,   ...(parsed.de30   || {}) },
+            uk100:  { ...DEFAULTS.uk100,  ...(parsed.uk100  || {}) },
+            us30:   { ...DEFAULTS.us30,   ...(parsed.us30   || {}) },
+            us2000: { ...DEFAULTS.us2000, ...(parsed.us2000 || {}) },
             updatedAt: parsed.updatedAt || null,
           });
         } catch(e) {
@@ -776,7 +828,12 @@ export default {
           if (!body.fx || !body.gold || !body.nas100) return err('Missing fx, gold or nas100 config', 400);
 
           // Validate all values are positive numbers
-          const allVals = [...Object.values(body.fx), ...Object.values(body.gold), ...Object.values(body.nas100)];
+          const allVals = [
+            ...Object.values(body.fx), ...Object.values(body.gold), ...Object.values(body.nas100),
+            ...Object.values(body.spx500 || {}), ...Object.values(body.de30 || {}),
+            ...Object.values(body.uk100 || {}), ...Object.values(body.us30 || {}),
+            ...Object.values(body.us2000 || {}),
+          ];
           if (allVals.some(v => typeof v !== 'number' || v <= 0)) {
             return err('All cap values must be positive numbers', 400);
           }
@@ -785,6 +842,11 @@ export default {
             fx:        body.fx,
             gold:      body.gold,
             nas100:    body.nas100,
+            spx500:    body.spx500 || DEFAULTS.spx500,
+            de30:      body.de30   || DEFAULTS.de30,
+            uk100:     body.uk100  || DEFAULTS.uk100,
+            us30:      body.us30   || DEFAULTS.us30,
+            us2000:    body.us2000 || DEFAULTS.us2000,
             updatedAt: new Date().toISOString(),
           };
 
