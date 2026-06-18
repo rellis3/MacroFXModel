@@ -2240,9 +2240,10 @@ function computeHMMSignalsV2(bars, sym, trainedParams, preFeatures, schedule) {
     atr   = buildATR_hmm(bars, 20);
     atrSL = buildATR_hmm(bars, 70);
     adx   = buildADX_hmm(bars, cfg.adxN ?? 50);
+    const closes = bars.map(b => b.close);
     trend = new Float64Array(N);
     for (let i = LN - 1; i < N; i++)
-      trend[i] = linregSlopeAt(bars.map(b => b.close), i - LN + 1, LN);
+      trend[i] = linregSlopeAt(closes, i - LN + 1, LN);
     tZ = rollingZArr(trend, 200);
     vZ = rollingZArr(atr,   200);
     aZ = rollingZArr(adx,   200);
