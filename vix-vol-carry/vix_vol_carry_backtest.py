@@ -747,18 +747,82 @@ def _post(url: str, data: dict, label: str):
         print(f"  Warning — could not push {label}: {e}")
 
 
+def _nn(v):
+    """None-out NaN so json.dumps doesn't emit invalid `NaN` tokens."""
+    return None if (isinstance(v, float) and np.isnan(v)) else v
+
+
+def _curve(series: pd.Series, step: int = 5, value_key: str = 'equity'):
+    """Downsample a daily series to ~weekly points for a lightweight chart payload."""
+    s = series.iloc[::step]
+    return [{'date': d.strftime('%Y-%m-%d'), value_key: round(float(v), 5)} for d, v in s.items()]
+
+
+def _drawdown(equity: pd.Series) -> pd.Series:
+    return equity / equity.cummax() - 1
+
+
 def push_to_server(base_url: str, bt: dict, wf: dict):
     base = base_url.rstrip('/')
     _post(f"{base}/api/vix-vol-carry-backtest/trades",
           {'trades': bt['trades'], 'savedAt': datetime.now().isoformat()}, 'trades')
 
-    m = bt['metrics']
+    m       = bt['metrics']
+    naive_m = compute_metrics(bt['naive_ret'], bt['naive_equity'],
+                               pd.Series(1.0, index=bt['naive_ret'].index))
+
+    oos_sh   = wf.get('mean_oos_sharpe', np.nan)
+    wfe      = wf.get('wfe', np.nan)
+    strat_dd = m.get('Max_DD', np.nan)
+    naive_dd = naive_m.get('Max_DD', np.nan)
+
+    verdict = lambda v, hi, lo: 'PASS' if v >= hi else ('BORDERLINE' if v >= lo else 'FAIL')
+    stress  = stress_window_breakdown(bt['strat_ret'])
+    stress_rows = []
+    for label, (start, end) in STRESS_WINDOWS.items():
+        r = bt['strat_ret'].loc[start:end]
+        if r.empty:
+            continue
+        worst = float(r.min())
+        row = dict(stress.get(label, {}))
+        row['name']       = label
+        row['worst_day']  = worst
+        row['pass']       = worst > -0.50
+        stress_rows.append(row)
+
     summary = {
-        'metrics':         {k: (None if isinstance(v, float) and np.isnan(v) else v) for k, v in m.items()},
-        'wfe':             None if (isinstance(wf.get('wfe'), float) and np.isnan(wf.get('wfe'))) else wf.get('wfe'),
-        'mean_oos_sharpe': None if (isinstance(wf.get('mean_oos_sharpe'), float) and np.isnan(wf.get('mean_oos_sharpe'))) else wf.get('mean_oos_sharpe'),
-        'n_windows':       len(wf.get('window_table', [])),
-        'run_at':          datetime.now().isoformat(),
+        'run_at':        datetime.now().isoformat(),
+        'date_range':    {'start': bt['daily'].index[0].strftime('%Y-%m-%d'),
+                           'end':   bt['daily'].index[-1].strftime('%Y-%m-%d')},
+        'metrics':       {k: _nn(v) for k, v in m.items()},
+        'naive_metrics': {k: _nn(v) for k, v in naive_m.items()},
+        'bh_total_return': float((bt['bh_equity'].iloc[-1] - 1) * 100),
+
+        'equity_curve':    _curve(bt['equity']),
+        'naive_curve':     _curve(bt['naive_equity']),
+        'bh_curve':        _curve(bt['bh_equity']),
+        'drawdown_curve':  _curve(_drawdown(bt['equity']), value_key='dd'),
+        'naive_dd_curve':  _curve(_drawdown(bt['naive_equity']), value_key='dd'),
+
+        'regime_breakdown': [{'name': k, **v} for k, v in regime_breakdown(bt['daily'], bt['strat_ret']).items()],
+        'stress_windows':   stress_rows,
+
+        'walk_forward': {
+            'window_table':    wf.get('window_table', []),
+            'oos_curve':       _curve(wf['oos_equity']) if not wf.get('oos_equity', pd.Series(dtype=float)).empty else [],
+            'wfe':             _nn(wfe),
+            'mean_oos_sharpe': _nn(oos_sh),
+            'mean_is_sharpe':  _nn(wf.get('mean_is_sharpe', np.nan)),
+            'n_windows':       len(wf.get('window_table', [])),
+        },
+
+        'verdict': {
+            'oos_sharpe': {'value': _nn(oos_sh), 'status': verdict(oos_sh, 0.5, 0.3) if not np.isnan(oos_sh) else 'N/A'},
+            'wfe':        {'value': _nn(wfe),    'status': verdict(wfe, 0.5, 0.3) if not np.isnan(wfe) else 'N/A'},
+            'max_dd':     {'strat': _nn(strat_dd), 'naive': _nn(naive_dd),
+                            'pass': bool(abs(strat_dd) < abs(naive_dd)) if not (np.isnan(strat_dd) or np.isnan(naive_dd)) else None},
+            'stress_pass': all(r['pass'] for r in stress_rows) if stress_rows else None,
+        },
     }
     _post(f"{base}/api/vix-vol-carry-backtest/results", summary, 'results summary')
 

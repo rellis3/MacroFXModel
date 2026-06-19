@@ -148,6 +148,32 @@ No API keys needed. Runtime is dominated by the three yfinance downloads (a few 
 - Chart: `vix_vol_carry.png` — 4 panels: equity curve (strategy vs naive short vs buy-and-hold long VXX,
   log scale), drawdown, VIX with regime-shaded background and circuit-breaker trigger markers, and the
   stitched walk-forward OOS equity curve.
+- Dashboard: with `--base-url` pointed at the deployed server, the trade log and a chart-ready results
+  summary get pushed to `/api/vix-vol-carry-backtest/{trades,results}` and become viewable at
+  `vix-vol-carry-backtest.html` — see "Dashboard Integration" below.
+
+---
+
+## Dashboard Integration
+
+There is a **read-only viewer page** (`vix-vol-carry-backtest.html`, linked from the index dashboard's
+Backtests menu) and two pairs of simple in-memory store endpoints in `server.js`
+(`/api/vix-vol-carry-backtest/trades` and `/results`, GET+POST). This is intentionally lighter than the
+macro-equity model's dashboard integration:
+
+| | Macro Equity (P1) | VIX Vol-Carry (P8) |
+|---|---|---|
+| Trade/results store endpoints | ✅ | ✅ |
+| JS reimplementation of the backtest engine | ✅ (`js/macroEquityEngine.js`) | ❌ — Python only |
+| `/run` job queue + OANDA/FRED live data calls | ✅ | ❌ |
+| Dashboard "▶ Run" button | ✅ | ❌ — view-only |
+| bot-config.html settings tab | ✅ | ❌ |
+
+P8 stays standalone on purpose: you still run `python vix_vol_carry_backtest.py --base-url <server-url>`
+yourself (e.g. from a desktop), which pushes the results once; the dashboard page just displays whatever
+was last pushed so it's checkable from a phone afterwards. There is no live engine here and nothing in
+this strategy talks to the bot's execution machine — by design, given P8 is flagged for extra scrutiny
+through the validation funnel before any deployment work is justified.
 
 ---
 

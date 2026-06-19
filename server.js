@@ -2106,6 +2106,40 @@ app.get('/api/macro-equity-backtest/results', (_req, res) => {
   res.json({ ok: true, results: macroEquityStore.results });
 });
 
+// ── VIX vol-carry (P8) backtest store ────────────────────────────────────────
+// In-memory; persists for the lifetime of the process. Standalone — unlike the
+// macro-equity model above, there is no JS engine port or /run job queue here.
+// Populated by running: python vix-vol-carry/vix_vol_carry_backtest.py --base-url <URL>
+const vixVolCarryStore = { trades: [], results: {}, savedAt: null };
+
+app.post('/api/vix-vol-carry-backtest/trades', express.json({ limit: '10mb' }), (req, res) => {
+  const { trades, savedAt } = req.body ?? {};
+  if (!Array.isArray(trades)) return res.status(400).json({ ok: false, error: 'trades array required' });
+  vixVolCarryStore.trades  = trades;
+  vixVolCarryStore.savedAt = savedAt ?? new Date().toISOString();
+  console.log(`[vix-vol-carry-bt] saved ${trades.length} trades`);
+  res.json({ ok: true, n: trades.length });
+});
+
+app.get('/api/vix-vol-carry-backtest/trades', (_req, res) => {
+  if (!vixVolCarryStore.trades.length)
+    return res.status(404).json({ ok: false, error: 'No trades — run vix_vol_carry_backtest.py first' });
+  res.json({ ok: true, trades: vixVolCarryStore.trades, savedAt: vixVolCarryStore.savedAt });
+});
+
+app.post('/api/vix-vol-carry-backtest/results', express.json({ limit: '5mb' }), (req, res) => {
+  vixVolCarryStore.results = req.body ?? {};
+  vixVolCarryStore.savedAt = vixVolCarryStore.results.run_at ?? new Date().toISOString();
+  console.log('[vix-vol-carry-bt] results summary stored');
+  res.json({ ok: true });
+});
+
+app.get('/api/vix-vol-carry-backtest/results', (_req, res) => {
+  if (!Object.keys(vixVolCarryStore.results).length)
+    return res.status(404).json({ ok: false, error: 'No results — run vix_vol_carry_backtest.py first' });
+  res.json({ ok: true, results: vixVolCarryStore.results });
+});
+
 // ── Macro-equity JS engine: data cache + job queue ────────────────────────────
 
 const ME_RAW_CACHE = { data: null, fetchedAt: null };
