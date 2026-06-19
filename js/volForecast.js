@@ -8,10 +8,14 @@
  *                 Jun-15 morning compare: HV20 Δ−6% vs ref (acceptable).
  *                 Previous: Rogers-Satchell EWMA λ=0.94 (Δ+15.5%)
  *
- *   index     : GARCH(1,1) α=0.06 β=0.91
- *                 ω floor = 4.76e-6 (~20% long-run). Reverted from EWMA(0.90)
- *                 after EWMA spiked Δ−37.5% on first large-move day (NQ 33.54% vs ref 20.95%).
- *                 EWMA(0.90) half-life only 6.6 days — too reactive, no floor.
+ *   index     : GARCH(1,1) α=0.06 β=0.87 (interim, was β=0.91 — 2026-06-19)
+ *                 ω floor = 1.11e-5 (rescaled, still ~20% long-run). Reverted from
+ *                 EWMA(0.90) after EWMA spiked Δ−37.5% on first large-move day
+ *                 (NQ 33.54% vs ref 20.95%). EWMA(0.90) half-life only 6.6 days —
+ *                 too reactive, no floor. β=0.91's 23-day half-life then proved too
+ *                 STICKY (Jun-17/18/19 NQ trajectory) — β=0.87 (~9.5-day half-life)
+ *                 is a provisional middle ground pending grid search; see
+ *                 MD files/VOL_CALIBRATION_TRACKER.md.
  *                 Previous trial: EWMA(λ=0.90)
  *
  *   fx        : Yang-Zhang (YZ) estimator, window=30
@@ -72,9 +76,22 @@ const HN_P75 = 1.1503;
 //   Factors below derived from NQ only — SPX500/DE30/UK100/US30/US2000 share this
 //   class but have no reference data yet; monitor once available, may need to split
 //   index into per-instrument corrections if they diverge from NQ's behavior.
+//
+// index GARCH persistence — INTERIM FIX 2026-06-19 (see MD files/VOL_CALIBRATION_TRACKER.md):
+//   3-session trajectory (Jun-17 Δ+22.3%, Jun-18 Δ+3.5%, Jun-19 Δ+33.7%) showed the
+//   Δ+22.3%/Δ+33.7% overestimates recur whenever a prior-day shock hasn't fully decayed —
+//   confirms this is a structural persistence problem, not noise the static hl/oc
+//   correction factors above can fix (those only correct distribution shape, not decay
+//   speed). garch_beta_interim/garch_omega_interim below halve the half-life
+//   (23d → ~9.5d: β 0.91→0.87, α unchanged, ω rescaled to keep the same 20% long-run
+//   variance anchor) as a conservative provisional step — NOT a final calibration.
+//   Applies to the primary index estimator only; garch_omega (legacy shadow column)
+//   is untouched so the before/after comparison stays meaningful. Revisit via grid
+//   search once enough (ours, ref) pairs have accumulated (tracker file has the table).
 const ASSET_PARAMS = {
   commodity: { hl_50_corr: 0.93, hl_75_corr: 0.88, oc_50_corr: 1.09, oc_75_corr: 1.03 },
-  index:     { hl_50_corr: 0.81, hl_75_corr: 0.78, oc_50_corr: 0.85, oc_75_corr: 0.90, garch_omega: 4.76e-6 },
+  index:     { hl_50_corr: 0.81, hl_75_corr: 0.78, oc_50_corr: 0.85, oc_75_corr: 0.90, garch_omega: 4.76e-6,
+               garch_beta_interim: 0.87, garch_omega_interim: 1.11e-5 },
   fx:        { hl_50_corr: 1.04, hl_75_corr: 0.99, oc_50_corr: 1.10, oc_75_corr: 1.08, garch_omega: 3.60e-7 },
 };
 
@@ -210,13 +227,16 @@ export function ewmaVolSeries(bars, lambda = 0.90) {
 
 // For index/fx: ω floor prevents estimates collapsing in quiet regimes.
 // Initialized at unconditional variance ω/(1−α−β) — no seed transient.
-function garch11VolSeries(bars, omega) {
+// alpha/beta default to the original global constants; index's primary
+// estimator overrides beta (see ASSET_PARAMS.index.garch_beta_interim, 2026-06-19)
+// to shorten persistence while the legacy shadow series keeps the originals.
+function garch11VolSeries(bars, omega, alpha = G_ALPHA, beta = G_BETA) {
   const n   = bars.length;
   const out = new Array(n - 1);
-  let sigma2 = omega / (1 - G_ALPHA - G_BETA);
+  let sigma2 = omega / (1 - alpha - beta);
   for (let i = 1; i < n; i++) {
     const r = Math.log(bars[i].close / bars[i - 1].close);
-    sigma2 = omega + G_ALPHA * r * r + G_BETA * sigma2;
+    sigma2 = omega + alpha * r * r + beta * sigma2;
     out[i - 1] = Math.sqrt(sigma2);
   }
   return out;
@@ -346,7 +366,9 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   if (assetClass === 'commodity') {
     volSeries = hv20Series(ohlc, 20);                    // kept: RS-EWMA was Δ+15.5%, HV20 Δ−6%
   } else if (assetClass === 'index') {
-    volSeries = garch11VolSeries(ohlc, p.garch_omega);   // reverted: EWMA(0.90) too reactive (Δ−37.5%)
+    // Interim persistence fix 2026-06-19: shorter beta/omega than the legacy shadow
+    // below (see ASSET_PARAMS.index comment) — provisional pending grid search.
+    volSeries = garch11VolSeries(ohlc, p.garch_omega_interim, G_ALPHA, p.garch_beta_interim);
   } else {
     volSeries = yangZhangVolSeries(ohlc);                // switched: HV30 too slow (Δ+20.5%), YZ was Δ+12%
   }

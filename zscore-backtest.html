@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yield Spread Z-Score Backtester</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#btApp { padding: 0 20px 40px; max-width: 1340px; margin: 0 auto; }
+
+.bt-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 900px) { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-kpi { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; transition: border-color .2s; }
+.bt-kpi:hover { border-color: var(--border2); }
+.bt-kpi-label { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-kpi-value { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+.bt-kpi-value.green { color: var(--green); }
+.bt-kpi-value.red   { color: var(--red);   }
+.bt-kpi-value.blue  { color: var(--blue);  }
+.bt-kpi-value.amber { color: var(--amber); }
+.bt-kpi-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.bt-sec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+@media (max-width: 900px) { .bt-sec-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-sec { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+.bt-sec-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-sec-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+
+.bt-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+.bt-card-hdr { padding: 12px 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.bt-card-hdr .tabs { display: flex; gap: 4px; margin-left: auto; }
+.bt-card-body { padding: 18px; }
+
+.bt-chart-wrap { position: relative; height: 280px; }
+
+.bt-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+@media (max-width: 900px) { .bt-two-col { grid-template-columns: 1fr; } }
+
+.bt-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.bt-tbl th { padding: 7px 10px; text-align: left; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.bt-tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.bt-tbl tr:last-child td { border-bottom: none; }
+.bt-tbl tr:hover td { background: var(--s2); }
+.bt-tbl td.num { text-align: right; }
+.bt-tbl td.pos { color: var(--green); }
+.bt-tbl td.neg { color: var(--red); }
+.bt-tbl td.neu { color: var(--text2); }
+
+.bt-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace; border: 1px solid; }
+.bt-badge.win  { color: var(--green); background: var(--green-bg); border-color: var(--green-bd); }
+.bt-badge.loss { color: var(--red);   background: var(--red-bg);   border-color: var(--red-bd);   }
+.bt-badge.exp  { color: var(--amber); background: var(--amber-bg); border-color: var(--amber-bd); }
+
+.bt-filters { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.bt-sel { background: var(--s2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 10px; cursor: pointer; }
+.bt-sel:focus { outline: none; border-color: var(--blue); }
+.bt-filter-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.bt-pg { padding: 10px 14px; display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); border-top: 1px solid var(--border); }
+.bt-pg button { background: var(--s2); border: 1px solid var(--border); border-radius: 5px; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px; padding: 3px 10px; cursor: pointer; }
+.bt-pg button:hover { border-color: var(--blue); color: var(--blue); }
+.bt-pg button:disabled { opacity: .35; cursor: default; }
+
+.bt-run-bar { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); padding: 12px 16px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bt-run-bar input, .bt-run-bar select { background: var(--s2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 10px; }
+.bt-run-bar label.chk { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-run-btn { background: var(--green); border: none; border-radius: 6px; color: #fff; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; padding: 6px 18px; cursor: pointer; transition: opacity .2s; }
+.bt-run-btn:hover { opacity: .85; }
+.bt-run-btn:disabled { opacity: .5; cursor: wait; }
+.bt-run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.bt-tbl-scroll { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+
+.hm-grid { display: flex; flex-wrap: wrap; gap: 4px; padding: 14px 18px; }
+.hm-cell { width: 64px; height: 40px; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 9px; border: 1px solid var(--border); cursor: default; }
+.hm-cell .hm-month { color: var(--text3); }
+.hm-cell .hm-val   { font-size: 11px; font-weight: 600; }
+
+.chart-btn { background: none; border: 1px solid var(--border); color: var(--text3); cursor: pointer; padding: 1px 6px; border-radius: 3px; font-size: 13px; line-height: 1.4; transition: color .15s, border-color .15s; }
+.chart-btn:hover { color: var(--amber); border-color: var(--amber); }
+
+#chartModal { display: none; position: fixed; inset: 0; z-index: 1000; background: #0d0f14; flex-direction: column; }
+.chart-modal-hdr { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid #2a2f45; background: #131722; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div id="btApp">
+
+<!-- ── Top bar ─────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">Yield Spread Z-Score Backtester</div>
+    <div class="sub">US2Y vs local short rate · rolling z-score overshoot · Asia-range Fib mean reversion · 6 pairs</div>
+  </div>
+  <div style="flex:1"></div>
+  <span class="upd" id="btComputedAt"></span>
+  <a href="backtest-viewer.html?source=zscore" style="text-decoration:none"><button class="dark-btn" style="border-color:#4f7df0;color:#4f7df0">⛶ Full Chart Viewer</button></a>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+
+</div>
+</div>
+
+<div id="btApp" style="padding-top:0">
+
+<!-- ── Run bar ──────────────────────────────────────────────────────────────── -->
+<div class="bt-run-bar" id="runBar">
+  <span class="bt-run-lbl">Run Backtest:</span>
+  <input type="date" id="runFrom" style="width:130px">
+  <input type="date" id="runTo" style="width:130px">
+  <select id="runPair" class="bt-sel" title="Run a single pair, or All pairs to run every configured pair">
+    <option value="">All pairs</option>
+  </select>
+  <select id="runZWindow" class="bt-sel" title="Rolling lookback window (calendar days) for the spread z-score">
+    <option value="60">Z-window 60d</option>
+    <option value="90" selected>Z-window 90d</option>
+    <option value="120">Z-window 120d</option>
+    <option value="180">Z-window 180d</option>
+    <option value="252">Z-window 252d</option>
+  </select>
+  <select id="runFibMode" class="bt-sel" title="Which Fibonacci extension multiples to trade">
+    <option value="all" selected>Fib: all 5 levels</option>
+    <option value="first">Fib: 0.25 only</option>
+  </select>
+  <select id="runEntryWindow" class="bt-sel" title="Hours after 06:00 UTC during which a Fib touch can trigger an entry">
+    <option value="4">Entry 4h</option>
+    <option value="6" selected>Entry 6h</option>
+    <option value="10">Entry 10h</option>
+    <option value="14">Entry 14h</option>
+  </select>
+  <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="togglePairSettings()" title="Per-pair entry threshold & direction invert">⚙ Pairs</button>
+  <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
+  <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="toggleHelp()" title="Strategy help">?</button>
+  <span id="runStatus" class="bt-run-lbl"></span>
+</div>
+
+<!-- ── Per-pair threshold / invert panel ─────────────────────────────────── -->
+<div id="pairSettings" style="display:none;margin-top:8px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px">
+  <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-family:'DM Mono',monospace">
+    Per-pair entry threshold (|z| ≥) and direction invert — applies on next Run. Only USDJPY's sign has been
+    validated against live results; treat every other pair's default direction as unconfirmed.
+  </div>
+  <div id="pairSettingsBody" style="display:flex;gap:16px;flex-wrap:wrap"></div>
+</div>
+
+<!-- ── Strategy help panel ───────────────────────────────────────────────── -->
+<div id="stratHelp" style="display:none;margin:8px 0 0;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;color:var(--txt2)">
+  <strong style="color:var(--txt);font-size:13px">Yield Spread Z-Score — strategy logic</strong>
+  <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Signal</div>
+      Spread = US 2Y yield (GS2) − local short rate (JP/DE/GB/AU OECD short rate, or CA/CH for the USD-base pairs).
+      A rolling z-score of that spread is computed daily; when |z| exceeds the pair's threshold, the day is "live" and biased
+      LONG (z &gt; +thresh) or SHORT (z &lt; −thresh). USD-quote pairs (EURUSD/GBPUSD/AUDUSD) default to a higher
+      threshold than USD-base pairs (USDJPY/USDCAD/USDCHF) to offset negative RR below it.
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Entry</div>
+      The Asia session (00:00–05:59 UTC) body range (no wicks) anchors Fibonacci extension levels projected outside it
+      (0.25/0.75/1.25/1.5/2.0 × range). During the entry window after 06:00 UTC, the first touch of each untraded level
+      fills at that exact price. Reward (to the Asia range edge) must be ≥0.8× the risk (to the next level out).
+    </div>
+    <div>
+      <div style="color:var(--txt);font-weight:600;margin-bottom:4px">Exit</div>
+      TP = opposite Asia range edge (mean reversion). SL = one Fib step further from the range (0.25×range beyond entry).
+      Stop is checked before target each bar. Unresolved trades are closed at the open of the first bar ≥22:00 UTC (EXPIRED).
+    </div>
+  </div>
+  <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+    v1 limitations: no spread/commission cost, no notional sizing, all yield legs are monthly series forward-filled to
+    daily (so the z-score updates in monthly steps, not daily), one entry per level/day, no economic-event filter, and only
+    USDJPY's direction sign has been validated against live results — use the <strong>⚙ Pairs</strong> panel's Invert
+    checkbox to test the flip on any pair.
+  </div>
+</div>
+
+<!-- ── Status bar ────────────────────────────────────────────────────────── -->
+<div class="status-bar" id="btStatus" style="margin-top:10px">
+  <div class="sdot spin" id="btDot"></div>
+  <span class="stxt" id="btMsg">Loading backtest results…</span>
+  <span class="bt-run-lbl" id="pillFred">FRED —</span>
+  <span class="bt-run-lbl" id="pillR2">R2 —</span>
+  <span id="pillM1Group"></span>
+</div>
+
+<!-- ── Pair tabs ─────────────────────────────────────────────────────────── -->
+<div class="tabs" id="pairTabs" style="display:none;margin-top:10px">
+  <button class="ptab active" onclick="switchPair('combined',this)">Combined</button>
+</div>
+
+<!-- ── Primary KPIs ──────────────────────────────────────────────────────── -->
+<div class="bt-kpi-grid" id="kpiGrid" style="display:none">
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Win Rate</div>
+    <div class="bt-kpi-value green" id="kWin">—</div>
+    <div class="bt-kpi-sub" id="kWinSub">TP / total trades</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Profit Factor</div>
+    <div class="bt-kpi-value blue" id="kPf">—</div>
+    <div class="bt-kpi-sub">gross win / gross loss pips</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Sharpe Ratio</div>
+    <div class="bt-kpi-value blue" id="kSharpe">—</div>
+    <div class="bt-kpi-sub">annualised, daily pips</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Max Drawdown</div>
+    <div class="bt-kpi-value red" id="kMaxDd">—</div>
+    <div class="bt-kpi-sub">cumulative pips peak→trough</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Total Pips</div>
+    <div class="bt-kpi-value green" id="kPips">—</div>
+    <div class="bt-kpi-sub" id="kPipsSub">across all trades</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Trades / Year</div>
+    <div class="bt-kpi-value amber" id="kTpy">—</div>
+    <div class="bt-kpi-sub">varies by pair &amp; threshold</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Avg Reward:Risk</div>
+    <div class="bt-kpi-value amber" id="kRr">—</div>
+    <div class="bt-kpi-sub">at entry, before outcome</div>
+  </div>
+  <div class="bt-kpi">
+    <div class="bt-kpi-label">Expectancy</div>
+    <div class="bt-kpi-value blue" id="kExpect">—</div>
+    <div class="bt-kpi-sub">avg pips / trade</div>
+  </div>
+</div>
+
+<!-- ── Secondary stats ───────────────────────────────────────────────────── -->
+<div class="bt-sec-grid" id="secGrid" style="display:none">
+  <div class="bt-sec"><span class="bt-sec-lbl">Total Trades</span><span class="bt-sec-val" id="sTotal">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Wins (TP)</span><span class="bt-sec-val" id="sWins">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Losses (SL)</span><span class="bt-sec-val" id="sLosses">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Expired</span><span class="bt-sec-val" id="sExps">—</span></div>
+</div>
+
+<!-- ── Z-tier breakdown ──────────────────────────────────────────────────── -->
+<div class="bt-card" id="zTierCard" style="display:none">
+  <div class="bt-card-hdr">Z-Tier Breakdown — primary research output</div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="zTierTbl">
+      <thead><tr>
+        <th>Tier</th><th class="num">Trades</th><th class="num">Wins</th><th class="num">Losses</th>
+        <th class="num">Win%</th><th class="num">Total Pips</th><th class="num">Profit Factor</th>
+      </tr></thead>
+      <tbody id="zTierTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Equity curve ───────────────────────────────────────────────────────── -->
+<div class="bt-card" id="eqCard" style="display:none">
+  <div class="bt-card-hdr">Cumulative Pips</div>
+  <div class="bt-card-body">
+    <div class="bt-chart-wrap"><canvas id="eqChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ── Monthly P&L grid ──────────────────────────────────────────────────── -->
+<div class="bt-card" id="hmCard" style="display:none">
+  <div class="bt-card-hdr">Monthly P&amp;L (pips)</div>
+  <div class="hm-grid" id="hmGrid"></div>
+</div>
+
+<!-- ── Trade log ─────────────────────────────────────────────────────────── -->
+<div class="bt-card" id="logCard" style="display:none">
+  <div class="bt-card-hdr">Trade Log</div>
+  <div class="bt-filters">
+    <span class="bt-filter-lbl">Pair</span>
+    <select class="bt-sel" id="fPair" onchange="applyFilters()">
+      <option value="">All</option>
+    </select>
+    <span class="bt-filter-lbl">Dir</span>
+    <select class="bt-sel" id="fDir" onchange="applyFilters()">
+      <option value="">All</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option>
+    </select>
+    <span class="bt-filter-lbl">Result</span>
+    <select class="bt-sel" id="fResult" onchange="applyFilters()">
+      <option value="">All</option><option value="TP">TP</option><option value="SL">SL</option><option value="EXPIRED">EXPIRED</option>
+    </select>
+    <span class="bt-filter-lbl" id="fCount" style="margin-left:auto"></span>
+  </div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="logTbl">
+      <thead><tr>
+        <th>Date</th><th>Pair</th><th>Dir</th><th class="num">Z</th><th>Tier</th><th class="num">Fib</th>
+        <th class="num">Entry</th><th class="num">SL</th><th class="num">TP</th><th class="num">R:R</th>
+        <th>Result</th><th class="num">Pips</th><th></th>
+      </tr></thead>
+      <tbody id="logTblBody"></tbody>
+    </table>
+  </div>
+  <div class="bt-pg" id="logPg"></div>
+</div>
+
+</div>
+
+<!-- ── M1 Chart Modal ────────────────────────────────────────────────────── -->
+<div id="chartModal">
+  <div class="chart-modal-hdr">
+    <span id="chartModalTitle" style="font-weight:600;font-size:14px;color:#d1d4dc"></span>
+    <span id="chartModalBadge" style="font-size:11px;color:#8fa0b8;flex:1"></span>
+    <a href="backtest-viewer.html?source=zscore" target="_blank"
+       style="background:#1c2133;border:1px solid #2a3348;color:#4f7df0;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:12px;text-decoration:none;white-space:nowrap">
+      ⛶ Full Viewer
+    </a>
+    <button onclick="closeChartModal()" style="background:none;border:1px solid #2a2f45;color:#8fa0b8;cursor:pointer;padding:4px 12px;border-radius:4px;font-size:12px">✕ Close</button>
+  </div>
+  <div id="chartContainer" style="flex:1;min-height:0;width:100%"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let _combined   = null;
+let _perPair    = null;
+let _allTrades  = [];
+let _filtTrades = [];
+let _page       = 0;
+let _activePair = 'combined';
+let _eqChart    = null;
+let _pairsMeta  = null;
+let _pairKeys   = [];
+const PAGE_SIZE = 50;
+
+function setStatus(dot, msg) {
+  document.getElementById('btDot').className = `sdot ${dot}`;
+  document.getElementById('btMsg').textContent = msg;
+}
+
+function toggleHelp() {
+  const el = document.getElementById('stratHelp');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function togglePairSettings() {
+  const el = document.getElementById('pairSettings');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function loadPairsMeta() {
+  try {
+    const r = await fetch('/api/zscore-backtest/pairs');
+    const d = await r.json();
+    if (!d.ok) return;
+    _pairsMeta = d.pairs;
+    _pairKeys  = Object.keys(d.pairs);
+    buildPairControls();
+  } catch { /* leave static fallbacks */ }
+}
+
+function buildPairControls() {
+  const runPairSel = document.getElementById('runPair');
+  runPairSel.innerHTML = '<option value="">All pairs</option>' +
+    _pairKeys.map(k => `<option value="${k}">${_pairsMeta[k].label}</option>`).join('');
+
+  document.getElementById('pairSettingsBody').innerHTML = _pairKeys.map(k => {
+    const m = _pairsMeta[k];
+    const opts = [1.5, 2.0, 2.5, 3.0].map(v =>
+      `<option value="${v}" ${v === m.defaultThreshold ? 'selected' : ''}>z≥${v}</option>`).join('');
+    return `<div style="display:flex;align-items:center;gap:6px">
+      <span class="bt-run-lbl" style="min-width:56px">${m.label}</span>
+      <select class="bt-sel" id="runThresh_${k}" title="${m.label} entry threshold">${opts}</select>
+      <label class="chk" title="Flip LONG/SHORT for ${m.label}"><input type="checkbox" id="runInvert_${k}"> Invert</label>
+    </div>`;
+  }).join('');
+
+  document.getElementById('pairTabs').innerHTML =
+    '<button class="ptab active" onclick="switchPair(\'combined\',this)">Combined</button>' +
+    _pairKeys.map(k => `<button class="ptab" onclick="switchPair('${k}',this)">${_pairsMeta[k].label}</button>`).join('');
+
+  document.getElementById('fPair').innerHTML = '<option value="">All</option>' +
+    _pairKeys.map(k => `<option value="${_pairsMeta[k].label}">${_pairsMeta[k].label}</option>`).join('');
+}
+
+async function refreshDiagnose() {
+  try {
+    const r = await fetch('/api/zscore-backtest/diagnose');
+    const d = await r.json();
+    document.getElementById('pillFred').textContent = `FRED ${d.fredKey ? '✓' : '✗'}`;
+    document.getElementById('pillR2').textContent   = `R2 ${d.r2 ? '✓' : '✗'}`;
+    const grp = document.getElementById('pillM1Group');
+    if (grp && d.m1Cached) {
+      grp.innerHTML = Object.entries(d.m1Cached).map(([k, ok]) =>
+        `<span class="bt-run-lbl">${(_pairsMeta?.[k]?.label || k.toUpperCase())} M1 ${ok ? '✓' : '✗'}</span>`).join('');
+    }
+  } catch { /* leave placeholders */ }
+}
+
+async function loadData() {
+  setStatus('spin', 'Loading backtest results…');
+  try {
+    const [sumR, tradesR] = await Promise.all([
+      fetch('/api/zscore-backtest'),
+      fetch('/api/zscore-backtest/trades'),
+    ]);
+    const sum = await sumR.json();
+    const tr  = await tradesR.json();
+    if (!sum.ok || !tr.ok) {
+      setStatus('err', sum.error || tr.error || 'No backtest results yet — click Run to generate them.');
+      return;
+    }
+    _combined  = sum.combined;
+    _perPair   = sum.perPair;
+    _allTrades = tr.trades || [];
+    document.getElementById('btComputedAt').textContent = `file: ${sum.file || ''}`;
+    setStatus('ok', `Loaded ${_allTrades.length} trades from ${sum.file}`);
+    document.getElementById('pairTabs').style.display = 'flex';
+    renderAll();
+  } catch (e) {
+    setStatus('err', `Failed to load: ${e.message}`);
+  }
+}
+
+function switchPair(pair, btn) {
+  _activePair = pair;
+  document.querySelectorAll('#pairTabs .ptab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  _page = 0;
+  renderAll();
+}
+
+function currentStats() {
+  if (_activePair === 'combined') return _combined;
+  return _perPair?.[_activePair] ?? null;
+}
+
+function currentTrades() {
+  if (_activePair === 'combined') return _allTrades;
+  const key = _activePair.toUpperCase();
+  return _allTrades.filter(t => t.pair === key);
+}
+
+const fmtPips = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1);
+
+function renderAll() {
+  const stats = currentStats();
+  if (!stats || stats.total === 0) {
+    ['kpiGrid','secGrid','zTierCard','eqCard','hmCard','logCard'].forEach(id => document.getElementById(id).style.display = 'none');
+    return;
+  }
+  ['kpiGrid','secGrid','zTierCard','eqCard','hmCard','logCard'].forEach(id => document.getElementById(id).style.display = '');
+
+  document.getElementById('kWin').textContent    = stats.winRate.toFixed(1) + '%';
+  document.getElementById('kWinSub').textContent = `${stats.wins} TP / ${stats.total} trades`;
+  document.getElementById('kPf').textContent     = stats.profitFactor >= 999 ? '∞' : stats.profitFactor.toFixed(2);
+  document.getElementById('kSharpe').textContent  = stats.sharpe.toFixed(2);
+  document.getElementById('kMaxDd').textContent   = fmtPips(stats.maxDrawdown);
+  document.getElementById('kPips').textContent    = fmtPips(stats.totalPips);
+  document.getElementById('kPipsSub').textContent = `${stats.total} trades`;
+  document.getElementById('kTpy').textContent     = stats.tradesPerYear.toFixed(1);
+  document.getElementById('kRr').textContent       = stats.avgRR.toFixed(2);
+  document.getElementById('kExpect').textContent  = fmtPips(stats.expectancy);
+
+  document.getElementById('sTotal').textContent  = stats.total;
+  document.getElementById('sWins').textContent   = stats.wins;
+  document.getElementById('sLosses').textContent = stats.losses;
+  document.getElementById('sExps').textContent   = stats.exps;
+
+  renderZTiers(stats.zTiers);
+  renderEquity(stats.equityCurve);
+  renderMonthly(stats.monthly);
+
+  _filtTrades = currentTrades();
+  applyFilters();
+}
+
+function renderZTiers(zTiers) {
+  const order = ['2.0-2.5', '2.5-3.0', '3.0+'];
+  document.getElementById('zTierTblBody').innerHTML = order.map(tier => {
+    const t = zTiers[tier] || { count: 0, wins: 0, losses: 0, winRate: 0, totalPips: 0, profitFactor: 0 };
+    const pipsCls = t.totalPips > 0 ? 'pos' : t.totalPips < 0 ? 'neg' : 'neu';
+    return `<tr>
+      <td><b>${tier}σ</b></td><td class="num">${t.count}</td><td class="num">${t.wins}</td><td class="num">${t.losses}</td>
+      <td class="num">${t.winRate.toFixed(1)}%</td>
+      <td class="num ${pipsCls}">${fmtPips(t.totalPips)}</td>
+      <td class="num">${t.profitFactor >= 999 ? '∞' : t.profitFactor.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderEquity(curve) {
+  const ctx = document.getElementById('eqChart').getContext('2d');
+  if (_eqChart) { _eqChart.destroy(); _eqChart = null; }
+  _eqChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: curve.map(p => p.date),
+      datasets: [{
+        label: 'Cumulative pips', data: curve.map(p => p.cum),
+        borderColor: '#4f7df0', backgroundColor: 'rgba(79,125,240,0.08)',
+        fill: true, pointRadius: 0, borderWidth: 1.5, tension: 0.05,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#5a6380', maxTicksLimit: 10, font: { family: 'DM Mono', size: 9 } }, grid: { color: '#2a2f45' } },
+        y: { ticks: { color: '#5a6380', font: { family: 'DM Mono', size: 9 } }, grid: { color: '#2a2f45' } },
+      },
+    },
+  });
+}
+
+function renderMonthly(monthly) {
+  const months = Object.keys(monthly).sort();
+  document.getElementById('hmGrid').innerHTML = months.map(ym => {
+    const m = monthly[ym];
+    const pos = m.pips > 0, neg = m.pips < 0;
+    const bg = pos ? 'rgba(16,185,129,0.15)' : neg ? 'rgba(239,68,68,0.15)' : 'transparent';
+    const fg = pos ? 'var(--green)' : neg ? 'var(--red)' : 'var(--text3)';
+    return `<div class="hm-cell" style="background:${bg}" title="${m.trades} trades">
+      <span class="hm-month">${ym}</span>
+      <span class="hm-val" style="color:${fg}">${fmtPips(m.pips)}</span>
+    </div>`;
+  }).join('') || '<span style="color:var(--text3);font-size:12px">No trades</span>';
+}
+
+function applyFilters() {
+  const pair = document.getElementById('fPair').value;
+  const dir  = document.getElementById('fDir').value;
+  const res  = document.getElementById('fResult').value;
+  let trades = currentTrades();
+  if (pair) trades = trades.filter(t => t.pair === pair);
+  if (dir)  trades = trades.filter(t => t.dir === dir);
+  if (res)  trades = trades.filter(t => t.result === res);
+  trades = [...trades].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+  _filtTrades = trades;
+  _page = 0;
+  document.getElementById('fCount').textContent = `${trades.length} trades`;
+  renderLog();
+}
+
+function renderLog() {
+  const start = _page * PAGE_SIZE;
+  const pageTrades = _filtTrades.slice(start, start + PAGE_SIZE);
+  document.getElementById('logTblBody').innerHTML = pageTrades.map((t, i) => {
+    const idx = start + i;
+    const badgeCls = t.result === 'TP' ? 'win' : t.result === 'SL' ? 'loss' : 'exp';
+    const pipsCls  = t.pips > 0 ? 'pos' : t.pips < 0 ? 'neg' : 'neu';
+    return `<tr>
+      <td>${t.date}</td><td>${t.pair}</td><td>${t.dir}</td><td class="num">${t.z.toFixed(2)}</td>
+      <td>${t.zTier}σ</td><td class="num">${t.fibLevel}</td>
+      <td class="num">${t.entry}</td><td class="num">${t.sl}</td><td class="num">${t.tp}</td>
+      <td class="num">${t.rr.toFixed(2)}</td>
+      <td><span class="bt-badge ${badgeCls}">${t.result}</span></td>
+      <td class="num ${pipsCls}">${fmtPips(t.pips)}</td>
+      <td><button class="chart-btn" onclick="openChartModal(${idx})" title="View M1 chart">📈</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--text3)">No trades match the current filters</td></tr>';
+
+  const totalPages = Math.max(1, Math.ceil(_filtTrades.length / PAGE_SIZE));
+  document.getElementById('logPg').innerHTML = `
+    <button onclick="gotoPage(0)" ${_page === 0 ? 'disabled' : ''}>« First</button>
+    <button onclick="gotoPage(${_page - 1})" ${_page === 0 ? 'disabled' : ''}>‹ Prev</button>
+    <span>Page ${_page + 1} / ${totalPages}</span>
+    <button onclick="gotoPage(${_page + 1})" ${_page >= totalPages - 1 ? 'disabled' : ''}>Next ›</button>
+    <button onclick="gotoPage(${totalPages - 1})" ${_page >= totalPages - 1 ? 'disabled' : ''}>Last »</button>
+  `;
+}
+
+function gotoPage(p) {
+  _page = Math.max(0, p);
+  renderLog();
+}
+
+// ── Run backtest ──────────────────────────────────────────────────────────
+async function runBacktest() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('runStatus').textContent = 'Starting…';
+
+  const thresholds = {}, invert = {};
+  for (const k of _pairKeys) {
+    const threshEl = document.getElementById(`runThresh_${k}`);
+    const invEl     = document.getElementById(`runInvert_${k}`);
+    if (threshEl) thresholds[k] = threshEl.value;
+    if (invEl)    invert[k]     = invEl.checked;
+  }
+
+  const body = {
+    dateFrom: document.getElementById('runFrom').value,
+    dateTo:   document.getElementById('runTo').value,
+    pair:     document.getElementById('runPair').value,
+    zWindow:  document.getElementById('runZWindow').value,
+    fibLevelMode: document.getElementById('runFibMode').value,
+    entryWindow:  document.getElementById('runEntryWindow').value,
+    thresholds, invert,
+  };
+
+  try {
+    const r = await fetch('/api/zscore-backtest/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed to start backtest');
+    pollJob(d.jobId);
+  } catch (e) {
+    document.getElementById('runStatus').textContent = `Error: ${e.message}`;
+    btn.disabled = false;
+  }
+}
+
+function pollJob(jobId) {
+  const poll = async () => {
+    try {
+      const r = await fetch(`/api/zscore-backtest/status/${jobId}`);
+      const d = await r.json();
+      if (d.status === 'running') {
+        document.getElementById('runStatus').textContent = `Running… ${d.elapsed}s`;
+        setTimeout(poll, 2000);
+        return;
+      }
+      document.getElementById('runBtn').disabled = false;
+      if (d.status === 'done') {
+        document.getElementById('runStatus').textContent = d.message || 'Done';
+        loadData();
+      } else {
+        document.getElementById('runStatus').textContent = `Error: ${d.error}`;
+      }
+    } catch (e) {
+      document.getElementById('runStatus').textContent = `Error: ${e.message}`;
+      document.getElementById('runBtn').disabled = false;
+    }
+  };
+  poll();
+}
+
+// ── M1 Chart Modal ────────────────────────────────────────────────────────
+let _chartInstance = null;
+
+function _toEpochSec(timeStr) {
+  const s = String(timeStr).substring(0, 19).replace(' ', 'T');
+  return Math.floor(new Date(s + 'Z').getTime() / 1000);
+}
+
+function _dateOffset(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().substring(0, 10);
+}
+
+function openChartModal(tradeIdx) {
+  const trade = _filtTrades[tradeIdx];
+  if (!trade) return;
+
+  const pair = trade.pair.toLowerCase();
+  const date = trade.date;
+  const isLong = trade.dir === 'LONG';
+
+  const modal = document.getElementById('chartModal');
+  modal.style.display = 'flex';
+  document.getElementById('chartModalTitle').textContent = `${trade.pair} — ${date}`;
+  document.getElementById('chartModalBadge').textContent =
+    `${trade.dir} · z=${trade.z.toFixed(2)} (${trade.zTier}σ) · fib ${trade.fibLevel} · ${trade.result} · ${fmtPips(trade.pips)} pips`;
+
+  if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; }
+
+  const container = document.getElementById('chartContainer');
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8fa0b8;font-size:13px">Loading M1 data… (first load may take a minute)</div>';
+
+  const from = _dateOffset(date, -1);
+  const to   = _dateOffset(date, +1);
+
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 120_000);
+
+  fetch(`/api/zscore-backtest/candles/${pair}?from=${from}&to=${to}`, { signal: ctrl.signal })
+    .then(r => r.json())
+    .then(d => {
+      clearTimeout(tid);
+      if (!d.ok || !d.candles?.length) {
+        container.innerHTML = `<div style="padding:24px;font-size:13px;line-height:1.7">
+          <div style="color:#ef5350;font-weight:600;margin-bottom:8px">⚠ No M1 candle data</div>
+          <div style="color:#8fa0b8">${d.error || 'No candles returned for this date range'}</div>
+        </div>`;
+        return;
+      }
+      container.innerHTML = '';
+
+      _chartInstance = LightweightCharts.createChart(container, {
+        autoSize:  true,
+        layout:    { background: { color: '#131722' }, textColor: '#d1d4dc' },
+        grid:      { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#2a3348' },
+        timeScale: { borderColor: '#2a3348', timeVisible: true, secondsVisible: false },
+      });
+
+      const cs = _chartInstance.addCandlestickSeries({
+        upColor: '#26a69a', downColor: '#ef5350',
+        borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+      });
+
+      cs.setData(d.candles.map(b => ({
+        time: _toEpochSec(b.time),
+        open: b.open, high: b.high, low: b.low, close: b.close,
+      })));
+
+      const LS = LightweightCharts.LineStyle;
+      const addLine = (price, color, title, style) =>
+        cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title });
+
+      addLine(trade.asia_high, '#9ca3af', 'Asia Hi', LS.Dashed);
+      addLine(trade.asia_low,  '#9ca3af', 'Asia Lo', LS.Dashed);
+      addLine(trade.entry, isLong ? '#26a69a' : '#ef5350', `Entry (fib ${trade.fibLevel})`, LS.Solid);
+      addLine(trade.tp,    '#26a69a', 'TP', LS.Dotted);
+      addLine(trade.sl,    '#ef5350', 'SL', LS.Dotted);
+
+      const markers = [];
+      if (trade.fill_time) {
+        markers.push({
+          time: _toEpochSec(trade.fill_time), position: isLong ? 'belowBar' : 'aboveBar',
+          color: isLong ? '#26a69a' : '#ef5350', shape: isLong ? 'arrowUp' : 'arrowDown', text: trade.dir,
+        });
+      }
+      if (trade.exit_time) {
+        const win = trade.result === 'TP';
+        markers.push({
+          time: _toEpochSec(trade.exit_time), position: isLong ? 'aboveBar' : 'belowBar',
+          color: win ? '#26a69a' : '#ef5350', shape: win ? 'arrowUp' : 'arrowDown', text: trade.result,
+        });
+      }
+      cs.setMarkers(markers.sort((a, b) => a.time - b.time));
+
+      const dayStart = _toEpochSec(date + 'T00:00:00');
+      _chartInstance.timeScale().setVisibleRange({ from: dayStart - 3 * 3600, to: dayStart + 27 * 3600 });
+    })
+    .catch(e => {
+      container.innerHTML = `<div style="padding:24px;color:#ef5350;font-size:13px">Error: ${e.message}</div>`;
+    });
+}
+
+function closeChartModal() {
+  document.getElementById('chartModal').style.display = 'none';
+  if (_chartInstance) { _chartInstance.remove(); _chartInstance = null; }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartModal(); });
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+loadPairsMeta().then(() => {
+  refreshDiagnose();
+  loadData();
+});
+</script>
+</body>
+</html>

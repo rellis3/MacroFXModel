@@ -36,6 +36,7 @@ import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
+import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
@@ -5771,6 +5772,177 @@ app.get('/api/asia-range-backtest/trades', (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── Yield Spread Z-Score Backtest ─────────────────────────────────────────────
+// USDJPY/EURUSD mean-reversion into the Asia range, triggered by a rolling
+// yield-spread z-score overshoot. Engine: js/zscoreSpreadEngine.js
+
+const ZS_BT_DATA_DIR = path.join(__dirname, 'VolRangeForecaster', 'data', 'zscore');
+
+function _latestZsBtFile() {
+  if (!fs.existsSync(ZS_BT_DATA_DIR)) return null;
+  const files = fs.readdirSync(ZS_BT_DATA_DIR)
+    .filter(f => f.startsWith('zscore_bt_') && f.endsWith('.json'))
+    .sort().reverse();
+  return files.length ? path.join(ZS_BT_DATA_DIR, files[0]) : null;
+}
+
+const zsJobs = new Map();
+
+function _purgeStaleZsJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of zsJobs) if (job.startedAt < cutoff) zsJobs.delete(id);
+}
+
+app.post('/api/zscore-backtest/run', (req, res) => {
+  if (!process.env.FRED_KEY) {
+    return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch yield spread data' });
+  }
+  const {
+    dateFrom = '', dateTo = '', pair = '',
+    zWindow = '90', fibLevelMode = 'all', entryWindow = '6',
+    thresholds = {}, invert = {},
+  } = req.body || {};
+
+  const opts = {
+    dateFrom, dateTo,
+    zWindow:      parseInt(zWindow)      || 90,
+    fibLevelMode,
+    entryWindow:  parseInt(entryWindow)  || 6,
+    thresholds: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, parseFloat(thresholds[k]) || ZSCORE_PAIRS[k].defaultThreshold])),
+    invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, invert[k] === true || invert[k] === 'true'])),
+  };
+
+  const pairsToRun = pair
+    ? [pair.toLowerCase()].filter(p => ZSCORE_PAIRS[p])
+    : Object.keys(ZSCORE_PAIRS);
+
+  if (!pairsToRun.length) {
+    return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  }
+
+  const jobId     = `zs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleZsJobs();
+  zsJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { trades, perPair, combined, log } = await runFullZScoreBacktest(opts, pairsToRun);
+
+      if (!trades.length) {
+        zsJobs.set(jobId, { status: 'error', error: 'No trades generated — check date range, M1 data, and FRED_KEY', log, startedAt });
+        return;
+      }
+
+      if (!fs.existsSync(ZS_BT_DATA_DIR)) fs.mkdirSync(ZS_BT_DATA_DIR, { recursive: true });
+      const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(ZS_BT_DATA_DIR, `zscore_bt_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify({ trades, perPair, combined, opts }, null, 0) + '\n');
+
+      zsJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: {
+          ok: true,
+          message: `Z-Score backtest complete — ${trades.length} trades`,
+          perPair, combined, log,
+          file: path.basename(outFile),
+        },
+      });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[zscore-backtest/run]', msg, e?.stack ?? '');
+      zsJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/zscore-backtest/status/:jobId', (req, res) => {
+  const job = zsJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+app.get('/api/zscore-backtest', (_req, res) => {
+  const file = _latestZsBtFile();
+  if (!file) return res.status(404).json({ ok: false, error: 'No Z-Score backtest results found — run a backtest first' });
+  try {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    res.json({ ok: true, perPair: data.perPair, combined: data.combined, opts: data.opts, file: path.basename(file) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/zscore-backtest/trades', (_req, res) => {
+  const file = _latestZsBtFile();
+  if (!file) return res.json({ ok: false, error: 'No Z-Score backtest results found — run a backtest first' });
+  try {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    res.json({ ok: true, trades: data.trades, file: path.basename(file) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/zscore-backtest/candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { from, to } = req.query;
+  try {
+    if (!m1CandleCache.has(pair)) {
+      if (m1CandleCache.size >= M1_CACHE_MAX) {
+        m1CandleCache.delete(m1CandleCache.keys().next().value);
+      }
+      const packed = await loadM1ForPair(pair);
+      if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+      m1CandleCache.set(pair, packed);
+    }
+    const packed = m1CandleCache.get(pair);
+    const { n, times, opens, highs, lows, closes } = packed;
+
+    const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
+    const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
+    const candles = [];
+    for (let i = 0; i < n && candles.length < 20000; i++) {
+      const t = times[i];
+      if (t >= fromTs && t <= toTs) {
+        candles.push({ time: new Date(t * 1000).toISOString().substring(0, 19), open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+      }
+    }
+    res.json({ ok: true, pair, n: candles.length, candles });
+  } catch (e) {
+    console.error('[zscore-backtest/candles]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/zscore-backtest/diagnose', (_req, res) => {
+  const m1 = _m1CacheStatus();
+  res.json({
+    ok: true,
+    fredKey: !!process.env.FRED_KEY,
+    r2:      !!(process.env.R2_ACCESS_KEY && process.env.R2_SECRET_KEY),
+    m1Cached: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, m1.pairs.includes(ZSCORE_PAIRS[k].label)])),
+  });
+});
+
+app.get('/api/zscore-backtest/pairs', (_req, res) => {
+  res.json({
+    ok: true,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) =>
+      [k, { label: v.label, pairDisplay: v.pairDisplay, defaultThreshold: v.defaultThreshold }])),
+  });
 });
 
 // ── Dyn Anchor nightly forecast ────────────────────────────────────────────────
