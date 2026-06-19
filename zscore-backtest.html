@@ -259,6 +259,31 @@
   </div>
 </div>
 
+<!-- ── Risk regime breakdown ─────────────────────────────────────────────── -->
+<div class="bt-card" id="regimeCard" style="display:none">
+  <div class="bt-card-hdr">Risk Regime Breakdown — VIX/HY cross-asset gate</div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="regimeTbl">
+      <thead><tr>
+        <th>Regime</th><th class="num">Trades</th><th class="num">Wins</th><th class="num">Losses</th>
+        <th class="num">Win%</th><th class="num">Total Pips</th><th class="num">Profit Factor</th>
+      </tr></thead>
+      <tbody id="regimeTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Z-Tier x Regime matrix ─────────────────────────────────────────────── -->
+<div class="bt-card" id="regimeMatrixCard" style="display:none">
+  <div class="bt-card-hdr">Z-Tier &times; Risk Regime — does the edge survive risk-off days?</div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="regimeMatrixTbl">
+      <thead><tr id="regimeMatrixHead"><th>Tier</th></tr></thead>
+      <tbody id="regimeMatrixBody"></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ── Equity curve ───────────────────────────────────────────────────────── -->
 <div class="bt-card" id="eqCard" style="display:none">
   <div class="bt-card-hdr">Cumulative Pips</div>
@@ -443,13 +468,15 @@ function currentTrades() {
 
 const fmtPips = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1);
 
+const CARD_IDS = ['kpiGrid','secGrid','zTierCard','regimeCard','regimeMatrixCard','eqCard','hmCard','logCard'];
+
 function renderAll() {
   const stats = currentStats();
   if (!stats || stats.total === 0) {
-    ['kpiGrid','secGrid','zTierCard','eqCard','hmCard','logCard'].forEach(id => document.getElementById(id).style.display = 'none');
+    CARD_IDS.forEach(id => document.getElementById(id).style.display = 'none');
     return;
   }
-  ['kpiGrid','secGrid','zTierCard','eqCard','hmCard','logCard'].forEach(id => document.getElementById(id).style.display = '');
+  CARD_IDS.forEach(id => document.getElementById(id).style.display = '');
 
   document.getElementById('kWin').textContent    = stats.winRate.toFixed(1) + '%';
   document.getElementById('kWinSub').textContent = `${stats.wins} TP / ${stats.total} trades`;
@@ -468,6 +495,8 @@ function renderAll() {
   document.getElementById('sExps').textContent   = stats.exps;
 
   renderZTiers(stats.zTiers);
+  renderRegimes(stats.regimes);
+  renderRegimeMatrix(stats.regimeByTier);
   renderEquity(stats.equityCurve);
   renderMonthly(stats.monthly);
 
@@ -475,9 +504,11 @@ function renderAll() {
   applyFilters();
 }
 
+const Z_TIER_ORDER = ['2.0-2.5', '2.5-3.0', '3.0+'];
+const REGIME_ORDER  = ['Risk-Off STRONG', 'Risk-Off MODERATE', 'Risk-On', 'Neutral', 'Unknown'];
+
 function renderZTiers(zTiers) {
-  const order = ['2.0-2.5', '2.5-3.0', '3.0+'];
-  document.getElementById('zTierTblBody').innerHTML = order.map(tier => {
+  document.getElementById('zTierTblBody').innerHTML = Z_TIER_ORDER.map(tier => {
     const t = zTiers[tier] || { count: 0, wins: 0, losses: 0, winRate: 0, totalPips: 0, profitFactor: 0 };
     const pipsCls = t.totalPips > 0 ? 'pos' : t.totalPips < 0 ? 'neg' : 'neu';
     return `<tr>
@@ -486,6 +517,39 @@ function renderZTiers(zTiers) {
       <td class="num ${pipsCls}">${fmtPips(t.totalPips)}</td>
       <td class="num">${t.profitFactor >= 999 ? '∞' : t.profitFactor.toFixed(2)}</td>
     </tr>`;
+  }).join('');
+}
+
+function renderRegimes(regimes) {
+  const rows = REGIME_ORDER
+    .map(r => [r, regimes[r] || { count: 0, wins: 0, losses: 0, winRate: 0, totalPips: 0, profitFactor: 0 }])
+    .filter(([, r]) => r.count > 0);
+  document.getElementById('regimeTblBody').innerHTML = rows.map(([regime, r]) => {
+    const pipsCls = r.totalPips > 0 ? 'pos' : r.totalPips < 0 ? 'neg' : 'neu';
+    return `<tr>
+      <td><b>${regime}</b></td><td class="num">${r.count}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td>
+      <td class="num">${r.winRate.toFixed(1)}%</td>
+      <td class="num ${pipsCls}">${fmtPips(r.totalPips)}</td>
+      <td class="num">${r.profitFactor >= 999 ? '∞' : r.profitFactor.toFixed(2)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="color:var(--text3)">No regime data — FRED_KEY missing or VIX/HY fetch failed</td></tr>';
+}
+
+function renderRegimeMatrix(regimeByTier) {
+  const activeRegimes = REGIME_ORDER.filter(r =>
+    Z_TIER_ORDER.some(tier => (regimeByTier[tier]?.[r]?.count ?? 0) > 0));
+
+  document.getElementById('regimeMatrixHead').innerHTML =
+    '<th>Tier</th>' + activeRegimes.map(r => `<th class="num">${r}</th>`).join('');
+
+  document.getElementById('regimeMatrixBody').innerHTML = Z_TIER_ORDER.map(tier => {
+    const cells = activeRegimes.map(r => {
+      const c = regimeByTier[tier]?.[r] || { count: 0, totalPips: 0, winRate: 0 };
+      if (c.count === 0) return `<td class="num" style="color:var(--text3)">—</td>`;
+      const pipsCls = c.totalPips > 0 ? 'pos' : c.totalPips < 0 ? 'neg' : 'neu';
+      return `<td class="num ${pipsCls}" title="${c.winRate.toFixed(1)}% win rate">${c.count} / ${fmtPips(c.totalPips)}</td>`;
+    }).join('');
+    return `<tr><td><b>${tier}σ</b></td>${cells}</tr>`;
   }).join('');
 }
 

@@ -122,6 +122,59 @@ function buildRollingZSeries(usObs, otherObs, zWindow, dateFrom, dateTo) {
   return zByDate;
 }
 
+// Cross-asset risk regime, forward-filled by calendar day. Mirrors scoreRisk() in
+// js/fx-macro-model.js exactly (same VIX/HY thresholds) so a day tagged "Risk-Off
+// STRONG" here means the same thing it would on the live macro dashboard.
+const RISK_REGIME_SERIES = { vix: 'VIXCLS', hy: 'BAMLH0A0HYM2' };
+
+function _riskRegimeOf(vix, hyBps) {
+  let vixScore = 0;
+  if (vix != null) {
+    if      (vix >= 28) vixScore = 1.0;
+    else if (vix >= 22) vixScore = 0.7;
+    else if (vix >= 18) vixScore = 0.4;
+    else if (vix >= 15) vixScore = 0.1;
+  }
+  let hyScore = 0;
+  if (hyBps != null) {
+    if      (hyBps >= 500) hyScore = 1.0;
+    else if (hyBps >= 400) hyScore = 0.6;
+    else if (hyBps >= 300) hyScore = 0.2;
+  }
+  const riskOffScore = Math.max(vixScore, hyScore);
+  const vixCalm = vix != null && vix < 15;
+  const hyCalm  = hyBps != null && hyBps < 330;
+  const riskOnScore = (vixCalm && hyCalm)
+    ? Math.min(1.0, (15 - vix) / 5 * 0.7 + (330 - hyBps) / 330 * 0.3) : 0;
+
+  let regime;
+  if      (riskOffScore >= 0.7) regime = 'Risk-Off STRONG';
+  else if (riskOffScore >= 0.4) regime = 'Risk-Off MODERATE';
+  else if (riskOnScore  >= 0.5) regime = 'Risk-On';
+  else                          regime = 'Neutral';
+
+  return { riskOffScore, riskOnScore, regime };
+}
+
+async function fetchRiskRegimeByDate(dateFrom, dateTo, fredKey) {
+  const fredFrom = _shiftDate(dateFrom, -14);
+  const [vixObs, hyObs] = await Promise.all([
+    fetchFredObservations(RISK_REGIME_SERIES.vix, fredFrom, fredKey),
+    fetchFredObservations(RISK_REGIME_SERIES.hy, fredFrom, fredKey),
+  ]);
+
+  const days = _dateRangeDays(fredFrom, dateTo);
+  const byDate = new Map();
+  let lastVix = null, lastHy = null;
+  for (const d of days) {
+    if (vixObs.has(d)) lastVix = vixObs.get(d);
+    if (hyObs.has(d)) lastHy = hyObs.get(d);
+    const hyBps = lastHy != null ? lastHy * 100 : null;
+    byDate.set(d, _riskRegimeOf(lastVix, hyBps));
+  }
+  return byDate;
+}
+
 // ── M1 day grouping & session analysis ──────────────────────────────────────────
 
 function buildDayIndex(times) {
@@ -229,6 +282,25 @@ function zTierOf(absZ) {
   return '2.0-2.5';
 }
 
+const Z_TIERS = ['2.0-2.5', '2.5-3.0', '3.0+'];
+const RISK_REGIMES = ['Risk-Off STRONG', 'Risk-Off MODERATE', 'Risk-On', 'Neutral', 'Unknown'];
+
+// Shared by the zTiers, regimes, and regimeByTier breakdowns below — same five fields
+// computed over whatever subset of trades is handed in.
+function _bucketStats(tt) {
+  const tWins = tt.filter(t => t.result === 'TP').length;
+  const tLosses = tt.filter(t => t.result === 'SL').length;
+  const tPips = tt.reduce((s, t) => s + t.pips, 0);
+  const tGrossW = tt.filter(t => t.pips > 0).reduce((s, t) => s + t.pips, 0);
+  const tGrossL = Math.abs(tt.filter(t => t.pips < 0).reduce((s, t) => s + t.pips, 0));
+  return {
+    count: tt.length, wins: tWins, losses: tLosses,
+    winRate: tt.length ? +(tWins / tt.length * 100).toFixed(1) : 0,
+    totalPips: +tPips.toFixed(1),
+    profitFactor: tGrossL > 0 ? +(tGrossW / tGrossL).toFixed(2) : (tGrossW > 0 ? 999 : 0),
+  };
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 export function computeZScoreStats(trades) {
@@ -237,7 +309,7 @@ export function computeZScoreStats(trades) {
     return {
       total: 0, wins: 0, losses: 0, exps: 0, winRate: 0, totalPips: 0, profitFactor: 0,
       sharpe: 0, maxDrawdown: 0, tradesPerYear: 0, avgRR: 0, expectancy: 0,
-      zTiers: {}, monthly: {}, equityCurve: [],
+      zTiers: {}, regimes: {}, regimeByTier: {}, monthly: {}, equityCurve: [],
     };
   }
 
@@ -275,19 +347,21 @@ export function computeZScoreStats(trades) {
   const tradesPerYear = total / years;
 
   const zTiers = {};
-  for (const tier of ['2.0-2.5', '2.5-3.0', '3.0+']) {
-    const tt = trades.filter(t => t.zTier === tier);
-    const tWins = tt.filter(t => t.result === 'TP').length;
-    const tLosses = tt.filter(t => t.result === 'SL').length;
-    const tPips = tt.reduce((s, t) => s + t.pips, 0);
-    const tGrossW = tt.filter(t => t.pips > 0).reduce((s, t) => s + t.pips, 0);
-    const tGrossL = Math.abs(tt.filter(t => t.pips < 0).reduce((s, t) => s + t.pips, 0));
-    zTiers[tier] = {
-      count: tt.length, wins: tWins, losses: tLosses,
-      winRate: tt.length ? +(tWins / tt.length * 100).toFixed(1) : 0,
-      totalPips: +tPips.toFixed(1),
-      profitFactor: tGrossL > 0 ? +(tGrossW / tGrossL).toFixed(2) : (tGrossW > 0 ? 999 : 0),
-    };
+  for (const tier of Z_TIERS) zTiers[tier] = _bucketStats(trades.filter(t => t.zTier === tier));
+
+  // Cross-asset risk regime (VIX/HY, mirrors fx-macro-model.js scoreRisk()) the day each
+  // trade fired — tests whether losses concentrate on Risk-Off days rather than being
+  // evenly spread, i.e. whether extreme z-scores are "noise to fade" or real trend.
+  const regimes = {};
+  for (const regime of RISK_REGIMES) regimes[regime] = _bucketStats(trades.filter(t => (t.regime ?? 'Unknown') === regime));
+
+  const regimeByTier = {};
+  for (const tier of Z_TIERS) {
+    const tierTrades = trades.filter(t => t.zTier === tier);
+    regimeByTier[tier] = {};
+    for (const regime of RISK_REGIMES) {
+      regimeByTier[tier][regime] = _bucketStats(tierTrades.filter(t => (t.regime ?? 'Unknown') === regime));
+    }
   }
 
   const monthly = {};
@@ -309,7 +383,7 @@ export function computeZScoreStats(trades) {
     tradesPerYear: +tradesPerYear.toFixed(1),
     avgRR: +avgRR.toFixed(2),
     expectancy: +(totalPips / total).toFixed(2),
-    zTiers, monthly, equityCurve,
+    zTiers, regimes, regimeByTier, monthly, equityCurve,
   };
 }
 
@@ -325,6 +399,7 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
     zWindow = 90, fibLevelMode = 'all', entryWindow = 6,
     thresholds = {}, invert = {},
     fredKey = process.env.FRED_KEY,
+    riskRegimeByDate,
   } = opts;
 
   if (!fredKey) throw new Error('FRED_KEY not set — cannot fetch yield data');
@@ -334,9 +409,12 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
   if (!packed) throw new Error(`No M1 data available for ${pairKey} — check R2 credentials or local parquet cache`);
 
   const fredFrom = _shiftDate(dateFrom, -(zWindow + 14));
-  const [usObs, otherObs] = await Promise.all([
+  const [usObs, otherObs, regimeByDate] = await Promise.all([
     fetchFredObservations(cfg.baseSeries, fredFrom, fredKey),
     fetchFredObservations(cfg.quoteSeries, fredFrom, fredKey),
+    riskRegimeByDate
+      ? Promise.resolve(riskRegimeByDate)
+      : fetchRiskRegimeByDate(dateFrom, dateTo, fredKey).catch(() => new Map()),
   ]);
   const zByDate = buildRollingZSeries(usObs, otherObs, zWindow, dateFrom, dateTo);
 
@@ -366,6 +444,11 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
       asia, dir, winStart, winEnd, exitIdx, end,
       fibLevels, cfg.pip, pairKey, cfg.pairDisplay, zInfo.z, zTier, dateStr,
     );
+    const regimeInfo = regimeByDate.get(dateStr);
+    for (const t of dayTrades) {
+      t.regime = regimeInfo?.regime ?? 'Unknown';
+      t.riskOffScore = regimeInfo?.riskOffScore ?? null;
+    }
     trades.push(...dayTrades);
   }
 
@@ -377,12 +460,20 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
 }
 
 export async function runFullZScoreBacktest(opts = {}, pairKeys = Object.keys(ZSCORE_PAIRS)) {
+  const dateFrom = opts.dateFrom || '2018-01-01';
+  const dateTo   = opts.dateTo   || new Date().toISOString().substring(0, 10);
+  const fredKey  = opts.fredKey  || process.env.FRED_KEY;
+
+  // Fetched once and shared across pairs — regime is date-based, not pair-specific.
+  // Best-effort: a failed fetch leaves trades tagged 'Unknown' rather than failing the run.
+  const riskRegimeByDate = await fetchRiskRegimeByDate(dateFrom, dateTo, fredKey).catch(() => new Map());
+
   const allTrades = [];
   const perPair = {};
   const log = [];
   for (const pairKey of pairKeys) {
     try {
-      const { trades, stats, log: pairLog } = await runZScoreBacktest(pairKey, opts);
+      const { trades, stats, log: pairLog } = await runZScoreBacktest(pairKey, { ...opts, riskRegimeByDate });
       perPair[pairKey] = stats;
       allTrades.push(...trades);
       log.push(pairLog);
