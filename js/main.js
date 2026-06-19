@@ -731,7 +731,12 @@ async function loadAll() {
       checkFXMacroAlerts().catch(() => {});
     }
 
-    updateStatus('ok', `${S.currentPair.name} loaded · ${S.asiaRangeData[S.currentPair.symbol].confluences.length + S.mondayRangeData[S.currentPair.symbol].confluences.length} total confluences`);
+    const _statusSym = S.currentPair.symbol;
+    const _statusMerged = filterConfluences(mergeCrossSources([
+      ...(S.asiaRangeData[_statusSym].confluences   || []).map(c => ({...c, source: 'asia'})),
+      ...(S.mondayRangeData[_statusSym].confluences || []).map(c => ({...c, source: 'monday'})),
+    ], _statusSym));
+    updateStatus('ok', `${S.currentPair.name} loaded · ${_statusMerged.length} total confluences`);
   } catch (error) {
     console.error('Load error:', error);
     updateStatus('err', `Error: ${error.message}`);

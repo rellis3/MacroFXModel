@@ -33,6 +33,13 @@ window.setConfSortMode = (mode) => {
   window.renderAll?.();
 };
 
+let _showAllZones = (() => { try { return localStorage.getItem('levelmap_show_all') === '1'; } catch(e) { return false; } })();
+window.toggleShowAllZones = () => {
+  _showAllZones = !_showAllZones;
+  try { localStorage.setItem('levelmap_show_all', _showAllZones ? '1' : '0'); } catch(e) {}
+  window.renderAll?.();
+};
+
 export function renderAll() {
   try {
     return renderAllInner();
@@ -252,11 +259,10 @@ function renderAllInner() {
   const _zoneWindowPips = volRegime.atrPips * 4;
   const _MAX_ZONES = 14;
   const _rawZoneCount = enhanced.length;
-  const enhancedFiltered = enhanced
-    .filter(z => z.distance <= _zoneWindowPips)
-    .slice(0, _MAX_ZONES);
-  // Expose the raw count so the level-map badge can show "X / Y"
-  const _zoneCountLabel = `${enhancedFiltered.length}${_rawZoneCount > enhancedFiltered.length ? ` / ${_rawZoneCount}` : ''}`;
+  const enhancedFiltered = _showAllZones
+    ? enhanced
+    : enhanced.filter(z => z.distance <= _zoneWindowPips).slice(0, _MAX_ZONES);
+  const _zoneCountLabel = `${enhancedFiltered.length}${!_showAllZones && _rawZoneCount > enhancedFiltered.length ? ` / ${_rawZoneCount}` : ''}`;
   // Re-use `enhanced` reference downstream (avoids touching all template renders)
   enhanced.length = 0;
   enhancedFiltered.forEach(z => enhanced.push(z));
@@ -726,7 +732,8 @@ ${calendarCtx.warnings.length > 0 ? `
     <div class="sec-lbl">
       Level Map
       <span class="sec-badge purple">TIER 2</span>
-      <span class="count-badge" title="${_rawZoneCount > enhanced.length ? `${_rawZoneCount} total zones — ${_rawZoneCount - enhanced.length} removed (outside 4× ATR window or weak density)` : ''}">${_zoneCountLabel}</span>
+      <span class="count-badge" title="${!_showAllZones && _rawZoneCount > enhanced.length ? `${_rawZoneCount} total zones — ${_rawZoneCount - enhanced.length} removed (outside 4× ATR window or weak density)` : ''}">${_zoneCountLabel}</span>
+      <span onclick="window.toggleShowAllZones()" style="cursor:pointer;font-size:10px;font-weight:500;color:${_showAllZones ? 'var(--orange,#f59e0b)' : 'var(--text3)'};margin-left:6px;user-select:none" title="${_showAllZones ? 'Showing all zones — click to filter to 4× ATR window' : 'Click to show all zones beyond 4× ATR window'}">${_showAllZones ? '▲ Filter' : '▼ Show all'}</span>
     </div>
     ${(() => {
       const ds = window._lastDecisionState;

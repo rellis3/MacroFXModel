@@ -7315,8 +7315,29 @@ async function nqAuditUpdate(fields) {
 }
 
 async function nqSendTg(msg) {
-  if (!state.tg?.token || !state.tg?.chatId) return;
-  await sendTelegram(state.tg.token, state.tg.chatId, msg).catch(() => {});
+  // Check NQ-specific TG config first, fall back to shared state.tg
+  try {
+    const cfg    = await nqLoadMonCfg();
+    const token  = cfg.tgToken  || state.tg?.token;
+    const chatId = cfg.tgChatId || state.tg?.chatId;
+    if (token && chatId) await sendTelegram(token, chatId, msg).catch(() => {});
+  } catch {
+    if (state.tg?.token && state.tg?.chatId)
+      await sendTelegram(state.tg.token, state.tg.chatId, msg).catch(() => {});
+  }
+}
+
+async function _iqrSendTg(mon, msg) {
+  // Check instrument-specific TG config first, fall back to shared state.tg
+  try {
+    const cfg    = await _iqrLoadMonCfg(mon);
+    const token  = cfg.tgToken  || state.tg?.token;
+    const chatId = cfg.tgChatId || state.tg?.chatId;
+    if (token && chatId) await sendTelegram(token, chatId, msg).catch(() => {});
+  } catch {
+    if (state.tg?.token && state.tg?.chatId)
+      await sendTelegram(state.tg.token, state.tg.chatId, msg).catch(() => {});
+  }
 }
 
 // ── Gate checks ───────────────────────────────────────────────────────────────
@@ -7655,6 +7676,314 @@ async function nqRestoreFromKv() {
   }, 60_000);
 
   console.log('[nq-mon] NQ-QMR signal monitor scheduled (Gates at 09:05 / 12:05 / 13:05 UTC)');
+})();
+
+// ── SPX / DOW / DAX QMR Signal Monitors ──────────────────────────────────────
+// Same two-gate overnight-range + London-momentum logic as NQ-QMR, applied to
+// additional index instruments.  All three share the generic helper functions
+// below; the NQ monitor (above) remains independent so a bug here can't break it.
+
+function _makeQmrMon(id, label, instrument, kvStatus, kvAudit, kvConfig) {
+  return {
+    id, label, instrument, kvStatus, kvAudit, kvConfig,
+    date: null, gate1: null, gate2: null, direction: null,
+    newsBlocked: false, newsEvents: [],
+    sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+    gate1Data: null, gate2Data: null,
+  };
+}
+
+const _iqrMons = {
+  spx: _makeQmrMon('spx', 'SPX-QMR', 'SPX500_USD', 'spx_qmr_status', 'spx_qmr_audit', 'spx_qmr_config'),
+  dow: _makeQmrMon('dow', 'DOW-QMR', 'US30_USD',   'dow_qmr_status', 'dow_qmr_audit', 'dow_qmr_config'),
+  dax: _makeQmrMon('dax', 'DAX-QMR', 'DE30_EUR',   'dax_qmr_status', 'dax_qmr_audit', 'dax_qmr_config'),
+};
+
+async function _iqrLoadMonCfg(mon) {
+  try {
+    const raw = await kv.get(mon.kvConfig);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed?.data ?? parsed ?? {};
+  } catch { return {}; }
+}
+
+async function _iqrPushKv(mon) {
+  try {
+    const raw      = await kv.get(mon.kvStatus).catch(() => null);
+    const parsed   = raw ? JSON.parse(raw) : {};
+    const existing = parsed?.data ?? parsed ?? {};
+    const g1state  = mon.gate1 === 'LONG' || mon.gate1 === 'SHORT' ? 'PASS'
+                   : mon.gate1 === 'FLAT' ? 'FAIL' : null;
+    const g2state  = mon.gate2 === 'CONFIRMED' ? 'PASS'
+                   : mon.gate2 === 'REJECTED'  ? 'FAIL' : null;
+    const payload  = {
+      ...existing,
+      gates: {
+        gate1: { state: g1state, ts: Date.now(), direction: mon.gate1, data: mon.gate1Data },
+        gate2: { state: g2state, ts: Date.now(), data: mon.gate2Data },
+      },
+      today_direction:     mon.direction,
+      news_blocked:        mon.newsBlocked,
+      news_events:         mon.newsEvents,
+      pushed_at:           Math.floor(Date.now() / 1000),
+      mt5_positions:       existing.mt5_positions       ?? [],
+      today_closed_trades: existing.today_closed_trades ?? [],
+    };
+    await kv.put(mon.kvStatus, JSON.stringify({ data: payload, timestamp: Date.now() }));
+  } catch (e) { console.error(`[${mon.id}-mon] KV write error:`, e.message); }
+}
+
+async function _iqrAuditUpdate(mon, fields) {
+  try {
+    const today = mon.date || new Date().toISOString().substring(0, 10);
+    const raw   = await kv.get(mon.kvAudit).catch(() => null);
+    let log = [];
+    try {
+      const parsed = raw ? JSON.parse(raw) : [];
+      log = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
+    } catch { log = []; }
+    let idx = log.findIndex(e => e.date === today);
+    if (idx === -1) { log.unshift({ date: today }); idx = 0; }
+    Object.assign(log[idx], fields);
+    if (log.length > 90) log = log.slice(0, 90);
+    await kv.put(mon.kvAudit, JSON.stringify({ data: log, timestamp: Date.now() }));
+  } catch (e) { console.error(`[${mon.id}-audit] write error:`, e.message); }
+}
+
+async function _iqrDailyOpen(mon) {
+  const today = new Date().toISOString().substring(0, 10);
+  Object.assign(mon, {
+    date: today, gate1: null, gate2: null, direction: null,
+    newsBlocked: false, newsEvents: [],
+    sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+    gate1Data: null, gate2Data: null,
+  });
+  const news = await nqFetchNewsRisk(today);
+  mon.newsBlocked = news.blocked;
+  mon.newsEvents  = news.events;
+  let msg = `📅 <b>${mon.label} | ${today}</b>\n\n`;
+  msg += `Gate 1:  04:48 ET  (09:05 UTC)\n`;
+  msg += `Gate 2:  07:40 ET  (12:05 UTC)\n`;
+  msg += `Entry:   09:25 ET  (13:05 UTC)\n\n`;
+  if (news.blocked) {
+    msg += `⚠️ <b>HIGH-IMPACT US NEWS — trade suppressed</b>\n`;
+    msg += news.events.map(e => `  • ${e.event} @ ${(e.time ?? '').split(' ')[1] ?? '?'} ET`).join('\n');
+  } else {
+    msg += `✓ No high-impact US data — monitor active`;
+  }
+  await _iqrSendTg(mon, msg);
+  mon.sentOpen = true;
+  await _iqrPushKv(mon);
+  await _iqrAuditUpdate(mon, {
+    date: today, news_blocked: news.blocked,
+    news_events: news.events.map(e => e.event ?? String(e)).filter(Boolean),
+    gate1: null, gate2: null, signal: null, trade: null,
+  });
+  console.log(`[${mon.id}-mon] Day open ${today}`);
+}
+
+async function _iqrGate1Check(mon) {
+  const cfg = await _iqrLoadMonCfg(mon);
+  if (cfg.enabled === false) { console.log(`[${mon.id}-mon] Gate 1 skipped — disabled`); return; }
+  if (mon.newsBlocked && cfg.newsFilter !== false) { console.log(`[${mon.id}-mon] Gate 1 skipped — news block`); return; }
+  if (!process.env.OANDA_KEY) return;
+  try {
+    const nas      = await fetchOandaRecentH1(mon.instrument, 15);
+    const today    = new Date().toISOString().substring(0, 10);
+    const overnight = nas.filter(b => {
+      const h = parseInt(b.t.substring(11, 13));
+      const d = b.t.substring(0, 10);
+      return b.complete && ((d < today && h >= 20) || (d === today && h <= 8));
+    });
+    if (overnight.length < 3) { console.log(`[${mon.id}-mon] Gate 1: too few overnight bars`); return; }
+    const asiaH    = Math.max(...overnight.map(b => b.h));
+    const asiaL    = Math.min(...overnight.map(b => b.l));
+    const range    = asiaH - asiaL;
+    const mid      = (asiaH + asiaL) / 2;
+    const rangePct = mid > 0 ? (range / mid * 100) : 0;
+    const g1bar    = nas.filter(b => b.complete).slice(-1)[0];
+    if (!g1bar) return;
+    const pos      = range > 0 ? (g1bar.c - asiaL) / range : 0.5;
+    const THRESH   = cfg.gate1Threshold ?? 0.60;
+    const MIN_RNG  = cfg.minRangePct    ?? 0.15;
+    let gate1 = pos >= THRESH ? 'LONG' : pos <= (1 - THRESH) ? 'SHORT' : 'FLAT';
+    if (rangePct < MIN_RNG) gate1 = 'FLAT';
+    const stopMul    = cfg.stopMultiplier ?? 0.45;
+    const stopPctDyn = stopMul > 0
+      ? Math.max(+(rangePct * stopMul).toFixed(3), 0.10)
+      : +(cfg.stopPct ?? 0.50);
+    mon.gate1     = gate1;
+    mon.gate1Data = { price: g1bar.c, asiaH, asiaL, range, rangePct, stopPct: stopPctDyn, pos };
+    const icon = gate1 === 'FLAT' ? '⚫' : '🟡';
+    const de   = gate1 === 'LONG' ? '▲' : gate1 === 'SHORT' ? '▼' : '—';
+    let msg = `${icon} <b>${mon.label} | GATE 1</b>  ${gate1}\n`;
+    msg += `${de} Direction bias: <b>${gate1}</b>\n`;
+    msg += `Time: ${g1bar.t.substring(11, 16)} UTC\n\n`;
+    msg += `${mon.id.toUpperCase()}: ${g1bar.c.toFixed(1)}\n`;
+    msg += `Asia range: ${asiaL.toFixed(1)} — ${asiaH.toFixed(1)}  (${rangePct.toFixed(2)}%)\n`;
+    msg += `Position in range: ${(pos * 100).toFixed(0)}%\n`;
+    if (gate1 === 'FLAT') msg += `\nRange ambiguous — <b>no trade today</b>`;
+    else                  msg += `\nAwaiting Gate 2 @ 12:05 UTC`;
+    await _iqrSendTg(mon, msg);
+    mon.sentGate1 = true;
+    await _iqrPushKv(mon);
+    await _iqrAuditUpdate(mon, { gate1: {
+      state:     gate1 === 'LONG' || gate1 === 'SHORT' ? 'PASS' : 'FAIL',
+      direction: gate1, ts: Date.now(), price: g1bar.c,
+      asiaH, asiaL, rangePct: +rangePct.toFixed(3), stopPct: stopPctDyn, pos: +pos.toFixed(4),
+    }});
+    console.log(`[${mon.id}-mon] Gate 1 → ${gate1}  pos=${(pos*100).toFixed(0)}%  range=${rangePct.toFixed(2)}%`);
+  } catch (e) { console.error(`[${mon.id}-mon] Gate 1 error:`, e.message); }
+}
+
+async function _iqrGate2Check(mon) {
+  const cfg = await _iqrLoadMonCfg(mon);
+  if (cfg.enabled === false) return;
+  if (mon.newsBlocked && cfg.newsFilter !== false) return;
+  if (!mon.gate1 || mon.gate1 === 'FLAT') return;
+  if (!process.env.OANDA_KEY) return;
+  try {
+    const nas     = await fetchOandaRecentH1(mon.instrument, 7);
+    const ldnOpen = nas.find(b => b.t.substring(11, 13) === '07' && b.complete);
+    const check   = nas.filter(b => b.complete && parseInt(b.t.substring(11, 13)) <= 12).slice(-1)[0];
+    if (!ldnOpen || !check) { console.log(`[${mon.id}-mon] Gate 2: missing bars`); return; }
+    const ldnMove = (check.c - ldnOpen.o) / ldnOpen.o * 100;
+    const G2_MIN  = cfg.gate2MinMovePct ?? 0.10;
+    let gate2 = 'REJECTED';
+    if (ldnMove >  G2_MIN && mon.gate1 === 'LONG')  gate2 = 'CONFIRMED';
+    if (ldnMove < -G2_MIN && mon.gate1 === 'SHORT') gate2 = 'CONFIRMED';
+    mon.gate2     = gate2;
+    mon.direction = gate2 === 'CONFIRMED' ? mon.gate1 : null;
+    mon.gate2Data = { ldnMove, ldnOpen: ldnOpen.o, checkPrice: check.c };
+    const icon = gate2 === 'CONFIRMED' ? '🟢' : '🔴';
+    const mc   = ldnMove >= 0 ? '↑' : '↓';
+    let msg = `${icon} <b>${mon.label} | GATE 2</b>  ${gate2}\n`;
+    if (gate2 === 'CONFIRMED') {
+      msg += `Direction: <b>${mon.direction === 'LONG' ? '▲ LONG' : '▼ SHORT'}</b>\n`;
+      msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
+      msg += `London move: ${mc} ${Math.abs(ldnMove).toFixed(2)}%  (min: ${G2_MIN}%)\n`;
+      msg += `London open: ${ldnOpen.o.toFixed(1)}  →  Now: ${check.c.toFixed(1)}\n\n`;
+      msg += `⚡ <b>BOTH GATES CLEAR</b> — Entry at 09:25 ET (13:05 UTC)`;
+    } else {
+      msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
+      msg += `London move: ${mc} ${Math.abs(ldnMove).toFixed(2)}% — gates disagree — <b>no trade today</b>`;
+    }
+    await _iqrSendTg(mon, msg);
+    mon.sentGate2 = true;
+    await _iqrPushKv(mon);
+    await _iqrAuditUpdate(mon, { gate2: {
+      state:      gate2 === 'CONFIRMED' ? 'PASS' : 'FAIL',
+      ts:         Date.now(), ldnMove: +ldnMove.toFixed(4),
+      ldnOpen:    ldnOpen.o, checkPrice: check.c,
+    }});
+    console.log(`[${mon.id}-mon] Gate 2 → ${gate2}  ldnMove=${ldnMove.toFixed(2)}%`);
+  } catch (e) { console.error(`[${mon.id}-mon] Gate 2 error:`, e.message); }
+}
+
+async function _iqrEntrySignal(mon) {
+  if (mon.gate2 !== 'CONFIRMED' || mon.newsBlocked) return;
+  if (!process.env.OANDA_KEY) return;
+  try {
+    const cfg     = await _iqrLoadMonCfg(mon);
+    const bars    = await fetchOandaRecentH1(mon.instrument, 2);
+    const current = bars.slice(-1)[0];
+    if (!current) return;
+    const price   = current.o;
+    const dir     = mon.direction;
+    const stopPct = mon.gate1Data?.stopPct ?? cfg.stopPct ?? 0.50;
+    const tpPct   = cfg.tpPct ?? 1.50;
+    const stop    = dir === 'LONG' ? price * (1 - stopPct / 100) : price * (1 + stopPct / 100);
+    const tp      = dir === 'LONG' ? price * (1 + tpPct   / 100) : price * (1 - tpPct   / 100);
+    let msg = `🎯 <b>${mon.label} | ENTRY SIGNAL</b>\n`;
+    msg += `${dir === 'LONG' ? '▲' : '▼'} Direction: <b>${dir}</b>\n`;
+    msg += `Time: ≈09:25 ET  (${current.t.substring(11, 16)} UTC)\n\n`;
+    msg += `${mon.id.toUpperCase()} price: <b>${price.toFixed(1)}</b>\n`;
+    msg += `Stop:  ${stop.toFixed(1)}  (${Math.abs(price - stop).toFixed(0)} pts / ${stopPct}%)\n`;
+    msg += `TP:    ${tp.toFixed(1)}  (${tpPct}%)\n`;
+    msg += `<i>Signal only — no live orders placed</i>`;
+    await _iqrSendTg(mon, msg);
+    mon.sentEntry = true;
+    await _iqrPushKv(mon);
+    await _iqrAuditUpdate(mon, { signal: {
+      fired: true, ts: Date.now(), direction: dir,
+      entry: price, stop: +stop.toFixed(2), tp: +tp.toFixed(2),
+    }});
+    console.log(`[${mon.id}-mon] Entry → ${dir} @ ${price.toFixed(1)}`);
+  } catch (e) { console.error(`[${mon.id}-mon] Entry error:`, e.message); }
+}
+
+async function _iqrEodSummary(mon) {
+  if (!mon.sentGate1 && !mon.sentOpen) return;
+  const dow = new Date().getUTCDay();
+  if (dow === 0 || dow === 6) return;
+  let msg = `📊 <b>${mon.label} | EOD ${mon.date ?? ''}</b>\n\n`;
+  msg += `Gate 1: ${mon.gate1  ?? '—'}\n`;
+  msg += `Gate 2: ${mon.gate2  ?? '—'}\n`;
+  msg += `Entry:  ${mon.sentEntry ? (mon.direction ?? 'fired') : 'no trade'}\n`;
+  if (mon.newsBlocked) msg += `\n⚠️ Suppressed by high-impact news`;
+  await _iqrSendTg(mon, msg);
+  await _iqrAuditUpdate(mon, { eod_ts: Date.now() });
+  Object.assign(mon, {
+    gate1: null, gate2: null, direction: null,
+    sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+    gate1Data: null, gate2Data: null,
+  });
+  await _iqrPushKv(mon);
+  console.log(`[${mon.id}-mon] EOD reset`);
+}
+
+async function _iqrRestoreFromKv(mon) {
+  try {
+    const raw      = await kv.get(mon.kvStatus).catch(() => null);
+    if (!raw) return;
+    const parsed   = JSON.parse(raw);
+    const existing = parsed?.data ?? parsed ?? {};
+    if (!existing.pushed_at) return;
+    const storedDate = new Date(existing.pushed_at * 1000).toISOString().substring(0, 10);
+    const today      = new Date().toISOString().substring(0, 10);
+    if (storedDate !== today) return;
+    const g1 = existing.gates?.gate1;
+    if (!g1) return;
+    mon.date        = today;
+    mon.gate1       = g1.direction ?? null;
+    mon.gate1Data   = g1.data      ?? null;
+    mon.newsBlocked = existing.news_blocked ?? false;
+    mon.newsEvents  = existing.news_events  ?? [];
+    mon.sentOpen    = true;
+    mon.sentGate1   = true;
+    const g2 = existing.gates?.gate2;
+    if (g2?.state != null) {
+      mon.gate2     = g2.state === 'PASS' ? 'CONFIRMED' : 'REJECTED';
+      mon.gate2Data = g2.data ?? null;
+      mon.direction = mon.gate2 === 'CONFIRMED' ? mon.gate1 : null;
+      mon.sentGate2 = true;
+    }
+    console.log(`[${mon.id}-mon] Restored: date=${today} gate1=${mon.gate1} gate2=${mon.gate2 ?? 'pending'}`);
+  } catch (e) { console.error(`[${mon.id}-mon] KV restore error:`, e.message); }
+}
+
+(function scheduleIqrMonitors() {
+  const mons = Object.values(_iqrMons);
+  setTimeout(() => {
+    mons.forEach(m => _iqrRestoreFromKv(m).catch(e => console.error(`[${m.id}-mon]`, e.message)));
+  }, 3_500);
+  setInterval(async () => {
+    const now = new Date();
+    const dow = now.getUTCDay();
+    if (dow === 0 || dow === 6) return;
+    if (!state.tg) await reloadConfig().catch(() => {});
+    const H = now.getUTCHours();
+    const M = now.getUTCMinutes();
+    for (const m of mons) {
+      if (H === 7  && M === 0  && !m.sentOpen)  _iqrDailyOpen(m).catch(e   => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 9  && M === 5  && !m.sentGate1) _iqrGate1Check(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 12 && M === 5  && !m.sentGate2) _iqrGate2Check(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 13 && M === 5  && !m.sentEntry) _iqrEntrySignal(m).catch(e => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 20 && M === 30)                  _iqrEodSummary(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+    }
+  }, 60_000);
+  console.log('[iqr-mon] SPX / DOW / DAX QMR monitors scheduled (Gates at 09:05 / 12:05 / 13:05 UTC)');
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────
