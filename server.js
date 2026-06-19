@@ -3092,6 +3092,35 @@ app.get('/api/gold-backtest/trades', (req, res) => {
   res.json({ ok: true, trades: goldBacktestStore.trades, savedAt: goldBacktestStore.savedAt });
 });
 
+// ── Gold live trade journal (CSV → JSON) ─────────────────────────────────────
+// Reads Gold/logs/gold_trades.csv and returns all rows as structured JSON.
+app.get('/api/gold/trades', async (req, res) => {
+  const csvPath = path.join(__dirname, 'Gold', 'logs', 'gold_trades.csv');
+  try {
+    const raw = await fs.promises.readFile(csvPath, 'utf8');
+    const lines = raw.trim().split('\n');
+    if (lines.length < 2) return res.json({ ok: true, trades: [] });
+    const headers = lines[0].split(',');
+    const trades = lines.slice(1).map(line => {
+      // composition field may contain commas — split on first N-1 delimiters only
+      const parts = line.split(',');
+      const row = {};
+      headers.forEach((h, i) => {
+        const v = (parts[i] ?? '').trim();
+        row[h.trim()] = isNaN(v) || v === '' ? v : parseFloat(v);
+      });
+      // composition is the last column and may have had commas — rejoin overflow parts
+      if (parts.length > headers.length) {
+        row['composition'] = parts.slice(headers.length - 1).join(',').trim();
+      }
+      return row;
+    }).filter(r => r.zone_id);
+    res.json({ ok: true, trades, count: trades.length });
+  } catch (err) {
+    res.status(404).json({ ok: false, error: err.message });
+  }
+});
+
 // ── Diversification backtest data cache ───────────────────────────────────────
 const DIVERS_CACHE = { data: null, fetchedAt: null };
 const DIVERS_TTL_MS = 22 * 60 * 60 * 1000;

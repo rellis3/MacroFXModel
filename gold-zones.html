@@ -198,6 +198,10 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
       <button data-count="10">Top 10</button>
       <button class="on" data-count="all">All</button>
     </div>
+    <div class="gz-seg" id="gzSortSeg">
+      <button class="on" data-sort="score">Score ↓</button>
+      <button data-sort="price">Nearest</button>
+    </div>
     <label class="gz-check" id="gzChkFibs">
       <input type="checkbox" id="gzShowFibs"> Fib levels
     </label>
@@ -318,6 +322,7 @@ let _showTl      = false;
 let _showFibs    = false;
 let _showSwings  = false;
 let _zonePrimitive = null;   // time-bounded zone box attached to candlestick series
+let _sortMode = 'score';     // 'score' | 'price'
 
 const LS = window.LightweightCharts ? LightweightCharts.LineStyle : { Solid:0, Dotted:1, Dashed:2, LargeDashed:3, SparseDotted:4 };
 
@@ -377,6 +382,15 @@ function _bindControls() {
     btn.classList.add('on');
     _countFilter = btn.dataset.count === 'all' ? 9999 : parseInt(btn.dataset.count);
     _rebuildChart();
+    _renderZoneCards();
+  });
+
+  // Sort mode
+  document.getElementById('gzSortSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-sort]'); if (!btn) return;
+    document.querySelectorAll('#gzSortSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    _sortMode = btn.dataset.sort;
     _renderZoneCards();
   });
 
@@ -850,7 +864,19 @@ function _filteredZones() {
   if (!_zonesData?.zones) return [];
   let z = [..._zonesData.zones];
   if (_dirFilter !== 'all') z = z.filter(x => x.direction === _dirFilter);
-  z.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+  if (_sortMode === 'price' && _currentPrice) {
+    // Sort by distance from live price to nearest GP edge (0 if inside GP)
+    const dist = zone => {
+      const px = _currentPrice;
+      if (px >= zone.gp_low && px <= zone.gp_high) return 0;
+      return px > zone.gp_high ? px - zone.gp_high : zone.gp_low - px;
+    };
+    z.sort((a, b) => dist(a) - dist(b));
+  } else {
+    z.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  }
+
   if (typeof _countFilter === 'number') z = z.slice(0, _countFilter);
   return z;
 }
@@ -1067,75 +1093,112 @@ async function _tickPrice() {
 setInterval(_tickPrice, 5000);
 _tickPrice();
 
-// ── Trade history ────────────────────────────────────────────────────
-// Injected from journal — hardcoded from last parse for quick reference
-const PAPER_TRADES = [
-  { ts:'2026-05-25 13:48', zone:'M30_short_4535_4571_886', dir:'SHORT', entry:4561.45, sl:4578.12, tp1:4544.78, tp2:4528.11, slPips:16.7, result:'LOSS', closePx:4578.35, pnl:-16.9, closeReason:'SL_HIT' },
-  { ts:'2026-05-26 07:55', zone:'M30_long_4512_4571',      dir:'LONG',  entry:4531.81, sl:4516.61, tp1:4547.01, tp2:4562.21, slPips:15.2, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
-  { ts:'2026-05-26 13:50', zone:'M30_short_4512_4543',     dir:'SHORT', entry:4526.10, sl:4541.40, tp1:4510.80, tp2:4495.50, slPips:15.3, result:'TP1↗', closePx:4509.9, pnl:16.2, closeReason:'TP1_HIT (no TP2 logged)' },
-  { ts:'2026-05-26 15:30', zone:'M30_long_4489_4543',      dir:'LONG',  entry:4506.47, sl:4491.87, tp1:4521.07, tp2:4535.67, slPips:14.6, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
-  { ts:'2026-05-26 19:10', zone:'M30_long_4492_4537_786',  dir:'LONG',  entry:4500.60, sl:4491.53, tp1:4509.67, tp2:4518.74, slPips:9.1,  result:'OPEN', closePx:null, pnl:null, closeReason:'' },
-  { ts:'2026-05-29 07:01', zone:'M30_long_4501_4541_50pct',dir:'LONG',  entry:4522.26, sl:4501.85, tp1:4542.67, tp2:4563.08, slPips:20.4, result:'WIN',  closePx:4563.91, pnl:+41.6, closeReason:'TP2_HIT' },
-  { ts:'2026-06-01 10:40', zone:'M30_long_4476_4517_50pct',dir:'LONG',  entry:4503.36, sl:4477.23, tp1:4529.49, tp2:4555.62, slPips:26.1, result:'LOSS', closePx:4476.35, pnl:-27.0, closeReason:'SL_HIT' },
-  { ts:'2026-06-04 07:57', zone:'M30_long_4448_4513_786',  dir:'LONG',  entry:4461.69, sl:4444.94, tp1:4478.44, tp2:4495.19, slPips:16.8, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
-  { ts:'2026-06-04 11:05', zone:'M30_long_4448_4513',      dir:'LONG',  entry:4472.27, sl:4451.02, tp1:4493.52, tp2:4514.77, slPips:21.2, result:'TP1↗', closePx:4493.6, pnl:21.3, closeReason:'TP1_HIT (no TP2 logged)' },
-  { ts:'2026-06-04 14:09', zone:'M30_long_4475_4495_50pct',dir:'LONG',  entry:4490.88, sl:4360.37, tp1:4777.99, tp2:4882.4,  slPips:130.5,result:'⚠️ BAD SL', closePx:null, pnl:null, closeReason:'SL 130.5 pips — exceeds max_sl_pips=40?' },
-  { ts:'2026-06-04 18:25', zone:'M30_long_4463_4497_50pct',dir:'LONG',  entry:4480.31, sl:4401.08, tp1:4654.62, tp2:4718.01, slPips:79.2, result:'⚠️ BAD SL', closePx:null, pnl:null, closeReason:'SL 79.2 pips — exceeds max_sl_pips=40?' },
-  { ts:'2026-06-05 07:05', zone:'M30_long_4439_4488_786',  dir:'LONG',  entry:4455.07, sl:4415.07, tp1:4543.07, tp2:4575.07, slPips:40.0, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
-  { ts:'2026-06-05 09:50', zone:'M30_long_4426_4541',      dir:'LONG',  entry:4465.44, sl:4425.44, tp1:4553.44, tp2:4585.44, slPips:40.0, result:'LOSS', closePx:4423.38, pnl:-42.1, closeReason:'SL_HIT' },
-  { ts:'2026-06-08 09:15', zone:'M30_long_4269_4488_886',  dir:'LONG',  entry:4288.82, sl:4248.82, tp1:4376.82, tp2:4408.82, slPips:40.0, result:'OPEN', closePx:null, pnl:null, closeReason:'' },
-  { ts:'2026-06-08 15:50', zone:'M30_long_4269_4468',      dir:'LONG',  entry:4335.80, sl:4295.80, tp1:4423.80, tp2:4455.80, slPips:40.0, result:'EXPIRED', closePx:4317.38, pnl:-18.4, closeReason:'EXPIRED at day end' },
-];
-
-(function _renderTrades() {
+// ── Trade history — live from CSV via /api/gold/trades ────────────────
+async function _loadTradeHistory() {
   const wrap = document.getElementById('gzTradesWrap');
-  const rows = PAPER_TRADES.map(t => {
-    const rCls = t.result === 'WIN' ? 'win' : t.result === 'LOSS' || t.result === 'EXPIRED' ? 'loss'
-               : t.result.includes('BAD') ? 'loss' : t.result === 'OPEN' ? 'open' : 'expired';
-    const pnlStr = t.pnl != null ? `${t.pnl > 0 ? '+' : ''}${t.pnl.toFixed(1)}p` : '—';
-    const closeStr = t.closePx ? t.closePx.toFixed(2) : '—';
-    const warn = t.result.includes('BAD') ? ' ⚠️' : '';
-    return `<tr>
-      <td style="color:var(--text3)">${t.ts}</td>
-      <td style="color:${t.dir==='LONG'?'var(--green)':'var(--red)'};">${t.dir}</td>
-      <td>${t.entry.toFixed(2)}</td>
-      <td>${t.sl.toFixed(2)}</td>
-      <td style="color:${t.slPips > 40 ? 'var(--red)' : 'var(--text)'}">${t.slPips}${warn}</td>
-      <td>${t.tp1.toFixed(2)} / ${t.tp2.toFixed(2)}</td>
-      <td>${closeStr}</td>
-      <td class="gz-result ${rCls}">${t.result}</td>
-      <td style="color:${t.pnl != null && t.pnl > 0 ? 'var(--green)' : 'var(--red)'};">${pnlStr}</td>
-      <td style="font-size:10px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis">${t.closeReason}</td>
-    </tr>`;
-  }).join('');
+  try {
+    const res = await fetch('/api/gold/trades');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { trades } = await res.json();
+    if (!trades?.length) { wrap.innerHTML = '<div class="gz-msg">No trades logged yet</div>'; return; }
 
-  const totals = PAPER_TRADES.reduce((acc, t) => {
-    if (t.pnl != null) {
-      acc.total += t.pnl;
-      acc.count++;
-      if (t.result === 'WIN') acc.wins++;
-      else if (t.result === 'LOSS' || t.result === 'EXPIRED') acc.losses++;
-    }
-    return acc;
-  }, { total: 0, count: 0, wins: 0, losses: 0 });
+    // Sort newest first
+    const sorted = [...trades].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
 
-  const summaryColor = totals.total >= 0 ? 'var(--green)' : 'var(--red)';
+    // ── Score band analytics ──────────────────────────────────────────────
+    const BANDS = [
+      { label: '< 10',  lo: 0,  hi: 10  },
+      { label: '10–20', lo: 10, hi: 20  },
+      { label: '20–35', lo: 20, hi: 35  },
+      { label: '35+',   lo: 35, hi: Infinity },
+    ];
+    const bandStats = BANDS.map(b => {
+      const bt = trades.filter(t => t.score >= b.lo && t.score < b.hi);
+      const wins     = bt.filter(t => t.result === 'WIN').length;
+      const losses   = bt.filter(t => t.result === 'LOSS').length;
+      const expired  = bt.filter(t => t.result === 'EXPIRED').length;
+      const closed   = wins + losses + expired;
+      const netPips  = bt.reduce((s, t) => s + (t.pnl_pips || 0), 0);
+      const avgPips  = closed ? (netPips / closed) : null;
+      const wr       = closed ? Math.round(wins / closed * 100) : null;
+      return { ...b, count: bt.length, wins, losses, expired, closed, netPips, avgPips, wr };
+    });
 
-  wrap.innerHTML = `
-  <div style="margin-bottom:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);display:flex;gap:24px;flex-wrap:wrap">
-    <div><span style="color:var(--text3);font-size:10px">SIGNALS</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace">${PAPER_TRADES.length}</span></div>
-    <div><span style="color:var(--text3);font-size:10px">CLOSED</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace">${totals.count}</span></div>
-    <div><span style="color:var(--text3);font-size:10px">WINS / LOSSES</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:var(--green)">${totals.wins}</span><span style="color:var(--text3)"> / </span><span style="font-weight:700;font-family:'DM Mono',monospace;color:var(--red)">${totals.losses}</span></div>
-    <div><span style="color:var(--text3);font-size:10px">NET (closed)</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:${summaryColor}">${totals.total > 0 ? '+' : ''}${totals.total.toFixed(1)} pips</span></div>
-    <div style="color:var(--amber);font-size:10.5px;align-self:center">⚠ 2 entries had SL > 40 pip cap — possible bug (see orange rows)</div>
-  </div>
-  <table class="gz-trades-table">
-    <thead><tr>
-      <th>Time (UTC)</th><th>Dir</th><th>Entry</th><th>SL</th><th>SL pips</th><th>TP1 / TP2</th><th>Close px</th><th>Result</th><th>P&L</th><th>Notes</th>
-    </tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
-})();
+    const bandRows = bandStats.map(b => {
+      if (!b.count) return `<tr><td style="color:var(--text3)">${b.label}</td><td colspan="6" style="color:var(--text3)">—</td></tr>`;
+      const wrCol = b.wr >= 50 ? 'var(--green)' : b.wr >= 33 ? 'var(--amber)' : 'var(--red)';
+      const netCol = b.netPips >= 0 ? 'var(--green)' : 'var(--red)';
+      return `<tr>
+        <td style="font-weight:700;color:var(--gold)">${b.label}</td>
+        <td>${b.count}</td>
+        <td><span style="color:var(--green)">${b.wins}W</span> / <span style="color:var(--red)">${b.losses}L</span> / <span style="color:var(--text3)">${b.expired}E</span></td>
+        <td style="color:${wrCol};font-weight:700">${b.wr !== null ? b.wr + '%' : '—'}</td>
+        <td style="color:${netCol};font-weight:700">${b.netPips >= 0 ? '+' : ''}${b.netPips.toFixed(1)}p</td>
+        <td style="color:${b.avgPips >= 0 ? 'var(--green)' : 'var(--red)'}">${b.avgPips !== null ? (b.avgPips >= 0 ? '+' : '') + b.avgPips.toFixed(1) + 'p avg' : '—'}</td>
+      </tr>`;
+    }).join('');
+
+    // ── Totals ────────────────────────────────────────────────────────────
+    const wins    = trades.filter(t => t.result === 'WIN').length;
+    const losses  = trades.filter(t => t.result === 'LOSS').length;
+    const expired = trades.filter(t => t.result === 'EXPIRED').length;
+    const closed  = wins + losses + expired;
+    const net     = trades.reduce((s, t) => s + (t.pnl_pips || 0), 0);
+    const wr      = closed ? Math.round(wins / closed * 100) : 0;
+    const netCol  = net >= 0 ? 'var(--green)' : 'var(--red)';
+
+    // ── Trade rows ────────────────────────────────────────────────────────
+    const tradeRows = sorted.map(t => {
+      const isLong   = t.direction === 'LONG';
+      const result   = t.result ?? '—';
+      const rCls     = result === 'WIN' ? 'win' : result === 'LOSS' ? 'loss' : result === 'EXPIRED' ? 'expired' : '';
+      const pnl      = t.pnl_pips;
+      const pnlStr   = pnl != null ? `${pnl >= 0 ? '+' : ''}${Number(pnl).toFixed(1)}p` : '—';
+      const pnlCol   = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+      const score    = t.score ?? 0;
+      const scoreCol = score >= 35 ? 'var(--gold)' : score >= 20 ? 'var(--amber)' : score >= 10 ? 'var(--text2)' : 'var(--text3)';
+      return `<tr>
+        <td style="color:var(--text3);white-space:nowrap">${t.date} ${t.time?.slice(0,5)}</td>
+        <td style="color:${isLong?'var(--green)':'var(--red)'};">${t.direction}</td>
+        <td style="color:${scoreCol};font-weight:700">${score}</td>
+        <td>${Number(t.entry).toFixed(2)}</td>
+        <td style="color:var(--text3)">${Number(t.sl_pips).toFixed(0)}p SL</td>
+        <td class="gz-result ${rCls}">${result}</td>
+        <td style="color:${pnlCol};font-weight:700">${pnlStr}</td>
+        <td style="font-size:9.5px;color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.zone_id}</td>
+      </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+    <div style="margin-bottom:16px;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);display:flex;gap:28px;flex-wrap:wrap;align-items:center">
+      <div><span style="color:var(--text3);font-size:10px">CLOSED</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace">${closed}</span></div>
+      <div><span style="color:var(--text3);font-size:10px">WIN RATE</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:${wr>=50?'var(--green)':wr>=33?'var(--amber)':'var(--red)'}">${wr}%</span></div>
+      <div><span style="color:var(--text3);font-size:10px">W/L/E</span><span style="margin-left:8px;font-family:'DM Mono',monospace"><span style="color:var(--green)">${wins}</span><span style="color:var(--text3)"> / </span><span style="color:var(--red)">${losses}</span><span style="color:var(--text3)"> / </span>${expired}</span></div>
+      <div><span style="color:var(--text3);font-size:10px">NET PIPS</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:${netCol}">${net>=0?'+':''}${net.toFixed(1)}p</span></div>
+      <div style="color:var(--text3);font-size:10px;align-self:center">Scores shown are pre-dedup (inflated) for trades before 19 Jun 2026</div>
+    </div>
+
+    <div style="margin-bottom:16px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+      <div style="padding:8px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);border-bottom:1px solid var(--border)">Score band breakdown</div>
+      <table class="gz-trades-table">
+        <thead><tr>
+          <th>Score band</th><th>Trades</th><th>W / L / E</th><th>Win rate</th><th>Net pips</th><th>Avg per trade</th>
+        </tr></thead>
+        <tbody>${bandRows}</tbody>
+      </table>
+    </div>
+
+    <table class="gz-trades-table">
+      <thead><tr>
+        <th>Date / Time</th><th>Dir</th><th>Score</th><th>Entry</th><th>SL</th><th>Result</th><th>P&L</th><th>Zone</th>
+      </tr></thead>
+      <tbody>${tradeRows}</tbody>
+    </table>`;
+  } catch (e) {
+    wrap.innerHTML = `<div class="gz-msg">Could not load trade history: ${e.message}</div>`;
+  }
+}
+_loadTradeHistory();
 </script>
 </body>
 </html>
