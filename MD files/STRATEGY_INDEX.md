@@ -48,7 +48,7 @@ Combined they form a regime-rotation portfolio targeting 20-28% CAGR on a $100k 
 | 5 | FX Cross-Sectional Momentum | [P5_FX_MOMENTUM.md](P5_FX_MOMENTUM.md) | 12-18 | 8-13% | Brief ready |
 | 6 | Gold Macro Divergence | [P6_GOLD_DIVERGENCE.md](P6_GOLD_DIVERGENCE.md) | 4-8 | 7-11% | Brief ready |
 | 7 | JPY Carry Unwind Circuit Breaker | [P7_JPY_CIRCUIT_BREAKER.md](P7_JPY_CIRCUIT_BREAKER.md) | Always on | Capital protection | Brief ready |
-| 8 | VIX Vol-Carry (direct VIX exposure) | [P8_VIX_VOL_CARRY.md](P8_VIX_VOL_CARRY.md) | Variable (regime-driven) | 8-14% | Claude Code built — backtest ready |
+| 8 | VIX Vol-Carry (direct VIX exposure) | [P8_VIX_VOL_CARRY.md](P8_VIX_VOL_CARRY.md) | Variable (regime-driven) | 8-14% | Claude Code built — backtest ready, standalone dashboard viewer added |
 
 ### Portfolio Combined Estimate ($100k account)
 

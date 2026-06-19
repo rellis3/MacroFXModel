@@ -2,7 +2,7 @@
 ## VXX (Short) — Direct VIX Exposure, Not a Filter
 
 **Type:** Portfolio-level, daily signal
-**Status:** Claude Code built — backtest ready to run (needs live data + walk-forward review)
+**Status:** Claude Code built — backtest ready to run (needs live data + walk-forward review); standalone read-only dashboard viewer added
 **Back to index:** [STRATEGY_INDEX.md](STRATEGY_INDEX.md)
 
 ---
@@ -152,7 +152,21 @@ vectorised backtest core, expanding walk-forward, regime breakdown, pass/fail ve
 ```bash
 cd vix-vol-carry
 python vix_vol_carry_backtest.py
+
+# Push a results snapshot to the dashboard so it's checkable from a phone:
+python vix_vol_carry_backtest.py --base-url http://localhost:3000
 ```
+
+**Dashboard viewer:** `vix-vol-carry-backtest.html` (linked from the index dashboard's Backtests menu)
+is a **read-only** viewer — there is no "Run" button and no server-side engine for P8. The Python script
+pushes a single precomputed JSON snapshot (metrics, equity/drawdown curves, regime breakdown, named
+stress windows, walk-forward table, pass/fail verdict) to two simple `server.js` store endpoints
+(`/api/vix-vol-carry-backtest/{trades,results}`, GET+POST); the page only ever reads it back. This is
+deliberately the *lighter* of the two dashboard patterns in this repo — unlike the macro-equity model
+(P1), P8 has no JS engine port, no `/run` job queue, no live OANDA/FRED calls, and no bot-config.html
+tab. P8 stays fully standalone and disconnected from the live bot's execution machine; the dashboard
+page exists only so a manually-run backtest's results are viewable from anywhere, including a phone,
+after the fact. See "Dashboard Integration" in `vix-vol-carry/README.md` for the full comparison table.
 
 ---
 
