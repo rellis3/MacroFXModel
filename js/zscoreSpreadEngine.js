@@ -187,14 +187,13 @@ function walkTrade(times, highs, lows, opens, closes, entryIdx, exitDeadlineIdx,
 }
 
 function findDayTrades(times, opens, highs, lows, closes, asia, dir, winStart, winEnd, exitIdx, dayEnd,
-                        fibLevels, fibProx, pip, pairKey, pairDisplay, z, zTier, dateStr) {
+                        fibLevels, pip, pairKey, pairDisplay, z, zTier, dateStr) {
   const trades = [];
   const traded = new Set();
-  const prox = fibProx * pip;
   for (let i = winStart; i < winEnd; i++) {
     for (const lvl of fibLevels) {
       if (traded.has(lvl.mult)) continue;
-      const touched = lows[i] <= lvl.price + prox && highs[i] >= lvl.price - prox;
+      const touched = lows[i] <= lvl.price && highs[i] >= lvl.price;
       if (!touched) continue;
       traded.add(lvl.mult);
 
@@ -323,7 +322,7 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
   const {
     dateFrom = '2018-01-01',
     dateTo = new Date().toISOString().substring(0, 10),
-    zWindow = 90, fibLevelMode = 'all', fibProx = 5, entryWindow = 6,
+    zWindow = 90, fibLevelMode = 'all', entryWindow = 6,
     thresholds = {}, invert = {},
     fredKey = process.env.FRED_KEY,
   } = opts;
@@ -365,7 +364,7 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
     const dayTrades = findDayTrades(
       packed.times, packed.opens, packed.highs, packed.lows, packed.closes,
       asia, dir, winStart, winEnd, exitIdx, end,
-      fibLevels, fibProx, cfg.pip, pairKey, cfg.pairDisplay, zInfo.z, zTier, dateStr,
+      fibLevels, cfg.pip, pairKey, cfg.pairDisplay, zInfo.z, zTier, dateStr,
     );
     trades.push(...dayTrades);
   }

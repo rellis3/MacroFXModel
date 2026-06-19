@@ -127,12 +127,6 @@
     <option value="all" selected>Fib: all 5 levels</option>
     <option value="first">Fib: 0.25 only</option>
   </select>
-  <select id="runFibProx" class="bt-sel" title="Touch tolerance around the Fib level, in pips">
-    <option value="2">Prox 2 pips</option>
-    <option value="5" selected>Prox 5 pips</option>
-    <option value="10">Prox 10 pips</option>
-    <option value="15">Prox 15 pips</option>
-  </select>
   <select id="runEntryWindow" class="bt-sel" title="Hours after 06:00 UTC during which a Fib touch can trigger an entry">
     <option value="4">Entry 4h</option>
     <option value="6" selected>Entry 6h</option>
@@ -601,7 +595,6 @@ async function runBacktest() {
     pair:     document.getElementById('runPair').value,
     zWindow:  document.getElementById('runZWindow').value,
     fibLevelMode: document.getElementById('runFibMode').value,
-    fibProx:      document.getElementById('runFibProx').value,
     entryWindow:  document.getElementById('runEntryWindow').value,
     thresholds, invert,
   };
