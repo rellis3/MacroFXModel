@@ -198,6 +198,7 @@
   <span class="fb-lbl">To</span><input type="date" class="fb-date-inp" id="toDate">
   <button class="fb-run-btn" id="runBtn" onclick="loadAndRun()">▶ Load &amp; Run</button>
   <button class="fb-cfg-toggle" onclick="toggleConfig()">⚙ Config</button>
+  <button class="fb-cfg-toggle" onclick="toggleOptimizer()">🔬 Optimizer</button>
   <span class="fb-lbl" id="runStatus"></span>
 </div>
 
@@ -208,9 +209,9 @@
     <button class="dark-btn" style="padding:2px 10px;font-size:10px" onclick="resetParams()">Reset defaults</button>
     <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto">120-day warmup window is loaded automatically before the From date</span>
   </div>
-  <!-- Strategy picker -->
-  <div style="display:flex;align-items:flex-start;gap:14px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:12px">
-    <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+  <!-- Strategy / SL mode / TP mode pickers -->
+  <div style="display:flex;align-items:flex-start;gap:14px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:12px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px">
       <span class="fb-param-lbl">Entry Strategy</span>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px">
         <select class="fb-sel" id="cfg_strategy" style="min-width:160px">
@@ -219,6 +220,22 @@
         </select>
         <span id="stratHelp" style="font-size:10px;color:var(--text3);font-family:'DM Sans',sans-serif;line-height:1.5"></span>
       </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;min-width:160px">
+      <span class="fb-param-lbl">SL Mode</span>
+      <select class="fb-sel" id="cfg_slMode">
+        <option value="atr">ATR-based</option>
+        <option value="pips">Fixed Pips</option>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;min-width:160px">
+      <span class="fb-param-lbl">TP Mode</span>
+      <select class="fb-sel" id="cfg_tpMode">
+        <option value="trail">MFE Trail</option>
+        <option value="fixed_r">Fixed R</option>
+        <option value="both">Both (first hit)</option>
+        <option value="none">None (SL/EOD only)</option>
+      </select>
     </div>
   </div>
   <div class="fb-cfg-grid" id="cfgGrid"></div>
@@ -231,6 +248,61 @@
       Dynamic levels <span style="color:var(--text3);font-weight:400">(update as day H/L expands · dashed borders)</span>
     </div>
     <div class="fb-level-grid" id="dynLevelGrid" style="grid-template-columns:repeat(4,1fr)"></div>
+  </div>
+</div>
+
+<!-- Optimizer panel -->
+<div class="fb-cfg-panel" id="optPanel" style="display:none">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+    <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em">Config Optimizer</span>
+    <span style="font-size:10px;color:var(--text3);font-family:'DM Sans',sans-serif">Random search over SL/TP/entry settings, re-run against the M1 data + forecasts already loaded by ▶ Load &amp; Run — no re-fetching.</span>
+  </div>
+  <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:10px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="fb-param-lbl">Trials</span>
+      <select class="fb-sel" id="optTrials">
+        <option value="100">100</option>
+        <option value="300">300</option>
+        <option value="500" selected>500</option>
+        <option value="1000">1,000</option>
+        <option value="2000">2,000</option>
+        <option value="5000">5,000</option>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="fb-param-lbl">Objective</span>
+      <select class="fb-sel" id="optObjective">
+        <option value="totalPnl">Total P&amp;L %</option>
+        <option value="sharpe">Sharpe Ratio</option>
+        <option value="pf">Profit Factor</option>
+        <option value="calmar">Calmar Ratio</option>
+        <option value="expectancy">Expectancy %/trade</option>
+        <option value="winrate">Win Rate %</option>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="fb-param-lbl">Min Trades</span>
+      <input type="number" class="fb-num-input" id="optMinTrades" min="1" max="1000" step="1" value="20">
+    </div>
+    <button class="fb-run-btn" id="optRunBtn" onclick="toggleOptimizerRun()">▶ Run Optimizer</button>
+    <span class="fb-lbl" id="optStatus"></span>
+  </div>
+  <div style="font-size:10px;color:var(--text3);font-family:'DM Sans',sans-serif;line-height:1.6;margin-bottom:10px">
+    Searches: Entry Strategy, SL Mode (ATR-based vs Fixed Pips) + distance, TP Mode (MFE Trail / Fixed R / Both / None) + distance,
+    Breakeven trigger, Momentum Z entry filter, Dyn Level Min Move, entry-window hours, one-trade-at-a-time vs concurrent, cooldown bars,
+    and max trades per level/day. ATR Period, SL ATR Timeframe, GARCH Warmup and Round-Trip Cost stay fixed at the values in ⚙ Config —
+    those are inputs the data was prepared with (or a real expense), not free levers to "optimize away".
+  </div>
+  <div id="optResultsWrap" style="display:none;overflow-x:auto">
+    <table class="bt-tbl" id="optResultsTable">
+      <thead><tr>
+        <th>#</th><th class="num" id="optScoreColLbl">Score</th>
+        <th class="num">P&amp;L%</th><th class="num">Sharpe</th><th class="num">PF</th>
+        <th class="num">Win%</th><th class="num">MaxDD%</th><th class="num">Trades</th>
+        <th>Config</th><th></th>
+      </tr></thead>
+      <tbody id="optResultsBody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -515,15 +587,25 @@ const PAIR_SAFE = {
 
 const PARAMS = [
   { key:'slAtrMult',      label:'SL ATR Multiplier',        min:0.5, max:6.0,  step:0.1,  def:2.0,
-    help:'SL = ATR × this. Wider → survives noise, larger per-trade loss.' },
+    help:'(ATR mode) SL = ATR × this. Wider → survives noise, larger per-trade loss.' },
   { key:'atrPeriod',      label:'ATR Period (bars)',         min:5,   max:100,  step:1,    def:14,
     help:'Number of bars for the Wilder ATR used to set stop-loss.' },
   { key:'slAtrTfMin',     label:'SL ATR Timeframe (min)',   min:1,   max:240,  step:1,    def:30,
-    help:'M1 data is resampled to this timeframe before computing ATR. 1 = pure M1, 30 = 30-minute bars (wider, filters noise).' },
+    help:'(ATR mode) M1 data is resampled to this timeframe before computing ATR. 1 = pure M1, 30 = 30-minute bars (wider, filters noise).' },
+  { key:'slFixedPips',    label:'SL Fixed Pips',            min:1,   max:300,  step:1,    def:20,
+    help:'(Pips mode) Stop distance in pips/points, independent of ATR. JPY pairs use 0.01/pip, other FX 0.0001/pip, gold 0.01, indices 1pt.' },
+  { key:'tpRMult',        label:'TP R-Multiple',            min:0.5, max:10.0, step:0.1,  def:2.0,
+    help:'(Fixed-R / Both TP modes) Take-profit distance = SL distance × this multiple.' },
   { key:'mfeTrailPct',    label:'MFE Trail Retrace %',      min:0.10,max:0.95, step:0.05, def:0.50,
-    help:'Exit when price retraces this fraction of peak MFE. 0.50 = give back 50% of best profit.' },
+    help:'(Trail / Both TP modes) Exit when price retraces this fraction of peak MFE. 0.50 = give back 50% of best profit.' },
   { key:'mfeMinR',        label:'Trail Min MFE (R)',         min:0.1, max:3.0,  step:0.1,  def:0.3,
     help:'Trail exit only activates once MFE ≥ this many R multiples.' },
+  { key:'beAfterR',       label:'Breakeven Trigger (R)',     min:0,   max:5.0,  step:0.1,  def:0,
+    help:'Once MFE reaches this many R, move SL to entry (lock in breakeven). 0 = disabled.' },
+  { key:'momZThresh',     label:'Momentum Z Filter (abs)',   min:0,   max:4.0,  step:0.1,  def:0,
+    help:'Only take entries when |momentum Z-score| at the signal bar ≥ this value. 0 = disabled (no momentum filter).' },
+  { key:'costPct',        label:'Round-Trip Cost (%)',       min:0,   max:0.20, step:0.01, def:0,
+    help:'Spread + slippage subtracted from every trade as a % of day-open price. Set >0 for realistic, post-cost results.' },
   { key:'dynMinMove',     label:'Dyn Level Min Move (%)',   min:0.0, max:1.0,  step:0.05, def:0.25,
     help:'Dynamic H/L levels only activate after day H or L has moved this % from open. Prevents immediate triggers at session start.' },
   { key:'windowStartH',   label:'Window Start (UTC h)',     min:0,   max:12,   step:1,    def:0,
@@ -542,7 +624,7 @@ const PARAMS = [
     help:'Daily bars loaded before the From date to seed the GARCH model.' },
 ];
 const PARAM_DEFS = Object.fromEntries(PARAMS.map(p => [p.key, p.def]));
-let cfg = { ...PARAM_DEFS };
+let cfg = { ...PARAM_DEFS, strategy:'dirop', slMode:'atr', tpMode:'trail' };
 let enabledLevels = new Set(LEVELS.map(l => l.key));
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -556,6 +638,9 @@ let selectedTradeIdx = -1;
 let selectedDayIdx   = -1;
 let tradePage        = 0;
 const TRADES_PER_PAGE = 50;
+
+// Cached artifacts from the last Load & Run, reused by the optimizer so it never re-fetches/recomputes them.
+let cachedForecasts = null, cachedAtrArr = null, cachedMomZArr = null, cachedPipSize = null;
 
 let mainChart  = null, priceSeries  = null;
 let pnlChart   = null, pnlSeries    = null;
@@ -603,6 +688,10 @@ function readConfig() {
   });
   const stratEl = document.getElementById('cfg_strategy');
   if (stratEl) cfg.strategy = stratEl.value;
+  const slModeEl = document.getElementById('cfg_slMode');
+  if (slModeEl) cfg.slMode = slModeEl.value;
+  const tpModeEl = document.getElementById('cfg_tpMode');
+  if (tpModeEl) cfg.tpMode = tpModeEl.value;
 }
 
 const STRAT_HELP = {
@@ -619,14 +708,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function resetParams() {
-  cfg = { ...PARAM_DEFS };
+  cfg = { ...PARAM_DEFS, strategy:'dirop', slMode:'atr', tpMode:'trail' };
   enabledLevels = new Set(LEVELS.map(l=>l.key));
   const stratEl = document.getElementById('cfg_strategy');
   if (stratEl) { stratEl.value = 'dirop'; stratEl.dispatchEvent(new Event('change')); }
+  const slModeEl = document.getElementById('cfg_slMode'); if (slModeEl) slModeEl.value = 'atr';
+  const tpModeEl = document.getElementById('cfg_tpMode'); if (tpModeEl) tpModeEl.value = 'trail';
   initConfigUI();
 }
 function toggleLevel(key, on) { on ? enabledLevels.add(key) : enabledLevels.delete(key); }
 function toggleConfig() { const p=document.getElementById('cfgPanel'); p.style.display=p.style.display==='none'?'block':'none'; }
+function toggleOptimizer() { const p=document.getElementById('optPanel'); p.style.display=p.style.display==='none'?'block':'none'; }
 
 // Default dates
 (function() {
@@ -757,18 +849,6 @@ function computeWalkForwardForecasts(dailyBars, assetClass, minWarmup) {
 // Wilder ATR
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function computeATRArray(m1s, period) {
-  const n = m1s.length, atr = new Float64Array(n);
-  if (!n) return atr;
-  atr[0] = m1s[0].high - m1s[0].low;
-  const k = 1/period;
-  for (let i = 1; i < n; i++) {
-    const tr = Math.max(m1s[i].high-m1s[i].low, Math.abs(m1s[i].high-m1s[i-1].close), Math.abs(m1s[i].low-m1s[i-1].close));
-    atr[i] = tr > 0 ? k*tr + (1-k)*atr[i-1] : atr[i-1];
-  }
-  return atr;
-}
-
 function resampleBars(m1s, tfMin) {
   if (tfMin <= 1) return m1s;
   const out = [];
@@ -810,16 +890,50 @@ function computeATRForTf(m1s, period, tfMin) {
   return out;
 }
 
+// Approximate pip/point size per instrument (used by the "Fixed Pips" SL mode).
+// FX majors/crosses: 0.0001 (0.01 for JPY quote pairs). Gold: 0.01. Indices: 1 point.
+function pipSizeForPair(pair) {
+  if (pair.includes('JPY')) return 0.01;
+  const cls = PAIR_ASSET_CLASS[pair] ?? 'fx';
+  if (cls === 'fx') return 0.0001;
+  if (cls === 'commodity') return 0.01;
+  return 1;
+}
+
+// Same math as computeMomentumZScore but returns a Float64Array aligned 1:1 with
+// m1s indices (zero-filled during warmup) so it can be indexed by bar position
+// inside runBacktest without recomputing per optimizer trial.
+function computeMomentumZArray(m1s, rocPeriod = 10, zWindow = 20) {
+  const n = m1s.length, out = new Float64Array(n);
+  const need = rocPeriod + zWindow;
+  for (let i = need - 1; i < n; i++) {
+    const rocs = [];
+    for (let j = i - zWindow + 1; j <= i; j++) {
+      rocs.push((m1s[j].close - m1s[j - rocPeriod].close) / m1s[j - rocPeriod].close);
+    }
+    const mean = rocs.reduce((s, v) => s + v, 0) / zWindow;
+    const std  = Math.sqrt(rocs.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, zWindow - 1));
+    out[i] = std > 1e-10 ? (rocs[zWindow - 1] - mean) / std : 0;
+  }
+  return out;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Backtest simulation
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDate) {
+function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDate, momZArr, pipSize) {
   const trades  = [];
   const dayData = [];
   const fromTs  = new Date(fromDate+'T00:00:00Z').getTime()/1000;
   const toTs    = new Date(toDate  +'T23:59:59Z').getTime()/1000;
-  const { windowStartH, windowEndH, eodClose, mfeTrailPct, mfeMinR, dynMinMove } = config;
+  const { windowStartH, windowEndH, eodClose, mfeTrailPct, mfeMinR, dynMinMove, costPct } = config;
+  const slMode = config.slMode || 'atr';
+  const tpMode = config.tpMode || 'trail';
+  const beAfterR   = config.beAfterR   || 0;
+  const momZThresh = config.momZThresh || 0;
+  const useTrail = tpMode === 'trail' || tpMode === 'both';
+  const useTp    = tpMode === 'fixed_r' || tpMode === 'both';
   const singleMode     = (config.oneTradeAtATime ?? 1) >= 1;
   const minBarsBetween = Math.max(0, Math.round(config.minBarsBetween ?? 0));
 
@@ -838,7 +952,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
     if (barDate !== currentDate) {
       if (eodClose >= 1 && activeTrades.length && currentDay) {
         const prev = m1s[i-1] ?? c;
-        activeTrades.forEach(t => _closeTrade(t, prev.time, prev.close, 'EOD', trades, currentDay));
+        activeTrades.forEach(t => _closeTrade(t, prev.time, prev.close, 'EOD', trades, currentDay, costPct));
         activeTrades = []; lastExitBar = i;
       }
       if (currentDay) {
@@ -871,51 +985,70 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
 
     // EOD close
     if (eodClose >= 1 && activeTrades.length && barHour >= windowEndH) {
-      activeTrades.forEach(t => _closeTrade(t, c.time, c.open, 'EOD', trades, currentDay));
+      activeTrades.forEach(t => _closeTrade(t, c.time, c.open, 'EOD', trades, currentDay, costPct));
       activeTrades = []; lastExitBar = i;
     }
 
     // ── SL check ──────────────────────────────────────────────────────────
     activeTrades = activeTrades.filter(t => {
       if (t.direction === 'LONG' && c.low <= t.sl) {
-        _closeTrade(t, c.time, t.sl, 'SL', trades, currentDay); lastExitBar = i; return false;
+        _closeTrade(t, c.time, t.sl, 'SL', trades, currentDay, costPct); lastExitBar = i; return false;
       }
       if (t.direction === 'SHORT' && c.high >= t.sl) {
-        _closeTrade(t, c.time, t.sl, 'SL', trades, currentDay); lastExitBar = i; return false;
+        _closeTrade(t, c.time, t.sl, 'SL', trades, currentDay, costPct); lastExitBar = i; return false;
       }
       return true;
     });
 
-    // ── MFE trail exit ────────────────────────────────────────────────────
-    activeTrades = activeTrades.filter(t => {
-      const { direction, entry, slDist } = t;
-      if (direction === 'LONG') {
-        const mfe = c.high - entry;
-        if (mfe > t.mfePeak) t.mfePeak = mfe;
-        if (t.mfePeak >= mfeMinR * slDist && t.mfePeak > 0) {
-          if ((entry + t.mfePeak - c.close) / t.mfePeak > mfeTrailPct) {
-            _closeTrade(t, c.time, c.close, 'TRAIL', trades, currentDay); lastExitBar = i; return false;
-          }
+    // ── TP check (fixed_r / both) ────────────────────────────────────────
+    if (useTp) {
+      activeTrades = activeTrades.filter(t => {
+        if (t.tp == null) return true;
+        if (t.direction === 'LONG' && c.high >= t.tp) {
+          _closeTrade(t, c.time, t.tp, 'TP', trades, currentDay, costPct); lastExitBar = i; return false;
         }
-      } else {
-        const mfe = entry - c.low;
-        if (mfe > t.mfePeak) t.mfePeak = mfe;
-        if (t.mfePeak >= mfeMinR * slDist && t.mfePeak > 0) {
-          if ((c.close - (entry - t.mfePeak)) / t.mfePeak > mfeTrailPct) {
-            _closeTrade(t, c.time, c.close, 'TRAIL', trades, currentDay); lastExitBar = i; return false;
-          }
+        if (t.direction === 'SHORT' && c.low <= t.tp) {
+          _closeTrade(t, c.time, t.tp, 'TP', trades, currentDay, costPct); lastExitBar = i; return false;
         }
+        return true;
+      });
+    }
+
+    // ── MFE tracking + breakeven stop ────────────────────────────────────
+    activeTrades.forEach(t => {
+      const mfe = t.direction === 'LONG' ? c.high - t.entry : t.entry - c.low;
+      if (mfe > t.mfePeak) t.mfePeak = mfe;
+      if (beAfterR > 0 && !t.beApplied && t.slDist > 0 && t.mfePeak >= beAfterR * t.slDist) {
+        t.sl = t.entry; t.beApplied = true;
       }
-      return true;
     });
+
+    // ── MFE trail exit (trail / both) ────────────────────────────────────
+    if (useTrail) {
+      activeTrades = activeTrades.filter(t => {
+        const { direction, entry, slDist, mfePeak } = t;
+        if (mfePeak <= 0 || mfePeak < mfeMinR * slDist) return true;
+        if (direction === 'LONG') {
+          if ((entry + mfePeak - c.close) / mfePeak > mfeTrailPct) {
+            _closeTrade(t, c.time, c.close, 'TRAIL', trades, currentDay, costPct); lastExitBar = i; return false;
+          }
+        } else {
+          if ((c.close - (entry - mfePeak)) / mfePeak > mfeTrailPct) {
+            _closeTrade(t, c.time, c.close, 'TRAIL', trades, currentDay, costPct); lastExitBar = i; return false;
+          }
+        }
+        return true;
+      });
+    }
 
     // ── Entry signals ──────────────────────────────────────────────────────
     const cooldownOk = (i - lastExitBar) > minBarsBetween;
     const slotOk     = singleMode ? activeTrades.length === 0 : true;
-    if (!cooldownOk || !slotOk || barHour < windowStartH || barHour >= windowEndH) continue;
+    const momOk      = momZThresh <= 0 || Math.abs(momZArr?.[i] ?? 0) >= momZThresh;
+    if (!cooldownOk || !slotOk || !momOk || barHour < windowStartH || barHour >= windowEndH) continue;
 
     const atr = atrArr[i];
-    if (atr <= 0) continue;
+    if (slMode === 'atr' && atr <= 0) continue;
 
     const highMovePct = (currentDay.high - currentDay.open) / currentDay.open * 100;
     const lowMovePct  = (currentDay.open  - currentDay.low ) / currentDay.open * 100;
@@ -953,13 +1086,20 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
 
       currentDay.levelTraded[def.key] = true;
       currentDay.levelTradeCount[def.key] = (currentDay.levelTradeCount[def.key] || 0) + 1;
-      const slDist = atr * config.slAtrMult;
-      const sl     = lvDir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
+      const slDist = slMode === 'pips'
+        ? (config.slFixedPips || 20) * (pipSize || 0.0001)
+        : atr * config.slAtrMult;
+      const sl = lvDir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
+      let tp = null;
+      if (useTp) {
+        const tpDist = slDist * (config.tpRMult || 2.0);
+        tp = lvDir === 'SHORT' ? lvPrice - tpDist : lvPrice + tpDist;
+      }
       tradeId++;
       activeTrades.push({
         id: tradeId, date: barDate, level: def.key,
         direction: lvDir,
-        entryTs: c.time, entry: lvPrice, sl, slDist, mfePeak: 0,
+        entryTs: c.time, entry: lvPrice, sl, tp, slDist, mfePeak: 0, beApplied: false,
         forecast: fc, dayOpen: currentDay.open,
         dynSnap: def.dynamic ? lvPrice : null,
       });
@@ -970,7 +1110,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
   // Close any remaining open trades
   if (activeTrades.length && m1s.length > 0) {
     const last = m1s[m1s.length-1];
-    activeTrades.forEach(t => _closeTrade(t, last.time, last.close, 'EOD', trades, currentDay));
+    activeTrades.forEach(t => _closeTrade(t, last.time, last.close, 'EOD', trades, currentDay, costPct));
   }
   if (currentDay) {
     if (m1s.length > 0) currentDay.endTs = m1s[m1s.length-1].time;
@@ -989,16 +1129,18 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
   return { trades, dayData };
 }
 
-function _closeTrade(t, exitTs, exitPrice, reason, trades, day) {
-  const pnlPts = t.direction === 'LONG' ? exitPrice - t.entry : t.entry - exitPrice;
-  const pnlPct = (pnlPts / t.dayOpen) * 100;
-  const pnlR   = t.slDist > 0 ? pnlPts / t.slDist : 0;
-  const mfeR   = t.slDist > 0 ? t.mfePeak / t.slDist : 0;
+function _closeTrade(t, exitTs, exitPrice, reason, trades, day, costPct) {
+  const rawPts  = t.direction === 'LONG' ? exitPrice - t.entry : t.entry - exitPrice;
+  const costPts = (costPct || 0) / 100 * t.dayOpen;  // round-trip spread/slippage
+  const pnlPts  = rawPts - costPts;
+  const pnlPct  = (pnlPts / t.dayOpen) * 100;
+  const pnlR    = t.slDist > 0 ? pnlPts / t.slDist : 0;
+  const mfeR    = t.slDist > 0 ? t.mfePeak / t.slDist : 0;
   if (day) day.pnl += pnlPct;
   trades.push({
     id: t.id, date: t.date, level: t.level, direction: t.direction,
     entryTs: t.entryTs, exitTs, entry: t.entry, exit: exitPrice,
-    sl: t.sl, pnlPct, pnlR, mfeR, maeR: Math.max(0, -pnlR),
+    sl: t.sl, tp: t.tp ?? null, pnlPct, pnlR, mfeR, maeR: Math.max(0, -pnlR),
     durationMin: Math.round((exitTs - t.entryTs) / 60),
     exitReason: reason, win: pnlPct > 0,
     forecast: t.forecast, dayOpen: t.dayOpen,
@@ -1049,11 +1191,24 @@ async function loadAndRun() {
   const allDaily   = aggregateToDailyBars(m1Candles);
   const forecasts  = computeWalkForwardForecasts(allDaily, assetClass, warmup);
   const atrArr     = computeATRForTf(m1Candles, cfg.atrPeriod, cfg.slAtrTfMin || 1);
+  const momZArr    = computeMomentumZArray(m1Candles);
+  const pipSize    = pipSizeForPair(pair);
 
   setStatus('Running M1 simulation…','running');
   await tick();
 
-  const result = runBacktest(m1Candles, forecasts, atrArr, cfg, enabledLevels, fromDate, toDate);
+  const result = runBacktest(m1Candles, forecasts, atrArr, cfg, enabledLevels, fromDate, toDate, momZArr, pipSize);
+  cachedForecasts = forecasts; cachedAtrArr = atrArr; cachedMomZArr = momZArr; cachedPipSize = pipSize;
+  applyBacktestResult(result, fromDate, toDate);
+  document.getElementById('chartPairLbl').textContent = pair;
+  document.getElementById('analyticsSection').style.display = 'block';
+  runBtn.disabled = false;
+}
+
+// Shared by loadAndRun() and the optimizer's "Apply" action — both produce a
+// { trades, dayData } result against the same cached M1/forecast data and need
+// identical chart/analytics/banner refresh logic.
+function applyBacktestResult(result, fromDate, toDate, statusMsg) {
   allTrades  = result.trades;
   allDayData = result.dayData;
   selectedTradeIdx = -1;
@@ -1066,23 +1221,181 @@ async function loadAndRun() {
     covBanner.textContent = `Note: ${fcDays}/${allDayData.length} days have forecasts — extend warmup or use a longer date range.`;
   } else { covBanner.style.display = 'none'; }
 
-  setStatus(`Complete — ${allTrades.length} trades · ${fcDays} forecast days`,'ok');
+  setStatus(statusMsg ?? `Complete — ${allTrades.length} trades · ${fcDays} forecast days`, 'ok');
 
   buildLegend();
-  const tradingM1 = m1Candles.filter(c => {
-    const f = new Date(fromDate+'T00:00:00Z').getTime()/1000;
-    const t = new Date(toDate  +'T23:59:59Z').getTime()/1000;
-    return c.time >= f && c.time <= t;
-  });
+  const f = new Date(fromDate+'T00:00:00Z').getTime()/1000;
+  const t = new Date(toDate  +'T23:59:59Z').getTime()/1000;
+  const tradingM1 = m1Candles.filter(c => c.time >= f && c.time <= t);
   renderChart(tradingM1);
   renderAnalytics(allTrades);
-  document.getElementById('chartPairLbl').textContent = pair;
-  document.getElementById('analyticsSection').style.display = 'block';
   updateNavButtons();
-  runBtn.disabled = false;
 }
 
 const tick = () => new Promise(r => setTimeout(r, 0));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Config Optimizer — random search over SL/TP/entry params, scored against the
+// already-cached M1 data + forecasts + ATR + momentum array (no re-fetching,
+// no re-running GARCH). ATR Period, SL ATR Timeframe, GARCH Warmup and Round-Trip
+// Cost are excluded from the search — they're either fixed inputs the cached
+// arrays were built from, or a real cost that shouldn't be "optimized" to zero.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const OPT_EXCLUDE_KEYS = new Set(['atrPeriod', 'slAtrTfMin', 'warmupDays', 'costPct', 'eodClose']);
+const OPT_NUMERIC_PARAMS = PARAMS.filter(p => !OPT_EXCLUDE_KEYS.has(p.key));
+const OPT_CATEGORICAL = {
+  strategy: ['dirop', 'reversal'],
+  slMode:   ['atr', 'pips'],
+  tpMode:   ['trail', 'fixed_r', 'both', 'none'],
+};
+
+let optResults  = [];
+let optRunning  = false;
+let optCancel   = false;
+
+function sampleTrialConfig(baseCfg) {
+  const t = { ...baseCfg };
+  for (const [key, opts] of Object.entries(OPT_CATEGORICAL)) {
+    t[key] = opts[Math.floor(Math.random() * opts.length)];
+  }
+  OPT_NUMERIC_PARAMS.forEach(p => {
+    const steps = Math.max(1, Math.round((p.max - p.min) / p.step));
+    const k = Math.floor(Math.random() * (steps + 1));
+    t[p.key] = Math.round((p.min + k * p.step) * 1e6) / 1e6;
+  });
+  if (t.windowEndH <= t.windowStartH) t.windowEndH = Math.min(23, t.windowStartH + 1);
+  return t;
+}
+
+function optObjectiveValue(stats, objective) {
+  switch (objective) {
+    case 'sharpe':      return stats.sharpe;
+    case 'pf':           return Number.isFinite(stats.pf) ? stats.pf : 50;
+    case 'calmar':       return Number.isFinite(stats.calmar) ? stats.calmar : 0;
+    case 'expectancy':   return stats.expectancy;
+    case 'winrate':      return stats.winRate;
+    default:             return stats.totalPnl;
+  }
+}
+
+function summarizeTrialConfig(c) {
+  const slPart = c.slMode === 'pips'
+    ? `Pips ${c.slFixedPips}`
+    : `ATR×${c.slAtrMult.toFixed(1)}/${c.slAtrTfMin}m`;
+  let tpPart;
+  if (c.tpMode === 'none')          tpPart = 'None';
+  else if (c.tpMode === 'fixed_r')  tpPart = `R×${c.tpRMult.toFixed(1)}`;
+  else if (c.tpMode === 'trail')    tpPart = `Trail ${Math.round(c.mfeTrailPct*100)}%@${c.mfeMinR.toFixed(1)}R`;
+  else                               tpPart = `R×${c.tpRMult.toFixed(1)}+Trail ${Math.round(c.mfeTrailPct*100)}%`;
+  const beStr    = c.beAfterR > 0 ? ` · BE@${c.beAfterR.toFixed(1)}R` : '';
+  const momStr   = c.momZThresh > 0 ? ` · |MomZ|≥${c.momZThresh.toFixed(1)}` : '';
+  const stratStr = c.strategy === 'reversal' ? 'Reversal' : 'DirOpen';
+  const concStr  = c.oneTradeAtATime >= 1 ? '1@time' : `conc/cd${c.minBarsBetween}`;
+  return `${stratStr} · SL:${slPart} · TP:${tpPart}${beStr}${momStr} · ${concStr} · MaxLv${c.maxLevelTrades} · ${c.windowStartH}-${c.windowEndH}h`;
+}
+
+function toggleOptimizerRun() {
+  if (optRunning) { optCancel = true; return; }
+  runOptimizer();
+}
+
+async function runOptimizer() {
+  if (!m1Candles.length || !cachedForecasts) {
+    alert('Run a backtest first (▶ Load & Run) so the optimizer has data to work with.');
+    return;
+  }
+  readConfig();
+  const trials    = parseInt(document.getElementById('optTrials').value, 10) || 500;
+  const minTrades = Math.max(1, parseInt(document.getElementById('optMinTrades').value, 10) || 20);
+  const objective = document.getElementById('optObjective').value;
+  const fromDate  = document.getElementById('fromDate').value;
+  const toDate    = document.getElementById('toDate').value;
+
+  // Trim the M1/ATR/momentum arrays to the active trading window once — bars
+  // outside [fromDate,toDate] are skipped by runBacktest on every single bar
+  // anyway, so pre-trimming avoids re-scanning the (often much larger) warmup
+  // region on every one of the thousands of trials.
+  const fTs = new Date(fromDate+'T00:00:00Z').getTime()/1000;
+  const tTs = new Date(toDate  +'T23:59:59Z').getTime()/1000;
+  let s = m1Candles.findIndex(c => c.time >= fTs); if (s < 0) s = 0;
+  let e = m1Candles.length - 1; while (e > s && m1Candles[e].time > tTs) e--;
+  const trialM1    = m1Candles.slice(s, e + 1);
+  const trialAtr   = cachedAtrArr.slice(s, e + 1);
+  const trialMomZ  = cachedMomZArr.slice(s, e + 1);
+
+  optRunning = true; optCancel = false;
+  optResults = [];
+  const btn = document.getElementById('optRunBtn');
+  btn.textContent = '■ Stop';
+  const statusEl = document.getElementById('optStatus');
+
+  const BATCH = 20;
+  for (let n = 0; n < trials; n++) {
+    if (optCancel) break;
+    const trialCfg = sampleTrialConfig(cfg);
+    const { trades } = runBacktest(trialM1, cachedForecasts, trialAtr, trialCfg, enabledLevels, fromDate, toDate, trialMomZ, cachedPipSize);
+    if (trades.length >= minTrades) {
+      const stats = computeAnalytics(trades);
+      if (stats) optResults.push({ cfg: trialCfg, stats, score: optObjectiveValue(stats, objective) });
+    }
+    if (n % BATCH === BATCH - 1) {
+      statusEl.textContent = `Trial ${n+1}/${trials}… (${optResults.length} valid)`;
+      await tick();
+    }
+  }
+
+  optResults.sort((a, b) => b.score - a.score);
+  renderOptimizerResults(objective);
+  statusEl.textContent = optCancel
+    ? `Stopped — ${optResults.length}/${trials} configs met the min-trades filter.`
+    : `Done — ${optResults.length}/${trials} configs met the min-trades filter.`;
+  btn.textContent = '▶ Run Optimizer';
+  optRunning = false; optCancel = false;
+}
+
+function renderOptimizerResults(objective) {
+  const tbody = document.getElementById('optResultsBody');
+  tbody.innerHTML = '';
+  const top = optResults.slice(0, 25);
+  const objLabel = { totalPnl:'P&L Score', sharpe:'Sharpe Score', pf:'PF Score', calmar:'Calmar Score', expectancy:'Expectancy Score', winrate:'Win% Score' }[objective] || 'Score';
+  document.getElementById('optScoreColLbl').textContent = objLabel;
+  top.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${idx+1}</td>
+      <td class="num">${r.score.toFixed(2)}</td>
+      <td class="num ${r.stats.totalPnl>=0?'pos':'neg'}">${r.stats.totalPnl.toFixed(2)}%</td>
+      <td class="num">${r.stats.sharpe.toFixed(2)}</td>
+      <td class="num">${Number.isFinite(r.stats.pf)?r.stats.pf.toFixed(2):'∞'}</td>
+      <td class="num">${r.stats.winRate.toFixed(1)}%</td>
+      <td class="num">${r.stats.maxDD.toFixed(2)}%</td>
+      <td class="num">${r.stats.total}</td>
+      <td style="font-size:10px;color:var(--text2);white-space:normal;min-width:340px">${summarizeTrialConfig(r.cfg)}</td>
+      <td><button class="dark-btn" style="font-size:10px;padding:2px 8px" onclick="applyOptimizerConfig(${idx})">Apply ▶</button></td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('optResultsWrap').style.display = top.length ? 'block' : 'none';
+}
+
+function syncConfigUIFromCfg() {
+  PARAMS.forEach(p => { const el = document.getElementById('cfg_'+p.key); if (el) el.value = cfg[p.key]; });
+  const stratEl  = document.getElementById('cfg_strategy'); if (stratEl)  { stratEl.value  = cfg.strategy; stratEl.dispatchEvent(new Event('change')); }
+  const slModeEl = document.getElementById('cfg_slMode');   if (slModeEl) slModeEl.value = cfg.slMode;
+  const tpModeEl = document.getElementById('cfg_tpMode');   if (tpModeEl) tpModeEl.value = cfg.tpMode;
+}
+
+function applyOptimizerConfig(idx) {
+  const r = optResults[idx];
+  if (!r) return;
+  cfg = { ...r.cfg };
+  syncConfigUIFromCfg();
+
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate   = document.getElementById('toDate').value;
+  const result = runBacktest(m1Candles, cachedForecasts, cachedAtrArr, cfg, enabledLevels, fromDate, toDate, cachedMomZArr, cachedPipSize);
+  applyBacktestResult(result, fromDate, toDate, `Applied optimizer config #${idx+1} — ${result.trades.length} trades`);
+  document.getElementById('cfgPanel').style.display = 'block';
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Legend
@@ -1199,7 +1512,7 @@ function updateMarkers() {
     const isL = t.direction === 'LONG';
     const def = LEVELS.find(l => l.key === t.level);
     markers.push({ time:t.entryTs, position:isL?'belowBar':'aboveBar', color:def?.color??'#aaa', shape:isL?'arrowUp':'arrowDown', text:def?.label??t.level, size:1 });
-    markers.push({ time:t.exitTs,  position:isL?'aboveBar':'belowBar', color:t.win?'#00c97d':'#f87171', shape:'circle', size:0.5, text:t.exitReason==='SL'?'SL':t.exitReason==='TRAIL'?'T':'' });
+    markers.push({ time:t.exitTs,  position:isL?'aboveBar':'belowBar', color:t.win?'#00c97d':'#f87171', shape:'circle', size:0.5, text:t.exitReason==='SL'?'SL':t.exitReason==='TP'?'TP':t.exitReason==='TRAIL'?'T':'' });
   });
   markers.sort((a,b)=>a.time-b.time);
   priceSeries.setMarkers(markers);
@@ -1358,6 +1671,33 @@ function drawOverlay() {
         ctx.font        = '9px "DM Mono", monospace';
         const labelX = Math.min(x2 + 4, W - 78);
         ctx.fillText('SL ' + t.sl.toPrecision(6), labelX, ysl - 4);
+      }
+    }
+
+    // TP line (fixed_r / both modes only — spans entry → exit at TP price)
+    if (t.tp != null) {
+      const ytp = priceSeries.priceToCoordinate(t.tp);
+      if (ytp != null) {
+        ctx.strokeStyle = '#2dd4bf';
+        ctx.lineWidth   = isSel ? 1.5 : 0.75;
+        ctx.globalAlpha = isSel ? 0.85 : 0.28;
+        ctx.setLineDash([2, 4]);
+        ctx.beginPath(); ctx.moveTo(x1, ytp); ctx.lineTo(x2, ytp); ctx.stroke();
+
+        if (isSel) {
+          ctx.strokeStyle = '#2dd4bf';
+          ctx.lineWidth   = 1;
+          ctx.globalAlpha = 0.55;
+          ctx.setLineDash([1, 3]);
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1, ytp); ctx.stroke();
+
+          ctx.setLineDash([]);
+          ctx.fillStyle   = '#2dd4bf';
+          ctx.globalAlpha = 0.9;
+          ctx.font        = '9px "DM Mono", monospace';
+          const labelX = Math.min(x2 + 4, W - 78);
+          ctx.fillText('TP ' + t.tp.toPrecision(6), labelX, ytp - 4);
+        }
       }
     }
   });
@@ -1764,11 +2104,11 @@ function exportResults() {
   const pair = document.getElementById('pairSel').value;
   const from = document.getElementById('fromDate').value;
   const to   = document.getElementById('toDate').value;
-  const hdr  = 'id,date,level,dynamic,direction,entryTs,exitTs,entry,exit,sl,pnlPct,pnlR,mfeR,durationMin,exitReason,hlMedian,hl75,ocMedian,oc75,volAnnual\n';
+  const hdr  = 'id,date,level,dynamic,direction,entryTs,exitTs,entry,exit,sl,tp,pnlPct,pnlR,mfeR,durationMin,exitReason,hlMedian,hl75,ocMedian,oc75,volAnnual\n';
   const rows = allTrades.map(t => {
     const def = LEVELS.find(l=>l.key===t.level);
     return [t.id,t.date,t.level,def?.dynamic?1:0,t.direction,t.entryTs,t.exitTs,
-      t.entry.toFixed(6),t.exit.toFixed(6),t.sl.toFixed(6),
+      t.entry.toFixed(6),t.exit.toFixed(6),t.sl.toFixed(6),t.tp!=null?t.tp.toFixed(6):'',
       t.pnlPct.toFixed(4),t.pnlR.toFixed(4),t.mfeR.toFixed(4),
       t.durationMin,t.exitReason,
       t.forecast?.hl_median??'',t.forecast?.hl_75??'',
