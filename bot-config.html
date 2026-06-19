@@ -3386,6 +3386,90 @@ document.querySelector('.tab-btn[data-tab="beta"]')?.addEventListener('click', (
   loadBetaTargets();
 });
 
+// ── Gold Bot Config ───────────────────────────────────────────────────────────
+const _GOLD_DEFAULTS = {
+  enabled: true, paper_mode: true, gold_macro_gate: true,
+  trade_window_start: '07:00', trade_window_end: '20:00',
+  max_trades_per_day: 2, cooldown_minutes: 30,
+  min_zone_score: 3.0, proximity_pips: 5.0, vu_min_components: 2,
+  sl_atr_mult: 1.5, max_sl_pips: 40, tp1_r: 1.0, tp2_r: 2.0, risk_pct: 0.5,
+};
+
+function _goldFill(cfg) {
+  const c = {..._GOLD_DEFAULTS, ...cfg};
+  const el = id => document.getElementById(id);
+  const set = (id, v) => { const e = el(id); if (e) e.value = v; };
+  const chk = (id, v) => { const e = el(id); if (e) e.checked = !!v; };
+  chk('gold_enabled',            c.enabled);
+  chk('gold_paper_mode',         c.paper_mode);
+  chk('gold_macro_gate',         c.gold_macro_gate);
+  set('gold_window_start',       c.trade_window_start);
+  set('gold_window_end',         c.trade_window_end);
+  set('gold_max_trades_per_day', c.max_trades_per_day);
+  set('gold_cooldown_minutes',   c.cooldown_minutes);
+  set('gold_min_zone_score',     c.min_zone_score);
+  set('gold_proximity_pips',     c.proximity_pips);
+  set('gold_sl_atr_mult',        c.sl_atr_mult);
+  set('gold_max_sl_pips',        c.max_sl_pips);
+  set('gold_tp1_r',              c.tp1_r);
+  set('gold_tp2_r',              c.tp2_r);
+  set('gold_risk_pct',           c.risk_pct);
+  const vu = String(c.vu_min_components);
+  document.querySelectorAll('input[name="gold_vu_min"]').forEach(r => { r.checked = r.value === vu; });
+}
+
+async function loadGoldConfig() {
+  const cfg = await _kvGet('gold_bot_config');
+  _goldFill(cfg || {});
+  const st = document.getElementById('goldSaveStatus');
+  if (st) st.textContent = cfg ? 'Loaded from KV' : 'Using defaults (no KV entry yet)';
+}
+
+async function saveGoldConfig() {
+  const el  = id => document.getElementById(id);
+  const num = id => parseFloat(el(id)?.value) || 0;
+  const chk = id => !!(el(id)?.checked);
+  const vu  = document.querySelector('input[name="gold_vu_min"]:checked')?.value;
+  const cfg = {
+    enabled:            chk('gold_enabled'),
+    paper_mode:         chk('gold_paper_mode'),
+    gold_macro_gate:    chk('gold_macro_gate'),
+    trade_window_start: el('gold_window_start')?.value  || '07:00',
+    trade_window_end:   el('gold_window_end')?.value    || '20:00',
+    max_trades_per_day: parseInt(el('gold_max_trades_per_day')?.value) || 2,
+    cooldown_minutes:   num('gold_cooldown_minutes'),
+    min_zone_score:     num('gold_min_zone_score'),
+    proximity_pips:     num('gold_proximity_pips'),
+    vu_min_components:  parseInt(vu || '2'),
+    sl_atr_mult:        num('gold_sl_atr_mult'),
+    max_sl_pips:        num('gold_max_sl_pips'),
+    tp1_r:              num('gold_tp1_r'),
+    tp2_r:              num('gold_tp2_r'),
+    risk_pct:           num('gold_risk_pct'),
+  };
+  const st = el('goldSaveStatus');
+  if (st) { st.textContent = 'Saving…'; st.style.color = ''; }
+  const ok = await _kvSet('gold_bot_config', cfg);
+  if (st) {
+    st.textContent = ok ? '✓ Saved — bot picks up on next bar close' : '✗ Save failed';
+    st.style.color = ok ? 'var(--green)' : 'var(--red)';
+    setTimeout(() => { if (st) { st.style.color = ''; } }, 5000);
+  }
+}
+
+function resetGoldDefaults() {
+  _goldFill({});
+  const st = document.getElementById('goldSaveStatus');
+  if (st) st.textContent = 'Defaults restored — press Save to apply';
+}
+
+window.saveGoldConfig    = saveGoldConfig;
+window.resetGoldDefaults = resetGoldDefaults;
+
+document.querySelector('.tab-btn[data-tab="gold"]')?.addEventListener('click', () => {
+  loadGoldConfig();
+});
+
 // ── Multi-instrument QMR config ───────────────────────────────────────────────
 const IQR_CONFIGS = {
   nq:  { id: 'nq',  label: 'NQ-QMR',  displayName: 'NQ (Nasdaq-100)', backtestUrl: 'nq-qmr-backtest.html', ptValue: 20, kvStatus: 'nq_qmr_status',  kvAudit: 'nq_qmr_audit',  kvConfig: 'nq_qmr_config'  },

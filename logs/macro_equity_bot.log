@@ -373,3 +373,5 @@
 [2026-06-19 09:38:35] [MEBot] [INFO] VIX: 300 bars, latest=16.9
 [2026-06-19 09:38:35] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
 [2026-06-19 09:38:37] [MEBot] [INFO] Cycle complete in 4.6s — sleeping 3595s
+[2026-06-19 10:38:35] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 10:38:37] [MEBot] [INFO] Cycle complete in 5.3s — sleeping 3595s
