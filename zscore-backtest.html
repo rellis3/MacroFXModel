@@ -722,7 +722,7 @@ function openChartModal(tradeIdx) {
 
       addLine(trade.asia_high, '#9ca3af', 'Asia Hi', LS.Dashed);
       addLine(trade.asia_low,  '#9ca3af', 'Asia Lo', LS.Dashed);
-      addLine(trade.entry, isLong ? '#26a69a' : '#ef5350', `Entry (fib ${trade.fibLevel})`, LS.Solid);
+      addLine(trade.fill_price ?? trade.entry, isLong ? '#26a69a' : '#ef5350', `Entry (fib ${trade.fibLevel})`, LS.Solid);
       addLine(trade.tp,    '#26a69a', 'TP', LS.Dotted);
       addLine(trade.sl,    '#ef5350', 'SL', LS.Dotted);
 
