@@ -1,0 +1,166 @@
+[1/19] euraud — 61938 KB
+[2/19] nzdusd — 57237 KB
+[3/19] eurcad — 62167 KB
+[4/19] audcad — 59428 KB
+[5/19] eurchf — 55669 KB
+[6/19] audchf — 25010 KB
+[7/19] audnzd — 59014 KB
+[8/19] eurnzd — 63532 KB
+[9/19] eurgbp — 57088 KB
+[10/19] gbpaud — 64914 KB
+[11/19] gbpcad — 63502 KB
+[12/19] audjpy — 60651 KB
+[13/19] cadjpy — 60296 KB
+[14/19] chfjpy — 61521 KB
+[15/19] nzdjpy — 60015 KB
+[16/19] gbpchf — 61881 KB
+[17/19] eurjpy — 60627 KB
+[18/19] gbpnzd — 64630 KB
+[19/19] gbpjpy — 63508 KB
+
+=== 19/19 ready ===
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\range_fib_reaction_study.py:148: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
+  month_key = bars5.index.tz_convert("UTC").to_period("M").to_numpy()
+Downloading 19 missing pair(s) from R2: ['nzdusd', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd', 'audnzd', 'audcad', 'audchf', 'gbpaud', 'gbpcad', 'gbpchf', 'gbpnzd', 'eurjpy', 'gbpjpy', 'audjpy', 'cadjpy', 'chfjpy', 'nzdjpy']
+[1/26] eurusd...
+[2/26] gbpusd...
+[3/26] audusd...
+[4/26] nzdusd...
+[5/26] usdcad...
+[6/26] usdchf...
+[7/26] eurgbp...
+[8/26] euraud...
+[9/26] eurcad...
+[10/26] eurchf...
+[11/26] eurnzd...
+[12/26] audnzd...
+[13/26] audcad...
+[14/26] audchf...
+[15/26] gbpaud...
+[16/26] gbpcad...
+[17/26] gbpchf...
+[18/26] gbpnzd...
+[19/26] usdjpy...
+[20/26] eurjpy...
+[21/26] gbpjpy...
+[22/26] audjpy...
+[23/26] cadjpy...
+[24/26] chfjpy...
+[25/26] nzdjpy...
+[26/26] gold...
+
+=== DAILY — level reaction summary (min 50 touches) ===
+ level  is_key  n_touches  pct_continuation  avg_continuation_pips  avg_reversion_pips  pct_mean_reversion
+  -9.5   False        153              39.2                   56.6                67.3                60.8
+  -9.0   False        177              40.1                   55.4                62.2                59.9
+  -8.5   False        216              44.4                   51.6                53.7                55.6
+  -8.0   False        260              43.8                   49.2                52.5                56.2
+  -7.5   False        320              42.5                   46.3                55.1                57.5
+  -7.0   False        397              42.8                   44.0                53.1                57.2
+  -6.5   False        483              43.5                   42.9                50.8                56.5
+  -6.0   False        596              44.8                   41.8                47.1                55.2
+  -5.5   False        742              44.2                   40.6                42.5                55.8
+  -5.0   False        948              44.3                   39.0                41.6                55.7
+  -4.5   False       1177              46.2                   38.9                39.5                53.8
+  -4.0   False       1529              45.3                   37.7                40.8                54.7
+  -3.5   False       2025              44.5                   36.6                39.8                55.5
+  -3.0   False       2662              45.9                   36.5                38.5                54.1
+  -2.5   False       3592              46.5                   36.4                38.1                53.5
+  -2.0   False       4969              47.6                   36.6                38.6                52.4
+  -1.5   False       7215              47.4                   37.1                38.1                52.6
+  -1.0   False      11271              48.0                   37.7                38.0                52.0
+  -0.5   False      20082              48.2                   38.4                39.8                51.8
+  -0.2   False      27503              48.4                   40.1                40.7                51.6
+   0.0    True      37707              49.0                   42.9                42.7                51.0
+   0.2    True      45501              50.2                   44.0                43.4                49.8
+   0.5    True      47736              50.3                   43.5                42.7                49.7
+   0.8    True      46518              50.2                   43.5                43.0                49.8
+   1.0    True      38988              49.5                   41.8                42.4                50.5
+   1.2   False      28322              49.5                   38.6                39.1                50.5
+   1.5   False      20561              49.6                   37.1                37.3                50.4
+   2.0   False      11828              49.8                   35.4                35.6                50.2
+   2.5   False       7659              49.0                   34.3                35.1                51.0
+   3.0   False       5329              48.9                   33.6                33.2                51.1
+   3.5   False       3900              49.2                   32.9                32.5                50.8
+   4.0   False       2932              49.9                   32.6                32.2                50.1
+   4.5   False       2237              50.2                   32.7                31.0                49.8
+   5.0   False       1747              49.2                   32.6                31.0                50.8
+   5.5   False       1365              47.8                   32.9                32.8                52.2
+   6.0   False       1070              49.1                   33.6                34.1                50.9
+   6.5   False        858              48.6                   34.0                34.2                51.4
+   7.0   False        692              46.7                   34.4                35.2                53.3
+   7.5   False        540              48.7                   36.5                37.2                51.3
+   8.0   False        438              50.0                   37.6                39.5                50.0
+   8.5   False        372              49.5                   37.3                42.3                50.5
+   9.0   False        302              49.0                   38.8                46.1                51.0
+   9.5   False        257              45.1                   38.5                51.9                54.9
+  10.0   False        205              43.9                   41.0                53.5                56.1
+  10.5   False        167              47.3                   43.2                59.6                52.7
+
+=== MONTHLY — level reaction summary (min 50 touches) ===
+ level  is_key  n_touches  pct_continuation  avg_continuation_pips  avg_reversion_pips  pct_mean_reversion
+  -1.5   False         74              39.2                  187.0               321.3                60.8
+  -1.0   False        200              43.0                  180.8               221.5                57.0
+  -0.5   False        538              48.1                  181.8               193.1                51.9
+  -0.2   False        866              49.4                  188.3               188.6                50.6
+   0.0    True       1424              47.1                  192.0               191.2                52.9
+   0.2    True       1929              49.2                  187.8               196.8                50.8
+   0.5    True       2091              50.0                  193.3               201.2                50.0
+   0.8    True       2024              50.1                  197.6               204.9                49.9
+   1.0    True       1552              51.3                  192.4               189.2                48.7
+   1.2   False        963              49.5                  175.4               169.3                50.5
+   1.5   False        563              50.4                  173.8               170.4                49.6
+   2.0   False        209              44.0                  170.1               206.9                56.0
+   2.5   False         70              44.3                  193.0               260.1                55.7
+
+Saved CSVs to C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\analysis\output\range_fib_reaction
