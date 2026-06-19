@@ -751,6 +751,14 @@ function closeChartModal() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartModal(); });
 
 // ── Boot ──────────────────────────────────────────────────────────────────
+(function setDefaultDateRange() {
+  const to = new Date();
+  const from = new Date(to);
+  from.setUTCFullYear(from.getUTCFullYear() - 6);
+  document.getElementById('runTo').value   = to.toISOString().substring(0, 10);
+  document.getElementById('runFrom').value = from.toISOString().substring(0, 10);
+})();
+
 loadPairsMeta().then(() => {
   refreshDiagnose();
   loadData();
