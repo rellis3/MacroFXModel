@@ -207,19 +207,43 @@ def compute_metrics(returns: pd.Series, equity: pd.Series, position: pd.Series) 
 #  DATA FETCHING
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def fetch_yf_close(ticker: str, start: str, end: str, fallback: str = None) -> pd.Series:
-    """Fetch a single split/dividend-adjusted Close series from yfinance."""
+def _yf_close(ticker: str, start: str, end: str) -> pd.Series:
     df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False)
-    if (df is None or df.empty) and fallback:
-        print(f"  {ticker} unavailable, falling back to {fallback}…")
-        df = yf.download(fallback, start=start, end=end, auto_adjust=True, progress=False)
     if df is None or df.empty:
-        raise RuntimeError(f"No data returned for {ticker}")
+        return None
     close = df['Close']
     if isinstance(close, pd.DataFrame):
         close = close.iloc[:, 0]
     close.index = pd.to_datetime(close.index).tz_localize(None)
-    return close.rename(ticker.lstrip('^'))
+    return close
+
+
+def fetch_yf_close(ticker: str, start: str, end: str, fallback: str = None) -> pd.Series:
+    """Fetch a single split/dividend-adjusted Close series from yfinance.
+
+    If `fallback` is given, also splice in any earlier history it has that
+    `ticker` lacks — e.g. Yahoo's `^VIX3M` history doesn't reach back through
+    the pre-rename `^VXV` era, so a fallback that only kicks in when `ticker`
+    returns *zero* rows would silently miss that gap and truncate the whole
+    requested date range to wherever `ticker`'s data happens to start.
+    """
+    primary = _yf_close(ticker, start, end)
+    if fallback:
+        fb = _yf_close(fallback, start, end)
+        if fb is not None and not fb.empty:
+            if primary is None or primary.empty:
+                print(f"  {ticker} unavailable, using {fallback}…")
+                primary = fb
+            else:
+                missing = fb.index.difference(primary.index)
+                older = missing[missing < primary.index.min()]
+                if len(older):
+                    print(f"  Splicing in {len(older)} earlier rows from {fallback} "
+                          f"(back to {older.min().date()}) — {ticker} alone only goes back to {primary.index.min().date()}")
+                    primary = pd.concat([primary, fb.loc[older]]).sort_index()
+    if primary is None or primary.empty:
+        raise RuntimeError(f"No data returned for {ticker}")
+    return primary.rename(ticker.lstrip('^'))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -848,6 +872,10 @@ def main():
     print("\n[2/6] Aligning dataset …")
     df = build_dataset(vix, vix3m, vxx)
     print(f"  Dataset: {len(df)} trading days ({df.index[0].date()} → {df.index[-1].date()})")
+    if df.index[0] > pd.Timestamp(BACKTEST_START):
+        print(f"  WARNING: data starts {df.index[0].date()}, after the intended backtest start "
+              f"{BACKTEST_START} — one of vix/vix3m/vxx is missing history over that gap, so "
+              f"results below cover a shorter window than the strategy was designed to test.")
 
     print("\n[3/6] Building Five-Lens regime signal (vol cone + term structure) …")
     sig = build_signals(df)
