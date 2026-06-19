@@ -5772,7 +5772,7 @@ app.post('/api/zscore-backtest/run', (req, res) => {
   } = req.body || {};
 
   const opts = {
-    dateFrom, dateTo,
+    dateFrom: dateFrom || undefined, dateTo: dateTo || undefined,
     zWindow:      parseInt(zWindow)      || 90,
     fibLevelMode,
     entryWindow:  parseInt(entryWindow)  || 6,
