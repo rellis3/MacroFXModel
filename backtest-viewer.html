@@ -611,7 +611,7 @@ const ZSCORE_ADAPTER = {
   getLevels(trade) {
     if (trade.entry == null) return null;
     return {
-      entry: trade.fill_price ?? trade.entry, sl: trade.sl, tp: trade.tp,
+      entry: trade.entry, sl: trade.sl, tp: trade.tp,
       asiaHi: trade.asia_high, asiaLo: trade.asia_low,
     };
   },
