@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Range Fib Reaction Study</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0b0d13;--bg2:#0f1117;--s1:#171a24;--s2:#1f2330;--s3:#272c3d;
+  --border:#262b3c;--border2:#343958;
+  --text:#eef0f8;--text2:#9aa3c0;--text3:#5e6790;
+  --green:#22c58b;--green-bg:#0d2b22;--green-bd:#1a4a38;
+  --red:#f87171;--red-bg:#2b1a1a;--red-bd:#4a2828;
+  --blue:#5b8cff;--blue2:#8b6cf0;--blue-bg:#19213c;--blue-bd:#2a3a6a;
+  --orange:#f5a93f;--orange-bg:#3a2a10;--orange-bd:#5a4520;
+  --violet:#a78bfa;--cyan:#22d3ee;--pink:#f472b6;
+  --r:14px;--rs:10px;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -8px rgba(0,0,0,.5);
+  --shadow-hover:0 2px 4px rgba(0,0,0,.45), 0 14px 32px -10px rgba(91,140,255,.25);
+}
+*{box-sizing:border-box}
+body{
+  background:
+    radial-gradient(circle at 15% 0%, rgba(91,140,255,.07), transparent 40%),
+    radial-gradient(circle at 85% 8%, rgba(139,108,240,.06), transparent 40%),
+    var(--bg);
+  color:var(--text);font-family:-apple-system,'Segoe UI',sans-serif;font-size:14px;margin:0;padding:0 28px 60px;line-height:1.5;
+}
+.mono{font-family:'DM Mono',Consolas,monospace}
+a{color:var(--blue)}
+[title]{cursor:help}
+
+/* ---- header ribbon ---- */
+.hero{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:26px 4px 18px}
+.hero-left{display:flex;align-items:center;gap:14px}
+.logo-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--blue2));
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px -2px rgba(91,140,255,.45);flex-shrink:0}
+.logo-mark svg{width:22px;height:22px}
+h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{font-size:11px;color:var(--text3);font-family:Consolas,monospace;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.hero-stats{display:flex;gap:10px;flex-wrap:wrap}
+.hero-chip{background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:7px 16px;font-size:11.5px;
+  color:var(--text2);box-shadow:var(--shadow);display:flex;align-items:center;gap:7px}
+.hero-chip b{color:var(--text);font-size:13px}
+.hero-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+
+/* ---- loading overlay ---- */
+#loadOverlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;z-index:999;transition:opacity .3s}
+#loadOverlay.hide{opacity:0;pointer-events:none}
+.spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--blue);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadOverlay .lo-txt{font-size:12px;color:var(--text3);font-family:Consolas,monospace}
+
+/* ---- panels ---- */
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:18px;box-shadow:var(--shadow)}
+.panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--text2);margin:0 0 14px;font-family:Consolas,monospace;
+  display:flex;align-items:center;gap:8px;font-weight:600}
+.panel h2 .h2-accent{width:3px;height:13px;border-radius:2px;background:linear-gradient(180deg,var(--blue),var(--blue2));display:inline-block}
+.panel.sticky{position:sticky;top:10px;z-index:50}
+
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:130px}
+.field label{font-size:10px;color:var(--text3);font-family:Consolas,monospace;text-transform:uppercase;letter-spacing:.05em}
+.field.chk{flex-direction:row;align-items:center;gap:6px;padding-bottom:7px}
+select,input[type=number]{
+  background:var(--s2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);
+  font-family:Consolas,monospace;font-size:12px;padding:7px 11px;min-width:0;transition:border-color .15s, box-shadow .15s;
+}
+select:hover,input[type=number]:hover{border-color:var(--border2)}
+select:focus,input[type=number]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(91,140,255,.18)}
+input[type=checkbox]{width:14px;height:14px;accent-color:var(--blue)}
+
+.note{font-size:11.5px;color:var(--text3);line-height:1.65}
+.note code{background:var(--s2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+.note b{color:var(--text2)}
+details.explainer{font-size:12px;color:var(--text2)}
+details.explainer summary{cursor:pointer;color:var(--blue);font-family:Consolas,monospace;font-size:11px;text-transform:uppercase;
+  letter-spacing:.05em;user-select:none;list-style:none;font-weight:600}
+details.explainer summary::-webkit-details-marker{display:none}
+details.explainer summary::before{content:"▸ ";display:inline-block}
+details.explainer[open] summary::before{content:"▾ "}
+details.explainer .ex-body{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+details.explainer .ex-item{background:var(--s2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px}
+details.explainer .ex-item b{color:var(--text)}
+
+/* ---- leaderboard / KPI cards ---- */
+.lb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px}
+.lb-card{
+  position:relative;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px 17px 15px;
+  cursor:pointer;transition:transform .15s, box-shadow .15s, border-color .15s;box-shadow:var(--shadow);overflow:hidden;
+}
+.lb-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent, linear-gradient(90deg,var(--blue),var(--blue2)))}
+.lb-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);border-color:var(--border2)}
+.lb-icon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;
+  background:var(--icon-bg,var(--blue-bg));color:var(--icon-fg,var(--blue))}
+.lb-icon svg{width:16px;height:16px}
+.lb-card .lb-lbl{font-size:10px;color:var(--text3);font-family:Consolas,monospace;text-transform:uppercase;letter-spacing:.08em}
+.lb-card .lb-val{font-size:21px;font-weight:700;margin-top:6px;letter-spacing:-.01em}
+.lb-card .lb-sub{font-size:11px;color:var(--text2);margin-top:4px;font-family:Consolas,monospace}
+
+.kpi-strip{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.kpi-chip{background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:7px 15px;font-size:11px;
+  font-family:Consolas,monospace;color:var(--text2)}
+.kpi-chip b{color:var(--text)}
+
+/* ---- narrative ---- */
+.narrative{
+  background:linear-gradient(100deg, var(--blue-bg) 0%, var(--s1) 22%);
+  border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--r);
+  padding:16px 20px;margin-bottom:18px;font-size:13px;line-height:1.75;box-shadow:var(--shadow);
+}
+.narrative .n-line{margin:0 0 8px;display:flex;gap:8px;align-items:flex-start}
+.narrative .n-line:last-child{margin-bottom:0}
+.narrative .n-ico{flex-shrink:0;margin-top:2px;opacity:.85}
+.narrative.warn{border-left-color:var(--orange);background:linear-gradient(100deg, var(--orange-bg) 0%, var(--s1) 22%)}
+.narrative b.hl{color:var(--text)}
+.narrative .tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:10.5px;font-weight:700;font-family:Consolas,monospace;flex-shrink:0}
+.tag.sig{color:var(--green);background:var(--green-bg)}
+.tag.nosig{color:var(--orange);background:var(--orange-bg)}
+
+/* ---- chart ---- */
+.legend{display:flex;gap:18px;margin-bottom:10px;font-size:11px;color:var(--text2);font-family:Consolas,monospace;flex-wrap:wrap}
+.legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.chart-wrap{height:380px}
+
+/* ---- table ---- */
+.tbl-wrap{max-height:460px;overflow:auto;border-radius:var(--rs);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-family:Consolas,monospace;font-size:12px}
+thead th{position:sticky;top:0;background:var(--s2);z-index:2}
+th{text-align:left;padding:9px 12px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;
+  border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none}
+th:hover{color:var(--text)}
+th .ih{border-bottom:1px dotted var(--text3);cursor:help}
+td{padding:7px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr:hover td{background:var(--s2)}
+tbody tr:nth-child(even) td{background:rgba(255,255,255,.012)}
+tr.dim td{opacity:.5}
+td.pos{color:var(--green)}
+td.neg{color:var(--red)}
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;border:1px solid;font-weight:600}
+.badge.yes{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}
+.badge.no{color:var(--text3);background:var(--s2);border-color:var(--border)}
+#status{font-size:11px;color:var(--text3);font-family:Consolas,monospace;margin-top:8px}
+
+footer{text-align:center;color:var(--text3);font-size:11px;font-family:Consolas,monospace;padding:20px 0 0}
+</style>
+</head>
+<body>
+  <div id="loadOverlay"><div class="spinner"></div><div class="lo-txt">Loading dataset…</div></div>
+
+  <div class="hero">
+    <div class="hero-left">
+      <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h7v7"/></svg></div>
+      <div>
+        <h1>Range Fib Reaction Study</h1>
+        <div class="sub" id="generatedAt">loading…</div>
+      </div>
+    </div>
+    <div class="hero-stats" id="heroStats"></div>
+  </div>
+
+  <div class="panel">
+    <div class="note" style="margin-bottom:12px">
+      Projects the same Fibonacci grid <code>js/asiaRangeEngine.js</code> uses (price = range.low + range.range &times; level) from each
+      completed <b>daily</b>, <b>monthly</b>, or <b>Monday</b> body range, then checks the next evaluation window (next day / next month /
+      rest of that week respectively) for the first touch of each level — and measures whether price <b>continued</b> through it or
+      <b>reversed</b> off it.
+    </div>
+    <details class="explainer">
+      <summary>How to read this dashboard</summary>
+      <div class="ex-body">
+        <div class="ex-item"><b>Fade pips/touch</b><br>The average pip outcome of betting on the level <i>reversing</i> price, exiting at
+        the eventual extreme. It's optimistic (no spread/slippage/perfect exit) — use it to compare slices against each other, not as a
+        literal backtested return.</div>
+        <div class="ex-item"><b>% Mean reversion</b><br>Of all touches of this level, the share where price reversed off it rather than
+        continuing through. 50% = coin flip, no edge either way.</div>
+        <div class="ex-item"><b>N (sample size)</b><br>How many times this level/day/session etc. was actually touched. Small N means the
+        average is noisy — a single big winning or losing trade can swing it a lot. Shown as the orange line on the chart.</div>
+        <div class="ex-item"><b>Significant? ("Sig")</b><br>A statistical test asking: "could this reversion rate just be random chance
+        around 50/50?" <b>Yes</b> = under 5% chance it's noise (p&lt;0.05) — the skew is probably real. <b>No</b> = plausibly just noise,
+        <i>especially</i> if N is also small. A tall bar with "Sig = No" is the classic trap: looks exciting, isn't backed by enough data.</div>
+        <div class="ex-item"><b>Confluence tightness</b><br>How close a daily level sits to a same-week Monday-range projected level.
+        Tight = within a few pips (FX) / ~30 pips (gold); Regular = within ~10 pips (FX) / ~100 (gold); None = no nearby match.</div>
+        <div class="ex-item"><b>Year range filter</b><br>Re-aggregates every chart/table live from the underlying yearly counts — not just
+        a cosmetic slice. Use it to check whether an edge held up recently or was a one-off period.</div>
+      </div>
+    </details>
+  </div>
+
+  <div id="leaderboard" class="lb-grid"></div>
+
+  <div class="panel">
+    <h2><span class="h2-accent"></span>Filters</h2>
+    <div class="row">
+      <div class="field"><label>Pair / scope</label><select id="fPair"></select></div>
+      <div class="field"><label>Timeframe</label><select id="fTimeframe"></select></div>
+      <div class="field"><label>Group by</label><select id="fDim"></select></div>
+      <div class="field"><label>Metric</label>
+        <select id="fMetric">
+          <option value="avg_fade_pnl">Avg fade pips / touch</option>
+          <option value="pct_mr">% Mean reversion</option>
+          <option value="total_fade_pnl">Total fade pips (n-weighted)</option>
+        </select>
+      </div>
+      <div class="field"><label>Year from</label><select id="fYearFrom"></select></div>
+      <div class="field"><label>Year to</label><select id="fYearTo"></select></div>
+      <div class="field"><label>Min touches</label><input id="fMinN" type="number" value="30" min="1" style="width:80px"></div>
+      <div class="field chk"><input id="fSigOnly" type="checkbox"><label style="padding:0">Significant only</label></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>Compare against (optional)</label><select id="cPair"><option value="">— none —</option></select></div>
+      <div class="field"><label>Compare timeframe</label><select id="cTimeframe"></select></div>
+    </div>
+  </div>
+
+  <div id="narrative" class="narrative">Loading…</div>
+
+  <div class="panel">
+    <div class="kpi-strip" id="kpiStrip"></div>
+    <h2 id="chartTitle"><span class="h2-accent"></span>Chart</h2>
+    <div class="legend" id="legend"></div>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2><span class="h2-accent"></span>Data</h2>
+    <div class="tbl-wrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+    <div id="status"></div>
+  </div>
+
+  <footer>Static analytical snapshot — no live backend. Re-run the Python pipeline and redeploy to refresh.</footer>
+
+<script>
+const DIM_LABELS = {
+  level: "Fib Level", dow: "Day of Week", month: "Month of Year", year: "Year",
+  session: "Session (UTC)", vol_regime: "Volatility Regime", trend_regime: "Trend Regime",
+  confluence_bucket: "Confluence Tightness (daily only)", direction: "Approach Direction",
+};
+const DIM_ORDER = {
+  session: ["Asia", "London", "Overlap", "NY"],
+  vol_regime: ["Low", "Mid", "High"],
+  trend_regime: ["Down", "Up"],
+  confluence_bucket: ["tight", "regular", "none", "no_data"],
+  direction: ["from_below", "from_above"],
+};
+const PAIR_LABELS = { ALL: "ALL — every pair combined", ALL_FX: "ALL FX (excl. gold)", ALL_GOLD: "Gold only" };
+const TF_LABELS = { daily: "Daily", monthly: "Monthly", monday: "Monday" };
+
+const ICONS = {
+  pair: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9h.01M15 15h.01M15 9l-6 6"/></svg>',
+  level: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/></svg>',
+  day: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  session: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
+  month: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 14h2M14 14h2M8 17h2M14 17h2"/></svg>',
+  target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16h.01"/></svg>',
+};
+const LB_META = {
+  "Best Pair":               { icon: "pair",    bg: "var(--blue-bg)",   fg: "var(--blue)",   accent: "linear-gradient(90deg,var(--blue),var(--blue2))" },
+  "Best Level":              { icon: "level",   bg: "var(--green-bg)",  fg: "var(--green)",  accent: "linear-gradient(90deg,#22c58b,#22d3ee)" },
+  "Best Day":                { icon: "day",     bg: "#2a2240",          fg: "var(--violet)", accent: "linear-gradient(90deg,#a78bfa,#8b6cf0)" },
+  "Best Session":            { icon: "session", bg: "var(--orange-bg)", fg: "var(--orange)", accent: "linear-gradient(90deg,#f5a93f,#f87171)" },
+  "Best Month":              { icon: "month",   bg: "#3a1c34",          fg: "var(--pink)",   accent: "linear-gradient(90deg,#f472b6,#a78bfa)" },
+  "Best Confluence Tightness": { icon: "target", bg: "var(--green-bg)", fg: "var(--green)",  accent: "linear-gradient(90deg,#22c58b,#5b8cff)" },
+};
+
+let bundle = null;
+let chart = null;
+
+// --- stats helpers (mirrors the Python binomial z-test so client-side re-aggregation matches) ---
+function erf(x) {
+  const sign = x < 0 ? -1 : 1; x = Math.abs(x);
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const t = 1 / (1 + p * x);
+  const y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1) * t * Math.exp(-x*x);
+  return sign * y;
+}
+function normCdf(z) { return 0.5 * (1 + erf(z / Math.SQRT2)); }
+function recompute(g) {
+  g.pct_mr = g.n ? (g.n_mr / g.n) * 100 : 0;
+  g.avg_fade_pnl = g.n ? g.sum_fade_pnl / g.n : 0;
+  g.total_fade_pnl = g.sum_fade_pnl;
+  const p_hat = g.pct_mr / 100;
+  const z = g.n ? (p_hat - 0.5) / Math.sqrt(0.25 / g.n) : 0;
+  g.p_value = g.n ? 2 * (1 - normCdf(Math.abs(z))) : 1;
+  g.significant = g.p_value < 0.05;
+  return g;
+}
+function mergeRows(rows, keyFn) {
+  const groups = new Map();
+  for (const r of rows) {
+    const k = keyFn(r);
+    if (!groups.has(k)) groups.set(k, { ...r, n: 0, n_mr: 0, sum_fade_pnl: 0 });
+    const g = groups.get(k);
+    g.n += r.n; g.n_mr += r.n_mr; g.sum_fade_pnl += r.sum_fade_pnl;
+  }
+  return [...groups.values()].map(recompute);
+}
+
+function dimKey(dim, row) {
+  if (dim === "level") return row.level;
+  if (dim === "dow") return row.dow;
+  if (dim === "month") return row.month;
+  return row[dim];
+}
+function dimLabel(dim, row) {
+  if (dim === "level") return (row.level >= 0 ? "+" : "") + row.level.toFixed(2) + (row.is_key ? " *" : "");
+  return String(row[dim]);
+}
+function sortRows(dim, rows) {
+  const order = DIM_ORDER[dim];
+  if (dim === "level") return rows.slice().sort((a, b) => a.level - b.level);
+  if (dim === "dow") return rows.slice().sort((a, b) => a.dow_n - b.dow_n);
+  if (dim === "month") return rows.slice().sort((a, b) => a.month_n - b.month_n);
+  if (dim === "year") return rows.slice().sort((a, b) => a.year - b.year);
+  if (order) return rows.slice().sort((a, b) => order.indexOf(a[dim]) - order.indexOf(b[dim]));
+  return rows;
+}
+
+function yearFiltered(dim, pair, timeframe, yFrom, yTo) {
+  const rows = (bundle.tables[dim] || []).filter(r =>
+    r.pair === pair && r.timeframe === timeframe && r.year >= yFrom && r.year <= yTo);
+  return dim === "year" ? rows : mergeRows(rows, r => dimKey(dim, r));
+}
+function getRows(dim, pair, timeframe, yFrom, yTo, minN, sigOnly) {
+  let rows = yearFiltered(dim, pair, timeframe, yFrom, yTo).filter(r => r.n >= minN);
+  if (sigOnly) rows = rows.filter(r => r.significant);
+  return sortRows(dim, rows);
+}
+
+function populateSelectors() {
+  const pairOpts = ["ALL", "ALL_FX", "ALL_GOLD", ...bundle.meta.pairs];
+  for (const sel of [document.getElementById("fPair"), document.getElementById("cPair")]) {
+    for (const p of pairOpts) {
+      const o = document.createElement("option");
+      o.value = p; o.textContent = PAIR_LABELS[p] || p.toUpperCase();
+      sel.appendChild(o);
+    }
+  }
+  document.getElementById("fPair").value = "ALL";
+  for (const sel of [document.getElementById("fTimeframe"), document.getElementById("cTimeframe")]) {
+    for (const tf of bundle.meta.timeframes) {
+      const o = document.createElement("option");
+      o.value = tf; o.textContent = TF_LABELS[tf] || tf;
+      sel.appendChild(o);
+    }
+  }
+  document.getElementById("cTimeframe").value = "daily";
+  const dimSel = document.getElementById("fDim");
+  for (const dim of bundle.meta.dimensions) {
+    const o = document.createElement("option");
+    o.value = dim; o.textContent = DIM_LABELS[dim] || dim;
+    dimSel.appendChild(o);
+  }
+  const years = bundle.meta.years;
+  for (const sel of [document.getElementById("fYearFrom"), document.getElementById("fYearTo")]) {
+    for (const y of years) {
+      const o = document.createElement("option");
+      o.value = y; o.textContent = y;
+      sel.appendChild(o);
+    }
+  }
+  document.getElementById("fYearFrom").value = years[0];
+  document.getElementById("fYearTo").value = years[years.length - 1];
+}
+
+function fmtPips(v) { return (v >= 0 ? "+" : "") + v.toFixed(1); }
+
+function barColor(metric, r) {
+  if (metric === "pct_mr") return r.significant ? (r.pct_mr >= 50 ? "#22c58b" : "#f87171") : "rgba(94,103,144,0.4)";
+  const v = metric === "total_fade_pnl" ? r.total_fade_pnl : r.avg_fade_pnl;
+  if (!r.significant) return "rgba(94,103,144,0.4)";
+  return v >= 0 ? "#22c58b" : "#f87171";
+}
+
+function buildHeroStats() {
+  const yearRows = bundle.tables.year.filter(r => r.pair === "ALL");
+  const totalN = yearRows.reduce((s, r) => s + r.n, 0);
+  const years = bundle.meta.years;
+  const chips = [
+    [`${bundle.meta.pairs.length} pairs`, null],
+    [`${totalN.toLocaleString()} touches`, null],
+    [`${years[0]}–${years[years.length - 1]}`, null],
+  ];
+  document.getElementById("heroStats").innerHTML = chips.map(([v]) =>
+    `<span class="hero-chip"><span class="dot"></span><b>${v}</b></span>`).join("");
+}
+
+function buildNarrative(dim, pair, timeframe, rows, yFrom, yTo, metric) {
+  const el = document.getElementById("narrative");
+  const dimLbl = DIM_LABELS[dim] || dim;
+  const scopeLbl = PAIR_LABELS[pair] || pair.toUpperCase();
+  const totalN = rows.reduce((s, r) => s + r.n, 0);
+  const sig = rows.filter(r => r.significant);
+  if (!rows.length) {
+    el.innerHTML = `<p class="n-line"><span class="n-ico">${ICONS.warn}</span><span>No buckets meet the current Min Touches threshold for
+      <b class="hl">${scopeLbl}</b> / <b class="hl">${TF_LABELS[timeframe]}</b> / ${yFrom}&ndash;${yTo}. Try lowering Min Touches.</span></p>`;
+    return;
+  }
+  const lines = [];
+  lines.push([ICONS.info, `Showing <b class="hl">${dimLbl}</b> for <b class="hl">${scopeLbl}</b>, <b class="hl">${TF_LABELS[timeframe]}</b>
+    timeframe, <b class="hl">${yFrom}&ndash;${yTo}</b> — <b class="hl">${totalN.toLocaleString()}</b> touches across
+    <b class="hl">${rows.length}</b> ${dimLbl.toLowerCase()} buckets, <b class="hl">${sig.length}</b> statistically significant
+    (<span class="tag sig">Sig</span>).`]);
+
+  if (sig.length) {
+    const best = sig.slice().sort((a, b) => Math.abs(b.avg_fade_pnl) - Math.abs(a.avg_fade_pnl))[0];
+    lines.push([ICONS.level, `Strongest reliable signal: <b class="hl">${dimLabel(dim, best)}</b> at
+      <b class="hl">${fmtPips(best.avg_fade_pnl)} pips/touch</b> fading the level (${best.pct_mr.toFixed(1)}% mean-reversion,
+      n=${best.n.toLocaleString()}, p=${best.p_value.toFixed(4)}) — <span class="tag sig">Sig: Yes</span>.`]);
+  } else {
+    lines.push([ICONS.warn, `None of these buckets reach statistical significance at this sample size — differences between them
+      are plausibly just noise. Lower Min Touches with caution; smaller samples are noisier, not more meaningful.`]);
+  }
+
+  const notSig = rows.filter(r => !r.significant);
+  let hasWarning = false;
+  if (notSig.length) {
+    const trap = notSig.slice().sort((a, b) => Math.abs(b.avg_fade_pnl) - Math.abs(a.avg_fade_pnl))[0];
+    const allN = rows.map(r => r.n);
+    const medianN = allN.slice().sort((a, b) => a - b)[Math.floor(allN.length / 2)];
+    if (Math.abs(trap.avg_fade_pnl) > (sig[0] ? Math.abs(sig[0].avg_fade_pnl) * 0.5 : 0) && trap.n < medianN) {
+      hasWarning = true;
+      lines.push([ICONS.warn, `<span class="tag nosig">Watch out</span> <b class="hl">${dimLabel(dim, trap)}</b> shows
+        ${fmtPips(trap.avg_fade_pnl)} pips/touch, which looks attractive on the chart, but it's based on only
+        <b class="hl">${trap.n.toLocaleString()}</b> touches (below the median of ${medianN.toLocaleString()} for this view) and is
+        <b class="hl">not significant</b> (p=${trap.p_value.toFixed(4)}). Treat it as anecdotal, not a tradeable edge — exactly the kind
+        of tall-but-thin bar to be skeptical of.`]);
+    }
+  }
+  el.className = (sig.length && !hasWarning) ? "narrative" : "narrative warn";
+  el.innerHTML = lines.map(([ico, l]) => `<p class="n-line"><span class="n-ico">${ico}</span><span>${l}</span></p>`).join("");
+}
+
+function render() {
+  const pair = document.getElementById("fPair").value;
+  const timeframe = document.getElementById("fTimeframe").value;
+  const dim = document.getElementById("fDim").value;
+  const metric = document.getElementById("fMetric").value;
+  const yFrom = parseInt(document.getElementById("fYearFrom").value, 10);
+  const yTo = parseInt(document.getElementById("fYearTo").value, 10);
+  const minN = parseInt(document.getElementById("fMinN").value, 10) || 1;
+  const sigOnly = document.getElementById("fSigOnly").checked;
+  const cPair = document.getElementById("cPair").value;
+  const cTimeframe = document.getElementById("cTimeframe").value;
+
+  const primary = getRows(dim, pair, timeframe, yFrom, yTo, minN, sigOnly);
+  const compare = cPair ? getRows(dim, cPair, cTimeframe, yFrom, yTo, minN, sigOnly) : [];
+
+  buildNarrative(dim, pair, timeframe, primary, yFrom, yTo, metric);
+
+  const totalN = primary.reduce((s, r) => s + r.n, 0);
+  const sigCount = primary.filter(r => r.significant).length;
+  document.getElementById("kpiStrip").innerHTML = [
+    [`Touches`, totalN.toLocaleString()],
+    [`Buckets shown`, primary.length],
+    [`Significant`, `${sigCount} / ${primary.length}`],
+    [`Year range`, `${yFrom}–${yTo}`],
+  ].map(([l, v]) => `<span class="kpi-chip">${l}: <b>${v}</b></span>`).join("");
+
+  document.getElementById("chartTitle").innerHTML = `<span class="h2-accent"></span>` +
+    `${DIM_LABELS[dim]} — ${PAIR_LABELS[pair] || pair.toUpperCase()} (${TF_LABELS[timeframe]})` +
+    (cPair ? ` vs ${PAIR_LABELS[cPair] || cPair.toUpperCase()} (${TF_LABELS[cTimeframe]})` : "");
+
+  const labelMap = new Map();
+  for (const r of primary) labelMap.set(dimKey(dim, r), dimLabel(dim, r));
+  for (const r of compare) if (!labelMap.has(dimKey(dim, r))) labelMap.set(dimKey(dim, r), dimLabel(dim, r));
+  const keys = sortRows(dim, [...labelMap.keys()].map(k =>
+    primary.find(r => dimKey(dim, r) === k) || compare.find(r => dimKey(dim, r) === k)
+  )).map(r => dimKey(dim, r));
+
+  const primaryByKey = new Map(primary.map(r => [dimKey(dim, r), r]));
+  const compareByKey = new Map(compare.map(r => [dimKey(dim, r), r]));
+
+  const datasets = [];
+  const legendParts = [];
+  if (!cPair) {
+    datasets.push({
+      type: "bar", label: "Primary", yAxisID: "y", borderRadius: 5, borderSkipped: false, maxBarThickness: 38,
+      data: keys.map(k => primaryByKey.has(k) ? primaryByKey.get(k)[metric] : null),
+      backgroundColor: keys.map(k => primaryByKey.has(k) ? barColor(metric, primaryByKey.get(k)) : "transparent"),
+    });
+    datasets.push({
+      type: "line", label: "N (touches)", yAxisID: "y2", borderColor: "#f5a93f", backgroundColor: "rgba(245,169,63,.08)",
+      tension: 0.3, pointRadius: 2, pointBackgroundColor: "#f5a93f", borderWidth: 1.75, fill: true,
+      data: keys.map(k => primaryByKey.has(k) ? primaryByKey.get(k).n : null),
+    });
+    legendParts.push(['#22c58b', "Significant ↑"], ["#f87171", "Significant ↓"], ["rgba(94,103,144,0.6)", "Not significant"], ["#f5a93f", "N (touches, right axis)"]);
+  } else {
+    datasets.push({
+      type: "bar", label: `${PAIR_LABELS[pair] || pair.toUpperCase()} (${TF_LABELS[timeframe]})`, yAxisID: "y",
+      borderRadius: 5, borderSkipped: false, maxBarThickness: 32,
+      data: keys.map(k => primaryByKey.has(k) ? primaryByKey.get(k)[metric] : null),
+      backgroundColor: "#5b8cff",
+    });
+    datasets.push({
+      type: "bar", label: `${PAIR_LABELS[cPair] || cPair.toUpperCase()} (${TF_LABELS[cTimeframe]})`, yAxisID: "y",
+      borderRadius: 5, borderSkipped: false, maxBarThickness: 32,
+      data: keys.map(k => compareByKey.has(k) ? compareByKey.get(k)[metric] : null),
+      backgroundColor: "#f5a93f",
+    });
+    legendParts.push(["#5b8cff", datasets[0].label], ["#f5a93f", datasets[1].label]);
+  }
+
+  document.getElementById("legend").innerHTML = legendParts.map(([color, label]) =>
+    `<span><span class="legend-dot" style="background:${color}"></span>${label}</span>`).join("");
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById("chart"), {
+    data: { labels: keys.map(k => labelMap.get(k)), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#171a24", borderColor: "#262b3c", borderWidth: 1, cornerRadius: 8, padding: 10,
+          titleColor: "#eef0f8", bodyColor: "#9aa3c0", titleFont: { weight: "600" },
+          callbacks: {
+            afterBody(items) {
+              const k = keys[items[0].dataIndex];
+              const r = primaryByKey.get(k);
+              if (!r) return "";
+              return [`N: ${r.n.toLocaleString()}`, `% Mean Rev: ${r.pct_mr.toFixed(1)}%`,
+                      `p-value: ${r.p_value.toFixed(4)}`, `Significant: ${r.significant ? "Yes" : "No"}`];
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { color: "#9aa3c0", font: { size: 10 } }, grid: { color: "rgba(38,43,60,.6)" }, border: { color: "#262b3c" } },
+        y: { ticks: { color: "#9aa3c0", font: { size: 10 } }, grid: { color: "rgba(38,43,60,.6)" }, position: "left", border: { color: "#262b3c" } },
+        y2: { display: !cPair, position: "right", ticks: { color: "#f5a93f", font: { size: 10 } }, grid: { display: false }, border: { display: false } },
+      },
+    },
+  });
+
+  renderTable(dim, primary, compare, metric);
+}
+
+let tblSort = { col: "n", dir: -1 };
+function renderTable(dim, primary, compare, metric) {
+  const cols = [
+    ["group", DIM_LABELS[dim] || dim],
+    ["scope", "Scope"],
+    ["n", "N"],
+    ["pct_mr", "% Mean Rev"],
+    ["avg_fade_pnl", "Avg Fade Pips"],
+    ["total_fade_pnl", "Total Fade Pips"],
+    ["p_value", "p-value"],
+    ["significant", '<span class="ih" title="Binomial test vs 50%. Yes = under 5% chance this is random noise (p<0.05). No = could plausibly be chance, especially with low N.">Sig?</span>'],
+  ];
+  const rows = [
+    ...primary.map(r => ({ ...r, _group: dimLabel(dim, r), _scope: "primary" })),
+    ...compare.map(r => ({ ...r, _group: dimLabel(dim, r), _scope: "compare" })),
+  ];
+  const sortCol = tblSort.col;
+  rows.sort((a, b) => {
+    const av = sortCol === "group" ? a._group : a[sortCol];
+    const bv = sortCol === "group" ? b._group : b[sortCol];
+    if (av == null) return 1; if (bv == null) return -1;
+    return av > bv ? tblSort.dir : av < bv ? -tblSort.dir : 0;
+  });
+
+  const thead = document.querySelector("#tbl thead");
+  thead.innerHTML = "<tr>" + cols.map(([key, label]) =>
+    `<th data-col="${key}">${label}${tblSort.col === key ? (tblSort.dir > 0 ? " ▲" : " ▼") : ""}</th>`).join("") + "</tr>";
+  thead.querySelectorAll("th").forEach(th => th.onclick = (e) => {
+    if (e.target.classList.contains("ih")) return;
+    const col = th.dataset.col;
+    tblSort.dir = tblSort.col === col ? -tblSort.dir : -1;
+    tblSort.col = col;
+    renderTable(dim, primary, compare, metric);
+  });
+
+  const tbody = document.querySelector("#tbl tbody");
+  tbody.innerHTML = rows.map(r => `<tr class="${r.significant ? "" : "dim"}">
+    <td>${r._group}</td>
+    <td>${r._scope === "primary" ? "Primary" : "Compare"}</td>
+    <td>${r.n.toLocaleString()}</td>
+    <td class="${r.pct_mr >= 50 ? "pos" : "neg"}">${r.pct_mr.toFixed(1)}%</td>
+    <td class="${r.avg_fade_pnl >= 0 ? "pos" : "neg"}">${r.avg_fade_pnl.toFixed(1)}</td>
+    <td class="${r.total_fade_pnl >= 0 ? "pos" : "neg"}">${Math.round(r.total_fade_pnl).toLocaleString()}</td>
+    <td>${r.p_value.toFixed(4)}</td>
+    <td><span class="badge ${r.significant ? "yes" : "no"}">${r.significant ? "YES" : "no"}</span></td>
+  </tr>`).join("");
+
+  document.getElementById("status").textContent = `${rows.length} row(s) shown. Faded rows = not statistically significant.`;
+}
+
+function lbCard(title, value, sub) {
+  const meta = LB_META[title] || LB_META["Best Pair"];
+  return `<div class="lb-card" style="--accent:${meta.accent}">
+    <div class="lb-icon" style="--icon-bg:${meta.bg};--icon-fg:${meta.fg}">${ICONS[meta.icon]}</div>
+    <div class="lb-lbl">${title}</div>
+    <div class="lb-val">${value}</div>
+    <div class="lb-sub">${sub}</div>
+  </div>`;
+}
+
+function buildLeaderboard() {
+  const wrap = document.getElementById("leaderboard");
+  const minN = 100;
+  const cards = [];
+
+  const bestOf = (rows) => {
+    const sig = rows.filter(r => r.n >= minN && r.significant).sort((a, b) => b.avg_fade_pnl - a.avg_fade_pnl);
+    return sig.length ? sig[0] : null;
+  };
+
+  const byPairDaily = mergeRows(bundle.by_pair.filter(r => r.timeframe === "daily"), r => r.pair);
+  const bp = bestOf(byPairDaily);
+  if (bp) cards.push(lbCard("Best Pair", bp.pair.toUpperCase(), `${fmtPips(bp.avg_fade_pnl)} pips/touch · n=${bp.n.toLocaleString()} · ${bp.pct_mr.toFixed(0)}% reversion`));
+
+  const byLevelDaily = mergeRows((bundle.tables.level || []).filter(r => r.pair === "ALL" && r.timeframe === "daily"), r => r.level);
+  const bl = bestOf(byLevelDaily);
+  if (bl) cards.push(lbCard("Best Level", (bl.level >= 0 ? "+" : "") + bl.level.toFixed(2), `${fmtPips(bl.avg_fade_pnl)} pips/touch · n=${bl.n.toLocaleString()}`));
+
+  const byDow = mergeRows((bundle.tables.dow || []).filter(r => r.pair === "ALL" && r.timeframe === "daily"), r => r.dow);
+  const bd = bestOf(byDow);
+  if (bd) cards.push(lbCard("Best Day", bd.dow, `${fmtPips(bd.avg_fade_pnl)} pips/touch · n=${bd.n.toLocaleString()}`));
+
+  const bySession = mergeRows((bundle.tables.session || []).filter(r => r.pair === "ALL" && r.timeframe === "daily"), r => r.session);
+  const bs = bestOf(bySession);
+  if (bs) cards.push(lbCard("Best Session", bs.session, `${fmtPips(bs.avg_fade_pnl)} pips/touch · n=${bs.n.toLocaleString()}`));
+
+  const byMonth = mergeRows((bundle.tables.month || []).filter(r => r.pair === "ALL" && r.timeframe === "daily"), r => r.month);
+  const bm = bestOf(byMonth);
+  if (bm) cards.push(lbCard("Best Month", bm.month, `${fmtPips(bm.avg_fade_pnl)} pips/touch · n=${bm.n.toLocaleString()}`));
+
+  const byConf = mergeRows((bundle.tables.confluence_bucket || []).filter(r => r.pair === "ALL" && r.timeframe === "daily"), r => r.confluence_bucket);
+  const bc = bestOf(byConf);
+  if (bc) cards.push(lbCard("Best Confluence Tightness", bc.confluence_bucket, `${fmtPips(bc.avg_fade_pnl)} pips/touch · n=${bc.n.toLocaleString()}`));
+
+  wrap.innerHTML = cards.join("") || `<div class="lb-card"><div class="lb-lbl">No significant findings</div><div class="lb-val">at n≥${minN}</div></div>`;
+}
+
+async function main() {
+  const res = await fetch("./site_data.json");
+  bundle = await res.json();
+  document.getElementById("generatedAt").textContent = "Generated " + new Date(bundle.generated_at).toLocaleString();
+  populateSelectors();
+  buildHeroStats();
+  buildLeaderboard();
+  for (const id of ["fPair", "fTimeframe", "fDim", "fMetric", "fYearFrom", "fYearTo", "fMinN", "fSigOnly", "cPair", "cTimeframe"]) {
+    document.getElementById(id).addEventListener("change", render);
+  }
+  render();
+  document.getElementById("loadOverlay").classList.add("hide");
+}
+main().catch(e => {
+  document.getElementById("status").textContent = "Failed to load site_data.json: " + e.message;
+  document.getElementById("loadOverlay").innerHTML = `<div class="lo-txt">Failed to load: ${e.message}</div>`;
+  console.error(e);
+});
+</script>
+</body>
+</html>
