@@ -352,6 +352,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn bt" data-tab="backtest" onclick="switchTab('backtest')">Backtest Bot</button>
     <button class="tab-btn rg" data-tab="regime"   onclick="switchTab('regime')">Regime Bot</button>
     <button class="tab-btn rg" data-tab="regimev2" onclick="switchTab('regimev2')">Regime Bot V2</button>
+    <button class="tab-btn" data-tab="regimev7" onclick="switchTab('regimev7')" style="color:#14b8a6" id="rgv7TabBtn">Regime Bot V7</button>
     <button class="tab-btn" data-tab="dynanchor" onclick="switchTab('dynanchor')" style="color:#f59e0b" id="daTabBtn">⚓ Dyn Anchor</button>
     <button class="tab-btn" data-tab="beta" onclick="switchTab('beta')" style="color:#9d96f0" id="betaTabBtn">β Beta Targets</button>
     <button class="tab-btn" data-tab="gold" onclick="switchTab('gold')" style="color:#f4c430" id="goldTabBtn">⚡ Gold Bot</button>
@@ -1680,6 +1681,32 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     </div>
 
   </div><!-- /tab-regimev2 -->
+
+  <!-- ══════════════════════════════════════════════════════ REGIME V7 TAB -->
+  <div id="tab-regimev7" class="tab-pane">
+
+    <div class="bot-banner" style="background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.25)">
+      <div class="bot-banner-icon">🔮</div>
+      <div>
+        <div class="bot-banner-title" style="color:#14b8a6">HMM Regime Bot V7</div>
+        <div class="bot-banner-sub">V6 signal pipeline + regime-exit debounce + optional HTF confirm · Entry/exit config audit log for backtest validation · RegimeV7/regime_bot_v7.py · Config in KV</div>
+      </div>
+    </div>
+
+    <!-- Usage notes -->
+    <div class="card" style="background:rgba(20,184,166,0.08);border-color:rgba(20,184,166,0.25)">
+      <div class="card-title" style="color:#14b8a6">Running V7</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.8;font-family:'DM Mono',monospace">
+        python RegimeV7/regime_bot_v7.py                                           <span style="color:var(--text3)"># paper mode</span><br>
+        python RegimeV7/regime_bot_v7.py --live                                    <span style="color:var(--text3)"># live MT5</span><br>
+        python RegimeV7/regime_bot_v7.py --dashboard-url https://your-url.app --live
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">
+        Config and credentials are managed via the <code>regime_bot_v7_config</code> / <code>regime_bot_v7_credentials</code> KV keys (no dashboard panel yet — edit via the KV API or another bot's panel as a template). Every entry/exit is written to the <code>regime_bot_v7_audit_log</code> KV key with the full config snapshot active at the time, for comparing live/paper results against backtest predictions. Log prefix: <code>[RGV7]</code> · Magic number: <code>20260007</code>
+      </div>
+    </div>
+
+  </div><!-- /tab-regimev7 -->
 
   <!-- ══════════════════════════════════════════════════════ DYN ANCHOR TAB -->
   <div class="tab-pane" id="tab-dynanchor">
