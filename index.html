@@ -65,6 +65,8 @@
       <a href="forecaster-backtest.html" target="_blank" style="color:#f59e0b">📈 Fcst BT</a>
       <a href="macro-equity-backtest.html" target="_blank" style="color:#818cf8">📊 Macro Equity BT</a>
       <a href="liquidity-pulse.html" target="_blank" style="color:#06b6d4">💧 Liquidity Pulse</a>
+      <a href="vix-vol-carry-backtest.html" target="_blank" style="color:#ff00aa">🌋 VIX Vol-Carry BT</a>
+      <a href="zscore-backtest.html" target="_blank" style="color:#fbbf24">⚡ Yield Z-Score BT</a>
       <a href="diversification.html" target="_blank" style="color:#14b8a6">🔗 Diversification</a>
       <a href="hub.html" target="_blank" style="color:#14b8a6;font-weight:700">⬡ Risk Hub</a>
     </div>
@@ -1262,6 +1264,401 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
           <div class="cfg-field">
             <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone pt cap</span><span class="cfg-label-type">pts</span></div>
             <input class="cfg-input" type="number" id="nas100_enhPivPipCap" step="10" min="10" max="1000" placeholder="150">
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-divider"></div>
+
+      <!-- SPX500 -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">
+          SPX500 <span class="cfg-section-badge">SPX500_USD — points, not pips</span>
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Confluence points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="spx500_confluencePips" step="5" min="5" max="200" placeholder="25">
+            <div class="cfg-hint">Points distance for two Fibs to cluster. Default 25 = ~0.5% at 5000.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Cluster merge factor</span><span class="cfg-label-type">0–1</span></div>
+            <input class="cfg-input" type="number" id="spx500_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
+            <div class="cfg-hint">Default 0.30 = 7.5-point merge radius at 25-point threshold.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Overnight min points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="spx500_asiaMinPips" step="5" min="5" max="200" placeholder="15">
+            <div class="cfg-hint">Min overnight range in points before Fib matching is enabled. Default 15.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib lookback (days)</span><span class="cfg-label-type">days</span></div>
+            <input class="cfg-input" type="number" id="spx500_structuralLookbackDays" step="1" min="5" max="90" placeholder="30">
+            <div class="cfg-hint">Days of 30m bars for structural sweep. Default 30.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib pivot N</span><span class="cfg-label-type">bars</span></div>
+            <input class="cfg-input" type="number" id="spx500_structuralPivotN" step="1" min="2" max="20" placeholder="5">
+            <div class="cfg-hint">N-bar dominance for swing pivot. Default 5.</div>
+          </div>
+        </div>
+        <div class="cfg-divider" style="margin:8px 0 10px"></div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="spx500_oiAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.12">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="spx500_oiPipCap" step="5" min="5" max="500" placeholder="50">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="spx500_pivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="spx500_pivPipCap" step="5" min="5" max="500" placeholder="40">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="spx500_rngAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.08">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="spx500_rngPipCap" step="5" min="5" max="500" placeholder="25">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="spx500_gexAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.15">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="spx500_gexPipCap" step="5" min="5" max="500" placeholder="60">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="spx500_enhPivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="spx500_enhPivPipCap" step="5" min="5" max="500" placeholder="40">
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-divider"></div>
+
+      <!-- DAX -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">
+          DAX <span class="cfg-section-badge">DE30_USD — points, not pips</span>
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Confluence points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="de30_confluencePips" step="5" min="5" max="500" placeholder="80">
+            <div class="cfg-hint">Points distance for two Fibs to cluster. Default 80 = ~0.45% at 18000.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Cluster merge factor</span><span class="cfg-label-type">0–1</span></div>
+            <input class="cfg-input" type="number" id="de30_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
+            <div class="cfg-hint">Default 0.30 = 24-point merge radius at 80-point threshold.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Overnight min points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="de30_asiaMinPips" step="5" min="5" max="300" placeholder="40">
+            <div class="cfg-hint">Min overnight range in points before Fib matching is enabled. Default 40.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib lookback (days)</span><span class="cfg-label-type">days</span></div>
+            <input class="cfg-input" type="number" id="de30_structuralLookbackDays" step="1" min="5" max="90" placeholder="30">
+            <div class="cfg-hint">Days of 30m bars for structural sweep. Default 30.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib pivot N</span><span class="cfg-label-type">bars</span></div>
+            <input class="cfg-input" type="number" id="de30_structuralPivotN" step="1" min="2" max="20" placeholder="5">
+            <div class="cfg-hint">N-bar dominance for swing pivot. Default 5.</div>
+          </div>
+        </div>
+        <div class="cfg-divider" style="margin:8px 0 10px"></div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="de30_oiAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.12">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="de30_oiPipCap" step="10" min="10" max="1000" placeholder="150">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="de30_pivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="de30_pivPipCap" step="10" min="10" max="1000" placeholder="120">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="de30_rngAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.08">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="de30_rngPipCap" step="10" min="10" max="1000" placeholder="80">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="de30_gexAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.15">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="de30_gexPipCap" step="10" min="10" max="1000" placeholder="200">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="de30_enhPivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="de30_enhPivPipCap" step="10" min="10" max="1000" placeholder="120">
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-divider"></div>
+
+      <!-- FTSE100 -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">
+          FTSE100 <span class="cfg-section-badge">UK100_GBP — points, not pips</span>
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Confluence points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="uk100_confluencePips" step="5" min="5" max="300" placeholder="40">
+            <div class="cfg-hint">Points distance for two Fibs to cluster. Default 40 = ~0.5% at 8000.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Cluster merge factor</span><span class="cfg-label-type">0–1</span></div>
+            <input class="cfg-input" type="number" id="uk100_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
+            <div class="cfg-hint">Default 0.30 = 12-point merge radius at 40-point threshold. Raise to 0.50 to reduce confluence count.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Overnight min points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="uk100_asiaMinPips" step="5" min="5" max="200" placeholder="25">
+            <div class="cfg-hint">Min overnight range in points before Fib matching is enabled. Default 25.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib lookback (days)</span><span class="cfg-label-type">days</span></div>
+            <input class="cfg-input" type="number" id="uk100_structuralLookbackDays" step="1" min="5" max="90" placeholder="30">
+            <div class="cfg-hint">Days of 30m bars for structural sweep. Default 30.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib pivot N</span><span class="cfg-label-type">bars</span></div>
+            <input class="cfg-input" type="number" id="uk100_structuralPivotN" step="1" min="2" max="20" placeholder="5">
+            <div class="cfg-hint">N-bar dominance for swing pivot. Default 5.</div>
+          </div>
+        </div>
+        <div class="cfg-divider" style="margin:8px 0 10px"></div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="uk100_oiAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.12">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="uk100_oiPipCap" step="5" min="5" max="500" placeholder="80">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="uk100_pivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="uk100_pivPipCap" step="5" min="5" max="500" placeholder="60">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="uk100_rngAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.08">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="uk100_rngPipCap" step="5" min="5" max="500" placeholder="40">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="uk100_gexAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.15">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="uk100_gexPipCap" step="5" min="5" max="500" placeholder="100">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="uk100_enhPivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="uk100_enhPivPipCap" step="5" min="5" max="500" placeholder="60">
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-divider"></div>
+
+      <!-- DOW30 -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">
+          DOW30 <span class="cfg-section-badge">US30_USD — points, not pips</span>
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Confluence points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us30_confluencePips" step="5" min="5" max="500" placeholder="60">
+            <div class="cfg-hint">Points distance for two Fibs to cluster. Default 60 = ~0.15% at 40000.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Cluster merge factor</span><span class="cfg-label-type">0–1</span></div>
+            <input class="cfg-input" type="number" id="us30_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
+            <div class="cfg-hint">Default 0.30 = 18-point merge radius at 60-point threshold.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Overnight min points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us30_asiaMinPips" step="5" min="5" max="300" placeholder="30">
+            <div class="cfg-hint">Min overnight range in points before Fib matching is enabled. Default 30.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib lookback (days)</span><span class="cfg-label-type">days</span></div>
+            <input class="cfg-input" type="number" id="us30_structuralLookbackDays" step="1" min="5" max="90" placeholder="30">
+            <div class="cfg-hint">Days of 30m bars for structural sweep. Default 30.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib pivot N</span><span class="cfg-label-type">bars</span></div>
+            <input class="cfg-input" type="number" id="us30_structuralPivotN" step="1" min="2" max="20" placeholder="5">
+            <div class="cfg-hint">N-bar dominance for swing pivot. Default 5.</div>
+          </div>
+        </div>
+        <div class="cfg-divider" style="margin:8px 0 10px"></div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us30_oiAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.12">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us30_oiPipCap" step="10" min="10" max="1000" placeholder="100">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us30_pivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us30_pivPipCap" step="10" min="10" max="1000" placeholder="80">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us30_rngAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.08">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us30_rngPipCap" step="10" min="10" max="1000" placeholder="60">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us30_gexAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.15">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us30_gexPipCap" step="10" min="10" max="1000" placeholder="120">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us30_enhPivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us30_enhPivPipCap" step="10" min="10" max="1000" placeholder="80">
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-divider"></div>
+
+      <!-- RUSSELL 2000 -->
+      <div class="cfg-section">
+        <div class="cfg-section-title">
+          Russell 2000 <span class="cfg-section-badge">US2000_USD — points, not pips</span>
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Confluence points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us2000_confluencePips" step="1" min="1" max="100" placeholder="15">
+            <div class="cfg-hint">Points distance for two Fibs to cluster. Default 15 = ~0.75% at 2000.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Cluster merge factor</span><span class="cfg-label-type">0–1</span></div>
+            <input class="cfg-input" type="number" id="us2000_mergeFactor" step="0.05" min="0.10" max="0.80" placeholder="0.30">
+            <div class="cfg-hint">Default 0.30 = 4.5-point merge radius at 15-point threshold.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Overnight min points</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us2000_asiaMinPips" step="1" min="1" max="100" placeholder="10">
+            <div class="cfg-hint">Min overnight range in points before Fib matching is enabled. Default 10.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib lookback (days)</span><span class="cfg-label-type">days</span></div>
+            <input class="cfg-input" type="number" id="us2000_structuralLookbackDays" step="1" min="5" max="90" placeholder="30">
+            <div class="cfg-hint">Days of 30m bars for structural sweep. Default 30.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Structural Fib pivot N</span><span class="cfg-label-type">bars</span></div>
+            <input class="cfg-input" type="number" id="us2000_structuralPivotN" step="1" min="2" max="20" placeholder="5">
+            <div class="cfg-hint">N-bar dominance for swing pivot. Default 5.</div>
+          </div>
+        </div>
+        <div class="cfg-divider" style="margin:8px 0 10px"></div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us2000_oiAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.12">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">OI Wall pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us2000_oiPipCap" step="1" min="1" max="200" placeholder="30">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us2000_pivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Pivot pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us2000_pivPipCap" step="1" min="1" max="200" placeholder="25">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us2000_rngAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.08">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Range boundary pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us2000_rngPipCap" step="1" min="1" max="200" placeholder="15">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us2000_gexAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.15">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Gamma flip pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us2000_gexPipCap" step="1" min="1" max="200" placeholder="35">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone ATR fraction</span><span class="cfg-label-type">fraction</span></div>
+            <input class="cfg-input" type="number" id="us2000_enhPivAtrFrac" step="0.01" min="0.01" max="1" placeholder="0.10">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Fib pivot zone pt cap</span><span class="cfg-label-type">pts</span></div>
+            <input class="cfg-input" type="number" id="us2000_enhPivPipCap" step="1" min="1" max="200" placeholder="25">
           </div>
         </div>
       </div>

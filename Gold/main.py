@@ -959,10 +959,11 @@ class GoldBot:
             'squeeze_ratio':  self.squeeze_ratio,
             'mt5_positions':        _serialize_open_positions(MAGIC) or _serialize_paper_trade(self.bot_state),
             'today_closed_trades': _serialize_closed_trades(MAGIC),
-            'armed_zone_id':      self.bot_state.armed_zone_id,
-            'armed_zone_variant': armed_zone_obj.zone_variant if armed_zone_obj else None,
-            'armed_zone_window':  (f'{armed_zone_obj.gp_low:.1f}–{armed_zone_obj.gp_high:.1f}'
-                                   if armed_zone_obj else None),
+            'armed_zone_id':       self.bot_state.armed_zone_id,
+            'armed_zone_variant':  armed_zone_obj.zone_variant if armed_zone_obj else None,
+            'armed_zone_window':   (f'{armed_zone_obj.gp_low:.1f}–{armed_zone_obj.gp_high:.1f}'
+                                    if armed_zone_obj else None),
+            'zone_gp_entry_time':  self.bot_state.zone_gp_entry_time,
         }
         if self.sess_lvls:
             status['touched']          = _touched_pivot_levels(self.sess_lvls)
@@ -978,8 +979,23 @@ class GoldBot:
         POCs directly on the chart — no manual configuration needed.
         """
         try:
+            # Preserve detected_at across cycles so the frontend can show when
+            # each zone was first identified (before or after price reached it).
+            existing_detected: dict[str, str] = {}
+            try:
+                old = _kv_get('gold_bot_zones', self.base_url)
+                if old:
+                    for ez in old.get('zones', []):
+                        if ez.get('zone_id') and ez.get('detected_at'):
+                            existing_detected[ez['zone_id']] = ez['detected_at']
+            except Exception:
+                pass
+
+            now_iso = datetime.now(timezone.utc).isoformat()
+
             payload = {
-                'timestamp':      datetime.now(timezone.utc).isoformat(),
+                'timestamp':      now_iso,
+                'atr':            round(self.atr_15m, 2),
                 'htf_bias':       self.htf_bias.bias if self.htf_bias else 'UNKNOWN',
                 'htf_confidence': round(self.htf_bias.confidence, 2) if self.htf_bias else 0.0,
                 'session':        self.sess_lvls.current_session if self.sess_lvls else 'UNKNOWN',
@@ -1012,6 +1028,8 @@ class GoldBot:
                         'score':             z.score,
                         'htf_aligned':       z.htf_aligned,
                         'composition':       z.composition,
+                        # Preserved from previous cycle if zone already existed
+                        'detected_at':       existing_detected.get(z.zone_id, now_iso),
                     }
                     for z in self.zones if z.active
                 ],

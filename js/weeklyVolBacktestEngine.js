@@ -31,7 +31,7 @@ import { readFileSync, existsSync }             from 'fs';
 import path                                       from 'path';
 import { fileURLToPath }                          from 'url';
 import {
-  fetchD1, ewmaVarSeries, hvVarSeries,
+  fetchD1, ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas,
   ASSET_PARAMS, BM_P50, BM_P75, HN_P50, HN_P75,
 } from './volBacktestEngine.js';
 import {
@@ -444,16 +444,23 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
         } = opts;
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  // Build full vol var series (O(n), avoids O(n²) per-bar rebuild).
-  // commodity → HV20, index → EWMA(λ=0.90), fx → HV30 — mirrors computeForecast() in volForecast.js.
+  // Pre-compute vol sigma series O(n) — out[i] = sigma for predicting bar i's range.
+  // commodity→HV20, index→GARCH(1,1), fx→YZ(30) — mirrors computeForecast() in volForecast.js.
   const closes  = bars.map(b => b.close);
-  const logRets = [];
-  for (let i = 1; i < closes.length; i++) logRets.push(Math.log(closes[i] / closes[i - 1]));
-  const volVars = assetClass === 'commodity' ? hvVarSeries(logRets, 20)
-                : assetClass === 'index'     ? ewmaVarSeries(logRets, 0.90)
-                :                              hvVarSeries(logRets, 30);
-  // volVars[i] = variance after observing logRets[0..i], corresponds to close of bars[i+1].
-  // To predict range for bars[k]: use volVars[k-2] (var through bars[k-1]).
+  let volSigmas;
+  if (assetClass === 'commodity') {
+    const logRets = [];
+    for (let i = 1; i < closes.length; i++) logRets.push(Math.log(closes[i] / closes[i - 1]));
+    const hvVars = hvVarSeries(logRets, 20);
+    volSigmas = new Float64Array(bars.length);
+    for (let i = 2; i < bars.length; i++) volSigmas[i] = Math.sqrt(Math.max(hvVars[i - 2], 1e-12));
+  } else if (assetClass === 'index') {
+    volSigmas = garchSigmas(bars, (ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx).garch_omega ?? 4.76e-6);
+  } else {
+    const yzFull = yzVolSeries(bars, 30);
+    volSigmas = new Float64Array(bars.length);
+    for (let i = 1; i < bars.length; i++) volSigmas[i] = yzFull[i - 1] || 1e-6;
+  }
 
   const dateToIdx = new Map();
   for (let i = 0; i < bars.length; i++) dateToIdx.set(bars[i].date, i);
@@ -541,9 +548,8 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
       carryTrades.push(...stillOpen);
     }
 
-    // Vol var at Monday open = computed through all closes before Monday
-    const varIdx = Math.max(0, mondayIdx - 2);
-    const sigmaD = Math.sqrt(Math.max(volVars[varIdx] ?? 0, 1e-12));
+    // Vol sigma for Monday = pre-computed through Friday's close (no lookahead)
+    const sigmaD = Math.max(volSigmas[mondayIdx] ?? 1e-6, 1e-6);
     const sigmaW = sigmaD * SQRT5;
 
     const hl50pct  = BM_P50 * p.hl_50_corr  * sigmaW * 100;

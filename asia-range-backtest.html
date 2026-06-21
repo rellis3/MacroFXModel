@@ -1468,7 +1468,7 @@ function _renderModuleLayers(trade) {
   const ep  = trade.entry_price ?? 0;
   const tp  = trade.tp_price    ?? ep;
   const sl  = trade.sl_price    ?? ep;
-  const rng = trade.asia_range  ?? (Math.abs(ep - sl) * 3) || Math.abs(ep - tp) * 3 || 0.01;
+  const rng = trade.asia_range ?? ((Math.abs(ep - sl) * 3) || Math.abs(ep - tp) * 3 || 0.01);
   const lo  = Math.min(ep, tp, sl) - rng * 1.5;
   const hi  = Math.max(ep, tp, sl) + rng * 1.5;
 

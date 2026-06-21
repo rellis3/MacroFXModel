@@ -253,3 +253,133 @@
 [2026-06-15 18:44:30] [MEBot] [INFO] Cycle complete in 4.9s — sleeping 3595s
 [2026-06-15 19:16:59] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
 [2026-06-15 19:17:01] [MEBot] [INFO] Cycle complete in 4.3s — sleeping 3596s
+[2026-06-15 19:44:27] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 19:44:30] [MEBot] [INFO] Cycle complete in 5.8s — sleeping 3594s
+[2026-06-15 20:17:00] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 20:17:03] [MEBot] [INFO] Cycle complete in 5.6s — sleeping 3594s
+[2026-06-15 20:44:27] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 20:44:29] [MEBot] [INFO] Cycle complete in 4.1s — sleeping 3596s
+[2026-06-15 21:16:59] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 21:17:01] [MEBot] [INFO] Cycle complete in 3.7s — sleeping 3596s
+[2026-06-15 21:44:26] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 21:44:27] [MEBot] [INFO] Cycle complete in 2.3s — sleeping 3598s
+[2026-06-15 22:16:59] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 22:17:00] [MEBot] [INFO] Cycle complete in 2.6s — sleeping 3597s
+[2026-06-15 22:44:27] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 22:44:28] [MEBot] [INFO] Cycle complete in 3.3s — sleeping 3597s
+[2026-06-15 23:16:58] [MEBot] [INFO] Fetching VIX data…
+[2026-06-15 23:16:59] [MEBot] [INFO] VIX: 300 bars, latest=16.2
+[2026-06-15 23:16:59] [MEBot] [INFO] No rebalance today (2026-06-15). Last: 2026-06
+[2026-06-15 23:17:00] [MEBot] [INFO] Cycle complete in 2.5s — sleeping 3598s
+[2026-06-17 16:38:23] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-17 16:38:28] [MEBot] [WARNING] KV credentials not found (key=macro_equity_credentials) — will use env vars / already-open MT5 terminal
+[2026-06-17 16:38:28] [MEBot] [INFO] MT5 connected: account=10011043764  balance=85996.55  server=MetaQuotes-Demo
+[2026-06-17 16:38:31] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=False  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-17 16:38:31] [MEBot] [INFO] Fetching VIX data…
+[2026-06-17 16:38:35] [MEBot] [INFO] VIX: 300 bars, latest=16.9
+[2026-06-17 16:38:35] [MEBot] [INFO] No rebalance today (2026-06-17). Last: never
+[2026-06-17 16:38:39] [MEBot] [INFO] Cycle complete in 8.5s — sleeping 3592s
+[2026-06-17 17:38:32] [MEBot] [INFO] No rebalance today (2026-06-17). Last: never
+[2026-06-17 17:38:34] [MEBot] [INFO] Cycle complete in 3.3s — sleeping 3597s
+[2026-06-17 18:38:32] [MEBot] [INFO] No rebalance today (2026-06-17). Last: never
+[2026-06-17 18:38:34] [MEBot] [INFO] Cycle complete in 3.0s — sleeping 3597s
+[2026-06-17 19:38:32] [MEBot] [INFO] No rebalance today (2026-06-17). Last: never
+[2026-06-17 19:38:34] [MEBot] [INFO] Cycle complete in 2.9s — sleeping 3597s
+[2026-06-17 20:38:32] [MEBot] [INFO] No rebalance today (2026-06-17). Last: never
+[2026-06-17 20:38:33] [MEBot] [INFO] Cycle complete in 2.2s — sleeping 3598s
+[2026-06-17 21:38:32] [MEBot] [INFO] No rebalance today (2026-06-17). Last: never
+[2026-06-17 21:38:33] [MEBot] [INFO] Cycle complete in 2.3s — sleeping 3598s
+[2026-06-17 22:38:32] [MEBot] [INFO] No rebalance today (2026-06-17). Last: never
+[2026-06-17 22:38:33] [MEBot] [INFO] Cycle complete in 2.6s — sleeping 3597s
+[2026-06-17 23:38:32] [MEBot] [INFO] Fetching VIX data…
+[2026-06-17 23:38:33] [MEBot] [INFO] VIX: 300 bars, latest=18.4
+[2026-06-17 23:38:33] [MEBot] [INFO] No rebalance today (2026-06-17). Last: never
+[2026-06-17 23:38:35] [MEBot] [INFO] Cycle complete in 4.2s — sleeping 3596s
+[2026-06-18 00:38:32] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 00:38:33] [MEBot] [INFO] Cycle complete in 2.4s — sleeping 3598s
+[2026-06-18 01:38:32] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 01:38:33] [MEBot] [INFO] Cycle complete in 2.6s — sleeping 3597s
+[2026-06-18 02:38:32] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 02:38:34] [MEBot] [INFO] Cycle complete in 3.3s — sleeping 3597s
+[2026-06-18 03:38:32] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 03:38:33] [MEBot] [INFO] Cycle complete in 2.4s — sleeping 3598s
+[2026-06-18 04:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 04:38:34] [MEBot] [INFO] Cycle complete in 3.2s — sleeping 3597s
+[2026-06-18 05:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 05:38:34] [MEBot] [INFO] Cycle complete in 2.7s — sleeping 3597s
+[2026-06-18 06:38:33] [MEBot] [INFO] Fetching VIX data…
+[2026-06-18 06:38:34] [MEBot] [INFO] VIX: 300 bars, latest=18.4
+[2026-06-18 06:38:34] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 06:38:36] [MEBot] [INFO] Cycle complete in 4.4s — sleeping 3596s
+[2026-06-18 07:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 07:38:35] [MEBot] [INFO] Cycle complete in 3.5s — sleeping 3597s
+[2026-06-18 08:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 08:38:35] [MEBot] [INFO] Cycle complete in 3.6s — sleeping 3596s
+[2026-06-18 09:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 09:38:34] [MEBot] [INFO] Cycle complete in 2.9s — sleeping 3597s
+[2026-06-18 10:38:32] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 10:38:33] [MEBot] [INFO] Cycle complete in 2.1s — sleeping 3598s
+[2026-06-18 11:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 11:38:34] [MEBot] [INFO] Cycle complete in 2.8s — sleeping 3597s
+[2026-06-18 12:38:32] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 12:38:34] [MEBot] [INFO] Cycle complete in 2.7s — sleeping 3597s
+[2026-06-18 13:38:33] [MEBot] [INFO] Fetching VIX data…
+[2026-06-18 13:38:34] [MEBot] [INFO] VIX: 300 bars, latest=17.2
+[2026-06-18 13:38:34] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 13:38:36] [MEBot] [INFO] Cycle complete in 4.4s — sleeping 3596s
+[2026-06-18 14:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 14:38:34] [MEBot] [INFO] Cycle complete in 2.6s — sleeping 3597s
+[2026-06-18 15:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 15:38:34] [MEBot] [INFO] Cycle complete in 2.2s — sleeping 3598s
+[2026-06-18 16:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 16:38:33] [MEBot] [INFO] Cycle complete in 1.9s — sleeping 3598s
+[2026-06-18 17:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 17:38:34] [MEBot] [INFO] Cycle complete in 2.4s — sleeping 3598s
+[2026-06-18 18:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 18:38:34] [MEBot] [INFO] Cycle complete in 2.2s — sleeping 3598s
+[2026-06-18 19:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 19:38:34] [MEBot] [INFO] Cycle complete in 3.0s — sleeping 3597s
+[2026-06-18 20:38:32] [MEBot] [INFO] Fetching VIX data…
+[2026-06-18 20:38:33] [MEBot] [INFO] VIX: 300 bars, latest=16.8
+[2026-06-18 20:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 20:38:34] [MEBot] [INFO] Cycle complete in 2.3s — sleeping 3598s
+[2026-06-18 21:38:32] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 21:38:33] [MEBot] [INFO] Cycle complete in 1.5s — sleeping 3598s
+[2026-06-18 22:38:32] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 22:38:33] [MEBot] [INFO] Cycle complete in 1.5s — sleeping 3599s
+[2026-06-18 23:38:33] [MEBot] [INFO] No rebalance today (2026-06-18). Last: never
+[2026-06-18 23:38:33] [MEBot] [INFO] Cycle complete in 1.5s — sleeping 3598s
+[2026-06-19 00:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 00:38:33] [MEBot] [INFO] Cycle complete in 1.7s — sleeping 3598s
+[2026-06-19 01:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 01:38:33] [MEBot] [INFO] Cycle complete in 1.5s — sleeping 3598s
+[2026-06-19 02:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 02:38:33] [MEBot] [INFO] Cycle complete in 1.5s — sleeping 3598s
+[2026-06-19 03:38:33] [MEBot] [INFO] Fetching VIX data…
+[2026-06-19 03:38:33] [MEBot] [INFO] VIX: 300 bars, latest=16.4
+[2026-06-19 03:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 03:38:34] [MEBot] [INFO] Cycle complete in 2.2s — sleeping 3598s
+[2026-06-19 04:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 04:38:33] [MEBot] [INFO] Cycle complete in 1.6s — sleeping 3598s
+[2026-06-19 05:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 05:38:33] [MEBot] [INFO] Cycle complete in 1.5s — sleeping 3598s
+[2026-06-19 06:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 06:38:33] [MEBot] [INFO] Cycle complete in 1.6s — sleeping 3598s
+[2026-06-19 07:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 07:38:33] [MEBot] [INFO] Cycle complete in 1.5s — sleeping 3598s
+[2026-06-19 08:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 08:38:34] [MEBot] [INFO] Cycle complete in 2.1s — sleeping 3598s
+[2026-06-19 09:38:34] [MEBot] [INFO] Fetching VIX data…
+[2026-06-19 09:38:35] [MEBot] [INFO] VIX: 300 bars, latest=16.9
+[2026-06-19 09:38:35] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 09:38:37] [MEBot] [INFO] Cycle complete in 4.6s — sleeping 3595s
+[2026-06-19 10:38:35] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 10:38:37] [MEBot] [INFO] Cycle complete in 5.3s — sleeping 3595s
+[2026-06-19 11:38:34] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 11:38:35] [MEBot] [INFO] Cycle complete in 2.6s — sleeping 3597s
+[2026-06-19 12:38:33] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 12:38:35] [MEBot] [INFO] Cycle complete in 2.5s — sleeping 3597s
+[2026-06-19 13:38:34] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 13:38:36] [MEBot] [INFO] Cycle complete in 4.2s — sleeping 3596s
+[2026-06-19 14:38:34] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
+[2026-06-19 14:38:36] [MEBot] [INFO] Cycle complete in 3.6s — sleeping 3596s

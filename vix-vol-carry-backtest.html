@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIX Vol-Carry Backtester (P8)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+#vcApp { padding: 0 20px 60px; max-width: 1340px; margin: 0 auto; }
+
+.bt-kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px; }
+@media(max-width:900px){.bt-kpi-grid{grid-template-columns:repeat(2,1fr);}}
+.bt-kpi { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:16px 18px 14px;display:flex;flex-direction:column;gap:4px;transition:border-color .2s; }
+.bt-kpi:hover{border-color:var(--border2);}
+.bt-kpi-label { font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace; }
+.bt-kpi-value { font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);line-height:1.1; }
+.bt-kpi-value.green{color:var(--green);} .bt-kpi-value.red{color:var(--red);}
+.bt-kpi-value.blue{color:var(--blue);}   .bt-kpi-value.amber{color:var(--amber);}
+.bt-kpi-sub { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+
+.bt-sec-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px; }
+@media(max-width:900px){.bt-sec-grid{grid-template-columns:repeat(2,1fr);}}
+.bt-sec { background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between; }
+.bt-sec-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+.bt-sec-val { font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text); }
+.bt-sec-val.pos{color:var(--green);} .bt-sec-val.neg{color:var(--red);}
+
+.bt-card { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px; }
+.bt-card-hdr { padding:12px 18px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px; }
+.bt-card-body { padding:18px; }
+.bt-chart-wrap { position:relative;height:260px; }
+.bt-two-col { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px; }
+@media(max-width:900px){.bt-two-col{grid-template-columns:1fr;}}
+
+.bt-tbl { width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px; }
+.bt-tbl th { padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap; }
+.bt-tbl td { padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap; }
+.bt-tbl tr:last-child td{border-bottom:none;}
+.bt-tbl tr:hover td{background:var(--s2);}
+.bt-tbl td.num{text-align:right;} .bt-tbl td.pos{color:var(--green);} .bt-tbl td.neg{color:var(--red);}
+.bt-tbl td.amber{color:var(--amber);} .bt-tbl td.blue{color:var(--blue);}
+.bt-tbl-scroll { overflow-x:auto;max-height:380px;overflow-y:auto; }
+
+.verdict-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 18px; }
+@media(max-width:700px){.verdict-grid{grid-template-columns:1fr;}}
+.verdict-item { background:var(--s2);border-radius:8px;padding:12px 14px; }
+.verdict-lbl { font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace; }
+.verdict-val { font-size:20px;font-weight:700;font-family:'DM Mono',monospace;margin:4px 0; }
+.verdict-badge { display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace; }
+.verdict-badge.pass { background:#064e3b44;color:#34d399;border:1px solid #065f46; }
+.verdict-badge.fail { background:#450a0a44;color:#f87171;border:1px solid #7f1d1d; }
+.verdict-overall { padding:10px 18px;border-top:1px solid var(--border);font-size:13px;font-weight:600;font-family:'DM Mono',monospace; }
+
+.info-box { background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-top:10px;font-size:12px;line-height:1.7;color:var(--text2); }
+.info-box code { background:var(--s2);padding:1px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px; }
+
+.wf-pass { color:var(--green); }
+.wf-fail { color:var(--red); }
+.wf-neu  { color:var(--text3); }
+
+.refresh-btn { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;font-weight:600;padding:6px 16px;cursor:pointer;transition:opacity .2s; }
+.refresh-btn:hover{opacity:.8;} .refresh-btn:disabled{opacity:.5;cursor:wait;}
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div id="vcApp">
+
+<!-- ── Top bar ──────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">VIX Vol-Carry Backtester (P8)</div>
+    <div class="sub">Five-Lens vol cone + term structure regime · Short VXX · Circuit breaker · Walk-forward validated</div>
+  </div>
+  <div style="flex:1"></div>
+  <span class="upd" id="vcComputedAt"></span>
+  <button class="refresh-btn" id="refreshBtn" onclick="loadResults()">⟳ Refresh</button>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+
+</div><!-- close sticky #vcApp -->
+</div><!-- close sticky-header -->
+
+<div id="vcApp" style="padding-top:0">
+
+<!-- ── Info box ────────────────────────────────────────────────────────────── -->
+<div class="info-box">
+  <strong style="color:var(--text)">Standalone — not wired into the live bot</strong>. This is a read-only viewer.
+  Results here are pushed by manually running the backtester yourself (on a desktop, not from this page):
+  <code>python vix-vol-carry/vix_vol_carry_backtest.py --base-url &lt;this-server-url&gt;</code>.
+  There is no "Run" button and no server-side engine for this strategy — unlike the Macro Equity model, this
+  page never talks to OANDA/FRED or executes anything live; it only displays the last pushed Python backtest
+  output, so you can check results from your phone after a run.
+</div>
+
+<!-- ── Status bar ─────────────────────────────────────────────────────────── -->
+<div class="status-bar" id="vcStatus" style="margin-top:10px">
+  <div class="sdot" id="vcDot"></div>
+  <span class="stxt" id="vcMsg">Loading last pushed results…</span>
+</div>
+
+<!-- ── KPI grid ───────────────────────────────────────────────────────────── -->
+<div class="bt-kpi-grid" id="kpiGrid" style="display:none">
+  <div class="bt-kpi"><div class="bt-kpi-label">CAGR</div><div class="bt-kpi-value green" id="kCagr">—</div><div class="bt-kpi-sub" id="kCagrSub">naive always-short —</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Sharpe Ratio</div><div class="bt-kpi-value blue" id="kSharpe">—</div><div class="bt-kpi-sub" id="kSharpeSub">naive —</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red" id="kMaxDD">—</div><div class="bt-kpi-sub" id="kMaxDDSub">naive —</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Worst Single Day</div><div class="bt-kpi-value red" id="kWorstDay">—</div><div class="bt-kpi-sub">the Volmageddon check</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value green" id="kWinRate">—</div><div class="bt-kpi-sub">days in a short position</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Time In Market</div><div class="bt-kpi-value amber" id="kTimeMkt">—</div><div class="bt-kpi-sub" id="kTradesSub">— trades</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">OOS Sharpe</div><div class="bt-kpi-value" id="kOosSharpe">—</div><div class="bt-kpi-sub">walk-forward out-of-sample</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">WF Efficiency</div><div class="bt-kpi-value" id="kWfe">—</div><div class="bt-kpi-sub">OOS ÷ IS Sharpe ratio</div></div>
+</div>
+
+<!-- ── Secondary stats ────────────────────────────────────────────────────── -->
+<div class="bt-sec-grid" id="secGrid" style="display:none">
+  <div class="bt-sec"><span class="bt-sec-lbl">Sortino Ratio</span><span class="bt-sec-val" id="sSortino">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Profit Factor</span><span class="bt-sec-val blue" id="sPF">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Calmar Ratio</span><span class="bt-sec-val" id="sCalmar">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Max DD Duration</span><span class="bt-sec-val" id="sDDDays">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Buy &amp; Hold Long VXX</span><span class="bt-sec-val neg" id="sBH">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Date Range</span><span class="bt-sec-val" id="sRange">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">WF Windows</span><span class="bt-sec-val" id="sWFWindows">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Mean IS Sharpe</span><span class="bt-sec-val" id="sMeanIS">—</span></div>
+</div>
+
+<!-- ── Verdict ────────────────────────────────────────────────────────────── -->
+<div class="bt-card" id="verdictCard" style="display:none">
+  <div class="bt-card-hdr">Proof-of-Concept Verdict</div>
+  <div class="verdict-grid" id="verdictGrid"></div>
+  <div class="verdict-overall" id="verdictOverall"></div>
+</div>
+
+<!-- ── Equity curve ───────────────────────────────────────────────────────── -->
+<div class="bt-card" id="eqCard" style="display:none">
+  <div class="bt-card-hdr">Equity Curve (log scale) — Strategy vs Naive Always-Short vs Buy &amp; Hold Long VXX</div>
+  <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="eqChart"></canvas></div></div>
+</div>
+
+<!-- ── Drawdown ───────────────────────────────────────────────────────────── -->
+<div class="bt-card" id="ddCard" style="display:none">
+  <div class="bt-card-hdr">Drawdown — Strategy vs Naive Always-Short</div>
+  <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="ddChart"></canvas></div></div>
+</div>
+
+<!-- ── Walk-forward OOS equity ────────────────────────────────────────────── -->
+<div class="bt-card" id="wfEqCard" style="display:none">
+  <div class="bt-card-hdr">Walk-Forward Out-of-Sample Equity <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">stitched OOS periods — regime stability, not parameter re-fit (see README)</span><span id="wfeLabel" style="margin-left:auto;color:var(--amber);font-size:11px;font-family:'DM Mono',monospace"></span></div>
+  <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="wfEqChart"></canvas></div></div>
+</div>
+
+<!-- ── Named stress windows ───────────────────────────────────────────────── -->
+<div class="bt-card" id="stressCard" style="display:none">
+  <div class="bt-card-hdr">Named Historical Tail-Risk Windows <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">the real test for a short-vol system — no single day worse than -50%</span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="stressTbl">
+      <thead><tr>
+        <th>Window</th>
+        <th class="num">Days</th>
+        <th class="num">Total Return</th>
+        <th class="num">Worst Day</th>
+        <th class="num">Sharpe</th>
+        <th>Result</th>
+      </tr></thead>
+      <tbody id="stressTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Regime breakdown ───────────────────────────────────────────────────── -->
+<div class="bt-card" id="regimeCard" style="display:none">
+  <div class="bt-card-hdr">Regime Breakdown <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">strategy performance by regime</span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="regimeTbl">
+      <thead><tr>
+        <th>Regime</th>
+        <th class="num">Days</th>
+        <th class="num">Win Rate</th>
+        <th class="num">Total Return</th>
+        <th class="num">Sharpe</th>
+      </tr></thead>
+      <tbody id="regimeTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Walk-forward windows table ─────────────────────────────────────────── -->
+<div class="bt-card" id="wfCard" style="display:none">
+  <div class="bt-card-hdr">Walk-Forward Windows <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">504d train / 63d test / 21d step</span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="wfTbl">
+      <thead><tr>
+        <th>#</th>
+        <th>Train Start</th>
+        <th>Train End</th>
+        <th>Test Start</th>
+        <th>Test End</th>
+        <th class="num">IS Sharpe</th>
+        <th class="num">OOS Sharpe</th>
+        <th class="num">OOS Return</th>
+      </tr></thead>
+      <tbody id="wfTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Trade log ──────────────────────────────────────────────────────────── -->
+<div class="bt-card" id="tradeCard" style="display:none">
+  <div class="bt-card-hdr" style="cursor:pointer;user-select:none" onclick="toggleTrades()">
+    Trade Log
+    <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:4px" id="tradeSummary"></span>
+    <span id="tradeToggle" style="margin-left:auto;font-size:14px">▾</span>
+  </div>
+  <div id="tradeBody" style="display:none">
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="tradeTbl">
+        <thead><tr>
+          <th>Entry</th>
+          <th>Exit</th>
+          <th>Direction</th>
+          <th class="num">Size</th>
+          <th class="num">Entry Px</th>
+          <th class="num">Exit Px</th>
+          <th class="num">PnL %</th>
+          <th>Regime</th>
+          <th class="num">VIX Pct</th>
+        </tr></thead>
+        <tbody id="tradeTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- close #vcApp -->
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+
+let _eqChart = null, _ddChart = null, _wfEqChart = null;
+let _tradesOpen = false;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const pct = (v, d=1) => v == null || !isFinite(v) ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(d) + '%';
+const num = (v, d=2) => v == null || !isFinite(v) ? '—' : v.toFixed(d);
+
+function setStatus(type, msg) {
+  document.getElementById('vcDot').className = 'sdot ' + type;
+  document.getElementById('vcMsg').textContent = msg;
+}
+function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
+function setVal(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function setClass(id, cls) { const el = document.getElementById(id); if (el) el.className = cls; }
+
+// ── Load results + trades ───────────────────────────────────────────────────
+
+async function loadResults() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  setStatus('spin', 'Fetching last pushed results…');
+
+  try {
+    const [rr, tr] = await Promise.all([
+      fetch('/api/vix-vol-carry-backtest/results'),
+      fetch('/api/vix-vol-carry-backtest/trades'),
+    ]);
+
+    if (!rr.ok) {
+      const j = await rr.json().catch(() => ({}));
+      setStatus('err', j.error || 'No results yet — run vix_vol_carry_backtest.py --base-url against this server.');
+      btn.disabled = false;
+      return;
+    }
+    const { results } = await rr.json();
+    const trades = tr.ok ? (await tr.json()).trades ?? [] : [];
+
+    document.getElementById('vcComputedAt').textContent =
+      'computed ' + (results.run_at ? new Date(results.run_at).toLocaleString() : '—');
+    setStatus('ok', `Loaded — ${results.date_range?.start ?? '?'} → ${results.date_range?.end ?? '?'}`);
+
+    renderAll(results, trades);
+  } catch (e) {
+    setStatus('err', 'Load error: ' + e.message);
+  }
+  btn.disabled = false;
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+
+function renderAll(d, trades) {
+  renderKpis(d);
+  renderSecondary(d);
+  renderVerdict(d);
+  renderEquityCurve(d);
+  renderDrawdown(d);
+  renderWFEquity(d);
+  renderStressTable(d);
+  renderRegimeTable(d);
+  renderWFTable(d);
+  renderTradeLog(trades);
+
+  ['kpiGrid','secGrid','verdictCard','eqCard','ddCard','wfEqCard',
+   'stressCard','regimeCard','wfCard','tradeCard'].forEach(show);
+}
+
+function renderKpis(d) {
+  const m = d.metrics ?? {}, nm = d.naive_metrics ?? {}, wf = d.walk_forward ?? {};
+
+  setVal('kCagr', pct(m.CAGR));
+  setClass('kCagr', 'bt-kpi-value ' + (m.CAGR >= 0 ? 'green' : 'red'));
+  setVal('kCagrSub', `naive always-short ${pct(nm.CAGR)}`);
+
+  setVal('kSharpe', num(m.Sharpe));
+  setClass('kSharpe', 'bt-kpi-value ' + (m.Sharpe >= 0.7 ? 'green' : m.Sharpe >= 0.4 ? 'amber' : 'red'));
+  setVal('kSharpeSub', `naive ${num(nm.Sharpe)}`);
+
+  setVal('kMaxDD', pct(m.Max_DD));
+  setVal('kMaxDDSub', `naive ${pct(nm.Max_DD)}`);
+
+  setVal('kWorstDay', pct(m.Worst_Day));
+  setClass('kWorstDay', 'bt-kpi-value ' + (m.Worst_Day > -0.50 ? 'green' : 'red'));
+
+  setVal('kWinRate', pct(m.Win_Rate, 0));
+  setVal('kTimeMkt', pct(m.Time_In_Market, 0));
+  setVal('kTradesSub', `${m.Total_Trades ?? '—'} trades`);
+
+  const oosSh = wf.mean_oos_sharpe;
+  setVal('kOosSharpe', oosSh == null ? 'N/A' : num(oosSh));
+  setClass('kOosSharpe', 'bt-kpi-value ' + (oosSh == null ? '' : oosSh >= 0.5 ? 'green' : oosSh >= 0.3 ? 'amber' : 'red'));
+
+  const wfe = wf.wfe;
+  setVal('kWfe', wfe == null ? 'N/A' : num(wfe));
+  setClass('kWfe', 'bt-kpi-value ' + (wfe == null ? '' : wfe >= 0.5 ? 'green' : wfe >= 0.3 ? 'amber' : 'red'));
+}
+
+function renderSecondary(d) {
+  const m = d.metrics ?? {}, wf = d.walk_forward ?? {};
+  setVal('sSortino', num(m.Sortino));
+  setVal('sPF', isFinite(m.Profit_Factor) ? num(m.Profit_Factor) : '∞');
+  setVal('sCalmar', isFinite(m.Calmar) ? num(m.Calmar) : '—');
+  setVal('sDDDays', (m.Max_DD_Days ?? '—') + 'd');
+  setVal('sBH', pct((d.bh_total_return ?? 0) / 100, 1));
+  setVal('sRange', `${d.date_range?.start ?? '?'} → ${d.date_range?.end ?? '?'}`);
+  setVal('sWFWindows', (wf.n_windows ?? 0).toLocaleString());
+  setVal('sMeanIS', num(wf.mean_is_sharpe));
+}
+
+function renderVerdict(d) {
+  const v = d.verdict ?? {};
+  const grid = document.getElementById('verdictGrid');
+  const badge = ok => `<span class="verdict-badge ${ok ? 'pass' : 'fail'}">${ok ? '✓ PASS' : '✗ FAIL'}</span>`;
+
+  const oosPass = v.oos_sharpe?.status === 'PASS';
+  const wfePass = v.wfe?.status === 'PASS';
+  const ddPass  = v.max_dd?.pass;
+  const stressPass = v.stress_pass;
+
+  grid.innerHTML = `
+    <div class="verdict-item">
+      <div class="verdict-lbl">OOS Sharpe (target ≥0.5)</div>
+      <div class="verdict-val" style="color:${oosPass ? 'var(--green)' : 'var(--red)'}">${num(v.oos_sharpe?.value)}</div>
+      ${badge(oosPass)}
+    </div>
+    <div class="verdict-item">
+      <div class="verdict-lbl">Walk-Forward Efficiency (target ≥0.5)</div>
+      <div class="verdict-val" style="color:${wfePass ? 'var(--green)' : 'var(--red)'}">${num(v.wfe?.value)}</div>
+      ${badge(wfePass)}
+    </div>
+    <div class="verdict-item">
+      <div class="verdict-lbl">Max Drawdown vs Naive Always-Short</div>
+      <div class="verdict-val" style="color:${ddPass ? 'var(--green)' : 'var(--red)'}">${pct(v.max_dd?.strat,1)} vs ${pct(v.max_dd?.naive,1)}</div>
+      ${badge(!!ddPass)}
+    </div>
+    <div class="verdict-item">
+      <div class="verdict-lbl">No &gt;50% single-day loss in named stress windows</div>
+      <div class="verdict-val" style="color:${stressPass ? 'var(--green)' : 'var(--red)'}">${stressPass == null ? 'N/A' : (stressPass ? 'Held' : 'Breached')}</div>
+      ${stressPass == null ? '' : badge(stressPass)}
+    </div>
+  `;
+
+  const overallPass = oosPass && wfePass && !!ddPass && stressPass !== false;
+  const overall = document.getElementById('verdictOverall');
+  if (overallPass) {
+    overall.innerHTML = `<span style="color:var(--green)">✓ OVERALL PASS</span> — edge confirmed and the Volmageddon-style stress check held. Still treat with extra skepticism (see P8 docs) before any live capital — this is the repo's first strategy trading VIX directly rather than using it as a filter.`;
+  } else {
+    const fails = [];
+    if (!oosPass) fails.push('OOS Sharpe below threshold');
+    if (!wfePass) fails.push('WFE below threshold — possible regime instability');
+    if (!ddPass) fails.push('Strategy drawdown ≥ naive always-short');
+    if (stressPass === false) fails.push('A named stress window had a >50% single-day loss');
+    overall.innerHTML = `<span style="color:var(--red)">✗ OVERALL FAIL</span> — ${fails.join(' · ')}.`;
+  }
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: false,
+  plugins: {
+    legend: { display: true, labels: { color: '#94a3b8', font: { family: "'DM Mono', monospace", size: 11 } } },
+    tooltip: { mode: 'index', intersect: false, backgroundColor: '#1e2538',
+      titleColor: '#e2e8f0', bodyColor: '#94a3b8', borderColor: '#2a3348', borderWidth: 1 },
+  },
+  scales: {
+    x: { ticks: { color: '#64748b', font: { family: "'DM Mono'", size: 10 }, maxTicksLimit: 8 },
+         grid:  { color: '#1e2538' } },
+    y: { ticks: { color: '#64748b', font: { family: "'DM Mono'", size: 10 } },
+         grid:  { color: '#1e2538' } },
+  },
+};
+
+function renderEquityCurve(d) {
+  const strat = d.equity_curve ?? [], naive = d.naive_curve ?? [], bh = d.bh_curve ?? [];
+  if (_eqChart) { _eqChart.destroy(); _eqChart = null; }
+  _eqChart = new Chart(document.getElementById('eqChart'), {
+    type: 'line',
+    data: {
+      labels: strat.map(p => p.date),
+      datasets: [
+        { label: 'Strategy (regime-filtered short)', data: strat.map(p => p.equity),
+          borderColor: '#00d4aa', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0 },
+        { label: 'Naive Always-Short', data: naive.map(p => p.equity),
+          borderColor: '#f0a000', borderWidth: 1.1, borderDash: [4,3], pointRadius: 0, fill: false, tension: 0 },
+        { label: 'Buy & Hold Long VXX', data: bh.map(p => p.equity),
+          borderColor: '#5588ee', borderWidth: 0.9, pointRadius: 0, fill: false, tension: 0 },
+      ],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      scales: {
+        x: { ...CHART_DEFAULTS.scales.x, ticks: { ...CHART_DEFAULTS.scales.x.ticks, maxTicksLimit: 10 } },
+        y: { ...CHART_DEFAULTS.scales.y, type: 'logarithmic',
+             ticks: { color: '#64748b', font: { family: "'DM Mono'", size: 10 }, maxTicksLimit: 6,
+               callback: v => `${v.toFixed(2)}×` } },
+      },
+    },
+  });
+}
+
+function renderDrawdown(d) {
+  const strat = d.drawdown_curve ?? [], naive = d.naive_dd_curve ?? [];
+  if (_ddChart) { _ddChart.destroy(); _ddChart = null; }
+  _ddChart = new Chart(document.getElementById('ddChart'), {
+    type: 'line',
+    data: {
+      labels: strat.map(p => p.date),
+      datasets: [
+        { label: 'Strategy DD', data: strat.map(p => p.dd), borderColor: '#f87171', borderWidth: 1.2,
+          backgroundColor: '#f871711a', pointRadius: 0, fill: true, tension: 0 },
+        { label: 'Naive Short DD', data: naive.map(p => p.dd), borderColor: '#4466cc', borderWidth: 1,
+          backgroundColor: '#4466cc1a', pointRadius: 0, fill: true, tension: 0 },
+      ],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      scales: {
+        x: CHART_DEFAULTS.scales.x,
+        y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => pct(v, 0) } },
+      },
+    },
+  });
+}
+
+function renderWFEquity(d) {
+  const wf = d.walk_forward ?? {};
+  const curve = wf.oos_curve ?? [];
+  document.getElementById('wfeLabel').textContent =
+    `WFE = ${num(wf.wfe)} | Mean OOS Sharpe = ${num(wf.mean_oos_sharpe)}`;
+
+  if (_wfEqChart) { _wfEqChart.destroy(); _wfEqChart = null; }
+  _wfEqChart = new Chart(document.getElementById('wfEqChart'), {
+    type: 'line',
+    data: {
+      labels: curve.map(p => p.date),
+      datasets: [{ label: 'OOS Equity (stitched)', data: curve.map(p => p.equity),
+        borderColor: '#a855f7', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0 }],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      scales: {
+        x: { display: false },
+        y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => `${v.toFixed(2)}×` } },
+      },
+    },
+  });
+}
+
+// ── Tables ───────────────────────────────────────────────────────────────────
+
+function renderStressTable(d) {
+  const tbody = document.getElementById('stressTblBody');
+  const rows = d.stress_windows ?? [];
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td class="num">${r.Days ?? '—'}</td>
+      <td class="num ${(r.Total_Ret ?? '').startsWith('-') ? 'neg' : 'pos'}">${r.Total_Ret ?? '—'}</td>
+      <td class="num ${r.pass ? 'pos' : 'neg'}">${r.Worst_Day ?? '—'}</td>
+      <td class="num">${r.Sharpe ?? '—'}</td>
+      <td><span style="color:${r.pass ? 'var(--green)' : 'var(--red)'}">${r.pass ? '✓ PASS' : '✗ FAIL'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderRegimeTable(d) {
+  const tbody = document.getElementById('regimeTblBody');
+  const rows = d.regime_breakdown ?? [];
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td class="num">${r.Days ?? '—'}</td>
+      <td class="num">${r.Win_Rate ?? '—'}</td>
+      <td class="num ${(r.Total_Ret ?? '').startsWith('-') ? 'neg' : 'pos'}">${r.Total_Ret ?? '—'}</td>
+      <td class="num">${r.Sharpe ?? '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function renderWFTable(d) {
+  const tbody = document.getElementById('wfTblBody');
+  const rows = (d.walk_forward ?? {}).window_table ?? [];
+  tbody.innerHTML = rows.map((w, i) => {
+    const oosSh = w.OOS_Sharpe;
+    const cls = oosSh === 'N/A' ? 'wf-neu' : (oosSh >= 0.5 ? 'wf-pass' : oosSh >= 0 ? 'wf-neu' : 'wf-fail');
+    const retNeg = (w.OOS_Return ?? '').startsWith('-');
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${w.train_start}</td>
+      <td>${w.train_end}</td>
+      <td>${w.test_start}</td>
+      <td>${w.test_end}</td>
+      <td class="num">${w.IS_Sharpe}</td>
+      <td class="num ${cls}">${oosSh}</td>
+      <td class="num ${retNeg ? 'neg' : 'pos'}">${w.OOS_Return}</td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleTrades() {
+  _tradesOpen = !_tradesOpen;
+  document.getElementById('tradeBody').style.display = _tradesOpen ? '' : 'none';
+  document.getElementById('tradeToggle').textContent = _tradesOpen ? '▴' : '▾';
+}
+
+function renderTradeLog(trades) {
+  const wins = trades.filter(t => (t.pnl_pct ?? 0) > 0).length;
+  document.getElementById('tradeSummary').textContent =
+    `${trades.length} trades · ${wins} wins · ${trades.length - wins} losses`;
+
+  const tbody = document.getElementById('tradeTblBody');
+  tbody.innerHTML = trades.map(t => `
+    <tr>
+      <td>${t.entry_date ?? '—'}</td>
+      <td>${t.exit_date ?? 'open'}</td>
+      <td>${t.direction ?? '—'}</td>
+      <td class="num">${t.position_sz != null ? (t.position_sz * 100).toFixed(0) + '%' : '—'}</td>
+      <td class="num">${num(t.entry_price)}</td>
+      <td class="num">${t.exit_price != null ? num(t.exit_price) : '—'}</td>
+      <td class="num ${(t.pnl_pct ?? 0) >= 0 ? 'pos' : 'neg'}">${t.pnl_pct != null ? t.pnl_pct.toFixed(2) + '%' : '—'}</td>
+      <td>${t.regime ?? '—'}</td>
+      <td class="num">${t.vix_pct != null ? (t.vix_pct * 100).toFixed(0) + '%' : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+loadResults();
+</script>
+</body>
+</html>

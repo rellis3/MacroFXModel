@@ -107,6 +107,86 @@ function populateCfgForm(caps) {
   fill('nas100_gexPipCap',     nas100.gexPipCap);
   fill('nas100_enhPivAtrFrac', nas100.enhPivAtrFrac);
   fill('nas100_enhPivPipCap',  nas100.enhPivPipCap);
+  const spx500 = caps.spx500 || CAP_DEFAULTS.spx500;
+  fill('spx500_confluencePips',  spx500.confluencePips);
+  fill('spx500_mergeFactor',     spx500.mergeFactor);
+  fill('spx500_asiaMinPips',     spx500.asiaMinPips);
+  fill('spx500_structuralLookbackDays', spx500.structuralLookbackDays);
+  fill('spx500_structuralPivotN',       spx500.structuralPivotN);
+  fill('spx500_oiAtrFrac',     spx500.oiAtrFrac);
+  fill('spx500_oiPipCap',      spx500.oiPipCap);
+  fill('spx500_pivAtrFrac',    spx500.pivAtrFrac);
+  fill('spx500_pivPipCap',     spx500.pivPipCap);
+  fill('spx500_rngAtrFrac',    spx500.rngAtrFrac);
+  fill('spx500_rngPipCap',     spx500.rngPipCap);
+  fill('spx500_gexAtrFrac',    spx500.gexAtrFrac);
+  fill('spx500_gexPipCap',     spx500.gexPipCap);
+  fill('spx500_enhPivAtrFrac', spx500.enhPivAtrFrac);
+  fill('spx500_enhPivPipCap',  spx500.enhPivPipCap);
+  const de30 = caps.de30 || CAP_DEFAULTS.de30;
+  fill('de30_confluencePips',  de30.confluencePips);
+  fill('de30_mergeFactor',     de30.mergeFactor);
+  fill('de30_asiaMinPips',     de30.asiaMinPips);
+  fill('de30_structuralLookbackDays', de30.structuralLookbackDays);
+  fill('de30_structuralPivotN',       de30.structuralPivotN);
+  fill('de30_oiAtrFrac',     de30.oiAtrFrac);
+  fill('de30_oiPipCap',      de30.oiPipCap);
+  fill('de30_pivAtrFrac',    de30.pivAtrFrac);
+  fill('de30_pivPipCap',     de30.pivPipCap);
+  fill('de30_rngAtrFrac',    de30.rngAtrFrac);
+  fill('de30_rngPipCap',     de30.rngPipCap);
+  fill('de30_gexAtrFrac',    de30.gexAtrFrac);
+  fill('de30_gexPipCap',     de30.gexPipCap);
+  fill('de30_enhPivAtrFrac', de30.enhPivAtrFrac);
+  fill('de30_enhPivPipCap',  de30.enhPivPipCap);
+  const uk100 = caps.uk100 || CAP_DEFAULTS.uk100;
+  fill('uk100_confluencePips',  uk100.confluencePips);
+  fill('uk100_mergeFactor',     uk100.mergeFactor);
+  fill('uk100_asiaMinPips',     uk100.asiaMinPips);
+  fill('uk100_structuralLookbackDays', uk100.structuralLookbackDays);
+  fill('uk100_structuralPivotN',       uk100.structuralPivotN);
+  fill('uk100_oiAtrFrac',     uk100.oiAtrFrac);
+  fill('uk100_oiPipCap',      uk100.oiPipCap);
+  fill('uk100_pivAtrFrac',    uk100.pivAtrFrac);
+  fill('uk100_pivPipCap',     uk100.pivPipCap);
+  fill('uk100_rngAtrFrac',    uk100.rngAtrFrac);
+  fill('uk100_rngPipCap',     uk100.rngPipCap);
+  fill('uk100_gexAtrFrac',    uk100.gexAtrFrac);
+  fill('uk100_gexPipCap',     uk100.gexPipCap);
+  fill('uk100_enhPivAtrFrac', uk100.enhPivAtrFrac);
+  fill('uk100_enhPivPipCap',  uk100.enhPivPipCap);
+  const us30 = caps.us30 || CAP_DEFAULTS.us30;
+  fill('us30_confluencePips',  us30.confluencePips);
+  fill('us30_mergeFactor',     us30.mergeFactor);
+  fill('us30_asiaMinPips',     us30.asiaMinPips);
+  fill('us30_structuralLookbackDays', us30.structuralLookbackDays);
+  fill('us30_structuralPivotN',       us30.structuralPivotN);
+  fill('us30_oiAtrFrac',     us30.oiAtrFrac);
+  fill('us30_oiPipCap',      us30.oiPipCap);
+  fill('us30_pivAtrFrac',    us30.pivAtrFrac);
+  fill('us30_pivPipCap',     us30.pivPipCap);
+  fill('us30_rngAtrFrac',    us30.rngAtrFrac);
+  fill('us30_rngPipCap',     us30.rngPipCap);
+  fill('us30_gexAtrFrac',    us30.gexAtrFrac);
+  fill('us30_gexPipCap',     us30.gexPipCap);
+  fill('us30_enhPivAtrFrac', us30.enhPivAtrFrac);
+  fill('us30_enhPivPipCap',  us30.enhPivPipCap);
+  const us2000 = caps.us2000 || CAP_DEFAULTS.us2000;
+  fill('us2000_confluencePips',  us2000.confluencePips);
+  fill('us2000_mergeFactor',     us2000.mergeFactor);
+  fill('us2000_asiaMinPips',     us2000.asiaMinPips);
+  fill('us2000_structuralLookbackDays', us2000.structuralLookbackDays);
+  fill('us2000_structuralPivotN',       us2000.structuralPivotN);
+  fill('us2000_oiAtrFrac',     us2000.oiAtrFrac);
+  fill('us2000_oiPipCap',      us2000.oiPipCap);
+  fill('us2000_pivAtrFrac',    us2000.pivAtrFrac);
+  fill('us2000_pivPipCap',     us2000.pivPipCap);
+  fill('us2000_rngAtrFrac',    us2000.rngAtrFrac);
+  fill('us2000_rngPipCap',     us2000.rngPipCap);
+  fill('us2000_gexAtrFrac',    us2000.gexAtrFrac);
+  fill('us2000_gexPipCap',     us2000.gexPipCap);
+  fill('us2000_enhPivAtrFrac', us2000.enhPivAtrFrac);
+  fill('us2000_enhPivPipCap',  us2000.enhPivPipCap);
   const k5 = caps.kalman5m || KALMAN5M_DEFAULTS;
   fill('kalman5m_lookback',      k5.lookback);
   fill('kalman5m_processNoise',  k5.processNoise);
@@ -181,6 +261,91 @@ function readCfgForm() {
       enhPivAtrFrac: num('nas100_enhPivAtrFrac'),
       enhPivPipCap:  num('nas100_enhPivPipCap'),
     },
+    spx500: {
+      confluencePips: num('spx500_confluencePips'),
+      mergeFactor:    num('spx500_mergeFactor'),
+      asiaMinPips:            num('spx500_asiaMinPips'),
+      structuralLookbackDays: num('spx500_structuralLookbackDays'),
+      structuralPivotN:       num('spx500_structuralPivotN'),
+      oiAtrFrac:     num('spx500_oiAtrFrac'),
+      oiPipCap:      num('spx500_oiPipCap'),
+      pivAtrFrac:    num('spx500_pivAtrFrac'),
+      pivPipCap:     num('spx500_pivPipCap'),
+      rngAtrFrac:    num('spx500_rngAtrFrac'),
+      rngPipCap:     num('spx500_rngPipCap'),
+      gexAtrFrac:    num('spx500_gexAtrFrac'),
+      gexPipCap:     num('spx500_gexPipCap'),
+      enhPivAtrFrac: num('spx500_enhPivAtrFrac'),
+      enhPivPipCap:  num('spx500_enhPivPipCap'),
+    },
+    de30: {
+      confluencePips: num('de30_confluencePips'),
+      mergeFactor:    num('de30_mergeFactor'),
+      asiaMinPips:            num('de30_asiaMinPips'),
+      structuralLookbackDays: num('de30_structuralLookbackDays'),
+      structuralPivotN:       num('de30_structuralPivotN'),
+      oiAtrFrac:     num('de30_oiAtrFrac'),
+      oiPipCap:      num('de30_oiPipCap'),
+      pivAtrFrac:    num('de30_pivAtrFrac'),
+      pivPipCap:     num('de30_pivPipCap'),
+      rngAtrFrac:    num('de30_rngAtrFrac'),
+      rngPipCap:     num('de30_rngPipCap'),
+      gexAtrFrac:    num('de30_gexAtrFrac'),
+      gexPipCap:     num('de30_gexPipCap'),
+      enhPivAtrFrac: num('de30_enhPivAtrFrac'),
+      enhPivPipCap:  num('de30_enhPivPipCap'),
+    },
+    uk100: {
+      confluencePips: num('uk100_confluencePips'),
+      mergeFactor:    num('uk100_mergeFactor'),
+      asiaMinPips:            num('uk100_asiaMinPips'),
+      structuralLookbackDays: num('uk100_structuralLookbackDays'),
+      structuralPivotN:       num('uk100_structuralPivotN'),
+      oiAtrFrac:     num('uk100_oiAtrFrac'),
+      oiPipCap:      num('uk100_oiPipCap'),
+      pivAtrFrac:    num('uk100_pivAtrFrac'),
+      pivPipCap:     num('uk100_pivPipCap'),
+      rngAtrFrac:    num('uk100_rngAtrFrac'),
+      rngPipCap:     num('uk100_rngPipCap'),
+      gexAtrFrac:    num('uk100_gexAtrFrac'),
+      gexPipCap:     num('uk100_gexPipCap'),
+      enhPivAtrFrac: num('uk100_enhPivAtrFrac'),
+      enhPivPipCap:  num('uk100_enhPivPipCap'),
+    },
+    us30: {
+      confluencePips: num('us30_confluencePips'),
+      mergeFactor:    num('us30_mergeFactor'),
+      asiaMinPips:            num('us30_asiaMinPips'),
+      structuralLookbackDays: num('us30_structuralLookbackDays'),
+      structuralPivotN:       num('us30_structuralPivotN'),
+      oiAtrFrac:     num('us30_oiAtrFrac'),
+      oiPipCap:      num('us30_oiPipCap'),
+      pivAtrFrac:    num('us30_pivAtrFrac'),
+      pivPipCap:     num('us30_pivPipCap'),
+      rngAtrFrac:    num('us30_rngAtrFrac'),
+      rngPipCap:     num('us30_rngPipCap'),
+      gexAtrFrac:    num('us30_gexAtrFrac'),
+      gexPipCap:     num('us30_gexPipCap'),
+      enhPivAtrFrac: num('us30_enhPivAtrFrac'),
+      enhPivPipCap:  num('us30_enhPivPipCap'),
+    },
+    us2000: {
+      confluencePips: num('us2000_confluencePips'),
+      mergeFactor:    num('us2000_mergeFactor'),
+      asiaMinPips:            num('us2000_asiaMinPips'),
+      structuralLookbackDays: num('us2000_structuralLookbackDays'),
+      structuralPivotN:       num('us2000_structuralPivotN'),
+      oiAtrFrac:     num('us2000_oiAtrFrac'),
+      oiPipCap:      num('us2000_oiPipCap'),
+      pivAtrFrac:    num('us2000_pivAtrFrac'),
+      pivPipCap:     num('us2000_pivPipCap'),
+      rngAtrFrac:    num('us2000_rngAtrFrac'),
+      rngPipCap:     num('us2000_rngPipCap'),
+      gexAtrFrac:    num('us2000_gexAtrFrac'),
+      gexPipCap:     num('us2000_gexPipCap'),
+      enhPivAtrFrac: num('us2000_enhPivAtrFrac'),
+      enhPivPipCap:  num('us2000_enhPivPipCap'),
+    },
     kalman5m: {
       lookback:     num('kalman5m_lookback'),
       processNoise: num('kalman5m_processNoise'),
@@ -205,6 +370,11 @@ export async function saveCaps() {
     ...Object.values(payload.fx),
     ...Object.values(payload.gold),
     ...Object.values(payload.nas100),
+    ...Object.values(payload.spx500),
+    ...Object.values(payload.de30),
+    ...Object.values(payload.uk100),
+    ...Object.values(payload.us30),
+    ...Object.values(payload.us2000),
     ...Object.values(payload.kalman5m),
   ];
   if (allVals.some(v => v == null || (typeof v === 'number' && v <= 0))) {

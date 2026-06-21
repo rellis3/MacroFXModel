@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>P3 — Yield Curve Regime Rotation</title>
+<title>P3 — VIX Regime Rotation</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -11,8 +11,6 @@
 <script src="./js/sys-backtest-shared.js"></script>
 <style>
 #app { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
-
-/* KPI grid */
 .bt-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
 @media (max-width: 1000px) { .bt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px)  { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -28,8 +26,6 @@
 .bt-kpi-value.blue  { color: var(--blue); }
 .bt-kpi-value.amber { color: var(--amber); }
 .bt-kpi-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
-
-/* Sec stats */
 .bt-sec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
 @media (max-width: 900px) { .bt-sec-grid { grid-template-columns: repeat(2, 1fr); } }
 .bt-sec {
@@ -38,8 +34,6 @@
 }
 .bt-sec-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
 .bt-sec-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
-
-/* Card */
 .bt-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
 .bt-card-hdr {
   padding: 12px 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
@@ -50,8 +44,6 @@
 .bt-card-body { padding: 18px; }
 .bt-chart-wrap { position: relative; height: 280px; }
 .bt-chart-wrap.tall { height: 380px; }
-
-/* Tables */
 .bt-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
 .bt-tbl th {
   padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em;
@@ -65,8 +57,6 @@
 .bt-tbl td.neg { color: var(--red); }
 .bt-tbl td.neu { color: var(--text2); }
 .bt-tbl-scroll { overflow-x: auto; max-height: 380px; overflow-y: auto; }
-
-/* Run bar */
 .bt-run-bar {
   background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r);
   padding: 12px 16px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
@@ -79,8 +69,6 @@
 .bt-run-btn:hover { opacity: .85; }
 .bt-run-btn:disabled { opacity: .5; cursor: wait; }
 .bt-run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
-
-/* Tabs */
 .dv-tabs { display: flex; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
 .dv-tab {
   padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em;
@@ -91,27 +79,16 @@
 .dv-tab.active { background: #f97316; border-color: #f97316; color: #fff; }
 .dv-panel { display: none; }
 .dv-panel.active { display: block; }
-
-/* Status dot */
 .sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
 .sdot.ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
 .sdot.spin { background: var(--amber); animation: pulse 1s infinite; }
 .sdot.err  { background: var(--red); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-/* Info/warn banners */
 .dv-info {
   background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.3); border-radius: var(--r);
   padding: 10px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--blue);
   margin-top: 10px;
 }
-.dv-warn {
-  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); border-radius: var(--r);
-  padding: 10px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--red);
-  margin-top: 10px; display: flex; align-items: center; gap: 8px;
-}
-
-/* Config inputs */
 .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
 .cfg-section-title { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; font-family: 'DM Mono', monospace; font-weight: 600; }
 .cfg-row { padding: 4px 0; display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-family: 'DM Mono', monospace; }
@@ -122,8 +99,6 @@
 }
 .cfg-inp:focus { outline: none; border-color: #f97316; }
 .cfg-note { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 4px; }
-
-/* LW chart pane labels */
 .lw-pane-label {
   font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3);
   padding: 4px 8px; border-bottom: 1px solid var(--border);
@@ -131,8 +106,6 @@
 }
 .lw-pane-label .leg { display: flex; align-items: center; gap: 5px; }
 .lw-pane-label .leg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-
-/* Regime legend */
 .regime-legend {
   display: flex; gap: 20px; flex-wrap: wrap;
   padding: 10px 12px; border-top: 1px solid var(--border);
@@ -147,9 +120,9 @@
 
   <!-- ── Top bar ──────────────────────────────────────────────────────────────── -->
   <div style="padding: 20px 0 10px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-    <h1 style="font-size: 22px; font-weight: 700; margin: 0; color: #f97316;">P3 — Yield Curve Regime Rotation</h1>
+    <h1 style="font-size: 22px; font-weight: 700; margin: 0; color: #f97316;">P3 — VIX Regime Rotation</h1>
     <span style="font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace;">
-      ISM trend + Core CPI momentum → 4 macro quadrants · SPY/TLT/GLD allocation
+      VIX level + z-score → 3 regimes · Calm: SPY heavy · Elevated: hedged · Stressed: TLT/GLD
     </span>
     <span style="margin-left: auto; font-size: 12px; font-family: 'DM Mono', monospace;">
       ← <a href="diversification.html" style="color: var(--blue);">Book Explorer</a>
@@ -160,16 +133,16 @@
   <div class="bt-run-bar">
     <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
     <span class="sdot" id="statusDot"></span>
-    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute Yield Curve Regime Rotation system</span>
+    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute VIX Regime Rotation system</span>
   </div>
 
   <!-- ── Description ──────────────────────────────────────────────────────────── -->
   <div class="dv-info" style="margin-top: 14px;">
-    ISM Manufacturing 3-month trend + Core CPI momentum → 4 macro quadrants:
-    <strong>Goldilocks</strong> (ISM rising + CPI deflating → SPY heavy) ·
-    <strong>Overheating</strong> (ISM rising + CPI inflating → SPY+GLD) ·
-    <strong>Stagflation</strong> (ISM falling + CPI inflating → GLD heavy) ·
-    <strong>Recession</strong> (ISM falling + CPI deflating → TLT heavy).
+    VIX absolute level + rolling z-score → 3 regimes:
+    <strong>Calm</strong> (VIX &lt; threshold &amp; z &lt; 0 → SPY heavy) ·
+    <strong>Elevated</strong> (in between → reduced SPY + TLT buffer + GLD) ·
+    <strong>Stressed</strong> (VIX spike or z &gt; stress level → TLT + GLD flight-to-safety).
+    Decorrelated from P1 (which uses lagged FRED macro data) — VIX reacts in real-time to risk events.
   </div>
 
   <!-- ── Config card ──────────────────────────────────────────────────────────── -->
@@ -181,41 +154,33 @@
     <div id="cfgBody" class="bt-card-body" style="display:none;">
       <div class="cfg-grid">
         <div>
-          <div class="cfg-section-title">Signal</div>
-          <div class="cfg-row"><span>ISM MA period (days)</span>
-            <input type="number" id="cfg_p3_ismMaPeriod" class="cfg-inp" value="63" step="5" min="10" max="252"></div>
-          <div class="cfg-note" style="margin-top:8px;">ISM trend = MA(now) − MA(63 days ago). CPI momentum = pctChange(coreCpi lagged 21 days).</div>
-          <div style="margin-top:16px;">
-            <div class="cfg-section-title">Goldilocks (ISM rising + CPI deflating)</div>
-            <div class="cfg-row"><span>SPY</span>
-              <input type="number" id="cfg_p3_goldilocksSpy" class="cfg-inp" value="1.0" step="0.05" min="0" max="1"></div>
-            <div class="cfg-note">TLT = 1 − SPY (GLD = 0)</div>
-          </div>
-          <div style="margin-top:16px;">
-            <div class="cfg-section-title">Overheating (ISM rising + CPI inflating)</div>
-            <div class="cfg-row"><span>SPY</span>
-              <input type="number" id="cfg_p3_overheatSpy" class="cfg-inp" value="0.5" step="0.05" min="0" max="1"></div>
-            <div class="cfg-row"><span>TLT</span>
-              <input type="number" id="cfg_p3_overheatTlt" class="cfg-inp" value="0.2" step="0.05" min="0" max="1"></div>
-            <div class="cfg-row"><span>GLD</span>
-              <input type="number" id="cfg_p3_overheatGld" class="cfg-inp" value="0.3" step="0.05" min="0" max="1"></div>
-          </div>
+          <div class="cfg-section-title">VIX Thresholds</div>
+          <div class="cfg-row"><span>Z-score window (days)</span>
+            <input type="number" id="cfg_zWin" class="cfg-inp" value="60" step="5" min="20" max="252"></div>
+          <div class="cfg-row"><span>Calm VIX level &lt;</span>
+            <input type="number" id="cfg_vixCalm" class="cfg-inp" value="15" step="1" min="8" max="25"></div>
+          <div class="cfg-row"><span>Stressed VIX level &gt;</span>
+            <input type="number" id="cfg_vixStress" class="cfg-inp" value="25" step="1" min="15" max="50"></div>
+          <div class="cfg-row"><span>Stress z-score &gt;</span>
+            <input type="number" id="cfg_stressZ" class="cfg-inp" value="1.5" step="0.1" min="0.5" max="3"></div>
+          <div class="cfg-note">Calm: VIX &lt; calm AND z &lt; 0 · Stressed: VIX &gt; stress OR z &gt; stressZ</div>
         </div>
         <div>
-          <div class="cfg-section-title">Stagflation (ISM falling + CPI inflating)</div>
-          <div class="cfg-row"><span>GLD</span>
-            <input type="number" id="cfg_p3_stagGld" class="cfg-inp" value="0.6" step="0.05" min="0" max="1"></div>
-          <div class="cfg-row"><span>TLT</span>
-            <input type="number" id="cfg_p3_stagTlt" class="cfg-inp" value="0.3" step="0.05" min="0" max="1"></div>
-          <div class="cfg-row"><span>SPY</span>
-            <input type="number" id="cfg_p3_stagSpy" class="cfg-inp" value="0.1" step="0.05" min="0" max="1"></div>
-          <div style="margin-top:16px;">
-            <div class="cfg-section-title">Recession (ISM falling + CPI deflating)</div>
-            <div class="cfg-row"><span>TLT</span>
-              <input type="number" id="cfg_p3_recTlt" class="cfg-inp" value="0.8" step="0.05" min="0" max="1"></div>
-            <div class="cfg-row"><span>SPY</span>
-              <input type="number" id="cfg_p3_recSpy" class="cfg-inp" value="0.1" step="0.05" min="0" max="1"></div>
-            <div class="cfg-note">GLD = 1 − TLT − SPY</div>
+          <div class="cfg-section-title">Regime Allocations (SPY / TLT / GLD)</div>
+          <div class="cfg-row"><span>Calm — SPY</span>
+            <input type="number" id="cfg_calmSpy" class="cfg-inp" value="0.9" step="0.05" min="0" max="1"></div>
+          <div class="cfg-note">Calm GLD = 1 − SPY</div>
+          <div style="margin-top:10px;">
+            <div class="cfg-row"><span>Elevated — SPY</span>
+              <input type="number" id="cfg_elevSpy" class="cfg-inp" value="0.3" step="0.05" min="0" max="1"></div>
+            <div class="cfg-row"><span>Elevated — TLT</span>
+              <input type="number" id="cfg_elevTlt" class="cfg-inp" value="0.3" step="0.05" min="0" max="1"></div>
+            <div class="cfg-note">Elevated GLD = 1 − SPY − TLT</div>
+          </div>
+          <div style="margin-top:10px;">
+            <div class="cfg-row"><span>Stressed — TLT</span>
+              <input type="number" id="cfg_stressTlt" class="cfg-inp" value="0.8" step="0.05" min="0" max="1"></div>
+            <div class="cfg-note">Stressed GLD = 1 − TLT</div>
           </div>
         </div>
       </div>
@@ -228,39 +193,37 @@
 
   <!-- ── Tabs ─────────────────────────────────────────────────────────────────── -->
   <div class="dv-tabs">
-    <div class="dv-tab active" data-tab="signal"   onclick="switchTab('signal')">Signal Chart</div>
-    <div class="dv-tab"        data-tab="equity"   onclick="switchTab('equity')">Equity Curve</div>
-    <div class="dv-tab"        data-tab="monthly"  onclick="switchTab('monthly')">Monthly Returns</div>
-    <div class="dv-tab"        data-tab="annual"   onclick="switchTab('annual')">Annual Summary</div>
-    <div class="dv-tab"        data-tab="trades"   onclick="switchTab('trades')">Rebalances</div>
+    <div class="dv-tab active" data-tab="signal"  onclick="switchTab('signal')">Signal Chart</div>
+    <div class="dv-tab"        data-tab="equity"  onclick="switchTab('equity')">Equity Curve</div>
+    <div class="dv-tab"        data-tab="monthly" onclick="switchTab('monthly')">Monthly Returns</div>
+    <div class="dv-tab"        data-tab="annual"  onclick="switchTab('annual')">Annual Summary</div>
+    <div class="dv-tab"        data-tab="trades"  onclick="switchTab('trades')">Rebalances</div>
   </div>
 
   <!-- ── Panel: Signal Chart ──────────────────────────────────────────────────── -->
   <div class="dv-panel active" id="panel-signal">
     <div class="bt-card" style="margin-top:14px;">
-      <div class="bt-card-hdr">SPY, TLT &amp; GLD Price (Normalized) + Regime Signals</div>
+      <div class="bt-card-hdr">SPY, TLT &amp; GLD Price (Normalized) + Regime Markers</div>
       <div class="lw-pane-label">
         <span class="leg"><span class="leg-dot" style="background:#3b82f6;"></span>SPY</span>
         <span class="leg"><span class="leg-dot" style="background:#10b981;"></span>TLT</span>
         <span class="leg"><span class="leg-dot" style="background:#eab308;"></span>GLD</span>
-        <span style="margin-left:auto;color:var(--text3);">markers show regime change</span>
+        <span style="margin-left:auto;color:var(--text3);">markers = regime change</span>
       </div>
       <div id="lwPriceChart" style="height:300px;"></div>
     </div>
     <div class="bt-card" style="margin-top:14px;">
-      <div class="bt-card-hdr">Macro Regime Indicator</div>
+      <div class="bt-card-hdr">VIX Level + Regime</div>
       <div class="lw-pane-label">
-        <span class="leg"><span class="leg-dot" style="background:#10b981;"></span>Goldilocks (+1)</span>
-        <span class="leg"><span class="leg-dot" style="background:#f59e0b;"></span>Overheating (+0.5)</span>
-        <span class="leg"><span class="leg-dot" style="background:#ef4444;"></span>Stagflation (−0.5)</span>
-        <span class="leg"><span class="leg-dot" style="background:#6366f1;"></span>Recession (−1)</span>
+        <span class="leg"><span class="leg-dot" style="background:#10b981;"></span>Calm</span>
+        <span class="leg"><span class="leg-dot" style="background:#f59e0b;"></span>Elevated</span>
+        <span class="leg"><span class="leg-dot" style="background:#ef4444;"></span>Stressed</span>
       </div>
-      <div id="lwSignalChart" style="height:200px;"></div>
+      <div id="lwSignalChart" style="height:220px;"></div>
       <div class="regime-legend">
-        <div class="regime-legend-item"><span class="regime-legend-swatch" style="background:#10b981;"></span>Goldilocks — SPY heavy (ISM↑, CPI↓)</div>
-        <div class="regime-legend-item"><span class="regime-legend-swatch" style="background:#f59e0b;"></span>Overheating — SPY+GLD (ISM↑, CPI↑)</div>
-        <div class="regime-legend-item"><span class="regime-legend-swatch" style="background:#ef4444;"></span>Stagflation — GLD heavy (ISM↓, CPI↑)</div>
-        <div class="regime-legend-item"><span class="regime-legend-swatch" style="background:#6366f1;"></span>Recession — TLT heavy (ISM↓, CPI↓)</div>
+        <div class="regime-legend-item"><span class="regime-legend-swatch" style="background:#10b981;"></span>Calm — SPY heavy (VIX &lt; calm &amp; z &lt; 0)</div>
+        <div class="regime-legend-item"><span class="regime-legend-swatch" style="background:#f59e0b;"></span>Elevated — SPY + TLT + GLD blend</div>
+        <div class="regime-legend-item"><span class="regime-legend-swatch" style="background:#ef4444;"></span>Stressed — TLT + GLD (VIX spike)</div>
       </div>
     </div>
   </div>
@@ -312,6 +275,8 @@
               <tr>
                 <th>Date</th>
                 <th>Regime</th>
+                <th class="num">VIX</th>
+                <th class="num">VIX Z</th>
                 <th class="num">SPY%</th>
                 <th class="num">TLT%</th>
                 <th class="num">GLD%</th>
@@ -328,201 +293,94 @@
 </div><!-- #app -->
 
 <script>
-// ── State ─────────────────────────────────────────────────────────────────────
 let _result = null;
 let _rawData = null;
 
-// Regime colors and values for histogram
-const REGIME_COLORS = {
-  GOLDILOCKS:  '#10b981',
-  OVERHEATING: '#f59e0b',
-  STAGFLATION: '#ef4444',
-  RECESSION:   '#6366f1',
-};
-const REGIME_VALUES = {
-  GOLDILOCKS:   1.0,
-  OVERHEATING:  0.5,
-  STAGFLATION: -0.5,
-  RECESSION:   -1.0,
-};
+const REGIME_COLORS = { CALM: '#10b981', ELEVATED: '#f59e0b', STRESSED: '#ef4444' };
+const REGIME_VALUES = { CALM: 1.0, ELEVATED: 0.0, STRESSED: -1.0 };
 
-// ── Config reader ─────────────────────────────────────────────────────────────
 function readCfg() {
   const g = id => parseFloat(document.getElementById(id).value);
   return {
-    ismMaPeriod:   g('cfg_p3_ismMaPeriod'),
-    goldilocksSpy: g('cfg_p3_goldilocksSpy'),
-    overheatSpy:   g('cfg_p3_overheatSpy'),
-    overheatTlt:   g('cfg_p3_overheatTlt'),
-    overheatGld:   g('cfg_p3_overheatGld'),
-    stagGld:       g('cfg_p3_stagGld'),
-    stagTlt:       g('cfg_p3_stagTlt'),
-    stagSpy:       g('cfg_p3_stagSpy'),
-    recTlt:        g('cfg_p3_recTlt'),
-    recSpy:        g('cfg_p3_recSpy'),
+    zWin:      g('cfg_zWin'),
+    vixCalm:   g('cfg_vixCalm'),
+    vixStress: g('cfg_vixStress'),
+    stressZ:   g('cfg_stressZ'),
+    calmSpy:   g('cfg_calmSpy'),
+    elevSpy:   g('cfg_elevSpy'),
+    elevTlt:   g('cfg_elevTlt'),
+    stressTlt: g('cfg_stressTlt'),
   };
 }
 
-// ── Engine ────────────────────────────────────────────────────────────────────
 function runEngine(data, cfg) {
-  const { dateIndex: dates, fred, prices } = data;
+  const { dateIndex: dates, prices } = data;
   const n = dates.length;
+  const vixRaw = prices?.vix ? ffill(prices.vix) : null;
+  if (!vixRaw) return { monthlyRet: [], monthlyDates: [], trades: [], signals: [] };
 
-  const ism     = ffill(fred.ism);
-  const coreCpi = ffill(fred.coreCpi);
   const spy = ffill(prices.spy);
   const tlt = ffill(prices.tlt);
   const gld = ffill(prices.gld);
-
-  // ISM moving average helper
-  function maN(arr, p) {
-    return arr.map((v, i) => {
-      if (i < p) return NaN;
-      const sl = arr.slice(i - p, i).filter(isFinite);
-      return sl.length > 10 ? sl.reduce((a, b) => a + b, 0) / sl.length : NaN;
-    });
-  }
-
-  const ismLagged = applyLag(ism, PUB_MONTHLY);
-  const ismMa = maN(ismLagged, cfg.ismMaPeriod);
-  const ismTrend = ismMa.map((v, i) => {
-    if (i < cfg.ismMaPeriod) return NaN;
-    const prev = ismMa[i - cfg.ismMaPeriod];
-    return isFinite(prev) && isFinite(v) ? v - prev : NaN;
-  });
-
-  const cpiLag = applyLag(coreCpi, PUB_MONTHLY);
-  const cpiMom = pctChange(cpiLag);
+  const vixZ = rollingZ(vixRaw, cfg.zWin);
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
-  const monthlyRet = [];
-  const monthlyDates = [];
-  const trades = [];
-  const signals = [];
-  const regimes = [];
+  const monthlyRet = [], monthlyDates = [], trades = [], signals = [];
   let prevMonthEnd = -1;
-  let sA = 0.7, tA = 0.2, gA = 0.1;
-  let currentRegime = 'GOLDILOCKS';
+  let sA = cfg.calmSpy, tA = 0, gA = 1 - cfg.calmSpy;
 
   for (const idx of monthEnds) {
-    const trend = ismTrend[idx];
-    const cpi   = cpiMom[idx];
-
-    let ns = 0.7, nt = 0.2, ng = 0.1;
-    let regime = 'GOLDILOCKS';
-
-    if (isFinite(trend) && isFinite(cpi)) {
-      const rising      = trend > 0;
-      const inflationary = cpi > 0;
-
-      if (rising && !inflationary) {
-        // Goldilocks
-        ns = cfg.goldilocksSpy;
-        nt = 1 - cfg.goldilocksSpy;
-        ng = 0;
-        regime = 'GOLDILOCKS';
-      } else if (rising && inflationary) {
-        // Overheating
-        ns = cfg.overheatSpy;
-        nt = cfg.overheatTlt;
-        ng = cfg.overheatGld;
-        regime = 'OVERHEATING';
-      } else if (!rising && inflationary) {
-        // Stagflation
-        ns = cfg.stagSpy;
-        nt = cfg.stagTlt;
-        ng = cfg.stagGld;
-        regime = 'STAGFLATION';
-      } else {
-        // Recession
-        ns = cfg.recSpy;
-        nt = cfg.recTlt;
-        ng = 1 - cfg.recSpy - cfg.recTlt;
-        regime = 'RECESSION';
-      }
+    const vv = vixRaw[idx], vz = vixZ[idx];
+    let ns, nt, ng, regime;
+    if (!isFinite(vv) || !isFinite(vz)) { ns=sA; nt=tA; ng=gA; regime='CALM'; }
+    else if (vv < cfg.vixCalm && vz < 0) {
+      ns=cfg.calmSpy; nt=0; ng=1-cfg.calmSpy; regime='CALM';
+    } else if (vv > cfg.vixStress || vz > cfg.stressZ) {
+      ns=0; nt=cfg.stressTlt; ng=1-cfg.stressTlt; regime='STRESSED';
+    } else {
+      ns=cfg.elevSpy; nt=cfg.elevTlt; ng=Math.max(0,1-cfg.elevSpy-cfg.elevTlt); regime='ELEVATED';
     }
 
     if (prevMonthEnd >= 0) {
-      const rSpy = (isFinite(spy[prevMonthEnd]) && isFinite(spy[idx]) && spy[prevMonthEnd] > 0)
-        ? (spy[idx] - spy[prevMonthEnd]) / spy[prevMonthEnd] : 0;
-      const rTlt = (isFinite(tlt[prevMonthEnd]) && isFinite(tlt[idx]) && tlt[prevMonthEnd] > 0)
-        ? (tlt[idx] - tlt[prevMonthEnd]) / tlt[prevMonthEnd] : 0;
-      const rGld = (isFinite(gld[prevMonthEnd]) && isFinite(gld[idx]) && gld[prevMonthEnd] > 0)
-        ? (gld[idx] - gld[prevMonthEnd]) / gld[prevMonthEnd] : 0;
-
-      const ret = sA * rSpy + tA * rTlt + gA * rGld;
+      const rSpy = isFinite(spy[prevMonthEnd])&&isFinite(spy[idx])&&spy[prevMonthEnd]>0 ? (spy[idx]-spy[prevMonthEnd])/spy[prevMonthEnd] : 0;
+      const rTlt = isFinite(tlt[prevMonthEnd])&&isFinite(tlt[idx])&&tlt[prevMonthEnd]>0 ? (tlt[idx]-tlt[prevMonthEnd])/tlt[prevMonthEnd] : 0;
+      const rGld = isFinite(gld[prevMonthEnd])&&isFinite(gld[idx])&&gld[prevMonthEnd]>0 ? (gld[idx]-gld[prevMonthEnd])/gld[prevMonthEnd] : 0;
+      const ret = sA*rSpy + tA*rTlt + gA*rGld;
       equity *= (1 + ret);
       monthlyRet.push(ret);
       monthlyDates.push(dates[idx]);
-
-      trades.push({
-        date:    dates[idx],
-        regime:  regime,
-        spy:     ns,
-        tlt:     nt,
-        gld:     ng,
-        oldAlloc: sA,
-        newAlloc: ns,
-        signal:  isFinite(trend) ? trend : NaN,
-        ret:     ret,
-      });
-
-      signals.push({ date: dates[idx], value: REGIME_VALUES[regime], regime });
-      regimes.push({ date: dates[idx], regime });
+      trades.push({ date:dates[idx], regime, vix:vv, vixZ:vz, spy:ns, tlt:nt, gld:ng, ret });
+      signals.push({ date:dates[idx], value:REGIME_VALUES[regime], regime });
     }
-
-    sA = ns; tA = nt; gA = ng;
-    currentRegime = regime;
+    sA=ns; tA=nt; gA=ng;
     prevMonthEnd = idx;
   }
-
-  return { monthlyRet, monthlyDates, trades, signals, regimes };
+  return { monthlyRet, monthlyDates, trades, signals };
 }
 
-// ── Build regime change markers (for SPY price series) ──────────────────────
 function buildRegimeMarkers(trades) {
-  const markers = [];
-  let prevRegime = null;
+  const markers = []; let prev = null;
   for (const t of trades) {
-    if (t.regime !== prevRegime) {
-      markers.push({
-        time:     t.date,
-        position: 'aboveBar',
-        color:    REGIME_COLORS[t.regime],
-        shape:    'circle',
-        text:     t.regime.charAt(0),
-        size:     1,
-      });
-      prevRegime = t.regime;
+    if (t.regime !== prev) {
+      markers.push({ time:t.date, position:'aboveBar', color:REGIME_COLORS[t.regime], shape:'circle', text:t.regime[0], size:1 });
+      prev = t.regime;
     }
   }
   return markers;
 }
 
-// ── Signal chart (LightweightCharts) ─────────────────────────────────────────
-function renderSignalChart(data, result, cfg) {
+function renderSignalChart(data, result) {
   const { dateIndex: dates, prices } = data;
-  const spy = ffill(prices.spy);
-  const tlt = ffill(prices.tlt);
-  const gld = ffill(prices.gld);
-
-  // Find first valid index for all three
+  const spy = ffill(prices.spy), tlt = ffill(prices.tlt), gld = ffill(prices.gld);
   let firstIdx = 0;
-  for (let i = 0; i < dates.length; i++) {
-    if (isFinite(spy[i]) && isFinite(tlt[i]) && isFinite(gld[i])) { firstIdx = i; break; }
-  }
-  const spyBase = spy[firstIdx];
-  const tltBase = tlt[firstIdx];
-  const gldBase = gld[firstIdx];
+  for (let i = 0; i < dates.length; i++) { if (isFinite(spy[i]) && isFinite(tlt[i])) { firstIdx = i; break; } }
+  const spyBase = spy[firstIdx], tltBase = tlt[firstIdx], gldBase = gld[firstIdx];
 
-  // ── Top pane: SPY + TLT + GLD normalized ──────────────────────────────────
   const priceEl = document.getElementById('lwPriceChart');
   priceEl.innerHTML = '';
-  priceEl.style.height = '300px';
   const priceChart = LightweightCharts.createChart(priceEl, {
-    width: priceEl.clientWidth,
-    height: 300,
+    width: priceEl.clientWidth, height: 300,
     layout: { background: { color: '#0d1117' }, textColor: '#94a3b8' },
     grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
@@ -531,32 +389,23 @@ function renderSignalChart(data, result, cfg) {
     handleScroll: true, handleScale: true,
   });
   new ResizeObserver(() => priceChart.applyOptions({ width: priceEl.clientWidth })).observe(priceEl);
-
   const spySeries = priceChart.addLineSeries({ color: '#3b82f6', lineWidth: 2, title: 'SPY' });
   const tltSeries = priceChart.addLineSeries({ color: '#10b981', lineWidth: 1.5, lineStyle: 1, title: 'TLT' });
   const gldSeries = priceChart.addLineSeries({ color: '#eab308', lineWidth: 1.5, lineStyle: 2, title: 'GLD' });
-
   const spyData = [], tltData = [], gldData = [];
   for (let i = firstIdx; i < dates.length; i++) {
     if (isFinite(spy[i]) && spyBase > 0) spyData.push({ time: dates[i], value: spy[i] / spyBase });
     if (isFinite(tlt[i]) && tltBase > 0) tltData.push({ time: dates[i], value: tlt[i] / tltBase });
     if (isFinite(gld[i]) && gldBase > 0) gldData.push({ time: dates[i], value: gld[i] / gldBase });
   }
-  spySeries.setData(spyData);
-  tltSeries.setData(tltData);
-  gldSeries.setData(gldData);
-
-  // Regime-change markers on SPY series
+  spySeries.setData(spyData); tltSeries.setData(tltData); gldSeries.setData(gldData);
   const markers = buildRegimeMarkers(result.trades);
   if (markers.length > 0) spySeries.setMarkers(markers);
 
-  // ── Bottom pane: regime histogram ──────────────────────────────────────────
   const signalEl = document.getElementById('lwSignalChart');
   signalEl.innerHTML = '';
-  signalEl.style.height = '200px';
   const signalChart = LightweightCharts.createChart(signalEl, {
-    width: signalEl.clientWidth,
-    height: 200,
+    width: signalEl.clientWidth, height: 220,
     layout: { background: { color: '#0d1117' }, textColor: '#94a3b8' },
     grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
@@ -565,150 +414,105 @@ function renderSignalChart(data, result, cfg) {
     handleScroll: true, handleScale: true,
   });
   new ResizeObserver(() => signalChart.applyOptions({ width: signalEl.clientWidth })).observe(signalEl);
-
   const histSeries = signalChart.addHistogramSeries({
-    color: '#10b981',
     priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
-    lastValueVisible: true,
-    priceLineVisible: false,
+    lastValueVisible: true, priceLineVisible: false,
   });
+  histSeries.setData(result.signals.filter(s => isFinite(s.value)).map(s => ({
+    time: s.date, value: s.value, color: REGIME_COLORS[s.regime]
+  })));
+  histSeries.createPriceLine({ price: 0, color: 'rgba(255,255,255,0.15)', lineWidth: 1, axisLabelVisible: false, title: '' });
 
-  const histData = result.signals
-    .filter(s => isFinite(s.value))
-    .map(s => ({
-      time:  s.date,
-      value: s.value,
-      color: REGIME_COLORS[s.regime],
-    }));
-  histSeries.setData(histData);
-
-  // Zero line
-  histSeries.createPriceLine({
-    price: 0,
-    color: 'rgba(255,255,255,0.15)',
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Solid,
-    axisLabelVisible: false,
-    title: '',
-  });
-
-  // Sync time scales
-  priceChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (range) signalChart.timeScale().setVisibleLogicalRange(range);
-  });
-  signalChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (range) priceChart.timeScale().setVisibleLogicalRange(range);
-  });
+  priceChart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r) signalChart.timeScale().setVisibleLogicalRange(r); });
+  signalChart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r) priceChart.timeScale().setVisibleLogicalRange(r); });
 }
 
-// ── Rebalances table (custom for P3 — shows SPY/TLT/GLD per trade) ───────────
-function renderP3TradesTable(tbodyEl, trades) {
+function renderTradesTable(tbodyEl, trades) {
   if (!tbodyEl) return;
   let html = '';
   for (const t of trades) {
-    const regimeColor = REGIME_COLORS[t.regime] || 'var(--text2)';
+    const rc = REGIME_COLORS[t.regime] || 'var(--text2)';
     const cls = t.ret >= 0 ? 'pos' : 'neg';
     html += `<tr>
-      <td>${t.date.substring(0, 7)}</td>
-      <td><span style="color:${regimeColor};font-weight:600;">${t.regime}</span></td>
-      <td class="num">${fmt(t.spy * 100, 0)}%</td>
-      <td class="num">${fmt(t.tlt * 100, 0)}%</td>
-      <td class="num">${fmt(t.gld * 100, 0)}%</td>
-      <td class="num ${isFinite(t.ret) ? cls : 'neu'}">${isFinite(t.ret) ? fmtPct(t.ret * 100) : '—'}</td>
+      <td>${t.date.substring(0,7)}</td>
+      <td><span style="color:${rc};font-weight:600;">${t.regime}</span></td>
+      <td class="num">${isFinite(t.vix) ? fmt(t.vix,1) : '—'}</td>
+      <td class="num">${isFinite(t.vixZ) ? fmt(t.vixZ,2) : '—'}</td>
+      <td class="num">${fmt(t.spy*100,0)}%</td>
+      <td class="num">${fmt(t.tlt*100,0)}%</td>
+      <td class="num">${fmt(t.gld*100,0)}%</td>
+      <td class="num ${isFinite(t.ret)?cls:'neu'}">${isFinite(t.ret)?fmtPct(t.ret*100):'—'}</td>
     </tr>`;
   }
-  tbodyEl.innerHTML = html || '<tr><td colspan="6" class="neu">No trades</td></tr>';
+  tbodyEl.innerHTML = html || '<tr><td colspan="8" class="neu">No trades</td></tr>';
 }
 
-// ── Tab callback for lazy chart rendering ─────────────────────────────────────
 function onTabSwitch(tab) {
   if (!_result) return;
   setTimeout(() => {
     const eqs = buildEquity(_result.monthlyRet);
     if (tab === 'equity') {
       const bhRets = buildBHReturns(_rawData);
-      const bhEqs  = buildEquity(bhRets);
-      renderEquityChart('chartEquity', eqs, _result.monthlyDates, bhEqs, 'SPY B&H', '#f97316');
+      renderEquityChart('chartEquity', eqs, _result.monthlyDates, buildEquity(bhRets), 'SPY B&H', '#f97316');
       renderDDChart('chartDD', eqs, _result.monthlyDates);
     }
     if (tab === 'monthly') renderHeatmap('heatmapContainer', _result.monthlyRet, _result.monthlyDates);
     if (tab === 'annual')  renderAnnualChart('chartAnnual', _result.monthlyRet, _result.monthlyDates);
-    if (tab === 'trades')  renderP3TradesTable(document.getElementById('tradesTbody'), _result.trades);
+    if (tab === 'trades')  renderTradesTable(document.getElementById('tradesTbody'), _result.trades);
   }, 30);
 }
 
 function buildBHReturns(data) {
-  const spy = ffill(data.prices.spy);
-  const dates = data.dateIndex;
-  const monthEnds = monthEndIdx(dates);
-  const rets = [];
-  let prev = -1;
+  const spy = ffill(data.prices.spy), dates = data.dateIndex, monthEnds = monthEndIdx(dates);
+  const rets = []; let prev = -1;
   for (const idx of monthEnds) {
-    if (prev >= 0) {
-      const p0 = spy[prev], p1 = spy[idx];
-      rets.push((isFinite(p0) && isFinite(p1) && p0 > 0) ? (p1 - p0) / p0 : 0);
-    }
+    if (prev >= 0) { const p0=spy[prev],p1=spy[idx]; rets.push((isFinite(p0)&&isFinite(p1)&&p0>0)?(p1-p0)/p0:0); }
     prev = idx;
   }
   return rets;
 }
 
-// ── Config toggle ─────────────────────────────────────────────────────────────
 function toggleConfig() {
   const body = document.getElementById('cfgBody');
   body.style.display = body.style.display === 'none' ? 'block' : 'none';
 }
 
-// ── Main backtest runner ──────────────────────────────────────────────────────
 async function runBacktest() {
   const btn = document.getElementById('runBtn');
   btn.disabled = true;
   setStatus('spin', 'Fetching market data…');
-
   try {
     const data = await fetchDiversData();
     _rawData = data;
-    setStatus('spin', `Running P3 engine on ${data.dateIndex.length} trading days…`);
+    setStatus('spin', `Running P3 VIX Regime engine on ${data.dateIndex.length} trading days…`);
     await new Promise(r => setTimeout(r, 20));
 
     const cfg = readCfg();
     const result = runEngine(data, cfg);
     _result = result;
-
     const eqs = buildEquity(result.monthlyRet);
 
     setStatus('spin', 'Rendering…');
     await new Promise(r => setTimeout(r, 20));
 
     renderKPIs(eqs, result.monthlyRet);
-    renderSignalChart(data, result, cfg);
+    renderSignalChart(data, result);
 
-    // Render active tab content
     const activeTab = document.querySelector('.dv-tab.active')?.dataset.tab ?? 'signal';
     if (activeTab === 'equity') {
-      const bhRets = buildBHReturns(data);
-      const bhEqs  = buildEquity(bhRets);
-      renderEquityChart('chartEquity', eqs, result.monthlyDates, bhEqs, 'SPY B&H', '#f97316');
+      renderEquityChart('chartEquity', eqs, result.monthlyDates, buildEquity(buildBHReturns(data)), 'SPY B&H', '#f97316');
       renderDDChart('chartDD', eqs, result.monthlyDates);
     }
     if (activeTab === 'monthly') renderHeatmap('heatmapContainer', result.monthlyRet, result.monthlyDates);
     if (activeTab === 'annual')  renderAnnualChart('chartAnnual', result.monthlyRet, result.monthlyDates);
-    if (activeTab === 'trades')  renderP3TradesTable(document.getElementById('tradesTbody'), result.trades);
+    if (activeTab === 'trades')  renderTradesTable(document.getElementById('tradesTbody'), result.trades);
 
     saveResult('p3', result, cfg);
 
-    // Compute regime distribution for status message
-    const regimeCounts = {};
-    for (const r of result.regimes) {
-      regimeCounts[r.regime] = (regimeCounts[r.regime] || 0) + 1;
-    }
-    const total = result.regimes.length || 1;
-    const distStr = Object.entries(regimeCounts)
-      .map(([k, v]) => `${k}: ${Math.round(v / total * 100)}%`)
-      .join(' · ');
-
-    const nMonths = result.monthlyRet.length;
-    setStatus('ok', `Complete — ${data.dateIndex.length} days · ${nMonths} months · ${distStr}`);
+    const counts = {}; for (const t of result.trades) counts[t.regime] = (counts[t.regime]||0)+1;
+    const total = result.trades.length || 1;
+    const distStr = Object.entries(counts).map(([k,v]) => `${k}: ${Math.round(v/total*100)}%`).join(' · ');
+    setStatus('ok', `Complete — ${data.dateIndex.length} days · ${result.monthlyRet.length} months · ${distStr}`);
   } catch (e) {
     setStatus('err', 'Error: ' + e.message);
     console.error(e);

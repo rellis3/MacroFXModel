@@ -11,8 +11,7 @@
 #dvApp { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
 
 /* KPI grid */
-.bt-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
-@media (max-width: 1000px) { .bt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+.bt-kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 14px; }
 @media (max-width: 640px)  { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 .bt-kpi {
   background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
@@ -186,14 +185,14 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
 
   <div style="padding: 20px 0 10px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
     <h1 style="font-size: 22px; font-weight: 700; margin: 0;">Combined Book Explorer</h1>
-    <span style="font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace;">6 uncorrelated alpha sources · interactive sizing · diversification analytics</span>
+    <span style="font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace;">5 uncorrelated alpha sources · interactive sizing · diversification analytics</span>
     <a href="hub.html" target="_blank" style="margin-left:auto;font-size:11px;font-family:'DM Mono',monospace;font-weight:600;padding:5px 14px;border-radius:6px;border:1px solid #14b8a6;color:#14b8a6;text-decoration:none;">⬡ Risk Hub →</a>
   </div>
 
   <div class="bt-run-bar">
     <button class="bt-run-btn" id="runBtn" onclick="runAll()">Run Backtest</button>
     <span class="sdot" id="statusDot"></span>
-    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute all 6 strategies</span>
+    <span id="statusMsg" class="bt-run-lbl">Click Run to fetch data and compute all 5 strategies</span>
     <span style="margin-left:auto;" class="bt-run-lbl" id="cacheLabel"></span>
   </div>
 
@@ -203,8 +202,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <a href="macro-equity-backtest.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #14b8a6; color:#14b8a6; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P1 Macro Regime ↗</a>
     <a href="system-credit-equity.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #ef4444; color:#ef4444; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P2 Credit-Equity ↗</a>
     <a href="system-yield-curve.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #f97316; color:#f97316; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P3 Yield Curve ↗</a>
-    <a href="system-fx-carry.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #3b82f6; color:#3b82f6; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P4 FX Carry ↗</a>
-    <a href="system-fx-momentum.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #a855f7; color:#a855f7; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P5 FX Momentum ↗</a>
+    <a href="system-fx-carry.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #3b82f6; color:#3b82f6; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P4 FX Risk Barometer ↗</a>
     <a href="system-gold-macro.html" target="_blank" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:600; padding:4px 12px; border-radius:5px; border:1px solid #eab308; color:#eab308; text-decoration:none; transition:opacity .15s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">P6 Gold Macro ↗</a>
   </div>
 
@@ -218,8 +216,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="sys-legend-item"><span class="swatch" style="background:#14b8a6"></span>P1 Macro Regime</div>
     <div class="sys-legend-item"><span class="swatch" style="background:#ef4444"></span>P2 Credit-Equity</div>
     <div class="sys-legend-item"><span class="swatch" style="background:#f97316"></span>P3 Yield Curve</div>
-    <div class="sys-legend-item"><span class="swatch" style="background:#3b82f6"></span>P4 FX Carry</div>
-    <div class="sys-legend-item"><span class="swatch" style="background:#a855f7"></span>P5 FX Momentum</div>
+    <div class="sys-legend-item"><span class="swatch" style="background:#3b82f6"></span>P4 FX Risk Barometer</div>
     <div class="sys-legend-item"><span class="swatch" style="background:#eab308"></span>P6 Gold Macro</div>
     <div class="sys-legend-item"><span class="swatch" style="background:#ffffff"></span>Combined Book</div>
   </div>
@@ -231,6 +228,9 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="dv-tab"        data-tab="corr"        onclick="switchTab('corr')">Correlations</div>
     <div class="dv-tab"        data-tab="rolling"     onclick="switchTab('rolling')">Rolling Monitor</div>
     <div class="dv-tab"        data-tab="alpha"       onclick="switchTab('alpha')">Alpha Sources</div>
+    <div class="dv-tab"        data-tab="montecarlo"  onclick="switchTab('montecarlo')">Monte Carlo</div>
+    <div class="dv-tab"        data-tab="robustness"  onclick="switchTab('robustness')">Robustness</div>
+    <div class="dv-tab"        data-tab="testlab"     onclick="switchTab('testlab')">Testing Lab</div>
     <div class="dv-tab"        data-tab="systems"     onclick="switchTab('systems')">Systems</div>
   </div>
 
@@ -292,6 +292,7 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
                 <th class="num">Ind. CAGR</th>
                 <th class="num">Ind. Sharpe</th>
                 <th class="num">Ind. MaxDD</th>
+                <th class="num">Avg ρ</th>
                 <th class="num">Contribution</th>
                 <th class="num">Div. Ratio</th>
               </tr>
@@ -374,14 +375,327 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     </div>
   </div>
 
-  <!-- ── Tab 6: Systems ─────────────────────────────────────────────────────── -->
+  <!-- ── Tab 6: Monte Carlo ───────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-montecarlo">
+    <div class="dv-info" style="margin-top:14px;">
+      Bootstrap resampling of combined monthly returns — 1 000 simulations over the same horizon.
+      Shows the range of outcomes if returns were drawn randomly from the observed distribution.
+      Median (P50) should track the actual equity curve; wide P5–P95 band signals return uncertainty.
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">
+        Monte Carlo — Equity Curve Envelope (1 000 simulations)
+        <button class="bt-run-btn" onclick="renderMonteCarlo()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Re-run Simulation</button>
+      </div>
+      <div class="bt-card-body">
+        <div class="bt-chart-wrap tall"><canvas id="chartMC"></canvas></div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Simulation Summary — Final Equity Distribution</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>Percentile</th><th class="num">Final Equity</th><th class="num">CAGR</th>
+              <th class="num">Implied Sharpe</th><th class="num">Max Drawdown (median)</th>
+            </tr></thead>
+            <tbody id="mcSummaryBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 7: Robustness ─────────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-robustness">
+    <div class="dv-info" style="margin-top:14px;">
+      In-sample vs out-of-sample split at the midpoint of the backtest period.
+      A robust system should show <em>similar</em> Sharpe in both halves — large degradation signals overfitting.
+      Also shows worst 1-, 3- and 5-year rolling windows to stress-test consistency.
+    </div>
+    <div id="robustnessNoData" style="display:none;padding:24px;text-align:center;color:#64748b;font-size:13px;">
+      Run the backtest first, then return to this tab.
+      <button class="bt-run-btn" onclick="runAll()" style="margin-left:12px;font-size:11px;padding:4px 14px;">Run Backtest</button>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">
+        Train / Test Split — Per System + Combined
+        <button class="bt-run-btn" onclick="renderRobustness()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Recalculate</button>
+      </div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>System</th>
+              <th class="num">IS Sharpe</th><th class="num">OOS Sharpe</th><th class="num">Degradation</th>
+              <th class="num">IS CAGR</th><th class="num">OOS CAGR</th>
+              <th class="num">IS MaxDD</th><th class="num">OOS MaxDD</th>
+            </tr></thead>
+            <tbody id="robustBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="bt-two-col" style="margin-top:14px;">
+      <div class="bt-card">
+        <div class="bt-card-hdr">Worst Rolling 12-Month CAGR (Combined)</div>
+        <div class="bt-card-body">
+          <div class="bt-chart-wrap"><canvas id="chartWorstPeriods"></canvas></div>
+        </div>
+      </div>
+      <div class="bt-card">
+        <div class="bt-card-hdr">Rolling 12-Month Sharpe — Position Distribution</div>
+        <div class="bt-card-body">
+          <div class="bt-chart-wrap"><canvas id="chartSharpeHist"></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Worst Period Summary</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>System</th>
+              <th class="num">Worst 12m</th><th class="num">Period</th>
+              <th class="num">Worst 36m</th><th class="num">Period</th>
+              <th class="num">Worst 60m</th><th class="num">Period</th>
+            </tr></thead>
+            <tbody id="worstBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 8: Testing Lab ────────────────────────────────────────────────── -->
+  <div class="dv-panel" id="panel-testlab">
+
+    <!-- Section 1: Monte Carlo IID + Block Bootstrap -->
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">
+        1 — Monte Carlo: IID vs Block Bootstrap
+        <span style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+          <label style="font-size:11px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:5px;">
+            <input type="radio" name="tlMCMode" value="iid" checked onchange="renderTLMC()"> IID
+          </label>
+          <label style="font-size:11px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:5px;">
+            <input type="radio" name="tlMCMode" value="block" onchange="renderTLMC()"> Block Bootstrap
+          </label>
+          <label style="font-size:11px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:5px;">
+            <input type="radio" name="tlMCMode" value="both" onchange="renderTLMC()"> Side-by-Side
+          </label>
+          <button class="bt-run-btn" onclick="renderTLMC()" style="font-size:10px;padding:4px 14px;">Re-run</button>
+        </span>
+      </div>
+      <div class="bt-card-body">
+        <div id="tlMCCharts" class="bt-two-col" style="margin-top:0;">
+          <div><div class="bt-chart-wrap tall"><canvas id="chartTLMC_IID"></canvas></div><div style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);margin-top:6px;">IID Bootstrap (1 000 sims)</div></div>
+          <div><div class="bt-chart-wrap tall"><canvas id="chartTLMC_Block"></canvas></div><div style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);margin-top:6px;">Block Bootstrap (1 000 sims)</div></div>
+        </div>
+        <div class="dv-info" style="margin-top:10px;">Block bootstrap preserves serial correlation — wider bands = real uncertainty, not just noise.</div>
+      </div>
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Bootstrap Summary — Final Equity Distribution</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>Mode</th><th>Pct</th><th class="num">Final Equity</th><th class="num">CAGR</th>
+            </tr></thead>
+            <tbody id="tlMCSummaryBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Walk-Forward -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">
+        2 — Walk-Forward Retrain + Parameter Drift
+        <span style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <label style="font-size:11px;color:var(--text3);">Train yrs:
+            <select id="tlWFTrain" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace;padding:2px 6px;">
+              <option value="3">3</option><option value="5" selected>5</option><option value="7">7</option>
+            </select>
+          </label>
+          <label style="font-size:11px;color:var(--text3);">Test yrs:
+            <select id="tlWFTest" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:11px;font-family:'DM Mono',monospace;padding:2px 6px;">
+              <option value="1" selected>1</option><option value="2">2</option>
+            </select>
+          </label>
+          <button class="bt-run-btn" id="tlWFBtn" onclick="runTLWalkForward()">Run Walk-Forward</button>
+        </span>
+      </div>
+      <div class="bt-card-body">
+        <div id="tlWFProgress" style="display:none;padding:8px 0;">
+          <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;margin-bottom:6px;">
+            <div id="tlWFProgressBar" style="height:100%;background:var(--blue);width:0%;transition:width .2s;border-radius:3px;"></div>
+          </div>
+          <div id="tlWFProgressMsg" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
+        </div>
+        <div class="bt-two-col" style="margin-top:0;">
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">OOS Equity vs Actual</div>
+            <div class="bt-chart-wrap tall"><canvas id="chartTLWFEquity"></canvas></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">OOS Sharpe by System</div>
+            <div class="bt-chart-wrap tall"><canvas id="chartTLWFSharpe"></canvas></div>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Walk-Forward Summary</div>
+          <div id="tlWFSummary" style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text3);">Run walk-forward to see results.</div>
+        </div>
+        <div style="margin-top:14px;">
+          <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Parameter Drift — IS-Best Key Param per Window</div>
+          <div class="bt-tbl-scroll"><table class="bt-tbl" id="tlWFDriftTable"><thead><tr><th>Window</th><th>P1 bandHigh</th><th>P1 Sizing</th><th>P2 Sizing</th><th>P3 Sizing</th><th>P4 calmAlloc</th><th>P4 stressAlloc</th><th>P6 Sizing</th></tr></thead><tbody id="tlWFDriftBody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Permutation Test -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">
+        3 — Permutation / Randomness Test
+        <button class="bt-run-btn" id="tlPermBtn" onclick="runTLPerm()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Run 10 000 Permutations</button>
+      </div>
+      <div class="bt-card-body">
+        <div class="dv-info" style="margin-bottom:10px;">
+          Randomizes the sign of each monthly return (null hypothesis: these P&amp;L magnitudes occurred with no net
+          directional edge) and rebuilds the Sharpe distribution under that null 10,000 times. The p-value is the
+          share of randomized-sign trials whose Sharpe matches or beats the actual, signed result.
+        </div>
+        <div class="bt-two-col" style="margin-top:0;">
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">Combined Book — Null Sharpe Distribution</div>
+            <div class="bt-chart-wrap"><canvas id="chartTLPerm"></canvas></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">Per-System Significance</div>
+            <div class="bt-tbl-scroll" style="max-height:280px;">
+              <table class="bt-tbl">
+                <thead><tr><th>System</th><th class="num">Actual Sharpe</th><th class="num">p-value</th><th>Significance</th></tr></thead>
+                <tbody id="tlPermBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Capital Ceiling -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">4 — Capital Ceiling (Market Impact Estimate)</div>
+      <div class="bt-card-body" style="padding:0;">
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>System</th><th>Asset(s)</th><th class="num">Daily Vol</th><th class="num">Max AUM</th><th>Constraint Note</th>
+            </tr></thead>
+            <tbody id="tlCapBody"></tbody>
+          </table>
+        </div>
+        <div class="dv-info" style="margin:12px 18px 0;">
+          Max AUM estimated at ~2% of average daily volume to keep market impact &lt; 0.5% drag/year.
+          Assumes 1–6 trades/year and a 30-min execution window per trade.
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5: Transaction Costs -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">5 — Transaction Costs / Spreads Sensitivity</div>
+      <div class="bt-card-body">
+        <div class="bt-two-col" style="margin-top:0;">
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">Combined Sharpe vs Cost (bps)</div>
+            <div class="bt-chart-wrap"><canvas id="chartTLTxCost"></canvas></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;">Stats at Each Cost Level</div>
+            <div class="bt-tbl-scroll">
+              <table class="bt-tbl" id="tlTxTable">
+                <thead><tr>
+                  <th>Cost (bps)</th><th class="num">Comb. Sharpe</th><th class="num">Comb. CAGR</th><th class="num">Comb. MaxDD</th>
+                </tr></thead>
+                <tbody id="tlTxBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="bt-tbl-scroll">
+            <table class="bt-tbl" id="tlTxSysTable">
+              <thead><tr id="tlTxSysHead"></tr></thead>
+              <tbody id="tlTxSysBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 6: Deflated Sharpe Ratio -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">
+        6 — Deflated Sharpe Ratio (Selection-Bias Correction)
+        <button class="bt-run-btn" id="tlDSRBtn" onclick="runTLDeflatedSharpe()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Compute Deflated Sharpe</button>
+      </div>
+      <div class="bt-card-body">
+        <div class="dv-info" style="margin-bottom:10px;">
+          Each system's parameters were chosen from a grid search over N candidate configs — the reported Sharpe is the
+          <em>best of N</em>, which looks good even with zero real skill. The Deflated Sharpe Ratio (Bailey &amp; López de Prado)
+          discounts the observed Sharpe by the expected maximum achievable by chance given N trials, then reports the
+          probability the true Sharpe is still positive after that correction.
+        </div>
+        <div id="tlDSRProgress" style="display:none;padding:4px 0 10px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
+        <div class="bt-tbl-scroll">
+          <table class="bt-tbl">
+            <thead><tr>
+              <th>System</th><th class="num">N Trials</th><th class="num">Sharpe (current)</th>
+              <th class="num">σ(Sharpe) across trials</th><th class="num">SR₀ (luck threshold)</th>
+              <th class="num">Deflated Sharpe</th><th>Verdict</th>
+            </tr></thead>
+            <tbody id="tlDSRBody"><tr><td colspan="7" style="text-align:center;color:var(--text3);">Click "Compute Deflated Sharpe" to run.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 7: Expected Value by Regime -->
+    <div class="bt-card" style="margin-top:20px;">
+      <div class="bt-card-hdr">
+        7 — Expected Value by Market Regime (VIX-Conditioned)
+        <button class="bt-run-btn" id="tlEVBtn" onclick="runTLEVByRegime()" style="margin-left:auto;font-size:10px;padding:4px 14px;">Compute EV by Regime</button>
+      </div>
+      <div class="bt-card-body">
+        <div class="dv-info" style="margin-bottom:10px;">
+          Decomposes each system's edge into win-rate × average-win vs. loss-rate × average-loss, bucketed by the VIX-regime
+          classification (Calm / Elevated / Stressed) used in P3. A robust edge shows positive EV across all three regimes;
+          an edge concentrated in one regime is fragile to a regime shift.
+        </div>
+        <div class="bt-chart-wrap"><canvas id="chartTLEVRegime"></canvas></div>
+        <div class="bt-tbl-scroll" style="margin-top:14px;">
+          <table class="bt-tbl" id="tlEVTable">
+            <thead><tr id="tlEVHead"></tr></thead>
+            <tbody id="tlEVBody"><tr><td style="text-align:center;color:var(--text3);">Click "Compute EV by Regime" to run.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Tab 9: Systems ─────────────────────────────────────────────────────── -->
   <div class="dv-panel" id="panel-systems">
     <div class="sys-tabs" id="sysTabs">
       <div class="sys-tab active" data-sys="p1" onclick="switchSys('p1')" style="background:#14b8a6;">P1 Macro Regime</div>
       <div class="sys-tab" data-sys="p2" onclick="switchSys('p2')" style="">P2 Credit-Equity</div>
       <div class="sys-tab" data-sys="p3" onclick="switchSys('p3')" style="">P3 Yield Curve</div>
-      <div class="sys-tab" data-sys="p4" onclick="switchSys('p4')" style="">P4 FX Carry</div>
-      <div class="sys-tab" data-sys="p5" onclick="switchSys('p5')" style="">P5 FX Momentum</div>
+      <div class="sys-tab" data-sys="p4" onclick="switchSys('p4')" style="">P4 FX Risk Barometer</div>
       <div class="sys-tab" data-sys="p6" onclick="switchSys('p6')" style="">P6 Gold Macro</div>
     </div>
     <div id="sys-panel-area"></div>
@@ -393,9 +707,9 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Configuration
 // ═══════════════════════════════════════════════════════════════════════════════
-const SYS_NAMES  = ['P1 Macro Regime', 'P2 Credit-Equity', 'P3 Yield Curve', 'P4 FX Carry', 'P5 FX Momentum', 'P6 Gold Macro'];
-const SYS_KEYS   = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
-const SYS_COLORS = ['#14b8a6', '#ef4444', '#f97316', '#3b82f6', '#a855f7', '#eab308'];
+const SYS_NAMES  = ['P1 Macro Regime', 'P2 Credit-Equity', 'P3 VIX Regime', 'P4 FX Risk Barometer', 'P6 Gold Macro'];
+const SYS_KEYS   = ['p1', 'p2', 'p3', 'p4', 'p6'];
+const SYS_COLORS = ['#14b8a6', '#ef4444', '#f97316', '#3b82f6', '#eab308'];
 const COMBINED_COLOR = '#e2e8f0';
 
 const Z_WIN    = 252;
@@ -407,22 +721,25 @@ const PUB_MONTHLY = 21;
 let _cfg = {
   p1: { wNetliq:0.30, wCurve:0.2333, wCredit:0.2333, wRealyield:0.175, wIsm:0.0583,
         bandHigh:1.00, bandMid:-0.25, bandLow:-0.50,
-        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.15 },
+        allocBull:1.00, allocNb:0.75, allocNbear:0.50, allocBear:0.15,
+        sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
   p2: { thVBull:1.0, thBull:0.25, thNeutral:-0.75, thBear:-2.0,
-        allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0 },
-  p3: { ismMaPeriod:42, goldilocksSpy:1.0, overheatSpy:0.5, overheatGld:0.2, overheatTlt:0.2,
-        stagGld:1.0, stagTlt:0.3, stagSpy:0.1, recTlt:0.7, recSpy:0.1 },
-  p4: { trendWin:378, allocNormal:1.0 },
-  p5: { lookback:189, skip:21, nLong:3, nShort:2 },
+        allocVBull:1.0, allocBull:0.8, allocNeutral:0.5, allocBear:0.3, allocVBear:0.0,
+        sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
+  p3: { zWin:60, vixCalm:15, vixStress:25, stressZ:1.5,
+        calmSpy:0.9, elevSpy:0.3, elevTlt:0.3, stressTlt:0.8,
+        sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
+  p4: { calmAlloc:1.0, elevAlloc:0.4, stressAlloc:-0.4 },
   p6: { olsWindow:126, thVLong:-2.0, thLong:-1.0, thShort:1.0, thVShort:1.5,
-        allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0 },
+        allocVLong:1.0, allocLong:0.75, allocNeutral:0.3, allocShort:0.25, allocVShort:0.0,
+        sizingMode:'discrete', volTarget:0.12, volWin:21, volMinMult:0.5, volMaxMult:1.5 },
 };
 
 // State
 let _rawData   = null;     // data from /api/diversification/data
 let _results   = {};       // { p1: {dates,equity,monthlyRet,...}, ... }
 let _combined  = null;     // combined equity curve & monthly returns
-let _weights   = [1, 1, 1, 1, 1, 1]; // raw sliders (normalized to 1)
+let _weights   = SYS_KEYS.map(() => 1); // raw sliders (normalized to 1)
 let _charts    = {};       // chart instances to destroy/recreate
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -462,6 +779,19 @@ function rollingZ(arr, win = Z_WIN) {
     const mu = slice.reduce((a, b) => a + b, 0) / slice.length;
     const sd = Math.sqrt(slice.reduce((a, b) => a + (b-mu)**2, 0) / slice.length);
     out[i] = sd > 0 ? (arr[i] - mu) / sd : 0;
+  }
+  return out;
+}
+function clip(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+function rollingVolAnnualized(returns, win) {
+  const out = new Array(returns.length).fill(NaN);
+  for (let i = 0; i < returns.length; i++) {
+    const slice = [];
+    for (let j = Math.max(0, i - win); j < i; j++) if (isFinite(returns[j])) slice.push(returns[j]);
+    if (slice.length < Math.floor(win/2)) continue;
+    const mu = slice.reduce((a,b)=>a+b,0) / slice.length;
+    const sd = Math.sqrt(slice.reduce((a,b)=>a+(b-mu)**2,0) / slice.length);
+    out[i] = sd * Math.sqrt(252);
   }
   return out;
 }
@@ -513,6 +843,67 @@ function sharpe(rets) {
   const mu = fin.reduce((a,b)=>a+b,0)/fin.length;
   const sd = Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length);
   return sd === 0 ? 0 : (mu / sd) * Math.sqrt(12);
+}
+
+// Sortino: only penalises negative returns
+function sortino(rets) {
+  const fin = rets.filter(isFinite);
+  if (fin.length < 3) return NaN;
+  const mu = fin.reduce((a,b)=>a+b,0)/fin.length;
+  const neg = fin.filter(r => r < 0);
+  if (neg.length === 0) return Infinity;
+  const downDev = Math.sqrt(neg.reduce((a,r) => a+r*r, 0) / neg.length);
+  return downDev > 0 ? (mu / downDev) * Math.sqrt(12) : NaN;
+}
+
+// Calmar: CAGR / |MaxDD|
+function calmarRatio(rets) {
+  const fin = rets.filter(isFinite);
+  if (fin.length < 3) return NaN;
+  let eq = 1, peak = 1, mdd = 0;
+  for (const r of fin) { eq*=(1+r); if(eq>peak) peak=eq; mdd=Math.min(mdd,(eq-peak)/peak); }
+  if (mdd === 0) return NaN;
+  const annRet = (Math.pow(eq, 12/fin.length) - 1);
+  return annRet / Math.abs(mdd);
+}
+
+// Worst rolling N-month CAGR
+function worstRollingCAGR(rets, win) {
+  const fin = rets.filter(isFinite);
+  let worst = Infinity, worstIdx = -1;
+  for (let i = win; i <= fin.length; i++) {
+    const slice = fin.slice(i - win, i);
+    let eq = 1; for (const r of slice) eq *= (1+r);
+    const c = (Math.pow(eq, 12/win) - 1) * 100;
+    if (c < worst) { worst = c; worstIdx = i - win; }
+  }
+  return { cagr: isFinite(worst) && worst !== Infinity ? worst : NaN, startIdx: worstIdx };
+}
+
+// Bootstrap Monte Carlo — returns percentile curves
+function runMonteCarlo(monthlyRet, nSims = 1000) {
+  const fin = monthlyRet.filter(isFinite);
+  const n = fin.length;
+  if (n < 12) return null;
+  const sims = [];
+  for (let s = 0; s < nSims; s++) {
+    let eq = 1;
+    const curve = [1];
+    for (let t = 0; t < n; t++) {
+      eq *= (1 + fin[Math.floor(Math.random() * n)]);
+      curve.push(eq);
+    }
+    sims.push(curve);
+  }
+  const pcts = [5, 25, 50, 75, 95];
+  const bands = pcts.map(() => new Array(n + 1).fill(0));
+  for (let t = 0; t <= n; t++) {
+    const col = sims.map(s => s[t]).sort((a,b) => a-b);
+    pcts.forEach((p, pi) => {
+      bands[pi][t] = col[Math.round((p/100) * (nSims-1))];
+    });
+  }
+  return { bands, pcts, n, sims };
 }
 
 // Gaussian elimination with partial pivoting — solves Ax = b, returns x
@@ -664,6 +1055,8 @@ function runP1(data) {
 
   // Spy prices (forward-filled)
   const spy = ffill(prices.spy);
+  const c = _cfg.p1;
+  const spyVolAnn = rollingVolAnnualized(pctChange(spy), c.volWin);
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
@@ -677,14 +1070,24 @@ function runP1(data) {
   for (const idx of monthEnds) {
     // Compute composite score at month-end
     const nz = nlZ[idx], cv = cvZ[idx], cr = crZ[idx], ry = ryZ[idx], iz = izZ[idx];
-    const c = _cfg.p1;
     const score = [nz,cv,cr,ry,iz].every(isFinite)
       ? c.wNetliq*nz + c.wCurve*cv + c.wCredit*(-cr) + c.wRealyield*(-ry) + c.wIsm*iz
       : NaN;
 
-    const newAlloc = isFinite(score)
-      ? (score > c.bandHigh ? c.allocBull : score > c.bandMid ? c.allocNb : score > c.bandLow ? c.allocNbear : c.allocBear)
-      : 0.5;
+    let newAlloc;
+    if (c.sizingMode === 'continuous') {
+      // Linear ramp between the same Bear/Bull endpoints (no discrete steps), then
+      // scaled by target vol / realized SPY vol so exposure responds to current risk, not just signal level.
+      const t = isFinite(score) ? clip((score - c.bandLow) / (c.bandHigh - c.bandLow), 0, 1) : 0.5;
+      const baseAlloc = c.allocBear + (c.allocBull - c.allocBear) * t;
+      const rv = spyVolAnn[idx];
+      const volMult = isFinite(rv) && rv > 0 ? clip(c.volTarget / rv, c.volMinMult, c.volMaxMult) : 1;
+      newAlloc = clip(baseAlloc * volMult, 0, 1);
+    } else {
+      newAlloc = isFinite(score)
+        ? (score > c.bandHigh ? c.allocBull : score > c.bandMid ? c.allocNb : score > c.bandLow ? c.allocNbear : c.allocBear)
+        : 0.5;
+    }
 
     // Compute equity for this month using allocation from previous month
     if (prevMonthEnd >= 0) {
@@ -725,6 +1128,8 @@ function runP2(data) {
     return (v - spy[i-21]) / spy[i-21];
   });
   const spyRetZ = rollingZ(spyRet21, 63); // shorter window for returns
+  const c2 = _cfg.p2;
+  const spyVolAnn = rollingVolAnnualized(pctChange(spy), c2.volWin);
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
@@ -740,9 +1145,18 @@ function runP2(data) {
     let score = NaN;
     if (isFinite(cr) && isFinite(sp)) score = -cr + sp; // positive = bullish divergence
 
-    const c2 = _cfg.p2;
     let newSpyAlloc = 0.6, newTltAlloc = 0.4;
-    if (isFinite(score)) {
+    if (c2.sizingMode === 'continuous') {
+      // Same pattern as P1: ramp SPY weight linearly between the VeryBearish/VeryBullish
+      // endpoints by score (ignoring the intermediate Bull/Neutral/Bear buckets), then scale
+      // by vol target / realized SPY vol so exposure responds to current risk, not just signal level.
+      const t = isFinite(score) ? clip((score - c2.thBear) / (c2.thVBull - c2.thBear), 0, 1) : 0.5;
+      const baseAlloc = c2.allocVBear + (c2.allocVBull - c2.allocVBear) * t;
+      const rv = spyVolAnn[idx];
+      const volMult = isFinite(rv) && rv > 0 ? clip(c2.volTarget / rv, c2.volMinMult, c2.volMaxMult) : 1;
+      newSpyAlloc = clip(baseAlloc * volMult, 0, 1);
+      newTltAlloc = 1 - newSpyAlloc;
+    } else if (isFinite(score)) {
       if (score > c2.thVBull)    { newSpyAlloc = c2.allocVBull;    newTltAlloc = 1-c2.allocVBull; }
       else if (score > c2.thBull){ newSpyAlloc = c2.allocBull;     newTltAlloc = 1-c2.allocBull; }
       else if (score > c2.thNeutral){ newSpyAlloc = c2.allocNeutral; newTltAlloc = 1-c2.allocNeutral; }
@@ -770,60 +1184,59 @@ function runP2(data) {
   return { key:'p2', name: SYS_NAMES[1], color: SYS_COLORS[1], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
-// P3: Yield Curve Regime Rotation — ISM trend + Core CPI → 4 quadrants
+// P3: VIX Regime Rotation — market-implied fear gauge (VIX) drives SPY/TLT/GLD allocation.
+// Unlike P1 (uses lagged FRED data: ISM/credit/realyield), VIX reacts in real-time to risk events,
+// creating genuine decorrelation during growth scares and policy-uncertainty episodes.
+// CALM  (VIX < vixCalm, z < 0): SPY heavy — risk appetite intact.
+// ELEVATED (in between): SPY reduced + TLT buffer + GLD — uncertainty hedge.
+// STRESSED (VIX > vixStress or z > stressZ): TLT + GLD — flight to safety.
 function runP3(data) {
-  const { dateIndex: dates, fred, prices } = data;
+  const { dateIndex: dates, prices } = data;
   const n = dates.length;
+  const vixRaw = prices?.vix ? ffill(prices.vix) : null;
+  if (!vixRaw) return { key:'p3', name: SYS_NAMES[2], color: SYS_COLORS[2], equityCurve: new Array(n).fill(NaN), dates, monthlyRet: [], monthlyDates: [] };
 
-  const ism     = ffill(fred.ism);
-  const coreCpi = ffill(fred.coreCpi);
   const spy = ffill(prices.spy);
   const tlt = ffill(prices.tlt);
   const gld = ffill(prices.gld);
-
-  const c3 = _cfg.p3;
-  // ISM MA (configurable period)
-  function maN(arr, p) {
-    return arr.map((v,i) => {
-      if (i < p) return NaN;
-      const sl = arr.slice(i-p, i).filter(isFinite);
-      return sl.length > 10 ? sl.reduce((a,b)=>a+b)/sl.length : NaN;
-    });
-  }
-  const ismMa = maN(applyLag(ism, PUB_MONTHLY), c3.ismMaPeriod);
-  const ismTrend = ismMa.map((v,i) => {
-    if (i < c3.ismMaPeriod) return NaN;
-    const prev = ismMa[i-c3.ismMaPeriod];
-    return isFinite(prev) && isFinite(v) ? v - prev : NaN;
-  });
-
-  const cpiLag = applyLag(coreCpi, PUB_MONTHLY);
-  // YoY: (today / 252 trading days ago) - 1, expressed as percentage
-  const CPI_YOY_WIN = 252;
-  const cpiYoY = cpiLag.map((v, i) => {
-    const prior = cpiLag[i - CPI_YOY_WIN];
-    return (isFinite(v) && isFinite(prior) && prior > 0) ? (v / prior - 1) * 100 : NaN;
-  });
+  const c3  = _cfg.p3;
+  const vixZ = rollingZ(vixRaw, c3.zWin);
+  const spyVolAnn = c3.sizingMode === 'continuous' ? rollingVolAnnualized(pctChange(spy), c3.volWin) : null;
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let sA=0.7, tA=0.2, gA=0.1; // SPY, TLT, GLD allocations
+  let sA = c3.calmSpy, tA = 0, gA = 1 - c3.calmSpy;
 
   for (const idx of monthEnds) {
-    const trend = ismTrend[idx], cpi = cpiYoY[idx];
-    let ns=0.7, nt=0.2, ng=0.1;
-    if (isFinite(trend) && isFinite(cpi)) {
-      const rising = trend > 0;
-      const inflationary = cpi > 3.0; // spec: CPI YoY > 3% = inflationary
-      if (rising && !inflationary)       { ns=c3.goldilocksSpy; nt=1-c3.goldilocksSpy; ng=0; }  // Goldilocks
-      else if (rising && inflationary)   { ns=c3.overheatSpy; nt=c3.overheatTlt; ng=c3.overheatGld; }  // Overheating
-      else if (!rising && inflationary)  { ns=c3.stagSpy; nt=c3.stagTlt; ng=c3.stagGld; }  // Stagflation
-      else                               { ns=c3.recSpy; nt=c3.recTlt; ng=1-c3.recSpy-c3.recTlt; }  // Recession
+    const vv = vixRaw[idx], vz = vixZ[idx];
+    let ns, nt, ng;
+    if (!isFinite(vv) || !isFinite(vz)) { ns = sA; nt = tA; ng = gA; }
+    else if (c3.sizingMode === 'continuous') {
+      // Smooth stress score in [0,1]: 0 at/below the calm thresholds (VIX level AND z both calm,
+      // mirroring the discrete AND-logic), 1 at/above either stress threshold (OR-logic). SPY/TLT
+      // ramp linearly between the same Calm/Stressed endpoints (Elevated bucket folded into the ramp,
+      // same simplification P1 makes for its middle buckets), then SPY alone is scaled by vol target /
+      // realized SPY vol — GLD absorbs whatever weight that scaling frees up or borrows.
+      const tLevel = (vv - c3.vixCalm) / (c3.vixStress - c3.vixCalm);
+      const tZ = vz / c3.stressZ;
+      const t = clip(Math.max(tLevel, tZ), 0, 1);
+      const spyBase = c3.calmSpy * (1 - t);
+      const tltBase = c3.stressTlt * t;
+      const rv = spyVolAnn[idx];
+      const volMult = isFinite(rv) && rv > 0 ? clip(c3.volTarget / rv, c3.volMinMult, c3.volMaxMult) : 1;
+      ns = clip(spyBase * volMult, 0, 1);
+      nt = tltBase;
+      ng = clip(1 - ns - nt, 0, 1);
+    } else if (vv < c3.vixCalm && vz < 0) {
+      ns = c3.calmSpy;  nt = 0;           ng = 1 - c3.calmSpy;
+    } else if (vv > c3.vixStress || vz > c3.stressZ) {
+      ns = 0;           nt = c3.stressTlt; ng = 1 - c3.stressTlt;
+    } else {
+      ns = c3.elevSpy;  nt = c3.elevTlt;  ng = Math.max(0, 1 - c3.elevSpy - c3.elevTlt);
     }
-
     if (prevMonthEnd >= 0) {
       const rSpy = isFinite(spy[prevMonthEnd])&&isFinite(spy[idx])&&spy[prevMonthEnd]>0 ? (spy[idx]-spy[prevMonthEnd])/spy[prevMonthEnd] : 0;
       const rTlt = isFinite(tlt[prevMonthEnd])&&isFinite(tlt[idx])&&tlt[prevMonthEnd]>0 ? (tlt[idx]-tlt[prevMonthEnd])/tlt[prevMonthEnd] : 0;
@@ -839,42 +1252,43 @@ function runP3(data) {
     sA=ns; tA=nt; gA=ng;
     prevMonthEnd = idx;
   }
-
   return { key:'p3', name: SYS_NAMES[2], color: SYS_COLORS[2], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
-// P4: USD/JPY Pure Bidirectional Trend — long when price > MA, short when price < MA.
-// No VIX gate: gating longs flat during 2022 USD/JPY rally (elevated VIX from Fed hiking/Ukraine)
-// caused FLAT during the biggest uptrend, then wrong SHORTs on brief dips → cascading losses.
+// P4: FX Risk Barometer — AUD/JPY + NZD/JPY basket (classic high-beta-vs-JPY risk-on/risk-off
+// crosses). Sized off P3's already-validated VIX regime classification (zWin/vixCalm/vixStress/
+// stressZ) instead of an independent threshold, since a second tunable regime detector would
+// just add another overfit-prone knob without a clear extra edge. Calm = long the basket
+// (risk appetite intact); Stressed = short it (high-beta-vs-funding-currency carry unwinds hard
+// in risk-off, e.g. 2008 GFC, Mar 2020, Aug 2024).
 function runP4(data) {
-  const { dateIndex: dates, fx } = data;
+  const { dateIndex: dates, fx, prices } = data;
   const n = dates.length;
-  const usdjpy = ffill(fx.usdjpy);
-  const c4 = _cfg.p4;
-  const tw = c4.trendWin;
-  const usdMA = usdjpy.map((_, i) => {
-    if (i < tw) return NaN;
-    let s = 0, cnt = 0;
-    for (let j = i - tw + 1; j <= i; j++) if (isFinite(usdjpy[j])) { s += usdjpy[j]; cnt++; }
-    return cnt > 0 ? s / cnt : NaN;
-  });
+  const audjpy = ffill(fx.audjpy);
+  const nzdjpy = ffill(fx.nzdjpy);
+  const vixRaw = prices?.vix ? ffill(prices.vix) : null;
+  const c3 = _cfg.p3, c4 = _cfg.p4;
+  const vixZ = vixRaw ? rollingZ(vixRaw, c3.zWin) : null;
+
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
   const equityCurve = new Array(n).fill(NaN);
   const monthlyRet = [], monthlyDates = [];
   let prevMonthEnd = -1;
-  let position = 0;
+  let alloc = c4.calmAlloc;
+
   for (const idx of monthEnds) {
-    const maReady = isFinite(usdjpy[idx]) && isFinite(usdMA[idx]);
-    const newPos = maReady ? (usdjpy[idx] > usdMA[idx] ? 1 : -1) : 0;
+    const vv = vixRaw ? vixRaw[idx] : NaN, vz = vixZ ? vixZ[idx] : NaN;
+    let newAlloc;
+    if (!isFinite(vv) || !isFinite(vz)) newAlloc = alloc;
+    else if (vv < c3.vixCalm && vz < 0) newAlloc = c4.calmAlloc;
+    else if (vv > c3.vixStress || vz > c3.stressZ) newAlloc = c4.stressAlloc;
+    else newAlloc = c4.elevAlloc;
+
     if (prevMonthEnd >= 0) {
-      let ret = 0;
-      if (position !== 0) {
-        const u0 = usdjpy[prevMonthEnd], u1 = usdjpy[idx];
-        if (isFinite(u0) && isFinite(u1) && u0 > 0) {
-          ret = c4.allocNormal * position * (u1 - u0) / u0;
-        }
-      }
+      const rAud = isFinite(audjpy[prevMonthEnd])&&isFinite(audjpy[idx])&&audjpy[prevMonthEnd]>0 ? (audjpy[idx]-audjpy[prevMonthEnd])/audjpy[prevMonthEnd] : 0;
+      const rNzd = isFinite(nzdjpy[prevMonthEnd])&&isFinite(nzdjpy[idx])&&nzdjpy[prevMonthEnd]>0 ? (nzdjpy[idx]-nzdjpy[prevMonthEnd])/nzdjpy[prevMonthEnd] : 0;
+      const ret = alloc * (rAud + rNzd) / 2;
       equity *= (1 + ret);
       monthlyRet.push(ret);
       monthlyDates.push(dates[idx]);
@@ -882,106 +1296,10 @@ function runP4(data) {
     } else {
       equityCurve[idx] = equity;
     }
-    position = newPos;
+    alloc = newAlloc;
     prevMonthEnd = idx;
   }
   return { key:'p4', name: SYS_NAMES[3], color: SYS_COLORS[3], equityCurve, dates, monthlyRet, monthlyDates };
-}
-
-// P5: FX Cross-Sectional Momentum — long top 3, short bottom 3 of 7 USD pairs
-function runP5(data) {
-  const { dateIndex: dates, fx } = data;
-  const n = dates.length;
-
-  // Express all as USD return perspective: EUR/USD etc are already correct;
-  // for USD/JPY, USD/CAD, USD/CHF we invert (1/rate gives currency appreciation vs USD)
-  const eurusd = ffill(fx.eurusd);
-  const gbpusd = ffill(fx.gbpusd);
-  const audusd = ffill(fx.audusd);
-  const nzdusd = ffill(fx.nzdusd);
-  // Convert: 1/usdjpy etc. (not needed since we compute returns)
-  // For USD/JPY: if USD_JPY rises, USD strengthened → JPY weakened → JPY return = negative
-  // We store as returns, so jpyRet = -usdJpyReturn
-  const usdjpy = ffill(fx.usdjpy);
-  const usdcad = ffill(fx.usdcad);
-  const usdchf = ffill(fx.usdchf);
-
-  const PAIRS = [
-    { name:'EUR', arr: eurusd, inverted: false },
-    { name:'GBP', arr: gbpusd, inverted: false },
-    { name:'AUD', arr: audusd, inverted: false },
-    { name:'NZD', arr: nzdusd, inverted: false },
-    { name:'JPY', arr: usdjpy, inverted: true },  // inverted: JPY strength = USD_JPY falling
-    { name:'CAD', arr: usdcad, inverted: true },
-    { name:'CHF', arr: usdchf, inverted: true },
-  ];
-
-  const c5 = _cfg.p5;
-  // 12-1 month momentum: return from lb days ago to skip days ago (skip last month to avoid reversal)
-  function momN(arr, inverted, lb, skip) {
-    return arr.map((v, i) => {
-      if (i < lb) return NaN;
-      const vLong  = arr[i - lb];
-      const vShort = arr[i - skip];
-      if (!isFinite(vLong) || !isFinite(vShort) || vLong === 0) return NaN;
-      const r = (vShort - vLong) / vLong; // return from 12-months-ago to 1-month-ago
-      return inverted ? -r : r;
-    });
-  }
-
-  const monthEnds = monthEndIdx(dates);
-  let equity = 1.0;
-  const equityCurve = new Array(n).fill(NaN);
-  const monthlyRet = [], monthlyDates = [];
-  let prevMonthEnd = -1;
-  let longIdx = [], shortIdx = [];
-
-  for (const idx of monthEnds) {
-    const scores = PAIRS.map((p, pi) => {
-      const m = momN(p.arr, p.inverted, c5.lookback, c5.skip);
-      return { pi, score: m[idx] };
-    }).filter(x => isFinite(x.score)).sort((a,b)=>b.score-a.score);
-
-    const nL = c5.nLong, nS = c5.nShort;
-    if (prevMonthEnd >= 0 && longIdx.length > 0) {
-      let ret = 0;
-      for (const pi of longIdx) {
-        const p = PAIRS[pi];
-        const p0 = p.arr[prevMonthEnd], p1 = p.arr[idx];
-        if (isFinite(p0)&&isFinite(p1)&&p0>0) {
-          const r = (p1-p0)/p0 * (p.inverted ? -1 : 1);
-          ret += r / nL;
-        }
-      }
-      for (const pi of shortIdx) {
-        const p = PAIRS[pi];
-        const p0 = p.arr[prevMonthEnd], p1 = p.arr[idx];
-        if (isFinite(p0)&&isFinite(p1)&&p0>0) {
-          const r = (p1-p0)/p0 * (p.inverted ? -1 : 1);
-          ret -= r / nS;
-        }
-      }
-      equity *= (1 + ret);
-      monthlyRet.push(ret);
-      monthlyDates.push(dates[idx]);
-      for (let i = prevMonthEnd + 1; i <= idx; i++) equityCurve[i] = equity;
-    } else {
-      equityCurve[idx] = equity;
-    }
-
-    // Update longs/shorts — require sufficient spread between best and worst signal
-    const spreadOk = scores.length >= nL + nS &&
-      (scores[0].score - scores[scores.length - 1].score) > 0.04;
-    if (spreadOk) {
-      longIdx  = scores.slice(0, nL).map(x => x.pi);
-      shortIdx = scores.slice(-nS).map(x => x.pi);
-    } else {
-      longIdx = []; shortIdx = [];
-    }
-    prevMonthEnd = idx;
-  }
-
-  return { key:'p5', name: SYS_NAMES[4], color: SYS_COLORS[4], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
 // P6: Gold Macro Divergence — OLS log(GLD) ~ DFII10 + DTWEXBGS residual z-score
@@ -1000,6 +1318,7 @@ function runP6(data) {
   const c6 = _cfg.p6;
   const residuals = rollingOLSResidual(logGld, ryLag, dxyLag, c6.olsWindow);
   const residZ    = rollingZ(residuals, Math.floor(c6.olsWindow/2));
+  const gldVolAnn = c6.sizingMode === 'continuous' ? rollingVolAnnualized(pctChange(gld), c6.volWin) : null;
 
   const monthEnds = monthEndIdx(dates);
   let equity = 1.0;
@@ -1011,7 +1330,16 @@ function runP6(data) {
   for (const idx of monthEnds) {
     const rz = residZ[idx];
     let newAlloc = c6.allocNeutral;
-    if (isFinite(rz)) {
+    if (c6.sizingMode === 'continuous') {
+      // Ramp GLD weight linearly between the VeryLong/VeryShort endpoints by residual z-score
+      // (ignoring the intermediate Long/Short buckets, same simplification as P1), then scale by
+      // vol target / realized GLD vol — GLD is the traded asset here, so its own vol is the gauge.
+      const t = isFinite(rz) ? clip((rz - c6.thVLong) / (c6.thVShort - c6.thVLong), 0, 1) : 0.5;
+      const baseAlloc = c6.allocVLong + (c6.allocVShort - c6.allocVLong) * t;
+      const rv = gldVolAnn[idx];
+      const volMult = isFinite(rv) && rv > 0 ? clip(c6.volTarget / rv, c6.volMinMult, c6.volMaxMult) : 1;
+      newAlloc = clip(baseAlloc * volMult, 0, 1);
+    } else if (isFinite(rz)) {
       if (rz < c6.thVLong)      newAlloc = c6.allocVLong;
       else if (rz < c6.thLong)  newAlloc = c6.allocLong;
       else if (rz < c6.thShort) newAlloc = c6.allocNeutral;
@@ -1034,7 +1362,7 @@ function runP6(data) {
     prevMonthEnd = idx;
   }
 
-  return { key:'p6', name: SYS_NAMES[5], color: SYS_COLORS[5], equityCurve, dates, monthlyRet, monthlyDates };
+  return { key:'p6', name: SYS_NAMES[4], color: SYS_COLORS[4], equityCurve, dates, monthlyRet, monthlyDates };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1061,7 +1389,7 @@ function computeCombined(results, weights) {
   let equity = 1.0;
   const cumulativeEq = monthlyRet.map(r => { equity *= (1+r); return equity; });
 
-  return { dates: allDates, monthlyRet, cumulativeEq, weights: ws };
+  return { dates: allDates, monthlyDates: allDates, monthlyRet, cumulativeEq, weights: ws };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1108,9 +1436,13 @@ function renderKPIs(combined) {
   const mr = combined.monthlyRet;
   const eq = combined.cumulativeEq;
   const sh = sharpe(mr);
+  const so = sortino(mr);
+  const cl = calmarRatio(mr);
   const ca = cagr(eq[eq.length-1], mr.length);
   const dd = maxDD(eq);
-  const win = mr.filter(v=>v>0).length / mr.filter(isFinite).length * 100;
+  const fin = mr.filter(isFinite);
+  const win = fin.filter(v=>v>0).length / fin.length * 100;
+  const freq = fin.filter(v=>v!==0).length / fin.length * 100;
 
   document.getElementById('kpiRow').style.display = 'block';
   document.getElementById('sysLegend').style.display = 'flex';
@@ -1123,12 +1455,21 @@ function renderKPIs(combined) {
     <div class="bt-kpi"><div class="bt-kpi-label">Sharpe Ratio</div>
       <div class="bt-kpi-value ${sh>=1?'green':sh>=0.5?'blue':'red'}">${fmt(sh,2)}</div>
       <div class="bt-kpi-sub">Risk-adjusted return</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Sortino Ratio</div>
+      <div class="bt-kpi-value ${so>=1.5?'green':so>=0.8?'blue':'red'}">${isFinite(so)?fmt(so,2):'—'}</div>
+      <div class="bt-kpi-sub">Downside-only vol</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Calmar Ratio</div>
+      <div class="bt-kpi-value ${cl>=0.5?'green':cl>=0.2?'blue':'red'}">${isFinite(cl)?fmt(cl,2):'—'}</div>
+      <div class="bt-kpi-sub">CAGR ÷ MaxDD</div></div>
     <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div>
       <div class="bt-kpi-value red">${fmt(dd,1)}%</div>
       <div class="bt-kpi-sub">Peak-to-trough</div></div>
     <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div>
       <div class="bt-kpi-value ${win>=55?'green':'amber'}">${fmt(win,0)}%</div>
       <div class="bt-kpi-sub">Months with gain</div></div>
+    <div class="bt-kpi"><div class="bt-kpi-label">Trade Frequency</div>
+      <div class="bt-kpi-value blue">${fmt(freq,0)}%</div>
+      <div class="bt-kpi-sub">Active months</div></div>
     <div class="bt-kpi"><div class="bt-kpi-label">Final Equity</div>
       <div class="bt-kpi-value blue">${fmt(eq[eq.length-1],2)}×</div>
       <div class="bt-kpi-sub">From $1 invested</div></div>
@@ -1267,7 +1608,7 @@ function applyPreset(preset) {
   document.getElementById('preset'+preset.charAt(0).toUpperCase()+preset.slice(1)).classList.add('active');
 
   if (preset === 'ew') {
-    _weights = [1,1,1,1,1,1];
+    _weights = SYS_KEYS.map(() => 1);
   } else if (preset === 'rp') {
     // Risk parity: weight ∝ 1/vol(monthly ret)
     const vols = SYS_KEYS.map(k => {
@@ -1279,7 +1620,7 @@ function applyPreset(preset) {
     });
     const invVols = vols.map(v => 1/v);
     const sumInv = invVols.reduce((a,b)=>a+b);
-    _weights = invVols.map(v => v/sumInv * 6);
+    _weights = invVols.map(v => v/sumInv * SYS_KEYS.length);
   } else if (preset === 'ms') {
     // Max Sharpe: Markowitz tangent portfolio (Σ⁻¹μ), falls back to proportional-Sharpe
     const mkW = maxSharpeMarkowitz(SYS_KEYS);
@@ -1288,7 +1629,7 @@ function applyPreset(preset) {
     } else {
       const sharpes = SYS_KEYS.map(k => Math.max(0, sharpe(_results[k]?.monthlyRet ?? [])));
       const sumS = sharpes.reduce((a,b)=>a+b) || 1;
-      _weights = sharpes.map(s => s/sumS * 6);
+      _weights = sharpes.map(s => s/sumS * SYS_KEYS.length);
     }
   } else if (preset === 'md') {
     // Min Drawdown: weight ∝ 1/|maxDD| (less negative DD = more weight)
@@ -1300,7 +1641,7 @@ function applyPreset(preset) {
     });
     const invDds = dds.map(d => 1/d);
     const sumD = invDds.reduce((a,b)=>a+b);
-    _weights = invDds.map(v => v/sumD * 6);
+    _weights = invDds.map(v => v/sumD * SYS_KEYS.length);
   }
 
   renderSliders();
@@ -1319,12 +1660,23 @@ function renderSizingTable() {
   const ws = _weights.map(w => w/totalW);
   const combSh = _combined ? sharpe(_combined.monthlyRet) : NaN;
 
+  // Build avg pairwise correlation for each system vs all others
+  const allMo = [...new Set(SYS_KEYS.flatMap(k=>_results[k]?.monthlyDates??[]))].sort();
+  const retsByKey = SYS_KEYS.map(k => {
+    const r = _results[k];
+    return allMo.map(d => { const idx=r?.monthlyDates?.indexOf(d)??-1; return idx>=0?r.monthlyRet[idx]:NaN; });
+  });
+  const avgCorrs = retsByKey.map((ri, i) =>
+    retsByKey.filter((_,j) => j!==i).reduce((sum, rj) => sum + pearson(ri, rj), 0) / (SYS_KEYS.length - 1)
+  );
+
   let html = '';
   for (let i = 0; i < SYS_KEYS.length; i++) {
     const r = _results[SYS_KEYS[i]];
     const mr = r?.monthlyRet ?? [];
     const sh = sharpe(mr); const ca = cagr(r?.monthlyRet ? (() => { let e=1; return mr.map(v=>{ e*=(1+v); return e; }) })()[mr.length-1] : 1, mr.length);
     let mdd = 0; if(r){ let eq=1,pk=1; for(const v of mr){eq*=(1+v);if(eq>pk)pk=eq;mdd=Math.min(mdd,(eq-pk)/pk);} }
+    const avgRho = avgCorrs[i];
     const contrib = isFinite(combSh) && isFinite(sh) && combSh > 0 ? ws[i]*sh/combSh*100 : NaN;
     const divRatio = mr.length > 0 && isFinite(sh) ? (() => { const indVol = (() => { const fin=mr.filter(isFinite); const mu=fin.reduce((a,b)=>a+b,0)/fin.length; return Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/fin.length); })(); return indVol > 0 ? (combSh / sh) : NaN; })() : NaN;
     html += `<tr>
@@ -1333,6 +1685,7 @@ function renderSizingTable() {
       <td class="num ${ca>=0?'pos':'neg'}">${fmtPct(ca)}</td>
       <td class="num ${sh>=0.5?'pos':sh>=0.3?'neu':'neg'}">${fmt(sh,2)}</td>
       <td class="num neg">${fmt(mdd*100,1)}%</td>
+      <td class="num ${isFinite(avgRho)&&avgRho>0.25?'neg':isFinite(avgRho)&&avgRho<0.05?'pos':'neu'}" title="Avg pairwise correlation vs other 5 systems">${isFinite(avgRho)?fmt(avgRho,2):'—'}</td>
       <td class="num">${isFinite(contrib)?fmt(contrib,1)+'%':'—'}</td>
       <td class="num ${divRatio>1?'pos':'neu'}">${fmt(divRatio,2)}</td>
     </tr>`;
@@ -1360,6 +1713,226 @@ function renderSizingTable() {
       }],
       { plugins: { legend: { display: false } }, scales: { y: { ticks: { color:'#94a3b8', font:{family:'DM Mono',size:10} }, grid:{color:'rgba(255,255,255,0.06)'} }, x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{display:false} } } }
     );
+  }
+}
+
+// ── Monte Carlo ───────────────────────────────────────────────────────────────
+function renderMonteCarlo() {
+  if (!_combined) return;
+  const mr = _combined.monthlyRet;
+  const mc = runMonteCarlo(mr, 1000);
+  if (!mc) return;
+
+  const { bands, pcts, n, sims } = mc;
+  const labels = Array.from({ length: n + 1 }, (_, i) => i === 0 ? 'Start' : `M${i}`);
+  const colors = ['#ef4444', '#f97316', '#14b8a6', '#f97316', '#ef4444'];
+  const fills  = ['+1', '+1', false, '-1', '-1'];
+  const alphas = ['0.15', '0.25', '1.0', '0.25', '0.15'];
+
+  destroyChart('chartMC');
+  const ctx = document.getElementById('chartMC')?.getContext('2d');
+  if (!ctx) return;
+
+  // Actual equity curve
+  const actualEq = [1];
+  for (const r of mr.filter(isFinite)) actualEq.push(actualEq[actualEq.length-1] * (1+r));
+
+  const datasets = pcts.map((p, pi) => ({
+    label: `P${p}`,
+    data: bands[pi],
+    borderColor: colors[pi],
+    backgroundColor: colors[pi].replace(')', `,${alphas[pi]})`).replace('rgb', 'rgba'),
+    borderWidth: pi === 2 ? 2 : 1,
+    borderDash: pi === 2 ? [] : [3,3],
+    pointRadius: 0,
+    tension: 0,
+    fill: fills[pi],
+  }));
+  datasets.push({
+    label: 'Actual',
+    data: actualEq,
+    borderColor: '#e2e8f0',
+    backgroundColor: 'transparent',
+    borderWidth: 2.5,
+    pointRadius: 0,
+    tension: 0,
+  });
+
+  _charts['chartMC'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      ..._chartOpts(), animation: { duration: 0 },
+      plugins: { legend: { display: true, labels: { color:'#94a3b8', font:{family:'DM Mono',size:10}, boxWidth:12 } } },
+      scales: {
+        x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:9},maxTicksLimit:20}, grid:{color:'rgba(255,255,255,0.04)'} },
+        y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{color:'rgba(255,255,255,0.06)'},
+             title:{display:true,text:'Equity (×)',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+      },
+    },
+  });
+
+  // Summary table
+  const finalEqs = sims.map(s => s[s.length-1]).sort((a,b)=>a-b);
+  const nSims = sims.length;
+  const summaryPcts = [5, 25, 50, 75, 95];
+  let html = '';
+  for (const p of summaryPcts) {
+    const fe = finalEqs[Math.round((p/100)*(nSims-1))];
+    const c = (Math.pow(fe, 12/n) - 1) * 100;
+    const simRets = sims[Math.round((p/100)*(nSims-1))].map((v,i,a) => i===0 ? 0 : (v-a[i-1])/a[i-1]);
+    const sh = sharpe(simRets.slice(1));
+    html += `<tr>
+      <td>P${p}</td>
+      <td class="num ${fe>=1?'pos':'neg'}">${fmt(fe,2)}×</td>
+      <td class="num ${c>=0?'pos':'neg'}">${fmtPct(c)}</td>
+      <td class="num ${sh>=0.5?'pos':sh>=0?'neu':'neg'}">${isFinite(sh)?fmt(sh,2):'—'}</td>
+      <td class="num">—</td>
+    </tr>`;
+  }
+  document.getElementById('mcSummaryBody').innerHTML = html;
+}
+
+// ── Robustness (in-sample / out-of-sample split) ──────────────────────────────
+function renderRobustness() {
+  const noDataEl = document.getElementById('robustnessNoData');
+  if (!_combined) { if (noDataEl) noDataEl.style.display='block'; return; }
+  if (noDataEl) noDataEl.style.display = 'none';
+  const allMo = _combined.monthlyDates;
+  if (!allMo || allMo.length < 24) return;
+  const mid = Math.floor(allMo.length / 2);
+  const splitDate = allMo[mid];
+
+  const statsFor = (rets, dates, isIn) => {
+    const slice = rets.filter((_, i) => isIn ? dates[i] < splitDate : dates[i] >= splitDate);
+    if (slice.length < 3) return { sh: NaN, ca: NaN, dd: NaN };
+    let eq = 1, peak = 1, mdd = 0;
+    for (const r of slice) { eq*=(1+r); if(eq>peak) peak=eq; mdd=Math.min(mdd,(eq-peak)/peak); }
+    return { sh: sharpe(slice), ca: cagr(eq, slice.length), dd: mdd*100 };
+  };
+
+  const rows = [...SYS_KEYS.map((k,i) => {
+    const r = _results[k]; if (!r) return null;
+    const is_ = statsFor(r.monthlyRet, r.monthlyDates, true);
+    const oos = statsFor(r.monthlyRet, r.monthlyDates, false);
+    const degrad = isFinite(is_.sh) && is_.sh > 0 ? ((oos.sh - is_.sh) / Math.abs(is_.sh)) * 100 : NaN;
+    return { name: SYS_NAMES[i], color: SYS_COLORS[i], is: is_, oos, degrad };
+  }).filter(Boolean), (() => {
+    const is_ = statsFor(_combined.monthlyRet, _combined.monthlyDates, true);
+    const oos = statsFor(_combined.monthlyRet, _combined.monthlyDates, false);
+    const degrad = isFinite(is_.sh) && is_.sh > 0 ? ((oos.sh - is_.sh) / Math.abs(is_.sh)) * 100 : NaN;
+    return { name: 'Combined Book', color: '#e2e8f0', is: is_, oos, degrad };
+  })()];
+
+  let html = '';
+  for (const row of rows) {
+    const dc = isFinite(row.degrad) ? (row.degrad >= -20 ? 'pos' : row.degrad >= -50 ? 'neu' : 'neg') : 'neu';
+    html += `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${row.color};margin-right:5px;"></span>${row.name}</td>
+      <td class="num ${row.is.sh>=0.5?'pos':row.is.sh>=0?'neu':'neg'}">${isFinite(row.is.sh)?fmt(row.is.sh,2):'—'}</td>
+      <td class="num ${row.oos.sh>=0.5?'pos':row.oos.sh>=0?'neu':'neg'}">${isFinite(row.oos.sh)?fmt(row.oos.sh,2):'—'}</td>
+      <td class="num ${dc}">${isFinite(row.degrad)?(row.degrad>=0?'+':'')+fmt(row.degrad,0)+'%':'—'}</td>
+      <td class="num ${row.is.ca>=0?'pos':'neg'}">${isFinite(row.is.ca)?fmtPct(row.is.ca):'—'}</td>
+      <td class="num ${row.oos.ca>=0?'pos':'neg'}">${isFinite(row.oos.ca)?fmtPct(row.oos.ca):'—'}</td>
+      <td class="num neg">${isFinite(row.is.dd)?fmt(row.is.dd,1)+'%':'—'}</td>
+      <td class="num neg">${isFinite(row.oos.dd)?fmt(row.oos.dd,1)+'%':'—'}</td>
+    </tr>`;
+  }
+  document.getElementById('robustBody').innerHTML = html;
+
+  // Worst periods table
+  const allSystems = [...SYS_KEYS.map((k,i) => ({ name: SYS_NAMES[i], color: SYS_COLORS[i], rets: _results[k]?.monthlyRet??[], dates: _results[k]?.monthlyDates??[] })),
+    { name: 'Combined', color: '#e2e8f0', rets: _combined.monthlyRet, dates: _combined.monthlyDates }];
+  let worstHtml = '';
+  for (const sys of allSystems) {
+    const w12 = worstRollingCAGR(sys.rets, 12);
+    const w36 = worstRollingCAGR(sys.rets, 36);
+    const w60 = worstRollingCAGR(sys.rets, 60);
+    const pd = (obj, rets) => {
+      if (!isFinite(obj.cagr) || obj.startIdx < 0) return '—';
+      const d = sys.dates[obj.startIdx] ?? '';
+      return d ? d.substring(0,7) : '—';
+    };
+    worstHtml += `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sys.color};margin-right:5px;"></span>${sys.name}</td>
+      <td class="num neg">${isFinite(w12.cagr)?fmtPct(w12.cagr):'—'}</td>
+      <td class="num" style="color:var(--text3)">${pd(w12)}</td>
+      <td class="num neg">${isFinite(w36.cagr)?fmtPct(w36.cagr):'—'}</td>
+      <td class="num" style="color:var(--text3)">${pd(w36)}</td>
+      <td class="num neg">${isFinite(w60.cagr)?fmtPct(w60.cagr):'—'}</td>
+      <td class="num" style="color:var(--text3)">${pd(w60)}</td>
+    </tr>`;
+  }
+  document.getElementById('worstBody').innerHTML = worstHtml;
+
+  // Rolling 12m CAGR chart for combined
+  const mr = _combined.monthlyRet.filter(isFinite);
+  const rollingCAGR = mr.map((_, i) => {
+    if (i < 11) return NaN;
+    const sl = mr.slice(i-11, i+1);
+    let eq = 1; for (const r of sl) eq *= (1+r);
+    return (Math.pow(eq, 12/12) - 1) * 100;
+  });
+  const labels = _combined.monthlyDates.filter((_,i) => i < mr.length).map((d,i) => i%12===0?d.substring(0,7):'');
+  destroyChart('chartWorstPeriods');
+  const ctx1 = document.getElementById('chartWorstPeriods')?.getContext('2d');
+  if (ctx1) {
+    _charts['chartWorstPeriods'] = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Rolling 12m CAGR %',
+          data: rollingCAGR,
+          backgroundColor: rollingCAGR.map(v => v >= 0 ? 'rgba(20,184,166,0.7)' : 'rgba(239,68,68,0.7)'),
+          borderWidth: 0, borderRadius: 2,
+        }]
+      },
+      options: {
+        ..._chartOpts(), animation: { duration: 0 },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:9},maxTicksLimit:15}, grid:{display:false} },
+          y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10},callback:v=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'},
+               title:{display:true,text:'12m CAGR %',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+        },
+      },
+    });
+  }
+
+  // Rolling Sharpe histogram (distribution of 12m Sharpe values)
+  const rollingSharpes = mr.map((_, i) => {
+    if (i < 11) return NaN;
+    return sharpe(mr.slice(i-11, i+1));
+  }).filter(isFinite);
+  const bins = 20, minS = Math.min(-2, ...rollingSharpes), maxS = Math.max(3, ...rollingSharpes);
+  const binW = (maxS - minS) / bins;
+  const hist = new Array(bins).fill(0);
+  const binLabels = [];
+  for (let b = 0; b < bins; b++) { binLabels.push(fmt(minS + b*binW, 1)); }
+  for (const s of rollingSharpes) {
+    const bi = Math.min(bins-1, Math.floor((s - minS) / binW));
+    if (bi >= 0) hist[bi]++;
+  }
+  destroyChart('chartSharpeHist');
+  const ctx2 = document.getElementById('chartSharpeHist')?.getContext('2d');
+  if (ctx2) {
+    _charts['chartSharpeHist'] = new Chart(ctx2, {
+      type: 'bar',
+      data: { labels: binLabels, datasets: [{ label: 'Count', data: hist,
+        backgroundColor: binLabels.map(l => parseFloat(l) >= 0 ? 'rgba(20,184,166,0.7)' : 'rgba(239,68,68,0.7)'),
+        borderWidth: 0, borderRadius: 2 }] },
+      options: {
+        ..._chartOpts(), animation: { duration: 0 },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:9},maxTicksLimit:10}, grid:{display:false},
+               title:{display:true,text:'12m Rolling Sharpe',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+          y: { ticks:{color:'#94a3b8',font:{family:'DM Mono',size:10}}, grid:{color:'rgba(255,255,255,0.06)'},
+               title:{display:true,text:'Frequency',color:'#94a3b8',font:{family:'DM Mono',size:10}} },
+        },
+      },
+    });
   }
 }
 
@@ -1578,6 +2151,15 @@ function sysCfgForm(key) {
   const row = (lbl, id, val, step, min, max) =>
     `<div class="form-row" style="padding:4px 0;justify-content:space-between;font-size:11px;font-family:'DM Mono',monospace;">
       <span style="color:var(--text3)">${lbl}</span>${inp(id, val, step, min, max)}</div>`;
+  const sel = (id, val, options) =>
+    `<select id="sc_${id}" onchange="updateSysCfg('${key}')"
+      style="width:110px;background:var(--s2);border:1px solid var(--border);border-radius:4px;
+             color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 6px;">
+      ${options.map(o=>`<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('')}
+    </select>`;
+  const selRow = (lbl, id, val, options) =>
+    `<div class="form-row" style="padding:4px 0;justify-content:space-between;font-size:11px;font-family:'DM Mono',monospace;">
+      <span style="color:var(--text3)">${lbl}</span>${sel(id, val, options)}</div>`;
 
   if (key === 'p1') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
@@ -1599,6 +2181,19 @@ function sysCfgForm(key) {
         ${row('Neutral-bear',  'p1_allocNbear',  c.allocNbear,  0.05)}
         ${row('Bear alloc',    'p1_allocBear',   c.allocBear,   0.05)}
       </div>
+      <div style="grid-column:1/-1;margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Sizing Mode</div>
+        ${selRow('Mode', 'p1_sizingMode', c.sizingMode, ['discrete','continuous'])}
+        ${row('Vol target (ann.)',   'p1_volTarget',  c.volTarget,  0.01, 0.02, 0.40)}
+        ${row('Vol window (days)',   'p1_volWin',     c.volWin,     1, 5, 126)}
+        ${row('Min vol multiplier',  'p1_volMinMult', c.volMinMult, 0.05, 0.1, 1)}
+        ${row('Max vol multiplier',  'p1_volMaxMult', c.volMaxMult, 0.05, 1, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">
+          Discrete: today's 4-bucket step allocation. Continuous: linear ramp between Bear↔Bull
+          across the same Bull/Bear thresholds, then scaled by Vol target ÷ realized SPY vol (clipped
+          to min/max multiplier) so exposure responds to current risk, not just signal level.
+        </div>
+      </div>
     </div>`;
 
   if (key === 'p2') return `
@@ -1619,47 +2214,67 @@ function sysCfgForm(key) {
         ${row('Very bearish SPY', 'p2_allocVBear',   c.allocVBear)}
         <div style="font-size:10px;color:var(--text3);margin-top:4px;">TLT = 1 − SPY alloc</div>
       </div>
+      <div style="grid-column:1/-1;margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Sizing Mode</div>
+        ${selRow('Mode', 'p2_sizingMode', c.sizingMode, ['discrete','continuous'])}
+        ${row('Vol target (ann.)',   'p2_volTarget',  c.volTarget,  0.01, 0.02, 0.40)}
+        ${row('Vol window (days)',   'p2_volWin',     c.volWin,     1, 5, 126)}
+        ${row('Min vol multiplier',  'p2_volMinMult', c.volMinMult, 0.05, 0.1, 1)}
+        ${row('Max vol multiplier',  'p2_volMaxMult', c.volMaxMult, 0.05, 1, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">
+          Discrete: today's 5-bucket step allocation. Continuous: linear ramp between Very
+          Bearish↔Very Bullish SPY weight, then scaled by Vol target ÷ realized SPY vol.
+        </div>
+      </div>
     </div>`;
 
   if (key === 'p3') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Signal</div>
-        ${row('ISM MA period (days)', 'p3_ismMaPeriod', c.ismMaPeriod, 5, 10, 252)}
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">VIX Thresholds</div>
+        ${row('Z-score window (days)', 'p3_zWin',     c.zWin,     5, 20, 252)}
+        ${row('Calm VIX level <',      'p3_vixCalm',  c.vixCalm,  1, 8, 25)}
+        ${row('Stressed VIX level >',  'p3_vixStress',c.vixStress,1, 15, 50)}
+        ${row('Stress z-score >',      'p3_stressZ',  c.stressZ,  0.1, 0.5, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Calm: VIX &lt; calm AND z &lt; 0 · Stressed: VIX &gt; stress OR z &gt; stressZ</div>
       </div>
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Quadrant Allocations (SPY / TLT / GLD)</div>
-        ${row('Goldilocks SPY',    'p3_goldilocksSpy', c.goldilocksSpy)}
-        ${row('Overheat SPY',      'p3_overheatSpy',   c.overheatSpy)}
-        ${row('Overheat TLT',      'p3_overheatTlt',   c.overheatTlt)}
-        ${row('Overheat GLD',      'p3_overheatGld',   c.overheatGld)}
-        ${row('Stagflation GLD',   'p3_stagGld',       c.stagGld)}
-        ${row('Stagflation TLT',   'p3_stagTlt',       c.stagTlt)}
-        ${row('Stagflation SPY',   'p3_stagSpy',       c.stagSpy)}
-        ${row('Recession TLT',     'p3_recTlt',        c.recTlt)}
-        ${row('Recession SPY',     'p3_recSpy',        c.recSpy)}
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Regime Allocations</div>
+        ${row('Calm SPY',      'p3_calmSpy',   c.calmSpy,   0.05)}
+        ${row('Elevated SPY',  'p3_elevSpy',   c.elevSpy,   0.05)}
+        ${row('Elevated TLT',  'p3_elevTlt',   c.elevTlt,   0.05)}
+        ${row('Stressed TLT',  'p3_stressTlt', c.stressTlt, 0.05)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Calm GLD = 1−SPY · Stressed GLD = 1−TLT · Elevated GLD = 1−SPY−TLT</div>
+      </div>
+      <div style="grid-column:1/-1;margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Sizing Mode</div>
+        ${selRow('Mode', 'p3_sizingMode', c.sizingMode, ['discrete','continuous'])}
+        ${row('Vol target (ann.)',   'p3_volTarget',  c.volTarget,  0.01, 0.02, 0.40)}
+        ${row('Vol window (days)',   'p3_volWin',     c.volWin,     1, 5, 126)}
+        ${row('Min vol multiplier',  'p3_volMinMult', c.volMinMult, 0.05, 0.1, 1)}
+        ${row('Max vol multiplier',  'p3_volMaxMult', c.volMaxMult, 0.05, 1, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">
+          Discrete: today's 3-state Calm/Elevated/Stressed allocation. Continuous: SPY/TLT ramp
+          linearly between the Calm/Stressed endpoints by a smooth VIX stress score, SPY is then
+          scaled by Vol target ÷ realized SPY vol, and GLD absorbs the residual weight.
+        </div>
       </div>
     </div>`;
 
   if (key === 'p4') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Trend Filter</div>
-        ${row('MA window (days)', 'p4_trendWin', c.trendWin, 21, 63, 504)}
-        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Long above MA (JPY weakening) · Short below MA (JPY strengthening) · No VIX gate</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Regime Allocations</div>
+        ${row('Calm alloc',    'p4_calmAlloc',   c.calmAlloc,   0.05, -1, 2)}
+        ${row('Elevated alloc','p4_elevAlloc',   c.elevAlloc,   0.05, -1, 2)}
+        ${row('Stress alloc',  'p4_stressAlloc', c.stressAlloc, 0.05, -2, 1)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Applied to an equal-weight AUD/JPY + NZD/JPY basket. Negative = short.</div>
       </div>
       <div>
-        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Allocation</div>
-        ${row('Position size', 'p4_allocNormal', c.allocNormal)}
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">Applied ×1 long or ×−1 short.</div>
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Regime Signal</div>
+        <div style="font-size:10px;color:var(--text3);">Reuses P3's VIX classification (Section "P3 VIX Regime" zWin/vixCalm/vixStress/stressZ) instead of an independent threshold — one fewer overfit-prone knob. Calm → long risk-on basket. Stressed → short into the carry unwind. Tune P3's thresholds to affect both systems together.</div>
       </div>
     </div>`;
-
-  if (key === 'p5') return `
-    ${row('Momentum lookback (days)', 'p5_lookback', c.lookback, 5, 10, 252)}
-    ${row('Number of longs',          'p5_nLong',    c.nLong,    1, 1, 6)}
-    ${row('Number of shorts',         'p5_nShort',   c.nShort,   1, 1, 6)}
-    <div style="font-size:10px;color:var(--text3);margin-top:6px;">7 pairs: EUR, GBP, AUD, NZD (long vs USD) + JPY, CAD, CHF (inverted)</div>`;
 
   if (key === 'p6') return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
@@ -1680,6 +2295,19 @@ function sysCfgForm(key) {
         ${row('Overvalued',       'p6_allocShort',   c.allocShort)}
         ${row('Very overvalued',  'p6_allocVShort',  c.allocVShort)}
       </div>
+      <div style="grid-column:1/-1;margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Sizing Mode</div>
+        ${selRow('Mode', 'p6_sizingMode', c.sizingMode, ['discrete','continuous'])}
+        ${row('Vol target (ann.)',   'p6_volTarget',  c.volTarget,  0.01, 0.02, 0.40)}
+        ${row('Vol window (days)',   'p6_volWin',     c.volWin,     1, 5, 126)}
+        ${row('Min vol multiplier',  'p6_volMinMult', c.volMinMult, 0.05, 0.1, 1)}
+        ${row('Max vol multiplier',  'p6_volMaxMult', c.volMaxMult, 0.05, 1, 3)}
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">
+          Discrete: today's 5-bucket step allocation. Continuous: linear ramp between Very
+          Undervalued↔Very Overvalued GLD weight, then scaled by Vol target ÷ realized GLD vol
+          (GLD is the traded asset, so its own vol is the risk gauge here, not SPY's).
+        </div>
+      </div>
     </div>`;
   return '';
 }
@@ -1693,31 +2321,39 @@ function updateSysCfg(key) {
     c.wRealyield=n('wRealyield'); c.wIsm=n('wIsm');
     c.bandHigh=n('bandHigh'); c.bandMid=n('bandMid'); c.bandLow=n('bandLow');
     c.allocBull=n('allocBull'); c.allocNb=n('allocNb'); c.allocNbear=n('allocNbear'); c.allocBear=n('allocBear');
+    const sizingModeEl = document.getElementById('sc_p1_sizingMode');
+    if (sizingModeEl) c.sizingMode = sizingModeEl.value;
+    c.volTarget=n('volTarget'); c.volWin=n('volWin'); c.volMinMult=n('volMinMult'); c.volMaxMult=n('volMaxMult');
   } else if (key === 'p2') {
     c.thVBull=n('thVBull'); c.thBull=n('thBull'); c.thNeutral=n('thNeutral'); c.thBear=n('thBear');
     c.allocVBull=n('allocVBull'); c.allocBull=n('allocBull'); c.allocNeutral=n('allocNeutral');
     c.allocBear=n('allocBear'); c.allocVBear=n('allocVBear');
+    const sizingModeEl = document.getElementById('sc_p2_sizingMode');
+    if (sizingModeEl) c.sizingMode = sizingModeEl.value;
+    c.volTarget=n('volTarget'); c.volWin=n('volWin'); c.volMinMult=n('volMinMult'); c.volMaxMult=n('volMaxMult');
   } else if (key === 'p3') {
-    c.ismMaPeriod=n('ismMaPeriod'); c.goldilocksSpy=n('goldilocksSpy');
-    c.overheatSpy=n('overheatSpy'); c.overheatTlt=n('overheatTlt'); c.overheatGld=n('overheatGld');
-    c.stagGld=n('stagGld'); c.stagTlt=n('stagTlt'); c.stagSpy=n('stagSpy');
-    c.recTlt=n('recTlt'); c.recSpy=n('recSpy');
+    c.zWin=n('zWin'); c.vixCalm=n('vixCalm'); c.vixStress=n('vixStress'); c.stressZ=n('stressZ');
+    c.calmSpy=n('calmSpy'); c.elevSpy=n('elevSpy'); c.elevTlt=n('elevTlt'); c.stressTlt=n('stressTlt');
+    const sizingModeEl = document.getElementById('sc_p3_sizingMode');
+    if (sizingModeEl) c.sizingMode = sizingModeEl.value;
+    c.volTarget=n('volTarget'); c.volWin=n('volWin'); c.volMinMult=n('volMinMult'); c.volMaxMult=n('volMaxMult');
   } else if (key === 'p4') {
-    c.trendWin=n('trendWin'); c.allocNormal=n('allocNormal');
-  } else if (key === 'p5') {
-    c.lookback=n('lookback'); c.nLong=n('nLong'); c.nShort=n('nShort');
+    c.calmAlloc=n('calmAlloc'); c.elevAlloc=n('elevAlloc'); c.stressAlloc=n('stressAlloc');
   } else if (key === 'p6') {
     c.olsWindow=n('olsWindow'); c.thVLong=n('thVLong'); c.thLong=n('thLong');
     c.thShort=n('thShort'); c.thVShort=n('thVShort');
     c.allocVLong=n('allocVLong'); c.allocLong=n('allocLong'); c.allocNeutral=n('allocNeutral');
     c.allocShort=n('allocShort'); c.allocVShort=n('allocVShort');
+    const sizingModeEl = document.getElementById('sc_p6_sizingMode');
+    if (sizingModeEl) c.sizingMode = sizingModeEl.value;
+    c.volTarget=n('volTarget'); c.volWin=n('volWin'); c.volMinMult=n('volMinMult'); c.volMaxMult=n('volMaxMult');
   }
 }
 
 function rerunSystem(key) {
   if (!_rawData) return;
   updateSysCfg(key);
-  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p6:runP6 };
   _results[key] = runners[key](_rawData);
   _combined = computeCombined(_results, _weights);
   renderSystemPanel(key);
@@ -1737,6 +2373,7 @@ const OPT_GRIDS = {
     bandLow:   [-1.5, -1.0, -0.5],
     allocBull: [0.85, 1.0],
     allocBear: [0.15, 0.25, 0.35],
+    sizingMode:['discrete', 'continuous'],
   },
   p2: {
     thVBull:     [0.75, 1.0, 1.5],
@@ -1745,20 +2382,20 @@ const OPT_GRIDS = {
     thBear:      [-2.5, -2.0, -1.5],
     allocNeutral:[0.5, 0.6, 0.7],        // medium regimes drive most P&L
     allocVBear:  [0.0, 0.1],
+    sizingMode:  ['discrete', 'continuous'],
   },
   p3: {
-    ismMaPeriod: [21, 42, 63],
-    recTlt:      [0.5, 0.6, 0.7, 0.8],
-    stagGld:     [0.6, 0.8, 1.0],
-    overheatGld: [0.2, 0.3, 0.5],        // gold allocation in overheating regime
+    vixCalm:   [12, 15, 18],
+    vixStress: [22, 25, 28],
+    stressZ:   [1.0, 1.5, 2.0],
+    calmSpy:   [0.8, 0.9, 1.0],
+    stressTlt: [0.7, 0.8, 0.9],
+    sizingMode:['discrete', 'continuous'],
   },
   p4: {
-    trendWin: [126, 189, 252, 315, 378],
-  },
-  p5: {
-    lookback: [126, 189, 252],
-    nLong:    [2, 3, 4],
-    nShort:   [1, 2, 3],
+    calmAlloc:   [0.6, 0.8, 1.0],
+    elevAlloc:   [0.0, 0.2, 0.4],
+    stressAlloc: [-0.6, -0.4, -0.2, 0.0],
   },
   p6: {
     olsWindow:    [63, 126, 252],
@@ -1766,6 +2403,7 @@ const OPT_GRIDS = {
     thLong:       [-1.25, -1.0, -0.75],
     thShort:      [0.5, 0.75, 1.0],
     allocNeutral: [0.0, 0.2, 0.3],       // range around the newly found optimum
+    sizingMode:   ['discrete', 'continuous'],
   },
 };
 
@@ -1784,14 +2422,14 @@ function expandGrid(grid) {
 function _validCombo(key, c) {
   if (key === 'p1') return c.bandHigh > c.bandMid && c.bandMid > c.bandLow;
   if (key === 'p2') return c.thVBull > c.thBull && c.thBull > c.thNeutral && c.thNeutral > c.thBear;
-  if (key === 'p4') return true;
+  if (key === 'p4') return c.calmAlloc > c.elevAlloc && c.elevAlloc > c.stressAlloc;
   if (key === 'p6') return c.thVLong < c.thLong;
   return true;
 }
 
 async function optimiseSystem(key) {
   if (!_rawData) return;
-  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p5:runP5, p6:runP6 };
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p6:runP6 };
   const grid = OPT_GRIDS[key];
   if (!grid) return;
 
@@ -1871,8 +2509,7 @@ function renderSystemPanel(key) {
     'Five-factor macro composite (net liquidity, yield curve, HY credit, real yield, ISM). Monthly z-score scoring drives SPY allocation across four bands. Longs-only: equity markets have structural upward drift (~10%/yr); shorts expose you to gap risk, short squeezes, and unlimited downside without the structural premium.',
     'Credit-equity divergence tracks the spread between HY credit conditions (BAMLH0A0HYM2 z-score) and SPY short-term momentum. Risk-on divergence (credit improving + equity rising) favours SPY; risk-off divergence rotates to TLT. Captures regime transitions before they fully express in price.',
     'ISM Manufacturing trend combined with Core CPI momentum creates four macro quadrants: Goldilocks (SPY heavy), Overheating (SPY+GLD), Stagflation (GLD heavy), Recession (TLT heavy). Asset mix is tunable per quadrant.',
-    'USD/JPY Bidirectional Trend — long when price is above its rolling MA (JPY weakening/carry-on), short when below (JPY strengthening/carry-off). Captures all major USD/JPY trends in both directions: 2008 JPY safe-haven surge (short profits), Abenomics 2012–2015 +50% (long profits), Fed hiking 2021–2024 +45% (long profits), 2024 carry unwind (short profits). VIX Z-score gate only exits LONG positions; shorts remain open during risk-off events where JPY safe-haven demand reinforces the short thesis.',
-    'Cross-sectional momentum across 7 major currencies in USD terms. Long top-2 / short bottom-2 produces a pure momentum factor orthogonal to carry and macro. A minimum 4% spread between best and worst signal gates out low-conviction months. 9-month lookback targets the strongest momentum window.',
+    'AUD/JPY + NZD/JPY risk barometer — equal-weight basket of two classic high-beta-vs-funding-currency crosses. Sized by P3\'s VIX regime classification rather than an independent signal: long the basket when calm (risk appetite intact), trimmed when elevated, short when stressed (these crosses unwind hard in risk-off — 2008 GFC, Mar 2020, Aug 2024). Replaces the old single-pair USD/JPY trend system and the cross-sectional FX momentum system, both of which the Deflated Sharpe Ratio test showed were statistically indistinguishable from noise.',
     'OLS regression of log(GLD) on real yield (DFII10) and USD strength (DTWEXBGS) over a rolling window. When gold trades at a discount to its macro-implied fair value (negative residual z-score), increase allocation. Captures gold mispricing vs macro fundamentals.',
   ];
   const sysPages = [
@@ -1880,7 +2517,6 @@ function renderSystemPanel(key) {
     'system-credit-equity.html',
     'system-yield-curve.html',
     'system-fx-carry.html',
-    'system-fx-momentum.html',
     'system-gold-macro.html',
   ];
 
@@ -1955,7 +2591,8 @@ function renderSystemPanel(key) {
         <td class="num pos">${pos}</td><td class="num neg">${neg}</td>
         <td class="num pos">${fmtPct(best)}</td><td class="num neg">${fmtPct(worst)}</td></tr>`;
     }
-    document.querySelector(`#sysTable${key} tbody`).innerHTML = tbody;
+    const tbodyEl = document.querySelector(`#sysTable${key} tbody`);
+    if (tbodyEl) tbodyEl.innerHTML = tbody;
   }, 50);
 }
 
@@ -1974,6 +2611,734 @@ function _sysKpiHtml(r, i) {
     <div class="bt-kpi"><div class="bt-kpi-label">Final Equity</div><div class="bt-kpi-value blue">${fmt(eqs[eqs.length-1],2)}×</div></div>`;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Testing Lab
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Section 1: Block Bootstrap ────────────────────────────────────────────────
+function runBlockBootstrap(monthlyRet, nSims=1000, blockSize=null) {
+  const fin = monthlyRet.filter(isFinite);
+  const n = fin.length;
+  const bs = blockSize ?? Math.max(3, Math.round(Math.sqrt(n)));
+  const sims = [];
+  for (let s = 0; s < nSims; s++) {
+    const sample = [];
+    while (sample.length < n) {
+      const start = Math.floor(Math.random() * Math.max(1, n - bs + 1));
+      for (let b = 0; b < bs && sample.length < n; b++) sample.push(fin[start + b]);
+    }
+    let eq = 1; const curve = [1];
+    for (const r of sample) { eq *= (1+r); curve.push(eq); }
+    sims.push(curve);
+  }
+  const pcts = [5,25,50,75,95];
+  const bands = pcts.map(() => new Array(n+1).fill(0));
+  for (let t = 0; t <= n; t++) {
+    const col = sims.map(s=>s[t]).sort((a,b)=>a-b);
+    pcts.forEach((p,pi) => { bands[pi][t] = col[Math.round((p/100)*(nSims-1))]; });
+  }
+  return { bands, pcts, n, sims };
+}
+
+function _buildMCEnvelopeDatasets(mc) {
+  const labels = Array.from({length: mc.n+1}, (_,i)=>i===0?'0':String(i));
+  const colors = ['rgba(239,68,68,.15)','rgba(251,146,60,.2)','rgba(59,130,246,1)','rgba(251,146,60,.2)','rgba(239,68,68,.15)'];
+  const fills  = [false,'+1',false,'-1',false];
+  return {
+    labels,
+    datasets: mc.pcts.map((p,pi) => ({
+      label: `P${p}`, data: mc.bands[pi],
+      borderColor: pi===2 ? '#3b82f6' : pi===0||pi===4 ? 'rgba(239,68,68,.6)' : 'rgba(251,146,60,.6)',
+      borderWidth: pi===2 ? 2 : 1, pointRadius: 0, fill: fills[pi],
+      backgroundColor: colors[pi], tension: 0,
+    })),
+  };
+}
+
+function renderTLMC() {
+  if (!_combined) return;
+  const mr = _combined.monthlyRet;
+  const mode = document.querySelector('input[name=tlMCMode]:checked')?.value ?? 'iid';
+  const showIID   = mode !== 'block';
+  const showBlock = mode !== 'iid';
+
+  const iidEl   = document.getElementById('chartTLMC_IID');
+  const blockEl = document.getElementById('chartTLMC_Block');
+  const wrap    = document.getElementById('tlMCCharts');
+
+  if (mode === 'both') {
+    wrap.style.display = 'grid';
+    iidEl.closest('div').style.display = '';
+    blockEl.closest('div').style.display = '';
+  } else if (mode === 'iid') {
+    wrap.style.display = 'block';
+    iidEl.closest('div').style.display = '';
+    blockEl.closest('div').style.display = 'none';
+  } else {
+    wrap.style.display = 'block';
+    iidEl.closest('div').style.display = 'none';
+    blockEl.closest('div').style.display = '';
+  }
+
+  const pctLabels = ['P5','P25','P50','P75','P95'];
+  let summaryRows = '';
+  const baseOpts = { animation:{duration:0}, plugins:{legend:{display:true,position:'top',labels:{color:'#94a3b8',font:{size:10}}}},
+    scales:{x:{ticks:{maxTicksLimit:12,color:'#94a3b8',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},
+            y:{ticks:{color:'#94a3b8',font:{size:10},callback:v=>v.toFixed(2)+'×'},grid:{color:'rgba(255,255,255,0.06)'}}} };
+
+  if (showIID) {
+    const mc = runMonteCarlo(mr, 1000);
+    const { labels, datasets } = _buildMCEnvelopeDatasets(mc);
+    destroyChart('chartTLMC_IID');
+    makeChart('chartTLMC_IID', 'line', labels, datasets, baseOpts);
+    mc.pcts.forEach((p,pi) => {
+      const fe = mc.bands[pi][mc.n];
+      const c = cagr(fe, mc.n);
+      summaryRows += `<tr><td>IID</td><td>${pctLabels[pi]}</td><td class="num ${fe>=1?'pos':'neg'}">${fmt(fe,2)}×</td><td class="num ${c>=0?'pos':'neg'}">${fmtPct(c)}</td></tr>`;
+    });
+  }
+  if (showBlock) {
+    const mc = runBlockBootstrap(mr, 1000);
+    const { labels, datasets } = _buildMCEnvelopeDatasets(mc);
+    destroyChart('chartTLMC_Block');
+    makeChart('chartTLMC_Block', 'line', labels, datasets, baseOpts);
+    mc.pcts.forEach((p,pi) => {
+      const fe = mc.bands[pi][mc.n];
+      const c = cagr(fe, mc.n);
+      summaryRows += `<tr><td>Block</td><td>${pctLabels[pi]}</td><td class="num ${fe>=1?'pos':'neg'}">${fmt(fe,2)}×</td><td class="num ${c>=0?'pos':'neg'}">${fmtPct(c)}</td></tr>`;
+    });
+  }
+  document.getElementById('tlMCSummaryBody').innerHTML = summaryRows;
+}
+
+// ── Section 2: Walk-Forward ───────────────────────────────────────────────────
+let _comboLibrary = {};
+
+async function buildComboLibrary(key, onProgress) {
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p6:runP6 };
+  const grid = OPT_GRIDS[key];
+  if (!grid) {
+    _comboLibrary[key] = [{ combo:{..._cfg[key]}, mr:_results[key].monthlyRet, dates:_results[key].monthlyDates }];
+    return;
+  }
+  const combos = expandGrid(grid).filter(c => _validCombo(key, c));
+  _comboLibrary[key] = [];
+  for (let ci = 0; ci < combos.length; ci++) {
+    const saved = {..._cfg[key]};
+    Object.assign(_cfg[key], combos[ci]);
+    const res = runners[key](_rawData);
+    Object.assign(_cfg[key], saved);
+    _comboLibrary[key].push({ combo:combos[ci], mr:res.monthlyRet, dates:res.monthlyDates });
+    if (ci % 20 === 0) { onProgress?.(key, ci, combos.length); await new Promise(r=>setTimeout(r,0)); }
+  }
+}
+
+function _filterByDates(mr, dates, fromDate, toDate) {
+  const out = [];
+  for (let i = 0; i < dates.length; i++) {
+    if (dates[i] >= fromDate && dates[i] <= toDate && isFinite(mr[i])) out.push(mr[i]);
+  }
+  return out;
+}
+
+async function runTLWalkForward() {
+  if (!_rawData || !_combined) return;
+  const btn = document.getElementById('tlWFBtn');
+  btn.disabled = true;
+  const progDiv = document.getElementById('tlWFProgress');
+  const progBar = document.getElementById('tlWFProgressBar');
+  const progMsg = document.getElementById('tlWFProgressMsg');
+  progDiv.style.display = 'block';
+
+  const trainYrs = parseInt(document.getElementById('tlWFTrain').value);
+  const testYrs  = parseInt(document.getElementById('tlWFTest').value);
+
+  const allDates = _combined.monthlyDates;
+  if (!allDates || allDates.length < (trainYrs + testYrs) * 12) {
+    progMsg.textContent = 'Not enough data for walk-forward.';
+    btn.disabled = false;
+    return;
+  }
+
+  // Build combo library for all systems
+  const totalKeys = SYS_KEYS.length;
+  for (let ki = 0; ki < totalKeys; ki++) {
+    const key = SYS_KEYS[ki];
+    progMsg.textContent = `Building combo library: ${key.toUpperCase()} (0/…)`;
+    progBar.style.width = ((ki / totalKeys) * 40) + '%';
+    await buildComboLibrary(key, (k, ci, total) => {
+      progMsg.textContent = `Building combo library: ${k.toUpperCase()} (${ci}/${total})`;
+    });
+  }
+
+  // Walk-forward windows
+  const trainMos = trainYrs * 12;
+  const testMos  = testYrs * 12;
+  const wfWindows = [];
+  for (let start = 0; start + trainMos + testMos <= allDates.length; start += testMos) {
+    const isEnd   = allDates[start + trainMos - 1];
+    const oosStart = allDates[start + trainMos];
+    const oosEnd   = allDates[Math.min(start + trainMos + testMos - 1, allDates.length - 1)];
+    const isStart  = allDates[start];
+    wfWindows.push({ isStart, isEnd, oosStart, oosEnd });
+  }
+
+  const wfOOSBySystem = {};
+  SYS_KEYS.forEach(k => { wfOOSBySystem[k] = { rets: [], dates: [] }; });
+  const driftRows = [];
+
+  for (let wi = 0; wi < wfWindows.length; wi++) {
+    const { isStart, isEnd, oosStart, oosEnd } = wfWindows[wi];
+    progBar.style.width = (40 + (wi / wfWindows.length) * 55) + '%';
+    progMsg.textContent = `Walk-forward window ${wi+1}/${wfWindows.length}: IS ${isStart}→${isEnd}`;
+    await new Promise(r=>setTimeout(r,0));
+
+    const driftRow = { window: `${oosStart}→${oosEnd}` };
+
+    for (const key of SYS_KEYS) {
+      const lib = _comboLibrary[key] || [];
+      let bestSh = -Infinity, bestEntry = lib[0];
+      for (const entry of lib) {
+        const isRets = _filterByDates(entry.mr, entry.dates, isStart, isEnd);
+        if (isRets.length < 6) continue;
+        const sh = sharpe(isRets);
+        if (isFinite(sh) && sh > bestSh) { bestSh = sh; bestEntry = entry; }
+      }
+      const oosRets  = bestEntry ? _filterByDates(bestEntry.mr, bestEntry.dates, oosStart, oosEnd) : [];
+      const oosDates = bestEntry ? bestEntry.dates.filter(d => d >= oosStart && d <= oosEnd) : [];
+      wfOOSBySystem[key].rets.push(...oosRets);
+      wfOOSBySystem[key].dates.push(...oosDates);
+
+      if (key === 'p1') {
+        driftRow.p1_bandHigh = bestEntry?.combo?.bandHigh ?? '—';
+        driftRow.p1_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
+      }
+      if (key === 'p2') {
+        driftRow.p2_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
+      }
+      if (key === 'p3') {
+        driftRow.p3_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
+      }
+      if (key === 'p4') {
+        driftRow.p4_calmAlloc = bestEntry?.combo?.calmAlloc ?? '—';
+        driftRow.p4_stressAlloc = bestEntry?.combo?.stressAlloc ?? '—';
+      }
+      if (key === 'p6') {
+        driftRow.p6_sizingMode = bestEntry?.combo?.sizingMode ?? '—';
+      }
+    }
+    driftRows.push(driftRow);
+  }
+
+  // Build OOS combined equity
+  const wts = SYS_KEYS.map((_,i) => _weights[i]);
+  const wtsSum = wts.reduce((a,b)=>a+b,0);
+  const wtsN = wts.map(w=>w/wtsSum);
+
+  const allOOSDates = [...new Set(SYS_KEYS.flatMap(k=>wfOOSBySystem[k].dates))].sort();
+  const wfOOSRets = allOOSDates.map(d => {
+    let ret = 0;
+    SYS_KEYS.forEach((k,i) => {
+      const idx = wfOOSBySystem[k].dates.indexOf(d);
+      if (idx >= 0 && isFinite(wfOOSBySystem[k].rets[idx])) ret += wtsN[i] * wfOOSBySystem[k].rets[idx];
+    });
+    return ret;
+  });
+
+  let wfEq = 1; const wfEquity = [1];
+  for (const r of wfOOSRets) { wfEq *= (1+r); wfEquity.push(wfEq); }
+
+  // Actual combined equity for same date range
+  const oosFirst = allOOSDates[0], oosLast = allOOSDates[allOOSDates.length-1];
+  const actualInRange = _combined.monthlyDates.map((d,i)=>d>=oosFirst&&d<=oosLast?_combined.monthlyRet[i]:null).filter(v=>v!==null&&isFinite(v));
+  let actEq = 1; const actEquity = [1];
+  for (const r of actualInRange) { actEq *= (1+r); actEquity.push(actEq); }
+
+  // Charts
+  const wfLabels = Array.from({length:wfEquity.length},(_,i)=>String(i));
+  destroyChart('chartTLWFEquity');
+  makeChart('chartTLWFEquity','line',wfLabels,[
+    { label:'WF OOS Equity', data:wfEquity, borderColor:'#3b82f6', borderWidth:2, pointRadius:0, tension:0 },
+    { label:'Actual Combined', data:actEquity, borderColor:'#e2e8f0', borderWidth:1.5, borderDash:[4,4], pointRadius:0, tension:0 },
+  ], { animation:{duration:0}, plugins:{legend:{display:true,position:'top',labels:{color:'#94a3b8',font:{size:10}}}},
+       scales:{x:{ticks:{maxTicksLimit:10,color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}},
+               y:{ticks:{color:'#94a3b8',callback:v=>v.toFixed(2)+'×'},grid:{color:'rgba(255,255,255,0.06)'}}} });
+
+  const sysSharpes = SYS_KEYS.map(k => sharpe(wfOOSBySystem[k].rets));
+  destroyChart('chartTLWFSharpe');
+  makeChart('chartTLWFSharpe','bar',SYS_NAMES,[{
+    label:'OOS Sharpe', data:sysSharpes, backgroundColor:SYS_COLORS.map(c=>c+'cc'), borderColor:SYS_COLORS, borderWidth:1,
+  }], { animation:{duration:0}, plugins:{legend:{display:false}},
+       scales:{x:{ticks:{color:'#94a3b8',font:{size:9}},grid:{color:'rgba(255,255,255,0.06)'}},
+               y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}}} });
+
+  // Summary
+  const wfSh = sharpe(wfOOSRets);
+  const wfCa = cagr(wfEq, wfOOSRets.length);
+  const wfDD = maxDD(wfEquity);
+  const actSh = sharpe(_combined.monthlyRet);
+  const actCa = cagr(_combined.cumulativeEq[_combined.cumulativeEq.length-1], _combined.monthlyRet.length);
+  const actDD = maxDD(_combined.cumulativeEq);
+  document.getElementById('tlWFSummary').innerHTML = `
+    <table class="bt-tbl" style="margin-top:4px;">
+      <thead><tr><th></th><th class="num">Sharpe</th><th class="num">CAGR</th><th class="num">MaxDD</th></tr></thead>
+      <tbody>
+        <tr><td>WF OOS</td><td class="num ${wfSh>=0.5?'pos':'neg'}">${isFinite(wfSh)?fmt(wfSh,2):'—'}</td><td class="num ${wfCa>=0?'pos':'neg'}">${isFinite(wfCa)?fmtPct(wfCa):'—'}</td><td class="num neg">${fmt(wfDD,1)}%</td></tr>
+        <tr><td>Actual Full</td><td class="num ${actSh>=0.5?'pos':'neg'}">${fmt(actSh,2)}</td><td class="num ${actCa>=0?'pos':'neg'}">${fmtPct(actCa)}</td><td class="num neg">${fmt(actDD,1)}%</td></tr>
+      </tbody>
+    </table>`;
+
+  // Drift table
+  document.getElementById('tlWFDriftBody').innerHTML = driftRows.map(r =>
+    `<tr><td>${r.window}</td><td class="num">${r.p1_bandHigh??'—'}</td><td class="num">${r.p1_sizingMode??'—'}</td><td class="num">${r.p2_sizingMode??'—'}</td><td class="num">${r.p3_sizingMode??'—'}</td><td class="num">${r.p4_calmAlloc??'—'}</td><td class="num">${r.p4_stressAlloc??'—'}</td><td class="num">${r.p6_sizingMode??'—'}</td></tr>`
+  ).join('');
+
+  progBar.style.width = '100%';
+  progMsg.textContent = `Done — ${wfWindows.length} windows, ${wfOOSRets.length} OOS months`;
+  btn.disabled = false;
+}
+
+// ── Section 3: Permutation Test ───────────────────────────────────────────────
+function permutationTest(monthlyRet, nPerm=10000) {
+  // Reordering the same returns leaves mean/std (hence Sharpe) unchanged, so a
+  // simple shuffle is a no-op test. Instead randomize the *sign* of each return —
+  // the null hypothesis is "these monthly P&L magnitudes occurred with no net
+  // directional edge," which actually perturbs the mean and gives a real null
+  // distribution to compare the actual (signed) Sharpe against.
+  const fin = monthlyRet.filter(isFinite);
+  const actual = sharpe(fin);
+  let exceeds = 0;
+  const nullSharpes = [];
+  for (let p = 0; p < nPerm; p++) {
+    const s = fin.map(r => Math.random() < 0.5 ? r : -r);
+    const sh = sharpe(s);
+    nullSharpes.push(sh);
+    if (sh >= actual) exceeds++;
+  }
+  return { actual, pValue: exceeds/nPerm, nullSharpes };
+}
+
+function _permSig(p) {
+  if (p < 0.01) return { label:'Highly significant', cls:'pos' };
+  if (p < 0.05) return { label:'Significant', cls:'pos' };
+  if (p < 0.10) return { label:'Marginal', cls:'neu' };
+  return { label:'Not significant', cls:'neg' };
+}
+
+async function runTLPerm() {
+  if (!_combined) return;
+  const btn = document.getElementById('tlPermBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+
+  const result = permutationTest(_combined.monthlyRet, 10000);
+  await new Promise(r=>setTimeout(r,0));
+
+  const bins = 40;
+  const ns = result.nullSharpes;
+  const minS = Math.min(...ns), maxS = Math.max(...ns);
+  const binW = (maxS - minS) / bins;
+  const counts = new Array(bins).fill(0);
+  for (const v of ns) { const b = Math.min(bins-1, Math.floor((v-minS)/binW)); counts[b]++; }
+  const binLabels = Array.from({length:bins},(_,b)=>fmt(minS+b*binW,2));
+
+  destroyChart('chartTLPerm');
+  const ctx = document.getElementById('chartTLPerm').getContext('2d');
+  _charts['chartTLPerm'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: binLabels,
+      datasets: [{
+        label: 'Null Sharpe (permuted)', data: counts,
+        backgroundColor: binLabels.map(l=>parseFloat(l)>=result.actual?'rgba(239,68,68,.6)':'rgba(59,130,246,.4)'),
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      ..._chartOpts(), animation:{duration:0},
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ticks:{maxTicksLimit:10,color:'#94a3b8',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},
+        y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}},
+      },
+    },
+  });
+
+  const { label: sigLabel, cls: sigCls } = _permSig(result.pValue);
+  let rows = `<tr>
+    <td><strong>Combined Book</strong></td>
+    <td class="num ${result.actual>=0.5?'pos':'neg'}">${fmt(result.actual,2)}</td>
+    <td class="num">${result.pValue < 0.001 ? '<0.001' : result.pValue.toFixed(3)}</td>
+    <td class="${sigCls}">${sigLabel}</td>
+  </tr>`;
+
+  for (const key of SYS_KEYS) {
+    const r = _results[key];
+    if (!r) continue;
+    const res = permutationTest(r.monthlyRet, 2000);
+    await new Promise(r2=>setTimeout(r2,0));
+    const { label, cls } = _permSig(res.pValue);
+    const ki = SYS_KEYS.indexOf(key);
+    rows += `<tr>
+      <td><span class="swatch" style="background:${SYS_COLORS[ki]}"></span>${SYS_NAMES[ki]}</td>
+      <td class="num ${res.actual>=0.5?'pos':'neg'}">${fmt(res.actual,2)}</td>
+      <td class="num">${res.pValue < 0.001 ? '<0.001' : res.pValue.toFixed(3)}</td>
+      <td class="${cls}">${label}</td>
+    </tr>`;
+  }
+  document.getElementById('tlPermBody').innerHTML = rows;
+
+  btn.disabled = false;
+  btn.textContent = 'Re-run 10 000 Permutations';
+}
+
+// ── Section 4: Capital Ceiling ────────────────────────────────────────────────
+const CAPACITY_TABLE = [
+  { sys:'P1 Macro Regime',  asset:'SPY ETF',          dailyVol:'$25B',  maxAUM:'$5B+',  note:'Monthly rebalance, deep ETF market' },
+  { sys:'P2 Credit-Equity', asset:'SPY ETF',           dailyVol:'$25B',  maxAUM:'$5B+',  note:'Same as P1 — broad equity ETFs' },
+  { sys:'P3 VIX Regime',    asset:'SPY/TLT/GLD ETF',  dailyVol:'$10B',  maxAUM:'$2B+',  note:'GLD is thinnest at ~$1.5B/day' },
+  { sys:'P4 FX Risk Barometer', asset:'AUD/JPY + NZD/JPY FX spot', dailyVol:'$25B', maxAUM:'$3B+', note:'AUD/JPY liquid; thinner NZD/JPY leg caps scale vs USD majors' },
+  { sys:'P6 Gold Macro',    asset:'GLD ETF',           dailyVol:'$1.5B', maxAUM:'$300M', note:'GLD daily vol is the binding constraint' },
+];
+
+function renderTLCapacity() {
+  document.getElementById('tlCapBody').innerHTML = CAPACITY_TABLE.map(row =>
+    `<tr>
+      <td><strong>${row.sys}</strong></td>
+      <td>${row.asset}</td>
+      <td class="num">${row.dailyVol}</td>
+      <td class="num pos"><strong>${row.maxAUM}</strong></td>
+      <td style="color:var(--text3)">${row.note}</td>
+    </tr>`
+  ).join('');
+}
+
+// ── Section 5: Transaction Costs ──────────────────────────────────────────────
+const TX_COST_PROFILE = {
+  p1: { tradesPerYear: 6,  label: '~6 regime flips/yr' },
+  p2: { tradesPerYear: 8,  label: '~8 signal changes/yr' },
+  p3: { tradesPerYear: 4,  label: '~4 VIX regime changes/yr' },
+  p4: { tradesPerYear: 4,  label: '~4 VIX regime changes/yr (shared w/ P3)' },
+  p6: { tradesPerYear: 6,  label: '~6 z-score crossings/yr' },
+};
+
+const TX_SCENARIOS = [0, 5, 10, 20, 50];
+
+function renderTLTxCosts() {
+  if (!_combined) return;
+
+  const wts = SYS_KEYS.map((_,i) => _weights[i]);
+  const wtsSum = wts.reduce((a,b)=>a+b,0);
+  const wtsN = wts.map(w=>w/wtsSum);
+
+  const combSharpes=[], combCAGRs=[], combDDs=[];
+  const sysRows = {};
+  SYS_KEYS.forEach(k => { sysRows[k] = []; });
+
+  for (const costBps of TX_SCENARIOS) {
+    // Per-system adjusted combined
+    const sysAdj = SYS_KEYS.map((k,i) => {
+      const r = _results[k];
+      if (!r) return [];
+      const drag = (costBps/10000) * TX_COST_PROFILE[k].tradesPerYear / 12;
+      return r.monthlyRet.map(v => isFinite(v) ? v - drag : NaN);
+    });
+
+    // Align dates
+    const commonDates = _combined.monthlyDates;
+    const adjCombRet = commonDates.map((d,di) => {
+      let ret = 0;
+      SYS_KEYS.forEach((k,i) => {
+        const r = _results[k];
+        if (!r) return;
+        const idx = r.monthlyDates.indexOf(d);
+        if (idx >= 0 && isFinite(sysAdj[i][idx])) ret += wtsN[i] * sysAdj[i][idx];
+      });
+      return ret;
+    });
+
+    let eq2 = 1; const eq2curve = [1];
+    for (const r of adjCombRet) { eq2 *= (1+r); eq2curve.push(eq2); }
+    combSharpes.push(sharpe(adjCombRet));
+    combCAGRs.push(cagr(eq2, adjCombRet.length));
+    combDDs.push(maxDD(eq2curve));
+
+    SYS_KEYS.forEach((k,i) => {
+      const r = _results[k];
+      if (!r) { sysRows[k].push({ sh:NaN, ca:NaN }); return; }
+      const drag = (costBps/10000) * TX_COST_PROFILE[k].tradesPerYear / 12;
+      const adj = r.monthlyRet.map(v=>isFinite(v)?v-drag:NaN);
+      let e=1;
+      for (const rv of adj) if(isFinite(rv)) e*=(1+rv);
+      sysRows[k].push({ sh:sharpe(adj), ca:cagr(e, adj.filter(isFinite).length) });
+    });
+  }
+
+  // Find breakeven
+  let breakeven = null;
+  for (let i=1;i<TX_SCENARIOS.length;i++) {
+    if (combSharpes[i]<1.0 && combSharpes[i-1]>=1.0) {
+      const t=(1.0-combSharpes[i-1])/(combSharpes[i]-combSharpes[i-1]);
+      breakeven = TX_SCENARIOS[i-1] + t*(TX_SCENARIOS[i]-TX_SCENARIOS[i-1]);
+      break;
+    }
+  }
+
+  destroyChart('chartTLTxCost');
+  makeChart('chartTLTxCost','line',TX_SCENARIOS.map(c=>c+'bps'),[
+    { label:'Combined Sharpe', data:combSharpes, borderColor:'#3b82f6', borderWidth:2, pointRadius:4, tension:0.3 },
+    { label:'Sharpe = 1.0', data:TX_SCENARIOS.map(()=>1.0), borderColor:'rgba(239,68,68,.5)', borderWidth:1, borderDash:[4,4], pointRadius:0 },
+  ],{animation:{duration:0},plugins:{legend:{display:true,position:'top',labels:{color:'#94a3b8',font:{size:10}}}},
+     scales:{x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}},
+             y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.06)'}}}});
+
+  document.getElementById('tlTxBody').innerHTML = TX_SCENARIOS.map((c,i)=>
+    `<tr>
+      <td>${c} bps${i===0?' (no cost)':''}</td>
+      <td class="num ${combSharpes[i]>=0.5?'pos':'neg'}">${fmt(combSharpes[i],2)}</td>
+      <td class="num ${combCAGRs[i]>=0?'pos':'neg'}">${fmtPct(combCAGRs[i])}</td>
+      <td class="num neg">${fmt(combDDs[i],1)}%</td>
+    </tr>`
+  ).join('') + (breakeven!==null?`<tr><td colspan="4" class="neu" style="color:var(--amber)">Sharpe drops below 1.0 at ~${fmt(breakeven,0)} bps</td></tr>`:'');
+
+  const headEl = document.getElementById('tlTxSysHead');
+  headEl.innerHTML = '<th>System</th><th>Trades/yr</th>' + TX_SCENARIOS.map(c=>`<th class="num">${c}bps Sh</th><th class="num">${c}bps CAGR</th>`).join('');
+  document.getElementById('tlTxSysBody').innerHTML = SYS_KEYS.map((k,ki)=>{
+    const prof = TX_COST_PROFILE[k];
+    return `<tr>
+      <td><span class="swatch" style="background:${SYS_COLORS[ki]}"></span>${SYS_NAMES[ki]}</td>
+      <td>${prof.tradesPerYear} <span style="color:var(--text3);font-size:10px;">${prof.label}</span></td>
+      ${TX_SCENARIOS.map((_,si)=>{
+        const d=sysRows[k][si];
+        return `<td class="num ${d.sh>=0.5?'pos':'neg'}">${isFinite(d.sh)?fmt(d.sh,2):'—'}</td><td class="num ${d.ca>=0?'pos':'neg'}">${isFinite(d.ca)?fmtPct(d.ca):'—'}</td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+}
+
+// ── Section 6: Deflated Sharpe Ratio ──────────────────────────────────────────
+function erf(x) {
+  const sign = x < 0 ? -1 : 1; x = Math.abs(x);
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const t = 1/(1+p*x);
+  const y = 1-(((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t)*Math.exp(-x*x);
+  return sign*y;
+}
+function normCDF(x) { return 0.5*(1+erf(x/Math.SQRT2)); }
+function normInv(p) {
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+  const a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00];
+  const b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01];
+  const c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,-2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00];
+  const d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,3.754408661907416e+00];
+  const plow=0.02425, phigh=1-plow;
+  let q,r;
+  if (p<plow) { q=Math.sqrt(-2*Math.log(p)); return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  if (p<=phigh) { q=p-0.5; r=q*q; return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  q=Math.sqrt(-2*Math.log(1-p));
+  return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+
+function skewKurt(rets) {
+  const fin = rets.filter(isFinite);
+  const n = fin.length;
+  const mu = fin.reduce((a,b)=>a+b,0)/n;
+  const sd = Math.sqrt(fin.reduce((a,b)=>a+(b-mu)**2,0)/n);
+  if (sd === 0) return { skew:0, kurt:3 };
+  const skew = fin.reduce((a,b)=>a+((b-mu)/sd)**3,0)/n;
+  const kurt = fin.reduce((a,b)=>a+((b-mu)/sd)**4,0)/n;
+  return { skew, kurt };
+}
+
+async function computeTrialSharpes(key, onProgress) {
+  const runners = { p1:runP1, p2:runP2, p3:runP3, p4:runP4, p6:runP6 };
+  const grid = OPT_GRIDS[key];
+  if (!grid) return [sharpe(_results[key].monthlyRet)];
+  const combos = expandGrid(grid).filter(c => _validCombo(key, c));
+  const baseCfg = {..._cfg[key]};
+  const sharpes = [];
+  for (let ci = 0; ci < combos.length; ci++) {
+    Object.assign(_cfg[key], combos[ci]);
+    if (key === 'p1' && 'wNetliq' in combos[ci]) {
+      const rem = 1 - _cfg.p1.wNetliq;
+      const baseRem = baseCfg.wCurve + baseCfg.wCredit + baseCfg.wRealyield + baseCfg.wIsm;
+      const scale = baseRem > 0 ? rem / baseRem : 0.25;
+      _cfg.p1.wCurve = baseCfg.wCurve*scale; _cfg.p1.wCredit = baseCfg.wCredit*scale;
+      _cfg.p1.wRealyield = baseCfg.wRealyield*scale; _cfg.p1.wIsm = baseCfg.wIsm*scale;
+    }
+    sharpes.push(sharpe(runners[key](_rawData).monthlyRet));
+    if (ci % 40 === 39) { onProgress?.(key, ci+1, combos.length); await new Promise(r=>setTimeout(r,0)); }
+  }
+  Object.assign(_cfg[key], baseCfg);
+  return sharpes;
+}
+
+function deflatedSharpe(monthlyRet, trialSharpes) {
+  const fin = monthlyRet.filter(isFinite);
+  const n = fin.length;
+  if (n < 12) return null;
+  const shAnn = sharpe(fin);
+  const shM = shAnn / Math.sqrt(12);          // per-period (monthly) SR
+  const { skew, kurt } = skewKurt(fin);
+
+  const validTrials = trialSharpes.filter(isFinite);
+  const N = Math.max(validTrials.length, 1);
+  const muT = validTrials.reduce((a,b)=>a+b,0)/N;
+  const varT = validTrials.reduce((a,b)=>a+(b-muT)**2,0)/N;
+  const sigmaSRAnn = Math.sqrt(varT);
+  const sigmaSR = sigmaSRAnn / Math.sqrt(12);
+
+  const gammaE = 0.5772156649;
+  let sr0 = 0;
+  if (N > 1 && sigmaSR > 0) {
+    sr0 = sigmaSR * ((1-gammaE)*normInv(1-1/N) + gammaE*normInv(1-1/(N*Math.E)));
+  }
+
+  const denom = Math.sqrt(Math.max(1e-9, 1 - skew*shM + ((kurt-1)/4)*shM*shM));
+  const z = (shM - sr0) * Math.sqrt(n-1) / denom;
+  const dsr = normCDF(z);
+
+  return { shAnn, sr0Ann: sr0*Math.sqrt(12), dsr, nTrials: N, sigmaSRAnn, n };
+}
+
+async function runTLDeflatedSharpe() {
+  if (!_rawData || !_results.p1) return;
+  const btn = document.getElementById('tlDSRBtn');
+  btn.disabled = true;
+  const prog = document.getElementById('tlDSRProgress');
+  prog.style.display = 'block';
+
+  const rows = [];
+  const allTrialSh = [];
+  for (const key of SYS_KEYS) {
+    prog.textContent = `Testing ${key.toUpperCase()} trials…`;
+    await new Promise(r=>setTimeout(r,0));
+    const trialSharpes = await computeTrialSharpes(key, (k,done,total) => {
+      prog.textContent = `Testing ${k.toUpperCase()}: ${done}/${total} combos…`;
+    });
+    allTrialSh.push(...trialSharpes);
+    const res = deflatedSharpe(_results[key].monthlyRet, trialSharpes);
+    rows.push({ name: SYS_NAMES[SYS_KEYS.indexOf(key)], color: SYS_COLORS[SYS_KEYS.indexOf(key)], res });
+  }
+
+  prog.textContent = 'Computing combined book deflated Sharpe…';
+  await new Promise(r=>setTimeout(r,0));
+  const combRes = deflatedSharpe(_combined.monthlyRet, allTrialSh);
+  rows.push({ name: 'Combined Book', color: '#e2e8f0', res: combRes });
+
+  prog.style.display = 'none';
+  btn.disabled = false;
+
+  document.getElementById('tlDSRBody').innerHTML = rows.map(r => {
+    if (!r.res) return `<tr><td>${r.name}</td><td colspan="6" class="num">—</td></tr>`;
+    const { shAnn, sr0Ann, dsr, nTrials, sigmaSRAnn } = r.res;
+    const pct = dsr*100;
+    const verdict = pct>=95 ? 'Real edge (95%+ confidence)' : pct>=70 ? 'Likely real, some luck' : pct>=50 ? 'Marginal — partly luck' : 'Indistinguishable from noise';
+    const vColor = pct>=95?'#22c55e':pct>=70?'#84cc16':pct>=50?'#f97316':'#ef4444';
+    return `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${r.color};margin-right:5px;"></span>${r.name}</td>
+      <td class="num">${nTrials.toLocaleString()}</td>
+      <td class="num ${shAnn>=0.5?'pos':'neg'}">${fmt(shAnn,2)}</td>
+      <td class="num">${fmt(sigmaSRAnn,2)}</td>
+      <td class="num">${fmt(sr0Ann,2)}</td>
+      <td class="num" style="color:${vColor};font-weight:600;">${fmt(pct,1)}%</td>
+      <td style="color:${vColor};">${verdict}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Section 7: Expected Value by Regime ───────────────────────────────────────
+function classifyMonthlyVixRegime() {
+  if (!_rawData) return { dates: [], regime: [] };
+  const { dateIndex: dates, prices } = _rawData;
+  const vixRaw = prices?.vix ? ffill(prices.vix) : null;
+  if (!vixRaw) return { dates: [], regime: [] };
+  const c3 = _cfg.p3;
+  const vixZ = rollingZ(vixRaw, c3.zWin);
+  const monthEnds = monthEndIdx(dates);
+  const regimeDates = [], regimes = [];
+  for (const idx of monthEnds) {
+    const vv = vixRaw[idx], vz = vixZ[idx];
+    let r;
+    if (!isFinite(vv) || !isFinite(vz)) r = null;
+    else if (vv < c3.vixCalm && vz < 0) r = 'CALM';
+    else if (vv > c3.vixStress || vz > c3.stressZ) r = 'STRESSED';
+    else r = 'ELEVATED';
+    if (r) { regimeDates.push(dates[idx]); regimes.push(r); }
+  }
+  return { dates: regimeDates, regime: regimes };
+}
+
+function evByRegime(monthlyRet, monthlyDates, regimeMap) {
+  const buckets = { CALM: [], ELEVATED: [], STRESSED: [] };
+  for (let i = 0; i < monthlyDates.length; i++) {
+    const r = regimeMap.get(monthlyDates[i]);
+    if (r && isFinite(monthlyRet[i])) buckets[r].push(monthlyRet[i]);
+  }
+  const out = {};
+  for (const [regime, rets] of Object.entries(buckets)) {
+    if (rets.length === 0) { out[regime] = null; continue; }
+    const wins = rets.filter(r=>r>0);
+    const losses = rets.filter(r=>r<=0);
+    const winRate = wins.length / rets.length;
+    const avgWin = wins.length ? wins.reduce((a,b)=>a+b,0)/wins.length : 0;
+    const avgLoss = losses.length ? losses.reduce((a,b)=>a+b,0)/losses.length : 0;
+    const ev = winRate*avgWin + (1-winRate)*avgLoss;
+    out[regime] = { n: rets.length, winRate, avgWin, avgLoss, ev };
+  }
+  return out;
+}
+
+function runTLEVByRegime() {
+  if (!_rawData || !_results.p1 || !_combined) return;
+  const { dates: regimeDates, regime } = classifyMonthlyVixRegime();
+  if (!regimeDates.length) return;
+  const regimeMap = new Map(regimeDates.map((d,i)=>[d, regime[i]]));
+
+  const REGIMES = ['CALM','ELEVATED','STRESSED'];
+  const REGIME_COLORS = { CALM:'#22c55e', ELEVATED:'#f97316', STRESSED:'#ef4444' };
+
+  const allSeries = [...SYS_KEYS.map((k,i)=>({ name: SYS_NAMES[i], color: SYS_COLORS[i], mr: _results[k].monthlyRet, dates: _results[k].monthlyDates })),
+    { name: 'Combined Book', color: '#e2e8f0', mr: _combined.monthlyRet, dates: _combined.monthlyDates }];
+
+  const evRows = allSeries.map(s => ({ name: s.name, color: s.color, stats: evByRegime(s.mr, s.dates, regimeMap) }));
+
+  const datasets = REGIMES.map(r => ({
+    label: r,
+    data: evRows.map(row => row.stats[r] ? row.stats[r].ev*100 : null),
+    backgroundColor: REGIME_COLORS[r] + 'cc',
+    borderColor: REGIME_COLORS[r], borderWidth: 1,
+  }));
+  makeChart('chartTLEVRegime', 'bar', evRows.map(r=>r.name), datasets, {
+    animation:{duration:0},
+    plugins:{ legend:{ display:true, position:'top', labels:{color:'#94a3b8',font:{size:10}} } },
+    scales: { x:{ ticks:{color:'#94a3b8',font:{size:9}}, grid:{display:false} },
+              y:{ ticks:{color:'#94a3b8', callback:v=>v.toFixed(2)+'%'}, grid:{color:'rgba(255,255,255,0.06)'}, title:{display:true,text:'EV / month (%)',color:'#64748b',font:{size:10}} } }
+  });
+
+  document.getElementById('tlEVHead').innerHTML = '<th>System</th>' + REGIMES.map(r=>
+    `<th class="num" style="color:${REGIME_COLORS[r]}">${r} N</th><th class="num" style="color:${REGIME_COLORS[r]}">${r} Win%</th><th class="num" style="color:${REGIME_COLORS[r]}">${r} EV/mo</th>`
+  ).join('');
+  document.getElementById('tlEVBody').innerHTML = evRows.map(row => {
+    const cells = REGIMES.map(r => {
+      const s = row.stats[r];
+      if (!s) return `<td class="num">—</td><td class="num">—</td><td class="num">—</td>`;
+      const evColor = s.ev >= 0 ? 'pos' : 'neg';
+      return `<td class="num">${s.n}</td><td class="num">${(s.winRate*100).toFixed(0)}%</td><td class="num ${evColor}">${(s.ev*100).toFixed(2)}%</td>`;
+    }).join('');
+    return `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${row.color};margin-right:5px;"></span>${row.name}</td>${cells}</tr>`;
+  }).join('');
+}
+
+// ── TestLab tab init ──────────────────────────────────────────────────────────
+function initTestLab() {
+  renderTLMC();
+  renderTLCapacity();
+  renderTLTxCosts();
+  runTLEVByRegime();
+}
+
 function switchSys(key) {
   document.querySelectorAll('.sys-tab').forEach(t => {
     const isActive = t.dataset.sys === key;
@@ -1985,6 +3350,7 @@ function switchSys(key) {
   renderSystemPanel(key);
 }
 
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Tab switching
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1994,12 +3360,15 @@ function switchTab(tab) {
 
   // Lazy render on tab switch
   setTimeout(() => {
-    if (tab === 'corr')    { renderCorrelationMatrix(); }
-    if (tab === 'rolling') { renderRollingCorr(); renderRollingSharpe(); }
-    if (tab === 'alpha')   { renderAlpha(); }
-    if (tab === 'sizing')  { renderSizingTable(); }
-    if (tab === 'systems') { switchSys(document.querySelector('.sys-tab.active')?.dataset.sys ?? 'p1'); }
-    if (tab === 'combined'){ renderCombinedChart(); renderDDChart(); }
+    if (tab === 'corr')       { renderCorrelationMatrix(); }
+    if (tab === 'rolling')    { renderRollingCorr(); renderRollingSharpe(); }
+    if (tab === 'alpha')      { renderAlpha(); }
+    if (tab === 'sizing')     { renderSizingTable(); }
+    if (tab === 'montecarlo') { renderMonteCarlo(); }
+    if (tab === 'robustness') { renderRobustness(); }
+    if (tab === 'testlab')    { initTestLab(); }
+    if (tab === 'systems')    { switchSys(document.querySelector('.sys-tab.active')?.dataset.sys ?? 'p1'); }
+    if (tab === 'combined')   { renderCombinedChart(); renderDDChart(); }
   }, 30);
 }
 
@@ -2019,7 +3388,7 @@ async function runAll() {
     _rawData = data;
     document.getElementById('cacheLabel').textContent = data.cached ? '(cached)' : '(fresh)';
 
-    setStatus('spin', `Running 6 strategy engines (${data.dateIndex.length} trading days)…`);
+    setStatus('spin', `Running 5 strategy engines (${data.dateIndex.length} trading days)…`);
     await new Promise(r => setTimeout(r, 20));
 
     _results.p1 = runP1(data);
@@ -2029,9 +3398,7 @@ async function runAll() {
     _results.p3 = runP3(data);
     setStatus('spin', 'P3 done · Running P4…'); await new Promise(r=>setTimeout(r,10));
     _results.p4 = runP4(data);
-    setStatus('spin', 'P4 done · Running P5…'); await new Promise(r=>setTimeout(r,10));
-    _results.p5 = runP5(data);
-    setStatus('spin', 'P5 done · Running P6…'); await new Promise(r=>setTimeout(r,10));
+    setStatus('spin', 'P4 done · Running P6…'); await new Promise(r=>setTimeout(r,10));
     _results.p6 = runP6(data);
 
     setStatus('spin', 'Optimising weights…'); await new Promise(r=>setTimeout(r,10));

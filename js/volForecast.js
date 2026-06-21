@@ -1,24 +1,30 @@
 /**
  * Vol & Range Forecaster — core math engine (no network, no I/O).
  *
- * Methodology — primary estimator per asset class (switched 2026-06-15):
+ * Methodology — primary estimator per asset class (last updated 2026-06-15 evening):
  *
  *   commodity : 20-day simple historical volatility (HV20)
  *                 std(log_returns[-20:]) × √252
- *                 Reference comparison showed HV20 Δ+2.7% vs GARCH Δ+15.5%.
- *                 Previous: Rogers-Satchell EWMA λ=0.94
+ *                 Jun-15 morning compare: HV20 Δ−6% vs ref (acceptable).
+ *                 Previous: Rogers-Satchell EWMA λ=0.94 (Δ+15.5%)
  *
- *   index     : EWMA close-to-close, λ=0.90
- *                 σ²_t = 0.10·r²_t + 0.90·σ²_{t-1}
- *                 Reference comparison showed EWMA Δ+3.7% vs GARCH Δ+15.9%.
- *                 Previous: GARCH(1,1) α=0.06 β=0.91
+ *   index     : GARCH(1,1) α=0.06 β=0.87 (interim, was β=0.91 — 2026-06-19)
+ *                 ω floor = 1.11e-5 (rescaled, still ~20% long-run). Reverted from
+ *                 EWMA(0.90) after EWMA spiked Δ−37.5% on first large-move day
+ *                 (NQ 33.54% vs ref 20.95%). EWMA(0.90) half-life only 6.6 days —
+ *                 too reactive, no floor. β=0.91's 23-day half-life then proved too
+ *                 STICKY (Jun-17/18/19 NQ trajectory) — β=0.87 (~9.5-day half-life)
+ *                 is a provisional middle ground pending grid search; see
+ *                 MD files/VOL_CALIBRATION_TRACKER.md.
+ *                 Previous trial: EWMA(λ=0.90)
  *
- *   fx        : 30-day simple historical volatility (HV30) [experimental]
- *                 std(log_returns[-30:]) × √252
- *                 YZ was best available (Δ+12%) but HV30 being trialled.
- *                 Previous: GARCH(1,1) α=0.06 β=0.91
+ *   fx        : Yang-Zhang (YZ) estimator, window=30
+ *                 σ²_YZ = σ²_overnight + k·σ²_OC + (1−k)·σ²_RS
+ *                 Jun-15 morning compare showed YZ Δ+12% (reference 12% above YZ).
+ *                 HV30 was tried first but underestimated by Δ+20.5%.
+ *                 Previous trial: HV30; before that: GARCH(1,1)
  *
- *   Legacy shadow (stored as garch_/legacy_ fields for before/after comparison):
+ *   Legacy shadow (stored as legacy_ fields for before/after comparison):
  *                 commodity → RS-EWMA λ=0.94
  *                 index/fx  → GARCH(1,1) α=0.06 β=0.91
  *
@@ -51,25 +57,68 @@ const HN_P75 = 1.1503;
 //
 // hl_50_corr / hl_75_corr / oc_50_corr / oc_75_corr
 //   Reset to 1.0 on 2026-06-15 when primaries switched to HV20/EWMA/HV30.
-//   Previous calibration (for GARCH/RS-EWMA) is documented in ESTIMATOR_CHANGE_LOG.md.
-//   New estimators are close enough to reference that pure BM/HN formulas apply.
+// Calibration history — corrections derived as ref_value / our_uncorrected_value:
+//
+// commodity (GOLD, HV20) — calibrated 2026-06-15, confirmed 2026-06-17:
+//   Jun-17 compare with these factors already applied: HL med Δ−2.6%, HL 75p Δ−0.9%,
+//   OC med Δ+2.3%, OC 75p Δ−0.5% — all within noise, no change.
+//
+// fx (EURUSD, YZ) — refined 2026-06-17 (1 day ahead of planned Jun-18 checkpoint):
+//   Jun-17 compare: HL med Δ−3.7%, HL 75p Δ+1.5%, OC med Δ−4.0%, OC 75p Δ−7.3%.
+//   New factors close these small residual gaps; re-check after another session.
+//
+// index (GARCH) — calibrated 2026-06-17 from first post-revert compare (NQ only):
+//   Jun-17 compare: ours 26.56% vs ref 21.71% vol (Δ−22.3%, we overestimate).
+//   HL med Δ−23.5%, HL 75p Δ−28.9%, OC med Δ−17.7%, OC 75p Δ−11.6%.
+//   GARCH persistence (α+β=0.97, half-life ~23 days) keeps vol elevated long after
+//   a shock has passed — same symptom direction as the earlier EWMA(0.90) overshoot,
+//   different mechanism (EWMA over-reacts instantly; GARCH stays sticky afterward).
+//   Factors below derived from NQ only — SPX500/DE30/UK100/US30/US2000 share this
+//   class but have no reference data yet; monitor once available, may need to split
+//   index into per-instrument corrections if they diverge from NQ's behavior.
+//
+// index GARCH persistence — INTERIM FIX 2026-06-19 (see MD files/VOL_CALIBRATION_TRACKER.md):
+//   3-session trajectory (Jun-17 Δ+22.3%, Jun-18 Δ+3.5%, Jun-19 Δ+33.7%) showed the
+//   Δ+22.3%/Δ+33.7% overestimates recur whenever a prior-day shock hasn't fully decayed —
+//   confirms this is a structural persistence problem, not noise the static hl/oc
+//   correction factors above can fix (those only correct distribution shape, not decay
+//   speed). garch_beta_interim/garch_omega_interim below halve the half-life
+//   (23d → ~9.5d: β 0.91→0.87, α unchanged, ω rescaled to keep the same 20% long-run
+//   variance anchor) as a conservative provisional step — NOT a final calibration.
+//   Applies to the primary index estimator only; garch_omega (legacy shadow column)
+//   is untouched so the before/after comparison stays meaningful. Revisit via grid
+//   search once enough (ours, ref) pairs have accumulated (tracker file has the table).
 const ASSET_PARAMS = {
-  commodity: { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0 },
-  index:     { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0, garch_omega: 4.76e-6 },
-  fx:        { hl_50_corr: 1.0, hl_75_corr: 1.0, oc_50_corr: 1.0, oc_75_corr: 1.0, garch_omega: 3.60e-7 },
+  commodity: { hl_50_corr: 0.93, hl_75_corr: 0.88, oc_50_corr: 1.09, oc_75_corr: 1.03 },
+  index:     { hl_50_corr: 0.81, hl_75_corr: 0.78, oc_50_corr: 0.85, oc_75_corr: 0.90, garch_omega: 4.76e-6,
+               garch_beta_interim: 0.87, garch_omega_interim: 1.11e-5 },
+  fx:        { hl_50_corr: 1.04, hl_75_corr: 0.99, oc_50_corr: 1.10, oc_75_corr: 1.08, garch_omega: 3.60e-7 },
 };
 
 // ── News event multipliers ────────────────────────────────────────────────────
-// Applied to fx/index only — commodity vol is not systematically driven by US events.
+// Applied to all asset classes (commodity included as of 2026-06-18 — see below).
 // Recalibrated 2026-06-12 from Jun 12 reference (CPI day): EURUSD implied ×1.11,
 // NQ implied ×1.07. FOMC/NFP not yet observed in reference data; reduced proportionally.
+//
+// 2026-06-18: new Fed Chair's first speech caused a major repricing in GOLD, NQ,
+// and EURUSD alike (user-confirmed: "huge news day ... price went crazy"). Two gaps
+// fixed by this change:
+//   1. No NEWS_PATTERNS entry matched a Fed Chair speech/testimony calendar event
+//      (only scheduled data releases were covered) — added 'Fed Chair Speech' below.
+//   2. commodity was unconditionally excluded from any news multiplier, on the
+//      assumption gold isn't event-driven — contradicted by Jun-18 data, where GOLD's
+//      reaction was comparable to fx/index. Exclusion removed in computeForecast().
+//   Fed Chair speech mult set at 1.18 (between NFP and FOMC) pending calibration
+//   against a clean single-event reference compare.
 const NEWS_PATTERNS = [
-  { re: /federal\s*fund|fomc.*rate|fed.*rate/i, mult: 1.21, label: 'FOMC Rate' },
-  { re: /non.?farm|nonfarm|payroll/i,           mult: 1.16, label: 'NFP'       },
-  { re: /consumer\s*price|cpi/i,                mult: 1.11, label: 'CPI'       },
-  { re: /personal\s*consumption|pce/i,          mult: 1.08, label: 'PCE'       },
-  { re: /gross\s*domestic|gdp/i,                mult: 1.05, label: 'GDP'       },
-  { re: /producer\s*price|ppi/i,                mult: 1.05, label: 'PPI'       },
+  { re: /federal\s*fund|fomc.*rate|fed.*rate/i,         mult: 1.21, label: 'FOMC Rate'       },
+  { re: /fed\s*chair|fomc\s*press\s*conference|monetary\s*policy\s*testimony|humphrey.?hawkins/i,
+                                                          mult: 1.18, label: 'Fed Chair Speech' },
+  { re: /non.?farm|nonfarm|payroll/i,                   mult: 1.16, label: 'NFP'       },
+  { re: /consumer\s*price|cpi/i,                        mult: 1.11, label: 'CPI'       },
+  { re: /personal\s*consumption|pce/i,                  mult: 1.08, label: 'PCE'       },
+  { re: /gross\s*domestic|gdp/i,                        mult: 1.05, label: 'GDP'       },
+  { re: /producer\s*price|ppi/i,                        mult: 1.05, label: 'PPI'       },
 ];
 
 export function detectNewsMultiplier(events = []) {
@@ -178,13 +227,16 @@ export function ewmaVolSeries(bars, lambda = 0.90) {
 
 // For index/fx: ω floor prevents estimates collapsing in quiet regimes.
 // Initialized at unconditional variance ω/(1−α−β) — no seed transient.
-function garch11VolSeries(bars, omega) {
+// alpha/beta default to the original global constants; index's primary
+// estimator overrides beta (see ASSET_PARAMS.index.garch_beta_interim, 2026-06-19)
+// to shorten persistence while the legacy shadow series keeps the originals.
+function garch11VolSeries(bars, omega, alpha = G_ALPHA, beta = G_BETA) {
   const n   = bars.length;
   const out = new Array(n - 1);
-  let sigma2 = omega / (1 - G_ALPHA - G_BETA);
+  let sigma2 = omega / (1 - alpha - beta);
   for (let i = 1; i < n; i++) {
     const r = Math.log(bars[i].close / bars[i - 1].close);
-    sigma2 = omega + G_ALPHA * r * r + G_BETA * sigma2;
+    sigma2 = omega + alpha * r * r + beta * sigma2;
     out[i - 1] = Math.sqrt(sigma2);
   }
   return out;
@@ -275,11 +327,15 @@ function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
     hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
     hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
     hl_5d:      r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt5),
+    hl_5d_75:   r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * sqrt5),
     hl_20d:     r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt20),
+    hl_20d_75:  r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * sqrt20),
     oc_median:  r2(oc_med),
     oc_75:      r2(oc_75v),
     oc_5d:      r2(oc_med * sqrt5),
+    oc_5d_75:   r2(oc_75v * sqrt5),
     oc_20d:     r2(oc_med * sqrt20),
+    oc_20d_75:  r2(oc_75v * sqrt20),
     oh_median:  r2(oc_med),
     oh_75:      r2(oc_75v),
     ol_median:  r2(oc_med),
@@ -292,8 +348,8 @@ function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
 /**
  * @param {Array<{open,high,low,close}>} ohlc  Daily bars, oldest → newest
  * @param {string}  assetClass  'commodity' | 'index' | 'fx'
- * @param {number}  newsMult    Output of detectNewsMultiplier() — stored in output as
- *                              informational context only, not applied to ranges.
+ * @param {number}  newsMult    Output of detectNewsMultiplier() — when > 1, scales
+ *                              sigmaFwd (and thus all HL/OC ranges) before correction.
  * @returns forecast object — all values are percentages
  */
 export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
@@ -302,17 +358,19 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
 
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
-  // Primary estimators — switched 2026-06-15 based on reference comparison:
-  //   commodity HV20 Δ+2.7% vs RS-EWMA Δ+15.5%  (ref GOLD 28.91%)
-  //   index EWMA Δ+3.7% vs GARCH Δ+15.9%          (ref NQ   29.99%)
-  //   fx HV30 experimental (YZ Δ+12% was best but HV30 being trialled)
+  // Primary estimators — updated 2026-06-15 evening based on reference comparison:
+  //   commodity HV20: vol 29.34% vs ref 27.59% (Δ−6%)  ← keep, close enough
+  //   index EWMA(0.90) gave 33.54% vs ref 20.95% (Δ−37.5%) — too reactive after spike → revert to GARCH
+  //   fx HV30 gave 4.59% vs ref 5.53% (Δ+20.5%) — too slow → switch to YZ (was Δ+12%, best available)
   let volSeries;
   if (assetClass === 'commodity') {
-    volSeries = hv20Series(ohlc, 20);          // was: rsEwmaVolSeries(ohlc)
+    volSeries = hv20Series(ohlc, 20);                    // kept: RS-EWMA was Δ+15.5%, HV20 Δ−6%
   } else if (assetClass === 'index') {
-    volSeries = ewmaVolSeries(ohlc, 0.90);     // was: garch11VolSeries(ohlc, p.garch_omega)
+    // Interim persistence fix 2026-06-19: shorter beta/omega than the legacy shadow
+    // below (see ASSET_PARAMS.index comment) — provisional pending grid search.
+    volSeries = garch11VolSeries(ohlc, p.garch_omega_interim, G_ALPHA, p.garch_beta_interim);
   } else {
-    volSeries = hv20Series(ohlc, 30);          // was: garch11VolSeries(ohlc, p.garch_omega)
+    volSeries = yangZhangVolSeries(ohlc);                // switched: HV30 too slow (Δ+20.5%), YZ was Δ+12%
   }
 
   // Legacy shadow — old estimator (RS-EWMA for commodity, GARCH for index/fx).
@@ -321,8 +379,9 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
     ? rsEwmaVolSeries(ohlc)
     : garch11VolSeries(ohlc, p.garch_omega);
 
-  // US event multiplier applies to fx/index only.
-  const sigmaFwd = (newsMult > 1 && assetClass !== 'commodity')
+  // US event multiplier applies to all asset classes (commodity included as of
+  // 2026-06-18 — Jun-18 Fed Chair speech moved GOLD as much as fx/index).
+  const sigmaFwd = newsMult > 1
     ? volSeries.at(-1) * newsMult
     : volSeries.at(-1);
 
@@ -374,7 +433,7 @@ export function computeForecastFromRV(dailyRVs, assetClass = 'fx', newsMult = 1.
     ? ewmaOnRVSeries(rvValues)
     : garchOnRVSeries(rvValues, p.garch_omega);
 
-  const sigmaFwd = (newsMult > 1 && assetClass !== 'commodity')
+  const sigmaFwd = newsMult > 1
     ? volSeries.at(-1) * newsMult
     : volSeries.at(-1);
   return _buildOutput(volSeries, sigmaFwd, assetClass, newsMult);

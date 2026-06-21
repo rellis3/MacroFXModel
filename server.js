@@ -36,6 +36,8 @@ import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
+import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
+import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -142,6 +144,8 @@ const state = {
   hmm5mBars:           {},   // { 'EUR/USD': bars[] } — M1 bars cached for polarity flip detection
   hmm5mV2Regimes:      {},   // shadow V2 regimes — 4-state, learned params
   hmm1hV2Regimes:      {},   // 1h V2 regimes — same HMM on H1 bars for HTF alignment
+  hmm30mV2Regimes:     {},   // 30m V2 regimes — same HMM on M30 bars, V7 primary MTF signal
+  hmm2hV2Regimes:      {},   // 2h V2 regimes — same HMM on H2 bars, V7 optional 4x HTF gate
   hmm5mTrainedParams:  null, // Baum-Welch learned parameters loaded from KV
   hmm5mMacroContext:   null, // FRED macro overlay loaded from KV
   hmm5mTrainStatus:    {},   // per-pair training progress { sym: { status, iterations, nBars } }
@@ -2045,6 +2049,16 @@ app.get('/api/hmm1h-v2', (_req, res) => {
   res.json(state.hmm1hV2Regimes);
 });
 
+// V2 30m regime data — primary MTF signal for regime_bot_v7.py
+app.get('/api/hmm30m-v2', (_req, res) => {
+  res.json(state.hmm30mV2Regimes);
+});
+
+// V2 2h regime data — optional 4x HTF confirmation gate for regime_bot_v7.py
+app.get('/api/hmm2h-v2', (_req, res) => {
+  res.json(state.hmm2hV2Regimes);
+});
+
 // V2 training status per pair
 app.get('/api/hmm5m-train-status', (_req, res) => {
   res.json({
@@ -2103,6 +2117,40 @@ app.get('/api/macro-equity-backtest/results', (_req, res) => {
   if (!Object.keys(macroEquityStore.results).length)
     return res.status(404).json({ ok: false, error: 'No results — run macro_equity_backtest.py first' });
   res.json({ ok: true, results: macroEquityStore.results });
+});
+
+// ── VIX vol-carry (P8) backtest store ────────────────────────────────────────
+// In-memory; persists for the lifetime of the process. Standalone — unlike the
+// macro-equity model above, there is no JS engine port or /run job queue here.
+// Populated by running: python vix-vol-carry/vix_vol_carry_backtest.py --base-url <URL>
+const vixVolCarryStore = { trades: [], results: {}, savedAt: null };
+
+app.post('/api/vix-vol-carry-backtest/trades', express.json({ limit: '10mb' }), (req, res) => {
+  const { trades, savedAt } = req.body ?? {};
+  if (!Array.isArray(trades)) return res.status(400).json({ ok: false, error: 'trades array required' });
+  vixVolCarryStore.trades  = trades;
+  vixVolCarryStore.savedAt = savedAt ?? new Date().toISOString();
+  console.log(`[vix-vol-carry-bt] saved ${trades.length} trades`);
+  res.json({ ok: true, n: trades.length });
+});
+
+app.get('/api/vix-vol-carry-backtest/trades', (_req, res) => {
+  if (!vixVolCarryStore.trades.length)
+    return res.status(404).json({ ok: false, error: 'No trades — run vix_vol_carry_backtest.py first' });
+  res.json({ ok: true, trades: vixVolCarryStore.trades, savedAt: vixVolCarryStore.savedAt });
+});
+
+app.post('/api/vix-vol-carry-backtest/results', express.json({ limit: '5mb' }), (req, res) => {
+  vixVolCarryStore.results = req.body ?? {};
+  vixVolCarryStore.savedAt = vixVolCarryStore.results.run_at ?? new Date().toISOString();
+  console.log('[vix-vol-carry-bt] results summary stored');
+  res.json({ ok: true });
+});
+
+app.get('/api/vix-vol-carry-backtest/results', (_req, res) => {
+  if (!Object.keys(vixVolCarryStore.results).length)
+    return res.status(404).json({ ok: false, error: 'No results — run vix_vol_carry_backtest.py first' });
+  res.json({ ok: true, results: vixVolCarryStore.results });
 });
 
 // ── Macro-equity JS engine: data cache + job queue ────────────────────────────
@@ -2877,6 +2925,49 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
   }
 });
 
+// ── /api/oanda_ohlc5m  — OHLC candles for any FX/gold pair ──────────────────
+// ?symbol=EUR/USD[&granularity=H1]  granularity defaults to M5
+// Returns { values:[{datetime, open, high, low, close}] } newest-first,
+// datetime in London local time.
+const _m5SrvCache = new Map();
+const _OHLC_GRAN = { M5: { count: 1500, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 } };
+app.get('/api/oanda_ohlc5m', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const gran = (req.query.granularity || 'M5').toUpperCase();
+  if (!_OHLC_GRAN[gran]) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
+  const { count, ttl } = _OHLC_GRAN[gran];
+  const instrument = symbol.replace('/', '_');
+  const cacheKey   = `ohlc_${gran}_${instrument}`;
+  const cached     = _m5SrvCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < ttl) return res.json(cached.data);
+  try {
+    const base = _oandaBaseMe();
+    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M`;
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+      signal:  AbortSignal.timeout(20_000),
+    });
+    if (!r.ok) { const t = await r.text().catch(() => 'err'); return res.status(502).json({ error: `OANDA ${r.status}: ${t.slice(0,200)}` }); }
+    const data = await r.json();
+    if (!data.candles) return res.status(502).json({ error: 'No candles returned' });
+    const values = data.candles
+      .filter(c => c.complete && c.mid)
+      .map(c => ({
+        datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
+        open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
+      }))
+      .reverse();
+    const result = { values, meta: { symbol, source: 'oanda', granularity: gran } };
+    _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    res.json(result);
+  } catch (err) {
+    console.error('[oanda_ohlc5m]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
 app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
@@ -3056,6 +3147,35 @@ app.get('/api/gold-backtest/trades', (req, res) => {
     return res.status(404).json({ ok: false, error: 'No trades found — run the backtester first' });
   }
   res.json({ ok: true, trades: goldBacktestStore.trades, savedAt: goldBacktestStore.savedAt });
+});
+
+// ── Gold live trade journal (CSV → JSON) ─────────────────────────────────────
+// Reads Gold/logs/gold_trades.csv and returns all rows as structured JSON.
+app.get('/api/gold/trades', async (req, res) => {
+  const csvPath = path.join(__dirname, 'Gold', 'logs', 'gold_trades.csv');
+  try {
+    const raw = await fs.promises.readFile(csvPath, 'utf8');
+    const lines = raw.trim().split('\n');
+    if (lines.length < 2) return res.json({ ok: true, trades: [] });
+    const headers = lines[0].split(',');
+    const trades = lines.slice(1).map(line => {
+      // composition field may contain commas — split on first N-1 delimiters only
+      const parts = line.split(',');
+      const row = {};
+      headers.forEach((h, i) => {
+        const v = (parts[i] ?? '').trim();
+        row[h.trim()] = isNaN(v) || v === '' ? v : parseFloat(v);
+      });
+      // composition is the last column and may have had commas — rejoin overflow parts
+      if (parts.length > headers.length) {
+        row['composition'] = parts.slice(headers.length - 1).join(',').trim();
+      }
+      return row;
+    }).filter(r => r.zone_id);
+    res.json({ ok: true, trades, count: trades.length });
+  } catch (err) {
+    res.status(404).json({ ok: false, error: err.message });
+  }
 });
 
 // ── Diversification backtest data cache ───────────────────────────────────────
@@ -3335,7 +3455,12 @@ app.post('/api/vol-forecast/refresh', async (_req, res) => {
 function _fmtForecastText(data) {
   const LW  = 29;
   const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
-  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`, ''];
+  const lines = ['**VOL & RANGE FORECAST**', `**For session: ${data.session_label}**`];
+  const newsMult = data.meta?.news_mult ?? 1;
+  if (newsMult > 1) {
+    lines.push(`News: ${data.meta?.news_flag ?? 'Event'} ×${newsMult.toFixed(2)} applied`);
+  }
+  lines.push('');
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     lines.push(
       div(name),
@@ -3411,6 +3536,25 @@ app.get('/api/vol-forecast/export', (_req, res) => {
   res.type('text/plain').send(_fmtForecastText(forecastState.latest));
 });
 
+// Confluence zones export — multi-layer technical levels per instrument.
+// Clusters Fibonacci retracements (3/5/10-day swings), previous daily opens/H/L,
+// weekly pivots, vol forecast absolute levels, and round numbers. Returns zones
+// with 2+ distinct level types. Format: CZ {price} : {count} {type1},{type2},...
+app.get('/api/vol-forecast/zones', (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  if (!forecastState.ohlcCache || !Object.keys(forecastState.ohlcCache).length) {
+    return res.status(202).type('text/plain').send('OHLC cache not yet populated — check back in 60s.');
+  }
+  try {
+    const text = buildConfluenceZoneText(forecastState.ohlcCache, forecastState.latest);
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Zone computation error: ${e.message}`);
+  }
+});
+
 // Live session status — intraday tracking (actual OHLC vs forecast).
 // Fetches today's current/latest daily bar from Oanda and computes consumed
 // range, directional bias, shape, and outlook per instrument.
@@ -3421,6 +3565,48 @@ app.get('/api/vol-forecast/live', async (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// Session alias used by vol-forecast-v2.html — live today or historical from KV.
+app.get('/api/vol-forecast/session', async (req, res) => {
+  const date = String(req.query.date ?? '');
+  if (date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+    try {
+      const raw = await kv.get(`vol_session_${date}`);
+      if (!raw) return res.status(404).json({ ok: false, error: `No session data for ${date}` });
+      return res.json({ ok: true, date, ...JSON.parse(raw) });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  }
+  try {
+    const status = await getSessionStatus();
+    res.json(status);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Session-stats aliases used by vol-forecast-v2.html.
+app.get('/api/vol-forecast/session-stats', (_req, res) => {
+  if (isSessionStatsComputing()) {
+    return res.status(202).json({ ok: false, status: 'computing', message: 'Session stats computation in progress — poll again in 60s.' });
+  }
+  const data = getSessionStats();
+  if (!data) return res.status(202).json({ ok: false, message: 'Session stats not yet computed — POST /api/vol-forecast/session-stats/compute to start.' });
+  res.json(data);
+});
+
+app.post('/api/vol-forecast/session-stats/compute', (_req, res) => {
+  if (isSessionStatsComputing()) {
+    return res.json({ ok: false, message: 'Already computing — poll /api/vol-forecast/session-stats for result.' });
+  }
+  const years = parseInt(_req.query.years) || 5;
+  res.json({ ok: true, message: `Computing session stats (${years}yr H1) — poll /api/vol-forecast/session-stats in ~3–5 min.` });
+  computeSessionStats(years)
+    .then(data => kv.put('session_stats', JSON.stringify(data)))
+    .catch(e => console.error('[SESSION-STATS] Error:', e.message));
 });
 
 // Plain-text live session export — same format as the ⬇ Session button on the dashboard.
@@ -3874,13 +4060,13 @@ async function _getWeeklyStatus() {
           wtd_oc_pct:       wtdOCPct,
           wtd_days:         wtdDays,
           hl_5d:            f.hl_5d,
-          hl_5d_75:         r2(f.hl_75  * Math.sqrt(5)),
+          hl_5d_75:         f.hl_5d_75  ?? r2(f.hl_75  * Math.sqrt(5)),
           oc_5d:            f.oc_5d,
-          oc_5d_75:         r2(f.oc_75  * Math.sqrt(5)),
+          oc_5d_75:         f.oc_5d_75  ?? r2(f.oc_75  * Math.sqrt(5)),
           hl_20d:           f.hl_20d,
-          hl_20d_75:        r2(f.hl_75  * Math.sqrt(20)),
+          hl_20d_75:        f.hl_20d_75 ?? r2(f.hl_75  * Math.sqrt(20)),
           oc_20d:           f.oc_20d,
-          oc_20d_75:        r2(f.oc_75  * Math.sqrt(20)),
+          oc_20d_75:        f.oc_20d_75 ?? r2(f.oc_75  * Math.sqrt(20)),
           hl_consumed_pct:  hlConsumedPct,
           hl_remaining_pct: hlRemainingPct,
           vol_annual:       f.vol_annual,
@@ -3924,6 +4110,8 @@ function _fmtWeeklyText(data) {
   const div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const f2  = x => (x != null ? x.toFixed(2) : '—');
   const sign = x => (x != null ? (x >= 0 ? '+' : '') + x.toFixed(2) : '—');
+  const rrow = (lbl, med, p75) =>
+    `${lbl.padEnd(24)}: ${f2(med)}% median · ${f2(p75)}% 75th Percentile`;
 
   const lines = [
     '**VOL & RANGE FORECAST — WEEKLY**',
@@ -3952,10 +4140,14 @@ function _fmtWeeklyText(data) {
       }
     }
     lines.push('');
-    lines.push(`5-day H-L forecast  : ${f2(w.hl_5d)}%  (week range budget)`);
-    lines.push(`5-day O-C forecast  : ${f2(w.oc_5d)}%  (net weekly move expected)`);
-    lines.push(`20-day H-L forecast : ${f2(w.hl_20d)}%  (monthly range budget)`);
-    lines.push(`20-day O-C forecast : ${f2(w.oc_20d)}%  (net monthly move expected)`);
+    lines.push('── 5-Day (Weekly)');
+    lines.push(rrow('High to Low range', w.hl_5d, w.hl_5d_75));
+    lines.push(rrow('Open to Close move', w.oc_5d, w.oc_5d_75));
+    lines.push('');
+    lines.push('── 20-Day (Monthly)');
+    lines.push(rrow('High to Low range', w.hl_20d, w.hl_20d_75));
+    lines.push(rrow('Open to Close move', w.oc_20d, w.oc_20d_75));
+    lines.push('');
     lines.push(`Volatility (ann)    : ${f2(w.vol_annual)}%  [${w.vol_pct ?? '—'}th pct]`);
     if (w.note) lines.push(`Note                : ${w.note}`);
     lines.push('');
@@ -5768,6 +5960,177 @@ app.get('/api/asia-range-backtest/trades', (_req, res) => {
   }
 });
 
+// ── Yield Spread Z-Score Backtest ─────────────────────────────────────────────
+// USDJPY/EURUSD mean-reversion into the Asia range, triggered by a rolling
+// yield-spread z-score overshoot. Engine: js/zscoreSpreadEngine.js
+
+const ZS_BT_DATA_DIR = path.join(__dirname, 'VolRangeForecaster', 'data', 'zscore');
+
+function _latestZsBtFile() {
+  if (!fs.existsSync(ZS_BT_DATA_DIR)) return null;
+  const files = fs.readdirSync(ZS_BT_DATA_DIR)
+    .filter(f => f.startsWith('zscore_bt_') && f.endsWith('.json'))
+    .sort().reverse();
+  return files.length ? path.join(ZS_BT_DATA_DIR, files[0]) : null;
+}
+
+const zsJobs = new Map();
+
+function _purgeStaleZsJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of zsJobs) if (job.startedAt < cutoff) zsJobs.delete(id);
+}
+
+app.post('/api/zscore-backtest/run', (req, res) => {
+  if (!process.env.FRED_KEY) {
+    return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch yield spread data' });
+  }
+  const {
+    dateFrom = '', dateTo = '', pair = '',
+    zWindow = '90', fibLevelMode = 'all', entryWindow = '6',
+    thresholds = {}, invert = {},
+  } = req.body || {};
+
+  const opts = {
+    dateFrom: dateFrom || undefined, dateTo: dateTo || undefined,
+    zWindow:      parseInt(zWindow)      || 90,
+    fibLevelMode,
+    entryWindow:  parseInt(entryWindow)  || 6,
+    thresholds: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, parseFloat(thresholds[k]) || ZSCORE_PAIRS[k].defaultThreshold])),
+    invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, invert[k] === true || invert[k] === 'true'])),
+  };
+
+  const pairsToRun = pair
+    ? [pair.toLowerCase()].filter(p => ZSCORE_PAIRS[p])
+    : Object.keys(ZSCORE_PAIRS);
+
+  if (!pairsToRun.length) {
+    return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  }
+
+  const jobId     = `zs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleZsJobs();
+  zsJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { trades, perPair, combined, log } = await runFullZScoreBacktest(opts, pairsToRun);
+
+      if (!trades.length) {
+        zsJobs.set(jobId, { status: 'error', error: 'No trades generated — check date range, M1 data, and FRED_KEY', log, startedAt });
+        return;
+      }
+
+      if (!fs.existsSync(ZS_BT_DATA_DIR)) fs.mkdirSync(ZS_BT_DATA_DIR, { recursive: true });
+      const ts      = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(ZS_BT_DATA_DIR, `zscore_bt_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify({ trades, perPair, combined, opts }, null, 0) + '\n');
+
+      zsJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: {
+          ok: true,
+          message: `Z-Score backtest complete — ${trades.length} trades`,
+          perPair, combined, log,
+          file: path.basename(outFile),
+        },
+      });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[zscore-backtest/run]', msg, e?.stack ?? '');
+      zsJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/zscore-backtest/status/:jobId', (req, res) => {
+  const job = zsJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+app.get('/api/zscore-backtest', (_req, res) => {
+  const file = _latestZsBtFile();
+  if (!file) return res.status(404).json({ ok: false, error: 'No Z-Score backtest results found — run a backtest first' });
+  try {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    res.json({ ok: true, perPair: data.perPair, combined: data.combined, opts: data.opts, file: path.basename(file) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/zscore-backtest/trades', (_req, res) => {
+  const file = _latestZsBtFile();
+  if (!file) return res.json({ ok: false, error: 'No Z-Score backtest results found — run a backtest first' });
+  try {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    res.json({ ok: true, trades: data.trades, file: path.basename(file) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/zscore-backtest/candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { from, to } = req.query;
+  try {
+    if (!m1CandleCache.has(pair)) {
+      if (m1CandleCache.size >= M1_CACHE_MAX) {
+        m1CandleCache.delete(m1CandleCache.keys().next().value);
+      }
+      const packed = await loadM1ForPair(pair);
+      if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+      m1CandleCache.set(pair, packed);
+    }
+    const packed = m1CandleCache.get(pair);
+    const { n, times, opens, highs, lows, closes } = packed;
+
+    const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
+    const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
+    const candles = [];
+    for (let i = 0; i < n && candles.length < 20000; i++) {
+      const t = times[i];
+      if (t >= fromTs && t <= toTs) {
+        candles.push({ time: new Date(t * 1000).toISOString().substring(0, 19), open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+      }
+    }
+    res.json({ ok: true, pair, n: candles.length, candles });
+  } catch (e) {
+    console.error('[zscore-backtest/candles]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/zscore-backtest/diagnose', (_req, res) => {
+  const m1 = _m1CacheStatus();
+  res.json({
+    ok: true,
+    fredKey: !!process.env.FRED_KEY,
+    r2:      !!(process.env.R2_ACCESS_KEY && process.env.R2_SECRET_KEY),
+    m1Cached: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, m1.pairs.includes(ZSCORE_PAIRS[k].label)])),
+  });
+});
+
+app.get('/api/zscore-backtest/pairs', (_req, res) => {
+  res.json({
+    ok: true,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) =>
+      [k, { label: v.label, pairDisplay: v.pairDisplay, defaultThreshold: v.defaultThreshold }])),
+  });
+});
+
 // ── Dyn Anchor nightly forecast ────────────────────────────────────────────────
 // Fetches full OHLC D1 candles from OANDA (includes open/high/low, unlike
 // fetchDailyCandles which returns close-only).
@@ -6649,6 +7012,62 @@ async function runHMM1hV2Refresh() {
   }
 }
 
+async function runHMM30mV2Refresh() {
+  if (!process.env.OANDA_KEY) return;
+  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  for (const sym of pairs) {
+    try {
+      const instrument = sym.replace('/', '_');
+      const r = await fetch(
+        `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M30&count=500&price=M`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+      );
+      if (!r.ok) continue;
+      const d = await r.json();
+      const bars = (d.candles ?? [])
+        .filter(c => c.complete !== false && c.mid)
+        .map(c => ({ open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c }));
+      if (bars.length < 150) continue;
+      const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
+      if (!result) continue;
+      state.hmm30mV2Regimes[sym] = result;
+    } catch (e) {
+      console.error(`[HMM30M-V2] ${sym} error:`, e.message);
+    }
+  }
+}
+
+async function runHMM2hV2Refresh() {
+  if (!process.env.OANDA_KEY) return;
+  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  for (const sym of pairs) {
+    try {
+      const instrument = sym.replace('/', '_');
+      const r = await fetch(
+        `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=H2&count=200&price=M`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+      );
+      if (!r.ok) continue;
+      const d = await r.json();
+      const bars = (d.candles ?? [])
+        .filter(c => c.complete !== false && c.mid)
+        .map(c => ({ open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c }));
+      if (bars.length < 100) continue;
+      const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
+      if (!result) continue;
+      state.hmm2hV2Regimes[sym] = result;
+    } catch (e) {
+      console.error(`[HMM2H-V2] ${sym} error:`, e.message);
+    }
+  }
+}
+
 async function refreshMacroContext() {
   if (!process.env.FRED_KEY) return;
   try {
@@ -6867,6 +7286,18 @@ setTimeout(() => {
   runHMM1hV2Refresh().catch(console.error);
   setInterval(runHMM1hV2Refresh, 5 * 60 * 1000);
 }, 25_000);
+
+// V2 30m MTF HMM — primary signal for regime_bot_v7.py, refreshes every 5 min
+setTimeout(() => {
+  runHMM30mV2Refresh().catch(console.error);
+  setInterval(runHMM30mV2Refresh, 5 * 60 * 1000);
+}, 30_000);
+
+// V2 2h HTF HMM — optional 4x confirmation gate for regime_bot_v7.py, refreshes every 10 min
+setTimeout(() => {
+  runHMM2hV2Refresh().catch(console.error);
+  setInterval(runHMM2hV2Refresh, 10 * 60 * 1000);
+}, 35_000);
 
 // Macro context (VIX, HY spread, yield curve via FRED) — refresh every 6h, run once at startup
 refreshMacroContext().catch(console.error);
@@ -7109,8 +7540,29 @@ async function nqAuditUpdate(fields) {
 }
 
 async function nqSendTg(msg) {
-  if (!state.tg?.token || !state.tg?.chatId) return;
-  await sendTelegram(state.tg.token, state.tg.chatId, msg).catch(() => {});
+  // Check NQ-specific TG config first, fall back to shared state.tg
+  try {
+    const cfg    = await nqLoadMonCfg();
+    const token  = cfg.tgToken  || state.tg?.token;
+    const chatId = cfg.tgChatId || state.tg?.chatId;
+    if (token && chatId) await sendTelegram(token, chatId, msg).catch(() => {});
+  } catch {
+    if (state.tg?.token && state.tg?.chatId)
+      await sendTelegram(state.tg.token, state.tg.chatId, msg).catch(() => {});
+  }
+}
+
+async function _iqrSendTg(mon, msg) {
+  // Check instrument-specific TG config first, fall back to shared state.tg
+  try {
+    const cfg    = await _iqrLoadMonCfg(mon);
+    const token  = cfg.tgToken  || state.tg?.token;
+    const chatId = cfg.tgChatId || state.tg?.chatId;
+    if (token && chatId) await sendTelegram(token, chatId, msg).catch(() => {});
+  } catch {
+    if (state.tg?.token && state.tg?.chatId)
+      await sendTelegram(state.tg.token, state.tg.chatId, msg).catch(() => {});
+  }
 }
 
 // ── Gate checks ───────────────────────────────────────────────────────────────
@@ -7451,11 +7903,320 @@ async function nqRestoreFromKv() {
   console.log('[nq-mon] NQ-QMR signal monitor scheduled (Gates at 09:05 / 12:05 / 13:05 UTC)');
 })();
 
+// ── SPX / DOW / DAX QMR Signal Monitors ──────────────────────────────────────
+// Same two-gate overnight-range + London-momentum logic as NQ-QMR, applied to
+// additional index instruments.  All three share the generic helper functions
+// below; the NQ monitor (above) remains independent so a bug here can't break it.
+
+function _makeQmrMon(id, label, instrument, kvStatus, kvAudit, kvConfig) {
+  return {
+    id, label, instrument, kvStatus, kvAudit, kvConfig,
+    date: null, gate1: null, gate2: null, direction: null,
+    newsBlocked: false, newsEvents: [],
+    sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+    gate1Data: null, gate2Data: null,
+  };
+}
+
+const _iqrMons = {
+  spx: _makeQmrMon('spx', 'SPX-QMR', 'SPX500_USD', 'spx_qmr_status', 'spx_qmr_audit', 'spx_qmr_config'),
+  dow: _makeQmrMon('dow', 'DOW-QMR', 'US30_USD',   'dow_qmr_status', 'dow_qmr_audit', 'dow_qmr_config'),
+  dax: _makeQmrMon('dax', 'DAX-QMR', 'DE30_EUR',   'dax_qmr_status', 'dax_qmr_audit', 'dax_qmr_config'),
+};
+
+async function _iqrLoadMonCfg(mon) {
+  try {
+    const raw = await kv.get(mon.kvConfig);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed?.data ?? parsed ?? {};
+  } catch { return {}; }
+}
+
+async function _iqrPushKv(mon) {
+  try {
+    const raw      = await kv.get(mon.kvStatus).catch(() => null);
+    const parsed   = raw ? JSON.parse(raw) : {};
+    const existing = parsed?.data ?? parsed ?? {};
+    const g1state  = mon.gate1 === 'LONG' || mon.gate1 === 'SHORT' ? 'PASS'
+                   : mon.gate1 === 'FLAT' ? 'FAIL' : null;
+    const g2state  = mon.gate2 === 'CONFIRMED' ? 'PASS'
+                   : mon.gate2 === 'REJECTED'  ? 'FAIL' : null;
+    const payload  = {
+      ...existing,
+      gates: {
+        gate1: { state: g1state, ts: Date.now(), direction: mon.gate1, data: mon.gate1Data },
+        gate2: { state: g2state, ts: Date.now(), data: mon.gate2Data },
+      },
+      today_direction:     mon.direction,
+      news_blocked:        mon.newsBlocked,
+      news_events:         mon.newsEvents,
+      pushed_at:           Math.floor(Date.now() / 1000),
+      mt5_positions:       existing.mt5_positions       ?? [],
+      today_closed_trades: existing.today_closed_trades ?? [],
+    };
+    await kv.put(mon.kvStatus, JSON.stringify({ data: payload, timestamp: Date.now() }));
+  } catch (e) { console.error(`[${mon.id}-mon] KV write error:`, e.message); }
+}
+
+async function _iqrAuditUpdate(mon, fields) {
+  try {
+    const today = mon.date || new Date().toISOString().substring(0, 10);
+    const raw   = await kv.get(mon.kvAudit).catch(() => null);
+    let log = [];
+    try {
+      const parsed = raw ? JSON.parse(raw) : [];
+      log = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
+    } catch { log = []; }
+    let idx = log.findIndex(e => e.date === today);
+    if (idx === -1) { log.unshift({ date: today }); idx = 0; }
+    Object.assign(log[idx], fields);
+    if (log.length > 90) log = log.slice(0, 90);
+    await kv.put(mon.kvAudit, JSON.stringify({ data: log, timestamp: Date.now() }));
+  } catch (e) { console.error(`[${mon.id}-audit] write error:`, e.message); }
+}
+
+async function _iqrDailyOpen(mon) {
+  const today = new Date().toISOString().substring(0, 10);
+  Object.assign(mon, {
+    date: today, gate1: null, gate2: null, direction: null,
+    newsBlocked: false, newsEvents: [],
+    sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+    gate1Data: null, gate2Data: null,
+  });
+  const news = await nqFetchNewsRisk(today);
+  mon.newsBlocked = news.blocked;
+  mon.newsEvents  = news.events;
+  let msg = `📅 <b>${mon.label} | ${today}</b>\n\n`;
+  msg += `Gate 1:  04:48 ET  (09:05 UTC)\n`;
+  msg += `Gate 2:  07:40 ET  (12:05 UTC)\n`;
+  msg += `Entry:   09:25 ET  (13:05 UTC)\n\n`;
+  if (news.blocked) {
+    msg += `⚠️ <b>HIGH-IMPACT US NEWS — trade suppressed</b>\n`;
+    msg += news.events.map(e => `  • ${e.event} @ ${(e.time ?? '').split(' ')[1] ?? '?'} ET`).join('\n');
+  } else {
+    msg += `✓ No high-impact US data — monitor active`;
+  }
+  await _iqrSendTg(mon, msg);
+  mon.sentOpen = true;
+  await _iqrPushKv(mon);
+  await _iqrAuditUpdate(mon, {
+    date: today, news_blocked: news.blocked,
+    news_events: news.events.map(e => e.event ?? String(e)).filter(Boolean),
+    gate1: null, gate2: null, signal: null, trade: null,
+  });
+  console.log(`[${mon.id}-mon] Day open ${today}`);
+}
+
+async function _iqrGate1Check(mon) {
+  const cfg = await _iqrLoadMonCfg(mon);
+  if (cfg.enabled === false) { console.log(`[${mon.id}-mon] Gate 1 skipped — disabled`); return; }
+  if (mon.newsBlocked && cfg.newsFilter !== false) { console.log(`[${mon.id}-mon] Gate 1 skipped — news block`); return; }
+  if (!process.env.OANDA_KEY) return;
+  try {
+    const nas      = await fetchOandaRecentH1(mon.instrument, 15);
+    const today    = new Date().toISOString().substring(0, 10);
+    const overnight = nas.filter(b => {
+      const h = parseInt(b.t.substring(11, 13));
+      const d = b.t.substring(0, 10);
+      return b.complete && ((d < today && h >= 20) || (d === today && h <= 8));
+    });
+    if (overnight.length < 3) { console.log(`[${mon.id}-mon] Gate 1: too few overnight bars`); return; }
+    const asiaH    = Math.max(...overnight.map(b => b.h));
+    const asiaL    = Math.min(...overnight.map(b => b.l));
+    const range    = asiaH - asiaL;
+    const mid      = (asiaH + asiaL) / 2;
+    const rangePct = mid > 0 ? (range / mid * 100) : 0;
+    const g1bar    = nas.filter(b => b.complete).slice(-1)[0];
+    if (!g1bar) return;
+    const pos      = range > 0 ? (g1bar.c - asiaL) / range : 0.5;
+    const THRESH   = cfg.gate1Threshold ?? 0.60;
+    const MIN_RNG  = cfg.minRangePct    ?? 0.15;
+    let gate1 = pos >= THRESH ? 'LONG' : pos <= (1 - THRESH) ? 'SHORT' : 'FLAT';
+    if (rangePct < MIN_RNG) gate1 = 'FLAT';
+    const stopMul    = cfg.stopMultiplier ?? 0.45;
+    const stopPctDyn = stopMul > 0
+      ? Math.max(+(rangePct * stopMul).toFixed(3), 0.10)
+      : +(cfg.stopPct ?? 0.50);
+    mon.gate1     = gate1;
+    mon.gate1Data = { price: g1bar.c, asiaH, asiaL, range, rangePct, stopPct: stopPctDyn, pos };
+    const icon = gate1 === 'FLAT' ? '⚫' : '🟡';
+    const de   = gate1 === 'LONG' ? '▲' : gate1 === 'SHORT' ? '▼' : '—';
+    let msg = `${icon} <b>${mon.label} | GATE 1</b>  ${gate1}\n`;
+    msg += `${de} Direction bias: <b>${gate1}</b>\n`;
+    msg += `Time: ${g1bar.t.substring(11, 16)} UTC\n\n`;
+    msg += `${mon.id.toUpperCase()}: ${g1bar.c.toFixed(1)}\n`;
+    msg += `Asia range: ${asiaL.toFixed(1)} — ${asiaH.toFixed(1)}  (${rangePct.toFixed(2)}%)\n`;
+    msg += `Position in range: ${(pos * 100).toFixed(0)}%\n`;
+    if (gate1 === 'FLAT') msg += `\nRange ambiguous — <b>no trade today</b>`;
+    else                  msg += `\nAwaiting Gate 2 @ 12:05 UTC`;
+    await _iqrSendTg(mon, msg);
+    mon.sentGate1 = true;
+    await _iqrPushKv(mon);
+    await _iqrAuditUpdate(mon, { gate1: {
+      state:     gate1 === 'LONG' || gate1 === 'SHORT' ? 'PASS' : 'FAIL',
+      direction: gate1, ts: Date.now(), price: g1bar.c,
+      asiaH, asiaL, rangePct: +rangePct.toFixed(3), stopPct: stopPctDyn, pos: +pos.toFixed(4),
+    }});
+    console.log(`[${mon.id}-mon] Gate 1 → ${gate1}  pos=${(pos*100).toFixed(0)}%  range=${rangePct.toFixed(2)}%`);
+  } catch (e) { console.error(`[${mon.id}-mon] Gate 1 error:`, e.message); }
+}
+
+async function _iqrGate2Check(mon) {
+  const cfg = await _iqrLoadMonCfg(mon);
+  if (cfg.enabled === false) return;
+  if (mon.newsBlocked && cfg.newsFilter !== false) return;
+  if (!mon.gate1 || mon.gate1 === 'FLAT') return;
+  if (!process.env.OANDA_KEY) return;
+  try {
+    const nas     = await fetchOandaRecentH1(mon.instrument, 7);
+    const ldnOpen = nas.find(b => b.t.substring(11, 13) === '07' && b.complete);
+    const check   = nas.filter(b => b.complete && parseInt(b.t.substring(11, 13)) <= 12).slice(-1)[0];
+    if (!ldnOpen || !check) { console.log(`[${mon.id}-mon] Gate 2: missing bars`); return; }
+    const ldnMove = (check.c - ldnOpen.o) / ldnOpen.o * 100;
+    const G2_MIN  = cfg.gate2MinMovePct ?? 0.10;
+    let gate2 = 'REJECTED';
+    if (ldnMove >  G2_MIN && mon.gate1 === 'LONG')  gate2 = 'CONFIRMED';
+    if (ldnMove < -G2_MIN && mon.gate1 === 'SHORT') gate2 = 'CONFIRMED';
+    mon.gate2     = gate2;
+    mon.direction = gate2 === 'CONFIRMED' ? mon.gate1 : null;
+    mon.gate2Data = { ldnMove, ldnOpen: ldnOpen.o, checkPrice: check.c };
+    const icon = gate2 === 'CONFIRMED' ? '🟢' : '🔴';
+    const mc   = ldnMove >= 0 ? '↑' : '↓';
+    let msg = `${icon} <b>${mon.label} | GATE 2</b>  ${gate2}\n`;
+    if (gate2 === 'CONFIRMED') {
+      msg += `Direction: <b>${mon.direction === 'LONG' ? '▲ LONG' : '▼ SHORT'}</b>\n`;
+      msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
+      msg += `London move: ${mc} ${Math.abs(ldnMove).toFixed(2)}%  (min: ${G2_MIN}%)\n`;
+      msg += `London open: ${ldnOpen.o.toFixed(1)}  →  Now: ${check.c.toFixed(1)}\n\n`;
+      msg += `⚡ <b>BOTH GATES CLEAR</b> — Entry at 09:25 ET (13:05 UTC)`;
+    } else {
+      msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
+      msg += `London move: ${mc} ${Math.abs(ldnMove).toFixed(2)}% — gates disagree — <b>no trade today</b>`;
+    }
+    await _iqrSendTg(mon, msg);
+    mon.sentGate2 = true;
+    await _iqrPushKv(mon);
+    await _iqrAuditUpdate(mon, { gate2: {
+      state:      gate2 === 'CONFIRMED' ? 'PASS' : 'FAIL',
+      ts:         Date.now(), ldnMove: +ldnMove.toFixed(4),
+      ldnOpen:    ldnOpen.o, checkPrice: check.c,
+    }});
+    console.log(`[${mon.id}-mon] Gate 2 → ${gate2}  ldnMove=${ldnMove.toFixed(2)}%`);
+  } catch (e) { console.error(`[${mon.id}-mon] Gate 2 error:`, e.message); }
+}
+
+async function _iqrEntrySignal(mon) {
+  if (mon.gate2 !== 'CONFIRMED' || mon.newsBlocked) return;
+  if (!process.env.OANDA_KEY) return;
+  try {
+    const cfg     = await _iqrLoadMonCfg(mon);
+    const bars    = await fetchOandaRecentH1(mon.instrument, 2);
+    const current = bars.slice(-1)[0];
+    if (!current) return;
+    const price   = current.o;
+    const dir     = mon.direction;
+    const stopPct = mon.gate1Data?.stopPct ?? cfg.stopPct ?? 0.50;
+    const tpPct   = cfg.tpPct ?? 1.50;
+    const stop    = dir === 'LONG' ? price * (1 - stopPct / 100) : price * (1 + stopPct / 100);
+    const tp      = dir === 'LONG' ? price * (1 + tpPct   / 100) : price * (1 - tpPct   / 100);
+    let msg = `🎯 <b>${mon.label} | ENTRY SIGNAL</b>\n`;
+    msg += `${dir === 'LONG' ? '▲' : '▼'} Direction: <b>${dir}</b>\n`;
+    msg += `Time: ≈09:25 ET  (${current.t.substring(11, 16)} UTC)\n\n`;
+    msg += `${mon.id.toUpperCase()} price: <b>${price.toFixed(1)}</b>\n`;
+    msg += `Stop:  ${stop.toFixed(1)}  (${Math.abs(price - stop).toFixed(0)} pts / ${stopPct}%)\n`;
+    msg += `TP:    ${tp.toFixed(1)}  (${tpPct}%)\n`;
+    msg += `<i>Signal only — no live orders placed</i>`;
+    await _iqrSendTg(mon, msg);
+    mon.sentEntry = true;
+    await _iqrPushKv(mon);
+    await _iqrAuditUpdate(mon, { signal: {
+      fired: true, ts: Date.now(), direction: dir,
+      entry: price, stop: +stop.toFixed(2), tp: +tp.toFixed(2),
+    }});
+    console.log(`[${mon.id}-mon] Entry → ${dir} @ ${price.toFixed(1)}`);
+  } catch (e) { console.error(`[${mon.id}-mon] Entry error:`, e.message); }
+}
+
+async function _iqrEodSummary(mon) {
+  if (!mon.sentGate1 && !mon.sentOpen) return;
+  const dow = new Date().getUTCDay();
+  if (dow === 0 || dow === 6) return;
+  let msg = `📊 <b>${mon.label} | EOD ${mon.date ?? ''}</b>\n\n`;
+  msg += `Gate 1: ${mon.gate1  ?? '—'}\n`;
+  msg += `Gate 2: ${mon.gate2  ?? '—'}\n`;
+  msg += `Entry:  ${mon.sentEntry ? (mon.direction ?? 'fired') : 'no trade'}\n`;
+  if (mon.newsBlocked) msg += `\n⚠️ Suppressed by high-impact news`;
+  await _iqrSendTg(mon, msg);
+  await _iqrAuditUpdate(mon, { eod_ts: Date.now() });
+  Object.assign(mon, {
+    gate1: null, gate2: null, direction: null,
+    sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
+    gate1Data: null, gate2Data: null,
+  });
+  await _iqrPushKv(mon);
+  console.log(`[${mon.id}-mon] EOD reset`);
+}
+
+async function _iqrRestoreFromKv(mon) {
+  try {
+    const raw      = await kv.get(mon.kvStatus).catch(() => null);
+    if (!raw) return;
+    const parsed   = JSON.parse(raw);
+    const existing = parsed?.data ?? parsed ?? {};
+    if (!existing.pushed_at) return;
+    const storedDate = new Date(existing.pushed_at * 1000).toISOString().substring(0, 10);
+    const today      = new Date().toISOString().substring(0, 10);
+    if (storedDate !== today) return;
+    const g1 = existing.gates?.gate1;
+    if (!g1) return;
+    mon.date        = today;
+    mon.gate1       = g1.direction ?? null;
+    mon.gate1Data   = g1.data      ?? null;
+    mon.newsBlocked = existing.news_blocked ?? false;
+    mon.newsEvents  = existing.news_events  ?? [];
+    mon.sentOpen    = true;
+    mon.sentGate1   = true;
+    const g2 = existing.gates?.gate2;
+    if (g2?.state != null) {
+      mon.gate2     = g2.state === 'PASS' ? 'CONFIRMED' : 'REJECTED';
+      mon.gate2Data = g2.data ?? null;
+      mon.direction = mon.gate2 === 'CONFIRMED' ? mon.gate1 : null;
+      mon.sentGate2 = true;
+    }
+    console.log(`[${mon.id}-mon] Restored: date=${today} gate1=${mon.gate1} gate2=${mon.gate2 ?? 'pending'}`);
+  } catch (e) { console.error(`[${mon.id}-mon] KV restore error:`, e.message); }
+}
+
+(function scheduleIqrMonitors() {
+  const mons = Object.values(_iqrMons);
+  setTimeout(() => {
+    mons.forEach(m => _iqrRestoreFromKv(m).catch(e => console.error(`[${m.id}-mon]`, e.message)));
+  }, 3_500);
+  setInterval(async () => {
+    const now = new Date();
+    const dow = now.getUTCDay();
+    if (dow === 0 || dow === 6) return;
+    if (!state.tg) await reloadConfig().catch(() => {});
+    const H = now.getUTCHours();
+    const M = now.getUTCMinutes();
+    for (const m of mons) {
+      if (H === 7  && M === 0  && !m.sentOpen)  _iqrDailyOpen(m).catch(e   => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 9  && M === 5  && !m.sentGate1) _iqrGate1Check(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 12 && M === 5  && !m.sentGate2) _iqrGate2Check(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 13 && M === 5  && !m.sentEntry) _iqrEntrySignal(m).catch(e => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 20 && M === 30)                  _iqrEodSummary(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+    }
+  }, 60_000);
+  console.log('[iqr-mon] SPX / DOW / DAX QMR monitors scheduled (Gates at 09:05 / 12:05 / 13:05 UTC)');
+})();
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';
   const fredKey = process.env.FRED_KEY   ? '✓' : '✗ missing — T1/T2/T4/T6 will show Data unavailable';
+  const finnhub = process.env.FINNHUB_KEY ? '✓' : '✗ missing — news multiplier / event risk disabled';
   const cfKv    = process.env.CF_ACCOUNT_ID ? '✓ CF REST API' : '✗ file only (set CF_ACCOUNT_ID + CF_API_TOKEN)';
   const alerts  = state.cfg?.enabled ? 'ON' : 'OFF (enable in Alerts modal)';
   console.log(`MacroFX Server   http://localhost:${PORT}`);
@@ -7463,6 +8224,7 @@ app.listen(PORT, () => {
   console.log(`Level refresh    every ${REFRESH_LEVELS_MS / 60_000} min`);
   console.log(`OANDA_KEY        ${oanda}`);
   console.log(`FRED_KEY         ${fredKey}`);
+  console.log(`FINNHUB_KEY      ${finnhub}`);
   console.log(`KV persistence   ${cfKv}`);
   console.log(`Data dir         ${process.env.DATA_DIR || path.join(__dirname, 'data')}`);
 });
