@@ -24,9 +24,17 @@ function err(msg, status = 500) {
 // KV key whitelist -- only these prefixes/exact keys may be read or written
 // via /api/kv/get and /api/kv/set. The 'caps' key is excluded here because
 // it has its own dedicated /api/config/caps route with stricter validation.
+// Regime bot tags recognised by /api/regime-append, /api/regime-backfill and
+// /api/regime-history. Anything else (or missing) falls back to 'v2' to
+// preserve the historical default for older callers.
+const REGIME_BOT_TAGS = new Set(['v1', 'v2', 'v4', 'v7']);
+function normalizeBotTag(raw) {
+  return REGIME_BOT_TAGS.has(raw) ? raw : 'v2';
+}
+
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'trade_hist_'];
+  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit']);
+  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
@@ -2074,7 +2082,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         let body;
         try { body = await request.json(); } catch(e) { return err('Invalid JSON', 400); }
 
-        const bot    = body.bot === 'v1' ? 'v1' : 'v2';
+        const bot    = normalizeBotTag(body.bot);
         const states = Array.isArray(body.states) ? body.states : [];
         const events = Array.isArray(body.events) ? body.events : [];
         const ts     = body.ts || Math.floor(Date.now() / 1000);
@@ -2126,7 +2134,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         let body;
         try { body = await request.json(); } catch(e) { return err('Invalid JSON', 400); }
 
-        const bot    = body.bot === 'v1' ? 'v1' : 'v2';
+        const bot    = normalizeBotTag(body.bot);
         const pair   = body.pair;
         const newRec = Array.isArray(body.records) ? body.records : [];
         const newEvt = Array.isArray(body.events)  ? body.events  : [];
@@ -2161,7 +2169,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       // Returns { pair, bot, records:[...], events:[...] }
       if (path === '/api/regime-history') {
         if (!env.FX_SCORES) return err('KV not bound', 503);
-        const bot      = url.searchParams.get('bot') === 'v1' ? 'v1' : 'v2';
+        const bot      = normalizeBotTag(url.searchParams.get('bot'));
         const pairSafe = (url.searchParams.get('pair') || 'eurusd').toLowerCase();
         const fromTs   = parseInt(url.searchParams.get('from') || '0');
         const toTs     = parseInt(url.searchParams.get('to')   || '9999999999');

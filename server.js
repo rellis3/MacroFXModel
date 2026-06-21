@@ -144,6 +144,8 @@ const state = {
   hmm5mBars:           {},   // { 'EUR/USD': bars[] } — M1 bars cached for polarity flip detection
   hmm5mV2Regimes:      {},   // shadow V2 regimes — 4-state, learned params
   hmm1hV2Regimes:      {},   // 1h V2 regimes — same HMM on H1 bars for HTF alignment
+  hmm30mV2Regimes:     {},   // 30m V2 regimes — same HMM on M30 bars, V7 primary MTF signal
+  hmm2hV2Regimes:      {},   // 2h V2 regimes — same HMM on H2 bars, V7 optional 4x HTF gate
   hmm5mTrainedParams:  null, // Baum-Welch learned parameters loaded from KV
   hmm5mMacroContext:   null, // FRED macro overlay loaded from KV
   hmm5mTrainStatus:    {},   // per-pair training progress { sym: { status, iterations, nBars } }
@@ -2045,6 +2047,16 @@ app.get('/api/hmm5m-v2', (_req, res) => {
 // V2 1h HTF regime data — used by regime_bot_v2.py for higher-timeframe alignment
 app.get('/api/hmm1h-v2', (_req, res) => {
   res.json(state.hmm1hV2Regimes);
+});
+
+// V2 30m regime data — primary MTF signal for regime_bot_v7.py
+app.get('/api/hmm30m-v2', (_req, res) => {
+  res.json(state.hmm30mV2Regimes);
+});
+
+// V2 2h regime data — optional 4x HTF confirmation gate for regime_bot_v7.py
+app.get('/api/hmm2h-v2', (_req, res) => {
+  res.json(state.hmm2hV2Regimes);
 });
 
 // V2 training status per pair
@@ -6855,6 +6867,62 @@ async function runHMM1hV2Refresh() {
   }
 }
 
+async function runHMM30mV2Refresh() {
+  if (!process.env.OANDA_KEY) return;
+  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  for (const sym of pairs) {
+    try {
+      const instrument = sym.replace('/', '_');
+      const r = await fetch(
+        `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=M30&count=500&price=M`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+      );
+      if (!r.ok) continue;
+      const d = await r.json();
+      const bars = (d.candles ?? [])
+        .filter(c => c.complete !== false && c.mid)
+        .map(c => ({ open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c }));
+      if (bars.length < 150) continue;
+      const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
+      if (!result) continue;
+      state.hmm30mV2Regimes[sym] = result;
+    } catch (e) {
+      console.error(`[HMM30M-V2] ${sym} error:`, e.message);
+    }
+  }
+}
+
+async function runHMM2hV2Refresh() {
+  if (!process.env.OANDA_KEY) return;
+  const pairs = state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com'
+    : 'https://api-fxtrade.oanda.com';
+  for (const sym of pairs) {
+    try {
+      const instrument = sym.replace('/', '_');
+      const r = await fetch(
+        `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=H2&count=200&price=M`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
+      );
+      if (!r.ok) continue;
+      const d = await r.json();
+      const bars = (d.candles ?? [])
+        .filter(c => c.complete !== false && c.mid)
+        .map(c => ({ open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c }));
+      if (bars.length < 100) continue;
+      const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
+      if (!result) continue;
+      state.hmm2hV2Regimes[sym] = result;
+    } catch (e) {
+      console.error(`[HMM2H-V2] ${sym} error:`, e.message);
+    }
+  }
+}
+
 async function refreshMacroContext() {
   if (!process.env.FRED_KEY) return;
   try {
@@ -7073,6 +7141,18 @@ setTimeout(() => {
   runHMM1hV2Refresh().catch(console.error);
   setInterval(runHMM1hV2Refresh, 5 * 60 * 1000);
 }, 25_000);
+
+// V2 30m MTF HMM — primary signal for regime_bot_v7.py, refreshes every 5 min
+setTimeout(() => {
+  runHMM30mV2Refresh().catch(console.error);
+  setInterval(runHMM30mV2Refresh, 5 * 60 * 1000);
+}, 30_000);
+
+// V2 2h HTF HMM — optional 4x confirmation gate for regime_bot_v7.py, refreshes every 10 min
+setTimeout(() => {
+  runHMM2hV2Refresh().catch(console.error);
+  setInterval(runHMM2hV2Refresh, 10 * 60 * 1000);
+}, 35_000);
 
 // Macro context (VIX, HY spread, yield curve via FRED) — refresh every 6h, run once at startup
 refreshMacroContext().catch(console.error);
