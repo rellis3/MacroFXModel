@@ -1323,6 +1323,304 @@ async function loadRgV2Status() {
   } catch (e) { /* non-critical */ }
 }
 
+// ── Regime Bot V7 ─────────────────────────────────────────────────────────────
+
+const RGV7_DEFAULTS = {
+  enabled:                  true,
+  paper_mode:               true,
+  pairs:                    ['EUR/USD', 'GBP/USD', 'USD/JPY'],
+  interval_secs:            30,
+  entry_conf:               70.0,
+  entry_score_min:          62.0,
+  sl_atr_mult:              2.0,
+  candle_hold:              2,
+  conf_floor:               45.0,
+  mfe_retrace_pct:          0.25,
+  mfe_min_r:                1.5,
+  max_hold_bars:            24,
+  exit_regime_bars:         3,
+  window_start:             7,
+  window_end:               20,
+  post_exit_cooldown:       4,
+  htf_require:              false,
+  use_bocpd:                true,
+  bocpd_run_length:         150,
+  risk_pct:                 1.0,
+  max_lot:                  5.0,
+  max_spread_pips:          3.0,
+  ddlimit:                  3.0,
+  monthlydd:                5.0,
+  lockout:                  3,
+  fomc_window_hours:        48.0,
+  heartbeat_min:            60,
+  entry_fail_cooldown_secs: 300,
+  tg_token:                 '',
+  tg_chat_id:               '',
+};
+
+const RGV7_PAIRS = [
+  { id: 'rgv7_pair_EURUSD', sym: 'EUR/USD' },
+  { id: 'rgv7_pair_GBPUSD', sym: 'GBP/USD' },
+  { id: 'rgv7_pair_USDJPY', sym: 'USD/JPY' },
+  { id: 'rgv7_pair_AUDUSD', sym: 'AUD/USD' },
+  { id: 'rgv7_pair_NZDUSD', sym: 'NZD/USD' },
+  { id: 'rgv7_pair_USDCAD', sym: 'USD/CAD' },
+  { id: 'rgv7_pair_USDCHF', sym: 'USD/CHF' },
+  { id: 'rgv7_pair_GBPJPY', sym: 'GBP/JPY' },
+  { id: 'rgv7_pair_EURGBP', sym: 'EUR/GBP' },
+  { id: 'rgv7_pair_EURJPY', sym: 'EUR/JPY' },
+  { id: 'rgv7_pair_EURCHF', sym: 'EUR/CHF' },
+  { id: 'rgv7_pair_GBPCHF', sym: 'GBP/CHF' },
+  { id: 'rgv7_pair_AUDJPY', sym: 'AUD/JPY' },
+  { id: 'rgv7_pair_CADJPY', sym: 'CAD/JPY' },
+  { id: 'rgv7_pair_XAUUSD', sym: 'XAU/USD' },
+  { id: 'rgv7_pair_NAS100',  sym: 'NAS100_USD' },
+  { id: 'rgv7_pair_SPX500',  sym: 'SPX500_USD' },
+  { id: 'rgv7_pair_DE30',    sym: 'DE30_USD'   },
+  { id: 'rgv7_pair_UK100',   sym: 'UK100_GBP'  },
+  { id: 'rgv7_pair_US30',    sym: 'US30_USD'   },
+  { id: 'rgv7_pair_US2000',  sym: 'US2000_USD' },
+];
+
+let _rgv7Cfg = JSON.parse(JSON.stringify(RGV7_DEFAULTS));
+
+function readRgV7Form() {
+  _rgv7Cfg.enabled                  = chk('rgv7_enabled');
+  _rgv7Cfg.paper_mode               = chk('rgv7_paper_mode');
+  _rgv7Cfg.interval_secs            = num('rgv7_interval_secs',      30);
+  _rgv7Cfg.entry_conf               = num('rgv7_entry_conf',         70.0);
+  _rgv7Cfg.entry_score_min          = num('rgv7_entry_score_min',    62.0);
+  _rgv7Cfg.sl_atr_mult              = num('rgv7_sl_atr_mult',        2.0);
+  _rgv7Cfg.candle_hold              = num('rgv7_candle_hold',        2);
+  _rgv7Cfg.conf_floor               = num('rgv7_conf_floor',         45.0);
+  _rgv7Cfg.mfe_retrace_pct          = num('rgv7_mfe_retrace_pct',    0.25);
+  _rgv7Cfg.mfe_min_r                = num('rgv7_mfe_min_r',          1.5);
+  _rgv7Cfg.max_hold_bars            = num('rgv7_max_hold_bars',      24);
+  _rgv7Cfg.exit_regime_bars         = num('rgv7_exit_regime_bars',   3);
+  _rgv7Cfg.window_start             = num('rgv7_window_start',       7);
+  _rgv7Cfg.window_end               = num('rgv7_window_end',         20);
+  _rgv7Cfg.post_exit_cooldown       = num('rgv7_post_exit_cooldown', 4);
+  _rgv7Cfg.htf_require              = chk('rgv7_htf_require');
+  _rgv7Cfg.use_bocpd                = chk('rgv7_use_bocpd');
+  _rgv7Cfg.bocpd_run_length         = num('rgv7_bocpd_run_length',   150);
+  _rgv7Cfg.risk_pct                 = num('rgv7_risk_pct',           1.0);
+  _rgv7Cfg.max_lot                  = num('rgv7_max_lot',            5.0);
+  _rgv7Cfg.max_spread_pips          = num('rgv7_max_spread_pips',    3.0);
+  _rgv7Cfg.ddlimit                  = num('rgv7_ddlimit',            3.0);
+  _rgv7Cfg.monthlydd                = num('rgv7_monthlydd',          5.0);
+  _rgv7Cfg.lockout                  = num('rgv7_lockout',            3);
+  _rgv7Cfg.fomc_window_hours        = num('rgv7_fomc_window_hours',  48.0);
+  _rgv7Cfg.heartbeat_min            = num('rgv7_heartbeat_min',      60);
+  _rgv7Cfg.entry_fail_cooldown_secs = num('rgv7_entry_fail_cooldown_secs', 300);
+  _rgv7Cfg.tg_token                 = str('rgv7_tg_token',           '');
+  _rgv7Cfg.tg_chat_id               = str('rgv7_tg_chat_id',         '');
+  _rgv7Cfg.pairs                    = RGV7_PAIRS.filter(p => chk(p.id)).map(p => p.sym);
+}
+
+function renderRgV7Form() {
+  setChk('rgv7_enabled',            _rgv7Cfg.enabled            ?? true);
+  setChk('rgv7_paper_mode',         _rgv7Cfg.paper_mode         ?? true);
+  setVal('rgv7_interval_secs',      _rgv7Cfg.interval_secs      ?? 30);
+  setVal('rgv7_entry_conf',         _rgv7Cfg.entry_conf         ?? 70.0);
+  setVal('rgv7_entry_score_min',    _rgv7Cfg.entry_score_min    ?? 62.0);
+  setVal('rgv7_sl_atr_mult',        _rgv7Cfg.sl_atr_mult        ?? 2.0);
+  setVal('rgv7_candle_hold',        _rgv7Cfg.candle_hold        ?? 2);
+  setVal('rgv7_conf_floor',         _rgv7Cfg.conf_floor         ?? 45.0);
+  setVal('rgv7_mfe_retrace_pct',    _rgv7Cfg.mfe_retrace_pct    ?? 0.25);
+  setVal('rgv7_mfe_min_r',          _rgv7Cfg.mfe_min_r          ?? 1.5);
+  setVal('rgv7_max_hold_bars',      _rgv7Cfg.max_hold_bars      ?? 24);
+  setVal('rgv7_exit_regime_bars',   _rgv7Cfg.exit_regime_bars   ?? 3);
+  setVal('rgv7_window_start',       _rgv7Cfg.window_start       ?? 7);
+  setVal('rgv7_window_end',         _rgv7Cfg.window_end         ?? 20);
+  setVal('rgv7_post_exit_cooldown', _rgv7Cfg.post_exit_cooldown ?? 4);
+  setChk('rgv7_htf_require',        _rgv7Cfg.htf_require        ?? false);
+  setChk('rgv7_use_bocpd',          _rgv7Cfg.use_bocpd          ?? true);
+  setVal('rgv7_bocpd_run_length',   _rgv7Cfg.bocpd_run_length   ?? 150);
+  setVal('rgv7_risk_pct',           _rgv7Cfg.risk_pct           ?? 1.0);
+  setVal('rgv7_max_lot',            _rgv7Cfg.max_lot            ?? 5.0);
+  setVal('rgv7_max_spread_pips',    _rgv7Cfg.max_spread_pips    ?? 3.0);
+  setVal('rgv7_ddlimit',            _rgv7Cfg.ddlimit            ?? 3.0);
+  setVal('rgv7_monthlydd',          _rgv7Cfg.monthlydd          ?? 5.0);
+  setVal('rgv7_lockout',            _rgv7Cfg.lockout            ?? 3);
+  setVal('rgv7_heartbeat_min',      _rgv7Cfg.heartbeat_min      ?? 60);
+  setVal('rgv7_tg_token',           _rgv7Cfg.tg_token           ?? '');
+  setVal('rgv7_tg_chat_id',         _rgv7Cfg.tg_chat_id         ?? '');
+
+  const enabledPairs = new Set(_rgv7Cfg.pairs || RGV7_DEFAULTS.pairs);
+  RGV7_PAIRS.forEach(p => setChk(p.id, enabledPairs.has(p.sym)));
+}
+
+async function loadRgV7Config() {
+  try {
+    const stored = await kvGet('regime_bot_v7_config');
+    if (stored) { _rgv7Cfg = { ...JSON.parse(JSON.stringify(RGV7_DEFAULTS)), ...stored }; }
+    renderRgV7Form();
+  } catch (e) { /* non-critical */ }
+}
+
+async function saveRgV7Config() {
+  readRgV7Form();
+  const el = document.getElementById('rgv7SaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('regime_bot_v7_config', _rgv7Cfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#14b8a6'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetRgV7Defaults() {
+  _rgv7Cfg = JSON.parse(JSON.stringify(RGV7_DEFAULTS));
+  renderRgV7Form();
+  const el = document.getElementById('rgv7SaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function rgV7TgTest() {
+  const btn = document.getElementById('rgv7TgTestBtn');
+  const el  = document.getElementById('rgv7TgTestStatus');
+  if (btn) btn.disabled = true;
+  if (el)  { el.textContent = 'Sending…'; el.style.color = 'var(--text3)'; }
+  try {
+    const r = await fetch('/api/regime-v7/tg-test', { method: 'POST' });
+    const j = await r.json();
+    if (j.ok) {
+      if (el) { el.textContent = `Sent ✓  (${j.pair})`; el.style.color = '#14b8a6'; }
+      setTimeout(() => { if (el) el.textContent = ''; }, 4000);
+    } else {
+      if (el) { el.textContent = `Failed: ${j.reason}`; el.style.color = 'var(--red)'; }
+    }
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function loadRgV7Creds() {
+  try { _applyCredsToForm(await kvGet('regime_bot_v7_credentials'), 'rgv7_', 'rgv7_mt5_password'); } catch (e) {}
+}
+async function saveRgV7Creds() {
+  await _saveCreds('regime_bot_v7_credentials', 'rgv7_', 'rgv7_mt5_password', 'rgv7CredsStatus');
+}
+
+async function rgV7ForceUnlock() {
+  const btn = document.getElementById('rgv7UnlockBtn');
+  const el  = document.getElementById('rgv7UnlockStatus');
+  if (btn) btn.disabled = true;
+  if (el)  { el.textContent = 'Sending…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('rgv7_force_unlock', { force_unlock: true, requested_at: Date.now() });
+    if (el) { el.textContent = 'Unlock sent — bot will clear lockout within 30s ✓'; el.style.color = '#14b8a6'; }
+    setTimeout(() => { if (el) el.textContent = ''; if (btn) btn.disabled = false; }, 5000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+    if (btn) btn.disabled = false;
+  }
+}
+
+function _rgv7RegimeColor(regime) {
+  const r = (regime || '').toUpperCase();
+  if (r === 'BULL')  return '#2ecc71';
+  if (r === 'BEAR')  return '#e74c3c';
+  if (r === 'RANGE') return '#f1c40f';
+  return '#888';
+}
+
+async function loadRgV7Status() {
+  try {
+    const data = await kvGet('regime_bot_v7_status');
+    const ageEl  = document.getElementById('rgv7StatusAge');
+    const modeEl = document.getElementById('rgv7StatusMode');
+    const lockEl = document.getElementById('rgv7LockoutBadge');
+    const tbody  = document.getElementById('rgv7StatusBody');
+    if (!data) {
+      if (ageEl) ageEl.textContent = 'Bot has not run yet';
+      return;
+    }
+
+    const ageSecs = Math.round((Date.now() - (data.pushed_at ?? 0) * 1000) / 1000);
+    if (ageEl) {
+      ageEl.textContent = ageSecs < 60 ? `${ageSecs}s ago` : `${Math.round(ageSecs / 60)}m ago`;
+      ageEl.style.color = ageSecs > 90 ? '#f39c12' : 'var(--text3)';
+    }
+    if (modeEl) {
+      modeEl.textContent = data.paper_mode ? '· PAPER' : '· LIVE';
+      modeEl.style.color = data.paper_mode ? '#888' : '#e74c3c';
+    }
+    if (lockEl) {
+      lockEl.style.display = data.riskguard_locked ? 'inline' : 'none';
+    }
+
+    if (!tbody) return;
+    const pairs = data.pairs || {};
+    if (!Object.keys(pairs).length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3)">No pair data yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = Object.entries(pairs).map(([sym, p]) => {
+      const regColor = _rgv7RegimeColor(p.regime);
+      const confVal  = p.conf != null ? p.conf.toFixed(1) + '%' : '—';
+
+      // Score: plain number on most states; nested in reg_score on 'opened'
+      const scoreNum = p.score ?? (p.reg_score && p.reg_score.score);
+      let scoreCell = '<span style="color:var(--text3)">—</span>';
+      if (scoreNum != null) {
+        const scoreColor = scoreNum >= 70 ? '#2ecc71' : scoreNum >= 50 ? '#f1c40f' : scoreNum >= 30 ? '#f39c12' : '#e74c3c';
+        scoreCell = `<span style="color:${scoreColor};font-weight:600">${scoreNum.toFixed(0)}</span>`;
+      }
+
+      const htfCell = p.htf_regime
+        ? `<span style="color:${_rgv7RegimeColor(p.htf_regime)}">${p.htf_regime}</span>`
+        : '<span style="color:var(--text3)">—</span>';
+
+      let posCell = '<span style="color:var(--text3)">flat</span>';
+      if (p.status === 'open') {
+        const sign = (p.pnl_pips ?? 0) >= 0 ? '+' : '';
+        const pnl  = p.pnl_pips != null ? ` ${sign}${p.pnl_pips.toFixed(1)}p` : '';
+        const dur  = p.dur_secs != null ? ` ${Math.round(p.dur_secs / 60)}m` : '';
+        const mfe  = p.mfe_r != null ? ` (${p.mfe_r.toFixed(2)}R)` : '';
+        const col  = p.direction === 'LONG' ? '#2ecc71' : '#e74c3c';
+        posCell = `<span style="color:${col};font-weight:600">${p.direction}${dur}${pnl}${mfe}</span>`;
+      } else if (p.status === 'opened') {
+        posCell = `<span style="color:#2ecc71;font-weight:600">${p.direction} entered @ ${p.entry}</span>`;
+      } else if (p.status === 'closed') {
+        const sign = (p.pnl_pips ?? 0) >= 0 ? '+' : '';
+        const col  = (p.pnl_pips ?? 0) >= 0 ? '#2ecc71' : '#e74c3c';
+        posCell = `<span style="color:${col}">closed: ${p.reason} (${sign}${(p.pnl_pips ?? 0).toFixed(1)}p)</span>`;
+      } else if (p.status === 'blocked') {
+        posCell = `<span style="color:#f39c12">🔒 ${p.reason || 'locked'}</span>`;
+      } else if (p.status === 'cooldown') {
+        posCell = `<span style="color:var(--text3)">cooldown (${p.bars_left ?? 0} bars left)</span>`;
+      } else if (p.status === 'window') {
+        posCell = `<span style="color:var(--text3)">outside trade window</span>`;
+      } else if (p.status === 'hold_pending') {
+        posCell = `<span style="color:var(--text3)">hold pending (${p.debounce ?? 0})</span>`;
+      } else if (p.status === 'gated') {
+        posCell = `<span style="color:var(--text3)">gated (${p.debounce ?? 0})</span>`;
+      } else if (p.status === 'watching') {
+        posCell = `<span style="color:var(--text3)">watching</span>`;
+      } else if (p.status === 'entry_failed') {
+        posCell = `<span style="color:#e74c3c">entry failed</span>`;
+      } else if (typeof p.status === 'string' && p.status.startsWith('order_fail_cd')) {
+        posCell = `<span style="color:#e74c3c">${p.status}</span>`;
+      }
+
+      return `<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:7px 10px;font-weight:600">${sym.replace('/', '')}</td>
+        <td style="padding:7px 10px;color:${regColor};font-weight:600">${p.regime || '—'}</td>
+        <td style="padding:7px 10px;text-align:right">${confVal}</td>
+        <td style="padding:7px 10px;text-align:right">${scoreCell}</td>
+        <td style="padding:7px 10px">${htfCell}</td>
+        <td style="padding:7px 10px">${posCell}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { /* non-critical */ }
+}
+
 async function loadRgBotStatus() {
   try {
     const data = await kvGet('regime_bot_status');
@@ -1390,6 +1688,11 @@ window.resetRgV2Defaults = resetRgV2Defaults;
 window.saveRgV2Creds     = saveRgV2Creds;
 window.rgV2ForceUnlock   = rgV2ForceUnlock;
 window.rgV2TgTest        = rgV2TgTest;
+window.saveRgV7Config    = saveRgV7Config;
+window.resetRgV7Defaults = resetRgV7Defaults;
+window.saveRgV7Creds     = saveRgV7Creds;
+window.rgV7ForceUnlock   = rgV7ForceUnlock;
+window.rgV7TgTest        = rgV7TgTest;
 
 // ── Dyn Anchor Bot ────────────────────────────────────────────────────────────
 
@@ -1748,17 +2051,20 @@ loadConfig();
 loadBtConfig();
 loadRgConfig();
 loadRgV2Config();
+loadRgV7Config();
 loadDaConfig();
 loadGoldConfig();
 loadCreds();
 loadBtCreds();
 loadRgCreds();
 loadRgV2Creds();
+loadRgV7Creds();
 loadDaCreds();
 loadBotStatus();
 loadBtBotStatus();
 loadRgBotStatus();
 loadRgV2Status();
+loadRgV7Status();
 // ── Hedge Bot ─────────────────────────────────────────────────────────────────
 
 const HB_DEFAULTS = {
@@ -2461,6 +2767,7 @@ setInterval(loadBotStatus,    60_000);
 setInterval(loadBtBotStatus,  60_000);
 setInterval(loadRgBotStatus,  60_000);
 setInterval(loadRgV2Status,   30_000);
+setInterval(loadRgV7Status,   30_000);
 setInterval(loadDaStatus,     60_000);
 setInterval(loadGoldStatus,   60_000);
 setInterval(loadBtJournal,   120_000);
