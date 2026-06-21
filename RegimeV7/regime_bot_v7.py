@@ -184,17 +184,17 @@ DEFAULT_CFG: dict = {
     'interval_secs': 30,
 
     # ── V7 strategy params (MTF = M30 bars unless noted) ─────────────────────
-    'entry_conf':         70.0,
-    'entry_score_min':    62.0,
-    'sl_atr_mult':        2.0,
-    'candle_hold':        2,      # MTF bars regime+gates must persist before entry
-    'conf_floor':         45.0,
-    'mfe_retrace_pct':    0.25,
-    'mfe_min_r':          1.5,
-    'max_hold_bars':      24,     # MTF bars — backstop timeout
-    'exit_regime_bars':   3,      # consecutive non-trend MTF bars before exit
+    'entry_conf':         54.0,
+    'entry_score_min':    58.0,
+    'sl_atr_mult':        2.3,
+    'candle_hold':        3,      # MTF bars regime+gates must persist before entry
+    'conf_floor':         55.0,
+    'mfe_retrace_pct':    0.27,
+    'mfe_min_r':          1.1,
+    'max_hold_bars':      49,     # MTF bars — backstop timeout
+    'exit_regime_bars':   4,      # consecutive non-trend MTF bars before exit
     'window_start':       7,      # UTC hour, entries only
-    'window_end':         20,     # UTC hour, entries only
+    'window_end':         19,     # UTC hour, entries only
     'post_exit_cooldown': 4,      # MTF bars blocked after any close
     'htf_require':        False,  # require 4x HTF (H2) regime to agree
 

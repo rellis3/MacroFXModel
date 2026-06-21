@@ -1225,17 +1225,17 @@ const V6_DEFAULTS = Object.fromEntries([...V6_PARAMS.map(p => [p.key, p.def])]);
 // non-trend MTF bars. Each BULL/BEAR bar for the trade direction resets the counter.
 // HTF confirmation: optional gate requiring the 4× HTF regime to agree before entry.
 const V7_PARAMS = [
-  { key:'entry_conf',        label:'Entry Conf (%)',        min:50,  max:95,  step:1,    def:70,   help:'Minimum HMM regime confidence (computed on MTF bars) to enter. Only BULL or BEAR regimes considered.' },
-  { key:'entry_score_min',   label:'Entry Score Min',       min:40,  max:90,  step:1,    def:62,   help:'Minimum V5 composite score to enter. Same 7-component score as V5, computed on MTF bars.' },
-  { key:'sl_atr_mult',       label:'SL ATR Multiplier',     min:0.5, max:5.0, step:0.1,  def:2.0,  help:'Stop-loss = MTF ATR × this. Breakeven fires automatically at 1.0R.' },
-  { key:'candle_hold',       label:'Entry Hold (MTF bars)', min:1,   max:10,  step:1,    def:2,    help:'MTF bars the regime signal must persist before entry fires.' },
-  { key:'conf_floor',        label:'Conf Floor (%)',        min:20,  max:70,  step:1,    def:45,   help:'Exit if MTF confidence drops below this. Emergency exit — should be well below entry_conf.' },
-  { key:'mfe_retrace_pct',   label:'MFE Retrace %',         min:0.05,max:0.60,step:0.01, def:0.25, help:'Exit when price gives back this fraction of peak MFE. Only activates once mfe_min_r is hit.' },
-  { key:'mfe_min_r',         label:'MFE Min R (retrace)',   min:0.5, max:4.0, step:0.1,  def:1.5,  help:'MFE retrace only arms once MFE ≥ this R. Set higher to let trades run before trailing.' },
-  { key:'max_hold_bars',     label:'Max Hold (MTF bars)',   min:4,   max:96,  step:1,    def:24,   help:'Force-close after this many MTF bars. Backstop if debounce exit never fires.' },
-  { key:'exit_regime_bars',  label:'Exit Debounce (MTF)',   min:1,   max:10,  step:1,    def:3,    help:'Consecutive non-trend MTF bars before exiting. Each trend bar resets this counter to 0. E.g. 3 = tolerate up to 3 RANGE bars before closing the trade.' },
+  { key:'entry_conf',        label:'Entry Conf (%)',        min:50,  max:95,  step:1,    def:54,   help:'Minimum HMM regime confidence (computed on MTF bars) to enter. Only BULL or BEAR regimes considered.' },
+  { key:'entry_score_min',   label:'Entry Score Min',       min:40,  max:90,  step:1,    def:58,   help:'Minimum V5 composite score to enter. Same 7-component score as V5, computed on MTF bars.' },
+  { key:'sl_atr_mult',       label:'SL ATR Multiplier',     min:0.5, max:5.0, step:0.1,  def:2.3,  help:'Stop-loss = MTF ATR × this. Breakeven fires automatically at 1.0R.' },
+  { key:'candle_hold',       label:'Entry Hold (MTF bars)', min:1,   max:10,  step:1,    def:3,    help:'MTF bars the regime signal must persist before entry fires.' },
+  { key:'conf_floor',        label:'Conf Floor (%)',        min:20,  max:70,  step:1,    def:55,   help:'Exit if MTF confidence drops below this. Emergency exit — should be well below entry_conf.' },
+  { key:'mfe_retrace_pct',   label:'MFE Retrace %',         min:0.05,max:0.60,step:0.01, def:0.27, help:'Exit when price gives back this fraction of peak MFE. Only activates once mfe_min_r is hit.' },
+  { key:'mfe_min_r',         label:'MFE Min R (retrace)',   min:0.5, max:4.0, step:0.1,  def:1.1,  help:'MFE retrace only arms once MFE ≥ this R. Set higher to let trades run before trailing.' },
+  { key:'max_hold_bars',     label:'Max Hold (MTF bars)',   min:4,   max:96,  step:1,    def:49,   help:'Force-close after this many MTF bars. Backstop if debounce exit never fires.' },
+  { key:'exit_regime_bars',  label:'Exit Debounce (MTF)',   min:1,   max:10,  step:1,    def:4,    help:'Consecutive non-trend MTF bars before exiting. Each trend bar resets this counter to 0. E.g. 3 = tolerate up to 3 RANGE bars before closing the trade.' },
   { key:'window_start',      label:'Window Start (UTC h)',  min:0,   max:12,  step:1,    def:7,    help:'Earliest UTC hour for new entries.' },
-  { key:'window_end',        label:'Window End (UTC h)',    min:12,  max:23,  step:1,    def:20,   help:'Latest UTC hour for new entries. Open trades continue after this.' },
+  { key:'window_end',        label:'Window End (UTC h)',    min:12,  max:23,  step:1,    def:19,   help:'Latest UTC hour for new entries. Open trades continue after this.' },
   { key:'post_exit_cooldown',label:'Cooldown (MTF bars)',   min:0,   max:24,  step:1,    def:4,    help:'Block re-entry for this many MTF bars after any close. 4 = 2h on 30m.' },
 ];
 const V7_BOOLS = [
