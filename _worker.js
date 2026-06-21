@@ -845,6 +845,7 @@ export default {
             'bot_config', 'bot_credentials',
             'regime_bot_config', 'regime_bot_credentials',
             'regime_bot_v2_config', 'regime_bot_v2_credentials',
+            'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_audit_log',
             'backtestsystem_live_config', 'backtestsystem_credentials',
             'gold_bot_config', 'gold_ml_params', 'gold_optimiser_last', 'gold_perf_snapshot',
             'hmm5m_trained_params', 'hmm5m_macro_context',
@@ -853,7 +854,7 @@ export default {
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
           await env.FX_SCORES.put(key, JSON.stringify({ data, timestamp }), kvOpts);
           // Persist closed trade history for bot status keys
-          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'dyn_anchor_status']);
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
           }
@@ -910,6 +911,68 @@ export default {
             `  SL        : ${sl.toFixed(priceDp)}  (${slPips.toFixed(1)}p)`,
             `  Lots      : 0.10`,
             `  Vol z     : +0.30σ`,
+            `  <i>This is a test message — no real trade was opened</i>`,
+          ].join('\n');
+
+          const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }),
+          });
+          const tgBody = await tgRes.json();
+          if (!tgRes.ok) return json({ ok: false, reason: tgBody.description || 'Telegram error' });
+          return json({ ok: true, pair, message: msg });
+        } catch(e) {
+          return json({ ok: false, reason: e.message });
+        }
+      }
+
+      // -- /api/regime-v7/tg-test --------------------------------
+      // Sends a sample entry-alert Telegram message using the current V7 config
+      // and the first pair from the live status (or from config pairs list).
+      if (path === '/api/regime-v7/tg-test' && request.method === 'POST') {
+        if (!env.FX_SCORES) return err('KV not bound', 503);
+        try {
+          const cfgRaw    = await env.FX_SCORES.get('regime_bot_v7_config');
+          const statusRaw = await env.FX_SCORES.get('regime_bot_v7_status');
+          const tgCfgRaw  = await env.FX_SCORES.get('tg_config');
+
+          const cfg    = cfgRaw    ? JSON.parse(cfgRaw).data    ?? JSON.parse(cfgRaw) : {};
+          const status = statusRaw ? JSON.parse(statusRaw).data ?? JSON.parse(statusRaw) : {};
+          const shared = tgCfgRaw  ? JSON.parse(tgCfgRaw).data  ?? JSON.parse(tgCfgRaw) : {};
+
+          const token  = (cfg.tg_token  || '').trim() || (shared.token   || '').trim();
+          const chatId = (cfg.tg_chat_id || '').trim() || (shared.chatId  || '').trim();
+          if (!token || !chatId) return json({ ok: false, reason: 'No Telegram token/chat ID configured — fill in the V7 Telegram fields and save first.' });
+
+          // Pick a pair: first from live status, else first configured pair
+          const statusPairs = Object.keys(status.pairs || {});
+          const cfgPairs    = cfg.pairs || ['EUR/USD', 'GBP/USD', 'USD/JPY'];
+          const pair        = statusPairs[0] || cfgPairs[0] || 'EUR/USD';
+          const pairStatus  = (status.pairs || {})[pair] || {};
+
+          // Build a representative entry-alert message (mirrors formatter.py entry_alert)
+          const regime     = pairStatus.regime || 'BULL';
+          const conf       = pairStatus.conf ?? 78.5;
+          const pairDisp   = pair.replace('/', '');
+          const isJpy      = pair.includes('JPY');
+          const isGold     = pair === 'XAU/USD' || pair === 'NAS100_USD';
+          const priceDp    = isGold ? 2 : (isJpy ? 3 : 5);
+          const price      = pairStatus.entry ?? 1.08500;
+          const pip        = isGold ? 1.0 : (isJpy ? 0.01 : 0.0001);
+          const sl         = price - pip * 15;
+          const slPips     = Math.abs(price - sl) / pip;
+          const paperTag   = status.paper_mode !== false ? ' [PAPER]' : '';
+          const regimeLabel = { BULL: 'Bull', BEAR: 'Bear', RANGE: 'Range', CHOP: 'Chop' }[regime.toUpperCase()] || regime;
+          const emoji       = { BULL: '🟢', BEAR: '🔴', RANGE: '🟡', CHOP: '⚪' }[regime.toUpperCase()] || '⚫';
+          const direction   = regime === 'BULL' ? 'LONG' : 'SHORT';
+
+          const msg = [
+            `${emoji} <b>[V7 TEST] ${pairDisp} — ${direction}${paperTag}</b>`,
+            `  Regime    : ${regimeLabel} (${conf.toFixed(1)}%)`,
+            `  Price     : ${price.toFixed(priceDp)}`,
+            `  SL        : ${sl.toFixed(priceDp)}  (${slPips.toFixed(1)}p)`,
+            `  Lots      : 0.10`,
             `  <i>This is a test message — no real trade was opened</i>`,
           ].join('\n');
 
