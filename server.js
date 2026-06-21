@@ -2453,6 +2453,51 @@ function alignSparse(dateIndex, sparseMap) {
   return dateIndex.map(d => sparseMap.has(d) ? sparseMap.get(d) : NaN);
 }
 
+// Forward-fill a sparse date-keyed map onto a master date array — carries the
+// last known value forward over gaps (weekends/holidays/reporting lag) instead
+// of leaving NaN, since TGA/RRP update on Treasury/Fed business days that don't
+// line up 1:1 with the FX/CFD trading calendar.
+function forwardFillAlign(dateIndex, sparseMap) {
+  const keys = [...sparseMap.keys()].sort();
+  let ptr = -1, lastVal = NaN;
+  return dateIndex.map(d => {
+    while (ptr + 1 < keys.length && keys[ptr + 1] <= d) { ptr++; lastVal = sparseMap.get(keys[ptr]); }
+    return lastVal;
+  });
+}
+
+// Daily Treasury General Account balance from Treasury's Daily Treasury
+// Statement (Table I — Operating Cash Balance), via the public Fiscal Data
+// API. This is the genuinely-daily counterpart to FRED's WTREGEN (weekly).
+// Account-type label is matched by substring rather than filtered server-side
+// since the dataset mixes a few account rows per day ("Federal Reserve
+// Account", "Tax and Loan Note Accounts", "Total Operating Balance" etc).
+async function fetchDtsTgaBalance(fromDate) {
+  const base = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance';
+  const out  = new Map();
+  for (let pageNum = 1; pageNum <= 50; pageNum++) {
+    const params = new URLSearchParams({
+      filter: `record_date:gte:${fromDate}`,
+      fields: 'record_date,account_type,close_today_bal',
+      sort: 'record_date',
+      'page[number]': String(pageNum),
+      'page[size]': '1000',
+    });
+    const r = await fetch(`${base}?${params.toString()}`, { signal: AbortSignal.timeout(25_000) });
+    if (!r.ok) throw new Error(`Treasury DTS HTTP ${r.status}`);
+    const json = await r.json();
+    const rows = json.data ?? [];
+    for (const row of rows) {
+      if (!String(row.account_type ?? '').toLowerCase().includes('federal reserve')) continue;
+      const v = parseFloat(row.close_today_bal);
+      if (isFinite(v)) out.set(row.record_date, v / 1000); // millions -> billions, matches RRPONTSYD units
+    }
+    const totalPages = json.meta?.['total-pages'] ?? 1;
+    if (!rows.length || pageNum >= totalPages) break;
+  }
+  return out;
+}
+
 // Fetch and align all raw data needed by the engine
 async function fetchMeRawData(fredKey) {
   const FROM_DATE  = '2005-01-01';
@@ -3128,6 +3173,106 @@ app.get('/api/diversification/data', async (req, res) => {
     res.json({ ok: true, cached: false, ...data });
   } catch (e) {
     console.error('[divers] fetch error:', e.stack ?? e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Liquidity Pulse — daily TGA + ON RRP flows vs NQ ──────────────────────────
+// Exploratory diagnostic: tests whether the genuinely-daily components of
+// "Net Liquidity" (Treasury General Account drawdowns + overnight reverse
+// repo usage) line up with NQ price moves, distinct from the slow weekly/
+// monthly Fed balance sheet read already used in the Macro Equity Bot.
+const LIQ_PULSE_CACHE   = { data: null, fetchedAt: null };
+const LIQ_PULSE_TTL_MS  = 6 * 60 * 60 * 1000; // 6h — underlying data is daily at best
+const LIQ_PULSE_FROM    = '2019-01-01';
+
+function pearsonCorr(a, b) {
+  const xs = [], ys = [];
+  for (let i = 0; i < a.length; i++) if (isFinite(a[i]) && isFinite(b[i])) { xs.push(a[i]); ys.push(b[i]); }
+  const m = xs.length;
+  if (m < 5) return NaN;
+  const mx = xs.reduce((s, v) => s + v, 0) / m;
+  const my = ys.reduce((s, v) => s + v, 0) / m;
+  let cov = 0, vx = 0, vy = 0;
+  for (let i = 0; i < m; i++) { cov += (xs[i] - mx) * (ys[i] - my); vx += (xs[i] - mx) ** 2; vy += (ys[i] - my) ** 2; }
+  return (vx > 0 && vy > 0) ? cov / Math.sqrt(vx * vy) : NaN;
+}
+function signHitRate(a, b, mask) {
+  let hit = 0, total = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (mask && !mask[i]) continue;
+    if (!isFinite(a[i]) || !isFinite(b[i]) || a[i] === 0) continue;
+    total++;
+    if (Math.sign(a[i]) === Math.sign(b[i])) hit++;
+  }
+  return total >= 5 ? hit / total : NaN;
+}
+
+app.get('/api/liquidity-pulse/data', async (req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!fredKey) return res.status(400).json({ ok: false, error: 'FRED_KEY not set' });
+  if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, error: 'OANDA_KEY not set' });
+
+  const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from) ? req.query.from : LIQ_PULSE_FROM;
+  const isDefaultRange = fromDate === LIQ_PULSE_FROM;
+
+  const age = LIQ_PULSE_CACHE.fetchedAt ? Date.now() - LIQ_PULSE_CACHE.fetchedAt : Infinity;
+  if (isDefaultRange && LIQ_PULSE_CACHE.data && age < LIQ_PULSE_TTL_MS) {
+    return res.json({ ok: true, cached: true, ...LIQ_PULSE_CACHE.data });
+  }
+
+  try {
+    console.log(`[liq-pulse] fetching RRP (FRED), TGA (Treasury DTS), NQ (OANDA) from ${fromDate}…`);
+    const [rrpMap, tgaMap, nqBars] = await Promise.all([
+      fetchFredSeries('RRPONTSYD', fromDate, fredKey),
+      fetchDtsTgaBalance(fromDate),
+      fetchOandaD1Range('NAS100_USD', fromDate),
+    ]);
+    console.log(`[liq-pulse] RRP ${rrpMap.size} obs | TGA ${tgaMap.size} obs | NQ ${nqBars.length} bars`);
+
+    const dates   = nqBars.map(b => b.date);
+    const nqClose = nqBars.map(b => b.close);
+    const n       = dates.length;
+
+    const rrp = forwardFillAlign(dates, rrpMap);
+    const tga = forwardFillAlign(dates, tgaMap);
+
+    const dTga = new Array(n).fill(NaN);
+    const dRrp = new Array(n).fill(NaN);
+    const liqPulse  = new Array(n).fill(NaN); // -(ΔTGA + ΔRRP): rising TGA/RRP drains reserves
+    const nqRet     = new Array(n).fill(NaN); // same-day NQ return
+    const nqRetFwd  = new Array(n).fill(NaN); // next-day NQ return (tests lead, not just coincidence)
+    const isSettlementDay = new Array(n).fill(false);
+
+    for (let i = 0; i < n; i++) {
+      const dow = new Date(dates[i] + 'T00:00:00Z').getUTCDay(); // 0=Sun..6=Sat
+      isSettlementDay[i] = dow === 2 || dow === 4; // Tue/Thu — typical T-bill settlement days
+      if (i > 0) {
+        if (isFinite(tga[i]) && isFinite(tga[i - 1])) dTga[i] = tga[i] - tga[i - 1];
+        if (isFinite(rrp[i]) && isFinite(rrp[i - 1])) dRrp[i] = rrp[i] - rrp[i - 1];
+        if (isFinite(dTga[i]) && isFinite(dRrp[i])) liqPulse[i] = -(dTga[i] + dRrp[i]);
+        nqRet[i] = (nqClose[i] - nqClose[i - 1]) / nqClose[i - 1] * 100;
+      }
+      if (i < n - 1) nqRetFwd[i] = (nqClose[i + 1] - nqClose[i]) / nqClose[i] * 100;
+    }
+
+    const notSettlement = isSettlementDay.map(v => !v);
+    const stats = {
+      n,
+      corrSameDay:          pearsonCorr(liqPulse, nqRet),
+      corrNextDay:          pearsonCorr(liqPulse, nqRetFwd),
+      hitRateNextDay:       signHitRate(liqPulse, nqRetFwd),
+      hitRateSettlement:    signHitRate(liqPulse, nqRetFwd, isSettlementDay),
+      hitRateNonSettlement: signHitRate(liqPulse, nqRetFwd, notSettlement),
+      settlementDayCount:   isSettlementDay.filter(Boolean).length,
+    };
+
+    const payload = { dates, nqClose, tga, rrp, dTga, dRrp, liqPulse, nqRet, nqRetFwd, isSettlementDay, stats };
+    if (isDefaultRange) { LIQ_PULSE_CACHE.data = payload; LIQ_PULSE_CACHE.fetchedAt = Date.now(); }
+    console.log(`[liq-pulse] ready: ${n} days, corrNextDay=${stats.corrNextDay?.toFixed(3)}, hitRateNextDay=${stats.hitRateNextDay?.toFixed(3)}`);
+    res.json({ ok: true, cached: false, ...payload });
+  } catch (e) {
+    console.error('[liq-pulse] fetch error:', e.stack ?? e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
