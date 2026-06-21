@@ -1,4 +1,4 @@
-change # MacroFXModel — Backtest Engine: Ranges, Confluences & Features
+# MacroFXModel — Backtest Engine: Ranges, Confluences & Features
 
 ## Overview
 

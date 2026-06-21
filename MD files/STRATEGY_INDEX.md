@@ -48,7 +48,6 @@ Combined they form a regime-rotation portfolio targeting 20-28% CAGR on a $100k 
 | 5 | FX Cross-Sectional Momentum | [P5_FX_MOMENTUM.md](P5_FX_MOMENTUM.md) | 12-18 | 8-13% | Brief ready |
 | 6 | Gold Macro Divergence | [P6_GOLD_DIVERGENCE.md](P6_GOLD_DIVERGENCE.md) | 4-8 | 7-11% | Brief ready |
 | 7 | JPY Carry Unwind Circuit Breaker | [P7_JPY_CIRCUIT_BREAKER.md](P7_JPY_CIRCUIT_BREAKER.md) | Always on | Capital protection | Brief ready |
-| 8 | VIX Vol-Carry (direct VIX exposure) | [P8_VIX_VOL_CARRY.md](P8_VIX_VOL_CARRY.md) | Variable (regime-driven) | 8-14% | Claude Code built — backtest ready, standalone dashboard viewer added |
 
 ### Portfolio Combined Estimate ($100k account)
 
@@ -101,15 +100,8 @@ Phase 5 (Month 2)   I2 Asia Fib walk-forward        <- 5m bar backtest
 Phase 6 (Month 3)   P3 Regime Rotation portfolio    <- Combine validated models
 Phase 7 (Month 3)   I1 ORB + I3 VWAP               <- NQ/ES intraday layer
 Phase 8 (Month 4)   P7 JPY Circuit Breaker          <- Portfolio-level risk gate
-Phase 9 (Month 4)   P8 VIX Vol-Carry                <- First strategy trading VIX directly, not as a filter
-Phase 10 (Live)     MT5 execution bot               <- Already built, point at signals
+Phase 9 (Live)      MT5 execution bot               <- Already built, point at signals
 ```
-
-**Note on P8:** every other strategy in this suite (and `bot/modules/vol_gate.py`) uses VIX only as a
-regime gate/size multiplier for some other asset. P8 is the first to trade VIX exposure itself (short
-VXX to harvest term-structure roll decay). Treat it with extra skepticism through the validation
-funnel — short-vol-carry is the textbook "picks up nickels in front of a steamroller" strategy archetype,
-and its failure mode (Volmageddon, Feb 2018) is the canonical tail-risk case study for this entire genre.
 
 ---
 
