@@ -488,8 +488,11 @@ def push_status(
 
 # ── Core rebalance cycle ───────────────────────────────────────────────────────
 
-def do_rebalance(cfg: dict, paper_mode: bool, vix_closes: list[float]) -> dict:
-    """Fetch FRED data, compute signal, rebalance all enabled instruments."""
+def compute_macro_status(cfg: dict, vix_closes: list[float]) -> dict:
+    """Fetch FRED data and compute the current macro signal + per-instrument target
+    allocations. Read-only — places no orders, so it's safe (and cheap) to call every
+    poll cycle. This keeps the dashboard's Live Status panel populated between
+    month-end rebalances, instead of only on the day a rebalance actually executes."""
     api_key = cfg.get('fred_api_key', '')
     if not api_key:
         log.error('No FRED API key configured — cannot compute macro signal')
@@ -509,7 +512,6 @@ def do_rebalance(cfg: dict, paper_mode: bool, vix_closes: list[float]) -> dict:
     }
     equity_floor   = cfg.get('alloc_floor',          0.50)
     inverted_floor = cfg.get('inverted_alloc_floor',  0.20)
-    threshold      = cfg.get('rebalance_threshold',   0.05)
     portfolio_mode = cfg.get('portfolio_mode',        False)
 
     # Enabled instruments
@@ -542,11 +544,9 @@ def do_rebalance(cfg: dict, paper_mode: bool, vix_closes: list[float]) -> dict:
              + (f'  EU={signal_eu["score"]:.3f}' if any_eu else ''))
 
     equity   = get_account_equity()
-    eq_keys  = [k for k, v in active.items() if not v['inverted']]
     inv_keys = [k for k, v in active.items() if v['inverted'] and v['symbol']]
 
     instrument_status: dict[str, dict] = {}
-    actions: list[dict] = []
 
     for key, inst in active.items():
         symbol    = inst['symbol']
@@ -579,24 +579,40 @@ def do_rebalance(cfg: dict, paper_mode: bool, vix_closes: list[float]) -> dict:
             'target_alloc': round(target_alloc, 4),
             'score':        round(score, 3),
             'regime':       signal['regime'],
+            'action':       'monitor',
         }
-
         if not symbol:
             log.info(f'{key}: cash position (no MT5 symbol) — target {target_alloc:.0%}')
-            continue
-
-        action = rebalance_instrument(symbol, key, target_alloc, equity, paper_mode, threshold)
-        instrument_status[key]['action'] = action.get('action')
-        actions.append({'key': key, **action})
-        log.info(f'{key} ({symbol}): target={target_alloc:.0%}  action={action.get("action")}')
 
     return {
         'signal_us':          signal_us,
         'signal_eu':          signal_eu if any_eu else None,
         'instrument_status':  instrument_status,
-        'actions':            actions,
+        'active':             active,
         'equity':             round(equity, 2),
     }
+
+
+def execute_rebalance(
+    active: dict,
+    instrument_status: dict,
+    equity: float,
+    paper_mode: bool,
+    threshold: float,
+) -> list[dict]:
+    """Place orders to bring each instrument to its already-computed target_alloc.
+    Only call this on the actual month-end rebalance day."""
+    actions: list[dict] = []
+    for key, inst in active.items():
+        symbol = inst['symbol']
+        if not symbol:
+            continue
+        target_alloc = instrument_status.get(key, {}).get('target_alloc', 0.0)
+        action = rebalance_instrument(symbol, key, target_alloc, equity, paper_mode, threshold)
+        instrument_status[key]['action'] = action.get('action')
+        actions.append({'key': key, **action})
+        log.info(f'{key} ({symbol}): target={target_alloc:.0%}  action={action.get("action")}')
+    return actions
 
 
 # ── Main loop ──────────────────────────────────────────────────────────────────
@@ -655,25 +671,29 @@ def run(url: str, paper_mode: bool, force_rebalance: bool = False, live_override
             (is_last_trading_day_of_month() and today_ym != last_rebalance_ym)
         )
 
-        signal_us: dict = {}
-        instrument_status: dict = {}
+        # Always compute the current macro signal + target allocations (read-only)
+        # so the dashboard's Live Status panel stays populated between month-end
+        # rebalances. Real orders only fire below, when should_rebalance is True.
+        status   = compute_macro_status(cfg, vix_closes)
+        signal_us         = status.get('signal_us', {})
+        instrument_status = status.get('instrument_status', {})
 
-        if should_rebalance:
+        if should_rebalance and status:
             log.info('=== REBALANCE TRIGGERED ===')
-            result = do_rebalance(cfg, paper_mode, vix_closes)
-            if result:
-                signal_us         = result.get('signal_us', {})
-                instrument_status = result.get('instrument_status', {})
-                last_rebalance_ym = today_ym
-                force_rebalance   = False
-                rebalance_log.insert(0, {
-                    'date':        date.today().isoformat(),
-                    'score':       signal_us.get('score'),
-                    'regime':      signal_us.get('regime'),
-                    'instruments': {k: v['target_alloc'] for k, v in instrument_status.items()},
-                    'actions':     [a['action'] for a in result.get('actions', [])],
-                })
-                rebalance_log = rebalance_log[:24]  # keep last 24 months
+            actions = execute_rebalance(
+                status['active'], instrument_status, status['equity'],
+                paper_mode, cfg.get('rebalance_threshold', 0.05),
+            )
+            last_rebalance_ym = today_ym
+            force_rebalance    = False
+            rebalance_log.insert(0, {
+                'date':        date.today().isoformat(),
+                'score':       signal_us.get('score'),
+                'regime':      signal_us.get('regime'),
+                'instruments': {k: v['target_alloc'] for k, v in instrument_status.items()},
+                'actions':     [a['action'] for a in actions],
+            })
+            rebalance_log = rebalance_log[:24]  # keep last 24 months
         else:
             log.info(f'No rebalance today ({date.today()}). Last: {last_rebalance_ym or "never"}')
 

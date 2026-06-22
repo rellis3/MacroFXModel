@@ -18,7 +18,9 @@
 //
 // Env vars required: OANDA_KEY  (+ OANDA_ENV, OANDA_ACCOUNT_ID)
 // Env vars optional: FRED_KEY   (enables macro tier enrichment)
-//                    ENABLE_ZSCORE_CONVICTION=true (adds zSpread/zConvictionMult/
+//                    ENABLE_ZSCORE_CONVICTION=true (deployment-level master gate;
+//                    also requires the Caps modal's "Yield-spread Z-score conviction"
+//                    toggle to be on — both must be true. Adds zSpread/zConvictionMult/
 //                    signalScoreZAdjusted fields per entry — additive only, see
 //                    computeYieldSpreadZ() below; default off, no live consumer reads it)
 
@@ -185,8 +187,13 @@ const ZSPREAD_SHORT_KEY = {
   'USD/CHF': 'ch_short',
 };
 
-async function computeYieldSpreadZ(sym) {
+async function computeYieldSpreadZ(sym, caps) {
+  // Two-layer gate: the env var is a deployment-level master switch (set once on
+  // Railway), the KV caps flag is the day-to-day on/off toggled live from the
+  // dashboard's Caps modal — both must be true, so flipping the UI checkbox alone
+  // can never enable this on a deployment where the env var hasn't been set.
   if (process.env.ENABLE_ZSCORE_CONVICTION !== 'true') return null;
+  if (caps?.enableZscoreConviction !== true) return null;
   const shortKey = ZSPREAD_SHORT_KEY[sym];
   if (!shortKey) return null;
   try {
@@ -804,7 +811,7 @@ export async function refreshPair(sym, globalData = {}) {
     const atr          = computeEmaAtr(bars30m);
     const currentPrice = await fetchCurrentPrice(sym);
     const fredData     = globalData.fredData ?? null;
-    const zSpreadData  = await computeYieldSpreadZ(sym);
+    const zSpreadData  = await computeYieldSpreadZ(sym, caps);
 
     const entries = buildEntries(
       allConfs,

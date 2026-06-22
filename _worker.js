@@ -755,6 +755,10 @@ export default {
             enhPivAtrFrac:0.10,
             enhPivPipCap: 150,
           },
+          confluencePriceMode:    'midpoint',
+          clusterMerge:           true,
+          slMaxAtrMult:           0.5,
+          enableZscoreConviction: false,
           updatedAt: null,
         };
 
@@ -768,6 +772,13 @@ export default {
             fx:     { ...DEFAULTS.fx,     ...(parsed.fx     || {}) },
             gold:   { ...DEFAULTS.gold,   ...(parsed.gold   || {}) },
             nas100: { ...DEFAULTS.nas100, ...(parsed.nas100 || {}) },
+            confluencePriceMode:    parsed.confluencePriceMode    ?? DEFAULTS.confluencePriceMode,
+            clusterMerge:           parsed.clusterMerge           ?? DEFAULTS.clusterMerge,
+            slMaxAtrMult:           parsed.slMaxAtrMult           ?? DEFAULTS.slMaxAtrMult,
+            // Yield-spread Z-score conviction (additive scoring field in levels.js) —
+            // requires ENABLE_ZSCORE_CONVICTION env var ALSO set on the server as a
+            // deployment-level master gate; this KV flag is the day-to-day on/off.
+            enableZscoreConviction: parsed.enableZscoreConviction ?? DEFAULTS.enableZscoreConviction,
             updatedAt: parsed.updatedAt || null,
           });
         } catch(e) {
@@ -793,6 +804,13 @@ export default {
             fx:        body.fx,
             gold:      body.gold,
             nas100:    body.nas100,
+            // Global confluence-mode settings — previously read from the form but
+            // silently dropped here, so they never actually persisted. Fixed alongside
+            // adding enableZscoreConviction since it lives in the same form section.
+            confluencePriceMode:    ['midpoint', 'lowest', 'highest'].includes(body.confluencePriceMode) ? body.confluencePriceMode : 'midpoint',
+            clusterMerge:           body.clusterMerge !== false,
+            slMaxAtrMult:           typeof body.slMaxAtrMult === 'number' && body.slMaxAtrMult > 0 ? body.slMaxAtrMult : 0.5,
+            enableZscoreConviction: body.enableZscoreConviction === true,
             updatedAt: new Date().toISOString(),
           };
 
@@ -854,7 +872,7 @@ export default {
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
           await env.FX_SCORES.put(key, JSON.stringify({ data, timestamp }), kvOpts);
           // Persist closed trade history for bot status keys
-          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status']);
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
           }
@@ -1981,7 +1999,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         if (!env.FX_SCORES) return json({ ok: false, trades: [], reason: 'KV not bound' });
         const from = url.searchParams.get('from') || new Date().toISOString().slice(0, 10);
         const to   = url.searchParams.get('to')   || from;
-        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status'];
+        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status'];
         const dates = [];
         const startD = new Date(from + 'T00:00:00Z');
         const endD   = new Date(to   + 'T00:00:00Z');

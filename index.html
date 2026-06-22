@@ -1028,6 +1028,14 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
             <input class="cfg-input" id="conf_slMaxAtrMult" type="number" min="0.1" max="3" step="0.05">
             <div class="cfg-hint">Caps the structural stop loss at this multiple of the daily ATR. The SL is placed just beyond the nearest adverse confluence level — this prevents runaway stops when levels are far apart. Default 0.5 (half the daily range). Lower = tighter max, higher = allows wider stops.</div>
           </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Yield-spread Z-score conviction</span><span class="cfg-label-type">experimental</span></div>
+            <select class="cfg-input" id="conf_enableZscoreConviction">
+              <option value="false">Off (default)</option>
+              <option value="true">On — adds zSpread/zConvictionMult/signalScoreZAdjusted fields</option>
+            </select>
+            <div class="cfg-hint">Additive only — never changes signalScore/grade, so Telegram alerts and bot/main.py's Telegram-mode trading are unaffected either way. Also requires the server's ENABLE_ZSCORE_CONVICTION env var to be set (deployment-level master gate) — this switch alone won't enable it on a server where that env var is unset.</div>
+          </div>
         </div>
         <div class="cfg-mode-note">
           <strong>To match the Pine Script indicator exactly:</strong> set <code>Price selection → Lowest</code> and <code>Cluster merge → Off</code>, then hit Save to KV. All consumers — dashboard, backtest, and Telegram alerts — update immediately.<br><br>

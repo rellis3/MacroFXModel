@@ -15,6 +15,7 @@ Signal lifecycle:
   Server marks signal STOPPED → spread diverged further, bot closes both legs (loss)
 
 KV key:    hedge_bot_status   (shows in bot-config positions table)
+Creds key: hedge_bot_credentials  (account/password/server set on the Hedge config page)
 Magic:     20260007
 Log file:  hedge_bot.log
 
@@ -153,6 +154,19 @@ def _fetch_signals(base_url: str) -> list:
 def _load_config(base_url: str) -> dict:
     stored = _kv_get(CFG_KEY, base_url)
     return {**DEFAULT_CFG, **stored} if stored else dict(DEFAULT_CFG)
+
+
+def load_credentials(base_url: str) -> None:
+    creds = _kv_get('hedge_bot_credentials', base_url)
+    if not creds:
+        return
+    for env_key, cfg_key in [
+        ('MT5_ACCOUNT', 'mt5_account'), ('MT5_PASSWORD', 'mt5_password'),
+        ('MT5_SERVER',  'mt5_server'),  ('MT5_PATH',     'mt5_path'),
+    ]:
+        if val := creds.get(cfg_key):
+            os.environ[env_key] = str(val)
+    log.info(f'Credentials loaded: account={creds.get("mt5_account")}  server={creds.get("mt5_server")}')
 
 
 def _ack_signal(sig_id: str, status: str, base_url: str) -> None:
@@ -423,11 +437,25 @@ def _save_state(open_positions: dict) -> None:
 # ── Main loop ──────────────────────────────────────────────────────────────────
 
 def run(base_url: str, live: bool) -> None:
+    load_credentials(base_url)
     if HAS_MT5:
-        if not mt5.initialize():
+        path = os.environ.get('MT5_PATH') or None
+        if not (mt5.initialize(path=path) if path else mt5.initialize()):
             log.error(f'MT5 initialize failed: {mt5.last_error()}')
             return
-        log.info(f'MT5 connected — account {mt5.account_info().login}')
+        account  = os.environ.get('MT5_ACCOUNT', '')
+        password = os.environ.get('MT5_PASSWORD', '')
+        server   = os.environ.get('MT5_SERVER', '')
+        if account and password and server:
+            if not mt5.login(int(account), password, server):
+                log.error(f'MT5 login failed: {mt5.last_error()}')
+                return
+        info = mt5.account_info()
+        if info and account and str(info.login) != str(account):
+            log.error(f'Account mismatch: expected {account} got {info.login} — aborting')
+            mt5.shutdown()
+            return
+        log.info(f'MT5 connected — account {info.login if info else "?"}')
     else:
         log.warning('MetaTrader5 not installed — paper mode only')
 

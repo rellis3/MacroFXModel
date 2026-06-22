@@ -201,15 +201,18 @@ function populateCfgForm(caps) {
   const mergeEl = document.getElementById('conf_clusterMerge');
   if (mergeEl) mergeEl.value = String(caps.clusterMerge ?? true);
   fill('conf_slMaxAtrMult', caps.slMaxAtrMult ?? 0.5);
+  const zEl = document.getElementById('conf_enableZscoreConviction');
+  if (zEl) zEl.value = String(caps.enableZscoreConviction ?? false);
 }
 
 function readCfgForm() {
   const num = id => parseFloat(document.getElementById(id)?.value) || null;
   const str = id => document.getElementById(id)?.value ?? null;
   return {
-    confluencePriceMode: str('conf_priceMode')    ?? 'midpoint',
-    clusterMerge:        str('conf_clusterMerge') !== 'false',
-    slMaxAtrMult:        parseFloat(document.getElementById('conf_slMaxAtrMult')?.value) || 0.5,
+    confluencePriceMode:    str('conf_priceMode')    ?? 'midpoint',
+    clusterMerge:           str('conf_clusterMerge') !== 'false',
+    slMaxAtrMult:           parseFloat(document.getElementById('conf_slMaxAtrMult')?.value) || 0.5,
+    enableZscoreConviction: str('conf_enableZscoreConviction') === 'true',
     fx: {
       confluencePips: num('fx_confluencePips'),
       mergeFactor:    num('fx_mergeFactor'),

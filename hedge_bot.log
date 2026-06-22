@@ -1,0 +1,10 @@
+[2026-06-22 19:57:01] [INFO] MT5 connected — account 10011001704
+[2026-06-22 19:57:06] [WARNING] kv_get(hedge_bot_config): HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/kv/get?key=hedge_bot_config (Caused by NewConnectionError("HTTPConnection(host='localhost', port=3000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+[2026-06-22 20:03:51] [INFO] MT5 connected — account 107132286
+[2026-06-22 20:04:01] [INFO] Signal AUDUSD-EURCHF-1782152177025: AUDUSD LONG 0.21L / EURCHF SHORT 0.07L  z=-2.22  corr=-0.385
+[2026-06-22 20:04:01] [INFO] [PAPER] LONG 0.21 AUDUSD @ 0.70007 SL=0.68007 → ticket=155041935
+[2026-06-22 20:04:01] [INFO] [PAPER] SHORT 0.07 EURCHF SL=0.94458 → ticket=155041954
+[2026-06-22 20:04:08] [INFO] Signal NZDUSD-EURCHF-1782152177026: NZDUSD LONG 0.21L / EURCHF SHORT 0.08L  z=-2.10  corr=-0.403
+[2026-06-22 20:04:08] [INFO] [PAPER] LONG 0.21 NZDUSD @ 0.57122 SL=0.55121 → ticket=155048452
+[2026-06-22 20:04:08] [INFO] [PAPER] SHORT 0.08 EURCHF SL=0.94458 → ticket=155048453
+[2026-06-22 20:07:52] [INFO] MT5 connected — account 107132286
