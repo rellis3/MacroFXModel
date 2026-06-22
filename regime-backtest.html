@@ -1015,6 +1015,8 @@ const V2_PARAMS = [
     help:'EXIT gate: the trend slope (rate of price change). If slope is below this value for slope_bars consecutive bars, exit — momentum is fading. More negative threshold = only exits on sharper momentum drops.' },
   { key:'slope_bars',      label:'Slope Bars',            min:1,   max:10,   step:1,    def:3,
     help:'How many consecutive bars slope must be below threshold before the slope exit triggers. Higher = requires sustained momentum loss, not just a single slow bar. Works together with Slope Thresh.' },
+  { key:'x3x4_mfe_suppress_r', label:'X3/X4 Suppress MFE (R)', min:0.2, max:5.0, step:0.1, def:0.6,
+    help:'Once a trade\'s peak profit (MFE) reaches this many R multiples, the slope (X3) and conf-drop (X4) exits are disabled — only regime-flip, conf-floor, BOCPD, score-collapse, decay, and MFE-retrace can still close it. Lets a winner ride out a temporary momentum/confidence wobble instead of being chopped on noise.' },
   { key:'bocpd_thresh',    label:'BOCPD Thresh (%)',      min:40,  max:95,   step:1,    def:70,
     help:'EXIT gate: BOCPD detects sudden structural breaks in price behaviour — sharp changes that suggest a new regime. If the change-point probability exceeds this, exit. Higher (85%) = only exits on very confident break signals.' },
   { key:'bocpd_exit_bars', label:'BOCPD Exit Bars',       min:1,   max:5,    step:1,    def:2,
@@ -1029,16 +1031,16 @@ const V2_PARAMS = [
     help:'How many consecutive bars the score must be below hold_score_min before the hold-score exit triggers. Same debounce concept as BOCPD Exit Bars. Prevents exiting on a single noisy bar.' },
   { key:'mfe_retrace_pct', label:'MFE Retrace %',         min:0.05,max:0.60, step:0.01, def:0.25,
     help:'Profit protection: once the trade has moved MFE Min R in your favour, exit if price retraces this fraction back from the peak profit. 0.25 = exit if you give back 25% of your best profit. Lower = locks in gains tightly.' },
-  { key:'mfe_min_r',       label:'MFE Min (R)',           min:0.2, max:5.0,  step:0.1,  def:1.0,
-    help:'The minimum peak profit (in multiples of your stop-loss distance) before the MFE retrace exit can trigger. 1.0R = retrace exit only kicks in once you\'ve been at least 1× your risk in profit. Higher = lets small winners run further.' },
+  { key:'mfe_min_r',       label:'MFE Min (R)',           min:0.2, max:5.0,  step:0.1,  def:0.6,
+    help:'The minimum peak profit (in multiples of your stop-loss distance) before the MFE retrace exit can trigger. 0.6R = retrace exit only kicks in once you\'ve been at least 0.6× your risk in profit. Higher = lets small winners run further.' },
   { key:'range_exit_hold', label:'Range Exit Hold (bars)', min:0,  max:10,   step:1,    def:2,
     help:'When regime flips to RANGE while in trade, wait this many bars before exiting. Same as V1 — prevents closing on brief sideways noise. V2 has other exit gates so this can be lower than V1.' },
   { key:'window_start',    label:'Window Start (UTC h)',  min:0,   max:12,   step:1,    def:7,
     help:'Earliest UTC hour new trades can open. Same as V1. 07:00 = London open. V2\'s composite score naturally filters out poor-session entries so the window can be slightly wider than V1.' },
   { key:'window_end',      label:'Window End (UTC h)',    min:12,  max:23,   step:1,    def:20,
     help:'Latest UTC hour new trades can open. Same as V1. V2\'s score gate includes a session-quality component so it degrades automatically in thin hours — you can leave this wider and let the score filter do the work.' },
-  { key:'post_exit_cooldown', label:'Post-Exit Cooldown (bars)', min:0, max:240, step:1, def:0,
-    help:'After any trade closes (win or loss), block all new entries for this many M1 bars. 60 = 1 hour cooldown. V2 has more exit gates than V1 so exits are more frequent — a cooldown of 30–60 bars is often very effective at cutting noise re-entries.' },
+  { key:'post_exit_cooldown', label:'Post-Exit Cooldown (bars)', min:0, max:240, step:1, def:4,
+    help:'After any trade closes (win or loss), block all new entries for this many M1 bars. 60 = 1 hour cooldown. V2 has more exit gates than V1 so exits are more frequent — a cooldown of 30–60 bars is often very effective at cutting noise re-entries. Default raised to 4 bars (~4min) to match the live bot\'s recommended cooldown.' },
 ];
 const V2_BOOLS = [
   { key:'exit_on_range',        label:'Exit on RANGE',          def:true  },
@@ -2995,6 +2997,9 @@ function simulateV1(candles, signals, c) {
 }
 
 // ─── Simulation: V2 ──────────────────────────────────────────────────────────
+// X3 (slope) and X4 (conf-drop) are suppressed once a trade's MFE reaches
+// x3x4_mfe_suppress_r — same mechanism V3 introduced, ported back into V2 so
+// winners aren't cut by the same noise-sensitive checks that correctly cut losers fast.
 
 function simulateV2(candles, signals, c) {
   const trades = [];
@@ -3036,14 +3041,16 @@ function simulateV2(candles, signals, c) {
         if (++rangeHold >= c.range_exit_hold) { trades.push(mkTrade(pos, bar.time, xp, 'RANGE_EXIT')); exited = true; }
       } else if (!flipped) { rangeHold = 0; }
 
-      // X2: conf floor / conf drop
+      // X2: conf floor; X4: conf drop (suppressed once MFE ≥ x3x4_mfe_suppress_r)
       if (!exited) {
         if (sig.conf < c.conf_floor) { trades.push(mkTrade(pos, bar.time, xp, 'CONF_FLOOR')); exited = true; }
-        else if (confDrop >= c.drop_thresh) { trades.push(mkTrade(pos, bar.time, xp, 'CONF_DROP')); exited = true; }
+        else if (confDrop >= c.drop_thresh && pos.mfe_r < c.x3x4_mfe_suppress_r) {
+          trades.push(mkTrade(pos, bar.time, xp, 'CONF_DROP')); exited = true;
+        }
       }
-      // X3: slope
+      // X3: slope (suppressed once MFE ≥ x3x4_mfe_suppress_r)
       if (!exited) {
-        if (sig.slope < c.slope_thresh) {
+        if (sig.slope < c.slope_thresh && pos.mfe_r < c.x3x4_mfe_suppress_r) {
           if (++pos.slope_ct >= c.slope_bars) { trades.push(mkTrade(pos, bar.time, xp, 'SLOPE')); exited = true; }
         } else { pos.slope_ct = 0; }
       }

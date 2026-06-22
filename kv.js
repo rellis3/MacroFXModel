@@ -57,6 +57,9 @@ const _CF_EXACT = new Set([
   'regime_bot_credentials',  // regime bot MT5 credentials — must survive redeploys
   'regime_bot_v2_config',    // regime v2 bot settings — must survive redeploys
   'regime_bot_v2_credentials', // regime v2 bot MT5 credentials — must survive redeploys
+  'regime_bot_v7_config',    // regime v7 bot settings — must survive redeploys
+  'regime_bot_v7_credentials', // regime v7 bot MT5 credentials — must survive redeploys
+  'regime_bot_v7_audit_log', // regime v7 entry/exit audit log w/ config snapshots — cannot be auto-rebuilt
   'bot_config',             // main bot settings — must survive redeploys
   'bot_credentials',        // main bot MT5 credentials — must survive redeploys
   'backtestsystem_live_config',  // backtest bot settings — must survive redeploys
