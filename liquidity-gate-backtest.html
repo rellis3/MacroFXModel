@@ -96,6 +96,7 @@
 <!-- Run bar -->
 <div class="run-bar">
   <button class="run-btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
+  <button class="run-btn" id="sweepBtn" style="background:#818cf8;color:#0a0a1a" onclick="runSweep()">📊 Compare All 6</button>
   <select id="cfg_instrument" style="background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 10px;cursor:pointer;">
     <optgroup label="US Indices">
       <option value="NAS100_USD" selected>NAS100 (Nasdaq)</option>
@@ -151,6 +152,31 @@
       </div>
     </div>
     <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
+  </div>
+</div>
+
+<!-- Sweep results -->
+<div class="card" id="sweepCard" style="display:none;">
+  <div class="card-hdr">Compare All 6 Instruments <span style="font-weight:400;color:var(--text3)" id="sweepSubtitle"></span></div>
+  <div class="card-body">
+    <div class="tbl-wrap">
+      <table class="tbl" id="sweepTable">
+        <thead>
+          <tr>
+            <th>Instrument</th>
+            <th class="num">CAGR</th>
+            <th class="num">Sharpe</th>
+            <th class="num">Sortino</th>
+            <th class="num">Max DD</th>
+            <th class="num">Win Rate</th>
+            <th class="num">Trades</th>
+            <th class="num">Corr (Z vs next-day ret)</th>
+            <th class="num">Hit Rate</th>
+          </tr>
+        </thead>
+        <tbody id="sweepTbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -283,6 +309,59 @@ async function runBacktest() {
     btn.disabled = false;
   }
 }
+
+const SWEEP_FRIENDLY = {
+  NAS100_USD: 'NAS100', SPX500_USD: 'SPX500', US30_USD: 'US30',
+  US2000_USD: 'US2000', DE30_USD: 'DE30', UK100_GBP: 'UK100',
+};
+
+async function runSweep() {
+  const btn = document.getElementById('sweepBtn');
+  btn.disabled = true;
+  setStatus('spin', 'Running backtest across all 6 instruments — please wait…');
+
+  const params = new URLSearchParams({
+    from:            document.getElementById('cfg_from').value || '2015-01-01',
+    netliqThreshold: document.getElementById('cfg_netliq').value,
+    stopPct:         document.getElementById('cfg_stop').value,
+    riskPct:         document.getElementById('cfg_risk').value,
+    requireBoth:     document.getElementById('cfg_require_both').value,
+  });
+
+  try {
+    const r = await fetch('/api/liquidity-gate/sweep?' + params);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Unknown error');
+
+    const ranked = d.results.slice().sort((a, b) => (b.stats?.sharpe ?? -Infinity) - (a.stats?.sharpe ?? -Infinity));
+    document.getElementById('sweepTbody').innerHTML = ranked.map(row => {
+      if (!row.ok) return `<tr><td>${SWEEP_FRIENDLY[row.instrument] ?? row.instrument}</td><td colspan="8" style="color:var(--text3)">Error: ${row.error}</td></tr>`;
+      const s = row.stats, dg = row.diagnostics ?? {};
+      return `
+        <tr>
+          <td>${SWEEP_FRIENDLY[row.instrument] ?? row.instrument}</td>
+          <td class="num ${s.cagr >= 0 ? 'win' : 'loss'}">${fmt(s.cagr, 1, '%')}</td>
+          <td class="num">${s.sharpe?.toFixed(2) ?? '—'}</td>
+          <td class="num">${s.sortino?.toFixed(2) ?? '—'}</td>
+          <td class="num">-${Math.abs(s.maxDD ?? 0).toFixed(1)}%</td>
+          <td class="num">${((s.winRate ?? 0) * 100).toFixed(1)}%</td>
+          <td class="num">${s.n ?? 0}</td>
+          <td class="num">${dg.corrNextDay?.toFixed(3) ?? '—'}</td>
+          <td class="num">${dg.hitRateNextDay != null ? (dg.hitRateNextDay * 100).toFixed(1) + '%' : '—'}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('sweepSubtitle').textContent =
+      d.results.find(r => r.ok)?.period ? `· ${d.results.find(r => r.ok).period}` : '';
+    document.getElementById('sweepCard').style.display = '';
+    setStatus('ok', 'Sweep done — ranked by Sharpe, best first');
+  } catch (err) {
+    setStatus('err', 'Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+window.runSweep = runSweep;
 
 function fmt(n, dp = 1, suffix = '') {
   if (n == null || !isFinite(n)) return '—';

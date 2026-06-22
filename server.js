@@ -3676,6 +3676,39 @@ app.get('/api/liquidity-gate/backtest', async (req, res) => {
   }
 });
 
+app.get('/api/liquidity-gate/sweep', async (req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!fredKey) return res.status(503).json({ ok: false, error: 'FRED_KEY not set' });
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+
+  const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from) ? req.query.from : LIQ_GATE_FROM_DEFAULT;
+  const cfg = {
+    netliqThreshold: req.query.netliqThreshold != null ? parseFloat(req.query.netliqThreshold) : 0.25,
+    stopPct:         req.query.stopPct         != null ? parseFloat(req.query.stopPct)         : 3.0,
+    riskPct:         req.query.riskPct         != null ? parseFloat(req.query.riskPct)         : 1.0,
+    requireBoth:     req.query.requireBoth != null ? req.query.requireBoth === 'true' : true,
+  };
+
+  try {
+    const fredRaw = await _getLiquidityGateFred(fromDate, fredKey);
+    const instruments = [...LIQUIDITY_GATE_INSTRUMENTS];
+    const results = await Promise.all(instruments.map(async instrument => {
+      try {
+        const bars = await _getLiquidityGateBars(instrument, fromDate);
+        const { stats, diagnostics, curve } = _computeLiquidityGate(bars, fredRaw, cfg);
+        return { instrument, ok: true, stats, diagnostics,
+                 period: curve.length ? `${curve[0].date} → ${curve[curve.length - 1].date}` : null };
+      } catch (err) {
+        return { instrument, ok: false, error: err.message };
+      }
+    }));
+    res.json({ ok: true, results });
+  } catch (err) {
+    console.error('[liquidity-gate sweep]', err.stack ?? err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get('/api/liquidity-gate/live', async (req, res) => {
   const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
   if (!fredKey) return res.status(503).json({ ok: false, error: 'FRED_KEY not set' });
