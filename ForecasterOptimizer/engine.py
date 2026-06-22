@@ -210,6 +210,8 @@ PARAMS = [
     dict(key="atrPeriod", min=5, max=100, step=1, default=14),
     dict(key="slAtrTfMin", min=1, max=240, step=1, default=30),
     dict(key="slFixedPips", min=1, max=300, step=1, default=20),
+    dict(key="entryConfirmAtrMult", min=0, max=1.0, step=0.05, default=0.25),
+    dict(key="entryStopSlipAtrMult", min=0, max=0.3, step=0.01, default=0.05),
     dict(key="tpRMult", min=0.5, max=10.0, step=0.1, default=2.0),
     dict(key="mfeTrailPct", min=0.10, max=0.95, step=0.05, default=0.50),
     dict(key="mfeMinR", min=0.1, max=3.0, step=0.1, default=0.3),
@@ -234,6 +236,7 @@ OPT_CATEGORICAL = {
     "strategy": ["dirop", "reversal"],
     "slMode": ["atr", "pips"],
     "tpMode": ["trail", "fixed_r", "both", "none", "level"],
+    "entryMode": ["touch", "stop"],
 }
 
 
@@ -270,6 +273,7 @@ def _run_backtest_kernel(
     day_key_offset, fc_valid, fc_hl75, fc_hlmed, fc_oc75, fc_ocmed,
     from_ts, to_ts,
     strategy_is_reversal, sl_mode_is_pips, sl_fixed_pips, sl_atr_mult, pip_size,
+    use_entry_stop, entry_confirm_atr_mult, entry_stop_slip_atr_mult,
     use_trail, use_tp, tp_r_mult, mfe_trail_pct, mfe_min_r,
     use_level_target, level_target_cutoff_h,
     be_after_r, mom_z_thresh, cost_pct, dyn_min_move,
@@ -298,6 +302,11 @@ def _run_backtest_kernel(
     n_active = 0
 
     level_trade_count = np.zeros(12, dtype=np.int32)
+    armed_active = np.zeros(12, dtype=np.bool_)
+    armed_dir = np.zeros(12, dtype=np.int8)
+    armed_confirm = np.zeros(12, dtype=np.float64)
+    armed_lvprice = np.zeros(12, dtype=np.float64)
+    armed_atr = np.zeros(12, dtype=np.float64)
     day_key_prev = -1
     day_open = 0.0
     day_high = 0.0
@@ -340,6 +349,7 @@ def _run_backtest_kernel(
             day_low = opens[i]
             for lv in range(12):
                 level_trade_count[lv] = 0
+                armed_active[lv] = False
             idx_fc = day_key - day_key_offset
             if 0 <= idx_fc < fc_n and fc_valid[idx_fc]:
                 day_fc_valid = True
@@ -450,6 +460,68 @@ def _run_backtest_kernel(
                         last_exit_bar = i
 
         # Entry signals
+
+        # Stop-confirm check (entryMode='stop'): a level armed on an earlier
+        # bar fires once price breaks back past confirm price in the reversal
+        # direction — the stop order actually triggering, not the bare touch
+        # that armed it. Re-checks slot/cooldown/window-close at fill time;
+        # a blocked fill is simply dropped (missed trade), not requeued.
+        if use_entry_stop:
+            for lv in range(12):
+                if not armed_active[lv]:
+                    continue
+                a_dir = armed_dir[lv]
+                a_confirm = armed_confirm[lv]
+                confirmed = (lows[i] <= a_confirm) if a_dir == 1 else (highs[i] >= a_confirm)
+                if not confirmed:
+                    continue
+                armed_active[lv] = False
+                slot_ok_now = (n_active == 0) if one_trade_at_a_time else True
+                cooldown_ok_now = (i - last_exit_bar) > min_bars_between
+                if not slot_ok_now or not cooldown_ok_now or bar_hour >= window_end_h:
+                    continue  # missed the fill
+
+                a_lvprice = armed_lvprice[lv]
+                a_atr = armed_atr[lv]
+                slip = entry_stop_slip_atr_mult * a_atr
+                entry_price = (a_confirm - slip) if a_dir == 1 else (a_confirm + slip)
+
+                level_trade_count[lv] += 1
+                sl_dist = (sl_fixed_pips * pip_size) if sl_mode_is_pips else (a_atr * sl_atr_mult)
+                sl = entry_price + sl_dist if a_dir == 1 else entry_price - sl_dist
+                has_tp = False
+                tp = 0.0
+                if use_level_target:
+                    if lv <= 7:
+                        tp = 2.0 * day_open - a_lvprice
+                        has_tp = True
+                elif use_tp:
+                    tp_dist = sl_dist * tp_r_mult
+                    tp = entry_price - tp_dist if a_dir == 1 else entry_price + tp_dist
+                    has_tp = True
+
+                free = -1
+                for s in range(MAX_SLOTS):
+                    if not slot_active[s]:
+                        free = s
+                        break
+                if free >= 0:
+                    slot_active[free] = True
+                    slot_dir[free] = a_dir
+                    slot_entry[free] = entry_price
+                    slot_sl[free] = sl
+                    slot_tp[free] = tp
+                    slot_has_tp[free] = has_tp
+                    slot_sldist[free] = sl_dist
+                    slot_mfe[free] = 0.0
+                    slot_be[free] = False
+                    slot_dayopen[free] = day_open
+                    slot_entryts[free] = ts
+                    n_active += 1
+
+                if one_trade_at_a_time:
+                    break
+
         cooldown_ok = (i - last_exit_bar) > min_bars_between
         slot_ok = (n_active == 0) if one_trade_at_a_time else True
         mom_ok = (mom_z_thresh <= 0) or (abs(mom_arr[i]) >= mom_z_thresh)
@@ -466,6 +538,8 @@ def _run_backtest_kernel(
         l_moved = low_move_pct >= dyn_min_move
 
         for lv in range(12):
+            if use_entry_stop and armed_active[lv]:
+                continue  # already armed, waiting on confirm
             if level_trade_count[lv] >= max_level_trades:
                 continue
 
@@ -526,6 +600,15 @@ def _run_backtest_kernel(
                 elif def_dir == 0 and lows[i] <= lv_price:
                     lv_dir = 0
             if lv_dir == -1:
+                continue
+
+            if use_entry_stop:
+                buf = entry_confirm_atr_mult * atr
+                armed_active[lv] = True
+                armed_dir[lv] = lv_dir
+                armed_confirm[lv] = lv_price - buf if lv_dir == 1 else lv_price + buf
+                armed_lvprice[lv] = lv_price
+                armed_atr[lv] = atr
                 continue
 
             level_trade_count[lv] += 1
@@ -593,12 +676,14 @@ def run_backtest(m1, atr_arr, mom_arr, fc_lookup, cfg, from_ts, to_ts, pip_size)
     use_level_target = tp_mode == "level"
     use_trail = tp_mode in ("trail", "both")
     use_tp = tp_mode in ("fixed_r", "both") or use_level_target
+    use_entry_stop = cfg.get("entryMode", "touch") == "stop"
     entry_ts, exit_ts, pnl_pct, win, reason = _run_backtest_kernel(
         times, opens, highs, lows, closes, atr_arr, mom_arr,
         day_key_offset, fc_valid, fc_hl75, fc_hlmed, fc_oc75, fc_ocmed,
         np.int64(from_ts), np.int64(to_ts),
         cfg.get("strategy", "dirop") == "reversal", cfg.get("slMode", "atr") == "pips",
         float(cfg.get("slFixedPips", 20)), float(cfg.get("slAtrMult", 2.0)), float(pip_size),
+        use_entry_stop, float(cfg.get("entryConfirmAtrMult", 0.25)), float(cfg.get("entryStopSlipAtrMult", 0.05)),
         use_trail, use_tp, float(cfg.get("tpRMult", 2.0)), float(cfg.get("mfeTrailPct", 0.5)), float(cfg.get("mfeMinR", 0.3)),
         use_level_target, int(cfg.get("levelTargetCutoffH", 12)),
         float(cfg.get("beAfterR", 0.0)), float(cfg.get("momZThresh", 0.0)), float(cfg.get("costPct", 0.0)), float(cfg.get("dynMinMove", 0.25)),

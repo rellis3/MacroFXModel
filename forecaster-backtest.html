@@ -238,6 +238,13 @@
         <option value="level">Opposite Level</option>
       </select>
     </div>
+    <div style="display:flex;flex-direction:column;gap:4px;min-width:160px">
+      <span class="fb-param-lbl">Entry Mode</span>
+      <select class="fb-sel" id="cfg_entryMode">
+        <option value="touch">Touch (immediate)</option>
+        <option value="stop">Stop (confirm)</option>
+      </select>
+    </div>
   </div>
   <div class="fb-cfg-grid" id="cfgGrid"></div>
   <div style="margin-top:14px">
@@ -595,6 +602,10 @@ const PARAMS = [
     help:'(ATR mode) M1 data is resampled to this timeframe before computing ATR. 1 = pure M1, 30 = 30-minute bars (wider, filters noise).' },
   { key:'slFixedPips',    label:'SL Fixed Pips',            min:1,   max:300,  step:1,    def:20,
     help:'(Pips mode) Stop distance in pips/points, independent of ATR. JPY pairs use 0.01/pip, other FX 0.0001/pip, gold 0.01, indices 1pt.' },
+  { key:'entryConfirmAtrMult', label:'Entry Confirm Buffer (×ATR)', min:0, max:1.0, step:0.05, def:0.25,
+    help:"(Stop entry mode) Price must break back past the level by this many ATRs in the reversal direction before the trade actually fires — simulates a stop order placed past the level instead of a fill at the bare touch." },
+  { key:'entryStopSlipAtrMult', label:'Entry Stop Slippage (×ATR)', min:0, max:0.3, step:0.01, def:0.05,
+    help:"(Stop entry mode) Extra adverse slippage applied to the confirmed stop-order fill, as a fraction of ATR — real stop orders fill worse than their nominal trigger price during fast moves." },
   { key:'tpRMult',        label:'TP R-Multiple',            min:0.5, max:10.0, step:0.1,  def:2.0,
     help:'(Fixed-R / Both TP modes) Take-profit distance = SL distance × this multiple.' },
   { key:'mfeTrailPct',    label:'MFE Trail Retrace %',      min:0.10,max:0.95, step:0.05, def:0.50,
@@ -627,7 +638,7 @@ const PARAMS = [
     help:'Daily bars loaded before the From date to seed the GARCH model.' },
 ];
 const PARAM_DEFS = Object.fromEntries(PARAMS.map(p => [p.key, p.def]));
-let cfg = { ...PARAM_DEFS, strategy:'dirop', slMode:'atr', tpMode:'trail' };
+let cfg = { ...PARAM_DEFS, strategy:'dirop', slMode:'atr', tpMode:'trail', entryMode:'touch' };
 let enabledLevels = new Set(LEVELS.map(l => l.key));
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -695,6 +706,8 @@ function readConfig() {
   if (slModeEl) cfg.slMode = slModeEl.value;
   const tpModeEl = document.getElementById('cfg_tpMode');
   if (tpModeEl) cfg.tpMode = tpModeEl.value;
+  const entryModeEl = document.getElementById('cfg_entryMode');
+  if (entryModeEl) cfg.entryMode = entryModeEl.value;
 }
 
 const STRAT_HELP = {
@@ -711,12 +724,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function resetParams() {
-  cfg = { ...PARAM_DEFS, strategy:'dirop', slMode:'atr', tpMode:'trail' };
+  cfg = { ...PARAM_DEFS, strategy:'dirop', slMode:'atr', tpMode:'trail', entryMode:'touch' };
   enabledLevels = new Set(LEVELS.map(l=>l.key));
   const stratEl = document.getElementById('cfg_strategy');
   if (stratEl) { stratEl.value = 'dirop'; stratEl.dispatchEvent(new Event('change')); }
   const slModeEl = document.getElementById('cfg_slMode'); if (slModeEl) slModeEl.value = 'atr';
   const tpModeEl = document.getElementById('cfg_tpMode'); if (tpModeEl) tpModeEl.value = 'trail';
+  const entryModeEl = document.getElementById('cfg_entryMode'); if (entryModeEl) entryModeEl.value = 'touch';
   initConfigUI();
 }
 function toggleLevel(key, on) { on ? enabledLevels.add(key) : enabledLevels.delete(key); }
@@ -925,6 +939,30 @@ function computeMomentumZArray(m1s, rocPeriod = 10, zWindow = 20) {
 // Backtest simulation
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// SL / fixed-R TP distances anchor off entryPrice (not lvPrice) so a confirmed
+// stop-entry fill — which lands past lvPrice by the confirm buffer ± slippage —
+// gets the risk it actually took, not the risk measured from the bare touch.
+// In 'touch' mode entryPrice === lvPrice, so this is a no-op vs. the original math.
+function _buildTrade(tradeId, barDate, key, dir, dynamic, entryTs, entryPrice, lvPrice, atr, dayOpen, fc,
+                      slMode, slAtrMult, slFixedPips, pipSize, useLevelTarget, useTp, tpRMult) {
+  const slDist = slMode === 'pips' ? (slFixedPips || 20) * (pipSize || 0.0001) : atr * slAtrMult;
+  const sl = dir === 'SHORT' ? entryPrice + slDist : entryPrice - slDist;
+  let tp = null;
+  if (useLevelTarget) {
+    // Mirror price across the day open — only defined for static levels
+    // (open*(1±x/100) symmetry); dynamic levels get no target (≈ 'none').
+    if (!dynamic) tp = 2 * dayOpen - lvPrice;
+  } else if (useTp) {
+    const tpDist = slDist * (tpRMult || 2.0);
+    tp = dir === 'SHORT' ? entryPrice - tpDist : entryPrice + tpDist;
+  }
+  return {
+    id: tradeId, date: barDate, level: key, direction: dir,
+    entryTs, entry: entryPrice, sl, tp, slDist, mfePeak: 0, beApplied: false,
+    forecast: fc, dayOpen, dynSnap: dynamic ? lvPrice : null,
+  };
+}
+
 function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDate, momZArr, pipSize) {
   const trades  = [];
   const dayData = [];
@@ -939,6 +977,9 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
   const useTrail = tpMode === 'trail' || tpMode === 'both';
   const useTp    = tpMode === 'fixed_r' || tpMode === 'both' || useLevelTarget;
   const levelTargetCutoffH = config.levelTargetCutoffH ?? 12;
+  const useEntryStop = (config.entryMode || 'touch') === 'stop';
+  const entryConfirmAtrMult  = config.entryConfirmAtrMult  ?? 0.25;
+  const entryStopSlipAtrMult = config.entryStopSlipAtrMult ?? 0.05;
   const singleMode     = (config.oneTradeAtATime ?? 1) >= 1;
   const minBarsBetween = Math.max(0, Math.round(config.minBarsBetween ?? 0));
 
@@ -974,6 +1015,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         finalDynLevels: null,
         levelTraded: {},
         levelTradeCount: {},
+        armed: {},
         pnl: 0,
       };
     }
@@ -1047,6 +1089,31 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
     }
 
     // ── Entry signals ──────────────────────────────────────────────────────
+
+    // Stop-confirm check: a level armed on an earlier bar (entryMode='stop')
+    // fires once price breaks back past confirmPrice in the reversal direction
+    // — the stop order actually triggering, not the bare touch that armed it.
+    if (useEntryStop) {
+      for (const def of LEVELS) {
+        const a = currentDay.armed[def.key];
+        if (!a) continue;
+        const confirmed = a.dir === 'SHORT' ? c.low <= a.confirmPrice : c.high >= a.confirmPrice;
+        if (!confirmed) continue;
+        delete currentDay.armed[def.key];
+        const slotOkNow     = singleMode ? activeTrades.length === 0 : true;
+        const cooldownOkNow = (i - lastExitBar) > minBarsBetween;
+        if (!slotOkNow || !cooldownOkNow || barHour >= windowEndH) continue;  // missed the fill
+        const slip = entryStopSlipAtrMult * a.atr;
+        const entryPrice = a.dir === 'SHORT' ? a.confirmPrice - slip : a.confirmPrice + slip;
+        currentDay.levelTraded[def.key] = true;
+        currentDay.levelTradeCount[def.key] = (currentDay.levelTradeCount[def.key] || 0) + 1;
+        activeTrades.push(_buildTrade(++tradeId, barDate, def.key, a.dir, def.dynamic, c.time, entryPrice,
+          a.lvPrice, a.atr, currentDay.open, fc, slMode, config.slAtrMult, config.slFixedPips, pipSize,
+          useLevelTarget, useTp, config.tpRMult));
+        if (singleMode) break;
+      }
+    }
+
     const cooldownOk = (i - lastExitBar) > minBarsBetween;
     const slotOk     = singleMode ? activeTrades.length === 0 : true;
     const momOk      = momZThresh <= 0 || Math.abs(momZArr?.[i] ?? 0) >= momZThresh;
@@ -1062,6 +1129,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
 
     for (const def of LEVELS) {
       if (!enabledLvs.has(def.key)) continue;
+      if (useEntryStop && currentDay.armed[def.key]) continue;  // already armed, waiting on confirm
       if ((currentDay.levelTradeCount[def.key] || 0) >= (config.maxLevelTrades || 1)) continue;
 
       let lvPrice;
@@ -1089,29 +1157,20 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
       }
       if (!lvDir) continue;
 
+      if (useEntryStop) {
+        const buf = entryConfirmAtrMult * atr;
+        currentDay.armed[def.key] = {
+          dir: lvDir, lvPrice, atr,
+          confirmPrice: lvDir === 'SHORT' ? lvPrice - buf : lvPrice + buf,
+        };
+        continue;
+      }
+
       currentDay.levelTraded[def.key] = true;
       currentDay.levelTradeCount[def.key] = (currentDay.levelTradeCount[def.key] || 0) + 1;
-      const slDist = slMode === 'pips'
-        ? (config.slFixedPips || 20) * (pipSize || 0.0001)
-        : atr * config.slAtrMult;
-      const sl = lvDir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
-      let tp = null;
-      if (useLevelTarget) {
-        // Mirror price across the day open — only defined for static levels
-        // (open*(1±x/100) symmetry); dynamic levels get no target (≈ 'none').
-        if (!def.dynamic) tp = 2 * currentDay.open - lvPrice;
-      } else if (useTp) {
-        const tpDist = slDist * (config.tpRMult || 2.0);
-        tp = lvDir === 'SHORT' ? lvPrice - tpDist : lvPrice + tpDist;
-      }
-      tradeId++;
-      activeTrades.push({
-        id: tradeId, date: barDate, level: def.key,
-        direction: lvDir,
-        entryTs: c.time, entry: lvPrice, sl, tp, slDist, mfePeak: 0, beApplied: false,
-        forecast: fc, dayOpen: currentDay.open,
-        dynSnap: def.dynamic ? lvPrice : null,
-      });
+      activeTrades.push(_buildTrade(++tradeId, barDate, def.key, lvDir, def.dynamic, c.time, lvPrice,
+        lvPrice, atr, currentDay.open, fc, slMode, config.slAtrMult, config.slFixedPips, pipSize,
+        useLevelTarget, useTp, config.tpRMult));
       if (singleMode) break;
     }
   }
@@ -1254,9 +1313,10 @@ const tick = () => new Promise(r => setTimeout(r, 0));
 const OPT_EXCLUDE_KEYS = new Set(['atrPeriod', 'slAtrTfMin', 'warmupDays', 'costPct', 'eodClose']);
 const OPT_NUMERIC_PARAMS = PARAMS.filter(p => !OPT_EXCLUDE_KEYS.has(p.key));
 const OPT_CATEGORICAL = {
-  strategy: ['dirop', 'reversal'],
-  slMode:   ['atr', 'pips'],
-  tpMode:   ['trail', 'fixed_r', 'both', 'none', 'level'],
+  strategy:  ['dirop', 'reversal'],
+  slMode:    ['atr', 'pips'],
+  tpMode:    ['trail', 'fixed_r', 'both', 'none', 'level'],
+  entryMode: ['touch', 'stop'],
 };
 
 let optResults  = [];
@@ -1302,7 +1362,10 @@ function summarizeTrialConfig(c) {
   const momStr   = c.momZThresh > 0 ? ` · |MomZ|≥${c.momZThresh.toFixed(1)}` : '';
   const stratStr = c.strategy === 'reversal' ? 'Reversal' : 'DirOpen';
   const concStr  = c.oneTradeAtATime >= 1 ? '1@time' : `conc/cd${c.minBarsBetween}`;
-  return `${stratStr} · SL:${slPart} · TP:${tpPart}${beStr}${momStr} · ${concStr} · MaxLv${c.maxLevelTrades} · ${c.windowStartH}-${c.windowEndH}h`;
+  const entryStr = c.entryMode === 'stop'
+    ? ` · Stop@${c.entryConfirmAtrMult.toFixed(2)}ATR+${c.entryStopSlipAtrMult.toFixed(2)}slip`
+    : '';
+  return `${stratStr} · SL:${slPart} · TP:${tpPart}${beStr}${momStr}${entryStr} · ${concStr} · MaxLv${c.maxLevelTrades} · ${c.windowStartH}-${c.windowEndH}h`;
 }
 
 function toggleOptimizerRun() {
@@ -1392,6 +1455,7 @@ function syncConfigUIFromCfg() {
   const stratEl  = document.getElementById('cfg_strategy'); if (stratEl)  { stratEl.value  = cfg.strategy; stratEl.dispatchEvent(new Event('change')); }
   const slModeEl = document.getElementById('cfg_slMode');   if (slModeEl) slModeEl.value = cfg.slMode;
   const tpModeEl = document.getElementById('cfg_tpMode');   if (tpModeEl) tpModeEl.value = cfg.tpMode;
+  const entryModeEl = document.getElementById('cfg_entryMode'); if (entryModeEl) entryModeEl.value = cfg.entryMode;
 }
 
 function applyOptimizerConfig(idx) {
