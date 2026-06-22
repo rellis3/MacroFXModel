@@ -3643,6 +3643,11 @@ async function _getLiquidityGateBars(instrument, fromDate) {
   console.log(`[liquidity-gate] fetching OANDA H1 ${oandaSym} (${instrument}) from ${fromDate}…`);
   const h1 = await fetchOandaH1Range(oandaSym, fromDate);
   const bars = _liqGateBarsFromH1(h1);
+  if (!bars.length) {
+    throw new Error(`No NY-open/close day-bars built for ${oandaSym} (got ${h1.length} raw H1 candles) — `
+      + `OANDA may not serve this instrument on this account, or it lacks candles at the 13:00/14:00 or `
+      + `21:00/22:00 UTC anchor hours the day-bar builder requires`);
+  }
   liqGateBarCache.set(cacheKey, { bars, fetchedAt: Date.now() });
   return bars;
 }
