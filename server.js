@@ -1177,6 +1177,12 @@ function formatAlert(sym, entry, price, distPips) {
 
   if (entry.tags?.length) parts.push(`Tags: ${entry.tags.slice(0, 3).join(' · ')}`);
 
+  // Yield-spread Z-score — supplementary only, not yet folded into the grade above.
+  if (entry.zSpread) {
+    const z = entry.zSpread.z;
+    parts.push(`Z-conviction: ${z >= 0 ? '+' : ''}${z}σ ×${entry.zConvictionMult} <i>(not yet weighted into grade)</i>`);
+  }
+
   const sltp = [
     entry.sl != null ? `SL ${entry.sl.toFixed(digits)}` : null,
     entry.tp != null ? `TP ${entry.tp.toFixed(digits)}${entry.tpNote ? ` (${entry.tpNote} · ATR)` : ' (ATR)'}` : null,

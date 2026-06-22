@@ -18,6 +18,9 @@
 //
 // Env vars required: OANDA_KEY  (+ OANDA_ENV, OANDA_ACCOUNT_ID)
 // Env vars optional: FRED_KEY   (enables macro tier enrichment)
+//                    ENABLE_ZSCORE_CONVICTION=true (adds zSpread/zConvictionMult/
+//                    signalScoreZAdjusted fields per entry — additive only, see
+//                    computeYieldSpreadZ() below; default off, no live consumer reads it)
 
 import * as kv from './kv.js';
 import { fitHMM, hmmSignalScore, compute30mSwingRegime } from './hmm.js';
@@ -157,6 +160,81 @@ export async function fetchGlobalMacro() {
   } catch {}
   // KV empty (server refresh still in progress) — skip macro enrichment this cycle.
   return null;
+}
+
+// ── Yield-spread Z-score (pair-specific rate-differential stretch) ───────────
+// Feature-flagged via ENABLE_ZSCORE_CONVICTION=true (default OFF). Additive-only —
+// see computeYieldSpreadZ()/yieldSpreadConvictionMult() callers in buildEntries():
+// it writes to NEW fields (zSpread, zConvictionMult, signalScoreZAdjusted) and never
+// modifies signalScore/grade/totalStars, which bot/main.py's Telegram-mode trading
+// path (evaluate_pair_telegram) and bot/modules/macro_regime.py read directly from
+// the live KV entries — those consumers are unaffected whether this flag is on or off.
+//
+// Reuses the fredhistory_series_* KV cache server.js already populates every 6h
+// (refreshFredHistory) for the compass/gold-lab UI — no new FRED fetch added.
+// Spread = US 2Y − local short rate; z > 0 favors LONG, matching the sign
+// convention documented in js/zscoreSpreadEngine.js (ZSCORE_PAIRS), which notes
+// only USD/JPY's sign has been validated against live results — the others share
+// the same documented convention but are unconfirmed.
+const ZSPREAD_SHORT_KEY = {
+  'USD/JPY': 'jp_short',
+  'EUR/USD': 'de_short',
+  'GBP/USD': 'gb_short',
+  'AUD/USD': 'au_short',
+  'USD/CAD': 'ca_short',
+  'USD/CHF': 'ch_short',
+};
+
+async function computeYieldSpreadZ(sym) {
+  if (process.env.ENABLE_ZSCORE_CONVICTION !== 'true') return null;
+  const shortKey = ZSPREAD_SHORT_KEY[sym];
+  if (!shortKey) return null;
+  try {
+    const [usRaw, otherRaw] = await Promise.all([
+      kv.get('fredhistory_series_us2y'),
+      kv.get(`fredhistory_series_${shortKey}`),
+    ]);
+    if (!usRaw || !otherRaw) return null;
+    const usObs    = JSON.parse(usRaw);
+    const otherObs = JSON.parse(otherRaw);
+    if (!usObs?.length || !otherObs?.length) return null;
+
+    const usMap    = new Map(usObs.map(o => [o.date, o.value]));
+    const otherMap = new Map(otherObs.map(o => [o.date, o.value]));
+    const dates    = [...new Set([...usMap.keys(), ...otherMap.keys()])].sort();
+
+    let lastUs = null, lastOther = null;
+    const spreads = [];
+    for (const d of dates) {
+      if (usMap.has(d))    lastUs    = usMap.get(d);
+      if (otherMap.has(d)) lastOther = otherMap.get(d);
+      if (lastUs != null && lastOther != null) spreads.push(lastUs - lastOther);
+    }
+    if (spreads.length < 12) return null; // not enough overlapping history yet
+
+    const latest   = spreads[spreads.length - 1];
+    const n        = spreads.length;
+    const mean     = spreads.reduce((s, v) => s + v, 0) / n;
+    const variance = spreads.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+    const std      = Math.sqrt(variance);
+    if (std < 1e-9) return null;
+
+    return { z: (latest - mean) / std, spread: latest, n };
+  } catch {
+    return null;
+  }
+}
+
+// Sign-aware conviction multiplier — bounded [0.85, 1.15], never flips the
+// underlying composite score's sign. Boosts when the z-score's implied direction
+// agrees with the entry's direction, dampens (not reverses) when it disagrees.
+function yieldSpreadConvictionMult(direction, zInfo) {
+  if (!zInfo) return null;
+  const zDirection = zInfo.z > 0 ? 'long' : 'short';
+  const agrees     = zDirection === direction;
+  const magnitude  = Math.min(Math.abs(zInfo.z), 3) / 3; // cap at 3σ → [0,1]
+  const delta      = 0.15 * magnitude;
+  return agrees ? 1 + delta : 1 - delta;
 }
 
 // ── Fibonacci computation ─────────────────────────────────────────────────────
@@ -542,7 +620,7 @@ async function fetchCurrentPrice(sym) {
 
 // ── Entry builder (rich data) ─────────────────────────────────────────────────
 
-function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m, dailyBars, fredData) {
+function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m, dailyBars, fredData, zSpreadData) {
   const pipSize = getPipSize(sym);
   const digits  = getDigits(sym);
   const tick    = pipSize * 0.5;
@@ -624,6 +702,14 @@ function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m
     };
     const g = gradeEntry(entryForGrade, hmmData);
 
+    // Yield-spread Z-score conviction — additive/display-only (ENABLE_ZSCORE_CONVICTION).
+    // Writes new fields only; signalScore/grade/totalStars above are never touched, so
+    // bot/main.py's Telegram-mode trading and macro_regime.py are unaffected regardless
+    // of this flag's state. See computeYieldSpreadZ() for the full rationale.
+    const zConvictionMult      = yieldSpreadConvictionMult(direction, zSpreadData);
+    const signalScoreZAdjusted = zConvictionMult != null ? Math.round(signalScore * zConvictionMult) : null;
+    if (zSpreadData) tags.push(`Z ${zSpreadData.z >= 0 ? '+' : ''}${zSpreadData.z.toFixed(1)}σ`);
+
     return {
       price:         parseFloat(c.price.toFixed(digits)),
       direction,
@@ -640,6 +726,9 @@ function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m
       tags,
       rangeBias:     { confirmCount: rbias.confirmCount, conflictCount: rbias.conflictCount },
       signalAligned: signalScore >= 50,
+      zSpread:              zSpreadData ? { z: Math.round(zSpreadData.z * 100) / 100, spread: Math.round(zSpreadData.spread * 1000) / 1000 } : null,
+      zConvictionMult:      zConvictionMult != null ? Math.round(zConvictionMult * 100) / 100 : null,
+      signalScoreZAdjusted,
     };
   }).filter(Boolean);
 }
@@ -715,11 +804,12 @@ export async function refreshPair(sym, globalData = {}) {
     const atr          = computeEmaAtr(bars30m);
     const currentPrice = await fetchCurrentPrice(sym);
     const fredData     = globalData.fredData ?? null;
+    const zSpreadData  = await computeYieldSpreadZ(sym);
 
     const entries = buildEntries(
       allConfs,
       currentPrice, atr, sym,
-      hmmData, bars5m, bars30m, barsDaily, fredData
+      hmmData, bars5m, bars30m, barsDaily, fredData, zSpreadData
     );
 
     if (!entries.length) {
