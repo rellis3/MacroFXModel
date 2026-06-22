@@ -3636,7 +3636,7 @@ function _liqGateBarsFromH1(h1) {
 async function _getLiquidityGateBars(instrument, fromDate) {
   const cacheKey = `${instrument}:${fromDate}`;
   const cached = liqGateBarCache.get(cacheKey);
-  if (cached?.bars && cached.fetchedAt && Date.now() - cached.fetchedAt < LIQ_GATE_BAR_TTL_MS) {
+  if (cached?.bars?.length && cached.fetchedAt && Date.now() - cached.fetchedAt < LIQ_GATE_BAR_TTL_MS) {
     return cached.bars;
   }
   const oandaSym = _liqGateOandaSym(instrument);
