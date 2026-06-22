@@ -360,10 +360,10 @@ async function runSweep() {
           <td class="num">-${Math.abs(s.maxDD ?? 0).toFixed(1)}%</td>
           <td class="num">${((s.winRate ?? 0) * 100).toFixed(1)}%</td>
           <td class="num">${s.n ?? 0}</td>
-          <td class="num">${isFinite(dg.corrNextDay) ? dg.corrNextDay.toFixed(3) : '—'}</td>
-          <td class="num">${isFinite(dg.hitRateNextDay) ? (dg.hitRateNextDay * 100).toFixed(1) + '%' : '—'}</td>
-          <td class="num">${isFinite(dg.corrWeekly) ? dg.corrWeekly.toFixed(3) : '—'}</td>
-          <td class="num">${isFinite(dg.hitRateWeekly) ? (dg.hitRateWeekly * 100).toFixed(1) + '%' : '—'}</td>
+          <td class="num">${isFiniteNum(dg.corrNextDay) ? dg.corrNextDay.toFixed(3) : '—'}</td>
+          <td class="num">${isFiniteNum(dg.hitRateNextDay) ? (dg.hitRateNextDay * 100).toFixed(1) + '%' : '—'}</td>
+          <td class="num">${isFiniteNum(dg.corrWeekly) ? dg.corrWeekly.toFixed(3) : '—'}</td>
+          <td class="num">${isFiniteNum(dg.hitRateWeekly) ? (dg.hitRateWeekly * 100).toFixed(1) + '%' : '—'}</td>
         </tr>`;
     }).join('');
 
@@ -383,6 +383,10 @@ function fmt(n, dp = 1, suffix = '') {
   if (n == null || !isFinite(n)) return '—';
   return (n >= 0 ? '+' : '') + n.toFixed(dp) + suffix;
 }
+
+// JSON has no NaN — the server's diagnostics (corr/hit-rate on thin data) serialize as
+// null over the wire, and isFinite(null) is true in JS, so guard for null explicitly.
+function isFiniteNum(v) { return v != null && isFinite(v); }
 
 function renderAll() {
   renderKpis();
@@ -444,7 +448,7 @@ function renderGateZChart() {
   });
   hist.setData(
     _dates.map((t, i) => ({ time: t, value: _netliqZ[i], color: _netliqZ[i] >= 0 ? '#10b981' : '#ef4444' }))
-      .filter(p => isFinite(p.value))
+      .filter(p => isFiniteNum(p.value))
   );
   const markers = [];
   for (let i = 0; i < _dates.length; i++) {
@@ -455,16 +459,16 @@ function renderGateZChart() {
 }
 
 function renderDiagnostics() {
-  const fmtCorr = v => isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(3) : '—';
-  const fmtHit  = v => isFinite(v) ? (v * 100).toFixed(1) + '%' : '—';
+  const fmtCorr = v => isFiniteNum(v) ? (v >= 0 ? '+' : '') + v.toFixed(3) : '—';
+  const fmtHit  = v => isFiniteNum(v) ? (v * 100).toFixed(1) + '%' : '—';
   document.getElementById('dCorr').textContent = fmtCorr(_diag.corrNextDay);
-  document.getElementById('dCorr').style.color = !isFinite(_diag.corrNextDay) ? '' : Math.abs(_diag.corrNextDay) >= 0.10 ? (_diag.corrNextDay > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
+  document.getElementById('dCorr').style.color = !isFiniteNum(_diag.corrNextDay) ? '' : Math.abs(_diag.corrNextDay) >= 0.10 ? (_diag.corrNextDay > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
   document.getElementById('dHit').textContent  = fmtHit(_diag.hitRateNextDay);
-  document.getElementById('dHit').style.color  = !isFinite(_diag.hitRateNextDay) ? '' : _diag.hitRateNextDay >= 0.53 ? '#10b981' : _diag.hitRateNextDay <= 0.47 ? '#ef4444' : '#f59e0b';
+  document.getElementById('dHit').style.color  = !isFiniteNum(_diag.hitRateNextDay) ? '' : _diag.hitRateNextDay >= 0.53 ? '#10b981' : _diag.hitRateNextDay <= 0.47 ? '#ef4444' : '#f59e0b';
   document.getElementById('dCorrWk').textContent = fmtCorr(_diag.corrWeekly);
-  document.getElementById('dCorrWk').style.color = !isFinite(_diag.corrWeekly) ? '' : Math.abs(_diag.corrWeekly) >= 0.10 ? (_diag.corrWeekly > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
+  document.getElementById('dCorrWk').style.color = !isFiniteNum(_diag.corrWeekly) ? '' : Math.abs(_diag.corrWeekly) >= 0.10 ? (_diag.corrWeekly > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
   document.getElementById('dHitWk').textContent  = fmtHit(_diag.hitRateWeekly);
-  document.getElementById('dHitWk').style.color  = !isFinite(_diag.hitRateWeekly) ? '' : _diag.hitRateWeekly >= 0.53 ? '#10b981' : _diag.hitRateWeekly <= 0.47 ? '#ef4444' : '#f59e0b';
+  document.getElementById('dHitWk').style.color  = !isFiniteNum(_diag.hitRateWeekly) ? '' : _diag.hitRateWeekly >= 0.53 ? '#10b981' : _diag.hitRateWeekly <= 0.47 ? '#ef4444' : '#f59e0b';
 }
 
 function renderTradeTable() {
