@@ -226,6 +226,7 @@
       <select class="fb-sel" id="cfg_slMode">
         <option value="atr">ATR-based</option>
         <option value="pips">Fixed Pips</option>
+        <option value="maeCalib">MAE Calibrated</option>
       </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;min-width:160px">
@@ -602,6 +603,12 @@ const PARAMS = [
     help:'(ATR mode) M1 data is resampled to this timeframe before computing ATR. 1 = pure M1, 30 = 30-minute bars (wider, filters noise).' },
   { key:'slFixedPips',    label:'SL Fixed Pips',            min:1,   max:300,  step:1,    def:20,
     help:'(Pips mode) Stop distance in pips/points, independent of ATR. JPY pairs use 0.01/pip, other FX 0.0001/pip, gold 0.01, indices 1pt.' },
+  { key:'maeCalibPct',    label:'MAE Calib Percentile',     min:50,  max:99,   step:1,    def:85,
+    help:"(MAE Calibrated mode) Stop = this percentile of the trailing historical uncapped MAE (in ATR units), measured from entry to end-of-day across past trades, walk-forward (no lookahead)." },
+  { key:'maeCalibLookback', label:'MAE Calib Lookback (samples)', min:20, max:500, step:10, def:100,
+    help:"(MAE Calibrated mode) Number of trailing historical day-entries used to compute the MAE percentile." },
+  { key:'maeCalibMinSamples', label:'MAE Calib Min Samples', min:5,  max:100,  step:5,    def:20,
+    help:"(MAE Calibrated mode) Falls back to ATR×SL-Multiplier until at least this many calibration samples have accumulated." },
   { key:'entryConfirmAtrMult', label:'Entry Confirm Buffer (×ATR)', min:0, max:1.0, step:0.05, def:0.25,
     help:"(Stop entry mode) Price must break back past the level by this many ATRs in the reversal direction before the trade actually fires — simulates a stop order placed past the level instead of a fill at the bare touch." },
   { key:'entryStopSlipAtrMult', label:'Entry Stop Slippage (×ATR)', min:0, max:0.3, step:0.01, def:0.05,
@@ -939,13 +946,28 @@ function computeMomentumZArray(m1s, rocPeriod = 10, zWindow = 20) {
 // Backtest simulation
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// MAE-calibrated SL: sizes the stop from a percentile of the *uncapped*
+// historical MAE (in ATR units), tracked walk-forward from real price action
+// rather than from trades' own (already-capped) maeTrough — using the
+// trades' own censored MAE would just chase whatever stop was already set.
+// Falls back to ATR×slAtrMult until enough calibration samples exist.
+function _computeSlDist(slMode, atr, slAtrMult, slFixedPips, pipSize, calib) {
+  if (slMode === 'pips') return (slFixedPips || 20) * (pipSize || 0.0001);
+  if (slMode === 'maeCalib' && calib && calib.series.length >= calib.minSamples) {
+    const win = calib.series.slice(Math.max(0, calib.series.length - calib.lookback))
+      .map(s => s.maeAtr).sort((a, b) => a - b);
+    const idx = Math.min(win.length - 1, Math.max(0, Math.floor((calib.pct / 100) * win.length)));
+    return Math.max(win[idx], 0.05) * atr;
+  }
+  return atr * slAtrMult;
+}
+
 // SL / fixed-R TP distances anchor off entryPrice (not lvPrice) so a confirmed
 // stop-entry fill — which lands past lvPrice by the confirm buffer ± slippage —
 // gets the risk it actually took, not the risk measured from the bare touch.
 // In 'touch' mode entryPrice === lvPrice, so this is a no-op vs. the original math.
 function _buildTrade(tradeId, barDate, key, dir, dynamic, entryTs, entryPrice, lvPrice, atr, dayOpen, fc,
-                      slMode, slAtrMult, slFixedPips, pipSize, useLevelTarget, useTp, tpRMult) {
-  const slDist = slMode === 'pips' ? (slFixedPips || 20) * (pipSize || 0.0001) : atr * slAtrMult;
+                      slDist, useLevelTarget, useTp, tpRMult) {
   const sl = dir === 'SHORT' ? entryPrice + slDist : entryPrice - slDist;
   let tp = null;
   if (useLevelTarget) {
@@ -987,6 +1009,18 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
   let activeTrades = [];
   let lastExitBar  = -999999;  // M1 bar index of most recent trade exit
 
+  // MAE-calibrated SL state: maeCalibSeries accumulates walk-forward, one
+  // entry per day-entry, only once that day's bars are fully observed (so
+  // later trades never see calibration data from their own or a future day).
+  const maeCalibSeries = [];
+  let dayEntryLog = [];
+  const calibCtx = {
+    series: maeCalibSeries,
+    pct: config.maeCalibPct ?? 85,
+    lookback: config.maeCalibLookback ?? 100,
+    minSamples: config.maeCalibMinSamples ?? 20,
+  };
+
   for (let i = 0; i < m1s.length; i++) {
     const c = m1s[i];
     if (c.time < fromTs || c.time > toTs) continue;
@@ -1004,6 +1038,20 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
       if (currentDay) {
         currentDay.endTs = m1s[i-1]?.time ?? currentDay.startTs;
         dayData.push(currentDay);
+        // Calibration scan: uncapped MAE (in ATR units) from each of today's
+        // entries to today's last bar, independent of slMode/actual exit —
+        // available to maeCalib-mode trades from tomorrow onward.
+        const dayEndIdx = i - 1;
+        dayEntryLog.forEach(e => {
+          let trough = 0;
+          for (let j = e.entryIdx; j <= dayEndIdx; j++) {
+            const bar = m1s[j];
+            const adverse = e.direction === 'LONG' ? e.entry - bar.low : bar.high - e.entry;
+            if (adverse > trough) trough = adverse;
+          }
+          if (e.atr > 0) maeCalibSeries.push({ entryTs: e.entryTs, maeAtr: trough / e.atr });
+        });
+        dayEntryLog = [];
       }
       currentDate = barDate;
       const fc = forecasts[barDate];
@@ -1109,9 +1157,10 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         const entryPrice = a.dir === 'SHORT' ? a.confirmPrice - slip : a.confirmPrice + slip;
         currentDay.levelTraded[def.key] = true;
         currentDay.levelTradeCount[def.key] = (currentDay.levelTradeCount[def.key] || 0) + 1;
+        const slDistA = _computeSlDist(slMode, a.atr, config.slAtrMult, config.slFixedPips, pipSize, calibCtx);
         activeTrades.push(_buildTrade(++tradeId, barDate, def.key, a.dir, def.dynamic, c.time, entryPrice,
-          a.lvPrice, a.atr, currentDay.open, fc, slMode, config.slAtrMult, config.slFixedPips, pipSize,
-          useLevelTarget, useTp, config.tpRMult));
+          a.lvPrice, a.atr, currentDay.open, fc, slDistA, useLevelTarget, useTp, config.tpRMult));
+        dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: entryPrice, direction: a.dir, atr: a.atr });
         if (singleMode) break;
       }
     }
@@ -1122,7 +1171,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
     if (!cooldownOk || !slotOk || !momOk || barHour < windowStartH || barHour >= windowEndH) continue;
 
     const atr = atrArr[i];
-    if (slMode === 'atr' && atr <= 0) continue;
+    if ((slMode === 'atr' || slMode === 'maeCalib') && atr <= 0) continue;
 
     const highMovePct = (currentDay.high - currentDay.open) / currentDay.open * 100;
     const lowMovePct  = (currentDay.open  - currentDay.low ) / currentDay.open * 100;
@@ -1170,9 +1219,10 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
 
       currentDay.levelTraded[def.key] = true;
       currentDay.levelTradeCount[def.key] = (currentDay.levelTradeCount[def.key] || 0) + 1;
+      const slDistT = _computeSlDist(slMode, atr, config.slAtrMult, config.slFixedPips, pipSize, calibCtx);
       activeTrades.push(_buildTrade(++tradeId, barDate, def.key, lvDir, def.dynamic, c.time, lvPrice,
-        lvPrice, atr, currentDay.open, fc, slMode, config.slAtrMult, config.slFixedPips, pipSize,
-        useLevelTarget, useTp, config.tpRMult));
+        lvPrice, atr, currentDay.open, fc, slDistT, useLevelTarget, useTp, config.tpRMult));
+      dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: lvPrice, direction: lvDir, atr });
       if (singleMode) break;
     }
   }
@@ -1321,7 +1371,7 @@ const OPT_EXCLUDE_KEYS = new Set(['atrPeriod', 'slAtrTfMin', 'warmupDays', 'cost
 const OPT_NUMERIC_PARAMS = PARAMS.filter(p => !OPT_EXCLUDE_KEYS.has(p.key));
 const OPT_CATEGORICAL = {
   strategy:  ['dirop', 'reversal'],
-  slMode:    ['atr', 'pips'],
+  slMode:    ['atr', 'pips', 'maeCalib'],
   tpMode:    ['trail', 'fixed_r', 'both', 'none', 'level'],
   entryMode: ['touch', 'stop'],
 };
@@ -1356,8 +1406,8 @@ function optObjectiveValue(stats, objective) {
 }
 
 function summarizeTrialConfig(c) {
-  const slPart = c.slMode === 'pips'
-    ? `Pips ${c.slFixedPips}`
+  const slPart = c.slMode === 'pips' ? `Pips ${c.slFixedPips}`
+    : c.slMode === 'maeCalib' ? `MAEcal P${c.maeCalibPct}/${c.maeCalibLookback}`
     : `ATR×${c.slAtrMult.toFixed(1)}/${c.slAtrTfMin}m`;
   let tpPart;
   if (c.tpMode === 'none')          tpPart = 'None';
