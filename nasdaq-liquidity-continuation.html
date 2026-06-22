@@ -154,6 +154,16 @@
   <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="gate1Chart"></canvas></div></div>
 </div>
 
+<div class="bt-card" id="gate2DiagCard" style="display:none">
+  <div class="bt-card-hdr">Gate 2 — Component Diagnostic <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px" id="gate2DiagSub"></span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="gate2DiagTbl">
+      <thead><tr><th>Component</th><th class="num">Weight</th><th class="num">Avg Sub-Score</th><th class="num">Days Sub-Score ≥70</th><th class="num">Days Weakest Link</th></tr></thead>
+      <tbody id="gate2DiagTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
 <div class="bt-card" id="mcCard" style="display:none">
   <div class="bt-card-hdr">Monte Carlo Bootstrap <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px" id="mcSub">resampling completed trades with replacement</span></div>
   <div class="bt-tbl-scroll">
@@ -375,6 +385,7 @@ function renderAll(d) {
   renderDrawdown(d);
   renderRollingSharpe(d);
   renderGate1Chart(d);
+  renderGate2Diagnostic(d);
   renderMonteCarlo(d);
   renderWalkForward(d);
   renderOutOfSample(d);
@@ -383,7 +394,7 @@ function renderAll(d) {
   renderTradeLog(d);
   renderEventLog(d);
 
-  ['kpiGrid','secGrid','eqCard','twoColCharts','gate1Card','mcCard','wfCard','oosCard',
+  ['kpiGrid','secGrid','eqCard','twoColCharts','gate1Card','gate2DiagCard','mcCard','wfCard','oosCard',
    'exitCmpCard','researchCard','leadLagCard','tradeCard','eventCard'].forEach(show);
 }
 
@@ -493,6 +504,49 @@ function renderGate1Chart(d) {
     options: { ...CHART_DEFAULTS, scales: { x: CHART_DEFAULTS.scales.x,
       y: { ...CHART_DEFAULTS.scales.y, min: -5, max: 5 } } },
   });
+}
+
+// Aggregates the per-bar `breakdown` already returned by scoreTrendAt (one
+// {id,label,weight,rawValue,subScore} per TREND_SCORE component, every bar)
+// into "which indicator is actually blocking VALID" — that breakdown was
+// already part of the JSON payload, just never surfaced in the UI before.
+function renderGate2Diagnostic(d) {
+  const sample = d.gate2.find(g => g.breakdown && g.breakdown.length);
+  const components = (sample?.breakdown ?? []).map(b => ({ id: b.id, label: b.label, weight: b.weight }));
+  const stats = {};
+  for (const c of components) stats[c.id] = { sum: 0, n: 0, high: 0, weakest: 0 };
+
+  let validDays = 0, coverageSum = 0, coverageN = 0, breakdownDays = 0;
+  for (const g of d.gate2) {
+    if (g.valid) validDays++;
+    if (Number.isFinite(g.coverage)) { coverageSum += g.coverage; coverageN++; }
+    const present = (g.breakdown ?? []).filter(b => b.subScore != null);
+    if (!present.length) continue;
+    breakdownDays++;
+    let minSub = Infinity, minId = null;
+    for (const b of present) {
+      stats[b.id].sum += b.subScore;
+      stats[b.id].n++;
+      if (b.subScore >= 70) stats[b.id].high++;
+      if (b.subScore < minSub) { minSub = b.subScore; minId = b.id; }
+    }
+    if (minId != null) stats[minId].weakest++;
+  }
+
+  document.getElementById('gate2DiagSub').textContent =
+    `composite VALID (>70) on ${pct(validDays / (d.gate2.length || 1), 1)} of ${d.gate2.length} bars · avg weight-coverage ${pct(coverageSum / (coverageN || 1), 0)}`;
+
+  document.getElementById('gate2DiagTblBody').innerHTML = components.map(c => {
+    const s = stats[c.id];
+    const avgSub = s.n ? s.sum / s.n : NaN;
+    return `<tr>
+      <td>${c.label}</td>
+      <td class="num">${num(c.weight, 1)}</td>
+      <td class="num ${avgSub >= 70 ? 'pos' : avgSub < 40 ? 'neg' : ''}">${num(avgSub, 1)}</td>
+      <td class="num">${pct(s.n ? s.high / s.n : NaN, 0)}</td>
+      <td class="num amber">${pct(breakdownDays ? s.weakest / breakdownDays : NaN, 0)}</td>
+    </tr>`;
+  }).join('');
 }
 
 function renderMonteCarlo(d) {
