@@ -19,9 +19,13 @@
  *   allLevels — all four levels simultaneously
  *
  * SL/TP modes (slMode / tpMode):
- *   'level' — use HL-geometry based levels (default)
- *   'atr'   — ATR30 × multiplier
- *   'pips'  — fixed pip distance
+ *   'level'    — use HL-geometry based levels (default)
+ *   'atr'      — ATR30 × multiplier
+ *   'pips'     — fixed pip distance
+ *   'maeCalib' — (SL only) percentile of trailing historical *uncapped* MAE
+ *                (in ATR30 units), walk-forward week-by-week with no
+ *                lookahead. Falls back to ATR30 × atrSlMult until
+ *                maeCalibMinSamples fills have accumulated.
  *
  * Supports all 26 Asia-Range pairs.
  * Requires process.env.OANDA_KEY.
@@ -255,6 +259,22 @@ function resolveOnBar(side, entry, tp, sl, bar, mondayOpen) {
   return null; // still open
 }
 
+// MAE-calibrated SL distance: a percentile of trailing historical *uncapped*
+// MAE (in ATR units) accumulated walk-forward across prior weeks. Using a
+// trade's own censored MAE (capped at whatever stop was already set) would
+// just chase that same stop — calibCtx.series instead comes from a separate
+// uncapped tracker (see the per-bar loop below) that ignores SL/TP/EOW exit.
+// Falls back to ATR30 × atrSlMult until calibCtx.minSamples fills exist.
+function _maeCalibSlDist(atr, calibCtx, fallbackMult) {
+  if (!atr || !calibCtx) return null;
+  const { series, pct = 85, lookback = 100, minSamples = 20 } = calibCtx;
+  if (series.length < minSamples) return atr * fallbackMult;
+  const win = series.slice(Math.max(0, series.length - lookback))
+    .map(s => s.maeAtr).sort((a, b) => a - b);
+  const idx = Math.min(win.length - 1, Math.max(0, Math.floor((pct / 100) * win.length)));
+  return Math.max(win[idx], 0.05) * atr;
+}
+
 // ── Weekly trade simulator ─────────────────────────────────────────────────────
 // Walks each D1 bar in the week, placing limit orders at levels and resolving
 // outcomes bar-by-bar.  Returns an array of trade objects (1–8 per week max).
@@ -273,6 +293,7 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     tpPips    = 50,
     spreadPct = 0,
     pair      = '',
+    calibCtx  = null,
     zScoreFilter    = false,
     zScoreBuyThresh = -1.5,
     zScoreSellThresh = 1.5,
@@ -296,6 +317,10 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
 
   // ── SL / TP resolvers ────────────────────────────────────────────────────────
   const getSl = (side, entry, fallback) => {
+    if (slMode === 'maeCalib') {
+      const dist = _maeCalibSlDist(safeAtr, calibCtx, atrSlMult);
+      if (dist != null) return side === 'SELL' ? entry + dist : entry - dist;
+    }
     if (slMode === 'atr'  && safeAtr) return side === 'SELL' ? entry + safeAtr * atrSlMult : entry - safeAtr * atrSlMult;
     if (slMode === 'pips')             return side === 'SELL' ? entry + slPips  * pip       : entry - slPips  * pip;
     return fallback;
@@ -390,7 +415,17 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
 
     // ── Carry open trades into this bar ─────────────────────────────────────
     for (const t of Object.values(slots)) {
-      if (t?.outcome === 'open') {
+      if (!t) continue;
+      // Uncapped MAE (raw price units, regardless of outcome) — feeds the
+      // maeCalib SL's walk-forward percentile via calibCtx; tracks the true
+      // adverse excursion through EOW even past whatever stop this trade
+      // actually closed against.
+      const adverseRaw = t.side === 'SELL'
+        ? Math.max(0, bar.high - t.entry)
+        : Math.max(0, t.entry - bar.low);
+      if (adverseRaw > (t._uncappedMae ?? 0)) t._uncappedMae = adverseRaw;
+
+      if (t.outcome === 'open') {
         const mfeInc = t.side === 'SELL'
           ? Math.max(0, t.entry - bar.low)  / mondayOpen * 100
           : Math.max(0, bar.high - t.entry) / mondayOpen * 100;
@@ -423,8 +458,9 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
   // ── Collect filled trades, apply spread (skip spread for open carries) ───
   const result = Object.values(slots)
     .filter(Boolean)
-    .map(t => ({
+    .map(({ _uncappedMae, ...t }) => ({
       ...t, filled: true,
+      uncappedMaeAtr: safeAtr ? _uncappedMae / safeAtr : null,
       pnlPct: (opts.noEowClose && t.outcome === 'open')
         ? t.pnlPct  // spread applied at carry resolution to avoid double-count
         : +(t.pnlPct - spreadPct).toFixed(5),
@@ -441,8 +477,14 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
   const { dateFrom = '', dateTo = '', minLookback = 60, atrPeriod = 30,
           carryMode = false, maxOnePerPair = false,
           m1ByWeek = null,   // Map<weekKey, m1bar[]> — M1 simulation when provided
+          maeCalibPct = 85, maeCalibLookback = 100, maeCalibMinSamples = 20,
         } = opts;
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+
+  // maeCalib SL mode: walk-forward series of prior weeks' uncapped MAE (ATR
+  // units), one pair's own — never shared across instruments/weeks ahead.
+  const maeCalibSeries = [];
+  const calibCtx = { series: maeCalibSeries, pct: maeCalibPct, lookback: maeCalibLookback, minSamples: maeCalibMinSamples };
 
   // Pre-compute vol sigma series O(n) — out[i] = sigma for predicting bar i's range.
   // commodity→HV20, index→GARCH(1,1), fx→YZ(30) — mirrors computeForecast() in volForecast.js.
@@ -568,7 +610,16 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     // maxOnePerPair: skip new orders while any carry is still open
     const skipNewOrders = maxOnePerPair && carryTrades.length > 0;
     const trades        = skipNewOrders
-      ? [] : simulateWeek(mondayOpen, simBars, levelPcts, { ...opts, noEowClose: carryMode });
+      ? [] : simulateWeek(mondayOpen, simBars, levelPcts, { ...opts, noEowClose: carryMode, calibCtx });
+
+    // Calibration update happens after this week's fills are known, so next
+    // week's getSl() sees this week's data but this week's own getSl() calls
+    // (above) never could — no lookahead.
+    for (const t of trades) {
+      if (t.filled && Number.isFinite(t.uncappedMaeAtr) && t.uncappedMaeAtr >= 0) {
+        maeCalibSeries.push({ week: weekKey, maeAtr: t.uncappedMaeAtr });
+      }
+    }
 
     for (const t of trades) {
       if (carryMode && t.filled && t.outcome === 'open') {

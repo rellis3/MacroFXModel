@@ -71,8 +71,8 @@
 #wbtChartModal { display:none;position:fixed;inset:0;z-index:1000;background:#0d0f14;flex-direction:column; }
 .wbt-chart-hdr { display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #2a2f45;background:#131722;flex-shrink:0; }
 #wbtChartContainer { flex:1;min-height:0; }
-.wbt-atr-params,.wbt-pip-params,.wbt-ind-params { display:none;gap:6px;align-items:center;flex-wrap:wrap; }
-.wbt-atr-params.visible,.wbt-pip-params.visible,.wbt-ind-params.visible { display:flex; }
+.wbt-atr-params,.wbt-pip-params,.wbt-ind-params,.wbt-mae-params { display:none;gap:6px;align-items:center;flex-wrap:wrap; }
+.wbt-atr-params.visible,.wbt-pip-params.visible,.wbt-ind-params.visible,.wbt-mae-params.visible { display:flex; }
 
 .bt-run-bar { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
 .bt-run-bar input,.bt-run-bar select { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px; }
@@ -167,6 +167,7 @@
     <option value="level">SL: Level</option>
     <option value="atr">SL: ATR×</option>
     <option value="pips">SL: Pips</option>
+    <option value="maeCalib">SL: MAE Calib</option>
   </select>
 
   <select id="runTpMode" class="bt-sel" title="How the take-profit is calculated." onchange="updateParamVis()">
@@ -186,6 +187,13 @@
     <span class="bt-run-lbl">Pips:</span>
     <input type="number" id="runSlPips" value="30" min="1" max="500" style="width:52px" title="SL in pips">
     <input type="number" id="runTpPips" value="50" min="1" max="1000" style="width:52px" title="TP in pips">
+  </div>
+
+  <div id="maeCalibParams" class="wbt-mae-params">
+    <span class="bt-run-lbl">MAE Calib:</span>
+    <input type="number" id="runMaeCalibPct" value="85" min="50" max="99" style="width:48px" title="SL = this percentile of trailing historical uncapped MAE (ATR units)">
+    <input type="number" id="runMaeCalibLookback" value="100" min="20" max="500" style="width:56px" title="Trailing window of historical fills used for the percentile">
+    <input type="number" id="runMaeCalibMinSamples" value="20" min="5" max="100" style="width:48px" title="Falls back to ATR×SL-mult until this many fills have accumulated">
   </div>
 
   <select id="runSpread" class="bt-sel" title="Round-trip transaction cost as % of position">
@@ -1336,6 +1344,9 @@ async function runBacktest() {
     atrTpMult: document.getElementById('runAtrTpMult').value,
     slPips:         document.getElementById('runSlPips').value,
     tpPips:         document.getElementById('runTpPips').value,
+    maeCalibPct:        document.getElementById('runMaeCalibPct').value,
+    maeCalibLookback:   document.getElementById('runMaeCalibLookback').value,
+    maeCalibMinSamples: document.getElementById('runMaeCalibMinSamples').value,
     carryMode:      document.getElementById('runCarryMode').value,
     maxOnePerPair:  document.getElementById('runMaxOnePerPair').value,
     zScoreFilter:    document.getElementById('cbZScore').checked,
@@ -1390,10 +1401,12 @@ async function runBacktest() {
 function updateParamVis() {
   const sl = document.getElementById('runSlMode').value;
   const tp = document.getElementById('runTpMode').value;
-  const needAtr  = sl === 'atr'  || tp === 'atr';
+  const needAtr  = sl === 'atr'  || tp === 'atr' || sl === 'maeCalib';
   const needPips = sl === 'pips' || tp === 'pips';
+  const needMaeCalib = sl === 'maeCalib';
   document.getElementById('atrParams').classList.toggle('visible', needAtr);
   document.getElementById('pipParams').classList.toggle('visible', needPips);
+  document.getElementById('maeCalibParams').classList.toggle('visible', needMaeCalib);
   const needInd = document.getElementById('cbZScore').checked || document.getElementById('cbSMI').checked;
   document.getElementById('indParams').classList.toggle('visible', needInd);
   document.getElementById('runSlMult').style.display = sl === 'level' ? '' : 'none';
