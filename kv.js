@@ -210,7 +210,7 @@ async function fileFlush() {
   }
 }
 
-setInterval(fileFlush, 5_000);
+setInterval(fileFlush, 5_000).unref();
 process.on('beforeExit', fileFlush);
 
 // ── Public API ────────────────────────────────────────────────────────────────

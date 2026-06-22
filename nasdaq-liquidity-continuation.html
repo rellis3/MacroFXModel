@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NASDAQ Liquidity Continuation Framework</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+#nlcApp { padding: 0 20px 60px; max-width: 1340px; margin: 0 auto; }
+
+.bt-kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px; }
+@media(max-width:900px){.bt-kpi-grid{grid-template-columns:repeat(2,1fr);}}
+.bt-kpi { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:16px 18px 14px;display:flex;flex-direction:column;gap:4px;transition:border-color .2s; }
+.bt-kpi:hover{border-color:var(--border2);}
+.bt-kpi-label { font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace; }
+.bt-kpi-value { font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);line-height:1.1; }
+.bt-kpi-value.green{color:var(--green);} .bt-kpi-value.red{color:var(--red);}
+.bt-kpi-value.blue{color:var(--blue);}   .bt-kpi-value.amber{color:var(--amber);}
+.bt-kpi-sub { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+
+.bt-sec-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px; }
+@media(max-width:900px){.bt-sec-grid{grid-template-columns:repeat(2,1fr);}}
+.bt-sec { background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between; }
+.bt-sec-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+.bt-sec-val { font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text); }
+.bt-sec-val.pos{color:var(--green);} .bt-sec-val.neg{color:var(--red);}
+.bt-sec-val.amber{color:var(--amber);} .bt-sec-val.blue{color:var(--blue);}
+
+.bt-card { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px; }
+.bt-card-hdr { padding:12px 18px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px; }
+.bt-card-body { padding:18px; }
+.bt-chart-wrap { position:relative;height:260px; }
+.bt-two-col { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px; }
+@media(max-width:900px){.bt-two-col{grid-template-columns:1fr;}}
+
+.bt-tbl { width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px; }
+.bt-tbl th { padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap; }
+.bt-tbl td { padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap; }
+.bt-tbl tr:last-child td{border-bottom:none;}
+.bt-tbl tr:hover td{background:var(--s2);}
+.bt-tbl td.num{text-align:right;} .bt-tbl td.pos{color:var(--green);} .bt-tbl td.neg{color:var(--red);}
+.bt-tbl td.amber{color:var(--amber);} .bt-tbl td.blue{color:var(--blue);}
+.bt-tbl-scroll { overflow-x:auto;max-height:380px;overflow-y:auto; }
+
+.bt-run-bar { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
+.bt-run-bar input,.bt-run-bar select { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px; }
+.bt-run-btn { background:var(--green);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;padding:6px 18px;cursor:pointer;transition:opacity .2s; }
+.bt-run-btn:hover{opacity:.85;} .bt-run-btn:disabled{opacity:.5;cursor:wait;}
+.bt-run-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+.bt-run-bar label { display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;cursor:pointer; }
+.bt-run-bar input[type=date] { width:120px; }
+.rbar-sep { width:1px;height:22px;background:var(--border);margin:0 4px; }
+
+.info-box { background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-top:10px;font-size:12px;line-height:1.7;color:var(--text2); }
+
+.gate-pill { display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;font-family:'DM Mono',monospace; }
+.gate-pill.bull{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
+.gate-pill.bear{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
+.gate-pill.neu{background:var(--s2);color:var(--text3);border:1px solid var(--border);}
+
+.wf-pass { color:var(--green); }
+.wf-fail { color:var(--red); }
+.wf-neu  { color:var(--text3); }
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div id="nlcApp">
+
+<div class="topbar">
+  <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 9 L5 6 L8 10 L14 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">NASDAQ Liquidity Continuation Framework</div>
+    <div class="sub">Gate 1 Liquidity → Gate 2 Trend → Gate 3 NY Confirmation → Gate 4 Dynamic Exit · Brand-new, self-contained · Daily backtest 2014–present</div>
+  </div>
+  <div style="flex:1"></div>
+  <span class="upd" id="nlcComputedAt"></span>
+  <a href="macro-equity-backtest.html" style="text-decoration:none"><button class="dark-btn" style="border-color:#818cf8;color:#818cf8">📊 Macro Equity</button></a>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+
+<div class="bt-run-bar" id="runBar">
+  <span class="bt-run-lbl" style="font-weight:600;color:var(--text2)">Run Backtest:</span>
+  <div class="rbar-sep"></div>
+  <label><input type="checkbox" id="useSynthetic" checked> Synthetic self-test data</label>
+  <div class="rbar-sep"></div>
+  <label>Start <input type="date" id="startDate" value="2014-01-01"></label>
+  <label>End <input type="date" id="endDate" placeholder="today"></label>
+  <div class="rbar-sep"></div>
+  <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
+  <span id="runStatus" class="bt-run-lbl"></span>
+</div>
+
+</div>
+</div>
+
+<div id="nlcApp" style="padding-top:0">
+
+<div class="info-box" id="stratInfo">
+  <strong style="color:var(--text)">How it works</strong> — <strong>Gate 1 (Liquidity)</strong>: a daily LiquidityScore (−5..+5) from a weighted, z-scored panel of Fed/ECB/BOJ balance sheets, reverse repo, TGA, the 10Y-2Y curve, DXY, HY credit spreads, NFCI, HYG/LQD, VIX/VIX3M/VVIX — score &gt; +2 = BULLISH, &lt; −2 = BEARISH, else no directional bias. <strong>Gate 2 (Trend)</strong>: a 0-100 TrendScore from ADX, Hurst exponent, ATR percentile, directional momentum, breadth trend, VWAP conviction and VIX term structure — &gt;70 = VALID, with a risk tier (LOW/MEDIUM/HIGH). <strong>Gate 3 (NY Confirmation)</strong>: a weighted vote of futures/DXY/yield/breadth moves classifies LONG/SHORT/INVALID; true NYSE TICK/A-D/TRIN have no free daily proxy and abstain (disclosed, not faked). <strong>Entry</strong>: Gate1 BULLISH + Gate2 VALID + Gate3 LONG → long (mirror for short). <strong>Gate 4 (Dynamic Exit)</strong>: a ContinuationScore re-evaluated every bar — &gt;70 stay in full size, 50-70 reduce to half, &lt;40 close — backed by a standing ATR-multiple stop. Fills are next-bar-open (no lookahead); a stop can still trigger intrabar since it was placed before that bar opened. Every threshold lives in <code>js/nasdaqConfig.js</code> — nothing here is a black box.
+</div>
+
+<div class="status-bar" id="nlcStatus" style="margin-top:10px">
+  <div class="sdot" id="nlcDot"></div>
+  <span class="stxt" id="nlcMsg">Click ▶ Run to start the backtest. Synthetic mode needs no network access; uncheck it to fetch real FRED/Yahoo data (requires FRED_KEY).</span>
+</div>
+
+<div class="bt-kpi-grid" id="kpiGrid" style="display:none">
+  <div class="bt-kpi"><div class="bt-kpi-label">CAGR</div><div class="bt-kpi-value green" id="kCagr">—</div><div class="bt-kpi-sub" id="kCagrSub">— years tested</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Sharpe Ratio</div><div class="bt-kpi-value blue" id="kSharpe">—</div><div class="bt-kpi-sub" id="kSortinoSub">Sortino —</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red" id="kMaxDD">—</div><div class="bt-kpi-sub" id="kMaxDDSub">Calmar —</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Profit Factor</div><div class="bt-kpi-value blue" id="kPF">—</div><div class="bt-kpi-sub" id="kPFSub">Expectancy —</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value green" id="kWinRate">—</div><div class="bt-kpi-sub" id="kWinRateSub">— trades</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Trades / Week</div><div class="bt-kpi-value amber" id="kTpw">—</div><div class="bt-kpi-sub">target 1–3 / wk</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Gate 1+2 Coverage</div><div class="bt-kpi-value" id="kGateCov">—</div><div class="bt-kpi-sub" id="kGateCovSub">days Gate1 valid · Gate2 valid</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Omega Ratio</div><div class="bt-kpi-value" id="kOmega">—</div><div class="bt-kpi-sub">gain/loss vs 0</div></div>
+</div>
+
+<div class="bt-sec-grid" id="secGrid" style="display:none">
+  <div class="bt-sec"><span class="bt-sec-lbl">Avg Winner R</span><span class="bt-sec-val pos" id="sAvgWin">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Avg Loser R</span><span class="bt-sec-val neg" id="sAvgLoss">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Avg Holding (bars)</span><span class="bt-sec-val" id="sAvgHold">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Annual Vol</span><span class="bt-sec-val" id="sAnnualVol">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Skewness</span><span class="bt-sec-val" id="sSkew">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Excess Kurtosis</span><span class="bt-sec-val" id="sKurt">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Best Day</span><span class="bt-sec-val pos" id="sBestDay">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Worst Day</span><span class="bt-sec-val neg" id="sWorstDay">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Best Month</span><span class="bt-sec-val pos" id="sBestMonth">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Worst Month</span><span class="bt-sec-val neg" id="sWorstMonth">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">+Months / −Months</span><span class="bt-sec-val" id="sMonths">—</span></div>
+  <div class="bt-sec"><span class="bt-sec-lbl">Final Equity</span><span class="bt-sec-val blue" id="sFinalEq">—</span></div>
+</div>
+
+<div class="bt-card" id="eqCard" style="display:none">
+  <div class="bt-card-hdr">Equity Curve (log scale)</div>
+  <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="eqChart"></canvas></div></div>
+</div>
+
+<div class="bt-two-col" id="twoColCharts" style="display:none">
+  <div class="bt-card">
+    <div class="bt-card-hdr">Drawdown (underwater curve)</div>
+    <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="ddChart"></canvas></div></div>
+  </div>
+  <div class="bt-card">
+    <div class="bt-card-hdr">Rolling Sharpe <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">~1 quarter window</span></div>
+    <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="rsChart"></canvas></div></div>
+  </div>
+</div>
+
+<div class="bt-card" id="gate1Card" style="display:none">
+  <div class="bt-card-hdr">Gate 1 — LiquidityScore <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">−5..+5 · &gt;+2 BULLISH · &lt;−2 BEARISH</span></div>
+  <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="gate1Chart"></canvas></div></div>
+</div>
+
+<div class="bt-card" id="mcCard" style="display:none">
+  <div class="bt-card-hdr">Monte Carlo Bootstrap <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px" id="mcSub">resampling completed trades with replacement</span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="mcTbl">
+      <thead><tr><th>Metric</th><th class="num">P5</th><th class="num">P25</th><th class="num">P50 (median)</th><th class="num">P75</th><th class="num">P95</th></tr></thead>
+      <tbody id="mcTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="bt-card" id="wfCard" style="display:none">
+  <div class="bt-card-hdr">Walk-Forward Temporal Stability <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px" id="wfSub">equal-length sub-windows, same fixed thresholds throughout</span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="wfTbl">
+      <thead><tr>
+        <th>#</th><th>Start</th><th>End</th>
+        <th class="num">CAGR</th><th class="num">Sharpe</th><th class="num">Max DD</th>
+        <th class="num">Win Rate</th><th class="num">Profit Factor</th><th class="num">Trades</th><th class="num">Expectancy R</th>
+      </tr></thead>
+      <tbody id="wfTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="bt-card" id="oosCard" style="display:none">
+  <div class="bt-card-hdr">Out-of-Sample Split <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px" id="oosSub"></span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="oosTbl">
+      <thead><tr>
+        <th>Period</th><th class="num">CAGR</th><th class="num">Sharpe</th><th class="num">Max DD</th>
+        <th class="num">Win Rate</th><th class="num">Profit Factor</th><th class="num">Trades</th><th class="num">Expectancy R</th>
+      </tr></thead>
+      <tbody id="oosTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="bt-card" id="exitCmpCard" style="display:none">
+  <div class="bt-card-hdr">Exit Model Comparison <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">Gate 4 ContinuationScore (primary, live) vs 8 secondary models replayed against the same completed trades — research only, never overrides a live trade</span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="exitCmpTbl">
+      <thead><tr><th>Model</th><th class="num">Trades</th><th class="num">Win Rate</th><th class="num">Profit Factor</th><th class="num">Avg R</th><th class="num">Total R</th><th class="num">Avg Bars Held</th></tr></thead>
+      <tbody id="exitCmpTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="bt-card" id="researchCard" style="display:none">
+  <div class="bt-card-hdr">Research — Feature Importance <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px" id="importanceSub">rank correlation vs forward NASDAQ return</span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="importanceTbl">
+      <thead><tr><th>Feature</th><th class="num">r</th><th class="num">t-stat</th><th class="num">n</th></tr></thead>
+      <tbody id="importanceTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="bt-card" id="leadLagCard" style="display:none">
+  <div class="bt-card-hdr">Research — Lead-Lag: Does Liquidity Lead NASDAQ? <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">lag &gt; 0 ⇒ driver leads price by that many days; lag range tested ±30d</span></div>
+  <div class="bt-card-body">
+    <div class="bt-chart-wrap" style="margin-bottom:14px"><canvas id="leadLagChart"></canvas></div>
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="leadLagTbl">
+        <thead><tr><th>Driver</th><th class="num">Horizon (d)</th><th class="num">Strongest Lag</th><th class="num">r</th><th class="num">t-stat</th><th class="num">n</th></tr></thead>
+        <tbody id="leadLagTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="bt-card" id="tradeCard" style="display:none">
+  <div class="bt-card-hdr" style="cursor:pointer;user-select:none" onclick="toggleSection('tradeBody','tradeToggle')">
+    Trade Log
+    <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:4px" id="tradeSummary"></span>
+    <span id="tradeToggle" style="margin-left:auto;font-size:14px">▾</span>
+  </div>
+  <div id="tradeBody" style="display:none">
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="tradeTbl">
+        <thead><tr>
+          <th>Entry Date</th><th>Dir</th><th class="num">Entry</th><th>Exit Date</th><th class="num">Exit</th>
+          <th class="num">R</th><th class="num">Risk%</th><th>Tier</th><th>Reduced</th><th>Reason</th><th class="num">Bars</th>
+          <th class="num">Liq@Entry</th><th class="num">Trend@Entry</th>
+        </tr></thead>
+        <tbody id="tradeTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="bt-card" id="eventCard" style="display:none">
+  <div class="bt-card-hdr" style="cursor:pointer;user-select:none" onclick="toggleSection('eventBody','eventToggle')">
+    Event Log
+    <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:4px" id="eventSummary"></span>
+    <span id="eventToggle" style="margin-left:auto;font-size:14px">▾</span>
+  </div>
+  <div id="eventBody" style="display:none">
+    <div class="bt-tbl-scroll">
+      <table class="bt-tbl" id="eventTbl">
+        <thead><tr><th>Date</th><th>Message</th></tr></thead>
+        <tbody id="eventTblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+
+let _data      = null;
+let _pollTimer = null;
+let _eqChart = null, _ddChart = null, _rsChart = null, _gate1Chart = null, _leadLagChart = null;
+
+const SECONDARY_EXIT_LABELS = {
+  fixed2R: 'Fixed 2R', fixed3R: 'Fixed 3R', atrTrailing: 'ATR Trailing', chandelier: 'Chandelier',
+  momentumDeterioration: 'Momentum Deterioration', vwapLoss: 'VWAP Loss', breadthDeterioration: 'Breadth Deterioration',
+  timeExit: 'Time Exit', hybridTrailTime: 'Hybrid Trail+Time',
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const pct = (v, d=1) => v == null || !isFinite(v) ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(d) + '%';
+const num = (v, d=2) => v == null || !isFinite(v) ? '—' : v.toFixed(d);
+const clr = (v) => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+// profitFactor/omega are capped server-side to ±999 before JSON (Infinity
+// doesn't survive JSON.stringify — it becomes null, indistinguishable from
+// "no data") — treat that sentinel as the display value "∞".
+const ratio = (v) => v == null || !isFinite(v) ? '—' : (v >= 999 ? '∞' : v.toFixed(2));
+
+function setStatus(type, msg) {
+  document.getElementById('nlcDot').className = 'sdot ' + type;
+  document.getElementById('nlcMsg').textContent = msg;
+}
+function setVal(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function setClass(id, cls) { const el = document.getElementById(id); if (el) el.className = cls; }
+function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
+
+function toggleSection(bodyId, toggleId) {
+  const body = document.getElementById(bodyId);
+  const icon = document.getElementById(toggleId);
+  const open = body.style.display === 'none';
+  body.style.display = open ? '' : 'none';
+  icon.textContent = open ? '▴' : '▾';
+}
+
+// ── Run backtest ──────────────────────────────────────────────────────────────
+
+async function runBacktest() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('runStatus').textContent = 'Starting…';
+  setStatus('spin', 'Launching backtest…');
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+
+  const body = {
+    synthetic: document.getElementById('useSynthetic').checked,
+    start: document.getElementById('startDate').value || undefined,
+    end: document.getElementById('endDate').value || undefined,
+  };
+
+  try {
+    const r = await fetch('/api/nasdaq-liquidity/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const jb = await r.json();
+    if (!jb.ok) {
+      setStatus('err', jb.error || 'Failed to start job');
+      document.getElementById('runStatus').textContent = jb.error || 'Error';
+      btn.disabled = false;
+      return;
+    }
+    const jobId = jb.jobId;
+    document.getElementById('runStatus').textContent = `Job ${jobId} queued…`;
+
+    _pollTimer = setInterval(async () => {
+      try {
+        const sr = await fetch(`/api/nasdaq-liquidity/status/${jobId}`);
+        const sj = await sr.json();
+        if (sj.status === 'running') {
+          const phase = sj.phase ?? 'Running…';
+          document.getElementById('runStatus').textContent = `${phase} (${sj.elapsed ?? 0}s)`;
+          setStatus('spin', phase);
+          return;
+        }
+        clearInterval(_pollTimer); _pollTimer = null;
+        btn.disabled = false;
+        if (sj.status === 'done') {
+          document.getElementById('runStatus').textContent = 'Complete!';
+          const d = sj.data;
+          setStatus('ok', `Backtest complete — ${d.dateRange.start} → ${d.dateRange.end}${d.synthetic ? ' (SYNTHETIC self-test data — not real market data)' : ''}`);
+          _data = d;
+          renderAll(d);
+        } else {
+          setStatus('err', sj.error || 'Backtest failed');
+          document.getElementById('runStatus').textContent = 'Error: ' + (sj.error || 'unknown');
+        }
+      } catch (e) {
+        clearInterval(_pollTimer); _pollTimer = null;
+        btn.disabled = false;
+        setStatus('err', 'Poll error: ' + e.message);
+      }
+    }, 2000);
+  } catch (e) {
+    setStatus('err', 'Error: ' + e.message);
+    btn.disabled = false;
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function renderAll(d) {
+  document.getElementById('nlcComputedAt').textContent = 'computed ' + new Date(d.runAt).toLocaleString();
+
+  renderKpis(d);
+  renderSecondary(d);
+  renderEquityCurve(d);
+  renderDrawdown(d);
+  renderRollingSharpe(d);
+  renderGate1Chart(d);
+  renderMonteCarlo(d);
+  renderWalkForward(d);
+  renderOutOfSample(d);
+  renderExitComparison(d);
+  renderResearch(d);
+  renderTradeLog(d);
+  renderEventLog(d);
+
+  ['kpiGrid','secGrid','eqCard','twoColCharts','gate1Card','mcCard','wfCard','oosCard',
+   'exitCmpCard','researchCard','leadLagCard','tradeCard','eventCard'].forEach(show);
+}
+
+function renderKpis(d) {
+  const p = d.performance;
+  setVal('kCagr', pct(p.cagr));
+  setClass('kCagr', 'bt-kpi-value ' + (p.cagr >= 0 ? 'green' : 'red'));
+  setVal('kCagrSub', `${num(p.years,1)} years tested`);
+
+  setVal('kSharpe', num(p.sharpe));
+  setClass('kSharpe', 'bt-kpi-value ' + (p.sharpe >= 0.7 ? 'green' : p.sharpe >= 0.3 ? 'amber' : 'red'));
+  setVal('kSortinoSub', `Sortino ${num(p.sortino)}`);
+
+  setVal('kMaxDD', pct(p.maxDrawdown.maxDrawdown, 1));
+  setVal('kMaxDDSub', `Calmar ${num(p.calmar)}`);
+
+  setVal('kPF', ratio(p.profitFactor));
+  setVal('kPFSub', `Expectancy ${num(p.expectancyR)}R`);
+
+  setVal('kWinRate', pct(p.winRate, 0));
+  setVal('kWinRateSub', `${p.tradeCount ?? 0} trades`);
+
+  setVal('kTpw', num(p.tradesPerWeek, 2));
+
+  const g1Valid = d.gate1.filter(g => g.dataValid).length;
+  const g2Valid = d.gate2.filter(g => g.valid).length;
+  setVal('kGateCov', `${pct(g1Valid / d.gate1.length, 0)}`);
+  setVal('kGateCovSub', `Gate1 valid ${pct(g1Valid / d.gate1.length,0)} · Gate2 valid ${pct(g2Valid / d.gate2.length,0)}`);
+
+  setVal('kOmega', ratio(p.omega));
+}
+
+function renderSecondary(d) {
+  const p = d.performance;
+  setVal('sAvgWin', num(p.avgWinnerR) + 'R');
+  setVal('sAvgLoss', num(p.avgLoserR) + 'R');
+  setVal('sAvgHold', num(p.avgHoldingBars, 1));
+  setVal('sAnnualVol', pct(p.annualVol, 1));
+  setVal('sSkew', num(p.skewness));
+  setVal('sKurt', num(p.excessKurtosis));
+  setVal('sBestDay', p.bestDay ? `${pct(p.bestDay.value)} (${p.bestDay.date})` : '—');
+  setVal('sWorstDay', p.worstDay ? `${pct(p.worstDay.value)} (${p.worstDay.date})` : '—');
+  setVal('sBestMonth', p.bestMonth ? `${pct(p.bestMonth.return)} (${p.bestMonth.month})` : '—');
+  setVal('sWorstMonth', p.worstMonth ? `${pct(p.worstMonth.return)} (${p.worstMonth.month})` : '—');
+  setVal('sMonths', `${p.positiveMonths} / ${p.negativeMonths}`);
+  const finalEq = d.equityCurve.length ? d.equityCurve[d.equityCurve.length - 1].equity : NaN;
+  setVal('sFinalEq', num(finalEq) + '×');
+}
+
+const CHART_DEFAULTS = {
+  responsive: true, maintainAspectRatio: false, animation: false,
+  plugins: {
+    legend: { display: true, labels: { color: '#94a3b8', font: { family: "'DM Mono', monospace", size: 11 } } },
+    tooltip: { mode: 'index', intersect: false, backgroundColor: '#1e2538',
+      titleColor: '#e2e8f0', bodyColor: '#94a3b8', borderColor: '#2a3348', borderWidth: 1 },
+  },
+  scales: {
+    x: { ticks: { color: '#64748b', font: { family: "'DM Mono'", size: 10 }, maxTicksLimit: 8 }, grid: { color: '#1e2538' } },
+    y: { ticks: { color: '#64748b', font: { family: "'DM Mono'", size: 10 } }, grid: { color: '#1e2538' } },
+  },
+};
+
+function renderEquityCurve(d) {
+  const labels = d.equityCurve.map(p => p.date);
+  const eq = d.equityCurve.map(p => p.equity);
+  if (_eqChart) { _eqChart.destroy(); _eqChart = null; }
+  _eqChart = new Chart(document.getElementById('eqChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Strategy Equity', data: eq, borderColor: '#10b981', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0 }] },
+    options: { ...CHART_DEFAULTS,
+      scales: { x: CHART_DEFAULTS.scales.x,
+        y: { ...CHART_DEFAULTS.scales.y, type: 'logarithmic',
+          ticks: { color: '#64748b', font: { family: "'DM Mono'", size: 10 }, maxTicksLimit: 6, callback: v => `${v.toFixed(2)}×` } } } },
+  });
+}
+
+function renderDrawdown(d) {
+  const labels = d.equityCurve.map(p => p.date);
+  const dd = d.performance.rollingDrawdownSeries;
+  if (_ddChart) { _ddChart.destroy(); _ddChart = null; }
+  _ddChart = new Chart(document.getElementById('ddChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Drawdown', data: dd, borderColor: '#f87171', borderWidth: 1.2, backgroundColor: '#f871711a', pointRadius: 0, fill: true, tension: 0 }] },
+    options: { ...CHART_DEFAULTS, scales: { x: CHART_DEFAULTS.scales.x,
+      y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => pct(v,0) } } } },
+  });
+}
+
+function renderRollingSharpe(d) {
+  const labels = d.equityCurve.map(p => p.date);
+  const rs = d.performance.rollingSharpeSeries;
+  if (_rsChart) { _rsChart.destroy(); _rsChart = null; }
+  _rsChart = new Chart(document.getElementById('rsChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Rolling Sharpe', data: rs, borderColor: '#818cf8', borderWidth: 1.2, pointRadius: 0, fill: false, tension: 0 }] },
+    options: CHART_DEFAULTS,
+  });
+}
+
+function renderGate1Chart(d) {
+  const labels = d.gate1.map(g => g.date);
+  const score = d.gate1.map(g => g.score);
+  if (_gate1Chart) { _gate1Chart.destroy(); _gate1Chart = null; }
+  _gate1Chart = new Chart(document.getElementById('gate1Chart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'LiquidityScore', data: score, borderColor: '#f59e0b', borderWidth: 1.2, pointRadius: 0, fill: false, tension: 0, spanGaps: true }] },
+    options: { ...CHART_DEFAULTS, scales: { x: CHART_DEFAULTS.scales.x,
+      y: { ...CHART_DEFAULTS.scales.y, min: -5, max: 5 } } },
+  });
+}
+
+function renderMonteCarlo(d) {
+  const mc = d.monteCarlo;
+  document.getElementById('mcSub').textContent = `${mc.resamples ?? 0} resamples × ${mc.tradesPerPath ?? 0} trades/path — approximates each trade's equity contribution as risk% × pnlR`;
+  const rows = [
+    ['Terminal Equity (×)', mc.terminalEquity, (v) => num(v,3)],
+    ['Max Drawdown', mc.maxDrawdown, (v) => pct(v,1)],
+    ['Sharpe-like', mc.sharpeLike, (v) => num(v,2)],
+  ];
+  document.getElementById('mcTblBody').innerHTML = rows.map(([label, vals, fmt]) => `
+    <tr><td>${label}</td>
+      <td class="num">${fmt(vals.p5)}</td><td class="num">${fmt(vals.p25)}</td>
+      <td class="num">${fmt(vals.p50)}</td><td class="num">${fmt(vals.p75)}</td><td class="num">${fmt(vals.p95)}</td>
+    </tr>`).join('');
+}
+
+function renderWalkForward(d) {
+  const wf = d.walkForward;
+  document.getElementById('wfSub').textContent = `${wf.windowCount ?? 0} windows · ${wf.positiveWindowCount ?? 0} positive · CAGR σ ${num(wf.cagrStdDev,3)} · Sharpe σ ${num(wf.sharpeStdDev,2)}`;
+  document.getElementById('wfTblBody').innerHTML = (wf.windows ?? []).map(w => {
+    const cls = w.sharpe >= 0.5 ? 'wf-pass' : w.sharpe >= 0 ? 'wf-neu' : 'wf-fail';
+    return `<tr>
+      <td>${w.windowIndex + 1}</td><td>${w.startDate}</td><td>${w.endDate}</td>
+      <td class="num ${clr(w.cagr)}">${pct(w.cagr)}</td>
+      <td class="num ${cls}">${num(w.sharpe)}</td>
+      <td class="num neg">${pct(w.maxDrawdown,1)}</td>
+      <td class="num">${pct(w.winRate,0)}</td>
+      <td class="num">${ratio(w.profitFactor)}</td>
+      <td class="num">${w.tradeCount}</td>
+      <td class="num ${clr(w.expectancyR)}">${num(w.expectancyR)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderOutOfSample(d) {
+  const oos = d.outOfSample;
+  if (!oos.inSample) { document.getElementById('oosTblBody').innerHTML = '<tr><td colspan="8">Not enough history to split.</td></tr>'; return; }
+  document.getElementById('oosSub').textContent = `split at ${oos.splitDate}`;
+  const row = (label, r) => `<tr>
+    <td>${label}</td>
+    <td class="num ${clr(r.cagr)}">${pct(r.cagr)}</td>
+    <td class="num">${num(r.sharpe)}</td>
+    <td class="num neg">${pct(r.maxDrawdown.maxDrawdown,1)}</td>
+    <td class="num">${pct(r.winRate,0)}</td>
+    <td class="num">${ratio(r.profitFactor)}</td>
+    <td class="num">${r.tradeCount}</td>
+    <td class="num ${clr(r.expectancyR)}">${num(r.expectancyR)}</td>
+  </tr>`;
+  document.getElementById('oosTblBody').innerHTML = row('In-Sample', oos.inSample) + row('Out-of-Sample', oos.outOfSample);
+}
+
+function tradeArrayStats(trades) {
+  const n = trades.length;
+  if (!n) return { n: 0, winRate: NaN, profitFactor: NaN, avgR: NaN, totalR: NaN, avgBars: NaN };
+  const winners = trades.filter(t => t.pnlR > 0);
+  const losers = trades.filter(t => t.pnlR <= 0);
+  const grossWin = winners.reduce((a,t) => a + t.pnlR, 0);
+  const grossLoss = Math.abs(losers.reduce((a,t) => a + t.pnlR, 0));
+  const totalR = trades.reduce((a,t) => a + t.pnlR, 0);
+  return {
+    n, winRate: winners.length / n,
+    profitFactor: grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : NaN),
+    avgR: totalR / n, totalR,
+    avgBars: trades.reduce((a,t) => a + t.barsHeld, 0) / n,
+  };
+}
+
+function renderExitComparison(d) {
+  const primary = tradeArrayStats(d.trades.filter(t => t.reason !== 'END_OF_HISTORY_OPEN'));
+  const rows = [`<tr style="font-weight:600">
+    <td>Gate 4 ContinuationScore (primary, live)</td>
+    <td class="num">${primary.n}</td><td class="num">${pct(primary.winRate,0)}</td>
+    <td class="num">${ratio(primary.profitFactor)}</td>
+    <td class="num ${clr(primary.avgR)}">${num(primary.avgR)}</td>
+    <td class="num ${clr(primary.totalR)}">${num(primary.totalR)}</td>
+    <td class="num">${num(primary.avgBars,1)}</td>
+  </tr>`];
+  for (const [modelId, label] of Object.entries(SECONDARY_EXIT_LABELS)) {
+    const trades = d.secondaryExitComparison[modelId] ?? [];
+    const s = tradeArrayStats(trades);
+    rows.push(`<tr>
+      <td>${label}</td>
+      <td class="num">${s.n}</td><td class="num">${pct(s.winRate,0)}</td>
+      <td class="num">${ratio(s.profitFactor)}</td>
+      <td class="num ${clr(s.avgR)}">${num(s.avgR)}</td>
+      <td class="num ${clr(s.totalR)}">${num(s.totalR)}</td>
+      <td class="num">${num(s.avgBars,1)}</td>
+    </tr>`);
+  }
+  document.getElementById('exitCmpTblBody').innerHTML = rows.join('');
+}
+
+function renderResearch(d) {
+  const research = d.research;
+  document.getElementById('importanceSub').textContent = `vs ${research.importance.horizonDays}-day forward NASDAQ return · Spearman rank correlation`;
+  document.getElementById('importanceTblBody').innerHTML = research.importance.ranking.map(f => `
+    <tr><td>${f.id}</td>
+      <td class="num ${clr(f.r ?? 0)}">${f.r != null ? f.r.toFixed(3) : '—'}</td>
+      <td class="num">${f.tStat != null ? f.tStat.toFixed(2) : '—'}</td>
+      <td class="num">${f.n}</td>
+    </tr>`).join('');
+
+  const drivers = [['rrpDelta','ΔReverse Repo'], ['tgaDelta','ΔTGA'], ['liquidityScore','LiquidityScore (composite)']];
+  const rows = [];
+  for (const [key, label] of drivers) {
+    for (const horizon of research.leadLag[key]) {
+      const s = horizon.strongest;
+      if (!s) continue;
+      rows.push(`<tr><td>${label}</td><td class="num">${horizon.horizonDays}</td>
+        <td class="num">${s.lag}</td>
+        <td class="num ${clr(s.r ?? 0)}">${s.r != null ? s.r.toFixed(3) : '—'}</td>
+        <td class="num">${s.tStat != null ? s.tStat.toFixed(2) : '—'}</td>
+        <td class="num">${s.n}</td></tr>`);
+    }
+  }
+  document.getElementById('leadLagTblBody').innerHTML = rows.join('');
+
+  // Chart: liquidityScore lead-lag r vs lag, at the same horizon used for feature importance.
+  const llHorizon = research.leadLag.liquidityScore.find(h => h.horizonDays === research.importance.horizonDays) ?? research.leadLag.liquidityScore[0];
+  const labels = llHorizon.results.map(r => r.lag);
+  const rs = llHorizon.results.map(r => r.r);
+  if (_leadLagChart) { _leadLagChart.destroy(); _leadLagChart = null; }
+  _leadLagChart = new Chart(document.getElementById('leadLagChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: `LiquidityScore lead-lag r (${llHorizon.horizonDays}d fwd return)`, data: rs,
+      backgroundColor: rs.map(v => v >= 0 ? '#10b98199' : '#f8717199') }] },
+    options: { ...CHART_DEFAULTS, scales: { x: { ...CHART_DEFAULTS.scales.x, title: { display: true, text: 'lag (days, + = driver leads price)', color: '#94a3b8' } },
+      y: CHART_DEFAULTS.scales.y } },
+  });
+}
+
+function renderTradeLog(d) {
+  const trades = d.trades ?? [];
+  const completed = trades.filter(t => t.reason !== 'END_OF_HISTORY_OPEN');
+  const wins = completed.filter(t => t.pnlR > 0).length;
+  document.getElementById('tradeSummary').textContent = `${completed.length} trades · ${wins} wins · ${completed.length - wins} losses`;
+  document.getElementById('tradeTblBody').innerHTML = trades.map(t => `
+    <tr>
+      <td>${t.entryDate}</td>
+      <td class="${t.direction === 'LONG' ? 'pos' : 'neg'}">${t.direction}</td>
+      <td class="num">${num(t.entryPrice,2)}</td>
+      <td>${t.exitDate}</td>
+      <td class="num">${num(t.exitPrice,2)}</td>
+      <td class="num ${clr(t.pnlR)}">${num(t.pnlR)}</td>
+      <td class="num">${t.riskPct}%</td>
+      <td>${t.tier ?? '—'}</td>
+      <td>${t.reduced ? 'yes' : 'no'}</td>
+      <td>${t.reason}</td>
+      <td class="num">${t.barsHeld}</td>
+      <td class="num">${num(t.liquidityScoreAtEntry)}</td>
+      <td class="num">${num(t.trendScoreAtEntry,0)}</td>
+    </tr>`).join('');
+}
+
+function renderEventLog(d) {
+  const events = d.eventLog ?? [];
+  const cap = 1000;
+  const shown = events.slice(-cap);
+  document.getElementById('eventSummary').textContent = events.length > cap
+    ? `${events.length} events (showing last ${cap})` : `${events.length} events`;
+  document.getElementById('eventTblBody').innerHTML = shown.map(e => `<tr><td>${e.date}</td><td>${e.message}</td></tr>`).join('');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Page loads with no data — try to load the last persisted run, if any.
+(async function init() {
+  try {
+    const r = await fetch('/api/nasdaq-liquidity/results');
+    const j = await r.json();
+    if (j.ok) {
+      _data = j.data;
+      setStatus('ok', `Loaded last run — ${j.data.dateRange.start} → ${j.data.dateRange.end}${j.data.synthetic ? ' (SYNTHETIC self-test data)' : ''}`);
+      renderAll(j.data);
+    }
+  } catch { /* no persisted run yet — fine, run bar is still usable */ }
+})();
+</script>
+</body>
+</html>

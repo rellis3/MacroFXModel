@@ -38,6 +38,10 @@ import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
+import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
+import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
+import { runResearchSuite as runNasdaqResearchSuite } from './js/nasdaqResearch.js';
+import { DATA_DEFAULTS as NASDAQ_DATA_DEFAULTS } from './js/nasdaqConfig.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -6492,6 +6496,139 @@ app.get('/api/zscore-backtest/pairs', (_req, res) => {
     pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) =>
       [k, { label: v.label, pairDisplay: v.pairDisplay, defaultThreshold: v.defaultThreshold }])),
   });
+});
+
+// ── NASDAQ Liquidity Continuation Framework ───────────────────────────────────
+// Four-gate daily backtest (Liquidity → Trend → NY Confirmation → Dynamic
+// Exit) built from scratch in js/nasdaq*.js — see those files' headers for
+// the full design rationale. This route group is wiring only: it loads a
+// dataset, runs the engine, attaches performance/robustness/research
+// reports, and persists the result so the dashboard survives a page reload.
+
+const NLC_BT_DATA_DIR = path.join(__dirname, 'VolRangeForecaster', 'data', 'nasdaq-liquidity');
+
+// JSON.stringify silently turns Infinity/-Infinity into null, which is
+// indistinguishable from "no data" (NaN also serializes to null). Several
+// nasdaqPerformance.js stats (profitFactor, omega) are legitimately Infinity
+// when a sample has zero losing trades, so cap them to a finite sentinel
+// before persisting — same convention as the existing /api/.../stats route
+// (see `pf === Infinity ? 999 : ...` above).
+function _capInfinity(value) {
+  if (typeof value === 'number') {
+    if (value === Infinity) return 999;
+    if (value === -Infinity) return -999;
+    return value;
+  }
+  if (Array.isArray(value)) return value.map(_capInfinity);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = _capInfinity(v);
+    return out;
+  }
+  return value;
+}
+
+function _latestNlcBtFile() {
+  if (!fs.existsSync(NLC_BT_DATA_DIR)) return null;
+  const files = fs.readdirSync(NLC_BT_DATA_DIR)
+    .filter(f => f.startsWith('nlc_bt_') && f.endsWith('.json'))
+    .sort().reverse();
+  return files.length ? path.join(NLC_BT_DATA_DIR, files[0]) : null;
+}
+
+const nlcJobs = new Map();
+
+function _purgeStaleNlcJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of nlcJobs) if (job.startedAt < cutoff) nlcJobs.delete(id);
+}
+
+app.post('/api/nasdaq-liquidity/run', express.json({ limit: '1mb' }), (req, res) => {
+  const body = req.body || {};
+  const synthetic = body.synthetic === true || body.synthetic === 'true';
+
+  if (!synthetic && !process.env.FRED_KEY) {
+    return res.status(400).json({ ok: false,
+      error: 'FRED_KEY not set — add it to Railway env vars, or pass synthetic:true to exercise the pipeline on the built-in synthetic dataset' });
+  }
+
+  const start = body.start || NASDAQ_DATA_DEFAULTS.backtestStart;
+  const end = body.end || undefined;
+
+  const jobId = `nlc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleNlcJobs();
+  nlcJobs.set(jobId, { status: 'running', startedAt, phase: synthetic ? 'Generating synthetic dataset…' : 'Fetching FRED & Yahoo data…' });
+
+  (async () => {
+    try {
+      const dataset = await loadNasdaqDataset({ start, end, synthetic });
+      nlcJobs.get(jobId).phase = 'Running 4-gate backtest…';
+
+      const result = runNasdaqBacktest(dataset);
+
+      nlcJobs.get(jobId).phase = 'Computing performance & robustness reports…';
+      const performance = computeNasdaqPerformanceReport({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+      const monteCarlo = nasdaqMonteCarloBootstrap(result.trades);
+      const walkForward = nasdaqWalkForwardStability({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+      const outOfSample = nasdaqOutOfSampleSplit({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+
+      nlcJobs.get(jobId).phase = 'Running research suite…';
+      const research = runNasdaqResearchSuite({ closes: dataset.ohlc.close, gate1: result.gate1, indicators: result.indicators });
+
+      const payload = _capInfinity({
+        runAt: new Date().toISOString(),
+        synthetic: !!dataset.synthetic,
+        dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
+        gate1: result.gate1, gate2: result.gate2, trades: result.trades, eventLog: result.eventLog,
+        equityCurve: result.dates.map((d, i) => ({ date: d, equity: result.equityCurve[i] })),
+        secondaryExitComparison: result.secondaryExitComparison,
+        performance, monteCarlo, walkForward, outOfSample, research,
+      });
+
+      if (!fs.existsSync(NLC_BT_DATA_DIR)) fs.mkdirSync(NLC_BT_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(NLC_BT_DATA_DIR, `nlc_bt_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(payload, null, 0) + '\n');
+
+      nlcJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: { ok: true, data: payload, file: path.basename(outFile) },
+      });
+      console.log(`[nasdaq-liquidity] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s) — ${result.trades.length} trades`);
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[nasdaq-liquidity/run]', msg, e?.stack ?? '');
+      nlcJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/nasdaq-liquidity/status/:jobId', (req, res) => {
+  const job = nlcJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running',
+      elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+      phase: job.phase ?? 'Running…' });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+app.get('/api/nasdaq-liquidity/results', (_req, res) => {
+  const file = _latestNlcBtFile();
+  if (!file) return res.json({ ok: false, error: 'No NASDAQ Liquidity Continuation backtest results found — run a backtest first' });
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    const data = JSON.parse(raw);
+    res.json({ ok: true, data, file: path.basename(file) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ── Dyn Anchor nightly forecast ────────────────────────────────────────────────
