@@ -3397,6 +3397,331 @@ app.get('/api/liquidity-pulse/data', async (req, res) => {
   }
 });
 
+// ── Liquidity Gate — 2-gate macro signal (Net Liquidity regime + cross-asset
+// coherence) backtestable across 6 index futures. Standalone system; ports
+// the z-score/lag math from MacroEquityBot/fred_signal.py into JS since no
+// JS implementation of that formula existed yet outside the Python bot.
+const LIQUIDITY_GATE_FRED_IDS = { walcl: 'WALCL', wtregen: 'WTREGEN', rrpon: 'RRPONTSYD', curve: 'T10Y2Y', credit: 'BAMLH0A0HYM2' };
+const LIQ_GATE_PUB_LAG_WEEKLY = 5;   // trading days — WALCL/WTREGEN/RRPON publication lag
+const LIQ_GATE_Z_WINDOW       = 252;
+const LIQ_GATE_MIN_Z_WINDOW   = 30;
+const LIQ_GATE_FROM_DEFAULT   = '2015-01-01';
+
+const LIQUIDITY_GATE_INSTRUMENTS = new Set(['NAS100_USD', 'SPX500_USD', 'US30_USD', 'US2000_USD', 'DE30_USD', 'UK100_GBP']);
+
+// DE30_USD is the canonical key shared with oi_store/BETA_PAIRS, but OANDA only
+// quotes the DAX CFD as DE30_EUR — same quirk as the _h4OandaSym ov map above.
+function _liqGateOandaSym(instrument) {
+  return instrument === 'DE30_USD' ? 'DE30_EUR' : instrument;
+}
+
+const LIQ_GATE_FRED_CACHE = { data: null, fetchedAt: null };
+const LIQ_GATE_FRED_TTL_MS = 6 * 60 * 60 * 1000; // 6h — same cadence as liquidity-pulse, underlying data is daily at best
+
+async function _getLiquidityGateFred(fromDate, fredKey) {
+  const isDefaultRange = fromDate === LIQ_GATE_FROM_DEFAULT;
+  const age = LIQ_GATE_FRED_CACHE.fetchedAt ? Date.now() - LIQ_GATE_FRED_CACHE.fetchedAt : Infinity;
+  if (isDefaultRange && LIQ_GATE_FRED_CACHE.data && age < LIQ_GATE_FRED_TTL_MS) {
+    return LIQ_GATE_FRED_CACHE.data;
+  }
+  const entries = Object.entries(LIQUIDITY_GATE_FRED_IDS);
+  const maps = await Promise.all(entries.map(([, sid]) => fetchFredSeries(sid, fromDate, fredKey)));
+  const fredRaw = {};
+  entries.forEach(([key], i) => { fredRaw[key] = maps[i]; });
+  if (isDefaultRange) { LIQ_GATE_FRED_CACHE.data = fredRaw; LIQ_GATE_FRED_CACHE.fetchedAt = Date.now(); }
+  return fredRaw;
+}
+
+function _liqGatePctChange(values) {
+  const out = new Array(values.length).fill(NaN);
+  for (let i = 1; i < values.length; i++) {
+    const p = values[i - 1], c = values[i];
+    if (isFinite(p) && isFinite(c) && p !== 0) out[i] = (c - p) / Math.abs(p);
+  }
+  return out;
+}
+function _liqGateApplyLag(values, lag) {
+  if (lag <= 0) return values.slice();
+  const n = values.length;
+  if (lag >= n) return new Array(n).fill(NaN);
+  return new Array(lag).fill(NaN).concat(values.slice(0, n - lag));
+}
+function _liqGateRollingZ(values, window = LIQ_GATE_Z_WINDOW, minWindow = LIQ_GATE_MIN_Z_WINDOW) {
+  const out = new Array(values.length).fill(NaN);
+  for (let i = 0; i < values.length; i++) {
+    if (!isFinite(values[i])) continue;
+    const slice = [];
+    for (let j = Math.max(0, i - window); j < i; j++) if (isFinite(values[j])) slice.push(values[j]);
+    if (slice.length < minWindow) continue;
+    const mu = slice.reduce((s, v) => s + v, 0) / slice.length;
+    const sd = Math.sqrt(slice.reduce((s, v) => s + (v - mu) ** 2, 0) / slice.length);
+    out[i] = sd > 0 ? (values[i] - mu) / sd : 0;
+  }
+  return out;
+}
+
+// Net liquidity = WALCL - WTREGEN - RRPON, %-change, 5-day publication lag, 252d rolling z.
+function computeNetLiqZ(fredRaw, dates) {
+  const walcl   = forwardFillAlign(dates, fredRaw.walcl   ?? new Map());
+  const wtregen = forwardFillAlign(dates, fredRaw.wtregen ?? new Map());
+  const rrpon   = forwardFillAlign(dates, fredRaw.rrpon   ?? new Map());
+  const netliqRaw = dates.map((_, i) =>
+    (isFinite(walcl[i]) && isFinite(wtregen[i]) && isFinite(rrpon[i])) ? walcl[i] - wtregen[i] - rrpon[i] : NaN
+  );
+  const pctCh  = _liqGatePctChange(netliqRaw);
+  const lagged = _liqGateApplyLag(pctCh, LIQ_GATE_PUB_LAG_WEEKLY);
+  return _liqGateRollingZ(lagged);
+}
+
+// Curve (T10Y2Y) and credit (BAMLH0A0HYM2, negated — tighter spread = bullish)
+// z-scores; 0 lag since both are genuinely-daily EOD prints, unlike WALCL/TGA/RRP.
+function computeCoherenceZ(fredRaw, dates) {
+  const curve  = forwardFillAlign(dates, fredRaw.curve  ?? new Map());
+  const credit = forwardFillAlign(dates, fredRaw.credit ?? new Map());
+  const curveZ  = _liqGateRollingZ(curve);
+  const creditZ = _liqGateRollingZ(credit.map(v => isFinite(v) ? -v : NaN));
+  return { curveZ, creditZ };
+}
+
+function _liqGateStats(trades, curve, equity) {
+  const n    = trades.length;
+  const wins = trades.filter(t => t.tradeReturn > 0).length;
+  const rets = trades.map(t => t.tradeReturn / 100);
+  const mu   = rets.reduce((s, r) => s + r, 0) / (rets.length || 1);
+  const sig  = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / (rets.length || 1));
+  const years = curve.length >= 2
+    ? (new Date(curve[curve.length - 1].date) - new Date(curve[0].date)) / (365.25 * 864e5) : 1;
+  const tpy     = n / Math.max(years, 1);
+  const sharpe  = sig > 0 ? (mu / sig) * Math.sqrt(tpy) : 0;
+  const downDev = Math.sqrt(rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / (n || 1));
+  const sortino = downDev > 0 ? (mu / downDev) * Math.sqrt(tpy) : 0;
+  const cagr    = (Math.pow(equity, 1 / Math.max(years, 0.01)) - 1) * 100;
+  let peak = 1, maxDD = 0;
+  for (const { equity: eq } of curve) {
+    if (eq > peak) peak = eq;
+    const dd = (peak - eq) / peak;
+    if (dd > maxDD) maxDD = dd;
+  }
+  return { n, wins, winRate: n ? wins / n : 0, cagr: +cagr.toFixed(2),
+           sharpe: +sharpe.toFixed(2), sortino: +sortino.toFixed(2),
+           maxDD: +(maxDD * 100).toFixed(2),
+           totalReturn: +((equity - 1) * 100).toFixed(2) };
+}
+
+// Walks daily bars aligned to the FRED date axis. Gate status for day i is
+// decided from day i-1's z-scores (the lag math above already encodes FRED
+// publication lag — this extra day-shift additionally prevents using day i's
+// own close to decide day i's own entry), then the trade executes at day i's
+// NY-open price (bars[].open — see _liqGateBarsFromH1).
+function _computeLiquidityGate(bars, fredRaw, cfg = {}) {
+  const {
+    netliqThreshold = 0.25,
+    stopPct         = 3.0,
+    riskPct         = 1.0,
+    requireBoth     = true,
+  } = cfg;
+
+  const dates = bars.map(b => b.date);
+  const netliqZ = computeNetLiqZ(fredRaw, dates);
+  const { curveZ, creditZ } = computeCoherenceZ(fredRaw, dates);
+
+  const gate1Series = new Array(dates.length).fill('NEUTRAL');
+  const gate2Series = new Array(dates.length).fill(false);
+  for (let i = 0; i < dates.length; i++) {
+    const z = netliqZ[i];
+    gate1Series[i] = !isFinite(z) ? 'NEUTRAL' : z > netliqThreshold ? 'LONG' : z < -netliqThreshold ? 'SHORT' : 'NEUTRAL';
+    if (gate1Series[i] !== 'NEUTRAL' && isFinite(curveZ[i]) && isFinite(creditZ[i])) {
+      const want = gate1Series[i] === 'LONG' ? 1 : -1;
+      // creditZ is already negated in computeCoherenceZ (tighter spread = bullish),
+      // so both curveZ and creditZ share the same "positive = bullish" sign convention here.
+      const curveAgree  = Math.sign(curveZ[i])  === want;
+      const creditAgree = Math.sign(creditZ[i]) === want;
+      gate2Series[i] = requireBoth ? (curveAgree && creditAgree) : (curveAgree || creditAgree);
+    }
+  }
+
+  const trades = [];
+  const curve  = [];
+  let equity = 1.0;
+  let pos = null; // { direction, entry, entryIdx, entryDate }
+
+  for (let i = 1; i < dates.length; i++) {
+    const prevGate1 = gate1Series[i - 1];
+    const prevGate2 = gate2Series[i - 1];
+    const today = bars[i];
+    const aligned = prevGate1 !== 'NEUTRAL' && prevGate2;
+
+    if (pos) {
+      const movedPct = pos.direction === 'LONG'
+        ? (today.close - pos.entry) / pos.entry * 100
+        : (pos.entry - today.close) / pos.entry * 100;
+      const stopHit = movedPct <= -stopPct;
+      const gateBreak = prevGate1 !== pos.direction || !prevGate2;
+
+      if (stopHit) {
+        const exit = today.close;
+        const movePct = pos.direction === 'LONG' ? (exit - pos.entry) / pos.entry * 100 : (pos.entry - exit) / pos.entry * 100;
+        const leverage = riskPct / stopPct;
+        const tradeReturn = movePct * leverage;
+        equity *= (1 + tradeReturn / 100);
+        trades.push({ date: pos.entryDate, exitDate: today.date, direction: pos.direction,
+                      entry: pos.entry, exit, exitReason: 'STOP',
+                      movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3),
+                      equity: +equity.toFixed(6) });
+        curve.push({ date: today.date, equity: +equity.toFixed(6) });
+        pos = null;
+      } else if (gateBreak) {
+        const exit = today.open;
+        const movePct = pos.direction === 'LONG' ? (exit - pos.entry) / pos.entry * 100 : (pos.entry - exit) / pos.entry * 100;
+        const leverage = riskPct / stopPct;
+        const tradeReturn = movePct * leverage;
+        equity *= (1 + tradeReturn / 100);
+        trades.push({ date: pos.entryDate, exitDate: today.date, direction: pos.direction,
+                      entry: pos.entry, exit, exitReason: 'GATE_FLIP',
+                      movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3),
+                      equity: +equity.toFixed(6) });
+        curve.push({ date: today.date, equity: +equity.toFixed(6) });
+        pos = null;
+      }
+    }
+
+    if (!pos && aligned) {
+      pos = { direction: prevGate1, entry: today.open, entryIdx: i, entryDate: today.date };
+    }
+  }
+
+  // Diagnostics: netliqZ vs next-day return, per the liquidity-pulse pattern.
+  const nextDayRet = new Array(dates.length).fill(NaN);
+  for (let i = 0; i < dates.length - 1; i++) {
+    if (bars[i].close) nextDayRet[i] = (bars[i + 1].close - bars[i].close) / bars[i].close * 100;
+  }
+  const diagnostics = {
+    corrNextDay:    pearsonCorr(netliqZ, nextDayRet),
+    hitRateNextDay: signHitRate(netliqZ, nextDayRet),
+  };
+
+  const stats = _liqGateStats(trades, curve, equity);
+  return { trades, curve, stats, diagnostics, gate1Series, gate2Series, dates, netliqZ, curveZ, creditZ };
+}
+
+const liqGateBarCache = new Map(); // instrument → { bars, fetchedAt }
+const LIQ_GATE_BAR_TTL_MS = 23 * 60 * 60 * 1000;
+
+// Builds one {date, open, close} bar per trading day from H1 candles, anchoring
+// "open" to the NY-open hour (13:00 UTC EDT / 14:00 UTC EST — same bar NQ-QMR
+// uses for its 09:25 ET entry) rather than OANDA's default D1 candle, whose
+// "open" is actually the prior evening's 5pm-NY FX-day-rollover price. "close"
+// is anchored the same way to the 5pm-NY hour (21:00 UTC EDT / 22:00 UTC EST)
+// so each bar still spans one NY trading day, matching the old D1 semantics.
+function _liqGateBarsFromH1(h1) {
+  const byDate = new Map();
+  for (const b of h1) {
+    const d = b.t.substring(0, 10);
+    if (!byDate.has(d)) byDate.set(d, []);
+    byDate.get(d).push(b);
+  }
+  const bars = [];
+  for (const d of [...byDate.keys()].sort()) {
+    const dayBars = byDate.get(d);
+    const openBar  = dayBars.find(b => b.t.substring(11, 13) === '13')
+                  || dayBars.find(b => b.t.substring(11, 13) === '14');
+    const closeBar = dayBars.find(b => b.t.substring(11, 13) === '21')
+                  || dayBars.find(b => b.t.substring(11, 13) === '22');
+    if (!openBar || !closeBar) continue; // holiday/thin-liquidity day — skip
+    bars.push({ date: d, open: openBar.o, close: closeBar.c });
+  }
+  return bars;
+}
+
+async function _getLiquidityGateBars(instrument, fromDate) {
+  const cacheKey = `${instrument}:${fromDate}`;
+  const cached = liqGateBarCache.get(cacheKey);
+  if (cached?.bars && cached.fetchedAt && Date.now() - cached.fetchedAt < LIQ_GATE_BAR_TTL_MS) {
+    return cached.bars;
+  }
+  const oandaSym = _liqGateOandaSym(instrument);
+  console.log(`[liquidity-gate] fetching OANDA H1 ${oandaSym} (${instrument}) from ${fromDate}…`);
+  const h1 = await fetchOandaH1Range(oandaSym, fromDate);
+  const bars = _liqGateBarsFromH1(h1);
+  liqGateBarCache.set(cacheKey, { bars, fetchedAt: Date.now() });
+  return bars;
+}
+
+app.get('/api/liquidity-gate/backtest', async (req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!fredKey) return res.status(503).json({ ok: false, error: 'FRED_KEY not set' });
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+
+  const instrument = LIQUIDITY_GATE_INSTRUMENTS.has(req.query.instrument) ? req.query.instrument : 'NAS100_USD';
+  const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from) ? req.query.from : LIQ_GATE_FROM_DEFAULT;
+
+  const cfg = {
+    netliqThreshold: req.query.netliqThreshold != null ? parseFloat(req.query.netliqThreshold) : 0.25,
+    stopPct:         req.query.stopPct         != null ? parseFloat(req.query.stopPct)         : 3.0,
+    riskPct:         req.query.riskPct         != null ? parseFloat(req.query.riskPct)         : 1.0,
+    requireBoth:     req.query.requireBoth != null ? req.query.requireBoth === 'true' : true,
+  };
+
+  try {
+    const [bars, fredRaw] = await Promise.all([
+      _getLiquidityGateBars(instrument, fromDate),
+      _getLiquidityGateFred(fromDate, fredKey),
+    ]);
+    console.log(`[liquidity-gate] ${bars.length} D1 bars (${instrument}) — running backtest`);
+    const result = _computeLiquidityGate(bars, fredRaw, cfg);
+    res.json({ ok: true, instrument, ...result });
+  } catch (err) {
+    console.error('[liquidity-gate]', err.stack ?? err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/liquidity-gate/live', async (req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!fredKey) return res.status(503).json({ ok: false, error: 'FRED_KEY not set' });
+
+  const netliqThreshold = req.query.netliqThreshold != null ? parseFloat(req.query.netliqThreshold) : 0.25;
+  const requireBoth     = req.query.requireBoth != null ? req.query.requireBoth === 'true' : true;
+
+  try {
+    const fredRaw = await _getLiquidityGateFred(LIQ_GATE_FROM_DEFAULT, fredKey);
+    const allDates = new Set();
+    for (const m of Object.values(fredRaw)) for (const d of m.keys()) allDates.add(d);
+    const dates = [...allDates].sort();
+    if (!dates.length) throw new Error('No FRED data returned');
+
+    const netliqZ = computeNetLiqZ(fredRaw, dates);
+    const { curveZ, creditZ } = computeCoherenceZ(fredRaw, dates);
+
+    const lastIdx = dates.length - 1;
+    const z = netliqZ[lastIdx];
+    const gate1 = !isFinite(z) ? 'NEUTRAL' : z > netliqThreshold ? 'LONG' : z < -netliqThreshold ? 'SHORT' : 'NEUTRAL';
+    let gate2Pass = false;
+    if (gate1 !== 'NEUTRAL' && isFinite(curveZ[lastIdx]) && isFinite(creditZ[lastIdx])) {
+      const want = gate1 === 'LONG' ? 1 : -1;
+      const curveAgree  = Math.sign(curveZ[lastIdx])  === want;
+      const creditAgree = Math.sign(creditZ[lastIdx]) === want;
+      gate2Pass = requireBoth ? (curveAgree && creditAgree) : (curveAgree || creditAgree);
+    }
+
+    const shared = {
+      asOf: dates[lastIdx],
+      gate1, gate2Pass,
+      netliqZ: isFinite(z) ? +z.toFixed(3) : null,
+      curveZ:  isFinite(curveZ[lastIdx])  ? +curveZ[lastIdx].toFixed(3)  : null,
+      creditZ: isFinite(creditZ[lastIdx]) ? +creditZ[lastIdx].toFixed(3) : null,
+      composite: gate1 === 'NEUTRAL' ? 'BLOCKED' : gate2Pass ? 'ALIGNED' : 'MIXED',
+    };
+
+    const instruments = {};
+    for (const inst of LIQUIDITY_GATE_INSTRUMENTS) instruments[inst] = shared;
+    res.json({ ok: true, asOf: dates[lastIdx], instruments });
+  } catch (err) {
+    console.error('[liquidity-gate live]', err.stack ?? err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // SSE live price stream — must be handled before the generic /api/* catch-all
 // because it returns an infinite ReadableStream, not a text body.
 app.get('/api/oanda_stream', async (req, res) => {

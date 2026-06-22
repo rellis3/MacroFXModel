@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liquidity Gate — Net Liquidity + Coherence Backtest</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="./js/sys-backtest-shared.js"></script>
+<style>
+#app { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.kpi {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+  padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 3px;
+}
+.kpi-lbl { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.kpi-val { font-size: 24px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+.kpi-val.green { color: #10b981; } .kpi-val.red { color: #ef4444; } .kpi-val.amber { color: #f59e0b; }
+.kpi-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+.card-hdr { padding: 11px 16px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.card-body { padding: 16px; }
+.chart-wrap { position: relative; height: 300px; }
+
+.run-bar { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); padding: 11px 14px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.run-btn { background: #22d3ee; border: none; border-radius: 6px; color: #042a30; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; padding: 6px 20px; cursor: pointer; transition: opacity .2s; }
+.run-btn:hover { opacity: .85; } .run-btn:disabled { opacity: .5; cursor: wait; }
+.run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.cfg-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px; }
+.cfg-field { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.cfg-field label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); font-family: 'DM Mono', monospace; }
+.cfg-field input, .cfg-field select { background: var(--s2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 5px 8px; width: 110px; }
+
+.tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.tbl th { padding: 6px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--s2); }
+.tbl td.num { text-align: right; }
+.tbl td.win { color: #10b981; font-weight: 600; }
+.tbl td.loss { color: #ef4444; font-weight: 600; }
+.tbl-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+
+.gate-pill { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .06em; font-family: 'DM Mono', monospace; }
+.gate-long  { background: rgba(16,185,129,.15); color: #10b981; }
+.gate-short { background: rgba(239,68,68,.12);  color: #ef4444; }
+
+.sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
+.sdot.ok   { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.sdot.spin { background: #f59e0b; animation: spin-pulse 1s infinite; }
+.sdot.err  { background: #ef4444; }
+@keyframes spin-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.info-box { background: rgba(34,211,238,.07); border: 1px solid rgba(34,211,238,.2); border-radius: var(--r); padding: 10px 14px; font-size: 11px; font-family: 'DM Mono', monospace; color: #67e8f9; margin-top: 10px; line-height: 1.6; }
+
+.diag-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+@media (max-width: 860px) { .diag-grid { grid-template-columns: repeat(1, 1fr); } }
+.diag-card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; }
+.diag-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.diag-val { font-size: 20px; font-weight: 700; font-family: 'DM Mono', monospace; margin-top: 4px; }
+
+.legend-row { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 0 0; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.legend-row span.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Header -->
+<div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;margin:0;color:#22d3ee;">💧⚡ Liquidity Gate — Net Liquidity + Cross-Asset Coherence</h1>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;" id="hdrSubtitle">NAS100_USD · OANDA H1 data · Net Liquidity regime (Gate 1) + curve/credit coherence (Gate 2) · NY-open entries (09:25 ET)</div>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <a href="nq-qmr-backtest.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:#f59e0b;">🎯 NQ-QMR BT →</a>
+    <a href="liquidity-pulse.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:#06b6d4;">💧 Liquidity Pulse →</a>
+    <a href="macro-equity-backtest.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:#818cf8;">📊 Macro Equity BT →</a>
+    <a href="bot-config.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);">🤖 Bot Config →</a>
+    <a href="index.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Dashboard</a>
+  </div>
+</div>
+
+<!-- System spec banner -->
+<div class="info-box">
+  <strong style="color:#22d3ee">System Logic:</strong> Gate 1 reads Fed Net Liquidity (WALCL − WTREGEN − RRPON), %-change, 5-day publication lag, rolling 252-day z-score — z &gt; +threshold → LONG bias, z &lt; −threshold → SHORT bias, otherwise NEUTRAL (no trade). Gate 2 checks whether the yield curve (T10Y2Y) and HY credit spread (BAMLH0A0HYM2, inverted) z-scores agree with Gate 1's direction — "require both" (stricter) or "require either". Entries fire at <strong>NY open</strong> (the OANDA H1 candle starting 13:00 UTC EDT / 14:00 UTC EST — same bar NQ-QMR uses for its 09:25 ET entry) using yesterday's gate status (no lookahead); exits fire at NY open on a gate flip, or at the day's 5pm-NY <strong>close</strong> if the close-based stop is hit. The stop check is once-daily by design (matching the daily cadence of the gate signal itself), not a data limitation.
+</div>
+
+<!-- Run bar -->
+<div class="run-bar">
+  <button class="run-btn" id="runBtn" onclick="runBacktest()">Run Backtest</button>
+  <select id="cfg_instrument" style="background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 10px;cursor:pointer;">
+    <optgroup label="US Indices">
+      <option value="NAS100_USD" selected>NAS100 (Nasdaq)</option>
+      <option value="SPX500_USD">SPX500 (S&amp;P 500)</option>
+      <option value="US30_USD">US30 (Dow)</option>
+      <option value="US2000_USD">US2000 (Russell)</option>
+    </optgroup>
+    <optgroup label="EU Indices">
+      <option value="DE30_USD">DE30 (DAX)</option>
+      <option value="UK100_GBP">UK100 (FTSE)</option>
+    </optgroup>
+  </select>
+  <span class="sdot" id="statusDot"></span>
+  <span id="statusMsg" class="run-lbl">Select instrument &amp; click Run — fetches OANDA H1 + FRED data</span>
+  <span id="cacheLabel" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
+</div>
+
+<!-- Config card -->
+<div class="card" style="margin-top:12px;">
+  <div class="card-hdr" style="cursor:pointer;" onclick="toggleCfg()">
+    ⚙ Gate Parameters — click to expand
+    <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--text3);" id="cfgSummary">defaults</span>
+  </div>
+  <div class="card-body" id="cfgBody" style="display:none;">
+    <div class="cfg-row">
+      <div class="cfg-field">
+        <label>From Date</label>
+        <input type="date" id="cfg_from" value="2015-01-01">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">backtest start</span>
+      </div>
+      <div class="cfg-field">
+        <label>Net Liq Z Threshold</label>
+        <input type="number" id="cfg_netliq" value="0.25" min="0" max="2" step="0.05">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Gate 1 LONG/SHORT band</span>
+      </div>
+      <div class="cfg-field">
+        <label>Stop Distance %</label>
+        <input type="number" id="cfg_stop" value="3.0" min="0.5" max="10" step="0.25">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">close-based, checked daily</span>
+      </div>
+      <div class="cfg-field">
+        <label>Max Risk % / Trade</label>
+        <input type="number" id="cfg_risk" value="1.00" min="0.25" max="5.0" step="0.05">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">account risk per trade</span>
+      </div>
+      <div class="cfg-field">
+        <label>Gate 2 Mode</label>
+        <select id="cfg_require_both">
+          <option value="true" selected>Require Both (strict)</option>
+          <option value="false">Require Either</option>
+        </select>
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">curve &amp; credit agreement rule</span>
+      </div>
+    </div>
+    <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
+  </div>
+</div>
+
+<!-- KPI grid -->
+<div id="kpiSection" style="display:none;">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lbl">CAGR</div><div class="kpi-val green" id="kCagr">—</div><div class="kpi-sub" id="kPeriod">—</div></div>
+    <div class="kpi"><div class="kpi-lbl">Sharpe Ratio</div><div class="kpi-val" id="kSharpe">—</div><div class="kpi-sub">trade-level annualised</div></div>
+    <div class="kpi"><div class="kpi-lbl">Sortino Ratio</div><div class="kpi-val" id="kSortino">—</div><div class="kpi-sub">downside dev only</div></div>
+    <div class="kpi"><div class="kpi-lbl">Max Drawdown</div><div class="kpi-val red" id="kMaxDD">—</div><div class="kpi-sub">peak-to-trough</div></div>
+    <div class="kpi"><div class="kpi-lbl">Win Rate</div><div class="kpi-val" id="kWinRate">—</div><div class="kpi-sub" id="kWins">— / — trades</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total Trades</div><div class="kpi-val amber" id="kTotalTrades">—</div><div class="kpi-sub" id="kTotalRet">—</div></div>
+  </div>
+</div>
+
+<!-- Equity curve -->
+<div class="card" id="chartCard" style="display:none;">
+  <div class="card-hdr">Equity Curve <span id="chartSubtitle" style="font-weight:400;color:var(--text3)"></span></div>
+  <div class="card-body">
+    <div id="lwEquity" style="height:300px;"></div>
+  </div>
+</div>
+
+<!-- Gate status / price chart -->
+<div class="card" id="gateChartCard" style="display:none;">
+  <div class="card-hdr">Net Liquidity Z-Score &amp; Gate 2 Confirmation</div>
+  <div class="card-body">
+    <div id="lwGateZ" style="height:220px;"></div>
+    <div class="legend-row">
+      <span><span class="sw" style="background:#10b981"></span>Net Liq Z &gt; 0 (LONG bias)</span>
+      <span><span class="sw" style="background:#ef4444"></span>Net Liq Z &lt; 0 (SHORT bias)</span>
+      <span><span class="sw" style="background:#fbbf24"></span>▲ Gate 2 confirmed (aligned)</span>
+    </div>
+  </div>
+</div>
+
+<!-- Diagnostics -->
+<div class="card" id="diagCard" style="display:none;">
+  <div class="card-hdr">Diagnostics — Does This Instrument Actually Have Edge?</div>
+  <div class="card-body">
+    <div class="diag-grid">
+      <div class="diag-card">
+        <div class="diag-lbl">Corr — Net Liq Z vs Next-Day Return</div>
+        <div class="diag-val" id="dCorr">—</div>
+      </div>
+      <div class="diag-card">
+        <div class="diag-lbl">Hit Rate — sign(Z) == sign(next ret)</div>
+        <div class="diag-val" id="dHit">—</div>
+      </div>
+      <div class="diag-card">
+        <div class="diag-lbl">Read</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:6px;">corr &gt; 0.10 or hit-rate &gt; 53% = worth a closer look on this instrument</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Trade log -->
+<div class="card" id="tradeCard" style="display:none;">
+  <div class="card-hdr">
+    Trade Log
+    <span style="margin-left:auto;font-weight:400;font-size:11px;color:var(--text3);" id="tradeCount"></span>
+  </div>
+  <div class="tbl-wrap">
+    <table class="tbl" id="tradeTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Exit Date</th>
+          <th>Dir</th>
+          <th class="num">Entry</th>
+          <th class="num">Exit</th>
+          <th>Exit Reason</th>
+          <th class="num">Move %</th>
+          <th class="num">P&amp;L % acct</th>
+          <th class="num">Equity</th>
+        </tr>
+      </thead>
+      <tbody id="tradeTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+let _trades = [], _curve = [], _stats = {}, _diag = {}, _dates = [], _netliqZ = [], _gate2Series = [];
+let _lwEquityChart = null, _lwGateZChart = null;
+
+function toggleCfg() {
+  const el = document.getElementById('cfgBody');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+async function runBacktest() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  const instrument = document.getElementById('cfg_instrument').value;
+  setStatus('spin', `Fetching OANDA H1 ${instrument} + FRED series — please wait…`);
+
+  const params = new URLSearchParams({
+    instrument,
+    from:            document.getElementById('cfg_from').value || '2015-01-01',
+    netliqThreshold: document.getElementById('cfg_netliq').value,
+    stopPct:         document.getElementById('cfg_stop').value,
+    riskPct:         document.getElementById('cfg_risk').value,
+    requireBoth:     document.getElementById('cfg_require_both').value,
+  });
+
+  try {
+    const r = await fetch('/api/liquidity-gate/backtest?' + params);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Unknown error');
+    _trades  = d.trades  || [];
+    _curve   = d.curve   || [];
+    _stats   = d.stats   || {};
+    _diag    = d.diagnostics || {};
+    _dates   = d.dates   || [];
+    _netliqZ = d.netliqZ || [];
+    _gate2Series = d.gate2Series || [];
+
+    const cacheEl = document.getElementById('cacheLabel');
+    if (cacheEl) cacheEl.textContent = `(${_trades.length} trades, ${_dates.length} days)`;
+
+    renderAll();
+    setStatus('ok', `Done — ${_trades.length} trades over ${_curve.length > 1 ? Math.round((new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) * 10) / 10 : '?'} years`);
+  } catch (err) {
+    setStatus('err', 'Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function fmt(n, dp = 1, suffix = '') {
+  if (n == null || !isFinite(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(dp) + suffix;
+}
+
+function renderAll() {
+  renderKpis();
+  renderEquityChart();
+  renderGateZChart();
+  renderDiagnostics();
+  renderTradeTable();
+  ['kpiSection','chartCard','gateChartCard','diagCard','tradeCard'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
+}
+
+function renderKpis() {
+  const s = _stats;
+  document.getElementById('kCagr').textContent      = fmt(s.cagr, 1, '%');
+  document.getElementById('kCagr').className        = 'kpi-val ' + (s.cagr >= 0 ? 'green' : 'red');
+  document.getElementById('kSharpe').textContent    = s.sharpe != null ? s.sharpe.toFixed(2) : '—';
+  document.getElementById('kSharpe').className      = 'kpi-val ' + (s.sharpe >= 1.0 ? 'green' : s.sharpe >= 0.5 ? 'amber' : 'red');
+  document.getElementById('kSortino').textContent   = s.sortino != null ? s.sortino.toFixed(2) : '—';
+  document.getElementById('kSortino').className     = 'kpi-val ' + (s.sortino >= 1.5 ? 'green' : s.sortino >= 0.7 ? 'amber' : 'red');
+  document.getElementById('kMaxDD').textContent     = s.maxDD != null ? '-' + Math.abs(s.maxDD).toFixed(1) + '%' : '—';
+  document.getElementById('kWinRate').textContent   = s.winRate != null ? (s.winRate * 100).toFixed(1) + '%' : '—';
+  document.getElementById('kWinRate').className     = 'kpi-val ' + (s.winRate >= 0.5 ? 'green' : s.winRate >= 0.4 ? 'amber' : 'red');
+  document.getElementById('kWins').textContent      = `${s.wins ?? 0} wins / ${s.n ?? 0} trades`;
+  document.getElementById('kTotalTrades').textContent = s.n ?? 0;
+  document.getElementById('kTotalRet').textContent = fmt(s.totalReturn, 1, '% total');
+
+  if (_curve.length >= 2) {
+    document.getElementById('kPeriod').textContent =
+      _curve[0].date + ' → ' + _curve[_curve.length-1].date;
+  }
+}
+
+function renderEquityChart() {
+  if (_lwEquityChart) { _lwEquityChart.remove(); _lwEquityChart = null; }
+  if (!_curve.length) return;
+  _lwEquityChart = createLWChart('lwEquity', 300);
+  if (!_lwEquityChart) return;
+  const series = _lwEquityChart.addAreaSeries({
+    lineColor: '#22d3ee', topColor: 'rgba(34,211,238,0.25)', bottomColor: 'rgba(34,211,238,0.01)',
+    lineWidth: 2, priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' },
+  });
+  series.setData(_curve.map(p => ({ time: p.date, value: p.equity })));
+  _lwEquityChart.timeScale().fitContent();
+
+  const sub = document.getElementById('chartSubtitle');
+  if (sub && _curve.length >= 2) sub.textContent = `${_curve[0].date} → ${_curve[_curve.length-1].date}`;
+}
+
+function renderGateZChart() {
+  if (_lwGateZChart) { _lwGateZChart.remove(); _lwGateZChart = null; }
+  if (!_dates.length) return;
+  _lwGateZChart = createLWChart('lwGateZ', 220);
+  if (!_lwGateZChart) return;
+  const hist = _lwGateZChart.addHistogramSeries({
+    priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    lastValueVisible: true, priceLineVisible: false,
+  });
+  hist.setData(
+    _dates.map((t, i) => ({ time: t, value: _netliqZ[i], color: _netliqZ[i] >= 0 ? '#10b981' : '#ef4444' }))
+      .filter(p => isFinite(p.value))
+  );
+  const markers = [];
+  for (let i = 0; i < _dates.length; i++) {
+    if (_gate2Series[i]) markers.push({ time: _dates[i], position: 'aboveBar', color: '#fbbf24', shape: 'circle', size: 0.4 });
+  }
+  if (markers.length) hist.setMarkers(markers);
+  _lwGateZChart.timeScale().fitContent();
+}
+
+function renderDiagnostics() {
+  const fmtCorr = v => isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(3) : '—';
+  const fmtHit  = v => isFinite(v) ? (v * 100).toFixed(1) + '%' : '—';
+  document.getElementById('dCorr').textContent = fmtCorr(_diag.corrNextDay);
+  document.getElementById('dCorr').style.color = !isFinite(_diag.corrNextDay) ? '' : Math.abs(_diag.corrNextDay) >= 0.10 ? (_diag.corrNextDay > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
+  document.getElementById('dHit').textContent  = fmtHit(_diag.hitRateNextDay);
+  document.getElementById('dHit').style.color  = !isFinite(_diag.hitRateNextDay) ? '' : _diag.hitRateNextDay >= 0.53 ? '#10b981' : _diag.hitRateNextDay <= 0.47 ? '#ef4444' : '#f59e0b';
+}
+
+function renderTradeTable() {
+  const tbody = document.getElementById('tradeTbody');
+  document.getElementById('tradeCount').textContent = `${_trades.length} trades`;
+  if (!_trades.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3)">No trades</td></tr>'; return; }
+  tbody.innerHTML = _trades.slice().reverse().map(t => `
+    <tr>
+      <td>${t.date}</td>
+      <td>${t.exitDate ?? '—'}</td>
+      <td><span class="gate-pill ${t.direction === 'LONG' ? 'gate-long' : 'gate-short'}">${t.direction}</span></td>
+      <td class="num">${t.entry?.toFixed(2) ?? '—'}</td>
+      <td class="num">${t.exit?.toFixed(2) ?? '—'}</td>
+      <td>${t.exitReason ?? '—'}</td>
+      <td class="num ${t.movePct >= 0 ? 'win' : 'loss'}">${fmt(t.movePct, 2, '%')}</td>
+      <td class="num ${t.tradeReturn >= 0 ? 'win' : 'loss'}">${fmt(t.tradeReturn, 2, '%')}</td>
+      <td class="num">${t.equity?.toFixed(3) ?? '—'}</td>
+    </tr>
+  `).join('');
+}
+
+window.addEventListener('resize', () => {
+  if (_lwEquityChart) _lwEquityChart.applyOptions({ width: document.getElementById('lwEquity').clientWidth });
+  if (_lwGateZChart)  _lwGateZChart.applyOptions({ width: document.getElementById('lwGateZ').clientWidth });
+});
+</script>
+</body>
+</html>

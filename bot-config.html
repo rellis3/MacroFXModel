@@ -360,6 +360,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="poshedgebot" onclick="switchTab('poshedgebot')" style="color:#10b981" id="phbTabBtn">🛡 Pos Hedge</button>
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
     <button class="tab-btn" data-tab="nqqmr" onclick="switchTab('nqqmr')" style="color:#f59e0b" id="nqTabBtn">🎯 QMR Indices</button>
+    <button class="tab-btn" data-tab="liquiditygate" onclick="switchTab('liquiditygate')" style="color:#22d3ee" id="lgTabBtn">💧 Liquidity Gate</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
   </div>
 
@@ -3033,6 +3034,36 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   </div><!-- /tab-nqqmr -->
 
+  <div class="tab-pane" id="tab-liquiditygate">
+
+    <div class="bot-banner" style="background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.28)">
+      <div class="bot-banner-icon">💧</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#22d3ee">Liquidity Gate — Net Liquidity + Cross-Asset Coherence</div>
+        <div class="bot-banner-sub">Standalone macro signal · 6 index futures · Gate 1: Fed Net Liquidity regime (FRED) · Gate 2: curve/credit coherence confirm · Gate 3: OI overlay (informational)</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
+        <a href="liquidity-gate-backtest.html" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #22d3ee;border-radius:7px;color:#22d3ee;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtester</button>
+        </a>
+        <button style="background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text3);font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px" onclick="lgLoadLive()">↺ Refresh</button>
+      </div>
+    </div>
+
+    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin:16px 0 8px">
+      Live Gate Status — As Of <span id="lgAsOf">—</span>
+    </div>
+
+    <div id="lgCards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:12px;padding:20px">Loading…</div>
+    </div>
+
+    <div class="info-box" style="margin-top:14px">
+      <strong style="color:#22d3ee">Reading this panel:</strong> Gate 1 direction comes from the Net Liquidity 252-day rolling z-score (WALCL − WTREGEN − RRPON, 5-day publication lag). Gate 2 PASS means the yield curve (T10Y2Y) and HY credit spread (inverted) z-scores agree with Gate 1's direction. Gate 1 and Gate 2 are identical across all 6 instruments since they're FRED-only — the per-instrument Gate 3 overlay below reads each instrument's saved options-OI data (📊 OI button, main dashboard) to show whether dealer positioning (max pain / call &amp; put walls) agrees or conflicts with the macro bias. Gate 3 is informational only, not a hard gate.
+    </div>
+
+  </div><!-- /tab-liquiditygate -->
+
   <div class="tab-pane" id="tab-positions">
 
     <!-- Sub-tabs: Live / History / Hedge Audit -->
@@ -4374,6 +4405,89 @@ document.querySelector('.tab-btn[data-tab="nqqmr"]')?.addEventListener('click', 
   nqLoadStatus();
   nqLoadConfig();
   nqLoadAudit();
+});
+
+// ── Liquidity Gate tab ───────────────────────────────────────────────────────────
+const LG_INSTRUMENTS = ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'US2000_USD', 'DE30_USD', 'UK100_GBP'];
+const LG_FRIENDLY = {
+  NAS100_USD: 'NAS100 (Nasdaq)', SPX500_USD: 'SPX500 (S&amp;P 500)', US30_USD: 'US30 (Dow)',
+  US2000_USD: 'US2000 (Russell)', DE30_USD: 'DE30 (DAX)', UK100_GBP: 'UK100 (FTSE)',
+};
+
+// Same localStorage shape/key as js/oi.js's oiLoadStore() — inlined here since
+// this tab's script block isn't a module and can't import that file directly.
+function _lgOiLoadStore() {
+  try { return JSON.parse(localStorage.getItem('oi_store') || '{}'); } catch (e) { return {}; }
+}
+
+function _lgOiOverlay(sym, gate1) {
+  const store = _lgOiLoadStore();
+  const inst = store[sym];
+  if (!inst || !inst.spot) {
+    return `<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:8px">No OI data — paste via 📊 OI button</div>`;
+  }
+  const { spot, maxPain, callWall, putWall } = inst;
+  const distToCall = callWall ? Math.abs(callWall - spot) : Infinity;
+  const distToPut  = putWall  ? Math.abs(spot - putWall)  : Infinity;
+  const closerTo = distToCall < distToPut ? 'CALL WALL' : 'PUT WALL';
+  // Max-pain pull direction: price below max pain tends to drift up toward it (bullish pull), and vice versa.
+  const maxPainDir = maxPain ? (spot < maxPain ? 'LONG' : spot > maxPain ? 'SHORT' : 'NEUTRAL') : 'NEUTRAL';
+  const agrees = gate1 !== 'NEUTRAL' && maxPainDir !== 'NEUTRAL' && maxPainDir === gate1;
+  const conflicts = gate1 !== 'NEUTRAL' && maxPainDir !== 'NEUTRAL' && maxPainDir !== gate1;
+  const agreeColor = agrees ? '#10b981' : conflicts ? '#ef4444' : 'var(--text3)';
+  const agreeLabel = agrees ? 'AGREES with Gate 1' : conflicts ? 'CONFLICTS with Gate 1' : 'no Gate 1 bias to compare';
+  return `
+    <div style="font-size:11px;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.6">
+      <div>Spot ${spot.toFixed(2)} · closer to <strong>${closerTo}</strong></div>
+      <div>Max pain ${maxPain ? maxPain.toFixed(2) : '—'} → pull direction <strong>${maxPainDir}</strong></div>
+      <div style="color:${agreeColor};font-weight:600;margin-top:3px">${agreeLabel}</div>
+    </div>`;
+}
+
+function _lgCardHtml(sym, live) {
+  const g1 = live?.gate1 ?? 'NEUTRAL';
+  const g2 = !!live?.gate2Pass;
+  const composite = live?.composite ?? 'BLOCKED';
+  const compColor = composite === 'ALIGNED' ? '#10b981' : composite === 'MIXED' ? '#f59e0b' : '#ef4444';
+  const g1Color = g1 === 'LONG' ? '#10b981' : g1 === 'SHORT' ? '#ef4444' : 'var(--text3)';
+  return `
+    <div class="card" style="border-top:3px solid ${compColor}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="card-title" style="margin-bottom:0">${LG_FRIENDLY[sym] ?? sym}</div>
+        <div style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;padding:3px 10px;border-radius:4px;background:${compColor}22;color:${compColor}">${composite}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;font-family:'DM Mono',monospace;font-size:12px">
+        <div style="color:var(--text3)">Gate 1 (Net Liq)</div><div style="font-weight:700;color:${g1Color}">${g1}</div>
+        <div style="color:var(--text3)">NetLiq Z</div><div style="font-weight:600">${live?.netliqZ ?? '—'}</div>
+        <div style="color:var(--text3)">Gate 2 (Coherence)</div><div style="font-weight:700;color:${g2 ? '#10b981' : '#ef4444'}">${g2 ? 'PASS' : 'FAIL'}</div>
+        <div style="color:var(--text3)">Curve Z / Credit Z</div><div style="font-weight:600">${live?.curveZ ?? '—'} / ${live?.creditZ ?? '—'}</div>
+      </div>
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <div style="font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;font-family:'DM Mono',monospace">Gate 3 — OI Overlay (informational)</div>
+        ${_lgOiOverlay(sym, g1)}
+      </div>
+    </div>`;
+}
+
+async function lgLoadLive() {
+  const container = document.getElementById('lgCards');
+  if (!container) return;
+  try {
+    const r = await fetch('/api/liquidity-gate/live');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Unknown error');
+    const asOfEl = document.getElementById('lgAsOf');
+    if (asOfEl) asOfEl.textContent = d.asOf ?? '—';
+    container.innerHTML = LG_INSTRUMENTS.map(sym => _lgCardHtml(sym, d.instruments?.[sym])).join('');
+  } catch (e) {
+    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--red);font-size:12px;padding:20px">Error: ${e.message}</div>`;
+  }
+}
+window.lgLoadLive = lgLoadLive;
+
+// Auto-load Liquidity Gate status when tab is opened
+document.querySelector('.tab-btn[data-tab="liquiditygate"]')?.addEventListener('click', () => {
+  lgLoadLive();
 });
 
 // ── Positions tab ─────────────────────────────────────────────────────────────
