@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-06-19 (interim GARCH β fix implemented, see below).
+Last updated: 2026-06-22 (Track 1 first checkpoint — fix did NOT help, see below).
 
 ---
 
@@ -22,10 +22,16 @@ Last updated: 2026-06-19 (interim GARCH β fix implemented, see below).
   for this log line next time a news-heavy session comes up.
 
 - index/NQ GARCH persistence: confirmed structural (not single-day noise) via
-  3-session trajectory below. **Interim fix implemented 2026-06-19** (this
-  session): β 0.91→0.87 for the primary index estimator only (legacy shadow
-  column untouched). This is explicitly provisional — see "Dual-track plan"
-  below for what happens next.
+  3-session trajectory below. **Interim fix implemented 2026-06-19**: β
+  0.91→0.87 for the primary index estimator only (legacy shadow column
+  untouched). **First checkpoint (2026-06-22) is bad news: Δ got WORSE, not
+  better (+33.7% → +59.0%)**, the largest NQ gap yet. Leading hypothesis: α
+  (reaction to the most recent day's return), not β (decay of old shocks), is
+  the bigger problem — lowering β doesn't help if a *fresh* large realized
+  return is still feeding `alpha*r²` every single day this week (this has been
+  an unusually news-heavy week). Per the no-whiplash rule, NOT re-tuning off
+  this one point — see "Track 1 checkpoint result" below for the full reasoning
+  and what evidence would confirm/deny the alpha hypothesis.
 
 ---
 
@@ -35,7 +41,8 @@ Last updated: 2026-06-19 (interim GARCH β fix implemented, see below).
 |--------|------------------------|---------:|--------:|-------:|------|
 | Jun-17 | first post-revert      | 26.56%   | 21.71%  | +22.3% | GARCH α=0.06/β=0.91 just reinstated after EWMA(0.90) rejected |
 | Jun-18 | Fed Chair speech day   | —        | —       | +3.5%  | shock day itself was fine; correction factors fit from Jun-17 data |
-| Jun-19 | post-shock decay       | —        | —       | +33.7% | worst gap yet — prior day's shock hadn't decayed in our series, ref had nearly fully reverted |
+| Jun-19 | post-shock decay       | —        | —       | +33.7% | worst gap yet (pre-fix) — prior day's shock hadn't decayed, ref had nearly fully reverted |
+| Jun-22 | Track 1 checkpoint #1  | 24.97%   | 15.70%  | +59.0% | **post-fix (β=0.87), and it's worse** — see diagnosis below |
 
 **Diagnosis**: reference's NQ vol behaves as if it has roughly 1-session effective
 memory after a shock. Our GARCH(0.06/0.91) has α+β=0.97 → ~23-day half-life —
@@ -51,6 +58,28 @@ non-event days. They are the WRONG tool for a decay-speed/persistence problem.
 Conflating the two causes whiplash (proven twice now). The fix for "vol stays
 elevated too long after a shock" has to be an estimator-dynamics change
 (alpha/beta/lambda), never a correction-factor refit.
+
+**Updated diagnosis (2026-06-22)**: the Track 1 β cut (23d → 9.5d half-life)
+should have *helped* if the problem were purely "old shocks decay too slowly."
+Instead Δ got worse. Two non-exclusive explanations:
+1. **α is the real lever, not β.** α=0.06 weights *every single day's* fresh
+   realized return into sigma2, regardless of β. If NQ had another large
+   close-to-close move on Jun-19 (Friday) — plausible, this has been a
+   continuously news-heavy week since the Jun-18 Fed Chair speech — then a
+   lower β does nothing to stop that fresh shock from pushing sigma2 up; it
+   only affects how fast *already-absorbed* shocks fade. The reference's vol
+   dropping to 15.70% (its lowest level in this whole tracking window) while
+   ours rose to 24.97% suggests the reference barely reacts to single-day
+   moves at all — more consistent with a low-α problem than a high-β one.
+2. **Compounding, not independent, weekly shocks.** This has been one
+   continuous volatile week (Fed Chair speech Jun-18 → still-elevated Jun-19 →
+   apparently another move into Jun-22) rather than isolated single-day
+   events. A persistence fix only pays off once shocks stop arriving; we
+   haven't had a clean "post-shock, no new shock" session yet to test it.
+**Action**: do NOT cut β further or touch α off this single point (whiplash
+risk). Need the raw daily NQ return series to confirm hypothesis 1 directly —
+next time this is revisited, pull the actual close-to-close returns for
+Jun-18/19/22 and check whether Jun-19's bar itself was a large mover.
 
 ---
 
@@ -79,6 +108,13 @@ Implementation: `js/volForecast.js`
 **Next checkpoint**: after the next 1-2 sessions' NQ compare, check whether
 Δ has shrunk vs the +22.3%/+33.7% pattern. Record results in the table below.
 
+**Checkpoint result (2026-06-22)**: Δ rose to +59.0% — worse than pre-fix.
+See "Updated diagnosis" above. Leading theory is α (not β) is the dominant
+error source given a continuously news-heavy week. **Not reverting or
+re-tuning yet** — one data point during an unusually shock-heavy week isn't
+enough to distinguish "the fix is wrong" from "the fix can't work until
+shocks stop arriving." Need a calmer week to isolate the effect cleanly.
+
 ### Track 2 — wait + grid search (ONGOING, multi-session)
 Keep accumulating (ours_vol, ref_vol, instrument, date, event-flag) tuples
 below every session. Once there are enough clean (non-event-day) points —
@@ -94,23 +130,26 @@ multiplier behavior specifically).
 
 | Date   | Instrument | Ours vol | Ref vol | Δ      | Event day? | Notes |
 |--------|-----------|---------:|--------:|-------:|------------|-------|
-| Jun-17 | NQ        | 26.56%   | 21.71%  | +22.3% | No         | first post-revert GARCH compare |
+| Jun-17 | NQ        | 26.56%   | 21.71%  | +22.3% | No         | first post-revert GARCH compare, β=0.91 |
 | Jun-18 | NQ        | —        | —       | +3.5%  | **Yes** (Fed Chair speech) | shock day itself, exclude from correction-factor fits |
-| Jun-19 | NQ        | —        | —       | +33.7% | No         | post-shock decay, worst gap, motivated Track 1 fix |
+| Jun-19 | NQ        | —        | —       | +33.7% | No         | post-shock decay, worst gap pre-fix, motivated Track 1 fix |
+| Jun-22 | NQ        | 24.97%   | 15.70%  | +59.0% | No (but news-heavy week) | **post-fix (β=0.87)** — worse, not better; see updated diagnosis above |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
-on hand — only Δ was recorded in this session's analysis.)*
+on hand — only Δ was recorded in those sessions' analysis.)*
 
 GOLD/EURUSD gap history (commodity/fx — separate asset classes, separate
 estimators, not part of the GARCH persistence problem, but tracked here so
 all reference compares live in one place):
 
-| Date   | Instrument | Δ vs ref | Notes |
-|--------|-----------|---------:|-------|
-| Jun-15 | GOLD      | −6%      | HV20, acceptable |
-| Jun-17 | EURUSD    | small (~±5%) | YZ correction factors refined this day |
-| Jun-18 | GOLD      | — | Fed Chair speech day; news multiplier didn't fire (open bug, see above) |
-| Jun-19 | GOLD/EURUSD | — | not yet logged in detail — fill in if revisited |
+| Date   | Instrument | Ours vol | Ref vol | Δ vol | Δ HL med | Δ HL 75p | Δ OC med | Δ OC 75p | Notes |
+|--------|-----------|---------:|--------:|------:|---------:|---------:|---------:|---------:|-------|
+| Jun-15 | GOLD      | —        | —       | −6%   | —        | —        | —        | —        | HV20, acceptable |
+| Jun-17 | EURUSD    | —        | —       | small (~±5%) | —  | —        | —        | —        | YZ correction factors refined this day |
+| Jun-18 | GOLD      | —        | —       | —     | —        | —        | —        | —        | Fed Chair speech day; news multiplier didn't fire (open bug, see above) |
+| Jun-19 | GOLD/EURUSD | —      | —       | —     | —        | —        | —        | —        | not yet logged in detail — fill in if revisited |
+| Jun-22 | GOLD      | 29.03%   | 27.14%  | +7.0% | −3.3%    | +1.2%    | **+15.5%** | +2.4%  | HL/OC75 fine; OC median stands out — watch for recurrence on next calm day before touching `oc_50_corr` |
+| Jun-22 | EURUSD    | 5.38%    | 5.73%   | −6.1% | +1.9%    | +6.2%    | +4.2%    | +5.0%    | all within normal noise band, fx calibration still holding up |
 
 ---
 
@@ -120,12 +159,14 @@ all reference compares live in one place):
    Ask the user to paste the Railway log line from the next `runVolForecast()`
    run (scheduled or manual `/api/vol-forecast/refresh`) to finally determine
    why the Fed Chair speech didn't trigger the news multiplier.
-2. **Track 1 checkpoint** — after next 1-2 NQ compares, check if β=0.87 actually
-   closed the gap or just changed its sign/magnitude (whiplash risk same as
-   ASSET_PARAMS — but lower risk here since β=0.87 is a moderate, reasoned step,
-   not a single-day fit).
+2. **Track 1 checkpoint #1 came back bad (2026-06-22)** — Δ rose to +59.0%,
+   worse than the +33.7% pre-fix. Need to: (a) pull NQ's actual daily
+   close-to-close returns for Jun-18/19/22 to check if Jun-19 itself was
+   another large mover (would confirm the α-not-β hypothesis), (b) get a
+   reading from a calmer, non-news week before concluding the fix failed.
 3. **Track 2 grid search** — not started, blocked on accumulating enough clean
-   data points (table above). Revisit once 5+ non-event NQ rows exist.
+   data points (table above). Revisit once 5+ non-event NQ rows exist. Given
+   item 2, the grid search should sweep α as well as β, not just β.
 4. **index ASSET_PARAMS hl/oc correction factors** (0.81/0.78/0.85/0.90,
    calibrated Jun-17 from a single contaminated-by-persistence day) are
    themselves suspect — once Track 1/2 settle on a better-decaying estimator,
@@ -138,6 +179,10 @@ all reference compares live in one place):
 6. Backtest engines (`js/volBacktestEngine.js`, `weeklyVolBacktestEngine.js`,
    `volBacktestM1Engine.js`) still run old EWMA/RS-era ASSET_PARAMS, untouched
    by any of this — separate, lower-priority cleanup.
+7. **GOLD OC median ran +15.5% hot on Jun-22** while HL med/75p and OC 75p were
+   all within ±3% — single day, do not touch `oc_50_corr` (currently 1.09) yet,
+   but watch the next 1-2 calm GOLD sessions for a repeat before dismissing as
+   noise.
 
 ---
 
