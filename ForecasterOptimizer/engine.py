@@ -17,6 +17,17 @@ provably bit-identical, not approximations):
     so a running incremental pass yields the exact same per-day value.
   - ATR-per-M1-bar mapping uses np.searchsorted instead of a two-pointer
     scan — same monotonic lookup, vectorized.
+
+In practice float64 rounding isn't perfectly associative, so the forward-pass
+forecast values can differ from JS's by ~1e-7 relative — irrelevant almost
+everywhere, but on the rare bar where a level price lands within that
+tolerance of the bar's high/low, one engine triggers a level and the other
+doesn't. Once that happens, all downstream trade timing for that run diverges
+(same market data, different trade slots busy at different times). Confirmed
+via trade-by-trade diffing against the JS reference: roughly 1 in a few
+thousand trades over a 6-year window. Not a logic bug — both engines apply
+the exact same comparisons, just to operands that occasionally differ in the
+last float64 bit.
 """
 
 import numpy as np
@@ -202,6 +213,7 @@ PARAMS = [
     dict(key="tpRMult", min=0.5, max=10.0, step=0.1, default=2.0),
     dict(key="mfeTrailPct", min=0.10, max=0.95, step=0.05, default=0.50),
     dict(key="mfeMinR", min=0.1, max=3.0, step=0.1, default=0.3),
+    dict(key="levelTargetCutoffH", min=0, max=23, step=1, default=12),
     dict(key="beAfterR", min=0.0, max=5.0, step=0.1, default=0.0),
     dict(key="momZThresh", min=0.0, max=4.0, step=0.1, default=0.0),
     dict(key="costPct", min=0.0, max=0.20, step=0.01, default=0.0),
@@ -221,7 +233,7 @@ OPT_NUMERIC_PARAMS = [p for p in PARAMS if p["key"] not in OPT_EXCLUDE_KEYS]
 OPT_CATEGORICAL = {
     "strategy": ["dirop", "reversal"],
     "slMode": ["atr", "pips"],
-    "tpMode": ["trail", "fixed_r", "both", "none"],
+    "tpMode": ["trail", "fixed_r", "both", "none", "level"],
 }
 
 
@@ -259,6 +271,7 @@ def _run_backtest_kernel(
     from_ts, to_ts,
     strategy_is_reversal, sl_mode_is_pips, sl_fixed_pips, sl_atr_mult, pip_size,
     use_trail, use_tp, tp_r_mult, mfe_trail_pct, mfe_min_r,
+    use_level_target, level_target_cutoff_h,
     be_after_r, mom_z_thresh, cost_pct, dyn_min_move,
     window_start_h, window_end_h, eod_close,
     one_trade_at_a_time, min_bars_between, max_level_trades,
@@ -410,8 +423,8 @@ def _run_backtest_kernel(
                     slot_sl[s] = slot_entry[s]
                     slot_be[s] = True
 
-        # MFE trail exit
-        if use_trail:
+        # MFE trail exit (also active for level-target mode past the cutoff hour)
+        if use_trail or (use_level_target and bar_hour >= level_target_cutoff_h):
             for s in range(MAX_SLOTS):
                 if slot_active[s]:
                     mfe_peak = slot_mfe[s]
@@ -518,11 +531,19 @@ def _run_backtest_kernel(
             level_trade_count[lv] += 1
             sl_dist = (sl_fixed_pips * pip_size) if sl_mode_is_pips else (atr * sl_atr_mult)
             sl = lv_price + sl_dist if lv_dir == 1 else lv_price - sl_dist
-            has_tp = use_tp
+            has_tp = False
             tp = 0.0
-            if use_tp:
+            if use_level_target:
+                if lv <= 7:
+                    # Mirror price across day open — only defined for the 8
+                    # static levels (open*(1±x/100) symmetry); dynamic levels
+                    # (lv 8-11) get no target, behaving like tpMode='none'.
+                    tp = 2.0 * day_open - lv_price
+                    has_tp = True
+            elif use_tp:
                 tp_dist = sl_dist * tp_r_mult
                 tp = lv_price - tp_dist if lv_dir == 1 else lv_price + tp_dist
+                has_tp = True
 
             free = -1
             for s in range(MAX_SLOTS):
@@ -569,8 +590,9 @@ def run_backtest(m1, atr_arr, mom_arr, fc_lookup, cfg, from_ts, to_ts, pip_size)
     times, opens, highs, lows, closes = m1
     day_key_offset, fc_valid, fc_hl75, fc_hlmed, fc_oc75, fc_ocmed = fc_lookup
     tp_mode = cfg.get("tpMode", "trail")
+    use_level_target = tp_mode == "level"
     use_trail = tp_mode in ("trail", "both")
-    use_tp = tp_mode in ("fixed_r", "both")
+    use_tp = tp_mode in ("fixed_r", "both") or use_level_target
     entry_ts, exit_ts, pnl_pct, win, reason = _run_backtest_kernel(
         times, opens, highs, lows, closes, atr_arr, mom_arr,
         day_key_offset, fc_valid, fc_hl75, fc_hlmed, fc_oc75, fc_ocmed,
@@ -578,6 +600,7 @@ def run_backtest(m1, atr_arr, mom_arr, fc_lookup, cfg, from_ts, to_ts, pip_size)
         cfg.get("strategy", "dirop") == "reversal", cfg.get("slMode", "atr") == "pips",
         float(cfg.get("slFixedPips", 20)), float(cfg.get("slAtrMult", 2.0)), float(pip_size),
         use_trail, use_tp, float(cfg.get("tpRMult", 2.0)), float(cfg.get("mfeTrailPct", 0.5)), float(cfg.get("mfeMinR", 0.3)),
+        use_level_target, int(cfg.get("levelTargetCutoffH", 12)),
         float(cfg.get("beAfterR", 0.0)), float(cfg.get("momZThresh", 0.0)), float(cfg.get("costPct", 0.0)), float(cfg.get("dynMinMove", 0.25)),
         int(cfg.get("windowStartH", 0)), int(cfg.get("windowEndH", 22)), int(cfg.get("eodClose", 1)),
         bool(cfg.get("oneTradeAtATime", 1) >= 1), int(round(cfg.get("minBarsBetween", 0))), int(cfg.get("maxLevelTrades", 1)),

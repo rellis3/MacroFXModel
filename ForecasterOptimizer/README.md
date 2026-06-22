@@ -29,6 +29,10 @@ python3 sweep.py --pairs eurusd,gbpusd,usdjpy,gold --trials 600 --workers 4
 
 # rebuild the cross-pair leaderboard from existing results/ without rerunning
 python3 sweep.py --summarize-only
+
+# force tpMode='level' (opposite-side structural-level target, see below)
+# on every trial instead of the default 'none', as a separate comparison
+python3 sweep.py --pairs eurusd --trials 600 --tp-mode level
 ```
 
 `--workers N` runs N pairs concurrently via multiprocessing — use this if you
@@ -55,11 +59,18 @@ this repo's history:
    for context.
 3. Random-search `--trials` configs on the TRAIN window only, using the exact
    grid-snap sampling from `sampleTrialConfig` in the HTML page, with
-   `tpMode` forced to `'none'` and `beAfterR` forced random in `[0.1, 3.0]`
-   (fixed-R/trailing TP modes trivially inflate Calmar by capping every
-   loss — forcing pure SL/EOD exits with a breakeven stop is the
-   apples-to-apples comparison against a strategy that actually takes full
-   stop-outs).
+   `tpMode` forced to `--tp-mode` (default `'none'`) and `beAfterR` forced
+   random in `[0.1, 3.0]` (fixed-R/trailing TP modes trivially inflate Calmar
+   by capping every loss — forcing pure SL/EOD exits with a breakeven stop is
+   the apples-to-apples comparison against a strategy that actually takes
+   full stop-outs). Pass `--tp-mode level` to instead force every trial onto
+   the opposite-side level-target mode (`tpMode='level'`, togglable
+   independently in the HTML page too): TP is the mirror of the entry level
+   price across the day's open (only defined for the 8 static levels; the 4
+   dynamic levels get no target); past `levelTargetCutoffH` (UTC hour,
+   searchable) the MFE trail exit also becomes active alongside that target,
+   so a late-day position can still escape on adverse price action instead
+   of waiting on a target that may never come.
 4. Rank by Calmar twice: unconstrained, and filtered to configs where the
    stop-loss fires on ≥15% of trades (`--sl-hit-min`) — otherwise the
    top-ranked config is often just a stop so wide it never triggers, which
