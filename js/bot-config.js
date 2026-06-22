@@ -1330,17 +1330,17 @@ const RGV7_DEFAULTS = {
   paper_mode:               true,
   pairs:                    ['EUR/USD', 'GBP/USD', 'USD/JPY'],
   interval_secs:            30,
-  entry_conf:               70.0,
-  entry_score_min:          62.0,
-  sl_atr_mult:              2.0,
-  candle_hold:              2,
-  conf_floor:               45.0,
-  mfe_retrace_pct:          0.25,
-  mfe_min_r:                1.5,
-  max_hold_bars:            24,
-  exit_regime_bars:         3,
+  entry_conf:               54.0,
+  entry_score_min:          58.0,
+  sl_atr_mult:              2.3,
+  candle_hold:              3,
+  conf_floor:               55.0,
+  mfe_retrace_pct:          0.27,
+  mfe_min_r:                1.1,
+  max_hold_bars:            49,
+  exit_regime_bars:         4,
   window_start:             7,
-  window_end:               20,
+  window_end:               19,
   post_exit_cooldown:       4,
   htf_require:              false,
   use_bocpd:                true,
@@ -1388,17 +1388,17 @@ function readRgV7Form() {
   _rgv7Cfg.enabled                  = chk('rgv7_enabled');
   _rgv7Cfg.paper_mode               = chk('rgv7_paper_mode');
   _rgv7Cfg.interval_secs            = num('rgv7_interval_secs',      30);
-  _rgv7Cfg.entry_conf               = num('rgv7_entry_conf',         70.0);
-  _rgv7Cfg.entry_score_min          = num('rgv7_entry_score_min',    62.0);
-  _rgv7Cfg.sl_atr_mult              = num('rgv7_sl_atr_mult',        2.0);
-  _rgv7Cfg.candle_hold              = num('rgv7_candle_hold',        2);
-  _rgv7Cfg.conf_floor               = num('rgv7_conf_floor',         45.0);
-  _rgv7Cfg.mfe_retrace_pct          = num('rgv7_mfe_retrace_pct',    0.25);
-  _rgv7Cfg.mfe_min_r                = num('rgv7_mfe_min_r',          1.5);
-  _rgv7Cfg.max_hold_bars            = num('rgv7_max_hold_bars',      24);
-  _rgv7Cfg.exit_regime_bars         = num('rgv7_exit_regime_bars',   3);
+  _rgv7Cfg.entry_conf               = num('rgv7_entry_conf',         54.0);
+  _rgv7Cfg.entry_score_min          = num('rgv7_entry_score_min',    58.0);
+  _rgv7Cfg.sl_atr_mult              = num('rgv7_sl_atr_mult',        2.3);
+  _rgv7Cfg.candle_hold              = num('rgv7_candle_hold',        3);
+  _rgv7Cfg.conf_floor               = num('rgv7_conf_floor',         55.0);
+  _rgv7Cfg.mfe_retrace_pct          = num('rgv7_mfe_retrace_pct',    0.27);
+  _rgv7Cfg.mfe_min_r                = num('rgv7_mfe_min_r',          1.1);
+  _rgv7Cfg.max_hold_bars            = num('rgv7_max_hold_bars',      49);
+  _rgv7Cfg.exit_regime_bars         = num('rgv7_exit_regime_bars',   4);
   _rgv7Cfg.window_start             = num('rgv7_window_start',       7);
-  _rgv7Cfg.window_end               = num('rgv7_window_end',         20);
+  _rgv7Cfg.window_end               = num('rgv7_window_end',         19);
   _rgv7Cfg.post_exit_cooldown       = num('rgv7_post_exit_cooldown', 4);
   _rgv7Cfg.htf_require              = chk('rgv7_htf_require');
   _rgv7Cfg.use_bocpd                = chk('rgv7_use_bocpd');
