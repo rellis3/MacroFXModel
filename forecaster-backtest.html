@@ -1987,6 +1987,7 @@ function renderAnalytics(trades) {
   // Secondary stats
   document.getElementById('secGrid').innerHTML = [
     { lbl:'Avg MFE (R)',  val:(trades.reduce((s,t)=>s+t.mfeR,0)/trades.length).toFixed(2)+'R' },
+    { lbl:'Avg MAE (R)',  val:(trades.reduce((s,t)=>s+t.maeR,0)/trades.length).toFixed(2)+'R' },
     { lbl:'Avg Duration', val:Math.round(trades.reduce((s,t)=>s+t.durationMin,0)/trades.length)+'m' },
     { lbl:'R:R Ratio',    val:st.avgLoss>0?(st.avgWin/st.avgLoss).toFixed(2):'∞' },
     { lbl:'Avg P&L (R)',  val:(trades.reduce((s,t)=>s+t.pnlR,0)/trades.length).toFixed(2)+'R' },
