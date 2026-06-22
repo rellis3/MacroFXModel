@@ -958,7 +958,7 @@ function _buildTrade(tradeId, barDate, key, dir, dynamic, entryTs, entryPrice, l
   }
   return {
     id: tradeId, date: barDate, level: key, direction: dir,
-    entryTs, entry: entryPrice, sl, tp, slDist, mfePeak: 0, beApplied: false,
+    entryTs, entry: entryPrice, sl, tp, slDist, mfePeak: 0, maeTrough: 0, beApplied: false,
     forecast: fc, dayOpen, dynSnap: dynamic ? lvPrice : null,
   };
 }
@@ -1061,10 +1061,12 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
       });
     }
 
-    // ── MFE tracking + breakeven stop ────────────────────────────────────
+    // ── MFE / MAE tracking + breakeven stop ──────────────────────────────
     activeTrades.forEach(t => {
       const mfe = t.direction === 'LONG' ? c.high - t.entry : t.entry - c.low;
       if (mfe > t.mfePeak) t.mfePeak = mfe;
+      const mae = t.direction === 'LONG' ? t.entry - c.low : c.high - t.entry;
+      if (mae > t.maeTrough) t.maeTrough = mae;
       if (beAfterR > 0 && !t.beApplied && t.slDist > 0 && t.mfePeak >= beAfterR * t.slDist) {
         t.sl = t.entry; t.beApplied = true;
       }
@@ -1204,11 +1206,16 @@ function _closeTrade(t, exitTs, exitPrice, reason, trades, day, costPct) {
   const pnlPct  = (pnlPts / t.dayOpen) * 100;
   const pnlR    = t.slDist > 0 ? pnlPts / t.slDist : 0;
   const mfeR    = t.slDist > 0 ? t.mfePeak / t.slDist : 0;
+  // SL exits close on the bar that breaches the stop, before maeTrough's
+  // per-bar update runs for that bar — so floor maeR at the realized loss
+  // (the true worst point for any adverse exit) rather than relying solely
+  // on the tracked trough, which undercounts that final bar for SL exits.
+  const maeR    = t.slDist > 0 ? Math.max(t.maeTrough / t.slDist, -pnlR, 0) : Math.max(0, -pnlR);
   if (day) day.pnl += pnlPct;
   trades.push({
     id: t.id, date: t.date, level: t.level, direction: t.direction,
     entryTs: t.entryTs, exitTs, entry: t.entry, exit: exitPrice,
-    sl: t.sl, tp: t.tp ?? null, pnlPct, pnlR, mfeR, maeR: Math.max(0, -pnlR),
+    sl: t.sl, tp: t.tp ?? null, pnlPct, pnlR, mfeR, maeR,
     durationMin: Math.round((exitTs - t.entryTs) / 60),
     exitReason: reason, win: pnlPct > 0,
     forecast: t.forecast, dayOpen: t.dayOpen,
