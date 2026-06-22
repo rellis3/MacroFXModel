@@ -33,6 +33,10 @@ python3 sweep.py --summarize-only
 # force tpMode='level' (opposite-side structural-level target, see below)
 # on every trial instead of the default 'none', as a separate comparison
 python3 sweep.py --pairs eurusd --trials 600 --tp-mode level
+
+# force entryMode='stop' (confirmed stop-order entry, see below) on every
+# trial instead of the default 'touch', as a separate comparison
+python3 sweep.py --pairs eurusd --trials 600 --entry-mode stop
 ```
 
 `--workers N` runs N pairs concurrently via multiprocessing — use this if you
@@ -70,7 +74,18 @@ this repo's history:
    dynamic levels get no target); past `levelTargetCutoffH` (UTC hour,
    searchable) the MFE trail exit also becomes active alongside that target,
    so a late-day position can still escape on adverse price action instead
-   of waiting on a target that may never come.
+   of waiting on a target that may never come. Pass `--entry-mode stop` to
+   instead force every trial onto confirmed stop-order entries
+   (`entryMode='stop'`, togglable independently in the HTML page too):
+   touching a level no longer fires a trade immediately — it arms the level,
+   and the trade only fires once price breaks back past it by
+   `entryConfirmAtrMult × ATR` in the reversal direction (simulating a real
+   stop order placed past the level), with `entryStopSlipAtrMult × ATR` of
+   extra adverse slippage applied to the fill. SL/fixed-R-TP distances anchor
+   to the actual confirmed fill price rather than the bare touch price, so
+   the stored risk reflects what the trade actually risked. An armed level
+   that never confirms — or confirms but finds no free slot/cooldown
+   window — simply expires unfired; it is not requeued.
 4. Rank by Calmar twice: unconstrained, and filtered to configs where the
    stop-loss fires on ≥15% of trades (`--sl-hit-min`) — otherwise the
    top-ranked config is often just a stop so wide it never triggers, which

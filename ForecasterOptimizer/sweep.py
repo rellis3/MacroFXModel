@@ -22,6 +22,10 @@ parquet data:
      fixed-R/trailing-TP exits trivially blow up Calmar by capping every
      loss). Pass --tp-mode level to instead force the opposite-side
      structural-level target mode on every trial, as a separate comparison.
+     entryMode is likewise forced to --entry-mode (default 'touch', the
+     original immediate-fill-on-touch behavior); pass --entry-mode stop to
+     instead force every trial to require a confirmed stop-order break-back
+     past the level before firing, as a separate comparison.
   5. Keep trials with >= --min-trades and a finite Calmar.
   6. Rank by Calmar twice: once unconstrained, once filtered to configs
      where the stop-loss actually fires on >= --sl-hit-min of trades (so
@@ -152,6 +156,7 @@ def process_pair(pair, args):
     for trial in range(args.trials):
         trial_cfg = E.sample_trial_config(base_cfg, rng)
         trial_cfg["tpMode"] = args.tp_mode
+        trial_cfg["entryMode"] = args.entry_mode
         trial_cfg["beAfterR"] = round(0.1 + rng.random() * 2.9, 1)
         stats, reason, n_trades = run_one(m1, atr_arr, mom_arr, fc_lookup, trial_cfg, *train_ts, pip_size)
         if n_trades >= args.min_trades and stats is not None and math.isfinite(stats["calmar"]):
@@ -246,6 +251,11 @@ def parse_args():
                      help="TP mode forced for every random-search trial. 'none' (default) is the "
                           "established honest SL/EOD-only comparison. 'level' tests the opposite-side "
                           "structural-level target mode instead.")
+    ap.add_argument("--entry-mode", choices=["touch", "stop"], default="touch",
+                     help="Entry mode forced for every random-search trial. 'touch' (default) fires "
+                          "the instant price touches a level. 'stop' arms the level on touch and only "
+                          "fires once price breaks back past it by entryConfirmAtrMult*ATR, simulating "
+                          "a stop order placed past the level instead of a bare-touch fill.")
     ap.add_argument("--top-n", type=int, default=5)
     ap.add_argument("--data-start", default="2017-09-01")
     ap.add_argument("--train-from", default="2018-01-01")
