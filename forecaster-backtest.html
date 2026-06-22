@@ -235,6 +235,7 @@
         <option value="fixed_r">Fixed R</option>
         <option value="both">Both (first hit)</option>
         <option value="none">None (SL/EOD only)</option>
+        <option value="level">Opposite Level</option>
       </select>
     </div>
   </div>
@@ -600,6 +601,8 @@ const PARAMS = [
     help:'(Trail / Both TP modes) Exit when price retraces this fraction of peak MFE. 0.50 = give back 50% of best profit.' },
   { key:'mfeMinR',        label:'Trail Min MFE (R)',         min:0.1, max:3.0,  step:0.1,  def:0.3,
     help:'Trail exit only activates once MFE ≥ this many R multiples.' },
+  { key:'levelTargetCutoffH', label:'Level Target Cutoff (UTC h)', min:0, max:23, step:1, def:12,
+    help:"(Opposite Level TP mode) Before this hour, only the opposite-side level price is targeted as TP. From this hour onward, the MFE trail exit also becomes active alongside that target, so late-day price action can still trail/exit early." },
   { key:'beAfterR',       label:'Breakeven Trigger (R)',     min:0,   max:5.0,  step:0.1,  def:0,
     help:'Once MFE reaches this many R, move SL to entry (lock in breakeven). 0 = disabled.' },
   { key:'momZThresh',     label:'Momentum Z Filter (abs)',   min:0,   max:4.0,  step:0.1,  def:0,
@@ -932,8 +935,10 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
   const tpMode = config.tpMode || 'trail';
   const beAfterR   = config.beAfterR   || 0;
   const momZThresh = config.momZThresh || 0;
+  const useLevelTarget = tpMode === 'level';
   const useTrail = tpMode === 'trail' || tpMode === 'both';
-  const useTp    = tpMode === 'fixed_r' || tpMode === 'both';
+  const useTp    = tpMode === 'fixed_r' || tpMode === 'both' || useLevelTarget;
+  const levelTargetCutoffH = config.levelTargetCutoffH ?? 12;
   const singleMode     = (config.oneTradeAtATime ?? 1) >= 1;
   const minBarsBetween = Math.max(0, Math.round(config.minBarsBetween ?? 0));
 
@@ -1023,8 +1028,8 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
       }
     });
 
-    // ── MFE trail exit (trail / both) ────────────────────────────────────
-    if (useTrail) {
+    // ── MFE trail exit (trail / both, or level-target after cutoff hour) ──
+    if (useTrail || (useLevelTarget && barHour >= levelTargetCutoffH)) {
       activeTrades = activeTrades.filter(t => {
         const { direction, entry, slDist, mfePeak } = t;
         if (mfePeak <= 0 || mfePeak < mfeMinR * slDist) return true;
@@ -1091,7 +1096,11 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         : atr * config.slAtrMult;
       const sl = lvDir === 'SHORT' ? lvPrice + slDist : lvPrice - slDist;
       let tp = null;
-      if (useTp) {
+      if (useLevelTarget) {
+        // Mirror price across the day open — only defined for static levels
+        // (open*(1±x/100) symmetry); dynamic levels get no target (≈ 'none').
+        if (!def.dynamic) tp = 2 * currentDay.open - lvPrice;
+      } else if (useTp) {
         const tpDist = slDist * (config.tpRMult || 2.0);
         tp = lvDir === 'SHORT' ? lvPrice - tpDist : lvPrice + tpDist;
       }
@@ -1247,7 +1256,7 @@ const OPT_NUMERIC_PARAMS = PARAMS.filter(p => !OPT_EXCLUDE_KEYS.has(p.key));
 const OPT_CATEGORICAL = {
   strategy: ['dirop', 'reversal'],
   slMode:   ['atr', 'pips'],
-  tpMode:   ['trail', 'fixed_r', 'both', 'none'],
+  tpMode:   ['trail', 'fixed_r', 'both', 'none', 'level'],
 };
 
 let optResults  = [];
@@ -1287,6 +1296,7 @@ function summarizeTrialConfig(c) {
   if (c.tpMode === 'none')          tpPart = 'None';
   else if (c.tpMode === 'fixed_r')  tpPart = `R×${c.tpRMult.toFixed(1)}`;
   else if (c.tpMode === 'trail')    tpPart = `Trail ${Math.round(c.mfeTrailPct*100)}%@${c.mfeMinR.toFixed(1)}R`;
+  else if (c.tpMode === 'level')    tpPart = `OppLvl, Trail≥${c.levelTargetCutoffH}h`;
   else                               tpPart = `R×${c.tpRMult.toFixed(1)}+Trail ${Math.round(c.mfeTrailPct*100)}%`;
   const beStr    = c.beAfterR > 0 ? ` · BE@${c.beAfterR.toFixed(1)}R` : '';
   const momStr   = c.momZThresh > 0 ? ` · |MomZ|≥${c.momZThresh.toFixed(1)}` : '';

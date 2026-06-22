@@ -17,9 +17,11 @@ parquet data:
      for context.
   4. Run --trials random-search trials on the TRAIN window only, using
      sampleTrialConfig's exact grid-snap sampling, with tpMode forced to
-     'none' and beAfterR forced random in [0.1, 3.0] (the same bias used in
-     the validated friend-comparison run, since fixed-R/trailing-TP exits
-     trivially blow up Calmar by capping every loss).
+     --tp-mode (default 'none') and beAfterR forced random in [0.1, 3.0]
+     (the same bias used in the validated friend-comparison run, since
+     fixed-R/trailing-TP exits trivially blow up Calmar by capping every
+     loss). Pass --tp-mode level to instead force the opposite-side
+     structural-level target mode on every trial, as a separate comparison.
   5. Keep trials with >= --min-trades and a finite Calmar.
   6. Rank by Calmar twice: once unconstrained, once filtered to configs
      where the stop-loss actually fires on >= --sl-hit-min of trades (so
@@ -149,7 +151,7 @@ def process_pair(pair, args):
     t_opt0 = time.time()
     for trial in range(args.trials):
         trial_cfg = E.sample_trial_config(base_cfg, rng)
-        trial_cfg["tpMode"] = "none"
+        trial_cfg["tpMode"] = args.tp_mode
         trial_cfg["beAfterR"] = round(0.1 + rng.random() * 2.9, 1)
         stats, reason, n_trades = run_one(m1, atr_arr, mom_arr, fc_lookup, trial_cfg, *train_ts, pip_size)
         if n_trades >= args.min_trades and stats is not None and math.isfinite(stats["calmar"]):
@@ -240,6 +242,10 @@ def parse_args():
     ap.add_argument("--trials", type=int, default=600)
     ap.add_argument("--min-trades", type=int, default=20)
     ap.add_argument("--sl-hit-min", type=float, default=0.15)
+    ap.add_argument("--tp-mode", choices=["none", "level"], default="none",
+                     help="TP mode forced for every random-search trial. 'none' (default) is the "
+                          "established honest SL/EOD-only comparison. 'level' tests the opposite-side "
+                          "structural-level target mode instead.")
     ap.add_argument("--top-n", type=int, default=5)
     ap.add_argument("--data-start", default="2017-09-01")
     ap.add_argument("--train-from", default="2018-01-01")
