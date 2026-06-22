@@ -3595,9 +3595,20 @@ function _computeLiquidityGate(bars, fredRaw, cfg = {}) {
   for (let i = 0; i < dates.length - 1; i++) {
     if (bars[i].close) nextDayRet[i] = (bars[i + 1].close - bars[i].close) / bars[i].close * 100;
   }
+  // WALCL/WTREGEN/RRP only update weekly, so netliqZ is a step function that
+  // barely moves day to day — a 1-day-forward correlation mostly measures
+  // "no new information" days against daily noise. A 5-trading-day-forward
+  // return matches the signal's actual update cadence.
+  const FWD_WEEKLY = 5;
+  const weeklyFwdRet = new Array(dates.length).fill(NaN);
+  for (let i = 0; i < dates.length - FWD_WEEKLY; i++) {
+    if (bars[i].close) weeklyFwdRet[i] = (bars[i + FWD_WEEKLY].close - bars[i].close) / bars[i].close * 100;
+  }
   const diagnostics = {
     corrNextDay:    pearsonCorr(netliqZ, nextDayRet),
     hitRateNextDay: signHitRate(netliqZ, nextDayRet),
+    corrWeekly:     pearsonCorr(netliqZ, weeklyFwdRet),
+    hitRateWeekly:  signHitRate(netliqZ, weeklyFwdRet),
   };
 
   const stats = _liqGateStats(trades, curve, equity);
