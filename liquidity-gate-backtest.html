@@ -171,7 +171,9 @@
             <th class="num">Win Rate</th>
             <th class="num">Trades</th>
             <th class="num">Corr (Z vs next-day ret)</th>
-            <th class="num">Hit Rate</th>
+            <th class="num">Hit Rate (1d)</th>
+            <th class="num">Corr (Z vs 5d fwd ret)</th>
+            <th class="num">Hit Rate (5d)</th>
           </tr>
         </thead>
         <tbody id="sweepTbody"></tbody>
@@ -229,6 +231,18 @@
       <div class="diag-card">
         <div class="diag-lbl">Read</div>
         <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:6px;">corr &gt; 0.10 or hit-rate &gt; 53% = worth a closer look on this instrument</div>
+      </div>
+      <div class="diag-card">
+        <div class="diag-lbl">Corr — Net Liq Z vs 5-Day Fwd Return</div>
+        <div class="diag-val" id="dCorrWk">—</div>
+      </div>
+      <div class="diag-card">
+        <div class="diag-lbl">Hit Rate — sign(Z) == sign(5-day fwd ret)</div>
+        <div class="diag-val" id="dHitWk">—</div>
+      </div>
+      <div class="diag-card">
+        <div class="diag-lbl">Read</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:6px;">WALCL/TGA/RRP only update weekly — this tests the signal at its actual update cadence instead of daily noise</div>
       </div>
     </div>
   </div>
@@ -335,7 +349,7 @@ async function runSweep() {
 
     const ranked = d.results.slice().sort((a, b) => (b.stats?.sharpe ?? -Infinity) - (a.stats?.sharpe ?? -Infinity));
     document.getElementById('sweepTbody').innerHTML = ranked.map(row => {
-      if (!row.ok) return `<tr><td>${SWEEP_FRIENDLY[row.instrument] ?? row.instrument}</td><td colspan="8" style="color:var(--text3)">Error: ${row.error}</td></tr>`;
+      if (!row.ok) return `<tr><td>${SWEEP_FRIENDLY[row.instrument] ?? row.instrument}</td><td colspan="10" style="color:var(--text3)">Error: ${row.error}</td></tr>`;
       const s = row.stats, dg = row.diagnostics ?? {};
       return `
         <tr>
@@ -346,8 +360,10 @@ async function runSweep() {
           <td class="num">-${Math.abs(s.maxDD ?? 0).toFixed(1)}%</td>
           <td class="num">${((s.winRate ?? 0) * 100).toFixed(1)}%</td>
           <td class="num">${s.n ?? 0}</td>
-          <td class="num">${dg.corrNextDay?.toFixed(3) ?? '—'}</td>
-          <td class="num">${dg.hitRateNextDay != null ? (dg.hitRateNextDay * 100).toFixed(1) + '%' : '—'}</td>
+          <td class="num">${isFinite(dg.corrNextDay) ? dg.corrNextDay.toFixed(3) : '—'}</td>
+          <td class="num">${isFinite(dg.hitRateNextDay) ? (dg.hitRateNextDay * 100).toFixed(1) + '%' : '—'}</td>
+          <td class="num">${isFinite(dg.corrWeekly) ? dg.corrWeekly.toFixed(3) : '—'}</td>
+          <td class="num">${isFinite(dg.hitRateWeekly) ? (dg.hitRateWeekly * 100).toFixed(1) + '%' : '—'}</td>
         </tr>`;
     }).join('');
 
@@ -445,6 +461,10 @@ function renderDiagnostics() {
   document.getElementById('dCorr').style.color = !isFinite(_diag.corrNextDay) ? '' : Math.abs(_diag.corrNextDay) >= 0.10 ? (_diag.corrNextDay > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
   document.getElementById('dHit').textContent  = fmtHit(_diag.hitRateNextDay);
   document.getElementById('dHit').style.color  = !isFinite(_diag.hitRateNextDay) ? '' : _diag.hitRateNextDay >= 0.53 ? '#10b981' : _diag.hitRateNextDay <= 0.47 ? '#ef4444' : '#f59e0b';
+  document.getElementById('dCorrWk').textContent = fmtCorr(_diag.corrWeekly);
+  document.getElementById('dCorrWk').style.color = !isFinite(_diag.corrWeekly) ? '' : Math.abs(_diag.corrWeekly) >= 0.10 ? (_diag.corrWeekly > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
+  document.getElementById('dHitWk').textContent  = fmtHit(_diag.hitRateWeekly);
+  document.getElementById('dHitWk').style.color  = !isFinite(_diag.hitRateWeekly) ? '' : _diag.hitRateWeekly >= 0.53 ? '#10b981' : _diag.hitRateWeekly <= 0.47 ? '#ef4444' : '#f59e0b';
 }
 
 function renderTradeTable() {
