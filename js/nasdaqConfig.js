@@ -70,12 +70,24 @@ export const TREND_SCORE = {
   // linear ramp between [rampLow, rampHigh] (clipped outside the range);
   // rampLow > rampHigh encodes "a lower raw value is better". Sub-scores are
   // combined by weighted average (compositeRampScore in nasdaqTransforms.js).
+  // Ramp anchors below (adx/hurst/momentum/breadth) were recalibrated against
+  // an empirical diagnostic run (see the Gate 2 Component Diagnostic card):
+  // the original anchors were pinned to crisis-level raw values, so a
+  // genuinely strong "good trend day" landed just under validThreshold even
+  // when every other gate agreed — the component breakdown showed momentum
+  // and breadth as the dominant always-weakest-link blockers, and the
+  // framework's own "reference" lines (adxTrendLevel 25, hurstTrendLevel 0.5)
+  // scored only 50/40 under the old ramps, i.e. below the midpoint of what
+  // the dashboard itself calls "a real/persistent trend". Tightening the
+  // ramps to realistic single-day/short-window magnitudes (rather than full
+  // ATR-scale or crisis-scale moves) fixes that inconsistency without
+  // changing validThreshold itself.
   components: [
-    { id: 'adx',         label: 'ADX (trend strength)',                     unit: 'ADX',         weight: 1.2, rampLow: 10,   rampHigh: 40 },
-    { id: 'hurst',       label: 'Hurst exponent (persistence)',             unit: 'H',           weight: 1.0, rampLow: 0.40, rampHigh: 0.65 },
+    { id: 'adx',         label: 'ADX (trend strength)',                     unit: 'ADX',         weight: 1.2, rampLow: 10,   rampHigh: 32 },
+    { id: 'hurst',       label: 'Hurst exponent (persistence)',             unit: 'H',           weight: 1.0, rampLow: 0.32, rampHigh: 0.65 },
     { id: 'atrPercentile', label: 'ATR percentile (participation)',        unit: '%ile',        weight: 0.8, rampLow: 10,   rampHigh: 60 },
-    { id: 'momentum',    label: 'Directional session momentum',            unit: 'ATRs',        weight: 1.2, rampLow: 0,    rampHigh: 1.5 },
-    { id: 'breadth',     label: 'Breadth trend (equal-weight vs cap-weight)', unit: 'z',         weight: 1.0, rampLow: -1,   rampHigh: 1.5 },
+    { id: 'momentum',    label: 'Directional session momentum',            unit: 'ATRs',        weight: 1.2, rampLow: 0,    rampHigh: 0.6 },
+    { id: 'breadth',     label: 'Breadth trend (equal-weight vs cap-weight)', unit: 'z',         weight: 1.0, rampLow: -1,   rampHigh: 1.0 },
     { id: 'vwapDist',    label: 'Conviction vs session VWAP',               unit: 'ATRs',        weight: 0.8, rampLow: 0,    rampHigh: 1.0 },
     { id: 'vixTermStructure', label: 'VIX term structure (VIX3M/VIX)',      unit: 'ratio',       weight: 0.7, rampLow: 0.95, rampHigh: 1.15 },
   ],
