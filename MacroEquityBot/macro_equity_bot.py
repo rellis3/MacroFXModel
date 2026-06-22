@@ -261,6 +261,21 @@ def compute_target_lots(symbol: str, target_alloc: float, equity: float) -> floa
 
 # ── Order execution ────────────────────────────────────────────────────────────
 
+def _resolve_filling_mode(symbol: str) -> int:
+    """Pick a filling mode the broker actually supports for this symbol (bitmask: 1=FOK, 2=IOC, 4=Return)."""
+    filling_mode = mt5.ORDER_FILLING_IOC  # fallback
+    info = mt5.symbol_info(symbol)
+    if info:
+        allowed = info.filling_mode
+        if allowed & 1:
+            filling_mode = mt5.ORDER_FILLING_FOK
+        elif allowed & 2:
+            filling_mode = mt5.ORDER_FILLING_IOC
+        elif allowed & 4:
+            filling_mode = mt5.ORDER_FILLING_RETURN
+    return filling_mode
+
+
 def _send_order(symbol: str, action: int, lots: float, comment: str, paper_mode: bool) -> bool:
     """Send a market order. action: mt5.ORDER_TYPE_BUY / SELL."""
     if paper_mode:
@@ -282,7 +297,7 @@ def _send_order(symbol: str, action: int, lots: float, comment: str, paper_mode:
         'magic':     MAGIC,
         'comment':   comment[:31],
         'type_time': mt5.ORDER_TIME_GTC,
-        'type_filling': mt5.ORDER_FILLING_IOC,
+        'type_filling': _resolve_filling_mode(symbol),
     }
     result = mt5.order_send(req)
     if result and result.retcode == mt5.TRADE_RETCODE_DONE:
@@ -353,7 +368,7 @@ def rebalance_instrument(
                     'magic':    MAGIC,
                     'comment':  f'ME_reduce_{key}'[:31],
                     'type_time':    mt5.ORDER_TIME_GTC,
-                    'type_filling': mt5.ORDER_FILLING_IOC,
+                    'type_filling': _resolve_filling_mode(symbol),
                 }
                 result = mt5.order_send(req)
                 if result and result.retcode == mt5.TRADE_RETCODE_DONE:

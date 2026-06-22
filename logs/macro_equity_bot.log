@@ -439,3 +439,92 @@
 [2026-06-22 14:01:01] [MEBot] [INFO] Cycle complete in 3.6s — sleeping 3596s
 [2026-06-22 15:01:00] [MEBot] [INFO] No rebalance today (2026-06-22). Last: 2026-06
 [2026-06-22 15:01:01] [MEBot] [INFO] Cycle complete in 3.6s — sleeping 3596s
+[2026-06-22 16:00:59] [MEBot] [INFO] No rebalance today (2026-06-22). Last: 2026-06
+[2026-06-22 16:01:00] [MEBot] [INFO] Cycle complete in 2.4s — sleeping 3598s
+[2026-06-22 16:23:51] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-22 16:23:53] [MEBot] [INFO] Credentials loaded from KV: account=5560853  server=OANDA_UK-Demo-1
+[2026-06-22 16:23:53] [MEBot] [INFO] MT5 connected: account=5560853  balance=100000.0  server=OANDA_UK-Demo-1
+[2026-06-22 16:23:56] [MEBot] [INFO] Config: paper_mode_kv=False  effective_paper=False  QQQ=True  SPY=True  Russell=True  TLT=True  DAX=False  Gold=False  BIL=False  portfolio=True  poll=3600s
+[2026-06-22 16:23:56] [MEBot] [INFO] Fetching VIX data…
+[2026-06-22 16:23:58] [MEBot] [INFO] VIX: 300 bars, latest=17.7
+[2026-06-22 16:23:58] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-22 16:23:58] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-22 16:24:02] [MEBot] [INFO]   FRED WALCL: 1225 observations
+[2026-06-22 16:24:05] [MEBot] [INFO]   FRED WTREGEN: 1225 observations
+[2026-06-22 16:24:07] [MEBot] [INFO]   FRED RRPONTSYD: 3266 observations
+[2026-06-22 16:24:10] [MEBot] [INFO]   FRED T10Y2Y: 5870 observations
+[2026-06-22 16:24:12] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-22 16:24:15] [MEBot] [INFO]   FRED DFII10: 5869 observations
+[2026-06-22 16:24:17] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-22 16:24:19] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-22 16:24:41] [MEBot] [INFO] Macro score: US=-0.658 (NEUTRAL_BEAR)
+[2026-06-22 16:24:41] [MEBot] [WARNING] No D1 data for NAS100
+[2026-06-22 16:24:41] [MEBot] [WARNING] Symbol NAS100 not found in MT5
+[2026-06-22 16:24:41] [MEBot] [INFO] QQQ (NAS100): target=50%  action=skip
+[2026-06-22 16:24:41] [MEBot] [WARNING] No D1 data for SP500
+[2026-06-22 16:24:41] [MEBot] [WARNING] Symbol SP500 not found in MT5
+[2026-06-22 16:24:41] [MEBot] [INFO] SPY (SP500): target=50%  action=skip
+[2026-06-22 16:24:41] [MEBot] [ERROR] Order FAILED US2000: OrderSendResult(retcode=10030, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Unsupported filling mode', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US2000', volume=16.66, price=3000.671, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_IWM', position=0, position_by=0))
+[2026-06-22 16:24:41] [MEBot] [INFO] IWM (US2000): target=50%  action=buy
+[2026-06-22 16:24:41] [MEBot] [WARNING] No D1 data for USB30Y
+[2026-06-22 16:24:41] [MEBot] [WARNING] Symbol USB30Y not found in MT5
+[2026-06-22 16:24:41] [MEBot] [INFO] TLT (USB30Y): target=50%  action=skip
+[2026-06-22 16:24:43] [MEBot] [INFO] Cycle complete in 47.4s — sleeping 3553s
+[2026-06-22 16:47:52] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-22 16:47:56] [MEBot] [INFO] Credentials loaded from KV: account=5560853  server=OANDA_UK-Demo-1
+[2026-06-22 16:47:56] [MEBot] [INFO] MT5 connected: account=5560853  balance=100000.0  server=OANDA_UK-Demo-1
+[2026-06-22 16:47:59] [MEBot] [INFO] Config: paper_mode_kv=False  effective_paper=False  QQQ=True  SPY=True  Russell=True  TLT=True  DAX=False  Gold=False  BIL=False  portfolio=True  poll=3600s
+[2026-06-22 16:47:59] [MEBot] [INFO] Fetching VIX data…
+[2026-06-22 16:48:01] [MEBot] [INFO] VIX: 300 bars, latest=17.6
+[2026-06-22 16:48:01] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-22 16:48:01] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-22 16:48:03] [MEBot] [INFO]   FRED WALCL: 1225 observations
+[2026-06-22 16:48:05] [MEBot] [INFO]   FRED WTREGEN: 1225 observations
+[2026-06-22 16:48:08] [MEBot] [INFO]   FRED RRPONTSYD: 3266 observations
+[2026-06-22 16:48:10] [MEBot] [INFO]   FRED T10Y2Y: 5870 observations
+[2026-06-22 16:48:12] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-22 16:48:15] [MEBot] [INFO]   FRED DFII10: 5869 observations
+[2026-06-22 16:48:17] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-22 16:48:20] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-22 16:48:41] [MEBot] [INFO] Macro score: US=-0.658 (NEUTRAL_BEAR)
+[2026-06-22 16:48:41] [MEBot] [WARNING] No D1 data for NAS100
+[2026-06-22 16:48:41] [MEBot] [WARNING] Symbol NAS100 not found in MT5
+[2026-06-22 16:48:41] [MEBot] [INFO] QQQ (NAS100): target=50%  action=skip
+[2026-06-22 16:48:41] [MEBot] [WARNING] No D1 data for SP500
+[2026-06-22 16:48:41] [MEBot] [WARNING] Symbol SP500 not found in MT5
+[2026-06-22 16:48:41] [MEBot] [INFO] SPY (SP500): target=50%  action=skip
+[2026-06-22 16:48:42] [MEBot] [INFO] Order OK US2000 16.64L  ticket=38602862
+[2026-06-22 16:48:42] [MEBot] [INFO] IWM (US2000): target=50%  action=buy
+[2026-06-22 16:48:42] [MEBot] [WARNING] No D1 data for USB30Y
+[2026-06-22 16:48:42] [MEBot] [WARNING] Symbol USB30Y not found in MT5
+[2026-06-22 16:48:42] [MEBot] [INFO] TLT (USB30Y): target=50%  action=skip
+[2026-06-22 16:48:43] [MEBot] [INFO] Cycle complete in 44.4s — sleeping 3556s
+[2026-06-22 17:10:36] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-22 17:10:41] [MEBot] [INFO] Credentials loaded from KV: account=5560853  server=OANDA_UK-Demo-1
+[2026-06-22 17:10:41] [MEBot] [INFO] MT5 connected: account=5560853  balance=100000.0  server=OANDA_UK-Demo-1
+[2026-06-22 17:10:45] [MEBot] [INFO] Config: paper_mode_kv=False  effective_paper=False  QQQ=True  SPY=True  Russell=True  TLT=True  DAX=False  Gold=False  BIL=False  portfolio=True  poll=3600s
+[2026-06-22 17:10:45] [MEBot] [INFO] Fetching VIX data…
+[2026-06-22 17:10:50] [MEBot] [INFO] VIX: 300 bars, latest=17.5
+[2026-06-22 17:10:50] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-22 17:10:50] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-22 17:10:54] [MEBot] [INFO]   FRED WALCL: 1225 observations
+[2026-06-22 17:10:57] [MEBot] [INFO]   FRED WTREGEN: 1225 observations
+[2026-06-22 17:11:01] [MEBot] [INFO]   FRED RRPONTSYD: 3266 observations
+[2026-06-22 17:11:06] [MEBot] [INFO]   FRED T10Y2Y: 5870 observations
+[2026-06-22 17:11:10] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 784 observations
+[2026-06-22 17:11:15] [MEBot] [INFO]   FRED DFII10: 5869 observations
+[2026-06-22 17:11:20] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-22 17:11:24] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-22 17:11:57] [MEBot] [INFO] Macro score: US=-0.697 (NEUTRAL_BEAR)
+[2026-06-22 17:11:57] [MEBot] [WARNING] No D1 data for NAS100
+[2026-06-22 17:11:57] [MEBot] [WARNING] Symbol NAS100 not found in MT5
+[2026-06-22 17:11:57] [MEBot] [INFO] QQQ (NAS100): target=50%  action=skip
+[2026-06-22 17:11:57] [MEBot] [WARNING] No D1 data for SP500
+[2026-06-22 17:11:57] [MEBot] [WARNING] Symbol SP500 not found in MT5
+[2026-06-22 17:11:57] [MEBot] [INFO] SPY (SP500): target=50%  action=skip
+[2026-06-22 17:11:57] [MEBot] [INFO] IWM (US2000): change 0.1% < threshold 5% — hold
+[2026-06-22 17:11:57] [MEBot] [INFO] IWM (US2000): target=50%  action=hold
+[2026-06-22 17:11:57] [MEBot] [WARNING] No D1 data for USB30Y
+[2026-06-22 17:11:57] [MEBot] [WARNING] Symbol USB30Y not found in MT5
+[2026-06-22 17:11:57] [MEBot] [INFO] TLT (USB30Y): target=50%  action=skip
+[2026-06-22 17:11:59] [MEBot] [INFO] Cycle complete in 73.9s — sleeping 3526s

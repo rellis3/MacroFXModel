@@ -2159,7 +2159,7 @@ async function buildWalkForwardSchedule(bars, sym, features, trainDays, retrainE
 
   const plural = windows.length > 1 ? 's' : '';
   statusFn(`Training HMM: ${windows.length} window${plural} in parallel…`);
-  await new Promise(r => requestAnimationFrame(r));
+  await uiYield();
 
   // All windows train simultaneously in Web Workers
   const results = await Promise.all(
@@ -2480,7 +2480,7 @@ async function loadAndRun() {
 
     // ── 2. Compute HMM signals on full M1 ───────────────────────────────────
     setStatus('spin', `Computing HMM on ${m1Count.toLocaleString()} M1 bars…`);
-    await new Promise(r => requestAnimationFrame(r));
+    await uiYield();
     let rawSignals, rawHtfSignals = null;
     if (currentBot === 'v1') {
       rawSignals = computeHMMSignalsV1(rawCandles, pair);
@@ -2491,7 +2491,7 @@ async function loadAndRun() {
       } else if (currentBot === 'v7') {
         rawSignals = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, V5_MTF);
         setStatus('spin', `Computing V7 HTF signals (${V5_MTF * 4}m)…`);
-        await new Promise(r => requestAnimationFrame(r));
+        await uiYield();
         rawHtfSignals = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, V5_MTF * 4);
       } else if (currentBot === 'v4') {
         rawSignals = computeHMMSignalsV4(rawCandles, pair, trainedParams);
@@ -2501,14 +2501,14 @@ async function loadAndRun() {
         let schedule = null, features = null;
         if (trainDays > 0) {
           setStatus('spin', 'Computing HMM features…');
-          await new Promise(r => requestAnimationFrame(r));
+          await uiYield();
           features = computeHMMFeatures(rawCandles, pair);
           schedule = await buildWalkForwardSchedule(rawCandles, pair, features, trainDays, retrainEvery,
             msg => setStatus('spin', msg));
           const badge = document.getElementById('hmmTrainBadge');
           if (badge) badge.style.display = '';
           setStatus('spin', 'Running HMM forward pass with learned parameters…');
-          await new Promise(r => requestAnimationFrame(r));
+          await uiYield();
         }
         rawSignals = computeHMMSignalsV2(rawCandles, pair, trainedParams, features, schedule);
       }
@@ -2516,7 +2516,7 @@ async function loadAndRun() {
 
     // ── 3. Simulate on full M1 ───────────────────────────────────────────────
     setStatus('spin', 'Running simulation…');
-    await new Promise(r => requestAnimationFrame(r));
+    await uiYield();
     const simMap = { v1:simulateV1, v2:simulateV2, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
     allTrades = currentBot === 'v7'
       ? simulateV7(rawCandles, rawSignals, rawHtfSignals, cfg)
@@ -2531,7 +2531,7 @@ async function loadAndRun() {
 
     if (displayStep > 1) {
       setStatus('spin', `Aggregating to M${displayStep} for display (${m1Count.toLocaleString()} M1 → ${Math.ceil(m1Count/displayStep).toLocaleString()} bars)…`);
-      await new Promise(r => requestAnimationFrame(r));
+      await uiYield();
       const agg  = downsampleForDisplay(rawCandles, rawSignals, displayStep);
       m5Candles  = agg.candles;
       allSignals = agg.signals;
@@ -2733,7 +2733,7 @@ async function runClientOptimizer() {
     if (!rawCandles.length) throw new Error('No M1 candle data — check Railway/R2 or try a shorter range');
 
     setOptProgress(`Computing ${currentBot.toUpperCase()} signals on ${rawCandles.length.toLocaleString()} M1 bars…`, 0);
-    await new Promise(r => requestAnimationFrame(r));
+    await uiYield();
 
     // Default (non walk-forward-trained) signal path — matches optimizer.py, which never
     // fetches/uses trainedParams either.
@@ -2745,7 +2745,7 @@ async function runClientOptimizer() {
     } else if (currentBot === 'v7') {
       rawSignals = computeHMMSignalsAtMTF(rawCandles, pair, null, V5_MTF);
       setOptProgress(`Computing V7 HTF signals (${V5_MTF * 4}m)…`, 0);
-      await new Promise(r => requestAnimationFrame(r));
+      await uiYield();
       rawHtfSignals = computeHMMSignalsAtMTF(rawCandles, pair, null, V5_MTF * 4);
     } else if (currentBot === 'v4') {
       rawSignals = computeHMMSignalsV4(rawCandles, pair, null);
@@ -2840,7 +2840,7 @@ async function runClientOptimizer() {
     }
 
     setOptProgress(`Evaluating top ${top.length} config(s) on blind test split…`, 100);
-    await new Promise(r => requestAnimationFrame(r));
+    await uiYield();
     top.forEach(t => { t.anTe = t.reason === 'pass' ? runOptSplit(simFnTe, cTe, sTe, t.cfg) : null; });
 
     optResults = top;
@@ -4734,6 +4734,19 @@ function setStatus(type, msg) {
   dot.className = 'sdot ' + (type === 'spin' ? 'spin' : type === 'ok' ? 'ok' : type === 'err' ? 'err' : '');
   txt.textContent = msg;
   document.getElementById('runStatus').textContent = '';
+}
+
+// requestAnimationFrame never fires while the tab is hidden/backgrounded, which can
+// freeze a run forever at whichever status-update yield happens to be in flight when the
+// user tabs away. Race it against a timeout (which still fires in background tabs) so a
+// run always makes progress regardless of tab focus.
+function uiYield() {
+  return new Promise(resolve => {
+    let done = false;
+    const fire = () => { if (!done) { done = true; resolve(); } };
+    requestAnimationFrame(fire);
+    setTimeout(fire, 50);
+  });
 }
 
 function fmtDate(d) {
