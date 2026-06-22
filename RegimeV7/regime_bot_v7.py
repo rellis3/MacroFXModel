@@ -653,7 +653,10 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
             log.info(f'Closed ticket={ticket} at {cp}')
             return True
-        log.warning(f'Close attempt {attempt + 1} failed: retcode={getattr(res, "retcode", None)}')
+        if res is None:
+            log.warning(f'Close attempt {attempt + 1} — order_send returned None  last_error={mt5.last_error()}')
+        else:
+            log.warning(f'Close attempt {attempt + 1} failed: retcode={res.retcode}  comment={res.comment!r}')
     log.error(f'Close FAILED after 3 attempts for ticket={ticket} ({pair}) — SL is protection')
     return False
 

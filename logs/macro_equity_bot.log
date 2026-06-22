@@ -435,3 +435,7 @@
 [2026-06-22 13:02:14] [MEBot] [WARNING] Symbol USB30Y not found in MT5
 [2026-06-22 13:02:14] [MEBot] [INFO] TLT (USB30Y): target=50%  action=skip
 [2026-06-22 13:02:16] [MEBot] [INFO] Cycle complete in 77.9s — sleeping 3522s
+[2026-06-22 14:00:59] [MEBot] [INFO] No rebalance today (2026-06-22). Last: 2026-06
+[2026-06-22 14:01:01] [MEBot] [INFO] Cycle complete in 3.6s — sleeping 3596s
+[2026-06-22 15:01:00] [MEBot] [INFO] No rebalance today (2026-06-22). Last: 2026-06
+[2026-06-22 15:01:01] [MEBot] [INFO] Cycle complete in 3.6s — sleeping 3596s
