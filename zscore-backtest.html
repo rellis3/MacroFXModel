@@ -133,6 +133,11 @@
     <option value="10">Entry 10h</option>
     <option value="14">Entry 14h</option>
   </select>
+  <select id="runZCeiling" class="bt-sel" title="Skip signal days whose |z| is at or above this — caps how extreme a Z-score is still allowed to trade">
+    <option value="" selected>Z ceiling: none</option>
+    <option value="2.5">Z ceiling: 2.5 (2.0-2.5σ only)</option>
+    <option value="3.0">Z ceiling: 3.0 (below 3.0σ)</option>
+  </select>
   <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="togglePairSettings()" title="Per-pair entry threshold & direction invert">⚙ Pairs</button>
   <button class="bt-run-btn" id="runBtn" onclick="runBacktest()">▶ Run</button>
   <button class="dark-btn" style="padding:4px 10px;font-size:11px;border-color:var(--border)" onclick="toggleHelp()" title="Strategy help">?</button>
@@ -596,6 +601,7 @@ async function runBacktest() {
     zWindow:  document.getElementById('runZWindow').value,
     fibLevelMode: document.getElementById('runFibMode').value,
     entryWindow:  document.getElementById('runEntryWindow').value,
+    zCeiling: document.getElementById('runZCeiling').value,
     thresholds, invert,
   };
 

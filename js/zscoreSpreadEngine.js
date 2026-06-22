@@ -323,7 +323,7 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
     dateFrom = '2018-01-01',
     dateTo = new Date().toISOString().substring(0, 10),
     zWindow = 90, fibLevelMode = 'all', entryWindow = 6,
-    thresholds = {}, invert = {},
+    thresholds = {}, invert = {}, zCeiling = Infinity,
     fredKey = process.env.FRED_KEY,
   } = opts;
 
@@ -342,14 +342,16 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
 
   const dayIndex = buildDayIndex(packed.times);
   const trades = [];
-  let daysConsidered = 0, daysSkippedIncomplete = 0, daysNoSignal = 0;
+  let daysConsidered = 0, daysSkippedIncomplete = 0, daysNoSignal = 0, daysAboveCeiling = 0;
 
   for (const [dateStr, { start, end }] of dayIndex) {
     if (dateStr < dateFrom || dateStr > dateTo) continue;
     const zInfo = zByDate.get(dateStr);
     if (zInfo == null) continue;
     daysConsidered++;
-    if (Math.abs(zInfo.z) < threshold) { daysNoSignal++; continue; }
+    const absZ = Math.abs(zInfo.z);
+    if (absZ < threshold) { daysNoSignal++; continue; }
+    if (absZ >= zCeiling) { daysAboveCeiling++; continue; }
 
     let dir = zInfo.z > 0 ? 'LONG' : 'SHORT';
     if (invert[pairKey]) dir = dir === 'LONG' ? 'SHORT' : 'LONG';
@@ -372,7 +374,7 @@ export async function runZScoreBacktest(pairKey, opts = {}) {
   const stats = computeZScoreStats(trades);
   return {
     trades, stats,
-    log: { pair: cfg.label, threshold, daysConsidered, daysSkippedIncomplete, daysNoSignal, totalTrades: trades.length },
+    log: { pair: cfg.label, threshold, daysConsidered, daysSkippedIncomplete, daysNoSignal, daysAboveCeiling, totalTrades: trades.length },
   };
 }
 

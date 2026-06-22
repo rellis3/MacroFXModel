@@ -6414,7 +6414,7 @@ app.post('/api/zscore-backtest/run', (req, res) => {
   }
   const {
     dateFrom = '', dateTo = '', pair = '',
-    zWindow = '90', fibLevelMode = 'all', entryWindow = '6',
+    zWindow = '90', fibLevelMode = 'all', entryWindow = '6', zCeiling = '',
     thresholds = {}, invert = {},
   } = req.body || {};
 
@@ -6423,6 +6423,7 @@ app.post('/api/zscore-backtest/run', (req, res) => {
     zWindow:      parseInt(zWindow)      || 90,
     fibLevelMode,
     entryWindow:  parseInt(entryWindow)  || 6,
+    zCeiling:     parseFloat(zCeiling)   || Infinity,
     thresholds: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
       [k, parseFloat(thresholds[k]) || ZSCORE_PAIRS[k].defaultThreshold])),
     invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
