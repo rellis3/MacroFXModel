@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-06-22 (Track 1 first checkpoint — fix did NOT help, see below).
+Last updated: 2026-06-23 (Track 1 checkpoint #2 — sharp reversal, see below).
 
 ---
 
@@ -21,17 +21,19 @@ Last updated: 2026-06-22 (Track 1 first checkpoint — fix did NOT help, see bel
   `runVolForecast()` run's Railway log output** to disambiguate. Nudge the user
   for this log line next time a news-heavy session comes up.
 
-- index/NQ GARCH persistence: confirmed structural (not single-day noise) via
-  3-session trajectory below. **Interim fix implemented 2026-06-19**: β
-  0.91→0.87 for the primary index estimator only (legacy shadow column
-  untouched). **First checkpoint (2026-06-22) is bad news: Δ got WORSE, not
-  better (+33.7% → +59.0%)**, the largest NQ gap yet. Leading hypothesis: α
-  (reaction to the most recent day's return), not β (decay of old shocks), is
-  the bigger problem — lowering β doesn't help if a *fresh* large realized
-  return is still feeding `alpha*r²` every single day this week (this has been
-  an unusually news-heavy week). Per the no-whiplash rule, NOT re-tuning off
-  this one point — see "Track 1 checkpoint result" below for the full reasoning
-  and what evidence would confirm/deny the alpha hypothesis.
+- index/NQ GARCH persistence: **promising reversal on checkpoint #2
+  (2026-06-23)** — raw vol Δ dropped 59.0% (Mon) → 18.1% (Tue), the single
+  biggest day-over-day improvement in this whole tracking window. Supports the
+  Jun-22 alpha-hypothesis: Monday's bar likely carried a fresh large return
+  that pushed GARCH up regardless of β; Tuesday's bar apparently didn't, so the
+  faster decay (β=0.87, ~9.5-day half-life) got to show its benefit. Corrected
+  HL/OC outputs (the metrics actually displayed) now run slightly *under*
+  reference (−3% to −6%) instead of over — first sign the static index hl/oc
+  correction factors (0.81/0.78/0.85/0.90, calibrated when the raw gap was
+  +22%) may now be slightly over-correcting a smaller raw gap. **Not touching
+  them yet** — one good day isn't enough to confirm the +59%→+18% drop is the
+  fix actually working vs. one calm day in a still-noisy week. Need 1-2 more
+  checkpoints before concluding anything about Track 1's effectiveness.
 
 ---
 
@@ -43,6 +45,7 @@ Last updated: 2026-06-22 (Track 1 first checkpoint — fix did NOT help, see bel
 | Jun-18 | Fed Chair speech day   | —        | —       | +3.5%  | shock day itself was fine; correction factors fit from Jun-17 data |
 | Jun-19 | post-shock decay       | —        | —       | +33.7% | worst gap yet (pre-fix) — prior day's shock hadn't decayed, ref had nearly fully reverted |
 | Jun-22 | Track 1 checkpoint #1  | 24.97%   | 15.70%  | +59.0% | **post-fix (β=0.87), and it's worse** — see diagnosis below |
+| Jun-23 | Track 1 checkpoint #2  | 25.01%   | 21.17%  | +18.1% | **sharp reversal** — biggest single-day improvement yet; HL/OC corrected now run −3% to −6% (slight underestimate) |
 
 **Diagnosis**: reference's NQ vol behaves as if it has roughly 1-session effective
 memory after a shock. Our GARCH(0.06/0.91) has α+β=0.97 → ~23-day half-life —
@@ -81,6 +84,22 @@ risk). Need the raw daily NQ return series to confirm hypothesis 1 directly —
 next time this is revisited, pull the actual close-to-close returns for
 Jun-18/19/22 and check whether Jun-19's bar itself was a large mover.
 
+**Updated diagnosis (2026-06-23)**: checkpoint #2 supports hypothesis 1 above —
+ours' raw value barely moved (24.97% → 25.01%, +0.04pp) while ref jumped
+15.70% → 21.17% (+5.47pp, +34.8% on its own). Reference itself swung hard
+session-to-session, undercutting the "reference has ~1-day flat memory"
+framing from Jun-19 — it's not memoryless, it's reacting to *different*
+information than close-to-close OHLC (intraday realized moves, options
+markets, whatever it actually ingests) on a *similar* timescale to ours, just
+with a smaller/faster-decaying response to single-day shocks. This is more
+evidence for "α too high" than "β too high" — our series stayed elevated
+because it's still digesting Monday's shock at roughly the same weight
+regardless of beta, while ref's big Tuesday-specific move shows it does react
+to fresh information, just not in a way that compounds for weeks like ours.
+**Still not touching α** — want to see whether ours starts converging on its
+own over the next 1-2 sessions as Monday's shock keeps decaying out of the
+9.5-day-half-life window now that no new shock has hit.
+
 ---
 
 ## Dual-track plan ("let's do both" — agreed 2026-06-19)
@@ -115,6 +134,17 @@ re-tuning yet** — one data point during an unusually shock-heavy week isn't
 enough to distinguish "the fix is wrong" from "the fix can't work until
 shocks stop arriving." Need a calmer week to isolate the effect cleanly.
 
+**Checkpoint result (2026-06-23)**: Δ dropped to +18.1% — sharp reversal,
+biggest single-day improvement in the whole window. Ours barely moved
+(24.97%→25.01%) while ref jumped (15.70%→21.17%), closing most of the gap
+from ref's side, not ours. This is consistent with the α-not-β hypothesis
+(see updated diagnosis), but it's still only 2 post-fix data points pointing
+in opposite directions — genuinely unclear yet whether Track 1 is "working."
+HL/OC corrected outputs flipped from over- to under-estimating (−3% to −6%),
+which is the first concrete signal that `ASSET_PARAMS.index` hl/oc factors
+may need a refit once the raw-vol gap stabilizes — but not yet, could easily
+flip back.
+
 ### Track 2 — wait + grid search (ONGOING, multi-session)
 Keep accumulating (ours_vol, ref_vol, instrument, date, event-flag) tuples
 below every session. Once there are enough clean (non-event-day) points —
@@ -134,9 +164,13 @@ multiplier behavior specifically).
 | Jun-18 | NQ        | —        | —       | +3.5%  | **Yes** (Fed Chair speech) | shock day itself, exclude from correction-factor fits |
 | Jun-19 | NQ        | —        | —       | +33.7% | No         | post-shock decay, worst gap pre-fix, motivated Track 1 fix |
 | Jun-22 | NQ        | 24.97%   | 15.70%  | +59.0% | No (but news-heavy week) | **post-fix (β=0.87)** — worse, not better; see updated diagnosis above |
+| Jun-23 | NQ        | 25.01%   | 21.17%  | +18.1% | No         | **sharp reversal** — ref moved, ours didn't; best NQ checkpoint since Jun-18 |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
-on hand — only Δ was recorded in those sessions' analysis.)*
+on hand — only Δ was recorded in those sessions' analysis. Note: a Jun-23
+"ours" paste was briefly seen mislabeled as Monday's session with NQ=25.20% —
+that was stale Monday data re-pasted alongside a Tuesday reference; discarded,
+not logged, since the dates didn't match.)*
 
 GOLD/EURUSD gap history (commodity/fx — separate asset classes, separate
 estimators, not part of the GARCH persistence problem, but tracked here so
@@ -150,6 +184,8 @@ all reference compares live in one place):
 | Jun-19 | GOLD/EURUSD | —      | —       | —     | —        | —        | —        | —        | not yet logged in detail — fill in if revisited |
 | Jun-22 | GOLD      | 29.03%   | 27.14%  | +7.0% | −3.3%    | +1.2%    | **+15.5%** | +2.4%  | HL/OC75 fine; OC median stands out — watch for recurrence on next calm day before touching `oc_50_corr` |
 | Jun-22 | EURUSD    | 5.38%    | 5.73%   | −6.1% | +1.9%    | +6.2%    | +4.2%    | +5.0%    | all within normal noise band, fx calibration still holding up |
+| Jun-23 | GOLD      | 28.70%   | 27.76%  | +3.4% | −4.3%    | −3.0%    | −1.5%    | −4.0%    | OC median spike from Jun-22 did NOT recur — confirms it was noise, `oc_50_corr` left alone correctly |
+| Jun-23 | EURUSD    | 5.34%    | 5.92%   | −9.8% | −3.5%    | −1.4%    | −3.8%    | −4.5%    | vol gap a bit wider than usual but HL/OC (the actual displayed metrics) all within ~4.5%, still solid |
 
 ---
 
@@ -159,11 +195,13 @@ all reference compares live in one place):
    Ask the user to paste the Railway log line from the next `runVolForecast()`
    run (scheduled or manual `/api/vol-forecast/refresh`) to finally determine
    why the Fed Chair speech didn't trigger the news multiplier.
-2. **Track 1 checkpoint #1 came back bad (2026-06-22)** — Δ rose to +59.0%,
-   worse than the +33.7% pre-fix. Need to: (a) pull NQ's actual daily
-   close-to-close returns for Jun-18/19/22 to check if Jun-19 itself was
-   another large mover (would confirm the α-not-β hypothesis), (b) get a
-   reading from a calmer, non-news week before concluding the fix failed.
+2. **Track 1 checkpoints are whipsawing (#1 +59.0% Jun-22, #2 +18.1% Jun-23)** —
+   2 post-fix points, opposite directions, not enough to call it working or
+   not. Need: (a) pull NQ's actual daily close-to-close returns for
+   Jun-18/19/22/23 to confirm/deny the α-not-β hypothesis directly, (b) at
+   least 1-2 more checkpoints before drawing any conclusion. Do NOT touch
+   `garch_beta_interim`/`garch_omega_interim` again until the trend is clear
+   in one direction for 2+ consecutive sessions.
 3. **Track 2 grid search** — not started, blocked on accumulating enough clean
    data points (table above). Revisit once 5+ non-event NQ rows exist. Given
    item 2, the grid search should sweep α as well as β, not just β.
