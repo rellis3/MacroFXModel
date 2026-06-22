@@ -1,0 +1,262 @@
+[
+  {
+    "pair": "cadjpy",
+    "train_calmar": 12.18540193540757,
+    "train_sharpe": 1.3816573128245482,
+    "train_trades": 250,
+    "hold_calmar": 18.799451715929383,
+    "hold_sharpe": 1.5400737851593622,
+    "hold_trades": 140,
+    "valid_trials": 598
+  },
+  {
+    "pair": "eurusd",
+    "train_calmar": 2.1786357163114407,
+    "train_sharpe": 0.6088263178684565,
+    "train_trades": 74,
+    "hold_calmar": 7.01442505426065,
+    "hold_sharpe": 1.341724106969883,
+    "hold_trades": 44,
+    "valid_trials": 597
+  },
+  {
+    "pair": "audnzd",
+    "train_calmar": 2.092699747423862,
+    "train_sharpe": 1.5103704480251285,
+    "train_trades": 107,
+    "hold_calmar": 3.2924758925607316,
+    "hold_sharpe": 1.2146977846672204,
+    "hold_trades": 18,
+    "valid_trials": 580
+  },
+  {
+    "pair": "chfjpy",
+    "train_calmar": 0.9135772919249866,
+    "train_sharpe": 0.8166101141692647,
+    "train_trades": 3615,
+    "hold_calmar": 3.2497707526963264,
+    "hold_sharpe": 1.8693431878333304,
+    "hold_trades": 1420,
+    "valid_trials": 588
+  },
+  {
+    "pair": "gbpjpy",
+    "train_calmar": 7.785812956009169,
+    "train_sharpe": 1.2337601573205847,
+    "train_trades": 431,
+    "hold_calmar": 1.831398984804522,
+    "hold_sharpe": 0.9170063419050678,
+    "hold_trades": 176,
+    "valid_trials": 597
+  },
+  {
+    "pair": "gbpusd",
+    "train_calmar": 0.638890037866811,
+    "train_sharpe": 0.7966873354031249,
+    "train_trades": 520,
+    "hold_calmar": 1.211913585137226,
+    "hold_sharpe": 1.1889113082849858,
+    "hold_trades": 211,
+    "valid_trials": 596
+  },
+  {
+    "pair": "audcad",
+    "train_calmar": 0.6853328583705313,
+    "train_sharpe": 0.9951670718615204,
+    "train_trades": 431,
+    "hold_calmar": 0.6393411556883278,
+    "hold_sharpe": 0.8048792655800686,
+    "hold_trades": 202,
+    "valid_trials": 598
+  },
+  {
+    "pair": "euraud",
+    "train_calmar": 0.9047092424984244,
+    "train_sharpe": 1.019845838201926,
+    "train_trades": 1299,
+    "hold_calmar": 0.6162321711006656,
+    "hold_sharpe": 0.625033129901903,
+    "hold_trades": 502,
+    "valid_trials": 587
+  },
+  {
+    "pair": "gbpchf",
+    "train_calmar": 0.698130349179145,
+    "train_sharpe": 0.8920964586197161,
+    "train_trades": 6395,
+    "hold_calmar": 0.5908232657233539,
+    "hold_sharpe": 0.639519681304441,
+    "hold_trades": 2069,
+    "valid_trials": 594
+  },
+  {
+    "pair": "eurgbp",
+    "train_calmar": 0.8363167399432552,
+    "train_sharpe": 0.6208252507789841,
+    "train_trades": 114,
+    "hold_calmar": 0.5189326168317328,
+    "hold_sharpe": 0.32539403845942005,
+    "hold_trades": 26,
+    "valid_trials": 599
+  },
+  {
+    "pair": "gbpcad",
+    "train_calmar": 1.6315358043973676,
+    "train_sharpe": 0.7051503849784372,
+    "train_trades": 31,
+    "hold_calmar": 0.32814246959080146,
+    "hold_sharpe": 0.2565965998373319,
+    "hold_trades": 12,
+    "valid_trials": 599
+  },
+  {
+    "pair": "usdchf",
+    "train_calmar": 1.674017946366515,
+    "train_sharpe": 0.4613324363989391,
+    "train_trades": 24,
+    "hold_calmar": 0.3219721482072823,
+    "hold_sharpe": 0.4267411241938612,
+    "hold_trades": 35,
+    "valid_trials": 593
+  },
+  {
+    "pair": "nzdjpy",
+    "train_calmar": 0.6002049601092339,
+    "train_sharpe": 0.436476942491535,
+    "train_trades": 55,
+    "hold_calmar": 0.24644515675427486,
+    "hold_sharpe": 0.25278823494657365,
+    "hold_trades": 26,
+    "valid_trials": 590
+  },
+  {
+    "pair": "usdjpy",
+    "train_calmar": 0.6263703185979331,
+    "train_sharpe": 0.8527051243036597,
+    "train_trades": 4075,
+    "hold_calmar": 0.2418694842003589,
+    "hold_sharpe": 0.5294000730622594,
+    "hold_trades": 1424,
+    "valid_trials": 598
+  },
+  {
+    "pair": "eurnzd",
+    "train_calmar": 0.8140375408097131,
+    "train_sharpe": 0.5036453413943941,
+    "train_trades": 2755,
+    "hold_calmar": 0.09472551670159048,
+    "hold_sharpe": 0.1822116191372815,
+    "hold_trades": 987,
+    "valid_trials": 580
+  },
+  {
+    "pair": "eurcad",
+    "train_calmar": 0.7487304206246603,
+    "train_sharpe": 0.8663259591037532,
+    "train_trades": 200,
+    "hold_calmar": 0.04127016653417223,
+    "hold_sharpe": 0.05337944679611158,
+    "hold_trades": 72,
+    "valid_trials": 592
+  },
+  {
+    "pair": "gbpnzd",
+    "train_calmar": 2.2948360988308143,
+    "train_sharpe": 0.7947662867553048,
+    "train_trades": 160,
+    "hold_calmar": 0.00822305864179833,
+    "hold_sharpe": 0.008088645366988676,
+    "hold_trades": 54,
+    "valid_trials": 594
+  },
+  {
+    "pair": "eurjpy",
+    "train_calmar": 0.8271038506345899,
+    "train_sharpe": 0.426765258040503,
+    "train_trades": 4621,
+    "hold_calmar": -0.09452986749683234,
+    "hold_sharpe": -0.21442211849449166,
+    "hold_trades": 1768,
+    "valid_trials": 593
+  },
+  {
+    "pair": "eurchf",
+    "train_calmar": 0.19813701459455402,
+    "train_sharpe": 0.28871526291204297,
+    "train_trades": 37,
+    "hold_calmar": -0.17255650127075517,
+    "hold_sharpe": -0.3242150317916007,
+    "hold_trades": 23,
+    "valid_trials": 574
+  },
+  {
+    "pair": "audjpy",
+    "train_calmar": 0.31252288026183106,
+    "train_sharpe": 0.46119792764543266,
+    "train_trades": 2223,
+    "hold_calmar": -0.19194020981106538,
+    "hold_sharpe": -0.5524098503692288,
+    "hold_trades": 905,
+    "valid_trials": 586
+  },
+  {
+    "pair": "gbpaud",
+    "train_calmar": 1.9792246010606218,
+    "train_sharpe": 0.8923423338904152,
+    "train_trades": 127,
+    "hold_calmar": -0.3007527441887125,
+    "hold_sharpe": -0.6982318490165073,
+    "hold_trades": 41,
+    "valid_trials": 600
+  },
+  {
+    "pair": "nzdusd",
+    "train_calmar": 0.4067780846434025,
+    "train_sharpe": 0.5685676622280941,
+    "train_trades": 2386,
+    "hold_calmar": -0.3408677094190464,
+    "hold_sharpe": -1.4210629465076492,
+    "hold_trades": 960,
+    "valid_trials": 591
+  },
+  {
+    "pair": "usdcad",
+    "train_calmar": 0.6920353066213818,
+    "train_sharpe": 0.8191666838389389,
+    "train_trades": 2114,
+    "hold_calmar": -0.36010180689626775,
+    "hold_sharpe": -1.4787157495625227,
+    "hold_trades": 652,
+    "valid_trials": 593
+  },
+  {
+    "pair": "audusd",
+    "train_calmar": 0.16170209248821346,
+    "train_sharpe": 0.38616385972170836,
+    "train_trades": 2577,
+    "hold_calmar": -0.41114153315298263,
+    "hold_sharpe": -2.2501864996232084,
+    "hold_trades": 1033,
+    "valid_trials": 597
+  },
+  {
+    "pair": "audchf",
+    "train_calmar": 1.5643392823952136,
+    "train_sharpe": 0.8441638062480159,
+    "train_trades": 25,
+    "hold_calmar": null,
+    "hold_sharpe": null,
+    "hold_trades": 0,
+    "valid_trials": 557
+  },
+  {
+    "pair": "gold",
+    "train_calmar": null,
+    "train_sharpe": null,
+    "train_trades": null,
+    "hold_calmar": null,
+    "hold_sharpe": null,
+    "hold_trades": null,
+    "valid_trials": 0
+  }
+]

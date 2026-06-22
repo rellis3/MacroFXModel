@@ -383,3 +383,13 @@
 [2026-06-19 13:38:36] [MEBot] [INFO] Cycle complete in 4.2s — sleeping 3596s
 [2026-06-19 14:38:34] [MEBot] [INFO] No rebalance today (2026-06-19). Last: never
 [2026-06-19 14:38:36] [MEBot] [INFO] Cycle complete in 3.6s — sleeping 3596s
+[2026-06-22 09:40:38] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-22 09:40:42] [MEBot] [WARNING] KV credentials not found (key=macro_equity_credentials) — will use env vars / already-open MT5 terminal
+[2026-06-22 09:40:42] [MEBot] [INFO] MT5 connected: account=107132286  balance=85758.09  server=MetaQuotes-Demo
+[2026-06-22 09:40:45] [MEBot] [INFO] Config: paper_mode_kv=True  effective_paper=False  QQQ=True  SPY=True  Russell=False  TLT=False  DAX=False  Gold=False  BIL=False  portfolio=False  poll=3600s
+[2026-06-22 09:40:45] [MEBot] [INFO] Fetching VIX data…
+[2026-06-22 09:40:47] [MEBot] [INFO] VIX: 300 bars, latest=17.6
+[2026-06-22 09:40:47] [MEBot] [INFO] No rebalance today (2026-06-22). Last: never
+[2026-06-22 09:40:50] [MEBot] [INFO] Cycle complete in 5.4s — sleeping 3595s
+[2026-06-22 10:40:52] [MEBot] [INFO] No rebalance today (2026-06-22). Last: never
+[2026-06-22 10:41:00] [MEBot] [INFO] Cycle complete in 15.6s — sleeping 3584s

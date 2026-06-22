@@ -870,6 +870,7 @@ def run(url: str, paper_mode: bool) -> None:
     bocpd_reg  = BOCPRegistry(expected_run_length=cfg.get('bocpd_run_length', 150))
     macro      = MacroOverlay(
         fomc_window_hours=cfg.get('fomc_window_hours', 48.0),
+        dashboard_url=url,
     )
 
     for pair in cfg['pairs']:
@@ -906,7 +907,7 @@ def run(url: str, paper_mode: bool) -> None:
             new_cfg = load_config(url)
             cfg.update(new_cfg)
             tg = load_tg_config(url, cfg)
-            macro = MacroOverlay(fomc_window_hours=cfg.get('fomc_window_hours', 48.0))
+            macro = MacroOverlay(fomc_window_hours=cfg.get('fomc_window_hours', 48.0), dashboard_url=url)
             last_cfg_reload = time.time()
             # Sync new pairs if changed
             for pair in cfg['pairs']:

@@ -77,6 +77,7 @@ from datetime import datetime, timezone, date as date_type
 from typing import Optional
 
 import requests
+from dotenv import load_dotenv
 
 # ── path so relative imports work from repo root or RegimeV7/ ─────────────────
 _HERE   = os.path.dirname(os.path.abspath(__file__))
@@ -85,6 +86,11 @@ _V4_DIR = os.path.join(_HERE, '..', 'RegimeV4')
 sys.path.insert(0, _HERE)
 sys.path.insert(0, _V2_DIR)   # bocpd, macro_overlay, formatter live in RegimeV2
 sys.path.insert(0, _V4_DIR)   # regime_score_v4 lives in RegimeV4
+
+# Railway injects FRED_KEY etc. directly into the container env, but this bot
+# is run locally (needs an MT5 terminal) so it doesn't see those — load the
+# same .env that macro_overlay.py's other consumer (RegimeV2) already uses.
+load_dotenv(os.path.join(_V2_DIR, '.env'))
 
 from bocpd         import BOCPRegistry           # noqa: E402
 from macro_overlay import MacroOverlay            # noqa: E402
@@ -888,7 +894,7 @@ def run(url: str, paper_mode: bool) -> None:
 
     risk_guard = RiskGuardV7()
     bocpd_reg  = BOCPRegistry(expected_run_length=cfg.get('bocpd_run_length', 150))
-    macro      = MacroOverlay(fomc_window_hours=cfg.get('fomc_window_hours', 48.0))
+    macro      = MacroOverlay(fomc_window_hours=cfg.get('fomc_window_hours', 48.0), dashboard_url=url)
 
     def _init_pair(pair: str) -> None:
         debounce_ctr[pair]     = 0
@@ -999,7 +1005,7 @@ def run(url: str, paper_mode: bool) -> None:
             new_cfg = load_config(url)
             cfg.update(new_cfg)
             tg    = load_tg_config(url, cfg)
-            macro = MacroOverlay(fomc_window_hours=cfg.get('fomc_window_hours', 48.0))
+            macro = MacroOverlay(fomc_window_hours=cfg.get('fomc_window_hours', 48.0), dashboard_url=url)
             last_cfg_reload = time.time()
             for pair in cfg['pairs']:
                 if pair not in debounce_ctr:

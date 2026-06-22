@@ -41,3 +41,5 @@ bot/data/beta_history.jsonl
 bot/regime_bot.log
 backtestSystem/backtestSystem.log
 logs/dyn_anchor_bot.log
+logs/regime_bot_v7.log
+logs/macro_equity_bot.log

@@ -3182,6 +3182,51 @@ app.get('/api/gold/trades', async (req, res) => {
   }
 });
 
+// ── CBOE FX/Gold implied vol (EVZCLS/GVZCLS via FRED) ─────────────────────────
+// Serves RegimeV2/macro_overlay.py's CBOEVolFetcher for bots that run outside
+// Railway (V4/V7 need a local MT5 terminal) and so don't inherit FRED_KEY from
+// the container env. They poll this instead of calling FRED directly.
+const CVOL_CACHE    = { data: null, fetchedAt: 0 };
+const CVOL_TTL_MS   = 6 * 60 * 60 * 1000;  // 6h — matches CBOEVolFetcher._REFRESH_SECS
+const CVOL_SERIES   = ['EVZCLS', 'GVZCLS'];
+
+app.get('/api/cvol', async (_req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!fredKey) return res.status(503).json({ ok: false, error: 'FRED_KEY not set' });
+
+  const age = Date.now() - CVOL_CACHE.fetchedAt;
+  if (CVOL_CACHE.data && age < CVOL_TTL_MS) {
+    return res.json({ ok: true, cached: true, ...CVOL_CACHE.data });
+  }
+
+  try {
+    const fromDate = new Date(Date.now() - 1825 * 86_400_000).toISOString().slice(0, 10); // 5y
+    const results  = await Promise.allSettled(CVOL_SERIES.map(sid => fetchFredSeries(sid, fromDate, fredKey)));
+
+    const levels = {}, pct = {};
+    results.forEach((r, i) => {
+      const sid = CVOL_SERIES[i];
+      if (r.status !== 'fulfilled' || r.value.size < 20) return;
+      const values  = [...r.value.values()];
+      const current = values[values.length - 1];
+      const below   = values.filter(v => v < current).length;
+      levels[sid] = Math.round(current * 100) / 100;
+      pct[sid]    = Math.round((below / values.length) * 1000) / 10;
+    });
+
+    if (Object.keys(levels).length === 0) throw new Error('all FRED series fetches failed');
+
+    const data = { levels, pct, coherence: (pct.EVZCLS ?? 0) >= 50 };
+    CVOL_CACHE.data      = data;
+    CVOL_CACHE.fetchedAt = Date.now();
+    res.json({ ok: true, cached: false, ...data });
+  } catch (e) {
+    console.warn('[cvol] fetch error:', e.message);
+    if (CVOL_CACHE.data) return res.json({ ok: true, cached: true, stale: true, ...CVOL_CACHE.data });
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Diversification backtest data cache ───────────────────────────────────────
 const DIVERS_CACHE = { data: null, fetchedAt: null };
 const DIVERS_TTL_MS = 22 * 60 * 60 * 1000;

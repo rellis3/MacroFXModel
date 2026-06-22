@@ -1,0 +1,37 @@
+{
+  "pair": "gold",
+  "asset_class": "commodity",
+  "pip_size": 0.01,
+  "bars": 900,
+  "trials": 600,
+  "valid_trials": 0,
+  "elapsed_sec": 6.0,
+  "baseline_train": {
+    "stats": null,
+    "n_trades": 0
+  },
+  "baseline_hold": {
+    "stats": null,
+    "n_trades": 0
+  },
+  "top_unconstrained": [],
+  "top_real_sl": [],
+  "holdout": null,
+  "log": [
+    "[gold] loaded 900 M1 bars (2017-09-01..2026-04-30)",
+    "[gold] baseline (dirop/atr/trail) \u2014 TRAIN trades=0 (too few trades)  HOLDOUT trades=0 (too few trades)",
+    "[gold] trial 50/600 \u2014 0s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 100/600 \u2014 0s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 150/600 \u2014 1s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 200/600 \u2014 1s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 250/600 \u2014 1s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 300/600 \u2014 1s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 350/600 \u2014 1s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 400/600 \u2014 2s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 450/600 \u2014 2s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 500/600 \u2014 2s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 550/600 \u2014 2s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] trial 600/600 \u2014 3s elapsed \u2014 0 valid \u2014 best calmar so far: nan",
+    "[gold] optimizer loop done in 2.8s \u2014 0/600 valid trials"
+  ]
+}

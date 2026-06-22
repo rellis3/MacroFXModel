@@ -2814,7 +2814,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <div class="card-title" style="color:#f59e0b;margin-bottom:0">Gate 1 — Asia Overnight Range</div>
           <div id="nqG1Badge" style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;padding:3px 10px;border-radius:4px;background:var(--border2);color:var(--text3)">AWAITING</div>
         </div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:12px;padding:8px 10px;background:rgba(0,0,0,.18);border-radius:6px;font-family:'DM Mono',monospace">
+        <div id="iqrG1Note" style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:12px;padding:8px 10px;background:rgba(0,0,0,.18);border-radius:6px;font-family:'DM Mono',monospace">
           Read NAS100 overnight range 21:00→09:00 UTC. If price at ~09:05 UTC is in the <strong style="color:var(--text2)">top 40%</strong> → LONG bias. <strong style="color:var(--text2)">Bottom 40%</strong> → SHORT bias. Middle 20% → FLAT, no trade.
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;font-family:'DM Mono',monospace;font-size:12px">
@@ -2839,7 +2839,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
           <div class="card-title" style="color:#f59e0b;margin-bottom:0">Gate 2 — London Momentum</div>
           <div id="nqG2Badge" style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;padding:3px 10px;border-radius:4px;background:var(--border2);color:var(--text3)">AWAITING</div>
         </div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:12px;padding:8px 10px;background:rgba(0,0,0,.18);border-radius:6px;font-family:'DM Mono',monospace">
+        <div id="iqrG2Note" style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:12px;padding:8px 10px;background:rgba(0,0,0,.18);border-radius:6px;font-family:'DM Mono',monospace">
           Compare NAS100 at 07:00 UTC (London open) vs 12:00 UTC. Move must be <strong style="color:var(--text2)">&gt;0.10%</strong> in the <strong style="color:var(--text2)">same direction</strong> as Gate 1 to confirm. Opposite or insufficient move → REJECTED.
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;font-family:'DM Mono',monospace;font-size:12px">
@@ -3829,6 +3829,8 @@ function _iqrUpdateBanner() {
   if (el('iqrBannerTitle'))     el('iqrBannerTitle').textContent = `${c.label} — Signal Relay`;
   if (el('iqrBannerSub'))       el('iqrBannerSub').textContent   = `External quant system · ${c.displayName} · ~1-2 entries/week · 09:25 ET entry window · Two-gate validation`;
   if (el('iqrGateNote'))        el('iqrGateNote').textContent    = `Autonomous Gate Intelligence — computed from OANDA ${c.displayName} H1 data`;
+  if (el('iqrG1Note'))          el('iqrG1Note').innerHTML        = `Read ${c.displayName} overnight range 21:00→09:00 UTC. If price at ~09:05 UTC is in the <strong style="color:var(--text2)">top 40%</strong> → LONG bias. <strong style="color:var(--text2)">Bottom 40%</strong> → SHORT bias. Middle 20% → FLAT, no trade.`;
+  if (el('iqrG2Note'))          el('iqrG2Note').innerHTML        = `Compare ${c.displayName} at 07:00 UTC (London open) vs 12:00 UTC. Move must be <strong style="color:var(--text2)">&gt;0.10%</strong> in the <strong style="color:var(--text2)">same direction</strong> as Gate 1 to confirm. Opposite or insufficient move → REJECTED.`;
   if (el('iqrSizerDesc'))       el('iqrSizerDesc').textContent   = `Fixed per quant spec: 0.5% stop distance · 1.8% max risk. Enter your account size and ${c.displayName} entry price to get contract count.`;
   if (el('iqrSizerPriceLabel')) el('iqrSizerPriceLabel').textContent = `${c.displayName} entry price (est.)`;
   const btEl = el('iqrBacktestLink');
@@ -4502,6 +4504,9 @@ const _POS_BOTS = [
   { key: 'hedge_bot_status',           label: 'HedgeBot',  color: '#06b6d4', bg: '#0a2030',  bd: '#0e7490', paper: false },
   { key: 'position_hedge_bot_status',  label: 'PosHedge',  color: '#34d399', bg: '#0d2b22',  bd: '#1a4a38', paper: false },
   { key: 'nq_qmr_status',             label: 'NQ-QMR',    color: '#f59e0b', bg: '#1a1200',  bd: '#b45309', paper: false },
+  { key: 'spx_qmr_status',            label: 'SPX-QMR',   color: '#f59e0b', bg: '#1a1200',  bd: '#b45309', paper: false },
+  { key: 'dow_qmr_status',            label: 'DOW-QMR',   color: '#f59e0b', bg: '#1a1200',  bd: '#b45309', paper: false },
+  { key: 'dax_qmr_status',            label: 'DAX-QMR',   color: '#f59e0b', bg: '#1a1200',  bd: '#b45309', paper: false },
   { key: 'regime_bot_v7_status',      label: 'Regime V7', color: '#14b8a6', bg: '#042f2e',  bd: '#0f766e', paper: false },
 ];
 

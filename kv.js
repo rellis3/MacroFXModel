@@ -78,6 +78,9 @@ const _CF_EXACT = new Set([
   'nq_qmr_status',          // NQ-QMR live gate state — must survive redeploys (gate1 lost on restart kills gate2 Telegram)
   'nq_qmr_audit',           // NQ-QMR 90-day gate audit log — must survive redeploys
   'nq_qmr_config',          // NQ-QMR user config — must survive redeploys
+  'spx_qmr_status', 'spx_qmr_audit', 'spx_qmr_config',  // SPX-QMR — same persistence needs as NQ-QMR
+  'dow_qmr_status', 'dow_qmr_audit', 'dow_qmr_config',  // DOW-QMR — same persistence needs as NQ-QMR
+  'dax_qmr_status', 'dax_qmr_audit', 'dax_qmr_config',  // DAX-QMR — same persistence needs as NQ-QMR
 ]);
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart

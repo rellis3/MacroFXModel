@@ -194,19 +194,24 @@ class CBOEVolFetcher:
     _REFRESH_SECS       = 3600 * 6  # 6h — EOD settlement values
     _RETRY_SECS_ON_FAIL = 300        # 5-min retry when FRED is down
 
-    def __init__(self):
+    def __init__(self, dashboard_url: Optional[str] = None):
         self._levels:    dict[str, float] = {}
         self._pct:       dict[str, float] = {}
         self._fetched:   float = 0.0
         self._coherence: bool  = False
+        self._dashboard_url = dashboard_url.rstrip('/') if dashboard_url else None
 
     def refresh(self) -> None:
         now = time.time()
         if now - self._fetched < self._REFRESH_SECS:
             return
+
+        if self._dashboard_url and self._refresh_from_dashboard(now):
+            return
+
         api_key = os.environ.get('FRED_KEY', '')
         if not api_key:
-            log.warning('[CVOL] FRED_KEY not set — skipping vol fetch')
+            log.warning('[CVOL] FRED_KEY not set and dashboard unavailable — skipping vol fetch')
             self._fetched = now
             return
         levels: dict[str, float] = {}
@@ -240,6 +245,27 @@ class CBOEVolFetcher:
                 f'{s}={levels[s]:.1f}({pcts[s]:.0f}%ile)' for s in levels
             )
             log.info(f'[CVOL] {summary}  coherence={self._coherence}')
+
+    def _refresh_from_dashboard(self, now: float) -> bool:
+        """Try the dashboard's /api/cvol, which has FRED_KEY on Railway. Returns True on success."""
+        try:
+            r = requests.get(f'{self._dashboard_url}/api/cvol', timeout=10)
+            r.raise_for_status()
+            d = r.json()
+            if not d.get('ok') or not d.get('levels'):
+                return False
+            self._levels    = d['levels']
+            self._pct       = d['pct']
+            self._coherence = bool(d.get('coherence', False))
+            self._fetched   = now
+            summary = '  '.join(
+                f'{s}={self._levels[s]:.1f}({self._pct[s]:.0f}%ile)' for s in self._levels
+            )
+            log.info(f'[CVOL] (via dashboard) {summary}  coherence={self._coherence}')
+            return True
+        except Exception as exc:
+            log.debug(f'[CVOL] dashboard fetch failed, falling back to direct FRED: {exc}')
+            return False
 
     def pair_vol_level(self, pair: str) -> Optional[float]:
         sym = _PAIR_VOL_SERIES.get(pair)
@@ -534,9 +560,10 @@ class MacroOverlay:
     """
 
     def __init__(self, fomc_window_hours: float = 48.0,
-                 vix_backwardation_threshold: float = 0.95):
+                 vix_backwardation_threshold: float = 0.95,
+                 dashboard_url: Optional[str] = None):
         self.vix         = VIXFetcher()
-        self.cboe_vol    = CBOEVolFetcher()
+        self.cboe_vol    = CBOEVolFetcher(dashboard_url=dashboard_url)
         self.dxy         = DXYFetcher()
         self.credit      = CreditFetcher()
         self.fomc        = FOMCCalendar()
