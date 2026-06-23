@@ -283,6 +283,7 @@
 
 <!-- KPI grid (hidden until data loads) -->
 <div id="kpiSection" style="display:none;">
+  <div id="activeDatasetLabel" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:6px;"></div>
   <div class="kpi-grid">
     <div class="kpi"><div class="kpi-lbl">Total Return</div><div class="kpi-val green" id="kTotalRet">—</div><div class="kpi-sub" id="kPeriod">—</div></div>
     <div class="kpi"><div class="kpi-lbl">CAGR</div><div class="kpi-val green" id="kCagr">—</div><div class="kpi-sub">annualised</div></div>
@@ -618,8 +619,15 @@
 let _trades = [], _curve = [], _stats = {};
 let _trades2 = [], _curve2 = [], _stats2 = null;
 let _trades3 = [], _curve3 = [], _stats3 = null;
-let _curveCombo = [], _statsCombo = null;
+let _tradesCombo = [], _curveCombo = [], _statsCombo = null;
 let _chart = null, _series = null;
+
+// "Active" dataset — what every analysis section below the chart reads from.
+// Defaults to System 1 alone; switches to the blended Combined set (S1 minus
+// any extended days System 3 replaced, plus S2/S3 trades) whenever either
+// extra system is enabled, so the rest of the page reflects what you'd
+// actually have traded rather than always showing System 1 in isolation.
+let _activeTrades = [], _activeCurve = [], _activeStats = {};
 
 function toggleCfg() {
   const el = document.getElementById('cfgBody');
@@ -679,6 +687,9 @@ async function runBacktest() {
   const instrument = document.getElementById('cfg_instrument').value;
   setStatus('spin', `Fetching 5 years of OANDA H1 ${instrument} — please wait…`);
 
+  const showS2 = document.getElementById('cfg_system2').checked;
+  const showS3 = document.getElementById('cfg_system3').checked;
+
   const params = new URLSearchParams({
     instrument,
     gate1Threshold:  document.getElementById('cfg_gate1').value,
@@ -689,8 +700,8 @@ async function runBacktest() {
     minRangePct:     document.getElementById('cfg_range').value,
     tpPct:           document.getElementById('cfg_tp').value,
     direction:       document.getElementById('cfg_direction').value,
-    showSystem2:     document.getElementById('cfg_system2').checked,
-    showSystem3:     document.getElementById('cfg_system3').checked,
+    showSystem2:     showS2,
+    showSystem3:     showS3,
     extPctThreshold: document.getElementById('cfg_ext_pct').value,
   });
 
@@ -707,12 +718,19 @@ async function runBacktest() {
     _trades3    = d.trades3    || [];
     _curve3     = d.curve3     || [];
     _stats3     = d.stats3     || null;
-    _curveCombo = d.curveCombo || [];
-    _statsCombo = d.statsCombo || null;
+    _tradesCombo = d.tradesCombo || [];
+    _curveCombo  = d.curveCombo  || [];
+    _statsCombo  = d.statsCombo  || null;
+
+    const useCombo = (showS2 || showS3) && _tradesCombo.length > 0;
+    _activeTrades = useCombo ? _tradesCombo : _trades;
+    _activeCurve  = useCombo ? _curveCombo  : _curve;
+    _activeStats  = useCombo ? _statsCombo  : _stats;
+
     const cacheEl = document.getElementById('cacheLabel');
     if (cacheEl) cacheEl.textContent = d.cached ? '(cached)' : `(${_trades.length} trades)`;
     renderAll();
-    setStatus('ok', `Done — ${_trades.length} trades over ${_curve.length > 1 ? Math.round((new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) * 10) / 10 : '?'} years`);
+    setStatus('ok', `Done — ${_activeTrades.length} trades over ${_activeCurve.length > 1 ? Math.round((new Date(_activeCurve[_activeCurve.length-1].date) - new Date(_activeCurve[0].date)) / (365.25*864e5) * 10) / 10 : '?'} years${useCombo ? ' (combined)' : ''}`);
   } catch (err) {
     setStatus('err', 'Error: ' + err.message);
   } finally {
@@ -726,6 +744,13 @@ function fmt(n, dp = 1, suffix = '') {
 }
 
 function renderAll() {
+  const label = document.getElementById('activeDatasetLabel');
+  if (label) {
+    const usingCombo = _activeTrades === _tradesCombo && _tradesCombo.length > 0;
+    label.textContent = usingCombo
+      ? `Showing: Combined strategy (System 1 + ${_trades3.length ? 'System 3' : ''}${_trades3.length && _trades2.length ? ' + ' : ''}${_trades2.length ? 'System 2' : ''}) — ${_activeTrades.length} trades`
+      : `Showing: System 1 only — ${_activeTrades.length} trades`;
+  }
   renderKpis();
   renderChart();
   renderSystem2Card();
@@ -844,7 +869,7 @@ function renderSystem3Card() {
 }
 
 function renderKpis() {
-  const s = _stats;
+  const s = _activeStats;
   document.getElementById('kTotalRet').textContent  = fmt(s.totalReturn, 1, '%');
   document.getElementById('kTotalRet').className    = 'kpi-val ' + (s.totalReturn >= 0 ? 'green' : 'red');
   document.getElementById('kCagr').textContent      = fmt(s.cagr, 1, '%');
@@ -858,30 +883,30 @@ function renderKpis() {
   document.getElementById('kWinRate').className     = 'kpi-val ' + (s.winRate >= 0.55 ? 'green' : s.winRate >= 0.45 ? 'amber' : 'red');
   document.getElementById('kWins').textContent      = `${s.wins} wins / ${s.n} trades`;
 
-  const years = _curve.length >= 2
-    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25 * 864e5)
+  const years = _activeCurve.length >= 2
+    ? (new Date(_activeCurve[_activeCurve.length-1].date) - new Date(_activeCurve[0].date)) / (365.25 * 864e5)
     : 1;
   const tpy = years > 0 ? (s.n / years).toFixed(1) : '—';
   document.getElementById('kFreq').textContent      = tpy + '/yr';
   document.getElementById('kTotalTrades').textContent = s.n + ' total';
 
-  if (_curve.length >= 2) {
+  if (_activeCurve.length >= 2) {
     document.getElementById('kPeriod').textContent =
-      _curve[0].date + ' → ' + _curve[_curve.length-1].date;
+      _activeCurve[0].date + ' → ' + _activeCurve[_activeCurve.length-1].date;
   }
 
   // Secondary stats
-  const wins  = _trades.filter(t => t.tradeReturn > 0);
-  const losses = _trades.filter(t => t.tradeReturn <= 0);
+  const wins  = _activeTrades.filter(t => t.tradeReturn > 0);
+  const losses = _activeTrades.filter(t => t.tradeReturn <= 0);
   const avgWin  = wins.length  ? wins.reduce((s, t)  => s + t.tradeReturn, 0) / wins.length  : 0;
   const avgLoss = losses.length ? losses.reduce((s, t) => s + t.tradeReturn, 0) / losses.length : 0;
   document.getElementById('sAvgWin').textContent  = avgWin  ? fmt(avgWin,  2, '% acct') : '—';
   document.getElementById('sAvgLoss').textContent = avgLoss ? fmt(avgLoss, 2, '% acct') : '—';
   document.getElementById('sRR').textContent      = avgLoss ? (Math.abs(avgWin / avgLoss)).toFixed(2) + ':1' : '—';
-  const stops = _trades.filter(t => t.exitReason === 'STOP').length;
+  const stops = _activeTrades.filter(t => t.exitReason === 'STOP').length;
   document.getElementById('sStops').textContent   = stops + ' (' + (s.n ? (stops / s.n * 100).toFixed(0) : 0) + '%)';
-  document.getElementById('sLongs').textContent   = _trades.filter(t => t.direction === 'LONG').length;
-  document.getElementById('sShorts').textContent  = _trades.filter(t => t.direction === 'SHORT').length;
+  document.getElementById('sLongs').textContent   = _activeTrades.filter(t => t.direction === 'LONG').length;
+  document.getElementById('sShorts').textContent  = _activeTrades.filter(t => t.direction === 'SHORT').length;
   const calmar = s.maxDD > 0 ? (s.cagr / s.maxDD).toFixed(2) : '—';
   document.getElementById('sCalmar').textContent  = calmar;
   document.getElementById('sFireRate').textContent = '~' + (s.n && years > 0 ? ((s.n / years) / 252 * 100).toFixed(0) : '?') + '% of days';
@@ -963,7 +988,7 @@ function renderChart() {
 
 function renderAnnual() {
   const byYear = {};
-  for (const t of _trades) {
+  for (const t of _activeTrades) {
     const y = t.date.substring(0, 4);
     if (!byYear[y]) byYear[y] = { ret: 0, n: 0, wins: 0 };
     byYear[y].ret  += t.tradeReturn;
@@ -984,15 +1009,15 @@ function renderAnnual() {
 }
 
 function renderGateBreakdown() {
-  const g1L = _trades.filter(t => t.gate1 === 'LONG').length;
-  const g1S = _trades.filter(t => t.gate1 === 'SHORT').length;
-  const total = _trades.length;
+  const g1L = _activeTrades.filter(t => t.gate1 === 'LONG').length;
+  const g1S = _activeTrades.filter(t => t.gate1 === 'SHORT').length;
+  const total = _activeTrades.length;
   document.getElementById('gG1Long').textContent    = g1L;
   document.getElementById('gG1Short').textContent   = g1S;
   document.getElementById('gG2Confirm').textContent = total;
   // Gate 2 reject is implied: we can estimate from total trading days
-  const years = _curve.length >= 2
-    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25 * 864e5)
+  const years = _activeCurve.length >= 2
+    ? (new Date(_activeCurve[_activeCurve.length-1].date) - new Date(_activeCurve[0].date)) / (365.25 * 864e5)
     : 1;
   const tradingDays = Math.round(years * 252);
   const rejectRate  = tradingDays > 0 ? ((1 - total / tradingDays) * 100).toFixed(0) : '?';
@@ -1003,11 +1028,11 @@ function renderGateBreakdown() {
 // ── Monthly Calendar Heatmap ──────────────────────────────────────────────────
 function renderMonthlyCal() {
   const grid = document.getElementById('calGrid');
-  if (!grid || !_trades.length) return;
+  if (!grid || !_activeTrades.length) return;
 
   // Compound monthly returns
   const byMY = {};
-  for (const t of _trades) {
+  for (const t of _activeTrades) {
     const [yr, mo] = [t.date.substring(0, 4), t.date.substring(5, 7)];
     const key = `${yr}-${mo}`;
     if (!byMY[key]) byMY[key] = 1.0;
@@ -1015,7 +1040,7 @@ function renderMonthlyCal() {
   }
   const monthRet = k => byMY[k] != null ? (byMY[k] - 1) * 100 : null;
 
-  const years = [...new Set(_trades.map(t => t.date.substring(0, 4)))].sort();
+  const years = [...new Set(_activeTrades.map(t => t.date.substring(0, 4)))].sort();
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   function cellColor(r) {
@@ -1048,7 +1073,7 @@ function renderMonthlyCal() {
 // ── Long / Short Distribution ─────────────────────────────────────────────────
 function renderLongShort() {
   const el = document.getElementById('dirCols');
-  if (!el || !_trades.length) return;
+  if (!el || !_activeTrades.length) return;
 
   function dirStats(trades) {
     const n  = trades.length;
@@ -1056,8 +1081,8 @@ function renderLongShort() {
     const rets = trades.map(t => t.tradeReturn / 100);
     const mu   = rets.reduce((s, r) => s + r, 0) / n;
     const sig  = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / n);
-    const years = _curve.length >= 2
-      ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+    const years = _activeCurve.length >= 2
+      ? (new Date(_activeCurve[_activeCurve.length-1].date) - new Date(_activeCurve[0].date)) / (365.25*864e5) : 1;
     const tpy  = n / Math.max(years, 0.01);
     const sharpe = sig > 0 ? (mu / sig) * Math.sqrt(tpy) : 0;
     const downVar = rets.reduce((s, r) => s + Math.min(r,0)**2, 0) / n;
@@ -1091,15 +1116,15 @@ function renderLongShort() {
     </div>`;
   }
 
-  const longs  = _trades.filter(t => t.direction === 'LONG');
-  const shorts = _trades.filter(t => t.direction === 'SHORT');
+  const longs  = _activeTrades.filter(t => t.direction === 'LONG');
+  const shorts = _activeTrades.filter(t => t.direction === 'SHORT');
   el.innerHTML = panelHtml('▲ LONG Trades', '#10b981', dirStats(longs))
                + panelHtml('▼ SHORT Trades', '#ef4444', dirStats(shorts));
 }
 
 // ── Walk-Forward & Train/Test Validation ──────────────────────────────────────
 function renderValidation() {
-  if (!_trades.length) return;
+  if (!_activeTrades.length) return;
   const stopPct  = parseFloat(document.getElementById('cfg_stop').value)  || 0.50;
   const riskPct  = parseFloat(document.getElementById('cfg_risk').value)  || 1.80;
   const leverage = riskPct / stopPct;
@@ -1112,9 +1137,9 @@ function renderValidation() {
     const n     = rets.length;
     const mu    = rets.reduce((s,r)=>s+r,0) / n;
     const sig   = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0) / n);
-    const years = _curve.length >= 2
-      ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
-    const tpy   = _trades.length / Math.max(years, 0.01);  // use full-sample tpy for annualisation
+    const years = _activeCurve.length >= 2
+      ? (new Date(_activeCurve[_activeCurve.length-1].date) - new Date(_activeCurve[0].date)) / (365.25*864e5) : 1;
+    const tpy   = _activeTrades.length / Math.max(years, 0.01);  // use full-sample tpy for annualisation
     const sharpe  = sig > 0 ? (mu/sig) * Math.sqrt(tpy) : 0;
     const downVar = rets.reduce((s,r)=>s+Math.min(r,0)**2,0) / n;
     const sortino = downVar > 0 ? (mu/Math.sqrt(downVar)) * Math.sqrt(tpy) : 0;
@@ -1131,16 +1156,16 @@ function renderValidation() {
   if (label) {
     if (tcDrag > 0) {
       label.style.display = '';
-      label.textContent = `TC drag: −${tcDrag.toFixed(3)}% acct/trade · ~${(tcDrag * _trades.length / (_curve.length >= 2 ? (new Date(_curve[_curve.length-1].date)-new Date(_curve[0].date))/(365.25*864e5) : 1)).toFixed(1)}%/yr`;
+      label.textContent = `TC drag: −${tcDrag.toFixed(3)}% acct/trade · ~${(tcDrag * _activeTrades.length / (_activeCurve.length >= 2 ? (new Date(_activeCurve[_activeCurve.length-1].date)-new Date(_activeCurve[0].date))/(365.25*864e5) : 1)).toFixed(1)}%/yr`;
     } else {
       label.style.display = 'none';
     }
   }
 
   // Train/Test (60/40 chronological split)
-  const splitIdx = Math.floor(_trades.length * 0.60);
-  const train    = _trades.slice(0, splitIdx);
-  const test     = _trades.slice(splitIdx);
+  const splitIdx = Math.floor(_activeTrades.length * 0.60);
+  const train    = _activeTrades.slice(0, splitIdx);
+  const test     = _activeTrades.slice(splitIdx);
   const trnS     = computeStats(train);
   const tstS     = computeStats(test);
 
@@ -1155,12 +1180,12 @@ function renderValidation() {
   }
   const tp = document.getElementById('valTrain');
   const ts = document.getElementById('valTest');
-  if (tp) tp.innerHTML = statRows(trnS, `📚 In-Sample (first ${Math.round(train.length/_trades.length*100)}%)`);
-  if (ts) ts.innerHTML = statRows(tstS, `🔬 Out-of-Sample (last ${Math.round(test.length/_trades.length*100)}%)`);
+  if (tp) tp.innerHTML = statRows(trnS, `📚 In-Sample (first ${Math.round(train.length/_activeTrades.length*100)}%)`);
+  if (ts) ts.innerHTML = statRows(tstS, `🔬 Out-of-Sample (last ${Math.round(test.length/_activeTrades.length*100)}%)`);
 
   // Walk-forward annual windows
   const byYear = {};
-  for (const t of _trades) {
+  for (const t of _activeTrades) {
     const y = t.date.substring(0, 4);
     if (!byYear[y]) byYear[y] = [];
     byYear[y].push(t);
@@ -1200,11 +1225,11 @@ async function runMonteCarlo() {
   // Yield to UI to show the status message
   await new Promise(r => setTimeout(r, 20));
 
-  const rets  = _trades.map(t => t.tradeReturn / 100);
+  const rets  = _activeTrades.map(t => t.tradeReturn / 100);
   const n     = rets.length;
   const N_SIM = 500;
-  const years = _curve.length >= 2
-    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+  const years = _activeCurve.length >= 2
+    ? (new Date(_activeCurve[_activeCurve.length-1].date) - new Date(_activeCurve[0].date)) / (365.25*864e5) : 1;
   const tpy   = n / Math.max(years, 0.01);
 
   // Run MC simulations — store final equity + max drawdown + per-path Sharpe + percentile curves
@@ -1298,7 +1323,7 @@ async function runMonteCarlo() {
     });
     // Actual equity curve
     const actual = _mcChart.addLineSeries({ color: '#f59e0b', lineWidth: 2, priceFormat: { type: 'custom', formatter: v => v.toFixed(2)+'x' } });
-    actual.setData(_curve.map((p, i) => ({ time: toTs(i), value: p.equity })));
+    actual.setData(_activeCurve.map((p, i) => ({ time: toTs(i), value: p.equity })));
     _mcChart.timeScale().fitContent();
   }
 
@@ -1337,20 +1362,20 @@ async function runMonteCarlo() {
 }
 
 function renderMEA() {
-  if (!_trades.length) return;
+  if (!_activeTrades.length) return;
   const stopPct  = parseFloat(document.getElementById('cfg_stop').value) || 0.50;
   const riskPct  = parseFloat(document.getElementById('cfg_risk').value) || 1.80;
   const leverage = riskPct / stopPct;
-  const eodCagr  = _stats.cagr ?? 0;
+  const eodCagr  = _activeStats.cagr ?? 0;
 
   // ── MFE distribution bar chart ───────────────────────────────────────────
   const buckets = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 2.00, 2.50, 3.00, 4.00];
-  const counts  = buckets.map(b => _trades.filter(t => t.mfePct != null && t.mfePct >= b).length);
+  const counts  = buckets.map(b => _activeTrades.filter(t => t.mfePct != null && t.mfePct >= b).length);
   const maxCt   = Math.max(...counts, 1);
   const chartEl = document.getElementById('meaDistChart');
   if (chartEl) {
     chartEl.innerHTML = buckets.map((b, i) => {
-      const pct = (_trades.length ? counts[i] / _trades.length * 100 : 0).toFixed(0);
+      const pct = (_activeTrades.length ? counts[i] / _activeTrades.length * 100 : 0).toFixed(0);
       const h   = Math.max(Math.round(counts[i] / maxCt * 76), 2);
       const col = b <= stopPct ? '#ef4444' : b <= stopPct * 2 ? '#f59e0b' : '#10b981';
       return `<div class="mea-bar-col">
@@ -1363,12 +1388,12 @@ function renderMEA() {
 
   // ── TP sweep simulation ───────────────────────────────────────────────────
   const tpLevels = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.50, 3.00];
-  const n = _trades.length;
+  const n = _activeTrades.length;
 
   // Simulate each TP level client-side using stored MFE/MAE data
   function simTP(tpPct) {
     let eq = 1.0; const rets = [];
-    for (const t of _trades) {
+    for (const t of _activeTrades) {
       let ret;
       if (t.exitReason === 'STOP') {
         // Stop hit: check if MFE reached TP first (optimistic — TP before stop in same bar)
@@ -1384,8 +1409,8 @@ function renderMEA() {
     }
     const mu  = rets.reduce((s, r) => s + r, 0) / n;
     const sig = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / n);
-    const years = _curve.length >= 2
-      ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5)
+    const years = _activeCurve.length >= 2
+      ? (new Date(_activeCurve[_activeCurve.length-1].date) - new Date(_activeCurve[0].date)) / (365.25*864e5)
       : 1;
     const tpy    = n / Math.max(years, 0.01);
     const sharpe = sig > 0 ? (mu / sig) * Math.sqrt(tpy) : 0;
@@ -1398,7 +1423,7 @@ function renderMEA() {
       if (dd > maxDD) maxDD = dd;
     }
     const wins    = rets.filter(r => r > 0).length;
-    const hitRate = _trades.filter(t => (t.mfePct ?? 0) >= tpPct).length / n;
+    const hitRate = _activeTrades.filter(t => (t.mfePct ?? 0) >= tpPct).length / n;
     const winRets  = rets.filter(r => r > 0);
     const lossRets = rets.filter(r => r <= 0);
     const avgWin   = winRets.length  ? winRets.reduce((s, r)  => s + r, 0) / winRets.length  * 100 : 0;
@@ -1432,8 +1457,8 @@ function renderMEA() {
   }
 
   // ── MAE summary stats ────────────────────────────────────────────────────
-  const maes   = _trades.map(t => t.maePct ?? 0).filter(v => isFinite(v));
-  const mfes   = _trades.map(t => t.mfePct ?? 0).filter(v => isFinite(v));
+  const maes   = _activeTrades.map(t => t.maePct ?? 0).filter(v => isFinite(v));
+  const mfes   = _activeTrades.map(t => t.mfePct ?? 0).filter(v => isFinite(v));
   const avgMFE = mfes.reduce((s, v) => s + v, 0) / (mfes.length || 1);
   const avgMAE = maes.reduce((s, v) => s + v, 0) / (maes.length || 1);
   const mfes50 = [...mfes].sort((a, b) => a - b)[Math.floor(mfes.length * 0.50)] ?? 0;
@@ -1450,13 +1475,13 @@ function renderTradeTable() {
   const tbody = document.getElementById('tradeTbody');
   const count = document.getElementById('tradeCount');
   if (!tbody) return;
-  if (count) count.textContent = _trades.length + ' trades';
+  if (count) count.textContent = _activeTrades.length + ' trades';
 
-  const rows = [..._trades].reverse().map((t, i) => {
+  const rows = [..._activeTrades].reverse().map((t, i) => {
     const isWin = t.tradeReturn > 0;
     const cls   = isWin ? 'win' : 'loss';
     const dCls  = t.direction === 'LONG' ? 'win' : 'loss';
-    const idx   = _trades.length - 1 - i; // original index (reversed display)
+    const idx   = _activeTrades.length - 1 - i; // original index (reversed display)
     return `<tr>
       <td>${t.date}</td>
       <td class="${dCls}">${t.direction === 'LONG' ? '▲ LONG' : '▼ SHORT'}</td>
@@ -1477,9 +1502,9 @@ function renderTradeTable() {
 }
 
 function exportCsv() {
-  if (!_trades.length) return;
+  if (!_activeTrades.length) return;
   const hdr = 'Date,Direction,Gate1,Gate2,Entry,Stop,Exit,ExitType,Move%,PnL%,Equity\n';
-  const rows = _trades.map(t =>
+  const rows = _activeTrades.map(t =>
     `${t.date},${t.direction},${t.gate1},${t.gate2},${t.entry?.toFixed(2)},${t.stop?.toFixed(2)},${t.exit?.toFixed(2)},${t.exitReason},${t.movePct?.toFixed(3)},${t.tradeReturn?.toFixed(3)},${t.equity?.toFixed(6)}`
   ).join('\n');
   const blob = new Blob([hdr + rows], { type: 'text/csv' });
@@ -1560,7 +1585,7 @@ function loadCfg(cfg) {
 let _tvChart = null, _tvSeries = null;
 
 function openTv(idx) {
-  const trade = _trades[idx];
+  const trade = _activeTrades[idx];
   if (!trade) return;
   const overlay = document.getElementById('tvOverlay');
   overlay.classList.add('open');
@@ -1701,7 +1726,7 @@ async function runBlockBootstrap() {
   if (status) status.textContent = 'Running 500 block-bootstrap sims…';
   await new Promise(r => setTimeout(r, 20));
 
-  const rets    = _trades.map(t => t.tradeReturn / 100);
+  const rets    = _activeTrades.map(t => t.tradeReturn / 100);
   const n       = rets.length;
   const blkSize = Math.max(2, parseInt(document.getElementById('bbBlockSize').value) || 5);
   const N_SIM   = 500;
@@ -1738,8 +1763,8 @@ async function runBlockBootstrap() {
   maxDDs.sort((a, b) => a - b);
   const pct   = p => finals[Math.min(finals.length - 1, Math.floor(finals.length * p / 100))];
   const pctDD = p => maxDDs[Math.min(maxDDs.length - 1, Math.floor(maxDDs.length * p / 100))];
-  const years = _curve.length >= 2
-    ? (new Date(_curve[_curve.length - 1].date) - new Date(_curve[0].date)) / (365.25 * 864e5) : 1;
+  const years = _activeCurve.length >= 2
+    ? (new Date(_activeCurve[_activeCurve.length - 1].date) - new Date(_activeCurve[0].date)) / (365.25 * 864e5) : 1;
   const toCAGR  = eq => ((Math.pow(eq, 1 / Math.max(years, 0.01)) - 1) * 100).toFixed(1);
   const probLoss = finals.filter(e => e < 1).length / N_SIM * 100;
 
@@ -1795,7 +1820,7 @@ async function runWFRetrain() {
       const oosSeries = _wfrChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: 'OOS retrain', priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' } });
       oosSeries.setData(oosCurve.map(p => ({ time: p.date, value: p.equity })));
       const actualSeries = _wfrChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, lineStyle: 1, title: 'Fixed-param', priceFormat: { type: 'custom', formatter: v => v.toFixed(2) + 'x' } });
-      actualSeries.setData(_curve.map(p => ({ time: p.date, value: p.equity })));
+      actualSeries.setData(_activeCurve.map(p => ({ time: p.date, value: p.equity })));
       _wfrChart.timeScale().fitContent();
     }
 
@@ -1831,7 +1856,7 @@ async function runWFRetrain() {
 
 // ── Capital Ceiling ───────────────────────────────────────────────────────────
 function renderCapCeiling() {
-  if (!_stats || !_stats.cagr || !_trades.length) return;
+  if (!_activeStats || !_activeStats.cagr || !_activeTrades.length) return;
 
   const dailyVol = parseFloat(document.getElementById('capDailyVol').value) || 50000;
   const sigma    = parseFloat(document.getElementById('capSigma').value)    || 1.0;
@@ -1839,11 +1864,11 @@ function renderCapCeiling() {
   const riskPct  = parseFloat(document.getElementById('cfg_risk').value)    || 1.80;
   const leverage = riskPct / stopPct;  // notional / account
 
-  const baseCagr   = _stats.cagr;
-  const baseSharpe = _stats.sharpe;
-  const years      = _curve.length >= 2
-    ? (new Date(_curve[_curve.length - 1].date) - new Date(_curve[0].date)) / (365.25 * 864e5) : 1;
-  const tpy        = _trades.length / Math.max(years, 0.01);
+  const baseCagr   = _activeStats.cagr;
+  const baseSharpe = _activeStats.sharpe;
+  const years      = _activeCurve.length >= 2
+    ? (new Date(_activeCurve[_activeCurve.length - 1].date) - new Date(_activeCurve[0].date)) / (365.25 * 864e5) : 1;
+  const tpy        = _activeTrades.length / Math.max(years, 0.01);
 
   const aumLevels = [1e5, 2.5e5, 5e5, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8, 2.5e8, 5e8];
 

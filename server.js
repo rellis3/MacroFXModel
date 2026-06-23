@@ -2522,6 +2522,7 @@ function _computeNqQmr(bars, cfg = {}) {
       eq *= (1 + t.tradeReturn / 100);
       curveComboFinal.push({ date: t.date, equity: +eq.toFixed(6) });
     }
+    result.tradesCombo = comboPool;
     result.curveCombo = curveComboFinal;
     result.statsCombo = _qmrStats(comboPool, curveComboFinal, eq);
   }
