@@ -78,3 +78,24 @@ this table shows it clearly —
 risk-adjusted return directly, so configs like #22/#10/#14 above land
 near the top instead of being buried under overtrading noise. That's a
 smarter run, not a bigger one.
+
+### Verdict — is any of this actually good?
+
+Not all bad, but none are deploy-ready. **#22 is the pick of the batch**:
+Sharpe 2.15 / PF 1.84 / MaxDD 1.05% on 408 trades — the only entry in the
+high-Sharpe cluster with a trade count large enough that the numbers
+aren't mostly noise (#10/#14/#17 post flashier Sharpe/PF but on only
+60–100 trades, which is too thin to trust on its own).
+
+Two caveats even on #22:
+- The **11-12h entry window** is a single random-search hour slot — that
+  smells like curve-fit to this dataset rather than a real session
+  effect. Test whether the edge survives widening it (e.g. 10-13h); if
+  Sharpe collapses, it was noise.
+- **Every row in this table is in-sample** — best-of-N random trials
+  judged on the same data used to rank them. That's classic
+  multiple-comparisons bias. None of these are proven.
+
+Cheapest next step, no optimizer re-run needed: Apply #22, then
+`▶ Load & Run` against a date range (or pair) it wasn't selected on. If
+Sharpe/PF hold up out-of-sample, it's real; if they evaporate, it wasn't.
