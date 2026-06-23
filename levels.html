@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Actionable Levels</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#alApp { padding: 0 20px 32px; max-width: 1300px; margin: 0 auto; }
+
+/* ── Summary / filter bar ────────────────────────────────────────────────── */
+.al-summary {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 14px; padding: 10px 14px;
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+}
+.al-summary-label {
+  font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text3); font-family: 'DM Mono', monospace;
+}
+.al-filter-btn {
+  font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600;
+  padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--s2); color: var(--text2); cursor: pointer;
+}
+.al-filter-btn.active { background: var(--blue-bg); border-color: var(--blue-bd); color: var(--blue); }
+.al-filter-btn .cnt { opacity: .7; margin-left: 4px; }
+
+/* ── Card grid ────────────────────────────────────────────────────────────── */
+.al-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+@media (max-width: 900px) { .al-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1300px) and (min-width: 901px) { .al-grid { grid-template-columns: 1fr 1fr; } }
+
+.al-card {
+  background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl);
+  padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 12px;
+  transition: border-color .2s;
+}
+.al-card:hover { border-color: var(--border2); }
+.al-card.verdict-ACT   { border-color: var(--green-bd); }
+.al-card.verdict-AVOID { border-color: var(--red-bd); }
+
+.al-card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.al-pair-name { font-size: 15px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); }
+.al-price { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text2); margin-left: 8px; }
+
+.al-verdict-badge {
+  font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace; letter-spacing: .05em;
+  padding: 5px 12px; border-radius: 20px; white-space: nowrap;
+}
+.al-verdict-badge.ACT   { background: var(--green-bg); border: 1px solid var(--green-bd); color: var(--green); }
+.al-verdict-badge.WATCH { background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber); }
+.al-verdict-badge.WAIT  { background: var(--s2);        border: 1px solid var(--border2);  color: var(--text3); }
+.al-verdict-badge.AVOID { background: var(--red-bg);   border: 1px solid var(--red-bd);   color: var(--red); }
+
+.al-vol-pill {
+  font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 8px; border-radius: 12px;
+  background: var(--blue-bg); border: 1px solid var(--blue-bd); color: var(--blue);
+}
+.al-vol-pill.HIGH { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red); }
+.al-vol-pill.LOW  { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+
+.al-macro-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.al-chip {
+  font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace; padding: 3px 9px;
+  border-radius: 12px; border: 1px solid var(--border); color: var(--text2); background: var(--s2);
+}
+.al-chip.LONG    { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.al-chip.SHORT   { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red); }
+.al-chip.NEUTRAL { color: var(--text3); }
+.al-meta { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.al-section-label {
+  font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text3); font-family: 'DM Mono', monospace; margin-bottom: 6px;
+}
+
+.al-levels { display: flex; flex-direction: column; gap: 4px; }
+.al-lv-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-family: 'DM Mono', monospace; padding: 3px 8px; border-radius: 6px;
+  background: var(--s2);
+}
+.al-lv-row.hit { opacity: .55; }
+.al-lv-row.current { background: var(--blue-bg); border: 1px solid var(--blue-bd); font-weight: 700; }
+.al-lv-label { color: var(--text3); }
+.al-lv-price { color: var(--text); font-weight: 600; }
+
+.al-bar-track { height: 6px; border-radius: 4px; background: var(--s2); overflow: hidden; margin-top: 8px; }
+.al-bar-fill  { height: 100%; background: var(--blue); transition: width .3s; }
+.al-bar-fill.hi { background: var(--red); }
+
+.al-rationale {
+  font-size: 11px; line-height: 1.5; color: var(--text2); padding: 8px 10px;
+  background: var(--s2); border-radius: 8px; border-left: 3px solid var(--border2);
+}
+.al-rationale.ACT   { border-left-color: var(--green); }
+.al-rationale.WATCH { border-left-color: var(--amber); }
+.al-rationale.AVOID { border-left-color: var(--red); }
+
+.al-empty-note { font-size: 10px; color: var(--text3); font-style: italic; }
+</style>
+</head>
+<body class="dark">
+<div id="alApp">
+
+<div class="sticky-header" id="alHeader">
+<div class="topbar">
+  <div class="logo-box" style="background:linear-gradient(135deg,#10b981,#1847c2)">
+    <svg viewBox="0 0 17 17" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12 L5 7 L8 9 L11 5 L14 7"/>
+      <circle cx="14" cy="7" r="1.4" fill="#fff"/>
+    </svg>
+  </div>
+  <div class="title-block">
+    <div class="title">Actionable Levels</div>
+    <div class="sub">Macro Regime × Vol Forecast — composite act / watch / wait / avoid signal, all pairs</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="upd">Forecast updated: <span id="alUpdated">—</span></span>
+  <button class="dark-btn" id="alRefreshBtn" onclick="window._alRefresh()">↻ Refresh</button>
+  <a href="vol-forecast.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Vol &amp; Range Forecast" style="border-color:#4f7df0;color:#4f7df0">📐 Vol Forecast</button></a>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+<div class="status-bar">
+  <div class="sdot" id="alSdot"></div>
+  <div class="stxt" id="alStxt">Loading…</div>
+</div>
+</div>
+
+<div class="al-summary" id="alSummary" style="display:none">
+  <span class="al-summary-label">Filter</span>
+  <button class="al-filter-btn active" data-filter="all"   onclick="window._alFilter('all')">All <span class="cnt" id="cnt-all">0</span></button>
+  <button class="al-filter-btn"        data-filter="ACT"   onclick="window._alFilter('ACT')">🟢 Act <span class="cnt" id="cnt-ACT">0</span></button>
+  <button class="al-filter-btn"        data-filter="WATCH" onclick="window._alFilter('WATCH')">🟡 Watch <span class="cnt" id="cnt-WATCH">0</span></button>
+  <button class="al-filter-btn"        data-filter="WAIT"  onclick="window._alFilter('WAIT')">⚪ Wait <span class="cnt" id="cnt-WAIT">0</span></button>
+  <button class="al-filter-btn"        data-filter="AVOID" onclick="window._alFilter('AVOID')">🔴 Avoid <span class="cnt" id="cnt-AVOID">0</span></button>
+</div>
+
+<div class="al-grid" id="alGrid"></div>
+
+</div>
+<script type="module" src="./js/levels.js"></script>
+</body>
+</html>
