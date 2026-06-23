@@ -1085,7 +1085,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
     }
 
     // ── SL check ──────────────────────────────────────────────────────────
-    activeTrades = activeTrades.filter(t => {
+    if (activeTrades.length) activeTrades = activeTrades.filter(t => {
       if (t.direction === 'LONG' && c.low <= t.sl) {
         _closeTrade(t, c.time, t.sl, 'SL', trades, currentDay, costPct); lastExitBar = i; return false;
       }
@@ -1096,7 +1096,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
     });
 
     // ── TP check (fixed_r / both) ────────────────────────────────────────
-    if (useTp) {
+    if (useTp && activeTrades.length) {
       activeTrades = activeTrades.filter(t => {
         if (t.tp == null) return true;
         if (t.direction === 'LONG' && c.high >= t.tp) {
@@ -1121,7 +1121,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
     });
 
     // ── MFE trail exit (trail / both, or level-target after cutoff hour) ──
-    if (useTrail || (useLevelTarget && barHour >= levelTargetCutoffH)) {
+    if ((useTrail || (useLevelTarget && barHour >= levelTargetCutoffH)) && activeTrades.length) {
       activeTrades = activeTrades.filter(t => {
         const { direction, entry, slDist, mfePeak } = t;
         if (mfePeak <= 0 || mfePeak < mfeMinR * slDist) return true;
@@ -1160,7 +1160,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         const slDistA = _computeSlDist(slMode, a.atr, config.slAtrMult, config.slFixedPips, pipSize, calibCtx);
         activeTrades.push(_buildTrade(++tradeId, barDate, def.key, a.dir, def.dynamic, c.time, entryPrice,
           a.lvPrice, a.atr, currentDay.open, fc, slDistA, useLevelTarget, useTp, config.tpRMult));
-        dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: entryPrice, direction: a.dir, atr: a.atr });
+        if (slMode === 'maeCalib') dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: entryPrice, direction: a.dir, atr: a.atr });
         if (singleMode) break;
       }
     }
@@ -1222,7 +1222,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
       const slDistT = _computeSlDist(slMode, atr, config.slAtrMult, config.slFixedPips, pipSize, calibCtx);
       activeTrades.push(_buildTrade(++tradeId, barDate, def.key, lvDir, def.dynamic, c.time, lvPrice,
         lvPrice, atr, currentDay.open, fc, slDistT, useLevelTarget, useTp, config.tpRMult));
-      dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: lvPrice, direction: lvDir, atr });
+      if (slMode === 'maeCalib') dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: lvPrice, direction: lvDir, atr });
       if (singleMode) break;
     }
   }
@@ -1460,7 +1460,14 @@ async function runOptimizer() {
   btn.textContent = '■ Stop';
   const statusEl = document.getElementById('optStatus');
 
-  const BATCH = 20;
+  // Yield based on elapsed wall-clock time rather than a fixed trial count —
+  // trial cost varies a lot (concurrent-trade / high-reentry configs can be
+  // far more expensive than the default single-trade-per-day case), so a
+  // fixed "every 20 trials" batch can still block the main thread long enough
+  // to trip the browser's unresponsive-page warning. Yielding by elapsed time
+  // keeps every blocking chunk short regardless of which configs get sampled.
+  const YIELD_MS = 40;
+  let lastYield = performance.now();
   for (let n = 0; n < trials; n++) {
     if (optCancel) break;
     const trialCfg = sampleTrialConfig(cfg);
@@ -1469,9 +1476,10 @@ async function runOptimizer() {
       const stats = computeAnalytics(trades);
       if (stats) optResults.push({ cfg: trialCfg, stats, score: optObjectiveValue(stats, objective) });
     }
-    if (n % BATCH === BATCH - 1) {
+    if (performance.now() - lastYield >= YIELD_MS) {
       statusEl.textContent = `Trial ${n+1}/${trials}… (${optResults.length} valid)`;
       await tick();
+      lastYield = performance.now();
     }
   }
 
@@ -2010,8 +2018,8 @@ function computeAnalytics(trades) {
   });
 
   const expectancy = (winRate/100)*avgWin - (1-winRate/100)*avgLoss;
-  const maxCW = Math.max(0,...trades.map(t=>t.win?t.pnlPct:0));
-  const maxCL = Math.min(0,...trades.map(t=>!t.win?t.pnlPct:0));
+  const maxCW = trades.reduce((m,t)=> t.win && t.pnlPct>m ? t.pnlPct : m, 0);
+  const maxCL = trades.reduce((m,t)=>!t.win && t.pnlPct<m ? t.pnlPct : m, 0);
 
   return { total:n, wins:wins.length, losses:losses.length, winRate, grossWin, grossLoss,
     pf, avgWin, avgLoss, totalPnl, maxDD, sharpe, sortino, calmar, cagr, equity,
