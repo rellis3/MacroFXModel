@@ -108,7 +108,7 @@ export function calculateTierScores() {
 // Rising net liq = more dealer cash to deploy = risk-on tailwind for NQ.
 // WALCL updates weekly (Thursdays), so prev = prior week.
 function computeT1_Equity() {
-  const fredData  = S.fredData;
+  const fredData  = S.fredData ?? {};
   const walcl     = fredData.walcl?.value;
   const walclPrev = fredData.walcl?.prev;
   const tga       = fredData.tga?.value;
@@ -158,7 +158,7 @@ function computeT1_Equity() {
 }
 
 function computeT1() {
-  const fredData = S.fredData;
+  const fredData = S.fredData ?? {};
   if (S.currentPair.isEquity) return computeT1_Equity();
   if (S.currentPair.isGold) {
     const tips = fredData.tips?.value;
@@ -300,7 +300,7 @@ function computeT1() {
 }
 
 function computeT2() {
-  const fredData = S.fredData;
+  const fredData = S.fredData ?? {};
   const vix = fredData.vix?.value;
   const vixPrev = fredData.vix?.prev;
   if (vix == null) return tierUnavailable('T2', 'VIX', 'VIX Level + Δ', 3);
@@ -337,7 +337,7 @@ function computeT2() {
 }
 
 function computeT3() {
-  const fredData = S.fredData;
+  const fredData = S.fredData ?? {};
   const usdBase     = S.currentPair.isUsdBase;
   const amplifier   = S.currentPair.isGold ? 1.5 : 1;
 
@@ -393,7 +393,7 @@ function computeT3() {
 }
 
 function computeT4() {
-  const fredData = S.fredData;
+  const fredData = S.fredData ?? {};
   const hyRaw = fredData.hy?.value;
   const hyPrevRaw = fredData.hy?.prev;
   if (hyRaw == null || isNaN(hyRaw)) return tierUnavailable('T4', 'HY Credit', 'HY OAS', 2);
@@ -458,7 +458,7 @@ function computeT4() {
 // Negative correlation → carry crash / risk-off unwind.
 // Returns null when fewer than 4 pairs have both rate data and price bars.
 function computeCrossCarryScore() {
-  const f = S.fredData;
+  const f = S.fredData ?? {};
   const us = f.us2y?.value ?? null;
   if (us == null) return null;
 
@@ -531,7 +531,7 @@ function computeCrossCarryScore() {
 }
 
 function computeT5() {
-  const fredData   = S.fredData;
+  const fredData   = S.fredData ?? {};
   const isInverted = S.currentPair.isSafeHaven || S.currentPair.isGold;
 
   // Primary: cross-sectional carry factor — ranks all pairs by rate differential
@@ -635,7 +635,7 @@ function computeT5() {
 }
 
 function computeT6() {
-  const fredData = S.fredData;
+  const fredData = S.fredData ?? {};
   const nfci = fredData.nfci?.value;
   if (nfci == null) return tierUnavailable('T6', 'NFCI', 'Conditions', 2);
 
