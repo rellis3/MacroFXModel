@@ -263,6 +263,19 @@
         </label>
         <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">G1 pass + G2 fail → trade London direction</span>
       </div>
+      <div class="cfg-field">
+        <label>System 3</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:4px;">
+          <input type="checkbox" id="cfg_system3" style="width:14px;height:14px;accent-color:#a855f7;">
+          <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text)">Extension Fade</span>
+        </label>
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">G1+G2 confirm but move already extreme vs ADR → fade instead</span>
+      </div>
+      <div class="cfg-field">
+        <label>Extension Percentile</label>
+        <input type="number" id="cfg_ext_pct" value="75" min="50" max="95" step="5">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">days above this percentile of typical range-used get faded</span>
+      </div>
     </div>
     <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
   </div>
@@ -304,6 +317,12 @@
 <div class="card" id="system2Card" style="display:none;">
   <div class="card-hdr">System 1 vs System 2 — Rejection Fade</div>
   <div class="card-body" id="system2Body"></div>
+</div>
+
+<!-- System 3 comparison card -->
+<div class="card" id="system3Card" style="display:none;">
+  <div class="card-hdr">System 1 vs System 3 — Extension Fade</div>
+  <div class="card-body" id="system3Body"></div>
 </div>
 
 <!-- Annual returns -->
@@ -598,6 +617,7 @@
 <script>
 let _trades = [], _curve = [], _stats = {};
 let _trades2 = [], _curve2 = [], _stats2 = null;
+let _trades3 = [], _curve3 = [], _stats3 = null;
 let _curveCombo = [], _statsCombo = null;
 let _chart = null, _series = null;
 
@@ -670,6 +690,8 @@ async function runBacktest() {
     tpPct:           document.getElementById('cfg_tp').value,
     direction:       document.getElementById('cfg_direction').value,
     showSystem2:     document.getElementById('cfg_system2').checked,
+    showSystem3:     document.getElementById('cfg_system3').checked,
+    extPctThreshold: document.getElementById('cfg_ext_pct').value,
   });
 
   try {
@@ -682,6 +704,9 @@ async function runBacktest() {
     _trades2    = d.trades2    || [];
     _curve2     = d.curve2     || [];
     _stats2     = d.stats2     || null;
+    _trades3    = d.trades3    || [];
+    _curve3     = d.curve3     || [];
+    _stats3     = d.stats3     || null;
     _curveCombo = d.curveCombo || [];
     _statsCombo = d.statsCombo || null;
     const cacheEl = document.getElementById('cacheLabel');
@@ -704,6 +729,7 @@ function renderAll() {
   renderKpis();
   renderChart();
   renderSystem2Card();
+  renderSystem3Card();
   renderAnnual();
   renderGateBreakdown();
   renderMonthlyCal();
@@ -767,6 +793,56 @@ function renderSystem2Card() {
     </table>`;
 }
 
+function renderSystem3Card() {
+  const card = document.getElementById('system3Card');
+  const body = document.getElementById('system3Body');
+  if (!card || !body) return;
+  if (!_stats3 || !_statsCombo) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const s1 = _stats, s3 = _stats3, sc = _statsCombo;
+  const extendedCount = _trades.filter(t => t.extended).length;
+  const row = (label, v1, v3, vc, higherBetter = true) => {
+    const best = higherBetter
+      ? (v1 >= v3 ? (v1 >= vc ? 'S1' : 'C') : (v3 >= vc ? 'S3' : 'C'))
+      : (v1 <= v3 ? (v1 <= vc ? 'S1' : 'C') : (v3 <= vc ? 'S3' : 'C'));
+    const col = (v, sys) => `<td style="text-align:right;padding:4px 10px;color:${sys===best?'#10b981':'var(--text)'};font-family:'DM Mono',monospace;font-size:12px">${v}</td>`;
+    return `<tr>
+      <td style="padding:4px 10px;color:var(--text3);font-size:12px">${label}</td>
+      ${col(v1,'S1')}${col(v3,'S3')}${col(vc,'C')}
+    </tr>`;
+  };
+
+  const pct = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  const f2  = v => v.toFixed(2);
+  const n   = (v, unit = '') => v.toFixed(0) + unit;
+
+  body.innerHTML = `
+    <p style="font-size:11px;color:var(--text3);margin:0 0 10px">
+      System 1: full continuation set (G1+G2 confirm), unaffected by this toggle &nbsp;|&nbsp;
+      System 3: of S1's days, the ${extendedCount} where the move into entry was already ≥${document.getElementById('cfg_ext_pct').value}th percentile of the trailing 20-day ADR → faded (opposite direction) instead<br>
+      Combined: System 1 minus those ${extendedCount} extended days, plus System 3's fade on them (and System 2 if also enabled). Green = best value.
+    </p>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr>
+        <th style="text-align:left;padding:4px 10px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)">Metric</th>
+        <th style="text-align:right;padding:4px 10px;color:#f59e0b;font-size:11px;border-bottom:1px solid var(--border)">System 1</th>
+        <th style="text-align:right;padding:4px 10px;color:#a855f7;font-size:11px;border-bottom:1px solid var(--border)">System 3</th>
+        <th style="text-align:right;padding:4px 10px;color:#10b981;font-size:11px;border-bottom:1px solid var(--border)">Combined</th>
+      </tr></thead>
+      <tbody>
+        ${row('Total Return', pct(s1.totalReturn), pct(s3.totalReturn), pct(sc.totalReturn))}
+        ${row('CAGR', pct(s1.cagr), pct(s3.cagr), pct(sc.cagr))}
+        ${row('Sharpe', f2(s1.sharpe), f2(s3.sharpe), f2(sc.sharpe))}
+        ${row('Sortino', f2(s1.sortino), f2(s3.sortino), f2(sc.sortino))}
+        ${row('Max Drawdown', '-'+f2(s1.maxDD)+'%', '-'+f2(s3.maxDD)+'%', '-'+f2(sc.maxDD)+'%', false)}
+        ${row('Calmar', s1.maxDD>0?(s1.cagr/s1.maxDD).toFixed(2):'—', s3.maxDD>0?(s3.cagr/s3.maxDD).toFixed(2):'—', sc.maxDD>0?(sc.cagr/sc.maxDD).toFixed(2):'—')}
+        ${row('Win Rate', (s1.winRate*100).toFixed(1)+'%', (s3.winRate*100).toFixed(1)+'%', (sc.winRate*100).toFixed(1)+'%')}
+        ${row('Trades', n(s1.n), n(s3.n), n(sc.n))}
+      </tbody>
+    </table>`;
+}
+
 function renderKpis() {
   const s = _stats;
   document.getElementById('kTotalRet').textContent  = fmt(s.totalReturn, 1, '%');
@@ -818,10 +894,12 @@ function renderChart() {
   if (_chart) { _chart.remove(); _chart = null; _series = null; }
 
   const hasS2 = _curve2.length > 0;
+  const hasS3 = _curve3.length > 0;
+  const hasExtra = hasS2 || hasS3;
 
   _chart = LightweightCharts.createChart(wrap, {
     width:  wrap.clientWidth,
-    height: hasS2 ? 360 : 300,
+    height: hasExtra ? 360 : 300,
     layout: { background: { color: 'transparent' }, textColor: '#94a3b8' },
     grid:   { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
     rightPriceScale:  { borderColor: '#334155' },
@@ -830,25 +908,37 @@ function renderChart() {
   });
 
   const fmtEq = { type: 'custom', formatter: v => v.toFixed(2) + 'x' };
+  const subParts = [];
 
-  if (hasS2) {
+  if (hasExtra) {
     // Combined (green) — fill
     const comboSeries = _chart.addAreaSeries({
       lineColor: '#10b981', topColor: 'rgba(16,185,129,0.2)', bottomColor: 'rgba(16,185,129,0.01)',
       lineWidth: 2, priceFormat: fmtEq, title: 'Combined',
     });
     comboSeries.setData(_curveCombo.map(p => ({ time: p.date, value: p.equity })));
+    subParts.push('green=combined');
 
-    // System 2 (blue line)
-    const s2Series = _chart.addLineSeries({
-      color: '#3b82f6', lineWidth: 1.5, priceFormat: fmtEq, title: 'System 2',
-    });
-    s2Series.setData(_curve2.map(p => ({ time: p.date, value: p.equity })));
+    if (hasS2) {
+      const s2Series = _chart.addLineSeries({
+        color: '#3b82f6', lineWidth: 1.5, priceFormat: fmtEq, title: 'System 2',
+      });
+      s2Series.setData(_curve2.map(p => ({ time: p.date, value: p.equity })));
+      subParts.unshift('blue=S2');
+    }
+    if (hasS3) {
+      const s3Series = _chart.addLineSeries({
+        color: '#a855f7', lineWidth: 1.5, priceFormat: fmtEq, title: 'System 3',
+      });
+      s3Series.setData(_curve3.map(p => ({ time: p.date, value: p.equity })));
+      subParts.unshift('purple=S3');
+    }
 
     // System 1 (amber line, no fill so it doesn't obscure)
     _series = _chart.addLineSeries({
       color: '#f59e0b', lineWidth: 2, priceFormat: fmtEq, title: 'System 1',
     });
+    subParts.unshift('amber=S1');
   } else {
     _series = _chart.addAreaSeries({
       lineColor: '#f59e0b', topColor: 'rgba(245,158,11,0.3)', bottomColor: 'rgba(245,158,11,0.01)',
@@ -861,8 +951,8 @@ function renderChart() {
 
   const sub = document.getElementById('chartSubtitle');
   if (sub && _curve.length >= 2) {
-    sub.textContent = hasS2
-      ? `${_curve[0].date} → ${_curve[_curve.length-1].date} · amber=S1 · blue=S2 · green=combined`
+    sub.textContent = hasExtra
+      ? `${_curve[0].date} → ${_curve[_curve.length-1].date} · ${subParts.join(' · ')}`
       : `${_curve[0].date} → ${_curve[_curve.length-1].date}`;
   }
 

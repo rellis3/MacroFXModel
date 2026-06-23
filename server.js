@@ -2282,6 +2282,8 @@ function _computeNqQmr(bars, cfg = {}) {
     tpPct           = 0,     // take-profit % from entry; 0 = EOD only (e.g. 1.0 = 2R at 0.5% stop)
     direction       = 'both',// 'both' | 'long' | 'short' — filter trade direction
     showSystem2     = false, // also compute rejection-fade trades (Gate1 pass, Gate2 rejects)
+    showSystem3     = false, // also compute extension-fade trades (G1+G2 confirm, but move already extreme vs typical day range)
+    extPctThreshold = 75,    // percentile (vs trailing history) of move-used-by-entry/ADR above which a confirmed day counts as "extended"
   } = cfg;
 
   // Group H1 bars by UTC date
@@ -2293,9 +2295,23 @@ function _computeNqQmr(bars, cfg = {}) {
   }
   const dates = Object.keys(byDate).sort();
 
-  const trades = [], trades2 = [];
-  let equity1 = 1.0, equity2 = 1.0, equityCombo = 1.0;
-  const curve1 = [], curve2 = [], curveCombo = [];
+  // Full UTC-day range % per date — trailing ADR baseline for the extension filter below.
+  // Only ever read for days strictly before the trade being evaluated, so no lookahead.
+  const dayRangePct = {};
+  for (const d of dates) {
+    const db = byDate[d];
+    const dh = Math.max(...db.map(b => b.h));
+    const dl = Math.min(...db.map(b => b.l));
+    const dm = (dh + dl) / 2;
+    dayRangePct[d] = dm > 0 ? (dh - dl) / dm * 100 : 0;
+  }
+  const ADR_LOOKBACK    = 20; // trailing days averaged for the ADR baseline
+  const EXT_MIN_SAMPLES = 20; // min prior confirm-day samples before ranking a percentile
+  const extRatioHistory = []; // causal — confirm-day extension ratios seen strictly before "today"
+
+  const trades = [], trades2 = [], trades3 = [];
+  let equity1 = 1.0, equity2 = 1.0, equity3 = 1.0, equityCombo = 1.0;
+  const curve1 = [], curve2 = [], curve3 = [], curveCombo = [];
 
   for (let di = 1; di < dates.length; di++) {
     const today = dates[di];
@@ -2403,7 +2419,24 @@ function _computeNqQmr(bars, cfg = {}) {
       : (entry - exit) / entry * 100;
     const leverage    = riskPct / effStopPct;
     const tradeReturn = movePct * leverage;
-    equityCombo *= (1 + tradeReturn / 100);
+
+    // Extension check — only meaningful for continuation (non-S2) days. Tracked
+    // regardless of showSystem3 so the percentile history is stable across toggle state.
+    let isExtended = false;
+    if (!isS2) {
+      const histDates   = dates.slice(Math.max(0, di - ADR_LOOKBACK), di);
+      const adrBaseline = histDates.length
+        ? histDates.reduce((s, d) => s + dayRangePct[d], 0) / histDates.length
+        : 0;
+      const extensionPct = mid > 0 ? Math.abs(entry - mid) / mid * 100 : 0;
+      const extRatio      = adrBaseline > 0 ? extensionPct / adrBaseline : 0;
+      if (extRatioHistory.length >= EXT_MIN_SAMPLES) {
+        const less    = extRatioHistory.filter(v => v <= extRatio).length;
+        const pctRank = less / extRatioHistory.length * 100;
+        isExtended = pctRank >= extPctThreshold;
+      }
+      extRatioHistory.push(extRatio);
+    }
 
     const tradeBase = { date: today, gate1, gate2, direction: gate2, entry, stop, exit, exitReason,
                         stopPct: +effStopPct.toFixed(3),
@@ -2415,27 +2448,84 @@ function _computeNqQmr(bars, cfg = {}) {
       curve2.push({ date: today, equity: +equity2.toFixed(6) });
     } else {
       equity1 *= (1 + tradeReturn / 100);
-      trades.push({ ...tradeBase, equity: +equity1.toFixed(6), system: 'S1' });
+      trades.push({ ...tradeBase, equity: +equity1.toFixed(6), system: 'S1', extended: isExtended });
       curve1.push({ date: today, equity: +equity1.toFixed(6) });
+
+      // System 3: same day, opposite (fade) direction — only when the move into entry
+      // is already at an extreme vs the trailing ADR baseline.
+      if (isExtended) {
+        const fadeDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
+        const fadeStop = fadeDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
+        const fadeTp   = tpPct > 0
+          ? (fadeDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
+          : null;
+
+        let fadeExit = null, fadeReason = 'EOD';
+        for (const bar of afterEntry) {
+          if (fadeDir === 'LONG'  && bar.l <= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
+          if (fadeDir === 'SHORT' && bar.h >= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
+          if (fadeTp !== null && fadeDir === 'LONG'  && bar.h >= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
+          if (fadeTp !== null && fadeDir === 'SHORT' && bar.l <= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
+          if (parseInt(bar.t.substring(11, 13)) >= 20) { fadeExit = bar.c; fadeReason = 'EOD'; break; }
+        }
+        if (fadeExit === null) {
+          const last = afterEntry[afterEntry.length - 1];
+          if (last) { fadeExit = last.c; fadeReason = 'EOD'; }
+        }
+
+        if (fadeExit !== null) {
+          let fadeMfe = 0, fadeMae = 0;
+          for (const bar of [entryBar, ...afterEntry]) {
+            const fav = fadeDir === 'LONG' ? (bar.h - entry) / entry * 100 : (entry - bar.l) / entry * 100;
+            const adv = fadeDir === 'LONG' ? (bar.l - entry) / entry * 100 : (entry - bar.h) / entry * 100;
+            if (fav > fadeMfe) fadeMfe = fav;
+            if (adv < fadeMae) fadeMae = adv;
+          }
+          const fadeMovePct = fadeDir === 'LONG' ? (fadeExit - entry) / entry * 100 : (entry - fadeExit) / entry * 100;
+          const fadeReturn  = fadeMovePct * leverage;
+          equity3 *= (1 + fadeReturn / 100);
+          trades3.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeStop, exit: fadeExit,
+                         exitReason: fadeReason, stopPct: +effStopPct.toFixed(3),
+                         movePct: +fadeMovePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
+                         mfePct: +fadeMfe.toFixed(3), maePct: +fadeMae.toFixed(3),
+                         equity: +equity3.toFixed(6), system: 'S3' });
+          curve3.push({ date: today, equity: +equity3.toFixed(6) });
+        }
+      }
     }
-    curveCombo.push({ date: today, equity: +equityCombo.toFixed(6) });
   }
 
   const stats = _qmrStats(trades, curve1, equity1);
+  const result = { trades, curve: curve1, stats };
 
-  if (!showSystem2) {
-    return { trades, curve: curve1, stats };
+  if (showSystem2) {
+    result.trades2 = trades2;
+    result.curve2  = curve2;
+    result.stats2  = _qmrStats(trades2, curve2, equity2);
   }
-
-  const stats2      = _qmrStats(trades2, curve2, equity2);
-  const allTrades   = [...trades, ...trades2].sort((a, b) => a.date.localeCompare(b.date));
-  const statsCombo  = _qmrStats(allTrades, curveCombo, equityCombo);
-
-  return {
-    trades,  curve: curve1,  stats,
-    trades2, curve2,         stats2,
-    curveCombo,              statsCombo,
-  };
+  if (showSystem3) {
+    result.trades3 = trades3;
+    result.curve3  = curve3;
+    result.stats3  = _qmrStats(trades3, curve3, equity3);
+  }
+  if (showSystem2 || showSystem3) {
+    // Carve extended days out of S1 when System 3 is replacing them with a fade trade,
+    // so the combined curve never double-counts a single trading day.
+    const comboPool = [
+      ...trades.filter(t => !(showSystem3 && t.extended)),
+      ...(showSystem2 ? trades2 : []),
+      ...(showSystem3 ? trades3 : []),
+    ].sort((a, b) => a.date.localeCompare(b.date));
+    let eq = 1.0;
+    const curveComboFinal = [];
+    for (const t of comboPool) {
+      eq *= (1 + t.tradeReturn / 100);
+      curveComboFinal.push({ date: t.date, equity: +eq.toFixed(6) });
+    }
+    result.curveCombo = curveComboFinal;
+    result.statsCombo = _qmrStats(comboPool, curveComboFinal, eq);
+  }
+  return result;
 }
 
 // Fetch ^VIX from Yahoo Finance v8 chart endpoint
@@ -2880,7 +2970,7 @@ const nqQmrBarCache    = new Map(); // instrument → { bars, fetchedAt }
 const nqQmrResultCache = { result: null, fetchedAt: null }; // NAS100_USD default only
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both' };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both', extPctThreshold: 75 };
 
 async function _getNqQmrBars(instrument = 'NAS100_USD') {
   const cached = nqQmrBarCache.get(instrument);
@@ -2915,8 +3005,9 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
     }
   }
   cfg.showSystem2 = req.query.showSystem2 === 'true';
+  cfg.showSystem3 = req.query.showSystem3 === 'true';
 
-  const isNasDefault = instrument === 'NAS100_USD' && !cfg.showSystem2 && Object.entries(cfg).every(([k, v]) =>
+  const isNasDefault = instrument === 'NAS100_USD' && !cfg.showSystem2 && !cfg.showSystem3 && Object.entries(cfg).every(([k, v]) =>
     typeof v === 'string' ? v === NQ_QMR_DEFAULTS[k] : Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001
   );
   if (isNasDefault && nqQmrResultCache.result && nqQmrResultCache.fetchedAt && Date.now() - nqQmrResultCache.fetchedAt < NQ_QMR_TTL_MS) {
@@ -8426,16 +8517,21 @@ async function nqRestoreFromKv() {
     const today      = new Date().toISOString().substring(0, 10);
     if (storedDate !== today) return;
 
-    const g1 = existing.gates?.gate1;
-    if (!g1) return;
-
     nqMon.date        = today;
-    nqMon.gate1       = g1.direction ?? null;
-    nqMon.gate1Data   = g1.data      ?? null;
     nqMon.newsBlocked = existing.news_blocked ?? false;
     nqMon.newsEvents  = existing.news_events  ?? [];
     nqMon.sentOpen    = true;
-    nqMon.sentGate1   = true;
+
+    // gate1 is pushed as a {state:null,...} placeholder by the daily-open write,
+    // before it has actually run — only treat it as "already checked" once state
+    // is set, otherwise a Railway redeploy between open and the 09:05 check
+    // permanently marks gate1 (and everything downstream) as already-sent.
+    const g1 = existing.gates?.gate1;
+    if (g1?.state != null) {
+      nqMon.gate1     = g1.direction ?? null;
+      nqMon.gate1Data = g1.data      ?? null;
+      nqMon.sentGate1 = true;
+    }
 
     const g2 = existing.gates?.gate2;
     if (g2?.state != null) {
@@ -8445,7 +8541,7 @@ async function nqRestoreFromKv() {
       nqMon.sentGate2 = true;
     }
 
-    console.log(`[nq-mon] Restored from KV: date=${today} gate1=${nqMon.gate1} gate2=${nqMon.gate2 ?? 'pending'}`);
+    console.log(`[nq-mon] Restored from KV: date=${today} gate1=${nqMon.gate1 ?? 'pending'} gate2=${nqMon.gate2 ?? 'pending'}`);
   } catch (e) {
     console.error('[nq-mon] KV restore error:', e.message);
   }
@@ -8741,15 +8837,22 @@ async function _iqrRestoreFromKv(mon) {
     const storedDate = new Date(existing.pushed_at * 1000).toISOString().substring(0, 10);
     const today      = new Date().toISOString().substring(0, 10);
     if (storedDate !== today) return;
-    const g1 = existing.gates?.gate1;
-    if (!g1) return;
     mon.date        = today;
-    mon.gate1       = g1.direction ?? null;
-    mon.gate1Data   = g1.data      ?? null;
     mon.newsBlocked = existing.news_blocked ?? false;
     mon.newsEvents  = existing.news_events  ?? [];
     mon.sentOpen    = true;
-    mon.sentGate1   = true;
+
+    // gate1 is pushed as a {state:null,...} placeholder by the daily-open write,
+    // before it has actually run — only treat it as "already checked" once state
+    // is set, otherwise a Railway redeploy between open and the 09:05 check
+    // permanently marks gate1 (and everything downstream) as already-sent.
+    const g1 = existing.gates?.gate1;
+    if (g1?.state != null) {
+      mon.gate1     = g1.direction ?? null;
+      mon.gate1Data = g1.data      ?? null;
+      mon.sentGate1 = true;
+    }
+
     const g2 = existing.gates?.gate2;
     if (g2?.state != null) {
       mon.gate2     = g2.state === 'PASS' ? 'CONFIRMED' : 'REJECTED';
