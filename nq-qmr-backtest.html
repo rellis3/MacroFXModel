@@ -825,8 +825,55 @@ function renderSystem3Card() {
   if (!_stats3 || !_statsCombo) { card.style.display = 'none'; return; }
   card.style.display = '';
 
-  const s1 = _stats, s3 = _stats3, sc = _statsCombo;
-  const extendedCount = _trades.filter(t => t.extended).length;
+  // Fair comparison: System 1 restricted to the SAME days System 3 traded (not
+  // System 1's full population) — comparing against full S1 makes the fade look
+  // better than it is, because it mixes in hundreds of unrelated days.
+  const extTrades = _trades.filter(t => t.extended);
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+  function miniStats(trades) {
+    const n = trades.length;
+    if (!n) return { n: 0, cagr: 0, sharpe: 0, sortino: 0, maxDD: 0, winRate: 0, totalReturn: 0 };
+    const rets = trades.map(t => t.tradeReturn / 100);
+    const mu   = rets.reduce((s,r)=>s+r,0) / n;
+    const sig  = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0) / n);
+    const tpy  = n / Math.max(years, 0.01);
+    const sharpe  = sig > 0 ? (mu/sig) * Math.sqrt(tpy) : 0;
+    const downVar = rets.reduce((s,r)=>s+Math.min(r,0)**2,0) / n;
+    const sortino = downVar > 0 ? (mu/Math.sqrt(downVar)) * Math.sqrt(tpy) : 0;
+    let eq=1, peak=1, maxDD=0;
+    for (const r of rets) { eq*=(1+r); if (eq>peak) peak=eq; const dd=(peak-eq)/peak; if (dd>maxDD) maxDD=dd; }
+    const wins = trades.filter(t=>t.tradeReturn>0).length;
+    return { n, cagr: (Math.pow(eq, 1/Math.max(years,0.01))-1)*100, sharpe, sortino, maxDD: maxDD*100, winRate: wins/n, totalReturn: (eq-1)*100 };
+  }
+  const s1 = miniStats(extTrades), s3 = _stats3, sc = _statsCombo;
+
+  // Paired same-day diffs (fade − continuation) for a significance check, plus
+  // a concentration check — does the edge come from the whole sample or a
+  // handful of outlier days?
+  const s1ByDate = new Map(extTrades.map(t => [t.date, t.tradeReturn]));
+  const s3ByDate = new Map(_trades3.map(t => [t.date, t.tradeReturn]));
+  const sharedDates = [..._trades3.map(t => t.date)].filter(d => s1ByDate.has(d));
+  const diffs = sharedDates.map(d => s3ByDate.get(d) - s1ByDate.get(d));
+  const nPairs = diffs.length;
+  const fadeWinPct = nPairs ? diffs.filter(d => d > 0).length / nPairs * 100 : 0;
+  const totalDiff  = diffs.reduce((s,d)=>s+d, 0);
+  const top5Diff    = [...diffs].sort((a,b)=>b-a).slice(0,5).reduce((s,d)=>s+d, 0);
+  const top5Share   = totalDiff !== 0 ? top5Diff / totalDiff * 100 : 0;
+  // Paired bootstrap: resample the diffs with replacement; p = fraction of
+  // resampled means that are <= 0 (mirrors the Monte Carlo tab's method).
+  let pLE0 = null;
+  if (nPairs >= 5) {
+    const N_SIM = 1000;
+    let countLE0 = 0;
+    for (let s = 0; s < N_SIM; s++) {
+      let sum = 0;
+      for (let i = 0; i < nPairs; i++) sum += diffs[Math.floor(Math.random() * nPairs)];
+      if (sum / nPairs <= 0) countLE0++;
+    }
+    pLE0 = countLE0 / N_SIM;
+  }
+
   const row = (label, v1, v3, vc, higherBetter = true) => {
     const best = higherBetter
       ? (v1 >= v3 ? (v1 >= vc ? 'S1' : 'C') : (v3 >= vc ? 'S3' : 'C'))
@@ -842,16 +889,25 @@ function renderSystem3Card() {
   const f2  = v => v.toFixed(2);
   const n   = (v, unit = '') => v.toFixed(0) + unit;
 
+  const notSignificant = pLE0 == null || pLE0 >= 0.05;
+  const sigColor  = notSignificant ? '#ef4444' : '#10b981';
+  const sigWarn   = notSignificant
+    ? '⚠ Not statistically significant — treat as noise, not an edge.'
+    : '★ Significant at p<0.05.';
+  const concWarn  = top5Share >= 50
+    ? `<div class="drift-warn">⚠ The top 5 days account for ${top5Share.toFixed(0)}% of the total edge — this is being driven by a handful of outlier days, not a consistent effect.</div>`
+    : '';
+
   body.innerHTML = `
     <p style="font-size:11px;color:var(--text3);margin:0 0 10px">
-      System 1: full continuation set (G1+G2 confirm), unaffected by this toggle &nbsp;|&nbsp;
-      System 3: of S1's days, the ${extendedCount} where the move into entry was already ≥${document.getElementById('cfg_ext_pct').value}th percentile of the trailing 20-day ADR → faded (opposite direction) instead<br>
-      Combined: System 1 minus those ${extendedCount} extended days, plus System 3's fade on them (and System 2 if also enabled). Green = best value.
+      System 1 (same days): of S1's days, the ${extTrades.length} where the move into entry was already ≥${document.getElementById('cfg_ext_pct').value}th percentile of the trailing 20-day ADR — shown as continuation, for a fair comparison &nbsp;|&nbsp;
+      System 3: those same days, faded (opposite direction) instead<br>
+      Combined: full System 1 minus those days, plus System 3's fade on them (and System 2 if also enabled). Green = best value.
     </p>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr>
         <th style="text-align:left;padding:4px 10px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)">Metric</th>
-        <th style="text-align:right;padding:4px 10px;color:#f59e0b;font-size:11px;border-bottom:1px solid var(--border)">System 1</th>
+        <th style="text-align:right;padding:4px 10px;color:#f59e0b;font-size:11px;border-bottom:1px solid var(--border)">S1 (same days)</th>
         <th style="text-align:right;padding:4px 10px;color:#a855f7;font-size:11px;border-bottom:1px solid var(--border)">System 3</th>
         <th style="text-align:right;padding:4px 10px;color:#10b981;font-size:11px;border-bottom:1px solid var(--border)">Combined</th>
       </tr></thead>
@@ -865,7 +921,17 @@ function renderSystem3Card() {
         ${row('Win Rate', (s1.winRate*100).toFixed(1)+'%', (s3.winRate*100).toFixed(1)+'%', (sc.winRate*100).toFixed(1)+'%')}
         ${row('Trades', n(s1.n), n(s3.n), n(sc.n))}
       </tbody>
-    </table>`;
+    </table>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Is this a real edge? (paired same-day test)</div>
+      <div class="sec-grid" style="margin-top:0">
+        <div class="sec"><span class="sec-lbl">Fade beats continuation</span><span class="sec-val">${fadeWinPct.toFixed(0)}% of ${nPairs} matched days</span></div>
+        <div class="sec"><span class="sec-lbl">Bootstrap p (P[mean ≤ 0])</span><span class="sec-val" style="color:${sigColor}">${pLE0 != null ? pLE0.toFixed(3) : '—'}</span></div>
+        <div class="sec"><span class="sec-lbl">Top-5-day share of total edge</span><span class="sec-val" style="color:${top5Share>=50?'#ef4444':'var(--text)'}">${isFinite(top5Share)?top5Share.toFixed(0)+'%':'—'}</span></div>
+      </div>
+      <div class="drift-warn" style="color:${sigColor};font-size:11px;margin-top:6px">${sigWarn}</div>
+      ${concWarn}
+    </div>`;
 }
 
 function renderKpis() {
