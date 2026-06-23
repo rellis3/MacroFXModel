@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Actionable Levels</title>
+<title>Entry Lens</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
 <style>
@@ -100,6 +100,59 @@
 .al-rationale.AVOID { border-left-color: var(--red); }
 
 .al-empty-note { font-size: 10px; color: var(--text3); font-style: italic; }
+
+.al-card { cursor: pointer; }
+
+/* ── Z-score pills (yield compass + hedge correlation) ───────────────────── */
+.al-z-pill {
+  font-size: 10px; font-family: 'DM Mono', monospace; padding: 3px 9px; border-radius: 12px;
+  background: var(--s2); border: 1px solid var(--border); color: var(--text2);
+}
+
+/* ── Deep-dive page ───────────────────────────────────────────────────────── */
+#alDeepDive { margin-top: 14px; }
+.al-dd-header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.al-back-link {
+  font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text2);
+  text-decoration: none; padding: 5px 12px; border: 1px solid var(--border); border-radius: 20px;
+}
+.al-back-link:hover { border-color: var(--blue-bd); color: var(--blue); }
+.al-dd-title { display: flex; align-items: center; gap: 10px; }
+
+.al-dd-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; align-items: start; }
+@media (max-width: 1000px) { .al-dd-grid { grid-template-columns: 1fr; } }
+.al-dd-col { display: flex; flex-direction: column; gap: 14px; }
+
+.al-zone-pill {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'DM Mono', monospace;
+  padding: 5px 10px; border-radius: 8px; background: var(--s2); border: 1px solid var(--border); color: var(--text);
+}
+.al-zone-pill.aligned  { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.al-zone-pill.opposing { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red); }
+.al-zone-stars { color: var(--amber); letter-spacing: -1px; }
+
+.al-zone-table, .al-tier-table {
+  width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'DM Mono', monospace; white-space: nowrap;
+}
+.al-zone-table th, .al-tier-table th {
+  text-align: left; font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text3); padding: 6px 8px; border-bottom: 1.5px solid var(--border);
+}
+.al-zone-table td, .al-tier-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.al-zone-row.aligned  td { background: var(--green-bg); }
+.al-zone-row.opposing td { color: var(--text3); }
+.al-zone-row td:first-child, .al-tier-table td:first-child { color: var(--text); font-weight: 600; }
+
+.al-tag {
+  display: inline-block; font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+  background: var(--s3); border: 1px solid var(--border); color: var(--text3); margin: 1px 3px 1px 0;
+}
+
+.al-tier-score { font-weight: 700; }
+.al-tier-score.LONG    { color: var(--green); }
+.al-tier-score.SHORT   { color: var(--red); }
+.al-tier-score.NEUTRAL { color: var(--text3); }
+.al-tier-reading { color: var(--text3); white-space: normal; }
 </style>
 </head>
 <body class="dark">
@@ -114,8 +167,8 @@
     </svg>
   </div>
   <div class="title-block">
-    <div class="title">Actionable Levels</div>
-    <div class="sub">Macro Regime × Vol Forecast — composite act / watch / wait / avoid signal, all pairs</div>
+    <div class="title">Entry Lens</div>
+    <div class="sub">Macro × Range × Volatility × Yield/Hedge Z-Scores — where to actually enter, all pairs</div>
   </div>
   <div class="spacer"></div>
   <span class="upd">Forecast updated: <span id="alUpdated">—</span></span>
@@ -139,6 +192,7 @@
 </div>
 
 <div class="al-grid" id="alGrid"></div>
+<div id="alDeepDive" style="display:none"></div>
 
 </div>
 <script type="module" src="./js/levels.js"></script>

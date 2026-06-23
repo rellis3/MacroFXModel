@@ -79,6 +79,7 @@ function _collapseCluster(cluster) {
   const price     = cluster.reduce((s, c) => s + c.price, 0) / cluster.length;
   const hasAsia   = cluster.some(c => c.source === 'asia');
   const hasMonday = cluster.some(c => c.source === 'monday');
+  const hasVol    = cluster.some(c => c.source === 'volforecast');
   const density   = cluster.reduce((s, c) => s + (c.density || 1), 0);
   const pipDiff   = Math.min(...cluster.map(c => c.pipDiff ?? Infinity));
   const isTight   = cluster.some(c => c.isTight);
@@ -95,8 +96,9 @@ function _collapseCluster(cluster) {
     yesterdayFibs,
     todayFib:         todayFibs[0]     ?? cluster[0].todayFib,
     yesterdayFib:     yesterdayFibs[0] ?? cluster[0].yesterdayFib,
-    source:           hasAsia && hasMonday ? 'cross' : (hasAsia ? 'asia' : 'monday'),
+    source:           hasAsia && hasMonday ? 'cross' : (hasAsia ? 'asia' : (hasMonday ? 'monday' : 'volforecast')),
     crossSessionMatch: hasAsia && hasMonday,
+    hasVolForecast:   hasVol,
   };
 }
 
