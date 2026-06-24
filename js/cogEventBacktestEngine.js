@@ -2,7 +2,7 @@
 //
 // Replaces cogBacktestEngine.js's one-evaluation-per-daily-bar loop with the
 // actual observed COG workflow: a single decision cycle per trading day,
-// sequenced through Gate1B's morning window, Gate2's midday window and
+// sequenced through Threshold 1's morning window, Gate2's midday window and
 // Gate3's narrow afternoon window — in that order — before any entry is even
 // considered. Once a trade is open, the Exit Engine re-evaluates repeatedly
 // through the rest of that day (and subsequent days, if still open) at
@@ -12,20 +12,22 @@
 // still backs the existing daily Backtest Lab path — this is a new sibling
 // engine, not a replacement, so neither can break the other.
 //
-// Gate1A/Gate2/Gate3 are still fundamentally DAILY-resolution signals in
-// this system (macro prints, vol percentiles, cross-asset daily closes —
-// see cogConfig.js header): this engine computes each ONCE per calendar day
-// and treats that value as frozen across the day's intraday bars, then
-// checks/logs it within its assigned window — it does not invent intraday
-// updates those gates' own underlying data doesn't support. Gate1B is the
-// one gate that genuinely updates intraday, computed every bar.
+// Gate2/Gate3 are still fundamentally DAILY-resolution signals in this
+// system (vol percentiles, cross-asset daily closes — see cogConfig.js
+// header): this engine computes each ONCE per calendar day and treats that
+// value as frozen across the day's intraday bars, then checks/logs it
+// within its assigned window — it does not invent intraday updates those
+// gates' own underlying data doesn't support.
 //
-// Gate1A+Gate1B combined hard veto: reuses cogExecutionEngine.js's existing
-// decideAction() completely unchanged, by building a single pseudo-gate1
-// object whose `state` is BULLISH only when BOTH Gate1A's daily regime AND
-// Gate1B's window-end flow reading agree BULLISH (symmetric for BEARISH) —
-// any disagreement, or either side INVALID, falls through to decideAction's
-// existing NEUTRAL/INVALID veto paths with no veto logic duplicated here.
+// Threshold 1 (cogThreshold1Gate.js) replaces the old Gate1A+Gate1B hard
+// conjunction (combinedGate1 required BOTH sublayers to independently agree
+// BULLISH/BEARISH before Gate2/Gate3 were even consulted — a 4-way
+// conjunction that produced zero trades over a 2-year synthetic backtest).
+// It is a single blended score combining the same slow daily macro panel
+// (frozen per day, like Gate1A) with the same fast intraday flow panel
+// (genuinely updates every bar, like Gate1B) — see that file's header for
+// the full rationale. Its output already satisfies decideAction()'s gate1
+// contract directly, so no merge step is needed here anymore.
 //
 // Event timeline: every window check, decision and exit re-evaluation is
 // appended to `events[]` as a flat, human-readable audit trail — Backtest
@@ -36,8 +38,7 @@
 // still evaluated and logged for transparency, but the entry decision step
 // is skipped — this system flattens before considering a new signal.
 
-import { computeLiquidityGate1A } from './cogLiquidityGate.js';
-import { computeLiquidityGate1B } from './cogLiquidityGate1B.js';
+import { computeThreshold1 } from './cogThreshold1Gate.js';
 import { computeRiskGate } from './cogRiskGate.js';
 import { computeDirectionGate } from './cogDirectionGate.js';
 import { decideAction, buildEntryPlan } from './cogExecutionEngine.js';
@@ -54,23 +55,7 @@ function toSeriesById(seriesMap) {
   return out;
 }
 
-// Merges Gate1A's daily regime and Gate1B's window-end flow reading into the
-// single { dataValid, state, score } shape decideAction() already expects
-// for "gate1" — BULLISH/BEARISH require BOTH sublayers to agree, anything
-// else (disagreement, either INVALID) reads as NEUTRAL/INVALID, which
-// decideAction already treats as a veto. `score` stays Gate1A's own
-// RegimeScore (Gate1B's FlowScore lives on a different [-100,100] scale and
-// is reported alongside, not blended into a single number).
-function combinedGate1(gate1A, gate1B) {
-  const dataValid = gate1A.dataValid && gate1B.dataValid;
-  let state = 'NEUTRAL';
-  if (gate1A.state === 'BULLISH' && gate1B.state === 'BULLISH') state = 'BULLISH';
-  else if (gate1A.state === 'BEARISH' && gate1B.state === 'BEARISH') state = 'BEARISH';
-  if (!dataValid) state = 'INVALID';
-  return { dataValid, state, score: gate1A.score, reasons: [...(gate1A.reasons || []), ...(gate1B.reasons || [])], gate1A, gate1B };
-}
-
-const INVALID_GATE1B = { dataValid: false, state: 'INVALID', valid: false, score: null, coverage: 0, contributions: [], reasons: [] };
+const INVALID_THRESHOLD1 = { dataValid: false, state: 'INVALID', score: null, coverage: 0, contributions: [], reasons: [] };
 
 // `dataset` = generateSyntheticIntradayCogDataset's shape (or any real
 // intraday loader matching it): { dates, minuteOfDay, ohlc, liquiditySeries,
@@ -91,13 +76,13 @@ export function runEventBacktest(dataset, options = {}) {
   const { accountEquity = 100000, instrumentKey = 'primary', stopModelId = COG_EXECUTION.defaultStopModel, requestedTier = COG_EXECUTION.defaultTier } = options;
   const instrument = COG_EXECUTION.instruments[instrumentKey];
 
-  // Gate1A/Gate2/Gate3 computed on the TRUE daily axis (one entry per
-  // calendar day, `daily.dates.length` long) — never re-expanded onto the
-  // intraday bar axis above. Their rolling-window config (e.g. a 252-day
-  // percentile lookback, GARCH's expanding-window refit) is defined in
-  // TRADING DAYS; feeding them an intraday-bar array would silently corrupt
-  // those window lengths and blow up GARCH's refit cost (see cogDataSources.js).
-  // Indexed below by trading-day ordinal position, not by intraday bar index.
+  // Gate2/Gate3 computed on the TRUE daily axis (one entry per calendar day,
+  // `daily.dates.length` long) — never re-expanded onto the intraday bar
+  // axis above. Their rolling-window config (e.g. a 252-day percentile
+  // lookback, GARCH's expanding-window refit) is defined in TRADING DAYS;
+  // feeding them an intraday-bar array would silently corrupt those window
+  // lengths and blow up GARCH's refit cost (see cogDataSources.js). Indexed
+  // below by trading-day ordinal position, not by intraday bar index.
   const numDays = daily.dates.length;
   const dailyOhlc = {
     open: daily.ohlc.map(b => b.open),
@@ -105,13 +90,19 @@ export function runEventBacktest(dataset, options = {}) {
     low: daily.ohlc.map(b => b.low),
     close: daily.ohlc.map(b => b.close),
   };
-  const gate1ASeries = computeLiquidityGate1A(toSeriesById(daily.liquiditySeries), numDays);
   const gate2Series = computeRiskGate(toSeriesById(daily.riskSeries), dailyOhlc, dailyOhlc.close, numDays);
   const gate3Series = computeDirectionGate(toSeriesById(daily.directionSeries), numDays);
-  // Gate1B IS genuinely intraday-resolution by design — computed every bar.
-  const gate1BSeries = computeLiquidityGate1B(toSeriesById(gate1bSeries), n);
 
   const tradingDays = buildTradingDays(dates, minuteOfDay);
+  // Maps each intraday bar to its calendar day's ordinal position — lets
+  // Threshold 1's slow leg freeze at that day's value for every bar within
+  // it while the fast leg still updates every bar (see cogThreshold1Gate.js).
+  const dayIndexForBar = new Array(n);
+  for (let dayIdx = 0; dayIdx < tradingDays.length; dayIdx++) {
+    for (const i of tradingDays[dayIdx].bars) dayIndexForBar[i] = dayIdx;
+  }
+  const threshold1Series = computeThreshold1(toSeriesById(daily.liquiditySeries), toSeriesById(gate1bSeries), numDays, n, dayIndexForBar);
+
   const cadenceBars = Math.max(1, Math.round(COG_EXIT_SCORE.defaultReevaluateMinutes / COG_INTRADAY_SCHEDULE.barIntervalMinutes));
 
   const events = [];
@@ -125,19 +116,19 @@ export function runEventBacktest(dataset, options = {}) {
 
   // `dayIdx` is this trading day's ordinal position — `tradingDays` is built
   // from the same per-day iteration order as `daily.dates`, so dayIdx is
-  // exactly the right index into the day-resolution gate1ASeries/gate2Series/
-  // gate3Series arrays above (NOT an intraday bar index — Gate1A/2/3 are
-  // frozen for the whole day, so there is no "which bar within the day"
-  // question for them the way there is for Gate1B).
+  // exactly the right index into the day-resolution gate2Series/gate3Series
+  // arrays above (NOT an intraday bar index — Gate2/3 are frozen for the
+  // whole day, so there is no "which bar within the day" question for them
+  // the way there is for Threshold 1's fast leg).
   for (let dayIdx = 0; dayIdx < tradingDays.length; dayIdx++) {
     const day = tradingDays[dayIdx];
     if (!day.bars.length) continue;
 
-    // ── Morning: Gate1B flow-threshold window — check/log the reading at
-    // the END of the window (the latest, most-informed read available
-    // before Gate2's window opens). ──────────────────────────────────────
-    const gate1BAtWindowEnd = day.gate1bBars.length ? gate1BSeries[day.gate1bBars[day.gate1bBars.length - 1]] : INVALID_GATE1B;
-    logEvent(day, 'GATE1B_WINDOW', `Gate1B ${gate1BAtWindowEnd.state}${gate1BAtWindowEnd.score != null ? ` (FlowScore ${gate1BAtWindowEnd.score.toFixed(1)})` : ''}`, { gate1B: gate1BAtWindowEnd });
+    // ── Morning: Threshold 1 window — check/log the reading at the END of
+    // the window (the latest, most-informed read available before Gate2's
+    // window opens). ──────────────────────────────────────────────────────
+    const threshold1AtWindowEnd = day.gate1bBars.length ? threshold1Series[day.gate1bBars[day.gate1bBars.length - 1]] : INVALID_THRESHOLD1;
+    logEvent(day, 'THRESHOLD1_WINDOW', `Threshold 1 ${threshold1AtWindowEnd.state}${threshold1AtWindowEnd.score != null ? ` (score ${threshold1AtWindowEnd.score.toFixed(1)})` : ''}`, { threshold1: threshold1AtWindowEnd });
 
     // ── Midday: Gate 2 risk-engine check window — Gate2 is daily-resolution
     // (see header); this just checks/logs that day's already-computed value. ──
@@ -149,16 +140,15 @@ export function runEventBacktest(dataset, options = {}) {
     const gate3AtWindow = gate3Series[dayIdx];
     logEvent(day, 'GATE3_WINDOW', `Gate3 ${gate3AtWindow.state}${gate3AtWindow.score != null ? ` (score ${gate3AtWindow.score.toFixed(1)})` : ''}`, { gate3: gate3AtWindow });
 
-    const gate1AAtWindow = gate1ASeries[dayIdx];
-    const merged1 = combinedGate1(gate1AAtWindow, gate1BAtWindowEnd);
-
-    // ── Decision: combine Gate1A+Gate1B veto with Gate2/Gate3 (skipped if
-    // a trade from a prior cycle is still open — flatten before re-entry). ──
+    // ── Decision: Threshold 1's own { dataValid, state, score } shape
+    // already satisfies decideAction()'s gate1 contract directly — no merge
+    // step needed (skipped if a trade from a prior cycle is still open —
+    // flatten before re-entry). ───────────────────────────────────────────
     let pendingEntry = null;
     if (openTrade) {
       logEvent(day, 'DECISION', 'Skipped — trade already open (flattens before considering a new signal)');
     } else {
-      const { action, reasons } = decideAction(merged1, gate2AtWindow, gate3AtWindow);
+      const { action, reasons } = decideAction(threshold1AtWindowEnd, gate2AtWindow, gate3AtWindow);
       logEvent(day, 'DECISION', `Action: ${action}`, { reasons });
       if (action !== 'NO_TRADE') {
         if (day.entryBar == null) {
@@ -167,7 +157,7 @@ export function runEventBacktest(dataset, options = {}) {
           const fillOpen = ohlc.open[day.entryBar];
           const plan = buildEntryPlan({ action, gate2Entry: gate2AtWindow, fillOpen, instrument, stopModelId, requestedTier, accountEquity });
           if (plan.error) logEvent(day, 'ENTRY', `No entry: ${plan.error}`);
-          else pendingEntry = { action, plan, gate1Entry: merged1, gate2Entry: gate2AtWindow, gate3Entry: gate3AtWindow };
+          else pendingEntry = { action, plan, gate1Entry: threshold1AtWindowEnd, gate2Entry: gate2AtWindow, gate3Entry: gate3AtWindow };
         }
       }
     }
@@ -179,14 +169,17 @@ export function runEventBacktest(dataset, options = {}) {
     // `cadenceBars` bars, mirroring live's 5/15/30-min re-evaluation). ─────
     for (const i of day.bars) {
       if (openTrade && i > openTrade.entryIndex) {
-        // Gate1A/2/3 snapshots are looked up by DAY index (entryDayIdx /
-        // dayIdx), never by the intraday bar index `i` — those gates are
-        // frozen per-day. Gate1B alone is genuinely intraday, so it stays
-        // indexed by bar (entryIndex / i).
+        // Gate2/3 snapshots are looked up by DAY index (entryDayIdx / dayIdx)
+        // — those gates are frozen per-day. Threshold 1 is genuinely
+        // intraday (its fast leg updates every bar), so it stays indexed by
+        // bar (entryIndex / i) — passed as BOTH the gate1 and gate1B
+        // snapshot fields so cogExitEngine.js's alignExitFeatures (which
+        // still reads separate gate1/gate1B fields, e.g. preferring gate1B's
+        // contributions for vix/vvix) resolves correctly unmodified.
         const exitResult = ((i - openTrade.entryIndex) % cadenceBars === 0)
           ? computeExitScore(
-              { gate1: gate1ASeries[openTrade.entryDayIdx], gate1B: gate1BSeries[openTrade.entryIndex], gate2: gate2Series[openTrade.entryDayIdx], gate3: gate3Series[openTrade.entryDayIdx] },
-              { gate1: gate1ASeries[dayIdx], gate1B: gate1BSeries[i], gate2: gate2Series[dayIdx], gate3: gate3Series[dayIdx] },
+              { gate1: threshold1Series[openTrade.entryIndex], gate1B: threshold1Series[openTrade.entryIndex], gate2: gate2Series[openTrade.entryDayIdx], gate3: gate3Series[openTrade.entryDayIdx] },
+              { gate1: threshold1Series[i], gate1B: threshold1Series[i], gate2: gate2Series[dayIdx], gate3: gate3Series[dayIdx] },
               openTrade.direction
             )
           : null;
@@ -246,7 +239,7 @@ export function runEventBacktest(dataset, options = {}) {
   const equityCurveDollars = equityCurve.map(e => e * accountEquity);
   return {
     dates, minuteOfDay, equityCurve, equityCurveDollars, trades, accountEquity, events,
-    gate1A: gate1ASeries, gate1B: gate1BSeries, gate2: gate2Series, gate3: gate3Series,
+    threshold1: threshold1Series, gate2: gate2Series, gate3: gate3Series,
     tradingDays,
   };
 }

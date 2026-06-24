@@ -6951,23 +6951,23 @@ function _gateHitRateSummary(gate1, gate2, gate3, gate4) {
   };
 }
 
-// Event-driven engine's gate hit-rate summary: gate1A/gate2/gate3 are
-// daily-resolution (one entry per tradingDay, see cogEventBacktestEngine.js),
-// gate1B is genuinely intraday — so its hit rate is reported at the single
-// window-end bar each day actually decides off (the last bar in
-// day.gate1bBars), not averaged across every intraday bar, which would
+// Event-driven engine's gate hit-rate summary: gate2/gate3 are
+// daily-resolution (one entry per tradingDay, see cogEventBacktestEngine.js).
+// Threshold 1 (replaces the old Gate1A+Gate1B hard conjunction — see
+// cogThreshold1Gate.js) is genuinely intraday — so its hit rate is reported
+// at the single window-end bar each day actually decides off (the last bar
+// in day.gate1bBars), not averaged across every intraday bar, which would
 // overweight days with more bars in the window. There is no single "gate4"
 // per-bar array in this engine (the decision is logged per trading day in
 // events[] instead), so this intentionally has a different shape than
 // _gateHitRateSummary above rather than forcing a fake gate4 series.
 function _eventGateHitRateSummary(result) {
-  const { gate1A, gate1B, gate2, gate3, tradingDays } = result;
-  const gate1BAtWindowEnd = tradingDays.map(day =>
-    day.gate1bBars.length ? gate1B[day.gate1bBars[day.gate1bBars.length - 1]] : { state: 'INVALID' });
+  const { threshold1, gate2, gate3, tradingDays } = result;
+  const threshold1AtWindowEnd = tradingDays.map(day =>
+    day.gate1bBars.length ? threshold1[day.gate1bBars[day.gate1bBars.length - 1]] : { state: 'INVALID' });
   return {
     dayCount: tradingDays.length,
-    gate1A: _frequency(gate1A, g => g.state),
-    gate1B: _frequency(gate1BAtWindowEnd, g => g.state),
+    threshold1: _frequency(threshold1AtWindowEnd, g => g.state),
     gate2: _frequency(gate2, g => g.dataValid ? (g.valid ? 'VALID' : 'INVALID') : 'INVALID_DATA'),
     gate3: _frequency(gate3, g => g.state),
   };
