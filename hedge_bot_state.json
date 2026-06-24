@@ -1,184 +1,184 @@
 {
   "open_positions": {
-    "NZDUSD-WTICO_USD-1782311330228": {
-      "signal_id": "NZDUSD-WTICO_USD-1782311330228",
+    "NZDUSD-WTICO_USD-1782323970837": {
+      "signal_id": "NZDUSD-WTICO_USD-1782323970837",
       "pair_a": "NZDUSD",
       "pair_b": "WTICO_USD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.25,
       "lots_b": 0.1,
-      "ticket_a": 311357446,
-      "ticket_b": 311357447,
-      "entry_time": "2026-06-24T14:29:17.451770+00:00"
+      "ticket_a": 323973851,
+      "ticket_b": 323973853,
+      "entry_time": "2026-06-24T17:59:33.854406+00:00"
     },
-    "NZDUSD-BCO_USD-1782311330229": {
-      "signal_id": "NZDUSD-BCO_USD-1782311330229",
+    "NZDUSD-BCO_USD-1782323970838": {
+      "signal_id": "NZDUSD-BCO_USD-1782323970838",
       "pair_a": "NZDUSD",
       "pair_b": "BCO_USD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.25,
       "lots_b": 0.11,
-      "ticket_a": 311362130,
-      "ticket_b": 311362132,
-      "entry_time": "2026-06-24T14:29:22.134052+00:00"
+      "ticket_a": 323977170,
+      "ticket_b": 323977171,
+      "entry_time": "2026-06-24T17:59:37.172702+00:00"
     },
-    "USDCHF-GBPJPY-1782311330229": {
-      "signal_id": "USDCHF-GBPJPY-1782311330229",
+    "USDCHF-GBPJPY-1782323970838": {
+      "signal_id": "USDCHF-GBPJPY-1782323970838",
       "pair_a": "USDCHF",
       "pair_b": "GBPJPY",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.23,
       "lots_b": 0.18,
-      "ticket_a": 311366374,
-      "ticket_b": 311366375,
-      "entry_time": "2026-06-24T14:29:26.376197+00:00"
+      "ticket_a": 323980476,
+      "ticket_b": 323980478,
+      "entry_time": "2026-06-24T17:59:40.480990+00:00"
     },
-    "USDCHF-EURJPY-1782311330229": {
-      "signal_id": "USDCHF-EURJPY-1782311330229",
+    "USDCHF-EURJPY-1782323970838": {
+      "signal_id": "USDCHF-EURJPY-1782323970838",
       "pair_a": "USDCHF",
       "pair_b": "EURJPY",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.23,
       "lots_b": 0.26,
-      "ticket_a": 311370588,
-      "ticket_b": 311370588,
-      "entry_time": "2026-06-24T14:29:30.589947+00:00"
+      "ticket_a": 323984393,
+      "ticket_b": 323984394,
+      "entry_time": "2026-06-24T17:59:44.399721+00:00"
     },
-    "USDCHF-AUDJPY-1782311330229": {
-      "signal_id": "USDCHF-AUDJPY-1782311330229",
+    "USDCHF-AUDJPY-1782323970838": {
+      "signal_id": "USDCHF-AUDJPY-1782323970838",
       "pair_a": "USDCHF",
       "pair_b": "AUDJPY",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.23,
       "lots_b": 0.24,
-      "ticket_a": 311375568,
-      "ticket_b": 311375569,
-      "entry_time": "2026-06-24T14:29:35.570052+00:00"
+      "ticket_a": 323988926,
+      "ticket_b": 323988927,
+      "entry_time": "2026-06-24T17:59:48.928424+00:00"
     },
-    "USDCHF-XPTUSD-1782311330229": {
-      "signal_id": "USDCHF-XPTUSD-1782311330229",
+    "USDCHF-XPTUSD-1782323970838": {
+      "signal_id": "USDCHF-XPTUSD-1782323970838",
       "pair_a": "USDCHF",
       "pair_b": "XPTUSD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.23,
       "lots_b": 0.18,
-      "ticket_a": 311380244,
-      "ticket_b": 311380246,
-      "entry_time": "2026-06-24T14:29:40.247352+00:00"
+      "ticket_a": 323992792,
+      "ticket_b": 323992794,
+      "entry_time": "2026-06-24T17:59:52.797789+00:00"
     },
-    "GBPJPY-USDZAR-1782311330229": {
-      "signal_id": "GBPJPY-USDZAR-1782311330229",
+    "GBPJPY-USDZAR-1782323970838": {
+      "signal_id": "GBPJPY-USDZAR-1782323970838",
       "pair_a": "GBPJPY",
       "pair_b": "USDZAR",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.27,
-      "lots_b": 0.16,
-      "ticket_a": 311384730,
-      "ticket_b": 311384733,
-      "entry_time": "2026-06-24T14:29:44.735250+00:00"
+      "lots_b": 0.15,
+      "ticket_a": 323996820,
+      "ticket_b": 323996827,
+      "entry_time": "2026-06-24T17:59:56.832734+00:00"
     },
-    "XAUUSD-WTICO_USD-1782311330229": {
-      "signal_id": "XAUUSD-WTICO_USD-1782311330229",
+    "XAUUSD-WTICO_USD-1782323970838": {
+      "signal_id": "XAUUSD-WTICO_USD-1782323970838",
       "pair_a": "XAUUSD",
       "pair_b": "WTICO_USD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.01,
       "lots_b": 0.05,
-      "ticket_a": 311389389,
-      "ticket_b": 311389389,
-      "entry_time": "2026-06-24T14:29:49.390361+00:00"
+      "ticket_a": 324000540,
+      "ticket_b": 324000540,
+      "entry_time": "2026-06-24T18:00:00.541301+00:00"
     },
-    "XAUUSD-BCO_USD-1782311330229": {
-      "signal_id": "XAUUSD-BCO_USD-1782311330229",
+    "XAUUSD-BCO_USD-1782323970838": {
+      "signal_id": "XAUUSD-BCO_USD-1782323970838",
       "pair_a": "XAUUSD",
       "pair_b": "BCO_USD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.01,
       "lots_b": 0.05,
-      "ticket_a": 311393883,
-      "ticket_b": 311393884,
-      "entry_time": "2026-06-24T14:29:53.885849+00:00"
+      "ticket_a": 324004281,
+      "ticket_b": 324004282,
+      "entry_time": "2026-06-24T18:00:04.283033+00:00"
     },
-    "EURJPY-USDCNH-1782311330229": {
-      "signal_id": "EURJPY-USDCNH-1782311330229",
+    "EURJPY-USDCNH-1782323970839": {
+      "signal_id": "EURJPY-USDCNH-1782323970839",
       "pair_a": "EURJPY",
       "pair_b": "USDCNH",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.38,
       "lots_b": 0.15,
-      "ticket_a": 311398310,
-      "ticket_b": 311398311,
-      "entry_time": "2026-06-24T14:29:58.312476+00:00"
+      "ticket_a": 324007597,
+      "ticket_b": 324007598,
+      "entry_time": "2026-06-24T18:00:07.599055+00:00"
     },
-    "EURJPY-USDZAR-1782311330229": {
-      "signal_id": "EURJPY-USDZAR-1782311330229",
+    "EURJPY-USDZAR-1782323970839": {
+      "signal_id": "EURJPY-USDZAR-1782323970839",
       "pair_a": "EURJPY",
       "pair_b": "USDZAR",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.38,
       "lots_b": 0.15,
-      "ticket_a": 311402707,
-      "ticket_b": 311402708,
-      "entry_time": "2026-06-24T14:30:02.710034+00:00"
+      "ticket_a": 324010664,
+      "ticket_b": 324010665,
+      "entry_time": "2026-06-24T18:00:10.665604+00:00"
     },
-    "EURCHF-US30_USD-1782311330229": {
-      "signal_id": "EURCHF-US30_USD-1782311330229",
+    "EURCHF-US30_USD-1782323970839": {
+      "signal_id": "EURCHF-US30_USD-1782323970839",
       "pair_a": "EURCHF",
       "pair_b": "US30_USD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.22,
       "lots_b": 0.09,
-      "ticket_a": 311408236,
-      "ticket_b": 311408241,
-      "entry_time": "2026-06-24T14:30:08.249196+00:00"
+      "ticket_a": 324013843,
+      "ticket_b": 324013844,
+      "entry_time": "2026-06-24T18:00:13.845047+00:00"
     },
-    "XAGUSD-BCO_USD-1782311330229": {
-      "signal_id": "XAGUSD-BCO_USD-1782311330229",
+    "XAGUSD-BCO_USD-1782323970839": {
+      "signal_id": "XAGUSD-BCO_USD-1782323970839",
       "pair_a": "XAGUSD",
       "pair_b": "BCO_USD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.25,
       "lots_b": 0.09,
-      "ticket_a": 311413175,
-      "ticket_b": 311413176,
-      "entry_time": "2026-06-24T14:30:13.178321+00:00"
+      "ticket_a": 324017101,
+      "ticket_b": 324017102,
+      "entry_time": "2026-06-24T18:00:17.103314+00:00"
     },
-    "XPTUSD-WTICO_USD-1782311330229": {
-      "signal_id": "XPTUSD-WTICO_USD-1782311330229",
+    "XPTUSD-WTICO_USD-1782323970839": {
+      "signal_id": "XPTUSD-WTICO_USD-1782323970839",
       "pair_a": "XPTUSD",
       "pair_b": "WTICO_USD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.25,
-      "lots_b": 0.09,
-      "ticket_a": 311417807,
-      "ticket_b": 311417808,
-      "entry_time": "2026-06-24T14:30:17.809185+00:00"
+      "lots_b": 0.08,
+      "ticket_a": 324022647,
+      "ticket_b": 324022648,
+      "entry_time": "2026-06-24T18:00:22.648703+00:00"
     },
-    "XPTUSD-BCO_USD-1782311330229": {
-      "signal_id": "XPTUSD-BCO_USD-1782311330229",
+    "XPTUSD-BCO_USD-1782323970839": {
+      "signal_id": "XPTUSD-BCO_USD-1782323970839",
       "pair_a": "XPTUSD",
       "pair_b": "BCO_USD",
       "direction_a": "LONG",
       "direction_b": "SHORT",
       "lots_a": 0.25,
       "lots_b": 0.09,
-      "ticket_a": 311424410,
-      "ticket_b": 311424418,
-      "entry_time": "2026-06-24T14:30:24.424049+00:00"
+      "ticket_a": 324026156,
+      "ticket_b": 324026156,
+      "entry_time": "2026-06-24T18:00:26.157457+00:00"
     }
   }
 }
