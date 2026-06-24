@@ -8,7 +8,7 @@ import { calculateTierScores } from './macro.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
 import { loadCaps, openCfgModal, closeCfgModal, saveCaps, resetCaps } from './caps.js';
 import { oiLoadStoreFromKV, openOIModal, closeOIModal, processOIData, removeOIInstrument, calcOISpot, updateOIBasis, autoEstimateBasis } from './oi.js';
-import { setCompassMode, toggleCompassFX, loadAndRenderCompass } from './compass.js';
+import { setCompassMode, toggleCompassFX, toggleCompassDiv, loadAndRenderCompass } from './compass.js';
 import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries, detectCandlePatterns, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './signal.js';
 import { renderARMAAndTransition } from './arma.js';
 import { renderAll } from './render.js';
@@ -49,6 +49,7 @@ window.saveCaps               = saveCaps;
 window.resetCaps              = resetCaps;
 window.setCompassMode         = setCompassMode;
 window.toggleCompassFX        = toggleCompassFX;
+window.toggleCompassDiv       = toggleCompassDiv;
 window.toggleNQEarnings       = function() {
   try { S.nqEarningsWeek = !S.nqEarningsWeek; localStorage.setItem('nq_earnings_week', S.nqEarningsWeek ? '1' : ''); } catch(e) {}
   window.renderAll?.();
