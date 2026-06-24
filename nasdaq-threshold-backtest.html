@@ -111,7 +111,7 @@
 
 <!-- System spec banner -->
 <div class="info-box">
-  <strong style="color:#22d3ee">System Logic:</strong> Nasdaq price is never a SIGNAL input. Gate 1 (Liquidity) reads Fed balance sheet / RRP / TGA / VIX-style macro liquidity inputs with zero Nasdaq input → BULLISH/BEARISH/NEUTRAL. Gate 2 (Risk/Vol) reads QQQ/SPY price <em>only</em> to measure volatility/correlation regime for stop distance &amp; sizing — never direction → VALID/INVALID + eligible risk tier. Gate 3 (Direction) reads DXY/USDJPY/ES/RTY cross-asset macro, never NQ/QQQ → LONG/SHORT/NEUTRAL. Gate 4 (Execution) is the only gate that touches NQ/QQQ price, and only to place a trade Gates 1–3 already justified. The Exit Engine re-scores every bar against the same 3 gates aligned to the trade's direction → stay in / REDUCE 50% / CLOSE. A hard stop (ATR-fraction, GARCH-sigma, or expected-move) always overrides.
+  <strong style="color:#22d3ee">System Logic:</strong> Nasdaq price is never a SIGNAL input. Gate 1A (Slow Macro Regime) reads Fed/ECB/BOJ balance sheets, RRP, TGA and HY credit spreads with zero Nasdaq input → BULLISH/BEARISH/NEUTRAL (Gate 1B, a fast intraday flow threshold, is planned but not yet built — see cogConfig.js). Gate 2 (Risk/Vol) reads QQQ/SPY price <em>only</em> to measure volatility/correlation regime for stop distance &amp; sizing — never direction → VALID/INVALID + eligible risk tier. Gate 3 (Direction) reads DXY/USDJPY/ES/RTY cross-asset macro, never NQ/QQQ → LONG/SHORT/NEUTRAL. Gate 4 (Execution) is the only gate that touches NQ/QQQ price, and only to place a trade Gates 1–3 already justified. The Exit Engine re-scores every bar against the same 3 gates aligned to the trade's direction → stay in / REDUCE 50% / CLOSE. A hard stop (ATR-fraction, GARCH-sigma, or expected-move) always overrides.
 </div>
 
 <!-- Run bar -->
@@ -480,7 +480,7 @@ function renderGateHitRates() {
   if (!g) { document.getElementById('gateHitBody').innerHTML = '<div style="color:var(--text3);font-size:11px;">No gate data</div>'; return; }
   document.getElementById('gateBarCount').textContent = `· ${g.barCount} bars`;
   document.getElementById('gateHitBody').innerHTML =
-    renderGateBar(g.gate1, 'Gate 1 — Liquidity') +
+    renderGateBar(g.gate1, 'Gate 1A — Macro Regime') +
     renderGateBar(g.gate2, 'Gate 2 — Risk/Vol') +
     renderGateBar(g.gate3, 'Gate 3 — Direction') +
     renderGateBar(g.gate4, 'Gate 4 — Execution action (needs 1∩2∩3 alignment + no open position)');

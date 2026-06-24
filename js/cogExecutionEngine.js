@@ -66,8 +66,12 @@ export function selectTier(eligibleTiers, requestedTier) {
 
 // Prices one trade. `fillOpen` must be the NEXT bar's open (see header) —
 // this function has no awareness of bar indices, so that discipline is the
-// caller's (computeExecutionSignals') responsibility.
-function buildEntryPlan({ action, gate2Entry, fillOpen, instrument, stopModelId, requestedTier, accountEquity }) {
+// caller's responsibility. Exported (in addition to being used internally by
+// computeExecutionSignals below) so cogEventBacktestEngine.js can price a
+// single trade directly at its own intraday entry bar without going through
+// the vectorized whole-series computeExecutionSignals path, which assumes
+// one gate-decision-per-bar rather than one decision per trading day.
+export function buildEntryPlan({ action, gate2Entry, fillOpen, instrument, stopModelId, requestedTier, accountEquity }) {
   const stopModel = gate2Entry?.stopModels?.[stopModelId];
   if (!stopModel || !Number.isFinite(stopModel.standard) || !Number.isFinite(stopModel.conservative)) {
     return { error: `Stop model '${stopModelId}' unavailable at this bar` };

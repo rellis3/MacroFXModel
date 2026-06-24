@@ -22,7 +22,7 @@
 // this file owns the actual $ /R accounting, scaling the trade's final pnl
 // by whatever size fraction remained open at close.
 
-import { computeLiquidityGate } from './cogLiquidityGate.js';
+import { computeLiquidityGate1A } from './cogLiquidityGate.js';
 import { computeRiskGate } from './cogRiskGate.js';
 import { computeDirectionGate } from './cogDirectionGate.js';
 import { computeExecutionSignals } from './cogExecutionEngine.js';
@@ -53,7 +53,7 @@ export function runBacktest(dataset, options = {}) {
     close: ohlcBars.map(b => b.close),
   };
 
-  const gate1 = computeLiquidityGate(toSeriesById(liquiditySeries), n);
+  const gate1 = computeLiquidityGate1A(toSeriesById(liquiditySeries), n);
   const gate2 = computeRiskGate(toSeriesById(riskSeries), ohlc, ohlc.close, n);
   const gate3 = computeDirectionGate(toSeriesById(directionSeries), n);
   const { accountEquity = 100000, instrumentKey, stopModelId, requestedTier } = options;
