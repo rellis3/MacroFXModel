@@ -32,7 +32,7 @@ function findBreakdown(breakdown, id) {
 export function alignExitFeatures(entrySnapshot, currentSnapshot, direction) {
   const sideSign = direction === 'LONG' ? 1 : -1;
   const entryGate1 = entrySnapshot?.gate1;
-  const { gate1, gate2, gate3 } = currentSnapshot || {};
+  const { gate1, gate1B, gate2, gate3 } = currentSnapshot || {};
   const values = {};
 
   if (Number.isFinite(gate1?.score) && Number.isFinite(entryGate1?.score)) {
@@ -48,13 +48,21 @@ export function alignExitFeatures(entrySnapshot, currentSnapshot, direction) {
   const hygLqdC = findContribution(gate3?.contributions, 'hygLqd');
   if (hygLqdC?.signedValue != null) values.creditWeakening = sideSign * hygLqdC.signedValue;
 
-  // Gate 1's vix/vvix `normalized` is already direction-agnostic (positive
-  // when the raw VIX/VVIX level/ROC is rising) — exactly "spike magnitude",
-  // no sign flip needed.
-  const vixC = findContribution(gate1?.contributions, 'vix');
+  // vix/vvix `normalized` is already direction-agnostic (positive when the
+  // raw VIX/VVIX level/ROC is rising) — exactly "spike magnitude", no sign
+  // flip needed. Gate1A's own input list no longer carries vix/vvix (they
+  // moved to Gate1B when Gate 1 was split into sublayers — see
+  // cogConfig.js), so prefer Gate1B's intraday vix/vvix contributions when
+  // present (the event-driven engine always passes these); fall back to
+  // gate1 for the legacy daily engine, which currently has no vix/vvix
+  // source at all and will keep reading null here until Gate1B is wired
+  // into that path too — a disclosed gap, not a silent one.
+  const vixSource = gate1B?.contributions || gate1?.contributions;
+  const vixC = findContribution(vixSource, 'vix');
   if (vixC?.normalized != null) values.vixSpike = vixC.normalized;
 
-  const vvixC = findContribution(gate1?.contributions, 'vvix');
+  const vvixSource = gate1B?.contributions || gate1?.contributions;
+  const vvixC = findContribution(vvixSource, 'vvix');
   if (vvixC?.normalized != null) values.vvixSpike = vvixC.normalized;
 
   // Momentum continuation: re-derive Gate 3's own avgVote from its score

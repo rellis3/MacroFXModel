@@ -16,7 +16,7 @@
 
 import { fetchFredSeries, fetchYahooDaily } from './nasdaqDataSources.js';
 import { mulberry32, applyPublicationLag, forwardFillOnto } from './nasdaqTransforms.js';
-import { COG_LIQUIDITY_1A_INPUTS, COG_RISK_INPUTS, COG_DIRECTION_INPUTS, COG_EXECUTION, COG_DATA_DEFAULTS } from './cogConfig.js';
+import { COG_LIQUIDITY_1A_INPUTS, COG_RISK_INPUTS, COG_DIRECTION_INPUTS, COG_EXECUTION, COG_DATA_DEFAULTS, COG_LIQUIDITY_1B_INPUTS, COG_INTRADAY_SCHEDULE } from './cogConfig.js';
 
 // ── Real data: FRED + Yahoo ─────────────────────────────────────────────────
 
@@ -273,4 +273,116 @@ export function generateSyntheticCogDataset({ start = COG_DATA_DEFAULTS.backtest
   });
 
   return { synthetic: true, dates, ohlc, liquiditySeries, riskSeries, directionSeries };
+}
+
+// ── Synthetic INTRADAY dataset (NOT real data — see header) ────────────────
+//
+// Feeds js/cogEventBacktestEngine.js: the same daily-resolution Gate1A/
+// Gate2/Gate3 inputs as generateSyntheticCogDataset above, held constant
+// (forward-filled) across each day's intraday bars — those gates' real
+// inputs (balance-sheet prints, vol percentiles, cross-asset daily closes)
+// genuinely don't update intraday in this system (see cogConfig.js header),
+// so faking intraday movement for them would be exactly the kind of
+// half-built scaffolding this file's disclosure standard exists to prevent.
+// Gate1B's 7 candidate inputs DO get their own genuinely intraday-updating
+// process — a fast, low-persistence AR(1) driver per input, continuous
+// across day boundaries (a real FX/rates/vol tape doesn't reset to zero
+// overnight) — because that gate's entire premise is "is right now a good
+// moment", which requires an input that actually moves within the day.
+//
+// Built on top of generateSyntheticCogDataset rather than reimplementing the
+// daily AR(1) driver machinery a second time — same reuse discipline as the
+// rest of this file.
+export function generateSyntheticIntradayCogDataset({ start = COG_DATA_DEFAULTS.backtestStart, end, seed = 42 } = {}) {
+  const daily = generateSyntheticCogDataset({ start, end, seed });
+  const { sessionStartMinute, sessionEndMinute, barIntervalMinutes } = COG_INTRADAY_SCHEDULE;
+  const barsPerDay = Math.floor((sessionEndMinute - sessionStartMinute) / barIntervalMinutes) + 1;
+  const rng = mulberry32(seed + 1); // independent stream from generateSyntheticCogDataset's own seed usage
+
+  const dates = [];
+  const minuteOfDay = [];
+  const t = [];
+  for (const date of daily.dates) {
+    for (let b = 0; b < barsPerDay; b++) {
+      const minute = sessionStartMinute + b * barIntervalMinutes;
+      dates.push(date);
+      minuteOfDay.push(minute);
+      t.push(new Date(`${date}T00:00:00Z`).getTime() + minute * 60000);
+    }
+  }
+  const n = dates.length;
+
+  // Gate1A/Gate2/Gate3 are computed by the caller on THIS daily-resolution
+  // data directly (daily.dates / daily.liquiditySeries / daily.riskSeries /
+  // daily.directionSeries / daily.ohlc, one entry per calendar day) — never
+  // re-expanded onto the intraday bar axis. Their rolling windows are
+  // defined in TRADING DAYS (e.g. a 252-day percentile lookback); stretching
+  // those same window lengths over ~96x as many intraday bars would silently
+  // shrink a "1 year" lookback to "~2.6 calendar days" and (for Gate 2's
+  // GARCH refits) turn an O(numDays) computation into an O(numBars) one —
+  // wrong on both correctness and performance grounds. The event engine
+  // looks up that one frozen daily value per trading day directly, by day
+  // index, rather than by bar index.
+
+  // Gate1B inputs: fast mean-reverting AR(1) drivers, much lower persistence
+  // than the daily drivers above, sampled once per intraday bar.
+  function intradayDriver(phi, shockScale) {
+    const out = new Array(n).fill(0);
+    let s = 0;
+    for (let i = 0; i < n; i++) { s = s * phi + (rng() - 0.5) * shockScale; out[i] = s; }
+    return out;
+  }
+  const flowDrivers = {
+    dxy:     intradayDriver(0.90, 0.06),
+    us10y:   intradayDriver(0.88, 0.05),
+    us2y:    intradayDriver(0.88, 0.04),
+    hygLqd:  intradayDriver(0.85, 0.05),
+    breadth: intradayDriver(0.85, 0.07),
+    vix:     intradayDriver(0.80, 0.10),
+    vvix:    intradayDriver(0.80, 0.12),
+  };
+  const flowBase = { dxy: 104, us10y: 4.2, us2y: 4.5, hygLqd: 0.92, breadth: 1.0, vix: 16, vvix: 90 };
+  const gate1bSeries = {};
+  for (const input of COG_LIQUIDITY_1B_INPUTS) {
+    const driver = flowDrivers[input.id];
+    const base = flowBase[input.id] ?? 100;
+    gate1bSeries[input.id] = dates.map((date, i) => ({ date, value: Math.max(0.01, base * (1 + input.sign * 0.02 * driver[i])) }));
+  }
+
+  // Intraday NQ OHLC: a fresh per-bar random walk seeded at the daily
+  // dataset's own opening price, drifted/vol-scaled off the same flow
+  // drivers above — loosely consistent with the macro backdrop (same
+  // standard as generateSyntheticCogDataset's own price path) without any
+  // gate ever reading it directly.
+  const price = new Array(n);
+  price[0] = daily.ohlc[0].open;
+  for (let i = 1; i < n; i++) {
+    const volLevel = 0.0009 + 0.002 * Math.abs(flowDrivers.vix[i]);
+    const drift = 0.00004 * Math.tanh(flowDrivers.breadth[i]) - 0.00003 * Math.tanh(flowDrivers.dxy[i]);
+    const shock = (rng() - 0.5) * volLevel * 2;
+    price[i] = price[i - 1] * (1 + drift + shock);
+  }
+  const ohlc = dates.map((date, i) => {
+    const close = price[i];
+    const open = i === 0 ? close : price[i - 1];
+    const volLevel = 0.0006 + 0.0012 * Math.abs(flowDrivers.vix[i]);
+    const high = Math.max(open, close) * (1 + rng() * volLevel);
+    const low = Math.min(open, close) * (1 - rng() * volLevel);
+    return { date, t: t[i], minuteOfDay: minuteOfDay[i], open, high, low, close, volume: 50_000 + rng() * 30_000 };
+  });
+
+  return {
+    synthetic: true,
+    dates, minuteOfDay, t, ohlc, gate1bSeries,
+    // True daily-resolution axis for Gate1A/Gate2/Gate3 — one entry per
+    // calendar day (daily.dates.length), never re-expanded onto the
+    // intraday bar axis above (see comment block earlier in this function).
+    daily: {
+      dates: daily.dates,
+      liquiditySeries: daily.liquiditySeries,
+      riskSeries: daily.riskSeries,
+      directionSeries: daily.directionSeries,
+      ohlc: daily.ohlc,
+    },
+  };
 }

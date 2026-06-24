@@ -18,10 +18,18 @@ export function resetTradeIdCounter() { nextTradeId = 1; } // test/backtest-reru
 // computeExecutionSignals — riskPct is derived from it directly (riskAmount
 // / accountEquity) rather than re-deriving the tier/base-risk multiplier
 // chain, so this file never has to know COG_EXECUTION's internals.
-export function openTradeRecord({ entryIndex, entryDate, action, entryPlan, accountEquity, gate1Entry, gate2Entry, gate3Entry }) {
+//
+// `entryDayIdx` is optional: the daily engine's `entryIndex` already IS a
+// day index (one bar per calendar day), so it never passes this. The
+// event-driven intraday engine's `entryIndex` is an INTRADAY bar index
+// instead, so it separately threads `entryDayIdx` — the day-resolution
+// Gate1A/Gate2/Gate3 array position this trade's entry snapshot came from —
+// for the Exit Engine's re-evaluation lookups to use later.
+export function openTradeRecord({ entryIndex, entryDate, action, entryPlan, accountEquity, gate1Entry, gate2Entry, gate3Entry, entryDayIdx = null }) {
   return {
     id: nextTradeId++,
     entryIndex,
+    entryDayIdx,
     entryDate,
     direction: action,
     instrument: entryPlan.instrument,

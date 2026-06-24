@@ -76,22 +76,48 @@ export const COG_LIQUIDITY_1A_SCORE = {
   marginalMargin: 0.5,     // |score| within this of the bullish/bearish threshold counts as "marginal" conviction
 };
 
-// ── Gate 1B — Fast Intraday Flow Threshold (NOT YET IMPLEMENTED) ────────
-// Per the redesign spec this sublayer reads intraday-updating cross-asset
-// flow (DXY 5m/15m ROC, US10Y/US2Y yield ROC, HYG/LQD intraday proxy, bond
-// futures, cross-asset breadth) and outputs a binary VALID/INVALID; the hard
-// veto then applies to Gate1A + Gate1B combined, not Gate1A alone. No config
-// block is declared here yet: a DXY-proxy basket and a cross-asset breadth
-// proxy are buildable today from OANDA's existing FX-major/index-CFD
-// intraday candles (M5/M15, once OANDA_KEY is present in this environment),
-// but US10Y/US2Y intraday yield ROC and an HYG/LQD intraday proxy have no
-// free, multi-year-backtestable source identified in this codebase (FRED is
-// daily-with-lag; Yahoo intraday is short-history and already blocked at
-// this sandbox's network layer). cogBacktestEngine.js's daily-bar loop also
-// needs restructuring to consume intraday bars before this can run for real.
-// Declaring inputs/thresholds before those two things are resolved would be
-// exactly the kind of half-built scaffolding this file's "no black boxes,
-// nothing faked" standard exists to prevent.
+// ── Gate 1B — Fast Intraday Flow Threshold ──────────────────────────────
+// Composite FlowScore = weighted sum of normalized intraday z-scores of each
+// input's own short-horizon ROC (`rocBars` intraday bars back, NOT a daily
+// horizon) — a fast cross-asset flow read, distinct from Gate1A's slow daily
+// regime above. `sign` follows the same "+1 = rising raw value is bullish
+// for Nasdaq" convention as Gate1A/Gate3. `breadth` is a single SPY/ES
+// proxy id; the real-data loader (cogDataSources.js) resolves it to
+// whichever of SPY or ES futures is available intraday — this config layer
+// only needs the id, not the underlying ticker logic.
+//
+// Live wiring note: a DXY-proxy basket and SPY/ES breadth are buildable
+// today from OANDA's FX-major/index-CFD intraday candles; US10Y/US2Y
+// intraday yield ROC and an HYG/LQD intraday proxy still have no free,
+// multi-year-backtestable source identified in this codebase (FRED is
+// daily-with-lag; Yahoo intraday is short-history). Per explicit instruction
+// this gate is being built and tested against synthetic/proxy data ONLY for
+// now (see generateSyntheticIntradayCogDataset in cogDataSources.js) — no
+// live API is wired to it yet, so the gap above is disclosed, not faked.
+export const COG_LIQUIDITY_1B_INPUTS = [
+  { id: 'dxy',     label: 'DXY ROC (FX basket proxy)',  sign: -1, weight: 1.0, rocBars: 3 },
+  { id: 'us10y',   label: 'US10Y Yield ROC',            sign: -1, weight: 1.0, rocBars: 3 },
+  { id: 'us2y',    label: 'US2Y Yield ROC',              sign: -1, weight: 0.8, rocBars: 3 },
+  { id: 'hygLqd',  label: 'HYG/LQD ROC',                 sign: +1, weight: 1.0, rocBars: 3 },
+  { id: 'breadth', label: 'SPY/ES breadth proxy ROC',    sign: +1, weight: 1.0, rocBars: 3 },
+  { id: 'vix',     label: 'VIX ROC (inverse)',           sign: -1, weight: 0.8, rocBars: 3 },
+  { id: 'vvix',    label: 'VVIX ROC (inverse)',          sign: -1, weight: 0.5, rocBars: 3 },
+];
+
+// Range is [-100,+100] per the redesign spec — deliberately NOT the same
+// [-5,+5]/[0,100] shape as Gate1A/Gate3, to keep this gate's binary-with-a-
+// dead-zone semantics visually distinct: there is no NEUTRAL state here,
+// only BULLISH (>+35), BEARISH (<-35), or INVALID (everything else,
+// including the dead zone and insufficient coverage) — see
+// cogLiquidityGate1B.js.
+export const COG_LIQUIDITY_1B_SCORE = {
+  range: [-100, 100],
+  bullishThreshold: 35,
+  bearishThreshold: -35,
+  zWindowBars: 1920,  // ~20 trading days x 96 bars/day (see COG_INTRADAY_SCHEDULE) — rolling lookback for each input's ROC z-score
+  zClip: 3,
+  minCoverage: 0.5,
+};
 
 // ── Gate 2 — Risk / Volatility Engine ───────────────────────────────────
 // Inputs never touch Nasdaq price — vol/correlation/credit measures only.
@@ -237,6 +263,32 @@ export const COG_EXIT_SCORE = {
     { id: 'atrExpansion',           label: 'ATR expansion (inverse — blow-off risk)',            weight: 0.7, rampLow: 90,   rampHigh: 40 },
     { id: 'regimeShift',            label: 'Vol-regime shift toward HIGH (inverse)',             weight: 0.8, rampLow: 1,    rampHigh: 0 },
   ],
+};
+
+// ── Intraday Event Schedule ──────────────────────────────────────────────
+// Models the observed COG-style workflow as a sequence of clock-time windows
+// within a single trading day, rather than one end-to-end evaluation per
+// daily bar (see cogEventBacktestEngine.js, which is the engine that
+// actually walks these): Gate1B's flow read updates all morning but is
+// checked/locked at the end of its window; Gate2 and Gate3 are still
+// fundamentally DAILY-resolution signals in this system (see their own
+// header comments) so this engine computes them once per day and simply
+// checks/logs that frozen value within its window, rather than inventing
+// intraday updates their underlying data doesn't support. All minutes are
+// session-local (minutes since midnight, exchange time) and must line up
+// with `barIntervalMinutes` (every window boundary below is a multiple of 5
+// so no window ever splits a bar) — generateSyntheticIntradayCogDataset
+// builds its bar axis directly off these same numbers.
+export const COG_INTRADAY_SCHEDULE = {
+  sessionStartMinute: 8 * 60,        // 08:00
+  sessionEndMinute: 16 * 60,         // 16:00
+  barIntervalMinutes: 5,             // synthetic/intraday bar cadence
+  gate1bWindow: { startMinute: 8 * 60,        endMinute: 12 * 60 + 30, label: 'Gate 1B flow threshold (08:00–12:30)' },
+  gate2Window:  { startMinute: 12 * 60 + 30,  endMinute: 14 * 60 + 15, label: 'Gate 2 risk engine check (12:30–14:15)' },
+  gate3Window:  { startMinute: 14 * 60 + 20,  endMinute: 14 * 60 + 35, label: 'Gate 3 direction confirmation (14:20–14:35)' },
+  // Earliest possible fill bar is the first bar strictly after gate3Window
+  // closes — mirrors COG_EXECUTION.fillRule's "next-bar-open, never same
+  // bar" discipline at intraday resolution.
 };
 
 // ── Synthetic / backtest data defaults ──────────────────────────────────
