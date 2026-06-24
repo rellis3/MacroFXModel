@@ -42,10 +42,11 @@ import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDat
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
 import { runResearchSuite as runNasdaqResearchSuite } from './js/nasdaqResearch.js';
 import { DATA_DEFAULTS as NASDAQ_DATA_DEFAULTS } from './js/nasdaqConfig.js';
-import { generateSyntheticCogDataset, fetchRealCogDataset } from './js/cogDataSources.js';
+import { generateSyntheticCogDataset, fetchRealCogDataset, generateSyntheticIntradayCogDataset } from './js/cogDataSources.js';
 import { runBacktest as runCogBacktest } from './js/cogBacktestEngine.js';
+import { runEventBacktest as runCogEventBacktest } from './js/cogEventBacktestEngine.js';
 import { computePerformanceReport as computeCogPerformanceReport, monteCarloBootstrap as cogMonteCarloBootstrap, walkForwardStability as cogWalkForwardStability, outOfSampleSplit as cogOutOfSampleSplit } from './js/nasdaqPerformance.js';
-import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
+import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_INTRADAY_SCHEDULE, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
 import { computeExitScore } from './js/cogExitEngine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
@@ -6950,6 +6951,61 @@ function _gateHitRateSummary(gate1, gate2, gate3, gate4) {
   };
 }
 
+// Event-driven engine's gate hit-rate summary: gate1A/gate2/gate3 are
+// daily-resolution (one entry per tradingDay, see cogEventBacktestEngine.js),
+// gate1B is genuinely intraday — so its hit rate is reported at the single
+// window-end bar each day actually decides off (the last bar in
+// day.gate1bBars), not averaged across every intraday bar, which would
+// overweight days with more bars in the window. There is no single "gate4"
+// per-bar array in this engine (the decision is logged per trading day in
+// events[] instead), so this intentionally has a different shape than
+// _gateHitRateSummary above rather than forcing a fake gate4 series.
+function _eventGateHitRateSummary(result) {
+  const { gate1A, gate1B, gate2, gate3, tradingDays } = result;
+  const gate1BAtWindowEnd = tradingDays.map(day =>
+    day.gate1bBars.length ? gate1B[day.gate1bBars[day.gate1bBars.length - 1]] : { state: 'INVALID' });
+  return {
+    dayCount: tradingDays.length,
+    gate1A: _frequency(gate1A, g => g.state),
+    gate1B: _frequency(gate1BAtWindowEnd, g => g.state),
+    gate2: _frequency(gate2, g => g.dataValid ? (g.valid ? 'VALID' : 'INVALID') : 'INVALID_DATA'),
+    gate3: _frequency(gate3, g => g.state),
+  };
+}
+
+// nasdaqPerformance.js's report functions assume `dates`/`equityCurve` are
+// ONE ENTRY PER TRADING DAY (TRADING_DAYS=252 annualization, tradesPerWeek's
+// /5 divisor, etc. — see cogConfig.js/nasdaqPerformance.js headers). The
+// event engine's own equityCurve is intraday-bar-resolution instead, so
+// feeding it straight in would silently corrupt every annualized stat by
+// ~(bars/day)x — the exact same axis bug already fixed for Gate1A/2/3.
+// This resamples to one value per trading day (that day's LAST bar, i.e.
+// the day's closing equity) before any report function ever sees it.
+function _dailyEquitySeriesFromEvent(result) {
+  const dates = [], equity = [], equityDollars = [];
+  for (const day of result.tradingDays) {
+    if (!day.bars.length) continue;
+    const lastBar = day.bars[day.bars.length - 1];
+    dates.push(day.date);
+    equity.push(result.equityCurve[lastBar]);
+    equityDollars.push(result.equityCurveDollars[lastBar]);
+  }
+  return { dates, equity, equityDollars };
+}
+
+// walkForwardStability/outOfSampleSplit slice trades into calendar windows
+// by comparing t.entryIndex against indices into the (here, day-resampled)
+// dates/equityCurve array — but the event engine's trades carry an INTRADAY
+// bar entryIndex, not a day index, so that comparison would silently
+// misassign every trade. Returns shallow trade clones with entryIndex
+// remapped to the day-ordinal position matching `dayIndexByDate` (built
+// from the exact resampled `dates` array the report functions receive) —
+// only for feeding those report functions; the Trade Journal UI keeps using
+// the original intraday-resolution trades from the engine's own output.
+function _tradesWithDayIndex(trades, dayIndexByDate) {
+  return trades.map(t => ({ ...t, entryIndex: dayIndexByDate.get(t.entryDate) ?? t.entryIndex }));
+}
+
 function _latestCogBtFile() {
   if (!fs.existsSync(COG_BT_DATA_DIR)) return null;
   const files = fs.readdirSync(COG_BT_DATA_DIR)
@@ -6974,7 +7030,11 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
   const instrumentKey = body.instrumentKey || undefined;
   const stopModelId = body.stopModelId || undefined;
   const requestedTier = body.requestedTier || undefined;
-  const dataMode = body.dataMode === 'synthetic' ? 'synthetic' : 'real';
+  // Event-driven intraday engine has no real-data loader yet (see
+  // cogEventBacktestEngine.js header) — it's synthetic-only until one is
+  // built, so dataMode is forced regardless of what the client sent.
+  const engine = body.engine === 'event' ? 'event' : 'daily';
+  const dataMode = engine === 'event' ? 'synthetic' : (body.dataMode === 'synthetic' ? 'synthetic' : 'real');
 
   const jobId = `cog_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
@@ -6982,34 +7042,65 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
   _purgeStaleCogJobs();
   cogJobs.set(jobId, {
     status: 'running', startedAt,
-    phase: dataMode === 'real' ? 'Fetching real FRED/Yahoo data…' : 'Generating synthetic dataset…',
+    phase: engine === 'event' ? 'Generating synthetic intraday dataset…' : (dataMode === 'real' ? 'Fetching real FRED/Yahoo data…' : 'Generating synthetic dataset…'),
   });
 
   (async () => {
     try {
-      const dataset = dataMode === 'real'
-        ? await fetchRealCogDataset({ start, end })
-        : generateSyntheticCogDataset({ start, end, seed });
-      cogJobs.get(jobId).phase = 'Running 4-gate backtest + Exit Engine…';
+      let payload;
+      if (engine === 'event') {
+        const dataset = generateSyntheticIntradayCogDataset({ start, end, seed });
+        cogJobs.get(jobId).phase = 'Running event-driven intraday backtest…';
+        const result = runCogEventBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
 
-      const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+        cogJobs.get(jobId).phase = 'Computing performance & robustness reports…';
+        const daily = _dailyEquitySeriesFromEvent(result);
+        const dayIndexByDate = new Map(daily.dates.map((d, i) => [d, i]));
+        const reportTrades = _tradesWithDayIndex(result.trades, dayIndexByDate);
+        const performance = computeCogPerformanceReport({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+        const monteCarlo = cogMonteCarloBootstrap(reportTrades);
+        const walkForward = cogWalkForwardStability({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+        const outOfSample = cogOutOfSampleSplit({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+        const gateHitRates = _eventGateHitRateSummary(result);
 
-      cogJobs.get(jobId).phase = 'Computing performance & robustness reports…';
-      const performance = computeCogPerformanceReport({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
-      const monteCarlo = cogMonteCarloBootstrap(result.trades);
-      const walkForward = cogWalkForwardStability({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
-      const outOfSample = cogOutOfSampleSplit({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
-      const gateHitRates = _gateHitRateSummary(result.gate1, result.gate2, result.gate3, result.gate4);
+        payload = _capInfinity({
+          runAt: new Date().toISOString(),
+          synthetic: true,
+          engine: 'event',
+          dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
+          options: { dataMode, seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+          trades: result.trades,
+          equityCurve: daily.dates.map((d, i) => ({ date: d, equity: daily.equity[i], equityDollars: daily.equityDollars[i] })),
+          events: result.events,
+          intradayBarCount: result.dates.length,
+          performance, monteCarlo, walkForward, outOfSample, gateHitRates,
+        });
+      } else {
+        const dataset = dataMode === 'real'
+          ? await fetchRealCogDataset({ start, end })
+          : generateSyntheticCogDataset({ start, end, seed });
+        cogJobs.get(jobId).phase = 'Running 4-gate backtest + Exit Engine…';
 
-      const payload = _capInfinity({
-        runAt: new Date().toISOString(),
-        synthetic: dataset.synthetic,
-        dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
-        options: { dataMode, seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
-        trades: result.trades,
-        equityCurve: result.dates.map((d, i) => ({ date: d, equity: result.equityCurve[i], equityDollars: result.equityCurveDollars[i] })),
-        performance, monteCarlo, walkForward, outOfSample, gateHitRates,
-      });
+        const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+
+        cogJobs.get(jobId).phase = 'Computing performance & robustness reports…';
+        const performance = computeCogPerformanceReport({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+        const monteCarlo = cogMonteCarloBootstrap(result.trades);
+        const walkForward = cogWalkForwardStability({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+        const outOfSample = cogOutOfSampleSplit({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+        const gateHitRates = _gateHitRateSummary(result.gate1, result.gate2, result.gate3, result.gate4);
+
+        payload = _capInfinity({
+          runAt: new Date().toISOString(),
+          synthetic: dataset.synthetic,
+          engine: 'daily',
+          dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
+          options: { dataMode, seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+          trades: result.trades,
+          equityCurve: result.dates.map((d, i) => ({ date: d, equity: result.equityCurve[i], equityDollars: result.equityCurveDollars[i] })),
+          performance, monteCarlo, walkForward, outOfSample, gateHitRates,
+        });
+      }
 
       if (!fs.existsSync(COG_BT_DATA_DIR)) fs.mkdirSync(COG_BT_DATA_DIR, { recursive: true });
       const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
@@ -7020,7 +7111,7 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
         status: 'done', startedAt,
         result: { ok: true, data: payload, file: path.basename(outFile) },
       });
-      console.log(`[cog-threshold] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s) — ${result.trades.length} trades`);
+      console.log(`[cog-threshold] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s, engine=${engine}) — ${payload.trades.length} trades`);
     } catch (e) {
       const msg = e?.message || String(e) || 'Unknown engine error';
       console.error('[cog-threshold/run]', msg, e?.stack ?? '');
@@ -7070,6 +7161,7 @@ app.get('/api/cog-threshold/config', (_req, res) => {
     stopModels: COG_STOP_MODELS,
     execution: COG_EXECUTION,
     dataDefaults: COG_DATA_DEFAULTS_CFG,
+    intradaySchedule: COG_INTRADAY_SCHEDULE,
   });
 });
 

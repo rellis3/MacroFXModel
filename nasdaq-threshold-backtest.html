@@ -116,6 +116,7 @@
 
 <!-- Run bar -->
 <div class="run-bar">
+  <div class="cfg-field"><label>Engine</label><select id="cfg_engine" onchange="onEngineChange()"><option value="daily" selected>Daily (1 decision/bar)</option><option value="event">Event-Driven Intraday</option></select></div>
   <div class="cfg-field"><label>Data Source</label><select id="cfg_datamode" onchange="onDataModeChange()"><option value="real" selected>Real (FRED + Yahoo)</option><option value="synthetic">Synthetic self-test</option></select></div>
   <div class="cfg-field"><label>Start</label><input type="date" id="cfg_start"></div>
   <div class="cfg-field"><label>End</label><input type="date" id="cfg_end"><span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">blank = today</span></div>
@@ -133,6 +134,11 @@
 
 <!-- Instrument sizing note (populated by JS based on selection) -->
 <div class="info-box warn" id="instrumentNote" style="display:none;"></div>
+
+<!-- Event-driven engine disclosure (shown only when Engine = Event-Driven Intraday) -->
+<div class="info-box" id="engineNote" style="display:none;">
+  <strong style="color:#22d3ee">Event-Driven Intraday Engine:</strong> sequences a single decision cycle per trading day through Gate1B's morning flow-threshold window, Gate2's midday risk check and Gate3's narrow afternoon direction window, in that order, before any entry — then re-evaluates the Exit Engine intraday at COG_EXIT_SCORE's cadence once a trade is open. No real intraday data source exists yet, so this engine is <strong>synthetic-only</strong> (Data Source is forced and disabled). Gate1B's ±35 FlowScore threshold is deliberately strict, so the full Gate1A+Gate1B+Gate2+Gate3 conjunction firing is rare by design — see the Event Timeline below for the per-day audit trail of every window check.
+</div>
 
 <!-- KPI grid -->
 <div id="kpiSection" style="display:none;">
@@ -219,6 +225,19 @@
   </div>
 </div>
 
+<!-- Event Timeline (event-driven engine only — per-day window/decision/exit audit trail) -->
+<div class="card" id="eventTimelineCard" style="display:none;">
+  <div class="card-hdr">Event Timeline <span style="font-weight:400;color:var(--text3)" id="eventTimelineCount"></span></div>
+  <div class="card-body">
+    <div class="tbl-wrap">
+      <table class="tbl" id="eventTimelineTable">
+        <thead><tr><th>Date</th><th>Window</th><th>Summary</th></tr></thead>
+        <tbody id="eventTimelineTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- Trade Journal -->
 <div class="card" id="journalCard" style="display:none;">
   <div class="card-hdr">
@@ -301,6 +320,16 @@ function onDataModeChange() {
 }
 window.onDataModeChange = onDataModeChange;
 
+function onEngineChange() {
+  const isEvent = document.getElementById('cfg_engine').value === 'event';
+  const dataModeSel = document.getElementById('cfg_datamode');
+  dataModeSel.disabled = isEvent;
+  if (isEvent) dataModeSel.value = 'synthetic';
+  document.getElementById('engineNote').style.display = isEvent ? '' : 'none';
+  onDataModeChange();
+}
+window.onEngineChange = onEngineChange;
+
 function updateInstrumentNote() {
   const key = document.getElementById('cfg_instrument').value;
   const note = document.getElementById('instrumentNote');
@@ -314,11 +343,13 @@ function updateInstrumentNote() {
 
 async function runBacktest() {
   const btn = document.getElementById('runBtn');
+  const engine = document.getElementById('cfg_engine').value;
   const dataMode = document.getElementById('cfg_datamode').value;
   btn.disabled = true;
-  setStatus('spin', dataMode === 'real' ? 'Fetching real FRED/Yahoo data…' : 'Generating synthetic dataset…');
+  setStatus('spin', engine === 'event' ? 'Generating synthetic intraday dataset…' : (dataMode === 'real' ? 'Fetching real FRED/Yahoo data…' : 'Generating synthetic dataset…'));
 
   const body = {
+    engine,
     dataMode,
     start: document.getElementById('cfg_start').value || undefined,
     end: document.getElementById('cfg_end').value || undefined,
@@ -352,7 +383,8 @@ async function runBacktest() {
     _data = result;
     renderAll();
     const provenance = result.synthetic ? 'synthetic self-test data' : 'real FRED/Yahoo data';
-    setStatus('ok', `Done (${provenance}) — ${result.trades.length} trades, ${result.dateRange.start} → ${result.dateRange.end}`);
+    const engineLbl = result.engine === 'event' ? 'event-driven intraday' : 'daily';
+    setStatus('ok', `Done (${engineLbl}, ${provenance}) — ${result.trades.length} trades, ${result.dateRange.start} → ${result.dateRange.end}`);
   } catch (err) {
     setStatus('err', 'Error: ' + err.message);
   } finally {
@@ -372,6 +404,7 @@ function renderAll() {
   renderDistribution();
   renderGateHitRates();
   renderRobustness();
+  renderEventTimeline();
   renderTradeJournal();
   ['kpiSection', 'equityCard', 'ddCard', 'heatmapCard', 'distGateRow', 'robustCard', 'journalCard'].forEach(id => {
     document.getElementById(id).style.display = '';
@@ -478,12 +511,36 @@ function renderGateBar(freq, title) {
 function renderGateHitRates() {
   const g = _data.gateHitRates;
   if (!g) { document.getElementById('gateHitBody').innerHTML = '<div style="color:var(--text3);font-size:11px;">No gate data</div>'; return; }
-  document.getElementById('gateBarCount').textContent = `· ${g.barCount} bars`;
-  document.getElementById('gateHitBody').innerHTML =
-    renderGateBar(g.gate1, 'Gate 1A — Macro Regime') +
-    renderGateBar(g.gate2, 'Gate 2 — Risk/Vol') +
-    renderGateBar(g.gate3, 'Gate 3 — Direction') +
-    renderGateBar(g.gate4, 'Gate 4 — Execution action (needs 1∩2∩3 alignment + no open position)');
+  if (_data.engine === 'event') {
+    document.getElementById('gateBarCount').textContent = `· ${g.dayCount} trading days`;
+    document.getElementById('gateHitBody').innerHTML =
+      renderGateBar(g.gate1A, 'Gate 1A — Macro Regime (daily)') +
+      renderGateBar(g.gate1B, 'Gate 1B — Fast Flow Threshold (intraday, window-end reading)') +
+      renderGateBar(g.gate2, 'Gate 2 — Risk/Vol (daily)') +
+      renderGateBar(g.gate3, 'Gate 3 — Direction (daily)');
+  } else {
+    document.getElementById('gateBarCount').textContent = `· ${g.barCount} bars`;
+    document.getElementById('gateHitBody').innerHTML =
+      renderGateBar(g.gate1, 'Gate 1A — Macro Regime') +
+      renderGateBar(g.gate2, 'Gate 2 — Risk/Vol') +
+      renderGateBar(g.gate3, 'Gate 3 — Direction') +
+      renderGateBar(g.gate4, 'Gate 4 — Execution action (needs 1∩2∩3 alignment + no open position)');
+  }
+}
+
+function renderEventTimeline() {
+  const card = document.getElementById('eventTimelineCard');
+  const events = _data.events;
+  if (!events || !events.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const MAX_ROWS = 1000;
+  const shown = events.length > MAX_ROWS ? events.slice(-MAX_ROWS) : events;
+  document.getElementById('eventTimelineCount').textContent = events.length > MAX_ROWS
+    ? `· showing most recent ${MAX_ROWS} of ${events.length} events`
+    : `· ${events.length} events`;
+  document.getElementById('eventTimelineTbody').innerHTML = shown.map(e => `
+    <tr><td>${e.date}</td><td>${e.window}</td><td>${e.summary}</td></tr>
+  `).join('');
 }
 
 function renderRobustness() {
