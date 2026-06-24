@@ -2,6 +2,7 @@ node_modules/
 /data/
 VolRangeForecaster/data/*.parquet
 VolRangeForecaster/data/m1/
+VolRangeForecaster/data/cog-threshold/
 .env
 .env.local
 bot/.env.example
