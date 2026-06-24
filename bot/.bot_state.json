@@ -5,11 +5,11 @@
     "locked_until": 1780563914.5479677,
     "last_trade_by_pair": {
       "XAU/USD": 1781765186.662191,
-      "USD/JPY": 1782283286.616746,
+      "USD/JPY": 1782301938.01654,
       "USD/CAD": 1782222969.462234,
       "EUR/USD": 1781711076.722537,
       "USD/CHF": 1782234606.0929937,
-      "EUR/GBP": 1782133060.2322798,
+      "EUR/GBP": 1782310088.4704914,
       "GBP/JPY": 1782202809.1919997,
       "AUD/USD": 1781797131.2759385,
       "GBP/USD": 1782223564.2760735
@@ -17,5 +17,14 @@
     "last_reset_date": "2026-06-24",
     "last_reset_month": "2026-06"
   },
-  "position_meta": {}
+  "position_meta": {
+    "152245497254": {
+      "tp1": 0.86184,
+      "tp1_close_pct": 50,
+      "trailoffset_dist": 0.00053,
+      "tp1_hit": false,
+      "trail_active": false,
+      "trail_sl": null
+    }
+  }
 }

@@ -6,6 +6,7 @@
 <title>Bot Config — MacroFX</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 :root {
   --bg:#f4f6fb; --s1:#fff; --s2:#f0f3f8; --s3:#e8edf6;
@@ -326,6 +327,23 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .pos-cal-day.has-trades .cal-num { color:var(--text); font-weight:700; }
 .pos-cal-dots { display:flex; gap:2px; flex-wrap:wrap; justify-content:center; max-width:40px; }
 .pos-cal-dot { width:6px; height:6px; border-radius:50%; }
+/* ── Trade chart modal ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:500; display:none; align-items:center; justify-content:center; padding:16px; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--s1); border:1.5px solid var(--border2); border-radius:var(--rxl); width:100%; max-width:820px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+.modal-hd { display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border); }
+.modal-title { font-size:14px; font-weight:700; color:var(--text); flex:1; }
+.modal-close { background:none; border:none; color:var(--text3); font-size:18px; cursor:pointer; padding:4px; line-height:1; }
+.modal-close:hover { color:var(--text); }
+.modal-body { padding:16px 18px; overflow-y:auto; flex:1; }
+.tc-meta { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:12px; }
+.tc-meta-item { display:flex; flex-direction:column; }
+.tc-meta-lbl { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; }
+.tc-meta-val { font-size:13px; font-weight:700; font-family:'DM Mono',monospace; color:var(--text); }
+.tc-chart-wrap { position:relative; height:380px; width:100%; background:#131722; border-radius:8px; overflow:hidden; }
+.tc-status { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:#9ba3bf; text-align:center; padding:0 20px; }
+.hist-chart-btn { background:var(--s2); border:1px solid var(--border); border-radius:6px; width:26px; height:26px; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; justify-content:center; transition:background .15s,border-color .15s; }
+.hist-chart-btn:hover { background:var(--blue-bg); border-color:var(--blue-bd); }
 </style>
 </head>
 <body>
@@ -3195,10 +3213,11 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
               <th>Opened</th>
               <th>Closed</th>
               <th>Duration</th>
+              <th>Chart</th>
             </tr>
           </thead>
           <tbody id="histTableBody">
-            <tr><td colspan="13" class="pos-empty">Loading…</td></tr>
+            <tr><td colspan="14" class="pos-empty">Loading…</td></tr>
           </tbody>
           <tfoot id="histTableFoot"></tfoot>
         </table>
@@ -3584,6 +3603,23 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
   <h4 id="tipTitle"></h4>
   <p id="tipBody"></p>
   <div class="tip-ex" id="tipEx"></div>
+</div>
+
+<!-- Trade chart modal -->
+<div class="modal-overlay" id="tradeChartModal" onclick="if(event.target===this)closeTradeChartModal()">
+  <div class="modal" style="max-width:820px" onclick="event.stopPropagation()">
+    <div class="modal-hd">
+      <div class="modal-title" id="tcTitle">Trade Chart</div>
+      <button type="button" class="modal-close" onclick="closeTradeChartModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="tc-meta" id="tcMeta"></div>
+      <div class="tc-chart-wrap">
+        <div id="tcChartEl" style="width:100%;height:100%"></div>
+        <div class="tc-status" id="tcStatus" style="display:none"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -5115,6 +5151,7 @@ let _calYear         = new Date().getFullYear();
 let _calMonth        = new Date().getMonth(); // 0-indexed
 let _calTradeMap     = {};   // 'YYYY-MM-DD' → [{bot_key,...}, ...]
 let _histInitDone    = false;
+let _lastHistTrades  = [];   // last loaded trade-history rows, indexed for the chart modal
 
 function _initHistoryView() {
   if (_histInitDone) return;
@@ -5507,7 +5544,7 @@ async function loadHistoryTab() {
   if (!tbody) return;
 
   const { from, to } = _getHistDateRange();
-  tbody.innerHTML = `<tr><td colspan="13" class="pos-empty">Loading…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="14" class="pos-empty">Loading…</td></tr>`;
   if (stats) stats.innerHTML = '';
   if (tfoot) tfoot.innerHTML = '';
 
@@ -5517,9 +5554,10 @@ async function loadHistoryTab() {
     const j = await r.json();
     trades = (j.trades || []).filter(t => _histActiveBots.has(t.bot_key));
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="13" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
     return;
   }
+  _lastHistTrades = trades;
 
   // Build trade map for calendar
   _calTradeMap = {};
@@ -5530,7 +5568,7 @@ async function loadHistoryTab() {
   renderCal();
 
   if (!trades.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="pos-empty">No closed trades found for this date range.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="pos-empty">No closed trades found for this date range.</td></tr>`;
     if (stats) stats.innerHTML = `<div class="pos-hist-stat"><span class="pos-hist-stat-val">0</span><span class="pos-hist-stat-lbl">Trades</span></div>`;
     renderHistAnalytics([]);
     return;
@@ -5557,7 +5595,7 @@ async function loadHistoryTab() {
   renderHistAnalytics(trades);
 
   // Table rows
-  const rows = trades.map(t => {
+  const rows = trades.map((t, idx) => {
     const bot    = _POS_BOTS.find(b => b.key === t.bot_key) || { label: t.bot_key, color:'#aaa', bg:'var(--s2)', bd:'var(--border)', paper:false };
     const net    = (t.profit || 0) + (t.swap || 0);
     const pClass = net >= 0 ? 'pos-profit-pos' : 'pos-profit-neg';
@@ -5582,6 +5620,7 @@ async function loadHistoryTab() {
       `<td style="color:var(--text3);font-size:11px">${_fmtTime(t.time_open)}</td>` +
       `<td style="color:var(--text3);font-size:11px">${_fmtTime(t.time_close)}</td>` +
       `<td style="color:var(--text3);font-size:11px">${dur}</td>` +
+      `<td><button class="hist-chart-btn" onclick="openTradeChartModal(${idx})" title="View price chart">&#128200;</button></td>` +
       `</tr>`;
   });
   tbody.innerHTML = rows.join('');
@@ -5595,7 +5634,7 @@ async function loadHistoryTab() {
     `<td class="${totalPnl >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</td>` +
     `<td class="${totalSwap < 0 ? 'pos-profit-neg' : ''}">${totalSwap.toFixed(2)}</td>` +
     `<td class="${totalNet >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalNet >= 0 ? '+' : ''}${totalNet.toFixed(2)}</td>` +
-    `<td colspan="3"></td>` +
+    `<td colspan="4"></td>` +
     `</tr>`;
 }
 window.loadHistoryTab = loadHistoryTab;
@@ -5665,6 +5704,135 @@ function calDayClick(iso) {
   loadHistoryTab();
 }
 window.calDayClick = calDayClick;
+
+// ── Trade chart modal ─────────────────────────────────────────────────────────
+// MT5 symbol → OANDA instrument. Falls back to a generic 3+3 split for any
+// 6-letter pair not in this table (covers crosses we haven't listed explicitly).
+const _OANDA_SYM = {
+  eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
+  gbpjpy:'GBP/JPY', audusd:'AUD/USD', usdcad:'USD/CAD', usdchf:'USD/CHF',
+  nzdusd:'NZD/USD', eurgbp:'EUR/GBP', euraud:'EUR/AUD', eurchf:'EUR/CHF',
+  eurcad:'EUR/CAD', eurnzd:'EUR/NZD', gbpaud:'GBP/AUD', gbpchf:'GBP/CHF',
+  gbpcad:'GBP/CAD', gbpnzd:'GBP/NZD', audjpy:'AUD/JPY', audnzd:'AUD/NZD',
+  audcad:'AUD/CAD', audchf:'AUD/CHF', nzdjpy:'NZD/JPY', cadjpy:'CAD/JPY',
+  chfjpy:'CHF/JPY', xauusd:'XAU/USD', xagusd:'XAG/USD',
+};
+function _mt5ToOandaSymbol(raw) {
+  const alpha = String(raw || '').toUpperCase().replace(/[^A-Z]/g, '');
+  if (_OANDA_SYM[alpha.toLowerCase()]) return _OANDA_SYM[alpha.toLowerCase()];
+  if (alpha.length === 6) return `${alpha.slice(0,3)}/${alpha.slice(3)}`;
+  return null;
+}
+
+// /api/oanda_ohlc1m relabels each bar's true-UTC instant as if it were UTC
+// using its London wall-clock string (so the chart's UTC-only time axis shows
+// London-local labels). Trade timestamps are true UTC epoch (see _fmtTime),
+// so they need the same relabelling to land on the right candle.
+function _toFakeUtcEpoch(epochSec) {
+  const s = new Date(epochSec * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 19);
+  return Math.floor(new Date(s.replace(' ', 'T') + 'Z').getTime() / 1000);
+}
+
+let _tcChart = null, _tcSeries = null, _tcPriceLines = [];
+
+function closeTradeChartModal() {
+  document.getElementById('tradeChartModal').classList.remove('open');
+}
+window.closeTradeChartModal = closeTradeChartModal;
+
+async function openTradeChartModal(idx) {
+  const t = _lastHistTrades[idx];
+  if (!t) return;
+
+  const modal  = document.getElementById('tradeChartModal');
+  const status = document.getElementById('tcStatus');
+  const meta   = document.getElementById('tcMeta');
+  const title  = document.getElementById('tcTitle');
+  modal.classList.add('open');
+  status.style.display = 'flex';
+  status.textContent = 'Loading M1 data…';
+  if (_tcSeries) _tcSeries.setData([]);
+
+  const bot = _POS_BOTS.find(b => b.key === t.bot_key) || { label: t.bot_key || '—' };
+  title.textContent = `${t.symbol || '—'} · ${bot.label}`;
+
+  const net = (t.profit || 0) + (t.swap || 0);
+  const metaItems = [
+    ['Direction', t.direction || '—'],
+    ['Lots', (t.lots || 0).toFixed(2)],
+    ['Entry', t.open_price  != null ? t.open_price.toFixed(5)  : '—'],
+    ['Close', t.close_price != null ? t.close_price.toFixed(5) : '—'],
+    ['Net P&L', `${net >= 0 ? '+' : ''}${net.toFixed(2)}`],
+    ['Duration', (t.time_open && t.time_close) ? _fmtDuration(t.time_close - t.time_open) : '—'],
+  ];
+  if (t.comment) metaItems.push(['Comment', t.comment]);
+  meta.innerHTML = metaItems.map(([lbl, val]) =>
+    `<div class="tc-meta-item"><span class="tc-meta-lbl">${lbl}</span><span class="tc-meta-val">${val}</span></div>`
+  ).join('');
+
+  const sym = _mt5ToOandaSymbol(t.symbol);
+  if (!sym)                          { status.textContent = `Can't map symbol "${t.symbol}" to an OANDA instrument.`; return; }
+  if (!t.time_open || !t.time_close) { status.textContent = 'Missing open/close time for this trade.'; return; }
+
+  const dateStr = new Date(t.time_open * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
+  const days    = Math.min(14, Math.max(1, Math.ceil((t.time_close - t.time_open) / 86400) + 1));
+  const fakeOpen  = _toFakeUtcEpoch(t.time_open);
+  const fakeClose = _toFakeUtcEpoch(t.time_close);
+
+  try {
+    const r = await fetch(`/api/oanda_ohlc1m?symbol=${encodeURIComponent(sym)}&date=${dateStr}&days=${days}`);
+    const j = await r.json();
+    if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
+    if (!j.values?.length) throw new Error('No M1 data returned for this window');
+
+    const bars = j.values.map(v => ({
+      time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open: +v.open, high: +v.high, low: +v.low, close: +v.close,
+    }));
+
+    const padded = bars.filter(b => b.time >= fakeOpen - 1800 && b.time <= fakeClose + 1800);
+    const data = padded.length >= 5 ? padded : bars;
+    if (!data.length) throw new Error('No candles in trade window');
+
+    const el = document.getElementById('tcChartEl');
+    if (!_tcChart) {
+      _tcChart = LightweightCharts.createChart(el, {
+        width: el.clientWidth || 760, height: el.clientHeight || 380,
+        layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
+        grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#1c2133' },
+        timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
+        handleScroll: true, handleScale: true,
+      });
+      _tcSeries = _tcChart.addCandlestickSeries({ priceLineVisible: false });
+      window.addEventListener('resize', () => {
+        if (_tcChart) try { _tcChart.resize(el.clientWidth, el.clientHeight); } catch(e) {}
+      });
+    }
+
+    _tcSeries.setData(data);
+    _tcChart.timeScale().setVisibleRange({ from: data[0].time, to: data[data.length - 1].time });
+
+    const isLong = t.direction === 'BUY';
+    const win    = net >= 0;
+    _tcSeries.setMarkers([
+      { time: fakeOpen,  position: isLong ? 'belowBar' : 'aboveBar', color: '#60a5fa', shape: isLong ? 'arrowUp' : 'arrowDown', text: 'Entry' },
+      { time: fakeClose, position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
+    ]);
+
+    _tcPriceLines.forEach(pl => { try { _tcSeries.removePriceLine(pl); } catch(e) {} });
+    _tcPriceLines = [];
+    if (t.open_price  != null) _tcPriceLines.push(_tcSeries.createPriceLine({ price: t.open_price,  color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Entry' }));
+    if (t.close_price != null) _tcPriceLines.push(_tcSeries.createPriceLine({ price: t.close_price, color: win ? '#10b981' : '#f87171', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exit' }));
+
+    status.style.display = 'none';
+  } catch (e) {
+    status.style.display = 'flex';
+    status.textContent = `Error: ${e.message}`;
+  }
+}
+window.openTradeChartModal = openTradeChartModal;
 
 // ── Telegram mode toggle ──────────────────────────────────────────────────────
 function toggleTgSettings() {
