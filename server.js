@@ -42,6 +42,11 @@ import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDat
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
 import { runResearchSuite as runNasdaqResearchSuite } from './js/nasdaqResearch.js';
 import { DATA_DEFAULTS as NASDAQ_DATA_DEFAULTS } from './js/nasdaqConfig.js';
+import { generateSyntheticCogDataset } from './js/cogDataSources.js';
+import { runBacktest as runCogBacktest } from './js/cogBacktestEngine.js';
+import { computePerformanceReport as computeCogPerformanceReport, monteCarloBootstrap as cogMonteCarloBootstrap, walkForwardStability as cogWalkForwardStability, outOfSampleSplit as cogOutOfSampleSplit } from './js/nasdaqPerformance.js';
+import { COG_LIQUIDITY_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
+import { computeExitScore } from './js/cogExitEngine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -6793,6 +6798,245 @@ app.get('/api/nasdaq-liquidity/results', (_req, res) => {
     res.json({ ok: true, data, file: path.basename(file) });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Nasdaq Macro Threshold Engine (COG-inspired 4-gate system) ────────────────
+// Phase 1 wiring: synthetic dataset only — js/cogDataSources.js has no real-data
+// loader yet (that's Phase 2), so /run always calls generateSyntheticCogDataset.
+// Same async job/status/results pattern as the NASDAQ Liquidity Continuation
+// group above, persisted separately so the two systems' run histories never mix.
+
+const COG_BT_DATA_DIR = path.join(__dirname, 'VolRangeForecaster', 'data', 'cog-threshold');
+
+// Per-bar classification frequency for each gate, e.g. {BULLISH:0.41,
+// BEARISH:0.33, NEUTRAL:0.26} — explains the Backtest Lab's "why so few
+// trades" question (a trade needs Gate 1/2/3 to align on the same bar) without
+// shipping the full per-bar gate detail (reasons/contributions/breakdown) over
+// the wire, which would multiply payload size by ~3x for no UI benefit here.
+function _frequency(arr, getKey) {
+  const n = arr.length;
+  const counts = {};
+  for (const x of arr) {
+    const k = getKey(x);
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(counts).map(([k, v]) => [k, n > 0 ? v / n : 0]));
+}
+
+function _gateHitRateSummary(gate1, gate2, gate3, gate4) {
+  return {
+    barCount: gate1.length,
+    gate1: _frequency(gate1, g => g.state),
+    gate2: _frequency(gate2, g => g.dataValid ? (g.valid ? 'VALID' : 'INVALID') : 'INVALID_DATA'),
+    gate3: _frequency(gate3, g => g.state),
+    gate4: _frequency(gate4, g => g.action),
+  };
+}
+
+function _latestCogBtFile() {
+  if (!fs.existsSync(COG_BT_DATA_DIR)) return null;
+  const files = fs.readdirSync(COG_BT_DATA_DIR)
+    .filter(f => f.startsWith('cog_bt_') && f.endsWith('.json'))
+    .sort().reverse();
+  return files.length ? path.join(COG_BT_DATA_DIR, files[0]) : null;
+}
+
+const cogJobs = new Map();
+
+function _purgeStaleCogJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of cogJobs) if (job.startedAt < cutoff) cogJobs.delete(id);
+}
+
+app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) => {
+  const body = req.body || {};
+  const start = body.start || COG_DATA_DEFAULTS_CFG.backtestStart;
+  const end = body.end || undefined;
+  const seed = Number.isFinite(+body.seed) ? +body.seed : 42;
+  const accountEquity = Number.isFinite(+body.accountEquity) ? +body.accountEquity : 100000;
+  const instrumentKey = body.instrumentKey || undefined;
+  const stopModelId = body.stopModelId || undefined;
+  const requestedTier = body.requestedTier || undefined;
+
+  const jobId = `cog_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleCogJobs();
+  cogJobs.set(jobId, { status: 'running', startedAt, phase: 'Generating synthetic dataset…' });
+
+  (async () => {
+    try {
+      const dataset = generateSyntheticCogDataset({ start, end, seed });
+      cogJobs.get(jobId).phase = 'Running 4-gate backtest + Exit Engine…';
+
+      const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+
+      cogJobs.get(jobId).phase = 'Computing performance & robustness reports…';
+      const performance = computeCogPerformanceReport({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+      const monteCarlo = cogMonteCarloBootstrap(result.trades);
+      const walkForward = cogWalkForwardStability({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+      const outOfSample = cogOutOfSampleSplit({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
+      const gateHitRates = _gateHitRateSummary(result.gate1, result.gate2, result.gate3, result.gate4);
+
+      const payload = _capInfinity({
+        runAt: new Date().toISOString(),
+        synthetic: true,
+        dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
+        options: { seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+        trades: result.trades,
+        equityCurve: result.dates.map((d, i) => ({ date: d, equity: result.equityCurve[i], equityDollars: result.equityCurveDollars[i] })),
+        performance, monteCarlo, walkForward, outOfSample, gateHitRates,
+      });
+
+      if (!fs.existsSync(COG_BT_DATA_DIR)) fs.mkdirSync(COG_BT_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(COG_BT_DATA_DIR, `cog_bt_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(payload, null, 0) + '\n');
+
+      cogJobs.set(jobId, {
+        status: 'done', startedAt,
+        result: { ok: true, data: payload, file: path.basename(outFile) },
+      });
+      console.log(`[cog-threshold] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s) — ${result.trades.length} trades`);
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[cog-threshold/run]', msg, e?.stack ?? '');
+      cogJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/cog-threshold/status/:jobId', (req, res) => {
+  const job = cogJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running',
+      elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+      phase: job.phase ?? 'Running…' });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+app.get('/api/cog-threshold/results', (_req, res) => {
+  const file = _latestCogBtFile();
+  if (!file) return res.json({ ok: false, error: 'No Nasdaq Macro Threshold Engine backtest results found — run a backtest first' });
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    const data = JSON.parse(raw);
+    res.json({ ok: true, data, file: path.basename(file) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Exposes the gate/exit/execution config the UI renders threshold/weight
+// breakdowns from, so the dashboard never hardcodes a second copy of numbers
+// that already live in js/cogConfig.js ("no black boxes" applies to the UI
+// too — every weight/threshold shown must trace back to this one source).
+app.get('/api/cog-threshold/config', (_req, res) => {
+  res.json({
+    ok: true,
+    liquidity: COG_LIQUIDITY_SCORE,
+    risk: COG_RISK_SCORE,
+    direction: COG_DIRECTION_SCORE,
+    exit: COG_EXIT_SCORE,
+    riskTiers: COG_RISK_TIERS,
+    stopModels: COG_STOP_MODELS,
+    execution: COG_EXECUTION,
+    dataDefaults: COG_DATA_DEFAULTS_CFG,
+  });
+});
+
+// Builds a same-length-as-trades-but-windowed event log: gate-STATE-CHANGE
+// events (not every bar — only transitions, so a 90-day window doesn't spam
+// "still BULLISH" 90 times) interleaved with trade open/close events, sorted
+// by date. Powers the Live Monitor's Event Timeline without the client
+// needing the full per-bar gate series.
+function _cogEventTimeline(dates, gate1, gate2, gate3, trades, lookbackBars) {
+  const n = dates.length;
+  const startIdx = Math.max(0, n - lookbackBars);
+  const startDate = dates[startIdx];
+  const events = [];
+  let prevG1 = null, prevG3 = null, prevG2Valid = null;
+  for (let i = startIdx; i < n; i++) {
+    const g1 = gate1[i].state;
+    const g3 = gate3[i].state;
+    const g2v = gate2[i].dataValid ? (gate2[i].valid ? 'VALID' : 'INVALID') : 'INVALID_DATA';
+    if (i > startIdx) {
+      if (g1 !== prevG1) events.push({ date: dates[i], type: 'GATE1_STATE', detail: `Gate 1 (Liquidity) → ${g1}` });
+      if (g3 !== prevG3) events.push({ date: dates[i], type: 'GATE3_STATE', detail: `Gate 3 (Direction) → ${g3}` });
+      if (g2v !== prevG2Valid) events.push({ date: dates[i], type: 'GATE2_STATE', detail: `Gate 2 (Risk) → ${g2v}` });
+    }
+    prevG1 = g1; prevG3 = g3; prevG2Valid = g2v;
+  }
+  for (const t of trades) {
+    if (t.entryDate >= startDate) {
+      events.push({ date: t.entryDate, type: 'TRADE_OPEN', detail: `${t.direction} opened @ ${t.entryPrice.toFixed(2)} (${t.tier}/${t.stopModelId})`, tradeId: t.id });
+    }
+    if (t.exitDate && t.exitDate >= startDate && t.reason !== 'END_OF_HISTORY_OPEN') {
+      events.push({ date: t.exitDate, type: 'TRADE_CLOSE', detail: `${t.direction} closed (${t.reason}) pnlR=${t.pnlR?.toFixed(2)}`, tradeId: t.id });
+    }
+  }
+  events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return events;
+}
+
+// Phase 1 "live" snapshot: generates a synthetic dataset through TODAY
+// (generateSyntheticCogDataset defaults `end` to now) and reports the last
+// bar's full gate detail plus whatever trade is open. A trade still open at
+// the dataset's last bar always closes out the backtest loop with reason
+// END_OF_HISTORY_OPEN (see cogBacktestEngine.js) — that forced "close" is
+// exactly the synthetic stand-in for "still open as of now" in Phase 1, so
+// we detect it and re-report it as the live open trade (with a freshly
+// computed exit score, since the engine's forced close never bothers
+// scoring an exit that didn't actually happen).
+app.get('/api/cog-threshold/live', (req, res) => {
+  try {
+    const seed = Number.isFinite(+req.query.seed) ? +req.query.seed : 42;
+    const accountEquity = Number.isFinite(+req.query.accountEquity) ? +req.query.accountEquity : 100000;
+    const instrumentKey = req.query.instrumentKey || undefined;
+    const stopModelId = req.query.stopModelId || undefined;
+    const requestedTier = req.query.requestedTier || undefined;
+    const lookbackBars = Number.isFinite(+req.query.lookbackBars) ? +req.query.lookbackBars : 90;
+    const start = req.query.start || COG_DATA_DEFAULTS_CFG.backtestStart;
+
+    const dataset = generateSyntheticCogDataset({ start, seed });
+    const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+
+    const lastIndex = result.dates.length - 1;
+    const lastTrade = result.trades[result.trades.length - 1] || null;
+    const isOpenNow = !!lastTrade && lastTrade.reason === 'END_OF_HISTORY_OPEN';
+    const closedTrades = isOpenNow ? result.trades.slice(0, -1) : result.trades;
+
+    let openTrade = null;
+    if (isOpenNow) {
+      const liveExit = computeExitScore(
+        { gate1: result.gate1[lastTrade.entryIndex], gate2: result.gate2[lastTrade.entryIndex], gate3: result.gate3[lastTrade.entryIndex] },
+        { gate1: result.gate1[lastIndex], gate2: result.gate2[lastIndex], gate3: result.gate3[lastIndex] },
+        lastTrade.direction
+      );
+      openTrade = { ...lastTrade, liveExit };
+    }
+
+    const payload = _capInfinity({
+      asOf: result.dates[lastIndex],
+      synthetic: true,
+      options: { seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+      gates: { gate1: result.gate1[lastIndex], gate2: result.gate2[lastIndex], gate3: result.gate3[lastIndex], gate4: result.gate4[lastIndex] },
+      openTrade,
+      recentTrades: closedTrades.slice(-20).reverse(),
+      events: _cogEventTimeline(result.dates, result.gate1, result.gate2, result.gate3, result.trades, lookbackBars),
+      equity: { multiple: result.equityCurve[lastIndex], dollars: result.equityCurveDollars[lastIndex] },
+    });
+
+    res.json({ ok: true, data: payload });
+  } catch (e) {
+    console.error('[cog-threshold/live]', e?.message ?? e, e?.stack ?? '');
+    res.status(500).json({ ok: false, error: e?.message || 'Unknown engine error' });
   }
 });
 

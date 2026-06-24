@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nasdaq Macro Threshold Engine — Live Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="./js/sys-backtest-shared.js"></script>
+<style>
+#app { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
+
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+.card-hdr { padding: 11px 16px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.card-body { padding: 16px; }
+
+.run-bar { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); padding: 11px 14px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.run-btn { background: #22d3ee; border: none; border-radius: 6px; color: #042a30; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; padding: 6px 20px; cursor: pointer; transition: opacity .2s; }
+.run-btn:hover { opacity: .85; } .run-btn:disabled { opacity: .5; cursor: wait; }
+.run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.cfg-field { display: flex; flex-direction: column; gap: 3px; }
+.cfg-field label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); font-family: 'DM Mono', monospace; }
+.cfg-field input, .cfg-field select { background: var(--s2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 5px 8px; width: 132px; }
+
+.tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.tbl th { padding: 6px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--s2); }
+.tbl td.num { text-align: right; }
+.tbl td.win { color: #10b981; font-weight: 600; }
+.tbl td.loss { color: #ef4444; font-weight: 600; }
+.tbl-wrap { overflow-x: auto; }
+.tbl-wrap.scroll { max-height: 260px; overflow-y: auto; }
+
+.gate-pill { display: inline-block; padding: 2px 9px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .06em; font-family: 'DM Mono', monospace; }
+
+.sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
+.sdot.ok   { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.sdot.spin { background: #f59e0b; animation: spin-pulse 1s infinite; }
+.sdot.err  { background: #ef4444; }
+@keyframes spin-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.info-box { background: rgba(34,211,238,.07); border: 1px solid rgba(34,211,238,.2); border-radius: var(--r); padding: 10px 14px; font-size: 11px; font-family: 'DM Mono', monospace; color: #67e8f9; margin-top: 10px; line-height: 1.6; }
+.info-box.warn { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); color: #fbbf24; }
+
+.diag-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 4px; }
+@media (max-width: 860px) { .diag-grid { grid-template-columns: repeat(2, 1fr); } }
+.diag-card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; }
+.diag-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.diag-val { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; margin-top: 4px; }
+.diag-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+/* Status strip */
+.status-strip { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 14px 16px; }
+.status-item { display: flex; flex-direction: column; gap: 3px; }
+.status-item .lbl { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.status-item .val { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); }
+
+/* Gate cards */
+.gate-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 14px; }
+@media (max-width: 980px) { .gate-cards-grid { grid-template-columns: 1fr; } }
+.gate-card-meta { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; }
+.gate-card-meta .m-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.gate-card-meta .m-val { font-size: 13px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.reasons-list { margin: 6px 0 10px 18px; padding: 0; font-size: 11.5px; color: var(--text2); line-height: 1.6; }
+.eligible-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+/* Event timeline */
+.timeline-list { display: flex; flex-direction: column; gap: 2px; max-height: 420px; overflow-y: auto; }
+.timeline-item { display: flex; align-items: baseline; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--border); font-size: 12px; font-family: 'DM Mono', monospace; }
+.timeline-item:last-child { border-bottom: none; }
+.timeline-icon { width: 18px; text-align: center; flex-shrink: 0; }
+.timeline-date { color: var(--text3); flex-shrink: 0; width: 78px; }
+.timeline-detail { color: var(--text2); }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Header -->
+<div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;margin:0;color:#22d3ee;">📡 Nasdaq Macro Threshold Engine — Live Monitor</h1>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Phase 1: synthetic dataset generated through today · same 4-gate + Exit Engine logic as the Backtest Lab, evaluated on the latest bar</div>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <a href="nasdaq-threshold-backtest.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:#22d3ee;">🧮 Backtest Lab →</a>
+    <a href="index.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Dashboard</a>
+  </div>
+</div>
+
+<!-- System spec banner -->
+<div class="info-box">
+  <strong style="color:#22d3ee">System Logic:</strong> Nasdaq price is never a SIGNAL input. Gate 1 (Liquidity) reads Fed balance sheet / RRP / TGA / VIX-style macro liquidity inputs with zero Nasdaq input → BULLISH/BEARISH/NEUTRAL. Gate 2 (Risk/Vol) reads QQQ/SPY price <em>only</em> to measure volatility/correlation regime for stop distance &amp; sizing — never direction → VALID/INVALID + eligible risk tier. Gate 3 (Direction) reads DXY/USDJPY/ES/RTY cross-asset macro, never NQ/QQQ → LONG/SHORT/NEUTRAL. Gate 4 (Execution) is the only gate that touches NQ/QQQ price, and only to place a trade Gates 1–3 already justified. The Exit Engine re-scores the open trade every bar against the same 3 gates aligned to its direction → stay in / REDUCE 50% / CLOSE. Every number below traces back to a named input — no composite score is ever shown without its full breakdown.
+</div>
+
+<!-- Run bar -->
+<div class="run-bar">
+  <div class="cfg-field"><label>Seed</label><input type="number" id="cfg_seed" value="42" step="1"></div>
+  <div class="cfg-field"><label>Account Equity</label><input type="number" id="cfg_equity" value="100000" step="5000" min="1000"></div>
+  <div class="cfg-field"><label>Instrument</label><select id="cfg_instrument"></select></div>
+  <div class="cfg-field"><label>Stop Model</label><select id="cfg_stopmodel"></select></div>
+  <div class="cfg-field"><label>Requested Tier</label><select id="cfg_tier"></select></div>
+  <div class="cfg-field"><label>Event Window</label>
+    <select id="cfg_lookback">
+      <option value="30">30 bars</option>
+      <option value="90" selected>90 bars</option>
+      <option value="180">180 bars</option>
+      <option value="365">365 bars</option>
+    </select>
+  </div>
+  <button class="run-btn" id="refreshBtn" onclick="refresh()" style="align-self:flex-end;">Refresh</button>
+  <label style="display:flex;align-items:center;gap:6px;align-self:flex-end;padding-bottom:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+    <input type="checkbox" id="autoRefreshChk" onchange="toggleAutoRefresh(this)"> Auto-refresh (60s)
+  </label>
+  <div style="display:flex;align-items:center;gap:8px;align-self:flex-end;padding-bottom:6px;">
+    <span class="sdot" id="statusDot"></span>
+    <span id="statusMsg" class="run-lbl">Loading config…</span>
+  </div>
+</div>
+
+<!-- Instrument sizing note -->
+<div class="info-box warn" id="instrumentNote" style="display:none;"></div>
+
+<div id="mainSections" style="display:none;">
+
+<!-- Status strip -->
+<div class="card">
+  <div class="card-body status-strip">
+    <div class="status-item"><span class="lbl">As Of</span><span class="val" id="asOfDate">—</span></div>
+    <div class="status-item"><span class="lbl">Position</span><span class="val" id="positionStrip">—</span></div>
+    <div class="status-item"><span class="lbl">Equity (since run start)</span><span class="val" id="equityStrip">—</span></div>
+  </div>
+</div>
+
+<!-- Gate Cards -->
+<div class="gate-cards-grid">
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Gate 1 — Liquidity Engine <span style="font-weight:400;color:var(--text3)">macro liquidity backdrop, zero Nasdaq input</span></div>
+    <div class="card-body">
+      <div class="gate-card-meta">
+        <div><div class="m-lbl">State</div><div class="m-val" id="g1State">—</div></div>
+        <div><div class="m-lbl">Score</div><div class="m-val" id="g1Score">—</div></div>
+        <div><div class="m-lbl">Coverage</div><div class="m-val" id="g1Cov">—</div></div>
+      </div>
+      <div class="info-box warn" id="g1Marginal" style="display:none;">Score sits within the marginal band of the BULLISH/BEARISH threshold — borderline classification.</div>
+      <ul class="reasons-list" id="g1Reasons"></ul>
+      <div class="tbl-wrap scroll">
+        <table class="tbl"><thead><tr><th>Input</th><th class="num">Weight</th><th class="num">Raw</th><th class="num">Signed</th><th class="num">Contribution</th></tr></thead>
+        <tbody id="g1Tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Gate 2 — Risk / Volatility Engine <span style="font-weight:400;color:var(--text3)">QQQ/SPY price read for vol regime only, never direction</span></div>
+    <div class="card-body">
+      <div class="gate-card-meta">
+        <div><div class="m-lbl">State</div><div class="m-val" id="g2State">—</div></div>
+        <div><div class="m-lbl">Score</div><div class="m-val" id="g2Score">—</div></div>
+        <div><div class="m-lbl">Coverage</div><div class="m-val" id="g2Cov">—</div></div>
+      </div>
+      <div class="diag-lbl">Eligible Risk Tiers</div>
+      <div class="eligible-pills" id="g2Tiers"></div>
+      <div class="diag-lbl" style="margin-top:12px;">Stop-Model Distances (instrument price units)</div>
+      <div class="tbl-wrap" style="margin-top:4px;">
+        <table class="tbl"><thead><tr><th>Model</th><th class="num">Standard</th><th class="num">Conservative</th></tr></thead>
+        <tbody id="g2Stops"></tbody></table>
+      </div>
+      <div class="diag-lbl" style="margin-top:12px;">Component Breakdown</div>
+      <div class="tbl-wrap scroll" style="margin-top:4px;">
+        <table class="tbl"><thead><tr><th>Component</th><th class="num">Weight</th><th class="num">Raw</th><th class="num">Sub-score</th></tr></thead>
+        <tbody id="g2Tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Gate 3 — Direction Engine <span style="font-weight:400;color:var(--text3)">cross-asset macro confirmation, never NQ/QQQ</span></div>
+    <div class="card-body">
+      <div class="gate-card-meta">
+        <div><div class="m-lbl">State</div><div class="m-val" id="g3State">—</div></div>
+        <div><div class="m-lbl">Score</div><div class="m-val" id="g3Score">—</div></div>
+        <div><div class="m-lbl">Coverage</div><div class="m-val" id="g3Cov">—</div></div>
+      </div>
+      <ul class="reasons-list" id="g3Reasons"></ul>
+      <div class="tbl-wrap scroll">
+        <table class="tbl"><thead><tr><th>Input</th><th class="num">Weight</th><th class="num">Raw</th><th class="num">Signed</th><th class="num">Contribution</th></tr></thead>
+        <tbody id="g3Tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Gate 4 — Execution Engine <span style="font-weight:400;color:var(--text3)">only gate that reads NQ/QQQ price, decided off the latest bar</span></div>
+    <div class="card-body">
+      <div class="gate-card-meta">
+        <div><div class="m-lbl">Action (as of last close)</div><div class="m-val" id="g4Action">—</div></div>
+      </div>
+      <ul class="reasons-list" id="g4Reasons"></ul>
+      <div id="g4Plan"></div>
+    </div>
+  </div>
+
+</div><!-- /gate-cards-grid -->
+
+<!-- Trade Panel -->
+<div class="card">
+  <div class="card-hdr">Open Position</div>
+  <div class="card-body" id="tradePanelBody"></div>
+</div>
+
+<!-- Recent Trades + Event Timeline side by side -->
+<div class="gate-cards-grid">
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Recent Closed Trades</div>
+    <div class="card-body">
+      <div class="tbl-wrap scroll">
+        <table class="tbl"><thead><tr>
+          <th>Entry</th><th>Dir</th><th class="num">Entry Px</th><th>Exit</th><th class="num">Exit Px</th><th>Reason</th><th class="num">PnL (R)</th><th class="num">PnL ($)</th>
+        </tr></thead><tbody id="recentTbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Event Timeline <span style="font-weight:400;color:var(--text3)" id="timelineSubtitle"></span></div>
+    <div class="card-body">
+      <div class="timeline-list" id="timelineBody"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /mainSections -->
+
+</div><!-- /app -->
+
+<script type="module">
+let _config = null;
+let _data = null;
+let _autoTimer = null;
+
+const STATE_COLORS = {
+  BULLISH: '#10b981', LONG: '#10b981', VALID: '#10b981', HOLD: '#10b981',
+  BEARISH: '#ef4444', SHORT: '#ef4444', INVALID: '#ef4444', CLOSE: '#ef4444',
+  NEUTRAL: '#64748b', NO_TRADE: '#64748b',
+  INVALID_DATA: '#f59e0b', REDUCE: '#f59e0b',
+};
+function statePill(label) {
+  const c = STATE_COLORS[label] || '#64748b';
+  return `<span class="gate-pill" style="background:${c}22;color:${c};">${label}</span>`;
+}
+function num(v, d = 2) { return (v == null || !isFinite(v)) ? '—' : v.toFixed(d); }
+function pct(v, d = 1) { return (v == null || !isFinite(v)) ? '—' : fmtPct(v * 100, d); }
+function colorFor(v) { return (v == null || !isFinite(v)) ? 'var(--text)' : (v >= 0 ? '#10b981' : '#ef4444'); }
+
+async function loadConfig() {
+  setStatus('spin', 'Loading config…');
+  const r = await fetch('/api/cog-threshold/config');
+  const d = await r.json();
+  if (!d.ok) { setStatus('err', 'Failed to load config'); return; }
+  _config = d;
+
+  const instSel = document.getElementById('cfg_instrument');
+  instSel.innerHTML = Object.entries(d.execution.instruments).map(([key, inst]) =>
+    `<option value="${key}" ${key === 'primary' ? 'selected' : ''}>${inst.label} (${inst.ticker})</option>`).join('');
+
+  const stopSel = document.getElementById('cfg_stopmodel');
+  stopSel.innerHTML = Object.entries(d.stopModels).map(([key, m]) =>
+    `<option value="${key}" ${key === d.execution.defaultStopModel ? 'selected' : ''}>${m.label}</option>`).join('');
+
+  const tierSel = document.getElementById('cfg_tier');
+  tierSel.innerHTML = Object.entries(d.riskTiers).map(([key, t]) =>
+    `<option value="${key}" ${key === d.execution.defaultTier ? 'selected' : ''}>${key[0].toUpperCase() + key.slice(1)} (${t.riskPct}% risk)</option>`).join('');
+
+  instSel.addEventListener('change', updateInstrumentNote);
+  updateInstrumentNote();
+
+  await refresh();
+}
+
+function updateInstrumentNote() {
+  const key = document.getElementById('cfg_instrument').value;
+  const note = document.getElementById('instrumentNote');
+  if (key === 'primary') {
+    note.style.display = '';
+    note.innerHTML = '<strong>⚠ Sizing note:</strong> NQ Futures (pointValue $20/pt) combined with the 1% base-risk-of-equity setting floors position size to 0 contracts for most stop-model × tier combinations at typical account sizes, and the model\'s ATR-based stop distance has grown with NQ\'s price level over time — by recent history even Model A (ATR fraction) + Aggressive tier can floor to 0. This is a position-sizing economics reality, not an engine bug. Switch to QQQ (pointValue $1) to see trades fire reliably, or raise Account Equity.';
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+async function refresh() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  setStatus('spin', 'Generating synthetic dataset through today + running 4-gate scan…');
+  const params = new URLSearchParams({
+    seed: document.getElementById('cfg_seed').value || 42,
+    accountEquity: document.getElementById('cfg_equity').value || 100000,
+    instrumentKey: document.getElementById('cfg_instrument').value,
+    stopModelId: document.getElementById('cfg_stopmodel').value,
+    requestedTier: document.getElementById('cfg_tier').value,
+    lookbackBars: document.getElementById('cfg_lookback').value || 90,
+  });
+  try {
+    const r = await fetch('/api/cog-threshold/live?' + params.toString());
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed to load live snapshot');
+    _data = d.data;
+    renderAll();
+    setStatus('ok', `As of ${_data.asOf} — synthetic Phase 1 dataset, refreshed ${new Date().toLocaleTimeString()}`);
+  } catch (err) {
+    setStatus('err', 'Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+window.refresh = refresh;
+
+function toggleAutoRefresh(checkbox) {
+  if (checkbox.checked) {
+    _autoTimer = setInterval(refresh, 60000);
+  } else if (_autoTimer) {
+    clearInterval(_autoTimer);
+    _autoTimer = null;
+  }
+}
+window.toggleAutoRefresh = toggleAutoRefresh;
+
+function renderAll() {
+  renderStatusStrip();
+  renderGate1();
+  renderGate2();
+  renderGate3();
+  renderGate4();
+  renderTradePanel();
+  renderRecentTrades();
+  renderTimeline();
+  document.getElementById('mainSections').style.display = '';
+}
+
+function renderStatusStrip() {
+  const x = _data;
+  document.getElementById('asOfDate').textContent = x.asOf;
+  document.getElementById('equityStrip').textContent = `${x.equity.multiple.toFixed(4)}x · $${Math.round(x.equity.dollars).toLocaleString()}`;
+  const posEl = document.getElementById('positionStrip');
+  posEl.innerHTML = x.openTrade
+    ? statePill(x.openTrade.direction) + ` IN TRADE since ${x.openTrade.entryDate}`
+    : statePill('NEUTRAL') + ' FLAT';
+}
+
+function contributionRows(contributions) {
+  const sorted = contributions.slice().sort((a, b) => Math.abs(b.contribution ?? 0) - Math.abs(a.contribution ?? 0));
+  return sorted.map(c => `
+    <tr>
+      <td>${c.label}</td>
+      <td class="num">${num(c.weight, 2)}</td>
+      <td class="num">${c.rawValue == null ? '—' : num(c.rawValue, 3)}</td>
+      <td class="num">${c.signedValue == null ? '—' : num(c.signedValue, 2)}</td>
+      <td class="num ${c.contribution > 0 ? 'win' : c.contribution < 0 ? 'loss' : ''}">${c.contribution == null ? '—' : (c.contribution >= 0 ? '+' : '') + num(c.contribution, 2)}</td>
+    </tr>`).join('');
+}
+
+function renderGate1() {
+  const g = _data.gates.gate1;
+  document.getElementById('g1State').innerHTML = statePill(g.dataValid ? g.state : 'INVALID');
+  document.getElementById('g1Score').textContent = `${num(g.score, 2)} / ±5  (bull > 2, bear < -2)`;
+  document.getElementById('g1Cov').textContent = pct(g.coverage, 0);
+  document.getElementById('g1Marginal').style.display = g.marginal ? '' : 'none';
+  document.getElementById('g1Reasons').innerHTML = g.reasons.length ? g.reasons.map(r => `<li>${r}</li>`).join('') : '<li style="color:var(--text3)">No reasons — insufficient data coverage</li>';
+  document.getElementById('g1Tbody').innerHTML = contributionRows(g.contributions);
+}
+
+function renderGate3() {
+  const g = _data.gates.gate3;
+  document.getElementById('g3State').innerHTML = statePill(g.dataValid ? g.state : 'INVALID');
+  document.getElementById('g3Score').textContent = `${num(g.score, 1)} / 100  (long > 60, short < 40)`;
+  document.getElementById('g3Cov').textContent = pct(g.coverage, 0);
+  document.getElementById('g3Reasons').innerHTML = g.reasons.length ? g.reasons.map(r => `<li>${r}</li>`).join('') : '<li style="color:var(--text3)">No reasons — insufficient data coverage</li>';
+  document.getElementById('g3Tbody').innerHTML = contributionRows(g.contributions);
+}
+
+function renderGate2() {
+  const g = _data.gates.gate2;
+  document.getElementById('g2State').innerHTML = statePill(g.dataValid ? (g.valid ? 'VALID' : 'INVALID') : 'INVALID_DATA');
+  document.getElementById('g2Score').textContent = `${num(g.score, 1)} / 100  (valid > 35)`;
+  document.getElementById('g2Cov').textContent = pct(g.coverage, 0);
+  document.getElementById('g2Tiers').innerHTML = g.eligibleTiers.length
+    ? g.eligibleTiers.map(t => statePill(t.toUpperCase())).join('')
+    : '<span style="color:var(--text3);font-size:11px;">none eligible</span>';
+  document.getElementById('g2Stops').innerHTML = Object.entries(g.stopModels).map(([key, m]) => `
+    <tr><td>${_config.stopModels[key]?.label || key}</td><td class="num">${num(m.standard, 2)}</td><td class="num">${num(m.conservative, 2)}</td></tr>
+  `).join('') || '<tr><td colspan="3" style="color:var(--text3)">unavailable</td></tr>';
+  document.getElementById('g2Tbody').innerHTML = g.breakdown.slice().sort((a, b) => (a.subScore ?? 101) - (b.subScore ?? 101)).map(c => `
+    <tr><td>${c.label}</td><td class="num">${num(c.weight, 2)}</td><td class="num">${c.rawValue == null ? '—' : num(c.rawValue, 3)}</td><td class="num">${c.subScore == null ? '—' : num(c.subScore, 1)}</td></tr>
+  `).join('');
+}
+
+function renderGate4() {
+  const g = _data.gates.gate4;
+  document.getElementById('g4Action').innerHTML = statePill(g.action);
+  document.getElementById('g4Reasons').innerHTML = g.reasons.map(r => `<li>${r}</li>`).join('');
+  const planEl = document.getElementById('g4Plan');
+  if (g.entryPlan) {
+    const p = g.entryPlan;
+    planEl.innerHTML = `
+      <div class="diag-grid">
+        <div class="diag-card"><div class="diag-lbl">Entry Price</div><div class="diag-val">${num(p.entryPrice, 2)}</div><div class="diag-sub">${p.tier} / ${p.stopModelId}</div></div>
+        <div class="diag-card"><div class="diag-lbl">Stop (standard)</div><div class="diag-val">${num(p.stopStandard.price, 2)}</div><div class="diag-sub">dist ${num(p.stopStandard.distance, 2)}</div></div>
+        <div class="diag-card"><div class="diag-lbl">Position Size</div><div class="diag-val">${p.positionSize}</div></div>
+        <div class="diag-card"><div class="diag-lbl">Risk Amount</div><div class="diag-val">$${num(p.riskAmount, 0)}</div></div>
+      </div>`;
+  } else if (g.action !== 'NO_TRADE') {
+    planEl.innerHTML = `<div class="info-box warn">Gates aligned for ${g.action}, but the next session's open price isn't available yet — the engine never looks ahead, so the entry plan computes once that bar prints.</div>`;
+  } else {
+    planEl.innerHTML = '';
+  }
+}
+
+function renderTradePanel() {
+  const wrap = document.getElementById('tradePanelBody');
+  const t = _data.openTrade;
+  if (!t) {
+    wrap.innerHTML = '<div style="color:var(--text3);font-size:12px;">No open position — see the Gate 4 card above for the current signal.</div>';
+    return;
+  }
+  const ex = t.liveExit;
+  wrap.innerHTML = `
+    <div class="diag-grid">
+      <div class="diag-card"><div class="diag-lbl">Direction</div><div class="diag-val">${statePill(t.direction)}</div><div class="diag-sub">since ${t.entryDate}</div></div>
+      <div class="diag-card"><div class="diag-lbl">Entry Price</div><div class="diag-val">${num(t.entryPrice, 2)}</div></div>
+      <div class="diag-card"><div class="diag-lbl">Stop (standard)</div><div class="diag-val">${num(t.stopStandardPrice, 2)}</div></div>
+      <div class="diag-card"><div class="diag-lbl">Position Size</div><div class="diag-val">${t.positionSize}</div><div class="diag-sub">${t.tier} / ${t.stopModelId}</div></div>
+      <div class="diag-card"><div class="diag-lbl">Risk</div><div class="diag-val">$${num(t.riskAmount, 0)}</div><div class="diag-sub">${num(t.riskPct, 2)}% of equity</div></div>
+      <div class="diag-card"><div class="diag-lbl">Unrealized PnL (mark-to-last-close)</div><div class="diag-val" style="color:${colorFor(t.pnlR)}">${num(t.pnlR, 2)}R · $${num(t.pnlDollars, 0)}</div></div>
+    </div>
+    <div class="diag-lbl" style="margin-top:14px;">Live Exit Engine — ${statePill(ex.action)} score ${num(ex.score, 1)}/100 (stay-in > 70, close < 40), coverage ${pct(ex.coverage, 0)}</div>
+    <ul class="reasons-list">${ex.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+    <div class="tbl-wrap scroll" style="margin-top:6px;">
+      <table class="tbl"><thead><tr><th>Exit Component</th><th class="num">Weight</th><th class="num">Raw</th><th class="num">Sub-score</th></tr></thead>
+      <tbody>${ex.breakdown.slice().sort((a, b) => (a.subScore ?? 101) - (b.subScore ?? 101)).map(c => `
+        <tr><td>${c.label}</td><td class="num">${num(c.weight, 2)}</td><td class="num">${c.rawValue == null ? '—' : num(c.rawValue, 3)}</td><td class="num">${c.subScore == null ? '—' : num(c.subScore, 1)}</td></tr>`).join('')}</tbody></table>
+    </div>
+    ${t.sizeReducedAt && t.sizeReducedAt.length ? `<div class="info-box warn" style="margin-top:10px;">Already reduced to 50% size at: ${t.sizeReducedAt.map(e => e.date).join(', ')}</div>` : ''}
+  `;
+}
+
+function renderRecentTrades() {
+  const tbody = document.getElementById('recentTbody');
+  const trades = _data.recentTrades;
+  tbody.innerHTML = trades.length ? trades.map(t => `
+    <tr>
+      <td>${t.entryDate}</td>
+      <td>${statePill(t.direction)}</td>
+      <td class="num">${num(t.entryPrice)}</td>
+      <td>${t.exitDate ?? '—'}</td>
+      <td class="num">${num(t.exitPrice)}</td>
+      <td>${t.reason ?? '—'}</td>
+      <td class="num ${t.pnlR > 0 ? 'win' : 'loss'}">${num(t.pnlR)}</td>
+      <td class="num ${t.pnlDollars > 0 ? 'win' : 'loss'}">$${num(t.pnlDollars, 0)}</td>
+    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text3)">No closed trades in this window</td></tr>';
+}
+
+const EVENT_ICONS = { GATE1_STATE: '💧', GATE2_STATE: '⚡', GATE3_STATE: '🧭', TRADE_OPEN: '🟢', TRADE_CLOSE: '🔴' };
+function renderTimeline() {
+  document.getElementById('timelineSubtitle').textContent = `· last ${document.getElementById('cfg_lookback').value} bars`;
+  const wrap = document.getElementById('timelineBody');
+  const events = _data.events.slice().reverse();
+  wrap.innerHTML = events.length ? events.map(e => `
+    <div class="timeline-item">
+      <span class="timeline-icon">${EVENT_ICONS[e.type] || '•'}</span>
+      <span class="timeline-date">${e.date}</span>
+      <span class="timeline-detail">${e.detail}</span>
+    </div>`).join('') : '<div style="color:var(--text3);font-size:12px;">No events in this window</div>';
+}
+
+loadConfig();
+</script>
+</body>
+</html>
