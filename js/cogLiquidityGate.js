@@ -1,11 +1,14 @@
-// js/cogLiquidityGate.js — Gate 1: Liquidity Engine
+// js/cogLiquidityGate.js — Gate 1A: Slow Macro Regime
 //
-// Never touches Nasdaq price (see cogConfig.js header). Reads Fed/ECB/BOJ/
-// PBOC balance sheets, RRP, TGA, NFCI, credit spreads, the US curve and DXY
-// — pure macro/cross-asset liquidity backdrop — and reduces them to a single
-// LiquidityScore in [-5, +5] plus a VALID/INVALID classification.
+// Never touches Nasdaq price (see cogConfig.js header). Reads Fed/ECB/BOJ
+// balance sheets, RRP, TGA and HY credit spreads — pure slow-moving macro
+// liquidity backdrop, updates at most daily — and reduces them to a single
+// RegimeScore in [-5, +5] plus a BULLISH/BEARISH/NEUTRAL/INVALID
+// classification. This is Gate1A only; Gate1B (fast intraday flow
+// threshold) is a separate, not-yet-implemented sublayer — see cogConfig.js
+// — and the hard veto in cogExecutionEngine.js applies to both combined.
 //
-// "No black boxes": computeLiquidityGate returns, for every bar, the raw
+// "No black boxes": computeLiquidityGate1A returns, for every bar, the raw
 // value, the normalized [-1,1] sub-signal and the final weighted
 // contribution of every input — never just the composite number.
 //
@@ -16,7 +19,7 @@
 // scaled onto [-1,+1], then average the two before applying `sign`/`weight`.
 
 import { roc, rollingZScore, rollingPercentile, clip } from './nasdaqTransforms.js';
-import { COG_LIQUIDITY_INPUTS, COG_LIQUIDITY_SCORE } from './cogConfig.js';
+import { COG_LIQUIDITY_1A_INPUTS, COG_LIQUIDITY_1A_SCORE } from './cogConfig.js';
 
 const TRADING_DAYS_PER_CALENDAR_DAY = 5 / 7; // weekday-only series approximation
 
@@ -24,7 +27,7 @@ function tradingDayHorizon(calendarDays) {
   return Math.max(1, Math.round(calendarDays * TRADING_DAYS_PER_CALENDAR_DAY));
 }
 
-// Human-readable phrasing for Gate 1's reasons text, keyed by input id:
+// Human-readable phrasing for Gate1A's reasons text, keyed by input id:
 // [supportivePhrase, opposingPhrase]. Read when the input's *signed*
 // normalized value (after `sign` is applied) is positive vs. negative —
 // i.e. always phrased in terms of "good for risk assets" vs. "bad for risk
@@ -35,15 +38,7 @@ const PHRASES = {
   tga:    ['TGA drawing down (liquidity injected)', 'TGA rebuilding (liquidity drained)'],
   ecb:    ['ECB balance sheet expanding', 'ECB balance sheet contracting'],
   boj:    ['BOJ balance sheet expanding', 'BOJ balance sheet contracting'],
-  pboc:   ['China FX reserves rising', 'China FX reserves falling'],
-  curve:  ['Yield curve steepening', 'Yield curve flattening/inverting'],
-  dxy:    ['DXY weakening', 'DXY strengthening'],
   credit: ['HY credit spreads tightening', 'HY credit spreads widening'],
-  nfci:   ['Financial conditions loosening', 'Financial conditions tightening'],
-  hygLqd: ['HYG/LQD ratio rising (risk appetite up)', 'HYG/LQD ratio falling (risk appetite down)'],
-  vix:    ['VIX falling', 'VIX rising'],
-  vix3m:  ['VIX3M falling', 'VIX3M rising'],
-  vvix:   ['VVIX falling', 'VVIX rising'],
 };
 function phraseFor(id, signedValue) {
   const pair = PHRASES[id] || [`${id} supportive`, `${id} unsupportive`];
@@ -55,7 +50,7 @@ function phraseFor(id, signedValue) {
 // O(n*period) over the WHOLE series) — never recomputed per-bar, since doing
 // that inside the bar loop would make the gate O(n^2).
 function precomputeInputSignal(seriesAligned) {
-  const { rocHorizonsDays, zWindowDays, percentileWindowDays, zClip } = COG_LIQUIDITY_SCORE;
+  const { rocHorizonsDays, zWindowDays, percentileWindowDays, zClip } = COG_LIQUIDITY_1A_SCORE;
   const n = seriesAligned.length;
 
   const rocZArrays = rocHorizonsDays.map(calDays => {
@@ -89,19 +84,19 @@ function buildContribution(input, rawValue, normalized) {
   return { id: input.id, label: input.label, weight: input.weight, rawValue, normalized, signedValue, contribution };
 }
 
-// Computes the full Gate 1 time series from a map of input id -> aligned raw
+// Computes the full Gate1A time series from a map of input id -> aligned raw
 // value array (already publication-lag-shifted + forward-filled by the
 // caller onto the dataset's common `dates` axis — see cogBacktestEngine.js).
 // Returns one entry per bar: { dataValid, state, score, coverage, marginal,
 // contributions[], reasons[] }.
-export function computeLiquidityGate(seriesById, n) {
-  const { range, bullishThreshold, bearishThreshold, minCoverage, marginalMargin } = COG_LIQUIDITY_SCORE;
-  const totalWeight = COG_LIQUIDITY_INPUTS.reduce((a, inp) => a + inp.weight, 0);
+export function computeLiquidityGate1A(seriesById, n) {
+  const { range, bullishThreshold, bearishThreshold, minCoverage, marginalMargin } = COG_LIQUIDITY_1A_SCORE;
+  const totalWeight = COG_LIQUIDITY_1A_INPUTS.reduce((a, inp) => a + inp.weight, 0);
   const out = new Array(n);
 
   // One pass per input (not per bar) to build its normalized-signal array.
   const normalizedByInput = {};
-  for (const input of COG_LIQUIDITY_INPUTS) {
+  for (const input of COG_LIQUIDITY_1A_INPUTS) {
     const series = seriesById[input.id];
     normalizedByInput[input.id] = series ? precomputeInputSignal(series) : null;
   }
@@ -109,7 +104,7 @@ export function computeLiquidityGate(seriesById, n) {
   for (let i = 0; i < n; i++) {
     const contributions = [];
     let weightedSum = 0, weightPresent = 0;
-    for (const input of COG_LIQUIDITY_INPUTS) {
+    for (const input of COG_LIQUIDITY_1A_INPUTS) {
       const series = seriesById[input.id];
       const normArr = normalizedByInput[input.id];
       const c = series ? buildContribution(input, series[i], normArr[i]) : { id: input.id, label: input.label, weight: input.weight, rawValue: null, normalized: null, signedValue: null, contribution: null };
@@ -119,7 +114,7 @@ export function computeLiquidityGate(seriesById, n) {
     const coverage = totalWeight > 0 ? weightPresent / totalWeight : 0;
     const dataValid = coverage >= minCoverage;
     // Weight-present average vote in [-1,1], rescaled onto the configured
-    // [-5,+5] LiquidityScore range.
+    // [-5,+5] RegimeScore range.
     const avgVote = weightPresent > 0 ? weightedSum / weightPresent : null;
     const score = dataValid && avgVote != null ? clip(avgVote * range[1], range[0], range[1]) : null;
 
