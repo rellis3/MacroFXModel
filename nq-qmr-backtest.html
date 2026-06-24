@@ -792,11 +792,13 @@ function renderSystem2Card() {
   const f2   = v => v.toFixed(2);
   const n    = (v, unit = '') => v.toFixed(0) + unit;
 
+  const s3Active = _trades3.length > 0;
   body.innerHTML = `
     <p style="font-size:11px;color:var(--text3);margin:0 0 10px">
       System 1: G1 pass + G2 confirmed → trade Gate1 direction &nbsp;|&nbsp;
       System 2: G1 pass + G2 rejected (London fades overnight bias) → trade London direction<br>
-      Combined: both systems, equal sizing per trade. Green = best value.
+      Combined: ${s3Active ? 'System 1 + System 2 + System 3 (Extension Fade is also enabled — see its card below for that breakdown)' : 'both systems'}, equal sizing per trade. Green = best value.
+      ${s3Active ? '<br><strong style="color:#a855f7">Note:</strong> the Combined column here includes System 3\'s trades even though they aren\'t shown in this table.' : ''}
     </p>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr>
@@ -902,7 +904,8 @@ function renderSystem3Card() {
     <p style="font-size:11px;color:var(--text3);margin:0 0 10px">
       System 1 (same days): of S1's days, the ${extTrades.length} where the move into entry was already ≥${document.getElementById('cfg_ext_pct').value}th percentile of the trailing 20-day ADR — shown as continuation, for a fair comparison &nbsp;|&nbsp;
       System 3: those same days, faded (opposite direction) instead<br>
-      Combined: full System 1 minus those days, plus System 3's fade on them (and System 2 if also enabled). Green = best value.
+      Combined: ${_trades2.length > 0 ? 'System 1 + System 2 + System 3 (Rejection Fade is also enabled — see its card above for that breakdown)' : 'full System 1 minus those days, plus System 3\'s fade on them'}, equal sizing per trade. Green = best value.
+      ${_trades2.length > 0 ? '<br><strong style="color:#3b82f6">Note:</strong> the Combined column here includes System 2\'s trades even though they aren\'t shown in this table.' : ''}
     </p>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr>
