@@ -1,0 +1,377 @@
+//@version=6
+indicator("Yield Lag Forecast [MacroFX]", shorttitle="YieldLag", overlay=true, max_lines_count=50, max_labels_count=50)
+
+// =====================================================
+// WHAT THIS IS
+// =====================================================
+// Mirrors the MacroFXModel dashboard's "compass divergence" concept on real
+// intraday price: build a blended 2Y+10Y composite yield-spread z-score from
+// daily-resolution government bond data, track its rate-of-change, flag when
+// that RoC is statistically abnormal, and project a forward price target from
+// a beta fit between the lagged spread signal and subsequent price moves.
+//
+// Government yield series only print once per day, even when this chart is
+// on an intraday timeframe — so the lag horizon is expressed in TRADING DAYS
+// (1 day ≈ the next session's worth of move), not chart bars. The script
+// converts that into chart bars internally so the forecast line lands in the
+// right place regardless of which intraday resolution you're viewing.
+//
+// Caveat: TVC: bond tickers for some 2Y tenors (esp. AU/CA/CH) may not exist
+// on every TradingView plan/feed. If a leg is unavailable the script falls
+// back to 10Y-only weighting automatically — check the stats table for "—"
+// values on first load to confirm your feed has both legs.
+
+// =====================================================
+// INPUTS
+// =====================================================
+gp_pair = "Pair"
+pairSel = input.string("EUR/USD", "FX Pair (must match the chart you're viewing)",
+     options=["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF",
+              "EUR/GBP", "EUR/JPY", "EUR/CHF", "GBP/CHF", "GBP/JPY", "AUD/JPY", "CAD/JPY"],
+     group=gp_pair,
+     tooltip="Yield legs are pulled from TVC: government bond tickers, independent of the chart's own symbol formatting — pick the pair that matches what you're actually charting.")
+
+gp_spread = "Composite Spread"
+w2y  = input.float(0.6, "2Y weight (10Y weight = 1 - this)", minval=0.0, maxval=1.0, step=0.05, group=gp_spread)
+zLen = input.int(90, "Z-score lookback (trading days)", minval=20, maxval=250, group=gp_spread)
+
+gp_roc = "Rate-of-Change & Abnormality"
+lagDays      = input.int(1, "Lead-lag horizon (trading days, 1 ≈ next 24h)", minval=1, maxval=5, group=gp_roc)
+rocSmoothLen = input.int(3, "RoC smoothing window (trading days)", minval=1, maxval=20, group=gp_roc)
+absThresh    = input.float(1.5, "Abnormal |RoC z| threshold", minval=0.5, maxval=4.0, step=0.1, group=gp_roc)
+
+gp_fc = "Lead-Lag Forecast"
+betaLen    = input.int(60, "Beta/correlation fit window (trading days)", minval=20, maxval=250, group=gp_fc)
+minSamples = input.int(15, "Min valid samples before trusting beta", minval=5, maxval=100, group=gp_fc)
+
+gp_vis = "Visuals"
+showForecastLine = input.bool(true, "Show forward forecast line", group=gp_vis)
+showTable        = input.bool(true, "Show stats table", group=gp_vis)
+tintBg           = input.bool(true, "Tint background on abnormal divergence", group=gp_vis)
+upCol            = input.color(color.new(color.teal, 0), "Forecast up color", group=gp_vis)
+dnCol            = input.color(color.new(color.red, 0),  "Forecast down color", group=gp_vis)
+
+// =====================================================
+// PER-PAIR TICKER / SIGN CONFIG
+// =====================================================
+// rawDir replicates the dashboard's exact raw spread-differential sign
+// (js/compass.js compassCompute): EUR/USD is the one pair computed as
+// base-minus-foreign before fxSign is applied; every other pair (including
+// EUR crosses) is foreign-minus-base. fxSign is applied AFTER z-scoring to
+// match dashboard output exactly — z-scoring isn't sign-equivariant, so the
+// raw-value sign has to be right before that step, not just the final output.
+getPairConfig(p) =>
+    string _fgnL  = na
+    string _fgnS  = na
+    string _baseL = na
+    string _baseS = na
+    float _fxSign = 1.0
+    float _rawDir = 1.0
+    if p == "EUR/USD"
+        _fgnL := "TVC:DE10Y",  _fgnS := "TVC:DE02Y"
+        _baseL := "TVC:US10Y", _baseS := "TVC:US02Y"
+        _fxSign := -1.0, _rawDir := -1.0
+    else if p == "GBP/USD"
+        _fgnL := "TVC:GB10Y",  _fgnS := "TVC:GB02Y"
+        _baseL := "TVC:US10Y", _baseS := "TVC:US02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "USD/JPY"
+        _fgnL := "TVC:JP10Y",  _fgnS := "TVC:JP02Y"
+        _baseL := "TVC:US10Y", _baseS := "TVC:US02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "AUD/USD"
+        _fgnL := "TVC:AU10Y",  _fgnS := "TVC:AU02Y"
+        _baseL := "TVC:US10Y", _baseS := "TVC:US02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "USD/CAD"
+        _fgnL := "TVC:CA10Y",  _fgnS := "TVC:CA02Y"
+        _baseL := "TVC:US10Y", _baseS := "TVC:US02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "USD/CHF"
+        _fgnL := "TVC:CH10Y",  _fgnS := "TVC:CH02Y"
+        _baseL := "TVC:US10Y", _baseS := "TVC:US02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "EUR/GBP"
+        _fgnL := "TVC:GB10Y",  _fgnS := "TVC:GB02Y"
+        _baseL := "TVC:DE10Y", _baseS := "TVC:DE02Y"
+        _fxSign := -1.0, _rawDir := 1.0
+    else if p == "EUR/JPY"
+        _fgnL := "TVC:DE10Y",  _fgnS := "TVC:DE02Y"
+        _baseL := "TVC:JP10Y", _baseS := "TVC:JP02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "EUR/CHF"
+        _fgnL := "TVC:DE10Y",  _fgnS := "TVC:DE02Y"
+        _baseL := "TVC:CH10Y", _baseS := "TVC:CH02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "GBP/CHF"
+        _fgnL := "TVC:GB10Y",  _fgnS := "TVC:GB02Y"
+        _baseL := "TVC:CH10Y", _baseS := "TVC:CH02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "GBP/JPY"
+        _fgnL := "TVC:GB10Y",  _fgnS := "TVC:GB02Y"
+        _baseL := "TVC:JP10Y", _baseS := "TVC:JP02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "AUD/JPY"
+        _fgnL := "TVC:AU10Y",  _fgnS := "TVC:AU02Y"
+        _baseL := "TVC:JP10Y", _baseS := "TVC:JP02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    else if p == "CAD/JPY"
+        _fgnL := "TVC:CA10Y",  _fgnS := "TVC:CA02Y"
+        _baseL := "TVC:JP10Y", _baseS := "TVC:JP02Y"
+        _fxSign := 1.0, _rawDir := 1.0
+    [_fgnL, _fgnS, _baseL, _baseS, _fxSign, _rawDir]
+
+[fgnLTk, fgnSTk, baseLTk, baseSTk, fxSign, rawDir] = getPairConfig(pairSel)
+
+// =====================================================
+// DAILY-PINNED DATA (step function on intraday charts — updates once/session)
+// =====================================================
+fgnL_d       = request.security(fgnLTk,  "1D", close, ignore_invalid_symbol=true)
+fgnS_d       = request.security(fgnSTk,  "1D", close, ignore_invalid_symbol=true)
+baseL_d      = request.security(baseLTk, "1D", close, ignore_invalid_symbol=true)
+baseS_d      = request.security(baseSTk, "1D", close, ignore_invalid_symbol=true)
+chartClose_d = request.security(syminfo.tickerid, "1D", close)
+
+// Fires once per session regardless of chart timeframe — drives the rolling
+// daily buffers below so z-scores/RoC are computed over real trading days,
+// not intraday bars.
+newDailyBar = nz(ta.change(fgnL_d)) != 0 or nz(ta.change(baseL_d)) != 0 or nz(ta.change(chartClose_d)) != 0
+
+// =====================================================
+// ROLLING DAILY BUFFERS (manual — request.security can't combine 4 symbols
+// into one higher-timeframe context, so the rolling stats are built by hand)
+// =====================================================
+var float[] sp10Buf   = array.new_float(0)
+var float[] sp2Buf    = array.new_float(0)
+var float[] compZBuf  = array.new_float(0)
+var float[] rocBuf    = array.new_float(0)
+var float[] smoothBuf = array.new_float(0)
+var float[] priceBuf  = array.new_float(0)
+
+BUF_CAP = 400
+
+trimBuf(arr) =>
+    while array.size(arr) > BUF_CAP
+        array.shift(arr)
+
+tailMean(arr, win) =>
+    sz = array.size(arr)
+    cnt = math.min(win, sz)
+    float s = 0.0
+    int valid = 0
+    if cnt > 0
+        for i = sz - cnt to sz - 1
+            v = array.get(arr, i)
+            if not na(v)
+                s += v
+                valid += 1
+    valid > 0 ? s / valid : float(na)
+
+tailStdev(arr, win) =>
+    sz = array.size(arr)
+    cnt = math.min(win, sz)
+    float result = na
+    if cnt > 1
+        m = tailMean(arr, win)
+        if not na(m)
+            float ss = 0.0
+            int valid = 0
+            for i = sz - cnt to sz - 1
+                v = array.get(arr, i)
+                if not na(v)
+                    d = v - m
+                    ss += d * d
+                    valid += 1
+            if valid > 1
+                result := math.sqrt(ss / (valid - 1))
+    result
+
+// OLS slope (beta) + correlation of laggedPredictor -> subsequent price move,
+// built from the manual daily buffers (ta.correlation only walks live bars,
+// it can't be pointed at an arbitrary array, hence the hand-rolled sums).
+fitBeta(predBuf, pxBuf, lagN, win) =>
+    n = math.min(array.size(predBuf), array.size(pxBuf))
+    int wantStart = math.max(0, n - win)
+    float sumX = 0.0
+    float sumY = 0.0
+    int validCnt = 0
+    if n > 0
+        for idx = wantStart to n - 1
+            if idx - lagN >= 0
+                x  = array.get(predBuf, idx - lagN)
+                y0 = array.get(pxBuf, idx)
+                y1 = array.get(pxBuf, idx - lagN)
+                if not na(x) and not na(y0) and not na(y1)
+                    sumX += x
+                    sumY += (y0 - y1)
+                    validCnt += 1
+    float beta = na
+    float corr = na
+    if validCnt > 5
+        mx = sumX / validCnt
+        my = sumY / validCnt
+        float sxx = 0.0
+        float syy = 0.0
+        float sxy = 0.0
+        for idx = wantStart to n - 1
+            if idx - lagN >= 0
+                x  = array.get(predBuf, idx - lagN)
+                y0 = array.get(pxBuf, idx)
+                y1 = array.get(pxBuf, idx - lagN)
+                if not na(x) and not na(y0) and not na(y1)
+                    dx = x - mx
+                    dy = (y0 - y1) - my
+                    sxx += dx * dx
+                    syy += dy * dy
+                    sxy += dx * dy
+        if sxx > 0
+            beta := sxy / sxx
+        if sxx > 0 and syy > 0
+            corr := sxy / math.sqrt(sxx * syy)
+    [beta, corr, validCnt]
+
+// =====================================================
+// PERSISTED "AS OF TODAY" SIGNAL STATE
+// =====================================================
+var float  v_compZ            = na
+var float  v_zRoc             = na
+var bool   v_abnormal          = false
+var float  v_beta              = na
+var float  v_corr              = na
+var int    v_validCnt          = 0
+var float  v_smoothedRoc       = na
+var string v_followStatus     = "WARMING UP"
+
+if newDailyBar
+    sp10_today = rawDir * (fgnL_d - baseL_d)
+    have2y     = not na(fgnS_d) and not na(baseS_d)
+    sp2_today  = have2y ? rawDir * (fgnS_d - baseS_d) : float(na)
+
+    array.push(sp10Buf, sp10_today)
+    array.push(sp2Buf, sp2_today)
+    array.push(priceBuf, chartClose_d)
+    trimBuf(sp10Buf)
+    trimBuf(sp2Buf)
+    trimBuf(priceBuf)
+
+    sd10 = tailStdev(sp10Buf, zLen)
+    m10  = tailMean(sp10Buf, zLen)
+    z10  = (not na(sd10) and sd10 > 0) ? (sp10_today - m10) / sd10 : float(na)
+
+    sd2 = tailStdev(sp2Buf, zLen)
+    m2  = tailMean(sp2Buf, zLen)
+    z2  = (have2y and not na(sd2) and sd2 > 0) ? (sp2_today - m2) / sd2 : float(na)
+
+    // Falls back to 10Y-only weighting if the 2Y leg is unavailable on this feed.
+    compZ_today = (have2y and not na(z2)) ? (w2y * z2 + (1.0 - w2y) * z10) * fxSign
+         : (not na(z10) ? z10 * fxSign : float(na))
+
+    array.push(compZBuf, compZ_today)
+    trimBuf(compZBuf)
+    v_compZ := compZ_today
+
+    szC = array.size(compZBuf)
+    roc_today = (szC > lagDays) ? compZ_today - array.get(compZBuf, szC - 1 - lagDays) : float(na)
+    array.push(rocBuf, roc_today)
+    trimBuf(rocBuf)
+
+    smoothedRoc_today = tailMean(rocBuf, rocSmoothLen)
+    array.push(smoothBuf, smoothedRoc_today)
+    trimBuf(smoothBuf)
+    v_smoothedRoc := smoothedRoc_today
+
+    sdRoc = tailStdev(smoothBuf, zLen)
+    mRoc  = tailMean(smoothBuf, zLen)
+    zRoc_today = (not na(sdRoc) and sdRoc > 0 and not na(smoothedRoc_today)) ? (smoothedRoc_today - mRoc) / sdRoc : float(na)
+    v_zRoc     := zRoc_today
+    v_abnormal := not na(zRoc_today) and math.abs(zRoc_today) > absThresh
+
+    [bt, ct, vc] = fitBeta(smoothBuf, priceBuf, lagDays, betaLen)
+    v_beta     := bt
+    v_corr     := ct
+    v_validCnt := vc
+
+    // "Did price follow the forecast?" check for the most recently completed
+    // lag window — uses TODAY's beta applied retroactively rather than the
+    // beta that was live lagDays ago, so treat this as a rough read, not a
+    // rigorous walk-forward backtest.
+    szS = array.size(smoothBuf)
+    szP = array.size(priceBuf)
+    lastPredictor    = (szS > lagDays) ? array.get(smoothBuf, szS - 1 - lagDays) : float(na)
+    lastActualMove   = (szP > lagDays) ? array.get(priceBuf, szP - 1) - array.get(priceBuf, szP - 1 - lagDays) : float(na)
+    lastForecastMove = (not na(v_beta) and not na(lastPredictor)) ? v_beta * lastPredictor : float(na)
+
+    v_followStatus := (na(lastForecastMove) or na(lastActualMove) or v_validCnt < minSamples) ? "WARMING UP"
+         : (lastActualMove * lastForecastMove > 0 ? "FOLLOWING" : "DIVERGING")
+
+// =====================================================
+// LIVE FORECAST (uses today's fitted beta + signal against the live intraday price)
+// =====================================================
+liveExpectedMove = (not na(v_beta) and not na(v_smoothedRoc) and v_validCnt >= minSamples) ? v_beta * v_smoothedRoc : float(na)
+forecastPrice    = not na(liveExpectedMove) ? close + liveExpectedMove : float(na)
+
+secsPerBar   = timeframe.in_seconds(timeframe.period)
+barsPerDay   = secsPerBar > 0 ? 86400.0 / secsPerBar : 1.0
+forecastBars = math.max(1, math.round(barsPerDay * lagDays))
+
+// =====================================================
+// VISUALS — forecast line + abnormal-divergence background tint
+// =====================================================
+var line  fcLine  = na
+var label fcLabel = na
+
+if barstate.islast
+    line.delete(fcLine)
+    label.delete(fcLabel)
+    if showForecastLine and not na(forecastPrice)
+        lineCol = forecastPrice >= close ? upCol : dnCol
+        fcLine  := line.new(bar_index, close, bar_index + forecastBars, forecastPrice,
+             color=lineCol, width=2, style=line.style_dashed, xloc=xloc.bar_index)
+        fcLabel := label.new(bar_index + forecastBars, forecastPrice,
+             "Forecast " + (forecastPrice >= close ? "+" : "") + str.tostring(forecastPrice - close, format.mintick),
+             style=forecastPrice >= close ? label.style_label_down : label.style_label_up,
+             textcolor=color.white, color=lineCol, size=size.small)
+
+// Positive RoC-z = composite spread accelerating in the pair's bullish
+// direction (per the dashboard's fxSign convention); negative = bearish.
+bgcolor(tintBg and v_abnormal ? (v_zRoc >= 0 ? color.new(color.teal, 85) : color.new(color.red, 85)) : na)
+
+// =====================================================
+// STATS TABLE
+// =====================================================
+var table statsTbl = na
+
+if showTable and barstate.islast
+    table.delete(statsTbl)
+    statsTbl := table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 55),
+         border_width=1, border_color=color.new(color.gray, 60))
+
+    table.cell(statsTbl, 0, 0, "Pair", text_color=color.white, text_size=size.small, bgcolor=color.new(color.gray, 75))
+    table.cell(statsTbl, 1, 0, pairSel, text_color=color.white, text_size=size.small, bgcolor=color.new(color.gray, 75))
+
+    table.cell(statsTbl, 0, 1, "Composite Z", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 1, not na(v_compZ) ? str.tostring(v_compZ, "#.##") : "—", text_color=color.white, text_size=size.small)
+
+    table.cell(statsTbl, 0, 2, "RoC Z (abnormal?)", text_color=color.white, text_size=size.small)
+    roBg = v_abnormal ? color.new(color.orange, 40) : na
+    table.cell(statsTbl, 1, 2, (not na(v_zRoc) ? str.tostring(v_zRoc, "#.##") : "—") + (v_abnormal ? " ⚠" : ""),
+         text_color=color.white, text_size=size.small, bgcolor=roBg)
+
+    table.cell(statsTbl, 0, 3, "Beta (px/z-unit)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 3, not na(v_beta) ? str.tostring(v_beta, "#.#####") : "—", text_color=color.white, text_size=size.small)
+
+    table.cell(statsTbl, 0, 4, "Fit corr / n", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 4, (not na(v_corr) ? str.tostring(v_corr, "#.##") : "—") + " / " + str.tostring(v_validCnt),
+         text_color=color.white, text_size=size.small)
+
+    table.cell(statsTbl, 0, 5, "Forecast Δ (" + str.tostring(lagDays) + "d)", text_color=color.white, text_size=size.small)
+    fcTxt = not na(liveExpectedMove) ? (liveExpectedMove >= 0 ? "+" : "") + str.tostring(liveExpectedMove, format.mintick) : "—"
+    fcCol = na(liveExpectedMove) ? color.white : (liveExpectedMove >= 0 ? upCol : dnCol)
+    table.cell(statsTbl, 1, 5, fcTxt, text_color=fcCol, text_size=size.small)
+
+    table.cell(statsTbl, 0, 6, "Target price", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 6, not na(forecastPrice) ? str.tostring(forecastPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
+
+    table.cell(statsTbl, 0, 7, "Last lag: price vs fc", text_color=color.white, text_size=size.small)
+    statusBg = v_followStatus == "FOLLOWING" ? color.new(color.teal, 40) : v_followStatus == "DIVERGING" ? color.new(color.red, 40) : color.new(color.gray, 50)
+    table.cell(statsTbl, 1, 7, v_followStatus, text_color=color.white, text_size=size.small, bgcolor=statusBg)
