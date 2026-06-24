@@ -5,10 +5,20 @@ indicator("Yield Lag Forecast [MacroFX]", shorttitle="YieldLag", overlay=true, m
 // WHAT THIS IS
 // =====================================================
 // Mirrors the MacroFXModel dashboard's "compass divergence" concept on real
-// intraday price: build a blended 2Y+10Y composite yield-spread z-score from
-// daily-resolution government bond data, track its rate-of-change, flag when
-// that RoC is statistically abnormal, and project a forward price target from
-// a beta fit between the lagged spread signal and subsequent price moves.
+// intraday price:
+//   1. Auto-detects which FX pair you're charting (base/quote currency) and
+//      pulls daily-resolution 2Y+10Y government bond yields for both legs.
+//   2. Builds a blended composite yield-spread z-score, tracks its rate-of-
+//      change, flags abnormal RoC, and projects a forward price target from a
+//      beta fit between the lagged spread signal and subsequent price moves
+//      (the original forecast line/label).
+//   3. NEW — regresses price on that same composite spread z-score (rolling
+//      OLS, matching the dashboard's compassDivergence()) and plots the
+//      regression-implied "yield fair value" directly on the price pane, plus
+//      a z-scored divergence reading of how far price has drifted from it.
+//      That divergence z-score is the "has price actually reacted to the
+//      yield yet, and is the lag real?" signal — distinct from, and in
+//      addition to, the forecast line above.
 //
 // Government yield series only print once per day, even when this chart is
 // on an intraday timeframe — so the lag horizon is expressed in TRADING DAYS
@@ -24,12 +34,12 @@ indicator("Yield Lag Forecast [MacroFX]", shorttitle="YieldLag", overlay=true, m
 // =====================================================
 // INPUTS
 // =====================================================
-gp_pair = "Pair"
-pairSel = input.string("EUR/USD", "FX Pair (must match the chart you're viewing)",
-     options=["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF",
+gp_pair = "Pair (Auto-Detected)"
+pairOverride = input.string("Auto-detect", "Override (only if auto-detect is wrong)",
+     options=["Auto-detect", "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF",
               "EUR/GBP", "EUR/JPY", "EUR/CHF", "GBP/CHF", "GBP/JPY", "AUD/JPY", "CAD/JPY"],
      group=gp_pair,
-     tooltip="Yield legs are pulled from TVC: government bond tickers, independent of the chart's own symbol formatting — pick the pair that matches what you're actually charting.")
+     tooltip="The pair is auto-detected from the chart's base/quote currency (syminfo.basecurrency / syminfo.currency). Only override if your feed mislabels the symbol or you're viewing a pair outside the 13 supported.")
 
 gp_spread = "Composite Spread"
 w2y  = input.float(0.6, "2Y weight (10Y weight = 1 - this)", minval=0.0, maxval=1.0, step=0.05, group=gp_spread)
@@ -44,12 +54,61 @@ gp_fc = "Lead-Lag Forecast"
 betaLen    = input.int(60, "Beta/correlation fit window (trading days)", minval=20, maxval=250, group=gp_fc)
 minSamples = input.int(15, "Min valid samples before trusting beta", minval=5, maxval=100, group=gp_fc)
 
+gp_div = "Price vs Yield Divergence (Z-Score)"
+divWindow         = input.int(120, "Regression window (trading days)", minval=30, maxval=400, group=gp_div,
+     tooltip="Rolling OLS regression of price on the composite spread z-score — mirrors the dashboard's compassDivergence(). Residuals over this window are z-scored to produce the divergence reading below.")
+divAbsThresh      = input.float(1.5, "Abnormal |Divergence Z| threshold", minval=0.5, maxval=4.0, step=0.1, group=gp_div)
+showFairValueLine = input.bool(true, "Plot yield fair-value line on price", group=gp_div)
+fvCol             = input.color(color.new(color.blue, 0), "Fair-value line color", group=gp_div)
+divUpCol          = input.color(color.new(color.purple, 0), "Color when price > fair value (z > 0)", group=gp_div)
+divDnCol          = input.color(color.new(color.orange, 0), "Color when price < fair value (z < 0)", group=gp_div)
+
 gp_vis = "Visuals"
 showForecastLine = input.bool(true, "Show forward forecast line", group=gp_vis)
 showTable        = input.bool(true, "Show stats table", group=gp_vis)
 tintBg           = input.bool(true, "Tint background on abnormal divergence", group=gp_vis)
 upCol            = input.color(color.new(color.teal, 0), "Forecast up color", group=gp_vis)
 dnCol            = input.color(color.new(color.red, 0),  "Forecast down color", group=gp_vis)
+
+// =====================================================
+// PAIR AUTO-DETECTION
+// =====================================================
+// Reads the chart's own base/quote currency instead of relying on a manual
+// dropdown — works regardless of broker ticker-prefix formatting. Falls back
+// to na (caught by pairRecognized below) for anything outside the 13
+// supported pairs, so the override dropdown above stays available as a
+// manual safety net.
+detectPair() =>
+    string _bc  = syminfo.basecurrency
+    string _qc  = syminfo.currency
+    string _det = na
+    if _bc == "EUR" and _qc == "USD"
+        _det := "EUR/USD"
+    else if _bc == "GBP" and _qc == "USD"
+        _det := "GBP/USD"
+    else if _bc == "USD" and _qc == "JPY"
+        _det := "USD/JPY"
+    else if _bc == "AUD" and _qc == "USD"
+        _det := "AUD/USD"
+    else if _bc == "USD" and _qc == "CAD"
+        _det := "USD/CAD"
+    else if _bc == "USD" and _qc == "CHF"
+        _det := "USD/CHF"
+    else if _bc == "EUR" and _qc == "GBP"
+        _det := "EUR/GBP"
+    else if _bc == "EUR" and _qc == "JPY"
+        _det := "EUR/JPY"
+    else if _bc == "EUR" and _qc == "CHF"
+        _det := "EUR/CHF"
+    else if _bc == "GBP" and _qc == "CHF"
+        _det := "GBP/CHF"
+    else if _bc == "GBP" and _qc == "JPY"
+        _det := "GBP/JPY"
+    else if _bc == "AUD" and _qc == "JPY"
+        _det := "AUD/JPY"
+    else if _bc == "CAD" and _qc == "JPY"
+        _det := "CAD/JPY"
+    _det
 
 // =====================================================
 // PER-PAIR TICKER / SIGN CONFIG
@@ -121,7 +180,17 @@ getPairConfig(p) =>
         _fxSign := 1.0, _rawDir := 1.0
     [_fgnL, _fgnS, _baseL, _baseS, _fxSign, _rawDir]
 
-[fgnLTk, fgnSTk, baseLTk, baseSTk, fxSign, rawDir] = getPairConfig(pairSel)
+// =====================================================
+// RESOLVE PAIR (auto-detect, with manual override fallback)
+// =====================================================
+autoDetected   = detectPair()
+pairSel        = pairOverride == "Auto-detect" ? autoDetected : pairOverride
+pairRecognized = not na(pairSel)
+// request.security can't take a na symbol — fall back to a harmless dummy
+// config when unrecognized; all buffer updates/visuals are gated off below.
+configPair = pairRecognized ? pairSel : "EUR/USD"
+
+[fgnLTk, fgnSTk, baseLTk, baseSTk, fxSign, rawDir] = getPairConfig(configPair)
 
 // =====================================================
 // DAILY-PINNED DATA (step function on intraday charts — updates once/session)
@@ -230,19 +299,103 @@ fitBeta(predBuf, pxBuf, lagN, win) =>
             corr := sxy / math.sqrt(sxx * syy)
     [beta, corr, validCnt]
 
+// Rolling OLS regression of price (y) on composite spread z-score (x), then
+// z-score the residuals — the Pine port of the dashboard's compassDivergence
+// (js/compass.js). |z| above ~1.5 means price has drifted away from where the
+// rate differential implies it should sit: the "has price actually reacted
+// to the yield yet, and is the lag real?" signal, distinct from the RoC/beta
+// forecast above. fairPrice is in real price units, so it plots directly over
+// price with no rescaling.
+olsDivergence(xBuf, yBuf, win) =>
+    n = math.min(array.size(xBuf), array.size(yBuf))
+    int wantStart = math.max(0, n - win)
+    float sumX = 0.0
+    float sumY = 0.0
+    int validCnt = 0
+    if n > 0
+        for idx = wantStart to n - 1
+            xv = array.get(xBuf, idx)
+            yv = array.get(yBuf, idx)
+            if not na(xv) and not na(yv)
+                sumX += xv
+                sumY += yv
+                validCnt += 1
+    float alpha     = na
+    float beta       = na
+    float r2         = na
+    float zLast       = na
+    float fairPrice   = na
+    float gap         = na
+    if validCnt > 5
+        mx = sumX / validCnt
+        my = sumY / validCnt
+        float sxx = 0.0
+        float syy = 0.0
+        float sxy = 0.0
+        for idx = wantStart to n - 1
+            xv = array.get(xBuf, idx)
+            yv = array.get(yBuf, idx)
+            if not na(xv) and not na(yv)
+                dx = xv - mx
+                dy = yv - my
+                sxx += dx * dx
+                syy += dy * dy
+                sxy += dx * dy
+        if sxx > 0
+            beta  := sxy / sxx
+            alpha := my - beta * mx
+            r2    := syy > 0 ? (sxy * sxy) / (sxx * syy) : 0.0
+
+            float sumRes = 0.0
+            int resCnt = 0
+            for idx = wantStart to n - 1
+                xv = array.get(xBuf, idx)
+                yv = array.get(yBuf, idx)
+                if not na(xv) and not na(yv)
+                    sumRes += yv - (alpha + beta * xv)
+                    resCnt += 1
+            if resCnt > 0
+                resMean = sumRes / resCnt
+                float ssRes = 0.0
+                for idx = wantStart to n - 1
+                    xv = array.get(xBuf, idx)
+                    yv = array.get(yBuf, idx)
+                    if not na(xv) and not na(yv)
+                        d = (yv - (alpha + beta * xv)) - resMean
+                        ssRes += d * d
+                resStdRaw = math.sqrt(ssRes / resCnt)
+                resStd    = resStdRaw == 0 ? 1.0 : resStdRaw
+                lastX = array.get(xBuf, n - 1)
+                lastY = array.get(yBuf, n - 1)
+                if not na(lastX) and not na(lastY)
+                    lastRes = lastY - (alpha + beta * lastX)
+                    zLast     := (lastRes - resMean) / resStd
+                    fairPrice := alpha + beta * lastX
+                    gap       := -lastRes
+    [alpha, beta, r2, zLast, fairPrice, gap, validCnt]
+
 // =====================================================
 // PERSISTED "AS OF TODAY" SIGNAL STATE
 // =====================================================
-var float  v_compZ            = na
-var float  v_zRoc             = na
-var bool   v_abnormal          = false
-var float  v_beta              = na
-var float  v_corr              = na
-var int    v_validCnt          = 0
-var float  v_smoothedRoc       = na
-var string v_followStatus     = "WARMING UP"
+var float  v_compZ        = na
+var float  v_zRoc         = na
+var bool   v_abnormal      = false
+var float  v_beta          = na
+var float  v_corr          = na
+var int    v_validCnt      = 0
+var float  v_smoothedRoc   = na
+var string v_followStatus = "WARMING UP"
 
-if newDailyBar
+var float  v_divBeta      = na
+var float  v_divR2        = na
+var float  v_fairPrice    = na
+var float  v_divGap       = na
+var int    v_divN         = 0
+var float  v_divZ         = na
+var bool   v_abnormalDiv   = false
+var string v_divTrend     = "WARMING UP"
+
+if newDailyBar and pairRecognized
     sp10_today = rawDir * (fgnL_d - baseL_d)
     have2y     = not na(fgnS_d) and not na(baseS_d)
     sp2_today  = have2y ? rawDir * (fgnS_d - baseS_d) : float(na)
@@ -304,6 +457,21 @@ if newDailyBar
     v_followStatus := (na(lastForecastMove) or na(lastActualMove) or v_validCnt < minSamples) ? "WARMING UP"
          : (lastActualMove * lastForecastMove > 0 ? "FOLLOWING" : "DIVERGING")
 
+    // Price-vs-yield divergence: rolling regression of price on the composite
+    // spread z-score, residual z-scored. Captures prevDivZ before overwriting
+    // v_divZ so the WIDENING/NARROWING trend reflects yesterday -> today.
+    prevDivZ = v_divZ
+    [da, dBeta, dR2, dZ, dFair, dGap, dN] = olsDivergence(compZBuf, priceBuf, divWindow)
+    v_divBeta     := dBeta
+    v_divR2       := dR2
+    v_fairPrice   := dFair
+    v_divGap      := dGap
+    v_divN        := dN
+    v_divZ        := dZ
+    v_abnormalDiv := not na(dZ) and math.abs(dZ) > divAbsThresh
+    v_divTrend    := (na(dZ) or na(prevDivZ)) ? "WARMING UP"
+         : (math.abs(dZ) > math.abs(prevDivZ) ? "WIDENING" : "NARROWING")
+
 // =====================================================
 // LIVE FORECAST (uses today's fitted beta + signal against the live intraday price)
 // =====================================================
@@ -315,14 +483,23 @@ barsPerDay   = secsPerBar > 0 ? 86400.0 / secsPerBar : 1.0
 forecastBars = math.max(1, math.round(barsPerDay * lagDays))
 
 // =====================================================
-// VISUALS — forecast line + abnormal-divergence background tint
+// YIELD FAIR-VALUE OVERLAY (plotted directly on price, real price units —
+// the regression-implied price level from olsDivergence, no rescaling hack)
 // =====================================================
-var line  fcLine  = na
-var label fcLabel = na
+v_fairValuePlot = (showFairValueLine and pairRecognized) ? v_fairPrice : float(na)
+plot(v_fairValuePlot, title="Yield Fair Value", color=fvCol, style=plot.style_stepline, linewidth=2)
+
+// =====================================================
+// VISUALS — forecast line/label + divergence label + abnormal-divergence tint
+// =====================================================
+var line  fcLine   = na
+var label fcLabel  = na
+var label divLabel = na
 
 if barstate.islast
     line.delete(fcLine)
     label.delete(fcLabel)
+    label.delete(divLabel)
     if showForecastLine and not na(forecastPrice)
         lineCol = forecastPrice >= close ? upCol : dnCol
         fcLine  := line.new(bar_index, close, bar_index + forecastBars, forecastPrice,
@@ -331,10 +508,20 @@ if barstate.islast
              "Forecast " + (forecastPrice >= close ? "+" : "") + str.tostring(forecastPrice - close, format.mintick),
              style=forecastPrice >= close ? label.style_label_down : label.style_label_up,
              textcolor=color.white, color=lineCol, size=size.small)
+    if pairRecognized and not na(v_divZ)
+        divCol    = v_abnormalDiv ? (v_divZ >= 0 ? divUpCol : divDnCol) : color.new(color.gray, 30)
+        divAnchor = not na(v_fairPrice) ? v_fairPrice : close
+        divLabel  := label.new(bar_index, divAnchor,
+             "Div Z " + (v_divZ >= 0 ? "+" : "") + str.tostring(v_divZ, "#.##") + " (" + v_divTrend + ")" + (v_abnormalDiv ? " ⚠" : ""),
+             style=label.style_label_left, textcolor=color.white, color=divCol, size=size.small, xloc=xloc.bar_index)
 
-// Positive RoC-z = composite spread accelerating in the pair's bullish
-// direction (per the dashboard's fxSign convention); negative = bearish.
-bgcolor(tintBg and v_abnormal ? (v_zRoc >= 0 ? color.new(color.teal, 85) : color.new(color.red, 85)) : na)
+// Primary tint = price-vs-yield divergence (the new core signal): is price
+// trading away from where the rate differential says it should be?
+bgcolor(tintBg and pairRecognized and v_abnormalDiv ? (v_divZ >= 0 ? color.new(divUpCol, 85) : color.new(divDnCol, 85)) : na)
+// Secondary marker = abnormal RoC (the original lead-lag signal) — kept as a
+// small shape instead of competing with the divergence tint for bgcolor.
+plotshape(tintBg and pairRecognized and v_abnormal, title="RoC Abnormal", style=shape.circle,
+     location=location.belowbar, color=(v_zRoc >= 0 ? upCol : dnCol), size=size.tiny)
 
 // =====================================================
 // STATS TABLE
@@ -343,11 +530,14 @@ var table statsTbl = na
 
 if showTable and barstate.islast
     table.delete(statsTbl)
-    statsTbl := table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 55),
+    statsTbl := table.new(position.top_right, 2, 12, bgcolor=color.new(color.black, 55),
          border_width=1, border_color=color.new(color.gray, 60))
 
+    pairBg   = pairRecognized ? color.new(color.gray, 75) : color.new(color.red, 40)
+    pairText = pairRecognized ? pairSel + (pairOverride == "Auto-detect" ? " (auto)" : " (override)")
+         : "UNSUPPORTED (" + syminfo.basecurrency + "/" + syminfo.currency + ")"
     table.cell(statsTbl, 0, 0, "Pair", text_color=color.white, text_size=size.small, bgcolor=color.new(color.gray, 75))
-    table.cell(statsTbl, 1, 0, pairSel, text_color=color.white, text_size=size.small, bgcolor=color.new(color.gray, 75))
+    table.cell(statsTbl, 1, 0, pairText, text_color=color.white, text_size=size.small, bgcolor=pairBg)
 
     table.cell(statsTbl, 0, 1, "Composite Z", text_color=color.white, text_size=size.small)
     table.cell(statsTbl, 1, 1, not na(v_compZ) ? str.tostring(v_compZ, "#.##") : "—", text_color=color.white, text_size=size.small)
@@ -375,3 +565,20 @@ if showTable and barstate.islast
     table.cell(statsTbl, 0, 7, "Last lag: price vs fc", text_color=color.white, text_size=size.small)
     statusBg = v_followStatus == "FOLLOWING" ? color.new(color.teal, 40) : v_followStatus == "DIVERGING" ? color.new(color.red, 40) : color.new(color.gray, 50)
     table.cell(statsTbl, 1, 7, v_followStatus, text_color=color.white, text_size=size.small, bgcolor=statusBg)
+
+    table.cell(statsTbl, 0, 8, "Yield fair value", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 8, not na(v_fairPrice) ? str.tostring(v_fairPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
+
+    table.cell(statsTbl, 0, 9, "Gap to fair value", text_color=color.white, text_size=size.small)
+    gapCol = na(v_divZ) ? color.white : (v_divZ >= 0 ? divUpCol : divDnCol)
+    table.cell(statsTbl, 1, 9, not na(v_divGap) ? (v_divGap >= 0 ? "+" : "") + str.tostring(v_divGap, format.mintick) : "—",
+         text_color=gapCol, text_size=size.small)
+
+    table.cell(statsTbl, 0, 10, "Divergence Z (px vs yield)", text_color=color.white, text_size=size.small)
+    divBg = v_abnormalDiv ? (v_divZ >= 0 ? color.new(divUpCol, 40) : color.new(divDnCol, 40)) : na
+    table.cell(statsTbl, 1, 10, (not na(v_divZ) ? str.tostring(v_divZ, "#.##") : "—") + (v_abnormalDiv ? " ⚠" : ""),
+         text_color=color.white, text_size=size.small, bgcolor=divBg)
+
+    table.cell(statsTbl, 0, 11, "Divergence trend", text_color=color.white, text_size=size.small)
+    trendBg = v_divTrend == "WIDENING" ? color.new(color.orange, 40) : v_divTrend == "NARROWING" ? color.new(color.teal, 40) : color.new(color.gray, 50)
+    table.cell(statsTbl, 1, 11, v_divTrend, text_color=color.white, text_size=size.small, bgcolor=trendBg)
