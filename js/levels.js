@@ -16,13 +16,13 @@
 // from js/render.js's renderAllInner().
 import { S } from './state.js';
 import { PAIRS, CACHE_DURATION, COMPASS_CONFIG } from './config.js';
-import { fetchAPI, loadCached, londonSessionDay, getDigits, cleanupStaleSessionCaches, filterTradingDays, toMyfxbSym } from './utils.js';
+import { fetchAPI, loadCached, londonSessionDay, getDigits, getPipSize, cleanupStaleSessionCaches, filterTradingDays, toMyfxbSym } from './utils.js';
 import { calculateTierScores, computeBayesianScore, computeUSDStrength, computeDollarRegime } from './macro.js';
 import { calculateVolRegime, calcPositionSize, calculatePivots } from './vol.js';
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { detectCrossSessionClusters, mergeCrossSources, filterConfluences, enhanceConfluences } from './confluences.js';
 import { loadCaps } from './caps.js';
-import { loadCompassData, compassFairValue, zScore } from './compass.js';
+import { loadCompassData, compassFairValue, compassDivergence, zScore } from './compass.js';
 
 // ── Pair symbol -> vol-forecast instrument key ───────────────────────────────
 const INSTRUMENT_KEY_OVERRIDES = { 'XAU/USD': 'GOLD', 'NAS100_USD': 'NQ' };
@@ -249,11 +249,14 @@ async function pairCompassSignal(sym) {
     const signal = compassFairValue(data);
     const z10arr = data.spread10y?.length > 20 ? zScore(data.spread10y) : null;
     const z2arr  = data.spread2y?.length  > 20 ? zScore(data.spread2y)  : null;
+    let divergence = null;
+    try { divergence = compassDivergence(data, sym); } catch (e) {}
     return {
       signal,
       z10: z10arr ? (z10arr[z10arr.length - 1]?.value ?? null) : null,
       z2:  z2arr  ? (z2arr[z2arr.length - 1]?.value  ?? null) : null,
       label: COMPASS_CONFIG[sym]?.label ?? null,
+      divergence,
     };
   } catch (e) {
     return null;
@@ -390,6 +393,10 @@ function zScoreRowHtml(m) {
   if (m.compass) {
     parts.push(`<span class="al-z-pill" title="Yield-spread composite z-score (10y/2y, sign-adjusted for ${m.sym})">📐 Yield ${fmtZ(m.compass.signal)}</span>`);
   }
+  if (m.compass?.divergence?.z != null) {
+    const dz = m.compass.divergence.z;
+    parts.push(`<span class="al-z-pill" title="Price vs. spread-implied fair value: rolling regression residual, z-scored (r²=${m.compass.divergence.r2.toFixed(2)}, ${m.compass.divergence.n}d window)">↔ Div ${fmtZ(dz)}</span>`);
+  }
   if (m.hedge) {
     parts.push(`<span class="al-z-pill" title="Correlation vs ${m.hedge.partner}: ${m.hedge.avgC.toFixed(2)} avg → ${m.hedge.curC.toFixed(2)} now">🔗 ${m.hedge.partner} ${fmtZ(m.hedge.z)}</span>`);
   }
@@ -481,8 +488,27 @@ function tierRowHtml(t) {
 
 function compassHtml(m) {
   if (!m.compass) return '<div class="al-empty-note">No yield-spread data for this instrument.</div>';
-  const { signal, z10, z2, label } = m.compass;
+  const { signal, z10, z2, label, divergence } = m.compass;
   const lean = signal == null ? 'Neutral' : signal > 0.3 ? 'Favors LONG' : signal < -0.3 ? 'Favors SHORT' : 'Neutral';
+  const divHtml = (() => {
+    if (divergence?.z == null) return '';
+    const dz = divergence.z;
+    const dzAbs = Math.abs(dz);
+    const rich = dz > 0;
+    const pipSz = getPipSize(m.sym);
+    const gapPips = divergence.gap != null && pipSz ? Math.abs(divergence.gap / pipSz).toFixed(0) : null;
+    const verdict = dzAbs < 1 ? 'Price is tracking the spread closely — no meaningful divergence.'
+      : rich ? `Price is running ${gapPips ? `~${gapPips}p ` : ''}rich vs what the spread implies — reversion risk skews lower.`
+             : `Price is lagging ${gapPips ? `~${gapPips}p ` : ''}below what the spread implies — catch-up move skews higher.`;
+    return `
+    <div class="al-macro-row" style="margin-top:6px">
+      <span class="al-chip">↔ Divergence</span>
+      <span class="al-meta">z ${fmtZ(dz)}</span>
+      <span class="al-meta">r² ${divergence.r2.toFixed(2)}</span>
+      <span class="al-meta">${divergence.n}d window</span>
+    </div>
+    <div class="al-rationale">Rolling regression of price on the spread lean, residual z-scored. ${verdict}</div>`;
+  })();
   return `
     <div class="al-macro-row">
       <span class="al-chip">${label ?? 'Yield Spread'}</span>
@@ -490,6 +516,7 @@ function compassHtml(m) {
       <span class="al-meta">z2y ${fmtZ(z2)}</span>
     </div>
     <div class="al-rationale">Composite signal ${fmtZ(signal)} — <strong>${lean}</strong> based on the yield-spread differential vs its trailing distribution.</div>
+    ${divHtml}
   `;
 }
 

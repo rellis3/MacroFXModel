@@ -15,6 +15,7 @@ export const S = {
   compassData:     {},
   compassMode:     'both', // '2y' | '10y' | 'both'
   compassShowFX:   false,  // overlay normalized FX rate on compass chart
+  compassShowDiv:  false,  // overlay price-vs-spread regression-residual z-score on compass chart
   _caps:           null,   // proximity caps loaded from KV
   cotData:         null,   // parsed CFTC COT data keyed by pair
   sessionData:     null,   // detectSession() result — current trading session

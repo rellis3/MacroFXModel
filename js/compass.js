@@ -315,6 +315,98 @@ export function compassFairValue(data) {
   return signal;
 }
 
+// ── Price-vs-spread divergence (rolling regression residual, z-scored) ──────
+// compassFairValue() above is a pure spread-direction lean — it never looks at
+// price, despite the "Fair Value" UI copy implying a price comparison. This is
+// the real lead-lag metric: regress price on the same composite spread z-score
+// over a rolling window, then z-score the residual. |z| above ~1.5 means price
+// has drifted away from where the yield differential implies it should sit —
+// the cointegration-style cousin of a naive zScore(price) - zScore(spread).
+const DIVERGENCE_WINDOW = 120; // trading days in the rolling regression window
+
+function compositeSpreadZSeries(data, cfg) {
+  const isGoldFV = data.sym === 'XAU/USD';
+  const z10 = data.spread10y?.length > 20 ? zScore(data.spread10y) : null;
+
+  if (isGoldFV) {
+    const zDxy = data.spreadDxy?.length > 20 ? zScore(data.spreadDxy) : null;
+    if (!z10 && !zDxy) return null;
+    if (z10 && zDxy) {
+      const dxyMap = {};
+      zDxy.forEach(p => { dxyMap[p.date] = p.value; });
+      return z10.filter(p => dxyMap[p.date] != null)
+        .map(p => ({ date: p.date, value: (p.value * 0.55 + dxyMap[p.date] * 0.45) * cfg.fxSign }));
+    }
+    const single = z10 || zDxy;
+    return single.map(p => ({ date: p.date, value: p.value * cfg.fxSign }));
+  }
+
+  const z2 = data.spread2y?.length > 20 ? zScore(data.spread2y) : null;
+  if (!z10 && !z2) return null;
+  if (z10 && z2) {
+    const z2Map = {};
+    z2.forEach(p => { z2Map[p.date] = p.value; });
+    return z10.filter(p => z2Map[p.date] != null)
+      .map(p => ({ date: p.date, value: (z2Map[p.date] * 0.6 + p.value * 0.4) * cfg.fxSign }));
+  }
+  const single = z10 || z2;
+  return single.map(p => ({ date: p.date, value: p.value * cfg.fxSign }));
+}
+
+// Simple OLS: y = alpha + beta*x. r2 included so callers can sanity-check fit quality.
+function olsRegress(xs, ys) {
+  const n = xs.length;
+  const xMean = xs.reduce((a, b) => a + b, 0) / n;
+  const yMean = ys.reduce((a, b) => a + b, 0) / n;
+  let num = 0, denX = 0, denY = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - xMean, dy = ys[i] - yMean;
+    num += dx * dy; denX += dx * dx; denY += dy * dy;
+  }
+  if (denX === 0) return null;
+  const beta  = num / denX;
+  const alpha = yMean - beta * xMean;
+  const r2    = denY === 0 ? 0 : (num * num) / (denX * denY);
+  return { alpha, beta, r2 };
+}
+
+export function compassDivergence(data, sym) {
+  const cfg = COMPASS_CONFIG[sym];
+  if (!cfg || !data) return null;
+
+  const spreadZ = compositeSpreadZSeries(data, cfg);
+  if (!spreadZ || spreadZ.length < 30) return null;
+
+  const fxBars = filterTradingDays(S.ohlcData[sym]?.values);
+  if (!fxBars || fxBars.length < 30) return null;
+  const priceMap = {};
+  fxBars.forEach(b => { priceMap[b.datetime.split(' ')[0]] = parseFloat(b.close); });
+
+  const aligned = spreadZ
+    .map(p => ({ date: p.date, x: p.value, y: priceMap[p.date] }))
+    .filter(p => p.y != null && Number.isFinite(p.y));
+  if (aligned.length < 30) return null;
+
+  const win = aligned.slice(-DIVERGENCE_WINDOW);
+  const reg = olsRegress(win.map(p => p.x), win.map(p => p.y));
+  if (!reg) return null;
+
+  const residuals = win.map(p => ({ date: p.date, value: p.y - (reg.alpha + reg.beta * p.x) }));
+  const zSeries = zScore(residuals);
+  const zLast = zSeries.length ? zSeries[zSeries.length - 1].value : null;
+  const lastResidual = residuals.length ? residuals[residuals.length - 1].value : null;
+
+  return {
+    z: zLast,
+    residualSeries: zSeries,
+    fairPrice: reg.alpha + reg.beta * win[win.length - 1].x,
+    gap: lastResidual != null ? -lastResidual : null, // price units price must move to reach regression fair value
+    beta: reg.beta,
+    r2: reg.r2,
+    n: win.length,
+  };
+}
+
 export function goldDriverAlignment(data) {
   if (!data || data.sym !== 'XAU/USD') return null;
   const momYield = data.momentum10y != null ? data.momentum10y < 0 : null;
@@ -343,6 +435,7 @@ export function renderCompassCard(data, quote) {
   const cfg    = COMPASS_CONFIG[S.currentPair.symbol];
   const regime = compassRegime(data, quote);
   const fvGap  = compassFairValue(data);
+  const divergence = compassDivergence(data, S.currentPair.symbol);
   const digits = getDigits(S.currentPair.symbol);
 
   const z10  = zScore(data.spread10y.slice(-90));
@@ -356,6 +449,7 @@ export function renderCompassCard(data, quote) {
   const showS10 = S.compassMode === '10y'  || S.compassMode === 'both';
   const showDxy = isGoldChart && (S.compassMode === '2y' || S.compassMode === 'both');
   const showFX  = S.compassShowFX;
+  const showDiv = S.compassShowDiv;
 
   // Build FX normalized line from daily OHLC (last 90 bars)
   let zFX = [];
@@ -368,10 +462,14 @@ export function renderCompassCard(data, quote) {
     }
   }
 
+  // Regression-residual divergence z-series (price vs spread-implied fair value)
+  const zDiv = showDiv && divergence?.residualSeries?.length ? divergence.residualSeries.slice(-90) : [];
+
   const allPoints = [
     ...(showS10 ? z10  : []),
     ...(showS2  ? (isGoldChart ? zDxy : z2) : []),
     ...(showFX  ? zFX : []),
+    ...(showDiv ? zDiv : []),
   ];
   const yVals = allPoints.map(p => p.value);
   const yMin  = yVals.length ? Math.min(...yVals) - 0.3 : -2;
@@ -383,11 +481,13 @@ export function renderCompassCard(data, quote) {
   const H      = 90;
   const xScale = W / Math.max(nPts - 1, 1);
 
-  const fxScale = zFX.length > 1 ? W / Math.max(zFX.length - 1, 1) : xScale;
+  const fxScale  = zFX.length  > 1 ? W / Math.max(zFX.length  - 1, 1) : xScale;
+  const divScale = zDiv.length > 1 ? W / Math.max(zDiv.length - 1, 1) : xScale;
 
   const path10y = showS10 ? buildSVGPath(z10,  xScale, null, H, yRange) : '';
   const path2y  = showS2  ? buildSVGPath(isGoldChart ? zDxy : z2, xScale, null, H, yRange) : '';
-  const pathFX  = showFX && zFX.length > 1 ? buildSVGPath(zFX, fxScale, null, H, yRange) : '';
+  const pathFX  = showFX  && zFX.length  > 1 ? buildSVGPath(zFX,  fxScale,  null, H, yRange) : '';
+  const pathDiv = showDiv && zDiv.length  > 1 ? buildSVGPath(zDiv, divScale, null, H, yRange) : '';
 
   const ySpan    = yMax - yMin;
   const zeroY    = H - ((0 - yMin) / ySpan) * H;
@@ -410,6 +510,7 @@ export function renderCompassCard(data, quote) {
         <button class="ctog s10y ${S.compassMode==='10y'||S.compassMode==='both'?'active':''}" onclick="setCompassMode('10y')">${isGoldChart ? '10Y Yield' : '10Y'}</button>
         <button class="ctog ${S.compassMode==='both'?'active':''}" onclick="setCompassMode('both')">Both</button>
         <button class="ctog ${S.compassShowFX?'active':''}" onclick="toggleCompassFX()" style="border-color:var(--blue-bd);${S.compassShowFX?'background:var(--blue-bg);color:var(--blue)':''}">FX Rate</button>
+        <button class="ctog ${S.compassShowDiv?'active':''}" onclick="toggleCompassDiv()" style="border-color:var(--red-bd);${S.compassShowDiv?'background:var(--red-bg);color:var(--red)':''}" title="Regression residual: price - spread-implied fair value, z-scored">Divergence</button>
       </div>
     </div>
 
@@ -419,6 +520,7 @@ export function renderCompassCard(data, quote) {
         ? '<div class="cl-item"><div class="cl-line" style="background:var(--amber)"></div><span>DXY (z, inverted — up = weak dollar)</span></div>'
         : '<div class="cl-item"><div class="cl-line" style="background:var(--green)"></div><span>2Y spread (z-score)</span></div>') : ''}
       ${showFX  ? '<div class="cl-item"><div class="cl-line" style="background:transparent;border-top:2px dashed var(--blue);height:0;margin-top:5px"></div><span>FX rate (z-score, 90d daily)</span></div>' : ''}
+      ${showDiv ? '<div class="cl-item"><div class="cl-line" style="background:var(--red)"></div><span>Divergence (regression residual, z-score)</span></div>' : ''}
       <div class="cl-item"><div class="cl-line" style="background:var(--border2);height:1px"></div><span>Neutral</span></div>
     </div>
 
@@ -441,6 +543,14 @@ export function renderCompassCard(data, quote) {
           const lx = ((zFX.length-1)*fxScale).toFixed(1);
           const ly = Math.max(0,Math.min(H, H - ((zFX[zFX.length-1].value - yMin)/ySpan)*H)).toFixed(1);
           return `<circle cx="${lx}" cy="${ly}" r="3" fill="var(--blue)"/>`;
+        })() : ''}
+        ${showDiv && pathDiv ? `
+          <path d="${pathDiv}" stroke="var(--red)" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+        ` : ''}
+        ${showDiv && zDiv.length ? (() => {
+          const lx = ((zDiv.length-1)*divScale).toFixed(1);
+          const ly = Math.max(0,Math.min(H, H - ((zDiv[zDiv.length-1].value - yMin)/ySpan)*H)).toFixed(1);
+          return `<circle cx="${lx}" cy="${ly}" r="3" fill="var(--red)"/>`;
         })() : ''}
         ${showS10 && z10.length ? (() => {
           const lx = ((z10.length-1)*xScale).toFixed(1);
@@ -503,16 +613,40 @@ export function renderCompassCard(data, quote) {
 
     ${fvGap != null ? `
     <div class="compass-fv">
-      <span class="fv-label">Fair Value</span>
+      <span class="fv-label">Spread Lean</span>
       <div class="fv-bar-wrap">
         <div class="fv-bar" style="width:${fvPct}%;background:${fvCol}"></div>
       </div>
       <span class="fv-val" style="color:${fvCol}">${fvSign}</span>
     </div>
     <div style="font-size:9.5px;color:var(--text3);margin-top:4px;line-height:1.5">
-      Fair value = weighted z-score of 2Y+10Y spreads. ${fvGap > 0.5 ? '⬆ Price lagging spread — catch-up move expected' : fvGap < -0.5 ? '⬇ Price running ahead of spread — reversion risk' : 'Price broadly in line with rate differential'}
+      Weighted z-score of 2Y+10Y spreads only — the rate differential's own directional lean, before comparing to price. ${fvGap > 0.5 ? `⬆ Spread favours ${data.sym.split('/')[0]} strength` : fvGap < -0.5 ? `⬇ Spread favours ${data.sym.split('/')[0]} weakness` : 'Spread roughly neutral'}.
     </div>
     ` : ''}
+
+    ${divergence != null ? (() => {
+      const dz = divergence.z;
+      const dzAbs = dz != null ? Math.abs(dz) : 0;
+      const dPct = Math.min(100, dzAbs * 33);
+      const rich = dz != null && dz > 0;
+      const dCol = dzAbs >= 1.5 ? (rich ? 'var(--red)' : 'var(--green)') : 'var(--text3)';
+      const pipSz = getPipSize(S.currentPair.symbol);
+      const gapPips = divergence.gap != null && pipSz ? Math.abs(divergence.gap / pipSz).toFixed(0) : null;
+      const verdict = dzAbs < 1 ? 'Price is tracking the spread closely — no meaningful divergence.'
+        : rich ? `Price is running ${gapPips ? `~${gapPips}p ` : ''}rich vs what the spread implies — reversion risk skews lower.`
+               : `Price is lagging ${gapPips ? `~${gapPips}p ` : ''}below what the spread implies — catch-up move skews higher.`;
+      return `
+    <div class="compass-fv" style="margin-top:6px">
+      <span class="fv-label">Divergence</span>
+      <div class="fv-bar-wrap">
+        <div class="fv-bar" style="width:${dPct}%;background:${dCol}"></div>
+      </div>
+      <span class="fv-val" style="color:${dCol}">z ${dz != null ? (dz>0?'+':'') + dz.toFixed(2) : '—'}</span>
+    </div>
+    <div style="font-size:9.5px;color:var(--text3);margin-top:4px;line-height:1.5">
+      Rolling regression of price on the spread lean (${divergence.n}d window, r²=${divergence.r2.toFixed(2)}), residual z-scored. ${verdict}
+    </div>`;
+    })() : ''}
 
     <div id="compassARMA"></div>
     <div id="compassTransition"></div>
@@ -693,6 +827,13 @@ export function renderYieldPulse(sym) {
 
 export function toggleCompassFX() {
   S.compassShowFX = !S.compassShowFX;
+  const data = S.compassData[S.currentPair.symbol];
+  renderCompassCard(data, window._latestQuote);
+  if (window.renderARMAAndTransition) window.renderARMAAndTransition(data);
+}
+
+export function toggleCompassDiv() {
+  S.compassShowDiv = !S.compassShowDiv;
   const data = S.compassData[S.currentPair.symbol];
   renderCompassCard(data, window._latestQuote);
   if (window.renderARMAAndTransition) window.renderARMAAndTransition(data);
