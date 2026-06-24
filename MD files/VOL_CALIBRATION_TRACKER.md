@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-06-24 (Track 1 checkpoint #3 — trend confirmed, see below).
+Last updated: 2026-06-25 (Track 1 checkpoint #4 — raw gap flipped sign, see below).
 
 ---
 
@@ -21,21 +21,23 @@ Last updated: 2026-06-24 (Track 1 checkpoint #3 — trend confirmed, see below).
   `runVolForecast()` run's Railway log output** to disambiguate. Nudge the user
   for this log line next time a news-heavy session comes up.
 
-- index/NQ GARCH persistence: **trend confirmed (2026-06-24)** — raw vol Δ has
-  now improved for 3 consecutive sessions: +59.0% (Jun-22) → +18.1% (Jun-23) →
-  +9.7% (Jun-24). This is no longer "one good day," it's a clean monotonic
-  convergence, crossing the "2+ consecutive sessions same direction" bar set
-  after checkpoint #1's whipsaw. Read as confirmation of the Jun-22 hypothesis:
-  the news-heavy week's fresh shocks stopped arriving, and the interim β=0.87
-  decay is now doing its job shrinking the gap. **New problem this creates**:
-  the static index hl/oc correction factors (0.81/0.78/0.85/0.90, sized for a
-  +22% raw gap) are increasingly over-correcting a shrinking raw gap — corrected
-  HL/OC outputs have gone from −3%/−6% (Jun-23) to **−7.7%/−9.4%** (Jun-24),
-  worse each day in the opposite direction. **Still not refitting them** — the
-  raw gap itself is still moving (18.1%→9.7%, not flat yet), and fitting
-  corrections against a moving target would just be a slower-motion version of
-  the same whiplash mistake. Wait for the raw Δ to stabilize within a narrow
-  band across 2+ sessions, then refit hl/oc corrections from that stable level.
+- index/NQ GARCH persistence: **raw gap crossed zero (2026-06-25)** — the
+  4-session trajectory is now +59.0% (Jun-22) → +18.1% (Jun-23) → +9.7%
+  (Jun-24) → **−4.9%** (Jun-25). The monotonic shrink continued right through
+  zero into a slight underestimate — this is the first negative raw Δ in the
+  whole tracking window. One session isn't enough to call this "overshoot"
+  vs noise (same 2+ session bar as before applies to confirming the sign),
+  but it means the raw gap is clearly NOT stabilizing yet — it's still moving
+  fast (14.6pp swing in one day). **The hl/oc over-correction problem just got
+  much worse as a direct consequence**: stacking the existing
+  over-/under-correction factors on top of a now-negative raw gap pushes
+  corrected HL/OC Δ to **−21% to −26%** (Jun-25), vs −7.7%/−9.4% on Jun-24 —
+  roughly 2.5x worse in one session. **Still not refitting** — refitting off
+  a single sign-flip session would be exactly the whiplash this rule exists to
+  prevent, and if Jun-26 reverts toward positive again, the table would have
+  to flip a third time. Watch for whether the negative sign holds for a 2nd
+  session; if so, that's the actual trigger to refit hl/oc, not "raw Δ near
+  9.7%" (that target is now moot — the gap blew through it).
 
 ---
 
@@ -49,6 +51,7 @@ Last updated: 2026-06-24 (Track 1 checkpoint #3 — trend confirmed, see below).
 | Jun-22 | Track 1 checkpoint #1  | 24.97%   | 15.70%  | +59.0% | **post-fix (β=0.87), and it's worse** — see diagnosis below |
 | Jun-23 | Track 1 checkpoint #2  | 25.01%   | 21.17%  | +18.1% | **sharp reversal** — biggest single-day improvement yet; HL/OC corrected now run −3% to −6% (slight underestimate) |
 | Jun-24 | Track 1 checkpoint #3  | 26.57%   | 24.21%  | +9.7%  | **trend confirmed** — 3rd straight improvement; HL/OC corrected now −7.7% to −9.4% (over-correction worsening as raw gap shrinks) |
+| Jun-25 | Track 1 checkpoint #4  | 26.40%   | 27.76%  | −4.9%  | **sign flip** — raw gap went negative for the first time; HL/OC corrected now −21% to −26% (over-correction sharply worse, see diagnosis) |
 
 **Diagnosis**: reference's NQ vol behaves as if it has roughly 1-session effective
 memory after a shock. Our GARCH(0.06/0.91) has α+β=0.97 → ~23-day half-life —
@@ -124,6 +127,29 @@ session: if raw Δ lands within a narrow band (roughly ±3-4pp) of 9.7% again,
 treat the raw gap as stabilized and refit hl/oc corrections from the
 stabilized level.
 
+**Updated diagnosis (2026-06-25)**: checkpoint #4 broke through the band the
+previous diagnosis was watching for — raw Δ didn't land near +9.7%, it kept
+moving and crossed zero to −4.9%. Two readings, not mutually exclusive:
+1. **Still just convergence, now overshooting slightly.** A
+   59→18→9.7→−4.9 sequence looks like exponential decay toward some
+   equilibrium near (or slightly below) zero, consistent with β=0.87 finally
+   catching up on a calm stretch with no fresh shocks. If so, the next
+   session should land somewhere in the small-negative-to-zero range, not
+   keep falling — a continued slide deeper negative would argue β=0.87 is now
+   *too low* (decaying old context too fast) rather than the original
+   problem of being too high.
+2. **Reference itself is just noisy session-to-session**, as already shown
+   Jun-22→23 (ref jumped 15.70%→21.17% on its own). Ref went 24.21%→27.76%
+   this time while ours barely moved (26.57%→26.40%) — same pattern as
+   Jun-23, ref doing most of the moving, not ours. This keeps pointing at
+   reference reacting to information on a faster timescale than close-to-
+   close OHLC captures, not at our β being wrong per se.
+**Action**: do not touch `garch_beta_interim` off a single sign-flip. Next
+session is the real test: if Δ stays negative (confirms overshoot/noise-level
+equilibrium near zero) or swings back positive (confirms pure session-to-
+session noise, ref-driven), either way that's the 2nd data point needed
+before deciding whether to refit hl/oc.
+
 ---
 
 ## Dual-track plan ("let's do both" — agreed 2026-06-19)
@@ -179,6 +205,18 @@ the raw gap stabilize enough to refit the downstream hl/oc corrections,"
 since those have kept over-correcting as a direct consequence (HL/OC
 corrected now −7.7%/−9.4%, worse than Jun-23's −3%/−6%).
 
+**Checkpoint result (2026-06-25)**: Δ crossed zero to −4.9% — first negative
+raw gap in the tracking window, continuing the same monotonic shrink
+(+59.0%→+18.1%→+9.7%→−4.9%) one step further than expected. Ours barely
+moved (26.57%→26.40%) while ref jumped (24.21%→27.76%), the same
+ref-does-the-moving pattern as Jun-23. Not touching `garch_beta_interim` off
+one sign-flip session — need to see whether Jun-26 holds negative (overshoot
+settling near a new equilibrium) or swings back positive (pure ref-side
+noise) before drawing any conclusion. HL/OC corrected outputs got
+significantly worse as a side effect: −21% to −26%, vs −7.7%/−9.4% on
+Jun-24 — the over-correction problem is compounding fast and is now the
+more urgent of the two open threads.
+
 ### Track 2 — wait + grid search (ONGOING, multi-session)
 Keep accumulating (ours_vol, ref_vol, instrument, date, event-flag) tuples
 below every session. Once there are enough clean (non-event-day) points —
@@ -200,6 +238,7 @@ multiplier behavior specifically).
 | Jun-22 | NQ        | 24.97%   | 15.70%  | +59.0% | No (but news-heavy week) | **post-fix (β=0.87)** — worse, not better; see updated diagnosis above |
 | Jun-23 | NQ        | 25.01%   | 21.17%  | +18.1% | No         | **sharp reversal** — ref moved, ours didn't; best NQ checkpoint since Jun-18 |
 | Jun-24 | NQ        | 26.57%   | 24.21%  | +9.7%  | No         | **trend confirmed**, 3rd straight improvement; HL/OC corrected now −7.7%/−9.4% (over-correction, see diagnosis) |
+| Jun-25 | NQ        | 26.40%   | 27.76%  | −4.9%  | No         | **sign flip**, first negative raw Δ; HL/OC corrected now −21%/−26% (over-correction much worse, see diagnosis) |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
 on hand — only Δ was recorded in those sessions' analysis. Note: a Jun-23
@@ -223,6 +262,8 @@ all reference compares live in one place):
 | Jun-23 | EURUSD    | 5.34%    | 5.92%   | −9.8% | −3.5%    | −1.4%    | −3.8%    | −4.5%    | vol gap a bit wider than usual but HL/OC (the actual displayed metrics) all within ~4.5%, still solid |
 | Jun-24 | GOLD      | 29.02%   | 27.75%  | +4.6% | −7.6%    | −3.5%    | −2.9%    | −4.8%    | wider than Jun-23 but still within normal noise band, no action |
 | Jun-24 | EURUSD    | 5.33%    | 6.01%   | −11.3% | −5.2%   | −2.9%    | −3.8%    | −6.7%    | vol gap widening slightly session over session (−6.1%→−9.8%→−11.3%), worth a glance next session but HL/OC still single-digit, not actionable yet |
+| Jun-25 | GOLD      | 30.05%   | 29.24%  | +2.8% | −9.8%    | −4.7%    | −5.4%    | −4.3%    | HL med drifting more negative each session (−4.3%→−7.6%→−9.8%) — still single-digit-to-low-teens, watch but not actionable yet |
+| Jun-25 | EURUSD    | 5.39%    | 5.84%   | −7.7% | −1.8%    | 0.0%     | −3.8%    | −2.3%    | gap narrowed back from Jun-24's −11.3%, bouncing in the same noise band as Jun-22/23 — no action |
 
 ---
 
@@ -232,31 +273,35 @@ all reference compares live in one place):
    Ask the user to paste the Railway log line from the next `runVolForecast()`
    run (scheduled or manual `/api/vol-forecast/refresh`) to finally determine
    why the Fed Chair speech didn't trigger the news multiplier.
-2. **Track 1 trend confirmed (2026-06-24)** — 3 consecutive improving
-   checkpoints (+59.0% Jun-22 → +18.1% Jun-23 → +9.7% Jun-24), crossing the
-   "2+ consecutive sessions same direction" bar. Treating the interim β=0.87
-   fix as working; no longer treating it as whipsawing. Not touching
-   `garch_beta_interim`/`garch_omega_interim` further unless a future
-   checkpoint reverses this trend. Still want to pull NQ's actual daily
-   close-to-close returns for Jun-18→24 at some point to directly confirm the
-   α-not-β hypothesis, but no longer urgent now that the outcome (convergence)
-   matches the prediction.
+2. **Track 1 raw gap crossed zero (2026-06-25)** — 4-session trajectory
+   +59.0% Jun-22 → +18.1% Jun-23 → +9.7% Jun-24 → **−4.9% Jun-25**, a clean
+   monotonic shrink that's now overshot into negative territory. Need the
+   Jun-26 checkpoint to know whether this is (a) settling near a small
+   negative/zero equilibrium, (b) genuine overshoot meaning β=0.87 is now too
+   low, or (c) pure ref-side session noise (ref has done most of the moving
+   on both Jun-23 and Jun-25). Not touching `garch_beta_interim`/
+   `garch_omega_interim` off one sign-flip session. Still want to pull NQ's
+   actual daily close-to-close returns at some point to directly confirm the
+   α-not-β hypothesis, but it's secondary to resolving the sign-flip question
+   first.
 3. **Track 2 grid search** — not started, blocked on accumulating enough clean
-   data points (table above). Revisit once 5+ non-event NQ rows exist (4
-   currently: Jun-17, 22, 23, 24 — Jun-18/19 lack raw %). Given item 2, the
+   data points (table above). Revisit once 5+ non-event NQ rows exist (5
+   currently: Jun-17, 22, 23, 24, 25 — Jun-18/19 lack raw %). Given item 2, the
    grid search should sweep α as well as β, not just β.
-4. **index ASSET_PARAMS hl/oc correction factors refit — now the live
-   blocker.** (0.81/0.78/0.85/0.90, calibrated Jun-17 from a single
-   contaminated-by-persistence day.) With Track 1's raw gap shrinking fast
-   (+59.0%→+18.1%→+9.7%), these static factors are now visibly
-   over-correcting: corrected HL/OC Δ has moved −3%/−6% (Jun-23) →
-   −7.7%/−9.4% (Jun-24), worse each session, in the *opposite* direction from
-   the original over-estimate problem. **Trigger to refit**: once raw Δ lands
-   within ~±3-4pp of 9.7% for a second consecutive session (i.e. raw gap
-   itself stabilizes, not just shrinks), refit hl/oc corrections from that
-   stabilized level — do not refit while the raw gap is still actively
-   moving session to session, or this becomes the same whiplash mistake one
-   layer downstream.
+4. **index ASSET_PARAMS hl/oc correction factors refit — increasingly
+   urgent.** (0.81/0.78/0.85/0.90, calibrated Jun-17 from a single
+   contaminated-by-persistence day.) As Track 1's raw gap has shrunk and now
+   flipped negative, these static factors have gone from over-correcting to
+   badly over-correcting: corrected HL/OC Δ has moved −3%/−6% (Jun-23) →
+   −7.7%/−9.4% (Jun-24) → **−21%/−26%** (Jun-25). **Trigger to refit**: once
+   the raw Δ's sign and rough magnitude hold steady for 2 consecutive
+   sessions (not just "near +9.7%" — that target is moot now), refit hl/oc
+   corrections from the stabilized level. Given how far off the displayed
+   HL/OC numbers now are (−21% to −26% is no longer a minor noise-band issue),
+   if Jun-26 confirms the negative sign is holding, that should be treated as
+   the trigger even without a third confirming session — the cost of a wrong
+   display now likely exceeds the whiplash risk of refitting one session
+   early.
 5. SPX500/DE30/UK100/US30/US2000 (other `index`-class instruments) have no
    reference data yet — all calibration so far is NQ-only. Watch for
    divergence once reference data for these appears.
