@@ -276,8 +276,22 @@ export const COG_EXECUTION = {
   instruments: {
     // `pointValue` = $ per 1.0 price-point move per unit, used to convert a
     // stop distance (price points) into a $ risk amount for position sizing.
-    primary:   { id: 'nq_futures', label: 'NQ Futures (continuous)', ticker: 'NQ=F', pointValue: 20 },
-    secondary: { id: 'qqq', label: 'QQQ (Nasdaq-100 ETF)', ticker: 'QQQ', pointValue: 1 },
+    // `sizeIncrement` = the smallest tradable unit of this instrument (whole
+    // contracts = 1; omit for 1). buildEntryPlan() in cogExecutionEngine.js
+    // floors the raw risk-justified size down to a multiple of this. All
+    // variants here price off the SAME NQ=F OHLC series fetched in
+    // cogDataSources.js — `micro`/`frac*` differ only in pointValue/
+    // sizeIncrement (sizing math), never in the underlying price action,
+    // since MNQ is a cash-equivalent 1/10-size clone of NQ and the `frac*`
+    // entries are a research-only relaxation of the whole-contract floor
+    // (not a real product) used to isolate whether trade starvation is a
+    // signal problem or a sizing/execution-constraint problem.
+    primary:   { id: 'nq_futures', label: 'NQ Futures (continuous)', ticker: 'NQ=F', pointValue: 20, sizeIncrement: 1 },
+    secondary: { id: 'qqq', label: 'QQQ (Nasdaq-100 ETF)', ticker: 'QQQ', pointValue: 1, sizeIncrement: 1 },
+    micro:     { id: 'mnq_futures', label: 'MNQ Micro Nasdaq Futures (continuous)', ticker: 'MNQ=F', pointValue: 2, sizeIncrement: 1 },
+    frac10:    { id: 'nq_frac_0_1', label: 'NQ Futures — simulated 0.1-contract sizing (research)', ticker: 'NQ=F', pointValue: 20, sizeIncrement: 0.1, research: true },
+    frac25:    { id: 'nq_frac_0_25', label: 'NQ Futures — simulated 0.25-contract sizing (research)', ticker: 'NQ=F', pointValue: 20, sizeIncrement: 0.25, research: true },
+    frac50:    { id: 'nq_frac_0_5', label: 'NQ Futures — simulated 0.5-contract sizing (research)', ticker: 'NQ=F', pointValue: 20, sizeIncrement: 0.5, research: true },
   },
 };
 
