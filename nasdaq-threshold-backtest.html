@@ -101,7 +101,7 @@
 <div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
   <div>
     <h1 style="font-size:20px;font-weight:700;margin:0;color:#22d3ee;">🧮 Nasdaq Macro Threshold Engine — Backtest Lab</h1>
-    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">4-gate macro framework (Liquidity → Risk/Vol → Direction → Execution) + Exit Engine · synthetic dataset (Phase 1) · one trade open at a time, fixed-equity sizing</div>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">4-gate macro framework (Liquidity → Risk/Vol → Direction → Execution) + Exit Engine · real FRED/Yahoo data by default, synthetic self-test optional · one trade open at a time, fixed-equity sizing</div>
   </div>
   <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
     <a href="nasdaq-threshold-engine.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:#22d3ee;">📡 Live Monitor →</a>
@@ -116,9 +116,10 @@
 
 <!-- Run bar -->
 <div class="run-bar">
+  <div class="cfg-field"><label>Data Source</label><select id="cfg_datamode" onchange="onDataModeChange()"><option value="real" selected>Real (FRED + Yahoo)</option><option value="synthetic">Synthetic self-test</option></select></div>
   <div class="cfg-field"><label>Start</label><input type="date" id="cfg_start"></div>
   <div class="cfg-field"><label>End</label><input type="date" id="cfg_end"><span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">blank = today</span></div>
-  <div class="cfg-field"><label>Seed</label><input type="number" id="cfg_seed" value="42" step="1"></div>
+  <div class="cfg-field"><label>Seed</label><input type="number" id="cfg_seed" value="42" step="1" disabled><span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">synthetic mode only</span></div>
   <div class="cfg-field"><label>Account Equity</label><input type="number" id="cfg_equity" value="100000" step="5000" min="1000"></div>
   <div class="cfg-field"><label>Instrument</label><select id="cfg_instrument"></select></div>
   <div class="cfg-field"><label>Stop Model</label><select id="cfg_stopmodel"></select></div>
@@ -126,7 +127,7 @@
   <button class="run-btn" id="runBtn" onclick="runBacktest()" style="align-self:flex-end;">Run Backtest</button>
   <div style="display:flex;align-items:center;gap:8px;align-self:flex-end;padding-bottom:6px;">
     <span class="sdot" id="statusDot"></span>
-    <span id="statusMsg" class="run-lbl">Configure a run &amp; click Run — synthetic Phase 1 dataset, no external API needed</span>
+    <span id="statusMsg" class="run-lbl">Configure a run &amp; click Run — real FRED/Yahoo data by default, switch Data Source to synthetic for a no-network self-test</span>
   </div>
 </div>
 
@@ -294,6 +295,12 @@ async function loadConfig() {
   document.getElementById('f_reason').innerHTML += ['STOP_HIT', 'EXIT_ENGINE_CLOSE', 'END_OF_HISTORY_OPEN'].map(r => `<option value="${r}">${r}</option>`).join('');
 }
 
+function onDataModeChange() {
+  const isReal = document.getElementById('cfg_datamode').value === 'real';
+  document.getElementById('cfg_seed').disabled = isReal;
+}
+window.onDataModeChange = onDataModeChange;
+
 function updateInstrumentNote() {
   const key = document.getElementById('cfg_instrument').value;
   const note = document.getElementById('instrumentNote');
@@ -307,10 +314,12 @@ function updateInstrumentNote() {
 
 async function runBacktest() {
   const btn = document.getElementById('runBtn');
+  const dataMode = document.getElementById('cfg_datamode').value;
   btn.disabled = true;
-  setStatus('spin', 'Generating synthetic dataset…');
+  setStatus('spin', dataMode === 'real' ? 'Fetching real FRED/Yahoo data…' : 'Generating synthetic dataset…');
 
   const body = {
+    dataMode,
     start: document.getElementById('cfg_start').value || undefined,
     end: document.getElementById('cfg_end').value || undefined,
     seed: +document.getElementById('cfg_seed').value || 42,
@@ -342,7 +351,8 @@ async function runBacktest() {
 
     _data = result;
     renderAll();
-    setStatus('ok', `Done — ${result.trades.length} trades, ${result.dateRange.start} → ${result.dateRange.end}`);
+    const provenance = result.synthetic ? 'synthetic self-test data' : 'real FRED/Yahoo data';
+    setStatus('ok', `Done (${provenance}) — ${result.trades.length} trades, ${result.dateRange.start} → ${result.dateRange.end}`);
   } catch (err) {
     setStatus('err', 'Error: ' + err.message);
   } finally {
