@@ -2314,7 +2314,7 @@ function _computeNqQmr(bars, cfg = {}) {
   const EXT_MIN_SAMPLES = 20; // min prior confirm-day samples before ranking a percentile
   const extRatioHistory = []; // causal — confirm-day extension ratios seen strictly before "today"
 
-  const trades = [], trades2 = [], trades3 = [];
+  const trades = [], trades2 = [], trades3 = [], trades2cf = [];
   let equity1 = 1.0, equity2 = 1.0, equity3 = 1.0, equityCombo = 1.0;
   const curve1 = [], curve2 = [], curve3 = [], curveCombo = [];
 
@@ -2451,6 +2451,35 @@ function _computeNqQmr(bars, cfg = {}) {
       equity2 *= (1 + tradeReturn / 100);
       trades2.push({ ...tradeBase, equity: +equity2.toFixed(6), system: 'S2' });
       curve2.push({ date: today, equity: +equity2.toFixed(6) });
+
+      // Counterfactual: same rejection day, trading Gate 1's original direction
+      // instead of fading it — the natural baseline for "is fading the rejection
+      // actually better than ignoring it," same pattern as System 3's fade check.
+      const cfDir  = gate1;
+      const cfStop = cfDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
+      const cfTp   = tpPct > 0
+        ? (cfDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
+        : null;
+
+      let cfExit = null, cfReason = 'EOD';
+      for (const bar of afterEntry) {
+        if (cfDir === 'LONG'  && bar.l <= cfStop) { cfExit = cfStop; cfReason = 'STOP'; break; }
+        if (cfDir === 'SHORT' && bar.h >= cfStop) { cfExit = cfStop; cfReason = 'STOP'; break; }
+        if (cfTp !== null && cfDir === 'LONG'  && bar.h >= cfTp) { cfExit = cfTp; cfReason = 'TP'; break; }
+        if (cfTp !== null && cfDir === 'SHORT' && bar.l <= cfTp) { cfExit = cfTp; cfReason = 'TP'; break; }
+        if (parseInt(bar.t.substring(11, 13)) >= 20) { cfExit = bar.c; cfReason = 'EOD'; break; }
+      }
+      if (cfExit === null) {
+        const last = afterEntry[afterEntry.length - 1];
+        if (last) { cfExit = last.c; cfReason = 'EOD'; }
+      }
+      if (cfExit !== null) {
+        const cfMovePct = cfDir === 'LONG' ? (cfExit - entry) / entry * 100 : (entry - cfExit) / entry * 100;
+        const cfReturn   = cfMovePct * leverage;
+        trades2cf.push({ date: today, gate1, gate2, direction: cfDir, entry, stop: cfStop, exit: cfExit,
+                          exitReason: cfReason, stopPct: +effStopPct.toFixed(3),
+                          movePct: +cfMovePct.toFixed(3), tradeReturn: +cfReturn.toFixed(3), system: 'S2cf' });
+      }
     } else {
       equity1 *= (1 + tradeReturn / 100);
       trades.push({ ...tradeBase, equity: +equity1.toFixed(6), system: 'S1', extended: isExtended });
@@ -2507,6 +2536,7 @@ function _computeNqQmr(bars, cfg = {}) {
     result.trades2 = trades2;
     result.curve2  = curve2;
     result.stats2  = _qmrStats(trades2, curve2, equity2);
+    result.trades2cf = trades2cf; // counterfactual: Gate 1's direction on the same rejection days
   }
   if (showSystem3) {
     result.trades3 = trades3;
