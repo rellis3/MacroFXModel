@@ -119,6 +119,50 @@ export const COG_LIQUIDITY_1B_SCORE = {
   minCoverage: 0.5,
 };
 
+// ── Threshold 1 — Composite Liquidity Gate (slow macro + fast intraday flow) ──
+// Replaces the old Gate1A+Gate1B hard conjunction (decideAction required
+// BOTH sublayers to independently agree BULLISH/BEARISH before Gate2/Gate3
+// were even consulted) with a SINGLE blended score, per the observed COG UI
+// workflow: "1. Threshold 1, 2. Threshold 2, 3. Order Filled, 4. Closed" has
+// only one liquidity-style gate ahead of execution, not two independently
+// vetoing ones. The architectural diagnosis: a 2-year synthetic backtest
+// produced zero trades under the 4-way Gate1A∩Gate1B∩Gate2∩Gate3 conjunction
+// — too restrictive structurally, not a threshold-calibration problem.
+//
+// Slow leg reuses COG_LIQUIDITY_1A_INPUTS unchanged (WALCL/RRP/TGA/ECB/BOJ/HY
+// credit spread, daily resolution). Fast leg below is a 5-input subset of
+// COG_LIQUIDITY_1B_INPUTS — breadth and vvix are dropped per the redesign
+// spec (they stay defined above for any future standalone Gate1B work, just
+// not part of this composite). `sign`/`weight`/`rocBars` values are carried
+// over unchanged from their COG_LIQUIDITY_1B_INPUTS counterparts.
+export const COG_THRESHOLD1_FAST_INPUTS = [
+  { id: 'dxy',    label: 'DXY ROC (FX basket proxy)', sign: -1, weight: 1.0, rocBars: 3 },
+  { id: 'us10y',  label: 'US10Y Yield ROC',            sign: -1, weight: 1.0, rocBars: 3 },
+  { id: 'us2y',   label: 'US2Y Yield ROC',             sign: -1, weight: 0.8, rocBars: 3 },
+  { id: 'hygLqd', label: 'Credit ROC (HYG/LQD)',       sign: +1, weight: 1.0, rocBars: 3 },
+  { id: 'vix',    label: 'VIX ROC (inverse)',          sign: -1, weight: 0.8, rocBars: 3 },
+];
+
+// Binary-with-dead-zone classification (BULLISH/BEARISH/INVALID, no NEUTRAL
+// state) — same style as the old standalone Gate1B, per the redesign spec.
+// The two legs' own per-input normalized votes (each already on [-1,1], same
+// math as Gate1A/Gate1B) are averaged within their leg, then blended
+// `slowWeight`/`fastWeight` before rescaling onto `range` — see
+// computeThreshold1 in cogThreshold1Gate.js. `zWindowBars`/`zClip` configure
+// the fast leg's ROC z-score exactly like COG_LIQUIDITY_1B_SCORE does for
+// standalone Gate1B; the slow leg keeps using COG_LIQUIDITY_1A_SCORE's own
+// rocHorizonsDays/zWindowDays/percentileWindowDays/zClip unchanged.
+export const COG_THRESHOLD1_SCORE = {
+  range: [-100, 100],
+  bullishThreshold: 35,
+  bearishThreshold: -35,
+  slowWeight: 1.0,
+  fastWeight: 1.0,
+  zWindowBars: 1920,
+  zClip: 3,
+  minCoverage: 0.5,   // >=50% of the COMBINED slow+fast weighted panel must have data, else INVALID
+};
+
 // ── Gate 2 — Risk / Volatility Engine ───────────────────────────────────
 // Inputs never touch Nasdaq price — vol/correlation/credit measures only.
 // `ticker`/`fredSeriesId` resolve through cogDataSources.js. MOVE has no
@@ -283,7 +327,7 @@ export const COG_INTRADAY_SCHEDULE = {
   sessionStartMinute: 8 * 60,        // 08:00
   sessionEndMinute: 16 * 60,         // 16:00
   barIntervalMinutes: 5,             // synthetic/intraday bar cadence
-  gate1bWindow: { startMinute: 8 * 60,        endMinute: 12 * 60 + 30, label: 'Gate 1B flow threshold (08:00–12:30)' },
+  gate1bWindow: { startMinute: 8 * 60,        endMinute: 12 * 60 + 30, label: 'Threshold 1 composite read (08:00–12:30)' },
   gate2Window:  { startMinute: 12 * 60 + 30,  endMinute: 14 * 60 + 15, label: 'Gate 2 risk engine check (12:30–14:15)' },
   gate3Window:  { startMinute: 14 * 60 + 20,  endMinute: 14 * 60 + 35, label: 'Gate 3 direction confirmation (14:20–14:35)' },
   // Earliest possible fill bar is the first bar strictly after gate3Window

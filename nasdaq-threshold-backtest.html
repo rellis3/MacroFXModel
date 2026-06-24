@@ -137,7 +137,7 @@
 
 <!-- Event-driven engine disclosure (shown only when Engine = Event-Driven Intraday) -->
 <div class="info-box" id="engineNote" style="display:none;">
-  <strong style="color:#22d3ee">Event-Driven Intraday Engine:</strong> sequences a single decision cycle per trading day through Gate1B's morning flow-threshold window, Gate2's midday risk check and Gate3's narrow afternoon direction window, in that order, before any entry — then re-evaluates the Exit Engine intraday at COG_EXIT_SCORE's cadence once a trade is open. No real intraday data source exists yet, so this engine is <strong>synthetic-only</strong> (Data Source is forced and disabled). Gate1B's ±35 FlowScore threshold is deliberately strict, so the full Gate1A+Gate1B+Gate2+Gate3 conjunction firing is rare by design — see the Event Timeline below for the per-day audit trail of every window check.
+  <strong style="color:#22d3ee">Event-Driven Intraday Engine:</strong> sequences a single decision cycle per trading day through Threshold 1's morning composite-liquidity window (slow daily macro panel blended with fast intraday flow — replaces the old Gate1A+Gate1B hard conjunction), Gate2's midday risk check and Gate3's narrow afternoon direction window, in that order, before any entry — then re-evaluates the Exit Engine intraday at COG_EXIT_SCORE's cadence once a trade is open. No real intraday data source exists yet, so this engine is <strong>synthetic-only</strong> (Data Source is forced and disabled). See the Event Timeline below for the per-day audit trail of every window check.
 </div>
 
 <!-- KPI grid -->
@@ -514,8 +514,7 @@ function renderGateHitRates() {
   if (_data.engine === 'event') {
     document.getElementById('gateBarCount').textContent = `· ${g.dayCount} trading days`;
     document.getElementById('gateHitBody').innerHTML =
-      renderGateBar(g.gate1A, 'Gate 1A — Macro Regime (daily)') +
-      renderGateBar(g.gate1B, 'Gate 1B — Fast Flow Threshold (intraday, window-end reading)') +
+      renderGateBar(g.threshold1, 'Threshold 1 — Composite Liquidity (slow macro + fast flow, window-end reading)') +
       renderGateBar(g.gate2, 'Gate 2 — Risk/Vol (daily)') +
       renderGateBar(g.gate3, 'Gate 3 — Direction (daily)');
   } else {
