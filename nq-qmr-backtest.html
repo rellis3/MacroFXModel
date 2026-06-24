@@ -1191,6 +1191,13 @@ function renderChart() {
       s3Series.setData(_curve3.map(p => ({ time: p.date, value: p.equity })));
       subParts.unshift('purple=S3');
     }
+    if (hasS4) {
+      const s4Series = _chart.addLineSeries({
+        color: '#ec4899', lineWidth: 1.5, priceFormat: fmtEq, title: 'System 4',
+      });
+      s4Series.setData(_curve4.map(p => ({ time: p.date, value: p.equity })));
+      subParts.unshift('pink=S4');
+    }
 
     // System 1 (amber line, no fill so it doesn't obscure)
     _series = _chart.addLineSeries({
