@@ -45,7 +45,7 @@ import { DATA_DEFAULTS as NASDAQ_DATA_DEFAULTS } from './js/nasdaqConfig.js';
 import { generateSyntheticCogDataset, fetchRealCogDataset } from './js/cogDataSources.js';
 import { runBacktest as runCogBacktest } from './js/cogBacktestEngine.js';
 import { computePerformanceReport as computeCogPerformanceReport, monteCarloBootstrap as cogMonteCarloBootstrap, walkForwardStability as cogWalkForwardStability, outOfSampleSplit as cogOutOfSampleSplit } from './js/nasdaqPerformance.js';
-import { COG_LIQUIDITY_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
+import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
 import { computeExitScore } from './js/cogExitEngine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
@@ -6947,7 +6947,7 @@ app.get('/api/cog-threshold/results', (_req, res) => {
 app.get('/api/cog-threshold/config', (_req, res) => {
   res.json({
     ok: true,
-    liquidity: COG_LIQUIDITY_SCORE,
+    liquidity: COG_LIQUIDITY_1A_SCORE,
     risk: COG_RISK_SCORE,
     direction: COG_DIRECTION_SCORE,
     exit: COG_EXIT_SCORE,

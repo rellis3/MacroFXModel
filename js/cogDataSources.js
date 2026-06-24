@@ -7,7 +7,7 @@
 // reason to duplicate that layer. This file only adds the input-descriptor
 // resolution (cogConfig.js uses two different input shapes — see
 // describeInput below) and a synthetic dataset generator shaped for this
-// system's own input lists (COG_LIQUIDITY_INPUTS / COG_RISK_INPUTS /
+// system's own input lists (COG_LIQUIDITY_1A_INPUTS / COG_RISK_INPUTS /
 // COG_DIRECTION_INPUTS), never the sibling NLC framework's LIQUIDITY_INPUTS.
 //
 // Synthetic data is clearly tagged `synthetic: true` and exists purely to
@@ -16,7 +16,7 @@
 
 import { fetchFredSeries, fetchYahooDaily } from './nasdaqDataSources.js';
 import { mulberry32, applyPublicationLag, forwardFillOnto } from './nasdaqTransforms.js';
-import { COG_LIQUIDITY_INPUTS, COG_RISK_INPUTS, COG_DIRECTION_INPUTS, COG_EXECUTION, COG_DATA_DEFAULTS } from './cogConfig.js';
+import { COG_LIQUIDITY_1A_INPUTS, COG_RISK_INPUTS, COG_DIRECTION_INPUTS, COG_EXECUTION, COG_DATA_DEFAULTS } from './cogConfig.js';
 
 // ── Real data: FRED + Yahoo ─────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ async function fetchYahooRatioSeries(tickersA, tickersB) {
 }
 
 // cogConfig.js uses two input shapes: the array-of-objects shape
-// (COG_LIQUIDITY_INPUTS, COG_DIRECTION_INPUTS — `source` + `seriesId`/
+// (COG_LIQUIDITY_1A_INPUTS, COG_DIRECTION_INPUTS — `source` + `seriesId`/
 // `tickers`) and the dict-of-objects shape (COG_RISK_INPUTS — `ticker` /
 // `fredSeriesId` directly). This normalizes either onto one descriptor so
 // fetchInputRaw only needs one code path.
@@ -64,7 +64,7 @@ function describeInput(input) {
   throw new Error(`Unrecognized input descriptor: ${JSON.stringify(input)}`);
 }
 
-// Fetches one cogConfig.js input entry (any of COG_LIQUIDITY_INPUTS,
+// Fetches one cogConfig.js input entry (any of COG_LIQUIDITY_1A_INPUTS,
 // COG_RISK_INPUTS values, COG_DIRECTION_INPUTS) to a raw ascending
 // {date, value}[] series. Throws on total fetch failure (e.g. no FRED_KEY) —
 // callers must catch per-input and fall back to the weight-present coverage
@@ -128,7 +128,7 @@ export async function fetchRealCogDataset({ start = COG_DATA_DEFAULTS.backtestSt
 
   const riskInputEntries = Object.entries(COG_RISK_INPUTS);
   const [liquidityRaw, riskRaw, directionRaw] = await Promise.all([
-    Promise.all(COG_LIQUIDITY_INPUTS.map(fetchInputOrAbstain)),
+    Promise.all(COG_LIQUIDITY_1A_INPUTS.map(fetchInputOrAbstain)),
     Promise.all(riskInputEntries.map(([, inp]) => fetchInputOrAbstain(inp))),
     Promise.all(COG_DIRECTION_INPUTS.map(fetchInputOrAbstain)),
   ]);
@@ -140,7 +140,7 @@ export async function fetchRealCogDataset({ start = COG_DATA_DEFAULTS.backtestSt
   };
 
   const liquiditySeries = {};
-  COG_LIQUIDITY_INPUTS.forEach((input, idx) => {
+  COG_LIQUIDITY_1A_INPUTS.forEach((input, idx) => {
     const lagged = applyPublicationLag(liquidityRaw[idx], input.publicationLagDays);
     liquiditySeries[input.id] = toPoints(forwardFillOnto(lagged, dates));
   });
@@ -215,10 +215,10 @@ export function generateSyntheticCogDataset({ start = COG_DATA_DEFAULTS.backtest
     return dates.map((date, i) => ({ date, value: out[i] }));
   }
 
-  // Gate 1 — one series per COG_LIQUIDITY_INPUTS entry, signed so the gate's
+  // Gate 1 — one series per COG_LIQUIDITY_1A_INPUTS entry, signed so the gate's
   // own `sign` convention recovers the intended bullish/bearish read.
   const liquiditySeries = {};
-  for (const input of COG_LIQUIDITY_INPUTS) {
+  for (const input of COG_LIQUIDITY_1A_INPUTS) {
     liquiditySeries[input.id] = levelSeries(liqDriver, { base: 100, sign: input.sign, amplitude: 0.35, noiseFrac: 0.01 });
   }
 

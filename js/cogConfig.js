@@ -8,7 +8,11 @@
 //
 // Core thesis this config encodes: Nasdaq price must NEVER feed a trade
 // SIGNAL or VALID/INVALID classification. Gate 1 (Liquidity) is a pure
-// macro/cross-asset read with zero Nasdaq input. Gate 3 (Direction) prefers
+// macro/cross-asset read with zero Nasdaq input, split into Gate1A (slow
+// daily macro regime) and Gate1B (fast intraday flow threshold — not yet
+// implemented, see that section below) so the hard veto can react to both
+// "is the macro backdrop favorable" and "is right now a good moment to act
+// on it" instead of only the former. Gate 3 (Direction) prefers
 // cross-asset confirmation over Nasdaq price and only ever touches ES/RTY
 // futures as broad risk-proxy confirmation, never NQ/QQQ. Gate 2
 // (Risk/Volatility) is the one deliberate exception: it reads QQQ/SPY price
@@ -31,33 +35,27 @@
 // this file and the cog*.js engine files, so the two sibling systems can
 // evolve independently and neither can silently break the other.
 
-// ── Gate 1 — Liquidity Engine ────────────────────────────────────────────
+// ── Gate 1A — Slow Macro Regime ─────────────────────────────────────────
+// Gate 1 is split into two sublayers: the slow balance-sheet/credit inputs
+// below update at most daily (often weekly/monthly) and cannot, by
+// themselves, explain intraday trade-trigger timings — see Gate 1B below
+// for the fast intraday counterpart this sublayer is paired with. Gate1A
+// alone answers "is the macro liquidity backdrop BULLISH/BEARISH/NEUTRAL
+// this week", not "is right now a good moment to act on that backdrop."
+//
 // `sign` encodes "more liquidity for US risk assets": +1 = rising raw value
 // is bullish (e.g. central-bank balance sheet growth), -1 = rising raw value
-// is bearish (e.g. dollar strength drains USD liquidity globally).
+// is bearish (e.g. TGA rebuilding drains reserves from the system).
 // `publicationLagDays` models real-world reporting delay — a print is never
 // visible to the backtest before its actual publication date (no lookahead).
-export const COG_LIQUIDITY_INPUTS = [
+export const COG_LIQUIDITY_1A_INPUTS = [
   { id: 'walcl',  label: 'Fed Balance Sheet (WALCL)',          source: 'fred',  seriesId: 'WALCL',         sign: +1, weight: 1.2, publicationLagDays: 4 },
   { id: 'rrp',    label: 'Reverse Repo (RRPONTSYD)',           source: 'fred',  seriesId: 'RRPONTSYD',     sign: -1, weight: 1.2, publicationLagDays: 1 },
   { id: 'tga',    label: 'Treasury General Account (WTREGEN)', source: 'fred',  seriesId: 'WTREGEN',       sign: -1, weight: 1.0, publicationLagDays: 4 },
   { id: 'ecb',    label: 'ECB Balance Sheet (ECBASSETSW)',     source: 'fred',  seriesId: 'ECBASSETSW',    sign: +1, weight: 0.7, publicationLagDays: 5 },
   { id: 'boj',    label: 'BOJ Balance Sheet (JPNASSETS)',      source: 'fred',  seriesId: 'JPNASSETS',     sign: +1, weight: 0.5, publicationLagDays: 10 },
-  { id: 'pboc',   label: 'PBOC Proxy — China FX Reserves',     source: 'fred',  seriesId: 'TRESEGCNM052N', sign: +1, weight: 0.4, publicationLagDays: 15,
-    proxyNote: 'FRED has no clean official PBOC balance-sheet series; China FX reserves (ex-gold) is the closest free, disclosed proxy.' },
-  { id: 'curve',  label: 'US 10Y-2Y Spread (T10Y2Y)',          source: 'fred',  seriesId: 'T10Y2Y',        sign: +1, weight: 1.0, publicationLagDays: 1,
-    note: 'Steepening = improving growth/risk-on = bullish; flattening/inversion = bearish.' },
-  { id: 'dxy',    label: 'Dollar Index (DTWEXBGS)',            source: 'fred',  seriesId: 'DTWEXBGS',      sign: -1, weight: 1.0, publicationLagDays: 1,
-    note: 'A strengthening dollar tightens global USD liquidity — bearish for risk assets.' },
   { id: 'credit', label: 'HY Credit Spread (BAMLH0A0HYM2)',    source: 'fred',  seriesId: 'BAMLH0A0HYM2',  sign: -1, weight: 1.0, publicationLagDays: 1,
     note: 'Widening spreads = credit stress = bearish.' },
-  { id: 'nfci',   label: 'Chicago Fed NFCI',                   source: 'fred',  seriesId: 'NFCI',          sign: -1, weight: 0.8, publicationLagDays: 7,
-    note: 'NFCI > 0 = tighter-than-average financial conditions = bearish.' },
-  { id: 'hygLqd', label: 'HYG/LQD Ratio',                      source: 'yahoo', tickers: ['HYG', 'LQD'],   sign: +1, weight: 0.9, publicationLagDays: 0,
-    note: 'Rising HY-vs-IG credit ETF ratio = risk appetite improving = bullish.' },
-  { id: 'vix',    label: 'VIX',                                source: 'yahoo', tickers: ['^VIX'],         sign: -1, weight: 1.0, publicationLagDays: 0 },
-  { id: 'vix3m',  label: 'VIX3M',                              source: 'yahoo', tickers: ['^VIX3M'],       sign: -1, weight: 0.5, publicationLagDays: 0 },
-  { id: 'vvix',   label: 'VVIX',                               source: 'yahoo', tickers: ['^VVIX'],        sign: -1, weight: 0.5, publicationLagDays: 0 },
 ];
 
 // Per the brief, each input blends THREE signals before being weighted into
@@ -66,10 +64,10 @@ export const COG_LIQUIDITY_INPUTS = [
 // [-1, +1] ("normalized") and averaged; the equal-weight blend of those
 // normalized values is this input's final contribution before `sign`/weight
 // — see computeInputContribution in cogLiquidityGate.js.
-export const COG_LIQUIDITY_SCORE = {
+export const COG_LIQUIDITY_1A_SCORE = {
   range: [-5, 5],
-  bullishThreshold: 2,     // LiquidityScore > +2 → BULLISH
-  bearishThreshold: -2,    // LiquidityScore < -2 → BEARISH
+  bullishThreshold: 2,     // RegimeScore > +2 → BULLISH
+  bearishThreshold: -2,    // RegimeScore < -2 → BEARISH
   rocHorizonsDays: [1, 7, 30],   // daily / 7d / 30d rate-of-change, each z-scored then averaged
   zWindowDays: 252,        // ~1 trading year lookback for the ROC z-scores
   percentileWindowDays: 252, // lookback for the raw-level percentile-rank sub-signal
@@ -77,6 +75,23 @@ export const COG_LIQUIDITY_SCORE = {
   minCoverage: 0.5,        // >=50% of the weighted panel (by weight) must have data, else score is INVALID
   marginalMargin: 0.5,     // |score| within this of the bullish/bearish threshold counts as "marginal" conviction
 };
+
+// ── Gate 1B — Fast Intraday Flow Threshold (NOT YET IMPLEMENTED) ────────
+// Per the redesign spec this sublayer reads intraday-updating cross-asset
+// flow (DXY 5m/15m ROC, US10Y/US2Y yield ROC, HYG/LQD intraday proxy, bond
+// futures, cross-asset breadth) and outputs a binary VALID/INVALID; the hard
+// veto then applies to Gate1A + Gate1B combined, not Gate1A alone. No config
+// block is declared here yet: a DXY-proxy basket and a cross-asset breadth
+// proxy are buildable today from OANDA's existing FX-major/index-CFD
+// intraday candles (M5/M15, once OANDA_KEY is present in this environment),
+// but US10Y/US2Y intraday yield ROC and an HYG/LQD intraday proxy have no
+// free, multi-year-backtestable source identified in this codebase (FRED is
+// daily-with-lag; Yahoo intraday is short-history and already blocked at
+// this sandbox's network layer). cogBacktestEngine.js's daily-bar loop also
+// needs restructuring to consume intraday bars before this can run for real.
+// Declaring inputs/thresholds before those two things are resolved would be
+// exactly the kind of half-built scaffolding this file's "no black boxes,
+// nothing faked" standard exists to prevent.
 
 // ── Gate 2 — Risk / Volatility Engine ───────────────────────────────────
 // Inputs never touch Nasdaq price — vol/correlation/credit measures only.
