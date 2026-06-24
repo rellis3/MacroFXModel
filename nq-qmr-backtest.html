@@ -637,6 +637,7 @@
 <script>
 let _trades = [], _curve = [], _stats = {};
 let _trades2 = [], _curve2 = [], _stats2 = null;
+let _trades2cf = []; // counterfactual: Gate 1's direction on the same rejection days
 let _trades3 = [], _curve3 = [], _stats3 = null;
 let _trades4 = [], _curve4 = [], _stats4 = null;
 let _tradesCombo = [], _curveCombo = [], _statsCombo = null;
@@ -738,6 +739,7 @@ async function runBacktest() {
     _trades2    = d.trades2    || [];
     _curve2     = d.curve2     || [];
     _stats2     = d.stats2     || null;
+    _trades2cf  = d.trades2cf  || [];
     _trades3    = d.trades3    || [];
     _curve3     = d.curve3     || [];
     _stats3     = d.stats3     || null;
@@ -799,6 +801,44 @@ function renderAll() {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
+}
+
+// Two-sample bootstrap: tests whether mean(lowerGroup) is reliably below
+// mean(upperGroup) by resampling each group independently. Returns the
+// fraction of resampled draws where lowerGroup's mean was NOT below
+// upperGroup's (i.e. p for "lowerGroup is not actually worse").
+function bootstrapMeanBelowP(lowerGroup, upperGroup, nSim = 1000) {
+  const nl = lowerGroup.length, nu = upperGroup.length;
+  if (nl < 5 || nu < 5) return null;
+  let countGE0 = 0;
+  for (let s = 0; s < nSim; s++) {
+    let sumL = 0, sumU = 0;
+    for (let i = 0; i < nl; i++) sumL += lowerGroup[Math.floor(Math.random() * nl)];
+    for (let i = 0; i < nu; i++) sumU += upperGroup[Math.floor(Math.random() * nu)];
+    if ((sumL / nl) - (sumU / nu) >= 0) countGE0++;
+  }
+  return countGE0 / nSim;
+}
+
+// Shared CAGR/Sharpe/Sortino/MaxDD/winRate computation for an arbitrary trade
+// subset, annualised against the full backtest period (same convention used
+// throughout this page for sub-population stats).
+function subsetStats(trades) {
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+  const n = trades.length;
+  if (!n) return { n: 0, cagr: 0, sharpe: 0, sortino: 0, maxDD: 0, winRate: 0, totalReturn: 0 };
+  const rets = trades.map(t => t.tradeReturn / 100);
+  const mu   = rets.reduce((s,r)=>s+r,0) / n;
+  const sig  = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0) / n);
+  const tpy  = n / Math.max(years, 0.01);
+  const sharpe  = sig > 0 ? (mu/sig) * Math.sqrt(tpy) : 0;
+  const downVar = rets.reduce((s,r)=>s+Math.min(r,0)**2,0) / n;
+  const sortino = downVar > 0 ? (mu/Math.sqrt(downVar)) * Math.sqrt(tpy) : 0;
+  let eq=1, peak=1, maxDD=0;
+  for (const r of rets) { eq*=(1+r); if (eq>peak) peak=eq; const dd=(peak-eq)/peak; if (dd>maxDD) maxDD=dd; }
+  const wins = trades.filter(t=>t.tradeReturn>0).length;
+  return { n, cagr: (Math.pow(eq, 1/Math.max(years,0.01))-1)*100, sharpe, sortino, maxDD: maxDD*100, winRate: wins/n, totalReturn: (eq-1)*100 };
 }
 
 // Combined always includes every enabled system, not just the two shown in a
@@ -868,7 +908,71 @@ function renderSystem2Card() {
         ${row('Win Rate', (s1.winRate*100).toFixed(1)+'%', (s2.winRate*100).toFixed(1)+'%', (sc.winRate*100).toFixed(1)+'%')}
         ${row('Trades', n(s1.n), n(s2.n), n(sc.n))}
       </tbody>
-    </table>`;
+    </table>
+    ${renderTradeThroughSection(s1, s2)}`;
+}
+
+// Third option for System 2: rejection days currently get skipped entirely
+// (that's just "System 1" above) — the open question is whether trading
+// Gate 1's direction through the rejection anyway beats both skipping AND
+// fading it.
+function renderTradeThroughSection(s1, s2) {
+  if (!_trades2cf.length) return '';
+  const cfStats = subsetStats(_trades2cf);
+
+  const s2ByDate = new Map(_trades2.map(t => [t.date, t.tradeReturn]));
+  const cfByDate = new Map(_trades2cf.map(t => [t.date, t.tradeReturn]));
+  const sharedDates = [..._trades2.map(t => t.date)].filter(d => cfByDate.has(d));
+  const diffs = sharedDates.map(d => s2ByDate.get(d) - cfByDate.get(d)); // fade − trade-through
+  const nPairs = diffs.length;
+  const fadeWinPct = nPairs ? diffs.filter(d => d > 0).length / nPairs * 100 : 0;
+  let pLE0 = null;
+  if (nPairs >= 5) {
+    const N_SIM = 1000;
+    let countLE0 = 0;
+    for (let s = 0; s < N_SIM; s++) {
+      let sum = 0;
+      for (let i = 0; i < nPairs; i++) sum += diffs[Math.floor(Math.random() * nPairs)];
+      if (sum / nPairs <= 0) countLE0++;
+    }
+    pLE0 = countLE0 / N_SIM;
+  }
+  const fadeBetterColor = pLE0 != null && pLE0 < 0.05 ? '#10b981' : '#ef4444';
+
+  // Combined view: what if Gate 2 were removed entirely as a filter, and every
+  // Gate-1 signal day got traded regardless of what London does?
+  const tradeThroughPool = [..._trades, ..._trades2cf].sort((a,b)=>a.date.localeCompare(b.date));
+  const tradeThroughCombined = subsetStats(tradeThroughPool);
+
+  const pct = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  const f2  = v => v.toFixed(2);
+
+  return `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Third option: trade Gate 1's direction through the rejection, instead of fading it</div>
+      <p style="font-size:11px;color:var(--text3);margin:0 0 8px">
+        "System 1" above already skips rejection days entirely. This tests the other alternative: what if the rejection itself is mostly noise, and Gate 1's original signal should just be trusted anyway?
+      </p>
+      <div class="sec-grid" style="margin-top:0">
+        <div class="sec"><span class="sec-lbl">Trade-through win rate</span><span class="sec-val">${(cfStats.winRate*100).toFixed(0)}%</span></div>
+        <div class="sec"><span class="sec-lbl">System 2 (fade) win rate</span><span class="sec-val">${(s2.winRate*100).toFixed(0)}%</span></div>
+        <div class="sec"><span class="sec-lbl">Fade beats trade-through</span><span class="sec-val">${fadeWinPct.toFixed(0)}% of ${nPairs} matched days</span></div>
+        <div class="sec"><span class="sec-lbl">Bootstrap p (fade mean ≤ trade-through)</span><span class="sec-val" style="color:${fadeBetterColor}">${pLE0 != null ? pLE0.toFixed(3) : '—'}</span></div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+        <thead><tr>
+          <th style="text-align:left;padding:4px 10px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)">Metric</th>
+          <th style="text-align:right;padding:4px 10px;color:#f59e0b;font-size:11px;border-bottom:1px solid var(--border)">Full S1 (current, skips rejections)</th>
+          <th style="text-align:right;padding:4px 10px;color:#06b6d4;font-size:11px;border-bottom:1px solid var(--border)">S1 + trade-through (Gate 2 removed)</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">CAGR</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${pct(s1.cagr)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${tradeThroughCombined.cagr>=s1.cagr?'#10b981':'var(--text)'}">${pct(tradeThroughCombined.cagr)}</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Sharpe</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${f2(s1.sharpe)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${tradeThroughCombined.sharpe>=s1.sharpe?'#10b981':'var(--text)'}">${f2(tradeThroughCombined.sharpe)}</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Max Drawdown</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">-${f2(s1.maxDD)}%</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${tradeThroughCombined.maxDD<=s1.maxDD?'#10b981':'var(--text)'}">-${f2(tradeThroughCombined.maxDD)}%</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Trades</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${s1.n.toFixed(0)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${tradeThroughCombined.n.toFixed(0)}</td></tr>
+        </tbody>
+      </table>
+    </div>`;
 }
 
 function renderSystem3Card() {
@@ -882,24 +986,14 @@ function renderSystem3Card() {
   // System 1's full population) — comparing against full S1 makes the fade look
   // better than it is, because it mixes in hundreds of unrelated days.
   const extTrades = _trades.filter(t => t.extended);
-  const years = _curve.length >= 2
-    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
-  function miniStats(trades) {
-    const n = trades.length;
-    if (!n) return { n: 0, cagr: 0, sharpe: 0, sortino: 0, maxDD: 0, winRate: 0, totalReturn: 0 };
-    const rets = trades.map(t => t.tradeReturn / 100);
-    const mu   = rets.reduce((s,r)=>s+r,0) / n;
-    const sig  = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0) / n);
-    const tpy  = n / Math.max(years, 0.01);
-    const sharpe  = sig > 0 ? (mu/sig) * Math.sqrt(tpy) : 0;
-    const downVar = rets.reduce((s,r)=>s+Math.min(r,0)**2,0) / n;
-    const sortino = downVar > 0 ? (mu/Math.sqrt(downVar)) * Math.sqrt(tpy) : 0;
-    let eq=1, peak=1, maxDD=0;
-    for (const r of rets) { eq*=(1+r); if (eq>peak) peak=eq; const dd=(peak-eq)/peak; if (dd>maxDD) maxDD=dd; }
-    const wins = trades.filter(t=>t.tradeReturn>0).length;
-    return { n, cagr: (Math.pow(eq, 1/Math.max(years,0.01))-1)*100, sharpe, sortino, maxDD: maxDD*100, winRate: wins/n, totalReturn: (eq-1)*100 };
-  }
-  const s1 = miniStats(extTrades), s3 = _stats3, sc = _statsCombo;
+  const s1 = subsetStats(extTrades), s3 = _stats3, sc = _statsCombo;
+
+  // Third option: skip these days instead of fading or continuing them.
+  const unflagged   = _trades.filter(t => !t.extended);
+  const skipStats   = subsetStats(unflagged);
+  const skipP       = bootstrapMeanBelowP(
+    extTrades.map(t => t.tradeReturn / 100), unflagged.map(t => t.tradeReturn / 100)
+  );
 
   // Paired same-day diffs (fade − continuation) for a significance check, plus
   // a concentration check — does the edge come from the whole sample or a
@@ -986,6 +1080,30 @@ function renderSystem3Card() {
       </div>
       <div class="drift-warn" style="color:${sigColor};font-size:11px;margin-top:6px">${sigWarn}</div>
       ${concWarn}
+    </div>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Third option: skip these days instead of fading or continuing</div>
+      <p style="font-size:11px;color:var(--text3);margin:0 0 8px">
+        Doesn't require extension to predict a reversal — just that flagged days are worse trades than the rest, so removing them (not reversing them) should help.
+      </p>
+      <div class="sec-grid" style="margin-top:0">
+        <div class="sec"><span class="sec-lbl">Flagged-day win rate</span><span class="sec-val">${(s1.winRate*100).toFixed(0)}%</span></div>
+        <div class="sec"><span class="sec-lbl">Unflagged-day win rate</span><span class="sec-val">${(skipStats.winRate*100).toFixed(0)}%</span></div>
+        <div class="sec"><span class="sec-lbl">Bootstrap p (flagged ≥ unflagged mean)</span><span class="sec-val" style="color:${skipP!=null && skipP<0.05 ? '#10b981' : '#ef4444'}">${skipP != null ? skipP.toFixed(3) : '—'}</span></div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+        <thead><tr>
+          <th style="text-align:left;padding:4px 10px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)">Metric</th>
+          <th style="text-align:right;padding:4px 10px;color:#f59e0b;font-size:11px;border-bottom:1px solid var(--border)">Full S1 (current)</th>
+          <th style="text-align:right;padding:4px 10px;color:#06b6d4;font-size:11px;border-bottom:1px solid var(--border)">S1 minus flagged days</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">CAGR</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${pct(_stats.cagr)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${skipStats.cagr>=_stats.cagr?'#10b981':'var(--text)'}">${pct(skipStats.cagr)}</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Sharpe</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${f2(_stats.sharpe)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${skipStats.sharpe>=_stats.sharpe?'#10b981':'var(--text)'}">${f2(skipStats.sharpe)}</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Max Drawdown</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">-${f2(_stats.maxDD)}%</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${skipStats.maxDD<=_stats.maxDD?'#10b981':'var(--text)'}">-${f2(skipStats.maxDD)}%</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Trades</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${n(_stats.n)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${n(skipStats.n)}</td></tr>
+        </tbody>
+      </table>
     </div>`;
 }
 
@@ -998,24 +1116,14 @@ function renderSystem4Card() {
 
   // Fair comparison: System 1 restricted to the SAME days System 4 traded.
   const chopTrades = _trades.filter(t => t.choppy);
-  const years = _curve.length >= 2
-    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
-  function miniStats(trades) {
-    const n = trades.length;
-    if (!n) return { n: 0, cagr: 0, sharpe: 0, sortino: 0, maxDD: 0, winRate: 0, totalReturn: 0 };
-    const rets = trades.map(t => t.tradeReturn / 100);
-    const mu   = rets.reduce((s,r)=>s+r,0) / n;
-    const sig  = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0) / n);
-    const tpy  = n / Math.max(years, 0.01);
-    const sharpe  = sig > 0 ? (mu/sig) * Math.sqrt(tpy) : 0;
-    const downVar = rets.reduce((s,r)=>s+Math.min(r,0)**2,0) / n;
-    const sortino = downVar > 0 ? (mu/Math.sqrt(downVar)) * Math.sqrt(tpy) : 0;
-    let eq=1, peak=1, maxDD=0;
-    for (const r of rets) { eq*=(1+r); if (eq>peak) peak=eq; const dd=(peak-eq)/peak; if (dd>maxDD) maxDD=dd; }
-    const wins = trades.filter(t=>t.tradeReturn>0).length;
-    return { n, cagr: (Math.pow(eq, 1/Math.max(years,0.01))-1)*100, sharpe, sortino, maxDD: maxDD*100, winRate: wins/n, totalReturn: (eq-1)*100 };
-  }
-  const s1 = miniStats(chopTrades), s4 = _stats4, sc = _statsCombo;
+  const s1 = subsetStats(chopTrades), s4 = _stats4, sc = _statsCombo;
+
+  // Third option: skip these days instead of fading or continuing them.
+  const unflaggedChop = _trades.filter(t => !t.choppy);
+  const skipStatsChop = subsetStats(unflaggedChop);
+  const skipPChop     = bootstrapMeanBelowP(
+    chopTrades.map(t => t.tradeReturn / 100), unflaggedChop.map(t => t.tradeReturn / 100)
+  );
 
   const s1ByDate = new Map(chopTrades.map(t => [t.date, t.tradeReturn]));
   const s4ByDate = new Map(_trades4.map(t => [t.date, t.tradeReturn]));
@@ -1097,6 +1205,30 @@ function renderSystem4Card() {
       </div>
       <div class="drift-warn" style="color:${sigColor};font-size:11px;margin-top:6px">${sigWarn}</div>
       ${concWarn}
+    </div>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Third option: skip these days instead of fading or continuing</div>
+      <p style="font-size:11px;color:var(--text3);margin:0 0 8px">
+        Doesn't require chop to predict a reversal — just that flagged days are worse trades than the rest, so removing them (not reversing them) should help.
+      </p>
+      <div class="sec-grid" style="margin-top:0">
+        <div class="sec"><span class="sec-lbl">Flagged-day win rate</span><span class="sec-val">${(s1.winRate*100).toFixed(0)}%</span></div>
+        <div class="sec"><span class="sec-lbl">Unflagged-day win rate</span><span class="sec-val">${(skipStatsChop.winRate*100).toFixed(0)}%</span></div>
+        <div class="sec"><span class="sec-lbl">Bootstrap p (flagged ≥ unflagged mean)</span><span class="sec-val" style="color:${skipPChop!=null && skipPChop<0.05 ? '#10b981' : '#ef4444'}">${skipPChop != null ? skipPChop.toFixed(3) : '—'}</span></div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+        <thead><tr>
+          <th style="text-align:left;padding:4px 10px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)">Metric</th>
+          <th style="text-align:right;padding:4px 10px;color:#f59e0b;font-size:11px;border-bottom:1px solid var(--border)">Full S1 (current)</th>
+          <th style="text-align:right;padding:4px 10px;color:#06b6d4;font-size:11px;border-bottom:1px solid var(--border)">S1 minus flagged days</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">CAGR</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${pct(_stats.cagr)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${skipStatsChop.cagr>=_stats.cagr?'#10b981':'var(--text)'}">${pct(skipStatsChop.cagr)}</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Sharpe</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${f2(_stats.sharpe)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${skipStatsChop.sharpe>=_stats.sharpe?'#10b981':'var(--text)'}">${f2(skipStatsChop.sharpe)}</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Max Drawdown</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">-${f2(_stats.maxDD)}%</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px;color:${skipStatsChop.maxDD<=_stats.maxDD?'#10b981':'var(--text)'}">-${f2(skipStatsChop.maxDD)}%</td></tr>
+          <tr><td style="padding:4px 10px;color:var(--text3);font-size:12px">Trades</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${n(_stats.n)}</td><td style="text-align:right;padding:4px 10px;font-family:'DM Mono',monospace;font-size:12px">${n(skipStatsChop.n)}</td></tr>
+        </tbody>
+      </table>
     </div>`;
 }
 
