@@ -15,8 +15,8 @@
 // substitute for the real fetch path.
 
 import { fetchFredSeries, fetchYahooDaily } from './nasdaqDataSources.js';
-import { mulberry32 } from './nasdaqTransforms.js';
-import { COG_LIQUIDITY_INPUTS, COG_DIRECTION_INPUTS, COG_DATA_DEFAULTS } from './cogConfig.js';
+import { mulberry32, applyPublicationLag, forwardFillOnto } from './nasdaqTransforms.js';
+import { COG_LIQUIDITY_INPUTS, COG_RISK_INPUTS, COG_DIRECTION_INPUTS, COG_EXECUTION, COG_DATA_DEFAULTS } from './cogConfig.js';
 
 // ── Real data: FRED + Yahoo ─────────────────────────────────────────────────
 
@@ -75,6 +75,87 @@ export async function fetchInputRaw(input) {
   if (d.kind === 'yahoo') return fetchYahooCloseSeries(d.tickers);
   if (d.kind === 'yahoo-ratio') return fetchYahooRatioSeries(d.tickersA, d.tickersB);
   throw new Error(`fetchInputRaw: unhandled kind ${d.kind}`);
+}
+
+// Fetches one input and never throws — a single dead ticker/series degrades
+// that input to all-NaN (the gate just abstains on it via its own
+// weight-present coverage policy) rather than failing the whole dataset.
+// `flaggedMissing` inputs (MOVE) are never even attempted — same disclosed,
+// not-faked gap as Phase 1.
+async function fetchInputOrAbstain(input) {
+  if (input.flaggedMissing) return [];
+  try { return await fetchInputRaw(input); } catch { return []; }
+}
+
+// ── Phase 2/3: real dataset (FRED + Yahoo) ──────────────────────────────────
+//
+// Same { dates, ohlc, liquiditySeries, riskSeries, directionSeries } shape
+// generateSyntheticCogDataset returns — a drop-in replacement for
+// cogBacktestEngine.js's runBacktest(), which stays dataset-shape-agnostic.
+//
+// Date axis = the traded instrument's OWN actual trading days (NQ futures,
+// falling back to QQQ if NQ=F has no history for the range) — mirrors the
+// sibling NLC system's loadDailyDataset in nasdaqBacktest.js.
+//
+// Gate 2/3 inputs (vol/correlation/cross-asset — same-day market closes,
+// "no publication lag needed" per their own gate file headers) are aligned
+// onto that axis by exact date match only; a day with no print for a given
+// input is left NaN and that input simply abstains for that bar via the
+// gate's existing weight-present coverage policy — never forward-filled,
+// same convention nasdaqBacktest.js already uses for its daily series.
+//
+// Gate 1's macro/balance-sheet inputs publish far less often than daily
+// (weekly/monthly), so each one is first shifted forward by its own
+// publicationLagDays (a print is never visible before its real publication
+// date — no lookahead) and then forward-filled onto the trading-day axis
+// (the most recent print holds until the next one arrives) — the exact
+// applyPublicationLag + forwardFillOnto pipeline nasdaqLiquidityEngine.js
+// already uses for the sibling system's own Gate 1.
+export async function fetchRealCogDataset({ start = COG_DATA_DEFAULTS.backtestStart, end } = {}) {
+  const { primary, secondary } = COG_EXECUTION.instruments;
+  const primaryBars = await fetchYahooDaily(primary.ticker, { start }).catch(() => []);
+  const bars = primaryBars.length ? primaryBars : await fetchYahooDaily(secondary.ticker, { start });
+  if (!bars.length) throw new Error(`No price data available for ${primary.ticker} or ${secondary.ticker}`);
+
+  let dates = bars.map(b => new Date(b.t).toISOString().slice(0, 10));
+  let ohlcBars = bars;
+  if (end) {
+    const cut = dates.findIndex(d => d > end);
+    const n = cut === -1 ? dates.length : cut;
+    dates = dates.slice(0, n);
+    ohlcBars = ohlcBars.slice(0, n);
+  }
+
+  const riskInputEntries = Object.entries(COG_RISK_INPUTS);
+  const [liquidityRaw, riskRaw, directionRaw] = await Promise.all([
+    Promise.all(COG_LIQUIDITY_INPUTS.map(fetchInputOrAbstain)),
+    Promise.all(riskInputEntries.map(([, inp]) => fetchInputOrAbstain(inp))),
+    Promise.all(COG_DIRECTION_INPUTS.map(fetchInputOrAbstain)),
+  ]);
+
+  const toPoints = (values) => dates.map((date, i) => ({ date, value: values[i] }));
+  const sameDayAlign = (raw) => {
+    const map = new Map(raw.map(p => [p.date, p.value]));
+    return dates.map(d => (map.has(d) ? map.get(d) : NaN));
+  };
+
+  const liquiditySeries = {};
+  COG_LIQUIDITY_INPUTS.forEach((input, idx) => {
+    const lagged = applyPublicationLag(liquidityRaw[idx], input.publicationLagDays);
+    liquiditySeries[input.id] = toPoints(forwardFillOnto(lagged, dates));
+  });
+
+  const riskSeries = {};
+  riskInputEntries.forEach(([id], idx) => { riskSeries[id] = toPoints(sameDayAlign(riskRaw[idx])); });
+
+  const directionSeries = {};
+  COG_DIRECTION_INPUTS.forEach((input, idx) => { directionSeries[input.id] = toPoints(sameDayAlign(directionRaw[idx])); });
+
+  const ohlc = dates.map((date, i) => ({
+    date, t: ohlcBars[i].t, open: ohlcBars[i].open, high: ohlcBars[i].high, low: ohlcBars[i].low, close: ohlcBars[i].close, volume: ohlcBars[i].volume,
+  }));
+
+  return { synthetic: false, dates, ohlc, liquiditySeries, riskSeries, directionSeries };
 }
 
 // ── Synthetic self-test dataset (NOT real data — see header) ───────────────

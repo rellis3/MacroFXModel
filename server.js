@@ -42,7 +42,7 @@ import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDat
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
 import { runResearchSuite as runNasdaqResearchSuite } from './js/nasdaqResearch.js';
 import { DATA_DEFAULTS as NASDAQ_DATA_DEFAULTS } from './js/nasdaqConfig.js';
-import { generateSyntheticCogDataset } from './js/cogDataSources.js';
+import { generateSyntheticCogDataset, fetchRealCogDataset } from './js/cogDataSources.js';
 import { runBacktest as runCogBacktest } from './js/cogBacktestEngine.js';
 import { computePerformanceReport as computeCogPerformanceReport, monteCarloBootstrap as cogMonteCarloBootstrap, walkForwardStability as cogWalkForwardStability, outOfSampleSplit as cogOutOfSampleSplit } from './js/nasdaqPerformance.js';
 import { COG_LIQUIDITY_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
@@ -6802,10 +6802,11 @@ app.get('/api/nasdaq-liquidity/results', (_req, res) => {
 });
 
 // ── Nasdaq Macro Threshold Engine (COG-inspired 4-gate system) ────────────────
-// Phase 1 wiring: synthetic dataset only — js/cogDataSources.js has no real-data
-// loader yet (that's Phase 2), so /run always calls generateSyntheticCogDataset.
-// Same async job/status/results pattern as the NASDAQ Liquidity Continuation
-// group above, persisted separately so the two systems' run histories never mix.
+// Phase 2/3 wiring: /run defaults to real FRED/Yahoo data via fetchRealCogDataset
+// (js/cogDataSources.js), with an explicit dataMode:'synthetic' opt-out for the
+// Phase 1 self-test path. Same async job/status/results pattern as the NASDAQ
+// Liquidity Continuation group above, persisted separately so the two systems'
+// run histories never mix.
 
 const COG_BT_DATA_DIR = path.join(__dirname, 'VolRangeForecaster', 'data', 'cog-threshold');
 
@@ -6858,16 +6859,22 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
   const instrumentKey = body.instrumentKey || undefined;
   const stopModelId = body.stopModelId || undefined;
   const requestedTier = body.requestedTier || undefined;
+  const dataMode = body.dataMode === 'synthetic' ? 'synthetic' : 'real';
 
   const jobId = `cog_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
 
   _purgeStaleCogJobs();
-  cogJobs.set(jobId, { status: 'running', startedAt, phase: 'Generating synthetic dataset…' });
+  cogJobs.set(jobId, {
+    status: 'running', startedAt,
+    phase: dataMode === 'real' ? 'Fetching real FRED/Yahoo data…' : 'Generating synthetic dataset…',
+  });
 
   (async () => {
     try {
-      const dataset = generateSyntheticCogDataset({ start, end, seed });
+      const dataset = dataMode === 'real'
+        ? await fetchRealCogDataset({ start, end })
+        : generateSyntheticCogDataset({ start, end, seed });
       cogJobs.get(jobId).phase = 'Running 4-gate backtest + Exit Engine…';
 
       const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
@@ -6881,9 +6888,9 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
 
       const payload = _capInfinity({
         runAt: new Date().toISOString(),
-        synthetic: true,
+        synthetic: dataset.synthetic,
         dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
-        options: { seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+        options: { dataMode, seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
         trades: result.trades,
         equityCurve: result.dates.map((d, i) => ({ date: d, equity: result.equityCurve[i], equityDollars: result.equityCurveDollars[i] })),
         performance, monteCarlo, walkForward, outOfSample, gateHitRates,
