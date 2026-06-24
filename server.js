@@ -2289,6 +2289,8 @@ function _computeNqQmr(bars, cfg = {}) {
     showSystem2     = false, // also compute rejection-fade trades (Gate1 pass, Gate2 rejects)
     showSystem3     = false, // also compute extension-fade trades (G1+G2 confirm, but move already extreme vs typical day range)
     extPctThreshold = 75,    // percentile (vs trailing history) of move-used-by-entry/ADR above which a confirmed day counts as "extended"
+    showSystem4     = false, // also compute chop-fade trades (G1+G2 confirm, but the session's path was inefficient/choppy, not a clean trend)
+    effPctThreshold = 25,    // percentile (vs trailing history) of trend efficiency BELOW which a confirmed day counts as "choppy"
   } = cfg;
 
   // Group H1 bars by UTC date
@@ -2313,10 +2315,11 @@ function _computeNqQmr(bars, cfg = {}) {
   const ADR_LOOKBACK    = 20; // trailing days averaged for the ADR baseline
   const EXT_MIN_SAMPLES = 20; // min prior confirm-day samples before ranking a percentile
   const extRatioHistory = []; // causal — confirm-day extension ratios seen strictly before "today"
+  const effRatioHistory = []; // causal — confirm-day trend-efficiency ratios seen strictly before "today"
 
-  const trades = [], trades2 = [], trades3 = [], trades2cf = [];
-  let equity1 = 1.0, equity2 = 1.0, equity3 = 1.0, equityCombo = 1.0;
-  const curve1 = [], curve2 = [], curve3 = [], curveCombo = [];
+  const trades = [], trades2 = [], trades3 = [], trades2cf = [], trades4 = [];
+  let equity1 = 1.0, equity2 = 1.0, equity3 = 1.0, equity4 = 1.0, equityCombo = 1.0;
+  const curve1 = [], curve2 = [], curve3 = [], curve4 = [], curveCombo = [];
 
   for (let di = 1; di < dates.length; di++) {
     const today = dates[di];
@@ -2443,6 +2446,35 @@ function _computeNqQmr(bars, cfg = {}) {
       extRatioHistory.push(extRatio);
     }
 
+    // Choppiness check — trend efficiency (Kaufman ER): net move from session
+    // open through entry, divided by the total close-to-close path length
+    // travelled getting there. Near 1 = clean trend (real room left to run);
+    // near 0 = lots of back-and-forth for little net progress (already stalled).
+    // Tracked regardless of showSystem4, same causal-history pattern as extension.
+    let isChoppy = false;
+    if (!isS2) {
+      const entryHour   = entryBar.t.substring(11, 13);
+      const sessionBars = [
+        ...overnightBars,
+        ...(byDate[today] || []).filter(b => {
+          const h = b.t.substring(11, 13);
+          return h > '08' && h <= entryHour;
+        }),
+      ].sort((a, b) => a.t.localeCompare(b.t));
+      const netMove = Math.abs(entry - sessionBars[0].o);
+      let pathLength = 0;
+      for (let i = 1; i < sessionBars.length; i++) {
+        pathLength += Math.abs(sessionBars[i].c - sessionBars[i - 1].c);
+      }
+      const effRatio = pathLength > 0 ? netMove / pathLength : 0;
+      if (effRatioHistory.length >= EXT_MIN_SAMPLES) {
+        const less    = effRatioHistory.filter(v => v <= effRatio).length;
+        const pctRank = less / effRatioHistory.length * 100;
+        isChoppy = pctRank <= effPctThreshold;
+      }
+      effRatioHistory.push(effRatio);
+    }
+
     const tradeBase = { date: today, gate1, gate2, direction: gate2, entry, stop, exit, exitReason,
                         stopPct: +effStopPct.toFixed(3),
                         movePct: +movePct.toFixed(3), tradeReturn: +tradeReturn.toFixed(3),
@@ -2482,7 +2514,7 @@ function _computeNqQmr(bars, cfg = {}) {
       }
     } else {
       equity1 *= (1 + tradeReturn / 100);
-      trades.push({ ...tradeBase, equity: +equity1.toFixed(6), system: 'S1', extended: isExtended });
+      trades.push({ ...tradeBase, equity: +equity1.toFixed(6), system: 'S1', extended: isExtended, choppy: isChoppy });
       curve1.push({ date: today, equity: +equity1.toFixed(6) });
 
       // System 3: same day, opposite (fade) direction — only when the move into entry
@@ -2526,6 +2558,50 @@ function _computeNqQmr(bars, cfg = {}) {
           curve3.push({ date: today, equity: +equity3.toFixed(6) });
         }
       }
+
+      // System 4: same day, opposite (fade) direction — only when the session's
+      // path into entry was inefficient/choppy rather than a clean trend. Same
+      // fade direction as System 3 — sourceExtended lets the combo de-duplicate
+      // a day flagged by both when S3 and S4 are both enabled.
+      if (isChoppy) {
+        const fadeDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
+        const fadeStop = fadeDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
+        const fadeTp   = tpPct > 0
+          ? (fadeDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
+          : null;
+
+        let fadeExit = null, fadeReason = 'EOD';
+        for (const bar of afterEntry) {
+          if (fadeDir === 'LONG'  && bar.l <= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
+          if (fadeDir === 'SHORT' && bar.h >= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
+          if (fadeTp !== null && fadeDir === 'LONG'  && bar.h >= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
+          if (fadeTp !== null && fadeDir === 'SHORT' && bar.l <= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
+          if (parseInt(bar.t.substring(11, 13)) >= 20) { fadeExit = bar.c; fadeReason = 'EOD'; break; }
+        }
+        if (fadeExit === null) {
+          const last = afterEntry[afterEntry.length - 1];
+          if (last) { fadeExit = last.c; fadeReason = 'EOD'; }
+        }
+
+        if (fadeExit !== null) {
+          let fadeMfe = 0, fadeMae = 0;
+          for (const bar of [entryBar, ...afterEntry]) {
+            const fav = fadeDir === 'LONG' ? (bar.h - entry) / entry * 100 : (entry - bar.l) / entry * 100;
+            const adv = fadeDir === 'LONG' ? (bar.l - entry) / entry * 100 : (entry - bar.h) / entry * 100;
+            if (fav > fadeMfe) fadeMfe = fav;
+            if (adv < fadeMae) fadeMae = adv;
+          }
+          const fadeMovePct = fadeDir === 'LONG' ? (fadeExit - entry) / entry * 100 : (entry - fadeExit) / entry * 100;
+          const fadeReturn  = fadeMovePct * leverage;
+          equity4 *= (1 + fadeReturn / 100);
+          trades4.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeStop, exit: fadeExit,
+                         exitReason: fadeReason, stopPct: +effStopPct.toFixed(3),
+                         movePct: +fadeMovePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
+                         mfePct: +fadeMfe.toFixed(3), maePct: +fadeMae.toFixed(3),
+                         equity: +equity4.toFixed(6), system: 'S4', sourceExtended: isExtended });
+          curve4.push({ date: today, equity: +equity4.toFixed(6) });
+        }
+      }
     }
   }
 
@@ -2543,13 +2619,21 @@ function _computeNqQmr(bars, cfg = {}) {
     result.curve3  = curve3;
     result.stats3  = _qmrStats(trades3, curve3, equity3);
   }
-  if (showSystem2 || showSystem3) {
-    // Carve extended days out of S1 when System 3 is replacing them with a fade trade,
-    // so the combined curve never double-counts a single trading day.
+  if (showSystem4) {
+    result.trades4 = trades4;
+    result.curve4  = curve4;
+    result.stats4  = _qmrStats(trades4, curve4, equity4);
+  }
+  if (showSystem2 || showSystem3 || showSystem4) {
+    // Carve extended/choppy days out of S1 when System 3/4 are replacing them with
+    // a fade trade, so the combined curve never double-counts a single trading day.
+    // A day flagged by both (S3 and S4 both enabled) is credited to S3 — both fade
+    // the same direction, so the outcome is identical either way.
     const comboPool = [
-      ...trades.filter(t => !(showSystem3 && t.extended)),
+      ...trades.filter(t => !((showSystem3 && t.extended) || (showSystem4 && t.choppy))),
       ...(showSystem2 ? trades2 : []),
       ...(showSystem3 ? trades3 : []),
+      ...(showSystem4 ? trades4.filter(t => !(showSystem3 && t.sourceExtended)) : []),
     ].sort((a, b) => a.date.localeCompare(b.date));
     let eq = 1.0;
     const curveComboFinal = [];
@@ -3006,7 +3090,7 @@ const nqQmrBarCache    = new Map(); // instrument → { bars, fetchedAt }
 const nqQmrResultCache = { result: null, fetchedAt: null }; // NAS100_USD default only
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both', extPctThreshold: 75 };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both', extPctThreshold: 75, effPctThreshold: 25 };
 
 async function _getNqQmrBars(instrument = 'NAS100_USD') {
   const cached = nqQmrBarCache.get(instrument);
@@ -3042,8 +3126,9 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
   }
   cfg.showSystem2 = req.query.showSystem2 === 'true';
   cfg.showSystem3 = req.query.showSystem3 === 'true';
+  cfg.showSystem4 = req.query.showSystem4 === 'true';
 
-  const isNasDefault = instrument === 'NAS100_USD' && !cfg.showSystem2 && !cfg.showSystem3 && Object.entries(cfg).every(([k, v]) =>
+  const isNasDefault = instrument === 'NAS100_USD' && !cfg.showSystem2 && !cfg.showSystem3 && !cfg.showSystem4 && Object.entries(cfg).every(([k, v]) =>
     typeof v === 'string' ? v === NQ_QMR_DEFAULTS[k] : Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001
   );
   if (isNasDefault && nqQmrResultCache.result && nqQmrResultCache.fetchedAt && Date.now() - nqQmrResultCache.fetchedAt < NQ_QMR_TTL_MS) {

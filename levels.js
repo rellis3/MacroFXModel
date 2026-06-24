@@ -21,8 +21,10 @@
 //                    ENABLE_ZSCORE_CONVICTION=true (deployment-level master gate;
 //                    also requires the Caps modal's "Yield-spread Z-score conviction"
 //                    toggle to be on — both must be true. Adds zSpread/zConvictionMult/
-//                    signalScoreZAdjusted fields per entry — additive only, see
-//                    computeYieldSpreadZ() below; default off, no live consumer reads it)
+//                    signalScoreZAdjusted fields per entry for the 8 pairs in
+//                    ZSPREAD_SERIES — additive only, see computeYieldSpreadZ() below;
+//                    default off, no live consumer reads it. XAU/USD and NAS100_USD
+//                    aren't covered — no rate-differential equivalent exists for them)
 
 import * as kv from './kv.js';
 import { fitHMM, hmmSignalScore, compute30mSwingRegime } from './hmm.js';
@@ -174,17 +176,25 @@ export async function fetchGlobalMacro() {
 //
 // Reuses the fredhistory_series_* KV cache server.js already populates every 6h
 // (refreshFredHistory) for the compass/gold-lab UI — no new FRED fetch added.
-// Spread = US 2Y − local short rate; z > 0 favors LONG, matching the sign
-// convention documented in js/zscoreSpreadEngine.js (ZSCORE_PAIRS), which notes
-// only USD/JPY's sign has been validated against live results — the others share
-// the same documented convention but are unconfirmed.
-const ZSPREAD_SHORT_KEY = {
-  'USD/JPY': 'jp_short',
-  'EUR/USD': 'de_short',
-  'GBP/USD': 'gb_short',
-  'AUD/USD': 'au_short',
-  'USD/CAD': 'ca_short',
-  'USD/CHF': 'ch_short',
+// Spread = seriesA − seriesB; z > 0 favors LONG, matching the sign convention
+// documented in js/zscoreSpreadEngine.js (ZSCORE_PAIRS), which notes only
+// USD/JPY's sign has been validated against live results — the rest (including
+// both cross pairs below) share the same documented convention but are unconfirmed.
+//
+// USD-anchored pairs use [us2y, local short rate] — unchanged from the original
+// 6-pair version. EUR/GBP and GBP/JPY are cross pairs with no USD leg, so they
+// spread the base currency's short rate against the quote currency's
+// (base − quote, matching the order the pair name itself reads in), reusing the
+// same de_short/gb_short/jp_short series already cached for the USD pairs above.
+const ZSPREAD_SERIES = {
+  'USD/JPY': ['us2y',     'jp_short'],
+  'EUR/USD': ['us2y',     'de_short'],
+  'GBP/USD': ['us2y',     'gb_short'],
+  'AUD/USD': ['us2y',     'au_short'],
+  'USD/CAD': ['us2y',     'ca_short'],
+  'USD/CHF': ['us2y',     'ch_short'],
+  'EUR/GBP': ['de_short', 'gb_short'],
+  'GBP/JPY': ['gb_short', 'jp_short'],
 };
 
 async function computeYieldSpreadZ(sym, caps) {
@@ -194,28 +204,29 @@ async function computeYieldSpreadZ(sym, caps) {
   // can never enable this on a deployment where the env var hasn't been set.
   if (process.env.ENABLE_ZSCORE_CONVICTION !== 'true') return null;
   if (caps?.enableZscoreConviction !== true) return null;
-  const shortKey = ZSPREAD_SHORT_KEY[sym];
-  if (!shortKey) return null;
+  const series = ZSPREAD_SERIES[sym];
+  if (!series) return null;
+  const [aKey, bKey] = series;
   try {
-    const [usRaw, otherRaw] = await Promise.all([
-      kv.get('fredhistory_series_us2y'),
-      kv.get(`fredhistory_series_${shortKey}`),
+    const [aRaw, bRaw] = await Promise.all([
+      kv.get(`fredhistory_series_${aKey}`),
+      kv.get(`fredhistory_series_${bKey}`),
     ]);
-    if (!usRaw || !otherRaw) return null;
-    const usObs    = JSON.parse(usRaw);
-    const otherObs = JSON.parse(otherRaw);
-    if (!usObs?.length || !otherObs?.length) return null;
+    if (!aRaw || !bRaw) return null;
+    const aObs = JSON.parse(aRaw);
+    const bObs = JSON.parse(bRaw);
+    if (!aObs?.length || !bObs?.length) return null;
 
-    const usMap    = new Map(usObs.map(o => [o.date, o.value]));
-    const otherMap = new Map(otherObs.map(o => [o.date, o.value]));
-    const dates    = [...new Set([...usMap.keys(), ...otherMap.keys()])].sort();
+    const aMap  = new Map(aObs.map(o => [o.date, o.value]));
+    const bMap  = new Map(bObs.map(o => [o.date, o.value]));
+    const dates = [...new Set([...aMap.keys(), ...bMap.keys()])].sort();
 
-    let lastUs = null, lastOther = null;
+    let lastA = null, lastB = null;
     const spreads = [];
     for (const d of dates) {
-      if (usMap.has(d))    lastUs    = usMap.get(d);
-      if (otherMap.has(d)) lastOther = otherMap.get(d);
-      if (lastUs != null && lastOther != null) spreads.push(lastUs - lastOther);
+      if (aMap.has(d)) lastA = aMap.get(d);
+      if (bMap.has(d)) lastB = bMap.get(d);
+      if (lastA != null && lastB != null) spreads.push(lastA - lastB);
     }
     if (spreads.length < 12) return null; // not enough overlapping history yet
 

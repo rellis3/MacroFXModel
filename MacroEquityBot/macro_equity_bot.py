@@ -527,7 +527,7 @@ def compute_macro_status(cfg: dict, vix_closes: list[float]) -> dict:
     if cfg.get('include_dax'):
         active['DAX'] = {'symbol': cfg.get('symbol_dax', 'GER40'),  'inverted': False, 'eu_mode': True}
     if cfg.get('include_gold'):
-        active['GOLD'] = {'symbol': cfg.get('symbol_gold', 'XAUUSD'), 'inverted': False, 'eu_mode': False}
+        active['GOLD'] = {'symbol': cfg.get('symbol_gold', 'XAUUSD'), 'inverted': True, 'eu_mode': False}
     if cfg.get('include_bil'):
         active['BIL'] = {'symbol': '', 'inverted': True, 'eu_mode': False}  # cash — not traded
 

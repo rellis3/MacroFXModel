@@ -276,6 +276,19 @@
         <input type="number" id="cfg_ext_pct" value="75" min="50" max="95" step="5">
         <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">days above this percentile of typical range-used get faded</span>
       </div>
+      <div class="cfg-field">
+        <label>System 4</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:4px;">
+          <input type="checkbox" id="cfg_system4" style="width:14px;height:14px;accent-color:#ec4899;">
+          <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text)">Chop Fade</span>
+        </label>
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">G1+G2 confirm but session path is inefficient/choppy → fade instead</span>
+      </div>
+      <div class="cfg-field">
+        <label>Efficiency Percentile</label>
+        <input type="number" id="cfg_eff_pct" value="25" min="5" max="50" step="5">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">days below this percentile of trend efficiency get faded</span>
+      </div>
     </div>
     <button class="run-btn" onclick="runBacktest()">Re-run with these params</button>
   </div>
@@ -324,6 +337,12 @@
 <div class="card" id="system3Card" style="display:none;">
   <div class="card-hdr">System 1 vs System 3 — Extension Fade</div>
   <div class="card-body" id="system3Body"></div>
+</div>
+
+<!-- System 4 comparison card -->
+<div class="card" id="system4Card" style="display:none;">
+  <div class="card-hdr">System 1 vs System 4 — Chop Fade</div>
+  <div class="card-body" id="system4Body"></div>
 </div>
 
 <!-- Annual returns -->
@@ -619,13 +638,14 @@
 let _trades = [], _curve = [], _stats = {};
 let _trades2 = [], _curve2 = [], _stats2 = null;
 let _trades3 = [], _curve3 = [], _stats3 = null;
+let _trades4 = [], _curve4 = [], _stats4 = null;
 let _tradesCombo = [], _curveCombo = [], _statsCombo = null;
 let _chart = null, _series = null;
 
 // "Active" dataset — what every analysis section below the chart reads from.
 // Defaults to System 1 alone; switches to the blended Combined set (S1 minus
-// any extended days System 3 replaced, plus S2/S3 trades) whenever either
-// extra system is enabled, so the rest of the page reflects what you'd
+// any extended/choppy days System 3/4 replaced, plus S2/S3/S4 trades) whenever
+// any extra system is enabled, so the rest of the page reflects what you'd
 // actually have traded rather than always showing System 1 in isolation.
 let _activeTrades = [], _activeCurve = [], _activeStats = {};
 
@@ -689,6 +709,7 @@ async function runBacktest() {
 
   const showS2 = document.getElementById('cfg_system2').checked;
   const showS3 = document.getElementById('cfg_system3').checked;
+  const showS4 = document.getElementById('cfg_system4').checked;
 
   const params = new URLSearchParams({
     instrument,
@@ -703,6 +724,8 @@ async function runBacktest() {
     showSystem2:     showS2,
     showSystem3:     showS3,
     extPctThreshold: document.getElementById('cfg_ext_pct').value,
+    showSystem4:     showS4,
+    effPctThreshold: document.getElementById('cfg_eff_pct').value,
   });
 
   try {
@@ -718,11 +741,14 @@ async function runBacktest() {
     _trades3    = d.trades3    || [];
     _curve3     = d.curve3     || [];
     _stats3     = d.stats3     || null;
+    _trades4    = d.trades4    || [];
+    _curve4     = d.curve4     || [];
+    _stats4     = d.stats4     || null;
     _tradesCombo = d.tradesCombo || [];
     _curveCombo  = d.curveCombo  || [];
     _statsCombo  = d.statsCombo  || null;
 
-    const useCombo = (showS2 || showS3) && _tradesCombo.length > 0;
+    const useCombo = (showS2 || showS3 || showS4) && _tradesCombo.length > 0;
     _activeTrades = useCombo ? _tradesCombo : _trades;
     _activeCurve  = useCombo ? _curveCombo  : _curve;
     _activeStats  = useCombo ? _statsCombo  : _stats;
@@ -747,14 +773,20 @@ function renderAll() {
   const label = document.getElementById('activeDatasetLabel');
   if (label) {
     const usingCombo = _activeTrades === _tradesCombo && _tradesCombo.length > 0;
+    const activeSystems = ['System 1',
+      _trades2.length ? 'System 2' : null,
+      _trades3.length ? 'System 3' : null,
+      _trades4.length ? 'System 4' : null,
+    ].filter(Boolean).join(' + ');
     label.textContent = usingCombo
-      ? `Showing: Combined strategy (System 1 + ${_trades3.length ? 'System 3' : ''}${_trades3.length && _trades2.length ? ' + ' : ''}${_trades2.length ? 'System 2' : ''}) — ${_activeTrades.length} trades`
+      ? `Showing: Combined strategy (${activeSystems}) — ${_activeTrades.length} trades`
       : `Showing: System 1 only — ${_activeTrades.length} trades`;
   }
   renderKpis();
   renderChart();
   renderSystem2Card();
   renderSystem3Card();
+  renderSystem4Card();
   renderAnnual();
   renderGateBreakdown();
   renderMonthlyCal();
@@ -767,6 +799,25 @@ function renderAll() {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
+}
+
+// Combined always includes every enabled system, not just the two shown in a
+// given comparison card — this builds the disclosure note for whichever other
+// systems are also active, so a card never silently implies Combined = just
+// the two systems it displays. `selfNum` excludes that card's own system.
+function comboDisclosure(selfNum) {
+  const ALL = [
+    { n: 2, label: 'System 2', color: '#3b82f6', trades: _trades2 },
+    { n: 3, label: 'System 3', color: '#a855f7', trades: _trades3 },
+    { n: 4, label: 'System 4', color: '#ec4899', trades: _trades4 },
+  ];
+  const others = ALL.filter(s => s.n !== selfNum && s.trades.length > 0);
+  if (!others.length) return { summary: '', note: '' };
+  const names = others.map(s => s.label).join(' + ');
+  return {
+    summary: ` (${names} also enabled — see ${others.length > 1 ? 'their cards' : 'its card'} for that breakdown)`,
+    note: `<br><strong style="color:${others[0].color}">Note:</strong> the Combined column here also includes ${names}'s trades even though ${others.length > 1 ? "they aren't" : "it isn't"} shown in this table.`,
+  };
 }
 
 function renderSystem2Card() {
@@ -792,13 +843,13 @@ function renderSystem2Card() {
   const f2   = v => v.toFixed(2);
   const n    = (v, unit = '') => v.toFixed(0) + unit;
 
-  const s3Active = _trades3.length > 0;
+  const disclosure = comboDisclosure(2);
   body.innerHTML = `
     <p style="font-size:11px;color:var(--text3);margin:0 0 10px">
       System 1: G1 pass + G2 confirmed → trade Gate1 direction &nbsp;|&nbsp;
       System 2: G1 pass + G2 rejected (London fades overnight bias) → trade London direction<br>
-      Combined: ${s3Active ? 'System 1 + System 2 + System 3 (Extension Fade is also enabled — see its card below for that breakdown)' : 'both systems'}, equal sizing per trade. Green = best value.
-      ${s3Active ? '<br><strong style="color:#a855f7">Note:</strong> the Combined column here includes System 3\'s trades even though they aren\'t shown in this table.' : ''}
+      Combined: both systems${disclosure.summary}, equal sizing per trade. Green = best value.
+      ${disclosure.note}
     </p>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr>
@@ -900,12 +951,13 @@ function renderSystem3Card() {
     ? `<div class="drift-warn">⚠ The top 5 days account for ${top5Share.toFixed(0)}% of the total edge — this is being driven by a handful of outlier days, not a consistent effect.</div>`
     : '';
 
+  const disclosure3 = comboDisclosure(3);
   body.innerHTML = `
     <p style="font-size:11px;color:var(--text3);margin:0 0 10px">
       System 1 (same days): of S1's days, the ${extTrades.length} where the move into entry was already ≥${document.getElementById('cfg_ext_pct').value}th percentile of the trailing 20-day ADR — shown as continuation, for a fair comparison &nbsp;|&nbsp;
       System 3: those same days, faded (opposite direction) instead<br>
-      Combined: ${_trades2.length > 0 ? 'System 1 + System 2 + System 3 (Rejection Fade is also enabled — see its card above for that breakdown)' : 'full System 1 minus those days, plus System 3\'s fade on them'}, equal sizing per trade. Green = best value.
-      ${_trades2.length > 0 ? '<br><strong style="color:#3b82f6">Note:</strong> the Combined column here includes System 2\'s trades even though they aren\'t shown in this table.' : ''}
+      Combined: full System 1 minus those days, plus System 3's fade on them${disclosure3.summary}, equal sizing per trade. Green = best value.
+      ${disclosure3.note}
     </p>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr>
@@ -923,6 +975,117 @@ function renderSystem3Card() {
         ${row('Calmar', s1.maxDD>0?(s1.cagr/s1.maxDD).toFixed(2):'—', s3.maxDD>0?(s3.cagr/s3.maxDD).toFixed(2):'—', sc.maxDD>0?(sc.cagr/sc.maxDD).toFixed(2):'—')}
         ${row('Win Rate', (s1.winRate*100).toFixed(1)+'%', (s3.winRate*100).toFixed(1)+'%', (sc.winRate*100).toFixed(1)+'%')}
         ${row('Trades', n(s1.n), n(s3.n), n(sc.n))}
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Is this a real edge? (paired same-day test)</div>
+      <div class="sec-grid" style="margin-top:0">
+        <div class="sec"><span class="sec-lbl">Fade beats continuation</span><span class="sec-val">${fadeWinPct.toFixed(0)}% of ${nPairs} matched days</span></div>
+        <div class="sec"><span class="sec-lbl">Bootstrap p (P[mean ≤ 0])</span><span class="sec-val" style="color:${sigColor}">${pLE0 != null ? pLE0.toFixed(3) : '—'}</span></div>
+        <div class="sec"><span class="sec-lbl">Top-5-day share of total edge</span><span class="sec-val" style="color:${top5Share>=50?'#ef4444':'var(--text)'}">${isFinite(top5Share)?top5Share.toFixed(0)+'%':'—'}</span></div>
+      </div>
+      <div class="drift-warn" style="color:${sigColor};font-size:11px;margin-top:6px">${sigWarn}</div>
+      ${concWarn}
+    </div>`;
+}
+
+function renderSystem4Card() {
+  const card = document.getElementById('system4Card');
+  const body = document.getElementById('system4Body');
+  if (!card || !body) return;
+  if (!_stats4 || !_statsCombo) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  // Fair comparison: System 1 restricted to the SAME days System 4 traded.
+  const chopTrades = _trades.filter(t => t.choppy);
+  const years = _curve.length >= 2
+    ? (new Date(_curve[_curve.length-1].date) - new Date(_curve[0].date)) / (365.25*864e5) : 1;
+  function miniStats(trades) {
+    const n = trades.length;
+    if (!n) return { n: 0, cagr: 0, sharpe: 0, sortino: 0, maxDD: 0, winRate: 0, totalReturn: 0 };
+    const rets = trades.map(t => t.tradeReturn / 100);
+    const mu   = rets.reduce((s,r)=>s+r,0) / n;
+    const sig  = Math.sqrt(rets.reduce((s,r)=>s+(r-mu)**2,0) / n);
+    const tpy  = n / Math.max(years, 0.01);
+    const sharpe  = sig > 0 ? (mu/sig) * Math.sqrt(tpy) : 0;
+    const downVar = rets.reduce((s,r)=>s+Math.min(r,0)**2,0) / n;
+    const sortino = downVar > 0 ? (mu/Math.sqrt(downVar)) * Math.sqrt(tpy) : 0;
+    let eq=1, peak=1, maxDD=0;
+    for (const r of rets) { eq*=(1+r); if (eq>peak) peak=eq; const dd=(peak-eq)/peak; if (dd>maxDD) maxDD=dd; }
+    const wins = trades.filter(t=>t.tradeReturn>0).length;
+    return { n, cagr: (Math.pow(eq, 1/Math.max(years,0.01))-1)*100, sharpe, sortino, maxDD: maxDD*100, winRate: wins/n, totalReturn: (eq-1)*100 };
+  }
+  const s1 = miniStats(chopTrades), s4 = _stats4, sc = _statsCombo;
+
+  const s1ByDate = new Map(chopTrades.map(t => [t.date, t.tradeReturn]));
+  const s4ByDate = new Map(_trades4.map(t => [t.date, t.tradeReturn]));
+  const sharedDates = [..._trades4.map(t => t.date)].filter(d => s1ByDate.has(d));
+  const diffs = sharedDates.map(d => s4ByDate.get(d) - s1ByDate.get(d));
+  const nPairs = diffs.length;
+  const fadeWinPct = nPairs ? diffs.filter(d => d > 0).length / nPairs * 100 : 0;
+  const totalDiff  = diffs.reduce((s,d)=>s+d, 0);
+  const top5Diff    = [...diffs].sort((a,b)=>b-a).slice(0,5).reduce((s,d)=>s+d, 0);
+  const top5Share   = totalDiff !== 0 ? top5Diff / totalDiff * 100 : 0;
+  let pLE0 = null;
+  if (nPairs >= 5) {
+    const N_SIM = 1000;
+    let countLE0 = 0;
+    for (let s = 0; s < N_SIM; s++) {
+      let sum = 0;
+      for (let i = 0; i < nPairs; i++) sum += diffs[Math.floor(Math.random() * nPairs)];
+      if (sum / nPairs <= 0) countLE0++;
+    }
+    pLE0 = countLE0 / N_SIM;
+  }
+
+  const row = (label, v1, v4, vc, higherBetter = true) => {
+    const best = higherBetter
+      ? (v1 >= v4 ? (v1 >= vc ? 'S1' : 'C') : (v4 >= vc ? 'S4' : 'C'))
+      : (v1 <= v4 ? (v1 <= vc ? 'S1' : 'C') : (v4 <= vc ? 'S4' : 'C'));
+    const col = (v, sys) => `<td style="text-align:right;padding:4px 10px;color:${sys===best?'#10b981':'var(--text)'};font-family:'DM Mono',monospace;font-size:12px">${v}</td>`;
+    return `<tr>
+      <td style="padding:4px 10px;color:var(--text3);font-size:12px">${label}</td>
+      ${col(v1,'S1')}${col(v4,'S4')}${col(vc,'C')}
+    </tr>`;
+  };
+
+  const pct = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  const f2  = v => v.toFixed(2);
+  const n   = (v, unit = '') => v.toFixed(0) + unit;
+
+  const notSignificant = pLE0 == null || pLE0 >= 0.05;
+  const sigColor  = notSignificant ? '#ef4444' : '#10b981';
+  const sigWarn   = notSignificant
+    ? '⚠ Not statistically significant — treat as noise, not an edge.'
+    : '★ Significant at p<0.05.';
+  const concWarn  = top5Share >= 50
+    ? `<div class="drift-warn">⚠ The top 5 days account for ${top5Share.toFixed(0)}% of the total edge — this is being driven by a handful of outlier days, not a consistent effect.</div>`
+    : '';
+
+  const disclosure4 = comboDisclosure(4);
+  body.innerHTML = `
+    <p style="font-size:11px;color:var(--text3);margin:0 0 10px">
+      System 1 (same days): of S1's days, the ${chopTrades.length} where the session's path into entry was already ≤${document.getElementById('cfg_eff_pct').value}th percentile of trend efficiency (net move ÷ total path length) — shown as continuation, for a fair comparison &nbsp;|&nbsp;
+      System 4: those same days, faded (opposite direction) instead<br>
+      Combined: full System 1 minus those days, plus System 4's fade on them${disclosure4.summary}, equal sizing per trade. Green = best value.
+      ${disclosure4.note}
+    </p>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr>
+        <th style="text-align:left;padding:4px 10px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)">Metric</th>
+        <th style="text-align:right;padding:4px 10px;color:#f59e0b;font-size:11px;border-bottom:1px solid var(--border)">S1 (same days)</th>
+        <th style="text-align:right;padding:4px 10px;color:#ec4899;font-size:11px;border-bottom:1px solid var(--border)">System 4</th>
+        <th style="text-align:right;padding:4px 10px;color:#10b981;font-size:11px;border-bottom:1px solid var(--border)">Combined</th>
+      </tr></thead>
+      <tbody>
+        ${row('Total Return', pct(s1.totalReturn), pct(s4.totalReturn), pct(sc.totalReturn))}
+        ${row('CAGR', pct(s1.cagr), pct(s4.cagr), pct(sc.cagr))}
+        ${row('Sharpe', f2(s1.sharpe), f2(s4.sharpe), f2(sc.sharpe))}
+        ${row('Sortino', f2(s1.sortino), f2(s4.sortino), f2(sc.sortino))}
+        ${row('Max Drawdown', '-'+f2(s1.maxDD)+'%', '-'+f2(s4.maxDD)+'%', '-'+f2(sc.maxDD)+'%', false)}
+        ${row('Calmar', s1.maxDD>0?(s1.cagr/s1.maxDD).toFixed(2):'—', s4.maxDD>0?(s4.cagr/s4.maxDD).toFixed(2):'—', sc.maxDD>0?(sc.cagr/sc.maxDD).toFixed(2):'—')}
+        ${row('Win Rate', (s1.winRate*100).toFixed(1)+'%', (s4.winRate*100).toFixed(1)+'%', (sc.winRate*100).toFixed(1)+'%')}
+        ${row('Trades', n(s1.n), n(s4.n), n(sc.n))}
       </tbody>
     </table>
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
@@ -989,7 +1152,8 @@ function renderChart() {
 
   const hasS2 = _curve2.length > 0;
   const hasS3 = _curve3.length > 0;
-  const hasExtra = hasS2 || hasS3;
+  const hasS4 = _curve4.length > 0;
+  const hasExtra = hasS2 || hasS3 || hasS4;
 
   _chart = LightweightCharts.createChart(wrap, {
     width:  wrap.clientWidth,
