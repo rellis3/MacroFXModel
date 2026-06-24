@@ -22,7 +22,7 @@ import { calculateVolRegime, calcPositionSize, calculatePivots } from './vol.js'
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { detectCrossSessionClusters, mergeCrossSources, filterConfluences, enhanceConfluences } from './confluences.js';
 import { loadCaps } from './caps.js';
-import { loadCompassData, compassFairValue, compassDivergence, zScore } from './compass.js';
+import { loadCompassData, compassFairValue, compassDivergence, compassRocForecast, zScore, buildSVGPath, compositeSpreadZSeries } from './compass.js';
 
 // ── Pair symbol -> vol-forecast instrument key ───────────────────────────────
 const INSTRUMENT_KEY_OVERRIDES = { 'XAU/USD': 'GOLD', 'NAS100_USD': 'NQ' };
@@ -251,12 +251,16 @@ async function pairCompassSignal(sym) {
     const z2arr  = data.spread2y?.length  > 20 ? zScore(data.spread2y)  : null;
     let divergence = null;
     try { divergence = compassDivergence(data, sym); } catch (e) {}
+    let rocForecast = null;
+    try { rocForecast = compassRocForecast(data, sym); } catch (e) {}
     return {
       signal,
       z10: z10arr ? (z10arr[z10arr.length - 1]?.value ?? null) : null,
       z2:  z2arr  ? (z2arr[z2arr.length - 1]?.value  ?? null) : null,
       label: COMPASS_CONFIG[sym]?.label ?? null,
       divergence,
+      rocForecast,
+      data,
     };
   } catch (e) {
     return null;
@@ -397,6 +401,10 @@ function zScoreRowHtml(m) {
     const dz = m.compass.divergence.z;
     parts.push(`<span class="al-z-pill" title="Price vs. spread-implied fair value: rolling regression residual, z-scored (r²=${m.compass.divergence.r2.toFixed(2)}, ${m.compass.divergence.n}d window)">↔ Div ${fmtZ(dz)}</span>`);
   }
+  if (m.compass?.rocForecast?.zRoc != null) {
+    const rf = m.compass.rocForecast;
+    parts.push(`<span class="al-z-pill" title="Rolling rate-of-change of the yield-spread z-score (lag ${rf.lagDays}d ≈ next 24h), smoothed + z-scored. β=${rf.beta != null ? rf.beta.toFixed(2) : '—'}, n=${rf.n}. Last lag window: ${rf.followStatus}.">⏱ RoC ${fmtZ(rf.zRoc)}${rf.abnormal ? ' ⚠' : ''}</span>`);
+  }
   if (m.hedge) {
     parts.push(`<span class="al-z-pill" title="Correlation vs ${m.hedge.partner}: ${m.hedge.avgC.toFixed(2)} avg → ${m.hedge.curC.toFixed(2)} now">🔗 ${m.hedge.partner} ${fmtZ(m.hedge.z)}</span>`);
   }
@@ -486,9 +494,56 @@ function tierRowHtml(t) {
   </tr>`;
 }
 
+// Static yield-z vs FX-price-z overlay chart (last 90 trading days), shared
+// normalized axis — the deep-dive's "visual view of yield vs price". Reuses
+// buildSVGPath/zScore from compass.js rather than inventing a second charting
+// approach; mirrors renderCompassCard's overlay but without the mode toggles.
+function compassRocChartHtml(m) {
+  const data = m.compass?.data;
+  const cfg  = COMPASS_CONFIG[m.sym];
+  if (!data || !cfg) return '';
+  const spreadZ = compositeSpreadZSeries(data, cfg);
+  if (!spreadZ || spreadZ.length < 10) return '';
+  const z10win = spreadZ.slice(-90);
+
+  let zFX = [];
+  const fxBars = filterTradingDays(S.ohlcData[m.sym]?.values);
+  if (fxBars && fxBars.length >= 10) {
+    const chron  = [...fxBars].reverse().slice(-90);
+    const fxPts  = chron.map(b => ({ date: b.datetime.split(' ')[0], value: parseFloat(b.close) }));
+    zFX = zScore(fxPts);
+  }
+
+  const allVals = [...z10win.map(p => p.value), ...zFX.map(p => p.value)];
+  if (!allVals.length) return '';
+  const yMin = Math.min(...allVals) - 0.3;
+  const yMax = Math.max(...allVals) + 0.3;
+  const yRange = [yMin, yMax];
+  const W = 600, H = 80;
+  const xScale  = W / Math.max(z10win.length - 1, 1);
+  const fxScale = zFX.length > 1 ? W / Math.max(zFX.length - 1, 1) : xScale;
+  const path10  = buildSVGPath(z10win, xScale, null, H, yRange);
+  const pathFX  = zFX.length > 1 ? buildSVGPath(zFX, fxScale, null, H, yRange) : '';
+  const ySpan = yMax - yMin;
+  const zeroY = Math.max(0, Math.min(H, H - ((0 - yMin) / ySpan) * H));
+
+  return `
+  <div class="compass-legend" style="margin-top:10px">
+    <div class="cl-item"><div class="cl-line" style="background:var(--purple)"></div><span>Composite yield-spread z (sign-adj.)</span></div>
+    ${pathFX ? '<div class="cl-item"><div class="cl-line" style="background:transparent;border-top:2px dashed var(--blue);height:0;margin-top:5px"></div><span>FX rate (z, 90d)</span></div>' : ''}
+  </div>
+  <div class="compass-chart-wrap">
+    <svg class="compass-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:80px">
+      <line x1="0" y1="${zeroY.toFixed(1)}" x2="${W}" y2="${zeroY.toFixed(1)}" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/>
+      ${path10 ? `<path d="${path10}" stroke="var(--purple)" stroke-width="1.8" fill="none" stroke-linejoin="round"/>` : ''}
+      ${pathFX ? `<path d="${pathFX}" stroke="var(--blue)" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-dasharray="3,2"/>` : ''}
+    </svg>
+  </div>`;
+}
+
 function compassHtml(m) {
   if (!m.compass) return '<div class="al-empty-note">No yield-spread data for this instrument.</div>';
-  const { signal, z10, z2, label, divergence } = m.compass;
+  const { signal, z10, z2, label, divergence, rocForecast } = m.compass;
   const lean = signal == null ? 'Neutral' : signal > 0.3 ? 'Favors LONG' : signal < -0.3 ? 'Favors SHORT' : 'Neutral';
   const divHtml = (() => {
     if (divergence?.z == null) return '';
@@ -509,6 +564,28 @@ function compassHtml(m) {
     </div>
     <div class="al-rationale">Rolling regression of price on the spread lean, residual z-scored. ${verdict}</div>`;
   })();
+  const rocHtml = (() => {
+    if (!rocForecast || rocForecast.zRoc == null) return '';
+    const rf = rocForecast;
+    const pipSz = getPipSize(m.sym);
+    const deltaPips = rf.forecastDelta != null && pipSz ? Math.abs(rf.forecastDelta / pipSz).toFixed(0) : null;
+    const dirArrow = rf.forecastDelta == null ? '·' : rf.forecastDelta > 0 ? '↑' : rf.forecastDelta < 0 ? '↓' : '·';
+    const target = (m.nowPrice != null && rf.forecastDelta != null) ? (m.nowPrice + rf.forecastDelta).toFixed(m.dp) : null;
+    const statusCls = rf.followStatus === 'FOLLOWING' ? 'ACT' : rf.followStatus === 'DIVERGING' ? 'AVOID' : '';
+    const verdict = (rf.beta == null || rf.n < 15)
+      ? `Not enough history yet to trust the beta fit (n=${rf.n}) — forecast is informational only.`
+      : `Lagged ${rf.lagDays}d RoC implies a ${dirArrow} move of ${deltaPips ? `~${deltaPips}p` : 'an undetermined size'} over the next ~24h${target ? ` (≈ ${target})` : ''}. Last completed lag window: price <strong>${rf.followStatus}</strong> the forecast.`;
+    return `
+    <div class="al-macro-row" style="margin-top:10px">
+      <span class="al-chip">⏱ Movement Lag Forecast</span>
+      <span class="al-meta">RoC z ${fmtZ(rf.zRoc)}${rf.abnormal ? ' ⚠ abnormal' : ''}</span>
+      <span class="al-meta">β ${rf.beta != null ? rf.beta.toFixed(2) : '—'}</span>
+      <span class="al-meta">r ${rf.corr != null ? rf.corr.toFixed(2) : '—'}</span>
+      <span class="al-meta">n=${rf.n}</span>
+    </div>
+    ${compassRocChartHtml(m)}
+    <div class="al-rationale ${statusCls}">${verdict}</div>`;
+  })();
   return `
     <div class="al-macro-row">
       <span class="al-chip">${label ?? 'Yield Spread'}</span>
@@ -517,6 +594,7 @@ function compassHtml(m) {
     </div>
     <div class="al-rationale">Composite signal ${fmtZ(signal)} — <strong>${lean}</strong> based on the yield-spread differential vs its trailing distribution.</div>
     ${divHtml}
+    ${rocHtml}
   `;
 }
 

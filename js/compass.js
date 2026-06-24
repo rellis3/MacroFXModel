@@ -324,7 +324,7 @@ export function compassFairValue(data) {
 // the cointegration-style cousin of a naive zScore(price) - zScore(spread).
 const DIVERGENCE_WINDOW = 120; // trading days in the rolling regression window
 
-function compositeSpreadZSeries(data, cfg) {
+export function compositeSpreadZSeries(data, cfg) {
   const isGoldFV = data.sym === 'XAU/USD';
   const z10 = data.spread10y?.length > 20 ? zScore(data.spread10y) : null;
 
@@ -405,6 +405,93 @@ export function compassDivergence(data, sym) {
     r2: reg.r2,
     n: win.length,
   };
+}
+
+// ── Rate-of-change forecast (movement lag) ───────────────────────────────────
+// Web port of pine/yield-lag-forecast.pine's RoC/forecast block. Computes the
+// rolling rate-of-change of the composite spread z-score (lagDays trading day
+// ≈ next 24h), smooths it, z-scores it to flag abnormal readings, then beta-
+// fits the smoothed RoC against the subsequent lagDays-day price move so a
+// live reading can be projected into a forecast price delta. followStatus is
+// a retrospective check (today's beta applied to the lag-days-ago reading)
+// of whether price actually moved the way the last forecast implied.
+const ROC_LAG_DAYS    = 1;   // trading days; 1 ≈ next 24h
+const ROC_SMOOTH_DAYS = 3;   // trailing smoothing window on the RoC itself
+const ROC_Z_WINDOW    = 90;  // trading days used to z-score the smoothed RoC
+const ROC_ABNORMAL_Z  = 1.5; // |z| above this is flagged abnormal
+const ROC_BETA_WINDOW = 60;  // trading days in the beta/correlation fit
+const ROC_MIN_SAMPLES = 15;  // min valid beta-fit samples before trusting it
+
+function tailMean(vals) {
+  if (!vals.length) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+export function compassRocForecast(data, sym) {
+  const cfg = COMPASS_CONFIG[sym];
+  if (!cfg || !data) return null;
+
+  const spreadZ = compositeSpreadZSeries(data, cfg);
+  if (!spreadZ || spreadZ.length < ROC_SMOOTH_DAYS + ROC_LAG_DAYS + 20) return null;
+
+  const rocSeries = [];
+  for (let i = ROC_LAG_DAYS; i < spreadZ.length; i++) {
+    rocSeries.push({ date: spreadZ[i].date, value: spreadZ[i].value - spreadZ[i - ROC_LAG_DAYS].value });
+  }
+
+  const smoothSeries = rocSeries.map((p, i) => {
+    const win = rocSeries.slice(Math.max(0, i - ROC_SMOOTH_DAYS + 1), i + 1).map(q => q.value);
+    return { date: p.date, value: tailMean(win) };
+  });
+
+  const zSeries = zScore(smoothSeries.slice(-ROC_Z_WINDOW));
+  const zRoc = zSeries.length ? zSeries[zSeries.length - 1].value : null;
+  const smoothedRoc = smoothSeries.length ? smoothSeries[smoothSeries.length - 1].value : null;
+  const abnormal = zRoc != null && Math.abs(zRoc) > ROC_ABNORMAL_Z;
+
+  const fxBars = filterTradingDays(S.ohlcData[sym]?.values);
+  if (!fxBars || fxBars.length < 30) {
+    return { zRoc, abnormal, beta: null, corr: null, n: 0, smoothedRoc, forecastDelta: null, followStatus: 'WARMING UP', lagDays: ROC_LAG_DAYS };
+  }
+  const priceMap = {};
+  fxBars.forEach(b => { priceMap[b.datetime.split(' ')[0]] = parseFloat(b.close); });
+
+  const combined = smoothSeries
+    .map(p => ({ date: p.date, x: p.value, y: priceMap[p.date] }))
+    .filter(p => p.x != null && p.y != null && Number.isFinite(p.y));
+
+  let beta = null, corr = null, validCnt = 0, followStatus = 'WARMING UP';
+  if (combined.length > ROC_LAG_DAYS + 5) {
+    const win = combined.slice(-(ROC_BETA_WINDOW + ROC_LAG_DAYS));
+    const pairs = [];
+    for (let i = ROC_LAG_DAYS; i < win.length; i++) {
+      pairs.push({ x: win[i - ROC_LAG_DAYS].x, y: win[i].y - win[i - ROC_LAG_DAYS].y });
+    }
+    validCnt = pairs.length;
+    if (validCnt > 5) {
+      const mx = tailMean(pairs.map(p => p.x));
+      const my = tailMean(pairs.map(p => p.y));
+      let sxx = 0, syy = 0, sxy = 0;
+      pairs.forEach(p => {
+        const dx = p.x - mx, dy = p.y - my;
+        sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+      });
+      if (sxx > 0) beta = sxy / sxx;
+      if (sxx > 0 && syy > 0) corr = sxy / Math.sqrt(sxx * syy);
+    }
+
+    const lastIdx = combined.length - 1;
+    if (beta != null && validCnt >= ROC_MIN_SAMPLES && lastIdx - ROC_LAG_DAYS >= 0) {
+      const lastPredictor    = combined[lastIdx - ROC_LAG_DAYS].x;
+      const lastActualMove   = combined[lastIdx].y - combined[lastIdx - ROC_LAG_DAYS].y;
+      const lastForecastMove = beta * lastPredictor;
+      followStatus = (lastActualMove * lastForecastMove > 0) ? 'FOLLOWING' : 'DIVERGING';
+    }
+  }
+
+  const forecastDelta = (beta != null && smoothedRoc != null) ? beta * smoothedRoc : null;
+
+  return { zRoc, abnormal, beta, corr, n: validCnt, smoothedRoc, forecastDelta, followStatus, lagDays: ROC_LAG_DAYS };
 }
 
 export function goldDriverAlignment(data) {
