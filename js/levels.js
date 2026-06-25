@@ -23,7 +23,8 @@ import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { detectCrossSessionClusters, mergeCrossSources, filterConfluences, enhanceConfluences } from './confluences.js';
 import { loadCaps } from './caps.js';
 import { loadCompassData, compassFairValue, compassDivergence, compassRocForecast, zScore, compositeSpreadZSeries } from './compass.js';
-import { oiLoadStore } from './oi.js';
+import { oiLoadStore, oiLoadStoreFromKV } from './oi.js';
+import { loadCOT, getCOTForPair, renderCOTCard } from './cot.js';
 
 // ── Pair symbol -> vol-forecast instrument key ───────────────────────────────
 const INSTRUMENT_KEY_OVERRIDES = { 'XAU/USD': 'GOLD', 'NAS100_USD': 'NQ' };
@@ -371,6 +372,7 @@ function buildCardModel(pair, quote, tierData, volRegime, bayes, posSize, f, s, 
     zones, topZone: zones[0] ?? null,
     compass, hedgeRows, hedge: hedgeRows[0] ?? null,
     oi: getPairOI(sym),
+    cot: getCOTForPair(sym),
   };
 }
 
@@ -436,6 +438,13 @@ function zScoreRowHtml(m) {
       ? Math.round(Math.abs((m.oi.maxPain - m.nowPrice) / getPipSize(m.sym))) : null;
     const mpDir  = m.oi.maxPain > (m.nowPrice ?? 0) ? '↑' : '↓';
     parts.push(`<span class="al-z-pill" title="Options OI: call wall ${m.oi.callWall?.toFixed(m.dp ?? 5) ?? '—'} · put wall ${m.oi.putWall?.toFixed(m.dp ?? 5) ?? '—'} · max pain ${m.oi.maxPain?.toFixed(m.dp ?? 5) ?? '—'} · GEX ${gex > 0 ? '+' : ''}${gex.toFixed(0)}">🎯 OI ${regime}${mpDist != null ? ` MP${mpDir}${mpDist}p` : ''}</span>`);
+  }
+  if (m.cot) {
+    const net = m.cot.levNet ?? 0;
+    const dir = net > 0 ? '↑' : net < 0 ? '↓' : '—';
+    const pct = m.cot.specPct != null ? ` ${m.cot.specPct}%ile` : '';
+    const crowd = m.cot.crowdingPct >= 20 ? ' ⚠' : '';
+    parts.push(`<span class="al-z-pill" title="COT: spec net ${net > 0 ? '+' : ''}${net} contracts (${m.cot.levNetChg != null ? (m.cot.levNetChg >= 0 ? '+' : '') + m.cot.levNetChg + ' wk' : '—'}) · ${m.cot.crowdingPct ?? 0}% of OI${m.cot.specPct != null ? ` · ${m.cot.specPct}th pctile (3yr)` : ''}">📋 COT ${dir}${pct}${crowd}</span>`);
   }
   return parts.length ? `<div class="al-macro-row">${parts.join('')}</div>` : '';
 }
@@ -867,6 +876,10 @@ function buildDeepDiveHtml(m) {
           <div class="al-section-label">Options Open Interest — Levels &amp; Gamma</div>
           ${oiHtml(m)}
         </div>
+        <div class="al-card">
+          <div class="al-section-label">COT Positioning <span style="font-size:9px;font-weight:500;padding:1px 5px;border-radius:3px;background:#7c3aed22;color:#a78bfa;letter-spacing:.3px">CFTC</span></div>
+          ${renderCOTCard(m.sym)}
+        </div>
       </div>
     </div>
   `;
@@ -953,7 +966,7 @@ async function boot() {
       fetch('/api/vol-forecast').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/vol-forecast/live').then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
-    await Promise.all([loadCaps(), loadHedgeAlerts()]);
+    await Promise.all([loadCaps(), loadHedgeAlerts(), loadCOT(), oiLoadStoreFromKV()]);
 
     S.fredData = fredData;
     S.ecbData  = ecbData;
