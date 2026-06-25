@@ -23,6 +23,7 @@ import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { detectCrossSessionClusters, mergeCrossSources, filterConfluences, enhanceConfluences } from './confluences.js';
 import { loadCaps } from './caps.js';
 import { loadCompassData, compassFairValue, compassDivergence, compassRocForecast, zScore, compositeSpreadZSeries } from './compass.js';
+import { oiLoadStore } from './oi.js';
 
 // ── Pair symbol -> vol-forecast instrument key ───────────────────────────────
 const INSTRUMENT_KEY_OVERRIDES = { 'XAU/USD': 'GOLD', 'NAS100_USD': 'NQ' };
@@ -269,6 +270,25 @@ async function pairCompassSignal(sym) {
 
 // ── Build the composite per-pair model: macro bias + vol-forecast levels +
 //    range/vol confluence zones + both z-scores + verdict ───────────────────
+// Loads the stored OI snapshot for a pair (populated by the main dashboard's
+// OI modal). Returns null when no data has been pasted yet.
+function getPairOI(sym) {
+  try { return oiLoadStore()[sym] ?? null; } catch(e) { return null; }
+}
+
+// Finds the gamma flip strike — the price where net GEX crosses zero, meaning
+// the regime transitions from PIN (dealers long gamma) to BREAKOUT (short).
+function findGexFlip(gexProfile) {
+  if (!gexProfile || gexProfile.length < 2) return null;
+  for (let i = 1; i < gexProfile.length; i++) {
+    if (Math.sign(gexProfile[i].netGex) !== Math.sign(gexProfile[i - 1].netGex)) {
+      return Math.abs(gexProfile[i].netGex) < Math.abs(gexProfile[i - 1].netGex)
+        ? gexProfile[i].strike : gexProfile[i - 1].strike;
+    }
+  }
+  return null;
+}
+
 function buildCardModel(pair, quote, tierData, volRegime, bayes, posSize, f, s, zones, compass, hedgeRows) {
   const sym = pair.symbol;
   const totalScore = tierData.totalScore;
@@ -350,6 +370,7 @@ function buildCardModel(pair, quote, tierData, volRegime, bayes, posSize, f, s, 
     hlConsumedPct, breakoutPct, bias, dir, conviction, verdict, rationale,
     zones, topZone: zones[0] ?? null,
     compass, hedgeRows, hedge: hedgeRows[0] ?? null,
+    oi: getPairOI(sym),
   };
 }
 
@@ -407,6 +428,14 @@ function zScoreRowHtml(m) {
   }
   if (m.hedge) {
     parts.push(`<span class="al-z-pill" title="Correlation vs ${m.hedge.partner}: ${m.hedge.avgC.toFixed(2)} avg → ${m.hedge.curC.toFixed(2)} now">🔗 ${m.hedge.partner} ${fmtZ(m.hedge.z)}</span>`);
+  }
+  if (m.oi) {
+    const gex = m.oi.exposures?.gex ?? 0;
+    const regime = gex > 0 ? 'PIN' : gex < 0 ? 'BKOUT' : 'NEU';
+    const mpDist = m.nowPrice && m.oi.maxPain
+      ? Math.round(Math.abs((m.oi.maxPain - m.nowPrice) / getPipSize(m.sym))) : null;
+    const mpDir  = m.oi.maxPain > (m.nowPrice ?? 0) ? '↑' : '↓';
+    parts.push(`<span class="al-z-pill" title="Options OI: call wall ${m.oi.callWall?.toFixed(m.dp ?? 5) ?? '—'} · put wall ${m.oi.putWall?.toFixed(m.dp ?? 5) ?? '—'} · max pain ${m.oi.maxPain?.toFixed(m.dp ?? 5) ?? '—'} · GEX ${gex > 0 ? '+' : ''}${gex.toFixed(0)}">🎯 OI ${regime}${mpDist != null ? ` MP${mpDir}${mpDist}p` : ''}</span>`);
   }
   return parts.length ? `<div class="al-macro-row">${parts.join('')}</div>` : '';
 }
@@ -621,6 +650,86 @@ function initYieldLagChart(m) {
   _ylChart.timeScale().fitContent();
 }
 
+function oiHtml(m) {
+  const oi = m.oi;
+  if (!oi) return '<div class="al-empty-note">No OI data for this pair — paste CME strike table via the 📊 OI button on the main dashboard to unlock options-level analysis.</div>';
+
+  const dp     = m.dp ?? 5;
+  const sym    = m.sym;
+  const pipSz  = getPipSize(sym);
+  const price  = m.nowPrice;
+
+  const callWall  = oi.callWall  ?? 0;
+  const putWall   = oi.putWall   ?? 0;
+  const maxPain   = oi.maxPain   ?? 0;
+  const gex       = oi.exposures?.gex ?? 0;
+  const dex       = oi.exposures?.dex ?? 0;
+  const gexSign   = gex > 0 ? 'positive' : gex < 0 ? 'negative' : 'zero';
+  const regime    = gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL';
+  const regimeCls = gex > 0 ? 'WATCH' : gex < 0 ? 'ACT' : '';
+  const gexFlip   = findGexFlip(oi.gexProfile);
+
+  const fmt = v => v ? v.toFixed(dp) : '—';
+  const pips = (a, b) => (pipSz && a && b) ? Math.round(Math.abs(a - b) / pipSz) : null;
+  const dir  = (a, b) => a > b ? '↑' : '↓';
+
+  // Price position relative to key levels
+  const aboveCW  = price != null && callWall && price > callWall;
+  const belowPW  = price != null && putWall  && price < putWall;
+  const cwDist   = pips(price, callWall);
+  const pwDist   = pips(price, putWall);
+  const mpDist   = pips(price, maxPain);
+  const fpDist   = pips(price, gexFlip);
+
+  const mpDir    = maxPain && price != null ? dir(maxPain, price) : '';
+  const fpDir    = gexFlip  && price != null ? dir(gexFlip, price)  : '';
+
+  // Regime narrative
+  const narrative = (() => {
+    if (regime === 'PIN') {
+      return `Net GEX is <strong>positive</strong> — dealers are long gamma and actively delta-hedge in the opposite direction of moves. Expect price to be attracted toward high-OI strikes and volatility to be dampened. Max pain at <strong>${fmt(maxPain)}</strong> acts as a gravitational target ${mpDir}${mpDist != null ? ` (${mpDist}p away)` : ''}.`;
+    }
+    if (regime === 'BREAKOUT') {
+      return `Net GEX is <strong>negative</strong> — dealers are short gamma and must hedge by trading <em>with</em> the move, amplifying momentum. Breakout moves are more likely to extend; fade attempts are riskier. Watch the gamma flip at <strong>${fmt(gexFlip)}</strong> as a potential inflection point.`;
+    }
+    return 'Net GEX is near zero — no clear gamma-driven bias. Price can move freely without dealer hedging headwinds or tailwinds.';
+  })();
+
+  // Top call / put walls as level rows
+  const cwWalls = (oi.callWalls?.length ? oi.callWalls : (callWall ? [{ strike: callWall, oi: oi.callWallOI ?? 0 }] : [])).slice(0, 3);
+  const pwWalls = (oi.putWalls?.length  ? oi.putWalls  : (putWall  ? [{ strike: putWall,  oi: oi.putWallOI  ?? 0 }] : [])).slice(0, 3);
+
+  const wallRow = (w, type) => {
+    const d = pips(price, w.strike);
+    const active = price != null && (type === 'call' ? price > w.strike - (d ?? 999) * pipSz && price < w.strike : price < w.strike + (d ?? 999) * pipSz && price > w.strike);
+    return lvRow(
+      `${type === 'call' ? '🔴 Call wall' : '🟢 Put wall'} ${fmt(w.strike)}`,
+      `${w.oi ? Math.round(w.oi / 1000) + 'k OI' : ''}${d != null ? ` · ${d}p` : ''}`,
+      false, active
+    );
+  };
+
+  return `
+    <div class="al-macro-row">
+      <span class="al-chip ${regimeCls}">γ ${regime}</span>
+      <span class="al-meta">GEX ${gex >= 0 ? '+' : ''}${Math.round(gex)}</span>
+      ${dex !== 0 ? `<span class="al-meta">DEX ${dex >= 0 ? '+' : ''}${Math.round(dex)}</span>` : ''}
+      ${gexFlip ? `<span class="al-meta">flip ${fmt(gexFlip)} ${fpDir}${fpDist != null ? `${fpDist}p` : ''}</span>` : ''}
+    </div>
+    <div class="al-rationale ${regimeCls}">${narrative}</div>
+
+    <div class="al-levels" style="margin-top:8px">
+      ${cwWalls.map(w => wallRow(w, 'call')).join('')}
+      ${pwWalls.map(w => wallRow(w, 'put')).join('')}
+      ${maxPain ? lvRow(`🎯 Max pain ${fmt(maxPain)}`, `${mpDir}${mpDist != null ? mpDist + 'p away' : ''}`, false, false) : ''}
+      ${gexFlip ? lvRow(`⚡ Gamma flip ${fmt(gexFlip)}`, `${fpDir}${fpDist != null ? fpDist + 'p · regime changes here' : 'regime changes here'}`, false, false) : ''}
+    </div>
+
+    ${aboveCW ? `<div class="al-rationale AVOID" style="margin-top:6px">Price is <strong>above the call wall</strong> at ${fmt(callWall)} — options resistance has been breached; dynamic is now gamma-driven squeeze territory or reversal risk.</div>` : ''}
+    ${belowPW ? `<div class="al-rationale ACT" style="margin-top:6px">Price is <strong>below the put wall</strong> at ${fmt(putWall)} — put sellers defending this level; watch for a bounce or increased selling pressure.</div>` : ''}
+  `;
+}
+
 function compassHtml(m) {
   if (!m.compass) return '<div class="al-empty-note">No yield-spread data for this instrument.</div>';
   const { signal, z10, z2, label, divergence, rocForecast } = m.compass;
@@ -753,6 +862,10 @@ function buildDeepDiveHtml(m) {
         <div class="al-card">
           <div class="al-section-label">Hedge Correlation Monitor</div>
           ${hedgeHtml(m)}
+        </div>
+        <div class="al-card">
+          <div class="al-section-label">Options Open Interest — Levels &amp; Gamma</div>
+          ${oiHtml(m)}
         </div>
       </div>
     </div>
