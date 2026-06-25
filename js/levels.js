@@ -166,7 +166,22 @@ function buildZones(pair, quote, tierData, volRegime, macroBias, f, s) {
     push(open - open * f.oc_75    / 100, 'Vol 75th ↓');
   }
 
-  const merged   = mergeCrossSources([..._asiaConfs, ..._mondayConfs, ...volConfs], symbol);
+  // OI option levels injected as zone sources — call wall, put wall, max pain,
+  // and gamma flip appear in the zone table with full trade plan when OI data
+  // has been pasted. density:2 bypasses filterConfluences' minimum-density gate;
+  // gamma flip gets isTight:true instead (tight = definitionally significant).
+  const oiConfs = [];
+  const pairOIData = getPairOI(symbol);
+  if (pairOIData) {
+    const addOI = (price) => { if (price > 0 && isFinite(price)) oiConfs.push({ price, source: 'oi', isTight: false, density: 2 }); };
+    if (pairOIData.callWall) addOI(pairOIData.callWall);
+    if (pairOIData.putWall)  addOI(pairOIData.putWall);
+    if (pairOIData.maxPain)  addOI(pairOIData.maxPain);
+    const gexFlipPrice = findGexFlip(pairOIData.gexProfile);
+    if (gexFlipPrice) oiConfs.push({ price: gexFlipPrice, source: 'oi', isTight: true, density: 1 });
+  }
+
+  const merged   = mergeCrossSources([..._asiaConfs, ..._mondayConfs, ...volConfs, ...oiConfs], symbol);
   const filtered = filterConfluences(merged);
   if (!filtered.length) return [];
 
@@ -363,6 +378,35 @@ function buildCardModel(pair, quote, tierData, volRegime, bayes, posSize, f, s, 
     rationale += ` Nearest zone: ${alignedZone.price.toFixed(dp)} (${starTxt}${alignedZone.direction ? `, ${alignedZone.direction}` : ''}, ${Math.round(alignedZone.distance)}p away).`;
   }
 
+  // COT crowding modifier — downgrade ACT→WATCH when specs are crowded in the
+  // direction we're trading; note contrarian fuel when they're crowded against us.
+  const cotData = getCOTForPair(sym);
+  if (cotData?.specPct != null && dir !== 0) {
+    const sp = cotData.specPct;
+    const crowdedWith    = (dir > 0 && sp >= 80) || (dir < 0 && sp <= 20);
+    const crowdedAgainst = (dir > 0 && sp <= 20) || (dir < 0 && sp >= 80);
+    const side = dir > 0 ? 'long' : 'short';
+    const contra = dir > 0 ? 'short' : 'long';
+    if (crowdedWith) {
+      if (verdict === 'ACT') verdict = 'WATCH';
+      rationale += ` ⚠ COT: specs at ${sp}th-pctile ${side} — crowded trade, elevated unwind risk.`;
+    } else if (crowdedAgainst) {
+      rationale += ` COT: specs at ${sp}th-pctile ${contra} — contrarian fuel if positioning unwinds.`;
+    }
+  }
+
+  // GEX regime note — tells the trader whether to expect pinning or amplification.
+  const oiForRationale = getPairOI(sym);
+  if (oiForRationale?.exposures?.gex != null && verdict !== 'AVOID') {
+    const gex = oiForRationale.exposures.gex;
+    if (gex < 0) {
+      rationale += ` GEX negative (BREAKOUT) — dealer hedging amplifies moves.`;
+    } else if (gex > 0 && oiForRationale.maxPain) {
+      const mpDir = oiForRationale.maxPain > (price ?? 0) ? '↑' : '↓';
+      rationale += ` GEX positive (PIN) — gravity toward max pain ${oiForRationale.maxPain.toFixed(dp)} ${mpDir}.`;
+    }
+  }
+
   return {
     pair, sym, price, nowPrice: price ?? curClose ?? open, dp,
     tierData, volRegime, bayes, posSize, f, s, open,
@@ -491,6 +535,7 @@ function zoneSourceTags(z) {
   else if (z.source === 'asia') tags.push('Asia');
   else if (z.source === 'monday') tags.push('Monday');
   else if (z.source === 'volforecast') tags.push('Vol Forecast');
+  else if (z.source === 'oi') tags.push('OI');
   if (z.hasVolForecast && z.source !== 'volforecast') tags.push('+Vol');
   if (z.pdhMatch) tags.push(z.pdhMatch);
   if (z.pwhMatch) tags.push(z.pwhMatch);
@@ -974,17 +1019,35 @@ async function boot() {
     const sessionInstruments  = sessionRes?.instruments ?? {};
     S.garchForecast = forecastInstruments;
 
-    setStatus('spin', 'Loading USD index pairs…');
-    const USD_INDEX_PAIRS = ['EUR/USD', 'GBP/USD', 'AUD/USD', 'USD/JPY'];
-    for (const sym of USD_INDEX_PAIRS) { await loadPairData(sym); }
+    // ① Prefetch all pairs' OHLC + quotes in parallel — the serial loop was the
+    //   #1 cause of slow loads (26 × 4 sequential network calls = up to 100+ requests).
+    setStatus('spin', 'Prefetching market data…');
+    await Promise.all(PAIRS.map(p => loadPairData(p.symbol).catch(() => null)));
+
+    // USD strength is synchronous once OHLC data is in S — no dedicated serial pre-loop needed.
     S.usdStrength  = computeUSDStrength();
     S.dollarRegime = computeDollarRegime();
 
+    // ② Prefetch compass signals for all supported pairs in parallel (FRED/KV → localStorage).
+    setStatus('spin', 'Loading yield signals…');
+    const compassResults = {};
+    await Promise.all(
+      PAIRS
+        .filter(p => COMPASS_CONFIG[p.symbol])
+        .map(p =>
+          pairCompassSignal(p.symbol)
+            .then(r  => { compassResults[p.symbol] = r; })
+            .catch(() => {})
+        )
+    );
+
+    // ③ Sequential computation (tier calcs mutate S.currentPair) + progressive render.
+    //   Each pair now reads already-loaded S state — no network waits inside the loop.
     const results = [];
     for (let i = 0; i < PAIRS.length; i++) {
       const pair = PAIRS[i];
-      setStatus('spin', `Loading ${pair.name} (${i + 1}/${PAIRS.length})…`);
-      const quote = await loadPairData(pair.symbol);
+      setStatus('spin', `Analysing ${pair.name} (${i + 1}/${PAIRS.length})…`);
+      const quote = await loadPairData(pair.symbol); // instant — data already in S
 
       S.currentPair = pair;
       let tierData, volRegime, bayes, posSize;
@@ -1012,10 +1075,15 @@ async function boot() {
       try { zones = buildZones(pair, quote, tierData, volRegime, macroBiasForZones, f, s); }
       catch (e) { console.warn('[levels] zone build failed for', pair.symbol, e); }
 
-      const compass = await pairCompassSignal(pair.symbol);
+      const compass = compassResults[pair.symbol] ?? null;
       const hedgeRows = hedgeRowsForPair(pair.symbol);
 
       results.push(buildCardModel(pair, quote, tierData, volRegime, bayes, posSize, f, s, zones, compass, hedgeRows));
+
+      // Progressive render — update grid as each pair completes so results are
+      // visible immediately rather than after all 26 pairs finish computing.
+      _allResults = [...results];
+      if (!location.hash.replace(/^#/, '')) renderGrid();
     }
 
     S.currentPair = PAIRS[0];
