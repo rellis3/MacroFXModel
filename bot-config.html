@@ -5774,8 +5774,10 @@ async function openTradeChartModal(idx) {
   if (!sym)                          { status.textContent = `Can't map symbol "${t.symbol}" to an OANDA instrument.`; return; }
   if (!t.time_open || !t.time_close) { status.textContent = 'Missing open/close time for this trade.'; return; }
 
-  const dateStr = new Date(t.time_open * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
-  const days    = Math.min(14, Math.max(1, Math.ceil((t.time_close - t.time_open) / 86400) + 1));
+  const dateStr      = new Date(t.time_open  * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
+  const closeDateStr = new Date(t.time_close * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
+  const daySpan = Math.round((new Date(closeDateStr + 'T00:00:00Z') - new Date(dateStr + 'T00:00:00Z')) / 86400000);
+  const days    = Math.min(14, Math.max(1, daySpan + 1));
   const fakeOpen  = _toFakeUtcEpoch(t.time_open);
   const fakeClose = _toFakeUtcEpoch(t.time_close);
 

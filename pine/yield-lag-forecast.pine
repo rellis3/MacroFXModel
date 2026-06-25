@@ -1,5 +1,5 @@
 //@version=6
-indicator("Yield Lag Forecast [MacroFX]", shorttitle="YieldLag", overlay=true, max_lines_count=50, max_labels_count=50)
+indicator("Yield Lag Forecast [MacroFX]", shorttitle="YieldLag", overlay=false, max_lines_count=50, max_labels_count=50)
 
 // =====================================================
 // WHAT THIS IS
@@ -8,23 +8,30 @@ indicator("Yield Lag Forecast [MacroFX]", shorttitle="YieldLag", overlay=true, m
 // intraday price:
 //   1. Auto-detects which FX pair you're charting (base/quote currency) and
 //      pulls daily-resolution 2Y+10Y government bond yields for both legs.
-//   2. Builds a blended composite yield-spread z-score, tracks its rate-of-
-//      change, flags abnormal RoC, and projects a forward price target from a
-//      beta fit between the lagged spread signal and subsequent price moves
-//      (the original forecast line/label).
-//   3. NEW — regresses price on that same composite spread z-score (rolling
-//      OLS, matching the dashboard's compassDivergence()) and plots the
-//      regression-implied "yield fair value" directly on the price pane, plus
-//      a z-scored divergence reading of how far price has drifted from it.
-//      That divergence z-score is the "has price actually reacted to the
-//      yield yet, and is the lag real?" signal — distinct from, and in
-//      addition to, the forecast line above.
+//   2. Builds a blended composite yield-spread z-score — the "base yield
+//      curve" — and plots it as a flowing oscillator in this indicator's own
+//      pane, tracks its rate-of-change, and flags abnormal RoC.
+//   3. Regresses price on that same composite spread z-score (rolling OLS,
+//      matching the dashboard's compassDivergence()) to get a "yield fair
+//      value" price level and a z-scored divergence reading of how far price
+//      has drifted from it. That divergence z is forced onto the price pane
+//      as a continuous ribbon between price and fair value — shaded harder
+//      the more stretched it gets — so "is price tracking or diverging from
+//      the yield curve" is visible at a glance instead of buried in a label.
+//   4. When the lead-lag RoC signal is abnormal, the forward forecast line is
+//      filled into a wedge (price -> projected target) whose opacity scales
+//      with how stretched that RoC z-score is — the more abnormal the yield
+//      move, the bolder the "this is what's intended to happen" zone.
 //
 // Government yield series only print once per day, even when this chart is
 // on an intraday timeframe — so the lag horizon is expressed in TRADING DAYS
 // (1 day ≈ the next session's worth of move), not chart bars. The script
 // converts that into chart bars internally so the forecast line lands in the
-// right place regardless of which intraday resolution you're viewing.
+// right place regardless of which intraday resolution you're viewing. All of
+// the once-per-session values are also cosmetically EMA-smoothed before
+// plotting (see "Visual smoothing" input) purely so the lines render as a
+// flowing curve instead of a stair-step — the underlying z-scores, table, and
+// forecast math are unsmoothed.
 //
 // Caveat: TVC: bond tickers for some 2Y tenors (esp. AU/CA/CH) may not exist
 // on every TradingView plan/feed. If a leg is unavailable the script falls
@@ -58,6 +65,8 @@ gp_div = "Price vs Yield Divergence (Z-Score)"
 divWindow         = input.int(120, "Regression window (trading days)", minval=30, maxval=400, group=gp_div,
      tooltip="Rolling OLS regression of price on the composite spread z-score — mirrors the dashboard's compassDivergence(). Residuals over this window are z-scored to produce the divergence reading below.")
 divAbsThresh      = input.float(1.5, "Abnormal |Divergence Z| threshold", minval=0.5, maxval=4.0, step=0.1, group=gp_div)
+divMinSamples     = input.int(30, "Min valid samples before trusting fair value", minval=10, maxval=200, group=gp_div,
+     tooltip="OLS on too few samples produces an unstable beta/alpha — a tiny shift in the latest spread reading can swing the fair-value price wildly. Fair value/divergence stay 'WARMING UP' until the regression has at least this many valid daily samples.")
 showFairValueLine = input.bool(true, "Plot yield fair-value line on price", group=gp_div)
 fvCol             = input.color(color.new(color.blue, 0), "Fair-value line color", group=gp_div)
 divUpCol          = input.color(color.new(color.purple, 0), "Color when price > fair value (z > 0)", group=gp_div)
@@ -69,6 +78,8 @@ showTable        = input.bool(true, "Show stats table", group=gp_vis)
 tintBg           = input.bool(true, "Tint background on abnormal divergence", group=gp_vis)
 upCol            = input.color(color.new(color.teal, 0), "Forecast up color", group=gp_vis)
 dnCol            = input.color(color.new(color.red, 0),  "Forecast down color", group=gp_vis)
+flowSmoothLen    = input.int(3, "Visual smoothing (bars, cosmetic only)", minval=1, maxval=20, group=gp_vis,
+     tooltip="EMA applied only to plotted lines so once-per-session yield updates render as a flowing curve instead of a stair-step. Does not affect the z-scores, table, or forecast math.")
 
 // =====================================================
 // PAIR AUTO-DETECTION
@@ -203,8 +214,27 @@ chartClose_d = request.security(syminfo.tickerid, "1D", close)
 
 // Fires once per session regardless of chart timeframe — drives the rolling
 // daily buffers below so z-scores/RoC are computed over real trading days,
-// not intraday bars.
-newDailyBar = nz(ta.change(fgnL_d)) != 0 or nz(ta.change(baseL_d)) != 0 or nz(ta.change(chartClose_d)) != 0
+// not intraday bars. ta.change() calls are hoisted out of the `or` below so
+// each one runs unconditionally every bar (short-circuit `or` would otherwise
+// skip later calls, breaking their internal historical-series state).
+chgFgnL_d       = ta.change(fgnL_d)
+chgBaseL_d      = ta.change(baseL_d)
+chgChartClose_d = ta.change(chartClose_d)
+newDailyBar = nz(chgFgnL_d) != 0 or nz(chgBaseL_d) != 0 or nz(chgChartClose_d) != 0
+
+// =====================================================
+// LIVE INTRADAY DATA (chart-resolution pull, same tickers as above) — whether
+// this actually ticks within a session depends on TVC's own update frequency
+// for that symbol; requesting at timeframe.period instead of forcing "1D" at
+// least stops the script itself from throttling it down to once/day. Used
+// only for the live base-curve/fair-value/divergence visuals below — the
+// z-score lookback, regression fit, and RoC lead-lag forecast all stay on
+// the daily buffers above, since those are deliberately "trading days" math.
+// =====================================================
+fgnL_live  = request.security(fgnLTk,  timeframe.period, close, ignore_invalid_symbol=true)
+fgnS_live  = request.security(fgnSTk,  timeframe.period, close, ignore_invalid_symbol=true)
+baseL_live = request.security(baseLTk, timeframe.period, close, ignore_invalid_symbol=true)
+baseS_live = request.security(baseSTk, timeframe.period, close, ignore_invalid_symbol=true)
 
 // =====================================================
 // ROLLING DAILY BUFFERS (manual — request.security can't combine 4 symbols
@@ -305,7 +335,10 @@ fitBeta(predBuf, pxBuf, lagN, win) =>
 // rate differential implies it should sit: the "has price actually reacted
 // to the yield yet, and is the lag real?" signal, distinct from the RoC/beta
 // forecast above. fairPrice is in real price units, so it plots directly over
-// price with no rescaling.
+// price with no rescaling. resMean/resStd are also returned (not just zLast)
+// so the caller can apply this same day's fit to a live, intraday-ticking x
+// to get a fair price/divergence Z that updates between sessions, not just
+// once a day.
 olsDivergence(xBuf, yBuf, win) =>
     n = math.min(array.size(xBuf), array.size(yBuf))
     int wantStart = math.max(0, n - win)
@@ -325,7 +358,8 @@ olsDivergence(xBuf, yBuf, win) =>
     float r2         = na
     float zLast       = na
     float fairPrice   = na
-    float gap         = na
+    float resMeanOut  = na
+    float resStdOut   = na
     if validCnt > 5
         mx = sumX / validCnt
         my = sumY / validCnt
@@ -365,14 +399,15 @@ olsDivergence(xBuf, yBuf, win) =>
                         ssRes += d * d
                 resStdRaw = math.sqrt(ssRes / resCnt)
                 resStd    = resStdRaw == 0 ? 1.0 : resStdRaw
+                resMeanOut := resMean
+                resStdOut  := resStd
                 lastX = array.get(xBuf, n - 1)
                 lastY = array.get(yBuf, n - 1)
                 if not na(lastX) and not na(lastY)
                     lastRes = lastY - (alpha + beta * lastX)
                     zLast     := (lastRes - resMean) / resStd
                     fairPrice := alpha + beta * lastX
-                    gap       := -lastRes
-    [alpha, beta, r2, zLast, fairPrice, gap, validCnt]
+    [alpha, beta, r2, zLast, fairPrice, validCnt, resMeanOut, resStdOut]
 
 // =====================================================
 // PERSISTED "AS OF TODAY" SIGNAL STATE
@@ -389,11 +424,22 @@ var string v_followStatus = "WARMING UP"
 var float  v_divBeta      = na
 var float  v_divR2        = na
 var float  v_fairPrice    = na
-var float  v_divGap       = na
 var int    v_divN         = 0
 var float  v_divZ         = na
 var bool   v_abnormalDiv   = false
 var string v_divTrend     = "WARMING UP"
+
+// Today's calibration (mean/stdev/regression fit) — persisted so the LIVE
+// section below can apply this same day's stats to intraday-ticking yield
+// pulls instead of waiting for tomorrow's daily print.
+var float v_m10         = na
+var float v_sd10        = na
+var float v_m2          = na
+var float v_sd2         = na
+var float v_divAlpha    = na
+var float v_divResMean  = na
+var float v_divResStd   = na
+var bool  v_divTrustworthy = false
 
 if newDailyBar and pairRecognized
     sp10_today = rawDir * (fgnL_d - baseL_d)
@@ -414,6 +460,11 @@ if newDailyBar and pairRecognized
     sd2 = tailStdev(sp2Buf, zLen)
     m2  = tailMean(sp2Buf, zLen)
     z2  = (have2y and not na(sd2) and sd2 > 0) ? (sp2_today - m2) / sd2 : float(na)
+
+    v_m10  := m10
+    v_sd10 := sd10
+    v_m2   := m2
+    v_sd2  := sd2
 
     // Falls back to 10Y-only weighting if the 2Y leg is unavailable on this feed.
     compZ_today = (have2y and not na(z2)) ? (w2y * z2 + (1.0 - w2y) * z10) * fxSign
@@ -461,16 +512,27 @@ if newDailyBar and pairRecognized
     // spread z-score, residual z-scored. Captures prevDivZ before overwriting
     // v_divZ so the WIDENING/NARROWING trend reflects yesterday -> today.
     prevDivZ = v_divZ
-    [da, dBeta, dR2, dZ, dFair, dGap, dN] = olsDivergence(compZBuf, priceBuf, divWindow)
-    v_divBeta     := dBeta
-    v_divR2       := dR2
-    v_fairPrice   := dFair
-    v_divGap      := dGap
-    v_divN        := dN
-    v_divZ        := dZ
-    v_abnormalDiv := not na(dZ) and math.abs(dZ) > divAbsThresh
-    v_divTrend    := (na(dZ) or na(prevDivZ)) ? "WARMING UP"
+    [da, dBeta, dR2, dZ, dFair, dN, dResMean, dResStd] = olsDivergence(compZBuf, priceBuf, divWindow)
+    // Gate the regression output on sample count — with too few points (early
+    // on a fresh chart, or after a long na gap) sxx is small and beta/alpha
+    // become numerically unstable, throwing fairPrice (and therefore the
+    // ribbon/divergence) wildly off from actual price even though the math
+    // "succeeded." Treat anything under divMinSamples as still warming up.
+    divTrustworthy   = dN >= divMinSamples
+    v_divBeta       := divTrustworthy ? dBeta : float(na)
+    v_divR2         := divTrustworthy ? dR2 : float(na)
+    v_fairPrice     := divTrustworthy ? dFair : float(na)
+    v_divN          := dN
+    v_divZ          := divTrustworthy ? dZ : float(na)
+    v_abnormalDiv   := divTrustworthy and not na(dZ) and math.abs(dZ) > divAbsThresh
+    v_divTrend      := (not divTrustworthy or na(dZ) or na(prevDivZ)) ? "WARMING UP"
          : (math.abs(dZ) > math.abs(prevDivZ) ? "WIDENING" : "NARROWING")
+    // alpha/resMean/resStd from today's fit, persisted so the LIVE section can
+    // apply them to an intraday-ticking x without waiting for tomorrow's print.
+    v_divAlpha       := divTrustworthy ? da : float(na)
+    v_divResMean     := divTrustworthy ? dResMean : float(na)
+    v_divResStd      := divTrustworthy ? dResStd : float(na)
+    v_divTrustworthy := divTrustworthy
 
 // =====================================================
 // LIVE FORECAST (uses today's fitted beta + signal against the live intraday price)
@@ -483,45 +545,112 @@ barsPerDay   = secsPerBar > 0 ? 86400.0 / secsPerBar : 1.0
 forecastBars = math.max(1, math.round(barsPerDay * lagDays))
 
 // =====================================================
-// YIELD FAIR-VALUE OVERLAY (plotted directly on price, real price units —
-// the regression-implied price level from olsDivergence, no rescaling hack)
+// LIVE INTRADAY YIELD SIGNAL — applies TODAY's already-calibrated mean/
+// stdev and regression fit (both computed once/session above, where the
+// stats are actually trustworthy) to the live intraday pulls, so the base
+// curve/fair-value/divergence move between sessions instead of waiting for
+// tomorrow's daily print. The table's "(as of today)" rows still show the
+// once-daily snapshot for a stable reference; these live values drive the
+// chart visuals. flowSmoothLen lightly denoises tick noise only — it
+// doesn't change the calibration.
 // =====================================================
-v_fairValuePlot = (showFairValueLine and pairRecognized) ? v_fairPrice : float(na)
-plot(v_fairValuePlot, title="Yield Fair Value", color=fvCol, style=plot.style_stepline, linewidth=2)
+sp10_live   = rawDir * (fgnL_live - baseL_live)
+have2y_live = not na(fgnS_live) and not na(baseS_live)
+sp2_live    = have2y_live ? rawDir * (fgnS_live - baseS_live) : float(na)
+
+z10_live = (not na(v_sd10) and v_sd10 > 0) ? (sp10_live - v_m10) / v_sd10 : float(na)
+z2_live  = (have2y_live and not na(v_sd2) and v_sd2 > 0) ? (sp2_live - v_m2) / v_sd2 : float(na)
+
+liveCompZ = (have2y_live and not na(z2_live)) ? (w2y * z2_live + (1.0 - w2y) * z10_live) * fxSign
+     : (not na(z10_live) ? z10_live * fxSign : float(na))
+
+liveFairPrice = (v_divTrustworthy and not na(v_divAlpha) and not na(v_divBeta) and not na(liveCompZ)) ? v_divAlpha + v_divBeta * liveCompZ : float(na)
+liveResidual  = not na(liveFairPrice) ? close - liveFairPrice : float(na)
+liveDivZ      = (not na(liveResidual) and not na(v_divResStd) and v_divResStd > 0) ? (liveResidual - v_divResMean) / v_divResStd : float(na)
+liveAbnormalDiv = not na(liveDivZ) and math.abs(liveDivZ) > divAbsThresh
+
+compZPlot  = ta.ema(liveCompZ, flowSmoothLen)
+divZPlot   = ta.ema(liveDivZ, flowSmoothLen)
+fairPxPlot = ta.ema(liveFairPrice, flowSmoothLen)
 
 // =====================================================
-// VISUALS — forecast line/label + divergence label + abnormal-divergence tint
+// BASE YIELD CURVE — this indicator's own pane. The composite 2Y+10Y spread
+// z-score flows here across sessions; the price-vs-yield divergence z is
+// plotted alongside as columns inside a shaded "normal tracking" band —
+// poking outside the band is the "diverging" read.
 // =====================================================
-var line  fcLine   = na
-var label fcLabel  = na
-var label divLabel = na
+hUp = hline(divAbsThresh,  "Divergence band +", color=color.new(color.gray, 70), linestyle=hline.style_dashed)
+hDn = hline(-divAbsThresh, "Divergence band -", color=color.new(color.gray, 70), linestyle=hline.style_dashed)
+fill(hUp, hDn, color=color.new(color.gray, 92), title="Normal tracking zone")
+hline(0, "Zero", color=color.new(color.gray, 50), linestyle=hline.style_dotted)
+
+plot(pairRecognized ? compZPlot : na, title="Composite Yield Z (base curve)", color=color.new(color.blue, 0), linewidth=2)
+plot(pairRecognized ? divZPlot : na, title="Price vs Yield Divergence Z (live)", style=plot.style_columns,
+     color = na(liveDivZ) ? color.new(color.gray, 50) : (liveDivZ >= 0 ? divUpCol : divDnCol))
+
+// =====================================================
+// PRICE PANE OVERLAYS — forced onto the main chart (force_overlay=true) even
+// though this script's own pane is the oscillator above. The fill between
+// price and the yield fair-value line is the continuous "is price tracking
+// or diverging from the yield curve" visual, shaded harder the more
+// stretched the LIVE divergence z-score is — not just flagged when abnormal.
+// =====================================================
+divStretch   = na(liveDivZ) ? 0.0 : math.min(math.abs(liveDivZ) / (divAbsThresh * 2.0), 1.0)
+ribbonTransp = 90 - math.round(divStretch * 60)
+
+p_priceAnchor = plot(pairRecognized ? close : na, title="Price (ribbon anchor)", display=display.none, force_overlay=true)
+p_fairValue   = plot(showFairValueLine and pairRecognized ? fairPxPlot : na, title="Yield Fair Value",
+     color=fvCol, linewidth=2, style=plot.style_line, force_overlay=true)
+fill(p_priceAnchor, p_fairValue,
+     color = na(liveDivZ) ? na : (liveDivZ >= 0 ? color.new(divUpCol, ribbonTransp) : color.new(divDnCol, ribbonTransp)),
+     title="Price vs Yield Tracking/Diverging")
+
+// =====================================================
+// VISUALS — forecast wedge/label + divergence label + abnormal-divergence
+// tint. All forced onto the price pane (force_overlay=true) since this
+// script's own pane is now the base-yield-curve oscillator above.
+// =====================================================
+var line     fcLine     = na
+var line     fcBaseLine = na
+var linefill fcFill      = na
+var label    fcLabel    = na
+var label    divLabel   = na
 
 if barstate.islast
     line.delete(fcLine)
+    line.delete(fcBaseLine)
+    linefill.delete(fcFill)
     label.delete(fcLabel)
     label.delete(divLabel)
     if showForecastLine and not na(forecastPrice)
-        lineCol = forecastPrice >= close ? upCol : dnCol
+        lineCol     = forecastPrice >= close ? upCol : dnCol
+        roStretch   = na(v_zRoc) ? 0.0 : math.min(math.abs(v_zRoc) / (absThresh * 2.0), 1.0)
+        wedgeTransp = 92 - math.round(roStretch * 62)
+        fcBaseLine := line.new(bar_index, close, bar_index + forecastBars, close,
+             color=color.new(lineCol, 100), width=1, style=line.style_dashed, xloc=xloc.bar_index, force_overlay=true)
         fcLine  := line.new(bar_index, close, bar_index + forecastBars, forecastPrice,
-             color=lineCol, width=2, style=line.style_dashed, xloc=xloc.bar_index)
+             color=lineCol, width=2, style=line.style_dashed, xloc=xloc.bar_index, force_overlay=true)
+        fcFill  := linefill.new(fcBaseLine, fcLine, color=color.new(lineCol, wedgeTransp))
         fcLabel := label.new(bar_index + forecastBars, forecastPrice,
              "Forecast " + (forecastPrice >= close ? "+" : "") + str.tostring(forecastPrice - close, format.mintick),
              style=forecastPrice >= close ? label.style_label_down : label.style_label_up,
-             textcolor=color.white, color=lineCol, size=size.small)
-    if pairRecognized and not na(v_divZ)
-        divCol    = v_abnormalDiv ? (v_divZ >= 0 ? divUpCol : divDnCol) : color.new(color.gray, 30)
-        divAnchor = not na(v_fairPrice) ? v_fairPrice : close
+             textcolor=color.white, color=lineCol, size=size.small, force_overlay=true)
+    if pairRecognized and not na(liveDivZ)
+        divCol    = liveAbnormalDiv ? (liveDivZ >= 0 ? divUpCol : divDnCol) : color.new(color.gray, 30)
+        divAnchor = not na(liveFairPrice) ? liveFairPrice : close
         divLabel  := label.new(bar_index, divAnchor,
-             "Div Z " + (v_divZ >= 0 ? "+" : "") + str.tostring(v_divZ, "#.##") + " (" + v_divTrend + ")" + (v_abnormalDiv ? " ⚠" : ""),
-             style=label.style_label_left, textcolor=color.white, color=divCol, size=size.small, xloc=xloc.bar_index)
+             "Div Z " + (liveDivZ >= 0 ? "+" : "") + str.tostring(liveDivZ, "#.##") + " (" + v_divTrend + ")" + (liveAbnormalDiv ? " ⚠" : ""),
+             style=label.style_label_left, textcolor=color.white, color=divCol, size=size.small, xloc=xloc.bar_index, force_overlay=true)
 
 // Primary tint = price-vs-yield divergence (the new core signal): is price
-// trading away from where the rate differential says it should be?
-bgcolor(tintBg and pairRecognized and v_abnormalDiv ? (v_divZ >= 0 ? color.new(divUpCol, 85) : color.new(divDnCol, 85)) : na)
+// trading away from where the rate differential says it should be? Driven by
+// the LIVE divergence z so it pulses on/off intraday as the live reading
+// crosses threshold, not just once/day.
+bgcolor(tintBg and pairRecognized and liveAbnormalDiv ? (liveDivZ >= 0 ? color.new(divUpCol, 85) : color.new(divDnCol, 85)) : na, force_overlay=true)
 // Secondary marker = abnormal RoC (the original lead-lag signal) — kept as a
 // small shape instead of competing with the divergence tint for bgcolor.
 plotshape(tintBg and pairRecognized and v_abnormal, title="RoC Abnormal", style=shape.circle,
-     location=location.belowbar, color=(v_zRoc >= 0 ? upCol : dnCol), size=size.tiny)
+     location=location.belowbar, color=(v_zRoc >= 0 ? upCol : dnCol), size=size.tiny, force_overlay=true)
 
 // =====================================================
 // STATS TABLE
@@ -530,8 +659,8 @@ var table statsTbl = na
 
 if showTable and barstate.islast
     table.delete(statsTbl)
-    statsTbl := table.new(position.top_right, 2, 12, bgcolor=color.new(color.black, 55),
-         border_width=1, border_color=color.new(color.gray, 60))
+    statsTbl := table.new(position.top_right, 2, 14, bgcolor=color.new(color.black, 55),
+         border_width=1, border_color=color.new(color.gray, 60), force_overlay=true)
 
     pairBg   = pairRecognized ? color.new(color.gray, 75) : color.new(color.red, 40)
     pairText = pairRecognized ? pairSel + (pairOverride == "Auto-detect" ? " (auto)" : " (override)")
@@ -539,46 +668,55 @@ if showTable and barstate.islast
     table.cell(statsTbl, 0, 0, "Pair", text_color=color.white, text_size=size.small, bgcolor=color.new(color.gray, 75))
     table.cell(statsTbl, 1, 0, pairText, text_color=color.white, text_size=size.small, bgcolor=pairBg)
 
-    table.cell(statsTbl, 0, 1, "Composite Z", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 1, "Composite Z (as of today)", text_color=color.white, text_size=size.small)
     table.cell(statsTbl, 1, 1, not na(v_compZ) ? str.tostring(v_compZ, "#.##") : "—", text_color=color.white, text_size=size.small)
 
-    table.cell(statsTbl, 0, 2, "RoC Z (abnormal?)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 2, "Composite Z (live)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 2, not na(liveCompZ) ? str.tostring(liveCompZ, "#.##") : "—", text_color=color.white, text_size=size.small)
+
+    table.cell(statsTbl, 0, 3, "RoC Z (abnormal?)", text_color=color.white, text_size=size.small)
     roBg = v_abnormal ? color.new(color.orange, 40) : na
-    table.cell(statsTbl, 1, 2, (not na(v_zRoc) ? str.tostring(v_zRoc, "#.##") : "—") + (v_abnormal ? " ⚠" : ""),
+    table.cell(statsTbl, 1, 3, (not na(v_zRoc) ? str.tostring(v_zRoc, "#.##") : "—") + (v_abnormal ? " ⚠" : ""),
          text_color=color.white, text_size=size.small, bgcolor=roBg)
 
-    table.cell(statsTbl, 0, 3, "Beta (px/z-unit)", text_color=color.white, text_size=size.small)
-    table.cell(statsTbl, 1, 3, not na(v_beta) ? str.tostring(v_beta, "#.#####") : "—", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 4, "Beta (px/z-unit)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 4, not na(v_beta) ? str.tostring(v_beta, "#.#####") : "—", text_color=color.white, text_size=size.small)
 
-    table.cell(statsTbl, 0, 4, "Fit corr / n", text_color=color.white, text_size=size.small)
-    table.cell(statsTbl, 1, 4, (not na(v_corr) ? str.tostring(v_corr, "#.##") : "—") + " / " + str.tostring(v_validCnt),
+    table.cell(statsTbl, 0, 5, "Fit corr / n", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 5, (not na(v_corr) ? str.tostring(v_corr, "#.##") : "—") + " / " + str.tostring(v_validCnt),
          text_color=color.white, text_size=size.small)
 
-    table.cell(statsTbl, 0, 5, "Forecast Δ (" + str.tostring(lagDays) + "d)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 6, "Forecast Δ (" + str.tostring(lagDays) + "d)", text_color=color.white, text_size=size.small)
     fcTxt = not na(liveExpectedMove) ? (liveExpectedMove >= 0 ? "+" : "") + str.tostring(liveExpectedMove, format.mintick) : "—"
     fcCol = na(liveExpectedMove) ? color.white : (liveExpectedMove >= 0 ? upCol : dnCol)
-    table.cell(statsTbl, 1, 5, fcTxt, text_color=fcCol, text_size=size.small)
+    table.cell(statsTbl, 1, 6, fcTxt, text_color=fcCol, text_size=size.small)
 
-    table.cell(statsTbl, 0, 6, "Target price", text_color=color.white, text_size=size.small)
-    table.cell(statsTbl, 1, 6, not na(forecastPrice) ? str.tostring(forecastPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 7, "Target price", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 7, not na(forecastPrice) ? str.tostring(forecastPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
 
-    table.cell(statsTbl, 0, 7, "Last lag: price vs fc", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 8, "Last lag: price vs fc", text_color=color.white, text_size=size.small)
     statusBg = v_followStatus == "FOLLOWING" ? color.new(color.teal, 40) : v_followStatus == "DIVERGING" ? color.new(color.red, 40) : color.new(color.gray, 50)
-    table.cell(statsTbl, 1, 7, v_followStatus, text_color=color.white, text_size=size.small, bgcolor=statusBg)
+    table.cell(statsTbl, 1, 8, v_followStatus, text_color=color.white, text_size=size.small, bgcolor=statusBg)
 
-    table.cell(statsTbl, 0, 8, "Yield fair value", text_color=color.white, text_size=size.small)
-    table.cell(statsTbl, 1, 8, not na(v_fairPrice) ? str.tostring(v_fairPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 9, "Yield fair value (live)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 9, not na(liveFairPrice) ? str.tostring(liveFairPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
 
-    table.cell(statsTbl, 0, 9, "Gap to fair value", text_color=color.white, text_size=size.small)
-    gapCol = na(v_divZ) ? color.white : (v_divZ >= 0 ? divUpCol : divDnCol)
-    table.cell(statsTbl, 1, 9, not na(v_divGap) ? (v_divGap >= 0 ? "+" : "") + str.tostring(v_divGap, format.mintick) : "—",
+    table.cell(statsTbl, 0, 10, "Gap to fair value (live)", text_color=color.white, text_size=size.small)
+    gapCol  = na(liveDivZ) ? color.white : (liveDivZ >= 0 ? divUpCol : divDnCol)
+    gapLive = na(liveResidual) ? float(na) : -liveResidual
+    table.cell(statsTbl, 1, 10, not na(gapLive) ? (gapLive >= 0 ? "+" : "") + str.tostring(gapLive, format.mintick) : "—",
          text_color=gapCol, text_size=size.small)
 
-    table.cell(statsTbl, 0, 10, "Divergence Z (px vs yield)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 11, "Divergence Z (as of today)", text_color=color.white, text_size=size.small)
     divBg = v_abnormalDiv ? (v_divZ >= 0 ? color.new(divUpCol, 40) : color.new(divDnCol, 40)) : na
-    table.cell(statsTbl, 1, 10, (not na(v_divZ) ? str.tostring(v_divZ, "#.##") : "—") + (v_abnormalDiv ? " ⚠" : ""),
+    table.cell(statsTbl, 1, 11, (not na(v_divZ) ? str.tostring(v_divZ, "#.##") : "—") + (v_abnormalDiv ? " ⚠" : ""),
          text_color=color.white, text_size=size.small, bgcolor=divBg)
 
-    table.cell(statsTbl, 0, 11, "Divergence trend", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 12, "Divergence Z (live)", text_color=color.white, text_size=size.small)
+    liveDivBg = liveAbnormalDiv ? (liveDivZ >= 0 ? color.new(divUpCol, 40) : color.new(divDnCol, 40)) : na
+    table.cell(statsTbl, 1, 12, (not na(liveDivZ) ? str.tostring(liveDivZ, "#.##") : "—") + (liveAbnormalDiv ? " ⚠" : ""),
+         text_color=color.white, text_size=size.small, bgcolor=liveDivBg)
+
+    table.cell(statsTbl, 0, 13, "Divergence trend", text_color=color.white, text_size=size.small)
     trendBg = v_divTrend == "WIDENING" ? color.new(color.orange, 40) : v_divTrend == "NARROWING" ? color.new(color.teal, 40) : color.new(color.gray, 50)
-    table.cell(statsTbl, 1, 11, v_divTrend, text_color=color.white, text_size=size.small, bgcolor=trendBg)
+    table.cell(statsTbl, 1, 13, v_divTrend, text_color=color.white, text_size=size.small, bgcolor=trendBg)

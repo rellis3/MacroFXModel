@@ -488,7 +488,11 @@ export default {
         // to:   date+days T00:00Z — extended when days>1 for run-to-SL/TP mode
         const [yr, mo, dy] = date.split('-').map(Number);
         const fromDate = new Date(Date.UTC(yr, mo - 1, dy - 1, 22, 0, 0));
-        const toDate   = new Date(Date.UTC(yr, mo - 1, dy + days, 0, 0, 0));
+        let   toDate   = new Date(Date.UTC(yr, mo - 1, dy + days, 0, 0, 0));
+        // OANDA rejects 'to' values in the future (e.g. requesting "today" while
+        // the session is still live) — clamp to now so today's date always works.
+        const now = new Date();
+        if (toDate > now) toDate = now;
         const fromRFC  = fromDate.toISOString();
         const toRFC    = toDate.toISOString();
 
