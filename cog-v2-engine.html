@@ -136,6 +136,7 @@
 <div class="dv-tabs">
   <div class="dv-tab active" data-tab="live" onclick="switchTab('live')">📡 Live Monitor</div>
   <div class="dv-tab" data-tab="backtest" onclick="switchTab('backtest')">🧮 Backtest Lab</div>
+  <div class="dv-tab" data-tab="hist" onclick="switchTab('hist')">📊 Historical (OANDA)</div>
 </div>
 
 <!-- ══════════════════════════ LIVE MONITOR PANEL ══════════════════════════ -->
@@ -436,6 +437,184 @@
 
 </div><!-- /panel-backtest -->
 
+<!-- ══════════════════════════ HISTORICAL BACKTEST PANEL ══════════════════════════ -->
+<div class="dv-panel" id="panel-hist">
+
+<div class="info-box">
+  <strong style="color:#818cf8">Historical Backtest (OANDA):</strong> Fetches real NAS100_USD 5-minute candles via OANDA v20 REST API and aligns them with FRED (DGS10, DGS2, VIXCLS) and Yahoo Finance (DX-Y.NYB, HYG/LQD, ^VVIX) macro series. All API keys are loaded from Railway environment variables — no key input needed here. UK session bars only (08:00–16:00 BST/GMT). Trigger window is 14:20–14:35 UK. Breadth abstains (no free feed). Expect 2–10 minutes for large date ranges.
+</div>
+
+<div class="run-bar">
+  <div class="cfg-field"><label>Start</label><input type="date" id="hist_start"></div>
+  <div class="cfg-field"><label>End</label><input type="date" id="hist_end"><span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">blank = today</span></div>
+  <div class="cfg-field"><label>Account Equity</label><input type="number" id="hist_equity" value="100000" step="5000" min="1000"></div>
+  <div class="cfg-field"><label>Instrument</label><select id="hist_instrument" onchange="updateInstrumentNote('hist')"></select></div>
+  <div class="cfg-field"><label>Stop Model</label><select id="hist_stopmodel"></select></div>
+  <div class="cfg-field"><label>Requested Tier</label><select id="hist_tier"></select></div>
+  <button class="run-btn" id="histRunBtn" onclick="runHistoricalBacktest()" style="align-self:flex-end;">Run Historical</button>
+  <div style="display:flex;align-items:center;gap:8px;align-self:flex-end;padding-bottom:6px;">
+    <span class="sdot" id="histStatusDot"></span>
+    <span id="histStatusMsg" class="run-lbl">Configure a run &amp; click Run — uses real OANDA + FRED/Yahoo data via Railway env vars</span>
+  </div>
+</div>
+
+<div class="info-box warn" id="histInstrumentNote" style="display:none;"></div>
+
+<div id="histSections" style="display:none;">
+
+<!-- KPI grid -->
+<div class="kpi-grid" style="margin-top:14px;">
+  <div class="kpi"><div class="kpi-lbl">CAGR</div><div class="kpi-val" id="hKCagr">—</div><div class="kpi-sub" id="hKPeriod">—</div></div>
+  <div class="kpi"><div class="kpi-lbl">Sharpe</div><div class="kpi-val" id="hKSharpe">—</div><div class="kpi-sub">daily, annualised</div></div>
+  <div class="kpi"><div class="kpi-lbl">Sortino</div><div class="kpi-val" id="hKSortino">—</div><div class="kpi-sub">downside dev only</div></div>
+  <div class="kpi"><div class="kpi-lbl">Calmar</div><div class="kpi-val" id="hKCalmar">—</div><div class="kpi-sub">CAGR / |Max DD|</div></div>
+  <div class="kpi"><div class="kpi-lbl">Max Drawdown</div><div class="kpi-val red" id="hKMaxDD">—</div><div class="kpi-sub">peak-to-trough</div></div>
+  <div class="kpi"><div class="kpi-lbl">Win Rate</div><div class="kpi-val" id="hKWinRate">—</div><div class="kpi-sub" id="hKWins">— / — trades</div></div>
+  <div class="kpi"><div class="kpi-lbl">Profit Factor</div><div class="kpi-val" id="hKPF">—</div><div class="kpi-sub">gross win / gross loss</div></div>
+  <div class="kpi"><div class="kpi-lbl">Expectancy</div><div class="kpi-val" id="hKExpectancy">—</div><div class="kpi-sub">avg R per trade</div></div>
+  <div class="kpi"><div class="kpi-lbl">Omega</div><div class="kpi-val" id="hKOmega">—</div><div class="kpi-sub">gain/loss ratio @0</div></div>
+  <div class="kpi"><div class="kpi-lbl">Trades / Week</div><div class="kpi-val amber" id="hKTpw">—</div><div class="kpi-sub" id="hKTotalTrades">— total</div></div>
+</div>
+
+<!-- Historical-only metrics -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Historical Metrics (real OANDA data)</div>
+  <div class="card-body" style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:14px 16px;">
+    <div><div class="diag-lbl">Total Trades</div><div class="diag-val" id="hMTotal">—</div></div>
+    <div><div class="diag-lbl">Long / Short</div><div class="diag-val" id="hMLongShort">—</div></div>
+    <div><div class="diag-lbl">Completed</div><div class="diag-val" id="hMCompleted">—</div></div>
+    <div><div class="diag-lbl">Avg Win R</div><div class="diag-val green" id="hMAvgWin">—</div></div>
+    <div><div class="diag-lbl">Avg Loss R</div><div class="diag-val red" id="hMAvgLoss">—</div></div>
+    <div>
+      <div class="diag-lbl">Avg MAE</div>
+      <div class="diag-val" id="hMAvgMAE">—</div>
+      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">max adverse excursion pts</div>
+    </div>
+    <div>
+      <div class="diag-lbl">Avg MFE</div>
+      <div class="diag-val" id="hMAvgMFE">—</div>
+      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">max favourable excursion pts</div>
+    </div>
+  </div>
+</div>
+
+<!-- Confidence buckets -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Confidence Score Buckets</div>
+  <div class="card-body">
+    <div class="tbl-wrap">
+      <table class="tbl" id="hConfBucketTable">
+        <thead><tr>
+          <th>Score Range</th><th class="num">Trades</th><th class="num">Win Rate</th><th class="num">Avg R</th>
+        </tr></thead>
+        <tbody id="hConfBucketTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Direction agreement -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Trigger Direction Agreement</div>
+  <div class="card-body" id="hDirAgBody"></div>
+</div>
+
+<!-- Equity curve -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Equity Curve <span id="hEquitySubtitle" style="font-weight:400;color:var(--text3)"></span></div>
+  <div class="card-body"><div id="histLwEquity" class="chart-wrap"></div></div>
+</div>
+
+<!-- Drawdown -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Drawdown — Underwater Curve</div>
+  <div class="card-body"><div id="histLwDrawdown" class="chart-wrap" style="height:200px;"></div></div>
+</div>
+
+<!-- Gate hit rates -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Gate Hit Rates <span style="font-weight:400;color:var(--text3)" id="hGateBarCount"></span></div>
+  <div class="card-body" id="hGateHitBody"></div>
+</div>
+
+<!-- Gate1B input coverage -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Gate1B Input Coverage <span style="font-weight:400;color:var(--text3);font-size:10px;">fraction of intraday bars where each macro series had a non-null value after forward-fill</span></div>
+  <div class="card-body" id="hCoverageBody"></div>
+</div>
+
+<!-- Robustness -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Robustness — Monte Carlo · Walk-Forward · Out-of-Sample</div>
+  <div class="card-body">
+    <div class="robust-grid">
+      <div class="diag-card" style="margin:0;">
+        <div class="diag-lbl">Monte Carlo — trade-order resample (terminal equity multiple, p5/p25/p50/p75/p95)</div>
+        <div id="hMcTerminal" style="margin-top:8px;font-family:'DM Mono',monospace;font-size:13px;"></div>
+        <div class="diag-lbl" style="margin-top:10px;">Max Drawdown bands</div>
+        <div id="hMcDD" style="margin-top:6px;font-family:'DM Mono',monospace;font-size:13px;"></div>
+      </div>
+      <div class="diag-card" style="margin:0;">
+        <div class="diag-lbl">Out-of-Sample split (final 20% held out)</div>
+        <div id="hOosBody" style="margin-top:8px;font-family:'DM Mono',monospace;font-size:12px;"></div>
+      </div>
+    </div>
+    <div class="diag-lbl" style="margin-top:14px;">Walk-Forward — 4 equal non-overlapping windows</div>
+    <div class="tbl-wrap" style="margin-top:6px;max-height:none;">
+      <table class="tbl" id="hWfTable">
+        <thead><tr>
+          <th>Window</th><th>Start</th><th>End</th>
+          <th class="num">CAGR</th><th class="num">Sharpe</th><th class="num">Max DD</th>
+          <th class="num">Win Rate</th><th class="num">PF</th><th class="num">Trades</th><th class="num">Expectancy</th>
+        </tr></thead>
+        <tbody id="hWfTbody"></tbody>
+      </table>
+    </div>
+    <div class="legend-row"><span id="hWfSummary"></span></div>
+  </div>
+</div>
+
+<!-- Trade Journal -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">
+    Trade Journal
+    <span style="margin-left:auto;font-weight:400;font-size:11px;color:var(--text3);" id="hJournalReasonFreq"></span>
+  </div>
+  <div class="card-body">
+    <div class="filter-row">
+      <div class="cfg-field"><label>Direction</label><select id="h_f_direction"><option value="">All</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
+      <div class="cfg-field"><label>Outcome</label><select id="h_f_outcome"><option value="">All</option><option value="win">Win</option><option value="loss">Loss</option></select></div>
+      <div class="cfg-field"><label>Sort By</label>
+        <select id="h_f_sortby">
+          <option value="entryIndex">Entry order</option>
+          <option value="pnlR">PnL (R)</option>
+          <option value="confScore">Conf Score</option>
+          <option value="mae">MAE</option>
+          <option value="mfe">MFE</option>
+        </select>
+      </div>
+      <div class="cfg-field"><label>Sort Dir</label><select id="h_f_sortdir"><option value="asc">Asc</option><option value="desc" selected>Desc</option></select></div>
+      <button class="run-btn" style="padding:5px 14px;" onclick="renderHistTradeJournal()">Apply</button>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th>ID</th><th>Entry Date</th><th>Dir</th><th>Tier</th><th>Stop Model</th>
+          <th class="num">Entry</th><th>Exit Date</th><th class="num">Exit</th><th>Reason</th>
+          <th class="num">Bars</th><th class="num">Risk %</th>
+          <th class="num">PnL (R)</th><th class="num">PnL ($)</th>
+          <th class="num">Conf</th><th class="num">MAE</th><th class="num">MFE</th>
+        </tr></thead>
+        <tbody id="hTradeJournalTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /histSections -->
+
+</div><!-- /panel-hist -->
+
 </div><!-- /app -->
 
 <script type="module">
@@ -447,6 +626,8 @@ let _liveAutoTimer = null;
 let _btData = null;
 let _btEquityUnit = 'mult';
 let _btLwEquityChart = null, _btLwDrawdownChart = null;
+let _histData = null;
+let _histLwEquityChart = null, _histLwDrawdownChart = null;
 
 const STATE_COLORS = {
   BULLISH: '#10b981', LONG: '#10b981', VALID: '#10b981', ARMED_LONG: '#10b981',
@@ -486,7 +667,7 @@ async function loadConfig() {
   if (!d.ok) { setStatus2('live', 'err', 'Failed to load config'); return; }
   _config = d;
 
-  for (const prefix of ['live', 'bt']) {
+  for (const prefix of ['live', 'bt', 'hist']) {
     const instSel = document.getElementById(`${prefix}_instrument`);
     instSel.innerHTML = Object.entries(d.execution.instruments).map(([key, inst]) =>
       `<option value="${key}" ${key === 'primary' ? 'selected' : ''}>${inst.label} (${inst.ticker})</option>`).join('');
@@ -503,8 +684,10 @@ async function loadConfig() {
   }
   updateInstrumentNote('live');
   updateInstrumentNote('bt');
+  updateInstrumentNote('hist');
 
   document.getElementById('bt_start').value = d.dataDefaults.backtestStart;
+  document.getElementById('hist_start').value = d.dataDefaults.backtestStart;
 
   document.getElementById('bt_f_tier').innerHTML += Object.keys(d.risk.riskTiers).map(k => `<option value="${k}">${k}</option>`).join('');
   document.getElementById('bt_f_stopmodel').innerHTML += Object.keys(d.risk.stopModels).map(k => `<option value="${k}">${k}</option>`).join('');
@@ -528,12 +711,12 @@ function updateInstrumentNote(prefix) {
 }
 window.updateInstrumentNote = updateInstrumentNote;
 
-// ── Status dots (live + backtest each have their own) ──────────────────────
+// ── Status dots (live / backtest / hist each have their own) ───────────────
 function setStatus2(prefix, type, msg) {
-  const dot = document.getElementById(`${prefix === 'live' ? 'liveStatusDot' : 'btStatusDot'}`);
-  const lbl = document.getElementById(`${prefix === 'live' ? 'liveStatusMsg' : 'btStatusMsg'}`);
-  dot.className = 'sdot ' + type;
-  lbl.textContent = msg;
+  const dotId = prefix === 'live' ? 'liveStatusDot' : prefix === 'hist' ? 'histStatusDot' : 'btStatusDot';
+  const lblId = prefix === 'live' ? 'liveStatusMsg' : prefix === 'hist' ? 'histStatusMsg' : 'btStatusMsg';
+  document.getElementById(dotId).className = 'sdot ' + type;
+  document.getElementById(lblId).textContent = msg;
 }
 
 // ══════════════════════════ LIVE MONITOR ═══════════════════════════════════
@@ -949,9 +1132,272 @@ function renderTradeJournal() {
 }
 window.renderTradeJournal = renderTradeJournal;
 
+// ══════════════════════════ HISTORICAL BACKTEST ════════════════════════════
+
+async function runHistoricalBacktest() {
+  const btn = document.getElementById('histRunBtn');
+  btn.disabled = true;
+  setStatus2('hist', 'spin', 'Starting historical run — fetching OANDA M5 candles via Railway…');
+
+  const body = {
+    start: document.getElementById('hist_start').value || undefined,
+    end: document.getElementById('hist_end').value || undefined,
+    accountEquity: +document.getElementById('hist_equity').value || 100000,
+    instrumentKey: document.getElementById('hist_instrument').value,
+    stopModelId: document.getElementById('hist_stopmodel').value,
+    requestedTier: document.getElementById('hist_tier').value,
+  };
+
+  try {
+    const runRes = await fetch('/api/cog-v2/run-historical', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const runData = await runRes.json();
+    if (!runData.ok) throw new Error(runData.error || 'Failed to start historical run');
+
+    const jobId = runData.jobId;
+    let result = null;
+    for (let i = 0; i < 600; i++) {
+      await new Promise(res => setTimeout(res, 1500));
+      const sRes = await fetch(`/api/cog-v2/status/${jobId}`);
+      const sData = await sRes.json();
+      if (!sData.ok) throw new Error(sData.error || 'Job failed');
+      if (sData.status === 'running') { setStatus2('hist', 'spin', sData.phase || `Running… (${sData.elapsed}s)`); continue; }
+      if (sData.status === 'done') { result = sData.data; break; }
+      throw new Error(sData.error || 'Unknown job error');
+    }
+    if (!result) throw new Error('Historical backtest timed out (15 min)');
+
+    _histData = result;
+    renderHistAll();
+    setStatus2('hist', 'ok', `Done — ${result.trades.length} trades · ${result.tradingDayCount} trading days · ${result.dateRange.start} → ${result.dateRange.end}`);
+  } catch (err) {
+    setStatus2('hist', 'err', 'Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+window.runHistoricalBacktest = runHistoricalBacktest;
+
+function renderHistAll() {
+  renderHistKpis();
+  renderHistExtras();
+  renderHistConfBuckets();
+  renderHistDirAgreement();
+  renderHistEquityChart();
+  renderHistDrawdownChart();
+  renderHistGateHitRates();
+  renderHistCoverage();
+  renderHistRobustness();
+  renderHistTradeJournal();
+  document.getElementById('histSections').style.display = '';
+}
+
+function renderHistKpis() {
+  const p = _histData.performance;
+  document.getElementById('hKCagr').textContent = pct(p.cagr);
+  document.getElementById('hKCagr').className = 'kpi-val ' + (p.cagr >= 0 ? 'green' : 'red');
+  document.getElementById('hKPeriod').textContent = `${p.startDate} → ${p.endDate}`;
+  document.getElementById('hKSharpe').textContent = num(p.sharpe);
+  document.getElementById('hKSharpe').className = 'kpi-val ' + (p.sharpe >= 1 ? 'green' : p.sharpe >= 0 ? 'amber' : 'red');
+  document.getElementById('hKSortino').textContent = num(p.sortino);
+  document.getElementById('hKSortino').className = 'kpi-val ' + (p.sortino >= 1.5 ? 'green' : p.sortino >= 0 ? 'amber' : 'red');
+  document.getElementById('hKCalmar').textContent = num(p.calmar);
+  document.getElementById('hKMaxDD').textContent = pct(p.maxDrawdown.maxDrawdown);
+  document.getElementById('hKWinRate').textContent = pct(p.winRate, 1);
+  document.getElementById('hKWinRate').className = 'kpi-val ' + (p.winRate >= 0.45 ? 'green' : p.winRate >= 0.35 ? 'amber' : 'red');
+  document.getElementById('hKWins').textContent = `${p.winCount ?? 0} / ${p.tradeCount ?? 0} trades`;
+  document.getElementById('hKPF').textContent = num(p.profitFactor);
+  document.getElementById('hKPF').className = 'kpi-val ' + (p.profitFactor >= 1.8 ? 'green' : p.profitFactor >= 1 ? 'amber' : 'red');
+  document.getElementById('hKExpectancy').textContent = num(p.expectancyR) + 'R';
+  document.getElementById('hKExpectancy').className = 'kpi-val ' + (p.expectancyR >= 0 ? 'green' : 'red');
+  document.getElementById('hKOmega').textContent = num(p.omega);
+  document.getElementById('hKTpw').textContent = num(p.tradesPerWeek);
+  document.getElementById('hKTotalTrades').textContent = `${p.tradeCount ?? 0} total`;
+}
+
+function renderHistExtras() {
+  const m = _histData.historicalMetrics;
+  document.getElementById('hMTotal').textContent = m.tradeCount ?? '—';
+  document.getElementById('hMLongShort').textContent = `${m.longCount ?? 0}L / ${m.shortCount ?? 0}S`;
+  document.getElementById('hMCompleted').textContent = m.completedCount ?? '—';
+  document.getElementById('hMAvgWin').textContent = m.avgWinR != null ? `+${num(m.avgWinR)}R` : '—';
+  document.getElementById('hMAvgLoss').textContent = m.avgLossR != null ? `${num(m.avgLossR)}R` : '—';
+  document.getElementById('hMAvgMAE').textContent = m.avgMAE != null ? num(m.avgMAE, 1) : '—';
+  document.getElementById('hMAvgMFE').textContent = m.avgMFE != null ? num(m.avgMFE, 1) : '—';
+}
+
+function renderHistConfBuckets() {
+  const buckets = _histData.historicalMetrics.confBuckets || [];
+  document.getElementById('hConfBucketTbody').innerHTML = buckets.length
+    ? buckets.map(b => `
+      <tr>
+        <td>${b.label}</td>
+        <td class="num">${b.count}</td>
+        <td class="num">${b.winRate != null ? pct(b.winRate, 1) : '—'}</td>
+        <td class="num ${b.avgR != null && b.avgR >= 0 ? 'win' : 'loss'}">${b.avgR != null ? num(b.avgR) + 'R' : '—'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--text3)">No confidence data</td></tr>';
+}
+
+function renderHistDirAgreement() {
+  const da = _histData.dirAgreement;
+  const body = document.getElementById('hDirAgBody');
+  if (!da) { body.innerHTML = '<div style="color:var(--text3);font-size:11px;">No direction agreement data</div>'; return; }
+  const fmtRow = (label, d) =>
+    `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;font-family:'DM Mono',monospace;">
+      <span style="color:var(--text3)">${label}</span>
+      <span>${d.agree ?? 0} / ${d.armed ?? 0} armed <strong style="margin-left:10px;">${d.rate != null ? pct(d.rate, 1) : '—'}</strong></span>
+    </div>`;
+  body.innerHTML = `
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:'DM Mono',monospace;">
+      Overall: ${da.totalDirAgreeBars ?? 0} / ${da.totalTriggerArmedBars ?? 0} trigger-armed bars where setup+trigger agreed →
+      <strong style="color:#22d3ee">${da.rateOverall != null ? pct(da.rateOverall, 1) : '—'}</strong>
+    </div>
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 2px;">By Setup Direction</div>
+    ${Object.entries(da.bySetupDir || {}).map(([k, v]) => fmtRow(k, v)).join('')}
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 2px;">By Setup Age at Trigger</div>
+    ${Object.entries(da.bySetupAge || {}).map(([k, v]) => fmtRow(k, v)).join('')}
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 2px;">By Trigger Session</div>
+    ${Object.entries(da.byTriggerSession || {}).map(([k, v]) => fmtRow(k, v)).join('')}
+  `;
+}
+
+function renderHistEquityChart() {
+  if (_histLwEquityChart) { _histLwEquityChart.remove(); _histLwEquityChart = null; }
+  if (!_histData?.equityCurve?.length) return;
+  _histLwEquityChart = createLWChart('histLwEquity', 280);
+  if (!_histLwEquityChart) return;
+  const series = _histLwEquityChart.addAreaSeries({
+    lineColor: '#818cf8', topColor: 'rgba(129,140,248,0.25)', bottomColor: 'rgba(129,140,248,0.01)',
+    lineWidth: 2,
+    priceFormat: { type: 'custom', formatter: v => v.toFixed(3) + 'x' },
+  });
+  series.setData(_histData.equityCurve.map(p => ({ time: p.date, value: p.equity })));
+  _histLwEquityChart.timeScale().fitContent();
+  document.getElementById('hEquitySubtitle').textContent =
+    `${_histData.equityCurve[0].date} → ${_histData.equityCurve[_histData.equityCurve.length - 1].date}`;
+}
+
+function renderHistDrawdownChart() {
+  if (_histLwDrawdownChart) { _histLwDrawdownChart.remove(); _histLwDrawdownChart = null; }
+  if (!_histData?.equityCurve?.length) return;
+  _histLwDrawdownChart = createLWChart('histLwDrawdown', 200);
+  if (!_histLwDrawdownChart) return;
+  const series = _histLwDrawdownChart.addAreaSeries({
+    lineColor: '#ef4444', topColor: 'rgba(239,68,68,0.01)', bottomColor: 'rgba(239,68,68,0.3)',
+    lineWidth: 1.5, priceFormat: { type: 'custom', formatter: v => (v * 100).toFixed(1) + '%' },
+  });
+  const dd = _histData.performance.rollingDrawdownSeries || [];
+  series.setData(_histData.equityCurve.map((p, i) => ({ time: p.date, value: isFinite(dd[i]) ? dd[i] : 0 })));
+  _histLwDrawdownChart.timeScale().fitContent();
+}
+
+function renderHistGateHitRates() {
+  const g = _histData.gateHitRates;
+  const body = document.getElementById('hGateHitBody');
+  if (!g) { body.innerHTML = '<div style="color:var(--text3);font-size:11px;">No gate data</div>'; return; }
+  document.getElementById('hGateBarCount').textContent =
+    `· ${g.barCount} bars · ${g.transitions.setup}/${g.transitions.risk}/${g.transitions.trigger} setup/risk/trigger transitions`;
+  body.innerHTML =
+    renderGateBar(g.setup, 'Setup Gate (Threshold1, persistent)') +
+    renderGateBar(g.risk, 'Risk Gate (Gate2, frozen/day)') +
+    renderGateBar(g.trigger, 'Trigger Gate (NQ impulse + Gate3 direction)');
+}
+
+function renderHistCoverage() {
+  const cov = _histData.gate1bCoverage;
+  const body = document.getElementById('hCoverageBody');
+  if (!cov) { body.innerHTML = '<div style="color:var(--text3);font-size:11px;">No coverage data</div>'; return; }
+  body.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:16px;font-family:\'DM Mono\',monospace;">' +
+    Object.entries(cov).map(([k, v]) => {
+      const filled = v?.filledCount ?? 0, total = v?.total ?? 0;
+      const pctVal = total > 0 ? (filled / total * 100).toFixed(0) : '—';
+      const c = total > 0 && filled / total >= 0.8 ? '#10b981' : total > 0 && filled / total >= 0.5 ? '#f59e0b' : '#ef4444';
+      return `<div style="min-width:90px;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">${k}</div><div style="font-size:18px;font-weight:700;color:${c};">${pctVal}%</div><div style="font-size:10px;color:var(--text3);">${filled}/${total} bars</div></div>`;
+    }).join('') + '</div>';
+}
+
+function renderHistRobustness() {
+  const mc = _histData.monteCarlo, oos = _histData.outOfSample, wf = _histData.walkForward;
+  const bandRow = (band, fmtFn) => Object.entries(band || {}).map(([k, v]) =>
+    `<span style="margin-right:14px;">${k}: <strong>${fmtFn(v)}</strong></span>`).join('');
+  document.getElementById('hMcTerminal').innerHTML = mc?.terminalEquity ? bandRow(mc.terminalEquity, v => num(v, 3) + 'x') : '—';
+  document.getElementById('hMcDD').innerHTML = mc?.maxDrawdown ? bandRow(mc.maxDrawdown, v => pct(v)) : '—';
+  if (oos?.inSample && oos?.outOfSample) {
+    const row = (label, key, fmtFn) =>
+      `<div style="display:flex;justify-content:space-between;margin-top:3px;"><span style="color:var(--text3)">${label}</span><span>${fmtFn(oos.inSample[key])} <span style="color:var(--text3)">vs</span> ${fmtFn(oos.outOfSample[key])}</span></div>`;
+    document.getElementById('hOosBody').innerHTML =
+      `<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"><span>Metric</span><span>In-Sample vs Out-of-Sample (split ${oos.splitDate})</span></div>` +
+      row('CAGR', 'cagr', v => pct(v)) +
+      row('Sharpe', 'sharpe', v => num(v)) +
+      `<div style="display:flex;justify-content:space-between;margin-top:3px;"><span style="color:var(--text3)">Max DD</span><span>${pct(oos.inSample.maxDrawdown.maxDrawdown)} <span style="color:var(--text3)">vs</span> ${pct(oos.outOfSample.maxDrawdown.maxDrawdown)}</span></div>` +
+      row('Win Rate', 'winRate', v => pct(v, 1)) +
+      row('Trades', 'tradeCount', v => String(v ?? 0));
+  } else {
+    document.getElementById('hOosBody').innerHTML = '<span style="color:var(--text3)">Not enough history to split</span>';
+  }
+  const windows = wf?.windows || [];
+  document.getElementById('hWfTbody').innerHTML = windows.length ? windows.map(w => `
+    <tr>
+      <td>${w.windowIndex + 1}</td><td>${w.startDate}</td><td>${w.endDate}</td>
+      <td class="num ${w.cagr >= 0 ? 'win' : 'loss'}">${pct(w.cagr)}</td>
+      <td class="num">${num(w.sharpe)}</td>
+      <td class="num loss">${pct(w.maxDrawdown)}</td>
+      <td class="num">${pct(w.winRate, 1)}</td>
+      <td class="num">${num(w.profitFactor)}</td>
+      <td class="num">${w.tradeCount}</td>
+      <td class="num ${w.expectancyR >= 0 ? 'win' : 'loss'}">${num(w.expectancyR)}R</td>
+    </tr>`).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--text3)">No windows</td></tr>';
+  document.getElementById('hWfSummary').textContent = wf
+    ? `CAGR std dev: ${pct(wf.cagrStdDev)} · Sharpe std dev: ${num(wf.sharpeStdDev)} · ${wf.positiveWindowCount}/${wf.windowCount} windows positive`
+    : '';
+}
+
+function renderHistTradeJournal() {
+  if (!_histData) return;
+  const dirFilter = document.getElementById('h_f_direction').value;
+  const outcomeFilter = document.getElementById('h_f_outcome').value;
+  const sortBy = document.getElementById('h_f_sortby').value;
+  const sortDir = document.getElementById('h_f_sortdir').value;
+  let trades = (_histData.trades || []).filter(t => {
+    if (dirFilter && t.direction !== dirFilter) return false;
+    if (outcomeFilter === 'win' && !(t.pnlR > 0)) return false;
+    if (outcomeFilter === 'loss' && !(t.pnlR <= 0)) return false;
+    return true;
+  });
+  trades = [...trades].sort((a, b) => {
+    const av = a[sortBy] ?? -Infinity, bv = b[sortBy] ?? -Infinity;
+    return sortDir === 'asc' ? av - bv : bv - av;
+  });
+  document.getElementById('hJournalReasonFreq').textContent =
+    reasonFrequency(_histData.trades).map(r => `${r.reason}: ${r.count}`).join('  ·  ');
+  document.getElementById('hTradeJournalTbody').innerHTML = trades.length ? trades.map(t => `
+    <tr>
+      <td>${t.id}</td><td>${t.entryDate}</td>
+      <td>${statePill(t.direction)}</td>
+      <td>${t.tier}</td><td>${t.stopModelId}</td>
+      <td class="num">${num(t.entryPrice)}</td>
+      <td>${t.exitDate ?? '—'}</td>
+      <td class="num">${num(t.exitPrice)}</td>
+      <td>${t.reason ?? '—'}</td>
+      <td class="num">${t.barsHeld ?? '—'}</td>
+      <td class="num">${num(t.riskPct, 2)}%</td>
+      <td class="num ${t.pnlR > 0 ? 'win' : 'loss'}">${num(t.pnlR)}</td>
+      <td class="num ${t.pnlDollars > 0 ? 'win' : 'loss'}">$${num(t.pnlDollars, 0)}</td>
+      <td class="num">${t.confScore != null ? num(t.confScore, 1) : '—'}</td>
+      <td class="num">${t.mae != null ? num(t.mae, 1) : '—'}</td>
+      <td class="num">${t.mfe != null ? num(t.mfe, 1) : '—'}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="16" style="text-align:center;color:var(--text3)">No trades match these filters</td></tr>';
+}
+window.renderHistTradeJournal = renderHistTradeJournal;
+
 window.addEventListener('resize', () => {
   if (_btLwEquityChart) _btLwEquityChart.applyOptions({ width: document.getElementById('btLwEquity').clientWidth });
   if (_btLwDrawdownChart) _btLwDrawdownChart.applyOptions({ width: document.getElementById('btLwDrawdown').clientWidth });
+  if (_histLwEquityChart) _histLwEquityChart.applyOptions({ width: document.getElementById('histLwEquity').clientWidth });
+  if (_histLwDrawdownChart) _histLwDrawdownChart.applyOptions({ width: document.getElementById('histLwDrawdown').clientWidth });
 });
 
 loadConfig();
