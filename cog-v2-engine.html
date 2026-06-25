@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COG V2 Engine — Persistent State Machine</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="./js/sys-backtest-shared.js"></script>
+<style>
+#app { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.kpi { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 3px; }
+.kpi-lbl { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.kpi-val { font-size: 22px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+.kpi-val.green { color: #10b981; } .kpi-val.red { color: #ef4444; } .kpi-val.amber { color: #f59e0b; }
+.kpi-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+.card-hdr { padding: 11px 16px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.card-body { padding: 16px; }
+.chart-wrap { position: relative; height: 280px; }
+
+.run-bar { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--r); padding: 11px 14px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.run-btn { background: #22d3ee; border: none; border-radius: 6px; color: #042a30; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; padding: 6px 20px; cursor: pointer; transition: opacity .2s; }
+.run-btn:hover { opacity: .85; } .run-btn:disabled { opacity: .5; cursor: wait; }
+.run-btn.alt { background: #818cf8; color: #0a0a1a; }
+.run-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.cfg-field { display: flex; flex-direction: column; gap: 3px; }
+.cfg-field label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); font-family: 'DM Mono', monospace; }
+.cfg-field input, .cfg-field select { background: var(--s2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 5px 8px; width: 132px; }
+
+.tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.tbl th { padding: 6px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--s2); }
+.tbl td.num { text-align: right; }
+.tbl td.win { color: #10b981; font-weight: 600; }
+.tbl td.loss { color: #ef4444; font-weight: 600; }
+.tbl-wrap { overflow-x: auto; }
+.tbl-wrap.scroll { max-height: 320px; overflow-y: auto; }
+
+.gate-pill { display: inline-block; padding: 2px 9px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .06em; font-family: 'DM Mono', monospace; }
+
+.sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
+.sdot.ok   { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.sdot.spin { background: #f59e0b; animation: spin-pulse 1s infinite; }
+.sdot.err  { background: #ef4444; }
+@keyframes spin-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.info-box { background: rgba(34,211,238,.07); border: 1px solid rgba(34,211,238,.2); border-radius: var(--r); padding: 10px 14px; font-size: 11px; font-family: 'DM Mono', monospace; color: #67e8f9; margin-top: 10px; line-height: 1.6; }
+.info-box.warn { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); color: #fbbf24; }
+
+.diag-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 4px; }
+@media (max-width: 860px) { .diag-grid { grid-template-columns: repeat(2, 1fr); } }
+.diag-card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; }
+.diag-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.diag-val { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; margin-top: 4px; }
+.diag-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+.legend-row { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 0 0; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.legend-row span.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.gatebar-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.gatebar-row:last-child { margin-bottom: 0; }
+.gatebar-title { font-size: 11px; font-weight: 600; color: var(--text2); font-family: 'DM Mono', monospace; }
+.gatebar { display: flex; height: 22px; border-radius: 5px; overflow: hidden; border: 1px solid var(--border); }
+.gatebar-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #04111a; font-family: 'DM Mono', monospace; min-width: 2px; }
+.gatebar-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); }
+.gatebar-legend span.sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+.dist-wrap { display: flex; align-items: flex-end; gap: 4px; height: 160px; padding: 0 4px; }
+.dist-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
+.dist-bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; }
+.dist-lbl { font-size: 9px; color: var(--text3); font-family: 'DM Mono', monospace; white-space: nowrap; }
+.dist-count { font-size: 10px; color: var(--text2); font-family: 'DM Mono', monospace; }
+
+.robust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 1000px) { .robust-grid { grid-template-columns: 1fr; } }
+
+.filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+
+/* Mode tabs (Live Monitor / Backtest Lab) */
+.dv-tabs { display: flex; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+.dv-tab { padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-family: 'DM Mono', monospace; color: var(--text3); background: var(--s1); border: 1px solid var(--border); cursor: pointer; transition: all .15s; }
+.dv-tab:hover { border-color: #22d3ee; color: #22d3ee; }
+.dv-tab.active { background: #22d3ee; border-color: #22d3ee; color: #042a30; }
+.dv-panel { display: none; }
+.dv-panel.active { display: block; }
+
+/* Gate cards (Setup/Risk/Trigger) */
+.gate-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+@media (max-width: 1180px) { .gate-cards-grid { grid-template-columns: 1fr; } }
+.gate-card-meta { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; }
+.gate-card-meta .m-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.gate-card-meta .m-val { font-size: 13px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.reasons-list { margin: 6px 0 10px 18px; padding: 0; font-size: 11.5px; color: var(--text2); line-height: 1.6; }
+
+/* Event Journal */
+.timeline-list { display: flex; flex-direction: column; gap: 2px; max-height: 460px; overflow-y: auto; }
+.timeline-item { display: flex; align-items: baseline; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--border); font-size: 12px; font-family: 'DM Mono', monospace; }
+.timeline-item:last-child { border-bottom: none; }
+.timeline-icon { width: 18px; text-align: center; flex-shrink: 0; }
+.timeline-time { color: var(--text3); flex-shrink: 0; width: 50px; }
+.timeline-detail { color: var(--text2); }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Header -->
+<div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;margin:0;color:#22d3ee;">🧠 COG V2 Engine — Persistent State Machine</h1>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Setup (Threshold1) → Risk (Gate2) → Trigger (NQ impulse + Gate3 direction), each persisting VALID/ARMED until explicitly invalidated — not snapshotted once at a fixed window. Live Monitor + Backtest Lab combined below.</div>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <a href="nasdaq-threshold-backtest.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">V1 Backtest Lab →</a>
+    <a href="nasdaq-threshold-engine.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">V1 Live Monitor →</a>
+    <a href="index.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Dashboard</a>
+  </div>
+</div>
+
+<!-- System spec banner -->
+<div class="info-box">
+  <strong style="color:#22d3ee">V2 Architecture:</strong> Real COG behavior is asynchronous — Setup can validate at 23:30 the previous night or 11:30am, entry is not a fixed candle, and if no entry happens ~5 minutes after the NY cash-equity open the setup is usually dead for the day. <strong>Setup Gate</strong> = computeThreshold1() evaluated every bar, continuously, no fixed window. <strong>Risk Gate</strong> = computeRiskGate(), frozen per calendar day (genuinely daily-resolution inputs) but tracked continuously from the start of the trading day. <strong>Trigger Gate</strong> = NEW — NQ's own price-action impulse (momentum burst, opening-range break, orderflow, volume) combined with Gate3's frozen daily direction, armed only inside the 14:20–14:35 UK window (NY open → NY open+5m). Entry fires when Setup ∩ Risk ∩ Trigger all agree on direction. All three gates' underlying math is reused unmodified from the V1 gate files — only the persistence/validity wrapper is new.
+</div>
+
+<!-- Mode tabs -->
+<div class="dv-tabs">
+  <div class="dv-tab active" data-tab="live" onclick="switchTab('live')">📡 Live Monitor</div>
+  <div class="dv-tab" data-tab="backtest" onclick="switchTab('backtest')">🧮 Backtest Lab</div>
+</div>
+
+<!-- ══════════════════════════ LIVE MONITOR PANEL ══════════════════════════ -->
+<div class="dv-panel active" id="panel-live">
+
+<div class="run-bar">
+  <div class="cfg-field"><label>Seed</label><input type="number" id="live_seed" value="42" step="1"></div>
+  <div class="cfg-field"><label>Account Equity</label><input type="number" id="live_equity" value="100000" step="5000" min="1000"></div>
+  <div class="cfg-field"><label>Instrument</label><select id="live_instrument"></select></div>
+  <div class="cfg-field"><label>Stop Model</label><select id="live_stopmodel"></select></div>
+  <div class="cfg-field"><label>Requested Tier</label><select id="live_tier"></select></div>
+  <div class="cfg-field"><label>Journal Window</label>
+    <select id="live_lookback">
+      <option value="100">100 bars</option>
+      <option value="300" selected>300 bars</option>
+      <option value="600">600 bars</option>
+      <option value="1500">1500 bars</option>
+    </select>
+  </div>
+  <button class="run-btn" id="liveRefreshBtn" onclick="liveRefresh()" style="align-self:flex-end;">Refresh</button>
+  <label style="display:flex;align-items:center;gap:6px;align-self:flex-end;padding-bottom:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+    <input type="checkbox" id="liveAutoChk" onchange="toggleLiveAuto(this)"> Auto-refresh (60s)
+  </label>
+  <div style="display:flex;align-items:center;gap:8px;align-self:flex-end;padding-bottom:6px;">
+    <span class="sdot" id="liveStatusDot"></span>
+    <span id="liveStatusMsg" class="run-lbl">Loading config…</span>
+  </div>
+</div>
+
+<div class="info-box warn" id="liveInstrumentNote" style="display:none;"></div>
+
+<div id="liveSections" style="display:none;">
+
+<div class="card">
+  <div class="card-body" style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:14px 16px;">
+    <div><div class="diag-lbl">As Of</div><div class="diag-val" id="liveAsOf">—</div></div>
+    <div><div class="diag-lbl">Position</div><div class="diag-val" id="livePosition">—</div></div>
+    <div><div class="diag-lbl">Equity (since run start)</div><div class="diag-val" id="liveEquity">—</div></div>
+  </div>
+</div>
+
+<div class="gate-cards-grid">
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Setup Gate <span style="font-weight:400;color:var(--text3)">Threshold1, persists VALID until invalidated</span></div>
+    <div class="card-body">
+      <div class="gate-card-meta">
+        <div><div class="m-lbl">State</div><div class="m-val" id="setupState">—</div></div>
+        <div><div class="m-lbl">Score</div><div class="m-val" id="setupScore">—</div></div>
+        <div><div class="m-lbl">Confidence</div><div class="m-val" id="setupConf">—</div></div>
+      </div>
+      <div class="diag-lbl" id="setupValidSince">—</div>
+      <ul class="reasons-list" id="setupReasons"></ul>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Risk Gate <span style="font-weight:400;color:var(--text3)">Gate2, frozen/day, tracked continuously</span></div>
+    <div class="card-body">
+      <div class="gate-card-meta">
+        <div><div class="m-lbl">State</div><div class="m-val" id="riskState">—</div></div>
+        <div><div class="m-lbl">Score</div><div class="m-val" id="riskScore">—</div></div>
+        <div><div class="m-lbl">Tier</div><div class="m-val" id="riskTier">—</div></div>
+      </div>
+      <div class="diag-lbl" id="riskValidSince">—</div>
+      <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap;">
+        <div><div class="diag-lbl">Stop Distance</div><div class="diag-val" id="riskStopPct" style="font-size:14px;">—</div></div>
+        <div><div class="diag-lbl">Risk % of Equity</div><div class="diag-val" id="riskPct" style="font-size:14px;">—</div></div>
+      </div>
+      <ul class="reasons-list" id="riskReasons"></ul>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Trigger Gate <span style="font-weight:400;color:var(--text3)">NQ impulse + Gate3 direction, 14:20–14:35 UK window</span></div>
+    <div class="card-body">
+      <div class="gate-card-meta">
+        <div><div class="m-lbl">State</div><div class="m-val" id="trigState">—</div></div>
+        <div><div class="m-lbl">Impulse Score</div><div class="m-val" id="trigScore">—</div></div>
+      </div>
+      <div class="diag-lbl" id="trigValidSince">—</div>
+      <ul class="reasons-list" id="trigReasons"></ul>
+    </div>
+  </div>
+
+</div><!-- /gate-cards-grid -->
+
+<!-- Trade Panel -->
+<div class="card">
+  <div class="card-hdr">Open Position</div>
+  <div class="card-body" id="liveTradeBody"></div>
+</div>
+
+<!-- Recent Trades + Event Journal -->
+<div class="gate-cards-grid" style="grid-template-columns:1.1fr 1fr;">
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Recent Closed Trades</div>
+    <div class="card-body">
+      <div class="tbl-wrap scroll">
+        <table class="tbl"><thead><tr>
+          <th>Entry</th><th>Dir</th><th class="num">Entry Px</th><th>Exit</th><th class="num">Exit Px</th><th>Reason</th><th class="num">PnL (R)</th><th class="num">PnL ($)</th>
+        </tr></thead><tbody id="liveRecentTbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Event Journal <span style="font-weight:400;color:var(--text3)" id="liveJournalSubtitle"></span></div>
+    <div class="card-body">
+      <div class="timeline-list" id="liveJournalBody"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /liveSections -->
+
+</div><!-- /panel-live -->
+
+<!-- ══════════════════════════ BACKTEST LAB PANEL ══════════════════════════ -->
+<div class="dv-panel" id="panel-backtest">
+
+<div class="run-bar">
+  <div class="cfg-field"><label>Start</label><input type="date" id="bt_start"></div>
+  <div class="cfg-field"><label>End</label><input type="date" id="bt_end"><span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">blank = today</span></div>
+  <div class="cfg-field"><label>Seed</label><input type="number" id="bt_seed" value="42" step="1"></div>
+  <div class="cfg-field"><label>Account Equity</label><input type="number" id="bt_equity" value="100000" step="5000" min="1000"></div>
+  <div class="cfg-field"><label>Instrument</label><select id="bt_instrument"></select></div>
+  <div class="cfg-field"><label>Stop Model</label><select id="bt_stopmodel"></select></div>
+  <div class="cfg-field"><label>Requested Tier</label><select id="bt_tier"></select></div>
+  <button class="run-btn" id="btRunBtn" onclick="runBacktest()" style="align-self:flex-end;">Run Backtest</button>
+  <div style="display:flex;align-items:center;gap:8px;align-self:flex-end;padding-bottom:6px;">
+    <span class="sdot" id="btStatusDot"></span>
+    <span id="btStatusMsg" class="run-lbl">Configure a run &amp; click Run — synthetic dataset, intraday-bar resolution</span>
+  </div>
+</div>
+
+<div class="info-box warn" id="btInstrumentNote" style="display:none;"></div>
+
+<!-- KPI grid -->
+<div id="btKpiSection" style="display:none;">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lbl">CAGR</div><div class="kpi-val" id="btKCagr">—</div><div class="kpi-sub" id="btKPeriod">—</div></div>
+    <div class="kpi"><div class="kpi-lbl">Sharpe</div><div class="kpi-val" id="btKSharpe">—</div><div class="kpi-sub">daily, annualised</div></div>
+    <div class="kpi"><div class="kpi-lbl">Sortino</div><div class="kpi-val" id="btKSortino">—</div><div class="kpi-sub">downside dev only</div></div>
+    <div class="kpi"><div class="kpi-lbl">Calmar</div><div class="kpi-val" id="btKCalmar">—</div><div class="kpi-sub">CAGR / |Max DD|</div></div>
+    <div class="kpi"><div class="kpi-lbl">Omega</div><div class="kpi-val" id="btKOmega">—</div><div class="kpi-sub">gain/loss ratio @0</div></div>
+    <div class="kpi"><div class="kpi-lbl">Max Drawdown</div><div class="kpi-val red" id="btKMaxDD">—</div><div class="kpi-sub">peak-to-trough</div></div>
+    <div class="kpi"><div class="kpi-lbl">Win Rate</div><div class="kpi-val" id="btKWinRate">—</div><div class="kpi-sub" id="btKWins">— / — trades</div></div>
+    <div class="kpi"><div class="kpi-lbl">Profit Factor</div><div class="kpi-val" id="btKPF">—</div><div class="kpi-sub">gross win / gross loss</div></div>
+    <div class="kpi"><div class="kpi-lbl">Expectancy</div><div class="kpi-val" id="btKExpectancy">—</div><div class="kpi-sub">avg R per trade</div></div>
+    <div class="kpi"><div class="kpi-lbl">Trades / Week</div><div class="kpi-val amber" id="btKTpw">—</div><div class="kpi-sub" id="btKTotalTrades">— total</div></div>
+    <div class="kpi"><div class="kpi-lbl">Skewness</div><div class="kpi-val" id="btKSkew">—</div><div class="kpi-sub">daily returns</div></div>
+    <div class="kpi"><div class="kpi-lbl">Excess Kurtosis</div><div class="kpi-val" id="btKKurt">—</div><div class="kpi-sub">daily returns</div></div>
+  </div>
+</div>
+
+<!-- Equity curve -->
+<div class="card" id="btEquityCard" style="display:none;">
+  <div class="card-hdr">
+    Equity Curve <span id="btEquitySubtitle" style="font-weight:400;color:var(--text3)"></span>
+    <span style="margin-left:auto;display:flex;gap:6px;">
+      <button class="run-btn" id="btUnitMultBtn" style="padding:3px 10px;font-size:10px;" onclick="setBtEquityUnit('mult')">Multiple</button>
+      <button class="run-btn alt" id="btUnitDollarBtn" style="padding:3px 10px;font-size:10px;" onclick="setBtEquityUnit('dollars')">Dollars</button>
+    </span>
+  </div>
+  <div class="card-body"><div id="btLwEquity" class="chart-wrap"></div></div>
+</div>
+
+<!-- Drawdown -->
+<div class="card" id="btDdCard" style="display:none;">
+  <div class="card-hdr">Drawdown — Underwater Curve</div>
+  <div class="card-body"><div id="btLwDrawdown" class="chart-wrap" style="height:200px;"></div></div>
+</div>
+
+<!-- Monthly heatmap -->
+<div class="card" id="btHeatmapCard" style="display:none;">
+  <div class="card-hdr">Monthly Returns</div>
+  <div class="card-body" id="btHeatmapBody"></div>
+</div>
+
+<!-- Trade distribution + gate hit rates -->
+<div class="robust-grid" id="btDistGateRow" style="display:none;">
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Trade P&amp;L Distribution <span style="font-weight:400;color:var(--text3)">R-multiple buckets, clipped to ±5R</span></div>
+    <div class="card-body"><div class="dist-wrap" id="btDistWrap"></div></div>
+  </div>
+  <div class="card" style="margin-top:0;">
+    <div class="card-hdr">Gate Hit Rates <span style="font-weight:400;color:var(--text3)" id="btGateBarCount"></span></div>
+    <div class="card-body" id="btGateHitBody"></div>
+  </div>
+</div>
+
+<!-- Robustness -->
+<div class="card" id="btRobustCard" style="display:none;">
+  <div class="card-hdr">Robustness — Monte Carlo · Walk-Forward · Out-of-Sample</div>
+  <div class="card-body">
+    <div class="robust-grid">
+      <div class="diag-card" style="margin:0;">
+        <div class="diag-lbl">Monte Carlo — trade-order resample (terminal equity multiple, p5/p25/p50/p75/p95)</div>
+        <div id="btMcTerminal" style="margin-top:8px;font-family:'DM Mono',monospace;font-size:13px;"></div>
+        <div class="diag-lbl" style="margin-top:10px;">Max Drawdown bands</div>
+        <div id="btMcDD" style="margin-top:6px;font-family:'DM Mono',monospace;font-size:13px;"></div>
+      </div>
+      <div class="diag-card" style="margin:0;">
+        <div class="diag-lbl">Out-of-Sample split (final 20% held out)</div>
+        <div id="btOosBody" style="margin-top:8px;font-family:'DM Mono',monospace;font-size:12px;"></div>
+      </div>
+    </div>
+    <div class="diag-lbl" style="margin-top:14px;">Walk-Forward — 4 equal non-overlapping windows</div>
+    <div class="tbl-wrap" style="margin-top:6px;max-height:none;">
+      <table class="tbl" id="btWfTable">
+        <thead><tr>
+          <th>Window</th><th>Start</th><th>End</th>
+          <th class="num">CAGR</th><th class="num">Sharpe</th><th class="num">Max DD</th>
+          <th class="num">Win Rate</th><th class="num">PF</th><th class="num">Trades</th><th class="num">Expectancy</th>
+        </tr></thead>
+        <tbody id="btWfTbody"></tbody>
+      </table>
+    </div>
+    <div class="legend-row"><span id="btWfSummary"></span></div>
+  </div>
+</div>
+
+<!-- Event Journal -->
+<div class="card" id="btJournalCard" style="display:none;">
+  <div class="card-hdr">Event Journal <span style="font-weight:400;color:var(--text3)" id="btJournalCount"></span></div>
+  <div class="card-body">
+    <div class="tbl-wrap scroll">
+      <table class="tbl" id="btJournalTable">
+        <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Message</th></tr></thead>
+        <tbody id="btJournalTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Trade Journal -->
+<div class="card" id="btTradeJournalCard" style="display:none;">
+  <div class="card-hdr">
+    Trade Journal
+    <span style="margin-left:auto;font-weight:400;font-size:11px;color:var(--text3);" id="btJournalReasonFreq"></span>
+  </div>
+  <div class="card-body">
+    <div class="filter-row">
+      <div class="cfg-field"><label>Direction</label><select id="bt_f_direction"><option value="">All</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
+      <div class="cfg-field"><label>Tier</label><select id="bt_f_tier"><option value="">All</option></select></div>
+      <div class="cfg-field"><label>Stop Model</label><select id="bt_f_stopmodel"><option value="">All</option></select></div>
+      <div class="cfg-field"><label>Reason</label><select id="bt_f_reason"><option value="">All</option></select></div>
+      <div class="cfg-field"><label>Outcome</label><select id="bt_f_outcome"><option value="">All</option><option value="win">Win</option><option value="loss">Loss</option></select></div>
+      <div class="cfg-field"><label>Sort By</label>
+        <select id="bt_f_sortby">
+          <option value="entryIndex">Entry order</option>
+          <option value="pnlR">PnL (R)</option>
+          <option value="pnlDollars">PnL ($)</option>
+          <option value="barsHeld">Bars held</option>
+        </select>
+      </div>
+      <div class="cfg-field"><label>Sort Dir</label><select id="bt_f_sortdir"><option value="asc">Asc</option><option value="desc" selected>Desc</option></select></div>
+      <button class="run-btn" style="padding:5px 14px;" onclick="renderTradeJournal()">Apply</button>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl" id="btTradeJournalTable">
+        <thead><tr>
+          <th>ID</th><th>Entry Date</th><th>Dir</th><th>Tier</th><th>Stop Model</th>
+          <th class="num">Entry</th><th>Exit Date</th><th class="num">Exit</th><th>Reason</th>
+          <th class="num">Bars</th><th class="num">Size@Close</th><th class="num">Risk %</th>
+          <th class="num">PnL (R)</th><th class="num">PnL ($)</th>
+        </tr></thead>
+        <tbody id="btTradeJournalTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /panel-backtest -->
+
+</div><!-- /app -->
+
+<script type="module">
+import { filterTrades, sortTrades, reasonFrequency } from './js/cogTradeJournal.js';
+
+let _config = null;
+let _liveData = null;
+let _liveAutoTimer = null;
+let _btData = null;
+let _btEquityUnit = 'mult';
+let _btLwEquityChart = null, _btLwDrawdownChart = null;
+
+const STATE_COLORS = {
+  BULLISH: '#10b981', LONG: '#10b981', VALID: '#10b981', ARMED_LONG: '#10b981',
+  BEARISH: '#ef4444', SHORT: '#ef4444', INVALID: '#ef4444', ARMED_SHORT: '#ef4444', CLOSE: '#ef4444',
+  NEUTRAL: '#64748b', NO_TRADE: '#64748b', NOT_ARMED: '#64748b', FLAT: '#64748b',
+  INVALID_DATA: '#f59e0b', REDUCE: '#f59e0b', STAY_IN: '#10b981',
+};
+function statePill(label) {
+  const c = STATE_COLORS[label] || '#64748b';
+  return `<span class="gate-pill" style="background:${c}22;color:${c};">${label}</span>`;
+}
+function num(v, d = 2) { return (v == null || !isFinite(v)) ? '—' : v.toFixed(d); }
+function pct(v, d = 1) { return (v == null || !isFinite(v)) ? '—' : fmtPct(v * 100, d); }
+function colorFor(v) { return (v == null || !isFinite(v)) ? 'var(--text)' : (v >= 0 ? '#10b981' : '#ef4444'); }
+function fmtTimeMin(minuteOfDay) {
+  if (!Number.isFinite(minuteOfDay)) return '--:--';
+  const h = Math.floor(minuteOfDay / 60) % 24, m = Math.floor(minuteOfDay % 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+function reasonsList(reasons) {
+  // Setup gate reasons (contribution-shaped) carry a phrased explanation with
+  // no number baked in, so the contribution is appended here. Risk/Trigger
+  // gate reasons (subScore-shaped, from cogExplainability.js's
+  // factorReasonsFromBreakdown) already embed the "X/100" score in
+  // `explanation` itself — appending it again would just repeat the number.
+  if (!reasons || !reasons.length) return '<li style="color:var(--text3)">No reasons — insufficient data coverage</li>';
+  return reasons.map(r => `<li>${r.explanation}${r.contribution != null ? ` <span style="color:var(--text3)">(contribution ${r.contribution >= 0 ? '+' : ''}${num(r.contribution, 2)})</span>` : ''}</li>`).join('');
+}
+function fmtValidSince(validSince) {
+  return validSince ? `valid since ${validSince.date} ${fmtTimeMin(validSince.minuteOfDay)}` : 'not currently valid';
+}
+
+async function loadConfig() {
+  setStatus2('live', 'spin', 'Loading config…');
+  const r = await fetch('/api/cog-v2/config');
+  const d = await r.json();
+  if (!d.ok) { setStatus2('live', 'err', 'Failed to load config'); return; }
+  _config = d;
+
+  for (const prefix of ['live', 'bt']) {
+    const instSel = document.getElementById(`${prefix}_instrument`);
+    instSel.innerHTML = Object.entries(d.execution.instruments).map(([key, inst]) =>
+      `<option value="${key}" ${key === 'primary' ? 'selected' : ''}>${inst.label} (${inst.ticker})</option>`).join('');
+
+    const stopSel = document.getElementById(`${prefix}_stopmodel`);
+    stopSel.innerHTML = Object.entries(d.risk.stopModels).map(([key, m]) =>
+      `<option value="${key}" ${key === d.execution.defaultStopModel ? 'selected' : ''}>${m.label}</option>`).join('');
+
+    const tierSel = document.getElementById(`${prefix}_tier`);
+    tierSel.innerHTML = Object.entries(d.risk.riskTiers).map(([key, t]) =>
+      `<option value="${key}" ${key === d.execution.defaultTier ? 'selected' : ''}>${key[0].toUpperCase() + key.slice(1)} (${t.riskPct}% risk)</option>`).join('');
+
+    instSel.addEventListener('change', () => updateInstrumentNote(prefix));
+  }
+  updateInstrumentNote('live');
+  updateInstrumentNote('bt');
+
+  document.getElementById('bt_start').value = d.dataDefaults.backtestStart;
+
+  document.getElementById('bt_f_tier').innerHTML += Object.keys(d.risk.riskTiers).map(k => `<option value="${k}">${k}</option>`).join('');
+  document.getElementById('bt_f_stopmodel').innerHTML += Object.keys(d.risk.stopModels).map(k => `<option value="${k}">${k}</option>`).join('');
+  document.getElementById('bt_f_reason').innerHTML += ['STOP_HIT', 'EXIT_ENGINE_CLOSE', 'END_OF_HISTORY_OPEN'].map(r => `<option value="${r}">${r}</option>`).join('');
+
+  await liveRefresh();
+}
+
+const INSTRUMENT_NOTES = {
+  primary: '<strong>⚠ Sizing note:</strong> NQ Futures (pointValue $20/pt) combined with the 1% base-risk-of-equity setting floors position size to 0 contracts for most stop-model × tier combinations at typical account sizes. This is a position-sizing economics reality, not an engine bug. Switch to QQQ (pointValue $1) or MNQ (pointValue $2) to see trades fire more reliably, or raise Account Equity.',
+  micro: '<strong>ℹ MNQ note:</strong> Micro Nasdaq futures (pointValue $2/pt, 1/10th of NQ) — a real, separately-listed CME product, not a simulation.',
+  frac10: '<strong>⚠ Research-only:</strong> simulates sizing full-size NQ down to 0.1-contract increments. No broker offers fractional futures contracts.',
+  frac25: '<strong>⚠ Research-only:</strong> simulates sizing full-size NQ down to 0.25-contract increments. No broker offers fractional futures contracts.',
+  frac50: '<strong>⚠ Research-only:</strong> simulates sizing full-size NQ down to 0.5-contract increments. No broker offers fractional futures contracts.',
+};
+function updateInstrumentNote(prefix) {
+  const key = document.getElementById(`${prefix}_instrument`).value;
+  const note = document.getElementById(`${prefix}InstrumentNote`);
+  if (INSTRUMENT_NOTES[key]) { note.style.display = ''; note.innerHTML = INSTRUMENT_NOTES[key]; }
+  else { note.style.display = 'none'; }
+}
+window.updateInstrumentNote = updateInstrumentNote;
+
+// ── Status dots (live + backtest each have their own) ──────────────────────
+function setStatus2(prefix, type, msg) {
+  const dot = document.getElementById(`${prefix === 'live' ? 'liveStatusDot' : 'btStatusDot'}`);
+  const lbl = document.getElementById(`${prefix === 'live' ? 'liveStatusMsg' : 'btStatusMsg'}`);
+  dot.className = 'sdot ' + type;
+  lbl.textContent = msg;
+}
+
+// ══════════════════════════ LIVE MONITOR ═══════════════════════════════════
+
+async function liveRefresh() {
+  const btn = document.getElementById('liveRefreshBtn');
+  btn.disabled = true;
+  setStatus2('live', 'spin', 'Generating synthetic intraday dataset through today + running V2 state machine…');
+  const params = new URLSearchParams({
+    seed: document.getElementById('live_seed').value || 42,
+    accountEquity: document.getElementById('live_equity').value || 100000,
+    instrumentKey: document.getElementById('live_instrument').value,
+    stopModelId: document.getElementById('live_stopmodel').value,
+    requestedTier: document.getElementById('live_tier').value,
+    lookbackBars: document.getElementById('live_lookback').value || 300,
+  });
+  try {
+    const r = await fetch('/api/cog-v2/live?' + params.toString());
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed to load live snapshot');
+    _liveData = d.data;
+    renderLiveAll();
+    setStatus2('live', 'ok', `As of ${_liveData.asOf} ${fmtTimeMin(_liveData.asOfTime)} — synthetic dataset, refreshed ${new Date().toLocaleTimeString()}`);
+  } catch (err) {
+    setStatus2('live', 'err', 'Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+window.liveRefresh = liveRefresh;
+
+function toggleLiveAuto(checkbox) {
+  if (checkbox.checked) { _liveAutoTimer = setInterval(liveRefresh, 60000); }
+  else if (_liveAutoTimer) { clearInterval(_liveAutoTimer); _liveAutoTimer = null; }
+}
+window.toggleLiveAuto = toggleLiveAuto;
+
+function renderLiveAll() {
+  renderLiveStatusStrip();
+  renderSetupGate();
+  renderRiskGate();
+  renderTriggerGate();
+  renderLiveTradePanel();
+  renderLiveRecentTrades();
+  renderLiveJournal();
+  document.getElementById('liveSections').style.display = '';
+}
+
+function renderLiveStatusStrip() {
+  const x = _liveData;
+  document.getElementById('liveAsOf').textContent = `${x.asOf} ${fmtTimeMin(x.asOfTime)}`;
+  document.getElementById('liveEquity').textContent = `${x.equity.multiple.toFixed(4)}x · $${Math.round(x.equity.dollars).toLocaleString()}`;
+  const posEl = document.getElementById('livePosition');
+  posEl.innerHTML = x.openTrade
+    ? statePill(x.openTrade.direction) + ` IN TRADE since ${x.openTrade.entryDate}`
+    : statePill('FLAT') + ' FLAT';
+}
+
+function renderSetupGate() {
+  const g = _liveData.setup;
+  document.getElementById('setupState').innerHTML = statePill(g.valid ? g.direction : 'INVALID');
+  document.getElementById('setupScore').textContent = `${num(g.score, 1)} / ±100 (bull > 35, bear < -35)`;
+  document.getElementById('setupConf').textContent = g.confidence != null ? `${g.confidence}%` : '—';
+  document.getElementById('setupValidSince').textContent = fmtValidSince(g.validSince);
+  document.getElementById('setupReasons').innerHTML = reasonsList(g.reasons);
+}
+
+function renderRiskGate() {
+  const g = _liveData.risk;
+  document.getElementById('riskState').innerHTML = statePill(g.valid ? 'VALID' : 'INVALID');
+  document.getElementById('riskScore').textContent = `${num(g.score, 1)} / 100`;
+  document.getElementById('riskTier').textContent = g.tier ? statePill(g.tier.toUpperCase()) : '—';
+  document.getElementById('riskTier').innerHTML = g.tier ? statePill(g.tier.toUpperCase()) : '—';
+  document.getElementById('riskValidSince').textContent = fmtValidSince(g.validSince);
+  document.getElementById('riskStopPct').textContent = g.stopPct != null ? `${num(g.stopPct, 2)}%` : '—';
+  document.getElementById('riskPct').textContent = g.riskPct != null ? `${num(g.riskPct, 2)}%` : '—';
+  document.getElementById('riskReasons').innerHTML = reasonsList(g.reasons);
+}
+
+function renderTriggerGate() {
+  const g = _liveData.trigger;
+  document.getElementById('trigState').innerHTML = statePill(g.armed ? `ARMED_${g.direction}` : 'NOT_ARMED');
+  document.getElementById('trigScore').textContent = g.impulseScore != null ? `${num(g.impulseScore, 1)} / 100 (arm > 60)` : '—';
+  document.getElementById('trigValidSince').textContent = fmtValidSince(g.validSince);
+  document.getElementById('trigReasons').innerHTML = reasonsList(g.reasons);
+}
+
+function renderLiveTradePanel() {
+  const wrap = document.getElementById('liveTradeBody');
+  const t = _liveData.openTrade;
+  if (!t) {
+    wrap.innerHTML = '<div style="color:var(--text3);font-size:12px;">No open position — see the gate cards above for the current signal state.</div>';
+    return;
+  }
+  const ex = t.liveExit;
+  wrap.innerHTML = `
+    <div class="diag-grid">
+      <div class="diag-card"><div class="diag-lbl">Direction</div><div class="diag-val">${statePill(t.direction)}</div><div class="diag-sub">since ${t.entryDate}</div></div>
+      <div class="diag-card"><div class="diag-lbl">Entry Price</div><div class="diag-val">${num(t.entryPrice, 2)}</div></div>
+      <div class="diag-card"><div class="diag-lbl">Stop (standard)</div><div class="diag-val">${num(t.stopStandardPrice, 2)}</div></div>
+      <div class="diag-card"><div class="diag-lbl">Position Size</div><div class="diag-val">${t.positionSize}</div><div class="diag-sub">${t.tier} / ${t.stopModelId}</div></div>
+      <div class="diag-card"><div class="diag-lbl">Risk</div><div class="diag-val">$${num(t.riskAmount, 0)}</div><div class="diag-sub">${num(t.riskPct, 2)}% of equity</div></div>
+      <div class="diag-card"><div class="diag-lbl">Unrealized PnL (mark-to-last-close)</div><div class="diag-val" style="color:${colorFor(t.pnlR)}">${num(t.pnlR, 2)}R · $${num(t.pnlDollars, 0)}</div></div>
+    </div>
+    ${ex ? `
+    <div class="diag-lbl" style="margin-top:14px;">Live Exit Engine — ${statePill(ex.action)} score ${num(ex.score, 1)}/100 (stay-in > 70, close < 40), coverage ${pct(ex.coverage, 0)}</div>
+    <ul class="reasons-list">${(ex.reasons || []).map(r => `<li>${r}</li>`).join('')}</ul>
+    ` : ''}
+    ${t.sizeReducedAt && t.sizeReducedAt.length ? `<div class="info-box warn" style="margin-top:10px;">Already reduced to 50% size at: ${t.sizeReducedAt.map(e => e.date).join(', ')}</div>` : ''}
+  `;
+}
+
+function renderLiveRecentTrades() {
+  const tbody = document.getElementById('liveRecentTbody');
+  const trades = _liveData.recentTrades || [];
+  tbody.innerHTML = trades.length ? trades.map(t => `
+    <tr>
+      <td>${t.entryDate}</td>
+      <td>${statePill(t.direction)}</td>
+      <td class="num">${num(t.entryPrice)}</td>
+      <td>${t.exitDate ?? '—'}</td>
+      <td class="num">${num(t.exitPrice)}</td>
+      <td>${t.reason ?? '—'}</td>
+      <td class="num ${t.pnlR > 0 ? 'win' : 'loss'}">${num(t.pnlR)}</td>
+      <td class="num ${t.pnlDollars > 0 ? 'win' : 'loss'}">$${num(t.pnlDollars, 0)}</td>
+    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text3)">No closed trades in this window</td></tr>';
+}
+
+const JOURNAL_ICONS = { SETUP: '🎯', RISK: '⚡', TRIGGER: '🚀', ENTRY: '🟢', REDUCE: '🟡', CLOSE: '🔴' };
+function renderLiveJournal() {
+  document.getElementById('liveJournalSubtitle').textContent = `· last ${document.getElementById('live_lookback').value} bars`;
+  const wrap = document.getElementById('liveJournalBody');
+  const entries = (_liveData.journal || []).slice().reverse();
+  wrap.innerHTML = entries.length ? entries.map(e => `
+    <div class="timeline-item">
+      <span class="timeline-icon">${JOURNAL_ICONS[e.type] || '•'}</span>
+      <span class="timeline-time">${e.time}</span>
+      <span class="timeline-detail">${e.message}</span>
+    </div>`).join('') : '<div style="color:var(--text3);font-size:12px;">No journal entries in this window</div>';
+}
+
+// ══════════════════════════ BACKTEST LAB ═══════════════════════════════════
+
+async function runBacktest() {
+  const btn = document.getElementById('btRunBtn');
+  btn.disabled = true;
+  setStatus2('bt', 'spin', 'Generating synthetic intraday dataset…');
+
+  const body = {
+    start: document.getElementById('bt_start').value || undefined,
+    end: document.getElementById('bt_end').value || undefined,
+    seed: +document.getElementById('bt_seed').value || 42,
+    accountEquity: +document.getElementById('bt_equity').value || 100000,
+    instrumentKey: document.getElementById('bt_instrument').value,
+    stopModelId: document.getElementById('bt_stopmodel').value,
+    requestedTier: document.getElementById('bt_tier').value,
+  };
+
+  try {
+    const runRes = await fetch('/api/cog-v2/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const runData = await runRes.json();
+    if (!runData.ok) throw new Error(runData.error || 'Failed to start run');
+
+    const jobId = runData.jobId;
+    let result = null;
+    for (let i = 0; i < 160; i++) {
+      await new Promise(res => setTimeout(res, 750));
+      const sRes = await fetch(`/api/cog-v2/status/${jobId}`);
+      const sData = await sRes.json();
+      if (!sData.ok) throw new Error(sData.error || 'Job failed');
+      if (sData.status === 'running') { setStatus2('bt', 'spin', sData.phase || `Running… (${sData.elapsed}s)`); continue; }
+      if (sData.status === 'done') { result = sData.data; break; }
+      throw new Error(sData.error || 'Unknown job error');
+    }
+    if (!result) throw new Error('Backtest timed out');
+
+    _btData = result;
+    renderBtAll();
+    setStatus2('bt', 'ok', `Done — ${result.trades.length} trades over ${result.intradayBarCount} bars, ${result.dateRange.start} → ${result.dateRange.end}`);
+  } catch (err) {
+    setStatus2('bt', 'err', 'Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+window.runBacktest = runBacktest;
+
+function renderBtAll() {
+  renderBtKpis();
+  renderBtEquityChart();
+  renderBtDrawdownChart();
+  renderBtHeatmapCard();
+  renderBtDistribution();
+  renderBtGateHitRates();
+  renderBtRobustness();
+  renderBtJournal();
+  renderTradeJournal();
+  ['btKpiSection', 'btEquityCard', 'btDdCard', 'btHeatmapCard', 'btDistGateRow', 'btRobustCard', 'btJournalCard', 'btTradeJournalCard'].forEach(id => {
+    document.getElementById(id).style.display = '';
+  });
+}
+
+function renderBtKpis() {
+  const p = _btData.performance;
+  document.getElementById('btKCagr').textContent = pct(p.cagr);
+  document.getElementById('btKCagr').className = 'kpi-val ' + (p.cagr >= 0 ? 'green' : 'red');
+  document.getElementById('btKPeriod').textContent = `${p.startDate} → ${p.endDate}`;
+  document.getElementById('btKSharpe').textContent = num(p.sharpe);
+  document.getElementById('btKSharpe').className = 'kpi-val ' + (p.sharpe >= 1 ? 'green' : p.sharpe >= 0 ? 'amber' : 'red');
+  document.getElementById('btKSortino').textContent = num(p.sortino);
+  document.getElementById('btKSortino').className = 'kpi-val ' + (p.sortino >= 1.5 ? 'green' : p.sortino >= 0 ? 'amber' : 'red');
+  document.getElementById('btKCalmar').textContent = num(p.calmar);
+  document.getElementById('btKOmega').textContent = num(p.omega);
+  document.getElementById('btKMaxDD').textContent = pct(p.maxDrawdown.maxDrawdown);
+  document.getElementById('btKWinRate').textContent = pct(p.winRate, 1);
+  document.getElementById('btKWinRate').className = 'kpi-val ' + (p.winRate >= 0.45 ? 'green' : p.winRate >= 0.35 ? 'amber' : 'red');
+  document.getElementById('btKWins').textContent = `${p.winCount ?? 0} / ${p.tradeCount ?? 0} trades`;
+  document.getElementById('btKPF').textContent = num(p.profitFactor);
+  document.getElementById('btKPF').className = 'kpi-val ' + (p.profitFactor >= 1.8 ? 'green' : p.profitFactor >= 1 ? 'amber' : 'red');
+  document.getElementById('btKExpectancy').textContent = num(p.expectancyR) + 'R';
+  document.getElementById('btKExpectancy').className = 'kpi-val ' + (p.expectancyR >= 0 ? 'green' : 'red');
+  document.getElementById('btKTpw').textContent = num(p.tradesPerWeek);
+  document.getElementById('btKTotalTrades').textContent = `${p.tradeCount ?? 0} total`;
+  document.getElementById('btKSkew').textContent = num(p.skewness);
+  document.getElementById('btKKurt').textContent = num(p.excessKurtosis);
+}
+
+function setBtEquityUnit(unit) {
+  _btEquityUnit = unit;
+  document.getElementById('btUnitMultBtn').className = 'run-btn' + (unit === 'mult' ? '' : ' alt');
+  document.getElementById('btUnitDollarBtn').className = 'run-btn alt' + (unit === 'dollars' ? '' : '');
+  renderBtEquityChart();
+}
+window.setBtEquityUnit = setBtEquityUnit;
+
+function renderBtEquityChart() {
+  if (_btLwEquityChart) { _btLwEquityChart.remove(); _btLwEquityChart = null; }
+  if (!_btData?.equityCurve?.length) return;
+  _btLwEquityChart = createLWChart('btLwEquity', 280);
+  if (!_btLwEquityChart) return;
+  const isDollars = _btEquityUnit === 'dollars';
+  const series = _btLwEquityChart.addAreaSeries({
+    lineColor: '#22d3ee', topColor: 'rgba(34,211,238,0.25)', bottomColor: 'rgba(34,211,238,0.01)',
+    lineWidth: 2,
+    priceFormat: { type: 'custom', formatter: v => isDollars ? '$' + Math.round(v).toLocaleString() : v.toFixed(3) + 'x' },
+  });
+  series.setData(_btData.equityCurve.map(p => ({ time: p.date, value: isDollars ? p.equityDollars : p.equity })));
+  _btLwEquityChart.timeScale().fitContent();
+  document.getElementById('btEquitySubtitle').textContent = `${_btData.equityCurve[0].date} → ${_btData.equityCurve[_btData.equityCurve.length - 1].date}`;
+}
+
+function renderBtDrawdownChart() {
+  if (_btLwDrawdownChart) { _btLwDrawdownChart.remove(); _btLwDrawdownChart = null; }
+  if (!_btData?.equityCurve?.length) return;
+  _btLwDrawdownChart = createLWChart('btLwDrawdown', 200);
+  if (!_btLwDrawdownChart) return;
+  const series = _btLwDrawdownChart.addAreaSeries({
+    lineColor: '#ef4444', topColor: 'rgba(239,68,68,0.01)', bottomColor: 'rgba(239,68,68,0.3)',
+    lineWidth: 1.5, priceFormat: { type: 'custom', formatter: v => (v * 100).toFixed(1) + '%' },
+  });
+  const dd = _btData.performance.rollingDrawdownSeries || [];
+  series.setData(_btData.equityCurve.map((p, i) => ({ time: p.date, value: isFinite(dd[i]) ? dd[i] : 0 })));
+  _btLwDrawdownChart.timeScale().fitContent();
+}
+
+function renderBtHeatmapCard() {
+  const months = _btData.performance.monthlyReturns || [];
+  renderHeatmap('btHeatmapBody', months.map(m => m.return), months.map(m => m.month + '-01'));
+}
+
+const DIST_COLOR = b => b >= 0 ? '#10b981' : '#ef4444';
+function renderBtDistribution() {
+  const dist = _btData.performance.pnlDistribution || [];
+  const wrap = document.getElementById('btDistWrap');
+  if (!dist.length) { wrap.innerHTML = '<div style="color:var(--text3);font-size:11px;">No completed trades</div>'; return; }
+  const maxCount = Math.max(...dist.map(d => d.count), 1);
+  wrap.innerHTML = dist.map(d => `
+    <div class="dist-col">
+      <div class="dist-count">${d.count}</div>
+      <div class="dist-bar" style="height:${Math.max(2, (d.count / maxCount) * 120)}px;background:${DIST_COLOR(d.bucket)};"></div>
+      <div class="dist-lbl">${d.bucket > 0 ? '+' : ''}${d.bucket}R</div>
+    </div>
+  `).join('');
+}
+
+const GATE_COLORS = {
+  LONG: '#10b981', VALID: '#10b981', ARMED_LONG: '#10b981',
+  SHORT: '#ef4444', INVALID: '#ef4444', ARMED_SHORT: '#ef4444',
+  NEUTRAL: '#64748b', NOT_ARMED: '#64748b',
+};
+function renderGateBar(freq, title) {
+  const entries = Object.entries(freq || {}).sort((a, b) => b[1] - a[1]);
+  const segs = entries.map(([k, v]) => `<div class="gatebar-seg" style="width:${(v * 100).toFixed(2)}%;background:${GATE_COLORS[k] || '#64748b'};">${v >= 0.06 ? (v * 100).toFixed(0) + '%' : ''}</div>`).join('');
+  const legend = entries.map(([k, v]) => `<span><span class="sw" style="background:${GATE_COLORS[k] || '#64748b'}"></span>${k} ${(v * 100).toFixed(1)}%</span>`).join('');
+  return `<div class="gatebar-row"><div class="gatebar-title">${title}</div><div class="gatebar">${segs}</div><div class="gatebar-legend">${legend}</div></div>`;
+}
+function renderBtGateHitRates() {
+  const g = _btData.gateHitRates;
+  if (!g) { document.getElementById('btGateHitBody').innerHTML = '<div style="color:var(--text3);font-size:11px;">No gate data</div>'; return; }
+  document.getElementById('btGateBarCount').textContent = `· ${g.barCount} bars · ${g.transitions.setup}/${g.transitions.risk}/${g.transitions.trigger} setup/risk/trigger transitions`;
+  document.getElementById('btGateHitBody').innerHTML =
+    renderGateBar(g.setup, 'Setup Gate (Threshold1, persistent)') +
+    renderGateBar(g.risk, 'Risk Gate (Gate2, frozen/day)') +
+    renderGateBar(g.trigger, 'Trigger Gate (NQ impulse + Gate3 direction)');
+}
+
+function renderBtJournal() {
+  const card = document.getElementById('btJournalCard');
+  const entries = _btData.journal || [];
+  if (!entries.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const MAX_ROWS = 1000;
+  const shown = entries.length > MAX_ROWS ? entries.slice(-MAX_ROWS) : entries;
+  document.getElementById('btJournalCount').textContent = entries.length > MAX_ROWS
+    ? `· showing most recent ${MAX_ROWS} of ${entries.length} entries`
+    : `· ${entries.length} entries`;
+  document.getElementById('btJournalTbody').innerHTML = shown.slice().reverse().map(e => `
+    <tr><td>${e.date}</td><td>${e.time}</td><td>${e.type}</td><td>${e.message}</td></tr>
+  `).join('');
+}
+
+function renderBtRobustness() {
+  const mc = _btData.monteCarlo, oos = _btData.outOfSample, wf = _btData.walkForward;
+
+  const bandRow = (band, fmtFn) => Object.entries(band || {}).map(([k, v]) => `<span style="margin-right:14px;">${k}: <strong>${fmtFn(v)}</strong></span>`).join('');
+  document.getElementById('btMcTerminal').innerHTML = mc?.terminalEquity ? bandRow(mc.terminalEquity, v => num(v, 3) + 'x') : '—';
+  document.getElementById('btMcDD').innerHTML = mc?.maxDrawdown ? bandRow(mc.maxDrawdown, v => pct(v)) : '—';
+
+  if (oos?.inSample && oos?.outOfSample) {
+    const row = (label, key, fmtFn) => `<div style="display:flex;justify-content:space-between;margin-top:3px;"><span style="color:var(--text3)">${label}</span><span>${fmtFn(oos.inSample[key])} <span style="color:var(--text3)">vs</span> ${fmtFn(oos.outOfSample[key])}</span></div>`;
+    document.getElementById('btOosBody').innerHTML =
+      `<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"><span>Metric</span><span>In-Sample vs Out-of-Sample (split ${oos.splitDate})</span></div>` +
+      row('CAGR', 'cagr', v => pct(v)) +
+      row('Sharpe', 'sharpe', v => num(v)) +
+      `<div style="display:flex;justify-content:space-between;margin-top:3px;"><span style="color:var(--text3)">Max DD</span><span>${pct(oos.inSample.maxDrawdown.maxDrawdown)} <span style="color:var(--text3)">vs</span> ${pct(oos.outOfSample.maxDrawdown.maxDrawdown)}</span></div>` +
+      row('Win Rate', 'winRate', v => pct(v, 1)) +
+      row('Trades', 'tradeCount', v => String(v ?? 0));
+  } else {
+    document.getElementById('btOosBody').innerHTML = '<span style="color:var(--text3)">Not enough history to split</span>';
+  }
+
+  const tbody = document.getElementById('btWfTbody');
+  const windows = wf?.windows || [];
+  tbody.innerHTML = windows.length ? windows.map(w => `
+    <tr>
+      <td>${w.windowIndex + 1}</td><td>${w.startDate}</td><td>${w.endDate}</td>
+      <td class="num ${w.cagr >= 0 ? 'win' : 'loss'}">${pct(w.cagr)}</td>
+      <td class="num">${num(w.sharpe)}</td>
+      <td class="num loss">${pct(w.maxDrawdown)}</td>
+      <td class="num">${pct(w.winRate, 1)}</td>
+      <td class="num">${num(w.profitFactor)}</td>
+      <td class="num">${w.tradeCount}</td>
+      <td class="num ${w.expectancyR >= 0 ? 'win' : 'loss'}">${num(w.expectancyR)}R</td>
+    </tr>`).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--text3)">No windows</td></tr>';
+  document.getElementById('btWfSummary').textContent = wf ? `CAGR std dev: ${pct(wf.cagrStdDev)} · Sharpe std dev: ${num(wf.sharpeStdDev)} · ${wf.positiveWindowCount}/${wf.windowCount} windows positive` : '';
+}
+
+function renderTradeJournal() {
+  if (!_btData) return;
+  const filters = {
+    direction: document.getElementById('bt_f_direction').value || undefined,
+    tier: document.getElementById('bt_f_tier').value || undefined,
+    stopModelId: document.getElementById('bt_f_stopmodel').value || undefined,
+    reason: document.getElementById('bt_f_reason').value || undefined,
+    outcome: document.getElementById('bt_f_outcome').value || undefined,
+  };
+  const filtered = filterTrades(_btData.trades, filters);
+  const sorted = sortTrades(filtered, { by: document.getElementById('bt_f_sortby').value, dir: document.getElementById('bt_f_sortdir').value });
+
+  document.getElementById('btJournalReasonFreq').textContent = reasonFrequency(_btData.trades).map(r => `${r.reason}: ${r.count}`).join('  ·  ');
+
+  const tbody = document.getElementById('btTradeJournalTbody');
+  tbody.innerHTML = sorted.length ? sorted.map(t => `
+    <tr>
+      <td>${t.id}</td><td>${t.entryDate}</td>
+      <td>${statePill(t.direction)}</td>
+      <td>${t.tier}</td><td>${t.stopModelId}</td>
+      <td class="num">${num(t.entryPrice)}</td>
+      <td>${t.exitDate ?? '—'}</td>
+      <td class="num">${num(t.exitPrice)}</td>
+      <td>${t.reason ?? '—'}</td>
+      <td class="num">${t.barsHeld ?? '—'}</td>
+      <td class="num">${num(t.sizeFractionAtClose ?? 1, 2)}</td>
+      <td class="num">${num(t.riskPct, 2)}%</td>
+      <td class="num ${t.pnlR > 0 ? 'win' : 'loss'}">${num(t.pnlR)}</td>
+      <td class="num ${t.pnlDollars > 0 ? 'win' : 'loss'}">$${num(t.pnlDollars, 0)}</td>
+    </tr>`).join('') : '<tr><td colspan="14" style="text-align:center;color:var(--text3)">No trades match these filters</td></tr>';
+}
+window.renderTradeJournal = renderTradeJournal;
+
+window.addEventListener('resize', () => {
+  if (_btLwEquityChart) _btLwEquityChart.applyOptions({ width: document.getElementById('btLwEquity').clientWidth });
+  if (_btLwDrawdownChart) _btLwDrawdownChart.applyOptions({ width: document.getElementById('btLwDrawdown').clientWidth });
+});
+
+loadConfig();
+</script>
+</body>
+</html>
