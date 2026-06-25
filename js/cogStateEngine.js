@@ -62,7 +62,7 @@ import { buildTradingDays } from './cogTradingDay.js';
 import { createGateState, updateGateState } from './cogStateStore.js';
 import { factorReasonsFromContributions, factorReasonsFromBreakdown, describeContributionTransition, describeBreakdownTransition, fmtTime } from './cogExplainability.js';
 import { COG_EXECUTION, COG_RISK_TIERS, COG_EXIT_SCORE, COG_INTRADAY_SCHEDULE } from './cogConfig.js';
-import { COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './cogV2Config.js';
+import { COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_NY_OPEN_MINUTE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './cogV2Config.js';
 
 // Same constant cogEventBacktestEngine.js uses — it is a private local
 // there (not exported), so redefined here rather than reaching into a V1
@@ -113,13 +113,25 @@ function applySetupHysteresis(score, prevHysState) {
   return 'INVALID';
 }
 
-// Weighted confidence blend: setup_conf(0-100) × weight + risk_conf × weight +
-// trigger_conf × weight. All three are true continuous signals, not booleans —
-// this is what eliminates the "score at 34 vs 36 treated identically" problem
-// of the pure boolean conjunction. Direction must still agree separately.
+// Weighted confidence blend on a true 0–100 scale. All three inputs are
+// normalized to [0, 100] before blending so the combined score is interpretable
+// as "% of maximum possible signal strength" and the threshold has stable
+// meaning regardless of changes to individual signal ranges:
+//   setup_norm   = clamp((|score| - stayFloor) / (100 - stayFloor), 0, 1) × 100
+//   risk_norm    = risk_score                    (already 0–100)
+//   trigger_norm = trigger_impulse               (already 0–100)
+// combined = 0 when all gates are at their minimum valid level
+// combined = 100 when all gates are at absolute maximum
+// Direction must still agree separately — the confidence only replaces the
+// boolean strength test, not the directional requirement.
+export function normalizeSetupConf(rawConf) {
+  const { setupNormFloor, setupNormCeiling } = COG_V2_CONFIDENCE;
+  return Math.max(0, Math.min(100, (rawConf - setupNormFloor) / (setupNormCeiling - setupNormFloor) * 100));
+}
+
 function combinedConfidence(setupConf, riskConf, triggerConf) {
   const { setupWeight, riskWeight, triggerWeight } = COG_V2_CONFIDENCE;
-  return setupWeight * setupConf + riskWeight * riskConf + triggerWeight * triggerConf;
+  return setupWeight * normalizeSetupConf(setupConf) + riskWeight * riskConf + triggerWeight * triggerConf;
 }
 
 // Threshold1's BULLISH/BEARISH vocabulary -> the LONG/SHORT vocabulary the
@@ -436,11 +448,82 @@ export function runV2Backtest(dataset, options = {}) {
   }
 
   const equityCurveDollars = equityCurve.map(e => e * accountEquity);
+
+  // ── Direction agreement diagnostics ────────────────────────────────────
+  // Post-loop pass: for every bar where the trigger was armed, check whether
+  // setup direction matched trigger direction. Reports overall rate plus
+  // breakdowns by setup direction and by setup age when trigger fires.
+  // Purpose: understand WHERE the 4.6% synthetic agreement rate comes from
+  // so real-data performance can be compared against the right baseline.
+  const BAR_MINUTES = COG_INTRADAY_SCHEDULE.barIntervalMinutes ?? 5;
+  const dirAg = {
+    totalTriggerArmedBars: 0,
+    totalDirAgreeBars: 0,
+    bySetupDir: {
+      LONG:    { armed: 0, agree: 0 },
+      SHORT:   { armed: 0, agree: 0 },
+      INVALID: { armed: 0, agree: 0 },
+    },
+    bySetupAge: {
+      fresh:   { label: '<30min',   armed: 0, agree: 0 },
+      medium:  { label: '30-180min', armed: 0, agree: 0 },
+      mature:  { label: '>180min',  armed: 0, agree: 0 },
+    },
+    // Trigger session at arming: all triggers are in the 14:20-14:35 UK window;
+    // split at NY open (14:30 UK = COG_V2_NY_OPEN_MINUTE) to see whether
+    // pre-NY (London close / setup window) or NY-open bars agree more.
+    byTriggerSession: {
+      preNY: { label: 'pre-NY (14:20-14:29 UK)', armed: 0, agree: 0 },
+      nyOpen: { label: 'NY open (14:30-14:35 UK)', armed: 0, agree: 0 },
+    },
+  };
+  for (let i = 0; i < n; i++) {
+    const ts = triggerSnapshots[i];
+    if (!ts?.armed) continue;
+    dirAg.totalTriggerArmedBars++;
+    const ss = setupSnapshots[i];
+    const setupDir = ss?.direction ?? null;  // 'LONG', 'SHORT', or null
+    const trigDir  = ts.direction;
+    const agree    = !!setupDir && setupDir === trigDir;
+    if (agree) dirAg.totalDirAgreeBars++;
+
+    // By setup direction
+    const dirKey = setupDir === 'LONG' ? 'LONG' : setupDir === 'SHORT' ? 'SHORT' : 'INVALID';
+    dirAg.bySetupDir[dirKey].armed++;
+    if (agree) dirAg.bySetupDir[dirKey].agree++;
+
+    // By setup age at trigger time
+    const validSinceIdx = ss?.validSince?.index ?? null;
+    const ageMins = validSinceIdx != null ? (i - validSinceIdx) * BAR_MINUTES : null;
+    if (ageMins != null) {
+      const ageKey = ageMins < 30 ? 'fresh' : ageMins <= 180 ? 'medium' : 'mature';
+      dirAg.bySetupAge[ageKey].armed++;
+      if (agree) dirAg.bySetupAge[ageKey].agree++;
+    }
+
+    // By trigger session
+    const min = minuteOfDay[i];
+    const sessKey = min < COG_V2_NY_OPEN_MINUTE ? 'preNY' : 'nyOpen';
+    dirAg.byTriggerSession[sessKey].armed++;
+    if (agree) dirAg.byTriggerSession[sessKey].agree++;
+  }
+  // Compute rates
+  dirAg.rateOverall = dirAg.totalTriggerArmedBars > 0
+    ? dirAg.totalDirAgreeBars / dirAg.totalTriggerArmedBars
+    : 0;
+  for (const v of Object.values(dirAg.bySetupDir))
+    v.rate = v.armed > 0 ? v.agree / v.armed : 0;
+  for (const v of Object.values(dirAg.bySetupAge))
+    v.rate = v.armed > 0 ? v.agree / v.armed : 0;
+  for (const v of Object.values(dirAg.byTriggerSession))
+    v.rate = v.armed > 0 ? v.agree / v.armed : 0;
+
   return {
     dates, minuteOfDay, equityCurve, equityCurveDollars, trades, accountEquity, journal,
     setupSnapshots, riskSnapshots, triggerSnapshots,
     setupState, riskState, triggerState,
     tradingDays,
+    dirAgreement: dirAg,
     // Exposed so callers (server.js's live route) can recompute a fresh exit
     // score for a currently-open trade on demand, the same gate1/gate1B/gate2/
     // gate3 call shape used by this loop's own cadence-gated re-evaluation.

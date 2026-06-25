@@ -183,19 +183,19 @@
     <div>
       <div class="diag-lbl">Combined Confidence</div>
       <div class="diag-val" id="combinedConf" style="font-size:22px;font-family:'DM Mono',monospace;">—</div>
-      <div class="diag-sub" style="font-size:10px;color:var(--text3);">0.45×setup + 0.35×risk + 0.20×trigger ≥ 78 → entry</div>
+      <div class="diag-sub" style="font-size:10px;color:var(--text3);">0.45×norm(setup) + 0.35×risk + 0.20×trigger ≥ 35 → entry (true 0–100 scale)</div>
     </div>
     <div style="flex:1;min-width:220px;">
       <div style="height:8px;background:var(--s2);border-radius:4px;overflow:hidden;position:relative;">
         <div id="combinedConfBar" style="height:100%;background:#22d3ee;border-radius:4px;width:0%;transition:width .3s;"></div>
-        <div style="position:absolute;top:0;left:78%;height:100%;border-left:2px solid #f59e0b;"></div>
+        <div style="position:absolute;top:0;left:35%;height:100%;border-left:2px solid #f59e0b;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">
-        <span>0</span><span style="color:#f59e0b;">78 (entry)</span><span>100</span>
+        <span>0</span><span style="color:#f59e0b;">35 (entry)</span><span>100</span>
       </div>
     </div>
     <div style="display:flex;gap:18px;flex-wrap:wrap;">
-      <div><div class="diag-lbl">Setup ×0.45</div><div class="diag-val" id="confSetupContrib" style="font-size:14px;">—</div></div>
+      <div><div class="diag-lbl">Setup ×0.45 (norm)</div><div class="diag-val" id="confSetupContrib" style="font-size:14px;">—</div></div>
       <div><div class="diag-lbl">Risk ×0.35</div><div class="diag-val" id="confRiskContrib" style="font-size:14px;">—</div></div>
       <div><div class="diag-lbl">Trigger ×0.20</div><div class="diag-val" id="confTrigContrib" style="font-size:14px;">—</div></div>
     </div>
@@ -593,17 +593,25 @@ function renderLiveStatusStrip() {
     : statePill('FLAT') + ' FLAT';
 }
 
+// Normalize setup confidence: map raw |score| ∈ [stayFloor=15, 100] → [0, 100]
+// Must mirror cogStateEngine.js normalizeSetupConf() exactly.
+function normalizeSetupConf(raw) {
+  return Math.max(0, Math.min(100, (raw - 15) / (100 - 15) * 100));
+}
+
 function renderCombinedConfidence() {
   const s = _liveData.setup, r = _liveData.risk, t = _liveData.trigger;
   const sc = s.confidence ?? 0, rc = r.confidence ?? 0, tc = t.confidence ?? 0;
-  const combined = 0.45 * sc + 0.35 * rc + 0.20 * tc;
-  const passes = combined >= 78;
+  const scNorm = normalizeSetupConf(sc);
+  const combined = 0.45 * scNorm + 0.35 * rc + 0.20 * tc;
+  const passes = combined >= 35;
   const el = document.getElementById('combinedConf');
   el.textContent = `${num(combined, 1)} / 100`;
-  el.style.color = passes ? '#10b981' : combined >= 60 ? '#f59e0b' : 'var(--text)';
+  el.style.color = passes ? '#10b981' : combined >= 25 ? '#f59e0b' : 'var(--text)';
   document.getElementById('combinedConfBar').style.width = `${Math.min(100, combined)}%`;
-  document.getElementById('combinedConfBar').style.background = passes ? '#10b981' : combined >= 60 ? '#f59e0b' : '#ef4444';
-  document.getElementById('confSetupContrib').textContent = `${num(sc, 1)} → ${num(0.45 * sc, 1)}`;
+  document.getElementById('combinedConfBar').style.background = passes ? '#10b981' : combined >= 25 ? '#f59e0b' : '#ef4444';
+  // Show: raw |score| → normalized → weighted contribution
+  document.getElementById('confSetupContrib').textContent = `${num(sc, 1)}→${num(scNorm, 1)}→${num(0.45 * scNorm, 1)}`;
   document.getElementById('confRiskContrib').textContent = `${num(rc, 1)} → ${num(0.35 * rc, 1)}`;
   document.getElementById('confTrigContrib').textContent = `${num(tc, 1)} → ${num(0.20 * tc, 1)}`;
 }
