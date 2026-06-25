@@ -49,6 +49,7 @@ import { computePerformanceReport as computeCogPerformanceReport, monteCarloBoot
 import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_THRESHOLD1_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_INTRADAY_SCHEDULE, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
 import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
+import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
@@ -7385,6 +7386,184 @@ app.get('/api/cog-v2/results', (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── Historical backtest helpers ───────────────────────────────────────────────
+
+// Matches signal journal entries (type='ENTRY', has confScore) to trades by
+// entryDate so confidence bucket performance can be computed without modifying
+// cogTradeJournal.js. Signal fires at bar i; fill is at bar i+1 — typically
+// the same UK calendar date (both within the 08:00-16:00 session).
+function _matchConfToTrades(trades, journal) {
+  const confByDate = new Map();
+  for (const e of journal) {
+    if (e.type === 'ENTRY' && e.confScore != null) confByDate.set(e.date, e.confScore);
+  }
+  return trades.map(t => ({ ...t, confScore: confByDate.get(t.entryDate) ?? null }));
+}
+
+// Confidence bucket performance: group trades by confScore at entry and report
+// win rate + avg R per bucket. The bucket boundaries were calibrated against
+// the post-normalization score distribution (minScore=35 → most entries cluster
+// 35-60; see cogV2Config.js COG_V2_CONFIDENCE calibration note).
+function _confBuckets(tradesWithConf) {
+  const defs = [
+    { label: '35-45', min: 35, max: 45 },
+    { label: '45-55', min: 45, max: 55 },
+    { label: '55-65', min: 55, max: 65 },
+    { label: '65+',   min: 65, max: Infinity },
+  ];
+  return defs.map(b => {
+    const bt = tradesWithConf.filter(t => t.confScore != null && t.confScore >= b.min && t.confScore < b.max && t.pnlR != null && Number.isFinite(t.pnlR));
+    const wins = bt.filter(t => t.pnlR > 0).length;
+    const totalR = bt.reduce((s, t) => s + t.pnlR, 0);
+    return { label: b.label, count: bt.length, winRate: bt.length ? wins / bt.length : null, avgR: bt.length ? totalR / bt.length : null };
+  });
+}
+
+// MAE/MFE (Maximum Adverse / Favorable Excursion) computed from the intraday
+// bar range between entry fill and exit, measured in price points from the
+// entry price. Skips trades with no exitIndex (end-of-history open).
+function _computeMAEMFE(trades, ohlcBars) {
+  const highs = ohlcBars.map(b => b.high);
+  const lows  = ohlcBars.map(b => b.low);
+  return trades.map(trade => {
+    const { entryIndex, exitIndex, direction, entryPrice } = trade;
+    if (!Number.isFinite(exitIndex) || !Number.isFinite(entryIndex)) return { mae: null, mfe: null };
+    let mae = 0, mfe = 0;
+    for (let i = entryIndex; i <= exitIndex; i++) {
+      const h = highs[i], l = lows[i];
+      if (!Number.isFinite(h) || !Number.isFinite(l)) continue;
+      if (direction === 'LONG') {
+        mae = Math.max(mae, entryPrice - l);
+        mfe = Math.max(mfe, h - entryPrice);
+      } else {
+        mae = Math.max(mae, h - entryPrice);
+        mfe = Math.max(mfe, entryPrice - l);
+      }
+    }
+    return { mae, mfe };
+  });
+}
+
+// ── /api/cog-v2/run-historical ────────────────────────────────────────────────
+// Exactly the same async-job pattern as /api/cog-v2/run but uses
+// loadHistoricalCogDataset (OANDA M5 + FRED/Yahoo macro) instead of
+// generateSyntheticIntradayCogDataset. Reuses cogV2Jobs and the existing
+// /api/cog-v2/status/:jobId poller — same jobId namespace, one map.
+//
+// Required env vars: OANDA_KEY (loaded from process.env — NEVER logged here).
+// Optional: OANDA_ENV ('live' | 'practice', default 'live').
+app.post('/api/cog-v2/run-historical', express.json({ limit: '1mb' }), (req, res) => {
+  const oandaKey = process.env.OANDA_KEY;
+  if (!oandaKey) {
+    return res.status(400).json({ ok: false, error: 'OANDA_KEY not set — set it in server environment variables' });
+  }
+
+  const body = req.body || {};
+  const start = body.start || COG_DATA_DEFAULTS_CFG.backtestStart;
+  const end = body.end || undefined;
+  const instrument = body.instrument || 'NAS100_USD';
+  const oandaEnv = process.env.OANDA_ENV || 'live';
+  const accountEquity = Number.isFinite(+body.accountEquity) ? +body.accountEquity : 100000;
+  const instrumentKey = body.instrumentKey || undefined;
+  const stopModelId = body.stopModelId || undefined;
+  const requestedTier = body.requestedTier || undefined;
+
+  const jobId = `cogv2hist_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleCogV2Jobs();
+  cogV2Jobs.set(jobId, { status: 'running', startedAt, phase: `Fetching OANDA M5 candles for ${instrument} [${start} → ${end || 'today'}]…` });
+
+  (async () => {
+    try {
+      const dataset = await loadHistoricalCogDataset({
+        start, end, instrument,
+        oandaKey,      // from process.env — never logged
+        oandaEnv,
+        onProgress: p => {
+          const job = cogV2Jobs.get(jobId);
+          if (job) job.phase = p.phase || 'Loading historical data…';
+        },
+      });
+
+      cogV2Jobs.get(jobId).phase = 'Running V2 persistent state engine on real data…';
+      const result = runV2Backtest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+
+      cogV2Jobs.get(jobId).phase = 'Computing performance, MAE/MFE and confidence calibration…';
+      const daily = _dailyEquitySeriesFromEvent(result);
+      const dayIndexByDate = new Map(daily.dates.map((d, i) => [d, i]));
+      const reportTrades = _tradesWithDayIndex(result.trades, dayIndexByDate);
+      const performance = computeCogPerformanceReport({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+      const monteCarlo = cogMonteCarloBootstrap(reportTrades);
+      const walkForward = cogWalkForwardStability({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+      const outOfSample = cogOutOfSampleSplit({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+      const gateHitRates = _v2GateHitRateSummary(result);
+
+      // Extended historical-only metrics
+      const tradesWithConf = _matchConfToTrades(result.trades, result.journal);
+      const maeMfe = _computeMAEMFE(result.trades, dataset.ohlc);
+      const tradesEnriched = result.trades.map((t, idx) => ({
+        ...t,
+        confScore: tradesWithConf[idx].confScore,
+        mae: maeMfe[idx].mae,
+        mfe: maeMfe[idx].mfe,
+      }));
+
+      const longCount  = result.trades.filter(t => t.direction === 'LONG').length;
+      const shortCount = result.trades.filter(t => t.direction === 'SHORT').length;
+      const completedTrades = result.trades.filter(t => Number.isFinite(t.pnlR));
+      const winners = completedTrades.filter(t => t.pnlR > 0);
+      const losers  = completedTrades.filter(t => t.pnlR <= 0);
+
+      const payload = _capInfinity({
+        runAt: new Date().toISOString(),
+        synthetic: false,
+        dataSource: 'historical_oanda',
+        engine: 'v2',
+        instrument,
+        dateRange: dataset.dateRange,
+        options: { accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+        gate1bCoverage: dataset.gate1bCoverage,
+        intradayBarCount: result.dates.length,
+        tradingDayCount: dataset.daily.dates.length,
+        trades: tradesEnriched,
+        equityCurve: daily.dates.map((d, i) => ({ date: d, equity: daily.equity[i], equityDollars: daily.equityDollars[i] })),
+        journal: result.journal,
+        performance, monteCarlo, walkForward, outOfSample, gateHitRates,
+        dirAgreement: result.dirAgreement,
+        historicalMetrics: {
+          tradeCount: result.trades.length,
+          longCount, shortCount,
+          completedCount: completedTrades.length,
+          winnerCount: winners.length,
+          loserCount:  losers.length,
+          winRate:     completedTrades.length ? winners.length / completedTrades.length : null,
+          avgWinR:     winners.length ? winners.reduce((s, t) => s + t.pnlR, 0) / winners.length : null,
+          avgLossR:    losers.length  ? losers.reduce((s, t) => s + t.pnlR, 0)  / losers.length  : null,
+          expectancy:  completedTrades.length ? completedTrades.reduce((s, t) => s + t.pnlR, 0) / completedTrades.length : null,
+          avgMAE:      maeMfe.filter(m => m.mae != null).length ? maeMfe.filter(m => m.mae != null).reduce((s, m) => s + m.mae, 0) / maeMfe.filter(m => m.mae != null).length : null,
+          avgMFE:      maeMfe.filter(m => m.mfe != null).length ? maeMfe.filter(m => m.mfe != null).reduce((s, m) => s + m.mfe, 0) / maeMfe.filter(m => m.mfe != null).length : null,
+          confBuckets: _confBuckets(tradesWithConf),
+        },
+      });
+
+      if (!fs.existsSync(COG_V2_DATA_DIR)) fs.mkdirSync(COG_V2_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(COG_V2_DATA_DIR, `cog_v2_hist_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(payload, null, 0) + '\n');
+
+      cogV2Jobs.set(jobId, { status: 'done', startedAt, result: { ok: true, data: payload, file: path.basename(outFile) } });
+      console.log(`[cog-v2/hist] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s) — ${payload.trades.length} trades, ${payload.tradingDayCount} trading days`);
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown error in historical backtest';
+      console.error('[cog-v2/run-historical]', msg, e?.stack ?? '');
+      cogV2Jobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
 });
 
 // Same "no black boxes" discipline as /api/cog-threshold/config: every
