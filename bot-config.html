@@ -3200,6 +3200,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         <table class="pos-table">
           <thead>
             <tr>
+              <th>Chart</th>
               <th>Date</th>
               <th>Pair</th>
               <th>Bot</th>
@@ -3213,7 +3214,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
               <th>Opened</th>
               <th>Closed</th>
               <th>Duration</th>
-              <th>Chart</th>
             </tr>
           </thead>
           <tbody id="histTableBody">
@@ -5607,6 +5607,7 @@ async function loadHistoryTab() {
     const badgeStyle = `background:${bot.bg};border:1px solid ${bot.bd};color:${bot.color}`;
     const badgeClass = `pos-bot-badge${bot.paper ? ' pos-paper-badge' : ''}`;
     return `<tr>` +
+      `<td><button class="hist-chart-btn" onclick="openTradeChartModal(${idx})" title="View price chart">&#128200;</button></td>` +
       `<td style="color:var(--text3);font-size:11px">${dateStr}</td>` +
       `<td><strong>${t.symbol || '—'}</strong></td>` +
       `<td><span class="${badgeClass}" style="${badgeStyle}">${bot.label}</span></td>` +
@@ -5620,7 +5621,6 @@ async function loadHistoryTab() {
       `<td style="color:var(--text3);font-size:11px">${_fmtTime(t.time_open)}</td>` +
       `<td style="color:var(--text3);font-size:11px">${_fmtTime(t.time_close)}</td>` +
       `<td style="color:var(--text3);font-size:11px">${dur}</td>` +
-      `<td><button class="hist-chart-btn" onclick="openTradeChartModal(${idx})" title="View price chart">&#128200;</button></td>` +
       `</tr>`;
   });
   tbody.innerHTML = rows.join('');
@@ -5628,13 +5628,13 @@ async function loadHistoryTab() {
   // Totals row
   if (tfoot) tfoot.innerHTML =
     `<tr class="pos-totals">` +
-    `<td colspan="3">Totals (${trades.length} trades)</td>` +
+    `<td colspan="4">Totals (${trades.length} trades)</td>` +
     `<td>${totalLots.toFixed(2)}</td>` +
     `<td colspan="2"></td>` +
     `<td class="${totalPnl >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</td>` +
     `<td class="${totalSwap < 0 ? 'pos-profit-neg' : ''}">${totalSwap.toFixed(2)}</td>` +
     `<td class="${totalNet >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalNet >= 0 ? '+' : ''}${totalNet.toFixed(2)}</td>` +
-    `<td colspan="4"></td>` +
+    `<td colspan="3"></td>` +
     `</tr>`;
 }
 window.loadHistoryTab = loadHistoryTab;

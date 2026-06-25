@@ -23,15 +23,23 @@ indicator("Yield Lag Forecast [MacroFX]", shorttitle="YieldLag", overlay=false, 
 //      with how stretched that RoC z-score is — the more abnormal the yield
 //      move, the bolder the "this is what's intended to happen" zone.
 //
-// Government yield series only print once per day, even when this chart is
-// on an intraday timeframe — so the lag horizon is expressed in TRADING DAYS
-// (1 day ≈ the next session's worth of move), not chart bars. The script
-// converts that into chart bars internally so the forecast line lands in the
-// right place regardless of which intraday resolution you're viewing. All of
-// the once-per-session values are also cosmetically EMA-smoothed before
-// plotting (see "Visual smoothing" input) purely so the lines render as a
-// flowing curve instead of a stair-step — the underlying z-scores, table, and
-// forecast math are unsmoothed.
+// Two data paths, deliberately kept separate:
+//   - DAILY: the z-score lookback, regression fit, and RoC lead-lag forecast
+//     are all built from once-per-session yield pulls ("1D"), because the lag
+//     horizon is genuinely a TRADING DAYS concept (1 day ≈ the next session's
+//     worth of move) — feeding that math intraday ticks would turn a
+//     deliberate multi-day momentum read into noise. The script converts the
+//     lag horizon into chart bars internally so the forecast line lands in
+//     the right place regardless of which intraday resolution you're viewing.
+//   - LIVE: the same tickers are also pulled at the chart's own resolution
+//     (timeframe.period instead of "1D") and run through TODAY's
+//     already-calibrated mean/stdev and regression coefficients, so the base
+//     curve, fair-value line, and divergence ribbon/tint can move between
+//     sessions instead of only updating once a day. Whether this actually
+//     ticks intraday depends on how often TVC refreshes that yield symbol —
+//     this just stops the script itself from throttling it down to "1D".
+//     flowSmoothLen lightly EMA-denoises both paths for plotting only; the
+//     table's "(as of today)" rows show the unsmoothed daily snapshot.
 //
 // Caveat: TVC: bond tickers for some 2Y tenors (esp. AU/CA/CH) may not exist
 // on every TradingView plan/feed. If a leg is unavailable the script falls

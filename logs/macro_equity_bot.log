@@ -1244,3 +1244,7 @@
 [2026-06-25 11:42:01] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 786 observations
 [2026-06-25 11:42:05] [MEBot] [INFO]   FRED DFII10: 5872 observations
 [2026-06-25 11:42:09] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-25 11:42:12] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-25 11:43:09] [MEBot] [INFO] Macro score: US=-1.285 (BEAR)
+[2026-06-25 11:43:10] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
+[2026-06-25 11:43:17] [MEBot] [INFO] Cycle complete in 100.7s — sleeping 3499s
