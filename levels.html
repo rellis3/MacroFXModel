@@ -223,6 +223,15 @@
 .audit-short { color: var(--red); }
 .audit-empty-cell { text-align: center; color: var(--text3); padding: 28px !important; }
 .audit-empty-msg { text-align: center; color: var(--text3); font-size: 12px; padding: 28px; font-style: italic; }
+.audit-kv-tag { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: #10b98122; color: #10b981; letter-spacing: .3px; vertical-align: middle; margin-left: 6px; }
+
+/* ── Breakdown tables ─────────────────────────────────────────────────────── */
+.audit-bkdn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+@media (max-width: 760px) { .audit-bkdn-row { grid-template-columns: 1fr; } }
+.audit-bkdn-block { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 14px 16px; }
+.audit-bkdn-title { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; margin-bottom: 10px; }
+.audit-bkdn-table { font-size: 11px; }
+.audit-bkdn-label { font-weight: 600; color: var(--text); }
 
 .audit-session-pill {
   font-size: 9px; font-weight: 600; letter-spacing: .06em;

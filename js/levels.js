@@ -25,7 +25,7 @@ import { loadCaps } from './caps.js';
 import { loadCompassData, compassFairValue, compassDivergence, compassRocForecast, zScore, compositeSpreadZSeries } from './compass.js';
 import { oiLoadStore, oiLoadStoreFromKV } from './oi.js';
 import { loadCOT, getCOTForPair, renderCOTCard } from './cot.js';
-import { saveZoneSnapshot, renderAuditPage, destroyAuditCharts } from './zone-audit.js';
+import { saveZoneSnapshot, renderAuditPage, destroyAuditCharts, renderPairAuditHistory, initPairAuditHistory } from './zone-audit.js';
 
 // ── Pair symbol -> vol-forecast instrument key ───────────────────────────────
 const INSTRUMENT_KEY_OVERRIDES = { 'XAU/USD': 'GOLD', 'NAS100_USD': 'NQ' };
@@ -926,6 +926,10 @@ function buildDeepDiveHtml(m) {
           <div class="al-section-label">COT Positioning <span style="font-size:9px;font-weight:500;padding:1px 5px;border-radius:3px;background:#7c3aed22;color:#a78bfa;letter-spacing:.3px">CFTC</span></div>
           ${renderCOTCard(m.sym)}
         </div>
+        <div class="al-card">
+          <div class="al-section-label">Zone History <span style="font-size:9px;font-weight:500;padding:1px 5px;border-radius:3px;background:#f39c1222;color:#f39c12;letter-spacing:.3px">14d</span></div>
+          ${renderPairAuditHistory(m.sym)}
+        </div>
       </div>
     </div>
   `;
@@ -972,8 +976,9 @@ function route() {
     dd.style.display      = 'block';
     if (audit) audit.style.display = 'none';
     dd.innerHTML = buildDeepDiveHtml(m);
-    // Mount the yield-lag chart AFTER HTML is in the DOM so the container exists
+    // Mount charts/event-handlers AFTER HTML is in the DOM
     initYieldLagChart(m);
+    initPairAuditHistory();
   } else {
     dd.style.display = 'none';
     if (audit) audit.style.display = 'none';
