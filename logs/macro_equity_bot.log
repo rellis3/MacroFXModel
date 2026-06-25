@@ -1224,3 +1224,23 @@
 [2026-06-25 09:44:07] [MEBot] [INFO] Macro score: US=-1.285 (BEAR)
 [2026-06-25 09:44:08] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
 [2026-06-25 09:44:19] [MEBot] [INFO] Cycle complete in 162.8s — sleeping 3437s
+[2026-06-25 10:41:39] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-25 10:41:46] [MEBot] [INFO]   FRED WALCL: 1225 observations
+[2026-06-25 10:41:49] [MEBot] [INFO]   FRED WTREGEN: 1225 observations
+[2026-06-25 10:41:52] [MEBot] [INFO]   FRED RRPONTSYD: 3269 observations
+[2026-06-25 10:41:54] [MEBot] [INFO]   FRED T10Y2Y: 5873 observations
+[2026-06-25 10:41:57] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 786 observations
+[2026-06-25 10:42:02] [MEBot] [INFO]   FRED DFII10: 5872 observations
+[2026-06-25 10:42:06] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-25 10:42:10] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-25 10:42:38] [MEBot] [INFO] Macro score: US=-1.285 (BEAR)
+[2026-06-25 10:42:38] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
+[2026-06-25 10:42:41] [MEBot] [INFO] Cycle complete in 64.8s — sleeping 3535s
+[2026-06-25 11:41:40] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-25 11:41:44] [MEBot] [INFO]   FRED WALCL: 1225 observations
+[2026-06-25 11:41:47] [MEBot] [INFO]   FRED WTREGEN: 1225 observations
+[2026-06-25 11:41:52] [MEBot] [INFO]   FRED RRPONTSYD: 3269 observations
+[2026-06-25 11:41:57] [MEBot] [INFO]   FRED T10Y2Y: 5873 observations
+[2026-06-25 11:42:01] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 786 observations
+[2026-06-25 11:42:05] [MEBot] [INFO]   FRED DFII10: 5872 observations
+[2026-06-25 11:42:09] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc

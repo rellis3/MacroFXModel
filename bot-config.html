@@ -5724,13 +5724,17 @@ function _mt5ToOandaSymbol(raw) {
   return null;
 }
 
-// /api/oanda_ohlc1m relabels each bar's true-UTC instant as if it were UTC
-// using its London wall-clock string (so the chart's UTC-only time axis shows
-// London-local labels). Trade timestamps are true UTC epoch (see _fmtTime),
-// so they need the same relabelling to land on the right candle.
-function _toFakeUtcEpoch(epochSec) {
-  const s = new Date(epochSec * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 19);
-  return Math.floor(new Date(s.replace(' ', 'T') + 'Z').getTime() / 1000);
+// /api/oanda_ohlc1m returns each bar's "datetime" as a bare London wall-clock
+// string with no timezone marker (built for journal review, which wants
+// session-local labels). Trade timestamps are true UTC (see _fmtTime), so to
+// line markers up with bars — and to match the UTC times already shown in
+// the Trade History table — every bar has to be converted back to true UTC.
+// London is UTC+0 (GMT) or UTC+1 (BST) depending on the date, so the offset
+// is derived empirically rather than hardcoded.
+function _londonOffsetMinutes(approxDate) {
+  const utcStr = approxDate.toLocaleString('en-US', { timeZone: 'UTC' });
+  const lonStr = approxDate.toLocaleString('en-US', { timeZone: 'Europe/London' });
+  return Math.round((new Date(lonStr) - new Date(utcStr)) / 60000);
 }
 
 let _tcChart = null, _tcSeries = null, _tcPriceLines = [];
@@ -5778,8 +5782,9 @@ async function openTradeChartModal(idx) {
   const closeDateStr = new Date(t.time_close * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
   const daySpan = Math.round((new Date(closeDateStr + 'T00:00:00Z') - new Date(dateStr + 'T00:00:00Z')) / 86400000);
   const days    = Math.min(14, Math.max(1, daySpan + 1));
-  const fakeOpen  = _toFakeUtcEpoch(t.time_open);
-  const fakeClose = _toFakeUtcEpoch(t.time_close);
+  // Offset barely changes within a session, but recompute around the trade's
+  // own date so a trade straddling a DST changeover still resolves correctly.
+  const offsetMin = _londonOffsetMinutes(new Date(t.time_open * 1000));
 
   try {
     const r = await fetch(`/api/oanda_ohlc1m?symbol=${encodeURIComponent(sym)}&date=${dateStr}&days=${days}`);
@@ -5788,11 +5793,11 @@ async function openTradeChartModal(idx) {
     if (!j.values?.length) throw new Error('No M1 data returned for this window');
 
     const bars = j.values.map(v => ({
-      time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000) - offsetMin * 60,
       open: +v.open, high: +v.high, low: +v.low, close: +v.close,
     }));
 
-    const padded = bars.filter(b => b.time >= fakeOpen - 1800 && b.time <= fakeClose + 1800);
+    const padded = bars.filter(b => b.time >= t.time_open - 1800 && b.time <= t.time_close + 1800);
     const data = padded.length >= 5 ? padded : bars;
     if (!data.length) throw new Error('No candles in trade window');
 
@@ -5819,8 +5824,8 @@ async function openTradeChartModal(idx) {
     const isLong = t.direction === 'BUY';
     const win    = net >= 0;
     _tcSeries.setMarkers([
-      { time: fakeOpen,  position: isLong ? 'belowBar' : 'aboveBar', color: '#60a5fa', shape: isLong ? 'arrowUp' : 'arrowDown', text: 'Entry' },
-      { time: fakeClose, position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
+      { time: t.time_open,  position: isLong ? 'belowBar' : 'aboveBar', color: '#60a5fa', shape: isLong ? 'arrowUp' : 'arrowDown', text: 'Entry' },
+      { time: t.time_close, position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
     ]);
 
     _tcPriceLines.forEach(pl => { try { _tcSeries.removePriceLine(pl); } catch(e) {} });
