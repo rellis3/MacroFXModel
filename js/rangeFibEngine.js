@@ -172,6 +172,20 @@ function _mondayForDay(ranges, dayEpoch) {
   return (dayEpoch - mon.epoch) < 7 * 86400 ? mon : null;
 }
 
+function _prevMonday(ranges, mondayEpoch) {
+  // The Monday range immediately before the given Monday.
+  let prev = null;
+  for (const m of ranges) { if (m.epoch >= mondayEpoch) break; prev = m; }
+  return prev;
+}
+
+function _minAdjacentGap(levels) {
+  const sorted = [...levels].sort((a, b) => a - b);
+  let min = Infinity;
+  for (let i = 1; i < sorted.length; i++) min = Math.min(min, sorted[i] - sorted[i - 1]);
+  return isFinite(min) && min > 0 ? min : 0.25;
+}
+
 // ── Single-day simulation (chronological, one position at a time) ─────────────
 
 function simulateDay(packed, dateStr, opts) {
@@ -188,6 +202,15 @@ function simulateDay(packed, dateStr, opts) {
     tradeHourTo   = 22,         // entry window end   (UTC hour)
     spreadPips    = 0.8,
     slippagePips  = 0.5,
+    // ── Confluence filter (today's fib ≈ previous session's fib) ──────────────
+    // Mirrors the indicator's Display Mode:
+    //   'all'       — trade every level (confluence off; the bare baseline)
+    //   'strong'    — only levels with a standard (orange) confluence
+    //   'strongest' — only levels with a tight (green) confluence
+    confluenceMode    = 'all',
+    confluenceThreshPips = 2.0,   // standard tolerance (pips); auto-set to 200 for gold upstream
+    tightPct          = 10.0,     // tight tolerance = threshold × tightPct%  (green)
+    confluencePrice   = 'lowest', // 'lowest' | 'highest' | 'midpoint' — which of the pair to enter at
     pipSize       = 0.0001,
     fibLevels     = FIB_LEVELS,
     _asiaSessions = null,
@@ -225,41 +248,101 @@ function simulateDay(packed, dateStr, opts) {
   }
   if (!sources.length) return [];
 
+  // ── Confluence prep: previous-session fib prices + distance thresholds ───────
+  let prevAsiaPrices = [], prevMondayPrices = [];
+  let asiaConfDist = 0, monConfDist = 0, tightDist = 0;
+  if (confluenceMode !== 'all') {
+    const threshPrice = confluenceThreshPips * pipSize;
+    tightDist = threshPrice * (tightPct / 100);          // green — uses uncapped threshold
+    const minGap = _minAdjacentGap(fibLevels);           // 0.25 for the default set
+    // Standard (orange) tolerance is capped at 0.5× the min adjacent fib gap so a
+    // level can't match more than one neighbour on small ranges (mirrors the indicator).
+    asiaConfDist = Math.min(threshPrice, asia.range * minGap * 0.5);
+
+    // Previous Asia session fib prices
+    let prevAsia = _asiaSessions ? _prevAsia(_asiaSessions, dayEpoch) : null;
+    if (!prevAsia && !_asiaSessions) {
+      for (let d = 1; d <= 7; d++) {
+        const pf = dayEpoch - d * 86400;
+        const pb = extractBars(packed, pf, pf + 6 * 3600);
+        if (pb.length >= 10) { prevAsia = asiaBodyRange(pb); if (prevAsia) break; }
+      }
+    }
+    if (prevAsia) prevAsiaPrices = fibLevels.map(lv => prevAsia.low + prevAsia.range * lv);
+
+    // Previous Monday fib prices (cache path only)
+    if (levelSource !== 'asia' && monday && monday.epoch != null && _mondayRanges) {
+      const prevMon = _prevMonday(_mondayRanges, monday.epoch);
+      if (prevMon) {
+        monConfDist = Math.min(threshPrice, monday.range * minGap * 0.5);
+        prevMondayPrices = fibLevels.map(lv => prevMon.low + prevMon.range * lv);
+      }
+    }
+  }
+
   const slDist  = Math.max(asia.range * slMult, minSlPips * pipSize);
   const asiaMid = asia.low + asia.range * 0.5;
   const above   = asia.high + pipSize;   // strictly outside thresholds
   const below   = asia.low  - pipSize;
 
-  // Resolve direction / SL / TP for each candidate level
-  const allPrices = sources.map(s => s.price);
-  const levels = [];
+  // ── PASS 1: gather qualifying levels (zone + confluence filter), assign side/SL ──
+  const cands = [];
   for (const f of sources) {
     if (enabledFibs && !enabledFibs.has(f.level)) continue;
-    const price   = f.price;
+
+    // Confluence filter — today's fib vs previous session's fib
+    let hasConf = false, isTight = false, confDistPips = null, price = f.price;
+    if (confluenceMode !== 'all') {
+      const prevPrices = f.source === 'monday' ? prevMondayPrices : prevAsiaPrices;
+      const confDist   = f.source === 'monday' ? monConfDist : asiaConfDist;
+      if (!prevPrices.length) continue; // no prior session → no confluence possible
+      let best = Infinity, bestPrev = null;
+      for (const pp of prevPrices) { const d = Math.abs(f.price - pp); if (d < best) { best = d; bestPrev = pp; } }
+      hasConf = best <= confDist;
+      isTight = best <= tightDist;
+      if (confluenceMode === 'strong'    && !hasConf) continue;
+      if (confluenceMode === 'strongest' && !isTight) continue;
+      confDistPips = +(best / pipSize).toFixed(2);
+      // Enter at the selected price of the confluent pair
+      price = confluencePrice === 'highest'  ? Math.max(f.price, bestPrev)
+            : confluencePrice === 'midpoint' ? (f.price + bestPrev) / 2
+            :                                  Math.min(f.price, bestPrev);
+    }
+
     const isAbove = price >= above;
     const isBelow = price <= below;
     if (tradeZone === 'outside' && !isAbove && !isBelow) continue; // skip inside-range levels
 
-    let side, sl, tp;
+    let side, sl;
     if (isAbove)      { side = 'SELL'; sl = price + slDist; }
     else if (isBelow) { side = 'BUY';  sl = price - slDist; }
     else { // inside range, context by midpoint
       if (price > asiaMid) { side = 'SELL'; sl = asia.high + slDist; }
       else                 { side = 'BUY';  sl = asia.low  - slDist; }
     }
-    const riskDist = Math.abs(price - sl);
+    cands.push({ ...f, side, entry: price, sl, riskDist: Math.abs(price - sl), hasConf, isTight, confDistPips });
+  }
+  if (!cands.length) return [];
 
+  // ── PASS 2: structural TP targets the next QUALIFYING level (confluence zone)
+  //    when a confluence mode is active; otherwise every fib level. ─────────────
+  const tpTargets = (confluenceMode === 'all' ? sources.map(s => s.price) : cands.map(c => c.entry))
+    .slice().sort((a, b) => a - b);
+  const levels = [];
+  for (const c of cands) {
+    const { side, entry: price, sl, riskDist } = c;
+    let tp;
     if (tpMode === 'rr') {
       tp = side === 'SELL' ? price - riskDist * tpR : price + riskDist * tpR;
     } else if (tpMode === 'midpoint') {
       tp = asiaMid;
-    } else { // structural — next level toward target, minus buffer
+    } else { // structural — next qualifying level toward target, minus buffer
       const buf = tpBufPips * pipSize;
       if (side === 'SELL') {
-        const below_ = allPrices.filter(p => p < price - buf).sort((a, b) => b - a);
-        tp = below_.length ? below_[0] + buf : price - riskDist * tpR;
+        const below_ = tpTargets.filter(p => p < price - buf);
+        tp = below_.length ? below_[below_.length - 1] + buf : price - riskDist * tpR;
       } else {
-        const above_ = allPrices.filter(p => p > price + buf).sort((a, b) => a - b);
+        const above_ = tpTargets.filter(p => p > price + buf);
         tp = above_.length ? above_[0] - buf : price + riskDist * tpR;
       }
     }
@@ -268,7 +351,7 @@ function simulateDay(packed, dateStr, opts) {
     if (side === 'SELL' && (tp >= price || sl <= price)) continue;
     if (side === 'BUY'  && (tp <= price || sl >= price)) continue;
 
-    levels.push({ ...f, side, entry: price, sl, tp, riskDist });
+    levels.push({ ...c, tp });
   }
   if (!levels.length) return [];
 
@@ -302,6 +385,9 @@ function simulateDay(packed, dateStr, opts) {
       fib_level:   pos.level,
       level_source: pos.source,
       is_key:      pos.isKey,
+      has_confluence: pos.hasConf ?? false,
+      is_tight:       pos.isTight ?? false,
+      conf_dist_pips: pos.confDistPips ?? null,
       entry_price: +pos.entry.toFixed(6),
       sl_price:    +pos.sl.toFixed(6),
       tp_price:    +pos.tp.toFixed(6),
@@ -458,7 +544,11 @@ export async function runRangeFibBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR)
   const pipSize = PIP_SIZE[pairKey] ?? 0.0001;
   const enabledFibs = Array.isArray(opts.enabledFibs) && opts.enabledFibs.length
     ? new Set(opts.enabledFibs) : null;
-  const config = { ...opts, pipSize, enabledFibs, _asiaSessions: asiaSessions, _mondayRanges: mondayRanges };
+  // Auto confluence threshold: 200 "pips" for gold, 2 for FX (mirrors the indicator).
+  const confluenceThreshPips = opts.confluenceThreshPips != null
+    ? opts.confluenceThreshPips : (pairKey === 'gold' ? 200 : 2.0);
+  const config = { ...opts, pipSize, enabledFibs, confluenceThreshPips,
+    _asiaSessions: asiaSessions, _mondayRanges: mondayRanges };
 
   // Dates that have an Asia session
   const dates = asiaSessions.map(s => new Date(s.epoch * 1000).toISOString().substring(0, 10));

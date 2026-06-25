@@ -6644,6 +6644,11 @@ app.post('/api/range-fib/run', async (req, res) => {
     tradeHourTo:   b.tradeHourTo   != null ? parseInt(b.tradeHourTo)    : 22,
     spreadPips:    b.spreadPips    != null ? parseFloat(b.spreadPips)    : 0.8,
     slippagePips:  b.slippagePips  != null ? parseFloat(b.slippagePips)  : 0.5,
+    // Confluence filter (mirrors indicator Display Mode)
+    confluenceMode:       b.confluenceMode || 'all',          // 'all' | 'strong' | 'strongest'
+    confluenceThreshPips: b.confluenceThreshPips != null ? parseFloat(b.confluenceThreshPips) : null,
+    tightPct:             b.tightPct        != null ? parseFloat(b.tightPct)        : 10,
+    confluencePrice:      b.confluencePrice || 'lowest',      // 'lowest' | 'highest' | 'midpoint'
   };
   try {
     const { trades, stats, params } = await runRangeFibBacktest(pair, opts, BT_M1_DIR);
