@@ -59,9 +59,23 @@ const HN_P75 = 1.1503;
 //   Reset to 1.0 on 2026-06-15 when primaries switched to HV20/EWMA/HV30.
 // Calibration history — corrections derived as ref_value / our_uncorrected_value:
 //
-// commodity (GOLD, HV20) — calibrated 2026-06-15, confirmed 2026-06-17:
-//   Jun-17 compare with these factors already applied: HL med Δ−2.6%, HL 75p Δ−0.9%,
-//   OC med Δ+2.3%, OC 75p Δ−0.5% — all within noise, no change.
+// commodity (GOLD, HV20) — recalibrated 2026-06-26 (see VOL_CALIBRATION_TRACKER.md).
+//   Original Jun-15 factors were fit when HV20 vol underestimated reference by −6%; the
+//   vol bias has since drifted to a consistent +3–7% overestimate (Jun-22 through Jun-26),
+//   flipping the sign and making the original factors pull in the wrong direction (HL med
+//   trending −3%→−4%→−8%→−10% over the week). Same shape-factor analysis as index:
+//   S = (ours_vol / ref_vol) × corr / (1 + Δ_HL%) extracted across 5 sessions:
+//     Jun-22: S_hl50=1.029 S_hl75=0.930 S_oc50=1.010† S_oc75=1.076
+//     Jun-23: S_hl50=1.005 S_hl75=0.938 S_oc50=1.144  S_oc75=1.109
+//     Jun-24: S_hl50=1.053 S_hl75=0.954 S_oc50=1.174  S_oc75=1.131
+//     Jun-25: S_hl50=1.059 S_hl75=0.949 S_oc50=1.185  S_oc75=1.106
+//     Jun-26: S_hl50=1.026 S_hl75=0.987 S_oc50=1.174  S_oc75=1.157
+//     avg:    hl50=1.034   hl75=0.952   oc50=1.169†  oc75=1.116
+//   †Jun-22 OC med was a +15.5% outlier spike (not recurred) — excluded from oc_50 avg.
+//   Unlike index, GOLD's vol bias is stable (~+4% typical), so factors are set to the
+//   composite ideal (S / 1.04) rather than shape-only, targeting near-zero HL/OC Δ at
+//   the typical vol level. With these factors displayed error ≈ (vol_Δ − 4%) × shape.
+//   REVERT VALUES (Jun-15 vol-contaminated): hl_50=0.93 hl_75=0.88 oc_50=1.09 oc_75=1.03
 //
 // fx (EURUSD, YZ) — refined 2026-06-17 (1 day ahead of planned Jun-18 checkpoint):
 //   Jun-17 compare: HL med Δ−3.7%, HL 75p Δ+1.5%, OC med Δ−4.0%, OC 75p Δ−7.3%.
@@ -99,7 +113,7 @@ const HN_P75 = 1.1503;
 //   is untouched so the before/after comparison stays meaningful. Revisit via grid
 //   search once enough (ours, ref) pairs have accumulated (tracker file has the table).
 const ASSET_PARAMS = {
-  commodity: { hl_50_corr: 0.93, hl_75_corr: 0.88, oc_50_corr: 1.09, oc_75_corr: 1.03 },
+  commodity: { hl_50_corr: 0.99, hl_75_corr: 0.92, oc_50_corr: 1.12, oc_75_corr: 1.07 },
   index:     { hl_50_corr: 0.97, hl_75_corr: 0.94, oc_50_corr: 1.06, oc_75_corr: 1.10, garch_omega: 4.76e-6,
                garch_beta_interim: 0.87, garch_omega_interim: 1.11e-5 },
   fx:        { hl_50_corr: 1.04, hl_75_corr: 0.99, oc_50_corr: 1.10, oc_75_corr: 1.08, garch_omega: 3.60e-7 },

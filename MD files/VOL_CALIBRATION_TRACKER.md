@@ -21,6 +21,15 @@ Last updated: 2026-06-26 (hl/oc correction factors recalibrated — shape-only c
   `runVolForecast()` run's Railway log output** to disambiguate. Nudge the user
   for this log line next time a news-heavy session comes up.
 
+- commodity (GOLD) hl/oc correction factors: **recalibrated 2026-06-26** —
+  same shape-factor analysis as index, run across 5 GOLD sessions (Jun-22→26).
+  Jun-15 factors (0.93/0.88/1.09/1.03) were calibrated when HV20 vol was −6%
+  below ref; vol bias has since drifted to a consistent +3–7% overestimate,
+  flipping the sign and causing HL med to drift −3%→−10% over the week. New
+  composite-ideal factors (S/1.04, targeting near-zero error at typical +4%
+  vol bias): **hl_50=0.99, hl_75=0.92, oc_50=1.12, oc_75=1.07**. Revert
+  values (0.93/0.88/1.09/1.03) preserved in code comment.
+
 - index hl/oc correction factors: **recalibrated 2026-06-26** — replaced the
   Jun-17 vol-contaminated values (0.81/0.78/0.85/0.90) with shape-only
   constants validated across 3 sessions spanning +22% to −21% raw vol Δ
