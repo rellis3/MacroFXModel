@@ -25,6 +25,7 @@ import { loadCaps } from './caps.js';
 import { loadCompassData, compassFairValue, compassDivergence, compassRocForecast, zScore, compositeSpreadZSeries } from './compass.js';
 import { oiLoadStore, oiLoadStoreFromKV } from './oi.js';
 import { loadCOT, getCOTForPair, renderCOTCard } from './cot.js';
+import { saveZoneSnapshot, renderAuditPage, destroyAuditCharts } from './zone-audit.js';
 
 // ── Pair symbol -> vol-forecast instrument key ───────────────────────────────
 const INSTRUMENT_KEY_OVERRIDES = { 'XAU/USD': 'GOLD', 'NAS100_USD': 'NQ' };
@@ -948,24 +949,34 @@ function renderGrid() {
 
 // ── Hash-based routing between the all-pairs grid and a pair's deep-dive ────
 function route() {
-  const hash = decodeURIComponent(location.hash.replace(/^#/, ''));
+  const hash    = decodeURIComponent(location.hash.replace(/^#/, ''));
   const dd      = document.getElementById('alDeepDive');
   const grid    = document.getElementById('alGrid');
   const summary = document.getElementById('alSummary');
-  const m = hash ? _allResults.find(r => symKey(r.sym) === hash) : null;
+  const audit   = document.getElementById('alAudit');
 
-  // Destroy any existing LightweightCharts instance before replacing innerHTML
+  // Destroy charts when leaving their views
   if (_ylChart) { try { _ylChart.remove(); } catch(e) {} _ylChart = null; }
+  if (hash !== 'audit') destroyAuditCharts();
 
-  if (m) {
-    grid.style.display = 'none';
+  const m = (hash && hash !== 'audit') ? _allResults.find(r => symKey(r.sym) === hash) : null;
+
+  if (hash === 'audit') {
+    grid.style.display    = 'none';
     summary.style.display = 'none';
-    dd.style.display = 'block';
+    dd.style.display      = 'none';
+    if (audit) { audit.style.display = 'block'; renderAuditPage(audit); }
+  } else if (m) {
+    grid.style.display    = 'none';
+    summary.style.display = 'none';
+    dd.style.display      = 'block';
+    if (audit) audit.style.display = 'none';
     dd.innerHTML = buildDeepDiveHtml(m);
     // Mount the yield-lag chart AFTER HTML is in the DOM so the container exists
     initYieldLagChart(m);
   } else {
     dd.style.display = 'none';
+    if (audit) audit.style.display = 'none';
     grid.style.display = 'grid';
     if (_allResults.length) summary.style.display = 'flex';
     renderGrid();
@@ -1088,6 +1099,8 @@ async function boot() {
 
     S.currentPair = PAIRS[0];
     render(results, forecastRes?.meta);
+    // Save zone snapshot for the audit trail (async, non-blocking)
+    try { saveZoneSnapshot(results); } catch (e) { console.warn('[levels] audit snapshot failed', e); }
 
     const withLevels = results.filter(r => r.f).length;
     const withZones  = results.filter(r => r.zones?.length).length;
