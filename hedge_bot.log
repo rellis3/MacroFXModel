@@ -22377,3 +22377,944 @@
 [2026-06-25 12:54:08] [INFO] Cycle 6229 — 11 open pairs — sleeping 30s
 [2026-06-25 12:54:48] [INFO] Cycle 6230 — 11 open pairs — sleeping 30s
 [2026-06-25 12:55:25] [INFO] Cycle 6231 — 11 open pairs — sleeping 30s
+[2026-06-25 12:56:14] [INFO] Cycle 6232 — 11 open pairs — sleeping 30s
+[2026-06-25 12:57:02] [INFO] Cycle 6233 — 11 open pairs — sleeping 30s
+[2026-06-25 12:57:46] [INFO] Cycle 6234 — 11 open pairs — sleeping 30s
+[2026-06-25 12:58:33] [INFO] Cycle 6235 — 11 open pairs — sleeping 30s
+[2026-06-25 12:59:20] [INFO] Cycle 6236 — 11 open pairs — sleeping 30s
+[2026-06-25 13:00:06] [INFO] Cycle 6237 — 11 open pairs — sleeping 30s
+[2026-06-25 13:00:49] [INFO] Cycle 6238 — 11 open pairs — sleeping 30s
+[2026-06-25 13:01:31] [INFO] Cycle 6239 — 11 open pairs — sleeping 30s
+[2026-06-25 13:02:11] [INFO] Closing AUDUSD/BCO_USD reason=DISMISSED
+[2026-06-25 13:02:11] [INFO] [PAPER] Close AUDUSD ticket=384804314
+[2026-06-25 13:02:11] [INFO] [PAPER] Close BCO_USD ticket=384804318
+[2026-06-25 13:02:11] [INFO] Closing NZDUSD/WTICO_USD reason=DISMISSED
+[2026-06-25 13:02:11] [INFO] [PAPER] Close NZDUSD ticket=384808951
+[2026-06-25 13:02:11] [INFO] [PAPER] Close WTICO_USD ticket=384808952
+[2026-06-25 13:02:11] [INFO] Closing NZDUSD/BCO_USD reason=DISMISSED
+[2026-06-25 13:02:11] [INFO] [PAPER] Close NZDUSD ticket=384812125
+[2026-06-25 13:02:11] [INFO] [PAPER] Close BCO_USD ticket=384812126
+[2026-06-25 13:02:11] [INFO] Closing USDCHF/GBPJPY reason=DISMISSED
+[2026-06-25 13:02:11] [INFO] [PAPER] Close USDCHF ticket=384816981
+[2026-06-25 13:02:11] [INFO] [PAPER] Close GBPJPY ticket=384816983
+[2026-06-25 13:02:15] [INFO] Closing USDCHF/EURJPY reason=DISMISSED
+[2026-06-25 13:02:15] [INFO] [PAPER] Close USDCHF ticket=384821091
+[2026-06-25 13:02:15] [INFO] [PAPER] Close EURJPY ticket=384821092
+[2026-06-25 13:02:15] [INFO] Closing USDCHF/AUDJPY reason=DISMISSED
+[2026-06-25 13:02:15] [INFO] [PAPER] Close USDCHF ticket=384826216
+[2026-06-25 13:02:15] [INFO] [PAPER] Close AUDJPY ticket=384826219
+[2026-06-25 13:02:15] [INFO] Closing USDCHF/CADJPY reason=DISMISSED
+[2026-06-25 13:02:15] [INFO] [PAPER] Close USDCHF ticket=384830074
+[2026-06-25 13:02:15] [INFO] [PAPER] Close CADJPY ticket=384830082
+[2026-06-25 13:02:15] [INFO] Closing GBPJPY/USDZAR reason=DISMISSED
+[2026-06-25 13:02:15] [INFO] [PAPER] Close GBPJPY ticket=384833695
+[2026-06-25 13:02:15] [INFO] [PAPER] Close USDZAR ticket=384833697
+[2026-06-25 13:02:15] [INFO] Closing EURJPY/USDCNH reason=DISMISSED
+[2026-06-25 13:02:15] [INFO] [PAPER] Close EURJPY ticket=384837948
+[2026-06-25 13:02:15] [INFO] [PAPER] Close USDCNH ticket=384837951
+[2026-06-25 13:02:20] [INFO] Closing EURJPY/USDZAR reason=DISMISSED
+[2026-06-25 13:02:20] [INFO] [PAPER] Close EURJPY ticket=384842698
+[2026-06-25 13:02:20] [INFO] [PAPER] Close USDZAR ticket=384842699
+[2026-06-25 13:02:20] [INFO] Closing EURCHF/US30_USD reason=DISMISSED
+[2026-06-25 13:02:20] [INFO] [PAPER] Close EURCHF ticket=384846623
+[2026-06-25 13:02:20] [INFO] [PAPER] Close US30_USD ticket=384846624
+[2026-06-25 13:02:24] [INFO] Cycle 6240 — 0 open pairs — sleeping 30s
+[2026-06-25 13:03:07] [INFO] Cycle 6241 — 0 open pairs — sleeping 30s
+[2026-06-25 13:03:48] [INFO] Cycle 6242 — 0 open pairs — sleeping 30s
+[2026-06-25 13:04:33] [INFO] Cycle 6243 — 0 open pairs — sleeping 30s
+[2026-06-25 13:05:16] [INFO] Cycle 6244 — 0 open pairs — sleeping 30s
+[2026-06-25 13:06:01] [INFO] Cycle 6245 — 0 open pairs — sleeping 30s
+[2026-06-25 13:06:44] [INFO] Cycle 6246 — 0 open pairs — sleeping 30s
+[2026-06-25 13:07:21] [INFO] Signal AUDUSD-WTICO_USD-1782389211596: AUDUSD LONG 0.25L / WTICO_USD SHORT 0.1L  z=-2.04  corr=-0.406
+[2026-06-25 13:07:21] [INFO] [PAPER] LONG 0.25 AUDUSD @ 0.68912 SL=0.66912 → ticket=389241913
+[2026-06-25 13:07:21] [INFO] [PAPER] SHORT 0.1 WTICO_USD SL=70.73900 → ticket=389241915
+[2026-06-25 13:07:25] [INFO] Signal AUDUSD-BCO_USD-1782389211596: AUDUSD LONG 0.25L / BCO_USD SHORT 0.11L  z=-2.13  corr=-0.422
+[2026-06-25 13:07:25] [INFO] [PAPER] LONG 0.25 AUDUSD @ 0.68911 SL=0.66911 → ticket=389245868
+[2026-06-25 13:07:25] [INFO] [PAPER] SHORT 0.11 BCO_USD SL=74.32400 → ticket=389245870
+[2026-06-25 13:07:29] [INFO] Signal NZDUSD-WTICO_USD-1782389211596: NZDUSD LONG 0.25L / WTICO_USD SHORT 0.12L  z=-2.31  corr=-0.490
+[2026-06-25 13:07:29] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56369 SL=0.54369 → ticket=389249332
+[2026-06-25 13:07:29] [INFO] [PAPER] SHORT 0.12 WTICO_USD SL=70.73900 → ticket=389249333
+[2026-06-25 13:07:31] [INFO] Signal NZDUSD-BCO_USD-1782389211596: NZDUSD LONG 0.25L / BCO_USD SHORT 0.12L  z=-2.34  corr=-0.492
+[2026-06-25 13:07:31] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56372 SL=0.54372 → ticket=389251913
+[2026-06-25 13:07:31] [INFO] [PAPER] SHORT 0.12 BCO_USD SL=74.32400 → ticket=389251914
+[2026-06-25 13:07:33] [INFO] Signal NZDUSD-USDZAR-1782389211596: NZDUSD LONG 0.25L / USDZAR SHORT 0.23L  z=-2.03  corr=-0.915
+[2026-06-25 13:07:33] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56371 SL=0.54371 → ticket=389253891
+[2026-06-25 13:07:33] [INFO] [PAPER] SHORT 0.23 USDZAR SL=16.58690 → ticket=389253894
+[2026-06-25 13:07:37] [INFO] Signal USDCHF-GBPJPY-1782389211596: USDCHF LONG 0.23L / GBPJPY SHORT 0.18L  z=-2.50  corr=-0.674
+[2026-06-25 13:07:37] [INFO] [PAPER] LONG 0.23 USDCHF @ 0.81326 SL=0.79326 → ticket=389257127
+[2026-06-25 13:07:37] [INFO] [PAPER] SHORT 0.18 GBPJPY @ 212.99400 SL=214.99400 → ticket=389257130
+[2026-06-25 13:07:40] [INFO] Signal USDCHF-EURJPY-1782389211596: USDCHF LONG 0.23L / EURJPY SHORT 0.26L  z=-2.43  corr=-0.703
+[2026-06-25 13:07:40] [INFO] [PAPER] LONG 0.23 USDCHF @ 0.81327 SL=0.79327 → ticket=389260636
+[2026-06-25 13:07:40] [INFO] [PAPER] SHORT 0.26 EURJPY SL=185.55500 → ticket=389260637
+[2026-06-25 13:07:44] [INFO] Signal USDCHF-AUDJPY-1782389211596: USDCHF LONG 0.23L / AUDJPY SHORT 0.24L  z=-2.08  corr=-0.641
+[2026-06-25 13:07:44] [INFO] [PAPER] LONG 0.23 USDCHF @ 0.81330 SL=0.79330 → ticket=389264456
+[2026-06-25 13:07:44] [INFO] [PAPER] SHORT 0.24 AUDJPY SL=113.54800 → ticket=389264464
+[2026-06-25 13:07:48] [INFO] Signal USDCHF-CADJPY-1782389211596: USDCHF LONG 0.23L / CADJPY SHORT 0.11L  z=-2.11  corr=-0.308
+[2026-06-25 13:07:48] [INFO] [PAPER] LONG 0.23 USDCHF @ 0.81330 SL=0.79330 → ticket=389268830
+[2026-06-25 13:07:48] [INFO] [PAPER] SHORT 0.11 CADJPY SL=115.69300 → ticket=389268832
+[2026-06-25 13:07:55] [INFO] Signal GBPJPY-USDZAR-1782389211596: GBPJPY LONG 0.27L / USDZAR SHORT 0.16L  z=-2.06  corr=-0.640
+[2026-06-25 13:07:55] [INFO] [PAPER] LONG 0.27 GBPJPY @ 212.98200 SL=210.98200 → ticket=389275055
+[2026-06-25 13:07:55] [INFO] [PAPER] SHORT 0.16 USDZAR SL=16.58690 → ticket=389275056
+[2026-06-25 13:08:00] [INFO] Signal EURJPY-USDCNH-1782389211597: EURJPY LONG 0.38L / USDCNH SHORT 0.15L  z=-2.05  corr=-0.593
+[2026-06-25 13:08:00] [INFO] [PAPER] LONG 0.38 EURJPY SL=181.55500 → ticket=389280364
+[2026-06-25 13:08:00] [INFO] [PAPER] SHORT 0.15 USDCNH @ 6.80583 SL=6.82583 → ticket=389280366
+[2026-06-25 13:08:06] [INFO] Signal EURJPY-USDZAR-1782389211597: EURJPY LONG 0.38L / USDZAR SHORT 0.16L  z=-2.16  corr=-0.650
+[2026-06-25 13:08:06] [INFO] [PAPER] LONG 0.38 EURJPY SL=181.55500 → ticket=389286309
+[2026-06-25 13:08:06] [INFO] [PAPER] SHORT 0.16 USDZAR SL=16.58690 → ticket=389286317
+[2026-06-25 13:08:12] [INFO] Signal EURCHF-US30_USD-1782389211597: EURCHF LONG 0.22L / US30_USD SHORT 0.08L  z=-2.29  corr=-0.323
+[2026-06-25 13:08:12] [INFO] [PAPER] LONG 0.22 EURCHF SL=0.90218 → ticket=389292277
+[2026-06-25 13:08:12] [INFO] [PAPER] SHORT 0.08 US30_USD SL=52091.42000 → ticket=389292284
+[2026-06-25 13:08:24] [INFO] Cycle 6247 — 13 open pairs — sleeping 30s
+[2026-06-25 13:09:12] [INFO] Cycle 6248 — 13 open pairs — sleeping 30s
+[2026-06-25 13:09:55] [INFO] Cycle 6249 — 13 open pairs — sleeping 30s
+[2026-06-25 13:10:39] [INFO] Cycle 6250 — 13 open pairs — sleeping 30s
+[2026-06-25 13:11:20] [INFO] Cycle 6251 — 13 open pairs — sleeping 30s
+[2026-06-25 13:12:04] [INFO] Cycle 6252 — 13 open pairs — sleeping 30s
+[2026-06-25 13:12:45] [INFO] Cycle 6253 — 13 open pairs — sleeping 30s
+[2026-06-25 13:13:35] [INFO] Cycle 6254 — 13 open pairs — sleeping 30s
+[2026-06-25 13:14:21] [INFO] Cycle 6255 — 13 open pairs — sleeping 30s
+[2026-06-25 13:15:01] [INFO] Cycle 6256 — 13 open pairs — sleeping 30s
+[2026-06-25 13:15:46] [INFO] Cycle 6257 — 13 open pairs — sleeping 30s
+[2026-06-25 13:16:30] [INFO] Cycle 6258 — 13 open pairs — sleeping 30s
+[2026-06-25 13:17:12] [INFO] Cycle 6259 — 13 open pairs — sleeping 30s
+[2026-06-25 13:17:55] [INFO] Cycle 6260 — 13 open pairs — sleeping 30s
+[2026-06-25 13:18:40] [INFO] Cycle 6261 — 13 open pairs — sleeping 30s
+[2026-06-25 13:19:21] [INFO] Cycle 6262 — 13 open pairs — sleeping 30s
+[2026-06-25 13:19:59] [INFO] Cycle 6263 — 13 open pairs — sleeping 30s
+[2026-06-25 13:20:44] [INFO] Cycle 6264 — 13 open pairs — sleeping 30s
+[2026-06-25 13:21:28] [INFO] Cycle 6265 — 13 open pairs — sleeping 30s
+[2026-06-25 13:22:13] [INFO] Cycle 6266 — 13 open pairs — sleeping 30s
+[2026-06-25 13:22:53] [INFO] Cycle 6267 — 13 open pairs — sleeping 30s
+[2026-06-25 13:23:31] [INFO] Cycle 6268 — 13 open pairs — sleeping 30s
+[2026-06-25 13:24:08] [INFO] Cycle 6269 — 13 open pairs — sleeping 30s
+[2026-06-25 13:24:48] [INFO] Cycle 6270 — 13 open pairs — sleeping 30s
+[2026-06-25 13:25:26] [INFO] Cycle 6271 — 13 open pairs — sleeping 30s
+[2026-06-25 13:26:04] [INFO] Cycle 6272 — 13 open pairs — sleeping 30s
+[2026-06-25 13:26:45] [INFO] Cycle 6273 — 13 open pairs — sleeping 30s
+[2026-06-25 13:27:25] [INFO] Cycle 6274 — 13 open pairs — sleeping 30s
+[2026-06-25 13:28:01] [INFO] Cycle 6275 — 13 open pairs — sleeping 30s
+[2026-06-25 13:28:42] [INFO] Cycle 6276 — 13 open pairs — sleeping 30s
+[2026-06-25 13:29:21] [INFO] Cycle 6277 — 13 open pairs — sleeping 30s
+[2026-06-25 13:30:01] [INFO] Cycle 6278 — 13 open pairs — sleeping 30s
+[2026-06-25 13:30:46] [INFO] Cycle 6279 — 13 open pairs — sleeping 30s
+[2026-06-25 13:31:25] [INFO] Cycle 6280 — 13 open pairs — sleeping 30s
+[2026-06-25 13:32:03] [INFO] Cycle 6281 — 13 open pairs — sleeping 30s
+[2026-06-25 13:32:42] [INFO] Cycle 6282 — 13 open pairs — sleeping 30s
+[2026-06-25 13:33:21] [INFO] Cycle 6283 — 13 open pairs — sleeping 30s
+[2026-06-25 13:34:01] [INFO] Cycle 6284 — 13 open pairs — sleeping 30s
+[2026-06-25 13:34:41] [INFO] Cycle 6285 — 13 open pairs — sleeping 30s
+[2026-06-25 13:35:23] [INFO] Cycle 6286 — 13 open pairs — sleeping 30s
+[2026-06-25 13:36:04] [INFO] Cycle 6287 — 13 open pairs — sleeping 30s
+[2026-06-25 13:36:43] [INFO] Cycle 6288 — 13 open pairs — sleeping 30s
+[2026-06-25 13:37:25] [INFO] Cycle 6289 — 13 open pairs — sleeping 30s
+[2026-06-25 13:38:03] [INFO] Cycle 6290 — 13 open pairs — sleeping 30s
+[2026-06-25 13:38:41] [INFO] Cycle 6291 — 13 open pairs — sleeping 30s
+[2026-06-25 13:39:23] [INFO] Cycle 6292 — 13 open pairs — sleeping 30s
+[2026-06-25 13:40:01] [INFO] Cycle 6293 — 13 open pairs — sleeping 30s
+[2026-06-25 13:40:42] [INFO] Cycle 6294 — 13 open pairs — sleeping 30s
+[2026-06-25 13:41:33] [INFO] Cycle 6295 — 13 open pairs — sleeping 30s
+[2026-06-25 13:42:19] [INFO] Cycle 6296 — 13 open pairs — sleeping 30s
+[2026-06-25 13:43:05] [INFO] Cycle 6297 — 13 open pairs — sleeping 30s
+[2026-06-25 13:43:47] [INFO] Cycle 6298 — 13 open pairs — sleeping 30s
+[2026-06-25 13:44:33] [INFO] Cycle 6299 — 13 open pairs — sleeping 30s
+[2026-06-25 13:45:21] [INFO] Cycle 6300 — 13 open pairs — sleeping 30s
+[2026-06-25 13:46:06] [INFO] Cycle 6301 — 13 open pairs — sleeping 30s
+[2026-06-25 13:46:51] [INFO] Cycle 6302 — 13 open pairs — sleeping 30s
+[2026-06-25 13:47:35] [INFO] Cycle 6303 — 13 open pairs — sleeping 30s
+[2026-06-25 13:48:13] [INFO] Cycle 6304 — 13 open pairs — sleeping 30s
+[2026-06-25 13:48:53] [INFO] Cycle 6305 — 13 open pairs — sleeping 30s
+[2026-06-25 13:49:38] [INFO] Cycle 6306 — 13 open pairs — sleeping 30s
+[2026-06-25 13:50:18] [INFO] Cycle 6307 — 13 open pairs — sleeping 30s
+[2026-06-25 13:51:02] [INFO] Cycle 6308 — 13 open pairs — sleeping 30s
+[2026-06-25 13:51:47] [INFO] Cycle 6309 — 13 open pairs — sleeping 30s
+[2026-06-25 13:52:30] [INFO] Cycle 6310 — 13 open pairs — sleeping 30s
+[2026-06-25 13:53:15] [INFO] Cycle 6311 — 13 open pairs — sleeping 30s
+[2026-06-25 13:54:00] [INFO] Cycle 6312 — 13 open pairs — sleeping 30s
+[2026-06-25 13:54:42] [INFO] Cycle 6313 — 13 open pairs — sleeping 30s
+[2026-06-25 13:55:22] [INFO] Cycle 6314 — 13 open pairs — sleeping 30s
+[2026-06-25 13:56:04] [INFO] Cycle 6315 — 13 open pairs — sleeping 30s
+[2026-06-25 13:56:46] [INFO] Cycle 6316 — 13 open pairs — sleeping 30s
+[2026-06-25 13:57:37] [INFO] Cycle 6317 — 13 open pairs — sleeping 30s
+[2026-06-25 13:58:25] [INFO] Cycle 6318 — 13 open pairs — sleeping 30s
+[2026-06-25 13:58:55] [INFO] MT5 connected — account 107132286
+[2026-06-25 13:59:08] [INFO] Cycle 1 — 13 open pairs — sleeping 30s
+[2026-06-25 13:59:52] [INFO] Cycle 2 — 13 open pairs — sleeping 30s
+[2026-06-25 14:00:39] [INFO] Cycle 3 — 13 open pairs — sleeping 30s
+[2026-06-25 14:01:25] [INFO] Cycle 4 — 13 open pairs — sleeping 30s
+[2026-06-25 14:02:15] [INFO] Cycle 5 — 13 open pairs — sleeping 30s
+[2026-06-25 14:02:56] [INFO] Cycle 6 — 13 open pairs — sleeping 30s
+[2026-06-25 14:03:38] [INFO] Cycle 7 — 13 open pairs — sleeping 30s
+[2026-06-25 14:04:19] [INFO] Cycle 8 — 13 open pairs — sleeping 30s
+[2026-06-25 14:04:58] [INFO] Cycle 9 — 13 open pairs — sleeping 30s
+[2026-06-25 14:05:41] [INFO] Cycle 10 — 13 open pairs — sleeping 30s
+[2026-06-25 14:06:25] [INFO] Cycle 11 — 13 open pairs — sleeping 30s
+[2026-06-25 14:07:03] [INFO] Cycle 12 — 13 open pairs — sleeping 30s
+[2026-06-25 14:07:46] [INFO] Cycle 13 — 13 open pairs — sleeping 30s
+[2026-06-25 14:08:24] [INFO] Cycle 14 — 13 open pairs — sleeping 30s
+[2026-06-25 14:09:05] [INFO] Cycle 15 — 13 open pairs — sleeping 30s
+[2026-06-25 14:09:47] [INFO] Cycle 16 — 13 open pairs — sleeping 30s
+[2026-06-25 14:10:29] [INFO] Cycle 17 — 13 open pairs — sleeping 30s
+[2026-06-25 14:11:07] [INFO] Cycle 18 — 13 open pairs — sleeping 30s
+[2026-06-25 14:11:51] [INFO] Cycle 19 — 13 open pairs — sleeping 30s
+[2026-06-25 14:12:32] [INFO] Cycle 20 — 13 open pairs — sleeping 30s
+[2026-06-25 14:13:11] [INFO] Cycle 21 — 13 open pairs — sleeping 30s
+[2026-06-25 14:13:52] [INFO] Cycle 22 — 13 open pairs — sleeping 30s
+[2026-06-25 14:14:31] [INFO] Cycle 23 — 13 open pairs — sleeping 30s
+[2026-06-25 14:15:08] [INFO] Cycle 24 — 13 open pairs — sleeping 30s
+[2026-06-25 14:15:51] [INFO] Cycle 25 — 13 open pairs — sleeping 30s
+[2026-06-25 14:16:35] [INFO] Cycle 26 — 13 open pairs — sleeping 30s
+[2026-06-25 14:17:12] [INFO] Cycle 27 — 13 open pairs — sleeping 30s
+[2026-06-25 14:17:52] [INFO] Cycle 28 — 13 open pairs — sleeping 30s
+[2026-06-25 14:18:32] [INFO] Cycle 29 — 13 open pairs — sleeping 30s
+[2026-06-25 14:19:09] [INFO] Cycle 30 — 13 open pairs — sleeping 30s
+[2026-06-25 14:19:50] [INFO] Cycle 31 — 13 open pairs — sleeping 30s
+[2026-06-25 14:20:30] [INFO] Cycle 32 — 13 open pairs — sleeping 30s
+[2026-06-25 14:21:11] [INFO] Cycle 33 — 13 open pairs — sleeping 30s
+[2026-06-25 14:21:52] [INFO] Cycle 34 — 13 open pairs — sleeping 30s
+[2026-06-25 14:22:34] [INFO] Cycle 35 — 13 open pairs — sleeping 30s
+[2026-06-25 14:23:15] [INFO] Cycle 36 — 13 open pairs — sleeping 30s
+[2026-06-25 14:24:00] [INFO] Cycle 37 — 13 open pairs — sleeping 30s
+[2026-06-25 14:24:40] [INFO] Cycle 38 — 13 open pairs — sleeping 30s
+[2026-06-25 14:25:19] [INFO] Cycle 39 — 13 open pairs — sleeping 30s
+[2026-06-25 14:26:07] [INFO] Cycle 40 — 13 open pairs — sleeping 30s
+[2026-06-25 14:26:46] [INFO] Cycle 41 — 13 open pairs — sleeping 30s
+[2026-06-25 14:27:26] [INFO] Cycle 42 — 13 open pairs — sleeping 30s
+[2026-06-25 14:28:09] [INFO] Cycle 43 — 13 open pairs — sleeping 30s
+[2026-06-25 14:28:48] [INFO] Cycle 44 — 13 open pairs — sleeping 30s
+[2026-06-25 14:29:29] [INFO] Cycle 45 — 13 open pairs — sleeping 30s
+[2026-06-25 14:30:17] [INFO] Cycle 46 — 13 open pairs — sleeping 30s
+[2026-06-25 14:31:01] [INFO] Cycle 47 — 13 open pairs — sleeping 30s
+[2026-06-25 14:31:45] [INFO] Cycle 48 — 13 open pairs — sleeping 30s
+[2026-06-25 14:32:27] [INFO] Cycle 49 — 13 open pairs — sleeping 30s
+[2026-06-25 14:33:10] [INFO] Cycle 50 — 13 open pairs — sleeping 30s
+[2026-06-25 14:33:53] [INFO] Cycle 51 — 13 open pairs — sleeping 30s
+[2026-06-25 14:34:36] [INFO] Cycle 52 — 13 open pairs — sleeping 30s
+[2026-06-25 14:35:22] [INFO] Cycle 53 — 13 open pairs — sleeping 30s
+[2026-06-25 14:36:09] [INFO] Cycle 54 — 13 open pairs — sleeping 30s
+[2026-06-25 14:36:53] [INFO] Cycle 55 — 13 open pairs — sleeping 30s
+[2026-06-25 14:37:41] [INFO] Cycle 56 — 13 open pairs — sleeping 30s
+[2026-06-25 14:38:28] [INFO] Cycle 57 — 13 open pairs — sleeping 30s
+[2026-06-25 14:39:20] [INFO] Cycle 58 — 13 open pairs — sleeping 30s
+[2026-06-25 14:40:07] [INFO] Cycle 59 — 13 open pairs — sleeping 30s
+[2026-06-25 14:40:52] [INFO] Cycle 60 — 13 open pairs — sleeping 30s
+[2026-06-25 14:41:41] [INFO] Cycle 61 — 13 open pairs — sleeping 30s
+[2026-06-25 14:42:24] [INFO] Cycle 62 — 13 open pairs — sleeping 30s
+[2026-06-25 14:43:10] [INFO] Cycle 63 — 13 open pairs — sleeping 30s
+[2026-06-25 14:43:58] [INFO] Cycle 64 — 13 open pairs — sleeping 30s
+[2026-06-25 14:44:48] [INFO] Cycle 65 — 13 open pairs — sleeping 30s
+[2026-06-25 14:45:33] [INFO] Cycle 66 — 13 open pairs — sleeping 30s
+[2026-06-25 14:46:20] [INFO] Cycle 67 — 13 open pairs — sleeping 30s
+[2026-06-25 14:47:10] [INFO] Cycle 68 — 13 open pairs — sleeping 30s
+[2026-06-25 14:47:58] [INFO] Cycle 69 — 13 open pairs — sleeping 30s
+[2026-06-25 14:48:49] [INFO] Cycle 70 — 13 open pairs — sleeping 30s
+[2026-06-25 14:49:38] [INFO] Cycle 71 — 13 open pairs — sleeping 30s
+[2026-06-25 14:50:22] [INFO] Cycle 72 — 13 open pairs — sleeping 30s
+[2026-06-25 14:51:05] [INFO] Cycle 73 — 13 open pairs — sleeping 30s
+[2026-06-25 14:51:53] [INFO] Cycle 74 — 13 open pairs — sleeping 30s
+[2026-06-25 14:52:42] [INFO] Cycle 75 — 13 open pairs — sleeping 30s
+[2026-06-25 14:53:29] [INFO] Cycle 76 — 13 open pairs — sleeping 30s
+[2026-06-25 14:54:13] [INFO] Cycle 77 — 13 open pairs — sleeping 30s
+[2026-06-25 14:55:05] [INFO] Cycle 78 — 13 open pairs — sleeping 30s
+[2026-06-25 14:55:49] [INFO] Cycle 79 — 13 open pairs — sleeping 30s
+[2026-06-25 14:56:44] [INFO] Cycle 80 — 13 open pairs — sleeping 30s
+[2026-06-25 14:57:25] [INFO] Cycle 81 — 13 open pairs — sleeping 30s
+[2026-06-25 14:58:11] [INFO] Cycle 82 — 13 open pairs — sleeping 30s
+[2026-06-25 14:58:56] [INFO] Cycle 83 — 13 open pairs — sleeping 30s
+[2026-06-25 14:59:33] [INFO] Cycle 84 — 13 open pairs — sleeping 30s
+[2026-06-25 15:00:16] [INFO] Cycle 85 — 13 open pairs — sleeping 30s
+[2026-06-25 15:00:54] [INFO] Cycle 86 — 13 open pairs — sleeping 30s
+[2026-06-25 15:01:40] [INFO] Cycle 87 — 13 open pairs — sleeping 30s
+[2026-06-25 15:02:22] [INFO] Cycle 88 — 13 open pairs — sleeping 30s
+[2026-06-25 15:03:06] [INFO] Cycle 89 — 13 open pairs — sleeping 30s
+[2026-06-25 15:03:47] [INFO] Cycle 90 — 13 open pairs — sleeping 30s
+[2026-06-25 15:04:28] [INFO] Cycle 91 — 13 open pairs — sleeping 30s
+[2026-06-25 15:05:09] [INFO] Cycle 92 — 13 open pairs — sleeping 30s
+[2026-06-25 15:05:56] [INFO] Cycle 93 — 13 open pairs — sleeping 30s
+[2026-06-25 15:06:38] [INFO] Cycle 94 — 13 open pairs — sleeping 30s
+[2026-06-25 15:07:23] [INFO] Cycle 95 — 13 open pairs — sleeping 30s
+[2026-06-25 15:08:05] [INFO] Cycle 96 — 13 open pairs — sleeping 30s
+[2026-06-25 15:08:48] [INFO] Cycle 97 — 13 open pairs — sleeping 30s
+[2026-06-25 15:09:35] [INFO] Cycle 98 — 13 open pairs — sleeping 30s
+[2026-06-25 15:10:21] [INFO] Cycle 99 — 13 open pairs — sleeping 30s
+[2026-06-25 15:11:04] [INFO] Cycle 100 — 13 open pairs — sleeping 30s
+[2026-06-25 15:11:52] [INFO] Cycle 101 — 13 open pairs — sleeping 30s
+[2026-06-25 15:12:36] [INFO] Cycle 102 — 13 open pairs — sleeping 30s
+[2026-06-25 15:13:17] [INFO] Cycle 103 — 13 open pairs — sleeping 30s
+[2026-06-25 15:13:59] [INFO] Cycle 104 — 13 open pairs — sleeping 30s
+[2026-06-25 15:14:46] [INFO] Cycle 105 — 13 open pairs — sleeping 30s
+[2026-06-25 15:15:31] [INFO] Cycle 106 — 13 open pairs — sleeping 30s
+[2026-06-25 15:16:22] [INFO] Cycle 107 — 13 open pairs — sleeping 30s
+[2026-06-25 15:17:14] [INFO] Cycle 108 — 13 open pairs — sleeping 30s
+[2026-06-25 15:18:03] [INFO] Cycle 109 — 13 open pairs — sleeping 30s
+[2026-06-25 15:18:49] [INFO] Cycle 110 — 13 open pairs — sleeping 30s
+[2026-06-25 15:19:34] [INFO] Cycle 111 — 13 open pairs — sleeping 30s
+[2026-06-25 15:20:19] [INFO] Cycle 112 — 13 open pairs — sleeping 30s
+[2026-06-25 15:21:04] [INFO] Cycle 113 — 13 open pairs — sleeping 30s
+[2026-06-25 15:21:50] [INFO] Cycle 114 — 13 open pairs — sleeping 30s
+[2026-06-25 15:22:34] [INFO] Cycle 115 — 13 open pairs — sleeping 30s
+[2026-06-25 15:23:23] [INFO] Cycle 116 — 13 open pairs — sleeping 30s
+[2026-06-25 15:24:07] [INFO] Cycle 117 — 13 open pairs — sleeping 30s
+[2026-06-25 15:24:53] [INFO] Cycle 118 — 13 open pairs — sleeping 30s
+[2026-06-25 15:25:39] [INFO] Cycle 119 — 13 open pairs — sleeping 30s
+[2026-06-25 15:26:24] [INFO] Cycle 120 — 13 open pairs — sleeping 30s
+[2026-06-25 15:27:06] [INFO] Cycle 121 — 13 open pairs — sleeping 30s
+[2026-06-25 15:27:51] [INFO] Cycle 122 — 13 open pairs — sleeping 30s
+[2026-06-25 15:28:38] [INFO] Cycle 123 — 13 open pairs — sleeping 30s
+[2026-06-25 15:29:23] [INFO] Cycle 124 — 13 open pairs — sleeping 30s
+[2026-06-25 15:30:06] [INFO] Cycle 125 — 13 open pairs — sleeping 30s
+[2026-06-25 15:30:52] [INFO] Cycle 126 — 13 open pairs — sleeping 30s
+[2026-06-25 15:31:36] [INFO] Cycle 127 — 13 open pairs — sleeping 30s
+[2026-06-25 15:32:23] [INFO] Cycle 128 — 13 open pairs — sleeping 30s
+[2026-06-25 15:33:08] [INFO] Cycle 129 — 13 open pairs — sleeping 30s
+[2026-06-25 15:33:58] [INFO] Cycle 130 — 13 open pairs — sleeping 30s
+[2026-06-25 15:34:43] [INFO] Cycle 131 — 13 open pairs — sleeping 30s
+[2026-06-25 15:35:29] [INFO] Cycle 132 — 13 open pairs — sleeping 30s
+[2026-06-25 15:36:14] [INFO] Cycle 133 — 13 open pairs — sleeping 30s
+[2026-06-25 15:36:58] [INFO] Cycle 134 — 13 open pairs — sleeping 30s
+[2026-06-25 15:37:42] [INFO] Cycle 135 — 13 open pairs — sleeping 30s
+[2026-06-25 15:38:23] [INFO] Cycle 136 — 13 open pairs — sleeping 30s
+[2026-06-25 15:39:07] [INFO] Cycle 137 — 13 open pairs — sleeping 30s
+[2026-06-25 15:39:50] [INFO] Cycle 138 — 13 open pairs — sleeping 30s
+[2026-06-25 15:40:33] [INFO] Cycle 139 — 13 open pairs — sleeping 30s
+[2026-06-25 15:41:15] [INFO] Cycle 140 — 13 open pairs — sleeping 30s
+[2026-06-25 15:41:59] [INFO] Cycle 141 — 13 open pairs — sleeping 30s
+[2026-06-25 15:42:40] [INFO] Cycle 142 — 13 open pairs — sleeping 30s
+[2026-06-25 15:43:22] [INFO] Cycle 143 — 13 open pairs — sleeping 30s
+[2026-06-25 15:44:07] [INFO] Cycle 144 — 13 open pairs — sleeping 30s
+[2026-06-25 15:44:48] [INFO] Cycle 145 — 13 open pairs — sleeping 30s
+[2026-06-25 15:45:28] [INFO] Cycle 146 — 13 open pairs — sleeping 30s
+[2026-06-25 15:46:11] [INFO] Cycle 147 — 13 open pairs — sleeping 30s
+[2026-06-25 15:46:51] [INFO] Cycle 148 — 13 open pairs — sleeping 30s
+[2026-06-25 15:47:31] [INFO] Cycle 149 — 13 open pairs — sleeping 30s
+[2026-06-25 15:48:14] [INFO] Cycle 150 — 13 open pairs — sleeping 30s
+[2026-06-25 15:48:54] [INFO] Cycle 151 — 13 open pairs — sleeping 30s
+[2026-06-25 15:49:36] [INFO] Cycle 152 — 13 open pairs — sleeping 30s
+[2026-06-25 15:50:18] [INFO] Cycle 153 — 13 open pairs — sleeping 30s
+[2026-06-25 15:50:58] [INFO] Cycle 154 — 13 open pairs — sleeping 30s
+[2026-06-25 15:51:36] [INFO] Cycle 155 — 13 open pairs — sleeping 30s
+[2026-06-25 15:52:17] [INFO] Cycle 156 — 13 open pairs — sleeping 30s
+[2026-06-25 15:52:57] [INFO] Cycle 157 — 13 open pairs — sleeping 30s
+[2026-06-25 15:53:36] [INFO] Cycle 158 — 13 open pairs — sleeping 30s
+[2026-06-25 15:54:16] [INFO] Cycle 159 — 13 open pairs — sleeping 30s
+[2026-06-25 15:54:55] [INFO] Cycle 160 — 13 open pairs — sleeping 30s
+[2026-06-25 15:55:32] [INFO] Cycle 161 — 13 open pairs — sleeping 30s
+[2026-06-25 15:56:13] [INFO] Cycle 162 — 13 open pairs — sleeping 30s
+[2026-06-25 15:56:51] [INFO] Cycle 163 — 13 open pairs — sleeping 30s
+[2026-06-25 15:57:31] [INFO] Cycle 164 — 13 open pairs — sleeping 30s
+[2026-06-25 15:58:09] [INFO] Cycle 165 — 13 open pairs — sleeping 30s
+[2026-06-25 15:58:49] [INFO] Cycle 166 — 13 open pairs — sleeping 30s
+[2026-06-25 15:59:27] [INFO] Cycle 167 — 13 open pairs — sleeping 30s
+[2026-06-25 16:00:07] [INFO] Cycle 168 — 13 open pairs — sleeping 30s
+[2026-06-25 16:00:47] [INFO] Cycle 169 — 13 open pairs — sleeping 30s
+[2026-06-25 16:01:25] [INFO] Cycle 170 — 13 open pairs — sleeping 30s
+[2026-06-25 16:02:05] [INFO] Cycle 171 — 13 open pairs — sleeping 30s
+[2026-06-25 16:02:45] [INFO] Cycle 172 — 13 open pairs — sleeping 30s
+[2026-06-25 16:03:26] [INFO] Cycle 173 — 13 open pairs — sleeping 30s
+[2026-06-25 16:04:06] [INFO] Cycle 174 — 13 open pairs — sleeping 30s
+[2026-06-25 16:04:46] [INFO] Cycle 175 — 13 open pairs — sleeping 30s
+[2026-06-25 16:05:26] [INFO] Cycle 176 — 13 open pairs — sleeping 30s
+[2026-06-25 16:06:05] [INFO] Cycle 177 — 13 open pairs — sleeping 30s
+[2026-06-25 16:06:47] [INFO] Cycle 178 — 13 open pairs — sleeping 30s
+[2026-06-25 16:07:26] [INFO] Cycle 179 — 13 open pairs — sleeping 30s
+[2026-06-25 16:08:06] [INFO] Cycle 180 — 13 open pairs — sleeping 30s
+[2026-06-25 16:08:46] [INFO] Cycle 181 — 13 open pairs — sleeping 30s
+[2026-06-25 16:09:24] [INFO] Cycle 182 — 13 open pairs — sleeping 30s
+[2026-06-25 16:10:02] [INFO] Cycle 183 — 13 open pairs — sleeping 30s
+[2026-06-25 16:10:42] [INFO] Cycle 184 — 13 open pairs — sleeping 30s
+[2026-06-25 16:11:21] [INFO] Cycle 185 — 13 open pairs — sleeping 30s
+[2026-06-25 16:12:01] [INFO] Cycle 186 — 13 open pairs — sleeping 30s
+[2026-06-25 16:12:39] [INFO] Cycle 187 — 13 open pairs — sleeping 30s
+[2026-06-25 16:13:20] [INFO] Cycle 188 — 13 open pairs — sleeping 30s
+[2026-06-25 16:14:00] [INFO] Cycle 189 — 13 open pairs — sleeping 30s
+[2026-06-25 16:14:39] [INFO] Cycle 190 — 13 open pairs — sleeping 30s
+[2026-06-25 16:15:20] [INFO] Cycle 191 — 13 open pairs — sleeping 30s
+[2026-06-25 16:15:58] [INFO] Cycle 192 — 13 open pairs — sleeping 30s
+[2026-06-25 16:16:35] [INFO] Cycle 193 — 13 open pairs — sleeping 30s
+[2026-06-25 16:17:11] [INFO] Closing NZDUSD/USDZAR reason=EXITED
+[2026-06-25 16:17:11] [INFO] [PAPER] Close NZDUSD ticket=389253891
+[2026-06-25 16:17:11] [INFO] [PAPER] Close USDZAR ticket=389253894
+[2026-06-25 16:17:15] [INFO] Closing GBPJPY/USDZAR reason=EXITED
+[2026-06-25 16:17:15] [INFO] [PAPER] Close GBPJPY ticket=389275055
+[2026-06-25 16:17:15] [INFO] [PAPER] Close USDZAR ticket=389275056
+[2026-06-25 16:17:19] [INFO] Closing EURJPY/USDZAR reason=EXITED
+[2026-06-25 16:17:19] [INFO] [PAPER] Close EURJPY ticket=389286309
+[2026-06-25 16:17:19] [INFO] [PAPER] Close USDZAR ticket=389286317
+[2026-06-25 16:17:22] [INFO] Closing EURCHF/US30_USD reason=EXITED
+[2026-06-25 16:17:22] [INFO] [PAPER] Close EURCHF ticket=389292277
+[2026-06-25 16:17:22] [INFO] [PAPER] Close US30_USD ticket=389292284
+[2026-06-25 16:17:28] [INFO] Cycle 194 — 9 open pairs — sleeping 30s
+[2026-06-25 16:18:06] [INFO] Cycle 195 — 9 open pairs — sleeping 30s
+[2026-06-25 16:18:44] [INFO] Cycle 196 — 9 open pairs — sleeping 30s
+[2026-06-25 16:19:24] [INFO] Cycle 197 — 9 open pairs — sleeping 30s
+[2026-06-25 16:20:04] [INFO] Cycle 198 — 9 open pairs — sleeping 30s
+[2026-06-25 16:20:41] [INFO] Cycle 199 — 9 open pairs — sleeping 30s
+[2026-06-25 16:21:23] [INFO] Cycle 200 — 9 open pairs — sleeping 30s
+[2026-06-25 16:22:02] [INFO] Cycle 201 — 9 open pairs — sleeping 30s
+[2026-06-25 16:22:42] [INFO] Cycle 202 — 9 open pairs — sleeping 30s
+[2026-06-25 16:23:23] [INFO] Cycle 203 — 9 open pairs — sleeping 30s
+[2026-06-25 16:24:03] [INFO] Cycle 204 — 9 open pairs — sleeping 30s
+[2026-06-25 16:24:43] [INFO] Cycle 205 — 9 open pairs — sleeping 30s
+[2026-06-25 16:25:25] [INFO] Cycle 206 — 9 open pairs — sleeping 30s
+[2026-06-25 16:26:05] [INFO] Cycle 207 — 9 open pairs — sleeping 30s
+[2026-06-25 16:26:43] [INFO] Cycle 208 — 9 open pairs — sleeping 30s
+[2026-06-25 16:27:25] [INFO] Cycle 209 — 9 open pairs — sleeping 30s
+[2026-06-25 16:28:05] [INFO] Cycle 210 — 9 open pairs — sleeping 30s
+[2026-06-25 16:28:43] [INFO] Cycle 211 — 9 open pairs — sleeping 30s
+[2026-06-25 16:29:25] [INFO] Cycle 212 — 9 open pairs — sleeping 30s
+[2026-06-25 16:30:06] [INFO] Cycle 213 — 9 open pairs — sleeping 30s
+[2026-06-25 16:30:45] [INFO] Cycle 214 — 9 open pairs — sleeping 30s
+[2026-06-25 16:31:26] [INFO] Cycle 215 — 9 open pairs — sleeping 30s
+[2026-06-25 16:32:07] [INFO] Cycle 216 — 9 open pairs — sleeping 30s
+[2026-06-25 16:32:46] [INFO] Cycle 217 — 9 open pairs — sleeping 30s
+[2026-06-25 16:33:27] [INFO] Cycle 218 — 9 open pairs — sleeping 30s
+[2026-06-25 16:34:08] [INFO] Cycle 219 — 9 open pairs — sleeping 30s
+[2026-06-25 16:34:45] [INFO] Cycle 220 — 9 open pairs — sleeping 30s
+[2026-06-25 16:35:26] [INFO] Cycle 221 — 9 open pairs — sleeping 30s
+[2026-06-25 16:36:06] [INFO] Cycle 222 — 9 open pairs — sleeping 30s
+[2026-06-25 16:36:45] [INFO] Cycle 223 — 9 open pairs — sleeping 30s
+[2026-06-25 16:37:27] [INFO] Cycle 224 — 9 open pairs — sleeping 30s
+[2026-06-25 16:38:07] [INFO] Cycle 225 — 9 open pairs — sleeping 30s
+[2026-06-25 16:38:47] [INFO] Cycle 226 — 9 open pairs — sleeping 30s
+[2026-06-25 16:39:27] [INFO] Cycle 227 — 9 open pairs — sleeping 30s
+[2026-06-25 16:40:06] [INFO] Cycle 228 — 9 open pairs — sleeping 30s
+[2026-06-25 16:40:46] [INFO] Cycle 229 — 9 open pairs — sleeping 30s
+[2026-06-25 16:41:27] [INFO] Cycle 230 — 9 open pairs — sleeping 30s
+[2026-06-25 16:42:07] [INFO] Cycle 231 — 9 open pairs — sleeping 30s
+[2026-06-25 16:42:48] [INFO] Cycle 232 — 9 open pairs — sleeping 30s
+[2026-06-25 16:43:27] [INFO] Cycle 233 — 9 open pairs — sleeping 30s
+[2026-06-25 16:44:07] [INFO] Cycle 234 — 9 open pairs — sleeping 30s
+[2026-06-25 16:44:47] [INFO] Cycle 235 — 9 open pairs — sleeping 30s
+[2026-06-25 16:45:27] [INFO] Cycle 236 — 9 open pairs — sleeping 30s
+[2026-06-25 16:46:07] [INFO] Cycle 237 — 9 open pairs — sleeping 30s
+[2026-06-25 16:46:47] [INFO] Cycle 238 — 9 open pairs — sleeping 30s
+[2026-06-25 16:47:26] [INFO] Cycle 239 — 9 open pairs — sleeping 30s
+[2026-06-25 16:48:06] [INFO] Cycle 240 — 9 open pairs — sleeping 30s
+[2026-06-25 16:48:46] [INFO] Cycle 241 — 9 open pairs — sleeping 30s
+[2026-06-25 16:49:27] [INFO] Cycle 242 — 9 open pairs — sleeping 30s
+[2026-06-25 16:50:07] [INFO] Cycle 243 — 9 open pairs — sleeping 30s
+[2026-06-25 16:50:47] [INFO] Cycle 244 — 9 open pairs — sleeping 30s
+[2026-06-25 16:51:27] [INFO] Cycle 245 — 9 open pairs — sleeping 30s
+[2026-06-25 16:52:08] [INFO] Cycle 246 — 9 open pairs — sleeping 30s
+[2026-06-25 16:52:49] [INFO] Cycle 247 — 9 open pairs — sleeping 30s
+[2026-06-25 16:53:29] [INFO] Cycle 248 — 9 open pairs — sleeping 30s
+[2026-06-25 16:54:09] [INFO] Cycle 249 — 9 open pairs — sleeping 30s
+[2026-06-25 16:54:49] [INFO] Cycle 250 — 9 open pairs — sleeping 30s
+[2026-06-25 16:55:30] [INFO] Cycle 251 — 9 open pairs — sleeping 30s
+[2026-06-25 16:56:11] [INFO] Cycle 252 — 9 open pairs — sleeping 30s
+[2026-06-25 16:56:53] [INFO] Cycle 253 — 9 open pairs — sleeping 30s
+[2026-06-25 16:57:33] [INFO] Cycle 254 — 9 open pairs — sleeping 30s
+[2026-06-25 16:58:14] [INFO] Cycle 255 — 9 open pairs — sleeping 30s
+[2026-06-25 16:58:53] [INFO] Cycle 256 — 9 open pairs — sleeping 30s
+[2026-06-25 16:59:31] [INFO] Cycle 257 — 9 open pairs — sleeping 30s
+[2026-06-25 17:00:10] [INFO] Cycle 258 — 9 open pairs — sleeping 30s
+[2026-06-25 17:00:50] [INFO] Cycle 259 — 9 open pairs — sleeping 30s
+[2026-06-25 17:01:28] [INFO] Cycle 260 — 9 open pairs — sleeping 30s
+[2026-06-25 17:02:07] [INFO] Cycle 261 — 9 open pairs — sleeping 30s
+[2026-06-25 17:02:45] [INFO] Cycle 262 — 9 open pairs — sleeping 30s
+[2026-06-25 17:03:23] [INFO] Cycle 263 — 9 open pairs — sleeping 30s
+[2026-06-25 17:04:04] [INFO] Cycle 264 — 9 open pairs — sleeping 30s
+[2026-06-25 17:04:43] [INFO] Cycle 265 — 9 open pairs — sleeping 30s
+[2026-06-25 17:05:21] [INFO] Cycle 266 — 9 open pairs — sleeping 30s
+[2026-06-25 17:06:02] [INFO] Cycle 267 — 9 open pairs — sleeping 30s
+[2026-06-25 17:06:42] [INFO] Cycle 268 — 9 open pairs — sleeping 30s
+[2026-06-25 17:07:22] [INFO] Cycle 269 — 9 open pairs — sleeping 30s
+[2026-06-25 17:08:02] [INFO] Cycle 270 — 9 open pairs — sleeping 30s
+[2026-06-25 17:08:46] [INFO] Cycle 271 — 9 open pairs — sleeping 30s
+[2026-06-25 17:09:34] [INFO] Cycle 272 — 9 open pairs — sleeping 30s
+[2026-06-25 17:10:19] [INFO] Cycle 273 — 9 open pairs — sleeping 30s
+[2026-06-25 17:11:02] [INFO] Cycle 274 — 9 open pairs — sleeping 30s
+[2026-06-25 17:11:45] [INFO] Cycle 275 — 9 open pairs — sleeping 30s
+[2026-06-25 17:12:26] [INFO] Cycle 276 — 9 open pairs — sleeping 30s
+[2026-06-25 17:13:13] [INFO] Cycle 277 — 9 open pairs — sleeping 30s
+[2026-06-25 17:13:53] [INFO] Cycle 278 — 9 open pairs — sleeping 30s
+[2026-06-25 17:14:34] [INFO] Cycle 279 — 9 open pairs — sleeping 30s
+[2026-06-25 17:15:14] [INFO] Cycle 280 — 9 open pairs — sleeping 30s
+[2026-06-25 17:15:55] [INFO] Cycle 281 — 9 open pairs — sleeping 30s
+[2026-06-25 17:16:36] [INFO] Cycle 282 — 9 open pairs — sleeping 30s
+[2026-06-25 17:17:15] [INFO] Cycle 283 — 9 open pairs — sleeping 30s
+[2026-06-25 17:18:01] [INFO] Cycle 284 — 9 open pairs — sleeping 30s
+[2026-06-25 17:18:40] [INFO] Cycle 285 — 9 open pairs — sleeping 30s
+[2026-06-25 17:19:17] [INFO] Cycle 286 — 9 open pairs — sleeping 30s
+[2026-06-25 17:20:01] [INFO] Cycle 287 — 9 open pairs — sleeping 30s
+[2026-06-25 17:20:41] [INFO] Cycle 288 — 9 open pairs — sleeping 30s
+[2026-06-25 17:21:22] [INFO] Cycle 289 — 9 open pairs — sleeping 30s
+[2026-06-25 17:22:06] [INFO] Cycle 290 — 9 open pairs — sleeping 30s
+[2026-06-25 17:22:47] [INFO] Cycle 291 — 9 open pairs — sleeping 30s
+[2026-06-25 17:23:26] [INFO] Cycle 292 — 9 open pairs — sleeping 30s
+[2026-06-25 17:24:09] [INFO] Cycle 293 — 9 open pairs — sleeping 30s
+[2026-06-25 17:24:48] [INFO] Cycle 294 — 9 open pairs — sleeping 30s
+[2026-06-25 17:25:27] [INFO] Cycle 295 — 9 open pairs — sleeping 30s
+[2026-06-25 17:26:09] [INFO] Cycle 296 — 9 open pairs — sleeping 30s
+[2026-06-25 17:26:49] [INFO] Cycle 297 — 9 open pairs — sleeping 30s
+[2026-06-25 17:27:31] [INFO] Cycle 298 — 9 open pairs — sleeping 30s
+[2026-06-25 17:28:14] [INFO] Cycle 299 — 9 open pairs — sleeping 30s
+[2026-06-25 17:28:52] [INFO] Cycle 300 — 9 open pairs — sleeping 30s
+[2026-06-25 17:29:31] [INFO] Cycle 301 — 9 open pairs — sleeping 30s
+[2026-06-25 17:30:12] [INFO] Cycle 302 — 9 open pairs — sleeping 30s
+[2026-06-25 17:30:54] [INFO] Cycle 303 — 9 open pairs — sleeping 30s
+[2026-06-25 17:31:39] [INFO] Cycle 304 — 9 open pairs — sleeping 30s
+[2026-06-25 17:32:25] [INFO] Cycle 305 — 9 open pairs — sleeping 30s
+[2026-06-25 17:33:09] [INFO] Cycle 306 — 9 open pairs — sleeping 30s
+[2026-06-25 17:33:53] [INFO] Cycle 307 — 9 open pairs — sleeping 30s
+[2026-06-25 17:34:33] [INFO] Cycle 308 — 9 open pairs — sleeping 30s
+[2026-06-25 17:35:23] [INFO] Cycle 309 — 9 open pairs — sleeping 30s
+[2026-06-25 17:36:11] [INFO] Cycle 310 — 9 open pairs — sleeping 30s
+[2026-06-25 17:36:56] [INFO] Cycle 311 — 9 open pairs — sleeping 30s
+[2026-06-25 17:37:41] [INFO] Cycle 312 — 9 open pairs — sleeping 30s
+[2026-06-25 17:38:25] [INFO] Cycle 313 — 9 open pairs — sleeping 30s
+[2026-06-25 17:39:10] [INFO] Cycle 314 — 9 open pairs — sleeping 30s
+[2026-06-25 17:39:57] [INFO] Cycle 315 — 9 open pairs — sleeping 30s
+[2026-06-25 17:40:45] [INFO] Cycle 316 — 9 open pairs — sleeping 30s
+[2026-06-25 17:41:37] [INFO] Cycle 317 — 9 open pairs — sleeping 30s
+[2026-06-25 17:42:21] [INFO] Cycle 318 — 9 open pairs — sleeping 30s
+[2026-06-25 17:43:03] [INFO] Cycle 319 — 9 open pairs — sleeping 30s
+[2026-06-25 17:43:42] [INFO] Cycle 320 — 9 open pairs — sleeping 30s
+[2026-06-25 17:44:23] [INFO] Cycle 321 — 9 open pairs — sleeping 30s
+[2026-06-25 17:45:06] [INFO] Cycle 322 — 9 open pairs — sleeping 30s
+[2026-06-25 17:45:47] [INFO] Cycle 323 — 9 open pairs — sleeping 30s
+[2026-06-25 17:46:30] [INFO] Cycle 324 — 9 open pairs — sleeping 30s
+[2026-06-25 17:47:06] [INFO] Closing EURJPY/USDCNH reason=EXITED
+[2026-06-25 17:47:06] [INFO] [PAPER] Close EURJPY ticket=389280364
+[2026-06-25 17:47:06] [INFO] [PAPER] Close USDCNH ticket=389280366
+[2026-06-25 17:47:15] [INFO] Cycle 325 — 8 open pairs — sleeping 30s
+[2026-06-25 17:47:55] [INFO] Cycle 326 — 8 open pairs — sleeping 30s
+[2026-06-25 17:48:38] [INFO] Cycle 327 — 8 open pairs — sleeping 30s
+[2026-06-25 17:49:18] [INFO] Cycle 328 — 8 open pairs — sleeping 30s
+[2026-06-25 17:50:00] [INFO] Cycle 329 — 8 open pairs — sleeping 30s
+[2026-06-25 17:50:42] [INFO] Cycle 330 — 8 open pairs — sleeping 30s
+[2026-06-25 17:51:24] [INFO] Cycle 331 — 8 open pairs — sleeping 30s
+[2026-06-25 17:52:05] [INFO] Cycle 332 — 8 open pairs — sleeping 30s
+[2026-06-25 17:52:48] [INFO] Cycle 333 — 8 open pairs — sleeping 30s
+[2026-06-25 17:53:27] [INFO] Cycle 334 — 8 open pairs — sleeping 30s
+[2026-06-25 17:54:11] [INFO] Cycle 335 — 8 open pairs — sleeping 30s
+[2026-06-25 17:54:53] [INFO] Cycle 336 — 8 open pairs — sleeping 30s
+[2026-06-25 17:55:35] [INFO] Cycle 337 — 8 open pairs — sleeping 30s
+[2026-06-25 17:56:19] [INFO] Cycle 338 — 8 open pairs — sleeping 30s
+[2026-06-25 17:57:00] [INFO] Cycle 339 — 8 open pairs — sleeping 30s
+[2026-06-25 17:57:42] [INFO] Cycle 340 — 8 open pairs — sleeping 30s
+[2026-06-25 17:58:23] [INFO] Cycle 341 — 8 open pairs — sleeping 30s
+[2026-06-25 17:59:03] [INFO] Cycle 342 — 8 open pairs — sleeping 30s
+[2026-06-25 17:59:46] [INFO] Cycle 343 — 8 open pairs — sleeping 30s
+[2026-06-25 18:00:24] [INFO] Cycle 344 — 8 open pairs — sleeping 30s
+[2026-06-25 18:01:05] [INFO] Cycle 345 — 8 open pairs — sleeping 30s
+[2026-06-25 18:01:48] [INFO] Cycle 346 — 8 open pairs — sleeping 30s
+[2026-06-25 18:02:26] [INFO] Cycle 347 — 8 open pairs — sleeping 30s
+[2026-06-25 18:03:08] [INFO] Cycle 348 — 8 open pairs — sleeping 30s
+[2026-06-25 18:03:49] [INFO] Cycle 349 — 8 open pairs — sleeping 30s
+[2026-06-25 18:04:31] [INFO] Cycle 350 — 8 open pairs — sleeping 30s
+[2026-06-25 18:05:12] [INFO] Cycle 351 — 8 open pairs — sleeping 30s
+[2026-06-25 18:05:52] [INFO] Cycle 352 — 8 open pairs — sleeping 30s
+[2026-06-25 18:06:32] [INFO] Cycle 353 — 8 open pairs — sleeping 30s
+[2026-06-25 18:07:13] [INFO] Cycle 354 — 8 open pairs — sleeping 30s
+[2026-06-25 18:07:58] [INFO] Cycle 355 — 8 open pairs — sleeping 30s
+[2026-06-25 18:08:37] [INFO] Cycle 356 — 8 open pairs — sleeping 30s
+[2026-06-25 18:09:19] [INFO] Cycle 357 — 8 open pairs — sleeping 30s
+[2026-06-25 18:09:57] [INFO] Cycle 358 — 8 open pairs — sleeping 30s
+[2026-06-25 18:10:37] [INFO] Cycle 359 — 8 open pairs — sleeping 30s
+[2026-06-25 18:11:17] [INFO] Cycle 360 — 8 open pairs — sleeping 30s
+[2026-06-25 18:11:58] [INFO] Cycle 361 — 8 open pairs — sleeping 30s
+[2026-06-25 18:12:36] [INFO] Cycle 362 — 8 open pairs — sleeping 30s
+[2026-06-25 18:13:19] [INFO] Cycle 363 — 8 open pairs — sleeping 30s
+[2026-06-25 18:13:58] [INFO] Cycle 364 — 8 open pairs — sleeping 30s
+[2026-06-25 18:14:36] [INFO] Cycle 365 — 8 open pairs — sleeping 30s
+[2026-06-25 18:15:16] [INFO] Cycle 366 — 8 open pairs — sleeping 30s
+[2026-06-25 18:15:57] [INFO] Cycle 367 — 8 open pairs — sleeping 30s
+[2026-06-25 18:16:37] [INFO] Cycle 368 — 8 open pairs — sleeping 30s
+[2026-06-25 18:17:18] [INFO] Cycle 369 — 8 open pairs — sleeping 30s
+[2026-06-25 18:17:58] [INFO] Cycle 370 — 8 open pairs — sleeping 30s
+[2026-06-25 18:18:36] [INFO] Cycle 371 — 8 open pairs — sleeping 30s
+[2026-06-25 18:19:16] [INFO] Cycle 372 — 8 open pairs — sleeping 30s
+[2026-06-25 18:19:59] [INFO] Cycle 373 — 8 open pairs — sleeping 30s
+[2026-06-25 18:20:39] [INFO] Cycle 374 — 8 open pairs — sleeping 30s
+[2026-06-25 18:21:21] [INFO] Cycle 375 — 8 open pairs — sleeping 30s
+[2026-06-25 18:22:04] [INFO] Cycle 376 — 8 open pairs — sleeping 30s
+[2026-06-25 18:22:44] [INFO] Cycle 377 — 8 open pairs — sleeping 30s
+[2026-06-25 18:23:28] [INFO] Cycle 378 — 8 open pairs — sleeping 30s
+[2026-06-25 18:24:11] [INFO] Cycle 379 — 8 open pairs — sleeping 30s
+[2026-06-25 18:24:51] [INFO] Cycle 380 — 8 open pairs — sleeping 30s
+[2026-06-25 18:25:37] [INFO] Cycle 381 — 8 open pairs — sleeping 30s
+[2026-06-25 18:26:16] [INFO] Cycle 382 — 8 open pairs — sleeping 30s
+[2026-06-25 18:26:57] [INFO] Cycle 383 — 8 open pairs — sleeping 30s
+[2026-06-25 18:27:38] [INFO] Cycle 384 — 8 open pairs — sleeping 30s
+[2026-06-25 18:28:18] [INFO] Cycle 385 — 8 open pairs — sleeping 30s
+[2026-06-25 18:28:57] [INFO] Cycle 386 — 8 open pairs — sleeping 30s
+[2026-06-25 18:29:42] [INFO] Cycle 387 — 8 open pairs — sleeping 30s
+[2026-06-25 18:30:20] [INFO] Cycle 388 — 8 open pairs — sleeping 30s
+[2026-06-25 18:31:01] [INFO] Cycle 389 — 8 open pairs — sleeping 30s
+[2026-06-25 18:31:40] [INFO] Cycle 390 — 8 open pairs — sleeping 30s
+[2026-06-25 18:32:20] [INFO] Cycle 391 — 8 open pairs — sleeping 30s
+[2026-06-25 18:33:00] [INFO] Cycle 392 — 8 open pairs — sleeping 30s
+[2026-06-25 18:33:38] [INFO] Cycle 393 — 8 open pairs — sleeping 30s
+[2026-06-25 18:34:17] [INFO] Cycle 394 — 8 open pairs — sleeping 30s
+[2026-06-25 18:34:55] [INFO] Cycle 395 — 8 open pairs — sleeping 30s
+[2026-06-25 18:35:33] [INFO] Cycle 396 — 8 open pairs — sleeping 30s
+[2026-06-25 18:36:13] [INFO] Cycle 397 — 8 open pairs — sleeping 30s
+[2026-06-25 18:36:51] [INFO] Cycle 398 — 8 open pairs — sleeping 30s
+[2026-06-25 18:37:29] [INFO] Cycle 399 — 8 open pairs — sleeping 30s
+[2026-06-25 18:38:10] [INFO] Cycle 400 — 8 open pairs — sleeping 30s
+[2026-06-25 18:38:48] [INFO] Cycle 401 — 8 open pairs — sleeping 30s
+[2026-06-25 18:39:28] [INFO] Cycle 402 — 8 open pairs — sleeping 30s
+[2026-06-25 18:40:08] [INFO] Cycle 403 — 8 open pairs — sleeping 30s
+[2026-06-25 18:40:46] [INFO] Cycle 404 — 8 open pairs — sleeping 30s
+[2026-06-25 18:41:25] [INFO] Cycle 405 — 8 open pairs — sleeping 30s
+[2026-06-25 18:42:05] [INFO] Cycle 406 — 8 open pairs — sleeping 30s
+[2026-06-25 18:42:45] [INFO] Cycle 407 — 8 open pairs — sleeping 30s
+[2026-06-25 18:43:26] [INFO] Cycle 408 — 8 open pairs — sleeping 30s
+[2026-06-25 18:44:06] [INFO] Cycle 409 — 8 open pairs — sleeping 30s
+[2026-06-25 18:44:44] [INFO] Cycle 410 — 8 open pairs — sleeping 30s
+[2026-06-25 18:45:26] [INFO] Cycle 411 — 8 open pairs — sleeping 30s
+[2026-06-25 18:46:08] [INFO] Cycle 412 — 8 open pairs — sleeping 30s
+[2026-06-25 18:46:44] [INFO] Cycle 413 — 8 open pairs — sleeping 30s
+[2026-06-25 18:47:29] [INFO] Cycle 414 — 8 open pairs — sleeping 30s
+[2026-06-25 18:48:14] [INFO] Cycle 415 — 8 open pairs — sleeping 30s
+[2026-06-25 18:48:51] [INFO] Cycle 416 — 8 open pairs — sleeping 30s
+[2026-06-25 18:49:34] [INFO] Cycle 417 — 8 open pairs — sleeping 30s
+[2026-06-25 18:50:15] [INFO] Cycle 418 — 8 open pairs — sleeping 30s
+[2026-06-25 18:50:56] [INFO] Cycle 419 — 8 open pairs — sleeping 30s
+[2026-06-25 18:51:40] [INFO] Cycle 420 — 8 open pairs — sleeping 30s
+[2026-06-25 18:52:24] [INFO] Cycle 421 — 8 open pairs — sleeping 30s
+[2026-06-25 18:53:02] [INFO] Cycle 422 — 8 open pairs — sleeping 30s
+[2026-06-25 18:53:40] [INFO] Cycle 423 — 8 open pairs — sleeping 30s
+[2026-06-25 18:54:20] [INFO] Cycle 424 — 8 open pairs — sleeping 30s
+[2026-06-25 18:54:59] [INFO] Cycle 425 — 8 open pairs — sleeping 30s
+[2026-06-25 18:55:42] [INFO] Cycle 426 — 8 open pairs — sleeping 30s
+[2026-06-25 18:56:25] [INFO] Cycle 427 — 8 open pairs — sleeping 30s
+[2026-06-25 18:57:03] [INFO] Cycle 428 — 8 open pairs — sleeping 30s
+[2026-06-25 18:57:44] [INFO] Cycle 429 — 8 open pairs — sleeping 30s
+[2026-06-25 18:58:23] [INFO] Cycle 430 — 8 open pairs — sleeping 30s
+[2026-06-25 18:59:03] [INFO] Cycle 431 — 8 open pairs — sleeping 30s
+[2026-06-25 18:59:41] [INFO] Cycle 432 — 8 open pairs — sleeping 30s
+[2026-06-25 19:00:22] [INFO] Cycle 433 — 8 open pairs — sleeping 30s
+[2026-06-25 19:01:03] [INFO] Cycle 434 — 8 open pairs — sleeping 30s
+[2026-06-25 19:01:42] [INFO] Cycle 435 — 8 open pairs — sleeping 30s
+[2026-06-25 19:02:21] [INFO] Cycle 436 — 8 open pairs — sleeping 30s
+[2026-06-25 19:03:02] [INFO] Cycle 437 — 8 open pairs — sleeping 30s
+[2026-06-25 19:03:43] [INFO] Cycle 438 — 8 open pairs — sleeping 30s
+[2026-06-25 19:04:21] [INFO] Cycle 439 — 8 open pairs — sleeping 30s
+[2026-06-25 19:05:02] [INFO] Cycle 440 — 8 open pairs — sleeping 30s
+[2026-06-25 19:05:43] [INFO] Cycle 441 — 8 open pairs — sleeping 30s
+[2026-06-25 19:06:25] [INFO] Cycle 442 — 8 open pairs — sleeping 30s
+[2026-06-25 19:07:02] [INFO] Cycle 443 — 8 open pairs — sleeping 30s
+[2026-06-25 19:07:44] [INFO] Cycle 444 — 8 open pairs — sleeping 30s
+[2026-06-25 19:08:20] [INFO] Cycle 445 — 8 open pairs — sleeping 30s
+[2026-06-25 19:08:59] [INFO] Cycle 446 — 8 open pairs — sleeping 30s
+[2026-06-25 19:09:43] [INFO] Cycle 447 — 8 open pairs — sleeping 30s
+[2026-06-25 19:10:22] [INFO] Cycle 448 — 8 open pairs — sleeping 30s
+[2026-06-25 19:11:02] [INFO] Cycle 449 — 8 open pairs — sleeping 30s
+[2026-06-25 19:11:42] [INFO] Cycle 450 — 8 open pairs — sleeping 30s
+[2026-06-25 19:12:21] [INFO] Cycle 451 — 8 open pairs — sleeping 30s
+[2026-06-25 19:12:58] [INFO] Cycle 452 — 8 open pairs — sleeping 30s
+[2026-06-25 19:13:38] [INFO] Cycle 453 — 8 open pairs — sleeping 30s
+[2026-06-25 19:14:16] [INFO] Cycle 454 — 8 open pairs — sleeping 30s
+[2026-06-25 19:14:54] [INFO] Cycle 455 — 8 open pairs — sleeping 30s
+[2026-06-25 19:15:36] [INFO] Cycle 456 — 8 open pairs — sleeping 30s
+[2026-06-25 19:16:14] [INFO] Cycle 457 — 8 open pairs — sleeping 30s
+[2026-06-25 19:16:52] [INFO] Cycle 458 — 8 open pairs — sleeping 30s
+[2026-06-25 19:17:32] [INFO] Cycle 459 — 8 open pairs — sleeping 30s
+[2026-06-25 19:18:12] [INFO] Cycle 460 — 8 open pairs — sleeping 30s
+[2026-06-25 19:18:55] [INFO] Cycle 461 — 8 open pairs — sleeping 30s
+[2026-06-25 19:19:35] [INFO] Cycle 462 — 8 open pairs — sleeping 30s
+[2026-06-25 19:20:16] [INFO] Cycle 463 — 8 open pairs — sleeping 30s
+[2026-06-25 19:20:53] [INFO] Cycle 464 — 8 open pairs — sleeping 30s
+[2026-06-25 19:21:34] [INFO] Cycle 465 — 8 open pairs — sleeping 30s
+[2026-06-25 19:22:11] [INFO] Cycle 466 — 8 open pairs — sleeping 30s
+[2026-06-25 19:22:50] [INFO] Cycle 467 — 8 open pairs — sleeping 30s
+[2026-06-25 19:23:26] [INFO] Cycle 468 — 8 open pairs — sleeping 30s
+[2026-06-25 19:24:08] [INFO] Cycle 469 — 8 open pairs — sleeping 30s
+[2026-06-25 19:24:46] [INFO] Cycle 470 — 8 open pairs — sleeping 30s
+[2026-06-25 19:25:23] [INFO] Cycle 471 — 8 open pairs — sleeping 30s
+[2026-06-25 19:26:03] [INFO] Cycle 472 — 8 open pairs — sleeping 30s
+[2026-06-25 19:26:45] [INFO] Cycle 473 — 8 open pairs — sleeping 30s
+[2026-06-25 19:27:23] [INFO] Cycle 474 — 8 open pairs — sleeping 30s
+[2026-06-25 19:28:04] [INFO] Cycle 475 — 8 open pairs — sleeping 30s
+[2026-06-25 19:28:51] [INFO] Cycle 476 — 8 open pairs — sleeping 30s
+[2026-06-25 19:29:29] [INFO] Cycle 477 — 8 open pairs — sleeping 30s
+[2026-06-25 19:30:10] [INFO] Cycle 478 — 8 open pairs — sleeping 30s
+[2026-06-25 19:30:49] [INFO] Cycle 479 — 8 open pairs — sleeping 30s
+[2026-06-25 19:31:27] [INFO] Cycle 480 — 8 open pairs — sleeping 30s
+[2026-06-25 19:32:15] [INFO] Cycle 481 — 8 open pairs — sleeping 30s
+[2026-06-25 19:32:55] [INFO] Cycle 482 — 8 open pairs — sleeping 30s
+[2026-06-25 19:33:33] [INFO] Cycle 483 — 8 open pairs — sleeping 30s
+[2026-06-25 19:34:13] [INFO] Cycle 484 — 8 open pairs — sleeping 30s
+[2026-06-25 19:34:50] [INFO] Cycle 485 — 8 open pairs — sleeping 30s
+[2026-06-25 19:35:28] [INFO] Cycle 486 — 8 open pairs — sleeping 30s
+[2026-06-25 19:36:09] [INFO] Cycle 487 — 8 open pairs — sleeping 30s
+[2026-06-25 19:36:49] [INFO] Cycle 488 — 8 open pairs — sleeping 30s
+[2026-06-25 19:37:26] [INFO] Cycle 489 — 8 open pairs — sleeping 30s
+[2026-06-25 19:38:08] [INFO] Cycle 490 — 8 open pairs — sleeping 30s
+[2026-06-25 19:38:47] [INFO] Cycle 491 — 8 open pairs — sleeping 30s
+[2026-06-25 19:39:24] [INFO] Cycle 492 — 8 open pairs — sleeping 30s
+[2026-06-25 19:40:06] [INFO] Cycle 493 — 8 open pairs — sleeping 30s
+[2026-06-25 19:40:48] [INFO] Cycle 494 — 8 open pairs — sleeping 30s
+[2026-06-25 19:41:28] [INFO] Cycle 495 — 8 open pairs — sleeping 30s
+[2026-06-25 19:42:09] [INFO] Cycle 496 — 8 open pairs — sleeping 30s
+[2026-06-25 19:42:49] [INFO] Cycle 497 — 8 open pairs — sleeping 30s
+[2026-06-25 19:43:24] [INFO] Cycle 498 — 8 open pairs — sleeping 30s
+[2026-06-25 19:44:04] [INFO] Cycle 499 — 8 open pairs — sleeping 30s
+[2026-06-25 19:44:47] [INFO] Cycle 500 — 8 open pairs — sleeping 30s
+[2026-06-25 19:45:24] [INFO] Cycle 501 — 8 open pairs — sleeping 30s
+[2026-06-25 19:46:02] [INFO] Cycle 502 — 8 open pairs — sleeping 30s
+[2026-06-25 19:46:41] [INFO] Cycle 503 — 8 open pairs — sleeping 30s
+[2026-06-25 19:47:16] [INFO] Closing USDCHF/GBPJPY reason=EXITED
+[2026-06-25 19:47:16] [INFO] [PAPER] Close USDCHF ticket=389257127
+[2026-06-25 19:47:16] [INFO] [PAPER] Close GBPJPY ticket=389257130
+[2026-06-25 19:47:25] [INFO] Cycle 504 — 7 open pairs — sleeping 30s
+[2026-06-25 19:48:04] [INFO] Cycle 505 — 7 open pairs — sleeping 30s
+[2026-06-25 19:48:44] [INFO] Cycle 506 — 7 open pairs — sleeping 30s
+[2026-06-25 19:49:22] [INFO] Cycle 507 — 7 open pairs — sleeping 30s
+[2026-06-25 19:50:01] [INFO] Cycle 508 — 7 open pairs — sleeping 30s
+[2026-06-25 19:50:39] [INFO] Cycle 509 — 7 open pairs — sleeping 30s
+[2026-06-25 19:51:16] [INFO] Cycle 510 — 7 open pairs — sleeping 30s
+[2026-06-25 19:51:52] [INFO] Cycle 511 — 7 open pairs — sleeping 30s
+[2026-06-25 19:52:29] [INFO] Cycle 512 — 7 open pairs — sleeping 30s
+[2026-06-25 19:53:08] [INFO] Cycle 513 — 7 open pairs — sleeping 30s
+[2026-06-25 19:53:50] [INFO] Cycle 514 — 7 open pairs — sleeping 30s
+[2026-06-25 19:54:27] [INFO] Cycle 515 — 7 open pairs — sleeping 30s
+[2026-06-25 19:55:06] [INFO] Cycle 516 — 7 open pairs — sleeping 30s
+[2026-06-25 19:55:46] [INFO] Cycle 517 — 7 open pairs — sleeping 30s
+[2026-06-25 19:56:26] [INFO] Cycle 518 — 7 open pairs — sleeping 30s
+[2026-06-25 19:57:05] [INFO] Cycle 519 — 7 open pairs — sleeping 30s
+[2026-06-25 19:57:43] [INFO] Cycle 520 — 7 open pairs — sleeping 30s
+[2026-06-25 19:58:21] [INFO] Cycle 521 — 7 open pairs — sleeping 30s
+[2026-06-25 19:59:03] [INFO] Cycle 522 — 7 open pairs — sleeping 30s
+[2026-06-25 19:59:43] [INFO] Cycle 523 — 7 open pairs — sleeping 30s
+[2026-06-25 20:00:21] [INFO] Cycle 524 — 7 open pairs — sleeping 30s
+[2026-06-25 20:01:02] [INFO] Cycle 525 — 7 open pairs — sleeping 30s
+[2026-06-25 20:01:43] [INFO] Cycle 526 — 7 open pairs — sleeping 30s
+[2026-06-25 20:02:23] [INFO] Cycle 527 — 7 open pairs — sleeping 30s
+[2026-06-25 20:03:11] [INFO] Cycle 528 — 7 open pairs — sleeping 30s
+[2026-06-25 20:03:56] [INFO] Cycle 529 — 7 open pairs — sleeping 30s
+[2026-06-25 20:04:32] [INFO] Closing AUDUSD/WTICO_USD reason=DISMISSED
+[2026-06-25 20:04:32] [INFO] [PAPER] Close AUDUSD ticket=389241913
+[2026-06-25 20:04:32] [INFO] [PAPER] Close WTICO_USD ticket=389241915
+[2026-06-25 20:04:32] [INFO] Closing AUDUSD/BCO_USD reason=DISMISSED
+[2026-06-25 20:04:32] [INFO] [PAPER] Close AUDUSD ticket=389245868
+[2026-06-25 20:04:32] [INFO] [PAPER] Close BCO_USD ticket=389245870
+[2026-06-25 20:04:32] [INFO] Closing NZDUSD/WTICO_USD reason=DISMISSED
+[2026-06-25 20:04:32] [INFO] [PAPER] Close NZDUSD ticket=389249332
+[2026-06-25 20:04:32] [INFO] [PAPER] Close WTICO_USD ticket=389249333
+[2026-06-25 20:04:32] [INFO] Closing NZDUSD/BCO_USD reason=DISMISSED
+[2026-06-25 20:04:32] [INFO] [PAPER] Close NZDUSD ticket=389251913
+[2026-06-25 20:04:32] [INFO] [PAPER] Close BCO_USD ticket=389251914
+[2026-06-25 20:04:32] [INFO] Closing USDCHF/EURJPY reason=DISMISSED
+[2026-06-25 20:04:32] [INFO] [PAPER] Close USDCHF ticket=389260636
+[2026-06-25 20:04:32] [INFO] [PAPER] Close EURJPY ticket=389260637
+[2026-06-25 20:04:32] [INFO] Closing USDCHF/AUDJPY reason=DISMISSED
+[2026-06-25 20:04:32] [INFO] [PAPER] Close USDCHF ticket=389264456
+[2026-06-25 20:04:32] [INFO] [PAPER] Close AUDJPY ticket=389264464
+[2026-06-25 20:04:32] [INFO] Closing USDCHF/CADJPY reason=DISMISSED
+[2026-06-25 20:04:32] [INFO] [PAPER] Close USDCHF ticket=389268830
+[2026-06-25 20:04:32] [INFO] [PAPER] Close CADJPY ticket=389268832
+[2026-06-25 20:04:36] [INFO] Cycle 530 — 0 open pairs — sleeping 30s
+[2026-06-25 20:05:18] [INFO] Cycle 531 — 0 open pairs — sleeping 30s
+[2026-06-25 20:06:01] [INFO] Cycle 532 — 0 open pairs — sleeping 30s
+[2026-06-25 20:06:48] [INFO] Cycle 533 — 0 open pairs — sleeping 30s
+[2026-06-25 20:07:31] [INFO] Cycle 534 — 0 open pairs — sleeping 30s
+[2026-06-25 20:08:13] [INFO] Cycle 535 — 0 open pairs — sleeping 30s
+[2026-06-25 20:08:57] [INFO] Cycle 536 — 0 open pairs — sleeping 30s
+[2026-06-25 20:09:40] [INFO] Cycle 537 — 0 open pairs — sleeping 30s
+[2026-06-25 20:10:17] [INFO] Signal NZDUSD-WTICO_USD-1782414590091: NZDUSD LONG 0.25L / WTICO_USD SHORT 0.11L  z=-2.10  corr=-0.436
+[2026-06-25 20:10:17] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56482 SL=0.54482 → ticket=414617792
+[2026-06-25 20:10:17] [INFO] [PAPER] SHORT 0.11 WTICO_USD SL=73.23700 → ticket=414617794
+[2026-06-25 20:10:22] [INFO] Signal NZDUSD-BCO_USD-1782414590092: NZDUSD LONG 0.25L / BCO_USD SHORT 0.11L  z=-2.12  corr=-0.438
+[2026-06-25 20:10:22] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56483 SL=0.54483 → ticket=414622158
+[2026-06-25 20:10:22] [INFO] [PAPER] SHORT 0.11 BCO_USD SL=76.84400 → ticket=414622160
+[2026-06-25 20:10:26] [INFO] Signal USDCHF-GBPJPY-1782414590092: USDCHF LONG 0.24L / GBPJPY SHORT 0.19L  z=-2.52  corr=-0.680
+[2026-06-25 20:10:26] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.81000 SL=0.79000 → ticket=414626162
+[2026-06-25 20:10:26] [INFO] [PAPER] SHORT 0.19 GBPJPY @ 213.53300 SL=215.53300 → ticket=414626164
+[2026-06-25 20:10:31] [INFO] Signal USDCHF-EURJPY-1782414590092: USDCHF LONG 0.24L / EURJPY SHORT 0.27L  z=-2.43  corr=-0.704
+[2026-06-25 20:10:31] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.81002 SL=0.79002 → ticket=414631908
+[2026-06-25 20:10:31] [INFO] [PAPER] SHORT 0.27 EURJPY SL=185.99400 → ticket=414631910
+[2026-06-25 20:10:36] [INFO] Signal USDCHF-AUDJPY-1782414590092: USDCHF LONG 0.24L / AUDJPY SHORT 0.25L  z=-2.10  corr=-0.648
+[2026-06-25 20:10:36] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.81001 SL=0.79001 → ticket=414636335
+[2026-06-25 20:10:36] [INFO] [PAPER] SHORT 0.25 AUDJPY SL=113.84600 → ticket=414636337
+[2026-06-25 20:10:40] [INFO] Signal USDCHF-CADJPY-1782414590092: USDCHF LONG 0.24L / CADJPY SHORT 0.13L  z=-2.23  corr=-0.341
+[2026-06-25 20:10:40] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.81001 SL=0.79001 → ticket=414640248
+[2026-06-25 20:10:40] [INFO] [PAPER] SHORT 0.13 CADJPY SL=115.97500 → ticket=414640249
+[2026-06-25 20:10:43] [INFO] Signal GBPJPY-USDZAR-1782414590092: GBPJPY LONG 0.28L / USDZAR SHORT 0.16L  z=-2.00  corr=-0.626
+[2026-06-25 20:10:43] [INFO] [PAPER] LONG 0.28 GBPJPY @ 213.54400 SL=211.54400 → ticket=414643970
+[2026-06-25 20:10:43] [INFO] [PAPER] SHORT 0.16 USDZAR SL=16.50043 → ticket=414643972
+[2026-06-25 20:10:48] [INFO] Signal EURJPY-USDCNH-1782414590092: EURJPY LONG 0.39L / USDCNH SHORT 0.15L  z=-2.09  corr=-0.603
+[2026-06-25 20:10:48] [INFO] [PAPER] LONG 0.39 EURJPY SL=181.99400 → ticket=414648110
+[2026-06-25 20:10:48] [INFO] [PAPER] SHORT 0.15 USDCNH @ 6.80198 SL=6.82198 → ticket=414648113
+[2026-06-25 20:10:52] [INFO] Signal EURJPY-USDZAR-1782414590092: EURJPY LONG 0.39L / USDZAR SHORT 0.16L  z=-2.13  corr=-0.641
+[2026-06-25 20:10:52] [INFO] [PAPER] LONG 0.39 EURJPY SL=181.99400 → ticket=414652663
+[2026-06-25 20:10:52] [INFO] [PAPER] SHORT 0.16 USDZAR SL=16.50043 → ticket=414652666
+[2026-06-25 20:10:58] [INFO] Signal EURCHF-US30_USD-1782414590092: EURCHF LONG 0.23L / US30_USD SHORT 0.08L  z=-2.33  corr=-0.332
+[2026-06-25 20:10:58] [INFO] [PAPER] LONG 0.23 EURCHF SL=0.90108 → ticket=414658266
+[2026-06-25 20:10:58] [INFO] [PAPER] SHORT 0.08 US30_USD SL=52146.62000 → ticket=414658268
+[2026-06-25 20:11:06] [INFO] Cycle 538 — 10 open pairs — sleeping 30s
+[2026-06-25 20:11:46] [INFO] Cycle 539 — 10 open pairs — sleeping 30s
+[2026-06-25 20:12:25] [INFO] Cycle 540 — 10 open pairs — sleeping 30s
+[2026-06-25 20:13:05] [INFO] Cycle 541 — 10 open pairs — sleeping 30s
+[2026-06-25 20:13:43] [INFO] Cycle 542 — 10 open pairs — sleeping 30s
+[2026-06-25 20:14:23] [INFO] Cycle 543 — 10 open pairs — sleeping 30s
+[2026-06-25 20:15:06] [INFO] Cycle 544 — 10 open pairs — sleeping 30s
+[2026-06-25 20:15:46] [INFO] Cycle 545 — 10 open pairs — sleeping 30s
+[2026-06-25 20:16:25] [INFO] Cycle 546 — 10 open pairs — sleeping 30s
+[2026-06-25 20:17:02] [INFO] Closing NZDUSD/WTICO_USD reason=DISMISSED
+[2026-06-25 20:17:02] [INFO] [PAPER] Close NZDUSD ticket=414617792
+[2026-06-25 20:17:02] [INFO] [PAPER] Close WTICO_USD ticket=414617794
+[2026-06-25 20:17:02] [INFO] Closing NZDUSD/BCO_USD reason=DISMISSED
+[2026-06-25 20:17:02] [INFO] [PAPER] Close NZDUSD ticket=414622158
+[2026-06-25 20:17:02] [INFO] [PAPER] Close BCO_USD ticket=414622160
+[2026-06-25 20:17:02] [INFO] Closing USDCHF/GBPJPY reason=DISMISSED
+[2026-06-25 20:17:02] [INFO] [PAPER] Close USDCHF ticket=414626162
+[2026-06-25 20:17:02] [INFO] [PAPER] Close GBPJPY ticket=414626164
+[2026-06-25 20:17:06] [INFO] Closing USDCHF/EURJPY reason=DISMISSED
+[2026-06-25 20:17:06] [INFO] [PAPER] Close USDCHF ticket=414631908
+[2026-06-25 20:17:06] [INFO] [PAPER] Close EURJPY ticket=414631910
+[2026-06-25 20:17:06] [INFO] Closing USDCHF/AUDJPY reason=DISMISSED
+[2026-06-25 20:17:06] [INFO] [PAPER] Close USDCHF ticket=414636335
+[2026-06-25 20:17:06] [INFO] [PAPER] Close AUDJPY ticket=414636337
+[2026-06-25 20:17:06] [INFO] Closing USDCHF/CADJPY reason=DISMISSED
+[2026-06-25 20:17:06] [INFO] [PAPER] Close USDCHF ticket=414640248
+[2026-06-25 20:17:06] [INFO] [PAPER] Close CADJPY ticket=414640249
+[2026-06-25 20:17:06] [INFO] Closing GBPJPY/USDZAR reason=DISMISSED
+[2026-06-25 20:17:06] [INFO] [PAPER] Close GBPJPY ticket=414643970
+[2026-06-25 20:17:06] [INFO] [PAPER] Close USDZAR ticket=414643972
+[2026-06-25 20:17:06] [INFO] Closing EURJPY/USDCNH reason=DISMISSED
+[2026-06-25 20:17:06] [INFO] [PAPER] Close EURJPY ticket=414648110
+[2026-06-25 20:17:06] [INFO] [PAPER] Close USDCNH ticket=414648113
+[2026-06-25 20:17:10] [INFO] Closing EURJPY/USDZAR reason=DISMISSED
+[2026-06-25 20:17:10] [INFO] [PAPER] Close EURJPY ticket=414652663
+[2026-06-25 20:17:10] [INFO] [PAPER] Close USDZAR ticket=414652666
+[2026-06-25 20:17:10] [INFO] Closing EURCHF/US30_USD reason=DISMISSED
+[2026-06-25 20:17:10] [INFO] [PAPER] Close EURCHF ticket=414658266
+[2026-06-25 20:17:10] [INFO] [PAPER] Close US30_USD ticket=414658268
+[2026-06-25 20:17:13] [INFO] Cycle 547 — 0 open pairs — sleeping 30s
+[2026-06-25 20:17:51] [INFO] Cycle 548 — 0 open pairs — sleeping 30s
+[2026-06-25 20:18:30] [INFO] Cycle 549 — 0 open pairs — sleeping 30s
+[2026-06-25 20:19:12] [INFO] Cycle 550 — 0 open pairs — sleeping 30s
+[2026-06-25 20:19:49] [INFO] Cycle 551 — 0 open pairs — sleeping 30s
+[2026-06-25 20:20:30] [INFO] Cycle 552 — 0 open pairs — sleeping 30s
+[2026-06-25 20:21:12] [INFO] Cycle 553 — 0 open pairs — sleeping 30s
+[2026-06-25 20:21:49] [INFO] Cycle 554 — 0 open pairs — sleeping 30s
+[2026-06-25 20:22:25] [INFO] Signal NZDUSD-WTICO_USD-1782415312074: NZDUSD LONG 0.25L / WTICO_USD SHORT 0.11L  z=-2.10  corr=-0.436
+[2026-06-25 20:22:25] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56492 SL=0.54492 → ticket=415345737
+[2026-06-25 20:22:25] [INFO] [PAPER] SHORT 0.11 WTICO_USD SL=73.45500 → ticket=415345738
+[2026-06-25 20:22:28] [INFO] Signal NZDUSD-BCO_USD-1782415312074: NZDUSD LONG 0.25L / BCO_USD SHORT 0.11L  z=-2.12  corr=-0.438
+[2026-06-25 20:22:28] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56491 SL=0.54491 → ticket=415348970
+[2026-06-25 20:22:28] [INFO] [PAPER] SHORT 0.11 BCO_USD SL=77.08200 → ticket=415348971
+[2026-06-25 20:22:32] [INFO] Signal USDCHF-GBPJPY-1782415312074: USDCHF LONG 0.24L / GBPJPY SHORT 0.19L  z=-2.52  corr=-0.680
+[2026-06-25 20:22:32] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.80976 SL=0.78976 → ticket=415352287
+[2026-06-25 20:22:32] [INFO] [PAPER] SHORT 0.19 GBPJPY @ 213.58000 SL=215.58000 → ticket=415352297
+[2026-06-25 20:22:37] [INFO] Signal USDCHF-EURJPY-1782415312074: USDCHF LONG 0.24L / EURJPY SHORT 0.27L  z=-2.43  corr=-0.704
+[2026-06-25 20:22:37] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.80973 SL=0.78973 → ticket=415357749
+[2026-06-25 20:22:37] [INFO] [PAPER] SHORT 0.27 EURJPY SL=186.03200 → ticket=415357749
+[2026-06-25 20:22:41] [INFO] Signal USDCHF-AUDJPY-1782415312074: USDCHF LONG 0.24L / AUDJPY SHORT 0.25L  z=-2.10  corr=-0.648
+[2026-06-25 20:22:41] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.80970 SL=0.78970 → ticket=415361748
+[2026-06-25 20:22:41] [INFO] [PAPER] SHORT 0.25 AUDJPY SL=113.86300 → ticket=415361749
+[2026-06-25 20:22:45] [INFO] Signal USDCHF-CADJPY-1782415312074: USDCHF LONG 0.24L / CADJPY SHORT 0.13L  z=-2.23  corr=-0.341
+[2026-06-25 20:22:45] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.80971 SL=0.78971 → ticket=415365333
+[2026-06-25 20:22:45] [INFO] [PAPER] SHORT 0.13 CADJPY SL=115.98900 → ticket=415365334
+[2026-06-25 20:22:48] [INFO] Signal GBPJPY-USDZAR-1782415312074: GBPJPY LONG 0.28L / USDZAR SHORT 0.16L  z=-2.00  corr=-0.626
+[2026-06-25 20:22:48] [INFO] [PAPER] LONG 0.28 GBPJPY @ 213.59200 SL=211.59200 → ticket=415368324
+[2026-06-25 20:22:48] [INFO] [PAPER] SHORT 0.16 USDZAR SL=16.49510 → ticket=415368326
+[2026-06-25 20:22:50] [INFO] Signal EURJPY-USDCNH-1782415312074: EURJPY LONG 0.39L / USDCNH SHORT 0.15L  z=-2.09  corr=-0.603
+[2026-06-25 20:22:50] [INFO] [PAPER] LONG 0.39 EURJPY SL=182.03200 → ticket=415370908
+[2026-06-25 20:22:50] [INFO] [PAPER] SHORT 0.15 USDCNH @ 6.80177 SL=6.82177 → ticket=415370910
+[2026-06-25 20:22:54] [INFO] Signal EURJPY-USDZAR-1782415312074: EURJPY LONG 0.39L / USDZAR SHORT 0.16L  z=-2.13  corr=-0.641
+[2026-06-25 20:22:54] [INFO] [PAPER] LONG 0.39 EURJPY SL=182.03200 → ticket=415374698
+[2026-06-25 20:22:54] [INFO] [PAPER] SHORT 0.16 USDZAR SL=16.49510 → ticket=415374702
+[2026-06-25 20:22:58] [INFO] Signal EURCHF-US30_USD-1782415312074: EURCHF LONG 0.23L / US30_USD SHORT 0.08L  z=-2.33  corr=-0.332
+[2026-06-25 20:22:58] [INFO] [PAPER] LONG 0.23 EURCHF SL=0.90102 → ticket=415378117
+[2026-06-25 20:22:58] [INFO] [PAPER] SHORT 0.08 US30_USD SL=52136.02000 → ticket=415378119
+[2026-06-25 20:23:04] [INFO] Cycle 555 — 10 open pairs — sleeping 30s
+[2026-06-25 20:23:45] [INFO] Cycle 556 — 10 open pairs — sleeping 30s
+[2026-06-25 20:24:27] [INFO] Cycle 557 — 10 open pairs — sleeping 30s
+[2026-06-25 20:25:08] [INFO] Cycle 558 — 10 open pairs — sleeping 30s
+[2026-06-25 20:25:49] [INFO] Cycle 559 — 10 open pairs — sleeping 30s
+[2026-06-25 20:26:30] [INFO] Cycle 560 — 10 open pairs — sleeping 30s
+[2026-06-25 20:27:09] [INFO] Cycle 561 — 10 open pairs — sleeping 30s
+[2026-06-25 20:27:49] [INFO] Cycle 562 — 10 open pairs — sleeping 30s
+[2026-06-25 20:28:29] [INFO] Cycle 563 — 10 open pairs — sleeping 30s
+[2026-06-25 20:29:12] [INFO] Cycle 564 — 10 open pairs — sleeping 30s
+[2026-06-25 20:29:52] [INFO] Cycle 565 — 10 open pairs — sleeping 30s
+[2026-06-25 20:30:32] [INFO] Cycle 566 — 10 open pairs — sleeping 30s
+[2026-06-25 20:31:11] [INFO] Cycle 567 — 10 open pairs — sleeping 30s
+[2026-06-25 20:31:51] [INFO] Cycle 568 — 10 open pairs — sleeping 30s
+[2026-06-25 20:32:30] [INFO] Cycle 569 — 10 open pairs — sleeping 30s
+[2026-06-25 20:33:13] [INFO] Cycle 570 — 10 open pairs — sleeping 30s
+[2026-06-25 20:33:55] [WARNING] kv_get(hedge_bot_config): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-25 20:34:03] [INFO] Cycle 571 — 10 open pairs — sleeping 30s
+[2026-06-25 20:34:42] [INFO] Cycle 572 — 10 open pairs — sleeping 30s
+[2026-06-25 20:35:24] [INFO] Cycle 573 — 10 open pairs — sleeping 30s
+[2026-06-25 20:36:01] [INFO] Cycle 574 — 10 open pairs — sleeping 30s
+[2026-06-25 20:36:39] [INFO] Cycle 575 — 10 open pairs — sleeping 30s
+[2026-06-25 20:37:18] [INFO] Cycle 576 — 10 open pairs — sleeping 30s
+[2026-06-25 20:38:00] [WARNING] kv_get(hedge_bot_config): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-25 20:38:12] [WARNING] fetch_signals: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-25 20:38:12] [INFO] Closing NZDUSD/WTICO_USD reason=DISMISSED
+[2026-06-25 20:38:12] [INFO] [PAPER] Close NZDUSD ticket=415345737
+[2026-06-25 20:38:12] [INFO] [PAPER] Close WTICO_USD ticket=415345738
+[2026-06-25 20:38:12] [INFO] Closing NZDUSD/BCO_USD reason=DISMISSED
+[2026-06-25 20:38:12] [INFO] [PAPER] Close NZDUSD ticket=415348970
+[2026-06-25 20:38:12] [INFO] [PAPER] Close BCO_USD ticket=415348971
+[2026-06-25 20:38:12] [INFO] Closing USDCHF/GBPJPY reason=DISMISSED
+[2026-06-25 20:38:12] [INFO] [PAPER] Close USDCHF ticket=415352287
+[2026-06-25 20:38:12] [INFO] [PAPER] Close GBPJPY ticket=415352297
+[2026-06-25 20:38:27] [INFO] Closing USDCHF/EURJPY reason=DISMISSED
+[2026-06-25 20:38:27] [INFO] [PAPER] Close USDCHF ticket=415357749
+[2026-06-25 20:38:27] [INFO] [PAPER] Close EURJPY ticket=415357749
+[2026-06-25 20:38:27] [INFO] Closing USDCHF/AUDJPY reason=DISMISSED
+[2026-06-25 20:38:27] [INFO] [PAPER] Close USDCHF ticket=415361748
+[2026-06-25 20:38:27] [INFO] [PAPER] Close AUDJPY ticket=415361749
+[2026-06-25 20:38:27] [INFO] Closing USDCHF/CADJPY reason=DISMISSED
+[2026-06-25 20:38:27] [INFO] [PAPER] Close USDCHF ticket=415365333
+[2026-06-25 20:38:27] [INFO] [PAPER] Close CADJPY ticket=415365334
+[2026-06-25 20:38:27] [INFO] Closing GBPJPY/USDZAR reason=DISMISSED
+[2026-06-25 20:38:27] [INFO] [PAPER] Close GBPJPY ticket=415368324
+[2026-06-25 20:38:27] [INFO] [PAPER] Close USDZAR ticket=415368326
+[2026-06-25 20:38:27] [INFO] Closing EURJPY/USDCNH reason=DISMISSED
+[2026-06-25 20:38:27] [INFO] [PAPER] Close EURJPY ticket=415370908
+[2026-06-25 20:38:27] [INFO] [PAPER] Close USDCNH ticket=415370910
+[2026-06-25 20:38:39] [WARNING] patch_audit_close(415370908): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-25 20:38:39] [INFO] Closing EURJPY/USDZAR reason=DISMISSED
+[2026-06-25 20:38:39] [INFO] [PAPER] Close EURJPY ticket=415374698
+[2026-06-25 20:38:39] [INFO] [PAPER] Close USDZAR ticket=415374702
+[2026-06-25 20:38:39] [INFO] Closing EURCHF/US30_USD reason=DISMISSED
+[2026-06-25 20:38:39] [INFO] [PAPER] Close EURCHF ticket=415378117
+[2026-06-25 20:38:39] [INFO] [PAPER] Close US30_USD ticket=415378119
+[2026-06-25 20:38:51] [WARNING] kv_put(hedge_bot_status): HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-25 20:38:51] [INFO] Cycle 577 — 0 open pairs — sleeping 30s
+[2026-06-25 20:39:40] [WARNING] fetch_signals: HTTPSConnectionPool(host='macrofxmodel-production.up.railway.app', port=443): Read timed out. (read timeout=10)
+[2026-06-25 20:39:55] [INFO] Cycle 578 — 0 open pairs — sleeping 30s
+[2026-06-25 20:40:42] [INFO] Signal NZDUSD-WTICO_USD-1782415312074: NZDUSD LONG 0.25L / WTICO_USD SHORT 0.11L  z=-2.10  corr=-0.436
+[2026-06-25 20:40:42] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56513 SL=0.54513 → ticket=416442872
+[2026-06-25 20:40:42] [INFO] [PAPER] SHORT 0.11 WTICO_USD SL=73.45500 → ticket=416442873
+[2026-06-25 20:40:46] [INFO] Signal NZDUSD-BCO_USD-1782415312074: NZDUSD LONG 0.25L / BCO_USD SHORT 0.11L  z=-2.12  corr=-0.438
+[2026-06-25 20:40:46] [INFO] [PAPER] LONG 0.25 NZDUSD @ 0.56504 SL=0.54504 → ticket=416446937
+[2026-06-25 20:40:46] [INFO] [PAPER] SHORT 0.11 BCO_USD SL=77.08200 → ticket=416446938
+[2026-06-25 20:40:54] [INFO] Signal USDCHF-GBPJPY-1782415312074: USDCHF LONG 0.24L / GBPJPY SHORT 0.19L  z=-2.52  corr=-0.680
+[2026-06-25 20:40:54] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.80953 SL=0.78953 → ticket=416454746
+[2026-06-25 20:40:54] [INFO] [PAPER] SHORT 0.19 GBPJPY @ 213.56700 SL=215.56700 → ticket=416454746
+[2026-06-25 20:40:58] [INFO] Signal USDCHF-EURJPY-1782415312074: USDCHF LONG 0.24L / EURJPY SHORT 0.27L  z=-2.43  corr=-0.704
+[2026-06-25 20:40:58] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.80965 SL=0.78965 → ticket=416458727
+[2026-06-25 20:40:58] [INFO] [PAPER] SHORT 0.27 EURJPY SL=186.03200 → ticket=416458727
+[2026-06-25 20:41:03] [INFO] Signal USDCHF-AUDJPY-1782415312074: USDCHF LONG 0.24L / AUDJPY SHORT 0.25L  z=-2.10  corr=-0.648
+[2026-06-25 20:41:03] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.80971 SL=0.78971 → ticket=416463634
+[2026-06-25 20:41:03] [INFO] [PAPER] SHORT 0.25 AUDJPY SL=113.86300 → ticket=416463635
+[2026-06-25 20:41:05] [INFO] Signal USDCHF-CADJPY-1782415312074: USDCHF LONG 0.24L / CADJPY SHORT 0.13L  z=-2.23  corr=-0.341
+[2026-06-25 20:41:05] [INFO] [PAPER] LONG 0.24 USDCHF @ 0.80971 SL=0.78971 → ticket=416465991
+[2026-06-25 20:41:05] [INFO] [PAPER] SHORT 0.13 CADJPY SL=115.98900 → ticket=416465993
+[2026-06-25 20:41:18] [INFO] Signal GBPJPY-USDZAR-1782415312074: GBPJPY LONG 0.28L / USDZAR SHORT 0.16L  z=-2.00  corr=-0.626
+[2026-06-25 20:41:18] [INFO] [PAPER] LONG 0.28 GBPJPY @ 213.54800 SL=211.54800 → ticket=416478871
+[2026-06-25 20:41:18] [INFO] [PAPER] SHORT 0.16 USDZAR SL=16.49510 → ticket=416478873
+[2026-06-25 20:41:24] [INFO] Signal EURJPY-USDCNH-1782415312074: EURJPY LONG 0.39L / USDCNH SHORT 0.15L  z=-2.09  corr=-0.603
+[2026-06-25 20:41:24] [INFO] [PAPER] LONG 0.39 EURJPY SL=182.03200 → ticket=416484680
+[2026-06-25 20:41:24] [INFO] [PAPER] SHORT 0.15 USDCNH @ 6.80188 SL=6.82188 → ticket=416484681
+[2026-06-25 20:41:29] [INFO] Signal EURJPY-USDZAR-1782415312074: EURJPY LONG 0.39L / USDZAR SHORT 0.16L  z=-2.13  corr=-0.641
+[2026-06-25 20:41:29] [INFO] [PAPER] LONG 0.39 EURJPY SL=182.03200 → ticket=416489998
+[2026-06-25 20:41:30] [INFO] [PAPER] SHORT 0.16 USDZAR SL=16.49510 → ticket=416490002
+[2026-06-25 20:41:35] [INFO] Signal EURCHF-US30_USD-1782415312074: EURCHF LONG 0.23L / US30_USD SHORT 0.08L  z=-2.33  corr=-0.332
+[2026-06-25 20:41:35] [INFO] [PAPER] LONG 0.23 EURCHF SL=0.90102 → ticket=416495662
+[2026-06-25 20:41:35] [INFO] [PAPER] SHORT 0.08 US30_USD SL=52136.02000 → ticket=416495665
+[2026-06-25 20:41:45] [INFO] Cycle 579 — 10 open pairs — sleeping 30s
+[2026-06-25 20:42:26] [INFO] Cycle 580 — 10 open pairs — sleeping 30s
+[2026-06-25 20:43:08] [INFO] Cycle 581 — 10 open pairs — sleeping 30s
+[2026-06-25 20:43:48] [INFO] Cycle 582 — 10 open pairs — sleeping 30s
+[2026-06-25 20:44:28] [INFO] Cycle 583 — 10 open pairs — sleeping 30s
+[2026-06-25 20:45:07] [INFO] Cycle 584 — 10 open pairs — sleeping 30s
+[2026-06-25 20:45:48] [INFO] Cycle 585 — 10 open pairs — sleeping 30s
+[2026-06-25 20:46:25] [INFO] Cycle 586 — 10 open pairs — sleeping 30s

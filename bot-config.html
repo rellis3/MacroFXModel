@@ -5725,16 +5725,15 @@ function _mt5ToOandaSymbol(raw) {
 }
 
 // /api/oanda_ohlc1m returns each bar's "datetime" as a bare London wall-clock
-// string with no timezone marker (built for journal review, which wants
-// session-local labels). Trade timestamps are true UTC (see _fmtTime), so to
-// line markers up with bars — and to match the UTC times already shown in
-// the Trade History table — every bar has to be converted back to true UTC.
-// London is UTC+0 (GMT) or UTC+1 (BST) depending on the date, so the offset
-// is derived empirically rather than hardcoded.
-function _londonOffsetMinutes(approxDate) {
-  const utcStr = approxDate.toLocaleString('en-US', { timeZone: 'UTC' });
-  const lonStr = approxDate.toLocaleString('en-US', { timeZone: 'Europe/London' });
-  return Math.round((new Date(lonStr) - new Date(utcStr)) / 60000);
+// string with no timezone marker. Trade timestamps are true UTC (see _fmtTime),
+// so every bar must be converted back to true UTC so markers align correctly.
+// Offset = difference between the London wall-clock interpretation and true UTC.
+// Uses the same sv-SE locale trick the server already uses for the datetime
+// strings, so the round-trip is guaranteed consistent without locale-string parsing.
+function _londonOffsetMinutes(epochSec) {
+  const lonStr    = new Date(epochSec * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 19);
+  const fakeEpoch = Math.floor(new Date(lonStr.replace(' ', 'T') + 'Z').getTime() / 1000);
+  return Math.round((fakeEpoch - epochSec) / 60);
 }
 
 let _tcChart = null, _tcSeries = null, _tcPriceLines = [];
@@ -5782,9 +5781,7 @@ async function openTradeChartModal(idx) {
   const closeDateStr = new Date(t.time_close * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
   const daySpan = Math.round((new Date(closeDateStr + 'T00:00:00Z') - new Date(dateStr + 'T00:00:00Z')) / 86400000);
   const days    = Math.min(14, Math.max(1, daySpan + 1));
-  // Offset barely changes within a session, but recompute around the trade's
-  // own date so a trade straddling a DST changeover still resolves correctly.
-  const offsetMin = _londonOffsetMinutes(new Date(t.time_open * 1000));
+  const offsetMin = _londonOffsetMinutes(t.time_open);
 
   try {
     const r = await fetch(`/api/oanda_ohlc1m?symbol=${encodeURIComponent(sym)}&date=${dateStr}&days=${days}`);
