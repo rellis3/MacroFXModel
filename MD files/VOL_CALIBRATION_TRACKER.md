@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-06-26 (Track 1 checkpoint #5 — gap widening negative, trigger met, see below).
+Last updated: 2026-06-26 (hl/oc correction factors recalibrated — shape-only constants, revert values preserved).
 
 ---
 
@@ -20,6 +20,14 @@ Last updated: 2026-06-26 (Track 1 checkpoint #5 — gap widening negative, trigg
   diagnostic log line is deployed (PR #384) — **waiting on the next live
   `runVolForecast()` run's Railway log output** to disambiguate. Nudge the user
   for this log line next time a news-heavy session comes up.
+
+- index hl/oc correction factors: **recalibrated 2026-06-26** — replaced the
+  Jun-17 vol-contaminated values (0.81/0.78/0.85/0.90) with shape-only
+  constants validated across 3 sessions spanning +22% to −21% raw vol Δ
+  (stable within ±0.02–0.04): **hl_50=0.97, hl_75=0.94, oc_50=1.06,
+  oc_75=1.10**. Revert values preserved in code comment. With shape-only
+  factors, displayed HL/OC error will now track raw vol Δ linearly instead
+  of amplifying/sign-flipping it. Next checkpoint will validate.
 
 - index/NQ GARCH persistence: **gap widening negative, trigger met
   (2026-06-26)** — 5-session trajectory: +59.0%→+18.1%→+9.7%→−4.9%→**−21.0%**.
@@ -244,6 +252,15 @@ noise) before drawing any conclusion. HL/OC corrected outputs got
 significantly worse as a side effect: −21% to −26%, vs −7.7%/−9.4% on
 Jun-24 — the over-correction problem is compounding fast and is now the
 more urgent of the two open threads.
+
+**Code change (2026-06-26) — index hl/oc correction factors recalibrated**:
+Replaced the Jun-17 single-session vol-contaminated values with shape-only
+constants derived by extracting S = (ref_HL × ours_vol × old_corr) / (ref_vol
+× ours_HL_displayed) across 3 sessions (Jun-17 +22%, Jun-25 −4.9%, Jun-26
+−21%): averaged to hl_50=0.975→0.97, hl_75=0.940→0.94, oc_50=1.058→1.06,
+oc_75=1.100→1.10. Shape factors were stable across all three sessions despite
+the 43pp swing in raw vol Δ; the old composite factors were not. Revert values
+(0.81/0.78/0.85/0.90) preserved in the code comment for easy rollback.
 
 **Checkpoint result (2026-06-26)**: Δ widened to −21.0% — second consecutive
 negative session, triggering the item-4 refit condition. But the raw gap
