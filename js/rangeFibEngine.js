@@ -1,0 +1,478 @@
+/**
+ * Range-Fib Backtester — STRIPPED engine.
+ *
+ * The bare range-extension strategy, nothing else. No confluence requirement,
+ * no WaveTrend, no confluence modules, no priority ranking, no ATR modes.
+ *
+ *   Asia range:   5m  body high/low  (00:00–06:00 UTC)
+ *   Monday range: 15m body high/low  (full Monday UTC)   — optional level source
+ *   Fib levels:   range EXTENSIONS — price = low + range × level   (45-level set)
+ *   Entry:        limit order at a fib level, inside the trade window
+ *                   • extension level ABOVE the range  → SELL (fade the extension)
+ *                   • extension level BELOW the range  → BUY
+ *                   • inside-range level (tradeZone='both') → context by midpoint
+ *   Stop:         range-based — SL dist = asiaRange × slMult, floored at minSlPips
+ *   Target:       'structural' (next enabled fib level toward target, minus buffer)
+ *                 | 'rr' (fixed R multiple) | 'midpoint' (back to range mid)
+ *   Exit:         walked on 1-minute bars, chronologically, ONE position at a time.
+ *                 SL checked before TP within a bar (pessimistic). EOD close at window end.
+ *   Costs:        (spread + slippage) pips deducted from every trade.
+ *
+ * This is intentionally small (range calc + fib projection + entry/exit walk) so the
+ * base edge can be validated honestly before any selectivity layer is added back.
+ */
+
+import { loadM1ForPair, BT_M1_DIR } from './volBacktestM1Engine.js';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+// Range-extension multiples (NOT statistical SDs). 0 = range low, 1 = range high.
+export const FIB_LEVELS = [
+  -9.5, -9, -8.5, -8, -7.5, -7, -6.5, -6, -5.5, -5,
+  -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, -0.25,
+  0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3,
+  3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8,
+  8.5, 9, 9.5, 10, 10.5,
+];
+const KEY_LEVELS = new Set([0, 0.25, 0.5, 0.75, 1.0]);
+
+export const PIP_SIZE = {
+  eurusd: 0.0001, gbpusd: 0.0001, audusd: 0.0001, nzdusd: 0.0001,
+  usdcad: 0.0001, usdchf: 0.0001, eurgbp: 0.0001, euraud: 0.0001,
+  eurcad: 0.0001, eurchf: 0.0001, eurnzd: 0.0001, audnzd: 0.0001,
+  audcad: 0.0001, audchf: 0.0001, gbpaud: 0.0001, gbpcad: 0.0001,
+  gbpchf: 0.0001, gbpnzd: 0.0001,
+  usdjpy: 0.01, eurjpy: 0.01, gbpjpy: 0.01, audjpy: 0.01,
+  cadjpy: 0.01, chfjpy: 0.01, nzdjpy: 0.01,
+  gold:   0.1,
+};
+
+export const RANGE_FIB_INSTRUMENTS = [
+  'eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf', 'gbpjpy',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd',
+  'audjpy', 'audnzd', 'audcad', 'audchf',
+  'gbpaud', 'gbpcad', 'gbpchf', 'gbpnzd',
+  'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
+];
+
+// ── M1 packed-array helpers (self-contained copies) ───────────────────────────
+
+// Binary search: first index where times[i] >= target. O(log N).
+function _bisect(times, target) {
+  let lo = 0, hi = times.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (times[mid] < target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function extractBars(packed, fromEpoch, toEpoch) {
+  const { n, times, opens, highs, lows, closes } = packed;
+  const start = _bisect(times, fromEpoch);
+  const bars  = [];
+  for (let i = start; i < n && times[i] < toEpoch; i++) {
+    bars.push({ time: times[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+  }
+  return bars;
+}
+
+function resampleTo(bars, minutes) {
+  const secs = minutes * 60;
+  const buckets = new Map();
+  for (const bar of bars) {
+    const bucket = bar.time - (bar.time % secs);
+    if (!buckets.has(bucket)) {
+      buckets.set(bucket, { time: bucket, open: bar.open, high: bar.high, low: bar.low, close: bar.close });
+    } else {
+      const b = buckets.get(bucket);
+      b.high  = Math.max(b.high, bar.high);
+      b.low   = Math.min(b.low,  bar.low);
+      b.close = bar.close;
+    }
+  }
+  return [...buckets.values()].sort((a, b) => a.time - b.time);
+}
+
+// ── Session range calculators (bodies only) ───────────────────────────────────
+
+function bodyRange(m1Bars, minutes) {
+  if (!m1Bars.length) return null;
+  const bars = resampleTo(m1Bars, minutes);
+  let high = -Infinity, low = Infinity;
+  for (const bar of bars) {
+    high = Math.max(high, Math.max(bar.open, bar.close));
+    low  = Math.min(low,  Math.min(bar.open, bar.close));
+  }
+  if (!isFinite(high) || !isFinite(low) || low >= high) return null;
+  return { high, low, range: high - low };
+}
+
+const asiaBodyRange   = (m1) => bodyRange(m1, 5);    // 5m  bodies, 00:00–06:00 UTC
+const mondayBodyRange = (m1) => bodyRange(m1, 15);   // 15m bodies, full Monday UTC
+
+// ── Fib projection ────────────────────────────────────────────────────────────
+
+function calcFibs(low, range, levels) {
+  return levels.map(lv => ({ level: lv, price: low + range * lv, isKey: KEY_LEVELS.has(lv) }));
+}
+
+// ── Pre-built session caches (fast previous-Asia / Monday lookup) ─────────────
+
+function _buildAsiaSessions(packed) {
+  // One Asia range per UTC date present in the data.
+  const { n, times } = packed;
+  const byDate = new Map();
+  for (let i = 0; i < n; i++) {
+    const h = Math.floor(times[i] / 3600) % 24;
+    if (h >= 0 && h < 6) {
+      const day = times[i] - (times[i] % 86400);
+      if (!byDate.has(day)) byDate.set(day, true);
+    }
+  }
+  const out = [];
+  for (const day of [...byDate.keys()].sort((a, b) => a - b)) {
+    const bars = extractBars(packed, day, day + 6 * 3600);
+    if (bars.length < 10) continue;
+    const r = asiaBodyRange(bars);
+    if (r) out.push({ epoch: day, ...r });
+  }
+  return out;
+}
+
+function _buildMondayRanges(packed) {
+  const { n, times } = packed;
+  const mondays = new Set();
+  for (let i = 0; i < n; i++) {
+    const day = times[i] - (times[i] % 86400);
+    if ((Math.floor(day / 86400) + 4) % 7 === 1) mondays.add(day); // 1 = Monday
+  }
+  const out = [];
+  for (const day of [...mondays].sort((a, b) => a - b)) {
+    const bars = extractBars(packed, day, day + 24 * 3600);
+    if (bars.length < 20) continue;
+    const r = mondayBodyRange(bars);
+    if (r) out.push({ epoch: day, ...r });
+  }
+  return out;
+}
+
+function _prevAsia(sessions, dayEpoch) {
+  let prev = null;
+  for (const s of sessions) { if (s.epoch >= dayEpoch) break; prev = s; }
+  return prev;
+}
+
+function _mondayForDay(ranges, dayEpoch) {
+  // Most recent Monday on/before this day, within the same week.
+  let mon = null;
+  for (const m of ranges) { if (m.epoch > dayEpoch) break; mon = m; }
+  if (!mon) return null;
+  return (dayEpoch - mon.epoch) < 7 * 86400 ? mon : null;
+}
+
+// ── Single-day simulation (chronological, one position at a time) ─────────────
+
+function simulateDay(packed, dateStr, opts) {
+  const {
+    levelSource   = 'asia',     // 'asia' | 'monday' | 'both'
+    tradeZone     = 'outside',  // 'outside' (extensions only) | 'both' (incl. inside levels)
+    enabledFibs   = null,       // Set of allowed fib multiples, or null = all
+    slMult        = 0.5,        // SL dist = asiaRange × slMult
+    minSlPips     = 5,          // SL floor in pips
+    tpMode        = 'structural', // 'structural' | 'rr' | 'midpoint'
+    tpR           = 2.0,        // R multiple when tpMode='rr'
+    tpBufPips     = 5,          // buffer subtracted from structural TP level
+    tradeHourFrom = 6,          // entry window start (UTC hour)
+    tradeHourTo   = 22,         // entry window end   (UTC hour)
+    spreadPips    = 0.8,
+    slippagePips  = 0.5,
+    pipSize       = 0.0001,
+    fibLevels     = FIB_LEVELS,
+    _asiaSessions = null,
+    _mondayRanges = null,
+  } = opts;
+
+  const dayEpoch = Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
+
+  // Asia range (current day)
+  const asiaM1 = extractBars(packed, dayEpoch, dayEpoch + 6 * 3600);
+  if (asiaM1.length < 10) return [];
+  const asia = asiaBodyRange(asiaM1);
+  if (!asia || asia.range < pipSize * 5) return [];
+
+  // Monday range (if used)
+  let monday = null;
+  if (levelSource !== 'asia') {
+    monday = _mondayRanges ? _mondayForDay(_mondayRanges, dayEpoch) : null;
+    if (!monday && !_mondayRanges) {
+      const dow      = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+      const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
+      const monEpoch = dayEpoch - daysBack * 86400;
+      const monBars  = extractBars(packed, monEpoch, monEpoch + 24 * 3600);
+      if (monBars.length >= 20) monday = mondayBodyRange(monBars);
+    }
+  }
+
+  // Build the level list (price-sorted) from the requested source(s)
+  const sources = [];
+  if (levelSource === 'asia' || levelSource === 'both') {
+    for (const f of calcFibs(asia.low, asia.range, fibLevels)) sources.push({ ...f, source: 'asia' });
+  }
+  if ((levelSource === 'monday' || levelSource === 'both') && monday) {
+    for (const f of calcFibs(monday.low, monday.range, fibLevels)) sources.push({ ...f, source: 'monday' });
+  }
+  if (!sources.length) return [];
+
+  const slDist  = Math.max(asia.range * slMult, minSlPips * pipSize);
+  const asiaMid = asia.low + asia.range * 0.5;
+  const above   = asia.high + pipSize;   // strictly outside thresholds
+  const below   = asia.low  - pipSize;
+
+  // Resolve direction / SL / TP for each candidate level
+  const allPrices = sources.map(s => s.price);
+  const levels = [];
+  for (const f of sources) {
+    if (enabledFibs && !enabledFibs.has(f.level)) continue;
+    const price   = f.price;
+    const isAbove = price >= above;
+    const isBelow = price <= below;
+    if (tradeZone === 'outside' && !isAbove && !isBelow) continue; // skip inside-range levels
+
+    let side, sl, tp;
+    if (isAbove)      { side = 'SELL'; sl = price + slDist; }
+    else if (isBelow) { side = 'BUY';  sl = price - slDist; }
+    else { // inside range, context by midpoint
+      if (price > asiaMid) { side = 'SELL'; sl = asia.high + slDist; }
+      else                 { side = 'BUY';  sl = asia.low  - slDist; }
+    }
+    const riskDist = Math.abs(price - sl);
+
+    if (tpMode === 'rr') {
+      tp = side === 'SELL' ? price - riskDist * tpR : price + riskDist * tpR;
+    } else if (tpMode === 'midpoint') {
+      tp = asiaMid;
+    } else { // structural — next level toward target, minus buffer
+      const buf = tpBufPips * pipSize;
+      if (side === 'SELL') {
+        const below_ = allPrices.filter(p => p < price - buf).sort((a, b) => b - a);
+        tp = below_.length ? below_[0] + buf : price - riskDist * tpR;
+      } else {
+        const above_ = allPrices.filter(p => p > price + buf).sort((a, b) => a - b);
+        tp = above_.length ? above_[0] - buf : price + riskDist * tpR;
+      }
+    }
+
+    // Sanity: TP must be in profit direction, SL in loss direction
+    if (side === 'SELL' && (tp >= price || sl <= price)) continue;
+    if (side === 'BUY'  && (tp <= price || sl >= price)) continue;
+
+    levels.push({ ...f, side, entry: price, sl, tp, riskDist });
+  }
+  if (!levels.length) return [];
+
+  // Trade-window 1m bars
+  const tradeFrom = dayEpoch + tradeHourFrom * 3600;
+  const tradeTo   = dayEpoch + tradeHourTo   * 3600;
+  const bars      = extractBars(packed, tradeFrom, tradeTo);
+  if (bars.length < 5) return [];
+  const refOpen = bars[0].open;
+
+  const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dow       = DOW_NAMES[new Date(dateStr + 'T12:00:00Z').getUTCDay()];
+  const costPips  = spreadPips + slippagePips;
+
+  // Chronological single-position walk. First untouched level reached gets entered;
+  // hold until SL/TP/EOD; then go flat and look for the next level. Each level once/day.
+  const trades = [];
+  const usedLevels = new Set();
+  let pos = null; // { ...level, fillTime, mfe, mae }
+
+  const closeTrade = (exitPrice, exitTime, outcome) => {
+    const isSell  = pos.side === 'SELL';
+    const grossPips = (isSell ? (pos.entry - exitPrice) : (exitPrice - pos.entry)) / pipSize;
+    const netPips   = grossPips - costPips;
+    const slPips    = pos.riskDist / pipSize;
+    trades.push({
+      instrument:  null, // filled in by caller
+      date:        dateStr,
+      side:        pos.side,
+      outcome,
+      fib_level:   pos.level,
+      level_source: pos.source,
+      is_key:      pos.isKey,
+      entry_price: +pos.entry.toFixed(6),
+      sl_price:    +pos.sl.toFixed(6),
+      tp_price:    +pos.tp.toFixed(6),
+      exit_price:  +exitPrice.toFixed(6),
+      gross_pips:  +grossPips.toFixed(1),
+      net_pips:    +netPips.toFixed(1),
+      sl_pips:     +slPips.toFixed(1),
+      r:           slPips > 0 ? +(netPips / slPips).toFixed(3) : 0,
+      mfe_r:       slPips > 0 ? +(pos.mfe / pos.riskDist).toFixed(3) : 0,
+      mae_r:       slPips > 0 ? +(pos.mae / pos.riskDist).toFixed(3) : 0,
+      fill_time:   new Date(pos.fillTime * 1000).toISOString().substring(0, 19),
+      exit_time:   new Date(exitTime     * 1000).toISOString().substring(0, 19),
+      asia_high:   +asia.high.toFixed(6),
+      asia_low:    +asia.low.toFixed(6),
+      asia_range:  +asia.range.toFixed(6),
+      asia_mid:    +asiaMid.toFixed(6),
+      asia_range_pips: +(asia.range / pipSize).toFixed(1),
+      dow,
+    });
+    pos = null;
+  };
+
+  const lvlKey = (lv) => lv.level + ':' + lv.source;
+
+  for (const bar of bars) {
+    // 1) Manage an open position first (SL before TP within a bar — pessimistic).
+    if (pos) {
+      const isSell = pos.side === 'SELL';
+      pos.mfe = Math.max(pos.mfe, isSell ? pos.entry - bar.low  : bar.high - pos.entry);
+      pos.mae = Math.max(pos.mae, isSell ? bar.high - pos.entry : pos.entry - bar.low);
+      if (isSell) {
+        if (bar.high >= pos.sl)      closeTrade(pos.sl, bar.time, 'loss');
+        else if (bar.low <= pos.tp)  closeTrade(pos.tp, bar.time, 'win');
+      } else {
+        if (bar.low <= pos.sl)       closeTrade(pos.sl, bar.time, 'loss');
+        else if (bar.high >= pos.tp) closeTrade(pos.tp, bar.time, 'win');
+      }
+    }
+
+    // 2) Consume every level whose price traded inside this bar's range.
+    //    A resting limit fills the FIRST time price trades AT the level (low ≤ L ≤ high).
+    //    If we're flat, fill the in-bar level nearest the bar open (first reached);
+    //    any other in-bar level is marked used (its limit would also have filled → missed).
+    const inBar = levels.filter(lv => !usedLevels.has(lvlKey(lv)) && bar.low <= lv.entry && bar.high >= lv.entry);
+    if (inBar.length) {
+      inBar.sort((a, b) => Math.abs(a.entry - bar.open) - Math.abs(b.entry - bar.open));
+      for (const lv of inBar) usedLevels.add(lvlKey(lv)); // consume all that traded
+      if (!pos) {
+        const lv = inBar[0];
+        const isSell = lv.side === 'SELL';
+        pos = { ...lv, fillTime: bar.time, mfe: 0, mae: 0, refOpen };
+        // same-bar SL/TP resolution (SL first)
+        if (isSell) {
+          if (bar.high >= pos.sl)      closeTrade(pos.sl, bar.time, 'loss');
+          else if (bar.low <= pos.tp)  closeTrade(pos.tp, bar.time, 'win');
+        } else {
+          if (bar.low <= pos.sl)       closeTrade(pos.sl, bar.time, 'loss');
+          else if (bar.high >= pos.tp) closeTrade(pos.tp, bar.time, 'win');
+        }
+      }
+    }
+  }
+
+  // EOD: close any still-open position at the last bar's close
+  if (pos) {
+    const last = bars[bars.length - 1];
+    closeTrade(last.close, last.time, 'open');
+  }
+
+  return trades;
+}
+
+// ── Stats + equity ────────────────────────────────────────────────────────────
+
+export function computeStats(trades) {
+  const filled = trades.filter(t => t.outcome !== undefined);
+  const n = filled.length;
+  if (!n) return { trades: 0 };
+
+  const wins   = filled.filter(t => t.net_pips > 0);
+  const losses = filled.filter(t => t.net_pips <= 0);
+  const grossWin  = wins.reduce((a, t) => a + t.net_pips, 0);
+  const grossLoss = Math.abs(losses.reduce((a, t) => a + t.net_pips, 0));
+  const netPips   = filled.reduce((a, t) => a + t.net_pips, 0);
+
+  // R-based equity curve + max drawdown
+  let cum = 0, peak = 0, maxDD = 0;
+  const equity = [];
+  for (const t of filled) {
+    cum += t.r;
+    peak = Math.max(peak, cum);
+    maxDD = Math.min(maxDD, cum - peak);
+    equity.push({ date: t.date, cumR: +cum.toFixed(3) });
+  }
+
+  // Sharpe of per-trade R (annualised-ish, per-trade basis)
+  const rs   = filled.map(t => t.r);
+  const mean = rs.reduce((a, b) => a + b, 0) / n;
+  const sd   = Math.sqrt(rs.reduce((a, b) => a + (b - mean) ** 2, 0) / n) || 1e-9;
+  const sharpe = (mean / sd) * Math.sqrt(n); // total-sample Sharpe
+
+  // Edge concentration — top-5 days' share of net pips
+  const byDay = new Map();
+  for (const t of filled) byDay.set(t.date, (byDay.get(t.date) || 0) + t.net_pips);
+  const dayPnls = [...byDay.values()].filter(v => v > 0).sort((a, b) => b - a);
+  const top5 = dayPnls.slice(0, 5).reduce((a, b) => a + b, 0);
+  const totalPos = dayPnls.reduce((a, b) => a + b, 0) || 1e-9;
+  const edgeConc = top5 / totalPos;
+
+  return {
+    trades:       n,
+    wins:         wins.length,
+    winRate:      +(wins.length / n * 100).toFixed(1),
+    profitFactor: grossLoss > 0 ? +(grossWin / grossLoss).toFixed(2) : Infinity,
+    netPips:      +netPips.toFixed(1),
+    avgR:         +mean.toFixed(3),
+    sharpe:       +sharpe.toFixed(2),
+    maxDD_R:      +maxDD.toFixed(2),
+    edgeConc:     +(edgeConc * 100).toFixed(1), // % of positive P&L from top-5 days
+    equity,
+  };
+}
+
+// ── Public: single pair backtest ──────────────────────────────────────────────
+
+const _pairCache = new Map(); // pairKey → { packed, asiaSessions, mondayRanges, ts }
+const _TTL = 6 * 3600 * 1000;
+
+async function _getPairData(pairKey, m1Dir) {
+  const now = Date.now();
+  const c = _pairCache.get(pairKey);
+  if (c && now - c.ts < _TTL) return c;
+  const packed = await loadM1ForPair(pairKey, m1Dir);
+  if (!packed) return null;
+  const entry = { packed, asiaSessions: _buildAsiaSessions(packed), mondayRanges: _buildMondayRanges(packed), ts: now };
+  _pairCache.set(pairKey, entry);
+  return entry;
+}
+
+export function clearPairCache(pairKey) {
+  if (pairKey) _pairCache.delete(pairKey);
+  else _pairCache.clear();
+}
+
+// Test seam — exposes the pure per-day simulator for unit tests (no data layer).
+export const _test = { simulateDay, asiaBodyRange, calcFibs, resampleTo };
+
+export async function runRangeFibBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
+  const { dateFrom = '', dateTo = '', progressCb = null } = opts;
+  const data = await _getPairData(pairKey, m1Dir);
+  if (!data) throw new Error(`No M1 data for ${pairKey}`);
+  const { packed, asiaSessions, mondayRanges } = data;
+
+  const pipSize = PIP_SIZE[pairKey] ?? 0.0001;
+  const enabledFibs = Array.isArray(opts.enabledFibs) && opts.enabledFibs.length
+    ? new Set(opts.enabledFibs) : null;
+  const config = { ...opts, pipSize, enabledFibs, _asiaSessions: asiaSessions, _mondayRanges: mondayRanges };
+
+  // Dates that have an Asia session
+  const dates = asiaSessions.map(s => new Date(s.epoch * 1000).toISOString().substring(0, 10));
+
+  const trades = [];
+  let processed = 0;
+  for (const date of dates) {
+    if (dateFrom && date < dateFrom) { processed++; continue; }
+    if (dateTo   && date > dateTo)   { processed++; continue; }
+    const dayTrades = simulateDay(packed, date, config);
+    for (const t of dayTrades) { t.instrument = pairKey.toUpperCase(); trades.push(t); }
+    processed++;
+    if (progressCb && processed % 100 === 0) progressCb(processed, dates.length);
+  }
+
+  return { trades, stats: computeStats(trades), params: { ...opts, pair: pairKey } };
+}
