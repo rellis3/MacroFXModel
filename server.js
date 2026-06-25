@@ -46,8 +46,10 @@ import { generateSyntheticCogDataset, fetchRealCogDataset, generateSyntheticIntr
 import { runBacktest as runCogBacktest } from './js/cogBacktestEngine.js';
 import { runEventBacktest as runCogEventBacktest } from './js/cogEventBacktestEngine.js';
 import { computePerformanceReport as computeCogPerformanceReport, monteCarloBootstrap as cogMonteCarloBootstrap, walkForwardStability as cogWalkForwardStability, outOfSampleSplit as cogOutOfSampleSplit } from './js/nasdaqPerformance.js';
-import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_INTRADAY_SCHEDULE, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
+import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_THRESHOLD1_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_INTRADAY_SCHEDULE, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
 import { computeExitScore } from './js/cogExitEngine.js';
+import { runV2Backtest } from './js/cogStateEngine.js';
+import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE } from './js/cogV2Config.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -7250,6 +7252,225 @@ app.get('/api/cog-threshold/live', (req, res) => {
     res.json({ ok: true, data: payload });
   } catch (e) {
     console.error('[cog-threshold/live]', e?.message ?? e, e?.stack ?? '');
+    res.status(500).json({ ok: false, error: e?.message || 'Unknown engine error' });
+  }
+});
+
+// ── COG V2 Engine (persistent async state machine) ─────────────────────────
+// See js/cogV2Config.js / js/cogStateEngine.js headers for the full
+// architectural rationale. This is a NEW, parallel set of routes — it never
+// touches the V1 job map/data dir/handlers above. runV2Backtest()'s output
+// already has the exact `{tradingDays, equityCurve, equityCurveDollars}`
+// shape the V1 event-engine helpers (_dailyEquitySeriesFromEvent,
+// _tradesWithDayIndex) expect, and V2 trades carry the same entryDate field,
+// so those two helpers are reused as-is rather than re-implemented.
+
+const COG_V2_DATA_DIR = path.join(__dirname, 'VolRangeForecaster', 'data', 'cog-v2');
+
+// Per-bar frequency summary across the WHOLE backtest, in the same spirit as
+// _eventGateHitRateSummary above but shaped around V2's three persistent
+// gates instead of V1's fixed-window ones: setup/risk are "is it valid right
+// now" frequencies, trigger is "armed which direction" (rare, by design —
+// only inside the 14:20-14:35 window). Transition counts are included since
+// "how often did a gate actually change state" is the more meaningful
+// signal for a persistence-based system than a per-bar snapshot is.
+function _v2GateHitRateSummary(result) {
+  const { setupSnapshots, riskSnapshots, triggerSnapshots, setupState, riskState, triggerState } = result;
+  return {
+    barCount: setupSnapshots.length,
+    setup: _frequency(setupSnapshots, s => s.valid ? (s.direction || 'VALID') : 'INVALID'),
+    risk: _frequency(riskSnapshots, s => s.valid ? 'VALID' : 'INVALID'),
+    trigger: _frequency(triggerSnapshots, s => s.armed ? `ARMED_${s.direction}` : 'NOT_ARMED'),
+    transitions: { setup: setupState.transitions.length, risk: riskState.transitions.length, trigger: triggerState.transitions.length },
+  };
+}
+
+const cogV2Jobs = new Map();
+
+function _purgeStaleCogV2Jobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of cogV2Jobs) if (job.startedAt < cutoff) cogV2Jobs.delete(id);
+}
+
+function _latestCogV2File() {
+  if (!fs.existsSync(COG_V2_DATA_DIR)) return null;
+  const files = fs.readdirSync(COG_V2_DATA_DIR)
+    .filter(f => f.startsWith('cog_v2_') && f.endsWith('.json'))
+    .sort().reverse();
+  return files.length ? path.join(COG_V2_DATA_DIR, files[0]) : null;
+}
+
+app.post('/api/cog-v2/run', express.json({ limit: '1mb' }), (req, res) => {
+  const body = req.body || {};
+  const start = body.start || COG_DATA_DEFAULTS_CFG.backtestStart;
+  const end = body.end || undefined;
+  const seed = Number.isFinite(+body.seed) ? +body.seed : 42;
+  const accountEquity = Number.isFinite(+body.accountEquity) ? +body.accountEquity : 100000;
+  const instrumentKey = body.instrumentKey || undefined;
+  const stopModelId = body.stopModelId || undefined;
+  const requestedTier = body.requestedTier || undefined;
+
+  const jobId = `cogv2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+
+  _purgeStaleCogV2Jobs();
+  cogV2Jobs.set(jobId, { status: 'running', startedAt, phase: 'Generating synthetic intraday dataset…' });
+
+  (async () => {
+    try {
+      const dataset = generateSyntheticIntradayCogDataset({ start, end, seed });
+      cogV2Jobs.get(jobId).phase = 'Running V2 persistent state engine…';
+      const result = runV2Backtest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+
+      cogV2Jobs.get(jobId).phase = 'Computing performance & robustness reports…';
+      const daily = _dailyEquitySeriesFromEvent(result);
+      const dayIndexByDate = new Map(daily.dates.map((d, i) => [d, i]));
+      const reportTrades = _tradesWithDayIndex(result.trades, dayIndexByDate);
+      const performance = computeCogPerformanceReport({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+      const monteCarlo = cogMonteCarloBootstrap(reportTrades);
+      const walkForward = cogWalkForwardStability({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+      const outOfSample = cogOutOfSampleSplit({ dates: daily.dates, equityCurve: daily.equity, trades: reportTrades });
+      const gateHitRates = _v2GateHitRateSummary(result);
+
+      const payload = _capInfinity({
+        runAt: new Date().toISOString(),
+        synthetic: true,
+        engine: 'v2',
+        dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
+        options: { seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+        trades: result.trades,
+        equityCurve: daily.dates.map((d, i) => ({ date: d, equity: daily.equity[i], equityDollars: daily.equityDollars[i] })),
+        journal: result.journal,
+        intradayBarCount: result.dates.length,
+        performance, monteCarlo, walkForward, outOfSample, gateHitRates,
+      });
+
+      if (!fs.existsSync(COG_V2_DATA_DIR)) fs.mkdirSync(COG_V2_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(COG_V2_DATA_DIR, `cog_v2_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(payload, null, 0) + '\n');
+
+      cogV2Jobs.set(jobId, { status: 'done', startedAt, result: { ok: true, data: payload, file: path.basename(outFile) } });
+      console.log(`[cog-v2] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s) — ${payload.trades.length} trades`);
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[cog-v2/run]', msg, e?.stack ?? '');
+      cogV2Jobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/cog-v2/status/:jobId', (req, res) => {
+  const job = cogV2Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running',
+      elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+      phase: job.phase ?? 'Running…' });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+app.get('/api/cog-v2/results', (_req, res) => {
+  const file = _latestCogV2File();
+  if (!file) return res.json({ ok: false, error: 'No V2 Engine backtest results found — run a backtest first' });
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    const data = JSON.parse(raw);
+    res.json({ ok: true, data, file: path.basename(file) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Same "no black boxes" discipline as /api/cog-threshold/config: every
+// threshold/weight the V2 UI renders must trace back to either V1's
+// cogConfig.js (Setup/Risk gates reuse that math unmodified) or
+// cogV2Config.js (the Trigger Gate's own new constants).
+app.get('/api/cog-v2/config', (_req, res) => {
+  res.json({
+    ok: true,
+    setup: { score: COG_THRESHOLD1_SCORE, note: COG_V2_SETUP_NOTE },
+    risk: { score: COG_RISK_SCORE, riskTiers: COG_RISK_TIERS, stopModels: COG_STOP_MODELS, note: COG_V2_RISK_NOTE },
+    trigger: { score: COG_V2_TRIGGER_SCORE, window: COG_V2_TRIGGER_WINDOW, impulseParams: COG_V2_IMPULSE_PARAMS, nyOpenMinute: COG_V2_NY_OPEN_MINUTE, entryDeadlineMinute: COG_V2_ENTRY_DEADLINE_MINUTE },
+    execution: COG_EXECUTION,
+    dataDefaults: COG_DATA_DEFAULTS_CFG,
+    intradaySchedule: COG_INTRADAY_SCHEDULE,
+  });
+});
+
+// Live snapshot: same Phase-1 convention as /api/cog-threshold/live — a
+// synthetic intraday dataset generated through TODAY (end defaults to now
+// inside generateSyntheticIntradayCogDataset -> generateSyntheticCogDataset),
+// reporting the last bar's already-client-shaped gate snapshots
+// (setupSnapshots/riskSnapshots/triggerSnapshots — built once by
+// cogStateEngine.js, never re-derived here) plus whatever trade is open.
+// A trade still open at the dataset's last bar always closes the backtest
+// loop with reason END_OF_HISTORY_OPEN (see cogStateEngine.js) — detected
+// and re-reported as the live open trade exactly like the V1 endpoint does.
+app.get('/api/cog-v2/live', (req, res) => {
+  try {
+    const seed = Number.isFinite(+req.query.seed) ? +req.query.seed : 42;
+    const accountEquity = Number.isFinite(+req.query.accountEquity) ? +req.query.accountEquity : 100000;
+    const instrumentKey = req.query.instrumentKey || undefined;
+    const stopModelId = req.query.stopModelId || undefined;
+    const requestedTier = req.query.requestedTier || undefined;
+    const lookbackBars = Number.isFinite(+req.query.lookbackBars) ? +req.query.lookbackBars : 300;
+    // Unlike /run (a real backtest, full history from COG_DATA_DEFAULTS_CFG.
+    // backtestStart is the point), this route only needs enough bars to warm
+    // up the longest rolling window any V2 gate uses — Risk's 252-trading-day
+    // percentile/correlation lookbacks (cogConfig.js COG_RISK_SCORE) are the
+    // longest. ~545 calendar days (~1.5y) clears that with margin while
+    // keeping per-bar intraday generation fast enough for a live monitor that
+    // re-hits this on every page load and 60s auto-refresh tick; full history
+    // back to 2014 here would mean generating a decade+ of 5-minute bars on
+    // every single poll.
+    const defaultStart = new Date(Date.now() - 545 * 86_400_000).toISOString().slice(0, 10);
+    const start = req.query.start || defaultStart;
+
+    const dataset = generateSyntheticIntradayCogDataset({ start, seed });
+    const result = runV2Backtest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+
+    const lastIndex = result.dates.length - 1;
+    const lastTrade = result.trades[result.trades.length - 1] || null;
+    const isOpenNow = !!lastTrade && lastTrade.reason === 'END_OF_HISTORY_OPEN';
+    const closedTrades = isOpenNow ? result.trades.slice(0, -1) : result.trades;
+
+    let openTrade = null;
+    if (isOpenNow) {
+      const entryDayIdx = lastTrade.entryDayIdx;
+      const lastDayIdx = result.dayIndexForBar[lastIndex];
+      const liveExit = computeExitScore(
+        { gate1: result.threshold1Series[lastTrade.entryIndex], gate1B: result.threshold1Series[lastTrade.entryIndex], gate2: result.gate2Series[entryDayIdx], gate3: result.gate3Series[entryDayIdx] },
+        { gate1: result.threshold1Series[lastIndex], gate1B: result.threshold1Series[lastIndex], gate2: result.gate2Series[lastDayIdx], gate3: result.gate3Series[lastDayIdx] },
+        lastTrade.direction
+      );
+      openTrade = { ...lastTrade, liveExit };
+    }
+
+    const startIdx = Math.max(0, result.journal.length ? result.journal.findIndex(j => j.index >= lastIndex - lookbackBars) : -1);
+    const recentJournal = startIdx === -1 ? [] : result.journal.slice(startIdx);
+
+    const payload = _capInfinity({
+      asOf: result.dates[lastIndex],
+      asOfTime: result.minuteOfDay[lastIndex],
+      synthetic: true,
+      options: { seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+      setup: result.setupSnapshots[lastIndex],
+      risk: result.riskSnapshots[lastIndex],
+      trigger: result.triggerSnapshots[lastIndex],
+      openTrade,
+      recentTrades: closedTrades.slice(-20).reverse(),
+      journal: recentJournal,
+      equity: { multiple: result.equityCurve[lastIndex], dollars: result.equityCurveDollars[lastIndex] },
+    });
+
+    res.json({ ok: true, data: payload });
+  } catch (e) {
+    console.error('[cog-v2/live]', e?.message ?? e, e?.stack ?? '');
     res.status(500).json({ ok: false, error: e?.message || 'Unknown engine error' });
   }
 });

@@ -96,11 +96,15 @@ export function buildEntryPlan({ action, gate2Entry, fillOpen, instrument, stopM
   const tierConfig = COG_RISK_TIERS[tier];
   const riskAmount = accountEquity * COG_EXECUTION.baseRiskPctOfEquity * tierConfig.riskPct;
   const pointValue = instrument.pointValue;
+  const sizeIncrement = instrument.sizeIncrement ?? 1;
   // Sized off the STANDARD stop (the conservative stop is reported for
-  // comparison but never used to inflate size).
-  const positionSize = Math.floor(riskAmount / (stopStandard.distance * pointValue));
+  // comparison but never used to inflate size), floored to the instrument's
+  // smallest tradable increment (1 = whole contracts; <1 = research-only
+  // fractional sizing — see cogConfig.js instruments note).
+  const rawSize = riskAmount / (stopStandard.distance * pointValue);
+  const positionSize = Math.round((Math.floor(rawSize / sizeIncrement) * sizeIncrement) * 1e6) / 1e6;
 
-  if (positionSize < 1) {
+  if (positionSize < sizeIncrement) {
     return { error: `Risk amount ($${riskAmount.toFixed(0)}) too small for stop distance (${stopStandard.distance.toFixed(2)} pts) — 0 ${instrument.label} units sized` };
   }
 

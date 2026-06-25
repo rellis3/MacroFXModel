@@ -333,9 +333,16 @@ window.onEngineChange = onEngineChange;
 function updateInstrumentNote() {
   const key = document.getElementById('cfg_instrument').value;
   const note = document.getElementById('instrumentNote');
-  if (key === 'primary') {
+  const NOTES = {
+    primary: '<strong>⚠ Sizing note:</strong> NQ Futures (pointValue $20/pt) combined with the 1% base-risk-of-equity setting floors position size to 0 contracts for most stop-model × tier combinations at typical account sizes — only Model A (ATR fraction) + Aggressive tier reliably sizes a non-zero position on NQ. This is a position-sizing economics reality, not an engine bug. Switch to QQQ (pointValue $1) or MNQ (pointValue $2) to see trades fire across every stop-model/tier combination, or raise Account Equity.',
+    micro: '<strong>ℹ MNQ note:</strong> Micro Nasdaq futures (pointValue $2/pt, 1/10th of NQ) — a real, separately-listed CME product, not a simulation. Sizes a non-zero position across a much wider range of stop-model × tier combinations than full-size NQ at the same account equity.',
+    frac10: '<strong>⚠ Research-only:</strong> simulates sizing full-size NQ ($20/pt) down to 0.1-contract increments. Not a real tradable product — no broker offers fractional futures contracts. Use this only to isolate whether NQ trade starvation is a sizing-granularity problem vs a signal problem.',
+    frac25: '<strong>⚠ Research-only:</strong> simulates sizing full-size NQ ($20/pt) down to 0.25-contract increments. Not a real tradable product — no broker offers fractional futures contracts. Use this only to isolate whether NQ trade starvation is a sizing-granularity problem vs a signal problem.',
+    frac50: '<strong>⚠ Research-only:</strong> simulates sizing full-size NQ ($20/pt) down to 0.5-contract increments. Not a real tradable product — no broker offers fractional futures contracts. Use this only to isolate whether NQ trade starvation is a sizing-granularity problem vs a signal problem.',
+  };
+  if (NOTES[key]) {
     note.style.display = '';
-    note.innerHTML = '<strong>⚠ Sizing note:</strong> NQ Futures (pointValue $20/pt) combined with the 1% base-risk-of-equity setting floors position size to 0 contracts for most stop-model × tier combinations at typical account sizes — only Model A (ATR fraction) + Aggressive tier reliably sizes a non-zero position on NQ. This is a position-sizing economics reality, not an engine bug. Switch to QQQ (pointValue $1) to see trades fire across every stop-model/tier combination, or raise Account Equity.';
+    note.innerHTML = NOTES[key];
   } else {
     note.style.display = 'none';
   }
