@@ -62,7 +62,7 @@ import { buildTradingDays } from './cogTradingDay.js';
 import { createGateState, updateGateState } from './cogStateStore.js';
 import { factorReasonsFromContributions, factorReasonsFromBreakdown, describeContributionTransition, describeBreakdownTransition, fmtTime } from './cogExplainability.js';
 import { COG_EXECUTION, COG_RISK_TIERS, COG_EXIT_SCORE, COG_INTRADAY_SCHEDULE } from './cogConfig.js';
-import { COG_V2_ENTRY_DEADLINE_MINUTE } from './cogV2Config.js';
+import { COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './cogV2Config.js';
 
 // Same constant cogEventBacktestEngine.js uses — it is a private local
 // there (not exported), so redefined here rather than reaching into a V1
@@ -76,6 +76,50 @@ function toSeriesById(seriesMap) {
   const out = {};
   for (const key of Object.keys(seriesMap)) out[key] = seriesMap[key].map(p => p.value);
   return out;
+}
+
+// Rolling arithmetic mean over `window` bars — used to pre-smooth slow FRED
+// series (walcl/rrp/tga/ecb/boj) so their weekly/monthly print cadence doesn't
+// produce day-of-publication spikes in the ROC z-score sub-signals. Preserves
+// array length: early bars (< window) average whatever is available.
+function rollingMean(arr, window) {
+  const out = new Array(arr.length);
+  let sum = 0, count = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const v = arr[i];
+    if (v != null && Number.isFinite(v)) { sum += v; count++; }
+    if (i >= window) {
+      const old = arr[i - window];
+      if (old != null && Number.isFinite(old)) { sum -= old; count--; }
+    }
+    out[i] = count > 0 ? sum / count : null;
+  }
+  return out;
+}
+
+// Applies hysteresis to a raw Threshold1 score, returning the V2 gate state.
+// `prevHysState` is the hysteresis state from the PREVIOUS bar (the V2 layer's
+// own memory, not Threshold1's binary output). This prevents re-entry at the
+// bare threshold: once BULLISH, we stay BULLISH until the score drops below the
+// narrow stayThreshold — a much wider band than cogThreshold1Gate.js's own
+// enter/stay conflation (it uses bullishThreshold=35 for both directions).
+function applySetupHysteresis(score, prevHysState) {
+  const { enterThreshold, stayThreshold } = COG_V2_SETUP_HYSTERESIS;
+  if (score == null) return 'INVALID';
+  if (score > enterThreshold) return 'BULLISH';
+  if (score < -enterThreshold) return 'BEARISH';
+  if (prevHysState === 'BULLISH' && score > stayThreshold) return 'BULLISH';
+  if (prevHysState === 'BEARISH' && score < -stayThreshold) return 'BEARISH';
+  return 'INVALID';
+}
+
+// Weighted confidence blend: setup_conf(0-100) × weight + risk_conf × weight +
+// trigger_conf × weight. All three are true continuous signals, not booleans —
+// this is what eliminates the "score at 34 vs 36 treated identically" problem
+// of the pure boolean conjunction. Direction must still agree separately.
+function combinedConfidence(setupConf, riskConf, triggerConf) {
+  const { setupWeight, riskWeight, triggerWeight } = COG_V2_CONFIDENCE;
+  return setupWeight * setupConf + riskWeight * riskConf + triggerWeight * triggerConf;
 }
 
 // Threshold1's BULLISH/BEARISH vocabulary -> the LONG/SHORT vocabulary the
@@ -121,7 +165,18 @@ export function runV2Backtest(dataset, options = {}) {
   for (let dayIdx = 0; dayIdx < tradingDays.length; dayIdx++) {
     for (const i of tradingDays[dayIdx].bars) dayIndexForBar[i] = dayIdx;
   }
-  const threshold1Series = computeThreshold1(toSeriesById(daily.liquiditySeries), toSeriesById(gate1bSeries), numDays, n, dayIndexForBar);
+
+  // Pre-smooth slow FRED series before passing to computeThreshold1 so that
+  // weekly-updating series (WALCL, RRP) don't generate publication-day spikes
+  // in the 1d/7d ROC z-score sub-signals. The IDs to smooth come from
+  // COG_V2_SLOW_SMOOTH.ids; credit (daily, genuinely meaningful) is excluded.
+  const rawSlowById = toSeriesById(daily.liquiditySeries);
+  const slowSeriesById = { ...rawSlowById };
+  for (const id of COG_V2_SLOW_SMOOTH.ids) {
+    if (rawSlowById[id]) slowSeriesById[id] = rollingMean(rawSlowById[id], COG_V2_SLOW_SMOOTH.windowDays);
+  }
+
+  const threshold1Series = computeThreshold1(slowSeriesById, toSeriesById(gate1bSeries), numDays, n, dayIndexForBar);
   const triggerSeries = computeTriggerGate({ ohlc, n, minuteOfDay, tradingDays, dayIndexForBar, gate3Series });
 
   const cadenceBars = Math.max(1, Math.round(COG_EXIT_SCORE.defaultReevaluateMinutes / COG_INTRADAY_SCHEDULE.barIntervalMinutes));
@@ -147,6 +202,12 @@ export function runV2Backtest(dataset, options = {}) {
   let pendingEntry = null;
   let currentDayIdx = -1;
   let deadlinePassedToday = false;
+  // V2 hysteresis state: the setup gate's own memory layer, separate from
+  // Threshold1's bar-by-bar binary output (which uses its own 35/-35 thresholds
+  // and has no persistence). Initialized to INVALID at run start.
+  let prevHysState = 'INVALID';
+  // Streak counter for COG_V2_MIN_SETUP_PERSIST_BARS (currently 0 = disabled).
+  let setupValidStreakBars = 0;
 
   for (let i = 0; i < n; i++) {
     const dayIdx = dayIndexForBar[i];
@@ -162,9 +223,29 @@ export function runV2Backtest(dataset, options = {}) {
     if (!openTrade && !pendingEntry && !deadlinePassedToday && minuteOfDay[i] > COG_V2_ENTRY_DEADLINE_MINUTE) {
       deadlinePassedToday = true;
     }
-    const setupEval = (deadlinePassedToday && t1.state !== 'INVALID')
-      ? { ...t1, state: 'INVALID', overridden: true, overrideReason: 'Time invalidation: no entry within 5 min of NY open' }
-      : t1;
+
+    // Apply V2 hysteresis over Threshold1's raw output: the T1 score is the
+    // continuous signal; applySetupHysteresis() decides the hysteresis state
+    // using enter/stay thresholds wider than T1's own 35/-35 classification.
+    const hysState = deadlinePassedToday ? 'INVALID' : applySetupHysteresis(t1.score, prevHysState);
+    // Build the augmented evaluation object that downstream logic and the UI
+    // consume. `state` is the HYSTERESIS state (not raw T1 state), `t1State`
+    // preserves the raw T1 classification for diagnostics.
+    const setupEval = {
+      ...t1,
+      state: hysState,
+      t1State: t1.state,
+      overridden: deadlinePassedToday && t1.state !== 'INVALID',
+      overrideReason: deadlinePassedToday && t1.state !== 'INVALID'
+        ? 'Time invalidation: no entry within 5 min of NY open'
+        : null,
+    };
+    prevHysState = hysState;
+
+    // Streak tracking for MIN_SETUP_PERSIST_BARS guard (disabled when 0).
+    const setupIsValid = setupEval.dataValid && setupEval.state !== 'INVALID';
+    setupValidStreakBars = setupIsValid ? setupValidStreakBars + 1 : 0;
+    const persistOk = COG_V2_MIN_SETUP_PERSIST_BARS === 0 || setupValidStreakBars >= COG_V2_MIN_SETUP_PERSIST_BARS;
 
     const setupTransition = updateGateState(setupState, setupEval, bar, {
       isValidFn: e => e.dataValid && e.state !== 'INVALID',
@@ -177,12 +258,18 @@ export function runV2Backtest(dataset, options = {}) {
     }
 
     const setupDir = setupDirection(setupEval.state);
+    // setup_conf is the absolute score (0–100): how far the score is from zero.
+    // A score of ±100 = maximum conviction; ±45 (enter threshold) = entry-level.
+    // This is the signal the confidence model's setupWeight multiplies.
+    const setupConf = setupEval.score != null ? Math.abs(setupEval.score) : 0;
     setupSnapshots[i] = {
-      valid: setupEval.dataValid && setupEval.state !== 'INVALID',
+      valid: setupIsValid && persistOk,
       direction: setupDir,
       score: setupEval.score,
+      t1State: setupEval.t1State,
+      hysState,
       validSince: setupState.validSince,
-      confidence: Math.round((setupEval.coverage || 0) * 100),
+      confidence: setupConf,
       reasons: factorReasonsFromContributions(setupEval.contributions, setupEval.reasons),
     };
 
@@ -205,12 +292,18 @@ export function runV2Backtest(dataset, options = {}) {
       ? (stopModel.standard / liveClose) * 100
       : null;
     const riskPctVal = eligibleTier ? COG_RISK_TIERS[eligibleTier].riskPct * COG_EXECUTION.baseRiskPctOfEquity * 100 : null;
+    // risk_conf: Risk Gate's own continuous 0–100 composite score (the same score
+    // cogRiskGate.js's compositeRampScore() produced). Falls back to 0 when
+    // the Risk Gate has no score (invalid data), not null — so the confidence
+    // blend degrades gracefully rather than throwing on a null multiply.
+    const riskConf = g2.score != null ? g2.score : 0;
     riskSnapshots[i] = {
       valid: g2.valid,
       stopPct,
       riskPct: riskPctVal,
       tier: eligibleTier,
       score: g2.score,
+      confidence: riskConf,
       validSince: riskState.validSince,
       reasons: factorReasonsFromBreakdown(g2.breakdown),
     };
@@ -226,19 +319,37 @@ export function runV2Backtest(dataset, options = {}) {
       logJournal(i, 'TRIGGER', `Trigger ARMED ${trig.direction}`, { transition: triggerTransition.transition });
     }
 
+    // trigger_conf: Trigger Gate's own 0–100 impulse score. The armThreshold
+    // check (inWindow + impulseScore > 60) is now subsumed by the confidence
+    // blend — a fully armed trigger naturally exceeds its threshold, which
+    // pushes triggerConf high; a barely-armed trigger contributes its partial
+    // score proportionally. Direction must still agree separately.
+    const triggerConf = trig.armed ? (trig.impulseScore ?? 0) : 0;
     triggerSnapshots[i] = {
       armed: trig.armed,
       direction: (trig.direction === 'LONG' || trig.direction === 'SHORT') ? trig.direction : null,
       impulseScore: trig.impulseScore,
+      confidence: triggerConf,
       validSince: triggerState.validSince,
       reasons: factorReasonsFromBreakdown(trig.breakdown, { worstFirst: false }),
     };
 
-    // ── Entry: Setup ∩ Risk ∩ Trigger, direction-agreeing, one at a time ──
+    // ── Entry: direction-agreeing, combined confidence > minScore ─────────
+    // Replaces the binary "all three boolean gates simultaneously valid"
+    // conjunction with a weighted continuous confidence model. The directional
+    // requirement (setup direction matches trigger direction) is kept as a hard
+    // constraint — it's a DIRECTION guard, not a STRENGTH guard. Risk gate
+    // validity is now a contributor to the confidence score rather than an
+    // independent veto. Trigger window membership (trig.armed) is the
+    // remaining structural gate: confidence scoring is only active inside the
+    // trigger window; outside it, triggerConf = 0, which naturally suppresses
+    // the blend below the threshold (20% weight at 0 is a meaningful penalty).
     if (!openTrade && !pendingEntry) {
       const setupSnap = setupSnapshots[i], riskSnap = riskSnapshots[i], trigSnap = triggerSnapshots[i];
       const directionsAgree = setupSnap.valid && trigSnap.armed && setupSnap.direction === trigSnap.direction;
-      if (directionsAgree && riskSnap.valid) {
+      const confScore = combinedConfidence(setupSnap.confidence, riskSnap.confidence, trigSnap.confidence);
+      const confPasses = confScore >= COG_V2_CONFIDENCE.minScore;
+      if (directionsAgree && confPasses) {
         const action = trigSnap.direction;
         if (i + 1 >= n) {
           logJournal(i, 'ENTRY', 'No entry: no next bar available for fill (series end)');
@@ -248,7 +359,8 @@ export function runV2Backtest(dataset, options = {}) {
           if (plan.error) {
             logJournal(i, 'ENTRY', `No entry: ${plan.error}`);
           } else {
-            pendingEntry = { action, plan, gate1Entry: setupEval, gate2Entry: g2, gate3Entry: gate3Series[dayIdx], entryDayIdx: dayIdx };
+            logJournal(i, 'ENTRY', `Signal: conf=${confScore.toFixed(1)} (setup=${setupSnap.confidence.toFixed(0)}, risk=${riskSnap.confidence.toFixed(0)}, trig=${trigSnap.confidence.toFixed(0)}) → ${action}`, { confScore });
+            pendingEntry = { action, plan, gate1Entry: setupEval, gate2Entry: g2, gate3Entry: gate3Series[dayIdx], entryDayIdx: dayIdx, confScore };
           }
         }
       }

@@ -177,15 +177,40 @@
   </div>
 </div>
 
+<!-- Combined confidence indicator — replaces binary gate-valid conjunction -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-body" style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:12px 16px;">
+    <div>
+      <div class="diag-lbl">Combined Confidence</div>
+      <div class="diag-val" id="combinedConf" style="font-size:22px;font-family:'DM Mono',monospace;">—</div>
+      <div class="diag-sub" style="font-size:10px;color:var(--text3);">0.45×setup + 0.35×risk + 0.20×trigger ≥ 78 → entry</div>
+    </div>
+    <div style="flex:1;min-width:220px;">
+      <div style="height:8px;background:var(--s2);border-radius:4px;overflow:hidden;position:relative;">
+        <div id="combinedConfBar" style="height:100%;background:#22d3ee;border-radius:4px;width:0%;transition:width .3s;"></div>
+        <div style="position:absolute;top:0;left:78%;height:100%;border-left:2px solid #f59e0b;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">
+        <span>0</span><span style="color:#f59e0b;">78 (entry)</span><span>100</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;">
+      <div><div class="diag-lbl">Setup ×0.45</div><div class="diag-val" id="confSetupContrib" style="font-size:14px;">—</div></div>
+      <div><div class="diag-lbl">Risk ×0.35</div><div class="diag-val" id="confRiskContrib" style="font-size:14px;">—</div></div>
+      <div><div class="diag-lbl">Trigger ×0.20</div><div class="diag-val" id="confTrigContrib" style="font-size:14px;">—</div></div>
+    </div>
+  </div>
+</div>
+
 <div class="gate-cards-grid">
 
   <div class="card" style="margin-top:0;">
-    <div class="card-hdr">Setup Gate <span style="font-weight:400;color:var(--text3)">Threshold1, persists VALID until invalidated</span></div>
+    <div class="card-hdr">Setup Gate <span style="font-weight:400;color:var(--text3)">Threshold1 + hysteresis (enter&gt;45, stay&gt;15)</span></div>
     <div class="card-body">
       <div class="gate-card-meta">
-        <div><div class="m-lbl">State</div><div class="m-val" id="setupState">—</div></div>
-        <div><div class="m-lbl">Score</div><div class="m-val" id="setupScore">—</div></div>
-        <div><div class="m-lbl">Confidence</div><div class="m-val" id="setupConf">—</div></div>
+        <div><div class="m-lbl">Hys State</div><div class="m-val" id="setupState">—</div></div>
+        <div><div class="m-lbl">Score / ±100</div><div class="m-val" id="setupScore">—</div></div>
+        <div><div class="m-lbl">Conf (|score|)</div><div class="m-val" id="setupConf">—</div></div>
       </div>
       <div class="diag-lbl" id="setupValidSince">—</div>
       <ul class="reasons-list" id="setupReasons"></ul>
@@ -197,7 +222,7 @@
     <div class="card-body">
       <div class="gate-card-meta">
         <div><div class="m-lbl">State</div><div class="m-val" id="riskState">—</div></div>
-        <div><div class="m-lbl">Score</div><div class="m-val" id="riskScore">—</div></div>
+        <div><div class="m-lbl">Score / 100</div><div class="m-val" id="riskScore">—</div></div>
         <div><div class="m-lbl">Tier</div><div class="m-val" id="riskTier">—</div></div>
       </div>
       <div class="diag-lbl" id="riskValidSince">—</div>
@@ -214,7 +239,7 @@
     <div class="card-body">
       <div class="gate-card-meta">
         <div><div class="m-lbl">State</div><div class="m-val" id="trigState">—</div></div>
-        <div><div class="m-lbl">Impulse Score</div><div class="m-val" id="trigScore">—</div></div>
+        <div><div class="m-lbl">Impulse / 100</div><div class="m-val" id="trigScore">—</div></div>
       </div>
       <div class="diag-lbl" id="trigValidSince">—</div>
       <ul class="reasons-list" id="trigReasons"></ul>
@@ -551,6 +576,7 @@ function renderLiveAll() {
   renderSetupGate();
   renderRiskGate();
   renderTriggerGate();
+  renderCombinedConfidence();
   renderLiveTradePanel();
   renderLiveRecentTrades();
   renderLiveJournal();
@@ -567,11 +593,26 @@ function renderLiveStatusStrip() {
     : statePill('FLAT') + ' FLAT';
 }
 
+function renderCombinedConfidence() {
+  const s = _liveData.setup, r = _liveData.risk, t = _liveData.trigger;
+  const sc = s.confidence ?? 0, rc = r.confidence ?? 0, tc = t.confidence ?? 0;
+  const combined = 0.45 * sc + 0.35 * rc + 0.20 * tc;
+  const passes = combined >= 78;
+  const el = document.getElementById('combinedConf');
+  el.textContent = `${num(combined, 1)} / 100`;
+  el.style.color = passes ? '#10b981' : combined >= 60 ? '#f59e0b' : 'var(--text)';
+  document.getElementById('combinedConfBar').style.width = `${Math.min(100, combined)}%`;
+  document.getElementById('combinedConfBar').style.background = passes ? '#10b981' : combined >= 60 ? '#f59e0b' : '#ef4444';
+  document.getElementById('confSetupContrib').textContent = `${num(sc, 1)} → ${num(0.45 * sc, 1)}`;
+  document.getElementById('confRiskContrib').textContent = `${num(rc, 1)} → ${num(0.35 * rc, 1)}`;
+  document.getElementById('confTrigContrib').textContent = `${num(tc, 1)} → ${num(0.20 * tc, 1)}`;
+}
+
 function renderSetupGate() {
   const g = _liveData.setup;
-  document.getElementById('setupState').innerHTML = statePill(g.valid ? g.direction : 'INVALID');
-  document.getElementById('setupScore').textContent = `${num(g.score, 1)} / ±100 (bull > 35, bear < -35)`;
-  document.getElementById('setupConf').textContent = g.confidence != null ? `${g.confidence}%` : '—';
+  document.getElementById('setupState').innerHTML = statePill(g.hysState ?? (g.valid ? g.direction : 'INVALID'));
+  document.getElementById('setupScore').textContent = g.score != null ? num(g.score, 1) : '—';
+  document.getElementById('setupConf').textContent = g.confidence != null ? num(g.confidence, 1) : '—';
   document.getElementById('setupValidSince').textContent = fmtValidSince(g.validSince);
   document.getElementById('setupReasons').innerHTML = reasonsList(g.reasons);
 }
@@ -579,8 +620,7 @@ function renderSetupGate() {
 function renderRiskGate() {
   const g = _liveData.risk;
   document.getElementById('riskState').innerHTML = statePill(g.valid ? 'VALID' : 'INVALID');
-  document.getElementById('riskScore').textContent = `${num(g.score, 1)} / 100`;
-  document.getElementById('riskTier').textContent = g.tier ? statePill(g.tier.toUpperCase()) : '—';
+  document.getElementById('riskScore').textContent = g.score != null ? num(g.score, 1) : '—';
   document.getElementById('riskTier').innerHTML = g.tier ? statePill(g.tier.toUpperCase()) : '—';
   document.getElementById('riskValidSince').textContent = fmtValidSince(g.validSince);
   document.getElementById('riskStopPct').textContent = g.stopPct != null ? `${num(g.stopPct, 2)}%` : '—';
@@ -591,7 +631,7 @@ function renderRiskGate() {
 function renderTriggerGate() {
   const g = _liveData.trigger;
   document.getElementById('trigState').innerHTML = statePill(g.armed ? `ARMED_${g.direction}` : 'NOT_ARMED');
-  document.getElementById('trigScore').textContent = g.impulseScore != null ? `${num(g.impulseScore, 1)} / 100 (arm > 60)` : '—';
+  document.getElementById('trigScore').textContent = g.impulseScore != null ? num(g.impulseScore, 1) : '—';
   document.getElementById('trigValidSince').textContent = fmtValidSince(g.validSince);
   document.getElementById('trigReasons').innerHTML = reasonsList(g.reasons);
 }

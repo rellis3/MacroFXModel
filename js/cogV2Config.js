@@ -99,3 +99,60 @@ export const COG_V2_TRIGGER_SCORE = {
     { id: 'orderflowProxy', label: 'Orderflow proxy (close position within bar range, direction-aligned)', weight: 0.8, rampLow: 0.3, rampHigh: 0.9 },
   ],
 };
+
+// ── Setup Gate hysteresis (V2 overlay, does not touch cogThreshold1Gate.js) ─
+// Threshold1's own thresholds (35/-35 in COG_THRESHOLD1_SCORE) classify per
+// bar independently. V2 wraps that output in a hysteresis layer here:
+// the gate only ENTERS a direction once the score exceeds enterThreshold
+// (higher bar than T1's own 35); once entered, it STAYS valid until the score
+// falls below stayThreshold (wide band to survive brief pullbacks).
+// Wide bands chosen after diagnostic analysis: median score at VALID→INVALID
+// transition was 16.3 — stay>15 is exactly that floor; enter>45 ensures we
+// don't arm on marginal threshold crossings (score was at median=35.0 at
+// INVALID→VALID transitions, meaning many entries were barely above threshold).
+export const COG_V2_SETUP_HYSTERESIS = {
+  enterThreshold: 45,  // Enter BULLISH/BEARISH: |score| must clear this (vs T1's raw 35)
+  stayThreshold: 15,   // Stay valid: |score| must stay above this once entered (wide band)
+};
+
+// ── Slow-series pre-smoothing (V2 path only, slow FRED series) ───────────
+// WALCL, RRPONTSYD, WTREGEN update weekly; ECBASSETSW/JPNASSETS monthly.
+// Passing them raw to computeThreshold1's 1d/7d ROC z-score sub-signals
+// generates extreme noise (a weekly WALCL print produces a spike on the
+// publication date and flat-lines for 4 more days). The fix: apply a rolling
+// mean to these series BEFORE computing ROC z-scores, so the z-score engine
+// sees a smoothed regime trend rather than print-day spikes.
+// `ids` lists the slow FRED inputs to smooth; credit (BAMLH0A0HYM2) is omitted
+// because it is genuinely daily-meaningful (tighter spread = risk appetite).
+// `windowDays` = rolling mean lookback in daily bars.
+export const COG_V2_SLOW_SMOOTH = {
+  windowDays: 30,
+  ids: ['walcl', 'rrp', 'tga', 'ecb', 'boj'],
+};
+
+// ── Weighted confidence model (V2, replaces binary gate conjunction) ──────
+// Instead of "all three gates must be simultaneously boolean-valid", entry
+// fires when a weighted blend of three continuous confidence scores clears a
+// threshold. This eliminates the binary flip problem: a gate at 34/35 and a
+// gate at 36/35 look identical in the boolean model but are both captured here
+// as distinct confidence contributions. Direction (setup vs trigger) must still
+// agree — confidence scoring only replaces the valid/invalid boolean, not the
+// directional requirement.
+// Confidence signals (each 0–100):
+//   setup_conf   = |setup_score|          (how far from zero — max at ±100)
+//   risk_conf    = risk gate score        (Risk Gate's own composite 0–100)
+//   trigger_conf = trigger impulse score  (Trigger Gate's own 0–100)
+export const COG_V2_CONFIDENCE = {
+  setupWeight: 0.45,
+  riskWeight: 0.35,
+  triggerWeight: 0.20,
+  minScore: 78,  // combined must clear this (0–100 scale)
+};
+
+// ── Minimum setup persistence (stub, currently disabled) ─────────────────
+// After hysteresis, setup streaks are expected to lengthen (from median 2 bars
+// to ~30 bars). If the streaks are still too short, this param adds a minimum-
+// bars-valid requirement before a setup can contribute to an entry. Disabled
+// by default (0 = no minimum); enable after observing post-hysteresis streak
+// lengths in the diagnostic. Build now, enable later.
+export const COG_V2_MIN_SETUP_PERSIST_BARS = 0;

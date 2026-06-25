@@ -49,7 +49,7 @@ import { computePerformanceReport as computeCogPerformanceReport, monteCarloBoot
 import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_THRESHOLD1_SCORE, COG_EXIT_SCORE, COG_RISK_TIERS, COG_STOP_MODELS, COG_EXECUTION, COG_INTRADAY_SCHEDULE, COG_DATA_DEFAULTS as COG_DATA_DEFAULTS_CFG } from './js/cogConfig.js';
 import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
-import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE } from './js/cogV2Config.js';
+import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -7278,9 +7278,11 @@ app.get('/api/cog-v2/results', (_req, res) => {
 app.get('/api/cog-v2/config', (_req, res) => {
   res.json({
     ok: true,
-    setup: { score: COG_THRESHOLD1_SCORE, note: COG_V2_SETUP_NOTE },
+    setup: { score: COG_THRESHOLD1_SCORE, hysteresis: COG_V2_SETUP_HYSTERESIS, slowSmooth: COG_V2_SLOW_SMOOTH, note: COG_V2_SETUP_NOTE },
     risk: { score: COG_RISK_SCORE, riskTiers: COG_RISK_TIERS, stopModels: COG_STOP_MODELS, note: COG_V2_RISK_NOTE },
     trigger: { score: COG_V2_TRIGGER_SCORE, window: COG_V2_TRIGGER_WINDOW, impulseParams: COG_V2_IMPULSE_PARAMS, nyOpenMinute: COG_V2_NY_OPEN_MINUTE, entryDeadlineMinute: COG_V2_ENTRY_DEADLINE_MINUTE },
+    confidence: COG_V2_CONFIDENCE,
+    minSetupPersistBars: COG_V2_MIN_SETUP_PERSIST_BARS,
     execution: COG_EXECUTION,
     dataDefaults: COG_DATA_DEFAULTS_CFG,
     intradaySchedule: COG_INTRADAY_SCHEDULE,
