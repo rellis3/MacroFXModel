@@ -7343,6 +7343,7 @@ app.post('/api/cog-v2/run', express.json({ limit: '1mb' }), (req, res) => {
         journal: result.journal,
         intradayBarCount: result.dates.length,
         performance, monteCarlo, walkForward, outOfSample, gateHitRates,
+        dirAgreement: result.dirAgreement,
       });
 
       if (!fs.existsSync(COG_V2_DATA_DIR)) fs.mkdirSync(COG_V2_DATA_DIR, { recursive: true });

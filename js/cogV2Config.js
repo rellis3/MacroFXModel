@@ -142,11 +142,33 @@ export const COG_V2_SLOW_SMOOTH = {
 //   setup_conf   = |setup_score|          (how far from zero — max at ±100)
 //   risk_conf    = risk gate score        (Risk Gate's own composite 0–100)
 //   trigger_conf = trigger impulse score  (Trigger Gate's own 0–100)
+//
+// Normalization: each gate's raw signal is mapped to [0, 100] before blending
+// so the combined score is a true 0–100 scale and the threshold is interpretable
+// as "X% of maximum possible combined signal strength."
+//   risk_conf and trigger_conf are already 0–100 (compositeRampScore output).
+//   setup_conf = |score| has theoretical range [0, 100] but the gate can only
+//   SUSTAIN hysteresis above stayThreshold (15); below that the regime will
+//   exit. setupNormFloor anchors the normalization at the stay floor so that
+//   a setup barely holding at |score|=15 → setup contribution = 0, and the
+//   full range [15, 100] maps to [0, 100]. This makes:
+//     combined = 0 when all gates are at their minimum valid level
+//     combined = 100 when all gates are at their absolute maximum
+//     threshold = 35 ≡ "≥ 35% of maximum combined signal strength"
+// Calibration (3 seeds × 3257 days, 1976 trigger-armed bars, post-normalization):
+//   setup_conf at dir-agree bars: estimated P50 ≈ 22 → setupNorm ≈ 8 → weighted ≈ 3.6
+//   risk_conf:   mean=50 → weighted ≈ 17.5
+//   trigger_conf: mean=69 → weighted ≈ 13.8
+//   combined at entry-eligible: mean ≈ 35, max ≈ 52 (vs 47.8/55.6 pre-normalization)
+//   minScore=35 passes most dir-agree bars while filtering the weakest setup states.
 export const COG_V2_CONFIDENCE = {
   setupWeight: 0.45,
   riskWeight: 0.35,
   triggerWeight: 0.20,
-  minScore: 78,  // combined must clear this (0–100 scale)
+  // Setup normalization anchors — map raw |score| ∈ [stayThreshold, 100] → [0, 100]
+  setupNormFloor: 15,    // = COG_V2_SETUP_HYSTERESIS.stayThreshold (scores below this cannot sustain hysteresis)
+  setupNormCeiling: 100, // theoretical max of computeThreshold1 score
+  minScore: 35,          // ≥ 35% of maximum combined strength on true 0–100 scale
 };
 
 // ── Minimum setup persistence (stub, currently disabled) ─────────────────
