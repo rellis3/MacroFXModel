@@ -33,6 +33,7 @@ import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRa
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
+import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
@@ -6611,6 +6612,44 @@ app.get('/api/asia-range-backtest/trades', (_req, res) => {
     const trades = JSON.parse(raw);
     res.json({ ok: true, trades, file: path.basename(file) });
   } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Range-Fib Backtest (STRIPPED) ─────────────────────────────────────────────
+// The bare range-extension strategy — no confluence, no indicators, no modules.
+// One pair, synchronous (M1 is cached after first load). Engine: js/rangeFibEngine.js
+app.get('/api/range-fib/meta', (_req, res) => {
+  res.json({ ok: true, instruments: RANGE_FIB_INSTRUMENTS, fibLevels: RANGE_FIB_LEVELS });
+});
+
+app.post('/api/range-fib/run', async (req, res) => {
+  const b = req.body || {};
+  const pair = String(b.pair || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!RANGE_FIB_INSTRUMENTS.includes(pair)) {
+    return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+  }
+  const opts = {
+    dateFrom:      b.dateFrom || '',
+    dateTo:        b.dateTo   || '',
+    levelSource:   b.levelSource || 'asia',          // 'asia' | 'monday' | 'both'
+    tradeZone:     b.tradeZone   || 'outside',       // 'outside' | 'both'
+    enabledFibs:   Array.isArray(b.enabledFibs) ? b.enabledFibs.map(Number) : null,
+    slMult:        b.slMult       != null ? parseFloat(b.slMult)       : 0.5,
+    minSlPips:     b.minSlPips     != null ? parseFloat(b.minSlPips)     : 5,
+    tpMode:        b.tpMode || 'structural',         // 'structural' | 'rr' | 'midpoint'
+    tpR:           b.tpR          != null ? parseFloat(b.tpR)           : 2.0,
+    tpBufPips:     b.tpBufPips     != null ? parseFloat(b.tpBufPips)     : 5,
+    tradeHourFrom: b.tradeHourFrom != null ? parseInt(b.tradeHourFrom)  : 6,
+    tradeHourTo:   b.tradeHourTo   != null ? parseInt(b.tradeHourTo)    : 22,
+    spreadPips:    b.spreadPips    != null ? parseFloat(b.spreadPips)    : 0.8,
+    slippagePips:  b.slippagePips  != null ? parseFloat(b.slippagePips)  : 0.5,
+  };
+  try {
+    const { trades, stats, params } = await runRangeFibBacktest(pair, opts, BT_M1_DIR);
+    res.json({ ok: true, pair, trades, stats, params });
+  } catch (e) {
+    console.error('[range-fib/run]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
