@@ -111,6 +111,29 @@
     </div>
 
     <div class="grp">
+      <div class="grp-lbl">Confluence filter</div>
+      <label class="row"><span>Display mode</span>
+        <select id="confluenceMode">
+          <option value="all">All levels (no confluence)</option>
+          <option value="strong">Strong — standard confluence (orange)</option>
+          <option value="strongest">Strongest — tight confluence (green)</option>
+        </select></label>
+      <div class="two">
+        <label class="row"><span>Threshold (pips)</span><input type="number" id="confThresh" value="2.0" step="0.1" min="0.1"/></label>
+        <label class="row"><span>Tight % of std</span><input type="number" id="tightPct" value="10" step="1" min="1" max="100"/></label>
+      </div>
+      <label class="row"><span>Confluence price</span>
+        <select id="confPrice">
+          <option value="lowest">Lowest of pair</option>
+          <option value="highest">Highest of pair</option>
+          <option value="midpoint">Midpoint</option>
+        </select></label>
+      <p class="hint">Confluence = today's fib aligns with the previous session's fib within
+        the threshold. <b>Tight</b> (green) = within tight% of the standard tolerance.
+        Gold auto-uses a 200-unit threshold.</p>
+    </div>
+
+    <div class="grp">
       <div class="grp-lbl">Stop / Target</div>
       <div class="two">
         <label class="row"><span>SL × range</span><input type="number" id="slMult" value="0.5" step="0.1" min="0.1"/></label>
@@ -181,7 +204,7 @@
       <h3>Trades (<span id="tradeCount">0</span>)</h3>
       <div class="trade-rows">
         <table>
-          <thead><tr><th>Date</th><th>Side</th><th>Fib</th><th>Entry</th><th>Outcome</th><th>Net pips</th><th>R</th></tr></thead>
+          <thead><tr><th>Date</th><th>Side</th><th>Fib</th><th>Conf</th><th>Entry</th><th>Outcome</th><th>Net pips</th><th>R</th></tr></thead>
           <tbody id="tradeBody"></tbody>
         </table>
       </div>
@@ -240,6 +263,10 @@ function buildOpts(slipOverride){
     tradeHourTo:  +$('hTo').value,
     spreadPips:   +$('spread').value,
     slippagePips: slipOverride != null ? slipOverride : +$('slippage').value,
+    confluenceMode:       $('confluenceMode').value,
+    confluenceThreshPips: +$('confThresh').value,
+    tightPct:             +$('tightPct').value,
+    confluencePrice:      $('confPrice').value,
   };
 }
 
@@ -347,6 +374,7 @@ function renderTrades(trades){
       <td>${t.date}</td>
       <td style="color:${t.side==='SELL'?'var(--red)':'var(--green)'}">${t.side}</td>
       <td>${t.fib_level}</td>
+      <td>${t.is_tight ? '<span style="color:var(--green)">tight</span>' : t.has_confluence ? '<span style="color:var(--amber)">std</span>' : '<span class="muted">—</span>'}</td>
       <td>${t.entry_price}</td>
       <td>${t.outcome}</td>
       <td style="color:${t.net_pips>0?'var(--green)':'var(--red)'}">${t.net_pips}</td>
