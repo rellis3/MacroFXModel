@@ -142,11 +142,20 @@ export const COG_V2_SLOW_SMOOTH = {
 //   setup_conf   = |setup_score|          (how far from zero — max at ±100)
 //   risk_conf    = risk gate score        (Risk Gate's own composite 0–100)
 //   trigger_conf = trigger impulse score  (Trigger Gate's own 0–100)
+//
+// Calibration note (3 seeds × 3257 days, 1976 trigger-armed bars):
+//   setup_conf:   mean=16, P50=14, P75=24, P99=45
+//   risk_conf:    mean=50, P50=50, P75=63, P99=86
+//   trigger_conf: mean=69, P50=67, P75=73, P99=90
+//   Combined at full-entry-eligible bars: mean=47.8, P25=43, P75=51.6, max=55.6
+//   minScore=40 requires setup_conf ≥ ~19 at median risk/trigger (P52 of setup
+//   distribution), filtering truly marginal setup states while keeping the bulk
+//   of real opportunities. 78 was unreachable (max achievable = 55.6).
 export const COG_V2_CONFIDENCE = {
   setupWeight: 0.45,
   riskWeight: 0.35,
   triggerWeight: 0.20,
-  minScore: 78,  // combined must clear this (0–100 scale)
+  minScore: 40,  // calibrated: max achievable is ~56; 40 filters weakest setup states
 };
 
 // ── Minimum setup persistence (stub, currently disabled) ─────────────────
