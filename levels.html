@@ -153,6 +153,133 @@
 .al-tier-score.SHORT   { color: var(--red); }
 .al-tier-score.NEUTRAL { color: var(--text3); }
 .al-tier-reading { color: var(--text3); white-space: normal; }
+
+/* ── Zone Audit page ──────────────────────────────────────────────────────── */
+.audit-page { padding-bottom: 40px; }
+.audit-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.audit-title { font-size: 18px; font-weight: 700; color: var(--text); }
+.audit-sub   { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+.audit-filter-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 14px; background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: var(--rl); margin-bottom: 14px;
+}
+.audit-filter-btn {
+  font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600;
+  padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--s2); color: var(--text2); cursor: pointer;
+}
+.audit-filter-btn.active { background: var(--blue-bg); border-color: var(--blue-bd); color: var(--blue); }
+.audit-filter-btn:disabled { opacity: .5; cursor: default; }
+.audit-filter-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+.audit-filter-label { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.audit-date-input {
+  font-size: 11px; font-family: 'DM Mono', monospace; padding: 4px 8px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--s2); color: var(--text);
+}
+
+.audit-stats-bar {
+  display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+  padding: 12px 18px; background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: var(--rl); margin-bottom: 14px;
+}
+.audit-stat { display: flex; flex-direction: column; align-items: center; padding: 0 24px 0 0; margin-right: 24px; border-right: 1px solid var(--border); }
+.audit-stat:last-of-type { border-right: none; }
+.audit-stat-val { font-size: 20px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+.audit-stat-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+.audit-stat-pct { font-size: 12px; font-weight: 400; color: var(--text3); }
+.audit-stat-touched { color: var(--amber); }
+.audit-stat-win     { color: var(--green); }
+.audit-stat-loss    { color: var(--red); }
+.audit-check-all-btn {
+  font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600;
+  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--s2); color: var(--text2); cursor: pointer; white-space: nowrap;
+}
+.audit-check-all-btn:hover:not(:disabled) { border-color: var(--blue-bd); color: var(--blue); }
+.audit-check-all-btn:disabled { opacity: .4; cursor: default; }
+
+.audit-table-wrap { overflow-x: auto; }
+.audit-table {
+  width: 100%; border-collapse: collapse; font-size: 11px;
+  font-family: 'DM Mono', monospace; white-space: nowrap;
+}
+.audit-table th {
+  text-align: left; font-size: 9px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text3); padding: 7px 10px;
+  border-bottom: 1.5px solid var(--border); background: var(--s1);
+  position: sticky; top: 0; z-index: 1;
+}
+.audit-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.audit-row:hover td { background: var(--s2); }
+.audit-day   { font-size: 9px; color: var(--text3); }
+.audit-pair  { font-weight: 700; color: var(--text); }
+.audit-stars { color: var(--amber); letter-spacing: -1px; }
+.audit-price { font-weight: 600; color: var(--text); }
+.audit-sl    { color: var(--red); }
+.audit-tp    { color: var(--green); }
+.audit-long  { color: var(--green); }
+.audit-short { color: var(--red); }
+.audit-empty-cell { text-align: center; color: var(--text3); padding: 28px !important; }
+.audit-empty-msg { text-align: center; color: var(--text3); font-size: 12px; padding: 28px; font-style: italic; }
+
+.audit-session-pill {
+  font-size: 9px; font-weight: 600; letter-spacing: .06em;
+  padding: 2px 7px; border-radius: 10px;
+  background: var(--s2); border: 1px solid var(--border); color: var(--text3);
+}
+
+.audit-outcome {
+  font-size: 10px; font-weight: 700; font-family: 'DM Mono', monospace;
+  padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.audit-outcome.win     { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+.audit-outcome.loss    { background: var(--red-bg);   border-color: var(--red-bd);   color: var(--red); }
+.audit-outcome.touched { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber); }
+.audit-outcome.none    { background: var(--s2); border-color: var(--border); color: var(--text3); }
+.audit-outcome.pending { color: var(--text3); }
+.audit-outcome-lg { font-size: 12px; padding: 4px 12px; border-radius: 12px; }
+
+.audit-actions { display: flex; gap: 4px; }
+.audit-check-btn, .audit-view-btn {
+  font-size: 11px; padding: 3px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--s2); color: var(--text2);
+  cursor: pointer; line-height: 1.3;
+}
+.audit-check-btn:hover, .audit-view-btn:hover { border-color: var(--blue-bd); color: var(--blue); }
+.audit-check-btn:disabled { opacity: .4; cursor: default; }
+
+/* ── M1 chart modal ───────────────────────────────────────────────────────── */
+#auditModal { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; }
+.audit-modal-backdrop {
+  position: absolute; inset: 0; background: rgba(0,0,0,.72); backdrop-filter: blur(2px);
+}
+.audit-modal-box {
+  position: relative; z-index: 1; width: min(92vw, 980px);
+  background: var(--s1); border: 1.5px solid var(--border2);
+  border-radius: 14px; padding: 20px 22px 18px; display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+}
+.audit-modal-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.audit-modal-title { font-size: 15px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+.audit-modal-sub   { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.audit-modal-close {
+  font-size: 14px; padding: 4px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--s2); color: var(--text2);
+  cursor: pointer; flex-shrink: 0;
+}
+.audit-modal-close:hover { border-color: var(--red-bd); color: var(--red); }
+.audit-chart-el { height: 400px; background: #131722; border-radius: 8px; overflow: hidden; }
+.audit-modal-meta {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text2);
+  padding: 8px 10px; background: var(--s2); border-radius: 8px;
+}
+.audit-modal-meta strong { font-weight: 700; }
 </style>
 </head>
 <body class="dark">
@@ -174,6 +301,7 @@
   <span class="upd">Forecast updated: <span id="alUpdated">—</span></span>
   <button class="dark-btn" id="alRefreshBtn" onclick="window._alRefresh()">↻ Refresh</button>
   <a href="vol-forecast.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Vol &amp; Range Forecast" style="border-color:#4f7df0;color:#4f7df0">📐 Vol Forecast</button></a>
+  <a href="#audit" style="text-decoration:none"><button class="dark-btn" style="border-color:#f39c12;color:#f39c12" title="Zone Audit — track whether levels were hit">📋 Zone Audit</button></a>
   <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
 </div>
 <div class="status-bar">
@@ -193,6 +321,7 @@
 
 <div class="al-grid" id="alGrid"></div>
 <div id="alDeepDive" style="display:none"></div>
+<div id="alAudit"    style="display:none"></div>
 
 </div>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
