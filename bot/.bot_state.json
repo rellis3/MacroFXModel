@@ -12,10 +12,19 @@
       "EUR/GBP": 1782310088.4704914,
       "GBP/JPY": 1782202809.1919997,
       "AUD/USD": 1781797131.2759385,
-      "GBP/USD": 1782223564.2760735
+      "GBP/USD": 1782386945.6408532
     },
     "last_reset_date": "2026-06-25",
     "last_reset_month": "2026-06"
   },
-  "position_meta": {}
+  "position_meta": {
+    "152251474810": {
+      "tp1": 1.31632,
+      "tp1_close_pct": 50,
+      "trailoffset_dist": 0.00053,
+      "tp1_hit": false,
+      "trail_active": false,
+      "trail_sl": null
+    }
+  }
 }

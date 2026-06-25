@@ -22,7 +22,7 @@ import { calculateVolRegime, calcPositionSize, calculatePivots } from './vol.js'
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { detectCrossSessionClusters, mergeCrossSources, filterConfluences, enhanceConfluences } from './confluences.js';
 import { loadCaps } from './caps.js';
-import { loadCompassData, compassFairValue, compassDivergence, compassRocForecast, zScore, buildSVGPath, compositeSpreadZSeries } from './compass.js';
+import { loadCompassData, compassFairValue, compassDivergence, compassRocForecast, zScore, compositeSpreadZSeries } from './compass.js';
 
 // ── Pair symbol -> vol-forecast instrument key ───────────────────────────────
 const INSTRUMENT_KEY_OVERRIDES = { 'XAU/USD': 'GOLD', 'NAS100_USD': 'NQ' };
@@ -494,51 +494,131 @@ function tierRowHtml(t) {
   </tr>`;
 }
 
-// Static yield-z vs FX-price-z overlay chart (last 90 trading days), shared
-// normalized axis — the deep-dive's "visual view of yield vs price". Reuses
-// buildSVGPath/zScore from compass.js rather than inventing a second charting
-// approach; mirrors renderCompassCard's overlay but without the mode toggles.
-function compassRocChartHtml(m) {
-  const data = m.compass?.data;
-  const cfg  = COMPASS_CONFIG[m.sym];
-  if (!data || !cfg) return '';
-  const spreadZ = compositeSpreadZSeries(data, cfg);
-  if (!spreadZ || spreadZ.length < 10) return '';
-  const z10win = spreadZ.slice(-90);
-
-  let zFX = [];
-  const fxBars = filterTradingDays(S.ohlcData[m.sym]?.values);
-  if (fxBars && fxBars.length >= 10) {
-    const chron  = [...fxBars].reverse().slice(-90);
-    const fxPts  = chron.map(b => ({ date: b.datetime.split(' ')[0], value: parseFloat(b.close) }));
-    zFX = zScore(fxPts);
-  }
-
-  const allVals = [...z10win.map(p => p.value), ...zFX.map(p => p.value)];
-  if (!allVals.length) return '';
-  const yMin = Math.min(...allVals) - 0.3;
-  const yMax = Math.max(...allVals) + 0.3;
-  const yRange = [yMin, yMax];
-  const W = 600, H = 80;
-  const xScale  = W / Math.max(z10win.length - 1, 1);
-  const fxScale = zFX.length > 1 ? W / Math.max(zFX.length - 1, 1) : xScale;
-  const path10  = buildSVGPath(z10win, xScale, null, H, yRange);
-  const pathFX  = zFX.length > 1 ? buildSVGPath(zFX, fxScale, null, H, yRange) : '';
-  const ySpan = yMax - yMin;
-  const zeroY = Math.max(0, Math.min(H, H - ((0 - yMin) / ySpan) * H));
-
+// Placeholder div for the Lightweight Charts yield-lag chart. The actual
+// chart is mounted by initYieldLagChart() AFTER this HTML is injected into
+// the DOM, since LightweightCharts.createChart() needs a live DOM element.
+function compassRocChartHtml(sym) {
   return `
   <div class="compass-legend" style="margin-top:10px">
-    <div class="cl-item"><div class="cl-line" style="background:var(--purple)"></div><span>Composite yield-spread z (sign-adj.)</span></div>
-    ${pathFX ? '<div class="cl-item"><div class="cl-line" style="background:transparent;border-top:2px dashed var(--blue);height:0;margin-top:5px"></div><span>FX rate (z, 90d)</span></div>' : ''}
+    <div class="cl-item"><div class="cl-line" style="background:#9b59b6"></div><span>Yield fair value (regression-implied price)</span></div>
+    <div class="cl-item"><div class="cl-line" style="background:transparent;border-top:2px dashed #3498db;height:0;margin-top:5px"></div><span>FX price (candles)</span></div>
+    <div class="cl-item"><div class="cl-line" style="background:transparent;border-top:2px dashed #27ae60;height:0;margin-top:5px"></div><span>Forecast projection</span></div>
   </div>
-  <div class="compass-chart-wrap">
-    <svg class="compass-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:80px">
-      <line x1="0" y1="${zeroY.toFixed(1)}" x2="${W}" y2="${zeroY.toFixed(1)}" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4,3"/>
-      ${path10 ? `<path d="${path10}" stroke="var(--purple)" stroke-width="1.8" fill="none" stroke-linejoin="round"/>` : ''}
-      ${pathFX ? `<path d="${pathFX}" stroke="var(--blue)" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-dasharray="3,2"/>` : ''}
-    </svg>
-  </div>`;
+  <div id="ylChart-${sym.replace('/', '_')}" style="height:220px;background:#131722;border-radius:6px;margin-top:6px"></div>`;
+}
+
+// Returns the next N non-weekend dates after dateStr (YYYY-MM-DD).
+function nextTradingDays(dateStr, n) {
+  const dates = [];
+  const d = new Date(dateStr + 'T00:00:00Z');
+  while (dates.length < n) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+// Active LightweightCharts instance — destroyed when routing away from deep-dive.
+let _ylChart = null;
+
+// Mounts the yield-lag LightweightCharts chart after deep-dive HTML injection.
+// Shows: daily FX candles + yield regression fair-value line (same price axis,
+// no rescaling — fairPrice IS already in price units) + dashed forward
+// projection showing where the RoC forecast implies price will move.
+function initYieldLagChart(m) {
+  if (_ylChart) { try { _ylChart.remove(); } catch(e) {} _ylChart = null; }
+
+  const LC = window.LightweightCharts;
+  if (!LC) return;
+
+  const sym   = m.sym;
+  const el    = document.getElementById('ylChart-' + sym.replace('/', '_'));
+  if (!el) return;
+
+  const div = m.compass?.divergence;
+  const roc = m.compass?.rocForecast;
+  const dp  = m.dp ?? 5;
+
+  // FX daily candles (chronological, last 60 bars)
+  const rawBars = filterTradingDays(S.ohlcData[sym]?.values) ?? [];
+  const candles = [...rawBars].reverse().slice(-60).map(b => ({
+    time:  b.datetime.split(' ')[0],
+    open:  parseFloat(b.open),
+    high:  parseFloat(b.high),
+    low:   parseFloat(b.low),
+    close: parseFloat(b.close),
+  })).filter(b => b.close > 0);
+
+  if (!candles.length) return;
+  const lastBar = candles[candles.length - 1];
+
+  // Fair-value line from the divergence regression (price units, daily)
+  const fairSeries = div?.fairPriceSeries
+    ?.filter(p => p.date >= candles[0].time)
+    ?.map(p => ({ time: p.date, value: p.value })) ?? [];
+
+  _ylChart = LC.createChart(el, {
+    autoSize:   true,
+    layout:     { background: { color: '#131722' }, textColor: '#d1d4dc' },
+    grid:       { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+    crosshair:  { mode: LC.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#2a3348', precision: dp },
+    timeScale:  { borderColor: '#2a3348', timeVisible: false },
+  });
+
+  // Candlestick series
+  const cs = _ylChart.addCandlestickSeries({
+    upColor: '#26a69a', downColor: '#ef5350',
+    borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+    wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+  });
+  cs.setData(candles);
+
+  // Fair-value line (purple) — same price axis, no rescaling
+  if (fairSeries.length) {
+    const fvLine = _ylChart.addLineSeries({
+      color: '#9b59b6', lineWidth: 2,
+      lineStyle: LC.LineStyle.Solid,
+      priceLineVisible: false, lastValueVisible: true,
+    });
+    fvLine.setData(fairSeries);
+
+    // Current fair value as a horizontal price line
+    if (div?.fairPrice != null) {
+      fvLine.createPriceLine({
+        price: div.fairPrice, color: '#9b59b680', lineWidth: 1,
+        lineStyle: LC.LineStyle.Dashed, title: `Fair value ${div.fairPrice.toFixed(dp)}`,
+        axisLabelVisible: true,
+      });
+    }
+  }
+
+  // Forward projection: from last close out lagDays trading days
+  if (roc?.forecastDelta != null && lastBar) {
+    const lagDays  = roc.lagDays ?? 1;
+    const target   = lastBar.close + roc.forecastDelta;
+    const futureDates = nextTradingDays(lastBar.time, lagDays);
+    const projColor = roc.forecastDelta >= 0 ? '#27ae60' : '#e74c3c';
+    const projLine  = _ylChart.addLineSeries({
+      color: projColor, lineWidth: 2,
+      lineStyle: LC.LineStyle.Dashed,
+      priceLineVisible: false, lastValueVisible: true,
+    });
+    projLine.setData([
+      { time: lastBar.time, value: lastBar.close },
+      { time: futureDates[futureDates.length - 1], value: target },
+    ]);
+
+    const pipSz = getPipSize(sym);
+    const pipLabel = pipSz ? `${roc.forecastDelta >= 0 ? '+' : ''}${Math.round(roc.forecastDelta / pipSz)}p` : '';
+    projLine.createPriceLine({
+      price: target, color: projColor, lineWidth: 1,
+      lineStyle: LC.LineStyle.Dotted,
+      title: `Forecast ${pipLabel}`, axisLabelVisible: true,
+    });
+  }
+
+  _ylChart.timeScale().fitContent();
 }
 
 function compassHtml(m) {
@@ -583,7 +663,7 @@ function compassHtml(m) {
       <span class="al-meta">r ${rf.corr != null ? rf.corr.toFixed(2) : '—'}</span>
       <span class="al-meta">n=${rf.n}</span>
     </div>
-    ${compassRocChartHtml(m)}
+    ${compassRocChartHtml(m.sym)}
     <div class="al-rationale ${statusCls}">${verdict}</div>`;
   })();
   return `
@@ -703,11 +783,16 @@ function route() {
   const summary = document.getElementById('alSummary');
   const m = hash ? _allResults.find(r => symKey(r.sym) === hash) : null;
 
+  // Destroy any existing LightweightCharts instance before replacing innerHTML
+  if (_ylChart) { try { _ylChart.remove(); } catch(e) {} _ylChart = null; }
+
   if (m) {
     grid.style.display = 'none';
     summary.style.display = 'none';
     dd.style.display = 'block';
     dd.innerHTML = buildDeepDiveHtml(m);
+    // Mount the yield-lag chart AFTER HTML is in the DOM so the container exists
+    initYieldLagChart(m);
   } else {
     dd.style.display = 'none';
     grid.style.display = 'grid';

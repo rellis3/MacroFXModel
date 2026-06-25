@@ -68,6 +68,8 @@ absThresh    = input.float(1.5, "Abnormal |RoC z| threshold", minval=0.5, maxval
 gp_fc = "Lead-Lag Forecast"
 betaLen    = input.int(60, "Beta/correlation fit window (trading days)", minval=20, maxval=250, group=gp_fc)
 minSamples = input.int(15, "Min valid samples before trusting beta", minval=5, maxval=100, group=gp_fc)
+showOptimalLag = input.bool(true, "Show rolling optimal lag (1-5d)", group=gp_fc,
+     tooltip="Refits the lead-lag correlation at lags 1-5 trading days over the same betaLen window and reports whichever lag currently fits best. The lag isn't static — this tells you how much lead time the spread is currently giving, instead of assuming the lagDays you set above is still right.")
 
 gp_div = "Price vs Yield Divergence (Z-Score)"
 divWindow         = input.int(120, "Regression window (trading days)", minval=30, maxval=400, group=gp_div,
@@ -79,6 +81,9 @@ showFairValueLine = input.bool(true, "Plot yield fair-value line on price", grou
 fvCol             = input.color(color.new(color.blue, 0), "Fair-value line color", group=gp_div)
 divUpCol          = input.color(color.new(color.purple, 0), "Color when price > fair value (z > 0)", group=gp_div)
 divDnCol          = input.color(color.new(color.orange, 0), "Color when price < fair value (z < 0)", group=gp_div)
+baseRateHorizon   = input.int(10, "Snap-back check horizon (trading days)", minval=1, maxval=60, group=gp_div,
+     tooltip="When |Divergence Z| has exceeded the abnormal threshold above in the past, did price actually move toward fair value within this many trading days? This measures that historically on this exact chart/pair instead of assuming a stretched reading implies a snapback.")
+baseRateWindow    = input.int(250, "Snap-back lookback (trading days)", minval=30, maxval=400, group=gp_div)
 
 gp_vis = "Visuals"
 showForecastLine = input.bool(true, "Show forward forecast line", group=gp_vis)
@@ -254,6 +259,7 @@ var float[] compZBuf  = array.new_float(0)
 var float[] rocBuf    = array.new_float(0)
 var float[] smoothBuf = array.new_float(0)
 var float[] priceBuf  = array.new_float(0)
+var float[] divZBuf   = array.new_float(0)
 
 BUF_CAP = 400
 
@@ -449,6 +455,20 @@ var float v_divResMean  = na
 var float v_divResStd   = na
 var bool  v_divTrustworthy = false
 
+// Historical base-rate: of past instances where |Divergence Z| exceeded the
+// abnormal threshold, did price actually move toward fair value within
+// baseRateHorizon trading days? Measured, not assumed.
+var float v_snapHitRate = na
+var float v_snapAvgRet  = na
+var int   v_snapN       = 0
+
+// Rolling optimal lag: which of lag=1..5 trading days currently has the
+// strongest |correlation| between the smoothed predictor and forward price
+// move — the lag isn't static, so this re-checks it every session instead of
+// assuming the lagDays input above still matches current conditions.
+var int   v_optimalLag     = na
+var float v_optimalLagCorr = na
+
 if newDailyBar and pairRecognized
     sp10_today = rawDir * (fgnL_d - baseL_d)
     have2y     = not na(fgnS_d) and not na(baseS_d)
@@ -503,6 +523,21 @@ if newDailyBar and pairRecognized
     v_corr     := ct
     v_validCnt := vc
 
+    // Rolling optimal lag — refit at lag=1..5 trading days, keep whichever
+    // currently has the strongest |correlation| over the same betaLen window.
+    if showOptimalLag
+        float bestAbsCorr = 0.0
+        int   bestLagDays = na
+        float bestCorr    = na
+        for lagTry = 1 to 5
+            [bTry, cTry, nTry] = fitBeta(smoothBuf, priceBuf, lagTry, betaLen)
+            if not na(cTry) and math.abs(cTry) > bestAbsCorr
+                bestAbsCorr := math.abs(cTry)
+                bestLagDays := lagTry
+                bestCorr    := cTry
+        v_optimalLag     := bestLagDays
+        v_optimalLagCorr := bestCorr
+
     // "Did price follow the forecast?" check for the most recently completed
     // lag window — uses TODAY's beta applied retroactively rather than the
     // beta that was live lagDays ago, so treat this as a rough read, not a
@@ -541,6 +576,36 @@ if newDailyBar and pairRecognized
     v_divResMean     := divTrustworthy ? dResMean : float(na)
     v_divResStd      := divTrustworthy ? dResStd : float(na)
     v_divTrustworthy := divTrustworthy
+
+    // Historical snap-back base rate. Push today's divZ, then scan the
+    // lookback window for past days where |divZ| was already abnormal and
+    // baseRateHorizon days have since elapsed — check whether price actually
+    // moved toward fair value (i.e. opposite the sign of that day's divZ) by
+    // now. This is measured directly from this chart's own history, not
+    // assumed from the divergence reading alone.
+    array.push(divZBuf, v_divZ)
+    trimBuf(divZBuf)
+    nZ = array.size(divZBuf)
+    wantStartZ = math.max(0, nZ - baseRateWindow)
+    float sumImpliedRet = 0.0
+    int   hits  = 0
+    int   total = 0
+    if nZ - 1 - baseRateHorizon >= wantStartZ
+        for i = wantStartZ to nZ - 1 - baseRateHorizon
+            zi = array.get(divZBuf, i)
+            if not na(zi) and math.abs(zi) > divAbsThresh
+                pxThen  = array.get(priceBuf, i)
+                pxLater = array.get(priceBuf, i + baseRateHorizon)
+                if not na(pxThen) and not na(pxLater)
+                    expectedSign = zi >= 0 ? -1.0 : 1.0
+                    impliedRet   = expectedSign * (pxLater - pxThen)
+                    sumImpliedRet += impliedRet
+                    if impliedRet > 0
+                        hits += 1
+                    total += 1
+    v_snapN       := total
+    v_snapHitRate := total > 0 ? 100.0 * hits / total : float(na)
+    v_snapAvgRet  := total > 0 ? sumImpliedRet / total : float(na)
 
 // =====================================================
 // LIVE FORECAST (uses today's fitted beta + signal against the live intraday price)
@@ -667,7 +732,7 @@ var table statsTbl = na
 
 if showTable and barstate.islast
     table.delete(statsTbl)
-    statsTbl := table.new(position.top_right, 2, 14, bgcolor=color.new(color.black, 55),
+    statsTbl := table.new(position.top_right, 2, 17, bgcolor=color.new(color.black, 55),
          border_width=1, border_color=color.new(color.gray, 60), force_overlay=true)
 
     pairBg   = pairRecognized ? color.new(color.gray, 75) : color.new(color.red, 40)
@@ -694,37 +759,54 @@ if showTable and barstate.islast
     table.cell(statsTbl, 1, 5, (not na(v_corr) ? str.tostring(v_corr, "#.##") : "—") + " / " + str.tostring(v_validCnt),
          text_color=color.white, text_size=size.small)
 
-    table.cell(statsTbl, 0, 6, "Forecast Δ (" + str.tostring(lagDays) + "d)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 6, "Optimal lag (1-5d)", text_color=color.white, text_size=size.small)
+    lagMismatch = showOptimalLag and not na(v_optimalLag) and v_optimalLag != lagDays
+    lagTxt = showOptimalLag and not na(v_optimalLag) ? str.tostring(v_optimalLag) + "d (corr " + str.tostring(v_optimalLagCorr, "#.##") + ")" : "—"
+    table.cell(statsTbl, 1, 6, lagTxt, text_color=color.white, text_size=size.small,
+         bgcolor=lagMismatch ? color.new(color.orange, 50) : na)
+
+    table.cell(statsTbl, 0, 7, "Forecast Δ (" + str.tostring(lagDays) + "d)", text_color=color.white, text_size=size.small)
     fcTxt = not na(liveExpectedMove) ? (liveExpectedMove >= 0 ? "+" : "") + str.tostring(liveExpectedMove, format.mintick) : "—"
     fcCol = na(liveExpectedMove) ? color.white : (liveExpectedMove >= 0 ? upCol : dnCol)
-    table.cell(statsTbl, 1, 6, fcTxt, text_color=fcCol, text_size=size.small)
+    table.cell(statsTbl, 1, 7, fcTxt, text_color=fcCol, text_size=size.small)
 
-    table.cell(statsTbl, 0, 7, "Target price", text_color=color.white, text_size=size.small)
-    table.cell(statsTbl, 1, 7, not na(forecastPrice) ? str.tostring(forecastPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 8, "Target price", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 8, not na(forecastPrice) ? str.tostring(forecastPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
 
-    table.cell(statsTbl, 0, 8, "Last lag: price vs fc", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 9, "Last lag: price vs fc", text_color=color.white, text_size=size.small)
     statusBg = v_followStatus == "FOLLOWING" ? color.new(color.teal, 40) : v_followStatus == "DIVERGING" ? color.new(color.red, 40) : color.new(color.gray, 50)
-    table.cell(statsTbl, 1, 8, v_followStatus, text_color=color.white, text_size=size.small, bgcolor=statusBg)
+    table.cell(statsTbl, 1, 9, v_followStatus, text_color=color.white, text_size=size.small, bgcolor=statusBg)
 
-    table.cell(statsTbl, 0, 9, "Yield fair value (live)", text_color=color.white, text_size=size.small)
-    table.cell(statsTbl, 1, 9, not na(liveFairPrice) ? str.tostring(liveFairPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 10, "Yield fair value (live)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 1, 10, not na(liveFairPrice) ? str.tostring(liveFairPrice, format.mintick) : "—", text_color=color.white, text_size=size.small)
 
-    table.cell(statsTbl, 0, 10, "Gap to fair value (live)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 11, "Gap to fair value (live)", text_color=color.white, text_size=size.small)
     gapCol  = na(liveDivZ) ? color.white : (liveDivZ >= 0 ? divUpCol : divDnCol)
     gapLive = na(liveResidual) ? float(na) : -liveResidual
-    table.cell(statsTbl, 1, 10, not na(gapLive) ? (gapLive >= 0 ? "+" : "") + str.tostring(gapLive, format.mintick) : "—",
+    table.cell(statsTbl, 1, 11, not na(gapLive) ? (gapLive >= 0 ? "+" : "") + str.tostring(gapLive, format.mintick) : "—",
          text_color=gapCol, text_size=size.small)
 
-    table.cell(statsTbl, 0, 11, "Divergence Z (as of today)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 12, "Divergence Z (as of today)", text_color=color.white, text_size=size.small)
     divBg = v_abnormalDiv ? (v_divZ >= 0 ? color.new(divUpCol, 40) : color.new(divDnCol, 40)) : na
-    table.cell(statsTbl, 1, 11, (not na(v_divZ) ? str.tostring(v_divZ, "#.##") : "—") + (v_abnormalDiv ? " ⚠" : ""),
+    table.cell(statsTbl, 1, 12, (not na(v_divZ) ? str.tostring(v_divZ, "#.##") : "—") + (v_abnormalDiv ? " ⚠" : ""),
          text_color=color.white, text_size=size.small, bgcolor=divBg)
 
-    table.cell(statsTbl, 0, 12, "Divergence Z (live)", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 13, "Divergence Z (live)", text_color=color.white, text_size=size.small)
     liveDivBg = liveAbnormalDiv ? (liveDivZ >= 0 ? color.new(divUpCol, 40) : color.new(divDnCol, 40)) : na
-    table.cell(statsTbl, 1, 12, (not na(liveDivZ) ? str.tostring(liveDivZ, "#.##") : "—") + (liveAbnormalDiv ? " ⚠" : ""),
+    table.cell(statsTbl, 1, 13, (not na(liveDivZ) ? str.tostring(liveDivZ, "#.##") : "—") + (liveAbnormalDiv ? " ⚠" : ""),
          text_color=color.white, text_size=size.small, bgcolor=liveDivBg)
 
-    table.cell(statsTbl, 0, 13, "Divergence trend", text_color=color.white, text_size=size.small)
+    table.cell(statsTbl, 0, 14, "Divergence trend", text_color=color.white, text_size=size.small)
     trendBg = v_divTrend == "WIDENING" ? color.new(color.orange, 40) : v_divTrend == "NARROWING" ? color.new(color.teal, 40) : color.new(color.gray, 50)
-    table.cell(statsTbl, 1, 13, v_divTrend, text_color=color.white, text_size=size.small, bgcolor=trendBg)
+    table.cell(statsTbl, 1, 14, v_divTrend, text_color=color.white, text_size=size.small, bgcolor=trendBg)
+
+    table.cell(statsTbl, 0, 15, "Snap-back rate (|Z|>" + str.tostring(divAbsThresh, "#.#") + ", " + str.tostring(baseRateHorizon) + "d)",
+         text_color=color.white, text_size=size.small)
+    snapTxt = v_snapN > 0 ? str.tostring(v_snapHitRate, "#.#") + "% (n=" + str.tostring(v_snapN) + ")" : "— (n=0)"
+    snapBg  = v_snapN > 0 ? (v_snapHitRate >= 50 ? color.new(color.teal, 50) : color.new(color.red, 50)) : na
+    table.cell(statsTbl, 1, 15, snapTxt, text_color=color.white, text_size=size.small, bgcolor=snapBg)
+
+    table.cell(statsTbl, 0, 16, "Avg implied return (" + str.tostring(baseRateHorizon) + "d)", text_color=color.white, text_size=size.small)
+    retCol = na(v_snapAvgRet) ? color.white : (v_snapAvgRet >= 0 ? upCol : dnCol)
+    table.cell(statsTbl, 1, 16, v_snapN > 0 ? (v_snapAvgRet >= 0 ? "+" : "") + str.tostring(v_snapAvgRet, format.mintick) : "—",
+         text_color=retCol, text_size=size.small)

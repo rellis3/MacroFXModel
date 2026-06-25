@@ -1248,3 +1248,31 @@
 [2026-06-25 11:43:09] [MEBot] [INFO] Macro score: US=-1.285 (BEAR)
 [2026-06-25 11:43:10] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
 [2026-06-25 11:43:17] [MEBot] [INFO] Cycle complete in 100.7s — sleeping 3499s
+[2026-06-25 11:55:26] [MEBot] [INFO] MacroEquityBot starting  paper=False  live_override=True  dashboard=https://macrofxmodel-production.up.railway.app
+[2026-06-25 11:55:32] [MEBot] [WARNING] KV credentials not found (key=macro_equity_credentials) — will use env vars / already-open MT5 terminal
+[2026-06-25 11:55:32] [MEBot] [INFO] MT5 connected: account=10011001704  balance=93636.78  server=MetaQuotes-Demo
+[2026-06-25 11:55:36] [MEBot] [INFO] Config: paper_mode_kv=False  effective_paper=False  QQQ=True  SPY=True  Russell=True  TLT=False  DAX=False  Gold=True  BIL=False  portfolio=True  poll=3600s
+[2026-06-25 11:55:36] [MEBot] [INFO] Fetching VIX data…
+[2026-06-25 11:55:43] [MEBot] [INFO] VIX: 300 bars, latest=17.9
+[2026-06-25 11:55:43] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-25 11:55:48] [MEBot] [INFO]   FRED WALCL: 1225 observations
+[2026-06-25 11:55:55] [MEBot] [INFO]   FRED WTREGEN: 1225 observations
+[2026-06-25 11:56:02] [MEBot] [INFO]   FRED RRPONTSYD: 3269 observations
+[2026-06-25 11:56:08] [MEBot] [INFO]   FRED T10Y2Y: 5873 observations
+[2026-06-25 11:56:15] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 786 observations
+[2026-06-25 11:56:22] [MEBot] [INFO]   FRED DFII10: 5872 observations
+[2026-06-25 11:56:31] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-25 11:56:37] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-25 11:57:24] [MEBot] [INFO] Macro score: US=-1.285 (BEAR)
+[2026-06-25 11:57:24] [MEBot] [WARNING] No D1 data for US100
+[2026-06-25 11:57:35] [MEBot] [INFO] === REBALANCE TRIGGERED ===
+[2026-06-25 11:57:35] [MEBot] [WARNING] Symbol US100 not found in MT5
+[2026-06-25 11:57:35] [MEBot] [INFO] QQQ (US100): target=50%  action=skip
+[2026-06-25 11:57:35] [MEBot] [ERROR] Order FAILED US500: OrderSendResult(retcode=10017, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Trade disabled', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US500', volume=6.3, price=7416.3, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_SPY', position=0, position_by=0))
+[2026-06-25 11:57:35] [MEBot] [INFO] SPY (US500): target=50%  action=buy
+[2026-06-25 11:57:35] [MEBot] [ERROR] Order FAILED US2000: OrderSendResult(retcode=10017, deal=0, order=0, volume=0.0, price=0.0, bid=0.0, ask=0.0, comment='Trade disabled', request_id=0, retcode_external=0, request=TradeRequest(action=1, magic=20260006, order=0, symbol='US2000', volume=16.0, price=2996.6, stoplimit=0.0, sl=0.0, tp=0.0, deviation=30, type=0, type_filling=1, type_time=0, expiration=0, comment='ME_rebal_IWM', position=0, position_by=0))
+[2026-06-25 11:57:35] [MEBot] [INFO] IWM (US2000): target=50%  action=buy
+[2026-06-25 11:57:35] [MEBot] [INFO] Order OK XAUUSD 0.12L  ticket=152251304664
+[2026-06-25 11:57:35] [MEBot] [INFO] GOLD (XAUUSD): target=50%  action=buy
+[2026-06-25 11:57:40] [MEBot] [INFO] Cycle complete in 123.4s — sleeping 3477s
+[2026-06-25 12:55:41] [MEBot] [INFO] Fetching FRED macro data…

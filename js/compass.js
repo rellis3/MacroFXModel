@@ -396,12 +396,16 @@ export function compassDivergence(data, sym) {
   const zLast = zSeries.length ? zSeries[zSeries.length - 1].value : null;
   const lastResidual = residuals.length ? residuals[residuals.length - 1].value : null;
 
+  const fairPriceSeries = win.map(p => ({ date: p.date, value: reg.alpha + reg.beta * p.x }));
+
   return {
     z: zLast,
     residualSeries: zSeries,
+    fairPriceSeries,
     fairPrice: reg.alpha + reg.beta * win[win.length - 1].x,
     gap: lastResidual != null ? -lastResidual : null, // price units price must move to reach regression fair value
     beta: reg.beta,
+    alpha: reg.alpha,
     r2: reg.r2,
     n: win.length,
   };

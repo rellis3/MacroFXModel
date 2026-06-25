@@ -5797,7 +5797,7 @@ async function openTradeChartModal(idx) {
       open: +v.open, high: +v.high, low: +v.low, close: +v.close,
     }));
 
-    const padded = bars.filter(b => b.time >= t.time_open - 1800 && b.time <= t.time_close + 1800);
+    const padded = bars.filter(b => b.time >= t.time_open - 600 && b.time <= t.time_close + 600);
     const data = padded.length >= 5 ? padded : bars;
     if (!data.length) throw new Error('No candles in trade window');
 
@@ -5823,8 +5823,9 @@ async function openTradeChartModal(idx) {
 
     const isLong = t.direction === 'BUY';
     const win    = net >= 0;
+    const entryCol = isLong ? '#10b981' : '#f87171';
     _tcSeries.setMarkers([
-      { time: t.time_open,  position: isLong ? 'belowBar' : 'aboveBar', color: '#60a5fa', shape: isLong ? 'arrowUp' : 'arrowDown', text: 'Entry' },
+      { time: t.time_open,  position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
       { time: t.time_close, position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
     ]);
 
