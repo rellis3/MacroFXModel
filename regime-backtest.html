@@ -496,6 +496,7 @@
     <button class="rb-toggle-btn active" id="btnV1" onclick="selectBot('v1')">V1</button>
     <button class="rb-toggle-btn" id="btnV2" onclick="selectBot('v2')">V2</button>
     <button class="rb-toggle-btn" id="btnV21" onclick="selectBot('v21')">V2.1</button>
+    <button class="rb-toggle-btn" id="btnV22" onclick="selectBot('v22')">V2.2</button>
     <button class="rb-toggle-btn" id="btnV3" onclick="selectBot('v3')">V3</button>
     <button class="rb-toggle-btn" id="btnV4" onclick="selectBot('v4')">V4</button>
     <button class="rb-toggle-btn" id="btnV5" onclick="selectBot('v5')">V5</button>
@@ -1100,6 +1101,19 @@ const V2_1_BOOLS = [
 ];
 const V2_1_DEFAULTS = Object.fromEntries([...V2_1_PARAMS.map(p=>[p.key,p.def]),...V2_1_BOOLS.map(b=>[b.key,b.def])]);
 
+// ─── V2.2 Config ─────────────────────────────────────────────────────────────
+// V2.2 = V2.1's exact quant logic (cost-aware spread, TP/BE/ATR-trail, lean exits,
+// invert, max-trades/day) applied to a HIGHER-TIMEFRAME regime. M1 bars are
+// aggregated to the selected TF (15m/30m/1h/4h via the TF toggle), the V2-family
+// HMM signal is computed on those bars and mapped back to M1 with no lookahead, so
+// the stop/TP/trail run on M1 highs/lows but the regime + atrSL are TF-scale —
+// i.e. bigger moves per trade to clear the spread that M1 could not. Same params as
+// V2.1; bar-count gates (Entry Hold, cooldown, BOCPD/slope/score bars) are
+// interpreted in TF-bar units and scaled to M1 internally by simulateV22.
+const V2_2_PARAMS   = V2_1_PARAMS;
+const V2_2_BOOLS    = V2_1_BOOLS;
+const V2_2_DEFAULTS = V2_1_DEFAULTS;
+
 // ─── V3 Config ───────────────────────────────────────────────────────────────
 // V3 collapses 13 hard entry gates → 4 (conf×session, debounce, slope direction, score≥65).
 // BOCPD/vol-z/decay/rising-conf are no longer hard gates — BOCPD penalises the composite
@@ -1317,6 +1331,7 @@ const V2_METRICS = [
   { key:'decay', label:'decay', color:'#f44336' },
 ];
 const V2_1_METRICS = V2_METRICS;  // same HMM signal stream as V2
+const V2_2_METRICS = V2_METRICS;  // V2.2 = V2.1 logic on higher-TF signals
 const V3_METRICS = [
   { key:'conf',  label:'conf',  color:'#2196f3' },
   { key:'score', label:'score', color:'#4caf50' },
@@ -1408,19 +1423,23 @@ function setV5TF(minutes) {
     const lbl = minutes >= 60 ? (minutes / 60) + 'h' : minutes + 'm';
     const ver = currentBot === 'v6' ? 'V6' : 'V5';
     document.getElementById('cfgTitle').textContent = `${ver} Configuration (${lbl} Regime on M1 bars)`;
+  } else if (currentBot === 'v22') {
+    const lbl = minutes >= 60 ? (minutes / 60) + 'h' : minutes + 'm';
+    document.getElementById('cfgTitle').textContent = `V2.2 Configuration (${lbl} regime · V2.1 quant logic · bar-count gates in ${lbl} units)`;
   }
 }
 
 function selectBot(bot) {
   currentBot = bot;
-  ['v1','v2','v21','v3','v4','v5','v6','v7'].forEach(v =>
+  ['v1','v2','v21','v22','v3','v4','v5','v6','v7'].forEach(v =>
     document.getElementById('btn' + v.toUpperCase()).classList.toggle('active', bot === v));
-  const isMTF = bot === 'v5' || bot === 'v6' || bot === 'v7';
+  const isMTF = bot === 'v5' || bot === 'v6' || bot === 'v7' || bot === 'v22';
   const tfMin = V5_MTF;
   const tfLbl = tfMin >= 60 ? (tfMin / 60) + 'h' : tfMin + 'm';
   const titles = {
     v1: 'V1 Configuration', v2: 'V2 Configuration',
     v21: 'V2.1 Configuration (cost-aware · TP/BE/trail · lean exits · invert)',
+    v22: `V2.2 Configuration (${tfLbl} regime · V2.1 quant logic · bar-count gates in ${tfLbl} units)`,
     v3: 'V3 Configuration',
     v4: 'V4 Configuration',
     v5: `V5 Configuration (${tfLbl} Regime on M1 bars)`,
@@ -1433,9 +1452,9 @@ function selectBot(bot) {
   document.getElementById('v5TfToggle').style.display  = isMTF ? '' : 'none';
   document.getElementById('hmmTrainWrap').style.display  = (bot === 'v2' || bot === 'v21' || bot === 'v3') ? 'flex' : 'none';
   document.getElementById('hmmTrainBadge').style.display = 'none';
-  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v21:V2_1_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS, v7:V7_METRICS };
+  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v21:V2_1_METRICS, v22:V2_2_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS, v7:V7_METRICS };
   activeMetrics = metricsMap[bot] || V2_METRICS;
-  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
   const savedDefault = localStorage.getItem(`opt_default_${bot}`);
   cfg = savedDefault ? JSON.parse(savedDefault) : { ...(defaultsMap[bot] || V2_DEFAULTS) };
   buildConfigPanel();
@@ -1450,8 +1469,8 @@ function selectBot(bot) {
 // ─── Config panel ─────────────────────────────────────────────────────────────
 
 function buildConfigPanel() {
-  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
-  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
+  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v22:V2_2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
   const params = paramsMap[currentBot] || V2_PARAMS;
   const bools  = boolsMap[currentBot]  || V2_BOOLS;
 
@@ -1493,7 +1512,7 @@ function buildConfigPanel() {
 function onSlider(key, val, step) {
   let num = step % 1 === 0 ? parseInt(val) : parseFloat(val);
   if (isNaN(num)) return;
-  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
   const params = paramsMap2[currentBot] || V2_PARAMS;
   const p = params.find(pp => pp.key === key);
   if (p) num = Math.max(p.min, Math.min(p.max, num));
@@ -1507,7 +1526,7 @@ function resetParam(key, def) {
 }
 
 function resetAllParams() {
-  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
   localStorage.removeItem(`opt_default_${currentBot}`);
   cfg = { ...(resetMap[currentBot] || V2_DEFAULTS) };
   buildConfigPanel();
@@ -2550,6 +2569,8 @@ async function loadAndRun() {
         rawHtfSignals = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, V5_MTF * 4);
       } else if (currentBot === 'v4') {
         rawSignals = computeHMMSignalsV4(rawCandles, pair, trainedParams);
+      } else if (currentBot === 'v22') {
+        rawSignals = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, V5_MTF);
       } else {
         const trainDays    = parseInt(document.getElementById('hmmTrainDays')?.value  ?? '0');
         const retrainEvery = parseInt(document.getElementById('hmmRetrainEvery')?.value ?? '0');
@@ -2572,7 +2593,7 @@ async function loadAndRun() {
     // ── 3. Simulate on full M1 ───────────────────────────────────────────────
     setStatus('spin', 'Running simulation…');
     await uiYield();
-    const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+    const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v22:simulateV22, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
     allTrades = currentBot === 'v7'
       ? simulateV7(rawCandles, rawSignals, rawHtfSignals, cfg)
       : (simMap[currentBot] || simulateV2)(rawCandles, rawSignals, cfg);
@@ -2807,6 +2828,8 @@ async function runClientOptimizer() {
       rawHtfSignals = computeHMMSignalsAtMTF(rawCandles, pair, null, V5_MTF * 4);
     } else if (currentBot === 'v4') {
       rawSignals = computeHMMSignalsV4(rawCandles, pair, null);
+    } else if (currentBot === 'v22') {
+      rawSignals = computeHMMSignalsAtMTF(rawCandles, pair, null, V5_MTF);
     } else {
       rawSignals = computeHMMSignalsV2(rawCandles, pair, null, null, null); // v2 + v3
     }
@@ -2819,8 +2842,8 @@ async function runClientOptimizer() {
     const cVa = rawCandles.slice(ti, vi), sVa = rawSignals.slice(ti, vi);
     const cTe = rawCandles.slice(vi),     sTe = rawSignals.slice(vi);
 
-    const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
-    const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
+    const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+    const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v22:V2_2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
     const params = paramsMap[currentBot] || V2_PARAMS;
     const bools  = boolsMap[currentBot]  || V2_BOOLS;
     // V7 simulate needs htfSignals — use closures so runOptSplit sees same 3-arg signature.
@@ -2834,14 +2857,14 @@ async function runClientOptimizer() {
       simFnVa = (c, s, cfg) => simulateV7(c, s, htfVa, cfg);
       simFnTe = (c, s, cfg) => simulateV7(c, s, htfTe, cfg);
     } else {
-      const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+      const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v22:simulateV22, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
       const fn = simMap[currentBot] || simulateV2;
       simFnTr = simFnVa = simFnTe = fn;
     }
-    const mtf    = (currentBot === 'v5' || currentBot === 'v6' || currentBot === 'v7') ? V5_MTF : 1;
+    const mtf    = (currentBot === 'v5' || currentBot === 'v6' || currentBot === 'v7' || currentBot === 'v22') ? V5_MTF : 1;
     const limits = optMtfLimits(mtf);
 
-    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
     let incumbent    = { ...(defaultsMap[currentBot] || V2_DEFAULTS) };
     let incumbentScore = -Infinity;
 
@@ -3350,6 +3373,24 @@ function simulateV21(candles, signals, c) {
     trades.push(mkT(pos, lc.time, lc.close, 'END'));
   }
   return trades;
+}
+
+// ─── Simulation: V2.2 ────────────────────────────────────────────────────────
+// V2.1's execution logic on higher-TF signals. The signals array is already the
+// TF regime mapped onto M1 bars (atrSL is TF-scale → bigger stops/targets), so we
+// just reuse simulateV21 bar-for-bar on M1, scaling the bar-COUNT gates by S so
+// "Entry Hold = 2" etc. mean 2 TF bars, not 2 M1 bars (matches V5's convention).
+function simulateV22(candles, signals, c) {
+  const S = V5_MTF;   // 1 TF bar = S M1 bars
+  const scaled = {
+    ...c,
+    candle_hold:        Math.max(1, Math.round((c.candle_hold        || 1) * S)),
+    post_exit_cooldown: Math.max(0, Math.round((c.post_exit_cooldown || 0) * S)),
+    bocpd_exit_bars:    Math.max(1, Math.round((c.bocpd_exit_bars    || 2) * S)),
+    slope_bars:         Math.max(1, Math.round((c.slope_bars         || 3) * S)),
+    score_drop_bars:    Math.max(1, Math.round((c.score_drop_bars    || 2) * S)),
+  };
+  return simulateV21(candles, signals, scaled);
 }
 
 // ─── Simulation: V3 ──────────────────────────────────────────────────────────
