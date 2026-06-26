@@ -552,6 +552,52 @@
 .v2-hist-nav { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .v2-hist-date { background: var(--s2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 8px; border-radius: 4px; outline: none; }
 .v2-hist-date:focus { border-color: var(--blue-bd); }
+
+/* ── v2 Chart Expand button (sibling of m5-wrap) ────────────────────────────── */
+.v2-m5-wrap { cursor: pointer; }
+.v2-m5-expand {
+  position: absolute; top: 6px; right: 6px; z-index: 10;
+  background: rgba(0,0,0,.30); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px; padding: 1px 6px;
+  font-size: 11px; color: rgba(255,255,255,0.35);
+  cursor: pointer; transition: all .15s; user-select: none;
+  line-height: 1.5; pointer-events: auto;
+}
+.v2-m5-expand:hover { color: rgba(255,255,255,0.85); background: rgba(0,0,0,.55); border-color: rgba(255,255,255,0.35); }
+
+/* ── v2 Chart Modal ──────────────────────────────────────────────────────────── */
+.v2-chart-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,.82); backdrop-filter: blur(4px);
+  align-items: center; justify-content: center; padding: 20px;
+  box-sizing: border-box;
+}
+.v2-chart-modal-overlay.open { display: flex; }
+.v2-chart-modal {
+  background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: 14px; width: 100%; max-width: 1280px;
+  height: 88vh; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,.65);
+}
+.v2-chart-modal-hdr {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px 11px; border-bottom: 1.5px solid var(--border);
+  flex-shrink: 0;
+}
+.v2-chart-modal-name {
+  font-size: 20px; font-weight: 700; font-family: 'DM Mono', monospace;
+  letter-spacing: .08em; color: var(--text);
+}
+.v2-chart-modal-hint {
+  font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3);
+}
+.v2-chart-modal-close {
+  margin-left: auto; background: none; border: 1px solid var(--border);
+  color: var(--text2); font-size: 12px; padding: 5px 14px; border-radius: 6px;
+  cursor: pointer; font-family: 'DM Mono', monospace; transition: all .15s;
+}
+.v2-chart-modal-close:hover { border-color: var(--border2); background: var(--s2); color: var(--text); }
+.v2-chart-modal-body { flex: 1; min-height: 0; position: relative; }
 </style>
 </head>
 <body class="dark">
@@ -639,6 +685,7 @@
   <button class="v2-tool-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()">Session Stats</button>
   <button class="v2-tool-btn" id="vfHelpBtn"     onclick="toggleHelp()">? Help</button>
   <div class="v2-tool-sep"></div>
+  <a href="levels.html" target="_blank" style="text-decoration:none"><button class="v2-tool-btn" style="border-color:#10b981;color:#10b981" title="Entry Lens — macro × range × volatility × z-score entry view, all pairs">🎯 Entry Lens</button></a>
   <a href="index.html" style="text-decoration:none"><button class="v2-tool-btn">→ Dashboard</button></a>
 </div>
 
@@ -880,6 +927,18 @@
 </div>
 
 </div><!-- /v2App -->
+
+<!-- CHART EXPAND MODAL -->
+<div class="v2-chart-modal-overlay" id="v2ChartModal" onclick="if(event.target===this)closeChartModal()">
+  <div class="v2-chart-modal">
+    <div class="v2-chart-modal-hdr">
+      <span class="v2-chart-modal-name" id="v2ChartModalName">—</span>
+      <span class="v2-chart-modal-hint">M5 Candles — scroll to zoom · drag to pan · Esc to close</span>
+      <button class="v2-chart-modal-close" onclick="closeChartModal()">✕ Close</button>
+    </div>
+    <div class="v2-chart-modal-body" id="v2ChartModalBody"></div>
+  </div>
+</div>
 
 <!-- HELP MODAL -->
 <div id="vfHelpOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);overflow-y:auto;padding:24px 16px">
@@ -1497,7 +1556,10 @@ function buildV2Card(name, f, meta, isHistorical = false) {
       <span class="v2-inst-name">${name}</span>
       <div class="v2-hdr-pills">${trendChip}${volVovChip}${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
     </div>
-    <div class="v2-m5-wrap" id="m5wrap-${name}"></div>
+    <div style="position:relative">
+      <div class="v2-m5-wrap" id="m5wrap-${name}" onclick="openChartModal('${name}')" title="Click to expand chart"></div>
+      <button class="v2-m5-expand" onclick="openChartModal('${name}')" title="Expand chart">⤢</button>
+    </div>
     <div class="v2-m5-status" id="m5status-${name}"></div>
     ${buildRangeMap(name, f)}
     <button class="v2-bars-toggle" type="button" onclick="(function(btn){var b=btn.closest('.v2-card').querySelector('.v2-metric-bars');var open=b.style.display!=='none';b.style.display=open?'none':'flex';btn.querySelector('.v2-bars-arrow').textContent=open?'▸':'▾';})(this)">
@@ -2789,7 +2851,8 @@ async function loadM5Chart(name, f) {
     w.innerHTML = `<div class="v2-m5-empty" style="color:#f87171;border-color:#f8717144;font-size:10px">${msg}</div>`;
   };
 
-  const _draw = (bars) => {
+  // bars = all bars to render (may include prev day); overrideDayOpen = today's first open; todayBarsRaw = today-only bars for hit chips
+  const _draw = (bars, overrideDayOpen, todayBarsRaw) => {
     const w = getWrap(); if (!w) return;
     if (_lwCharts[name]) { try { _lwCharts[name].remove(); } catch (_) {} delete _lwCharts[name]; }
     w.innerHTML = '';
@@ -2805,8 +2868,18 @@ async function loadM5Chart(name, f) {
 
     if (!chartData.length) { _err('no data'); return; }
 
-    const dayOpen  = chartData[0].open;
+    // dayOpen is today's session open (first today bar), not necessarily chartData[0] if prev day included
+    const dayOpen   = overrideDayOpen ?? chartData[0].open;
     const lastClose = chartData[chartData.length - 1].close;
+
+    // Build today-only chart data for hit detection and action status
+    const hitsData = todayBarsRaw
+      ? todayBarsRaw.map(c => ({
+          time:  Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+          open:  parseFloat(c.open),  high: parseFloat(c.high),
+          low:   parseFloat(c.low),   close: parseFloat(c.close),
+        })).filter(b => b.open && !isNaN(b.time))
+      : chartData;
 
     try {
       // Pre-compute forecast level prices so autoscaleInfoProvider can include them
@@ -2900,7 +2973,6 @@ async function loadM5Chart(name, f) {
 
       chart.timeScale().fitContent();
       _lwCharts[name] = chart;
-      _chartMeta[name] = { series, dayOpen, lineDefs, chartData, f };
 
       // Resize when card width changes
       const ro = new ResizeObserver(() => {
@@ -2908,11 +2980,14 @@ async function loadM5Chart(name, f) {
       });
       ro.observe(w);
 
-      // Action status chips + direction indicator
-      _m5ActionStatus(name, dayOpen, lastClose, f);
+      // Action status chips + direction indicator (today-only bars)
+      _m5ActionStatus(name, dayOpen, hitsData.length ? hitsData[hitsData.length - 1].close : lastClose, f);
 
-      // Level hit times — scan bars to find when each level was first touched
-      _renderHitChips(name, dayOpen, lineDefs, chartData);
+      // Level hit times — scan today-only bars to find when each level was first touched
+      _renderHitChips(name, dayOpen, lineDefs, hitsData);
+
+      // Store today-only bars in chartMeta so _rescanHits works correctly
+      _chartMeta[name] = { series, dayOpen, lineDefs, chartData: hitsData, f };
 
     } catch (err) {
       console.error('[lwchart]', name, err);
@@ -2938,9 +3013,31 @@ async function loadM5Chart(name, f) {
 
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
     const todayM5    = values.filter(c => c.datetime?.startsWith(londonDate));
-    const srcBars    = todayM5.length >= 1 ? [...todayM5].reverse() : [...values.slice(0, 96)].reverse();
+
+    // Previous London trading day for chart context (avoids wide candles early in the session)
+    const prevDate = new Date(londonDate + 'T12:00:00Z');
+    prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+    while (prevDate.getUTCDay() === 0 || prevDate.getUTCDay() === 6) prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+    const prevLondonDate = prevDate.toISOString().slice(0, 10);
+    const prevDayM5 = values.filter(c => c.datetime?.startsWith(prevLondonDate));
+
+    let srcBars, overrideDayOpen, todayBarsRaw;
+    if (todayM5.length >= 1) {
+      const todayAsc   = [...todayM5].reverse();        // ascending today bars
+      const prevAsc    = [...prevDayM5].reverse();      // ascending prev day bars
+      const prevCtx    = prevAsc.slice(-96);            // last 96 bars of prev day (8 hrs)
+      srcBars          = [...prevCtx, ...todayAsc];     // full display: prev context + today
+      overrideDayOpen  = parseFloat(todayAsc[0].open); // first today bar = day open
+      todayBarsRaw     = todayAsc;                      // today-only for hit chips
+    } else {
+      // Before today's first bar — fall back to last 96 bars across all available data
+      srcBars         = [...values.slice(0, 96)].reverse();
+      overrideDayOpen = null;
+      todayBarsRaw    = null;
+    }
+
     if (!srcBars.length) { _err('no data'); return; }
-    _draw(srcBars);
+    _draw(srcBars, overrideDayOpen, todayBarsRaw);
   } catch (e) {
     console.warn('[lwchart]', name, e.message);
     _err(e.message.slice(0, 50));
@@ -2960,6 +3057,155 @@ async function loadAllM5Charts(instruments) {
       if (_lwCharts[name]) _rescanHits(name).catch(() => {});
     }
   }, 2000);
+}
+
+// ── Chart Modal ────────────────────────────────────────────────────────────────
+let _modalChart = null;
+
+function openChartModal(name) {
+  const overlay = document.getElementById('v2ChartModal');
+  if (!overlay) return;
+  const nameEl = document.getElementById('v2ChartModalName');
+  if (nameEl) nameEl.textContent = name;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Short delay so overlay renders before chart measures dimensions
+  setTimeout(() => _buildModalChart(name), 60);
+}
+
+function closeChartModal() {
+  const overlay = document.getElementById('v2ChartModal');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+  if (_modalChart) { try { _modalChart.remove(); } catch (_) {} _modalChart = null; }
+  const body = document.getElementById('v2ChartModalBody');
+  if (body) body.innerHTML = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartModal(); });
+
+function _buildModalChart(name) {
+  const body = document.getElementById('v2ChartModalBody');
+  if (!body) return;
+  if (_modalChart) { try { _modalChart.remove(); } catch (_) {} _modalChart = null; }
+  body.innerHTML = '';
+
+  if (!window.LightweightCharts) {
+    body.innerHTML = '<div style="padding:20px;font-family:\'DM Mono\',monospace;color:var(--text3)">Chart library not loaded.</div>';
+    return;
+  }
+
+  const meta = _chartMeta[name];
+  const f    = currentForecast?.instruments?.[name];
+  const cache = _m5Cache[name];
+
+  if (!meta?.dayOpen && !cache?.values?.length) {
+    body.innerHTML = '<div style="padding:20px;font-family:\'DM Mono\',monospace;color:var(--text3)">No chart data yet — wait for cards to load.</div>';
+    return;
+  }
+
+  // Rebuild chart data from cache (prev day + today) for the modal view
+  let srcData;
+  const dayOpen = meta?.dayOpen;
+
+  if (cache?.values?.length) {
+    const values = cache.values;
+    const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
+    const prevDate = new Date(londonDate + 'T12:00:00Z');
+    prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+    while (prevDate.getUTCDay() === 0 || prevDate.getUTCDay() === 6) prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+    const prevLondonDate = prevDate.toISOString().slice(0, 10);
+    const todayM5  = values.filter(c => c.datetime?.startsWith(londonDate));
+    const prevDayM5 = values.filter(c => c.datetime?.startsWith(prevLondonDate));
+    const todayAsc = [...todayM5].reverse();
+    const prevAsc  = [...prevDayM5].reverse();
+    const allBars  = todayAsc.length >= 1 ? [...prevAsc, ...todayAsc] : [...values.slice(0, 288)].reverse();
+    srcData = allBars.map(c => ({
+      time:  Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open:  parseFloat(c.open),  high: parseFloat(c.high),
+      low:   parseFloat(c.low),   close: parseFloat(c.close),
+    })).filter(b => b.open && !isNaN(b.time));
+  } else {
+    srcData = meta?.chartData ?? [];
+  }
+
+  if (!srcData.length) {
+    body.innerHTML = '<div style="padding:20px;font-family:\'DM Mono\',monospace;color:var(--text3)">No bars available.</div>';
+    return;
+  }
+
+  const LS = LightweightCharts.LineStyle;
+  const lineDefs = [
+    { pct: f?.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: false },
+    { pct: f?.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: false },
+    { pct: f?.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true  },
+    { pct: f?.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true  },
+    { pct: f?.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: false },
+    { pct: f?.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: false },
+    { pct: f?.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: false },
+    { pct: f?.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: false },
+  ];
+  const levelPrices = lineDefs.filter(d => d.pct && dayOpen).map(d => dayOpen * (1 + d.side * d.pct / 100));
+
+  const chart = LightweightCharts.createChart(body, {
+    width:  body.clientWidth  || 900,
+    height: Math.max(400, body.clientHeight || 500),
+    layout: {
+      background: { type: 'solid', color: 'transparent' },
+      textColor: '#9ca3af', fontSize: 11, fontFamily: "'DM Mono', monospace",
+    },
+    grid: {
+      vertLines: { color: 'rgba(255,255,255,0.04)' },
+      horzLines: { color: 'rgba(255,255,255,0.07)' },
+    },
+    timeScale: {
+      borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, secondsVisible: false,
+      fixLeftEdge: true, fixRightEdge: false,
+    },
+    rightPriceScale: {
+      borderColor: 'rgba(255,255,255,0.1)',
+      scaleMargins: { top: 0.07, bottom: 0.07 },
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+      vertLine: { color: 'rgba(255,255,255,0.3)', labelBackgroundColor: '#1e2030' },
+      horzLine: { color: 'rgba(255,255,255,0.3)', labelBackgroundColor: '#1e2030' },
+    },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+    handleScale:  { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
+  });
+
+  const series = chart.addCandlestickSeries({
+    upColor: '#10b981', downColor: '#f97316',
+    borderUpColor: '#10b981', borderDownColor: '#f97316',
+    wickUpColor: '#10b981', wickDownColor: '#f97316',
+    autoscaleInfoProvider: orig => {
+      const r = orig();
+      if (!r || !levelPrices.length) return r;
+      return { priceRange: { minValue: Math.min(r.priceRange.minValue, ...levelPrices), maxValue: Math.max(r.priceRange.maxValue, ...levelPrices) }, margins: r.margins };
+    },
+  });
+  series.setData(srcData);
+
+  if (dayOpen) {
+    for (const { pct, side, color, style, title, axis } of lineDefs) {
+      if (!pct) continue;
+      series.createPriceLine({ price: dayOpen * (1 + side * pct / 100), color, lineWidth: 1, lineStyle: style, title, axisLabelVisible: axis });
+    }
+    const lastClose = srcData[srcData.length - 1].close;
+    const isUp = lastClose >= dayOpen;
+    series.createPriceLine({ price: lastClose, color: isUp ? 'rgba(16,185,129,0.8)' : 'rgba(249,115,22,0.8)', lineWidth: 1, lineStyle: LS.Solid, title: isUp ? '▲' : '▼', axisLabelVisible: true });
+  }
+
+  chart.timeScale().fitContent();
+  _modalChart = chart;
+
+  const ro = new ResizeObserver(() => {
+    if (_modalChart && body.clientWidth > 0) {
+      _modalChart.applyOptions({ width: body.clientWidth, height: Math.max(400, body.clientHeight) });
+    }
+  });
+  ro.observe(body);
 }
 
 // ── Help ───────────────────────────────────────────────────────────────────────
