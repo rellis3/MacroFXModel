@@ -543,6 +543,12 @@
   <div class="card-body" id="hCoverageBody"></div>
 </div>
 
+<!-- Gate 1A/2/3 fetch diagnostics -->
+<div class="card" style="margin-top:14px;">
+  <div class="card-hdr">Macro Fetch Diagnostics <span style="font-weight:400;color:var(--text3);font-size:10px;">per-input fetch result for Gate1A/Gate2/Gate3 — hover FAIL chips for error detail</span></div>
+  <div class="card-body" id="hFetchSummaryBody"></div>
+</div>
+
 <!-- Robustness -->
 <div class="card" style="margin-top:14px;">
   <div class="card-hdr">Robustness — Monte Carlo · Walk-Forward · Out-of-Sample</div>
@@ -1188,6 +1194,7 @@ function renderHistAll() {
   renderHistDrawdownChart();
   renderHistGateHitRates();
   renderHistCoverage();
+  renderHistFetchSummary();
   renderHistRobustness();
   renderHistTradeJournal();
   document.getElementById('histSections').style.display = '';
@@ -1311,11 +1318,47 @@ function renderHistCoverage() {
   if (!cov) { body.innerHTML = '<div style="color:var(--text3);font-size:11px;">No coverage data</div>'; return; }
   body.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:16px;font-family:\'DM Mono\',monospace;">' +
     Object.entries(cov).map(([k, v]) => {
-      const filled = v?.filledCount ?? 0, total = v?.total ?? 0;
+      const filled = v?.finite ?? 0, total = v?.total ?? 0;
       const pctVal = total > 0 ? (filled / total * 100).toFixed(0) : '—';
       const c = total > 0 && filled / total >= 0.8 ? '#10b981' : total > 0 && filled / total >= 0.5 ? '#f59e0b' : '#ef4444';
       return `<div style="min-width:90px;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">${k}</div><div style="font-size:18px;font-weight:700;color:${c};">${pctVal}%</div><div style="font-size:10px;color:var(--text3);">${filled}/${total} bars</div></div>`;
     }).join('') + '</div>';
+}
+
+function renderHistFetchSummary() {
+  const fs = _histData.fetchSummary;
+  const el = document.getElementById('hFetchSummaryBody');
+  if (!el) return;
+  if (!fs || !Object.keys(fs).length) { el.innerHTML = '<span style="color:var(--text3);font-size:11px;">No fetch summary available</span>'; return; }
+  const groups = { direction: [], risk: [], liquidity: [] };
+  const dirIds = new Set(['dxy','usdjpy','eurusd','us2y','us10y','hygLqd','creditImpulse','gold','copper','oil','es','rty']);
+  const riskIds = new Set(['vix','vix3m','vvix','move','qqq','spy','credit','us10y_r']);
+  for (const [id, v] of Object.entries(fs)) {
+    const grp = dirIds.has(id) ? 'direction' : riskIds.has(id) ? 'risk' : 'liquidity';
+    groups[grp].push({ id, ...v });
+  }
+  function renderGroup(label, items) {
+    if (!items.length) return '';
+    const chips = items.map(it => {
+      const ok = it.ok === true;
+      const flagged = it.source === 'flaggedMissing';
+      const bg = flagged ? 'rgba(148,163,184,.15)' : ok ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)';
+      const txt = flagged ? '#94a3b8' : ok ? '#10b981' : '#ef4444';
+      const badge = flagged ? 'ABSTAIN' : ok ? `${it.bars ?? 0}d` : 'FAIL';
+      const title = it.error ? ` title="${it.error.replace(/"/g, '&quot;')}"` : '';
+      return `<span${title} style="display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border-radius:4px;background:${bg};font-size:11px;font-family:'DM Mono',monospace;margin:2px;white-space:nowrap;cursor:${it.error ? 'help' : 'default'};">` +
+        `<span style="color:${txt};font-weight:700;">${badge}</span>` +
+        `<span style="color:var(--text2);">${id}</span>` +
+        `</span>`;
+    }).join('');
+    const okCount = items.filter(i => i.ok).length;
+    const ttl = items.filter(i => i.source !== 'flaggedMissing').length;
+    const hdr = `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">${label} <span style="color:${okCount===ttl?'#10b981':okCount===0?'#ef4444':'#f59e0b'}">${okCount}/${ttl}</span></div>`;
+    return `<div style="margin-bottom:10px;">${hdr}<div>${chips}</div></div>`;
+  }
+  el.innerHTML = renderGroup('Gate 3 — Direction inputs', groups.direction) +
+                 renderGroup('Gate 2 — Risk inputs', groups.risk) +
+                 renderGroup('Gate 1A — Liquidity inputs', groups.liquidity);
 }
 
 function renderHistRobustness() {
