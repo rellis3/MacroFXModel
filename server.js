@@ -6607,6 +6607,10 @@ app.post('/api/nasdaq-liquidity/run', express.json({ limit: '1mb' }), (req, res)
   res.json({ ok: true, jobId });
 });
 
+app.get('/api/nasdaq-liquidity/config', (_req, res) => {
+  res.json({ ok: true, hasFredKey: !!process.env.FRED_KEY });
+});
+
 app.get('/api/nasdaq-liquidity/status/:jobId', (req, res) => {
   const job = nlcJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });

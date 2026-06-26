@@ -84,7 +84,7 @@
 <div class="bt-run-bar" id="runBar">
   <span class="bt-run-lbl" style="font-weight:600;color:var(--text2)">Run Backtest:</span>
   <div class="rbar-sep"></div>
-  <label><input type="checkbox" id="useSynthetic" checked> Synthetic self-test data</label>
+  <label><input type="checkbox" id="useSynthetic"> Synthetic self-test data</label>
   <div class="rbar-sep"></div>
   <label>Start <input type="date" id="startDate" value="2014-01-01"></label>
   <label>End <input type="date" id="endDate" placeholder="today"></label>
@@ -713,7 +713,20 @@ function renderEventLog(d) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 // Page loads with no data — try to load the last persisted run, if any.
+// Also fetch the server config to set the synthetic checkbox correctly:
+// if FRED_KEY is available, default to real data (unchecked); otherwise
+// default to synthetic so the Run button always works out of the box.
 (async function init() {
+  try {
+    const cfg = await fetch('/api/nasdaq-liquidity/config').then(r => r.json()).catch(() => null);
+    const hasFred = cfg?.hasFredKey === true;
+    document.getElementById('useSynthetic').checked = !hasFred;
+    if (!hasFred) {
+      document.getElementById('nlcMsg').textContent =
+        'FRED_KEY not configured — synthetic self-test mode is on by default. Add FRED_KEY to Railway env vars to enable real-data runs.';
+    }
+  } catch { /* config fetch failed — leave checkbox as-is (unchecked) */ }
+
   try {
     const r = await fetch('/api/nasdaq-liquidity/results');
     const j = await r.json();
