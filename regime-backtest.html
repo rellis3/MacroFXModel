@@ -476,7 +476,7 @@
   </div>
   <div class="title-block">
     <div class="title" style="font-size:15px;font-weight:700;">Regime Bot Backtester</div>
-    <div class="sub">Replay V1 · V2 · V3 · V4 · V5 (30m regime) bot logic · regime-colored candles · full analytics</div>
+    <div class="sub">Replay V1 · V2 · V2.1 (cost-aware) · V3 · V4 · V5 (30m regime) bot logic · regime-colored candles · full analytics</div>
   </div>
   <div style="flex:1"></div>
   <a href="regime-viewer.html" style="text-decoration:none"><button class="dark-btn">Regime Viewer →</button></a>
@@ -495,6 +495,7 @@
   <div class="rb-toggle">
     <button class="rb-toggle-btn active" id="btnV1" onclick="selectBot('v1')">V1</button>
     <button class="rb-toggle-btn" id="btnV2" onclick="selectBot('v2')">V2</button>
+    <button class="rb-toggle-btn" id="btnV21" onclick="selectBot('v21')">V2.1</button>
     <button class="rb-toggle-btn" id="btnV3" onclick="selectBot('v3')">V3</button>
     <button class="rb-toggle-btn" id="btnV4" onclick="selectBot('v4')">V4</button>
     <button class="rb-toggle-btn" id="btnV5" onclick="selectBot('v5')">V5</button>
@@ -1048,6 +1049,40 @@ const V2_BOOLS = [
 ];
 const V2_DEFAULTS = Object.fromEntries([...V2_PARAMS.map(p=>[p.key,p.def]),...V2_BOOLS.map(b=>[b.key,b.def])]);
 
+// ─── V2.1 Config ─────────────────────────────────────────────────────────────
+// V2.1 keeps V2's exact HMM regime signal + 13-gate entry, but fixes the three
+// things that make V2 the most-traded-yet-unprofitable bot live:
+//   1. COST-AWARE: every trade pays a configurable spread (round-trip), so the
+//      backtest stops flattering an over-trading strategy that bleeds the spread live.
+//   2. STRUCTURED EXITS: adds a real Take-Profit (R), Breakeven trigger (R) and
+//      ATR trailing stop so winners are actually banked / ridden, instead of V2's
+//      give-back-only exits (MFE-retrace / score-drop) that chop trends to bits.
+//   3. LEAN EXITS (default ON): disables V2's noisy micro-exits (slope X3, conf-drop
+//      X4, score-low/score-drop, decay, MFE-retrace) and holds the regime on just
+//      regime-flip + conf-floor + BOCPD + SL/TP/BE/trail — the "regime IS tradable,
+//      so hold it" thesis. Turn OFF to fall back to full V2 exits + costs/TP.
+//   Plus INVERT DIRECTION — a one-switch test of the "flip it" idea (long BEAR /
+//   short BULL). Honest: the inverted book still pays the same spread.
+const V2_1_PARAMS = [
+  ...V2_PARAMS,
+  { key:'spread_pips',    label:'Spread (pips, round-trip)', min:0, max:8, step:0.1, def:1.2, fixed:true,
+    help:'Total transaction cost charged to EVERY trade, in pips, expressed as the full round-trip spread (entry + exit). Pip size is inferred from price (0.01 for JPY/large-quote pairs, 0.0001 otherwise). This is THE fix for "profitable in backtest, losing live": V2 modelled zero cost. Set to your broker\'s typical regime-hours spread for the pair (EURUSD ~0.8–1.5, crosses higher).' },
+  { key:'tp_r',           label:'Take Profit (R)',          min:0, max:8, step:0.1, def:2.0,
+    help:'Fixed take-profit at this many R (multiples of the stop distance). Checked intrabar against each M1 high/low. 0 = disabled (pure V2 give-back exits). A real target is the main reason V2.1 banks trend winners instead of round-tripping them. 1.5–3.0 typical for regime trends.' },
+  { key:'be_trigger_r',   label:'Breakeven Trigger (R)',    min:0, max:4, step:0.1, def:1.0,
+    help:'Once peak profit (MFE) reaches this many R, move the stop to entry (plus the spread buffer) so a winner can no longer become a full loser. 0 = disabled. Works with the trailing stop below.' },
+  { key:'trail_atr_mult', label:'Trail ATR Mult',           min:0, max:6, step:0.1, def:0.0,
+    help:'After breakeven triggers, trail the stop this many ATRs behind price (ATR = the same 70-bar ATR used for the initial stop). 0 = no trail (stop just sits at breakeven). This is the "let the regime run" lever — pair a loose trail (2–3) with a high/disabled TP to ride long regimes.' },
+  { key:'max_trades_day', label:'Max Trades / Day',         min:0, max:20, step:1, def:0,
+    help:'Hard cap on new entries per UTC day (over-trading throttle). 0 = unlimited. V2 over-trades; capping to the best few setups per day often lifts net-of-cost expectancy.' },
+];
+const V2_1_BOOLS = [
+  ...V2_BOOLS,
+  { key:'lean_exits', label:'Lean Exits (hold the regime)', def:true },
+  { key:'invert_dir', label:'Invert Direction (flip BULL/BEAR)', def:false },
+];
+const V2_1_DEFAULTS = Object.fromEntries([...V2_1_PARAMS.map(p=>[p.key,p.def]),...V2_1_BOOLS.map(b=>[b.key,b.def])]);
+
 // ─── V3 Config ───────────────────────────────────────────────────────────────
 // V3 collapses 13 hard entry gates → 4 (conf×session, debounce, slope direction, score≥65).
 // BOCPD/vol-z/decay/rising-conf are no longer hard gates — BOCPD penalises the composite
@@ -1264,6 +1299,7 @@ const V2_METRICS = [
   { key:'exh',   label:'exh',   color:'#795548' },
   { key:'decay', label:'decay', color:'#f44336' },
 ];
+const V2_1_METRICS = V2_METRICS;  // same HMM signal stream as V2
 const V3_METRICS = [
   { key:'conf',  label:'conf',  color:'#2196f3' },
   { key:'score', label:'score', color:'#4caf50' },
@@ -1360,13 +1396,15 @@ function setV5TF(minutes) {
 
 function selectBot(bot) {
   currentBot = bot;
-  ['v1','v2','v3','v4','v5','v6','v7'].forEach(v =>
+  ['v1','v2','v21','v3','v4','v5','v6','v7'].forEach(v =>
     document.getElementById('btn' + v.toUpperCase()).classList.toggle('active', bot === v));
   const isMTF = bot === 'v5' || bot === 'v6' || bot === 'v7';
   const tfMin = V5_MTF;
   const tfLbl = tfMin >= 60 ? (tfMin / 60) + 'h' : tfMin + 'm';
   const titles = {
-    v1: 'V1 Configuration', v2: 'V2 Configuration', v3: 'V3 Configuration',
+    v1: 'V1 Configuration', v2: 'V2 Configuration',
+    v21: 'V2.1 Configuration (cost-aware · TP/BE/trail · lean exits · invert)',
+    v3: 'V3 Configuration',
     v4: 'V4 Configuration',
     v5: `V5 Configuration (${tfLbl} Regime on M1 bars)`,
     v6: `V6 Configuration (${tfLbl} Regime on M1 bars)`,
@@ -1376,11 +1414,11 @@ function selectBot(bot) {
   document.getElementById('hbScoreRow').style.display  = (bot === 'v1') ? 'none' : '';
   document.getElementById('v5TfLabel').style.display   = isMTF ? '' : 'none';
   document.getElementById('v5TfToggle').style.display  = isMTF ? '' : 'none';
-  document.getElementById('hmmTrainWrap').style.display  = (bot === 'v2' || bot === 'v3') ? 'flex' : 'none';
+  document.getElementById('hmmTrainWrap').style.display  = (bot === 'v2' || bot === 'v21' || bot === 'v3') ? 'flex' : 'none';
   document.getElementById('hmmTrainBadge').style.display = 'none';
-  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS, v7:V7_METRICS };
+  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v21:V2_1_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS, v7:V7_METRICS };
   activeMetrics = metricsMap[bot] || V2_METRICS;
-  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
   const savedDefault = localStorage.getItem(`opt_default_${bot}`);
   cfg = savedDefault ? JSON.parse(savedDefault) : { ...(defaultsMap[bot] || V2_DEFAULTS) };
   buildConfigPanel();
@@ -1395,8 +1433,8 @@ function selectBot(bot) {
 // ─── Config panel ─────────────────────────────────────────────────────────────
 
 function buildConfigPanel() {
-  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
-  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
+  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
   const params = paramsMap[currentBot] || V2_PARAMS;
   const bools  = boolsMap[currentBot]  || V2_BOOLS;
 
@@ -1438,7 +1476,7 @@ function buildConfigPanel() {
 function onSlider(key, val, step) {
   let num = step % 1 === 0 ? parseInt(val) : parseFloat(val);
   if (isNaN(num)) return;
-  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
   const params = paramsMap2[currentBot] || V2_PARAMS;
   const p = params.find(pp => pp.key === key);
   if (p) num = Math.max(p.min, Math.min(p.max, num));
@@ -1452,7 +1490,7 @@ function resetParam(key, def) {
 }
 
 function resetAllParams() {
-  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
   localStorage.removeItem(`opt_default_${currentBot}`);
   cfg = { ...(resetMap[currentBot] || V2_DEFAULTS) };
   buildConfigPanel();
@@ -2517,7 +2555,7 @@ async function loadAndRun() {
     // ── 3. Simulate on full M1 ───────────────────────────────────────────────
     setStatus('spin', 'Running simulation…');
     await uiYield();
-    const simMap = { v1:simulateV1, v2:simulateV2, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+    const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
     allTrades = currentBot === 'v7'
       ? simulateV7(rawCandles, rawSignals, rawHtfSignals, cfg)
       : (simMap[currentBot] || simulateV2)(rawCandles, rawSignals, cfg);
@@ -2629,7 +2667,9 @@ function optRandomParam(p) {
 // Global uniform random-sample of a full trial config — the exploration half of the sampler.
 function sampleOptConfig(params, bools) {
   const trialCfg = {};
-  params.forEach(p => { trialCfg[p.key] = optRandomParam(p); });
+  // p.fixed params (e.g. cost assumptions like spread) are never mutated by the optimizer —
+  // otherwise it would "optimize" by lowering modeled costs rather than improving the strategy.
+  params.forEach(p => { trialCfg[p.key] = p.fixed ? p.def : optRandomParam(p); });
   bools.forEach(b => { trialCfg[b.key] = Math.random() < 0.5; });
   return trialCfg;
 }
@@ -2644,6 +2684,7 @@ const OPT_MUTATE_PROB  = 0.40;
 function sampleOptConfigLocal(params, bools, incumbent) {
   const trialCfg = { ...incumbent };
   params.forEach(p => {
+    if (p.fixed) return;  // keep cost assumptions (e.g. spread) pinned at their configured value
     if (Math.random() >= OPT_MUTATE_PROB) return;
     const span   = (p.max - p.min) * OPT_JITTER_FRAC;
     const base   = incumbent[p.key] != null ? incumbent[p.key] : p.def;
@@ -2761,8 +2802,8 @@ async function runClientOptimizer() {
     const cVa = rawCandles.slice(ti, vi), sVa = rawSignals.slice(ti, vi);
     const cTe = rawCandles.slice(vi),     sTe = rawSignals.slice(vi);
 
-    const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
-    const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
+    const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+    const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
     const params = paramsMap[currentBot] || V2_PARAMS;
     const bools  = boolsMap[currentBot]  || V2_BOOLS;
     // V7 simulate needs htfSignals — use closures so runOptSplit sees same 3-arg signature.
@@ -2776,14 +2817,14 @@ async function runClientOptimizer() {
       simFnVa = (c, s, cfg) => simulateV7(c, s, htfVa, cfg);
       simFnTe = (c, s, cfg) => simulateV7(c, s, htfTe, cfg);
     } else {
-      const simMap = { v1:simulateV1, v2:simulateV2, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+      const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
       const fn = simMap[currentBot] || simulateV2;
       simFnTr = simFnVa = simFnTe = fn;
     }
     const mtf    = (currentBot === 'v5' || currentBot === 'v6' || currentBot === 'v7') ? V5_MTF : 1;
     const limits = optMtfLimits(mtf);
 
-    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
     let incumbent    = { ...(defaultsMap[currentBot] || V2_DEFAULTS) };
     let incumbentScore = -Infinity;
 
@@ -3119,6 +3160,177 @@ function simulateV2(candles, signals, c) {
   if (pos) {
     const lc = candles[candles.length - 1];
     trades.push(mkTrade(pos, lc.time, lc.close, 'END'));
+  }
+  return trades;
+}
+
+// ─── Simulation: V2.1 ────────────────────────────────────────────────────────
+// Same HMM regime signal + entry gates as V2, but: (1) every trade pays a
+// configurable round-trip spread (cost-aware); (2) real Take-Profit (R),
+// Breakeven (R) and ATR trailing stop replace V2's give-back-only exits;
+// (3) "Lean Exits" (default) holds the regime on just flip + conf-floor + BOCPD
+// + SL/TP/BE/trail, dropping V2's choppy slope/conf-drop/score/decay/retrace
+// micro-exits; (4) optional Invert Direction tests the "flip it" hypothesis;
+// (5) optional Max Trades/Day throttles over-trading. SL is moved by BE/trail,
+// so pos.orig_sl_dist preserves the original R denominator for reporting.
+function simulateV21(candles, signals, c) {
+  const trades = [];
+  let pos = null, debounce = 0, rangeHold = 0, cooldown = 0;
+  let prevConf = null;
+  let curDay = null, tradesToday = 0;
+  const pipSizeOf = px => px >= 20 ? 0.01 : 0.0001;
+
+  // Build a trade with the round-trip spread deducted from P&L (in % terms),
+  // keeping the original stop distance as the R denominator.
+  const mkT = (p, exitTs, exitPx, reason) => {
+    const t = mkTrade(p, exitTs, exitPx, reason);
+    const costPct = (c.spread_pips * pipSizeOf(p.entry_price)) / p.entry_price * 100;
+    t.pnl_pct -= costPct;
+    t.pnl_r    = t.risk_pct > 0 ? t.pnl_pct / t.risk_pct : 0;
+    t.win      = t.pnl_pct > 0;
+    t.cost_pct = costPct;
+    return t;
+  };
+
+  for (let i = WARMUP; i < candles.length; i++) {
+    const sig = signals[i];
+    if (!sig) continue;
+    const bar = candles[i];
+    const day = Math.floor(sig.ts / 86400);
+    if (day !== curDay) { curDay = day; tradesToday = 0; }
+    const utcH = new Date(sig.ts * 1000).getUTCHours();
+    const inWin     = utcH >= c.window_start && utcH < c.window_end;
+    const effConf   = sig.conf * getSessionMult(sig.ts);
+    const confDrop  = prevConf != null ? prevConf - sig.conf : 0;
+    const confRising = prevConf == null || sig.conf >= prevConf;
+
+    if (pos) {
+      const riskPr  = pos.orig_sl_dist;
+      const tpPrice = c.tp_r > 0
+        ? (pos.direction === 'LONG' ? pos.entry_price + c.tp_r * riskPr : pos.entry_price - c.tp_r * riskPr)
+        : null;
+
+      // ── Intrabar SL / TP (SL assumed first if both touched in one bar) ──
+      const slHit = (pos.direction === 'LONG'  && bar.low  <= pos.sl)
+                 || (pos.direction === 'SHORT' && bar.high >= pos.sl);
+      if (slHit) {
+        // BE/trail may have moved sl to/through entry — label accordingly.
+        const reason = pos.be_armed ? 'TRAIL_BE' : 'SL';
+        trades.push(mkT(pos, bar.time, pos.sl, reason));
+        pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; prevConf = sig.conf; continue;
+      }
+      const tpHit = tpPrice != null && (
+        (pos.direction === 'LONG'  && bar.high >= tpPrice) ||
+        (pos.direction === 'SHORT' && bar.low  <= tpPrice));
+      if (tpHit) {
+        trades.push(mkT(pos, bar.time, tpPrice, 'TP'));
+        pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; prevConf = sig.conf; continue;
+      }
+
+      // Update MFE
+      const fav = pos.direction === 'LONG' ? bar.high - pos.entry_price : pos.entry_price - bar.low;
+      if (fav > pos.mfe_price) pos.mfe_price = fav;
+      pos.mfe_r = riskPr > 0 ? pos.mfe_price / riskPr : 0;
+
+      const xp = bar.close;
+      let exited = false;
+
+      // X1: regime flip (always active — a flipped regime invalidates the trade)
+      const flipped = pos.regime !== sig.regime;
+      if (flipped && (sig.regime === 'BULL' || sig.regime === 'BEAR')) {
+        trades.push(mkT(pos, bar.time, xp, 'REGIME_FLIP')); exited = true;
+      } else if (flipped && c.exit_on_range && (sig.regime === 'RANGE' || sig.regime === 'CHOP')) {
+        if (++rangeHold >= c.range_exit_hold) { trades.push(mkT(pos, bar.time, xp, 'RANGE_EXIT')); exited = true; }
+      } else if (!flipped) { rangeHold = 0; }
+
+      // X2: conf floor + X6: BOCPD — kept in BOTH lean and full modes (regime-integrity exits)
+      if (!exited && sig.conf < c.conf_floor) { trades.push(mkT(pos, bar.time, xp, 'CONF_FLOOR')); exited = true; }
+      if (!exited) {
+        if (sig.bocpd >= c.bocpd_thresh) {
+          if (++pos.bocpd_ct >= c.bocpd_exit_bars) { trades.push(mkT(pos, bar.time, xp, 'BOCPD')); exited = true; }
+        } else { pos.bocpd_ct = 0; }
+      }
+
+      // Full V2 give-back micro-exits — ONLY when Lean Exits is OFF
+      if (!exited && !c.lean_exits) {
+        if (confDrop >= c.drop_thresh && pos.mfe_r < c.x3x4_mfe_suppress_r) {
+          trades.push(mkT(pos, bar.time, xp, 'CONF_DROP')); exited = true;
+        }
+        if (!exited) {
+          if (sig.slope < c.slope_thresh && pos.mfe_r < c.x3x4_mfe_suppress_r) {
+            if (++pos.slope_ct >= c.slope_bars) { trades.push(mkT(pos, bar.time, xp, 'SLOPE')); exited = true; }
+          } else { pos.slope_ct = 0; }
+        }
+        if (!exited) {
+          if (sig.score < c.hold_score_min) {
+            if (++pos.score_low_ct >= c.score_drop_bars) { trades.push(mkT(pos, bar.time, xp, 'SCORE_LOW')); exited = true; }
+          } else { pos.score_low_ct = 0; }
+          if (!exited && (pos.entry_score - sig.score) >= c.score_drop_exit) {
+            trades.push(mkT(pos, bar.time, xp, 'SCORE_DROP')); exited = true;
+          }
+        }
+        if (!exited && pos.mfe_r >= c.mfe_min_r && pos.mfe_price > 0) {
+          const curFav  = pos.direction === 'LONG' ? (xp - pos.entry_price) : (pos.entry_price - xp);
+          const retrace = (pos.mfe_price - Math.max(0, curFav)) / pos.mfe_price;
+          if (retrace >= c.mfe_retrace_pct) { trades.push(mkT(pos, bar.time, xp, 'MFE_RETRACE')); exited = true; }
+        }
+        if (!exited && sig.decay >= c.decay_exit) { trades.push(mkT(pos, bar.time, xp, 'DECAY')); exited = true; }
+      }
+
+      if (exited) { pos = null; debounce = 0; rangeHold = 0; cooldown = c.post_exit_cooldown || 0; prevConf = sig.conf; continue; }
+
+      // ── Breakeven + ATR trailing (after exits, applied for next bar) ──
+      if (c.be_trigger_r > 0 && pos.mfe_r >= c.be_trigger_r) {
+        pos.be_armed = true;
+        const buf = c.spread_pips * pipSizeOf(pos.entry_price);
+        if (pos.direction === 'LONG')  { const be = pos.entry_price + buf; if (be > pos.sl) pos.sl = be; }
+        else                           { const be = pos.entry_price - buf; if (be < pos.sl) pos.sl = be; }
+      }
+      if (c.trail_atr_mult > 0 && pos.be_armed && pos.atr > 0) {
+        if (pos.direction === 'LONG')  { const ns = bar.close - c.trail_atr_mult * pos.atr; if (ns > pos.sl) pos.sl = ns; }
+        else                           { const ns = bar.close + c.trail_atr_mult * pos.atr; if (ns < pos.sl) pos.sl = ns; }
+      }
+    }
+
+    if (cooldown > 0) { cooldown--; prevConf = sig.conf; continue; }
+
+    if (!pos && inWin) {
+      const isDir   = sig.regime === 'BULL' || sig.regime === 'BEAR';
+      const okConf  = effConf >= c.entry_conf;
+      const okRise  = !c.require_rising_conf || confRising;
+      const okVz    = sig.vz <= c.vol_z_max;
+      const okDecay = sig.decay < c.entry_decay_max;
+      const okScore = sig.score >= c.entry_score_min;
+      const okBocpd = sig.bocpd < 55;
+      const okSlope = (sig.regime === 'BULL' && sig.slope > 0) || (sig.regime === 'BEAR' && sig.slope < 0);
+      const okDaily = !c.max_trades_day || tradesToday < c.max_trades_day;
+
+      if (isDir && okConf && okRise && okVz && okDecay && okScore && okBocpd && okSlope && okDaily) {
+        if (++debounce >= c.candle_hold && sig.atrSL) {
+          let dir2 = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          if (c.invert_dir) dir2 = dir2 === 'LONG' ? 'SHORT' : 'LONG';
+          const ep     = bar.close;
+          const slDist = sig.atrSL * c.sl_atr_mult;
+          const sl     = dir2 === 'LONG' ? ep - slDist : ep + slDist;
+          pos = {
+            regime: sig.regime, direction: dir2, entry_ts: bar.time, entry_price: ep,
+            entry_score: sig.score, sl, orig_sl_dist: slDist, atr: sig.atrSL,
+            mfe_price: 0, mfe_r: 0, be_armed: false,
+            conf_at_entry: sig.conf, decay_at_entry: sig.decay,
+            slope_ct: 0, bocpd_ct: 0, score_low_ct: 0,
+          };
+          tradesToday++;
+          debounce = 0; rangeHold = 0;
+        }
+      } else { debounce = 0; }
+    } else if (!pos) { debounce = 0; }
+
+    prevConf = sig.conf;
+  }
+
+  if (pos) {
+    const lc = candles[candles.length - 1];
+    trades.push(mkT(pos, lc.time, lc.close, 'END'));
   }
   return trades;
 }
