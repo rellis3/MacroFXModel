@@ -6649,6 +6649,13 @@ app.post('/api/range-fib/run', async (req, res) => {
     confluenceThreshPips: b.confluenceThreshPips != null ? parseFloat(b.confluenceThreshPips) : null,
     tightPct:             b.tightPct        != null ? parseFloat(b.tightPct)        : 10,
     confluencePrice:      b.confluencePrice || 'lowest',      // 'lowest' | 'highest' | 'midpoint'
+    // Stop mode + session timezone + Monday timeframe (overlooked indicator features)
+    slMode:        b.slMode || 'range',                       // 'range' | 'atr'
+    atrPeriod:     b.atrPeriod  != null ? parseInt(b.atrPeriod)    : 14,
+    atrMult:       b.atrMult    != null ? parseFloat(b.atrMult)    : 1.5,
+    atrTfMin:      b.atrTfMin   != null ? parseInt(b.atrTfMin)     : 30,
+    sessionTz:     b.sessionTz || 'london',                   // 'london' (faithful) | 'utc'
+    mondayTfMin:   b.mondayTfMin != null ? parseInt(b.mondayTfMin) : 15,
   };
   try {
     const { trades, stats, params } = await runRangeFibBacktest(pair, opts, BT_M1_DIR);
