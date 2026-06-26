@@ -5751,12 +5751,10 @@ function _mt5ToOandaSymbol(raw) {
   return null;
 }
 
-// /api/oanda_ohlc1m returns each bar's "datetime" as a bare London wall-clock
-// string with no timezone marker. Trade timestamps are true UTC (see _fmtTime),
-// so every bar must be converted back to true UTC so markers align correctly.
-// Offset = difference between the London wall-clock interpretation and true UTC.
-// Uses the same sv-SE locale trick the server already uses for the datetime
-// strings, so the round-trip is guaranteed consistent without locale-string parsing.
+// Returns the London offset in minutes (0 for GMT, 60 for BST).
+// Bars from /api/oanda_ohlc1m are in London local time ("fake UTC").
+// Trade timestamps (t.time_open / t.time_close) are true UTC.
+// Adding this offset converts true UTC → fake UTC so markers align with bars.
 function _londonOffsetMinutes(epochSec) {
   const lonStr    = new Date(epochSec * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 19);
   const fakeEpoch = Math.floor(new Date(lonStr.replace(' ', 'T') + 'Z').getTime() / 1000);
@@ -5816,12 +5814,17 @@ async function openTradeChartModal(idx) {
     if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
     if (!j.values?.length) throw new Error('No M1 data returned for this window');
 
+    // Keep bars in "fake UTC" (London local treated as UTC) — same as gold-zones.html.
+    // Convert true-UTC trade timestamps to the same coordinate system for markers.
+    const entryTs = t.time_open  + offsetMin * 60;
+    const exitTs  = t.time_close + offsetMin * 60;
+
     const bars = j.values.map(v => ({
-      time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000) - offsetMin * 60,
+      time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
       open: +v.open, high: +v.high, low: +v.low, close: +v.close,
     }));
 
-    const padded = bars.filter(b => b.time >= t.time_open - 600 && b.time <= t.time_close + 600);
+    const padded = bars.filter(b => b.time >= entryTs - 600 && b.time <= exitTs + 600);
     const data = padded.length >= 5 ? padded : bars;
     if (!data.length) throw new Error('No candles in trade window');
 
@@ -5849,8 +5852,8 @@ async function openTradeChartModal(idx) {
     const win    = net >= 0;
     const entryCol = isLong ? '#10b981' : '#f87171';
     _tcSeries.setMarkers([
-      { time: t.time_open,  position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
-      { time: t.time_close, position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
+      { time: entryTs, position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
+      { time: exitTs,  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
     ]);
 
     _tcPriceLines.forEach(pl => { try { _tcSeries.removePriceLine(pl); } catch(e) {} });
