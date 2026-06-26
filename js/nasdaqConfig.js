@@ -29,8 +29,9 @@ export const LIQUIDITY_INPUTS = [
     note: 'Steepening curve = improving growth/risk-on = bullish; flattening/inversion = bearish.' },
   { id: 'dxy',       label: 'Dollar Index (DTWEXBGS)',          source: 'fred',  seriesId: 'DTWEXBGS',      sign: -1, weight: 1.0, publicationLagDays: 1, freq: 'daily',
     note: 'A strengthening dollar tightens global USD liquidity — bearish for risk assets.' },
-  { id: 'credit',    label: 'HY Credit Spread (BAMLH0A0HYM2)',  source: 'fred',  seriesId: 'BAMLH0A0HYM2',  sign: -1, weight: 1.0, publicationLagDays: 1, freq: 'daily',
-    note: 'Widening spreads = credit stress = bearish.' },
+  // HY Credit Spread (BAMLH0A0HYM2) removed: only 16% data coverage on real FRED
+  // history — essentially absent. HYG/LQD ratio (hygLqd, below) covers the same
+  // economic signal with 92% coverage from Yahoo and is retained in the panel.
   { id: 'nfci',      label: 'Chicago Fed NFCI',                 source: 'fred',  seriesId: 'NFCI',          sign: -1, weight: 0.8, publicationLagDays: 7, freq: 'weekly',
     note: 'NFCI > 0 = tighter-than-average financial conditions = bearish.' },
   { id: 'hygLqd',    label: 'HYG/LQD Ratio',                    source: 'yahoo', tickers: ['HYG', 'LQD'],   sign: +1, weight: 0.9, publicationLagDays: 0, freq: 'daily',
@@ -45,7 +46,9 @@ export const LIQUIDITY_SCORE = {
   bullishThreshold: 1.5,  // LiquidityScore > +1.5 → BULLISH (lowered from 2 to widen the active zone)
   bearishThreshold: -1.5, // LiquidityScore < -1.5 → BEARISH (raised from -2 to widen the active zone)
   zClip: 3,               // component sub-scores are clipped to +/-3 std devs before averaging
-  zWindowDays: 252,       // ~1 trading year — standard macro z-score lookback, balances responsiveness vs noise
+  zWindowDays: 63,        // ~3 trading months — shortened from 252 so gradual regime shifts (e.g. QT unfolding
+                          // over 18 months) register as strong z-scores rather than washing out against a year
+                          // of history that is itself shifting. 63 days ≈ one fiscal quarter.
   minCoverage: 0.5,       // at least 50% of the weighted panel (by weight) must have data, else score is INVALID
   marginalMargin: 0.5,    // |score| within this of bullish/bearishThreshold counts as "marginal" conviction for sizing
 };
