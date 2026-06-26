@@ -7570,6 +7570,7 @@ app.post('/api/cog-v2/run-historical', express.json({ limit: '1mb' }), (req, res
         dateRange: dataset.dateRange,
         options: { accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
         gate1bCoverage: dataset.gate1bCoverage,
+        fetchSummary: dataset.fetchSummary,
         intradayBarCount: result.dates.length,
         tradingDayCount: dataset.daily.dates.length,
         trades: tradesEnriched,

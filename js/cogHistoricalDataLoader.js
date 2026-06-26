@@ -134,6 +134,117 @@ async function _fetchAllOandaM5(instrument, startIso, endIso, oandaKey, env, onP
   return all;
 }
 
+// ── Yahoo Finance authenticated series fetcher ─────────────────────────────────
+// Yahoo Finance v8 API requires session cookies + crumb since 2024. The module-
+// level session cache avoids re-fetching on every call. A 401/403 response from
+// the chart endpoint invalidates the cache so the next request starts a fresh
+// session automatically.
+
+const _YAHOO_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+let _yahooSession = null;
+let _yahooSessionExpiry = 0;
+
+async function _getYahooSession() {
+  if (_yahooSession && Date.now() < _yahooSessionExpiry) return _yahooSession;
+
+  const baseHeaders = { 'User-Agent': _YAHOO_UA, 'Accept': '*/*', 'Accept-Language': 'en-US,en;q=0.9' };
+
+  // Step 1: hit the Yahoo Finance homepage to obtain session cookies (A3, GUCS, …)
+  let cookieStr = '';
+  try {
+    const r = await fetch('https://finance.yahoo.com/', {
+      headers: { ...baseHeaders, 'Accept': 'text/html,application/xhtml+xml,*/*' },
+      signal: AbortSignal.timeout(15_000),
+    });
+    const setCookies = typeof r.headers.getSetCookie === 'function'
+      ? r.headers.getSetCookie()
+      : (r.headers.get('set-cookie') ? [r.headers.get('set-cookie')] : []);
+    const jar = {};
+    for (const c of setCookies) {
+      const nv = c.split(';')[0];
+      const eq = nv.indexOf('=');
+      if (eq > 0) jar[nv.slice(0, eq).trim()] = nv.slice(eq + 1).trim();
+    }
+    cookieStr = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ');
+  } catch (e) {
+    console.warn('[cogHistoricalDataLoader] Yahoo homepage fetch failed (continuing):', e.message);
+  }
+
+  // Step 2: fetch the crumb token
+  const crumbHeaders = { ...baseHeaders, 'Referer': 'https://finance.yahoo.com/' };
+  if (cookieStr) crumbHeaders['Cookie'] = cookieStr;
+  const cr = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+    headers: crumbHeaders,
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!cr.ok) throw new Error(`Yahoo crumb: HTTP ${cr.status}`);
+  const crumb = (await cr.text()).trim();
+  if (!crumb || crumb.startsWith('<') || crumb.length > 50) {
+    throw new Error(`Yahoo crumb: unexpected response (${crumb.length} chars, starts "${crumb.slice(0, 30)}")`);
+  }
+
+  // Merge any new cookies from the crumb response
+  if (typeof cr.headers.getSetCookie === 'function') {
+    const jar = Object.fromEntries(
+      cookieStr.split('; ').filter(Boolean).map(c => {
+        const eq = c.indexOf('=');
+        return eq > 0 ? [c.slice(0, eq), c.slice(eq + 1)] : null;
+      }).filter(Boolean)
+    );
+    for (const c of cr.headers.getSetCookie()) {
+      const nv = c.split(';')[0];
+      const eq = nv.indexOf('=');
+      if (eq > 0) jar[nv.slice(0, eq).trim()] = nv.slice(eq + 1).trim();
+    }
+    cookieStr = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ');
+  }
+
+  _yahooSession = { crumb, cookieStr };
+  _yahooSessionExpiry = Date.now() + 3_600_000;
+  return _yahooSession;
+}
+
+// Fetches a Yahoo Finance close series with crumb+cookie auth. Tries each ticker
+// in order (primary then fallbacks). On 401/403 the session cache is invalidated
+// and the request is retried once with a fresh crumb.
+async function _fetchYahooAuthSeries(tickers, startDate) {
+  const period1 = Math.floor(new Date(startDate + 'T00:00:00Z').getTime() / 1000);
+  const period2 = Math.floor(Date.now() / 1000);
+  let lastErr;
+  for (const ticker of tickers) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { crumb, cookieStr } = await _getYahooSession();
+        const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
+          `?interval=1d&period1=${period1}&period2=${period2}&crumb=${encodeURIComponent(crumb)}`;
+        const headers = { 'User-Agent': _YAHOO_UA, 'Accept': 'application/json,*/*', 'Referer': 'https://finance.yahoo.com/' };
+        if (cookieStr) headers['Cookie'] = cookieStr;
+        const r = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
+        if (r.status === 401 || r.status === 403) {
+          _yahooSession = null; _yahooSessionExpiry = 0;
+          throw Object.assign(new Error(`Yahoo ${ticker}: ${r.status}`), { _retry: true });
+        }
+        if (!r.ok) throw new Error(`Yahoo ${ticker}: HTTP ${r.status}`);
+        const json = await r.json();
+        const result = json?.chart?.result?.[0];
+        if (!result) throw new Error(`Yahoo ${ticker}: no chart result`);
+        const ts = result.timestamp || [];
+        const closes = result.indicators?.quote?.[0]?.close || [];
+        const bars = ts
+          .map((t, i) => ({ date: new Date(t * 1000).toISOString().slice(0, 10), value: closes[i] }))
+          .filter(b => Number.isFinite(b.value));
+        if (bars.length) return bars;
+        throw new Error(`Yahoo ${ticker}: 0 finite bars in response`);
+      } catch (e) {
+        lastErr = e;
+        if (e._retry && attempt === 0) continue;
+        break;
+      }
+    }
+  }
+  throw lastErr ?? new Error(`Yahoo: no data for [${tickers.join(', ')}]`);
+}
+
 // ── gate1b daily series fetch ──────────────────────────────────────────────────
 // Hard-coded ID → fetch descriptor map because COG_LIQUIDITY_1B_INPUTS carries
 // no `source` / `seriesId` fields of its own (see cogConfig.js header).
@@ -155,13 +266,8 @@ async function _fetchGate1bDailySeries(startDate) {
   }
 
   async function yahooCloseSeries(tickers) {
-    for (const ticker of tickers) {
-      try {
-        const bars = await fetchYahooDaily(ticker, { start: startDate });
-        if (bars.length) return bars.map(b => ({ date: new Date(b.t).toISOString().slice(0, 10), value: b.close }));
-      } catch { /* try next */ }
-    }
-    return [];
+    try { return await _fetchYahooAuthSeries(tickers, startDate); }
+    catch { return []; }
   }
 
   async function yahooRatioSeries(tickersA, tickersB) {
@@ -214,17 +320,57 @@ function _forwardFillDailyToIntraday(dailySeries, barDates) {
 //   directionSeries : same-day alignment
 
 async function _buildDailyGateSeries(tradingDates) {
-  async function inputOrAbstain(input) {
-    if (input.flaggedMissing) return [];
-    try { return await fetchInputRaw(input); } catch { return []; }
+  const fetchSummary = {};
+
+  async function inputOrAbstain(input, id) {
+    const inputId = id ?? input.id ?? '?';
+    if (input.flaggedMissing) {
+      fetchSummary[inputId] = { source: 'flaggedMissing', ok: false, bars: 0 };
+      return [];
+    }
+    // Determine if this input is Yahoo-sourced — the V1 COG_RISK_INPUTS dict uses
+    // `ticker` (not `source`), while COG_DIRECTION_INPUTS / COG_LIQUIDITY_1A_INPUTS
+    // use `source: 'yahoo'`. Both paths go through our authenticated fetcher.
+    const isYahoo = input.source === 'yahoo' ||
+      (!input.source && !input.fredSeriesId && !input.seriesId &&
+       (input.ticker != null || input.tickers != null));
+    try {
+      let data;
+      if (isYahoo) {
+        const primary  = input.tickers || (input.ticker  ? [input.ticker]  : []);
+        const fallback = input.fallbackTickers || (input.fallbackTicker ? [input.fallbackTicker] : []);
+        if (primary.length >= 2) {
+          // Two-ticker ratio series (e.g. hygLqd = HYG / LQD)
+          const [a, b] = await Promise.all([
+            _fetchYahooAuthSeries([primary[0]], COG_DATA_DEFAULTS.backtestStart),
+            _fetchYahooAuthSeries([primary[1]], COG_DATA_DEFAULTS.backtestStart),
+          ]);
+          const bMap = new Map(b.map(x => [x.date, x.value]));
+          data = a.map(x => {
+            const d = bMap.get(x.date);
+            return Number.isFinite(d) && d !== 0 ? { date: x.date, value: x.value / d } : null;
+          }).filter(Boolean);
+        } else {
+          data = await _fetchYahooAuthSeries([...primary, ...fallback], COG_DATA_DEFAULTS.backtestStart);
+        }
+      } else {
+        data = await fetchInputRaw(input);
+      }
+      fetchSummary[inputId] = { source: input.source || (input.fredSeriesId || input.seriesId ? 'fred' : 'yahoo'), ok: true, bars: data.length };
+      return data;
+    } catch (e) {
+      fetchSummary[inputId] = { source: input.source || (isYahoo ? 'yahoo' : 'fred'), ok: false, bars: 0, error: e.message.slice(0, 120) };
+      console.warn(`[cogHistoricalDataLoader] ${inputId}: fetch failed — ${e.message}`);
+      return [];
+    }
   }
 
   const riskInputEntries = Object.entries(COG_RISK_INPUTS);
 
   const [liquidityRaw, riskRaw, directionRaw] = await Promise.all([
-    Promise.all(COG_LIQUIDITY_1A_INPUTS.map(inputOrAbstain)),
-    Promise.all(riskInputEntries.map(([, inp]) => inputOrAbstain(inp))),
-    Promise.all(COG_DIRECTION_INPUTS.map(inputOrAbstain)),
+    Promise.all(COG_LIQUIDITY_1A_INPUTS.map(input => inputOrAbstain(input, input.id))),
+    Promise.all(riskInputEntries.map(([id, inp]) => inputOrAbstain(inp, id))),
+    Promise.all(COG_DIRECTION_INPUTS.map(input => inputOrAbstain(input, input.id))),
   ]);
 
   const toPoints = vals => tradingDates.map((date, i) => ({ date, value: vals[i] }));
@@ -245,7 +391,7 @@ async function _buildDailyGateSeries(tradingDates) {
   const directionSeries = {};
   COG_DIRECTION_INPUTS.forEach((input, idx) => { directionSeries[input.id] = toPoints(sameDayAlign(directionRaw[idx])); });
 
-  return { liquiditySeries, riskSeries, directionSeries };
+  return { liquiditySeries, riskSeries, directionSeries, fetchSummary };
 }
 
 // ── Main export ────────────────────────────────────────────────────────────────
@@ -358,7 +504,7 @@ export async function loadHistoricalCogDataset({
 
   // ── 5. Fetch Gate1A / Gate2 / Gate3 daily macro series ─────────────────────
   if (onProgress) onProgress({ phase: 'Fetching Gate1A/Gate2/Gate3 macro series (FRED + Yahoo)…' });
-  const { liquiditySeries, riskSeries, directionSeries } = await _buildDailyGateSeries(tradingDates);
+  const { liquiditySeries, riskSeries, directionSeries, fetchSummary } = await _buildDailyGateSeries(tradingDates);
 
   if (onProgress) onProgress({ phase: 'Dataset assembled — ready for runV2Backtest' });
 
@@ -378,6 +524,7 @@ export async function loadHistoricalCogDataset({
         { total: series.length, finite: series.filter(p => Number.isFinite(p.value)).length },
       ])
     ),
+    fetchSummary,
     daily: {
       dates: tradingDates,
       liquiditySeries,
