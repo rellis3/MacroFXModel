@@ -130,18 +130,18 @@ DEFAULT_CFG: dict = {
     'pairs':              ['EUR/USD', 'GBP/USD', 'USD/JPY'],
     'interval_secs':      30,
     # Entry gates
-    'entry_conf':         70.0,
-    'candle_hold':        2,
+    'entry_conf':         75.0,
+    'candle_hold':        4,
     'vol_z_max':          2.5,
     'entry_decay_max':    0.25,
-    'consensus_min':      2,
+    'consensus_min':      3,
     'entry_fail_cooldown_secs': 300,  # 5 min cooldown after a failed MT5 order
     # Hold / exit
     'hold_conf':          55.0,
     'conf_floor':         45.0,
     'slope_thresh':       -5.0,   # %/bar — exit if slope below this for slope_bars
-    'slope_bars':         3,
-    'drop_thresh':        15.0,   # single-bar drop → immediate exit
+    'slope_bars':         2,
+    'drop_thresh':        12.0,   # single-bar drop → immediate exit
     'bocpd_thresh':       70.0,   # % — BOCPD exit gate
     'bocpd_exit_bars':    2,      # consecutive polls above threshold before exit
     'decay_warning':      0.50,
@@ -152,6 +152,7 @@ DEFAULT_CFG: dict = {
     # Position sizing
     'sl_atr_mult':        1.8,
     'sl_atr_tf':          '5m',
+    'tp_r':               2.0,   # TP distance as multiple of SL distance (0 = no TP)
     'risk_pct':           1.0,
     'max_lot':            5.0,
     'max_spread_pips':    3.0,
@@ -179,8 +180,8 @@ DEFAULT_CFG: dict = {
     'score_drop_exit':    30.0,  # X12: exit if score drops this many pts from entry
     'score_drop_bars':    2,     # X11: bars below hold_score_min before exit
     # MFE retrace exit (X13)
-    'mfe_retrace_pct':   0.25,  # close when price gives back this fraction of peak MFE
-    'mfe_min_r':         1.0,   # X13 only activates once MFE reaches this many R
+    'mfe_retrace_pct':   0.40,  # close when price gives back this fraction of peak MFE
+    'mfe_min_r':         0.5,   # X13 only activates once MFE reaches this many R
 }
 
 # ── KV helpers ─────────────────────────────────────────────────────────────────
@@ -1443,11 +1444,13 @@ def run(url: str, paper_mode: bool) -> None:
             atr     = get_atr(pair, cfg.get('sl_atr_tf', '5m'))
             sl_dist = (atr * cfg['sl_atr_mult']) if atr else (20 * pip)
             sl      = (price - sl_dist) if direction == 'LONG' else (price + sl_dist)
+            tp_dist = sl_dist * cfg.get('tp_r', 2.0)
+            tp      = (price + tp_dist) if direction == 'LONG' else (price - tp_dist)
             size    = position_size(balance, cfg['risk_pct'], sl_dist, pair, cfg['max_lot'], decay_score)
             # Scale lots by composite score: 50% at entry_score_min, 100% at score=100
             size    = max(0.01, round(size * reg_score.size_pct / 100.0, 2))
 
-            ticket = open_position(pair, direction, sl, 0, size, cfg['max_spread_pips'], paper_mode)
+            ticket = open_position(pair, direction, sl, tp, size, cfg['max_spread_pips'], paper_mode)
 
             if ticket is not None:
                 _cycle_events.append({'pair': pair, 'type': 'entry', 'direction': direction, 'lots': size, 'sl': round(sl, 5)})
