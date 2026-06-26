@@ -18,7 +18,7 @@
 
 import {
   LIQUIDITY_INPUTS, ENTRY_RULE, EXECUTION, INSTRUMENTS, DATA_DEFAULTS,
-  TREND_RISK_TIERS,
+  TREND_RISK_TIERS, TREND_SCORE,
 } from './nasdaqConfig.js';
 import {
   fetchYahooDaily, fetchFredSeries, fetchLiquidityInputRaw, generateSyntheticDailyDataset,
@@ -154,106 +154,121 @@ export function runFullBacktest(dataset) {
   const eventLog = [];
   const equityCurve = new Array(n).fill(1);
   let equity = 1;
-  let position = null;     // open trade state
-  let pendingEntry = null; // { direction, fillIndex, stopDistance, riskPct, tier, liquidityScoreAtEntry, trendScoreAtEntry, signalDate }
+  let positions = [];      // array of open position objects
+  let pendingEntries = []; // array of { direction, fillIndex, stopDistance, riskPct, tier, liquidityScoreAtEntry, trendScoreAtEntry, signalDate }
 
   const log = (date, message) => eventLog.push({ date, message });
 
-  function finalizeTrade(exitIndex, exitPrice, reason) {
-    const dirSign = position.direction === 'LONG' ? 1 : -1;
-    const pnlR = dirSign * (exitPrice - position.entryPrice) / position.initialStopDistance;
+  function finalizeTrade(pos, exitIndex, exitPrice, reason) {
+    const dirSign = pos.direction === 'LONG' ? 1 : -1;
+    const pnlR = dirSign * (exitPrice - pos.entryPrice) / pos.initialStopDistance;
     trades.push({
-      direction: position.direction, entryIndex: position.entryIndex, entryDate: dates[position.entryIndex], entryPrice: position.entryPrice,
-      exitIndex, exitDate: dates[exitIndex], exitPrice, initialStopDistance: position.initialStopDistance,
-      riskPct: position.riskPct, tier: position.tier, reduced: position.reduced,
-      liquidityScoreAtEntry: position.liquidityScoreAtEntry, trendScoreAtEntry: position.trendScoreAtEntry,
-      barsHeld: exitIndex - position.entryIndex, pnlR, reason,
+      direction: pos.direction, entryIndex: pos.entryIndex, entryDate: dates[pos.entryIndex],
+      entryPrice: pos.entryPrice, exitIndex, exitDate: dates[exitIndex], exitPrice,
+      initialStopDistance: pos.initialStopDistance, riskPct: pos.riskPct, tier: pos.tier,
+      reduced: pos.reduced, liquidityScoreAtEntry: pos.liquidityScoreAtEntry,
+      trendScoreAtEntry: pos.trendScoreAtEntry,
+      barsHeld: exitIndex - pos.entryIndex, pnlR, reason,
     });
   }
 
   for (let i = 0; i < n; i++) {
-    let dailyReturnR = 0;
 
-    // STEP A — fill scheduled actions from a prior bar's signal.
-    if (pendingEntry && pendingEntry.fillIndex === i) {
+    // STEP A — fill pending entries scheduled for this bar's open.
+    for (let pi = pendingEntries.length - 1; pi >= 0; pi--) {
+      const pe = pendingEntries[pi];
+      if (pe.fillIndex !== i) continue;
       const entryPrice = bars[i].open;
-      const stopDistance = pendingEntry.stopDistance;
-      const stopPrice = pendingEntry.direction === 'LONG' ? entryPrice - stopDistance : entryPrice + stopDistance;
-      position = { ...pendingEntry, entryIndex: i, entryPrice, stopPrice, initialStopDistance: stopDistance, sizeFraction: 1, reduced: false, pendingCloseFillIndex: null };
-      const notionalRatio = (position.riskPct / 100) * entryPrice / stopDistance;
+      const { stopDistance } = pe;
+      const stopPrice = pe.direction === 'LONG' ? entryPrice - stopDistance : entryPrice + stopDistance;
+      const pos = { ...pe, entryIndex: i, entryPrice, stopPrice, initialStopDistance: stopDistance, sizeFraction: 1, reduced: false, pendingCloseFillIndex: null };
+      const notionalRatio = (pos.riskPct / 100) * entryPrice / stopDistance;
       equity *= (1 - transactionCostFraction(notionalRatio));
-      log(dates[i], `ORDER FILLED ${position.direction} @ ${entryPrice.toFixed(2)} (risk ${position.riskPct}%, stop ${stopDistance.toFixed(2)})`);
-      pendingEntry = null;
-      const dirSign = position.direction === 'LONG' ? 1 : -1;
-      if (Number.isFinite(bars[i].close)) dailyReturnR = dirSign * (bars[i].close - entryPrice) / stopDistance;
-    } else if (position && position.pendingCloseFillIndex === i) {
-      const exitPrice = bars[i].open;
-      const dirSign = position.direction === 'LONG' ? 1 : -1;
-      dailyReturnR = dirSign * (exitPrice - bars[i - 1].close) / position.initialStopDistance;
-      equity *= (1 + position.sizeFraction * (position.riskPct / 100) * dailyReturnR);
-      const notionalRatio = (position.riskPct / 100) * exitPrice / position.initialStopDistance * position.sizeFraction;
-      equity *= (1 - transactionCostFraction(notionalRatio));
-      finalizeTrade(i, exitPrice, 'CONTINUATION_SCORE_CLOSE');
-      log(dates[i], `CLOSE TRADE — order filled @ ${exitPrice.toFixed(2)}`);
-      position = null;
-      equityCurve[i] = equity;
-      continue; // flat for the rest of this bar
+      log(dates[i], `ORDER FILLED ${pos.direction} @ ${entryPrice.toFixed(2)} (risk ${pos.riskPct}%, stop ${stopDistance.toFixed(2)})`);
+      positions.push(pos);
+      pendingEntries.splice(pi, 1);
     }
 
-    // STEP B — evaluate an open position: stop check, mark-to-market, Gate 4.
-    if (position) {
-      const dirSign = position.direction === 'LONG' ? 1 : -1;
-      const stopHit = position.direction === 'LONG' ? bars[i].low <= position.stopPrice : bars[i].high >= position.stopPrice;
+    // STEP A2 — execute deferred close fills (Gate 4 CLOSE signals from a prior bar).
+    for (let pi = positions.length - 1; pi >= 0; pi--) {
+      const pos = positions[pi];
+      if (pos.pendingCloseFillIndex !== i) continue;
+      const exitPrice = bars[i].open;
+      const dirSign = pos.direction === 'LONG' ? 1 : -1;
+      const returnOnClose = dirSign * (exitPrice - bars[i - 1].close) / pos.initialStopDistance;
+      equity *= (1 + pos.sizeFraction * (pos.riskPct / 100) * returnOnClose);
+      const notionalRatio = (pos.riskPct / 100) * exitPrice / pos.initialStopDistance * pos.sizeFraction;
+      equity *= (1 - transactionCostFraction(notionalRatio));
+      finalizeTrade(pos, i, exitPrice, 'CONTINUATION_SCORE_CLOSE');
+      log(dates[i], `CLOSE TRADE — order filled @ ${exitPrice.toFixed(2)}`);
+      positions.splice(pi, 1);
+    }
+
+    // STEP B — evaluate all open positions: stop check, mark-to-market, Gate 4.
+    for (let pi = positions.length - 1; pi >= 0; pi--) {
+      const pos = positions[pi];
+      const dirSign = pos.direction === 'LONG' ? 1 : -1;
+      const stopHit = pos.direction === 'LONG' ? bars[i].low <= pos.stopPrice : bars[i].high >= pos.stopPrice;
       if (stopHit) {
-        const exitPrice = position.stopPrice;
-        const refPrice = (i === position.entryIndex) ? position.entryPrice : bars[i - 1].close;
-        dailyReturnR = dirSign * (exitPrice - refPrice) / position.initialStopDistance;
-        equity *= (1 + position.sizeFraction * (position.riskPct / 100) * dailyReturnR);
-        const notionalRatio = (position.riskPct / 100) * exitPrice / position.initialStopDistance * position.sizeFraction;
+        const exitPrice = pos.stopPrice;
+        const refPrice = (i === pos.entryIndex) ? pos.entryPrice : bars[i - 1].close;
+        const returnOnStop = dirSign * (exitPrice - refPrice) / pos.initialStopDistance;
+        equity *= (1 + pos.sizeFraction * (pos.riskPct / 100) * returnOnStop);
+        const notionalRatio = (pos.riskPct / 100) * exitPrice / pos.initialStopDistance * pos.sizeFraction;
         equity *= (1 - transactionCostFraction(notionalRatio));
-        finalizeTrade(i, exitPrice, 'STOP_LOSS');
+        finalizeTrade(pos, i, exitPrice, 'STOP_LOSS');
         log(dates[i], `STOP LOSS HIT — CLOSE TRADE @ ${exitPrice.toFixed(2)}`);
-        position = null;
+        positions.splice(pi, 1);
       } else {
-        if (i !== position.entryIndex) {
-          dailyReturnR = dirSign * (bars[i].close - bars[i - 1].close) / position.initialStopDistance;
+        // Mark to market: entry bar uses entryPrice as base; subsequent bars use previous close.
+        if (i === pos.entryIndex) {
+          if (Number.isFinite(bars[i].close)) {
+            const posReturn = dirSign * (bars[i].close - pos.entryPrice) / pos.initialStopDistance;
+            equity *= (1 + pos.sizeFraction * (pos.riskPct / 100) * posReturn);
+          }
+        } else {
+          const posReturn = dirSign * (bars[i].close - bars[i - 1].close) / pos.initialStopDistance;
+          equity *= (1 + pos.sizeFraction * (pos.riskPct / 100) * posReturn);
         }
-        equity *= (1 + position.sizeFraction * (position.riskPct / 100) * dailyReturnR);
 
-        const rawContinuation = {
-          momentum30m: indicators.momentum[i],
-          adx: indicators.adx[i],
-          adxSlope: indicators.adx[i] - (indicators.adx[i - 1] ?? NaN),
-          hurst: indicators.hurst[i],
-          vwapDist: Number.isFinite(vwapAtrSeries[i]) ? dirSign * vwapAtrSeries[i] : NaN,
-          vwapLoss: Number.isFinite(vwapAtrSeries[i]) ? ((dirSign * vwapAtrSeries[i] < 0) ? 1 : 0) : NaN,
-          breadth: breadthZ[i],
-          add: NaN, tick: NaN, trin: NaN,
-          dxy: dailyReturn(dataset.dxy[i - 1], dataset.dxy[i]),
-          yields: (Number.isFinite(dataset.us10y[i]) && Number.isFinite(dataset.us10y[i - 1])) ? dataset.us10y[i] - dataset.us10y[i - 1] : NaN,
-          vix: dailyReturn(dataset.vix[i - 1], dataset.vix[i]),
-          vvix: dailyReturn(dataset.vvix[i - 1], dataset.vvix[i]),
-          realizedVol: volFeatures.realizedVolPercentile[i],
-        };
-        const aligned = alignContinuationFeatures(position.direction, rawContinuation);
-        const cont = scoreContinuation(aligned);
-        position.lastContinuation = cont;
+        // Gate 4 — skip if already queued for close (Gate 4 already spoke).
+        if (pos.pendingCloseFillIndex === null) {
+          const rawContinuation = {
+            momentum30m: indicators.momentum[i],
+            adx: indicators.adx[i],
+            adxSlope: indicators.adx[i] - (indicators.adx[i - 1] ?? NaN),
+            hurst: indicators.hurst[i],
+            vwapDist: Number.isFinite(vwapAtrSeries[i]) ? dirSign * vwapAtrSeries[i] : NaN,
+            vwapLoss: Number.isFinite(vwapAtrSeries[i]) ? ((dirSign * vwapAtrSeries[i] < 0) ? 1 : 0) : NaN,
+            breadth: breadthZ[i],
+            add: NaN, tick: NaN, trin: NaN,
+            dxy: dailyReturn(dataset.dxy[i - 1], dataset.dxy[i]),
+            yields: (Number.isFinite(dataset.us10y[i]) && Number.isFinite(dataset.us10y[i - 1])) ? dataset.us10y[i] - dataset.us10y[i - 1] : NaN,
+            vix: dailyReturn(dataset.vix[i - 1], dataset.vix[i]),
+            vvix: dailyReturn(dataset.vvix[i - 1], dataset.vvix[i]),
+            realizedVol: volFeatures.realizedVolPercentile[i],
+          };
+          const aligned = alignContinuationFeatures(pos.direction, rawContinuation);
+          const cont = scoreContinuation(aligned);
+          pos.lastContinuation = cont;
 
-        if (cont.action === 'CLOSE') {
-          position.pendingCloseFillIndex = i + 1;
-          log(dates[i], `Gate 4 ContinuationScore ${cont.score?.toFixed(0) ?? 'n/a'} → CLOSE TRADE (signal, fills next open)`);
-        } else if (cont.action === 'REDUCE' && !position.reduced) {
-          position.sizeFraction = 0.5;
-          position.reduced = true;
-          const notionalRatio = (position.riskPct / 100) * bars[i].close / position.initialStopDistance * 0.5;
-          equity *= (1 - transactionCostFraction(notionalRatio));
-          log(dates[i], `Gate 4 ContinuationScore ${cont.score?.toFixed(0) ?? 'n/a'} → Reduce Position`);
+          if (cont.action === 'CLOSE') {
+            pos.pendingCloseFillIndex = i + 1;
+            log(dates[i], `Gate 4 ContinuationScore ${cont.score?.toFixed(0) ?? 'n/a'} → CLOSE TRADE (signal, fills next open)`);
+          } else if (cont.action === 'REDUCE' && !pos.reduced) {
+            pos.sizeFraction = 0.5;
+            pos.reduced = true;
+            const notionalRatio = (pos.riskPct / 100) * bars[i].close / pos.initialStopDistance * 0.5;
+            equity *= (1 - transactionCostFraction(notionalRatio));
+            log(dates[i], `Gate 4 ContinuationScore ${cont.score?.toFixed(0) ?? 'n/a'} → Reduce Position`);
+          }
         }
       }
     }
 
-    // STEP D — look for a new entry only when flat with nothing queued.
-    if (!position && !pendingEntry && i + 1 < n) {
+    // STEP D — look for a new entry if below the concurrent position cap.
+    const maxPos = ENTRY_RULE.maxConcurrentPositions ?? 1;
+    if (positions.length + pendingEntries.length < maxPos && i + 1 < n) {
       const g1 = gate1[i], g2 = gate2[i];
       const bias = (g1.dataValid && g1.state === 'BULLISH') ? 'LONG'
         : (g1.dataValid && g1.state === 'BEARISH') ? 'SHORT' : null;
@@ -268,16 +283,18 @@ export function runFullBacktest(dataset) {
         });
         const gate3RawMoves = computeDailyGate3RawMoves(i, dataset, vwapAtrSeries);
         const gate3 = computeNyConfirmation(gate3RawMoves, bias);
+        const highConviction = TREND_SCORE.highConvictionGate3Bypass != null
+          && g2.score >= TREND_SCORE.highConvictionGate3Bypass;
 
-        log(dates[i], `Gate 1 ${g1.state} (score ${g1.score?.toFixed(2)}) / Gate 2 VALID (score ${g2.score?.toFixed(0)}, tier ${g2.tier}) / Gate 3 ${gate3.decision}`);
+        log(dates[i], `Gate 1 ${g1.state} (score ${g1.score?.toFixed(2)}) / Gate 2 VALID (score ${g2.score?.toFixed(0)}, tier ${g2.tier}) / Gate 3 ${gate3.decision}${highConviction ? ' [G3-bypass]' : ''}`);
 
-        if (gate3.decision === bias) {
+        if (gate3.decision === bias || highConviction) {
           const tierInfo = determineConfidenceTier({ trendTier: g2.tier, liquidityScore: g1.score, volRegime: volRegime.regime });
           const stopDistance = computeStopDistance(indicators.atr[i], volRegime.regime);
-          pendingEntry = {
+          pendingEntries.push({
             direction: bias, fillIndex: i + 1, stopDistance, riskPct: tierInfo.riskPct, tier: tierInfo.tier,
             liquidityScoreAtEntry: g1.score, trendScoreAtEntry: g2.score, signalDate: dates[i],
-          };
+          });
           log(dates[i], `Risk = ${tierInfo.riskPct}% / Stop = ${stopDistance.toFixed(2)} (${volRegime.regime} vol regime) → ORDER QUEUED ${bias}`);
         }
       }
@@ -286,9 +303,9 @@ export function runFullBacktest(dataset) {
     equityCurve[i] = equity;
   }
 
-  // If still open at the end of history, mark it closed-at-last-close for reporting (not a real fill).
-  if (position) {
-    finalizeTrade(n - 1, bars[n - 1].close, 'END_OF_HISTORY_OPEN');
+  // End of history — close all positions still open at last close (not a real fill).
+  for (const pos of positions) {
+    finalizeTrade(pos, n - 1, bars[n - 1].close, 'END_OF_HISTORY_OPEN');
   }
 
   // Secondary exit model comparison — replay every completed trade's actual
