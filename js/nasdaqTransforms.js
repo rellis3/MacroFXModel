@@ -93,15 +93,39 @@ export function stdev(arr, period) {
 }
 
 // Absolute rate-of-change: arr[i] - arr[i - period]. Returns NaN where either
-// value is missing. Used to convert level-based macro series into momentum
-// series before z-scoring (a slowly-declining balance sheet has a near-zero
-// level z-score but a persistently negative ROC z-score).
+// value is missing.
 export function rollingRoc(arr, period) {
   const out = new Array(arr.length).fill(NaN);
   for (let i = period; i < arr.length; i++) {
     if (Number.isFinite(arr[i]) && Number.isFinite(arr[i - period])) {
       out[i] = arr[i] - arr[i - period];
     }
+  }
+  return out;
+}
+
+// Normalize arr[i] by the trailing `period` population std-dev WITHOUT
+// subtracting the mean. This preserves directional signal for trending series:
+// a balance sheet declining at a constant rate has roc ≈ constant, so its
+// z-score (which subtracts the mean) ≈ 0 — NEUTRAL despite 18 months of QT.
+// Dividing by std instead gives roc/σ ≈ -1.5 to -3, a persistent BEARISH
+// reading.  Requires at least 50% of the window to be finite; clipped to
+// +/- clipAt.
+export function rollingStdNorm(arr, period, clipAt = null) {
+  const out = new Array(arr.length).fill(NaN);
+  for (let i = period - 1; i < arr.length; i++) {
+    if (!Number.isFinite(arr[i])) continue;
+    let sum = 0, sumSq = 0, n = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      if (Number.isFinite(arr[j])) { sum += arr[j]; sumSq += arr[j] * arr[j]; n++; }
+    }
+    if (n < Math.floor(period * 0.5)) continue;
+    const mean = sum / n;
+    const std = Math.sqrt(Math.max(0, sumSq / n - mean * mean));
+    if (std < 1e-10) continue;
+    let norm = arr[i] / std;
+    if (clipAt != null) norm = Math.max(-clipAt, Math.min(clipAt, norm));
+    out[i] = norm;
   }
   return out;
 }
