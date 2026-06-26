@@ -2885,14 +2885,14 @@ async function loadM5Chart(name, f) {
       // Pre-compute forecast level prices so autoscaleInfoProvider can include them
       const LS = LightweightCharts.LineStyle;
       const lineDefs = [
-        { pct: f?.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: false },
-        { pct: f?.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: false },
-        { pct: f?.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true  },
-        { pct: f?.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true  },
-        { pct: f?.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: false },
-        { pct: f?.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: false },
-        { pct: f?.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: false },
-        { pct: f?.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: false },
+        { pct: f?.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
+        { pct: f?.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
+        { pct: f?.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true },
+        { pct: f?.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true },
+        { pct: f?.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: true },
+        { pct: f?.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: true },
+        { pct: f?.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
+        { pct: f?.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
       ];
       const levelPrices = lineDefs
         .filter(d => d.pct && dayOpen)
@@ -3014,24 +3014,19 @@ async function loadM5Chart(name, f) {
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
     const todayM5    = values.filter(c => c.datetime?.startsWith(londonDate));
 
-    // Previous London trading day for chart context (avoids wide candles early in the session)
-    const prevDate = new Date(londonDate + 'T12:00:00Z');
-    prevDate.setUTCDate(prevDate.getUTCDate() - 1);
-    while (prevDate.getUTCDay() === 0 || prevDate.getUTCDay() === 6) prevDate.setUTCDate(prevDate.getUTCDate() - 1);
-    const prevLondonDate = prevDate.toISOString().slice(0, 10);
-    const prevDayM5 = values.filter(c => c.datetime?.startsWith(prevLondonDate));
+    // All non-today bars for context — API returns ~1500 M5 bars ≈ 1 full trading week
+    const prevBars = values.filter(c => !c.datetime?.startsWith(londonDate));
 
     let srcBars, overrideDayOpen, todayBarsRaw;
     if (todayM5.length >= 1) {
-      const todayAsc   = [...todayM5].reverse();        // ascending today bars
-      const prevAsc    = [...prevDayM5].reverse();      // ascending prev day bars
-      const prevCtx    = prevAsc.slice(-96);            // last 96 bars of prev day (8 hrs)
-      srcBars          = [...prevCtx, ...todayAsc];     // full display: prev context + today
-      overrideDayOpen  = parseFloat(todayAsc[0].open); // first today bar = day open
-      todayBarsRaw     = todayAsc;                      // today-only for hit chips
+      const todayAsc  = [...todayM5].reverse();   // ascending today bars
+      const prevAsc   = [...prevBars].reverse();  // ascending prior-week bars
+      srcBars         = [...prevAsc, ...todayAsc];
+      overrideDayOpen = parseFloat(todayAsc[0].open);
+      todayBarsRaw    = todayAsc;
     } else {
-      // Before today's first bar — fall back to last 96 bars across all available data
-      srcBars         = [...values.slice(0, 96)].reverse();
+      // Before today's first bar — show all available history
+      srcBars         = [...values].reverse();
       overrideDayOpen = null;
       todayBarsRaw    = null;
     }
@@ -3111,15 +3106,12 @@ function _buildModalChart(name) {
   if (cache?.values?.length) {
     const values = cache.values;
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
-    const prevDate = new Date(londonDate + 'T12:00:00Z');
-    prevDate.setUTCDate(prevDate.getUTCDate() - 1);
-    while (prevDate.getUTCDay() === 0 || prevDate.getUTCDay() === 6) prevDate.setUTCDate(prevDate.getUTCDate() - 1);
-    const prevLondonDate = prevDate.toISOString().slice(0, 10);
     const todayM5  = values.filter(c => c.datetime?.startsWith(londonDate));
-    const prevDayM5 = values.filter(c => c.datetime?.startsWith(prevLondonDate));
+    const prevBars = values.filter(c => !c.datetime?.startsWith(londonDate));
     const todayAsc = [...todayM5].reverse();
-    const prevAsc  = [...prevDayM5].reverse();
-    const allBars  = todayAsc.length >= 1 ? [...prevAsc, ...todayAsc] : [...values.slice(0, 288)].reverse();
+    const prevAsc  = [...prevBars].reverse();
+    // Full week context: all ~1500 bars (prior week) + today
+    const allBars  = todayAsc.length >= 1 ? [...prevAsc, ...todayAsc] : [...values].reverse();
     srcData = allBars.map(c => ({
       time:  Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
       open:  parseFloat(c.open),  high: parseFloat(c.high),
@@ -3136,14 +3128,14 @@ function _buildModalChart(name) {
 
   const LS = LightweightCharts.LineStyle;
   const lineDefs = [
-    { pct: f?.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: false },
-    { pct: f?.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: false },
-    { pct: f?.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true  },
-    { pct: f?.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true  },
-    { pct: f?.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: false },
-    { pct: f?.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: false },
-    { pct: f?.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: false },
-    { pct: f?.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: false },
+    { pct: f?.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
+    { pct: f?.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
+    { pct: f?.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true },
+    { pct: f?.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true },
+    { pct: f?.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: true },
+    { pct: f?.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: true },
+    { pct: f?.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
+    { pct: f?.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
   ];
   const levelPrices = lineDefs.filter(d => d.pct && dayOpen).map(d => dayOpen * (1 + d.side * d.pct / 100));
 
