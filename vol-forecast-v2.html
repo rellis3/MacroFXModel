@@ -265,29 +265,32 @@
 .v2-tile.reached .v2-tile-val { color: var(--green); }
 .v2-tile-check { font-size: 9px; font-weight: 700; color: var(--green); letter-spacing: .05em; }
 
-/* ── v2 Tools bar ────────────────────────────────────────────────────────────── */
-.v2-tools-bar {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  padding: 10px 0; margin-top: 14px;
-  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+/* ── v2 Sticky button row ────────────────────────────────────────────────────── */
+.v2-btn-row {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 0 5px;
+  border-bottom: 1.5px solid var(--border);
+  overflow-x: auto; flex-wrap: nowrap;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
 }
+.v2-btn-row::-webkit-scrollbar { height: 3px; }
+.v2-btn-row::-webkit-scrollbar-track { background: transparent; }
+.v2-btn-row::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
 .v2-tool-btn {
   background: none; border: 1.5px solid var(--border); border-radius: 20px;
-  padding: 4px 12px; cursor: pointer; font-size: 11px; font-weight: 500;
+  padding: 3px 11px; cursor: pointer; font-size: 11px; font-weight: 500;
   color: var(--text2); font-family: 'DM Sans', sans-serif;
-  transition: all .2s; white-space: nowrap;
+  transition: all .2s; white-space: nowrap; flex-shrink: 0;
 }
 .v2-tool-btn:hover { border-color: var(--blue); color: var(--blue); }
 .v2-tool-btn:disabled { opacity: .4; cursor: not-allowed; }
 .v2-tool-btn.active { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
-.v2-tool-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+.v2-tool-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; margin: 0 2px; }
+.v2-exp-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; flex-shrink: 0; padding-left: 2px; }
 
-/* ── v2 Export bar ───────────────────────────────────────────────────────────── */
-.v2-export-bar {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  padding: 8px 0;
-}
-.v2-exp-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; flex-shrink: 0; }
+/* legacy selectors kept for compatibility — tools/export bars no longer rendered */
+.v2-tools-bar, .v2-export-bar { display: none; }
 
 /* ── v2 Secondary panels ─────────────────────────────────────────────────────── */
 .v2-panel {
@@ -629,6 +632,31 @@
     </div>
   </div>
 
+  <!-- All-buttons row (sticky) -->
+  <div class="v2-btn-row">
+    <button class="v2-tool-btn" id="vfLevelsBtn"          onclick="toggleLevelsView()"    disabled>Levels</button>
+    <button class="v2-tool-btn" id="vfHitRatesBtn"        onclick="toggleHitRates()">Hit Rates</button>
+    <button class="v2-tool-btn" id="vfBriefBtn"           onclick="toggleBrief()">Brief</button>
+    <button class="v2-tool-btn" id="vfWeeklyBtn"          onclick="toggleWeekly()"        disabled>Weekly</button>
+    <button class="v2-tool-btn" id="vfProfileBtn"         onclick="toggleProfile()">Profile</button>
+    <button class="v2-tool-btn" id="vfEventBtn"           onclick="toggleEventImpact()">Events</button>
+    <button class="v2-tool-btn" id="vfRefDataBtn"         onclick="toggleRefPanel()">Ref Data</button>
+    <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
+    <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
+    <div class="v2-tool-sep"></div>
+    <span class="v2-exp-lbl">Export:</span>
+    <button class="v2-tool-btn" id="vfExportBtn"          onclick="exportForecast()"          disabled>⬇ Forecast</button>
+    <button class="v2-tool-btn" id="vfSessionExportBtn"   onclick="exportSession()"           disabled>⬇ Session</button>
+    <button class="v2-tool-btn" id="vfV3ExportBtn"        onclick="exportV3()"                disabled>⬇ V+S</button>
+    <button class="v2-tool-btn" id="vfCZExportBtn"        onclick="exportConfluenceZones()"   disabled title="Confluence Zones export">⬇ C+Z</button>
+    <button class="v2-tool-btn" id="vfExtendedBtn"        onclick="exportExtended()"          disabled>⬇ Extended</button>
+    <button class="v2-tool-btn" id="vfWeeklyExportBtn"    onclick="exportWeekly()"            disabled>⬇ Weekly</button>
+    <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
+    <div class="v2-tool-sep"></div>
+    <a href="levels.html" target="_blank" style="text-decoration:none"><button class="v2-tool-btn" style="border-color:#10b981;color:#10b981" title="Entry Lens — macro × range × vol × z-score entry view">🎯 Entry Lens</button></a>
+    <a href="index.html" style="text-decoration:none"><button class="v2-tool-btn">→ Dashboard</button></a>
+  </div>
+
   <!-- Tab navigation -->
   <div class="v2-tabbar">
     <div class="v2-tab active" id="vfTabToday" onclick="switchTab('today', this)">
@@ -671,34 +699,6 @@
 <!-- INSTRUMENT GRID -->
 <div class="v2-grid" id="vfGrid">
   <!-- populated by JS -->
-</div>
-
-<!-- TOOLS BAR -->
-<div class="v2-tools-bar">
-  <button class="v2-tool-btn" id="vfLevelsBtn"   onclick="toggleLevelsView()"    disabled>Levels</button>
-  <button class="v2-tool-btn" id="vfHitRatesBtn" onclick="toggleHitRates()">Hit Rates</button>
-  <button class="v2-tool-btn" id="vfBriefBtn"    onclick="toggleBrief()">Brief</button>
-  <button class="v2-tool-btn" id="vfWeeklyBtn"   onclick="toggleWeekly()"        disabled>Weekly</button>
-  <button class="v2-tool-btn" id="vfProfileBtn"  onclick="toggleProfile()">Profile</button>
-  <button class="v2-tool-btn" id="vfEventBtn"    onclick="toggleEventImpact()">Events</button>
-  <button class="v2-tool-btn" id="vfRefDataBtn"  onclick="toggleRefPanel()">Ref Data</button>
-  <button class="v2-tool-btn" id="vfSessionComputeBtn" onclick="triggerSessionStats()">Session Stats</button>
-  <button class="v2-tool-btn" id="vfHelpBtn"     onclick="toggleHelp()">? Help</button>
-  <div class="v2-tool-sep"></div>
-  <a href="levels.html" target="_blank" style="text-decoration:none"><button class="v2-tool-btn" style="border-color:#10b981;color:#10b981" title="Entry Lens — macro × range × volatility × z-score entry view, all pairs">🎯 Entry Lens</button></a>
-  <a href="index.html" style="text-decoration:none"><button class="v2-tool-btn">→ Dashboard</button></a>
-</div>
-
-<!-- EXPORT BAR -->
-<div class="v2-export-bar">
-  <span class="v2-exp-lbl">Export:</span>
-  <button class="v2-tool-btn" id="vfExportBtn"        onclick="exportForecast()"  disabled>⬇ Export</button>
-  <button class="v2-tool-btn" id="vfSessionExportBtn" onclick="exportSession()"   disabled>⬇ Session</button>
-  <button class="v2-tool-btn" id="vfV3ExportBtn"      onclick="exportV3()"        disabled>⬇ V+S</button>
-  <button class="v2-tool-btn" id="vfCZExportBtn"      onclick="exportConfluenceZones()" disabled title="Confluence Zones: Fibonacci + prev highs/lows + weekly pivots + vol levels — paste into the C+Z Pine Script indicator">⬇ C+Z</button>
-  <button class="v2-tool-btn" id="vfExtendedBtn"      onclick="exportExtended()"  disabled>⬇ Extended</button>
-  <button class="v2-tool-btn" id="vfWeeklyExportBtn"  onclick="exportWeekly()"    disabled>⬇ Weekly</button>
-  <button class="v2-tool-btn" id="vfHistoryBtn"       onclick="toggleHistory()"   disabled>⊞ History</button>
 </div>
 
 <!-- POSITION SIZING -->
