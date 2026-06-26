@@ -46,9 +46,12 @@ export const LIQUIDITY_SCORE = {
   bullishThreshold: 1.5,  // LiquidityScore > +1.5 → BULLISH (lowered from 2 to widen the active zone)
   bearishThreshold: -1.5, // LiquidityScore < -1.5 → BEARISH (raised from -2 to widen the active zone)
   zClip: 3,               // component sub-scores are clipped to +/-3 std devs before averaging
-  zWindowDays: 63,        // ~3 trading months — shortened from 252 so gradual regime shifts (e.g. QT unfolding
-                          // over 18 months) register as strong z-scores rather than washing out against a year
-                          // of history that is itself shifting. 63 days ≈ one fiscal quarter.
+  rocLookbackDays: 63,    // rate-of-change window: arr[i] - arr[i-63]. A series declining for 18 months
+                          // has a persistently negative ROC even though its level z-score ≈ 0 (the mean
+                          // is also declining). 63 days ≈ one fiscal quarter.
+  zWindowDays: 252,       // z-score window applied to the ROC series (not levels). 252 days gives a full
+                          // year of ROC history, so the z-score reflects "how extreme is this quarterly
+                          // change relative to all quarterly changes in the past year".
   minCoverage: 0.5,       // at least 50% of the weighted panel (by weight) must have data, else score is INVALID
   marginalMargin: 0.5,    // |score| within this of bullish/bearishThreshold counts as "marginal" conviction for sizing
 };

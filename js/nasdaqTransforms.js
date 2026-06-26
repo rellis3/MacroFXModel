@@ -92,6 +92,20 @@ export function stdev(arr, period) {
   return out;
 }
 
+// Absolute rate-of-change: arr[i] - arr[i - period]. Returns NaN where either
+// value is missing. Used to convert level-based macro series into momentum
+// series before z-scoring (a slowly-declining balance sheet has a near-zero
+// level z-score but a persistently negative ROC z-score).
+export function rollingRoc(arr, period) {
+  const out = new Array(arr.length).fill(NaN);
+  for (let i = period; i < arr.length; i++) {
+    if (Number.isFinite(arr[i]) && Number.isFinite(arr[i - period])) {
+      out[i] = arr[i] - arr[i - period];
+    }
+  }
+  return out;
+}
+
 // z-score of arr[i] vs. the trailing `period` window (population stats),
 // optionally clipped to +/- clipAt std devs (LIQUIDITY_SCORE.zClip uses this).
 export function rollingZScore(arr, period, clipAt = null) {
