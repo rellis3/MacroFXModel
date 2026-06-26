@@ -172,6 +172,10 @@ def score_zones(zones: list[FibZone], vol: VolumeProfile,
             score += WEIGHTS['htf_aligned']
             zone.htf_aligned = True
             comp.append(f'HTF {htf.bias}')
+        elif htf.bias != 'NEUTRAL':
+            score -= 1.0   # active penalty for opposing an established HTF trend
+            zone.htf_aligned = False
+            comp.append(f'counter-{htf.bias}')
         else:
             zone.htf_aligned = False
 

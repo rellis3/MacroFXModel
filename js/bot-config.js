@@ -1916,59 +1916,71 @@ window.daForceUnlock    = daForceUnlock;
 // ── Gold Bot ──────────────────────────────────────────────────────────────────
 
 const GOLD_DEFAULTS = {
-  enabled:              true,
-  paper_mode:           true,
-  min_zone_score:       3.0,
-  proximity_pips:       5.0,
-  vu_min_components:    2,
-  risk_pct:             0.5,
-  tp1_r:                1.0,
-  tp2_r:                2.0,
-  sl_atr_mult:          1.5,
-  max_sl_pips:          40,
-  max_trades_per_day:   2,
-  trade_window_start:   '07:00',
-  trade_window_end:     '20:00',
-  cooldown_minutes:     30,
-  gold_macro_gate:      true,
+  enabled:                true,
+  paper_mode:             true,
+  min_zone_score:         3.0,
+  proximity_pips:         5.0,
+  vu_min_components:      2,
+  risk_pct:               0.5,
+  tp1_r:                  1.0,
+  tp2_r:                  2.0,
+  htf_aligned_tp2_r:      3.0,
+  htf_opposed_tp2_r:      1.5,
+  sl_atr_mult:            1.5,
+  max_sl_pips:            40,
+  max_trades_per_day:     2,
+  trade_window_start:     '07:00',
+  trade_window_end:       '20:00',
+  cooldown_minutes:       30,
+  gold_macro_gate:        true,
+  htf_block:              true,
+  htf_block_confidence:   0.5,
 };
 
 let _goldCfg = JSON.parse(JSON.stringify(GOLD_DEFAULTS));
 
 function readGoldForm() {
-  _goldCfg.enabled             = chk('gold_enabled');
-  _goldCfg.paper_mode          = chk('gold_paper_mode');
-  _goldCfg.gold_macro_gate     = chk('gold_macro_gate');
-  _goldCfg.min_zone_score      = num('gold_min_zone_score',      3.0);
-  _goldCfg.proximity_pips      = num('gold_proximity_pips',      5.0);
-  _goldCfg.vu_min_components   = parseInt(radio('gold_vu_min',   '2'), 10);
-  _goldCfg.sl_atr_mult         = num('gold_sl_atr_mult',         1.5);
-  _goldCfg.max_sl_pips         = num('gold_max_sl_pips',         40);
-  _goldCfg.tp1_r               = num('gold_tp1_r',               1.0);
-  _goldCfg.tp2_r               = num('gold_tp2_r',               2.0);
-  _goldCfg.risk_pct            = num('gold_risk_pct',            0.5);
-  _goldCfg.max_trades_per_day  = num('gold_max_trades_per_day',  2);
-  _goldCfg.trade_window_start  = str('gold_window_start',        '07:00');
-  _goldCfg.trade_window_end    = str('gold_window_end',          '20:00');
-  _goldCfg.cooldown_minutes    = num('gold_cooldown_minutes',    30);
+  _goldCfg.enabled               = chk('gold_enabled');
+  _goldCfg.paper_mode            = chk('gold_paper_mode');
+  _goldCfg.gold_macro_gate       = chk('gold_macro_gate');
+  _goldCfg.htf_block             = chk('gold_htf_block');
+  _goldCfg.htf_block_confidence  = num('gold_htf_block_confidence',  0.5);
+  _goldCfg.min_zone_score        = num('gold_min_zone_score',         3.0);
+  _goldCfg.proximity_pips        = num('gold_proximity_pips',         5.0);
+  _goldCfg.vu_min_components     = parseInt(radio('gold_vu_min',      '2'), 10);
+  _goldCfg.sl_atr_mult           = num('gold_sl_atr_mult',            1.5);
+  _goldCfg.max_sl_pips           = num('gold_max_sl_pips',            40);
+  _goldCfg.tp1_r                 = num('gold_tp1_r',                  1.0);
+  _goldCfg.tp2_r                 = num('gold_tp2_r',                  2.0);
+  _goldCfg.htf_aligned_tp2_r     = num('gold_htf_aligned_tp2_r',      3.0);
+  _goldCfg.htf_opposed_tp2_r     = num('gold_htf_opposed_tp2_r',      1.5);
+  _goldCfg.risk_pct              = num('gold_risk_pct',               0.5);
+  _goldCfg.max_trades_per_day    = num('gold_max_trades_per_day',     2);
+  _goldCfg.trade_window_start    = str('gold_window_start',           '07:00');
+  _goldCfg.trade_window_end      = str('gold_window_end',             '20:00');
+  _goldCfg.cooldown_minutes      = num('gold_cooldown_minutes',       30);
 }
 
 function renderGoldForm() {
-  setChk('gold_enabled',           _goldCfg.enabled           ?? true);
-  setChk('gold_paper_mode',        _goldCfg.paper_mode        ?? true);
-  setChk('gold_macro_gate',        _goldCfg.gold_macro_gate   ?? true);
-  setVal('gold_min_zone_score',    _goldCfg.min_zone_score    ?? 3.0);
-  setVal('gold_proximity_pips',    _goldCfg.proximity_pips    ?? 5.0);
-  setRadio('gold_vu_min',          String(_goldCfg.vu_min_components ?? 2));
-  setVal('gold_sl_atr_mult',       _goldCfg.sl_atr_mult       ?? 1.5);
-  setVal('gold_max_sl_pips',       _goldCfg.max_sl_pips       ?? 40);
-  setVal('gold_tp1_r',             _goldCfg.tp1_r             ?? 1.0);
-  setVal('gold_tp2_r',             _goldCfg.tp2_r             ?? 2.0);
-  setVal('gold_risk_pct',          _goldCfg.risk_pct          ?? 0.5);
-  setVal('gold_max_trades_per_day',_goldCfg.max_trades_per_day ?? 2);
-  setVal('gold_window_start',      _goldCfg.trade_window_start ?? '07:00');
-  setVal('gold_window_end',        _goldCfg.trade_window_end   ?? '20:00');
-  setVal('gold_cooldown_minutes',  _goldCfg.cooldown_minutes  ?? 30);
+  setChk('gold_enabled',              _goldCfg.enabled               ?? true);
+  setChk('gold_paper_mode',           _goldCfg.paper_mode            ?? true);
+  setChk('gold_macro_gate',           _goldCfg.gold_macro_gate       ?? true);
+  setChk('gold_htf_block',            _goldCfg.htf_block             ?? true);
+  setVal('gold_htf_block_confidence', _goldCfg.htf_block_confidence  ?? 0.5);
+  setVal('gold_min_zone_score',       _goldCfg.min_zone_score        ?? 3.0);
+  setVal('gold_proximity_pips',       _goldCfg.proximity_pips        ?? 5.0);
+  setRadio('gold_vu_min',             String(_goldCfg.vu_min_components ?? 2));
+  setVal('gold_sl_atr_mult',          _goldCfg.sl_atr_mult           ?? 1.5);
+  setVal('gold_max_sl_pips',          _goldCfg.max_sl_pips           ?? 40);
+  setVal('gold_tp1_r',                _goldCfg.tp1_r                 ?? 1.0);
+  setVal('gold_tp2_r',                _goldCfg.tp2_r                 ?? 2.0);
+  setVal('gold_htf_aligned_tp2_r',    _goldCfg.htf_aligned_tp2_r     ?? 3.0);
+  setVal('gold_htf_opposed_tp2_r',    _goldCfg.htf_opposed_tp2_r     ?? 1.5);
+  setVal('gold_risk_pct',             _goldCfg.risk_pct              ?? 0.5);
+  setVal('gold_max_trades_per_day',   _goldCfg.max_trades_per_day    ?? 2);
+  setVal('gold_window_start',         _goldCfg.trade_window_start    ?? '07:00');
+  setVal('gold_window_end',           _goldCfg.trade_window_end      ?? '20:00');
+  setVal('gold_cooldown_minutes',     _goldCfg.cooldown_minutes      ?? 30);
 }
 
 async function loadGoldConfig() {

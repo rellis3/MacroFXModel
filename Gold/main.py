@@ -94,6 +94,9 @@ DEFAULT_CFG: dict = {
     'trade_window_end':     '20:00',
     'cooldown_minutes':     30,
     'gold_macro_gate':      True,   # block if gold macro KV signal opposes direction
+    'htf_block_confidence': 0.5,   # HTF confidence threshold that hard-blocks counter-trend zones
+    'htf_aligned_tp2_r':    3.0,   # TP2 multiple for HTF-aligned continuation trades
+    'htf_opposed_tp2_r':    1.5,   # TP2 multiple for counter-trend trades (if somehow allowed)
     'log_dir':              '.',
 }
 
@@ -369,10 +372,13 @@ def _in_trade_window(cfg: dict) -> bool:
 # ── SL / TP calculation ───────────────────────────────────────────────────────
 
 def _calc_sl_tp(zone: FibZone, direction: str, price: float,
-                atr: float, cfg: dict) -> tuple[float, float, float]:
+                atr: float, cfg: dict, htf_aligned: bool = False) -> tuple[float, float, float]:
     """
     SL: just beyond the zone's far edge (swing origin + small buffer).
-    TP1 / TP2: R-multiples from SL distance.
+    TP1 / TP2: R-multiples from SL distance. TP2 scales with HTF alignment:
+      aligned (continuation) → htf_aligned_tp2_r (default 3.0)
+      counter-trend          → htf_opposed_tp2_r  (default 1.5)
+      neutral / unknown      → tp2_r config value (default 2.0)
     Returns (sl, tp1, tp2).
     """
     max_sl = cfg.get('max_sl_pips', 40) * PIP
@@ -409,7 +415,13 @@ def _calc_sl_tp(zone: FibZone, direction: str, price: float,
 
     sign = 1 if direction == 'LONG' else -1
     tp1  = round(price + sign * sl_dist * cfg.get('tp1_r', 1.0), 2)
-    tp2  = round(price + sign * sl_dist * cfg.get('tp2_r', 2.0), 2)
+
+    base_tp2_r = cfg.get('tp2_r', 2.0)
+    if htf_aligned:
+        tp2_r = max(base_tp2_r, cfg.get('htf_aligned_tp2_r', 3.0))
+    else:
+        tp2_r = min(base_tp2_r, cfg.get('htf_opposed_tp2_r', 1.5))
+    tp2  = round(price + sign * sl_dist * tp2_r, 2)
     return round(sl, 2), tp1, tp2
 
 
@@ -738,9 +750,23 @@ class GoldBot:
             min_score = base_score
         prox = self.cfg.get('proximity_pips', 5.0) * PIP
 
+        # Pre-compute HTF block threshold once
+        htf = self.htf_bias
+        block_conf = self.cfg.get('htf_block_confidence', 0.5)
+
         for zone in self.zones:
             if not zone.active or zone.score < min_score:
                 continue
+            # Hard-block counter-trend zones when HTF bias is established.
+            # Shorts in a bull market / longs in a bear market have TPs that
+            # the trend never reaches — filter them out before they arm.
+            if (self.cfg.get('htf_block', True)
+                    and htf and htf.bias != 'NEUTRAL'
+                    and htf.confidence >= block_conf):
+                if htf.bias == 'BULL' and zone.direction == 'short':
+                    continue
+                if htf.bias == 'BEAR' and zone.direction == 'long':
+                    continue
             # Price must be within proximity of the GP zone
             dist = max(0.0, max(zone.gp_low - price, price - zone.gp_high))
             if dist <= prox:
@@ -812,8 +838,9 @@ class GoldBot:
                 return
             log.info(f'[ML]     {ml_reason}')
 
-        # Calculate SL / TP + lot size
-        sl, tp1, tp2 = _calc_sl_tp(zone, direction, price, self.atr_15m, self.cfg)
+        # Calculate SL / TP + lot size (TP2 scales with HTF alignment)
+        htf_aligned = getattr(zone, 'htf_aligned', False)
+        sl, tp1, tp2 = _calc_sl_tp(zone, direction, price, self.atr_15m, self.cfg, htf_aligned)
         balance  = _mt5_balance()
         sl_pips  = abs(price - sl)
         lot_size = _calc_lot_size(balance, self.cfg.get('risk_pct', 0.5), sl_pips)

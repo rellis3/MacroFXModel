@@ -675,8 +675,16 @@ function _drawTrade(z, markers = []) {
   if (slDist > maxSl)    { sl = !isLong ? entry + maxSl    : entry - maxSl;    slDist = maxSl;    }
 
   const sign = isLong ? 1 : -1;
+  // Dynamic TP2: mirrors bot logic — continuation (HTF aligned) runs to 3R,
+  // counter-trend (if allowed) uses tighter 1.5R target
+  const htfAligned = !!z.htf_aligned;
+  const htfBias    = _zonesData?.htf_bias;
+  const htfConf    = _zonesData?.htf_confidence ?? 0;
+  const tp2_r = htfAligned ? 3.0
+              : (htfBias && htfBias !== 'NEUTRAL' && htfConf >= 0.5) ? 1.5
+              : 2.0;
   const tp1  = entry + sign * slDist * 1.0;
-  const tp2  = entry + sign * slDist * 2.0;
+  const tp2  = entry + sign * slDist * tp2_r;
 
   const add = (price, color, title, width = 2, style = 0) => {
     if (price == null || price <= 0) return;
@@ -697,8 +705,9 @@ function _drawTrade(z, markers = []) {
   add(sl, '#ef5350', `SL  ${sl.toFixed(1)}  (${slDist.toFixed(0)}p)`, 2, 0);
 
   // TPs
+  const tp2Label = htfAligned ? `TP2  ${tp2.toFixed(1)}  (${tp2_r}R trend+)` : `TP2  ${tp2.toFixed(1)}  (${tp2_r}R)`;
   add(tp1, 'rgba(38,166,154,0.85)', `TP1  ${tp1.toFixed(1)}  (1R)`, 1, 2);
-  add(tp2, '#26a69a',               `TP2  ${tp2.toFixed(1)}  (2R)`, 2, 0);
+  add(tp2, '#26a69a', tp2Label, 2, 0);
 
   // ── Time-bounded zone box + detection/armed markers ──────────────────
   const period = _tf === 'H4' ? 14400 : _tf === 'M30' ? 1800 : 300;
@@ -1049,7 +1058,11 @@ function _renderZoneCards() {
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <div class="gz-zone-id">${z.zone_id}</div>
           ${distHtml}
-          ${z.htf_aligned ? '<span style="font-size:9px;color:var(--cyan);border:1px solid rgba(38,198,218,.3);padding:1px 5px;border-radius:3px">HTF✓</span>' : ''}
+          ${z.htf_aligned
+            ? '<span style="font-size:9px;color:var(--cyan);border:1px solid rgba(38,198,218,.3);padding:1px 5px;border-radius:3px">HTF✓</span>'
+            : ((_zonesData?.htf_bias && _zonesData.htf_bias !== 'NEUTRAL')
+               ? '<span style="font-size:9px;color:var(--amber);border:1px solid rgba(255,167,38,.3);padding:1px 5px;border-radius:3px">⚠ counter-trend</span>'
+               : '')}
           ${z.zone_id === _selectedZoneId ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(244,196,48,.4);padding:1px 6px;border-radius:3px;background:rgba(244,196,48,.08)">▲ on chart</span>' : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
