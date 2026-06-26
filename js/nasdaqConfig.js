@@ -42,8 +42,8 @@ export const LIQUIDITY_INPUTS = [
 
 export const LIQUIDITY_SCORE = {
   range: [-5, 5],
-  bullishThreshold: 2,    // LiquidityScore > +2 → BULLISH
-  bearishThreshold: -2,   // LiquidityScore < -2 → BEARISH
+  bullishThreshold: 1.5,  // LiquidityScore > +1.5 → BULLISH (lowered from 2 to widen the active zone)
+  bearishThreshold: -1.5, // LiquidityScore < -1.5 → BEARISH (raised from -2 to widen the active zone)
   zClip: 3,               // component sub-scores are clipped to +/-3 std devs before averaging
   zWindowDays: 252,       // ~1 trading year — standard macro z-score lookback, balances responsiveness vs noise
   minCoverage: 0.5,       // at least 50% of the weighted panel (by weight) must have data, else score is INVALID
@@ -91,6 +91,9 @@ export const TREND_SCORE = {
     { id: 'vwapDist',    label: 'Conviction vs session VWAP',               unit: 'ATRs',        weight: 0.8, rampLow: 0,    rampHigh: 1.0 },
     { id: 'vixTermStructure', label: 'VIX term structure (VIX3M/VIX)',      unit: 'ratio',       weight: 0.7, rampLow: 0.95, rampHigh: 1.15 },
   ],
+  // When Gate 2 TrendScore reaches this level, Gate 3 confirmation is bypassed —
+  // a very high-conviction trend signal is treated as self-confirming. Set null to disable.
+  highConvictionGate3Bypass: 85,
 };
 
 // Risk tier mapping that Gate 2 recommends (final sizing decision lives in
@@ -198,6 +201,11 @@ export const ENTRY_RULE = {
   longLiquidityMin: LIQUIDITY_SCORE.bullishThreshold,
   shortLiquidityMax: LIQUIDITY_SCORE.bearishThreshold,
   trendScoreMin: TREND_SCORE.validThreshold,
+  // Maximum number of positions that may be open or queued simultaneously.
+  // Raising this from 1 allows the system to enter continuation trades while
+  // a prior trade is still running, removing the structural blocker where the
+  // average 12-bar hold would prevent any new signals from firing.
+  maxConcurrentPositions: 3,
 };
 
 // ── Backtest execution assumptions ──────────────────────────────────────────
