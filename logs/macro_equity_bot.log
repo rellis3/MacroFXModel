@@ -1381,3 +1381,205 @@
 [2026-06-25 19:56:35] [MEBot] [WARNING] No D1 data for US100
 [2026-06-25 19:56:35] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
 [2026-06-25 19:56:38] [MEBot] [INFO] Cycle complete in 61.3s — sleeping 3539s
+[2026-06-25 20:55:42] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-25 20:55:47] [MEBot] [INFO]   FRED WALCL: 1225 observations
+[2026-06-25 20:55:53] [MEBot] [INFO]   FRED WTREGEN: 1225 observations
+[2026-06-25 20:55:57] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-25 20:56:01] [MEBot] [INFO]   FRED T10Y2Y: 5873 observations
+[2026-06-25 20:56:05] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-25 20:56:08] [MEBot] [INFO]   FRED DFII10: 5872 observations
+[2026-06-25 20:56:12] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-25 20:56:15] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-25 20:56:49] [MEBot] [INFO] Macro score: US=-0.730 (NEUTRAL_BEAR)
+[2026-06-25 20:56:49] [MEBot] [WARNING] No D1 data for US100
+[2026-06-25 20:56:49] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
+[2026-06-25 20:56:53] [MEBot] [INFO] Cycle complete in 75.9s — sleeping 3524s
+[2026-06-25 21:55:39] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-25 21:55:40] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-25 21:55:42] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-25 21:55:44] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-25 21:55:47] [MEBot] [INFO]   FRED T10Y2Y: 5873 observations
+[2026-06-25 21:55:49] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-25 21:55:52] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-25 21:55:56] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-25 21:55:59] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-25 21:56:20] [MEBot] [INFO] Macro score: US=-0.663 (NEUTRAL_BEAR)
+[2026-06-25 21:56:20] [MEBot] [WARNING] No D1 data for US100
+[2026-06-25 21:56:20] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
+[2026-06-25 21:56:25] [MEBot] [INFO] Cycle complete in 48.3s — sleeping 3552s
+[2026-06-25 22:55:38] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-25 22:55:40] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-25 22:55:41] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-25 22:55:43] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-25 22:55:44] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-25 22:55:45] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-25 22:55:47] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-25 22:55:48] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-25 22:55:50] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-25 22:56:08] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-25 22:56:08] [MEBot] [WARNING] No D1 data for US100
+[2026-06-25 22:56:08] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
+[2026-06-25 22:56:09] [MEBot] [INFO] Cycle complete in 32.5s — sleeping 3567s
+[2026-06-25 23:55:39] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-25 23:55:41] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-25 23:55:43] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-25 23:55:45] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-25 23:55:48] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-25 23:55:51] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-25 23:55:53] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-25 23:55:56] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-25 23:55:58] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-25 23:56:20] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-25 23:56:20] [MEBot] [WARNING] No D1 data for US100
+[2026-06-25 23:56:20] [MEBot] [INFO] No rebalance today (2026-06-25). Last: 2026-06
+[2026-06-25 23:56:22] [MEBot] [INFO] Cycle complete in 44.8s — sleeping 3555s
+[2026-06-26 00:55:38] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 00:55:40] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 00:55:43] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 00:55:47] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 00:55:50] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 00:55:52] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 00:55:55] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 00:55:57] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 00:55:59] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 00:56:18] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 00:56:18] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 00:56:18] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 00:56:20] [MEBot] [INFO] Cycle complete in 43.1s — sleeping 3557s
+[2026-06-26 01:55:40] [MEBot] [INFO] Fetching VIX data…
+[2026-06-26 01:55:42] [MEBot] [INFO] VIX: 300 bars, latest=18.9
+[2026-06-26 01:55:42] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 01:55:44] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 01:55:46] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 01:55:48] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 01:55:49] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 01:55:50] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 01:55:52] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 01:55:54] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 01:55:56] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 01:56:15] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 01:56:15] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 01:56:15] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 01:56:17] [MEBot] [INFO] Cycle complete in 40.2s — sleeping 3560s
+[2026-06-26 02:55:39] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 02:55:41] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 02:55:42] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 02:55:44] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 02:55:46] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 02:55:47] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 02:55:48] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 02:55:51] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 02:55:54] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 02:56:22] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 02:56:22] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 02:56:22] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 02:56:23] [MEBot] [INFO] Cycle complete in 46.5s — sleeping 3554s
+[2026-06-26 03:55:40] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 03:55:43] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 03:55:45] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 03:55:47] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 03:55:49] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 03:55:50] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 03:55:52] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 03:55:54] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 03:55:57] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 03:56:14] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 03:56:14] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 03:56:14] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 03:56:17] [MEBot] [INFO] Cycle complete in 39.9s — sleeping 3560s
+[2026-06-26 04:55:40] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 04:55:44] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 04:55:48] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 04:55:52] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 04:55:56] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 04:55:59] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 04:56:02] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 04:56:06] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 04:56:09] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 04:56:32] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 04:56:32] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 04:56:32] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 04:56:33] [MEBot] [INFO] Cycle complete in 56.3s — sleeping 3544s
+[2026-06-26 05:55:40] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 05:55:43] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 05:55:46] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 05:55:48] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 05:55:51] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 05:55:53] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 05:55:56] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 05:55:58] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 05:56:02] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 05:56:23] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 05:56:23] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 05:56:24] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 05:56:27] [MEBot] [INFO] Cycle complete in 49.8s — sleeping 3550s
+[2026-06-26 06:55:40] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 06:55:43] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 06:55:45] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 06:55:48] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 06:55:49] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 06:55:50] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 06:55:52] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 06:55:55] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 06:55:56] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 06:56:26] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 06:56:26] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 06:56:26] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 06:56:29] [MEBot] [INFO] Cycle complete in 52.0s — sleeping 3548s
+[2026-06-26 07:55:40] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 07:55:43] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 07:55:47] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 07:55:52] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 07:55:56] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 07:56:00] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 07:56:04] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 07:56:08] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 07:56:12] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 07:56:53] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 07:56:53] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 07:56:53] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 07:56:59] [MEBot] [INFO] Cycle complete in 81.9s — sleeping 3518s
+[2026-06-26 08:55:40] [MEBot] [INFO] Fetching VIX data…
+[2026-06-26 08:55:43] [MEBot] [INFO] VIX: 300 bars, latest=19.6
+[2026-06-26 08:55:43] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 08:55:47] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 08:55:51] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 08:55:55] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 08:55:58] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 08:56:01] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 08:56:03] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 08:56:05] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 08:56:06] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 08:56:30] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 08:56:30] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 08:56:30] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 08:56:33] [MEBot] [INFO] Cycle complete in 56.1s — sleeping 3544s
+[2026-06-26 09:55:40] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 09:55:43] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 09:55:46] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 09:55:50] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 09:55:55] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 09:55:58] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 09:56:02] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 09:56:05] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 09:56:09] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 09:56:39] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 09:56:39] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 09:56:39] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 09:56:41] [MEBot] [INFO] Cycle complete in 64.1s — sleeping 3536s
+[2026-06-26 10:55:41] [MEBot] [INFO] Fetching FRED macro data…
+[2026-06-26 10:55:45] [MEBot] [INFO]   FRED WALCL: 1226 observations
+[2026-06-26 10:55:48] [MEBot] [INFO]   FRED WTREGEN: 1226 observations
+[2026-06-26 10:55:50] [MEBot] [INFO]   FRED RRPONTSYD: 3270 observations
+[2026-06-26 10:55:53] [MEBot] [INFO]   FRED T10Y2Y: 5874 observations
+[2026-06-26 10:55:55] [MEBot] [INFO]   FRED BAMLH0A0HYM2: 787 observations
+[2026-06-26 10:55:57] [MEBot] [INFO]   FRED DFII10: 5873 observations
+[2026-06-26 10:55:59] [MEBot] [WARNING]   FRED NAPM fetch failed: 400 Client Error: Bad Request for url: https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key=abebb54c168ec7542ff1aefb60e5f615&file_type=json&observation_start=2003-01-01&sort_order=asc
+[2026-06-26 10:56:02] [MEBot] [INFO]   FRED INDPRO: 281 observations
+[2026-06-26 10:56:29] [MEBot] [INFO] Macro score: US=-0.640 (NEUTRAL_BEAR)
+[2026-06-26 10:56:29] [MEBot] [WARNING] No D1 data for US100
+[2026-06-26 10:56:30] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 10:56:32] [MEBot] [INFO] Cycle complete in 55.1s — sleeping 3545s
+[2026-06-26 11:55:41] [MEBot] [ERROR] No FRED API key configured — cannot compute macro signal
+[2026-06-26 11:55:41] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 11:55:44] [MEBot] [INFO] Cycle complete in 7.3s — sleeping 3593s

@@ -1,124 +1,52 @@
 {
   "open_positions": {
-    "NZDUSD-WTICO_USD-1782415312074": {
-      "signal_id": "NZDUSD-WTICO_USD-1782415312074",
-      "pair_a": "NZDUSD",
-      "pair_b": "WTICO_USD",
-      "direction_a": "LONG",
-      "direction_b": "SHORT",
-      "lots_a": 0.25,
-      "lots_b": 0.11,
-      "ticket_a": 416442872,
-      "ticket_b": 416442873,
-      "entry_time": "2026-06-25T19:40:42.874965+00:00"
-    },
-    "NZDUSD-BCO_USD-1782415312074": {
-      "signal_id": "NZDUSD-BCO_USD-1782415312074",
-      "pair_a": "NZDUSD",
-      "pair_b": "BCO_USD",
-      "direction_a": "LONG",
-      "direction_b": "SHORT",
-      "lots_a": 0.25,
-      "lots_b": 0.11,
-      "ticket_a": 416446937,
-      "ticket_b": 416446938,
-      "entry_time": "2026-06-25T19:40:46.939900+00:00"
-    },
-    "USDCHF-GBPJPY-1782415312074": {
-      "signal_id": "USDCHF-GBPJPY-1782415312074",
+    "USDCHF-GBPJPY-1782472581875": {
+      "signal_id": "USDCHF-GBPJPY-1782472581875",
       "pair_a": "USDCHF",
       "pair_b": "GBPJPY",
       "direction_a": "LONG",
       "direction_b": "SHORT",
-      "lots_a": 0.24,
-      "lots_b": 0.19,
-      "ticket_a": 416454746,
-      "ticket_b": 416454746,
-      "entry_time": "2026-06-25T19:40:54.747530+00:00"
+      "lots_a": 0.23,
+      "lots_b": 0.18,
+      "ticket_a": 472611486,
+      "ticket_b": 472611487,
+      "entry_time": "2026-06-26T11:16:51.487944+00:00"
     },
-    "USDCHF-EURJPY-1782415312074": {
-      "signal_id": "USDCHF-EURJPY-1782415312074",
+    "USDCHF-EURJPY-1782472581875": {
+      "signal_id": "USDCHF-EURJPY-1782472581875",
       "pair_a": "USDCHF",
       "pair_b": "EURJPY",
       "direction_a": "LONG",
       "direction_b": "SHORT",
-      "lots_a": 0.24,
-      "lots_b": 0.27,
-      "ticket_a": 416458727,
-      "ticket_b": 416458727,
-      "entry_time": "2026-06-25T19:40:58.728612+00:00"
+      "lots_a": 0.23,
+      "lots_b": 0.26,
+      "ticket_a": 472613497,
+      "ticket_b": 472613498,
+      "entry_time": "2026-06-26T11:16:53.498674+00:00"
     },
-    "USDCHF-AUDJPY-1782415312074": {
-      "signal_id": "USDCHF-AUDJPY-1782415312074",
-      "pair_a": "USDCHF",
-      "pair_b": "AUDJPY",
-      "direction_a": "LONG",
-      "direction_b": "SHORT",
-      "lots_a": 0.24,
-      "lots_b": 0.25,
-      "ticket_a": 416463634,
-      "ticket_b": 416463635,
-      "entry_time": "2026-06-25T19:41:03.636263+00:00"
-    },
-    "USDCHF-CADJPY-1782415312074": {
-      "signal_id": "USDCHF-CADJPY-1782415312074",
+    "USDCHF-CADJPY-1782472581875": {
+      "signal_id": "USDCHF-CADJPY-1782472581875",
       "pair_a": "USDCHF",
       "pair_b": "CADJPY",
       "direction_a": "LONG",
       "direction_b": "SHORT",
-      "lots_a": 0.24,
-      "lots_b": 0.13,
-      "ticket_a": 416465991,
-      "ticket_b": 416465993,
-      "entry_time": "2026-06-25T19:41:05.994546+00:00"
-    },
-    "GBPJPY-USDZAR-1782415312074": {
-      "signal_id": "GBPJPY-USDZAR-1782415312074",
-      "pair_a": "GBPJPY",
-      "pair_b": "USDZAR",
-      "direction_a": "LONG",
-      "direction_b": "SHORT",
-      "lots_a": 0.28,
-      "lots_b": 0.16,
-      "ticket_a": 416478871,
-      "ticket_b": 416478873,
-      "entry_time": "2026-06-25T19:41:18.873699+00:00"
-    },
-    "EURJPY-USDCNH-1782415312074": {
-      "signal_id": "EURJPY-USDCNH-1782415312074",
-      "pair_a": "EURJPY",
-      "pair_b": "USDCNH",
-      "direction_a": "LONG",
-      "direction_b": "SHORT",
-      "lots_a": 0.39,
-      "lots_b": 0.15,
-      "ticket_a": 416484680,
-      "ticket_b": 416484681,
-      "entry_time": "2026-06-25T19:41:24.682974+00:00"
-    },
-    "EURJPY-USDZAR-1782415312074": {
-      "signal_id": "EURJPY-USDZAR-1782415312074",
-      "pair_a": "EURJPY",
-      "pair_b": "USDZAR",
-      "direction_a": "LONG",
-      "direction_b": "SHORT",
-      "lots_a": 0.39,
-      "lots_b": 0.16,
-      "ticket_a": 416489998,
-      "ticket_b": 416490002,
-      "entry_time": "2026-06-25T19:41:30.005891+00:00"
-    },
-    "EURCHF-US30_USD-1782415312074": {
-      "signal_id": "EURCHF-US30_USD-1782415312074",
-      "pair_a": "EURCHF",
-      "pair_b": "US30_USD",
-      "direction_a": "LONG",
-      "direction_b": "SHORT",
       "lots_a": 0.23,
-      "lots_b": 0.08,
-      "ticket_a": 416495662,
-      "ticket_b": 416495665,
-      "entry_time": "2026-06-25T19:41:35.668847+00:00"
+      "lots_b": 0.16,
+      "ticket_a": 472615289,
+      "ticket_b": 472615290,
+      "entry_time": "2026-06-26T11:16:55.291020+00:00"
+    },
+    "EURJPY-USDZAR-1782472581875": {
+      "signal_id": "EURJPY-USDZAR-1782472581875",
+      "pair_a": "EURJPY",
+      "pair_b": "USDZAR",
+      "direction_a": "LONG",
+      "direction_b": "SHORT",
+      "lots_a": 0.38,
+      "lots_b": 0.16,
+      "ticket_a": 472617125,
+      "ticket_b": 472617125,
+      "entry_time": "2026-06-26T11:16:57.126429+00:00"
     }
   }
 }
