@@ -134,10 +134,36 @@
     </div>
 
     <div class="grp">
-      <div class="grp-lbl">Stop / Target</div>
+      <div class="grp-lbl">Sessions</div>
       <div class="two">
+        <label class="row"><span>Timezone</span>
+          <select id="sessionTz">
+            <option value="london">London (DST)</option>
+            <option value="utc">UTC</option>
+          </select></label>
+        <label class="row"><span>Monday TF</span>
+          <select id="mondayTf">
+            <option value="15">15m</option>
+            <option value="30">30m</option>
+          </select></label>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="grp-lbl">Stop / Target</div>
+      <label class="row"><span>SL mode</span>
+        <select id="slMode" onchange="onSlMode()">
+          <option value="range">Range-based (× Asia range)</option>
+          <option value="atr">ATR-based (× ATR)</option>
+        </select></label>
+      <div class="two" id="rangeSlRow">
         <label class="row"><span>SL × range</span><input type="number" id="slMult" value="0.5" step="0.1" min="0.1"/></label>
         <label class="row"><span>Min SL (pips)</span><input type="number" id="minSlPips" value="5" step="1" min="1"/></label>
+      </div>
+      <div class="two" id="atrSlRow" style="display:none">
+        <label class="row"><span>ATR ×</span><input type="number" id="atrMult" value="1.5" step="0.1" min="0.1"/></label>
+        <label class="row"><span>ATR TF (min)</span>
+          <select id="atrTf"><option value="5">5</option><option value="15">15</option><option value="30" selected>30</option><option value="60">60</option></select></label>
       </div>
       <label class="row"><span>TP mode</span>
         <select id="tpMode">
@@ -241,6 +267,12 @@ document.querySelectorAll('[data-split]').forEach(btn => btn.onclick = () => {
 
 $('runBtn').onclick = run;
 
+function onSlMode(){
+  const atr = $('slMode').value === 'atr';
+  $('atrSlRow').style.display   = atr ? '' : 'none';
+  $('rangeSlRow').style.display = atr ? 'none' : '';
+}
+
 function setStatus(kind, msg){
   const el = $('status');
   el.className = 'status show ' + kind;
@@ -267,6 +299,11 @@ function buildOpts(slipOverride){
     confluenceThreshPips: +$('confThresh').value,
     tightPct:             +$('tightPct').value,
     confluencePrice:      $('confPrice').value,
+    slMode:      $('slMode').value,
+    atrMult:     +$('atrMult').value,
+    atrTfMin:    +$('atrTf').value,
+    sessionTz:   $('sessionTz').value,
+    mondayTfMin: +$('mondayTf').value,
   };
 }
 

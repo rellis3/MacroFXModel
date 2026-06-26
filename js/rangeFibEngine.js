@@ -109,8 +109,51 @@ function bodyRange(m1Bars, minutes) {
   return { high, low, range: high - low };
 }
 
-const asiaBodyRange   = (m1) => bodyRange(m1, 5);    // 5m  bodies, 00:00–06:00 UTC
-const mondayBodyRange = (m1) => bodyRange(m1, 15);   // 15m bodies, full Monday UTC
+const asiaBodyRange = (m1) => bodyRange(m1, 5);    // 5m bodies, Asia window
+
+// ── ATR (resampled to a higher timeframe, true-range average) ─────────────────
+
+function calcATR(m1Bars, tfMin, period = 14) {
+  const bars = resampleTo(m1Bars, tfMin);
+  if (bars.length < 2) return null;
+  const trs = [];
+  for (let i = 1; i < bars.length; i++) {
+    const b = bars[i], p = bars[i - 1];
+    trs.push(Math.max(b.high - b.low, Math.abs(b.high - p.close), Math.abs(b.low - p.close)));
+  }
+  const slice = trs.slice(-Math.max(period, 1));
+  return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
+}
+
+// ── Timezone (Europe/London, DST-aware) ───────────────────────────────────────
+// London is UTC in winter and UTC+1 (BST) from the last Sunday of March to the
+// last Sunday of October. Transitions happen at 01:00 UTC; we treat the offset
+// as constant across each calendar day (≤1h imprecision on the 2 switch days/yr).
+
+function _lastSundayDate(year, monthIdx0) {
+  const lastDay = new Date(Date.UTC(year, monthIdx0 + 1, 0));
+  return lastDay.getUTCDate() - lastDay.getUTCDay();
+}
+function _londonOffsetHours(y, mo /*1-12*/, d) {
+  const marSun = _lastSundayDate(y, 2);   // March
+  const octSun = _lastSundayDate(y, 9);   // October
+  const afterMar  = mo > 3  || (mo === 3  && d >= marSun);
+  const beforeOct = mo < 10 || (mo === 10 && d <  octSun);
+  return (afterMar && beforeOct) ? 1 : 0;
+}
+// UTC epoch (seconds) of local midnight for `dateStr` ('YYYY-MM-DD') in tz.
+function dayStartEpoch(dateStr, tz) {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const utcMidnight = Date.UTC(y, mo - 1, d) / 1000;
+  if (tz === 'london') return utcMidnight - _londonOffsetHours(y, mo, d) * 3600;
+  return utcMidnight;
+}
+// Day-of-week (0=Sun..6=Sat) of a calendar date in tz (date-only → tz-agnostic).
+function _dowOf(dateStr) {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+}
+function _isoDate(epochSec) { return new Date(epochSec * 1000).toISOString().substring(0, 10); }
 
 // ── Fib projection ────────────────────────────────────────────────────────────
 
@@ -120,42 +163,40 @@ function calcFibs(low, range, levels) {
 
 // ── Pre-built session caches (fast previous-Asia / Monday lookup) ─────────────
 
-function _buildAsiaSessions(packed) {
-  // One Asia range per UTC date present in the data.
+// Iterate every calendar date spanned by the data (in `tz`).
+function _eachDate(packed, fn) {
   const { n, times } = packed;
-  const byDate = new Map();
-  for (let i = 0; i < n; i++) {
-    const h = Math.floor(times[i] / 3600) % 24;
-    if (h >= 0 && h < 6) {
-      const day = times[i] - (times[i] % 86400);
-      if (!byDate.has(day)) byDate.set(day, true);
-    }
-  }
-  const out = [];
-  for (const day of [...byDate.keys()].sort((a, b) => a - b)) {
-    const bars = extractBars(packed, day, day + 6 * 3600);
-    if (bars.length < 10) continue;
-    const r = asiaBodyRange(bars);
-    if (r) out.push({ epoch: day, ...r });
-  }
-  return out;
+  if (!n) return;
+  let cur = Date.UTC(...(_isoDate(times[0]).split('-').map((v, i) => i === 1 ? +v - 1 : +v)));
+  const end = Date.UTC(...(_isoDate(times[n - 1]).split('-').map((v, i) => i === 1 ? +v - 1 : +v)));
+  for (; cur <= end; cur += 86400 * 1000) fn(new Date(cur).toISOString().substring(0, 10));
 }
 
-function _buildMondayRanges(packed) {
-  const { n, times } = packed;
-  const mondays = new Set();
-  for (let i = 0; i < n; i++) {
-    const day = times[i] - (times[i] % 86400);
-    if ((Math.floor(day / 86400) + 4) % 7 === 1) mondays.add(day); // 1 = Monday
-  }
+function _buildAsiaSessions(packed, tz) {
+  // One Asia range per calendar date (00:00–06:00 local).
   const out = [];
-  for (const day of [...mondays].sort((a, b) => a - b)) {
-    const bars = extractBars(packed, day, day + 24 * 3600);
-    if (bars.length < 20) continue;
-    const r = mondayBodyRange(bars);
-    if (r) out.push({ epoch: day, ...r });
-  }
-  return out;
+  _eachDate(packed, (ds) => {
+    const start = dayStartEpoch(ds, tz);
+    const bars  = extractBars(packed, start, start + 6 * 3600);
+    if (bars.length < 10) return;
+    const r = asiaBodyRange(bars);
+    if (r) out.push({ epoch: start, date: ds, ...r });
+  });
+  return out.sort((a, b) => a.epoch - b.epoch);
+}
+
+function _buildMondayRanges(packed, tz, mondayTfMin) {
+  // One range per Monday (full local Monday), bodies on the chosen timeframe.
+  const out = [];
+  _eachDate(packed, (ds) => {
+    if (_dowOf(ds) !== 1) return; // 1 = Monday
+    const start = dayStartEpoch(ds, tz);
+    const bars  = extractBars(packed, start, start + 24 * 3600);
+    if (bars.length < 20) return;
+    const r = bodyRange(bars, mondayTfMin);
+    if (r) out.push({ epoch: start, date: ds, ...r });
+  });
+  return out.sort((a, b) => a.epoch - b.epoch);
 }
 
 function _prevAsia(sessions, dayEpoch) {
@@ -198,10 +239,18 @@ function simulateDay(packed, dateStr, opts) {
     tpMode        = 'structural', // 'structural' | 'rr' | 'midpoint'
     tpR           = 2.0,        // R multiple when tpMode='rr'
     tpBufPips     = 5,          // buffer subtracted from structural TP level
-    tradeHourFrom = 6,          // entry window start (UTC hour)
-    tradeHourTo   = 22,         // entry window end   (UTC hour)
+    tradeHourFrom = 6,          // entry window start (local session hour)
+    tradeHourTo   = 22,         // entry window end   (local session hour)
     spreadPips    = 0.8,
     slippagePips  = 0.5,
+    // ── Stop-loss mode ────────────────────────────────────────────────────────
+    slMode        = 'range',    // 'range' (asiaRange × slMult) | 'atr' (ATR × atrMult)
+    atrPeriod     = 14,
+    atrMult       = 1.5,
+    atrTfMin      = 30,         // ATR timeframe in minutes (indicator default 30m)
+    // ── Session timezone / Monday timeframe ───────────────────────────────────
+    sessionTz     = 'utc',      // 'utc' | 'london' (DST-aware, matches indicator)
+    mondayTfMin   = 15,         // Monday range timeframe in minutes (15 or 30)
     // ── Confluence filter (today's fib ≈ previous session's fib) ──────────────
     // Mirrors the indicator's Display Mode:
     //   'all'       — trade every level (confluence off; the bare baseline)
@@ -217,7 +266,7 @@ function simulateDay(packed, dateStr, opts) {
     _mondayRanges = null,
   } = opts;
 
-  const dayEpoch = Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
+  const dayEpoch = dayStartEpoch(dateStr, sessionTz);   // local midnight (UTC epoch)
 
   // Asia range (current day)
   const asiaM1 = extractBars(packed, dayEpoch, dayEpoch + 6 * 3600);
@@ -230,11 +279,11 @@ function simulateDay(packed, dateStr, opts) {
   if (levelSource !== 'asia') {
     monday = _mondayRanges ? _mondayForDay(_mondayRanges, dayEpoch) : null;
     if (!monday && !_mondayRanges) {
-      const dow      = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+      const dow      = _dowOf(dateStr);
       const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
-      const monEpoch = dayEpoch - daysBack * 86400;
+      const monEpoch = dayStartEpoch(_isoDate(dayEpoch - daysBack * 86400), sessionTz);
       const monBars  = extractBars(packed, monEpoch, monEpoch + 24 * 3600);
-      if (monBars.length >= 20) monday = mondayBodyRange(monBars);
+      if (monBars.length >= 20) monday = bodyRange(monBars, mondayTfMin);
     }
   }
 
@@ -280,7 +329,15 @@ function simulateDay(packed, dateStr, opts) {
     }
   }
 
-  const slDist  = Math.max(asia.range * slMult, minSlPips * pipSize);
+  // Stop distance: range-based or ATR-based (ATR taken from the 24h ending at Asia close)
+  let slDist;
+  if (slMode === 'atr') {
+    const atrBars = extractBars(packed, dayEpoch + 6 * 3600 - 24 * 3600, dayEpoch + 6 * 3600);
+    const atr = calcATR(atrBars, atrTfMin, atrPeriod);
+    slDist = Math.max((atr != null ? atr * atrMult : asia.range * slMult), minSlPips * pipSize);
+  } else {
+    slDist = Math.max(asia.range * slMult, minSlPips * pipSize);
+  }
   const asiaMid = asia.low + asia.range * 0.5;
   const above   = asia.high + pipSize;   // strictly outside thresholds
   const below   = asia.low  - pipSize;
@@ -513,23 +570,34 @@ export function computeStats(trades) {
 
 // ── Public: single pair backtest ──────────────────────────────────────────────
 
-const _pairCache = new Map(); // pairKey → { packed, asiaSessions, mondayRanges, ts }
+const _pairCache    = new Map(); // pairKey → { packed, ts }              (raw M1, immutable)
+const _sessionCache = new Map(); // `${pairKey}:${tz}:${mondayTf}` → { asiaSessions, mondayRanges }
 const _TTL = 6 * 3600 * 1000;
 
-async function _getPairData(pairKey, m1Dir) {
+async function _getPacked(pairKey, m1Dir) {
   const now = Date.now();
   const c = _pairCache.get(pairKey);
-  if (c && now - c.ts < _TTL) return c;
+  if (c && now - c.ts < _TTL) return c.packed;
   const packed = await loadM1ForPair(pairKey, m1Dir);
   if (!packed) return null;
-  const entry = { packed, asiaSessions: _buildAsiaSessions(packed), mondayRanges: _buildMondayRanges(packed), ts: now };
-  _pairCache.set(pairKey, entry);
-  return entry;
+  _pairCache.set(pairKey, { packed, ts: now });
+  return packed;
+}
+
+function _getSessions(pairKey, packed, tz, mondayTfMin) {
+  const key = `${pairKey}:${tz}:${mondayTfMin}`;
+  if (_sessionCache.has(key)) return _sessionCache.get(key);
+  const built = {
+    asiaSessions: _buildAsiaSessions(packed, tz),
+    mondayRanges: _buildMondayRanges(packed, tz, mondayTfMin),
+  };
+  _sessionCache.set(key, built);
+  return built;
 }
 
 export function clearPairCache(pairKey) {
-  if (pairKey) _pairCache.delete(pairKey);
-  else _pairCache.clear();
+  if (pairKey) { _pairCache.delete(pairKey); for (const k of _sessionCache.keys()) if (k.startsWith(pairKey + ':')) _sessionCache.delete(k); }
+  else { _pairCache.clear(); _sessionCache.clear(); }
 }
 
 // Test seam — exposes the pure per-day simulator for unit tests (no data layer).
@@ -537,9 +605,12 @@ export const _test = { simulateDay, asiaBodyRange, calcFibs, resampleTo };
 
 export async function runRangeFibBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
   const { dateFrom = '', dateTo = '', progressCb = null } = opts;
-  const data = await _getPairData(pairKey, m1Dir);
-  if (!data) throw new Error(`No M1 data for ${pairKey}`);
-  const { packed, asiaSessions, mondayRanges } = data;
+  const packed = await _getPacked(pairKey, m1Dir);
+  if (!packed) throw new Error(`No M1 data for ${pairKey}`);
+
+  const sessionTz   = opts.sessionTz   || 'utc';
+  const mondayTfMin = opts.mondayTfMin || 15;
+  const { asiaSessions, mondayRanges } = _getSessions(pairKey, packed, sessionTz, mondayTfMin);
 
   const pipSize = PIP_SIZE[pairKey] ?? 0.0001;
   const enabledFibs = Array.isArray(opts.enabledFibs) && opts.enabledFibs.length
@@ -547,11 +618,11 @@ export async function runRangeFibBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR)
   // Auto confluence threshold: 200 "pips" for gold, 2 for FX (mirrors the indicator).
   const confluenceThreshPips = opts.confluenceThreshPips != null
     ? opts.confluenceThreshPips : (pairKey === 'gold' ? 200 : 2.0);
-  const config = { ...opts, pipSize, enabledFibs, confluenceThreshPips,
+  const config = { ...opts, pipSize, enabledFibs, confluenceThreshPips, sessionTz, mondayTfMin,
     _asiaSessions: asiaSessions, _mondayRanges: mondayRanges };
 
-  // Dates that have an Asia session
-  const dates = asiaSessions.map(s => new Date(s.epoch * 1000).toISOString().substring(0, 10));
+  // Dates that have an Asia session (label = local calendar date)
+  const dates = asiaSessions.map(s => s.date);
 
   const trades = [];
   let processed = 0;
