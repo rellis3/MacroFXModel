@@ -11,14 +11,15 @@
 //      respecting its real publicationLagDays (no lookahead — a print is
 //      invisible to the backtest until its real-world publication date).
 //   2. Compute rate-of-change: roc[i] = level[i] - level[i - rocLookbackDays].
-//      This converts slowly-drifting level series (e.g. Fed balance sheet) into
-//      a momentum series that carries a strong persistent signal. A balance sheet
-//      declining for 18 months has roc ≈ constant negative even though its level
-//      z-score ≈ 0 (because the rolling mean is also declining).
-//   3. Rolling z-score the ROC series over LIQUIDITY_SCORE.zWindowDays.
-//   4. Apply the input's `sign` so a positive signed z-score always means
+//      This converts slowly-drifting level series into a momentum series.
+//   3. Normalize the ROC by its trailing std-dev (NOT a z-score — the mean is
+//      NOT subtracted). A z-score of roc would wash out for constant-pace QT:
+//      if QT runs at -50B/quarter for 252 days, all roc ≈ -50, mean ≈ -50,
+//      z ≈ 0 → NEUTRAL. Dividing by std only gives -50/30 = -1.67 → persistent
+//      BEARISH reading. `zWindowDays` drives the std-dev lookback window.
+//   4. Apply the input's `sign` so a positive normalised value always means
 //      "more bullish for liquidity", then clip to +/- zClip std devs.
-//   5. Weighted average of signed/clipped z-scores (weight-present only —
+//   5. Weighted average of signed/clipped values (weight-present only —
 //      missing inputs are excluded, not treated as zero), rescaled from
 //      [-zClip, +zClip] onto LIQUIDITY_SCORE.range.
 //   6. Classify: score > bullishThreshold => BULLISH, score < bearishThreshold
@@ -30,7 +31,7 @@
 // gate/backtest system already in this repository.
 
 import { LIQUIDITY_INPUTS, LIQUIDITY_SCORE } from './nasdaqConfig.js';
-import { applyPublicationLag, forwardFillOnto, rollingZScore, rollingRoc, clip } from './nasdaqTransforms.js';
+import { applyPublicationLag, forwardFillOnto, rollingStdNorm, rollingRoc, clip } from './nasdaqTransforms.js';
 
 const SCALE = LIQUIDITY_SCORE.range[1] / LIQUIDITY_SCORE.zClip;
 
@@ -48,15 +49,16 @@ export function alignLiquidityInputs(rawByInputId, tradingDates) {
 
 // Returns one record per trading date with the full component breakdown.
 export function computeLiquidityScoreSeries(alignedByInputId, tradingDates) {
-  // Step 1: compute ROC for each input, then z-score the ROC series.
-  // We z-score momentum (ROC), not levels, so that slowly-trending macro series
-  // (e.g. a balance sheet declining for 18 months) produce a persistent non-zero
-  // signal rather than washing out because the rolling mean is itself declining.
+  // Step 1: ROC then std-norm. For each input:
+  //   roc[i]   = level[i] - level[i - rocLookbackDays]
+  //   norm[i]  = roc[i] / rollingStdDev(roc, zWindowDays)   ← no mean subtraction
+  // A balance sheet declining at a constant -50B/quarter has roc ≈ -50 every bar.
+  // z-score → (roc − mean) / σ ≈ 0 (NEUTRAL). Std-norm → roc / σ ≈ −1.7 (BEARISH).
   const rocByInput = {};
-  const zByInput = {};
+  const normByInput = {};
   for (const input of LIQUIDITY_INPUTS) {
     rocByInput[input.id] = rollingRoc(alignedByInputId[input.id], LIQUIDITY_SCORE.rocLookbackDays);
-    zByInput[input.id] = rollingZScore(rocByInput[input.id], LIQUIDITY_SCORE.zWindowDays, LIQUIDITY_SCORE.zClip);
+    normByInput[input.id] = rollingStdNorm(rocByInput[input.id], LIQUIDITY_SCORE.zWindowDays, LIQUIDITY_SCORE.zClip);
   }
 
   const totalWeight = LIQUIDITY_INPUTS.reduce((a, inp) => a + inp.weight, 0);
@@ -70,17 +72,17 @@ export function computeLiquidityScoreSeries(alignedByInputId, tradingDates) {
     for (const input of LIQUIDITY_INPUTS) {
       const rawValue = alignedByInputId[input.id][i];
       const roc = rocByInput[input.id][i];
-      const z = zByInput[input.id][i];
-      const signedZ = Number.isFinite(z) ? input.sign * z : NaN;
+      const norm = normByInput[input.id][i];
+      const signedNorm = Number.isFinite(norm) ? input.sign * norm : NaN;
       components.push({
         id: input.id, label: input.label, weight: input.weight, sign: input.sign,
         rawValue: Number.isFinite(rawValue) ? rawValue : null,
         roc: Number.isFinite(roc) ? roc : null,
-        z: Number.isFinite(z) ? z : null,
-        signedZ: Number.isFinite(signedZ) ? signedZ : null,
+        norm: Number.isFinite(norm) ? norm : null,
+        signedNorm: Number.isFinite(signedNorm) ? signedNorm : null,
       });
-      if (Number.isFinite(signedZ)) {
-        weightedSum += input.weight * signedZ;
+      if (Number.isFinite(signedNorm)) {
+        weightedSum += input.weight * signedNorm;
         weightPresent += input.weight;
       }
     }
