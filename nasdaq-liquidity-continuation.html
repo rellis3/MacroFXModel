@@ -99,7 +99,7 @@
 <div id="nlcApp" style="padding-top:0">
 
 <div class="info-box" id="stratInfo">
-  <strong style="color:var(--text)">How it works</strong> — <strong>Gate 1 (Liquidity)</strong>: a daily LiquidityScore (−5..+5) from a weighted, z-scored panel of Fed/ECB/BOJ balance sheets, reverse repo, TGA, the 10Y-2Y curve, DXY, HY credit spreads, NFCI, HYG/LQD, VIX/VIX3M/VVIX — score &gt; +2 = BULLISH, &lt; −2 = BEARISH, else no directional bias. <strong>Gate 2 (Trend)</strong>: a 0-100 TrendScore from ADX, Hurst exponent, ATR percentile, directional momentum, breadth trend, VWAP conviction and VIX term structure — &gt;70 = VALID, with a risk tier (LOW/MEDIUM/HIGH). <strong>Gate 3 (NY Confirmation)</strong>: a weighted vote of futures/DXY/yield/breadth moves classifies LONG/SHORT/INVALID; true NYSE TICK/A-D/TRIN have no free daily proxy and abstain (disclosed, not faked). <strong>Entry</strong>: Gate1 BULLISH + Gate2 VALID + Gate3 LONG → long (mirror for short). <strong>Gate 4 (Dynamic Exit)</strong>: a ContinuationScore re-evaluated every bar — &gt;70 stay in full size, 50-70 reduce to half, &lt;40 close — backed by a standing ATR-multiple stop. Fills are next-bar-open (no lookahead); a stop can still trigger intrabar since it was placed before that bar opened. Every threshold lives in <code>js/nasdaqConfig.js</code> — nothing here is a black box.
+  <strong style="color:var(--text)">How it works</strong> — <strong>Gate 1 (Liquidity)</strong>: a daily LiquidityScore (−5..+5) from a weighted, z-scored panel of Fed/ECB/BOJ balance sheets, reverse repo, TGA, the 10Y-2Y curve, DXY, HY credit spreads, NFCI, HYG/LQD, VIX/VIX3M/VVIX — score &gt; +2 = BULLISH, &lt; −2 = BEARISH, else no directional bias. <strong>Gate 2 (Trend)</strong>: a 0-100 TrendScore from ADX, Hurst exponent, ATR percentile, directional momentum, breadth trend, VWAP conviction and VIX term structure — &gt;70 = VALID, with a risk tier (LOW/MEDIUM/HIGH). <strong>Gate 3 (NY Confirmation)</strong>: a weighted vote of futures/DXY/yield/breadth moves classifies LONG/SHORT/INVALID — designed for live intraday mode (14:20–14:35 UK window); true NYSE TICK/A-D/TRIN have no free daily proxy, so Gate 3 is <em>not run</em> in the daily backtest (its daily proxies were systematically blocking entries without contributing real signal). <strong>Entry (daily backtest)</strong>: Gate1 BULLISH + Gate2 VALID → long; Gate1 BEARISH + Gate2 VALID → short. Gate 3 applies in live 30-min-bar mode only. <strong>Gate 4 (Dynamic Exit)</strong>: a ContinuationScore re-evaluated every bar — &gt;70 stay in full size, 50-70 reduce to half, &lt;40 close — backed by a standing ATR-multiple stop. Fills are next-bar-open (no lookahead); a stop can still trigger intrabar since it was placed before that bar opened. Every threshold lives in <code>js/nasdaqConfig.js</code> — nothing here is a black box.
 </div>
 
 <div class="status-bar" id="nlcStatus" style="margin-top:10px">
@@ -150,8 +150,37 @@
 </div>
 
 <div class="bt-card" id="gate1Card" style="display:none">
-  <div class="bt-card-hdr">Gate 1 — LiquidityScore <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">−5..+5 · &gt;+2 BULLISH · &lt;−2 BEARISH</span></div>
+  <div class="bt-card-hdr">Gate 1 — LiquidityScore <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">−5..+5 · &gt;+1.5 BULLISH · &lt;−1.5 BEARISH</span></div>
   <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="gate1Chart"></canvas></div></div>
+</div>
+
+<div class="bt-card" id="gate1DiagCard" style="display:none">
+  <div class="bt-card-hdr">Gate 1 — Coverage Diagnostic <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px" id="gate1DiagSub"></span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
+    <div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">State breakdown (all bars)</div>
+      <table class="bt-tbl">
+        <thead><tr><th>State</th><th class="num">Bars</th><th class="num">%</th></tr></thead>
+        <tbody id="gate1StateTblBody"></tbody>
+      </table>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Per-year activity</div>
+      <div style="max-height:220px;overflow-y:auto">
+        <table class="bt-tbl">
+          <thead><tr><th>Year</th><th class="num">Bull</th><th class="num">Bear</th><th class="num">Neutral</th><th class="num">No data</th></tr></thead>
+          <tbody id="gate1YearTblBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Input coverage — % of bars each series had valid data (sorted ascending)</div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl">
+      <thead><tr><th>Input</th><th class="num">Coverage</th></tr></thead>
+      <tbody id="gate1InputTblBody"></tbody>
+    </table>
+  </div>
 </div>
 
 <div class="bt-card" id="gate2DiagCard" style="display:none">
@@ -385,6 +414,7 @@ function renderAll(d) {
   renderDrawdown(d);
   renderRollingSharpe(d);
   renderGate1Chart(d);
+  renderGate1Diagnostic(d);
   renderGate2Diagnostic(d);
   renderMonteCarlo(d);
   renderWalkForward(d);
@@ -394,7 +424,7 @@ function renderAll(d) {
   renderTradeLog(d);
   renderEventLog(d);
 
-  ['kpiGrid','secGrid','eqCard','twoColCharts','gate1Card','gate2DiagCard','mcCard','wfCard','oosCard',
+  ['kpiGrid','secGrid','eqCard','twoColCharts','gate1Card','gate1DiagCard','gate2DiagCard','mcCard','wfCard','oosCard',
    'exitCmpCard','researchCard','leadLagCard','tradeCard','eventCard'].forEach(show);
 }
 
@@ -510,6 +540,38 @@ function renderGate1Chart(d) {
 // {id,label,weight,rawValue,subScore} per TREND_SCORE component, every bar)
 // into "which indicator is actually blocking VALID" — that breakdown was
 // already part of the JSON payload, just never surfaced in the UI before.
+function renderGate1Diagnostic(d) {
+  const diag = d.gate1Diagnostic;
+  if (!diag) return;
+  const n = diag.totalBars;
+  document.getElementById('gate1DiagSub').textContent =
+    `active (BULLISH+BEARISH) ${pct((diag.bullish + diag.bearish) / n, 1)} of ${n} bars · avg FRED coverage on valid bars ${pct(diag.avgCoverage, 0)}`;
+
+  document.getElementById('gate1StateTblBody').innerHTML = [
+    ['BULLISH', diag.bullish, 'pos'],
+    ['BEARISH', diag.bearish, 'pos'],
+    ['NEUTRAL — data OK, score flat', diag.neutralActive, 'amber'],
+    ['INVALID — insufficient FRED coverage', diag.invalidCoverage, 'neg'],
+  ].map(([label, count, cls]) => `<tr>
+    <td>${label}</td>
+    <td class="num ${cls}">${count}</td>
+    <td class="num ${cls}">${pct(count / n, 1)}</td>
+  </tr>`).join('');
+
+  document.getElementById('gate1YearTblBody').innerHTML = diag.byYear.map(y => `<tr>
+    <td>${y.year}</td>
+    <td class="num pos">${y.bullish}</td>
+    <td class="num pos">${y.bearish}</td>
+    <td class="num amber">${y.neutral}</td>
+    <td class="num neg">${y.invalidCoverage}</td>
+  </tr>`).join('');
+
+  document.getElementById('gate1InputTblBody').innerHTML = diag.perInputCoverage.map(inp => `<tr>
+    <td>${inp.label}</td>
+    <td class="num ${inp.coveragePct >= 80 ? 'pos' : inp.coveragePct >= 50 ? 'amber' : 'neg'}">${pct(inp.coveragePct / 100, 1)}</td>
+  </tr>`).join('');
+}
+
 function renderGate2Diagnostic(d) {
   const sample = d.gate2.find(g => g.breakdown && g.breakdown.length);
   const components = (sample?.breakdown ?? []).map(b => ({ id: b.id, label: b.label, weight: b.weight }));

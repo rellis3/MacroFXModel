@@ -25,7 +25,11 @@ import {
 } from './nasdaqDataSources.js';
 import { runLiquidityEngine } from './nasdaqLiquidityEngine.js';
 import { computeIndicatorSeries, computeBreadthAndVixFeatures, scoreTrendAt } from './nasdaqTrendEngine.js';
-import { computeNyConfirmation } from './nasdaqNyConfirmationEngine.js';
+// computeNyConfirmation is intentionally not imported here: Gate 3 is an
+// intraday gate (14:20-14:35 UK window) and its daily-bar proxies for
+// TICK/ADD/TRIN are too weak to add signal — they systematically block
+// entries without contributing real confirmation. Gate 3 remains available
+// for live 30-min-bar mode; it is simply bypassed in the daily backtest.
 import { alignContinuationFeatures, scoreContinuation, simulateSecondaryExit, SECONDARY_EXIT_MODEL_IDS } from './nasdaqExitEngine.js';
 import { computeVolatilityFeatureSeries, classifyVolatilityRegime, computeStopDistance, determineConfidenceTier } from './nasdaqSizing.js';
 import { sessionVWAP } from './nasdaqTransforms.js';
@@ -101,20 +105,6 @@ export async function loadDailyDataset({ start = DATA_DEFAULTS.backtestStart, en
   };
 }
 
-// Daily-bar proxy for Gate 3's NY-window inputs (see header note on tick/add/trin).
-function computeDailyGate3RawMoves(i, dataset, vwapAtrSeries) {
-  const c = dataset.ohlc.close;
-  return {
-    nq: dailyReturn(c[i - 1], c[i]),
-    es: dailyReturn(dataset.proxyMomentum.es[i - 1], dataset.proxyMomentum.es[i]),
-    rty: dailyReturn(dataset.proxyMomentum.rty[i - 1], dataset.proxyMomentum.rty[i]),
-    dxy: dailyReturn(dataset.dxy[i - 1], dataset.dxy[i]),
-    us10y: (Number.isFinite(dataset.us10y[i]) && Number.isFinite(dataset.us10y[i - 1])) ? dataset.us10y[i] - dataset.us10y[i - 1] : NaN,
-    vwap: vwapAtrSeries[i],
-    breadth: dailyReturn(dataset.breadthRatio[i - 1], dataset.breadthRatio[i]),
-    tick: NaN, add: NaN, trin: NaN, // no independent daily-bar proxy — abstain via Gate 3's weight-present coverage policy
-  };
-}
 
 function transactionCostFraction(notionalToEquityRatio) {
   return Math.max(0, notionalToEquityRatio) * (EXECUTION.commissionBps + EXECUTION.slippageBps) / 10_000;
@@ -267,6 +257,9 @@ export function runFullBacktest(dataset) {
     }
 
     // STEP D — look for a new entry if below the concurrent position cap.
+    // Gate 3 (NY Confirmation) is not run in the daily-bar backtest: it is an
+    // intraday gate and its daily proxies are too noisy to add signal. Entry
+    // fires on Gate 1 (BULLISH/BEARISH) + Gate 2 (VALID) alone.
     const maxPos = ENTRY_RULE.maxConcurrentPositions ?? 1;
     if (positions.length + pendingEntries.length < maxPos && i + 1 < n) {
       const g1 = gate1[i], g2 = gate2[i];
@@ -281,22 +274,14 @@ export function runFullBacktest(dataset) {
           vixPercentile: volFeatures.vixPercentile[i],
           vvixPercentile: volFeatures.vvixPercentile[i],
         });
-        const gate3RawMoves = computeDailyGate3RawMoves(i, dataset, vwapAtrSeries);
-        const gate3 = computeNyConfirmation(gate3RawMoves, bias);
-        const highConviction = TREND_SCORE.highConvictionGate3Bypass != null
-          && g2.score >= TREND_SCORE.highConvictionGate3Bypass;
-
-        log(dates[i], `Gate 1 ${g1.state} (score ${g1.score?.toFixed(2)}) / Gate 2 VALID (score ${g2.score?.toFixed(0)}, tier ${g2.tier}) / Gate 3 ${gate3.decision}${highConviction ? ' [G3-bypass]' : ''}`);
-
-        if (gate3.decision === bias || highConviction) {
-          const tierInfo = determineConfidenceTier({ trendTier: g2.tier, liquidityScore: g1.score, volRegime: volRegime.regime });
-          const stopDistance = computeStopDistance(indicators.atr[i], volRegime.regime);
-          pendingEntries.push({
-            direction: bias, fillIndex: i + 1, stopDistance, riskPct: tierInfo.riskPct, tier: tierInfo.tier,
-            liquidityScoreAtEntry: g1.score, trendScoreAtEntry: g2.score, signalDate: dates[i],
-          });
-          log(dates[i], `Risk = ${tierInfo.riskPct}% / Stop = ${stopDistance.toFixed(2)} (${volRegime.regime} vol regime) → ORDER QUEUED ${bias}`);
-        }
+        const tierInfo = determineConfidenceTier({ trendTier: g2.tier, liquidityScore: g1.score, volRegime: volRegime.regime });
+        const stopDistance = computeStopDistance(indicators.atr[i], volRegime.regime);
+        log(dates[i], `Gate 1 ${g1.state} (score ${g1.score?.toFixed(2)}) / Gate 2 VALID (score ${g2.score?.toFixed(0)}, tier ${g2.tier}) → ORDER QUEUED ${bias}`);
+        pendingEntries.push({
+          direction: bias, fillIndex: i + 1, stopDistance, riskPct: tierInfo.riskPct, tier: tierInfo.tier,
+          liquidityScoreAtEntry: g1.score, trendScoreAtEntry: g2.score, signalDate: dates[i],
+        });
+        log(dates[i], `Risk = ${tierInfo.riskPct}% / Stop = ${stopDistance.toFixed(2)} (${volRegime.regime} vol regime)`);
       }
     }
 
@@ -311,10 +296,66 @@ export function runFullBacktest(dataset) {
   // Secondary exit model comparison — replay every completed trade's actual
   // bar path against each registered model (research only, see nasdaqExitEngine.js).
   const secondaryExitComparison = compareSecondaryExitModels(trades, bars, indicators, breadthZ, vwapAtrSeries);
+  const gate1Diagnostic = computeGate1Diagnostic(gate1, dates);
 
   return {
     dates, gate1, gate2, indicators, volFeatures, trades, eventLog, equityCurve,
-    secondaryExitComparison, synthetic: !!dataset.synthetic,
+    secondaryExitComparison, gate1Diagnostic, synthetic: !!dataset.synthetic,
+  };
+}
+
+// Breaks down Gate 1's state distribution and per-input data coverage so the
+// dashboard can show why Gate 1 spends time in NEUTRAL (data gap vs score gap).
+function computeGate1Diagnostic(gate1Series, dates) {
+  const n = gate1Series.length;
+  let invalidCoverage = 0, neutralActive = 0, bullish = 0, bearish = 0;
+  const yearBuckets = {};
+  const inputPresence = {};
+
+  for (let i = 0; i < n; i++) {
+    const g = gate1Series[i];
+    const year = dates[i].slice(0, 4);
+    if (!yearBuckets[year]) yearBuckets[year] = { bullish: 0, bearish: 0, neutral: 0, invalidCoverage: 0, total: 0 };
+    yearBuckets[year].total++;
+
+    if (!g.dataValid) {
+      invalidCoverage++;
+      yearBuckets[year].invalidCoverage++;
+    } else if (g.state === 'BULLISH') {
+      bullish++;
+      yearBuckets[year].bullish++;
+    } else if (g.state === 'BEARISH') {
+      bearish++;
+      yearBuckets[year].bearish++;
+    } else {
+      neutralActive++;
+      yearBuckets[year].neutral++;
+    }
+
+    for (const comp of (g.components ?? [])) {
+      if (!inputPresence[comp.id]) inputPresence[comp.id] = { label: comp.label, present: 0, total: 0 };
+      inputPresence[comp.id].total++;
+      if (comp.signedZ !== null) inputPresence[comp.id].present++;
+    }
+  }
+
+  const validBars = gate1Series.filter(g => g.dataValid);
+  const avgCoverage = validBars.length ? validBars.reduce((s, g) => s + g.coverage, 0) / validBars.length : 0;
+
+  const perInputCoverage = Object.entries(inputPresence)
+    .map(([id, v]) => ({ id, label: v.label, coveragePct: v.total ? (v.present / v.total) * 100 : 0 }))
+    .sort((a, b) => a.coveragePct - b.coveragePct);
+
+  return {
+    totalBars: n,
+    invalidCoverage,
+    neutralActive,
+    bullish,
+    bearish,
+    activeRate: (bullish + bearish) / n,
+    avgCoverage,
+    byYear: Object.entries(yearBuckets).sort(([a], [b]) => a.localeCompare(b)).map(([year, v]) => ({ year, ...v })),
+    perInputCoverage,
   };
 }
 
