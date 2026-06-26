@@ -714,6 +714,23 @@
   </div>
 </div>
 
+<!-- Edge & cost diagnostics -->
+<div class="bt-card" id="edgeCostCard" style="display:none">
+  <div class="bt-card-hdr">Edge &amp; Cost Diagnostics
+    <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">— gross (pre-spread) vs net, and where per-trade edge beats the spread</span>
+  </div>
+  <div class="bt-card-body">
+    <div id="ecSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin:14px 0 2px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--text2);font-weight:600">Spread hurdle (pips, round-trip):</span>
+      <input type="number" id="ecHurdle" value="1.2" min="0" max="10" step="0.1"
+        class="rb-num-input" style="width:64px" oninput="renderEdgeCost()">
+      <span style="font-size:10px;color:var(--text3);flex:1;min-width:240px">A bucket is <b>tradeable</b> when its gross P&amp;L per trade clears this spread. Computed on gross (cost added back), so a single spread-0 run reveals the spread-clearing subset for any spread you type here.</span>
+    </div>
+    <div id="ecBuckets"></div>
+  </div>
+</div>
+
 <!-- Exit reason + regime breakdown -->
 <div class="bt-two-col">
   <div class="bt-card" style="margin-top:0">
@@ -4426,6 +4443,111 @@ function renderMetricsData() {
 
 // ─── Analytics rendering ─────────────────────────────────────────────────────
 
+// Edge & cost diagnostics: split gross (pre-spread) from net, quantify the cost
+// drag and over-trading, and find which buckets carry per-trade gross edge above a
+// configurable spread hurdle — i.e. the spread-clearing subset worth trading.
+function renderEdgeCost() {
+  const card = document.getElementById('edgeCostCard');
+  if (!card) return;
+  if (!allTrades.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const pipSizeOf = px => px >= 20 ? 0.01 : 0.0001;
+  const hurdlePips = parseFloat(document.getElementById('ecHurdle').value) || 0;
+  // Per trade: gross P&L (cost added back) and the cost this trade WOULD pay at the typed hurdle.
+  const T = allTrades.map(t => ({
+    t,
+    gross: t.pnl_pct + (t.cost_pct || 0),
+    hcost: hurdlePips * pipSizeOf(t.entry_price) / t.entry_price * 100,
+  }));
+  const N = T.length;
+  const grossTot = T.reduce((s, x) => s + x.gross, 0);
+  const netTot   = allTrades.reduce((s, t) => s + t.pnl_pct, 0);
+  const costTot  = allTrades.reduce((s, t) => s + (t.cost_pct || 0), 0);
+  const hCostTot = T.reduce((s, x) => s + x.hcost, 0);
+  const projNet  = grossTot - hCostTot;        // net P&L if the spread were exactly the hurdle
+  const grossBp  = grossTot / N * 100;          // bp = 0.01%
+  const hurdleBp = hCostTot / N * 100;
+  let firstTs = Infinity, lastTs = 0;
+  allTrades.forEach(t => { if (t.entry_ts < firstTs) firstTs = t.entry_ts; if (t.exit_ts > lastTs) lastTs = t.exit_ts; });
+  const days   = Math.max(1, (lastTs - firstTs) / 86400);
+  const perDay = N / days;
+  const budget = hurdleBp > 0 ? grossTot / (hurdleBp / 100) : Infinity;  // trades affordable before gross edge is eaten
+
+  const C = { g:'#34d399', r:'#f87171', b:'#60a5fa' };
+  const sgn = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  const cardEl = (label, val, color, sub) =>
+    `<div style="background:#11151f;border:1px solid #1e2436;border-radius:8px;padding:8px 10px">
+       <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${label}</div>
+       <div style="font-size:16px;font-weight:700;color:${color}">${val}</div>
+       ${sub ? `<div style="font-size:9px;color:var(--text3);margin-top:1px">${sub}</div>` : ''}
+     </div>`;
+  document.getElementById('ecSummary').innerHTML =
+    cardEl('Gross P&L (pre-spread)', sgn(grossTot), grossTot>=0?C.g:C.r, `${grossBp.toFixed(3)} bp / trade`) +
+    cardEl('Net P&L (actual)', sgn(netTot), netTot>=0?C.g:C.r, 'spread already deducted') +
+    cardEl('Total spread drag', '-' + Math.abs(costTot).toFixed(1) + '%', C.r, `${(costTot/N*100).toFixed(3)} bp / trade`) +
+    cardEl('Trades / day', perDay.toFixed(1), C.b, `${N.toLocaleString()} trades · ${Math.round(days)}d`) +
+    cardEl(`Projected net @ ${hurdlePips}p`, sgn(projNet), projNet>=0?C.g:C.r, `hurdle ${hurdleBp.toFixed(3)} bp / trade`) +
+    cardEl('Break-even trade budget', isFinite(budget)?Math.round(budget).toLocaleString():'∞', budget>=N?C.g:C.r, `you traded ${N.toLocaleString()}`);
+
+  // Bucket the trades along several observable dimensions; a bucket is "tradeable"
+  // when its gross P&L per trade beats the hurdle cost per trade (and it has enough trades).
+  const bucketize = (keyFn, order) => {
+    const m = new Map();
+    T.forEach(x => {
+      const k = keyFn(x.t); if (k == null) return;
+      if (!m.has(k)) m.set(k, { k, n:0, gross:0, hcost:0 });
+      const b = m.get(k); b.n++; b.gross += x.gross; b.hcost += x.hcost;
+    });
+    return order ? order.filter(k => m.has(k)).map(k => m.get(k))
+                 : [...m.values()].sort((a, b) => (b.gross/b.n) - (a.gross/a.n));
+  };
+  const sessionOf = h => h<8?'Asia (0-8)':h<13?'London (8-13)':h<21?'NY (13-21)':'Late (21-24)';
+  const scoreBand = s => s<60?'<60':s<65?'60-65':s<70?'65-70':s<75?'70-75':s<80?'75-80':'≥80';
+  const decayBand = d => d<0.1?'0-.1':d<0.2?'.1-.2':d<0.3?'.2-.3':d<0.4?'.3-.4':'≥.4';
+  const dowName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dims = [
+    { title:'By UTC hour', rows: bucketize(t=>new Date(t.entry_ts*1000).getUTCHours(), [...Array(24).keys()]) },
+    { title:'By session', rows: bucketize(t=>sessionOf(new Date(t.entry_ts*1000).getUTCHours()), ['Asia (0-8)','London (8-13)','NY (13-21)','Late (21-24)']) },
+    { title:'By entry-score band', rows: bucketize(t=>scoreBand(t.entry_score), ['<60','60-65','65-70','70-75','75-80','≥80']) },
+    { title:'By regime age (decay)', rows: bucketize(t=>decayBand(t.decay_at_entry), ['0-.1','.1-.2','.2-.3','.3-.4','≥.4']) },
+    { title:'By direction', rows: bucketize(t=>t.direction, ['LONG','SHORT']) },
+    { title:'By day of week', rows: bucketize(t=>new Date(t.entry_ts*1000).getUTCDay(), [1,2,3,4,5,0,6]).map(b=>({ ...b, k: dowName[b.k] })) },
+  ];
+  const MIN_N = 20;
+  const renderDim = d => {
+    let clearN=0, clearT=0, clearG=0, clearH=0;
+    const rows = d.rows.map(b => {
+      const gpt = b.gross/b.n*100, hpt = b.hcost/b.n*100;   // bp / trade
+      const clears = gpt > hpt && b.n >= MIN_N;
+      if (clears) { clearN++; clearT+=b.n; clearG+=b.gross; clearH+=b.hcost; }
+      const col = clears ? '#34d399' : (b.n < MIN_N ? '#5a6380' : '#f87171');
+      return `<tr style="${clears?'background:rgba(52,211,153,.07)':''}">
+        <td style="padding:3px 8px">${b.k}</td>
+        <td class="num" style="padding:3px 8px">${b.n}</td>
+        <td class="num" style="padding:3px 8px;color:${b.gross>=0?'#34d399':'#f87171'}">${(b.gross>=0?'+':'')+b.gross.toFixed(1)}%</td>
+        <td class="num" style="padding:3px 8px">${gpt.toFixed(2)}</td>
+        <td class="num" style="padding:3px 8px;color:${col}">${clears?'✓':(b.n<MIN_N?'·':'✗')}</td>
+      </tr>`;
+    }).join('');
+    const foot = clearN
+      ? `<div style="font-size:10px;color:#34d399;margin:4px 0 0;padding:0 8px">Tradeable subset: ${clearN} bucket(s), ${clearT.toLocaleString()} trades · projected net @ ${hurdlePips}p ${((clearG-clearH)>=0?'+':'')+(clearG-clearH).toFixed(1)}%</div>`
+      : `<div style="font-size:10px;color:#5a6380;margin:4px 0 0;padding:0 8px">No bucket (≥${MIN_N} trades) clears the ${hurdlePips}p hurdle.</div>`;
+    return `<div style="flex:1;min-width:250px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);margin:0 0 3px">${d.title}</div>
+      <table class="bt-tbl" style="width:100%;font-size:10px">
+        <thead><tr>
+          <th style="text-align:left;padding:3px 8px">Bucket</th>
+          <th class="num" style="padding:3px 8px">N</th>
+          <th class="num" style="padding:3px 8px">Gross</th>
+          <th class="num" style="padding:3px 8px" title="gross P&L per trade, basis points (0.01%)">bp/tr</th>
+          <th class="num" style="padding:3px 8px" title="clears ${hurdleBp.toFixed(2)}bp hurdle?">vs</th>
+        </tr></thead><tbody>${rows}</tbody></table>${foot}</div>`;
+  };
+  document.getElementById('ecBuckets').innerHTML =
+    `<div style="display:flex;flex-wrap:wrap;gap:18px">${dims.map(renderDim).join('')}</div>`;
+}
+
 function renderAnalytics() {
   const stats = computeAnalytics(allTrades);
   if (!stats) return;
@@ -4462,15 +4584,24 @@ function renderAnalytics() {
   // Equity curve
   const eqDates = stats.equityCurve.map(p => new Date(p.ts * 1000).toISOString().slice(0,10));
   const eqVals  = stats.equityCurve.map(p => p.pnl);
+  // Gross (pre-spread) curve, aligned to the same exit-time ordering as equityCurve.
+  const sortedByExit = [...allTrades].sort((a, b) => a.exit_ts - b.exit_ts);
+  const hasCost = sortedByExit.some(t => (t.cost_pct || 0) !== 0);
+  let gAcc = 0;
+  const grossVals = sortedByExit.map(t => { gAcc += t.pnl_pct + (t.cost_pct || 0); return gAcc; });
   if (eqChart) eqChart.destroy();
+  const eqDatasets = [{ label: 'Net P&L %', data: eqVals,
+      borderColor: '#4f7df0', backgroundColor: 'rgba(79,125,240,.08)', fill: true,
+      tension: .25, pointRadius: 0, borderWidth: 1.5 }];
+  if (hasCost) eqDatasets.push({ label: 'Gross (pre-spread) %', data: grossVals,
+      borderColor: '#34d399', backgroundColor: 'transparent', fill: false,
+      tension: .25, pointRadius: 0, borderWidth: 1.2, borderDash: [4, 3] });
   eqChart = new Chart(document.getElementById('eqChart'), {
     type: 'line',
-    data: { labels: eqDates, datasets: [{ label: 'Cumulative P&L %', data: eqVals,
-      borderColor: '#4f7df0', backgroundColor: 'rgba(79,125,240,.08)', fill: true,
-      tension: .25, pointRadius: 0, borderWidth: 1.5 }] },
+    data: { labels: eqDates, datasets: eqDatasets },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      plugins: { legend: { display: false }, tooltip: {
+      plugins: { legend: { display: hasCost, labels: { color: '#8a93b0', font: { family: 'DM Mono', size: 10 }, boxWidth: 18 } }, tooltip: {
         callbacks: { label: ctx => (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(2) + '%' }
       }},
       scales: {
@@ -4555,6 +4686,8 @@ function renderAnalytics() {
   renderMonthChart(stats.byMonth);
   el('kCagr').textContent = fmt1(stats.cagr) + '%';
   el('kCagr').className = 'bt-kpi-value ' + (stats.cagr >= 15 ? 'green' : stats.cagr >= 0 ? 'amber' : 'red');
+
+  renderEdgeCost();
 
   // Trade table
   filteredTrades = [...allTrades].sort((a, b) => b.entry_ts - a.entry_ts);
