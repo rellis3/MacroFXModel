@@ -6584,6 +6584,7 @@ app.post('/api/nasdaq-liquidity/run', express.json({ limit: '1mb' }), (req, res)
         gate1: result.gate1, gate2: result.gate2, trades: result.trades, eventLog: result.eventLog,
         equityCurve: result.dates.map((d, i) => ({ date: d, equity: result.equityCurve[i] })),
         secondaryExitComparison: result.secondaryExitComparison,
+        gate1Diagnostic: result.gate1Diagnostic,
         performance, monteCarlo, walkForward, outOfSample, research,
       });
 
