@@ -718,6 +718,11 @@ export function renderOICard(inst) {
     else if (ageH >= 24) staleBadge = `<span class="oi-badge oi-badge-amber" style="margin-left:6px;font-size:8px">${Math.round(ageH/24)}d old</span>`;
   }
 
+  // Suggested OI targets relative to spot — nearest opposing wall is the natural barrier
+  const _upWall = callWalls.filter(w => w.strike > spot).sort((a,b) => a.strike - b.strike)[0] || null;
+  const _dnWall = putWalls.filter(w => w.strike < spot).sort((a,b) => b.strike - a.strike)[0] || null;
+  const _mpDir  = maxPain > spot ? 'above — pulls up' : maxPain < spot ? 'below — pulls down' : 'at spot';
+
   // Directional OI flow vs spot — calls building above = resistance, puts building below = support
   const flowAboveNet = callChgAbove - putChgAbove; // >0: calls dominating above (resistance building)
   const flowBelowNet = putChgBelow - callChgBelow; // >0: puts dominating below (support building)
@@ -823,6 +828,18 @@ export function renderOICard(inst) {
       ${putWallRows}
     </div>
   </div>
+
+  <div class="oi-walls-grid" style="margin-top:0">
+    <div class="oi-walls-col">
+      <div class="oi-walls-hd oi-walls-hd-call">Upside target (call wall)</div>
+      <div style="padding:4px 8px;font-size:11px">${_upWall ? `<strong style="color:var(--red)">${oiFmtStrike(_upWall.strike,pair)}</strong> <span style="color:var(--text3)">${oiFmtOI(_upWall.oi)} OI</span>` : '<span style="color:var(--text3)">none above spot</span>'}</div>
+    </div>
+    <div class="oi-walls-col">
+      <div class="oi-walls-hd oi-walls-hd-put">Downside target (put wall)</div>
+      <div style="padding:4px 8px;font-size:11px">${_dnWall ? `<strong style="color:var(--green)">${oiFmtStrike(_dnWall.strike,pair)}</strong> <span style="color:var(--text3)">${oiFmtOI(_dnWall.oi)} OI</span>` : '<span style="color:var(--text3)">none below spot</span>'}</div>
+    </div>
+  </div>
+  <div style="font-size:9px;color:var(--text3);padding:2px 13px 6px">Magnet: max pain ${oiFmtStrike(maxPain,pair)} (${_mpDir}) · walls are barriers, max pain is the expiry pull</div>
 
   <div class="oi-levels">
     <div class="oi-level-hd">Top ${topLevels.length} by combined OI &nbsp;·&nbsp; ${numRows} total strikes</div>

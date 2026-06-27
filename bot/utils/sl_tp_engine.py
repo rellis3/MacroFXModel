@@ -139,6 +139,27 @@ class SLTPEngine:
             if entry.get('tp'):
                 return float(entry['tp']), f'{method}_dashboard'
 
+        # OI-wall target — nearest opposing wall in the trade direction acts as the
+        # natural profit barrier. Long → nearest call wall above; short → nearest put
+        # wall below. Stop just inside it. The hard max_tp_pips cap in calculate()
+        # clamps it if the wall is too far. Falls through to fixed R:R if no wall.
+        oi = pair_data.get('oi') or {}
+        if direction == 'long':
+            raw_cw = oi.get('callWalls') or []
+            cw_above = sorted(
+                [w['strike'] for w in raw_cw if w.get('strike') and w['strike'] > price]
+            ) if raw_cw else ([oi['callWall']] if oi.get('callWall') and oi['callWall'] > price else [])
+            if cw_above:
+                return cw_above[0] - pip * 2, 'oi_call_wall_target'
+        else:
+            raw_pw = oi.get('putWalls') or []
+            pw_below = sorted(
+                [w['strike'] for w in raw_pw if w.get('strike') and w['strike'] < price],
+                reverse=True
+            ) if raw_pw else ([oi['putWall']] if oi.get('putWall') and oi['putWall'] < price else [])
+            if pw_below:
+                return pw_below[0] + pip * 2, 'oi_put_wall_target'
+
         # Fixed R:R fallback — tp2r takes precedence over legacy tp1_rr
         tp_rr = self.tp2r if self.tp2r != 1.0 else self.sl_tp.get('tp1_rr', 1.5)
         dist  = sl_dist * tp_rr
