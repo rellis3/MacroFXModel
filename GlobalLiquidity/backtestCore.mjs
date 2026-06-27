@@ -41,18 +41,23 @@ export function sharpe(r) {
 }
 function maxDD(eq) { let pk = -Infinity, dd = 0; for (const e of eq) { pk = Math.max(pk, e); dd = Math.min(dd, e / pk - 1); } return dd; }
 
-// Convert raw price points → weekly (Friday) log returns.
-// points: array of { t: epochMillis, close: number }. Returns Map<'YYYY-MM-DD', logRet>.
-export function weeklyReturns(points) {
-  const byWeek = new Map();
+// Accumulate price points into a Map<weekFridayISO, {t, close}> keeping the last
+// close per week. Designed to be called repeatedly over CHUNKS of a large file
+// so the full row set never has to live in memory at once (Railway OOM guard).
+export function accumulateWeekly(byWeek, points) {
   for (const p of points) {
     if (!(p.close > 0)) continue;
-    const d = new Date(p.t); const dow = d.getUTCDay();
+    const dow = new Date(p.t).getUTCDay();
     const fri = new Date(p.t + ((5 - dow + 7) % 7) * 864e5);
     const key = fri.toISOString().slice(0, 10);
     const cur = byWeek.get(key);
     if (!cur || p.t >= cur.t) byWeek.set(key, { t: p.t, close: p.close });
   }
+  return byWeek;
+}
+
+// Map<weekISO,{t,close}> → Map<weekISO, weekly log return>.
+export function weeklyReturnsFromByWeek(byWeek) {
   const keys = [...byWeek.keys()].sort();
   const rets = new Map();
   for (let i = 1; i < keys.length; i++) {
@@ -60,6 +65,12 @@ export function weeklyReturns(points) {
     if (a > 0 && b > 0) rets.set(keys[i], Math.log(b / a));
   }
   return rets;
+}
+
+// One-shot: raw price points → weekly (Friday) log returns.
+// points: array of { t: epochMillis, close: number }. Returns Map<'YYYY-MM-DD', logRet>.
+export function weeklyReturns(points) {
+  return weeklyReturnsFromByWeek(accumulateWeekly(new Map(), points));
 }
 
 /*
