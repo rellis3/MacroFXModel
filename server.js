@@ -31,6 +31,7 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries } from './js/volForecast.
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
+import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
@@ -5768,6 +5769,70 @@ app.post('/api/vol-backtest/run', (req, res) => {
 
 app.get('/api/vol-backtest/status/:jobId', (req, res) => {
   const job = btJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Honest Forecast Harness ─────────────────────────────────────────────────
+// Re-tests the daily vol/range forecast under honest fills + costs + a true
+// IS/OOS split, and compares fade vs follow vs regime-gated entry at the
+// exhaustion band. Same async-job pattern as /api/vol-backtest/run.
+const hfJobs = new Map();
+function _purgeStaleHfJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of hfJobs) if (job.startedAt < cutoff) hfJobs.delete(id);
+}
+
+app.post('/api/honest-forecast/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    dateFrom:      b.dateFrom || '',
+    dateTo:        b.dateTo   || '',
+    slMult:        num(b.slMult, 1.5),
+    slopeThresh:   num(b.slopeThresh, 0.002),
+    oosFrac:       Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    breachReclaim: b.breachReclaim === true || b.breachReclaim === 'true',
+  };
+  if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
+  if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
+
+  const instFilter = b.pair
+    ? HONEST_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId     = `hf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleHfJobs();
+  hfJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, log } = await runHonestSuite(opts, instFilter ?? HONEST_INSTRUMENTS);
+      if (!results.length) {
+        hfJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
+        return;
+      }
+      hfJobs.set(jobId, { status: 'done', result: { results, log, opts }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[honest-forecast/run]', msg, e?.stack ?? '');
+      hfJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/honest-forecast/status/:jobId', (req, res) => {
+  const job = hfJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
