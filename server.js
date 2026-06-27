@@ -32,6 +32,7 @@ import { getSessionStats, computeSessionStats, isSessionStatsComputing } from '.
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
+import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
@@ -5939,6 +5940,74 @@ app.post('/api/honest-forecast/run', express.json({ limit: '256kb' }), (req, res
 
 app.get('/api/honest-forecast/status/:jobId', (req, res) => {
   const job = hfJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Vol/Range Forecast Backtester v2 (adaptive selector) ─────────────────────
+// Horizon-agnostic core (forecastCore.js): daily / weekly / 20-day. Compares the
+// adaptive day-type selector vs fixed fade75/fadeMed/follow legs on one IS/OOS
+// split. Same async-job pattern.
+const v2Jobs = new Map();
+function _purgeStaleV2Jobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of v2Jobs) if (job.startedAt < cutoff) v2Jobs.delete(id);
+}
+
+app.post('/api/vol-backtest-v2/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const horizon = ['daily', 'weekly', 'monthly'].includes(b.horizon) ? b.horizon : 'daily';
+  const opts = {
+    horizon,
+    dateFrom:   b.dateFrom || '',
+    dateTo:     b.dateTo   || '',
+    slMult:     num(b.slMult, 1.5),
+    oosFrac:    Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    fadeMedMax: num(b.fadeMedMax, 0.30),
+    fade75Max:  num(b.fade75Max, 0.55),
+    erWindow:   num(b.erWindow, 14),
+    slopeThresh: num(b.slopeThresh, 0.002),
+  };
+  if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
+  if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
+
+  const instFilter = b.pair
+    ? V2_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId     = `v2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleV2Jobs();
+  v2Jobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, log } = await runForecastV2Suite(opts, instFilter ?? V2_INSTRUMENTS);
+      if (!results.length) {
+        v2Jobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
+        return;
+      }
+      v2Jobs.set(jobId, { status: 'done', result: { results, log, opts }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[vol-backtest-v2/run]', msg, e?.stack ?? '');
+      v2Jobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/vol-backtest-v2/status/:jobId', (req, res) => {
+  const job = v2Jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
