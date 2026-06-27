@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Forecast Analyser — Refresh</title>
+<style>
+  :root{ --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+         --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889; --accent:#5b9dff;
+         --green:#3fb27f; --red:#e5604d; --amber:#e0a93b; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       padding:18px;max-width:560px;margin:0 auto}
+  h1{font-size:18px;margin:6px 0 2px}
+  .sub{color:var(--text2);font-size:13px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  label{display:block;font-size:12px;color:var(--text2);margin:10px 0 5px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+       border-radius:8px;padding:12px;font-size:16px}  /* 16px stops iOS zoom */
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2)}
+  .chk input{width:auto}
+  button{width:100%;background:var(--accent);color:#fff;border:0;border-radius:10px;
+       padding:14px;font-size:16px;font-weight:600;margin-top:14px}
+  button:disabled{opacity:.5}
+  button.sec{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  .hint{color:var(--text3);font-size:11px;margin-top:4px}
+  #out{white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--text2);
+       background:#0b0d12;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:12px;
+       max-height:46vh;overflow:auto}
+  .ok{color:var(--green)} .err{color:var(--red)} .run{color:var(--amber)}
+</style>
+</head>
+<body>
+  <h1>Forecast Analyser — Refresh</h1>
+  <div class="sub">Generate / update the level-interaction dataset. Needs the admin password.</div>
+
+  <div class="card">
+    <label>Admin password</label>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="ANALYSER_ADMIN_PASSWORD">
+
+    <label>Pairs <span class="hint">(blank = all on R2)</span></label>
+    <input id="pairs" placeholder="e.g. eurusd, gold  — or leave blank">
+
+    <label>Horizons</label>
+    <div class="row" style="margin-top:4px">
+      <span class="chk"><input type="checkbox" class="hz" value="daily" checked> daily</span>
+      <span class="chk"><input type="checkbox" class="hz" value="weekly"> weekly</span>
+      <span class="chk"><input type="checkbox" class="hz" value="monthly"> 20-day</span>
+    </div>
+
+    <button id="run">Refresh data</button>
+    <button id="check" class="sec">Check current dataset</button>
+    <div id="out">Ready.</div>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+const out = $('out');
+const log = (m, cls='') => { out.innerHTML += `\n${cls?`<span class="${cls}">`:''}${m}${cls?'</span>':''}`; out.scrollTop = out.scrollHeight; };
+const pw  = () => $('pw').value.trim();
+const hdr = () => ({ 'x-analyser-pw': pw(), 'Content-Type': 'application/json' });
+
+function remember(){ try{ localStorage.setItem('af_pw', pw()); }catch{} }
+try{ const s = localStorage.getItem('af_pw'); if(s) $('pw').value = s; }catch{}
+
+async function poll(jobId){
+  for(let i=0;i<600;i++){
+    await new Promise(r=>setTimeout(r,3000));
+    let r; try{ r = await fetch(`/api/forecast-analysis/refresh/status/${jobId}`,{headers:hdr()}).then(x=>x.json()); }catch{ continue; }
+    if(r.status==='running'){ out.innerHTML = out.innerHTML.replace(/\n· running.*$/, ''); log(`· running ${r.elapsed||0}s — ${(r.log||[]).slice(-1)[0]||''}`,'run'); continue; }
+    if(r.status==='done'){ (r.log||[]).forEach(l=>log(l)); log('✓ Done — dataset updated.','ok'); return; }
+    if(r.status==='error'){ (r.log||[]).forEach(l=>log(l)); log('✗ '+(r.error||'error'),'err'); return; }
+  }
+  log('Timed out polling.','err');
+}
+
+$('run').onclick = async () => {
+  if(!pw()){ log('Enter the admin password first.','err'); return; }
+  remember();
+  const pairs = $('pairs').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const horizons = [...document.querySelectorAll('.hz:checked')].map(c=>c.value);
+  if(!horizons.length){ log('Pick at least one horizon.','err'); return; }
+  $('run').disabled = true; out.textContent = '';
+  log(`Submitting refresh — pairs: ${pairs.length?pairs.join(', '):'ALL'} · horizons: ${horizons.join(', ')}`);
+  try{
+    const start = await fetch('/api/forecast-analysis/refresh',{method:'POST',headers:hdr(),body:JSON.stringify({pairs:pairs.length?pairs:undefined,horizons})}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    log('Job '+start.jobId+' started…','run');
+    await poll(start.jobId);
+  }catch(e){ log('✗ '+e.message,'err'); }
+  finally{ $('run').disabled = false; }
+};
+
+$('check').onclick = async () => {
+  if(!pw()){ log('Enter the admin password first.','err'); return; }
+  remember();
+  out.textContent = 'Checking…';
+  try{
+    const m = await fetch('/api/forecast-analysis/manifest',{headers:hdr()}).then(r=>r.json());
+    if(!m.ok){ log('✗ '+(m.error||'no dataset'),'err'); return; }
+    const man = m.manifest;
+    out.textContent = '';
+    log('Last refreshed: '+man.generatedAt,'ok');
+    log('Pairs: '+Object.keys(man.pairs||{}).length);
+    for(const [p,info] of Object.entries(man.pairs||{})){
+      const hz = Object.entries(info.horizons||{}).map(([h,c])=>`${h} ${c.windows}w`).join(', ');
+      log(`  ${p} (${info.assetClass}) — ${hz}`);
+    }
+  }catch(e){ log('✗ '+e.message,'err'); }
+};
+</script>
+</body>
+</html>
