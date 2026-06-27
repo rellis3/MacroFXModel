@@ -42,7 +42,7 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
-import { computeBacktest as computeGliBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
+import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
 import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
@@ -3148,8 +3148,10 @@ async function _gliWeeklyForPair(stem) {
   let ab = null;
   try { ab = await gliFetchFromR2(stem); } catch (e) { console.warn(`[gli-bt] R2 ${stem}: ${e.message}`); }
   if (!ab) {
-    const fp = path.join(BT_M1_DIR, `${stem}_m1.parquet`);
-    if (fs.existsSync(fp)) { const b = fs.readFileSync(fp); ab = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); }
+    for (const dir of [BT_M1_DIR, path.join(__dirname, 'portfolioBacktest', 'cache')]) {
+      const fp = path.join(dir, `${stem}_m1.parquet`);
+      if (fs.existsSync(fp)) { const b = fs.readFileSync(fp); ab = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); break; }
+    }
   }
   if (!ab) return null;
 
@@ -3239,6 +3241,57 @@ app.get('/api/global-liquidity/backtest/status/:jobId', (req, res) => {
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), phase: job.phase ?? 'Running…' });
   }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Global Liquidity → NQ timing test (does liquidity beat buy-and-hold NQ?) ───
+const gliNqJobs   = new Map();
+const GLI_NQ_CACHE = { result: null, builtAt: 0 };
+
+app.post('/api/global-liquidity/nq-backtest/run', express.json({ limit: '256kb' }), (req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY || req.body?.fredKey;
+  if (!fredKey) return res.status(400).json({ ok: false, error: 'FRED_KEY not set on Railway.' });
+  const force = req.body?.force === true || req.body?.force === 'true';
+  const jobId = `glinq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of gliNqJobs) if (Date.now() - j.startedAt > 30 * 60 * 1000) gliNqJobs.delete(id);
+
+  if (!force && GLI_NQ_CACHE.result && Date.now() - GLI_NQ_CACHE.builtAt < GLI_BT_TTL) {
+    gliNqJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, cached: true, data: GLI_NQ_CACHE.result } });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+  gliNqJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching FRED…' });
+  (async () => {
+    try {
+      const engine = loadGliEngine();
+      const payload = await _gliFetchFred(fredKey);
+      gliNqJobs.set(jobId, { status: 'running', startedAt, phase: 'Loading NQ from R2…' });
+      const nqReturns = await _gliWeeklyForPair('nq');
+      if (!nqReturns || !nqReturns.size) throw new Error('no NQ data (R2/disk unavailable)');
+      gliNqJobs.set(jobId, { status: 'running', startedAt, phase: 'Running liquidity-timing test…' });
+      const data = computeGliNqBacktest({ engine, payload, nqReturns, fredSource: 'FRED API (Railway key)' });
+      GLI_NQ_CACHE.result = data; GLI_NQ_CACHE.builtAt = Date.now();
+      gliNqJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, cached: false, data } });
+      console.log(`[gli-nq] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s)`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[gli-nq] error:', msg, e?.stack ?? '');
+      gliNqJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/global-liquidity/nq-backtest/status/:jobId', (req, res) => {
+  const job = gliNqJobs.get(req.params.jobId);
+  if (!job) {
+    if (GLI_NQ_CACHE.result && Date.now() - GLI_NQ_CACHE.builtAt < GLI_BT_TTL) {
+      return res.json({ ok: true, status: 'done', cached: true, data: GLI_NQ_CACHE.result });
+    }
+    return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  }
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), phase: job.phase ?? 'Running…' });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });

@@ -156,6 +156,23 @@
     </div>
   </div>
 
+  <!-- NQ liquidity-timing test: does liquidity beat buy-and-hold NASDAQ? -->
+  <div class="card" id="nqCard">
+    <div class="card-hdr"><span>Does liquidity time NASDAQ?</span><span class="dim">vs buy &amp; hold</span></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button class="gl-btn" id="nqRun" style="border-color:var(--blue);color:var(--blue);">▶ Run NQ test</button>
+        <span class="dim" id="nqStatus" style="font-size:12px;"></span>
+      </div>
+      <div id="nqResult" style="margin-top:12px;"></div>
+      <div class="dim" style="font-size:11px;margin-top:10px;line-height:1.5;">
+        Times a long/flat NASDAQ position from the liquidity impulse + regime + risk gate, and
+        benchmarks every rule against <b>buy &amp; hold NQ</b>. The bar: a rule only has edge if its
+        Sharpe beats buy &amp; hold — otherwise the signal adds no timing value.
+      </div>
+    </div>
+  </div>
+
   <div class="note" id="footNote"></div>
 </div>
 
@@ -476,6 +493,60 @@
         btPoll(x.j.jobId, t0);
       })
       .catch(function (e) { btFail(e.message); });
+  });
+
+  // ── NQ liquidity-timing test (vs buy & hold) ──────────────────────────────
+  var nqRunning = false;
+  function nqSetStatus(t) { document.getElementById('nqStatus').textContent = t || ''; }
+  function nqRender(d) {
+    var pct = function (x) { return x == null ? '—' : (x * 100).toFixed(0) + '%'; };
+    var bh = d.buyHoldSharpe || 0;
+    var rows = Object.keys(d.rules).map(function (name) {
+      var r = d.rules[name], isBH = /buy\s*&\s*hold/i.test(name);
+      var beat = !isBH && (r.sharpe || 0) > bh + 0.1;
+      var cls = isBH ? 'dim' : beat ? 'green' : 'red';
+      return '<div class="book-row"><span class="book-pair" style="flex:2;font-size:12px;font-weight:' +
+        (isBH ? '700' : '600') + ';">' + (isBH ? '★ ' : (beat ? '✓ ' : '· ')) + name + '</span>' +
+        '<span class="book-w ' + cls + '" style="font-weight:700;">Sharpe ' + (r.sharpe == null ? '—' : r.sharpe.toFixed(2)) +
+        '</span><span class="book-w">OOS ' + (r.oosSharpe == null ? '—' : r.oosSharpe.toFixed(2)) +
+        '</span><span class="book-w">in ' + pct(r.timeInMarket) + '</span></div>';
+    }).join('');
+    var verdictGreen = d.anyRuleBeatsBuyHold;
+    var html = '<div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--' + (verdictGreen ? 'green' : 'red') + ');">' +
+      (verdictGreen ? '✓ ' : '✗ ') + d.verdict + '</div>' + rows;
+    if (!d.real) html += '<div class="dim" style="font-size:11px;margin-top:10px;color:var(--amber);">' +
+      'FRED is synthetic on the server — set FRED_KEY on Railway for a real verdict.</div>';
+    else html += '<div class="dim" style="font-size:11px;margin-top:8px;">' + d.weeks + 'w · ' + d.start + ' → ' + d.asOf +
+      ' · NQ coverage ' + pct(d.coverage) + '</div>';
+    document.getElementById('nqResult').innerHTML = html;
+  }
+  function nqFail(msg) {
+    nqRunning = false; document.getElementById('nqRun').disabled = false;
+    nqSetStatus(''); document.getElementById('nqResult').innerHTML = '<div class="err" style="padding:8px 0;">NQ test failed: ' + msg + '</div>';
+  }
+  function nqPoll(jobId, t0, fails) {
+    fails = fails || 0;
+    fetch('/api/global-liquidity/nq-backtest/status/' + jobId)
+      .then(function (r) { if (r.status === 404 && fails < 8) throw new Error('__retry__'); return r.json(); })
+      .then(function (j) {
+        if (j.status === 'running') { nqSetStatus((j.phase || 'running') + '  ·  ' + (j.elapsed || 0) + 's'); setTimeout(function () { nqPoll(jobId, t0, 0); }, 3000); }
+        else if (j.status === 'done') { nqRunning = false; document.getElementById('nqRun').disabled = false; nqSetStatus((j.cached ? 'cached' : 'done') + '  ·  ' + Math.round((Date.now() - t0) / 1000) + 's'); nqRender(j.data); }
+        else nqFail(j.error || 'failed');
+      })
+      .catch(function (e) {
+        if (fails < 60 && (e.message === '__retry__' || /fetch|network|load|reset|timeout/i.test(e.message))) { nqSetStatus('working…  ·  ' + Math.round((Date.now() - t0) / 1000) + 's'); setTimeout(function () { nqPoll(jobId, t0, fails + 1); }, 5000); }
+        else nqFail(e.message);
+      });
+  }
+  document.getElementById('nqRun').addEventListener('click', function () {
+    if (nqRunning) return;
+    nqRunning = true; this.disabled = true;
+    document.getElementById('nqResult').innerHTML = ''; nqSetStatus('starting…');
+    var t0 = Date.now();
+    fetch('/api/global-liquidity/nq-backtest/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) { if (!x.ok || !x.j.ok) return nqFail(x.j.error || 'could not start'); nqPoll(x.j.jobId, t0); })
+      .catch(function (e) { nqFail(e.message); });
   });
 
   document.getElementById('helpBtn').addEventListener('click', function () { setHelp(true); });

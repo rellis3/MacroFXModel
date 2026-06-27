@@ -159,3 +159,74 @@ export function computeBacktest({ engine, payload, fxByPair, fredSource = 'unkno
     equity: eq.map((v) => round(v, 4)),
   };
 }
+
+/*
+ * computeNqBacktest({ engine, payload, nqReturns, fredSource })
+ *   Single-instrument NQ test. Reuses the engine's per-week liquidity impulse,
+ *   regime and risk gate to time a long/flat (or long/short) position on NASDAQ,
+ *   and benchmarks EVERY variant against buy-and-hold NQ.
+ *
+ * The bar that matters: a liquidity rule only has edge if it beats buy-and-hold
+ * NQ on Sharpe (NQ ripped 2020-26, so any long-biased rule "makes money").
+ *   nqReturns : Map<'YYYY-MM-DD', weekly log return of NQ>
+ */
+export function computeNqBacktest({ engine, payload, nqReturns, fredSource = 'unknown' }) {
+  const hist = engine.runHistory(payload);
+  if (hist.error) throw new Error('engine: ' + hist.error);
+  const { dates, regime, gate, impulse } = hist;
+  const n = dates.length;
+
+  // Align NQ weekly returns onto the engine grid (±4 days).
+  const nq = new Array(n).fill(0); let cover = 0;
+  const keys = [...nqReturns.keys()].sort(); let ptr = 0;
+  for (let i = 0; i < n; i++) {
+    const t = +new Date(dates[i]);
+    while (ptr < keys.length && +new Date(keys[ptr]) < t - 4 * 864e5) ptr++;
+    if (ptr < keys.length && Math.abs(+new Date(keys[ptr]) - t) <= 4 * 864e5) { nq[i] = nqReturns.get(keys[ptr]); cover++; }
+  }
+
+  const riskOn = (r) => r === 'REFLATION' || r === 'RECOVERY';
+  // Pre-specified position rules (decided at i-1, applied to return at i). No scan.
+  const rules = {
+    'Buy & hold (benchmark)': () => 1,
+    'Liq long/flat (impulse>0 & gate clear)': (i) => (impulse[i] > 0 && !gate[i]) ? 1 : 0,
+    'Regime long/flat (risk-on & gate clear)': (i) => (riskOn(regime[i]) && !gate[i]) ? 1 : 0,
+    'Liq long/short (sign, gate→flat)': (i) => gate[i] ? 0 : Math.sign(impulse[i]),
+    'Gate-only (long unless gate tripped)': (i) => gate[i] ? 0 : 1,
+  };
+
+  const warm = 52;
+  const evalRule = (posFn) => {
+    const ret = new Array(n).fill(0); let inMkt = 0;
+    for (let i = 1; i < n; i++) { const p = posFn(i - 1); ret[i] = p * nq[i]; if (p !== 0) inMkt++; }
+    const v = ret.slice(warm), eq = []; let c = 1; for (const r of ret) { c *= 1 + r; eq.push(c); }
+    // walk-forward OOS
+    const wins = []; let s = warm;
+    while (s + 156 + 52 <= n) { wins.push(sharpe(ret.slice(s + 156, s + 156 + 52))); s += 26; }
+    const round = (x, d = 3) => (isFinite(x) ? Math.round(x * 10 ** d) / 10 ** d : null);
+    return {
+      sharpe: round(sharpe(v)), annReturn: round(mean(v) * 52, 4), annVol: round(std(v) * Math.sqrt(52), 4),
+      maxDrawdown: round(maxDD(eq), 4), timeInMarket: round(inMkt / n, 3),
+      oosSharpe: wins.length ? round(mean(wins)) : null,
+    };
+  };
+
+  const results = {};
+  for (const [name, fn] of Object.entries(rules)) results[name] = evalRule(fn);
+  const bh = results['Buy & hold (benchmark)'].sharpe || 0;
+  const beatsBH = Object.entries(results)
+    .filter(([k]) => k !== 'Buy & hold (benchmark)')
+    .filter(([, r]) => (r.sharpe || 0) > bh + 0.1);    // must beat B&H by a margin
+
+  const round = (x, d = 3) => (isFinite(x) ? Math.round(x * 10 ** d) / 10 ** d : null);
+  return {
+    fredSource, real: !/synthetic/i.test(fredSource),
+    instrument: 'NQ', asOf: dates[n - 1], start: dates[0], weeks: n, coverage: round(cover / n, 2),
+    buyHoldSharpe: bh,
+    rules: results,
+    anyRuleBeatsBuyHold: beatsBH.length > 0,
+    verdict: beatsBH.length
+      ? `Liquidity timing beats buy-and-hold: ${beatsBH.map(([k]) => k).join('; ')}`
+      : 'No liquidity rule beats buy-and-hold NQ risk-adjusted — the signal adds no timing edge.',
+  };
+}
