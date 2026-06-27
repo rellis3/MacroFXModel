@@ -327,6 +327,28 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
 
+    // -- Global Liquidity backtest → proxy to the Railway origin -------------
+    // The heavy backtest (FRED_KEY + R2 FX + engine) runs on Railway, not in
+    // the Worker. Without this proxy the request falls through to static assets
+    // (404), which is why the dashboard button appeared to do nothing.
+    if (path.startsWith('/api/global-liquidity/backtest/')) {
+      const origin = env.RAILWAY_ORIGIN || 'https://macrofxmodel-production.up.railway.app';
+      try {
+        const upstream = await fetch(origin + path + url.search, {
+          method: request.method,
+          headers: { 'Content-Type': 'application/json' },
+          body: request.method === 'POST' ? await request.text() : undefined,
+        });
+        const body = await upstream.text();
+        return new Response(body, {
+          status: upstream.status,
+          headers: { 'Content-Type': 'application/json', ...CORS },
+        });
+      } catch (e) {
+        return err('backtest proxy to Railway failed: ' + (e?.message || e), 502);
+      }
+    }
+
     try {
       // -- /api/config -----------------------------------------
       if (path === '/api/config') {
