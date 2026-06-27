@@ -111,8 +111,14 @@ export const DAYTYPE_PRESETS = {
 };
 
 // ── The classifier ───────────────────────────────────────────────────────────
-// Blends the enabled estimators (weighted, renormalised) into T ∈ [0,1] and a
-// coarse label. `ctx` must carry closes + idx; win/weights are optional.
+// Blends the enabled estimators (weighted, renormalised) into:
+//   T       ∈ [0,1]   — trend-day-ness (0 = chop/fade, 1 = strong trend/follow)
+//   signedT ∈ [-1,+1] — the SAME signal re-centred on zero: sign = action
+//                       (−ve → fade, +ve → follow), magnitude = strength/lean.
+//                       signedT = (T − 0.5) × 2. It is a directional LEAN, NOT a
+//                       calibrated probability — magnitude ≠ P(win). Near 0 = no
+//                       lean (stand aside).
+// `ctx` must carry closes + idx; win/weights are optional.
 //   classifyDayType({ closes, idx, win, highs, lows, ... }, { weights, bands })
 export function classifyDayType(ctx, cfg = {}) {
   const weights = cfg.weights ?? DAYTYPE_PRESETS.default;
@@ -128,9 +134,10 @@ export function classifyDayType(ctx, cfg = {}) {
     num += w * v; den += w;
   }
   const T = den > 0 ? +(num / den).toFixed(4) : 0.5;
+  const signedT = +((T - 0.5) * 2).toFixed(4);   // [-1,+1]: −fade / +follow, |.| = lean
   const { rangeMax = 0.30, trendMin = 0.55 } = cfg.bands ?? {};
   const label = T < rangeMax ? 'RANGE' : T < trendMin ? 'MIXED' : 'TREND';
-  return { T, label, components };
+  return { T, signedT, label, components };
 }
 
 // ── Backward-compatible thin wrapper ─────────────────────────────────────────

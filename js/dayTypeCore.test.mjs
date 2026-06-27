@@ -64,6 +64,19 @@ const r = classifyDayType(ctx(trend, 300), { weights: DAYTYPE_PRESETS.balanced }
 console.log(`[4] balanced preset @ trend[300]: T=${r.T} label=${r.label} components=${Object.keys(r.components).join(',')}`);
 if (!(r.T >= 0 && r.T <= 1) || !r.label) process.exit(1);
 
+// signedT = (T-0.5)*2, stays in [-1,1], and agrees with T's side everywhere.
+let sBad = 0, sMax = 0;
+for (const series of [trend, chop]) for (let idx = 50; idx < N; idx++) {
+  const o = classifyDayType(ctx(series, idx));
+  const expected = +((o.T - 0.5) * 2).toFixed(4);
+  if (o.signedT !== expected || o.signedT < -1 || o.signedT > 1) sBad++;
+  sMax = Math.max(sMax, Math.abs(o.signedT - expected));
+  // sign must match side: T>0.5 → signedT>0 (follow), T<0.5 → signedT<0 (fade)
+  if ((o.T > 0.5 && o.signedT <= 0) || (o.T < 0.5 && o.signedT >= 0)) sBad++;
+}
+console.log(`[4b] signedT = (T-0.5)*2, in [-1,1], side-consistent: ${sBad === 0 ? '✓' : '✗ ' + sBad + ' violations'} (max|Δ|=${sMax})`);
+if (sBad) process.exit(1);
+
 // rangeBudget brick returns neutral without its inputs, and a value with them.
 const rbNeutral = ESTIMATORS.rangeBudget({});
 const rbLow = ESTIMATORS.rangeBudget({ realizedRangeFrac: 0.002, forecastRangeFrac: 0.01 });
