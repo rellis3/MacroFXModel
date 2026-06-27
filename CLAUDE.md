@@ -7,8 +7,11 @@ code, and follow it.**
 
 Orientation docs (read when you need them, not every time):
 `CODEBASE_OVERVIEW.md` (the map), `SYSTEM_ASSESSMENT.md` (honest critique),
-`TRADABILITY_REVIEW.md` (what's real vs in-sample), and
-`REVERSION_CONTINUATION_CONCEPT.md` (the fade/follow design basis).
+`TRADABILITY_REVIEW.md` (what's real vs in-sample),
+`REVERSION_CONTINUATION_CONCEPT.md` (the fade/follow design basis), and
+**`LEGO_MODULES.md` (the central brick registry** — every reusable module, where
+it's used, what it does, and the candidate bricks still to extract; read it
+before adding a module so you import an existing brick instead of copying).
 
 ---
 
@@ -55,8 +58,20 @@ doesn't, disconnect it — without disturbing the rest. Concretely:
 | `js/volBacktestEngine.js` | vol-sigma series (HV20 / GARCH / Yang-Zhang), `ASSET_PARAMS`, `classifyRegime`, band constants (`BM_P50/75`, `HN_P50/75`), `fetchD1` | the forecaster's vol math — single source of truth |
 | `js/dayTypeCore.js` | the reversion-vs-continuation classifier — `ESTIMATORS` registry, `DAYTYPE_PRESETS`, `classifyDayType`, `dayTypeScore` (trend-day-ness `T` = drift÷diffusion) | any system that must decide fade-vs-follow at a level — the forecaster **and** future bots, never copied |
 | `js/forecastCore.js` | `computeBands`, `walkBars` (fill walker), `simulateEntry` (the one primitive), `selectStrategy`, `volSigmaSeries`, `HORIZONS` (re-exports `dayTypeScore` from `dayTypeCore.js`) | all new forecast-family strategy logic |
-| `js/honestForecastEngine.js` | `summarize`, `summarizeSplit` (metrics + IS/OOS) | reporting — reuse, don't re-implement |
+| `js/honestForecastEngine.js` | `summarize`, `summarizeSplit` (metrics + IS/OOS) — `summarize` now delegates to `metricsCore` | reporting — reuse, don't re-implement |
 | `js/volBacktestV2Engine.js` | thin per-horizon orchestration + A/B vs fixed legs | the template for wiring a new strategy |
+
+**Shared utility bricks** (extracted 2026-06; pure, unit-tested in
+`js/legoBricks.test.mjs`; full catalogue in `LEGO_MODULES.md`):
+
+| Module | Owns | Import for |
+|---|---|---|
+| `js/barUtils.js` | `bisect`, `extractBars`, `resampleTo`, `bodyRange`, `calcATR`, `groupByDate` — the M1 packed-array hot path | any session-range backtest (already wired into `asiaRangeEngine`/`rangeFibEngine`/`confluenceModules`) |
+| `js/statsCore.js` | `rollingZScore`/`rollingZAt`, `rollingPercentile`, `linregSlope`, `ewma`, moments (`ddof`) | z-score/percentile gates — never re-inline a z-score |
+| `js/indicatorCore.js` | `ema`, `atrWilder`/`atrEma`, `adxWilder`, `rsiWilder`, `trueRange` (ATR variants named, never silently swapped) | regime/indicator math shared by HMM engines + backtests |
+| `js/metricsCore.js` | `sharpeRatio`, `sortinoRatio`, `calmar`, `maxDrawdown*`, `profitFactor`, `winRate`, `summarizeTrades` (== old `summarize`) | every performance card — one definition of Sharpe/DD |
+| `js/fibProjection.js` | `FIB_LEVELS`, `KEY_LEVELS`, `calcFibs` (range-extension grid) | any Asia/Monday range-extension engine |
+| `js/instrumentRegistry.js` | canonical pip/digits/asset-class + symbol aliases (`pipSize`, `instrument`, `resolveKey`…) | anything that needs a pip size or symbol — a wrong pip is a 10× PnL bug |
 
 > `js/volBacktestM1Engine.js` is the mature **v1** engine (M1 walk-forward, the
 > realistic fill walker, the seven legs). Treat it as **read-only reference** —

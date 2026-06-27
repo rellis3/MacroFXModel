@@ -33,6 +33,8 @@ import {
   hvVarSeries, yzVolSeries, garchSigmas, classifyRegime,
   ASSET_PARAMS, BM_P75, HN_P50, fetchD1, INSTRUMENTS,
 } from './volBacktestEngine.js';
+// Metrics live in the metricsCore lego brick (single source of truth).
+import { summarizeTrades } from './metricsCore.js';
 
 // Typical round-trip friction (spread + commission) in % of price, per asset
 // class. Conservative retail-ish defaults; override via opts.costPct.
@@ -192,42 +194,14 @@ export function runHonest(bars, assetClass, opts = {}) {
 
 // ── Metrics ──────────────────────────────────────────────────────────────────
 
+// Per-trade summary. Delegates to the metricsCore lego brick so the metric
+// definitions (per-trade Sharpe annualised by actual trade frequency, additive
+// drawdown, PF 99-fallback) live in ONE place. `js/legoBricks.test.mjs` proves
+// `summarizeTrades` reproduces this function's original numbers bit-for-bit
+// against a frozen baseline, so the delegation changes nothing.
 export function summarize(records) {
   const filled = records.filter(r => r.filled);
-  const n = filled.length;
-  if (!n) return { trades: 0, winRate: 0, profitFactor: 0, expectancy: 0, sharpe: 0, maxDD: 0, totalPnl: 0 };
-
-  let wins = 0, grossWin = 0, grossLoss = 0, sumPnl = 0, sumSq = 0;
-  let cum = 0, peak = 0, maxDD = 0;
-  for (const r of filled) {
-    const x = r.pnl_pct;
-    sumPnl += x; sumSq += x * x;
-    if (x > 0) { wins++; grossWin += x; } else { grossLoss += -x; }
-    cum += x; if (cum > peak) peak = cum; const dd = cum - peak; if (dd < maxDD) maxDD = dd;
-  }
-  const mean = sumPnl / n;
-  const variance = Math.max(sumSq / n - mean * mean, 0);
-  const std = Math.sqrt(variance);
-  // Annualize the per-trade Sharpe by the strategy's ACTUAL trade frequency
-  // (these systems trade ~8–30×/yr, not 252×). Years are measured from the
-  // span of filled trades; clamp to ≥0.25yr so tiny samples don't blow up.
-  const dates = filled.map(r => r.date).sort();
-  const yrs = Math.max(
-    (Date.parse(dates[dates.length - 1]) - Date.parse(dates[0])) / (365.25 * 864e5),
-    0.25);
-  const tradesPerYr = n / yrs;
-  const perTradeSharpe = std > 1e-9 ? mean / std : 0;
-  const sharpe = +(perTradeSharpe * Math.sqrt(tradesPerYr)).toFixed(3);
-  return {
-    trades: n,
-    tradesPerYr: +tradesPerYr.toFixed(1),
-    winRate: +(wins / n * 100).toFixed(1),
-    profitFactor: grossLoss > 1e-9 ? +(grossWin / grossLoss).toFixed(3) : (grossWin > 0 ? 99 : 0),
-    expectancy: +mean.toFixed(4),
-    sharpe,
-    maxDD: +maxDD.toFixed(3),
-    totalPnl: +sumPnl.toFixed(3),
-  };
+  return summarizeTrades(filled.map(r => r.pnl_pct), filled.map(r => r.date));
 }
 
 // Split records by date fraction into in-sample / out-of-sample and summarize.
