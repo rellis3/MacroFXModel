@@ -107,9 +107,12 @@ def _extract_trades(events: list[dict], days: int) -> list[dict]:
                 'has_hvn':       'HVN' in comp,
             }
 
-        elif etype == 'TP2_HIT' or (etype == 'CLOSE' and ev.get('reason') == 'TP2_HIT'):
-            zid = ev.get('zone_id', '')
-            if zid in zone_entries:
+        elif etype == 'TRADE_CLOSED':
+            zid    = ev.get('zone_id', '')
+            reason = ev.get('reason') or ev.get('result', '')
+            if zid not in zone_entries:
+                continue
+            if reason == 'TP2_HIT':
                 entry = zone_entries.pop(zid)
                 if entry['timestamp'] < cutoff:
                     continue
@@ -117,14 +120,14 @@ def _extract_trades(events: list[dict], days: int) -> list[dict]:
                 tp2_dist = abs(entry['tp2'] - entry['entry_price'])
                 pnl_r    = round(tp2_dist / sl_dist, 3) if sl_dist > 0 else 0.0
                 trades.append({**entry, 'result': 'WIN', 'pnl_r': pnl_r})
-
-        elif etype == 'SL_HIT':
-            zid = ev.get('zone_id', '')
-            if zid in zone_entries:
+            elif reason == 'SL_HIT':
                 entry = zone_entries.pop(zid)
                 if entry['timestamp'] < cutoff:
                     continue
                 trades.append({**entry, 'result': 'LOSS', 'pnl_r': -1.0})
+            # EXPIRED / breakeven / other reasons: drop the open entry, no trade
+            else:
+                zone_entries.pop(zid, None)
 
     return trades
 

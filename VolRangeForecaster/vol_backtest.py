@@ -296,26 +296,32 @@ def simulate_day(open_: float, high: float, low: float, close: float,
 # ── Dynamic-anchor strategy simulator ────────────────────────────────────────
 
 def simulate_day_dynamic_anchor(open_: float, high: float, low: float, close: float,
-                                 hl_median_pct: float, hl_75_pct: float) -> dict:
+                                 hl_median_pct: float, hl_75_pct: float,
+                                 anchor_low: float, anchor_high: float) -> dict:
     """
     Dynamic-anchor range fade.
 
-    The HL_median% forecast is applied FROM the actual session extreme (not the open).
+    The HL_median% forecast is applied FROM a PRIOR session extreme that is known
+    at order-placement time (the previous day's low/high). Anchoring off the
+    *current* day's extreme is lookahead/self-fulfilling, so callers must pass the
+    prior bar's low/high as ``anchor_low``/``anchor_high``.
 
-    SELL limit: low  × (1 + hl_median%)  →  TP = open_,  SL = low  × (1 + hl_75%)
-    BUY  limit: high × (1 - hl_median%)  →  TP = open_,  SL = high × (1 - hl_75%)
+    SELL limit: anchor_low  × (1 + hl_median%)  →  TP = open_,  SL = anchor_low  × (1 + hl_75%)
+    BUY  limit: anchor_high × (1 - hl_median%)  →  TP = open_,  SL = anchor_high × (1 - hl_75%)
 
     Guard: entry must be on the far side of open (sell entry > open_, buy entry < open_).
     This ensures TP at open_ is always in the profitable direction.
+    The fill/touch check uses the CURRENT day's high/low to decide whether the
+    (prior-anchored) level was actually traded today.
     Both sides live simultaneously; SELL is checked first.
     """
-    sell_entry = low  * (1.0 + hl_median_pct / 100.0)
+    sell_entry = anchor_low  * (1.0 + hl_median_pct / 100.0)
     sell_tp    = open_
-    sell_sl    = low  * (1.0 + hl_75_pct     / 100.0)
+    sell_sl    = anchor_low  * (1.0 + hl_75_pct     / 100.0)
 
-    buy_entry  = high * (1.0 - hl_median_pct / 100.0)
+    buy_entry  = anchor_high * (1.0 - hl_median_pct / 100.0)
     buy_tp     = open_
-    buy_sl     = high * (1.0 - hl_75_pct     / 100.0)
+    buy_sl     = anchor_high * (1.0 - hl_75_pct     / 100.0)
 
     base    = {"regime": "DA", "hl_75": hl_75_pct, "oc_median": 0.0}
     no_fill = {**base, "filled": False, "side": "", "outcome": "no_fill",
@@ -451,12 +457,17 @@ def run_backtest_da_carry(name: str, df: pd.DataFrame,
         }
 
         # -- Step 3: Attempt a new position for today -------------------------
-        sell_entry = low  * (1.0 + hl_median / 100.0)
+        # Anchor entry levels off the PRIOR day's extremes (known at order time);
+        # using today's extremes would be lookahead. The touch/fill check below
+        # still uses today's high/low.
+        anchor_low  = lows[i - 1]
+        anchor_high = highs[i - 1]
+        sell_entry = anchor_low  * (1.0 + hl_median / 100.0)
         sell_tp    = open_
-        sell_sl    = low  * (1.0 + hl_75     / 100.0)
-        buy_entry  = high * (1.0 - hl_median / 100.0)
+        sell_sl    = anchor_low  * (1.0 + hl_75     / 100.0)
+        buy_entry  = anchor_high * (1.0 - hl_median / 100.0)
         buy_tp     = open_
-        buy_sl     = high * (1.0 - hl_75     / 100.0)
+        buy_sl     = anchor_high * (1.0 - hl_75     / 100.0)
 
         def _mfe_r(side: str, entry: float, tp: float) -> float:
             if side == "SELL":
@@ -580,6 +591,7 @@ def run_backtest(name: str, df: pd.DataFrame, asset_class: str,
             result = simulate_day_dynamic_anchor(
                 open_=opens[i], high=highs[i], low=lows[i], close=closes[i],
                 hl_median_pct=hl_median, hl_75_pct=hl_75,
+                anchor_low=lows[i - 1], anchor_high=highs[i - 1],
             )
             records.append({
                 "instrument":    name,

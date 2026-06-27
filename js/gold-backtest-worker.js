@@ -252,7 +252,15 @@ function tickTrade(trade, bar, tp1PartialPct) {
   if (fav > trade.mfePts) trade.mfePts = fav;
   if (adv > trade.maePts) trade.maePts = adv;
 
+  // tp1Hit captured at bar OPEN: true only if TP1 was confirmed on a PRIOR bar.
   if (isLong) {
+    // Same-bar pessimism: if TP1 was NOT already confirmed and this bar's range
+    // spans BOTH the (original) stop and TP1, we cannot prove which came first —
+    // assume the stop hit first and book the full loss. Only move SL to BE (and
+    // continue toward TP2) when the original stop was NOT touched on this bar.
+    if (!tp1Hit && bar.l <= slPrice) {
+      return { exitPrice: slPrice, result: 'sl', r: -1 };
+    }
     if (!tp1Hit && bar.h >= tp1Price) {
       trade.tp1Hit = true;
       trade.slPrice = trade.entryPrice; // move SL to BE
@@ -268,6 +276,9 @@ function tickTrade(trade, bar, tp1PartialPct) {
       return { exitPrice: tp2Price, result: 'tp1+tp2', r };
     }
   } else {
+    if (!tp1Hit && bar.h >= slPrice) {
+      return { exitPrice: slPrice, result: 'sl', r: -1 };
+    }
     if (!tp1Hit && bar.l <= tp1Price) {
       trade.tp1Hit = true;
       trade.slPrice = trade.entryPrice;
@@ -675,7 +686,16 @@ function handleRun(cfg) {
       let closed = false;
 
       if (hasM1) {
-        const m1Start = lowerBound(m1, bar.ts);
+        // Entry is taken at the signal M5 bar's CLOSE (bar.c). Management must
+        // only see M1 price action AT/AFTER that close, never the M1 bars that
+        // make up the signal bar itself (which preceded the fill). The first
+        // managed bar is the M5 bar AFTER the signal bar, so for that bar
+        // bar.ts already equals the entry close; for the signal bar itself we
+        // must not scan its own M1 bars. Clamp the scan start to the entry close
+        // (= signal bar open + one M5 bar = entryTs + 300000) so no pre-entry M1
+        // bar can stop/TP the position (removes lookahead / fill optimism),
+        // while still advancing normally on later bars.
+        const m1Start = lowerBound(m1, Math.max(bar.ts, openTrade.entryTs + 300000));
         for (let j = m1Start; j < m1.length && m1[j].ts < nextTs; j++) {
           const result = tickTrade(openTrade, m1[j], tp1PartialPct);
           if (result) {

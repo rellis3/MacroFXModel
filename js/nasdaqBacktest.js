@@ -18,7 +18,7 @@
 
 import {
   LIQUIDITY_INPUTS, ENTRY_RULE, EXECUTION, INSTRUMENTS, DATA_DEFAULTS,
-  TREND_RISK_TIERS, TREND_SCORE,
+  TREND_RISK_TIERS, TREND_SCORE, SECONDARY_EXIT_MODELS,
 } from './nasdaqConfig.js';
 import {
   fetchYahooDaily, fetchFredSeries, fetchLiquidityInputRaw, generateSyntheticDailyDataset,
@@ -30,7 +30,7 @@ import { computeIndicatorSeries, computeBreadthAndVixFeatures, scoreTrendAt } fr
 // TICK/ADD/TRIN are too weak to add signal — they systematically block
 // entries without contributing real confirmation. Gate 3 remains available
 // for live 30-min-bar mode; it is simply bypassed in the daily backtest.
-import { alignContinuationFeatures, scoreContinuation, simulateSecondaryExit, SECONDARY_EXIT_MODEL_IDS } from './nasdaqExitEngine.js';
+import { simulateSecondaryExit, SECONDARY_EXIT_MODEL_IDS } from './nasdaqExitEngine.js';
 import { computeVolatilityFeatureSeries, classifyVolatilityRegime, computeStopDistance, determineConfidenceTier } from './nasdaqSizing.js';
 import { sessionVWAP } from './nasdaqTransforms.js';
 
@@ -171,7 +171,11 @@ export function runFullBacktest(dataset) {
       const entryPrice = bars[i].open;
       const { stopDistance } = pe;
       const stopPrice = pe.direction === 'LONG' ? entryPrice - stopDistance : entryPrice + stopDistance;
-      const pos = { ...pe, entryIndex: i, entryPrice, stopPrice, initialStopDistance: stopDistance, sizeFraction: 1, reduced: false, pendingCloseFillIndex: null };
+      const pos = {
+        ...pe, entryIndex: i, entryPrice, stopPrice, initialStopDistance: stopDistance,
+        sizeFraction: 1, reduced: false, pendingCloseFillIndex: null, pendingCloseReason: null,
+        highestSinceEntry: entryPrice, lowestSinceEntry: entryPrice,
+      };
       const notionalRatio = (pos.riskPct / 100) * entryPrice / stopDistance;
       equity *= (1 - transactionCostFraction(notionalRatio));
       log(dates[i], `ORDER FILLED ${pos.direction} @ ${entryPrice.toFixed(2)} (risk ${pos.riskPct}%, stop ${stopDistance.toFixed(2)})`);
@@ -189,7 +193,7 @@ export function runFullBacktest(dataset) {
       equity *= (1 + pos.sizeFraction * (pos.riskPct / 100) * returnOnClose);
       const notionalRatio = (pos.riskPct / 100) * exitPrice / pos.initialStopDistance * pos.sizeFraction;
       equity *= (1 - transactionCostFraction(notionalRatio));
-      finalizeTrade(pos, i, exitPrice, 'CONTINUATION_SCORE_CLOSE');
+      finalizeTrade(pos, i, exitPrice, pos.pendingCloseReason || 'SCHEDULED_CLOSE');
       log(dates[i], `CLOSE TRADE — order filled @ ${exitPrice.toFixed(2)}`);
       positions.splice(pi, 1);
     }
@@ -221,36 +225,30 @@ export function runFullBacktest(dataset) {
           equity *= (1 + pos.sizeFraction * (pos.riskPct / 100) * posReturn);
         }
 
-        // Gate 4 — skip if already queued for close (Gate 4 already spoke).
-        if (pos.pendingCloseFillIndex === null) {
-          const rawContinuation = {
-            momentum30m: indicators.momentum[i],
-            adx: indicators.adx[i],
-            adxSlope: indicators.adx[i] - (indicators.adx[i - 1] ?? NaN),
-            hurst: indicators.hurst[i],
-            vwapDist: Number.isFinite(vwapAtrSeries[i]) ? dirSign * vwapAtrSeries[i] : NaN,
-            vwapLoss: Number.isFinite(vwapAtrSeries[i]) ? ((dirSign * vwapAtrSeries[i] < 0) ? 1 : 0) : NaN,
-            breadth: breadthZ[i],
-            add: NaN, tick: NaN, trin: NaN,
-            dxy: dailyReturn(dataset.dxy[i - 1], dataset.dxy[i]),
-            yields: (Number.isFinite(dataset.us10y[i]) && Number.isFinite(dataset.us10y[i - 1])) ? dataset.us10y[i] - dataset.us10y[i - 1] : NaN,
-            vix: dailyReturn(dataset.vix[i - 1], dataset.vix[i]),
-            vvix: dailyReturn(dataset.vvix[i - 1], dataset.vvix[i]),
-            realizedVol: volFeatures.realizedVolPercentile[i],
-          };
-          const aligned = alignContinuationFeatures(pos.direction, rawContinuation);
-          const cont = scoreContinuation(aligned);
-          pos.lastContinuation = cont;
+        // Update extreme price tracker for the ATR trailing component.
+        if (pos.direction === 'LONG') {
+          pos.highestSinceEntry = Math.max(pos.highestSinceEntry, bars[i].high);
+        } else {
+          pos.lowestSinceEntry = Math.min(pos.lowestSinceEntry, bars[i].low);
+        }
 
-          if (cont.action === 'CLOSE') {
+        // Hybrid Trail+Time exit: ATR trailing OR time cap, whichever fires first.
+        // Mirrors the winning secondary research model (1.33 PF, +0.20R avg).
+        if (pos.pendingCloseFillIndex === null) {
+          const barsHeld = i - pos.entryIndex;
+          const atr = indicators.atr[i];
+          const { atrMultiplier, maxHoldingBars } = SECONDARY_EXIT_MODELS.hybridTrailTime;
+          const trailHit = Number.isFinite(atr) && atr > 0 && (
+            pos.direction === 'LONG'
+              ? bars[i].close <= pos.highestSinceEntry - atrMultiplier * atr
+              : bars[i].close >= pos.lowestSinceEntry + atrMultiplier * atr
+          );
+          const timeHit = barsHeld >= maxHoldingBars;
+          if (trailHit || timeHit) {
+            const reason = trailHit ? 'ATR_TRAIL' : 'TIME_EXIT';
             pos.pendingCloseFillIndex = i + 1;
-            log(dates[i], `Gate 4 ContinuationScore ${cont.score?.toFixed(0) ?? 'n/a'} → CLOSE TRADE (signal, fills next open)`);
-          } else if (cont.action === 'REDUCE' && !pos.reduced) {
-            pos.sizeFraction = 0.5;
-            pos.reduced = true;
-            const notionalRatio = (pos.riskPct / 100) * bars[i].close / pos.initialStopDistance * 0.5;
-            equity *= (1 - transactionCostFraction(notionalRatio));
-            log(dates[i], `Gate 4 ContinuationScore ${cont.score?.toFixed(0) ?? 'n/a'} → Reduce Position`);
+            pos.pendingCloseReason = reason;
+            log(dates[i], `Exit: ${reason} (barsHeld=${barsHeld}, highest=${pos.highestSinceEntry?.toFixed(2)}) → fills next open`);
           }
         }
       }
@@ -335,7 +333,7 @@ function computeGate1Diagnostic(gate1Series, dates) {
     for (const comp of (g.components ?? [])) {
       if (!inputPresence[comp.id]) inputPresence[comp.id] = { label: comp.label, present: 0, total: 0 };
       inputPresence[comp.id].total++;
-      if (comp.signedZ !== null) inputPresence[comp.id].present++;
+      if (comp.vote !== null && comp.vote !== undefined) inputPresence[comp.id].present++;
     }
   }
 

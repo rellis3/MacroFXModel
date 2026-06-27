@@ -31,6 +31,8 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries } from './js/volForecast.
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
+import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
+import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -854,7 +856,7 @@ async function computeHedgeSignals(force = false) {
       sigData.signals.push(sig);
 
       if (tgCfg?.token && tgCfg?.chatId) {
-        const bullet = spreadResult.dev > 0 ? '📈' : '📉';
+        const bullet = (spreadResult !== null ? spreadResult.dev : z) > 0 ? '📈' : '📉';
         const msg = `${bullet} <b>Hedge Signal — ${pa} / ${pb}</b>\n`
           + `Spread Z: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
           + `<b>${pa}</b>: ${dirA}  (β_vix = ${sig.beta_vix_a ?? 'n/a'})\n`
@@ -2037,21 +2039,26 @@ app.get('/api/futures-quote', async (req, res) => {
     'SPX500_USD': 'ES=F',
     'US30_USD':   'YM=F',
     'US2000_USD': 'RTY=F',
-    'DE30_USD':   'FDAX=F',
+    // DAX/FTSE futures are not reliably carried by Yahoo (Eurex/ICE listed, not CME).
+    // Fall back to the cash index as a price reference — basis to the index is small and
+    // the client labels these as "index" rather than "CME". (^ symbols, best-effort.)
+    'DE30_USD':   '^GDAXI',
+    'UK100_GBP':  '^FTSE',
   };
   const pair   = req.query.pair;
   const symbol = FUTURES_MAP[pair];
   if (!symbol) return res.json({ ok: false, error: 'No CME futures contract for this pair' });
+  const kind = symbol.startsWith('^') ? 'index' : 'future';
   try {
     const r = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`,
       { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8_000) },
     );
     if (!r.ok) return res.json({ ok: false, error: `Yahoo Finance returned ${r.status}` });
     const data  = await r.json();
     const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
     if (!price) return res.json({ ok: false, error: 'No price in Yahoo Finance response' });
-    res.json({ ok: true, price, symbol });
+    res.json({ ok: true, price, symbol, kind });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
@@ -5913,6 +5920,138 @@ app.post('/api/vol-backtest/run', (req, res) => {
 
 app.get('/api/vol-backtest/status/:jobId', (req, res) => {
   const job = btJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Honest Forecast Harness ─────────────────────────────────────────────────
+// Re-tests the daily vol/range forecast under honest fills + costs + a true
+// IS/OOS split, and compares fade vs follow vs regime-gated entry at the
+// exhaustion band. Same async-job pattern as /api/vol-backtest/run.
+const hfJobs = new Map();
+function _purgeStaleHfJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of hfJobs) if (job.startedAt < cutoff) hfJobs.delete(id);
+}
+
+app.post('/api/honest-forecast/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    dateFrom:      b.dateFrom || '',
+    dateTo:        b.dateTo   || '',
+    slMult:        num(b.slMult, 1.5),
+    slopeThresh:   num(b.slopeThresh, 0.002),
+    oosFrac:       Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    breachReclaim: b.breachReclaim === true || b.breachReclaim === 'true',
+  };
+  if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
+  if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
+
+  const instFilter = b.pair
+    ? HONEST_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId     = `hf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleHfJobs();
+  hfJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, log } = await runHonestSuite(opts, instFilter ?? HONEST_INSTRUMENTS);
+      if (!results.length) {
+        hfJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
+        return;
+      }
+      hfJobs.set(jobId, { status: 'done', result: { results, log, opts }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[honest-forecast/run]', msg, e?.stack ?? '');
+      hfJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/honest-forecast/status/:jobId', (req, res) => {
+  const job = hfJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Vol/Range Forecast Backtester v2 (adaptive selector) ─────────────────────
+// Horizon-agnostic core (forecastCore.js): daily / weekly / 20-day. Compares the
+// adaptive day-type selector vs fixed fade75/fadeMed/follow legs on one IS/OOS
+// split. Same async-job pattern.
+const v2Jobs = new Map();
+function _purgeStaleV2Jobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of v2Jobs) if (job.startedAt < cutoff) v2Jobs.delete(id);
+}
+
+app.post('/api/vol-backtest-v2/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const horizon = ['daily', 'weekly', 'monthly'].includes(b.horizon) ? b.horizon : 'daily';
+  const opts = {
+    horizon,
+    dateFrom:   b.dateFrom || '',
+    dateTo:     b.dateTo   || '',
+    slMult:     num(b.slMult, 1.5),
+    oosFrac:    Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    fadeMedMax: num(b.fadeMedMax, 0.30),
+    fade75Max:  num(b.fade75Max, 0.55),
+    erWindow:   num(b.erWindow, 14),
+    slopeThresh: num(b.slopeThresh, 0.002),
+  };
+  if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
+  if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
+
+  const instFilter = b.pair
+    ? V2_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId     = `v2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleV2Jobs();
+  v2Jobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, log } = await runForecastV2Suite(opts, instFilter ?? V2_INSTRUMENTS);
+      if (!results.length) {
+        v2Jobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
+        return;
+      }
+      v2Jobs.set(jobId, { status: 'done', result: { results, log, opts }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[vol-backtest-v2/run]', msg, e?.stack ?? '');
+      v2Jobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/vol-backtest-v2/status/:jobId', (req, res) => {
+  const job = v2Jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });

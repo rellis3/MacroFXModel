@@ -43,16 +43,14 @@ export const LIQUIDITY_INPUTS = [
 
 export const LIQUIDITY_SCORE = {
   range: [-5, 5],
-  bullishThreshold: 1.5,  // LiquidityScore > +1.5 → BULLISH (lowered from 2 to widen the active zone)
-  bearishThreshold: -1.5, // LiquidityScore < -1.5 → BEARISH (raised from -2 to widen the active zone)
-  zClip: 3,               // component sub-scores are clipped to +/-3 std devs before averaging
-  rocLookbackDays: 63,    // rate-of-change window: arr[i] - arr[i-63]. A series declining for 18 months
-                          // has a persistently negative ROC even though its level z-score ≈ 0 (the mean
-                          // is also declining). 63 days ≈ one fiscal quarter.
-  zWindowDays: 252,       // z-score window applied to the ROC series (not levels). 252 days gives a full
-                          // year of ROC history, so the z-score reflects "how extreme is this quarterly
-                          // change relative to all quarterly changes in the past year".
-  minCoverage: 0.5,       // at least 50% of the weighted panel (by weight) must have data, else score is INVALID
+  bullishThreshold: 1.5,  // LiquidityScore > +1.5 → BULLISH. ~65% weighted majority required (with zClip=3).
+  bearishThreshold: -1.5, // LiquidityScore < -1.5 → BEARISH. ~65% weighted majority required.
+  zClip: 3,               // vote magnitude: each input votes +3 (bullish) or -3 (bearish) based on ROC direction.
+                          // Weighted average of votes is then scaled by SCALE = range[1]/zClip = 5/3.
+  rocLookbackDays: 63,    // trailing window for rate-of-change: roc[i] = level[i] - level[i-63].
+                          // 63 trading days ≈ one fiscal quarter. Direction of roc determines each
+                          // input's vote — no magnitude normalisation needed or used.
+  minCoverage: 0.5,       // at least 50% of the weighted panel must have a valid roc to score the day.
   marginalMargin: 0.5,    // |score| within this of bullish/bearishThreshold counts as "marginal" conviction for sizing
 };
 
