@@ -6030,18 +6030,43 @@ function _analyserPw(req) {
     || (req.headers.cookie || '').split(/;\s*/).find(c => c.startsWith('analyser_pw='))?.slice('analyser_pw='.length)
     || '';
 }
+// Resolve the access level of a supplied password: 'admin' | 'view' | null.
+function _analyserLevel(supplied) {
+  const s = String(supplied ?? '');
+  const adminWant = process.env.ANALYSER_ADMIN_PASSWORD || process.env.ANALYSER_PASSWORD;
+  if (adminWant && s === adminWant) return 'admin';
+  const viewWant = process.env.ANALYSER_PASSWORD;
+  if (!viewWant) return 'view';            // no view password set → reads open
+  if (s === viewWant) return 'view';
+  return null;
+}
 function _analyserAuth(req, res, level) {
-  const supplied = String(_analyserPw(req));
+  const lvl = _analyserLevel(_analyserPw(req));
   if (level === 'admin') {
-    const want = process.env.ANALYSER_ADMIN_PASSWORD || process.env.ANALYSER_PASSWORD;
-    if (!want) { res.status(503).json({ ok: false, error: 'Refresh disabled — set ANALYSER_ADMIN_PASSWORD (or ANALYSER_PASSWORD) in env' }); return false; }
-    if (supplied !== want) { res.status(401).json({ ok: false, error: 'Unauthorized — bad analyser password' }); return false; }
+    const adminWant = process.env.ANALYSER_ADMIN_PASSWORD || process.env.ANALYSER_PASSWORD;
+    if (!adminWant) { res.status(503).json({ ok: false, error: 'Refresh disabled — set ANALYSER_ADMIN_PASSWORD (or ANALYSER_PASSWORD) in env' }); return false; }
+    if (lvl !== 'admin') { res.status(401).json({ ok: false, error: 'Unauthorized — admin password required' }); return false; }
     return true;
   }
-  const want = process.env.ANALYSER_PASSWORD; // view
-  if (want && supplied !== want) { res.status(401).json({ ok: false, error: 'Unauthorized — analyser password required' }); return false; }
+  if (lvl === null) { res.status(401).json({ ok: false, error: 'Unauthorized — analyser password required' }); return false; }
   return true;
 }
+
+// Login: exchange a password for its access level + a cookie. The page shows the
+// Refresh button only when level === 'admin'.
+app.post('/api/forecast-analysis/login', express.json({ limit: '8kb' }), (req, res) => {
+  const pw  = req.body?.password ?? '';
+  const lvl = _analyserLevel(pw);
+  if (lvl === null) return res.status(401).json({ ok: false, error: 'Wrong password' });
+  res.setHeader('Set-Cookie', `analyser_pw=${encodeURIComponent(pw)}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`);
+  res.json({ ok: true, level: lvl });
+});
+
+// Whoami: report the current request's level (from cookie/header/query) so the
+// page can render the right controls on load.
+app.get('/api/forecast-analysis/whoami', (req, res) => {
+  res.json({ ok: true, level: _analyserLevel(_analyserPw(req)) });
+});
 
 const afJobs = new Map();
 function _purgeStaleAfJobs() {

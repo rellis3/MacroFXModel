@@ -48,6 +48,13 @@ header, a query string, or a cookie (`x-analyser-pw`, `?pw=…`, or
 Recommendation: set **both** — a view password to share, and a separate admin
 password only you hold.
 
+**The admin button.** When you log into the page with the **admin** password,
+the page shows an extra **"Refresh data"** button (viewers logged in with the
+view password don't see it). The page knows your level from the login response
+(`/api/forecast-analysis/login` returns `level: "admin"` or `"view"`). The
+refresh API is also enforced server-side, so the button can never be triggered
+by someone without the admin password — it's a convenience, not the security.
+
 ---
 
 ## 3. Setting them in Railway
