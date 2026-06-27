@@ -96,7 +96,7 @@
 const $ = id => document.getElementById(id);
 const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn','HL50_dn','HL75_dn'];
 const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
-const SLICES = { byRegime:'Regime', byVol:'Volatility', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
+const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byGap:'Gap', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
 const TABS = ['Overview','Levels','Conditioning','Calibration','Excursion','Candidates','Pairs'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
@@ -246,12 +246,14 @@ function renderExcursion(v){
   const bestCont=[...elig].sort((x,y)=>x.s.eRatio-y.s.eRatio)[0];
   let html=`<div class="card"><div class="hint" style="margin-bottom:8px"><b>E-ratio</b> = avg favourable excursion (toward open) ÷ avg adverse excursion (away), vol-normalized. <b>&gt;1 = reversion-favoured</b> (good fade level), <b>&lt;1 = continuation-favoured</b> (good breakout level). MFE/MAE are % of price. The best fade level also wants a high reversion %.</div>`;
   if(bestFade) html+=`<div class="find">Best <b>fade</b> level: <b>${lbl(bestFade.k)}</b> — E-ratio <b>${fmt(bestFade.s.eRatio,2)}</b>, reverts ${fmt(bestFade.s.revRate)}% (n=${bestFade.s.decided}). Best <b>continuation</b> level: <b>${lbl(bestCont.k)}</b> — E-ratio <b>${fmt(bestCont.s.eRatio,2)}</b>.</div>`;
-  html+=`<table><thead><tr><th>Line</th><th>MFE (toward open)</th><th>MAE (away)</th><th>E-ratio</th><th>rev%</th><th>n</th><th>read</th></tr></thead><tbody>`;
-  for(const k of LINE_ORDER){ const s=a[k]; if(!s){ html+=`<tr><td>${lbl(k)}</td><td colspan="6" class="mut">—</td></tr>`; continue; }
+  html+=`<table><thead><tr><th>Line</th><th>MFE (toward open)</th><th>MAE (away)</th><th>E-ratio</th><th>rev%</th><th title="revert%×avgRetrace − cont%×avgExt, % per touch, no stop">expectancy%</th><th>n</th><th>read</th></tr></thead><tbody>`;
+  for(const k of LINE_ORDER){ const s=a[k]; if(!s){ html+=`<tr><td>${lbl(k)}</td><td colspan="7" class="mut">—</td></tr>`; continue; }
     const er=s.eRatio; const cls=er>=1.1?'pos':er<=0.9?'neg':'mut'; const read=er>=1.1?'<span class="sigbadge sb-up">FADE</span>':er<=0.9?'<span class="sigbadge sb-dn">FOLLOW</span>':'<span class="mut">neutral</span>';
+    const exp=(s.revRate/100)*(s.avgRetrace||0)-((100-s.revRate)/100)*(s.avgExt||0);  // fade expectancy % / touch
     html+=`<tr class="${s.lowN?'lown':''}"><td class="${sideCls(k)}">${lbl(k)}</td>
       <td>${fmt(s.avgMfe,3)}%</td><td>${fmt(s.avgMae,3)}%</td>
-      <td class="${cls}"><b>${fmt(er,2)}</b></td><td>${fmt(s.revRate)}%</td><td>${s.decided||0}</td><td>${read}</td></tr>`;
+      <td class="${cls}"><b>${fmt(er,2)}</b></td><td>${fmt(s.revRate)}%</td>
+      <td class="${exp>0?'pos':exp<0?'neg':'mut'}">${fmt(exp,3)}</td><td>${s.decided||0}</td><td>${read}</td></tr>`;
   }
   html+=`</tbody></table></div>`; v.innerHTML=html;
 }

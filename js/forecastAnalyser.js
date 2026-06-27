@@ -30,6 +30,16 @@ export function buildLadder(open, sigma, assetClass) {
   return { open, up, dn, frac: { hl50: b.hl50, hl75: b.hl75, ocMed: b.ocMed, oc75: b.oc75 } };
 }
 
+// Session of a touch from its timestamp (epoch seconds / ms / ISO), UTC hours.
+function classifySession(t) {
+  if (t == null) return null;
+  const d = typeof t === 'number' ? new Date(t < 1e12 ? t * 1000 : t) : new Date(t);
+  const h = d.getUTCHours();
+  if (h >= 22 || h < 7) return 'Asia';
+  if (h < 13) return 'London';
+  return 'NY';
+}
+
 // ── 2) Analyse one window against the ladder ─────────────────────────────────
 // session = { open, bars:[{time,open,high,low,close}] } (M1 for daily, D1 for
 // weekly/monthly). Returns a per-line record array for both sides.
@@ -52,23 +62,32 @@ export function analyseWindow(session, ladder) {
                    : (isUp ? line.level + open * (ladder.frac.hl75 - ladder.frac.hl50)
                            : line.level - open * (ladder.frac.hl75 - ladder.frac.hl50));
 
-      // First touch.
-      let touchIdx = -1, firstTouchTime = null;
+      // First touch — track running range to that point for the range-budget.
+      let touchIdx = -1, firstTouchTime = null, rHi = -Infinity, rLo = Infinity;
       for (let k = 0; k < bars.length; k++) {
+        if (bars[k].high > rHi) rHi = bars[k].high;
+        if (bars[k].low  < rLo) rLo = bars[k].low;
         const hit = isUp ? bars[k].high >= line.level : bars[k].low <= line.level;
         if (hit) { touchIdx = k; firstTouchTime = bars[k].time ?? null; break; }
       }
       if (touchIdx < 0) {
         outRows.push({ name: line.name, side, level: +line.level.toFixed(6), distPct: +(line.dist * 100).toFixed(4),
-          hit: false, outcome: 'no_touch', firstTouchTime: null,
+          hit: false, outcome: 'no_touch', firstTouchTime: null, session: null, budgetBucket: null,
           retraceTo: null, retracePct: 0, extTo: null, extPct: 0,
           closeBeyond: isUp ? closePx > line.level : closePx < line.level, mfePct: 0 });
         continue;
       }
+      // Range-budget at touch: realized H-L so far ÷ expected median daily range
+      // (2×HL50). Low = price hit the line early in the day's range (continuation
+      // pressure); high = range already spent (exhaustion).
+      const expRange = 2 * open * ladder.frac.hl50;
+      const budget   = expRange > 0 ? (rHi - rLo) / expRange : 0;
+      const budgetBucket = budget < 0.4 ? '1·early' : budget < 0.75 ? '2·mid' : '3·exhausted';
+      const session = classifySession(firstTouchTime);
       if (!hasPath) {
         // Touched, but no intraday path to judge revert vs continue.
         outRows.push({ name: line.name, side, level: +line.level.toFixed(6), distPct: +(line.dist * 100).toFixed(4),
-          hit: true, outcome: 'no_intraday', firstTouchTime,
+          hit: true, outcome: 'no_intraday', firstTouchTime, session, budgetBucket,
           retraceTo: null, retracePct: 0, extTo: null, extPct: 0,
           closeBeyond: isUp ? closePx > line.level : closePx < line.level, mfePct: 0 });
         continue;
@@ -112,7 +131,7 @@ export function analyseWindow(session, ladder) {
 
       outRows.push({
         name: line.name, side, level: +line.level.toFixed(6), distPct: +(line.dist * 100).toFixed(4),
-        hit: true, outcome, firstTouchTime,
+        hit: true, outcome, firstTouchTime, session, budgetBucket,
         retraceTo: retraceTo ? +retraceTo.toFixed(6) : null, retracePct: +retracePct.toFixed(4),
         extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
         closeBeyond: isUp ? closePx > line.level : closePx < line.level,
@@ -202,8 +221,13 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
 
     let hi = -Infinity, lo = Infinity;
     for (const b of bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
+    // Gap from the prior session close, in σ units → bucket.
+    const prevClose = i > 0 ? d1Bars[i - 1].close : open;
+    const gapSig = (sigma > 0 && prevClose > 0) ? (open - prevClose) / prevClose / sigma : 0;
+    const gapBucket = Math.abs(gapSig) < 0.25 ? 'flat' : gapSig > 0 ? 'gap-up' : 'gap-down';
     records.push({
       date, horizon, regime, dow, sigma: +(sigma * 100).toFixed(4),  // σ as % of price
+      gapBucket, gapSig: +gapSig.toFixed(3),
       open: +open.toFixed(6),
       realized: { high: +hi.toFixed(6), low: +lo.toFixed(6), close: +bars[bars.length - 1].close.toFixed(6) },
       lines,
@@ -215,12 +239,16 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
 // ── 4) Aggregate per line, optionally grouped by a slice key ─────────────────
 // sliceFn(record) → group key (e.g. r => r.regime). Returns
 // { group: { lineName: { side: stats } } }.
+// sliceFn receives (record, line). Window-level slices ignore `line`; per-touch
+// slices (session / range-budget) key off the line — a null key skips that line
+// (e.g. untouched lines have no session).
 export function aggregate(records, sliceFn = () => 'all') {
   const groups = {};
   for (const rec of records) {
-    const g = sliceFn(rec);
-    groups[g] ??= {};
     for (const ln of rec.lines) {
+      const g = sliceFn(rec, ln);
+      if (g == null) continue;
+      groups[g] ??= {};
       const key = `${ln.name}_${ln.side}`;
       const a = (groups[g][key] ??= { line: ln.name, side: ln.side, windows: 0, hits: 0, decided: 0, noIntraday: 0, reverted: 0, continued: 0, closeBeyond: 0, retraceSum: 0, extSum: 0, inSum: 0, outSum: 0, inNorm: 0, outNorm: 0 });
       a.windows++;

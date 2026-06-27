@@ -48,12 +48,15 @@ function buildAggregates(records) {
   const q2 = sigmas[Math.floor(sigmas.length * 2 / 3)] ?? 0;
   const volBucket = r => (r.sigma <= q1 ? '1·low-vol' : r.sigma <= q2 ? '2·mid-vol' : '3·high-vol');
   return {
-    all:      aggregate(records, () => 'all').all,
-    byRegime: aggregate(records, r => r.regime),
-    byVol:    aggregate(records, volBucket),
-    byDow:    aggregate(records, r => String(r.dow)),
-    byYear:   aggregate(records, r => r.date.slice(0, 4)),
-    byMonth:  aggregate(records, r => r.date.slice(0, 7)),
+    all:       aggregate(records, () => 'all').all,
+    byRegime:  aggregate(records, r => r.regime),
+    byVol:     aggregate(records, volBucket),
+    bySession: aggregate(records, (r, ln) => ln.session),       // per-touch
+    byBudget:  aggregate(records, (r, ln) => ln.budgetBucket),  // per-touch (range consumed at touch)
+    byGap:     aggregate(records, r => r.gapBucket),
+    byDow:     aggregate(records, r => String(r.dow)),
+    byYear:    aggregate(records, r => r.date.slice(0, 4)),
+    byMonth:   aggregate(records, r => r.date.slice(0, 7)),
   };
 }
 
