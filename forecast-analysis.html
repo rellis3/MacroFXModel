@@ -98,7 +98,7 @@ const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn',
 const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
 const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
-const TABS = ['Overview','Levels','Conditioning','Calibration','Excursion','Stability','Candidates','Pairs'];
+const TABS = ['Overview','Levels','Conditioning','Drivers','Calibration','Excursion','Stability','Candidates','Pairs'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
 
 const hdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
@@ -108,6 +108,21 @@ async function api(p,o={}){ return fetch(p,{...o,headers:{...(o.headers||{}),...
 // ── significance: binomial vs 0.5 ────────────────────────────────────────────
 function zOf(rate,n){ return (n>0)? (rate/100-0.5)/Math.sqrt(0.25/n) : 0; }
 function sig(rate,n){ const z=zOf(rate,n); const s=Math.abs(z)>=1.96; return { z, sig:s, dir: z>0?'up':'dn', cls: !s?'cell-ns':(z>0?'cell-up':'cell-dn') }; }
+// Standard-normal CDF (Abramowitz-Stegun erf) + chi-square p (Wilson-Hilferty).
+function normCdf(z){ const t=1/(1+0.2316419*Math.abs(z)); const d=0.3989423*Math.exp(-z*z/2);
+  let p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274)))); return z>0?1-p:p; }
+function chiSqP(x2,df){ if(df<=0||x2<=0) return 1; const k=df, t=Math.cbrt(x2/k), m=1-2/(9*k), s=Math.sqrt(2/(9*k));
+  return 1-normCdf((t-m)/s); }
+// Feature importance: chi-square of {reverted,continued} across a feature's buckets.
+function featureChi(buckets){ // buckets: [{reverted,continued}]
+  const rows=buckets.filter(b=>(b.reverted+b.continued)>=20); if(rows.length<2) return null;
+  const totR=rows.reduce((s,b)=>s+b.reverted,0), totC=rows.reduce((s,b)=>s+b.continued,0), N=totR+totC;
+  if(N<40||totR===0||totC===0) return null;
+  let x2=0; for(const b of rows){ const n=b.reverted+b.continued; const eR=n*totR/N, eC=n*totC/N;
+    x2+=(b.reverted-eR)**2/eR+(b.continued-eC)**2/eC; }
+  const df=rows.length-1; const rates=rows.map(b=>b.reverted/(b.reverted+b.continued)*100);
+  return { x2:+x2.toFixed(1), df, p:chiSqP(x2,df), lift:+(Math.max(...rates)-Math.min(...rates)).toFixed(1), buckets:rows.length, N };
+}
 function lbl(key){ const [nm,side]=key.split('_'); return `${LBL[nm]} ${side==='up'?'↑':'↓'}`; }
 function sideCls(key){ return key.endsWith('_up')?'lbl-up':'lbl-dn'; }
 
@@ -142,6 +157,7 @@ function render(){
   if(TAB==='Overview') return renderOverview(v);
   if(TAB==='Levels') return renderLevels(v);
   if(TAB==='Conditioning') return renderConditioning(v);
+  if(TAB==='Drivers') return renderDrivers(v);
   if(TAB==='Calibration') return renderCalibration(v);
   if(TAB==='Excursion') return renderExcursion(v);
   if(TAB==='Stability') return renderStability(v);
@@ -215,6 +231,39 @@ function renderConditioning(v){
     html+=`</tr>`; }
   html+=`</tbody></table></div>`; v.innerHTML=html;
   $('condSel').onchange=e=>{condDim=e.target.value;render();};
+}
+
+// ── Drivers: which conditions actually move reversion? (feature importance) ──
+let driverLine='pooled';
+function renderDrivers(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const dims=Object.keys(SLICES).filter(s=>d[s]);
+  // line scope: pooled (all 8 lines) or one line
+  const lineOpts=['pooled',...LINE_ORDER];
+  // For each feature, sum {reverted,continued} per bucket over the chosen line(s), run chi-square.
+  const rows=[];
+  for(const dim of dims){ const slice=d[dim]; const buckets=[];
+    for(const g of Object.keys(slice)){ let r=0,c=0;
+      const keys = driverLine==='pooled'? LINE_ORDER : [driverLine];
+      for(const k of keys){ const s=slice[g]?.[k]; if(s){ r+=s.reverted||0; c+=s.continued||0; } }
+      if(r+c>0) buckets.push({g,reverted:r,continued:c}); }
+    const res=featureChi(buckets); if(res) rows.push({dim,...res,
+      best:buckets.map(b=>({g:b.g,rate:b.reverted/(b.reverted+b.continued)*100,n:b.reverted+b.continued})).sort((a,b)=>b.rate-a.rate)}); }
+  rows.sort((a,b)=>b.x2-a.x2);
+  let html=`<div class="card"><div class="controls" style="margin-bottom:8px"><div><label>Line scope</label><select id="drvLine">`+
+    lineOpts.map(o=>`<option value="${o}" ${o===driverLine?'selected':''}>${o==='pooled'?'All lines pooled':lbl(o)}</option>`).join('')+`</select></div></div>`;
+  html+=`<div class="hint" style="margin-bottom:8px">Ranks each condition by how strongly it separates reversion vs continuation (chi-square over its buckets). <b>Lift</b> = spread between the best and worst bucket's reversion %. <b>p</b> &lt; 0.05 (green) = the condition genuinely matters; this is the empirical answer to "what drives it", with the baseline being ~coin-flip.</div>`;
+  if(!rows.length){ html+=`<div class="mut">Not enough data — needs a refresh with the conditioning fields.</div></div>`; v.innerHTML=html; $('drvLine')&&($('drvLine').onchange=e=>{driverLine=e.target.value;render();}); return; }
+  const top=rows[0];
+  html+=`<div class="find"><b>Top driver:</b> ${SLICES[top.dim]} (χ²=${top.x2}, p=${top.p<0.001?'<0.001':fmt(top.p,3)}, lift ${top.lift}pp). Highest reversion bucket: <b>${top.best[0].g}</b> at ${fmt(top.best[0].rate)}% (n=${top.best[0].n}), lowest: ${top.best[top.best.length-1].g} at ${fmt(top.best[top.best.length-1].rate)}%.</div>`;
+  html+=`<table><thead><tr><th>Condition</th><th>χ²</th><th>p</th><th>lift (pp)</th><th>buckets</th><th>N</th><th>strongest bucket</th></tr></thead><tbody>`;
+  for(const r of rows){ const sg=r.p<0.05; const bb=r.best[0];
+    html+=`<tr><td>${SLICES[r.dim]}</td><td><b>${r.x2}</b></td>
+      <td class="${sg?'pos':'mut'}">${r.p<0.001?'<0.001':fmt(r.p,3)}</td>
+      <td>${fmt(r.lift)}</td><td>${r.buckets}</td><td class="mut">${r.N}</td>
+      <td class="mut">${bb.g} ${fmt(bb.rate)}%</td></tr>`; }
+  html+=`</tbody></table></div>`; v.innerHTML=html;
+  $('drvLine').onchange=e=>{driverLine=e.target.value;render();};
 }
 
 // ── Calibration (unique): do the lines hold their percentile? ────────────────
