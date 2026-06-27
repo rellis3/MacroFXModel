@@ -39,7 +39,7 @@
 
   // FRED short-keys (must match the worker /api/fredhistory ALL_SERIES map).
   const KEYS = ['walcl','tga','rrp','ecb_assets','boj_assets','cny_res',
-                'dexuseu','dexjpus','dexusuk','dexchus',
+                'dexuseu','dexjpus','dexusuk',
                 'sofr','iorb','hy','dxy','bei','tips','vix','indpro'];
 
   const REGIMES = {
@@ -144,8 +144,9 @@
       // GBP omitted: no clean BoE balance-sheet series on FRED. The ranker falls
       // back to GBP's beta-to-global-impulse proxy (config CCY_BETA), and the
       // 0.05 GLI weight is simply renormalised across the remaining blocks.
-      CNY: () => { const a = ffill(S.cny_res), fx = ffill(S.dexchus);
-                   return a.map((v, i) => v * (isNum(fx[i]) && fx[i] > 0 ? 1 / fx[i] : NaN)); },
+      // China FX reserves (TRESEGCNM052N) are already USD-denominated — do NOT
+      // divide by USDCNY. (Matches GlobalLiquidity/config.py CNY block fx: None.)
+      CNY: () => ffill(S.cny_res),
     };
 
     const perCcyImpulse = {}, perCcyLevelZ = {};
