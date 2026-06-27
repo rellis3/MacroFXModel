@@ -237,9 +237,17 @@
       return { pair: x.pair, raw: w, score: x.s };
     });
     const gross = book.reduce((s, x) => s + Math.abs(x.raw), 0) || 1;
-    return book.map((x) => ({ pair: x.pair, weight: x.raw / gross, score: x.score }))
-               .filter((x) => Math.abs(x.weight) > 1e-6)
-               .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+    const tradedBook = book.map((x) => ({ pair: x.pair, weight: x.raw / gross, score: x.score }))
+                           .filter((x) => Math.abs(x.weight) > 1e-6)
+                           .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+
+    // Full cross-sectional ranking of ALL pairs (context, not all traded). Side
+    // marks which extreme each pair sits in; rank is 1 = strongest long candidate.
+    const ranking = sorted.map((x, idx) => ({
+      pair: x.pair, score: round(x.s), rank: idx + 1,
+      side: longs.has(x.pair) ? 'long' : shorts.has(x.pair) ? 'short' : 'flat',
+    }));
+    return { book: tradedBook, ranking };
   }
 
   // ── Top-level: payload → snapshot ──────────────────────────────────────────
@@ -249,7 +257,7 @@
     const gli = computeGLI(dates, series);
     const reg = classify(dates, series, gli);
     const i = dates.length - 1;
-    const book = buildBook(gli, reg, i);
+    const { book, ranking } = buildBook(gli, reg, i);
     const perCcy = {};
     Object.keys(gli.perCcyImpulse).forEach((k) => { perCcy[k] = round(last(gli.perCcyImpulse[k])); });
     for (const c of Object.keys(CFG.CCY_BETA)) if (!(c in perCcy)) perCcy[c] = round(ccyImpulse(gli, c, i));
@@ -263,6 +271,7 @@
                 gate: reg.gate[i], grossMult: round(reg.grossMult[i]),
                 growthZ: round(reg.growthZ[i]), creditZ: round(reg.creditZ[i]), volZ: round(reg.volZ[i]) },
       book,
+      ranking,
       history: { level: gli.level, impulse: gli.impulse, dates },
     };
   }
