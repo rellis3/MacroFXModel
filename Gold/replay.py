@@ -180,19 +180,17 @@ def _build_sessions(events: list[dict]) -> dict[str, SessionDay]:
             if zid in sess.zones:
                 sess.zones[zid].tp1_hit = True
 
-        elif etype in ('TP2_HIT', 'CLOSE') and ev.get('reason', ev.get('close_reason', '')) in (
-            'TP2_HIT', '', None
-        ) or etype == 'TP2_HIT':
-            zid = ev.get('zone_id', '')
+        elif etype == 'TRADE_CLOSED':
+            zid    = ev.get('zone_id', '')
+            reason = ev.get('reason') or ev.get('result', '')
             if zid in sess.zones:
-                sess.zones[zid].tp2_hit     = True
-                sess.zones[zid].close_price = ev.get('price')
-
-        elif etype == 'SL_HIT':
-            zid = ev.get('zone_id', '')
-            if zid in sess.zones:
-                sess.zones[zid].sl_hit      = True
-                sess.zones[zid].close_price = ev.get('price')
+                if reason == 'TP2_HIT':
+                    sess.zones[zid].tp2_hit     = True
+                    sess.zones[zid].close_price = ev.get('price')
+                elif reason == 'SL_HIT':
+                    sess.zones[zid].sl_hit      = True
+                    sess.zones[zid].close_price = ev.get('price')
+                # EXPIRED / breakeven / other: leave win/loss flags unset
 
         elif etype == 'ZONE_INVALIDATED':
             zid = ev.get('zone_id', '')

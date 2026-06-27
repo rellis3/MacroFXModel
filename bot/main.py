@@ -31,6 +31,7 @@ import json
 import logging
 import math
 import os
+import requests
 import time
 from datetime import datetime, timezone, date as date_type
 
@@ -784,6 +785,8 @@ def mt5_connect() -> bool:
 
 def _mt5_move_sl_to_be() -> None:
     for pos in mt5.positions_get() or []:
+        if pos.magic != MAGIC:
+            continue
         if pos.sl != pos.price_open:
             mt5.order_send({'action': mt5.TRADE_ACTION_SLTP, 'position': pos.ticket,
                             'sl': pos.price_open, 'tp': pos.tp})
@@ -792,6 +795,8 @@ def _mt5_move_sl_to_be() -> None:
 
 def _mt5_close_all() -> None:
     for pos in mt5.positions_get() or []:
+        if pos.magic != MAGIC:
+            continue
         t    = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
         tick = mt5.symbol_info_tick(pos.symbol)
         px   = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
