@@ -98,7 +98,7 @@ const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn',
 const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
 const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
-const TABS = ['Overview','Levels','Conditioning','Calibration','Excursion','Candidates','Pairs'];
+const TABS = ['Overview','Levels','Conditioning','Calibration','Excursion','Stability','Candidates','Pairs'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
 
 const hdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
@@ -144,6 +144,7 @@ function render(){
   if(TAB==='Conditioning') return renderConditioning(v);
   if(TAB==='Calibration') return renderCalibration(v);
   if(TAB==='Excursion') return renderExcursion(v);
+  if(TAB==='Stability') return renderStability(v);
   if(TAB==='Candidates') return renderCandidates(v);
   if(TAB==='Pairs') return renderPairs(v);
 }
@@ -223,7 +224,19 @@ function renderCalibration(v){
   const hasCal = a.OC50_up && a.OC50_up.closeBeyondRate!==undefined;
   if(!hasCal){ v.innerHTML=`<div class="card mut">Calibration needs a fresh refresh (new fields). ${LEVEL==='admin'?'Run a refresh.':'Ask the owner to refresh.'}</div>`; return; }
   const TARGET={OC50:50,OC75:25}; // close-percentile targets
-  let html=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. <b>Close lines:</b> % of windows that close beyond should match the percentile (Close med ≈ 50%, Close 75p ≈ 25%). <b>Proj lines:</b> reach rate shown for info.</div>`;
+  let html='';
+  // Range-forecast skill summary (Tier 4): forecast vs realized daily range.
+  const sk=d.skill;
+  if(sk){
+    const bias=sk.medianBiasPct, ex=sk.exceed75Rate;
+    html+=`<div class="card"><div style="font-weight:600;margin-bottom:8px">Vol-forecast skill</div><div class="kpi-grid">
+      <div class="kpi"><div class="v">${fmt(sk.avgFcMedRange,2)}%</div><div class="l">avg forecast median range</div></div>
+      <div class="kpi"><div class="v">${fmt(sk.avgRealRange,2)}%</div><div class="l">avg realized range</div></div>
+      <div class="kpi"><div class="v ${Math.abs(bias)>10?'neg':'pos'}">${bias>0?'+':''}${fmt(bias)}%</div><div class="l">range bias (real−fcast)</div></div>
+      <div class="kpi"><div class="v ${Math.abs(ex-25)>7?'neg':'pos'}">${fmt(ex)}%</div><div class="l">range &gt; 75p band (≈25% ideal)</div></div>
+    </div><div class="hint" style="margin-top:8px">Bias near 0 and exceed≈25% = the σ forecast is honest. A large positive bias = forecast ranges too narrow (σ underestimated); negative = too wide.</div></div>`;
+  }
+  html+=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. <b>Close lines:</b> % of windows that close beyond should match the percentile (Close med ≈ 50%, Close 75p ≈ 25%). <b>Proj lines:</b> reach rate shown for info.</div>`;
   html+=`<table><thead><tr><th>Line</th><th>closes beyond %</th><th>target</th><th>error</th><th>reach (hit) %</th><th>n win</th></tr></thead><tbody>`;
   for(const k of LINE_ORDER){ const s=a[k]; if(!s) continue; const [nm]=k.split('_'); const tgt=TARGET[nm];
     const err= tgt!==undefined ? (s.closeBeyondRate-tgt) : null;
@@ -254,6 +267,31 @@ function renderExcursion(v){
       <td>${fmt(s.avgMfe,3)}%</td><td>${fmt(s.avgMae,3)}%</td>
       <td class="${cls}"><b>${fmt(er,2)}</b></td><td>${fmt(s.revRate)}%</td>
       <td class="${exp>0?'pos':exp<0?'neg':'mut'}">${fmt(exp,3)}</td><td>${s.decided||0}</td><td>${read}</td></tr>`;
+  }
+  html+=`</tbody></table></div>`; v.innerHTML=html;
+}
+
+// ── Stability: is any line's edge consistent across years, or a one-off? ─────
+function renderStability(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const years=Object.keys(d.byYear||{}).sort();
+  if(!years.length){ v.innerHTML=`<div class="card mut">No yearly data.</div>`; return; }
+  let html=`<div class="card"><div class="hint" style="margin-bottom:8px">Per line across years: how many years the reversion edge was significant (z≥1.96) up vs down. A real edge is <b>consistent in one direction across years</b>; one or two stray significant years among many is likely noise (and survivorship across 8 lines × N years guarantees some). Verdict needs ≥3 same-direction sig years and no opposite.</div>`;
+  html+=`<table><thead><tr><th>Line</th><th>yrs (n≥30)</th><th>sig fade yrs</th><th>sig brk yrs</th><th>mean rev%</th><th>spread</th><th>verdict</th></tr></thead><tbody>`;
+  for(const k of LINE_ORDER){
+    let up=0,dn=0,tot=0,sum=0,min=100,max=0;
+    for(const y of years){ const s=d.byYear[y]?.[k]; if(!s||s.decided<30) continue; tot++; sum+=s.revRate; min=Math.min(min,s.revRate); max=Math.max(max,s.revRate);
+      const g=sig(s.revRate,s.decided); if(g.sig&&g.dir==='up')up++; if(g.sig&&g.dir==='dn')dn++; }
+    if(!tot){ html+=`<tr><td class="${sideCls(k)}">${lbl(k)}</td><td colspan="6" class="mut">— thin</td></tr>`; continue; }
+    const mean=sum/tot, spread=max-min;
+    let verdict='<span class="mut">no edge</span>';
+    if(up>=3&&dn===0) verdict='<span class="sigbadge sb-up">STABLE FADE</span>';
+    else if(dn>=3&&up===0) verdict='<span class="sigbadge sb-dn">STABLE BREAKOUT</span>';
+    else if(up&&dn) verdict='<span class="neg">flips ⚠</span>';
+    else if(up||dn) verdict='<span class="mut">weak/occasional</span>';
+    html+=`<tr><td class="${sideCls(k)}">${lbl(k)}</td><td>${tot}</td>
+      <td class="${up?'pos':'mut'}">${up}</td><td class="${dn?'neg':'mut'}">${dn}</td>
+      <td>${fmt(mean)}%</td><td class="mut">${fmt(spread)}pp</td><td>${verdict}</td></tr>`;
   }
   html+=`</tbody></table></div>`; v.innerHTML=html;
 }

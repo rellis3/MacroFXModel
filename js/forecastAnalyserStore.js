@@ -39,6 +39,31 @@ export async function discoverPairs() {
   return Object.keys(M1_DRIVE_IDS).sort();
 }
 
+// Forecast-range skill: how well the forecast median/75p range matched the
+// realized daily range (vol-forecast quality, independent of any trading edge).
+function computeSkill(records) {
+  let n = 0, fcMed = 0, fc75 = 0, real = 0, exceed = 0;
+  for (const r of records) {
+    const hl50 = r.lines.find(l => l.name === 'HL50')?.distPct;
+    const hl75 = r.lines.find(l => l.name === 'HL75')?.distPct;
+    if (hl50 == null || hl75 == null || !r.realized || !r.open) continue;
+    const fcMedRange = 2 * hl50, fc75Range = 2 * hl75;            // up+down, % of price
+    const realRange  = (r.realized.high - r.realized.low) / r.open * 100;
+    n++; fcMed += fcMedRange; fc75 += fc75Range; real += realRange;
+    if (realRange > fc75Range) exceed++;
+  }
+  if (!n) return null;
+  const avgFcMed = fcMed / n, avgReal = real / n;
+  return {
+    windows: n,
+    avgFcMedRange: +avgFcMed.toFixed(4),
+    avgFc75Range:  +(fc75 / n).toFixed(4),
+    avgRealRange:  +avgReal.toFixed(4),
+    medianBiasPct: +((avgReal - avgFcMed) / avgFcMed * 100).toFixed(1),  // + = realized wider than forecast
+    exceed75Rate:  +(exceed / n * 100).toFixed(1),                       // target ≈ 25% if 75p is honest
+  };
+}
+
 // Precompute the slice rollups the dashboard exposes.
 function buildAggregates(records) {
   // Vol terciles (low/mid/high σ) over this pair's windows — the regime the
@@ -59,6 +84,7 @@ function buildAggregates(records) {
     byDow:     aggregate(records, r => String(r.dow)),
     byYear:    aggregate(records, r => r.date.slice(0, 4)),
     byMonth:   aggregate(records, r => r.date.slice(0, 7)),
+    skill:     computeSkill(records),
   };
 }
 
