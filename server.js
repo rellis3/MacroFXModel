@@ -33,6 +33,7 @@ import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRa
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
+import { runRefresh as runAnalyserRefresh, discoverPairs as discoverAnalyserPairs, getManifest as getAnalyserManifest, getAggregates as getAnalyserAggregates, getPairData as getAnalyserPairData } from './js/forecastAnalyserStore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -6058,6 +6059,131 @@ app.get('/api/vol-backtest-v2/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Forecast Level Analyser — storage & refresh (Phase 2) ────────────────────
+// Reads precomputed level-interaction stats from R2; refresh recomputes them.
+// Password gate: a request supplies the password via header `x-analyser-pw`,
+// query `?pw=`, or cookie `analyser_pw`.
+//   view  → ANALYSER_PASSWORD     (if unset, reads are open until you set one)
+//   admin → ANALYSER_ADMIN_PASSWORD || ANALYSER_PASSWORD (must be set to refresh)
+// See FORECAST_ANALYSER_SETUP.md.
+function _analyserPw(req) {
+  return req.get('x-analyser-pw')
+    || req.query?.pw
+    || (req.headers.cookie || '').split(/;\s*/).find(c => c.startsWith('analyser_pw='))?.slice('analyser_pw='.length)
+    || '';
+}
+// Resolve the access level of a supplied password: 'admin' | 'view' | null.
+function _analyserLevel(supplied) {
+  const s = String(supplied ?? '');
+  const adminWant = process.env.ANALYSER_ADMIN_PASSWORD || process.env.ANALYSER_PASSWORD;
+  if (adminWant && s === adminWant) return 'admin';
+  const viewWant = process.env.ANALYSER_PASSWORD;
+  if (!viewWant) return 'view';            // no view password set → reads open
+  if (s === viewWant) return 'view';
+  return null;
+}
+function _analyserAuth(req, res, level) {
+  const lvl = _analyserLevel(_analyserPw(req));
+  if (level === 'admin') {
+    const adminWant = process.env.ANALYSER_ADMIN_PASSWORD || process.env.ANALYSER_PASSWORD;
+    if (!adminWant) { res.status(503).json({ ok: false, error: 'Refresh disabled — set ANALYSER_ADMIN_PASSWORD (or ANALYSER_PASSWORD) in env' }); return false; }
+    if (lvl !== 'admin') { res.status(401).json({ ok: false, error: 'Unauthorized — admin password required' }); return false; }
+    return true;
+  }
+  if (lvl === null) { res.status(401).json({ ok: false, error: 'Unauthorized — analyser password required' }); return false; }
+  return true;
+}
+
+// Login: exchange a password for its access level + a cookie. The page shows the
+// Refresh button only when level === 'admin'.
+app.post('/api/forecast-analysis/login', express.json({ limit: '8kb' }), (req, res) => {
+  const pw  = req.body?.password ?? '';
+  const lvl = _analyserLevel(pw);
+  if (lvl === null) return res.status(401).json({ ok: false, error: 'Wrong password' });
+  res.setHeader('Set-Cookie', `analyser_pw=${encodeURIComponent(pw)}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`);
+  res.json({ ok: true, level: lvl });
+});
+
+// Whoami: report the current request's level (from cookie/header/query) so the
+// page can render the right controls on load.
+app.get('/api/forecast-analysis/whoami', (req, res) => {
+  res.json({ ok: true, level: _analyserLevel(_analyserPw(req)) });
+});
+
+const afJobs = new Map();
+function _purgeStaleAfJobs() {
+  const cutoff = Date.now() - 2 * 60 * 60_000;
+  for (const [id, job] of afJobs) if (job.startedAt < cutoff) afJobs.delete(id);
+}
+
+app.post('/api/forecast-analysis/refresh', express.json({ limit: '64kb' }), (req, res) => {
+  if (!_analyserAuth(req, res, 'admin')) return;
+  const b = req.body ?? {};
+  const pairs    = Array.isArray(b.pairs) && b.pairs.length ? b.pairs.map(p => String(p).toLowerCase()) : null;
+  const horizons = Array.isArray(b.horizons) && b.horizons.length ? b.horizons : undefined;
+
+  const jobId     = `af_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  const log = [];
+  _purgeStaleAfJobs();
+  afJobs.set(jobId, { status: 'running', startedAt, log });
+
+  (async () => {
+    try {
+      const manifest = await runAnalyserRefresh({ pairs, horizons, onLog: m => { log.push(m); console.log('[analyser-refresh]', m); } });
+      afJobs.set(jobId, { status: 'done', startedAt, log, result: { manifest } });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[forecast-analysis/refresh]', msg);
+      afJobs.set(jobId, { status: 'error', startedAt, log, error: msg });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/forecast-analysis/refresh/status/:jobId', (req, res) => {
+  if (!_analyserAuth(req, res, 'admin')) return;
+  const job = afJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), log: job.log });
+  if (job.status === 'done')    return res.json({ ok: true, status: 'done', log: job.log, ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+app.get('/api/forecast-analysis/pairs', async (req, res) => {
+  if (!_analyserAuth(req, res, 'view')) return;
+  try { res.json({ ok: true, pairs: await discoverAnalyserPairs() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/forecast-analysis/manifest', async (req, res) => {
+  if (!_analyserAuth(req, res, 'view')) return;
+  try {
+    const m = await getAnalyserManifest();
+    if (!m) return res.status(404).json({ ok: false, error: 'No dataset yet — run a refresh' });
+    res.json({ ok: true, manifest: m });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/forecast-analysis/aggregates', async (req, res) => {
+  if (!_analyserAuth(req, res, 'view')) return;
+  try {
+    const a = await getAnalyserAggregates();
+    if (!a) return res.status(404).json({ ok: false, error: 'No dataset yet — run a refresh' });
+    res.json({ ok: true, aggregates: a });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/forecast-analysis/pair/:pair/:horizon', async (req, res) => {
+  if (!_analyserAuth(req, res, 'view')) return;
+  try {
+    const d = await getAnalyserPairData(String(req.params.pair).toLowerCase(), req.params.horizon);
+    if (!d) return res.status(404).json({ ok: false, error: 'Not found — check pair/horizon or run a refresh' });
+    res.json({ ok: true, data: d });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // Report M1 cache status and Drive IDs for download instructions

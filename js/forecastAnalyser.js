@@ -134,7 +134,8 @@ export function bucketM1IntoSessions(packed, boundaryHour = 22) {
   const { n, times, opens, highs, lows, closes } = packed;
   for (let i = 0; i < n; i++) {
     const t  = times[i];
-    const dt = new Date(t);
+    // times may be epoch SECONDS (Int32, from loadM1ForPair), epoch ms, or ISO.
+    const dt = typeof t === 'number' ? new Date(t < 1e12 ? t * 1000 : t) : new Date(t);
     const d  = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
     if (dt.getUTCHours() >= boundaryHour) d.setUTCDate(d.getUTCDate() + 1);  // belongs to next session
     const key = d.toISOString().slice(0, 10);
