@@ -122,43 +122,88 @@ export function analyseWindow(session, ladder) {
   return outRows;
 }
 
-// ── 3) Walk-forward over a series of windows ─────────────────────────────────
-// d1Bars drive σ/regime; m1ByDate gives intraday bars for daily; weekly/monthly
-// walk D1 bars within the window. Returns one record per window with per-line rows.
-export function runAnalyser(d1Bars, m1ByDate, assetClass, opts = {}) {
-  const { horizon = 'daily', minLookback = 50, dateFrom = '', dateTo = '' } = opts;
+// ── 3a) Bucket raw M1 into broker-day SESSIONS (22:00 UTC boundary) ───────────
+// M1-ONLY: the analyser derives everything from the R2 M1 parquet — no D1 bars,
+// no fallback (single-bar daily windows can't order high vs low → biased).
+// `packed` = { n, times, opens, highs, lows, closes } (from loadM1ForPair).
+// Returns Map(sessionDate → ordered bars[]). Boundary matches fetchD1 so the
+// analyser's "day"/open align with the live forecaster.
+export function bucketM1IntoSessions(packed, boundaryHour = 22) {
+  const map = new Map();
+  if (!packed || !packed.n) return map;
+  const { n, times, opens, highs, lows, closes } = packed;
+  for (let i = 0; i < n; i++) {
+    const t  = times[i];
+    const dt = new Date(t);
+    const d  = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+    if (dt.getUTCHours() >= boundaryHour) d.setUTCDate(d.getUTCDate() + 1);  // belongs to next session
+    const key = d.toISOString().slice(0, 10);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+  }
+  for (const arr of map.values()) arr.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  return map;
+}
+
+// Build a daily OHLC series FROM the M1 sessions (open=first M1, close=last M1).
+function sessionsToD1(sessions, dates) {
+  return dates.map(date => {
+    const bars = sessions.get(date);
+    let hi = -Infinity, lo = Infinity;
+    for (const b of bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
+    return { date, open: bars[0].open, high: hi, low: lo, close: bars[bars.length - 1].close };
+  });
+}
+
+// ── 3b) Walk-forward over windows — M1 sessions only ─────────────────────────
+// sessions = Map(sessionDate → ordered M1 bars[]) from bucketM1IntoSessions.
+// Daily window = that session's M1. Weekly/monthly = concatenated M1 across the
+// block of sessions (ordered intraday path, no D1). σ/regime from the M1-derived
+// daily closes (no lookahead).
+export function runAnalyser(sessions, assetClass, opts = {}) {
+  const { horizon = 'daily', minLookback = 50, dateFrom = '', dateTo = '', minBarsPerSession = 30 } = opts;
   const H = HORIZONS[horizon] ?? HORIZONS.daily;
+
+  // Drop thin sessions (holidays / partial days) so a session is a real path.
+  const dates = [...sessions.keys()].sort()
+    .filter(d => (sessions.get(d)?.length ?? 0) >= minBarsPerSession);
+  if (dates.length <= minLookback) return [];
+
+  const d1Bars = sessionsToD1(sessions, dates);
   const closes = d1Bars.map(b => b.close);
   const sigD   = volSigmaSeries(d1Bars, assetClass);
   const records = [];
   const step = horizon === 'daily' ? 1 : H.windowDays;
 
-  for (let i = minLookback; i < d1Bars.length; i += step) {
-    const start = d1Bars[i];
-    if (dateFrom && start.date < dateFrom) continue;
-    if (dateTo   && start.date > dateTo)   continue;
+  for (let i = minLookback; i < dates.length; i += step) {
+    const date = dates[i];
+    if (dateFrom && date < dateFrom) continue;
+    if (dateTo   && date > dateTo)   continue;
     const sigma = sigD[i] * H.sigmaScale;
     if (!sigma || sigma < 1e-8) continue;
 
-    const open   = start.open;
+    // Window bars = M1 across this session (daily) or this block of sessions.
+    let bars, open;
+    if (horizon === 'daily') {
+      bars = sessions.get(date);
+    } else {
+      bars = [];
+      for (let k = i; k < Math.min(i + H.windowDays, dates.length); k++) bars.push(...sessions.get(dates[k]));
+    }
+    if (!bars || bars.length < 2) continue;   // need an ordered path
+    open = bars[0].open;
+
     const ladder = buildLadder(open, sigma, assetClass);
     const regime = classifyRegime(closes, i, 20, 5, opts.slopeThresh ?? 0.002, 1.0);
-    const dow    = new Date(start.date + 'T00:00:00Z').getUTCDay();
+    const dow    = new Date(date + 'T00:00:00Z').getUTCDay();
+    const lines  = analyseWindow({ open, bars }, ladder);
 
-    let bars;
-    if (horizon === 'daily') {
-      bars = m1ByDate?.get(start.date)
-          ?? [{ time: start.date, open: start.open, high: start.high, low: start.low, close: start.close }];
-    } else {
-      bars = d1Bars.slice(i, Math.min(i + H.windowDays, d1Bars.length))
-        .map(x => ({ time: x.date, open: x.open, high: x.high, low: x.low, close: x.close }));
-    }
-
-    const lines = analyseWindow({ open, bars }, ladder);
+    let hi = -Infinity, lo = Infinity;
+    for (const b of bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
     records.push({
-      date: start.date, horizon, regime, dow,
+      date, horizon, regime, dow,
       open: +open.toFixed(6),
-      realized: { high: +start.high.toFixed(6), low: +start.low.toFixed(6), close: +start.close.toFixed(6) },
+      realized: { high: +hi.toFixed(6), low: +lo.toFixed(6), close: +bars[bars.length - 1].close.toFixed(6) },
       lines,
     });
   }
