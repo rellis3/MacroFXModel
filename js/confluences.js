@@ -176,19 +176,26 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
       }
     });
 
-    // Phase 3: OI level within proximity boosts star rating — check all ranked walls
+    // Phase 3: OI level within proximity boosts star rating — check all ranked walls.
+    // Star weight scales with wall strength: a match on the heaviest wall = full star,
+    // a minor wall = half. Gamma flip = 0.75, max pain = 0.5 (weaker structural pulls).
     let oiMatch = null;
+    let oiStars = 0;
     if (_oiData) {
-      const _cwList = _oiData.callWalls?.length ? _oiData.callWalls.map(w => w.strike) : (_oiData.callWall ? [_oiData.callWall] : []);
-      const _pwList = _oiData.putWalls?.length  ? _oiData.putWalls.map(w => w.strike)  : (_oiData.putWall  ? [_oiData.putWall]  : []);
-      for (const cw of _cwList) { if (Math.abs(c.price - cw) <= oiCapDist) { oiMatch = 'Call Wall'; break; } }
-      if (!oiMatch) for (const pw of _pwList) { if (Math.abs(c.price - pw) <= oiCapDist) { oiMatch = 'Put Wall'; break; } }
-      if (!oiMatch && Math.abs(c.price - _oiData.maxPain) <= oiCapDist) oiMatch = 'Max Pain';
+      const _cw = _oiData.callWalls?.length ? _oiData.callWalls
+                : (_oiData.callWall ? [{ strike: _oiData.callWall, oi: _oiData.callWallOI || 0 }] : []);
+      const _pw = _oiData.putWalls?.length  ? _oiData.putWalls
+                : (_oiData.putWall  ? [{ strike: _oiData.putWall,  oi: _oiData.putWallOI  || 0 }] : []);
+      const _maxWallOI = Math.max(1, _cw[0]?.oi || 0, _pw[0]?.oi || 0);
+      const _wallStars = oi => Math.max(0.5, Math.min(1, 0.5 + 0.5 * ((oi || 0) / _maxWallOI)));
+      for (const w of _cw) { if (Math.abs(c.price - w.strike) <= oiCapDist) { oiMatch = 'Call Wall'; oiStars = _wallStars(w.oi); break; } }
+      if (!oiMatch) for (const w of _pw) { if (Math.abs(c.price - w.strike) <= oiCapDist) { oiMatch = 'Put Wall'; oiStars = _wallStars(w.oi); break; } }
+      if (!oiMatch && Math.abs(c.price - _oiData.maxPain) <= oiCapDist) { oiMatch = 'Max Pain'; oiStars = 0.5; }
       if (!oiMatch && _oiData.gexProfile && _oiData.gexProfile.length > 1) {
         for (let i = 1; i < _oiData.gexProfile.length; i++) {
           if (Math.sign(_oiData.gexProfile[i].netGex) !== Math.sign(_oiData.gexProfile[i-1].netGex)) {
             if (Math.abs(c.price - _oiData.gexProfile[i].strike) <= gexCapDist) {
-              oiMatch = 'Gamma Flip'; break;
+              oiMatch = 'Gamma Flip'; oiStars = 0.75; break;
             }
           }
         }
@@ -266,7 +273,7 @@ export function enhanceConfluences(confluences, currentPrice, bias, pivots, volR
     if (pivotMatch)                structuralStars++;
     if (pdhMatch)                  structuralStars++;  // prev-day H/L — top institutional level
     if (pwhMatch)                  structuralStars++;  // prev-week H/L — weekly extreme
-    if (oiMatch)                   structuralStars++;
+    if (oiMatch)                   structuralStars += oiStars;  // weighted by wall strength
     if (nearDailyOpen)             structuralStars++;
     if (matchingOpens.length >= 3) structuralStars++;
     if ((c.density || 1) >= 2)     structuralStars++;
