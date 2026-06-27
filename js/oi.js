@@ -143,10 +143,14 @@ export function calcOISpot() {
   if (!raw.trim()) { oiToast('Paste OI data first, then click Calc', true); return; }
   const parsed = oiParseTable(raw);
   if (!parsed || parsed.strikes.length < 3) { oiToast('Could not parse OI data', true); return; }
-  const est = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
+  let est = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
   if (est == null) { oiToast('Could not estimate spot from OI data', true); return; }
 
   const pair = S.currentPair?.symbol ?? 'EUR/USD';
+  // estimateSpotFromOI returns the ATM in CME strike space (futures terms).
+  // For inverted pairs (6J/6C/6S) strikes are foreign-ccy/USD — invert to get the
+  // spot-equivalent the Spot field expects (e.g. 0.0068 → 147.x for USD/JPY).
+  if (futuresIsInverted(pair)) est = 1 / est;
   const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
   document.getElementById('oiSpotPrice').value = est.toFixed(digits);
   oiToast(`Spot estimated from OI balance: ${est.toFixed(digits)}`);
