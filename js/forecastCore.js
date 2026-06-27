@@ -25,8 +25,13 @@ import {
   BM_P50, BM_P75, HN_P50, HN_P75,
 } from './volBacktestEngine.js';
 import { summarize, summarizeSplit } from './honestForecastEngine.js';
+// Day-type score lives in its own lego brick (dayTypeCore.js) so it can plug
+// into other systems too — imported here, never copied. Re-exported so existing
+// forecast-family callers keep importing `dayTypeScore` from forecastCore.
+import { dayTypeScore, classifyDayType, ESTIMATORS, DAYTYPE_PRESETS } from './dayTypeCore.js';
 
 export { summarize, summarizeSplit };
+export { dayTypeScore, classifyDayType, ESTIMATORS, DAYTYPE_PRESETS };
 
 // ── Horizons ─────────────────────────────────────────────────────────────────
 // sigmaScale: daily σ scales by √periods for longer horizons (√5 week, √20 month).
@@ -144,28 +149,9 @@ export function simulateEntry(session, bands, spec) {
 }
 
 // ── 4) Day-type score T ∈ [0,1] (trend-day-ness; no lookahead) ───────────────
-// Blends Kaufman Efficiency Ratio and a variance-ratio persistence measure on
-// the prior closes. 1 = strong trend (follow), 0 = choppy/mean-revert (fade).
-// `closes` are per-horizon closes (D1 for daily, weekly closes for weekly…).
-export function dayTypeScore(closes, idx, win = 14) {
-  if (idx < win + 2) return 0.5;
-  // Kaufman Efficiency Ratio over the last `win` closes (using data < idx).
-  const a = closes[idx - 1], b = closes[idx - 1 - win];
-  let sumAbs = 0;
-  for (let j = idx - win; j < idx; j++) sumAbs += Math.abs(closes[j] - closes[j - 1]);
-  const er = sumAbs > 1e-12 ? Math.min(Math.abs(a - b) / sumAbs, 1) : 0;
-
-  // Variance ratio VR(2): var of 2-step returns / (2 × var of 1-step). >1 trend.
-  const r1 = [], r2 = [];
-  for (let j = idx - win; j < idx; j++) r1.push(Math.log(closes[j] / closes[j - 1]));
-  for (let j = idx - win; j < idx - 1; j++) r2.push(Math.log(closes[j + 1] / closes[j - 1]));
-  const v = arr => { const m = arr.reduce((s, x) => s + x, 0) / arr.length; return arr.reduce((s, x) => s + (x - m) ** 2, 0) / arr.length; };
-  const v1 = v(r1), v2 = v(r2);
-  const vr = v1 > 1e-18 ? v2 / (2 * v1) : 1;
-  const vrTrend = Math.min(Math.max((vr - 0.5) / 1.0, 0), 1);  // map VR≈0.5→0, ≈1.5→1
-
-  return +(0.6 * er + 0.4 * vrTrend).toFixed(4);
-}
+// Now owned by the standalone lego brick `dayTypeCore.js` and imported above —
+// see that module for the estimator registry and presets. `dayTypeScore` is
+// re-exported unchanged (default preset = the original ER 0.6 / VR 0.4 blend).
 
 // ── 5) Selector: T (+regime) → trade spec ────────────────────────────────────
 // Encodes the concept note: low T → fade the median (high traffic); mid T →
