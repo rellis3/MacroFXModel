@@ -61,7 +61,8 @@ export function analyseWindow(session, ladder) {
       if (touchIdx < 0) {
         outRows.push({ name: line.name, side, level: +line.level.toFixed(6), distPct: +(line.dist * 100).toFixed(4),
           hit: false, outcome: 'no_touch', firstTouchTime: null,
-          retraceTo: null, retracePct: 0, extTo: null, extPct: 0, closeBeyond: null, mfePct: 0 });
+          retraceTo: null, retracePct: 0, extTo: null, extPct: 0,
+          closeBeyond: isUp ? closePx > line.level : closePx < line.level, mfePct: 0 });
         continue;
       }
       if (!hasPath) {
@@ -202,7 +203,7 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
     let hi = -Infinity, lo = Infinity;
     for (const b of bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
     records.push({
-      date, horizon, regime, dow,
+      date, horizon, regime, dow, sigma: +(sigma * 100).toFixed(4),  // σ as % of price
       open: +open.toFixed(6),
       realized: { high: +hi.toFixed(6), low: +lo.toFixed(6), close: +bars[bars.length - 1].close.toFixed(6) },
       lines,
@@ -221,8 +222,9 @@ export function aggregate(records, sliceFn = () => 'all') {
     groups[g] ??= {};
     for (const ln of rec.lines) {
       const key = `${ln.name}_${ln.side}`;
-      const a = (groups[g][key] ??= { line: ln.name, side: ln.side, windows: 0, hits: 0, decided: 0, noIntraday: 0, reverted: 0, continued: 0, retraceSum: 0, extSum: 0 });
+      const a = (groups[g][key] ??= { line: ln.name, side: ln.side, windows: 0, hits: 0, decided: 0, noIntraday: 0, reverted: 0, continued: 0, closeBeyond: 0, retraceSum: 0, extSum: 0 });
       a.windows++;
+      if (ln.closeBeyond) a.closeBeyond++;     // for calibration (% of windows closing beyond the line)
       if (!ln.hit) continue;
       a.hits++;
       if (ln.outcome === 'no_intraday') { a.noIntraday++; continue; }
@@ -234,12 +236,13 @@ export function aggregate(records, sliceFn = () => 'all') {
   // finalize rates — revert/continue measured over DECIDED touches (path known).
   for (const g of Object.values(groups)) {
     for (const a of Object.values(g)) {
-      a.hitRate     = a.windows ? +(a.hits / a.windows * 100).toFixed(1) : 0;
-      a.revRate     = a.decided ? +(a.reverted / a.decided * 100).toFixed(1) : 0;
-      a.contRate    = a.decided ? +(a.continued / a.decided * 100).toFixed(1) : 0;
-      a.avgRetrace  = a.reverted ? +(a.retraceSum / a.reverted).toFixed(4) : 0;
-      a.avgExt      = a.continued ? +(a.extSum / a.continued).toFixed(4) : 0;
-      a.lowN        = a.decided < 30;
+      a.hitRate         = a.windows ? +(a.hits / a.windows * 100).toFixed(1) : 0;
+      a.revRate         = a.decided ? +(a.reverted / a.decided * 100).toFixed(1) : 0;
+      a.contRate        = a.decided ? +(a.continued / a.decided * 100).toFixed(1) : 0;
+      a.avgRetrace      = a.reverted ? +(a.retraceSum / a.reverted).toFixed(4) : 0;
+      a.avgExt          = a.continued ? +(a.extSum / a.continued).toFixed(4) : 0;
+      a.closeBeyondRate = a.windows ? +(a.closeBeyond / a.windows * 100).toFixed(1) : 0;
+      a.lowN            = a.decided < 30;
       delete a.retraceSum; delete a.extSum;
     }
   }
