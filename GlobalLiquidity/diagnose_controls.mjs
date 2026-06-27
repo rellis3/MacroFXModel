@@ -63,11 +63,13 @@ function stats(net) {
   };
 }
 
-// Run a strategy given a weight function (weights at end of week i from history ≤ i).
-function runStrategy(dates, R, m, weightFn) {
-  const net = new Array(dates.length).fill(0); let prev = new Array(m).fill(0);
+// Run a strategy. rebal = recompute weights every `rebal` weeks (hold between),
+// so monthly strategies don't pay weekly turnover.
+function runStrategy(dates, R, m, weightFn, rebal = 1) {
+  const net = new Array(dates.length).fill(0); let prev = new Array(m).fill(0); let held = prev;
   for (let i = 1; i < dates.length; i++) {
-    const w = weightFn(i - 1, R, m);                       // decided at i-1
+    if ((i - 1) % rebal === 0) held = weightFn(i - 1, R, m);  // decided at i-1
+    const w = held;
     let ret = 0; for (let j = 0; j < m; j++) ret += w[j] * R[i][j];
     let dw = 0; for (let j = 0; j < m; j++) dw += Math.abs(w[j] - prev[j]);
     net[i] = ret - dw * COST; prev = w;
@@ -77,13 +79,20 @@ function runStrategy(dates, R, m, weightFn) {
 function trailing(i, R, j, lb) { let s = 0, n = 0; for (let k = Math.max(0, i - lb + 1); k <= i; k++) { if (isFinite(R[k][j])) { s += R[k][j]; n++; } } return n ? s : 0; }
 function gnorm(w) { const g = w.reduce((s, x) => s + Math.abs(x), 0) || 1; return w.map((x) => x / g); }
 
-function xsMomentum(i, R, m) {
-  const sc = Array.from({ length: m }, (_, j) => ({ j, s: trailing(i, R, j, LB) }));
-  sc.sort((a, b) => b.s - a.s);
-  const w = new Array(m).fill(0);
-  for (let k = 0; k < 3; k++) { w[sc[k].j] = 1; w[sc[m - 1 - k].j] = -1; }
-  return gnorm(w);
+function xsMomentumLB(lb) {
+  return (i, R, m) => {
+    const sc = Array.from({ length: m }, (_, j) => ({ j, s: trailing(i, R, j, lb) }));
+    sc.sort((a, b) => b.s - a.s);
+    const w = new Array(m).fill(0);
+    for (let k = 0; k < 3; k++) { w[sc[k].j] = 1; w[sc[m - 1 - k].j] = -1; }
+    return gnorm(w);
+  };
 }
+function xsReversalLB(lb) {
+  const mom = xsMomentumLB(lb);
+  return (i, R, m) => mom(i, R, m).map((x) => -x);   // long recent losers / short winners
+}
+const xsMomentum = xsMomentumLB(LB);
 function tsMomentum(i, R, m) {
   const w = new Array(m).fill(0);
   for (let j = 0; j < m; j++) w[j] = Math.sign(trailing(i, R, j, LB));
@@ -112,10 +121,15 @@ async function main() {
   console.log('='.repeat(92));
   console.log('  POSITIVE-CONTROL DIAGNOSTIC — same harness machinery, price-only signals (no FRED)');
   console.log('='.repeat(92));
-  report('XS momentum (12w)', runStrategy(dates, R, m, xsMomentum));
-  report('TS momentum (12w)', runStrategy(dates, R, m, tsMomentum));
-  report('Random sign (neg ctrl)', runStrategy(dates, R, m, randomSign));
-  console.log('\nRead: if momentum Sharpe is clearly > 0 and random ≈ 0, the harness detects edge fine');
-  console.log('— so the liquidity signal (Sharpe 0.01) is genuinely the weak link, not the plumbing.');
+  console.log('  WEEKLY rebalance:');
+  report('  XS momentum 12w', runStrategy(dates, R, m, xsMomentum, 1));
+  report('  TS momentum 12w', runStrategy(dates, R, m, tsMomentum, 1));
+  report('  XS reversal 2w', runStrategy(dates, R, m, xsReversalLB(2), 1));
+  report('  Random sign (neg ctrl)', runStrategy(dates, R, m, randomSign, 1));
+  console.log('  MONTHLY rebalance (momentum’s natural habitat):');
+  report('  XS momentum 26w', runStrategy(dates, R, m, xsMomentumLB(26), 4));
+  report('  XS momentum 52w', runStrategy(dates, R, m, xsMomentumLB(52), 4));
+  console.log('\nRead: random ~0 = harness mechanics sound. If a momentum/reversal variant is');
+  console.log('clearly >0, the harness CAN capture a real premium — so liquidity (0.01) is the weak link.');
 }
 main().catch((e) => { console.error(e); process.exit(1); });
