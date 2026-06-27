@@ -53,7 +53,8 @@ doesn't, disconnect it — without disturbing the rest. Concretely:
 | Module | Owns | Import for |
 |---|---|---|
 | `js/volBacktestEngine.js` | vol-sigma series (HV20 / GARCH / Yang-Zhang), `ASSET_PARAMS`, `classifyRegime`, band constants (`BM_P50/75`, `HN_P50/75`), `fetchD1` | the forecaster's vol math — single source of truth |
-| `js/forecastCore.js` | `computeBands`, `walkBars` (fill walker), `simulateEntry` (the one primitive), `dayTypeScore`, `selectStrategy`, `volSigmaSeries`, `HORIZONS` | all new forecast-family strategy logic |
+| `js/dayTypeCore.js` | the reversion-vs-continuation classifier — `ESTIMATORS` registry, `DAYTYPE_PRESETS`, `classifyDayType`, `dayTypeScore` (trend-day-ness `T` = drift÷diffusion) | any system that must decide fade-vs-follow at a level — the forecaster **and** future bots, never copied |
+| `js/forecastCore.js` | `computeBands`, `walkBars` (fill walker), `simulateEntry` (the one primitive), `selectStrategy`, `volSigmaSeries`, `HORIZONS` (re-exports `dayTypeScore` from `dayTypeCore.js`) | all new forecast-family strategy logic |
 | `js/honestForecastEngine.js` | `summarize`, `summarizeSplit` (metrics + IS/OOS) | reporting — reuse, don't re-implement |
 | `js/volBacktestV2Engine.js` | thin per-horizon orchestration + A/B vs fixed legs | the template for wiring a new strategy |
 
