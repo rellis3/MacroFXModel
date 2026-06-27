@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Forecast Level Analyser</title>
+<style>
+  :root{ --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+         --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889; --accent:#5b9dff;
+         --green:#3fb27f; --red:#e5604d; --amber:#e0a93b; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:16px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0;font-size:17px;font-weight:650}
+  .sub{color:var(--text2);font-size:12px;margin-top:3px}
+  main{padding:16px 20px;max-width:1240px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 10px;font-size:14px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+  button.sec{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  button:disabled{opacity:.5}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 14px}
+  .tab{padding:8px 13px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--text2);background:transparent;border:1px solid transparent}
+  .tab.active{background:var(--panel);border-color:var(--line);color:var(--text)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em}
+  .lown{opacity:.38}
+  .mut{color:var(--text3)} .pos{color:var(--green)} .neg{color:var(--red)}
+  .lbl-up{color:#8fd4b4} .lbl-dn{color:#e9a39a}
+  .cell-up{background:rgba(63,178,127,.16);color:#9ee3c0;border-radius:4px}
+  .cell-dn{background:rgba(229,96,77,.16);color:#f1a99e;border-radius:4px}
+  .cell-ns{color:var(--text3)}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .kpi .v{font-size:20px;font-weight:700} .kpi .l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .pill{display:inline-block;font-size:10px;padding:1px 7px;border-radius:8px;background:var(--panel2);color:var(--text3);margin-left:6px}
+  .sigbadge{font-size:9px;padding:1px 5px;border-radius:6px;margin-left:5px;vertical-align:middle}
+  .sb-up{background:rgba(63,178,127,.2);color:var(--green)} .sb-dn{background:rgba(229,96,77,.2);color:var(--red)}
+  .find{border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;background:var(--panel2);border-radius:0 8px 8px 0;font-size:13px}
+  .legend{color:var(--text3);font-size:11px;line-height:1.7;margin-top:6px}
+  #login{max-width:340px} #refreshPanel{display:none}
+  #out{white-space:pre-wrap;font:11.5px/1.5 ui-monospace,Menlo,monospace;color:var(--text2);background:#0b0d12;border:1px solid var(--line);border-radius:7px;padding:10px;margin-top:10px;max-height:200px;overflow:auto;display:none}
+  .ok{color:var(--green)} .err{color:var(--red)} .run{color:var(--amber)}
+  .hint{color:var(--text3);font-size:11px;margin-top:6px}
+  .bar{display:inline-block;height:10px;border-radius:2px;vertical-align:middle}
+</style>
+</head>
+<body>
+<header>
+  <h1>Forecast Level Analyser <span class="pill" id="lvlPill" style="display:none"></span></h1>
+  <div class="sub" id="cov">What price actually does at each vol-forecast line — reversion vs continuation, with statistical significance. No trades, no costs.</div>
+</header>
+<main>
+  <div class="card" id="login" style="display:none">
+    <label>Password</label>
+    <div style="display:flex;gap:8px"><input id="pw" type="password" placeholder="analyser password" style="flex:1"><button id="loginBtn">Enter</button></div>
+    <div class="hint" id="loginMsg"></div>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="card">
+      <div class="controls">
+        <div><label>Pair</label><select id="pair"></select></div>
+        <div><label>Horizon</label><select id="horizon"></select></div>
+        <div style="min-width:auto"><button id="adminToggle" class="sec" style="display:none">⟳ Refresh data</button></div>
+      </div>
+      <div id="refreshPanel" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="controls">
+          <div style="min-width:220px"><label>Pairs (blank = all)</label><input id="rPairs" placeholder="eurusd, gold" style="width:100%"></div>
+          <div><label>Horizons</label><div style="display:flex;gap:10px;font-size:13px;color:var(--text2)">
+            <span><input type="checkbox" class="rhz" value="daily" checked> daily</span>
+            <span><input type="checkbox" class="rhz" value="weekly"> weekly</span>
+            <span><input type="checkbox" class="rhz" value="monthly"> 20d</span></div></div>
+          <div style="min-width:auto"><button id="runRefresh">Run refresh</button></div>
+        </div>
+        <div id="out"></div>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div id="view"></div>
+
+    <div class="card">
+      <div class="legend">
+        <b>Significance:</b> each reversion rate is tested against 50/50 (binomial z). <span class="cell-up">&nbsp;green&nbsp;</span> = price reverts off the line significantly more than chance (a fade edge); <span class="cell-dn">&nbsp;red&nbsp;</span> = continues through significantly more (a breakout edge); grey = indistinguishable from a coin-flip. <b>n</b> = decided touches; cells with n&lt;30 are dimmed. <b>Reverted</b> = returned to the next line inward before reaching the next line outward. Magnitudes are <b>% of price</b> (comparable across pairs). Daily uses M1 from R2; nothing here is a trade.
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn','HL50_dn','HL75_dn'];
+const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
+const SLICES = { byRegime:'Regime', byVol:'Volatility', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
+const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
+const TABS = ['Overview','Levels','Conditioning','Calibration','Candidates','Pairs'];
+let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
+
+const hdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
+const fmt = (v,d=1)=> (v===undefined||v===null||isNaN(v))?'—':(+v).toFixed(d);
+async function api(p,o={}){ return fetch(p,{...o,headers:{...(o.headers||{}),...hdr()}}).then(r=>r.json().then(j=>({status:r.status,j}))); }
+
+// ── significance: binomial vs 0.5 ────────────────────────────────────────────
+function zOf(rate,n){ return (n>0)? (rate/100-0.5)/Math.sqrt(0.25/n) : 0; }
+function sig(rate,n){ const z=zOf(rate,n); const s=Math.abs(z)>=1.96; return { z, sig:s, dir: z>0?'up':'dn', cls: !s?'cell-ns':(z>0?'cell-up':'cell-dn') }; }
+function lbl(key){ const [nm,side]=key.split('_'); return `${LBL[nm]} ${side==='up'?'↑':'↓'}`; }
+function sideCls(key){ return key.endsWith('_up')?'lbl-up':'lbl-dn'; }
+
+async function boot(){
+  const who = await api('/api/forecast-analysis/whoami'); LEVEL = who.j?.level ?? null;
+  const man = await api('/api/forecast-analysis/manifest');
+  if(man.status===401){ $('login').style.display=''; $('app').style.display='none'; return; }
+  if(!man.j?.ok){ $('cov').innerHTML='<span class="err">'+(man.j?.error||'No dataset — run a refresh.')+'</span>'; if(LEVEL==='admin') showApp(); else $('login').style.display=''; return; }
+  MANIFEST=man.j.manifest;
+  AGG=(await api('/api/forecast-analysis/aggregates')).j?.aggregates||{};
+  showApp();
+}
+function showApp(){
+  $('login').style.display='none'; $('app').style.display='';
+  if(LEVEL){ $('lvlPill').style.display=''; $('lvlPill').textContent=LEVEL; }
+  if(LEVEL==='admin') $('adminToggle').style.display='';
+  const pairs=Object.keys(MANIFEST?.pairs||{}).sort();
+  $('pair').innerHTML=pairs.map(p=>`<option>${p}</option>`).join('')||'<option>—</option>';
+  if(MANIFEST){ const g=MANIFEST.generatedAt?new Date(MANIFEST.generatedAt).toLocaleString():'—';
+    $('cov').textContent=`${pairs.length} pairs · last refreshed ${g} · ${MANIFEST.definitions?.revertContinue||''}`; }
+  $('tabs').innerHTML=TABS.map(t=>`<div class="tab ${t===TAB?'active':''}" data-t="${t}">${t}</div>`).join('');
+  $('tabs').querySelectorAll('.tab').forEach(el=>el.onclick=()=>{TAB=el.dataset.t;showApp();});
+  syncHorizons(); render();
+}
+function syncHorizons(){ const p=$('pair').value; const hz=Object.keys(MANIFEST?.pairs?.[p]?.horizons||{daily:1}); const cur=$('horizon').value;
+  $('horizon').innerHTML=hz.map(h=>`<option ${h===cur?'selected':''}>${h}</option>`).join(''); }
+
+function pairData(){ return AGG?.[$('pair').value]?.[$('horizon').value]; }
+
+function render(){
+  const v=$('view');
+  if(TAB==='Overview') return renderOverview(v);
+  if(TAB==='Levels') return renderLevels(v);
+  if(TAB==='Conditioning') return renderConditioning(v);
+  if(TAB==='Calibration') return renderCalibration(v);
+  if(TAB==='Candidates') return renderCandidates(v);
+  if(TAB==='Pairs') return renderPairs(v);
+}
+
+// ── Overview: KPIs + auto findings ───────────────────────────────────────────
+function renderOverview(v){
+  const h=$('horizon').value, pairs=Object.keys(AGG||{});
+  let totWin=0, sigUp=0, sigDn=0, tested=0, revWeighted=0, revN=0;
+  const edges=[];
+  for(const p of pairs){ const a=AGG[p]?.[h]?.all; if(!a) continue;
+    for(const k of LINE_ORDER){ const s=a[k]; if(!s||s.decided<50) continue;
+      tested++; const g=sig(s.revRate,s.decided); revWeighted+=s.revRate*s.decided; revN+=s.decided;
+      if(g.sig && g.dir==='up') sigUp++; if(g.sig && g.dir==='dn') sigDn++;
+      if(g.sig) edges.push({pair:p,key:k,rate:s.revRate,z:g.z,n:s.decided,dir:g.dir});
+    }
+    totWin += AGG[p][h]?.all?.OC50_up?.windows||0;
+  }
+  edges.sort((a,b)=>Math.abs(b.z)-Math.abs(a.z));
+  const avgRev = revN? (revWeighted/revN):0;
+  let html=`<div class="card"><div class="kpi-grid">
+    <div class="kpi"><div class="v">${pairs.length}</div><div class="l">pairs</div></div>
+    <div class="kpi"><div class="v">${totWin.toLocaleString()}</div><div class="l">windows (${h})</div></div>
+    <div class="kpi"><div class="v">${fmt(avgRev)}%</div><div class="l">avg reversion</div></div>
+    <div class="kpi"><div class="v">${sigUp}<span class="mut" style="font-size:13px"> / ${tested}</span></div><div class="l">sig. fade edges</div></div>
+    <div class="kpi"><div class="v">${sigDn}<span class="mut" style="font-size:13px"> / ${tested}</span></div><div class="l">sig. breakout edges</div></div>
+  </div></div>`;
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Findings</div>`;
+  const pctSig=tested?Math.round((sigUp+sigDn)/tested*100):0;
+  html+=`<div class="find">Across ${pairs.length} pairs, lines revert <b>${fmt(avgRev)}%</b> of the time on average — close to a coin-flip. Only <b>${pctSig}%</b> of line-readings (${sigUp+sigDn}/${tested}) are statistically distinguishable from 50/50, so <b>there is little standalone "fade the line" edge</b> — consistent with the range study. The edge, if any, is in the conditioning.</div>`;
+  if(edges.length){ html+=`<div class="find"><b>Strongest edges (by z):</b><br>`+
+    edges.slice(0,6).map(e=>`${e.pair.toUpperCase()} · ${lbl(e.key)} — reverts <b>${fmt(e.rate)}%</b> (z=${fmt(e.z,2)}, n=${e.n}) <span class="sigbadge ${e.dir==='up'?'sb-up':'sb-dn'}">${e.dir==='up'?'FADE':'BREAKOUT'}</span>`).join('<br>')+`</div>`; }
+  html+=`<div class="hint">Open <b>Conditioning</b> to see which regimes/vol buckets carry the edge, <b>Calibration</b> to check the forecast lines are honest, and <b>Candidates</b> for the ranked shortlist.</div></div>`;
+  v.innerHTML=html;
+}
+
+// ── Levels: per-line table, all-slice, with significance ─────────────────────
+function renderLevels(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const a=d.all||{};
+  let html=`<div class="card"><table><thead><tr><th>Line</th><th>hit%</th><th>rev%</th><th>z</th><th>cont%</th><th>avgRetr%</th><th>avgExt%</th><th>n</th><th>rev/cont</th></tr></thead><tbody>`;
+  for(const k of LINE_ORDER){ const s=a[k]; if(!s){ html+=`<tr><td>${lbl(k)}</td><td colspan="8" class="mut">—</td></tr>`; continue; }
+    const g=sig(s.revRate,s.decided); const w=64, rev=Math.round(w*(s.revRate||0)/100), con=w-rev;
+    html+=`<tr class="${s.lowN?'lown':''}"><td class="${sideCls(k)}">${lbl(k)}</td>
+      <td>${fmt(s.hitRate)}%</td>
+      <td class="${g.cls}">${fmt(s.revRate)}%${g.sig?`<span class="sigbadge ${g.dir==='up'?'sb-up':'sb-dn'}">${g.dir==='up'?'FADE':'BRK'}</span>`:''}</td>
+      <td class="mut">${fmt(g.z,2)}</td>
+      <td>${fmt(s.contRate)}%</td><td>${fmt(s.avgRetrace,3)}</td><td>${fmt(s.avgExt,3)}</td><td>${s.decided||0}</td>
+      <td style="text-align:left"><span class="bar" style="width:${rev}px;background:var(--green)"></span><span class="bar" style="width:${con}px;background:var(--amber)"></span></td></tr>`;
+  }
+  html+=`</tbody></table></div>`; v.innerHTML=html;
+}
+
+// ── Conditioning: line × group reversion matrix, significance-colored ─────────
+function renderConditioning(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const dims=Object.keys(SLICES).filter(s=>d[s]);
+  let html=`<div class="card"><div class="controls" style="margin-bottom:10px"><div><label>Dimension</label><select id="condSel">`+
+    dims.map(s=>`<option value="${s}" ${s===condDim?'selected':''}>${SLICES[s]}</option>`).join('')+`</select></div></div>`;
+  const slice=d[condDim]||{}; let groups=Object.keys(slice).sort();
+  if(condDim==='byDow') groups=groups.filter(g=>g>='1'&&g<='5');
+  html+=`<div class="hint" style="margin-bottom:8px">Cell = reversion % (z, n). Green = significant fade, red = significant breakout, grey = coin-flip.</div>`;
+  html+=`<table><thead><tr><th>Line</th>`+groups.map(g=>`<th>${condDim==='byDow'?DOW[g]:g}</th>`).join('')+`</tr></thead><tbody>`;
+  for(const k of LINE_ORDER){ html+=`<tr><td class="${sideCls(k)}">${lbl(k)}</td>`;
+    for(const g of groups){ const s=slice[g]?.[k];
+      if(!s||!s.decided){ html+=`<td class="mut">—</td>`; continue; }
+      const gg=sig(s.revRate,s.decided);
+      html+=`<td class="${gg.cls} ${s.lowN?'lown':''}">${fmt(s.revRate)}<span class="mut" style="font-size:10px"> ·${s.decided}</span></td>`; }
+    html+=`</tr>`; }
+  html+=`</tbody></table></div>`; v.innerHTML=html;
+  $('condSel').onchange=e=>{condDim=e.target.value;render();};
+}
+
+// ── Calibration (unique): do the lines hold their percentile? ────────────────
+function renderCalibration(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const a=d.all||{};
+  const hasCal = a.OC50_up && a.OC50_up.closeBeyondRate!==undefined;
+  if(!hasCal){ v.innerHTML=`<div class="card mut">Calibration needs a fresh refresh (new fields). ${LEVEL==='admin'?'Run a refresh.':'Ask the owner to refresh.'}</div>`; return; }
+  const TARGET={OC50:50,OC75:25}; // close-percentile targets
+  let html=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. <b>Close lines:</b> % of windows that close beyond should match the percentile (Close med ≈ 50%, Close 75p ≈ 25%). <b>Proj lines:</b> reach rate shown for info.</div>`;
+  html+=`<table><thead><tr><th>Line</th><th>closes beyond %</th><th>target</th><th>error</th><th>reach (hit) %</th><th>n win</th></tr></thead><tbody>`;
+  for(const k of LINE_ORDER){ const s=a[k]; if(!s) continue; const [nm]=k.split('_'); const tgt=TARGET[nm];
+    const err= tgt!==undefined ? (s.closeBeyondRate-tgt) : null;
+    html+=`<tr><td class="${sideCls(k)}">${lbl(k)}</td>
+      <td>${fmt(s.closeBeyondRate)}%</td>
+      <td class="mut">${tgt!==undefined?tgt+'%':'—'}</td>
+      <td class="${err===null?'mut':(Math.abs(err)>5?'neg':'pos')}">${err===null?'—':(err>0?'+':'')+fmt(err)}pp</td>
+      <td class="mut">${fmt(s.hitRate)}%</td><td>${s.windows||0}</td></tr>`; }
+  html+=`</tbody></table></div>`; v.innerHTML=html;
+}
+
+// ── Candidates: ranked significant edges across all slices for this pair ──────
+function renderCandidates(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const rows=[];
+  const scan=(sliceName,group,label)=>{ const obj = sliceName==='all'? d.all : d[sliceName]?.[group]; if(!obj) return;
+    for(const k of LINE_ORDER){ const s=obj[k]; if(!s||s.decided<40) continue; const g=sig(s.revRate,s.decided);
+      if(g.sig) rows.push({scope:label,key:k,rate:s.revRate,z:g.z,n:s.decided,dir:g.dir}); } };
+  scan('all',null,'Overall');
+  for(const sl of Object.keys(SLICES)){ if(!d[sl]) continue; for(const grp of Object.keys(d[sl])){
+    const nm = sl==='byDow'?DOW[grp]:grp; scan(sl,grp,`${SLICES[sl]}: ${nm}`); } }
+  rows.sort((a,b)=>Math.abs(b.z)-Math.abs(a.z));
+  const fade=rows.filter(r=>r.dir==='up'), brk=rows.filter(r=>r.dir==='dn');
+  const tbl=(list,title,kind)=>{ if(!list.length) return `<div class="card"><div style="font-weight:600">${title}</div><div class="mut" style="font-size:12px;margin-top:6px">No statistically significant ${kind} edges (n≥40) for ${$('pair').value.toUpperCase()}.</div></div>`;
+    return `<div class="card"><div style="font-weight:600;margin-bottom:8px">${title}</div><table><thead><tr><th>Scope</th><th>Line</th><th>rev%</th><th>z</th><th>n</th></tr></thead><tbody>`+
+      list.slice(0,12).map(r=>`<tr><td>${r.scope}</td><td class="${sideCls(r.key)}">${lbl(r.key)}</td><td class="${kind==='fade'?'pos':'neg'}">${fmt(r.rate)}%</td><td class="mut">${fmt(r.z,2)}</td><td>${r.n}</td></tr>`).join('')+`</tbody></table></div>`; };
+  v.innerHTML = `<div class="hint" style="margin:0 0 10px">Significant (|z|≥1.96, n≥40) reversion/continuation reads for <b>${$('pair').value.toUpperCase()}</b>, ranked by strength. A shortlist to investigate — not a backtested strategy.</div>`
+    + tbl(fade,'🟢 Fade / reversion candidates','fade') + tbl(brk,'🔴 Breakout / continuation candidates','breakout');
+}
+
+// ── Pairs: line × pair reversion matrix (all-slice), significance-colored ─────
+function renderPairs(v){
+  const h=$('horizon').value, pairs=Object.keys(AGG||{}).filter(p=>AGG[p]?.[h]?.all).sort();
+  if(!pairs.length){ v.innerHTML=noData(); return; }
+  let html=`<div class="card" style="overflow:auto"><div class="hint" style="margin-bottom:8px">Reversion % per pair per line (overall, ${h}). Green = significant fade, red = significant breakout.</div>`;
+  html+=`<table><thead><tr><th>Pair</th>`+LINE_ORDER.map(k=>`<th>${lbl(k)}</th>`).join('')+`</tr></thead><tbody>`;
+  for(const p of pairs){ html+=`<tr><td>${p.toUpperCase()}</td>`;
+    for(const k of LINE_ORDER){ const s=AGG[p][h].all[k];
+      if(!s||!s.decided){ html+=`<td class="mut">—</td>`; continue; }
+      const g=sig(s.revRate,s.decided); html+=`<td class="${g.cls} ${s.lowN?'lown':''}">${fmt(s.revRate,0)}</td>`; }
+    html+=`</tr>`; }
+  html+=`</tbody></table></div>`; v.innerHTML=html;
+}
+
+function noData(){ return `<div class="card mut">No data for ${$('pair').value} / ${$('horizon').value}. ${LEVEL==='admin'?'Run a refresh including this pair/horizon.':''}</div>`; }
+
+// ── events ───────────────────────────────────────────────────────────────────
+$('loginBtn').onclick=async()=>{ const pw=$('pw').value.trim(); if(!pw)return;
+  const r=await fetch('/api/forecast-analysis/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})}).then(x=>x.json());
+  if(!r.ok){ $('loginMsg').innerHTML='<span class="err">Wrong password</span>'; return; } localStorage.setItem('af_pw',pw); boot(); };
+$('pair').onchange=()=>{ syncHorizons(); render(); };
+$('horizon').onchange=render;
+$('adminToggle').onclick=()=>{ const p=$('refreshPanel'); p.style.display=p.style.display==='none'?'':'none'; };
+$('runRefresh').onclick=async()=>{
+  const pairs=$('rPairs').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const horizons=[...document.querySelectorAll('.rhz:checked')].map(c=>c.value); if(!horizons.length)return;
+  $('out').style.display=''; $('out').textContent='Submitting…'; $('runRefresh').disabled=true;
+  const log=(m,c='')=>{ $('out').innerHTML+=`\n${c?`<span class="${c}">`:''}${m}${c?'</span>':''}`; $('out').scrollTop=$('out').scrollHeight; };
+  try{ const start=await api('/api/forecast-analysis/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs:pairs.length?pairs:undefined,horizons})});
+    if(!start.j?.ok) throw new Error(start.j?.error||'failed'); log('Job '+start.j.jobId+' started…','run');
+    for(let i=0;i<900;i++){ await new Promise(r=>setTimeout(r,3000)); const st=await api(`/api/forecast-analysis/refresh/status/${start.j.jobId}`);
+      if(st.j?.status==='running'){ $('out').innerHTML=$('out').innerHTML.replace(/\n· .*$/,''); log('· '+(st.j.elapsed||0)+'s — '+((st.j.log||[]).slice(-1)[0]||''),'run'); continue; }
+      if(st.j?.status==='done'){ (st.j.log||[]).forEach(l=>log(l)); log('✓ Done — reloading…','ok'); setTimeout(boot,1200); break; }
+      if(st.j?.status==='error'){ log('✗ '+(st.j.error||'error'),'err'); break; } }
+  }catch(e){ log('✗ '+e.message,'err'); } finally{ $('runRefresh').disabled=false; }
+};
+boot();
+</script>
+</body>
+</html>

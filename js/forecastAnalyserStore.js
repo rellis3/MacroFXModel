@@ -41,9 +41,16 @@ export async function discoverPairs() {
 
 // Precompute the slice rollups the dashboard exposes.
 function buildAggregates(records) {
+  // Vol terciles (low/mid/high σ) over this pair's windows — the regime the
+  // reference study found to be the biggest driver.
+  const sigmas = records.map(r => r.sigma).filter(s => s > 0).sort((a, b) => a - b);
+  const q1 = sigmas[Math.floor(sigmas.length / 3)] ?? 0;
+  const q2 = sigmas[Math.floor(sigmas.length * 2 / 3)] ?? 0;
+  const volBucket = r => (r.sigma <= q1 ? '1·low-vol' : r.sigma <= q2 ? '2·mid-vol' : '3·high-vol');
   return {
     all:      aggregate(records, () => 'all').all,
     byRegime: aggregate(records, r => r.regime),
+    byVol:    aggregate(records, volBucket),
     byDow:    aggregate(records, r => String(r.dow)),
     byYear:   aggregate(records, r => r.date.slice(0, 4)),
     byMonth:  aggregate(records, r => r.date.slice(0, 7)),
