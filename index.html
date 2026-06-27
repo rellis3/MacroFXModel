@@ -79,6 +79,7 @@
     </div>
   </div>
   <button class="dark-btn" onclick="openBetaPanel()" id="betaBtn" title="Beta Factor Exposure Monitor — stochastic control system" style="border-color:#7c6fe0;color:#9d96f0"><span>β</span><span>Beta</span></button>
+  <button class="dark-btn" onclick="openIfoPanel()" id="ifoBtn" title="ifo Business Climate Index — German business sentiment (display only)" style="border-color:#d9485f;color:#ef6b80"><span>🇩🇪</span><span>IFO</span></button>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
   <span class="upd" id="upd"></span>
 </div>
@@ -261,6 +262,45 @@ Example:
 .bp-align-bar{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--red),var(--amber,#f4b942),var(--green));margin:4px 0 8px;position:relative}
 .bp-align-ptr{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--text);border:2px solid var(--bg);transform:translateX(-50%);transition:left .4s}
 @media(max-width:640px){.bp-grid{grid-template-columns:1fr}}
+</style>
+
+<!-- IFO — DAX SENTIMENT MODAL (display only, no trade signal) -->
+<div class="oi-modal-overlay" id="ifoPanelOverlay" onclick="if(event.target===this)closeIfoPanel()">
+  <div class="oi-modal" style="max-width:760px;max-height:90vh;overflow-y:auto">
+    <div class="oi-modal-hd">
+      <div>
+        <div class="oi-modal-title">🇩🇪 ifo Business Climate — Germany</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">German business sentiment · 2015=100, seasonally adjusted · context for DAX · <b>display only — no trade signal</b></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="oi-btn" onclick="openIfoPanel()" title="Reload data">↺ Refresh</button>
+        <button class="oi-btn" onclick="closeIfoPanel()">✕ Close</button>
+      </div>
+    </div>
+    <div id="ifoPanelContent" style="padding:4px 0">
+      <div style="text-align:center;padding:40px;color:var(--text3);font-size:12px">Loading ifo data…</div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* IFO panel layout */
+.ifo-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.ifo-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.ifo-card-lbl{font-size:9.5px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.ifo-card-val{font-size:26px;font-weight:700;font-family:var(--mono,monospace);line-height:1}
+.ifo-card-sub{font-size:10px;color:var(--text3);margin-top:5px}
+.ifo-up{color:var(--green)}
+.ifo-down{color:var(--red,#ef6b80)}
+.ifo-chart-wrap{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.ifo-chart-title{font-size:9.5px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.ifo-seed-note{background:rgba(244,185,66,.1);border:1px solid rgba(244,185,66,.3);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:10.5px;color:var(--text2);line-height:1.5}
+.ifo-table{width:100%;border-collapse:collapse;font-size:11px}
+.ifo-table th{text-align:left;color:var(--text3);font-weight:500;padding:4px 8px;border-bottom:1px solid var(--border)}
+.ifo-table td{padding:4px 8px;border-bottom:1px solid var(--s2);font-family:var(--mono,monospace);font-size:10.5px}
+.ifo-table tr:last-child td{border-bottom:none}
+.ifo-table td.num{text-align:right}
+@media(max-width:640px){.ifo-cards{grid-template-columns:1fr}}
 </style>
 
 <!-- HMM V2 SHADOW MODEL MODAL -->
@@ -998,6 +1038,111 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
   return parts.join('');
 }
 
+})();
+</script>
+
+<script>
+// ── IFO Panel — German business-climate display (no trade signal) ─────────────
+(function() {
+  const fmt = v => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(1);
+  const monthLbl = m => {
+    const [y, mo] = String(m).split('-');
+    const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return (names[(+mo) - 1] || mo) + ' ' + y;
+  };
+
+  function sparkline(series) {
+    if (!series.length) return '';
+    const w = 680, h = 90, pad = 6;
+    const vals = series.map(d => d.value);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const span = (max - min) || 1;
+    const x = i => pad + (i / Math.max(1, series.length - 1)) * (w - 2 * pad);
+    const y = v => pad + (1 - (v - min) / span) * (h - 2 * pad);
+    const pts = series.map((d, i) => `${x(i).toFixed(1)},${y(d.value).toFixed(1)}`);
+    const path = 'M' + pts.join(' L');
+    const dots = series.map((d, i) => {
+      const up = i === 0 ? true : d.value >= series[i - 1].value;
+      return `<circle cx="${x(i).toFixed(1)}" cy="${y(d.value).toFixed(1)}" r="2.6" fill="${up ? 'var(--green)' : '#ef6b80'}"></circle>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="display:block">
+      <polyline points="${pts.join(' ')}" fill="none" stroke="#5b7cfa" stroke-width="1.4"></polyline>
+      ${dots}
+    </svg>`;
+  }
+
+  function render(data) {
+    const el = document.getElementById('ifoPanelContent');
+    const series = Array.isArray(data.series) ? data.series.slice().filter(d => d && d.value != null) : [];
+    if (!series.length) { el.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)">No ifo data in <code>ifo.json</code>.</div>'; return; }
+    const latest = series[series.length - 1];
+    const prior  = series.length > 1 ? series[series.length - 2] : null;
+    const chg    = prior ? (latest.value - prior.value) : null;
+    const dirCls = chg == null ? '' : (chg >= 0 ? 'ifo-up' : 'ifo-down');
+    const arrow  = chg == null ? '' : (chg >= 0 ? '▲' : '▼');
+
+    const seedNote = data.seed
+      ? `<div class="ifo-seed-note">⚠ <b>Seed/placeholder data.</b> ${data._note || 'Replace <code>ifo.json</code> series with the official figures from ifo.de.'}</div>`
+      : '';
+
+    const hist = series.slice(-12).reverse().map(d => {
+      const idx = series.indexOf(d);
+      const c = idx > 0 ? (d.value - series[idx - 1].value) : null;
+      const cCls = c == null ? '' : (c >= 0 ? 'ifo-up' : 'ifo-down');
+      const cStr = c == null ? '—' : (c >= 0 ? '+' : '') + c.toFixed(1);
+      return `<tr><td>${monthLbl(d.month)}</td><td class="num">${fmt(d.value)}</td><td class="num ${cCls}">${cStr}</td></tr>`;
+    }).join('');
+
+    el.innerHTML = `
+      ${seedNote}
+      <div class="ifo-cards">
+        <div class="ifo-card">
+          <div class="ifo-card-lbl">Latest reading</div>
+          <div class="ifo-card-val">${fmt(latest.value)}</div>
+          <div class="ifo-card-sub">${monthLbl(latest.month)}</div>
+        </div>
+        <div class="ifo-card">
+          <div class="ifo-card-lbl">Prior month</div>
+          <div class="ifo-card-val">${prior ? fmt(prior.value) : '—'}</div>
+          <div class="ifo-card-sub">${prior ? monthLbl(prior.month) : ''}</div>
+        </div>
+        <div class="ifo-card">
+          <div class="ifo-card-lbl">Month-on-month</div>
+          <div class="ifo-card-val ${dirCls}">${chg == null ? '—' : (chg >= 0 ? '+' : '') + chg.toFixed(1)} <span style="font-size:16px">${arrow}</span></div>
+          <div class="ifo-card-sub">${data.basis || '2015=100'}</div>
+        </div>
+      </div>
+      <div class="ifo-chart-wrap">
+        <div class="ifo-chart-title">ifo index — last ${series.length} months</div>
+        ${sparkline(series)}
+      </div>
+      <div class="ifo-chart-wrap">
+        <div class="ifo-chart-title">History — last 12 months</div>
+        <table class="ifo-table">
+          <thead><tr><th>Month</th><th class="num">ifo</th><th class="num">Change</th></tr></thead>
+          <tbody>${hist}</tbody>
+        </table>
+      </div>
+      <div style="font-size:9.5px;color:var(--text3);text-align:right">Source: ${data.source || 'ifo Institute'} · updated ${data.updated || '—'}</div>
+    `;
+  }
+
+  window.openIfoPanel = async function() {
+    document.getElementById('ifoPanelOverlay').style.display = 'flex';
+    const el = document.getElementById('ifoPanelContent');
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-size:12px">Loading ifo data…</div>';
+    try {
+      const r = await fetch('/ifo.json?t=' + Math.floor(Date.now() / 60000));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      render(await r.json());
+    } catch (e) {
+      el.innerHTML = `<div style="padding:30px;text-align:center;color:var(--red,#ef6b80);font-size:12px">Could not load <code>ifo.json</code> — ${e.message}</div>`;
+    }
+  };
+
+  window.closeIfoPanel = function() {
+    document.getElementById('ifoPanelOverlay').style.display = 'none';
+  };
 })();
 </script>
 
