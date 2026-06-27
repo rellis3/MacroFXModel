@@ -276,6 +276,29 @@
     };
   }
 
+  // ── Backtest primitive: book weights for EVERY week (same causal pipeline) ──
+  // Returns dense per-week data so a backtester applies week t's book to week
+  // t+1's returns. run() above is just the last week of this.
+  function runHistory(payload) {
+    const { dates, series } = alignWeekly(payload);
+    if (!dates.length) return { error: 'no data', dates: [] };
+    const gli = computeGLI(dates, series);
+    const reg = classify(dates, series, gli);
+    const m = CFG.PAIRS.length, idx = {};
+    CFG.PAIRS.forEach((p, j) => { idx[p] = j; });
+    const weights = [], regime = [], gate = [], grossMult = [], conviction = [], impulse = [];
+    for (let i = 0; i < dates.length; i++) {
+      const row = new Array(m).fill(0);
+      const { book } = buildBook(gli, reg, i);            // identical to live
+      book.forEach((b) => { row[idx[b.pair]] = b.weight; });
+      weights.push(row);
+      regime.push(reg.regime[i]); gate.push(reg.gate[i]); grossMult.push(reg.grossMult[i]);
+      conviction.push(isNum(reg.conviction[i]) ? reg.conviction[i] : 0);
+      impulse.push(isNum(gli.impulse[i]) ? gli.impulse[i] : 0);
+    }
+    return { dates, pairs: CFG.PAIRS.slice(), weights, regime, gate, grossMult, conviction, impulse };
+  }
+
   function round(x) { return isNum(x) ? Math.round(x * 1000) / 1000 : null; }
   function phaseLabel(p) {
     if (!isNum(p)) return '—';
@@ -325,5 +348,5 @@
     return payload;
   }
 
-  return { run, synthetic, alignWeekly, CFG, KEYS, _math: { ffill, sma, rollingZ, roc, lag } };
+  return { run, runHistory, synthetic, alignWeekly, CFG, KEYS, _math: { ffill, sma, rollingZ, roc, lag } };
 }));
