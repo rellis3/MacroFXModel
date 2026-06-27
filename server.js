@@ -31,14 +31,15 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries } from './js/volForecast.
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2 } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
+import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
-import { computeBacktest as computeGliBacktest, weeklyReturns as gliWeeklyReturns, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
+import { computeBacktest as computeGliBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
 import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
@@ -3123,18 +3124,55 @@ async function _gliFetchFred(fredKey) {
 }
 
 // Load each pair's weekly returns from R2 (loadM1ForPair) → Map<weekDate, ret>.
+// Per-pair weekly-returns cache (survives across runs within an instance, so the
+// heavy R2 read happens at most once per deploy per pair).
+const _gliFxCache = new Map();   // stem -> { rets: Map, at: number }
+const GLI_FX_TTL = 12 * 60 * 60 * 1000;
+
+// Memory-light: read ONLY close+datetime (not all 6 OHLCV columns) for one pair,
+// reduce straight to weekly returns, and free the rows. Full-M1 decode of 26
+// pairs was ~1.7GB and OOM-restarted the Railway process mid-job (which wiped the
+// job map → "Job not found"). This keeps peak to a single pair's two columns.
+async function _gliWeeklyForPair(stem) {
+  const cached = _gliFxCache.get(stem);
+  if (cached && Date.now() - cached.at < GLI_FX_TTL) return cached.rets;
+
+  let ab = null;
+  try { ab = await gliFetchFromR2(stem); } catch (e) { console.warn(`[gli-bt] R2 ${stem}: ${e.message}`); }
+  if (!ab) {
+    const fp = path.join(BT_M1_DIR, `${stem}_m1.parquet`);
+    if (fs.existsSync(fp)) { const b = fs.readFileSync(fp); ab = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); }
+  }
+  if (!ab) return null;
+
+  // Stream in row chunks and reduce to weekly as we go — a full-file decode of
+  // one pair is ~3.7M rows ≈ 1.5GB; chunked it stays ~0.2GB regardless of size.
+  const file = { byteLength: ab.byteLength, slice: (s, e) => Promise.resolve(ab.slice(s, e)) };
+  const meta = await gliParquetMeta(file);
+  const total = Number(meta.num_rows);
+  const CHUNK = 150000;
+  const byWeek = new Map();
+  for (let start = 0; start < total; start += CHUNK) {
+    const end = Math.min(start + CHUNK, total);
+    let rows;
+    await gliParquetRead({ file, metadata: meta, columns: ['close', 'datetime'], rowFormat: 'object', rowStart: start, rowEnd: end, onComplete: (d) => (rows = d) });
+    gliAccumulateWeekly(byWeek, rows.map((r) => ({ t: (r.datetime instanceof Date ? r.datetime : new Date(r.datetime)).getTime(), close: r.close })));
+    rows = null;
+    await new Promise((r) => setImmediate(r));   // yield so HTTP (status polls / healthcheck) stays responsive
+  }
+  const rets = gliWeeklyFromByWeek(byWeek);
+  _gliFxCache.set(stem, { rets, at: Date.now() });
+  return rets;
+}
+
 async function _gliLoadFx(engine) {
   const fxByPair = {};
   let found = 0;
   for (const pair of engine.CFG.PAIRS) {
     const stem = (GLI_FX_ALIAS[pair] || pair).toLowerCase();
     try {
-      const m1 = await loadM1ForPair(stem);     // { times: Int32 epoch-sec, closes: Float32 } | null
-      if (!m1 || !m1.n) continue;
-      const points = new Array(m1.n);
-      for (let i = 0; i < m1.n; i++) points[i] = { t: m1.times[i] * 1000, close: m1.closes[i] };
-      fxByPair[pair] = gliWeeklyReturns(points);
-      found++;
+      const rets = await _gliWeeklyForPair(stem);
+      if (rets && rets.size) { fxByPair[pair] = rets; found++; }
     } catch (e) { console.warn(`[gli-bt] FX ${pair} failed: ${e.message}`); }
   }
   return { fxByPair, found };
@@ -3183,7 +3221,13 @@ app.post('/api/global-liquidity/backtest/run', express.json({ limit: '256kb' }),
 
 app.get('/api/global-liquidity/backtest/status/:jobId', (req, res) => {
   const job = gliBtJobs.get(req.params.jobId);
-  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (!job) {
+    // Job map can be lost (purge / restart); if a fresh result is cached, serve it.
+    if (GLI_BT_CACHE.result && Date.now() - GLI_BT_CACHE.builtAt < GLI_BT_TTL) {
+      return res.json({ ok: true, status: 'done', cached: true, data: GLI_BT_CACHE.result });
+    }
+    return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  }
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), phase: job.phase ?? 'Running…' });
   }

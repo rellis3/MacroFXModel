@@ -432,20 +432,32 @@
       'FRED is synthetic on the server — set FRED_KEY on Railway for a real number.</div>';
     document.getElementById('btResult').innerHTML = html;
   }
-  function btPoll(jobId, t0) {
+  function btPoll(jobId, t0, fails) {
+    fails = fails || 0;
     fetch('/api/global-liquidity/backtest/status/' + jobId)
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        // 404 can be transient while the server is busy decoding; tolerate a few.
+        if (r.status === 404 && fails < 8) throw new Error('__retry__');
+        return r.json();
+      })
       .then(function (j) {
         if (j.status === 'running') {
           btSetStatus((j.phase || 'running') + '  ·  ' + (j.elapsed || 0) + 's');
-          setTimeout(function () { btPoll(jobId, t0); }, 2000);
+          setTimeout(function () { btPoll(jobId, t0, 0); }, 3000);
         } else if (j.status === 'done') {
           btRunning = false; document.getElementById('btRun').disabled = false;
           btSetStatus((j.cached ? 'cached' : 'done') + '  ·  ' + Math.round((Date.now() - t0) / 1000) + 's');
           btRender(j.data);
         } else { btFail(j.error || 'failed'); }
       })
-      .catch(function (e) { btFail(e.message); });
+      .catch(function (e) {
+        // Transient network/timeout/404 during heavy decode → keep polling for
+        // up to ~5 min before giving up; the job runs to completion server-side.
+        if (fails < 60 && (e.message === '__retry__' || /fetch|network|load|reset|timeout/i.test(e.message))) {
+          btSetStatus('working…  ·  ' + Math.round((Date.now() - t0) / 1000) + 's');
+          setTimeout(function () { btPoll(jobId, t0, fails + 1); }, 5000);
+        } else { btFail(e.message); }
+      });
   }
   function btFail(msg) {
     btRunning = false; document.getElementById('btRun').disabled = false;
