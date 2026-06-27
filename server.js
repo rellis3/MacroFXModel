@@ -38,6 +38,8 @@ import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEV
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
+import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
+import { computeBacktest as computeGliBacktest, weeklyReturns as gliWeeklyReturns, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
 import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
@@ -3091,6 +3093,105 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
     return res.json({ ok: true, status: 'running',
       elapsed: Math.round((Date.now() - job.startedAt) / 1000),
       phase: job.phase ?? 'Running…' });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Global Liquidity real-data backtest (runs on Railway: FRED_KEY + R2 FX) ────
+// POST /api/global-liquidity/backtest/run        → { ok, jobId }
+// GET  /api/global-liquidity/backtest/status/:id → { ok, status, ...result }
+// Reuses the same engine as the phone page and the shared backtestCore so the
+// dashboard, CLI and server can never drift. FX comes from R2 via loadM1ForPair;
+// FRED comes from the FRED API using the Railway FRED_KEY.
+const gliBtJobs   = new Map();
+const GLI_BT_CACHE = { result: null, builtAt: 0 };
+const GLI_BT_TTL   = 6 * 60 * 60 * 1000;   // 6h — FRED/FX update at most daily
+
+function _purgeStaleGliJobs() {
+  const now = Date.now();
+  for (const [id, j] of gliBtJobs) if (now - j.startedAt > 30 * 60 * 1000) gliBtJobs.delete(id);
+}
+
+// Pull each FRED series (Railway key) into the /api/fredhistory payload shape.
+async function _gliFetchFred(fredKey) {
+  const payload = {};
+  for (const [k, sid] of Object.entries(GLI_FRED_IDS)) {
+    try {
+      const map = await fetchFredSeries(sid, '2008-01-01', fredKey);
+      payload[k] = [...map.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([date, value]) => ({ date, value }));
+    } catch (e) {
+      console.warn(`[gli-bt] FRED ${sid} failed: ${e.message}`);
+      payload[k] = [];
+    }
+  }
+  return payload;
+}
+
+// Load each pair's weekly returns from R2 (loadM1ForPair) → Map<weekDate, ret>.
+async function _gliLoadFx(engine) {
+  const fxByPair = {};
+  let found = 0;
+  for (const pair of engine.CFG.PAIRS) {
+    const stem = (GLI_FX_ALIAS[pair] || pair).toLowerCase();
+    try {
+      const m1 = await loadM1ForPair(stem);     // { times: Int32 epoch-sec, closes: Float32 } | null
+      if (!m1 || !m1.n) continue;
+      const points = new Array(m1.n);
+      for (let i = 0; i < m1.n; i++) points[i] = { t: m1.times[i] * 1000, close: m1.closes[i] };
+      fxByPair[pair] = gliWeeklyReturns(points);
+      found++;
+    } catch (e) { console.warn(`[gli-bt] FX ${pair} failed: ${e.message}`); }
+  }
+  return { fxByPair, found };
+}
+
+app.post('/api/global-liquidity/backtest/run', express.json({ limit: '256kb' }), (req, res) => {
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY || req.body?.fredKey;
+  if (!fredKey) {
+    return res.status(400).json({ ok: false,
+      error: 'FRED_KEY not set — add it to Railway env vars (or pass fredKey in the request body).' });
+  }
+  const force = req.body?.force === true || req.body?.force === 'true';
+
+  const jobId     = `gli_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleGliJobs();
+
+  // Serve a fresh cached result instantly (a phone tap shouldn't re-fetch R2 + FRED).
+  if (!force && GLI_BT_CACHE.result && Date.now() - GLI_BT_CACHE.builtAt < GLI_BT_TTL) {
+    gliBtJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, cached: true, data: GLI_BT_CACHE.result } });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+
+  gliBtJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching FRED…' });
+  (async () => {
+    try {
+      const engine = loadGliEngine();
+      const payload = await _gliFetchFred(fredKey);
+      gliBtJobs.set(jobId, { status: 'running', startedAt, phase: 'Loading FX from R2…' });
+      const { fxByPair, found } = await _gliLoadFx(engine);
+      if (!found) throw new Error('no FX data loaded (R2/disk unavailable)');
+      gliBtJobs.set(jobId, { status: 'running', startedAt, phase: 'Running engine + walk-forward…' });
+      const data = computeGliBacktest({ engine, payload, fxByPair, fredSource: 'FRED API (Railway key)' });
+      GLI_BT_CACHE.result = data; GLI_BT_CACHE.builtAt = Date.now();
+      gliBtJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, cached: false, data } });
+      console.log(`[gli-bt] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s, ${found} pairs)`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[gli-bt] error:', msg, e?.stack ?? '');
+      gliBtJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/global-liquidity/backtest/status/:jobId', (req, res) => {
+  const job = gliBtJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), phase: job.phase ?? 'Running…' });
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
