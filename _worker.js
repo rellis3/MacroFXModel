@@ -7,7 +7,7 @@
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token',
 };
 
 function json(data, status = 200) {
@@ -857,6 +857,17 @@ export default {
           const { key, data, timestamp } = body;
           if (!key) return err('key required', 400);
           if (!isAllowedKVKey(key)) return err('key not permitted', 403);
+          // Auth gate for sensitive keys (credentials/config). These can overwrite
+          // stored broker credentials and bot config, so writes must present a
+          // shared secret in the X-Auth-Token header matching env.KV_WRITE_SECRET.
+          // Market-data cache keys remain unauthenticated for dashboard writes.
+          if (/credentials|config|override|force_unlock/.test(key)) {
+            const provided = request.headers.get('X-Auth-Token') || '';
+            const expected = env.KV_WRITE_SECRET || '';
+            if (!expected || provided !== expected) {
+              return err('unauthorized: valid X-Auth-Token required for this key', 401);
+            }
+          }
           // Permanent keys have no TTL — they persist until explicitly overwritten.
           // Includes all user config, credentials, journals, and trained ML params.
           // Market-data keys get a 48h KV TTL as a hard safety net.

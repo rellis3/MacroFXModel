@@ -273,6 +273,10 @@ function walkLimitOrder(bars, side, entry, tp, sl, refOpen) {
       if (!hit) continue;
       filled   = true;
       fillTime = bar.time;
+      // Same-bar both-hit tie-break is PESSIMISTIC: the stop is tested BEFORE the
+      // target on every bar (incl. the fill bar), so a bar whose range spans both
+      // SL and TP is booked as a loss. The intrabar path is unknown, so this must
+      // stay SL-first — do not reorder these checks.
       if (isSell) {
         if (bar.high >= sl) return { outcome: 'loss', pnlPct: -(sl - entry) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist: 0, maeDist: sl - entry };
         if (bar.low  <= tp) return { outcome: 'win',  pnlPct:  (entry - tp) / refOpen * 100, fillTime, exitTime: bar.time, mfeDist: entry - tp, maeDist: 0 };

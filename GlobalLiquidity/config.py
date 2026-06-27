@@ -75,11 +75,11 @@ CB_BLOCKS = {
         "proxy": True,
     },
     "CNY": {
-        # PBoC: no clean weekly FRED series. Proxy with FX reserves + USDCNY.
+        # PBoC: no clean weekly FRED series. Proxy with FX reserves.
+        # TRESEGCNM052N is already denominated in USD, so NO FX translation.
         "components": {"reserves": "TRESEGCNM052N"},
         "formula": "reserves",
-        "fx": "DEXCHUS",                            # CNY per USD -> inverted
-        "fx_inverted": True,
+        "fx": None,                                 # already USD; do not divide by USDCNY
         "proxy": True,
     },
 }

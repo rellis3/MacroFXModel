@@ -129,21 +129,24 @@ def _build_dataset(events: list[dict]) -> tuple[list[list[float]], list[int]]:
             if zid:
                 zone_entries[zid] = ev
 
-        elif etype == 'TP2_HIT' or (etype == 'CLOSE' and ev.get('reason') == 'TP2_HIT'):
-            zid = ev.get('zone_id', '')
-            if zid in zone_entries:
+        elif etype == 'TRADE_CLOSED':
+            zid    = ev.get('zone_id', '')
+            reason = ev.get('reason') or ev.get('result', '')
+            if zid not in zone_entries:
+                continue
+            if reason == 'TP2_HIT':
                 entry = zone_entries.pop(zid)
                 feats = _extract_features(entry)
                 X.append(feats)
                 y.append(1)
-
-        elif etype == 'SL_HIT':
-            zid = ev.get('zone_id', '')
-            if zid in zone_entries:
+            elif reason == 'SL_HIT':
                 entry = zone_entries.pop(zid)
                 feats = _extract_features(entry)
                 X.append(feats)
                 y.append(0)
+            # EXPIRED / breakeven / other: not a labelled win/loss, drop entry
+            else:
+                zone_entries.pop(zid, None)
 
     return X, y
 

@@ -134,7 +134,7 @@ DEFAULT_CFG: dict = {
     'candle_hold':        4,
     'vol_z_max':          2.5,
     'entry_decay_max':    0.25,
-    'consensus_min':      3,
+    'consensus_min':      2,   # ≥2 OTHER pairs share the regime (excludes self; matches backtest E8/G3 gate)
     'entry_fail_cooldown_secs': 300,  # 5 min cooldown after a failed MT5 order
     # Hold / exit
     'hold_conf':          55.0,
@@ -720,11 +720,19 @@ def within_window(cfg: dict) -> bool:
 
 # ── Cross-pair consensus ───────────────────────────────────────────────────────
 
-def consensus_score(pairs: list[str], all_regimes: dict, target_regime: str) -> tuple[int, int]:
-    """Returns (count_in_regime, total_pairs)."""
+def consensus_score(pairs: list[str], all_regimes: dict, target_regime: str,
+                    self_pair: str = '') -> tuple[int, int]:
+    """Returns (count_of_OTHER_pairs_in_regime, total_pairs).
+
+    The count EXCLUDES ``self_pair`` so it represents how many *other* pairs
+    share ``target_regime`` (0..n-1). ``total_pairs`` is the full pair count n;
+    the score normaliser divides by ``total - 1`` (= number of peers). This
+    matches the backtest convention in backtest_v3.build_consensus.
+    """
     count = sum(
         1 for p in pairs
-        if all_regimes.get(p, {}).get('regime', '').upper() == target_regime.upper()
+        if p != self_pair
+        and all_regimes.get(p, {}).get('regime', '').upper() == target_regime.upper()
     )
     return count, len(pairs)
 
@@ -1041,7 +1049,7 @@ def run(url: str, paper_mode: bool) -> None:
 
                 # Telegram: regime change alert
                 if prev_regime and regime in TRADEABLE:
-                    cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime)
+                    cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime, self_pair=pair)
                     price_now = get_price(pair, url) or 0.0
                     macro_snap = macro.snapshot(pair)
                     msg = regime_change_alert(
@@ -1068,7 +1076,7 @@ def run(url: str, paper_mode: bool) -> None:
             # ── Per-pair inputs shared by score, entry, and exit ───────────
             sess_mult    = macro.session_multiplier(session_lbl)
             eff_conf     = confidence * sess_mult
-            cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime)
+            cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime, self_pair=pair)
 
             macro_inputs = macro.score_inputs(pair)
             reg_score = compute_regime_score(
@@ -1196,7 +1204,7 @@ def run(url: str, paper_mode: bool) -> None:
 
                 # X8 — consensus collapsed (checked against entry regime, not current)
                 if not close_reason:
-                    cons_x8, cons_x8_total = consensus_score(cfg['pairs'], all_regimes, entry_r)
+                    cons_x8, cons_x8_total = consensus_score(cfg['pairs'], all_regimes, entry_r, self_pair=pair)
                     if cons_x8_total > 1 and cons_x8 < cfg.get('consensus_min', 2):
                         close_reason = f'Consensus collapsed {cons_x8}/{cons_x8_total} (X8)'
                         exit_code = 'X8'
@@ -1310,7 +1318,7 @@ def run(url: str, paper_mode: bool) -> None:
                 # Heartbeat
                 hb_interval = cfg.get('heartbeat_min', 120) * 60
                 if hb_interval > 0 and now_t - last_heartbeat.get(pair, 0) >= hb_interval:
-                    cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime)
+                    cons, cons_total = consensus_score(cfg['pairs'], all_regimes, regime, self_pair=pair)
                     pos_info = {
                         'direction':   pos['direction'],
                         'pnl_pips':    pnl_pips,

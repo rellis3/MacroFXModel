@@ -852,7 +852,7 @@ async function computeHedgeSignals(force = false) {
       sigData.signals.push(sig);
 
       if (tgCfg?.token && tgCfg?.chatId) {
-        const bullet = spreadResult.dev > 0 ? '📈' : '📉';
+        const bullet = (spreadResult !== null ? spreadResult.dev : z) > 0 ? '📈' : '📉';
         const msg = `${bullet} <b>Hedge Signal — ${pa} / ${pb}</b>\n`
           + `Spread Z: <b>${sig.z_score}</b>  |  Score: <b>${score}</b>\n`
           + `<b>${pa}</b>: ${dirA}  (β_vix = ${sig.beta_vix_a ?? 'n/a'})\n`
