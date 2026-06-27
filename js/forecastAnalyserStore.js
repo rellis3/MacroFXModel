@@ -54,6 +54,8 @@ function buildAggregates(records) {
     bySession: aggregate(records, (r, ln) => ln.session),       // per-touch
     byBudget:  aggregate(records, (r, ln) => ln.budgetBucket),  // per-touch (range consumed at touch)
     byGap:     aggregate(records, r => r.gapBucket),
+    byEvent:   aggregate(records, r => r.eventBucket),
+    byPhase:   aggregate(records, r => r.monthPhase),
     byDow:     aggregate(records, r => String(r.dow)),
     byYear:    aggregate(records, r => r.date.slice(0, 4)),
     byMonth:   aggregate(records, r => r.date.slice(0, 7)),

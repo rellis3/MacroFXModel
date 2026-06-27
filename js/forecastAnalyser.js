@@ -225,9 +225,16 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
     const prevClose = i > 0 ? d1Bars[i - 1].close : open;
     const gapSig = (sigma > 0 && prevClose > 0) ? (open - prevClose) / prevClose / sigma : 0;
     const gapBucket = Math.abs(gapSig) < 0.25 ? 'flat' : gapSig > 0 ? 'gap-up' : 'gap-down';
+    // Deterministic calendar tags (no external data): US NFP = first Friday of the
+    // month; month phase = early/mid/late. Event days tend to break levels.
+    const [yy, mm, dd] = date.split('-').map(Number);
+    const dow1 = new Date(Date.UTC(yy, mm - 1, 1)).getUTCDay();
+    const firstFri = 1 + ((5 - dow1 + 7) % 7);
+    const eventBucket = (dd === firstFri) ? 'NFP' : 'normal';
+    const monthPhase  = dd <= 10 ? '1·early' : dd <= 20 ? '2·mid' : '3·late';
     records.push({
       date, horizon, regime, dow, sigma: +(sigma * 100).toFixed(4),  // σ as % of price
-      gapBucket, gapSig: +gapSig.toFixed(3),
+      gapBucket, gapSig: +gapSig.toFixed(3), eventBucket, monthPhase,
       open: +open.toFixed(6),
       realized: { high: +hi.toFixed(6), low: +lo.toFixed(6), close: +bars[bars.length - 1].close.toFixed(6) },
       lines,
