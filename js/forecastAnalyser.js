@@ -222,13 +222,19 @@ export function aggregate(records, sliceFn = () => 'all') {
     groups[g] ??= {};
     for (const ln of rec.lines) {
       const key = `${ln.name}_${ln.side}`;
-      const a = (groups[g][key] ??= { line: ln.name, side: ln.side, windows: 0, hits: 0, decided: 0, noIntraday: 0, reverted: 0, continued: 0, closeBeyond: 0, retraceSum: 0, extSum: 0 });
+      const a = (groups[g][key] ??= { line: ln.name, side: ln.side, windows: 0, hits: 0, decided: 0, noIntraday: 0, reverted: 0, continued: 0, closeBeyond: 0, retraceSum: 0, extSum: 0, inSum: 0, outSum: 0, inNorm: 0, outNorm: 0 });
       a.windows++;
       if (ln.closeBeyond) a.closeBeyond++;     // for calibration (% of windows closing beyond the line)
       if (!ln.hit) continue;
       a.hits++;
       if (ln.outcome === 'no_intraday') { a.noIntraday++; continue; }
       a.decided++;
+      // MAE/MFE excursions from the touch (every decided touch, regardless of outcome).
+      // excIn = max move toward open (favourable for a fade); excOut = max move away
+      // (favourable for a follow). Normalize by the day's σ for a vol-fair E-ratio.
+      a.inSum  += ln.retracePct; a.outSum += ln.extPct;
+      const sg = rec.sigma > 0 ? rec.sigma : 0;
+      if (sg) { a.inNorm += ln.retracePct / sg; a.outNorm += ln.extPct / sg; }
       if (ln.outcome === 'reverted')  { a.reverted++;  a.retraceSum += ln.retracePct; }
       if (ln.outcome === 'continued') { a.continued++; a.extSum     += ln.extPct; }
     }
@@ -242,8 +248,13 @@ export function aggregate(records, sliceFn = () => 'all') {
       a.avgRetrace      = a.reverted ? +(a.retraceSum / a.reverted).toFixed(4) : 0;
       a.avgExt          = a.continued ? +(a.extSum / a.continued).toFixed(4) : 0;
       a.closeBeyondRate = a.windows ? +(a.closeBeyond / a.windows * 100).toFixed(1) : 0;
+      // MAE/MFE: avg excursion toward open (mfe-fade) vs away (mae-fade) over all
+      // decided touches, plus the vol-normalized E-ratio (>1 = reversion-favoured).
+      a.avgMfe          = a.decided ? +(a.inSum  / a.decided).toFixed(4) : 0;   // toward open
+      a.avgMae          = a.decided ? +(a.outSum / a.decided).toFixed(4) : 0;   // away from open
+      a.eRatio          = a.outNorm > 1e-9 ? +(a.inNorm / a.outNorm).toFixed(3) : (a.inNorm > 0 ? 9 : 0);
       a.lowN            = a.decided < 30;
-      delete a.retraceSum; delete a.extSum;
+      delete a.retraceSum; delete a.extSum; delete a.inSum; delete a.outSum; delete a.inNorm; delete a.outNorm;
     }
   }
   return groups;
