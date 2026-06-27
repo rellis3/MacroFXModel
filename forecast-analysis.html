@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Forecast Level Analyser</title>
+<style>
+  :root{ --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+         --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889; --accent:#5b9dff;
+         --green:#3fb27f; --red:#e5604d; --amber:#e0a93b; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0;font-size:18px;font-weight:650}
+  .sub{color:var(--text2);font-size:12.5px;margin-top:3px}
+  main{padding:18px 22px;max-width:1180px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+  label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:9px 10px;font-size:14px}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .controls > div{min-width:130px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button.sec{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  button:disabled{opacity:.5}
+  .hint{color:var(--text3);font-size:11px;margin-top:8px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .lown{opacity:.4}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--text3)}
+  .bar{display:inline-block;height:11px;border-radius:2px;vertical-align:middle}
+  .bar-rev{background:var(--green)} .bar-con{background:var(--amber)}
+  .lbl-up{color:#8fd4b4} .lbl-dn{color:#e9a39a}
+  .pill{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;background:var(--panel2);color:var(--text3);margin-left:6px}
+  #login{max-width:340px}
+  #refreshPanel{display:none}
+  #out{white-space:pre-wrap;font:11.5px/1.5 ui-monospace,Menlo,monospace;color:var(--text2);background:#0b0d12;border:1px solid var(--line);border-radius:7px;padding:10px;margin-top:10px;max-height:200px;overflow:auto;display:none}
+  .ok{color:var(--green)} .err{color:var(--red)} .run{color:var(--amber)}
+  .legend{color:var(--text3);font-size:11px;line-height:1.7;margin-top:6px}
+  .matrix td.cell{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header>
+  <h1>Forecast Level Analyser <span class="pill" id="lvlPill" style="display:none"></span></h1>
+  <div class="sub" id="cov">Measures what price does at each forecast line — no trading. Reversion vs continuation, per line, per slice.</div>
+</header>
+<main>
+  <!-- login -->
+  <div class="card" id="login" style="display:none">
+    <label>Password</label>
+    <div style="display:flex;gap:8px"><input id="pw" type="password" placeholder="analyser password" style="flex:1"><button id="loginBtn">Enter</button></div>
+    <div class="hint" id="loginMsg"></div>
+  </div>
+
+  <!-- controls -->
+  <div class="card" id="controlsCard" style="display:none">
+    <div class="controls">
+      <div><label>Pair</label><select id="pair"></select></div>
+      <div><label>Horizon</label><select id="horizon"></select></div>
+      <div><label>Slice</label>
+        <select id="slice">
+          <option value="all">Overall</option>
+          <option value="byRegime">By regime</option>
+          <option value="byDow">By day-of-week</option>
+          <option value="byYear">By year</option>
+          <option value="byMonth">By month</option>
+        </select>
+      </div>
+      <div style="min-width:auto"><button id="adminToggle" class="sec" style="display:none">⟳ Refresh data</button></div>
+    </div>
+
+    <div id="refreshPanel" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+      <div class="controls">
+        <div style="min-width:220px"><label>Pairs (blank = all)</label><input id="rPairs" placeholder="eurusd, gold" style="width:100%"></div>
+        <div><label>Horizons</label>
+          <div style="display:flex;gap:10px;font-size:13px;color:var(--text2)">
+            <span><input type="checkbox" class="rhz" value="daily" checked> daily</span>
+            <span><input type="checkbox" class="rhz" value="weekly"> weekly</span>
+            <span><input type="checkbox" class="rhz" value="monthly"> 20d</span>
+          </div>
+        </div>
+        <div style="min-width:auto"><button id="runRefresh">Run refresh</button></div>
+      </div>
+      <div id="out"></div>
+    </div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>Lines:</b> Proj H/L 75p &amp; med (expected high/low), Close 75p &amp; med (expected close displacement) — both sides of the open.
+      <b>Reverted</b> = after touching a line, price returned to the next line inward (toward open) before reaching the next line outward; <b>continued</b> = reached the next line outward first.
+      <b>n</b> = decided touches (with an intraday path). Cells with n &lt; 30 are dimmed — too few to trust.
+      Daily uses M1 from R2; nothing here is a trade — no costs, no stops.
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn','HL50_dn','HL75_dn'];
+const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
+let MANIFEST=null, AGG=null, LEVEL=null;
+
+const hdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
+const fmt = (v,d=1)=> (v===undefined||v===null||isNaN(v))?'—':(+v).toFixed(d);
+
+async function api(path, opts={}){ return fetch(path,{...opts,headers:{...(opts.headers||{}),...hdr()}}).then(r=>r.json().then(j=>({status:r.status,j}))); }
+
+async function boot(){
+  const who = await api('/api/forecast-analysis/whoami');
+  LEVEL = who.j?.level ?? null;
+  const man = await api('/api/forecast-analysis/manifest');
+  if(man.status===401){ $('login').style.display=''; return; }
+  if(!man.j?.ok){ $('cov').innerHTML = '<span class="err">'+(man.j?.error||'No dataset yet — run a refresh.')+'</span>'; if(LEVEL==='admin'){ showApp(); } else { $('login').style.display=''; } return; }
+  MANIFEST = man.j.manifest;
+  const agg = await api('/api/forecast-analysis/aggregates');
+  AGG = agg.j?.aggregates || {};
+  showApp();
+}
+
+function showApp(){
+  $('login').style.display='none';
+  $('controlsCard').style.display=''; $('legendCard').style.display='';
+  if(LEVEL){ $('lvlPill').style.display=''; $('lvlPill').textContent=LEVEL; }
+  if(LEVEL==='admin') $('adminToggle').style.display='';
+  // pairs
+  const pairs = Object.keys(MANIFEST?.pairs||{}).sort();
+  $('pair').innerHTML = pairs.map(p=>`<option>${p}</option>`).join('') || '<option>—</option>';
+  if(MANIFEST){
+    const gen = MANIFEST.generatedAt ? new Date(MANIFEST.generatedAt).toLocaleString() : '—';
+    $('cov').textContent = `${pairs.length} pairs · last refreshed ${gen}`;
+  }
+  syncHorizons(); render();
+}
+function syncHorizons(){
+  const p = $('pair').value;
+  const hz = Object.keys(MANIFEST?.pairs?.[p]?.horizons||{daily:1});
+  $('horizon').innerHTML = hz.map(h=>`<option>${h}</option>`).join('');
+}
+
+function statCell(s){
+  if(!s) return '<td class="mut">—</td>'.repeat(6);
+  const w = 70; // bar width px
+  const rev = Math.round(w*(s.revRate||0)/100), con = Math.round(w*(s.contRate||0)/100);
+  const bar = `<span class="bar bar-rev" style="width:${rev}px"></span><span class="bar bar-con" style="width:${con}px"></span>`;
+  return `<td>${fmt(s.hitRate)}%</td><td class="pos">${fmt(s.revRate)}%</td><td class="neg">${fmt(s.contRate)}%</td>`
+       + `<td>${fmt(s.avgRetrace,3)}</td><td>${fmt(s.avgExt,3)}</td><td>${s.decided||0}</td><td style="text-align:left">${bar}</td>`;
+}
+
+function render(){
+  if(!AGG){ return; }
+  const p=$('pair').value, h=$('horizon').value, slice=$('slice').value;
+  const data = AGG?.[p]?.[h];
+  if(!data){ $('results').innerHTML = `<div class="card mut">No data for ${p} / ${h}. ${LEVEL==='admin'?'Run a refresh including this pair/horizon.':''}</div>`; return; }
+
+  if(slice==='all'){
+    const a = data.all||{};
+    let html = `<div class="card"><table><thead><tr><th>Line</th><th>hit%</th><th>rev%</th><th>cont%</th><th>avgRetr%</th><th>avgExt%</th><th>n</th><th style="text-align:left">rev / cont</th></tr></thead><tbody>`;
+    for(const key of LINE_ORDER){ const s=a[key]; const [nm,side]=key.split('_');
+      html += `<tr class="${s&&s.lowN?'lown':''}"><td class="${side==='up'?'lbl-up':'lbl-dn'}">${LBL[nm]} ${side==='up'?'↑':'↓'}</td>${statCell(s)}</tr>`; }
+    html += `</tbody></table></div>`;
+    $('results').innerHTML = html;
+  } else {
+    // matrix: rows = lines, cols = groups, cell = revRate% (n)
+    const groups = Object.keys(data[slice]||{}).sort();
+    let html = `<div class="card"><div class="hint" style="margin:0 0 8px">Cell = reversion rate % (decided n). Dimmed = n&lt;30.</div><table class="matrix"><thead><tr><th>Line \\ ${slice.replace('by','')}</th>${groups.map(g=>`<th>${g}</th>`).join('')}</tr></thead><tbody>`;
+    for(const key of LINE_ORDER){ const [nm,side]=key.split('_');
+      html += `<tr><td class="${side==='up'?'lbl-up':'lbl-dn'}">${LBL[nm]} ${side==='up'?'↑':'↓'}</td>`;
+      for(const g of groups){ const s=data[slice][g]?.[key];
+        html += s ? `<td class="cell ${s.lowN?'lown':''}">${fmt(s.revRate)}<span class="mut" style="font-size:10px"> (${s.decided})</span></td>` : '<td class="mut">—</td>'; }
+      html += `</tr>`; }
+    html += `</tbody></table></div>`;
+    $('results').innerHTML = html;
+  }
+}
+
+// ── events ───────────────────────────────────────────────────────────────────
+$('loginBtn').onclick = async () => {
+  const pw=$('pw').value.trim(); if(!pw) return;
+  const r = await fetch('/api/forecast-analysis/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})}).then(x=>x.json());
+  if(!r.ok){ $('loginMsg').innerHTML='<span class="err">Wrong password</span>'; return; }
+  localStorage.setItem('af_pw',pw); boot();
+};
+$('pair').onchange = () => { syncHorizons(); render(); };
+$('horizon').onchange = render;
+$('slice').onchange = render;
+$('adminToggle').onclick = () => { const p=$('refreshPanel'); p.style.display = p.style.display==='none'?'':'none'; };
+
+$('runRefresh').onclick = async () => {
+  const pairs = $('rPairs').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const horizons=[...document.querySelectorAll('.rhz:checked')].map(c=>c.value);
+  if(!horizons.length){ return; }
+  $('out').style.display=''; $('out').textContent='Submitting…'; $('runRefresh').disabled=true;
+  const log=(m,c='')=>{ $('out').innerHTML+=`\n${c?`<span class="${c}">`:''}${m}${c?'</span>':''}`; $('out').scrollTop=$('out').scrollHeight; };
+  try{
+    const start = await api('/api/forecast-analysis/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs:pairs.length?pairs:undefined,horizons})});
+    if(!start.j?.ok) throw new Error(start.j?.error||'failed');
+    log('Job '+start.j.jobId+' started…','run');
+    for(let i=0;i<900;i++){ await new Promise(r=>setTimeout(r,3000));
+      const st=await api(`/api/forecast-analysis/refresh/status/${start.j.jobId}`);
+      if(st.j?.status==='running'){ $('out').innerHTML=$('out').innerHTML.replace(/\n· .*$/,''); log('· '+(st.j.elapsed||0)+'s — '+((st.j.log||[]).slice(-1)[0]||''),'run'); continue; }
+      if(st.j?.status==='done'){ (st.j.log||[]).forEach(l=>log(l)); log('✓ Done — reloading…','ok'); setTimeout(boot,1200); break; }
+      if(st.j?.status==='error'){ log('✗ '+(st.j.error||'error'),'err'); break; }
+    }
+  }catch(e){ log('✗ '+e.message,'err'); }
+  finally{ $('runRefresh').disabled=false; }
+};
+
+boot();
+</script>
+</body>
+</html>
