@@ -70,6 +70,42 @@
   .note { font-size: 11px; color: var(--text3); line-height: 1.5; margin-top: 16px; font-family: 'DM Mono', monospace; }
   .err { color: var(--red); font-family: 'DM Mono', monospace; font-size: 13px; padding: 14px; }
   .loading { color: var(--text3); font-family: 'DM Mono', monospace; font-size: 13px; padding: 30px 14px; text-align: center; }
+
+  .help-pill { border-color: var(--blue); color: var(--blue); }
+  /* Help sheet — slides up from the bottom on mobile */
+  .help-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55);
+                  opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .help-overlay.open { opacity: 1; pointer-events: auto; }
+  .help-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 51; max-height: 88vh; overflow-y: auto;
+                background: var(--s1); border-top: 1.5px solid var(--border2);
+                border-radius: 18px 18px 0 0; padding: 8px 18px calc(28px + env(safe-area-inset-bottom));
+                transform: translateY(100%); transition: transform .26s cubic-bezier(.2,.8,.2,1);
+                box-shadow: 0 -10px 40px rgba(0,0,0,.4); }
+  .help-sheet.open { transform: translateY(0); }
+  @media (min-width: 640px) {
+    .help-sheet { left: 50%; right: auto; bottom: auto; top: 50%; max-width: 560px; width: 92%;
+                  transform: translate(-50%, -42%) scale(.98); opacity: 0; border-radius: 16px; border: 1.5px solid var(--border2); }
+    .help-sheet.open { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+  .help-grab { width: 38px; height: 4px; border-radius: 999px; background: var(--border2); margin: 8px auto 12px; }
+  .help-hd { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .help-hd h2 { font-size: 17px; font-weight: 700; margin: 0; }
+  .help-close { margin-left: auto; background: var(--s2); border: 1px solid var(--border2); color: var(--text2);
+                border-radius: var(--r); font-family: 'DM Mono', monospace; font-size: 13px; padding: 6px 12px; cursor: pointer; }
+  .help-body { font-size: 13.5px; line-height: 1.55; color: var(--text2); }
+  .help-body h3 { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3);
+                  font-family: 'DM Mono', monospace; margin: 18px 0 6px; }
+  .help-body p { margin: 6px 0; }
+  .help-body b { color: var(--text); }
+  .help-body code { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--s3);
+                    padding: 1px 5px; border-radius: 5px; color: var(--text); }
+  .help-list { list-style: none; padding: 0; margin: 6px 0; }
+  .help-list li { padding: 6px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; }
+  .help-list li:last-child { border-bottom: none; }
+  .help-key { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text);
+              min-width: 116px; flex: none; }
+  .help-tag { display:inline-block; font-family:'DM Mono',monospace; font-size:10px; font-weight:600;
+              padding:2px 7px; border-radius:999px; border:1px solid var(--border2); color:var(--text3); margin-right:5px; }
 </style>
 </head>
 <body>
@@ -81,6 +117,7 @@
     </div>
     <div class="gl-spacer"></div>
     <span class="gl-badge" id="srcBadge">…</span>
+    <button class="gl-btn help-pill" id="helpBtn" title="How to use this page" aria-label="Help">? Help</button>
     <button class="gl-btn" id="refreshBtn">↻ Refresh</button>
   </div>
   <div style="display:flex;gap:14px;margin:2px 0 4px;">
@@ -92,6 +129,59 @@
   <div id="content"><div class="loading">Fetching liquidity data…</div></div>
 
   <div class="note" id="footNote"></div>
+</div>
+
+<!-- Help sheet -->
+<div class="help-overlay" id="helpOverlay"></div>
+<div class="help-sheet" id="helpSheet" role="dialog" aria-modal="true" aria-label="How to use Global Liquidity">
+  <div class="help-grab"></div>
+  <div class="help-hd">
+    <h2>🌊 Global Liquidity — how to read it</h2>
+    <button class="help-close" id="helpClose">Close</button>
+  </div>
+  <div class="help-body">
+    <h3>What this is for</h3>
+    <p>A <b>liquidity-driven macro read for FX</b>. It nowcasts global money conditions (the Fed, ECB, BoJ,
+       PBoC and private/shadow liquidity), decides which <b>macro regime</b> you're in, and proposes a
+       <b>cross-sectional FX book</b> — long the currencies whose liquidity is expanding fastest, short the
+       weakest. It is a <b>slow, weekly decision aid</b>, not an intraday signal scanner.</p>
+
+    <h3>How to use it</h3>
+    <p>Check it <b>about once a week</b> (the inputs only update weekly). Read it <b>top-down</b>:
+       <b>Regime → Impulse → Book</b>. Most weeks the right action is to do little — the edge is in being
+       early on the few real turns and sizing to them, not in trading often. Expect <b>~1–3 position changes
+       per week</b>, very lumpy; a regime flip re-expresses the whole book at once.</p>
+
+    <h3>Reading each part</h3>
+    <ul class="help-list">
+      <li><span class="help-key">Regime banner</span><span>One of four states from liquidity impulse × growth.
+        Its line tells you the lean (e.g. <b>REFLATION</b> = long risk / sell USD &amp; funders).</span></li>
+      <li><span class="help-key">Risk gate</span><span>The override. When credit spreads or vol spike it turns
+        <b>red</b> and cuts gross — respect it regardless of how bullish liquidity looks.</span></li>
+      <li><span class="help-key">GLI Level</span><span><b>Where</b> liquidity is (z-score). Regime context.</span></li>
+      <li><span class="help-key">Liquidity Impulse</span><span><b>The timing signal.</b> 13-week rate-of-change —
+        markets trade the turn, not the level. Positive &amp; rising = tailwind for risk.</span></li>
+      <li><span class="help-key">Cycle Phase</span><span>Where you sit in the ~65-month liquidity cycle
+        (Trough → Rising → Peak → Falling).</span></li>
+      <li><span class="help-key">Conviction</span><span>How strongly to size — impulse strength × growth. Low
+        conviction → smaller book.</span></li>
+      <li><span class="help-key">Per-currency bars</span><span>Each currency's own liquidity impulse.
+        <span style="color:var(--green)">Green</span> = expanding, <span style="color:var(--red)">red</span> =
+        draining. The book trades the <i>spread</i> between them.</span></li>
+      <li><span class="help-key">Target FX book</span><span>Long the top / short the bottom by liquidity-impulse
+        spread. Weights are gross-normalised (sum of absolute weights = 1); scale to your own risk.</span></li>
+    </ul>
+
+    <h3>Data &amp; honesty</h3>
+    <p><span class="help-tag" style="color:var(--green);border-color:var(--green)">LIVE · FRED</span>
+       real data via the dashboard worker. &nbsp;
+       <span class="help-tag" style="color:var(--amber);border-color:var(--amber)">DEMO DATA</span>
+       seeded synthetic — the engine works but the numbers aren't real markets (shown when the API is
+       unavailable or the key isn't set). Use <code>Toggle demo data</code> to compare.</p>
+    <p>Everything is <b>causal</b> (trailing windows + publication lags), so the snapshot equals what the model
+       would have shown on that date — no hindsight. <b>GBP</b> uses a proxy (no clean BoE balance-sheet series
+       on FRED); growth uses INDPRO. <b>Not investment advice.</b></p>
+  </div>
 </div>
 
 <script src="./js/globalLiquidityEngine.js"></script>
@@ -250,6 +340,18 @@
   document.getElementById('demoToggle').addEventListener('click', function (ev) {
     ev.preventDefault(); forceDemo = !forceDemo; load();
   });
+
+  // Help sheet open/close (button, overlay tap, Esc).
+  var overlay = document.getElementById('helpOverlay'), sheet = document.getElementById('helpSheet');
+  function setHelp(open) {
+    overlay.classList.toggle('open', open); sheet.classList.toggle('open', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+  document.getElementById('helpBtn').addEventListener('click', function () { setHelp(true); });
+  document.getElementById('helpClose').addEventListener('click', function () { setHelp(false); });
+  overlay.addEventListener('click', function () { setHelp(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setHelp(false); });
+
   load();
 })();
 </script>
