@@ -29,16 +29,16 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Lego baseplate: M1 packed-array helpers + the fib level set / projection are
+// shared bricks now, not private copies. See js/barUtils.js, js/fibProjection.js.
+import { bisect as _bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
+import { FIB_LEVELS, calcFibs } from './fibProjection.js';
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-export const FIB_LEVELS = [
-  -9.5, -9, -8.5, -8, -7.5, -7, -6.5, -6, -5.5, -5,
-  -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, -0.25,
-  0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3,
-  3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8,
-  8.5, 9, 9.5, 10, 10.5,
-];
-const KEY_LEVELS = new Set([0, 0.25, 0.5, 0.75, 1.0]);
+// FIB_LEVELS imported from the fibProjection brick; re-exported so existing
+// callers of asiaRangeEngine.FIB_LEVELS keep working.
+export { FIB_LEVELS };
 
 const PIP_SIZE = {
   eurusd: 0.0001, gbpusd: 0.0001, audusd: 0.0001, nzdusd: 0.0001,
@@ -59,88 +59,14 @@ export const ASIA_INSTRUMENTS = [
   'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
 ];
 
-// ── M1 packed-array helpers ───────────────────────────────────────────────────
+// ── M1 packed-array helpers / ATR / session ranges ───────────────────────────
+// _bisect / extractBars / resampleTo / bodyRange / calcATR come from the
+// barUtils brick. The Asia (5m), Monday (15m) and ATR-30 conveniences are thin
+// aliases over it — same numbers, one implementation.
 
-// Binary search: first index in times[] where times[i] >= target. O(log N).
-function _bisect(times, target) {
-  let lo = 0, hi = times.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1;
-    if (times[mid] < target) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
-}
-
-// O(log N + window) instead of O(N) — the single biggest perf win.
-function extractBars(packed, fromEpoch, toEpoch) {
-  const { n, times, opens, highs, lows, closes } = packed;
-  const start = _bisect(times, fromEpoch);
-  const bars  = [];
-  for (let i = start; i < n && times[i] < toEpoch; i++) {
-    bars.push({ time: times[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
-  }
-  return bars;
-}
-
-function resampleTo(bars, minutes) {
-  const secs = minutes * 60;
-  const buckets = new Map();
-  for (const bar of bars) {
-    const bucket = bar.time - (bar.time % secs);
-    if (!buckets.has(bucket)) {
-      buckets.set(bucket, { time: bucket, open: bar.open, high: bar.high, low: bar.low, close: bar.close });
-    } else {
-      const b    = buckets.get(bucket);
-      b.high     = Math.max(b.high, bar.high);
-      b.low      = Math.min(b.low,  bar.low);
-      b.close    = bar.close;
-    }
-  }
-  return [...buckets.values()].sort((a, b) => a.time - b.time);
-}
-
-// ── ATR calculation ───────────────────────────────────────────────────────────
-
-function calcATR30(m1Bars, periods = 14) {
-  const bars30m = resampleTo(m1Bars, 30);
-  if (bars30m.length < 2) return null;
-  const trs = [];
-  for (let i = 1; i < bars30m.length; i++) {
-    const b = bars30m[i], p = bars30m[i - 1];
-    trs.push(Math.max(b.high - b.low, Math.abs(b.high - p.close), Math.abs(b.low - p.close)));
-  }
-  const slice = trs.slice(-Math.max(periods, 1));
-  return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
-}
-
-// ── Session range calculators ─────────────────────────────────────────────────
-
-// Asia range: max(open,close) / min(open,close) across 5m resampled bars.
-function asiaBodyRange(m1Bars) {
-  if (!m1Bars.length) return null;
-  const bars5m = resampleTo(m1Bars, 5);
-  let bodyHigh = -Infinity, bodyLow = Infinity;
-  for (const bar of bars5m) {
-    bodyHigh = Math.max(bodyHigh, Math.max(bar.open, bar.close));
-    bodyLow  = Math.min(bodyLow,  Math.min(bar.open, bar.close));
-  }
-  if (!isFinite(bodyHigh) || !isFinite(bodyLow) || bodyLow >= bodyHigh) return null;
-  return { high: bodyHigh, low: bodyLow, range: bodyHigh - bodyLow };
-}
-
-// Monday range: body high/low (max/min of open,close) across 15m resampled bars (full day).
-function mondayWickRange(m1Bars) {
-  if (!m1Bars.length) return null;
-  const bars15m = resampleTo(m1Bars, 15);
-  let high = -Infinity, low = Infinity;
-  for (const bar of bars15m) {
-    high = Math.max(high, Math.max(bar.open, bar.close));
-    low  = Math.min(low,  Math.min(bar.open, bar.close));
-  }
-  if (!isFinite(high) || !isFinite(low) || low >= high) return null;
-  return { high, low, range: high - low };
-}
+const calcATR30      = (m1, periods = 14) => calcATR(m1, 30, periods);  // 30m true-range avg
+const asiaBodyRange  = (m1) => bodyRange(m1, 5);                        // 5m bodies, Asia window
+const mondayWickRange = (m1) => bodyRange(m1, 15);                      // 15m bodies, full Monday
 
 // ── Per-pair caches (built once, used O(log N) per day) ──────────────────────
 
@@ -203,14 +129,7 @@ function _mondayForDay(mondayRanges, dayEpoch) {
 }
 
 // ── Fibonacci levels ──────────────────────────────────────────────────────────
-
-function calcFibs(sessionLow, sessionRange, levels = FIB_LEVELS) {
-  return levels.map(lv => ({
-    level:  lv,
-    price:  sessionLow + sessionRange * lv,
-    isKey:  KEY_LEVELS.has(lv),
-  }));
-}
+// calcFibs imported from the fibProjection brick (same signature & output).
 
 function detectConfluence(currFibs, prevFibs, threshold, tightThreshold) {
   return currFibs.map(curr => {

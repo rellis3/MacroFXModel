@@ -23,18 +23,17 @@
  */
 
 import { loadM1ForPair, BT_M1_DIR } from './volBacktestM1Engine.js';
+// Lego baseplate: M1 packed-array helpers + the fib level set are shared bricks
+// now, not private copies. See js/barUtils.js and js/fibProjection.js.
+import { bisect as _bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
+import { FIB_LEVELS, KEY_LEVELS, calcFibs } from './fibProjection.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 // Range-extension multiples (NOT statistical SDs). 0 = range low, 1 = range high.
-export const FIB_LEVELS = [
-  -9.5, -9, -8.5, -8, -7.5, -7, -6.5, -6, -5.5, -5,
-  -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, -0.25,
-  0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3,
-  3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8,
-  8.5, 9, 9.5, 10, 10.5,
-];
-const KEY_LEVELS = new Set([0, 0.25, 0.5, 0.75, 1.0]);
+// FIB_LEVELS / KEY_LEVELS imported from the fibProjection brick; re-exported so
+// existing callers of rangeFibEngine.FIB_LEVELS keep working.
+export { FIB_LEVELS };
 
 export const PIP_SIZE = {
   eurusd: 0.0001, gbpusd: 0.0001, audusd: 0.0001, nzdusd: 0.0001,
@@ -55,75 +54,11 @@ export const RANGE_FIB_INSTRUMENTS = [
   'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
 ];
 
-// ── M1 packed-array helpers (self-contained copies) ───────────────────────────
-
-// Binary search: first index where times[i] >= target. O(log N).
-function _bisect(times, target) {
-  let lo = 0, hi = times.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1;
-    if (times[mid] < target) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
-}
-
-function extractBars(packed, fromEpoch, toEpoch) {
-  const { n, times, opens, highs, lows, closes } = packed;
-  const start = _bisect(times, fromEpoch);
-  const bars  = [];
-  for (let i = start; i < n && times[i] < toEpoch; i++) {
-    bars.push({ time: times[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
-  }
-  return bars;
-}
-
-function resampleTo(bars, minutes) {
-  const secs = minutes * 60;
-  const buckets = new Map();
-  for (const bar of bars) {
-    const bucket = bar.time - (bar.time % secs);
-    if (!buckets.has(bucket)) {
-      buckets.set(bucket, { time: bucket, open: bar.open, high: bar.high, low: bar.low, close: bar.close });
-    } else {
-      const b = buckets.get(bucket);
-      b.high  = Math.max(b.high, bar.high);
-      b.low   = Math.min(b.low,  bar.low);
-      b.close = bar.close;
-    }
-  }
-  return [...buckets.values()].sort((a, b) => a.time - b.time);
-}
-
-// ── Session range calculators (bodies only) ───────────────────────────────────
-
-function bodyRange(m1Bars, minutes) {
-  if (!m1Bars.length) return null;
-  const bars = resampleTo(m1Bars, minutes);
-  let high = -Infinity, low = Infinity;
-  for (const bar of bars) {
-    high = Math.max(high, Math.max(bar.open, bar.close));
-    low  = Math.min(low,  Math.min(bar.open, bar.close));
-  }
-  if (!isFinite(high) || !isFinite(low) || low >= high) return null;
-  return { high, low, range: high - low };
-}
+// ── Session range / ATR (bodies only) ─────────────────────────────────────────
+// bodyRange / calcATR / extractBars / resampleTo / _bisect are imported from the
+// barUtils brick above. Only the Asia-window convenience alias stays local.
 
 const asiaBodyRange = (m1) => bodyRange(m1, 5);    // 5m bodies, Asia window
-
-// ── ATR (resampled to a higher timeframe, true-range average) ─────────────────
-
-function calcATR(m1Bars, tfMin, period = 14) {
-  const bars = resampleTo(m1Bars, tfMin);
-  if (bars.length < 2) return null;
-  const trs = [];
-  for (let i = 1; i < bars.length; i++) {
-    const b = bars[i], p = bars[i - 1];
-    trs.push(Math.max(b.high - b.low, Math.abs(b.high - p.close), Math.abs(b.low - p.close)));
-  }
-  const slice = trs.slice(-Math.max(period, 1));
-  return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
-}
 
 // ── Timezone (Europe/London, DST-aware) ───────────────────────────────────────
 // London is UTC in winter and UTC+1 (BST) from the last Sunday of March to the
@@ -156,10 +91,7 @@ function _dowOf(dateStr) {
 function _isoDate(epochSec) { return new Date(epochSec * 1000).toISOString().substring(0, 10); }
 
 // ── Fib projection ────────────────────────────────────────────────────────────
-
-function calcFibs(low, range, levels) {
-  return levels.map(lv => ({ level: lv, price: low + range * lv, isKey: KEY_LEVELS.has(lv) }));
-}
+// calcFibs imported from the fibProjection brick (same signature & output).
 
 // ── Pre-built session caches (fast previous-Asia / Monday lookup) ─────────────
 

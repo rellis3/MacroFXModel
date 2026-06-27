@@ -14,44 +14,15 @@
  *   check          — pure lookup, called per fib level — must be O(1) or O(small constant).
  */
 
+// Lego baseplate: M1 packed-array helpers + the fib level set are shared bricks.
+// See js/barUtils.js and js/fibProjection.js — the local `_bisect`/`_extractFast`/
+// `_resample30m`/`_FIB_LEVELS`/`_fibs` copies were lifted out to one source.
+import { bisect as _bisect, extractBars as _extractFast, resampleTo } from './barUtils.js';
+import { FIB_LEVELS as _FIB_LEVELS, calcFibs } from './fibProjection.js';
+
 // ── Utility ───────────────────────────────────────────────────────────────────
 
-function _bisect(times, target) {
-  let lo = 0, hi = times.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1;
-    if (times[mid] < target) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
-}
-
-// Binary-search based extraction — O(log N + window) instead of O(N)
-function _extractFast(packed, fromEpoch, toEpoch) {
-  const { times, opens, highs, lows, closes, n } = packed;
-  const start = _bisect(times, fromEpoch);
-  const bars = [];
-  for (let i = start; i < n && times[i] < toEpoch; i++) {
-    bars.push({ time: times[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
-  }
-  return bars;
-}
-
-function _resample30m(bars) {
-  const secs = 30 * 60;
-  const map = new Map();
-  for (const b of bars) {
-    const t0 = b.time - (b.time % secs);
-    if (!map.has(t0)) map.set(t0, { time: t0, open: b.open, high: b.high, low: b.low, close: b.close });
-    else {
-      const r = map.get(t0);
-      r.high  = Math.max(r.high, b.high);
-      r.low   = Math.min(r.low,  b.low);
-      r.close = b.close;
-    }
-  }
-  return [...map.values()].sort((a, b) => a.time - b.time);
-}
+const _resample30m = (bars) => resampleTo(bars, 30);
 
 function _asiaBodyRange(packed, dayEpoch) {
   const bars = _extractFast(packed, dayEpoch, dayEpoch + 6 * 3600);
@@ -71,13 +42,10 @@ function _asiaBodyRange(packed, dayEpoch) {
   return isFinite(hi) && hi > lo ? { high: hi, low: lo, range: hi - lo } : null;
 }
 
-const _FIB_LEVELS = [
-  -9.5,-9,-8.5,-8,-7.5,-7,-6.5,-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-0.5,-0.25,
-  0,0.25,0.5,0.75,1,1.25,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10,10.5,
-];
-
+// _FIB_LEVELS imported from the fibProjection brick. _fibs keeps its original
+// {level, price} shape (the brick's calcFibs also returns isKey, dropped here).
 function _fibs(low, range) {
-  return _FIB_LEVELS.map(lv => ({ level: lv, price: low + range * lv }));
+  return calcFibs(low, range).map(({ level, price }) => ({ level, price }));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
