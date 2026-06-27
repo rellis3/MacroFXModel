@@ -82,6 +82,10 @@ DEFAULT_PARAMS = dict(
     max_positions      = 5,
     block_same_leg     = True,
     coint_pval         = 0.05,   # Engle-Granger p-value threshold (lower = more stringent)
+    coint_train_bars   = 2000,   # H1 bars reserved as an in-sample window for the
+                                 # cointegration screen. Pair selection uses ONLY this
+                                 # leading slice; trading starts AFTER it so no future
+                                 # data leaks into which pairs are admitted (~80 days).
     max_hold_bars      = 48,     # H1 bars before time stop fires (~2 trading days)
     pair_cooldown_bars = 0,      # H1 bars to wait before re-entering same pair (0 = no cooldown)
 )
@@ -989,6 +993,9 @@ def main():
     ap.add_argument("--risk-pct",      type=float,          default=DEFAULT_PARAMS["risk_pct"])
     ap.add_argument("--corr-win",      type=int,            default=DEFAULT_PARAMS["corr_window"])
     ap.add_argument("--warmup",        type=int,            default=DEFAULT_PARAMS["warmup"])
+    ap.add_argument("--coint-train-bars", type=int,         default=DEFAULT_PARAMS["coint_train_bars"],
+                    help="In-sample H1 bars reserved for the cointegration screen; "
+                         "trading starts after this slice (prevents lookahead in pair selection)")
     ap.add_argument("--coint-pval",    type=float,          default=DEFAULT_PARAMS["coint_pval"],
                     help="Engle-Granger p-value threshold (default 0.05; try 0.10 if no pairs pass)")
     ap.add_argument("--min-corr",       type=float,          default=DEFAULT_PARAMS["min_corr"],
@@ -1032,7 +1039,8 @@ def main():
               "min_score": args.min_score, "min_corr": args.min_corr,
               "max_positions": args.max_pos, "risk_pct": args.risk_pct,
               "corr_window": args.corr_win, "warmup": args.warmup,
-              "coint_pval": args.coint_pval, "max_hold_bars": args.max_hold_bars,
+              "coint_pval": args.coint_pval, "coint_train_bars": args.coint_train_bars,
+              "max_hold_bars": args.max_hold_bars,
               "pair_cooldown_bars": args.pair_cooldown,
               "spread_pips": args.spread_pips,
               "whitelist_pairs": whitelist_pairs}
@@ -1088,15 +1096,36 @@ def main():
 
     log.info(f"Features ready for {len(pair_features)} combinations")
 
-    # Cointegration screening — only trade pairs with a stationary (mean-reverting) spread
+    # Cointegration screening — only trade pairs with a stationary (mean-reverting) spread.
+    #
+    # The screen is computed on an IN-SAMPLE leading slice ([from_ts, coint_cutoff])
+    # ONLY, and trading begins after that slice (trade_from_ts). This prevents the
+    # lookahead/in-sample-selection bias of measuring cointegration over the full
+    # window (incl. future data) and then trading the early period with that knowledge.
+    train_bars = int(params["coint_train_bars"])
+    union_ts = sorted(
+        set().union(*[set(h1_data[p].index) for p in active if p in h1_data])
+    )
+    union_ts = [t for t in union_ts if from_ts <= t <= to_ts]
+    if len(union_ts) <= train_bars:
+        log.error(f"Not enough H1 bars ({len(union_ts)}) for a {train_bars}-bar "
+                  f"cointegration in-sample window plus a trading period — "
+                  f"reduce --coint-train-bars or widen the date range")
+        sys.exit(1)
+    coint_cutoff = union_ts[train_bars - 1]   # last bar used for the in-sample screen
+    trade_from_ts = union_ts[train_bars]      # first bar that may be traded (out-of-sample)
+
     log.info(f"Cointegration screening {len(pair_features)} combinations "
-             f"(Engle-Granger p < {params['coint_pval']}) …")
+             f"(Engle-Granger p < {params['coint_pval']}) on in-sample window "
+             f"{from_ts.date()} → {coint_cutoff.date()} ({train_bars} H1 bars); "
+             f"trading from {trade_from_ts.date()} …")
     cointegrated = {}
     for fk, feat in pair_features.items():
         a, b = fk
         try:
-            sa = np.log(h1_data[a]["close"].dropna())
-            sb = np.log(h1_data[b]["close"].dropna())
+            # Restrict to the in-sample slice — no future data informs selection.
+            sa = np.log(h1_data[a]["close"].dropna()).loc[:coint_cutoff]
+            sb = np.log(h1_data[b]["close"].dropna()).loc[:coint_cutoff]
             common = sa.index.intersection(sb.index)
             if len(common) < 200:
                 continue
@@ -1119,14 +1148,14 @@ def main():
 
     # ── Pair scan mode: test each pair in isolation, then exit ────────────────
     if args.pair_scan:
-        scan_rows = run_pair_scan(active, h1_data, pair_features, params, from_ts, to_ts)
+        scan_rows = run_pair_scan(active, h1_data, pair_features, params, trade_from_ts, to_ts)
         print_pair_scan(scan_rows)
         sys.exit(0)
 
     # Simulate
     log.info("Simulating …")
     t0 = time.perf_counter()
-    trades = simulate_portfolio(active, h1_data, pair_features, params, from_ts, to_ts)
+    trades = simulate_portfolio(active, h1_data, pair_features, params, trade_from_ts, to_ts)
     elapsed = time.perf_counter() - t0
     log.info(f"Done in {elapsed:.1f}s — {len(trades)} trades")
 

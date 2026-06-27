@@ -636,6 +636,11 @@ function handleRun({ symbol, cfg }) {
           // After the touch bar, look ahead at the next candleConfirmN M1
           // bars and require at least candleConfirmPct of them to close in
           // the trade direction. This filters sweep-and-reverse fakeouts.
+          //
+          // Entry-fill defaults (no confirmation): fill at the level price
+          // (conf.price) on the touch bar's close — the engine's limit-style fill.
+          let entryPrice = conf.price;
+          let entryFillTs = barCloseTs;
           if (candleConfirmN > 0) {
             const confirmBars = entryBars.slice(_bi + 1, _bi + 1 + candleConfirmN);
             if (confirmBars.length < candleConfirmN) continue; // not enough bars left today
@@ -645,11 +650,16 @@ function handleRun({ symbol, cfg }) {
               if (entryDir === 'short' && cb.c < cb.o) dirCount++;
             }
             if (dirCount / candleConfirmN < candleConfirmPct) continue;
-            // Entry is placed after the confirmation window closes
-            // Use the close of the last confirmation bar as entry bar
+            // No lookahead: the decision used future bars, so the realistic fill
+            // can only happen AFTER the confirmation window closes. Fill at the
+            // close of the last confirmation bar (index _bi + candleConfirmN),
+            // and stamp entryTs at that bar's close so exit scanning starts after it.
+            const entryBar = confirmBars[confirmBars.length - 1];
+            entryPrice  = entryBar.c;
+            entryFillTs = entryBar.ts + barDurMs;
           }
 
-          // ── SL calculation (from conf.price, not bar.c) ────────────
+          // ── SL calculation (from entryPrice, not bar.c) ────────────
           let slDist;
           if (slMode === 'atr') {
             slDist = Math.max(slMult * atr, minSlPips * pip);
@@ -660,8 +670,7 @@ function handleRun({ symbol, cfg }) {
             slDist = Math.max(asiaRange.range * slFraction, minSlPips * pip);
           }
 
-          // ── TP calculation (from conf.price) ───────────────────────
-          const entryPrice = conf.price;
+          // ── TP calculation (from entryPrice) ───────────────────────
           let tpDist;
           if (tpMode === 'structural') {
             const bufDist = tpBuf * pip;
@@ -700,7 +709,7 @@ function handleRun({ symbol, cfg }) {
             tp:       tpPrice,
             slDist,
             tpDist,
-            entryTs:  barCloseTs,
+            entryTs:  entryFillTs,
             date,
             conf:     conf.price,
             confKey,
