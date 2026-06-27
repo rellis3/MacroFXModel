@@ -121,6 +121,7 @@
       <div>
         <div class="oi-modal-title">📊 CME OI Data — <span id="oiModalPairLbl" style="color:var(--blue)">—</span></div>
         <div style="font-size:10px;color:var(--text3);margin-top:3px">Data is stored per pair · switch pairs in the main tab bar to configure each one separately</div>
+        <div id="oiCmeWarn" style="display:none;font-size:10px;color:var(--amber);margin-top:4px;line-height:1.4"></div>
       </div>
       <button class="oi-btn" onclick="closeOIModal()">✕ Close</button>
     </div>
@@ -134,7 +135,6 @@
           <option value="USD/JPY">USD/JPY (6J)</option>
           <option value="AUD/USD">AUD/USD (6A)</option>
           <option value="USD/CHF">USD/CHF (6S)</option>
-          <option value="NZD/USD">NZD/USD (6N)</option>
           <option value="USD/CAD">USD/CAD (6C)</option>
           <option value="XAU/USD">XAU/USD (GC — Gold)</option>
           <option value="NAS100_USD">NAS100 (NQ Futures)</option>
@@ -143,6 +143,14 @@
           <option value="UK100_GBP">FTSE100 Futures</option>
           <option value="US30_USD">DOW30 (YM Futures)</option>
           <option value="US2000_USD">RUS2000 (RTY Futures)</option>
+          <!-- Crosses below have no CME options market — listed so the locked selector matches the active tab -->
+          <option value="EUR/GBP">EUR/GBP (no CME OI)</option>
+          <option value="GBP/JPY">GBP/JPY (no CME OI)</option>
+          <option value="EUR/JPY">EUR/JPY (no CME OI)</option>
+          <option value="EUR/CHF">EUR/CHF (no CME OI)</option>
+          <option value="GBP/CHF">GBP/CHF (no CME OI)</option>
+          <option value="AUD/JPY">AUD/JPY (no CME OI)</option>
+          <option value="CAD/JPY">CAD/JPY (no CME OI)</option>
         </select>
         <div class="oi-hint">Locked to the active pair tab. Switch pair first, then open OI config.</div>
       </div>

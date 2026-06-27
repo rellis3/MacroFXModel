@@ -37,12 +37,30 @@ const OI_FRIENDLY = {
   'US2000_USD': 'RUS2000 / RTY Futures',
 };
 
+// Instruments that actually have a CME (or equivalent listed) options market.
+// Crosses (EUR/GBP, GBP/JPY, …) have no CME chain — OI analysis is meaningless for them,
+// so the modal warns when one is opened on a non-listed pair.
+const OI_CME_PAIRS = new Set([
+  'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'USD/CAD', 'USD/CHF',
+  'NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP', 'US30_USD', 'US2000_USD',
+]);
+
 export function openOIModal() {
   const sym = S.currentPair ? S.currentPair.symbol : 'EUR/USD';
   const sel = document.getElementById('oiPairSelect');
   if (sel) { sel.value = sym; sel.disabled = true; }
   const lbl = document.getElementById('oiModalPairLbl');
   if (lbl) lbl.textContent = OI_FRIENDLY[sym] || sym;
+  const warnEl = document.getElementById('oiCmeWarn');
+  if (warnEl) {
+    if (!OI_CME_PAIRS.has(sym)) {
+      warnEl.style.display = 'block';
+      warnEl.textContent = `⚠ ${sym} has no CME options market — OI analysis is only valid for CME-listed instruments. Anything pasted here is stored but won't reflect a real options chain.`;
+    } else {
+      warnEl.style.display = 'none';
+      warnEl.textContent = '';
+    }
+  }
   const store = oiLoadStore();
   const existing = store[sym];
   // Auto-fill spot: prefer live OANDA quote (always fresh), fall back to saved value
@@ -58,6 +76,7 @@ export function openOIModal() {
   futEl.dataset.manual = '0';
   futEl.dataset.estimated = '0';
   futEl.dataset.liveSymbol = '';
+  futEl.dataset.liveKind = '';
   // Auto-fetch live CME futures price in background; won't overwrite if user has manually typed
   autoFetchFuturesPrice(sym, futEl);
   document.getElementById('oiNumLevels').value  = existing ? (existing.numLevels || 8)  : 8;
@@ -83,6 +102,7 @@ async function autoFetchFuturesPrice(pair, futEl) {
     futEl.value = d.price;
     futEl.dataset.estimated = '1';
     futEl.dataset.liveSymbol = d.symbol;
+    futEl.dataset.liveKind = d.kind || 'future';
     futEl.style.opacity = '0.65';
     updateOIBasis();
   } catch { /* silently ignore — field stays blank or at saved value */ }
@@ -175,6 +195,7 @@ export function autoEstimateBasis() {
     futEl.value = est.toFixed(digits);
     futEl.dataset.estimated = '1';
     futEl.dataset.liveSymbol = '';
+    futEl.dataset.liveKind = '';
     futEl.style.opacity = '0.65';
     updateOIBasis();
   }, 350);
@@ -193,6 +214,7 @@ export function updateOIBasis() {
   if (futEl && futEl === document.activeElement && futEl.dataset.estimated === '1') {
     futEl.dataset.estimated = '0';
     futEl.dataset.liveSymbol = '';
+    futEl.dataset.liveKind = '';
     futEl.dataset.manual = '1';
     futEl.style.opacity = '';
   }
@@ -206,7 +228,9 @@ export function updateOIBasis() {
   const basis = futuresSpot - spotRaw;
   const digits = isJpy ? 2 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
   const basisSign = basis >= 0 ? '+' : '';
-  const src = futEl?.dataset.liveSymbol ? ` (CME ${futEl.dataset.liveSymbol})` : futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
+  const _liveSym  = futEl?.dataset.liveSymbol;
+  const _srcLabel = futEl?.dataset.liveKind === 'index' ? 'index' : 'CME';
+  const src = _liveSym ? ` (${_srcLabel} ${_liveSym})` : futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
   el.textContent = `Basis: ${basisSign}${basis.toFixed(digits)}${src} · strikes shifted by ${(basis >= 0 ? '−' : '+') + Math.abs(basis).toFixed(digits)} → spot-equivalent levels`;
   el.style.color = 'var(--blue)';
 }
@@ -518,6 +542,18 @@ export function processOIData() {
   const totalCallChg = parsed.callChg.reduce((a,b)=>a+b,0);
   const totalPutChg  = parsed.putChg.reduce((a,b)=>a+b,0);
 
+  // Directional OI flow relative to spot — where positioning is being built/closed.
+  // Calls building ABOVE spot reinforce resistance (cap); puts building BELOW spot
+  // reinforce support (floor). Strikes are already in spot-equivalent terms here.
+  let callChgAbove = 0, callChgBelow = 0, putChgAbove = 0, putChgBelow = 0;
+  for (let i = 0; i < parsed.strikes.length; i++) {
+    if (parsed.strikes[i] >= spot) {
+      callChgAbove += parsed.callChg[i] || 0; putChgAbove += parsed.putChg[i] || 0;
+    } else {
+      callChgBelow += parsed.callChg[i] || 0; putChgBelow += parsed.putChg[i] || 0;
+    }
+  }
+
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
     maxPain, exposures, topLevels, gexProfile,
@@ -525,8 +561,10 @@ export function processOIData() {
     callWallOI: callWalls[0]?.oi ?? 0,  putWallOI: putWalls[0]?.oi ?? 0,
     callWalls, putWalls,
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
+    callChgAbove, callChgBelow, putChgAbove, putChgBelow,
     numRows: parsed.strikes.length, numLevels, minOI,
     savedAt: new Date().toLocaleString(),
+    savedAtMs: Date.now(),
     rawOI: rawOI.trim(),
     rawChg: rawChg.trim()
   };
@@ -653,6 +691,11 @@ export function renderOICard(inst) {
   const totalPutChg = inst.totalPutChg || 0;
   const numRows     = inst.numRows     || 0;
   const savedAt     = inst.savedAt     || null;
+  const savedAtMs   = inst.savedAtMs   || null;
+  const callChgAbove= inst.callChgAbove|| 0;
+  const callChgBelow= inst.callChgBelow|| 0;
+  const putChgAbove = inst.putChgAbove || 0;
+  const putChgBelow = inst.putChgBelow || 0;
   const gexProfile  = inst.gexProfile  || [];
   const gex = (exposures && typeof exposures.gex === 'number') ? exposures.gex : 0;
 
@@ -666,6 +709,26 @@ export function renderOICard(inst) {
   const gexSign = gex>0?'+':'';
   const gexClass = gex>0?'up':'dn';
   const skewPct = Math.min(100, Math.max(0, (pcRatio/3)*100)).toFixed(0);
+
+  // Staleness — OI goes stale fast, especially near expiry
+  let staleBadge = '';
+  if (savedAtMs) {
+    const ageH = (Date.now() - savedAtMs) / 3.6e6;
+    if (ageH >= 48)      staleBadge = `<span class="oi-badge oi-badge-red"   style="margin-left:6px;font-size:8px">STALE ${Math.round(ageH/24)}d</span>`;
+    else if (ageH >= 24) staleBadge = `<span class="oi-badge oi-badge-amber" style="margin-left:6px;font-size:8px">${Math.round(ageH/24)}d old</span>`;
+  }
+
+  // Directional OI flow vs spot — calls building above = resistance, puts building below = support
+  const flowAboveNet = callChgAbove - putChgAbove; // >0: calls dominating above (resistance building)
+  const flowBelowNet = putChgBelow - callChgBelow; // >0: puts dominating below (support building)
+  const hasFlow = (callChgAbove||callChgBelow||putChgAbove||putChgBelow) !== 0;
+  let flowBias = 'BALANCED', flowCol = 'var(--text3)', flowNote = 'No net directional positioning';
+  if (hasFlow) {
+    if (flowAboveNet > 0 && flowBelowNet > 0) { flowBias = 'COMPRESSING'; flowCol = 'var(--amber)'; flowNote = 'Resistance above + support below building — range tightening'; }
+    else if (flowAboveNet > 0 && flowBelowNet <= 0) { flowBias = 'CAPPED'; flowCol = 'var(--red)'; flowNote = 'Calls building above spot — resistance reinforcing'; }
+    else if (flowAboveNet <= 0 && flowBelowNet > 0) { flowBias = 'SUPPORTED'; flowCol = 'var(--green)'; flowNote = 'Puts building below spot — support reinforcing'; }
+    else { flowBias = 'UNWINDING'; flowCol = 'var(--text3)'; flowNote = 'Positioning closing on both sides'; }
+  }
 
   // Side-by-side wall lists
   const maxCallOI = callWalls.length ? callWalls[0].oi : 1;
@@ -725,7 +788,7 @@ export function renderOICard(inst) {
     <span class="oi-card-price">${oiFmtStrike(spot,pair)}</span>
     <button class="oi-remove" onclick="removeOIInstrument('${pair}')" title="Clear ${pair} OI data">×</button>
   </div>
-  ${savedAt ? `<div style="font-size:9px;color:var(--text3);padding:4px 13px;background:var(--s2);border-bottom:1px solid var(--border)">Saved: ${savedAt}</div>` : ''}
+  ${savedAt ? `<div style="font-size:9px;color:var(--text3);padding:4px 13px;background:var(--s2);border-bottom:1px solid var(--border)">Saved: ${savedAt}${staleBadge}</div>` : ''}
 
   <div class="oi-stats">
     <div class="oi-stat">
@@ -733,8 +796,8 @@ export function renderOICard(inst) {
       <div class="oi-stat-val amb">${oiFmtStrike(maxPain,pair)}</div>
       <div class="oi-stat-sub">${mpDir} ${mpDist}% from spot</div>
     </div>
-    <div class="oi-stat">
-      <div class="oi-stat-lbl">GEX</div>
+    <div class="oi-stat" title="Aggregate gamma exposure (dealer convention): positive = dealers long gamma, hedging dampens moves (pin); negative = short gamma, hedging amplifies moves (breakout). Magnitude is indicative only — flat-sigma / 14-DTE assumption; read relative bar widths in the gamma chart, not absolute $. The per-strike MAG/REP labels below are a separate lens (put- vs call-dominant), not the same as this aggregate sign.">
+      <div class="oi-stat-lbl">GEX ⓘ</div>
       <div class="oi-stat-val ${gexClass}">${gexSign}$${gexFmt}</div>
       <div class="oi-stat-sub">${gex>0?'Dampening':'Amplifying'}</div>
     </div>
@@ -789,6 +852,20 @@ export function renderOICard(inst) {
       <div class="oi-gex-sub">${totalPutChg>0?'Building':'Closing'} puts</div>
     </div>
   </div>
+
+  ${hasFlow ? `<div class="oi-gex-row" style="margin-top:6px">
+    <div class="oi-gex-cell">
+      <div class="oi-gex-lbl">Above spot (calls − puts Δ)</div>
+      <div class="oi-gex-val" style="color:${flowAboveNet>0?'var(--red)':flowAboveNet<0?'var(--green)':'var(--text3)'}">${oiFmtChg(flowAboveNet)}</div>
+      <div class="oi-gex-sub">${flowAboveNet>0?'Resistance building':flowAboveNet<0?'Resistance fading':'Flat'}</div>
+    </div>
+    <div class="oi-gex-cell">
+      <div class="oi-gex-lbl">Below spot (puts − calls Δ)</div>
+      <div class="oi-gex-val" style="color:${flowBelowNet>0?'var(--green)':flowBelowNet<0?'var(--red)':'var(--text3)'}">${oiFmtChg(flowBelowNet)}</div>
+      <div class="oi-gex-sub">${flowBelowNet>0?'Support building':flowBelowNet<0?'Support fading':'Flat'}</div>
+    </div>
+  </div>
+  <div style="font-size:9px;padding:4px 13px 2px;color:${flowCol}"><strong>${flowBias}</strong> · ${flowNote}</div>` : ''}
 </div>`;
 }
 

@@ -2035,21 +2035,26 @@ app.get('/api/futures-quote', async (req, res) => {
     'SPX500_USD': 'ES=F',
     'US30_USD':   'YM=F',
     'US2000_USD': 'RTY=F',
-    'DE30_USD':   'FDAX=F',
+    // DAX/FTSE futures are not reliably carried by Yahoo (Eurex/ICE listed, not CME).
+    // Fall back to the cash index as a price reference — basis to the index is small and
+    // the client labels these as "index" rather than "CME". (^ symbols, best-effort.)
+    'DE30_USD':   '^GDAXI',
+    'UK100_GBP':  '^FTSE',
   };
   const pair   = req.query.pair;
   const symbol = FUTURES_MAP[pair];
   if (!symbol) return res.json({ ok: false, error: 'No CME futures contract for this pair' });
+  const kind = symbol.startsWith('^') ? 'index' : 'future';
   try {
     const r = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`,
       { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8_000) },
     );
     if (!r.ok) return res.json({ ok: false, error: `Yahoo Finance returned ${r.status}` });
     const data  = await r.json();
     const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
     if (!price) return res.json({ ok: false, error: 'No price in Yahoo Finance response' });
-    res.json({ ok: true, price, symbol });
+    res.json({ ok: true, price, symbol, kind });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
