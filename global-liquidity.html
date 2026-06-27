@@ -66,6 +66,18 @@
   .book-pair { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600; flex: 1; }
   .book-w { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
 
+  .rank-hdr { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .rank-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-n { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); width: 22px; text-align: right; flex: none; }
+  .rank-chip { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; width: 20px; min-width: 20px;
+               text-align: center; padding: 2px 0; border-radius: 5px; flex: none; }
+  .rank-flat { color: var(--text3); background: var(--s3); }
+  .rank-pair { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; width: 64px; flex: none; }
+  .rank-barwrap { flex: 1; height: 7px; background: var(--s3); border-radius: 999px; position: relative; overflow: hidden; }
+  .rank-bar { position: absolute; top: 0; bottom: 0; border-radius: 999px; }
+  .rank-score { font-family: 'DM Mono', monospace; font-size: 12px; width: 48px; text-align: right; flex: none; }
+
   .spark { width: 100%; height: 56px; display: block; }
   .note { font-size: 11px; color: var(--text3); line-height: 1.5; margin-top: 16px; font-family: 'DM Mono', monospace; }
   .err { color: var(--red); font-family: 'DM Mono', monospace; font-size: 13px; padding: 14px; }
@@ -292,7 +304,36 @@
     });
     html += '</div></div>';
 
+    // Full cross-sectional ranking — all 26 pairs (context; only the extremes are traded).
+    html += '<div class="card"><div class="card-hdr rank-hdr" id="rankHdr">' +
+            '<span>Full ranking — all ' + snap.ranking.length + ' pairs</span>' +
+            '<span class="dim" id="rankChevron">tap to show ▾</span></div>' +
+            '<div class="card-body rank-body" id="rankBody" style="display:none;">';
+    var maxAbs = snap.ranking.reduce(function (m, r) { return Math.max(m, Math.abs(r.score || 0)); }, 0.5);
+    snap.ranking.forEach(function (r) {
+      var tag = r.side === 'long' ? '<span class="side L rank-chip">L</span>'
+              : r.side === 'short' ? '<span class="side S rank-chip">S</span>'
+              : '<span class="rank-chip rank-flat">·</span>';
+      var pos = r.score >= 0, pct = (Math.abs(r.score || 0) / maxAbs) * 50;
+      var bar = '<span class="rank-bar" style="' + (pos ? 'left:50%;' : 'left:' + (50 - pct) + '%;') +
+                'width:' + pct + '%;background:' + (pos ? 'var(--green)' : 'var(--red)') + ';"></span>';
+      html += '<div class="rank-row"><span class="rank-n">' + r.rank + '</span>' + tag +
+              '<span class="rank-pair">' + r.pair + '</span>' +
+              '<span class="rank-barwrap">' + bar + '</span>' +
+              '<span class="rank-score ' + zClass(r.score) + '">' + fmtZ(r.score) + '</span></div>';
+    });
+    html += '</div></div>';
+
     document.getElementById('content').innerHTML = html;
+
+    // Collapsible ranking toggle.
+    var rb = document.getElementById('rankBody'), rh = document.getElementById('rankHdr'),
+        rc = document.getElementById('rankChevron');
+    if (rh) rh.addEventListener('click', function () {
+      var open = rb.style.display === 'none';
+      rb.style.display = open ? 'block' : 'none';
+      rc.textContent = open ? 'tap to hide ▴' : 'tap to show ▾';
+    });
 
     document.getElementById('footNote').innerHTML = isDemo
       ? 'DEMO MODE — synthetic seeded data. Numbers exercise the engine, not real markets. ' +
