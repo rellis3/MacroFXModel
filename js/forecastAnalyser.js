@@ -1,0 +1,203 @@
+/**
+ * Forecast Level Analyser — measurement engine (Phase 1).
+ *
+ * Measures, never trades. For each window it builds the ladder of forecast
+ * lines (open + Close med/75p + Proj H/L med/75p, both sides), then records what
+ * price actually did relative to EACH line — hit, reversion vs continuation
+ * (ladder rule), retracement depth, extension, time-to-touch, close location.
+ * No entries, stops, fills or costs.
+ *
+ * Spec: FORECAST_LEVEL_ANALYSER_SPEC.md. Reuses the lego core (computeBands,
+ * volSigmaSeries, classifyRegime) — no vol math copied, no trade primitive.
+ */
+
+import { computeBands, volSigmaSeries, classifyRegime, HORIZONS, ASSET_PARAMS } from './forecastCore.js';
+
+// ── 1) Build the ladder of lines, sorted by distance from open ───────────────
+// Returns up[] and dn[], each ordered inner→outer, plus the band fractions.
+// Each line: { name, side, level(price), dist(frac) }.
+export function buildLadder(open, sigma, assetClass) {
+  const b = computeBands(open, sigma, assetClass);
+  const defs = [
+    { name: 'OC50', dist: b.ocMed },   // Close med
+    { name: 'OC75', dist: b.oc75 },    // Close 75p
+    { name: 'HL50', dist: b.hl50 },    // Proj H/L med
+    { name: 'HL75', dist: b.hl75 },    // Proj H/L 75p
+  ].sort((x, y) => x.dist - y.dist);   // inner → outer (fixed per asset class)
+
+  const up = defs.map(d => ({ name: d.name, side: 'up', dist: d.dist, level: open * (1 + d.dist) }));
+  const dn = defs.map(d => ({ name: d.name, side: 'dn', dist: d.dist, level: open * (1 - d.dist) }));
+  return { open, up, dn, frac: { hl50: b.hl50, hl75: b.hl75, ocMed: b.ocMed, oc75: b.oc75 } };
+}
+
+// ── 2) Analyse one window against the ladder ─────────────────────────────────
+// session = { open, bars:[{time,open,high,low,close}] } (M1 for daily, D1 for
+// weekly/monthly). Returns a per-line record array for both sides.
+export function analyseWindow(session, ladder) {
+  const { open, bars } = session;
+  const last = bars[bars.length - 1];
+  const closePx = last?.close ?? open;
+  // Revert/continue needs an ordered intraday path. A single bar (daily D1
+  // fallback) contains the high AND low with no time order → outcome unknowable.
+  const hasPath = bars.length >= 2;
+  const outRows = [];
+
+  for (const side of ['up', 'dn']) {
+    const lines = ladder[side];
+    const isUp  = side === 'up';
+    for (let i = 0; i < lines.length; i++) {
+      const line  = lines[i];
+      const inner = i > 0 ? lines[i - 1].level : open;            // toward open
+      const outer = i < lines.length - 1 ? lines[i + 1].level
+                   : (isUp ? line.level + open * (ladder.frac.hl75 - ladder.frac.hl50)
+                           : line.level - open * (ladder.frac.hl75 - ladder.frac.hl50));
+
+      // First touch.
+      let touchIdx = -1, firstTouchTime = null;
+      for (let k = 0; k < bars.length; k++) {
+        const hit = isUp ? bars[k].high >= line.level : bars[k].low <= line.level;
+        if (hit) { touchIdx = k; firstTouchTime = bars[k].time ?? null; break; }
+      }
+      if (touchIdx < 0) {
+        outRows.push({ name: line.name, side, level: +line.level.toFixed(6), distPct: +(line.dist * 100).toFixed(4),
+          hit: false, outcome: 'no_touch', firstTouchTime: null,
+          retraceTo: null, retracePct: 0, extTo: null, extPct: 0, closeBeyond: null, mfePct: 0 });
+        continue;
+      }
+      if (!hasPath) {
+        // Touched, but no intraday path to judge revert vs continue.
+        outRows.push({ name: line.name, side, level: +line.level.toFixed(6), distPct: +(line.dist * 100).toFixed(4),
+          hit: true, outcome: 'no_intraday', firstTouchTime,
+          retraceTo: null, retracePct: 0, extTo: null, extPct: 0,
+          closeBeyond: isUp ? closePx > line.level : closePx < line.level, mfePct: 0 });
+        continue;
+      }
+
+      // Walk forward from touch: which neighbour is reached first?
+      let outcome = 'undecided', retraceTo = null, extTo = null;
+      let extremeBack = isUp ? line.level : line.level;   // most-reverted price toward open
+      let extremeFwd  = isUp ? line.level : line.level;   // most-extended price away
+      for (let k = touchIdx; k < bars.length; k++) {
+        const bar = bars[k];
+        if (isUp) {
+          extremeBack = Math.min(extremeBack, bar.low);
+          extremeFwd  = Math.max(extremeFwd,  bar.high);
+          const revHit = bar.low  <= inner;
+          const conHit = bar.high >= outer;
+          if (revHit && conHit) { outcome = 'reverted'; retraceTo = inner; break; }   // tie → conservative: reverted
+          if (revHit) { outcome = 'reverted';  retraceTo = inner; break; }
+          if (conHit) { outcome = 'continued'; extTo = outer;     break; }
+        } else {
+          extremeBack = Math.max(extremeBack, bar.high);
+          extremeFwd  = Math.min(extremeFwd,  bar.low);
+          const revHit = bar.high >= inner;
+          const conHit = bar.low  <= outer;
+          if (revHit && conHit) { outcome = 'reverted'; retraceTo = inner; break; }
+          if (revHit) { outcome = 'reverted';  retraceTo = inner; break; }
+          if (conHit) { outcome = 'continued'; extTo = outer;     break; }
+        }
+      }
+      if (outcome === 'undecided') {
+        // classify by close
+        outcome = isUp ? (closePx > line.level ? 'continued' : 'reverted')
+                       : (closePx < line.level ? 'continued' : 'reverted');
+      }
+
+      const retracePct = isUp ? (line.level - extremeBack) / open * 100
+                              : (extremeBack - line.level) / open * 100;
+      const extPct     = isUp ? (extremeFwd - line.level) / open * 100
+                              : (line.level - extremeFwd) / open * 100;
+      const mfePct     = retracePct;  // favourable excursion for a fade = reversion depth
+
+      outRows.push({
+        name: line.name, side, level: +line.level.toFixed(6), distPct: +(line.dist * 100).toFixed(4),
+        hit: true, outcome, firstTouchTime,
+        retraceTo: retraceTo ? +retraceTo.toFixed(6) : null, retracePct: +retracePct.toFixed(4),
+        extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
+        closeBeyond: isUp ? closePx > line.level : closePx < line.level,
+        mfePct: +mfePct.toFixed(4),
+      });
+    }
+  }
+  return outRows;
+}
+
+// ── 3) Walk-forward over a series of windows ─────────────────────────────────
+// d1Bars drive σ/regime; m1ByDate gives intraday bars for daily; weekly/monthly
+// walk D1 bars within the window. Returns one record per window with per-line rows.
+export function runAnalyser(d1Bars, m1ByDate, assetClass, opts = {}) {
+  const { horizon = 'daily', minLookback = 50, dateFrom = '', dateTo = '' } = opts;
+  const H = HORIZONS[horizon] ?? HORIZONS.daily;
+  const closes = d1Bars.map(b => b.close);
+  const sigD   = volSigmaSeries(d1Bars, assetClass);
+  const records = [];
+  const step = horizon === 'daily' ? 1 : H.windowDays;
+
+  for (let i = minLookback; i < d1Bars.length; i += step) {
+    const start = d1Bars[i];
+    if (dateFrom && start.date < dateFrom) continue;
+    if (dateTo   && start.date > dateTo)   continue;
+    const sigma = sigD[i] * H.sigmaScale;
+    if (!sigma || sigma < 1e-8) continue;
+
+    const open   = start.open;
+    const ladder = buildLadder(open, sigma, assetClass);
+    const regime = classifyRegime(closes, i, 20, 5, opts.slopeThresh ?? 0.002, 1.0);
+    const dow    = new Date(start.date + 'T00:00:00Z').getUTCDay();
+
+    let bars;
+    if (horizon === 'daily') {
+      bars = m1ByDate?.get(start.date)
+          ?? [{ time: start.date, open: start.open, high: start.high, low: start.low, close: start.close }];
+    } else {
+      bars = d1Bars.slice(i, Math.min(i + H.windowDays, d1Bars.length))
+        .map(x => ({ time: x.date, open: x.open, high: x.high, low: x.low, close: x.close }));
+    }
+
+    const lines = analyseWindow({ open, bars }, ladder);
+    records.push({
+      date: start.date, horizon, regime, dow,
+      open: +open.toFixed(6),
+      realized: { high: +start.high.toFixed(6), low: +start.low.toFixed(6), close: +start.close.toFixed(6) },
+      lines,
+    });
+  }
+  return records;
+}
+
+// ── 4) Aggregate per line, optionally grouped by a slice key ─────────────────
+// sliceFn(record) → group key (e.g. r => r.regime). Returns
+// { group: { lineName: { side: stats } } }.
+export function aggregate(records, sliceFn = () => 'all') {
+  const groups = {};
+  for (const rec of records) {
+    const g = sliceFn(rec);
+    groups[g] ??= {};
+    for (const ln of rec.lines) {
+      const key = `${ln.name}_${ln.side}`;
+      const a = (groups[g][key] ??= { line: ln.name, side: ln.side, windows: 0, hits: 0, decided: 0, noIntraday: 0, reverted: 0, continued: 0, retraceSum: 0, extSum: 0 });
+      a.windows++;
+      if (!ln.hit) continue;
+      a.hits++;
+      if (ln.outcome === 'no_intraday') { a.noIntraday++; continue; }
+      a.decided++;
+      if (ln.outcome === 'reverted')  { a.reverted++;  a.retraceSum += ln.retracePct; }
+      if (ln.outcome === 'continued') { a.continued++; a.extSum     += ln.extPct; }
+    }
+  }
+  // finalize rates — revert/continue measured over DECIDED touches (path known).
+  for (const g of Object.values(groups)) {
+    for (const a of Object.values(g)) {
+      a.hitRate     = a.windows ? +(a.hits / a.windows * 100).toFixed(1) : 0;
+      a.revRate     = a.decided ? +(a.reverted / a.decided * 100).toFixed(1) : 0;
+      a.contRate    = a.decided ? +(a.continued / a.decided * 100).toFixed(1) : 0;
+      a.avgRetrace  = a.reverted ? +(a.retraceSum / a.reverted).toFixed(4) : 0;
+      a.avgExt      = a.continued ? +(a.extSum / a.continued).toFixed(4) : 0;
+      a.lowN        = a.decided < 30;
+      delete a.retraceSum; delete a.extSum;
+    }
+  }
+  return groups;
+}
+
+export { ASSET_PARAMS };
