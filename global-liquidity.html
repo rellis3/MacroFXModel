@@ -140,6 +140,22 @@
 
   <div id="content"><div class="loading">Fetching liquidity data…</div></div>
 
+  <!-- Real-data backtest (runs server-side on Railway: FRED key + R2 FX) -->
+  <div class="card" id="btCard">
+    <div class="card-hdr"><span>Real-data backtest</span><span class="dim">server · Railway</span></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button class="gl-btn" id="btRun" style="border-color:var(--green);color:var(--green);">▶ Run backtest</button>
+        <span class="dim" id="btStatus" style="font-size:12px;"></span>
+      </div>
+      <div id="btResult" style="margin-top:12px;"></div>
+      <div class="dim" style="font-size:11px;margin-top:10px;line-height:1.5;">
+        Runs the engine over real FX (R2 caches) + real FRED on the server, ~30–90s the first time
+        (cached 6h after). Walk-forward validated. Needs <code>FRED_KEY</code> set on Railway.
+      </div>
+    </div>
+  </div>
+
   <div class="note" id="footNote"></div>
 </div>
 
@@ -388,6 +404,68 @@
     overlay.classList.toggle('open', open); sheet.classList.toggle('open', open);
     document.body.style.overflow = open ? 'hidden' : '';
   }
+  // ── Real-data backtest (server-side on Railway) ───────────────────────────
+  var btRunning = false;
+  function btSetStatus(t) { document.getElementById('btStatus').textContent = t || ''; }
+  function btKpi(lbl, val, cls, sub) {
+    return '<div class="kpi"><div class="kpi-lbl">' + lbl + '</div><div class="kpi-val ' + (cls || '') +
+           '">' + val + '</div><div class="kpi-sub">' + (sub || '') + '</div></div>';
+  }
+  function btRender(d) {
+    var pct = function (x) { return x == null ? '—' : (x * 100).toFixed(1) + '%'; };
+    var wf = d.walkForward || {};
+    var shCls = d.sharpe == null ? 'dim' : d.sharpe >= 0.5 ? 'green' : d.sharpe < 0 ? 'red' : 'amber';
+    var wfeCls = wf.wfe == null ? 'dim' : wf.wfe >= 0.5 ? 'green' : 'red';
+    var html = '<div class="kpis">' +
+      btKpi('Sharpe (net)', d.sharpe == null ? '—' : d.sharpe.toFixed(2), shCls, d.real ? 'real FRED' : 'SYNTHETIC') +
+      btKpi('Ann. return', pct(d.annReturn), d.annReturn >= 0 ? 'green' : 'red', 'net of costs') +
+      btKpi('Max drawdown', pct(d.maxDrawdown), 'red', 'vol ' + pct(d.annVol)) +
+      btKpi('WFE (OOS/IS)', wf.wfe == null ? '—' : wf.wfe.toFixed(2), wfeCls, 'target ≥ 0.5') +
+      '</div>' +
+      '<div class="kpis" style="margin-top:10px;">' +
+      btKpi('Trades/week', d.tradesPerWeek, 'blue', d.avgGross + 'x gross') +
+      btKpi('OOS +ve', pct(wf.oosPositiveShare), 'purple', wf.windows + ' windows') +
+      btKpi('Hit rate', pct(d.hitRate), 'dim', 'weeks') +
+      btKpi('Coverage', d.coveredPairs + '/' + d.totalPairs, 'dim', d.weeks + 'w · ' + d.asOf) +
+      '</div>';
+    if (!d.real) html += '<div class="dim" style="font-size:11px;margin-top:10px;color:var(--amber);">' +
+      'FRED is synthetic on the server — set FRED_KEY on Railway for a real number.</div>';
+    document.getElementById('btResult').innerHTML = html;
+  }
+  function btPoll(jobId, t0) {
+    fetch('/api/global-liquidity/backtest/status/' + jobId)
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.status === 'running') {
+          btSetStatus((j.phase || 'running') + '  ·  ' + (j.elapsed || 0) + 's');
+          setTimeout(function () { btPoll(jobId, t0); }, 2000);
+        } else if (j.status === 'done') {
+          btRunning = false; document.getElementById('btRun').disabled = false;
+          btSetStatus((j.cached ? 'cached' : 'done') + '  ·  ' + Math.round((Date.now() - t0) / 1000) + 's');
+          btRender(j.data);
+        } else { btFail(j.error || 'failed'); }
+      })
+      .catch(function (e) { btFail(e.message); });
+  }
+  function btFail(msg) {
+    btRunning = false; document.getElementById('btRun').disabled = false;
+    btSetStatus(''); document.getElementById('btResult').innerHTML =
+      '<div class="err" style="padding:8px 0;">Backtest failed: ' + msg + '</div>';
+  }
+  document.getElementById('btRun').addEventListener('click', function () {
+    if (btRunning) return;
+    btRunning = true; this.disabled = true;
+    document.getElementById('btResult').innerHTML = ''; btSetStatus('starting…');
+    var t0 = Date.now();
+    fetch('/api/global-liquidity/backtest/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok || !x.j.ok) return btFail(x.j.error || 'could not start');
+        btPoll(x.j.jobId, t0);
+      })
+      .catch(function (e) { btFail(e.message); });
+  });
+
   document.getElementById('helpBtn').addEventListener('click', function () { setHelp(true); });
   document.getElementById('helpClose').addEventListener('click', function () { setHelp(false); });
   overlay.addEventListener('click', function () { setHelp(false); });
