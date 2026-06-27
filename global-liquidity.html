@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>Global Liquidity — Macro FX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+  #app { padding: 0 14px 80px; max-width: 720px; margin: 0 auto; }
+  .gl-top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 14px 0 10px;
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .gl-title { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .gl-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .gl-spacer { flex: 1; }
+  .gl-badge { font-size: 10px; font-weight: 600; font-family: 'DM Mono', monospace; padding: 3px 8px;
+              border-radius: 999px; border: 1px solid var(--border2); color: var(--text3); }
+  .gl-badge.live  { color: var(--green); border-color: var(--green); }
+  .gl-badge.demo  { color: var(--amber); border-color: var(--amber); }
+  .gl-btn { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; cursor: pointer;
+            background: var(--s2); color: var(--text); border: 1px solid var(--border2);
+            border-radius: var(--r); padding: 8px 14px; -webkit-tap-highlight-color: transparent; }
+  .gl-btn:active { transform: scale(.97); }
+  .gl-link { text-decoration: none; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); }
+
+  .regime-banner { border-radius: var(--rl); padding: 16px 18px; margin-top: 8px;
+                   border: 1.5px solid var(--border2); background: var(--s1);
+                   display: flex; align-items: center; gap: 14px; }
+  .regime-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+  .regime-name { font-size: 20px; font-weight: 700; line-height: 1.1; }
+  .regime-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 3px; }
+  .gate-pill { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600;
+               padding: 6px 10px; border-radius: var(--r); white-space: nowrap; }
+  .gate-on  { background: rgba(248,113,113,.14); color: var(--red); border: 1px solid var(--red); }
+  .gate-off { background: rgba(52,211,153,.10); color: var(--green); border: 1px solid var(--border2); }
+
+  .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+  @media (min-width: 560px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+  .kpi { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 14px 14px 12px; }
+  .kpi-lbl { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+             color: var(--text3); font-family: 'DM Mono', monospace; }
+  .kpi-val { font-size: 24px; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1.1; margin-top: 5px; }
+  .kpi-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 3px; }
+  .green { color: var(--green); } .red { color: var(--red); } .blue { color: var(--blue); }
+  .amber { color: var(--amber); } .purple { color: var(--purple); } .dim { color: var(--text3); }
+
+  .card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+  .card-hdr { padding: 11px 16px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+              color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border);
+              display: flex; align-items: center; justify-content: space-between; }
+  .card-body { padding: 12px 16px 16px; }
+
+  .ccy-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+  .ccy-name { width: 42px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; }
+  .ccy-bar-wrap { flex: 1; height: 8px; background: var(--s3); border-radius: 999px; position: relative; overflow: hidden; }
+  .ccy-bar { position: absolute; top: 0; bottom: 0; left: 50%; border-radius: 999px; }
+  .ccy-z { width: 52px; text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  .book-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .book-row:last-child { border-bottom: none; }
+  .side { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; width: 46px; text-align: center;
+          padding: 3px 0; border-radius: var(--r); }
+  .side.L { background: rgba(52,211,153,.12); color: var(--green); }
+  .side.S { background: rgba(248,113,113,.12); color: var(--red); }
+  .book-pair { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600; flex: 1; }
+  .book-w { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+
+  .spark { width: 100%; height: 56px; display: block; }
+  .note { font-size: 11px; color: var(--text3); line-height: 1.5; margin-top: 16px; font-family: 'DM Mono', monospace; }
+  .err { color: var(--red); font-family: 'DM Mono', monospace; font-size: 13px; padding: 14px; }
+  .loading { color: var(--text3); font-family: 'DM Mono', monospace; font-size: 13px; padding: 30px 14px; text-align: center; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="gl-top">
+    <div>
+      <div class="gl-title">Global Liquidity</div>
+      <div class="gl-sub" id="asOf">loading…</div>
+    </div>
+    <div class="gl-spacer"></div>
+    <span class="gl-badge" id="srcBadge">…</span>
+    <button class="gl-btn" id="refreshBtn">↻ Refresh</button>
+  </div>
+  <div style="display:flex;gap:14px;margin:2px 0 4px;">
+    <a class="gl-link" href="index.html">← Dashboard</a>
+    <a class="gl-link" href="hub.html">Systems Hub →</a>
+    <a class="gl-link" href="#" id="demoToggle">Toggle demo data</a>
+  </div>
+
+  <div id="content"><div class="loading">Fetching liquidity data…</div></div>
+
+  <div class="note" id="footNote"></div>
+</div>
+
+<script src="./js/globalLiquidityEngine.js"></script>
+<script>
+(function () {
+  'use strict';
+  var E = window.GLIEngine;
+  var forceDemo = false;
+
+  var REGIME_COLOR = {
+    REFLATION: 'var(--green)', RECOVERY: 'var(--blue)',
+    GOLDILOCKS_LATE: 'var(--amber)', DEFLATION: 'var(--red)'
+  };
+  var REGIME_DESC = {
+    REFLATION: 'Liquidity rising + growth up — long risk / sell USD & funders',
+    RECOVERY: 'Liquidity rising + growth down — early-cycle, lean long risk',
+    GOLDILOCKS_LATE: 'Liquidity falling + growth up — late cycle, buy convexity',
+    DEFLATION: 'Liquidity falling + growth down — risk-off, long USD/JPY/CHF/gold'
+  };
+
+  function fmtZ(x) { return (x == null) ? '—' : (x >= 0 ? '+' : '') + x.toFixed(2); }
+  function zClass(x) { return x == null ? 'dim' : x > 0.15 ? 'green' : x < -0.15 ? 'red' : 'dim'; }
+
+  function sparkline(vals, dates) {
+    var pts = [];
+    for (var i = Math.max(0, vals.length - 104); i < vals.length; i++)
+      if (typeof vals[i] === 'number' && !isNaN(vals[i])) pts.push(vals[i]);
+    if (pts.length < 3) return '';
+    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts), rng = (max - min) || 1;
+    var W = 320, H = 56, n = pts.length;
+    var d = pts.map(function (v, i) {
+      var x = (i / (n - 1)) * W, y = H - ((v - min) / rng) * (H - 8) - 4;
+      return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }).join(' ');
+    var zeroY = H - ((0 - min) / rng) * (H - 8) - 4;
+    var lastUp = pts[pts.length - 1] >= 0;
+    return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+      (0 >= min && 0 <= max ? '<line x1="0" y1="' + zeroY.toFixed(1) + '" x2="' + W + '" y2="' + zeroY.toFixed(1) +
+        '" stroke="var(--border2)" stroke-width="1" stroke-dasharray="3 3"/>' : '') +
+      '<path d="' + d + '" fill="none" stroke="' + (lastUp ? 'var(--green)' : 'var(--red)') +
+      '" stroke-width="2" stroke-linejoin="round"/></svg>';
+  }
+
+  function ccyBar(z) {
+    if (z == null) return '';
+    var mag = Math.max(-2.5, Math.min(2.5, z)), pct = (Math.abs(mag) / 2.5) * 50;
+    var color = z >= 0 ? 'var(--green)' : 'var(--red)';
+    var style = z >= 0 ? 'left:50%;width:' + pct + '%;' : 'left:' + (50 - pct) + '%;width:' + pct + '%;';
+    return '<div class="ccy-bar" style="' + style + 'background:' + color + ';"></div>';
+  }
+
+  function render(snap, isDemo) {
+    document.getElementById('asOf').textContent = 'as of ' + snap.asOf + '  ·  ' + snap.weeks + 'w history';
+    var badge = document.getElementById('srcBadge');
+    badge.textContent = isDemo ? 'DEMO DATA' : 'LIVE · FRED';
+    badge.className = 'gl-badge ' + (isDemo ? 'demo' : 'live');
+
+    var g = snap.gli, r = snap.regime;
+    var html = '';
+
+    // Regime banner
+    html += '<div class="regime-banner" style="border-color:' + (r.gate ? 'var(--red)' : REGIME_COLOR[r.state]) + ';">';
+    html += '<span class="regime-dot" style="background:' + REGIME_COLOR[r.state] + ';"></span>';
+    html += '<div><div class="regime-name">' + r.state.replace('_', ' ') + '</div>';
+    html += '<div class="regime-meta">' + REGIME_DESC[r.state] + '</div></div>';
+    html += '<span class="gate-pill ' + (r.gate ? 'gate-on' : 'gate-off') + '">' +
+            (r.gate ? '⚠ RISK GATE · gross ×' + r.grossMult : 'gate clear') + '</span>';
+    html += '</div>';
+
+    // KPIs
+    var impTxt = fmtZ(g.impulse), impCls = zClass(g.impulse);
+    html += '<div class="kpis">';
+    html += kpi('GLI Level (z)', fmtZ(g.level), zClass(g.level), 'standardised');
+    html += kpi('Liquidity Impulse', impTxt, impCls, '13w rate-of-change ← timing');
+    html += kpi('Cycle Phase', g.cyclePhase, 'purple', 'pos ' + (g.cycle == null ? '—' : g.cycle.toFixed(2)));
+    html += kpi('Conviction', r.conviction == null ? '—' : (r.conviction * 100).toFixed(0) + '%', 'blue',
+                'tilt ' + fmtZ(r.tilt));
+    html += '</div>';
+
+    // Impulse sparkline
+    html += '<div class="card"><div class="card-hdr"><span>Liquidity Impulse — last 2y</span>' +
+            '<span class="dim">' + impTxt + '</span></div><div class="card-body">' +
+            (sparkline(snap.history.impulse, snap.history.dates) || '<div class="dim">insufficient history</div>') +
+            '</div></div>';
+
+    // Per-currency impulse
+    var order = ['USD', 'EUR', 'JPY', 'GBP', 'CHF', 'CNY', 'AUD', 'NZD', 'CAD', 'XAU'];
+    html += '<div class="card"><div class="card-hdr"><span>Per-currency liquidity impulse</span><span class="dim">z-score</span></div><div class="card-body">';
+    order.forEach(function (c) {
+      if (!(c in g.perCcy)) return;
+      var z = g.perCcy[c];
+      html += '<div class="ccy-row"><span class="ccy-name">' + c + '</span>' +
+              '<span class="ccy-bar-wrap">' + ccyBar(z) + '</span>' +
+              '<span class="ccy-z ' + zClass(z) + '">' + fmtZ(z) + '</span></div>';
+    });
+    html += '</div></div>';
+
+    // Target book
+    html += '<div class="card"><div class="card-hdr"><span>Target FX book</span><span class="dim">' +
+            snap.book.length + ' positions · gross-normalised</span></div><div class="card-body">';
+    if (!snap.book.length) html += '<div class="dim">flat</div>';
+    snap.book.forEach(function (b) {
+      var L = b.weight > 0;
+      html += '<div class="book-row"><span class="side ' + (L ? 'L' : 'S') + '">' + (L ? 'LONG' : 'SHORT') + '</span>' +
+              '<span class="book-pair">' + b.pair + '</span>' +
+              '<span class="book-w">' + (b.weight >= 0 ? '+' : '') + b.weight.toFixed(3) +
+              '  ·  spread ' + fmtZ(b.score) + '</span></div>';
+    });
+    html += '</div></div>';
+
+    document.getElementById('content').innerHTML = html;
+
+    document.getElementById('footNote').innerHTML = isDemo
+      ? 'DEMO MODE — synthetic seeded data. Numbers exercise the engine, not real markets. ' +
+        'Live mode pulls FRED via /api/fredhistory (needs FRED_KEY configured on the worker).'
+      : 'Live FRED data via the dashboard worker. All transforms are causal (trailing windows + ' +
+        'publication lags), so this snapshot equals what the model would have shown at ' + snap.asOf +
+        '. GBP uses a beta proxy (no clean BoE balance-sheet series on FRED). Not investment advice.';
+  }
+
+  function kpi(lbl, val, cls, sub) {
+    return '<div class="kpi"><div class="kpi-lbl">' + lbl + '</div>' +
+           '<div class="kpi-val ' + (cls || '') + '">' + val + '</div>' +
+           '<div class="kpi-sub">' + (sub || '') + '</div></div>';
+  }
+
+  function hasRealData(payload) {
+    var n = 0;
+    E.KEYS.forEach(function (k) { if (Array.isArray(payload[k]) && payload[k].length > 5) n++; });
+    return n >= 10; // need a decent chunk of the series to trust live mode
+  }
+
+  function load() {
+    document.getElementById('content').innerHTML = '<div class="loading">Fetching liquidity data…</div>';
+    if (forceDemo) { try { render(E.run(E.synthetic(520, 7)), true); } catch (e) { showErr(e); } return; }
+
+    var url = '/api/fredhistory?keys=' + E.KEYS.join(',') + '&period=5y';
+    fetch(url).then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+      .then(function (payload) {
+        if (!hasRealData(payload)) { render(E.run(E.synthetic(520, 7)), true); return; }
+        var snap = E.run(payload);
+        if (snap.error) { render(E.run(E.synthetic(520, 7)), true); return; }
+        render(snap, false);
+      })
+      .catch(function () {
+        // Network/worker unavailable — fall back to demo so the page is never blank.
+        try { render(E.run(E.synthetic(520, 7)), true); } catch (e) { showErr(e); }
+      });
+  }
+
+  function showErr(e) {
+    document.getElementById('content').innerHTML = '<div class="err">Engine error: ' + (e && e.message || e) + '</div>';
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', load);
+  document.getElementById('demoToggle').addEventListener('click', function (ev) {
+    ev.preventDefault(); forceDemo = !forceDemo; load();
+  });
+  load();
+})();
+</script>
+</body>
+</html>

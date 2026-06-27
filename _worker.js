@@ -1041,6 +1041,21 @@ export default {
           au_short: 'IR3TIB01AUM156N',
           ca_short: 'IRSTCI01CAM156N',
           ch_short: 'IRSTCI01CHM156N',
+          // Global Liquidity engine series (global-liquidity.html / globalLiquidityEngine.js)
+          walcl:      'WALCL',          // Fed total assets
+          tga:        'WTREGEN',        // Treasury General Account (drains)
+          rrp:        'RRPONTSYD',      // Reverse repo (drains)
+          ecb_assets: 'ECBASSETSW',     // ECB total assets (EUR)
+          boj_assets: 'JPNASSETS',      // BoJ total assets (JPY)
+          cny_res:    'TRESEGCNM052N',  // China FX reserves (PBoC proxy)
+          dexuseu:    'DEXUSEU',        // USD per EUR
+          dexjpus:    'DEXJPUS',        // JPY per USD
+          dexusuk:    'DEXUSUK',        // USD per GBP
+          dexchus:    'DEXCHUS',        // CNY per USD
+          sofr:       'SOFR',           // secured overnight financing rate
+          iorb:       'IORB',           // interest on reserve balances
+          indpro:     'INDPRO',         // industrial production (growth proxy)
+          ism:        'NAPM',           // ISM manufacturing PMI (may be discontinued)
         };
 
         const keysParam = url.searchParams.get('keys') || 'us2y,us10y,de10y,de_short';
