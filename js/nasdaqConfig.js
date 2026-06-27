@@ -57,7 +57,7 @@ export const LIQUIDITY_SCORE = {
 // ── Trend Expression Engine (Gate 2) ────────────────────────────────────────
 export const TREND_SCORE = {
   range: [0, 100],
-  validThreshold: 70,     // TrendScore > 70 → VALID
+  validThreshold: 60,     // TrendScore > 60 → VALID (lowered from 70 to increase trade frequency)
   adxTrendLevel: 25,      // reference line only — ADX above this = "a real trend is present" on dashboards
   hurstTrendLevel: 0.5,   // reference line only — Hurst > 0.5 = persistent/trending series
   atrPercentileBand: [25, 90], // healthy participation band; outside this = exhaustion (>90) or dead market (<25)
