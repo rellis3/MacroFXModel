@@ -98,7 +98,7 @@ const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn',
 const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
 const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
-const TABS = ['Overview','Levels','Conditioning','Drivers','Calibration','Excursion','Stability','Candidates','Pairs'];
+const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
 
 const hdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
@@ -158,6 +158,7 @@ function render(){
   if(TAB==='Levels') return renderLevels(v);
   if(TAB==='Conditioning') return renderConditioning(v);
   if(TAB==='Drivers') return renderDrivers(v);
+  if(TAB==='Day-Type') return renderDayType(v);
   if(TAB==='Calibration') return renderCalibration(v);
   if(TAB==='Excursion') return renderExcursion(v);
   if(TAB==='Stability') return renderStability(v);
@@ -264,6 +265,49 @@ function renderDrivers(v){
       <td class="mut">${bb.g} ${fmt(bb.rate)}%</td></tr>`; }
   html+=`</tbody></table></div>`; v.innerHTML=html;
   $('drvLine').onchange=e=>{driverLine=e.target.value;render();};
+}
+
+// ── Day-Type: does the signedT lean predict continuation? (brief §5) ─────────
+let dtPeriod='full';
+function renderDayType(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const dt=d.dayType;
+  if(!dt){ v.innerHTML=`<div class="card mut">Day-Type analysis needs a fresh refresh (new fields). ${LEVEL==='admin'?'Run a refresh.':'Ask the owner to refresh.'}</div>`; return; }
+  const st=dt[dtPeriod]; const splitInfo=dt.splitDate?`OOS from ${dt.splitDate}`:'';
+  let html=`<div class="card"><div class="controls" style="margin-bottom:6px"><div><label>Sample</label><select id="dtPer">
+    <option value="full" ${dtPeriod==='full'?'selected':''}>Full</option>
+    <option value="is" ${dtPeriod==='is'?'selected':''}>In-sample</option>
+    <option value="oos" ${dtPeriod==='oos'?'selected':''}>Out-of-sample</option></select></div>
+    <div class="mut" style="font-size:11px;align-self:center">${splitInfo}</div></div>`;
+  if(!st){ html+=`<div class="mut">Not enough data in this sample.</div></div>`; v.innerHTML=html; $('dtPer').onchange=e=>{dtPeriod=e.target.value;render();}; return; }
+  // (b) headline: AUC
+  const auc=st.auc, aucCls=auc>=0.6?'pos':auc>0.55?'':'mut';
+  const verdict = auc>=0.6 ? 'the lean magnitude carries real information → worth a calibrated probability layer'
+                 : auc>0.55 ? 'weak but present — direction useful, magnitude marginal'
+                 : 'magnitude ≈ noise — keep the sign as a gate, skip the confidence layer';
+  html+=`<div class="kpi-grid">
+    <div class="kpi"><div class="v ${aucCls}">${fmt(auc,3)}</div><div class="l">AUC (signedT → continuation)</div></div>
+    <div class="kpi"><div class="v">${fmt(st.contPct)}%</div><div class="l">days continued</div></div>
+    <div class="kpi"><div class="v pos">${fmt(st.meanSignedT_cont,2)}</div><div class="l">mean signedT · continued</div></div>
+    <div class="kpi"><div class="v neg">${fmt(st.meanSignedT_rev,2)}</div><div class="l">mean signedT · reverted</div></div>
+    <div class="kpi"><div class="v mut" style="font-size:15px">${st.n}</div><div class="l">windows</div></div></div>`;
+  html+=`<div class="find" style="margin-top:10px"><b>(b) Confidence test:</b> AUC ${fmt(auc,3)} — ${verdict}.</div></div>`;
+  // (b) reliability: P(continuation) by signedT bin
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:8px">(b) P(continuation) by signedT bin — a rising curve = the lean predicts</div><table><thead><tr><th>signedT bin</th><th>P(continuation)</th><th></th><th>n</th></tr></thead><tbody>`;
+  for(const b of st.bins){ if(b.pCont==null||b.n<10){ html+=`<tr class="lown"><td>${fmt(b.lo,1)}…${fmt(b.lo+0.2,1)}</td><td class="mut">—</td><td></td><td class="mut">${b.n}</td></tr>`; continue; }
+    const w=Math.round(b.pCont*1.4); const lean=b.lo>=0?'lbl-up':'lbl-dn';
+    html+=`<tr><td class="${lean}">${fmt(b.lo,1)}…${fmt(b.lo+0.2,1)}</td><td>${fmt(b.pCont)}%</td>
+      <td style="text-align:left"><span class="bar" style="width:${w}px;background:${b.pCont>=50?'var(--green)':'var(--red)'}"></span></td><td class="mut">${b.n}</td></tr>`; }
+  html+=`</tbody></table></div>`;
+  // (c) cross-tab vs the selector's directional action
+  const ct=st.crosstab; const cell=c=>c.n? `${fmt(c.hitRate)}% <span class="mut" style="font-size:10px">n${c.n}</span>` : '<span class="mut">—</span>';
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">(c) Day-type lean vs the selector's action — hit-rate (did the bet pay)</div>
+    <div class="hint" style="margin-bottom:8px">Agree diagonal (lean and system point the same way) should beat the disagree off-diagonal if the lean sharpens the system.</div>
+    <table><thead><tr><th></th><th>system: fade</th><th>system: follow</th></tr></thead><tbody>
+    <tr><td class="lbl-dn">lean −ve (fade)</td><td class="cell-up">${cell(ct.agreeFade)}</td><td>${cell(ct.sysFollowLeanFade)}</td></tr>
+    <tr><td class="lbl-up">lean +ve (follow)</td><td>${cell(ct.sysFadeLeanFollow)}</td><td class="cell-up">${cell(ct.agreeFollow)}</td></tr>
+    </tbody></table></div>`;
+  v.innerHTML=html; $('dtPer').onchange=e=>{dtPeriod=e.target.value;render();};
 }
 
 // ── Calibration (unique): do the lines hold their percentile? ────────────────

@@ -64,6 +64,57 @@ function computeSkill(records) {
   };
 }
 
+// ── Day-type analysis (DAYTYPE_ANALYSIS_BRIEF.md) ────────────────────────────
+// Tests whether the day-type lean (signedT) predicts realized continuation vs
+// reversion, and whether its magnitude is real confidence (AUC + reliability).
+function aucOf(rows) {
+  const pos = rows.filter(r => r.cont).length, neg = rows.length - pos;
+  if (!pos || !neg) return 0.5;
+  const sorted = [...rows].sort((a, b) => a.s - b.s);
+  let i = 0, rankSumPos = 0;
+  while (i < sorted.length) {
+    let j = i; while (j < sorted.length && sorted[j].s === sorted[i].s) j++;
+    const avgRank = (i + 1 + j) / 2;               // average rank for ties
+    for (let k = i; k < j; k++) if (sorted[k].cont) rankSumPos += avgRank;
+    i = j;
+  }
+  return +(((rankSumPos - pos * (pos + 1) / 2) / (pos * neg))).toFixed(3);
+}
+function dayTypeStats(recs) {
+  const rows = recs.filter(r => r.signedT != null && r.realizedDir)
+    .map(r => ({ s: r.signedT, cont: r.realizedDir === 'CONTINUATION' ? 1 : 0, follow: r.dirAction === 'follow' }));
+  const n = rows.length;
+  if (n < 20) return null;
+  const mean = a => a.length ? +(a.reduce((s, r) => s + r.s, 0) / a.length).toFixed(3) : 0;
+  const cont = rows.filter(r => r.cont), rev = rows.filter(r => !r.cont);
+  // (a)+(b) bins of signedT [-1,1] → counts + P(continuation)
+  const NB = 10, bins = Array.from({ length: NB }, (_, i) => ({ lo: +(-1 + i * 0.2).toFixed(1), contN: 0, revN: 0 }));
+  for (const r of rows) { const bi = Math.min(NB - 1, Math.max(0, Math.floor((r.s + 1) / 0.2))); r.cont ? bins[bi].contN++ : bins[bi].revN++; }
+  // (c) cross-tab: lean sign × selector action; hit = realized matched the bet
+  const cell = (leanFollow, actFollow) => {
+    const sub = rows.filter(r => (r.s > 0) === leanFollow && r.follow === actFollow);
+    const hit = sub.filter(r => r.follow ? r.cont : !r.cont).length;
+    return { n: sub.length, hitRate: sub.length ? +(hit / sub.length * 100).toFixed(1) : 0 };
+  };
+  return {
+    n, contPct: +(cont.length / n * 100).toFixed(1),
+    meanSignedT_cont: mean(cont), meanSignedT_rev: mean(rev),
+    auc: aucOf(rows),
+    bins: bins.map(b => ({ lo: b.lo, n: b.contN + b.revN, pCont: (b.contN + b.revN) ? +(b.contN / (b.contN + b.revN) * 100).toFixed(1) : null })),
+    crosstab: { agreeFade: cell(false, false), sysFollowLeanFade: cell(false, true),
+                sysFadeLeanFollow: cell(true, false), agreeFollow: cell(true, true) },
+  };
+}
+function computeDayType(records, oosFrac = 0.4) {
+  const all = records.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+  if (!all.length) return null;
+  const cut = Math.floor(all.length * (1 - oosFrac));
+  const splitDate = all[cut]?.date ?? null;
+  const isRec  = splitDate ? records.filter(r => r.date < splitDate) : records;
+  const oosRec = splitDate ? records.filter(r => r.date >= splitDate) : [];
+  return { splitDate, full: dayTypeStats(records), is: dayTypeStats(isRec), oos: dayTypeStats(oosRec) };
+}
+
 // Precompute the slice rollups the dashboard exposes.
 function buildAggregates(records) {
   // Vol terciles (low/mid/high σ) over this pair's windows — the regime the
@@ -85,6 +136,7 @@ function buildAggregates(records) {
     byYear:    aggregate(records, r => r.date.slice(0, 4)),
     byMonth:   aggregate(records, r => r.date.slice(0, 7)),
     skill:     computeSkill(records),
+    dayType:   computeDayType(records),
   };
 }
 
