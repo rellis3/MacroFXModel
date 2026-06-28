@@ -83,6 +83,7 @@ module only reads what it's given. Pip size comes from `instrumentRegistry`.
 |---|---|---|---|
 | **Level sources** | `js/levelSources.js` | `LEVEL_SOURCES` registry + `collectLevels` (aggregate to one tagged list) + `clusterLevels` (merge to scored zones). **Seven** sources: `daily_open`, `prior_hilo` (PDH/PDL, PWH/PWL, N-day extremes), `pivots` (classic + camarilla), `volume_profile` (POC/VAH/VAL over x days), `swing_sr` (N-bar pivots, clustered), `round_number` (big/half figures), `vwap` (session VWAP anchors over x days). Tested in `js/levelSources.test.mjs` (POC + swing logic checked against a verbatim reference). | ✅ built |
 | **Render brick** | `js/levelChart.js` | reusable Lightweight-Charts viewer — `createLevelChart(el).setCandles().setLevels(Level[]).setZones(zones)`; pure `styleForKind` / `levelToPriceLineOptions` / `zoneToPriceLineOptions` (colour keyed by `Level.kind`). Lifted from `gold-zones.html`. Demo: `level-chart-demo.html`. Pure helpers + factory wiring tested headless against a mock in `js/levelChart.test.mjs`. | ✅ built |
+| **VuManChu core** | `js/vumanchuCore.js` | ONE WaveTrend / Money-Flow / VWAP compute, consumed two ways: `waveTrendSeries` (raw WT1[] for backtest gating) and `waveTrendReading` (latest-bar OB/OS/cross signal) — same compute, mode selects the shape. Standardizes the divide-by-zero guard on `WT_EPS = 1e-10`. Wired into `js/vumanchu.js` ✅ (re-exports `computeWT`/`computeMF`/`computeVWAP`/`ema`/`sma`) and `asiaRangeEngine._computeWT1Series` ✅. Golden test (`js/vumanchuCore.test.mjs`) proves it reproduces BOTH former copies bit-for-bit. | ✅ built |
 
 **Where each source consolidates existing copies** (extract / unify targets):
 
@@ -95,16 +96,17 @@ module only reads what it's given. Pip size comes from `instrumentRegistry`.
 | `swing_sr` | `sr_level` (N=5 on 30m) | `fib_engine.py` swing pivots |
 | `round_number` | `round_number` | — |
 | `vwap` | *(none in JS — backtests omit VWAP anchors entirely)* | `session_engine.py` `compute_vwap_anchors` |
+| VuManChu WT/MF/VWAP | `js/vumanchu.js` `computeWT`, `asiaRangeEngine._computeWT1Series` → **both now share `js/vumanchuCore.js`** ✅ | `Gold/modules/vumanchu.py`, `backtestSystem/indicators.py`, `bot/utils/indicators.py` (Python — later) |
 
-> **VuManChu / WaveTrend** is the remaining Tier-2 source. A clean JS brick
-> already exists — `js/vumanchu.js` (`computeWT`, `computeVWAP`, `computeMF`,
-> `assessEntry`) — so the work is to retire the private copy
-> `asiaRangeEngine._computeWT1Series` and the Python copies
-> (`Gold/modules/vumanchu.py`, `backtestSystem/indicators.py`,
-> `bot/utils/indicators.py`). ⚠ Not auto-rewired: `_computeWT1Series` guards the
-> channel-index with `d > 1e-10` while `vumanchu.computeWT` uses `d > 0` — a
-> vanishingly-rare edge case, but not bit-identical, so it needs a deliberate
-> reconciliation rather than a silent swap.
+> **VuManChu / WaveTrend — done (JS).** The two JS copies (`js/vumanchu.js`
+> `computeWT` and `asiaRangeEngine._computeWT1Series`) now share
+> `js/vumanchuCore.js`. They had drifted only on the channel-index divide guard
+> (`d > 0` vs `d > 1e-10`); the core standardizes on `1e-10`, which is not just a
+> merge but an **improvement** — on a flat/dead market float rounding leaves `d`
+> at ~1e-16, and the old `d > 0` guard divided by that noise to emit spurious
+> ±66 oscillator spikes, while `1e-10` suppresses them (proven in
+> `js/vumanchuCore.test.mjs`). `asiaRangeEngine` is bit-identical (it already
+> used `1e-10`). The Python copies remain a later unification target.
 
 ---
 
@@ -224,8 +226,9 @@ Tier-2 level sources (`js/levelSources.js`)
 - [x] Build the level-source contract + registry (7 sources) + `collectLevels` / `clusterLevels`.
 - [x] Add a **VWAP/anchor** source (`vwap`).
 - [x] Build the **render brick** (`js/levelChart.js`) + demo (`level-chart-demo.html`).
-- [ ] Add a **VuManChu/WaveTrend** source — wrap `js/vumanchu.js`; reconcile the
-      `_computeWT1Series` `d>1e-10` vs `computeWT` `d>0` guard first (see §1c note).
+- [x] Unify **VuManChu/WaveTrend** — `js/vumanchuCore.js` (one compute, two use
+      cases); `js/vumanchu.js` + `asiaRangeEngine` wired; guard standardized on
+      `1e-10` (golden-tested). Python copies still to unify.
 - [ ] Point the Asia-range confluence modules at `levelSources` (they become thin
       `levels()`→`check()` adapters) to delete the remaining duplicate level math.
 - [ ] Unify the Gold bot's Python copies (`volume_profile.py` nPOC-age, `session_engine.py`

@@ -32,25 +32,18 @@
  *   Set opts.useMF = false to skip it entirely for a given call.
  */
 
-// ── EMA / SMA ─────────────────────────────────────────────────────────────────
+// ── Shared compute (single source of truth) ──────────────────────────────────
+// EMA/SMA, WaveTrend, Money Flow and VWAP live in the vumanchuCore brick so this
+// module and asiaRangeEngine share ONE implementation (the divide-by-zero guard
+// was the only thing that had drifted; core standardizes it on 1e-10, which also
+// suppresses flat-market float-noise spikes). Re-exported under the original
+// names so existing importers (signal.js computeWT, server.js, gold backtest)
+// don't change.
+import {
+  ema, sma, computeWaveTrend, computeMoneyFlow, computeVWAP as _computeVWAP,
+} from './vumanchuCore.js';
 
-export function ema(values, period) {
-  if (!values?.length || period <= 0) return [];
-  const k = 2 / (period + 1);
-  const out = [values[0]];
-  for (let i = 1; i < values.length; i++) {
-    out.push(values[i] * k + out[i - 1] * (1 - k));
-  }
-  return out;
-}
-
-export function sma(values, period) {
-  return values.map((_, i) =>
-    i < period - 1
-      ? NaN
-      : values.slice(i - period + 1, i + 1).reduce((s, v) => s + v, 0) / period
-  );
-}
+export { ema, sma };
 
 // ── Bar resampling ────────────────────────────────────────────────────────────
 
@@ -84,15 +77,7 @@ export function resampleBars(bars, n) {
 //   n2=21  WT1 smoothing period
 //   sp=4   WT2 SMA signal line period
 
-export function computeWT(bars, { n1 = 10, n2 = 21, sp = 4 } = {}) {
-  const hlc3 = bars.map(b => (b.high + b.low + b.close) / 3);
-  const esa_  = ema(hlc3, n1);
-  const d_    = ema(hlc3.map((h, i) => Math.abs(h - esa_[i])), n1);
-  const ci    = hlc3.map((h, i) => d_[i] > 0 ? (h - esa_[i]) / (0.015 * d_[i]) : 0);
-  const wt1   = ema(ci, n2);
-  const wt2   = sma(wt1, sp);
-  return { wt1, wt2 };
-}
+export const computeWT = (bars, opts = {}) => computeWaveTrend(bars, opts);
 
 // ── Money Flow ────────────────────────────────────────────────────────────────
 // Directional volume pressure: (close − open) / range × volume, EMA-smoothed.
@@ -101,39 +86,15 @@ export function computeWT(bars, { n1 = 10, n2 = 21, sp = 4 } = {}) {
 //
 // FX note: use tick_volume (price updates per bar) as the volume proxy.
 
-export function computeMF(bars, { period = 14 } = {}) {
-  const raw = bars.map(b => {
-    const range = (b.high - b.low) || 1e-10;
-    const vol   = b.volume ?? b.tick_volume ?? 1;
-    return (b.close - b.open) / range * vol;
-  });
-  const peak = Math.max(...raw.map(Math.abs)) || 1;
-  const norm = raw.map(v => v / peak * 100);
-  return ema(norm, period);
-}
+export const computeMF = (bars, opts = {}) => computeMoneyFlow(bars, opts);
 
 // ── VWAP ──────────────────────────────────────────────────────────────────────
 
 /**
- * Session VWAP (cumulative from bar 0 of the bars array).
- * Returns { vwap: float[], osc: float[] }
- *   vwap — cumulative volume-weighted average price
- *   osc  — (close − vwap) normalised to ±100 for divergence comparison
+ * Session VWAP (cumulative from bar 0). Returns { vwap, osc }. Delegates to the
+ * vumanchuCore brick (single source of truth).
  */
-export function computeVWAP(bars) {
-  let cumTpv = 0, cumVol = 0;
-  const vwap = bars.map(b => {
-    const tp  = (b.high + b.low + b.close) / 3;
-    const vol = b.volume ?? b.tick_volume ?? 1;
-    cumTpv += tp * vol;
-    cumVol += vol;
-    return cumVol > 0 ? cumTpv / cumVol : tp;
-  });
-  const raw  = bars.map((b, i) => b.close - vwap[i]);
-  const peak = Math.max(...raw.map(Math.abs)) || 1;
-  const osc  = raw.map(v => v / peak * 100);
-  return { vwap, osc };
-}
+export const computeVWAP = (bars) => _computeVWAP(bars);
 
 /**
  * VWAP slope exhaustion — detects whether the momentum carrying price into a

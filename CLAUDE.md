@@ -80,6 +80,7 @@ built on the Tier-1 bricks; contract + module map in `LEGO_MODULES.md §1c`):
 |---|---|---|
 | `js/levelSources.js` | `LEVEL_SOURCES` registry (`daily_open`, `prior_hilo`, `pivots`, `volume_profile`, `swing_sr`, `round_number`, `vwap`), each `levels(ctx) → Level[]`, plus `collectLevels` + `clusterLevels` | building a strategy/chart from pluggable level sources — one `Level[]` feeds the scorer, the viewer and the strategy |
 | `js/levelChart.js` | reusable Lightweight-Charts viewer — `createLevelChart(el).setCandles().setLevels(Level[]).setZones()`; colour keyed by `Level.kind` (demo: `level-chart-demo.html`) | rendering a strategy's levels/zones on any page — pass in the `Level[]`, don't re-wire the chart |
+| `js/vumanchuCore.js` | one WaveTrend/Money-Flow/VWAP compute, two use cases: `waveTrendSeries` (raw WT1[] for gating) + `waveTrendReading` (latest-bar signal); guard standardized on `WT_EPS=1e-10` | VuManChu math anywhere — `js/vumanchu.js` + `asiaRangeEngine` already share it; never re-inline the WaveTrend formula |
 
 > `js/volBacktestM1Engine.js` is the mature **v1** engine (M1 walk-forward, the
 > realistic fill walker, the seven legs). Treat it as **read-only reference** —
