@@ -33,6 +33,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // shared bricks now, not private copies. See js/barUtils.js, js/fibProjection.js.
 import { bisect as _bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
+import { waveTrendSeries } from './vumanchuCore.js';
+// Use the SAME confluence matcher the live engine (levels.js) trades on, so the
+// backtest's notion of "confluence" matches what fires on the bot — including the
+// session-range distance cap + clustering (density) the old local copy lacked.
+import { detectConfluencesCore } from './confluence-core.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -131,44 +136,33 @@ function _mondayForDay(mondayRanges, dayEpoch) {
 // ── Fibonacci levels ──────────────────────────────────────────────────────────
 // calcFibs imported from the fibProjection brick (same signature & output).
 
-function detectConfluence(currFibs, prevFibs, threshold, tightThreshold) {
-  return currFibs.map(curr => {
-    let minDiff = Infinity, best = null;
-    for (const prev of prevFibs) {
-      const diff = Math.abs(curr.price - prev.price);
-      if (diff <= threshold && diff < minDiff) { minDiff = diff; best = prev; }
-    }
-    return {
-      ...curr,
-      hasConfluence: !!best,
-      isTight:       best ? minDiff <= tightThreshold : false,
-    };
+// Mark each current fib with hasConfluence / isTight / density using the LIVE
+// confluence matcher (confluence-core.detectConfluencesCore), instead of the old
+// bespoke per-fib threshold check. This brings the backtest in line with what the
+// bot trades: the Pine-style session-range distance cap and the cluster merge
+// (so two stacked prior fibs register as density ≥ 2, the live "dense zone").
+// confluence-core keys on `.fib`; our fibs carry the ratio on `.level`.
+function markConfluence(currFibs, prevFibs, { pipSize, normalDistance, tightDistance, mergeDistance, sessionRange }) {
+  const today = currFibs.map(f => ({ price: f.price, fib: f.level }));
+  const prev  = prevFibs.map(f => ({ price: f.price, fib: f.level }));
+  const clusters = detectConfluencesCore(today, prev, {
+    pipSize, normalDistance, tightDistance, mergeDistance,
+    priceMode: 'midpoint', clusterMerge: true, sessionRange,
+  });
+  return currFibs.map(f => {
+    const cl = clusters.find(c => (c.todayFibs ?? [c.todayFib]).includes(f.level));
+    return cl
+      ? { ...f, hasConfluence: true, isTight: cl.isTight, density: cl.density, confPrice: cl.price }
+      : { ...f, hasConfluence: false, isTight: false, density: 0 };
   });
 }
 
 // ── WaveTrend 1 (WT1) ─────────────────────────────────────────────────────────
-// Matches compute_wt1() in bot/utils/indicators.py and VuManchu Cipher B core.
-// Algorithm: hlc3 → EMA(n1) = esa → EMA(|hlc3-esa|, n1) = d → ci = (hlc3-esa)/(0.015*d) → EMA(ci, n2) = WT1
-// Returns a plain Array of WT1 values, one per bar. First n1+n2 values are EMA-warmed (not NaN).
-function _computeWT1Series(bars, n1 = 10, n2 = 21) {
-  const n  = bars.length;
-  const k1 = 2 / (n1 + 1);
-  const k2 = 2 / (n2 + 1);
-  const hlc3 = new Array(n);
-  for (let i = 0; i < n; i++) hlc3[i] = (bars[i].high + bars[i].low + bars[i].close) / 3;
-  const esa = new Array(n);
-  esa[0] = hlc3[0];
-  for (let i = 1; i < n; i++) esa[i] = hlc3[i] * k1 + esa[i - 1] * (1 - k1);
-  const d = new Array(n);
-  d[0] = Math.abs(hlc3[0] - esa[0]);
-  for (let i = 1; i < n; i++) d[i] = Math.abs(hlc3[i] - esa[i]) * k1 + d[i - 1] * (1 - k1);
-  const ci = new Array(n);
-  for (let i = 0; i < n; i++) ci[i] = d[i] > 1e-10 ? (hlc3[i] - esa[i]) / (0.015 * d[i]) : 0;
-  const wt1 = new Array(n);
-  wt1[0] = ci[0];
-  for (let i = 1; i < n; i++) wt1[i] = ci[i] * k2 + wt1[i - 1] * (1 - k2);
-  return wt1;
-}
+// VuManChu Cipher B core, now imported from the shared vumanchuCore brick so the
+// backtest and the live signal share ONE implementation. `waveTrendSeries`
+// returns one WT1 value per bar and is bit-identical to the previous private copy
+// (same 1e-10 divide guard) — see js/vumanchuCore.test.mjs.
+const _computeWT1Series = (bars, n1 = 10, n2 = 21) => waveTrendSeries(bars, { n1, n2 });
 
 // Returns bar index of the first touch of `entry` for `side`, or -1 if never touched.
 function findFirstTouch(bars, side, entry) {
@@ -295,13 +289,17 @@ function simulateDay(packed, dateStr, opts) {
   const currFibs = calcFibs(asia.low, asia.range, fibLevels);
   const prevFibs = prevAsia ? calcFibs(prevAsia.low, prevAsia.range, fibLevels) : [];
 
-  // Confluence thresholds in price terms
-  const threshold      = confluenceThreshPips * pipSize;
+  // Confluence thresholds in price terms (match the live engine's caps config).
+  const threshold      = confluenceThreshPips * pipSize;   // normalDistance
   const tightThreshold = threshold * (tightPct / 100);
+  const mergeDistance  = threshold * (opts.mergeFactor ?? 0.30);  // live default mergeFactor
 
   const fibs = prevFibs.length
-    ? detectConfluence(currFibs, prevFibs, threshold, tightThreshold)
-    : currFibs.map(f => ({ ...f, hasConfluence: false, isTight: false }));
+    ? markConfluence(currFibs, prevFibs, {
+        pipSize, normalDistance: threshold, tightDistance: tightThreshold,
+        mergeDistance, sessionRange: asia.range,   // ← the live distance cap (was missing)
+      })
+    : currFibs.map(f => ({ ...f, hasConfluence: false, isTight: false, density: 0 }));
 
   // Monday range + Monday fibs — O(log N) lookup if cache available
   let mondayRange = null;

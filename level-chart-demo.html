@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Level Sources + Chart — Lego Demo</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; margin-top:2px; }
+  .wrap { display:flex; gap:16px; padding:16px 20px; flex-wrap:wrap; }
+  #chart { flex:1 1 640px; min-width:320px; height:480px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .side { flex:0 0 260px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .card h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  label.src { display:flex; align-items:center; gap:8px; padding:3px 0; font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; }
+  label.src .dot { width:10px; height:10px; border-radius:2px; flex:0 0 auto; }
+  .row { display:flex; justify-content:space-between; font-family:'DM Mono',monospace; font-size:12px; padding:2px 0; }
+  .row b { color:var(--accent); }
+  button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .muted { color:var(--muted); font-size:11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Level Sources → Chart (lego bricks)</h1>
+  <div class="sub">Synthetic data. Each toggle is a <code>levelSources.js</code> module; lines drawn by <code>levelChart.js</code>. No network beyond the chart library.</div>
+</header>
+<div class="wrap">
+  <div id="chart"></div>
+  <div class="side">
+    <div class="card">
+      <h2>Level sources</h2>
+      <div id="toggles"></div>
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button id="zonesBtn">Show confluence zones</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Top confluence zones</h2>
+      <div id="zones"><span class="muted">toggle sources to populate</span></div>
+    </div>
+    <div class="card muted">
+      Built on the Tier-1 bricks (instrumentRegistry pip size, barUtils). The same
+      <code>Level[]</code> here feeds a confluence scorer and a strategy unchanged.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { LEVEL_SOURCES, collectLevels, clusterLevels } from './js/levelSources.js';
+import { createLevelChart, KIND_STYLE } from './js/levelChart.js';
+
+// ── Synthetic data: 90 daily bars + 5 days of intraday for VWAP / volume profile
+const day0 = Date.UTC(2024, 0, 1) / 1000;
+const dailyBars = [];
+let px = 1.2000;
+for (let i = 0; i < 90; i++) {
+  const o = px, c = px * (1 + 0.0010 * Math.sin(i / 7) + 0.0003 * Math.sin(i / 2));
+  dailyBars.push({ time: day0 + i * 86400, open: o, high: Math.max(o, c) * 1.003, low: Math.min(o, c) * 0.997, close: c });
+  px = c;
+}
+const last = dailyBars[dailyBars.length - 1];
+const intraday = [];
+for (let d = 4; d >= 0; d--) {
+  const base = last.close * (1 - 0.001 * d);
+  const dayStart = last.time - d * 86400;
+  for (let m = 0; m < 288; m++) {
+    const o = base + (Math.sin(m / 18) * 0.0012) + ((m % 40 === 0 ? 0.0008 : 0) * (m % 80 ? 1 : -1));
+    const c = o + 0.0001 * Math.cos(m / 9);
+    intraday.push({ time: dayStart + m * 300, open: o, high: Math.max(o, c) + 0.0004, low: Math.min(o, c) - 0.0004, close: c });
+  }
+}
+const instrument = 'EUR/USD';
+const ctx = { dailyBars, intraday, instrument, price: last.close };
+
+// ── Chart
+const view = createLevelChart(document.getElementById('chart'), { height: 480 });
+view.setCandles(dailyBars).fit();
+
+// ── Source toggles (all on)
+const enabled = new Set(Object.keys(LEVEL_SOURCES));
+const togWrap = document.getElementById('toggles');
+for (const [id, src] of Object.entries(LEVEL_SOURCES)) {
+  const color = (KIND_STYLE[src.kind] ?? KIND_STYLE._default).color;
+  const lab = document.createElement('label');
+  lab.className = 'src';
+  lab.innerHTML = `<input type="checkbox" checked data-id="${id}"><span class="dot" style="background:${color}"></span>${src.label} <span class="muted">(${id})</span>`;
+  lab.querySelector('input').addEventListener('change', e => { e.target.checked ? enabled.add(id) : enabled.delete(id); render(); });
+  togWrap.appendChild(lab);
+}
+
+let showZones = false;
+document.getElementById('zonesBtn').addEventListener('click', () => { showZones = !showZones; render(); });
+
+function render() {
+  const levels = collectLevels(ctx, [...enabled]);
+  view.setLevels(levels, { showTitle: false });
+  const zones = clusterLevels(levels, 12, instrument).slice(0, 8);
+  if (showZones) view.setZones(zones);
+  const zEl = document.getElementById('zones');
+  zEl.innerHTML = zones.length
+    ? zones.map(z => `<div class="row"><span>${z.price.toFixed(5)}</span><b>★${z.score.toFixed(1)}</b><span class="muted">${z.sources.join('+')}</span></div>`).join('')
+    : '<span class="muted">no zones</span>';
+}
+render();
+window.__demoReady = true;   // smoke-test hook
+</script>
+</body>
+</html>

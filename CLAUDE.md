@@ -49,6 +49,51 @@ doesn't, disconnect it — without disturbing the rest. Concretely:
    incumbent on **OOS** Sharpe with a **non-trivial OOS trade count (≥30)**.
    In-sample improvement is not evidence.
 
+6. **Register every brick — the registry is part of "done".** `LEGO_MODULES.md`
+   is the single index of what bricks exist, where they're used and why. Adding
+   or materially changing a brick is **not complete** until that doc is updated
+   (new row / status / consumer list / known-drift note). Read it before adding a
+   module so you import an existing brick instead of starting a new copy.
+
+---
+
+## Brick tiers & what counts as a brick
+
+Bricks come in tiers; know which you're building.
+
+- **Tier 1 — primitives.** Pure math/plumbing with a stable input→output contract
+  and no strategy opinion: vol math, the fill walker, metrics, z-scores/indicators,
+  bar utilities, the instrument registry, the WaveTrend/VWAP compute. These are
+  the *studs* everything snaps onto. (`js/volBacktestEngine.js`, `barUtils`,
+  `statsCore`, `indicatorCore`, `metricsCore`, `fibProjection`,
+  `instrumentRegistry`, `vumanchuCore`.)
+- **Tier 2 — feature / level-source plug-ins.** Built **on** Tier 1, these EMIT
+  something a strategy composes: a `Level[]` (daily-open, pivots, VAH/VAL/POC,
+  swing S&R, round numbers, VWAP) via the `levels(ctx) → Level[]` contract, so one
+  list feeds a confluence scorer, the chart viewer and a strategy. (`levelSources`.)
+- **Render bricks.** Reusable viewers that take a brick's output and draw it
+  (`levelChart` takes a `Level[]`). UI, not strategy logic.
+- **The brain (selectors).** `score → choice` logic layered on top
+  (`dayTypeScore → selectStrategy`). Not a brick to copy — a small principled
+  selector, proven OOS.
+
+**What IS a brick** (extract it): logic that is (a) used in ≥2 places, or provably
+will be; (b) has a **stable, documented contract** (fixed input/output shape);
+(c) is **pure** (no hidden global/DOM/network state — data is passed in); and
+(d) is **unit-testable on synthetic data** without the network. If two copies
+already exist, that alone qualifies — divergence is the bug we're preventing.
+
+**What is NOT a brick** (leave it inline): one-off glue used in a single place;
+anything fused to a specific page's DOM or a specific data feed; a thin
+re-parameterisation of an existing brick (just pass the parameter); or a "brick"
+that would need to reach into global state to work. Don't fragment a single-use
+helper into a module for its own sake — that adds surface without removing
+duplication.
+
+When unsure, default to: **extract if it removes a real second copy or has a
+clean contract two callers want; otherwise keep it inline and note it as a
+candidate in `LEGO_MODULES.md §2`.**
+
 ---
 
 ## The core modules (the baseplate — import these)
@@ -72,6 +117,15 @@ doesn't, disconnect it — without disturbing the rest. Concretely:
 | `js/metricsCore.js` | `sharpeRatio`, `sortinoRatio`, `calmar`, `maxDrawdown*`, `profitFactor`, `winRate`, `summarizeTrades` (== old `summarize`) | every performance card — one definition of Sharpe/DD |
 | `js/fibProjection.js` | `FIB_LEVELS`, `KEY_LEVELS`, `calcFibs` (range-extension grid) | any Asia/Monday range-extension engine |
 | `js/instrumentRegistry.js` | canonical pip/digits/asset-class + symbol aliases (`pipSize`, `instrument`, `resolveKey`…) | anything that needs a pip size or symbol — a wrong pip is a 10× PnL bug |
+
+**Tier-2 level-source bricks** (strategy-building plug-ins that EMIT price levels,
+built on the Tier-1 bricks; contract + module map in `LEGO_MODULES.md §1c`):
+
+| Module | Owns | Import for |
+|---|---|---|
+| `js/levelSources.js` | `LEVEL_SOURCES` registry (`daily_open`, `prior_hilo`, `pivots`, `volume_profile`, `swing_sr`, `round_number`, `vwap`), each `levels(ctx) → Level[]`, plus `collectLevels` + `clusterLevels` | building a strategy/chart from pluggable level sources — one `Level[]` feeds the scorer, the viewer and the strategy |
+| `js/levelChart.js` | reusable Lightweight-Charts viewer — `createLevelChart(el).setCandles().setLevels(Level[]).setZones()`; colour keyed by `Level.kind` (demo: `level-chart-demo.html`) | rendering a strategy's levels/zones on any page — pass in the `Level[]`, don't re-wire the chart |
+| `js/vumanchuCore.js` | one WaveTrend/Money-Flow/VWAP compute, two use cases: `waveTrendSeries` (raw WT1[] for gating) + `waveTrendReading` (latest-bar signal); guard standardized on `WT_EPS=1e-10` | VuManChu math anywhere — `js/vumanchu.js` + `asiaRangeEngine` already share it; never re-inline the WaveTrend formula |
 
 > `js/volBacktestM1Engine.js` is the mature **v1** engine (M1 walk-forward, the
 > realistic fill walker, the seven legs). Treat it as **read-only reference** —
@@ -101,6 +155,9 @@ unless that is explicitly the task.
 7. **A/B on the OOS card** against the incumbent. Ship the comparison, not just
    the new equity curve.
 8. **Link it from `hub.html`** so it's discoverable.
+9. **Update `LEGO_MODULES.md`.** If you added or changed a brick, record it (row,
+   status, consumers, why) — and add any new copy you couldn't yet retire to the
+   candidate/known-drift tables. The registry is part of "done" (Lego Principle 6).
 
 ---
 

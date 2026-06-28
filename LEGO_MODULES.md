@@ -44,17 +44,69 @@ reproduces `honestForecastEngine.summarize` bit-for-bit).
 
 | Brick | File | Owns | Replaces copies in | Status |
 |---|---|---|---|---|
-| **Bar utils** | `js/barUtils.js` | `bisect`, `extractBars`, `resampleTo`, `bodyRange`, `calcATR` (resampled true-range mean), `groupByDate` — the M1 packed-array hot path | `asiaRangeEngine` ✅, `rangeFibEngine` ✅, `confluenceModules` 🔲 (`_bisect`/`_extractFast`/`_resample30m`) | 🟡 |
+| **Bar utils** | `js/barUtils.js` | `bisect`, `extractBars`, `resampleTo`, `bodyRange`, `calcATR` (resampled true-range mean), `groupByDate` — the M1 packed-array hot path | `asiaRangeEngine` ✅, `rangeFibEngine` ✅, `confluenceModules` ✅ | ✅ |
 | **Stats core** | `js/statsCore.js` | `mean`, `variance`/`stdev` (ddof), `rollingZScore` (array, faithful to nasdaqTransforms), `rollingZAt` (scalar, faithful to hmm5m), `rollingPercentile`, `linregSlope`, `ewma` | `nasdaqTransforms`, `globalLiquidityEngine`, `macroEquityEngine`, `zscoreSpreadEngine`, `hmm5m*` 🔲 | 🟡 |
 | **Indicator core** | `js/indicatorCore.js` | `ema`, `trueRange`, `atrWilder` (faithful to hmm5m), `atrEma` (alpha variant), `adxWilder` (faithful to hmm5m), `rsiWilder` | `hmm5m`, `hmm5m-v2`, regime backtests, `range-bias`, `backtest-engine` 🔲 | 🟡 |
 | **Metrics core** | `js/metricsCore.js` | `sharpeRatio`, `sortinoRatio`, `calmar`, `maxDrawdownFromPnls`/`FromEquity`, `profitFactor`, `winRate`, `expectancy`, `summarizeTrades` (== honestForecast.summarize) | `honestForecastEngine`, `nasdaqPerformance`, `zscoreSpreadEngine`, `macroEquityEngine`, `rangeFibEngine`, `gold-backtest-worker`, `backtest.js` 🔲 | 🟡 |
-| **Fib projection** | `js/fibProjection.js` | `FIB_LEVELS` (45-level grid), `KEY_LEVELS`, `calcFibs` (`low + range × level`) | `asiaRangeEngine` ✅, `rangeFibEngine` ✅, `confluenceModules` 🔲 (`_FIB_LEVELS`/`_fibs`) | 🟡 |
+| **Fib projection** | `js/fibProjection.js` | `FIB_LEVELS` (45-level grid), `KEY_LEVELS`, `calcFibs` (`low + range × level`) | `asiaRangeEngine` ✅, `rangeFibEngine` ✅, `confluenceModules` ✅ | ✅ |
 | **Instrument registry** | `js/instrumentRegistry.js` | canonical pip size, price digits, asset class, symbol aliases (display/OANDA/Yahoo/MT5/code) + accessors (`pipSize`, `instrument`, `resolveKey`…) | server.js `PIP_SIZE`, `js/config.js`, `volBacktestEngine` `INSTRUMENTS`, `asiaRangeEngine`/`rangeFibEngine` `PIP_SIZE`, Python `_PIP_SIZES` 🔲 | 🟡 |
 
-> **Wired so far:** `rangeFibEngine.js` and `asiaRangeEngine.js` now import
-> `barUtils` + `fibProjection` instead of their private copies (verified
+> **Wired:** `asiaRangeEngine.js`, `rangeFibEngine.js` and `confluenceModules.js`
+> all import `barUtils` + `fibProjection` instead of their private copies, and
+> `honestForecastEngine.summarize` delegates to `metricsCore` (verified
 > `node --check` + brick tests; full backtest re-run needs M1 data/network not
 > available in the sandbox). Remaining adoption is tracked in §2 and §5.
+
+### 1c. Tier-2 level-source bricks (2026-06-28)
+
+These are the **strategy-building** bricks: pluggable modules that each EMIT a
+list of price levels, built ON the Tier-1 primitives above. The repo already
+proved the pluggable pattern in `confluenceModules.js` ({`buildPairCache`,
+`buildDayState`, `check`}) — but that interface only answers "is this price near
+a level?", so the levels stay trapped in the Asia-range engine. The level-source
+contract instead **emits** the levels so one list feeds three consumers: a
+confluence scorer (cluster), the chart viewer (render), a strategy (trade).
+
+**Contract**
+
+```
+LevelSource = { id, label, kind, defaultParams, levels(ctx) → Level[] }
+Level       = { price, kind, label, weight, meta }       // + `source` when via collectLevels
+ctx         = { dailyBars, instrument, price?, intraday?, params? }
+```
+
+`dailyBars` = chronological completed D1 bars; the LAST element is the most
+recent completed day, so "over past x days" = the last x. No lookahead — a
+module only reads what it's given. Pip size comes from `instrumentRegistry`.
+
+| Brick | File | Owns | Status |
+|---|---|---|---|
+| **Level sources** | `js/levelSources.js` | `LEVEL_SOURCES` registry + `collectLevels` (aggregate to one tagged list) + `clusterLevels` (merge to scored zones). **Seven** sources: `daily_open`, `prior_hilo` (PDH/PDL, PWH/PWL, N-day extremes), `pivots` (classic + camarilla), `volume_profile` (POC/VAH/VAL over x days), `swing_sr` (N-bar pivots, clustered), `round_number` (big/half figures), `vwap` (session VWAP anchors over x days). Tested in `js/levelSources.test.mjs` (POC + swing logic checked against a verbatim reference). | ✅ built |
+| **Render brick** | `js/levelChart.js` | reusable Lightweight-Charts viewer — `createLevelChart(el).setCandles().setLevels(Level[]).setZones(zones)`; pure `styleForKind` / `levelToPriceLineOptions` / `zoneToPriceLineOptions` (colour keyed by `Level.kind`). Lifted from `gold-zones.html`. Demo: `level-chart-demo.html`. Pure helpers + factory wiring tested headless against a mock in `js/levelChart.test.mjs`. | ✅ built |
+| **VuManChu core** | `js/vumanchuCore.js` | ONE WaveTrend / Money-Flow / VWAP compute, consumed two ways: `waveTrendSeries` (raw WT1[] for backtest gating) and `waveTrendReading` (latest-bar OB/OS/cross signal) — same compute, mode selects the shape. Standardizes the divide-by-zero guard on `WT_EPS = 1e-10`. Wired into `js/vumanchu.js` ✅ (re-exports `computeWT`/`computeMF`/`computeVWAP`/`ema`/`sma`) and `asiaRangeEngine._computeWT1Series` ✅. Golden test (`js/vumanchuCore.test.mjs`) proves it reproduces BOTH former copies bit-for-bit. | ✅ built |
+
+**Where each source consolidates existing copies** (extract / unify targets):
+
+| Level source | Existing JS (confluenceModules) | Existing Python (Gold bot) — unify later |
+|---|---|---|
+| `daily_open` | `daily_opens`, partial `session_open_range` | `session_engine.py` |
+| `prior_hilo` | `pdh_pdl`, `pwh_pwl`, `ath_52wk`, `monday_range` | `session_engine.py` |
+| `pivots` | *(none in JS)* | `session_engine.py:_pivots` (Camarilla variant — formulas differ; document before unifying) |
+| `volume_profile` | `vah_val`, `naked_poc` (no nPOC-age in JS) | `volume_profile.py` (age-weighted nPOC stack — port into JS as a param) |
+| `swing_sr` | `sr_level` (N=5 on 30m) | `fib_engine.py` swing pivots |
+| `round_number` | `round_number` | — |
+| `vwap` | *(none in JS — backtests omit VWAP anchors entirely)* | `session_engine.py` `compute_vwap_anchors` |
+| VuManChu WT/MF/VWAP | `js/vumanchu.js` `computeWT`, `asiaRangeEngine._computeWT1Series` → **both now share `js/vumanchuCore.js`** ✅ | `Gold/modules/vumanchu.py`, `backtestSystem/indicators.py`, `bot/utils/indicators.py` (Python — later) |
+
+> **VuManChu / WaveTrend — done (JS).** The two JS copies (`js/vumanchu.js`
+> `computeWT` and `asiaRangeEngine._computeWT1Series`) now share
+> `js/vumanchuCore.js`. They had drifted only on the channel-index divide guard
+> (`d > 0` vs `d > 1e-10`); the core standardizes on `1e-10`, which is not just a
+> merge but an **improvement** — on a flat/dead market float rounding leaves `d`
+> at ~1e-16, and the old `d > 0` guard divided by that noise to emit spurious
+> ±66 oscillator spikes, while `1e-10` suppresses them (proven in
+> `js/vumanchuCore.test.mjs`). `asiaRangeEngine` is bit-identical (it already
+> used `1e-10`). The Python copies remain a later unification target.
 
 ---
 
@@ -139,6 +191,31 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
 7. **Rolling z-score:** population stddev + clip (nasdaqTransforms) vs sample
    stddev no-clip (GlobalLiquidity mathx). `statsCore.rollingZScore` makes `ddof`
    and `clipAt` explicit arguments.
+8. **🔴 Confluence engine — live ≠ backtest (the big one).** The LIVE alert path
+   and the Asia-range BACKTEST use **different confluence code**:
+   - **Live / telegram:** `levels.js` → `confluence-core.js`
+     (`detectConfluencesCore` / `mergeCrossSessionConfs`) → writes `ai_entries_{PAIR}`
+     to KV → `cron-worker.js:51` proximity alerts + `bot/main.py:1005`
+     `evaluate_pair_telegram` + `bot/modules/macro_regime.py`. This is what the
+     index.html cards show and what the bot trades.
+   - **Backtest:** `asiaRangeEngine.js` → its own local `detectConfluence` + the
+     `confluenceModules.js` 16-module stack, served at `/api/asia-range-backtest/*`.
+     `asiaRangeEngine` does **not** import `confluence-core.js`.
+   ⇒ **The Asia-range backtest does not validate the live alert logic.** The real
+   prize is one shared confluence brick both `levels.js` and the backtest call —
+   equivalence-first, A/B'd on M1 + the live KV path (it changes live behaviour,
+   so highest caution). Note: repointing `confluenceModules → levelSources` is a
+   *backtest-internal* cleanup and does NOT touch this live path.
+   **Full gap analysis + the Asia-backtest inventory: `CONFLUENCE_LIVE_VS_BACKTEST.md`.**
+   ✅ **Step 1 done:** `asiaRangeEngine` now detects confluence via the LIVE
+   `confluence-core.detectConfluencesCore` (session-range distance cap + cluster
+   density) instead of its own local copy — `js/asiaRangeConfluence.test.mjs`.
+   This changes the backtest's confluence counts on purpose (now matches live).
+   ⏳ Next: cross-session via `mergeCrossSessionConfs`, then star/grade parity
+   (`trade-grade.js`). `confluence-core.js`, `range-bias.js`, `structural-fibs.js`,
+   `ranges.js` are **live, not dead** — don't delete. Only
+   `MD files/Range_Extension_Backtester_v5_2_ZSCORE.html` and
+   `Zoo/asia_range_backtest.py` are stale archive candidates.
 
 ---
 
@@ -155,19 +232,45 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
   and run the brick tests.
 - **Don't edit v1 production** (`volBacktestM1Engine.js`) or live Python bots in
   place — build alongside and migrate deliberately.
+- **Know the tier and the bar.** Is it a Tier-1 primitive, a Tier-2 level source,
+  a render brick, or a selector? Does it clear the "what IS a brick" bar (≥2 uses
+  or clean contract, stable I/O, pure, synthetic-testable)? See CLAUDE.md "Brick
+  tiers & what counts as a brick".
+- **Keep THIS registry current** — updating it is part of "done" for any brick
+  add/change (Lego Principle 6): a row in §1, status + consumers, and any copy
+  you couldn't yet retire logged in §2 / §3.
 
 ---
 
 ## 5. Adoption checklist (next steps, in order)
 
-- [ ] Wire `confluenceModules.js` to `barUtils` + `fibProjection` (`_bisect`,
-      `_extractFast`→`extractBars`, `_resample30m`→`resampleTo`, `_FIB_LEVELS`/`_fibs`).
-- [ ] Wire `metricsCore` into `honestForecastEngine.summarize` (golden test
-      already proves equivalence) then `nasdaqPerformance` / `zscoreSpreadEngine`.
+Tier-1 primitives
+- [x] Wire `confluenceModules.js` to `barUtils` + `fibProjection`.
+- [x] Wire `metricsCore` into `honestForecastEngine.summarize` (golden test proves equivalence).
+- [ ] Wire `metricsCore` into `nasdaqPerformance` / `zscoreSpreadEngine` / `macroEquityEngine`.
 - [ ] Wire `statsCore` into `nasdaqTransforms.rollingZScore/rollingPercentile`
       (bit-faithful), then `globalLiquidityEngine` / `macroEquityEngine`.
 - [ ] Wire `indicatorCore` into `hmm5m.js` / `hmm5m-v2.js` (ATR/ADX/rollingZ).
 - [ ] Generate `instruments.json` from `instrumentRegistry` and have the Python
       bots + backtests read it (single pip/symbol source across languages).
-- [ ] P0 unification of `ASSET_PARAMS` + GARCH params + BOCPD/regime score —
-      each behind an OOS re-run, per `SYSTEM_ASSESSMENT.md` P0.
+
+Tier-2 level sources (`js/levelSources.js`)
+- [x] Build the level-source contract + registry (7 sources) + `collectLevels` / `clusterLevels`.
+- [x] Add a **VWAP/anchor** source (`vwap`).
+- [x] Build the **render brick** (`js/levelChart.js`) + demo (`level-chart-demo.html`).
+- [x] Unify **VuManChu/WaveTrend** — `js/vumanchuCore.js` (one compute, two use
+      cases); `js/vumanchu.js` + `asiaRangeEngine` wired; guard standardized on
+      `1e-10` (golden-tested). Python copies still to unify.
+- [ ] Point the Asia-range confluence modules at `levelSources` (thin
+      `levels()`→`check()` adapters) to delete the duplicate level math. ⚠ **NOT a
+      bit-identical swap** — confluenceModules and levelSources differ in algorithm
+      (e.g. `round_number` 0.1 vs 0.01 grid), timeframe (`sr_level` 30m vs daily)
+      and aggregation (`vah_val` per-session vs composite), so it **changes the
+      backtest's confluence results**. Do it equivalence-first (make levelSources
+      reproduce each module exactly) and **A/B on M1 data** — not a headless swap.
+- [ ] Unify the Gold bot's Python copies (`volume_profile.py` nPOC-age, `session_engine.py`
+      pivots/VWAP) with these sources — **behind an OOS re-run**, since it touches live code.
+
+P0 cross-language unification
+- [ ] `ASSET_PARAMS` + GARCH params + BOCPD/regime score — each behind an OOS
+      re-run, per `SYSTEM_ASSESSMENT.md` P0.
