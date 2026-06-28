@@ -253,13 +253,24 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
   if (!withBarriers) throw new Error('No tradeable touches — re-refresh (records need innerLvl/outerLvl + features)');
 
   const result = runPerLine(touchesByPair, { splitFrac, minN, costByPair, slipByPair });
-  const out = { generatedAt: new Date().toISOString(), horizon, conditions, minN, splitFrac, ...result };
+  const generatedAt = new Date().toISOString();
+  // Store each pair's trade log separately (loaded on demand by the Book tab /
+  // the M1 chart drill-down) so the headline book JSON stays small.
+  const { tradesByPair, ...summary } = result;
+  let logged = 0;
+  for (const [pair, log] of Object.entries(tradesByPair || {})) {
+    if (!log.length) continue;
+    await putJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`, { pair, horizon, generatedAt, splitDate: result.splitDate, trades: log });
+    logged += log.length;
+  }
+  const out = { generatedAt, horizon, conditions, minN, splitFrac, ...summary };
   await putJSON(`${PREFIX}/per-line-${horizon}.json`, out);
-  onLog(`Book: ${result.nTrades} OOS trades · Sharpe ${result.book.sharpe} · expectancy ${result.book.expectancy}% · ` +
+  onLog(`Book: ${result.nTrades} OOS trades (${logged} logged) · Sharpe ${result.book.sharpe} · CAGR ${result.book.cagr}% · maxDD ${result.book.maxDD}% · ` +
         `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}`);
   return out;
 }
-export async function getPerLineBook(horizon = 'daily') { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }
+export async function getPerLineBook(horizon = 'daily')        { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }
+export async function getPerLineTrades(pair, horizon = 'daily') { return getJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`); }
 
 // ── Read helpers (public API serves these) ───────────────────────────────────
 export async function getManifest()              { return getJSON(`${PREFIX}/manifest.json`); }

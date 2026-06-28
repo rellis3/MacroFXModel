@@ -16,6 +16,7 @@ import {
   getManifest as getAnalyserManifest, getAggregates as getAnalyserAggregates,
   getPairData as getAnalyserPairData,
   runPerLineBook as runAnalyserPerLineBook, getPerLineBook as getAnalyserPerLineBook,
+  getPerLineTrades as getAnalyserPerLineTrades,
 } from './forecastAnalyserStore.js';
 
 function _analyserPw(req) {
@@ -187,6 +188,15 @@ export function mountAnalyserRoutes(app, express) {
       const book = await getAnalyserPerLineBook(req.params.horizon);
       if (!book) return res.status(404).json({ ok: false, error: 'No book yet — an admin must run the per-line build' });
       res.json({ ok: true, book });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  app.get('/api/forecast-analysis/per-line/:horizon/trades/:pair', async (req, res) => {
+    if (!_analyserAuth(req, res, 'view')) return;
+    try {
+      const t = await getAnalyserPerLineTrades(String(req.params.pair).toLowerCase(), req.params.horizon);
+      if (!t) return res.status(404).json({ ok: false, error: 'No trade log for that pair — rebuild the book' });
+      res.json({ ok: true, ...t });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 }
