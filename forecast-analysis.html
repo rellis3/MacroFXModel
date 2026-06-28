@@ -319,9 +319,13 @@ function renderCalibration(v){
   // Close lines are ONE-SIDED: P(close beyond the up line) = P(N>k), not 2·P(N>k).
   // OC50=HN_P50=0.6745σ → P(N>0.6745)=25%; OC75=HN_P75=1.1503σ → P(N>1.1503)=12.5%.
   const TARGET={OC50:25,OC75:12.5};
-  // Reach (daily high/low touches the line) via the reflection principle
-  // P(max≥a)=2·P(N≥a/σ), corr≈1. Reference only — asset corr factors shift these.
-  const REACH={OC50:50,OC75:25,HL50:11.6,HL75:4.0};
+  // Reach reference (≈, corr-dependent — informational, not pass/fail).
+  // OC lines are STATIC off open → reflection principle P(max≥a)=2·P(N≥a/σ):
+  //   OC50(0.6745σ)→50%, OC75(1.1503σ)→25%.
+  // HL lines are DYNAMIC, tagged by an hl-sized rally off the running low (a
+  // max-drawup), like the chart's proj-H/L line. That is rarer than the full
+  // range completing (~50%/25%): the drawup reach is ≈25% (med) / ≈12% (75p).
+  const REACH={OC50:50,OC75:25,HL50:25,HL75:12};
   let html='';
   // Range-forecast skill summary (Tier 4): forecast vs realized daily range.
   const sk=d.skill;
@@ -334,7 +338,7 @@ function renderCalibration(v){
       <div class="kpi"><div class="v ${Math.abs(ex-25)>7?'neg':'pos'}">${fmt(ex)}%</div><div class="l">range &gt; 75p band (≈25% ideal)</div></div>
     </div><div class="hint" style="margin-top:8px">Bias near 0 and exceed≈25% = the σ forecast is honest. A large positive bias = forecast ranges too narrow (σ underestimated); negative = too wide.</div></div>`;
   }
-  html+=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. The measures are <b>one-sided</b> (each up / down line tested on its own side). <b>Close lines:</b> % of windows that close beyond should match the one-sided percentile (Close med ≈ 25%, Close 75p ≈ 12.5%). <b>Reach</b> = % of windows whose daily high/low touches the line; the reflection-principle reference is shown alongside (≈, corr-dependent).</div>`;
+  html+=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. Geometry matches the live chart — <b>Close lines static off open</b>, <b>Proj H/L lines dynamic</b> (trailing the opposite extreme). <b>Close beyond %</b> is one-sided and should match the percentile (Close med ≈ 25%, Close 75p ≈ 12.5%). <b>Reach %</b> = windows whose high/low tag the line. The dynamic H/L lines are tagged by an hl-sized rally off the running low (a max-drawup, like the chart's proj-line) → reach ≈ 25% (med) / 12% (75p), rarer than the full range completing. Reference shown alongside (≈, corr-dependent, informational).</div>`;
   html+=`<table><thead><tr><th>Line</th><th>closes beyond %</th><th>target</th><th>error</th><th>reach (hit) %</th><th>reach ref</th><th>n win</th></tr></thead><tbody>`;
   for(const k of LINE_ORDER){ const s=a[k]; if(!s) continue; const [nm]=k.split('_'); const tgt=TARGET[nm]; const rref=REACH[nm];
     const err= tgt!==undefined ? (s.closeBeyondRate-tgt) : null;

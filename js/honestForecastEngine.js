@@ -61,7 +61,15 @@ function simulateDayHonest(bar, hl75pct, ocMedPct, regime, opts) {
     costPct = 0.012, slipPct = 0.006, breachReclaim = false,
   } = opts;
 
-  const hl  = open * hl75pct  / 100;   // exhaustion distance
+  // Exhaustion band. NOTE on geometry: the live chart's HL lines are DYNAMIC —
+  // they trail the opposite running intraday extreme (proj-high off the running
+  // low, etc). That construction needs the ordered intraday path. This engine is
+  // deliberately D1-only (one bar/day, mark-to-close, no intrabar TP assumption)
+  // to stay honest about path you cannot see. The open-anchored band below IS the
+  // t=0 value of that dynamic line (runLow=runHigh=open at the open), i.e. the
+  // most conservative honest anchor on D1. The faithful dynamic-HL backtest that
+  // walks the real intraday path lives in volBacktestV2Engine.js (dynamicHL).
+  const hl  = open * hl75pct  / 100;   // exhaustion distance (open-anchored = dynamic line at t=0)
   const slD = hl * slMult;
   const upBand = open + hl;
   const dnBand = open - hl;

@@ -57,12 +57,16 @@ export function runForecastV2(d1Bars, m1ByDate, assetClass, opts = {}) {
     costPct = DEFAULT_COST_PCT[assetClass] ?? 0.012,
     slipPct = DEFAULT_SLIP_PCT[assetClass] ?? 0.006,
     fadeMedMax = 0.30, fade75Max = 0.55, erWindow = 14,
+    // HL bands trail the opposite running extreme (the live chart's geometry).
+    // On by default so v2 trades the same level the overlay draws; the walked
+    // path supplies the ordered bars it needs (M1 for daily, D1 block otherwise).
+    dynamicHL = true,
   } = opts;
 
   const H = HORIZONS[horizon] ?? HORIZONS.daily;
   const closes = d1Bars.map(b => b.close);
   const sigD   = volSigmaSeries(d1Bars, assetClass);
-  const baseSpec = { slMult, costPct, slipPct };
+  const baseSpec = { slMult, costPct, slipPct, dynamicHL };
   const records = [];
 
   // Window iterator: daily = every bar; weekly/monthly = non-overlapping blocks.

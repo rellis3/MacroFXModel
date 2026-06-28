@@ -103,16 +103,29 @@ export function walkBars(bars, entry, tp, sl, isBuy, entryType, open) {
 export function simulateEntry(session, bands, spec) {
   const { open, bars } = session;
   const { band = 'hl75', action = 'fade', dir = 'both',
-          slMult = 1.5, costPct = 0.012, slipPct = 0.006 } = spec;
+          slMult = 1.5, costPct = 0.012, slipPct = 0.006, dynamicHL = false } = spec;
   const dist  = band === 'hl50' ? bands.hl50 : bands.hl75;
   const bandD = open * dist;
   const slD   = bandD * slMult;
 
+  const wantUp = dir === 'up' || dir === 'both';
+  const wantDn = dir === 'down' || dir === 'both';
+
+  // Dynamic-HL mode: the HL bands trail the OPPOSITE running extreme, exactly
+  // like the live chart / Pine overlay (proj-high off the running low, proj-low
+  // off the running high). Requires an ordered intraday path. The OC take-profit
+  // stays static off the open. Static mode (default) is left byte-identical.
+  if (dynamicHL) {
+    const best = walkDynamicHL(bars, open, bands, { band, action, dir, wantUp, wantDn, slMult, slipPct });
+    if (!best) return { filled: false, side: '', outcome: 'no_fill', pnlPct: 0, action, band };
+    const net = best.pnlPct - costPct;
+    return { filled: true, side: best.side, outcome: best.outcome, pnlPct: +net.toFixed(5),
+             action, band, fillTime: best.fillTime ?? null, exitTime: best.exitTime ?? null };
+  }
+
   // Build the candidate order(s). For a 'both' fade we place both and take the
   // first fill (walk picks it up chronologically by slicing).
   const orders = [];
-  const wantUp = dir === 'up' || dir === 'both';
-  const wantDn = dir === 'down' || dir === 'both';
 
   if (action === 'fade') {
     // Sell the upper band → revert down to Close median; buy the lower band → up.
@@ -146,6 +159,82 @@ export function simulateEntry(session, bands, spec) {
   return { filled: true, side: best.side, outcome: best.outcome,
            pnlPct: +net.toFixed(5), action, band,
            fillTime: best.fillTime ?? null, exitTime: best.exitTime ?? null };
+}
+
+// ── 3b) Dynamic-HL fill walker (HL bands trail the opposite running extreme) ──
+// Matches the live chart: proj-HIGH (up side) = runLow × (1+hl), proj-LOW (dn
+// side) = runHigh × (1−hl). Fade takes a limit at the trailing band → static OC
+// take-profit; follow takes a stop through it → target the next (dynamic) band
+// out, frozen at the fill bar. SL is set from the realised fill level.
+function walkDynamicHL(bars, open, bands, spec) {
+  const { band, action, dir, wantUp, wantDn, slMult, slipPct } = spec;
+  const n = bars.length;
+  if (!n) return null;
+  const runHi = new Array(n), runLo = new Array(n);
+  { let rh = -Infinity, rl = Infinity;
+    for (let k = 0; k < n; k++) {
+      if (bars[k].high > rh) rh = bars[k].high;
+      if (bars[k].low  < rl) rl = bars[k].low;
+      runHi[k] = rh; runLo[k] = rl;
+    } }
+  const hl    = band === 'hl50' ? bands.hl50 : bands.hl75;
+  const hlOut = bands.hl75;                       // next band out for an hl50 follow
+  const slD   = open * hl * slMult;
+  const slip  = open * slipPct / 100;
+
+  // slSign: +1 = SL above entry (sells), −1 = SL below entry (buys).
+  const orders = [];
+  if (action === 'fade') {
+    if (wantUp) orders.push({ isBuy: false, type: 'limit', slSign: +1, lvl: k => runLo[k] * (1 + hl), tp: () => bands.ocUp });
+    if (wantDn) orders.push({ isBuy: true,  type: 'limit', slSign: -1, lvl: k => runHi[k] * (1 - hl), tp: () => bands.ocDn });
+  } else if (band === 'hl50') {                   // follow a 50p break → target the 75p band
+    if (wantUp) orders.push({ isBuy: true,  type: 'stop', slSign: -1, lvl: k => runLo[k] * (1 + hl) + slip, tp: f => runLo[f] * (1 + hlOut) });
+    if (wantDn) orders.push({ isBuy: false, type: 'stop', slSign: +1, lvl: k => runHi[k] * (1 - hl) - slip, tp: f => runHi[f] * (1 - hlOut) });
+  } else {                                        // follow a 75p break → one ocMed beyond it
+    if (wantUp) orders.push({ isBuy: true,  type: 'stop', slSign: -1, lvl: k => runLo[k] * (1 + hl) + slip, tp: f => runLo[f] * (1 + hl) + open * bands.ocMed });
+    if (wantDn) orders.push({ isBuy: false, type: 'stop', slSign: +1, lvl: k => runHi[k] * (1 - hl) - slip, tp: f => runHi[f] * (1 - hl) - open * bands.ocMed });
+  }
+
+  let best = null;
+  for (const o of orders) {
+    const r = resolveDynOrder(bars, open, o, slD);
+    if (r && (!best || (r.fillTime && best.fillTime && r.fillTime < best.fillTime) || !best.filled)) {
+      best = { ...r, side: o.isBuy ? 'BUY' : 'SELL' };
+      if (dir !== 'both') break;   // single-sided → first order is the trade
+    }
+  }
+  return best;
+}
+
+// Resolve one dynamic order: find first fill against the trailing entry level,
+// then SL-first/TP intrabar from the fill bar; else mark to the window close.
+function resolveDynOrder(bars, open, o, slD) {
+  const { isBuy, type, lvl, tp, slSign } = o;
+  let filled = false, fillTime = null, entry = 0, sl = 0, tpLvl = 0;
+  for (let k = 0; k < bars.length; k++) {
+    const bar = bars[k];
+    if (!filled) {
+      const L = lvl(k);
+      const hit = isBuy ? (type === 'stop' ? bar.high >= L : bar.low <= L)
+                        : (type === 'stop' ? bar.low  <= L : bar.high >= L);
+      if (!hit) continue;
+      filled = true; fillTime = bar.time ?? null; entry = L;
+      sl = entry + slSign * slD;
+      tpLvl = tp(k);
+    }
+    if (isBuy) {
+      if (bar.low  <= sl)    return { filled: true, outcome: 'loss', pnlPct: -((entry - sl) / open * 100), fillTime, exitTime: bar.time ?? null };
+      if (bar.high >= tpLvl) return { filled: true, outcome: 'win',  pnlPct:  ((tpLvl - entry) / open * 100), fillTime, exitTime: bar.time ?? null };
+    } else {
+      if (bar.high >= sl)    return { filled: true, outcome: 'loss', pnlPct: -((sl - entry) / open * 100), fillTime, exitTime: bar.time ?? null };
+      if (bar.low  <= tpLvl) return { filled: true, outcome: 'win',  pnlPct:  ((entry - tpLvl) / open * 100), fillTime, exitTime: bar.time ?? null };
+    }
+  }
+  if (!filled) return null;
+  const last = bars[bars.length - 1];
+  const eod  = last?.close ?? entry;
+  const pnl  = isBuy ? (eod - entry) / open * 100 : (entry - eod) / open * 100;
+  return { filled: true, outcome: pnl > 0 ? 'win' : 'open', pnlPct: pnl, fillTime, exitTime: last?.time ?? null };
 }
 
 // ── 4) Day-type score T ∈ [0,1] (trend-day-ness; no lookahead) ───────────────

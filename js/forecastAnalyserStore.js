@@ -172,7 +172,9 @@ export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLo
 
   const manifest = {
     generatedAt: generatedAt ?? new Date().toISOString(),
-    definitions: { touch: 'intrabar', revertContinue: 'ladder (next-inner vs next-outer line)', lowN: 30, sessionBoundaryUtc: 22 },
+    definitions: { touch: 'intrabar', revertContinue: 'ladder (next-inner vs next-outer line)',
+      geometry: 'OC lines static off open; HL (Proj H/L) lines dynamic — trail the opposite running extreme (chart/Pine construction)',
+      lowN: 30, sessionBoundaryUtc: 22 },
     horizons, pairs: {},
   };
   const aggregates = {};
