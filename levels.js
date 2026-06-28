@@ -37,6 +37,11 @@ import {
   computeADX, computeHurst, ema, featureADX, featureSwingRegime, featureTwap,
   featureEmaRsi, featureHurst, computeRangeBiasServer, computeWeeklyPivots,
 } from './js/rangeBiasCore.js';
+// Star rating + signalScore weighting are shared with the backtest so both grade
+// a level identically. Bit-identical to the old inline code (entryGradeCore.test).
+import {
+  computeStars, computeStructScore, momScoreFrom, rbScoreFrom, computeSignalScore,
+} from './js/entryGradeCore.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -395,29 +400,13 @@ function computeMacroScore(direction, sym, fredData) {
 // ── Signal score computation ──────────────────────────────────────────────────
 
 function computeServerSignalScore(direction, sym, hmmData, rbias, emaRsiResult, structScore, fredData) {
-  const hmmScore  = hmmSignalScore(direction, hmmData) ?? 0.5;
-  const rbScore   = (rbias.conviction + 1) / 2; // → [0,1]
-  const momScore  = emaRsiResult.signal === direction           ? 0.78
-                  : emaRsiResult.signal && emaRsiResult.signal !== direction ? 0.22
-                  : 0.50;
-
-  if (fredData) {
-    const macroScore = computeMacroScore(direction, sym, fredData) ?? 0.5;
-    return Math.round((
-      hmmScore   * 0.25 +
-      macroScore * 0.25 +
-      rbScore    * 0.20 +
-      momScore   * 0.20 +
-      structScore * 0.10
-    ) * 100);
-  }
-
-  return Math.round((
-    hmmScore   * 0.38 +
-    momScore   * 0.25 +
-    rbScore    * 0.25 +
-    structScore * 0.12
-  ) * 100);
+  // Weighting lives in the entryGradeCore brick (shared with the backtest). Only
+  // the FRED macro component stays here (it's specific to this engine's data).
+  const hmmScore   = hmmSignalScore(direction, hmmData) ?? 0.5;
+  const rbScore    = rbScoreFrom(rbias.conviction);
+  const momScore   = momScoreFrom(emaRsiResult.signal, direction);
+  const macroScore = fredData ? (computeMacroScore(direction, sym, fredData) ?? 0.5) : null;
+  return computeSignalScore({ hmmScore, momScore, rbScore, structScore, macroScore });
 }
 
 // ── Current price ─────────────────────────────────────────────────────────────
@@ -471,21 +460,20 @@ function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m
     }
     if (!direction) return null;
 
-    // Structural star rating (same as before)
-    let stars = 1;
-    if (c.isTight)             stars++;
-    if ((c.density || 1) >= 2) stars++;
-    if ((c.density || 1) >= 3) stars++;
-    if (c.crossSessionMatch)   stars++;
-
-    // Pivot proximity (+1 star)
+    // Pivot proximity (detected first; feeds the star count below)
     let pivotMatch = null;
     if (pivots && atr) {
       const proxPip = atr * 0.10;
       for (const key of pivotKeys) {
-        if (Math.abs(c.price - pivots[key]) <= proxPip) { pivotMatch = key; stars++; break; }
+        if (Math.abs(c.price - pivots[key]) <= proxPip) { pivotMatch = key; break; }
       }
     }
+
+    // Structural star rating — shared formula (entryGradeCore brick)
+    const stars = computeStars({
+      isTight: c.isTight, density: c.density,
+      crossSessionMatch: c.crossSessionMatch, pivotMatch: !!pivotMatch,
+    });
 
     const tags = [];
     if (c.isTight)             tags.push('Tight Fib');
@@ -513,13 +501,10 @@ function buildEntries(allConfs, currentPrice, atr, sym, hmmData, bars5m, bars30m
     // EMA/RSI feature (already computed inside rbias.features)
     const emaRsiResult = rbias.features.find(f => f.key === 'ema') ?? { signal: null };
 
-    // Structural score for signal weighting (0–1)
-    const structScore = Math.min(1,
-      Math.min(stars, 5) / 5 * 0.5 +
-      (c.isTight ? 0.2 : 0) +
-      (c.crossSessionMatch ? 0.2 : 0) +
-      (pivotMatch ? 0.1 : 0)
-    );
+    // Structural score for signal weighting (0–1) — shared formula
+    const structScore = computeStructScore({
+      stars, isTight: c.isTight, crossSessionMatch: c.crossSessionMatch, pivotMatch: !!pivotMatch,
+    });
 
     // Signal score
     const signalScore = computeServerSignalScore(direction, sym, hmmData, rbias, emaRsiResult, structScore, fredData);
