@@ -288,10 +288,14 @@ Example:
 
     <!-- Edit form — add/update a monthly reading, saved to KV (no repo edit needed) -->
     <div class="ifo-edit">
-      <div class="ifo-edit-title">Update reading <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">— from <a href="https://www.ifo.de/en/ifo-business-climate-index" target="_blank" rel="noopener" style="color:var(--blue)">ifo.de</a>, published ~24th–26th each month</span></div>
+      <div class="ifo-edit-title">Update reading <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">— published ~24th–26th each month</span></div>
+      <div class="ifo-edit-src">
+        Source: <a href="https://www.ifo.de/en/ifo-business-climate-index" target="_blank" rel="noopener">https://www.ifo.de/en/ifo-business-climate-index</a>
+        <span style="color:var(--text3)">— enter the headline <b>ifo Business Climate Index</b> level (points, ~80–95), not the Current Situation/Expectations sub-indices or the change.</span>
+      </div>
       <div class="ifo-edit-row">
         <input class="ifo-input" type="month" id="ifoInMonth" title="Reference month (YYYY-MM)">
-        <input class="ifo-input" type="number" step="0.1" id="ifoInValue" placeholder="e.g. 88.6" title="ifo Business Climate Index value">
+        <input class="ifo-input" type="number" step="0.1" id="ifoInValue" placeholder="e.g. 88.6" title="ifo Business Climate Index value (points, 2015=100)">
         <button class="oi-btn" id="ifoSaveBtn" onclick="saveIfoReading()">Save</button>
         <span class="ifo-save-status" id="ifoSaveStatus"></span>
       </div>
@@ -317,6 +321,8 @@ Example:
 .ifo-seed-note{background:rgba(244,185,66,.1);border:1px solid rgba(244,185,66,.3);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:10.5px;color:var(--text2);line-height:1.5}
 .ifo-edit{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px}
 .ifo-edit-title{font-size:9.5px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.ifo-edit-src{font-size:10.5px;line-height:1.5;margin-bottom:10px}
+.ifo-edit-src a{color:var(--blue);word-break:break-all}
 .ifo-edit-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .ifo-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:12px;font-family:var(--mono,monospace);width:120px}
 .ifo-save-status{font-size:10.5px;color:var(--text3)}
