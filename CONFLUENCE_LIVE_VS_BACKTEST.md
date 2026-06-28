@@ -135,9 +135,18 @@ files are genuinely stale: the `MD files/…ZSCORE.html` export and `Zoo/asia_ra
   (no historical data) — the recorded grade is a faithful *approximation* of the
   live grade, not a 100% match. Re-run on M1 to compare grade vs outcome.
 
+- ✅ **Gate comparison panel** (don't gate blindly — *measure*). `asia-range-analysis.html`
+  Panel 0 compares three gates on a true IS/OOS split: the **stacked-score grade**
+  (A+/A/…), the **vol-forecast stretch** (HL75, the theory-grounded fade gate that
+  ties into the forecaster), and **day-type T** (fade = low T). Each shows IS + OOS
+  win/expectancy and Δexp-vs-all; thin OOS (<30) is dimmed; a verdict line names the
+  best OOS gate — or honestly says none beats "all". Pure brick `js/gateAnalysis.js`
+  (`compareGates`/`bestGate`), tested in `js/gateAnalysis.test.mjs`. Per-trade inputs
+  `vol_pos` / `day_type_T` are recorded by the engine (no-lookahead). ⚠ Run on M1 to
+  populate; the panel tells you whether the grade is actually a good gate or just a
+  fitted score (SYSTEM_ASSESSMENT.md §2.5).
+
 **Remaining:**
-1. Wire a UI filter on `live_grade` (e.g. A+/A only) so backtest selectivity can be
-   set to the live grade — and compare its OOS edge to the module-score selection.
-2. Source COT history + (optionally) FRED macro so the few omitted factors can be
-   added for fuller parity.
-3. **Keep the baseline** (`range-fib-backtest`) as the honest control.
+1. Source COT history + (optionally) FRED macro so the few omitted grade factors
+   can be added for fuller parity.
+2. **Keep the baseline** (`range-fib-backtest`) as the honest control.
