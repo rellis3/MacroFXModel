@@ -207,6 +207,13 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
   and run the brick tests.
 - **Don't edit v1 production** (`volBacktestM1Engine.js`) or live Python bots in
   place — build alongside and migrate deliberately.
+- **Know the tier and the bar.** Is it a Tier-1 primitive, a Tier-2 level source,
+  a render brick, or a selector? Does it clear the "what IS a brick" bar (≥2 uses
+  or clean contract, stable I/O, pure, synthetic-testable)? See CLAUDE.md "Brick
+  tiers & what counts as a brick".
+- **Keep THIS registry current** — updating it is part of "done" for any brick
+  add/change (Lego Principle 6): a row in §1, status + consumers, and any copy
+  you couldn't yet retire logged in §2 / §3.
 
 ---
 
@@ -229,8 +236,13 @@ Tier-2 level sources (`js/levelSources.js`)
 - [x] Unify **VuManChu/WaveTrend** — `js/vumanchuCore.js` (one compute, two use
       cases); `js/vumanchu.js` + `asiaRangeEngine` wired; guard standardized on
       `1e-10` (golden-tested). Python copies still to unify.
-- [ ] Point the Asia-range confluence modules at `levelSources` (they become thin
-      `levels()`→`check()` adapters) to delete the remaining duplicate level math.
+- [ ] Point the Asia-range confluence modules at `levelSources` (thin
+      `levels()`→`check()` adapters) to delete the duplicate level math. ⚠ **NOT a
+      bit-identical swap** — confluenceModules and levelSources differ in algorithm
+      (e.g. `round_number` 0.1 vs 0.01 grid), timeframe (`sr_level` 30m vs daily)
+      and aggregation (`vah_val` per-session vs composite), so it **changes the
+      backtest's confluence results**. Do it equivalence-first (make levelSources
+      reproduce each module exactly) and **A/B on M1 data** — not a headless swap.
 - [ ] Unify the Gold bot's Python copies (`volume_profile.py` nPOC-age, `session_engine.py`
       pivots/VWAP) with these sources — **behind an OOS re-run**, since it touches live code.
 
