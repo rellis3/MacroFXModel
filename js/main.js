@@ -675,6 +675,16 @@ async function loadAll() {
     S.usdStrength  = computeUSDStrength();
     S.dollarRegime = computeDollarRegime();
 
+    // ifo Business Climate — EU sentiment factor for the DAX macro T1 (monthly,
+    // static file). Fetched once per session when the DAX tab is viewed; re-render
+    // on arrival so the tier table picks it up.
+    if (S.currentPair.symbol === 'DE30_USD' && !S.ifoData) {
+      fetch('/ifo.json')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) { S.ifoData = data; renderAllDebounced(); } })
+        .catch(() => {});
+    }
+
     // HMM regimes — computed server-side every 30 min, fetch once per session
     if (!Object.keys(S.hmmRegimes).length) {
       fetch('/api/hmm/regimes')

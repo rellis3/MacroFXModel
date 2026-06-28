@@ -24,6 +24,7 @@ export const S = {
   eventRisk:       null,   // { level, sizeMult, events, currencyRisk } — Finnhub events
   surpriseIndex:   null,   // { [currency]: score } — macro surprise per currency
   ecbData:         null,   // ECB SDW daily rates { estr, de10y_ecb }
+  ifoData:         null,   // ifo Business Climate (Germany) — { series:[{month,value}], seed } — DAX macro T1
   oandaBook:       {},     // Oanda positionBook sentiment per symbol { longPct, shortPct, sentiment }
   spreadData:      {},     // OANDA live spread per symbol { spreadPips, classification, bid, ask, timestamp }
   myfxSentiment:   {},     // Myfxbook community outlook per symbol (EURUSD key format)

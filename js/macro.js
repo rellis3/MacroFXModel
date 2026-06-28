@@ -103,11 +103,51 @@ export function calculateTierScores() {
   };
 }
 
+// ── T1 for DAX: ifo Business Climate (EU sentiment) ─────────────────────────
+// The DAX is EUR-denominated and dominated by industrial/export firms, so US Fed
+// liquidity is the wrong macro driver (see MACRO_BOT_DESIGN.md — DAX needs an EU
+// factor). For DE30 we replace the net-liquidity T1 with German business sentiment:
+// the ifo Business Climate Index, scored on its month-on-month change. Rising ifo =
+// improving sentiment = tailwind for the DAX. Data is S.ifoData (static /ifo.json,
+// monthly). Heuristic factor — not OOS-validated; treat as macro context, not edge.
+function computeT1_Ifo() {
+  const ifo    = S.ifoData;
+  const series = Array.isArray(ifo?.series) ? ifo.series.filter(d => d && d.value != null) : [];
+  if (series.length < 2) return tierUnavailable('T1', 'ifo Business Climate (EU)', 'ifo MoM', 3);
+
+  const latest = series[series.length - 1];
+  const prior  = series[series.length - 2];
+  const chg    = latest.value - prior.value;
+  const a      = Math.abs(chg);
+
+  // Month-on-month buckets (index points). Typical monthly moves are ±0.5–2;
+  // a >2pt swing is a strong sentiment shift (cf. the -4.8 in the dashboard card).
+  let score = 0;
+  if (chg > 0) score = a > 2 ? 3 : a > 1 ? 2 : a > 0.3 ? 1 : 0;
+  else         score = a > 2 ? -3 : a > 1 ? -2 : a > 0.3 ? -1 : 0;
+
+  const reading = chg > 0.3  ? 'German business sentiment improving — tailwind for DAX'
+    : chg < -0.3 ? 'German business sentiment deteriorating — headwind for DAX'
+    :              'German business sentiment flat — neutral';
+
+  return {
+    tier: 'T1', name: 'ifo Business Climate (EU)', max: 3, score,
+    val: `${latest.value.toFixed(1)} (${chg >= 0 ? '+' : ''}${chg.toFixed(1)})${ifo.seed ? ' · seed' : ''}`,
+    reading,
+    source: 'ifo Institute',
+    isMonthly: true,
+    badge: 'MO',
+  };
+}
+
 // ── T1 for NQ/Equity: Net Fed Liquidity ─────────────────────────────────────
 // Net Liquidity = WALCL (Fed balance sheet) - TGA - RRP
 // Rising net liq = more dealer cash to deploy = risk-on tailwind for NQ.
 // WALCL updates weekly (Thursdays), so prev = prior week.
 function computeT1_Equity() {
+  // DAX uses an EU sentiment factor instead of US Fed liquidity (see computeT1_Ifo).
+  if (S.currentPair.symbol === 'DE30_USD') return computeT1_Ifo();
+
   const fredData  = S.fredData ?? {};
   const walcl     = fredData.walcl?.value;
   const walclPrev = fredData.walcl?.prev;
