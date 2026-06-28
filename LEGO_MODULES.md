@@ -206,6 +206,13 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
    equivalence-first, A/B'd on M1 + the live KV path (it changes live behaviour,
    so highest caution). Note: repointing `confluenceModules → levelSources` is a
    *backtest-internal* cleanup and does NOT touch this live path.
+   **Full gap analysis + the Asia-backtest inventory: `CONFLUENCE_LIVE_VS_BACKTEST.md`.**
+   Key divergences: live caps fib-match distance by session range + clusters
+   (density→stars) and grades by HMM+macro+range-bias; backtest doesn't cluster
+   and scores by 16 structural modules + WT gates. `confluence-core.js`,
+   `range-bias.js`, `structural-fibs.js`, `ranges.js` are **live, not dead** —
+   don't delete. Only `MD files/Range_Extension_Backtester_v5_2_ZSCORE.html` and
+   `Zoo/asia_range_backtest.py` are stale archive candidates.
 
 ---
 
