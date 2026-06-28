@@ -133,6 +133,16 @@ function _mondayForDay(mondayRanges, dayEpoch) {
   return null;
 }
 
+// Return the Monday range entry at a specific target epoch (±90s) — used to find
+// the PRIOR Monday for the Monday-vs-previous-Monday confluence (Strategy B).
+function _mondayAtEpoch(mondayRanges, target) {
+  let lo = 0, hi = mondayRanges.length;
+  while (lo < hi) { const m = (lo + hi) >>> 1; mondayRanges[m].epoch < target ? lo = m + 1 : hi = m; }
+  if (lo < mondayRanges.length && Math.abs(mondayRanges[lo].epoch - target) <= 90) return mondayRanges[lo];
+  if (lo > 0 && Math.abs(mondayRanges[lo - 1].epoch - target) <= 90) return mondayRanges[lo - 1];
+  return null;
+}
+
 // ── Fibonacci levels ──────────────────────────────────────────────────────────
 // calcFibs imported from the fibProjection brick (same signature & output).
 
@@ -228,8 +238,10 @@ function simulateDay(packed, dateStr, opts) {
   const {
     confluenceThreshPips = 2.0,
     tightPct             = 10.0,
+    mergeFactor          = 0.30,       // cluster merge radius = threshold × mergeFactor (live default)
+    crossSessionMerge    = false,      // overlay: flag Asia↔Monday coincidences (zone strength). Off = 2 independent strategies
     levelFilter          = 'tight',    // 'tight' | 'confluence' | 'asia_monday' | 'all'
-    levelSource          = 'asia',    // 'asia' | 'monday' | 'both'
+    levelSource          = 'asia',    // 'asia' | 'monday' | 'both' | 'asia_tight_monday'
     tradeZone            = 'outside',  // 'outside' | 'both'
     slMult               = 0.5,        // SL dist = asiaRange × slMult  (range_mult mode)
     tpMode               = '0.5',      // '0.5' | 'range_edge'
@@ -292,7 +304,7 @@ function simulateDay(packed, dateStr, opts) {
   // Confluence thresholds in price terms (match the live engine's caps config).
   const threshold      = confluenceThreshPips * pipSize;   // normalDistance
   const tightThreshold = threshold * (tightPct / 100);
-  const mergeDistance  = threshold * (opts.mergeFactor ?? 0.30);  // live default mergeFactor
+  const mergeDistance  = threshold * mergeFactor;  // cluster merge radius (live mergeFactor)
 
   const fibs = prevFibs.length
     ? markConfluence(currFibs, prevFibs, {
@@ -301,38 +313,51 @@ function simulateDay(packed, dateStr, opts) {
       })
     : currFibs.map(f => ({ ...f, hasConfluence: false, isTight: false, density: 0 }));
 
-  // Monday range + Monday fibs — O(log N) lookup if cache available
-  let mondayRange = null;
-  let mondayFibs  = [];
+  // Monday range + Monday fibs, AND the PRIOR Monday — O(log N) lookup if cached.
+  // Asia and Monday are TWO INDEPENDENT strategies: each scores confluence against
+  // its OWN previous session (Asia vs prev-Asia; Monday vs prev-Monday). The
+  // cross-session overlay below is an optional zone-strength layer, not the core.
+  let mondayRange = null, prevMondayRange = null;
+  let mondayFibs  = [], prevMondayFibs = [];
   {
     if (_mondayRanges) {
       mondayRange = _mondayForDay(_mondayRanges, dayEpoch);
+      if (mondayRange) prevMondayRange = _mondayAtEpoch(_mondayRanges, mondayRange.epoch - 7 * 86400);
     } else {
       const dow      = new Date(dateStr + 'T00:00:00Z').getUTCDay();
       const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
       const monEpoch = dayEpoch - daysBack * 86400;
       const monBars  = extractBars(packed, monEpoch, monEpoch + 24 * 3600);
       if (monBars.length >= 20) mondayRange = mondayWickRange(monBars);
+      const pBars    = extractBars(packed, monEpoch - 7 * 86400, monEpoch - 7 * 86400 + 24 * 3600);
+      if (pBars.length >= 20) prevMondayRange = mondayWickRange(pBars);
     }
-    if (mondayRange) mondayFibs = calcFibs(mondayRange.low, mondayRange.range, fibLevels);
+    if (mondayRange)     mondayFibs     = calcFibs(mondayRange.low, mondayRange.range, fibLevels);
+    if (prevMondayRange) prevMondayFibs = calcFibs(prevMondayRange.low, prevMondayRange.range, fibLevels);
   }
 
-  // Cross-alignment: flag each Asia fib that sits within confluenceThresh of a Monday fib
-  // and each Monday fib that sits within confluenceThresh of an Asia fib.
-  // Re-use the same confluenceThreshPips threshold — these are the zone boundaries.
-  for (const af of fibs) {
-    af.source        = 'asia';
-    af.crossAligned  = mondayFibs.length > 0 && mondayFibs.some(mf => Math.abs(af.price - mf.price) <= threshold);
-  }
-  for (const mf of mondayFibs) {
-    const asiaMatch  = fibs.some(af => Math.abs(af.price - mf.price) <= threshold);
-    const asiaTight  = fibs.some(af => Math.abs(af.price - mf.price) <= tightThreshold);
-    // For Monday fibs: treat Asia-fib alignment as the "confluence" signal so that
-    // the existing levelFilter logic (tight/confluence/all) applies naturally.
-    mf.hasConfluence = asiaMatch;
-    mf.isTight       = asiaTight;
-    mf.crossAligned  = asiaMatch;
-    mf.source        = 'monday';
+  // Strategy B: Monday confluence = this Monday's fibs vs the PRIOR Monday's fibs
+  // (same matcher + cap + clustering as Asia). Independent of Asia.
+  mondayFibs = (mondayFibs.length && prevMondayFibs.length)
+    ? markConfluence(mondayFibs, prevMondayFibs, {
+        pipSize, normalDistance: threshold, tightDistance: tightThreshold,
+        mergeDistance, sessionRange: mondayRange.range,
+      })
+    : mondayFibs.map(f => ({ ...f, hasConfluence: false, isTight: false, density: 0 }));
+
+  for (const af of fibs)       af.source = 'asia';
+  for (const mf of mondayFibs) mf.source = 'monday';
+
+  // Optional cross-session overlay (configurable zone-strength layer): when on,
+  // flag Asia and Monday fibs that coincide as crossAligned — the two strategies
+  // agree at this price → a stronger zone. When off, they stay fully independent.
+  // The 'asia_monday' levelFilter implies the overlay (it selects cross zones).
+  const crossOn = crossSessionMerge || levelFilter === 'asia_monday';
+  for (const af of fibs)       af.crossAligned = false;
+  for (const mf of mondayFibs) mf.crossAligned = false;
+  if (crossOn && fibs.length && mondayFibs.length) {
+    for (const af of fibs)       af.crossAligned = mondayFibs.some(mf => Math.abs(af.price - mf.price) <= mergeDistance);
+    for (const mf of mondayFibs) mf.crossAligned = fibs.some(af => Math.abs(af.price - mf.price) <= mergeDistance);
   }
 
   // Build candidate level list according to levelSource

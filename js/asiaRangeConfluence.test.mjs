@@ -66,5 +66,33 @@ console.log('[no prior fibs → no confluence]');
 const none = markConfluence(today, [], big);
 ok('empty prev → all hasConfluence false, density 0', none.every(f => f.hasConfluence === false && f.density === 0));
 
+console.log('[Monday is an independent strategy: vs prior Monday, not vs Asia]');
+// Monday this week vs Monday last week — its own confluence, exactly like Asia.
+const monThis = calcFibs(1.4000, 0.0100);
+const monPrev = calcFibs(1.40005, 0.0100);
+const monMarked = markConfluence(monThis, monPrev, big);
+ok('Monday fibs score confluence vs PRIOR Monday', monMarked.some(f => f.hasConfluence));
+// With no prior Monday, Monday has no confluence (independent of Asia entirely).
+ok('no prior Monday → Monday has no confluence (not borrowed from Asia)',
+   markConfluence(monThis, [], big).every(f => !f.hasConfluence));
+
+console.log('[cross-session overlay = optional zone-strength layer]');
+// Replicates asiaRangeEngine's overlay: crossAligned only when ON, by mergeDistance.
+function applyCrossOverlay(asiaFibs, monFibs, mergeDist, on) {
+  const a = asiaFibs.map(f => ({ ...f, crossAligned: false }));
+  const m = monFibs.map(f => ({ ...f, crossAligned: false }));
+  if (on) {
+    for (const af of a) af.crossAligned = m.some(mf => Math.abs(af.price - mf.price) <= mergeDist);
+    for (const mf of m) mf.crossAligned = a.some(af => Math.abs(af.price - mf.price) <= mergeDist);
+  }
+  return { a, m };
+}
+const aF = [{ level: 0, price: 1.5000, isKey: true }];
+const mF = [{ level: 1, price: 1.50003, isKey: true }];   // 0.3p from the Asia fib
+const off = applyCrossOverlay(aF, mF, mergeDistance, false);
+const on  = applyCrossOverlay(aF, mF, mergeDistance, true);
+ok('overlay OFF → strategies independent (no crossAligned)', off.a.every(f => !f.crossAligned) && off.m.every(f => !f.crossAligned));
+ok('overlay ON → coinciding Asia/Monday fibs flagged crossAligned', on.a[0].crossAligned && on.m[0].crossAligned);
+
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
