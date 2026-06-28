@@ -242,16 +242,25 @@ async function loadTrades(pair){ const h=$('horizon').value; const c=$('tradeLog
   html+=`</tbody></table></div>`; c.innerHTML=html;
 }
 function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   btn.onclick=async()=>{ bookBusy=true; render();
-    try{ const h=$('horizon').value;
-      const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h})});
-      if(!r.j?.ok) throw new Error(r.j?.error||'run failed');
-      const job=r.j.jobId; let done=false;
-      while(!done){ await new Promise(r=>setTimeout(r,2000));
-        const s=await api(`/api/forecast-analysis/per-line/status/${job}`);
-        if(s.j?.status==='done'){ done=true; } else if(s.j?.status==='error'){ throw new Error(s.j.error); } }
+    const h=$('horizon').value;
+    // Submit with a couple of retries — a flaky mobile connection drops the POST.
+    const submit=async()=>{ let last;
+      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h})});
+        if(r.j?.ok) return r.j.jobId; last=new Error(r.j?.error||'run rejected'); }catch(e){ last=e; } await sleep(1500); }
+      throw last; };
+    try{
+      const job=await submit(); let done=false, fails=0, waited=0;
+      // Poll — tolerate transient fetch drops (the build keeps running server-side).
+      while(!done && waited<1800000){ await sleep(3000); waited+=3000;
+        let s; try{ s=await api(`/api/forecast-analysis/per-line/status/${job}`); fails=0; }
+        catch(e){ if(++fails>40) throw new Error('lost connection to the build — it may still finish; reload the Book tab in a minute'); continue; }
+        if(s.j?.status==='done') done=true;
+        else if(s.j?.status==='error') throw new Error('build error: '+(s.j.error||'unknown'));
+        else if(s.status===404) throw new Error('build job expired — retry'); }
       await loadBook(true);
-    }catch(e){ alert('Book build failed: '+e.message); }
+    }catch(e){ alert('Book build: '+e.message+'\n\nThe build runs server-side, so if this was a network blip, reload the Book tab shortly to see the result.'); }
     finally{ bookBusy=false; render(); }
   };
 }
