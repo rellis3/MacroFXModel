@@ -154,6 +154,16 @@ console.log('[touchFeatures]');
   // WaveTrend extension reads the precomputed series in the touch direction.
   ok('wtState extended when overbought at an up-line', tf.compute({ bars: drive, touchIdx: 11, open: 100, sigma: 0.005, side: 'up', wt1: drive.map(() => 60) }).wtState.bucket === '3·extended');
   ok('createTouchFeatures merges config (erWin override, wt default kept)', tf.cfg.erWin === 5 && tf.cfg.wt.n1 === TOUCH_DEFAULTS.wt.n1);
+  // Volume climax: touch bar at 5× the flat baseline → surge.
+  const volBars = Array.from({ length: 40 }, (_, i) => ({ time: i, open: 100, high: 100.1, low: 99.9, close: 100, volume: i === 39 ? 500 : 100 }));
+  ok('volumeClimax = surge on a volume spike', createTouchFeatures({ volWin: 30 }).compute({ bars: volBars, touchIdx: 39, open: 100, sigma: 0.005, side: 'up' }).volClimax.bucket === '3·surge');
+  ok('volumeClimax null without volume', tf.compute({ bars: drive, touchIdx: 11, open: 100, sigma: 0.005, side: 'up' }).volClimax.bucket === null);
+  // Candle rejection: big upper wick at an up-line touch → reject.
+  const rejBar = [{ time: 0, open: 100, high: 101, low: 99.95, close: 100.05 }];
+  ok('candleRejection = reject on a big upper wick (up-line)', createTouchFeatures().compute({ bars: rejBar, touchIdx: 0, open: 100, sigma: 0.005, side: 'up' }).candleReject.bucket === '3·reject');
+  // Round-number proximity: 1.1000 sits ON a figure; 1.1037 is off.
+  ok('roundNumber on-figure at 1.1000', createTouchFeatures().compute({ bars: rejBar, touchIdx: 0, open: 1.1, sigma: 0.005, side: 'up', level: 1.1000, pip: 0.0001 }).roundNum.bucket === '3·on-figure');
+  ok('roundNumber off at 1.1080 (20 pips from 1.1100)', createTouchFeatures().compute({ bars: rejBar, touchIdx: 0, open: 1.1, sigma: 0.005, side: 'up', level: 1.1080, pip: 0.0001 }).roundNum.bucket === '1·off');
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

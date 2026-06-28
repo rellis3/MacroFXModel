@@ -52,7 +52,7 @@ function classifySession(t) {
 //     — so freezing neighbours at the touch bar is faithful, not an approximation.
 export function analyseWindow(session, ladder, ctx = {}) {
   const { open, bars } = session;
-  const { sigma = 0, tf = null } = ctx;            // daily-σ frac + configured touch-feature computer
+  const { sigma = 0, tf = null, pip = 0 } = ctx;   // daily-σ frac + configured touch-feature computer + pip size
   const n = bars.length;
   const last = bars[n - 1];
   const closePx = last?.close ?? open;
@@ -64,11 +64,12 @@ export function analyseWindow(session, ladder, ctx = {}) {
   // WaveTrend computed ONCE per window (causal EMA → indexing at a touch bar is
   // lookahead-free). null when no touch-feature computer is wired.
   const wt1 = tf ? tf.wtSeries(bars) : null;
-  const NO_FEATS = { approachER: null, approachVel: null, wtState: null };
-  const featBuckets = (touchIdx, side) => {
+  const FEAT_KEYS = ['approachER', 'approachVel', 'wtState', 'volClimax', 'candleReject', 'roundNum'];
+  const NO_FEATS = Object.fromEntries(FEAT_KEYS.map(k => [k, null]));
+  const featBuckets = (touchIdx, side, level) => {
     if (!tf || touchIdx < 0) return NO_FEATS;
-    const f = tf.compute({ bars, touchIdx, open, sigma, side, wt1 });
-    return { approachER: f.approachER.bucket, approachVel: f.approachVel.bucket, wtState: f.wtState.bucket };
+    const f = tf.compute({ bars, touchIdx, open, sigma, side, wt1, level, pip });
+    return Object.fromEntries(FEAT_KEYS.map(k => [k, f[k]?.bucket ?? null]));
   };
 
   // Running extremes inclusive of bar k (drives the dynamic HL line levels).
@@ -114,8 +115,8 @@ export function analyseWindow(session, ladder, ctx = {}) {
         continue;
       }
       const touchLvl = levelAt(nm, side, touchIdx);
-      // At-the-moment intraday approach features (null buckets when insufficient bars).
-      const fb = featBuckets(touchIdx, side);
+      // At-the-moment intraday approach + structural features (null when insufficient data).
+      const fb = featBuckets(touchIdx, side, touchLvl);
       // Range-budget at touch: realized H-L so far ÷ expected median daily range
       // (= HL50, the BM_P50 range constant — NOT 2×). Low = price hit the line
       // early in the day's range (continuation pressure); high = range spent.
@@ -201,7 +202,7 @@ export function analyseWindow(session, ladder, ctx = {}) {
 export function bucketM1IntoSessions(packed, boundaryHour = 22) {
   const map = new Map();
   if (!packed || !packed.n) return map;
-  const { n, times, opens, highs, lows, closes } = packed;
+  const { n, times, opens, highs, lows, closes, volumes } = packed;
   for (let i = 0; i < n; i++) {
     const t  = times[i];
     // times may be epoch SECONDS (Int32, from loadM1ForPair), epoch ms, or ISO.
@@ -210,7 +211,7 @@ export function bucketM1IntoSessions(packed, boundaryHour = 22) {
     if (dt.getUTCHours() >= boundaryHour) d.setUTCDate(d.getUTCDate() + 1);  // belongs to next session
     const key = d.toISOString().slice(0, 10);
     if (!map.has(key)) map.set(key, []);
-    map.get(key).push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+    map.get(key).push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes ? volumes[i] : 0 });
   }
   for (const arr of map.values()) arr.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
   return map;
@@ -268,7 +269,7 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
     const ladder = buildLadder(open, sigma, assetClass);
     const regime = classifyRegime(closes, i, 20, 5, opts.slopeThresh ?? 0.002, 1.0);
     const dow    = new Date(date + 'T00:00:00Z').getUTCDay();
-    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf });
+    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf, pip: opts.pip ?? 0 });
 
     // Day-type score (no lookahead: reads closes[< i] only) + the selector's
     // directional choice + the realized continuation/reversion label, for the

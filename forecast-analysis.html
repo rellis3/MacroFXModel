@@ -96,7 +96,7 @@
 const $ = id => document.getElementById(id);
 const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn','HL50_dn','HL75_dn'];
 const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
-const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byApproachER:'Approach efficiency', byApproachVel:'Approach velocity', byWtState:'WaveTrend (touch)', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
+const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byApproachER:'Approach efficiency', byApproachVel:'Approach velocity', byWtState:'WaveTrend (touch)', byVolClimax:'Volume climax', byCandleReject:'Candle rejection', byRoundNum:'Round-number prox', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
 const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';

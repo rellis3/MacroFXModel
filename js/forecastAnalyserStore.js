@@ -15,6 +15,7 @@
 import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
+import { pipSize } from './instrumentRegistry.js';
 
 const PREFIX   = 'forecast-analysis';
 const M1_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
@@ -136,6 +137,9 @@ function buildAggregates(records) {
     byApproachER:  aggregate(records, (r, ln) => ln.approachER),   // per-touch intraday approach efficiency
     byApproachVel: aggregate(records, (r, ln) => ln.approachVel),  // per-touch approach velocity (σ-units)
     byWtState:     aggregate(records, (r, ln) => ln.wtState),      // per-touch WaveTrend extension
+    byVolClimax:   aggregate(records, (r, ln) => ln.volClimax),    // per-touch volume climax vs baseline
+    byCandleReject:aggregate(records, (r, ln) => ln.candleReject), // per-touch wick rejection at the level
+    byRoundNum:    aggregate(records, (r, ln) => ln.roundNum),     // line distance to nearest round number
     byGap:     aggregate(records, r => r.gapBucket),
     byEvent:   aggregate(records, r => r.eventBucket),
     byPhase:   aggregate(records, r => r.monthPhase),
@@ -154,11 +158,12 @@ export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}) {
   if (!packed?.n) { onLog(`${pair}: no M1 data — skipped`); return null; }
   const sessions   = bucketM1IntoSessions(packed);
   const assetClass = assetClassFor(pair);
-  onLog(`${pair}: ${packed.n} M1 bars → ${sessions.size} sessions (${assetClass})`);
+  let pip = 0; try { pip = pipSize(pair) || 0; } catch { /* unknown symbol → round-number feature off */ }
+  onLog(`${pair}: ${packed.n} M1 bars → ${sessions.size} sessions (${assetClass}, pip ${pip || 'n/a'})`);
 
   const out = { pair, assetClass, horizons: {} };
   for (const h of horizons) {
-    const records  = runAnalyser(sessions, assetClass, { horizon: h });
+    const records  = runAnalyser(sessions, assetClass, { horizon: h, pip });
     const coverage = { from: records[0]?.date ?? null, to: records.at(-1)?.date ?? null, windows: records.length };
     await putJSON(`${PREFIX}/${pair}/${h}.json`, { pair, horizon: h, assetClass, coverage, records });
     out.horizons[h] = { coverage, aggregates: buildAggregates(records) };
