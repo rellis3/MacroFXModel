@@ -1027,6 +1027,24 @@
 .vfh-tbl td { padding: 4px 6px; vertical-align: top; border-bottom: 1px solid var(--border); line-height: 1.55; }
 .vfh-tbl tr:last-child td { border-bottom: none; }
 .vfh-tbl td:first-child { color: var(--text2); font-weight: 600; white-space: nowrap; padding-right: 14px; width: 140px; }
+/* ── Export pill dropdown ──────────────────────────────────────────────── */
+.vf-exp-dd { position: relative; display: inline-flex; }
+.vf-exp-menu {
+  display: none; position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 6px; gap: 3px; flex-direction: column;
+  z-index: 300; min-width: 170px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+.vf-exp-dd.open .vf-exp-menu { display: flex; }
+.vf-exp-item {
+  text-align: left; background: none; border: none; color: var(--text2);
+  font-size: 11px; font-weight: 500; padding: 5px 10px;
+  border-radius: 6px; font-family: 'DM Sans', sans-serif;
+  white-space: nowrap; transition: all .15s; cursor: pointer;
+}
+.vf-exp-item:hover:not(:disabled) { background: var(--s2); color: var(--blue); }
+.vf-exp-item:disabled { opacity: 0.38; cursor: default; }
+.vf-exp-sep { height: 1px; background: var(--border); margin: 3px 4px; }
 </style>
 </head>
 <body class="dark">
@@ -1048,12 +1066,19 @@
   </div>
   <div class="spacer"></div>
   <span class="upd">Updated: <span id="vfUpdated">—</span></span>
-  <button class="dark-btn" id="vfExportBtn" onclick="exportForecast()" disabled>⬇ Export</button>
-  <button class="dark-btn" id="vfSessionExportBtn" onclick="exportSession()" disabled>⬇ Session</button>
-  <button class="dark-btn" id="vfV3ExportBtn" onclick="exportV3()" disabled title="Vol forecast + session consumption stats for the v3 Pine Script indicator">⬇ V+S</button>
-  <button class="dark-btn" id="vfCZExportBtn" onclick="exportConfluenceZones()" disabled title="Confluence Zones: Fibonacci + prev highs/lows + weekly pivots + vol levels — paste into the C+Z Pine Script indicator">⬇ C+Z</button>
-  <button class="dark-btn" id="vfExtendedBtn" onclick="exportExtended()" disabled title="Extended export: vol percentile, O-H/O-L legs, 5-day and 20-day ranges">⬇ Extended</button>
-  <button class="dark-btn" id="vfWeeklyBtn"   onclick="exportWeekly()"   disabled title="Weekly export: WTD range consumption, directional bias, 5-day/20-day forecasts">⬇ Weekly</button>
+  <div class="vf-exp-dd" id="vfExpDropdown">
+    <button class="dark-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
+    <div class="vf-exp-menu">
+      <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export</button>
+      <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
+      <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
+      <div class="vf-exp-sep"></div>
+      <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"            disabled>⬇ Session</button>
+      <button class="vf-exp-item" id="vfV3ExportBtn"      onclick="closeExpDropdown();exportV3()"                 disabled>⬇ V+S</button>
+      <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z</button>
+      <button class="vf-exp-item" id="vfWeeklyBtn"        onclick="closeExpDropdown();exportWeekly()"             disabled>⬇ Weekly</button>
+    </div>
+  </div>
   <button class="dark-btn" id="vfHistoryBtn" onclick="toggleHistory()" disabled title="Show/hide session history table — click rows to load a past day, use ← Older / Newer → to navigate">⊞ History</button>
   <button class="dark-btn" id="vfLevelsBtn"  onclick="toggleLevelsView()" disabled title="Compact levels table — all instruments, today's price targets, hit times">📋 Levels</button>
   <button class="dark-btn" id="vfHitRatesBtn" onclick="toggleHitRates()" title="Levels hit rates — historical % hit rate and median reach time per level per instrument">📊 Hit Rates</button>
@@ -1635,8 +1660,10 @@ async function loadForecast() {
     renderForecast(data);
     updatePositionSizes();
     document.getElementById('vfExportBtn').disabled    = false;
+    document.getElementById('vfExportV2Btn').disabled = false;
     document.getElementById('vfExtendedBtn').disabled = false;
     document.getElementById('vfCZExportBtn').disabled = false;
+    document.getElementById('vfExpPillBtn').disabled  = false;
     setStatus('ok', `Forecast ready — session ${data.session_date}`);
   } catch (e) {
     setStatus('err', `Fetch error: ${e.message}`);
@@ -1723,6 +1750,69 @@ function buildExportText(data) {
   }
 
   return lines.join('\n');
+}
+
+// ── Export pill dropdown toggle ───────────────────────────────────────────────
+function toggleExpDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('vfExpDropdown').classList.toggle('open');
+}
+function closeExpDropdown() {
+  document.getElementById('vfExpDropdown').classList.remove('open');
+}
+document.addEventListener('click', closeExpDropdown);
+
+// ── Export v2: adds asymmetric O-H / O-L tilted by WTD weekly bias ────────────
+function buildExportV2Text(data) {
+  const LINE_WIDTH = 29;
+  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+  const weeklyInsts = currentWeekly?.instruments ?? {};
+
+  const lines = [
+    '**VOL & RANGE FORECAST v2**',
+    `**For session: ${data.session_label}**`,
+    '',
+  ];
+
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    const w     = weeklyInsts[name] ?? null;
+    const bias  = w?.bias       ?? 'Neutral';
+    const conf  = w?.confidence ?? '—';
+    // ±30% tilt on the OC distribution based on WTD directional bias
+    const scale = bias === 'Bullish' ? 0.30 : bias === 'Bearish' ? -0.30 : 0;
+    const oh_med = f.oc_median * (1 + scale);
+    const ol_med = f.oc_median * (1 - scale);
+    const oh_75  = f.oc_75    * (1 + scale);
+    const ol_75  = f.oc_75    * (1 - scale);
+    const arrow  = bias === 'Bullish' ? ' ↑' : bias === 'Bearish' ? ' ↓' : '';
+
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
+    lines.push(`High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th`);
+    lines.push(`Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th`);
+    lines.push(`Open High (upside)      : ${oh_med.toFixed(2)}% median · ${oh_75.toFixed(2)}% 75th${scale > 0 ? ' ↑' : ''}`);
+    lines.push(`Open Low  (downside)    : ${ol_med.toFixed(2)}% median · ${ol_75.toFixed(2)}% 75th${scale < 0 ? ' ↓' : ''}`);
+    lines.push(`Directional bias        : ${bias}${arrow}  [WTD conv: ${conf}]`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function exportV2() {
+  if (!currentForecast) return;
+  const text = buildExportV2Text(currentForecast);
+  const pill = document.getElementById('vfExpPillBtn');
+  const orig = pill?.textContent;
+
+  navigator.clipboard.writeText(text).then(() => {
+    if (pill) { pill.textContent = '✓ v2 copied'; setTimeout(() => { pill.textContent = orig; }, 2200); }
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `vol-forecast-v2-${currentForecast.session_date}.txt`;
+    a.click(); URL.revokeObjectURL(url);
+  });
 }
 
 function exportForecast() {
