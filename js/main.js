@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { PAIRS, CACHE_DURATION, FEATURE_FLAGS, TYPICAL_SPREADS } from './config.js';
-import { kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits, getPipSize, toOandaSym, classifySpread } from './utils.js';
+import { kvGet, kvSet, loadCached, cleanupStaleSessionCaches, fetchAPI, updateStatus, updatePill, londonSessionDay, getDigits, getPipSize, toOandaSym, classifySpread } from './utils.js';
 import { calculateAsiaRanges, calculateMondayRanges } from './ranges.js';
 import { calculateStructuralFibs } from './structural-fibs.js';
 import { filterConfluences, enhanceConfluences, mergeCrossSources } from './confluences.js';
@@ -30,6 +30,10 @@ const renderAllDebounced = () => {
   _renderTimer = setTimeout(() => { _renderTimer = null; renderAll(); }, 300);
 };
 window.renderAllDebounced = renderAllDebounced;
+
+// Lets the IFO modal (a non-module inline script) push a freshly-saved ifo
+// series into the DAX macro state and re-render the bias immediately.
+window.__setIfoData = (d) => { S.ifoData = d; renderAllDebounced(); };
 
 // ── Wire window globals for HTML onclick handlers and circular-dep breakers ──
 window.renderAll              = renderAll;
@@ -675,12 +679,13 @@ async function loadAll() {
     S.usdStrength  = computeUSDStrength();
     S.dollarRegime = computeDollarRegime();
 
-    // ifo Business Climate — EU sentiment factor for the DAX macro T1 (monthly,
-    // static file). Fetched once per session when the DAX tab is viewed; re-render
-    // on arrival so the tier table picks it up.
+    // ifo Business Climate — EU sentiment factor for the DAX macro T1 (monthly).
+    // Source of truth is KV ifo_data (edited from the dashboard's IFO modal);
+    // fall back to the static /ifo.json seed when KV is empty. Fetched once per
+    // session when the DAX tab is viewed; re-render on arrival so the tier picks it up.
     if (S.currentPair.symbol === 'DE30_USD' && !S.ifoData) {
-      fetch('/ifo.json')
-        .then(r => r.ok ? r.json() : null)
+      kvGet('ifo_data')
+        .then(kv => (kv?.data?.series?.length ? kv.data : fetch('/ifo.json').then(r => r.ok ? r.json() : null)))
         .then(data => { if (data) { S.ifoData = data; renderAllDebounced(); } })
         .catch(() => {});
     }
