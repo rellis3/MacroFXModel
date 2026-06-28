@@ -316,7 +316,12 @@ function renderCalibration(v){
   const a=d.all||{};
   const hasCal = a.OC50_up && a.OC50_up.closeBeyondRate!==undefined;
   if(!hasCal){ v.innerHTML=`<div class="card mut">Calibration needs a fresh refresh (new fields). ${LEVEL==='admin'?'Run a refresh.':'Ask the owner to refresh.'}</div>`; return; }
-  const TARGET={OC50:50,OC75:25}; // close-percentile targets
+  // Close lines are ONE-SIDED: P(close beyond the up line) = P(N>k), not 2·P(N>k).
+  // OC50=HN_P50=0.6745σ → P(N>0.6745)=25%; OC75=HN_P75=1.1503σ → P(N>1.1503)=12.5%.
+  const TARGET={OC50:25,OC75:12.5};
+  // Reach (daily high/low touches the line) via the reflection principle
+  // P(max≥a)=2·P(N≥a/σ), corr≈1. Reference only — asset corr factors shift these.
+  const REACH={OC50:50,OC75:25,HL50:11.6,HL75:4.0};
   let html='';
   // Range-forecast skill summary (Tier 4): forecast vs realized daily range.
   const sk=d.skill;
@@ -329,15 +334,16 @@ function renderCalibration(v){
       <div class="kpi"><div class="v ${Math.abs(ex-25)>7?'neg':'pos'}">${fmt(ex)}%</div><div class="l">range &gt; 75p band (≈25% ideal)</div></div>
     </div><div class="hint" style="margin-top:8px">Bias near 0 and exceed≈25% = the σ forecast is honest. A large positive bias = forecast ranges too narrow (σ underestimated); negative = too wide.</div></div>`;
   }
-  html+=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. <b>Close lines:</b> % of windows that close beyond should match the percentile (Close med ≈ 50%, Close 75p ≈ 25%). <b>Proj lines:</b> reach rate shown for info.</div>`;
-  html+=`<table><thead><tr><th>Line</th><th>closes beyond %</th><th>target</th><th>error</th><th>reach (hit) %</th><th>n win</th></tr></thead><tbody>`;
-  for(const k of LINE_ORDER){ const s=a[k]; if(!s) continue; const [nm]=k.split('_'); const tgt=TARGET[nm];
+  html+=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. The measures are <b>one-sided</b> (each up / down line tested on its own side). <b>Close lines:</b> % of windows that close beyond should match the one-sided percentile (Close med ≈ 25%, Close 75p ≈ 12.5%). <b>Reach</b> = % of windows whose daily high/low touches the line; the reflection-principle reference is shown alongside (≈, corr-dependent).</div>`;
+  html+=`<table><thead><tr><th>Line</th><th>closes beyond %</th><th>target</th><th>error</th><th>reach (hit) %</th><th>reach ref</th><th>n win</th></tr></thead><tbody>`;
+  for(const k of LINE_ORDER){ const s=a[k]; if(!s) continue; const [nm]=k.split('_'); const tgt=TARGET[nm]; const rref=REACH[nm];
     const err= tgt!==undefined ? (s.closeBeyondRate-tgt) : null;
     html+=`<tr><td class="${sideCls(k)}">${lbl(k)}</td>
       <td>${fmt(s.closeBeyondRate)}%</td>
       <td class="mut">${tgt!==undefined?tgt+'%':'—'}</td>
       <td class="${err===null?'mut':(Math.abs(err)>5?'neg':'pos')}">${err===null?'—':(err>0?'+':'')+fmt(err)}pp</td>
-      <td class="mut">${fmt(s.hitRate)}%</td><td>${s.windows||0}</td></tr>`; }
+      <td>${fmt(s.hitRate)}%</td>
+      <td class="mut">${rref!==undefined?'≈'+rref+'%':'—'}</td><td>${s.windows||0}</td></tr>`; }
   html+=`</tbody></table></div>`; v.innerHTML=html;
 }
 

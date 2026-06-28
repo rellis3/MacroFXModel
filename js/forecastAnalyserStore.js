@@ -47,7 +47,11 @@ function computeSkill(records) {
     const hl50 = r.lines.find(l => l.name === 'HL50')?.distPct;
     const hl75 = r.lines.find(l => l.name === 'HL75')?.distPct;
     if (hl50 == null || hl75 == null || !r.realized || !r.open) continue;
-    const fcMedRange = 2 * hl50, fc75Range = 2 * hl75;            // up+down, % of price
+    // BM_P50/BM_P75 ARE the range (high−low) percentiles, so hl50 = the median
+    // realized-range forecast and hl75 = the 75th-pct range forecast directly.
+    // (The ±hl50 *lines* span 2·hl50, but that band is two one-sided ~12% reach
+    //  lines, NOT a range prediction — don't double it here.)
+    const fcMedRange = hl50, fc75Range = hl75;                    // % of price
     const realRange  = (r.realized.high - r.realized.low) / r.open * 100;
     n++; fcMed += fcMedRange; fc75 += fc75Range; real += realRange;
     if (realRange > fc75Range) exceed++;
