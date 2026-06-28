@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-06-26 (hl/oc correction factors recalibrated — shape-only constants, revert values preserved).
+Last updated: 2026-06-29 (Jun-29 checkpoint — ref-side noise confirmed; new shape-only correction factors validated).
 
 ---
 
@@ -38,22 +38,14 @@ Last updated: 2026-06-26 (hl/oc correction factors recalibrated — shape-only c
   factors, displayed HL/OC error will now track raw vol Δ linearly instead
   of amplifying/sign-flipping it. Next checkpoint will validate.
 
-- index/NQ GARCH persistence: **gap widening negative, trigger met
-  (2026-06-26)** — 5-session trajectory: +59.0%→+18.1%→+9.7%→−4.9%→**−21.0%**.
-  Two consecutive negative sessions confirms the sign. The item-4 refit
-  trigger has been met, but the raw gap is STILL actively widening
-  (−4.9%→−21.0%, a 16pp swing in one session), making refitting against
-  today's number a moving-target problem exactly like before. ours drifted
-  down (26.40%→24.92%) while ref jumped (27.76%→31.53%) — same ref-moves-more
-  pattern as Jun-23/Jun-25, but both are moving in the same direction
-  (refs now trending up 3 sessions straight: 24.21→27.76→31.53). **HL/OC
-  corrected metrics are now a serious display problem**: −32% to −36% on
-  NQ (Jun-26), compounding from −21%/−26% on Jun-25. **Decision point**:
-  the no-whiplash rule says refitting hl/oc off a still-moving raw gap
-  is premature; but at −32%/−36% the cost of inaction is concrete (users
-  see badly wrong range estimates). **User call needed** on whether to refit
-  hl/oc corrections now (accepting another potential reverse if raw gap
-  swings back) or wait one more session to see if the −21% level holds.
+- index/NQ GARCH persistence: **ref-side noise confirmed (2026-06-29)** —
+  the Jun-25/26 negative gap (−4.9%→−21.0%) was almost entirely driven by
+  ref spiking (24.21%→27.76%→31.53%), not by our GARCH misbehaving. On
+  Jun-29 ref reverted fully to 22.56% while ours held at 24.49% — raw gap
+  is back positive at +8.6%. β=0.87 confirmed appropriate; no β adjustment
+  made. New shape-only correction factors (recalibrated 2026-06-26) validated
+  on first real test: displayed HL/OC Δ now tracks raw vol Δ proportionally
+  (+6%/+9%), no amplification.
 
 ---
 
@@ -69,6 +61,7 @@ Last updated: 2026-06-26 (hl/oc correction factors recalibrated — shape-only c
 | Jun-24 | Track 1 checkpoint #3  | 26.57%   | 24.21%  | +9.7%  | **trend confirmed** — 3rd straight improvement; HL/OC corrected now −7.7% to −9.4% (over-correction worsening as raw gap shrinks) |
 | Jun-25 | Track 1 checkpoint #4  | 26.40%   | 27.76%  | −4.9%  | **sign flip** — raw gap went negative for the first time; HL/OC corrected now −21% to −26% (over-correction sharply worse, see diagnosis) |
 | Jun-26 | Track 1 checkpoint #5  | 24.92%   | 31.53%  | −21.0% | **widening negative** — 2nd consecutive negative session, item-4 trigger met; HL/OC corrected now −32% to −36% (display problem, user call needed on refit) |
+| Jun-29 | Track 1 checkpoint #6  | 24.49%   | 22.56%  | +8.6%  | **ref-side noise confirmed** — ref reverted 31.53%→22.56%; gap back positive; new shape factors validated: displayed HL +6.3%/+8.8%, OC +2.8%/+6.6%, all proportional to raw vol Δ |
 
 **Diagnosis**: reference's NQ vol behaves as if it has roughly 1-session effective
 memory after a shock. Our GARCH(0.06/0.91) has α+β=0.97 → ~23-day half-life —
@@ -195,6 +188,22 @@ not a single spike, and the displayed range error (−32%/−36%) is bad but
 is a direct consequence of a 21% raw vol underestimate, not a correction-
 factor problem alone. User decision needed on direction.
 
+**Updated diagnosis (2026-06-29)**: checkpoint #6 confirms the Jun-25/26
+negative gap was almost entirely ref-side noise. Ref NQ vol reverted from
+31.53%→22.56% in one session (−28.5%) while ours held 24.92%→24.49% (−0.4pp),
+restoring raw gap to +8.6%. The same ref-does-the-moving pattern seen on
+Jun-23 — reference reacting to intraday/options information on a faster
+timescale than close-to-close OHLC. The 3-session ref run (24.21→27.76→31.53)
+that looked like a fresh-volatility-uptick regime was not; it reverted in one
+session. β=0.87 neither caused nor hid the swing — the decision not to adjust
+`garch_beta_interim` on two noisy data points was correct. The new shape-only
+correction factors (index: hl_50=0.97, hl_75=0.94, oc_50=1.06, oc_75=1.10)
+are now validated: displayed HL +6.3%/+8.8% and OC +2.8%/+6.6% on Jun-29
+track the raw vol Δ proportionally (+8.6%), with no amplification. Remaining
+positive gap (~+8.6%) is the GARCH sitting slightly elevated relative to
+reference — not a correction-factor issue, and manageable (compare Jun-22's
++59.0%).
+
 ---
 
 ## Dual-track plan ("let's do both" — agreed 2026-06-19)
@@ -285,6 +294,14 @@ corrections from the negative raw-gap level (accepted whiplash risk if ref
 reverts), or (c) nudge β slightly back up (0.87→0.89) to address the
 suspected over-decay of post-shock context. See diagnosis above.
 
+**Checkpoint result (2026-06-29)**: Δ reverted to +8.6% — ref-side noise
+confirmed. Ref went 31.53%→22.56% (−28.5%) in one session while ours held
+at 24.49%. The two consecutive negative sessions (Jun-25/26) were not a new
+regime; they were ref's own intraday/options-driven vol surge that unwound
+in a single bar. β=0.87 requires no adjustment. New shape-only correction
+factors validated on first real test: displayed HL Δ +6.3%/+8.8% and OC Δ
++2.8%/+6.6% — proportional to the +8.6% raw vol Δ, no amplification.
+
 ### Track 2 — wait + grid search (ONGOING, multi-session)
 Keep accumulating (ours_vol, ref_vol, instrument, date, event-flag) tuples
 below every session. Once there are enough clean (non-event-day) points —
@@ -308,6 +325,7 @@ multiplier behavior specifically).
 | Jun-24 | NQ        | 26.57%   | 24.21%  | +9.7%  | No         | **trend confirmed**, 3rd straight improvement; HL/OC corrected now −7.7%/−9.4% (over-correction, see diagnosis) |
 | Jun-25 | NQ        | 26.40%   | 27.76%  | −4.9%  | No         | **sign flip**, first negative raw Δ; HL/OC corrected now −21%/−26% (over-correction much worse, see diagnosis) |
 | Jun-26 | NQ        | 24.92%   | 31.53%  | −21.0% | No         | **widening negative**, 2nd straight; ref +13.6% while ours −5.6%, HL/OC corrected now −32%/−36% — display problem, user call needed |
+| Jun-29 | NQ        | 24.49%   | 22.56%  | +8.6%  | No         | **ref-side noise confirmed** — ref reverted from 31.53%; new shape factors validated: displayed HL +6.3%/+8.8%, OC +2.8%/+6.6%, all proportional to raw vol |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
 on hand — only Δ was recorded in those sessions' analysis. Note: a Jun-23
@@ -335,6 +353,8 @@ all reference compares live in one place):
 | Jun-25 | EURUSD    | 5.39%    | 5.84%   | −7.7% | −1.8%    | 0.0%     | −3.8%    | −2.3%    | gap narrowed back from Jun-24's −11.3%, bouncing in the same noise band as Jun-22/23 — no action |
 | Jun-26 | GOLD      | 29.94%   | 28.80%  | +4.0% | −5.8%    | −7.4%    | −3.5%    | −7.5%    | raw vol slight overestimate, continuing trend; HL75p/OC75p drifting more negative (−7%) — not actionable yet but worth watching |
 | Jun-26 | EURUSD    | 5.42%    | 5.94%   | −8.8% | −1.8%    | 0.0%     | +4.2%    | +7.7%    | OC metrics flipped positive (+4%/+8%) while HL near-zero — likely noise given small magnitudes, no action |
+| Jun-29 | GOLD      | 30.35%   | 25.34%  | +19.8% | +22.1%   | +18.4%   | **+34.6%** | —      | large raw vol overestimate (HV20 slow to shed prior week); HL tracks proportionally, OC med outlier again — 2nd occurrence (also Jun-22), may be structural |
+| Jun-29 | EURUSD    | 5.57%    | 6.35%   | −12.3% | −3.4%    | −1.4%    | −7.1%    | −2.2%    | fx factors unchanged; all within normal noise band, no action |
 
 ---
 
@@ -344,39 +364,38 @@ all reference compares live in one place):
    Ask the user to paste the Railway log line from the next `runVolForecast()`
    run (scheduled or manual `/api/vol-forecast/refresh`) to finally determine
    why the Fed Chair speech didn't trigger the news multiplier.
-2. **Track 1 gap widening negative (2026-06-26)** — 5-session trajectory
-   +59.0%→+18.1%→+9.7%→−4.9%→**−21.0%**. Two consecutive negative sessions
-   triggered the item-4 refit condition, but the raw gap is still actively
-   widening (not flat). Three options for next session — **user call needed**:
-   (a) wait 1 more session for the raw gap to plateau before refitting hl/oc;
-   (b) refit hl/oc correction factors now against the current negative raw
-   gap (accepts whiplash risk if ref reverts to ~25% range next week);
-   (c) nudge β slightly back up (e.g. 0.87→0.89) to dampen the suspected
-   over-decay and see if raw gap stabilizes closer to zero before refitting
-   hl/oc. Do NOT make a code change without user decision on which path to
-   take — all three are defensible, and this is an architectural call.
-3. **Track 2 grid search** — not started; 6 NQ rows now (Jun-17, 22, 23, 24,
-   25, 26 — Jun-18/19 still lack raw %). The sign-flip and widening adds
-   urgency: the grid search should include α as well as β. Blocked on raw
-   gap stabilizing (can't meaningfully fit a target that's moving 16pp/day).
-4. **index ASSET_PARAMS hl/oc correction factors — now a live display
-   problem** (0.81/0.78/0.85/0.90). Corrected HL/OC Δ trajectory:
-   −3%/−6% (Jun-23) → −7.7%/−9.4% (Jun-24) → −21%/−26% (Jun-25) →
-   **−32%/−36% (Jun-26)**. At −32%/−36% these are no longer calibration-
-   noise — users are seeing range forecasts that are roughly a third too
-   narrow. Trigger has been met (2 negative sessions) but refitting against
-   a still-moving target risks another whiplash cycle. Resolved by item 2
-   above — whichever option is chosen there also resolves this item.
+2. **Track 1 raw gap — RESOLVED (2026-06-29)** — Jun-25/26 negative spike
+   confirmed as ref-side noise (ref 24.21%→27.76%→31.53%→22.56%), not a
+   GARCH calibration failure. Gap is back positive at +8.6%. β=0.87 requires
+   no adjustment. New shape-only correction factors working correctly. Watch
+   for a genuine new divergence (would need to be sustained 2+ sessions with
+   ours moving, not ref) before re-opening.
+3. **Track 2 grid search** — not started; 7 NQ rows now (Jun-17, 22, 23, 24,
+   25, 26, 29 — Jun-18/19 still lack raw %). Urgency lowered now that the gap
+   is back to a manageable +8.6% and the new correction factors are working.
+   Still blocked on more clean non-event sessions before α/β grid search is
+   meaningful.
+4. **index ASSET_PARAMS hl/oc correction factors — RESOLVED (2026-06-26+29)**
+   — recalibrated to shape-only constants on Jun-26 (hl_50=0.97, hl_75=0.94,
+   oc_50=1.06, oc_75=1.10), replacing the vol-contaminated Jun-17 values
+   (0.81/0.78/0.85/0.90). Revert values preserved in code comment. Validated
+   Jun-29: displayed HL/OC Δ now tracks raw vol Δ proportionally. No further
+   action needed unless a sustained gap change develops over 2+ sessions.
 5. SPX500/DE30/UK100/US30/US2000 (other `index`-class instruments) have no
    reference data yet — all calibration so far is NQ-only. Watch for
    divergence once reference data for these appears.
 6. Backtest engines (`js/volBacktestEngine.js`, `weeklyVolBacktestEngine.js`,
    `volBacktestM1Engine.js`) still run old EWMA/RS-era ASSET_PARAMS, untouched
    by any of this — separate, lower-priority cleanup.
-7. **GOLD OC median ran +15.5% hot on Jun-22** while HL med/75p and OC 75p were
-   all within ±3% — single day, do not touch `oc_50_corr` (currently 1.09) yet,
-   but watch the next 1-2 calm GOLD sessions for a repeat before dismissing as
-   noise.
+7. **GOLD OC median outlier** — ran +15.5% hot on Jun-22 and **+34.6% on
+   Jun-29** (both high-raw-vol-overestimate days: +7.0% and +19.8%). HL med
+   and OC 75p tracked proportionally on both days; only OC med spikes
+   disproportionately. Two occurrences now; may be structural (HV20's
+   relationship between vol overestimate and the OC percentile). Do not
+   touch `oc_50_corr` (currently 1.12) yet — need 1+ more occurrence on a
+   high-vol-overestimate day, or a calm-day session where it's also elevated,
+   before drawing a conclusion. Current hypothesis: OC med outlier is
+   correlated with large raw vol overestimates specifically, not a constant bias.
 
 ---
 
