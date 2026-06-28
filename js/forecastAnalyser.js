@@ -12,7 +12,7 @@
  */
 
 import { computeBands, volSigmaSeries, classifyRegime, selectStrategy, HORIZONS, ASSET_PARAMS } from './forecastCore.js';
-import { classifyDayType } from './dayTypeCore.js';   // the reversion/continuation classifier (lego brick, imported never copied)
+import { classifyDayType, labelOutcome } from './dayTypeCore.js';   // the reversion/continuation classifier + realized-outcome labeler (lego bricks, imported never copied)
 
 // ── 1) Build the ladder of lines, sorted by distance from open ───────────────
 // Returns up[] and dn[], each ordered inner→outer, plus the band fractions.
@@ -261,11 +261,13 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
     const dt = classifyDayType({ closes, idx: i, win: 14 });
     const dirAction = selectStrategy(dt.T, regime).action;        // 'fade' | 'follow'
     const closePx = bars[bars.length - 1].close;
-    const moveFrac = Math.abs(closePx - open) / open;            // realized |close−open|
-    const realizedDir = moveFrac > ladder.frac.hl50 ? 'CONTINUATION' : 'REVERSION';
-
     let hi = -Infinity, lo = Infinity;
     for (const b of bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
+    // Realized outcome label (the ground truth the score is graded against) — the
+    // shared brick, default = balanced close-vs-median (~50/50), NOT the old hl50
+    // rule that fired ~12% and starved the day-type test.
+    const realizedDir = labelOutcome({ open, close: closePx, high: hi, low: lo,
+      ocMedFrac: ladder.frac.ocMed, hl50Frac: ladder.frac.hl50 });
     // Gap from the prior session close, in σ units → bucket.
     const prevClose = i > 0 ? d1Bars[i - 1].close : open;
     const gapSig = (sigma > 0 && prevClose > 0) ? (open - prevClose) / prevClose / sigma : 0;

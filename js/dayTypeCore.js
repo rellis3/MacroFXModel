@@ -140,6 +140,49 @@ export function classifyDayType(ctx, cfg = {}) {
   return { T, signedT, label, components };
 }
 
+// ── Realized outcome label (the ground truth the score is graded against) ────
+// The SCORE (above) predicts trend-day-ness BEFORE the window. This LABEL measures
+// what the window ACTUALLY did, so analyses can ask "did a stronger lean mean more
+// often right?" (the day-type AUC/reliability test). Like ESTIMATORS, the labelers
+// are named and pluggable so every system grades against the SAME definition —
+// never an inline re-spin (CLAUDE.md Lego Principle #1).
+//
+// ctx = { open, close, high, low, ocMedFrac, hl50Frac }  (fracs = forecast band
+// distances as a fraction of price, from computeBands). Returns 'CONTINUATION' |
+// 'REVERSION' | null (insufficient inputs).
+export const OUTCOME_LABELERS = {
+  // DEFAULT. Close finished beyond the MEDIAN close displacement → the day pushed
+  // through (continuation); within → it round-tripped (reversion). ~50/50 by
+  // construction (ocMed IS the median |close−open|), so the grade isn't starved —
+  // this is the fix for the old hl50 label that fired only ~12% of the time.
+  closeVsOcMed: ({ open, close, ocMedFrac }) =>
+    (open > 0 && ocMedFrac > 0)
+      ? (Math.abs(close - open) / open > ocMedFrac ? 'CONTINUATION' : 'REVERSION')
+      : null,
+
+  // Strict: close beyond the projected median high/low (~1.5σ). Rare (~12%) — a
+  // strong trend-through only. Kept for reference / back-compat with the brief.
+  closeVsHl50: ({ open, close, hl50Frac }) =>
+    (open > 0 && hl50Frac > 0)
+      ? (Math.abs(close - open) / open > hl50Frac ? 'CONTINUATION' : 'REVERSION')
+      : null,
+
+  // Realized single-day efficiency: net move ÷ traversed range. The realized twin
+  // of the Efficiency-Ratio estimator. >thresh ⇒ the day went somewhere (trend).
+  dayEfficiency: ({ open, high, low, close, effThresh = 0.5 }) => {
+    const rng = high - low;
+    return rng > 0 ? (Math.abs(close - open) / rng > effThresh ? 'CONTINUATION' : 'REVERSION') : null;
+  },
+};
+export const DEFAULT_OUTCOME = 'closeVsOcMed';
+
+// Label one window's realized behaviour. `def` selects the labeler (default =
+// the balanced close-vs-median rule); pass extra fields (e.g. effThresh) on ctx.
+export function labelOutcome(ctx, def = DEFAULT_OUTCOME) {
+  const fn = OUTCOME_LABELERS[def] ?? OUTCOME_LABELERS[DEFAULT_OUTCOME];
+  return fn(ctx);
+}
+
 // ── Backward-compatible thin wrapper ─────────────────────────────────────────
 // Preserves the original forecastCore signature & numbers. Existing callers keep
 // `dayTypeScore(closes, idx, win)`; the forecaster re-exports this verbatim.
