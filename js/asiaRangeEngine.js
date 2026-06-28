@@ -45,6 +45,7 @@ import { fitHMM, hmmSignalScore, compute30mSwingRegime } from '../hmm.js';
 import { computeRangeBiasServer, computeWeeklyPivots } from './rangeBiasCore.js';
 import { computeStars, computeStructScore, momScoreFrom, rbScoreFrom, computeSignalScore } from './entryGradeCore.js';
 import { gradeEntry } from './trade-grade.js';
+import { dayTypeScore } from './dayTypeCore.js';   // reversion(low T)↔continuation(high T) selector
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -143,7 +144,22 @@ function _dayGradeContext(packed, dayEpoch, dailyBarsAll, pivotAtrPeriod = 14) {
     long:  computeRangeBiasServer('', 'long',  bars5m, bars30m, dailyBars),
     short: computeRangeBiasServer('', 'short', bars5m, bars30m, dailyBars),
   };
-  return { hmmData, intraday30m, pivots, pivotAtr, rbias };
+
+  // Two alternative, theory-grounded gates to compare against the entry grade:
+  // (a) day-type T (low = mean-reverting day → fade-favourable; high = trend day),
+  // (b) the forecast HL75 half-range fraction, so a fade's "stretch" can be scored
+  //     as |entry-anchor| / (anchor × forecastHalfFrac): ≈1 means at the HL75 band.
+  const closes = dailyBars.map(b => b.close).filter(v => v > 0);
+  const dayTypeT = closes.length > 16 ? dayTypeScore(closes, closes.length, 14) : null;
+  let forecastHalfFrac = null;
+  if (closes.length >= 6) {
+    const win = closes.slice(-22);
+    let variance = 0;
+    for (let i = 1; i < win.length; i++) { const r = Math.log(win[i] / win[i - 1]); variance = 0.94 * variance + 0.06 * r * r; }
+    const sigma = Math.sqrt(variance);
+    forecastHalfFrac = 2.049 * 0.894 * sigma / 2;   // BM_P75 × FX corr (same as the vol_forecast module)
+  }
+  return { hmmData, intraday30m, pivots, pivotAtr, rbias, dayTypeT, forecastHalfFrac };
 }
 
 // Pre-index every Monday wick range across the full dataset.
@@ -675,6 +691,18 @@ function simulateDay(packed, dateStr, opts) {
       } catch { /* leave nulls — grade is additive, never blocks a trade */ }
     }
 
+    // Alternative gate inputs (for the gate-comparison panel; both no-lookahead):
+    //   day_type_T — low ⇒ mean-reverting day (fade-favourable), high ⇒ trend day
+    //   vol_pos    — |entry-anchor| / forecast HL75 half-range; ≈1 ⇒ at the band
+    let vol_pos = null, day_type_T = null;
+    if (gradeCtx) {
+      day_type_T = gradeCtx.dayTypeT;
+      const anchor = asiaM1[0]?.open;
+      if (anchor && gradeCtx.forecastHalfFrac > 0) {
+        vol_pos = +(Math.abs(price - anchor) / (anchor * gradeCtx.forecastHalfFrac)).toFixed(3);
+      }
+    }
+
     trades.push({
       date:             dateStr,
       side,
@@ -727,6 +755,9 @@ function simulateDay(packed, dateStr, opts) {
       live_signal_score,
       live_grade,
       live_verdict,
+      // Alternative gates (for gate comparison): vol-forecast stretch + day-type T
+      vol_pos,
+      day_type_T,
     });
   }
 

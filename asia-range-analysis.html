@@ -315,6 +315,28 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
+     PANEL 0 — Gate comparison (which gate adds OUT-OF-SAMPLE edge?)
+  ══════════════════════════════════════════════════════════════════════════ -->
+<div class="anl-card" id="gateCard">
+  <div class="anl-card-hdr">
+    0 — Gate Comparison
+    <span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">
+      Does tightening a gate beat "all" on <b>OOS</b>? Stacked-score grade vs vol-stretch vs day-type. Honest IS/OOS split — thin OOS samples (&lt;30) are dimmed.</span>
+    <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <span class="anl-lbl">OOS %:</span>
+      <select id="gateOos" class="anl-sel" onchange="renderGates()">
+        <option value="0.3">30%</option>
+        <option value="0.4" selected>40%</option>
+        <option value="0.5">50%</option>
+      </select>
+    </span>
+  </div>
+  <div id="gateVerdict" style="font-family:'DM Mono',monospace;font-size:12px;margin:4px 0 12px;color:var(--text2)"></div>
+  <div id="gateGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px"></div>
+  <div id="gateEmpty" style="color:var(--text3);font-size:12px;text-align:center;padding:16px">Load a backtest with the live grade enabled to compare gates.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
      PANEL 1 — Conditional breakdown pivot
   ══════════════════════════════════════════════════════════════════════════ -->
 <div class="anl-card">
@@ -592,6 +614,56 @@ function applyGlobal() {
   renderMAE();
   renderBestSetups();
   renderModuleAudit();
+  renderGates();
+}
+
+// ── Gate comparison (uses the shared js/gateAnalysis.js brick via window shim) ──
+function renderGates() {
+  const grid = document.getElementById('gateGrid');
+  const empty = document.getElementById('gateEmpty');
+  const verdictEl = document.getElementById('gateVerdict');
+  const ga = window.__gateAnalysis;
+  const haveGrade = _filtTrades.some(t => t.live_grade != null || t.vol_pos != null || t.day_type_T != null);
+  if (!ga || !haveGrade || _filtTrades.length < 10) {
+    grid.innerHTML = ''; verdictEl.textContent = '';
+    empty.style.display = ''; return;
+  }
+  empty.style.display = 'none';
+  const oosFrac = parseFloat(document.getElementById('gateOos').value) || 0.4;
+  const cmp = ga.compareGates(_filtTrades, { oosFrac, minOosTrades: 30 });
+  const best = ga.bestGate(cmp);
+
+  verdictEl.innerHTML = best
+    ? `Best OOS gate: <b style="color:#4ade80">${best.gateLabel} · ${best.bucket}</b> — OOS expectancy ${(best.oos.expectancy>=0?'+':'')}${best.oos.expectancy.toFixed(4)}% over ${best.oos.trades} trades (Δ vs all ${(best.oosExpectancyVsAll>=0?'+':'')}${best.oosExpectancyVsAll.toFixed(4)}%).`
+    : `<span style="color:#f59e0b">No gate adds out-of-sample edge over "all" (with ≥30 OOS trades) — an honest "the gate doesn't help" result.</span>`;
+
+  const sign = v => (v >= 0 ? '+' : '') + v.toFixed(4);
+  const cell = (m, thin) => `<td style="text-align:right;${thin?'opacity:.45':''}">${m.trades}</td>
+      <td style="text-align:right;${thin?'opacity:.45':''}">${m.winRate}%</td>
+      <td style="text-align:right;color:${m.expectancy>=0?'#4ade80':'#f87171'};${thin?'opacity:.45':''}">${sign(m.expectancy)}</td>`;
+
+  grid.innerHTML = Object.values(cmp.gates).map(g => `
+    <div style="border:1px solid var(--line,#1f2937);border-radius:8px;padding:10px 12px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">${g.label}
+        <span style="color:var(--text3);font-weight:400;font-size:11px">· ${g.coverage}/${cmp.total} have data</span></div>
+      <table style="width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:11px">
+        <thead><tr style="color:var(--text3)">
+          <th style="text-align:left">bucket</th>
+          <th colspan="3" style="text-align:center;border-bottom:1px solid var(--line,#1f2937)">in-sample</th>
+          <th colspan="3" style="text-align:center;border-bottom:1px solid var(--line,#1f2937)">out-of-sample</th>
+          <th style="text-align:right">Δexp</th>
+        </tr><tr style="color:var(--text3)">
+          <th></th><th style="text-align:right">n</th><th style="text-align:right">win</th><th style="text-align:right">exp</th>
+          <th style="text-align:right">n</th><th style="text-align:right">win</th><th style="text-align:right">exp</th><th></th>
+        </tr></thead>
+        <tbody>${g.rows.map(r => `<tr style="${r.label==='all'?'color:var(--text3)':''}">
+          <td style="text-align:left">${r.label}${r.thin?' ⚠':''}</td>
+          ${cell(r.is, false)}
+          ${cell(r.oos, r.thin)}
+          <td style="text-align:right;color:${r.oosExpectancyVsAll>0?'#4ade80':r.oosExpectancyVsAll<0?'#f87171':'var(--text3)'}">${r.label==='all'?'—':sign(r.oosExpectancyVsAll)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`).join('');
 }
 
 function clearGlobal() {
@@ -1102,6 +1174,14 @@ async function loadData() {
 }
 
 loadData();
+</script>
+
+<!-- Gate-comparison brick (shared js/gateAnalysis.js) exposed for the non-module
+     code above. Loads after the main script; re-renders once available. -->
+<script type="module">
+  import { compareGates, bestGate } from './js/gateAnalysis.js';
+  window.__gateAnalysis = { compareGates, bestGate };
+  if (typeof renderGates === 'function') { try { renderGates(); } catch {} }
 </script>
 </body>
 </html>
