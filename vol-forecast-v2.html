@@ -1790,33 +1790,27 @@ function closeExpDropdown() {
 }
 document.addEventListener('click', closeExpDropdown);
 
-// ── Export v2: asymmetric O-H / O-L tilted by WTD weekly bias ────────────────
+// ── Export v2: asymmetric O-H / O-L from drifted-BM math (d = μ_14d / σ_fwd) ─
 function buildExportV2Text(data) {
   const LINE_WIDTH = 29;
-  const divider = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
-  const weeklyInsts = currentWeekly?.instruments ?? {};
-
+  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
   const lines = ['**VOL & RANGE FORECAST v2**', `**For session: ${data.session_label}**`, ''];
-
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
-    const w     = weeklyInsts[name] ?? null;
-    const bias  = w?.bias       ?? 'Neutral';
-    const conf  = w?.confidence ?? '—';
-    // ±30% tilt on the OC distribution based on WTD directional bias
-    const scale = bias === 'Bullish' ? 0.30 : bias === 'Bearish' ? -0.30 : 0;
-    const oh_med = f.oc_median * (1 + scale);
-    const ol_med = f.oc_median * (1 - scale);
-    const oh_75  = f.oc_75    * (1 + scale);
-    const ol_75  = f.oc_75    * (1 - scale);
-    const arrow  = bias === 'Bullish' ? ' ↑' : bias === 'Bearish' ? ' ↓' : '';
-
+    const d      = f.drift_d ?? 0;
+    const oh_med = f.oh_v2_median ?? f.oc_median;
+    const oh_75  = f.oh_v2_75    ?? f.oc_75;
+    const ol_med = f.ol_v2_median ?? f.oc_median;
+    const ol_75  = f.ol_v2_75    ?? f.oc_75;
+    const dLabel = Math.abs(d) < 0.05 ? 'Neutral'
+                 : d > 0 ? (d > 0.20 ? 'Bullish ↑' : 'Mild bullish lean ↑')
+                          : (d < -0.20 ? 'Bearish ↓' : 'Mild bearish lean ↓');
     lines.push(divider(name));
     lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
     lines.push(`High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th`);
     lines.push(`Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th`);
-    lines.push(`Open High (upside)      : ${oh_med.toFixed(2)}% median · ${oh_75.toFixed(2)}% 75th${scale > 0 ? ' ↑' : ''}`);
-    lines.push(`Open Low  (downside)    : ${ol_med.toFixed(2)}% median · ${ol_75.toFixed(2)}% 75th${scale < 0 ? ' ↓' : ''}`);
-    lines.push(`Directional bias        : ${bias}${arrow}  [WTD conv: ${conf}]`);
+    lines.push(`Open High (upside)      : ${oh_med.toFixed(2)}% median · ${oh_75.toFixed(2)}% 75th`);
+    lines.push(`Open Low  (downside)    : ${ol_med.toFixed(2)}% median · ${ol_75.toFixed(2)}% 75th`);
+    lines.push(`Drift (d=μ/σ)           : ${d >= 0 ? '+' : ''}${d.toFixed(3)}  →  ${dLabel}`);
     lines.push('');
   }
   return lines.join('\n');
