@@ -191,6 +191,21 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
 7. **Rolling z-score:** population stddev + clip (nasdaqTransforms) vs sample
    stddev no-clip (GlobalLiquidity mathx). `statsCore.rollingZScore` makes `ddof`
    and `clipAt` explicit arguments.
+8. **🔴 Confluence engine — live ≠ backtest (the big one).** The LIVE alert path
+   and the Asia-range BACKTEST use **different confluence code**:
+   - **Live / telegram:** `levels.js` → `confluence-core.js`
+     (`detectConfluencesCore` / `mergeCrossSessionConfs`) → writes `ai_entries_{PAIR}`
+     to KV → `cron-worker.js:51` proximity alerts + `bot/main.py:1005`
+     `evaluate_pair_telegram` + `bot/modules/macro_regime.py`. This is what the
+     index.html cards show and what the bot trades.
+   - **Backtest:** `asiaRangeEngine.js` → its own local `detectConfluence` + the
+     `confluenceModules.js` 16-module stack, served at `/api/asia-range-backtest/*`.
+     `asiaRangeEngine` does **not** import `confluence-core.js`.
+   ⇒ **The Asia-range backtest does not validate the live alert logic.** The real
+   prize is one shared confluence brick both `levels.js` and the backtest call —
+   equivalence-first, A/B'd on M1 + the live KV path (it changes live behaviour,
+   so highest caution). Note: repointing `confluenceModules → levelSources` is a
+   *backtest-internal* cleanup and does NOT touch this live path.
 
 ---
 
