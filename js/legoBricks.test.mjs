@@ -11,6 +11,7 @@ import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRat
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
 import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRegistry.js';
 import { summarize } from './honestForecastEngine.js';
+import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -125,6 +126,16 @@ ok('gold canonical pip = 1.0 (not the 0.1 drift)', pipSize('gold') === 1.0);
 ok('NQ resolves via OANDA + assetClass index', instrument('NAS100_USD').key === 'nq' && instrument('nq').assetClass === 'index');
 ok('unknown instrument throws', (() => { try { instrument('ZZZ/ZZZ'); return false; } catch { return true; } })());
 ok('registry covers ≥30 instruments', INSTRUMENT_KEYS.length >= 30);
+
+console.log('[dayTypeCore]');
+ok('labelOutcome default = closeVsOcMed (continuation when |close−open| > ocMed)',
+  labelOutcome({ open: 100, close: 101, ocMedFrac: 0.005, hl50Frac: 0.012 }) === 'CONTINUATION' &&
+  labelOutcome({ open: 100, close: 100.2, ocMedFrac: 0.005, hl50Frac: 0.012 }) === 'REVERSION');
+ok('labelOutcome closeVsHl50 is stricter than default',
+  labelOutcome({ open: 100, close: 100.8, ocMedFrac: 0.005, hl50Frac: 0.012 }) === 'CONTINUATION' &&
+  labelOutcome({ open: 100, close: 100.8, ocMedFrac: 0.005, hl50Frac: 0.012 }, 'closeVsHl50') === 'REVERSION');
+ok('labelOutcome dayEfficiency uses net÷range', OUTCOME_LABELERS.dayEfficiency({ open: 100, high: 101, low: 99.9, close: 100.9 }) === 'CONTINUATION');
+ok('labelOutcome null-guards bad input', labelOutcome({ open: 0, close: 1, ocMedFrac: 0.01 }) === null);
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);

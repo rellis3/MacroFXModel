@@ -55,18 +55,27 @@ Outputs:
 
 ## 3. Define the realized outcome to score against
 
-For each window, compute the forecast bands with
-`computeBands(open, sigma, assetClass)` from `js/forecastCore.js`, then classify
-what price **actually did**:
+Use the shared labeler brick — **import, never re-inline** (it lives beside the
+score in `js/dayTypeCore.js`, so the grade can't silently disagree with another
+system):
 
-- **CONTINUATION** — the close finished **beyond** the median high/low band
-  (`|close − open| > hl50`): it broke through the zone and kept going.
-- **REVERSION** — price tagged a band but the close came back **inside** toward
-  the close-median (`|close − open| ≤ hl50`).
+```js
+import { labelOutcome } from './js/dayTypeCore.js';
+const realized = labelOutcome({ open, close, high, low, ocMedFrac, hl50Frac });
+```
 
-This is exactly the quantity `T` is trying to predict. (If you already have the
-forecaster's per-trade `outcome` from `simulateEntry`, you can use that too, but
-the close-vs-`hl50` rule is the clean unconditional label.)
+The **default** definition (`closeVsOcMed`) classifies what price actually did:
+
+- **CONTINUATION** — close finished **beyond the median close displacement**
+  (`|close − open| > ocMed`): the day pushed through.
+- **REVERSION** — close came back **inside** the median (`|close − open| ≤ ocMed`).
+
+This is ~**50/50 by construction** (ocMed *is* the median `|close − open|`), so the
+grade isn't starved. ⚠️ The earlier rule used `hl50` (~1.5σ), which fired on only
+~12% of days and crippled the AUC test — it's kept as the strict `closeVsHl50`
+labeler for reference, and `dayEfficiency` (net ÷ range) is a third option. Swap
+via `labelOutcome(ctx, 'closeVsHl50')`. (If you already have the forecaster's
+per-trade `outcome` from `simulateEntry`, that works too.)
 
 ## 4. Record schema — one row per window
 
