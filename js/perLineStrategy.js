@@ -43,6 +43,8 @@ export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
         date: w.date, open: w.open, line: `${ln.name}_${ln.side}`, name: ln.name, side: ln.side,
         reverted: ln.outcome === 'reverted', fillTime: ln.firstTouchTime ?? null,
         level: ln.level, innerLvl: ln.innerLvl, outerLvl: ln.outerLvl,
+        decidedBy: ln.decidedBy ?? 'barrier',           // 'barrier' (TP/SL hit) or 'close' (mark-to-close)
+        closePx: w.realized?.close ?? w.open,            // for honest mark-to-close of undecided outcomes
         cell: `${ln.name}_${ln.side}|${condKey}`,
       });
     }
@@ -50,69 +52,96 @@ export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
   return touches;
 }
 
-// ── 2) Learn the fade/follow/skip policy from IS touches ─────────────────────
-// fade   = reversion significantly > 50% (price returns to the inner line)
-// follow = reversion significantly < 50% (price breaks to the outer line)
-// skip   = coin-flip or thin sample.
-export function buildPolicy(touches, { minN = 50, z = 1.96 } = {}) {
-  const tally = {};
-  for (const t of touches) {
-    const c = (tally[t.cell] ??= { rev: 0, cont: 0 });
-    t.reverted ? c.rev++ : c.cont++;
+// ── 2) Price one touch for a GIVEN decision (% of price, net of cost) ─────────
+// Triple-barrier when a barrier was actually hit: FADE wins to the inner line,
+// loses to the outer; FOLLOW the reverse. When the outcome was decided by the
+// CLOSE (no barrier reached), mark to the actual close — so a 2-pip drift that
+// never tagged the target is scored as a 2-pip outcome, NOT a full win.
+export function pnlFor(t, decision, { costPct = 0.012, slipPct = 0.006 } = {}) {
+  let gross;
+  if (t.decidedBy === 'close') {
+    // BUY when fading a down-line or following an up-line; else SELL.
+    const isBuy = (decision === 'fade' && t.side === 'dn') || (decision === 'follow' && t.side === 'up');
+    gross = (isBuy ? (t.closePx - t.level) : (t.level - t.closePx)) / t.open * 100;
+  } else {
+    const distIn  = Math.abs(t.level - t.innerLvl) / t.open * 100;   // to TP (fade) / SL (follow)
+    const distOut = Math.abs(t.outerLvl - t.level) / t.open * 100;   // to SL (fade) / TP (follow)
+    gross = decision === 'fade' ? (t.reverted ?  distIn : -distOut)
+                                : (t.reverted ? -distIn :  distOut);  // follow
   }
+  const cost = costPct + (decision === 'follow' ? slipPct : 0);       // stop entries slip
+  return +(gross - cost).toFixed(5);
+}
+
+// ── 3) Learn the fade/follow/skip policy from IS touches ─────────────────────
+// Keep a cell ONLY if its in-sample AFTER-COST expectancy (with the real TP/SL +
+// honest mark-to-close) clears a positive margin — being right > 50% is NOT
+// enough if the wins are smaller than the losses or thinner than the spread.
+// Picks whichever of fade/follow is the more profitable side. Per-touch cost is
+// taken from t.cost/t.slip (stamped by runPerLine) with a fallback default.
+export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012, slipPct = 0.006 } = {}) {
+  const cells = {};
+  for (const t of touches) (cells[t.cell] ??= []).push(t);
+  const mean = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
   const policy = {};
-  for (const [cell, c] of Object.entries(tally)) {
-    const n = c.rev + c.cont;
+  for (const [cell, ts] of Object.entries(cells)) {
+    const n = ts.length;
     if (n < minN) { policy[cell] = { decision: 'skip', n, reason: 'lowN' }; continue; }
-    const rate  = c.rev / n;
-    const zStat = (rate - 0.5) / Math.sqrt(0.25 / n);
-    const decision = zStat >= z ? 'fade' : zStat <= -z ? 'follow' : 'skip';
-    policy[cell] = { decision, n, revRate: +(rate * 100).toFixed(1), z: +zStat.toFixed(2) };
+    const cost = t => ({ costPct: t.cost ?? costPct, slipPct: t.slip ?? slipPct });
+    const fadeExp   = mean(ts.map(t => pnlFor(t, 'fade',   cost(t))));
+    const followExp = mean(ts.map(t => pnlFor(t, 'follow', cost(t))));
+    const revRate   = ts.filter(t => t.reverted).length / n;
+    const best = fadeExp >= followExp ? 'fade' : 'follow';
+    const bestExp = Math.max(fadeExp, followExp);
+    const decision = bestExp > marginPct ? best : 'skip';   // must PAY after costs, not just be directional
+    policy[cell] = {
+      decision, n, revRate: +(revRate * 100).toFixed(1),
+      z: +((revRate - 0.5) / Math.sqrt(0.25 / n)).toFixed(2),
+      fadeExp: +fadeExp.toFixed(4), followExp: +followExp.toFixed(4), expectancy: +bestExp.toFixed(4),
+    };
   }
   return policy;
 }
 
-// ── 3) Price one touch under the policy (% of price, net of cost) ─────────────
-// Triple-barrier: a FADE wins to the inner line, loses to the outer; FOLLOW the
-// reverse. Returns null when the policy skips the cell.
-export function tradePnl(t, policy, { costPct = 0.012, slipPct = 0.006 } = {}) {
+// Back-compat helper: price a touch under a full policy (null when skipped).
+export function tradePnl(t, policy, opts = {}) {
   const p = policy[t.cell];
   if (!p || p.decision === 'skip') return null;
-  const distIn  = Math.abs(t.level - t.innerLvl) / t.open * 100;   // to TP (fade) / SL (follow)
-  const distOut = Math.abs(t.outerLvl - t.level) / t.open * 100;   // to SL (fade) / TP (follow)
-  const gross = p.decision === 'fade' ? (t.reverted ?  distIn : -distOut)
-                                      : (t.reverted ? -distIn :  distOut);   // follow
-  const cost  = costPct + (p.decision === 'follow' ? slipPct : 0);           // stop entries slip
-  return +(gross - cost).toFixed(5);
+  return pnlFor(t, p.decision, { costPct: t.cost ?? opts.costPct, slipPct: t.slip ?? opts.slipPct });
 }
 
 // ── 4) Full run: pooled IS policy → per-pair OOS trades → book equity ─────────
 // touchesByPair: { pair: touches[] }.  costByPair/slipByPair optional per-pair.
 // Returns { splitDate, policy, book, perPair, equity, nTrades, coverage }.
-export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, z = 1.96,
+export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
                                             costByPair = {}, slipByPair = {}, mcRuns = 1000, bootRuns = 1000 } = {}) {
+  // Stamp each touch with its pair's costs so the pooled policy prices trades
+  // with the right (asset-class) friction.
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx;
+    const slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
   const all = Object.values(touchesByPair).flat().sort(byDate);
   if (!all.length) return null;
   const splitDate = all[Math.floor(all.length * splitFrac)]?.date ?? null;
-  const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, z });
+  // Policy learned on IS, gated on after-cost expectancy (not just direction).
+  const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
 
   const bookTrades = [], perPair = {}, tradesByPair = {};
   for (const [pair, touches] of Object.entries(touchesByPair)) {
-    const costPct = costByPair[pair] ?? DEFAULT_COST_PCT.fx;
-    const slipPct = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
     const trades = [], log = [];
     for (const t of touches) {
       if (t.date < splitDate) continue;                     // OOS only
       const p = policy[t.cell];
       if (!p || p.decision === 'skip') continue;
-      const pnl = tradePnl(t, policy, { costPct, slipPct });
-      if (pnl == null) continue;
+      const pnl = pnlFor(t, p.decision, { costPct: t.cost, slipPct: t.slip });
       trades.push({ date: t.date, pnl });
       // Full trade geometry for the log + the (Phase 2) M1 chart drill-down.
       const tp = p.decision === 'fade' ? t.innerLvl : t.outerLvl;
       const sl = p.decision === 'fade' ? t.outerLvl : t.innerLvl;
       log.push({ date: t.date, line: t.line, name: t.name, side: t.side, decision: p.decision,
-        outcome: t.reverted ? 'reverted' : 'continued', open: t.open,
+        outcome: t.reverted ? 'reverted' : 'continued', decidedBy: t.decidedBy, open: t.open,
         entry: +t.level.toFixed(6), tp: +tp.toFixed(6), sl: +sl.toFixed(6),
         fillTime: t.fillTime, pnl });
     }

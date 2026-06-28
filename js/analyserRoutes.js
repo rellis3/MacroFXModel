@@ -169,6 +169,7 @@ export function mountAnalyserRoutes(app, express) {
       conditions: Array.isArray(b.conditions) && b.conditions.length ? b.conditions.map(String) : undefined,
       minN:      Number.isFinite(b.minN) ? b.minN : undefined,
       splitFrac: Number.isFinite(b.splitFrac) ? b.splitFrac : undefined,
+      marginPct: Number.isFinite(b.marginPct) ? b.marginPct : undefined,
     };
     res.json({ ok: true, jobId: startPerLineJob(opts) });
   });

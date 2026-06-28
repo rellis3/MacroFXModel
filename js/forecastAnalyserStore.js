@@ -226,7 +226,7 @@ export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLo
 // skip policy on in-sample, applies it out-of-sample, and writes the book result
 // (equity curve + per-pair OOS perf + the policy table) to R2.
 export async function runPerLineBook({ horizon = 'daily', conditions = ['approachVel'],
-                                       minN = 50, splitFrac = 0.6, onLog = () => {} } = {}) {
+                                       minN = 50, splitFrac = 0.6, marginPct = 0, onLog = () => {} } = {}) {
   if (!r2Configured()) throw new Error('R2 not configured');
   const manifest = await getManifest();
   if (!manifest) throw new Error('No dataset — run a refresh first');
@@ -252,7 +252,7 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
   }
   if (!withBarriers) throw new Error('No tradeable touches — re-refresh (records need innerLvl/outerLvl + features)');
 
-  const result = runPerLine(touchesByPair, { splitFrac, minN, costByPair, slipByPair });
+  const result = runPerLine(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
   const generatedAt = new Date().toISOString();
   // Store each pair's trade log separately (loaded on demand by the Book tab /
   // the M1 chart drill-down) so the headline book JSON stays small.
@@ -263,7 +263,7 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
     await putJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`, { pair, horizon, generatedAt, splitDate: result.splitDate, trades: log });
     logged += log.length;
   }
-  const out = { generatedAt, horizon, conditions, minN, splitFrac, ...summary };
+  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, ...summary };
   await putJSON(`${PREFIX}/per-line-${horizon}.json`, out);
   onLog(`Book: ${result.nTrades} OOS trades (${logged} logged) · Sharpe ${result.book.sharpe} · CAGR ${result.book.cagr}% · maxDD ${result.book.maxDD}% · ` +
         `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}`);

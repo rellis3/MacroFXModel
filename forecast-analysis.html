@@ -194,7 +194,7 @@ function equitySVG(eq){ if(!eq||eq.length<2) return ''; const W=720,H=180,pad=4;
 async function renderBook(v){
   v.innerHTML=`<div class="card mut">Loading book…</div>`;
   const b=await loadBook();
-  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button>` : '';
+  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button> <label style="display:inline;margin-left:8px">min expectancy %/trade <input id="bookMargin" type="number" step="0.001" value="${typeof b!=='string'&&b.marginPct!=null?b.marginPct:0}" style="width:90px"></label>` : '';
   const hint=`<div class="hint">Each forecast line is traded on its <b>own</b> OOS-validated edge under the live approach-velocity state: <b>fade</b> if it reverts significantly, <b>follow</b> if it breaks, else <b>skip</b>. Policy learned on in-sample (pooled across all pairs), applied out-of-sample. Triple-barrier exit (TP=inner line, SL=outer line). Costs on. <b>%/unit, no compounding</b> — this is the honest 26-pair book.</div>`;
   if(typeof b==='string'){ v.innerHTML=`<div class="card"><div class="controls" style="margin-bottom:8px">${buildBtn||''}</div><div class="mut">${b==='none'?'No book yet.':b} ${LEVEL==='admin'?'Click Build book (needs a refresh with the latest fields first).':'Ask the owner to build the book.'}</div>${hint}</div>`; wireBook(); return; }
   const f=b.book||{}; const kpi=(val,lab,neg)=>`<div class="kpi"><div class="v ${neg!==undefined?(neg?'neg':'pos'):''}">${val}</div><div class="l">${lab}</div></div>`;
@@ -213,10 +213,10 @@ async function renderBook(v){
   // policy table
   const pol=b.policy||{}; const cells=Object.entries(pol).filter(([,p])=>p.decision!=='skip').sort((a,b)=>b[1].n-a[1].n);
   html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Policy — traded cells (line × ${(b.conditions||[]).join('+')})</div>
-    <div class="hint" style="margin-bottom:6px">${b.coverage?`fade ${b.coverage.fadeCells} · follow ${b.coverage.followCells} · skip ${b.coverage.skipCells}`:''}</div>
-    <table><thead><tr><th>Cell</th><th>decision</th><th>IS reversion %</th><th>z</th><th>n</th></tr></thead><tbody>`;
+    <div class="hint" style="margin-bottom:6px">${b.coverage?`fade ${b.coverage.fadeCells} · follow ${b.coverage.followCells} · skip ${b.coverage.skipCells}`:''} — a cell is traded only if its IS after-cost expectancy clears the margin (significant ≠ profitable).</div>
+    <table><thead><tr><th>Cell</th><th>decision</th><th>IS reversion %</th><th>z</th><th>IS expectancy %</th><th>n</th></tr></thead><tbody>`;
   for(const [cell,p] of cells){ const [ln,...c]=cell.split('|');
-    html+=`<tr><td>${ln} <span class="mut">${c.join('·')}</span></td><td class="${p.decision==='fade'?'pos':'neg'}">${p.decision.toUpperCase()}</td><td>${fmt(p.revRate)}</td><td class="mut">${fmt(p.z,1)}</td><td class="mut">${p.n}</td></tr>`; }
+    html+=`<tr><td>${ln} <span class="mut">${c.join('·')}</span></td><td class="${p.decision==='fade'?'pos':'neg'}">${p.decision.toUpperCase()}</td><td>${fmt(p.revRate)}</td><td class="mut">${fmt(p.z,1)}</td><td class="${p.expectancy>0?'pos':'neg'}">${fmt(p.expectancy,4)}</td><td class="mut">${p.n}</td></tr>`; }
   html+=`</tbody></table></div>`;
   // per-pair OOS (breadth) — click a pair to load its trade log
   const pp=Object.entries(b.perPair||{}).filter(([,s])=>s.trades>0).sort((a,b)=>b[1].sharpe-a[1].sharpe);
@@ -246,8 +246,9 @@ function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
   btn.onclick=async()=>{ bookBusy=true; render();
     const h=$('horizon').value;
     // Submit with a couple of retries — a flaky mobile connection drops the POST.
+    const marginPct=parseFloat($('bookMargin')?.value)||0;
     const submit=async()=>{ let last;
-      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h})});
+      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h,marginPct})});
         if(r.j?.ok) return r.j.jobId; last=new Error(r.j?.error||'run rejected'); }catch(e){ last=e; } await sleep(1500); }
       throw last; };
     try{

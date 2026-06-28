@@ -13,7 +13,7 @@ import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRe
 import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
-import { extractTouches, buildPolicy, tradePnl, runPerLine } from './perLineStrategy.js';
+import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine } from './perLineStrategy.js';
 import { backtestStats } from './backtestStats.js';
 
 let failures = 0;
@@ -199,6 +199,22 @@ console.log('[perLineStrategy]');
   const run = runPerLine(byPair, { splitFrac: 0.6, minN: 30, costByPair:{eurusd:0.01}, slipByPair:{eurusd:0} });
   ok('runPerLine produces an OOS book with trades + daily equity', run.nTrades > 0 && run.equity.length > 0 && run.equity.length <= run.nTrades);
   ok('runPerLine book is profitable when the IS edge persists OOS', run.book.totalPnl > 0 && run.coverage.fadeCells >= 1);
+
+  // FIX 1 — honest mark-to-close: an undecided outcome (no barrier hit) is scored
+  // by the actual close, NOT credited the full target. A 1-pip drift ≠ a full win.
+  const closeT = { date:'2020-01-01', open:1.10, side:'up', reverted:true, decidedBy:'close', closePx:1.10490, level:1.10500, innerLvl:1.10300, outerLvl:1.10700 };
+  const pClose = pnlFor(closeT, 'fade', { costPct:0, slipPct:0 });
+  ok('pnlFor marks undecided to close, not the full target', near(pClose, (1.10500-1.10490)/1.10*100, 1e-4) && pClose < 0.05);
+  ok('pnlFor barrier win still credits the full target', near(pnlFor({...closeT, decidedBy:'barrier'}, 'fade', {costPct:0,slipPct:0}), (1.10500-1.10300)/1.10*100, 1e-4));
+
+  // FIX 2 — expectancy gate: a cell that is STATISTICALLY significant (z>1.96, ~58%
+  // reversion) but whose tiny TP/SL can't beat costs is SKIPPED (old z-only gate
+  // would have traded it). "Significant ≠ profitable."
+  const tight = [];
+  for (let i=0;i<200;i++) tight.push({ date:'2020-01-0'+(i%9+1), open:1.10, side:'up', reverted:i<116, decidedBy:'barrier',
+    closePx:1.10, level:1.10500, innerLvl:1.10486, outerLvl:1.10514, cell:'TIGHT', cost:0.012, slip:0.006 });
+  const polTight = buildPolicy(tight, { minN:50 });
+  ok('buildPolicy skips a significant cell whose edge < costs', polTight.TIGHT.decision==='skip' && polTight.TIGHT.z>1.96 && polTight.TIGHT.revRate>50);
 }
 
 console.log('[backtestStats]');
