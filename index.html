@@ -78,6 +78,14 @@
       <a href="hub.html" target="_blank" style="color:#14b8a6;font-weight:700">⬡ Risk Hub</a>
     </div>
   </div>
+  <div class="bt-dropdown" id="researchDropdown">
+    <button class="dark-btn" onclick="toggleResearchDropdown(event)" title="Research tools" style="border-color:#3fb27f;color:#3fb27f"><span>🔬</span><span>Research ▾</span></button>
+    <div class="bt-menu">
+      <a href="forecast-analysis.html" target="_blank" style="color:#3fb27f">📊 Forecast Level Analyser</a>
+      <a href="forecast-refresh.html" target="_blank" style="color:#e0a93b">⟳ Analyser Data Loader</a>
+      <a href="https://rangeanalysis-production.up.railway.app/" target="_blank" style="color:#60a5fa">📐 Range Analysis ↗</a>
+    </div>
+  </div>
   <button class="dark-btn" onclick="openBetaPanel()" id="betaBtn" title="Beta Factor Exposure Monitor — stochastic control system" style="border-color:#7c6fe0;color:#9d96f0"><span>β</span><span>Beta</span></button>
   <button class="dark-btn" onclick="openIfoPanel()" id="ifoBtn" title="ifo Business Climate Index — German business sentiment (display only)" style="border-color:#d9485f;color:#ef6b80"><span>🇩🇪</span><span>IFO</span></button>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
@@ -528,11 +536,17 @@ Example:
 <script>
 function toggleBtDropdown(e){
   e.stopPropagation();
+  var r=document.getElementById('researchDropdown'); if(r) r.classList.remove('open');
   document.getElementById('btDropdown').classList.toggle('open');
 }
+function toggleResearchDropdown(e){
+  e.stopPropagation();
+  var b=document.getElementById('btDropdown'); if(b) b.classList.remove('open');
+  document.getElementById('researchDropdown').classList.toggle('open');
+}
 document.addEventListener('click',function(){
-  var d=document.getElementById('btDropdown');
-  if(d) d.classList.remove('open');
+  var d=document.getElementById('btDropdown');     if(d) d.classList.remove('open');
+  var r=document.getElementById('researchDropdown'); if(r) r.classList.remove('open');
 });
 </script>
 
