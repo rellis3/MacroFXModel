@@ -1376,8 +1376,12 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
     const volumes = new Float32Array(n);   // parquet col[4] = tick volume (FX activity proxy)
     for (let i = 0; i < n; i++) {
       const r = rows[i];
-      times[i] = toEpoch(r[5]); opens[i] = r[0]; highs[i] = r[1]; lows[i] = r[2]; closes[i] = r[3];
-      volumes[i] = +r[4] || 0;
+      // Number() (not unary +) so an int64/BigInt column converts instead of
+      // throwing "Cannot convert a BigInt value to a number" (some index parquets
+      // store volume — and occasionally OHLC — as BigInt).
+      times[i] = toEpoch(r[5]);
+      opens[i] = Number(r[0]); highs[i] = Number(r[1]); lows[i] = Number(r[2]); closes[i] = Number(r[3]);
+      volumes[i] = Number(r[4]) || 0;
     }
     return { n, times, opens, highs, lows, closes, volumes };
   };
