@@ -8,6 +8,10 @@
 
 import { detectConfluencesCore } from './confluence-core.js';
 import { calcFibs } from './fibProjection.js';
+import { computeStars, computeStructScore, momScoreFrom, rbScoreFrom, computeSignalScore } from './entryGradeCore.js';
+import { computeRangeBiasServer } from './rangeBiasCore.js';
+import { gradeEntry } from './trade-grade.js';
+import { fitHMM, hmmSignalScore } from '../hmm.js';
 
 // ── verbatim copy of asiaRangeEngine.markConfluence ──────────────────────────
 function markConfluence(currFibs, prevFibs, { pipSize, normalDistance, tightDistance, mergeDistance, sessionRange }) {
@@ -93,6 +97,36 @@ const off = applyCrossOverlay(aF, mF, mergeDistance, false);
 const on  = applyCrossOverlay(aF, mF, mergeDistance, true);
 ok('overlay OFF → strategies independent (no crossAligned)', off.a.every(f => !f.crossAligned) && off.m.every(f => !f.crossAligned));
 ok('overlay ON → coinciding Asia/Monday fibs flagged crossAligned', on.a[0].crossAligned && on.m[0].crossAligned);
+
+console.log('[live grade chain — the exact block asiaRangeEngine runs per trade]');
+// Synthetic day inputs (oldest-first, string fields like the engine's resampled bars).
+const mkBars = (n, base, amp, per) => Array.from({ length: n }, (_, i) => {
+  const c = base + amp * Math.sin(i / per), o = base + amp * Math.sin((i - 1) / per);
+  return { high: String(Math.max(o, c) + 0.4), low: String(Math.min(o, c) - 0.4), close: String(c), open: String(o), time: i * 60 };
+});
+const dBars = mkBars(90, 100, 6, 14).map((b, i) => ({ epoch: i * 86400, open: +b.open, high: +b.high, low: +b.low, close: +b.close }));
+const rets = []; for (let i = 1; i < dBars.length; i++) rets.push(Math.log(dBars[i].close / dBars[i - 1].close));
+const hmmData = fitHMM(rets);
+const rbias = computeRangeBiasServer('', 'long', mkBars(60, 100, 2, 9), mkBars(220, 100, 4, 12), dBars);
+
+function gradeChain(side, fib, hmmData, rbias) {           // mirrors the engine's inline block
+  const dir = side === 'BUY' ? 'long' : 'short';
+  const emaRsi = rbias.features.find(f => f.key === 'ema') ?? { signal: null };
+  const flags = { isTight: fib.isTight, density: fib.density, crossSessionMatch: fib.crossAligned, pivotMatch: false };
+  const rawStars = computeStars(flags);
+  const structScore = computeStructScore({ stars: rawStars, ...flags });
+  const hmmScore = hmmSignalScore(dir, hmmData) ?? 0.5;
+  const signalScore = computeSignalScore({ hmmScore, momScore: momScoreFrom(emaRsi.signal, dir), rbScore: rbScoreFrom(rbias.conviction), structScore });
+  const g = gradeEntry({ direction: dir, signalScore, rangeBias: { confirmCount: rbias.confirmCount, conflictCount: rbias.conflictCount }, tags: [], totalStars: Math.min(5, rawStars) }, hmmData, null);
+  return { stars: Math.min(5, rawStars), signalScore, grade: g?.grade, verdict: g?.verdict };
+}
+const weak   = gradeChain('BUY', { isTight: false, density: 1, crossAligned: false }, hmmData, rbias);
+const strong = gradeChain('BUY', { isTight: true,  density: 3, crossAligned: true  }, hmmData, rbias);
+ok('grade chain yields a valid signalScore 0–100', weak.signalScore >= 0 && weak.signalScore <= 100);
+ok('grade label is one of A+/A/B/C/D/SKIP', ['A+','A','B','C','D','SKIP'].includes(strong.grade), `grade=${strong.grade}`);
+ok('stronger structure → ≥ stars and ≥ signalScore', strong.stars >= weak.stars && strong.signalScore >= weak.signalScore,
+   `weak ${weak.stars}★/${weak.signalScore} vs strong ${strong.stars}★/${strong.signalScore}`);
+ok('verdict present', typeof strong.verdict === 'string' && strong.verdict.length > 0);
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);

@@ -84,6 +84,8 @@ module only reads what it's given. Pip size comes from `instrumentRegistry`.
 | **Level sources** | `js/levelSources.js` | `LEVEL_SOURCES` registry + `collectLevels` (aggregate to one tagged list) + `clusterLevels` (merge to scored zones). **Seven** sources: `daily_open`, `prior_hilo` (PDH/PDL, PWH/PWL, N-day extremes), `pivots` (classic + camarilla), `volume_profile` (POC/VAH/VAL over x days), `swing_sr` (N-bar pivots, clustered), `round_number` (big/half figures), `vwap` (session VWAP anchors over x days). Tested in `js/levelSources.test.mjs` (POC + swing logic checked against a verbatim reference). | ✅ built |
 | **Render brick** | `js/levelChart.js` | reusable Lightweight-Charts viewer — `createLevelChart(el).setCandles().setLevels(Level[]).setZones(zones)`; pure `styleForKind` / `levelToPriceLineOptions` / `zoneToPriceLineOptions` (colour keyed by `Level.kind`). Lifted from `gold-zones.html`. Demo: `level-chart-demo.html`. Pure helpers + factory wiring tested headless against a mock in `js/levelChart.test.mjs`. | ✅ built |
 | **VuManChu core** | `js/vumanchuCore.js` | ONE WaveTrend / Money-Flow / VWAP compute, consumed two ways: `waveTrendSeries` (raw WT1[] for backtest gating) and `waveTrendReading` (latest-bar OB/OS/cross signal) — same compute, mode selects the shape. Standardizes the divide-by-zero guard on `WT_EPS = 1e-10`. Wired into `js/vumanchu.js` ✅ (re-exports `computeWT`/`computeMF`/`computeVWAP`/`ema`/`sma`) and `asiaRangeEngine._computeWT1Series` ✅. Golden test (`js/vumanchuCore.test.mjs`) proves it reproduces BOTH former copies bit-for-bit. | ✅ built |
+| **Range-bias core** | `js/rangeBiasCore.js` | the live entry-bias features — `computeADX`, `computeHurst`, `ema`, `featureADX`/`SwingRegime`/`Twap`/`EmaRsi`/`Hurst`, `computeRangeBiasServer`, `computeWeeklyPivots`. Extracted verbatim from `levels.js`; wired into `levels.js` ✅ (live) + `asiaRangeEngine` ✅ (backtest). Golden test (`js/rangeBiasCore.test.mjs`) proves bit-for-bit equality. | ✅ built |
+| **Entry-grade core** | `js/entryGradeCore.js` | the live star rating + `signalScore` weighting — `computeStars`, `computeStructScore`, `momScoreFrom`, `rbScoreFrom`, `computeSignalScore` (38/25/25/12 + FRED 25/25/20/20/10). A/B/C grade stays in `trade-grade.js`. Wired into `levels.js` ✅ + `asiaRangeEngine` ✅. Golden test (`js/entryGradeCore.test.mjs`, 108 combos). | ✅ built |
 
 **Where each source consolidates existing copies** (extract / unify targets):
 
@@ -207,15 +209,18 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
    so highest caution). Note: repointing `confluenceModules → levelSources` is a
    *backtest-internal* cleanup and does NOT touch this live path.
    **Full gap analysis + the Asia-backtest inventory: `CONFLUENCE_LIVE_VS_BACKTEST.md`.**
-   ✅ **Step 1 done:** `asiaRangeEngine` now detects confluence via the LIVE
-   `confluence-core.detectConfluencesCore` (session-range distance cap + cluster
-   density) instead of its own local copy — `js/asiaRangeConfluence.test.mjs`.
-   This changes the backtest's confluence counts on purpose (now matches live).
-   ⏳ Next: cross-session via `mergeCrossSessionConfs`, then star/grade parity
-   (`trade-grade.js`). `confluence-core.js`, `range-bias.js`, `structural-fibs.js`,
-   `ranges.js` are **live, not dead** — don't delete. Only
-   `MD files/Range_Extension_Backtester_v5_2_ZSCORE.html` and
-   `Zoo/asia_range_backtest.py` are stale archive candidates.
+   ✅ **Steps 1–3 done** (the backtest now grades like the live bot):
+   (1) confluence detection via the LIVE `confluence-core.detectConfluencesCore`
+   (range-cap + clustering); (2) Monday is its own strategy (Monday-vs-prev-Monday)
+   with an opt-in `crossSessionMerge` overlay; (3) every trade records `live_stars`
+   / `live_signal_score` / `live_grade` via the SHARED `hmm.js` + `rangeBiasCore` +
+   `entryGradeCore` + `trade-grade.js` (additive, no-lookahead). ⚠ Macro/COT/retail
+   factors omitted (no history) → grade is a faithful *approximation*. This changes
+   the backtest's confluence/selectivity on purpose; re-run on M1 to see it. Full
+   detail + remaining UI-filter work in `CONFLUENCE_LIVE_VS_BACKTEST.md`.
+   `confluence-core.js`, `range-bias.js`, `structural-fibs.js`, `ranges.js` are
+   **live, not dead** — don't delete. Archived: the MD-files ZSCORE export +
+   `Zoo/asia_range_backtest.py` → `archive/`.
 
 ---
 
