@@ -120,13 +120,10 @@ function computeDayType(records, oosFrac = 0.4) {
   return { splitDate, full: dayTypeStats(records), is: dayTypeStats(isRec), oos: dayTypeStats(oosRec) };
 }
 
-// Precompute the slice rollups the dashboard exposes.
-function buildAggregates(records) {
-  // Vol terciles (low/mid/high σ) over this pair's windows — the regime the
-  // reference study found to be the biggest driver.
-  const sigmas = records.map(r => r.sigma).filter(s => s > 0).sort((a, b) => a - b);
-  const q1 = sigmas[Math.floor(sigmas.length / 3)] ?? 0;
-  const q2 = sigmas[Math.floor(sigmas.length * 2 / 3)] ?? 0;
+// The full set of slice rollups the Conditioning/Drivers/Candidates tabs expose.
+// Vol terciles use FIXED thresholds (q1/q2 from the full sample) so the same
+// bucket means the same σ band in the full set and the OOS subset.
+function sliceSet(records, q1, q2) {
   const volBucket = r => (r.sigma <= q1 ? '1·low-vol' : r.sigma <= q2 ? '2·mid-vol' : '3·high-vol');
   return {
     all:       aggregate(records, () => 'all').all,
@@ -146,8 +143,24 @@ function buildAggregates(records) {
     byDow:     aggregate(records, r => String(r.dow)),
     byYear:    aggregate(records, r => r.date.slice(0, 4)),
     byMonth:   aggregate(records, r => r.date.slice(0, 7)),
+  };
+}
+
+// Precompute the slice rollups the dashboard exposes — full sample plus an
+// out-of-sample copy (last 40% by date, matching the day-type split) so the
+// Drivers tab can confirm a driver survives OOS, not just in-sample.
+function buildAggregates(records, oosFrac = 0.4) {
+  const sigmas = records.map(r => r.sigma).filter(s => s > 0).sort((a, b) => a - b);
+  const q1 = sigmas[Math.floor(sigmas.length / 3)] ?? 0;
+  const q2 = sigmas[Math.floor(sigmas.length * 2 / 3)] ?? 0;
+  const sorted    = records.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+  const splitDate = sorted[Math.floor(sorted.length * (1 - oosFrac))]?.date ?? null;
+  const oosRec    = splitDate ? records.filter(r => r.date >= splitDate) : [];
+  return {
+    ...sliceSet(records, q1, q2),
     skill:     computeSkill(records),
     dayType:   computeDayType(records),
+    oos:       { splitDate, ...sliceSet(oosRec, q1, q2) },
   };
 }
 
