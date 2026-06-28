@@ -98,7 +98,7 @@ const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn',
 const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
 const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
-const TABS = ['Overview','Levels','Conditioning','Calibration','Excursion','Candidates','Pairs'];
+const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
 
 const hdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
@@ -108,6 +108,21 @@ async function api(p,o={}){ return fetch(p,{...o,headers:{...(o.headers||{}),...
 // ── significance: binomial vs 0.5 ────────────────────────────────────────────
 function zOf(rate,n){ return (n>0)? (rate/100-0.5)/Math.sqrt(0.25/n) : 0; }
 function sig(rate,n){ const z=zOf(rate,n); const s=Math.abs(z)>=1.96; return { z, sig:s, dir: z>0?'up':'dn', cls: !s?'cell-ns':(z>0?'cell-up':'cell-dn') }; }
+// Standard-normal CDF (Abramowitz-Stegun erf) + chi-square p (Wilson-Hilferty).
+function normCdf(z){ const t=1/(1+0.2316419*Math.abs(z)); const d=0.3989423*Math.exp(-z*z/2);
+  let p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274)))); return z>0?1-p:p; }
+function chiSqP(x2,df){ if(df<=0||x2<=0) return 1; const k=df, t=Math.cbrt(x2/k), m=1-2/(9*k), s=Math.sqrt(2/(9*k));
+  return 1-normCdf((t-m)/s); }
+// Feature importance: chi-square of {reverted,continued} across a feature's buckets.
+function featureChi(buckets){ // buckets: [{reverted,continued}]
+  const rows=buckets.filter(b=>(b.reverted+b.continued)>=20); if(rows.length<2) return null;
+  const totR=rows.reduce((s,b)=>s+b.reverted,0), totC=rows.reduce((s,b)=>s+b.continued,0), N=totR+totC;
+  if(N<40||totR===0||totC===0) return null;
+  let x2=0; for(const b of rows){ const n=b.reverted+b.continued; const eR=n*totR/N, eC=n*totC/N;
+    x2+=(b.reverted-eR)**2/eR+(b.continued-eC)**2/eC; }
+  const df=rows.length-1; const rates=rows.map(b=>b.reverted/(b.reverted+b.continued)*100);
+  return { x2:+x2.toFixed(1), df, p:chiSqP(x2,df), lift:+(Math.max(...rates)-Math.min(...rates)).toFixed(1), buckets:rows.length, N };
+}
 function lbl(key){ const [nm,side]=key.split('_'); return `${LBL[nm]} ${side==='up'?'↑':'↓'}`; }
 function sideCls(key){ return key.endsWith('_up')?'lbl-up':'lbl-dn'; }
 
@@ -142,8 +157,11 @@ function render(){
   if(TAB==='Overview') return renderOverview(v);
   if(TAB==='Levels') return renderLevels(v);
   if(TAB==='Conditioning') return renderConditioning(v);
+  if(TAB==='Drivers') return renderDrivers(v);
+  if(TAB==='Day-Type') return renderDayType(v);
   if(TAB==='Calibration') return renderCalibration(v);
   if(TAB==='Excursion') return renderExcursion(v);
+  if(TAB==='Stability') return renderStability(v);
   if(TAB==='Candidates') return renderCandidates(v);
   if(TAB==='Pairs') return renderPairs(v);
 }
@@ -216,6 +234,82 @@ function renderConditioning(v){
   $('condSel').onchange=e=>{condDim=e.target.value;render();};
 }
 
+// ── Drivers: which conditions actually move reversion? (feature importance) ──
+let driverLine='pooled';
+function renderDrivers(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const dims=Object.keys(SLICES).filter(s=>d[s]);
+  // line scope: pooled (all 8 lines) or one line
+  const lineOpts=['pooled',...LINE_ORDER];
+  // For each feature, sum {reverted,continued} per bucket over the chosen line(s), run chi-square.
+  const rows=[];
+  for(const dim of dims){ const slice=d[dim]; const buckets=[];
+    for(const g of Object.keys(slice)){ let r=0,c=0;
+      const keys = driverLine==='pooled'? LINE_ORDER : [driverLine];
+      for(const k of keys){ const s=slice[g]?.[k]; if(s){ r+=s.reverted||0; c+=s.continued||0; } }
+      if(r+c>0) buckets.push({g,reverted:r,continued:c}); }
+    const res=featureChi(buckets); if(res) rows.push({dim,...res,
+      best:buckets.map(b=>({g:b.g,rate:b.reverted/(b.reverted+b.continued)*100,n:b.reverted+b.continued})).sort((a,b)=>b.rate-a.rate)}); }
+  rows.sort((a,b)=>b.x2-a.x2);
+  let html=`<div class="card"><div class="controls" style="margin-bottom:8px"><div><label>Line scope</label><select id="drvLine">`+
+    lineOpts.map(o=>`<option value="${o}" ${o===driverLine?'selected':''}>${o==='pooled'?'All lines pooled':lbl(o)}</option>`).join('')+`</select></div></div>`;
+  html+=`<div class="hint" style="margin-bottom:8px">Ranks each condition by how strongly it separates reversion vs continuation (chi-square over its buckets). <b>Lift</b> = spread between the best and worst bucket's reversion %. <b>p</b> &lt; 0.05 (green) = the condition genuinely matters; this is the empirical answer to "what drives it", with the baseline being ~coin-flip.</div>`;
+  if(!rows.length){ html+=`<div class="mut">Not enough data — needs a refresh with the conditioning fields.</div></div>`; v.innerHTML=html; $('drvLine')&&($('drvLine').onchange=e=>{driverLine=e.target.value;render();}); return; }
+  const top=rows[0];
+  html+=`<div class="find"><b>Top driver:</b> ${SLICES[top.dim]} (χ²=${top.x2}, p=${top.p<0.001?'<0.001':fmt(top.p,3)}, lift ${top.lift}pp). Highest reversion bucket: <b>${top.best[0].g}</b> at ${fmt(top.best[0].rate)}% (n=${top.best[0].n}), lowest: ${top.best[top.best.length-1].g} at ${fmt(top.best[top.best.length-1].rate)}%.</div>`;
+  html+=`<table><thead><tr><th>Condition</th><th>χ²</th><th>p</th><th>lift (pp)</th><th>buckets</th><th>N</th><th>strongest bucket</th></tr></thead><tbody>`;
+  for(const r of rows){ const sg=r.p<0.05; const bb=r.best[0];
+    html+=`<tr><td>${SLICES[r.dim]}</td><td><b>${r.x2}</b></td>
+      <td class="${sg?'pos':'mut'}">${r.p<0.001?'<0.001':fmt(r.p,3)}</td>
+      <td>${fmt(r.lift)}</td><td>${r.buckets}</td><td class="mut">${r.N}</td>
+      <td class="mut">${bb.g} ${fmt(bb.rate)}%</td></tr>`; }
+  html+=`</tbody></table></div>`; v.innerHTML=html;
+  $('drvLine').onchange=e=>{driverLine=e.target.value;render();};
+}
+
+// ── Day-Type: does the signedT lean predict continuation? (brief §5) ─────────
+let dtPeriod='full';
+function renderDayType(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const dt=d.dayType;
+  if(!dt){ v.innerHTML=`<div class="card mut">Day-Type analysis needs a fresh refresh (new fields). ${LEVEL==='admin'?'Run a refresh.':'Ask the owner to refresh.'}</div>`; return; }
+  const st=dt[dtPeriod]; const splitInfo=dt.splitDate?`OOS from ${dt.splitDate}`:'';
+  let html=`<div class="card"><div class="controls" style="margin-bottom:6px"><div><label>Sample</label><select id="dtPer">
+    <option value="full" ${dtPeriod==='full'?'selected':''}>Full</option>
+    <option value="is" ${dtPeriod==='is'?'selected':''}>In-sample</option>
+    <option value="oos" ${dtPeriod==='oos'?'selected':''}>Out-of-sample</option></select></div>
+    <div class="mut" style="font-size:11px;align-self:center">${splitInfo}</div></div>`;
+  if(!st){ html+=`<div class="mut">Not enough data in this sample.</div></div>`; v.innerHTML=html; $('dtPer').onchange=e=>{dtPeriod=e.target.value;render();}; return; }
+  // (b) headline: AUC
+  const auc=st.auc, aucCls=auc>=0.6?'pos':auc>0.55?'':'mut';
+  const verdict = auc>=0.6 ? 'the lean magnitude carries real information → worth a calibrated probability layer'
+                 : auc>0.55 ? 'weak but present — direction useful, magnitude marginal'
+                 : 'magnitude ≈ noise — keep the sign as a gate, skip the confidence layer';
+  html+=`<div class="kpi-grid">
+    <div class="kpi"><div class="v ${aucCls}">${fmt(auc,3)}</div><div class="l">AUC (signedT → continuation)</div></div>
+    <div class="kpi"><div class="v">${fmt(st.contPct)}%</div><div class="l">days continued</div></div>
+    <div class="kpi"><div class="v pos">${fmt(st.meanSignedT_cont,2)}</div><div class="l">mean signedT · continued</div></div>
+    <div class="kpi"><div class="v neg">${fmt(st.meanSignedT_rev,2)}</div><div class="l">mean signedT · reverted</div></div>
+    <div class="kpi"><div class="v mut" style="font-size:15px">${st.n}</div><div class="l">windows</div></div></div>`;
+  html+=`<div class="find" style="margin-top:10px"><b>(b) Confidence test:</b> AUC ${fmt(auc,3)} — ${verdict}.</div></div>`;
+  // (b) reliability: P(continuation) by signedT bin
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:8px">(b) P(continuation) by signedT bin — a rising curve = the lean predicts</div><table><thead><tr><th>signedT bin</th><th>P(continuation)</th><th></th><th>n</th></tr></thead><tbody>`;
+  for(const b of st.bins){ if(b.pCont==null||b.n<10){ html+=`<tr class="lown"><td>${fmt(b.lo,1)}…${fmt(b.lo+0.2,1)}</td><td class="mut">—</td><td></td><td class="mut">${b.n}</td></tr>`; continue; }
+    const w=Math.round(b.pCont*1.4); const lean=b.lo>=0?'lbl-up':'lbl-dn';
+    html+=`<tr><td class="${lean}">${fmt(b.lo,1)}…${fmt(b.lo+0.2,1)}</td><td>${fmt(b.pCont)}%</td>
+      <td style="text-align:left"><span class="bar" style="width:${w}px;background:${b.pCont>=50?'var(--green)':'var(--red)'}"></span></td><td class="mut">${b.n}</td></tr>`; }
+  html+=`</tbody></table></div>`;
+  // (c) cross-tab vs the selector's directional action
+  const ct=st.crosstab; const cell=c=>c.n? `${fmt(c.hitRate)}% <span class="mut" style="font-size:10px">n${c.n}</span>` : '<span class="mut">—</span>';
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">(c) Day-type lean vs the selector's action — hit-rate (did the bet pay)</div>
+    <div class="hint" style="margin-bottom:8px">Agree diagonal (lean and system point the same way) should beat the disagree off-diagonal if the lean sharpens the system.</div>
+    <table><thead><tr><th></th><th>system: fade</th><th>system: follow</th></tr></thead><tbody>
+    <tr><td class="lbl-dn">lean −ve (fade)</td><td class="cell-up">${cell(ct.agreeFade)}</td><td>${cell(ct.sysFollowLeanFade)}</td></tr>
+    <tr><td class="lbl-up">lean +ve (follow)</td><td>${cell(ct.sysFadeLeanFollow)}</td><td class="cell-up">${cell(ct.agreeFollow)}</td></tr>
+    </tbody></table></div>`;
+  v.innerHTML=html; $('dtPer').onchange=e=>{dtPeriod=e.target.value;render();};
+}
+
 // ── Calibration (unique): do the lines hold their percentile? ────────────────
 function renderCalibration(v){
   const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
@@ -223,7 +317,19 @@ function renderCalibration(v){
   const hasCal = a.OC50_up && a.OC50_up.closeBeyondRate!==undefined;
   if(!hasCal){ v.innerHTML=`<div class="card mut">Calibration needs a fresh refresh (new fields). ${LEVEL==='admin'?'Run a refresh.':'Ask the owner to refresh.'}</div>`; return; }
   const TARGET={OC50:50,OC75:25}; // close-percentile targets
-  let html=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. <b>Close lines:</b> % of windows that close beyond should match the percentile (Close med ≈ 50%, Close 75p ≈ 25%). <b>Proj lines:</b> reach rate shown for info.</div>`;
+  let html='';
+  // Range-forecast skill summary (Tier 4): forecast vs realized daily range.
+  const sk=d.skill;
+  if(sk){
+    const bias=sk.medianBiasPct, ex=sk.exceed75Rate;
+    html+=`<div class="card"><div style="font-weight:600;margin-bottom:8px">Vol-forecast skill</div><div class="kpi-grid">
+      <div class="kpi"><div class="v">${fmt(sk.avgFcMedRange,2)}%</div><div class="l">avg forecast median range</div></div>
+      <div class="kpi"><div class="v">${fmt(sk.avgRealRange,2)}%</div><div class="l">avg realized range</div></div>
+      <div class="kpi"><div class="v ${Math.abs(bias)>10?'neg':'pos'}">${bias>0?'+':''}${fmt(bias)}%</div><div class="l">range bias (real−fcast)</div></div>
+      <div class="kpi"><div class="v ${Math.abs(ex-25)>7?'neg':'pos'}">${fmt(ex)}%</div><div class="l">range &gt; 75p band (≈25% ideal)</div></div>
+    </div><div class="hint" style="margin-top:8px">Bias near 0 and exceed≈25% = the σ forecast is honest. A large positive bias = forecast ranges too narrow (σ underestimated); negative = too wide.</div></div>`;
+  }
+  html+=`<div class="card"><div class="hint" style="margin-bottom:8px">Unique to this tool: the lines are vol percentiles, so they should hold. <b>Close lines:</b> % of windows that close beyond should match the percentile (Close med ≈ 50%, Close 75p ≈ 25%). <b>Proj lines:</b> reach rate shown for info.</div>`;
   html+=`<table><thead><tr><th>Line</th><th>closes beyond %</th><th>target</th><th>error</th><th>reach (hit) %</th><th>n win</th></tr></thead><tbody>`;
   for(const k of LINE_ORDER){ const s=a[k]; if(!s) continue; const [nm]=k.split('_'); const tgt=TARGET[nm];
     const err= tgt!==undefined ? (s.closeBeyondRate-tgt) : null;
@@ -254,6 +360,31 @@ function renderExcursion(v){
       <td>${fmt(s.avgMfe,3)}%</td><td>${fmt(s.avgMae,3)}%</td>
       <td class="${cls}"><b>${fmt(er,2)}</b></td><td>${fmt(s.revRate)}%</td>
       <td class="${exp>0?'pos':exp<0?'neg':'mut'}">${fmt(exp,3)}</td><td>${s.decided||0}</td><td>${read}</td></tr>`;
+  }
+  html+=`</tbody></table></div>`; v.innerHTML=html;
+}
+
+// ── Stability: is any line's edge consistent across years, or a one-off? ─────
+function renderStability(v){
+  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const years=Object.keys(d.byYear||{}).sort();
+  if(!years.length){ v.innerHTML=`<div class="card mut">No yearly data.</div>`; return; }
+  let html=`<div class="card"><div class="hint" style="margin-bottom:8px">Per line across years: how many years the reversion edge was significant (z≥1.96) up vs down. A real edge is <b>consistent in one direction across years</b>; one or two stray significant years among many is likely noise (and survivorship across 8 lines × N years guarantees some). Verdict needs ≥3 same-direction sig years and no opposite.</div>`;
+  html+=`<table><thead><tr><th>Line</th><th>yrs (n≥30)</th><th>sig fade yrs</th><th>sig brk yrs</th><th>mean rev%</th><th>spread</th><th>verdict</th></tr></thead><tbody>`;
+  for(const k of LINE_ORDER){
+    let up=0,dn=0,tot=0,sum=0,min=100,max=0;
+    for(const y of years){ const s=d.byYear[y]?.[k]; if(!s||s.decided<30) continue; tot++; sum+=s.revRate; min=Math.min(min,s.revRate); max=Math.max(max,s.revRate);
+      const g=sig(s.revRate,s.decided); if(g.sig&&g.dir==='up')up++; if(g.sig&&g.dir==='dn')dn++; }
+    if(!tot){ html+=`<tr><td class="${sideCls(k)}">${lbl(k)}</td><td colspan="6" class="mut">— thin</td></tr>`; continue; }
+    const mean=sum/tot, spread=max-min;
+    let verdict='<span class="mut">no edge</span>';
+    if(up>=3&&dn===0) verdict='<span class="sigbadge sb-up">STABLE FADE</span>';
+    else if(dn>=3&&up===0) verdict='<span class="sigbadge sb-dn">STABLE BREAKOUT</span>';
+    else if(up&&dn) verdict='<span class="neg">flips ⚠</span>';
+    else if(up||dn) verdict='<span class="mut">weak/occasional</span>';
+    html+=`<tr><td class="${sideCls(k)}">${lbl(k)}</td><td>${tot}</td>
+      <td class="${up?'pos':'mut'}">${up}</td><td class="${dn?'neg':'mut'}">${dn}</td>
+      <td>${fmt(mean)}%</td><td class="mut">${fmt(spread)}pp</td><td>${verdict}</td></tr>`;
   }
   html+=`</tbody></table></div>`; v.innerHTML=html;
 }

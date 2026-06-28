@@ -11,7 +11,8 @@
  * volSigmaSeries, classifyRegime) — no vol math copied, no trade primitive.
  */
 
-import { computeBands, volSigmaSeries, classifyRegime, HORIZONS, ASSET_PARAMS } from './forecastCore.js';
+import { computeBands, volSigmaSeries, classifyRegime, selectStrategy, HORIZONS, ASSET_PARAMS } from './forecastCore.js';
+import { classifyDayType } from './dayTypeCore.js';   // the reversion/continuation classifier (lego brick, imported never copied)
 
 // ── 1) Build the ladder of lines, sorted by distance from open ───────────────
 // Returns up[] and dn[], each ordered inner→outer, plus the band fractions.
@@ -219,6 +220,15 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
     const dow    = new Date(date + 'T00:00:00Z').getUTCDay();
     const lines  = analyseWindow({ open, bars }, ladder);
 
+    // Day-type score (no lookahead: reads closes[< i] only) + the selector's
+    // directional choice + the realized continuation/reversion label, for the
+    // day-type analysis (DAYTYPE_ANALYSIS_BRIEF.md).
+    const dt = classifyDayType({ closes, idx: i, win: 14 });
+    const dirAction = selectStrategy(dt.T, regime).action;        // 'fade' | 'follow'
+    const closePx = bars[bars.length - 1].close;
+    const moveFrac = Math.abs(closePx - open) / open;            // realized |close−open|
+    const realizedDir = moveFrac > ladder.frac.hl50 ? 'CONTINUATION' : 'REVERSION';
+
     let hi = -Infinity, lo = Infinity;
     for (const b of bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
     // Gap from the prior session close, in σ units → bucket.
@@ -235,6 +245,7 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
     records.push({
       date, horizon, regime, dow, sigma: +(sigma * 100).toFixed(4),  // σ as % of price
       gapBucket, gapSig: +gapSig.toFixed(3), eventBucket, monthPhase,
+      dtT: dt.T, signedT: dt.signedT, dtLabel: dt.label, dirAction, realizedDir,
       open: +open.toFixed(6),
       realized: { high: +hi.toFixed(6), low: +lo.toFixed(6), close: +bars[bars.length - 1].close.toFixed(6) },
       lines,
