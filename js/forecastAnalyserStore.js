@@ -133,6 +133,9 @@ function buildAggregates(records) {
     byVol:     aggregate(records, volBucket),
     bySession: aggregate(records, (r, ln) => ln.session),       // per-touch
     byBudget:  aggregate(records, (r, ln) => ln.budgetBucket),  // per-touch (range consumed at touch)
+    byApproachER:  aggregate(records, (r, ln) => ln.approachER),   // per-touch intraday approach efficiency
+    byApproachVel: aggregate(records, (r, ln) => ln.approachVel),  // per-touch approach velocity (σ-units)
+    byWtState:     aggregate(records, (r, ln) => ln.wtState),      // per-touch WaveTrend extension
     byGap:     aggregate(records, r => r.gapBucket),
     byEvent:   aggregate(records, r => r.eventBucket),
     byPhase:   aggregate(records, r => r.monthPhase),

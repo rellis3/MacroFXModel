@@ -12,6 +12,7 @@ import { FIB_LEVELS, calcFibs } from './fibProjection.js';
 import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRegistry.js';
 import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
+import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -136,6 +137,24 @@ ok('labelOutcome closeVsHl50 is stricter than default',
   labelOutcome({ open: 100, close: 100.8, ocMedFrac: 0.005, hl50Frac: 0.012 }, 'closeVsHl50') === 'REVERSION');
 ok('labelOutcome dayEfficiency uses net÷range', OUTCOME_LABELERS.dayEfficiency({ open: 100, high: 101, low: 99.9, close: 100.9 }) === 'CONTINUATION');
 ok('labelOutcome null-guards bad input', labelOutcome({ open: 0, close: 1, ocMedFrac: 0.01 }) === null);
+
+console.log('[touchFeatures]');
+{
+  const tf = createTouchFeatures({ erWin: 5, velWin: 5 });
+  // A clean one-directional drive into the line → high efficiency ('3·driven').
+  const drive = Array.from({ length: 12 }, (_, i) => ({ time: i, open: 100 + i * 0.1, high: 100 + i * 0.1, low: 100 + i * 0.1, close: 100 + i * 0.1 }));
+  const fDrive = tf.compute({ bars: drive, touchIdx: 11, open: 100, sigma: 0.005, side: 'up', wt1: null });
+  ok('approachEfficiency = driven on a clean drive', fDrive.approachER.bucket === '3·driven' && fDrive.approachER.value > 0.9);
+  // A round-trip (up then back) → low efficiency ('1·choppy').
+  const chop = [100,100.2,100.4,100.2,100.0,100.2,100.4,100.2,100.0,100.2,100.4,100.2].map((c, i) => ({ time: i, open: c, high: c, low: c, close: c }));
+  ok('approachEfficiency = choppy on a round-trip', tf.compute({ bars: chop, touchIdx: 11, open: 100, sigma: 0.005, side: 'up', wt1: null }).approachER.bucket === '1·choppy');
+  // Velocity: a big fast move in σ-units → spike; null-guards on short history.
+  ok('approachVelocity = spike on a fast move', tf.compute({ bars: drive, touchIdx: 11, open: 100, sigma: 0.0005, side: 'up', wt1: null }).approachVel.bucket === '3·spike');
+  ok('touch features null-guard short history', tf.compute({ bars: drive, touchIdx: 2, open: 100, sigma: 0.005, side: 'up', wt1: null }).approachER.bucket === null);
+  // WaveTrend extension reads the precomputed series in the touch direction.
+  ok('wtState extended when overbought at an up-line', tf.compute({ bars: drive, touchIdx: 11, open: 100, sigma: 0.005, side: 'up', wt1: drive.map(() => 60) }).wtState.bucket === '3·extended');
+  ok('createTouchFeatures merges config (erWin override, wt default kept)', tf.cfg.erWin === 5 && tf.cfg.wt.n1 === TOUCH_DEFAULTS.wt.n1);
+}
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
