@@ -21,6 +21,16 @@ function err(msg, status = 500) {
   return json({ error: msg }, status);
 }
 
+// OANDA quotes the DAX CFD as DE30_EUR, but the dashboard's canonical key is
+// DE30_USD (shared with oi_store / BETA_PAIRS / config). Remap for the OANDA
+// request only — the response keeps the canonical `symbol` so frontend matching
+// is unchanged. Mirrors server.js _liqGateOandaSym / _h4OandaSym. Without this,
+// every DAX candle/quote request 502s at OANDA and the tab hangs on timeouts.
+function oandaInstrument(symbol) {
+  const s = symbol.replace('/', '_');  // EUR/USD → EUR_USD
+  return s === 'DE30_USD' ? 'DE30_EUR' : s;
+}
+
 // KV key whitelist -- only these prefixes/exact keys may be read or written
 // via /api/kv/get and /api/kv/set. The 'caps' key is excluded here because
 // it has its own dedicated /api/config/caps route with stricter validation.
@@ -373,7 +383,7 @@ export default {
         const oandaBase = env.OANDA_ENV === 'practice'
           ? 'https://api-fxpractice.oanda.com'
           : 'https://api-fxtrade.oanda.com';
-        const oandaSym = symbol.replace('/', '_');
+        const oandaSym = oandaInstrument(symbol);
         const oRes = await fetch(
           `${oandaBase}/v3/instruments/${encodeURIComponent(oandaSym)}/candles?granularity=M1&count=2&price=M`,
           { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) }
@@ -396,7 +406,7 @@ export default {
         const oandaBase = env.OANDA_ENV === 'practice'
           ? 'https://api-fxpractice.oanda.com'
           : 'https://api-fxtrade.oanda.com';
-        const oandaSym = symbol.replace('/', '_');
+        const oandaSym = oandaInstrument(symbol);
         const oRes = await fetch(
           `${oandaBase}/v3/instruments/${encodeURIComponent(oandaSym)}/candles?granularity=D&count=120&price=M`,
           { headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
@@ -427,7 +437,7 @@ export default {
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
-        const instrument  = symbol.replace('/', '_');  // EUR/USD → EUR_USD
+        const instrument  = oandaInstrument(symbol);  // EUR/USD → EUR_USD; DE30_USD → DE30_EUR
         const granularity = path === '/api/oanda_ohlc5m' ? 'M5' : 'M30';
         const count       = path === '/api/oanda_ohlc5m' ? 1500 : 700;
         const oandaBase   = env.OANDA_ENV === 'practice'
@@ -501,7 +511,7 @@ export default {
         if (!symbol) return err('symbol param required', 400);
         if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return err('date param required (YYYY-MM-DD)', 400);
 
-        const instrument = symbol.replace('/', '_');
+        const instrument = oandaInstrument(symbol);
         const oandaBase  = env.OANDA_ENV === 'practice'
           ? 'https://api-fxpractice.oanda.com'
           : 'https://api-fxtrade.oanda.com';

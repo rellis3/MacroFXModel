@@ -3318,7 +3318,9 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
   const gran = (req.query.granularity || 'M5').toUpperCase();
   if (!_OHLC_GRAN[gran]) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
   const { count, ttl } = _OHLC_GRAN[gran];
-  const instrument = symbol.replace('/', '_');
+  // OANDA quotes the DAX CFD as DE30_EUR though our canonical key is DE30_USD —
+  // remap the instrument or the request 502s and the tab hangs. See _liqGateOandaSym.
+  const instrument = _liqGateOandaSym(symbol.replace('/', '_'));
   const cacheKey   = `ohlc_${gran}_${instrument}`;
   const cached     = _m5SrvCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < ttl) return res.json(cached.data);
