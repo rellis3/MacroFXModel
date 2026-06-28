@@ -98,7 +98,7 @@ const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn',
 const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
 const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byApproachER:'Approach efficiency', byApproachVel:'Approach velocity', byWtState:'WaveTrend (touch)', byVolClimax:'Volume climax', byCandleReject:'Candle rejection', byRoundNum:'Round-number prox', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
-const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs'];
+const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs','Book'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
 
 const hdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
@@ -170,6 +170,66 @@ function render(){
   if(TAB==='Stability') return renderStability(v);
   if(TAB==='Candidates') return renderCandidates(v);
   if(TAB==='Pairs') return renderPairs(v);
+  if(TAB==='Book') return renderBook(v);
+}
+
+// ── Book: per-line confidence engine — pooled-IS policy applied OOS, 26-pair book
+let BOOK={}, bookBusy=false;
+async function loadBook(force){ const h=$('horizon').value;
+  if(BOOK[h] && !force) return BOOK[h];
+  const r=await api(`/api/forecast-analysis/per-line/${h}`);
+  BOOK[h]= r.status===200 && r.j?.ok ? r.j.book : (r.j?.error||'none');
+  return BOOK[h];
+}
+function equitySVG(eq){ if(!eq||eq.length<2) return ''; const W=720,H=180,pad=4;
+  const xs=eq.map((_,i)=>i), ys=eq.map(p=>p.cum);
+  const xmax=xs.length-1, ymin=Math.min(0,...ys), ymax=Math.max(0,...ys), yr=(ymax-ymin)||1;
+  const X=i=>pad+i/xmax*(W-2*pad), Y=y=>H-pad-(y-ymin)/yr*(H-2*pad);
+  const pts=eq.map((p,i)=>`${X(i).toFixed(1)},${Y(p.cum).toFixed(1)}`).join(' ');
+  const zeroY=Y(0).toFixed(1);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;background:#0b0d12;border:1px solid var(--line);border-radius:7px">
+    <line x1="0" y1="${zeroY}" x2="${W}" y2="${zeroY}" stroke="#2a3140" stroke-width="1"/>
+    <polyline points="${pts}" fill="none" stroke="var(--green)" stroke-width="1.5"/></svg>`;
+}
+async function renderBook(v){
+  v.innerHTML=`<div class="card mut">Loading book…</div>`;
+  const b=await loadBook();
+  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button>` : '';
+  const hint=`<div class="hint">Each forecast line is traded on its <b>own</b> OOS-validated edge under the live approach-velocity state: <b>fade</b> if it reverts significantly, <b>follow</b> if it breaks, else <b>skip</b>. Policy learned on in-sample (pooled across all pairs), applied out-of-sample. Triple-barrier exit (TP=inner line, SL=outer line). Costs on. <b>%/unit, no compounding</b> — this is the honest 26-pair book.</div>`;
+  if(typeof b==='string'){ v.innerHTML=`<div class="card"><div class="controls" style="margin-bottom:8px">${buildBtn||''}</div><div class="mut">${b==='none'?'No book yet.':b} ${LEVEL==='admin'?'Click Build book (needs a refresh with the latest fields first).':'Ask the owner to build the book.'}</div>${hint}</div>`; wireBook(); return; }
+  const f=b.book||{}; const kpi=(val,lab,neg)=>`<div class="kpi"><div class="v ${neg!==undefined?(neg?'neg':'pos'):''}">${val}</div><div class="l">${lab}</div></div>`;
+  let html=`<div class="card"><div class="controls" style="margin-bottom:10px">${buildBtn}<div class="mut" style="align-self:center">OOS from <b>${b.splitDate||'—'}</b> · ${b.nTrades} trades · cond ${(b.conditions||[]).join('+')} · minN ${b.minN}</div></div>
+    <div class="kpi-grid">${kpi(fmt(f.sharpe,2),'OOS Sharpe',f.sharpe<0)}${kpi(fmt(f.totalPnl,1)+'%','total return (simple)',f.totalPnl<0)}${kpi(fmt(f.expectancy,4)+'%','expectancy/trade',f.expectancy<0)}${kpi(fmt(f.winRate*100,1)+'%','win rate')}${kpi(fmt(f.maxDD,2)+'%','max drawdown',true)}${kpi(fmt(f.profitFactor,2),'profit factor')}</div>
+    <div style="margin-top:12px">${equitySVG(b.equity)}</div>${hint}</div>`;
+  // policy table
+  const pol=b.policy||{}; const cells=Object.entries(pol).filter(([,p])=>p.decision!=='skip').sort((a,b)=>b[1].n-a[1].n);
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Policy — traded cells (line × ${(b.conditions||[]).join('+')})</div>
+    <div class="hint" style="margin-bottom:6px">${b.coverage?`fade ${b.coverage.fadeCells} · follow ${b.coverage.followCells} · skip ${b.coverage.skipCells}`:''}</div>
+    <table><thead><tr><th>Cell</th><th>decision</th><th>IS reversion %</th><th>z</th><th>n</th></tr></thead><tbody>`;
+  for(const [cell,p] of cells){ const [ln,...c]=cell.split('|');
+    html+=`<tr><td>${ln} <span class="mut">${c.join('·')}</span></td><td class="${p.decision==='fade'?'pos':'neg'}">${p.decision.toUpperCase()}</td><td>${fmt(p.revRate)}</td><td class="mut">${fmt(p.z,1)}</td><td class="mut">${p.n}</td></tr>`; }
+  html+=`</tbody></table></div>`;
+  // per-pair OOS
+  const pp=Object.entries(b.perPair||{}).filter(([,s])=>s.trades>0).sort((a,b)=>b[1].sharpe-a[1].sharpe);
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair OOS (breadth check)</div>
+    <table><thead><tr><th>Pair</th><th>Sharpe</th><th>total %</th><th>expectancy %</th><th>win %</th><th>trades</th></tr></thead><tbody>`;
+  for(const [pair,s] of pp){ html+=`<tr><td>${pair.toUpperCase()}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate*100)}</td><td class="mut">${s.trades}</td></tr>`; }
+  html+=`</tbody></table></div>`;
+  v.innerHTML=html; wireBook();
+}
+function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
+  btn.onclick=async()=>{ bookBusy=true; render();
+    try{ const h=$('horizon').value;
+      const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h})});
+      if(!r.j?.ok) throw new Error(r.j?.error||'run failed');
+      const job=r.j.jobId; let done=false;
+      while(!done){ await new Promise(r=>setTimeout(r,2000));
+        const s=await api(`/api/forecast-analysis/per-line/status/${job}`);
+        if(s.j?.status==='done'){ done=true; } else if(s.j?.status==='error'){ throw new Error(s.j.error); } }
+      await loadBook(true);
+    }catch(e){ alert('Book build failed: '+e.message); }
+    finally{ bookBusy=false; render(); }
+  };
 }
 
 // ── Overview: KPIs + auto findings ───────────────────────────────────────────

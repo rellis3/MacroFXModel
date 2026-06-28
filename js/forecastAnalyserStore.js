@@ -16,6 +16,7 @@ import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize } from './instrumentRegistry.js';
+import { extractTouches, runPerLine, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 
 const PREFIX   = 'forecast-analysis';
 const M1_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
@@ -219,6 +220,46 @@ export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLo
   onLog(`Done — ${Object.keys(manifest.pairs).length} pairs stored.`);
   return manifest;
 }
+
+// ── Per-line confidence book — pooled-IS policy applied OOS across all pairs ──
+// Loads the stored per-pair touch records, pools them, learns the fade/follow/
+// skip policy on in-sample, applies it out-of-sample, and writes the book result
+// (equity curve + per-pair OOS perf + the policy table) to R2.
+export async function runPerLineBook({ horizon = 'daily', conditions = ['approachVel'],
+                                       minN = 50, splitFrac = 0.6, onLog = () => {} } = {}) {
+  if (!r2Configured()) throw new Error('R2 not configured');
+  const manifest = await getManifest();
+  if (!manifest) throw new Error('No dataset — run a refresh first');
+  const pairs = Object.keys(manifest.pairs || {});
+  onLog(`Building book from ${pairs.length} pairs (${horizon}, conditions: ${conditions.join('+')})`);
+
+  const touchesByPair = {}, costByPair = {}, slipByPair = {};
+  let withBarriers = 0, total = 0;
+  for (const pair of pairs) {
+    if (!manifest.pairs[pair]?.horizons?.[horizon]) continue;
+    const data = await getPairData(pair, horizon);
+    if (!data?.records?.length) { onLog(`${pair}: no records`); continue; }
+    const touches = extractTouches(data.records, { conditions });
+    total += data.records.length;
+    if (touches.length) {
+      withBarriers++;
+      touchesByPair[pair] = touches;
+      const ac = assetClassFor(pair);
+      costByPair[pair] = DEFAULT_COST_PCT[ac] ?? DEFAULT_COST_PCT.fx;
+      slipByPair[pair] = DEFAULT_SLIP_PCT[ac] ?? DEFAULT_SLIP_PCT.fx;
+    }
+    onLog(`${pair}: ${touches.length} tradeable touches`);
+  }
+  if (!withBarriers) throw new Error('No tradeable touches — re-refresh (records need innerLvl/outerLvl + features)');
+
+  const result = runPerLine(touchesByPair, { splitFrac, minN, costByPair, slipByPair });
+  const out = { generatedAt: new Date().toISOString(), horizon, conditions, minN, splitFrac, ...result };
+  await putJSON(`${PREFIX}/per-line-${horizon}.json`, out);
+  onLog(`Book: ${result.nTrades} OOS trades · Sharpe ${result.book.sharpe} · expectancy ${result.book.expectancy}% · ` +
+        `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}`);
+  return out;
+}
+export async function getPerLineBook(horizon = 'daily') { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }
 
 // ── Read helpers (public API serves these) ───────────────────────────────────
 export async function getManifest()              { return getJSON(`${PREFIX}/manifest.json`); }

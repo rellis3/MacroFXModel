@@ -184,6 +184,10 @@ export function analyseWindow(session, ladder, ctx = {}) {
         hit: true, outcome, firstTouchTime, session: sess, budgetBucket,
         retraceTo: retraceTo ? +retraceTo.toFixed(6) : null, retracePct: +retracePct.toFixed(4),
         extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
+        // The frozen triple-barrier levels (TP=inner toward open, SL=outer away),
+        // stored on EVERY decided touch so a strategy can price the trade
+        // regardless of which barrier hit.
+        innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6),
         closeBeyond: isUp ? closePx > touchLvl : closePx < touchLvl,
         mfePct: +retracePct.toFixed(4),   // favourable excursion for a fade = reversion depth
         ...fb,
