@@ -299,6 +299,41 @@ function garchOnRV(rvValues, omega) {
   return garchOnRVSeries(rvValues, omega).at(-1);
 }
 
+// ── Drifted-BM helpers for Export v2 OH/OL (additive — does NOT touch _buildOutput) ──
+// Standard normal CDF — Abramowitz & Stegun 26.2.17, |error| < 7.5e-8
+function _Phi(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const p = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const y = 1 - p * Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI);
+  return x >= 0 ? y : 1 - y;
+}
+
+// p-th quantile of max(Bt, t∈[0,1]) where Bt = d·t + Wt (unit diffusion).
+// CDF: F(x) = Φ(x−d) − exp(2dx)·Φ(−x−d)  [reflection principle, drifted BM].
+// At d=0, F(0.6745)=0.50 and F(1.1503)=0.75 — recovers HN_P50/P75 exactly.
+function _bmMaxQuantile(d, p) {
+  const F = x => _Phi(x - d) - Math.exp(2 * d * x) * _Phi(-x - d);
+  let lo = 0, hi = Math.abs(d) + 6;
+  for (let i = 0; i < 64; i++) {
+    const mid = (lo + hi) / 2;
+    if (F(mid) < p) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// Signed drift / vol ratio  d = μ_daily / σ_fwd  (dimensionless).
+// Uses last `win` close-to-close log returns; denominator is the PRIMARY vol
+// estimate (sigmaFwd) so d is in natural BM units for the formula above.
+// Clamped to ±2 to guard against tiny-σ edge cases.
+function _driftD(ohlc, sigmaFwd, win = 14) {
+  if (ohlc.length < win + 2 || sigmaFwd < 1e-14) return 0;
+  const closes = ohlc.slice(-(win + 1)).map(b => b.close);
+  let mu = 0;
+  for (let i = 1; i < closes.length; i++) mu += Math.log(closes[i] / closes[i - 1]);
+  mu /= win;
+  return +Math.max(-2, Math.min(2, mu / sigmaFwd)).toFixed(4);
+}
+
 // ── Shared output builder ─────────────────────────────────────────────────────
 function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
   const p           = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
@@ -423,6 +458,12 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const legacyPct = sigmaLegacy * 100;
   const r2s = x => Math.round(x * 100) / 100;
 
+  // v2 asymmetric OH/OL — additive fields, nothing above changes
+  const _p       = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+  const _sp      = sigmaFwd * 100;
+  const _d       = _driftD(ohlc, sigmaFwd);
+  const r2v      = x => Math.round(x * 100) / 100;
+
   return Object.assign(_buildOutput(volSeries, sigmaFwd, assetClass, newsMult), {
     yz_vol_annual:     r2s(yzPct     * Math.sqrt(TRADING_DAYS)),
     yz_hl_median:      r2s(BM_RANGE_P50 * yzPct),
@@ -436,6 +477,12 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
     legacy_vol_annual: r2s(legacyPct * Math.sqrt(TRADING_DAYS)),
     legacy_hl_median:  r2s(BM_RANGE_P50 * legacyPct),
     legacy_oc_median:  r2s(HN_P50       * legacyPct),
+    // v2: drift parameter and drifted-BM OH/OL percentiles
+    drift_d:       _d,
+    oh_v2_median:  r2v(_bmMaxQuantile( _d, 0.5)  * _p.oc_50_corr * _sp),
+    oh_v2_75:      r2v(_bmMaxQuantile( _d, 0.75) * _p.oc_75_corr * _sp),
+    ol_v2_median:  r2v(_bmMaxQuantile(-_d, 0.5)  * _p.oc_50_corr * _sp),
+    ol_v2_75:      r2v(_bmMaxQuantile(-_d, 0.75) * _p.oc_75_corr * _sp),
   });
 }
 

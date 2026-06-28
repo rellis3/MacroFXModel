@@ -601,6 +601,24 @@
 }
 .v2-chart-modal-close:hover { border-color: var(--border2); background: var(--s2); color: var(--text); }
 .v2-chart-modal-body { flex: 1; min-height: 0; position: relative; }
+/* ── Export pill dropdown ──────────────────────────────────────────────── */
+.vf-exp-dd { position: relative; display: inline-flex; }
+.vf-exp-menu {
+  display: none; position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--s1); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 6px; gap: 3px; flex-direction: column;
+  z-index: 300; min-width: 170px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+.vf-exp-dd.open .vf-exp-menu { display: flex; }
+.vf-exp-item {
+  text-align: left; background: none; border: none; color: var(--text2);
+  font-size: 11px; font-weight: 500; padding: 5px 10px;
+  border-radius: 6px; font-family: 'DM Sans', sans-serif;
+  white-space: nowrap; transition: all .15s; cursor: pointer;
+}
+.vf-exp-item:hover:not(:disabled) { background: var(--s2); color: var(--blue); }
+.vf-exp-item:disabled { opacity: 0.38; cursor: default; }
+.vf-exp-sep { height: 1px; background: var(--border); margin: 3px 4px; }
 </style>
 </head>
 <body class="dark">
@@ -644,13 +662,19 @@
     <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
     <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
     <div class="v2-tool-sep"></div>
-    <span class="v2-exp-lbl">Export:</span>
-    <button class="v2-tool-btn" id="vfExportBtn"          onclick="exportForecast()"          disabled>⬇ Forecast</button>
-    <button class="v2-tool-btn" id="vfSessionExportBtn"   onclick="exportSession()"           disabled>⬇ Session</button>
-    <button class="v2-tool-btn" id="vfV3ExportBtn"        onclick="exportV3()"                disabled>⬇ V+S</button>
-    <button class="v2-tool-btn" id="vfCZExportBtn"        onclick="exportConfluenceZones()"   disabled title="Confluence Zones export">⬇ C+Z</button>
-    <button class="v2-tool-btn" id="vfExtendedBtn"        onclick="exportExtended()"          disabled>⬇ Extended</button>
-    <button class="v2-tool-btn" id="vfWeeklyExportBtn"    onclick="exportWeekly()"            disabled>⬇ Weekly</button>
+    <div class="vf-exp-dd" id="vfExpDropdown">
+      <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
+      <div class="vf-exp-menu">
+        <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"          disabled>⬇ Export</button>
+        <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
+        <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"          disabled>⬇ Extended</button>
+        <div class="vf-exp-sep"></div>
+        <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"           disabled>⬇ Session</button>
+        <button class="vf-exp-item" id="vfV3ExportBtn"      onclick="closeExpDropdown();exportV3()"                disabled>⬇ V+S</button>
+        <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z</button>
+        <button class="vf-exp-item" id="vfWeeklyExportBtn"  onclick="closeExpDropdown();exportWeekly()"            disabled>⬇ Weekly</button>
+      </div>
+    </div>
     <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
     <div class="v2-tool-sep"></div>
     <a href="levels.html" target="_blank" style="text-decoration:none"><button class="v2-tool-btn" style="border-color:#10b981;color:#10b981" title="Entry Lens — macro × range × vol × z-score entry view">🎯 Entry Lens</button></a>
@@ -1272,7 +1296,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfExportBtn','vfExtendedBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn'].forEach(id => {
+      ['vfExportBtn','vfExportV2Btn','vfExtendedBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -1754,6 +1778,59 @@ function timeAgo(date) {
   if (secs < 3600)  return `${Math.floor(secs/60)}m ago`;
   if (secs < 86400) return `${Math.floor(secs/3600)}h ago`;
   return date.toLocaleDateString();
+}
+
+// ── Export pill dropdown toggle ───────────────────────────────────────────────
+function toggleExpDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('vfExpDropdown').classList.toggle('open');
+}
+function closeExpDropdown() {
+  document.getElementById('vfExpDropdown').classList.remove('open');
+}
+document.addEventListener('click', closeExpDropdown);
+
+// ── Export v2: asymmetric O-H / O-L from drifted-BM math (d = μ_14d / σ_fwd) ─
+function buildExportV2Text(data) {
+  const LINE_WIDTH = 29;
+  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+  const lines = ['**VOL & RANGE FORECAST v2**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    const d      = f.drift_d ?? 0;
+    const oh_med = f.oh_v2_median ?? f.oc_median;
+    const oh_75  = f.oh_v2_75    ?? f.oc_75;
+    const ol_med = f.ol_v2_median ?? f.oc_median;
+    const ol_75  = f.ol_v2_75    ?? f.oc_75;
+    const dLabel = Math.abs(d) < 0.05 ? 'Neutral'
+                 : d > 0 ? (d > 0.20 ? 'Bullish ↑' : 'Mild bullish lean ↑')
+                          : (d < -0.20 ? 'Bearish ↓' : 'Mild bearish lean ↓');
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
+    lines.push(`High to Low range       : ${f.hl_median.toFixed(2)}% median · ${f.hl_75.toFixed(2)}% 75th`);
+    lines.push(`Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th`);
+    lines.push(`Open High (upside)      : ${oh_med.toFixed(2)}% median · ${oh_75.toFixed(2)}% 75th`);
+    lines.push(`Open Low  (downside)    : ${ol_med.toFixed(2)}% median · ${ol_75.toFixed(2)}% 75th`);
+    lines.push(`Drift (d=μ/σ)           : ${d >= 0 ? '+' : ''}${d.toFixed(3)}  →  ${dLabel}`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function exportV2() {
+  if (!currentForecast) return;
+  const text = buildExportV2Text(currentForecast);
+  const pill = document.getElementById('vfExpPillBtn');
+  const orig = pill?.textContent;
+
+  navigator.clipboard.writeText(text).then(() => {
+    if (pill) { pill.textContent = '✓ v2 copied'; setTimeout(() => { pill.textContent = orig; }, 2200); }
+  }).catch(() => {
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })),
+      download: `vol-forecast-v2-${currentForecast.session_date}.txt`,
+    });
+    a.click();
+  });
 }
 
 // ── Export functions ───────────────────────────────────────────────────────────
