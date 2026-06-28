@@ -270,13 +270,25 @@ Example:
     <div class="oi-modal-hd">
       <div>
         <div class="oi-modal-title">🇩🇪 ifo Business Climate — Germany</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px">German business sentiment · 2015=100, seasonally adjusted · context for DAX · <b>display only — no trade signal</b></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">German business sentiment · 2015=100, seasonally adjusted · feeds the <b>DAX macro T1</b> factor</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="oi-btn" onclick="openIfoPanel()" title="Reload data">↺ Refresh</button>
         <button class="oi-btn" onclick="closeIfoPanel()">✕ Close</button>
       </div>
     </div>
+
+    <!-- Edit form — add/update a monthly reading, saved to KV (no repo edit needed) -->
+    <div class="ifo-edit">
+      <div class="ifo-edit-title">Update reading <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">— from <a href="https://www.ifo.de/en/ifo-business-climate-index" target="_blank" rel="noopener" style="color:var(--blue)">ifo.de</a>, published ~24th–26th each month</span></div>
+      <div class="ifo-edit-row">
+        <input class="ifo-input" type="month" id="ifoInMonth" title="Reference month (YYYY-MM)">
+        <input class="ifo-input" type="number" step="0.1" id="ifoInValue" placeholder="e.g. 88.6" title="ifo Business Climate Index value">
+        <button class="oi-btn" id="ifoSaveBtn" onclick="saveIfoReading()">Save</button>
+        <span class="ifo-save-status" id="ifoSaveStatus"></span>
+      </div>
+    </div>
+
     <div id="ifoPanelContent" style="padding:4px 0">
       <div style="text-align:center;padding:40px;color:var(--text3);font-size:12px">Loading ifo data…</div>
     </div>
@@ -295,6 +307,13 @@ Example:
 .ifo-chart-wrap{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px}
 .ifo-chart-title{font-size:9.5px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
 .ifo-seed-note{background:rgba(244,185,66,.1);border:1px solid rgba(244,185,66,.3);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:10.5px;color:var(--text2);line-height:1.5}
+.ifo-edit{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px}
+.ifo-edit-title{font-size:9.5px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.ifo-edit-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ifo-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:12px;font-family:var(--mono,monospace);width:120px}
+.ifo-save-status{font-size:10.5px;color:var(--text3)}
+.ifo-save-status.ok{color:var(--green)}
+.ifo-save-status.err{color:var(--red,#ef6b80)}
 .ifo-table{width:100%;border-collapse:collapse;font-size:11px}
 .ifo-table th{text-align:left;color:var(--text3);font-weight:500;padding:4px 8px;border-bottom:1px solid var(--border)}
 .ifo-table td{padding:4px 8px;border-bottom:1px solid var(--s2);font-family:var(--mono,monospace);font-size:10.5px}
@@ -1082,7 +1101,7 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
     const arrow  = chg == null ? '' : (chg >= 0 ? '▲' : '▼');
 
     const seedNote = data.seed
-      ? `<div class="ifo-seed-note">⚠ <b>Seed/placeholder data.</b> ${data._note || 'Replace <code>ifo.json</code> series with the official figures from ifo.de.'}</div>`
+      ? `<div class="ifo-seed-note">⚠ <b>Seed/placeholder data.</b> Enter the latest official figure from ifo.de above — it saves to the cloud (no repo edit needed) and replaces this seed. Until then, the DAX macro T1 runs on illustrative data.</div>`
       : '';
 
     const hist = series.slice(-12).reverse().map(d => {
@@ -1127,16 +1146,96 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
     `;
   }
 
+  // Source of truth is KV ifo_data (edited here); /ifo.json is the static seed.
+  let currentData = null;
+
+  async function kvGetIfo() {
+    try {
+      const r = await fetch('/api/kv/get?key=ifo_data');
+      if (!r.ok) return null;
+      const o = await r.json();
+      return o.miss ? null : (o.data ?? null);
+    } catch { return null; }
+  }
+  async function kvSetIfo(data) {
+    const r = await fetch('/api/kv/set', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'ifo_data', data, timestamp: Date.now() }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json().catch(() => ({}));
+    if (j.ok === false) throw new Error(j.reason || 'KV write rejected');
+  }
+
+  async function loadIfo() {
+    const kv = await kvGetIfo();
+    if (kv?.series?.length) return kv;
+    const r = await fetch('/ifo.json?t=' + Math.floor(Date.now() / 60000));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+
+  // Prefill the month input with the month after the latest reading (the one due next).
+  function prefillForm(data) {
+    const series = (data?.series || []).filter(d => d && d.value != null);
+    const monthEl = document.getElementById('ifoInMonth');
+    if (!monthEl || monthEl.value || !series.length) return;
+    const [y, m] = series[series.length - 1].month.split('-').map(Number);
+    const next = new Date(Date.UTC(y, m, 1)); // m is 1-based → Date month m = next month
+    monthEl.value = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  window.saveIfoReading = async function() {
+    const statusEl = document.getElementById('ifoSaveStatus');
+    const btn      = document.getElementById('ifoSaveBtn');
+    const month    = (document.getElementById('ifoInMonth').value || '').trim();
+    const value    = parseFloat(document.getElementById('ifoInValue').value);
+    const setStatus = (msg, cls) => { if (statusEl) { statusEl.textContent = msg; statusEl.className = 'ifo-save-status' + (cls ? ' ' + cls : ''); } };
+
+    if (!/^\d{4}-\d{2}$/.test(month)) return setStatus('Pick a month (YYYY-MM).', 'err');
+    if (!isFinite(value) || value <= 0) return setStatus('Enter a numeric index value.', 'err');
+
+    const base = (currentData && Array.isArray(currentData.series)) ? currentData : {
+      indicator: 'ifo Business Climate — Germany',
+      basis: '2015 = 100, seasonally adjusted',
+      source: 'ifo Institute (https://www.ifo.de)',
+    };
+    const series = (base.series || []).filter(d => d && d.value != null && d.month !== month);
+    series.push({ month, value });
+    series.sort((a, b) => a.month < b.month ? -1 : a.month > b.month ? 1 : 0);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const updated = { ...base, series, seed: false, updated: today };
+    delete updated._note;
+
+    if (btn) btn.disabled = true;
+    setStatus('Saving…');
+    try {
+      await kvSetIfo(updated);
+      currentData = updated;
+      window.__setIfoData?.(updated); // refresh the live DAX macro bias immediately
+      setStatus(`✓ Saved ${month} = ${value.toFixed(1)}`, 'ok');
+      document.getElementById('ifoInValue').value = '';
+      document.getElementById('ifoInMonth').value = '';
+      prefillForm(updated);
+      render(updated);
+    } catch (e) {
+      setStatus('Save failed — ' + e.message, 'err');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
   window.openIfoPanel = async function() {
     document.getElementById('ifoPanelOverlay').style.display = 'flex';
     const el = document.getElementById('ifoPanelContent');
     el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-size:12px">Loading ifo data…</div>';
     try {
-      const r = await fetch('/ifo.json?t=' + Math.floor(Date.now() / 60000));
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      render(await r.json());
+      currentData = await loadIfo();
+      prefillForm(currentData);
+      render(currentData);
     } catch (e) {
-      el.innerHTML = `<div style="padding:30px;text-align:center;color:var(--red,#ef6b80);font-size:12px">Could not load <code>ifo.json</code> — ${e.message}</div>`;
+      el.innerHTML = `<div style="padding:30px;text-align:center;color:var(--red,#ef6b80);font-size:12px">Could not load ifo data — ${e.message}</div>`;
     }
   };
 
