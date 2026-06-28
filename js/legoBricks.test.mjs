@@ -14,6 +14,7 @@ import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
 import { extractTouches, buildPolicy, tradePnl, runPerLine } from './perLineStrategy.js';
+import { backtestStats } from './backtestStats.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -198,6 +199,21 @@ console.log('[perLineStrategy]');
   const run = runPerLine(byPair, { splitFrac: 0.6, minN: 30, costByPair:{eurusd:0.01}, slipByPair:{eurusd:0} });
   ok('runPerLine produces an OOS book with trades + daily equity', run.nTrades > 0 && run.equity.length > 0 && run.equity.length <= run.nTrades);
   ok('runPerLine book is profitable when the IS edge persists OOS', run.book.totalPnl > 0 && run.coverage.fadeCells >= 1);
+}
+
+console.log('[backtestStats]');
+{
+  const dates = Array.from({ length: 200 }, (_, i) => `20${20 + Math.floor(i/50)}-0${1+(i%9)}-0${1+(i%9)}`);
+  const pnls  = Array.from({ length: 200 }, (_, i) => (i % 3 === 0 ? -0.5 : 0.4));   // ~67% win, +ve edge
+  const s = backtestStats(pnls, dates, { mcRuns: 200, bootRuns: 200, seed: 1 });
+  ok('backtestStats core fields present', ['sharpe','sortino','calmar','cagr','maxDD','profitFactor','payoff','winRate','expectancy','totalPnl'].every(k => k in s));
+  ok('backtestStats winRate ≈ 0.667', near(s.winRate, 2/3, 0.02));
+  ok('backtestStats totalPnl matches sum', near(s.totalPnl, pnls.reduce((a,b)=>a+b,0), 1e-6));
+  ok('backtestStats maxDD ≤ 0 and DD duration ≥ 0', s.maxDD <= 0 && s.maxDDdur >= 0);
+  ok('backtestStats bootstrap CI ordered (p5 ≤ p50 ≤ p95)', s.bootstrap.total.p5 <= s.bootstrap.total.p50 && s.bootstrap.total.p50 <= s.bootstrap.total.p95);
+  ok('backtestStats MC drawdown percentiles present', 'p50' in s.montecarlo.maxDD && 'p95' in s.montecarlo.maxDD);
+  ok('backtestStats deterministic under same seed', JSON.stringify(backtestStats(pnls, dates, { mcRuns: 200, bootRuns: 200, seed: 1 })) === JSON.stringify(s));
+  ok('backtestStats empty → {trades:0}', backtestStats([], []).trades === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

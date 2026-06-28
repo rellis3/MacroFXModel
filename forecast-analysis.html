@@ -199,8 +199,17 @@ async function renderBook(v){
   if(typeof b==='string'){ v.innerHTML=`<div class="card"><div class="controls" style="margin-bottom:8px">${buildBtn||''}</div><div class="mut">${b==='none'?'No book yet.':b} ${LEVEL==='admin'?'Click Build book (needs a refresh with the latest fields first).':'Ask the owner to build the book.'}</div>${hint}</div>`; wireBook(); return; }
   const f=b.book||{}; const kpi=(val,lab,neg)=>`<div class="kpi"><div class="v ${neg!==undefined?(neg?'neg':'pos'):''}">${val}</div><div class="l">${lab}</div></div>`;
   let html=`<div class="card"><div class="controls" style="margin-bottom:10px">${buildBtn}<div class="mut" style="align-self:center">OOS from <b>${b.splitDate||'—'}</b> · ${b.nTrades} trades · cond ${(b.conditions||[]).join('+')} · minN ${b.minN}</div></div>
-    <div class="kpi-grid">${kpi(fmt(f.sharpe,2),'OOS Sharpe',f.sharpe<0)}${kpi(fmt(f.totalPnl,1)+'%','total return (simple)',f.totalPnl<0)}${kpi(fmt(f.expectancy,4)+'%','expectancy/trade',f.expectancy<0)}${kpi(fmt(f.winRate*100,1)+'%','win rate')}${kpi(fmt(f.maxDD,2)+'%','max drawdown',true)}${kpi(fmt(f.profitFactor,2),'profit factor')}</div>
+    <div class="kpi-grid">${kpi(fmt(f.sharpe,2),'OOS Sharpe',f.sharpe<0)}${kpi(fmt(f.sortino,2),'Sortino',f.sortino<0)}${kpi(fmt(f.calmar,2),'Calmar',f.calmar<0)}${kpi(fmt(f.cagr,1)+'%','CAGR',f.cagr<0)}${kpi(fmt(f.totalPnl,1)+'%','total return',f.totalPnl<0)}${kpi(fmt(f.expectancy,4)+'%','expectancy/trade',f.expectancy<0)}${kpi(fmt(f.winRate*100,1)+'%','win rate')}${kpi(fmt(f.payoff,2),'payoff (avgW/avgL)')}${kpi(fmt(f.profitFactor,2),'profit factor')}${kpi(fmt(f.maxDD,2)+'%','max drawdown',true)}${kpi(f.maxDDdur+'','DD duration (trades)',true)}${kpi(f.tradesPerYr+'','trades/yr')}</div>
     <div style="margin-top:12px">${equitySVG(b.equity)}</div>${hint}</div>`;
+  // Robustness — bootstrap CI + Monte-Carlo drawdown
+  const bs=f.bootstrap, mc=f.montecarlo;
+  if(bs&&mc){ html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Robustness — bootstrap &amp; Monte-Carlo</div>
+    <div class="hint" style="margin-bottom:8px"><b>Bootstrap</b> resamples trades with replacement (outcome uncertainty); <b>Monte-Carlo</b> shuffles trade order (path/drawdown risk). A book whose bootstrap p5 total is still positive and whose MC p95 drawdown is survivable is robust, not a lucky ordering.</div>
+    <table><thead><tr><th></th><th>p5 / p50 / p95</th><th>read</th></tr></thead><tbody>
+    <tr><td>Bootstrap total return %</td><td>${fmt(bs.total.p5,1)} / ${fmt(bs.total.p50,1)} / ${fmt(bs.total.p95,1)}</td><td class="${bs.total.p5>0?'pos':'neg'}">${bs.total.p5>0?'positive even at p5':'p5 negative — fragile'}</td></tr>
+    <tr><td>Bootstrap Sharpe</td><td>${fmt(bs.sharpe.p5,2)} / ${fmt(bs.sharpe.p50,2)} / ${fmt(bs.sharpe.p95,2)}</td><td class="mut">P(profitable) ${fmt(bs.pPositive*100,0)}%</td></tr>
+    <tr><td>Monte-Carlo max drawdown %</td><td class="mut">p50 ${fmt(mc.maxDD.p50,1)} · p95 ${fmt(mc.maxDD.p95,1)} · p99 ${fmt(mc.maxDD.p99,1)}</td><td class="${Math.abs(mc.maxDD.p95)<Math.abs(f.totalPnl)?'pos':'neg'}">worst-case ordering DD</td></tr>
+    </tbody></table></div>`; }
   // policy table
   const pol=b.policy||{}; const cells=Object.entries(pol).filter(([,p])=>p.decision!=='skip').sort((a,b)=>b[1].n-a[1].n);
   html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Policy — traded cells (line × ${(b.conditions||[]).join('+')})</div>
@@ -209,13 +218,28 @@ async function renderBook(v){
   for(const [cell,p] of cells){ const [ln,...c]=cell.split('|');
     html+=`<tr><td>${ln} <span class="mut">${c.join('·')}</span></td><td class="${p.decision==='fade'?'pos':'neg'}">${p.decision.toUpperCase()}</td><td>${fmt(p.revRate)}</td><td class="mut">${fmt(p.z,1)}</td><td class="mut">${p.n}</td></tr>`; }
   html+=`</tbody></table></div>`;
-  // per-pair OOS
+  // per-pair OOS (breadth) — click a pair to load its trade log
   const pp=Object.entries(b.perPair||{}).filter(([,s])=>s.trades>0).sort((a,b)=>b[1].sharpe-a[1].sharpe);
-  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair OOS (breadth check)</div>
+  const posPairs=pp.filter(([,s])=>s.totalPnl>0).length;
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair OOS — breadth check (${posPairs}/${pp.length} pairs profitable)</div>
+    <div class="hint" style="margin-bottom:6px">Click a pair to load its trade log. Breadth is the Grinold payoff — a book wants most pairs profitable OOS, not one carrying it.</div>
     <table><thead><tr><th>Pair</th><th>Sharpe</th><th>total %</th><th>expectancy %</th><th>win %</th><th>trades</th></tr></thead><tbody>`;
-  for(const [pair,s] of pp){ html+=`<tr><td>${pair.toUpperCase()}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate*100)}</td><td class="mut">${s.trades}</td></tr>`; }
-  html+=`</tbody></table></div>`;
+  for(const [pair,s] of pp){ html+=`<tr class="pairRow" data-pair="${pair}" style="cursor:pointer"><td class="lbl-up">${pair.toUpperCase()}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate*100)}</td><td class="mut">${s.trades}</td></tr>`; }
+  html+=`</tbody></table></div><div id="tradeLog"></div>`;
   v.innerHTML=html; wireBook();
+  v.querySelectorAll('.pairRow').forEach(r=>r.onclick=()=>loadTrades(r.dataset.pair));
+}
+async function loadTrades(pair){ const h=$('horizon').value; const c=$('tradeLog');
+  c.innerHTML=`<div class="card mut">Loading ${pair.toUpperCase()} trades…</div>`;
+  const r=await api(`/api/forecast-analysis/per-line/${h}/trades/${pair}`);
+  if(r.status!==200||!r.j?.ok){ c.innerHTML=`<div class="card mut">${r.j?.error||'No trade log.'}</div>`; return; }
+  const tr=r.j.trades||[]; const recent=tr.slice(-300).reverse();
+  let html=`<div class="card"><div style="font-weight:600;margin-bottom:6px">${pair.toUpperCase()} trade log <span class="mut">(${tr.length} trades · showing last 300)</span></div>
+    <div class="hint" style="margin-bottom:6px">Phase 2 will make each row open an M1 chart with the forecast lines + entry/TP/SL marked. For now: the full geometry per trade.</div>
+    <table><thead><tr><th>Date</th><th>Line</th><th>Decision</th><th>Outcome</th><th>Entry</th><th>TP</th><th>SL</th><th>PnL %</th></tr></thead><tbody>`;
+  for(const t of recent){ const ln=LBL[t.name]?`${LBL[t.name]} ${t.side==='up'?'↑':'↓'}`:t.line;
+    html+=`<tr><td>${t.date}</td><td class="${t.side==='up'?'lbl-up':'lbl-dn'}">${ln}</td><td class="${t.decision==='fade'?'pos':'neg'}">${t.decision}</td><td class="mut">${t.outcome}</td><td class="mut">${t.entry}</td><td class="mut">${t.tp}</td><td class="mut">${t.sl}</td><td class="${t.pnl>0?'pos':'neg'}">${fmt(t.pnl,3)}</td></tr>`; }
+  html+=`</tbody></table></div>`; c.innerHTML=html;
 }
 function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
   btn.onclick=async()=>{ bookBusy=true; render();

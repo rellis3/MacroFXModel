@@ -22,6 +22,7 @@
  */
 
 import { summarizeTrades } from './metricsCore.js';
+import { backtestStats } from './backtestStats.js';
 
 export const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
 export const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };  // extra on FOLLOW (stop) entries
@@ -39,8 +40,8 @@ export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
       const condKey = conditions.map(c => ln[c] ?? 'na').join('|');
       if (condKey.includes('na')) continue;   // missing a gating condition → not tradeable
       touches.push({
-        date: w.date, open: w.open, line: `${ln.name}_${ln.side}`,
-        reverted: ln.outcome === 'reverted',
+        date: w.date, open: w.open, line: `${ln.name}_${ln.side}`, name: ln.name, side: ln.side,
+        reverted: ln.outcome === 'reverted', fillTime: ln.firstTouchTime ?? null,
         level: ln.level, innerLvl: ln.innerLvl, outerLvl: ln.outerLvl,
         cell: `${ln.name}_${ln.side}|${condKey}`,
       });
@@ -89,23 +90,34 @@ export function tradePnl(t, policy, { costPct = 0.012, slipPct = 0.006 } = {}) {
 // touchesByPair: { pair: touches[] }.  costByPair/slipByPair optional per-pair.
 // Returns { splitDate, policy, book, perPair, equity, nTrades, coverage }.
 export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, z = 1.96,
-                                            costByPair = {}, slipByPair = {} } = {}) {
+                                            costByPair = {}, slipByPair = {}, mcRuns = 1000, bootRuns = 1000 } = {}) {
   const all = Object.values(touchesByPair).flat().sort(byDate);
   if (!all.length) return null;
   const splitDate = all[Math.floor(all.length * splitFrac)]?.date ?? null;
   const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, z });
 
-  const bookTrades = [], perPair = {};
+  const bookTrades = [], perPair = {}, tradesByPair = {};
   for (const [pair, touches] of Object.entries(touchesByPair)) {
     const costPct = costByPair[pair] ?? DEFAULT_COST_PCT.fx;
     const slipPct = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
-    const trades = [];
+    const trades = [], log = [];
     for (const t of touches) {
       if (t.date < splitDate) continue;                     // OOS only
+      const p = policy[t.cell];
+      if (!p || p.decision === 'skip') continue;
       const pnl = tradePnl(t, policy, { costPct, slipPct });
-      if (pnl != null) trades.push({ date: t.date, pnl });
+      if (pnl == null) continue;
+      trades.push({ date: t.date, pnl });
+      // Full trade geometry for the log + the (Phase 2) M1 chart drill-down.
+      const tp = p.decision === 'fade' ? t.innerLvl : t.outerLvl;
+      const sl = p.decision === 'fade' ? t.outerLvl : t.innerLvl;
+      log.push({ date: t.date, line: t.line, name: t.name, side: t.side, decision: p.decision,
+        outcome: t.reverted ? 'reverted' : 'continued', open: t.open,
+        entry: +t.level.toFixed(6), tp: +tp.toFixed(6), sl: +sl.toFixed(6),
+        fillTime: t.fillTime, pnl });
     }
     perPair[pair] = { ...summarizeTrades(trades.map(x => x.pnl), trades.map(x => x.date)), trades: trades.length };
+    tradesByPair[pair] = log;
     bookTrades.push(...trades);
   }
   bookTrades.sort(byDate);
@@ -117,8 +129,8 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, z = 1.96
   const equity = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(4), cum: +(cum += pnl).toFixed(4) }));
   return {
-    splitDate, policy, perPair, equity, nTrades: bookTrades.length,
-    book: summarizeTrades(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date)),
+    splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair,
+    book: backtestStats(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date), { mcRuns, bootRuns }),
     coverage: { fadeCells: countDec(policy, 'fade'), followCells: countDec(policy, 'follow'), skipCells: countDec(policy, 'skip') },
   };
 }
