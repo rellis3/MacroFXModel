@@ -207,11 +207,14 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
    so highest caution). Note: repointing `confluenceModules → levelSources` is a
    *backtest-internal* cleanup and does NOT touch this live path.
    **Full gap analysis + the Asia-backtest inventory: `CONFLUENCE_LIVE_VS_BACKTEST.md`.**
-   Key divergences: live caps fib-match distance by session range + clusters
-   (density→stars) and grades by HMM+macro+range-bias; backtest doesn't cluster
-   and scores by 16 structural modules + WT gates. `confluence-core.js`,
-   `range-bias.js`, `structural-fibs.js`, `ranges.js` are **live, not dead** —
-   don't delete. Only `MD files/Range_Extension_Backtester_v5_2_ZSCORE.html` and
+   ✅ **Step 1 done:** `asiaRangeEngine` now detects confluence via the LIVE
+   `confluence-core.detectConfluencesCore` (session-range distance cap + cluster
+   density) instead of its own local copy — `js/asiaRangeConfluence.test.mjs`.
+   This changes the backtest's confluence counts on purpose (now matches live).
+   ⏳ Next: cross-session via `mergeCrossSessionConfs`, then star/grade parity
+   (`trade-grade.js`). `confluence-core.js`, `range-bias.js`, `structural-fibs.js`,
+   `ranges.js` are **live, not dead** — don't delete. Only
+   `MD files/Range_Extension_Backtester_v5_2_ZSCORE.html` and
    `Zoo/asia_range_backtest.py` are stale archive candidates.
 
 ---

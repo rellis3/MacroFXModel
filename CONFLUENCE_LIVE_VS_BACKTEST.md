@@ -69,9 +69,9 @@ faithful test of what fires on your phone.**
 
 | Dimension | Live (`confluence-core`) | Backtest (`asiaRangeEngine`/`confluenceModules`) | Impact |
 |---|---|---|---|
-| **Fib match distance** | `min(normalDist, sessionRange×0.25×0.5)` — capped by range | `confluenceThreshPips×pip` — **no range cap** | Backtest can match wider zones on big-range days |
-| **Clustering / density** | clusters raw pairs (`mergeFactor 0.30`) → `density` feeds stars | **none** — each fib checked independently; "density" not a concept | Live rewards stacked fibs; backtest doesn't (gets density-like info from modules instead) |
-| **Cross-session** | `mergeCrossSessionConfs` → `crossSessionMatch` (a star) | `crossAligned` flag used only as a `levelFilter` | Different mechanic, similar intent |
+| **Fib match distance** | `min(normalDist, sessionRange×0.25×0.5)` — capped by range | ✅ **ALIGNED** — backtest now calls `confluence-core.detectConfluencesCore` with `sessionRange` (was: `confluenceThreshPips×pip`, no cap) | closed |
+| **Clustering / density** | clusters raw pairs (`mergeFactor 0.30`) → `density` feeds stars | ✅ **ALIGNED** — same clusterer; each fib now carries `density` (was: none) | closed |
+| **Cross-session** | `mergeCrossSessionConfs` → `crossSessionMatch` (a star) | `crossAligned` flag used only as a `levelFilter` (not yet via `mergeCrossSessionConfs`) | ⏳ next |
 | **What scores the level** | HMM + macro + range-bias + structural blend | 16 structural modules only | **The core divergence** — different selection functions |
 | **Structural sources** | a few via range-bias (pivots, FVG, Ichimoku…) | 16 dedicated modules incl. **naked POC, VAH/VAL, swing S&R, vol-forecast HL75, SMI** — richer | Backtest "sees" structure the live grade never scores |
 | **Regime/macro** | HMM regime + FRED macro drive the grade | not in the score at all | Backtest can't reproduce the live grade |
@@ -112,13 +112,24 @@ files are genuinely stale: the `MD files/…ZSCORE.html` export and `Zoo/asia_ra
 
 ---
 
-## 4. Recommendation
+## 4. Progress & next steps
 
-1. **Don't merge live↔backtest confluence blindly** — they're different selection
-   functions, and the live side drives real Telegram alerts. Highest caution.
-2. **Make `levels.js`'s `confluence-core` path the canonical** (it's what trades),
-   then build the backtest to call the *same* confluence + grade code, so the
-   backtest proves the live logic. Equivalence-first, A/B on M1 + the KV path.
+**Done (this branch):**
+- ✅ **Confluence detection unified.** `asiaRangeEngine` now calls
+  `confluence-core.detectConfluencesCore` (the live matcher) via a thin
+  `markConfluence` adapter — bringing the **session-range distance cap** and
+  **cluster density** the backtest lacked. Each fib now carries
+  `hasConfluence / isTight / density`. Verified in `js/asiaRangeConfluence.test.mjs`.
+  ⚠ This **changes the backtest's confluence counts** (by design — it now matches
+  live); re-run with M1 data to see the new edge.
+
+**Next (working through it, in order):**
+1. **Cross-session via `mergeCrossSessionConfs`** — replace the backtest's
+   `crossAligned` proximity flag with the live Asia↔Monday merge so
+   `crossSessionMatch` means the same thing both sides.
+2. **Star + grade parity** — score levels with the live `signalScore` stars +
+   `trade-grade.js` grade (needs HMM + range-bias in the backtest; some live
+   factors — OANDA book, COT, FRED — aren't fully available historically, so this
+   is partial and explicit).
 3. **Keep the baseline** (`range-fib-backtest`) as the honest control.
-4. **Archive** the two stale files; leave the four live backtests and all the
-   live JS modules untouched.
+4. **Archive** the two stale files; leave the live JS modules untouched.
