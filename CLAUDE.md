@@ -73,6 +73,13 @@ doesn't, disconnect it — without disturbing the rest. Concretely:
 | `js/fibProjection.js` | `FIB_LEVELS`, `KEY_LEVELS`, `calcFibs` (range-extension grid) | any Asia/Monday range-extension engine |
 | `js/instrumentRegistry.js` | canonical pip/digits/asset-class + symbol aliases (`pipSize`, `instrument`, `resolveKey`…) | anything that needs a pip size or symbol — a wrong pip is a 10× PnL bug |
 
+**Tier-2 level-source bricks** (strategy-building plug-ins that EMIT price levels,
+built on the Tier-1 bricks; contract + module map in `LEGO_MODULES.md §1c`):
+
+| Module | Owns | Import for |
+|---|---|---|
+| `js/levelSources.js` | `LEVEL_SOURCES` registry (`daily_open`, `prior_hilo`, `pivots`, `volume_profile`, `swing_sr`, `round_number`), each `levels(ctx) → Level[]`, plus `collectLevels` + `clusterLevels` | building a strategy/chart from pluggable level sources — one `Level[]` feeds the scorer, the viewer and the strategy |
+
 > `js/volBacktestM1Engine.js` is the mature **v1** engine (M1 walk-forward, the
 > realistic fill walker, the seven legs). Treat it as **read-only reference** —
 > it runs in production. Build new versions alongside it (v2, v3…), like the
