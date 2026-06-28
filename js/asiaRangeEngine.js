@@ -38,6 +38,13 @@ import { waveTrendSeries } from './vumanchuCore.js';
 // backtest's notion of "confluence" matches what fires on the bot — including the
 // session-range distance cap + clustering (density) the old local copy lacked.
 import { detectConfluencesCore } from './confluence-core.js';
+// Grade levels the SAME way the live engine does (CONFLUENCE_LIVE_VS_BACKTEST.md):
+// same HMM (hmm.js), range-bias features (rangeBiasCore), star/signalScore
+// weighting (entryGradeCore) and A/B/C grader (trade-grade.js) — all shared.
+import { fitHMM, hmmSignalScore, compute30mSwingRegime } from '../hmm.js';
+import { computeRangeBiasServer, computeWeeklyPivots } from './rangeBiasCore.js';
+import { computeStars, computeStructScore, momScoreFrom, rbScoreFrom, computeSignalScore } from './entryGradeCore.js';
+import { gradeEntry } from './trade-grade.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -100,6 +107,45 @@ function _prevAsia(sessions, dayEpoch) {
   return lo > 0 ? sessions[lo - 1] : null;
 }
 
+// Pre-index daily OHLC bars across the full dataset (one per UTC calendar day),
+// for the live-grade HMM / EMA / Hurst / weekly-pivot inputs. Built once per pair.
+function _buildDailyBars(packed) {
+  const { n, times, opens, highs, lows, closes } = packed;
+  const byDay = new Map();
+  for (let i = 0; i < n; i++) {
+    const d = times[i] - (times[i] % 86400);
+    const b = byDay.get(d);
+    if (!b) byDay.set(d, { epoch: d, open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+    else { b.high = Math.max(b.high, highs[i]); b.low = Math.min(b.low, lows[i]); b.close = closes[i]; }
+  }
+  return [...byDay.values()].sort((a, b) => a.epoch - b.epoch);
+}
+
+// Day-level inputs for the live grade (no lookahead): HMM regime, weekly pivots,
+// 30m/5m windows ending at Asia close, and the range-bias conviction per side.
+// Direction-independent work is done once; rbias is precomputed for both sides.
+function _dayGradeContext(packed, dayEpoch, dailyBarsAll, pivotAtrPeriod = 14) {
+  const dailyBars = dailyBarsAll.filter(b => b.epoch < dayEpoch).slice(-100);   // strictly before today
+  let hmmData = null;
+  if (dailyBars.length >= 21) {
+    const closes = dailyBars.map(b => b.close).filter(v => v > 0);
+    const returns = [];
+    for (let i = 1; i < closes.length; i++) { const r = Math.log(closes[i] / closes[i - 1]); if (isFinite(r)) returns.push(r); }
+    if (returns.length >= 20) { try { hmmData = fitHMM(returns); } catch { hmmData = null; } }
+  }
+  const asiaClose = dayEpoch + 6 * 3600;
+  const bars30m = resampleTo(extractBars(packed, dayEpoch - 12 * 86400, asiaClose), 30);
+  const bars5m  = resampleTo(extractBars(packed, dayEpoch - 2  * 86400, asiaClose), 5);
+  const intraday30m = (() => { try { return compute30mSwingRegime(bars30m); } catch { return null; } })();
+  const pivots = computeWeeklyPivots(dailyBars);
+  const pivotAtr = calcATR(extractBars(packed, asiaClose - 24 * 3600, asiaClose), 30, pivotAtrPeriod);
+  const rbias = {
+    long:  computeRangeBiasServer('', 'long',  bars5m, bars30m, dailyBars),
+    short: computeRangeBiasServer('', 'short', bars5m, bars30m, dailyBars),
+  };
+  return { hmmData, intraday30m, pivots, pivotAtr, rbias };
+}
+
 // Pre-index every Monday wick range across the full dataset.
 // Per-day lookup: _mondayForDay(mondayRanges, dayEpoch) → O(log N).
 function _buildMondayRanges(packed) {
@@ -126,6 +172,16 @@ function _mondayForDay(mondayRanges, dayEpoch) {
   const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
   const target   = dayEpoch - daysBack * 86400;
   // Find nearest entry — allow ±90s for DST edge cases
+  let lo = 0, hi = mondayRanges.length;
+  while (lo < hi) { const m = (lo + hi) >>> 1; mondayRanges[m].epoch < target ? lo = m + 1 : hi = m; }
+  if (lo < mondayRanges.length && Math.abs(mondayRanges[lo].epoch - target) <= 90) return mondayRanges[lo];
+  if (lo > 0 && Math.abs(mondayRanges[lo - 1].epoch - target) <= 90) return mondayRanges[lo - 1];
+  return null;
+}
+
+// Return the Monday range entry at a specific target epoch (±90s) — used to find
+// the PRIOR Monday for the Monday-vs-previous-Monday confluence (Strategy B).
+function _mondayAtEpoch(mondayRanges, target) {
   let lo = 0, hi = mondayRanges.length;
   while (lo < hi) { const m = (lo + hi) >>> 1; mondayRanges[m].epoch < target ? lo = m + 1 : hi = m; }
   if (lo < mondayRanges.length && Math.abs(mondayRanges[lo].epoch - target) <= 90) return mondayRanges[lo];
@@ -228,8 +284,10 @@ function simulateDay(packed, dateStr, opts) {
   const {
     confluenceThreshPips = 2.0,
     tightPct             = 10.0,
+    mergeFactor          = 0.30,       // cluster merge radius = threshold × mergeFactor (live default)
+    crossSessionMerge    = false,      // overlay: flag Asia↔Monday coincidences (zone strength). Off = 2 independent strategies
     levelFilter          = 'tight',    // 'tight' | 'confluence' | 'asia_monday' | 'all'
-    levelSource          = 'asia',    // 'asia' | 'monday' | 'both'
+    levelSource          = 'asia',    // 'asia' | 'monday' | 'both' | 'asia_tight_monday'
     tradeZone            = 'outside',  // 'outside' | 'both'
     slMult               = 0.5,        // SL dist = asiaRange × slMult  (range_mult mode)
     tpMode               = '0.5',      // '0.5' | 'range_edge'
@@ -251,6 +309,8 @@ function simulateDay(packed, dateStr, opts) {
     // Pre-built pair-level session caches (populated by runAsiaRangeBacktest)
     _asiaSessions        = null,         // sorted array of {epoch,high,low,range}
     _mondayRanges        = null,         // sorted array of {epoch,high,low,range}
+    _dailyBars           = null,         // sorted daily OHLC for the live-grade inputs
+    liveGrade            = true,         // compute the live stars/signalScore/grade per trade (additive)
     // ── Confluence Priority mode ─────────────────────────────────────────────
     confluencePriorityMode = false,      // rank all zones by hit count, take top N
     priorityTopN           = 5,          // how many top-ranked zones to simulate
@@ -292,7 +352,7 @@ function simulateDay(packed, dateStr, opts) {
   // Confluence thresholds in price terms (match the live engine's caps config).
   const threshold      = confluenceThreshPips * pipSize;   // normalDistance
   const tightThreshold = threshold * (tightPct / 100);
-  const mergeDistance  = threshold * (opts.mergeFactor ?? 0.30);  // live default mergeFactor
+  const mergeDistance  = threshold * mergeFactor;  // cluster merge radius (live mergeFactor)
 
   const fibs = prevFibs.length
     ? markConfluence(currFibs, prevFibs, {
@@ -301,38 +361,51 @@ function simulateDay(packed, dateStr, opts) {
       })
     : currFibs.map(f => ({ ...f, hasConfluence: false, isTight: false, density: 0 }));
 
-  // Monday range + Monday fibs — O(log N) lookup if cache available
-  let mondayRange = null;
-  let mondayFibs  = [];
+  // Monday range + Monday fibs, AND the PRIOR Monday — O(log N) lookup if cached.
+  // Asia and Monday are TWO INDEPENDENT strategies: each scores confluence against
+  // its OWN previous session (Asia vs prev-Asia; Monday vs prev-Monday). The
+  // cross-session overlay below is an optional zone-strength layer, not the core.
+  let mondayRange = null, prevMondayRange = null;
+  let mondayFibs  = [], prevMondayFibs = [];
   {
     if (_mondayRanges) {
       mondayRange = _mondayForDay(_mondayRanges, dayEpoch);
+      if (mondayRange) prevMondayRange = _mondayAtEpoch(_mondayRanges, mondayRange.epoch - 7 * 86400);
     } else {
       const dow      = new Date(dateStr + 'T00:00:00Z').getUTCDay();
       const daysBack = dow === 1 ? 7 : (dow === 0 ? 6 : dow - 1);
       const monEpoch = dayEpoch - daysBack * 86400;
       const monBars  = extractBars(packed, monEpoch, monEpoch + 24 * 3600);
       if (monBars.length >= 20) mondayRange = mondayWickRange(monBars);
+      const pBars    = extractBars(packed, monEpoch - 7 * 86400, monEpoch - 7 * 86400 + 24 * 3600);
+      if (pBars.length >= 20) prevMondayRange = mondayWickRange(pBars);
     }
-    if (mondayRange) mondayFibs = calcFibs(mondayRange.low, mondayRange.range, fibLevels);
+    if (mondayRange)     mondayFibs     = calcFibs(mondayRange.low, mondayRange.range, fibLevels);
+    if (prevMondayRange) prevMondayFibs = calcFibs(prevMondayRange.low, prevMondayRange.range, fibLevels);
   }
 
-  // Cross-alignment: flag each Asia fib that sits within confluenceThresh of a Monday fib
-  // and each Monday fib that sits within confluenceThresh of an Asia fib.
-  // Re-use the same confluenceThreshPips threshold — these are the zone boundaries.
-  for (const af of fibs) {
-    af.source        = 'asia';
-    af.crossAligned  = mondayFibs.length > 0 && mondayFibs.some(mf => Math.abs(af.price - mf.price) <= threshold);
-  }
-  for (const mf of mondayFibs) {
-    const asiaMatch  = fibs.some(af => Math.abs(af.price - mf.price) <= threshold);
-    const asiaTight  = fibs.some(af => Math.abs(af.price - mf.price) <= tightThreshold);
-    // For Monday fibs: treat Asia-fib alignment as the "confluence" signal so that
-    // the existing levelFilter logic (tight/confluence/all) applies naturally.
-    mf.hasConfluence = asiaMatch;
-    mf.isTight       = asiaTight;
-    mf.crossAligned  = asiaMatch;
-    mf.source        = 'monday';
+  // Strategy B: Monday confluence = this Monday's fibs vs the PRIOR Monday's fibs
+  // (same matcher + cap + clustering as Asia). Independent of Asia.
+  mondayFibs = (mondayFibs.length && prevMondayFibs.length)
+    ? markConfluence(mondayFibs, prevMondayFibs, {
+        pipSize, normalDistance: threshold, tightDistance: tightThreshold,
+        mergeDistance, sessionRange: mondayRange.range,
+      })
+    : mondayFibs.map(f => ({ ...f, hasConfluence: false, isTight: false, density: 0 }));
+
+  for (const af of fibs)       af.source = 'asia';
+  for (const mf of mondayFibs) mf.source = 'monday';
+
+  // Optional cross-session overlay (configurable zone-strength layer): when on,
+  // flag Asia and Monday fibs that coincide as crossAligned — the two strategies
+  // agree at this price → a stronger zone. When off, they stay fully independent.
+  // The 'asia_monday' levelFilter implies the overlay (it selects cross zones).
+  const crossOn = crossSessionMerge || levelFilter === 'asia_monday';
+  for (const af of fibs)       af.crossAligned = false;
+  for (const mf of mondayFibs) mf.crossAligned = false;
+  if (crossOn && fibs.length && mondayFibs.length) {
+    for (const af of fibs)       af.crossAligned = mondayFibs.some(mf => Math.abs(af.price - mf.price) <= mergeDistance);
+    for (const mf of mondayFibs) mf.crossAligned = fibs.some(af => Math.abs(af.price - mf.price) <= mergeDistance);
   }
 
   // Build candidate level list according to levelSource
@@ -429,6 +502,13 @@ function simulateDay(packed, dateStr, opts) {
   }
 
   const trades = [];
+
+  // Day-level live-grade inputs (computed once; strictly no lookahead). Additive:
+  // does NOT change which trades simulate — only records the grade the live bot
+  // (levels.js → Telegram) would assign, so backtest selectivity can match live.
+  const gradeCtx = (liveGrade && _dailyBars)
+    ? _dayGradeContext(packed, dayEpoch, _dailyBars, atrPeriods)
+    : null;
 
   // ── PASS 1: filter candidates and score every valid zone ─────────────────────
   // (module checks run once here; result reused in pass 3 — no double computation)
@@ -556,6 +636,45 @@ function simulateDay(packed, dateStr, opts) {
       ? (Math.abs(price - mondayRange.high) <= pipSize * 10 || Math.abs(price - mondayRange.low) <= pipSize * 10)
       : false;
 
+    // ── Live grade (same shared code path as levels.js → Telegram) ─────────────
+    // Additive fields; recorded so the analysis page can compare grade vs outcome.
+    let live_stars = null, live_signal_score = null, live_grade = null, live_verdict = null;
+    if (gradeCtx) {
+      try {
+        const dir = side === 'BUY' ? 'long' : 'short';
+        const rb  = gradeCtx.rbias[dir];
+        const emaRsi = rb.features.find(f => f.key === 'ema') ?? { signal: null };
+        let pivotMatch = null;
+        if (gradeCtx.pivots && gradeCtx.pivotAtr) {
+          const prox = gradeCtx.pivotAtr * 0.10;
+          for (const k of ['PP', 'R1', 'R2', 'S1', 'S2']) {
+            if (gradeCtx.pivots[k] != null && Math.abs(price - gradeCtx.pivots[k]) <= prox) { pivotMatch = k; break; }
+          }
+        }
+        const flags = { isTight: fib.isTight, density: fib.density, crossSessionMatch: fib.crossAligned, pivotMatch: !!pivotMatch };
+        const rawStars = computeStars(flags);
+        const structScore = computeStructScore({ stars: rawStars, ...flags });
+        const hmmScore = hmmSignalScore(dir, gradeCtx.hmmData) ?? 0.5;
+        live_signal_score = computeSignalScore({
+          hmmScore, momScore: momScoreFrom(emaRsi.signal, dir),
+          rbScore: rbScoreFrom(rb.conviction), structScore,
+        });
+        live_stars = Math.min(5, rawStars);
+        const tags = [];
+        if (fib.isTight)            tags.push('Tight Fib');
+        if ((fib.density || 1) >= 3) tags.push('Dense Zone');
+        if (fib.crossAligned)       tags.push('Cross-Session');
+        if (pivotMatch)             tags.push(`Pivot ${pivotMatch}`);
+        const g = gradeEntry(
+          { direction: dir, signalScore: live_signal_score,
+            rangeBias: { confirmCount: rb.confirmCount, conflictCount: rb.conflictCount },
+            tags, totalStars: live_stars },
+          gradeCtx.hmmData, gradeCtx.intraday30m);
+        live_grade   = g?.grade ?? null;
+        live_verdict = g?.verdict ?? null;
+      } catch { /* leave nulls — grade is additive, never blocks a trade */ }
+    }
+
     trades.push({
       date:             dateStr,
       side,
@@ -603,6 +722,11 @@ function simulateDay(packed, dateStr, opts) {
       wt_at_touch:          wtAtTouch,
       wt_confirmed:         wtConfirmed,
       wt_divergence:        wtDivDetected,
+      // Live grade parity (same code path as levels.js → Telegram alerts)
+      live_stars,
+      live_signal_score,
+      live_grade,
+      live_verdict,
     });
   }
 
@@ -628,6 +752,7 @@ async function _getOrBuildPairData(pairKey, m1Dir) {
     packed,
     asiaSessions: _buildAsiaSessions(packed),
     mondayRanges: _buildMondayRanges(packed),
+    dailyBars:    _buildDailyBars(packed),
     ts: now,
   };
   _pairDataCache.set(pairKey, entry);
@@ -647,7 +772,7 @@ export async function runAsiaRangeBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR
 
   const pairData = await _getOrBuildPairData(pairKey, m1Dir);
   if (!pairData) throw new Error(`No M1 data for ${pairKey}`);
-  const { packed, asiaSessions: _asiaSessions, mondayRanges: _mondayRanges } = pairData;
+  const { packed, asiaSessions: _asiaSessions, mondayRanges: _mondayRanges, dailyBars: _dailyBars } = pairData;
 
   const pipSize    = PIP_SIZE[pairKey] ?? 0.0001;
 
@@ -656,7 +781,7 @@ export async function runAsiaRangeBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR
     ? buildAllPairCaches(packed, pipSize, opts.confluenceMods)
     : {};
 
-  const config = { ...opts, pipSize, pairCaches, _asiaSessions, _mondayRanges };
+  const config = { ...opts, pipSize, pairCaches, _asiaSessions, _mondayRanges, _dailyBars };
 
   // Collect UTC dates that have bars in the Asia session window
   const seenDates = new Set();

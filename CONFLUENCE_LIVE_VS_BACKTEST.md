@@ -71,10 +71,10 @@ faithful test of what fires on your phone.**
 |---|---|---|---|
 | **Fib match distance** | `min(normalDist, sessionRange×0.25×0.5)` — capped by range | ✅ **ALIGNED** — backtest now calls `confluence-core.detectConfluencesCore` with `sessionRange` (was: `confluenceThreshPips×pip`, no cap) | closed |
 | **Clustering / density** | clusters raw pairs (`mergeFactor 0.30`) → `density` feeds stars | ✅ **ALIGNED** — same clusterer; each fib now carries `density` (was: none) | closed |
-| **Cross-session** | `mergeCrossSessionConfs` → `crossSessionMatch` (a star) | `crossAligned` flag used only as a `levelFilter` (not yet via `mergeCrossSessionConfs`) | ⏳ next |
-| **What scores the level** | HMM + macro + range-bias + structural blend | 16 structural modules only | **The core divergence** — different selection functions |
-| **Structural sources** | a few via range-bias (pivots, FVG, Ichimoku…) | 16 dedicated modules incl. **naked POC, VAH/VAL, swing S&R, vol-forecast HL75, SMI** — richer | Backtest "sees" structure the live grade never scores |
-| **Regime/macro** | HMM regime + FRED macro drive the grade | not in the score at all | Backtest can't reproduce the live grade |
+| **Cross-session** | `mergeCrossSessionConfs` → `crossSessionMatch` (a star) | ✅ **ALIGNED** — Monday is now its own strategy (Monday vs prev-Monday); cross-merge is an opt-in `crossSessionMerge` overlay flagging `crossAligned` | closed |
+| **What scores the level** | HMM + macro + range-bias + structural blend | ✅ **ALIGNED (recorded)** — backtest now computes `live_stars` / `live_signal_score` / `live_grade` per trade via the SAME shared code (hmm.js, rangeBiasCore, entryGradeCore, trade-grade.js); the 16 module score remains as an extra structural layer | closed* |
+| **Structural sources** | a few via range-bias (pivots, FVG, Ichimoku…) | 16 dedicated modules incl. **naked POC, VAH/VAL, swing S&R, vol-forecast HL75, SMI** — richer | backtest still *has more* structural detail; live grade is now also recorded |
+| **Regime/macro** | HMM regime + FRED macro drive the grade | ✅ HMM now computed in the backtest (shared `hmm.js`); ⚠ **macro/COT/retail-book omitted** (no history) | mostly closed |
 | **Round numbers** | range-bias / pivots | module: 1000-pip major / 100-pip minor grid | (a third grid exists in `levelSources` — 100/50-pip) |
 | **Confirmation** | none (grade is the filter) | WaveTrend OB/OS + divergence gates | Backtest adds a timing gate the live cards don't |
 | **Fills** | live limit at level | `walkLimitOrder`, SL-before-TP, MFE/MAE | n/a (live is forward) |
@@ -123,13 +123,21 @@ files are genuinely stale: the `MD files/…ZSCORE.html` export and `Zoo/asia_ra
   ⚠ This **changes the backtest's confluence counts** (by design — it now matches
   live); re-run with M1 data to see the new edge.
 
-**Next (working through it, in order):**
-1. **Cross-session via `mergeCrossSessionConfs`** — replace the backtest's
-   `crossAligned` proximity flag with the live Asia↔Monday merge so
-   `crossSessionMatch` means the same thing both sides.
-2. **Star + grade parity** — score levels with the live `signalScore` stars +
-   `trade-grade.js` grade (needs HMM + range-bias in the backtest; some live
-   factors — OANDA book, COT, FRED — aren't fully available historically, so this
-   is partial and explicit).
+- ✅ **Independent strategies + cross overlay.** Monday is now scored Monday-vs-
+  prev-Monday (its own confluence, not borrowed from Asia); `crossSessionMerge` is
+  an opt-in zone-strength overlay. Asia and Monday are usable separately.
+- ✅ **Live grade recorded in the backtest.** Every trade now carries `live_stars`,
+  `live_signal_score`, `live_grade`, `live_verdict` from the SAME shared code the
+  bot grades on: `hmm.js` (regime), `rangeBiasCore` (the 5 features), `entryGradeCore`
+  (stars + signalScore weighting), `trade-grade.js` (A/B/C). Computed once per day,
+  strictly no-lookahead; additive (doesn't change which trades simulate) and
+  toggleable via `liveGrade`. ⚠ **Macro/COT/retail-sentiment factors are omitted**
+  (no historical data) — the recorded grade is a faithful *approximation* of the
+  live grade, not a 100% match. Re-run on M1 to compare grade vs outcome.
+
+**Remaining:**
+1. Wire a UI filter on `live_grade` (e.g. A+/A only) so backtest selectivity can be
+   set to the live grade — and compare its OOS edge to the module-score selection.
+2. Source COT history + (optionally) FRED macro so the few omitted factors can be
+   added for fuller parity.
 3. **Keep the baseline** (`range-fib-backtest`) as the honest control.
-4. **Archive** the two stale files; leave the live JS modules untouched.
