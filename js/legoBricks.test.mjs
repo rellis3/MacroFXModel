@@ -13,6 +13,8 @@ import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRe
 import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
+import { extractTouches, buildPolicy, tradePnl, runPerLine } from './perLineStrategy.js';
+import { backtestStats } from './backtestStats.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -164,6 +166,54 @@ console.log('[touchFeatures]');
   // Round-number proximity: 1.1000 sits ON a figure; 1.1037 is off.
   ok('roundNumber on-figure at 1.1000', createTouchFeatures().compute({ bars: rejBar, touchIdx: 0, open: 1.1, sigma: 0.005, side: 'up', level: 1.1000, pip: 0.0001 }).roundNum.bucket === '3·on-figure');
   ok('roundNumber off at 1.1080 (20 pips from 1.1100)', createTouchFeatures().compute({ bars: rejBar, touchIdx: 0, open: 1.1, sigma: 0.005, side: 'up', level: 1.1080, pip: 0.0001 }).roundNum.bucket === '1·off');
+}
+
+console.log('[perLineStrategy]');
+{
+  // One window with a decided fade-favoured touch: HL50_up reverted, spike, with
+  // inner/outer barriers priced.
+  const mkWin = (date, reverted, vel='3·spike') => ({ date, open: 1.10, lines: [
+    { name:'HL50', side:'up', outcome: reverted?'reverted':'continued', level:1.1050, innerLvl:1.1030, outerLvl:1.1070, approachVel:vel, budgetBucket:'3·exhausted' },
+  ]});
+  const touches = extractTouches([mkWin('2020-01-01',true)], {});
+  ok('extractTouches builds cell key from line + condition', touches[0].cell === 'HL50_up|3·spike' && touches[0].reverted === true);
+  ok('extractTouches drops missing-condition touches', extractTouches([{date:'x',open:1,lines:[{name:'HL50',side:'up',outcome:'reverted',level:1,innerLvl:0.9,outerLvl:1.1,approachVel:null}]}], {}).length === 0);
+  // Policy: 70% reversion over n=100 → fade; 50/50 → skip.
+  const isT = [];
+  for (let i=0;i<100;i++) isT.push(...extractTouches([mkWin('2020-01-0'+(i%9+1), i<70)], {}));
+  const pol = buildPolicy(isT, { minN: 50 });
+  ok('buildPolicy → fade on a significant reversion cell', pol['HL50_up|3·spike'].decision === 'fade');
+  const coin = []; for (let i=0;i<100;i++) coin.push(...extractTouches([mkWin('2020-02-01', i%2===0)], {}));
+  ok('buildPolicy → skip on a coin-flip cell', buildPolicy(coin,{minN:50})['HL50_up|3·spike'].decision === 'skip');
+  ok('buildPolicy → skip on thin sample', buildPolicy(isT.slice(0,10),{minN:50})['HL50_up|3·spike'].decision === 'skip');
+  // tradePnl: fade win = +distToInner − cost; fade loss = −distToOuter − cost.
+  const win  = tradePnl(touches[0], pol, { costPct: 0.01, slipPct: 0 });
+  const loss = tradePnl(extractTouches([mkWin('2020-01-01', false)],{})[0], pol, { costPct: 0.01, slipPct: 0 });
+  ok('tradePnl fade win ≈ +distToInner − cost', near(win, (Math.abs(1.1050-1.1030)/1.10*100) - 0.01, 1e-4));
+  ok('tradePnl fade loss ≈ −distToOuter − cost', near(loss, -(Math.abs(1.1070-1.1050)/1.10*100) - 0.01, 1e-4));
+  ok('tradePnl skips an unknown/skip cell', tradePnl({...touches[0], cell:'ZZ'}, pol, {}) === null);
+  // runPerLine: IS-learned fade applied OOS where the edge persists → positive book.
+  const byPair = { eurusd: [] };
+  for (let d=1; d<=200; d++){ const date = `2020-${String(Math.ceil(d/28)).padStart(2,'0')}-${String(d%28+1).padStart(2,'0')}`;
+    byPair.eurusd.push(...extractTouches([mkWin(date, d%10<7)], {})); }   // 70% revert throughout
+  const run = runPerLine(byPair, { splitFrac: 0.6, minN: 30, costByPair:{eurusd:0.01}, slipByPair:{eurusd:0} });
+  ok('runPerLine produces an OOS book with trades + daily equity', run.nTrades > 0 && run.equity.length > 0 && run.equity.length <= run.nTrades);
+  ok('runPerLine book is profitable when the IS edge persists OOS', run.book.totalPnl > 0 && run.coverage.fadeCells >= 1);
+}
+
+console.log('[backtestStats]');
+{
+  const dates = Array.from({ length: 200 }, (_, i) => `20${20 + Math.floor(i/50)}-0${1+(i%9)}-0${1+(i%9)}`);
+  const pnls  = Array.from({ length: 200 }, (_, i) => (i % 3 === 0 ? -0.5 : 0.4));   // ~67% win, +ve edge
+  const s = backtestStats(pnls, dates, { mcRuns: 200, bootRuns: 200, seed: 1 });
+  ok('backtestStats core fields present', ['sharpe','sortino','calmar','cagr','maxDD','profitFactor','payoff','winRate','expectancy','totalPnl'].every(k => k in s));
+  ok('backtestStats winRate ≈ 0.667', near(s.winRate, 2/3, 0.02));
+  ok('backtestStats totalPnl matches sum', near(s.totalPnl, pnls.reduce((a,b)=>a+b,0), 1e-6));
+  ok('backtestStats maxDD ≤ 0 and DD duration ≥ 0', s.maxDD <= 0 && s.maxDDdur >= 0);
+  ok('backtestStats bootstrap CI ordered (p5 ≤ p50 ≤ p95)', s.bootstrap.total.p5 <= s.bootstrap.total.p50 && s.bootstrap.total.p50 <= s.bootstrap.total.p95);
+  ok('backtestStats MC drawdown percentiles present', 'p50' in s.montecarlo.maxDD && 'p95' in s.montecarlo.maxDD);
+  ok('backtestStats deterministic under same seed', JSON.stringify(backtestStats(pnls, dates, { mcRuns: 200, bootRuns: 200, seed: 1 })) === JSON.stringify(s));
+  ok('backtestStats empty → {trades:0}', backtestStats([], []).trades === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

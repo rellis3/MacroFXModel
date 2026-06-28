@@ -15,6 +15,8 @@ import {
   runRefresh as runAnalyserRefresh, discoverPairs as discoverAnalyserPairs,
   getManifest as getAnalyserManifest, getAggregates as getAnalyserAggregates,
   getPairData as getAnalyserPairData,
+  runPerLineBook as runAnalyserPerLineBook, getPerLineBook as getAnalyserPerLineBook,
+  getPerLineTrades as getAnalyserPerLineTrades,
 } from './forecastAnalyserStore.js';
 
 function _analyserPw(req) {
@@ -65,6 +67,26 @@ function startRefreshJob({ pairs, horizons }) {
     } catch (e) {
       const msg = e?.message || String(e);
       console.error('[forecast-analysis/refresh]', msg);
+      afJobs.set(jobId, { status: 'error', startedAt, log, error: msg });
+    }
+  })();
+  return jobId;
+}
+
+// Run the per-line book as a tracked async job (loads stored records, no M1).
+function startPerLineJob(opts) {
+  const jobId     = `af_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  const log = [];
+  _purgeStaleAfJobs();
+  afJobs.set(jobId, { status: 'running', startedAt, log });
+  (async () => {
+    try {
+      const book = await runAnalyserPerLineBook({ ...opts, onLog: m => { log.push(m); console.log('[per-line]', m); } });
+      afJobs.set(jobId, { status: 'done', startedAt, log, result: { book } });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[per-line]', msg);
       afJobs.set(jobId, { status: 'error', startedAt, log, error: msg });
     }
   })();
@@ -135,6 +157,46 @@ export function mountAnalyserRoutes(app, express) {
       const d = await getAnalyserPairData(String(req.params.pair).toLowerCase(), req.params.horizon);
       if (!d) return res.status(404).json({ ok: false, error: 'Not found — check pair/horizon or run a refresh' });
       res.json({ ok: true, data: d });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // Per-line confidence book — build (admin: computes + writes) and read (view).
+  app.post('/api/forecast-analysis/per-line/run', express.json({ limit: '8kb' }), (req, res) => {
+    if (!_analyserAuth(req, res, 'admin')) return;
+    const b = req.body ?? {};
+    const opts = {
+      horizon:   b.horizon || 'daily',
+      conditions: Array.isArray(b.conditions) && b.conditions.length ? b.conditions.map(String) : undefined,
+      minN:      Number.isFinite(b.minN) ? b.minN : undefined,
+      splitFrac: Number.isFinite(b.splitFrac) ? b.splitFrac : undefined,
+    };
+    res.json({ ok: true, jobId: startPerLineJob(opts) });
+  });
+
+  app.get('/api/forecast-analysis/per-line/status/:jobId', (req, res) => {
+    if (!_analyserAuth(req, res, 'admin')) return;
+    const job = afJobs.get(req.params.jobId);
+    if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+    if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), log: job.log });
+    if (job.status === 'done')    return res.json({ ok: true, status: 'done', log: job.log, ...job.result });
+    return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+  });
+
+  app.get('/api/forecast-analysis/per-line/:horizon', async (req, res) => {
+    if (!_analyserAuth(req, res, 'view')) return;
+    try {
+      const book = await getAnalyserPerLineBook(req.params.horizon);
+      if (!book) return res.status(404).json({ ok: false, error: 'No book yet — an admin must run the per-line build' });
+      res.json({ ok: true, book });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  app.get('/api/forecast-analysis/per-line/:horizon/trades/:pair', async (req, res) => {
+    if (!_analyserAuth(req, res, 'view')) return;
+    try {
+      const t = await getAnalyserPerLineTrades(String(req.params.pair).toLowerCase(), req.params.horizon);
+      if (!t) return res.status(404).json({ ok: false, error: 'No trade log for that pair — rebuild the book' });
+      res.json({ ok: true, ...t });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 }
