@@ -144,7 +144,13 @@ function showApp(){
   if(MANIFEST){ const g=MANIFEST.generatedAt?new Date(MANIFEST.generatedAt).toLocaleString():'—';
     $('cov').textContent=`${pairs.length} pairs · last refreshed ${g} · ${MANIFEST.definitions?.revertContinue||''}`; }
   $('tabs').innerHTML=TABS.map(t=>`<div class="tab ${t===TAB?'active':''}" data-t="${t}">${t}</div>`).join('');
-  $('tabs').querySelectorAll('.tab').forEach(el=>el.onclick=()=>{TAB=el.dataset.t;showApp();});
+  // Tab switch only re-renders the view — it must NOT rebuild the pair/horizon
+  // selects (that was resetting the chosen pair every time you changed section).
+  $('tabs').querySelectorAll('.tab').forEach(el=>el.onclick=()=>{
+    TAB=el.dataset.t;
+    $('tabs').querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.t===TAB));
+    render();
+  });
   syncHorizons(); render();
 }
 function syncHorizons(){ const p=$('pair').value; const hz=Object.keys(MANIFEST?.pairs?.[p]?.horizons||{daily:1}); const cur=$('horizon').value;
