@@ -13,6 +13,7 @@
 
 import { computeBands, volSigmaSeries, classifyRegime, selectStrategy, HORIZONS, ASSET_PARAMS } from './forecastCore.js';
 import { classifyDayType, labelOutcome } from './dayTypeCore.js';   // the reversion/continuation classifier + realized-outcome labeler (lego bricks, imported never copied)
+import { createTouchFeatures } from './touchFeatures.js';           // at-the-moment intraday approach features (configurable lego brick)
 
 // ── 1) Build the ladder of lines, sorted by distance from open ───────────────
 // Returns up[] and dn[], each ordered inner→outer, plus the band fractions.
@@ -49,8 +50,9 @@ function classifySession(t) {
 //     the up lines anchor on the running LOW (which only drops on a new low) and
 //     vice-versa, an HL line is effectively fixed once its anchor extreme is set
 //     — so freezing neighbours at the touch bar is faithful, not an approximation.
-export function analyseWindow(session, ladder) {
+export function analyseWindow(session, ladder, ctx = {}) {
   const { open, bars } = session;
+  const { sigma = 0, tf = null, pip = 0 } = ctx;   // daily-σ frac + configured touch-feature computer + pip size
   const n = bars.length;
   const last = bars[n - 1];
   const closePx = last?.close ?? open;
@@ -59,6 +61,16 @@ export function analyseWindow(session, ladder) {
   const hasPath = n >= 2;
   const fr = ladder.frac;                          // { hl50, hl75, ocMed, oc75 } fractions
   const outRows = [];
+  // WaveTrend computed ONCE per window (causal EMA → indexing at a touch bar is
+  // lookahead-free). null when no touch-feature computer is wired.
+  const wt1 = tf ? tf.wtSeries(bars) : null;
+  const FEAT_KEYS = ['approachER', 'approachVel', 'wtState', 'volClimax', 'candleReject', 'roundNum'];
+  const NO_FEATS = Object.fromEntries(FEAT_KEYS.map(k => [k, null]));
+  const featBuckets = (touchIdx, side, level) => {
+    if (!tf || touchIdx < 0) return NO_FEATS;
+    const f = tf.compute({ bars, touchIdx, open, sigma, side, wt1, level, pip });
+    return Object.fromEntries(FEAT_KEYS.map(k => [k, f[k]?.bucket ?? null]));
+  };
 
   // Running extremes inclusive of bar k (drives the dynamic HL line levels).
   const runHigh = new Array(n), runLow = new Array(n);
@@ -99,10 +111,12 @@ export function analyseWindow(session, ladder) {
         outRows.push({ name: nm, side, level: +fin.toFixed(6), distPct,
           hit: false, outcome: 'no_touch', firstTouchTime: null, session: null, budgetBucket: null,
           retraceTo: null, retracePct: 0, extTo: null, extPct: 0,
-          closeBeyond: isUp ? closePx > fin : closePx < fin, mfePct: 0 });
+          closeBeyond: isUp ? closePx > fin : closePx < fin, mfePct: 0, ...NO_FEATS });
         continue;
       }
       const touchLvl = levelAt(nm, side, touchIdx);
+      // At-the-moment intraday approach + structural features (null when insufficient data).
+      const fb = featBuckets(touchIdx, side, touchLvl);
       // Range-budget at touch: realized H-L so far ÷ expected median daily range
       // (= HL50, the BM_P50 range constant — NOT 2×). Low = price hit the line
       // early in the day's range (continuation pressure); high = range spent.
@@ -114,7 +128,7 @@ export function analyseWindow(session, ladder) {
         outRows.push({ name: nm, side, level: +touchLvl.toFixed(6), distPct,
           hit: true, outcome: 'no_intraday', firstTouchTime, session: sess, budgetBucket,
           retraceTo: null, retracePct: 0, extTo: null, extPct: 0,
-          closeBeyond: isUp ? closePx > touchLvl : closePx < touchLvl, mfePct: 0 });
+          closeBeyond: isUp ? closePx > touchLvl : closePx < touchLvl, mfePct: 0, ...fb });
         continue;
       }
 
@@ -172,6 +186,7 @@ export function analyseWindow(session, ladder) {
         extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
         closeBeyond: isUp ? closePx > touchLvl : closePx < touchLvl,
         mfePct: +retracePct.toFixed(4),   // favourable excursion for a fade = reversion depth
+        ...fb,
       });
     }
   }
@@ -187,7 +202,7 @@ export function analyseWindow(session, ladder) {
 export function bucketM1IntoSessions(packed, boundaryHour = 22) {
   const map = new Map();
   if (!packed || !packed.n) return map;
-  const { n, times, opens, highs, lows, closes } = packed;
+  const { n, times, opens, highs, lows, closes, volumes } = packed;
   for (let i = 0; i < n; i++) {
     const t  = times[i];
     // times may be epoch SECONDS (Int32, from loadM1ForPair), epoch ms, or ISO.
@@ -196,7 +211,7 @@ export function bucketM1IntoSessions(packed, boundaryHour = 22) {
     if (dt.getUTCHours() >= boundaryHour) d.setUTCDate(d.getUTCDate() + 1);  // belongs to next session
     const key = d.toISOString().slice(0, 10);
     if (!map.has(key)) map.set(key, []);
-    map.get(key).push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
+    map.get(key).push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes ? volumes[i] : 0 });
   }
   for (const arr of map.values()) arr.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
   return map;
@@ -220,6 +235,7 @@ function sessionsToD1(sessions, dates) {
 export function runAnalyser(sessions, assetClass, opts = {}) {
   const { horizon = 'daily', minLookback = 50, dateFrom = '', dateTo = '', minBarsPerSession = 30 } = opts;
   const H = HORIZONS[horizon] ?? HORIZONS.daily;
+  const tf = createTouchFeatures(opts.touchCfg);   // at-the-moment approach features (configured here)
 
   // Drop thin sessions (holidays / partial days) so a session is a real path.
   const dates = [...sessions.keys()].sort()
@@ -253,7 +269,7 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
     const ladder = buildLadder(open, sigma, assetClass);
     const regime = classifyRegime(closes, i, 20, 5, opts.slopeThresh ?? 0.002, 1.0);
     const dow    = new Date(date + 'T00:00:00Z').getUTCDay();
-    const lines  = analyseWindow({ open, bars }, ladder);
+    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf, pip: opts.pip ?? 0 });
 
     // Day-type score (no lookahead: reads closes[< i] only) + the selector's
     // directional choice + the realized continuation/reversion label, for the

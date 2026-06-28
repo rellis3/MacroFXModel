@@ -1367,17 +1367,19 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
   };
 
   const pack = rows => {
-    const n      = rows.length;
-    const times  = new Int32Array(n);
-    const opens  = new Float32Array(n);
-    const highs  = new Float32Array(n);
-    const lows   = new Float32Array(n);
-    const closes = new Float32Array(n);
+    const n       = rows.length;
+    const times   = new Int32Array(n);
+    const opens   = new Float32Array(n);
+    const highs   = new Float32Array(n);
+    const lows    = new Float32Array(n);
+    const closes  = new Float32Array(n);
+    const volumes = new Float32Array(n);   // parquet col[4] = tick volume (FX activity proxy)
     for (let i = 0; i < n; i++) {
       const r = rows[i];
       times[i] = toEpoch(r[5]); opens[i] = r[0]; highs[i] = r[1]; lows[i] = r[2]; closes[i] = r[3];
+      volumes[i] = +r[4] || 0;
     }
-    return { n, times, opens, highs, lows, closes };
+    return { n, times, opens, highs, lows, closes, volumes };
   };
 
   // 1. R2
