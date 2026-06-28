@@ -221,29 +221,43 @@ function renderLevels(v){
 }
 
 // ── Conditioning: line × group reversion matrix, significance-colored ─────────
+let condMetric='rev';   // rev = reversion% · er = E-ratio · exp = fade expectancy %/touch
 function renderConditioning(v){
   const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
   const dims=Object.keys(SLICES).filter(s=>d[s]);
-  let html=`<div class="card"><div class="controls" style="margin-bottom:10px"><div><label>Dimension</label><select id="condSel">`+
-    dims.map(s=>`<option value="${s}" ${s===condDim?'selected':''}>${SLICES[s]}</option>`).join('')+`</select></div></div>`;
+  const METRICS={rev:'Reversion %',er:'E-ratio (fade)',exp:'Expectancy %/touch'};
+  let html=`<div class="card"><div class="controls" style="margin-bottom:10px">`+
+    `<div><label>Dimension</label><select id="condSel">`+
+    dims.map(s=>`<option value="${s}" ${s===condDim?'selected':''}>${SLICES[s]}</option>`).join('')+`</select></div>`+
+    `<div><label>Metric</label><select id="condMetric">`+
+    Object.entries(METRICS).map(([k,l])=>`<option value="${k}" ${k===condMetric?'selected':''}>${l}</option>`).join('')+`</select></div></div>`;
   const slice=d[condDim]||{}; let groups=Object.keys(slice).sort();
   if(condDim==='byDow') groups=groups.filter(g=>g>='1'&&g<='5');
-  html+=`<div class="hint" style="margin-bottom:8px">Cell = reversion % (z, n). Green = significant fade, red = significant breakout, grey = coin-flip.</div>`;
+  const hint = condMetric==='rev' ? 'Cell = reversion % (z, n). Green = significant fade, red = significant breakout, grey = coin-flip.'
+    : condMetric==='er' ? 'Cell = E-ratio of the fade (favourable ÷ adverse excursion, vol-normalised). &gt;1.1 green = reversion-favoured, &lt;0.9 red = continuation-favoured. This is the R:R edge per condition — a 55% bucket with E-ratio 1.4 can beat a 60% one at 1.0.'
+    : 'Cell = fade expectancy %/touch (revert%×avgRetrace − cont%×avgExt, no stop, costs excluded). The bottom-line edge of fading that line under that condition — combine with the Drivers tab to read off the best fade filters.';
+  html+=`<div class="hint" style="margin-bottom:8px">${hint}</div>`;
   html+=`<table><thead><tr><th>Line</th>`+groups.map(g=>`<th>${condDim==='byDow'?DOW[g]:g}</th>`).join('')+`</tr></thead><tbody>`;
   for(const k of LINE_ORDER){ html+=`<tr><td class="${sideCls(k)}">${lbl(k)}</td>`;
     for(const g of groups){ const s=slice[g]?.[k];
       if(!s||!s.decided){ html+=`<td class="mut">—</td>`; continue; }
-      const gg=sig(s.revRate,s.decided);
-      html+=`<td class="${gg.cls} ${s.lowN?'lown':''}">${fmt(s.revRate)}<span class="mut" style="font-size:10px"> ·${s.decided}</span></td>`; }
+      let cls, txt;
+      if(condMetric==='rev'){ const gg=sig(s.revRate,s.decided); cls=gg.cls; txt=fmt(s.revRate); }
+      else if(condMetric==='er'){ const er=s.eRatio; cls=er>=1.1?'cell-up':er<=0.9?'cell-dn':'cell-ns'; txt=fmt(er,2); }
+      else { const exp=(s.revRate/100)*(s.avgRetrace||0)-((100-s.revRate)/100)*(s.avgExt||0); cls=exp>0?'cell-up':exp<0?'cell-dn':'cell-ns'; txt=fmt(exp,3); }
+      html+=`<td class="${cls} ${s.lowN?'lown':''}">${txt}<span class="mut" style="font-size:10px"> ·${s.decided}</span></td>`; }
     html+=`</tr>`; }
   html+=`</tbody></table></div>`; v.innerHTML=html;
   $('condSel').onchange=e=>{condDim=e.target.value;render();};
+  $('condMetric').onchange=e=>{condMetric=e.target.value;render();};
 }
 
 // ── Drivers: which conditions actually move reversion? (feature importance) ──
-let driverLine='pooled';
+let driverLine='pooled', driverScope='full';
 function renderDrivers(v){
-  const d=pairData(); if(!d){ v.innerHTML=noData(); return; }
+  const base=pairData(); if(!base){ v.innerHTML=noData(); return; }
+  const hasOOS = !!base.oos;
+  const d = (driverScope==='oos' && hasOOS) ? base.oos : base;   // confirm drivers survive out-of-sample
   const dims=Object.keys(SLICES).filter(s=>d[s]);
   // line scope: pooled (all 8 lines) or one line
   const lineOpts=['pooled',...LINE_ORDER];
@@ -257,9 +271,14 @@ function renderDrivers(v){
     const res=featureChi(buckets); if(res) rows.push({dim,...res,
       best:buckets.map(b=>({g:b.g,rate:b.reverted/(b.reverted+b.continued)*100,n:b.reverted+b.continued})).sort((a,b)=>b.rate-a.rate)}); }
   rows.sort((a,b)=>b.x2-a.x2);
-  let html=`<div class="card"><div class="controls" style="margin-bottom:8px"><div><label>Line scope</label><select id="drvLine">`+
-    lineOpts.map(o=>`<option value="${o}" ${o===driverLine?'selected':''}>${o==='pooled'?'All lines pooled':lbl(o)}</option>`).join('')+`</select></div></div>`;
-  html+=`<div class="hint" style="margin-bottom:8px">Ranks each condition by how strongly it separates reversion vs continuation (chi-square over its buckets). <b>Lift</b> = spread between the best and worst bucket's reversion %. <b>p</b> &lt; 0.05 (green) = the condition genuinely matters; this is the empirical answer to "what drives it", with the baseline being ~coin-flip.</div>`;
+  let html=`<div class="card"><div class="controls" style="margin-bottom:8px">`+
+    `<div><label>Line scope</label><select id="drvLine">`+
+    lineOpts.map(o=>`<option value="${o}" ${o===driverLine?'selected':''}>${o==='pooled'?'All lines pooled':lbl(o)}</option>`).join('')+`</select></div>`+
+    `<div><label>Sample</label><select id="drvScope"${hasOOS?'':' disabled'}>`+
+    `<option value="full" ${driverScope==='full'?'selected':''}>Full sample</option>`+
+    `<option value="oos" ${driverScope==='oos'?'selected':''}>Out-of-sample${base.oos?.splitDate?` (from ${base.oos.splitDate})`:''}</option>`+
+    `</select></div></div>`;
+  html+=`<div class="hint" style="margin-bottom:8px">Ranks each condition by how strongly it separates reversion vs continuation (chi-square over its buckets). <b>Lift</b> = spread between the best and worst bucket's reversion %. <b>p</b> &lt; 0.05 (green) = the condition genuinely matters; this is the empirical answer to "what drives it", with the baseline being ~coin-flip. <b>Switch to Out-of-sample</b> to check a driver survives on held-out later data — an in-sample-only driver that vanishes OOS is noise${hasOOS?'':' (needs a fresh refresh for the OOS split)'}.</div>`;
   if(!rows.length){ html+=`<div class="mut">Not enough data — needs a refresh with the conditioning fields.</div></div>`; v.innerHTML=html; $('drvLine')&&($('drvLine').onchange=e=>{driverLine=e.target.value;render();}); return; }
   const top=rows[0];
   html+=`<div class="find"><b>Top driver:</b> ${SLICES[top.dim]} (χ²=${top.x2}, p=${top.p<0.001?'<0.001':fmt(top.p,3)}, lift ${top.lift}pp). Highest reversion bucket: <b>${top.best[0].g}</b> at ${fmt(top.best[0].rate)}% (n=${top.best[0].n}), lowest: ${top.best[top.best.length-1].g} at ${fmt(top.best[top.best.length-1].rate)}%.</div>`;
@@ -271,6 +290,7 @@ function renderDrivers(v){
       <td class="mut">${bb.g} ${fmt(bb.rate)}%</td></tr>`; }
   html+=`</tbody></table></div>`; v.innerHTML=html;
   $('drvLine').onchange=e=>{driverLine=e.target.value;render();};
+  $('drvScope')&&($('drvScope').onchange=e=>{driverScope=e.target.value;render();});
 }
 
 // ── Day-Type: does the signedT lean predict continuation? (brief §5) ─────────
