@@ -260,6 +260,32 @@ function roundNumberLevels(ctx) {
   return out;
 }
 
+// ── 7) VWAP / session anchors (over past x days) ─────────────────────────────
+// One session VWAP per day (tp = hlc3, volume proxy = volume||1), emitted as an
+// anchor level — the institutional reference the Gold bot tracks. The most
+// recent day's VWAP is the live anchor (highest weight). Needs `intraday`.
+// params: { lookbackDays = 5 }.
+function vwapAnchorLevels(ctx) {
+  const { lookbackDays = 5 } = ctx.params ?? {};
+  const bars = ctx.intraday ?? [];
+  if (!bars.length) return [];
+  const since = bars[bars.length - 1].time - lookbackDays * 86400;
+  const byDay = new Map();
+  for (const b of bars) { if (b.time < since) continue; const d = b.time - (b.time % 86400); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(b); }
+  const days = [...byDay.keys()].sort((a, b) => a - b);
+  const out = [];
+  days.forEach((d, idx) => {
+    let cumTpv = 0, cumVol = 0;
+    for (const b of byDay.get(d)) { const tp = (b.high + b.low + b.close) / 3; const vol = b.volume ?? 1; cumTpv += tp * vol; cumVol += vol; }
+    if (cumVol <= 0) return;
+    const vwap = cumTpv / cumVol;
+    const recent = idx === days.length - 1;
+    out.push(L(vwap, recent ? 'vwap' : 'vwap_anchor', recent ? 'VWAP (today)' : `VWAP ${isoDay(d)}`,
+      recent ? 1.8 : +(1.2 + 0.06 * idx).toFixed(3), { date: isoDay(d), recent }));
+  });
+  return out;
+}
+
 // ── Registry ─────────────────────────────────────────────────────────────────
 // Plug a source into a strategy/chart by id. defaultParams document the knobs.
 export const LEVEL_SOURCES = {
@@ -269,11 +295,12 @@ export const LEVEL_SOURCES = {
   volume_profile: { id: 'volume_profile', label: 'Volume Profile',     kind: 'profile',    defaultParams: { lookbackDays: 5, valueAreaPct: 0.70, binPips: 1, mode: 'composite' }, levels: volumeProfileLevels },
   swing_sr:       { id: 'swing_sr',       label: 'Swing S&R',          kind: 'sr',         defaultParams: { lookbackDays: 20, strength: 5, clusterPips: 5 },   levels: swingSRLevels },
   round_number:   { id: 'round_number',   label: 'Round Numbers',      kind: 'round',      defaultParams: { spanPips: 200, halves: true },                    levels: roundNumberLevels },
+  vwap:           { id: 'vwap',           label: 'VWAP Anchors',       kind: 'vwap',       defaultParams: { lookbackDays: 5 },                                levels: vwapAnchorLevels },
 };
 
 export {
   dailyOpenLevels, priorHighLowLevels, pivotLevels,
-  volumeProfileLevels, swingSRLevels, roundNumberLevels,
+  volumeProfileLevels, swingSRLevels, roundNumberLevels, vwapAnchorLevels,
 };
 
 // ── Aggregator ───────────────────────────────────────────────────────────────

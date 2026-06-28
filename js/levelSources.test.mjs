@@ -4,7 +4,7 @@
 import {
   LEVEL_SOURCES, collectLevels, clusterLevels,
   dailyOpenLevels, priorHighLowLevels, pivotLevels,
-  volumeProfileLevels, swingSRLevels, roundNumberLevels,
+  volumeProfileLevels, swingSRLevels, roundNumberLevels, vwapAnchorLevels,
 } from './levelSources.js';
 
 let failures = 0;
@@ -103,11 +103,22 @@ ok('includes 1.2300 and 1.2400 big figures', rn.some(l => near(l.price, 1.23)) &
 ok('includes a half figure 1.2350', rn.some(l => l.kind === 'round_half' && near(l.price, 1.235)));
 ok('all within ±span of price', rn.every(l => Math.abs(l.price - 1.2345) <= 0.02 + 1e-9));
 
+console.log('[vwap]');
+const vw = vwapAnchorLevels({ ...ctx, intraday, params: { lookbackDays: 5 } });
+ok('emits a VWAP anchor per day', vw.length >= 1 && vw.every(l => l.kind === 'vwap' || l.kind === 'vwap_anchor'));
+ok('most recent VWAP flagged + heaviest', (() => { const r = vw.find(l => l.meta.recent); return r && r.kind === 'vwap' && r.weight >= Math.max(...vw.map(l => l.weight)); })());
+ok('VWAP sits within the day price range', (() => {
+  const dayBars = intraday.filter(b => b.time - (b.time % 86400) === intraday[intraday.length - 1].time - (intraday[intraday.length - 1].time % 86400));
+  let lo = Infinity, hi = -Infinity; for (const b of dayBars) { lo = Math.min(lo, b.low); hi = Math.max(hi, b.high); }
+  const today = vw.find(l => l.meta.recent); return today && today.price >= lo && today.price <= hi;
+})());
+ok('returns [] without intraday', vwapAnchorLevels({ ...ctx, params: {} }).length === 0);
+
 console.log('[aggregator + clusterer]');
 const all = collectLevels({ ...ctx, intraday, price: last.close }, 'all');
 ok('collectLevels tags every level with source', all.length > 0 && all.every(l => l.source));
 ok('collectLevels sorted by price', all.every((l, i) => i === 0 || l.price >= all[i - 1].price));
-ok('registry exposes 6 sources', Object.keys(LEVEL_SOURCES).length === 6);
+ok('registry exposes 7 sources', Object.keys(LEVEL_SOURCES).length === 7);
 const zones = clusterLevels(all, 10, instrument);
 ok('clusterLevels merges into scored zones', zones.length > 0 && zones.every(z => z.score > 0 && Array.isArray(z.sources)));
 ok('zones sorted by score desc', zones.every((z, i) => i === 0 || z.score <= zones[i - 1].score));

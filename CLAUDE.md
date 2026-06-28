@@ -78,7 +78,8 @@ built on the Tier-1 bricks; contract + module map in `LEGO_MODULES.md §1c`):
 
 | Module | Owns | Import for |
 |---|---|---|
-| `js/levelSources.js` | `LEVEL_SOURCES` registry (`daily_open`, `prior_hilo`, `pivots`, `volume_profile`, `swing_sr`, `round_number`), each `levels(ctx) → Level[]`, plus `collectLevels` + `clusterLevels` | building a strategy/chart from pluggable level sources — one `Level[]` feeds the scorer, the viewer and the strategy |
+| `js/levelSources.js` | `LEVEL_SOURCES` registry (`daily_open`, `prior_hilo`, `pivots`, `volume_profile`, `swing_sr`, `round_number`, `vwap`), each `levels(ctx) → Level[]`, plus `collectLevels` + `clusterLevels` | building a strategy/chart from pluggable level sources — one `Level[]` feeds the scorer, the viewer and the strategy |
+| `js/levelChart.js` | reusable Lightweight-Charts viewer — `createLevelChart(el).setCandles().setLevels(Level[]).setZones()`; colour keyed by `Level.kind` (demo: `level-chart-demo.html`) | rendering a strategy's levels/zones on any page — pass in the `Level[]`, don't re-wire the chart |
 
 > `js/volBacktestM1Engine.js` is the mature **v1** engine (M1 walk-forward, the
 > realistic fill walker, the seven legs). Treat it as **read-only reference** —
