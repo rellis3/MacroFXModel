@@ -290,7 +290,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 
 // ── Public: run all instruments and return structured result ──────────────────
 
-export { ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75 };
+export { ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75, G_ALPHA, G_BETA };
 export { fetchD1 };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
