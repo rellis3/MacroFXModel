@@ -245,7 +245,7 @@ export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLo
 // skip policy on in-sample, applies it out-of-sample, and writes the book result
 // (equity curve + per-pair OOS perf + the policy table) to R2.
 export async function runPerLineBook({ horizon = 'daily', conditions = ['approachVel'],
-                                       minN = 50, splitFrac = 0.6, marginPct = 0,
+                                       minN = 50, splitFrac = 0.6, marginPct = 0.01,
                                        survivorMargin = 0.5, minSurvivorTrades = 30, onLog = () => {} } = {}) {
   if (!r2Configured()) throw new Error('R2 not configured');
   const manifest = await getManifest();
