@@ -17,6 +17,7 @@ import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, ru
 import { backtestStats, portfolioStats, deflatedSharpe } from './backtestStats.js';
 import { computeBands } from './forecastCore.js';
 import { buildVolatilityPlan } from './volatilityBotPlan.js';
+import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -322,6 +323,27 @@ console.log('[volatilityBotPlan]');
   ok('volatility plan: carries locked config (margin 0.01, approachVel)', plan.marginPct === 0.01 && plan.conditions[0] === 'approachVel');
   ok('volatility plan: throws without a book', (() => { try { buildVolatilityPlan(null, {}); return false; } catch { return true; } })());
 }
+
+console.log('[volatilityBotProducer]');
+await (async () => {
+  const book = { horizon:'daily', conditions:['approachVel'], marginPct:0.01, survivorMargin:0.5,
+    survivors:{ pairs:['eurusd','usdjpy'] }, policy:{ 'HL50_up|3·spike':{ decision:'fade' } } };
+  let written = null;
+  const plan = await refreshVolatilityPlan({
+    getBook: async () => book,
+    fetchD1: async (sym) => [{ open: sym.includes('JPY') ? 150 : 1.10, high: 1, low: 1, close: 1 }],  // open = last bar
+    sigmaSeries: () => [0.006],
+    kvPut: async (k, v) => { written = { k, v }; },
+    resolveInstrument: (p) => ({ oanda: p.toUpperCase().replace(/(...)(...)/, '$1_$2'), assetClass: 'fx', pip: p.includes('jpy') ? 0.01 : 0.0001 }),
+    now: () => '2026-06-29T00:00:00Z', stamp: () => 123,
+  });
+  ok('producer writes the volatility_bot_plan KV key', written?.k === 'volatility_bot_plan');
+  ok('producer plan prices both survivor pairs', plan.universe.length === 2 && plan.universe.includes('usdjpy'));
+  ok('producer stamps generatedAt + wraps {data,timestamp}', plan.generatedAt === '2026-06-29T00:00:00Z' && JSON.parse(written.v).timestamp === 123);
+  let threw = false;
+  try { await refreshVolatilityPlan({ getBook: async () => ({ survivors:{ pairs:[] } }), fetchD1: async()=>[], sigmaSeries:()=>[], kvPut: async()=>{} }); } catch { threw = true; }
+  ok('producer fails loud on an empty/absent book', threw);
+})();
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
