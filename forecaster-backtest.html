@@ -1164,11 +1164,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
         const slDistA = _computeSlDist(slMode, a.atr, config.slAtrMult, config.slFixedPips, pipSize, calibCtx);
         activeTrades.push(_buildTrade(++tradeId, barDate, def.key, a.dir, def.dynamic, c.time, entryPrice,
           a.lvPrice, a.atr, currentDay.open, fc, slDistA, useLevelTarget, useTp, config.tpRMult));
-<<<<<<< HEAD
-        if (slMode === 'maeCalib') dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: entryPrice, direction: a.dir, atr: a.atr });
-=======
         if (useMaeCalib) dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: entryPrice, direction: a.dir, atr: a.atr });
->>>>>>> 261fad63dd4e9122c1a27646688f4ec816e2c1bd
         if (singleMode) break;
       }
     }
@@ -1230,11 +1226,7 @@ function runBacktest(m1s, forecasts, atrArr, config, enabledLvs, fromDate, toDat
       const slDistT = _computeSlDist(slMode, atr, config.slAtrMult, config.slFixedPips, pipSize, calibCtx);
       activeTrades.push(_buildTrade(++tradeId, barDate, def.key, lvDir, def.dynamic, c.time, lvPrice,
         lvPrice, atr, currentDay.open, fc, slDistT, useLevelTarget, useTp, config.tpRMult));
-<<<<<<< HEAD
-      if (slMode === 'maeCalib') dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: lvPrice, direction: lvDir, atr });
-=======
       if (useMaeCalib) dayEntryLog.push({ entryIdx: i, entryTs: c.time, entry: lvPrice, direction: lvDir, atr });
->>>>>>> 261fad63dd4e9122c1a27646688f4ec816e2c1bd
       if (singleMode) break;
     }
   }
