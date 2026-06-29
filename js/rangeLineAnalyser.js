@@ -410,6 +410,65 @@ export function runHeldPosition(touchesByPair, { policy, splitDate, costByPair =
   return out;
 }
 
+// ── Per-(pair × level) quality scan + an honest veto ──────────────────────────
+// The pooled policy learns ONE decision per cell, so a level that's good
+// universally but bad on a specific pair is still traded there. This scans every
+// (pair, cell) the policy trades, reports its IS and OOS expectancy, and surfaces
+// the reliably-negative ones (the "bad levels" the pooled gate hides).
+// The veto is learned on IN-SAMPLE only (drop (pair,cell) whose IS expectancy is
+// below −vetoMargin on ≥ minN IS trades) and applied OUT-OF-SAMPLE — so the
+// baseline-vs-veto Sharpe is an honest out-of-sample comparison, not OOS snooping.
+// Caveat: per-(pair,cell) samples are small, so the veto itself can overfit —
+// minN guards it; treat the scan as diagnosis first, veto second.
+export function runBadLevelScan(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, minN = 30, vetoMargin = 0 } = {}) {
+  if (!policy || !splitDate) return null;
+  const K = (pair, cell) => `${pair}${cell}`;
+  const agg = new Map();
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) {
+      const p = policy[t.cell]; if (!p || p.decision === 'skip') continue;
+      const pnl = pnlFor(t, p.decision, { costPct: cost, slipPct: slip });
+      const k = K(pair, t.cell);
+      let a = agg.get(k);
+      if (!a) { a = { pair, cell: t.cell, decision: p.decision, isN: 0, isSum: 0, oosN: 0, oosSum: 0, oosWin: 0 }; agg.set(k, a); }
+      if (t.date < splitDate) { a.isN++; a.isSum += pnl; } else { a.oosN++; a.oosSum += pnl; if (pnl > 0) a.oosWin++; }
+    }
+  }
+  // IS-learned veto set.
+  const vetoed = new Set();
+  for (const a of agg.values()) if (a.isN >= minN && (a.isSum / a.isN) < -vetoMargin) vetoed.add(K(a.pair, a.cell));
+
+  // OOS portfolio impact: baseline (all traded cells) vs veto (drop the IS-bad ones).
+  const base = [], kept = [];
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) {
+      if (t.date < splitDate) continue;
+      const p = policy[t.cell]; if (!p || p.decision === 'skip') continue;
+      const pnl = pnlFor(t, p.decision, { costPct: cost, slipPct: slip });
+      base.push({ date: t.date, pnl });
+      if (!vetoed.has(K(pair, t.cell))) kept.push({ date: t.date, pnl });
+    }
+  }
+  const stat = (trades) => {
+    const n = trades.length, days = new Set(trades.map(t => t.date)).size, p = portfolioStats(_toDaily(trades));
+    return { sharpe: p.sharpe, trades: n, tradesPerDay: days ? +(n / days).toFixed(1) : 0,
+      expectancy: +(trades.reduce((s, x) => s + x.pnl, 0) / Math.max(1, n)).toFixed(4) };
+  };
+  const cells = [...agg.values()].map(a => ({
+    pair: a.pair, cell: a.cell, decision: a.decision,
+    isN: a.isN, isExp: a.isN ? +(a.isSum / a.isN).toFixed(4) : null,
+    oosN: a.oosN, oosExp: a.oosN ? +(a.oosSum / a.oosN).toFixed(4) : null,
+    oosWin: a.oosN ? +(a.oosWin / a.oosN * 100).toFixed(1) : null,
+    vetoed: vetoed.has(K(a.pair, a.cell)),
+  }));
+  // The reliably-bad (pair × level): negative OOS expectancy on a meaningful sample.
+  const worstOOS = cells.filter(c => c.oosN >= minN && c.oosExp != null).sort((a, b) => a.oosExp - b.oosExp).slice(0, 40);
+  return { minN, vetoMargin, nCells: cells.length, nVetoed: vetoed.size,
+    baseline: stat(base), withVeto: stat(kept), worstOOS };
+}
+
 // ── One pair: packed M1 → range-line touches (the per-pair unit of work) ──────
 // Returns the lightweight touch array (perLineStrategy shape). The caller can
 // drop `packed` after this — only the small touch list is retained — so a 26-pair
