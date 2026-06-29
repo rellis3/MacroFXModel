@@ -163,6 +163,22 @@ that already refreshes v1, right after it, isolated in a try/catch. It no-ops un
 a `policy_v2` exists in KV. This is **not** `cron-worker/cron-worker.js` (the
 separate Cloudflare proximity-alert worker, untouched).
 
+## Telegram alerts (`js/alertV2Core.js`) — built
+
+v2 alerts out to Telegram with its **own config**, separate from v1 (so paper-stage
+v2 noise never touches the live v1 alerter):
+- `selectAlerts` (pure) picks zones within proximity of price, at/above a min grade,
+  optional pair filter, with a per-level cooldown → returns alerts + updated
+  cooldowns. Default **OFF** (opt in from the page).
+- The live engine (`levelsV2Engine`) loads `tg_v2_alert_cfg` + the shared `tg_config`
+  (bot token/chat from the v1 Alerts modal) + `tg_v2_cooldowns` once per refresh,
+  dispatches via `alertFormatterV2.formatV2Entry`, persists cooldowns. **Alerts only —
+  never places trades.**
+- Config: `GET/POST /api/levels-v2/alert-config`; the **⚙ Alerts** panel on
+  `telegram-v2.html` (enabled, min grade, cooldown, per-class proximity, pairs).
+  `tg_v2_alert_cfg` is CF-persistent; cooldowns are ephemeral (a missed cooldown just
+  re-fires once after a restart).
+
 ## Still deliberately deferred
 
 - **Promote-from-ledger** UI (one-click blend of `refitFromLedger` into the frozen

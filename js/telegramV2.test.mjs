@@ -13,6 +13,7 @@ import { freezePolicy, isUsablePolicy, deriveBands } from './levelsV2Learn.js';
 import { extractTouches } from './perLineStrategy.js';
 import { buildRangeLadder } from './rangeLineAnalyser.js';
 import { recordEntries, resolvePair, ledgerStats, refitFromLedger } from './entryLedgerV2.js';
+import { selectAlerts, alertKey, pruneCooldowns } from './alertV2Core.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -194,6 +195,32 @@ console.log('[entryLedgerV2]');
   for (let i = 0; i < 30; i++) many.push({ cell: 'A_1.5_dn|spike', outcome: i % 3 === 0 ? 'loss' : 'win', realizedPct: i % 3 === 0 ? -0.1 : 0.2, decision: 'fade' });
   const cand = refitFromLedger(many, { minN: 30 });
   ok('refit produces a candidate cell', cand['A_1.5_dn|spike']?.n === 30 && cand['A_1.5_dn|spike'].source === 'ledger-realized');
+}
+
+// ── 6. alertV2Core (proximity + grade + cooldown selection) ──────────────────
+console.log('[alertV2Core]');
+{
+  const sym = 'EUR/USD', pip = 0.0001, cur = 1.1000, now = 1_000_000_000_000;
+  const entries = [
+    { price: 1.1003, direction: 'short', grade: 'A',  cell: 'c1' },  // 3p away, A
+    { price: 1.0997, direction: 'long',  grade: 'B',  cell: 'c2' },  // 3p away, B
+    { price: 1.1050, direction: 'short', grade: 'A+', cell: 'c3' },  // 50p away, far
+  ];
+  const cfg = { enabled: true, minGrade: 'A', cooldownMin: 120, proxPips: { default: 10 }, pairs: [] };
+  const r1 = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg, cooldowns: {}, now });
+  ok('fires near A, skips B + far', r1.alerts.length === 1 && r1.alerts[0].entry.cell === 'c1', `n=${r1.alerts.length}`);
+  ok('cooldown stamped', r1.cooldowns[alertKey(sym, 1.1003, 'short')] === now);
+  const r2 = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg, cooldowns: r1.cooldowns, now: now + 60_000 });
+  ok('cooldown suppresses re-alert', r2.alerts.length === 0);
+  const r3 = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg, cooldowns: r1.cooldowns, now: now + 121 * 60_000 });
+  ok('re-alerts after cooldown', r3.alerts.length === 1);
+  const off = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg: { ...cfg, enabled: false }, cooldowns: {}, now });
+  ok('disabled → nothing', off.alerts.length === 0);
+  const filtered = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg: { ...cfg, pairs: ['GBP/USD'] }, cooldowns: {}, now });
+  ok('pair filter excludes', filtered.alerts.length === 0);
+  const bGrade = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg: { ...cfg, minGrade: 'B' }, cooldowns: {}, now });
+  ok('minGrade B includes the B zone', bGrade.alerts.length === 2);
+  ok('prune drops stale', Object.keys(pruneCooldowns({ old: now - 25 * 3600_000, fresh: now }, now)).length === 1);
 }
 
 console.log(`\n${failures === 0 ? '✅ all passed' : `❌ ${failures} failed`}`);

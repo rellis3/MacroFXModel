@@ -41,10 +41,11 @@ import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
-import { recordsForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition } from './js/rangeLineAnalyser.js';
+import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition } from './js/rangeLineAnalyser.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
+import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
@@ -7225,6 +7226,36 @@ app.get('/api/levels-v2/ledger', async (req, res) => {
       }));
     }
     res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// v2 alert config (OWN config, separate from v1 ai_alert_cfg). GET returns current
+// + whether Telegram creds (tg_config) are saved; POST persists.
+app.get('/api/levels-v2/alert-config', async (req, res) => {
+  try {
+    const raw = await kv.get('tg_v2_alert_cfg');
+    const cfg = raw ? { ...DEFAULT_V2_ALERT_CFG, ...JSON.parse(raw) } : { ...DEFAULT_V2_ALERT_CFG };
+    const tgRaw = await kv.get('tg_config');
+    const tg = tgRaw ? JSON.parse(tgRaw) : null;
+    res.json({ ok: true, cfg, telegramConfigured: !!(tg?.token && tg?.chatId) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/levels-v2/alert-config', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cfg = {
+      enabled:     !!b.enabled,
+      minGrade:    ['A+', 'A', 'B', 'C'].includes(b.minGrade) ? b.minGrade : 'A',
+      cooldownMin: Math.max(5, parseInt(b.cooldownMin) || 120),
+      proxPips: {
+        default:      parseFloat(b.proxPips?.default) || DEFAULT_V2_ALERT_CFG.proxPips.default,
+        'XAU/USD':    parseFloat(b.proxPips?.['XAU/USD']) || DEFAULT_V2_ALERT_CFG.proxPips['XAU/USD'],
+        'NAS100_USD': parseFloat(b.proxPips?.['NAS100_USD']) || DEFAULT_V2_ALERT_CFG.proxPips['NAS100_USD'],
+      },
+      pairs: Array.isArray(b.pairs) ? b.pairs.filter(Boolean) : [],
+    };
+    await kv.put('tg_v2_alert_cfg', JSON.stringify(cfg));
+    res.json({ ok: true, cfg });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

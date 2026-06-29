@@ -28,6 +28,21 @@ import { createTouchFeatures } from './js/touchFeatures.js';
 import { gradeLevelV2 } from './js/gradeLevelV2.js';
 import { isUsablePolicy } from './js/levelsV2Learn.js';
 import { recordEntries, resolvePair } from './js/entryLedgerV2.js';
+import { selectAlerts, pruneCooldowns, DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
+import { formatV2Entry } from './js/alertFormatterV2.js';
+
+// Minimal Telegram sender (v2-owned; the cross-file JS Telegram sender is a known
+// LEGO_MODULES §2 candidate). Reads tg_config saved by the Alerts modal.
+async function sendTelegramV2(token, chatId, html) {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: html, parse_mode: 'HTML', disable_web_page_preview: true }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    return r.ok;
+  } catch { return false; }
+}
 
 // ── Instrument helpers ────────────────────────────────────────────────────────
 function pipOf(sym) { try { return pipSizeOf(sym); } catch { return sym.includes('JPY') ? 0.01 : sym.includes('XAU') ? 0.1 : 0.0001; } }
@@ -172,6 +187,18 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       ledgerRef.ledger = resolvePair(ledgerRef.ledger, sym, bars1m, now, opts.ledger);
     }
 
+    // Telegram alerts (v2's OWN config + cooldowns; alerts only, never trades).
+    const ac = opts.alertCtx;
+    if (ac?.cfg?.enabled && ac.token && ac.chatId) {
+      const sel = selectAlerts({ sym, entries: payload, currentPrice: +price.toFixed(digits), pip, cfg: ac.cfg, cooldowns: ac.cooldowns, now: Date.now() });
+      ac.cooldowns = sel.cooldowns;
+      for (const a of sel.alerts) {
+        const msg = formatV2Entry(sym, a.entry, { currentPrice: +price.toFixed(digits), digits, distPips: a.distPips, policyBuiltAt: frozen.builtAt });
+        const okSend = await sendTelegramV2(ac.token, ac.chatId, msg);
+        ac.sent = (ac.sent ?? 0) + (okSend ? 1 : 0);
+      }
+    }
+
     console.log(`[LEVELS-V2] ${sym}: ${payload.length} entries (${ladders.map(l => l.srcTag).join('+')}), ${Date.now() - t0}ms`);
     return payload.length;
   } catch (e) {
@@ -194,10 +221,34 @@ export async function refreshAllPairsV2(pairs, opts = {}) {
     ledgerRef = { ledger: Array.isArray(ledger) ? ledger : [] };
   }
 
+  // Load v2 alert config + Telegram creds + cooldowns once (own config, separate from v1).
+  let alertCtx = null;
+  try {
+    const cfgRaw = await kv.get('tg_v2_alert_cfg');
+    const cfg = cfgRaw ? { ...DEFAULT_V2_ALERT_CFG, ...JSON.parse(cfgRaw) } : { ...DEFAULT_V2_ALERT_CFG };
+    if (cfg.enabled) {
+      const tgRaw = await kv.get('tg_config');
+      const tg = tgRaw ? JSON.parse(tgRaw) : null;
+      if (tg?.token && tg?.chatId) {
+        let cooldowns = {};
+        try { const cdRaw = await kv.get('tg_v2_cooldowns'); if (cdRaw) cooldowns = JSON.parse(cdRaw) || {}; } catch {}
+        alertCtx = { cfg, token: tg.token, chatId: tg.chatId, cooldowns: pruneCooldowns(cooldowns, Date.now()), sent: 0 };
+      } else {
+        console.log('[LEVELS-V2] alerts enabled but tg_config missing token/chatId — save them in the Alerts modal');
+      }
+    }
+  } catch (e) { console.error('[LEVELS-V2] alert config load error:', e.message); }
+  opts = { ...opts, alertCtx };
+
   const results = {};
   for (const sym of pairs) {
     results[sym] = await refreshPairV2(sym, frozen, opts, ledgerRef);
     await new Promise(r => setTimeout(r, 400));   // OANDA rate-limit
+  }
+
+  if (alertCtx) {
+    try { await kv.put('tg_v2_cooldowns', JSON.stringify(alertCtx.cooldowns)); } catch {}
+    if (alertCtx.sent) console.log(`[LEVELS-V2] sent ${alertCtx.sent} Telegram alert(s)`);
   }
 
   if (ledgerRef) {
