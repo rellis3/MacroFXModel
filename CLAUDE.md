@@ -13,7 +13,10 @@ Orientation docs (read when you need them, not every time):
 direction / confidence — the built fade-vs-follow engine and its modules), and
 **`LEGO_MODULES.md` (the central brick registry** — every reusable module, where
 it's used, what it does, and the candidate bricks still to extract; read it
-before adding a module so you import an existing brick instead of copying).
+before adding a module so you import an existing brick instead of copying), and
+`PYTHON_LEGO.md` (extending the brick architecture to the Python bots — the
+`pylego/` baseplate, the generate-don't-port rule for shared math/data, and the
+one-bot-at-a-time adoption plan).
 
 ---
 
