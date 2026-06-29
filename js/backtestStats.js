@@ -50,6 +50,27 @@ function ddStats(pnls) {
 }
 function resample(arr, rng) { const n = arr.length, out = new Array(n); for (let i = 0; i < n; i++) out[i] = arr[(rng() * n) | 0]; return out; }
 function shuffle(arr, rng) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function skewKurt(a) {
+  const n = a.length; if (n < 3) return { skew: 0, kurt: 3 };
+  const m = mean(a), sd = stdev(a); if (sd < 1e-12) return { skew: 0, kurt: 3 };
+  let s = 0, k = 0; for (const x of a) { const z = (x - m) / sd; s += z ** 3; k += z ** 4; }
+  return { skew: s / n, kurt: k / n };
+}
+// Standard normal CDF (Abramowitz-Stegun erf).
+function normCdf(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp(-x * x / 2);
+  let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - p : p;
+}
+// Probabilistic Sharpe Ratio (López de Prado): P(true Sharpe > benchmark) given
+// the sample's length, skew and kurtosis. `sr`/`srBench` are PER-OBSERVATION
+// (non-annualised) Sharpes. Penalises short samples, negative skew and fat tails.
+function probabilisticSharpe(sr, n, skew, kurt, srBench = 0) {
+  if (n < 3) return 0;
+  const denom = Math.sqrt(Math.max(1e-12, 1 - skew * sr + (kurt - 1) / 4 * sr * sr));
+  return +normCdf((sr - srBench) * Math.sqrt(n - 1) / denom).toFixed(3);
+}
 
 export function backtestStats(pnls, dates = [], { mcRuns = 1000, bootRuns = 1000, seed = 0x9e3779b9 } = {}) {
   const n = pnls.length;
@@ -117,9 +138,15 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252 } =
   const scale = annVol > 1e-9 ? targetVol / annVol : 0;
   const scaled = daily.map(x => x * scale);
   const vtCagr = cagrOf(scaled), vtDD = ddStats(scaled).maxDD;
+  // Probabilistic Sharpe (P true Sharpe > 0) on the per-day Sharpe — penalises
+  // short samples, negative skew and fat tails.
+  const { skew, kurt } = skewKurt(daily);
+  const psr = probabilisticSharpe(sd > 1e-9 ? m / sd : 0, n, skew, kurt, 0);
   return {
     days: n,
     sharpe: +sharpe.toFixed(2),
+    psr,
+    skew: +skew.toFixed(2),
     annVol: +annVol.toFixed(2),
     cagr:   +cagr.toFixed(2),
     maxDD:  +maxDD.toFixed(2),

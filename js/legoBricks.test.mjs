@@ -13,7 +13,7 @@ import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRe
 import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
-import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine } from './perLineStrategy.js';
+import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor } from './perLineStrategy.js';
 import { backtestStats, portfolioStats } from './backtestStats.js';
 
 let failures = 0;
@@ -237,6 +237,23 @@ console.log('[backtestStats]');
   ok('portfolioStats Sharpe invariant to vol target (scale-free)', portfolioStats(daily,{targetVol:5}).sharpe === portfolioStats(daily,{targetVol:20}).sharpe);
   ok('portfolioStats annVol > 0 and vol-target set', ps.annVol > 0 && ps.volTarget.target === 10);
   ok('portfolioStats empty → {days:0}', portfolioStats([]).days === 0);
+  ok('portfolioStats PSR present & in [0,1]', ps.psr >= 0 && ps.psr <= 1);
+}
+
+console.log('[runRigor]');
+{
+  // A persistent ~70%-reversion edge across pairs and time → walk-forward holds,
+  // IS≈OOS, cost-stress decays but stays positive at 1×, per-year present.
+  const mk=(date,rev)=>({date,open:1.10,line:'HL50_up',name:'HL50',side:'up',reverted:rev,decidedBy:'barrier',closePx:1.10,level:1.1050,innerLvl:1.1030,outerLvl:1.1070,cell:'HL50_up|3·spike'});
+  const byPair={};
+  for(const p of ['eurusd','gbpusd','usdjpy']){ const a=[];
+    for(let d=0; d<900; d++){ const yr=2020+Math.floor(d/300); const mo=String(1+(Math.floor(d/25)%12)).padStart(2,'0'); const dd=String(1+(d%25)).padStart(2,'0');
+      a.push(mk(`${yr}-${mo}-${dd}`, (d*7)%10<7)); } byPair[p]=a; }
+  const rg=runRigor(byPair,{splitFrac:0.6,minN:30,folds:4,costByPair:{eurusd:0.005,gbpusd:0.005,usdjpy:0.005},slipByPair:{eurusd:0,gbpusd:0,usdjpy:0}});
+  ok('runRigor returns walk-forward folds', rg.walkForward.folds.length>=1 && rg.walkForward.overall.days>0);
+  ok('runRigor IS vs OOS with degradation ratio', rg.isVsOos.is.sharpe!==undefined && rg.isVsOos.oos.sharpe!==undefined && rg.isVsOos.degradation!=null);
+  ok('runRigor cost-sensitivity decays with cost', rg.costSensitivity.length===3 && rg.costSensitivity[0].sharpe >= rg.costSensitivity[2].sharpe);
+  ok('runRigor per-year present', rg.perYear.length>=1 && rg.perYear[0].year);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

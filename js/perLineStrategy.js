@@ -169,3 +169,78 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
 
 function byDate(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }
 function countDec(policy, d) { return Object.values(policy).filter(p => p.decision === d).length; }
+
+// Daily-summed PnL series from a {date,pnl}[] list (for portfolioStats).
+function dailySeries(trades) {
+  const m = new Map();
+  for (const t of trades) m.set(t.date, (m.get(t.date) || 0) + t.pnl);
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+}
+// Price every non-skip touch under a policy (optionally scaling cost by `mult`).
+function priceTrades(touches, policy, mult = 1) {
+  const out = [];
+  for (const t of touches) {
+    const p = policy[t.cell];
+    if (!p || p.decision === 'skip') continue;
+    out.push({ date: t.date, pnl: pnlFor(t, p.decision, { costPct: (t.cost ?? 0.012) * mult, slipPct: (t.slip ?? 0.006) * mult }) });
+  }
+  return out;
+}
+
+// ── 5) Rigor battery — walk-forward, per-year, cost-sensitivity, IS-vs-OOS ─────
+// A "serious backtest" beyond one split. All from the same touches (cheap).
+//   • walkForward — anchored folds: train on everything before each test chunk,
+//     test on the chunk, march forward; aggregate every fold's OOS trades.
+//   • isVsOos     — the single-split policy applied to its own IS vs the OOS
+//     (degradation ratio = OOS Sharpe ÷ IS Sharpe).
+//   • costSensitivity — re-price the OOS book at cost ×{1,2,3} (edge survival).
+//   • perYear     — OOS book stats per calendar year (sub-period stability).
+export function runRigor(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
+                                          folds = 5, initialFrac = 0.4, costMults = [1, 2, 3],
+                                          costByPair = {}, slipByPair = {} } = {}) {
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
+  const all = Object.values(touchesByPair).flat().sort(byDate);
+  if (all.length < 100) return null;
+  const dates = all.map(t => t.date);
+  const ps = (trades) => portfolioStats(dailySeries(trades));
+
+  // IS vs OOS on the single split.
+  const splitDate = dates[Math.floor(dates.length * splitFrac)];
+  const isPol  = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
+  const isStats  = ps(priceTrades(all.filter(t => t.date < splitDate), isPol));
+  const oosTrades = priceTrades(all.filter(t => t.date >= splitDate), isPol);
+  const oosStats = ps(oosTrades);
+  const isVsOos = { splitDate, is: isStats, oos: oosStats,
+                    degradation: isStats.sharpe ? +(oosStats.sharpe / isStats.sharpe).toFixed(2) : null };
+
+  // Walk-forward: initial IS = first `initialFrac`, then `folds` equal-count test chunks.
+  const startIdx = Math.floor(dates.length * initialFrac);
+  const tailDates = dates.slice(startIdx);
+  const wfTrades = [], foldStats = [];
+  for (let f = 0; f < folds; f++) {
+    const a = tailDates[Math.floor(f * tailDates.length / folds)];
+    const b = tailDates[Math.floor((f + 1) * tailDates.length / folds)] ?? null;   // null = to the end
+    const train = all.filter(t => t.date < a);
+    if (train.length < minN) continue;
+    const pol = buildPolicy(train, { minN, marginPct });
+    const test = all.filter(t => t.date >= a && (b == null || t.date < b));
+    const tr = priceTrades(test, pol);
+    wfTrades.push(...tr);
+    foldStats.push({ from: a, to: b ?? dates[dates.length - 1], trades: tr.length, ...ps(tr) });
+  }
+  const walkForward = { folds: foldStats, overall: ps(wfTrades), trades: wfTrades.length };
+
+  // Cost sensitivity on the OOS book (same policy, friction × mult).
+  const oosTouches = all.filter(t => t.date >= splitDate);
+  const costSensitivity = costMults.map(mult => ({ mult, ...ps(priceTrades(oosTouches, isPol, mult)) }));
+
+  // Per-year (OOS).
+  const byYear = {};
+  for (const t of oosTrades) (byYear[t.date.slice(0, 4)] ??= []).push(t);
+  const perYear = Object.entries(byYear).sort().map(([year, tr]) => ({ year, trades: tr.length, ...ps(tr) }));
+
+  return { isVsOos, walkForward, costSensitivity, perYear };
+}
