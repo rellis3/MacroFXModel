@@ -46,6 +46,11 @@ import { computeRangeBiasServer, computeWeeklyPivots } from './rangeBiasCore.js'
 import { computeStars, computeStructScore, momScoreFrom, rbScoreFrom, computeSignalScore } from './entryGradeCore.js';
 import { gradeEntry } from './trade-grade.js';
 import { dayTypeScore } from './dayTypeCore.js';   // reversion(low T)↔continuation(high T) selector
+// Transferred from the vol-forecaster strategy (STRATEGY_BUILD.md): the OOS-proven
+// at-the-moment confidence feature (approach velocity — fast spike into a level →
+// fade) and the triple-barrier exit (TP = next level toward mid, SL = next away).
+import { createTouchFeatures } from './touchFeatures.js';
+const _touchFeat = createTouchFeatures();   // default cfg (velWin 15, velFast 0.60σ)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -151,15 +156,15 @@ function _dayGradeContext(packed, dayEpoch, dailyBarsAll, pivotAtrPeriod = 14) {
   //     as |entry-anchor| / (anchor × forecastHalfFrac): ≈1 means at the HL75 band.
   const closes = dailyBars.map(b => b.close).filter(v => v > 0);
   const dayTypeT = closes.length > 16 ? dayTypeScore(closes, closes.length, 14) : null;
-  let forecastHalfFrac = null;
+  let forecastHalfFrac = null, dailySigma = null;
   if (closes.length >= 6) {
     const win = closes.slice(-22);
     let variance = 0;
     for (let i = 1; i < win.length; i++) { const r = Math.log(win[i] / win[i - 1]); variance = 0.94 * variance + 0.06 * r * r; }
-    const sigma = Math.sqrt(variance);
-    forecastHalfFrac = 2.049 * 0.894 * sigma / 2;   // BM_P75 × FX corr (same as the vol_forecast module)
+    dailySigma = Math.sqrt(variance);                       // daily σ as a fraction (for approachVel)
+    forecastHalfFrac = 2.049 * 0.894 * dailySigma / 2;      // BM_P75 × FX corr (same as the vol_forecast module)
   }
-  return { hmmData, intraday30m, pivots, pivotAtr, rbias, dayTypeT, forecastHalfFrac };
+  return { hmmData, intraday30m, pivots, pivotAtr, rbias, dayTypeT, forecastHalfFrac, dailySigma };
 }
 
 // Pre-index every Monday wick range across the full dataset.
@@ -317,6 +322,7 @@ function simulateDay(packed, dateStr, opts) {
     atrSlMult            = 1.5,          // SL = atrSlMult × ATR30
     atrTpMult            = 2.0,          // TP = atrTpMult × SL distance
     atrPeriods           = 14,
+    exitMode             = 'standard',   // 'standard' | 'triple_barrier' (TP=next structural level toward mid, SL=next away)
     // Confluence module system
     confluenceMods       = [],           // enabled module objects
     pairCaches           = {},           // pre-built pair-level caches
@@ -526,6 +532,18 @@ function simulateDay(packed, dateStr, opts) {
     ? _dayGradeContext(packed, dayEpoch, _dailyBars, atrPeriods)
     : null;
 
+  // Sparse STRUCTURAL ladder for the triple-barrier exit: the half-integer fib
+  // grid (…−1,−0.5,0,0.5,1,1.5…) — so barriers are real structural distances, not
+  // the 0.25-dense grid (whose neighbours would be swamped by cost).
+  const ladderP = (exitMode === 'triple_barrier')
+    ? fibLevels.filter(L => Number.isInteger(L * 2)).map(L => asia.low + asia.range * L).sort((a, b) => a - b)
+    : null;
+
+  // Approach bars (trade window + 30m pre-roll) for approachVel at the fill bar.
+  const approachBars = gradeCtx ? extractBars(packed, tradeFrom - 1800, tradeTo) : null;
+  const approachIdx  = approachBars ? new Map(approachBars.map((b, i) => [b.time, i])) : null;
+  const asiaOpen     = asiaM1[0]?.open ?? null;
+
   // ── PASS 1: filter candidates and score every valid zone ─────────────────────
   // (module checks run once here; result reused in pass 3 — no double computation)
   const _scored = [];
@@ -579,6 +597,21 @@ function simulateDay(packed, dateStr, opts) {
     } else {
       if (price > asiaMid) { side = 'SELL'; tp = asiaMid; sl = asia.high + slDist; }
       else                 { side = 'BUY';  tp = asiaMid; sl = asia.low  - slDist; }
+    }
+
+    // Triple-barrier exit (transferred from the vol-forecaster): TP = next
+    // structural level toward the range mid, SL = next structural level away.
+    // A principled level-geometry R:R that replaces the fixed TP=Asia-mid.
+    if (exitMode === 'triple_barrier') {
+      let belowP = null, aboveP = null;
+      for (const p of ladderP) {
+        if (p < price - 1e-9) belowP = p;                       // largest below entry
+        else if (p > price + 1e-9 && aboveP == null) aboveP = p; // smallest above entry
+      }
+      const inner = price > asiaMid ? belowP : aboveP;          // toward mid → TP
+      const outer = price > asiaMid ? aboveP : belowP;          // away → SL
+      if (inner == null || outer == null) continue;             // can't form the barrier
+      tp = inner; sl = outer;
     }
 
     if (side === 'SELL' && tp >= price) continue;
@@ -694,12 +727,24 @@ function simulateDay(packed, dateStr, opts) {
     // Alternative gate inputs (for the gate-comparison panel; both no-lookahead):
     //   day_type_T — low ⇒ mean-reverting day (fade-favourable), high ⇒ trend day
     //   vol_pos    — |entry-anchor| / forecast HL75 half-range; ≈1 ⇒ at the band
-    let vol_pos = null, day_type_T = null;
+    let vol_pos = null, day_type_T = null, approach_vel = null, approach_vel_bucket = null;
     if (gradeCtx) {
       day_type_T = gradeCtx.dayTypeT;
-      const anchor = asiaM1[0]?.open;
-      if (anchor && gradeCtx.forecastHalfFrac > 0) {
-        vol_pos = +(Math.abs(price - anchor) / (anchor * gradeCtx.forecastHalfFrac)).toFixed(3);
+      if (asiaOpen && gradeCtx.forecastHalfFrac > 0) {
+        vol_pos = +(Math.abs(price - asiaOpen) / (asiaOpen * gradeCtx.forecastHalfFrac)).toFixed(3);
+      }
+      // approachVel: speed of the move INTO the level at the fill bar, in daily-σ
+      // units (vol-forecaster's OOS-proven feature — spike ⇒ exhaustion ⇒ fade).
+      if (approachIdx && asiaOpen && gradeCtx.dailySigma > 0 && result.fillTime != null) {
+        const ti = approachIdx.get(result.fillTime);
+        if (ti != null) {
+          const f = _touchFeat.compute({
+            bars: approachBars, touchIdx: ti, open: asiaOpen,
+            sigma: gradeCtx.dailySigma, side: side === 'SELL' ? 'up' : 'dn',
+          });
+          approach_vel = f.approachVel.value;
+          approach_vel_bucket = f.approachVel.bucket;
+        }
       }
     }
 
@@ -758,6 +803,11 @@ function simulateDay(packed, dateStr, opts) {
       // Alternative gates (for gate comparison): vol-forecast stretch + day-type T
       vol_pos,
       day_type_T,
+      // Transferred vol-forecaster feature: approach velocity (spike → fade)
+      approach_vel,
+      approach_vel_bucket,
+      // Exit geometry used (so the analysis can separate standard vs triple-barrier)
+      exit_mode: exitMode,
     });
   }
 

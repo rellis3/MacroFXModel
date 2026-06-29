@@ -19,13 +19,14 @@ for (let i = 0; i < 600; i++) {
     live_grade: ['A+', 'A', 'B', 'C', 'D'][i % 5],      // uncorrelated with edge (noise)
     vol_pos: volPos,
     day_type_T: (i % 7) / 7 * 0.7,                       // 0 .. 0.6
+    approach_vel: (i % 4) * 0.30,                        // 0 .. 0.9 (spike bucket at ≥0.60)
   });
   d += (i % 3 + 1) * 2 * 864e5;
 }
 
 console.log('[structure]');
 const cmp = compareGates(trades, { oosFrac: 0.4, minOosTrades: 20 });
-ok('returns the 3 gates', Object.keys(cmp.gates).length === 3 && cmp.gates.grade && cmp.gates.volPos && cmp.gates.dayType);
+ok('returns the 4 gates', Object.keys(cmp.gates).length === 4 && cmp.gates.grade && cmp.gates.volPos && cmp.gates.dayType && cmp.gates.approachVel);
 ok('splitDate set', !!cmp.splitDate);
 ok('each gate row has IS + OOS metrics', cmp.gates.volPos.rows.every(r => r.is && r.oos && 'trades' in r.oos));
 ok('every gate ends with an "all" bucket', Object.values(cmp.gates).every(g => g.rows.at(-1).label === 'all'));

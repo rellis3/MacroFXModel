@@ -53,6 +53,16 @@ export const GATES = {
       { label: 'all',               pass: () => true },
     ],
   },
+  approachVel: {
+    label: 'Approach velocity (spike→fade)',
+    field: 'approach_vel',
+    buckets: [
+      { label: 'spike ≥ 0.60σ', pass: t => t.approach_vel != null && t.approach_vel >= 0.60 },
+      { label: '≥ 0.40σ',       pass: t => t.approach_vel != null && t.approach_vel >= 0.40 },
+      { label: '≥ 0.25σ',       pass: t => t.approach_vel != null && t.approach_vel >= 0.25 },
+      { label: 'all',           pass: () => true },
+    ],
+  },
 };
 
 // Split filled trades into IS / OOS by date fraction (same convention as
