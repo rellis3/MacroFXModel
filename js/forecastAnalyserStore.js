@@ -16,7 +16,8 @@ import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize } from './instrumentRegistry.js';
-import { extractTouches, runPerLine, runRigor, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, runSensitivity, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { deflatedSharpe } from './backtestStats.js';
 import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
 import { resampleTo } from './barUtils.js';
 
@@ -259,6 +260,11 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
   // Rigor battery (walk-forward / per-year / cost-sensitivity / IS-vs-OOS) on the
   // same pooled touches — the "serious backtest" checks.
   const rigor = runRigor(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+  // Parameter-sensitivity grid + deflated Sharpe (multiple-testing correction):
+  // is the edge perched on one lucky setting, and does it survive the search?
+  const sensitivity = runSensitivity(touchesByPair, { base: { splitFrac, minN, marginPct, survivorMargin },
+                                                      costByPair, slipByPair, minSurvivorTrades });
+  const deflated = sensitivity ? deflatedSharpe(result.equity.map(e => e.pnl), sensitivity.trialSharpesRaw) : null;
   const generatedAt = new Date().toISOString();
   // Store each pair's trade log separately (loaded on demand by the Book tab /
   // the M1 chart drill-down) so the headline book JSON stays small.
@@ -269,12 +275,14 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
     await putJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`, { pair, horizon, generatedAt, splitDate: result.splitDate, trades: log });
     logged += log.length;
   }
-  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, survivorMargin, minSurvivorTrades, ...summary, rigor };
+  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, survivorMargin, minSurvivorTrades, ...summary, rigor, sensitivity, deflated };
   await putJSON(`${PREFIX}/per-line-${horizon}.json`, out);
   const sv = result.survivors;
   onLog(`Book: ${result.nTrades} OOS trades (${logged} logged) · Sharpe ${result.book.sharpe} · CAGR ${result.book.cagr}% · maxDD ${result.book.maxDD}% · ` +
         `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}` +
-        (sv ? ` · live universe ${sv.count}/${sv.total} pairs (Sharpe ${sv.portfolio?.sharpe})` : ''));
+        (sv ? ` · live universe ${sv.count}/${sv.total} pairs (Sharpe ${sv.portfolio?.sharpe})` : '') +
+        (deflated ? ` · DSR ${(deflated.dsr * 100).toFixed(0)}% (${deflated.nTrials} trials)` : '') +
+        (result.missed ? ` · took ${result.missed.takenRate}% of touches` : ''));
   return out;
 }
 export async function getPerLineBook(horizon = 'daily')        { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }

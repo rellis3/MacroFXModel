@@ -13,8 +13,8 @@ import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRe
 import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
-import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, costForPair, buildSurvivors } from './perLineStrategy.js';
-import { backtestStats, portfolioStats } from './backtestStats.js';
+import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, runSensitivity, costForPair, buildSurvivors } from './perLineStrategy.js';
+import { backtestStats, portfolioStats, deflatedSharpe } from './backtestStats.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -211,6 +211,30 @@ console.log('[perLineStrategy]');
   ok('buildSurvivors drops a pair whose expectancy is below the cost margin', !sv.pairs.includes('thin') && sv.excluded.some(e => e.pair==='thin' && e.reason==='expectancy below cost margin'));
   ok('buildSurvivors drops a pair with too few trades (regardless of edge)', !sv.pairs.includes('few') && sv.excluded.some(e => e.pair==='few' && e.reason==='too few trades'));
   ok('buildSurvivors re-aggregates only survivor PnL', sv.count===1 && sv.nTrades===1 && sv.equity.length===1);
+
+  // Phase C — missed-trades summary: skipped OOS touches are counted with a reason.
+  ok('runPerLine attaches a missed summary with reasons', !!run.missed && run.missed.total >= 0 && typeof run.missed.byReason === 'object');
+  ok('runPerLine takenRate is a sane percentage', run.missed.takenRate >= 0 && run.missed.takenRate <= 100);
+
+  // Phase C — sensitivity grid: OAT sweeps + per-observation trial Sharpes.
+  const sens = runSensitivity(byPair, { base: { splitFrac:0.6, minN:30, marginPct:0, survivorMargin:0.5 },
+    costByPair:{eurusd:0.01}, slipByPair:{eurusd:0} });
+  ok('runSensitivity returns OAT sweeps for each knob', !!sens && Array.isArray(sens.sweeps.minN) && Array.isArray(sens.sweeps.splitFrac) && Array.isArray(sens.sweeps.marginPct) && Array.isArray(sens.sweeps.survivorMargin));
+  ok('runSensitivity emits distinct per-observation trial Sharpes', sens.nTrials >= 2 && sens.trialSharpesRaw.length === sens.nTrials);
+}
+
+console.log('[deflatedSharpe]');
+{
+  // A series with a real edge, evaluated against a handful of noisy trials, should
+  // deflate toward a probability in [0,1]; more/noisier trials → harder to clear.
+  const daily = Array.from({ length: 300 }, (_, i) => (i % 4 === 0 ? -0.4 : 0.35));   // +ve drift
+  const fewTrials  = [0.05, 0.06, 0.04];
+  const manyTrials = [0.05, 0.06, 0.04, 0.20, 0.18, 0.22, 0.15, 0.19];                // wider spread, more trials
+  const dFew  = deflatedSharpe(daily, fewTrials);
+  const dMany = deflatedSharpe(daily, manyTrials);
+  ok('deflatedSharpe returns dsr in [0,1] with sr0 and nTrials', dFew && dFew.dsr >= 0 && dFew.dsr <= 1 && dFew.nTrials === 3 && Number.isFinite(dFew.sr0));
+  ok('deflatedSharpe sr0 (expected max) rises with more/noisier trials', dMany.sr0 > dFew.sr0);
+  ok('deflatedSharpe needs >=2 trials', deflatedSharpe(daily, [0.1]) === null);
 
   // FIX 1 — honest mark-to-close: an undecided outcome (no barrier hit) is scored
   // by the actual close, NOT credited the full target. A 1-pip drift ≠ a full win.

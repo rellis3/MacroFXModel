@@ -119,6 +119,7 @@ export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012
       decision, n, revRate: +(revRate * 100).toFixed(1),
       z: +((revRate - 0.5) / Math.sqrt(0.25 / n)).toFixed(2),
       fadeExp: +fadeExp.toFixed(4), followExp: +followExp.toFixed(4), expectancy: +bestExp.toFixed(4),
+      ...(decision === 'skip' ? { reason: 'belowMargin' } : {}),   // edge < cost (vs 'lowN' above)
     };
   }
   return policy;
@@ -151,12 +152,25 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
   const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
 
   const bookTrades = [], perPair = {}, tradesByPair = {}, pnlByPair = {};
+  // Missed/skipped OOS touches + WHY the engine said no (the Phase-C "missed
+  // trades" view): a cell unseen in IS, too rare in IS (lowN), or whose IS edge
+  // didn't clear cost (belowMargin). We also stash the IS fade/follow estimate so
+  // you can see whether the skip was correct (negative est = good skip).
+  const missedCells = {};
+  let missedTotal = 0;
+  const noteMissed = (t, reason, p) => {
+    missedTotal++;
+    const c = (missedCells[t.cell] ??= { cell: t.cell, line: t.line, n: 0, reason,
+      fadeExp: p?.fadeExp ?? null, followExp: p?.followExp ?? null });
+    c.n++;
+  };
   for (const [pair, touches] of Object.entries(touchesByPair)) {
     const trades = [], log = [];
     for (const t of touches) {
       if (t.date < splitDate) continue;                     // OOS only
       const p = policy[t.cell];
-      if (!p || p.decision === 'skip') continue;
+      if (!p)                       { noteMissed(t, 'unseen-in-IS'); continue; }
+      if (p.decision === 'skip')    { noteMissed(t, p.reason === 'lowN' ? 'low-N in IS' : 'edge below cost', p); continue; }
       const pnl = pnlFor(t, p.decision, { costPct: t.cost, slipPct: t.slip });
       trades.push({ date: t.date, pnl });
       // Full trade geometry for the log + the (Phase 2) M1 chart drill-down.
@@ -188,8 +202,18 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
   // pairs' daily PnL — so its Sharpe still honours same-day concurrency and
   // cross-pair correlation, not a naive average of per-pair Sharpes.
   const survivors = buildSurvivors(perPair, pnlByPair, costByPair, { survivorMargin, minSurvivorTrades });
+  // Missed-trades summary: counts by reason + the most-skipped cells (with their
+  // IS estimate, so a skip with negative est reads as correctly avoided).
+  const byReason = {};
+  for (const c of Object.values(missedCells)) byReason[c.reason] = (byReason[c.reason] || 0) + c.n;
+  const missed = {
+    total: missedTotal, taken: bookTrades.length,
+    takenRate: (missedTotal + bookTrades.length) ? +(bookTrades.length / (missedTotal + bookTrades.length) * 100).toFixed(1) : 0,
+    byReason,
+    topCells: Object.values(missedCells).sort((a, b) => b.n - a.n).slice(0, 40),
+  };
   return {
-    splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair,
+    splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair, missed,
     book: backtestStats(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date), { mcRuns, bootRuns }),
     // HONEST headline: Sharpe/CAGR/DD on the daily portfolio series (captures
     // same-day concurrency + cross-pair correlation), not per-trade ×√(trades/yr).
@@ -303,4 +327,60 @@ export function runRigor(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct 
   const perYear = Object.entries(byYear).sort().map(([year, tr]) => ({ year, trades: tr.length, ...ps(tr) }));
 
   return { isVsOos, walkForward, costSensitivity, perYear };
+}
+
+// ── 6) Parameter-sensitivity grid (Phase C) ──────────────────────────────────
+// One-at-a-time (OAT) sweep around the base params: vary each knob across a small
+// grid holding the others at base, and report the OOS portfolio Sharpe + trade
+// count + survivor count/Sharpe. Cheap (no bootstrap/MC). Also returns the flat
+// list of per-observation daily Sharpes across all DISTINCT combos — the "trials"
+// a deflated-Sharpe correction needs. Note: approach-velocity thresholds are baked
+// into the stored touch cells at refresh time, so they CANNOT be swept here without
+// re-running the analyser — only post-hoc knobs are grid-able.
+export function runSensitivity(touchesByPair, { base = {}, grids = {}, costByPair = {}, slipByPair = {}, minSurvivorTrades = 30 } = {}) {
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
+  const pairs   = Object.entries(touchesByPair);
+  const allFlat = Object.values(touchesByPair).flat().sort(byDate);
+  if (allFlat.length < 100) return null;
+  const dates = allFlat.map(t => t.date);
+  const B = { splitFrac: base.splitFrac ?? 0.6, minN: base.minN ?? 50,
+              marginPct: base.marginPct ?? 0, survivorMargin: base.survivorMargin ?? 0.5 };
+
+  const evalCombo = ({ splitFrac, minN, marginPct, survivorMargin }) => {
+    const splitDate = dates[Math.floor(dates.length * splitFrac)];
+    const pol = buildPolicy(allFlat.filter(t => t.date < splitDate), { minN, marginPct });
+    const pnlByPair = {}, perPair = {}, pooled = [];
+    for (const [pair, touches] of pairs) {
+      const tr = priceTrades(touches.filter(t => t.date >= splitDate), pol);
+      pnlByPair[pair] = tr;
+      const exp = tr.length ? tr.reduce((s, x) => s + x.pnl, 0) / tr.length : 0;
+      perPair[pair] = { expectancy: +exp.toFixed(4), trades: tr.length };
+      pooled.push(...tr);
+    }
+    const daily = dailySeries(pooled);
+    const m = daily.length ? daily.reduce((s, x) => s + x, 0) / daily.length : 0;
+    const sd = daily.length > 1 ? Math.sqrt(daily.reduce((s, x) => s + (x - m) ** 2, 0) / daily.length) : 0;
+    const port = portfolioStats(daily);
+    const surv = buildSurvivors(perPair, pnlByPair, costByPair, { survivorMargin, minSurvivorTrades });
+    return { splitFrac, minN, marginPct, survivorMargin, days: daily.length, nTrades: pooled.length,
+      sharpe: port.sharpe, sharpeRaw: sd > 1e-9 ? +(m / sd).toFixed(4) : 0,
+      survCount: surv.count, survSharpe: surv.portfolio?.sharpe ?? 0 };
+  };
+
+  const G = {
+    splitFrac:      grids.splitFrac      ?? [0.5, 0.6, 0.7],
+    minN:           grids.minN           ?? [30, 50, 75, 100],
+    marginPct:      grids.marginPct      ?? [0, 0.005, 0.01, 0.02],
+    survivorMargin: grids.survivorMargin ?? [0.25, 0.5, 0.75, 1.0],
+  };
+  const seen = new Set(), trials = [], sweeps = {};
+  const remember = r => { const k = `${r.splitFrac}|${r.minN}|${r.marginPct}|${r.survivorMargin}`;
+    if (!seen.has(k)) { seen.add(k); trials.push(r); } };
+  for (const [param, vals] of Object.entries(G))
+    sweeps[param] = vals.map(v => { const r = evalCombo({ ...B, [param]: v }); remember(r); return r; });
+  const baseRow = evalCombo(B); remember(baseRow);
+  return { base: B, baseRow, sweeps, nTrials: trials.length, trialSharpesRaw: trials.map(t => t.sharpeRaw) };
 }

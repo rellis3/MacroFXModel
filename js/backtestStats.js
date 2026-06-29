@@ -72,6 +72,41 @@ function probabilisticSharpe(sr, n, skew, kurt, srBench = 0) {
   return +normCdf((sr - srBench) * Math.sqrt(n - 1) / denom).toFixed(3);
 }
 
+// Inverse standard-normal CDF (Acklam's rational approximation, |err| < 1.15e-9).
+function invNormCdf(p) {
+  if (p <= 0) return -Infinity; if (p >= 1) return Infinity;
+  const a = [-3.969683028665376e+1, 2.209460984245205e+2, -2.759285104469687e+2, 1.383577518672690e+2, -3.066479806614716e+1, 2.506628277459239e+0];
+  const b = [-5.447609879822406e+1, 1.615858368580409e+2, -1.556989798598866e+2, 6.680131188771972e+1, -1.328068155288572e+1];
+  const c = [-7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838e+0, -2.549732539343734e+0, 4.374664141464968e+0, 2.938163982698783e+0];
+  const d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996e+0, 3.754408661907416e+0];
+  const pl = 0.02425, ph = 1 - pl;
+  if (p < pl)  { const q = Math.sqrt(-2 * Math.log(p));     return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  if (p <= ph) { const q = p - 0.5, r = q*q;                return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  const q = Math.sqrt(-2 * Math.log(1 - p));                return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+
+// Deflated Sharpe Ratio (López de Prado 2014) — the multiple-testing correction.
+// Given the chosen series' daily PnL and the per-observation Sharpes of EVERY
+// config tried (`trialSRs`), it computes the expected MAXIMUM Sharpe achievable
+// by chance across that many trials (sr0) and returns P(true Sharpe > sr0),
+// penalised for sample length, skew and kurtosis. A book that clears its own
+// search's noise has DSR near 1; one perched on a lucky setting has DSR near 0.
+export function deflatedSharpe(daily, trialSRs = []) {
+  const T = daily.length, N = trialSRs.length;
+  if (N < 2 || T < 3) return null;
+  const sd = stdev(daily); if (sd < 1e-12) return null;
+  const sr = mean(daily) / sd;                              // per-observation Sharpe of the chosen series
+  const tm = mean(trialSRs);
+  const tv = trialSRs.reduce((s, x) => s + (x - tm) ** 2, 0) / (N - 1);   // sample variance of trial Sharpes
+  if (!(tv > 0)) return null;
+  const EM = 0.5772156649015329;                            // Euler-Mascheroni
+  const sr0 = Math.sqrt(tv) * ((1 - EM) * invNormCdf(1 - 1 / N) + EM * invNormCdf(1 - 1 / (N * Math.E)));
+  const { skew, kurt } = skewKurt(daily);
+  const denom = Math.sqrt(Math.max(1e-12, 1 - skew * sr + (kurt - 1) / 4 * sr * sr));
+  return { dsr: +normCdf((sr - sr0) * Math.sqrt(T - 1) / denom).toFixed(3),
+           sr: +sr.toFixed(4), sr0: +sr0.toFixed(4), nTrials: N, trialSharpeStd: +Math.sqrt(tv).toFixed(4) };
+}
+
 export function backtestStats(pnls, dates = [], { mcRuns = 1000, bootRuns = 1000, seed = 0x9e3779b9 } = {}) {
   const n = pnls.length;
   if (!n) return { trades: 0 };
