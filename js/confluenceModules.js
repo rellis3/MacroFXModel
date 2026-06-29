@@ -1037,6 +1037,21 @@ roundNumber.getLevels = (state, opts) => {
   return levels;
 };
 
+// Nearest big-figure / half-figure to a price, with SIGNED distance in pips.
+// Single source for the round-number arithmetic (same units as check()); the
+// round-number fade/follow adapter (js/roundNumberLean.js) consumes this so the
+// figure math is never duplicated.
+roundNumber.nearest = (price, state) => {
+  if (!state?.pipSize) return null;
+  const majorUnit = state.pipSize * 1000, minorUnit = state.pipSize * 100;
+  const maj = Math.round(price / majorUnit) * majorUnit;
+  const min = Math.round(price / minorUnit) * minorUnit;
+  // Prefer the big figure on a tie, or when the half-figure coincides with it.
+  if (Math.abs(min - maj) < state.pipSize * 5 || Math.abs(price - maj) <= Math.abs(price - min))
+    return { figure: +maj.toFixed(6), type: 'major', distPips: (price - maj) / state.pipSize };
+  return { figure: +min.toFixed(6), type: 'minor', distPips: (price - min) / state.pipSize };
+};
+
 fvgLevel.getLevels = (state) => {
   if (!state?.fvgs?.length) return [];
   return state.fvgs.flatMap(g => [
