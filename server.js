@@ -6815,6 +6815,8 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     // New: ATR-based SL/TP
     slMode = 'range_mult',
     atrSlMult = '1.5', atrTpMult = '2.0', atrPeriods = '14',
+    // Exit geometry + cross-session overlay (vol-forecaster transfer)
+    exitMode = 'standard', crossSessionMerge = 'false', mergeFactor = '0.30',
     // New: confluence modules
     zoneRadiusPips = '3',
     minConfluenceScore = '0',
@@ -6852,6 +6854,9 @@ app.post('/api/asia-range-backtest/run', (req, res) => {
     atrSlMult:            parseFloat(atrSlMult)      || 1.5,
     atrTpMult:            parseFloat(atrTpMult)      || 2.0,
     atrPeriods:           parseInt(atrPeriods)        || 14,
+    exitMode,
+    crossSessionMerge:    crossSessionMerge === 'true',
+    mergeFactor:          parseFloat(mergeFactor)     || 0.30,
     zoneRadiusPips:       parseFloat(zoneRadiusPips)  || 3,
     minConfluenceScore:   parseFloat(minConfluenceScore) || 0,
     confluenceMods,

@@ -146,6 +146,18 @@ files are genuinely stale: the `MD files/…ZSCORE.html` export and `Zoo/asia_ra
   populate; the panel tells you whether the grade is actually a good gate or just a
   fitted score (SYSTEM_ASSESSMENT.md §2.5).
 
+- ✅ **Vol-forecaster transfer wired** (`STRATEGY_BUILD.md`). The Asia engine now
+  imports the OOS-proven bricks from the sibling strategy:
+  - **`approach_vel`** — speed of the move into the level at the fill bar, in
+    daily-σ units (`touchFeatures.createTouchFeatures`). Spike ⇒ exhaustion ⇒
+    fade. Recorded per trade + a 4th gate in Panel 0 (`approachVel`).
+  - **`exitMode: 'triple_barrier'`** — TP = next structural level toward mid, SL =
+    next away (a principled level-geometry R:R that replaces the fixed TP=Asia-mid
+    that capped expectancy). Selectable in the backtest UI (Exit dropdown).
+  This directly tests the two things the gate analysis said were *missing*: a
+  temporal (approach) gate and a fixed exit. Run with Exit = triple-barrier and
+  read the `approachVel` gate in Panel 0.
+
 **Remaining:**
 1. Source COT history + (optionally) FRED macro so the few omitted grade factors
    can be added for fuller parity.

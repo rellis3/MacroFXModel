@@ -268,6 +268,11 @@
       <input type="number" id="cfAtrTpMult" value="2.0" min="0.5" max="10" step="0.25" style="width:60px;display:none" class="bt-sel" title="TP = SL distance × this (e.g. 2.0 = 2:1 R:R)">
       <span class="cf-lbl" id="cfAtrPerLbl" style="display:none">Periods:</span>
       <input type="number" id="cfAtrPeriods" value="14" min="5" max="50" step="1" style="width:52px;display:none" class="bt-sel">
+      <span class="cf-lbl" style="margin-left:14px" title="Exit geometry: standard (TP=Asia mid / SL) vs triple-barrier (TP=next structural level toward mid, SL=next away — transferred from the vol-forecaster)">Exit:</span>
+      <select id="cfExitMode" class="bt-sel" title="Triple-barrier prices TP/SL off the structural fib ladder — a principled level-geometry R:R">
+        <option value="standard">Standard (TP=Asia mid / SL mode)</option>
+        <option value="triple_barrier">Triple-barrier (next level toward / away)</option>
+      </select>
     </div>
 
     <!-- Zone + score row -->
@@ -1237,6 +1242,7 @@ async function runBacktest() {
       tradeHourTo:       document.getElementById('arHourTo').value,
       // New opts
       slMode:            document.getElementById('cfSlMode').value,
+      exitMode:          document.getElementById('cfExitMode')?.value || 'standard',
       atrSlMult:         document.getElementById('cfAtrSlMult').value,
       atrTpMult:         document.getElementById('cfAtrTpMult').value,
       atrPeriods:        document.getElementById('cfAtrPeriods').value,
