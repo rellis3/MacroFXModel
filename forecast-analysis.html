@@ -359,12 +359,15 @@ async function showTradeChart(i){ const t=TRADE_ROWS[i]; if(!t) return; const h=
 }
 function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-  btn.onclick=async()=>{ bookBusy=true; render();
+  btn.onclick=async()=>{
+    // Read every input FIRST — render() below rebuilds the controls from the
+    // loaded book and would otherwise reset the checkboxes before we read them.
     const h=$('horizon').value;
-    // Submit with a couple of retries — a flaky mobile connection drops the POST.
     const marginPct=parseFloat($('bookMargin')?.value)||0;
     const survRaw=parseFloat($('bookSurv')?.value); const survivorMargin=Number.isFinite(survRaw)?survRaw:0.5;
     const conditions=[...document.querySelectorAll('.bookCond:checked')].map(c=>c.value); if(!conditions.length) conditions.push('approachVel');
+    bookBusy=true; render();
+    // Submit with a couple of retries — a flaky mobile connection drops the POST.
     const submit=async()=>{ let last;
       for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h,marginPct,survivorMargin,conditions})});
         if(r.j?.ok) return r.j.jobId; last=new Error(r.j?.error||'run rejected'); }catch(e){ last=e; } await sleep(1500); }
