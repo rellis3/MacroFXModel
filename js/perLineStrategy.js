@@ -135,7 +135,8 @@ export function tradePnl(t, policy, opts = {}) {
 // touchesByPair: { pair: touches[] }.  costByPair/slipByPair optional per-pair.
 // Returns { splitDate, policy, book, perPair, equity, nTrades, coverage }.
 export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
-                                            costByPair = {}, slipByPair = {}, mcRuns = 1000, bootRuns = 1000 } = {}) {
+                                            costByPair = {}, slipByPair = {}, mcRuns = 1000, bootRuns = 1000,
+                                            survivorMargin = 0.5, minSurvivorTrades = 30 } = {}) {
   // Stamp each touch with its pair's costs so the pooled policy prices trades
   // with the right (asset-class) friction.
   for (const [pair, touches] of Object.entries(touchesByPair)) {
@@ -149,7 +150,7 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
   // Policy learned on IS, gated on after-cost expectancy (not just direction).
   const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
 
-  const bookTrades = [], perPair = {}, tradesByPair = {};
+  const bookTrades = [], perPair = {}, tradesByPair = {}, pnlByPair = {};
   for (const [pair, touches] of Object.entries(touchesByPair)) {
     const trades = [], log = [];
     for (const t of touches) {
@@ -169,6 +170,7 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
     perPair[pair] = { ...summarizeTrades(trades.map(x => x.pnl), trades.map(x => x.date)), trades: trades.length,
                       costPct: costByPair[pair] ?? DEFAULT_COST_PCT.fx };
     tradesByPair[pair] = log;
+    pnlByPair[pair] = trades;                                // {date,pnl}[] for the survivor re-aggregation
     bookTrades.push(...trades);
   }
   bookTrades.sort(byDate);
@@ -179,13 +181,49 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
   let cum = 0;
   const equity = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(4), cum: +(cum += pnl).toFixed(4) }));
+  // ── Live universe (survivors) ──────────────────────────────────────────────
+  // Costs are the binding constraint, so a pair is only "live" if its OOS net
+  // expectancy clears its OWN round-trip spread by a margin (and has enough
+  // trades to mean it). The survivor portfolio is RE-AGGREGATED from just those
+  // pairs' daily PnL — so its Sharpe still honours same-day concurrency and
+  // cross-pair correlation, not a naive average of per-pair Sharpes.
+  const survivors = buildSurvivors(perPair, pnlByPair, costByPair, { survivorMargin, minSurvivorTrades });
   return {
     splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair,
     book: backtestStats(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date), { mcRuns, bootRuns }),
     // HONEST headline: Sharpe/CAGR/DD on the daily portfolio series (captures
     // same-day concurrency + cross-pair correlation), not per-trade ×√(trades/yr).
     portfolio: { ...portfolioStats(equity.map(e => e.pnl)), avgTradesPerDay: equity.length ? +(bookTrades.length / equity.length).toFixed(1) : 0 },
+    survivors,
     coverage: { fadeCells: countDec(policy, 'fade'), followCells: countDec(policy, 'follow'), skipCells: countDec(policy, 'skip') },
+  };
+}
+
+// Pick the "live universe" (pairs that clear their own cost by a margin) and
+// re-aggregate ONLY their daily PnL into an honest portfolio. perPair holds the
+// OOS stats; pnlByPair holds each pair's {date,pnl}[]; costByPair the spreads.
+export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMargin = 0.5, minSurvivorTrades = 30 } = {}) {
+  const all = Object.keys(perPair);
+  const keep = [], excluded = [];
+  for (const p of all) {
+    const s = perPair[p], cost = costByPair[p] ?? DEFAULT_COST_PCT.fx;
+    const need = cost * survivorMargin;                       // net edge must clear this
+    if (s.trades >= minSurvivorTrades && s.expectancy >= need) keep.push(p);
+    else excluded.push({ pair: p, expectancy: s.expectancy, costPct: +cost.toFixed(4), need: +need.toFixed(4),
+      trades: s.trades, reason: s.trades < minSurvivorTrades ? 'too few trades' : 'expectancy below cost margin' });
+  }
+  const survTrades = keep.flatMap(p => pnlByPair[p] || []).sort(byDate);
+  const byDay = new Map();
+  for (const t of survTrades) byDay.set(t.date, (byDay.get(t.date) || 0) + t.pnl);
+  let cum = 0;
+  const equity = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(4), cum: +(cum += pnl).toFixed(4) }));
+  return {
+    margin: survivorMargin, minTrades: minSurvivorTrades,
+    pairs: keep, count: keep.length, total: all.length,
+    excluded: excluded.sort((a, b) => a.expectancy - b.expectancy),
+    nTrades: survTrades.length, equity,
+    portfolio: { ...portfolioStats(equity.map(e => e.pnl)), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 },
   };
 }
 
