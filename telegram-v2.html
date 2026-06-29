@@ -230,7 +230,11 @@ $('btnRefresh').onclick = async () => {
   $('btnRefresh').disabled = true; setStatus('refreshing live entries…', 'var(--amb)');
   try {
     const r = await fetch('/api/levels-v2/refresh', { method: 'POST' }); const j = await r.json();
-    setStatus(j.ok ? 'refreshed' : ('refresh: ' + (j.error || '?')), j.ok ? 'var(--grn)' : 'var(--red)');
+    if (!j.ok && /no policy/i.test(j.error || '')) {
+      setStatus('⚠ No policy yet — click “① Learn policy” first and wait for it to finish, then Refresh.', 'var(--amb)');
+    } else {
+      setStatus(j.ok ? `refreshed${j.ledgerSize != null ? ` · ledger ${j.ledgerSize}` : ''}` : ('refresh: ' + (j.error || '?')), j.ok ? 'var(--grn)' : 'var(--red)');
+    }
     await loadCurrent();
   } catch (e) { setStatus('refresh error: ' + e.message, 'var(--red)'); }
   $('btnRefresh').disabled = false;

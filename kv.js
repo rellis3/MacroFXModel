@@ -69,6 +69,8 @@ const _CF_EXACT = new Set([
   'gold_optimiser_last',    // last optimiser run result — persists across restarts
   'gold_perf_snapshot',     // 30-day P&L snapshot for performance dashboard
   'fred_data_v3',           // FRED dashboard cache (31 series) — survives Railway restarts
+  'policy_v2',              // Telegram-v2 frozen confidence policy — learned from a full M1 run (minutes); MUST survive redeploys or every restart wipes it
+  'ledger_v2',              // Telegram-v2 daily-learning ledger — accumulated live signal outcomes; cannot be rebuilt, must survive redeploys
   'dyn_anchor_config',      // DynAnchor bot settings — must survive redeploys
   'dyn_anchor_credentials', // DynAnchor bot MT5 credentials — must survive redeploys
   'macro_equity_config',       // Macro Equity bot settings — must survive redeploys
