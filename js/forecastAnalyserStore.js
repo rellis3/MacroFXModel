@@ -190,37 +190,53 @@ export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}) {
 }
 
 // Full / partial refresh. Writes per-pair raw + combined aggregates + manifest.
+// Manifest + aggregates are persisted INCREMENTALLY (after each pair) and MERGED
+// onto any existing dataset, so a crash/restart mid-run (e.g. OOM on a heavy
+// pair) keeps every pair finished so far instead of losing the whole batch — and
+// a daily-only refresh never wipes a pair's stored weekly/monthly coverage.
 export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLog = () => {} } = {}) {
   if (!r2Configured()) throw new Error('R2 not configured (R2_ACCESS_KEY / R2_SECRET_KEY)');
   const list = pairs?.length ? pairs : await discoverPairs();
   onLog(`Refreshing ${list.length} pair(s): ${list.join(', ')}`);
 
+  // Start from the existing dataset so partial/subset refreshes accumulate.
+  const prevManifest = await getManifest();
+  const aggregates   = (await getAggregates()) || {};
   const manifest = {
     generatedAt: generatedAt ?? new Date().toISOString(),
     definitions: { touch: 'intrabar', revertContinue: 'ladder (next-inner vs next-outer line)',
       geometry: 'OC lines static off open; HL (Proj H/L) lines dynamic — trail the opposite running extreme (chart/Pine construction)',
       lowN: 30, sessionBoundaryUtc: 22 },
-    horizons, pairs: {},
+    horizons,
+    pairs: prevManifest?.pairs ? { ...prevManifest.pairs } : {},
   };
-  const aggregates = {};
 
+  let done = 0, failed = 0;
   for (const pair of list) {
     try {
       const r = await refreshPair(pair, horizons, onLog);
       if (!r) continue;
+      // Merge per-horizon so a subset-horizon refresh keeps the other horizons.
+      const prevCov = manifest.pairs[pair]?.horizons || {};
       manifest.pairs[pair] = {
         assetClass: r.assetClass,
-        horizons: Object.fromEntries(Object.entries(r.horizons).map(([h, v]) => [h, v.coverage])),
+        horizons: { ...prevCov, ...Object.fromEntries(Object.entries(r.horizons).map(([h, v]) => [h, v.coverage])) },
       };
-      aggregates[pair] = Object.fromEntries(Object.entries(r.horizons).map(([h, v]) => [h, v.aggregates]));
+      aggregates[pair] = { ...(aggregates[pair] || {}),
+        ...Object.fromEntries(Object.entries(r.horizons).map(([h, v]) => [h, v.aggregates])) };
+      done++;
+      // Persist progress after EVERY pair — survives a mid-run restart.
+      manifest.generatedAt = new Date().toISOString();
+      await putJSON(`${PREFIX}/aggregates.json`, aggregates);
+      await putJSON(`${PREFIX}/manifest.json`, manifest);
+      onLog(`  ✓ saved progress (${done}/${list.length} pairs done${failed ? `, ${failed} failed` : ''})`);
     } catch (e) {
+      failed++;
       onLog(`${pair}: ERROR ${e.message}`);
     }
   }
 
-  await putJSON(`${PREFIX}/aggregates.json`, aggregates);
-  await putJSON(`${PREFIX}/manifest.json`, manifest);
-  onLog(`Done — ${Object.keys(manifest.pairs).length} pairs stored.`);
+  onLog(`Done — ${done}/${list.length} pair(s) refreshed${failed ? ` (${failed} failed)` : ''}; ${Object.keys(manifest.pairs).length} total in dataset.`);
   return manifest;
 }
 

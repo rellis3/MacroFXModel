@@ -680,10 +680,21 @@ $('runRefresh').onclick=async()=>{
   const log=(m,c='')=>{ $('out').innerHTML+=`\n${c?`<span class="${c}">`:''}${m}${c?'</span>':''}`; $('out').scrollTop=$('out').scrollHeight; };
   try{ const start=await api('/api/forecast-analysis/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs:pairs.length?pairs:undefined,horizons})});
     if(!start.j?.ok) throw new Error(start.j?.error||'failed'); log('Job '+start.j.jobId+' started…','run');
-    for(let i=0;i<900;i++){ await new Promise(r=>setTimeout(r,3000)); const st=await api(`/api/forecast-analysis/refresh/status/${start.j.jobId}`);
-      if(st.j?.status==='running'){ $('out').innerHTML=$('out').innerHTML.replace(/\n· .*$/,''); log('· '+(st.j.elapsed||0)+'s — '+((st.j.log||[]).slice(-1)[0]||''),'run'); continue; }
-      if(st.j?.status==='done'){ (st.j.log||[]).forEach(l=>log(l)); log('✓ Done — reloading…','ok'); setTimeout(boot,1200); break; }
-      if(st.j?.status==='error'){ log('✗ '+(st.j.error||'error'),'err'); break; } }
+    let netFails=0, lastLogLine='', stall=0;
+    for(let i=0;i<1800;i++){ await new Promise(r=>setTimeout(r,3000));
+      let st; try{ st=await api(`/api/forecast-analysis/refresh/status/${start.j.jobId}`); netFails=0; }
+      catch(e){ if(++netFails>40){ log('✗ lost connection to the server for ~2min — the refresh keeps running server-side and saves progress per pair; reload the page shortly to see the result.','err'); break; } continue; }
+      // Job vanished from the server (it restarted — often OOM on a heavy pair).
+      if(st.status===404){ log('✗ the refresh job is no longer on the server — it almost certainly restarted (a heavy pair can run the container out of memory).','err');
+        log('Progress is saved per pair, so finished pairs ARE stored. Reload to see them, then re-run the REMAINING pairs in smaller batches (type a few in the Pairs box, e.g. "eurusd, gbpusd, usdjpy").','run'); setTimeout(boot,1500); break; }
+      if(st.j?.status==='running'){ const line='· '+(st.j.elapsed||0)+'s — '+((st.j.log||[]).slice(-1)[0]||'');
+        if(line===lastLogLine){ if(++stall===40) log('⚠ no new progress for ~2min — a single large pair can take a while; still waiting…','run'); }
+        else { stall=0; lastLogLine=line; }
+        $('out').innerHTML=$('out').innerHTML.replace(/\n[·⚠] .*$/,''); log(line,'run'); continue; }
+      if(st.j?.status==='done'){ (st.j.log||[]).slice(-12).forEach(l=>log(l)); log('✓ Done — reloading…','ok'); setTimeout(boot,1200); break; }
+      if(st.j?.status==='error'){ log('✗ '+(st.j.error||'error'),'err'); break; }
+      // Any other shape (unexpected) — surface it instead of silently looping.
+      log('✗ unexpected status response'+(st.j?.error?': '+st.j.error:'')+' — stopping the poll. Reload to check whether the dataset updated.','err'); break; }
   }catch(e){ log('✗ '+e.message,'err'); } finally{ $('runRefresh').disabled=false; }
 };
 boot();
