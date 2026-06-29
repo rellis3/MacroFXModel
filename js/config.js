@@ -82,7 +82,9 @@ export const CAP_DEFAULTS = {
   //               false = Pine Script mode, one line per qualifying pair
   confluencePriceMode: 'lowest',
   clusterMerge: true,
-  slMaxAtrMult: 0.5,  // structural SL cap: won't exceed this multiple of daily ATR
+  slMaxAtrMult: 0.5,       // structural SL cap: won't exceed this multiple of daily ATR
+  zoneWindowAtrMult: 4,    // show levels within this many × daily ATR of current price
+  maxZones: 14,            // max levels shown per pair on the dashboard
 
   fx: {
     confluencePips: 2,    // max pip distance for two Fibs to count as a confluence

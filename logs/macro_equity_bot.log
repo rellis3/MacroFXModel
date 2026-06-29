@@ -1612,3 +1612,8 @@
 [2026-06-26 20:55:39] [MEBot] [ERROR] No FRED API key configured — cannot compute macro signal
 [2026-06-26 20:55:39] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
 [2026-06-26 20:55:41] [MEBot] [INFO] Cycle complete in 3.4s — sleeping 3597s
+[2026-06-26 21:55:41] [MEBot] [INFO] Fetching VIX data…
+[2026-06-26 21:55:43] [MEBot] [INFO] VIX: 300 bars, latest=18.4
+[2026-06-26 21:55:43] [MEBot] [ERROR] No FRED API key configured — cannot compute macro signal
+[2026-06-26 21:55:43] [MEBot] [INFO] No rebalance today (2026-06-26). Last: 2026-06
+[2026-06-26 21:55:46] [MEBot] [INFO] Cycle complete in 8.5s — sleeping 3592s

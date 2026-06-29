@@ -1306,6 +1306,16 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
             <div class="cfg-hint">Caps the structural stop loss at this multiple of the daily ATR. The SL is placed just beyond the nearest adverse confluence level — this prevents runaway stops when levels are far apart. Default 0.5 (half the daily range). Lower = tighter max, higher = allows wider stops.</div>
           </div>
           <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Zone window</span><span class="cfg-label-type">× daily ATR</span></div>
+            <input class="cfg-input" id="conf_zoneWindowAtrMult" type="number" min="1" max="20" step="0.5">
+            <div class="cfg-hint">Only show levels within this many × daily ATR of the current price. Default 4 (e.g. 4 × 50p = 200p for EUR/USD). Increase to see more distant extension levels; decrease to keep the list tight around price.</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Max levels shown</span><span class="cfg-label-type">count</span></div>
+            <input class="cfg-input" id="conf_maxZones" type="number" min="5" max="30" step="1">
+            <div class="cfg-hint">Maximum number of confluence levels displayed per pair. Levels are sorted nearest-to-price first, so raising this shows more distant levels rather than removing close ones. Default 14.</div>
+          </div>
+          <div class="cfg-field">
             <div class="cfg-label"><span class="cfg-label-main">Yield-spread Z-score conviction</span><span class="cfg-label-type">experimental</span></div>
             <select class="cfg-input" id="conf_enableZscoreConviction">
               <option value="false">Off (default)</option>

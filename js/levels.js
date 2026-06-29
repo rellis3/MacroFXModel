@@ -202,10 +202,14 @@ function buildZones(pair, quote, tierData, volRegime, macroBias, f, s) {
     console.warn('[levels] enhanceConfluences failed for', symbol, e);
     return [];
   }
-  enhanced.sort((a, b) => b.stars - a.stars || a.distance - b.distance);
+  // Sort: nearest first, tiebreak by stars — so the cap removes the most distant levels,
+  // not the lowest-rated ones. Stars are still visible on each card.
+  enhanced.sort((a, b) => a.distance - b.distance || b.stars - a.stars);
 
-  const zoneWindowPips = (volRegime.atrPips || 50) * 4;
-  return enhanced.filter(z => z.distance <= zoneWindowPips).slice(0, 14);
+  const _caps = S._caps;
+  const zoneWindowPips = (volRegime.atrPips || 50) * (_caps?.zoneWindowAtrMult ?? 4);
+  const maxZones = _caps?.maxZones ?? 14;
+  return enhanced.filter(z => z.distance <= zoneWindowPips).slice(0, maxZones);
 }
 
 // ── Hedge correlation z-score monitor (ported from index.html's Hedge Monitor) ──

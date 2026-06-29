@@ -200,7 +200,9 @@ function populateCfgForm(caps) {
   if (modeEl) modeEl.value = caps.confluencePriceMode ?? 'midpoint';
   const mergeEl = document.getElementById('conf_clusterMerge');
   if (mergeEl) mergeEl.value = String(caps.clusterMerge ?? true);
-  fill('conf_slMaxAtrMult', caps.slMaxAtrMult ?? 0.5);
+  fill('conf_slMaxAtrMult',      caps.slMaxAtrMult      ?? 0.5);
+  fill('conf_zoneWindowAtrMult', caps.zoneWindowAtrMult ?? 4);
+  fill('conf_maxZones',          caps.maxZones          ?? 14);
   const zEl = document.getElementById('conf_enableZscoreConviction');
   if (zEl) zEl.value = String(caps.enableZscoreConviction ?? false);
 }
@@ -211,7 +213,9 @@ function readCfgForm() {
   return {
     confluencePriceMode:    str('conf_priceMode')    ?? 'midpoint',
     clusterMerge:           str('conf_clusterMerge') !== 'false',
-    slMaxAtrMult:           parseFloat(document.getElementById('conf_slMaxAtrMult')?.value) || 0.5,
+    slMaxAtrMult:           parseFloat(document.getElementById('conf_slMaxAtrMult')?.value)      || 0.5,
+    zoneWindowAtrMult:      parseFloat(document.getElementById('conf_zoneWindowAtrMult')?.value) || 4,
+    maxZones:               parseInt(document.getElementById('conf_maxZones')?.value)            || 14,
     enableZscoreConviction: str('conf_enableZscoreConviction') === 'true',
     fx: {
       confluencePips: num('fx_confluencePips'),

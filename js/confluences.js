@@ -29,16 +29,16 @@ export function detectCrossSessionClusters(asiaConfs, mondayConfs, symbol) {
 }
 
 // Pre-enhancement structural quality filter.
-// Removes single-density loose confluences that add visual noise without trading value.
-// Keeps: tight alignment (today/yesterday fibs within 10% of threshold), density ≥ 2
-// (multiple raw fib pairs merged into this level), or cross-session (Asia+Monday agree).
-// Stars are not yet available here — only structural properties set by confluence-core.js.
+// Asia/Monday confluences already proved cross-temporal agreement (today vs yesterday,
+// or this Monday vs last Monday within the pip threshold) — always keep them.
+// Only apply the density/tight gate to injected single-source levels (volConfs, oiConfs
+// with density:1) that haven't gone through the temporal cross-check.
 export function filterConfluences(confluences) {
   if (!confluences.length) return confluences;
   const quality = confluences.filter(c =>
+    c.source === 'asia' || c.source === 'monday' || c.source === 'cross' ||
     c.isTight || (c.density ?? 1) >= 2 || c.crossSessionMatch
   );
-  // Fall back to all confluences if the filter removes everything
   return quality.length > 0 ? quality : confluences;
 }
 

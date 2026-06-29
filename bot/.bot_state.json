@@ -1,25 +1,25 @@
 {
   "risk_guard": {
-    "day_start_bal": 91266.2,
+    "day_start_bal": 93070.45,
     "month_start_bal": 104299.24,
     "locked_until": 1780563914.5479677,
     "last_trade_by_pair": {
       "XAU/USD": 1782464956.346644,
-      "USD/JPY": 1782462603.4132812,
-      "USD/CAD": 1782503808.949924,
-      "EUR/USD": 1782501763.935154,
+      "USD/JPY": 1782718031.73203,
+      "USD/CAD": 1782719606.0519958,
+      "EUR/USD": 1782716432.1897838,
       "USD/CHF": 1782406557.5493715,
-      "EUR/GBP": 1782485052.0255058,
+      "EUR/GBP": 1782719549.0253341,
       "GBP/JPY": 1782461016.1106334,
       "AUD/USD": 1781797131.2759385,
       "GBP/USD": 1782493856.3106213
     },
-    "last_reset_date": "2026-06-26",
+    "last_reset_date": "2026-06-29",
     "last_reset_month": "2026-06"
   },
   "position_meta": {
-    "152261723811": {
-      "tp1": 1.41846,
+    "152266592705": {
+      "tp1": 0.86217,
       "tp1_close_pct": 50,
       "trailoffset_dist": 0.00053,
       "tp1_hit": false,

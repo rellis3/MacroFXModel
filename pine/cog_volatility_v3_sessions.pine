@@ -6,7 +6,12 @@ indicator("C.og - Volatility Overlay v3 (Sessions)", overlay=true, max_labels_co
 // =====================================================
 
 goldChart = input.string("XAUUSD", "Gold — chart ticker",  tooltip="e.g. XAUUSD, GC1!, GOLD")
-nqChart   = input.string("NQ1!",   "NQ — chart ticker",    tooltip="e.g. NQ1!, NAS100USD, US100")
+nqChart    = input.string("NQ1!",      "NQ — chart ticker",     tooltip="e.g. NQ1!, NAS100USD, US100")
+spxChart   = input.string("SPX500USD", "SPX500 — chart ticker", tooltip="e.g. SPX500USD, US500, SP1!")
+de30Chart  = input.string("GER40",     "DE30 — chart ticker",   tooltip="e.g. GER40, GER30, DE30EUR, FDAX1!")
+uk100Chart = input.string("UK100GBP",  "UK100 — chart ticker",  tooltip="e.g. UK100GBP, Z1!, FTSE100")
+us30Chart  = input.string("US30USD",   "US30 — chart ticker",   tooltip="e.g. US30USD, DJIA, YM1!")
+us2kChart  = input.string("US2000USD", "US2000 — chart ticker", tooltip="e.g. US2000USD, RTY1!, RUT")
 
 // =====================================================
 // INPUT — PASTE VOLATILITY BLOCK (v3 — includes SESSION STATS)
@@ -42,6 +47,9 @@ col_med     = input.color(color.new(color.orange, 55), "Median Colour")
 col_oc_75   = input.color(color.new(color.aqua,   0),  "OC 75th Colour")
 col_oc_med  = input.color(color.new(color.aqua,   55), "OC Median Colour")
 col_open    = input.color(color.new(color.white,  55), "Day Open Colour")
+openSource  = input.string("London Midnight (00:00)", "Session Open Source",
+     options=["London Midnight (00:00)", "Pre-Session (23:00 prev night)"],
+     tooltip="Midnight: standard FX day open at 00:00 London time.\nPre-Session 23:00: day/open resets at 23:00 London (post-market session open — recommended for indices like SPX500, DE30, UK100, US30, US2000).\nChanging this option redraws all levels from the new open time.")
 show_table  = input.bool(true,  "Show Live Stats Panel")
 show_labels = input.bool(true,  "Show Line Labels")
 
@@ -56,15 +64,36 @@ col_asia_med   = input.color(color.new(color.blue,  55), "Asia Median Colour")
 col_london     = input.color(color.new(color.green, 0),  "London Extension Colour")
 
 // =====================================================
+// STYLE INPUTS — OH / OL + DRIFT
+// =====================================================
+
+show_oh_ol_drift = input.bool(false,  "Show OH/OL + Drift Lines",  group="OH/OL + Drift",
+     tooltip="Draws Open-High (upside) and Open-Low (downside) band lines anchored at the daily open, plus a drift forecast arrow. Requires the v2 export block that contains Open High / Open Low / Drift lines.")
+col_oh_75  = input.color(color.new(color.yellow,  0),  "OH 75th Colour",   group="OH/OL + Drift")
+col_oh_med = input.color(color.new(color.yellow,  60), "OH Median Colour", group="OH/OL + Drift")
+col_ol_75  = input.color(color.new(color.fuchsia, 0),  "OL 75th Colour",   group="OH/OL + Drift")
+col_ol_med = input.color(color.new(color.fuchsia, 60), "OL Median Colour", group="OH/OL + Drift")
+
+// =====================================================
 // HELPERS (unchanged from v1)
 // =====================================================
 
-f_normaliseTicker(t, goldT, nqT) =>
+f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
     r = t
     if t == str.upper(goldT) or t == "XAUUSD" or t == "GOLD"
         r := "GOLD"
     else if t == str.upper(nqT) or t == "NQ1!" or t == "NQ" or t == "NASDAQ100"
         r := "NQ"
+    else if t == str.upper(spxT) or t == "SPX500USD" or t == "US500" or t == "SP1!"
+        r := "SPX500"
+    else if t == str.upper(de30T) or t == "GER40" or t == "GER30" or t == "DE30EUR" or t == "FDAX1!"
+        r := "DE30"
+    else if t == str.upper(uk100T) or t == "UK100GBP" or t == "Z1!" or t == "FTSE100"
+        r := "UK100"
+    else if t == str.upper(us30T) or t == "US30USD" or t == "DJIA" or t == "YM1!"
+        r := "US30"
+    else if t == str.upper(us2kT) or t == "US2000USD" or t == "RTY1!" or t == "RUT"
+        r := "US2000"
     r
 
 f_collapseSpaces(s) =>
@@ -106,6 +135,20 @@ f_pct(price, ref) =>
 f_pctStr(v) =>
     (v >= 0 ? "+" : "") + str.tostring(v) + "%"
 
+// Drift parser — handles +/- prefixed numbers that str.tonumber may not parse with "+"
+f_parseDrift(src, keyword) =>
+    result = float(na)
+    if str.contains(src, keyword)
+        after = str.trim(array.get(str.split(src, keyword), 1))
+        parts = str.split(after, " ")
+        for j = 0 to array.size(parts) - 1
+            token   = str.trim(array.get(parts, j))
+            stripped = str.length(token) > 1 and str.startswith(token, "+") ? str.substring(token, 1) : token
+            val = str.tonumber(stripped)
+            if not na(val) and na(result)
+                result := val
+    result
+
 // =====================================================
 // PARSE VOL DATA + SESSION STATS FROM PASTE
 // =====================================================
@@ -114,6 +157,13 @@ var float vol_hl_med     = na
 var float vol_hl_75      = na
 var float vol_oc_med     = na
 var float vol_oc_75      = na
+// Open High (upside) / Open Low (downside) asymmetric bands
+var float vol_oh_med     = na   // Open High median %
+var float vol_oh_75      = na   // Open High 75th %
+var float vol_ol_med     = na   // Open Low median %
+var float vol_ol_75      = na   // Open Low 75th %
+// Drift d=μ/σ
+var float drift_val      = na
 // Session H-L consumption %s (% of daily H-L — set only if SESSION STATS section found in paste)
 var float asia_med_pct      = na
 var float asia_75_pct       = na
@@ -126,7 +176,7 @@ var float london_oc_med_pct = na
 var float london_oc_75_pct  = na
 
 if barstate.isfirst
-    sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart)
+    sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
     symUp = str.upper(sym)
     rows  = str.split(volText, "\n")
     n     = array.size(rows)
@@ -159,11 +209,17 @@ if barstate.isfirst
                      str.contains(rowUp, "NY RANGE") or str.contains(rowUp, "NY O-C")
 
                 // A new known-ticker header line resets the sym block
-                isOtherTicker = (str.contains(rowUp, "GOLD") or str.contains(rowUp, "EURUSD") or
-                     str.contains(rowUp, "GBPUSD") or str.contains(rowUp, "USDJPY") or
-                     str.contains(rowUp, "NQ") or str.contains(rowUp, "AUDUSD") or
+                isOtherTicker = (str.contains(rowUp, "GOLD")   or str.contains(rowUp, "NQ")     or
+                     str.contains(rowUp, "EURUSD") or str.contains(rowUp, "GBPUSD") or
+                     str.contains(rowUp, "USDJPY") or str.contains(rowUp, "AUDUSD") or
                      str.contains(rowUp, "NZDUSD") or str.contains(rowUp, "USDCAD") or
-                     str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY")) and
+                     str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY") or
+                     str.contains(rowUp, "EURGBP") or str.contains(rowUp, "EURJPY") or
+                     str.contains(rowUp, "EURCHF") or str.contains(rowUp, "GBPCHF") or
+                     str.contains(rowUp, "AUDJPY") or str.contains(rowUp, "CADJPY") or
+                     str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
+                     str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
+                     str.contains(rowUp, "US30")) and
                      not isDataLine2
 
                 if isOtherTicker
@@ -200,12 +256,20 @@ if barstate.isfirst
 
             // ── Standard vol block parsing ────────────────────────────────────
             isDataLine    = str.contains(rowUp, "RANGE") or str.contains(rowUp, "MOVE") or
-                 str.contains(rowUp, "VOLATILITY") or str.contains(rowUp, "PERCENTILE")
+                 str.contains(rowUp, "VOLATILITY") or str.contains(rowUp, "PERCENTILE") or
+                 str.contains(rowUp, "OPEN HIGH") or str.contains(rowUp, "OPEN LOW") or
+                 str.contains(rowUp, "DRIFT")
             isKnownTicker = str.contains(rowUp, "GOLD")   or str.contains(rowUp, "NQ")     or
                  str.contains(rowUp, "EURUSD") or str.contains(rowUp, "GBPUSD") or
                  str.contains(rowUp, "USDJPY") or str.contains(rowUp, "AUDUSD") or
                  str.contains(rowUp, "NZDUSD") or str.contains(rowUp, "USDCAD") or
-                 str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY")
+                 str.contains(rowUp, "USDCHF") or str.contains(rowUp, "GBPJPY") or
+                 str.contains(rowUp, "EURGBP") or str.contains(rowUp, "EURJPY") or
+                 str.contains(rowUp, "EURCHF") or str.contains(rowUp, "GBPCHF") or
+                 str.contains(rowUp, "AUDJPY") or str.contains(rowUp, "CADJPY") or
+                 str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
+                 str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
+                 str.contains(rowUp, "US30")
 
             if not isDataLine and isKnownTicker
                 insideVolBlock := str.contains(rowUp, symUp)
@@ -224,12 +288,35 @@ if barstate.isfirst
                     p75 = f_lastNumBefore(rowRaw, "75th")
                     if not na(p75) and na(vol_oc_75)
                         vol_oc_75 := p75
+                if str.contains(rowUp, "OPEN HIGH")
+                    med = f_firstNumAfter(rowRaw, ": ")
+                    p75 = f_lastNumBefore(rowRaw, "75th")
+                    if not na(med) and na(vol_oh_med)
+                        vol_oh_med := med
+                    if not na(p75) and na(vol_oh_75)
+                        vol_oh_75 := p75
+                if str.contains(rowUp, "OPEN LOW")
+                    med = f_firstNumAfter(rowRaw, ": ")
+                    p75 = f_lastNumBefore(rowRaw, "75th")
+                    if not na(med) and na(vol_ol_med)
+                        vol_ol_med := med
+                    if not na(p75) and na(vol_ol_75)
+                        vol_ol_75 := p75
+                if str.contains(rowUp, "DRIFT")
+                    d = f_parseDrift(rowRaw, ": ")
+                    if not na(d) and na(drift_val)
+                        drift_val := d
 
 // =====================================================
 // DAILY TRACKING
 // =====================================================
 
-newDay = ta.change(dayofmonth(time, "Europe/London")) != 0
+use23Open   = openSource == "Pre-Session (23:00 prev night)"
+londonHour  = hour(time, "Europe/London")
+prevLonHour = barstate.isfirst ? -1 : hour(time[1], "Europe/London")
+newDayMid   = ta.change(dayofmonth(time, "Europe/London")) != 0
+newDay23    = londonHour == 23 and prevLonHour != 23
+newDay      = use23Open ? newDay23 : newDayMid
 
 var int dayStartBar  = 0
 var int dayStartTime = 0
@@ -254,9 +341,8 @@ liveHL_pct = math.round((dayHigh - dayLow) / dayOpen * 100, 2)
 // =====================================================
 // ASIA SESSION TRACKING
 // =====================================================
-// Asia = 00:00–06:00 Europe/London (same window as dayOpen, so asiaOpen == dayOpen)
+// Asia = 00:00–06:00 Europe/London
 
-londonHour = hour(time, "Europe/London")
 inAsia     = londonHour >= 0 and londonHour < 6
 
 var float asiaHigh     = na
@@ -290,6 +376,15 @@ oc_up_med = not na(vol_oc_med) ? dayOpen * (1 + vol_oc_med / 100) : na
 oc_dn_med = not na(vol_oc_med) ? dayOpen * (1 - vol_oc_med / 100) : na
 oc_up_75  = not na(vol_oc_75)  ? dayOpen * (1 + vol_oc_75  / 100) : na
 oc_dn_75  = not na(vol_oc_75)  ? dayOpen * (1 - vol_oc_75  / 100) : na
+
+// =====================================================
+// PRICE LEVELS — OH / OL (anchored at day open, asymmetric)
+// =====================================================
+
+oh_up_75  = not na(vol_oh_75)  ? dayOpen * (1 + vol_oh_75  / 100) : na
+oh_up_med = not na(vol_oh_med) ? dayOpen * (1 + vol_oh_med / 100) : na
+ol_dn_75  = not na(vol_ol_75)  ? dayOpen * (1 - vol_ol_75  / 100) : na
+ol_dn_med = not na(vol_ol_med) ? dayOpen * (1 - vol_ol_med / 100) : na
 
 // =====================================================
 // PRICE LEVELS — SESSION PROJECTIONS
@@ -347,6 +442,15 @@ plot(oc_up_med,  "Close Med Up", color=col_oc_med, linewidth=1, style=plot.style
 plot(oc_dn_med,  "Close Med Dn", color=col_oc_med, linewidth=1, style=plot.style_stepline)
 
 // =====================================================
+// STATIC PLOTS — OH / OL (asymmetric open-anchored bands)
+// =====================================================
+
+plot(show_oh_ol_drift ? oh_up_75  : na, "OH 75th Up",  color=col_oh_75,  linewidth=2, style=plot.style_stepline)
+plot(show_oh_ol_drift ? oh_up_med : na, "OH Med Up",   color=col_oh_med, linewidth=1, style=plot.style_stepline)
+plot(show_oh_ol_drift ? ol_dn_75  : na, "OL 75th Dn",  color=col_ol_75,  linewidth=2, style=plot.style_stepline)
+plot(show_oh_ol_drift ? ol_dn_med : na, "OL Med Dn",   color=col_ol_med, linewidth=1, style=plot.style_stepline)
+
+// =====================================================
 // DYNAMIC LINES + LABELS
 // =====================================================
 
@@ -401,6 +505,14 @@ var line  ln_lOC_Lmd = na
 var label lb_lOC_H75 = na
 var label lb_lOC_L75 = na
 
+// — OH/OL labels + drift forecast arrow —
+var label lb_oh_up_75  = na
+var label lb_oh_up_med = na
+var label lb_ol_dn_75  = na
+var label lb_ol_dn_med = na
+var line  ln_drift     = na
+var label lb_drift     = na
+
 if barstate.islast
     // ── cleanup all ──────────────────────────────────────────────────────────
     line.delete(ln_pH_75)
@@ -447,6 +559,13 @@ if barstate.islast
     line.delete(ln_lOC_Lmd)
     label.delete(lb_lOC_H75)
     label.delete(lb_lOC_L75)
+
+    label.delete(lb_oh_up_75)
+    label.delete(lb_oh_up_med)
+    label.delete(lb_ol_dn_75)
+    label.delete(lb_ol_dn_med)
+    line.delete(ln_drift)
+    label.delete(lb_drift)
 
     x1 = dayStartTime
     x2 = time
@@ -678,6 +797,63 @@ if barstate.islast
                 ln_lOC_Lmd := line.new(x1, lonOC_L_med, x2, lonOC_L_med,
                      color=lonOCColMed, width=1, style=line.style_solid,
                      xloc=xloc.bar_time, extend=extend.none)
+
+    // ── OH/OL labels + Drift forecast arrow ──────────────────────────────────
+    if show_oh_ol_drift
+        if show_labels
+            if not na(oh_up_75)
+                lb_oh_up_75 := label.new(bar_index + 2, oh_up_75,
+                     "OH 75p  +" + str.tostring(vol_oh_75) + "%",
+                     style=label.style_label_left, color=color.new(col_oh_75, 70),
+                     textcolor=color.white, size=size.small)
+            if not na(oh_up_med)
+                lb_oh_up_med := label.new(bar_index + 2, oh_up_med,
+                     "OH med  +" + str.tostring(vol_oh_med) + "%",
+                     style=label.style_label_left, color=color.new(col_oh_med, 70),
+                     textcolor=color.white, size=size.small)
+            if not na(ol_dn_75)
+                lb_ol_dn_75 := label.new(bar_index + 2, ol_dn_75,
+                     "OL 75p  -" + str.tostring(vol_ol_75) + "%",
+                     style=label.style_label_left, color=color.new(col_ol_75, 70),
+                     textcolor=color.white, size=size.small)
+            if not na(ol_dn_med)
+                lb_ol_dn_med := label.new(bar_index + 2, ol_dn_med,
+                     "OL med  -" + str.tostring(vol_ol_med) + "%",
+                     style=label.style_label_left, color=color.new(col_ol_med, 70),
+                     textcolor=color.white, size=size.small)
+
+        // Drift forecast arrow — from session open, sloped by drift × OC 75th range
+        // The line spans one full day (24 h) in time so the angle is timeframe-agnostic.
+        if not na(drift_val) and not na(dayOpen)
+            // Scale: drift of ±1.0 maps to ±1× the OC 75th expected move.
+            // Falls back to OC med, then to 1% of price if neither is available.
+            ocRef       = not na(vol_oc_75)  ? vol_oc_75  :
+                          not na(vol_oc_med) ? vol_oc_med : 1.0
+            ocPts       = dayOpen * ocRef / 100
+            driftEnd    = dayOpen + drift_val * ocPts
+
+            driftColor  = drift_val >= 0.3  ? color.new(color.lime,   0)  :
+                          drift_val >= 0.1  ? color.new(color.green,  10) :
+                          drift_val > -0.1  ? color.new(color.gray,   30) :
+                          drift_val > -0.3  ? color.new(color.orange, 10) :
+                                              color.new(color.red,     0)
+
+            dayDurMs    = 24 * 60 * 60 * 1000
+            ln_drift   := line.new(dayStartTime, dayOpen,
+                          dayStartTime + dayDurMs, driftEnd,
+                          color=driftColor, width=2, style=line.style_arrow_right,
+                          xloc=xloc.bar_time, extend=extend.none)
+
+            if show_labels
+                driftTag = drift_val >= 0.3  ? "Bullish ↑"         :
+                           drift_val >= 0.1  ? "Mild bullish ↑"    :
+                           drift_val > -0.1  ? "Neutral"            :
+                           drift_val > -0.3  ? "Mild bearish ↓"    :
+                                               "Bearish ↓"
+                lb_drift := label.new(bar_index + 2, driftEnd,
+                     "Drift " + str.tostring(math.round(drift_val, 3)) + "  " + driftTag,
+                     style=label.style_label_left, color=color.new(driftColor, 70),
+                     textcolor=color.white, size=size.small)
 
 // =====================================================
 // LIVE STATS TABLE
