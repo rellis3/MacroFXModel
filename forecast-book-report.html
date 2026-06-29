@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Per-Line Volatility Strategy — Backtest Tearsheet</title>
+<style>
+  :root{ --ink:#15181f; --mut:#5b6472; --line:#d9dee7; --bg:#ffffff; --panel:#f6f8fb;
+         --accent:#1f6feb; --green:#0f7b4f; --red:#c0392b; --amber:#9a6b00; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#e9edf3;color:var(--ink);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .sheet{max-width:920px;margin:24px auto;background:var(--bg);padding:34px 40px;
+    box-shadow:0 2px 18px rgba(20,30,50,.12);border-radius:6px}
+  h1{font-size:22px;margin:0 0 2px;font-weight:700;letter-spacing:-.01em}
+  h2{font-size:15px;margin:26px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--ink);
+    text-transform:uppercase;letter-spacing:.05em}
+  h3{font-size:12.5px;margin:16px 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+  .sub{color:var(--mut);font-size:12px}
+  .meta{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:10px;font-size:12px;color:var(--mut)}
+  .meta b{color:var(--ink)}
+  p{margin:8px 0}
+  .lead{font-size:13.5px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+  th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--mut);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid var(--ink)}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--mut)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:10px 12px}
+  .kpi .v{font-size:20px;font-weight:700;letter-spacing:-.01em} .kpi .l{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .chart{border:1px solid var(--line);border-radius:6px;background:#fff;padding:6px}
+  .cap{font-size:11px;color:var(--mut);margin:4px 2px 0}
+  .note{background:var(--panel);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 5px 5px 0;font-size:12px;margin:8px 0}
+  .warn{border-left-color:var(--amber);background:#fdf7ea}
+  ul{margin:6px 0;padding-left:18px} li{margin:3px 0;font-size:12.5px}
+  .toolbar{max-width:920px;margin:14px auto 0;display:flex;gap:10px;align-items:center}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .err{color:var(--red);font-weight:600}
+  .foot{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);font-size:10.5px;color:var(--mut)}
+  .badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#eaf1fe;color:var(--accent);vertical-align:middle}
+  @media print{
+    html,body{background:#fff} .toolbar{display:none}
+    .sheet{box-shadow:none;margin:0;max-width:none;border-radius:0;padding:0 6mm}
+    h2{break-after:avoid} table,.chart,.kpis,.note{break-inside:avoid}
+    @page{margin:14mm 12mm}
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="window.print()">🖨 Print / Save as PDF</button>
+  <button class="sec" onclick="location.href='forecast-analysis.html'">← Analyser</button>
+  <span class="sub" id="tbStatus"></span>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="sub">Loading backtest…</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const H = new URLSearchParams(location.search).get('h') || 'daily';
+const HLBL = { daily:'Daily', weekly:'Weekly', monthly:'20-Day' }[H] || H;
+const pwHdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
+const fmt = (v,d=1)=> (v==null||isNaN(v))?'—':(+v).toFixed(d);
+const pct = (v,d=1)=> (v==null||isNaN(v))?'—':(+v).toFixed(d)+'%';
+const cls = v => v>0?'pos':v<0?'neg':'';
+const esc = s => String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+// ── SVG charts (dependency-free, print-safe) ─────────────────────────────────
+function lineChart(series, { w=840, h=210, color='#1f6feb', fill='rgba(31,111,235,.08)', zero=true }={}){
+  if(!series||series.length<2) return '<div class="cap">no data</div>';
+  const pad={l:44,r:8,t:8,b:18}, IW=w-pad.l-pad.r, IH=h-pad.t-pad.b;
+  const ys=series.map(p=>p.y), ymin=Math.min(zero?0:Infinity,...ys), ymax=Math.max(zero?0:-Infinity,...ys);
+  const yr=(ymax-ymin)||1, n=series.length-1;
+  const X=i=>pad.l+i/n*IW, Y=y=>pad.t+(ymax-y)/yr*IH;
+  const pts=series.map((p,i)=>`${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ');
+  const area=`${pad.l},${Y(Math.max(0,ymin)).toFixed(1)} ${pts} ${X(n).toFixed(1)},${Y(Math.max(0,ymin)).toFixed(1)}`;
+  const gy=[ymin,ymin+yr/2,ymax].map(v=>`<line x1="${pad.l}" y1="${Y(v).toFixed(1)}" x2="${w-pad.r}" y2="${Y(v).toFixed(1)}" stroke="#eef1f6"/><text x="${pad.l-5}" y="${(Y(v)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#8a93a3">${v.toFixed(1)}</text>`).join('');
+  const x0=series[0].x, x1=series[n].x;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet">
+    ${gy}${zero?`<line x1="${pad.l}" y1="${Y(0).toFixed(1)}" x2="${w-pad.r}" y2="${Y(0).toFixed(1)}" stroke="#cdd4df"/>`:''}
+    <polygon points="${area}" fill="${fill}"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/>
+    <text x="${pad.l}" y="${h-5}" font-size="9" fill="#8a93a3">${esc(x0||'')}</text>
+    <text x="${w-pad.r}" y="${h-5}" text-anchor="end" font-size="9" fill="#8a93a3">${esc(x1||'')}</text>
+  </svg>`;
+}
+// Equity → cumulative; underwater → drawdown from running peak.
+function toEquity(eq){ return (eq||[]).map(p=>({x:p.date, y:p.cum})); }
+function toDrawdown(eq){ let peak=-Infinity; return (eq||[]).map(p=>{ peak=Math.max(peak,p.cum); return {x:p.date, y:+(p.cum-peak).toFixed(3)}; }); }
+function barRow(label, val, max, color){ const w=max>0?Math.min(100,Math.abs(val)/max*100):0;
+  return `<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:11px">
+    <span style="width:120px;color:#5b6472">${label}</span>
+    <span style="flex:1;background:#eef1f6;border-radius:3px;height:11px;position:relative">
+      <span style="position:absolute;left:0;top:0;height:11px;width:${w}%;background:${color};border-radius:3px"></span></span>
+    <b style="width:64px;text-align:right">${val}</b></div>`;
+}
+
+function kpi(v,l,neg){ return `<div class="kpi"><div class="v ${neg===true?'neg':neg===false?'pos':''}">${v}</div><div class="l">${l}</div></div>`; }
+
+function render(b){
+  const pf=b.portfolio||{}, sv=b.survivors||{}, svp=sv.portfolio||{}, svt=svp.volTarget||{};
+  const f=b.book||{}, vt=pf.volTarget||{}, rg=b.rigor||{}, io=rg.isVsOos||{}, wf=rg.walkForward||{};
+  const dfl=b.deflated, bs=f.bootstrap, mc=f.montecarlo;
+  const pp=Object.entries(b.perPair||{}).filter(([,s])=>s.trades>0).sort((a,b)=>b[1].sharpe-a[1].sharpe);
+  const survSet=new Set(sv.pairs||[]);
+  const posPairs=pp.filter(([,s])=>s.totalPnl>0).length;
+  const cells=Object.entries(b.policy||{}).filter(([,p])=>p.decision&&p.decision!=='skip');
+  const fadeN=cells.filter(([,p])=>p.decision==='fade').length, followN=cells.filter(([,p])=>p.decision==='follow').length;
+  // use the SURVIVOR (live universe) curve as the headline; fall back to full book.
+  const heq = (sv.equity&&sv.equity.length>1)?sv.equity:b.equity;
+
+  let H=`
+  <h1>Per-Line Volatility Strategy <span class="badge">${HLBL}</span></h1>
+  <div class="sub">Systematic intraday mean-reversion at volatility-forecast levels · FX, equity indices &amp; gold · backtest tearsheet</div>
+  <div class="meta">
+    <span>Out-of-sample from <b>${esc(b.splitDate||'—')}</b></span>
+    <span>OOS trades <b>${(b.nTrades||0).toLocaleString()}</b></span>
+    <span>Live universe <b>${sv.count??'—'}/${sv.total??'—'}</b> instruments</span>
+    <span>Costs <b>on</b> (realistic per-pair spread)</span>
+    <span>Generated <b>${esc((b.generatedAt||'').slice(0,10))}</b></span>
+  </div>
+
+  <h2>1 · Strategy Overview</h2>
+  <p class="lead">The strategy forecasts each session's expected price envelope from a driftless-Brownian
+  range model (volatility-percentile bands around the session open), then trades <b>each forecast line on
+  its own statistically-validated edge</b>: fade the line when it reverts significantly, follow it when it
+  breaks, otherwise stand aside. The decision at every touch is conditioned on the live <b>approach velocity</b>
+  (a Crabel-style "stretch" gauge). Exits are a <b>triple barrier</b> (take-profit at the inner line,
+  stop at the outer line, time-stop at session close).</p>
+  <p>The fade/follow policy is <b>learned in-sample, pooled across all instruments</b> (one universal map, so
+  the edge must be common rather than 30 overfit per-instrument tables) and <b>applied out-of-sample</b>. A
+  cell is traded only if its in-sample, <b>after-cost</b> expectancy clears a positive margin — statistical
+  significance alone is not sufficient. The headline figures below are the <b>live universe</b>: the subset
+  of instruments whose out-of-sample net edge clears their own round-trip cost by a margin.</p>
+
+  <h2>2 · Headline Performance <span class="sub" style="font-weight:400;text-transform:none;letter-spacing:0">— live universe, out-of-sample</span></h2>
+  <div class="kpis">
+    ${kpi(fmt(svp.sharpe,2),'Sharpe (annualised)',svp.sharpe<0)}
+    ${kpi(svp.psr!=null?pct(svp.psr*100,0):'—','Prob. Sharpe &gt; 0',svp.psr<0.95)}
+    ${kpi(pct(svt.cagr,1),`Return p.a. @ ${svt.target||10}% vol`,svt.cagr<0)}
+    ${kpi(pct(svt.maxDD,1),'Max drawdown',true)}
+    ${kpi(fmt(svt.calmar,2),'Calmar',svp.calmar<0)}
+    ${kpi(pct(svp.annVol,1),'Realised volatility')}
+    ${kpi(fmt(svp.avgTradesPerDay,1),'Avg trades / day')}
+    ${kpi(fmt(sv.count,0)+'/'+fmt(sv.total,0),'Instruments traded')}
+  </div>
+  <div class="note">Sharpe is computed on <b>daily portfolio returns ×√252</b>, so concurrent positions across
+  correlated instruments count as one day's risk — not thousands of independent bets. Return and drawdown are
+  shown at a fixed ${svt.target||10}% annualised volatility so they are leverage-honest and comparable.
+  Full-book (all OOS-profitable instruments) Sharpe for reference: <b>${fmt(pf.sharpe,2)}</b>.</div>
+
+  <h2>3 · Equity &amp; Drawdown</h2>
+  <div class="chart">${lineChart(toEquity(heq),{color:'#1f6feb',fill:'rgba(31,111,235,.08)'})}</div>
+  <div class="cap">Cumulative out-of-sample return (% of capital per unit, no compounding), live universe.</div>
+  <div class="chart" style="margin-top:10px">${lineChart(toDrawdown(heq),{color:'#c0392b',fill:'rgba(192,57,43,.08)'})}</div>
+  <div class="cap">Underwater curve — drawdown from running peak.</div>
+
+  <h2>4 · Path &amp; Outcome Risk <span class="sub" style="font-weight:400;text-transform:none;letter-spacing:0">— bootstrap &amp; Monte-Carlo</span></h2>
+  <div class="two">
+    <div>
+      <h3>Bootstrap (outcome uncertainty)</h3>
+      ${bs?`<table><tbody>
+        <tr><td>Total return %</td><td class="mut">p5</td><td>${fmt(bs.total.p5,1)}</td></tr>
+        <tr><td></td><td class="mut">p50</td><td>${fmt(bs.total.p50,1)}</td></tr>
+        <tr><td></td><td class="mut">p95</td><td>${fmt(bs.total.p95,1)}</td></tr>
+        <tr><td>Sharpe (per-trade)</td><td class="mut">p5 / p95</td><td>${fmt(bs.sharpe.p5,2)} / ${fmt(bs.sharpe.p95,2)}</td></tr>
+        <tr><td>P(profitable)</td><td></td><td class="pos">${pct(bs.pPositive*100,0)}</td></tr>
+      </tbody></table>`:'<div class="cap">n/a</div>'}
+    </div>
+    <div>
+      <h3>Monte-Carlo (path/ordering risk)</h3>
+      ${mc?`<table><tbody>
+        <tr><td>Max drawdown %</td><td class="mut">p50</td><td class="neg">${fmt(mc.maxDD.p50,1)}</td></tr>
+        <tr><td></td><td class="mut">p95</td><td class="neg">${fmt(mc.maxDD.p95,1)}</td></tr>
+        <tr><td></td><td class="mut">p99</td><td class="neg">${fmt(mc.maxDD.p99,1)}</td></tr>
+      </tbody></table>
+      <div class="cap">Trade order shuffled 1,000× — worst-case drawdown you might have lived through with the same trades arriving differently.</div>`:'<div class="cap">n/a</div>'}
+    </div>
+  </div>
+
+  <h2>5 · Out-of-Sample Integrity</h2>
+  <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+    ${kpi(fmt(io.is?.sharpe,2),'In-sample Sharpe')}
+    ${kpi(fmt(io.oos?.sharpe,2),'Out-of-sample Sharpe',io.oos?.sharpe<0)}
+    ${kpi(io.degradation!=null?fmt(io.degradation,2):'—','OOS ÷ IS',io.degradation<0.5)}
+    ${kpi(fmt(wf.overall?.sharpe,2),'Walk-forward Sharpe',wf.overall?.sharpe<0)}
+  </div>
+  <div class="note">A ratio near or above 1.0 (and a walk-forward Sharpe close to the single-split figure)
+  indicates the edge is not an in-sample artefact. Walk-forward <b>retrains the policy before each test fold</b>
+  and marches forward in time.</div>
+  ${wf.folds?.length?`<h3>Walk-forward folds</h3><table><thead><tr><th>From</th><th>To</th><th>Sharpe</th><th>Return@${svt.target||10}%</th><th>Max DD</th><th>Trades</th></tr></thead><tbody>
+    ${wf.folds.map(x=>`<tr><td>${esc(x.from)}</td><td>${esc(x.to)}</td><td class="${cls(x.sharpe)}">${fmt(x.sharpe,2)}</td><td>${pct(x.volTarget?.cagr,1)}</td><td class="neg">${pct(x.volTarget?.maxDD,1)}</td><td class="mut">${(x.trades||0).toLocaleString()}</td></tr>`).join('')}
+  </tbody></table>`:''}
+  ${rg.perYear?.length?`<h3>Per-year (out-of-sample)</h3><table><thead><tr><th>Year</th><th>Sharpe</th><th>Return@${svt.target||10}%</th><th>Trades</th></tr></thead><tbody>
+    ${rg.perYear.map(y=>`<tr><td>${esc(y.year)}</td><td class="${cls(y.sharpe)}">${fmt(y.sharpe,2)}</td><td class="${cls(y.volTarget?.cagr)}">${pct(y.volTarget?.cagr,1)}</td><td class="mut">${(y.trades||0).toLocaleString()}</td></tr>`).join('')}
+  </tbody></table>`:''}
+
+  <h2>6 · Cost Sensitivity <span class="sub" style="font-weight:400;text-transform:none;letter-spacing:0">— the binding risk</span></h2>
+  <p>The per-trade edge is thin, so execution cost is the primary risk. The book is re-priced at 1×, 2× and 3×
+  the modelled spread:</p>
+  ${rg.costSensitivity?.length?`<table><thead><tr><th>Spread multiple</th><th>Sharpe</th><th>Return p.a. @ ${svt.target||10}% vol</th></tr></thead><tbody>
+    ${rg.costSensitivity.map(c=>`<tr><td>${c.mult}×</td><td class="${cls(c.sharpe)}">${fmt(c.sharpe,2)}</td><td class="${cls(c.volTarget?.cagr)}">${pct(c.volTarget?.cagr,1)}</td></tr>`).join('')}
+  </tbody></table>`:''}
+  <div class="note warn">Interpretation: the strategy is viable on tight execution (majors/indices/gold) and
+  degrades as spreads widen. Live deployment is gated on achieving close to the modelled round-trip cost —
+  limit entries at the line, and excluding instruments whose live spread exceeds the model.</div>
+
+  <h2>7 · Multiple-Testing Correction</h2>
+  ${dfl?`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+    ${kpi(pct(dfl.dsr*100,0),'Deflated Sharpe',dfl.dsr<0.95)}
+    ${kpi(fmt(dfl.nTrials,0),'Trials counted')}
+    ${kpi(fmt(dfl.sr0,3),'Benchmark SR₀ (per-obs)')}
+  </div>
+  <div class="note">The Deflated Sharpe Ratio (López de Prado) discounts the observed Sharpe for the number of
+  configurations tried, against the Sharpe expected by chance from that many trials. A value near 100% means the
+  edge clears its own search's noise. <b>Disclosure:</b> the ${dfl.nTrials} trials counted are the parameter grid;
+  the full research search (feature combinations, dev iterations) is larger, so this should be read as a floor,
+  not a complete correction.</div>`:'<div class="cap">n/a</div>'}
+
+  <h2>8 · Breadth <span class="sub" style="font-weight:400;text-transform:none;letter-spacing:0">— ${posPairs}/${pp.length} instruments profitable OOS · ${survSet.size} in the live universe</span></h2>
+  <table><thead><tr><th>Instrument</th><th>Live</th><th>Sharpe</th><th>Total %</th><th>Expectancy %</th><th>Win %</th><th>Cost %</th><th>Trades</th></tr></thead><tbody>
+    ${pp.map(([pair,s])=>`<tr style="${survSet.has(pair)?'':'opacity:.5'}"><td>${esc(pair.toUpperCase())}</td><td class="${survSet.has(pair)?'pos':'mut'}">${survSet.has(pair)?'✓':'—'}</td><td class="${cls(s.sharpe)}">${fmt(s.sharpe,2)}</td><td class="${cls(s.totalPnl)}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate,1)}</td><td class="mut">${s.costPct!=null?fmt(s.costPct,3):'—'}</td><td class="mut">${(s.trades||0).toLocaleString()}</td></tr>`).join('')}
+  </tbody></table>
+  <div class="cap">Breadth is the Grinold payoff: a robust book wants most instruments contributing, not one carrying it. ✓ = clears its own round-trip cost by the survivor margin.</div>
+
+  <h2>9 · What It Trades</h2>
+  <p>The validated policy resolves to <b>${fadeN} fade</b> and <b>${followN} follow</b> cells
+  (line × approach-velocity state); the remainder are skipped after costs. The edge is concentrated in
+  <b>fading the projected-high/low bands on fast approaches</b> (the Crabel "stretch" reverting), consistent
+  with the mean-reversion-at-volatility-extremes literature. The Close-line cells are largely skipped — their
+  after-cost expectancy does not clear the spread.</p>
+
+  <h2>10 · Methodology &amp; Data</h2>
+  <ul>
+    <li><b>Data:</b> OANDA M1 history, bucketed into 22:00 UTC broker-day sessions; per-session σ from the
+      volatility engine (HV20 / Yang-Zhang / GARCH family), identical to the live forecaster.</li>
+    <li><b>Levels:</b> driftless-Brownian range distribution (Feller) — Close lines static off the open,
+      Proj-High/Low lines dynamic (trailing the opposite running extreme).</li>
+    <li><b>No look-ahead:</b> σ, the policy and the velocity state for each window use only prior data.</li>
+    <li><b>Costs:</b> realistic per-pair round-trip spread + commission, plus slippage on breakout (stop)
+      entries; cost-stress at 2× and 3× shown above.</li>
+    <li><b>Validation:</b> single in-sample/out-of-sample split (from ${esc(b.splitDate||'—')}) <i>and</i>
+      anchored walk-forward, per-year stability, bootstrap, Monte-Carlo and a deflated-Sharpe multiple-testing
+      correction. A change is accepted only if it beats the incumbent on OOS Sharpe with a non-trivial OOS
+      trade count.</li>
+  </ul>
+
+  <h2>11 · Risk Factors &amp; Limitations</h2>
+  <ul>
+    <li><b>Execution cost is the binding constraint</b> — the edge thins materially at 2–3× modelled spread
+      (§6). Slippage, partial fills and venue spread directly erode it.</li>
+    <li><b>Thin per-trade edge, high turnover</b> — the strategy relies on breadth and frequency, not large
+      individual wins; capacity is spread-limited.</li>
+    <li><b>Backtest, not live</b> — fills are modelled (limit at the line / mark-to-close where a barrier was
+      not reached); real microstructure, gaps and broker behaviour will differ.</li>
+    <li><b>Multiple-testing</b> — the deflated Sharpe counts the parameter grid only; treat it as a floor.</li>
+    <li><b>Regime dependence</b> — the edge is a mean-reversion phenomenon; sustained trending or crisis
+      regimes can compress or invert it (earliest walk-forward fold is the weakest).</li>
+    <li><b>Survivorship of the live universe</b> — instrument selection uses out-of-sample net edge; the live
+      set is liable to change as costs/volatility regimes shift.</li>
+  </ul>
+
+  <div class="foot">
+    Prepared from the per-line analyser book (<code>per-line-${esc(b.horizon||H)}.json</code>). Figures are
+    out-of-sample, after costs, %/unit with no compounding; vol-targeted return/drawdown at a fixed annualised
+    volatility for comparability. <b>This document is a research backtest for internal discussion only — it is
+    not investment advice, not an offer, and not a representation of achievable live returns. Past simulated
+    performance does not guarantee future results.</b>
+  </div>`;
+  $('sheet').innerHTML = H;
+}
+
+async function boot(){
+  $('tbStatus').textContent='';
+  try{
+    const r = await fetch(`/api/forecast-analysis/per-line/${H}`, { headers: pwHdr() });
+    if(r.status===401){ $('sheet').innerHTML='<div class="err">Not authorised. Open the <a href="forecast-analysis.html">analyser</a> and log in first, then reopen this report.</div>'; return; }
+    const j = await r.json();
+    if(!j?.ok || !j.book){ $('sheet').innerHTML=`<div class="err">${esc(j?.error||'No book found — build the per-line book in the analyser first.')}</div>`; return; }
+    render(j.book);
+    $('tbStatus').textContent = `Loaded ${HLBL} book`;
+  }catch(e){ $('sheet').innerHTML=`<div class="err">Failed to load: ${esc(e.message)}</div>`; }
+}
+boot();
+</script>
+</body>
+</html>
