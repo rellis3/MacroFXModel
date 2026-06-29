@@ -13,7 +13,7 @@ import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRe
 import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
-import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor } from './perLineStrategy.js';
+import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, costForPair } from './perLineStrategy.js';
 import { backtestStats, portfolioStats } from './backtestStats.js';
 
 let failures = 0;
@@ -254,6 +254,10 @@ console.log('[runRigor]');
   ok('runRigor IS vs OOS with degradation ratio', rg.isVsOos.is.sharpe!==undefined && rg.isVsOos.oos.sharpe!==undefined && rg.isVsOos.degradation!=null);
   ok('runRigor cost-sensitivity decays with cost', rg.costSensitivity.length===3 && rg.costSensitivity[0].sharpe >= rg.costSensitivity[2].sharpe);
   ok('runRigor per-year present', rg.perYear.length>=1 && rg.perYear[0].year);
+  // realistic per-pair costs: majors cheap, exotic crosses much wider, fallback works
+  ok('costForPair: major < exotic cross', costForPair('eurusd') < costForPair('gbpnzd'));
+  ok('costForPair: exotic cross widest tier', costForPair('gbpnzd') >= 0.04);
+  ok('costForPair: unknown pair falls back to asset-class default', costForPair('zzzxxx','fx') === 0.012);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

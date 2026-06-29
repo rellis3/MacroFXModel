@@ -27,6 +27,27 @@ import { backtestStats, portfolioStats } from './backtestStats.js';
 export const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
 export const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };  // extra on FOLLOW (stop) entries
 
+// Realistic per-pair ROUND-TRIP cost (% of price): typical retail spread +
+// commission. Majors are tight; crosses wider; exotic crosses much wider — the
+// flat 0.012% flattered the exotics. Estimates (broker/venue-dependent) — the
+// Rigor cost-stress (×1/×2/×3) shows the buffer; tune per your execution venue.
+export const PAIR_COST_PCT = {
+  // majors
+  eurusd: 0.008, gbpusd: 0.010, usdjpy: 0.009, usdchf: 0.011, usdcad: 0.011, audusd: 0.011, nzdusd: 0.013,
+  // EUR / GBP crosses
+  eurgbp: 0.013, eurjpy: 0.014, eurchf: 0.015, euraud: 0.018, eurcad: 0.018, eurnzd: 0.038,
+  gbpjpy: 0.018, gbpchf: 0.022, gbpaud: 0.030, gbpcad: 0.032, gbpnzd: 0.045,
+  // other crosses
+  audjpy: 0.016, cadjpy: 0.018, chfjpy: 0.018, nzdjpy: 0.020, audnzd: 0.030, audcad: 0.028, audchf: 0.030,
+  // indices
+  nq: 0.008, spx500: 0.008, spx: 0.008, us30: 0.010, dow: 0.010, us2000: 0.015, de30: 0.012, uk100: 0.015,
+  // commodity
+  gold: 0.020,
+};
+export function costForPair(key, assetClass = 'fx') {
+  return PAIR_COST_PCT[String(key).toLowerCase()] ?? DEFAULT_COST_PCT[assetClass] ?? DEFAULT_COST_PCT.fx;
+}
+
 // ── 1) Flatten window records → decided touches with conditions + barrier geom ─
 // Each touch: { date, open, line, reverted, level, innerLvl, outerLvl, cell }.
 // `conditions` = the per-line condition fields keyed into the cell (default the
@@ -145,7 +166,8 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
         entry: +t.level.toFixed(6), tp: +tp.toFixed(6), sl: +sl.toFixed(6),
         fillTime: t.fillTime, pnl });
     }
-    perPair[pair] = { ...summarizeTrades(trades.map(x => x.pnl), trades.map(x => x.date)), trades: trades.length };
+    perPair[pair] = { ...summarizeTrades(trades.map(x => x.pnl), trades.map(x => x.date)), trades: trades.length,
+                      costPct: costByPair[pair] ?? DEFAULT_COST_PCT.fx };
     tradesByPair[pair] = log;
     bookTrades.push(...trades);
   }
