@@ -570,20 +570,39 @@ async function loadAll() {
     const symKey     = sym.replace('/', '');
     const sessionDay = londonSessionDay();
 
-    // Fire all independent fetches in parallel — cached values resolve instantly
+    // Macro data (FRED + ECB) is NOT pair-critical: the level map / session ranges only
+    // need the pair's OHLC. These endpoints are externally-sourced server-side and can be
+    // slow or cold, so load them in the BACKGROUND and re-render on arrival — otherwise a
+    // slow /api/fred would make the levels (and everything else) wait for no reason.
     const fredValid = S.fredData &&
       ['vix', 'us10y', 'hy', 'nfci'].every(k => S.fredData[k]?.value != null);
     // If FRED was unavailable on the last attempt, wait 30s before retrying so we
     // don't hammer /api/fred on every pair switch while the server refresh is in progress.
     const fredCooling = !fredValid && S._fredUnavailAt &&
       Date.now() - S._fredUnavailAt < 30_000;
-    const [fredData, ecbData, cfg, ohlcData, ohlc5mData, ohlc30mData, quote] =
+    if (!fredValid && !fredCooling) {
+      loadCached('fred2', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED,
+        d => ['vix', 'us10y', 'hy', 'nfci'].every(k => d?.[k]?.value != null))
+        .then(fredData => {
+          // Only promote to S.fredData if the critical series are actually present.
+          // Storing partial/empty data keeps fredValid false on every loadAll() call,
+          // triggering continuous re-fetches.
+          const fredNowValid = fredData &&
+            ['vix', 'us10y', 'hy', 'nfci'].every(k => fredData[k]?.value != null);
+          if (fredNowValid) { S.fredData = fredData; delete S._fredUnavailAt; updatePill('pillFred', 'ok'); }
+          else              { S._fredUnavailAt = Date.now(); } // start 30s cooldown
+          renderAllDebounced();
+        })
+        .catch(() => { S._fredUnavailAt = Date.now(); });
+    }
+    if (!S.ecbData) {
+      fetch('/api/ecbsdw').then(r => r.ok ? r.json() : null).catch(() => null)
+        .then(ecbData => { if (ecbData) { S.ecbData = ecbData; renderAllDebounced(); } });
+    }
+
+    // Pair-critical fetches gate the first render — cached values resolve instantly.
+    const [cfg, ohlcData, ohlc5mData, ohlc30mData, quote] =
       await Promise.all([
-        (fredValid || fredCooling) ? Promise.resolve(S.fredData) :
-          loadCached('fred2', () => fetchAPI('/api/fred'), CACHE_DURATION.FRED,
-            d => ['vix', 'us10y', 'hy', 'nfci'].every(k => d?.[k]?.value != null)),
-        S.ecbData ? Promise.resolve(S.ecbData) :
-          fetch('/api/ecbsdw').then(r => r.ok ? r.json() : null).catch(() => null),
         fetch('/api/config').then(r => r.json()).catch(() => ({})),
         S.ohlcData[sym] ? Promise.resolve(S.ohlcData[sym]) :
           loadCached(`ohlc_${symKey}`, () => fetchAPI(`/api/ohlc?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC),
@@ -593,17 +612,6 @@ async function loadAll() {
           loadCached(`ohlc30m_${symKey}_${sessionDay}`, () => fetchAPI(`/api/oanda_ohlc30m?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC30M),
         loadCached(`quote_${symKey}`, () => fetchAPI(`/api/quote?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.QUOTE),
       ]);
-
-    // Only promote fredData to S.fredData if the critical series are actually present.
-    // Storing partial/empty data (null critical series) keeps fredValid false on every
-    // loadAll() call, triggering continuous re-fetches.
-    const fredNowValid = fredData &&
-      ['vix', 'us10y', 'hy', 'nfci'].every(k => fredData[k]?.value != null);
-    if (!fredValid && !fredCooling) {
-      if (fredNowValid) { S.fredData = fredData; delete S._fredUnavailAt; updatePill('pillFred', 'ok'); }
-      else              { S._fredUnavailAt = Date.now(); } // start 30s cooldown
-    }
-    if (!S.ecbData)    S.ecbData  = ecbData;
     if (cfg.hasAnt)    updatePill('pillAnt', 'ant');
     if (cfg.hasKV)     updatePill('pillKV',  'ok');
     S.hasOanda    = !!cfg.hasOanda;

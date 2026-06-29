@@ -260,7 +260,7 @@ function renderAllInner() {
   const _MAX_ZONES = 14;
   const _rawZoneCount = enhanced.length;
   const enhancedFiltered = _showAllZones
-    ? enhanced
+    ? enhanced.slice()
     : enhanced.filter(z => z.distance <= _zoneWindowPips).slice(0, _MAX_ZONES);
   const _zoneCountLabel = `${enhancedFiltered.length}${!_showAllZones && _rawZoneCount > enhancedFiltered.length ? ` / ${_rawZoneCount}` : ''}`;
   // Re-use `enhanced` reference downstream (avoids touching all template renders)
