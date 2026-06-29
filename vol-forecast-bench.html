@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vol-Forecast Benchmark — σ estimator OOS scorecard</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#a06bff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:940px}
+  main{padding:22px 24px;max-width:1240px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .inst-title{font-size:13px;font-weight:600;margin:6px 0 8px}
+  .mode{color:var(--text2);font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--text3)}
+  .win{background:rgba(63,178,127,.12)}
+  .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .b-meh{background:rgba(224,169,59,.18);color:var(--amber)}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .summary td:first-child{font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>Vol-Forecast Benchmark <span class="mut" style="font-size:13px">· σ estimator OOS scorecard</span></h1>
+  <div class="sub">
+    The strategy stack currently <i>assumes</i> which volatility estimator is best
+    per asset class (commodity→HV20, index→GARCH, fx→Yang-Zhang). This measures it.
+    Every incumbent estimator is <b>imported</b> from <code>volBacktestEngine.js</code>
+    (no copies) and scored on how well it predicts each instrument's realised range,
+    against one new entrant — <b>HAR-RV</b>, fit walk-forward. Scored the same honest
+    way strategies are: a true in-sample / out-of-sample split, ranked by
+    <b>out-of-sample QLIKE</b> (lower = better). σ is the ruler everything
+    downstream — bands, "extension past the mean" — is measured in, so a better σ
+    sharpens every idea built on it.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Instrument</label>
+        <select id="pair">
+          <option value="">All instruments</option>
+          <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+          <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+          <option>USDCHF</option><option>GBPJPY</option><option>GOLD</option><option>NQ</option>
+        </select>
+      </div>
+      <div>
+        <label>Realised-vol proxy (truth)</label>
+        <select id="proxy">
+          <option value="gk">Garman-Klass (OHLC, low-noise)</option>
+          <option value="sq">Squared close-to-close return</option>
+          <option value="parkinson">Parkinson (high-low)</option>
+        </select>
+        <div class="hint">the target each forecast is scored against</div>
+      </div>
+      <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6">
+           <div class="hint">last fraction held out</div></div>
+    </div>
+    <div style="margin-top:14px"><button id="run">Run benchmark</button></div>
+    <div id="status"></div>
+  </div>
+
+  <div id="summary"></div>
+  <div id="results"></div>
+
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>QLIKE</b> = Patton's robust forecast loss <code>r/p − ln(r/p) − 1</code>;
+      <b>MSE</b> = mean squared error on variance. Both are <b>lower-is-better</b>
+      and minimised (0) by a perfect forecast. The column that matters is
+      <b>OOS QLIKE</b> — in-sample fit is not evidence. A row highlighted green is
+      that instrument's OOS winner. <b>HAR-RV</b> is the only new entrant; if it
+      doesn't beat the incumbent for an asset class out-of-sample, the incumbent
+      stays. Note: this scores the <i>variance forecast</i>, not a strategy — it
+      tells you which ruler to build on, not which trade to take.
+    </div>
+  </div>
+</main>
+
+<script>
+const $   = id => document.getElementById(id);
+const fmt = (v,d=4)=> (v===undefined||v===null||isNaN(v)) ? '—' : (+v).toFixed(d);
+
+function rankBadge(r){
+  // r.estimators is sorted by OOS QLIKE ascending; best is r.best
+  const top = r.estimators[0];
+  const incumbentByClass = { commodity:'hv20', index:'garch', fx:'yz30' };
+  const incb = incumbentByClass[r.assetClass];
+  const inc = r.estimators.find(e=>e.key===incb);
+  if(!top) return `<span class="badge b-bad">no result</span>`;
+  if(top.key===incb) return `<span class="badge b-meh">incumbent ${top.label} still best OOS (${fmt(top.oos.qlike)})</span>`;
+  const beatsInc = inc ? (top.oos.qlike < inc.oos.qlike) : true;
+  const cls = beatsInc ? 'b-good':'b-meh';
+  const note = inc ? `beats incumbent ${inc.label} (${fmt(inc.oos.qlike)})` : '';
+  return `<span class="badge ${cls}">OOS winner: ${top.label} (${fmt(top.oos.qlike)}) ${note}</span>`;
+}
+
+function renderInstrument(r){
+  let html = `<div class="card"><div class="inst-title">${r.name} <span class="mut">· ${r.assetClass} · ${r.nBars} bars · proxy ${r.proxy}</span> &nbsp; ${rankBadge(r)}</div>`;
+  html += `<table><thead><tr><th>estimator</th><th>OOS QLIKE</th><th>OOS MSE</th><th>OOS n</th><th>IS QLIKE</th><th>full QLIKE</th></tr></thead><tbody>`;
+  for(const e of r.estimators){
+    const win = e.rankOos===1;
+    html += `<tr class="${win?'win':''}">
+      <td class="mode">${e.label}</td>
+      <td><b>${fmt(e.oos.qlike)}</b></td>
+      <td>${e.oos.mse.toExponential(2)}</td>
+      <td>${e.oos.n}</td>
+      <td class="mut">${fmt(e.is.qlike)}</td>
+      <td class="mut">${fmt(e.full.qlike)}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderSummary(results){
+  // win count by estimator on OOS QLIKE
+  const wins = {};
+  for(const r of results){ const w=r.best; if(w) wins[w]=(wins[w]||0)+1; }
+  const labelOf = k => (results.find(r=>r.estimators.find(e=>e.key===k))?.estimators.find(e=>e.key===k)?.label) || k;
+  const rows = Object.entries(wins).sort((a,b)=>b[1]-a[1])
+    .map(([k,n])=>`<tr><td>${labelOf(k)}</td><td>${n}</td></tr>`).join('');
+  return `<div class="card"><div class="inst-title">OOS winners across ${results.length} instrument(s)</div>
+    <table class="summary"><thead><tr><th>estimator</th><th>times best (OOS QLIKE)</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+async function poll(jobId){
+  for(let i=0;i<180;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/vol-forecast-bench/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('status').textContent = `Running… ${res.elapsed||0}s`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = { pair:$('pair').value, proxy:$('proxy').value, oosFrac:$('oosFrac').value };
+  $('run').disabled=true; $('results').innerHTML=''; $('summary').innerHTML=''; $('legendCard').style.display='none';
+  $('status').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/vol-forecast-bench/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await poll(start.jobId);
+    $('status').textContent = `Done — ${out.results.length} instrument(s), proxy ${out.opts.proxy}, OOS ${out.opts.oosFrac}.`;
+    if(out.results.length>1) $('summary').innerHTML = renderSummary(out.results);
+    $('results').innerHTML = out.results.map(renderInstrument).join('');
+    $('legendCard').style.display='';
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>

@@ -150,6 +150,25 @@ inherently Python, duplicated across bots, and get consolidated here as new code
 | **KV client (Python)** | `pylego/kv.py` | `KvClient.get_json` / `put_json` / `put_status` — dashboard KV reads/writes + the `{data,timestamp}` status envelope; HTTP injected → offline-tested (`pylego/kv_test.py`). | `volatility_bot`; (regime bots later) | ✅ built |
 | telegram | `pylego/telegram.py` | alert transport — still a candidate. | — | 🔲 planned |
 
+### 1e. Vol-forecast evaluation brick (2026-06-29)
+
+Built to answer a question the strategy stack *assumed* rather than measured:
+which σ estimator actually predicts realised range best, per asset class, OOS.
+σ is the ruler bands and "extension past the mean" are measured in, so this grades
+the ruler itself. Pure, no-network, covered by `js/volForecastBench.test.mjs`
+(24 synthetic checks incl. a no-lookahead contract test on every estimator and an
+OLS-recovers-a-known-law test for HAR-RV).
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Vol-forecast bench** | `js/volForecastBench.js` | σ-estimator **evaluation** registry (`ESTIMATORS`) — EWMA(0.90/0.94), HV20/HV30, Yang-Zhang(30), GARCH(1,1) all **imported** from `volBacktestEngine.js` (no copies, re-aligned to a `predictVar(bars)→Float64Array` no-lookahead contract) plus the one new entrant **HAR-RV** (`harRvPred`, walk-forward OLS via incremental normal equations + `solve4`); realised-variance proxies (`realizedVarSeries`: Garman-Klass / squared-return / Parkinson); QLIKE+MSE scoring with full/IS/OOS split (`scoreSeries`); `runBench` ranks by OOS QLIKE | `server.js` `/api/vol-forecast-bench/*` + `vol-forecast-bench.html` (linked from `hub.html`) | ✅ |
+
+> Imports the incumbent estimators from `volBacktestEngine.js` rather than copying
+> them, so the benchmark and the live forecaster cannot silently disagree (Lego
+> Principle 1). HAR-RV is a *candidate* estimator — it only earns a place in the
+> forecaster if it beats the asset-class incumbent **out-of-sample**; the bench is
+> how that's decided, not an automatic adoption.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
