@@ -42,8 +42,12 @@ DEFAULT_CFG = {
     "risk_pct": 0.5,               # % of balance risked per trade
     "max_lot": 2.0,
     "max_open": 12,                # cap concurrent positions
-    "interval_secs": 120,          # plan/status refresh cadence
-    "tick_secs": 5,                # price poll cadence
+    # Three DECOUPLED cadences (see run()): σ/fractions/open only change once per
+    # session, so the plan is pulled slowly; config/status on a medium timer; the
+    # actual level-watch + touch detection is the tight local loop off live price.
+    "plan_secs": 600,              # re-pull the daily plan (trackers reset only on a NEW session)
+    "status_secs": 30,            # read config (kill/paper toggle) + push status
+    "tick_secs": 3,               # local price watch + touch detection
     "enabled_pairs": [],           # [] = use the plan's survivor universe
 }
 
@@ -122,61 +126,65 @@ def run(base_url: str, force_live: bool) -> None:
 
     trackers: dict[str, SessionTracker] = {}
     plan = None
-    last_refresh = 0.0
-    last_minute = 0.0
+    last_plan = last_status = last_minute = 0.0
 
+    # The trading loop runs at tick_secs off LIVE price. σ/fractions/open and the
+    # policy come from the daily plan (pulled slowly, trackers reset only when a
+    # NEW session's plan appears) — the OC lines are then static off the open and
+    # the HL lines are recomputed LOCALLY each tick from the bot's own running
+    # extremes, so a level is watched in real time with no server in the path.
     while True:
         nowt = time.time()
-        # ── periodic: refresh config + plan, push status ──────────────────────
-        if nowt - last_refresh >= cfg.get("interval_secs", 120):
-            cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or cfg)
+
+        # (a) Session plan — slow. Reset trackers only on a genuinely new plan.
+        if nowt - last_plan >= cfg.get("plan_secs", 600) or plan is None:
             new_plan = kv.get_json("volatility_bot_plan")
             if new_plan and new_plan.get("generatedAt") != (plan or {}).get("generatedAt"):
                 plan = new_plan
                 trackers = {p: SessionTracker(plan["pairs"][p]["open"]) for p in plan.get("universe", [])}
-                log.info(f"new plan: {len(trackers)} pairs · {plan.get('generatedAt')}")
+                log.info(f"new session plan: {len(trackers)} pairs · {plan.get('generatedAt')}")
+            last_plan = nowt
+
+        # (b) Config + status — medium. Picks up kill-switch / paper↔live promptly.
+        if nowt - last_status >= cfg.get("status_secs", 30):
+            cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or cfg)
             try:
                 kv.put_status("volatility_bot_status", build_status(cfg, broker, plan, paper))
             except Exception as e:
                 log.warning(f"status push failed: {e}")
-            last_refresh = nowt
+            last_status = nowt
 
-        if not plan or cfg.get("kill_switch"):
-            time.sleep(cfg.get("tick_secs", 5))
-            continue
-
-        pairs = cfg.get("enabled_pairs") or plan.get("universe", [])
-        sample_minute = (nowt - last_minute) >= 60
-
-        for pair in pairs:
-            tr = trackers.get(pair)
-            pp = plan["pairs"].get(pair)
-            if tr is None or pp is None:
-                continue
-            px = broker.price(pair)
-            if px is None:
-                continue
-            tr.on_price(px)
+        # (c) Price watch + touch detection — tight, local, off live price.
+        if plan and not cfg.get("kill_switch"):
+            pairs = cfg.get("enabled_pairs") or plan.get("universe", [])
+            sample_minute = (nowt - last_minute) >= 60
+            for pair in pairs:
+                tr, pp = trackers.get(pair), plan["pairs"].get(pair)
+                if tr is None or pp is None:
+                    continue
+                px = broker.price(pair)
+                if px is None:
+                    continue
+                tr.on_price(px)                       # updates running extremes → moves the HL lines
+                if sample_minute:
+                    tr.on_minute(px)                  # feeds the approach-velocity buffer
+                if hasattr(broker, "check_barriers"):
+                    broker.check_barriers()           # paper triple-barrier (MT5 does it natively)
+                if len(broker.positions()) >= cfg.get("max_open", 12):
+                    continue
+                for spec in decide(pp, plan.get("policy", {}), tr, px):
+                    lots = size_for(pair, broker.balance(), cfg.get("risk_pct", 0.5),
+                                    spec["entry"] - spec["sl"], cfg.get("max_lot", 2.0))
+                    order = {"pair": pair, "side": spec["side"], "lots": lots,
+                             "entry": spec["entry"], "tp": spec["tp"], "sl": spec["sl"],
+                             "comment": f"Vol {spec['line']} {spec['decision'][0]}"}
+                    tid = broker.open(order)
+                    log.info(f"{'[PAPER] ' if paper else ''}{pair} {spec['decision'].upper()} "
+                             f"{spec['line']} {spec['bucket']} → ticket {tid} lots {lots}")
             if sample_minute:
-                tr.on_minute(px)
-            # paper triple-barrier execution (live MT5 does it natively)
-            if hasattr(broker, "check_barriers"):
-                broker.check_barriers()
-            if len(broker.positions()) >= cfg.get("max_open", 12):
-                continue
-            for spec in decide(pp, plan.get("policy", {}), tr, px):
-                lots = size_for(pair, broker.balance(), cfg.get("risk_pct", 0.5),
-                                spec["entry"] - spec["sl"], cfg.get("max_lot", 2.0))
-                order = {"pair": pair, "side": spec["side"], "lots": lots,
-                         "entry": spec["entry"], "tp": spec["tp"], "sl": spec["sl"],
-                         "comment": f"Vol {spec['line']} {spec['decision'][0]}"}
-                tid = broker.open(order)
-                log.info(f"{'[PAPER] ' if paper else ''}{pair} {spec['decision'].upper()} "
-                         f"{spec['line']} {spec['bucket']} → ticket {tid} lots {lots}")
+                last_minute = nowt
 
-        if sample_minute:
-            last_minute = nowt
-        time.sleep(max(cfg.get("tick_secs", 5), 1))
+        time.sleep(max(cfg.get("tick_secs", 3), 1))
 
 
 def main():
