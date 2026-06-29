@@ -104,6 +104,7 @@ const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byB
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
 const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs','Book'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
+let BOOK_CONDS=null;   // the admin's pending cell-conditions selection (persists across re-renders)
 
 const hdr = () => { const pw=localStorage.getItem('af_pw'); return pw?{'x-analyser-pw':pw}:{}; };
 const fmt = (v,d=1)=> (v===undefined||v===null||isNaN(v))?'—':(+v).toFixed(d);
@@ -198,8 +199,10 @@ function equitySVG(eq){ if(!eq||eq.length<2) return ''; const W=720,H=180,pad=4;
 async function renderBook(v){
   v.innerHTML=`<div class="card mut">Loading book…</div>`;
   const b=await loadBook();
-  const curConds = (typeof b!=='string' && Array.isArray(b.conditions) && b.conditions.length) ? b.conditions : ['approachVel'];
-  const condBoxes = COND_OPTS.map(([k,lbl])=>`<label style="display:inline;margin:0 8px 0 0;font-size:12px;color:var(--text2)"><input type="checkbox" class="bookCond" value="${k}" ${curConds.includes(k)?'checked':''}> ${lbl}</label>`).join('');
+  // Pending selection persists in BOOK_CONDS so re-renders (e.g. the Building…
+  // state) never clobber a mid-edit; seed it once from the loaded book.
+  if(BOOK_CONDS===null){ const cc=(typeof b!=='string' && Array.isArray(b.conditions) && b.conditions.length) ? b.conditions : ['approachVel']; BOOK_CONDS=cc.slice(); }
+  const condBoxes = COND_OPTS.map(([k,lbl])=>`<label style="display:inline;margin:0 8px 0 0;font-size:12px;color:var(--text2)"><input type="checkbox" class="bookCond" value="${k}" ${BOOK_CONDS.includes(k)?'checked':''}> ${lbl}</label>`).join('');
   const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button> <label style="display:inline;margin-left:8px">min expectancy %/trade <input id="bookMargin" type="number" step="0.001" value="${typeof b!=='string'&&b.marginPct!=null?b.marginPct:0}" style="width:90px"></label> <label style="display:inline;margin-left:8px">survivor margin (× cost) <input id="bookSurv" type="number" step="0.1" value="${typeof b!=='string'&&b.survivorMargin!=null?b.survivorMargin:0.5}" style="width:70px"></label><div style="margin-top:8px"><span class="mut" style="font-size:11px">cell conditions (more = finer cells, thinner n — tests confluence like round-number):</span><br>${condBoxes}</div>` : '';
   const hint=`<div class="hint">Each forecast line is traded on its <b>own</b> OOS-validated edge under the live approach-velocity state: <b>fade</b> if it reverts significantly, <b>follow</b> if it breaks, else <b>skip</b>. Policy learned on in-sample (pooled across all pairs), applied out-of-sample. Triple-barrier exit (TP=inner line, SL=outer line). Costs on. <b>%/unit, no compounding</b> — this is the honest 26-pair book.</div>`;
   if(typeof b==='string'){ v.innerHTML=`<div class="card"><div class="controls" style="margin-bottom:8px">${buildBtn||''}</div><div class="mut">${b==='none'?'No book yet.':b} ${LEVEL==='admin'?'Click Build book (needs a refresh with the latest fields first).':'Ask the owner to build the book.'}</div>${hint}</div>`; wireBook(); return; }
@@ -359,13 +362,15 @@ async function showTradeChart(i){ const t=TRADE_ROWS[i]; if(!t) return; const h=
 }
 function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  // Keep the persisted selection in sync as the admin ticks/unticks — so a
+  // re-render never resets a mid-edit, and the build always uses what's shown.
+  document.querySelectorAll('.bookCond').forEach(cb=>cb.onchange=()=>{
+    BOOK_CONDS=[...document.querySelectorAll('.bookCond:checked')].map(c=>c.value); });
   btn.onclick=async()=>{
-    // Read every input FIRST — render() below rebuilds the controls from the
-    // loaded book and would otherwise reset the checkboxes before we read them.
     const h=$('horizon').value;
     const marginPct=parseFloat($('bookMargin')?.value)||0;
     const survRaw=parseFloat($('bookSurv')?.value); const survivorMargin=Number.isFinite(survRaw)?survRaw:0.5;
-    const conditions=[...document.querySelectorAll('.bookCond:checked')].map(c=>c.value); if(!conditions.length) conditions.push('approachVel');
+    const conditions=(BOOK_CONDS&&BOOK_CONDS.length)?BOOK_CONDS.slice():['approachVel'];
     bookBusy=true; render();
     // Submit with a couple of retries — a flaky mobile connection drops the POST.
     const submit=async()=>{ let last;
@@ -381,7 +386,7 @@ function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
         if(s.j?.status==='done') done=true;
         else if(s.j?.status==='error') throw new Error('build error: '+(s.j.error||'unknown'));
         else if(s.status===404) throw new Error('build job expired — retry'); }
-      await loadBook(true);
+      await loadBook(true); BOOK_CONDS=null;   // re-seed from the freshly built book
     }catch(e){ alert('Book build: '+e.message+'\n\nThe build runs server-side, so if this was a network blip, reload the Book tab shortly to see the result.'); }
     finally{ bookBusy=false; render(); }
   };
