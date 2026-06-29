@@ -21,11 +21,32 @@
  * curve. No network. Reuses metricsCore for the performance summary.
  */
 
-import { summarizeTrades, winRate, profitFactor, expectancy } from './metricsCore.js';
-import { backtestStats } from './backtestStats.js';
+import { summarizeTrades } from './metricsCore.js';
+import { backtestStats, portfolioStats } from './backtestStats.js';
 
 export const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
 export const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };  // extra on FOLLOW (stop) entries
+
+// Realistic per-pair ROUND-TRIP cost (% of price): typical retail spread +
+// commission. Majors are tight; crosses wider; exotic crosses much wider — the
+// flat 0.012% flattered the exotics. Estimates (broker/venue-dependent) — the
+// Rigor cost-stress (×1/×2/×3) shows the buffer; tune per your execution venue.
+export const PAIR_COST_PCT = {
+  // majors
+  eurusd: 0.008, gbpusd: 0.010, usdjpy: 0.009, usdchf: 0.011, usdcad: 0.011, audusd: 0.011, nzdusd: 0.013,
+  // EUR / GBP crosses
+  eurgbp: 0.013, eurjpy: 0.014, eurchf: 0.015, euraud: 0.018, eurcad: 0.018, eurnzd: 0.038,
+  gbpjpy: 0.018, gbpchf: 0.022, gbpaud: 0.030, gbpcad: 0.032, gbpnzd: 0.045,
+  // other crosses
+  audjpy: 0.016, cadjpy: 0.018, chfjpy: 0.018, nzdjpy: 0.020, audnzd: 0.030, audcad: 0.028, audchf: 0.030,
+  // indices
+  nq: 0.008, spx500: 0.008, spx: 0.008, us30: 0.010, dow: 0.010, us2000: 0.015, de30: 0.012, uk100: 0.015,
+  // commodity
+  gold: 0.020,
+};
+export function costForPair(key, assetClass = 'fx') {
+  return PAIR_COST_PCT[String(key).toLowerCase()] ?? DEFAULT_COST_PCT[assetClass] ?? DEFAULT_COST_PCT.fx;
+}
 
 // ── 1) Flatten window records → decided touches with conditions + barrier geom ─
 // Each touch: { date, open, line, reverted, level, innerLvl, outerLvl, cell }.
@@ -98,6 +119,7 @@ export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012
       decision, n, revRate: +(revRate * 100).toFixed(1),
       z: +((revRate - 0.5) / Math.sqrt(0.25 / n)).toFixed(2),
       fadeExp: +fadeExp.toFixed(4), followExp: +followExp.toFixed(4), expectancy: +bestExp.toFixed(4),
+      ...(decision === 'skip' ? { reason: 'belowMargin' } : {}),   // edge < cost (vs 'lowN' above)
     };
   }
   return policy;
@@ -114,7 +136,8 @@ export function tradePnl(t, policy, opts = {}) {
 // touchesByPair: { pair: touches[] }.  costByPair/slipByPair optional per-pair.
 // Returns { splitDate, policy, book, perPair, equity, nTrades, coverage }.
 export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
-                                            costByPair = {}, slipByPair = {}, mcRuns = 1000, bootRuns = 1000 } = {}) {
+                                            costByPair = {}, slipByPair = {}, mcRuns = 1000, bootRuns = 1000,
+                                            survivorMargin = 0.5, minSurvivorTrades = 30 } = {}) {
   // Stamp each touch with its pair's costs so the pooled policy prices trades
   // with the right (asset-class) friction.
   for (const [pair, touches] of Object.entries(touchesByPair)) {
@@ -128,13 +151,26 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
   // Policy learned on IS, gated on after-cost expectancy (not just direction).
   const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
 
-  const bookTrades = [], perPair = {}, tradesByPair = {};
+  const bookTrades = [], perPair = {}, tradesByPair = {}, pnlByPair = {};
+  // Missed/skipped OOS touches + WHY the engine said no (the Phase-C "missed
+  // trades" view): a cell unseen in IS, too rare in IS (lowN), or whose IS edge
+  // didn't clear cost (belowMargin). We also stash the IS fade/follow estimate so
+  // you can see whether the skip was correct (negative est = good skip).
+  const missedCells = {};
+  let missedTotal = 0;
+  const noteMissed = (t, reason, p) => {
+    missedTotal++;
+    const c = (missedCells[t.cell] ??= { cell: t.cell, line: t.line, n: 0, reason,
+      fadeExp: p?.fadeExp ?? null, followExp: p?.followExp ?? null });
+    c.n++;
+  };
   for (const [pair, touches] of Object.entries(touchesByPair)) {
     const trades = [], log = [];
     for (const t of touches) {
       if (t.date < splitDate) continue;                     // OOS only
       const p = policy[t.cell];
-      if (!p || p.decision === 'skip') continue;
+      if (!p)                       { noteMissed(t, 'unseen-in-IS'); continue; }
+      if (p.decision === 'skip')    { noteMissed(t, p.reason === 'lowN' ? 'low-N in IS' : 'edge below cost', p); continue; }
       const pnl = pnlFor(t, p.decision, { costPct: t.cost, slipPct: t.slip });
       trades.push({ date: t.date, pnl });
       // Full trade geometry for the log + the (Phase 2) M1 chart drill-down.
@@ -145,58 +181,206 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
         entry: +t.level.toFixed(6), tp: +tp.toFixed(6), sl: +sl.toFixed(6),
         fillTime: t.fillTime, pnl });
     }
-    // Per-pair risk on the DAILY series (same-day touches are simultaneous &
-    // correlated, not independent bets) — Sharpe/maxDD honest. Distribution
-    // descriptors (win%, expectancy, PF) stay per-trade (those don't assume
-    // independence). nTouches: A_0/A_1 etc. fire many times a day, so the daily
-    // unit is what risk should annualise.
-    const pPnls  = trades.map(x => x.pnl);
-    const pDaily = toDaily(trades);
-    const pRisk  = summarizeTrades(pDaily.map(d => d.pnl), pDaily.map(d => d.date));
-    perPair[pair] = {
-      trades: trades.length, tradingDays: pDaily.length,
-      winRate:      +(winRate(pPnls) * 100).toFixed(1),
-      expectancy:   +expectancy(pPnls).toFixed(4),
-      profitFactor: +profitFactor(pPnls).toFixed(3),
-      totalPnl:     +pPnls.reduce((s, x) => s + x, 0).toFixed(3),
-      sharpe: pRisk.sharpe, maxDD: pRisk.maxDD,
-    };
+    perPair[pair] = { ...summarizeTrades(trades.map(x => x.pnl), trades.map(x => x.date)), trades: trades.length,
+                      costPct: costByPair[pair] ?? DEFAULT_COST_PCT.fx };
     tradesByPair[pair] = log;
+    pnlByPair[pair] = trades;                                // {date,pnl}[] for the survivor re-aggregation
     bookTrades.push(...trades);
   }
   bookTrades.sort(byDate);
-  // The independent unit is a trading DAY, not a touch: positions across all
-  // pairs/lines on one date are simultaneous & correlated, so scoring risk on the
-  // raw per-touch array (~26k/yr) and annualising by √(trade count) overstates
-  // Sharpe ~10× and lets the iid bootstrap collapse the CI (P(profit)→100%).
-  // Aggregate to a daily portfolio-PnL series and score risk on THAT — Sharpe now
-  // annualises by ~√252 trading days and the bootstrap resamples days.
-  const dailyBook = toDaily(bookTrades);
+  // Daily-aggregated equity curve (compact: one point per day, not per trade) —
+  // sum the book's PnL per date, then cumulate. % of capital per unit, no compounding.
+  const byDay = new Map();
+  for (const t of bookTrades) byDay.set(t.date, (byDay.get(t.date) || 0) + t.pnl);
   let cum = 0;
-  const equity = dailyBook.map(d => ({ date: d.date, pnl: +d.pnl.toFixed(4), cum: +(cum += d.pnl).toFixed(4) }));
-  const tradePnls = bookTrades.map(x => x.pnl);
-  const risk = backtestStats(dailyBook.map(d => d.pnl), dailyBook.map(d => d.date), { mcRuns, bootRuns });
-  const book = {
-    ...risk,                                       // sharpe/sortino/maxDD/calmar/cagr/totalPnl/bootstrap/montecarlo — DAILY units
-    trades: bookTrades.length,                     // real trade count (risk.trades counts days)
-    tradingDays: dailyBook.length,
-    winRate:      +winRate(tradePnls).toFixed(4),  // per-trade descriptors (independence-free)
-    expectancy:   +expectancy(tradePnls).toFixed(4),
-    profitFactor: +profitFactor(tradePnls).toFixed(3),
-    perDayExpectancy: risk.expectancy,
+  const equity = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(4), cum: +(cum += pnl).toFixed(4) }));
+  // ── Live universe (survivors) ──────────────────────────────────────────────
+  // Costs are the binding constraint, so a pair is only "live" if its OOS net
+  // expectancy clears its OWN round-trip spread by a margin (and has enough
+  // trades to mean it). The survivor portfolio is RE-AGGREGATED from just those
+  // pairs' daily PnL — so its Sharpe still honours same-day concurrency and
+  // cross-pair correlation, not a naive average of per-pair Sharpes.
+  const survivors = buildSurvivors(perPair, pnlByPair, costByPair, { survivorMargin, minSurvivorTrades });
+  // Missed-trades summary: counts by reason + the most-skipped cells (with their
+  // IS estimate, so a skip with negative est reads as correctly avoided).
+  const byReason = {};
+  for (const c of Object.values(missedCells)) byReason[c.reason] = (byReason[c.reason] || 0) + c.n;
+  const missed = {
+    total: missedTotal, taken: bookTrades.length,
+    takenRate: (missedTotal + bookTrades.length) ? +(bookTrades.length / (missedTotal + bookTrades.length) * 100).toFixed(1) : 0,
+    byReason,
+    topCells: Object.values(missedCells).sort((a, b) => b.n - a.n).slice(0, 40),
   };
   return {
-    splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair, book,
+    splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair, missed,
+    book: backtestStats(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date), { mcRuns, bootRuns }),
+    // HONEST headline: Sharpe/CAGR/DD on the daily portfolio series (captures
+    // same-day concurrency + cross-pair correlation), not per-trade ×√(trades/yr).
+    portfolio: { ...portfolioStats(equity.map(e => e.pnl)), avgTradesPerDay: equity.length ? +(bookTrades.length / equity.length).toFixed(1) : 0 },
+    survivors,
     coverage: { fadeCells: countDec(policy, 'fade'), followCells: countDec(policy, 'follow'), skipCells: countDec(policy, 'skip') },
   };
 }
 
-function byDate(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }
-// Collapse a [{date,pnl}] trade list to one summed PnL per date (the independent
-// daily unit) — sorted ascending. Same-day correlated touches become one bet.
-function toDaily(trades) {
+// Pick the "live universe" (pairs that clear their own cost by a margin) and
+// re-aggregate ONLY their daily PnL into an honest portfolio. perPair holds the
+// OOS stats; pnlByPair holds each pair's {date,pnl}[]; costByPair the spreads.
+export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMargin = 0.5, minSurvivorTrades = 30 } = {}) {
+  const all = Object.keys(perPair);
+  const keep = [], excluded = [];
+  for (const p of all) {
+    const s = perPair[p], cost = costByPair[p] ?? DEFAULT_COST_PCT.fx;
+    const need = cost * survivorMargin;                       // net edge must clear this
+    if (s.trades >= minSurvivorTrades && s.expectancy >= need) keep.push(p);
+    else excluded.push({ pair: p, expectancy: s.expectancy, costPct: +cost.toFixed(4), need: +need.toFixed(4),
+      trades: s.trades, reason: s.trades < minSurvivorTrades ? 'too few trades' : 'expectancy below cost margin' });
+  }
+  const survTrades = keep.flatMap(p => pnlByPair[p] || []).sort(byDate);
   const byDay = new Map();
-  for (const t of trades) byDay.set(t.date, (byDay.get(t.date) || 0) + t.pnl);
-  return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([date, pnl]) => ({ date, pnl }));
+  for (const t of survTrades) byDay.set(t.date, (byDay.get(t.date) || 0) + t.pnl);
+  let cum = 0;
+  const equity = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(4), cum: +(cum += pnl).toFixed(4) }));
+  return {
+    margin: survivorMargin, minTrades: minSurvivorTrades,
+    pairs: keep, count: keep.length, total: all.length,
+    excluded: excluded.sort((a, b) => a.expectancy - b.expectancy),
+    nTrades: survTrades.length, equity,
+    portfolio: { ...portfolioStats(equity.map(e => e.pnl)), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 },
+  };
 }
+
+function byDate(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }
 function countDec(policy, d) { return Object.values(policy).filter(p => p.decision === d).length; }
+
+// Daily-summed PnL series from a {date,pnl}[] list (for portfolioStats).
+function dailySeries(trades) {
+  const m = new Map();
+  for (const t of trades) m.set(t.date, (m.get(t.date) || 0) + t.pnl);
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+}
+// Price every non-skip touch under a policy (optionally scaling cost by `mult`).
+function priceTrades(touches, policy, mult = 1) {
+  const out = [];
+  for (const t of touches) {
+    const p = policy[t.cell];
+    if (!p || p.decision === 'skip') continue;
+    out.push({ date: t.date, pnl: pnlFor(t, p.decision, { costPct: (t.cost ?? 0.012) * mult, slipPct: (t.slip ?? 0.006) * mult }) });
+  }
+  return out;
+}
+
+// ── 5) Rigor battery — walk-forward, per-year, cost-sensitivity, IS-vs-OOS ─────
+// A "serious backtest" beyond one split. All from the same touches (cheap).
+//   • walkForward — anchored folds: train on everything before each test chunk,
+//     test on the chunk, march forward; aggregate every fold's OOS trades.
+//   • isVsOos     — the single-split policy applied to its own IS vs the OOS
+//     (degradation ratio = OOS Sharpe ÷ IS Sharpe).
+//   • costSensitivity — re-price the OOS book at cost ×{1,2,3} (edge survival).
+//   • perYear     — OOS book stats per calendar year (sub-period stability).
+export function runRigor(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
+                                          folds = 5, initialFrac = 0.4, costMults = [1, 2, 3],
+                                          costByPair = {}, slipByPair = {} } = {}) {
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
+  const all = Object.values(touchesByPair).flat().sort(byDate);
+  if (all.length < 100) return null;
+  const dates = all.map(t => t.date);
+  const ps = (trades) => portfolioStats(dailySeries(trades));
+
+  // IS vs OOS on the single split.
+  const splitDate = dates[Math.floor(dates.length * splitFrac)];
+  const isPol  = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
+  const isStats  = ps(priceTrades(all.filter(t => t.date < splitDate), isPol));
+  const oosTrades = priceTrades(all.filter(t => t.date >= splitDate), isPol);
+  const oosStats = ps(oosTrades);
+  const isVsOos = { splitDate, is: isStats, oos: oosStats,
+                    degradation: isStats.sharpe ? +(oosStats.sharpe / isStats.sharpe).toFixed(2) : null };
+
+  // Walk-forward: initial IS = first `initialFrac`, then `folds` equal-count test chunks.
+  const startIdx = Math.floor(dates.length * initialFrac);
+  const tailDates = dates.slice(startIdx);
+  const wfTrades = [], foldStats = [];
+  for (let f = 0; f < folds; f++) {
+    const a = tailDates[Math.floor(f * tailDates.length / folds)];
+    const b = tailDates[Math.floor((f + 1) * tailDates.length / folds)] ?? null;   // null = to the end
+    const train = all.filter(t => t.date < a);
+    if (train.length < minN) continue;
+    const pol = buildPolicy(train, { minN, marginPct });
+    const test = all.filter(t => t.date >= a && (b == null || t.date < b));
+    const tr = priceTrades(test, pol);
+    wfTrades.push(...tr);
+    foldStats.push({ from: a, to: b ?? dates[dates.length - 1], trades: tr.length, ...ps(tr) });
+  }
+  const walkForward = { folds: foldStats, overall: ps(wfTrades), trades: wfTrades.length };
+
+  // Cost sensitivity on the OOS book (same policy, friction × mult).
+  const oosTouches = all.filter(t => t.date >= splitDate);
+  const costSensitivity = costMults.map(mult => ({ mult, ...ps(priceTrades(oosTouches, isPol, mult)) }));
+
+  // Per-year (OOS).
+  const byYear = {};
+  for (const t of oosTrades) (byYear[t.date.slice(0, 4)] ??= []).push(t);
+  const perYear = Object.entries(byYear).sort().map(([year, tr]) => ({ year, trades: tr.length, ...ps(tr) }));
+
+  return { isVsOos, walkForward, costSensitivity, perYear };
+}
+
+// ── 6) Parameter-sensitivity grid (Phase C) ──────────────────────────────────
+// One-at-a-time (OAT) sweep around the base params: vary each knob across a small
+// grid holding the others at base, and report the OOS portfolio Sharpe + trade
+// count + survivor count/Sharpe. Cheap (no bootstrap/MC). Also returns the flat
+// list of per-observation daily Sharpes across all DISTINCT combos — the "trials"
+// a deflated-Sharpe correction needs. Note: approach-velocity thresholds are baked
+// into the stored touch cells at refresh time, so they CANNOT be swept here without
+// re-running the analyser — only post-hoc knobs are grid-able.
+export function runSensitivity(touchesByPair, { base = {}, grids = {}, costByPair = {}, slipByPair = {}, minSurvivorTrades = 30 } = {}) {
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
+  const pairs   = Object.entries(touchesByPair);
+  const allFlat = Object.values(touchesByPair).flat().sort(byDate);
+  if (allFlat.length < 100) return null;
+  const dates = allFlat.map(t => t.date);
+  const B = { splitFrac: base.splitFrac ?? 0.6, minN: base.minN ?? 50,
+              marginPct: base.marginPct ?? 0, survivorMargin: base.survivorMargin ?? 0.5 };
+
+  const evalCombo = ({ splitFrac, minN, marginPct, survivorMargin }) => {
+    const splitDate = dates[Math.floor(dates.length * splitFrac)];
+    const pol = buildPolicy(allFlat.filter(t => t.date < splitDate), { minN, marginPct });
+    const pnlByPair = {}, perPair = {}, pooled = [];
+    for (const [pair, touches] of pairs) {
+      const tr = priceTrades(touches.filter(t => t.date >= splitDate), pol);
+      pnlByPair[pair] = tr;
+      const exp = tr.length ? tr.reduce((s, x) => s + x.pnl, 0) / tr.length : 0;
+      perPair[pair] = { expectancy: +exp.toFixed(4), trades: tr.length };
+      pooled.push(...tr);
+    }
+    const daily = dailySeries(pooled);
+    const m = daily.length ? daily.reduce((s, x) => s + x, 0) / daily.length : 0;
+    const sd = daily.length > 1 ? Math.sqrt(daily.reduce((s, x) => s + (x - m) ** 2, 0) / daily.length) : 0;
+    const port = portfolioStats(daily);
+    const surv = buildSurvivors(perPair, pnlByPair, costByPair, { survivorMargin, minSurvivorTrades });
+    return { splitFrac, minN, marginPct, survivorMargin, days: daily.length, nTrades: pooled.length,
+      sharpe: port.sharpe, sharpeRaw: sd > 1e-9 ? +(m / sd).toFixed(4) : 0,
+      survCount: surv.count, survSharpe: surv.portfolio?.sharpe ?? 0 };
+  };
+
+  const G = {
+    splitFrac:      grids.splitFrac      ?? [0.5, 0.6, 0.7],
+    minN:           grids.minN           ?? [30, 50, 75, 100],
+    marginPct:      grids.marginPct      ?? [0, 0.005, 0.01, 0.02],
+    survivorMargin: grids.survivorMargin ?? [0.25, 0.5, 0.75, 1.0],
+  };
+  const seen = new Set(), trials = [], sweeps = {};
+  const remember = r => { const k = `${r.splitFrac}|${r.minN}|${r.marginPct}|${r.survivorMargin}`;
+    if (!seen.has(k)) { seen.add(k); trials.push(r); } };
+  for (const [param, vals] of Object.entries(G))
+    sweeps[param] = vals.map(v => { const r = evalCombo({ ...B, [param]: v }); remember(r); return r; });
+  const baseRow = evalCombo(B); remember(baseRow);
+  return { base: B, baseRow, sweeps, nTrials: trials.length, trialSharpesRaw: trials.map(t => t.sharpeRaw) };
+}

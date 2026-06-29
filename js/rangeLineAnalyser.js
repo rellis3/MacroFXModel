@@ -213,4 +213,6 @@ export function runRangeLineBook(packedByPair, opts = {}) {
 
 // Re-export so a streaming caller (the server route) can build touchesByPair
 // pair-by-pair and run the pooled policy itself without a second import.
-export { runPerLine } from './perLineStrategy.js';
+// `costForPair` lets the route price each pair at its real round-trip spread
+// (the survivor / cost-sensitivity logic depends on per-pair costs).
+export { runPerLine, costForPair } from './perLineStrategy.js';

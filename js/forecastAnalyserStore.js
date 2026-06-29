@@ -16,7 +16,10 @@ import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize } from './instrumentRegistry.js';
-import { extractTouches, runPerLine, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, runSensitivity, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { deflatedSharpe } from './backtestStats.js';
+import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
+import { resampleTo } from './barUtils.js';
 
 const PREFIX   = 'forecast-analysis';
 const M1_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
@@ -226,7 +229,8 @@ export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLo
 // skip policy on in-sample, applies it out-of-sample, and writes the book result
 // (equity curve + per-pair OOS perf + the policy table) to R2.
 export async function runPerLineBook({ horizon = 'daily', conditions = ['approachVel'],
-                                       minN = 50, splitFrac = 0.6, marginPct = 0, onLog = () => {} } = {}) {
+                                       minN = 50, splitFrac = 0.6, marginPct = 0,
+                                       survivorMargin = 0.5, minSurvivorTrades = 30, onLog = () => {} } = {}) {
   if (!r2Configured()) throw new Error('R2 not configured');
   const manifest = await getManifest();
   if (!manifest) throw new Error('No dataset — run a refresh first');
@@ -245,14 +249,22 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
       withBarriers++;
       touchesByPair[pair] = touches;
       const ac = assetClassFor(pair);
-      costByPair[pair] = DEFAULT_COST_PCT[ac] ?? DEFAULT_COST_PCT.fx;
+      costByPair[pair] = costForPair(pair, ac);              // realistic per-pair round-trip spread
       slipByPair[pair] = DEFAULT_SLIP_PCT[ac] ?? DEFAULT_SLIP_PCT.fx;
     }
     onLog(`${pair}: ${touches.length} tradeable touches`);
   }
   if (!withBarriers) throw new Error('No tradeable touches — re-refresh (records need innerLvl/outerLvl + features)');
 
-  const result = runPerLine(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+  const result = runPerLine(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair, survivorMargin, minSurvivorTrades });
+  // Rigor battery (walk-forward / per-year / cost-sensitivity / IS-vs-OOS) on the
+  // same pooled touches — the "serious backtest" checks.
+  const rigor = runRigor(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+  // Parameter-sensitivity grid + deflated Sharpe (multiple-testing correction):
+  // is the edge perched on one lucky setting, and does it survive the search?
+  const sensitivity = runSensitivity(touchesByPair, { base: { splitFrac, minN, marginPct, survivorMargin },
+                                                      costByPair, slipByPair, minSurvivorTrades });
+  const deflated = sensitivity ? deflatedSharpe(result.equity.map(e => e.pnl), sensitivity.trialSharpesRaw) : null;
   const generatedAt = new Date().toISOString();
   // Store each pair's trade log separately (loaded on demand by the Book tab /
   // the M1 chart drill-down) so the headline book JSON stays small.
@@ -263,14 +275,89 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
     await putJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`, { pair, horizon, generatedAt, splitDate: result.splitDate, trades: log });
     logged += log.length;
   }
-  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, ...summary };
+  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, survivorMargin, minSurvivorTrades, ...summary, rigor, sensitivity, deflated };
   await putJSON(`${PREFIX}/per-line-${horizon}.json`, out);
+  const sv = result.survivors;
   onLog(`Book: ${result.nTrades} OOS trades (${logged} logged) · Sharpe ${result.book.sharpe} · CAGR ${result.book.cagr}% · maxDD ${result.book.maxDD}% · ` +
-        `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}`);
+        `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}` +
+        (sv ? ` · live universe ${sv.count}/${sv.total} pairs (Sharpe ${sv.portfolio?.sharpe})` : '') +
+        (deflated ? ` · DSR ${(deflated.dsr * 100).toFixed(0)}% (${deflated.nTrials} trials)` : '') +
+        (result.missed ? ` · took ${result.missed.takenRate}% of touches` : ''));
   return out;
 }
 export async function getPerLineBook(horizon = 'daily')        { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }
 export async function getPerLineTrades(pair, horizon = 'daily') { return getJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`); }
+
+// ── M1 chart drill-down for one trade's session (Book tab trade viewer) ──────
+// Returns the session's M1 candles plus the forecast geometry — static OC price
+// levels and the DYNAMIC HL line series (trailing the opposite running extreme,
+// the exact construction analyseWindow.levelAt uses) — so the levelChart brick
+// can render a trade with its forecast lines + entry/TP/SL. Packed M1 is cached
+// per pair (LRU 2) because loadM1ForPair pulls the whole parquet (~heavy); a
+// viewer drills one pair at a time so two slots cover the common case.
+const _m1ChartCache = new Map();
+async function _loadM1Cached(pair) {
+  const key = String(pair).toLowerCase();
+  if (_m1ChartCache.has(key)) { const v = _m1ChartCache.get(key); _m1ChartCache.delete(key); _m1ChartCache.set(key, v); return v; }
+  const packed = await loadM1ForPair(key);
+  _m1ChartCache.set(key, packed);
+  while (_m1ChartCache.size > 2) _m1ChartCache.delete(_m1ChartCache.keys().next().value);
+  return packed;
+}
+
+export async function getSessionChart(pair, horizon = 'daily', date = '') {
+  const key = String(pair).toLowerCase();
+  if (!date) throw new Error('date required');
+  // The stored record gives open + σ (already horizon-scaled, as % of price) so
+  // we rebuild the bands exactly as the analyser did — no σ recomputation.
+  const data = await getPairData(key, horizon);
+  const rec  = data?.records?.find(r => r.date === date);
+  if (!rec) return null;
+  const assetClass = data.assetClass || assetClassFor(key);
+  const packed = await _loadM1Cached(key);
+  if (!packed?.n) throw new Error('no M1 data for pair');
+  const sessions = bucketM1IntoSessions(packed);
+  const dates = [...sessions.keys()].sort();
+  const idx = dates.indexOf(date);
+  if (idx < 0) return null;
+  const H = FC_HORIZONS[horizon] ?? FC_HORIZONS.daily;
+  let bars = [];
+  if (horizon === 'daily') bars = (sessions.get(date) || []).slice();
+  else for (let k = idx; k < Math.min(idx + H.windowDays, dates.length); k++) bars.push(...(sessions.get(dates[k]) || []));
+  if (bars.length < 2) return null;
+  bars.sort((a, b) => a.time - b.time);
+  const open = bars[0].open;
+  const fr = computeBands(open, (rec.sigma || 0) / 100, assetClass);   // { hl50, hl75, ocMed, oc75 }
+
+  // Compact the candle payload for long (weekly/20-day) windows — the dynamic HL
+  // series is computed on the SAME grid we return so the lines match the candles.
+  let cb = bars, resampledTo = null;
+  if (bars.length > 2000) { resampledTo = Math.ceil(bars.length / 1500); cb = resampleTo(bars, resampledTo); }
+
+  // Dynamic HL line series — trail the opposite running extreme (analyseWindow.levelAt).
+  const hl = { HL50up: [], HL50dn: [], HL75up: [], HL75dn: [] };
+  let rh = -Infinity, rl = Infinity;
+  for (const b of cb) {
+    if (b.high > rh) rh = b.high;
+    if (b.low  < rl) rl = b.low;
+    hl.HL50up.push({ time: b.time, value: +(rl * (1 + fr.hl50)).toFixed(6) });
+    hl.HL50dn.push({ time: b.time, value: +(rh * (1 - fr.hl50)).toFixed(6) });
+    hl.HL75up.push({ time: b.time, value: +(rl * (1 + fr.hl75)).toFixed(6) });
+    hl.HL75dn.push({ time: b.time, value: +(rh * (1 - fr.hl75)).toFixed(6) });
+  }
+  // Static OC lines off the open.
+  const oc = {
+    OC50up: +(open * (1 + fr.ocMed)).toFixed(6), OC50dn: +(open * (1 - fr.ocMed)).toFixed(6),
+    OC75up: +(open * (1 + fr.oc75)).toFixed(6),  OC75dn: +(open * (1 - fr.oc75)).toFixed(6),
+  };
+  return {
+    pair: key, horizon, date, assetClass, open: +open.toFixed(6),
+    bars: cb.map(b => ({ time: b.time, open: +(+b.open).toFixed(6), high: +(+b.high).toFixed(6),
+                         low: +(+b.low).toFixed(6), close: +(+b.close).toFixed(6) })),
+    oc, hl, frac: { hl50: fr.hl50, hl75: fr.hl75, ocMed: fr.ocMed, oc75: fr.oc75 },
+    barCount: bars.length, resampledTo,
+  };
+}
 
 // ── Read helpers (public API serves these) ───────────────────────────────────
 export async function getManifest()              { return getJSON(`${PREFIX}/manifest.json`); }

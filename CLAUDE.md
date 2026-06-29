@@ -8,7 +8,9 @@ code, and follow it.**
 Orientation docs (read when you need them, not every time):
 `CODEBASE_OVERVIEW.md` (the map), `SYSTEM_ASSESSMENT.md` (honest critique),
 `TRADABILITY_REVIEW.md` (what's real vs in-sample),
-`REVERSION_CONTINUATION_CONCEPT.md` (the fade/follow design basis), and
+`REVERSION_CONTINUATION_CONCEPT.md` (the fade/follow design basis),
+`ENTRY_ZONE_CONFIDENCE.md` (how the per-line strategy decides entry zone /
+direction / confidence — the built fade-vs-follow engine and its modules), and
 **`LEGO_MODULES.md` (the central brick registry** — every reusable module, where
 it's used, what it does, and the candidate bricks still to extract; read it
 before adding a module so you import an existing brick instead of copying).

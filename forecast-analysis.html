@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Forecast Level Analyser</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root{ --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
          --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889; --accent:#5b9dff;
@@ -194,13 +195,34 @@ function equitySVG(eq){ if(!eq||eq.length<2) return ''; const W=720,H=180,pad=4;
 async function renderBook(v){
   v.innerHTML=`<div class="card mut">Loading book…</div>`;
   const b=await loadBook();
-  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button> <label style="display:inline;margin-left:8px">min expectancy %/trade <input id="bookMargin" type="number" step="0.001" value="${typeof b!=='string'&&b.marginPct!=null?b.marginPct:0}" style="width:90px"></label>` : '';
+  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button> <label style="display:inline;margin-left:8px">min expectancy %/trade <input id="bookMargin" type="number" step="0.001" value="${typeof b!=='string'&&b.marginPct!=null?b.marginPct:0}" style="width:90px"></label> <label style="display:inline;margin-left:8px">survivor margin (× cost) <input id="bookSurv" type="number" step="0.1" value="${typeof b!=='string'&&b.survivorMargin!=null?b.survivorMargin:0.5}" style="width:70px"></label>` : '';
   const hint=`<div class="hint">Each forecast line is traded on its <b>own</b> OOS-validated edge under the live approach-velocity state: <b>fade</b> if it reverts significantly, <b>follow</b> if it breaks, else <b>skip</b>. Policy learned on in-sample (pooled across all pairs), applied out-of-sample. Triple-barrier exit (TP=inner line, SL=outer line). Costs on. <b>%/unit, no compounding</b> — this is the honest 26-pair book.</div>`;
   if(typeof b==='string'){ v.innerHTML=`<div class="card"><div class="controls" style="margin-bottom:8px">${buildBtn||''}</div><div class="mut">${b==='none'?'No book yet.':b} ${LEVEL==='admin'?'Click Build book (needs a refresh with the latest fields first).':'Ask the owner to build the book.'}</div>${hint}</div>`; wireBook(); return; }
-  const f=b.book||{}; const kpi=(val,lab,neg)=>`<div class="kpi"><div class="v ${neg!==undefined?(neg?'neg':'pos'):''}">${val}</div><div class="l">${lab}</div></div>`;
+  const f=b.book||{}, pf=b.portfolio||{}, vt=pf.volTarget||{}; const kpi=(val,lab,neg)=>`<div class="kpi"><div class="v ${neg!==undefined?(neg?'neg':'pos'):''}">${val}</div><div class="l">${lab}</div></div>`;
+  // HONEST headline — portfolio (daily, time-aggregated) stats.
   let html=`<div class="card"><div class="controls" style="margin-bottom:10px">${buildBtn}<div class="mut" style="align-self:center">OOS from <b>${b.splitDate||'—'}</b> · ${b.nTrades} trades · cond ${(b.conditions||[]).join('+')} · minN ${b.minN}</div></div>
-    <div class="kpi-grid">${kpi(fmt(f.sharpe,2),'OOS Sharpe',f.sharpe<0)}${kpi(fmt(f.sortino,2),'Sortino',f.sortino<0)}${kpi(fmt(f.calmar,2),'Calmar',f.calmar<0)}${kpi(fmt(f.cagr,1)+'%','CAGR',f.cagr<0)}${kpi(fmt(f.totalPnl,1)+'%','total return',f.totalPnl<0)}${kpi(fmt(f.expectancy,4)+'%','expectancy/trade',f.expectancy<0)}${kpi(fmt(f.winRate*100,1)+'%','win rate')}${kpi(fmt(f.payoff,2),'payoff (avgW/avgL)')}${kpi(fmt(f.profitFactor,2),'profit factor')}${kpi(fmt(f.maxDD,2)+'%','max drawdown',true)}${kpi(f.maxDDdur+'','DD duration (trades)',true)}${kpi(f.tradesPerYr+'','trades/yr')}</div>
+    <div style="font-weight:600;margin-bottom:6px">Portfolio — honest (daily, time-aggregated)</div>
+    <div class="kpi-grid">${kpi(fmt(pf.sharpe,2),'Portfolio Sharpe',pf.sharpe<0)}${kpi(pf.psr!=null?fmt(pf.psr*100,0)+'%':'—','prob. Sharpe>0',pf.psr<0.95)}${kpi(fmt(pf.annVol,1)+'%','annual vol')}${kpi(fmt(vt.cagr,1)+'%',`CAGR @ ${vt.target||10}% vol`,vt.cagr<0)}${kpi(fmt(vt.maxDD,1)+'%',`max DD @ ${vt.target||10}% vol`,true)}${kpi(fmt(vt.calmar,2),'Calmar (vol-targeted)',vt.calmar<0)}${kpi(fmt(pf.avgTradesPerDay,1),'avg trades/day')}</div>
+    <div class="hint" style="margin-top:8px">This is the Sharpe that's real: daily portfolio returns ×√252, so 33 correlated pairs trading at once count as one day's risk — not ${f.tradesPerYr||'thousands of'} independent bets. CAGR/DD shown at a fixed ${vt.target||10}% annual vol so they're comparable and leverage-honest.</div>
     <div style="margin-top:12px">${equitySVG(b.equity)}</div>${hint}</div>`;
+  // Live universe — survivors only (pairs that clear their own cost by a margin),
+  // portfolio re-aggregated from just their daily PnL. The book you'd actually trade.
+  const sv=b.survivors;
+  if(sv){ const sp=sv.portfolio||{}, svt=sp.volTarget||{};
+    html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Live universe — survivors only <span class="mut" style="font-weight:400">(${sv.count}/${sv.total} pairs · net edge ≥ ${fmt(sv.margin,2)}× own spread · ≥${sv.minTrades} trades)</span></div>
+      <div class="hint" style="margin-bottom:8px">Costs are the binding constraint, so this is the book you'd actually trade: pairs whose OOS net expectancy clears their own round-trip spread by a margin. Stats are <b>re-aggregated from just these pairs' daily PnL</b> — same concurrency/correlation honesty as the full book, not an average of per-pair Sharpes.</div>
+      <div class="kpi-grid">${kpi(fmt(sp.sharpe,2),'Survivor Sharpe',sp.sharpe<0)}${kpi(sp.psr!=null?fmt(sp.psr*100,0)+'%':'—','prob. Sharpe>0',sp.psr<0.95)}${kpi(fmt(sp.annVol,1)+'%','annual vol')}${kpi(fmt(svt.cagr,1)+'%',`CAGR @ ${svt.target||10}% vol`,svt.cagr<0)}${kpi(fmt(svt.maxDD,1)+'%',`max DD @ ${svt.target||10}% vol`,true)}${kpi(fmt(sp.avgTradesPerDay,1),'avg trades/day')}</div>
+      <div class="hint" style="margin-top:8px">Full book Sharpe ${fmt((b.portfolio||{}).sharpe,2)} → survivors ${fmt(sp.sharpe,2)} on ${sv.count} pairs. Dropping cost-killed pairs removes dead weight rather than diversification.</div>
+      <div style="margin-top:12px">${equitySVG(sv.equity)}</div>`;
+    if(sv.excluded?.length){ html+=`<div style="margin-top:10px;font-weight:600">Excluded (${sv.excluded.length}) — didn't clear cost</div>
+      <table><thead><tr><th>Pair</th><th>expectancy %</th><th>need ≥ %</th><th>cost %</th><th>trades</th><th>why</th></tr></thead><tbody>`;
+      for(const e of sv.excluded){ html+=`<tr><td class="mut">${e.pair.toUpperCase()}</td><td class="${e.expectancy>0?'pos':'neg'}">${fmt(e.expectancy,4)}</td><td class="mut">${fmt(e.need,4)}</td><td class="mut">${fmt(e.costPct,3)}</td><td class="mut">${e.trades}</td><td class="mut">${e.reason}</td></tr>`; }
+      html+=`</tbody></table>`; }
+    html+=`</div>`;
+  }
+  // Per-trade stats (kept for reference — the Sharpe here ASSUMES independence and overstates).
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-trade stats <span class="mut" style="font-weight:400">(reference — per-trade Sharpe assumes independence, overstated)</span></div>
+    <div class="kpi-grid">${kpi(fmt(f.sharpe,2),'per-trade Sharpe ⚠',f.sharpe<0)}${kpi(fmt(f.totalPnl,1)+'%','total (sum, full size)',f.totalPnl<0)}${kpi(fmt(f.expectancy,4)+'%','expectancy/trade',f.expectancy<0)}${kpi(fmt(f.winRate*100,1)+'%','win rate')}${kpi(fmt(f.payoff,2),'payoff (avgW/avgL)')}${kpi(fmt(f.profitFactor,2),'profit factor')}</div></div>`;
   // Robustness — bootstrap CI + Monte-Carlo drawdown
   const bs=f.bootstrap, mc=f.montecarlo;
   if(bs&&mc){ html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Robustness — bootstrap &amp; Monte-Carlo</div>
@@ -210,6 +232,65 @@ async function renderBook(v){
     <tr><td>Bootstrap Sharpe</td><td>${fmt(bs.sharpe.p5,2)} / ${fmt(bs.sharpe.p50,2)} / ${fmt(bs.sharpe.p95,2)}</td><td class="mut">P(profitable) ${fmt(bs.pPositive*100,0)}%</td></tr>
     <tr><td>Monte-Carlo max drawdown %</td><td class="mut">p50 ${fmt(mc.maxDD.p50,1)} · p95 ${fmt(mc.maxDD.p95,1)} · p99 ${fmt(mc.maxDD.p99,1)}</td><td class="${Math.abs(mc.maxDD.p95)<Math.abs(f.totalPnl)?'pos':'neg'}">worst-case ordering DD</td></tr>
     </tbody></table></div>`; }
+  // Rigor battery — walk-forward, IS-vs-OOS, cost-sensitivity, per-year
+  const rg=b.rigor;
+  if(rg){
+    const io=rg.isVsOos||{}, wf=rg.walkForward||{};
+    html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Rigor — walk-forward &amp; stress</div>
+      <div class="hint" style="margin-bottom:8px">A serious backtest, not one split. <b>Walk-forward</b> retrains the policy before each test fold and marches forward. <b>IS→OOS degradation</b> should hold (ratio &gt; ~0.5). <b>Cost stress</b> should stay positive at 2–3× spread. <b>Per-year</b> should be broadly green. <b>Deflated Sharpe</b> discounts the edge for how many settings we tried (multiple-testing) — &gt;~95% means it clears its own search's noise.</div>
+      <div class="kpi-grid">
+        ${kpi(fmt(wf.overall?.sharpe,2),'Walk-forward Sharpe',wf.overall?.sharpe<0)}
+        ${kpi(fmt(io.is?.sharpe,2),'IS Sharpe')}
+        ${kpi(fmt(io.oos?.sharpe,2),'OOS Sharpe',io.oos?.sharpe<0)}
+        ${kpi(io.degradation!=null?fmt(io.degradation,2):'—','OOS÷IS degradation',io.degradation<0.5)}
+        ${b.deflated?kpi(fmt(b.deflated.dsr*100,0)+'%','Deflated Sharpe (DSR)',b.deflated.dsr<0.95):''}
+      </div>
+      ${b.deflated?`<div class="hint" style="margin-top:6px">DSR vs the expected best-of-${b.deflated.nTrials}-trials Sharpe (benchmark per-obs SR₀ ${fmt(b.deflated.sr0,3)}, trial-Sharpe σ ${fmt(b.deflated.trialSharpeStd,3)}). Our per-obs Sharpe ${fmt(b.deflated.sr,3)}.</div>`:''}`;
+    // walk-forward folds
+    if(wf.folds?.length){ html+=`<div style="margin-top:10px;font-weight:600">Walk-forward folds</div>
+      <table><thead><tr><th>from</th><th>to</th><th>Sharpe</th><th>CAGR@10%</th><th>maxDD@10%</th><th>trades</th></tr></thead><tbody>`;
+      for(const f0 of wf.folds){ html+=`<tr><td>${f0.from}</td><td>${f0.to}</td><td class="${f0.sharpe>0?'pos':'neg'}">${fmt(f0.sharpe,2)}</td><td>${fmt(f0.volTarget?.cagr,1)}%</td><td class="neg">${fmt(f0.volTarget?.maxDD,1)}%</td><td class="mut">${f0.trades}</td></tr>`; }
+      html+=`</tbody></table>`; }
+    // cost sensitivity + per-year side by side (stacked tables)
+    if(rg.costSensitivity?.length){ html+=`<div style="margin-top:10px;font-weight:600">Cost stress (OOS)</div>
+      <table><thead><tr><th>cost ×</th><th>Sharpe</th><th>CAGR@10%</th></tr></thead><tbody>`;
+      for(const c of rg.costSensitivity){ html+=`<tr><td>${c.mult}×</td><td class="${c.sharpe>0?'pos':'neg'}">${fmt(c.sharpe,2)}</td><td>${fmt(c.volTarget?.cagr,1)}%</td></tr>`; }
+      html+=`</tbody></table>`; }
+    if(rg.perYear?.length){ html+=`<div style="margin-top:10px;font-weight:600">Per-year (OOS)</div>
+      <table><thead><tr><th>year</th><th>Sharpe</th><th>CAGR@10%</th><th>trades</th></tr></thead><tbody>`;
+      for(const y of rg.perYear){ html+=`<tr><td>${y.year}</td><td class="${y.sharpe>0?'pos':'neg'}">${fmt(y.sharpe,2)}</td><td>${fmt(y.volTarget?.cagr,1)}%</td><td class="mut">${y.trades}</td></tr>`; }
+      html+=`</tbody></table>`; }
+    html+=`</div>`;
+  }
+  // Parameter-sensitivity grid — is the edge perched on one lucky setting?
+  const sn=b.sensitivity;
+  if(sn){ const SLBL={splitFrac:'IS/OOS split',minN:'min IS n / cell',marginPct:'expectancy margin %',survivorMargin:'survivor margin (× cost)'};
+    const baseKey=p=>sn.base[p];
+    html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Parameter sensitivity (OAT) <span class="mut" style="font-weight:400">— vary one knob, hold the rest at base</span></div>
+      <div class="hint" style="margin-bottom:8px">Each row re-runs the whole book changing ONE parameter. A robust edge moves smoothly and stays positive across the grid — a cliff next to the base value is a red flag. <b>Bold</b> = current base setting. Velocity thresholds aren't here: they're baked into the touch cells at refresh time and would need a re-refresh to sweep.</div>`;
+    for(const [param,rows] of Object.entries(sn.sweeps||{})){
+      html+=`<div style="margin-top:8px;font-weight:600">${SLBL[param]||param}</div>
+        <table><thead><tr><th>${param}</th><th>portfolio Sharpe</th><th>trades</th><th>live pairs</th><th>survivor Sharpe</th></tr></thead><tbody>`;
+      for(const r of rows){ const isB=r[param]===baseKey(param);
+        html+=`<tr${isB?' style="font-weight:700"':''}><td>${r[param]}${isB?' ◀':''}</td><td class="${r.sharpe>0?'pos':'neg'}">${fmt(r.sharpe,2)}</td><td class="mut">${r.nTrades}</td><td class="mut">${r.survCount}</td><td class="${r.survSharpe>0?'pos':'neg'}">${fmt(r.survSharpe,2)}</td></tr>`; }
+      html+=`</tbody></table>`; }
+    html+=`</div>`;
+  }
+  // Missed / skipped touches — what the engine declined, and why.
+  const ms=b.missed;
+  if(ms){ const reasons=Object.entries(ms.byReason||{}).sort((a,b)=>b[1]-a[1]);
+    html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Missed / skipped touches <span class="mut" style="font-weight:400">— took ${fmt(ms.takenRate,1)}% of ${ (ms.total+ms.taken).toLocaleString() } OOS touches</span></div>
+      <div class="hint" style="margin-bottom:8px">Every OOS touch the engine declined, and the gate that said no. <b>unseen-in-IS</b> = the cell never appeared in-sample (no learned decision); <b>low-N in IS</b> = too rare in-sample to trust; <b>edge below cost</b> = had a decision but its IS expectancy didn't clear the spread. The IS estimate is shown so you can see if the skip was right (a negative estimate = correctly avoided).</div>
+      <table><thead><tr><th>Reason</th><th>touches</th><th>share</th></tr></thead><tbody>`;
+    for(const [r,n] of reasons){ html+=`<tr><td>${r}</td><td class="mut">${n.toLocaleString()}</td><td class="mut">${fmt(n/Math.max(1,ms.total)*100,1)}%</td></tr>`; }
+    html+=`</tbody></table>`;
+    if(ms.topCells?.length){ html+=`<div style="margin-top:10px;font-weight:600">Most-skipped cells <span class="mut" style="font-weight:400">(top ${ms.topCells.length})</span></div>
+      <table><thead><tr><th>Cell</th><th>reason</th><th>touches</th><th>IS fade est %</th><th>IS follow est %</th></tr></thead><tbody>`;
+      for(const c of ms.topCells){ const [ln,...cc]=c.cell.split('|');
+        html+=`<tr><td>${ln} <span class="mut">${cc.join('·')}</span></td><td class="mut">${c.reason}</td><td class="mut">${c.n.toLocaleString()}</td><td class="${c.fadeExp>0?'pos':c.fadeExp==null?'mut':'neg'}">${c.fadeExp==null?'—':fmt(c.fadeExp,4)}</td><td class="${c.followExp>0?'pos':c.followExp==null?'mut':'neg'}">${c.followExp==null?'—':fmt(c.followExp,4)}</td></tr>`; }
+      html+=`</tbody></table>`; }
+    html+=`</div>`;
+  }
   // policy table
   const pol=b.policy||{}; const cells=Object.entries(pol).filter(([,p])=>p.decision!=='skip').sort((a,b)=>b[1].n-a[1].n);
   html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Policy — traded cells (line × ${(b.conditions||[]).join('+')})</div>
@@ -221,25 +302,55 @@ async function renderBook(v){
   // per-pair OOS (breadth) — click a pair to load its trade log
   const pp=Object.entries(b.perPair||{}).filter(([,s])=>s.trades>0).sort((a,b)=>b[1].sharpe-a[1].sharpe);
   const posPairs=pp.filter(([,s])=>s.totalPnl>0).length;
-  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair OOS — breadth check (${posPairs}/${pp.length} pairs profitable)</div>
-    <div class="hint" style="margin-bottom:6px">Click a pair to load its trade log. Breadth is the Grinold payoff — a book wants most pairs profitable OOS, not one carrying it.</div>
-    <table><thead><tr><th>Pair</th><th>Sharpe</th><th>total %</th><th>expectancy %</th><th>win %</th><th>trades</th></tr></thead><tbody>`;
-  for(const [pair,s] of pp){ html+=`<tr class="pairRow" data-pair="${pair}" style="cursor:pointer"><td class="lbl-up">${pair.toUpperCase()}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate*100)}</td><td class="mut">${s.trades}</td></tr>`; }
+  const survSet=new Set((b.survivors?.pairs)||[]);
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair OOS — breadth check (${posPairs}/${pp.length} pairs profitable${survSet.size?` · ${survSet.size} live`:''})</div>
+    <div class="hint" style="margin-bottom:6px">Click a pair to load its trade log. Breadth is the Grinold payoff — a book wants most pairs profitable OOS, not one carrying it. <b>✓</b> = in the live universe (clears its own cost); dimmed = excluded.</div>
+    <table><thead><tr><th>Pair</th><th>live</th><th>Sharpe</th><th>total %</th><th>expectancy %</th><th>win %</th><th>cost %</th><th>trades</th></tr></thead><tbody>`;
+  for(const [pair,s] of pp){ const live=survSet.has(pair);
+    html+=`<tr class="pairRow" data-pair="${pair}" style="cursor:pointer${live?'':';opacity:.5'}"><td class="lbl-up">${pair.toUpperCase()}</td><td class="${live?'pos':'mut'}">${live?'✓':'—'}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate)}</td><td class="mut">${s.costPct!=null?fmt(s.costPct,3):'—'}</td><td class="mut">${s.trades}</td></tr>`; }
   html+=`</tbody></table></div><div id="tradeLog"></div>`;
   v.innerHTML=html; wireBook();
   v.querySelectorAll('.pairRow').forEach(r=>r.onclick=()=>loadTrades(r.dataset.pair));
 }
+let TRADE_ROWS=[], TRADE_PAIR='';
 async function loadTrades(pair){ const h=$('horizon').value; const c=$('tradeLog');
   c.innerHTML=`<div class="card mut">Loading ${pair.toUpperCase()} trades…</div>`;
   const r=await api(`/api/forecast-analysis/per-line/${h}/trades/${pair}`);
   if(r.status!==200||!r.j?.ok){ c.innerHTML=`<div class="card mut">${r.j?.error||'No trade log.'}</div>`; return; }
   const tr=r.j.trades||[]; const recent=tr.slice(-300).reverse();
+  TRADE_ROWS=recent; TRADE_PAIR=pair;
   let html=`<div class="card"><div style="font-weight:600;margin-bottom:6px">${pair.toUpperCase()} trade log <span class="mut">(${tr.length} trades · showing last 300)</span></div>
-    <div class="hint" style="margin-bottom:6px">Phase 2 will make each row open an M1 chart with the forecast lines + entry/TP/SL marked. For now: the full geometry per trade.</div>
+    <div class="hint" style="margin-bottom:6px">Click any trade to open its M1 session chart with the forecast lines (Close static · Proj H/L dynamic) and the entry / TP / SL marked. First click on a pair loads its M1 (a few seconds); repeats are cached.</div>
+    <div id="tradeChartWrap"></div>
     <table><thead><tr><th>Date</th><th>Line</th><th>Decision</th><th>Outcome</th><th>Entry</th><th>TP</th><th>SL</th><th>PnL %</th></tr></thead><tbody>`;
-  for(const t of recent){ const ln=LBL[t.name]?`${LBL[t.name]} ${t.side==='up'?'↑':'↓'}`:t.line;
-    html+=`<tr><td>${t.date}</td><td class="${t.side==='up'?'lbl-up':'lbl-dn'}">${ln}</td><td class="${t.decision==='fade'?'pos':'neg'}">${t.decision}</td><td class="mut">${t.outcome}</td><td class="mut">${t.entry}</td><td class="mut">${t.tp}</td><td class="mut">${t.sl}</td><td class="${t.pnl>0?'pos':'neg'}">${fmt(t.pnl,3)}</td></tr>`; }
+  recent.forEach((t,i)=>{ const ln=LBL[t.name]?`${LBL[t.name]} ${t.side==='up'?'↑':'↓'}`:t.line;
+    html+=`<tr class="tradeRow" data-i="${i}" style="cursor:pointer"><td>${t.date}</td><td class="${t.side==='up'?'lbl-up':'lbl-dn'}">${ln}</td><td class="${t.decision==='fade'?'pos':'neg'}">${t.decision}</td><td class="mut">${t.outcome}</td><td class="mut">${t.entry}</td><td class="mut">${t.tp}</td><td class="mut">${t.sl}</td><td class="${t.pnl>0?'pos':'neg'}">${fmt(t.pnl,3)}</td></tr>`; });
   html+=`</tbody></table></div>`; c.innerHTML=html;
+  c.querySelectorAll('.tradeRow').forEach(row=>row.onclick=()=>showTradeChart(+row.dataset.i));
+}
+// Open the M1 session chart for trade index `i` (rendered via the levelChart brick).
+async function showTradeChart(i){ const t=TRADE_ROWS[i]; if(!t) return; const h=$('horizon').value;
+  const wrap=$('tradeChartWrap'); if(!wrap) return;
+  const ln=LBL[t.name]?`${LBL[t.name]} ${t.side==='up'?'↑':'↓'}`:t.line;
+  wrap.innerHTML=`<div class="card mut" style="margin:0 0 10px">Loading ${TRADE_PAIR.toUpperCase()} ${t.date} M1 chart…</div>`;
+  const r=await api(`/api/forecast-analysis/per-line/${h}/chart/${TRADE_PAIR}/${t.date}`);
+  if(r.status!==200||!r.j?.ok||!r.j.chart){ wrap.innerHTML=`<div class="card mut" style="margin:0 0 10px">${r.j?.error||'Could not load chart (M1 may be unavailable in this environment).'}</div>`; return; }
+  if(typeof window.openForecastTradeChart!=='function'){ wrap.innerHTML=`<div class="card mut" style="margin:0 0 10px">Chart library not loaded.</div>`; return; }
+  const ch=r.j.chart;
+  const head=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div style="font-weight:600">${TRADE_PAIR.toUpperCase()} · ${t.date} · ${ln}
+        <span class="${t.decision==='fade'?'pos':'neg'}" style="margin-left:8px">${t.decision.toUpperCase()}</span>
+        <span class="mut" style="margin-left:6px">${t.outcome}</span>
+        <span class="${t.pnl>0?'pos':'neg'}" style="margin-left:6px">${fmt(t.pnl,3)}%</span>
+        ${ch.resampledTo?`<span class="mut" style="margin-left:6px">${ch.barCount} M1 → ${ch.resampledTo}m bars</span>`:''}</div>
+      <button class="sec" id="tradeChartClose">✕ close</button></div>
+    <div class="legend" style="margin:0 0 6px">
+      <span style="color:#5b9dff">▬ entry</span> · <span style="color:#3fb27f">▬ TP</span> · <span style="color:#e5604d">▬ SL</span> ·
+      <span style="color:#9aa4b5">┄ Close med/75p (static)</span> · <span style="color:#e0a93b">┄ Proj H/L med/75p (dynamic)</span></div>`;
+  wrap.innerHTML=`<div class="card" style="margin:0 0 12px">${head}<div id="tradeChartHost" style="height:420px"></div></div>`;
+  $('tradeChartClose').onclick=()=>{ window.__destroyForecastTradeChart&&window.__destroyForecastTradeChart(); wrap.innerHTML=''; };
+  try{ window.openForecastTradeChart($('tradeChartHost'), ch, t); }
+  catch(e){ wrap.innerHTML=`<div class="card mut" style="margin:0 0 10px">Chart render failed: ${e.message}</div>`; }
 }
 function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -247,8 +358,9 @@ function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
     const h=$('horizon').value;
     // Submit with a couple of retries — a flaky mobile connection drops the POST.
     const marginPct=parseFloat($('bookMargin')?.value)||0;
+    const survRaw=parseFloat($('bookSurv')?.value); const survivorMargin=Number.isFinite(survRaw)?survRaw:0.5;
     const submit=async()=>{ let last;
-      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h,marginPct})});
+      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h,marginPct,survivorMargin})});
         if(r.j?.ok) return r.j.jobId; last=new Error(r.j?.error||'run rejected'); }catch(e){ last=e; } await sleep(1500); }
       throw last; };
     try{
@@ -575,6 +687,42 @@ $('runRefresh').onclick=async()=>{
   }catch(e){ log('✗ '+e.message,'err'); } finally{ $('runRefresh').disabled=false; }
 };
 boot();
+</script>
+
+<!-- Trade viewer — renders one trade's M1 session via the reusable levelChart brick. -->
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+let _view = null, _hl = [];
+function _destroy(){ for(const s of _hl){ try{ _view.chart.removeSeries(s); }catch{} } _hl=[]; if(_view){ try{ _view.destroy(); }catch{} _view=null; } }
+window.__destroyForecastTradeChart = _destroy;
+// host: DOM element · chart: server payload (bars/oc/hl) · trade: {entry,tp,sl,decision,fillTime,…}
+window.openForecastTradeChart = function(host, chart, trade){
+  _destroy();
+  _view = createLevelChart(host, { height: 420 });
+  _view.setCandles(chart.bars);
+  // Static Close (OC) lines — neutral dotted price lines off the open.
+  _view.setLevels([
+    { price: chart.oc.OC50up, kind:'_default', label:'Close med ↑' },
+    { price: chart.oc.OC50dn, kind:'_default', label:'Close med ↓' },
+    { price: chart.oc.OC75up, kind:'_default', label:'Close 75p ↑' },
+    { price: chart.oc.OC75dn, kind:'_default', label:'Close 75p ↓' },
+  ], { showTitle:true });
+  // Dynamic Proj H/L lines — line series trailing the opposite running extreme.
+  const addHL=(data,color)=>{ const s=_view.chart.addLineSeries({ color, lineWidth:1, lineStyle:2,
+      priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+    s.setData(data); _hl.push(s); };
+  addHL(chart.hl.HL50up,'#e0a93b'); addHL(chart.hl.HL50dn,'#e0a93b');
+  addHL(chart.hl.HL75up,'#b8852a'); addHL(chart.hl.HL75dn,'#b8852a');
+  // Entry / TP / SL — emphasised price lines straight on the candle series.
+  const pl=(price,color,title)=>{ if(Number.isFinite(price)) _view.series.createPriceLine({ price, color,
+      lineWidth:2, lineStyle:0, axisLabelVisible:true, title }); };
+  pl(trade.entry,'#5b9dff','ENTRY'); pl(trade.tp,'#3fb27f','TP'); pl(trade.sl,'#e5604d','SL');
+  // Entry marker at the fill bar.
+  if(Number.isFinite(trade.fillTime)){
+    try{ _view.series.setMarkers([{ time:trade.fillTime, position:'inBar', color:'#5b9dff', shape:'circle', text:'entry' }]); }catch{}
+  }
+  _view.fit();
+};
 </script>
 </body>
 </html>

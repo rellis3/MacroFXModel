@@ -13,8 +13,8 @@ import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRe
 import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
-import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine } from './perLineStrategy.js';
-import { backtestStats } from './backtestStats.js';
+import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, runSensitivity, costForPair, buildSurvivors } from './perLineStrategy.js';
+import { backtestStats, portfolioStats, deflatedSharpe } from './backtestStats.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -200,6 +200,42 @@ console.log('[perLineStrategy]');
   ok('runPerLine produces an OOS book with trades + daily equity', run.nTrades > 0 && run.equity.length > 0 && run.equity.length <= run.nTrades);
   ok('runPerLine book is profitable when the IS edge persists OOS', run.book.totalPnl > 0 && run.coverage.fadeCells >= 1);
 
+  // buildSurvivors: keep pairs whose net OOS expectancy clears their own cost by
+  // the margin (and have enough trades); re-aggregate ONLY their daily PnL.
+  ok('runPerLine attaches a survivors block', !!run.survivors && Array.isArray(run.survivors.pairs));
+  const svPerPair = { rich: { expectancy: 0.05, trades: 100 }, thin: { expectancy: 0.001, trades: 100 }, few: { expectancy: 0.05, trades: 5 } };
+  const svPnl     = { rich: [{ date:'2020-01-01', pnl:0.05 }], thin: [{ date:'2020-01-01', pnl:0.001 }], few: [{ date:'2020-01-01', pnl:0.05 }] };
+  const svCost    = { rich: 0.01, thin: 0.04, few: 0.01 };
+  const sv = buildSurvivors(svPerPair, svPnl, svCost, { survivorMargin: 0.5, minSurvivorTrades: 30 });
+  ok('buildSurvivors keeps a pair that clears cost by the margin', sv.pairs.includes('rich'));
+  ok('buildSurvivors drops a pair whose expectancy is below the cost margin', !sv.pairs.includes('thin') && sv.excluded.some(e => e.pair==='thin' && e.reason==='expectancy below cost margin'));
+  ok('buildSurvivors drops a pair with too few trades (regardless of edge)', !sv.pairs.includes('few') && sv.excluded.some(e => e.pair==='few' && e.reason==='too few trades'));
+  ok('buildSurvivors re-aggregates only survivor PnL', sv.count===1 && sv.nTrades===1 && sv.equity.length===1);
+
+  // Phase C — missed-trades summary: skipped OOS touches are counted with a reason.
+  ok('runPerLine attaches a missed summary with reasons', !!run.missed && run.missed.total >= 0 && typeof run.missed.byReason === 'object');
+  ok('runPerLine takenRate is a sane percentage', run.missed.takenRate >= 0 && run.missed.takenRate <= 100);
+
+  // Phase C — sensitivity grid: OAT sweeps + per-observation trial Sharpes.
+  const sens = runSensitivity(byPair, { base: { splitFrac:0.6, minN:30, marginPct:0, survivorMargin:0.5 },
+    costByPair:{eurusd:0.01}, slipByPair:{eurusd:0} });
+  ok('runSensitivity returns OAT sweeps for each knob', !!sens && Array.isArray(sens.sweeps.minN) && Array.isArray(sens.sweeps.splitFrac) && Array.isArray(sens.sweeps.marginPct) && Array.isArray(sens.sweeps.survivorMargin));
+  ok('runSensitivity emits distinct per-observation trial Sharpes', sens.nTrials >= 2 && sens.trialSharpesRaw.length === sens.nTrials);
+}
+
+console.log('[deflatedSharpe]');
+{
+  // A series with a real edge, evaluated against a handful of noisy trials, should
+  // deflate toward a probability in [0,1]; more/noisier trials → harder to clear.
+  const daily = Array.from({ length: 300 }, (_, i) => (i % 4 === 0 ? -0.4 : 0.35));   // +ve drift
+  const fewTrials  = [0.05, 0.06, 0.04];
+  const manyTrials = [0.05, 0.06, 0.04, 0.20, 0.18, 0.22, 0.15, 0.19];                // wider spread, more trials
+  const dFew  = deflatedSharpe(daily, fewTrials);
+  const dMany = deflatedSharpe(daily, manyTrials);
+  ok('deflatedSharpe returns dsr in [0,1] with sr0 and nTrials', dFew && dFew.dsr >= 0 && dFew.dsr <= 1 && dFew.nTrials === 3 && Number.isFinite(dFew.sr0));
+  ok('deflatedSharpe sr0 (expected max) rises with more/noisier trials', dMany.sr0 > dFew.sr0);
+  ok('deflatedSharpe needs >=2 trials', deflatedSharpe(daily, [0.1]) === null);
+
   // FIX 1 — honest mark-to-close: an undecided outcome (no barrier hit) is scored
   // by the actual close, NOT credited the full target. A 1-pip drift ≠ a full win.
   const closeT = { date:'2020-01-01', open:1.10, side:'up', reverted:true, decidedBy:'close', closePx:1.10490, level:1.10500, innerLvl:1.10300, outerLvl:1.10700 };
@@ -230,6 +266,34 @@ console.log('[backtestStats]');
   ok('backtestStats MC drawdown percentiles present', 'p50' in s.montecarlo.maxDD && 'p95' in s.montecarlo.maxDD);
   ok('backtestStats deterministic under same seed', JSON.stringify(backtestStats(pnls, dates, { mcRuns: 200, bootRuns: 200, seed: 1 })) === JSON.stringify(s));
   ok('backtestStats empty → {trades:0}', backtestStats([], []).trades === 0);
+  // portfolioStats: daily Sharpe ×√252; vol-target rescales but Sharpe is invariant.
+  const daily = Array.from({ length: 252 }, (_, i) => (i % 4 === 0 ? -0.2 : 0.15));   // ~+ve daily series
+  const ps = portfolioStats(daily, { targetVol: 10 });
+  ok('portfolioStats Sharpe = mean/sd×√252', near(ps.sharpe, (daily.reduce((a,b)=>a+b,0)/daily.length)/Math.sqrt(daily.reduce((a,b)=>a+(b-(daily.reduce((x,y)=>x+y,0)/daily.length))**2,0)/daily.length)*Math.sqrt(252), 0.02));
+  ok('portfolioStats Sharpe invariant to vol target (scale-free)', portfolioStats(daily,{targetVol:5}).sharpe === portfolioStats(daily,{targetVol:20}).sharpe);
+  ok('portfolioStats annVol > 0 and vol-target set', ps.annVol > 0 && ps.volTarget.target === 10);
+  ok('portfolioStats empty → {days:0}', portfolioStats([]).days === 0);
+  ok('portfolioStats PSR present & in [0,1]', ps.psr >= 0 && ps.psr <= 1);
+}
+
+console.log('[runRigor]');
+{
+  // A persistent ~70%-reversion edge across pairs and time → walk-forward holds,
+  // IS≈OOS, cost-stress decays but stays positive at 1×, per-year present.
+  const mk=(date,rev)=>({date,open:1.10,line:'HL50_up',name:'HL50',side:'up',reverted:rev,decidedBy:'barrier',closePx:1.10,level:1.1050,innerLvl:1.1030,outerLvl:1.1070,cell:'HL50_up|3·spike'});
+  const byPair={};
+  for(const p of ['eurusd','gbpusd','usdjpy']){ const a=[];
+    for(let d=0; d<900; d++){ const yr=2020+Math.floor(d/300); const mo=String(1+(Math.floor(d/25)%12)).padStart(2,'0'); const dd=String(1+(d%25)).padStart(2,'0');
+      a.push(mk(`${yr}-${mo}-${dd}`, (d*7)%10<7)); } byPair[p]=a; }
+  const rg=runRigor(byPair,{splitFrac:0.6,minN:30,folds:4,costByPair:{eurusd:0.005,gbpusd:0.005,usdjpy:0.005},slipByPair:{eurusd:0,gbpusd:0,usdjpy:0}});
+  ok('runRigor returns walk-forward folds', rg.walkForward.folds.length>=1 && rg.walkForward.overall.days>0);
+  ok('runRigor IS vs OOS with degradation ratio', rg.isVsOos.is.sharpe!==undefined && rg.isVsOos.oos.sharpe!==undefined && rg.isVsOos.degradation!=null);
+  ok('runRigor cost-sensitivity decays with cost', rg.costSensitivity.length===3 && rg.costSensitivity[0].sharpe >= rg.costSensitivity[2].sharpe);
+  ok('runRigor per-year present', rg.perYear.length>=1 && rg.perYear[0].year);
+  // realistic per-pair costs: majors cheap, exotic crosses much wider, fallback works
+  ok('costForPair: major < exotic cross', costForPair('eurusd') < costForPair('gbpnzd'));
+  ok('costForPair: exotic cross widest tier', costForPair('gbpnzd') >= 0.04);
+  ok('costForPair: unknown pair falls back to asset-class default', costForPair('zzzxxx','fx') === 0.012);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

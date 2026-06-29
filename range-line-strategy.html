@@ -53,8 +53,14 @@
   <div class="card" id="bookCard" style="display:none">
     <h2>Book — out-of-sample (all pairs pooled policy)</h2>
     <div id="bookChips"></div>
-    <div class="muted" style="margin-top:6px">Risk metrics (Sharpe/Sortino/Max&nbsp;DD/bootstrap) are scored on the <b>daily portfolio-PnL series</b>, not per touch — same-day touches across pairs/lines are simultaneous &amp; correlated, so the independent unit is a trading day (annualised ≈√252). Win%/Expectancy/PF stay per-trade. Total/bootstrap return assume <b>1 unit per signal</b> (≈ many simultaneous positions/day) — read it as scale, not an account curve; Sharpe is scale-invariant.</div>
+    <div class="muted" style="margin-top:6px">The honest headline is the <b>Portfolio Sharpe</b>: daily portfolio returns ×√252, so all the same-day correlated touches across pairs/lines count as one day's risk — not thousands of independent bets (which is what a per-trade Sharpe ×√trades/yr falsely assumes). CAGR/Max&nbsp;DD shown at a fixed annual-vol target so they're leverage-honest. Win%/Expectancy/PF are per-trade descriptors (independence-free).</div>
     <div id="coverage" class="muted" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card" id="survivorsCard" style="display:none">
+    <h2>Live universe — survivors only</h2>
+    <div id="survChips"></div>
+    <div id="survNote" class="muted" style="margin-top:6px"></div>
   </div>
 
   <div class="card" id="perPairCard" style="display:none">
@@ -116,23 +122,43 @@ async function poll(jobId, fails = 0) {
 
 function render(d) {
   const bk = d.book || {};
+  const pf = d.portfolio || {}, vt = pf.volTarget || {};
   $('bookCard').style.display = '';
   const cls = v => v >= 0 ? 'pos' : 'neg';
-  const boot = bk.bootstrap || {};
+  // HONEST headline — portfolio (daily, time-aggregated ×√252) stats first, so
+  // same-day correlated touches count as one day's risk, NOT thousands of iid
+  // bets. Then the per-trade distribution (win%/expectancy/PF) for context.
   $('bookChips').innerHTML = [
+    ['Portfolio Sharpe (daily)', `<span class="${cls(pf.sharpe)}">${fmt(pf.sharpe,2)}</span>`],
+    ['Prob. Sharpe>0', pf.psr!=null ? (pf.psr*100).toFixed(0)+'%' : '—'],
+    ['Annual vol', (pf.annVol??0).toFixed(1)+'%'],
+    [`CAGR @ ${vt.target||10}% vol`, `<span class="${cls(vt.cagr)}">${fmt(vt.cagr,1)}%</span>`],
+    [`Max DD @ ${vt.target||10}% vol`, `<span class="neg">${fmt(vt.maxDD,1)}%</span>`],
+    ['Avg trades/day', (pf.avgTradesPerDay??0)],
     ['Trades', bk.trades ?? 0],
-    ['Trading days', bk.tradingDays ?? '—'],
     ['Win% (per trade)', ((bk.winRate??0)*100).toFixed(1)+'%'],
     ['Expectancy (per trade)', `<span class="${cls(bk.expectancy)}">${fmt(bk.expectancy)}%</span>`],
     ['Profit factor', (bk.profitFactor??0)],
-    ['Sharpe (daily)', `<span class="${cls(bk.sharpe)}">${(bk.sharpe??0)}</span>`],
-    ['Sortino (daily)', bk.sortino??0],
-    ['Max DD', `<span class="neg">${bk.maxDD??0}%</span>`],
-    ['Bootstrap p5 total', `<span class="${cls(boot.total?.p5)}">${boot.total?.p5 ?? '—'}%</span>`],
-    ['P(profit)', `<b>${((boot.pPositive??0)*100).toFixed(0)}%</b>`],
   ].map(([k,v]) => `<span class="chip">${k} <b>${v}</b></span>`).join('');
   const cov = d.coverage || {};
   $('coverage').textContent = `Policy coverage — fade cells: ${cov.fadeCells??0} · follow: ${cov.followCells??0} · skip: ${cov.skipCells??0}. Split date: ${d.splitDate||'?'}. OOS trades: ${d.nTrades??0}.`;
+
+  // Live universe — pairs whose OOS net edge clears their own spread by a margin,
+  // portfolio re-aggregated from just their daily PnL (the book you'd actually trade).
+  const sv = d.survivors;
+  if (sv) {
+    const sp = sv.portfolio || {}, svt = sp.volTarget || {};
+    $('survivorsCard').style.display = '';
+    $('survChips').innerHTML = [
+      ['Pairs kept', `${sv.count}/${sv.total}`],
+      ['Survivor Sharpe (daily)', `<span class="${cls(sp.sharpe)}">${fmt(sp.sharpe,2)}</span>`],
+      ['Prob. Sharpe>0', sp.psr!=null ? (sp.psr*100).toFixed(0)+'%' : '—'],
+      ['Annual vol', (sp.annVol??0).toFixed(1)+'%'],
+      [`CAGR @ ${svt.target||10}% vol`, `<span class="${cls(svt.cagr)}">${fmt(svt.cagr,1)}%</span>`],
+      [`Max DD @ ${svt.target||10}% vol`, `<span class="neg">${fmt(svt.maxDD,1)}%</span>`],
+    ].map(([k,v]) => `<span class="chip">${k} <b>${v}</b></span>`).join('');
+    $('survNote').textContent = `Kept pairs whose OOS expectancy clears ${sv.margin}× their own round-trip spread on ≥${sv.minTrades} trades. Full-book Sharpe ${fmt(pf.sharpe,2)} → survivors ${fmt(sp.sharpe,2)} on ${sv.count} pairs.`;
+  }
 
   // Per-pair
   const pp = d.perPair || {};

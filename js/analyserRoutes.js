@@ -16,7 +16,7 @@ import {
   getManifest as getAnalyserManifest, getAggregates as getAnalyserAggregates,
   getPairData as getAnalyserPairData,
   runPerLineBook as runAnalyserPerLineBook, getPerLineBook as getAnalyserPerLineBook,
-  getPerLineTrades as getAnalyserPerLineTrades,
+  getPerLineTrades as getAnalyserPerLineTrades, getSessionChart as getAnalyserSessionChart,
 } from './forecastAnalyserStore.js';
 
 function _analyserPw(req) {
@@ -170,6 +170,8 @@ export function mountAnalyserRoutes(app, express) {
       minN:      Number.isFinite(b.minN) ? b.minN : undefined,
       splitFrac: Number.isFinite(b.splitFrac) ? b.splitFrac : undefined,
       marginPct: Number.isFinite(b.marginPct) ? b.marginPct : undefined,
+      survivorMargin:    Number.isFinite(b.survivorMargin) ? b.survivorMargin : undefined,
+      minSurvivorTrades: Number.isFinite(b.minSurvivorTrades) ? b.minSurvivorTrades : undefined,
     };
     res.json({ ok: true, jobId: startPerLineJob(opts) });
   });
@@ -198,6 +200,17 @@ export function mountAnalyserRoutes(app, express) {
       const t = await getAnalyserPerLineTrades(String(req.params.pair).toLowerCase(), req.params.horizon);
       if (!t) return res.status(404).json({ ok: false, error: 'No trade log for that pair — rebuild the book' });
       res.json({ ok: true, ...t });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // M1 chart drill-down for one trade's session — candles + forecast geometry
+  // (static OC levels + dynamic HL series) for the Book tab's trade viewer.
+  app.get('/api/forecast-analysis/per-line/:horizon/chart/:pair/:date', async (req, res) => {
+    if (!_analyserAuth(req, res, 'view')) return;
+    try {
+      const c = await getAnalyserSessionChart(String(req.params.pair).toLowerCase(), req.params.horizon, req.params.date);
+      if (!c) return res.status(404).json({ ok: false, error: 'No session data for that pair/date — rebuild the dataset' });
+      res.json({ ok: true, chart: c });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 }
