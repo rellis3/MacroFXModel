@@ -27,6 +27,7 @@ import { volSigmaSeries } from './js/forecastCore.js';
 import { createTouchFeatures } from './js/touchFeatures.js';
 import { gradeLevelV2 } from './js/gradeLevelV2.js';
 import { isUsablePolicy } from './js/levelsV2Learn.js';
+import { recordEntries, resolvePair } from './js/entryLedgerV2.js';
 
 // ── Instrument helpers ────────────────────────────────────────────────────────
 function pipOf(sym) { try { return pipSizeOf(sym); } catch { return sym.includes('JPY') ? 0.01 : sym.includes('XAU') ? 0.1 : 0.0001; } }
@@ -108,16 +109,20 @@ export async function loadPolicy() {
 export function _setPolicyCache(frozen) { _policyCache = frozen; _policyAt = Date.now(); }   // for the learn route
 
 // ── Per-pair refresh ──────────────────────────────────────────────────────────
-export async function refreshPairV2(sym, frozen, opts = {}) {
+export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
   const t0 = Date.now();
   const pip = pipOf(sym), digits = digitsOf(sym), ac = assetClassFor(sym);
   try {
-    const [bars5m, bars30m, barsD] = await Promise.all([
+    // M1 for the approach path (matches the offline learner's M1 bars so the
+    // approachVel bucket — velWin=15 → 15 min — is comparable to the learned cell;
+    // feeding M5 made every live touch read '1·grind'). M5/M30 for the ranges, D for σ.
+    const [bars1m, bars5m, bars30m, barsD] = await Promise.all([
+      fetchBars(sym, 'M1', 900),
       fetchBars(sym, 'M5', 1500),
       fetchBars(sym, 'M30', 500),
       fetchBars(sym, 'D', 120).catch(() => []),
     ]);
-    if (!bars5m.length) return null;
+    if (!bars5m.length || !bars1m.length) return null;
 
     const ar = asiaRange(bars5m), mr = mondayRange(bars30m);
     const ladders = [];
@@ -133,8 +138,9 @@ export async function refreshPairV2(sym, frozen, opts = {}) {
     const price = await fetchPrice(sym);
     if (price == null) return null;
 
-    // Recent intraday path into the level = current session's M5 bars (oldest-first).
-    const sessionBars = bars5m.slice(-Math.min(bars5m.length, 144));   // ~12h of M5
+    // Recent intraday path into the level = current session's M1 bars (oldest-first),
+    // SAME resolution the offline policy was learned on.
+    const sessionBars = bars1m.slice(-Math.min(bars1m.length, 900));   // ~15h of M1
     const open = sessionBars[0].open;
     const tf = createTouchFeatures(opts.touchCfg);
 
@@ -158,6 +164,13 @@ export async function refreshPairV2(sym, frozen, opts = {}) {
       policyBuiltAt: frozen.builtAt ?? null, currentPrice: +price.toFixed(digits),
     }));
 
+    // Daily-learning loop: record these signals + resolve older ones from M1.
+    if (ledgerRef) {
+      const now = Date.now();
+      ledgerRef.ledger = recordEntries(ledgerRef.ledger, sym, payload, now, opts.ledger);
+      ledgerRef.ledger = resolvePair(ledgerRef.ledger, sym, bars1m, now, opts.ledger);
+    }
+
     console.log(`[LEVELS-V2] ${sym}: ${payload.length} entries (${ladders.map(l => l.srcTag).join('+')}), ${Date.now() - t0}ms`);
     return payload.length;
   } catch (e) {
@@ -171,12 +184,26 @@ export async function refreshAllPairsV2(pairs, opts = {}) {
   const frozen = await loadPolicy();
   if (!frozen) { console.log('[LEVELS-V2] no frozen policy_v2 — run /api/levels-v2/learn first'); return { ok: false, error: 'no policy' }; }
   console.log(`[LEVELS-V2] refresh ${pairs.length} pairs · policy built ${frozen.builtAt ?? '?'} · ${frozen.nCells} cells`);
+
+  // Load the running ledger once, thread it through every pair (record + resolve), save once.
+  let ledgerRef = null;
+  if (opts.ledger?.enabled !== false) {
+    let ledger = [];
+    try { const raw = await kv.get('ledger_v2'); if (raw) ledger = JSON.parse(raw)?.data ?? JSON.parse(raw) ?? []; } catch {}
+    ledgerRef = { ledger: Array.isArray(ledger) ? ledger : [] };
+  }
+
   const results = {};
   for (const sym of pairs) {
-    results[sym] = await refreshPairV2(sym, frozen, opts);
+    results[sym] = await refreshPairV2(sym, frozen, opts, ledgerRef);
     await new Promise(r => setTimeout(r, 400));   // OANDA rate-limit
   }
+
+  if (ledgerRef) {
+    try { await kv.put('ledger_v2', JSON.stringify({ data: ledgerRef.ledger, timestamp: Date.now() })); } catch {}
+  }
+
   const ok = Object.values(results).filter(v => v != null).length;
-  console.log(`[LEVELS-V2] done — ${ok}/${pairs.length}`);
-  return { ok: true, results, policyBuiltAt: frozen.builtAt ?? null };
+  console.log(`[LEVELS-V2] done — ${ok}/${pairs.length}${ledgerRef ? ` · ledger ${ledgerRef.ledger.length}` : ''}`);
+  return { ok: true, results, policyBuiltAt: frozen.builtAt ?? null, ledgerSize: ledgerRef?.ledger.length ?? 0 };
 }
