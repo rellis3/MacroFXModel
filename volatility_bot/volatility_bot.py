@@ -4,7 +4,7 @@ Assembled entirely from pylego bricks: it consumes the frozen volatility_bot_pla
 (survivor universe + fade/follow policy + per-pair σ/open + band fractions),
 tracks each pair's session intraday, and on a forecast-line touch decides
 fade/follow via the golden-tested engine, sizes with pylego.sizing, and routes
-the order to a Broker (PaperBroker by default; MT5Broker when --live).
+the order to a Broker (PaperBroker by default; the canonical Mt5Broker when --live).
 
   python volatility_bot/volatility_bot.py            # paper mode (default)
   python volatility_bot/volatility_bot.py --live      # live MT5 (needs creds in config)
@@ -74,15 +74,17 @@ def _deep_merge(base: dict, over: dict) -> dict:
 
 
 def make_broker(cfg: dict):
-    """PaperBroker unless live + MT5 available. The live broker is connected by
-    the caller (needs credentials); paper needs nothing."""
+    """PaperBroker unless live + MT5 available. Uses the canonical pylego
+    `Mt5Broker` brick (shared with the regime bots) for the live path; PaperBroker
+    exposes the same surface so the loop is broker-agnostic."""
     if cfg.get("paper_mode", True):
         return PaperBroker(balance=10_000.0), True
-    from pylego.broker.mt5 import MT5Broker, HAS_MT5
-    if not HAS_MT5:
+    from pylego.broker.mt5 import Mt5Broker
+    broker = Mt5Broker(MAGIC, _broker_sym, I.pip_size, log=log)
+    if not broker.available:
         log.warning("live requested but MetaTrader5 missing — falling back to PAPER")
         return PaperBroker(balance=10_000.0), True
-    return MT5Broker(MAGIC, _broker_sym, path=os.environ.get("MT5_PATH", "")), False
+    return broker, False
 
 
 def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot: float) -> float:
@@ -95,19 +97,15 @@ def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot
 
 
 def build_status(cfg: dict, broker, plan, paper: bool) -> dict:
+    bal = broker.account_balance()
     return {
         "running": True,
         "mode": "paper" if paper else "live",
         "kill_switch": bool(cfg.get("kill_switch")),
-        "balance": round(broker.balance(), 2),
+        "balance": round(bal, 2) if bal is not None else None,
         "universe": (plan or {}).get("universe", []),
-        "mt5_positions": broker.positions(),
-        "today_closed_trades": [
-            {"symbol": c["pair"], "direction": "LONG" if c["side"] == "buy" else "SHORT",
-             "lots": c.get("lots"), "open_price": c.get("open_price"),
-             "close_price": c.get("close_price"), "reason": c.get("reason")}
-            for c in getattr(broker, "closed", [])[-50:]
-        ],
+        "mt5_positions": broker.serialize_open_positions(),
+        "today_closed_trades": broker.serialize_closed_trades(),
     }
 
 
@@ -170,15 +168,16 @@ def run(base_url: str, force_live: bool) -> None:
                     tr.on_minute(px)                  # feeds the approach-velocity buffer
                 if hasattr(broker, "check_barriers"):
                     broker.check_barriers()           # paper triple-barrier (MT5 does it natively)
-                if len(broker.positions()) >= cfg.get("max_open", 12):
+                if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
+                bal = broker.account_balance() or 0.0
                 for spec in decide(pp, plan.get("policy", {}), tr, px):
-                    lots = size_for(pair, broker.balance(), cfg.get("risk_pct", 0.5),
+                    lots = size_for(pair, bal, cfg.get("risk_pct", 0.5),
                                     spec["entry"] - spec["sl"], cfg.get("max_lot", 2.0))
-                    order = {"pair": pair, "side": spec["side"], "lots": lots,
-                             "entry": spec["entry"], "tp": spec["tp"], "sl": spec["sl"],
-                             "comment": f"Vol {spec['line']} {spec['decision'][0]}"}
-                    tid = broker.open(order)
+                    direction = "LONG" if spec["side"] == "buy" else "SHORT"
+                    tid = broker.enter(pair, direction, spec["sl"], spec["tp"], lots,
+                                       cfg.get("max_spread_pips", 1e9), paper,
+                                       comment=f"Vol {spec['line']} {spec['decision'][0]}")
                     log.info(f"{'[PAPER] ' if paper else ''}{pair} {spec['decision'].upper()} "
                              f"{spec['line']} {spec['bucket']} → ticket {tid} lots {lots}")
             if sample_minute:

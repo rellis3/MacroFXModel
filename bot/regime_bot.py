@@ -54,6 +54,7 @@ from pylego.instruments import pip_sizes_for          # shared pip-size table
 from pylego.point_values import point_values_for      # shared pip-value table
 from pylego.sizing import position_size as _position_size_lots
 from pylego.risk_guard import RiskGuard                # shared DD/cooldown guard
+from pylego.broker import Mt5Broker                    # shared MT5 execution brick
 
 try:
     import MetaTrader5 as mt5
@@ -195,60 +196,34 @@ def load_credentials(base_url: str) -> None:
 
 # ── MT5 connection ─────────────────────────────────────────────────────────────
 
+# Shared MT5 execution brick (pylego/broker). Connect / price / ATR / balance /
+# serialize / enter / stop all live here now; this bot injects its magic, broker
+# symbol map (_mt5_sym) and pip table. The module-level functions below are thin
+# delegations kept for call-site compatibility — behaviour is unchanged.
+_broker = Mt5Broker(
+    magic=MAGIC,
+    symbol_resolver=_mt5_sym,
+    pip_resolver=lambda p: _PIP_SIZES.get(p, 0.0001),
+    log=log,
+)
+
+
 def mt5_connect() -> bool:
-    if not HAS_MT5:
-        log.warning('MetaTrader5 not installed — paper mode only')
-        return False
-
-    mt5_path  = os.environ.get('MT5_PATH') or None
-    ok        = mt5.initialize(path=mt5_path) if mt5_path else mt5.initialize()
-    if not ok:
-        log.error(f'MT5 initialize() failed: {mt5.last_error()}')
-        return False
-
-    account  = os.environ.get('MT5_ACCOUNT', '')
-    password = os.environ.get('MT5_PASSWORD', '')
-    server   = os.environ.get('MT5_SERVER', '')
-
-    if account and password and server:
-        try:
-            if not mt5.login(int(account), password, server):
-                log.error(f'MT5 login() failed: {mt5.last_error()}')
-                return False
-        except Exception as exc:
-            log.error(f'MT5 login() raised: {exc}')
-            return False
-
-    info = mt5.account_info()
-    if info:
-        log.info(
-            f'MT5 connected  account={info.login}  balance={info.balance:.2f} {info.currency}'
-            f'  server={info.server}  leverage=1:{info.leverage}'
-        )
-        # Safety check: abort if connected account doesn't match expected account.
-        # Prevents trading on the wrong MT5 account when login credentials are
-        # missing from KV and MT5 falls back to its currently active session.
-        if account and str(info.login) != str(account):
-            log.error(
-                f'MT5 account mismatch: expected {account} but connected to {info.login} '
-                f'— refusing to start. Check regime_bot_credentials in KV.'
-            )
-            mt5.shutdown()
-            return False
-    return True
+    return _broker.connect(
+        os.environ.get('MT5_ACCOUNT', ''),
+        os.environ.get('MT5_PASSWORD', ''),
+        os.environ.get('MT5_SERVER', ''),
+        os.environ.get('MT5_PATH') or None,
+    )
 
 
 # ── Price & bar helpers ────────────────────────────────────────────────────────
 
 def get_price(pair: str, base_url: str) -> float | None:
-    """MT5 tick first (sub-ms), then dashboard API fallback."""
-    if HAS_MT5:
-        try:
-            tick = mt5.symbol_info_tick(_mt5_sym(pair))
-            if tick and tick.bid > 0:
-                return round((tick.bid + tick.ask) / 2, 6)
-        except Exception:
-            pass
+    """MT5 tick first (sub-ms, via the broker brick), then dashboard API fallback."""
+    p = _broker.price(pair)
+    if p is not None:
+        return p
     try:
         r = requests.get(f'{base_url}/api/quote?symbol={pair}', timeout=5)
         return r.json().get('price')
@@ -258,31 +233,14 @@ def get_price(pair: str, base_url: str) -> float | None:
 
 def get_atr(pair: str, tf: str = '5m') -> float | None:
     """EMA-ATR from MT5 bars, alpha=0.15 (matches dashboard vol.js)."""
-    if not HAS_MT5:
-        return None
-    try:
-        timeframe = mt5.TIMEFRAME_M5 if tf == '5m' else mt5.TIMEFRAME_M30
-        bars = mt5.copy_rates_from_pos(_mt5_sym(pair), timeframe, 0, 30)
-        if bars is None or len(bars) < 2:
-            return None
-        alpha = 0.15
-        atr   = abs(float(bars[1]['high']) - float(bars[1]['low']))
-        for i in range(1, len(bars)):
-            h  = float(bars[i]['high'])
-            l  = float(bars[i]['low'])
-            pc = float(bars[i - 1]['close'])
-            tr = max(h - l, abs(h - pc), abs(l - pc))
-            atr = alpha * tr + (1 - alpha) * atr
-        return round(atr, 6)
-    except Exception:
-        return None
+    return _broker.atr(pair, tf)
 
 
 def get_balance(paper_mode: bool) -> float:
-    if HAS_MT5 and not paper_mode:
-        info = mt5.account_info()
-        if info:
-            return info.balance
+    if not paper_mode:
+        bal = _broker.account_balance()
+        if bal is not None:
+            return bal
     return 10_000.0
 
 
@@ -422,152 +380,22 @@ def position_size(balance: float, risk_pct: float,
 
 
 # ── MT5 execution ─────────────────────────────────────────────────────────────
-
-def _filling_mode(mt5_sym: str) -> int:
-    info    = mt5.symbol_info(mt5_sym)
-    filling = mt5.ORDER_FILLING_IOC
-    if info:
-        am = info.filling_mode
-        if   am & 1: filling = mt5.ORDER_FILLING_FOK
-        elif am & 2: filling = mt5.ORDER_FILLING_IOC
-        elif am & 4: filling = mt5.ORDER_FILLING_RETURN
-    return filling
-
+# Order entry/exit now live in the shared broker brick (pylego/broker/mt5.py).
+# These wrappers preserve this bot's signatures and its exact order comments
+# ('RegimeBot X' / 'RgCls <reason>').
 
 def open_position(pair: str, direction: str, sl: float, tp: float,
                   size: float, max_spread_pips: float,
                   paper_mode: bool) -> int | None:
     """Returns ticket int on success, -1 for paper, None on failure."""
-    pip = _PIP_SIZES.get(pair, 0.0001)
-    log.info(
-        f'TRADE {pair} {direction}  SL={sl:.5f}  TP={tp:.5f}  lot={size}'
-        + ('  [PAPER]' if paper_mode else '')
+    return _broker.enter(
+        pair, direction, sl, tp, size, max_spread_pips, paper_mode,
+        comment=f'RegimeBot {direction[0]}',
     )
-
-    if paper_mode:
-        return -1
-
-    if not HAS_MT5:
-        log.error('MetaTrader5 not installed — cannot place live order')
-        return None
-
-    mt5_sym = _mt5_sym(pair)
-    tick    = mt5.symbol_info_tick(mt5_sym)
-    if not tick:
-        log.error(f'No tick for {mt5_sym}')
-        return None
-
-    spread_pips = (tick.ask - tick.bid) / pip
-    if spread_pips > max_spread_pips:
-        log.warning(f'SPREAD BLOCK {pair}: {spread_pips:.1f}p > max {max_spread_pips}p')
-        return None
-
-    existing = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
-                if p.magic == MAGIC]
-    if existing:
-        log.warning(f'DUPLICATE BLOCK {pair}: ticket {existing[0].ticket} already open')
-        return None
-
-    order_type = mt5.ORDER_TYPE_BUY if direction == 'LONG' else mt5.ORDER_TYPE_SELL
-    exec_price = tick.ask if direction == 'LONG' else tick.bid
-
-    order = {
-        'action':       mt5.TRADE_ACTION_DEAL,
-        'symbol':       mt5_sym,
-        'volume':       size,
-        'type':         order_type,
-        'price':        exec_price,
-        'sl':           round(sl, 5),
-        'deviation':    20,
-        'magic':        MAGIC,
-        'comment':      f'RegimeBot {direction[0]}',
-        'type_time':    mt5.ORDER_TIME_GTC,
-        'type_filling': _filling_mode(mt5_sym),
-    }
-    if tp and tp > 0:
-        order['tp'] = round(tp, 5)
-
-    res = mt5.order_send(order)
-
-    # order_send returns None when MT5 has a transport error (dropped connection,
-    # autotrading disabled). Capture last_error before any further MT5 calls.
-    if res is None:
-        err = mt5.last_error()
-        log.error(f'MT5 order_send returned None (transport error)  last_error={err}')
-        # Single retry after re-fetching tick price
-        import time as _time
-        _time.sleep(0.5)
-        tick = mt5.symbol_info_tick(mt5_sym)
-        if tick:
-            order['price'] = tick.ask if direction == 'LONG' else tick.bid
-            res = mt5.order_send(order)
-            if res is None:
-                log.error(f'MT5 retry also returned None  last_error={mt5.last_error()}')
-                return None
-
-    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-        log.info(f'MT5 order placed: ticket={res.order}  exec_price={exec_price}')
-        return res.order
-
-    err = mt5.last_error()
-    log.error(
-        f'MT5 order failed: retcode={getattr(res, "retcode", "?")} '
-        f'comment={getattr(res, "comment", "")}  last_error={err}'
-    )
-    return None
 
 
 def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -> bool:
-    log.info(f'CLOSE {pair}  ticket={ticket}  reason={reason}' + ('  [PAPER]' if paper_mode else ''))
-
-    if paper_mode or ticket < 0:
-        return True
-
-    if not HAS_MT5:
-        return False
-
-    mt5_sym   = _mt5_sym(pair)
-    positions = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
-                 if p.ticket == ticket and p.magic == MAGIC]
-
-    if not positions:
-        log.warning(f'Ticket {ticket} not found — may already be closed by SL/TP')
-        return True
-
-    pos         = positions[0]
-    close_type  = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
-    tick        = mt5.symbol_info_tick(mt5_sym)
-    if not tick:
-        return False
-
-    close_price = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
-
-    res = mt5.order_send({
-        'action':       mt5.TRADE_ACTION_DEAL,
-        'symbol':       mt5_sym,
-        'volume':       float(pos.volume),
-        'type':         close_type,
-        'position':     ticket,
-        'price':        close_price,
-        'deviation':    20,
-        'magic':        MAGIC,
-        'comment':      (''.join(c for c in f'RgCls {reason}' if c.isalnum() or c == ' '))[:31],
-        'type_time':    mt5.ORDER_TIME_GTC,
-        'type_filling': _filling_mode(mt5_sym),
-    })
-
-    if res is None:
-        log.error(f'Close failed: order_send returned None  last_error={mt5.last_error()}')
-        return False
-
-    if res.retcode == mt5.TRADE_RETCODE_DONE:
-        log.info(f'Position {ticket} closed at {close_price}')
-        return True
-
-    log.error(
-        f'Close failed: retcode={res.retcode}  comment={res.comment}  last_error={mt5.last_error()}'
-    )
-    return False
+    return _broker.stop(ticket, pair, paper_mode, reason, comment_prefix='RgCls')
 
 
 # ── Regime debounce ────────────────────────────────────────────────────────────
@@ -621,82 +449,16 @@ def within_window(cfg: dict) -> bool:
 
 
 # ── Position serialiser ────────────────────────────────────────────────────────
+# Delegated to the shared broker brick — these feed the dashboard positions tab
+# (PYTHON_LEGO.md §7); the brick emits the identical magic-filtered field set.
 
 def _serialize_open_positions(magic: int) -> list:
-    if not HAS_MT5:
-        return []
-    try:
-        return [
-            {
-                'ticket':     int(p.ticket),
-                'symbol':     p.symbol,
-                'direction':  'BUY' if p.type == 0 else 'SELL',
-                'lots':       round(float(p.volume), 2),
-                'open_price': round(float(p.price_open), 5),
-                'price':      round(float(p.price_current), 5),
-                'profit':     round(float(p.profit), 2),
-                'swap':       round(float(p.swap), 2),
-                'time_open':  int(p.time),
-                'comment':    str(p.comment or ''),
-            }
-            for p in (mt5.positions_get() or [])
-            if p.magic == magic
-        ]
-    except Exception:
-        return []
+    return _broker.serialize_open_positions()
 
 
 def _serialize_closed_trades(magic: int) -> list:
     """Return today's closed positions from MT5 deal history for this bot."""
-    if not HAS_MT5:
-        return []
-    try:
-        from datetime import timedelta
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
-        by_pos: dict = {}
-        for d in deals:
-            if d.magic != magic:
-                continue
-            pid = int(d.position_id)
-            if pid not in by_pos:
-                by_pos[pid] = {'in': None, 'out': []}
-            if d.entry == 0:
-                by_pos[pid]['in'] = d
-            elif d.entry in (1, 3):
-                by_pos[pid]['out'].append(d)
-        result = []
-        for pid, grp in by_pos.items():
-            outs = grp['out']
-            if not outs:
-                continue
-            ind      = grp['in']
-            last_out = max(outs, key=lambda d: d.time)
-            if ind:
-                direction  = 'BUY' if ind.type == 0 else 'SELL'
-                open_price = round(float(ind.price), 5)
-                time_open  = int(ind.time)
-            else:
-                direction  = 'BUY' if last_out.type == 1 else 'SELL'
-                open_price = None
-                time_open  = None
-            result.append({
-                'position_id': pid,
-                'symbol':      last_out.symbol,
-                'direction':   direction,
-                'lots':        round(sum(d.volume     for d in outs), 2),
-                'open_price':  open_price,
-                'close_price': round(float(last_out.price), 5),
-                'profit':      round(sum(d.profit     for d in outs), 2),
-                'swap':        round(sum(d.swap       for d in outs), 2),
-                'commission':  round(sum(d.commission for d in outs), 2),
-                'time_open':   time_open,
-                'time_close':  int(last_out.time),
-                'comment':     str(ind.comment if ind else last_out.comment or ''),
-            })
-        return sorted(result, key=lambda t: t['time_close'])
-    except Exception:
-        return []
+    return _broker.serialize_closed_trades()
 
 
 # ── Status push ────────────────────────────────────────────────────────────────
