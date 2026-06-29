@@ -72,6 +72,10 @@ ok('book returns a policy', book && book.policy && Object.keys(book.policy).leng
 ok('book has per-pair OOS stats for both pairs', book.perPair.eurusd && book.perPair.gbpusd);
 ok('book has aggregate stats + coverage', book.book && book.coverage &&
    Number.isFinite(book.coverage.fadeCells + book.coverage.followCells + book.coverage.skipCells));
+ok('risk scored on daily units (tradingDays ≤ trades, finite Sharpe)',
+   Number.isFinite(book.book.tradingDays) && book.book.tradingDays > 0 &&
+   book.book.tradingDays <= book.book.trades && Number.isFinite(book.book.sharpe),
+   `days=${book.book.tradingDays} trades=${book.book.trades}`);
 ok('policy cells decide fade/follow/skip', Object.values(book.policy).every(p => ['fade', 'follow', 'skip'].includes(p.decision)));
 ok('nTrades is a count', Number.isFinite(book.nTrades) && book.nTrades >= 0, `nTrades=${book.nTrades}`);
 

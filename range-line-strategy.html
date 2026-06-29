@@ -53,6 +53,7 @@
   <div class="card" id="bookCard" style="display:none">
     <h2>Book — out-of-sample (all pairs pooled policy)</h2>
     <div id="bookChips"></div>
+    <div class="muted" style="margin-top:6px">Risk metrics (Sharpe/Sortino/Max&nbsp;DD/bootstrap) are scored on the <b>daily portfolio-PnL series</b>, not per touch — same-day touches across pairs/lines are simultaneous &amp; correlated, so the independent unit is a trading day (annualised ≈√252). Win%/Expectancy/PF stay per-trade. Total/bootstrap return assume <b>1 unit per signal</b> (≈ many simultaneous positions/day) — read it as scale, not an account curve; Sharpe is scale-invariant.</div>
     <div id="coverage" class="muted" style="margin-top:6px"></div>
   </div>
 
@@ -120,11 +121,12 @@ function render(d) {
   const boot = bk.bootstrap || {};
   $('bookChips').innerHTML = [
     ['Trades', bk.trades ?? 0],
-    ['Win%', ((bk.winRate??0)*100).toFixed(1)+'%'],
-    ['Expectancy', `<span class="${cls(bk.expectancy)}">${fmt(bk.expectancy)}%</span>`],
+    ['Trading days', bk.tradingDays ?? '—'],
+    ['Win% (per trade)', ((bk.winRate??0)*100).toFixed(1)+'%'],
+    ['Expectancy (per trade)', `<span class="${cls(bk.expectancy)}">${fmt(bk.expectancy)}%</span>`],
     ['Profit factor', (bk.profitFactor??0)],
-    ['Sharpe', `<span class="${cls(bk.sharpe)}">${(bk.sharpe??0)}</span>`],
-    ['Sortino', bk.sortino??0],
+    ['Sharpe (daily)', `<span class="${cls(bk.sharpe)}">${(bk.sharpe??0)}</span>`],
+    ['Sortino (daily)', bk.sortino??0],
     ['Max DD', `<span class="neg">${bk.maxDD??0}%</span>`],
     ['Bootstrap p5 total', `<span class="${cls(boot.total?.p5)}">${boot.total?.p5 ?? '—'}%</span>`],
     ['P(profit)', `<b>${((boot.pPositive??0)*100).toFixed(0)}%</b>`],

@@ -21,7 +21,7 @@
  * curve. No network. Reuses metricsCore for the performance summary.
  */
 
-import { summarizeTrades } from './metricsCore.js';
+import { summarizeTrades, winRate, profitFactor, expectancy } from './metricsCore.js';
 import { backtestStats } from './backtestStats.js';
 
 export const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
@@ -145,24 +145,58 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
         entry: +t.level.toFixed(6), tp: +tp.toFixed(6), sl: +sl.toFixed(6),
         fillTime: t.fillTime, pnl });
     }
-    perPair[pair] = { ...summarizeTrades(trades.map(x => x.pnl), trades.map(x => x.date)), trades: trades.length };
+    // Per-pair risk on the DAILY series (same-day touches are simultaneous &
+    // correlated, not independent bets) — Sharpe/maxDD honest. Distribution
+    // descriptors (win%, expectancy, PF) stay per-trade (those don't assume
+    // independence). nTouches: A_0/A_1 etc. fire many times a day, so the daily
+    // unit is what risk should annualise.
+    const pPnls  = trades.map(x => x.pnl);
+    const pDaily = toDaily(trades);
+    const pRisk  = summarizeTrades(pDaily.map(d => d.pnl), pDaily.map(d => d.date));
+    perPair[pair] = {
+      trades: trades.length, tradingDays: pDaily.length,
+      winRate:      +(winRate(pPnls) * 100).toFixed(1),
+      expectancy:   +expectancy(pPnls).toFixed(4),
+      profitFactor: +profitFactor(pPnls).toFixed(3),
+      totalPnl:     +pPnls.reduce((s, x) => s + x, 0).toFixed(3),
+      sharpe: pRisk.sharpe, maxDD: pRisk.maxDD,
+    };
     tradesByPair[pair] = log;
     bookTrades.push(...trades);
   }
   bookTrades.sort(byDate);
-  // Daily-aggregated equity curve (compact: one point per day, not per trade) —
-  // sum the book's PnL per date, then cumulate. % of capital per unit, no compounding.
-  const byDay = new Map();
-  for (const t of bookTrades) byDay.set(t.date, (byDay.get(t.date) || 0) + t.pnl);
+  // The independent unit is a trading DAY, not a touch: positions across all
+  // pairs/lines on one date are simultaneous & correlated, so scoring risk on the
+  // raw per-touch array (~26k/yr) and annualising by √(trade count) overstates
+  // Sharpe ~10× and lets the iid bootstrap collapse the CI (P(profit)→100%).
+  // Aggregate to a daily portfolio-PnL series and score risk on THAT — Sharpe now
+  // annualises by ~√252 trading days and the bootstrap resamples days.
+  const dailyBook = toDaily(bookTrades);
   let cum = 0;
-  const equity = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    .map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(4), cum: +(cum += pnl).toFixed(4) }));
+  const equity = dailyBook.map(d => ({ date: d.date, pnl: +d.pnl.toFixed(4), cum: +(cum += d.pnl).toFixed(4) }));
+  const tradePnls = bookTrades.map(x => x.pnl);
+  const risk = backtestStats(dailyBook.map(d => d.pnl), dailyBook.map(d => d.date), { mcRuns, bootRuns });
+  const book = {
+    ...risk,                                       // sharpe/sortino/maxDD/calmar/cagr/totalPnl/bootstrap/montecarlo — DAILY units
+    trades: bookTrades.length,                     // real trade count (risk.trades counts days)
+    tradingDays: dailyBook.length,
+    winRate:      +winRate(tradePnls).toFixed(4),  // per-trade descriptors (independence-free)
+    expectancy:   +expectancy(tradePnls).toFixed(4),
+    profitFactor: +profitFactor(tradePnls).toFixed(3),
+    perDayExpectancy: risk.expectancy,
+  };
   return {
-    splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair,
-    book: backtestStats(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date), { mcRuns, bootRuns }),
+    splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair, book,
     coverage: { fadeCells: countDec(policy, 'fade'), followCells: countDec(policy, 'follow'), skipCells: countDec(policy, 'skip') },
   };
 }
 
 function byDate(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }
+// Collapse a [{date,pnl}] trade list to one summed PnL per date (the independent
+// daily unit) — sorted ascending. Same-day correlated touches become one bet.
+function toDaily(trades) {
+  const byDay = new Map();
+  for (const t of trades) byDay.set(t.date, (byDay.get(t.date) || 0) + t.pnl);
+  return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([date, pnl]) => ({ date, pnl }));
+}
 function countDec(policy, d) { return Object.values(policy).filter(p => p.decision === d).length; }
