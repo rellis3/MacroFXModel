@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Range-Line Strategy — per-line confidence (no modules)</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --green:#4ade80; --red:#f87171; --amber:#f59e0b; --blue:#5b9dff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui,'DM Sans',sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; margin-top:2px; }
+  .wrap { padding:16px 20px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+  .card h2 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  label { font-size:12px; color:var(--muted); margin-right:6px; }
+  select,input,button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  button { cursor:pointer; font-weight:600; }
+  button.run { background:#14532d; border-color:#166534; color:#bbf7d0; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  th,td { text-align:right; padding:3px 8px; border-bottom:1px solid #161c28; }
+  th:first-child,td:first-child { text-align:left; }
+  thead th { color:var(--muted); font-weight:500; }
+  .chip { display:inline-block; background:#0f1725; border:1px solid var(--line); border-radius:6px; padding:6px 10px; margin:0 8px 8px 0; font-family:'DM Mono',monospace; font-size:12px; }
+  .chip b { color:var(--blue); }
+  .pos { color:var(--green); } .neg { color:var(--red); }
+  .muted { color:var(--muted); font-size:11px; }
+  #status { font-family:'DM Mono',monospace; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Range-Line Strategy</h1>
+  <div class="sub">The Forecast-Level per-line confidence engine applied to Asia/Monday <b>range</b> levels — confluence modules stripped. Each line learns fade/follow/skip on after-cost expectancy (pooled IS → per-pair OOS), triple-barrier exit. Engine: <code>js/rangeLineAnalyser.js</code>.</div>
+</header>
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <span><label>Pair</label><select id="pair"><option value="">All pairs</option>
+        <option>eurusd</option><option>gbpusd</option><option>usdjpy</option><option>audusd</option><option>nzdusd</option><option>usdcad</option><option>usdchf</option><option>gbpjpy</option><option>eurjpy</option><option>gold</option></select></span>
+      <span><label>Lines</label><select id="sources"><option value="asia,monday">Asia + Monday</option><option value="asia">Asia only</option><option value="monday">Monday only</option></select></span>
+      <span><label>Condition</label><select id="conditions"><option value="approachVel">approachVel (spike→fade)</option><option value="none">none (line only)</option></select></span>
+      <span><label>min N / cell</label><input id="minN" type="number" value="50" min="5" max="500" style="width:64px"></span>
+      <span><label>OOS</label><select id="splitFrac"><option value="0.4">40%</option><option value="0.6" selected>40/60</option><option value="0.5">50%</option></select></span>
+      <button class="run" id="runBtn" onclick="run()">▶ Run</button>
+      <span id="status" class="muted"></span>
+    </div>
+    <div class="muted" style="margin-top:8px">Honest discipline: policy learned on in-sample only, applied out-of-sample; a cell trades only if its after-cost expectancy clears the margin. SKIP is a valid (and common) answer.</div>
+  </div>
+
+  <div class="card" id="bookCard" style="display:none">
+    <h2>Book — out-of-sample (all pairs pooled policy)</h2>
+    <div id="bookChips"></div>
+    <div id="coverage" class="muted" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card" id="perPairCard" style="display:none">
+    <h2>Per-pair (OOS)</h2>
+    <table id="perPair"><thead><tr><th>Pair</th><th>Trades</th><th>Win%</th><th>Expectancy</th><th>PF</th><th>Sharpe</th><th>MaxDD</th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="card" id="policyCard" style="display:none">
+    <h2>Learned policy — traded cells (line × condition)</h2>
+    <table id="policy"><thead><tr><th>Cell</th><th>Decision</th><th>N</th><th>Rev%</th><th>z</th><th>Expectancy</th></tr></thead><tbody></tbody></table>
+    <div class="muted" id="skipNote" style="margin-top:6px"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v,d=4) => (v>=0?'+':'') + Number(v).toFixed(d);
+
+async function run() {
+  $('runBtn').disabled = true;
+  $('status').textContent = 'submitting…';
+  const body = {
+    pair: $('pair').value,
+    sources: $('sources').value.split(','),
+    conditions: $('conditions').value,
+    minN: parseInt($('minN').value) || 50,
+    splitFrac: parseFloat($('splitFrac').value) || 0.6,
+  };
+  try {
+    const r = await fetch('/api/range-line/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'run failed');
+    poll(d.jobId);
+  } catch (e) { $('status').textContent = 'error: ' + e.message; $('runBtn').disabled = false; }
+}
+
+async function poll(jobId) {
+  try {
+    const r = await fetch('/api/range-line/status/' + jobId);
+    const d = await r.json();
+    if (d.status === 'running') {
+      $('status').textContent = `running… ${d.currentPair||''} ${d.pairsDone||0}/${d.pairsTotal||'?'} (${d.elapsed||0}s)`;
+      return setTimeout(() => poll(jobId), 1500);
+    }
+    if (d.status === 'done') { $('status').textContent = 'done ✓'; render(d); }
+    else { $('status').textContent = 'error: ' + (d.error || 'unknown'); }
+  } catch (e) { $('status').textContent = 'poll error: ' + e.message; }
+  $('runBtn').disabled = false;
+}
+
+function render(d) {
+  const bk = d.book || {};
+  $('bookCard').style.display = '';
+  const cls = v => v >= 0 ? 'pos' : 'neg';
+  const boot = bk.bootstrap || {};
+  $('bookChips').innerHTML = [
+    ['Trades', bk.trades ?? 0],
+    ['Win%', ((bk.winRate??0)*100).toFixed(1)+'%'],
+    ['Expectancy', `<span class="${cls(bk.expectancy)}">${fmt(bk.expectancy)}%</span>`],
+    ['Profit factor', (bk.profitFactor??0)],
+    ['Sharpe', `<span class="${cls(bk.sharpe)}">${(bk.sharpe??0)}</span>`],
+    ['Sortino', bk.sortino??0],
+    ['Max DD', `<span class="neg">${bk.maxDD??0}%</span>`],
+    ['Bootstrap p5 total', `<span class="${cls(boot.total?.p5)}">${boot.total?.p5 ?? '—'}%</span>`],
+    ['P(profit)', `<b>${((boot.pPositive??0)*100).toFixed(0)}%</b>`],
+  ].map(([k,v]) => `<span class="chip">${k} <b>${v}</b></span>`).join('');
+  const cov = d.coverage || {};
+  $('coverage').textContent = `Policy coverage — fade cells: ${cov.fadeCells??0} · follow: ${cov.followCells??0} · skip: ${cov.skipCells??0}. Split date: ${d.splitDate||'?'}. OOS trades: ${d.nTrades??0}.`;
+
+  // Per-pair
+  const pp = d.perPair || {};
+  $('perPairCard').style.display = '';
+  $('#perPair tbody') && 0;
+  document.querySelector('#perPair tbody').innerHTML = Object.entries(pp)
+    .sort((a,b) => (b[1].expectancy??0) - (a[1].expectancy??0))
+    .map(([pair,s]) => `<tr><td>${pair}</td><td>${s.trades??0}</td><td>${s.winRate??0}%</td>
+      <td class="${(s.expectancy??0)>=0?'pos':'neg'}">${fmt(s.expectancy)}</td><td>${s.profitFactor??0}</td>
+      <td class="${(s.sharpe??0)>=0?'pos':'neg'}">${s.sharpe??0}</td><td class="neg">${s.maxDD??0}</td></tr>`).join('');
+
+  // Policy (traded cells only)
+  const pol = d.policy || {};
+  const traded = Object.entries(pol).filter(([,p]) => p.decision !== 'skip')
+    .sort((a,b) => (b[1].expectancy??0) - (a[1].expectancy??0));
+  const skips = Object.values(pol).filter(p => p.decision === 'skip').length;
+  $('policyCard').style.display = '';
+  document.querySelector('#policy tbody').innerHTML = traded.length ? traded.map(([cell,p]) =>
+    `<tr><td>${cell}</td><td>${p.decision==='fade'?'🟢 fade':'🔵 follow'}</td><td>${p.n}</td><td>${p.revRate??'—'}%</td><td>${p.z??'—'}</td>
+      <td class="${(p.expectancy??0)>=0?'pos':'neg'}">${fmt(p.expectancy)}</td></tr>`).join('')
+    : `<tr><td colspan="6" class="muted">No cell cleared the after-cost expectancy gate — the honest "no edge" answer.</td></tr>`;
+  $('skipNote').textContent = `${traded.length} traded cell(s), ${skips} skipped.`;
+}
+</script>
+</body>
+</html>

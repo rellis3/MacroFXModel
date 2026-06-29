@@ -37,6 +37,7 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
+import { runRangeLineBook } from './js/rangeLineAnalyser.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
@@ -6963,6 +6964,67 @@ app.get('/api/asia-range-backtest/trades', (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── Range-Line Strategy (Forecast-Level per-line policy on range levels) ──────
+// Strips ALL confluence modules. Treats each Asia/Monday range fib as a "line",
+// learns fade/follow/skip per (line × approach) cell on after-cost expectancy
+// (pooled IS → per-pair OOS), triple-barrier exit. Engine: js/rangeLineAnalyser.js
+const rlJobs = new Map();
+function _assetClassFor(p) {
+  if (p === 'gold' || p.includes('xau')) return 'commodity';
+  if (p === 'nas100' || p === 'nq' || p.includes('spx') || p.includes('us30')) return 'index';
+  return 'fx';
+}
+app.post('/api/range-line/run', async (req, res) => {
+  const b = req.body || {};
+  const pair = (b.pair || '').toLowerCase();
+  const pairs = pair ? [pair].filter(p => ASIA_INSTRUMENTS.includes(p)) : ASIA_INSTRUMENTS;
+  if (!pairs.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+
+  const opts = {
+    sources:    Array.isArray(b.sources) ? b.sources : (b.sources ? [b.sources] : ['asia', 'monday']),
+    conditions: Array.isArray(b.conditions) ? b.conditions : (b.conditions === 'none' ? [] : ['approachVel']),
+    minN:       parseInt(b.minN) || 50,
+    splitFrac:  parseFloat(b.splitFrac) || 0.6,
+    marginPct:  parseFloat(b.marginPct) || 0,
+    minLookback: parseInt(b.minLookback) || 20,
+    dateFrom:   b.dateFrom || '', dateTo: b.dateTo || '',
+    mcRuns: 1000, bootRuns: 1000,
+  };
+
+  const jobId = `rl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [k, j] of rlJobs) if (Date.now() - (j.startedAt || 0) > 30 * 60 * 1000) rlJobs.delete(k);
+  rlJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const packedByPair = {}, assetClassByPair = {};
+      let i = 0;
+      for (const p of pairs) {
+        rlJobs.set(jobId, { status: 'running', startedAt, currentPair: p, pairsDone: i, pairsTotal: pairs.length });
+        const packed = await loadM1ForPair(p, BT_M1_DIR);
+        if (packed && packed.n) { packedByPair[p] = packed; assetClassByPair[p] = _assetClassFor(p); }
+        i++;
+      }
+      if (!Object.keys(packedByPair).length) { rlJobs.set(jobId, { status: 'error', error: 'No M1 data for the requested pairs', startedAt }); return; }
+      const book = runRangeLineBook(packedByPair, { ...opts, assetClassByPair });
+      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book } });
+    } catch (e) {
+      console.error('[range-line/run]', e?.message, e?.stack ?? '');
+      rlJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+app.get('/api/range-line/status/:jobId', (req, res) => {
+  const job = rlJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), currentPair: job.currentPair ?? null, pairsDone: job.pairsDone ?? 0, pairsTotal: job.pairsTotal ?? null });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
 // ── Range-Fib Backtest (STRIPPED) ─────────────────────────────────────────────
