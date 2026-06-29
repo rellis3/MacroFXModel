@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches } from './perLineStrategy.js';
 
@@ -154,6 +154,22 @@ ok('held model collapses 3 follow touches → 1 trade', held.struct.trades === 1
 ok('per-touch A/B keeps all 3 (the over-count held fixes)', abSame.struct.trades === 3,
    `abSame struct=${abSame.struct.trades}`);
 ok('held trades < per-touch trades (breadth deflated)', held.struct.trades < abSame.struct.trades);
+
+console.log('[bad-level scan — IS-learned veto, OOS impact]');
+// pair p1: cell A always loses (IS exp negative) → should be vetoed and dropped OOS.
+// pair p2: cell B always wins → kept. minN small for the synthetic.
+const blT = (cell, date, pnlSign) => ({ date, open:1.10, side:'up', name:cell.startsWith('A')?'A_x':'M_x', cell,
+  level:1.10, innerLvl:1.097, outerLvl:1.103, reverted: pnlSign<0, decidedBy:'barrier', closePx: pnlSign>0?1.104:1.096 });
+const mkSeq = (cell, sign, n, fromIS) => Array.from({length:n}, (_,i) => blT(cell, fromIS ? `2021-0${1+(i%9)}-01` : `2023-0${1+(i%9)}-01`, sign));
+const blTouches = { p1: [...mkSeq('M_1_up|', -1, 8, true), ...mkSeq('M_1_up|', -1, 8, false)],   // loser, IS+OOS
+                    p2: [...mkSeq('M_1_up|', +1, 8, true), ...mkSeq('M_1_up|', +1, 8, false)] }; // winner
+const blPol = { 'M_1_up|': { decision: 'follow' } };
+const bl = runBadLevelScan(blTouches, { policy: blPol, splitDate:'2022-01-01', costByPair:{ p1:0.0, p2:0.0 }, minN: 5 });
+ok('bad-level scan returns cells + baseline/withVeto + worst list', bl && Array.isArray(bl.worstOOS) && bl.baseline && bl.withVeto,
+   `nCells=${bl?.nCells} vetoed=${bl?.nVetoed}`);
+ok('veto drops the IS-losing (pair×level) → fewer kept trades', bl.withVeto.trades < bl.baseline.trades,
+   `base=${bl.baseline.trades} veto=${bl.withVeto.trades}`);
+ok('veto keeps the winning pair, removes the loser', bl.nVetoed >= 1);
 
 console.log('[E-ratio exit study]');
 const erTouches = { eurusd: touchesForPair(packed, 'fx', { sources: ['asia','monday'], conditions: [], minLookback: 20, asiaHrs: 0.5 }) };
