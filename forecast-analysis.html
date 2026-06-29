@@ -97,6 +97,9 @@
 const $ = id => document.getElementById(id);
 const LINE_ORDER = ['HL75_up','HL50_up','OC75_up','OC50_up','OC50_dn','OC75_dn','HL50_dn','HL75_dn'];
 const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'Close med' };
+// Per-line cell CONDITIONS the book can key off (must be touch-feature fields stored on each line).
+// approachVel is the OOS-proven base; roundNum is the testable Osler round-number confluence proxy.
+const COND_OPTS = [['approachVel','Approach velocity'],['roundNum','Round number (Osler)'],['volClimax','Volume climax'],['candleReject','Candle rejection'],['budgetBucket','Range budget'],['wtState','WaveTrend'],['approachER','Approach efficiency']];
 const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byApproachER:'Approach efficiency', byApproachVel:'Approach velocity', byWtState:'WaveTrend (touch)', byVolClimax:'Volume climax', byCandleReject:'Candle rejection', byRoundNum:'Round-number prox', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
 const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs','Book'];
@@ -195,7 +198,9 @@ function equitySVG(eq){ if(!eq||eq.length<2) return ''; const W=720,H=180,pad=4;
 async function renderBook(v){
   v.innerHTML=`<div class="card mut">Loading book…</div>`;
   const b=await loadBook();
-  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button> <label style="display:inline;margin-left:8px">min expectancy %/trade <input id="bookMargin" type="number" step="0.001" value="${typeof b!=='string'&&b.marginPct!=null?b.marginPct:0}" style="width:90px"></label> <label style="display:inline;margin-left:8px">survivor margin (× cost) <input id="bookSurv" type="number" step="0.1" value="${typeof b!=='string'&&b.survivorMargin!=null?b.survivorMargin:0.5}" style="width:70px"></label>` : '';
+  const curConds = (typeof b!=='string' && Array.isArray(b.conditions) && b.conditions.length) ? b.conditions : ['approachVel'];
+  const condBoxes = COND_OPTS.map(([k,lbl])=>`<label style="display:inline;margin:0 8px 0 0;font-size:12px;color:var(--text2)"><input type="checkbox" class="bookCond" value="${k}" ${curConds.includes(k)?'checked':''}> ${lbl}</label>`).join('');
+  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button> <label style="display:inline;margin-left:8px">min expectancy %/trade <input id="bookMargin" type="number" step="0.001" value="${typeof b!=='string'&&b.marginPct!=null?b.marginPct:0}" style="width:90px"></label> <label style="display:inline;margin-left:8px">survivor margin (× cost) <input id="bookSurv" type="number" step="0.1" value="${typeof b!=='string'&&b.survivorMargin!=null?b.survivorMargin:0.5}" style="width:70px"></label><div style="margin-top:8px"><span class="mut" style="font-size:11px">cell conditions (more = finer cells, thinner n — tests confluence like round-number):</span><br>${condBoxes}</div>` : '';
   const hint=`<div class="hint">Each forecast line is traded on its <b>own</b> OOS-validated edge under the live approach-velocity state: <b>fade</b> if it reverts significantly, <b>follow</b> if it breaks, else <b>skip</b>. Policy learned on in-sample (pooled across all pairs), applied out-of-sample. Triple-barrier exit (TP=inner line, SL=outer line). Costs on. <b>%/unit, no compounding</b> — this is the honest 26-pair book.</div>`;
   if(typeof b==='string'){ v.innerHTML=`<div class="card"><div class="controls" style="margin-bottom:8px">${buildBtn||''}</div><div class="mut">${b==='none'?'No book yet.':b} ${LEVEL==='admin'?'Click Build book (needs a refresh with the latest fields first).':'Ask the owner to build the book.'}</div>${hint}</div>`; wireBook(); return; }
   const f=b.book||{}, pf=b.portfolio||{}, vt=pf.volTarget||{}; const kpi=(val,lab,neg)=>`<div class="kpi"><div class="v ${neg!==undefined?(neg?'neg':'pos'):''}">${val}</div><div class="l">${lab}</div></div>`;
@@ -359,8 +364,9 @@ function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
     // Submit with a couple of retries — a flaky mobile connection drops the POST.
     const marginPct=parseFloat($('bookMargin')?.value)||0;
     const survRaw=parseFloat($('bookSurv')?.value); const survivorMargin=Number.isFinite(survRaw)?survRaw:0.5;
+    const conditions=[...document.querySelectorAll('.bookCond:checked')].map(c=>c.value); if(!conditions.length) conditions.push('approachVel');
     const submit=async()=>{ let last;
-      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h,marginPct,survivorMargin})});
+      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h,marginPct,survivorMargin,conditions})});
         if(r.j?.ok) return r.j.jobId; last=new Error(r.j?.error||'run rejected'); }catch(e){ last=e; } await sleep(1500); }
       throw last; };
     try{
