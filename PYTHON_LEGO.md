@@ -164,8 +164,10 @@ survivor universe). Each slice is its own PR, golden-tested, smallest diff:
    assembles the frozen artifact (survivors + policy + per-pair σ/open + band
    fractions via `computeBands`) the bot consumes; `volatility_bot_*` KV keys
    registered in `_worker.js`. ✅ this PR.
-2. **Producer route** — server endpoint builds the plan from `getPerLineBook` +
-   live `fetchD1` σ/open per survivor and writes KV `volatility_bot_plan`. ⬜
+2. **Producer route** — `js/volatilityBotProducer.js` builds the plan from
+   `getPerLineBook` + live `fetchD1`/`volSigmaSeries` σ/open per survivor and
+   writes KV `volatility_bot_plan`; `server.js` exposes `POST/GET
+   /api/volatility-bot/{refresh-plan,plan}` + a daily scheduler. ✅
 3. **pylego bricks** — `strategy/volatility.py` (the ONLY ported logic:
    approach-velocity bucket + dynamic-HL geometry + triple-barrier, golden-tested
    vs JS vectors) + new Category-B `kv.py`, `broker/mt5.py`, `broker/orders.py`. ⬜

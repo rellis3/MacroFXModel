@@ -34,6 +34,10 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
+import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
+import { getPerLineBook } from './js/forecastAnalyserStore.js';
+import { fetchD1 as _btFetchD1 } from './js/volBacktestEngine.js';
+import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -4309,6 +4313,31 @@ app.get('/api/vol-forecast/history', (_req, res) => {
 app.post('/api/vol-forecast/refresh', async (_req, res) => {
   res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
+});
+
+// ── Volatility Bot — frozen plan producer/consumer ────────────────────────────
+// Build the plan from the locked per-line book + live σ/open and write it to KV
+// (volatility_bot_plan); the Python bot reads it via GET below each state-refresh.
+async function _refreshVolatilityPlan() {
+  return refreshVolatilityPlan({
+    getBook: getPerLineBook,
+    fetchD1: (sym, n) => _btFetchD1(sym, n),
+    sigmaSeries: _volSigmaSeries,
+    kvPut: (k, v) => kv.put(k, v),
+    onLog: m => console.log('[volatility-bot]', m),
+  });
+}
+app.post('/api/volatility-bot/refresh-plan', async (_req, res) => {
+  try { res.json({ ok: true, plan: await _refreshVolatilityPlan() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/volatility-bot/plan', async (_req, res) => {
+  try {
+    const raw = await kv.get('volatility_bot_plan');
+    if (!raw) return res.status(404).json({ ok: false, error: 'No plan yet — POST /api/volatility-bot/refresh-plan (needs OANDA + a built book)' });
+    const parsed = JSON.parse(raw);
+    res.json({ ok: true, plan: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Text-format export helpers ────────────────────────────────────────────────
@@ -9488,6 +9517,14 @@ setInterval(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', 
 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
+
+// Volatility Bot plan — refresh shortly after boot, then daily (needs OANDA).
+// The bot also reads the last-written plan from KV, so a missed cycle is benign.
+if (process.env.OANDA_KEY) {
+  const _runVolPlan = () => _refreshVolatilityPlan().catch(e => console.error('[volatility-bot] plan refresh failed:', e.message));
+  setTimeout(_runVolPlan, 90_000);            // ~1.5 min after boot
+  setInterval(_runVolPlan, 24 * 60 * 60_000); // daily
+}
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
 // The local file is ephemeral (Railway wipes it); KV survives restarts.
