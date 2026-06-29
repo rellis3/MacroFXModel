@@ -193,9 +193,18 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
 // drop `packed` after this — only the small touch list is retained — so a 26-pair
 // book never holds all the M1 in memory at once.
 export function touchesForPair(packed, assetClass = 'fx', opts = {}) {
+  return extractTouches(recordsForPair(packed, assetClass, opts),
+                        { conditions: opts.conditions ?? ['approachVel'] });
+}
+
+// The EXPENSIVE half (packed M1 → session walk → line records), split out so a
+// caller can cache it: the records depend only on the data window + line/cell
+// formation, NOT on `conditions` (which only changes how extractTouches keys the
+// cell). So a cached records list lets a none↔approachVel toggle re-derive touches
+// for free. Pair it with the re-exported `extractTouches` below.
+export function recordsForPair(packed, assetClass = 'fx', opts = {}) {
   const sessions = bucketM1IntoSessions(packed, opts.boundaryHour ?? 22);
-  const records  = runRangeLineAnalyser(sessions, assetClass, opts);
-  return extractTouches(records, { conditions: opts.conditions ?? ['approachVel'] });
+  return runRangeLineAnalyser(sessions, assetClass, opts);
 }
 
 // ── Full book: packed M1 per pair → records → pooled-IS policy → per-pair OOS ──
@@ -217,4 +226,6 @@ export function runRangeLineBook(packedByPair, opts = {}) {
 // pair-by-pair and run the pooled policy itself without a second import.
 // `costForPair` lets the route price each pair at its real round-trip spread
 // (the survivor / cost-sensitivity logic depends on per-pair costs).
+// `extractTouches` pairs with `recordsForPair` for cache-then-derive.
 export { runPerLine, costForPair } from './perLineStrategy.js';
+export { extractTouches } from './perLineStrategy.js';

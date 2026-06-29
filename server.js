@@ -37,7 +37,7 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
-import { touchesForPair, runPerLine, costForPair } from './js/rangeLineAnalyser.js';
+import { recordsForPair, extractTouches, runPerLine, costForPair } from './js/rangeLineAnalyser.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
@@ -6974,6 +6974,12 @@ app.get('/api/asia-range-backtest/trades', (_req, res) => {
 // learns fade/follow/skip per (line × approach) cell on after-cost expectancy
 // (pooled IS → per-pair OOS), triple-barrier exit. Engine: js/rangeLineAnalyser.js
 const rlJobs = new Map();
+// Per-pair touch cache: load+analyse is the slow part (R2 fetch + parquet decode
+// + session walk) but produces a tiny touch list. Key on the settings that change
+// that list (data window + line/cell formation), so re-runs that only tweak policy
+// knobs (minN/splitFrac/marginPct) hit cache and skip the re-download entirely.
+const rlRecCache = new Map();              // `${pair}|${analyserKey}` → line records[] (conditions-independent)
+const RL_LOAD_CONCURRENCY = 4;             // M1 loads in flight (overlaps R2 latency, bounded memory)
 function _assetClassFor(p) {
   if (p === 'gold' || p.includes('xau')) return 'commodity';
   if (p === 'nas100' || p === 'nq' || p.includes('spx') || p.includes('us30')) return 'index';
@@ -7003,24 +7009,52 @@ app.post('/api/range-line/run', async (req, res) => {
 
   (async () => {
     try {
-      // Stream pairs one at a time: load M1 → extract the small touch list →
-      // RELEASE the packed M1 → yield to the event loop. This keeps only one
-      // pair's M1 resident at a time (the 26-pair book would otherwise OOM) and
-      // lets /status answer the poll between pairs (no event-loop starvation).
+      // Analyser cache key: only the settings that change the per-pair line
+      // RECORDS (data window + line formation). `conditions` is NOT included — it
+      // only changes how extractTouches keys cells — so a none↔approachVel toggle
+      // re-derives touches from cached records for free. Policy knobs
+      // (minN/splitFrac/marginPct) don't touch records either → also cached.
+      const recKey = [opts.sources.join(','), opts.minLookback, opts.dateFrom, opts.dateTo].join('|');
       const touchesByPair = {}, costByPair = {};
-      let i = 0;
-      for (const p of pairs) {
-        rlJobs.set(jobId, { status: 'running', startedAt, currentPair: p, pairsDone: i, pairsTotal: pairs.length });
-        let packed = await loadM1ForPair(p, BT_M1_DIR);
-        if (packed && packed.n) {
-          const ac = _assetClassFor(p);
-          touchesByPair[p] = touchesForPair(packed, ac, opts);
-          costByPair[p] = costForPair(p, ac);            // real per-pair round-trip spread (survivors honesty)
+      let done = 0;
+      const setProg = cur => rlJobs.set(jobId, { status: 'running', startedAt, currentPair: cur, pairsDone: done, pairsTotal: pairs.length });
+      setProg(null);
+
+      // One pair: cache hit → reuse records instantly; else load M1 → build records
+      // → RELEASE the packed M1 (only a few pairs' M1 ever resident). Touches are
+      // derived (cheap) from records per request with the chosen `conditions`.
+      const handle = async (p) => {
+        const ac = _assetClassFor(p);
+        costByPair[p] = costForPair(p, ac);              // real per-pair round-trip spread (survivors honesty)
+        const ck = `${p}|${recKey}`;
+        let records = rlRecCache.get(ck);
+        if (!records) {
+          setProg(p);
+          let packed = await loadM1ForPair(p, BT_M1_DIR);
+          if (packed && packed.n) {
+            records = recordsForPair(packed, ac, opts);
+            rlRecCache.set(ck, records);
+            if (rlRecCache.size > 80) rlRecCache.delete(rlRecCache.keys().next().value);  // bound memory
+          }
+          packed = null;                                 // release M1 for GC
+          await new Promise(r => setImmediate(r));        // yield → /status can respond
         }
-        packed = null;                                   // release M1 for GC
-        await new Promise(r => setImmediate(r));          // yield → /status can respond
-        i++;
-      }
+        if (records) touchesByPair[p] = extractTouches(records, { conditions: opts.conditions });
+        done++; setProg(p);
+      };
+
+      // Bounded-concurrency pool: a few R2 loads in flight at once (overlaps the
+      // slow network round-trips) while only ~RL_LOAD_CONCURRENCY pairs' M1 are
+      // ever resident — faster than strictly sequential, still memory-safe.
+      const queue = [...pairs];
+      const workers = Array.from({ length: Math.min(RL_LOAD_CONCURRENCY, queue.length) }, async () => {
+        while (queue.length) {
+          const p = queue.shift();
+          try { await handle(p); } catch (e) { done++; console.warn(`[range-line/run] ${p} failed: ${e?.message}`); }
+        }
+      });
+      await Promise.all(workers);
+
       if (!Object.keys(touchesByPair).length) { rlJobs.set(jobId, { status: 'error', error: 'No M1 data for the requested pairs', startedAt }); return; }
       const book = runPerLine(touchesByPair, { ...opts, costByPair });
       rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book } });
