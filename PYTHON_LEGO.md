@@ -130,7 +130,14 @@ order (by drift risk × reuse, from `LEGO_MODULES.md §2` Python table):
 3. **`risk_guard.py`** — daily/monthly DD lockout (4 copies + an unwired
    `safety/risk_gate.py`).
 4. **`sizing.py`** — conviction → risk% → lots (the `×0.5` decay variants).
-5. **`kv.py`** / **`telegram.py`** — dashboard KV client and alert transport.
+5. **`kv.py`** — dashboard KV client + the **config-in / status-out** plumbing
+   (`load_config(bot, defaults)`, `push_status(bot, payload)`). This is how a bot
+   is configured from the dashboard and how its trades reach the positions tab —
+   see §7. Highest-care brick after the broker because the dashboard depends on
+   its key names and payload shape.
+6. **`broker/mt5.py`** also owns `serialize_open_positions(magic)` /
+   `serialize_closed_trades(magic)` — the exact payload the positions tab renders.
+7. **`telegram.py`** — alert transport (formatters stay in the strategy).
 
 ## 5. Adoption plan — one bot at a time
 
@@ -159,7 +166,7 @@ it yields are the shared ones the live V2/V4/V7 adopt later, behind review.
   reviewed change.
 - Update `LEGO_MODULES.md` (and this table) — the registry is part of "done".
 
-## 6. Slice 1 (this PR) — `instruments` brick + first bot
+## 6. Slice 1 (merged, #545) — `instruments` brick + first bot
 
 - `scripts/gen_instruments_json.mjs` → generates `pylego/instruments.json` from
   `js/instrumentRegistry.js`.
@@ -175,3 +182,53 @@ it yields are the shared ones the live V2/V4/V7 adopt later, behind review.
 
 This validates the whole cross-language approach on the highest-value,
 lowest-risk brick before committing to the broker/execution layer.
+
+## 7. Dashboard contract — config in, positions out (NON-NEGOTIABLE)
+
+Every Python bot (existing or new, brick-built or not) is wired to the dashboard
+through **two KV keys**, and the brick work must preserve this exactly — it's how
+the user configures bots and tracks per-bot trade history.
+
+**Config IN — `<bot>_config`.** The bot reads its settings from a KV key edited on
+the dashboard's bot config page (`bot-config.html` / `js/bot-config.js`). e.g.
+`regime_bot` reads `regime_bot_config` via `load_config()`. A bot must never
+hard-code what the dashboard is meant to own; it reads `<bot>_config` each cycle
+so live edits take effect.
+
+**Status + positions OUT — `<bot>_status`.** Each cycle the bot pushes a status
+payload to its `<bot>_status` KV key; the dashboard reads it to render the bot's
+card **and the positions tab under bots** (open + closed trades per bot). The
+payload shape the dashboard expects (from `regime_bot` / `bot/main.py`):
+
+```
+{ enabled, paper_mode, cycle, balance, pairs,
+  positions:            { <pair>: {...per-pair live state...} },
+  mt5_positions:        [ <serialize_open_positions(MAGIC)> ],   # live open trades
+  today_closed_trades:  [ <serialize_closed_trades(MAGIC)> ] }   # today's closed trades
+```
+
+`mt5_positions` / `today_closed_trades` are the per-bot trade history the
+positions tab shows — keyed off the bot's unique `MAGIC` so each bot only reports
+its own trades. Field names (`ticket`, `symbol`, `direction`, `lots`,
+`open_price`, `close_price`, `profit`, `swap`, `commission`, `time_open`,
+`time_close`, `comment`) are part of the contract — the dashboard reads them by
+name.
+
+**Brick implications (for the upcoming `kv` + `broker/mt5` slices):**
+- `kv.py` must keep the `<bot>_config` / `<bot>_status` naming and the
+  `load_config` / `push_status` semantics — these bricks are a *refactor*, not a
+  redesign of the wire format. Golden-test the pushed payload shape.
+- `broker/mt5.serialize_open_positions` / `serialize_closed_trades` must emit the
+  **exact field set above**, magic-filtered, so the positions tab keeps working
+  unchanged.
+
+**New-bot checklist (when a bot is assembled from bricks, not just refactored):**
+1. Pick a unique `MAGIC` and a `<bot>` slug.
+2. Read `<bot>_config`; push `<bot>_status` with the payload above every cycle.
+3. Register the bot on `bot-config.html` (config form + the monitored-bots /
+   positions list in `js/bot-config.js`) so its config is editable and its trades
+   show in the positions tab.
+
+Until a bot does all three, it is **not** "done" — an unconfigurable bot whose
+trades don't reach the positions tab fails this contract regardless of how clean
+its internal bricks are.
