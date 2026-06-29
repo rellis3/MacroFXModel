@@ -136,7 +136,10 @@ inherently Python, duplicated across bots, and get consolidated here as new code
 |---|---|---|---|
 | **Instruments (Python)** | `pylego/instruments.py` + `pylego/instruments.json` | pip size / digits / asset class / venue symbols / alias resolution, mirroring the JS accessor API (`pip_size`, `resolve_key`, `instrument`, `mt5_symbol`, …); fail-loud on unknown. JSON is **generated** from `js/instrumentRegistry.js` by `scripts/gen_instruments_json.mjs` (one source of truth, both languages). Adopted by `bot/main.py` ✅ (its inline `_PIP_SIZES` now built from the brick); golden-tested in `pylego/instruments_test.py`. | 🟡 built, adoption in progress |
 | **JS→JSON bridge** | `scripts/gen_instruments_json.mjs` | serializes the JS registry → `pylego/instruments.json`; `--check` mode guards staleness in CI. The mechanism for every future Category-A bridge (`asset_params.json`, GARCH, regime score). | ✅ built |
-| broker / risk / sizing / kv / telegram | `pylego/broker/*`, `pylego/risk_guard.py`, … | Category-B execution bricks (MT5 connect, `enter`/`stop`, DD lockout, conviction→lots, KV, alert transport) — consolidate the 6+ in-bot copies. | 🔲 planned (PYTHON_LEGO.md §4–5) |
+| **Point values (Python)** | `pylego/point_values.py` + `pylego/point_values.json` | approximate cash value per pip per lot (sizing input). **Python-owned, NOT JS-sourced** — account-currency dependent, so it's not instrument identity and stays out of the price registry. Canonical = regime_bot == RegimeV2 set. `point_value`/`point_values_for` with explicit default. Adopted by `bot/regime_bot.py` ✅ (non-live). ⚠ DynAnchorBot's values differ → live adoption behind a sizing review. Golden-tested in `pylego/instruments_test.py`. | 🟡 built, adoption in progress |
+| **Sizing (Python)** | `pylego/sizing.py` | the `position_size` primitive (risk% → lots, decay discount, min/max clamp). Pure: caller passes pip + pip_value (no globals/MT5). Replaces the per-bot copies. Adopted by `bot/regime_bot.py` ✅; tested in `pylego/sizing_test.py` (incl. golden vs old formula). | 🟡 built, adoption in progress |
+| **RiskGuard (Python)** | `pylego/risk_guard.py` | daily/monthly DD lockout + per-pair cooldown state machine, lifted verbatim from `bot/regime_bot.py` (logger injected). Consolidates 4 copies + unwired `safety/risk_gate.py`. Adopted by `bot/regime_bot.py` ✅; tested in `pylego/risk_guard_test.py`. | 🟡 built, adoption in progress |
+| broker / kv / telegram | `pylego/broker/*`, `pylego/kv.py`, … | Remaining Category-B bricks (MT5 connect, `enter`/`stop`, serialize positions, KV client, alert transport) — consolidate the 6+ in-bot copies. **Next: extract the MT5 broker bricks from `bot/regime_bot.py`.** | 🔲 planned (PYTHON_LEGO.md §4–5) |
 
 ---
 
@@ -190,10 +193,10 @@ task they are catalogued, not extracted. See `a5819a3c`/`a8ce0949` survey notes.
 | Candidate | Duplicated in | Risk |
 |---|---|---|
 | MT5 position serialization (`_serialize_open_positions`) | `bot/main.py:123-145`, `bot/regime_bot.py`, RegimeV2/V4/V7, DynAnchorBot — 6+ copies | 🟠 HIGH |
-| Python position sizing (risk% → lots, decay) | `bot/regime_bot.py:252-264` vs `RegimeV2` (`×0.5` decay variant), V7, DynAnchorBot | 🟠 HIGH |
+| Python position sizing (risk% → lots, decay) | 🟡 **extracted** → `pylego/sizing.py`; `bot/regime_bot.py` adopted. Still inline: `RegimeV2` (`×0.5` decay variant), V7, DynAnchorBot | 🟠 HIGH |
 | MT5 connect/login + account check | `bot/main.py`, `bot/regime_bot.py:178-231`, RegimeV2/V7, DynAnchorBot | 🟡 MEDIUM |
 | KV client (get/put/status push) | `bot/main.py`, `bot/regime_bot.py`, `RegimeV2:189-209`, V7; partial `bot/utils/state_reader.py` | 🟡 MEDIUM |
-| RiskGuard (daily/monthly DD lockout) | `bot/regime_bot.py:397-450`, RegimeV2/V7, DynAnchorBot; unwired `safety/risk_gate.py:116-309` | 🟠 HIGH |
+| RiskGuard (daily/monthly DD lockout) | 🟡 **extracted** → `pylego/risk_guard.py`; `bot/regime_bot.py` adopted. Still inline: RegimeV2/V7, DynAnchorBot; unwired `safety/risk_gate.py:116-309` | 🟠 HIGH |
 | Telegram alerting | `bot/main.py:316-357`, RegimeV2 `formatter.py` (reused by V7), DynAnchorBot inline | 🟡 MEDIUM |
 | Logging setup | `bot/main.py:65`, `bot/regime_bot.py:97`, RegimeV2/V7 | 🟢 LOW |
 

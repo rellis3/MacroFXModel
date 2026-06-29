@@ -85,6 +85,35 @@ def test_pip_sizes_for_helper():
     assert got == {"EUR/USD": 0.0001, "USD/JPY": 0.01, "XAU/USD": 1.0}
 
 
+# ── point_values brick (Python-owned sizing input) ───────────────────────────
+# Golden: the shared point-value table must reproduce regime_bot's (== RegimeV2's)
+# former inline _PIP_VALUES exactly, including its 10.0 default for unlisted pairs.
+GOLDEN_PIP_VALUES_REGIME = {
+    "EUR/USD": 10.0, "GBP/USD": 10.0, "USD/JPY": 9.0,
+    "AUD/USD": 10.0, "NZD/USD": 10.0, "USD/CAD": 7.5,
+    "USD/CHF": 10.5, "GBP/JPY": 9.0, "EUR/GBP": 12.5,
+    "EUR/JPY": 6.5, "EUR/CHF": 11.0, "GBP/CHF": 11.0,
+    "AUD/JPY": 6.5, "CAD/JPY": 6.5,
+    "XAU/USD": 100.0, "NAS100_USD": 1.0, "USTECH100M": 1.0,
+    "SPX500_USD": 1.0, "DE30_USD": 1.0, "UK100_GBP": 1.0,
+    "US30_USD": 1.0, "US2000_USD": 1.0,
+}
+
+
+def test_golden_point_values():
+    from pylego import point_values as PV
+    rebuilt = PV.point_values_for(list(GOLDEN_PIP_VALUES_REGIME.keys()), default=10.0)
+    assert rebuilt == GOLDEN_PIP_VALUES_REGIME, rebuilt
+
+
+def test_point_value_default_for_unlisted():
+    from pylego import point_values as PV
+    # A cross with no listed value falls back to the default (matches .get(pair, 10.0)).
+    assert PV.point_value("EUR/AUD", default=10.0) == 10.0
+    # Listed instrument ignores the default.
+    assert PV.point_value("XAU/USD", default=10.0) == 100.0
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

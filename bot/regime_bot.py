@@ -44,6 +44,17 @@ from datetime import datetime, timezone, date as date_type
 
 import requests
 
+# Repo root on path so we can import the shared Python baseplate (pylego/) —
+# bots run from their own dir, so the root isn't on sys.path by default.
+import sys as _sys
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in _sys.path:
+    _sys.path.insert(0, _REPO_ROOT)
+from pylego.instruments import pip_sizes_for          # shared pip-size table
+from pylego.point_values import point_values_for      # shared pip-value table
+from pylego.sizing import position_size as _position_size_lots
+from pylego.risk_guard import RiskGuard                # shared DD/cooldown guard
+
 try:
     import MetaTrader5 as mt5
     HAS_MT5 = True
@@ -54,27 +65,23 @@ except ImportError:
 
 MAGIC = 20260002
 
-# ── Pip tables (match main.py) ─────────────────────────────────────────────────
-
-_PIP_SIZES = {
-    'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
-    'AUD/USD': 0.0001, 'NZD/USD': 0.0001, 'USD/CAD': 0.0001,
-    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,   'EUR/GBP': 0.0001,
-    'EUR/JPY': 0.01,   'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
-    'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
-    'XAU/USD': 1.0,    'NAS100_USD': 1.0,  'USTECH100M': 1.0,
-    'SPX500_USD': 1.0, 'DE30_USD': 1.0,    'UK100_GBP': 1.0,
-    'US30_USD': 1.0, 'US2000_USD': 1.0,
-}
-_PIP_VALUES = {
-    'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'NZD/USD': 10.0,
-    'USD/JPY': 9.0,  'USD/CAD': 7.5,  'USD/CHF': 10.5, 'GBP/JPY': 9.0,
-    'EUR/GBP': 12.5, 'EUR/JPY': 6.5,  'EUR/CHF': 11.0, 'GBP/CHF': 11.0,
-    'AUD/JPY': 6.5,  'CAD/JPY': 6.5,
-    'XAU/USD': 100.0, 'NAS100_USD': 1.0, 'USTECH100M': 1.0,
-    'SPX500_USD': 1.0, 'DE30_USD': 1.0,  'UK100_GBP': 1.0,
-    'US30_USD': 1.0, 'US2000_USD': 1.0,
-}
+# ── Pip tables ──────────────────────────────────────────────────────────────────
+# Sourced from the shared pylego baseplate instead of inline literals: pip SIZE
+# from the JS-generated instrument registry (pylego/instruments), pip VALUE from
+# the Python-owned point-value table (pylego/point_values). Values are identical
+# to the former inline dicts (golden-tested in pylego/instruments_test.py).
+_PAIR_KEYS = [
+    'EUR/USD', 'GBP/USD', 'USD/JPY',
+    'AUD/USD', 'NZD/USD', 'USD/CAD',
+    'USD/CHF', 'GBP/JPY', 'EUR/GBP',
+    'EUR/JPY', 'EUR/CHF', 'GBP/CHF',
+    'AUD/JPY', 'CAD/JPY',
+    'XAU/USD', 'NAS100_USD', 'USTECH100M',
+    'SPX500_USD', 'DE30_USD', 'UK100_GBP',
+    'US30_USD', 'US2000_USD',
+]
+_PIP_SIZES = pip_sizes_for(_PAIR_KEYS)
+_PIP_VALUES = point_values_for(_PAIR_KEYS, default=10.0)
 
 # ── Broker symbol aliases (pair name → actual MT5 symbol) ─────────────────────
 # Some demo brokers use different symbol names. Map the canonical pair name used
@@ -394,73 +401,8 @@ class DecayDetector:
 
 # ── RiskGuard ─────────────────────────────────────────────────────────────────
 
-class RiskGuard:
-    """
-    Mirrors the RiskGuard in main.py.
-    Fields are re-read from config each cycle so live changes take effect.
-    """
-
-    def __init__(self):
-        self.dd_limit_pct:   float = 3.0
-        self.monthly_dd_pct: float = 5.0
-        self.lockout_secs:   float = 3 * 3600
-        self.cooldown_secs:  float = 240
-
-        self._day_start:   float | None = None
-        self._month_start: float | None = None
-        self._locked_until: float       = 0.0
-        self._last_trade:  dict[str, float] = {}
-        self._reset_date:  date_type | None = None
-
-    def sync_cfg(self, cfg: dict) -> None:
-        self.dd_limit_pct   = float(cfg.get('ddlimit',    3.0))
-        self.monthly_dd_pct = float(cfg.get('monthlydd',  5.0))
-        self.lockout_secs   = float(cfg.get('lockout',    3)) * 3600
-        self.cooldown_secs  = float(cfg.get('cooldown',   240))
-
-    def update_balance(self, bal: float) -> None:
-        today = datetime.now(timezone.utc).date()
-        if self._day_start is None:
-            self._day_start  = bal
-            self._reset_date = today
-        if self._month_start is None:
-            self._month_start = bal
-        if self._reset_date and today > self._reset_date:
-            log.info(f'Daily reset — day_start {self._day_start:.2f} → {bal:.2f}')
-            self._day_start  = bal
-            self._reset_date = today
-
-    def record_trade(self, pair: str) -> None:
-        self._last_trade[pair] = time.time()
-
-    def force_unlock(self) -> None:
-        self._locked_until = 0.0
-        self._day_start    = None
-
-    def block_reason(self, bal: float, pair: str = '') -> str | None:
-        now = time.time()
-
-        if now < self._locked_until:
-            return f'Locked out — {(self._locked_until - now) / 60:.0f}m remaining'
-
-        if pair and pair in self._last_trade:
-            elapsed = now - self._last_trade[pair]
-            if elapsed < self.cooldown_secs:
-                return f'[{pair}] Cooldown — {(self.cooldown_secs - elapsed) / 60:.1f}m remaining'
-
-        if self._day_start:
-            dd = (self._day_start - bal) / self._day_start * 100
-            if dd >= self.dd_limit_pct:
-                self._locked_until = now + self.lockout_secs
-                return f'Daily DD {dd:.1f}% ≥ {self.dd_limit_pct}% — locked {self.lockout_secs / 3600:.0f}h'
-
-        if self._month_start:
-            mdd = (self._month_start - bal) / self._month_start * 100
-            if mdd >= self.monthly_dd_pct:
-                self._locked_until = now + self.lockout_secs
-                return f'Monthly DD {mdd:.1f}% ≥ {self.monthly_dd_pct}% — locked'
-
-        return None
+# RiskGuard now lives in the shared baseplate (pylego/risk_guard.py) — imported
+# at the top of this file. It is byte-identical to the former inline class.
 
 
 # ── Position sizing ────────────────────────────────────────────────────────────
@@ -468,16 +410,15 @@ class RiskGuard:
 def position_size(balance: float, risk_pct: float,
                   sl_dist: float, pair: str, max_lot: float,
                   decay_score: float = 0.0) -> float:
-    pip      = _PIP_SIZES.get(pair, 0.0001)
-    pv       = _PIP_VALUES.get(pair, 10.0)
-    sl_pips  = sl_dist / pip
-    risk_amt = balance * (risk_pct / 100)
-    if sl_pips <= 0 or pv <= 0:
-        return 0.01
-    raw_lots = risk_amt / (sl_pips * pv)
-    # Decay discount: lots shrink linearly as decay approaches 1
-    lots = raw_lots * (1.0 - decay_score)
-    return float(max(0.01, min(round(lots, 2), float(max_lot))))
+    # Resolve pip/pip-value from the shared tables, delegate the math to the
+    # shared sizing primitive (pylego/sizing.py). Keeps this bot's pair-keyed
+    # signature; behaviour is identical to the former inline formula.
+    pip = _PIP_SIZES.get(pair, 0.0001)
+    pv  = _PIP_VALUES.get(pair, 10.0)
+    return _position_size_lots(
+        balance, risk_pct, sl_dist, pip=pip, pip_value=pv,
+        max_lot=max_lot, decay_score=decay_score,
+    )
 
 
 # ── MT5 execution ─────────────────────────────────────────────────────────────
@@ -797,7 +738,7 @@ def run(base_url: str, paper_mode: bool) -> None:
         f'vol_z_max={cfg["vol_z_max"]}  decay_window={cfg["decay_window"]}'
     )
 
-    risk_guard = RiskGuard()
+    risk_guard = RiskGuard(log=log)
 
     # Per-pair runtime state
     debounce:      dict[str, RegimeDebounce] = {}
