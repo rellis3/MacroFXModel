@@ -7010,6 +7010,12 @@ const rlJobs = new Map();
 // knobs (minN/splitFrac/marginPct) hit cache and skip the re-download entirely.
 const rlRecCache = new Map();              // `${pair}|${analyserKey}` → line records[] (conditions-independent)
 const RL_LOAD_CONCURRENCY = 4;             // M1 loads in flight (overlaps R2 latency, bounded memory)
+// Coarse-trim "strong" universe — curated from the per-pair OOS table (Sharpe ≥ ~8,
+// tight spreads): gold + JPY crosses + main majors. The wide-spread exotic crosses
+// (gbpcad/gbpnzd/audnzd/audcad/gbpaud/eurnzd…) carry the weakest, cost-marginal edge
+// and most of the bad-level losers, so they're dropped here. A robust universe cut,
+// NOT a per-(pair×level) veto (which the bad-level scan showed is overfit-prone).
+const RL_STRONG_PAIRS = ['gold', 'audjpy', 'audusd', 'nzdjpy', 'nzdusd', 'usdjpy', 'cadjpy', 'eurjpy', 'gbpjpy', 'euraud', 'eurusd', 'gbpusd', 'usdchf', 'usdcad'];
 function _assetClassFor(p) {
   if (p === 'gold' || p.includes('xau')) return 'commodity';
   if (p === 'nas100' || p === 'nq' || p.includes('spx') || p.includes('us30')) return 'index';
@@ -7018,7 +7024,10 @@ function _assetClassFor(p) {
 app.post('/api/range-line/run', async (req, res) => {
   const b = req.body || {};
   const pair = (b.pair || '').toLowerCase();
-  const pairs = pair ? [pair].filter(p => ASIA_INSTRUMENTS.includes(p)) : ASIA_INSTRUMENTS;
+  // Universe: single pair → that pair; else 'strong' → curated strong set, 'all' → everything.
+  const universe = pair ? null : (b.universe === 'strong' ? 'strong' : 'all');
+  const allPairs = universe === 'strong' ? RL_STRONG_PAIRS.filter(p => ASIA_INSTRUMENTS.includes(p)) : ASIA_INSTRUMENTS;
+  const pairs = pair ? [pair].filter(p => ASIA_INSTRUMENTS.includes(p)) : allPairs;
   if (!pairs.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
 
   const opts = {
@@ -7028,6 +7037,8 @@ app.post('/api/range-line/run', async (req, res) => {
     splitFrac:  parseFloat(b.splitFrac) || 0.6,
     marginPct:  parseFloat(b.marginPct) || 0,
     minLookback: parseInt(b.minLookback) || 20,
+    // Coarse level-class trim: cap |fib level| so only near-mid levels trade (0 = no cap).
+    maxLevel:   (b.maxLevel != null && b.maxLevel !== '') ? parseFloat(b.maxLevel) : 0,
     dateFrom:   b.dateFrom || '', dateTo: b.dateTo || '',
     mcRuns: 1000, bootRuns: 1000,
   };
@@ -7069,7 +7080,12 @@ app.post('/api/range-line/run', async (req, res) => {
           packed = null;                                 // release M1 for GC
           await new Promise(r => setImmediate(r));        // yield → /status can respond
         }
-        if (records) touchesByPair[p] = extractTouches(records, { conditions: opts.conditions });
+        if (records) {
+          let touches = extractTouches(records, { conditions: opts.conditions });
+          // Level-class trim: keep only |fib level| ≤ maxLevel (name = `${A|M}_${fibL}`).
+          if (opts.maxLevel > 0) touches = touches.filter(t => Math.abs(parseFloat(String(t.name).slice(2))) <= opts.maxLevel + 1e-9);
+          touchesByPair[p] = touches;
+        }
         done++; setProg(p);
       };
 
