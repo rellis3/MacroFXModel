@@ -247,9 +247,11 @@ function render(d) {
         <td class="mut">${m.tradesPerDay}</td><td>${m.winRate}%</td><td>${m.payoff??'—'}</td>
         <td class="${(m.cagr??0)>=0?'pos':'neg'}">${fmt(m.cagr,1)}%</td><td class="neg">${fmt(m.maxDD,1)}%</td></tr>`).join('');
     const w = ab[winner];
+    const tradesFell = w.tradesPerDay < ab.fixed.tradesPerDay - 0.05;
     $('exitABVerdict').innerHTML = winner==='fixed'
       ? `No trail beat the fixed exit on Sharpe @2× cost — keep the fixed barrier. The trend the E-ratio saw doesn't survive trailing fills.`
-      : `<b>${LBL[winner]}</b> wins: Sharpe @2× ${fmt(best,2)} vs Fixed ${fmt(fixed2,2)}, trades/day ${ab.fixed.tradesPerDay}→${w.tradesPerDay} (breadth deflating), payoff ${ab.fixed.payoff}→${w.payoff}. Build it.`;
+      : `<b>${LBL[winner]}</b> wins on cost-robustness: Sharpe @2× ${fmt(best,2)} vs Fixed ${fmt(fixed2,2)}, @3× ${fmt(ss(w,3),2)} vs ${fmt(ss(ab.fixed,3),2)}, payoff ${ab.fixed.payoff}→${w.payoff}. `
+        + `<b>Caveat:</b> this prices each touch independently — trades/day ${ab.fixed.tradesPerDay}→${w.tradesPerDay}${tradesFell?'':' (unchanged)'}, so the breadth is <b>not yet deflated</b> and the @1× Sharpe stays inflated (the trend gets booked once per level entry). A held-position model — one trade through the trend, no re-entry while open — is needed for the true trades/day &amp; Sharpe.`;
   }
 
   // Held-position model — the honest trades/day + Sharpe.
