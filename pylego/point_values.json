@@ -1,0 +1,27 @@
+{
+  "_comment": "Approximate cash value per pip per lot (account=USD). Python-owned sizing input, NOT instrument identity — see pylego/point_values.py and PYTHON_LEGO.md. Canonical set = regime_bot == RegimeV2. Keyed by canonical instrument key (resolve aliases via instruments.resolve_key).",
+  "default": 10.0,
+  "values": {
+    "eurusd": 10.0,
+    "gbpusd": 10.0,
+    "audusd": 10.0,
+    "nzdusd": 10.0,
+    "usdjpy": 9.0,
+    "usdcad": 7.5,
+    "usdchf": 10.5,
+    "gbpjpy": 9.0,
+    "eurgbp": 12.5,
+    "eurjpy": 6.5,
+    "eurchf": 11.0,
+    "gbpchf": 11.0,
+    "audjpy": 6.5,
+    "cadjpy": 6.5,
+    "gold": 100.0,
+    "nq": 1.0,
+    "spx": 1.0,
+    "dax": 1.0,
+    "ftse": 1.0,
+    "dow": 1.0,
+    "rut": 1.0
+  }
+}

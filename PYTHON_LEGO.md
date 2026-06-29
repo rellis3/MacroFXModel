@@ -97,10 +97,14 @@ What the bridge carries now (slice 1): pip size, digits, asset class, venue
 symbols, and the full alias map (so Python resolves `"EUR/USD"`, `"EUR_USD"`,
 `"EURUSD"` identically to JS).
 
-What it deliberately does **not** carry yet:
-- **`pointValue` / pip value** — drifted across bots and account-currency
-  dependent; it's a sizing input. Carry it only once a canonical set + account
-  assumption is agreed, behind a risk review. Tracked as a P0 follow-up.
+What it deliberately does **not** carry:
+- **`pointValue` / pip value** — account-currency dependent, so it is NOT
+  instrument identity and stays OUT of the JS price registry (which feeds the vol
+  math). It lives instead in a **Python-owned** brick `pylego/point_values.py` +
+  `point_values.json` (canonical set = the identical regime_bot/RegimeV2 table).
+  Only the **non-live** `bot/regime_bot.py` adopts it so far; the live bots keep
+  their inline values until a sizing review, because **DynAnchorBot's values
+  differ** (EUR/JPY 9.0 vs 6.5, EUR/GBP 13.0 vs 12.5).
 - **Broker symbol overrides** — `instruments.json` carries the registry's `mt5`
   field as a *reference* default, but a bot keeps its own small broker-override
   map (`DAX` vs `GER40`). Instrument identity is shared; broker routing is local
@@ -136,10 +140,16 @@ values for that bot's instruments.
 
 | Step | Bot | Bricks adopted | Status |
 |---|---|---|---|
-| 1 | `bot/main.py` | `instruments` (pip size) | 🟡 this PR |
-| 2 | `bot/regime_bot.py` | `instruments` (pip size), then `broker/mt5` | ⬜ |
-| 3 | `RegimeV2/regime_bot_v2.py` | `instruments`, `broker/mt5`, `risk_guard` | ⬜ |
-| 4 | `DynAnchorBot`, `RegimeV4/7` | the full set | ⬜ |
+| 1 | `bot/main.py` | `instruments` (pip size) | ✅ merged (#545) |
+| 2 | `bot/regime_bot.py` | `instruments` (pip size), `point_values`, `sizing`, `risk_guard` | 🟡 this PR — the non-live pilot |
+| 3 | `bot/regime_bot.py` | `broker/mt5` (connect/enter/stop/serialize) | ⬜ next |
+| 4 | `RegimeV2/regime_bot_v2.py` | the full set (pip value behind a sizing review) | ⬜ |
+| 5 | `DynAnchorBot`, `RegimeV4/7` | the full set | ⬜ |
+
+**Why `bot/regime_bot.py` is the pilot:** it's no longer traded, so it's the
+safe sandbox to extract the *full* execution surface (sizing, risk, and next the
+MT5 broker bricks) without any risk of changing live behaviour — and the bricks
+it yields are the shared ones the live V2/V4/V7 adopt later, behind review.
 
 **Rules for each adoption (from `CLAUDE.md`):**
 - Smallest behavior-preserving diff; keep broker-specific overrides local.
