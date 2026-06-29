@@ -31,6 +31,7 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries } from './js/volForecast.
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
+import { runBench as runVolBench }                                   from './js/volForecastBench.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
@@ -6074,6 +6075,70 @@ app.post('/api/honest-forecast/run', express.json({ limit: '256kb' }), (req, res
 
 app.get('/api/honest-forecast/status/:jobId', (req, res) => {
   const job = hfJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Vol-Forecast Benchmark (σ-estimator OOS scorecard) ───────────────────────
+// Scores each σ estimator (EWMA / HV / Yang-Zhang / GARCH / HAR-RV) by how well it
+// predicts each instrument's realised range, on one IS/OOS split (QLIKE + MSE).
+// Pure scoring lives in volForecastBench.js; this route only fetches D1 and loops.
+// Same async-job pattern as the other backtests.
+const vfbJobs = new Map();
+function _purgeStaleVfbJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of vfbJobs) if (job.startedAt < cutoff) vfbJobs.delete(id);
+}
+
+app.post('/api/vol-forecast-bench/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const oosFrac = Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6);
+  const proxy   = ['gk', 'sq', 'parkinson'].includes(b.proxy) ? b.proxy : 'gk';
+  const instFilter = b.pair
+    ? BT_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : BT_INSTRUMENTS;
+
+  const jobId     = `vfb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleVfbJobs();
+  vfbJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const results = [], log = [];
+      for (const inst of instFilter) {
+        try {
+          const bars = await _btFetchD1(inst.oanda);
+          if (!bars || bars.length < 200) { log.push(`${inst.name}: too few bars (${bars?.length ?? 0})`); continue; }
+          const bench = runVolBench(bars, inst.assetClass, { oosFrac, proxy });
+          results.push({ name: inst.name, assetClass: inst.assetClass, ...bench });
+          log.push(`${inst.name}: best=${bench.best} (${bench.nBars} bars)`);
+        } catch (e) {
+          log.push(`${inst.name}: ${e?.message || e}`);
+        }
+      }
+      if (!results.length) { vfbJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt }); return; }
+      vfbJobs.set(jobId, { status: 'done', result: { results, log, opts: { oosFrac, proxy } }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[vol-forecast-bench/run]', msg, e?.stack ?? '');
+      vfbJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/vol-forecast-bench/status/:jobId', (req, res) => {
+  const job = vfbJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
