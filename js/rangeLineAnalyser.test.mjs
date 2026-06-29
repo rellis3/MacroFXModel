@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches } from './perLineStrategy.js';
 
@@ -48,6 +48,8 @@ ok('lines have outcome reverted/continued', allLines.length > 0 && allLines.ever
 ok('lines carry triple-barrier geometry', allLines.every(l => Number.isFinite(l.innerLvl) && Number.isFinite(l.outerLvl) && Number.isFinite(l.level)));
 ok('lines tagged decidedBy (barrier|close)', allLines.every(l => l.decidedBy === 'barrier' || l.decidedBy === 'close'));
 ok('lines have approachVel (bucket or null)', allLines.every(l => 'approachVel' in l));
+ok('lines carry MFE/MAE excursion (excMid/excAway ≥ 0)',
+   allLines.every(l => Number.isFinite(l.excMid) && Number.isFinite(l.excAway) && l.excMid >= 0 && l.excAway >= 0));
 ok('both Asia (A_) and Monday (M_) line sources present', allLines.some(l => l.name.startsWith('A_')) && allLines.some(l => l.name.startsWith('M_')));
 
 console.log('[extractTouches consumes the records]');
@@ -101,6 +103,15 @@ ok('survivors block present (live universe re-aggregated)',
    `kept=${book.survivors?.count}/${book.survivors?.total}`);
 ok('policy cells decide fade/follow/skip', Object.values(book.policy).every(p => ['fade', 'follow', 'skip'].includes(p.decision)));
 ok('nTrades is a count', Number.isFinite(book.nTrades) && book.nTrades >= 0, `nTrades=${book.nTrades}`);
+
+console.log('[E-ratio exit study]');
+const erTouches = { eurusd: touchesForPair(packed, 'fx', { sources: ['asia','monday'], conditions: [], minLookback: 20, asiaHrs: 0.5 }) };
+const er = eRatioByCell(erTouches, book.policy);
+ok('eRatioByCell returns overall + per-cell rows', er && Array.isArray(er.cells),
+   `overall=${er.overall} cells=${er.cells?.length} n=${er.n}`);
+ok('E-ratio cells have MFE/MAE/eRatio + decision', er.cells.every(c =>
+   Number.isFinite(c.mfe) && Number.isFinite(c.mae) && (c.eRatio == null || Number.isFinite(c.eRatio)) &&
+   (c.decision === 'fade' || c.decision === 'follow')));
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);

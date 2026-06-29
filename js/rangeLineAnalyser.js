@@ -110,10 +110,30 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
                                 : (closePx < L ? 'continued' : 'reverted');
       }
 
+      // MFE/MAE excursion from the touch to SESSION CLOSE (not truncated at the
+      // barrier) — measures whether price RUNS past the level (favouring a
+      // let-it-run / trailing exit) or pokes and reverts (favouring a fixed TP).
+      // Mid-referenced: `excMid` = furthest it travelled toward the range mid,
+      // `excAway` = furthest away. % of open. Decision-agnostic; the E-ratio per
+      // decision is derived later (fade: MFE=excMid; follow: MFE=excAway).
+      let excMid = 0, excAway = 0;
+      for (let k = touchIdx; k < n; k++) {
+        const upPct = (bars[k].high - L) / open * 100;
+        const dnPct = (L - bars[k].low)  / open * 100;
+        if (side === 'up') {                 // away = up (out of range), toward-mid = down
+          if (upPct > excAway) excAway = upPct;
+          if (dnPct > excMid)  excMid  = dnPct;
+        } else {                             // dn side: away = down, toward-mid = up
+          if (dnPct > excAway) excAway = dnPct;
+          if (upPct > excMid)  excMid  = upPct;
+        }
+      }
+
       out.push({
         name: ln.label, side, level: +L.toFixed(6),
         innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6),
         decidedBy, firstTouchTime: ftt, outcome, approachVel,
+        excMid: +excMid.toFixed(5), excAway: +excAway.toFixed(5),
       });
     }
   }
@@ -199,6 +219,37 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
     if (lines.length) records.push({ date, open: +open.toFixed(6), realized: { close: +bars[bars.length - 1].close.toFixed(6) }, lines });
   }
   return records;
+}
+
+// ── E-ratio study: does a let-it-run exit have a trend to ride? ───────────────
+// For each TRADED cell, average the MFE (favourable excursion in the decision's
+// direction) and MAE (adverse). E-ratio = MFE÷MAE measured to session close —
+// the question the fixed one-level barrier can't answer: when price reaches a
+// level, does it RUN past it (E>1 → a structural/chandelier trail would capture
+// more than the fixed TP) or poke and revert (E≈1 → the fixed TP is right)?
+//   fade decision:  favourable = toward mid (excMid), adverse = away  (excAway)
+//   follow decision: favourable = away      (excAway), adverse = mid  (excMid)
+export function eRatioByCell(touchesByPair, policy) {
+  const agg = {};
+  for (const touches of Object.values(touchesByPair || {})) {
+    for (const t of touches) {
+      const p = policy?.[t.cell];
+      if (!p || p.decision === 'skip') continue;
+      if (t.excMid == null || t.excAway == null) continue;
+      const fav = p.decision === 'fade' ? t.excMid : t.excAway;
+      const adv = p.decision === 'fade' ? t.excAway : t.excMid;
+      const a = (agg[t.cell] ??= { cell: t.cell, decision: p.decision, n: 0, mfe: 0, mae: 0 });
+      a.n++; a.mfe += fav; a.mae += adv;
+    }
+  }
+  const cells = Object.values(agg).map(a => ({
+    cell: a.cell, decision: a.decision, n: a.n,
+    mfe: +(a.mfe / a.n).toFixed(4), mae: +(a.mae / a.n).toFixed(4),
+    eRatio: a.mae > 1e-9 ? +(a.mfe / a.mae).toFixed(2) : null,
+  })).sort((x, y) => (y.eRatio ?? 0) - (x.eRatio ?? 0));
+  let MFE = 0, MAE = 0, N = 0;
+  for (const c of cells) { MFE += c.mfe * c.n; MAE += c.mae * c.n; N += c.n; }
+  return { overall: MAE > 1e-9 ? +(MFE / MAE).toFixed(2) : null, n: N, cells };
 }
 
 // ── One pair: packed M1 → range-line touches (the per-pair unit of work) ──────
