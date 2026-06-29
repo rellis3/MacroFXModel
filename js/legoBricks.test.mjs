@@ -15,6 +15,8 @@ import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
 import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, runSensitivity, costForPair, buildSurvivors } from './perLineStrategy.js';
 import { backtestStats, portfolioStats, deflatedSharpe } from './backtestStats.js';
+import { computeBands } from './forecastCore.js';
+import { buildVolatilityPlan } from './volatilityBotPlan.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -294,6 +296,31 @@ console.log('[runRigor]');
   ok('costForPair: major < exotic cross', costForPair('eurusd') < costForPair('gbpnzd'));
   ok('costForPair: exotic cross widest tier', costForPair('gbpnzd') >= 0.04);
   ok('costForPair: unknown pair falls back to asset-class default', costForPair('zzzxxx','fx') === 0.012);
+}
+
+console.log('[volatilityBotPlan]');
+{
+  const book = {
+    horizon: 'daily', conditions: ['approachVel'], marginPct: 0.01, survivorMargin: 0.5,
+    survivors: { pairs: ['eurusd', 'usdjpy', 'gbpcad'] },           // gbpcad has no live vol → dropped
+    policy: {
+      'HL50_up|3·spike': { decision: 'fade',   n: 400 },
+      'OC50_up|1·grind': { decision: 'skip',   n: 900, reason: 'belowMargin' },
+      'HL75_dn|2·med':   { decision: 'follow', n: 300 },
+    },
+  };
+  const volByPair = {
+    eurusd: { open: 1.10, sigma: 0.006, assetClass: 'fx', pip: 0.0001 },
+    usdjpy: { open: 150,  sigma: 0.007, assetClass: 'fx', pip: 0.01 },
+    // gbpcad intentionally omitted
+  };
+  const plan = buildVolatilityPlan(book, volByPair);
+  ok('volatility plan: universe = survivors WITH live vol only', plan.universe.length === 2 && plan.universe.includes('eurusd') && !plan.universe.includes('gbpcad'));
+  ok('volatility plan: drops skip cells, keeps fade/follow', plan.policy['HL50_up|3·spike']?.decision === 'fade' && plan.policy['HL75_dn|2·med']?.decision === 'follow' && !('OC50_up|1·grind' in plan.policy));
+  const b = computeBands(1.10, 0.006, 'fx');
+  ok('volatility plan: band fractions match canonical computeBands', near(plan.pairs.eurusd.hl50, +b.hl50.toFixed(8), 1e-9) && near(plan.pairs.eurusd.ocMed, +b.ocMed.toFixed(8), 1e-9));
+  ok('volatility plan: carries locked config (margin 0.01, approachVel)', plan.marginPct === 0.01 && plan.conditions[0] === 'approachVel');
+  ok('volatility plan: throws without a book', (() => { try { buildVolatilityPlan(null, {}); return false; } catch { return true; } })());
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

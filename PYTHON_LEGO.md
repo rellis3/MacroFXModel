@@ -152,6 +152,27 @@ values for that bot's instruments.
 | 3 | `bot/regime_bot.py` | `broker/mt5` (connect/enter/stop/serialize) | ⬜ next |
 | 4 | `RegimeV2/regime_bot_v2.py` | the full set (pip value behind a sizing review) | ⬜ |
 | 5 | `DynAnchorBot`, `RegimeV4/7` | the full set | ⬜ |
+| 6 | **`volatility_bot` (NEW)** — first bot built natively on `pylego` | consumes the frozen `volatility_bot_plan` (Category A); stands up the planned Category-B bricks (`broker/mt5`, `orders`, `kv`) as its execution layer | 🟡 Slice 1 (plan contract) built |
+
+### Volatility Bot — slices (§7)
+
+The first bot assembled *natively* on `pylego` (no legacy to preserve). Runs the
+locked per-line book (approachVel cells, fade/follow/skip, min-expectancy 0.01,
+survivor universe). Each slice is its own PR, golden-tested, smallest diff:
+
+1. **Plan contract (Category A)** — `js/volatilityBotPlan.js` `buildVolatilityPlan`
+   assembles the frozen artifact (survivors + policy + per-pair σ/open + band
+   fractions via `computeBands`) the bot consumes; `volatility_bot_*` KV keys
+   registered in `_worker.js`. ✅ this PR.
+2. **Producer route** — server endpoint builds the plan from `getPerLineBook` +
+   live `fetchD1` σ/open per survivor and writes KV `volatility_bot_plan`. ⬜
+3. **pylego bricks** — `strategy/volatility.py` (the ONLY ported logic:
+   approach-velocity bucket + dynamic-HL geometry + triple-barrier, golden-tested
+   vs JS vectors) + new Category-B `kv.py`, `broker/mt5.py`, `broker/orders.py`. ⬜
+4. **The bot** — `volatility_bot/volatility_bot.py` assembled from the bricks;
+   unique magic; paper-first; pushes `volatility_bot_status`. ⬜
+5. **UI** — `bot-config.html` "Volatility" tab (credentials + paper/live toggle +
+   universe/risk/margin/kill) + one `_POS_BOTS` row so trades show on positions. ⬜
 
 **Why `bot/regime_bot.py` is the pilot:** it's no longer traded, so it's the
 safe sandbox to extract the *full* execution surface (sizing, risk, and next the
