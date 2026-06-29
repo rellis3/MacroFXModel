@@ -70,6 +70,8 @@ export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
         // Optional MFE/MAE excursion (range-line analyser supplies these; forecast
         // records don't — harmless undefined). Used by the E-ratio exit study.
         excMid: ln.excMid, excAway: ln.excAway,
+        // Optional follow-direction trail PnLs (gross %), for the exit A/B.
+        fStruct: ln.fStruct, fChand: ln.fChand,
       });
     }
   }

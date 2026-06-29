@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches } from './perLineStrategy.js';
 
@@ -103,6 +103,39 @@ ok('survivors block present (live universe re-aggregated)',
    `kept=${book.survivors?.count}/${book.survivors?.total}`);
 ok('policy cells decide fade/follow/skip', Object.values(book.policy).every(p => ['fade', 'follow', 'skip'].includes(p.decision)));
 ok('nTrades is a count', Number.isFinite(book.nTrades) && book.nTrades >= 0, `nTrades=${book.nTrades}`);
+
+console.log('[exit trail sim — hand-crafted path, known answer]');
+// Ladder rung = 0.0030 (30 pips). Entry line A_1 = 1.1000 (up side). Path: runs to
+// peak 1.1090 (= +3 rungs), then closes 1.1040. Structural trail should exit one
+// rung below the peak (1.1060 = +2 rungs); chandelier (½ rung=15p) exits 1.1075.
+const mk = (o,h,l,c,t) => ({ time: t, open: o, high: h, low: l, close: c });
+const path = [
+  mk(1.1000,1.1005,1.0985,1.1003,0),   // entry bar, dips to 1.0985 (no SL at 1.0970)
+  mk(1.1003,1.1035,1.1000,1.1032,60),  // reach 1.1030 (rung1)
+  mk(1.1032,1.1065,1.1030,1.1060,120), // reach 1.1060 (rung2)
+  mk(1.1060,1.1092,1.1058,1.1088,180), // peak 1.1092 (>=1.1090 rung3)
+  mk(1.1088,1.1090,1.1038,1.1040,240), // pull back, low 1.1038 → crosses struct stop 1.1060
+];
+const lad = { low: 1.0970, high: 1.1000, validFrom: -Infinity, levels: [
+  { label:'A_0.5', level:1.0970 }, { label:'A_1', level:1.1000 }, { label:'A_1.5', level:1.1030 },
+  { label:'A_2', level:1.1060 }, { label:'A_2.5', level:1.1090 }, { label:'A_3', level:1.1120 } ] };
+const arr = analyseRangeWindow({ open: 1.1000, bars: path }, [lad], { tf: null });
+const a1 = arr.find(l => l.name === 'A_1');
+ok('A_1 line present with trail PnLs', a1 && Number.isFinite(a1.fStruct) && Number.isFinite(a1.fChand),
+   `fStruct=${a1?.fStruct} fChand=${a1?.fChand}`);
+// structural: exits at 1.1060 → (1.1060-1.1000)/1.1000*100 ≈ 0.5455%
+ok('structural trail exits ~one rung below peak (+2 rungs)', Math.abs(a1.fStruct - 0.5455) < 0.02, `fStruct=${a1.fStruct}`);
+ok('chandelier gives back less than structural (tighter)', a1.fChand >= a1.fStruct - 1e-6, `fChand=${a1.fChand} fStruct=${a1.fStruct}`);
+
+console.log('[exit A/B book]');
+const abPol = { 'A_1_up|': { decision: 'follow', n: 99 } };
+const ab = runExitAB({ p: arr.map(l => ({ ...l, date:'2020-01-02', open:1.1000, cell:`${l.name}_${l.side}|`, level:l.level,
+  innerLvl:l.innerLvl, outerLvl:l.outerLvl, reverted: l.outcome==='reverted', decidedBy:l.decidedBy,
+  closePx:1.1040, fStruct:l.fStruct, fChand:l.fChand })) },
+  { policy: abPol, splitDate: '2020-01-01', costByPair: { p: 0.008 } });
+ok('runExitAB returns all four modes', ab && ab.fixed && ab.struct && ab.chand && ab.scale,
+   `fixed=${ab?.fixed?.trades} struct=${ab?.struct?.trades}`);
+ok('exit modes carry cost-stress', Array.isArray(ab.struct.costStress) && ab.struct.costStress.length === 3);
 
 console.log('[E-ratio exit study]');
 const erTouches = { eurusd: touchesForPair(packed, 'fx', { sources: ['asia','monday'], conditions: [], minLookback: 20, asiaHrs: 0.5 }) };

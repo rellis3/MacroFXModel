@@ -77,6 +77,13 @@
     <table id="eratio" style="margin-top:8px"><thead><tr><th>Cell</th><th>Decision</th><th>N</th><th>MFE%</th><th>MAE%</th><th>E-ratio</th></tr></thead><tbody></tbody></table>
   </div>
 
+  <div class="card" id="exitABCard" style="display:none">
+    <h2>Exit A/B — same entries, four exits (OOS + cost-stress)</h2>
+    <div class="muted" style="margin-bottom:8px">Same learned policy; only the <b>exit</b> changes (follow trades only — fade keeps the fixed barrier). A trail wins only if it <b>beats Fixed on Sharpe @2× cost</b> while <b>trades/day fall</b> (the fake breadth deflating) and payoff rises. Ignore the @1× Sharpe (breadth-inflated). <code>structural</code> = ratchet to one level behind the peak (no tunable); <code>chandelier</code> = peak − ½ rung; <code>scale-out</code> = half at level 1, half trailed.</div>
+    <table id="exitAB"><thead><tr><th>Exit</th><th>Sharpe @1×</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Payoff</th><th>CAGR@10%</th><th>MaxDD@10%</th></tr></thead><tbody></tbody></table>
+    <div id="exitABVerdict" class="muted" style="margin-top:6px"></div>
+  </div>
+
   <div class="card" id="perPairCard" style="display:none">
     <h2>Per-pair (OOS)</h2>
     <table id="perPair"><thead><tr><th>Pair</th><th>Trades</th><th>Win%</th><th>Expectancy</th><th>PF</th><th>Sharpe</th><th>MaxDD</th></tr></thead><tbody></tbody></table>
@@ -212,6 +219,30 @@ function render(d) {
       `<tr><td>${c.cell}</td><td>${c.decision==='fade'?'🟢 fade':'🔵 follow'}</td><td>${c.n}</td>
         <td>${fmt(c.mfe)}</td><td>${fmt(c.mae)}</td>
         <td class="${(c.eRatio??0)>=1.3?'pos':(c.eRatio??0)<=1.05?'neg':''}">${c.eRatio??'—'}</td></tr>`).join('');
+  }
+
+  // Exit A/B — same entries, four exits.
+  const ab = d.exitAB;
+  if (ab && ab.fixed) {
+    $('exitABCard').style.display = '';
+    const LBL = { fixed:'Fixed (current)', struct:'Structural trail', chand:'Chandelier', scale:'Scale-out + trail' };
+    const ss = (m, mult) => { const c = (m.costStress||[]).find(x => x.mult===mult); return c ? c.sharpe : null; };
+    const fixed2 = ss(ab.fixed, 2);
+    const rows = ['fixed','struct','chand','scale'].map(k => ab[k] && ab[k].trades ? [k, ab[k]] : null).filter(Boolean);
+    // winner = best Sharpe @2× cost that also beats fixed @2×
+    let winner = 'fixed', best = fixed2 ?? -1e9;
+    for (const [k,m] of rows) { const s = ss(m,2); if (s != null && s > best) { best = s; winner = k; } }
+    document.querySelector('#exitAB tbody').innerHTML = rows.map(([k,m]) =>
+      `<tr${k===winner?' style="font-weight:700"':''}><td>${LBL[k]}${k===winner?' ◀':''}</td>
+        <td>${fmt(m.sharpe,2)}</td>
+        <td class="${(ss(m,2)??0)>0?'pos':'neg'}">${fmt(ss(m,2),2)}</td>
+        <td class="${(ss(m,3)??0)>0?'pos':'neg'}">${fmt(ss(m,3),2)}</td>
+        <td class="mut">${m.tradesPerDay}</td><td>${m.winRate}%</td><td>${m.payoff??'—'}</td>
+        <td class="${(m.cagr??0)>=0?'pos':'neg'}">${fmt(m.cagr,1)}%</td><td class="neg">${fmt(m.maxDD,1)}%</td></tr>`).join('');
+    const w = ab[winner];
+    $('exitABVerdict').innerHTML = winner==='fixed'
+      ? `No trail beat the fixed exit on Sharpe @2× cost — keep the fixed barrier. The trend the E-ratio saw doesn't survive trailing fills.`
+      : `<b>${LBL[winner]}</b> wins: Sharpe @2× ${fmt(best,2)} vs Fixed ${fmt(fixed2,2)}, trades/day ${ab.fixed.tradesPerDay}→${w.tradesPerDay} (breadth deflating), payoff ${ab.fixed.payoff}→${w.payoff}. Build it.`;
   }
 
   // Per-pair
