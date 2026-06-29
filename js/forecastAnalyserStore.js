@@ -16,7 +16,7 @@ import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize } from './instrumentRegistry.js';
-import { extractTouches, runPerLine, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 
 const PREFIX   = 'forecast-analysis';
 const M1_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
@@ -253,6 +253,9 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
   if (!withBarriers) throw new Error('No tradeable touches — re-refresh (records need innerLvl/outerLvl + features)');
 
   const result = runPerLine(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+  // Rigor battery (walk-forward / per-year / cost-sensitivity / IS-vs-OOS) on the
+  // same pooled touches — the "serious backtest" checks.
+  const rigor = runRigor(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
   const generatedAt = new Date().toISOString();
   // Store each pair's trade log separately (loaded on demand by the Book tab /
   // the M1 chart drill-down) so the headline book JSON stays small.
@@ -263,7 +266,7 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
     await putJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`, { pair, horizon, generatedAt, splitDate: result.splitDate, trades: log });
     logged += log.length;
   }
-  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, ...summary };
+  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, ...summary, rigor };
   await putJSON(`${PREFIX}/per-line-${horizon}.json`, out);
   onLog(`Book: ${result.nTrades} OOS trades (${logged} logged) · Sharpe ${result.book.sharpe} · CAGR ${result.book.cagr}% · maxDD ${result.book.maxDD}% · ` +
         `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}`);

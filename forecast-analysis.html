@@ -201,7 +201,7 @@ async function renderBook(v){
   // HONEST headline — portfolio (daily, time-aggregated) stats.
   let html=`<div class="card"><div class="controls" style="margin-bottom:10px">${buildBtn}<div class="mut" style="align-self:center">OOS from <b>${b.splitDate||'—'}</b> · ${b.nTrades} trades · cond ${(b.conditions||[]).join('+')} · minN ${b.minN}</div></div>
     <div style="font-weight:600;margin-bottom:6px">Portfolio — honest (daily, time-aggregated)</div>
-    <div class="kpi-grid">${kpi(fmt(pf.sharpe,2),'Portfolio Sharpe',pf.sharpe<0)}${kpi(fmt(pf.annVol,1)+'%','annual vol')}${kpi(fmt(vt.cagr,1)+'%',`CAGR @ ${vt.target||10}% vol`,vt.cagr<0)}${kpi(fmt(vt.maxDD,1)+'%',`max DD @ ${vt.target||10}% vol`,true)}${kpi(fmt(vt.calmar,2),'Calmar (vol-targeted)',vt.calmar<0)}${kpi(fmt(pf.avgTradesPerDay,1),'avg trades/day')}</div>
+    <div class="kpi-grid">${kpi(fmt(pf.sharpe,2),'Portfolio Sharpe',pf.sharpe<0)}${kpi(pf.psr!=null?fmt(pf.psr*100,0)+'%':'—','prob. Sharpe>0',pf.psr<0.95)}${kpi(fmt(pf.annVol,1)+'%','annual vol')}${kpi(fmt(vt.cagr,1)+'%',`CAGR @ ${vt.target||10}% vol`,vt.cagr<0)}${kpi(fmt(vt.maxDD,1)+'%',`max DD @ ${vt.target||10}% vol`,true)}${kpi(fmt(vt.calmar,2),'Calmar (vol-targeted)',vt.calmar<0)}${kpi(fmt(pf.avgTradesPerDay,1),'avg trades/day')}</div>
     <div class="hint" style="margin-top:8px">This is the Sharpe that's real: daily portfolio returns ×√252, so 33 correlated pairs trading at once count as one day's risk — not ${f.tradesPerYr||'thousands of'} independent bets. CAGR/DD shown at a fixed ${vt.target||10}% annual vol so they're comparable and leverage-honest.</div>
     <div style="margin-top:12px">${equitySVG(b.equity)}</div>${hint}</div>`;
   // Per-trade stats (kept for reference — the Sharpe here ASSUMES independence and overstates).
@@ -216,6 +216,34 @@ async function renderBook(v){
     <tr><td>Bootstrap Sharpe</td><td>${fmt(bs.sharpe.p5,2)} / ${fmt(bs.sharpe.p50,2)} / ${fmt(bs.sharpe.p95,2)}</td><td class="mut">P(profitable) ${fmt(bs.pPositive*100,0)}%</td></tr>
     <tr><td>Monte-Carlo max drawdown %</td><td class="mut">p50 ${fmt(mc.maxDD.p50,1)} · p95 ${fmt(mc.maxDD.p95,1)} · p99 ${fmt(mc.maxDD.p99,1)}</td><td class="${Math.abs(mc.maxDD.p95)<Math.abs(f.totalPnl)?'pos':'neg'}">worst-case ordering DD</td></tr>
     </tbody></table></div>`; }
+  // Rigor battery — walk-forward, IS-vs-OOS, cost-sensitivity, per-year
+  const rg=b.rigor;
+  if(rg){
+    const io=rg.isVsOos||{}, wf=rg.walkForward||{};
+    html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Rigor — walk-forward &amp; stress</div>
+      <div class="hint" style="margin-bottom:8px">A serious backtest, not one split. <b>Walk-forward</b> retrains the policy before each test fold and marches forward. <b>IS→OOS degradation</b> should hold (ratio &gt; ~0.5). <b>Cost stress</b> should stay positive at 2–3× spread. <b>Per-year</b> should be broadly green.</div>
+      <div class="kpi-grid">
+        ${kpi(fmt(wf.overall?.sharpe,2),'Walk-forward Sharpe',wf.overall?.sharpe<0)}
+        ${kpi(fmt(io.is?.sharpe,2),'IS Sharpe')}
+        ${kpi(fmt(io.oos?.sharpe,2),'OOS Sharpe',io.oos?.sharpe<0)}
+        ${kpi(io.degradation!=null?fmt(io.degradation,2):'—','OOS÷IS degradation',io.degradation<0.5)}
+      </div>`;
+    // walk-forward folds
+    if(wf.folds?.length){ html+=`<div style="margin-top:10px;font-weight:600">Walk-forward folds</div>
+      <table><thead><tr><th>from</th><th>to</th><th>Sharpe</th><th>CAGR@10%</th><th>maxDD@10%</th><th>trades</th></tr></thead><tbody>`;
+      for(const f0 of wf.folds){ html+=`<tr><td>${f0.from}</td><td>${f0.to}</td><td class="${f0.sharpe>0?'pos':'neg'}">${fmt(f0.sharpe,2)}</td><td>${fmt(f0.volTarget?.cagr,1)}%</td><td class="neg">${fmt(f0.volTarget?.maxDD,1)}%</td><td class="mut">${f0.trades}</td></tr>`; }
+      html+=`</tbody></table>`; }
+    // cost sensitivity + per-year side by side (stacked tables)
+    if(rg.costSensitivity?.length){ html+=`<div style="margin-top:10px;font-weight:600">Cost stress (OOS)</div>
+      <table><thead><tr><th>cost ×</th><th>Sharpe</th><th>CAGR@10%</th></tr></thead><tbody>`;
+      for(const c of rg.costSensitivity){ html+=`<tr><td>${c.mult}×</td><td class="${c.sharpe>0?'pos':'neg'}">${fmt(c.sharpe,2)}</td><td>${fmt(c.volTarget?.cagr,1)}%</td></tr>`; }
+      html+=`</tbody></table>`; }
+    if(rg.perYear?.length){ html+=`<div style="margin-top:10px;font-weight:600">Per-year (OOS)</div>
+      <table><thead><tr><th>year</th><th>Sharpe</th><th>CAGR@10%</th><th>trades</th></tr></thead><tbody>`;
+      for(const y of rg.perYear){ html+=`<tr><td>${y.year}</td><td class="${y.sharpe>0?'pos':'neg'}">${fmt(y.sharpe,2)}</td><td>${fmt(y.volTarget?.cagr,1)}%</td><td class="mut">${y.trades}</td></tr>`; }
+      html+=`</tbody></table>`; }
+    html+=`</div>`;
+  }
   // policy table
   const pol=b.policy||{}; const cells=Object.entries(pol).filter(([,p])=>p.decision!=='skip').sort((a,b)=>b[1].n-a[1].n);
   html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Policy — traded cells (line × ${(b.conditions||[]).join('+')})</div>
