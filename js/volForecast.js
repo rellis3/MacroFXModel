@@ -3,10 +3,12 @@
  *
  * Methodology — primary estimator per asset class (last updated 2026-06-15 evening):
  *
- *   commodity : 20-day simple historical volatility (HV20)
- *                 std(log_returns[-20:]) × √252
- *                 Jun-15 morning compare: HV20 Δ−6% vs ref (acceptable).
- *                 Previous: Rogers-Satchell EWMA λ=0.94 (Δ+15.5%)
+ *   commodity : Yang-Zhang estimator (same as fx)
+ *                 σ²_YZ = σ²_overnight + k·σ²_OC + (1−k)·σ²_RS
+ *                 Switched 2026-06-30: HV20 was Δ+19.8% above ref (3 sessions), YZ Δ+1.6%.
+ *                 HV20 slow 20-day window cannot shed prior-week elevated vol fast enough;
+ *                 YZ OHLC weighting adapts faster and lands at the right level.
+ *                 Previous: HV20 std(log_returns[-20:])×√252 (Jun-15 Δ−6%, drifted to +20%)
  *
  *   index     : GARCH(1,1) α=0.06 β=0.87 (interim, was β=0.91 — 2026-06-19)
  *                 ω floor = 1.11e-5 (rescaled, still ~20% long-run). Reverted from
@@ -59,7 +61,10 @@ const HN_P75 = 1.1503;
 //   Reset to 1.0 on 2026-06-15 when primaries switched to HV20/EWMA/HV30.
 // Calibration history — corrections derived as ref_value / our_uncorrected_value:
 //
-// commodity (GOLD, HV20) — recalibrated 2026-06-26 (see VOL_CALIBRATION_TRACKER.md).
+// commodity (GOLD, YZ) — estimator switched 2026-06-30 from HV20 → YZ (see VOL_CALIBRATION_TRACKER.md).
+//   Correction factors below were calibrated against HV20 and will be slightly off with YZ.
+//   After 3+ clean YZ sessions, recalibrate: oc_50_corr 1.12→~0.98 (shape-only, ~+14% residual expected).
+// commodity (GOLD, HV20) — prior recalibration 2026-06-26:
 //   Original Jun-15 factors were fit when HV20 vol underestimated reference by −6%; the
 //   vol bias has since drifted to a consistent +3–7% overestimate (Jun-22 through Jun-26),
 //   flipping the sign and making the original factors pull in the wrong direction (HL med
@@ -418,12 +423,14 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
   // Primary estimators — updated 2026-06-15 evening based on reference comparison:
-  //   commodity HV20: vol 29.34% vs ref 27.59% (Δ−6%)  ← keep, close enough
+  //   commodity YZ: switched 2026-06-30 — HV20 (+19.8% above ref, 3 sessions) vs YZ (+1.6%)
+  //     HV20 slow 20-day window can't shed prior-week elevated vol; YZ OHLC adapts faster.
+  //     Previous: HV20 (Jun-15 Δ−6%, later drifted to +20%).
   //   index EWMA(0.90) gave 33.54% vs ref 20.95% (Δ−37.5%) — too reactive after spike → revert to GARCH
   //   fx HV30 gave 4.59% vs ref 5.53% (Δ+20.5%) — too slow → switch to YZ (was Δ+12%, best available)
   let volSeries;
   if (assetClass === 'commodity') {
-    volSeries = hv20Series(ohlc, 20);                    // kept: RS-EWMA was Δ+15.5%, HV20 Δ−6%
+    volSeries = yangZhangVolSeries(ohlc);                // switched 2026-06-30: HV20 Δ+20% vs YZ Δ+1.6%
   } else if (assetClass === 'index') {
     // Interim persistence fix 2026-06-19: shorter beta/omega than the legacy shadow
     // below (see ASSET_PARAMS.index comment) — provisional pending grid search.
