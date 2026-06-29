@@ -8,7 +8,8 @@
       "Bash(node --input-type=module)",
       "Bash(git commit -m ' *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\relli\\\\OneDrive\\\\Documents\\\\Programming\\\\Trading\\\\v2 trading model\\\\MacroFXModel\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Workflow(deep-research)"
     ]
   },
   "hooks": {
