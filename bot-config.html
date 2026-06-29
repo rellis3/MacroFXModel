@@ -377,6 +377,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="hedgebot" onclick="switchTab('hedgebot')" style="color:#06b6d4" id="hbTabBtn">🔀 Hedge Bot</button>
     <button class="tab-btn" data-tab="poshedgebot" onclick="switchTab('poshedgebot')" style="color:#10b981" id="phbTabBtn">🛡 Pos Hedge</button>
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
+    <button class="tab-btn" data-tab="volatility" onclick="switchTab('volatility')" style="color:#e0a93b" id="vbTabBtn">📐 Volatility</button>
     <button class="tab-btn" data-tab="nqqmr" onclick="switchTab('nqqmr')" style="color:#f59e0b" id="nqTabBtn">🎯 QMR Indices</button>
     <button class="tab-btn" data-tab="liquiditygate" onclick="switchTab('liquiditygate')" style="color:#22d3ee" id="lgTabBtn">💧 Liquidity Gate</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
@@ -2786,6 +2787,81 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   </div><!-- /tab-macroequity -->
 
+  <!-- ══════════════════════════════════════════════════════ VOLATILITY TAB -->
+  <div class="tab-pane" id="tab-volatility">
+
+    <div class="bot-banner" style="background:rgba(224,169,59,0.08);border:1px solid rgba(224,169,59,0.28)">
+      <div class="bot-banner-icon">📐</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#e0a93b">Volatility Bot — per-line fade</div>
+        <div class="bot-banner-sub">Fades the vol-forecast Proj-H/L bands on the approach-velocity edge · survivor universe + frozen policy from the per-line book · triple-barrier exit · volatility_bot/volatility_bot.py</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <a href="forecast-analysis.html" target="_blank" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #e0a93b;border-radius:7px;color:#e0a93b;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Analyser</button>
+        </a>
+        <button style="background:#e0a93b;border:none;border-radius:7px;color:#1a1400;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveVbConfig();saveVbCreds()">Save All</button>
+      </div>
+    </div>
+
+    <!-- Live status -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:#e0a93b">Live Status</span>
+        <span id="vbLiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
+        <span id="vbLiveMode" style="font-size:11px;font-weight:600"></span>
+        <span style="flex:1"></span>
+        <span id="vbLiveBal" style="font-size:11px;color:var(--text3)"></span>
+        <button onclick="loadVbLiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="display:flex;gap:20px;padding:4px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;flex-wrap:wrap">
+        <span>Open positions: <b id="vbOpenN">—</b></span>
+        <span>Live universe: <b id="vbUniN">—</b></span>
+        <span style="margin-left:auto">Plan: <b id="vbPlanAge">—</b></span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- ── Controls ─────────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="form-row"><span class="form-lbl">Mode</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="vb_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE)</small></label></div>
+        <div class="form-row"><span class="form-lbl">Kill switch <small>no new entries</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb_kill_switch"> stop</label></div>
+        <div class="form-row"><span class="form-lbl">Risk % / trade</span><input type="number" id="vb_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max lot</span><input type="number" id="vb_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max open positions</span><input type="number" id="vb_max_open" min="1" max="40" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max spread (pips) <small>live entry guard</small></span><input type="number" id="vb_max_spread_pips" min="0.1" max="50" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Pairs override <small>blank = survivor universe</small></span><input type="text" id="vb_enabled_pairs" placeholder="eurusd, usdjpy" style="width:200px;text-align:left"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
+        <div class="form-row"><span class="form-lbl">Price tick <small>local watch</small></span><input type="number" id="vb_tick_secs" min="1" max="60" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Status push</span><input type="number" id="vb_status_secs" min="10" max="300" step="5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Plan re-pull</span><input type="number" id="vb_plan_secs" min="60" max="86400" step="60" style="width:80px"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#e0a93b;color:#1a1400" onclick="saveVbConfig()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetVbDefaults()">Reset Defaults</button>
+          <span id="vbSaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <!-- ── MT5 Credentials ──────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">MT5 Account</div>
+        <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="vb_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="vb_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
+        <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="vb_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="vb_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#e0a93b;color:#1a1400" onclick="saveVbCreds()">Save Credentials</button>
+          <span id="vbCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">volatility_bot_credentials</code>). The bot reads them on connect when paper trade is OFF. Flip to live only after a paper run looks right.</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-volatility -->
+
   <!-- ══════════════════════════════════════════════════════ NQ-QMR TAB -->
   <div class="tab-pane" id="tab-nqqmr">
 
@@ -4560,6 +4636,7 @@ const _POS_BOTS = [
   { key: 'dax_qmr_status',            label: 'DAX-QMR',   color: '#f59e0b', bg: '#1a1200',  bd: '#b45309', paper: false },
   { key: 'regime_bot_v7_status',      label: 'Regime V7', color: '#14b8a6', bg: '#042f2e',  bd: '#0f766e', paper: false },
   { key: 'macro_equity_bot_status',   label: 'MacroEquity', color: '#818cf8', bg: '#1e1b4b', bd: '#4338ca', paper: false },
+  { key: 'volatility_bot_status',     label: 'Volatility',  color: '#e0a93b', bg: '#292100', bd: '#78610a', paper: true },
 ];
 
 let _posRefreshTimer = null;

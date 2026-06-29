@@ -23,32 +23,33 @@ class KvClient:
 
     # ── reads ────────────────────────────────────────────────────────────────
     def get_json(self, key: str):
-        """GET /api/kv/get?key=… → the stored object, unwrapping the common
-        ``{data, timestamp}`` envelope. Returns None if absent/blank."""
+        """GET /api/kv/get?key=… → the stored value. The worker returns
+        ``{data, timestamp}`` (or ``{miss: true}``); we return ``data`` — exactly
+        what the dashboard's ``kvGet`` does. None if absent/blank."""
         r = self.http.get(f'{self.base}/api/kv/get', params={'key': key}, timeout=self.timeout)
         if getattr(r, 'status_code', 200) == 404:
             return None
         r.raise_for_status()
         body = r.json()
-        if body is None:
+        if not isinstance(body, dict) or body.get('miss'):
             return None
-        # /api/kv/get may return the raw value or {value:…}; values are often {data,timestamp}.
-        val = body.get('value', body) if isinstance(body, dict) else body
-        if isinstance(val, dict) and 'data' in val and 'timestamp' in val:
-            return val['data']
-        return val
+        return body.get('data', body)
 
     # ── writes ───────────────────────────────────────────────────────────────
-    def put_json(self, key: str, data) -> None:
+    def put_json(self, key: str, data, *, ts: int | None = None) -> None:
+        """POST /api/kv/set with the worker's body shape ``{key, data, timestamp}``
+        (matches the dashboard's ``kvSet``). NOTE: keys matching
+        credentials/config/override require an X-Auth-Token the BOT never sends —
+        the bot only WRITES its status key (unauthenticated) and READS config."""
         r = self.http.post(f'{self.base}/api/kv/set',
-                           json={'key': key, 'value': data}, timeout=self.timeout)
+                           json={'key': key, 'data': data, 'timestamp': ts if ts is not None else _now_ms()},
+                           timeout=self.timeout)
         r.raise_for_status()
 
     def put_status(self, key: str, status: dict, *, ts: int | None = None) -> None:
-        """Write the bot's runtime status under its own ``{bot}_status`` key,
-        wrapped in the dashboard's ``{data, timestamp}`` envelope (what the
-        positions page unwraps). Per-bot key, so it never collides with others."""
-        self.put_json(key, {'data': status, 'timestamp': ts if ts is not None else _now_ms()})
+        """Write the bot's runtime status under its own ``{bot}_status`` key. The
+        worker wraps it as ``{data, timestamp}``; the positions page reads ``data``."""
+        self.put_json(key, status, ts=ts)
 
 
 def _now_ms() -> int:
