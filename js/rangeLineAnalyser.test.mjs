@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches } from './perLineStrategy.js';
 
@@ -136,6 +136,24 @@ const ab = runExitAB({ p: arr.map(l => ({ ...l, date:'2020-01-02', open:1.1000, 
 ok('runExitAB returns all four modes', ab && ab.fixed && ab.struct && ab.chand && ab.scale,
    `fixed=${ab?.fixed?.trades} struct=${ab?.struct?.trades}`);
 ok('exit modes carry cost-stress', Array.isArray(ab.struct.costStress) && ab.struct.costStress.length === 3);
+
+console.log('[held-position model — collapses same-direction follow touches]');
+// Three follow touches, same day/side/source (Monday up). Per-touch A/B = 3 trades;
+// held model suppresses re-entry → 1 trade (the earliest by fillTime).
+const T = (cell, name, fillTime, fStruct) => ({
+  date:'2022-03-01', open:1.10, side:'up', name, cell,
+  level:1.10, innerLvl:1.097, outerLvl:1.103, reverted:false, decidedBy:'barrier', closePx:1.104,
+  fillTime, fStruct, fChand:+(fStruct+0.05).toFixed(5),
+});
+const hpTouches = { p: [ T('M_1_up|','M_1',180,0.30), T('M_1.5_up|','M_1.5',60,0.50), T('M_2_up|','M_2',120,0.40) ] };
+const hpPol = { 'M_1_up|':{decision:'follow'}, 'M_1.5_up|':{decision:'follow'}, 'M_2_up|':{decision:'follow'} };
+const held = runHeldPosition(hpTouches, { policy: hpPol, splitDate:'2022-01-01', costByPair:{ p:0.008 } });
+const abSame = runExitAB(hpTouches, { policy: hpPol, splitDate:'2022-01-01', costByPair:{ p:0.008 } });
+ok('held model collapses 3 follow touches → 1 trade', held.struct.trades === 1 && held.fixedHeld.trades === 1,
+   `held struct=${held.struct.trades} fixedHeld=${held.fixedHeld.trades}`);
+ok('per-touch A/B keeps all 3 (the over-count held fixes)', abSame.struct.trades === 3,
+   `abSame struct=${abSame.struct.trades}`);
+ok('held trades < per-touch trades (breadth deflated)', held.struct.trades < abSame.struct.trades);
 
 console.log('[E-ratio exit study]');
 const erTouches = { eurusd: touchesForPair(packed, 'fx', { sources: ['asia','monday'], conditions: [], minLookback: 20, asiaHrs: 0.5 }) };
