@@ -35,6 +35,14 @@ import requests
 import time
 from datetime import datetime, timezone, date as date_type
 
+# Put the repo root on the path so we can import the shared Python baseplate
+# (pylego/) — the bots are run from bot/, so the root isn't on sys.path by default.
+import sys as _sys
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in _sys.path:
+    _sys.path.insert(0, _REPO_ROOT)
+from pylego.instruments import pip_sizes_for  # shared pip table (single source of truth)
+
 from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, trigger_refresh, StaleDataError
 from utils.sl_tp_engine import SLTPEngine
 from utils.indicators import compute_atr, compute_wt1, atr_to_tol_pips
@@ -88,14 +96,19 @@ MODULE_REGISTRY = {
     'news_risk':         NewsRiskModule,
 }
 
-_PIP_SIZES = {
-    'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
-    'AUD/USD': 0.0001, 'XAU/USD': 1.0,   'EUR/GBP': 0.0001,
-    'USD/CAD': 0.0001, 'USD/CHF': 0.0001, 'GBP/JPY': 0.01,
-    'NAS100_USD': 1.0,
-    'SPX500_USD': 1.0, 'DE30_USD': 1.0, 'UK100_GBP': 1.0,
-    'US30_USD': 1.0,   'US2000_USD': 1.0,
-}
+# Pip sizes now come from the shared instrument registry (pylego/instruments.json,
+# generated from js/instrumentRegistry.js) instead of an inline literal — one
+# source of truth across the dashboard, backtests and bots. A wrong pip = 10× PnL.
+# Keyed by the display forms this bot uses; values are identical to the former
+# inline table (golden-tested in pylego/instruments_test.py).
+_PIP_SIZES = pip_sizes_for([
+    'EUR/USD', 'GBP/USD', 'USD/JPY',
+    'AUD/USD', 'XAU/USD', 'EUR/GBP',
+    'USD/CAD', 'USD/CHF', 'GBP/JPY',
+    'NAS100_USD',
+    'SPX500_USD', 'DE30_USD', 'UK100_GBP',
+    'US30_USD', 'US2000_USD',
+])
 
 _MT5_SYMBOL: dict[str, str] = {
     'NAS100_USD':  'USTECH100M',

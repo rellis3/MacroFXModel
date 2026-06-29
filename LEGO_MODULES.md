@@ -121,6 +121,23 @@ module only reads what it's given. Pip size comes from `instrumentRegistry`.
 > `js/vumanchuCore.test.mjs`). `asiaRangeEngine` is bit-identical (it already
 > used `1e-10`). The Python copies remain a later unification target.
 
+### 1d. Python baseplate bricks (`pylego/`) — 2026-06-29
+
+The Python sibling of the JS bricks: a shared `pylego/` package the bots import
+from instead of copy-pasting tables/plumbing into every island. **Full plan +
+the two-category strategy (generate-don't-port for math/data, consolidate for
+execution) is in `PYTHON_LEGO.md`.** Key rule: for **Category-A** (math/data)
+bricks the data has ONE source — the JS registry — serialized to JSON and read by
+both languages; we do **not** hand-port JS math into Python (that mints copy #7,
+the drift bug). **Category-B** (MT5 connect / enter / stop / risk / sizing) are
+inherently Python, duplicated across bots, and get consolidated here as new code.
+
+| Brick | File | Owns | Status |
+|---|---|---|---|
+| **Instruments (Python)** | `pylego/instruments.py` + `pylego/instruments.json` | pip size / digits / asset class / venue symbols / alias resolution, mirroring the JS accessor API (`pip_size`, `resolve_key`, `instrument`, `mt5_symbol`, …); fail-loud on unknown. JSON is **generated** from `js/instrumentRegistry.js` by `scripts/gen_instruments_json.mjs` (one source of truth, both languages). Adopted by `bot/main.py` ✅ (its inline `_PIP_SIZES` now built from the brick); golden-tested in `pylego/instruments_test.py`. | 🟡 built, adoption in progress |
+| **JS→JSON bridge** | `scripts/gen_instruments_json.mjs` | serializes the JS registry → `pylego/instruments.json`; `--check` mode guards staleness in CI. The mechanism for every future Category-A bridge (`asset_params.json`, GARCH, regime score). | ✅ built |
+| broker / risk / sizing / kv / telegram | `pylego/broker/*`, `pylego/risk_guard.py`, … | Category-B execution bricks (MT5 connect, `enter`/`stop`, DD lockout, conviction→lots, KV, alert transport) — consolidate the 6+ in-bot copies. | 🔲 planned (PYTHON_LEGO.md §4–5) |
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
@@ -134,7 +151,7 @@ drift directly desyncs trading from its backtest (the worst case).
 |---|---|---|---|---|---|
 | 1 | **`assetParams` + BM/HN constants (single source)** | Brownian range constants + per-asset-class correction factors | `volBacktestEngine.js:22-34` (canonical) vs **divergent** copies: `volForecast.js:45-50,115-120` (Jun-26 recal), `forecaster-backtest.html:471-481`, `VolRangeForecaster/vol_*.py`, `ForecasterOptimizer/engine.py`, **live** `TradingBot/dyn_anchor_bot.py:44-47`, **live** `DynAnchorBot/dyn_anchor_mt5_bot.py:46-62` | 🔴 CRITICAL | 6+ correction-factor sets from a June recalibration applied unevenly → live bots forecast different ranges than backtests. Make `volBacktestEngine` the source; Python imports via a generated JSON. |
 | 2 | **GARCH(1,1) σ series** | close-to-close GARCH vol | `volBacktestEngine.js:152-164` (α=0.06,β=0.91) vs **live** `js/vol.js:54-68` (**α=0.10,β=0.85,ω=1e-7**); Python ports match backtest | 🔴 CRITICAL | Live `vol.js` is structurally different from every backtest. Decide the canonical (α,β) and parameterise. |
-| 3 | **Instrument registry (Python side)** | pip size, point value, MT5/OANDA/Yahoo symbols | `js/instrumentRegistry.js` ✅ (JS) but Python still has `bot/main.py:91-110`, `bot/regime_bot.py:59-93` (**only place with `_PIP_VALUES`**), `bot/{backtest,hedge_bot,position_hedge_bot}.py`, `VolRangeForecaster`, `portfolioBacktest` | 🔴 CRITICAL | A single wrong pip = 10× PnL error. Port the JS registry to a `instruments.json` both sides read. |
+| 3 | **Instrument registry (Python side)** | pip size, point value, MT5/OANDA/Yahoo symbols | 🟡 **IN PROGRESS** — `pylego/instruments.py` reads generated `instruments.json`; `bot/main.py` adopted (pip size). Still inline: `bot/regime_bot.py:59-93` (**only place with `_PIP_VALUES`**), `RegimeV2/regime_bot_v2.py`, `bot/{backtest,hedge_bot,position_hedge_bot}.py`, `VolRangeForecaster`, `portfolioBacktest`. **pointValue/`_PIP_VALUES` NOT yet bridged — drifted (EUR/JPY 6.5 vs 9.0) + account-currency dependent → sizing change behind risk review.** | 🔴 CRITICAL | A single wrong pip = 10× PnL error. `instruments.json` (JS→JSON) is the bridge; adopt one bot at a time (PYTHON_LEGO.md §5). |
 | 4 | **Python indicator core** | EMA/ATR/ADX/RSI/WaveTrend for the bots | `bot/utils/indicators.py` (ATR alpha=0.15) vs `backtestSystem/indicators.py` (Wilder ATR) vs inline `bot/regime_bot.py:252-271`, `Gold/main.py`, `Gold/modules/fib_engine.py:89-97` | 🔴 VERY HIGH | ATR smoothing differs bot vs backtest → stops differ. Mirror of `js/indicatorCore.js`. |
 | 5 | **Regime composite score** | 7-component HMM+BOCPD+session+DXY+consensus+vol+credit → 0-100 | `RegimeV2/regime_score.py` vs `RegimeV4/regime_score_v4.py` (adds `bocpd_trend`, consensus fix) vs `js/regime-confidence.js` (6, no credit) vs inline in `regime-backtest.html` | 🔴 CRITICAL | V2 and V4 bots score the *same* regime differently. Pick V4 as canonical; port to JS for backtests. |
 | 6 | **BOCPD change-point detector** | run-length change-point prob | `RegimeV2/bocpd.py` (full, used by V2/V4/V7 bots) vs simplified scalar in `js/regime-confidence.js` / `regime-backtest.html` | 🔴 CRITICAL | Live exit gates fire on BOCPD; backtests compute it differently (or not). Port `bocpd.py` → `js/bocpd.js`. |
@@ -267,8 +284,11 @@ Tier-1 primitives
 - [ ] Wire `statsCore` into `nasdaqTransforms.rollingZScore/rollingPercentile`
       (bit-faithful), then `globalLiquidityEngine` / `macroEquityEngine`.
 - [ ] Wire `indicatorCore` into `hmm5m.js` / `hmm5m-v2.js` (ATR/ADX/rollingZ).
-- [ ] Generate `instruments.json` from `instrumentRegistry` and have the Python
+- [~] Generate `instruments.json` from `instrumentRegistry` and have the Python
       bots + backtests read it (single pip/symbol source across languages).
+      ✅ bridge built (`scripts/gen_instruments_json.mjs` → `pylego/instruments.json`),
+      ✅ `pylego/instruments.py` + `bot/main.py` adopted (pip size). Remaining bots
+      + `_PIP_VALUES` unification tracked in `PYTHON_LEGO.md §5`.
 
 Tier-2 level sources (`js/levelSources.js`)
 - [x] Build the level-source contract + registry (7 sources) + `collectLevels` / `clusterLevels`.
