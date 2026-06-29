@@ -14,7 +14,7 @@ import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
 import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine } from './perLineStrategy.js';
-import { backtestStats } from './backtestStats.js';
+import { backtestStats, portfolioStats } from './backtestStats.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -230,6 +230,13 @@ console.log('[backtestStats]');
   ok('backtestStats MC drawdown percentiles present', 'p50' in s.montecarlo.maxDD && 'p95' in s.montecarlo.maxDD);
   ok('backtestStats deterministic under same seed', JSON.stringify(backtestStats(pnls, dates, { mcRuns: 200, bootRuns: 200, seed: 1 })) === JSON.stringify(s));
   ok('backtestStats empty → {trades:0}', backtestStats([], []).trades === 0);
+  // portfolioStats: daily Sharpe ×√252; vol-target rescales but Sharpe is invariant.
+  const daily = Array.from({ length: 252 }, (_, i) => (i % 4 === 0 ? -0.2 : 0.15));   // ~+ve daily series
+  const ps = portfolioStats(daily, { targetVol: 10 });
+  ok('portfolioStats Sharpe = mean/sd×√252', near(ps.sharpe, (daily.reduce((a,b)=>a+b,0)/daily.length)/Math.sqrt(daily.reduce((a,b)=>a+(b-(daily.reduce((x,y)=>x+y,0)/daily.length))**2,0)/daily.length)*Math.sqrt(252), 0.02));
+  ok('portfolioStats Sharpe invariant to vol target (scale-free)', portfolioStats(daily,{targetVol:5}).sharpe === portfolioStats(daily,{targetVol:20}).sharpe);
+  ok('portfolioStats annVol > 0 and vol-target set', ps.annVol > 0 && ps.volTarget.target === 10);
+  ok('portfolioStats empty → {days:0}', portfolioStats([]).days === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
