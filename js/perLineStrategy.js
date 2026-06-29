@@ -67,6 +67,9 @@ export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
         decidedBy: ln.decidedBy ?? 'barrier',           // 'barrier' (TP/SL hit) or 'close' (mark-to-close)
         closePx: w.realized?.close ?? w.open,            // for honest mark-to-close of undecided outcomes
         cell: `${ln.name}_${ln.side}|${condKey}`,
+        // Optional MFE/MAE excursion (range-line analyser supplies these; forecast
+        // records don't — harmless undefined). Used by the E-ratio exit study.
+        excMid: ln.excMid, excAway: ln.excAway,
       });
     }
   }

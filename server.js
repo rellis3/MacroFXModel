@@ -37,7 +37,7 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
-import { recordsForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe } from './js/rangeLineAnalyser.js';
+import { recordsForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell } from './js/rangeLineAnalyser.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
@@ -7064,7 +7064,10 @@ app.post('/api/range-line/run', async (req, res) => {
       const rigor = runRigor(touchesByPair, { splitFrac: opts.splitFrac, minN: opts.minN, marginPct: opts.marginPct, costByPair });
       const sensitivity = runSensitivity(touchesByPair, { base: { splitFrac: opts.splitFrac, minN: opts.minN, marginPct: opts.marginPct, survivorMargin: 0.5 }, costByPair });
       const deflated = sensitivity ? deflatedSharpe(book.equity.map(e => e.pnl), sensitivity.trialSharpesRaw) : null;
-      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated } });
+      // E-ratio study (measure BEFORE building a trailing exit): does price run
+      // past the traded levels (let-it-run favoured) or poke and revert?
+      const eRatio = eRatioByCell(touchesByPair, book.policy);
+      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated, eRatio } });
     } catch (e) {
       console.error('[range-line/run]', e?.message, e?.stack ?? '');
       rlJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });
