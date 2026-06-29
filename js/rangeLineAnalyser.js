@@ -240,5 +240,10 @@ export function runRangeLineBook(packedByPair, opts = {}) {
 // `costForPair` lets the route price each pair at its real round-trip spread
 // (the survivor / cost-sensitivity logic depends on per-pair costs).
 // `extractTouches` pairs with `recordsForPair` for cache-then-derive.
-export { runPerLine, costForPair } from './perLineStrategy.js';
+// `runRigor`/`runSensitivity`/`deflatedSharpe` are the forecast-engine's proven
+// robustness battery (walk-forward / per-year / cost-stress / IS-vs-OOS /
+// deflated Sharpe) — the range-line route surfaces them so the strategy is judged
+// the same honest way, not by the breadth-inflated headline Sharpe alone.
+export { runPerLine, costForPair, runRigor, runSensitivity } from './perLineStrategy.js';
 export { extractTouches } from './perLineStrategy.js';
+export { deflatedSharpe } from './backtestStats.js';
