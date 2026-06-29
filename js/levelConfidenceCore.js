@@ -27,13 +27,20 @@
 // perLineStrategy.pnlFor returns). Calibrated for FX session-fib cells; override
 // per asset class via opts. A cell only reaches here if the frozen policy already
 // gated it above its cost margin, so every graded cell has positive expectancy.
+//
+// NOTE on R:R: the triple-barrier exits are ADJACENT ladder lines, which on the
+// half-integer fib grid are ~equidistant ⇒ rr is structurally ~1:1. Crucially the
+// cell's `expectancy` ALREADY encodes that 1:1 payoff (perLineStrategy.pnlFor sizes
+// wins/losses by the inner/outer distances). So the grade is on expectancy, NOT rr
+// — an rr≥1.5 gate would just make A+ unreachable by construction. We keep only a
+// floor demotion when rr is genuinely poor (`rrFloor`), as a sanity guard.
 export const DEFAULT_GRADE_BANDS = {
-  eAplus: 0.15, // ≥ this expectancy (and nFull + rr≥1.5) → A+
+  eAplus: 0.15, // ≥ this expectancy (and nFull) → A+
   eA:     0.08, // ≥ this expectancy (and nMin) → A
   eB:     0.03, // ≥ this expectancy → B
   nFull:  50,   // sample size for full confidence / A+
   nMin:   30,   // minimum sample to earn an A (matches the OOS ≥30 floor)
-  rrAplus: 1.5, // A+ requires at least this reward:risk (else demote to A)
+  rrFloor: 1.0, // demote a top grade only if rr falls below this (sanity, not the gate)
 };
 
 const clamp01 = x => Math.max(0, Math.min(1, x));
@@ -103,21 +110,21 @@ export function decide(touch, policy, opts = {}) {
   const n          = p.n ?? 0;
   const revRate    = p.revRate ?? null;
 
-  // Grade off expectancy + breadth (NOT a 0-100 heuristic).
+  // Grade off expectancy + breadth (NOT a 0-100 heuristic; NOT rr — see bands note).
   let grade;
-  if      (expectancy >= bands.eAplus && n >= bands.nFull && rr >= bands.rrAplus) grade = 'A+';
-  else if (expectancy >= bands.eA     && n >= bands.nMin)                          grade = 'A';
-  else if (expectancy >= bands.eB)                                                 grade = 'B';
-  else if (expectancy >  0)                                                        grade = 'C';
-  else                                                                            grade = 'SKIP';
+  if      (expectancy >= bands.eAplus && n >= bands.nFull) grade = 'A+';
+  else if (expectancy >= bands.eA     && n >= bands.nMin)  grade = 'A';
+  else if (expectancy >= bands.eB)                         grade = 'B';
+  else if (expectancy >  0)                                grade = 'C';
+  else                                                     grade = 'SKIP';
 
-  // R:R gate, same spirit as v1 trade-grade: a poor payoff can't be a top grade.
+  // Sanity floor only: a genuinely poor payoff (rr below the floor) can't be a top
+  // grade. With the equidistant ladder rr≈1.0 so this rarely fires — it guards the
+  // extreme/edge cases, it is NOT the grading gate.
   const warnings = [];
-  if (rr > 0 && rr < 1.0 && (grade === 'A+' || grade === 'A')) {
+  if (rr > 0 && rr < bands.rrFloor && (grade === 'A+' || grade === 'A')) {
     grade = 'B';
-    warnings.push(`R:R 1:${rr} — below breakeven`);
-  } else if (rr > 0 && rr < bands.rrAplus && grade === 'A+') {
-    grade = 'A';
+    warnings.push(`R:R 1:${rr} — below floor`);
   }
 
   const verdict = grade === 'A+' || grade === 'A' ? 'TAKE'

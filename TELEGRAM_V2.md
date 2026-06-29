@@ -115,11 +115,49 @@ approximation of the backtest's. This is the residual gap to A/B before cutover.
 4. **Cut over** v1 → v2 only when the ledger shows v2 ≥ v1 on realized after-cost
    expectancy. Until then both run; v2 is observed, not trusted.
 
-## Not done yet (deliberate next steps)
+## Daily-learning loop (`js/entryLedgerV2.js`) — built
 
-- `entryLedgerV2` (the self-calibration loop) — Phase 4.
-- Cron wiring of `refreshAllPairsV2` (currently route-triggered) — enable once a
-  policy exists in KV.
-- Broaden beyond Asia/Monday fib ladders to the full `levelSources` set (the brick
-  signature already supports it; the offline learner would extend `rangeLineAnalyser`).
+The policy is frozen, but the system now *observes itself* each day:
+
+1. **Record** — every live graded signal is appended to KV `ledger_v2` on each
+   refresh (`recordEntries`, deduped per standing `sym|cell|price`).
+2. **Resolve** — older records are resolved honestly from subsequent **M1** bars:
+   **limit-fill first** (did price actually reach the level? if never → `expired`,
+   not a free win), then **triple-barrier** TP vs SL (SL checked first, conservative),
+   netting an after-cost `realizedPct` (`resolvePair`).
+3. **Compare** — `ledgerStats` reports realized win-rate + after-cost expectancy
+   **vs the policy's claimed expectancy, per grade** — the honest "is the edge
+   holding up live?" (surfaced on `telegram-v2.html` and `GET /api/levels-v2/ledger`).
+4. **Refit candidate** — `refitFromLedger` aggregates realized fills per cell into a
+   review-only candidate policy; it **never auto-overwrites** the frozen one (you
+   promote deliberately). Only updates the expectancy estimate of the taken
+   decision — no counterfactual, so it can't flip fade↔follow.
+
+Record + resolve run automatically inside the Railway refresh loop (below).
+
+## Two grading-input fixes (built)
+
+- **R:R / A+ reachability.** The ladder's triple-barrier exits are adjacent
+  (≈equidistant) fib lines, so `rr ≈ 1:1` by construction — and the cell's
+  `expectancy` already encodes that payoff. The grade is therefore on **expectancy +
+  sample**, not `rr` (an `rr ≥ 1.5` gate made A+ unreachable). A floor demotion
+  guards only genuinely poor payoffs.
+- **Live velocity bucket.** The offline policy keys cells on `approachVel` computed
+  on **M1** (`velWin=15` → 15 min). The live engine now fetches **M1** for the
+  approach path (it was M5 → 75 min → every touch read `1·grind`), so the live
+  bucket matches the learned cell.
+
+## Autorun (Railway server-side, not the Cloudflare worker)
+
+`refreshAllPairsV2()` (which also records + resolves the ledger) runs inside the
+Node server's existing `runLevelsRefresh()` interval on Railway — the **same loop**
+that already refreshes v1, right after it, isolated in a try/catch. It no-ops until
+a `policy_v2` exists in KV. This is **not** `cron-worker/cron-worker.js` (the
+separate Cloudflare proximity-alert worker, untouched).
+
+## Still deliberately deferred
+
+- **Promote-from-ledger** UI (one-click blend of `refitFromLedger` into the frozen
+  policy after review) — the candidate is computed, promotion is still manual.
+- Broaden beyond Asia/Monday fib ladders to the full `levelSources` set.
 - Python bot reader for `ai_entries_v2_*` behind a `telegram_mode_v2` flag.

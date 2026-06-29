@@ -68,6 +68,14 @@
     </div>
     <div id="entries"><div class="muted">— nothing loaded —</div></div>
   </div>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <b>🧠 Daily-learning ledger — realized vs policy</b>
+      <span class="muted">limit-fill + triple-barrier on live M1 · auto-recorded each refresh</span>
+    </div>
+    <div id="ledger"><div class="muted">— no ledger yet (builds as live entries are recorded &amp; resolved) —</div></div>
+  </div>
 </div>
 
 <script>
@@ -172,11 +180,40 @@ function renderList(entries) {
     : '<div class="muted">— policy loaded but no near-price entries right now —</div>';
 }
 
+function renderLedger(s) {
+  if (!s || !s.total) { $('ledger').innerHTML = '<div class="muted">— no ledger yet (builds as live entries are recorded &amp; resolved) —</div>'; return; }
+  const grades = Object.keys(s.byGrade || {});
+  const rows = grades.map(g => {
+    const b = s.byGrade[g];
+    const holds = b.realizedExpectancy >= 0;
+    return `<tr>
+      <td class="${gradeCls(g)}">${g}</td>
+      <td class="mono">${b.n}</td>
+      <td class="mono">${b.winRate}%</td>
+      <td class="mono" style="color:${holds ? 'var(--grn)' : 'var(--red)'}">${b.realizedExpectancy >= 0 ? '+' : ''}${b.realizedExpectancy.toFixed(3)}%</td>
+      <td class="mono">+${b.policyExpectancy.toFixed(3)}%</td>
+      <td>${holds ? '✓ holding' : '✗ underperforming'}</td>
+    </tr>`;
+  }).join('');
+  $('ledger').innerHTML = `
+    <div class="cbadges" style="margin-bottom:8px;">
+      <span class="badge">${s.total} recorded</span>
+      <span class="badge">${s.decided} resolved</span>
+      <span class="badge">${s.open} open</span>
+      <span class="badge">${s.expired} expired</span>
+      <span class="badge">overall realized ${s.overallRealized >= 0 ? '+' : ''}${s.overallRealized.toFixed(3)}%</span>
+    </div>
+    ${rows ? `<table><thead><tr><th>Grade</th><th>n</th><th>Win%</th><th>Realized edge</th><th>Policy edge</th><th>Verdict</th></tr></thead><tbody>${rows}</tbody></table>`
+           : '<div class="muted">— recorded, awaiting resolution —</div>'}`;
+}
+
 async function loadCurrent() {
   setStatus('loading…');
   try {
     const r = await fetch('/api/levels-v2/entries'); const j = await r.json();
-    renderPolicy(j.policy); renderEntries(j, j.entries); setStatus('loaded', 'var(--grn)');
+    renderPolicy(j.policy); renderEntries(j, j.entries);
+    try { const lr = await fetch('/api/levels-v2/ledger'); const lj = await lr.json(); renderLedger(lj.stats); } catch {}
+    setStatus('loaded', 'var(--grn)');
   } catch (e) { setStatus('load error: ' + e.message, 'var(--red)'); }
 }
 

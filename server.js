@@ -40,6 +40,7 @@ import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from
 import { touchesForPair, runPerLine, costForPair } from './js/rangeLineAnalyser.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
+import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
@@ -7124,6 +7125,19 @@ app.get('/api/levels-v2/entries', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// GET /api/levels-v2/ledger — realized-vs-policy stats from the running ledger;
+// ?refit=1 also returns a refit candidate (realized expectancy per cell, review-only).
+app.get('/api/levels-v2/ledger', async (req, res) => {
+  try {
+    const raw = await kv.get('ledger_v2');
+    const parsed = raw ? JSON.parse(raw) : null;
+    const ledger = Array.isArray(parsed) ? parsed : (parsed?.data ?? []);
+    const out = { ok: true, stats: ledgerStatsV2(ledger) };
+    if (req.query.refit) out.refitCandidate = refitFromLedgerV2(ledger, { minN: parseInt(req.query.minN) || 30 });
+    res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Range-Fib Backtest (STRIPPED) ─────────────────────────────────────────────
 // The bare range-extension strategy — no confluence, no indicators, no modules.
 // One pair, synchronous (M1 is cached after first load). Engine: js/rangeFibEngine.js
@@ -8986,6 +9000,12 @@ async function runLevelsRefresh() {
     await refreshAllPairs(pairs);
     state.levelsRefreshAt = Date.now();
     await reloadLevels();
+
+    // Telegram-v2: apply the frozen policy to the same pairs (no-ops if no policy
+    // in KV yet). Server-side on Railway — the SAME interval as v1, NOT the
+    // Cloudflare cron-worker. Isolated so a v2 error never breaks the v1 refresh.
+    try { await refreshAllPairsV2(pairs); }
+    catch (e) { console.error('[LEVELS-V2] refresh error:', e.message); }
 
     // Compute HMM regime for each pair using last 200 daily closes (1 year)
     const hmmResults = [];

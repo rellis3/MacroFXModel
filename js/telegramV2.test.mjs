@@ -12,6 +12,7 @@ import { formatV2Entry } from './alertFormatterV2.js';
 import { freezePolicy, isUsablePolicy } from './levelsV2Learn.js';
 import { extractTouches } from './perLineStrategy.js';
 import { buildRangeLadder } from './rangeLineAnalyser.js';
+import { recordEntries, resolvePair, ledgerStats, refitFromLedger } from './entryLedgerV2.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -56,8 +57,14 @@ ok('skip when policy skips', decide(baseTouch,
   const rrUnder1 = { name: 'A_1', side: 'dn', condKey: 'spike', level: 100, inner: 101, outer: 90 };
   // fade dn: TP=inner=101 (dist1), SL=outer=90 (dist10) → rr=0.1 → demote to B
   const d = decide(rrUnder1, { 'A_1_dn|spike': { decision: 'fade', n: 80, expectancy: 0.30, revRate: 75 } });
-  ok('rr<1 demotes to B', d.grade === 'B' && d.warnings.some(w => w.includes('below breakeven')));
+  ok('rr<floor demotes to B', d.grade === 'B' && d.warnings.some(w => w.includes('below floor')));
   void poorRR; void followPoor;
+}
+{
+  // Fix #1: A+ must be reachable at rr≈1.0 (equidistant ladder neighbours).
+  const rrOne = { name: 'A_1.5', side: 'dn', condKey: 'spike', level: 100, inner: 98, outer: 102 };
+  const d = decide(rrOne, { 'A_1.5_dn|spike': { decision: 'fade', n: 80, expectancy: 0.20, revRate: 70 } });
+  ok('A+ reachable at rr=1.0', d.rr === 1 && d.grade === 'A+');
 }
 {
   const d = decide(baseTouch, { 'A_1.5_dn|spike': { decision: 'fade', n: 80, expectancy: 0.20, revRate: 70 } });
@@ -127,6 +134,52 @@ console.log('[formatter + freeze]');
   ok('freeze carries policy + meta', f.version === 2 && f.nCells === 1 && f.builtAt === '2024-01-01T00:00:00Z');
   ok('isUsablePolicy true', isUsablePolicy(f) === true);
   ok('isUsablePolicy false on empty', isUsablePolicy({ policy: {} }) === false);
+}
+
+// ── 5. entryLedgerV2 (daily-learning loop) ───────────────────────────────────
+console.log('[entryLedgerV2]');
+{
+  const mk = (cell, price, dir, sl, tp, grade) => ({ cell, price, direction: dir, decision: 'fade', grade, expectancy: 0.2, n: 80, sl, tp });
+  const t0 = 1_000_000_000_000;
+  // record + dedup
+  let L = recordEntries([], 'EUR/USD', [mk('A_1.5_dn|spike', 1.10, 'long', 1.09, 1.11, 'A+')], t0);
+  ok('records a signal', L.length === 1);
+  L = recordEntries(L, 'EUR/USD', [mk('A_1.5_dn|spike', 1.10, 'long', 1.09, 1.11, 'A+')], t0 + 1000);
+  ok('dedups standing level', L.length === 1);
+  L = recordEntries(L, 'EUR/USD', [mk('A_1_up|grind', 1.12, 'short', 1.13, 1.11, 'B')], t0 + 2000);
+  ok('records a second distinct cell', L.length === 2);
+
+  // resolve: long@1.10 fills then TP@1.11 → win
+  const bars = [
+    { time: (t0/1000) + 60, open: 1.105, high: 1.106, low: 1.099, close: 1.10 },  // touches 1.10 → fill
+    { time: (t0/1000) + 120, open: 1.10, high: 1.111, low: 1.10, close: 1.111 },  // hits TP 1.11
+  ];
+  const now = t0 + 10 * 60_000;
+  let R = resolvePair(L, 'EUR/USD', bars, now);
+  const longRec = R.find(r => r.cell === 'A_1.5_dn|spike');
+  ok('long fills + wins at TP', longRec.outcome === 'win' && longRec.realizedPct > 0, `outcome=${longRec.outcome}`);
+
+  // short@1.12 fills then SL@1.13 → loss
+  const bars2 = [
+    { time: (t0/1000) + 60, open: 1.121, high: 1.121, low: 1.119, close: 1.12 }, // touches 1.12 → fill
+    { time: (t0/1000) + 120, open: 1.12, high: 1.131, low: 1.12, close: 1.13 },  // hits SL 1.13
+  ];
+  R = resolvePair(R, 'EUR/USD', bars2, now);
+  const shortRec = R.find(r => r.cell === 'A_1_up|grind');
+  ok('short fills + loses at SL', shortRec.outcome === 'loss' && shortRec.realizedPct < 0, `outcome=${shortRec.outcome}`);
+
+  // never-touched → expired after maxAge
+  let E = recordEntries([], 'GBP/USD', [mk('A_2_dn|spike', 1.30, 'long', 1.29, 1.31, 'A')], t0);
+  E = resolvePair(E, 'GBP/USD', [{ time: (t0/1000) + 60, open: 1.32, high: 1.33, low: 1.315, close: 1.32 }], t0 + 4 * 86400_000);
+  ok('untouched expires', E[0].outcome === 'expired');
+
+  // stats + refit
+  const st = ledgerStats(R);
+  ok('stats count decided', st.decided === 2 && st.byGrade['A+']?.wins === 1 && st.byGrade['B']?.losses === 1);
+  const many = [];
+  for (let i = 0; i < 30; i++) many.push({ cell: 'A_1.5_dn|spike', outcome: i % 3 === 0 ? 'loss' : 'win', realizedPct: i % 3 === 0 ? -0.1 : 0.2, decision: 'fade' });
+  const cand = refitFromLedger(many, { minN: 30 });
+  ok('refit produces a candidate cell', cand['A_1.5_dn|spike']?.n === 30 && cand['A_1.5_dn|spike'].source === 'ledger-realized');
 }
 
 console.log(`\n${failures === 0 ? '✅ all passed' : `❌ ${failures} failed`}`);
