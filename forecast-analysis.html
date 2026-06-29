@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Forecast Level Analyser</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root{ --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
          --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889; --accent:#5b9dff;
@@ -263,17 +264,45 @@ async function renderBook(v){
   v.innerHTML=html; wireBook();
   v.querySelectorAll('.pairRow').forEach(r=>r.onclick=()=>loadTrades(r.dataset.pair));
 }
+let TRADE_ROWS=[], TRADE_PAIR='';
 async function loadTrades(pair){ const h=$('horizon').value; const c=$('tradeLog');
   c.innerHTML=`<div class="card mut">Loading ${pair.toUpperCase()} trades…</div>`;
   const r=await api(`/api/forecast-analysis/per-line/${h}/trades/${pair}`);
   if(r.status!==200||!r.j?.ok){ c.innerHTML=`<div class="card mut">${r.j?.error||'No trade log.'}</div>`; return; }
   const tr=r.j.trades||[]; const recent=tr.slice(-300).reverse();
+  TRADE_ROWS=recent; TRADE_PAIR=pair;
   let html=`<div class="card"><div style="font-weight:600;margin-bottom:6px">${pair.toUpperCase()} trade log <span class="mut">(${tr.length} trades · showing last 300)</span></div>
-    <div class="hint" style="margin-bottom:6px">Phase 2 will make each row open an M1 chart with the forecast lines + entry/TP/SL marked. For now: the full geometry per trade.</div>
+    <div class="hint" style="margin-bottom:6px">Click any trade to open its M1 session chart with the forecast lines (Close static · Proj H/L dynamic) and the entry / TP / SL marked. First click on a pair loads its M1 (a few seconds); repeats are cached.</div>
+    <div id="tradeChartWrap"></div>
     <table><thead><tr><th>Date</th><th>Line</th><th>Decision</th><th>Outcome</th><th>Entry</th><th>TP</th><th>SL</th><th>PnL %</th></tr></thead><tbody>`;
-  for(const t of recent){ const ln=LBL[t.name]?`${LBL[t.name]} ${t.side==='up'?'↑':'↓'}`:t.line;
-    html+=`<tr><td>${t.date}</td><td class="${t.side==='up'?'lbl-up':'lbl-dn'}">${ln}</td><td class="${t.decision==='fade'?'pos':'neg'}">${t.decision}</td><td class="mut">${t.outcome}</td><td class="mut">${t.entry}</td><td class="mut">${t.tp}</td><td class="mut">${t.sl}</td><td class="${t.pnl>0?'pos':'neg'}">${fmt(t.pnl,3)}</td></tr>`; }
+  recent.forEach((t,i)=>{ const ln=LBL[t.name]?`${LBL[t.name]} ${t.side==='up'?'↑':'↓'}`:t.line;
+    html+=`<tr class="tradeRow" data-i="${i}" style="cursor:pointer"><td>${t.date}</td><td class="${t.side==='up'?'lbl-up':'lbl-dn'}">${ln}</td><td class="${t.decision==='fade'?'pos':'neg'}">${t.decision}</td><td class="mut">${t.outcome}</td><td class="mut">${t.entry}</td><td class="mut">${t.tp}</td><td class="mut">${t.sl}</td><td class="${t.pnl>0?'pos':'neg'}">${fmt(t.pnl,3)}</td></tr>`; });
   html+=`</tbody></table></div>`; c.innerHTML=html;
+  c.querySelectorAll('.tradeRow').forEach(row=>row.onclick=()=>showTradeChart(+row.dataset.i));
+}
+// Open the M1 session chart for trade index `i` (rendered via the levelChart brick).
+async function showTradeChart(i){ const t=TRADE_ROWS[i]; if(!t) return; const h=$('horizon').value;
+  const wrap=$('tradeChartWrap'); if(!wrap) return;
+  const ln=LBL[t.name]?`${LBL[t.name]} ${t.side==='up'?'↑':'↓'}`:t.line;
+  wrap.innerHTML=`<div class="card mut" style="margin:0 0 10px">Loading ${TRADE_PAIR.toUpperCase()} ${t.date} M1 chart…</div>`;
+  const r=await api(`/api/forecast-analysis/per-line/${h}/chart/${TRADE_PAIR}/${t.date}`);
+  if(r.status!==200||!r.j?.ok||!r.j.chart){ wrap.innerHTML=`<div class="card mut" style="margin:0 0 10px">${r.j?.error||'Could not load chart (M1 may be unavailable in this environment).'}</div>`; return; }
+  if(typeof window.openForecastTradeChart!=='function'){ wrap.innerHTML=`<div class="card mut" style="margin:0 0 10px">Chart library not loaded.</div>`; return; }
+  const ch=r.j.chart;
+  const head=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div style="font-weight:600">${TRADE_PAIR.toUpperCase()} · ${t.date} · ${ln}
+        <span class="${t.decision==='fade'?'pos':'neg'}" style="margin-left:8px">${t.decision.toUpperCase()}</span>
+        <span class="mut" style="margin-left:6px">${t.outcome}</span>
+        <span class="${t.pnl>0?'pos':'neg'}" style="margin-left:6px">${fmt(t.pnl,3)}%</span>
+        ${ch.resampledTo?`<span class="mut" style="margin-left:6px">${ch.barCount} M1 → ${ch.resampledTo}m bars</span>`:''}</div>
+      <button class="sec" id="tradeChartClose">✕ close</button></div>
+    <div class="legend" style="margin:0 0 6px">
+      <span style="color:#5b9dff">▬ entry</span> · <span style="color:#3fb27f">▬ TP</span> · <span style="color:#e5604d">▬ SL</span> ·
+      <span style="color:#9aa4b5">┄ Close med/75p (static)</span> · <span style="color:#e0a93b">┄ Proj H/L med/75p (dynamic)</span></div>`;
+  wrap.innerHTML=`<div class="card" style="margin:0 0 12px">${head}<div id="tradeChartHost" style="height:420px"></div></div>`;
+  $('tradeChartClose').onclick=()=>{ window.__destroyForecastTradeChart&&window.__destroyForecastTradeChart(); wrap.innerHTML=''; };
+  try{ window.openForecastTradeChart($('tradeChartHost'), ch, t); }
+  catch(e){ wrap.innerHTML=`<div class="card mut" style="margin:0 0 10px">Chart render failed: ${e.message}</div>`; }
 }
 function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -609,6 +638,42 @@ $('runRefresh').onclick=async()=>{
   }catch(e){ log('✗ '+e.message,'err'); } finally{ $('runRefresh').disabled=false; }
 };
 boot();
+</script>
+
+<!-- Trade viewer — renders one trade's M1 session via the reusable levelChart brick. -->
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+let _view = null, _hl = [];
+function _destroy(){ for(const s of _hl){ try{ _view.chart.removeSeries(s); }catch{} } _hl=[]; if(_view){ try{ _view.destroy(); }catch{} _view=null; } }
+window.__destroyForecastTradeChart = _destroy;
+// host: DOM element · chart: server payload (bars/oc/hl) · trade: {entry,tp,sl,decision,fillTime,…}
+window.openForecastTradeChart = function(host, chart, trade){
+  _destroy();
+  _view = createLevelChart(host, { height: 420 });
+  _view.setCandles(chart.bars);
+  // Static Close (OC) lines — neutral dotted price lines off the open.
+  _view.setLevels([
+    { price: chart.oc.OC50up, kind:'_default', label:'Close med ↑' },
+    { price: chart.oc.OC50dn, kind:'_default', label:'Close med ↓' },
+    { price: chart.oc.OC75up, kind:'_default', label:'Close 75p ↑' },
+    { price: chart.oc.OC75dn, kind:'_default', label:'Close 75p ↓' },
+  ], { showTitle:true });
+  // Dynamic Proj H/L lines — line series trailing the opposite running extreme.
+  const addHL=(data,color)=>{ const s=_view.chart.addLineSeries({ color, lineWidth:1, lineStyle:2,
+      priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+    s.setData(data); _hl.push(s); };
+  addHL(chart.hl.HL50up,'#e0a93b'); addHL(chart.hl.HL50dn,'#e0a93b');
+  addHL(chart.hl.HL75up,'#b8852a'); addHL(chart.hl.HL75dn,'#b8852a');
+  // Entry / TP / SL — emphasised price lines straight on the candle series.
+  const pl=(price,color,title)=>{ if(Number.isFinite(price)) _view.series.createPriceLine({ price, color,
+      lineWidth:2, lineStyle:0, axisLabelVisible:true, title }); };
+  pl(trade.entry,'#5b9dff','ENTRY'); pl(trade.tp,'#3fb27f','TP'); pl(trade.sl,'#e5604d','SL');
+  // Entry marker at the fill bar.
+  if(Number.isFinite(trade.fillTime)){
+    try{ _view.series.setMarkers([{ time:trade.fillTime, position:'inBar', color:'#5b9dff', shape:'circle', text:'entry' }]); }catch{}
+  }
+  _view.fit();
+};
 </script>
 </body>
 </html>

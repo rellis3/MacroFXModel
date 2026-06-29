@@ -17,6 +17,8 @@ import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize } from './instrumentRegistry.js';
 import { extractTouches, runPerLine, runRigor, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
+import { resampleTo } from './barUtils.js';
 
 const PREFIX   = 'forecast-analysis';
 const M1_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
@@ -274,6 +276,77 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
 }
 export async function getPerLineBook(horizon = 'daily')        { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }
 export async function getPerLineTrades(pair, horizon = 'daily') { return getJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`); }
+
+// ── M1 chart drill-down for one trade's session (Book tab trade viewer) ──────
+// Returns the session's M1 candles plus the forecast geometry — static OC price
+// levels and the DYNAMIC HL line series (trailing the opposite running extreme,
+// the exact construction analyseWindow.levelAt uses) — so the levelChart brick
+// can render a trade with its forecast lines + entry/TP/SL. Packed M1 is cached
+// per pair (LRU 2) because loadM1ForPair pulls the whole parquet (~heavy); a
+// viewer drills one pair at a time so two slots cover the common case.
+const _m1ChartCache = new Map();
+async function _loadM1Cached(pair) {
+  const key = String(pair).toLowerCase();
+  if (_m1ChartCache.has(key)) { const v = _m1ChartCache.get(key); _m1ChartCache.delete(key); _m1ChartCache.set(key, v); return v; }
+  const packed = await loadM1ForPair(key);
+  _m1ChartCache.set(key, packed);
+  while (_m1ChartCache.size > 2) _m1ChartCache.delete(_m1ChartCache.keys().next().value);
+  return packed;
+}
+
+export async function getSessionChart(pair, horizon = 'daily', date = '') {
+  const key = String(pair).toLowerCase();
+  if (!date) throw new Error('date required');
+  // The stored record gives open + σ (already horizon-scaled, as % of price) so
+  // we rebuild the bands exactly as the analyser did — no σ recomputation.
+  const data = await getPairData(key, horizon);
+  const rec  = data?.records?.find(r => r.date === date);
+  if (!rec) return null;
+  const assetClass = data.assetClass || assetClassFor(key);
+  const packed = await _loadM1Cached(key);
+  if (!packed?.n) throw new Error('no M1 data for pair');
+  const sessions = bucketM1IntoSessions(packed);
+  const dates = [...sessions.keys()].sort();
+  const idx = dates.indexOf(date);
+  if (idx < 0) return null;
+  const H = FC_HORIZONS[horizon] ?? FC_HORIZONS.daily;
+  let bars = [];
+  if (horizon === 'daily') bars = (sessions.get(date) || []).slice();
+  else for (let k = idx; k < Math.min(idx + H.windowDays, dates.length); k++) bars.push(...(sessions.get(dates[k]) || []));
+  if (bars.length < 2) return null;
+  bars.sort((a, b) => a.time - b.time);
+  const open = bars[0].open;
+  const fr = computeBands(open, (rec.sigma || 0) / 100, assetClass);   // { hl50, hl75, ocMed, oc75 }
+
+  // Compact the candle payload for long (weekly/20-day) windows — the dynamic HL
+  // series is computed on the SAME grid we return so the lines match the candles.
+  let cb = bars, resampledTo = null;
+  if (bars.length > 2000) { resampledTo = Math.ceil(bars.length / 1500); cb = resampleTo(bars, resampledTo); }
+
+  // Dynamic HL line series — trail the opposite running extreme (analyseWindow.levelAt).
+  const hl = { HL50up: [], HL50dn: [], HL75up: [], HL75dn: [] };
+  let rh = -Infinity, rl = Infinity;
+  for (const b of cb) {
+    if (b.high > rh) rh = b.high;
+    if (b.low  < rl) rl = b.low;
+    hl.HL50up.push({ time: b.time, value: +(rl * (1 + fr.hl50)).toFixed(6) });
+    hl.HL50dn.push({ time: b.time, value: +(rh * (1 - fr.hl50)).toFixed(6) });
+    hl.HL75up.push({ time: b.time, value: +(rl * (1 + fr.hl75)).toFixed(6) });
+    hl.HL75dn.push({ time: b.time, value: +(rh * (1 - fr.hl75)).toFixed(6) });
+  }
+  // Static OC lines off the open.
+  const oc = {
+    OC50up: +(open * (1 + fr.ocMed)).toFixed(6), OC50dn: +(open * (1 - fr.ocMed)).toFixed(6),
+    OC75up: +(open * (1 + fr.oc75)).toFixed(6),  OC75dn: +(open * (1 - fr.oc75)).toFixed(6),
+  };
+  return {
+    pair: key, horizon, date, assetClass, open: +open.toFixed(6),
+    bars: cb.map(b => ({ time: b.time, open: +(+b.open).toFixed(6), high: +(+b.high).toFixed(6),
+                         low: +(+b.low).toFixed(6), close: +(+b.close).toFixed(6) })),
+    oc, hl, frac: { hl50: fr.hl50, hl75: fr.hl75, ocMed: fr.ocMed, oc75: fr.oc75 },
+    barCount: bars.length, resampledTo,
+  };
+}
 
 // ── Read helpers (public API serves these) ───────────────────────────────────
 export async function getManifest()              { return getJSON(`${PREFIX}/manifest.json`); }
