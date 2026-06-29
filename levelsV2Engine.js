@@ -150,7 +150,8 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
 
     const entries = gradeLevelV2({
       ladders, bars: sessionBars, open, sigma, pip, price, proxDist, tf,
-      policy: frozen.policy, condFields: frozen.conditions ?? ['approachVel'], opts: { bands: opts.bands },
+      policy: frozen.policy, condFields: frozen.conditions ?? ['approachVel'],
+      opts: { bands: frozen.bands ?? opts.bands },   // policy's own distribution-fit bands
     });
 
     const payload = entries.map(e => ({

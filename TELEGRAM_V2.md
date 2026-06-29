@@ -68,8 +68,16 @@ For a touched level it answers the three `ENTRY_ZONE_CONFIDENCE.md` questions:
    | C  | `expectancy > 0` | CAUTION |
    | SKIP | unseen / low-N / edge ≤ cost / rr too poor | SKIP |
 
-   Bands are configurable per asset class (`DEFAULT_GRADE_BANDS`). A readable 0–1
-   `confidence` is emitted for display, but **expectancy is the decision variable**.
+   Bands **auto-fit each policy's expectancy distribution** at learn time
+   (`levelsV2Learn.deriveBands` → percentiles stored in `frozen.bands`), so A+/A/B
+   always span the actual scale rather than a hard-coded number — e.g. when the best
+   session-fib cell pays ~+0.09%/touch, a fixed 0.15% A+ gate would be unreachable.
+   `DEFAULT_GRADE_BANDS` is the fallback. A readable 0–1 `confidence` is emitted for
+   display, but **expectancy is the decision variable**.
+
+   The live page **auto-loads** (re-reads KV every 60 s, toggleable) so the view
+   tracks the server's 30-min refresh without a manual click; it shows how stale the
+   entries are.
 
 ## The bricks (all pure, synthetic-tested in `js/telegramV2.test.mjs`)
 

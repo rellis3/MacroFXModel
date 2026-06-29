@@ -28,6 +28,29 @@ export function learnAndFreeze(packedByPair, opts = {}, stampISO = null) {
   return { frozen, book };
 }
 
+// Quantile of a sorted-ascending numeric array (linear interpolation).
+function quantile(sorted, q) {
+  if (!sorted.length) return null;
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos), hi = Math.ceil(pos);
+  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+// Grade bands derived from the policy's OWN expectancy distribution, so A+/A/B
+// always fit this policy's scale instead of a hard-coded number (which left A+
+// unreachable when the best cell was ~+0.09% vs a 0.15% gate). Percentile-based
+// with a small absolute floor so a weak policy can't inflate its own grades.
+export function deriveBands(policy, base = {}) {
+  const exps = Object.values(policy)
+    .filter(p => p && p.decision && p.decision !== 'skip' && Number.isFinite(p.expectancy) && p.expectancy > 0)
+    .map(p => p.expectancy).sort((a, b) => a - b);
+  if (exps.length < 4) return null;               // too few to fit — fall back to defaults
+  const eB     = Math.max(0.02, +quantile(exps, 0.33).toFixed(4));
+  const eA     = Math.max(eB + 0.005, +quantile(exps, 0.66).toFixed(4));
+  const eAplus = Math.max(eA + 0.005, +quantile(exps, 0.85).toFixed(4));
+  return { eAplus, eA, eB, nFull: base.nFull ?? 50, nMin: base.nMin ?? 30, rrFloor: base.rrFloor ?? 1.0 };
+}
+
 // Snapshot just what the live grader needs from a runPerLine result.
 export function freezePolicy(book, opts = {}, stampISO = null) {
   if (!book || !book.policy) throw new Error('freezePolicy: book has no policy');
@@ -41,6 +64,7 @@ export function freezePolicy(book, opts = {}, stampISO = null) {
     marginPct:  opts.marginPct ?? 0,
     coverage:   book.coverage ?? null,            // fade/follow/skip cell counts
     nCells:     Object.keys(book.policy).length,
+    bands:      deriveBands(book.policy, opts.bands ?? {}),  // null → grader uses DEFAULT_GRADE_BANDS
     policy:     book.policy,                       // { cell: { decision, n, expectancy, revRate, ... } }
   };
 }

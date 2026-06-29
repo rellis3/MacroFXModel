@@ -54,6 +54,8 @@
     <button id="btnLearn">① Learn policy (M1, offline)</button>
     <button id="btnRefresh" class="alt">② Refresh live entries</button>
     <button id="btnLoad" class="alt">↻ Load current</button>
+    <label class="toggle on" id="autoLbl" style="cursor:pointer;"><input type="checkbox" id="autoChk" checked style="vertical-align:middle;"> auto-load</label>
+    <span id="updated" class="status"></span>
     <span id="status" class="status"></span>
   </div>
 
@@ -207,14 +209,33 @@ function renderLedger(s) {
            : '<div class="muted">— recorded, awaiting resolution —</div>'}`;
 }
 
-async function loadCurrent() {
-  setStatus('loading…');
+function freshness(entries) {
+  // Newest entry-block timestamp across pairs → "updated Xm ago" + the server cadence.
+  let newest = 0;
+  for (const k of Object.keys(entries || {})) { const t = entries[k]?.timestamp || 0; if (t > newest) newest = t; }
+  if (!newest) { $('updated').textContent = ''; return; }
+  const agoMin = Math.round((Date.now() - newest) / 60000);
+  $('updated').textContent = `· entries ${agoMin <= 0 ? 'just now' : agoMin + 'm ago'} (server refreshes ~30m)`;
+}
+
+async function loadCurrent(quiet) {
+  if (!quiet) setStatus('loading…');
   try {
     const r = await fetch('/api/levels-v2/entries'); const j = await r.json();
-    renderPolicy(j.policy); renderEntries(j, j.entries);
+    renderPolicy(j.policy); renderEntries(j, j.entries); freshness(j.entries);
     try { const lr = await fetch('/api/levels-v2/ledger'); const lj = await lr.json(); renderLedger(lj.stats); } catch {}
-    setStatus('loaded', 'var(--grn)');
-  } catch (e) { setStatus('load error: ' + e.message, 'var(--red)'); }
+    if (!quiet) setStatus('loaded', 'var(--grn)');
+  } catch (e) { if (!quiet) setStatus('load error: ' + e.message, 'var(--red)'); }
+}
+
+// Auto-load: re-read KV every 60s (cheap) so the view tracks the server's 30-min
+// refresh without a manual click. Toggle persists in localStorage.
+let _autoTimer = null;
+function setAuto(on) {
+  localStorage.setItem('tgv2_auto', on ? '1' : '0');
+  $('autoChk').checked = on; $('autoLbl').classList.toggle('on', on);
+  if (_autoTimer) { clearInterval(_autoTimer); _autoTimer = null; }
+  if (on) _autoTimer = setInterval(() => loadCurrent(true), 60_000);
 }
 
 $('btnLearn').onclick = async () => {
@@ -239,7 +260,8 @@ $('btnRefresh').onclick = async () => {
   } catch (e) { setStatus('refresh error: ' + e.message, 'var(--red)'); }
   $('btnRefresh').disabled = false;
 };
-$('btnLoad').onclick = loadCurrent;
+$('btnLoad').onclick = () => loadCurrent();
+$('autoChk').onchange = e => setAuto(e.target.checked);
 $('viewToggle').onclick = () => {
   _view = _view === 'cards' ? 'list' : 'cards';
   const t = $('viewToggle');
@@ -247,6 +269,7 @@ $('viewToggle').onclick = () => {
   t.classList.toggle('on', _view === 'cards');
   if (_lastEntries) $('entries').innerHTML = _view === 'cards' ? renderCards(_lastEntries) : renderList(_lastEntries);
 };
+setAuto(localStorage.getItem('tgv2_auto') !== '0');   // default on
 loadCurrent();
 </script>
 </body>

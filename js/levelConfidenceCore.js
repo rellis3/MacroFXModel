@@ -34,10 +34,15 @@
 // wins/losses by the inner/outer distances). So the grade is on expectancy, NOT rr
 // — an rr≥1.5 gate would just make A+ unreachable by construction. We keep only a
 // floor demotion when rr is genuinely poor (`rrFloor`), as a sanity guard.
+// Defaults calibrated to the observed session-fib expectancy scale (best cells
+// ~+0.09%/touch after costs). These are the FALLBACK — the live engine prefers
+// per-policy bands derived from the actual expectancy distribution at learn time
+// (levelsV2Learn.freezePolicy → frozen.bands), so the grade always fits the policy
+// rather than a hard-coded number that may leave A+ unreachable.
 export const DEFAULT_GRADE_BANDS = {
-  eAplus: 0.15, // ≥ this expectancy (and nFull) → A+
-  eA:     0.08, // ≥ this expectancy (and nMin) → A
-  eB:     0.03, // ≥ this expectancy → B
+  eAplus: 0.08, // ≥ this expectancy (and nFull) → A+
+  eA:     0.05, // ≥ this expectancy (and nMin) → A
+  eB:     0.02, // ≥ this expectancy → B
   nFull:  50,   // sample size for full confidence / A+
   nMin:   30,   // minimum sample to earn an A (matches the OOS ≥30 floor)
   rrFloor: 1.0, // demote a top grade only if rr falls below this (sanity, not the gate)

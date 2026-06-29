@@ -9,7 +9,7 @@
 import { cellKey, directionFor, exitsFor, decide } from './levelConfidenceCore.js';
 import { gradeLevelV2 } from './gradeLevelV2.js';
 import { formatV2Entry } from './alertFormatterV2.js';
-import { freezePolicy, isUsablePolicy } from './levelsV2Learn.js';
+import { freezePolicy, isUsablePolicy, deriveBands } from './levelsV2Learn.js';
 import { extractTouches } from './perLineStrategy.js';
 import { buildRangeLadder } from './rangeLineAnalyser.js';
 import { recordEntries, resolvePair, ledgerStats, refitFromLedger } from './entryLedgerV2.js';
@@ -134,6 +134,20 @@ console.log('[formatter + freeze]');
   ok('freeze carries policy + meta', f.version === 2 && f.nCells === 1 && f.builtAt === '2024-01-01T00:00:00Z');
   ok('isUsablePolicy true', isUsablePolicy(f) === true);
   ok('isUsablePolicy false on empty', isUsablePolicy({ policy: {} }) === false);
+}
+{
+  // deriveBands: bands fit the policy's own scale; A+ reachable for the top cells.
+  const pol = {};
+  const exps = [0.051, 0.075, 0.080, 0.087, 0.089, 0.04, 0.06, 0.07];
+  exps.forEach((e, i) => { pol[`A_${i}_dn|spike`] = { decision: 'fade', n: 60, expectancy: e, revRate: 60 }; });
+  const b = deriveBands(pol);
+  ok('bands ordered + fit scale', b && b.eB < b.eA && b.eA < b.eAplus && b.eAplus <= 0.089,
+     `eB=${b?.eB} eA=${b?.eA} eA+=${b?.eAplus}`);
+  // The best cell (0.089) should clear A+ under its own bands (n≥nFull).
+  const top = decide({ name: 'A_4', side: 'dn', condKey: 'spike', level: 100, inner: 98, outer: 102 },
+    { 'A_4_dn|spike': { decision: 'fade', n: 60, expectancy: 0.089, revRate: 70 } }, { bands: b });
+  ok('top cell grades A+ under fitted bands', top.grade === 'A+', `grade=${top.grade}`);
+  ok('deriveBands null on tiny policy', deriveBands({ a: { decision: 'fade', expectancy: 0.05 } }) === null);
 }
 
 // ── 5. entryLedgerV2 (daily-learning loop) ───────────────────────────────────
