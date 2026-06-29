@@ -9535,12 +9535,31 @@ setInterval(() => computeHedgeSignals().catch(e => console.error('[HEDGE-SIG]', 
 // Vol & Range Forecast scheduler — runs daily at 22:00 UTC, computes on startup if stale
 startVolForecastScheduler().catch(e => console.error('[VOL-FORECAST] Scheduler init failed:', e.message));
 
-// Volatility Bot plan — refresh shortly after boot, then daily (needs OANDA).
-// The bot also reads the last-written plan from KV, so a missed cycle is benign.
+// Volatility Bot plan — refresh once per session, just AFTER the session open.
+// The session open is the midnight (00:00 UTC) anchor, so pulling earlier just
+// captures the prior session; default to 23:05 UTC (after 11pm, configurable via
+// VOL_PLAN_UTC_HOUR/MIN) so the fresh open/σ are in before the new day trades.
+// One bootstrap run only if no plan exists yet (avoids a mid-session open after a
+// midday restart — the last night's plan in KV stays correct until the next run).
+function _scheduleDailyUtc(hour, minute, fn) {
+  const now  = new Date();
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, minute, 0));
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+  setTimeout(function fire() { fn(); setInterval(fn, 24 * 60 * 60_000); }, next - now);
+  return next;
+}
 if (process.env.OANDA_KEY) {
   const _runVolPlan = () => _refreshVolatilityPlan().catch(e => console.error('[volatility-bot] plan refresh failed:', e.message));
-  setTimeout(_runVolPlan, 90_000);            // ~1.5 min after boot
-  setInterval(_runVolPlan, 24 * 60 * 60_000); // daily
+  const hour = Number(process.env.VOL_PLAN_UTC_HOUR ?? 23);
+  const min  = Number(process.env.VOL_PLAN_UTC_MIN ?? 5);
+  const next = _scheduleDailyUtc(hour, min, _runVolPlan);
+  console.log(`[volatility-bot] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
+  // Bootstrap only when KV has no plan yet (first deploy) — don't clobber a good
+  // overnight plan with a mid-session open on a midday restart.
+  setTimeout(async () => {
+    try { if (!(await kv.get('volatility_bot_plan'))) { console.log('[volatility-bot] no plan in KV — bootstrap refresh'); await _runVolPlan(); } }
+    catch (e) { console.error('[volatility-bot] bootstrap check failed:', e.message); }
+  }, 90_000);
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
