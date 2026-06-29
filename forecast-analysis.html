@@ -195,7 +195,7 @@ function equitySVG(eq){ if(!eq||eq.length<2) return ''; const W=720,H=180,pad=4;
 async function renderBook(v){
   v.innerHTML=`<div class="card mut">Loading book…</div>`;
   const b=await loadBook();
-  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button> <label style="display:inline;margin-left:8px">min expectancy %/trade <input id="bookMargin" type="number" step="0.001" value="${typeof b!=='string'&&b.marginPct!=null?b.marginPct:0}" style="width:90px"></label>` : '';
+  const buildBtn = LEVEL==='admin' ? `<button id="bookBuild" ${bookBusy?'disabled':''}>${bookBusy?'Building…':'⟳ Build book'}</button> <label style="display:inline;margin-left:8px">min expectancy %/trade <input id="bookMargin" type="number" step="0.001" value="${typeof b!=='string'&&b.marginPct!=null?b.marginPct:0}" style="width:90px"></label> <label style="display:inline;margin-left:8px">survivor margin (× cost) <input id="bookSurv" type="number" step="0.1" value="${typeof b!=='string'&&b.survivorMargin!=null?b.survivorMargin:0.5}" style="width:70px"></label>` : '';
   const hint=`<div class="hint">Each forecast line is traded on its <b>own</b> OOS-validated edge under the live approach-velocity state: <b>fade</b> if it reverts significantly, <b>follow</b> if it breaks, else <b>skip</b>. Policy learned on in-sample (pooled across all pairs), applied out-of-sample. Triple-barrier exit (TP=inner line, SL=outer line). Costs on. <b>%/unit, no compounding</b> — this is the honest 26-pair book.</div>`;
   if(typeof b==='string'){ v.innerHTML=`<div class="card"><div class="controls" style="margin-bottom:8px">${buildBtn||''}</div><div class="mut">${b==='none'?'No book yet.':b} ${LEVEL==='admin'?'Click Build book (needs a refresh with the latest fields first).':'Ask the owner to build the book.'}</div>${hint}</div>`; wireBook(); return; }
   const f=b.book||{}, pf=b.portfolio||{}, vt=pf.volTarget||{}; const kpi=(val,lab,neg)=>`<div class="kpi"><div class="v ${neg!==undefined?(neg?'neg':'pos'):''}">${val}</div><div class="l">${lab}</div></div>`;
@@ -205,6 +205,21 @@ async function renderBook(v){
     <div class="kpi-grid">${kpi(fmt(pf.sharpe,2),'Portfolio Sharpe',pf.sharpe<0)}${kpi(pf.psr!=null?fmt(pf.psr*100,0)+'%':'—','prob. Sharpe>0',pf.psr<0.95)}${kpi(fmt(pf.annVol,1)+'%','annual vol')}${kpi(fmt(vt.cagr,1)+'%',`CAGR @ ${vt.target||10}% vol`,vt.cagr<0)}${kpi(fmt(vt.maxDD,1)+'%',`max DD @ ${vt.target||10}% vol`,true)}${kpi(fmt(vt.calmar,2),'Calmar (vol-targeted)',vt.calmar<0)}${kpi(fmt(pf.avgTradesPerDay,1),'avg trades/day')}</div>
     <div class="hint" style="margin-top:8px">This is the Sharpe that's real: daily portfolio returns ×√252, so 33 correlated pairs trading at once count as one day's risk — not ${f.tradesPerYr||'thousands of'} independent bets. CAGR/DD shown at a fixed ${vt.target||10}% annual vol so they're comparable and leverage-honest.</div>
     <div style="margin-top:12px">${equitySVG(b.equity)}</div>${hint}</div>`;
+  // Live universe — survivors only (pairs that clear their own cost by a margin),
+  // portfolio re-aggregated from just their daily PnL. The book you'd actually trade.
+  const sv=b.survivors;
+  if(sv){ const sp=sv.portfolio||{}, svt=sp.volTarget||{};
+    html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Live universe — survivors only <span class="mut" style="font-weight:400">(${sv.count}/${sv.total} pairs · net edge ≥ ${fmt(sv.margin,2)}× own spread · ≥${sv.minTrades} trades)</span></div>
+      <div class="hint" style="margin-bottom:8px">Costs are the binding constraint, so this is the book you'd actually trade: pairs whose OOS net expectancy clears their own round-trip spread by a margin. Stats are <b>re-aggregated from just these pairs' daily PnL</b> — same concurrency/correlation honesty as the full book, not an average of per-pair Sharpes.</div>
+      <div class="kpi-grid">${kpi(fmt(sp.sharpe,2),'Survivor Sharpe',sp.sharpe<0)}${kpi(sp.psr!=null?fmt(sp.psr*100,0)+'%':'—','prob. Sharpe>0',sp.psr<0.95)}${kpi(fmt(sp.annVol,1)+'%','annual vol')}${kpi(fmt(svt.cagr,1)+'%',`CAGR @ ${svt.target||10}% vol`,svt.cagr<0)}${kpi(fmt(svt.maxDD,1)+'%',`max DD @ ${svt.target||10}% vol`,true)}${kpi(fmt(sp.avgTradesPerDay,1),'avg trades/day')}</div>
+      <div class="hint" style="margin-top:8px">Full book Sharpe ${fmt((b.portfolio||{}).sharpe,2)} → survivors ${fmt(sp.sharpe,2)} on ${sv.count} pairs. Dropping cost-killed pairs removes dead weight rather than diversification.</div>
+      <div style="margin-top:12px">${equitySVG(sv.equity)}</div>`;
+    if(sv.excluded?.length){ html+=`<div style="margin-top:10px;font-weight:600">Excluded (${sv.excluded.length}) — didn't clear cost</div>
+      <table><thead><tr><th>Pair</th><th>expectancy %</th><th>need ≥ %</th><th>cost %</th><th>trades</th><th>why</th></tr></thead><tbody>`;
+      for(const e of sv.excluded){ html+=`<tr><td class="mut">${e.pair.toUpperCase()}</td><td class="${e.expectancy>0?'pos':'neg'}">${fmt(e.expectancy,4)}</td><td class="mut">${fmt(e.need,4)}</td><td class="mut">${fmt(e.costPct,3)}</td><td class="mut">${e.trades}</td><td class="mut">${e.reason}</td></tr>`; }
+      html+=`</tbody></table>`; }
+    html+=`</div>`;
+  }
   // Per-trade stats (kept for reference — the Sharpe here ASSUMES independence and overstates).
   html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-trade stats <span class="mut" style="font-weight:400">(reference — per-trade Sharpe assumes independence, overstated)</span></div>
     <div class="kpi-grid">${kpi(fmt(f.sharpe,2),'per-trade Sharpe ⚠',f.sharpe<0)}${kpi(fmt(f.totalPnl,1)+'%','total (sum, full size)',f.totalPnl<0)}${kpi(fmt(f.expectancy,4)+'%','expectancy/trade',f.expectancy<0)}${kpi(fmt(f.winRate*100,1)+'%','win rate')}${kpi(fmt(f.payoff,2),'payoff (avgW/avgL)')}${kpi(fmt(f.profitFactor,2),'profit factor')}</div></div>`;
@@ -256,10 +271,12 @@ async function renderBook(v){
   // per-pair OOS (breadth) — click a pair to load its trade log
   const pp=Object.entries(b.perPair||{}).filter(([,s])=>s.trades>0).sort((a,b)=>b[1].sharpe-a[1].sharpe);
   const posPairs=pp.filter(([,s])=>s.totalPnl>0).length;
-  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair OOS — breadth check (${posPairs}/${pp.length} pairs profitable)</div>
-    <div class="hint" style="margin-bottom:6px">Click a pair to load its trade log. Breadth is the Grinold payoff — a book wants most pairs profitable OOS, not one carrying it.</div>
-    <table><thead><tr><th>Pair</th><th>Sharpe</th><th>total %</th><th>expectancy %</th><th>win %</th><th>cost %</th><th>trades</th></tr></thead><tbody>`;
-  for(const [pair,s] of pp){ html+=`<tr class="pairRow" data-pair="${pair}" style="cursor:pointer"><td class="lbl-up">${pair.toUpperCase()}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate*100)}</td><td class="mut">${s.costPct!=null?fmt(s.costPct,3):'—'}</td><td class="mut">${s.trades}</td></tr>`; }
+  const survSet=new Set((b.survivors?.pairs)||[]);
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair OOS — breadth check (${posPairs}/${pp.length} pairs profitable${survSet.size?` · ${survSet.size} live`:''})</div>
+    <div class="hint" style="margin-bottom:6px">Click a pair to load its trade log. Breadth is the Grinold payoff — a book wants most pairs profitable OOS, not one carrying it. <b>✓</b> = in the live universe (clears its own cost); dimmed = excluded.</div>
+    <table><thead><tr><th>Pair</th><th>live</th><th>Sharpe</th><th>total %</th><th>expectancy %</th><th>win %</th><th>cost %</th><th>trades</th></tr></thead><tbody>`;
+  for(const [pair,s] of pp){ const live=survSet.has(pair);
+    html+=`<tr class="pairRow" data-pair="${pair}" style="cursor:pointer${live?'':';opacity:.5'}"><td class="lbl-up">${pair.toUpperCase()}</td><td class="${live?'pos':'mut'}">${live?'✓':'—'}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate)}</td><td class="mut">${s.costPct!=null?fmt(s.costPct,3):'—'}</td><td class="mut">${s.trades}</td></tr>`; }
   html+=`</tbody></table></div><div id="tradeLog"></div>`;
   v.innerHTML=html; wireBook();
   v.querySelectorAll('.pairRow').forEach(r=>r.onclick=()=>loadTrades(r.dataset.pair));
@@ -310,8 +327,9 @@ function wireBook(){ const btn=$('bookBuild'); if(!btn) return;
     const h=$('horizon').value;
     // Submit with a couple of retries — a flaky mobile connection drops the POST.
     const marginPct=parseFloat($('bookMargin')?.value)||0;
+    const survRaw=parseFloat($('bookSurv')?.value); const survivorMargin=Number.isFinite(survRaw)?survRaw:0.5;
     const submit=async()=>{ let last;
-      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h,marginPct})});
+      for(let i=0;i<3;i++){ try{ const r=await api('/api/forecast-analysis/per-line/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({horizon:h,marginPct,survivorMargin})});
         if(r.j?.ok) return r.j.jobId; last=new Error(r.j?.error||'run rejected'); }catch(e){ last=e; } await sleep(1500); }
       throw last; };
     try{

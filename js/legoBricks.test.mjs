@@ -13,7 +13,7 @@ import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRe
 import { summarize } from './honestForecastEngine.js';
 import { labelOutcome, OUTCOME_LABELERS } from './dayTypeCore.js';
 import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
-import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, costForPair } from './perLineStrategy.js';
+import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, costForPair, buildSurvivors } from './perLineStrategy.js';
 import { backtestStats, portfolioStats } from './backtestStats.js';
 
 let failures = 0;
@@ -199,6 +199,18 @@ console.log('[perLineStrategy]');
   const run = runPerLine(byPair, { splitFrac: 0.6, minN: 30, costByPair:{eurusd:0.01}, slipByPair:{eurusd:0} });
   ok('runPerLine produces an OOS book with trades + daily equity', run.nTrades > 0 && run.equity.length > 0 && run.equity.length <= run.nTrades);
   ok('runPerLine book is profitable when the IS edge persists OOS', run.book.totalPnl > 0 && run.coverage.fadeCells >= 1);
+
+  // buildSurvivors: keep pairs whose net OOS expectancy clears their own cost by
+  // the margin (and have enough trades); re-aggregate ONLY their daily PnL.
+  ok('runPerLine attaches a survivors block', !!run.survivors && Array.isArray(run.survivors.pairs));
+  const svPerPair = { rich: { expectancy: 0.05, trades: 100 }, thin: { expectancy: 0.001, trades: 100 }, few: { expectancy: 0.05, trades: 5 } };
+  const svPnl     = { rich: [{ date:'2020-01-01', pnl:0.05 }], thin: [{ date:'2020-01-01', pnl:0.001 }], few: [{ date:'2020-01-01', pnl:0.05 }] };
+  const svCost    = { rich: 0.01, thin: 0.04, few: 0.01 };
+  const sv = buildSurvivors(svPerPair, svPnl, svCost, { survivorMargin: 0.5, minSurvivorTrades: 30 });
+  ok('buildSurvivors keeps a pair that clears cost by the margin', sv.pairs.includes('rich'));
+  ok('buildSurvivors drops a pair whose expectancy is below the cost margin', !sv.pairs.includes('thin') && sv.excluded.some(e => e.pair==='thin' && e.reason==='expectancy below cost margin'));
+  ok('buildSurvivors drops a pair with too few trades (regardless of edge)', !sv.pairs.includes('few') && sv.excluded.some(e => e.pair==='few' && e.reason==='too few trades'));
+  ok('buildSurvivors re-aggregates only survivor PnL', sv.count===1 && sv.nTrades===1 && sv.equity.length===1);
 
   // FIX 1 — honest mark-to-close: an undecided outcome (no barrier hit) is scored
   // by the actual close, NOT credited the full target. A 1-pip drift ≠ a full win.

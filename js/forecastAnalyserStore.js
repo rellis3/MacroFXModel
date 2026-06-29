@@ -228,7 +228,8 @@ export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLo
 // skip policy on in-sample, applies it out-of-sample, and writes the book result
 // (equity curve + per-pair OOS perf + the policy table) to R2.
 export async function runPerLineBook({ horizon = 'daily', conditions = ['approachVel'],
-                                       minN = 50, splitFrac = 0.6, marginPct = 0, onLog = () => {} } = {}) {
+                                       minN = 50, splitFrac = 0.6, marginPct = 0,
+                                       survivorMargin = 0.5, minSurvivorTrades = 30, onLog = () => {} } = {}) {
   if (!r2Configured()) throw new Error('R2 not configured');
   const manifest = await getManifest();
   if (!manifest) throw new Error('No dataset — run a refresh first');
@@ -254,7 +255,7 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
   }
   if (!withBarriers) throw new Error('No tradeable touches — re-refresh (records need innerLvl/outerLvl + features)');
 
-  const result = runPerLine(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+  const result = runPerLine(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair, survivorMargin, minSurvivorTrades });
   // Rigor battery (walk-forward / per-year / cost-sensitivity / IS-vs-OOS) on the
   // same pooled touches — the "serious backtest" checks.
   const rigor = runRigor(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
@@ -268,10 +269,12 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
     await putJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`, { pair, horizon, generatedAt, splitDate: result.splitDate, trades: log });
     logged += log.length;
   }
-  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, ...summary, rigor };
+  const out = { generatedAt, horizon, conditions, minN, splitFrac, marginPct, survivorMargin, minSurvivorTrades, ...summary, rigor };
   await putJSON(`${PREFIX}/per-line-${horizon}.json`, out);
+  const sv = result.survivors;
   onLog(`Book: ${result.nTrades} OOS trades (${logged} logged) · Sharpe ${result.book.sharpe} · CAGR ${result.book.cagr}% · maxDD ${result.book.maxDD}% · ` +
-        `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}`);
+        `cells fade/follow/skip ${result.coverage.fadeCells}/${result.coverage.followCells}/${result.coverage.skipCells}` +
+        (sv ? ` · live universe ${sv.count}/${sv.total} pairs (Sharpe ${sv.portfolio?.sharpe})` : ''));
   return out;
 }
 export async function getPerLineBook(horizon = 'daily')        { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }

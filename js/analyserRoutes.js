@@ -170,6 +170,8 @@ export function mountAnalyserRoutes(app, express) {
       minN:      Number.isFinite(b.minN) ? b.minN : undefined,
       splitFrac: Number.isFinite(b.splitFrac) ? b.splitFrac : undefined,
       marginPct: Number.isFinite(b.marginPct) ? b.marginPct : undefined,
+      survivorMargin:    Number.isFinite(b.survivorMargin) ? b.survivorMargin : undefined,
+      minSurvivorTrades: Number.isFinite(b.minSurvivorTrades) ? b.minSurvivorTrades : undefined,
     };
     res.json({ ok: true, jobId: startPerLineJob(opts) });
   });
