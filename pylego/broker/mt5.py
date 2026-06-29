@@ -136,6 +136,24 @@ class Mt5Broker:
         except Exception:
             return None
 
+    def session_bars(self, pair: str, since_epoch: int, tf=None) -> list:
+        """M1 OHLC bars from `since_epoch` (UTC seconds) to now — for a bot's
+        session catch-up (reconstruct running extremes + velocity buffer without
+        seeding). Returns [{high, low, close, time}] (empty if MT5 absent)."""
+        if not self.available:
+            return []
+        try:
+            mt5 = self.mt5
+            timeframe = tf if tf is not None else mt5.TIMEFRAME_M1
+            start = datetime.fromtimestamp(int(since_epoch), tz=timezone.utc)
+            rates = mt5.copy_rates_range(self.resolve(pair), timeframe, start, datetime.now(timezone.utc))
+            if rates is None:
+                return []
+            return [{'high': float(r['high']), 'low': float(r['low']),
+                     'close': float(r['close']), 'time': int(r['time'])} for r in rates]
+        except Exception:
+            return []
+
     def account_balance(self) -> float | None:
         """Live MT5 account balance, or None when unavailable. The paper-mode /
         default-balance policy stays in the bot."""

@@ -28,7 +28,7 @@ from pylego import instruments as I                          # noqa: E402
 from pylego import point_values as PV                        # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
-from volatility_bot.engine import SessionTracker, decide     # noqa: E402
+from volatility_bot.engine import SessionTracker, decide, session_open_epoch  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("volatility_bot")
@@ -141,8 +141,22 @@ def run(base_url: str, force_live: bool) -> None:
             new_plan = kv.get_json("volatility_bot_plan")
             if new_plan and new_plan.get("generatedAt") != (plan or {}).get("generatedAt"):
                 plan = new_plan
-                trackers = {p: SessionTracker(plan["pairs"][p]["open"]) for p in plan.get("universe", [])}
-                log.info(f"new session plan: {len(trackers)} pairs · {plan.get('generatedAt')}")
+                trackers = {}
+                since = session_open_epoch(nowt)
+                for p in plan.get("universe", []):
+                    tr = SessionTracker(plan["pairs"][p]["open"])
+                    # Walk the session so far (open → now) to sync extremes + velocity,
+                    # then dry-run prime so lines already crossed aren't retro-traded.
+                    try:
+                        tr.catch_up(broker.session_bars(p, since))
+                        px0 = broker.price(p)
+                        if px0 is not None:
+                            tr.on_price(px0)
+                            decide(plan["pairs"][p], plan.get("policy", {}), tr, px0, dry_run=True)
+                    except Exception as e:
+                        log.warning(f"{p}: catch-up failed: {e}")
+                    trackers[p] = tr
+                log.info(f"new session plan: {len(trackers)} pairs synced · {plan.get('generatedAt')}")
             last_plan = nowt
 
         # (b) Config + status — medium. Picks up kill-switch / paper↔live promptly.
