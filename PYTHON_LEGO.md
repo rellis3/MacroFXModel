@@ -121,23 +121,25 @@ These have no JS source; they're duplicated across bots. Build them new in
 `pylego/`, give each a clean contract, and migrate one bot at a time. Priority
 order (by drift risk × reuse, from `LEGO_MODULES.md §2` Python table):
 
-1. **`broker/mt5.py`** — connect/login/account-check + `serialize_open_positions`
-   (6+ copies). The "connect to MT5" brick.
-2. **`broker/orders.py`** — `enter(spec)` / `stop(ticket)` / `modify`. The "enter
-   trade" / "stop trade" bricks. A trade is a spec `{symbol, side, lots, sl, tp,
-   comment}`, mirroring the JS "one entry primitive, parameterised" rule — not a
-   new order function per bot.
-3. **`risk_guard.py`** — daily/monthly DD lockout (4 copies + an unwired
-   `safety/risk_gate.py`).
-4. **`sizing.py`** — conviction → risk% → lots (the `×0.5` decay variants).
-5. **`kv.py`** — dashboard KV client + the **config-in / status-out** plumbing
+1. **`broker/mt5.py`** — the `Mt5Broker` class: connect/login/account-check,
+   price/ATR/balance, `serialize_open_positions` / `serialize_closed_trades`
+   (the positions-tab payload), and order `enter` / `stop`. ✅ **built** (#this
+   PR). One class rather than a separate `orders.py` because entry/exit need the
+   same connection, magic, symbol resolver and filling-mode — `enter` takes a
+   trade-spec-style call (`pair, direction, sl, tp, lots, …`), mirroring the JS
+   "one entry primitive, parameterised" rule. Magic / symbol-resolver /
+   pip-resolver / MT5 module are all injected, so it's reusable and offline-testable.
+2. **`risk_guard.py`** — daily/monthly DD lockout (4 copies + an unwired
+   `safety/risk_gate.py`). ✅ built (#546).
+3. **`sizing.py`** — conviction → risk% → lots (the `×0.5` decay variants).
+   ✅ built (#546).
+4. **`kv.py`** — dashboard KV client + the **config-in / status-out** plumbing
    (`load_config(bot, defaults)`, `push_status(bot, payload)`). This is how a bot
    is configured from the dashboard and how its trades reach the positions tab —
-   see §7. Highest-care brick after the broker because the dashboard depends on
-   its key names and payload shape.
-6. **`broker/mt5.py`** also owns `serialize_open_positions(magic)` /
-   `serialize_closed_trades(magic)` — the exact payload the positions tab renders.
-7. **`telegram.py`** — alert transport (formatters stay in the strategy).
+   see §7. ⬜ next. Highest-care brick after the broker because the dashboard
+   depends on its key names and payload shape. (The positions payload itself is
+   already emitted by `Mt5Broker.serialize_*`.)
+5. **`telegram.py`** — alert transport (formatters stay in the strategy). ⬜
 
 ## 5. Adoption plan — one bot at a time
 
@@ -148,8 +150,8 @@ values for that bot's instruments.
 | Step | Bot | Bricks adopted | Status |
 |---|---|---|---|
 | 1 | `bot/main.py` | `instruments` (pip size) | ✅ merged (#545) |
-| 2 | `bot/regime_bot.py` | `instruments` (pip size), `point_values`, `sizing`, `risk_guard` | 🟡 this PR — the non-live pilot |
-| 3 | `bot/regime_bot.py` | `broker/mt5` (connect/enter/stop/serialize) | ⬜ next |
+| 2 | `bot/regime_bot.py` | `instruments` (pip size), `point_values`, `sizing`, `risk_guard` | ✅ merged (#546) |
+| 3 | `bot/regime_bot.py` | `broker/mt5` (connect/enter/stop/serialize) | 🟡 this PR |
 | 4 | `RegimeV2/regime_bot_v2.py` | the full set (pip value behind a sizing review) | ⬜ |
 | 5 | `DynAnchorBot`, `RegimeV4/7` | the full set | ⬜ |
 | 6 | **`volatility_bot` (NEW)** — first bot built natively on `pylego` | consumes the frozen `volatility_bot_plan` (Category A); stands up the planned Category-B bricks (`broker/mt5`, `orders`, `kv`) as its execution layer | 🟡 Slice 1 (plan contract) built |
