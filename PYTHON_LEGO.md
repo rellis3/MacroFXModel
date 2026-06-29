@@ -173,10 +173,12 @@ survivor universe). Each slice is its own PR, golden-tested, smallest diff:
    **golden-tested** vs `scripts/gen_volatility_vectors.mjs` → JSON), `line_levels`
    (OC static / HL dynamic), `neighbours` (inner/outer), `trade_spec`
    (fade/follow triple-barrier). ✅
-4. **Execution bricks + the bot** — new Category-B `pylego/kv.py`,
-   `pylego/broker/mt5.py`, `pylego/broker/orders.py` (extracted from `regime_bot`)
-   + `volatility_bot/volatility_bot.py` assembled from them; unique magic;
-   paper-first; pushes `volatility_bot_status`. ⬜
+4. **Execution bricks + the bot** — Category-B `pylego/kv.py` + `pylego/broker/{paper,mt5}.py`
+   (one broker surface; `PaperBroker` offline-tested incl. triple-barrier,
+   `MT5Broker` extracted from `regime_bot`) + the decision engine
+   `volatility_bot/engine.py` (pure, offline-tested) + `volatility_bot/volatility_bot.py`
+   (magic 20260099, paper-first, pushes `volatility_bot_status`). ✅ paper path
+   fully tested; ⚠ live MT5 connect/order needs a paper-terminal verify.
 5. **UI** — `bot-config.html` "Volatility" tab (credentials + paper/live toggle +
    universe/risk/margin/kill) + one `_POS_BOTS` row so trades show on positions. ⬜
 
