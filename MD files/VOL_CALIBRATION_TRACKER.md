@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-06-29 (Jun-29 checkpoint — ref-side noise confirmed; new shape-only correction factors validated).
+Last updated: 2026-06-30 (Jun-30 checkpoint — NQ at +3.4% Δ, excellent; GOLD HV20 still +19.8% above ref while YZ is only +1.6% — estimator switch recommended).
 
 ---
 
@@ -37,6 +37,15 @@ Last updated: 2026-06-29 (Jun-29 checkpoint — ref-side noise confirmed; new sh
   oc_75=1.10**. Revert values preserved in code comment. With shape-only
   factors, displayed HL/OC error will now track raw vol Δ linearly instead
   of amplifying/sign-flipping it. Next checkpoint will validate.
+
+- GOLD primary estimator: **HV20 overestimates reference by ~+20% — switch to YZ needed**. Jun-29
+  and Jun-30 both show HV20=30.35% vs Ref=25.34% (+19.8%), while YZ=25.74% lands within +1.6%
+  of reference. Three consecutive sessions confirm HV20 is the wrong estimator for GOLD (slow
+  20-day window, can't shed prior-week's elevated vol fast enough; YZ's OHLC weighting adapts
+  faster and sits at the right level). One-line code change in `volForecast.js:425`. Switching
+  would reduce vol gap from +19.8% → +1.6% and OC med gap from +34.6% → ~+14% (residual
+  requires oc_50_corr recalibration: ~1.12→~0.98, shape-only, after 3+ YZ sessions).
+  **Awaiting user approval before code change (see item 8).**
 
 - index/NQ GARCH persistence: **ref-side noise confirmed (2026-06-29)** —
   the Jun-25/26 negative gap (−4.9%→−21.0%) was almost entirely driven by
@@ -326,6 +335,7 @@ multiplier behavior specifically).
 | Jun-25 | NQ        | 26.40%   | 27.76%  | −4.9%  | No         | **sign flip**, first negative raw Δ; HL/OC corrected now −21%/−26% (over-correction much worse, see diagnosis) |
 | Jun-26 | NQ        | 24.92%   | 31.53%  | −21.0% | No         | **widening negative**, 2nd straight; ref +13.6% while ours −5.6%, HL/OC corrected now −32%/−36% — display problem, user call needed |
 | Jun-29 | NQ        | 24.49%   | 22.56%  | +8.6%  | No         | **ref-side noise confirmed** — ref reverted from 31.53%; new shape factors validated: displayed HL +6.3%/+8.8%, OC +2.8%/+6.6%, all proportional to raw vol |
+| Jun-30 | NQ        | 23.32%   | 22.56%  | +3.4%  | No         | **excellent tracking** — GARCH β=0.87 continuing post-shock decay; displayed HL +1.4%, OC −1.9%; essentially at reference |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
 on hand — only Δ was recorded in those sessions' analysis. Note: a Jun-23
@@ -355,6 +365,8 @@ all reference compares live in one place):
 | Jun-26 | EURUSD    | 5.42%    | 5.94%   | −8.8% | −1.8%    | 0.0%     | +4.2%    | +7.7%    | OC metrics flipped positive (+4%/+8%) while HL near-zero — likely noise given small magnitudes, no action |
 | Jun-29 | GOLD      | 30.35%   | 25.34%  | +19.8% | +22.1%   | +18.4%   | **+34.6%** | —      | large raw vol overestimate (HV20 slow to shed prior week); HL tracks proportionally, OC med outlier again — 2nd occurrence (also Jun-22), may be structural |
 | Jun-29 | EURUSD    | 5.57%    | 6.35%   | −12.3% | −3.4%    | −1.4%    | −7.1%    | −2.2%    | fx factors unchanged; all within normal noise band, no action |
+| Jun-30 | GOLD      | 30.35%   | 25.34%  | +19.8% | +22.1%   | —        | **+34.6%** | —     | HV20 barely changed (slow estimator); YZ=25.74% would give +1.6% gap — **3rd consecutive session confirming HV20 wrong, YZ right**; switching to YZ reduces OC gap to ~+14%; see item 8 |
+| Jun-30 | EURUSD    | 5.57%    | 6.35%   | −12.3% | −3.4%    | —        | −7.1%    | —        | stable; all estimators underestimate ref (HV20−17.2%, YZ−12.3%, EWMA−18.2%); may include implied vol; no action |
 
 ---
 
@@ -387,15 +399,26 @@ all reference compares live in one place):
 6. Backtest engines (`js/volBacktestEngine.js`, `weeklyVolBacktestEngine.js`,
    `volBacktestM1Engine.js`) still run old EWMA/RS-era ASSET_PARAMS, untouched
    by any of this — separate, lower-priority cleanup.
-7. **GOLD OC median outlier** — ran +15.5% hot on Jun-22 and **+34.6% on
-   Jun-29** (both high-raw-vol-overestimate days: +7.0% and +19.8%). HL med
-   and OC 75p tracked proportionally on both days; only OC med spikes
-   disproportionately. Two occurrences now; may be structural (HV20's
-   relationship between vol overestimate and the OC percentile). Do not
-   touch `oc_50_corr` (currently 1.12) yet — need 1+ more occurrence on a
-   high-vol-overestimate day, or a calm-day session where it's also elevated,
-   before drawing a conclusion. Current hypothesis: OC med outlier is
-   correlated with large raw vol overestimates specifically, not a constant bias.
+7. **GOLD OC median outlier — root cause identified (do NOT refit oc_50_corr)**:
+   Jun-22 (+15.5%), Jun-29 (+34.6%), Jun-30 (+34.6%) — three consecutive occurrences,
+   all on high-HV20-overestimate sessions (+7.0%, +19.8%, +19.8%). The gap is caused
+   by the vol estimator, not the shape correction: HV20 overestimates by +19.8%, and
+   OC med follows via the `σ_fwd × oc_50_corr` multiplication. Switching to YZ (vol
+   gap +1.6%) reduces OC med gap to ~+14%; the residual then needs `oc_50_corr`
+   recalibrated from 1.12 → ~0.98 (shape-only, after 3+ YZ sessions). **Do NOT touch
+   oc_50_corr while still on HV20** — it would mask the estimator error and whiplash
+   on the next session where HV20 happens to be closer to ref.
+
+8. **GOLD primary estimator switch: HV20 → YZ (ready to implement, awaiting user
+   approval)** — three consecutive sessions confirm HV20 systematically overestimates
+   GOLD reference by ~+20%, while YZ consistently lands within +1.6–2%. Code change
+   is one line in `volForecast.js:425`:
+     `volSeries = hv20Series(ohlc, 20);`  →  `volSeries = yangZhangVolSeries(ohlc);`
+   YZ is already computed as a shadow column so the function already exists. Post-switch
+   plan: (a) run 3+ clean sessions to confirm YZ stays close to ref, (b) extract
+   shape-only oc_50_corr from YZ-based sessions (~0.98 expected vs current 1.12),
+   (c) update ASSET_PARAMS commodity correction factors. Update backtest engines
+   separately (low priority; they are read-only reference, not live).
 
 ---
 
