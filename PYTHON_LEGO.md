@@ -168,11 +168,15 @@ survivor universe). Each slice is its own PR, golden-tested, smallest diff:
    `getPerLineBook` + live `fetchD1`/`volSigmaSeries` σ/open per survivor and
    writes KV `volatility_bot_plan`; `server.js` exposes `POST/GET
    /api/volatility-bot/{refresh-plan,plan}` + a daily scheduler. ✅
-3. **pylego bricks** — `strategy/volatility.py` (the ONLY ported logic:
-   approach-velocity bucket + dynamic-HL geometry + triple-barrier, golden-tested
-   vs JS vectors) + new Category-B `kv.py`, `broker/mt5.py`, `broker/orders.py`. ⬜
-4. **The bot** — `volatility_bot/volatility_bot.py` assembled from the bricks;
-   unique magic; paper-first; pushes `volatility_bot_status`. ⬜
+3. **Strategy port (Category-A logic)** — `pylego/strategy/volatility.py`: the
+   ONLY ported strategy math — `approach_velocity` (cell-key bucket,
+   **golden-tested** vs `scripts/gen_volatility_vectors.mjs` → JSON), `line_levels`
+   (OC static / HL dynamic), `neighbours` (inner/outer), `trade_spec`
+   (fade/follow triple-barrier). ✅
+4. **Execution bricks + the bot** — new Category-B `pylego/kv.py`,
+   `pylego/broker/mt5.py`, `pylego/broker/orders.py` (extracted from `regime_bot`)
+   + `volatility_bot/volatility_bot.py` assembled from them; unique magic;
+   paper-first; pushes `volatility_bot_status`. ⬜
 5. **UI** — `bot-config.html` "Volatility" tab (credentials + paper/live toggle +
    universe/risk/margin/kill) + one `_POS_BOTS` row so trades show on positions. ⬜
 
