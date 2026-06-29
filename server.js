@@ -7211,6 +7211,16 @@ app.get('/api/levels-v2/ledger', async (req, res) => {
     const ledger = Array.isArray(parsed) ? parsed : (parsed?.data ?? []);
     const out = { ok: true, stats: ledgerStatsV2(ledger) };
     if (req.query.refit) out.refitCandidate = refitFromLedgerV2(ledger, { minN: parseInt(req.query.minN) || 30 });
+    if (req.query.records) {
+      // Per-trade audit rows (newest first), trimmed to the fields the page renders.
+      const n = Math.min(parseInt(req.query.records) || 200, 1000);
+      out.records = ledger.slice(-n).reverse().map(r => ({
+        sym: r.sym, cell: r.cell, direction: r.direction, decision: r.decision, grade: r.grade,
+        price: r.price, sl: r.sl, tp: r.tp, n: r.n, policyExpectancy: r.policyExpectancy,
+        recordedAt: r.recordedAt, filledAt: r.filledAt, resolvedAt: r.resolvedAt,
+        outcome: r.outcome, realizedPct: r.realizedPct,
+      }));
+    }
     res.json(out);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
