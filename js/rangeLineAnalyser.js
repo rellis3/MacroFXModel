@@ -58,17 +58,23 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
   for (const lad of ladders) {
     const mid = (lad.low + lad.high) / 2;
     const prices = lad.levels.map(l => l.level);          // sorted ascending
+    // NO LOOKAHEAD: a level isn't tradeable until its range is KNOWN. The Asia
+    // low/high (A_0/A_1) are defined by the formation window, so a touch DURING
+    // formation + "revert to mid" is circular (price is inside its own range by
+    // construction). `validFrom` excludes every bar before the range closed.
+    const validFrom = lad.validFrom ?? -Infinity;
     for (const ln of lad.levels) {
       const L = ln.level;
       const side = L > mid ? 'up' : 'dn';
 
-      // First intrabar touch of the line.
+      // First intrabar touch of the line, ON OR AFTER the level became known.
       let touchIdx = -1, ftt = null;
       for (let k = 0; k < n; k++) {
+        if (bars[k].time < validFrom) continue;            // level not yet known
         const hit = side === 'up' ? bars[k].high >= L : bars[k].low <= L;
         if (hit) { touchIdx = k; ftt = bars[k].time ?? null; break; }
       }
-      if (touchIdx < 0) continue;                          // never touched → not a trade
+      if (touchIdx < 0) continue;                          // never touched (post-formation) → not a trade
 
       // Neighbours among the ladder: inner = next toward mid (TP), outer = away (SL).
       let belowP = null, aboveP = null;
@@ -166,19 +172,26 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
     const ladders = [];
     if (sources.includes('asia')) {
       const t0 = bars[0].time;
-      const asiaBars = bars.filter(b => b.time < t0 + asiaHrs * 3600);
+      const asiaClose = t0 + asiaHrs * 3600;               // Asia range known only after this
+      const asiaBars = bars.filter(b => b.time < asiaClose);
       const ar = bodyRange(asiaBars, 5);
-      if (ar) ladders.push({ low: ar.low, high: ar.high, levels: buildRangeLadder(ar.low, ar.range, 'A') });
+      // Only tradeable if there are post-formation bars left in the session.
+      if (ar && bars[bars.length - 1].time >= asiaClose)
+        ladders.push({ low: ar.low, high: ar.high, validFrom: asiaClose, levels: buildRangeLadder(ar.low, ar.range, 'A') });
     }
     if (sources.includes('monday')) {
       const monDate = mondayOf(date);
-      let mr = mondayCache.get(monDate);
-      if (mr === undefined) {
-        const monBars = sessions.get(monDate);
-        mr = monBars && monBars.length >= minBarsPerSession ? bodyRange(monBars, 15) : null;
-        mondayCache.set(monDate, mr);
+      // The Monday range is only known once Monday closes — never trade it on
+      // Monday itself (that would be the same circular formation-window lookahead).
+      if (monDate !== date) {
+        let mr = mondayCache.get(monDate);
+        if (mr === undefined) {
+          const monBars = sessions.get(monDate);
+          mr = monBars && monBars.length >= minBarsPerSession ? bodyRange(monBars, 15) : null;
+          mondayCache.set(monDate, mr);
+        }
+        if (mr) ladders.push({ low: mr.low, high: mr.high, validFrom: bars[0].time, levels: buildRangeLadder(mr.low, mr.range, 'M') });
       }
-      if (mr) ladders.push({ low: mr.low, high: mr.high, levels: buildRangeLadder(mr.low, mr.range, 'M') });
     }
     if (!ladders.length) continue;
 
