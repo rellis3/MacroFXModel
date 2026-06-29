@@ -259,7 +259,7 @@ async function renderBook(v){
   html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair OOS — breadth check (${posPairs}/${pp.length} pairs profitable)</div>
     <div class="hint" style="margin-bottom:6px">Click a pair to load its trade log. Breadth is the Grinold payoff — a book wants most pairs profitable OOS, not one carrying it.</div>
     <table><thead><tr><th>Pair</th><th>Sharpe</th><th>total %</th><th>expectancy %</th><th>win %</th><th>cost %</th><th>trades</th></tr></thead><tbody>`;
-  for(const [pair,s] of pp){ html+=`<tr class="pairRow" data-pair="${pair}" style="cursor:pointer"><td class="lbl-up">${pair.toUpperCase()}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate*100)}</td><td class="mut">${s.costPct!=null?fmt(s.costPct,3):'—'}</td><td class="mut">${s.trades}</td></tr>`; }
+  for(const [pair,s] of pp){ html+=`<tr class="pairRow" data-pair="${pair}" style="cursor:pointer"><td class="lbl-up">${pair.toUpperCase()}</td><td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td><td class="${s.totalPnl>0?'pos':'neg'}">${fmt(s.totalPnl,1)}</td><td>${fmt(s.expectancy,4)}</td><td class="mut">${fmt(s.winRate)}</td><td class="mut">${s.costPct!=null?fmt(s.costPct,3):'—'}</td><td class="mut">${s.trades}</td></tr>`; }
   html+=`</tbody></table></div><div id="tradeLog"></div>`;
   v.innerHTML=html; wireBook();
   v.querySelectorAll('.pairRow').forEach(r=>r.onclick=()=>loadTrades(r.dataset.pair));
