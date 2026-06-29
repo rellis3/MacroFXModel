@@ -96,3 +96,35 @@ export function backtestStats(pnls, dates = [], { mcRuns = 1000, bootRuns = 1000
     montecarlo: { maxDD: pctile(mcDD, [50, 95, 99]) },
   };
 }
+
+// ── Portfolio stats — the HONEST headline for a concurrent multi-asset book ────
+// Per-trade Sharpe × √(trades/yr) assumes every trade is an independent bet — false
+// for 33 pairs trading one signal at the same time. Aggregating to a TIME series
+// (daily) and annualising by √252 captures same-day concurrency + cross-pair
+// correlation, so this is the Sharpe that's real. `daily` = summed per-trade PnL
+// per trading day (% units, equal unit per trade). Also returns a vol-targeted
+// view so CAGR/DD are at a fixed, comparable risk level (leverage-invariant).
+export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252 } = {}) {
+  const n = daily.length;
+  if (!n) return { days: 0 };
+  const m = mean(daily), sd = stdev(daily);
+  const sharpe = sd > 1e-9 ? m / sd * Math.sqrt(periodsPerYear) : 0;
+  const annVol = sd * Math.sqrt(periodsPerYear);          // % units
+  const years  = n / periodsPerYear;
+  const cagrOf = series => { const t = sum(series); return years > 0 ? (Math.pow(Math.max(1e-9, 1 + t / 100), 1 / years) - 1) * 100 : 0; };
+  const cagr = cagrOf(daily), maxDD = ddStats(daily).maxDD;
+  // Scale the daily series to a fixed annual vol so the curve is comparable.
+  const scale = annVol > 1e-9 ? targetVol / annVol : 0;
+  const scaled = daily.map(x => x * scale);
+  const vtCagr = cagrOf(scaled), vtDD = ddStats(scaled).maxDD;
+  return {
+    days: n,
+    sharpe: +sharpe.toFixed(2),
+    annVol: +annVol.toFixed(2),
+    cagr:   +cagr.toFixed(2),
+    maxDD:  +maxDD.toFixed(2),
+    calmar: maxDD < 0 ? +(cagr / Math.abs(maxDD)).toFixed(2) : 0,
+    volTarget: { target: targetVol, cagr: +vtCagr.toFixed(2), maxDD: +vtDD.toFixed(2),
+                 calmar: vtDD < 0 ? +(vtCagr / Math.abs(vtDD)).toFixed(2) : 0 },
+  };
+}

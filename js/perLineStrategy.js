@@ -22,7 +22,7 @@
  */
 
 import { summarizeTrades } from './metricsCore.js';
-import { backtestStats } from './backtestStats.js';
+import { backtestStats, portfolioStats } from './backtestStats.js';
 
 export const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
 export const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };  // extra on FOLLOW (stop) entries
@@ -160,6 +160,9 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
   return {
     splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair,
     book: backtestStats(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date), { mcRuns, bootRuns }),
+    // HONEST headline: Sharpe/CAGR/DD on the daily portfolio series (captures
+    // same-day concurrency + cross-pair correlation), not per-trade ×√(trades/yr).
+    portfolio: { ...portfolioStats(equity.map(e => e.pnl)), avgTradesPerDay: equity.length ? +(bookTrades.length / equity.length).toFixed(1) : 0 },
     coverage: { fadeCells: countDec(policy, 'fade'), followCells: countDec(policy, 'follow'), skipCells: countDec(policy, 'skip') },
   };
 }
