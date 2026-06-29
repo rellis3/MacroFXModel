@@ -32,10 +32,12 @@ import { extractTouches, runPerLine } from './perLineStrategy.js';
 
 // Sparse STRUCTURAL ladder — half-integer fib grid (…−1,−0.5,0,0.5,1,1.5…) so the
 // triple-barrier neighbours are real distances, not the 0.25-dense grid.
-const LADDER_LEVELS = FIB_LEVELS.filter(L => Number.isInteger(L * 2));
+// Exported so the LIVE v2 producer (levelsV2Engine.js) builds the IDENTICAL ladder
+// the offline policy was learned on — same labels → same cell keys → no drift.
+export const LADDER_LEVELS = FIB_LEVELS.filter(L => Number.isInteger(L * 2));
 
 // Build the day's line ladder off a range: [{ label, level(price) }] sorted.
-function buildRangeLadder(low, range, srcTag) {
+export function buildRangeLadder(low, range, srcTag) {
   return LADDER_LEVELS
     .map(L => ({ label: `${srcTag}_${L}`, fibL: L, level: low + range * L }))
     .sort((a, b) => a.level - b.level);

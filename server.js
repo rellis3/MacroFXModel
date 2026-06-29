@@ -38,6 +38,8 @@ import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForP
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { touchesForPair, runPerLine, costForPair } from './js/rangeLineAnalyser.js';
+import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
+import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
@@ -7035,6 +7037,91 @@ app.get('/api/range-line/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), currentPair: job.currentPair ?? null, pairsDone: job.pairsDone ?? 0, pairsTotal: job.pairsTotal ?? null });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Telegram-v2 confidence engine ─────────────────────────────────────────────
+// Offline LEARN (build + freeze the per-cell expectancy policy from M1) → live
+// REFRESH (apply the frozen policy to fresh OANDA bars → ai_entries_v2_*). See
+// TELEGRAM_V2.md. Reuses the range-line streaming M1 pattern above.
+const lv2Jobs = new Map();
+
+// POST /api/levels-v2/learn — stream M1 per pair → pooled-IS policy → freeze to KV.
+app.post('/api/levels-v2/learn', async (req, res) => {
+  const b = req.body || {};
+  const pair = (b.pair || '').toLowerCase();
+  const pairs = pair ? [pair].filter(p => ASIA_INSTRUMENTS.includes(p)) : ASIA_INSTRUMENTS;
+  if (!pairs.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const opts = {
+    sources:    Array.isArray(b.sources) ? b.sources : ['asia', 'monday'],
+    conditions: Array.isArray(b.conditions) ? b.conditions : ['approachVel'],
+    minN: parseInt(b.minN) || 50, splitFrac: parseFloat(b.splitFrac) || 0.6,
+    marginPct: parseFloat(b.marginPct) || 0, minLookback: parseInt(b.minLookback) || 20,
+    mcRuns: 1000, bootRuns: 1000,
+  };
+  const jobId = `v2l_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [k, j] of lv2Jobs) if (Date.now() - (j.startedAt || 0) > 30 * 60 * 1000) lv2Jobs.delete(k);
+  lv2Jobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const touchesByPair = {}, costByPair = {};
+      let i = 0;
+      for (const p of pairs) {
+        lv2Jobs.set(jobId, { status: 'running', startedAt, currentPair: p, pairsDone: i, pairsTotal: pairs.length });
+        let packed = await loadM1ForPair(p, BT_M1_DIR);
+        if (packed && packed.n) {
+          const ac = _assetClassFor(p);
+          touchesByPair[p] = touchesForPair(packed, ac, opts);
+          costByPair[p] = costForPair(p, ac);
+        }
+        packed = null;
+        await new Promise(r => setImmediate(r));
+        i++;
+      }
+      if (!Object.keys(touchesByPair).length) { lv2Jobs.set(jobId, { status: 'error', error: 'No M1 data', startedAt }); return; }
+      const book   = runPerLine(touchesByPair, { ...opts, costByPair });
+      const frozen = freezePolicyV2(book, opts, new Date().toISOString());
+      await kv.put('policy_v2', JSON.stringify(frozen));
+      _setV2PolicyCache(frozen);
+      lv2Jobs.set(jobId, { status: 'done', startedAt, result: { ok: true, builtAt: frozen.builtAt, nCells: frozen.nCells, coverage: frozen.coverage, splitDate: frozen.splitDate, portfolio: book.portfolio ?? null, survivors: book.survivors ? { count: book.survivors.count, total: book.survivors.total } : null } });
+    } catch (e) {
+      console.error('[levels-v2/learn]', e?.message, e?.stack ?? '');
+      lv2Jobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/levels-v2/status/:jobId', (req, res) => {
+  const job = lv2Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), currentPair: job.currentPair ?? null, pairsDone: job.pairsDone ?? 0, pairsTotal: job.pairsTotal ?? null });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// POST /api/levels-v2/refresh — apply the frozen policy to live OANDA bars.
+app.post('/api/levels-v2/refresh', async (req, res) => {
+  try {
+    const pairs = (state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS);
+    const out = await refreshAllPairsV2(pairs.map(p => p.toUpperCase?.() ?? p));
+    res.json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// GET /api/levels-v2/entries — read the live v2 entries for the dashboard page.
+app.get('/api/levels-v2/entries', async (req, res) => {
+  try {
+    const policyRaw = await kv.get('policy_v2');
+    const policy = policyRaw ? JSON.parse(policyRaw) : null;
+    const pairs = (state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS);
+    const out = {};
+    for (const p of pairs) {
+      const sym = p.toUpperCase?.() ?? p;
+      const raw = await kv.get(`ai_entries_v2_${sym.replace('/', '')}`);
+      if (raw) out[sym] = JSON.parse(raw);
+    }
+    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, splitDate: policy.splitDate } : null, entries: out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Range-Fib Backtest (STRIPPED) ─────────────────────────────────────────────

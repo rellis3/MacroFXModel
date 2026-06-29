@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telegram v2 — Confidence Engine</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#141925; --panel2:#1b2230; --bd:#262e3d; --text:#e6edf3; --text2:#9aa7b8; --grn:#22c55e; --grnd:#16a34a; --amb:#f59e0b; --red:#ef4444; --blu:#5b9dff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'DM Sans',system-ui,sans-serif; font-size:14px; }
+  .wrap { max-width:1100px; margin:0 auto; padding:20px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--text2); font-size:12px; margin-bottom:18px; }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  button { background:var(--grnd); color:#fff; border:0; border-radius:8px; padding:9px 16px; font-weight:600; cursor:pointer; font-size:13px; }
+  button.alt { background:var(--panel2); color:var(--text); border:1px solid var(--bd); }
+  button:disabled { opacity:.5; cursor:default; }
+  .panel { background:var(--panel); border:1px solid var(--bd); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .muted { color:var(--text2); font-size:12px; }
+  .mono { font-family:'DM Mono',ui-monospace,monospace; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--bd); }
+  th { color:var(--text2); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  .g-Ap,.g-A { color:var(--grn); font-weight:700; }
+  .g-B { color:var(--amb); font-weight:700; }
+  .g-C { color:var(--text2); font-weight:700; }
+  .long { color:var(--grn); } .short { color:var(--red); }
+  .pill { display:inline-block; padding:1px 7px; border-radius:6px; background:var(--panel2); border:1px solid var(--bd); font-size:11px; }
+  .kpi { display:inline-flex; flex-direction:column; margin-right:22px; }
+  .kpi b { font-size:18px; } .kpi span { font-size:11px; color:var(--text2); }
+  a { color:var(--blu); text-decoration:none; }
+  .status { font-size:12px; color:var(--text2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📡 Telegram v2 — Confidence Engine</h1>
+  <div class="sub">One graded-entry pipeline. Confidence = <b>after-cost expectancy</b> from a frozen, OOS-learned per-cell policy — not a 0–100 heuristic. Learn offline on M1, then push out. Runs parallel to v1. <a href="hub.html">← Hub</a></div>
+
+  <div class="bar">
+    <button id="btnLearn">① Learn policy (M1, offline)</button>
+    <button id="btnRefresh" class="alt">② Refresh live entries</button>
+    <button id="btnLoad" class="alt">↻ Load current</button>
+    <span id="status" class="status"></span>
+  </div>
+
+  <div class="panel" id="policyPanel">
+    <div class="muted">No policy loaded yet. Click <b>Learn policy</b> to build it from M1 history (this is the offline OOS step), or <b>Load current</b> to read the frozen one.</div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <b>Live v2 entries</b>
+      <span class="muted" id="entriesMeta"></span>
+    </div>
+    <div id="entries"><div class="muted">— nothing loaded —</div></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const setStatus = (t, c) => { $('status').textContent = t; $('status').style.color = c || 'var(--text2)'; };
+const gradeCls = g => g === 'A+' ? 'g-Ap' : g === 'A' ? 'g-A' : g === 'B' ? 'g-B' : 'g-C';
+
+async function poll(jobId, onDone) {
+  try {
+    const r = await fetch(`/api/levels-v2/status/${jobId}`);
+    const j = await r.json();
+    if (j.status === 'running') {
+      setStatus(`learning… ${j.currentPair || ''} ${j.pairsDone || 0}/${j.pairsTotal || '?'} (${j.elapsed||0}s)`, 'var(--amb)');
+      setTimeout(() => poll(jobId, onDone), 1500);
+    } else if (j.status === 'done') { onDone(j); }
+    else { setStatus('learn failed: ' + (j.error || '?'), 'var(--red)'); }
+  } catch (e) { setStatus('poll error: ' + e.message, 'var(--red)'); }
+}
+
+function renderPolicy(p) {
+  if (!p) { $('policyPanel').innerHTML = '<div class="muted">No frozen policy in KV yet.</div>'; return; }
+  const cov = p.coverage || {};
+  $('policyPanel').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;align-items:center;">
+      <span class="kpi"><b>${p.nCells ?? '—'}</b><span>policy cells</span></span>
+      <span class="kpi"><b style="color:var(--grn)">${cov.fadeCells ?? '—'}</b><span>fade</span></span>
+      <span class="kpi"><b style="color:var(--blu)">${cov.followCells ?? '—'}</b><span>follow</span></span>
+      <span class="kpi"><b style="color:var(--text2)">${cov.skipCells ?? '—'}</b><span>skip</span></span>
+      ${p.portfolio ? `<span class="kpi"><b>${(p.portfolio.sharpe??0).toFixed?.(2) ?? p.portfolio.sharpe}</b><span>OOS portfolio Sharpe</span></span>` : ''}
+      ${p.survivors ? `<span class="kpi"><b>${p.survivors.count}/${p.survivors.total}</b><span>survivor pairs</span></span>` : ''}
+    </div>
+    <div class="muted mono" style="margin-top:8px;">split ${p.splitDate || '?'} · built ${p.builtAt || '?'}</div>`;
+}
+
+function renderEntries(meta, entries) {
+  $('entriesMeta').textContent = meta?.policy ? `policy ${meta.policy.nCells} cells · built ${meta.policy.builtAt||'?'}` : '';
+  const pairs = Object.keys(entries || {});
+  if (!pairs.length) { $('entries').innerHTML = '<div class="muted">— no live entries (run Refresh after a policy is learned) —</div>'; return; }
+  let rows = '';
+  for (const sym of pairs) {
+    const blk = entries[sym]; const list = blk?.data || [];
+    for (const e of list) {
+      rows += `<tr>
+        <td class="mono">${sym}</td>
+        <td class="${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</td>
+        <td class="mono">${e.price}</td>
+        <td class="${gradeCls(e.grade)}">${e.grade}</td>
+        <td class="mono">+${Number(e.expectancy).toFixed(3)}%</td>
+        <td class="mono">${e.n}</td>
+        <td>${e.decision}</td>
+        <td class="mono">1:${e.rrRatio}</td>
+        <td class="mono">${e.sl} / ${e.tp}</td>
+        <td><span class="pill mono">${e.cell}</span></td>
+      </tr>`;
+    }
+  }
+  $('entries').innerHTML = rows
+    ? `<table><thead><tr><th>Pair</th><th>Dir</th><th>Level</th><th>Grade</th><th>Edge</th><th>n</th><th>Play</th><th>R:R</th><th>SL / TP</th><th>Cell</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="muted">— policy loaded but no near-price entries right now —</div>';
+}
+
+async function loadCurrent() {
+  setStatus('loading…');
+  try {
+    const r = await fetch('/api/levels-v2/entries'); const j = await r.json();
+    renderPolicy(j.policy); renderEntries(j, j.entries); setStatus('loaded', 'var(--grn)');
+  } catch (e) { setStatus('load error: ' + e.message, 'var(--red)'); }
+}
+
+$('btnLearn').onclick = async () => {
+  $('btnLearn').disabled = true; setStatus('starting M1 learn…', 'var(--amb)');
+  try {
+    const r = await fetch('/api/levels-v2/learn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await r.json();
+    if (!j.jobId) { setStatus('learn rejected: ' + (j.error || '?'), 'var(--red)'); $('btnLearn').disabled = false; return; }
+    poll(j.jobId, (done) => { setStatus(`policy built · ${done.nCells} cells`, 'var(--grn)'); renderPolicy(done); $('btnLearn').disabled = false; });
+  } catch (e) { setStatus('learn error: ' + e.message, 'var(--red)'); $('btnLearn').disabled = false; }
+};
+$('btnRefresh').onclick = async () => {
+  $('btnRefresh').disabled = true; setStatus('refreshing live entries…', 'var(--amb)');
+  try {
+    const r = await fetch('/api/levels-v2/refresh', { method: 'POST' }); const j = await r.json();
+    setStatus(j.ok ? 'refreshed' : ('refresh: ' + (j.error || '?')), j.ok ? 'var(--grn)' : 'var(--red)');
+    await loadCurrent();
+  } catch (e) { setStatus('refresh error: ' + e.message, 'var(--red)'); }
+  $('btnRefresh').disabled = false;
+};
+$('btnLoad').onclick = loadCurrent;
+loadCurrent();
+</script>
+</body>
+</html>
