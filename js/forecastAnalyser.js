@@ -153,20 +153,23 @@ export function analyseWindow(session, ladder, ctx = {}) {
       }
 
       // Walk forward from touch: which neighbour is reached first?
-      let outcome = 'undecided', retraceTo = null, extTo = null;
+      // decidedBy='barrier' when a TP/SL line is actually hit; 'close' when neither
+      // is reached and we fall back to the session close (a small wiggle that never
+      // tagged a target is NOT a full win — the strategy marks these to close).
+      let outcome = 'undecided', retraceTo = null, extTo = null, decidedBy = 'close';
       let extremeBack = touchLvl, extremeFwd = touchLvl;
       for (let k = touchIdx; k < n; k++) {
         const bar = bars[k];
         if (isUp) {
           extremeBack = Math.min(extremeBack, bar.low);
           extremeFwd  = Math.max(extremeFwd,  bar.high);
-          if (bar.low  <= inner) { outcome = 'reverted';  retraceTo = inner; break; }  // tie → conservative: reverted
-          if (bar.high >= outer) { outcome = 'continued'; extTo     = outer; break; }
+          if (bar.low  <= inner) { outcome = 'reverted';  retraceTo = inner; decidedBy = 'barrier'; break; }  // tie → conservative: reverted
+          if (bar.high >= outer) { outcome = 'continued'; extTo     = outer; decidedBy = 'barrier'; break; }
         } else {
           extremeBack = Math.max(extremeBack, bar.high);
           extremeFwd  = Math.min(extremeFwd,  bar.low);
-          if (bar.high >= inner) { outcome = 'reverted';  retraceTo = inner; break; }
-          if (bar.low  <= outer) { outcome = 'continued'; extTo     = outer; break; }
+          if (bar.high >= inner) { outcome = 'reverted';  retraceTo = inner; decidedBy = 'barrier'; break; }
+          if (bar.low  <= outer) { outcome = 'continued'; extTo     = outer; decidedBy = 'barrier'; break; }
         }
       }
       if (outcome === 'undecided') {
@@ -186,8 +189,10 @@ export function analyseWindow(session, ladder, ctx = {}) {
         extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
         // The frozen triple-barrier levels (TP=inner toward open, SL=outer away),
         // stored on EVERY decided touch so a strategy can price the trade
-        // regardless of which barrier hit.
-        innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6),
+        // regardless of which barrier hit. decidedBy says whether a barrier was
+        // actually reached ('barrier') or the outcome fell back to the close
+        // ('close') — the latter is marked to close, not credited a full target.
+        innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6), decidedBy,
         closeBeyond: isUp ? closePx > touchLvl : closePx < touchLvl,
         mfePct: +retracePct.toFixed(4),   // favourable excursion for a fade = reversion depth
         ...fb,
