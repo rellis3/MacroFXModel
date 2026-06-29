@@ -14,6 +14,8 @@ import { extractTouches } from './perLineStrategy.js';
 import { buildRangeLadder } from './rangeLineAnalyser.js';
 import { recordEntries, resolvePair, ledgerStats, refitFromLedger } from './entryLedgerV2.js';
 import { selectAlerts, alertKey, pruneCooldowns } from './alertV2Core.js';
+import { countWithin, confluenceBucket } from './confluenceCount.js';
+import { mergeConfluence } from './confluenceTest.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -221,6 +223,24 @@ console.log('[alertV2Core]');
   const bGrade = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg: { ...cfg, minGrade: 'B' }, cooldowns: {}, now });
   ok('minGrade B includes the B zone', bGrade.alerts.length === 2);
   ok('prune drops stale', Object.keys(pruneCooldowns({ old: now - 25 * 3600_000, fresh: now }, now)).length === 1);
+}
+
+// ── 7. confluence helpers ────────────────────────────────────────────────────
+console.log('[confluence]');
+{
+  ok('countWithin counts in-tol partners', countWithin(1.1000, [1.1001, 1.1004, 1.0980], 0.0005) === 2);
+  ok('countWithin tol boundary inclusive', countWithin(1.1000, [1.1005], 0.0005) === 1);
+  ok('countWithin ignores NaN/zero tol', countWithin(1.1, [NaN, 1.1], 0) === 0);
+  ok('bucket solo/pair/triple', confluenceBucket(0) === '0·solo' && confluenceBucket(1) === '1·pair' && confluenceBucket(3) === '2·triple+');
+  // mergeConfluence: sample-weighted pooling across pairs
+  const merged = mergeConfluence([
+    { buckets: [{ bucket: '0·solo', n: 10, reversionRate: 50, fadeExp: 0.0 }, { bucket: '2·triple+', n: 10, reversionRate: 70, fadeExp: 0.10 }] },
+    { buckets: [{ bucket: '0·solo', n: 30, reversionRate: 60, fadeExp: 0.02 }, { bucket: '2·triple+', n: 30, reversionRate: 80, fadeExp: 0.14 }] },
+  ]);
+  const solo = merged.find(b => b.bucket === '0·solo');
+  const trip = merged.find(b => b.bucket === '2·triple+');
+  ok('merge sample-weights reversion', solo.n === 40 && solo.reversionRate === +((50*10+60*30)/40).toFixed(1));
+  ok('merge weights expectancy', trip.n === 40 && trip.fadeExp === +((0.10*10+0.14*30)/40).toFixed(4));
 }
 
 console.log(`\n${failures === 0 ? '✅ all passed' : `❌ ${failures} failed`}`);

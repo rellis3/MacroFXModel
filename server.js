@@ -46,6 +46,7 @@ import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
+import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
@@ -7243,6 +7244,50 @@ app.get('/api/levels-v2/alert-config', async (req, res) => {
     res.json({ ok: true, cfg, telegramConfigured: !!(tg?.token && tg?.chatId) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// POST /api/levels-v2/confluence-test — does confluence amplify probability?
+// Streams M1 per pair, tags each touch by how many independent sources align at its
+// price, returns reversion rate + after-cost fade expectancy per confluence bucket
+// (pooled + per-pair). Read-only research — does NOT change the live policy.
+app.post('/api/levels-v2/confluence-test', async (req, res) => {
+  const b = req.body || {};
+  const pair = (b.pair || '').toLowerCase();
+  const pairs = pair ? [pair].filter(p => ASIA_INSTRUMENTS.includes(p)) : ASIA_INSTRUMENTS;
+  if (!pairs.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const opts = {
+    sources: Array.isArray(b.sources) ? b.sources : ['asia', 'monday'],
+    conflTolPips: parseFloat(b.conflTolPips) || 5,
+    lookbackDays: parseInt(b.lookbackDays) || 3,
+    minLookback: parseInt(b.minLookback) || 20,
+  };
+  const jobId = `cf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [k, j] of lv2Jobs) if (Date.now() - (j.startedAt || 0) > 30 * 60 * 1000) lv2Jobs.delete(k);
+  lv2Jobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const perPair = {}; const results = [];
+      let i = 0;
+      for (const p of pairs) {
+        lv2Jobs.set(jobId, { status: 'running', startedAt, currentPair: p, pairsDone: i, pairsTotal: pairs.length });
+        let packed = await loadM1ForPair(p, BT_M1_DIR);
+        if (packed && packed.n) {
+          const r = confluenceForPair(packed, _assetClassFor(p), { ...opts, instrument: p });
+          if (r) { perPair[p] = r.buckets; results.push(r); }
+        }
+        packed = null;
+        await new Promise(r => setImmediate(r));
+        i++;
+      }
+      if (!results.length) { lv2Jobs.set(jobId, { status: 'error', error: 'No M1 data', startedAt }); return; }
+      lv2Jobs.set(jobId, { status: 'done', startedAt, result: { ok: true, pooled: mergeConfluence(results), perPair, tolPips: opts.conflTolPips, lookbackDays: opts.lookbackDays } });
+    } catch (e) {
+      console.error('[confluence-test]', e?.message, e?.stack ?? '');
+      lv2Jobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
 app.post('/api/levels-v2/alert-config', async (req, res) => {
   try {
     const b = req.body || {};

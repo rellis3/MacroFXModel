@@ -76,8 +76,23 @@
     <button id="btnLoad" class="alt">↻ Load current</button>
     <label class="toggle on" id="autoLbl" style="cursor:pointer;"><input type="checkbox" id="autoChk" checked style="vertical-align:middle;"> auto-load</label>
     <button id="btnAlerts" class="alt">⚙ Alerts</button>
+    <button id="btnConfl" class="alt">🔗 Confluence test</button>
     <span id="updated" class="status"></span>
     <span id="status" class="status"></span>
+  </div>
+
+  <div class="panel" id="conflPanel" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <b>🔗 Does confluence amplify probability?</b>
+      <span class="muted">backtest · reversion + after-cost fade edge by # of aligning sources</span>
+    </div>
+    <div style="margin-bottom:10px;">
+      <button id="conflRun">Run backtest (M1, all pairs)</button>
+      <label class="muted" style="margin-left:10px;">tol pips <input id="conflTol" type="number" value="5" style="width:55px;"></label>
+      <label class="muted" style="margin-left:6px;">lookback days <input id="conflDays" type="number" value="3" style="width:55px;"></label>
+      <span id="conflStatus" class="status"></span>
+    </div>
+    <div id="conflResult"><div class="muted">— run to compare solo vs 2-source vs 3+ zones —</div></div>
   </div>
 
   <div class="panel" id="alertPanel" style="display:none;">
@@ -403,6 +418,42 @@ async function loadAlertCfg() {
   } catch (e) { $('alStatus').textContent = 'load error: ' + e.message; }
 }
 $('btnAlerts').onclick = () => { const p = $('alertPanel'); const show = p.style.display === 'none'; p.style.display = show ? '' : 'none'; if (show) loadAlertCfg(); };
+
+// ── Confluence backtest ───────────────────────────────────────────────────────
+$('btnConfl').onclick = () => { const p = $('conflPanel'); p.style.display = p.style.display === 'none' ? '' : 'none'; };
+function renderConfl(r) {
+  const fmt = rows => `<table><thead><tr><th>Confluence</th><th>n</th><th>Reversion%</th><th>Fade edge (after cost)</th></tr></thead><tbody>${
+    rows.map(b => `<tr><td>${b.bucket}</td><td class="mono">${b.n}</td><td class="mono">${b.reversionRate}%</td>
+      <td class="mono" style="color:${b.fadeExp >= 0 ? 'var(--grn)' : 'var(--red)'}">${b.fadeExp >= 0 ? '+' : ''}${b.fadeExp.toFixed(3)}%</td></tr>`).join('')}</tbody></table>`;
+  const solo = r.pooled.find(b => b.bucket === '0·solo');
+  const trip = r.pooled.find(b => b.bucket === '2·triple+');
+  const verdict = (solo && trip && trip.n > 20 && solo.n > 20)
+    ? (trip.fadeExp > solo.fadeExp + 0.01
+        ? `<span style="color:var(--grn)">✓ Confluence amplifies: 3+ source zones (+${trip.fadeExp.toFixed(3)}%) beat solo (+${solo.fadeExp.toFixed(3)}%).</span>`
+        : `<span style="color:var(--amb)">~ No clear amplification: 3+ (${trip.fadeExp.toFixed(3)}%) vs solo (${solo.fadeExp.toFixed(3)}%) — the lesson doesn't hold here.</span>`)
+    : '<span class="muted">thin samples — inconclusive</span>';
+  $('conflResult').innerHTML = `<div style="margin-bottom:8px;">${verdict}</div>
+    <div class="muted" style="margin-bottom:6px;">pooled across pairs · tol ${r.tolPips}p · lookback ${r.lookbackDays}d</div>${fmt(r.pooled)}`;
+}
+async function pollConfl(jobId) {
+  try {
+    const r = await fetch(`/api/levels-v2/status/${jobId}`); const j = await r.json();
+    if (j.status === 'running') { $('conflStatus').textContent = `running… ${j.currentPair || ''} ${j.pairsDone || 0}/${j.pairsTotal || '?'}`; $('conflStatus').style.color = 'var(--amb)'; setTimeout(() => pollConfl(jobId), 1500); }
+    else if (j.status === 'done') { $('conflStatus').textContent = 'done'; $('conflStatus').style.color = 'var(--grn)'; renderConfl(j); }
+    else { $('conflStatus').textContent = 'failed: ' + (j.error || '?'); $('conflStatus').style.color = 'var(--red)'; $('conflRun').disabled = false; }
+  } catch (e) { $('conflStatus').textContent = 'poll error: ' + e.message; $('conflRun').disabled = false; }
+}
+$('conflRun').onclick = async () => {
+  $('conflRun').disabled = true; $('conflStatus').textContent = 'starting…'; $('conflStatus').style.color = 'var(--amb)';
+  try {
+    const body = { conflTolPips: parseFloat($('conflTol').value) || 5, lookbackDays: parseInt($('conflDays').value) || 3 };
+    const r = await fetch('/api/levels-v2/confluence-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!j.jobId) { $('conflStatus').textContent = 'rejected: ' + (j.error || '?'); $('conflRun').disabled = false; return; }
+    pollConfl(j.jobId);
+  } catch (e) { $('conflStatus').textContent = 'error: ' + e.message; $('conflRun').disabled = false; }
+  setTimeout(() => { $('conflRun').disabled = false; }, 3000);
+};
 $('alSave').onclick = async () => {
   const cfg = {
     enabled: $('alEnabled').checked, minGrade: $('alGrade').value,
