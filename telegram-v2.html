@@ -30,6 +30,19 @@
   .kpi b { font-size:18px; } .kpi span { font-size:11px; color:var(--text2); }
   a { color:var(--blu); text-decoration:none; }
   .status { font-size:12px; color:var(--text2); }
+  /* per-pair cards */
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--bd); border-radius:12px; padding:12px 12px 6px; }
+  .card.long { border-left:3px solid var(--grn); } .card.short { border-left:3px solid var(--red); }
+  .chead { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .chead .sym { font-weight:700; font-size:15px; }
+  .chead .px { color:var(--text2); font-size:12px; }
+  .cbadges { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+  .badge { font-size:10px; padding:1px 6px; border-radius:5px; background:var(--panel2); border:1px solid var(--bd); color:var(--text2); }
+  .card table { font-size:12px; } .card th,.card td { padding:5px 5px; }
+  .card .cell { font-size:10px; color:var(--text2); }
+  .toggle { font-size:11px; color:var(--text2); cursor:pointer; user-select:none; margin-left:10px; }
+  .toggle.on { color:var(--grn); }
 </style>
 </head>
 <body>
@@ -50,7 +63,7 @@
 
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <b>Live v2 entries</b>
+      <span><b>Live v2 entries</b><span id="viewToggle" class="toggle on" title="Toggle cards / list view">▦ cards</span></span>
       <span class="muted" id="entriesMeta"></span>
     </div>
     <div id="entries"><div class="muted">— nothing loaded —</div></div>
@@ -89,14 +102,57 @@ function renderPolicy(p) {
     <div class="muted mono" style="margin-top:8px;">split ${p.splitDate || '?'} · built ${p.builtAt || '?'}</div>`;
 }
 
+let _view = 'cards';          // 'cards' | 'list'
+let _lastEntries = null;      // cache so the toggle can re-render without refetching
+
+const GRADE_RANK = { 'A+': 4, A: 3, B: 2, C: 1, SKIP: 0 };
+const bestGrade = list => list.reduce((b, e) => (GRADE_RANK[e.grade] ?? 0) > (GRADE_RANK[b] ?? 0) ? e.grade : b, 'C');
+
 function renderEntries(meta, entries) {
   $('entriesMeta').textContent = meta?.policy ? `policy ${meta.policy.nCells} cells · built ${meta.policy.builtAt||'?'}` : '';
-  const pairs = Object.keys(entries || {});
+  _lastEntries = entries || {};
+  const pairs = Object.keys(_lastEntries);
   if (!pairs.length) { $('entries').innerHTML = '<div class="muted">— no live entries (run Refresh after a policy is learned) —</div>'; return; }
+  $('entries').innerHTML = _view === 'cards' ? renderCards(_lastEntries) : renderList(_lastEntries);
+}
+
+// Per-pair cards — one card per pair, levels sorted by edge (skip empty pairs).
+function renderCards(entries) {
+  const cards = [];
+  for (const sym of Object.keys(entries).sort()) {
+    const blk = entries[sym]; const list = (blk?.data || []).slice().sort((a, b) => b.expectancy - a.expectancy);
+    if (!list.length) continue;
+    const px = blk?.currentPrice;
+    const longs = list.filter(e => e.direction === 'long').length;
+    const shorts = list.length - longs;
+    const tilt = longs > shorts ? 'long' : shorts > longs ? 'short' : '';
+    const rows = list.map(e => `<tr>
+        <td class="${e.direction}">${e.direction === 'long' ? '↑' : '↓'}</td>
+        <td class="mono">${e.price}</td>
+        <td class="${gradeCls(e.grade)}">${e.grade}</td>
+        <td class="mono">+${Number(e.expectancy).toFixed(3)}%</td>
+        <td>${e.decision}</td>
+        <td class="mono">${e.sl} / ${e.tp}</td>
+        <td class="cell mono" title="cell ${e.cell} · n=${e.n} · R:R 1:${e.rrRatio}">${e.n}n</td>
+      </tr>`).join('');
+    cards.push(`<div class="card ${tilt}">
+      <div class="chead"><span class="sym">${sym}</span><span class="px mono">${px != null ? px : ''}</span></div>
+      <div class="cbadges">
+        <span class="badge">${list.length} levels</span>
+        <span class="badge">${longs}↑ / ${shorts}↓</span>
+        <span class="badge ${gradeCls(bestGrade(list))}">best ${bestGrade(list)}</span>
+      </div>
+      <table><thead><tr><th>Dir</th><th>Level</th><th>Gr</th><th>Edge</th><th>Play</th><th>SL / TP</th><th>n</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`);
+  }
+  return cards.length ? `<div class="cards">${cards.join('')}</div>` : '<div class="muted">— policy loaded but no near-price entries right now —</div>';
+}
+
+// Flat list (the original giant table) — kept behind the toggle.
+function renderList(entries) {
   let rows = '';
-  for (const sym of pairs) {
-    const blk = entries[sym]; const list = blk?.data || [];
-    for (const e of list) {
+  for (const sym of Object.keys(entries).sort()) {
+    for (const e of (entries[sym]?.data || [])) {
       rows += `<tr>
         <td class="mono">${sym}</td>
         <td class="${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</td>
@@ -111,7 +167,7 @@ function renderEntries(meta, entries) {
       </tr>`;
     }
   }
-  $('entries').innerHTML = rows
+  return rows
     ? `<table><thead><tr><th>Pair</th><th>Dir</th><th>Level</th><th>Grade</th><th>Edge</th><th>n</th><th>Play</th><th>R:R</th><th>SL / TP</th><th>Cell</th></tr></thead><tbody>${rows}</tbody></table>`
     : '<div class="muted">— policy loaded but no near-price entries right now —</div>';
 }
@@ -143,6 +199,13 @@ $('btnRefresh').onclick = async () => {
   $('btnRefresh').disabled = false;
 };
 $('btnLoad').onclick = loadCurrent;
+$('viewToggle').onclick = () => {
+  _view = _view === 'cards' ? 'list' : 'cards';
+  const t = $('viewToggle');
+  t.textContent = _view === 'cards' ? '▦ cards' : '☰ list';
+  t.classList.toggle('on', _view === 'cards');
+  if (_lastEntries) $('entries').innerHTML = _view === 'cards' ? renderCards(_lastEntries) : renderList(_lastEntries);
+};
 loadCurrent();
 </script>
 </body>
