@@ -371,21 +371,36 @@ function setAuto(on) {
 }
 
 // ── Learn / refresh ──────────────────────────────────────────────────────────
-async function poll(jobId, onDone) {
+// Poll the STABLE learn-status key (KV-backed) so progress survives page refresh
+// and server restarts — no jobId to lose. The run itself resumes from cached
+// per-pair touches, so it never re-loads all M1 from scratch.
+let _learnPoll = null;
+async function checkLearn() {
   try {
-    const r = await fetch(`/api/levels-v2/status/${jobId}`); const j = await r.json();
-    if (j.status === 'running') { setStatus(`learning… ${j.currentPair || ''} ${j.pairsDone || 0}/${j.pairsTotal || '?'} (${j.elapsed||0}s)`, 'var(--amb)'); setTimeout(() => poll(jobId, onDone), 1500); }
-    else if (j.status === 'done') onDone(j);
-    else setStatus('learn failed: ' + (j.error || '?'), 'var(--red)');
-  } catch (e) { setStatus('poll error: ' + e.message, 'var(--red)'); }
+    const r = await fetch('/api/levels-v2/learn-status'); const j = await r.json();
+    const s = j.status;
+    if (j.running || s?.state === 'running') {
+      $('btnLearn').disabled = true;
+      setStatus(`learning… ${s?.currentPair || ''} ${s?.pairsDone ?? 0}/${s?.pairsTotal ?? '?'}${s?.fromCache ? ` · ${s.fromCache} cached` : ''}`, 'var(--amb)');
+      if (!_learnPoll) _learnPoll = setInterval(checkLearn, 2500);
+      return true;
+    }
+    // not running
+    if (_learnPoll) { clearInterval(_learnPoll); _learnPoll = null; }
+    $('btnLearn').disabled = false;
+    if (s?.state === 'done') { $('btnLearn').textContent = '↻ Re-learn policy'; setStatus(`policy built · ${s.nCells} cells${s.fromCache ? ` · ${s.fromCache}/${s.pairs} cached` : ''}`, 'var(--grn)'); }
+    else if (s?.state === 'stalled') setStatus('⚠ last learn stalled — click Re-learn to resume from cache', 'var(--amb)');
+    else if (s?.state === 'error') setStatus('learn failed: ' + (s.error || '?') + ' — click to retry', 'var(--red)');
+    return false;
+  } catch { return false; }
 }
 $('btnLearn').onclick = async () => {
-  $('btnLearn').disabled = true; setStatus('starting M1 learn…', 'var(--amb)');
+  $('btnLearn').disabled = true; setStatus('starting M1 learn (resumes from cache)…', 'var(--amb)');
   try {
     const r = await fetch('/api/levels-v2/learn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     const j = await r.json();
-    if (!j.jobId) { setStatus('learn rejected: ' + (j.error || '?'), 'var(--red)'); $('btnLearn').disabled = false; return; }
-    poll(j.jobId, (done) => { setStatus(`policy built · ${done.nCells} cells`, 'var(--grn)'); renderPolicy(done); $('btnLearn').disabled = false; });
+    if (!j.ok) { setStatus('learn rejected: ' + (j.error || '?'), 'var(--red)'); $('btnLearn').disabled = false; return; }
+    setTimeout(checkLearn, 800);
   } catch (e) { setStatus('learn error: ' + e.message, 'var(--red)'); $('btnLearn').disabled = false; }
 };
 $('btnRefresh').onclick = async () => {
@@ -472,6 +487,7 @@ $('alSave').onclick = async () => {
 
 setAuto(localStorage.getItem('tgv2_auto') !== '0');
 loadCurrent();
+checkLearn();   // reflect an in-progress/done learn across page refreshes (no re-run needed)
 </script>
 </body>
 </html>

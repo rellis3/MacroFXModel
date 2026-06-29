@@ -72,6 +72,7 @@ const _CF_EXACT = new Set([
   'policy_v2',              // Telegram-v2 frozen confidence policy — learned from a full M1 run (minutes); MUST survive redeploys or every restart wipes it
   'ledger_v2',              // Telegram-v2 daily-learning ledger — accumulated live signal outcomes; cannot be rebuilt, must survive redeploys
   'tg_v2_alert_cfg',        // Telegram-v2 alert config (own config, separate from v1 ai_alert_cfg) — user-set, must survive redeploys
+  'policy_v2_status',       // Telegram-v2 learn-job progress/state — so the page shows it across page refreshes + server restarts (decoupled from the in-memory jobId)
   'dyn_anchor_config',      // DynAnchor bot settings — must survive redeploys
   'dyn_anchor_credentials', // DynAnchor bot MT5 credentials — must survive redeploys
   'macro_equity_config',       // Macro Equity bot settings — must survive redeploys
@@ -91,6 +92,10 @@ const _CF_EXACT = new Set([
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart
   if (key.startsWith('ai_entries_') || key.startsWith('ai_cron_')) return false;
+  // v2_touch_* are per-pair extracted touches cached for the Telegram-v2 learn —
+  // expensive to recompute (full M1 reload), so persist them to resume a learn
+  // that died mid-run instead of reloading all 26 pairs from scratch.
+  if (key.startsWith('v2_touch_')) return true;
   // fredhistory_* caches (90-day yield series for spread charts) are expensive to rebuild
   // (concurrent FRED requests cause rate-limits) so persist them in CF KV
   if (key.startsWith('fredhistory_')) return true;
