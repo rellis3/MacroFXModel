@@ -63,6 +63,13 @@
     <div id="survNote" class="muted" style="margin-top:6px"></div>
   </div>
 
+  <div class="card" id="rigorCard" style="display:none">
+    <h2>Rigor — walk-forward &amp; stress (real vs artifact)</h2>
+    <div class="muted" style="margin-bottom:8px">The headline Sharpe is breadth-inflated; THIS is how you judge real edge. <b>IS→OOS degradation</b> should hold (&gt;~0.5). <b>Cost stress</b> should stay positive at 2–3× spread. <b>Per-year</b> should be broadly green. <b>Deflated Sharpe</b> discounts for how many settings were tried — &gt;~95% means it clears its own search noise. A believable per-trade edge here looks like a low Sharpe that <i>survives</i> all four, not a high one that collapses.</div>
+    <div id="rigorChips"></div>
+    <div id="rigorTables"></div>
+  </div>
+
   <div class="card" id="perPairCard" style="display:none">
     <h2>Per-pair (OOS)</h2>
     <table id="perPair"><thead><tr><th>Pair</th><th>Trades</th><th>Win%</th><th>Expectancy</th><th>PF</th><th>Sharpe</th><th>MaxDD</th></tr></thead><tbody></tbody></table>
@@ -158,6 +165,29 @@ function render(d) {
       [`Max DD @ ${svt.target||10}% vol`, `<span class="neg">${fmt(svt.maxDD,1)}%</span>`],
     ].map(([k,v]) => `<span class="chip">${k} <b>${v}</b></span>`).join('');
     $('survNote').textContent = `Kept pairs whose OOS expectancy clears ${sv.margin}× their own round-trip spread on ≥${sv.minTrades} trades. Full-book Sharpe ${fmt(pf.sharpe,2)} → survivors ${fmt(sp.sharpe,2)} on ${sv.count} pairs.`;
+  }
+
+  // Rigor — the forecast-engine's real-vs-artifact battery.
+  const rg = d.rigor, df = d.deflated;
+  if (rg) {
+    const io = rg.isVsOos || {}, wf = rg.walkForward || {};
+    $('rigorCard').style.display = '';
+    $('rigorChips').innerHTML = [
+      ['Walk-forward Sharpe', `<span class="${cls(wf.overall?.sharpe)}">${fmt(wf.overall?.sharpe,2)}</span>`],
+      ['IS Sharpe', fmt(io.is?.sharpe,2)],
+      ['OOS Sharpe', `<span class="${cls(io.oos?.sharpe)}">${fmt(io.oos?.sharpe,2)}</span>`],
+      ['OOS÷IS degradation', io.degradation!=null ? `<span class="${io.degradation>=0.5?'pos':'neg'}">${fmt(io.degradation,2)}</span>` : '—'],
+      ...(df ? [['Deflated Sharpe (DSR)', `<span class="${df.dsr>=0.95?'pos':'neg'}">${(df.dsr*100).toFixed(0)}%</span>`]] : []),
+    ].map(([k,v]) => `<span class="chip">${k} <b>${v}</b></span>`).join('');
+    const tbl = (title, head, rows) => rows && rows.length
+      ? `<div style="margin-top:10px;font-weight:600">${title}</div><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : '';
+    const cs = (rg.costSensitivity||[]).map(c => `<tr><td>${c.mult}×</td><td class="${c.sharpe>0?'pos':'neg'}">${fmt(c.sharpe,2)}</td><td>${fmt(c.volTarget?.cagr,1)}%</td></tr>`);
+    const py = (rg.perYear||[]).map(y => `<tr><td>${y.year}</td><td class="${y.sharpe>0?'pos':'neg'}">${fmt(y.sharpe,2)}</td><td class="mut">${y.trades}</td></tr>`);
+    const wff = (wf.folds||[]).map(f0 => `<tr><td>${f0.from}</td><td>${f0.to}</td><td class="${f0.sharpe>0?'pos':'neg'}">${fmt(f0.sharpe,2)}</td><td class="mut">${f0.trades}</td></tr>`);
+    $('rigorTables').innerHTML =
+      tbl('Cost stress (OOS)', ['cost ×','Sharpe','CAGR@10%'], cs) +
+      tbl('Per-year (OOS)', ['year','Sharpe','trades'], py) +
+      tbl('Walk-forward folds', ['from','to','Sharpe','trades'], wff);
   }
 
   // Per-pair
