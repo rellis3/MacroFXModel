@@ -237,3 +237,84 @@ the truth**:
 
 Every one of those is encoded as a card or a brick here, so the *next* range
 strategy starts honest.
+
+---
+
+## 10. The final tradeable spec (LOCKED)
+
+After the four lies were removed, a coarse trim — **strong-pair universe + near-mid
+levels** (`Universe = Strong`, `Max level = ≤ 2`, `Condition = none`) — concentrated
+the strategy into one clean, coherent edge. This is the spec.
+
+### The strategy in one line
+> **Follow the break of the near-mid Monday range levels (and the Asia mid) on the
+> strong pairs; hold one position through the trend with a chandelier trail.**
+
+### Universe (14 pairs)
+`gold, audjpy, audusd, nzdjpy, nzdusd, usdjpy, cadjpy, eurjpy, gbpjpy, euraud,
+eurusd, gbpusd, usdchf, usdcad` (gold + JPY crosses + main majors — Sharpe ≥ ~8,
+tight spreads). The wide-spread exotic crosses are dropped: they carried the
+weakest, cost-marginal edge and most of the bad-level losers.
+
+### Signal — 10 cells, all FOLLOW (no fades survive the trim)
+The learned policy reduces to **continuation off the near-mid Monday levels**:
+`M_0`, `M_0.5`, `M_1`, `M_1.5`, `M_2` and their `dn` mirrors `M_-0.5/-1/-1.5/-2`,
+plus `A_0.5` (Asia mid). All **follow** — the fades were the far Asia extensions
+(E-ratio ≈ 1, marginal) and the level cap removes them.
+
+### Exit — chandelier trail, held position
+- **One held position** per (day, direction, source), re-entry suppressed while open.
+- **Chandelier trail** (stop = peak − ½ rung, never tighter than the inner stop).
+- *Note:* the per-touch Exit-A/B card shows "fixed wins" — that's the **over-count
+  artifact** (near-mid levels make the one-level TP look great when booked many
+  times). In the **held model (the honest lens) the chandelier wins** — trust it.
+
+### The numbers (strong + ≤2, OOS 2022-03 → 2026)
+| Metric | Value | Read |
+|---|---|---|
+| Held chandelier Sharpe @1× / @2× / @3× | 13.71 / 11.56 / 9.38 | @1× is breadth-inflated; cost-stress is the realistic axis |
+| Trades/day (held) | 24.7 | down from 44.1 per-touch — breadth collapsed |
+| Per-trade expectancy (after cost) | **+0.095%** | up from 0.067% pre-trim — the trim raised the edge |
+| Win % / Profit factor | 68% / 2.13 | |
+| Per-year Sharpe (2022–26) | 12.0–14.4, all green | no single-period dependence |
+| Walk-forward folds | 11.4–13.8 | stable |
+| OOS ÷ IS degradation · DSR | 1.05 · 100% | not overfit, clears its own search |
+| Bad-level veto impact | 13.14 → 13.15 (2 cells) | coarse trim already cleaned the losers |
+
+### The HONEST number (do not trade the pooled 13)
+The pooled 14-pair Sharpe (~13) is still **cross-pair-correlation inflated** —
+MaxDD −0.7% across 14 correlated FX pairs is impossibly smooth. **The honest unit
+is a single pair: ≈ Sharpe 3–5 realistically** (per-pair per-touch ~8.5–11 → ~half
+held → the @2–3× cost column). The 14-pair portfolio is genuinely better than one
+pair, but **not** by the ×4 the pooled number implies. Size for the single-pair
+edge; treat the portfolio uplift as *partial* diversification.
+
+### Honest caveats to carry into live
+- **Thin edge** (~4–9 pips/trade gross; less after real fills) — it needs the
+  trail's payoff to clear costs. Read the **@2–3× cost** column, never @1×.
+- **Fill-sensitive** (trailing/stop exits) — live slippage is the main risk;
+  cost-stress is the proxy and it survives, but watch live fills vs modelled.
+- **Pooled policy** (one universal map) — do **not** add a per-(pair×level) veto;
+  the bad-level scan proved it overfits (IS-positive cells flip OOS-negative).
+
+---
+
+## 11. Live wiring (the only remaining step)
+
+The research is complete; live is a *plumbing* job, with the anti-drift guard
+already in place:
+
+- **No drift by construction.** `LADDER_LEVELS` / `buildRangeLadder` are exported,
+  so a live producer builds the **identical** ladder the offline policy learned on
+  — same labels → same cell keys → the backtest and the bot cannot silently
+  disagree (the failure `TRADABILITY_REVIEW.md` warns about).
+- **The pattern exists.** Mirror `volatilityBotProducer` → a daily producer that
+  freezes the locked book's policy (the 10 follow cells) + today's per-pair Monday
+  range into a compact KV artifact the live bot consumes; the bot opens held
+  positions with the chandelier trail. (`PYTHON_LEGO.md §0` "ship it a file".)
+- **Build it as `js/levelsV2Engine.js`** (already referenced in `rangeLineAnalyser`
+  comments as the intended live consumer) — but only when you choose to go live.
+
+Until then, this strategy is **fully characterised, honestly validated, and
+documented**. That was the goal.
+

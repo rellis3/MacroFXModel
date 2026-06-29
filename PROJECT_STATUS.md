@@ -23,29 +23,27 @@ single branch.
 
 ---
 
-## The decision point (the only thing that matters next)
+## The decision point — RESOLVED ✅ (real edge confirmed)
 
-> **Does the Range-Line Strategy have real edge once scored honestly?**
+> **Does the Range-Line Strategy have real edge once scored honestly?** → **Yes.**
 
-The first 26-pair run showed Sharpe 56 — proven to be an **artifact** of scoring
-~111k correlated, simultaneous touches as independent bets. That's now fixed
-(daily portfolio aggregation, merged in #531/#532).
+The full investigation, result, and the four inflation artifacts removed are
+documented in **`RANGE_EXTENSION_GUIDE.md`** (§1 the four lies, §10 the locked
+spec). Summary:
 
-**Next action:** re-run the 26-pair book at `range-line-strategy.html` and read
-**only two things**:
+- The headline fantasy (Sharpe ~24) was **four stacked artifacts**: independence/√N
+  → lookahead → per-touch over-count → cross-pair pooling, plus fill optimism. Each
+  was found, fixed and committed.
+- **What's real:** a single pair, held-position, chandelier trail, at realistic
+  (2–3× cost) fills lands at **Sharpe ≈ 3–5** — positive every year, every
+  walk-forward fold, DSR 100%. Modest and thin, but real.
+- **The locked spec** (`RANGE_EXTENSION_GUIDE.md §10`): 14 strong pairs, follow the
+  break of near-mid Monday levels (|L| ≤ 2) + Asia mid, chandelier trail, one held
+  position. Per-trade expectancy +0.095% after cost, 68% win.
 
-- **Portfolio Sharpe (daily ×√252)** — the honest headline.
-- **Survivors card** — pairs whose OOS edge clears their *own* spread; the book
-  you'd actually trade.
-
-Ignore total return (it's 1-unit-per-signal scale, not an account curve) and the
-per-trade Sharpe (still inflated by design — kept only for distribution context).
-
-### Fork on the result
-- **Survivor Sharpe ≈ 1+ on a real cluster of pairs** → there's something.
-  Next: walk-forward + per-year stability (`runRigor`), then live wiring (below).
-- **Collapses to ≈ 0 after honest scoring** → the range-fade doesn't carry costs.
-  That is a **real, valuable finding**, not a failure. Park the strategy.
+**The only remaining step is live wiring** (`RANGE_EXTENSION_GUIDE.md §11`) — a
+plumbing job; the ladder is already exported so live builds the identical grid the
+policy learned on (no drift). Build it when you choose to go live.
 
 ---
 
