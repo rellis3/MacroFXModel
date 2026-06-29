@@ -16,7 +16,7 @@ import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize } from './instrumentRegistry.js';
-import { extractTouches, runPerLine, runRigor, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 
 const PREFIX   = 'forecast-analysis';
 const M1_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
@@ -245,7 +245,7 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
       withBarriers++;
       touchesByPair[pair] = touches;
       const ac = assetClassFor(pair);
-      costByPair[pair] = DEFAULT_COST_PCT[ac] ?? DEFAULT_COST_PCT.fx;
+      costByPair[pair] = costForPair(pair, ac);              // realistic per-pair round-trip spread
       slipByPair[pair] = DEFAULT_SLIP_PCT[ac] ?? DEFAULT_SLIP_PCT.fx;
     }
     onLog(`${pair}: ${touches.length} tradeable touches`);
