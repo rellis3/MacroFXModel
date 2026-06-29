@@ -84,6 +84,13 @@
     <div id="exitABVerdict" class="muted" style="margin-top:6px"></div>
   </div>
 
+  <div class="card" id="heldCard" style="display:none">
+    <h2>Held-position model — one trade through the trend (the HONEST Sharpe)</h2>
+    <div class="muted" style="margin-bottom:8px">How you'd actually trade it: a follow signal opens <b>one</b> position per day/direction/source; it trails to exit; later same-direction touches while it's open are <b>suppressed</b> (no re-entry). This collapses the per-touch over-count, so <b>trades/day falls</b> and the Sharpe is finally tradeable — not breadth-inflated. Compare trades/day here vs the Exit-A/B card above. <code>fixed-held</code> = enter at first follow, one-level TP; <code>structural</code>/<code>chandelier</code> = trail. Judge on Sharpe @2–3× cost.</div>
+    <table id="held"><thead><tr><th>Exit</th><th>Sharpe @1×</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Payoff</th><th>CAGR@10%</th><th>MaxDD@10%</th></tr></thead><tbody></tbody></table>
+    <div id="heldVerdict" class="muted" style="margin-top:6px"></div>
+  </div>
+
   <div class="card" id="perPairCard" style="display:none">
     <h2>Per-pair (OOS)</h2>
     <table id="perPair"><thead><tr><th>Pair</th><th>Trades</th><th>Win%</th><th>Expectancy</th><th>PF</th><th>Sharpe</th><th>MaxDD</th></tr></thead><tbody></tbody></table>
@@ -243,6 +250,29 @@ function render(d) {
     $('exitABVerdict').innerHTML = winner==='fixed'
       ? `No trail beat the fixed exit on Sharpe @2× cost — keep the fixed barrier. The trend the E-ratio saw doesn't survive trailing fills.`
       : `<b>${LBL[winner]}</b> wins: Sharpe @2× ${fmt(best,2)} vs Fixed ${fmt(fixed2,2)}, trades/day ${ab.fixed.tradesPerDay}→${w.tradesPerDay} (breadth deflating), payoff ${ab.fixed.payoff}→${w.payoff}. Build it.`;
+  }
+
+  // Held-position model — the honest trades/day + Sharpe.
+  const hp = d.heldPosition;
+  if (hp && (hp.struct || hp.chand || hp.fixedHeld)) {
+    $('heldCard').style.display = '';
+    const HLBL = { fixedHeld:'Fixed-held', struct:'Structural trail', chand:'Chandelier' };
+    const ss = (m, mult) => { const c = (m && m.costStress||[]).find(x => x.mult===mult); return c ? c.sharpe : null; };
+    const rows = ['fixedHeld','struct','chand'].map(k => hp[k] && hp[k].trades ? [k, hp[k]] : null).filter(Boolean);
+    let winner = null, best = -1e9;
+    for (const [k,m] of rows) { const s = ss(m,2); if (s != null && s > best) { best = s; winner = k; } }
+    document.querySelector('#held tbody').innerHTML = rows.map(([k,m]) =>
+      `<tr${k===winner?' style="font-weight:700"':''}><td>${HLBL[k]}${k===winner?' ◀':''}</td>
+        <td>${fmt(m.sharpe,2)}</td>
+        <td class="${(ss(m,2)??0)>0?'pos':'neg'}">${fmt(ss(m,2),2)}</td>
+        <td class="${(ss(m,3)??0)>0?'pos':'neg'}">${fmt(ss(m,3),2)}</td>
+        <td class="mut">${m.tradesPerDay}</td><td>${m.winRate}%</td><td>${m.payoff??'—'}</td>
+        <td class="${(m.cagr??0)>=0?'pos':'neg'}">${fmt(m.cagr,1)}%</td><td class="neg">${fmt(m.maxDD,1)}%</td></tr>`).join('');
+    const abFixedTPD = d.exitAB?.fixed?.tradesPerDay;
+    const w = hp[winner];
+    $('heldVerdict').innerHTML = winner
+      ? `Trades/day collapse from <b>${abFixedTPD ?? '?'}</b> (per-touch) to <b>${w.tradesPerDay}</b> here — the fake breadth is gone, so <b>${HLBL[winner]}</b>'s Sharpe @2× ${fmt(best,2)} (@3× ${fmt(ss(w,3),2)}) is the first <b>tradeable</b> number. Read it against the forecast engine's "believable &lt; 2" bar.`
+      : `No held trades.`;
   }
 
   // Per-pair

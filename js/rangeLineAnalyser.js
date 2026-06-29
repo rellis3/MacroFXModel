@@ -344,6 +344,72 @@ export function runExitAB(touchesByPair, { policy, splitDate, costByPair = {}, s
   return out;
 }
 
+// Pack a {date,pnl}[] trade list (+ per-cost-mult variants) into the same stats
+// shape runExitAB/runHeldPosition report.
+function _bookFromTrades(trades, byMult, costMults) {
+  const n = trades.length;
+  if (!n) return { trades: 0 };
+  let wins = 0, grossWin = 0, grossLoss = 0;
+  for (const t of trades) { if (t.pnl > 0) { wins++; grossWin += t.pnl; } else grossLoss += -t.pnl; }
+  const port = portfolioStats(_toDaily(trades));
+  const days = new Set(trades.map(t => t.date)).size, losses = n - wins;
+  return {
+    sharpe: port.sharpe, psr: port.psr, cagr: port.volTarget?.cagr ?? null, maxDD: port.volTarget?.maxDD ?? null,
+    trades: n, tradesPerDay: days ? +(n / days).toFixed(1) : 0,
+    winRate: +(wins / n * 100).toFixed(1),
+    expectancy: +(trades.reduce((s, x) => s + x.pnl, 0) / n).toFixed(4),
+    payoff: (losses && grossLoss > 1e-9) ? +(((grossWin / wins) / (grossLoss / losses))).toFixed(2) : null,
+    costStress: costMults.map(mult => ({ mult, sharpe: portfolioStats(_toDaily(byMult[mult] || [])).sharpe })),
+  };
+}
+
+// ── Held-position model: ONE trade through the trend (the honest trades/day) ───
+// The exit A/B prices every touch independently, so a trend is booked once per
+// level entry — the breadth never deflates. This instead models how you'd really
+// trade it: a follow signal opens ONE position per (day, direction, source=Asia
+// |Monday); it trails to exit; later same-direction follow touches while it's open
+// are SUPPRESSED (no re-entry). Entry = the EARLIEST follow touch in that group;
+// its trail PnL (fStruct/fChand, or fixed one-level for `fixedHeld`) IS the held
+// trade. Fade decisions stay one-per-touch (reversion doesn't fragment a trend).
+// Collapsing the overlap is what finally makes trades/day — and the Sharpe —
+// honest. (Conservative: one entry per direction/day; a re-entry after an early
+// stop is not modelled — that only lowers the count further.)
+export function runHeldPosition(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, costMults = [1, 2, 3] } = {}) {
+  if (!policy || !splitDate) return null;
+  const srcOf = t => (t.name && t.name[0] === 'A') ? 'A' : 'M';
+  const out = {};
+  for (const mode of ['fixedHeld', 'struct', 'chand']) {
+    const trades = [], byMult = Object.fromEntries(costMults.map(m => [m, []]));
+    const priceFollow = (t, c, s) => {
+      if (mode === 'fixedHeld') return pnlFor(t, 'follow', { costPct: c, slipPct: s });
+      const g = mode === 'struct' ? t.fStruct : t.fChand;
+      return g != null ? +(g - (c + s)).toFixed(5) : pnlFor(t, 'follow', { costPct: c, slipPct: s });
+    };
+    for (const [pair, touches] of Object.entries(touchesByPair)) {
+      const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+      const follows = new Map();                 // `${date}|${side}|${src}` → earliest follow touch
+      for (const t of touches) {
+        if (t.date < splitDate) continue;
+        const p = policy[t.cell]; if (!p || p.decision === 'skip') continue;
+        if (p.decision === 'fade') {             // fade: one trade per touch (fixed barrier)
+          trades.push({ date: t.date, pnl: pnlFor(t, 'fade', { costPct: cost, slipPct: slip }) });
+          for (const mult of costMults) byMult[mult].push({ date: t.date, pnl: pnlFor(t, 'fade', { costPct: cost * mult, slipPct: slip * mult }) });
+          continue;
+        }
+        const key = `${t.date}|${t.side}|${srcOf(t)}`;     // one held follow position per group
+        const cur = follows.get(key);
+        if (!cur || (t.fillTime ?? Infinity) < (cur.fillTime ?? Infinity)) follows.set(key, t);
+      }
+      for (const t of follows.values()) {
+        trades.push({ date: t.date, pnl: priceFollow(t, cost, slip) });
+        for (const mult of costMults) byMult[mult].push({ date: t.date, pnl: priceFollow(t, cost * mult, slip * mult) });
+      }
+    }
+    out[mode] = _bookFromTrades(trades, byMult, costMults);
+  }
+  return out;
+}
+
 // ── One pair: packed M1 → range-line touches (the per-pair unit of work) ──────
 // Returns the lightweight touch array (perLineStrategy shape). The caller can
 // drop `packed` after this — only the small touch list is retained — so a 26-pair
