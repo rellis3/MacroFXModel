@@ -40,6 +40,7 @@
   .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
   code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
   .summary td:first-child{font-weight:600}
+  .exp-btn{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -85,6 +86,7 @@
     <div id="status"></div>
   </div>
 
+  <div id="exports"></div>
   <div id="summary"></div>
   <div id="results"></div>
 
@@ -149,6 +151,37 @@ function renderSummary(results){
     <table class="summary"><thead><tr><th>estimator</th><th>times best (OOS QLIKE)</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
+function renderExports(exports, winners){
+  if(!exports) return '';
+  const winLine = winners && Object.keys(winners).length
+    ? `<div class="hint" style="margin-bottom:10px">Each instrument's forecast uses its OOS-winning estimator: ${Object.entries(winners).map(([k,v])=>`${k}=<b>${v}</b>`).join(' · ')}</div>` : '';
+  const btn = (id,label,note)=>`<button class="exp-btn" data-fmt="${id}">⬇ Copy ${label}${note?` <span style="font-size:9px;opacity:.6">${note}</span>`:''}</button>`;
+  return `<div class="card"><div class="inst-title">⬇ Export — winning forecast (same format as the Vol Forecaster indicator)</div>
+    ${winLine}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      ${btn('plain','Export')}
+      ${btn('v2','Export v2','+OH/OL bias')}
+      ${btn('extended','Extended','vol cone + 5/20d')}
+    </div>
+    <textarea id="expPreview" readonly style="width:100%;height:200px;background:var(--panel2);border:1px solid var(--line);color:var(--text2);font:11px/1.5 ui-monospace,Menlo,monospace;border-radius:6px;padding:9px;box-sizing:border-box">${(exports.plain||'').replace(/</g,'&lt;')}</textarea>
+    <div class="legend">Byte-identical to vol-forecast.html's ⬇ Export / Export v2 / Extended — paste into the same Pine Script. Band math uses the forecaster's own correction factors; only the σ comes from the benchmark winner.</div>
+  </div>`;
+}
+
+function wireExportButtons(exports){
+  if(!exports) return;
+  const ta = document.getElementById('expPreview');
+  document.querySelectorAll('.exp-btn').forEach(b=>{
+    b.onclick = ()=>{
+      const txt = exports[b.dataset.fmt] || '';
+      if(ta) ta.value = txt;
+      navigator.clipboard?.writeText(txt).then(()=>{
+        const o=b.innerHTML; b.innerHTML='✓ Copied'; setTimeout(()=>b.innerHTML=o,1800);
+      }).catch(()=>{});
+    };
+  });
+}
+
 async function poll(jobId){
   for(let i=0;i<180;i++){
     await new Promise(r=>setTimeout(r,2000));
@@ -163,13 +196,15 @@ async function poll(jobId){
 
 $('run').onclick = async () => {
   const body = { pair:$('pair').value, proxy:$('proxy').value, oosFrac:$('oosFrac').value };
-  $('run').disabled=true; $('results').innerHTML=''; $('summary').innerHTML=''; $('legendCard').style.display='none';
+  $('run').disabled=true; $('results').innerHTML=''; $('summary').innerHTML=''; $('exports').innerHTML=''; $('legendCard').style.display='none';
   $('status').textContent='Submitting…';
   try{
     const start = await fetch('/api/vol-forecast-bench/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
     if(!start.ok) throw new Error(start.error||'failed to start');
     const out = await poll(start.jobId);
     $('status').textContent = `Done — ${out.results.length} instrument(s), proxy ${out.opts.proxy}, OOS ${out.opts.oosFrac}.`;
+    $('exports').innerHTML = renderExports(out.exports, out.winners);
+    wireExportButtons(out.exports);
     if(out.results.length>1) $('summary').innerHTML = renderSummary(out.results);
     $('results').innerHTML = out.results.map(renderInstrument).join('');
     $('legendCard').style.display='';

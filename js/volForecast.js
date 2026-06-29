@@ -117,7 +117,7 @@ const HN_P75 = 1.1503;
 //   Applies to the primary index estimator only; garch_omega (legacy shadow column)
 //   is untouched so the before/after comparison stays meaningful. Revisit via grid
 //   search once enough (ours, ref) pairs have accumulated (tracker file has the table).
-const ASSET_PARAMS = {
+export const ASSET_PARAMS = {
   commodity: { hl_50_corr: 0.99, hl_75_corr: 0.92, oc_50_corr: 1.12, oc_75_corr: 1.07 },
   index:     { hl_50_corr: 0.97, hl_75_corr: 0.94, oc_50_corr: 1.06, oc_75_corr: 1.10, garch_omega: 4.76e-6,
                garch_beta_interim: 0.87, garch_omega_interim: 1.11e-5 },
@@ -316,7 +316,7 @@ function _Phi(x) {
 // p-th quantile of max(Bt, t∈[0,1]) where Bt = d·t + Wt (unit diffusion).
 // CDF: F(x) = Φ(x−d) − exp(2dx)·Φ(−x−d)  [reflection principle, drifted BM].
 // At d=0, F(0.6745)=0.50 and F(1.1503)=0.75 — recovers HN_P50/P75 exactly.
-function _bmMaxQuantile(d, p) {
+export function _bmMaxQuantile(d, p) {
   const F = x => _Phi(x - d) - Math.exp(2 * d * x) * _Phi(-x - d);
   let lo = 0, hi = Math.abs(d) + 6;
   for (let i = 0; i < 64; i++) {
@@ -330,7 +330,7 @@ function _bmMaxQuantile(d, p) {
 // Uses last `win` close-to-close log returns; denominator is the PRIMARY vol
 // estimate (sigmaFwd) so d is in natural BM units for the formula above.
 // Clamped to ±2 to guard against tiny-σ edge cases.
-function _driftD(ohlc, sigmaFwd, win = 14) {
+export function _driftD(ohlc, sigmaFwd, win = 14) {
   if (ohlc.length < win + 2 || sigmaFwd < 1e-14) return 0;
   const closes = ohlc.slice(-(win + 1)).map(b => b.close);
   let mu = 0;
@@ -340,7 +340,7 @@ function _driftD(ohlc, sigmaFwd, win = 14) {
 }
 
 // ── Shared output builder ─────────────────────────────────────────────────────
-function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
+export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
   const p           = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const sigmaFwdPct = sigmaFwd * 100;
   const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);

@@ -31,7 +31,8 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries } from './js/volForecast.
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runBench as runVolBench }                                   from './js/volForecastBench.js';
+import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
+import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
@@ -6115,6 +6116,8 @@ app.post('/api/vol-forecast-bench/run', express.json({ limit: '256kb' }), (req, 
   (async () => {
     try {
       const results = [], log = [];
+      const exportInstruments = {}, winners = {};
+      let latestDate = '';
       for (const inst of instFilter) {
         try {
           const bars = await _btFetchD1(inst.oanda);
@@ -6122,12 +6125,26 @@ app.post('/api/vol-forecast-bench/run', express.json({ limit: '256kb' }), (req, 
           const bench = runVolBench(bars, inst.assetClass, { oosFrac, proxy });
           results.push({ name: inst.name, assetClass: inst.assetClass, ...bench });
           log.push(`${inst.name}: best=${bench.best} (${bench.nBars} bars)`);
+          // Export the OOS-winning estimator's forecast through the forecaster's own
+          // band math, so the text drops into the same Pine indicator (forecastExport.js).
+          if (bench.best) {
+            const ctx = benchCtx(bars, inst.assetClass, { proxy });
+            const { series, sigmaFwd } = sigmaSeriesForExport(bars, bench.best, ctx);
+            if (Number.isFinite(sigmaFwd) && series.length >= 60) {
+              exportInstruments[inst.name] = forecastFields(series, sigmaFwd, bars, inst.assetClass);
+              winners[inst.name] = bench.best;
+              const d = bars[bars.length - 1].date; if (d > latestDate) latestDate = d;
+            }
+          }
         } catch (e) {
           log.push(`${inst.name}: ${e?.message || e}`);
         }
       }
       if (!results.length) { vfbJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt }); return; }
-      vfbJobs.set(jobId, { status: 'done', result: { results, log, opts: { oosFrac, proxy } }, startedAt });
+      const exports = Object.keys(exportInstruments).length
+        ? buildAllExports({ session_label: latestDate || 'latest', instruments: exportInstruments })
+        : null;
+      vfbJobs.set(jobId, { status: 'done', result: { results, log, exports, winners, opts: { oosFrac, proxy } }, startedAt });
     } catch (e) {
       const msg = e?.message || String(e) || 'Unknown engine error';
       console.error('[vol-forecast-bench/run]', msg, e?.stack ?? '');

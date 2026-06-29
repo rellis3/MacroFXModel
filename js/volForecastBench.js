@@ -24,7 +24,7 @@
  */
 
 import {
-  ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, ASSET_PARAMS, LAMBDA,
+  ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, ASSET_PARAMS, LAMBDA, G_ALPHA, G_BETA,
 } from './volBacktestEngine.js';
 
 // ── Realised-variance proxies (the "truth" each forecast is scored against) ────
@@ -176,6 +176,77 @@ const ESTIMATORS = {
   harRV:   { label: 'HAR-RV', predVar: (bars, ctx) => harRvPred(ctx.rv, ctx.harOpts) },
 };
 
+// ── Next-session σ forecast (for exporting the winning estimator) ─────────────
+// Returns the upcoming-session daily σ (fractional) from a given estimator, using
+// ALL bars through the last one — the live "tomorrow" forecast, not a backtest
+// alignment. Same underlying math as the scored series; just evaluated one step
+// past the last observed bar.
+function harRvForecastNext(rvSeries, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag = 22 } = {}) {
+  const n = rvSeries.length;
+  if (n < monthLag + warmup) return null;
+  const feat = (i) => {
+    if (i - monthLag < 0) return null;
+    let wk = 0, mo = 0;
+    for (let k = 1; k <= weekLag; k++)  wk += rvSeries[i - k];
+    for (let k = 1; k <= monthLag; k++) mo += rvSeries[i - k];
+    return [1, rvSeries[i - dailyLag], wk / weekLag, mo / monthLag];
+  };
+  const XtX = Array.from({ length: 4 }, () => new Float64Array(4));
+  const Xty = new Float64Array(4);
+  for (let t = monthLag; t < n; t++) {          // fit on every known target (index < n)
+    const x = feat(t); if (!x) continue;
+    const y = rvSeries[t];
+    for (let a = 0; a < 4; a++) { Xty[a] += x[a] * y; for (let b = 0; b < 4; b++) XtX[a][b] += x[a] * x[b]; }
+  }
+  const beta = solve4(XtX, Xty);
+  const xNext = feat(n);                          // lags through the last bar → forecast bar n
+  if (!beta || !xNext) return null;
+  let p = 0; for (let a = 0; a < 4; a++) p += beta[a] * xNext[a];
+  return Math.max(p, 1e-12);
+}
+
+function latestSigmaForecast(bars, key, ctx) {
+  const lr = logReturns(bars);
+  const last = (s) => (s.length ? s[s.length - 1] : NaN);
+  switch (key) {
+    case 'ewma090': return Math.sqrt(Math.max(last(ewmaVarSeries(lr, 0.90)), 1e-12));
+    case 'ewma094': return Math.sqrt(Math.max(last(ewmaVarSeries(lr, LAMBDA)), 1e-12));
+    case 'hv20':    return Math.sqrt(Math.max(last(hvVarSeries(lr, 20)), 1e-12));
+    case 'hv30':    return Math.sqrt(Math.max(last(hvVarSeries(lr, 30)), 1e-12));
+    case 'yz30':    return Math.max(last(yzVolSeries(bars, 30)), 1e-12);
+    case 'garch': {
+      const g = garchSigmas(bars, ctx.omega);
+      const n = bars.length;
+      const rLast = Math.log(bars[n - 1].close / bars[n - 2].close);
+      const vPrev = last(g) ** 2;                 // σ² for the last bar
+      return Math.sqrt(Math.max(ctx.omega + G_ALPHA * rLast * rLast + G_BETA * vPrev, 1e-12));
+    }
+    case 'harRV': {
+      const v = harRvForecastNext(ctx.rv, ctx.harOpts);
+      return v == null ? NaN : Math.sqrt(Math.max(v, 1e-12));
+    }
+    default: return NaN;
+  }
+}
+
+// Historical daily-σ series for an estimator (sqrt of its variance forecasts),
+// finite values only, with the next-session forecast appended as the last element
+// — the shape _buildOutput expects (sigmaFwd = series.at(-1), history for percentile/cone).
+function sigmaSeriesForExport(bars, key, ctx) {
+  const predVar = ESTIMATORS[key].predVar(bars, ctx);
+  const hist = [];
+  for (let i = 0; i < predVar.length; i++) if (Number.isFinite(predVar[i]) && predVar[i] > 0) hist.push(Math.sqrt(predVar[i]));
+  const next = latestSigmaForecast(bars, key, ctx);
+  if (Number.isFinite(next)) hist.push(next);
+  return { series: hist, sigmaFwd: hist.length ? hist[hist.length - 1] : NaN };
+}
+
+// Build the ctx (rv proxy + GARCH ω + HAR opts) the estimators need, from an asset class.
+function benchCtx(bars, assetClass = 'fx', { proxy = 'gk', harOpts } = {}) {
+  const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+  return { rv: realizedVarSeries(bars, proxy), omega: p.garch_omega ?? 4.76e-6, harOpts };
+}
+
 // ── Scoring ───────────────────────────────────────────────────────────────────
 
 function qlikeTerm(real, pred) { const x = real / pred; return x - Math.log(x) - 1; }
@@ -224,5 +295,6 @@ function runBench(bars, assetClass = 'fx', opts = {}) {
 }
 
 export {
-  realizedVarSeries, logReturns, harRvPred, scoreSeries, runBench, ESTIMATORS, solve4,
+  realizedVarSeries, logReturns, harRvPred, harRvForecastNext, scoreSeries, runBench, ESTIMATORS, solve4,
+  latestSigmaForecast, sigmaSeriesForExport, benchCtx,
 };
