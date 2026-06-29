@@ -42,6 +42,8 @@
         <option>eurusd</option><option>gbpusd</option><option>usdjpy</option><option>audusd</option><option>nzdusd</option><option>usdcad</option><option>usdchf</option><option>gbpjpy</option><option>eurjpy</option><option>gold</option></select></span>
       <span><label>Lines</label><select id="sources"><option value="asia,monday">Asia + Monday</option><option value="asia">Asia only</option><option value="monday">Monday only</option></select></span>
       <span><label>Condition</label><select id="conditions"><option value="approachVel">approachVel (spike→fade)</option><option value="none">none (line only)</option></select></span>
+      <span><label>Universe</label><select id="universe" title="All = 26 pairs; Strong = curated gold+JPY+majors (drops wide-spread exotics)"><option value="all">All pairs</option><option value="strong">Strong only</option></select></span>
+      <span><label>Max level</label><select id="maxLevel" title="Cap |fib level| — near-mid only drops the rare far extensions"><option value="0">all levels</option><option value="3">≤ 3</option><option value="2">≤ 2 (near-mid)</option><option value="1.5">≤ 1.5</option></select></span>
       <span><label>min N / cell</label><input id="minN" type="number" value="50" min="5" max="500" style="width:64px"></span>
       <span><label>OOS</label><select id="splitFrac"><option value="0.4">40%</option><option value="0.6" selected>40/60</option><option value="0.5">50%</option></select></span>
       <button class="run" id="runBtn" onclick="run()">▶ Run</button>
@@ -121,6 +123,8 @@ async function run() {
     pair: $('pair').value,
     sources: $('sources').value.split(','),
     conditions: $('conditions').value,
+    universe: $('universe').value,
+    maxLevel: parseFloat($('maxLevel').value) || 0,
     minN: parseInt($('minN').value) || 50,
     splitFrac: parseFloat($('splitFrac').value) || 0.6,
   };
