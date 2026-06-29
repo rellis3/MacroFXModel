@@ -19,6 +19,7 @@ class PaperBroker:
         self._pos: dict[int, dict] = {}
         self._closed: list[dict] = []
         self._price: dict[str, float] = {}
+        self._session: dict[str, list] = {}
 
     # ── connection (no-op for paper) ──────────────────────────────────────────
     def connect(self, account=None, password=None, server=None, path=None) -> bool:
@@ -33,6 +34,15 @@ class PaperBroker:
 
     def price(self, pair: str):
         return self._price.get(pair)
+
+    def set_session_bars(self, pair: str, bars: list) -> None:
+        """Test/sim hook: supply the session's OHLC bars the bot replays on
+        catch_up (paper has no real feed)."""
+        self._session.setdefault(pair, [])
+        self._session[pair] = list(bars)
+
+    def session_bars(self, pair: str, since_epoch=None) -> list:
+        return list(self._session.get(pair, []))
 
     def account_balance(self):
         return self._bal

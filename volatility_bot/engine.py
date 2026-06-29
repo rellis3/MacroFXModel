@@ -40,13 +40,32 @@ class SessionTracker:
     def on_minute(self, close_px):
         self.closes.append(float(close_px))
 
+    def catch_up(self, bars):
+        """Replay the session's OHLC bars (open → now) to reconstruct the running
+        extremes (drive the dynamic HL lines) and the velocity buffer — so on
+        startup or a new-session reset the bot is in-sync with the live session
+        WITHOUT any seeding. bars: iterable of {high, low, close}."""
+        for b in bars or []:
+            hi, lo, cl = b.get("high"), b.get("low"), b.get("close")
+            if hi is not None:
+                self.on_price(hi)
+            if lo is not None:
+                self.on_price(lo)
+            if cl is not None:
+                self.on_minute(cl)
+        return self
 
-def decide(plan_pair, policy, tracker, px, *, sigma=None):
+
+def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False):
     """Lines newly touched this tick that map to a tradeable (fade/follow) cell.
 
     Returns a list of specs: ``{side, entry, tp, sl, line, name, ln_side,
     decision, bucket, velocity}``. A line is decided ONCE per session (touched or
     not), so a level can't re-fire while price sits beyond it.
+
+    ``dry_run=True`` marks touched lines as acted but places NO trades — used right
+    after ``catch_up`` to "prime" lines price already crossed earlier in the
+    session, so the bot only trades GENUINELY NEW crossings (never retro-enters).
     """
     frac = {"hl50": plan_pair["hl50"], "hl75": plan_pair["hl75"],
             "ocMed": plan_pair["ocMed"], "oc75": plan_pair["oc75"]}
@@ -67,6 +86,8 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None):
             if not touched:
                 continue
             tracker.acted.add(line_id)     # one decision per line per session
+            if dry_run:
+                continue                   # prime only — never trade a stale crossing
             decision = (policy.get(cell_key(name, side, bucket)) or {}).get("decision")
             if decision not in ("fade", "follow"):
                 continue                   # skip cell / unseen → no trade
@@ -75,3 +96,15 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None):
                 out.append({**spec, "line": line_id, "name": name, "ln_side": side,
                             "decision": decision, "bucket": bucket, "velocity": val})
     return out
+
+
+# Most-recent 22:00 UTC broker-session open as an epoch (matches the book's
+# bucketM1IntoSessions(boundaryHour=22) / fetchD1 anchor). Used to fetch the
+# session's bars for catch_up.
+def session_open_epoch(now_epoch):
+    from datetime import datetime, timezone, timedelta
+    dt = datetime.fromtimestamp(now_epoch, tz=timezone.utc)
+    anchor = dt.replace(hour=22, minute=0, second=0, microsecond=0)
+    if dt.hour < 22:
+        anchor -= timedelta(days=1)
+    return int(anchor.timestamp())
