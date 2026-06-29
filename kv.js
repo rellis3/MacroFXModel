@@ -71,6 +71,7 @@ const _CF_EXACT = new Set([
   'fred_data_v3',           // FRED dashboard cache (31 series) — survives Railway restarts
   'policy_v2',              // Telegram-v2 frozen confidence policy — learned from a full M1 run (minutes); MUST survive redeploys or every restart wipes it
   'ledger_v2',              // Telegram-v2 daily-learning ledger — accumulated live signal outcomes; cannot be rebuilt, must survive redeploys
+  'tg_v2_alert_cfg',        // Telegram-v2 alert config (own config, separate from v1 ai_alert_cfg) — user-set, must survive redeploys
   'dyn_anchor_config',      // DynAnchor bot settings — must survive redeploys
   'dyn_anchor_credentials', // DynAnchor bot MT5 credentials — must survive redeploys
   'macro_equity_config',       // Macro Equity bot settings — must survive redeploys

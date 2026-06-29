@@ -75,8 +75,28 @@
     <button id="btnRefresh" class="alt">② Refresh live entries</button>
     <button id="btnLoad" class="alt">↻ Load current</button>
     <label class="toggle on" id="autoLbl" style="cursor:pointer;"><input type="checkbox" id="autoChk" checked style="vertical-align:middle;"> auto-load</label>
+    <button id="btnAlerts" class="alt">⚙ Alerts</button>
     <span id="updated" class="status"></span>
     <span id="status" class="status"></span>
+  </div>
+
+  <div class="panel" id="alertPanel" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <b>📨 v2 Telegram alerts <span class="muted" style="font-weight:400;">— own config, separate from v1 · alerts only, never trades</span></b>
+      <span class="muted" id="tgState"></span>
+    </div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;">
+      <label class="toggle"><input type="checkbox" id="alEnabled"> enabled</label>
+      <label>Min grade<br><select id="alGrade"><option>A+</option><option>A</option><option>B</option><option>C</option></select></label>
+      <label>Cooldown (min)<br><input id="alCooldown" type="number" min="5" style="width:70px;"></label>
+      <label>Prox FX (pips)<br><input id="alProxDef" type="number" style="width:70px;"></label>
+      <label>Prox Gold<br><input id="alProxGold" type="number" style="width:70px;"></label>
+      <label>Prox NAS<br><input id="alProxNas" type="number" style="width:70px;"></label>
+      <label>Pairs (blank=all)<br><input id="alPairs" type="text" placeholder="EUR/USD, XAU/USD" style="width:200px;"></label>
+      <button id="alSave">Save</button>
+      <span id="alStatus" class="status"></span>
+    </div>
+    <div class="muted" style="margin-top:8px;">Bot token + chat ID come from the v1 <b>Alerts modal</b> (shared <code>tg_config</code>). Alerts fire from the 30-min server refresh when a graded zone is within proximity.</div>
   </div>
 
   <div class="panel" id="policyPanel">
@@ -365,6 +385,39 @@ $('btnRefresh').onclick = async () => {
 };
 $('btnLoad').onclick = () => loadCurrent();
 $('autoChk').onchange = e => setAuto(e.target.checked);
+
+// ── v2 alert config ───────────────────────────────────────────────────────────
+async function loadAlertCfg() {
+  try {
+    const r = await fetch('/api/levels-v2/alert-config'); const j = await r.json();
+    const c = j.cfg || {};
+    $('alEnabled').checked = !!c.enabled;
+    $('alGrade').value = c.minGrade || 'A';
+    $('alCooldown').value = c.cooldownMin ?? 120;
+    $('alProxDef').value = c.proxPips?.default ?? 10;
+    $('alProxGold').value = c.proxPips?.['XAU/USD'] ?? 40;
+    $('alProxNas').value = c.proxPips?.['NAS100_USD'] ?? 50;
+    $('alPairs').value = (c.pairs || []).join(', ');
+    $('tgState').textContent = j.telegramConfigured ? '✓ Telegram bot configured' : '⚠ No bot token/chat — set it in the v1 Alerts modal';
+    $('tgState').style.color = j.telegramConfigured ? 'var(--grn)' : 'var(--amb)';
+  } catch (e) { $('alStatus').textContent = 'load error: ' + e.message; }
+}
+$('btnAlerts').onclick = () => { const p = $('alertPanel'); const show = p.style.display === 'none'; p.style.display = show ? '' : 'none'; if (show) loadAlertCfg(); };
+$('alSave').onclick = async () => {
+  const cfg = {
+    enabled: $('alEnabled').checked, minGrade: $('alGrade').value,
+    cooldownMin: parseInt($('alCooldown').value) || 120,
+    proxPips: { default: parseFloat($('alProxDef').value) || 10, 'XAU/USD': parseFloat($('alProxGold').value) || 40, 'NAS100_USD': parseFloat($('alProxNas').value) || 50 },
+    pairs: $('alPairs').value.split(',').map(s => s.trim()).filter(Boolean),
+  };
+  $('alStatus').textContent = 'saving…';
+  try {
+    const r = await fetch('/api/levels-v2/alert-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+    const j = await r.json();
+    $('alStatus').textContent = j.ok ? '✓ saved' : ('save failed: ' + (j.error || '?'));
+    $('alStatus').style.color = j.ok ? 'var(--grn)' : 'var(--red)';
+  } catch (e) { $('alStatus').textContent = 'save error: ' + e.message; $('alStatus').style.color = 'var(--red)'; }
+};
 
 setAuto(localStorage.getItem('tgv2_auto') !== '0');
 loadCurrent();
