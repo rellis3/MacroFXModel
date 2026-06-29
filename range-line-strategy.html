@@ -90,17 +90,26 @@ async function run() {
   } catch (e) { $('status').textContent = 'error: ' + e.message; $('runBtn').disabled = false; }
 }
 
-async function poll(jobId) {
+async function poll(jobId, fails = 0) {
   try {
     const r = await fetch('/api/range-line/status/' + jobId);
+    if (!r.ok && r.status !== 500) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     if (d.status === 'running') {
       $('status').textContent = `running… ${d.currentPair||''} ${d.pairsDone||0}/${d.pairsTotal||'?'} (${d.elapsed||0}s)`;
-      return setTimeout(() => poll(jobId), 1500);
+      return setTimeout(() => poll(jobId, 0), 1500);   // reset fail counter on success
     }
     if (d.status === 'done') { $('status').textContent = 'done ✓'; render(d); }
     else { $('status').textContent = 'error: ' + (d.error || 'unknown'); }
-  } catch (e) { $('status').textContent = 'poll error: ' + e.message; }
+  } catch (e) {
+    // A heavy pair can briefly block the event loop → transient fetch failure.
+    // Tolerate a run of them (≈30s) before giving up so the big book survives.
+    if (fails < 20) {
+      $('status').textContent = `running… (reconnecting ${fails + 1}/20)`;
+      return setTimeout(() => poll(jobId, fails + 1), 1500);
+    }
+    $('status').textContent = 'poll error: ' + e.message;
+  }
   $('runBtn').disabled = false;
 }
 

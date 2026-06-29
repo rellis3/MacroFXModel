@@ -186,16 +186,31 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
   return records;
 }
 
+// ── One pair: packed M1 → range-line touches (the per-pair unit of work) ──────
+// Returns the lightweight touch array (perLineStrategy shape). The caller can
+// drop `packed` after this — only the small touch list is retained — so a 26-pair
+// book never holds all the M1 in memory at once.
+export function touchesForPair(packed, assetClass = 'fx', opts = {}) {
+  const sessions = bucketM1IntoSessions(packed, opts.boundaryHour ?? 22);
+  const records  = runRangeLineAnalyser(sessions, assetClass, opts);
+  return extractTouches(records, { conditions: opts.conditions ?? ['approachVel'] });
+}
+
 // ── Full book: packed M1 per pair → records → pooled-IS policy → per-pair OOS ──
 // packedByPair: { pair: packed }.  assetClassByPair optional. Returns the
 // perLineStrategy.runPerLine result (policy + per-pair OOS + book stats + equity).
+// NOTE: this holds every pair's packed M1 at once — fine for tests / a few pairs.
+// The server route processes pairs one-at-a-time (releasing M1 + yielding) for
+// the full 26-pair book; see /api/range-line/run.
 export function runRangeLineBook(packedByPair, opts = {}) {
-  const { assetClassByPair = {}, conditions = ['approachVel'], boundaryHour = 22 } = opts;
+  const { assetClassByPair = {} } = opts;
   const touchesByPair = {};
   for (const [pair, packed] of Object.entries(packedByPair)) {
-    const sessions = bucketM1IntoSessions(packed, boundaryHour);
-    const records = runRangeLineAnalyser(sessions, assetClassByPair[pair] ?? 'fx', opts);
-    touchesByPair[pair] = extractTouches(records, { conditions });
+    touchesByPair[pair] = touchesForPair(packed, assetClassByPair[pair] ?? 'fx', opts);
   }
   return runPerLine(touchesByPair, opts);
 }
+
+// Re-export so a streaming caller (the server route) can build touchesByPair
+// pair-by-pair and run the pooled policy itself without a second import.
+export { runPerLine } from './perLineStrategy.js';
