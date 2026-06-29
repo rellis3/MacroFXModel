@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Telegram v2 — Confidence Engine</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root { --bg:#0b0e14; --panel:#141925; --panel2:#1b2230; --bd:#262e3d; --text:#e6edf3; --text2:#9aa7b8; --grn:#22c55e; --grnd:#16a34a; --amb:#f59e0b; --red:#ef4444; --blu:#5b9dff; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:'DM Sans',system-ui,sans-serif; font-size:14px; }
-  .wrap { max-width:1100px; margin:0 auto; padding:20px; }
+  .wrap { max-width:1180px; margin:0 auto; padding:20px; }
   h1 { font-size:20px; margin:0 0 4px; }
   .sub { color:var(--text2); font-size:12px; margin-bottom:18px; }
   .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
@@ -30,25 +31,44 @@
   .kpi b { font-size:18px; } .kpi span { font-size:11px; color:var(--text2); }
   a { color:var(--blu); text-decoration:none; }
   .status { font-size:12px; color:var(--text2); }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .tab { padding:6px 14px; border-radius:8px; background:var(--panel); border:1px solid var(--bd); color:var(--text2); cursor:pointer; font-size:13px; font-weight:600; }
+  .tab.on { background:var(--panel2); color:var(--text); border-color:#3a4a63; }
   /* per-pair cards */
-  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:12px; }
-  .card { background:var(--panel); border:1px solid var(--bd); border-radius:12px; padding:12px 12px 6px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--bd); border-radius:12px; padding:12px; }
   .card.long { border-left:3px solid var(--grn); } .card.short { border-left:3px solid var(--red); }
-  .chead { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .chead { display:flex; justify-content:space-between; align-items:baseline; }
   .chead .sym { font-weight:700; font-size:15px; }
   .chead .px { color:var(--text2); font-size:12px; }
-  .cbadges { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+  .closest { margin:8px 0; padding:8px; border-radius:8px; background:var(--panel2); cursor:pointer; }
+  .closest:hover { outline:1px solid var(--blu); }
+  .closest .top { display:flex; justify-content:space-between; align-items:center; }
+  .closest .det { color:var(--text2); font-size:11px; margin-top:3px; }
+  .cbadges { display:flex; gap:6px; flex-wrap:wrap; }
   .badge { font-size:10px; padding:1px 6px; border-radius:5px; background:var(--panel2); border:1px solid var(--bd); color:var(--text2); }
+  .expander { font-size:11px; color:var(--blu); cursor:pointer; user-select:none; margin-top:6px; display:inline-block; }
+  .zlist { margin-top:8px; display:none; }
+  .zlist.open { display:block; }
   .card table { font-size:12px; } .card th,.card td { padding:5px 5px; }
-  .card .cell { font-size:10px; color:var(--text2); }
+  .zrow { cursor:pointer; } .zrow:hover td { background:var(--panel2); }
+  .cell { font-size:10px; color:var(--text2); }
   .toggle { font-size:11px; color:var(--text2); cursor:pointer; user-select:none; margin-left:10px; }
   .toggle.on { color:var(--grn); }
+  .o-win { color:var(--grn); } .o-loss { color:var(--red); } .o-open { color:var(--blu); } .o-exp { color:var(--text2); }
+  /* chart modal */
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.72); display:none; align-items:center; justify-content:center; z-index:50; }
+  #modal.open { display:flex; }
+  .mbox { background:var(--panel); border:1px solid var(--bd); border-radius:12px; padding:14px; width:min(900px,94vw); }
+  .mhead { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  #chartBox { width:100%; height:440px; }
+  .x { cursor:pointer; color:var(--text2); font-size:18px; padding:0 6px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>📡 Telegram v2 — Confidence Engine</h1>
-  <div class="sub">One graded-entry pipeline. Confidence = <b>after-cost expectancy</b> from a frozen, OOS-learned per-cell policy — not a 0–100 heuristic. Learn offline on M1, then push out. Runs parallel to v1. <a href="hub.html">← Hub</a></div>
+  <div class="sub">Graded zones from a frozen, OOS-learned per-cell policy (confidence = after-cost expectancy). Track &amp; trace each trade as it fills and resolves. <a href="hub.html">← Hub</a></div>
 
   <div class="bar">
     <button id="btnLearn">① Learn policy (M1, offline)</button>
@@ -60,45 +80,75 @@
   </div>
 
   <div class="panel" id="policyPanel">
-    <div class="muted">No policy loaded yet. Click <b>Learn policy</b> to build it from M1 history (this is the offline OOS step), or <b>Load current</b> to read the frozen one.</div>
+    <div class="muted">No policy loaded yet. Click <b>Learn policy</b> to build it from M1 history, or <b>Load current</b>.</div>
   </div>
 
-  <div class="panel">
+  <div class="tabs">
+    <div class="tab on" data-tab="zones" id="tabZones">📍 Zones</div>
+    <div class="tab" data-tab="trades" id="tabTrades">📒 Trades (audit)</div>
+    <div class="tab" data-tab="ledger" id="tabLedger">🧠 Ledger stats</div>
+  </div>
+
+  <div class="panel" id="panelZones">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span><b>Live v2 entries</b><span id="viewToggle" class="toggle on" title="Toggle cards / list view">▦ cards</span></span>
-      <span class="muted" id="entriesMeta"></span>
+      <b>Live v2 zones</b>
+      <span class="muted">collapsed = nearest zone · click a zone for its chart · expand for all</span>
     </div>
     <div id="entries"><div class="muted">— nothing loaded —</div></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="panelTrades" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <b>🧠 Daily-learning ledger — realized vs policy</b>
-      <span class="muted">limit-fill + triple-barrier on live M1 · auto-recorded each refresh</span>
+      <b>📒 Per-trade audit</b>
+      <span class="muted">every recorded signal · honest limit-fill + triple-barrier on live M1</span>
     </div>
-    <div id="ledger"><div class="muted">— no ledger yet (builds as live entries are recorded &amp; resolved) —</div></div>
+    <div id="trades"><div class="muted">— no trades recorded yet —</div></div>
+  </div>
+
+  <div class="panel" id="panelLedger" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <b>🧠 Realized vs policy (per grade)</b>
+      <span class="muted">is the frozen edge holding up live?</span>
+    </div>
+    <div id="ledger"><div class="muted">— no ledger yet —</div></div>
   </div>
 </div>
 
-<script>
+<div id="modal">
+  <div class="mbox">
+    <div class="mhead"><b id="mtitle">Chart</b><span class="x" id="mclose">✕</span></div>
+    <div id="chartBox"></div>
+    <div class="muted mono" id="mfoot" style="margin-top:6px;"></div>
+  </div>
+</div>
+
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+
 const $ = id => document.getElementById(id);
 const setStatus = (t, c) => { $('status').textContent = t; $('status').style.color = c || 'var(--text2)'; };
 const gradeCls = g => g === 'A+' ? 'g-Ap' : g === 'A' ? 'g-A' : g === 'B' ? 'g-B' : 'g-C';
+const pipOf = sym => sym.includes('JPY') ? 0.01 : (sym.includes('XAU') || sym.includes('GOLD')) ? 0.1 : sym === 'NAS100_USD' ? 1 : 0.0001;
+const distPips = (price, cur, sym) => cur == null ? null : Math.round(Math.abs(price - cur) / pipOf(sym));
+const GRADE_RANK = { 'A+': 4, A: 3, B: 2, C: 1, SKIP: 0 };
+const bestGrade = list => list.reduce((b, e) => (GRADE_RANK[e.grade] ?? 0) > (GRADE_RANK[b] ?? 0) ? e.grade : b, 'C');
+const fmtTime = ms => { try { return new Date(ms).toISOString().slice(5, 16).replace('T', ' '); } catch { return '—'; } };
 
-async function poll(jobId, onDone) {
-  try {
-    const r = await fetch(`/api/levels-v2/status/${jobId}`);
-    const j = await r.json();
-    if (j.status === 'running') {
-      setStatus(`learning… ${j.currentPair || ''} ${j.pairsDone || 0}/${j.pairsTotal || '?'} (${j.elapsed||0}s)`, 'var(--amb)');
-      setTimeout(() => poll(jobId, onDone), 1500);
-    } else if (j.status === 'done') { onDone(j); }
-    else { setStatus('learn failed: ' + (j.error || '?'), 'var(--red)'); }
-  } catch (e) { setStatus('poll error: ' + e.message, 'var(--red)'); }
+let _lastEntries = null;
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(t) {
+  for (const x of ['Zones', 'Trades', 'Ledger']) {
+    $('panel' + x).style.display = t === x.toLowerCase() ? '' : 'none';
+    $('tab' + x).classList.toggle('on', t === x.toLowerCase());
+  }
+  if (t === 'trades') loadTrades();
 }
+['zones', 'trades', 'ledger'].forEach(t => { $('tab' + t[0].toUpperCase() + t.slice(1)).onclick = () => showTab(t); });
 
+// ── Policy panel ──────────────────────────────────────────────────────────────
 function renderPolicy(p) {
-  if (!p) { $('policyPanel').innerHTML = '<div class="muted">No frozen policy in KV yet.</div>'; return; }
+  if (!p) { $('policyPanel').innerHTML = '<div class="muted">No frozen policy in KV yet — click Learn policy.</div>'; return; }
   const cov = p.coverage || {};
   $('policyPanel').innerHTML = `
     <div style="display:flex;flex-wrap:wrap;align-items:center;">
@@ -106,130 +156,177 @@ function renderPolicy(p) {
       <span class="kpi"><b style="color:var(--grn)">${cov.fadeCells ?? '—'}</b><span>fade</span></span>
       <span class="kpi"><b style="color:var(--blu)">${cov.followCells ?? '—'}</b><span>follow</span></span>
       <span class="kpi"><b style="color:var(--text2)">${cov.skipCells ?? '—'}</b><span>skip</span></span>
-      ${p.portfolio ? `<span class="kpi"><b>${(p.portfolio.sharpe??0).toFixed?.(2) ?? p.portfolio.sharpe}</b><span>OOS portfolio Sharpe</span></span>` : ''}
-      ${p.survivors ? `<span class="kpi"><b>${p.survivors.count}/${p.survivors.total}</b><span>survivor pairs</span></span>` : ''}
     </div>
     <div class="muted mono" style="margin-top:8px;">split ${p.splitDate || '?'} · built ${p.builtAt || '?'}</div>`;
 }
 
-let _view = 'cards';          // 'cards' | 'list'
-let _lastEntries = null;      // cache so the toggle can re-render without refetching
-
-const GRADE_RANK = { 'A+': 4, A: 3, B: 2, C: 1, SKIP: 0 };
-const bestGrade = list => list.reduce((b, e) => (GRADE_RANK[e.grade] ?? 0) > (GRADE_RANK[b] ?? 0) ? e.grade : b, 'C');
-
-function renderEntries(meta, entries) {
-  $('entriesMeta').textContent = meta?.policy ? `policy ${meta.policy.nCells} cells · built ${meta.policy.builtAt||'?'}` : '';
-  _lastEntries = entries || {};
-  const pairs = Object.keys(_lastEntries);
-  if (!pairs.length) { $('entries').innerHTML = '<div class="muted">— no live entries (run Refresh after a policy is learned) —</div>'; return; }
-  $('entries').innerHTML = _view === 'cards' ? renderCards(_lastEntries) : renderList(_lastEntries);
-}
-
-// Per-pair cards — one card per pair, levels sorted by edge (skip empty pairs).
-function renderCards(entries) {
-  const cards = [];
-  for (const sym of Object.keys(entries).sort()) {
-    const blk = entries[sym]; const list = (blk?.data || []).slice().sort((a, b) => b.expectancy - a.expectancy);
-    if (!list.length) continue;
-    const px = blk?.currentPrice;
-    const longs = list.filter(e => e.direction === 'long').length;
-    const shorts = list.length - longs;
-    const tilt = longs > shorts ? 'long' : shorts > longs ? 'short' : '';
-    const rows = list.map(e => `<tr>
-        <td class="${e.direction}">${e.direction === 'long' ? '↑' : '↓'}</td>
-        <td class="mono">${e.price}</td>
-        <td class="${gradeCls(e.grade)}">${e.grade}</td>
-        <td class="mono">+${Number(e.expectancy).toFixed(3)}%</td>
-        <td>${e.decision}</td>
-        <td class="mono">${e.sl} / ${e.tp}</td>
-        <td class="cell mono" title="cell ${e.cell} · n=${e.n} · R:R 1:${e.rrRatio}">${e.n}n</td>
-      </tr>`).join('');
-    cards.push(`<div class="card ${tilt}">
-      <div class="chead"><span class="sym">${sym}</span><span class="px mono">${px != null ? px : ''}</span></div>
-      <div class="cbadges">
-        <span class="badge">${list.length} levels</span>
-        <span class="badge">${longs}↑ / ${shorts}↓</span>
-        <span class="badge ${gradeCls(bestGrade(list))}">best ${bestGrade(list)}</span>
-      </div>
-      <table><thead><tr><th>Dir</th><th>Level</th><th>Gr</th><th>Edge</th><th>Play</th><th>SL / TP</th><th>n</th></tr></thead><tbody>${rows}</tbody></table>
-    </div>`);
-  }
-  return cards.length ? `<div class="cards">${cards.join('')}</div>` : '<div class="muted">— policy loaded but no near-price entries right now —</div>';
-}
-
-// Flat list (the original giant table) — kept behind the toggle.
-function renderList(entries) {
-  let rows = '';
-  for (const sym of Object.keys(entries).sort()) {
-    for (const e of (entries[sym]?.data || [])) {
-      rows += `<tr>
-        <td class="mono">${sym}</td>
-        <td class="${e.direction}">${e.direction === 'long' ? '↑ BUY' : '↓ SELL'}</td>
-        <td class="mono">${e.price}</td>
-        <td class="${gradeCls(e.grade)}">${e.grade}</td>
-        <td class="mono">+${Number(e.expectancy).toFixed(3)}%</td>
-        <td class="mono">${e.n}</td>
-        <td>${e.decision}</td>
-        <td class="mono">1:${e.rrRatio}</td>
-        <td class="mono">${e.sl} / ${e.tp}</td>
-        <td><span class="pill mono">${e.cell}</span></td>
-      </tr>`;
-    }
-  }
-  return rows
-    ? `<table><thead><tr><th>Pair</th><th>Dir</th><th>Level</th><th>Grade</th><th>Edge</th><th>n</th><th>Play</th><th>R:R</th><th>SL / TP</th><th>Cell</th></tr></thead><tbody>${rows}</tbody></table>`
-    : '<div class="muted">— policy loaded but no near-price entries right now —</div>';
-}
-
-function renderLedger(s) {
-  if (!s || !s.total) { $('ledger').innerHTML = '<div class="muted">— no ledger yet (builds as live entries are recorded &amp; resolved) —</div>'; return; }
-  const grades = Object.keys(s.byGrade || {});
-  const rows = grades.map(g => {
-    const b = s.byGrade[g];
-    const holds = b.realizedExpectancy >= 0;
-    return `<tr>
-      <td class="${gradeCls(g)}">${g}</td>
-      <td class="mono">${b.n}</td>
-      <td class="mono">${b.winRate}%</td>
-      <td class="mono" style="color:${holds ? 'var(--grn)' : 'var(--red)'}">${b.realizedExpectancy >= 0 ? '+' : ''}${b.realizedExpectancy.toFixed(3)}%</td>
-      <td class="mono">+${b.policyExpectancy.toFixed(3)}%</td>
-      <td>${holds ? '✓ holding' : '✗ underperforming'}</td>
-    </tr>`;
-  }).join('');
-  $('ledger').innerHTML = `
-    <div class="cbadges" style="margin-bottom:8px;">
-      <span class="badge">${s.total} recorded</span>
-      <span class="badge">${s.decided} resolved</span>
-      <span class="badge">${s.open} open</span>
-      <span class="badge">${s.expired} expired</span>
-      <span class="badge">overall realized ${s.overallRealized >= 0 ? '+' : ''}${s.overallRealized.toFixed(3)}%</span>
-    </div>
-    ${rows ? `<table><thead><tr><th>Grade</th><th>n</th><th>Win%</th><th>Realized edge</th><th>Policy edge</th><th>Verdict</th></tr></thead><tbody>${rows}</tbody></table>`
-           : '<div class="muted">— recorded, awaiting resolution —</div>'}`;
-}
-
+// ── Zones (per-pair cards: closest + expand) ─────────────────────────────────
 function freshness(entries) {
-  // Newest entry-block timestamp across pairs → "updated Xm ago" + the server cadence.
   let newest = 0;
   for (const k of Object.keys(entries || {})) { const t = entries[k]?.timestamp || 0; if (t > newest) newest = t; }
   if (!newest) { $('updated').textContent = ''; return; }
   const agoMin = Math.round((Date.now() - newest) / 60000);
-  $('updated').textContent = `· entries ${agoMin <= 0 ? 'just now' : agoMin + 'm ago'} (server refreshes ~30m)`;
+  $('updated').textContent = `· entries ${agoMin <= 0 ? 'just now' : agoMin + 'm ago'} (server ~30m)`;
 }
 
+function zoneRow(sym, e, cur) {
+  const dp = distPips(e.price, cur, sym);
+  return `<tr class="zrow" data-sym="${sym}" data-price="${e.price}" data-sl="${e.sl}" data-tp="${e.tp}" data-cell="${e.cell}" data-dir="${e.direction}">
+    <td class="${e.direction}">${e.direction === 'long' ? '↑' : '↓'}</td>
+    <td class="mono">${e.price}</td>
+    <td class="mono">${dp == null ? '' : dp + 'p'}</td>
+    <td class="${gradeCls(e.grade)}">${e.grade}</td>
+    <td class="mono">+${Number(e.expectancy).toFixed(3)}%</td>
+    <td>${e.decision}</td>
+    <td class="mono">${e.sl} / ${e.tp}</td>
+    <td class="cell mono" title="n=${e.n} · R:R 1:${e.rrRatio}">${e.n}n</td>
+  </tr>`;
+}
+
+function renderCards(entries) {
+  const cards = [];
+  for (const sym of Object.keys(entries).sort()) {
+    const blk = entries[sym]; const cur = blk?.currentPrice;
+    const list = (blk?.data || []).slice();
+    if (!list.length) continue;
+    // closest zone to current price
+    const byDist = cur != null ? [...list].sort((a, b) => Math.abs(a.price - cur) - Math.abs(b.price - cur)) : list;
+    const near = byDist[0];
+    const dp = distPips(near.price, cur, sym);
+    const longs = list.filter(e => e.direction === 'long').length, shorts = list.length - longs;
+    const tilt = near.direction;
+    const allRows = byDist.map(e => zoneRow(sym, e, cur)).join('');
+    cards.push(`<div class="card ${tilt}">
+      <div class="chead"><span class="sym">${sym}</span><span class="px mono">${cur != null ? cur : ''}</span></div>
+      <div class="closest" data-sym="${sym}" data-price="${near.price}" data-sl="${near.sl}" data-tp="${near.tp}" data-cell="${near.cell}" data-dir="${near.direction}">
+        <div class="top">
+          <span><span class="${near.direction}">${near.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span> <span class="mono">${near.price}</span> <span class="${gradeCls(near.grade)}">[${near.grade}]</span></span>
+          <span class="mono" style="color:var(--text2)">${dp == null ? '' : dp + 'p away'}</span>
+        </div>
+        <div class="det">nearest zone · edge +${Number(near.expectancy).toFixed(3)}% (n=${near.n}) · ${near.decision} · SL ${near.sl} / TP ${near.tp} · 📈 chart</div>
+      </div>
+      <div class="cbadges">
+        <span class="badge">${list.length} zones</span>
+        <span class="badge">${longs}↑ / ${shorts}↓</span>
+        <span class="badge ${gradeCls(bestGrade(list))}">best ${bestGrade(list)}</span>
+      </div>
+      <span class="expander" data-sym="${sym}">▸ all ${list.length} zones</span>
+      <div class="zlist" id="zl-${sym.replace('/', '')}">
+        <table><thead><tr><th>Dir</th><th>Level</th><th>Dist</th><th>Gr</th><th>Edge</th><th>Play</th><th>SL / TP</th><th>n</th></tr></thead><tbody>${allRows}</tbody></table>
+      </div>
+    </div>`);
+  }
+  return cards.length ? `<div class="cards">${cards.join('')}</div>` : '<div class="muted">— policy loaded but no near-price zones right now —</div>';
+}
+
+function renderEntries(meta, entries) {
+  _lastEntries = entries || {};
+  const pairs = Object.keys(_lastEntries);
+  $('entries').innerHTML = pairs.length ? renderCards(_lastEntries) : '<div class="muted">— no live zones (run Refresh after a policy is learned) —</div>';
+}
+
+// expand + chart click via delegation
+$('entries').addEventListener('click', ev => {
+  const exp = ev.target.closest('.expander');
+  if (exp) { const zl = $('zl-' + exp.dataset.sym.replace('/', '')); const open = zl.classList.toggle('open'); exp.textContent = (open ? '▾ hide' : '▸ all') + ` zones`; return; }
+  const z = ev.target.closest('[data-price]');
+  if (z) openChart(z.dataset);
+});
+
+// ── Chart modal (levelChart lego brick) ──────────────────────────────────────
+let _chart = null;
+async function openChart(d) {
+  $('mtitle').textContent = `${d.sym} ${d.dir === 'long' ? '↑ BUY' : '↓ SELL'} @ ${d.price}`;
+  $('mfoot').textContent = `cell ${d.cell} · SL ${d.sl} · TP ${d.tp}`;
+  $('modal').classList.add('open');
+  $('chartBox').innerHTML = '';
+  _chart = createLevelChart($('chartBox'), { height: 440 });
+  try {
+    const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(d.sym)}&granularity=M5`);
+    const j = await r.json();
+    if (!j.values) { $('mfoot').textContent = 'No candles: ' + (j.error || '?'); return; }
+    const candles = j.values.map(v => ({
+      time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open: +v.open, high: +v.high, low: +v.low, close: +v.close,
+    })).filter(c => Number.isFinite(c.time)).sort((a, b) => a.time - b.time);
+    _chart.setCandles(candles);
+    _chart.setLevels([
+      { price: +d.price, kind: 'pivot',      label: `Entry ${d.price}` },
+      { price: +d.sl,    kind: 'support',    label: `SL ${d.sl}` },
+      { price: +d.tp,    kind: 'resistance', label: `TP ${d.tp}` },
+    ]);
+    if (_chart.fit) _chart.fit();
+  } catch (e) { $('mfoot').textContent = 'Chart error: ' + e.message; }
+}
+function closeChart() { $('modal').classList.remove('open'); if (_chart?.destroy) _chart.destroy(); _chart = null; }
+$('mclose').onclick = closeChart;
+$('modal').onclick = ev => { if (ev.target.id === 'modal') closeChart(); };
+
+// ── Trades (per-trade audit) ─────────────────────────────────────────────────
+function statusOf(r) {
+  if (r.outcome === 'win')  return ['WON', 'o-win'];
+  if (r.outcome === 'loss') return ['LOST', 'o-loss'];
+  if (r.outcome === 'expired') return ['expired', 'o-exp'];
+  if (r.outcome === 'timeout') return ['timeout', 'o-exp'];
+  if (r.filledAt) return ['open (filled)', 'o-open'];
+  return ['waiting fill', 'o-open'];
+}
+async function loadTrades() {
+  $('trades').innerHTML = '<div class="muted">loading…</div>';
+  try {
+    const r = await fetch('/api/levels-v2/ledger?records=300'); const j = await r.json();
+    const recs = j.records || [];
+    if (!recs.length) { $('trades').innerHTML = '<div class="muted">— no trades recorded yet (builds as zones fire &amp; resolve each refresh) —</div>'; return; }
+    const rows = recs.map(r => {
+      const [lbl, cls] = statusOf(r);
+      const real = r.realizedPct == null ? '' : `${r.realizedPct >= 0 ? '+' : ''}${Number(r.realizedPct).toFixed(3)}%`;
+      return `<tr>
+        <td class="mono">${fmtTime(r.recordedAt)}</td>
+        <td class="mono">${r.sym}</td>
+        <td class="${r.direction}">${r.direction === 'long' ? '↑' : '↓'}</td>
+        <td class="${gradeCls(r.grade)}">${r.grade}</td>
+        <td class="mono">${r.price}</td>
+        <td class="mono">${r.sl} / ${r.tp}</td>
+        <td class="${cls}">${lbl}</td>
+        <td class="mono ${r.realizedPct >= 0 ? 'o-win' : r.realizedPct < 0 ? 'o-loss' : ''}">${real}</td>
+        <td class="cell mono">${r.cell}</td>
+      </tr>`;
+    }).join('');
+    $('trades').innerHTML = `<table><thead><tr><th>Recorded</th><th>Pair</th><th>Dir</th><th>Gr</th><th>Entry</th><th>SL / TP</th><th>Status</th><th>Realized</th><th>Cell</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } catch (e) { $('trades').innerHTML = '<div class="muted">trades error: ' + e.message + '</div>'; }
+}
+
+// ── Ledger stats ─────────────────────────────────────────────────────────────
+function renderLedger(s) {
+  if (!s || !s.total) { $('ledger').innerHTML = '<div class="muted">— no ledger yet —</div>'; return; }
+  const rows = Object.keys(s.byGrade || {}).map(g => {
+    const b = s.byGrade[g]; const holds = b.realizedExpectancy >= 0;
+    return `<tr><td class="${gradeCls(g)}">${g}</td><td class="mono">${b.n}</td><td class="mono">${b.winRate}%</td>
+      <td class="mono" style="color:${holds ? 'var(--grn)' : 'var(--red)'}">${b.realizedExpectancy >= 0 ? '+' : ''}${b.realizedExpectancy.toFixed(3)}%</td>
+      <td class="mono">+${b.policyExpectancy.toFixed(3)}%</td><td>${holds ? '✓ holding' : '✗ underperforming'}</td></tr>`;
+  }).join('');
+  $('ledger').innerHTML = `
+    <div class="cbadges" style="margin-bottom:8px;">
+      <span class="badge">${s.total} recorded</span><span class="badge">${s.decided} resolved</span>
+      <span class="badge">${s.open} open</span><span class="badge">${s.expired} expired</span>
+      <span class="badge">overall ${s.overallRealized >= 0 ? '+' : ''}${s.overallRealized.toFixed(3)}%</span>
+    </div>
+    ${rows ? `<table><thead><tr><th>Grade</th><th>n</th><th>Win%</th><th>Realized</th><th>Policy</th><th>Verdict</th></tr></thead><tbody>${rows}</tbody></table>`
+           : '<div class="muted">— recorded, awaiting resolution —</div>'}`;
+}
+
+// ── Load / auto ──────────────────────────────────────────────────────────────
 async function loadCurrent(quiet) {
   if (!quiet) setStatus('loading…');
   try {
     const r = await fetch('/api/levels-v2/entries'); const j = await r.json();
     renderPolicy(j.policy); renderEntries(j, j.entries); freshness(j.entries);
     try { const lr = await fetch('/api/levels-v2/ledger'); const lj = await lr.json(); renderLedger(lj.stats); } catch {}
+    if ($('panelTrades').style.display !== 'none') loadTrades();
     if (!quiet) setStatus('loaded', 'var(--grn)');
   } catch (e) { if (!quiet) setStatus('load error: ' + e.message, 'var(--red)'); }
 }
 
-// Auto-load: re-read KV every 60s (cheap) so the view tracks the server's 30-min
-// refresh without a manual click. Toggle persists in localStorage.
 let _autoTimer = null;
 function setAuto(on) {
   localStorage.setItem('tgv2_auto', on ? '1' : '0');
@@ -238,6 +335,15 @@ function setAuto(on) {
   if (on) _autoTimer = setInterval(() => loadCurrent(true), 60_000);
 }
 
+// ── Learn / refresh ──────────────────────────────────────────────────────────
+async function poll(jobId, onDone) {
+  try {
+    const r = await fetch(`/api/levels-v2/status/${jobId}`); const j = await r.json();
+    if (j.status === 'running') { setStatus(`learning… ${j.currentPair || ''} ${j.pairsDone || 0}/${j.pairsTotal || '?'} (${j.elapsed||0}s)`, 'var(--amb)'); setTimeout(() => poll(jobId, onDone), 1500); }
+    else if (j.status === 'done') onDone(j);
+    else setStatus('learn failed: ' + (j.error || '?'), 'var(--red)');
+  } catch (e) { setStatus('poll error: ' + e.message, 'var(--red)'); }
+}
 $('btnLearn').onclick = async () => {
   $('btnLearn').disabled = true; setStatus('starting M1 learn…', 'var(--amb)');
   try {
@@ -251,25 +357,16 @@ $('btnRefresh').onclick = async () => {
   $('btnRefresh').disabled = true; setStatus('refreshing live entries…', 'var(--amb)');
   try {
     const r = await fetch('/api/levels-v2/refresh', { method: 'POST' }); const j = await r.json();
-    if (!j.ok && /no policy/i.test(j.error || '')) {
-      setStatus('⚠ No policy yet — click “① Learn policy” first and wait for it to finish, then Refresh.', 'var(--amb)');
-    } else {
-      setStatus(j.ok ? `refreshed${j.ledgerSize != null ? ` · ledger ${j.ledgerSize}` : ''}` : ('refresh: ' + (j.error || '?')), j.ok ? 'var(--grn)' : 'var(--red)');
-    }
+    if (!j.ok && /no policy/i.test(j.error || '')) setStatus('⚠ No policy yet — click “① Learn policy” first and wait for it to finish.', 'var(--amb)');
+    else setStatus(j.ok ? `refreshed${j.ledgerSize != null ? ` · ledger ${j.ledgerSize}` : ''}` : ('refresh: ' + (j.error || '?')), j.ok ? 'var(--grn)' : 'var(--red)');
     await loadCurrent();
   } catch (e) { setStatus('refresh error: ' + e.message, 'var(--red)'); }
   $('btnRefresh').disabled = false;
 };
 $('btnLoad').onclick = () => loadCurrent();
 $('autoChk').onchange = e => setAuto(e.target.checked);
-$('viewToggle').onclick = () => {
-  _view = _view === 'cards' ? 'list' : 'cards';
-  const t = $('viewToggle');
-  t.textContent = _view === 'cards' ? '▦ cards' : '☰ list';
-  t.classList.toggle('on', _view === 'cards');
-  if (_lastEntries) $('entries').innerHTML = _view === 'cards' ? renderCards(_lastEntries) : renderList(_lastEntries);
-};
-setAuto(localStorage.getItem('tgv2_auto') !== '0');   // default on
+
+setAuto(localStorage.getItem('tgv2_auto') !== '0');
 loadCurrent();
 </script>
 </body>
