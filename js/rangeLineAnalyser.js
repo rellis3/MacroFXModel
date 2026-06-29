@@ -28,7 +28,8 @@ import { FIB_LEVELS } from './fibProjection.js';
 import { volSigmaSeries } from './forecastCore.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { createTouchFeatures } from './touchFeatures.js';
-import { extractTouches, runPerLine } from './perLineStrategy.js';
+import { extractTouches, runPerLine, pnlFor, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { portfolioStats } from './backtestStats.js';
 
 // Sparse STRUCTURAL ladder — half-integer fib grid (…−1,−0.5,0,0.5,1,1.5…) so the
 // triple-barrier neighbours are real distances, not the 0.25-dense grid.
@@ -129,11 +130,46 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
         }
       }
 
+      // FOLLOW-direction trailing exits, simulated on the M1 path (for the exit
+      // A/B). Entry = L, going AWAY from mid (continuation). Two trails, both with
+      // the same protective stop = inner (one rung toward mid):
+      //   • structural ratchet: each time price reaches the next ladder level, the
+      //     stop ratchets to one level behind the peak — exit on a level-flip back.
+      //   • chandelier: stop = peak − chandFrac×rung (continuous give-back).
+      // Adverse-first within a bar (conservative). fStruct/fChand = realised GROSS
+      // PnL (% of open, + = favourable for the follow trade). Fade keeps the fixed
+      // barrier, so these are only consumed for follow decisions.
+      const rung = Math.abs(outer - L);
+      const trailW = rung * (ctx.chandFrac ?? 0.5);
+      // Both trails share the protective stop = inner; the chandelier never starts
+      // tighter than that (it only ratchets ABOVE inner once price is in profit),
+      // so the A/B compares give-back-from-peak, not initial-stop width.
+      let sStop = inner, sPeak = L, sExit = null, cPeak = L, cStop = inner, cExit = null;
+      for (let k = touchIdx; k < n && (sExit === null || cExit === null); k++) {
+        const bar = bars[k];
+        if (side === 'up') {
+          if (sExit === null) { if (bar.low <= sStop) sExit = sStop;
+            else while (bar.high >= sPeak + rung - 1e-12) { sPeak += rung; sStop = sPeak - rung; } }
+          if (cExit === null) { if (bar.low <= cStop) cExit = cStop;
+            else if (bar.high > cPeak) { cPeak = bar.high; cStop = Math.max(inner, cPeak - trailW); } }
+        } else {
+          if (sExit === null) { if (bar.high >= sStop) sExit = sStop;
+            else while (bar.low <= sPeak - rung + 1e-12) { sPeak -= rung; sStop = sPeak + rung; } }
+          if (cExit === null) { if (bar.high >= cStop) cExit = cStop;
+            else if (bar.low < cPeak) { cPeak = bar.low; cStop = Math.min(inner, cPeak + trailW); } }
+        }
+      }
+      if (sExit === null) sExit = closePx;
+      if (cExit === null) cExit = closePx;
+      const fStruct = (side === 'up' ? sExit - L : L - sExit) / open * 100;
+      const fChand  = (side === 'up' ? cExit - L : L - cExit) / open * 100;
+
       out.push({
         name: ln.label, side, level: +L.toFixed(6),
         innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6),
         decidedBy, firstTouchTime: ftt, outcome, approachVel,
         excMid: +excMid.toFixed(5), excAway: +excAway.toFixed(5),
+        fStruct: +fStruct.toFixed(5), fChand: +fChand.toFixed(5),
       });
     }
   }
@@ -252,6 +288,62 @@ export function eRatioByCell(touchesByPair, policy) {
   return { overall: MAE > 1e-9 ? +(MFE / MAE).toFixed(2) : null, n: N, cells };
 }
 
+// ── Exit A/B: same entries (the learned policy), four exits, honest harness ────
+// fade decisions always keep the fixed barrier (their E-ratio ≈ 1); follow
+// decisions are priced under each exit. Trail PnLs (fStruct/fChand) are gross and
+// pay cost+slip once (they're stop-based). Returns, per mode, the daily-aggregated
+// portfolio stats + cost-stress + trades/day + win% + payoff so the table reads
+// exactly like the rigor card — the winner is the mode that beats `fixed` on OOS
+// after cost-stress while its trades/day fall (breadth deflating).
+const _toDaily = (trades) => {
+  const m = new Map();
+  for (const t of trades) m.set(t.date, (m.get(t.date) || 0) + t.pnl);
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+};
+function _priceExit(t, decision, mode, cost, slip) {
+  if (decision === 'fade') return pnlFor(t, 'fade', { costPct: cost, slipPct: slip });
+  const fixed = pnlFor(t, 'follow', { costPct: cost, slipPct: slip });   // net
+  if (mode === 'fixed' || t.fStruct == null) return fixed;
+  const tc = cost + slip;                                                // trail = stop exit → slip
+  if (mode === 'struct') return +(t.fStruct - tc).toFixed(5);
+  if (mode === 'chand')  return t.fChand != null ? +(t.fChand - tc).toFixed(5) : fixed;
+  if (mode === 'scale')  return +(0.5 * fixed + 0.5 * (t.fStruct - tc)).toFixed(5);
+  return fixed;
+}
+export function runExitAB(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, costMults = [1, 2, 3] } = {}) {
+  if (!policy || !splitDate) return null;
+  const out = {};
+  for (const mode of ['fixed', 'struct', 'chand', 'scale']) {
+    const trades = [], byMult = Object.fromEntries(costMults.map(m => [m, []]));
+    let wins = 0, grossWin = 0, grossLoss = 0;
+    for (const [pair, touches] of Object.entries(touchesByPair)) {
+      const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+      for (const t of touches) {
+        if (t.date < splitDate) continue;
+        const p = policy[t.cell];
+        if (!p || p.decision === 'skip') continue;
+        const pnl = _priceExit(t, p.decision, mode, cost, slip);
+        trades.push({ date: t.date, pnl });
+        if (pnl > 0) { wins++; grossWin += pnl; } else grossLoss += -pnl;
+        for (const mult of costMults) byMult[mult].push({ date: t.date, pnl: _priceExit(t, p.decision, mode, cost * mult, slip * mult) });
+      }
+    }
+    const n = trades.length;
+    if (!n) { out[mode] = { trades: 0 }; continue; }
+    const port = portfolioStats(_toDaily(trades));
+    const days = new Set(trades.map(t => t.date)).size, losses = n - wins;
+    out[mode] = {
+      sharpe: port.sharpe, psr: port.psr, cagr: port.volTarget?.cagr ?? null, maxDD: port.volTarget?.maxDD ?? null,
+      trades: n, tradesPerDay: days ? +(n / days).toFixed(1) : 0,
+      winRate: +(wins / n * 100).toFixed(1),
+      expectancy: +(trades.reduce((s, x) => s + x.pnl, 0) / n).toFixed(4),
+      payoff: (losses && grossLoss > 1e-9) ? +(((grossWin / wins) / (grossLoss / losses))).toFixed(2) : null,
+      costStress: costMults.map(mult => ({ mult, sharpe: portfolioStats(_toDaily(byMult[mult])).sharpe })),
+    };
+  }
+  return out;
+}
+
 // ── One pair: packed M1 → range-line touches (the per-pair unit of work) ──────
 // Returns the lightweight touch array (perLineStrategy shape). The caller can
 // drop `packed` after this — only the small touch list is retained — so a 26-pair
@@ -298,3 +390,4 @@ export function runRangeLineBook(packedByPair, opts = {}) {
 export { runPerLine, costForPair, runRigor, runSensitivity } from './perLineStrategy.js';
 export { extractTouches } from './perLineStrategy.js';
 export { deflatedSharpe } from './backtestStats.js';
+// runExitAB is defined above (range-line-specific exit comparison).
