@@ -37,7 +37,7 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
-import { touchesForPair, runPerLine } from './js/rangeLineAnalyser.js';
+import { touchesForPair, runPerLine, costForPair } from './js/rangeLineAnalyser.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
@@ -7004,20 +7004,22 @@ app.post('/api/range-line/run', async (req, res) => {
       // RELEASE the packed M1 → yield to the event loop. This keeps only one
       // pair's M1 resident at a time (the 26-pair book would otherwise OOM) and
       // lets /status answer the poll between pairs (no event-loop starvation).
-      const touchesByPair = {};
+      const touchesByPair = {}, costByPair = {};
       let i = 0;
       for (const p of pairs) {
         rlJobs.set(jobId, { status: 'running', startedAt, currentPair: p, pairsDone: i, pairsTotal: pairs.length });
         let packed = await loadM1ForPair(p, BT_M1_DIR);
         if (packed && packed.n) {
-          touchesByPair[p] = touchesForPair(packed, _assetClassFor(p), opts);
+          const ac = _assetClassFor(p);
+          touchesByPair[p] = touchesForPair(packed, ac, opts);
+          costByPair[p] = costForPair(p, ac);            // real per-pair round-trip spread (survivors honesty)
         }
         packed = null;                                   // release M1 for GC
         await new Promise(r => setImmediate(r));          // yield → /status can respond
         i++;
       }
       if (!Object.keys(touchesByPair).length) { rlJobs.set(jobId, { status: 'error', error: 'No M1 data for the requested pairs', startedAt }); return; }
-      const book = runPerLine(touchesByPair, opts);
+      const book = runPerLine(touchesByPair, { ...opts, costByPair });
       rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book } });
     } catch (e) {
       console.error('[range-line/run]', e?.message, e?.stack ?? '');
