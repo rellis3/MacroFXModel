@@ -2766,6 +2766,87 @@ loadMeCreds();
 loadMeResults();
 loadMeLiveStatus();
 
+// ── Volatility Bot (per-line fade) ────────────────────────────────────────────
+const VB_DEFAULTS = {
+  paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
+  max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
+};
+let _vbCfg = { ...VB_DEFAULTS };
+
+function renderVbForm() {
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  chk('vb_paper_mode',  _vbCfg.paper_mode ?? true);
+  chk('vb_kill_switch', _vbCfg.kill_switch);
+  set('vb_risk_pct',        _vbCfg.risk_pct        ?? VB_DEFAULTS.risk_pct);
+  set('vb_max_lot',         _vbCfg.max_lot         ?? VB_DEFAULTS.max_lot);
+  set('vb_max_open',        _vbCfg.max_open        ?? VB_DEFAULTS.max_open);
+  set('vb_max_spread_pips', _vbCfg.max_spread_pips ?? VB_DEFAULTS.max_spread_pips);
+  set('vb_tick_secs',       _vbCfg.tick_secs       ?? VB_DEFAULTS.tick_secs);
+  set('vb_status_secs',     _vbCfg.status_secs     ?? VB_DEFAULTS.status_secs);
+  set('vb_plan_secs',       _vbCfg.plan_secs       ?? VB_DEFAULTS.plan_secs);
+  set('vb_enabled_pairs',  (_vbCfg.enabled_pairs ?? []).join(', '));
+}
+
+function readVbForm() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  _vbCfg.paper_mode      = !!document.getElementById('vb_paper_mode')?.checked;
+  _vbCfg.kill_switch     = !!document.getElementById('vb_kill_switch')?.checked;
+  _vbCfg.risk_pct        = num('vb_risk_pct', VB_DEFAULTS.risk_pct);
+  _vbCfg.max_lot         = num('vb_max_lot', VB_DEFAULTS.max_lot);
+  _vbCfg.max_open        = Math.round(num('vb_max_open', VB_DEFAULTS.max_open));
+  _vbCfg.max_spread_pips = num('vb_max_spread_pips', VB_DEFAULTS.max_spread_pips);
+  _vbCfg.tick_secs       = Math.round(num('vb_tick_secs', VB_DEFAULTS.tick_secs));
+  _vbCfg.status_secs     = Math.round(num('vb_status_secs', VB_DEFAULTS.status_secs));
+  _vbCfg.plan_secs       = Math.round(num('vb_plan_secs', VB_DEFAULTS.plan_secs));
+  _vbCfg.enabled_pairs   = (document.getElementById('vb_enabled_pairs')?.value || '')
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+
+async function loadVbConfig() {
+  try { const stored = await kvGet('volatility_bot_config'); if (stored) _vbCfg = { ...VB_DEFAULTS, ...stored }; renderVbForm(); } catch (e) {}
+}
+async function saveVbConfig() {
+  readVbForm();
+  const el = document.getElementById('vbSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('volatility_bot_config', _vbCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#e0a93b'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetVbDefaults() {
+  _vbCfg = { ...VB_DEFAULTS }; renderVbForm();
+  const el = document.getElementById('vbSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadVbCreds() { try { _applyCredsToForm(await kvGet('volatility_bot_credentials'), 'vb_', 'vb_mt5_password'); } catch (e) {} }
+async function saveVbCreds() { await _saveCreds('volatility_bot_credentials', 'vb_', 'vb_mt5_password', 'vbCredsStatus'); }
+
+async function loadVbLiveStatus() {
+  const ageEl = document.getElementById('vbLiveAge'), modeEl = document.getElementById('vbLiveMode');
+  const balEl = document.getElementById('vbLiveBal'), openEl = document.getElementById('vbOpenN');
+  const uniEl = document.getElementById('vbUniN');
+  try {
+    const [st, planWrap] = await Promise.all([kvGet('volatility_bot_status'), kvGet('volatility_bot_plan')]);
+    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; return; }
+    if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
+    if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+    if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
+    if (openEl) openEl.textContent = (st.mt5_positions || []).length;
+    if (uniEl)  uniEl.textContent  = (st.universe || []).length;
+    const pa = document.getElementById('vbPlanAge');
+    if (pa) pa.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+}
+
+window.saveVbConfig = saveVbConfig; window.resetVbDefaults = resetVbDefaults;
+window.saveVbCreds = saveVbCreds; window.loadVbLiveStatus = loadVbLiveStatus;
+
+document.querySelector('.tab-btn[data-tab="volatility"]')?.addEventListener('click', loadVbLiveStatus);
+loadVbConfig();
+loadVbCreds();
+loadVbLiveStatus();
+
 loadDaStatus();
 loadGoldStatus();
 loadBtJournal();

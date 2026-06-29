@@ -181,8 +181,14 @@ survivor universe). Each slice is its own PR, golden-tested, smallest diff:
    `volatility_bot/engine.py` (pure, offline-tested) + `volatility_bot/volatility_bot.py`
    (magic 20260099, paper-first, pushes `volatility_bot_status`). ✅ paper path
    fully tested; ⚠ live MT5 connect/order needs a paper-terminal verify.
-5. **UI** — `bot-config.html` "Volatility" tab (credentials + paper/live toggle +
-   universe/risk/margin/kill) + one `_POS_BOTS` row so trades show on positions. ⬜
+5. **UI** — `bot-config.html` "📐 Volatility" tab (MT5 credentials + paper/live
+   toggle + risk/max-lot/max-open/max-spread/cadences/pairs-override, saving
+   `volatility_bot_config` + `volatility_bot_credentials` via the shared
+   `kvSet`/`_saveCreds`) + live-status panel + one `_POS_BOTS` row so trades show
+   on the positions table. Also corrected `pylego/kv.py` to the real worker
+   contract (`/api/kv/set {key,data,timestamp}`, `/api/kv/get → data`) and the
+   bot's credential keys (`mt5_account`/`mt5_password`/`mt5_server`/`mt5_path`). ✅
+   **The Volatility Bot is complete — paper-runnable end to end.**
 
 **Why `bot/regime_bot.py` is the pilot:** it's no longer traded, so it's the
 safe sandbox to extract the *full* execution surface (sizing, risk, and next the

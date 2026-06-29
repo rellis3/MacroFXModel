@@ -118,7 +118,9 @@ def run(base_url: str, force_live: bool) -> None:
 
     if not paper:
         creds = kv.get_json("volatility_bot_credentials") or {}
-        if not broker.connect(creds.get("account"), creds.get("password"), creds.get("server")):
+        # Credential keys match the config page (_saveCreds): mt5_account/password/server/path.
+        if not broker.connect(creds.get("mt5_account"), creds.get("mt5_password"),
+                              creds.get("mt5_server"), creds.get("mt5_path") or None):
             log.error("broker connect failed — exiting")
             return
 
