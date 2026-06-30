@@ -54,6 +54,7 @@
       <span><label>Max level</label><select id="maxLevel" title="Cap |fib level| — near-mid only drops the rare far extensions"><option value="0">all levels</option><option value="3">≤ 3</option><option value="2">≤ 2 (near-mid)</option><option value="1.5">≤ 1.5</option></select></span>
       <span><label>min N / cell</label><input id="minN" type="number" value="50" min="5" max="500" style="width:64px"></span>
       <span><label>OOS</label><select id="splitFrac"><option value="0.4">40%</option><option value="0.6" selected>40/60</option><option value="0.5">50%</option></select></span>
+      <span><label>Range window</label><select id="rangeWindow" title="The window that forms the range; the breakout is traded after it. Default = London midnight–6am (00:00–06:00 UTC, fixed UTC = London winter time)."><option value="0,6" selected>London 00:00–06:00</option><option value="22,6">Asia 22:00–04:00 (legacy)</option><option value="0,8">London 00:00–08:00</option><option value="7,5">London 07:00–12:00</option></select></span>
       <button class="run" id="runBtn" onclick="run()">▶ Run</button>
       <span id="status" class="muted"></span>
     </div>
@@ -142,6 +143,8 @@ async function run() {
     minN: parseInt($('minN').value) || 50,
     splitFrac: parseFloat($('splitFrac').value) || 0.6,
   };
+  const [bh, ah] = ($('rangeWindow').value || '0,6').split(',');
+  body.boundaryHour = parseInt(bh); body.asiaHrs = parseFloat(ah);
   try {
     const r = await fetch('/api/range-line/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const d = await r.json();
