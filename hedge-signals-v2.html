@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hedge Signals v2 — Cointegration Pairs</title>
+<style>
+:root{
+  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--bg4:#252d3e;
+  --border:#2a3347;--border2:#374160;
+  --text:#e2e8f0;--muted:#64748b;--faint:#374151;
+  --green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--purple:#a855f7;--cyan:#06b6d4;
+  --accent:#4f8ef7;
+  --font:'Inter','SF Pro Display',system-ui,sans-serif;
+  --mono:'DM Mono','SF Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5;padding:20px;max-width:1180px;margin:0 auto}
+a{color:var(--accent);text-decoration:none}
+h1{font-size:20px;font-weight:700;letter-spacing:-.3px}
+h2{font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text)}
+.sub{color:var(--muted);font-size:12px;margin-top:3px}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:rgba(79,142,247,.12);color:var(--accent);border:1px solid rgba(79,142,247,.3);vertical-align:middle;margin-left:8px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:18px;border-bottom:1px solid var(--border);padding-bottom:14px}
+.nav{display:flex;gap:8px;align-items:center}
+.btn{font-family:var(--font);font-size:12px;font-weight:600;padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;transition:.15s}
+.btn:hover{background:var(--bg4);border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.muted{color:var(--muted)}
+.note{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 13px;font-size:12px;color:#fcd9a0;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:right;padding:7px 9px;border-bottom:1px solid var(--border)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:10px;letter-spacing:.4px;text-transform:uppercase}
+td{font-family:var(--mono)}
+.pos{color:var(--green)}.neg{color:var(--red)}.dim{color:var(--muted)}
+.pill{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:9px;font-weight:600}
+.pill.yes{background:rgba(34,197,94,.13);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.pill.no{background:rgba(100,116,139,.13);color:var(--muted);border:1px solid var(--border2)}
+.pill.long{background:rgba(34,197,94,.13);color:var(--green)}
+.pill.short{background:rgba(239,68,68,.13);color:var(--red)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.abwrap{overflow-x:auto}
+.win{color:var(--green);font-weight:700}
+.sig-card{border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:8px;background:var(--bg3)}
+.sig-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.sig-pair{font-weight:700;font-size:13px}
+.sig-row{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.sig-row b{color:var(--text)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:s .7s linear infinite;vertical-align:-1px}
+@keyframes s{to{transform:rotate(360deg)}}
+code{font-family:var(--mono);background:var(--bg3);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--cyan)}
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>Hedge Signals <span class="badge">v2 · Cointegration</span></h1>
+    <div class="sub">Pairs selected by <b>cointegration</b> (Engle-Granger half-life + t-stat), traded on the static residual z-score, money-matched legs, half-life time-stop.</div>
+  </div>
+  <div class="nav">
+    <a class="btn ghost" href="hedge-signals.html">← v1 (correlation)</a>
+    <a class="btn ghost" href="index.html">Dashboard</a>
+    <button class="btn" id="refreshBtn" onclick="loadSignals()">↻ Refresh signals</button>
+    <button class="btn" id="checkBtn" onclick="checkNow()">Check now</button>
+  </div>
+</div>
+
+<div class="note">
+  <b>Why v2.</b> v1 ranks pairs for <i>low</i> correlation then trades their spread as if it reverts — a contradiction, since only <i>cointegrated</i> legs revert.
+  v2 flips that: it only trades a pair whose spread is statistically mean-reverting, sizes leg B = β × leg A (money-matched), and cuts a position that hasn't reverted within ~2× its half-life. See <code>HEDGING_VS_SPREAD.md</code>.
+</div>
+
+<div class="panel">
+  <h2>Live v2 signals <span class="muted" id="lastRun"></span></h2>
+  <div id="signals"><span class="muted">Loading…</span></div>
+</div>
+
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+    <h2 style="margin:0">IS / OOS A/B — v2 vs v1-style baseline</h2>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label class="muted" style="font-size:11px">Years
+        <input id="years" type="number" value="3" min="1" max="5" step="1"
+          style="width:48px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:5px;padding:3px 6px;font-family:var(--mono)">
+      </label>
+      <button class="btn primary" id="btBtn" onclick="runBacktest()">Run backtest</button>
+    </div>
+  </div>
+  <div class="sub" style="margin-bottom:12px">Both engines run on the same OANDA H4 bars. A change only "wins" on <b>OOS</b> Sharpe with ≥30 OOS trades (house rule).</div>
+  <div id="btStatus" class="muted"></div>
+  <div id="btResult"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d=2) => v == null ? '—' : (+v).toFixed(d);
+const sgn = v => v == null ? 'dim' : v > 0 ? 'pos' : v < 0 ? 'neg' : 'dim';
+
+async function loadSignals(){
+  $('signals').innerHTML = '<span class="muted">Loading…</span>';
+  try{
+    const r = await fetch('/api/hedge-signals-v2'); const d = await r.json();
+    $('lastRun').textContent = d.last_run ? '· updated ' + new Date(d.last_run).toLocaleString() : '';
+    const sigs = (d.signals || []);
+    if(!sigs.length){ $('signals').innerHTML = '<span class="muted">No signals yet. OANDA bars are only reachable on Railway (403 in the sandbox). Hit “Check now” on the live host.</span>'; return; }
+    // Cointegrated + at-entry first, then by |z|
+    sigs.sort((a,b)=> (b.cointegrated-a.cointegrated) || (Math.abs(b.z)-Math.abs(a.z)));
+    $('signals').innerHTML = sigs.map(s=>{
+      const entry = s.isEntry
+        ? `<span class="pill ${s.direction_a==='LONG'?'long':'short'}">${s.pair_a} ${s.direction_a}</span> <span class="pill ${s.direction_b==='LONG'?'long':'short'}">${s.pair_b} ${s.direction_b}</span>`
+        : `<span class="pill no">watching</span>`;
+      return `<div class="sig-card">
+        <div class="sig-head">
+          <div class="sig-pair">${s.pair_a} / ${s.pair_b}</div>
+          <div>${entry} <span class="pill ${s.cointegrated?'yes':'no'}">${s.cointegrated?'cointegrated':'not cointegrated'}</span></div>
+        </div>
+        <div class="sig-row">
+          <span>z <b class="${sgn(s.z)}">${fmt(s.z,2)}σ</b></span>
+          <span>β (hedge) <b>${fmt(s.beta,3)}</b></span>
+          <span>leg B = <b>${fmt(s.notionalRatioB,3)}×</b> leg A</span>
+          <span>half-life <b>${s.halfLife==null?'—':fmt(s.halfLife,1)+' bars'}</b></span>
+          <span>t-stat <b>${fmt(s.tStat,2)}</b></span>
+          ${s.holdLimitBars?`<span>time-stop <b>${s.holdLimitBars} bars</b></span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ $('signals').innerHTML = '<span class="neg">Error: '+e.message+'</span>'; }
+}
+
+async function checkNow(){
+  $('checkBtn').disabled = true; $('checkBtn').innerHTML = '<span class="spin"></span> checking';
+  try{ await fetch('/api/hedge-signals-v2/check', {method:'POST'}); await loadSignals(); }
+  catch(e){ /* ignore */ }
+  finally{ $('checkBtn').disabled = false; $('checkBtn').textContent = 'Check now'; }
+}
+
+let _poll = null;
+async function runBacktest(){
+  clearInterval(_poll);
+  $('btBtn').disabled = true; $('btResult').innerHTML = '';
+  $('btStatus').innerHTML = '<span class="spin"></span> starting…';
+  try{
+    const years = parseInt($('years').value) || 3;
+    const r = await fetch('/api/hedge-signals-v2/backtest/run', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({years})});
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error || 'failed to start');
+    _poll = setInterval(async ()=>{
+      const s = await (await fetch('/api/hedge-signals-v2/backtest/status/'+j.jobId)).json();
+      if(s.status === 'running'){ $('btStatus').innerHTML = '<span class="spin"></span> '+(s.phase||'running')+' · '+(s.elapsed||0)+'s'; return; }
+      clearInterval(_poll); $('btBtn').disabled = false;
+      if(s.status === 'error' || !s.ok){ $('btStatus').innerHTML = '<span class="neg">Error: '+(s.error||'unknown')+'</span>'; return; }
+      $('btStatus').textContent = '';
+      renderBacktest(s.data);
+    }, 1500);
+  }catch(e){ $('btStatus').innerHTML = '<span class="neg">Error: '+e.message+'</span>'; $('btBtn').disabled = false; }
+}
+
+function card(title, m){
+  const row = (k,label,d=2,pct=false)=>`<tr><td>${label}</td><td class="${k==='sharpe'||k==='total'||k==='expectancy'?sgn(m[k]):''}">${pct?fmt(m[k]*100,1)+'%':fmt(m[k],d)}</td></tr>`;
+  return `<div class="panel" style="margin:0">
+    <h2>${title}</h2>
+    <table>
+      <tr><td>Trades</td><td>${m.trades}</td></tr>
+      ${row('sharpe','Sharpe',2)}
+      ${row('total','Total (log)',4)}
+      ${row('winRate','Win rate',0,true)}
+      ${row('profitFactor','Profit factor',2)}
+      ${row('expectancy','Expectancy',5)}
+      <tr><td>Max DD (log)</td><td class="neg">${fmt(m.maxDD,4)}</td></tr>
+    </table>
+  </div>`;
+}
+
+function renderBacktest(d){
+  const verdict = (()=>{
+    const v = d.v2.oos, b = d.base.oos;
+    const win = v.sharpe > b.sharpe && v.trades >= 30;
+    return `<div class="note" style="background:${win?'rgba(34,197,94,.07)':'rgba(100,116,139,.07)'};border-color:${win?'rgba(34,197,94,.3)':'var(--border2)'};color:${win?'#bbf7d0':'var(--muted)'}">
+      <b>OOS verdict:</b> v2 Sharpe <b>${fmt(v.sharpe,2)}</b> vs v1-style <b>${fmt(b.sharpe,2)}</b> on <b>${v.trades}</b> OOS trades —
+      ${win ? 'v2 wins the house test (beats incumbent OOS with ≥30 trades).' : (v.trades<30 ? 'not enough OOS trades (need ≥30) — widen the universe or lengthen the window.' : 'v2 does not beat the baseline OOS here.')}
+    </div>`;
+  })();
+
+  const ab = (label, e)=>`
+    <h2 style="margin:18px 0 8px">${label}</h2>
+    <div class="grid2">
+      ${card('In-sample', e.is)}
+      ${card('Out-of-sample', e.oos)}
+    </div>`;
+
+  const perPair = `
+    <h2 style="margin:20px 0 8px">Per-pair cointegration & PnL</h2>
+    <div class="abwrap"><table>
+      <tr><th>Pair</th><th>Coint?</th><th>Half-life</th><th>t-stat</th><th>v2 trades</th><th>v2 total</th><th>v1 trades</th><th>v1 total</th></tr>
+      ${d.perPair.map(p=>`<tr>
+        <td>${p.pair}</td>
+        <td><span class="pill ${p.cointegrated?'yes':'no'}">${p.cointegrated?'yes':'no'}</span></td>
+        <td>${p.halfLife==null?'—':fmt(p.halfLife,1)}</td>
+        <td>${fmt(p.tStat,2)}</td>
+        <td>${p.v2Trades}</td><td class="${sgn(p.v2Total)}">${fmt(p.v2Total,4)}</td>
+        <td>${p.baseTrades}</td><td class="${sgn(p.baseTotal)}">${fmt(p.baseTotal,4)}</td>
+      </tr>`).join('')}
+    </table></div>`;
+
+  $('btResult').innerHTML = verdict
+    + `<div class="muted" style="font-size:11px;margin-bottom:4px">${d.totalBars} bars · OOS = last ${Math.round((d.config.oosFrac)*100)}% · costs ${d.config.costLog} log/trade on. PnL in log-spread units.</div>`
+    + ab('v2 — cointegration + rolling z + half-life stop', d.v2)
+    + ab('v1-style baseline — plain spread, all-history mean, z-only exit', d.base)
+    + perPair;
+}
+
+loadSignals();
+</script>
+</body>
+</html>

@@ -46,7 +46,24 @@
   <a href="journal.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Open Trade Journal">📒</button></a>
   <a href="analysis.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="5-Year Pattern Analysis Engine">📊 Pattern Lab</button></a>
   <a href="correlations.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Rolling Correlation &amp; Hedge Analysis" style="border-color:#8b5cf6;color:#8b5cf6">⬡ Corr Lab</button></a>
-  <a href="hedge-signals.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Hedge Signal Generator — live divergence alerts + Python bot integration" style="border-color:#f59e0b;color:#f59e0b">⚡ Signals</button></a>
+  <span class="sig-dd" tabindex="0">
+    <style>
+      .sig-dd{position:relative;display:inline-block;outline:none}
+      .sig-dd > .dark-btn{border-color:#f59e0b;color:#f59e0b}
+      .sig-dd .sig-menu{position:absolute;top:100%;left:0;z-index:50;display:none;min-width:210px;margin-top:4px;
+        background:#161b27;border:1px solid #2a3347;border-radius:8px;padding:5px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+      .sig-dd:hover .sig-menu,.sig-dd:focus-within .sig-menu{display:block}
+      .sig-menu a{display:block;text-decoration:none;color:#e2e8f0;font-size:12px;padding:7px 9px;border-radius:6px;line-height:1.25}
+      .sig-menu a:hover{background:#252d3e}
+      .sig-menu a small{display:block;color:#64748b;font-size:10px;font-weight:400}
+      .sig-menu .v2tag{color:#22c55e;font-weight:700}
+    </style>
+    <button class="dark-btn" title="Hedge Signal Generators — v1 (correlation) & v2 (cointegration)">⚡ Signals ▾</button>
+    <div class="sig-menu">
+      <a href="hedge-signals.html" target="_blank">⚡ Signals <span style="color:#f59e0b">v1</span><small>Correlation divergence + Python bot integration</small></a>
+      <a href="hedge-signals-v2.html" target="_blank"><span class="v2tag">⚡ Signals v2</span><small>Cointegration-gated pairs · money-matched · half-life stop</small></a>
+    </div>
+  </span>
   <a href="bot-config.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Python Bot Config">🤖 Bot</button></a>
   <a href="gold.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Gold Macro Model — XAU/USD two-layer regime">🥇 Gold</button></a>
   <a href="vol-forecast.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Vol & Range Forecast — EWMA daily range forecaster" style="border-color:#4f7df0;color:#4f7df0">📐 Vol Forecast</button></a>

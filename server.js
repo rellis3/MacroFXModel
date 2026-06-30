@@ -72,6 +72,7 @@ import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
+import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -9158,6 +9159,146 @@ app.get('/api/hedge-signals/prices', (_req, res) => {
   }
   res.json({ prices, vol });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// Hedge Signals v2 — cointegration-gated pairs mean-reversion
+// ────────────────────────────────────────────────────────────────────────────
+// v1 (computeHedgeSignals) picks pairs for LOW correlation and trades a plain
+// log(A)−log(B) spread against an all-history mean. v2 selects pairs by
+// COINTEGRATION (Engle-Granger half-life + t-stat), trades the static residual
+// z-scored on a rolling window, money-matches the legs (β) and adds a half-life
+// time-stop. All math lives in js/hedgeSignalV2Engine.js (unit-tested, no copy).
+// OANDA H4 bars are reachable in Railway, not the sandbox (403 ⇒ no_data, not a bug).
+
+const HEDGE_SIGNAL_V2_CFG_KEY = 'hedge_signal_v2_cfg';
+const HEDGE_V2_SIGNALS_PATH   = path.join(__dirname, 'bot', 'data', 'hedge_signals_v2.json');
+const HEDGE_V2_BARS_TTL       = 60 * 60 * 1000;   // reuse fetched bars for 1h
+
+// Candidate pairs likely to cointegrate — the gate filters which actually do.
+// Equity indices co-move strongly (the colleague's DAX/SP, DOW/NAS live here),
+// then metals, energy and a few FX crosses. Same OANDA symbols as CORR/BETA lists.
+const HEDGE_V2_PAIRS = [
+  ['NAS100_USD','SPX500_USD'], ['US30_USD','SPX500_USD'], ['US30_USD','NAS100_USD'],
+  ['US2000_USD','SPX500_USD'], ['DE30_USD','SPX500_USD'], ['DE30_USD','NAS100_USD'],
+  ['UK100_GBP','DE30_USD'],
+  ['XAUUSD','XAGUSD'], ['XAUUSD','XPTUSD'],
+  ['WTICO_USD','BCO_USD'],
+  ['EURUSD','GBPUSD'], ['AUDUSD','NZDUSD'], ['USDCAD','USDCHF'],
+];
+
+let _hedgeV2Running   = false;
+let _hedgeV2BarsCache = { at: 0, years: 0, closes: {} };
+const hedgeV2BtJobs   = new Map();
+
+async function _hedgeV2Bars(years = 2, force = false) {
+  if (!force && _hedgeV2BarsCache.at && _hedgeV2BarsCache.years >= years
+      && Date.now() - _hedgeV2BarsCache.at < HEDGE_V2_BARS_TTL) {
+    return _hedgeV2BarsCache.closes;
+  }
+  const syms = [...new Set(HEDGE_V2_PAIRS.flat())];
+  const closes = {};
+  for (const sym of syms) {
+    const r = await fetchH4Bars(sym, years).catch(() => null);
+    if (r?.closes?.length) closes[sym] = r.closes;
+  }
+  _hedgeV2BarsCache = { at: Date.now(), years, closes };
+  return closes;
+}
+
+async function computeHedgeSignalsV2(force = false) {
+  if (_hedgeV2Running) return { status: 'busy' };
+  _hedgeV2Running = true;
+  try {
+    if (!process.env.OANDA_KEY) return { status: 'no_data', error: 'OANDA_KEY not set' };
+    const closes = await _hedgeV2Bars(2, force);
+    if (!Object.keys(closes).length)
+      return { status: 'no_data', error: 'No OANDA bars (expected in sandbox; works in Railway)' };
+
+    const cfgRaw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
+    const cfg    = cfgRaw ? { ...HEDGE_V2_DEFAULTS, ...JSON.parse(cfgRaw) } : { ...HEDGE_V2_DEFAULTS };
+    const now    = new Date().toISOString();
+    const signals = [];
+    for (const [a, b] of HEDGE_V2_PAIRS) {
+      if (!closes[a] || !closes[b]) continue;
+      const m = Math.min(closes[a].length, closes[b].length);
+      const sig = hedgeV2Live(closes[a].slice(-m), closes[b].slice(-m), cfg);
+      if (sig) signals.push({ pair_a: a, pair_b: b, ...sig, updated: now });
+    }
+    const out = { last_run: now, signals };
+    fs.mkdirSync(path.dirname(HEDGE_V2_SIGNALS_PATH), { recursive: true });
+    fs.writeFileSync(HEDGE_V2_SIGNALS_PATH, JSON.stringify(out, null, 2));
+    return { status: 'ok', total: signals.length, active: signals.filter(s => s.isEntry).length };
+  } catch (e) {
+    console.error('[HEDGE-SIG-V2]', e.message);
+    return { status: 'error', error: e.message };
+  } finally {
+    _hedgeV2Running = false;
+  }
+}
+
+app.get('/api/hedge-signals-v2', (_req, res) => {
+  if (!fs.existsSync(HEDGE_V2_SIGNALS_PATH)) return res.json({ signals: [], last_run: null });
+  try { res.json(JSON.parse(fs.readFileSync(HEDGE_V2_SIGNALS_PATH, 'utf8'))); }
+  catch { res.json({ signals: [], last_run: null }); }
+});
+
+app.post('/api/hedge-signals-v2/check', async (_req, res) => {
+  const result = await computeHedgeSignalsV2(true).catch(e => ({ status: 'error', error: e.message }));
+  res.json(result);
+});
+
+app.get('/api/hedge-signals-v2/config', async (_req, res) => {
+  const raw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
+  res.json(raw ? { ...HEDGE_V2_DEFAULTS, ...JSON.parse(raw) } : { ...HEDGE_V2_DEFAULTS });
+});
+
+app.put('/api/hedge-signals-v2/config', express.json({ limit: '64kb' }), async (req, res) => {
+  const cfg = { ...HEDGE_V2_DEFAULTS, ...(req.body || {}) };
+  await kv.put(HEDGE_SIGNAL_V2_CFG_KEY, JSON.stringify(cfg)).catch(() => {});
+  res.json({ ok: true, cfg });
+});
+
+// Async IS/OOS A/B backtest: v2 (cointegration + rolling z + half-life stop) vs
+// the v1-style baseline (plain spread, all-history mean, z-only exit).
+app.post('/api/hedge-signals-v2/backtest/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(400).json({ ok: false, error: 'OANDA_KEY not set' });
+  const jobId     = `hsv2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  const years     = Math.min(Math.max(parseFloat(req.body?.years) || 3, 1), 5);
+  const cfg       = { ...HEDGE_V2_DEFAULTS, ...(req.body?.cfg || {}) };
+
+  // Drop jobs older than 10 min.
+  for (const [id, j] of hedgeV2BtJobs) if (Date.now() - j.startedAt > 600_000) hedgeV2BtJobs.delete(id);
+  hedgeV2BtJobs.set(jobId, { status: 'running', startedAt, phase: 'Fetching OANDA H4 bars…' });
+
+  (async () => {
+    try {
+      const closes = await _hedgeV2Bars(years, false);
+      if (!Object.keys(closes).length) throw new Error('No OANDA bars returned (works in Railway, 403 in sandbox)');
+      hedgeV2BtJobs.get(jobId).phase = 'Running cointegration + IS/OOS A/B…';
+      const data = hedgeV2Comparison(closes, HEDGE_V2_PAIRS, cfg);
+      hedgeV2BtJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, data, runAt: new Date().toISOString() } });
+      console.log(`[hedge-sig-v2-bt] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s)`);
+    } catch (e) {
+      hedgeV2BtJobs.set(jobId, { status: 'error', startedAt, error: e?.message || String(e) });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
+  const job = hedgeV2BtJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running')
+    return res.json({ ok: true, status: 'running', phase: job.phase, elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'error') return res.json({ ok: false, status: 'error', error: job.error });
+  res.json({ ok: true, status: 'done', ...job.result });
+});
+
+// Recompute live v2 signals on the same cadence as v1 (5 min after boot, then 15-min).
+setTimeout(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
+setInterval(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 15 * 60_000);
 
 // ── Regime log backfill (pure Node.js) ──────────────────────────────────────
 // Native JS log parser — no Python subprocess required.
