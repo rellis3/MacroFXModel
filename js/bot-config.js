@@ -2886,7 +2886,9 @@ loadVbLiveStatus();
 const RL_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   max_spread_pips: 2.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
+  broker_symbols: {},          // { nq:'USTECH100', de30:'GER40', ... } — blank = built-in default
 };
+const RL_INDEX_KEYS = ['nq', 'spx500', 'de30', 'us30', 'us2000'];
 let _rlCfg = { ...RL_DEFAULTS };
 
 function renderRlForm() {
@@ -2902,6 +2904,8 @@ function renderRlForm() {
   set('rl_status_secs',     _rlCfg.status_secs     ?? RL_DEFAULTS.status_secs);
   set('rl_plan_secs',       _rlCfg.plan_secs       ?? RL_DEFAULTS.plan_secs);
   set('rl_enabled_pairs',  (_rlCfg.enabled_pairs ?? []).join(', '));
+  const syms = _rlCfg.broker_symbols || {};
+  RL_INDEX_KEYS.forEach(k => { const el = document.getElementById(`rl_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
 }
 function readRlForm() {
   const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
@@ -2916,6 +2920,9 @@ function readRlForm() {
   _rlCfg.plan_secs       = Math.round(num('rl_plan_secs', RL_DEFAULTS.plan_secs));
   _rlCfg.enabled_pairs   = (document.getElementById('rl_enabled_pairs')?.value || '')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const syms = {};
+  RL_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`rl_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
+  _rlCfg.broker_symbols = syms;
 }
 async function loadRlConfig() {
   try { const stored = await kvGet('range_line_bot_config'); if (stored) _rlCfg = { ...RL_DEFAULTS, ...stored }; renderRlForm(); } catch (e) {}
