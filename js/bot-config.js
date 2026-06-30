@@ -2950,7 +2950,8 @@ async function loadRlLiveStatus() {
   try {
     const [st, planWrap] = await Promise.all([kvGet('range_line_bot_status'), kvGet('range_line_bot_plan')]);
     if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; return; }
-    if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
+    if (ageEl)  { ageEl.textContent = st.running ? (st.forming ? 'Running · Asia range forming (no entries until 06:00 London)' : 'Running') : 'Idle';
+                  ageEl.style.color = st.forming ? 'var(--amber)' : 'var(--text3)'; }
     if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
     if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
     if (openEl) openEl.textContent = (st.mt5_positions || []).length;

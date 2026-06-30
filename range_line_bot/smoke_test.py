@@ -6,7 +6,7 @@ import sys
 
 from pylego.broker.paper import PaperBroker
 from range_line_bot.engine import RangeSession
-from range_line_bot.range_line_bot import _manage_chandeliers, size_for, _apply_broker_symbols, _broker_sym
+from range_line_bot.range_line_bot import _manage_chandeliers, size_for, _apply_broker_symbols, _broker_sym, _in_formation
 
 _p = _f = 0
 def ok(name, cond):
@@ -58,6 +58,22 @@ ok("override applies to another index (spx500 → US500)", _broker_sym("spx500")
 _apply_broker_symbols({})                       # cleared → all built-in defaults
 ok("cleared overrides → built-in default (nq → USTECH100)", _broker_sym("nq") == "USTECH100")
 ok("non-index resolves via registry/upper (eurusd)", _broker_sym("eurusd").upper() == _broker_sym("eurusd"))
+
+print("[formation window — no entries 00:00–06:00]")
+from datetime import datetime, timezone
+P = {"boundaryHour": 23, "asiaHrs": 6}                # window = 23:00–05:00 UTC (London 00:00–06:00 BST)
+t_form = int(datetime(2026, 6, 30, 2, 0, 0, tzinfo=timezone.utc).timestamp())   # 02:00 UTC → inside window
+t_open = int(datetime(2026, 6, 30, 10, 0, 0, tzinfo=timezone.utc).timestamp())  # 10:00 UTC → after pull
+ok("forming True while the Asia range builds (02:00 UTC)", _in_formation(P, t_form) is True)
+ok("forming False after the 06:00 pull (10:00 UTC)", _in_formation(P, t_open) is False)
+ok("forming False right at window close (05:00 UTC)",
+   _in_formation(P, int(datetime(2026, 6, 30, 5, 0, 0, tzinfo=timezone.utc).timestamp())) is False)
+# dry_run during formation → no entry even on a touch; a fresh session entered
+# after the window opens DOES fire (the real-entry path is covered above).
+s_form = RangeSession("nq", FIBS); s_form.set_range("A", BARS)
+ok("no entry while forming (dry_run gate suppresses the touch)", s_form.decide(110.0, POLICY, dry_run=True) == [])
+s_open = RangeSession("nq", FIBS); s_open.set_range("A", BARS)
+ok("entry fires when the window is open (dry_run False)", len(s_open.decide(110.0, POLICY, dry_run=False)) == 1)
 
 print(f"\n{'✗' if _f else '✓'} {_p} passed, {_f} failed")
 sys.exit(1 if _f else 0)
