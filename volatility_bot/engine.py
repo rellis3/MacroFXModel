@@ -44,8 +44,22 @@ class SessionTracker:
         """Replay the session's OHLC bars (open → now) to reconstruct the running
         extremes (drive the dynamic HL lines) and the velocity buffer — so on
         startup or a new-session reset the bot is in-sync with the live session
-        WITHOUT any seeding. bars: iterable of {high, low, close}."""
-        for b in bars or []:
+        WITHOUT any seeding. bars: iterable of {open, high, low, close}.
+
+        The FIRST bar's open re-anchors the session open: the plan ships the per-pair
+        σ/band FRACTIONS (open-independent) plus a D1 open that is STALE whenever the
+        plan is refreshed mid-session (OANDA's forming daily candle is excluded, so
+        the plan carries a prior session's open). The OC/Close lines hang off the
+        open, so anchoring on the live 22:00-UTC session open (bars[0].open) is what
+        keeps them correct; the plan open is only a fallback when no bars arrive."""
+        bars = list(bars or [])
+        first_open = next((b.get("open") for b in bars if b.get("open") is not None), None)
+        if first_open is not None:
+            self.open = float(first_open)
+            self.run_low = self.run_high = self.open
+            self.closes.clear()
+            self.closes.append(self.open)
+        for b in bars:
             hi, lo, cl = b.get("high"), b.get("low"), b.get("close")
             if hi is not None:
                 self.on_price(hi)

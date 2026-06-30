@@ -139,7 +139,9 @@ class Mt5Broker:
     def session_bars(self, pair: str, since_epoch: int, tf=None) -> list:
         """M1 OHLC bars from `since_epoch` (UTC seconds) to now — for a bot's
         session catch-up (reconstruct running extremes + velocity buffer without
-        seeding). Returns [{high, low, close, time}] (empty if MT5 absent)."""
+        seeding). Returns [{open, high, low, close, time}] (empty if MT5 absent).
+        The FIRST bar's open is the true live session open the bot anchors the OC
+        lines on (the plan's D1 open is stale when refreshed mid-session)."""
         if not self.available:
             return []
         try:
@@ -149,7 +151,7 @@ class Mt5Broker:
             rates = mt5.copy_rates_range(self.resolve(pair), timeframe, start, datetime.now(timezone.utc))
             if rates is None:
                 return []
-            return [{'high': float(r['high']), 'low': float(r['low']),
+            return [{'open': float(r['open']), 'high': float(r['high']), 'low': float(r['low']),
                      'close': float(r['close']), 'time': int(r['time'])} for r in rates]
         except Exception:
             return []
