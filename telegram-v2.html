@@ -473,18 +473,33 @@ $('btnAlerts').onclick = () => { const p = $('alertPanel'); const show = p.style
 // ── Confluence backtest ───────────────────────────────────────────────────────
 $('btnConfl').onclick = () => { const p = $('conflPanel'); p.style.display = p.style.display === 'none' ? '' : 'none'; };
 function renderConfl(r) {
-  const fmt = rows => `<table><thead><tr><th>Confluence</th><th>n</th><th>Reversion%</th><th>Fade edge (after cost)</th></tr></thead><tbody>${
-    rows.map(b => `<tr><td>${b.bucket}</td><td class="mono">${b.n}</td><td class="mono">${b.reversionRate}%</td>
+  const rows = r.pooled || [];
+  const tbl = rs => `<table><thead><tr><th>Fib band</th><th>Confluence</th><th>n</th><th>Bounce (toward mid)</th><th>Reversion%</th><th>Fade edge</th></tr></thead><tbody>${
+    rs.map(b => `<tr><td>${b.band}</td><td>${b.conf}</td><td class="mono">${b.n}</td>
+      <td class="mono">${(b.bounce*100).toFixed(1)}bp</td>
+      <td class="mono">${b.revRate}%</td>
       <td class="mono" style="color:${b.fadeExp >= 0 ? 'var(--grn)' : 'var(--red)'}">${b.fadeExp >= 0 ? '+' : ''}${b.fadeExp.toFixed(3)}%</td></tr>`).join('')}</tbody></table>`;
-  const solo = r.pooled.find(b => b.bucket === '0·solo');
-  const trip = r.pooled.find(b => b.bucket === '2·triple+');
-  const verdict = (solo && trip && trip.n > 20 && solo.n > 20)
-    ? (trip.fadeExp > solo.fadeExp + 0.01
-        ? `<span style="color:var(--grn)">✓ Confluence amplifies: 3+ source zones (+${trip.fadeExp.toFixed(3)}%) beat solo (+${solo.fadeExp.toFixed(3)}%).</span>`
-        : `<span style="color:var(--amb)">~ No clear amplification: 3+ (${trip.fadeExp.toFixed(3)}%) vs solo (${solo.fadeExp.toFixed(3)}%) — the lesson doesn't hold here.</span>`)
-    : '<span class="muted">thin samples — inconclusive</span>';
-  $('conflResult').innerHTML = `<div style="margin-bottom:8px;">${verdict}</div>
-    <div class="muted" style="margin-bottom:6px;">pooled across pairs · tol ${r.tolPips}p · lookback ${r.lookbackDays}d</div>${fmt(r.pooled)}`;
+
+  // Within-band verdict: does CONFLUENT beat PLAIN on the reaction (bounce)?
+  const bands = [...new Set(rows.filter(x => x.band !== 'ALL').map(x => x.band))];
+  const cmp = bands.map(band => {
+    const p = rows.find(x => x.band === band && x.conf.startsWith('plain'));
+    const c = rows.find(x => x.band === band && x.conf.startsWith('confluent'));
+    if (!p || !c || p.n < 30 || c.n < 30) return { band, txt: `${band}: thin sample`, win: null };
+    const win = c.bounce > p.bounce;
+    return { band, win, txt: `${band}: confluent bounce ${(c.bounce*100).toFixed(1)}bp vs plain ${(p.bounce*100).toFixed(1)}bp ${win ? '✓ stronger' : '✗ not stronger'} · revert ${c.revRate}% vs ${p.revRate}%` };
+  });
+  const wins = cmp.filter(x => x.win === true).length, scored = cmp.filter(x => x.win !== null).length;
+  const headline = scored === 0 ? '<span class="muted">thin samples — inconclusive</span>'
+    : wins === scored ? `<span style="color:var(--grn)">✓ Confluence reacts harder in <b>every</b> band (${wins}/${scored}) — the lesson holds once ladder-density &amp; location are controlled.</span>`
+    : wins >= scored - wins ? `<span style="color:var(--grn)">✓ Confluence reacts harder in ${wins}/${scored} bands — lesson broadly holds.</span>`
+    : `<span style="color:var(--amb)">~ Mixed: confluent stronger in only ${wins}/${scored} bands.</span>`;
+
+  $('conflResult').innerHTML = `
+    <div style="margin-bottom:8px;">${headline}</div>
+    <div class="muted" style="margin-bottom:6px;">distinct external-source confluence (ladder excluded) · location-controlled by fib band · reaction = mean bounce toward mid · tol ${r.tolPips}p</div>
+    <ul class="muted" style="margin:0 0 10px 16px;">${cmp.map(x => `<li>${x.txt}</li>`).join('')}</ul>
+    ${tbl(rows)}`;
 }
 async function pollConfl(jobId) {
   try {

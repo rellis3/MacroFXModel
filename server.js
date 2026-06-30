@@ -7502,7 +7502,7 @@ app.post('/api/levels-v2/confluence-test', async (req, res) => {
         let packed = await loadM1ForPair(p, BT_M1_DIR);
         if (packed && packed.n) {
           const r = confluenceForPair(packed, _assetClassFor(p), { ...opts, instrument: p });
-          if (r) { perPair[p] = r.buckets; results.push(r); }
+          if (r) { perPair[p] = r.rows; results.push(r); }
         }
         packed = null;
         await new Promise(r => setImmediate(r));

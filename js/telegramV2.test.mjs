@@ -232,15 +232,17 @@ console.log('[confluence]');
   ok('countWithin tol boundary inclusive', countWithin(1.1000, [1.1005], 0.0005) === 1);
   ok('countWithin ignores NaN/zero tol', countWithin(1.1, [NaN, 1.1], 0) === 0);
   ok('bucket solo/pair/triple', confluenceBucket(0) === '0·solo' && confluenceBucket(1) === '1·pair' && confluenceBucket(3) === '2·triple+');
-  // mergeConfluence: sample-weighted pooling across pairs
+  // mergeConfluence: pools raw cell accumulators (n / sumBounce / reverted / sumFade) across pairs
   const merged = mergeConfluence([
-    { buckets: [{ bucket: '0·solo', n: 10, reversionRate: 50, fadeExp: 0.0 }, { bucket: '2·triple+', n: 10, reversionRate: 70, fadeExp: 0.10 }] },
-    { buckets: [{ bucket: '0·solo', n: 30, reversionRate: 60, fadeExp: 0.02 }, { bucket: '2·triple+', n: 30, reversionRate: 80, fadeExp: 0.14 }] },
+    { cells: { 'core(≤1) · plain(<2)': { n: 10, sumBounce: 1.0, reverted: 5, sumFade: 0.0 } } },
+    { cells: { 'core(≤1) · plain(<2)': { n: 30, sumBounce: 6.0, reverted: 18, sumFade: 0.6 } } },
   ]);
-  const solo = merged.find(b => b.bucket === '0·solo');
-  const trip = merged.find(b => b.bucket === '2·triple+');
-  ok('merge sample-weights reversion', solo.n === 40 && solo.reversionRate === +((50*10+60*30)/40).toFixed(1));
-  ok('merge weights expectancy', trip.n === 40 && trip.fadeExp === +((0.10*10+0.14*30)/40).toFixed(4));
+  const cell = merged.find(b => b.key === 'core(≤1) · plain(<2)');
+  ok('merge pools n', cell.n === 40);
+  ok('merge means bounce', cell.bounce === +((1.0 + 6.0) / 40).toFixed(4));
+  ok('merge reversion%', cell.revRate === +((5 + 18) / 40 * 100).toFixed(1));
+  ok('merge fade edge', cell.fadeExp === +((0.0 + 0.6) / 40).toFixed(4));
+  ok('row carries band+conf', cell.band === 'core(≤1)' && cell.conf === 'plain(<2)');
 }
 
 console.log(`\n${failures === 0 ? '✅ all passed' : `❌ ${failures} failed`}`);
