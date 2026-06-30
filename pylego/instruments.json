@@ -256,7 +256,7 @@
     },
     "dax": {
       "display": "DE30_USD",
-      "oanda": "DE30_USD",
+      "oanda": "DE30_EUR",
       "yahoo": "^GDAXI",
       "mt5": "GER40",
       "assetClass": "index",
@@ -409,7 +409,8 @@
     "sp500": "spx",
     "dax": "dax",
     "de30_usd": "dax",
-    "de30usd": "dax",
+    "de30_eur": "dax",
+    "de30eur": "dax",
     "^gdaxi": "dax",
     "ger40": "dax",
     "ftse": "ftse",
