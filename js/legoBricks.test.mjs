@@ -375,6 +375,20 @@ await (async () => {
     });
   } catch { threwEmpty = true; }
   ok('producer refuses to publish a 0-pair plan', threwEmpty && !wroteEmpty);
+
+  // Two survivor names for the SAME instrument (e.g. 'us30' + 'dow', 'spx' +
+  // 'spx500') must collapse to one universe entry — otherwise the bot double-trades it.
+  const planDup = await refreshVolatilityPlan({
+    getBook: async () => ({ ...book, survivors:{ pairs:['us30','dow','spx','spx500'] } }),
+    fetchD1: async () => [{ open: 50000, high: 1, low: 1, close: 1 }],
+    sigmaSeries: () => Float64Array.from([0.01]),
+    kvPut: async () => {},
+    resolveInstrument: (p) => ({ oanda: (p === 'us30' || p === 'dow') ? 'US30_USD' : 'SPX500_USD', assetClass: 'index', pip: 1 }),
+    now: () => '2026-06-29T00:00:00Z', stamp: () => 1,
+  });
+  ok('producer dedups aliases of one instrument', planDup.universe.length === 2 &&
+     planDup.universe.includes('us30') && planDup.universe.includes('spx') &&
+     !planDup.universe.includes('dow') && !planDup.universe.includes('spx500'));
 })();
 
 console.log('[bucketM1IntoSessions — midnight Europe/London]');
