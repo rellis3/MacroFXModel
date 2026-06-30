@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches } from './perLineStrategy.js';
 
@@ -170,6 +170,34 @@ ok('bad-level scan returns cells + baseline/withVeto + worst list', bl && Array.
 ok('veto drops the IS-losing (pair×level) → fewer kept trades', bl.withVeto.trades < bl.baseline.trades,
    `base=${bl.baseline.trades} veto=${bl.withVeto.trades}`);
 ok('veto keeps the winning pair, removes the loser', bl.nVetoed >= 1);
+
+console.log('[held — chandelier now runs on FADE via the fade-direction trail]');
+const fadeT = { date:'2023-05-01', open:1.10, side:'up', name:'M_2', cell:'M_2_up|',
+  level:1.11, innerLvl:1.107, outerLvl:1.113, reverted:true, decidedBy:'barrier', closePx:1.104,
+  fillTime:10, fStruct:0.20, fChand:0.25, fStructFade:0.35, fChandFade:0.40 };
+const fadeHeld = runHeldPosition({ p:[fadeT] }, { policy:{ 'M_2_up|':{decision:'fade'} },
+  splitDate:'2023-01-01', costByPair:{ p:0.01 }, slipByPair:{ p:0.005 } });
+// chand fade → fChandFade - (cost+slip) = 0.40 - 0.015 = 0.385
+ok('held chandelier prices a FADE with fChandFade (0.40 - 0.015 = 0.385)',
+   Math.abs(fadeHeld.chand.expectancy - 0.385) < 0.01, `exp=${fadeHeld.chand?.expectancy}`);
+ok('held fixedHeld still uses the fixed barrier for fade', Number.isFinite(fadeHeld.fixedHeld.expectancy));
+
+console.log('[zone-walk — policy as exit oracle, known-answer path]');
+// Monday ladder, mid=fib0.5. Enter FOLLOW at M_1 (1.10, up); hold through M_1.5
+// (follow, up); CLOSE at M_2 which is FADE (above mid → expects down = reversal).
+// gross = (1.11-1.10)/1.10*100 = 0.9091%. Then re-enter at M_2.5 (follow up) and
+// mark to close 1.108 → loss. So 2 trades.
+const zt = (name, level, ft) => ({ date:'2023-04-01', open:1.10, name, cell:`${name}_up|`,
+  level, fillTime: ft, closePx: 1.108 });
+const zTouches = { p: [ zt('M_1',1.10,10), zt('M_1.5',1.105,20), zt('M_2',1.11,30), zt('M_2.5',1.115,40) ] };
+const zPol = { 'M_1_up|':{decision:'follow'}, 'M_1.5_up|':{decision:'follow'},
+               'M_2_up|':{decision:'fade'},   'M_2.5_up|':{decision:'follow'} };
+const zw = runZoneWalk(zTouches, { policy: zPol, splitDate:'2023-01-01', costByPair:{ p:0 }, slipByPair:{ p:0 } });
+ok('zone-walk: follow rides M_1→M_2, closes at the fade zone (+0.909%)',
+   zw && zw.trades === 2, `trades=${zw?.trades}`);
+// trade1 = (1.11-1.10)/1.10*100 = +0.909%; trade2 (re-entry M_2.5→close) = -0.636%; mean ≈ +0.136%.
+ok('zone-walk mean ≈ +0.136% (runner +0.909, re-entry loss -0.636)', Math.abs(zw.expectancy - 0.1364) < 0.01, `exp=${zw.expectancy}`);
+ok('zone-walk carries cost-stress', Array.isArray(zw.costStress) && zw.costStress.length === 3);
 
 console.log('[E-ratio exit study]');
 const erTouches = { eurusd: touchesForPair(packed, 'fx', { sources: ['asia','monday'], conditions: [], minLookback: 20, asiaHrs: 0.5 }) };
