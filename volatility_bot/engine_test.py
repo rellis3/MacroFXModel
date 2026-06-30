@@ -99,16 +99,23 @@ def test_catch_up_then_dry_run_prevents_retro_trade():
     assert decide(PP, policy, tr, 1.112) == []
 
 
-def test_session_open_epoch_anchors_at_22utc():
+def test_session_open_epoch_anchors_at_london_midnight():
     from datetime import datetime, timezone
-    # 2026-06-29 23:30 UTC → session opened 2026-06-29 22:00 UTC.
-    t = datetime(2026, 6, 29, 23, 30, tzinfo=timezone.utc).timestamp()
+    # SUMMER (BST, UTC+1): midnight London = 23:00 UTC the previous calendar day.
+    # 2026-06-30 12:00 UTC is 13:00 London → most-recent London midnight is
+    # 2026-06-30 00:00 London = 2026-06-29 23:00 UTC.
+    t = datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc).timestamp()
     a = datetime.fromtimestamp(session_open_epoch(t), tz=timezone.utc)
-    assert (a.hour, a.day) == (22, 29)
-    # 2026-06-29 09:00 UTC → session opened the PRIOR day 22:00 (2026-06-28).
-    t2 = datetime(2026, 6, 29, 9, 0, tzinfo=timezone.utc).timestamp()
+    assert (a.day, a.hour) == (29, 23), a
+    # Just BEFORE London midnight: 2026-06-29 22:30 UTC = 23:30 London → the
+    # most-recent London midnight is 2026-06-29 00:00 London = 2026-06-28 23:00 UTC.
+    t2 = datetime(2026, 6, 29, 22, 30, tzinfo=timezone.utc).timestamp()
     a2 = datetime.fromtimestamp(session_open_epoch(t2), tz=timezone.utc)
-    assert (a2.hour, a2.day) == (22, 28)
+    assert (a2.day, a2.hour) == (28, 23), a2
+    # WINTER (GMT, UTC+0): midnight London = 00:00 UTC the same day.
+    t3 = datetime(2026, 1, 15, 9, 0, tzinfo=timezone.utc).timestamp()
+    a3 = datetime.fromtimestamp(session_open_epoch(t3), tz=timezone.utc)
+    assert (a3.day, a3.hour) == (15, 0), a3
 
 
 if __name__ == "__main__":

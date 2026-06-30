@@ -112,13 +112,35 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False):
     return out
 
 
-# Most-recent 22:00 UTC broker-session open as an epoch (matches the book's
-# bucketM1IntoSessions(boundaryHour=22) / fetchD1 anchor). Used to fetch the
-# session's bars for catch_up.
-def session_open_epoch(now_epoch):
+# The forecast anchors the trading day at MIDNIGHT EUROPE/LONDON — i.e. 00:00
+# London wall-clock, which is 23:00 UTC during BST (summer) and 00:00 UTC during
+# GMT (winter). The bot fetches the session's bars from this anchor and takes the
+# first bar's open as the session open the OC/Close lines hang off.
+#
+# DST is computed without a tz database (Windows venvs often lack `tzdata`): UK
+# clocks go forward at 01:00 UTC on the last Sunday of March and back at 01:00 UTC
+# on the last Sunday of October.
+def _last_sunday_utc(year, month):
     from datetime import datetime, timezone, timedelta
-    dt = datetime.fromtimestamp(now_epoch, tz=timezone.utc)
-    anchor = dt.replace(hour=22, minute=0, second=0, microsecond=0)
-    if dt.hour < 22:
-        anchor -= timedelta(days=1)
-    return int(anchor.timestamp())
+    d = datetime(year, month, 31, tzinfo=timezone.utc)        # March & October both have 31 days
+    return d - timedelta(days=(d.weekday() + 1) % 7)          # Mon=0..Sun=6 → step back to Sunday
+
+
+def _london_offset_hours(dt_utc):
+    """UK clock offset from UTC at this instant: +1 during BST, 0 during GMT."""
+    from datetime import timedelta
+    bst_start = _last_sunday_utc(dt_utc.year, 3).replace(hour=1)    # 01:00 UTC, last Sun March
+    bst_end   = _last_sunday_utc(dt_utc.year, 10).replace(hour=1)   # 01:00 UTC, last Sun October
+    return 1 if bst_start <= dt_utc < bst_end else 0
+
+
+def session_open_epoch(now_epoch):
+    """Most-recent midnight Europe/London as a UTC epoch (the session-open anchor)."""
+    from datetime import datetime, timezone, timedelta
+    now_utc = datetime.fromtimestamp(now_epoch, tz=timezone.utc)
+    off = _london_offset_hours(now_utc)
+    london_midnight = (now_utc + timedelta(hours=off)).replace(hour=0, minute=0, second=0, microsecond=0)
+    # Convert that London wall-clock midnight back to a UTC instant, using the
+    # offset that applies AT the midnight instant (handles the DST-change night).
+    off_mid = _london_offset_hours(london_midnight - timedelta(hours=off))
+    return int((london_midnight - timedelta(hours=off_mid)).timestamp())
