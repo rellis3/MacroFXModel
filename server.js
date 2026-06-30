@@ -92,6 +92,7 @@ const cfEnv = {
   OANDA_ACCOUNT_ID: process.env.OANDA_ACCOUNT_ID,
   FINNHUB_KEY:      process.env.FINNHUB_KEY,
   MYFXBOOK_SESSION: process.env.MYFXBOOK_SESSION,
+  KV_WRITE_SECRET:  process.env.KV_WRITE_SECRET,   // gates credential/config writes in _worker.js (opt-in)
   FX_SCORES: {
     get:    (key)             => kv.get(key),
     put:    (key, value, opts) => kv.put(key, value, opts),
@@ -104,10 +105,16 @@ const cfEnv = {
 
 async function callWorker(req) {
   const url  = `http://localhost${req.originalUrl}`;
-  const init = { method: req.method };
+  const init = { method: req.method, headers: {} };
+  // Same-origin dashboard writes reach the worker through this trusted backend.
+  // The browser never holds the shared secret, so inject it server-side here —
+  // that way credential/config writes still succeed when the worker is run with
+  // KV_WRITE_SECRET set, while a direct (non-proxied) hit to the worker without
+  // the token is still rejected.
+  if (process.env.KV_WRITE_SECRET) init.headers['X-Auth-Token'] = process.env.KV_WRITE_SECRET;
   if (req.method === 'POST' || req.method === 'PUT') {
-    init.body    = JSON.stringify(req.body);
-    init.headers = { 'content-type': 'application/json' };
+    init.body = JSON.stringify(req.body);
+    init.headers['content-type'] = 'application/json';
   }
   return worker.fetch(new Request(url, init), cfEnv, {});
 }

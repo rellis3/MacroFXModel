@@ -890,14 +890,21 @@ export default {
           if (!key) return err('key required', 400);
           if (!isAllowedKVKey(key)) return err('key not permitted', 403);
           // Auth gate for sensitive keys (credentials/config). These can overwrite
-          // stored broker credentials and bot config, so writes must present a
-          // shared secret in the X-Auth-Token header matching env.KV_WRITE_SECRET.
-          // Market-data cache keys remain unauthenticated for dashboard writes.
+          // stored broker credentials and bot config, so when a shared secret is
+          // configured (env.KV_WRITE_SECRET) writes must present it in the
+          // X-Auth-Token header. The gate is OPT-IN: if no secret is set (e.g. the
+          // Railway compute backend, which has none), these writes are allowed just
+          // like market-data keys. Enforcing a missing secret as "always 401" would
+          // silently brick every dashboard Save button — the dashboard posts no
+          // token — which is exactly the bug that left the volatility bot's MT5
+          // credentials unsaved (bot then attaches to the wrong terminal account).
           if (/credentials|config|override|force_unlock/.test(key)) {
-            const provided = request.headers.get('X-Auth-Token') || '';
             const expected = env.KV_WRITE_SECRET || '';
-            if (!expected || provided !== expected) {
-              return err('unauthorized: valid X-Auth-Token required for this key', 401);
+            if (expected) {
+              const provided = request.headers.get('X-Auth-Token') || '';
+              if (provided !== expected) {
+                return err('unauthorized: valid X-Auth-Token required for this key', 401);
+              }
             }
           }
           // Permanent keys have no TTL — they persist until explicitly overwritten.

@@ -343,6 +343,34 @@ await (async () => {
   let threw = false;
   try { await refreshVolatilityPlan({ getBook: async () => ({ survivors:{ pairs:[] } }), fetchD1: async()=>[], sigmaSeries:()=>[], kvPut: async()=>{} }); } catch { threw = true; }
   ok('producer fails loud on an empty/absent book', threw);
+
+  // Survivor names that aren't already lowercase (e.g. upper-case R2 parquet names)
+  // must still price — buildVolatilityPlan lowercases its lookup, so the producer
+  // has to key volByPair by the lowercased pair or the whole universe drops.
+  let writtenUC = null;
+  const planUC = await refreshVolatilityPlan({
+    getBook: async () => ({ ...book, survivors:{ pairs:['EURUSD','USDJPY'] } }),
+    fetchD1: async (sym) => [{ open: sym.includes('JPY') ? 150 : 1.10, high: 1, low: 1, close: 1 }],
+    sigmaSeries: () => [0.006],
+    kvPut: async (k, v) => { writtenUC = { k, v }; },
+    resolveInstrument: (p) => ({ oanda: p.toUpperCase().replace(/(...)(...)/, '$1_$2'), assetClass: 'fx', pip: p.toLowerCase().includes('jpy') ? 0.01 : 0.0001 }),
+    now: () => '2026-06-29T00:00:00Z', stamp: () => 123,
+  });
+  ok('producer is case-insensitive on survivor names', planUC.universe.length === 2 && planUC.universe.includes('eurusd') && planUC.universe.includes('usdjpy'));
+
+  // A book with survivors but where every pair fails to price must NOT publish an
+  // empty universe (that silently strands the bot) — it throws instead.
+  let threwEmpty = false, wroteEmpty = false;
+  try {
+    await refreshVolatilityPlan({
+      getBook: async () => book,
+      fetchD1: async () => [],                       // no bars → every pair skipped
+      sigmaSeries: () => [0.006],
+      kvPut: async () => { wroteEmpty = true; },
+      resolveInstrument: (p) => ({ oanda: p.toUpperCase(), assetClass: 'fx', pip: 0.0001 }),
+    });
+  } catch { threwEmpty = true; }
+  ok('producer refuses to publish a 0-pair plan', threwEmpty && !wroteEmpty);
 })();
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

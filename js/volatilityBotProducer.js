@@ -52,12 +52,23 @@ export async function refreshVolatilityPlan({
       const sigma = Array.isArray(sig) ? sig[sig.length - 1] : sig;     // today's daily σ (frac)
       const open = bars[bars.length - 1]?.open;                         // today's forming-day open
       if (!(sigma > 0) || !(open > 0)) { onLog(`${pair}: bad σ/open — skipped`); fail++; continue; }
-      volByPair[pair] = { open, sigma, assetClass: inst.assetClass || 'fx', pip: inst.pip ?? null };
+      // Key by the lowercased pair: buildVolatilityPlan lowercases its survivor
+      // list before looking up volByPair, so a survivor name that isn't already
+      // lowercase (e.g. an upper-case R2 parquet name) would otherwise miss the
+      // lookup and silently drop EVERY pair → an empty universe.
+      volByPair[String(pair).toLowerCase()] = { open, sigma, assetClass: inst.assetClass || 'fx', pip: inst.pip ?? null };
       ok++;
     } catch (e) { onLog(`${pair}: ${e.message}`); fail++; }
   }
 
   const plan = { generatedAt: now(), source: 'per-line book', horizonScale: horizon, ...buildPlan(book, volByPair) };
+  // Refuse to publish an empty universe. A 0-pair plan is never tradeable and
+  // always means pricing failed (OANDA unreachable at the moment, or survivor
+  // names that didn't resolve) — writing it would silently strand the bot
+  // ("0 pairs synced") AND clobber a previously-good plan. Throw instead so the
+  // failure is visible in the server log and any prior plan is left intact.
+  if (!plan.universe.length)
+    throw new Error(`volatility plan has 0 tradeable pairs (${ok} priced, ${fail} skipped) — not publishing an empty plan; check OANDA reachability and survivor pair names`);
   await kvPut('volatility_bot_plan', JSON.stringify({ data: plan, timestamp: stamp() }));
   onLog(`plan written: ${plan.universe.length} pairs live (${ok} priced, ${fail} skipped)`);
   return plan;
