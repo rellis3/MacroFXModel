@@ -344,6 +344,33 @@ await (async () => {
   ok('producer prices a typed-array (Float64Array) sigma series', plan.universe.length === 2 && plan.pairs.eurusd?.sigma === 0.006);
   ok('producer plan prices both survivor pairs', plan.universe.length === 2 && plan.universe.includes('usdjpy'));
   ok('producer stamps generatedAt + wraps {data,timestamp}', plan.generatedAt === '2026-06-29T00:00:00Z' && JSON.parse(written.v).timestamp === 123);
+  // Open anchor: when fetchSessionOpen (London-midnight) is provided it MUST win over
+  // the D1 open; the D1 open is only the fallback. (The 4018.65-vs-4013.x bug.)
+  {
+    const lonPlan = await refreshVolatilityPlan({
+      getBook: async () => book,
+      fetchD1: async () => [{ open: 4018.65, high: 1, low: 1, close: 1 }],   // stale 22:00-UTC D1 open
+      fetchSessionOpen: async () => 4013.28,                                  // live London-midnight open
+      sigmaSeries: () => Float64Array.from([0.005, 0.006]),
+      kvPut: async () => {},
+      resolveInstrument: () => ({ oanda: 'X', assetClass: 'fx', pip: 0.0001 }),
+      now: () => '2026-06-29T00:00:00Z', stamp: () => 1,
+    });
+    ok('producer anchors open at London-midnight when fetchSessionOpen given (not the D1 open)',
+       lonPlan.pairs.eurusd?.open === 4013.28);
+    // Fallback: a failing/zero session-open call drops back to the D1 open, not a skip.
+    const fbPlan = await refreshVolatilityPlan({
+      getBook: async () => book,
+      fetchD1: async () => [{ open: 4018.65, high: 1, low: 1, close: 1 }],
+      fetchSessionOpen: async () => { throw new Error('oanda 502'); },
+      sigmaSeries: () => Float64Array.from([0.006]),
+      kvPut: async () => {},
+      resolveInstrument: () => ({ oanda: 'X', assetClass: 'fx', pip: 0.0001 }),
+      now: () => '2026-06-29T00:00:00Z', stamp: () => 1,
+    });
+    ok('producer falls back to D1 open when the session-open fetch fails',
+       fbPlan.pairs.eurusd?.open === 4018.65);
+  }
   let threw = false;
   try { await refreshVolatilityPlan({ getBook: async () => ({ survivors:{ pairs:[] } }), fetchD1: async()=>[], sigmaSeries:()=>[], kvPut: async()=>{} }); } catch { threw = true; }
   ok('producer fails loud on an empty/absent book', threw);

@@ -38,7 +38,7 @@ import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './j
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range } from './js/volBacktestEngine.js';
+import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
@@ -4343,6 +4343,7 @@ async function _refreshVolatilityPlan() {
     const plan = await refreshVolatilityPlan({
       getBook: getPerLineBook,
       fetchD1: (sym, n) => _btFetchD1(sym, n),
+      fetchSessionOpen: (sym) => _btFetchSessionOpenLondon(sym),   // London-midnight open anchor
       sigmaSeries: _volSigmaSeries,
       kvPut: (k, v) => kv.put(k, v),
       onLog,

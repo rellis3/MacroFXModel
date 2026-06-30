@@ -83,6 +83,29 @@ async function fetchD1(instrument, count = 5000) {
     .filter(c => c.close > 0);
 }
 
+// Today's session OPEN anchored at MIDNIGHT EUROPE/LONDON (00:00 London wall-clock,
+// DST-aware via Oanda's `alignmentTimezone` — 23:00 UTC in BST, 00:00 UTC in GMT).
+// This is the anchor the forecast/book session uses; `fetchD1` is NO good for it
+// because its bars open at 22:00 UTC AND it drops the incomplete forming candle, so
+// its "open" is a PRIOR session's 22:00-UTC open (the stale value the bot showed for
+// gold: 4018.65 vs the real London-midnight 4013.x). Here we daily-align to London
+// and KEEP the forming candle, so its open is the live midnight price.
+// Returns the open (number) or null if unavailable.
+async function fetchSessionOpenLondon(instrument) {
+  const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+            + `?granularity=D&count=3&price=M&dailyAlignment=0&alignmentTimezone=Europe%2FLondon`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal:  AbortSignal.timeout(30_000),
+  });
+  if (!r.ok) throw new Error(`Oanda ${instrument} session-open: HTTP ${r.status}`);
+  const data = await r.json();
+  const candles = (data.candles ?? []).filter(c => c.mid);   // KEEP incomplete: the forming London day
+  const last = candles[candles.length - 1];
+  const open = last ? parseFloat(last.mid.o) : NaN;
+  return open > 0 ? open : null;
+}
+
 // Oanda M1 fetch for one [from,to] window (epoch SECONDS). Returns ascending bars
 // [{ time(sec), open, high, low, close, volume }]. The window must be ≤5000 bars
 // (Oanda's cap) — the m1GapFill brick chunks larger ranges and calls this per
@@ -319,7 +342,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 // ── Public: run all instruments and return structured result ──────────────────
 
 export { ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75, G_ALPHA, G_BETA };
-export { fetchD1, fetchM1Range };
+export { fetchD1, fetchM1Range, fetchSessionOpenLondon };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');

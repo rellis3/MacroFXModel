@@ -46,12 +46,13 @@ class SessionTracker:
         startup or a new-session reset the bot is in-sync with the live session
         WITHOUT any seeding. bars: iterable of {open, high, low, close}.
 
-        The FIRST bar's open re-anchors the session open: the plan ships the per-pair
-        σ/band FRACTIONS (open-independent) plus a D1 open that is STALE whenever the
-        plan is refreshed mid-session (OANDA's forming daily candle is excluded, so
-        the plan carries a prior session's open). The OC/Close lines hang off the
-        open, so anchoring on the live 22:00-UTC session open (bars[0].open) is what
-        keeps them correct; the plan open is only a fallback when no bars arrive."""
+        The FIRST bar's open re-anchors the session open. The plan ships the per-pair
+        σ/band FRACTIONS (open-independent) plus a session open; the producer now
+        anchors that open at MIDNIGHT EUROPE/LONDON, but it can still be stale if the
+        plan was refreshed before this session's midnight. `bars` here come from
+        ``session_bars(pair, session_open_epoch(now))`` — M1 from London midnight — so
+        bars[0].open IS the live London-midnight open, the correct anchor for the
+        OC/Close lines. The plan open is only a fallback when no bars arrive."""
         bars = list(bars or [])
         first_open = next((b.get("open") for b in bars if b.get("open") is not None), None)
         if first_open is not None:

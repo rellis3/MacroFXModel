@@ -27,7 +27,7 @@ function defaultResolve(pair) {
 
 // Refresh the plan and persist it to KV. Returns the plan (with generatedAt).
 export async function refreshVolatilityPlan({
-  getBook, fetchD1, sigmaSeries, kvPut,
+  getBook, fetchD1, sigmaSeries, kvPut, fetchSessionOpen = null,
   resolveInstrument = defaultResolve, buildPlan = buildVolatilityPlan,
   horizon = 'daily', count = 400,
   now = () => new Date().toISOString(), stamp = () => Date.now(),
@@ -62,7 +62,18 @@ export async function refreshVolatilityPlan({
       // plain arrays and typed arrays; treat anything else as a scalar.
       const isSeries = Array.isArray(sig) || ArrayBuffer.isView(sig);
       const sigma = isSeries ? sig[sig.length - 1] : sig;               // today's daily σ (frac)
-      const open = bars[bars.length - 1]?.open;                         // today's forming-day open
+      // OPEN must be the MIDNIGHT-EUROPE/LONDON session open (the bands hang off it,
+      // and the book's sessions are London days). `fetchD1`'s last bar opens at
+      // 22:00 UTC and drops the forming candle, so it's a prior session's open —
+      // the stale value the bot showed (gold 4018.65 vs the real ~4013.x). Prefer
+      // the London-aligned session open; fall back to the D1 open only if it's
+      // unavailable (keeps the producer working offline / if the call fails).
+      let open = null;
+      if (typeof fetchSessionOpen === 'function') {
+        try { open = await fetchSessionOpen(inst.oanda); }
+        catch (e) { onLog(`${pair}: session-open fetch failed (${e.message}) — falling back to D1 open`); }
+      }
+      if (!(open > 0)) open = bars[bars.length - 1]?.open;              // fallback: D1 open (22:00 UTC)
       if (!(sigma > 0) || !(open > 0)) {
         onLog(`${pair}: bad σ/open — skipped (σ=${sigma}, open=${open}, bars=${bars.length})`); fail++; continue;
       }
