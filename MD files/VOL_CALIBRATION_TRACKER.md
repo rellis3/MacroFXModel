@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-06-30 (actual session data — GOLD YZ first live session: −8.7% vol gap vs HV20's +19.8%; NQ ref surged Q2-end; EURUSD essentially perfect).
+Last updated: 2026-07-01 (Jul-1 checkpoint — NQ Q2-end noise confirmed, GARCH β=0.87 excellent; GOLD YZ 2nd session −9.7%, ref still elevated post-Q2; EURUSD persistent underestimate confirmed).
 
 ---
 
@@ -38,12 +38,14 @@ Last updated: 2026-06-30 (actual session data — GOLD YZ first live session: �
   factors, displayed HL/OC error will now track raw vol Δ linearly instead
   of amplifying/sign-flipping it. Next checkpoint will validate.
 
-- GOLD primary estimator: **switched HV20 → YZ (2026-06-30, live)**. First live session
-  (Jun-30): YZ=25.49% vs Ref=27.91% → −8.7% (was +19.8% with HV20). Magnitude halved and
-  sign flipped. Note: ref jumped 25.34%→27.91% on the same session NQ ref jumped 22.56%→28.50%
-  — likely Q2-end elevated intraday vol that close-to-close estimators don't capture. Do not
-  revert. Watch 2-3 more normal sessions to see where YZ settles relative to ref. If gap
-  stabilises in the −5% to +5% range, proceed to recalibrate oc_50_corr (1.12→~0.98, shape-only).
+- GOLD primary estimator: **switched HV20 → YZ (2026-06-30, live)**. Two post-switch sessions:
+  Jun-30: −8.7%, Jul-1: −9.7%. Consistent ~−10% underestimate. Ref is holding elevated
+  (28.61% vs pre-Q2 25.34%) — ref didn't snap back on Jul-1 the way NQ ref did, suggesting
+  GOLD is in a genuinely higher vol environment post-Q2-end that YZ hasn't reflected yet
+  (close prices changed but intraday OHLC moves may not have fully updated the 30-day YZ
+  window). Do not revert to HV20. If gap persists at ~−10% for 2+ more sessions on non-event
+  days, investigate: (a) vol floor on YZ for commodity, or (b) whether the issue is oc_50_corr
+  overcorrecting in the other direction (1.12 now too high when vol is underestimated).
 
 - index/NQ GARCH persistence: **ref-side noise confirmed (2026-06-29)** —
   the Jun-25/26 negative gap (−4.9%→−21.0%) was almost entirely driven by
@@ -334,6 +336,7 @@ multiplier behavior specifically).
 | Jun-26 | NQ        | 24.92%   | 31.53%  | −21.0% | No         | **widening negative**, 2nd straight; ref +13.6% while ours −5.6%, HL/OC corrected now −32%/−36% — display problem, user call needed |
 | Jun-29 | NQ        | 24.49%   | 22.56%  | +8.6%  | No         | **ref-side noise confirmed** — ref reverted from 31.53%; new shape factors validated: displayed HL +6.3%/+8.8%, OC +2.8%/+6.6%, all proportional to raw vol |
 | Jun-30 | NQ        | 24.64%   | 28.50%  | −13.5% | Possibly (Q2 end) | **ref surged** — ref jumped 22.56%→28.50% (+26.4%) in one session while GARCH barely moved (24.49%→24.64%); same ref-reactive-to-intraday pattern; do not touch β; watch Jul-1 |
+| Jul-1  | NQ        | 24.50%   | 23.46%  | +4.4%  | No         | **Q2-end noise confirmed** — ref fully reverted (28.50%→23.46%); GARCH held flat; HL +1.7%, OC 0.0%; β=0.87 correctly calibrated |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
 on hand — only Δ was recorded in those sessions' analysis. Note: a Jun-23
@@ -364,7 +367,9 @@ all reference compares live in one place):
 | Jun-29 | GOLD      | 30.35%   | 25.34%  | +19.8% | +22.1%   | +18.4%   | **+34.6%** | —      | large raw vol overestimate (HV20 slow to shed prior week); HL tracks proportionally, OC med outlier again — 2nd occurrence (also Jun-22), may be structural |
 | Jun-29 | EURUSD    | 5.57%    | 6.35%   | −12.3% | −3.4%    | −1.4%    | −7.1%    | −2.2%    | fx factors unchanged; all within normal noise band, no action |
 | Jun-30 | GOLD (YZ) | 25.49%   | 27.91%  | −8.7%  | −12.3%   | −11.1%   | −12.3%   | −13.5%   | **first YZ session** — sign flipped vs HV20 (+19.8%); magnitude halved; ref jumped (25.34%→27.91%) same day NQ ref surged, likely Q2-end intraday vol; hold YZ, watch 2-3 more sessions |
-| Jun-30 | EURUSD    | 5.56%    | 5.61%   | −0.9%  | +3.6%    | +4.4%    | 0.0%     | +4.8%    | **essentially perfect** — ref came down (6.35%→5.61%); YZ within 1% on vol, HL/OC all within 5%; no action |
+| Jun-30 | EURUSD    | 5.56%    | 5.61%   | −0.9%  | +3.6%    | +4.4%    | 0.0%     | +4.8%    | **essentially perfect** — ref came down (6.35%→5.61%); one-off ref noise, not a calibration fix |
+| Jul-1  | GOLD (YZ) | 25.83%   | 28.61%  | −9.7%  | −12.8%   | −11.8%   | −14.0%   | −14.5%   | **2nd YZ session** — ref held elevated (didn't snap back like NQ); consistent ~−10% underestimate across 2 sessions; need 1-2 more non-event sessions before acting |
+| Jul-1  | EURUSD    | 5.58%    | 6.31%   | −11.6% | −6.6%    | −5.3%    | −10.3%   | −6.4%    | ref back up (5.61%→6.31%); persistent underestimate confirmed; Jun-30 was one-off ref noise; HL/OC gaps manageable (−5 to −10%) |
 
 ---
 
