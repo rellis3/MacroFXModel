@@ -39,8 +39,14 @@ export function aiSaveCache(sym, analysis, generatedAt) {
 
 export function aiCollectSnapshot() {
   const s = {};
-  const quote = window._latestQuote;
   const sym = S.currentPair?.symbol;
+  // Read the quote keyed by the pair being analysed — never the shared
+  // window._latestQuote reference. That reference is only re-pinned when a live
+  // SSE tick lands; after a pair switch whose loadAll() errored (e.g. an OANDA
+  // OHLC fetch failed), it still points at the previously-viewed pair, which
+  // leaks a wrong-pair price into the snapshot (e.g. EUR/USD's ~1.14 reported
+  // as AUD/USD). Per-symbol map → price always matches `sym`, or is omitted.
+  const quote = (sym && window._latestQuotes?.[sym]) || null;
   const pipSize = sym ? getPipSize(sym) : 0.0001;
   const digits = sym ? getDigits(sym) : 5;
 
@@ -880,18 +886,15 @@ export async function analyseAllPairs() {
       // Load data for this pair without switching the visible tab
       await window.loadPairDataForAnalysis(sym);
 
-      // Temporarily swap S.currentPair so all snapshot helpers read the right data
+      // Temporarily swap S.currentPair so all snapshot helpers read the right
+      // data. aiCollectSnapshot() now reads the quote from window._latestQuotes
+      // keyed by the active symbol, so no _latestQuote juggling is needed.
       S.currentPair = pair;
-      const quote = window._latestQuotes?.[sym];
-      // Point the legacy single-quote at this pair for snapshot
-      const _savedQuote = window._latestQuote;
-      if (quote) window._latestQuote = quote;
 
       const snapshot = aiCollectSnapshot();
 
       // Restore immediately — we have the snapshot
       S.currentPair = savedPair;
-      window._latestQuote = _savedQuote;
 
       const res = await fetch('/api/analysis', {
         method: 'POST',

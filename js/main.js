@@ -143,6 +143,12 @@ window.selectPair = async function(index) {
   document.querySelectorAll('.ptab').forEach((btn, i) => {
     btn.classList.toggle('active', i === index);
   });
+  // Re-pin the legacy single-quote reference to the new pair (or null) so a
+  // stale previous-pair price can't leak into _latestQuote consumers during the
+  // load window — e.g. if loadAll() errors before _storeQuote runs, or before
+  // the first live tick lands. Without this, the snapshot/header could report
+  // the old pair's price mislabelled as the new pair.
+  window._latestQuote = window._latestQuotes?.[S.currentPair.symbol] ?? null;
   window._lastEntries = null;          // clear stale proximity targets before new pair loads
   dismissProxAlert();
   updateHeaderRegime();                // switch regime pill immediately from cached data
