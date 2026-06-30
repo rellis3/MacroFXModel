@@ -189,6 +189,15 @@ v2 noise never touches the live v1 alerter):
   `telegram-v2.html` (enabled, min grade, cooldown, per-class proximity, pairs).
   `tg_v2_alert_cfg` is CF-persistent; cooldowns are ephemeral (a missed cooldown just
   re-fires once after a restart).
+- **Fires on live-price approach, not just the 30-min cycle.** A dedicated server
+  loop `checkV2AlertsNow(pairs)` runs every ~90s: it reads the cached zones
+  (`ai_entries_v2_*`) + a fresh price per pair and applies `selectAlerts` — so an
+  approach mid-cycle alerts within ~90s. The 30-min refresh only recomputes the
+  zones (no alerting there anymore).
+- **Own bot, or shared.** v2 prefers its OWN Telegram bot (`tg_v2_config`, set in the
+  ⚙ Alerts panel — token + chat ID + Send-test), falling back to the shared v1
+  `tg_config` if none is set (`loadV2Creds`). Routes `GET/POST/DELETE
+  /api/levels-v2/telegram-config` + `POST /api/levels-v2/telegram-test`.
 
 ## Still deliberately deferred
 

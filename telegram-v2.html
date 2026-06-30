@@ -111,7 +111,19 @@
       <button id="alSave">Save</button>
       <span id="alStatus" class="status"></span>
     </div>
-    <div class="muted" style="margin-top:8px;">Bot token + chat ID come from the v1 <b>Alerts modal</b> (shared <code>tg_config</code>). Alerts fire from the 30-min server refresh when a graded zone is within proximity.</div>
+
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd);">
+      <b style="font-size:13px;">🤖 v2's own Telegram bot <span class="muted" style="font-weight:400;">— optional; if blank, v2 uses the shared v1 bot</span></b>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:8px;">
+        <label>Bot token<br><input id="v2Token" type="text" placeholder="123456:ABC-..." style="width:280px;"></label>
+        <label>Chat ID<br><input id="v2Chat" type="text" placeholder="-1001234567890" style="width:160px;"></label>
+        <button id="v2BotSave">Save bot</button>
+        <button id="v2BotTest" class="alt">Send test</button>
+        <button id="v2BotClear" class="alt">Use shared</button>
+        <span id="v2BotStatus" class="status"></span>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:8px;">Alerts now fire on <b>live-price approach (~90s loop)</b>, not only at the 30-min refresh — zones recompute every 30 min; proximity is checked continuously.</div>
   </div>
 
   <div class="panel" id="policyPanel">
@@ -449,7 +461,10 @@ async function loadAlertCfg() {
     $('alProxGold').value = c.proxPips?.['XAU/USD'] ?? 40;
     $('alProxNas').value = c.proxPips?.['NAS100_USD'] ?? 50;
     $('alPairs').value = (c.pairs || []).join(', ');
-    $('tgState').textContent = j.telegramConfigured ? '✓ Telegram bot configured' : '⚠ No bot token/chat — set it in the v1 Alerts modal';
+    $('tgState').textContent = j.telegramConfigured
+      ? `✓ alerts via ${j.activeBot === 'v2-bot' ? 'v2 bot' : 'shared v1 bot'}`
+      : '⚠ no bot — add a v2 bot below or set the v1 Alerts modal';
+    $('v2Chat').value = j.v2ChatId || '';
     $('tgState').style.color = j.telegramConfigured ? 'var(--grn)' : 'var(--amb)';
   } catch (e) { $('alStatus').textContent = 'load error: ' + e.message; }
 }
@@ -504,6 +519,33 @@ $('alSave').onclick = async () => {
     $('alStatus').textContent = j.ok ? '✓ saved' : ('save failed: ' + (j.error || '?'));
     $('alStatus').style.color = j.ok ? 'var(--grn)' : 'var(--red)';
   } catch (e) { $('alStatus').textContent = 'save error: ' + e.message; $('alStatus').style.color = 'var(--red)'; }
+};
+
+// v2's own Telegram bot
+$('v2BotSave').onclick = async () => {
+  const token = $('v2Token').value.trim(), chatId = $('v2Chat').value.trim();
+  if (!token || !chatId) { $('v2BotStatus').textContent = 'token + chat ID required'; $('v2BotStatus').style.color = 'var(--amb)'; return; }
+  $('v2BotStatus').textContent = 'saving…';
+  try {
+    const r = await fetch('/api/levels-v2/telegram-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, chatId }) });
+    const j = await r.json();
+    $('v2BotStatus').textContent = j.ok ? '✓ v2 bot saved — click Send test' : ('failed: ' + (j.error || '?'));
+    $('v2BotStatus').style.color = j.ok ? 'var(--grn)' : 'var(--red)';
+    $('v2Token').value = '';   // don't keep the token in the field
+    loadAlertCfg();
+  } catch (e) { $('v2BotStatus').textContent = 'error: ' + e.message; $('v2BotStatus').style.color = 'var(--red)'; }
+};
+$('v2BotTest').onclick = async () => {
+  $('v2BotStatus').textContent = 'sending test…'; $('v2BotStatus').style.color = 'var(--amb)';
+  try {
+    const r = await fetch('/api/levels-v2/telegram-test', { method: 'POST' }); const j = await r.json();
+    $('v2BotStatus').textContent = j.ok ? `✓ test sent via ${j.via} — check Telegram` : ('test failed: ' + (j.error || '?'));
+    $('v2BotStatus').style.color = j.ok ? 'var(--grn)' : 'var(--red)';
+  } catch (e) { $('v2BotStatus').textContent = 'error: ' + e.message; $('v2BotStatus').style.color = 'var(--red)'; }
+};
+$('v2BotClear').onclick = async () => {
+  try { await fetch('/api/levels-v2/telegram-config', { method: 'DELETE' }); $('v2Token').value = ''; $('v2Chat').value = ''; $('v2BotStatus').textContent = 'reverted to shared v1 bot'; $('v2BotStatus').style.color = 'var(--text2)'; loadAlertCfg(); }
+  catch (e) { $('v2BotStatus').textContent = 'error: ' + e.message; }
 };
 
 setAuto(localStorage.getItem('tgv2_auto') !== '0');
