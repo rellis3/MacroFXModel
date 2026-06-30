@@ -9919,15 +9919,28 @@ if (process.env.OANDA_KEY) {
 }
 
 // Schedule the NIGHTLY hands-off book rebuild (the route + orchestrator live up
-// with the other /api/volatility-bot routes, before the catch-all). Opt-in via
-// VOL_BOOK_REBUILD=1. Runs at 22:35 UTC by default — just BEFORE the 23:05 plan
-// refresh, so the plan that night is built off the freshly-rebuilt book (and the
-// 23:05 plan refresh still runs as a light safety net if the heavy rebuild fails).
-if (process.env.OANDA_KEY && process.env.VOL_BOOK_REBUILD === '1') {
+// with the other /api/volatility-bot routes, before the catch-all). Runs at 22:35
+// UTC by default — just BEFORE the 23:05 plan refresh, so the plan that night is
+// built off the freshly-rebuilt book (and the 23:05 plan refresh still runs as a
+// light safety net if the heavy rebuild fails).
+//
+// The timer is ALWAYS armed (when OANDA_KEY is set); whether it actually rebuilds
+// is decided AT FIRE-TIME from the dashboard toggle (Caps config → volBookRebuild
+// in KV), so you flip it on/off from the Config page with no redeploy. The
+// VOL_BOOK_REBUILD=1 env var is the fallback default when the Caps flag is unset.
+if (process.env.OANDA_KEY) {
   const hour = Number(process.env.VOL_BOOK_REBUILD_UTC_HOUR ?? 22);
   const min  = Number(process.env.VOL_BOOK_REBUILD_UTC_MIN ?? 35);
-  _scheduleDailyUtc(hour, min, _runBookRebuild);
-  console.log(`[book-rebuild] NIGHTLY auto-rebuild enabled (${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC)`);
+  _scheduleDailyUtc(hour, min, async () => {
+    let enabled = process.env.VOL_BOOK_REBUILD === '1';     // env default
+    try {
+      const raw = await kv.get('caps');
+      if (raw) { const c = JSON.parse(raw); if (typeof c.volBookRebuild === 'boolean') enabled = c.volBookRebuild; }
+    } catch (e) { console.error('[book-rebuild] caps read failed:', e.message); }
+    if (enabled) _runBookRebuild();
+    else console.log('[book-rebuild] nightly tick — disabled (turn on "Rebuild book nightly" on the Config page)');
+  });
+  console.log(`[book-rebuild] nightly tick armed at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (run gated by Caps.volBookRebuild or VOL_BOOK_REBUILD=1)`);
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
