@@ -55,7 +55,7 @@ const REG = {
   // ── Index CFDs (pip = 1.0 point) ──
   nq:     { display: 'NAS100_USD', oanda: 'NAS100_USD', yahoo: 'NQ=F',   mt5: 'USTECH100M', assetClass: 'index', pip: 1.0, digits: 1 },
   spx:    { display: 'SPX500_USD', oanda: 'SPX500_USD', yahoo: '^GSPC',  mt5: 'SP500',      assetClass: 'index', pip: 1.0, digits: 1 },
-  dax:    { display: 'DE30_USD',   oanda: 'DE30_USD',   yahoo: '^GDAXI', mt5: 'GER40',      assetClass: 'index', pip: 1.0, digits: 1 },
+  dax:    { display: 'DE30_USD',   oanda: 'DE30_EUR',   yahoo: '^GDAXI', mt5: 'GER40',      assetClass: 'index', pip: 1.0, digits: 1 },  // OANDA quotes DAX in EUR (DE30_USD has no candles → "no D1 bars"); display kept for back-compat
   ftse:   { display: 'UK100_GBP',  oanda: 'UK100_GBP',  yahoo: '^FTSE',  mt5: 'UK100',      assetClass: 'index', pip: 1.0, digits: 1 },
   dow:    { display: 'US30_USD',   oanda: 'US30_USD',   yahoo: '^DJI',   mt5: 'US30',       assetClass: 'index', pip: 1.0, digits: 1 },
   rut:    { display: 'US2000_USD', oanda: 'US2000_USD', yahoo: '^RUT',   mt5: 'US2000',     assetClass: 'index', pip: 1.0, digits: 1 },
