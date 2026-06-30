@@ -156,6 +156,18 @@ function render(b){
   shown at a fixed ${svt.target||10}% annualised volatility so they are leverage-honest and comparable.
   Full-book (all OOS-profitable instruments) Sharpe for reference: <b>${fmt(pf.sharpe,2)}</b>.</div>
 
+  <div class="note warn"><b>Returns &amp; drawdown basis — Ann. return &amp; Max DD as % of starting capital.</b>
+  Both are read off <b>one compounded equity curve</b>, so Calmar is a like-for-like ratio:
+  <ul style="margin:5px 0 4px">
+    <li>The daily portfolio returns are compounded into an equity curve <code>E = ∏(1 + r)</code> starting at 1.0 (= 100% of capital).</li>
+    <li><b>Ann. return</b> = geometric annualised growth of that curve, <code>E_end^(252/N) − 1</code> — a true % of starting capital.</li>
+    <li><b>Max DD</b> = the largest peak-to-trough fall of the SAME curve, as a % of the running peak — same basis as the return.</li>
+    <li>Both are scaled to a fixed ${svt.target||10}% annual vol first (× ${svt.target||10}%/realised-vol), so they're leverage-comparable — this moves the cash scale, not the Sharpe.</li>
+  </ul>
+  <b>Why "Max drawdown (historical)" looks low:</b> it is the <i>single realised ordering</i> of trades, and this book's path ran smoother than the median.
+  So we also reshuffle the daily returns 1,000× at the same vol and report <b>Max drawdown (MC p95/p99)</b> — the realistic worst-case ordering, the number to size risk against — and <b>Calmar (stress)</b> = Ann. return ÷ |MC p95 DD|, the conservative ratio. The historical figure is the lucky path; the MC figure is the plan-for number.
+  <span class="mut">(Both geometric/compounded; a strictly arithmetic view — Σreturns ÷ years and additive DD — is a one-line switch if preferred.)</span></div>
+
   <h2>3 · Equity &amp; Drawdown</h2>
   <div class="chart">${lineChart(toEquity(heq),{color:'#1f6feb',fill:'rgba(31,111,235,.08)'})}</div>
   <div class="cap">Cumulative out-of-sample return (% of capital per unit, no compounding), live universe.</div>
