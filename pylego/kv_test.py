@@ -69,6 +69,60 @@ def test_plan_envelope_roundtrip():
     assert kv.get_json("volatility_bot_plan") == {"universe": ["eurusd"]}
 
 
+class _ReadTimeout(Exception):
+    """Stands in for requests.exceptions.ReadTimeout (matched by class name)."""
+
+
+class _FlakyWorker(_FakeWorker):
+    """Times out the first `fail_n` GETs, then serves normally — to prove the
+    client retries transient transport errors instead of crashing the bot."""
+    def __init__(self, fail_n):
+        super().__init__()
+        self.fail_n = fail_n
+        self.get_calls = 0
+
+    def get(self, url, params=None, timeout=None):
+        self.get_calls += 1
+        if self.get_calls <= self.fail_n:
+            raise _ReadTimeout("read timed out")
+        return super().get(url, params=params, timeout=timeout)
+
+
+def test_transient_timeout_is_retried_then_succeeds():
+    http = _FlakyWorker(fail_n=2)
+    http._store["k"] = {"data": {"v": 1}, "timestamp": 1}
+    kv = KvClient("http://x", http=http, retries=3, sleep=lambda _s: None)
+    assert kv.get_json("k") == {"v": 1}
+    assert http.get_calls == 3                      # 2 failures + 1 success
+
+
+def test_transient_timeout_reraised_after_exhausting_retries():
+    http = _FlakyWorker(fail_n=99)
+    kv = KvClient("http://x", http=http, retries=3, sleep=lambda _s: None)
+    raised = False
+    try:
+        kv.get_json("k")
+    except _ReadTimeout:
+        raised = True
+    assert raised and http.get_calls == 3           # gave up after exactly `retries`
+
+
+def test_non_transient_error_is_not_retried():
+    class _Boom(_FakeWorker):
+        def __init__(self): super().__init__(); self.get_calls = 0
+        def get(self, url, params=None, timeout=None):
+            self.get_calls += 1
+            raise ValueError("bad key")             # not a transport error
+    http = _Boom()
+    kv = KvClient("http://x", http=http, retries=3, sleep=lambda _s: None)
+    raised = False
+    try:
+        kv.get_json("k")
+    except ValueError:
+        raised = True
+    assert raised and http.get_calls == 1           # no retry on a non-transient error
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
