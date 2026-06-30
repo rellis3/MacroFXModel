@@ -173,7 +173,9 @@ function buildAggregates(records, oosFrac = 0.4) {
 export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}) {
   const packed = await loadM1ForPair(pair);
   if (!packed?.n) { onLog(`${pair}: no M1 data — skipped`); return null; }
-  const sessions   = bucketM1IntoSessions(packed);
+  // Sessions anchored at MIDNIGHT EUROPE/LONDON — the day the volatility forecast
+  // trades on (the live bot anchors there too). Was 22:00 UTC (broker day).
+  const sessions   = bucketM1IntoSessions(packed, 'Europe/London');
   const assetClass = assetClassFor(pair);
   let pip = 0; try { pip = pipSize(pair) || 0; } catch { /* unknown symbol → round-number feature off */ }
   onLog(`${pair}: ${packed.n} M1 bars → ${sessions.size} sessions (${assetClass}, pip ${pip || 'n/a'})`);
@@ -206,7 +208,7 @@ export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLo
     generatedAt: generatedAt ?? new Date().toISOString(),
     definitions: { touch: 'intrabar', revertContinue: 'ladder (next-inner vs next-outer line)',
       geometry: 'OC lines static off open; HL (Proj H/L) lines dynamic — trail the opposite running extreme (chart/Pine construction)',
-      lowN: 30, sessionBoundaryUtc: 22 },
+      lowN: 30, sessionBoundary: 'midnight Europe/London (DST-aware)' },
     horizons,
     pairs: prevManifest?.pairs ? { ...prevManifest.pairs } : {},
   };
@@ -332,7 +334,7 @@ export async function getSessionChart(pair, horizon = 'daily', date = '') {
   const assetClass = data.assetClass || assetClassFor(key);
   const packed = await _loadM1Cached(key);
   if (!packed?.n) throw new Error('no M1 data for pair');
-  const sessions = bucketM1IntoSessions(packed);
+  const sessions = bucketM1IntoSessions(packed, 'Europe/London');  // match the book's session anchor
   const dates = [...sessions.keys()].sort();
   const idx = dates.indexOf(date);
   if (idx < 0) return null;

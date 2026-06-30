@@ -202,23 +202,51 @@ export function analyseWindow(session, ladder, ctx = {}) {
   return outRows;
 }
 
-// ── 3a) Bucket raw M1 into broker-day SESSIONS (22:00 UTC boundary) ───────────
+// ── London DST helpers (no tz database needed) ───────────────────────────────
+// UK clocks go forward at 01:00 UTC on the last Sunday of March and back at 01:00
+// UTC on the last Sunday of October. Used for the midnight-Europe/London session
+// boundary the forecast trades on.
+function _lastSundayUtc1am(year, monthIdx) {
+  const d = new Date(Date.UTC(year, monthIdx, 31, 1, 0, 0));  // March(2) & October(9) have 31 days
+  d.setUTCDate(31 - d.getUTCDay());                           // step back to Sunday (getUTCDay: Sun=0)
+  return d;
+}
+function _londonIsBst(dt) {
+  const y = dt.getUTCFullYear();
+  return dt >= _lastSundayUtc1am(y, 2) && dt < _lastSundayUtc1am(y, 9);
+}
+// The Europe/London calendar date for a UTC instant (the trading-day key).
+function _londonDateKey(dt) {
+  const local = new Date(dt.getTime() + (_londonIsBst(dt) ? 3600000 : 0));
+  return `${local.getUTCFullYear()}-${String(local.getUTCMonth() + 1).padStart(2, '0')}-${String(local.getUTCDate()).padStart(2, '0')}`;
+}
+
+// ── 3a) Bucket raw M1 into trading-day SESSIONS ──────────────────────────────
 // M1-ONLY: the analyser derives everything from the R2 M1 parquet — no D1 bars,
 // no fallback (single-bar daily windows can't order high vs low → biased).
 // `packed` = { n, times, opens, highs, lows, closes } (from loadM1ForPair).
-// Returns Map(sessionDate → ordered bars[]). Boundary matches fetchD1 so the
-// analyser's "day"/open align with the live forecaster.
+// Returns Map(sessionDate → ordered bars[]).
+//   boundaryHour = number          → fixed UTC-hour boundary (default 22, the
+//                                     NY/OANDA broker day — used by the range engines)
+//   boundaryHour = 'Europe/London' → midnight Europe/London (DST-aware), the
+//                                     anchor the volatility forecast trades on
 export function bucketM1IntoSessions(packed, boundaryHour = 22) {
   const map = new Map();
   if (!packed || !packed.n) return map;
+  const london = boundaryHour === 'Europe/London' || boundaryHour === 'london';
   const { n, times, opens, highs, lows, closes, volumes } = packed;
   for (let i = 0; i < n; i++) {
     const t  = times[i];
     // times may be epoch SECONDS (Int32, from loadM1ForPair), epoch ms, or ISO.
     const dt = typeof t === 'number' ? new Date(t < 1e12 ? t * 1000 : t) : new Date(t);
-    const d  = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
-    if (dt.getUTCHours() >= boundaryHour) d.setUTCDate(d.getUTCDate() + 1);  // belongs to next session
-    const key = d.toISOString().slice(0, 10);
+    let key;
+    if (london) {
+      key = _londonDateKey(dt);                              // session = London calendar day
+    } else {
+      const d = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+      if (dt.getUTCHours() >= boundaryHour) d.setUTCDate(d.getUTCDate() + 1);  // belongs to next session
+      key = d.toISOString().slice(0, 10);
+    }
     if (!map.has(key)) map.set(key, []);
     map.get(key).push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes ? volumes[i] : 0 });
   }
