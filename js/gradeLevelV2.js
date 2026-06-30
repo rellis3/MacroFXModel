@@ -56,7 +56,7 @@ function neighbours(prices, level, side) {
 export function gradeLevelV2(args) {
   const { ladders = [], bars = [], open, sigma = 0, pip = 0, price, proxDist = Infinity,
           tf = null, policy = {}, condFields = ['approachVel'], includeSkips = false, opts = {} } = args;
-  if (!bars.length || price == null) return [];
+  if (!bars.length || price == null) return includeSkips ? { entries: [], skips: [] } : [];
 
   const touchIdx = bars.length - 1;          // "now" is the touch for the live approach
   const wt1 = tf ? tf.wtSeries(bars) : null;

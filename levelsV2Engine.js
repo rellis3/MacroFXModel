@@ -184,7 +184,10 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       includeSkips: true,
       opts: { bands: frozen.bands ?? opts.bands },   // policy's own distribution-fit bands
     });
-    const entries = graded.entries;
+    // gradeLevelV2 returns {entries,skips} with includeSkips, but [] on its early
+    // guard — tolerate both shapes.
+    const entries  = Array.isArray(graded) ? graded : (graded?.entries ?? []);
+    const skipsArr = Array.isArray(graded) ? [] : (graded?.skips ?? []);
 
     const payload = entries.map(e => ({
       ...e, price: +e.price.toFixed(digits),
@@ -224,16 +227,16 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       let nearCount = 0;
       for (const lad of ladders) for (const g of buildRangeLadder(lad.low, lad.high - lad.low, lad.srcTag))
         if (Math.abs(g.level - price) <= proxDist) nearCount++;
-      const skipCount = graded.skips?.length ?? 0;
+      const skipCount = skipsArr.length;
       reason = nearCount === 0 ? `no-near-levels(ladders=${ladders.length},prox=${(proxDist / pip).toFixed(0)}p)`
-             : skipCount > 0   ? `near-all-skip(near=${nearCount},skip=${skipCount},eg=${graded.skips[0]?.reason ?? '?'})`
+             : skipCount > 0   ? `near-all-skip(near=${nearCount},skip=${skipCount},eg=${skipsArr[0]?.reason ?? '?'})`
              :                   `near-all-na(near=${nearCount})`;   // near but velocity/condition 'na'
     }
     console.log(`[LEVELS-V2] ${sym}: ${payload.length} entries (${ladders.map(l => l.srcTag).join('+')}${bars1m.length ? '' : ' M5-approach'}${sigmaFallback ? ' σ-fallback' : ''}) ${reason}, ${Date.now() - t0}ms`);
     return { n: payload.length, reason, sigmaFallback, m1: bars1m.length > 0 };
   } catch (e) {
-    console.error(`[LEVELS-V2] ${sym} error:`, e.message);
-    return { n: 0, reason: 'error', error: e.message };
+    console.error(`[LEVELS-V2] ${sym} error:`, e?.stack ?? e?.message ?? e);
+    return { n: 0, reason: 'error: ' + String(e?.message ?? e).slice(0, 120), error: String(e?.message ?? e) };
   }
 }
 
@@ -305,7 +308,7 @@ export async function refreshAllPairsV2(pairs, opts = {}) {
     const n = typeof r === 'number' ? r : (r?.n ?? 0);
     const reason = typeof r === 'number' ? (n ? 'ok' : 'no-near-zones') : (r?.reason ?? 'null');
     totalEntries += n; if (n > 0) pairsWithEntries++;
-    const coarse = reason.split('(')[0];                  // strip per-pair counts for the aggregate
+    const coarse = reason.startsWith('error') ? 'error' : reason.split('(')[0];   // group all errors; full msg stays per-pair
     byReason[coarse] = (byReason[coarse] || 0) + 1;
     perPair[sym] = { n, reason };                          // full detail (with counts) per pair
   }
