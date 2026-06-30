@@ -2882,6 +2882,106 @@ loadVbConfig();
 loadVbCreds();
 loadVbLiveStatus();
 
+// ── Range-Line Bot config (mirrors the volatility bot) ────────────────────────
+const RL_DEFAULTS = {
+  paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
+  max_spread_pips: 2.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
+};
+let _rlCfg = { ...RL_DEFAULTS };
+
+function renderRlForm() {
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  chk('rl_paper_mode',  _rlCfg.paper_mode ?? true);
+  chk('rl_kill_switch', _rlCfg.kill_switch);
+  set('rl_risk_pct',        _rlCfg.risk_pct        ?? RL_DEFAULTS.risk_pct);
+  set('rl_max_lot',         _rlCfg.max_lot         ?? RL_DEFAULTS.max_lot);
+  set('rl_max_open',        _rlCfg.max_open        ?? RL_DEFAULTS.max_open);
+  set('rl_max_spread_pips', _rlCfg.max_spread_pips ?? RL_DEFAULTS.max_spread_pips);
+  set('rl_tick_secs',       _rlCfg.tick_secs       ?? RL_DEFAULTS.tick_secs);
+  set('rl_status_secs',     _rlCfg.status_secs     ?? RL_DEFAULTS.status_secs);
+  set('rl_plan_secs',       _rlCfg.plan_secs       ?? RL_DEFAULTS.plan_secs);
+  set('rl_enabled_pairs',  (_rlCfg.enabled_pairs ?? []).join(', '));
+}
+function readRlForm() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  _rlCfg.paper_mode      = !!document.getElementById('rl_paper_mode')?.checked;
+  _rlCfg.kill_switch     = !!document.getElementById('rl_kill_switch')?.checked;
+  _rlCfg.risk_pct        = num('rl_risk_pct', RL_DEFAULTS.risk_pct);
+  _rlCfg.max_lot         = num('rl_max_lot', RL_DEFAULTS.max_lot);
+  _rlCfg.max_open        = Math.round(num('rl_max_open', RL_DEFAULTS.max_open));
+  _rlCfg.max_spread_pips = num('rl_max_spread_pips', RL_DEFAULTS.max_spread_pips);
+  _rlCfg.tick_secs       = Math.round(num('rl_tick_secs', RL_DEFAULTS.tick_secs));
+  _rlCfg.status_secs     = Math.round(num('rl_status_secs', RL_DEFAULTS.status_secs));
+  _rlCfg.plan_secs       = Math.round(num('rl_plan_secs', RL_DEFAULTS.plan_secs));
+  _rlCfg.enabled_pairs   = (document.getElementById('rl_enabled_pairs')?.value || '')
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+async function loadRlConfig() {
+  try { const stored = await kvGet('range_line_bot_config'); if (stored) _rlCfg = { ...RL_DEFAULTS, ...stored }; renderRlForm(); } catch (e) {}
+}
+async function saveRlConfig() {
+  readRlForm();
+  const el = document.getElementById('rlSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('range_line_bot_config', _rlCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#4fd1c5'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetRlDefaults() {
+  _rlCfg = { ...RL_DEFAULTS }; renderRlForm();
+  const el = document.getElementById('rlSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadRlCreds() { try { _applyCredsToForm(await kvGet('range_line_bot_credentials'), 'rl_', 'rl_mt5_password'); } catch (e) {} }
+async function saveRlCreds() { await _saveCreds('range_line_bot_credentials', 'rl_', 'rl_mt5_password', 'rlCredsStatus'); }
+
+async function loadRlLiveStatus() {
+  const ageEl = document.getElementById('rlLiveAge'), modeEl = document.getElementById('rlLiveMode');
+  const balEl = document.getElementById('rlLiveBal'), openEl = document.getElementById('rlOpenN');
+  const uniEl = document.getElementById('rlUniN');
+  try {
+    const [st, planWrap] = await Promise.all([kvGet('range_line_bot_status'), kvGet('range_line_bot_plan')]);
+    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; return; }
+    if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
+    if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+    if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
+    if (openEl) openEl.textContent = (st.mt5_positions || []).length;
+    if (uniEl)  uniEl.textContent  = (st.universe || []).length;
+    const pa = document.getElementById('rlPlanAge');
+    if (pa) pa.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+    const body = document.getElementById('rlLinesBody');
+    if (body) {
+      const rows = st.lines || [];
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no ladders yet — waiting for the daily plan + the London window to close</td></tr>';
+      } else {
+        const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : (/nq|spx|us30|us2000|de30|dax|ftse|uk100|dow/i.test(sym) ? 1 : 5));
+        const rng = (sym, lad) => lad ? `${d(sym, lad.low)} – ${d(sym, lad.high)}` : '—';
+        body.innerHTML = rows.map(r => {
+          const lads = r.ladders || {};
+          return `<tr>
+            <td style="padding:5px 10px;font-weight:600;text-align:left">${r.instrument.toUpperCase()}</td>
+            <td style="padding:5px 10px;text-align:right">${d(r.instrument, r.price)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${rng(r.instrument, lads.A)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${rng(r.instrument, lads.M)}</td>
+            <td style="padding:5px 10px;text-align:left;color:var(--text3)">${(r.taken && r.taken.length) ? r.taken.join(', ') : '—'}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${((lads.A?.levels||[]).length + (lads.M?.levels||[]).length) || '—'}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+}
+
+window.saveRlConfig = saveRlConfig; window.resetRlDefaults = resetRlDefaults;
+window.saveRlCreds = saveRlCreds; window.loadRlLiveStatus = loadRlLiveStatus;
+
+document.querySelector('.tab-btn[data-tab="rangeline"]')?.addEventListener('click', loadRlLiveStatus);
+loadRlConfig();
+loadRlCreds();
+loadRlLiveStatus();
+
 loadDaStatus();
 loadGoldStatus();
 loadBtJournal();
