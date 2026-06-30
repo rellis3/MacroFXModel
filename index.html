@@ -1333,6 +1333,27 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
 
       <div class="cfg-section">
         <div class="cfg-section-title">
+          Volatility Bot <span class="cfg-section-badge">per-line forecast book · auto-rebuild</span>
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Rebuild book nightly</span><span class="cfg-label-type">auto</span></div>
+            <select class="cfg-input" id="vol_rebuildNightly">
+              <option value="false">Off (default)</option>
+              <option value="true">On — rebuild every night</option>
+            </select>
+            <div class="cfg-hint">When on, the server rebuilds the per-line book each night (22:35 UTC; override with VOL_BOOK_REBUILD_UTC_HOUR/MIN): top the M1 history up to now → re-measure on midnight-London sessions → rebuild the book (locked simple config) → refresh the plan. Needs OANDA_KEY on the server. Saved with the rest of this config (Save to KV below).</div>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label"><span class="cfg-label-main">Rebuild now</span><span class="cfg-label-type">on-demand</span></div>
+            <button type="button" class="cfg-save-btn" id="vbRebuildNowBtn" onclick="vbRebuildNow()" style="width:100%">↻ Rebuild book now</button>
+            <div class="cfg-hint" id="vbRebuildNowStatus">Runs the same chain immediately (independent of the nightly toggle). Heavy — a few minutes; watch the server logs for <code>[book-rebuild]</code>.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-section-title">
           FX Pairs <span class="cfg-section-badge">EUR/USD · GBP/USD · USD/JPY · AUD/USD</span>
         </div>
         <div class="cfg-grid">

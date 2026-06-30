@@ -205,6 +205,8 @@ function populateCfgForm(caps) {
   fill('conf_maxZones',          caps.maxZones          ?? 14);
   const zEl = document.getElementById('conf_enableZscoreConviction');
   if (zEl) zEl.value = String(caps.enableZscoreConviction ?? false);
+  const vrEl = document.getElementById('vol_rebuildNightly');
+  if (vrEl) vrEl.value = String(caps.volBookRebuild ?? false);
 }
 
 function readCfgForm() {
@@ -217,6 +219,9 @@ function readCfgForm() {
     zoneWindowAtrMult:      parseFloat(document.getElementById('conf_zoneWindowAtrMult')?.value) || 4,
     maxZones:               parseInt(document.getElementById('conf_maxZones')?.value)            || 14,
     enableZscoreConviction: str('conf_enableZscoreConviction') === 'true',
+    // Top-level boolean (NOT in a per-asset object, so it's excluded from the
+    // positive-number validation in saveCaps / the worker).
+    volBookRebuild:         str('vol_rebuildNightly') === 'true',
     fx: {
       confluencePips: num('fx_confluencePips'),
       mergeFactor:    num('fx_mergeFactor'),
@@ -414,6 +419,25 @@ export async function saveCaps() {
     status.className = 'cfg-status err';
   }
   btn.disabled = false;
+}
+
+// Fire the on-demand book rebuild (gap-fill → dataset → book → plan). Independent
+// of the nightly toggle; the server runs it in the background.
+export async function vbRebuildNow() {
+  const btn    = document.getElementById('vbRebuildNowBtn');
+  const status = document.getElementById('vbRebuildNowStatus');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Starting rebuild…';
+  try {
+    const res  = await fetch('/api/volatility-bot/rebuild-book', { method: 'POST' });
+    const data = await res.json();
+    if (status) status.textContent = data.ok
+      ? '✓ Rebuild started — runs in the background (a few minutes). Watch the server logs for [book-rebuild] full rebuild complete.'
+      : '⚠ ' + (data.error || 'rebuild failed to start');
+  } catch (e) {
+    if (status) status.textContent = '⚠ ' + e.message;
+  }
+  if (btn) btn.disabled = false;
 }
 
 export function resetCaps() {

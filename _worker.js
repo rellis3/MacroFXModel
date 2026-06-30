@@ -795,6 +795,7 @@ export default {
           clusterMerge:           true,
           slMaxAtrMult:           0.5,
           enableZscoreConviction: false,
+          volBookRebuild:         false,   // volatility-bot nightly book rebuild (server reads this)
           updatedAt: null,
         };
 
@@ -815,6 +816,7 @@ export default {
             // requires ENABLE_ZSCORE_CONVICTION env var ALSO set on the server as a
             // deployment-level master gate; this KV flag is the day-to-day on/off.
             enableZscoreConviction: parsed.enableZscoreConviction ?? DEFAULTS.enableZscoreConviction,
+            volBookRebuild:         parsed.volBookRebuild === true,
             updatedAt: parsed.updatedAt || null,
           });
         } catch(e) {
@@ -847,6 +849,7 @@ export default {
             clusterMerge:           body.clusterMerge !== false,
             slMaxAtrMult:           typeof body.slMaxAtrMult === 'number' && body.slMaxAtrMult > 0 ? body.slMaxAtrMult : 0.5,
             enableZscoreConviction: body.enableZscoreConviction === true,
+            volBookRebuild:         body.volBookRebuild === true,   // volatility-bot nightly rebuild toggle
             updatedAt: new Date().toISOString(),
           };
 
