@@ -23,6 +23,7 @@
 
 import { summarizeTrades } from './metricsCore.js';
 import { backtestStats, portfolioStats } from './backtestStats.js';
+import { intradayMtmDrawdown } from './intradayDrawdown.js';
 
 export const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
 export const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };  // extra on FOLLOW (stop) entries
@@ -67,6 +68,10 @@ export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
         decidedBy: ln.decidedBy ?? 'barrier',           // 'barrier' (TP/SL hit) or 'close' (mark-to-close)
         closePx: w.realized?.close ?? w.open,            // for honest mark-to-close of undecided outcomes
         cell: `${ln.name}_${ln.side}|${condKey}`,
+        // Intraday mark-to-market inputs: adverse excursion magnitudes (% of price)
+        // for fade (continuation = extPct) / follow (reversion = retracePct/mfePct)
+        // + the timing of the adverse extreme and the exit.
+        extPct: ln.extPct, retracePct: ln.retracePct ?? ln.mfePct, extTime: ln.extTime, exitTime: ln.exitTime,
         // Optional MFE/MAE excursion (range-line analyser supplies these; forecast
         // records don't — harmless undefined). Used by the E-ratio exit study.
         excMid: ln.excMid, excAway: ln.excAway,
@@ -179,7 +184,12 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
       if (!p)                       { noteMissed(t, 'unseen-in-IS'); continue; }
       if (p.decision === 'skip')    { noteMissed(t, p.reason === 'lowN' ? 'low-N in IS' : 'edge below cost', p); continue; }
       const pnl = pnlFor(t, p.decision, { costPct: t.cost, slipPct: t.slip });
-      trades.push({ date: t.date, pnl });
+      // Adverse excursion (intratrade MAE, % of price) for the chosen decision:
+      // a fade is hurt by CONTINUATION (extPct toward its stop); a follow by REVERSION.
+      const maePct = Math.abs((p.decision === 'fade' ? t.extPct : t.retracePct) ?? 0);
+      trades.push({ date: t.date, pnl,
+        entryTime: t.fillTime, exitTime: t.exitTime ?? t.fillTime,
+        maeTime: p.decision === 'fade' ? (t.extTime ?? t.fillTime) : t.fillTime, maePct });
       // Full trade geometry for the log + the (Phase 2) M1 chart drill-down.
       const tp = p.decision === 'fade' ? t.innerLvl : t.outerLvl;
       const sl = p.decision === 'fade' ? t.outerLvl : t.innerLvl;
@@ -225,6 +235,7 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
     // HONEST headline: Sharpe/CAGR/DD on the daily portfolio series (captures
     // same-day concurrency + cross-pair correlation), not per-trade ×√(trades/yr).
     portfolio: { ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(bookTrades.length / equity.length).toFixed(1) : 0 },
+    intradayDD: intradayDDBlock(bookTrades, equity),
     survivors,
     coverage: { fadeCells: countDec(policy, 'fade'), followCells: countDec(policy, 'follow'), skipCells: countDec(policy, 'skip') },
   };
@@ -255,10 +266,31 @@ export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMa
     excluded: excluded.sort((a, b) => a.expectancy - b.expectancy),
     nTrades: survTrades.length, equity,
     portfolio: { ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 },
+    intradayDD: intradayDDBlock(survTrades, equity),
   };
 }
 
 function byDate(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }
+
+// Raw (un-vol-targeted) peak-to-trough of the closed-trade daily-cumulated curve —
+// SAME % units as intradayMtmDrawdown, so the two can form an honest multiple.
+function rawClosedDD(equity) {
+  let peak = 0, maxDD = 0;
+  for (const e of equity) { if (e.cum > peak) peak = e.cum; const dd = e.cum - peak; if (dd < maxDD) maxDD = dd; }
+  return +maxDD.toFixed(4);
+}
+
+// Intraday MARK-TO-MARKET drawdown block for a trade list + its closed equity curve.
+// `trades` must carry {entryTime,exitTime,maeTime,maePct}. Returns the raw intraday
+// MTM DD, the raw closed-trade DD (same units), and their multiple — so a tearsheet
+// can scale the vol-targeted headline DD up by `multipleVsClosed` to show the honest
+// number that includes intratrade MAE + concurrency.
+function intradayDDBlock(trades, equity) {
+  const id = intradayMtmDrawdown(trades);
+  const closedRawDD = rawClosedDD(equity);
+  const mult = closedRawDD < -1e-9 ? +(id.maxDD / closedRawDD).toFixed(2) : null;
+  return { maxDD: id.maxDD, closedRawDD, multipleVsClosed: mult, breakpoints: id.breakpoints };
+}
 function countDec(policy, d) { return Object.values(policy).filter(p => p.decision === d).length; }
 
 // Daily-summed PnL series from a {date,pnl}[] list (for portfolioStats).
