@@ -41,11 +41,18 @@ export async function refreshVolatilityPlan({
     throw new Error('no per-line book / survivor universe — build the book first');
 
   const volByPair = {};
+  const seenOanda = new Set();          // collapse survivors that are the SAME instrument
   let ok = 0, fail = 0;
   for (const pair of book.survivors.pairs) {
     try {
       const inst = resolveInstrument(pair);
       if (!inst?.oanda) { onLog(`${pair}: no OANDA symbol — skipped`); fail++; continue; }
+      // The survivor list can carry two names for one instrument (e.g. 'us30' AND
+      // 'dow', 'spx' AND 'spx500' — short key + long alias). They resolve to the
+      // same OANDA symbol, so without this the universe would hold the instrument
+      // twice and the bot would open DOUBLE exposure on it. Keep the first, drop
+      // the rest.
+      if (seenOanda.has(inst.oanda)) { onLog(`${pair}: duplicate of ${inst.oanda} — skipped`); continue; }
       const bars = await fetchD1(inst.oanda, count);
       if (!bars?.length) { onLog(`${pair}: no D1 bars — skipped`); fail++; continue; }
       const sig = sigmaSeries(bars, inst.assetClass);
@@ -64,6 +71,7 @@ export async function refreshVolatilityPlan({
       // lowercase (e.g. an upper-case R2 parquet name) would otherwise miss the
       // lookup and silently drop EVERY pair → an empty universe.
       volByPair[String(pair).toLowerCase()] = { open, sigma, assetClass: inst.assetClass || 'fx', pip: inst.pip ?? null };
+      seenOanda.add(inst.oanda);          // first priced wins; later aliases of it are skipped
       ok++;
     } catch (e) { onLog(`${pair}: ${e.message}`); fail++; }
   }
