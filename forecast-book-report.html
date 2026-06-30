@@ -145,7 +145,8 @@ function render(b){
     ${kpi(pct(svt.cagr,1),`Return p.a. @ ${svt.target||10}% vol`,svt.cagr<0)}
     ${kpi(pct(svt.maxDD,1),'Max drawdown (historical)',true)}
     ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC p95 @ ${svt.target||10}% vol)`,true):''}
-    ${kpi(fmt(svt.calmar,2),'Calmar',svp.calmar<0)}
+    ${kpi(fmt(svt.calmar,2),'Calmar (historical)',svp.calmar<0)}
+    ${(svt.mcMaxDD&&svt.mcMaxDD.p95)?kpi(fmt(svt.cagr/Math.abs(svt.mcMaxDD.p95),2),'Calmar (stress · MC p95)',false):''}
     ${kpi(pct(svp.annVol,1),'Realised volatility')}
     ${kpi(fmt(svp.avgTradesPerDay,1),'Avg trades / day')}
     ${kpi(fmt(sv.count,0)+'/'+fmt(sv.total,0),'Instruments traded')}
