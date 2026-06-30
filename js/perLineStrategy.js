@@ -224,7 +224,7 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
     book: backtestStats(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date), { mcRuns, bootRuns }),
     // HONEST headline: Sharpe/CAGR/DD on the daily portfolio series (captures
     // same-day concurrency + cross-pair correlation), not per-trade ×√(trades/yr).
-    portfolio: { ...portfolioStats(equity.map(e => e.pnl)), avgTradesPerDay: equity.length ? +(bookTrades.length / equity.length).toFixed(1) : 0 },
+    portfolio: { ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(bookTrades.length / equity.length).toFixed(1) : 0 },
     survivors,
     coverage: { fadeCells: countDec(policy, 'fade'), followCells: countDec(policy, 'follow'), skipCells: countDec(policy, 'skip') },
   };
@@ -254,7 +254,7 @@ export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMa
     pairs: keep, count: keep.length, total: all.length,
     excluded: excluded.sort((a, b) => a.expectancy - b.expectancy),
     nTrades: survTrades.length, equity,
-    portfolio: { ...portfolioStats(equity.map(e => e.pnl)), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 },
+    portfolio: { ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 },
   };
 }
 

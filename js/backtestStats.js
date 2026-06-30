@@ -48,6 +48,22 @@ function ddStats(pnls) {
   }
   return { maxDD, maxDDdur: maxUnder };
 }
+
+// Compounded-equity max drawdown as a % OF THE RUNNING PEAK (negative). Unlike
+// ddStats (additive % points on a cumulative SUM), this compounds the per-period
+// returns into an equity curve and measures peak-to-trough as a fraction of
+// capital — the SAME basis as the geometric CAGR, so Calmar = CAGR/|maxDD| is a
+// like-for-like ratio and the number is a true "% of starting capital" drawdown.
+function compoundedMaxDD(returnsPct) {
+  let eq = 1, peak = 1, maxDD = 0;
+  for (const r of returnsPct) {
+    eq *= (1 + r / 100);
+    if (eq > peak) peak = eq;
+    const dd = (eq - peak) / peak;
+    if (dd < maxDD) maxDD = dd;
+  }
+  return maxDD * 100;
+}
 function resample(arr, rng) { const n = arr.length, out = new Array(n); for (let i = 0; i < n; i++) out[i] = arr[(rng() * n) | 0]; return out; }
 function shuffle(arr, rng) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function skewKurt(a) {
@@ -131,8 +147,12 @@ export function backtestStats(pnls, dates = [], { mcRuns = 1000, bootRuns = 1000
     const sm = mean(s), ss = stdev(s); bSh[b] = ss > 1e-9 ? sm / ss * Math.sqrt(tradesPerYr) : 0;
   }
   // Monte-Carlo (shuffle order) → path-dependent drawdown risk (sum is invariant).
+  // Collect drawdown MAGNITUDES so the reported percentiles are worst-case-correct:
+  // p99 = the 99th-percentile DEEPEST drawdown, not the shallowest. (Reporting
+  // pctile on the signed negatives put the mildest ordering at p99 — a bug that
+  // made the worst-case DD look benign.)
   const mcDD = new Array(mcRuns);
-  for (let r = 0; r < mcRuns; r++) mcDD[r] = ddStats(shuffle(pnls, rng)).maxDD;
+  for (let r = 0; r < mcRuns; r++) mcDD[r] = Math.abs(ddStats(shuffle(pnls, rng)).maxDD);
 
   return {
     trades: n,
@@ -149,7 +169,9 @@ export function backtestStats(pnls, dates = [], { mcRuns = 1000, bootRuns = 1000
     calmar:     maxDD < 0 ? +(cagr / Math.abs(maxDD)).toFixed(2) : 0,
     tradesPerYr: Math.round(tradesPerYr),
     bootstrap:  { total: pctile(bTot, [5, 50, 95]), sharpe: pctile(bSh, [5, 50, 95]), pPositive: +(nPos / bootRuns).toFixed(3) },
-    montecarlo: { maxDD: pctile(mcDD, [50, 95, 99]) },
+    // Negate the magnitude percentiles back to signed drawdowns so the UI still
+    // shows negatives, but now p50→p95→p99 DEEPEN (p99 = near-worst ordering).
+    montecarlo: { maxDD: (() => { const m = pctile(mcDD, [50, 95, 99]); return { p50: -m.p50, p95: -m.p95, p99: -m.p99 }; })() },
   };
 }
 
@@ -160,19 +182,36 @@ export function backtestStats(pnls, dates = [], { mcRuns = 1000, bootRuns = 1000
 // correlation, so this is the Sharpe that's real. `daily` = summed per-trade PnL
 // per trading day (% units, equal unit per trade). Also returns a vol-targeted
 // view so CAGR/DD are at a fixed, comparable risk level (leverage-invariant).
-export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252 } = {}) {
+export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252, mc = false, mcRuns = 1000 } = {}) {
   const n = daily.length;
   if (!n) return { days: 0 };
   const m = mean(daily), sd = stdev(daily);
   const sharpe = sd > 1e-9 ? m / sd * Math.sqrt(periodsPerYear) : 0;
   const annVol = sd * Math.sqrt(periodsPerYear);          // % units
   const years  = n / periodsPerYear;
-  const cagrOf = series => { const t = sum(series); return years > 0 ? (Math.pow(Math.max(1e-9, 1 + t / 100), 1 / years) - 1) * 100 : 0; };
-  const cagr = cagrOf(daily), maxDD = ddStats(daily).maxDD;
+  // CAGR and maxDD are BOTH measured on the same compounded equity curve, so they
+  // are like-for-like "% of capital" and Calmar = CAGR/|maxDD| is a real ratio.
+  const cagrOf = series => {
+    let eq = 1; for (const r of series) eq *= (1 + r / 100);
+    return years > 0 ? (Math.pow(Math.max(1e-9, eq), 1 / years) - 1) * 100 : 0;
+  };
+  const cagr = cagrOf(daily), maxDD = compoundedMaxDD(daily);
   // Scale the daily series to a fixed annual vol so the curve is comparable.
   const scale = annVol > 1e-9 ? targetVol / annVol : 0;
   const scaled = daily.map(x => x * scale);
-  const vtCagr = cagrOf(scaled), vtDD = ddStats(scaled).maxDD;
+  const vtCagr = cagrOf(scaled), vtDD = compoundedMaxDD(scaled);
+  // Monte-Carlo worst-case drawdown (opt-in — it's 1000 reshuffles, skip in the
+  // hot rigor sub-calls). The headline maxDD above is ONE historical ordering; this
+  // shuffles the daily returns to show the drawdown you could have lived through at
+  // the same vol. Reported as signed, deepening p50→p95→p99.
+  let mcMaxDD = null;
+  if (mc && scale > 0) {
+    const rng = mulberry32(0x9e3779b9);
+    const mags = new Array(mcRuns);
+    for (let i = 0; i < mcRuns; i++) mags[i] = Math.abs(compoundedMaxDD(shuffle(scaled, rng)));
+    const p = pctile(mags, [50, 95, 99]);
+    mcMaxDD = { p50: -p.p50, p95: -p.p95, p99: -p.p99 };
+  }
   // Probabilistic Sharpe (P true Sharpe > 0) on the per-day Sharpe — penalises
   // short samples, negative skew and fat tails.
   const { skew, kurt } = skewKurt(daily);
@@ -187,6 +226,7 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252 } =
     maxDD:  +maxDD.toFixed(2),
     calmar: maxDD < 0 ? +(cagr / Math.abs(maxDD)).toFixed(2) : 0,
     volTarget: { target: targetVol, cagr: +vtCagr.toFixed(2), maxDD: +vtDD.toFixed(2),
-                 calmar: vtDD < 0 ? +(vtCagr / Math.abs(vtDD)).toFixed(2) : 0 },
+                 calmar: vtDD < 0 ? +(vtCagr / Math.abs(vtDD)).toFixed(2) : 0,
+                 ...(mcMaxDD ? { mcMaxDD } : {}) },
   };
 }
