@@ -111,6 +111,12 @@ function render(b){
   // intraday/closed multiple, so it sits next to the historical/MC numbers like-for-like.
   const idd=sv.intradayDD||{}, iddMult=idd.multipleVsClosed;
   const iddVT=(iddMult!=null&&svt.maxDD!=null)?+(svt.maxDD*iddMult).toFixed(3):null;
+  // Block-bootstrap MC (regime-clustered tails) sits alongside the IID reshuffle.
+  // The stress Calmar quotes the DEEPER of the two p95s — block when available, else
+  // IID — so it's the conservative, honest ratio rather than the lucky ordering.
+  const svtBlk=svt.mcMaxDDBlock||{};
+  const stressDD=(svtBlk.p95!=null)?svtBlk.p95:(svt.mcMaxDD?svt.mcMaxDD.p95:null);
+  const stressLbl=(svtBlk.p95!=null)?'block p95':'MC p95';
   const pp=Object.entries(b.perPair||{}).filter(([,s])=>s.trades>0).sort((a,b)=>b[1].sharpe-a[1].sharpe);
   const survSet=new Set(sv.pairs||[]);
   const posPairs=pp.filter(([,s])=>s.totalPnl>0).length;
@@ -149,10 +155,11 @@ function render(b){
     ${kpi(svp.psr!=null?pct(svp.psr*100,0):'—','Prob. Sharpe &gt; 0',svp.psr<0.95)}
     ${kpi(pct(svt.cagr,1),`Return p.a. @ ${svt.target||10}% vol`,svt.cagr<0)}
     ${kpi(pct(svt.maxDD,1),'Max drawdown (historical)',true)}
-    ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC p95 @ ${svt.target||10}% vol)`,true):''}
+    ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC IID p95 @ ${svt.target||10}% vol)`,true):''}
+    ${svtBlk.p95!=null?kpi(pct(svtBlk.p95,1),`Max drawdown (MC block p95 · regime-clustered)`,true):''}
     ${iddVT!=null?kpi(pct(iddVT,1),`Max drawdown (intraday MTM · MAE+concurrency, ${fmt(iddMult,1)}× closed)`,true):''}
     ${kpi(fmt(svt.calmar,2),'Calmar (historical)',svp.calmar<0)}
-    ${(svt.mcMaxDD&&svt.mcMaxDD.p95)?kpi(fmt(svt.cagr/Math.abs(svt.mcMaxDD.p95),2),'Calmar (stress · MC p95)',false):''}
+    ${stressDD!=null?kpi(fmt(svt.cagr/Math.abs(stressDD),2),`Calmar (stress · ${stressLbl})`,false):''}
     ${(iddVT!=null&&iddVT<-1e-9)?kpi(fmt(svt.cagr/Math.abs(iddVT),2),'Calmar (intraday MTM)',false):''}
     ${kpi(pct(svp.annVol,1),'Realised volatility')}
     ${kpi(fmt(svp.avgTradesPerDay,1),'Avg trades / day')}
@@ -172,7 +179,7 @@ function render(b){
     <li>Both are scaled to a fixed ${svt.target||10}% annual vol first (× ${svt.target||10}%/realised-vol), so they're leverage-comparable — this moves the cash scale, not the Sharpe.</li>
   </ul>
   <b>Why "Max drawdown (historical)" looks low:</b> it is the <i>single realised ordering</i> of trades, and this book's path ran smoother than the median.
-  So we also reshuffle the daily returns 1,000× at the same vol and report <b>Max drawdown (MC p95/p99)</b> — the realistic worst-case ordering, the number to size risk against — and <b>Calmar (stress)</b> = Ann. return ÷ |MC p95 DD|, the conservative ratio. The historical figure is the lucky path; the MC figure is the plan-for number.
+  So we also resample the daily returns 1,000× at the same vol and report <b>Max drawdown (MC p95/p99)</b> two ways: an <b>IID</b> reshuffle (single-day order independent) and a <b>block</b> bootstrap (stationary, mean block ≈ ${fmt(svtBlk.blockMean||21,0)} days) that keeps losing streaks clumped so it does <i>not</i> understate regime-clustered tails. <b>Calmar (stress)</b> = Ann. return ÷ |the deeper of the two p95 DDs| — the conservative ratio. The historical figure is the lucky path; the block figure is the plan-for number.
   <span class="mut">(Both geometric/compounded; a strictly arithmetic view — Σreturns ÷ years and additive DD — is a one-line switch if preferred.)</span>
   <hr style="border:0;border-top:1px solid var(--line);margin:8px 0">
   <b style="color:var(--red)">⚠ The historical/MC drawdowns are a LOWER BOUND — quote the intraday MTM figure instead.</b> The equity curve is built from
@@ -180,7 +187,7 @@ function render(b){
   (i) <b>intratrade MAE</b> — a fade that runs most of the way to its stop before reverting to target books as a clean win, its unrealised drawdown invisible; or
   (ii) <b>intraday mark-to-market across concurrent positions</b> — the many positions open at once each day net to a single daily number, so simultaneous open-position drawdown is hidden.
   ${iddVT!=null?`The <b>Max drawdown (intraday MTM)</b> KPI above corrects exactly this: each trade is marked on a 3-point unrealised-PnL path anchored on its <i>actual</i> peak adverse excursion (the continuation extreme for a fade) and entry/exit times, and the portfolio is summed across <b>concurrent</b> open positions. On a raw basis that is <b>${fmt(idd.multipleVsClosed,1)}× deeper</b> than the closed-trade drawdown (raw ${fmt(idd.maxDD,2)}% vs ${fmt(idd.closedRawDD,2)}%), i.e. about <b>${pct(iddVT,1)}</b> on the headline ${svt.target||10}%-vol basis — that is the tradeable number to quote, not the ${pct(svt.maxDD,1)} historical figure.`:`The true tradeable (mark-to-market) drawdown is therefore <b>materially larger</b> than the historical figure shown.`}
-  Note the intraday MTM model is MAE-anchored (real worst excursion + real timing, linear between the three points), not a full tick replay, and the Monte-Carlo above is an <b>IID</b> reshuffle (trade/day order independent), which still understates regime-clustered tail drawdowns. <b>Size risk against the intraday MTM drawdown, not the ~1–6% closed-trade floor.</b></div>
+  Note the intraday MTM model is MAE-anchored (real worst excursion + real timing, linear between the three points), not a full tick replay. ${svtBlk.p95!=null?`The Monte-Carlo is now reported BOTH as an <b>IID</b> reshuffle and as a <b>block bootstrap</b> (mean block ≈ ${fmt(svtBlk.blockMean||21,0)} days), the latter preserving the regime clustering the IID version breaks up — quote the block p95/p99 as the regime-aware tail.`:`The Monte-Carlo above is an <b>IID</b> reshuffle, which still understates regime-clustered tail drawdowns.`} <b>Size risk against the intraday MTM drawdown and the block-bootstrap MC, not the ~1–6% closed-trade floor.</b></div>
 
   <h2>3 · Equity &amp; Drawdown</h2>
   <div class="chart">${lineChart(toEquity(heq),{color:'#1f6feb',fill:'rgba(31,111,235,.08)'})}</div>
@@ -202,12 +209,12 @@ function render(b){
     </div>
     <div>
       <h3>Monte-Carlo (path/ordering risk)</h3>
-      ${svt.mcMaxDD?`<table><tbody>
-        <tr><td>Max drawdown % @ ${svt.target||10}% vol</td><td class="mut">p50</td><td class="neg">${fmt(svt.mcMaxDD.p50,1)}</td></tr>
-        <tr><td></td><td class="mut">p95</td><td class="neg">${fmt(svt.mcMaxDD.p95,1)}</td></tr>
-        <tr><td></td><td class="mut">p99 (worst)</td><td class="neg">${fmt(svt.mcMaxDD.p99,1)}</td></tr>
+      ${svt.mcMaxDD?`<table><thead><tr><th>Max drawdown % @ ${svt.target||10}% vol</th><th>IID</th>${svtBlk.p95!=null?'<th>block</th>':''}</tr></thead><tbody>
+        <tr><td class="mut">p50</td><td class="neg">${fmt(svt.mcMaxDD.p50,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p50,1)}</td>`:''}</tr>
+        <tr><td class="mut">p95</td><td class="neg">${fmt(svt.mcMaxDD.p95,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p95,1)}</td>`:''}</tr>
+        <tr><td class="mut">p99 (worst)</td><td class="neg">${fmt(svt.mcMaxDD.p99,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p99,1)}</td>`:''}</tr>
       </tbody></table>
-      <div class="cap">Daily portfolio returns reshuffled 1,000× at the headline ${svt.target||10}% vol — same basis as the headline drawdown, so this is the realistic worst-case ordering (p99 = deepest). The historical −${fmt(Math.abs(svt.maxDD||0),1)}% was one benign path.</div>`
+      <div class="cap">Daily portfolio returns resampled 1,000× at the headline ${svt.target||10}% vol (p99 = deepest). <b>IID</b> reshuffles single days — it breaks up losing streaks and so understates clustered tails. <b>Block</b> is a stationary bootstrap with mean block ≈ ${fmt(svtBlk.blockMean||0,0)} days, which keeps losing runs clumped — the honest, regime-aware tail to size against. The historical −${fmt(Math.abs(svt.maxDD||0),1)}% was one benign path.</div>`
       :(mc?`<table><tbody>
         <tr><td>Max drawdown % (per-trade)</td><td class="mut">p50</td><td class="neg">${fmt(mc.maxDD.p50,1)}</td></tr>
         <tr><td></td><td class="mut">p95</td><td class="neg">${fmt(mc.maxDD.p95,1)}</td></tr>

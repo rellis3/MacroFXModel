@@ -433,5 +433,24 @@ console.log('[backtestStats — drawdown honesty]');
      Math.abs(bs.montecarlo.maxDD.p99) >= Math.abs(bs.maxDD) - 1e-9);
 }
 
+// Block bootstrap — the regime-clustering answer to "IID understates tails".
+{
+  // Strongly clustered returns: long calm up-drifts punctuated by clustered down-runs.
+  // IID shuffle scatters the down days; the stationary block bootstrap keeps them
+  // clumped, so its typical (and tail) drawdown must be AT LEAST as deep as IID.
+  const clustered = [];
+  for (let k = 0; k < 6; k++) { for (let i = 0; i < 12; i++) clustered.push(0.8); for (let i = 0; i < 6; i++) clustered.push(-2.5); }
+  const pc = portfolioStats(clustered, { mc: true });
+  const blk = pc.volTarget.mcMaxDDBlock, iid = pc.volTarget.mcMaxDD;
+  ok('block-bootstrap MC present + deepens p50→p95→p99',
+     blk && blk.p99 <= blk.p95 + 1e-9 && blk.p95 <= blk.p50 + 1e-9);
+  ok('block bootstrap reports its mean block length (≥1)', blk && blk.blockMean >= 1);
+  ok('block bootstrap median tail ≥ IID on clustered returns (clustering preserved)',
+     Math.abs(blk.p50) >= Math.abs(iid.p50) - 1e-9);
+  ok('block MC absent unless requested', portfolioStats(clustered).volTarget.mcMaxDDBlock === undefined);
+  ok('portfolioStats deterministic under fixed seed (block MC included)',
+     JSON.stringify(portfolioStats(clustered, { mc: true })) === JSON.stringify(pc));
+}
+
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
