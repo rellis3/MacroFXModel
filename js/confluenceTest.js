@@ -8,8 +8,14 @@
  *
  *   1. DISTINCT SOURCE KINDS, ladder EXCLUDED. Confluence = how many *different
  *      kinds* of external reference (PDH/PDL, PWH/PWL, pivots, round numbers,
- *      daily opens) sit within tolerance — NOT how many fib lines are nearby.
- *      "Confluent" = ≥2 distinct sources, i.e. the lesson's real meaning.
+ *      daily opens, swing S&R, swing-fib clusters) sit within tolerance — NOT how
+ *      many fib lines are nearby. A THREE-WAY split isolates the multi-swing-fib
+ *      thesis so it can't be diluted into a generic count:
+ *        fib(cluster)      — a swing_fib cluster aligns (the golden-pocket idea)
+ *        confluent(no fib) — ≥2 distinct OTHER source kinds, no fib cluster
+ *        plain(<2)         — neither
+ *      The fib class answers "do multi-swing fib clusters specifically make price
+ *      react" directly; the confluent class is generic overlap as the control.
  *   2. LOCATION-CONTROLLED. Results are bucketed by the level's fib band
  *      (core ≤1 / mid 1–2.5 / outer >2.5), and confluent-vs-plain is compared
  *      WITHIN each band — so the interior-vs-extreme effect can't masquerade as
@@ -95,7 +101,15 @@ export function runConfluenceTest(sessions, assetClass = 'fx', opts = {}) {
       // distinct SOURCE kinds within tolerance (the lesson's real "confluence")
       const kinds = new Set();
       for (const p of partners) if (Math.abs(p.price - ln.level) <= tol) kinds.add(p.source);
-      const conf = kinds.size >= 2 ? 'confluent(≥2 src)' : 'plain(<2)';
+      // Three-way split that ISOLATES the multi-swing-fib thesis: a touch sitting on
+      // a swing_fib cluster (which already requires ≥2 distinct swing pairs to exist)
+      // is its own class, so its reaction can't be diluted into generic confluence.
+      //   fib(cluster)      — a swing_fib cluster aligns (the user's golden-pocket idea)
+      //   confluent(no fib) — ≥2 distinct OTHER source kinds, no fib cluster
+      //   plain(<2)         — <2 sources, no fib cluster
+      const hasFib = kinds.has('swing_fib');
+      const others = [...kinds].filter(k => k !== 'swing_fib').length;
+      const conf = hasFib ? 'fib(cluster)' : (others >= 2 ? 'confluent(no fib)' : 'plain(<2)');
       const band = bandOf(Math.abs(fibOf(ln.name)));
 
       const touch = { decidedBy: ln.decidedBy, side: ln.side, level: ln.level,
