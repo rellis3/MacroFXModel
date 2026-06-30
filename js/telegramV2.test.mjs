@@ -244,6 +244,13 @@ console.log('[confluence]');
   ok('merge reversion%', cell.revRate === +((5 + 18) / 40 * 100).toFixed(1));
   ok('merge fade edge', cell.fadeExp === +((0.0 + 0.6) / 40).toFixed(4));
   ok('row carries band+conf', cell.band === 'core(≤1)' && cell.conf === 'plain(<2)');
+  // three-way split: a fib(cluster) cell pools + parses independently of plain/confluent
+  const merged3 = mergeConfluence([
+    { cells: { 'core(≤1) · fib(cluster)': { n: 20, sumBounce: 4.0, reverted: 12, sumFade: 0.2 } } },
+    { cells: { 'core(≤1) · fib(cluster)': { n: 30, sumBounce: 9.0, reverted: 21, sumFade: 0.3 } } },
+  ]);
+  const fib = merged3.find(b => b.key === 'core(≤1) · fib(cluster)');
+  ok('fib cell pools + parses', fib.n === 50 && fib.conf === 'fib(cluster)' && fib.band === 'core(≤1)');
 }
 
 // ── 8. swing-fib cluster level source ────────────────────────────────────────
