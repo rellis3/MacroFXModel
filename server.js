@@ -44,6 +44,7 @@ import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForP
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './js/rangeLineAnalyser.js';
+import { pipSize as _pipSize } from './js/instrumentRegistry.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
@@ -7157,7 +7158,9 @@ app.post('/api/range-line/run', async (req, res) => {
           setProg(p);
           let packed = await loadM1ForPair(p, BT_M1_DIR);
           if (packed && packed.n) {
-            records = recordsForPair(packed, ac, opts);
+            // Per-pair pip (for the roundNum touch feature — a wrong pip is a 10× bug).
+            let pip = 0; try { pip = _pipSize(p) || 0; } catch { pip = 0; }
+            records = recordsForPair(packed, ac, { ...opts, pip });
             rlRecCache.set(ck, records);
             if (rlRecCache.size > 80) rlRecCache.delete(rlRecCache.keys().next().value);  // bound memory
           }
@@ -7187,6 +7190,14 @@ app.post('/api/range-line/run', async (req, res) => {
 
       if (!Object.keys(touchesByPair).length) { rlJobs.set(jobId, { status: 'error', error: 'No M1 data for the requested pairs', startedAt }); return; }
       const book = runPerLine(touchesByPair, { ...opts, costByPair });
+      // A condition can over-fragment until no cell clears minN (every touch is
+      // dropped) → runPerLine returns null. Fail soft with a clear reason instead
+      // of dereferencing book.policy and crashing the job.
+      if (!book) {
+        rlJobs.set(jobId, { status: 'error', startedAt,
+          error: `No tradeable cells for condition "${opts.conditions.join('|') || 'none'}" — it fragments the sample below minN=${opts.minN}. Try a lower min N/cell or a coarser condition.` });
+        return;
+      }
       // Robustness battery (the forecast-engine's proven judge of real-vs-artifact):
       // walk-forward degradation, per-year, cost-stress, and deflated Sharpe. A
       // breadth-inflated headline Sharpe means nothing if OOS÷IS collapses or the
