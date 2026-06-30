@@ -30,7 +30,11 @@ import { pipSize as pipSizeOf } from './instrumentRegistry.js';
 
 // External reference sources only — the fib ladder is deliberately NOT a partner
 // (that was the density confound). Each contributes a distinct "kind" of S/R.
-const PARTNER_SOURCES = ['prior_hilo', 'pivots', 'round_number', 'daily_open'];
+// swing_sr (N-bar pivots) and swing_fib (multi-swing fib confluence incl. the
+// golden pocket) are the user's "where price actually reacts" hypothesis — each
+// is one distinct kind, so a fib-cluster landing on a ladder line counts as one
+// confluence source, not many.
+const PARTNER_SOURCES = ['prior_hilo', 'pivots', 'round_number', 'daily_open', 'swing_sr', 'swing_fib'];
 
 const bandOf = absFib => absFib <= 1 ? 'core(≤1)' : absFib <= 2.5 ? 'mid(1–2.5)' : 'outer(>2.5)';
 const fibOf  = name => { const p = String(name).split('_'); return parseFloat(p[p.length - 1]); };

@@ -232,6 +232,96 @@ function swingSRLevels(ctx) {
   return out;
 }
 
+// ── 5b) Swing-Fibonacci clusters (multi-swing confluence incl. golden pocket) ─
+// The user's thesis: price reacts where fib projections from *several different*
+// swing pairs agree — e.g. a 0.618/0.65 "golden pocket" from one high/low that
+// also lands on a 0.5 from a different, older swing. This source projects the
+// standard retracement ratios from every recent swing-high↔swing-low pair (both
+// directions) and emits a level ONLY where ≥ minConfluence DISTINCT swing pairs
+// land within clusterPips of each other. The confluence count is the signal.
+//
+// Mirrors structural-fibs.js intent (N-bar pivots, golden pocket 0.618–0.65) but
+// is PURE and horizon-agnostic: works off whatever bars it's given. Distinct
+// pairs are counted by their (hi,lo) identity so two ratios from the SAME swing
+// pair can't fake confluence (the density confound the confluence test exposed).
+// params: { lookbackDays = 60, strength = 3, topK = 6, clusterPips = 8,
+//           minConfluence = 2, ratios = [0.382,0.5,0.618,0.65,0.786,0.886] }.
+function swingFibLevels(ctx) {
+  const {
+    lookbackDays = 60, strength = 3, topK = 6, clusterPips = 8, minConfluence = 2,
+    ratios = [0.382, 0.5, 0.618, 0.65, 0.786, 0.886],
+  } = ctx.params ?? {};
+  let bars = ctx.dailyBars ?? [];
+  if (bars.length) {
+    const since = bars[bars.length - 1].time - lookbackDays * 86400;
+    bars = bars.filter(b => b.time >= since);
+  }
+  const N = strength;
+  if (bars.length < 2 * N + 1) return [];
+
+  // N-bar strict swing pivots (same test as swingSRLevels).
+  const highs = [], lows = [];
+  for (let i = N; i < bars.length - N; i++) {
+    let isH = true, isL = true;
+    for (let j = -N; j <= N; j++) {
+      if (j === 0) continue;
+      if (bars[i + j].high >= bars[i].high) isH = false;
+      if (bars[i + j].low  <= bars[i].low)  isL = false;
+    }
+    if (isH) highs.push({ price: bars[i].high, time: bars[i].time, i });
+    if (isL) lows.push({ price: bars[i].low,  time: bars[i].time, i });
+  }
+  // Always include the range extremes (the dominant anchors structural-fibs uses).
+  let rHi = bars[0], rLo = bars[0];
+  for (const b of bars) { if (b.high > rHi.high) rHi = b; if (b.low < rLo.low) rLo = b; }
+  highs.push({ price: rHi.high, time: rHi.time, i: -1 });
+  lows.push({ price: rLo.low, time: rLo.time, i: -2 });
+
+  // Keep the most prominent K of each (highest highs / lowest lows), de-duped.
+  const dedupe = arr => { const seen = new Set(); return arr.filter(x => { const k = Math.round(x.price / pipOf(ctx)); if (seen.has(k)) return false; seen.add(k); return true; }); };
+  const topHighs = dedupe(highs.slice().sort((a, b) => b.price - a.price)).slice(0, topK);
+  const topLows  = dedupe(lows.slice().sort((a, b) => a.price - b.price)).slice(0, topK);
+  if (!topHighs.length || !topLows.length) return [];
+
+  // Project each ratio from every (hi,lo) pair, BOTH directions. Tag each
+  // projection with the originating pair id so confluence = distinct pairs.
+  const projections = [];
+  for (const hi of topHighs) {
+    for (const lo of topLows) {
+      if (hi.price <= lo.price) continue;                 // need a real range
+      const range = hi.price - lo.price;
+      const pairId = `${hi.i}|${lo.i}`;
+      for (const r of ratios) {
+        projections.push({ price: hi.price - range * r, pairId });   // retrace down from high
+        projections.push({ price: lo.price + range * r, pairId });   // retrace up from low
+      }
+    }
+  }
+
+  // Cluster projections by price; a cluster is real confluence only if ≥
+  // minConfluence DISTINCT pairs contribute.
+  const tol = clusterPips * pipOf(ctx);
+  projections.sort((a, b) => a.price - b.price);
+  const out = [];
+  let bucket = [];
+  const flush = () => {
+    if (!bucket.length) return;
+    const pairs = new Set(bucket.map(x => x.pairId));
+    if (pairs.size >= minConfluence) {
+      const price = bucket.reduce((s, x) => s + x.price, 0) / bucket.length;
+      out.push(L(price, 'fib_cluster', `Fib×${pairs.size}`, +(0.8 + 0.3 * pairs.size).toFixed(3),
+        { confluence: pairs.size, hits: bucket.length }));
+    }
+    bucket = [];
+  };
+  for (const p of projections) {
+    if (bucket.length && p.price - bucket[bucket.length - 1].price > tol) flush();
+    bucket.push(p);
+  }
+  flush();
+  return out;
+}
+
 // ── 6) Round numbers / psychological levels ──────────────────────────────────
 // Big figures (every `bigPips` = 100 pips, the "00" levels) and half figures
 // (every `halfPips` = 50 pips) within ±`spanPips` of the reference price. N pips
@@ -294,13 +384,14 @@ export const LEVEL_SOURCES = {
   pivots:         { id: 'pivots',         label: 'Pivots',             kind: 'pivot',      defaultParams: { method: 'classic' },                              levels: pivotLevels },
   volume_profile: { id: 'volume_profile', label: 'Volume Profile',     kind: 'profile',    defaultParams: { lookbackDays: 5, valueAreaPct: 0.70, binPips: 1, mode: 'composite' }, levels: volumeProfileLevels },
   swing_sr:       { id: 'swing_sr',       label: 'Swing S&R',          kind: 'sr',         defaultParams: { lookbackDays: 20, strength: 5, clusterPips: 5 },   levels: swingSRLevels },
+  swing_fib:      { id: 'swing_fib',      label: 'Swing-Fib Clusters', kind: 'fib_cluster',defaultParams: { lookbackDays: 60, strength: 3, topK: 6, clusterPips: 8, minConfluence: 2 }, levels: swingFibLevels },
   round_number:   { id: 'round_number',   label: 'Round Numbers',      kind: 'round',      defaultParams: { spanPips: 200, halves: true },                    levels: roundNumberLevels },
   vwap:           { id: 'vwap',           label: 'VWAP Anchors',       kind: 'vwap',       defaultParams: { lookbackDays: 5 },                                levels: vwapAnchorLevels },
 };
 
 export {
   dailyOpenLevels, priorHighLowLevels, pivotLevels,
-  volumeProfileLevels, swingSRLevels, roundNumberLevels, vwapAnchorLevels,
+  volumeProfileLevels, swingSRLevels, swingFibLevels, roundNumberLevels, vwapAnchorLevels,
 };
 
 // ── Aggregator ───────────────────────────────────────────────────────────────
