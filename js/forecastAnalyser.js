@@ -158,20 +158,25 @@ export function analyseWindow(session, ladder, ctx = {}) {
       // tagged a target is NOT a full win — the strategy marks these to close).
       let outcome = 'undecided', retraceTo = null, extTo = null, decidedBy = 'close';
       let extremeBack = touchLvl, extremeFwd = touchLvl;
+      // Timing for the intraday mark-to-market drawdown: extTime = when the
+      // CONTINUATION extreme (the adverse excursion for a fade) was reached; exitTime
+      // = when a barrier resolved (or the last bar on a close-fallback).
+      let extTime = firstTouchTime, exitTime = null;
       for (let k = touchIdx; k < n; k++) {
         const bar = bars[k];
         if (isUp) {
           extremeBack = Math.min(extremeBack, bar.low);
-          extremeFwd  = Math.max(extremeFwd,  bar.high);
-          if (bar.low  <= inner) { outcome = 'reverted';  retraceTo = inner; decidedBy = 'barrier'; break; }  // tie → conservative: reverted
-          if (bar.high >= outer) { outcome = 'continued'; extTo     = outer; decidedBy = 'barrier'; break; }
+          if (bar.high > extremeFwd) { extremeFwd = bar.high; extTime = bar.time; }
+          if (bar.low  <= inner) { outcome = 'reverted';  retraceTo = inner; decidedBy = 'barrier'; exitTime = bar.time; break; }  // tie → conservative: reverted
+          if (bar.high >= outer) { outcome = 'continued'; extTo     = outer; decidedBy = 'barrier'; exitTime = bar.time; break; }
         } else {
           extremeBack = Math.max(extremeBack, bar.high);
-          extremeFwd  = Math.min(extremeFwd,  bar.low);
-          if (bar.high >= inner) { outcome = 'reverted';  retraceTo = inner; decidedBy = 'barrier'; break; }
-          if (bar.low  <= outer) { outcome = 'continued'; extTo     = outer; decidedBy = 'barrier'; break; }
+          if (bar.low < extremeFwd) { extremeFwd = bar.low; extTime = bar.time; }
+          if (bar.high >= inner) { outcome = 'reverted';  retraceTo = inner; decidedBy = 'barrier'; exitTime = bar.time; break; }
+          if (bar.low  <= outer) { outcome = 'continued'; extTo     = outer; decidedBy = 'barrier'; exitTime = bar.time; break; }
         }
       }
+      if (exitTime == null) exitTime = bars[n - 1]?.time ?? firstTouchTime;   // close-fallback exit
       if (outcome === 'undecided') {
         outcome = isUp ? (closePx > touchLvl ? 'continued' : 'reverted')
                        : (closePx < touchLvl ? 'continued' : 'reverted');
@@ -195,6 +200,7 @@ export function analyseWindow(session, ladder, ctx = {}) {
         innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6), decidedBy,
         closeBeyond: isUp ? closePx > touchLvl : closePx < touchLvl,
         mfePct: +retracePct.toFixed(4),   // favourable excursion for a fade = reversion depth
+        extTime, exitTime,               // for the intraday mark-to-market drawdown
         ...fb,
       });
     }

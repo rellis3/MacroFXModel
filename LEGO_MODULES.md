@@ -183,6 +183,31 @@ OLS-recovers-a-known-law test for HAR-RV).
 > identical. The export text is **golden-tested byte-identical** to vol-forecast.html
 > so the same Pine indicator consumes it; only the σ comes from the bench winner.
 
+### 1f. Intraday mark-to-market drawdown brick (2026-06-30)
+
+Built to answer an institutional reviewer's audit: the headline portfolio
+drawdown is read off the **closed-trade daily-netted** equity curve, which omits
+(i) **intratrade MAE** — a fade that runs most of the way to its stop before
+reverting to target books as a clean win, its unrealised drawdown invisible — and
+(ii) **intraday concurrency** — many positions open at once net to one daily
+number, hiding simultaneous open-position drawdown. Both make the closed-trade DD
+a *lower bound*; this brick computes the honest tradeable number. Pure, no-network,
+covered by `js/intradayDrawdown.test.mjs` (8 synthetic checks: MAE exposure on a
+winning trade, concurrency stacking vs sequential non-stacking, loss = its DD,
+midpoint default, malformed→0, MTM deeper than closed).
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Intraday MTM drawdown** | `js/intradayDrawdown.js` | `intradayMtmDrawdown(trades)` — portfolio mark-to-market drawdown including intratrade MAE + concurrency. Each trade is a 3-point unrealised-PnL path (0 @entry → −maePct @maeTime → finalPnl @exit, linear between) anchored on its **actual** peak adverse excursion; an active-set sweep over the breakpoint grid sums concurrent open marks + realised PnL and takes peak-to-trough. Self-coerces bar times (epoch-sec / epoch-ms / ISO) to one ms clock so cross-pair concurrency is meaningful. MAE-anchored approximation (real worst excursion + real timing), **not** a tick replay | `perLineStrategy.js` `runPerLine` (book `intradayDD`) + `buildSurvivors` (survivor `intradayDD`), surfaced as the "Max drawdown (intraday MTM)" KPI in `forecast-book-report.html` | ✅ |
+
+> Consumes the analyser's already-computed adverse excursion (`extPct` = the
+> continuation extreme for a fade) plus newly-captured `extTime`/`exitTime` timing
+> from `forecastAnalyser.js`'s barrier walk — no new MAE math, just timing on the
+> existing geometry. The brick reports the raw intraday DD, the raw closed-trade DD
+> (same % units) and their **multiple**, so the tearsheet scales the vol-targeted
+> headline DD up by that multiple to show a like-for-like honest figure rather than
+> mixing raw and vol-targeted units.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
