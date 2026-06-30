@@ -43,7 +43,7 @@ import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
-import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan } from './js/rangeLineAnalyser.js';
+import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './js/rangeLineAnalyser.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
@@ -7207,7 +7207,10 @@ app.post('/api/range-line/run', async (req, res) => {
       // Per-(pair × level) quality scan + IS-learned veto: which pairs/levels carry
       // the edge, which reliably lose (the pooled gate hides pair-specific losers).
       const badLevels = runBadLevelScan(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair, minN: 30 });
-      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated, eRatio, exitAB, heldPosition, badLevels } });
+      // Zone-walk: the fade/follow policy used as the live exit oracle at every zone
+      // (full ladder, fade can flip to a runner, re-entry after flat).
+      const zoneWalk = runZoneWalk(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair });
+      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated, eRatio, exitAB, heldPosition, badLevels, zoneWalk } });
     } catch (e) {
       console.error('[range-line/run]', e?.message, e?.stack ?? '');
       rlJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });

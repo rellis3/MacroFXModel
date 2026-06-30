@@ -240,7 +240,13 @@ strategy starts honest.
 
 ---
 
-## 10. The final tradeable spec (LOCKED)
+## 10. The FALLBACK spec (preserved — continuation-only, near-mid)
+
+> ⚠️ **This is the FALLBACK, not the final word.** It is the cleanest *continuation-only*
+> book and is preserved here in case we need to fall back to it. But it **dropped
+> the fade side and the extreme levels** — see §12 for why that's being revisited
+> with the **zone-walk** model. Keep this spec; don't treat it as the finished
+> strategy.
 
 After the four lies were removed, a coarse trim — **strong-pair universe + near-mid
 levels** (`Universe = Strong`, `Max level = ≤ 2`, `Condition = none`) — concentrated
@@ -318,3 +324,37 @@ already in place:
 Until then, this strategy is **fully characterised, honestly validated, and
 documented**. That was the goal.
 
+
+---
+
+## 12. The zone-walk model — fade AND follow, full ladder (revisiting the base principle)
+
+**Why this exists.** The §10 fallback ended up *continuation-only*, which is
+incoherent: the engine learns a fade-or-follow decision per zone, then only used
+*follow*. And the coarse trim dropped the extreme extension levels — the heart of
+a *range-extension* strategy. So §10 quietly morphed "trade the extension zones"
+into "near-mid Monday breakout." That's a real gap, not a settled result.
+
+**The fix — `runZoneWalk` (the policy IS the exit oracle).** Trade the FULL ladder
+and consult the learned decision at **every** zone the trade reaches:
+- Each zone has an **expected price direction**: `follow` → away from mid;
+  `fade` → toward mid (above mid → that's down; below mid → up).
+- **Flat:** the first non-skip zone **opens** a trade in its expected direction.
+- **In a trade (dir D):** a zone whose expected dir `== D` is a **continuation →
+  hold**; `== −D` is a **reversal → close** at that zone; skip zones are neutral.
+- **After a close → flat → re-enter** at a later zone (multiple trades/day — the
+  re-entry behaviour we wanted).
+
+**Why a fade becomes a runner (the trade you actually see).** Enter *fading* a
+level (betting reversion toward the mid). Price reverts, breaks **through** the
+mid, and the zones on the far side now expect price to continue in the **same**
+direction → they read as continuation → the trade **holds and rides** across many
+zones to the day's extreme. One trade, born as a fade, run as a trend — exactly
+the real-world behaviour, and the honest use of both halves of the engine.
+
+**Status:** built (`runZoneWalk` + the "Zone-walk" card), test with a known-answer
+path. **To test:** run `Max level = all levels` (use the extremes) with `none`, and
+compare the **Zone-walk** card's Sharpe @2–3× cost against the Held-position card.
+The open questions it answers: does using the fade side + the extremes pull bigger
+numbers, and does re-entry help — i.e. is the *real* range-extension strategy
+better than the continuation-only fallback?

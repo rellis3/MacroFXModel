@@ -93,6 +93,12 @@
     <div id="heldVerdict" class="muted" style="margin-top:6px"></div>
   </div>
 
+  <div class="card" id="zoneWalkCard" style="display:none">
+    <h2>Zone-walk — policy as the exit oracle (fade + follow, full ladder, re-entry)</h2>
+    <div class="muted" style="margin-bottom:8px">The honest use of the engine's <b>fade AND follow</b> decisions: open at the first non-skip zone, then at <b>every</b> zone the trade reaches consult its learned decision — <b>continuation → hold, reversal → close</b> — and re-enter after flat. A <b>fade can turn into a runner</b>: enter fading toward the mid, break through, and the far-side zones flip to continue in the same price direction → one trade rides many zones to the day's extreme. Run with <b>Max level = all</b> to use the extremes. Judge on Sharpe @2–3× cost vs the Held-position card.</div>
+    <table id="zoneWalk"><thead><tr><th>Model</th><th>Sharpe @1×</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Payoff</th><th>CAGR@10%</th><th>MaxDD@10%</th></tr></thead><tbody></tbody></table>
+  </div>
+
   <div class="card" id="badLevelsCard" style="display:none">
     <h2>Bad-level scan — which (pair × level) reliably lose</h2>
     <div class="muted" style="margin-bottom:8px">The pooled policy learns ONE decision per level, so a level that's fine universally but <b>bad on a specific pair</b> still gets traded there. This scans every traded <code>(pair × cell)</code> and surfaces the reliably-negative ones. The <b>veto</b> is learned IN-SAMPLE only (drop pair-levels with negative IS expectancy on ≥30 trades) and applied OUT-OF-SAMPLE — so baseline→veto is an honest comparison. (Per-pair samples are small, so the veto can overfit — read the worst-list as diagnosis first.)</div>
@@ -286,6 +292,20 @@ function render(d) {
     $('heldVerdict').innerHTML = winner
       ? `Trades/day collapse from <b>${abFixedTPD ?? '?'}</b> (per-touch) to <b>${w.tradesPerDay}</b> here — the fake breadth is gone, so <b>${HLBL[winner]}</b>'s Sharpe @2× ${fmt(best,2)} (@3× ${fmt(ss(w,3),2)}) is the first <b>tradeable</b> number. Read it against the forecast engine's "believable &lt; 2" bar.`
       : `No held trades.`;
+  }
+
+  // Zone-walk — policy as the exit oracle.
+  const zw = d.zoneWalk;
+  if (zw && zw.trades) {
+    $('zoneWalkCard').style.display = '';
+    const ss = (m, mult) => { const c = (m && m.costStress||[]).find(x => x.mult===mult); return c ? c.sharpe : null; };
+    document.querySelector('#zoneWalk tbody').innerHTML =
+      `<tr style="font-weight:700"><td>Zone-walk (fade+follow)</td>
+        <td>${fmt(zw.sharpe,2)}</td>
+        <td class="${(ss(zw,2)??0)>0?'pos':'neg'}">${fmt(ss(zw,2),2)}</td>
+        <td class="${(ss(zw,3)??0)>0?'pos':'neg'}">${fmt(ss(zw,3),2)}</td>
+        <td class="mut">${zw.tradesPerDay}</td><td>${zw.winRate}%</td><td>${zw.payoff??'—'}</td>
+        <td class="${(zw.cagr??0)>=0?'pos':'neg'}">${fmt(zw.cagr,1)}%</td><td class="neg">${fmt(zw.maxDD,1)}%</td></tr>`;
   }
 
   // Bad-level scan — which (pair × level) reliably lose.

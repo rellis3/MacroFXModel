@@ -469,6 +469,64 @@ export function runBadLevelScan(touchesByPair, { policy, splitDate, costByPair =
     baseline: stat(base), withVeto: stat(kept), worstOOS };
 }
 
+// ── Zone-walk: the policy IS the exit oracle, consulted at EVERY zone ──────────
+// The fixed/trail/held models only used the FOLLOW decisions and capped the trade
+// geometrically. This trades the FULL ladder (no level cap) and uses the learned
+// fade/follow decision at every zone the price reaches as a live hold/close signal:
+//   • Each zone has an EXPECTED price direction from its policy:
+//       follow → away from mid  (above mid → up,  below mid → down)
+//       fade   → toward mid      (above mid → down, below mid → up)
+//   • Flat: the first non-skip zone OPENS a trade in its expected direction.
+//   • In a trade (dir D): a zone whose expected dir == D is a continuation → HOLD;
+//     == −D is a reversal → CLOSE at that zone's price; skip zones are neutral.
+//   • After a close we go flat and can RE-ENTER at a later zone (multiple trades
+//     per day).
+// This is why a FADE can turn into a runner: enter fading a level (toward mid), it
+// reverts through the mid, and the zones on the far side flip to CONTINUE in the
+// same price direction → one trade rides many zones to the day's extreme. It's the
+// honest use of the fade/follow engine the per-line policy already learned.
+// (Walked from the per-zone first-touch times — a path approximation, no M1 reload.)
+function _zoneDir(decision, fibL) {
+  if (decision !== 'fade' && decision !== 'follow') return null;
+  const away = (fibL > 0.5) ? 'up' : 'down';                     // away from the range mid (fib 0.5)
+  return decision === 'follow' ? away : (away === 'up' ? 'down' : 'up');
+}
+export function runZoneWalk(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, costMults = [1, 2, 3] } = {}) {
+  if (!policy || !splitDate) return null;
+  const trades = [];                                            // { date, gross(%), tc }
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx, tc = cost + slip;
+    // Group by (date, source) — Asia and Monday are separate ladders/ranges.
+    const groups = new Map();
+    for (const t of touches) {
+      if (t.date < splitDate) continue;
+      const k = `${t.date}|${(t.name && String(t.name)[0] === 'A') ? 'A' : 'M'}`;
+      let arr = groups.get(k); if (!arr) { arr = []; groups.set(k, arr); }
+      arr.push(t);
+    }
+    for (const g of groups.values()) {
+      g.sort((a, b) => (a.fillTime ?? 0) - (b.fillTime ?? 0));
+      const closePx = g[0]?.closePx;
+      let pos = null;                                            // { dir, entry(price), open }
+      const close = (exitPx, date) => {
+        const gross = (pos.dir === 'up' ? (exitPx - pos.entry) : (pos.entry - exitPx)) / pos.open * 100;
+        trades.push({ date, gross: +gross.toFixed(5), tc });
+        pos = null;
+      };
+      for (const t of g) {
+        const ed = _zoneDir(policy[t.cell]?.decision, parseFloat(String(t.name).slice(2)));
+        if (!pos) { if (ed) pos = { dir: ed, entry: t.level, open: t.open }; }
+        else if (ed && ed !== pos.dir) close(t.level, t.date);   // reversal zone → take profit / cut
+        // else: continuation (ed == dir) or skip (neutral) → HOLD
+      }
+      if (pos && closePx != null) close(closePx, g[g.length - 1].date);   // mark to session close
+    }
+  }
+  if (!trades.length) return { trades: 0 };
+  const mk = mult => trades.map(t => ({ date: t.date, pnl: +(t.gross - t.tc * mult).toFixed(5) }));
+  return _bookFromTrades(mk(1), Object.fromEntries(costMults.map(m => [m, mk(m)])), costMults);
+}
+
 // ── One pair: packed M1 → range-line touches (the per-pair unit of work) ──────
 // Returns the lightweight touch array (perLineStrategy shape). The caller can
 // drop `packed` after this — only the small touch list is retained — so a 26-pair
