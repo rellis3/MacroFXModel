@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from volatility_bot.engine import SessionTracker, decide, session_open_epoch  # noqa: E402
+from volatility_bot.volatility_bot import _max_spread                          # noqa: E402
 
 PP = {"open": 1.10, "sigma": 0.006, "hl50": 0.0094, "hl75": 0.0123, "ocMed": 0.0040, "oc75": 0.0069}
 
@@ -116,6 +117,19 @@ def test_session_open_epoch_anchors_at_london_midnight():
     t3 = datetime(2026, 1, 15, 9, 0, tzinfo=timezone.utc).timestamp()
     a3 = datetime.fromtimestamp(session_open_epoch(t3), tz=timezone.utc)
     assert (a3.day, a3.hour) == (15, 0), a3
+
+
+def test_spread_cap_widens_for_indices_and_commodities():
+    # A scalar cap is treated as the FX cap; index/commodity widen so a 1.1-point
+    # index spread isn't blocked by an FX-tight 1.0 (the live "SPREAD BLOCK uk100").
+    cfg = {"max_spread_pips": 1}
+    assert _max_spread("eurusd", cfg) == 1.0                 # FX keeps the user's cap
+    assert _max_spread("uk100", cfg) >= 1.1                  # index widened → 1.1pt passes
+    assert _max_spread("gold", cfg) >= 1.1                   # commodity widened
+    # A per-class dict is honoured verbatim.
+    assert _max_spread("uk100", {"max_spread_pips": {"index": 3.0}}) == 3.0
+    # No config → sensible non-zero defaults (never 0, which would block everything).
+    assert _max_spread("eurusd", {}) > 0 and _max_spread("uk100", {}) > _max_spread("eurusd", {})
 
 
 if __name__ == "__main__":

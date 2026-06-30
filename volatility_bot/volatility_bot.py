@@ -88,6 +88,28 @@ def make_broker(cfg: dict):
     return broker, False
 
 
+# Spread guard caps in the instrument's OWN pip/point units. A single scalar is
+# meaningless across instruments — 1 "pip" is fine for EUR/USD but an index or gold
+# quotes a 1-point ($1) spread that naturally exceeds it, so a flat 1.0 cap blocks
+# every index/commodity trade (the live "SPREAD BLOCK uk100: 1.1p > max 1p"). Caps
+# are per ASSET CLASS; config `max_spread_pips` may be a dict (per-class override)
+# or a scalar (treated as the FX cap, scaled up for wider-spread classes).
+_SPREAD_MULT = {"fx": 1.0, "index": 6.0, "commodity": 6.0}
+_DEFAULT_FX_SPREAD = 2.0
+
+
+def _max_spread(pair: str, cfg: dict) -> float:
+    try:
+        ac = I.asset_class(pair)
+    except Exception:
+        ac = "fx"
+    mx = cfg.get("max_spread_pips")
+    if isinstance(mx, dict):                                  # explicit per-class override
+        return float(mx.get(ac, mx.get("fx", _DEFAULT_FX_SPREAD) * _SPREAD_MULT.get(ac, 3.0)))
+    fx_cap = float(mx) if isinstance(mx, (int, float)) else _DEFAULT_FX_SPREAD
+    return fx_cap * _SPREAD_MULT.get(ac, 3.0)                 # scale the FX cap for index/commodity
+
+
 def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot: float) -> float:
     try:
         pip = I.pip_size(pair)
@@ -249,7 +271,7 @@ def run(base_url: str, force_live: bool) -> None:
                                     spec["entry"] - spec["sl"], cfg.get("max_lot", 2.0))
                     direction = "LONG" if spec["side"] == "buy" else "SHORT"
                     tid = broker.enter(pair, direction, spec["sl"], spec["tp"], lots,
-                                       cfg.get("max_spread_pips", 1e9), paper,
+                                       _max_spread(pair, cfg), paper,
                                        comment=f"Vol {spec['line']} {spec['decision'][0]}")
                     log.info(f"{'[PAPER] ' if paper else ''}{pair} {spec['decision'].upper()} "
                              f"{spec['line']} {spec['bucket']} → ticket {tid} lots {lots}")
