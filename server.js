@@ -7138,6 +7138,11 @@ app.post('/api/range-line/run', async (req, res) => {
     minLookback: parseInt(b.minLookback) || 20,
     // Coarse level-class trim: cap |fib level| so only near-mid levels trade (0 = no cap).
     maxLevel:   (b.maxLevel != null && b.maxLevel !== '') ? parseFloat(b.maxLevel) : 0,
+    // Range-formation window. boundaryHour = session/day start (UTC); the range is
+    // the first asiaHrs of that session. Default = London midnight→6am (00:00–06:00
+    // UTC), trade the breakout after. Legacy Asia window was 22:00 + 6h.
+    boundaryHour: (b.boundaryHour != null && b.boundaryHour !== '') ? parseInt(b.boundaryHour) : 0,
+    asiaHrs:      (b.asiaHrs != null && b.asiaHrs !== '') ? parseFloat(b.asiaHrs) : 6,
     dateFrom:   b.dateFrom || '', dateTo: b.dateTo || '',
     mcRuns: 1000, bootRuns: 1000,
   };
@@ -7154,7 +7159,7 @@ app.post('/api/range-line/run', async (req, res) => {
       // only changes how extractTouches keys cells — so a none↔approachVel toggle
       // re-derives touches from cached records for free. Policy knobs
       // (minN/splitFrac/marginPct) don't touch records either → also cached.
-      const recKey = [opts.sources.join(','), opts.minLookback, opts.dateFrom, opts.dateTo].join('|');
+      const recKey = [opts.sources.join(','), opts.minLookback, opts.dateFrom, opts.dateTo, opts.boundaryHour, opts.asiaHrs].join('|');
       const touchesByPair = {}, costByPair = {};
       let done = 0;
       const setProg = cur => rlJobs.set(jobId, { status: 'running', startedAt, currentPair: cur, pairsDone: done, pairsTotal: pairs.length });
