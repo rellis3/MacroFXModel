@@ -208,14 +208,16 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
     }
 
     // Telegram alerts (v2's OWN config + cooldowns; alerts only, never trades).
-    const ac = opts.alertCtx;
-    if (ac?.cfg?.enabled && ac.token && ac.chatId) {
-      const sel = selectAlerts({ sym, entries: payload, currentPrice: +price.toFixed(digits), pip, cfg: ac.cfg, cooldowns: ac.cooldowns, now: Date.now() });
-      ac.cooldowns = sel.cooldowns;
+    // NB: named `actx`, not `ac` — `ac` is the asset-class const above; a second
+    // `const ac` here would shadow it and TDZ-throw on its earlier uses.
+    const actx = opts.alertCtx;
+    if (actx?.cfg?.enabled && actx.token && actx.chatId) {
+      const sel = selectAlerts({ sym, entries: payload, currentPrice: +price.toFixed(digits), pip, cfg: actx.cfg, cooldowns: actx.cooldowns, now: Date.now() });
+      actx.cooldowns = sel.cooldowns;
       for (const a of sel.alerts) {
         const msg = formatV2Entry(sym, a.entry, { currentPrice: +price.toFixed(digits), digits, distPips: a.distPips, policyBuiltAt: frozen.builtAt });
-        const okSend = await sendTelegramV2(ac.token, ac.chatId, msg);
-        ac.sent = (ac.sent ?? 0) + (okSend ? 1 : 0);
+        const okSend = await sendTelegramV2(actx.token, actx.chatId, msg);
+        actx.sent = (actx.sent ?? 0) + (okSend ? 1 : 0);
       }
     }
 
