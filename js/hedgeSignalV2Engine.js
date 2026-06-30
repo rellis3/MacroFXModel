@@ -314,6 +314,9 @@ export function liveSignal(closesA, closesB, opts = {}) {
   const isEntry = gate.pass && Math.abs(z) >= o.entryZ;
   const shortSpread = z > 0;                       // rich spread → short A / long B
   const beta = gate.beta != null ? gate.beta : r.beta;
+  // Would-be direction even while watching, so the UI can preview the trade.
+  const dirA = shortSpread ? 'SHORT' : 'LONG';
+  const dirB = shortSpread ? 'LONG'  : 'SHORT';
   return {
     z: +z.toFixed(3),
     beta: beta != null ? +beta.toFixed(4) : null,
@@ -321,8 +324,12 @@ export function liveSignal(closesA, closesB, opts = {}) {
     halfLife: isFinite(gate.halfLife) ? +gate.halfLife.toFixed(1) : null,
     tStat: +gate.t.toFixed(2),
     isEntry,
-    direction_a: isEntry ? (shortSpread ? 'SHORT' : 'LONG') : null,
-    direction_b: isEntry ? (shortSpread ? 'LONG'  : 'SHORT') : null,
+    direction_a: isEntry ? dirA : null,
+    direction_b: isEntry ? dirB : null,
+    wouldBeDirA: dirA,           // direction it WOULD take if it triggered now
+    wouldBeDirB: dirB,
+    priceA: closesA[closesA.length - 1] ?? null,   // latest price of each leg
+    priceB: closesB[closesB.length - 1] ?? null,
     notionalRatioB: beta != null ? +Math.abs(beta).toFixed(4) : null,  // money-match: B = β × A
     holdLimitBars: isEntry && isFinite(gate.halfLife) ? Math.round(gate.halfLife * o.maxHoldMult) : null,
   };

@@ -117,6 +117,8 @@ ok('liveSignal money-matches legs (notionalRatioB ≈ β) and gives a direction 
   assert.ok(sig, 'should return a reading');
   assert.ok(sig.beta != null && sig.notionalRatioB != null, 'has hedge ratio');
   assert.ok(Math.abs(sig.notionalRatioB - Math.abs(sig.beta)) < 1e-6, 'notional ratio is the hedge ratio');
+  assert.ok(sig.priceA === A[A.length - 1] && sig.priceB === B[B.length - 1], 'exposes latest leg prices for the action line');
+  assert.ok(sig.wouldBeDirA && sig.wouldBeDirB, 'always exposes a would-be direction for the preview line');
   if (sig.isEntry) {
     assert.strictEqual(sig.direction_a, 'SHORT');
     assert.strictEqual(sig.direction_b, 'LONG');
