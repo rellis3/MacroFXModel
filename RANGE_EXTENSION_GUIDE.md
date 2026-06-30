@@ -411,3 +411,48 @@ working spec.**
 
 §10 remains the simpler **continuation-only fallback**; this §13 spec is the
 working strategy.
+
+---
+
+## 14. Live approach-read as a cell key — tested, all six features LOST ❌
+
+> **Does deciding fade-vs-follow live "as price approaches the zone" — by keying
+> the per-line cell on an at-the-moment touch feature — beat the fixed §13 read?**
+> → **No.** Tested all six `touchFeatures` buckets as the Condition selector. None
+> beats §13 `none` (uniform per-zone) on the honest single-pair unit.
+
+The Condition dropdown splits each `(line × side)` cell by a lookahead-free
+approach-feature bucket, so the policy learns fade/follow/skip *per bucket*. The
+honest bar: beat §13 `none` held-chandelier OOS after cost by a non-trivial margin
+with ≥30 OOS trades.
+
+**Result — eurusd (the honest unit), held chandelier @2× / @3× cost:**
+
+| Condition | @2× | @3× | Trades/day | Verdict |
+|---|---|---|---|---|
+| **none (§13)** | **+6.11** | **+4.71** | 2.3 | baseline |
+| wtState | +6.21 | +4.91 | 2.2 | **tie** (within noise; trades/day *fell*) |
+| candleReject | +4.64 | +3.00 | 2.5 | **worse** (win% 54→49) |
+| approachVel / approachER / volClimax | — | — | — | **fragment** → edge dies at 2–3× cost (all-pairs Chandelier @2× went **negative**) |
+| roundNum | ≈ baseline | | (44.6/day pooled) | doesn't fragment → ≈ baseline, adds nothing |
+
+**Why it fails — two failure modes, no winners:**
+- **High-variance features fragment.** `approachVel`, `approachER`, `volClimax`
+  spread touches evenly across their 3 buckets → cells fall below `minN` → get
+  dropped → the surviving edge degrades (Chandelier @2× negative all-pairs). This
+  is the same failure `approachVel` showed on the σ-forecast lines.
+- **Low-variance features don't move the needle.** `wtState`, `candleReject`,
+  `roundNum` barely split the cells (most touches land in one bucket), so the
+  result sits ≈ on top of the unconditioned baseline. `wtState` *ties* §13 (+0.1
+  Sharpe on *fewer* trades — noise); `candleReject` actually *degrades* it.
+
+**Conclusion — banked, do not re-litigate:** conditioning the cell on a live
+approach-read either fragments, degrades, or ties. **Uniform per-zone treatment
+(§13) is the robust architecture.** The features are still computed and stored on
+each line record (and selectable in the UI) for the record, but **none is wired
+into the working spec.**
+
+**The one angle not yet tested** is using a live read as a *non-fragmenting*
+FILTER / position-sizer **on top of** the fixed §13 decision (gate participation
+or size, don't split the cell). That's a different mechanism — not a cell key —
+and remains open if a future run wants it.
