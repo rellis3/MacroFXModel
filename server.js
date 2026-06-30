@@ -4332,17 +4332,29 @@ app.post('/api/vol-forecast/refresh', async (_req, res) => {
 // Build the plan from the locked per-line book + live σ/open and write it to KV
 // (volatility_bot_plan); the Python bot reads it via GET below each state-refresh.
 async function _refreshVolatilityPlan() {
-  return refreshVolatilityPlan({
-    getBook: getPerLineBook,
-    fetchD1: (sym, n) => _btFetchD1(sym, n),
-    sigmaSeries: _volSigmaSeries,
-    kvPut: (k, v) => kv.put(k, v),
-    onLog: m => console.log('[volatility-bot]', m),
-  });
+  // Capture the producer's per-pair log so callers can SEE why pairs were
+  // skipped (OANDA HTTP status, unknown symbol, bad σ) — these reasons used to
+  // go only to the server console, leaving "0 priced, N skipped" undiagnosable
+  // from the API.
+  const refreshLog = [];
+  const onLog = m => { console.log('[volatility-bot]', m); refreshLog.push(m); };
+  try {
+    const plan = await refreshVolatilityPlan({
+      getBook: getPerLineBook,
+      fetchD1: (sym, n) => _btFetchD1(sym, n),
+      sigmaSeries: _volSigmaSeries,
+      kvPut: (k, v) => kv.put(k, v),
+      onLog,
+    });
+    return { plan, log: refreshLog };
+  } catch (e) {
+    e.refreshLog = refreshLog;            // attach so the route can return the reasons
+    throw e;
+  }
 }
 app.post('/api/volatility-bot/refresh-plan', async (_req, res) => {
-  try { res.json({ ok: true, plan: await _refreshVolatilityPlan() }); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try { const { plan, log } = await _refreshVolatilityPlan(); res.json({ ok: true, plan, log }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message, log: e.refreshLog || [] }); }
 });
 app.get('/api/volatility-bot/plan', async (_req, res) => {
   try {
