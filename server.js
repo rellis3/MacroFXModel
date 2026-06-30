@@ -45,6 +45,7 @@ import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta }
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './js/rangeLineAnalyser.js';
 import { pipSize as _pipSize } from './js/instrumentRegistry.js';
+import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
@@ -4403,6 +4404,67 @@ app.post('/api/volatility-bot/rebuild-book', (_req, res) => {
   res.json({ ok: true, status: 'started', note: 'gap-fill → dataset → book → plan; watch server logs' });
 });
 
+// ── Range-Line Bot — freeze the §13/§15 per-instrument policy → KV plan ────────
+// Mirrors the volatility-bot producer (RANGE_EXTENSION_GUIDE §11). Each instrument
+// (strong FX + US-index basket) freezes its OWN policy on its full M1 history, and
+// the compact plan is written to `range_line_bot_plan` for the Python range_line_bot
+// to consume. HEAVY (full M1 + analyser per instrument) → fire-and-forget with a
+// running guard, like the book rebuild. Window params (boundaryHour/asiaHrs) match
+// the §15 BST run by default and are stored IN the plan so the bot uses the same
+// window (no backtest/live drift).
+const RL_BOT_BOUNDARY_HOUR = Number(process.env.RANGE_BOT_BOUNDARY_HOUR ?? 23);   // BST London midnight = 23:00 UTC; set 0 for GMT/winter
+const RL_BOT_ASIA_HRS      = Number(process.env.RANGE_BOT_ASIA_HRS ?? 6);
+let _rlBotPlanRunning = false;
+async function _refreshRangeLineBotPlan() {
+  if (_rlBotPlanRunning) { console.log('[range-line-bot] plan refresh already running — skipped'); return null; }
+  _rlBotPlanRunning = true;
+  const refreshLog = [];
+  const onLog = m => { console.log('[range-line-bot]', m); refreshLog.push(m); };
+  try {
+    // getRecords: load the instrument's M1 → analyser line records using the frozen
+    // window. Released after each instrument (only one M1 resident at a time).
+    const getRecords = async (instr, ac) => {
+      let packed = await loadM1ForPair(instr, BT_M1_DIR);
+      if (!packed || !packed.n) return null;
+      let pip = 0; try { pip = _pipSize(instr) || 0; } catch { pip = 0; }
+      const records = recordsForPair(packed, ac, {
+        sources: ['asia', 'monday'], boundaryHour: RL_BOT_BOUNDARY_HOUR, asiaHrs: RL_BOT_ASIA_HRS, pip,
+      });
+      packed = null;                                   // release M1 for GC
+      await new Promise(r => setImmediate(r));          // yield
+      return records;
+    };
+    const plan = await refreshRangeLineBotPlan({
+      universe: RL_BOT_UNIVERSE,
+      getRecords,
+      kvPut: (k, v) => kv.put(k, v),
+      assetClassFor: _assetClassFor,
+      pipFor: (k) => { try { return _pipSize(k) || null; } catch { return null; } },
+      boundaryHour: RL_BOT_BOUNDARY_HOUR, asiaHrs: RL_BOT_ASIA_HRS,
+      onLog,
+    });
+    return { plan, log: refreshLog };
+  } catch (e) {
+    e.refreshLog = refreshLog;
+    throw e;
+  } finally {
+    _rlBotPlanRunning = false;
+  }
+}
+app.post('/api/range-line-bot/refresh-plan', (_req, res) => {
+  if (_rlBotPlanRunning) return res.status(409).json({ ok: false, error: 'plan refresh already running' });
+  _refreshRangeLineBotPlan().catch(e => console.error('[range-line-bot] plan refresh failed:', e.message));
+  res.json({ ok: true, status: 'started', note: 'freezing per-instrument policy → range_line_bot_plan; watch server logs ([range-line-bot])' });
+});
+app.get('/api/range-line-bot/plan', async (_req, res) => {
+  try {
+    const raw = await kv.get('range_line_bot_plan');
+    if (!raw) return res.status(404).json({ ok: false, error: 'No plan yet — POST /api/range-line-bot/refresh-plan (needs M1 data)' });
+    const parsed = JSON.parse(raw);
+    res.json({ ok: true, plan: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Text-format export helpers ────────────────────────────────────────────────
 // Mirrors the client-side buildExportText() / buildSessionText() in vol-forecast.html
 
@@ -7164,6 +7226,11 @@ const RL_STRONG_PAIRS = ['gold', 'audjpy', 'audusd', 'nzdjpy', 'nzdusd', 'usdjpy
 // Keys are the actual R2 M1 parquet basenames (`${key}_m1.parquet`):
 // NAS100→nq, SPX500→spx500, DAX→de30, FTSE100→uk100, Dow30→us30, Russell2000→us2000.
 const RL_INDEX_PAIRS = ['nq', 'spx500', 'de30', 'uk100', 'us30', 'us2000'];
+// Live range-line BOT universe (RANGE_EXTENSION_GUIDE §15): the strong FX set +
+// the US-index basket + DAX. FTSE100 (uk100) is dropped — the §15 laggard
+// (+2.62 @3×, below eurusd). Each instrument freezes its OWN per-instrument policy.
+const RL_BOT_INDEX = ['nq', 'spx500', 'de30', 'us30', 'us2000'];
+const RL_BOT_UNIVERSE = [...RL_STRONG_PAIRS, ...RL_BOT_INDEX];
 function _assetClassFor(p) {
   if (p === 'gold' || p.includes('xau')) return 'commodity';
   if (RL_INDEX_PAIRS.includes(p) || p === 'nq' || p.includes('spx') || p.includes('nas') ||
@@ -9916,6 +9983,23 @@ if (process.env.OANDA_KEY) {
     try { if (!(await kv.get('volatility_bot_plan'))) { console.log('[volatility-bot] no plan in KV — bootstrap refresh'); await _runVolPlan(); } }
     catch (e) { console.error('[volatility-bot] bootstrap check failed:', e.message); }
   }, 90_000);
+}
+
+// Range-line bot plan — freeze the per-instrument policy daily AFTER the London
+// range window closes (06:15 UTC default; the window is 23:00–05:00 UTC in BST /
+// 00:00–06:00 in GMT). The policy is stable night-to-night (full-history per
+// instrument), so this just extends the sample by a day. Always armed; the
+// producer refuses to publish an empty plan if M1 is unreachable.
+{
+  const _runRlBotPlan = () => _refreshRangeLineBotPlan().catch(e => console.error('[range-line-bot] plan refresh failed:', e.message));
+  const hour = Number(process.env.RANGE_BOT_PLAN_UTC_HOUR ?? 6);
+  const min  = Number(process.env.RANGE_BOT_PLAN_UTC_MIN ?? 15);
+  const next = _scheduleDailyUtc(hour, min, _runRlBotPlan);
+  console.log(`[range-line-bot] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
+  setTimeout(async () => {
+    try { if (!(await kv.get('range_line_bot_plan'))) { console.log('[range-line-bot] no plan in KV — bootstrap refresh'); await _runRlBotPlan(); } }
+    catch (e) { console.error('[range-line-bot] bootstrap check failed:', e.message); }
+  }, 120_000);
 }
 
 // Schedule the NIGHTLY hands-off book rebuild (the route + orchestrator live up
