@@ -7104,9 +7104,9 @@ const RL_STRONG_PAIRS = ['gold', 'audjpy', 'audusd', 'nzdjpy', 'nzdusd', 'usdjpy
 // Equity indices — overnight-range → cash-open breakout (same engine, assetClass
 // 'index': sigma params, costs and slippage already defined). M1 must exist in R2
 // as `${key}_m1.parquet`; instruments whose M1 is absent are skipped gracefully.
-// Keys are the system-canonical spellings (NAS100→nas100, SPX500→spx500, DAX→dax,
-// FTSE100→uk100, Dow30→us30, Russell2000→us2000).
-const RL_INDEX_PAIRS = ['nas100', 'spx500', 'dax', 'uk100', 'us30', 'us2000'];
+// Keys are the actual R2 M1 parquet basenames (`${key}_m1.parquet`):
+// NAS100→nq, SPX500→spx500, DAX→de30, FTSE100→uk100, Dow30→us30, Russell2000→us2000.
+const RL_INDEX_PAIRS = ['nq', 'spx500', 'de30', 'uk100', 'us30', 'us2000'];
 function _assetClassFor(p) {
   if (p === 'gold' || p.includes('xau')) return 'commodity';
   if (RL_INDEX_PAIRS.includes(p) || p === 'nq' || p.includes('spx') || p.includes('nas') ||
