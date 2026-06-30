@@ -26,6 +26,7 @@ import { pipSize as pipSizeOf } from './js/instrumentRegistry.js';
 import { volSigmaSeries } from './js/forecastCore.js';
 import { createTouchFeatures } from './js/touchFeatures.js';
 import { gradeLevelV2 } from './js/gradeLevelV2.js';
+import { buildRangeLadder } from './js/rangeLineAnalyser.js';
 import { isUsablePolicy } from './js/levelsV2Learn.js';
 import { recordEntries, resolvePair } from './js/entryLedgerV2.js';
 import { selectAlerts, pruneCooldowns, DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
@@ -167,15 +168,23 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
     const open = sessionBars[0].open;
     const tf = createTouchFeatures(opts.touchCfg);
 
-    // Proximity window: grade levels within this distance of price.
-    const proxPips = opts.proxPips?.[sym] ?? opts.proxPips?.default ?? (sym.includes('XAU') ? 80 : sym === 'NAS100_USD' ? 60 : 25);
-    const proxDist = proxPips * pip;
+    // DISPLAY proximity window. The ladder step is half the session range, so a
+    // FIXED pip window misses the nearest line whenever the range is wide (the
+    // "no zones" cause). Scale it to the ladder so the nearest line ALWAYS shows —
+    // the page is a tracker (cards display distance); tightness is the alert's job
+    // (selectAlerts has its own proxPips). 0.3×range > 0.25×range = worst-case
+    // distance to the nearest half-step line.
+    const baseProxPips = opts.proxPips?.[sym] ?? opts.proxPips?.default ?? (sym.includes('XAU') ? 80 : sym === 'NAS100_USD' ? 60 : 25);
+    const maxRange = Math.max(...ladders.map(l => l.high - l.low));
+    const proxDist = Math.max(baseProxPips * pip, 0.3 * maxRange);
 
-    const entries = gradeLevelV2({
+    const graded = gradeLevelV2({
       ladders, bars: sessionBars, open, sigma, pip, price, proxDist, tf,
       policy: frozen.policy, condFields: frozen.conditions ?? ['approachVel'],
+      includeSkips: true,
       opts: { bands: frozen.bands ?? opts.bands },   // policy's own distribution-fit bands
     });
+    const entries = graded.entries;
 
     const payload = entries.map(e => ({
       ...e, price: +e.price.toFixed(digits),
@@ -207,8 +216,21 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       }
     }
 
-    console.log(`[LEVELS-V2] ${sym}: ${payload.length} entries (${ladders.map(l => l.srcTag).join('+')}${bars1m.length ? '' : ' M5-approach'}${sigmaFallback ? ' σ-fallback' : ''}), ${Date.now() - t0}ms`);
-    return { n: payload.length, reason: payload.length ? 'ok' : 'no-near-zones', sigmaFallback, m1: bars1m.length > 0 };
+    // When 0 entries, pin down WHY: was any ladder level near price at all (geometry),
+    // and of those near, did the policy skip them (skip/unseen) vs were they dropped
+    // for a 'na' velocity bucket?
+    let reason = 'ok';
+    if (!payload.length) {
+      let nearCount = 0;
+      for (const lad of ladders) for (const g of buildRangeLadder(lad.low, lad.high - lad.low, lad.srcTag))
+        if (Math.abs(g.level - price) <= proxDist) nearCount++;
+      const skipCount = graded.skips?.length ?? 0;
+      reason = nearCount === 0 ? `no-near-levels(ladders=${ladders.length},prox=${(proxDist / pip).toFixed(0)}p)`
+             : skipCount > 0   ? `near-all-skip(near=${nearCount},skip=${skipCount},eg=${graded.skips[0]?.reason ?? '?'})`
+             :                   `near-all-na(near=${nearCount})`;   // near but velocity/condition 'na'
+    }
+    console.log(`[LEVELS-V2] ${sym}: ${payload.length} entries (${ladders.map(l => l.srcTag).join('+')}${bars1m.length ? '' : ' M5-approach'}${sigmaFallback ? ' σ-fallback' : ''}) ${reason}, ${Date.now() - t0}ms`);
+    return { n: payload.length, reason, sigmaFallback, m1: bars1m.length > 0 };
   } catch (e) {
     console.error(`[LEVELS-V2] ${sym} error:`, e.message);
     return { n: 0, reason: 'error', error: e.message };
@@ -277,15 +299,17 @@ export async function refreshAllPairsV2(pairs, opts = {}) {
 
   // Diagnostics so "no zones" is never a mystery: total entries + why each pair
   // produced none (no-M5-bars / no-ladders / no-sigma / no-price / no-near-zones / error).
-  const byReason = {};
+  const byReason = {}; const perPair = {};
   let totalEntries = 0, pairsWithEntries = 0;
-  for (const r of Object.values(results)) {
+  for (const [sym, r] of Object.entries(results)) {
     const n = typeof r === 'number' ? r : (r?.n ?? 0);
     const reason = typeof r === 'number' ? (n ? 'ok' : 'no-near-zones') : (r?.reason ?? 'null');
     totalEntries += n; if (n > 0) pairsWithEntries++;
-    byReason[reason] = (byReason[reason] || 0) + 1;
+    const coarse = reason.split('(')[0];                  // strip per-pair counts for the aggregate
+    byReason[coarse] = (byReason[coarse] || 0) + 1;
+    perPair[sym] = { n, reason };                          // full detail (with counts) per pair
   }
   console.log(`[LEVELS-V2] done — ${pairsWithEntries}/${pairs.length} pairs with zones · ${totalEntries} entries · reasons ${JSON.stringify(byReason)}`);
   return { ok: true, policyBuiltAt: frozen.builtAt ?? null, ledgerSize: ledgerRef?.ledger.length ?? 0,
-           totalEntries, pairsWithEntries, pairsTotal: pairs.length, byReason };
+           totalEntries, pairsWithEntries, pairsTotal: pairs.length, byReason, perPair };
 }
