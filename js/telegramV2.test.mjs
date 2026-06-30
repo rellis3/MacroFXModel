@@ -16,6 +16,7 @@ import { recordEntries, resolvePair, ledgerStats, refitFromLedger } from './entr
 import { selectAlerts, alertKey, pruneCooldowns } from './alertV2Core.js';
 import { countWithin, confluenceBucket } from './confluenceCount.js';
 import { mergeConfluence } from './confluenceTest.js';
+import { swingFibLevels, LEVEL_SOURCES } from './levelSources.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -243,6 +244,29 @@ console.log('[confluence]');
   ok('merge reversion%', cell.revRate === +((5 + 18) / 40 * 100).toFixed(1));
   ok('merge fade edge', cell.fadeExp === +((0.0 + 0.6) / 40).toFixed(4));
   ok('row carries band+conf', cell.band === 'core(≤1)' && cell.conf === 'plain(<2)');
+}
+
+// ── 8. swing-fib cluster level source ────────────────────────────────────────
+console.log('[swing_fib]');
+{
+  // Zig-zag with 2 strict swing highs + 2 strict swing lows (strength 1).
+  const bar = (i, hi, lo) => ({ time: i * 86400, open: (hi + lo) / 2, high: hi, low: lo, close: (hi + lo) / 2 });
+  const bars = [
+    bar(0, 1.1000, 1.0990), bar(1, 1.1050, 1.1040), bar(2, 1.1020, 1.0980),
+    bar(3, 1.1060, 1.1010), bar(4, 1.1015, 1.0970), bar(5, 1.1005, 1.0995),
+  ];
+  const ctx = { dailyBars: bars, pipSize: 0.0001 };
+  // Big tolerance → distinct-pair projections pool, proving multi-swing confluence.
+  const wide = swingFibLevels({ ...ctx, params: { strength: 1, clusterPips: 100000, minConfluence: 2 } });
+  ok('emits fib_cluster levels', wide.length > 0 && wide.every(l => l.kind === 'fib_cluster'));
+  ok('every level meets minConfluence', wide.every(l => l.meta.confluence >= 2));
+  ok('confluence counts DISTINCT pairs', wide.some(l => l.meta.confluence >= 2));
+  // minConfluence above any possible pair count → no clusters survive.
+  const strict = swingFibLevels({ ...ctx, params: { strength: 1, clusterPips: 100000, minConfluence: 999 } });
+  ok('distinct-pair guard suppresses fakes', strict.length === 0);
+  // too few bars → empty, never throws.
+  ok('short series returns []', swingFibLevels({ dailyBars: bars.slice(0, 2), pipSize: 0.0001, params: { strength: 3 } }).length === 0);
+  ok('registered in LEVEL_SOURCES', LEVEL_SOURCES.swing_fib?.levels === swingFibLevels);
 }
 
 console.log(`\n${failures === 0 ? '✅ all passed' : `❌ ${failures} failed`}`);
