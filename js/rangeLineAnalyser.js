@@ -113,11 +113,15 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
       const outer = side === 'up' ? aboveP : belowP;
       if (inner == null || outer == null) continue;        // extreme line, no barrier → skip
 
-      // At-the-moment approach features (approachVel etc.) — bucket, lookahead-free.
-      let approachVel = null;
+      // At-the-moment approach features (lookahead-free buckets). Store ALL of them
+      // so the Condition selector can key the policy on any one (approachVel,
+      // candle-rejection, volume-climax, WaveTrend, efficiency, round-number).
+      let feats = null;
       if (tf) {
         const f = tf.compute({ bars, touchIdx, open, sigma, side, wt1, level: L, pip });
-        approachVel = f.approachVel?.bucket ?? null;
+        feats = { approachVel: f.approachVel?.bucket ?? null, approachER: f.approachER?.bucket ?? null,
+                  wtState: f.wtState?.bucket ?? null, volClimax: f.volClimax?.bucket ?? null,
+                  candleReject: f.candleReject?.bucket ?? null, roundNum: f.roundNum?.bucket ?? null };
       }
 
       // Triple-barrier walk from the touch: inner first = reverted, outer = continued.
@@ -182,7 +186,10 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
       out.push({
         name: ln.label, side, level: +L.toFixed(6),
         innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6),
-        decidedBy, firstTouchTime: ftt, outcome, approachVel,
+        decidedBy, firstTouchTime: ftt, outcome,
+        approachVel: feats?.approachVel ?? null, approachER: feats?.approachER ?? null,
+        wtState: feats?.wtState ?? null, volClimax: feats?.volClimax ?? null,
+        candleReject: feats?.candleReject ?? null, roundNum: feats?.roundNum ?? null,
         excMid: +excMid.toFixed(5), excAway: +excAway.toFixed(5),
         fStructFade: +fStructFade.toFixed(5), fChandFade: +fChandFade.toFixed(5),
         fStruct: +fStruct.toFixed(5), fChand: +fChand.toFixed(5),
