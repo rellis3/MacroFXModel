@@ -38,8 +38,8 @@
 <div class="wrap">
   <div class="card">
     <div class="row">
-      <span><label>Pair</label><select id="pair"><option value="">All pairs</option>
-        <option>eurusd</option><option>gbpusd</option><option>usdjpy</option><option>audusd</option><option>nzdusd</option><option>usdcad</option><option>usdchf</option><option>gbpjpy</option><option>eurjpy</option><option>gold</option></select></span>
+      <span><label>Universe</label><select id="universe" title="Pick the group first. The Pair dropdown then lists the instruments in it; leave Pair on 'All …' to run the whole group, or pick one to run it alone."><option value="all">All FX pairs</option><option value="strong">Strong only</option><option value="index">Indices only</option><option value="all_index">FX + indices</option></select></span>
+      <span><label>Pair</label><select id="pair" title="'All …' runs the whole universe above; pick one instrument to run it on its own (the honest single-instrument unit)."></select></span>
       <span><label>Lines</label><select id="sources"><option value="asia,monday">Asia + Monday</option><option value="asia">Asia only</option><option value="monday">Monday only</option></select></span>
       <span><label>Condition</label><select id="conditions" title="Live at-the-moment read keyed into the cell. 'none' = fixed-per-zone (the §13 best). Each other splits cells by an approach feature — measure if any lifts OOS-after-cost.">
         <option value="none">none (line only — §13 best)</option>
@@ -50,7 +50,6 @@
         <option value="candleReject">candleReject (rejection)</option>
         <option value="roundNum">roundNum (round number)</option>
       </select></span>
-      <span><label>Universe</label><select id="universe" title="All = 26 FX pairs; Strong = curated gold+JPY+majors; Indices = NAS100/SPX500/DAX/FTSE100/Dow30/Russell2000 (needs index M1 in R2); All+indices = both"><option value="all">All FX pairs</option><option value="strong">Strong only</option><option value="index">Indices only</option><option value="all_index">FX + indices</option></select></span>
       <span><label>Max level</label><select id="maxLevel" title="Cap |fib level| — near-mid only drops the rare far extensions"><option value="0">all levels</option><option value="3">≤ 3</option><option value="2">≤ 2 (near-mid)</option><option value="1.5">≤ 1.5</option></select></span>
       <span><label>min N / cell</label><input id="minN" type="number" value="50" min="5" max="500" style="width:64px"></span>
       <span><label>OOS</label><select id="splitFrac"><option value="0.4">40%</option><option value="0.6" selected>40/60</option><option value="0.5">50%</option></select></span>
@@ -130,6 +129,32 @@
 <script>
 const $ = id => document.getElementById(id);
 const fmt = (v,d=4) => (v>=0?'+':'') + Number(v).toFixed(d);
+
+// ── Universe → its instruments (keys are the engine/M1 keys; labels are friendly).
+// Picking a Universe repopulates the Pair dropdown with just that group's members,
+// so Pair narrows the chosen Universe (or "All …" runs the whole group).
+const FX_ALL = ['eurusd','gbpusd','usdjpy','audusd','nzdusd','usdcad','usdchf','gbpjpy',
+  'eurjpy','eurgbp','euraud','eurcad','eurchf','eurnzd','audjpy','audnzd','audcad','audchf',
+  'gbpaud','gbpcad','gbpchf','gbpnzd','cadjpy','chfjpy','nzdjpy','gold'];
+const FX_STRONG = ['gold','audjpy','audusd','nzdjpy','nzdusd','usdjpy','cadjpy','eurjpy',
+  'gbpjpy','euraud','eurusd','gbpusd','usdchf','usdcad'];
+const INDICES = [['nq','NAS100'],['spx500','SPX500'],['de30','DAX'],['uk100','FTSE100'],
+  ['us30','Dow30'],['us2000','Russell2000']];
+const UNIVERSE_MEMBERS = {
+  all:       { allLabel:'All FX pairs',      members: FX_ALL.map(k=>[k,k]) },
+  strong:    { allLabel:'All strong pairs',  members: FX_STRONG.map(k=>[k,k]) },
+  index:     { allLabel:'All indices',       members: INDICES },
+  all_index: { allLabel:'All FX + indices',  members: [...FX_ALL.map(k=>[k,k]), ...INDICES] },
+};
+function populatePairs() {
+  const u = $('universe').value, prev = $('pair').value;
+  const { allLabel, members } = UNIVERSE_MEMBERS[u] || UNIVERSE_MEMBERS.all;
+  const opts = [`<option value="">${allLabel}</option>`]
+    .concat(members.map(([k,lbl]) => `<option value="${k}">${lbl}</option>`));
+  $('pair').innerHTML = opts.join('');
+  // Keep the prior pick if it still exists in the new universe, else fall back to "All".
+  $('pair').value = members.some(([k]) => k === prev) ? prev : '';
+}
 
 async function run() {
   $('runBtn').disabled = true;
@@ -362,6 +387,10 @@ function render(d) {
     : `<tr><td colspan="6" class="muted">No cell cleared the after-cost expectancy gate — the honest "no edge" answer.</td></tr>`;
   $('skipNote').textContent = `${traded.length} traded cell(s), ${skips} skipped.`;
 }
+
+// Wire Universe → Pair and populate on load.
+$('universe').addEventListener('change', populatePairs);
+populatePairs();
 </script>
 </body>
 </html>
