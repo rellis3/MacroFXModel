@@ -171,6 +171,17 @@ ok('veto drops the IS-losing (pair×level) → fewer kept trades', bl.withVeto.t
    `base=${bl.baseline.trades} veto=${bl.withVeto.trades}`);
 ok('veto keeps the winning pair, removes the loser', bl.nVetoed >= 1);
 
+console.log('[held — chandelier now runs on FADE via the fade-direction trail]');
+const fadeT = { date:'2023-05-01', open:1.10, side:'up', name:'M_2', cell:'M_2_up|',
+  level:1.11, innerLvl:1.107, outerLvl:1.113, reverted:true, decidedBy:'barrier', closePx:1.104,
+  fillTime:10, fStruct:0.20, fChand:0.25, fStructFade:0.35, fChandFade:0.40 };
+const fadeHeld = runHeldPosition({ p:[fadeT] }, { policy:{ 'M_2_up|':{decision:'fade'} },
+  splitDate:'2023-01-01', costByPair:{ p:0.01 }, slipByPair:{ p:0.005 } });
+// chand fade → fChandFade - (cost+slip) = 0.40 - 0.015 = 0.385
+ok('held chandelier prices a FADE with fChandFade (0.40 - 0.015 = 0.385)',
+   Math.abs(fadeHeld.chand.expectancy - 0.385) < 0.01, `exp=${fadeHeld.chand?.expectancy}`);
+ok('held fixedHeld still uses the fixed barrier for fade', Number.isFinite(fadeHeld.fixedHeld.expectancy));
+
 console.log('[zone-walk — policy as exit oracle, known-answer path]');
 // Monday ladder, mid=fib0.5. Enter FOLLOW at M_1 (1.10, up); hold through M_1.5
 // (follow, up); CLOSE at M_2 which is FADE (above mid → expects down = reversal).

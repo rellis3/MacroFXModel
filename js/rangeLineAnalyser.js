@@ -44,6 +44,32 @@ export function buildRangeLadder(low, range, srcTag) {
     .sort((a, b) => a.level - b.level);
 }
 
+// Simulate a structural-ratchet + chandelier trailing exit on the M1 path from a
+// touch. `dirUp` = the trade profits when price RISES. `protectStop` = the initial
+// stop (against the trade). `rung` = ladder step; `trailW` = chandelier give-back.
+// Adverse-first within a bar (conservative); the chandelier never starts tighter
+// than `protectStop`. Returns realised exit prices {sExit, cExit} (closePx if
+// neither stop is hit by session end). Used for BOTH the follow (away) and the
+// fade (toward-mid) directions, so the trail runs on either entry type.
+function _trailExits(bars, touchIdx, n, L, dirUp, protectStop, rung, trailW, closePx) {
+  let sStop = protectStop, sPeak = L, sExit = null, cPeak = L, cStop = protectStop, cExit = null;
+  for (let k = touchIdx; k < n && (sExit === null || cExit === null); k++) {
+    const bar = bars[k];
+    if (dirUp) {
+      if (sExit === null) { if (bar.low <= sStop) sExit = sStop;
+        else while (bar.high >= sPeak + rung - 1e-12) { sPeak += rung; sStop = sPeak - rung; } }
+      if (cExit === null) { if (bar.low <= cStop) cExit = cStop;
+        else if (bar.high > cPeak) { cPeak = bar.high; cStop = Math.max(protectStop, cPeak - trailW); } }
+    } else {
+      if (sExit === null) { if (bar.high >= sStop) sExit = sStop;
+        else while (bar.low <= sPeak - rung + 1e-12) { sPeak -= rung; sStop = sPeak + rung; } }
+      if (cExit === null) { if (bar.high >= cStop) cExit = cStop;
+        else if (bar.low < cPeak) { cPeak = bar.low; cStop = Math.min(protectStop, cPeak + trailW); } }
+    }
+  }
+  return { sExit: sExit ?? closePx, cExit: cExit ?? closePx };
+}
+
 // ── Analyse one session's M1 path against one or more range ladders ───────────
 // ladders: [{ low, high, levels:[{label,level}] }] (e.g. Asia, Monday). All
 // resolved against the SAME intraday path (this session's bars). Emits line
@@ -141,34 +167,24 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
       // barrier, so these are only consumed for follow decisions.
       const rung = Math.abs(outer - L);
       const trailW = rung * (ctx.chandFrac ?? 0.5);
-      // Both trails share the protective stop = inner; the chandelier never starts
-      // tighter than that (it only ratchets ABOVE inner once price is in profit),
-      // so the A/B compares give-back-from-peak, not initial-stop width.
-      let sStop = inner, sPeak = L, sExit = null, cPeak = L, cStop = inner, cExit = null;
-      for (let k = touchIdx; k < n && (sExit === null || cExit === null); k++) {
-        const bar = bars[k];
-        if (side === 'up') {
-          if (sExit === null) { if (bar.low <= sStop) sExit = sStop;
-            else while (bar.high >= sPeak + rung - 1e-12) { sPeak += rung; sStop = sPeak - rung; } }
-          if (cExit === null) { if (bar.low <= cStop) cExit = cStop;
-            else if (bar.high > cPeak) { cPeak = bar.high; cStop = Math.max(inner, cPeak - trailW); } }
-        } else {
-          if (sExit === null) { if (bar.high >= sStop) sExit = sStop;
-            else while (bar.low <= sPeak - rung + 1e-12) { sPeak -= rung; sStop = sPeak + rung; } }
-          if (cExit === null) { if (bar.high >= cStop) cExit = cStop;
-            else if (bar.low < cPeak) { cPeak = bar.low; cStop = Math.min(inner, cPeak + trailW); } }
-        }
-      }
-      if (sExit === null) sExit = closePx;
-      if (cExit === null) cExit = closePx;
-      const fStruct = (side === 'up' ? sExit - L : L - sExit) / open * 100;
-      const fChand  = (side === 'up' ? cExit - L : L - cExit) / open * 100;
+      // FOLLOW-direction trail (away from mid; protective stop = inner) AND
+      // FADE-direction trail (toward mid; protective stop = outer) — so the proven
+      // chandelier/structural trail runs on FADE entries too, not just follow.
+      const upF = side === 'up';                     // follow on an up-side level profits UP
+      const fEx = _trailExits(bars, touchIdx, n, L, upF, inner, rung, trailW, closePx);
+      const fStruct = (upF ? fEx.sExit - L : L - fEx.sExit) / open * 100;
+      const fChand  = (upF ? fEx.cExit - L : L - fEx.cExit) / open * 100;
+      const upD = side === 'dn';                      // fade on a dn-side level profits UP (toward mid)
+      const dEx = _trailExits(bars, touchIdx, n, L, upD, outer, rung, trailW, closePx);
+      const fStructFade = (upD ? dEx.sExit - L : L - dEx.sExit) / open * 100;
+      const fChandFade  = (upD ? dEx.cExit - L : L - dEx.cExit) / open * 100;
 
       out.push({
         name: ln.label, side, level: +L.toFixed(6),
         innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6),
         decidedBy, firstTouchTime: ftt, outcome, approachVel,
         excMid: +excMid.toFixed(5), excAway: +excAway.toFixed(5),
+        fStructFade: +fStructFade.toFixed(5), fChandFade: +fChandFade.toFixed(5),
         fStruct: +fStruct.toFixed(5), fChand: +fChand.toFixed(5),
       });
     }
@@ -380,29 +396,32 @@ export function runHeldPosition(touchesByPair, { policy, splitDate, costByPair =
   const out = {};
   for (const mode of ['fixedHeld', 'struct', 'chand']) {
     const trades = [], byMult = Object.fromEntries(costMults.map(m => [m, []]));
-    const priceFollow = (t, c, s) => {
-      if (mode === 'fixedHeld') return pnlFor(t, 'follow', { costPct: c, slipPct: s });
-      const g = mode === 'struct' ? t.fStruct : t.fChand;
-      return g != null ? +(g - (c + s)).toFixed(5) : pnlFor(t, 'follow', { costPct: c, slipPct: s });
+    // Price ONE held trade by its decision's exit: fixedHeld = the fixed barrier;
+    // struct/chand = the trail in the decision's direction — FOLLOW uses the away
+    // (fStruct/fChand) trail, FADE uses the toward-mid (fStructFade/fChandFade)
+    // trail. So the proven chandelier runs on fades too, not just follows.
+    const price = (t, dec, c, s) => {
+      if (mode === 'fixedHeld') return pnlFor(t, dec, { costPct: c, slipPct: s });
+      const g = dec === 'fade' ? (mode === 'struct' ? t.fStructFade : t.fChandFade)
+                               : (mode === 'struct' ? t.fStruct     : t.fChand);
+      return g != null ? +(g - (c + s)).toFixed(5) : pnlFor(t, dec, { costPct: c, slipPct: s });
     };
     for (const [pair, touches] of Object.entries(touchesByPair)) {
       const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
-      const follows = new Map();                 // `${date}|${side}|${src}` → earliest follow touch
+      // One held trade per (date, side, source) — the earliest non-skip touch
+      // (fade OR follow); its decision sets direction + exit.
+      const held = new Map();
       for (const t of touches) {
         if (t.date < splitDate) continue;
         const p = policy[t.cell]; if (!p || p.decision === 'skip') continue;
-        if (p.decision === 'fade') {             // fade: one trade per touch (fixed barrier)
-          trades.push({ date: t.date, pnl: pnlFor(t, 'fade', { costPct: cost, slipPct: slip }) });
-          for (const mult of costMults) byMult[mult].push({ date: t.date, pnl: pnlFor(t, 'fade', { costPct: cost * mult, slipPct: slip * mult }) });
-          continue;
-        }
-        const key = `${t.date}|${t.side}|${srcOf(t)}`;     // one held follow position per group
-        const cur = follows.get(key);
-        if (!cur || (t.fillTime ?? Infinity) < (cur.fillTime ?? Infinity)) follows.set(key, t);
+        const key = `${t.date}|${t.side}|${srcOf(t)}`;
+        const cur = held.get(key);
+        if (!cur || (t.fillTime ?? Infinity) < (cur.fillTime ?? Infinity)) held.set(key, t);
       }
-      for (const t of follows.values()) {
-        trades.push({ date: t.date, pnl: priceFollow(t, cost, slip) });
-        for (const mult of costMults) byMult[mult].push({ date: t.date, pnl: priceFollow(t, cost * mult, slip * mult) });
+      for (const t of held.values()) {
+        const dec = policy[t.cell].decision;
+        trades.push({ date: t.date, pnl: price(t, dec, cost, slip) });
+        for (const mult of costMults) byMult[mult].push({ date: t.date, pnl: price(t, dec, cost * mult, slip * mult) });
       }
     }
     out[mode] = _bookFromTrades(trades, byMult, costMults);

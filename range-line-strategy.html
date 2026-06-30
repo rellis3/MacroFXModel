@@ -88,7 +88,7 @@
 
   <div class="card" id="heldCard" style="display:none">
     <h2>Held-position model — one trade through the trend (the HONEST Sharpe)</h2>
-    <div class="muted" style="margin-bottom:8px">How you'd actually trade it: a follow signal opens <b>one</b> position per day/direction/source; it trails to exit; later same-direction touches while it's open are <b>suppressed</b> (no re-entry). This collapses the per-touch over-count, so <b>trades/day falls</b> and the Sharpe is finally tradeable — not breadth-inflated. Compare trades/day here vs the Exit-A/B card above. <code>fixed-held</code> = enter at first follow, one-level TP; <code>structural</code>/<code>chandelier</code> = trail. Judge on Sharpe @2–3× cost.</div>
+    <div class="muted" style="margin-bottom:8px">How you'd actually trade it: a follow signal opens <b>one</b> position per day/direction/source; it trails to exit; later same-direction touches while it's open are <b>suppressed</b> (no re-entry). This collapses the per-touch over-count, so <b>trades/day falls</b> and the Sharpe is finally tradeable — not breadth-inflated. Compare trades/day here vs the Exit-A/B card above. <code>fixed-held</code> = fixed one-level barrier; <code>structural</code>/<code>chandelier</code> = trail — and the trail now runs on <b>both fade and follow</b> (fade trails toward the mid, follow away). Judge on Sharpe @2–3× cost.</div>
     <table id="held"><thead><tr><th>Exit</th><th>Sharpe @1×</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Payoff</th><th>CAGR@10%</th><th>MaxDD@10%</th></tr></thead><tbody></tbody></table>
     <div id="heldVerdict" class="muted" style="margin-top:6px"></div>
   </div>
