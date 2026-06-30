@@ -15,7 +15,8 @@
 import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
-import { pipSize } from './instrumentRegistry.js';
+import { pipSize, oandaSymbol } from './instrumentRegistry.js';
+import { gapFillPacked } from './m1GapFill.js';
 import { extractTouches, runPerLine, runRigor, runSensitivity, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { deflatedSharpe } from './backtestStats.js';
 import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
@@ -170,9 +171,18 @@ function buildAggregates(records, oosFrac = 0.4) {
 
 // Refresh one pair across all horizons; writes raw records to R2, returns the
 // aggregates + coverage for the manifest/aggregates files.
-export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}) {
-  const packed = await loadM1ForPair(pair);
+export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}, opts = {}) {
+  let packed = await loadM1ForPair(pair);
   if (!packed?.n) { onLog(`${pair}: no M1 data — skipped`); return null; }
+  // Optional gap-fill: top the frozen R2 parquet up to "now" from OANDA M1 so a
+  // rebuilt book includes the most recent sessions (the parquet itself is static).
+  // Opt-in — `fetchCandles` is injected by the caller; no fetch = unchanged.
+  if (opts.gapFill && typeof opts.fetchCandles === 'function') {
+    try {
+      const nowSec = opts.nowSec ?? Math.floor(Date.now() / 1000);
+      packed = await gapFillPacked(packed, oandaSymbol(pair), opts.fetchCandles, { nowSec, onLog });
+    } catch (e) { onLog(`${pair}: gap-fill failed (${e.message}) — using stored M1`); }
+  }
   // Sessions anchored at MIDNIGHT EUROPE/LONDON — the day the volatility forecast
   // trades on (the live bot anchors there too). Was 22:00 UTC (broker day).
   const sessions   = bucketM1IntoSessions(packed, 'Europe/London');
@@ -196,10 +206,12 @@ export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}) {
 // onto any existing dataset, so a crash/restart mid-run (e.g. OOM on a heavy
 // pair) keeps every pair finished so far instead of losing the whole batch — and
 // a daily-only refresh never wipes a pair's stored weekly/monthly coverage.
-export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLog = () => {} } = {}) {
+export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLog = () => {},
+                                   gapFill = false, fetchCandles, nowSec } = {}) {
   if (!r2Configured()) throw new Error('R2 not configured (R2_ACCESS_KEY / R2_SECRET_KEY)');
   const list = pairs?.length ? pairs : await discoverPairs();
-  onLog(`Refreshing ${list.length} pair(s): ${list.join(', ')}`);
+  onLog(`Refreshing ${list.length} pair(s)${gapFill ? ' [gap-fill ON]' : ''}: ${list.join(', ')}`);
+  const pairOpts = { gapFill, fetchCandles, nowSec };
 
   // Start from the existing dataset so partial/subset refreshes accumulate.
   const prevManifest = await getManifest();
@@ -216,7 +228,7 @@ export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLo
   let done = 0, failed = 0;
   for (const pair of list) {
     try {
-      const r = await refreshPair(pair, horizons, onLog);
+      const r = await refreshPair(pair, horizons, onLog, pairOpts);
       if (!r) continue;
       // Merge per-horizon so a subset-horizon refresh keeps the other horizons.
       const prevCov = manifest.pairs[pair]?.horizons || {};

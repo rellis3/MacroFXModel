@@ -83,6 +83,34 @@ async function fetchD1(instrument, count = 5000) {
     .filter(c => c.close > 0);
 }
 
+// Oanda M1 fetch for one [from,to] window (epoch SECONDS). Returns ascending bars
+// [{ time(sec), open, high, low, close, volume }]. The window must be ≤5000 bars
+// (Oanda's cap) — the m1GapFill brick chunks larger ranges and calls this per
+// chunk. Used to top up the frozen R2 M1 series to "now" at book-rebuild time.
+async function fetchM1Range(instrument, fromSec, toSec) {
+  const fromIso = new Date(fromSec * 1000).toISOString();
+  const toIso   = new Date(toSec   * 1000).toISOString();
+  const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+            + `?granularity=M1&price=M&from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal:  AbortSignal.timeout(30_000),
+  });
+  if (!r.ok) throw new Error(`Oanda M1 ${instrument}: HTTP ${r.status}`);
+  const data = await r.json();
+  return (data.candles ?? [])
+    .filter(c => c.complete !== false && c.mid)
+    .map(c => ({
+      time:   Math.floor(new Date(c.time).getTime() / 1000),
+      open:   parseFloat(c.mid.o),
+      high:   parseFloat(c.mid.h),
+      low:    parseFloat(c.mid.l),
+      close:  parseFloat(c.mid.c),
+      volume: Number(c.volume ?? 0),
+    }))
+    .filter(c => c.close > 0);
+}
+
 // ── EWMA variance series ──────────────────────────────────────────────────────
 
 function ewmaVarSeries(logReturns, lam = LAMBDA) {
@@ -291,7 +319,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 // ── Public: run all instruments and return structured result ──────────────────
 
 export { ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75, G_ALPHA, G_BETA };
-export { fetchD1 };
+export { fetchD1, fetchM1Range };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');
