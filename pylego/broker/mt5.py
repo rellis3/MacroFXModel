@@ -281,6 +281,27 @@ class Mt5Broker:
 
         mt5 = self.mt5
         mt5_sym = self.resolve(pair)
+
+        # Trade-mode guard. Index/commodity CFDs keep streaming quotes outside their
+        # cash session but reject orders with retcode 10017 ("Trade disabled") — e.g.
+        # uk100 fired every line at ~23:00 London. symbol_info_tick() therefore can't
+        # catch it (a tick still exists); the symbol's trade_mode must be checked.
+        # Skip cleanly (like SPREAD/DUPLICATE BLOCK) rather than send a doomed order.
+        info = mt5.symbol_info(mt5_sym)
+        mode = getattr(info, 'trade_mode', None) if info is not None else None
+        FULL      = getattr(mt5, 'SYMBOL_TRADE_MODE_FULL', 4)
+        LONGONLY  = getattr(mt5, 'SYMBOL_TRADE_MODE_LONGONLY', 1)
+        SHORTONLY = getattr(mt5, 'SYMBOL_TRADE_MODE_SHORTONLY', 2)
+        tradable = (mode == FULL
+                    or (mode == LONGONLY and direction == 'LONG')
+                    or (mode == SHORTONLY and direction == 'SHORT'))
+        if mode is not None and not tradable:
+            self.log.warning(
+                f'TRADE DISABLED {pair}: trade_mode={mode} (market likely outside its '
+                f'session) — skipping {direction}'
+            )
+            return None
+
         tick = mt5.symbol_info_tick(mt5_sym)
         if not tick:
             self.log.error(f'No tick for {mt5_sym}')
@@ -333,10 +354,19 @@ class Mt5Broker:
             self.log.info(f'MT5 order placed: ticket={res.order}  exec_price={exec_price}')
             return res.order
 
-        self.log.error(
-            f'MT5 order failed: retcode={getattr(res, "retcode", "?")} '
-            f'comment={getattr(res, "comment", "")}  last_error={mt5.last_error()}'
-        )
+        # Benign market-state rejections (trade disabled / market closed) are not bugs —
+        # they happen at session edges the trade_mode guard above can't always pre-empt
+        # (some brokers keep trade_mode=FULL and only reject at order time). Log at
+        # warning, not error, so they don't read as failures in the alert stream.
+        rc = getattr(res, 'retcode', None)
+        benign = {getattr(mt5, 'TRADE_RETCODE_TRADE_DISABLED', 10017),
+                  getattr(mt5, 'TRADE_RETCODE_MARKET_CLOSED', 10018)}
+        msg = (f'MT5 order failed: retcode={rc} '
+               f'comment={getattr(res, "comment", "")}  last_error={mt5.last_error()}')
+        if rc in benign:
+            self.log.warning(msg + ' — market not tradable now, skipping')
+        else:
+            self.log.error(msg)
         return None
 
     def stop(
