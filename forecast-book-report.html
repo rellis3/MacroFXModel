@@ -166,7 +166,13 @@ function render(b){
   </ul>
   <b>Why "Max drawdown (historical)" looks low:</b> it is the <i>single realised ordering</i> of trades, and this book's path ran smoother than the median.
   So we also reshuffle the daily returns 1,000× at the same vol and report <b>Max drawdown (MC p95/p99)</b> — the realistic worst-case ordering, the number to size risk against — and <b>Calmar (stress)</b> = Ann. return ÷ |MC p95 DD|, the conservative ratio. The historical figure is the lucky path; the MC figure is the plan-for number.
-  <span class="mut">(Both geometric/compounded; a strictly arithmetic view — Σreturns ÷ years and additive DD — is a one-line switch if preferred.)</span></div>
+  <span class="mut">(Both geometric/compounded; a strictly arithmetic view — Σreturns ÷ years and additive DD — is a one-line switch if preferred.)</span>
+  <hr style="border:0;border-top:1px solid var(--line);margin:8px 0">
+  <b style="color:var(--red)">⚠ Drawdown is a LOWER BOUND — read before quoting Calmar.</b> The equity curve is built from
+  <b>closed-trade PnL netted per day</b> (triple-barrier outcome only), so it does <b>not</b> include
+  (i) <b>intratrade MAE</b> — a fade that runs most of the way to its stop before reverting to target books as a clean win, its unrealised drawdown invisible; or
+  (ii) <b>intraday mark-to-market across concurrent positions</b> — the many positions open at once each day net to a single daily number, so simultaneous open-position drawdown is hidden.
+  The true tradeable (mark-to-market) drawdown is therefore <b>materially larger</b> than shown here, and the Monte-Carlo above is an <b>IID</b> reshuffle (trade/day order independent), which understates regime-clustered tail drawdowns. <b>Treat the ~1–6% figures as a floor, not the expected worst case</b>; a full intraday MTM drawdown is the correct number and is not yet computed.</div>
 
   <h2>3 · Equity &amp; Drawdown</h2>
   <div class="chart">${lineChart(toEquity(heq),{color:'#1f6feb',fill:'rgba(31,111,235,.08)'})}</div>
