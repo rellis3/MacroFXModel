@@ -78,6 +78,12 @@ const _CF_EXACT = new Set([
   'dyn_anchor_credentials', // DynAnchor bot MT5 credentials — must survive redeploys
   'macro_equity_config',       // Macro Equity bot settings — must survive redeploys
   'macro_equity_credentials',  // Macro Equity bot MT5 credentials — must survive redeploys
+  'volatility_bot_config',      // Volatility bot settings — must survive redeploys (was wiped every deploy)
+  'volatility_bot_credentials', // Volatility bot MT5 credentials — must survive redeploys
+  'volatility_bot_plan',        // Volatility bot daily plan (survivors/policy/σ) — keep last good plan across a redeploy
+  'volatility_bot_audit_log',   // Volatility bot entry/exit audit log — cannot be auto-rebuilt
+  // NOTE: volatility_bot_status is deliberately NOT here — the bot rewrites it every
+  // ~30s, so it stays local/ephemeral to avoid blowing the CF KV write quota.
   'hedge_audit_log',        // forward-test log for advisory hedge suggestions — must survive redeploys
   'hedge_alerts_cache',     // summary of corr_history.json pushed by /api/hedge-alerts — survives redeploys
   'vol_hit_rates',          // historical price-level hit rates — expensive to recompute (~10 min full, ~1 min incremental)
