@@ -29,6 +29,7 @@ from pylego import point_values as PV                        # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
 from volatility_bot.engine import SessionTracker, decide, session_open_epoch  # noqa: E402
+from pylego.strategy.volatility import line_levels                             # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("volatility_bot")
@@ -96,7 +97,31 @@ def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot
     return position_size(balance, risk_pct, abs(sl_dist), pip=pip, pip_value=pv, max_lot=max_lot)
 
 
-def build_status(cfg: dict, broker, plan, paper: bool) -> dict:
+def _pair_lines(plan, trackers, broker):
+    """Per-pair snapshot the config page renders: today's forecast line levels the
+    bot pulled (OC static off open, HL dynamic off the running extreme) + the live
+    price + which lines have already been acted on this session."""
+    out = []
+    for pair in (plan or {}).get("universe", []):
+        tr = trackers.get(pair)
+        pp = (plan.get("pairs") or {}).get(pair)
+        if tr is None or pp is None:
+            continue
+        frac = {k: pp[k] for k in ("hl50", "hl75", "ocMed", "oc75")}
+        lv = line_levels(tr.open, tr.run_low, tr.run_high, frac)
+        px = None
+        try: px = broker.price(pair)
+        except Exception: pass
+        out.append({
+            "pair": pair, "open": round(tr.open, 6), "price": round(px, 6) if px else None,
+            "run_low": round(tr.run_low, 6), "run_high": round(tr.run_high, 6),
+            "levels": {k: round(v, 6) for k, v in lv.items()},
+            "acted": sorted(tr.acted),
+        })
+    return out
+
+
+def build_status(cfg: dict, broker, plan, paper: bool, trackers: dict | None = None) -> dict:
     bal = broker.account_balance()
     return {
         "running": True,
@@ -106,6 +131,7 @@ def build_status(cfg: dict, broker, plan, paper: bool) -> dict:
         "universe": (plan or {}).get("universe", []),
         "mt5_positions": broker.serialize_open_positions(),
         "today_closed_trades": broker.serialize_closed_trades(),
+        "lines": _pair_lines(plan, trackers or {}, broker),
     }
 
 
@@ -163,7 +189,7 @@ def run(base_url: str, force_live: bool) -> None:
         if nowt - last_status >= cfg.get("status_secs", 30):
             cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or cfg)
             try:
-                kv.put_status("volatility_bot_status", build_status(cfg, broker, plan, paper))
+                kv.put_status("volatility_bot_status", build_status(cfg, broker, plan, paper, trackers))
             except Exception as e:
                 log.warning(f"status push failed: {e}")
             last_status = nowt
