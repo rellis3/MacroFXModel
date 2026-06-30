@@ -207,19 +207,9 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       ledgerRef.ledger = resolvePair(ledgerRef.ledger, sym, approachBars, now, opts.ledger);
     }
 
-    // Telegram alerts (v2's OWN config + cooldowns; alerts only, never trades).
-    // NB: named `actx`, not `ac` — `ac` is the asset-class const above; a second
-    // `const ac` here would shadow it and TDZ-throw on its earlier uses.
-    const actx = opts.alertCtx;
-    if (actx?.cfg?.enabled && actx.token && actx.chatId) {
-      const sel = selectAlerts({ sym, entries: payload, currentPrice: +price.toFixed(digits), pip, cfg: actx.cfg, cooldowns: actx.cooldowns, now: Date.now() });
-      actx.cooldowns = sel.cooldowns;
-      for (const a of sel.alerts) {
-        const msg = formatV2Entry(sym, a.entry, { currentPrice: +price.toFixed(digits), digits, distPips: a.distPips, policyBuiltAt: frozen.builtAt });
-        const okSend = await sendTelegramV2(actx.token, actx.chatId, msg);
-        actx.sent = (actx.sent ?? 0) + (okSend ? 1 : 0);
-      }
-    }
+    // (Telegram alerting is NOT done here — the 30-min refresh only recomputes the
+    // zones. A separate fast loop, checkV2AlertsNow(), fires on live-price approach
+    // every ~90s against these cached zones, so alerts aren't gated to the 30-min cycle.)
 
     // When 0 entries, pin down WHY: was any ladder level near price at all (geometry),
     // and of those near, did the policy skip them (skip/unseen) vs were they dropped
@@ -254,6 +244,59 @@ function fallbackSigmaFromM5(bars5m) {
   return Math.sqrt(v) * Math.sqrt(288);
 }
 
+// ── Telegram creds: prefer v2's OWN bot, fall back to the shared v1 tg_config ──
+export async function loadV2Creds() {
+  try { const raw = await kv.get('tg_v2_config'); const c = raw ? JSON.parse(raw) : null; if (c?.token && c?.chatId) return { token: c.token, chatId: c.chatId, source: 'v2-bot' }; } catch {}
+  try { const raw = await kv.get('tg_config');    const c = raw ? JSON.parse(raw) : null; if (c?.token && c?.chatId) return { token: c.token, chatId: c.chatId, source: 'shared-v1' }; } catch {}
+  return null;
+}
+export async function sendV2Test(text) {
+  const creds = await loadV2Creds();
+  if (!creds) return { ok: false, error: 'no Telegram token/chat — save a v2 bot or the v1 tg_config' };
+  const ok = await sendTelegramV2(creds.token, creds.chatId, text);
+  return { ok, via: creds.source };
+}
+
+// ── Fast alert loop: fire on LIVE-price approach, decoupled from the 30-min zone
+// refresh. Reads the cached zones (ai_entries_v2_*) + a fresh price per pair and
+// applies the v2 alert config + cooldowns. Run every ~90s so an approach mid-cycle
+// still alerts. Alerts only — never trades.
+export async function checkV2AlertsNow(pairs = []) {
+  let cfg;
+  try { const raw = await kv.get('tg_v2_alert_cfg'); cfg = raw ? { ...DEFAULT_V2_ALERT_CFG, ...JSON.parse(raw) } : { ...DEFAULT_V2_ALERT_CFG }; }
+  catch { cfg = { ...DEFAULT_V2_ALERT_CFG }; }
+  if (!cfg.enabled) return { ok: true, skipped: 'disabled' };
+  const creds = await loadV2Creds();
+  if (!creds) return { ok: true, skipped: 'no-telegram-creds' };
+
+  let cooldowns = {};
+  try { const cd = await kv.get('tg_v2_cooldowns'); if (cd) cooldowns = JSON.parse(cd) || {}; } catch {}
+  cooldowns = pruneCooldowns(cooldowns, Date.now());
+
+  const watch = (Array.isArray(cfg.pairs) && cfg.pairs.length) ? cfg.pairs : pairs;
+  let sent = 0, checked = 0;
+  for (const sym of watch) {
+    let blk = null;
+    try { const raw = await kv.get(`ai_entries_v2_${sym.replace('/', '')}`); blk = raw ? JSON.parse(raw) : null; } catch {}
+    const zones = blk?.data;
+    if (!zones?.length) continue;
+    const price = await fetchPrice(sym);
+    if (price == null) continue;
+    checked++;
+    const pip = pipOf(sym), digits = digitsOf(sym);
+    const sel = selectAlerts({ sym, entries: zones, currentPrice: price, pip, cfg, cooldowns, now: Date.now() });
+    cooldowns = sel.cooldowns;
+    for (const a of sel.alerts) {
+      const msg = formatV2Entry(sym, a.entry, { currentPrice: price, digits, distPips: a.distPips });
+      if (await sendTelegramV2(creds.token, creds.chatId, msg)) sent++;
+    }
+    await new Promise(r => setTimeout(r, 120));   // gentle on OANDA
+  }
+  try { await kv.put('tg_v2_cooldowns', JSON.stringify(cooldowns)); } catch {}
+  if (sent) console.log(`[LEVELS-V2] alert loop: sent ${sent} (checked ${checked} pairs · via ${creds.source})`);
+  return { ok: true, sent, checked, via: creds.source };
+}
+
 // ── Refresh all pairs ───────────────────────────────────────────────────────
 export async function refreshAllPairsV2(pairs, opts = {}) {
   const frozen = await loadPolicy();
@@ -268,34 +311,10 @@ export async function refreshAllPairsV2(pairs, opts = {}) {
     ledgerRef = { ledger: Array.isArray(ledger) ? ledger : [] };
   }
 
-  // Load v2 alert config + Telegram creds + cooldowns once (own config, separate from v1).
-  let alertCtx = null;
-  try {
-    const cfgRaw = await kv.get('tg_v2_alert_cfg');
-    const cfg = cfgRaw ? { ...DEFAULT_V2_ALERT_CFG, ...JSON.parse(cfgRaw) } : { ...DEFAULT_V2_ALERT_CFG };
-    if (cfg.enabled) {
-      const tgRaw = await kv.get('tg_config');
-      const tg = tgRaw ? JSON.parse(tgRaw) : null;
-      if (tg?.token && tg?.chatId) {
-        let cooldowns = {};
-        try { const cdRaw = await kv.get('tg_v2_cooldowns'); if (cdRaw) cooldowns = JSON.parse(cdRaw) || {}; } catch {}
-        alertCtx = { cfg, token: tg.token, chatId: tg.chatId, cooldowns: pruneCooldowns(cooldowns, Date.now()), sent: 0 };
-      } else {
-        console.log('[LEVELS-V2] alerts enabled but tg_config missing token/chatId — save them in the Alerts modal');
-      }
-    }
-  } catch (e) { console.error('[LEVELS-V2] alert config load error:', e.message); }
-  opts = { ...opts, alertCtx };
-
   const results = {};
   for (const sym of pairs) {
     results[sym] = await refreshPairV2(sym, frozen, opts, ledgerRef);
     await new Promise(r => setTimeout(r, 400));   // OANDA rate-limit
-  }
-
-  if (alertCtx) {
-    try { await kv.put('tg_v2_cooldowns', JSON.stringify(alertCtx.cooldowns)); } catch {}
-    if (alertCtx.sent) console.log(`[LEVELS-V2] sent ${alertCtx.sent} Telegram alert(s)`);
   }
 
   if (ledgerRef) {

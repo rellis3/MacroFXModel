@@ -46,7 +46,7 @@ import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './js/rangeLineAnalyser.js';
 import { pipSize as _pipSize } from './js/instrumentRegistry.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
-import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
+import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
@@ -7421,8 +7421,39 @@ app.get('/api/levels-v2/alert-config', async (req, res) => {
     const cfg = raw ? { ...DEFAULT_V2_ALERT_CFG, ...JSON.parse(raw) } : { ...DEFAULT_V2_ALERT_CFG };
     const tgRaw = await kv.get('tg_config');
     const tg = tgRaw ? JSON.parse(tgRaw) : null;
-    res.json({ ok: true, cfg, telegramConfigured: !!(tg?.token && tg?.chatId) });
+    const v2Raw = await kv.get('tg_v2_config');
+    const v2 = v2Raw ? JSON.parse(v2Raw) : null;
+    res.json({ ok: true, cfg,
+      telegramConfigured: !!((v2?.token && v2?.chatId) || (tg?.token && tg?.chatId)),
+      v2BotConfigured: !!(v2?.token && v2?.chatId),
+      v2ChatId: v2?.chatId ?? null,
+      activeBot: (v2?.token && v2?.chatId) ? 'v2-bot' : (tg?.token && tg?.chatId) ? 'shared-v1' : 'none' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// v2's OWN Telegram bot (separate token/chat from v1). GET status; POST saves;
+// DELETE reverts to the shared v1 bot. POST /test sends a test via the active bot.
+app.get('/api/levels-v2/telegram-config', async (req, res) => {
+  try {
+    const raw = await kv.get('tg_v2_config'); const c = raw ? JSON.parse(raw) : null;
+    res.json({ ok: true, configured: !!(c?.token && c?.chatId), chatId: c?.chatId ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/levels-v2/telegram-config', async (req, res) => {
+  try {
+    const token = (req.body?.token || '').trim(), chatId = (req.body?.chatId || '').toString().trim();
+    if (!token || !chatId) return res.status(400).json({ ok: false, error: 'token and chatId required' });
+    await kv.put('tg_v2_config', JSON.stringify({ token, chatId }));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.delete('/api/levels-v2/telegram-config', async (req, res) => {
+  try { await kv.del('tg_v2_config'); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/levels-v2/telegram-test', async (req, res) => {
+  try { res.json(await sendV2Test('✅ Telegram v2 — test alert. This is the bot your v2 zone alerts will use.')); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/levels-v2/confluence-test — does confluence amplify probability?
 // Streams M1 per pair, tags each touch by how many independent sources align at its
@@ -9728,6 +9759,15 @@ monitorTick().catch(console.error);
 // Run an initial level refresh on boot, then every REFRESH_LEVELS_MS (default 30 min)
 setInterval(runLevelsRefresh, REFRESH_LEVELS_MS);
 runLevelsRefresh().catch(console.error);
+
+// Telegram-v2 fast alert loop: zones recompute every 30 min, but proximity to LIVE
+// price is checked every 90s so alerts fire on approach mid-cycle (no-op unless v2
+// alerts are enabled + a bot is configured).
+const V2_ALERT_MS = parseInt(process.env.V2_ALERT_MS || String(90 * 1000));
+setInterval(() => {
+  const v2pairs = (state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS).map(p => p.toUpperCase?.() ?? p);
+  checkV2AlertsNow(v2pairs).catch(e => console.error('[LEVELS-V2] alert loop error:', e.message));
+}, V2_ALERT_MS);
 
 // Live 5m HMM — runs every minute, initial run after a short delay so levels load first
 setTimeout(() => {
