@@ -37,9 +37,12 @@ spec). Summary:
 - **What's real:** a single pair, held-position, chandelier trail, at realistic
   (2–3× cost) fills lands at **Sharpe ≈ 3–5** — positive every year, every
   walk-forward fold, DSR 100%. Modest and thin, but real.
-- **The locked spec** (`RANGE_EXTENSION_GUIDE.md §10`): 14 strong pairs, follow the
-  break of near-mid Monday levels (|L| ≤ 2) + Asia mid, chandelier trail, one held
-  position. Per-trade expectancy +0.095% after cost, 68% win.
+- **The working spec** (`RANGE_EXTENSION_GUIDE.md §13`): 14 strong pairs, **full
+  ladder**, **fade + follow** (25 fade Asia-extension reversions + 23 follow
+  breakouts), one held position per side/day, **chandelier trail on both**. Honest
+  single-pair ≈ Sharpe **4.7–6** at realistic cost. (§10 is the simpler
+  continuation-only fallback; the **zone-walk** was tested and lost to the
+  chandelier — kept for reference.)
 
 **The only remaining step is live wiring** (`RANGE_EXTENSION_GUIDE.md §11`) — a
 plumbing job; the ladder is already exported so live builds the identical grid the

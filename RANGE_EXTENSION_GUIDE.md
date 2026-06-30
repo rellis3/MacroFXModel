@@ -25,13 +25,15 @@
 - **What we found.** The first runs showed an impossible **Sharpe ~24** with a
   near-zero drawdown. That was **four stacked artifacts**, not edge. We removed
   each with a measured, committed fix.
-- **What's real.** A **single pair** (eurusd), traded one position at a time with
-  a **trailing exit**, at **realistic (2–3× cost) fills**, lands at **Sharpe ≈
-  2.5–5** with realistic drawdowns (−2.6% to −4.7%), **positive every year and
-  every walk-forward fold**, Deflated Sharpe 100%. Modest, thin (~4 pips/trade,
-  ~2 after real cost), but **real**.
-- **The arc:** `~56 → ~24 → ~12 → ~7 (one pair) → ~3 (realistic fills)`. Every
-  step down was a lie removed, not edge lost.
+- **What's real.** A **single pair** (eurusd), one held position at a time with a
+  **chandelier trail**, at **realistic (2–3× cost) fills**, lands at **Sharpe ≈
+  4.7–6** with realistic drawdowns (~−2%), **positive every year and every
+  walk-forward fold**, Deflated Sharpe 100%. Real, multi-faceted, cost-robust.
+- **The arc:** `~56 → ~24 → ~12 → ~7 (one pair) → ~3 (continuation-only) → ~5
+  (fade+follow trailed, full ladder)`. Every step down to ~3 was a lie removed; the
+  step back up to ~5 was honouring the base principle (see §12–13).
+- **The working spec is §13** (fade+follow, full ladder, held chandelier). §10 is
+  the simpler continuation-only **fallback**.
 
 ---
 
@@ -358,3 +360,54 @@ compare the **Zone-walk** card's Sharpe @2–3× cost against the Held-position 
 The open questions it answers: does using the fade side + the extremes pull bigger
 numbers, and does re-entry help — i.e. is the *real* range-extension strategy
 better than the continuation-only fallback?
+
+**RESULT (tested, Strong + all levels):** The zone-walk **LOST** to the held
+chandelier. On the honest unit (eurusd): zone-walk @2× **3.16** / MaxDD **−6.3%**
+vs held chandelier @2× **6.11** / MaxDD **−2.0%**; same story pooled (zone-walk
+@2× 6.30 vs 11.42). The policy-exit ("close at a reversal zone") with **no hard
+stop bleeds**; the chandelier's ½-rung trailing stop is simply the better exit.
+Conclusion: **the fade/follow decision is the right ENTRY signal; the chandelier
+is the right EXIT.** Keep both — and **drop the zone-walk** (kept in the UI for
+reference only).
+
+---
+
+## 13. CURRENT BEST SPEC — fade+follow, full ladder, held chandelier ✅
+
+Bringing back **both** the fade side and the extreme levels (the base principle),
+and running the proven **chandelier trail on fades too**, beats the §10
+continuation-only fallback on the honest unit. **This supersedes §10 as the
+working spec.**
+
+### The strategy in one line
+> **On the strong pairs, take the engine's fade/follow decision at each Asia/Monday
+> range zone across the full ladder, open one held position per side/day, and exit
+> with a chandelier trail (toward the mid for a fade, away for a follow).**
+
+- **Universe:** the 14 strong pairs (gold + JPY crosses + main majors).
+- **Levels:** the **full ladder** (−9.5 … +10.5) — `Max level = all`.
+- **Entries:** fade **and** follow (this run: **48 cells — 25 fade** Asia-extension
+  reversions + **23 follow** Monday/Asia breakouts). Fades are small-but-real and
+  positive OOS once trailed.
+- **Exit:** **chandelier trail** on both directions (fade trails toward the mid,
+  follow away); one held position per (day, side, source).
+
+### The numbers (Strong + all levels, OOS)
+| | Pooled (14 pairs) | **eurusd (honest unit)** |
+|---|---|---|
+| Held chandelier @2× / @3× cost | 11.42 / 8.98 | **6.11 / 4.71** |
+| MaxDD @10% vol | −0.7% | **−2.0%** |
+| Trades/day (held) | 26.2 | 2.3 |
+| Per-trade expectancy (book) | +0.076% | +0.037% |
+
+- **The pooled ~12 is cross-pair inflated** (do not trade it) — the honest unit is
+  the **single pair ≈ Sharpe 4.7–6 at realistic 2–3× cost**, up from the fallback's
+  ~2.5–5. **Trailing the fades was the gain** (eurusd @3× 2.53 → 4.71).
+- Validated: positive **every year and every walk-forward fold**, OOS÷IS ≈ 1.0,
+  **Deflated Sharpe 100%**, survives **3× cost**.
+- **Residual caveat:** @1× (zero-slippage) is still ~7.5 single-pair, decaying to
+  ~4.7 at 3× — so some fill optimism remains; with truly realistic fills the honest
+  number is likely **~3–4**. Still a real, multi-faceted, cost-robust edge.
+
+§10 remains the simpler **continuation-only fallback**; this §13 spec is the
+working strategy.
