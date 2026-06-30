@@ -68,5 +68,15 @@ console.log('[intradayMtmDrawdown]');
   ok('MTM DD is materially deeper than closed-trade DD', mtm <= closedDD - 1e-9 && mtm < -5, `mtm=${mtm}`);
 }
 
+// 8. Realised PnL via the pipeline's `pnl` field (NOT `finalPnl`) must be honoured —
+//    reading only finalPnl zeroed every realised leg and gave a 0.0× multiple. Two
+//    concurrent LOSING trades (closed -4 each, no MAE) must show a -8 portfolio DD.
+{
+  const a = { entryTime: 0, maeTime: 5, exitTime: 10, maePct: 0, pnl: -4 };
+  const b = { entryTime: 0, maeTime: 5, exitTime: 10, maePct: 0, pnl: -4 };
+  const r = intradayMtmDrawdown([a, b]);
+  ok('realised PnL read from `pnl` field (concurrent losers → -8)', near(r.maxDD, -8), `maxDD=${r.maxDD}`);
+}
+
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 if (failures) process.exit(1);

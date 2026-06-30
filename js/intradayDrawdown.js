@@ -21,10 +21,12 @@
  * concurrency, so it is a far more honest drawdown than the closed-trade figure.
  * Pure + unit-tested (js/intradayDrawdown.test.mjs); no network.
  *
- * trades: [{ entryTime, exitTime, finalPnl, maePct (≥0 adverse, % of price), maeTime? }]
- *   times are comparable numbers (epoch seconds/ms). maeTime defaults to the
- *   entry/exit midpoint when absent. maePct is the adverse excursion magnitude for
- *   the trade's DECISION (continuation distance for a fade, reversion for a follow).
+ * trades: [{ entryTime, exitTime, finalPnl|pnl, maePct (≥0 adverse, % of price), maeTime? }]
+ *   times are comparable numbers (epoch seconds/ms). Realised PnL may be supplied as
+ *   `finalPnl` OR `pnl` (the per-line pipeline's field) — they are the same number.
+ *   maeTime defaults to the entry/exit midpoint when absent. maePct is the adverse
+ *   excursion magnitude for the trade's DECISION (continuation distance for a fade,
+ *   reversion for a follow).
  */
 
 // Coerce a bar time (epoch seconds, epoch ms, or ISO string) to epoch ms so all
@@ -60,7 +62,12 @@ export function intradayMtmDrawdown(trades) {
     if (e == null || x == null || x < e) continue;
     let m = _ms(t.maeTime);
     if (m == null || m < e || m > x) m = (e + x) / 2;   // default / clamp to (entry,exit)
-    ts.push({ e, x, m, f: +t.finalPnl || 0, dip: -Math.abs(t.maePct || 0) });
+    // Realised PnL: accept the house-convention `pnl` field (what the per-line
+    // pipeline pushes) as well as `finalPnl` — they are the same number. Reading
+    // only `finalPnl` silently zeroed every trade's realised leg and collapsed the
+    // whole drawdown to ~0 (the "0.0× closed" bug).
+    const f = +(t.finalPnl ?? t.pnl) || 0;
+    ts.push({ e, x, m, f, dip: -Math.abs(t.maePct || 0) });
   }
   if (!ts.length) return { maxDD: 0, peak: 0, trough: 0, breakpoints: 0 };
 
