@@ -29,11 +29,18 @@ class FakeMt5:
     ORDER_FILLING_IOC = 1
     ORDER_FILLING_RETURN = 2
     TRADE_RETCODE_DONE = 10009
+    TRADE_RETCODE_TRADE_DISABLED = 10017
+    TRADE_RETCODE_MARKET_CLOSED = 10018
+    SYMBOL_TRADE_MODE_DISABLED = 0
+    SYMBOL_TRADE_MODE_LONGONLY = 1
+    SYMBOL_TRADE_MODE_SHORTONLY = 2
+    SYMBOL_TRADE_MODE_CLOSEONLY = 3
+    SYMBOL_TRADE_MODE_FULL = 4
     TIMEFRAME_M5 = 5
     TIMEFRAME_M30 = 30
 
     def __init__(self, positions=None, tick=None, deals=None, account=None,
-                 filling_mode=2, send_result="done", bars=None):
+                 filling_mode=2, send_result="done", bars=None, trade_mode=None):
         self._positions = positions or []
         self._tick = tick or SimpleNamespace(bid=1.10000, ask=1.10010)
         self._deals = deals or []
@@ -41,6 +48,7 @@ class FakeMt5:
         self._filling = filling_mode
         self._send_result = send_result
         self._bars = bars
+        self._trade_mode = trade_mode          # None ⇒ omit (legacy symbol_info shape)
         self.sent_orders = []
 
     def last_error(self): return (0, "ok")
@@ -48,7 +56,11 @@ class FakeMt5:
     def login(self, *a, **k): return True
     def shutdown(self): pass
     def account_info(self): return self._account
-    def symbol_info(self, sym): return SimpleNamespace(filling_mode=self._filling)
+    def symbol_info(self, sym):
+        attrs = dict(filling_mode=self._filling)
+        if self._trade_mode is not None:
+            attrs['trade_mode'] = self._trade_mode
+        return SimpleNamespace(**attrs)
     def symbol_info_tick(self, sym): return self._tick
     def copy_rates_from_pos(self, sym, tf, start, count): return self._bars
 
@@ -64,6 +76,8 @@ class FakeMt5:
             return None
         if self._send_result == "reject":
             return SimpleNamespace(retcode=10004, order=0, comment="rejected")
+        if self._send_result == "disabled":
+            return SimpleNamespace(retcode=self.TRADE_RETCODE_TRADE_DISABLED, order=0, comment="Trade disabled")
         return SimpleNamespace(retcode=self.TRADE_RETCODE_DONE, order=555111, comment="done")
 
 
@@ -131,6 +145,36 @@ def test_enter_duplicate_block():
     fake = FakeMt5(positions=[_pos(1, MAGIC)])
     assert _broker(fake).enter('EUR/USD', 'LONG', 1.09, 1.11, 0.5, 5.0, paper_mode=False) is None
     assert fake.sent_orders == []
+
+
+def test_enter_trade_disabled_skips_before_send():
+    # Index outside its cash session: quotes still tick but trade_mode=DISABLED.
+    # The guard must skip cleanly WITHOUT sending a doomed order (the uk100 10017 bug).
+    fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_DISABLED)
+    assert _broker(fake).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) is None
+    assert fake.sent_orders == []
+
+
+def test_enter_longonly_blocks_short_allows_long():
+    short = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_LONGONLY)
+    assert _broker(short).enter('UK100', 'SHORT', 10500, 10400, 2.0, 6.0, paper_mode=False) is None
+    assert short.sent_orders == []
+    long_ = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_LONGONLY)
+    assert _broker(long_).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) == 555111
+    assert len(long_.sent_orders) == 1
+
+
+def test_enter_full_trade_mode_allows():
+    fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_FULL)
+    assert _broker(fake).enter('EUR/USD', 'LONG', 1.09, 1.11, 0.5, 5.0, paper_mode=False) == 555111
+
+
+def test_enter_benign_rejection_returns_none():
+    # trade_mode may stay FULL while the broker rejects at order time (10017/10018);
+    # the failure path must still return None (and not raise) for these market-state codes.
+    fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_FULL, send_result="disabled")
+    assert _broker(fake).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) is None
+    assert len(fake.sent_orders) == 1
 
 
 def test_enter_success_returns_ticket():
