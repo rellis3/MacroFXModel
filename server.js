@@ -49,6 +49,7 @@ import { refreshAllPairsV2, _setPolicyCache as _setV2PolicyCache } from './level
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
+import { buildPolicy as buildPolicyV2, DEFAULT_SLIP_PCT as V2_DEFAULT_SLIP } from './js/perLineStrategy.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
@@ -7229,51 +7230,99 @@ app.get('/api/range-line/status/:jobId', (req, res) => {
 // TELEGRAM_V2.md. Reuses the range-line streaming M1 pattern above.
 const lv2Jobs = new Map();
 
-// POST /api/levels-v2/learn — stream M1 per pair → pooled-IS policy → freeze to KV.
+// ── Robust, resumable, cached Telegram-v2 learn ───────────────────────────────
+// Flaky-run fixes: (1) per-pair touches are CACHED in KV so a re-run / restart
+// RESUMES from cache instead of reloading all 26 pairs' M1 (the slow, OOM-prone
+// part); (2) the freeze uses buildPolicy directly — no 1000× Monte-Carlo/bootstrap
+// (the CPU spike that got the job killed); (3) progress is written to KV
+// `policy_v2_status` so the page shows it across refreshes/restarts, decoupled from
+// the in-memory jobId. Only one learn runs at a time (guarded).
+const V2_TOUCH_TTL = 7 * 86400_000;     // reuse cached touches for a week
+const _v2TrimTouch = t => ({ date: t.date, name: t.name, line: t.line, side: t.side, reverted: t.reverted,
+  level: t.level, innerLvl: t.innerLvl, outerLvl: t.outerLvl, decidedBy: t.decidedBy, closePx: t.closePx, open: t.open, cell: t.cell });
+const _v2Byd = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+let _v2LearnRunning = false;
+
+async function _setLearnStatus(s) { try { await kv.put('policy_v2_status', JSON.stringify({ ...s, at: Date.now() })); } catch {} }
+
 app.post('/api/levels-v2/learn', async (req, res) => {
   const b = req.body || {};
   const pair = (b.pair || '').toLowerCase();
   const pairs = pair ? [pair].filter(p => ASIA_INSTRUMENTS.includes(p)) : ASIA_INSTRUMENTS;
   if (!pairs.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  if (_v2LearnRunning) return res.json({ ok: true, jobId: 'in-progress', already: true });   // idempotent — don't stack heavy runs
   const opts = {
     sources:    Array.isArray(b.sources) ? b.sources : ['asia', 'monday'],
     conditions: Array.isArray(b.conditions) ? b.conditions : ['approachVel'],
     minN: parseInt(b.minN) || 50, splitFrac: parseFloat(b.splitFrac) || 0.6,
     marginPct: parseFloat(b.marginPct) || 0, minLookback: parseInt(b.minLookback) || 20,
-    mcRuns: 1000, bootRuns: 1000,
   };
+  const force = b.force === true;                                    // ignore cache, recompute touches
+  const sig = JSON.stringify({ s: opts.sources, c: opts.conditions, ml: opts.minLookback });
   const jobId = `v2l_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   for (const [k, j] of lv2Jobs) if (Date.now() - (j.startedAt || 0) > 30 * 60 * 1000) lv2Jobs.delete(k);
   lv2Jobs.set(jobId, { status: 'running', startedAt });
+  _v2LearnRunning = true;
+
   (async () => {
     try {
-      const touchesByPair = {}, costByPair = {};
-      let i = 0;
+      const touchesByPair = {};
+      let i = 0, fromCache = 0;
       for (const p of pairs) {
-        lv2Jobs.set(jobId, { status: 'running', startedAt, currentPair: p, pairsDone: i, pairsTotal: pairs.length });
-        let packed = await loadM1ForPair(p, BT_M1_DIR);
-        if (packed && packed.n) {
-          const ac = _assetClassFor(p);
-          touchesByPair[p] = touchesForPair(packed, ac, opts);
-          costByPair[p] = costForPair(p, ac);
+        const prog = { state: 'running', startedAt, currentPair: p, pairsDone: i, pairsTotal: pairs.length, fromCache };
+        lv2Jobs.set(jobId, { status: 'running', ...prog }); await _setLearnStatus(prog);
+        const ac = _assetClassFor(p);
+        let touches = null;
+        if (!force) {
+          try { const raw = await kv.get(`v2_touch_${p}`); const o = raw ? JSON.parse(raw) : null;
+            if (o && o.sig === sig && Date.now() - o.ts < V2_TOUCH_TTL && Array.isArray(o.touches)) { touches = o.touches; fromCache++; } } catch {}
         }
-        packed = null;
+        if (!touches) {
+          let packed = await loadM1ForPair(p, BT_M1_DIR);
+          if (packed && packed.n) { touches = touchesForPair(packed, ac, opts).map(_v2TrimTouch); await kv.put(`v2_touch_${p}`, JSON.stringify({ sig, ts: Date.now(), touches })); }
+          packed = null;
+        }
+        if (touches?.length) {
+          const cost = costForPair(p, ac), slip = V2_DEFAULT_SLIP[ac] ?? V2_DEFAULT_SLIP.fx;
+          for (const t of touches) { t.cost = cost; t.slip = slip; }   // price pooled trades at the pair's real friction
+          touchesByPair[p] = touches;
+        }
         await new Promise(r => setImmediate(r));
         i++;
       }
-      if (!Object.keys(touchesByPair).length) { lv2Jobs.set(jobId, { status: 'error', error: 'No M1 data', startedAt }); return; }
-      const book   = runPerLine(touchesByPair, { ...opts, costByPair });
-      const frozen = freezePolicyV2(book, opts, new Date().toISOString());
+      const all = Object.values(touchesByPair).flat().sort(_v2Byd);
+      if (!all.length) { const e = { state: 'error', error: 'No M1 data', startedAt }; lv2Jobs.set(jobId, { status: 'error', ...e }); await _setLearnStatus(e); return; }
+
+      // Light freeze: pooled-IS policy via buildPolicy (no MC/bootstrap) + coverage.
+      const splitDate = all[Math.floor(all.length * opts.splitFrac)]?.date ?? null;
+      const policy = buildPolicyV2(all.filter(t => t.date < splitDate), { minN: opts.minN, marginPct: opts.marginPct });
+      const coverage = { fadeCells: 0, followCells: 0, skipCells: 0 };
+      for (const c of Object.values(policy)) coverage[c.decision === 'fade' ? 'fadeCells' : c.decision === 'follow' ? 'followCells' : 'skipCells']++;
+      const frozen = freezePolicyV2({ policy, splitDate, coverage }, opts, new Date().toISOString());
       await kv.put('policy_v2', JSON.stringify(frozen));
       _setV2PolicyCache(frozen);
-      lv2Jobs.set(jobId, { status: 'done', startedAt, result: { ok: true, builtAt: frozen.builtAt, nCells: frozen.nCells, coverage: frozen.coverage, splitDate: frozen.splitDate, portfolio: book.portfolio ?? null, survivors: book.survivors ? { count: book.survivors.count, total: book.survivors.total } : null } });
+      const done = { state: 'done', startedAt, builtAt: frozen.builtAt, nCells: frozen.nCells, coverage: frozen.coverage, splitDate: frozen.splitDate, fromCache, pairs: Object.keys(touchesByPair).length };
+      lv2Jobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...done } });
+      await _setLearnStatus(done);
     } catch (e) {
       console.error('[levels-v2/learn]', e?.message, e?.stack ?? '');
-      lv2Jobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });
-    }
+      const er = { state: 'error', error: e?.message || String(e), startedAt };
+      lv2Jobs.set(jobId, { status: 'error', ...er }); await _setLearnStatus(er);
+    } finally { _v2LearnRunning = false; }
   })();
   res.json({ ok: true, jobId });
+});
+
+// Stable learn status (no jobId) — survives page refresh / server restart.
+app.get('/api/levels-v2/learn-status', async (req, res) => {
+  try {
+    const raw = await kv.get('policy_v2_status');
+    const status = raw ? JSON.parse(raw) : null;
+    // A 'running' status older than 20 min with no live job = the run died; report stalled.
+    if (status?.state === 'running' && !_v2LearnRunning && Date.now() - (status.at || 0) > 20 * 60_000) status.state = 'stalled';
+    res.json({ ok: true, status, running: _v2LearnRunning });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.get('/api/levels-v2/status/:jobId', (req, res) => {
   const job = lv2Jobs.get(req.params.jobId);

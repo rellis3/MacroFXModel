@@ -48,6 +48,17 @@ levelsV2Learn.freezePolicy → KV `policy_v2`            │
 The runtime **never fits a policy** — it loads the frozen artifact. Re-learn
 deliberately (a fresh M1 run) and version the file.
 
+**Robust learn (resumable + cached).** The learn job is heavy (26 pairs of M1), so:
+per-pair extracted touches are **cached in KV** (`v2_touch_<pair>`, keyed by an opts
+signature, 7-day TTL) — a re-run or a restart **resumes from cache** instead of
+reloading all M1 (the slow, OOM-prone part); the freeze uses `buildPolicy` directly
+(**no 1000× Monte-Carlo/bootstrap** — that CPU spike was getting the job killed);
+and progress is written to KV `policy_v2_status` so the page (`GET
+/api/levels-v2/learn-status`) shows it **across page refreshes / server restarts**,
+decoupled from the in-memory jobId. One learn runs at a time (re-clicks are
+idempotent), and a `running` status with no live job >20 min reports as `stalled`
+so you can resume. Once a policy exists it persists — you never re-run to view it.
+
 ## The confidence decision (`levelConfidenceCore.decide`)
 
 For a touched level it answers the three `ENTRY_ZONE_CONFIDENCE.md` questions:
