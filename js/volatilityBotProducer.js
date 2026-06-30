@@ -49,9 +49,16 @@ export async function refreshVolatilityPlan({
       const bars = await fetchD1(inst.oanda, count);
       if (!bars?.length) { onLog(`${pair}: no D1 bars — skipped`); fail++; continue; }
       const sig = sigmaSeries(bars, inst.assetClass);
-      const sigma = Array.isArray(sig) ? sig[sig.length - 1] : sig;     // today's daily σ (frac)
+      // volSigmaSeries returns a Float64Array — Array.isArray() is FALSE for typed
+      // arrays, so `sig` itself (not its last element) would leak through and
+      // `sigma > 0` would be false, silently skipping EVERY pair. Accept both
+      // plain arrays and typed arrays; treat anything else as a scalar.
+      const isSeries = Array.isArray(sig) || ArrayBuffer.isView(sig);
+      const sigma = isSeries ? sig[sig.length - 1] : sig;               // today's daily σ (frac)
       const open = bars[bars.length - 1]?.open;                         // today's forming-day open
-      if (!(sigma > 0) || !(open > 0)) { onLog(`${pair}: bad σ/open — skipped`); fail++; continue; }
+      if (!(sigma > 0) || !(open > 0)) {
+        onLog(`${pair}: bad σ/open — skipped (σ=${sigma}, open=${open}, bars=${bars.length})`); fail++; continue;
+      }
       // Key by the lowercased pair: buildVolatilityPlan lowercases its survivor
       // list before looking up volByPair, so a survivor name that isn't already
       // lowercase (e.g. an upper-case R2 parquet name) would otherwise miss the

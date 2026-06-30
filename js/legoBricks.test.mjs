@@ -332,12 +332,15 @@ await (async () => {
   const plan = await refreshVolatilityPlan({
     getBook: async () => book,
     fetchD1: async (sym) => [{ open: sym.includes('JPY') ? 150 : 1.10, high: 1, low: 1, close: 1 }],  // open = last bar
-    sigmaSeries: () => [0.006],
+    // Float64Array — the REAL volSigmaSeries returns a typed array; the producer
+    // must take its last element (Array.isArray() is false for typed arrays).
+    sigmaSeries: () => Float64Array.from([0.005, 0.006]),
     kvPut: async (k, v) => { written = { k, v }; },
     resolveInstrument: (p) => ({ oanda: p.toUpperCase().replace(/(...)(...)/, '$1_$2'), assetClass: 'fx', pip: p.includes('jpy') ? 0.01 : 0.0001 }),
     now: () => '2026-06-29T00:00:00Z', stamp: () => 123,
   });
   ok('producer writes the volatility_bot_plan KV key', written?.k === 'volatility_bot_plan');
+  ok('producer prices a typed-array (Float64Array) sigma series', plan.universe.length === 2 && plan.pairs.eurusd?.sigma === 0.006);
   ok('producer plan prices both survivor pairs', plan.universe.length === 2 && plan.universe.includes('usdjpy'));
   ok('producer stamps generatedAt + wraps {data,timestamp}', plan.generatedAt === '2026-06-29T00:00:00Z' && JSON.parse(written.v).timestamp === 123);
   let threw = false;
@@ -351,7 +354,7 @@ await (async () => {
   const planUC = await refreshVolatilityPlan({
     getBook: async () => ({ ...book, survivors:{ pairs:['EURUSD','USDJPY'] } }),
     fetchD1: async (sym) => [{ open: sym.includes('JPY') ? 150 : 1.10, high: 1, low: 1, close: 1 }],
-    sigmaSeries: () => [0.006],
+    sigmaSeries: () => Float64Array.from([0.006]),
     kvPut: async (k, v) => { writtenUC = { k, v }; },
     resolveInstrument: (p) => ({ oanda: p.toUpperCase().replace(/(...)(...)/, '$1_$2'), assetClass: 'fx', pip: p.toLowerCase().includes('jpy') ? 0.01 : 0.0001 }),
     now: () => '2026-06-29T00:00:00Z', stamp: () => 123,

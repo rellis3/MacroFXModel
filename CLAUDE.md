@@ -182,6 +182,31 @@ unless that is explicitly the task.
 - **Validate locally before committing**: `node --check` the engine + `server.js`,
   and unit-test the core on synthetic data (no network needed).
 
+### Environment variables (set in Railway — values live there, never in git)
+
+These are the **names** the server/worker read; the secret **values** are
+configured in the Railway service env (and the Cloudflare worker), never
+committed. If a feature returns auth errors or empty data, check the matching
+var is set in Railway first.
+
+| Var | Used for |
+|---|---|
+| `OANDA_KEY`, `OANDA_ENV`, `OANDA_ACCOUNT_ID` | OANDA D1/M1 + live prices (`fetchD1`, vol-forecast). `OANDA_ENV` = `live`/`practice` — must match the key |
+| `R2_ACCESS_KEY`, `R2_SECRET_KEY`, `R2_BUCKET` | R2 store: M1 parquet + the forecast-analysis dataset / per-line book |
+| `FRED_KEY`, `FINNHUB_KEY`/`FINHUB_KEY`, `TWELVE_KEY`, `NEWS_KEY`, `MYFXBOOK_SESSION` | macro / quotes / news data feeds |
+| `ANT_KEY` | Claude API (AI analysis) |
+| `CF_ACCOUNT_ID`, `CF_API_TOKEN` | Cloudflare API (worker/KV ops) |
+| `KV_WRITE_SECRET` | **opt-in** auth for credential/config KV writes — if set, the dashboard write path must present it (server.js injects it when proxying). Unset ⇒ writes allowed (see `_worker.js`) |
+| `ANALYSER_ADMIN_PASSWORD` | forecast-analyser admin/refresh gate |
+| `VOL_PLAN_UTC_HOUR` / `VOL_PLAN_UTC_MIN` | when the volatility-bot daily plan refreshes (default 23:05 UTC) |
+| `VOL_FORECAST_UTC` | when the vol-forecast recompute runs |
+
+> The volatility-bot plan producer recomputes σ from OANDA D1 via
+> `volSigmaSeries` (the backtest's exact math) — **not** `/api/vol-forecast`,
+> whose correction constants are a flagged drift. The plan's lines must be
+> bit-identical to the per-line book's, so the producer never sources the live
+> forecast. Don't "simplify" it to read `/api/vol-forecast`.
+
 ## Anti-patterns (do not do)
 
 - Copying the vol math or the fill walker into a new file.
