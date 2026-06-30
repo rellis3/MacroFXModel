@@ -15,7 +15,7 @@
 import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
-import { pipSize, oandaSymbol } from './instrumentRegistry.js';
+import { pipSize, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
 import { extractTouches, runPerLine, runRigor, runSensitivity, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { deflatedSharpe } from './backtestStats.js';
@@ -34,15 +34,34 @@ export function assetClassFor(pair) {
   return 'fx';
 }
 
+// Collapse parquet names that are the SAME instrument so the book doesn't
+// double-count one (e.g. 'spx' AND 'spx500' both resolve to SPX500_USD; 'dow' AND
+// 'us30' both to US30_USD). Keeps the entry whose name IS the canonical key (so
+// 'spx' over 'spx500', 'dow' over 'us30' — which is also the richer dataset here);
+// unknown names are kept as-is (fail-open). Pure + exported for unit testing.
+export function dedupePairsByInstrument(pairs) {
+  const byKey = new Map();                      // canonicalKey → chosen parquet name
+  const kept  = [];                             // unknown names (no canonical) kept verbatim
+  for (const p of [...new Set(pairs)].sort()) {
+    let key = null;
+    try { key = resolveKey(p); } catch { /* fail-open */ }
+    if (!key) { kept.push(p); continue; }
+    const existing = byKey.get(key);
+    if (!existing || p.toLowerCase() === key) byKey.set(key, p);   // prefer the canonical-named one
+  }
+  return [...byKey.values(), ...kept].sort();
+}
+
 // Discover all M1 pairs on R2 (list m1/*_m1.parquet); fall back to the known list.
+// Deduped by instrument so two parquet names for one symbol aren't both analysed.
 export async function discoverPairs() {
   try {
     const keys  = await listKeys(`${M1_PREFIX}/`);
     const pairs = keys.filter(k => k.endsWith('_m1.parquet'))
       .map(k => k.split('/').pop().replace('_m1.parquet', ''));
-    if (pairs.length) return [...new Set(pairs)].sort();
+    if (pairs.length) return dedupePairsByInstrument(pairs);
   } catch { /* listing not permitted — fall through */ }
-  return Object.keys(M1_DRIVE_IDS).sort();
+  return dedupePairsByInstrument(Object.keys(M1_DRIVE_IDS));
 }
 
 // Forecast-range skill: how well the forecast median/75p range matched the
