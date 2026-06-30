@@ -66,6 +66,23 @@ function compoundedMaxDD(returnsPct) {
 }
 function resample(arr, rng) { const n = arr.length, out = new Array(n); for (let i = 0; i < n; i++) out[i] = arr[(rng() * n) | 0]; return out; }
 function shuffle(arr, rng) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// Stationary (Politis–Romano) block bootstrap: resample CONTIGUOUS blocks of random
+// geometric length (mean `meanBlock`), wrapping at the end. Unlike the IID shuffle
+// (which destroys ordering), this preserves serial correlation / regime clustering —
+// losing days stay clumped — so it does NOT understate clustered tail drawdowns.
+// Geometric block length (vs fixed) keeps the resampled series stationary (no
+// fixed-boundary artifact). Same output length as the input.
+function blockResample(arr, rng, meanBlock) {
+  const n = arr.length, out = new Array(n);
+  if (!n) return out;
+  const p = 1 / Math.max(1, meanBlock);                   // per-step prob of jumping to a new block
+  let idx = (rng() * n) | 0;
+  for (let i = 0; i < n; i++) {
+    out[i] = arr[idx];
+    idx = (rng() < p) ? (rng() * n) | 0 : (idx + 1) % n;  // new random block, or continue the run
+  }
+  return out;
+}
 function skewKurt(a) {
   const n = a.length; if (n < 3) return { skew: 0, kurt: 3 };
   const m = mean(a), sd = stdev(a); if (sd < 1e-12) return { skew: 0, kurt: 3 };
@@ -204,13 +221,23 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252, mc
   // hot rigor sub-calls). The headline maxDD above is ONE historical ordering; this
   // shuffles the daily returns to show the drawdown you could have lived through at
   // the same vol. Reported as signed, deepening p50→p95→p99.
-  let mcMaxDD = null;
+  // IID reshuffle (mcMaxDD) destroys ordering, so it understates regime-clustered
+  // tails. The stationary BLOCK bootstrap (mcMaxDDBlock) resamples contiguous runs
+  // so losing streaks stay clumped — the honest, deeper tail to size risk against.
+  // Both are reported so the IID-vs-clustered gap is visible (the reviewer's ask).
+  let mcMaxDD = null, mcMaxDDBlock = null;
   if (mc && scale > 0) {
     const rng = mulberry32(0x9e3779b9);
     const mags = new Array(mcRuns);
     for (let i = 0; i < mcRuns; i++) mags[i] = Math.abs(compoundedMaxDD(shuffle(scaled, rng)));
     const p = pctile(mags, [50, 95, 99]);
     mcMaxDD = { p50: -p.p50, p95: -p.p95, p99: -p.p99 };
+    // Mean block ≈ one trading month, capped so even short samples get several blocks.
+    const blockMean = Math.min(Math.max(5, Math.round(periodsPerYear / 12)), Math.max(5, Math.floor(n / 5)));
+    const bmags = new Array(mcRuns);
+    for (let i = 0; i < mcRuns; i++) bmags[i] = Math.abs(compoundedMaxDD(blockResample(scaled, rng, blockMean)));
+    const bp = pctile(bmags, [50, 95, 99]);
+    mcMaxDDBlock = { p50: -bp.p50, p95: -bp.p95, p99: -bp.p99, blockMean };
   }
   // Probabilistic Sharpe (P true Sharpe > 0) on the per-day Sharpe — penalises
   // short samples, negative skew and fat tails.
@@ -227,6 +254,6 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252, mc
     calmar: maxDD < 0 ? +(cagr / Math.abs(maxDD)).toFixed(2) : 0,
     volTarget: { target: targetVol, cagr: +vtCagr.toFixed(2), maxDD: +vtDD.toFixed(2),
                  calmar: vtDD < 0 ? +(vtCagr / Math.abs(vtDD)).toFixed(2) : 0,
-                 ...(mcMaxDD ? { mcMaxDD } : {}) },
+                 ...(mcMaxDD ? { mcMaxDD } : {}), ...(mcMaxDDBlock ? { mcMaxDDBlock } : {}) },
   };
 }
