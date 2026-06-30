@@ -53,13 +53,29 @@ DEFAULT_CFG = {
 }
 
 # Broker symbol routing (instrument identity stays shared; routing is local).
+# Built-in defaults; the config page can override any of these per broker (the
+# `broker_symbols` map in range_line_bot_config) — read live into _broker_overrides
+# each config refresh, so a symbol change applies WITHOUT a bot restart.
 _BROKER_OVERRIDE = {"de30": "GER40", "uk100": "UK100", "us2000": "US2000", "spx": "SP500",
                     "spx500": "SP500", "nq": "USTECH100", "us30": "US30"}
+_broker_overrides: dict = {}                    # mutated in place from config (do not reassign)
+
+
+def _apply_broker_symbols(cfg: dict) -> None:
+    """Refresh the runtime broker-symbol overrides from config (blank values ignored
+    → fall back to the built-in default). Mutates the shared dict so the resolver
+    the broker already holds sees the change."""
+    _broker_overrides.clear()
+    for k, v in (cfg.get("broker_symbols") or {}).items():
+        if v and str(v).strip():
+            _broker_overrides[str(k).lower()] = str(v).strip()
 
 
 def _broker_sym(pair: str) -> str:
     p = pair.lower()
-    if p in _BROKER_OVERRIDE:
+    if p in _broker_overrides:                  # user's per-broker override wins
+        return _broker_overrides[p]
+    if p in _BROKER_OVERRIDE:                    # built-in default
         return _BROKER_OVERRIDE[p]
     try:
         return I.mt5_symbol(pair) or pair.upper()
@@ -204,6 +220,7 @@ def run(base_url: str, force_live: bool) -> None:
     except Exception as e:
         log.error(f"could not reach dashboard at {base_url} to read config: {e} — exiting")
         return
+    _apply_broker_symbols(cfg)
     if force_live:
         cfg["paper_mode"] = False
     broker, paper = make_broker(cfg)
@@ -257,6 +274,7 @@ def run(base_url: str, force_live: bool) -> None:
         if nowt - last_status >= cfg.get("status_secs", 30):
             try:
                 cfg = _deep_merge(DEFAULT_CFG, kv.get_json("range_line_bot_config") or cfg)
+                _apply_broker_symbols(cfg)            # pick up broker-symbol edits live
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:

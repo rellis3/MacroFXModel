@@ -6,7 +6,7 @@ import sys
 
 from pylego.broker.paper import PaperBroker
 from range_line_bot.engine import RangeSession
-from range_line_bot.range_line_bot import _manage_chandeliers, size_for
+from range_line_bot.range_line_bot import _manage_chandeliers, size_for, _apply_broker_symbols, _broker_sym
 
 _p = _f = 0
 def ok(name, cond):
@@ -49,6 +49,15 @@ br.set_price("nq", 116.0); _manage_chandeliers(positions, br, PLAN, {"paper_mode
 ok("chandelier closes when price retraces past peak-0.5*rung", len(br.serialize_open_positions()) == 0)
 ok("closed trade recorded for the journal/positions table", len(br.serialize_closed_trades()) == 1)
 ok("local position state cleared", not positions)
+
+print("[broker symbol overrides]")
+_apply_broker_symbols({"broker_symbols": {"nq": "USTEC", "us30": "  ", "spx500": "US500"}})
+ok("config override wins (nq → USTEC)", _broker_sym("nq") == "USTEC")
+ok("blank override falls back to built-in default (us30 → US30)", _broker_sym("us30") == "US30")
+ok("override applies to another index (spx500 → US500)", _broker_sym("spx500") == "US500")
+_apply_broker_symbols({})                       # cleared → all built-in defaults
+ok("cleared overrides → built-in default (nq → USTECH100)", _broker_sym("nq") == "USTECH100")
+ok("non-index resolves via registry/upper (eurusd)", _broker_sym("eurusd").upper() == _broker_sym("eurusd"))
 
 print(f"\n{'✗' if _f else '✓'} {_p} passed, {_f} failed")
 sys.exit(1 if _f else 0)
