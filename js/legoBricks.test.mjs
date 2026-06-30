@@ -18,6 +18,7 @@ import { backtestStats, portfolioStats, deflatedSharpe } from './backtestStats.j
 import { computeBands } from './forecastCore.js';
 import { buildVolatilityPlan } from './volatilityBotPlan.js';
 import { refreshVolatilityPlan } from './volatilityBotProducer.js';
+import { bucketM1IntoSessions } from './forecastAnalyser.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -375,6 +376,27 @@ await (async () => {
   } catch { threwEmpty = true; }
   ok('producer refuses to publish a 0-pair plan', threwEmpty && !wroteEmpty);
 })();
+
+console.log('[bucketM1IntoSessions — midnight Europe/London]');
+{
+  const mk = iso => Math.floor(Date.parse(iso) / 1000);
+  // BST (summer): midnight London = 23:00 UTC. Split must fall at 23:00Z, not 22:00Z.
+  const bst = bucketM1IntoSessions({ n: 4,
+    times:  [mk('2026-06-29T22:30:00Z'), mk('2026-06-29T22:59:00Z'), mk('2026-06-29T23:00:00Z'), mk('2026-06-29T23:30:00Z')],
+    opens:  [1, 2, 3, 4], highs: [1, 2, 3, 4], lows: [1, 2, 3, 4], closes: [1, 2, 3, 4] }, 'Europe/London');
+  ok('BST: 22:30/22:59Z stay in the prior London day', (bst.get('2026-06-29') || []).map(b => b.open).join(',') === '1,2');
+  ok('BST: 23:00Z opens the new London day (session open=3)', (bst.get('2026-06-30') || [])[0]?.open === 3);
+  // GMT (winter): midnight London = 00:00 UTC.
+  const gmt = bucketM1IntoSessions({ n: 3,
+    times:  [mk('2026-01-14T23:30:00Z'), mk('2026-01-15T00:00:00Z'), mk('2026-01-15T08:00:00Z')],
+    opens:  [9, 10, 11], highs: [9, 10, 11], lows: [9, 10, 11], closes: [9, 10, 11] }, 'Europe/London');
+  ok('GMT: 00:00Z opens the new London day (session open=10)', (gmt.get('2026-01-15') || [])[0]?.open === 10);
+  // Default (number) boundary unchanged — still the 22:00 UTC broker day.
+  const utc = bucketM1IntoSessions({ n: 2,
+    times: [mk('2026-06-29T21:59:00Z'), mk('2026-06-29T22:00:00Z')],
+    opens: [1, 2], highs: [1, 2], lows: [1, 2], closes: [1, 2] });
+  ok('default 22:00-UTC boundary still splits at 22:00Z', (utc.get('2026-06-30') || [])[0]?.open === 2);
+}
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
