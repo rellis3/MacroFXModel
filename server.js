@@ -37,8 +37,8 @@ import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
-import { getPerLineBook } from './js/forecastAnalyserStore.js';
-import { fetchD1 as _btFetchD1 } from './js/volBacktestEngine.js';
+import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
+import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
@@ -4363,6 +4363,44 @@ app.get('/api/volatility-bot/plan', async (_req, res) => {
     const parsed = JSON.parse(raw);
     res.json({ ok: true, plan: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Hands-off book rebuild — gap-fill → dataset refresh → rebuild book → plan ──
+// Chains the whole rebuild so it runs itself instead of a manual "Build book" click:
+// top the frozen R2 M1 up to now (m1GapFill via OANDA M1), re-bucket + re-measure
+// the dataset (London sessions), rebuild the per-line book with the LOCKED simple
+// config (runPerLineBook defaults: approachVel, marginPct 0.01 — the honest,
+// walk-forward-validated config, NOT the overfit combo), then refresh the plan.
+// Safe to run NIGHTLY: the book is a full-history pooled IS→OOS model (~22k trades
+// over years), so each night just extends the sample by a day — it does NOT chase
+// recent noise the way a short-lookback model would; the policy is stable
+// night-to-night. The only cost is compute time (a full multi-pair M1 pass).
+let _bookRebuildRunning = false;
+async function _runBookRebuild() {
+  if (_bookRebuildRunning) { console.log('[book-rebuild] already running — skipped'); return; }
+  _bookRebuildRunning = true;
+  const onLog = m => console.log('[book-rebuild]', m);
+  try {
+    const nowSec = Math.floor(Date.now() / 1000);
+    onLog('starting: gap-fill dataset refresh (London sessions)…');
+    await _runAnalyserRefresh({ gapFill: true, fetchCandles: _btFetchM1Range, nowSec, onLog });
+    onLog('rebuilding per-line book (locked config: approachVel, margin 0.01)…');
+    await _runPerLineBook({ onLog });                 // defaults = the locked simple config
+    onLog('refreshing volatility-bot plan…');
+    await _refreshVolatilityPlan();
+    onLog('full rebuild complete');
+  } catch (e) {
+    console.error('[book-rebuild] failed:', e.message);
+  } finally {
+    _bookRebuildRunning = false;
+  }
+}
+// Manual one-click trigger (mirrors the monthly schedule). Registered here, BEFORE
+// the /api/* catch-all, so it isn't swallowed by the worker proxy.
+app.post('/api/volatility-bot/rebuild-book', (_req, res) => {
+  if (_bookRebuildRunning) return res.status(409).json({ ok: false, error: 'rebuild already running' });
+  _runBookRebuild();                                  // fire-and-forget; watch server logs ([book-rebuild])
+  res.json({ ok: true, status: 'started', note: 'gap-fill → dataset → book → plan; watch server logs' });
 });
 
 // ── Text-format export helpers ────────────────────────────────────────────────
@@ -9878,6 +9916,18 @@ if (process.env.OANDA_KEY) {
     try { if (!(await kv.get('volatility_bot_plan'))) { console.log('[volatility-bot] no plan in KV — bootstrap refresh'); await _runVolPlan(); } }
     catch (e) { console.error('[volatility-bot] bootstrap check failed:', e.message); }
   }, 90_000);
+}
+
+// Schedule the NIGHTLY hands-off book rebuild (the route + orchestrator live up
+// with the other /api/volatility-bot routes, before the catch-all). Opt-in via
+// VOL_BOOK_REBUILD=1. Runs at 22:35 UTC by default — just BEFORE the 23:05 plan
+// refresh, so the plan that night is built off the freshly-rebuilt book (and the
+// 23:05 plan refresh still runs as a light safety net if the heavy rebuild fails).
+if (process.env.OANDA_KEY && process.env.VOL_BOOK_REBUILD === '1') {
+  const hour = Number(process.env.VOL_BOOK_REBUILD_UTC_HOUR ?? 22);
+  const min  = Number(process.env.VOL_BOOK_REBUILD_UTC_MIN ?? 35);
+  _scheduleDailyUtc(hour, min, _runBookRebuild);
+  console.log(`[book-rebuild] NIGHTLY auto-rebuild enabled (${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC)`);
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
