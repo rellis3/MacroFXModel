@@ -412,5 +412,26 @@ console.log('[bucketM1IntoSessions — midnight Europe/London]');
   ok('default 22:00-UTC boundary still splits at 22:00Z', (utc.get('2026-06-30') || [])[0]?.open === 2);
 }
 
+console.log('[backtestStats — drawdown honesty]');
+{
+  // +5% peak, then -9% over three days (trough), then recovery. The compounded
+  // max drawdown is the peak-to-trough fall as a % of the peak equity.
+  const daily = [1, 1, 1, 1, 1, -3, -3, -3, 2, 2, 2, 2, 2, 2];
+  const ps = portfolioStats(daily, { mc: true });
+  ok('portfolio maxDD is compounded peak-to-trough (~-8.7%)', ps.maxDD < -8 && ps.maxDD > -9.5);
+  ok('CAGR and maxDD share the compounded basis (calmar = cagr/|maxDD|)',
+     Math.abs(ps.calmar - ps.cagr / Math.abs(ps.maxDD)) < 0.1);
+  ok('portfolio MC drawdown deepens p50→p95→p99 (worst-case correct)',
+     ps.volTarget.mcMaxDD.p99 <= ps.volTarget.mcMaxDD.p95 + 1e-9 &&
+     ps.volTarget.mcMaxDD.p95 <= ps.volTarget.mcMaxDD.p50 + 1e-9);
+  ok('portfolio MC absent unless requested', portfolioStats(daily).volTarget.mcMaxDD === undefined);
+
+  const bs = backtestStats(daily, [], { mcRuns: 500, bootRuns: 200 });
+  ok('per-trade MC drawdown deepens p50→p99 (inversion fixed)',
+     bs.montecarlo.maxDD.p99 <= bs.montecarlo.maxDD.p50 + 1e-9);
+  ok('per-trade MC worst-case is at least the historical maxDD depth',
+     Math.abs(bs.montecarlo.maxDD.p99) >= Math.abs(bs.maxDD) - 1e-9);
+}
+
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);

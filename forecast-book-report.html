@@ -143,7 +143,8 @@ function render(b){
     ${kpi(fmt(svp.sharpe,2),'Sharpe (annualised)',svp.sharpe<0)}
     ${kpi(svp.psr!=null?pct(svp.psr*100,0):'—','Prob. Sharpe &gt; 0',svp.psr<0.95)}
     ${kpi(pct(svt.cagr,1),`Return p.a. @ ${svt.target||10}% vol`,svt.cagr<0)}
-    ${kpi(pct(svt.maxDD,1),'Max drawdown',true)}
+    ${kpi(pct(svt.maxDD,1),'Max drawdown (historical)',true)}
+    ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC p95 @ ${svt.target||10}% vol)`,true):''}
     ${kpi(fmt(svt.calmar,2),'Calmar',svp.calmar<0)}
     ${kpi(pct(svp.annVol,1),'Realised volatility')}
     ${kpi(fmt(svp.avgTradesPerDay,1),'Avg trades / day')}
@@ -174,12 +175,18 @@ function render(b){
     </div>
     <div>
       <h3>Monte-Carlo (path/ordering risk)</h3>
-      ${mc?`<table><tbody>
-        <tr><td>Max drawdown %</td><td class="mut">p50</td><td class="neg">${fmt(mc.maxDD.p50,1)}</td></tr>
-        <tr><td></td><td class="mut">p95</td><td class="neg">${fmt(mc.maxDD.p95,1)}</td></tr>
-        <tr><td></td><td class="mut">p99</td><td class="neg">${fmt(mc.maxDD.p99,1)}</td></tr>
+      ${svt.mcMaxDD?`<table><tbody>
+        <tr><td>Max drawdown % @ ${svt.target||10}% vol</td><td class="mut">p50</td><td class="neg">${fmt(svt.mcMaxDD.p50,1)}</td></tr>
+        <tr><td></td><td class="mut">p95</td><td class="neg">${fmt(svt.mcMaxDD.p95,1)}</td></tr>
+        <tr><td></td><td class="mut">p99 (worst)</td><td class="neg">${fmt(svt.mcMaxDD.p99,1)}</td></tr>
       </tbody></table>
-      <div class="cap">Trade order shuffled 1,000× — worst-case drawdown you might have lived through with the same trades arriving differently.</div>`:'<div class="cap">n/a</div>'}
+      <div class="cap">Daily portfolio returns reshuffled 1,000× at the headline ${svt.target||10}% vol — same basis as the headline drawdown, so this is the realistic worst-case ordering (p99 = deepest). The historical −${fmt(Math.abs(svt.maxDD||0),1)}% was one benign path.</div>`
+      :(mc?`<table><tbody>
+        <tr><td>Max drawdown % (per-trade)</td><td class="mut">p50</td><td class="neg">${fmt(mc.maxDD.p50,1)}</td></tr>
+        <tr><td></td><td class="mut">p95</td><td class="neg">${fmt(mc.maxDD.p95,1)}</td></tr>
+        <tr><td></td><td class="mut">p99 (worst)</td><td class="neg">${fmt(mc.maxDD.p99,1)}</td></tr>
+      </tbody></table>
+      <div class="cap">Trade order shuffled 1,000× — worst-case drawdown you might have lived through with the same trades arriving differently (p99 = deepest).</div>`:'<div class="cap">n/a</div>')}
     </div>
   </div>
 
