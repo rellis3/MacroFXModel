@@ -137,13 +137,23 @@ def build_status(cfg: dict, broker, plan, paper: bool, trackers: dict | None = N
 
 def run(base_url: str, force_live: bool) -> None:
     kv = KvClient(base_url)
-    cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or {})
+    # KvClient already retries transient blips; if the dashboard is still
+    # unreachable at startup, exit with a clear message rather than a traceback.
+    try:
+        cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or {})
+    except Exception as e:
+        log.error(f"could not reach dashboard at {base_url} to read config: {e} — exiting")
+        return
     if force_live:
         cfg["paper_mode"] = False
     broker, paper = make_broker(cfg)
 
     if not paper:
-        creds = kv.get_json("volatility_bot_credentials") or {}
+        try:
+            creds = kv.get_json("volatility_bot_credentials") or {}
+        except Exception as e:
+            log.error(f"could not reach dashboard at {base_url} to read credentials: {e} — exiting")
+            return
         # Credential keys match the config page (_saveCreds): mt5_account/password/server/path.
         # Refuse to start live with no account: MT5's initialize() would otherwise
         # attach to whatever account the terminal is already logged into, silently
@@ -173,7 +183,11 @@ def run(base_url: str, force_live: bool) -> None:
 
         # (a) Session plan — slow. Reset trackers only on a genuinely new plan.
         if nowt - last_plan >= cfg.get("plan_secs", 600) or plan is None:
-            new_plan = kv.get_json("volatility_bot_plan")
+            try:
+                new_plan = kv.get_json("volatility_bot_plan")
+            except Exception as e:
+                log.warning(f"plan fetch failed: {e} — keeping current plan, retrying next cycle")
+                new_plan = None
             if new_plan and new_plan.get("generatedAt") != (plan or {}).get("generatedAt"):
                 plan = new_plan
                 trackers = {}
@@ -201,7 +215,10 @@ def run(base_url: str, force_live: bool) -> None:
 
         # (b) Config + status — medium. Picks up kill-switch / paper↔live promptly.
         if nowt - last_status >= cfg.get("status_secs", 30):
-            cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or cfg)
+            try:
+                cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or cfg)
+            except Exception as e:
+                log.warning(f"config fetch failed: {e} — keeping current config")
             try:
                 kv.put_status("volatility_bot_status", build_status(cfg, broker, plan, paper, trackers))
             except Exception as e:
