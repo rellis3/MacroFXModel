@@ -70,6 +70,13 @@ drift (the failure mode `TRADABILITY_REVIEW.md` warns about).
   vol-stretch (HL75) ≥0.75 was OOS-positive on one window but regime-sensitive.
 - **approachVel does not transfer to range fibs** (spike bucket was the *worst*).
   It was the OOS-proven feature for the σ-forecast lines, not range levels.
+- **No live approach-read beats §13 as a cell key** (full six-feature sweep, see
+  `RANGE_EXTENSION_GUIDE.md §14`). High-variance features (approachVel/approachER/
+  volClimax) *fragment* the cells until the edge dies at cost; low-variance ones
+  (wtState/candleReject/roundNum) sit ≈ on the baseline — wtState *ties* (+0.1
+  Sharpe on fewer trades, noise), candleReject *degrades* it. Uniform per-zone
+  treatment (§13) is confirmed the robust architecture. Open, untested angle: a
+  live read as a non-fragmenting FILTER/sizer on top of the fixed decision.
 - **The problem was construction/independence, not selection.** High-win-rate
   but losing levels proved R:R/exit is the lever, and the headline blow-up was
   the per-touch independence assumption — both now addressed honestly.
