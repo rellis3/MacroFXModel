@@ -7101,18 +7101,32 @@ const RL_LOAD_CONCURRENCY = 4;             // M1 loads in flight (overlaps R2 la
 // and most of the bad-level losers, so they're dropped here. A robust universe cut,
 // NOT a per-(pair×level) veto (which the bad-level scan showed is overfit-prone).
 const RL_STRONG_PAIRS = ['gold', 'audjpy', 'audusd', 'nzdjpy', 'nzdusd', 'usdjpy', 'cadjpy', 'eurjpy', 'gbpjpy', 'euraud', 'eurusd', 'gbpusd', 'usdchf', 'usdcad'];
+// Equity indices — overnight-range → cash-open breakout (same engine, assetClass
+// 'index': sigma params, costs and slippage already defined). M1 must exist in R2
+// as `${key}_m1.parquet`; instruments whose M1 is absent are skipped gracefully.
+// Keys are the system-canonical spellings (NAS100→nas100, SPX500→spx500, DAX→dax,
+// FTSE100→uk100, Dow30→us30, Russell2000→us2000).
+const RL_INDEX_PAIRS = ['nas100', 'spx500', 'dax', 'uk100', 'us30', 'us2000'];
 function _assetClassFor(p) {
   if (p === 'gold' || p.includes('xau')) return 'commodity';
-  if (p === 'nas100' || p === 'nq' || p.includes('spx') || p.includes('us30')) return 'index';
+  if (RL_INDEX_PAIRS.includes(p) || p === 'nq' || p.includes('spx') || p.includes('nas') ||
+      p.includes('us30') || p.includes('us2000') || p.includes('dax') || p.includes('de30') ||
+      p.includes('uk100') || p.includes('ftse') || p.includes('dow')) return 'index';
   return 'fx';
 }
+const RL_KNOWN = new Set([...ASIA_INSTRUMENTS, ...RL_INDEX_PAIRS]);
 app.post('/api/range-line/run', async (req, res) => {
   const b = req.body || {};
   const pair = (b.pair || '').toLowerCase();
-  // Universe: single pair → that pair; else 'strong' → curated strong set, 'all' → everything.
-  const universe = pair ? null : (b.universe === 'strong' ? 'strong' : 'all');
-  const allPairs = universe === 'strong' ? RL_STRONG_PAIRS.filter(p => ASIA_INSTRUMENTS.includes(p)) : ASIA_INSTRUMENTS;
-  const pairs = pair ? [pair].filter(p => ASIA_INSTRUMENTS.includes(p)) : allPairs;
+  // Universe: single pair → that pair; else 'strong' → curated strong set,
+  // 'index' → equity indices, 'all_index' → FX + indices, 'all' → all FX.
+  const universe = pair ? null : (['strong', 'index', 'all_index'].includes(b.universe) ? b.universe : 'all');
+  const allPairs =
+    universe === 'strong'    ? RL_STRONG_PAIRS.filter(p => ASIA_INSTRUMENTS.includes(p)) :
+    universe === 'index'     ? RL_INDEX_PAIRS :
+    universe === 'all_index' ? [...ASIA_INSTRUMENTS, ...RL_INDEX_PAIRS] :
+                               ASIA_INSTRUMENTS;
+  const pairs = pair ? [pair].filter(p => RL_KNOWN.has(p)) : allPairs;
   if (!pairs.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
 
   const opts = {
