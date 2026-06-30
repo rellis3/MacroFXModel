@@ -2836,6 +2836,33 @@ async function loadVbLiveStatus() {
     if (uniEl)  uniEl.textContent  = (st.universe || []).length;
     const pa = document.getElementById('vbPlanAge');
     if (pa) pa.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+    // Per-pair: today's forecast levels the bot pulled + live price.
+    const body = document.getElementById('vbLinesBody');
+    if (body) {
+      const rows = st.lines || [];
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no levels yet — waiting for the daily plan</td></tr>';
+      } else {
+        const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+        const acted = a => (a && a.length) ? a.map(s => s.replace('_', ' ')).join(', ') : '—';
+        // price colour: green if above open, red if below.
+        body.innerHTML = rows.map(r => {
+          const L = r.levels || {}, up = r.price != null && r.open != null && r.price >= r.open;
+          return `<tr>
+            <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+            <td style="padding:5px 10px;text-align:right;color:${r.price==null?'var(--text3)':up?'var(--green)':'var(--red)'}">${d(r.pair, r.price)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${d(r.pair, r.open)}</td>
+            <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL75_up)}</td>
+            <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL50_up)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${d(r.pair, L.OC50_up)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${d(r.pair, L.OC50_dn)}</td>
+            <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL50_dn)}</td>
+            <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL75_dn)}</td>
+            <td style="padding:5px 10px;text-align:left;color:var(--text3)">${acted(r.acted)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
 }
 

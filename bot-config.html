@@ -2821,6 +2821,53 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       </div>
     </div>
 
+    <!-- Today's forecast levels per pair (what the bot pulled) + live price -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#e0a93b">Today's Levels &amp; Live Price</span>
+        <span class="bot-banner-sub" style="margin:0">the bands the bot is watching — Close static off open, Proj-H/L trail the running extreme</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:right">Live</th>
+              <th style="padding:6px 10px;text-align:right">Open</th>
+              <th style="padding:6px 10px;text-align:right">Proj-H/L 75 ↑</th>
+              <th style="padding:6px 10px;text-align:right">Proj-H/L med ↑</th>
+              <th style="padding:6px 10px;text-align:right">Close med ↑</th>
+              <th style="padding:6px 10px;text-align:right">Close med ↓</th>
+              <th style="padding:6px 10px;text-align:right">Proj-H/L med ↓</th>
+              <th style="padding:6px 10px;text-align:right">Proj-H/L 75 ↓</th>
+              <th style="padding:6px 10px;text-align:left">Acted</th>
+            </tr>
+          </thead>
+          <tbody id="vbLinesBody">
+            <tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Run the bot to see today's levels</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- How to run -->
+    <div class="card">
+      <div class="card-title">How to run</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials above.</div>
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Make sure today's plan exists (server publishes it daily ~23:05 UTC; force one now):
+curl -X POST &lt;dashboard-url&gt;/api/volatility-bot/refresh-plan
+#    check it landed:
+curl &lt;dashboard-url&gt;/api/volatility-bot/plan
+
+# 2) Paper trade (default) — point --url at this dashboard:
+python volatility_bot/volatility_bot.py --url &lt;dashboard-url&gt;
+#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python volatility_bot/volatility_bot.py)
+
+# 3) Go live on MT5 (after saving credentials above + a clean paper run):
+python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
+      <div class="bot-banner-sub" style="margin-top:8px"><b>Pairs:</b> leave the <b>Pairs override</b> blank to trade the full survivor universe from the plan, or list specific pairs (e.g. <code>eurusd, usdjpy, us2000</code>) to trade only those — it's not all-or-nothing. <b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>) and network to the dashboard; live prices come from MT5, so paper fills need an MT5 terminal (or the dashboard-price fallback if enabled).</div>
+    </div>
+
     <div class="grid">
       <!-- ── Controls ─────────────────────────────────────────────────────── -->
       <div class="card">

@@ -15,7 +15,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { INSTRUMENTS, INSTRUMENT_KEYS, resolveKey } from '../js/instrumentRegistry.js';
+import { INSTRUMENTS, INSTRUMENT_KEYS, resolveKey, EXTRA_ALIASES } from '../js/instrumentRegistry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
@@ -35,6 +35,10 @@ function buildAliases() {
     add(r.oanda.replace('_', ''));
     add(r.yahoo);
     add(r.mt5);
+  }
+  // Same extra short-name aliases the JS registry applies (spx500→spx, de30→dax…).
+  for (const [a, key] of Object.entries(EXTRA_ALIASES)) {
+    if (INSTRUMENTS[key] && !(a in aliases)) aliases[a] = key;
   }
   return aliases;
 }

@@ -426,6 +426,11 @@
     "us2000_usd": "rut",
     "us2000usd": "rut",
     "^rut": "rut",
-    "us2000": "rut"
+    "us2000": "rut",
+    "spx500": "spx",
+    "us500": "spx",
+    "de30": "dax",
+    "nas100": "nq",
+    "ndx": "nq"
   }
 }

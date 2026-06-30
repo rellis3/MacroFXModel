@@ -62,6 +62,12 @@ const REG = {
 };
 
 // Alias index: any known symbol form → canonical key. Built once.
+// Short names used by the per-line book / vol-forecast export that aren't a venue
+// field on the canonical record (e.g. 'spx500'→spx, 'de30'→dax). Without these the
+// volatility-bot producer would silently drop those index survivors. Exported so
+// the JS→JSON generator applies the SAME extras (one source, both languages).
+export const EXTRA_ALIASES = { spx500: 'spx', us500: 'spx', de30: 'dax', ger40: 'dax', nas100: 'nq', ndx: 'nq' };
+
 const ALIAS = (() => {
   const m = new Map();
   for (const [key, r] of Object.entries(REG)) {
@@ -73,6 +79,9 @@ const ALIAS = (() => {
     add(r.oanda.replace('_', ''));
     add(r.yahoo);
     add(r.mt5);
+  }
+  for (const [a, key] of Object.entries(EXTRA_ALIASES)) {
+    if (REG[key] && !m.has(a)) m.set(a, key);
   }
   return m;
 })();
