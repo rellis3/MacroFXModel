@@ -7116,7 +7116,7 @@ app.post('/api/range-line/run', async (req, res) => {
 
   const opts = {
     sources:    Array.isArray(b.sources) ? b.sources : (b.sources ? [b.sources] : ['asia', 'monday']),
-    conditions: Array.isArray(b.conditions) ? b.conditions : (b.conditions === 'none' ? [] : ['approachVel']),
+    conditions: Array.isArray(b.conditions) ? b.conditions : (!b.conditions || b.conditions === 'none' ? [] : [b.conditions]),
     minN:       parseInt(b.minN) || 50,
     splitFrac:  parseFloat(b.splitFrac) || 0.6,
     marginPct:  parseFloat(b.marginPct) || 0,
