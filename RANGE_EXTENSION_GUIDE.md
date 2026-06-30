@@ -456,3 +456,54 @@ into the working spec.**
 FILTER / position-sizer **on top of** the fixed §13 decision (gate participation
 or size, don't split the cell). That's a different mechanism — not a cell key —
 and remains open if a future run wants it.
+
+---
+
+## 15. Indices — the strategy TRANSFERS, and is STRONGER on equity indices ✅
+
+> **Does the §13 range-line spec work beyond FX?** → **Yes — and the US equity
+> index basket is a better, more cost-robust book than FX.**
+
+Same engine, same §13 spec (full ladder, fade+follow, one held position/day,
+chandelier trail), just a different instrument class. The analyser is asset-class
+aware (`ASSET_PARAMS.index`, index cost/slip), so this was plumbing, not a rewrite
+(universe added in the index PR; range window set to London midnight–6am).
+
+**Honest single-instrument unit** (one index at a time — *not* the pooled book,
+which is the same cross-pair lie §1.4 warns about; the all-6-pooled figure was an
+inflated +9.75 @2×). Held chandelier, London BST window, sorted by the cost-stressed
+**@3×** column:
+
+| Instrument | @2× | **@3×** | Trades/day | Win% | Payoff | MaxDD | 1×→3× decay |
+|---|---|---|---|---|---|---|---|
+| **NASDAQ** | +7.98 | **+7.34** | 2.6 | 53.2% | 4.39 | −1.6% | −1.3 |
+| **Russell2000** | +7.42 | **+6.58** | 2.4 | 54.1% | 3.97 | −3.6% | −1.7 |
+| **Dow30** | +7.17 | **+6.28** | 2.2 | 55.2% | 4.52 | −1.4% | −1.8 |
+| **S&P500** | +6.71 | **+5.84** | 2.6 | 49.8% | 3.97 | −2.0% | −1.75 |
+| **DAX** | +6.45 | **+5.33** | 2.7 | 50.0% | 3.74 | −2.5% | −2.25 |
+| _eurusd (London, §13)_ | _+6.15_ | _+4.76_ | 2.3 | 53.6% | 3.83 | −1.9% | −2.8 |
+| FTSE100 | +4.53 | +2.62 | 2.7 | 47.2% | 3.06 | −2.4% | −3.8 |
+
+**Findings:**
+- **5 of 6 indices beat eurusd at honest 3× cost.** The US basket (NASDAQ, Russell,
+  Dow, S&P) all clear +5.8 @3×; DAX is solid; **FTSE100 is the laggard** (drop or
+  treat as marginal — lowest win%, steepest decay).
+- **The structural edge is cost-robustness.** Indices decay only ~1.3–1.8 Sharpe
+  across 3× cost vs eurusd's −2.8. An index moves hundreds of points while the
+  spread is ~1–2, so friction is a tiny fraction of each move → much less of the
+  §1.5 fill-optimism residual. NASDAQ is still **+7.34 at 3× cost** — the most
+  "survives reality" number in this whole investigation.
+- **Rigor is a clean sweep on all three US majors tested** (NASDAQ / Russell / Dow):
+  **OOS÷IS ≥ 1.0** (no overfit decay — OOS ≥ IS), **DSR 100%**, **every year green**,
+  **every walk-forward fold green**, cost-stress positive to 3×. Three independent
+  confirmations, not one lucky instrument.
+
+**Caveat:** index cost is modelled at `DEFAULT_COST_PCT.index = 0.010` (~1bp);
+real index-CFD round-trip is ~1.3bp, so the **@2–3× columns already bracket
+realistic-plus cost** — and it holds at 3×. Pooling (the +9.75) stays banned as
+the honest unit; trade/judge per instrument.
+
+**Conclusion:** the **US-index basket is a co-headline with (arguably better than)
+the FX range-line book** — same §13 spec, stronger and more cost-robust numbers,
+rigor-clean across three instruments. When live wiring is built (§11), the US index
+basket is the prime target.
