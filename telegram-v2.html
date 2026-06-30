@@ -254,6 +254,23 @@ function renderCards(entries) {
   return cards.length ? `<div class="cards">${cards.join('')}</div>` : '<div class="muted">— policy loaded but no near-price zones right now —</div>';
 }
 
+// Persistent "why 0 zones" panel — the refresh result's reason map + per-pair detail.
+function renderZeroDiag(j) {
+  const reasons = Object.entries(j.byReason || {}).map(([k, v]) => `${k}: ${v}`).join(' · ');
+  const rows = Object.entries(j.perPair || {}).slice(0, 30)
+    .map(([sym, p]) => `<tr><td class="mono">${sym}</td><td class="mono">${p.n}</td><td class="mono cell">${p.reason}</td></tr>`).join('');
+  $('entries').innerHTML = `
+    <div style="margin-bottom:8px;color:var(--amb)">Refresh produced <b>0 zones</b> across ${j.pairsTotal} pairs. Reasons: <span class="mono">${reasons || '—'}</span></div>
+    <div class="muted" style="margin-bottom:8px;">
+      <b>no-near-levels</b> = no ladder level within proximity of price (sparse half-range ladder / price away) ·
+      <b>near-all-skip</b> = levels near but the policy cell is skip/unseen ·
+      <b>near-all-na</b> = near but velocity bucket couldn't compute ·
+      <b>no-ladders</b> = Asia/Monday range not forming ·
+      <b>no-M5-bars</b> = OANDA access
+    </div>
+    <table><thead><tr><th>Pair</th><th>n</th><th>Reason (with counts)</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 function renderEntries(meta, entries) {
   _lastEntries = entries || {};
   const pairs = Object.keys(_lastEntries);
@@ -407,10 +424,13 @@ $('btnRefresh').onclick = async () => {
   $('btnRefresh').disabled = true; setStatus('refreshing live entries…', 'var(--amb)');
   try {
     const r = await fetch('/api/levels-v2/refresh', { method: 'POST' }); const j = await r.json();
+    await loadCurrent(true);   // refresh policy/ledger QUIETLY so it doesn't stomp the diagnostic below
     if (!j.ok && /no policy/i.test(j.error || '')) setStatus('⚠ No policy yet — click “① Learn policy” first and wait for it to finish.', 'var(--amb)');
-    else if (j.ok && j.totalEntries === 0) setStatus(`refreshed but 0 zones · ${j.pairsWithEntries}/${j.pairsTotal} pairs · reasons ${JSON.stringify(j.byReason)}`, 'var(--amb)');
-    else setStatus(j.ok ? `refreshed · ${j.totalEntries} zones across ${j.pairsWithEntries}/${j.pairsTotal} pairs` : ('refresh: ' + (j.error || '?')), j.ok ? 'var(--grn)' : 'var(--red)');
-    await loadCurrent();
+    else if (!j.ok) setStatus('refresh failed: ' + (j.error || '?'), 'var(--red)');
+    else if (j.totalEntries === 0) {
+      setStatus(`0 zones across ${j.pairsTotal} pairs — see panel for why`, 'var(--amb)');
+      renderZeroDiag(j);   // persistent diagnostic in the zones panel
+    } else setStatus(`refreshed · ${j.totalEntries} zones across ${j.pairsWithEntries}/${j.pairsTotal} pairs`, 'var(--grn)');
   } catch (e) { setStatus('refresh error: ' + e.message, 'var(--red)'); }
   $('btnRefresh').disabled = false;
 };
