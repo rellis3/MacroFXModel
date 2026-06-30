@@ -131,31 +131,39 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
     // M1 for the approach path (matches the offline learner's M1 bars so the
     // approachVel bucket — velWin=15 → 15 min — is comparable to the learned cell;
     // feeding M5 made every live touch read '1·grind'). M5/M30 for the ranges, D for σ.
+    // M1 (approach path) and D (σ) are OPTIONAL — a failing/empty one must NOT
+    // zero out the pair (that was the "no zones" bug). M5 (ladders) is required.
     const [bars1m, bars5m, bars30m, barsD] = await Promise.all([
-      fetchBars(sym, 'M1', 900),
-      fetchBars(sym, 'M5', 1500),
-      fetchBars(sym, 'M30', 500),
+      fetchBars(sym, 'M1', 900).catch(() => []),
+      fetchBars(sym, 'M5', 1500).catch(() => []),
+      fetchBars(sym, 'M30', 500).catch(() => []),
       fetchBars(sym, 'D', 120).catch(() => []),
     ]);
-    if (!bars5m.length || !bars1m.length) return null;
+    if (!bars5m.length) return { n: 0, reason: 'no-M5-bars' };
 
     const ar = asiaRange(bars5m), mr = mondayRange(bars30m);
     const ladders = [];
     if (ar) ladders.push({ srcTag: 'A', low: ar.low, high: ar.high });
     if (mr) ladders.push({ srcTag: 'M', low: mr.low, high: mr.high });
-    if (!ladders.length) return null;
+    if (!ladders.length) return { n: 0, reason: 'no-ladders' };
 
-    // Daily σ for approachVel units (forecastCore).
+    // Daily σ for approachVel units (forecastCore). If daily bars are unavailable,
+    // fall back to a σ estimated from M5 returns so velocity can still bucket
+    // (sigma=0 → every cell reads 'na' → zero zones).
     const d1 = barsD.map(b => ({ open: b.open, high: b.high, low: b.low, close: b.close }));
     const sigD = d1.length >= 20 ? volSigmaSeries(d1, ac) : [];
-    const sigma = sigD.length ? (sigD[sigD.length - 1] || 0) : 0;
+    let sigma = sigD.length ? (sigD[sigD.length - 1] || 0) : 0;
+    let sigmaFallback = false;
+    if (!(sigma > 0)) { sigma = fallbackSigmaFromM5(bars5m); sigmaFallback = sigma > 0; }
+    if (!(sigma > 0)) return { n: 0, reason: 'no-sigma' };
 
     const price = await fetchPrice(sym);
-    if (price == null) return null;
+    if (price == null) return { n: 0, reason: 'no-price' };
 
-    // Recent intraday path into the level = current session's M1 bars (oldest-first),
-    // SAME resolution the offline policy was learned on.
-    const sessionBars = bars1m.slice(-Math.min(bars1m.length, 900));   // ~15h of M1
+    // Approach path = M1 (matches the offline learner); fall back to M5 if M1 is
+    // unavailable so a missing M1 only degrades velocity granularity, not coverage.
+    const approachBars = bars1m.length ? bars1m : bars5m;
+    const sessionBars = approachBars.slice(-Math.min(approachBars.length, 900));
     const open = sessionBars[0].open;
     const tf = createTouchFeatures(opts.touchCfg);
 
@@ -184,7 +192,7 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
     if (ledgerRef) {
       const now = Date.now();
       ledgerRef.ledger = recordEntries(ledgerRef.ledger, sym, payload, now, opts.ledger);
-      ledgerRef.ledger = resolvePair(ledgerRef.ledger, sym, bars1m, now, opts.ledger);
+      ledgerRef.ledger = resolvePair(ledgerRef.ledger, sym, approachBars, now, opts.ledger);
     }
 
     // Telegram alerts (v2's OWN config + cooldowns; alerts only, never trades).
@@ -199,12 +207,24 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       }
     }
 
-    console.log(`[LEVELS-V2] ${sym}: ${payload.length} entries (${ladders.map(l => l.srcTag).join('+')}), ${Date.now() - t0}ms`);
-    return payload.length;
+    console.log(`[LEVELS-V2] ${sym}: ${payload.length} entries (${ladders.map(l => l.srcTag).join('+')}${bars1m.length ? '' : ' M5-approach'}${sigmaFallback ? ' σ-fallback' : ''}), ${Date.now() - t0}ms`);
+    return { n: payload.length, reason: payload.length ? 'ok' : 'no-near-zones', sigmaFallback, m1: bars1m.length > 0 };
   } catch (e) {
     console.error(`[LEVELS-V2] ${sym} error:`, e.message);
-    return null;
+    return { n: 0, reason: 'error', error: e.message };
   }
+}
+
+// Rough daily σ (fraction of price) from M5 close-to-close returns, for when daily
+// bars are unavailable. ~288 M5 bars/day → scale the per-bar stdev to a day.
+function fallbackSigmaFromM5(bars5m) {
+  const closes = bars5m.slice(-600).map(b => b.close).filter(c => c > 0);
+  if (closes.length < 20) return 0;
+  const rets = [];
+  for (let i = 1; i < closes.length; i++) rets.push(Math.log(closes[i] / closes[i - 1]));
+  const m = rets.reduce((s, x) => s + x, 0) / rets.length;
+  const v = rets.reduce((s, x) => s + (x - m) ** 2, 0) / rets.length;
+  return Math.sqrt(v) * Math.sqrt(288);
 }
 
 // ── Refresh all pairs ───────────────────────────────────────────────────────
@@ -255,7 +275,17 @@ export async function refreshAllPairsV2(pairs, opts = {}) {
     try { await kv.put('ledger_v2', JSON.stringify({ data: ledgerRef.ledger, timestamp: Date.now() })); } catch {}
   }
 
-  const ok = Object.values(results).filter(v => v != null).length;
-  console.log(`[LEVELS-V2] done — ${ok}/${pairs.length}${ledgerRef ? ` · ledger ${ledgerRef.ledger.length}` : ''}`);
-  return { ok: true, results, policyBuiltAt: frozen.builtAt ?? null, ledgerSize: ledgerRef?.ledger.length ?? 0 };
+  // Diagnostics so "no zones" is never a mystery: total entries + why each pair
+  // produced none (no-M5-bars / no-ladders / no-sigma / no-price / no-near-zones / error).
+  const byReason = {};
+  let totalEntries = 0, pairsWithEntries = 0;
+  for (const r of Object.values(results)) {
+    const n = typeof r === 'number' ? r : (r?.n ?? 0);
+    const reason = typeof r === 'number' ? (n ? 'ok' : 'no-near-zones') : (r?.reason ?? 'null');
+    totalEntries += n; if (n > 0) pairsWithEntries++;
+    byReason[reason] = (byReason[reason] || 0) + 1;
+  }
+  console.log(`[LEVELS-V2] done — ${pairsWithEntries}/${pairs.length} pairs with zones · ${totalEntries} entries · reasons ${JSON.stringify(byReason)}`);
+  return { ok: true, policyBuiltAt: frozen.builtAt ?? null, ledgerSize: ledgerRef?.ledger.length ?? 0,
+           totalEntries, pairsWithEntries, pairsTotal: pairs.length, byReason };
 }

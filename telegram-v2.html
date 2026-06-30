@@ -408,7 +408,8 @@ $('btnRefresh').onclick = async () => {
   try {
     const r = await fetch('/api/levels-v2/refresh', { method: 'POST' }); const j = await r.json();
     if (!j.ok && /no policy/i.test(j.error || '')) setStatus('⚠ No policy yet — click “① Learn policy” first and wait for it to finish.', 'var(--amb)');
-    else setStatus(j.ok ? `refreshed${j.ledgerSize != null ? ` · ledger ${j.ledgerSize}` : ''}` : ('refresh: ' + (j.error || '?')), j.ok ? 'var(--grn)' : 'var(--red)');
+    else if (j.ok && j.totalEntries === 0) setStatus(`refreshed but 0 zones · ${j.pairsWithEntries}/${j.pairsTotal} pairs · reasons ${JSON.stringify(j.byReason)}`, 'var(--amb)');
+    else setStatus(j.ok ? `refreshed · ${j.totalEntries} zones across ${j.pairsWithEntries}/${j.pairsTotal} pairs` : ('refresh: ' + (j.error || '?')), j.ok ? 'var(--grn)' : 'var(--red)');
     await loadCurrent();
   } catch (e) { setStatus('refresh error: ' + e.message, 'var(--red)'); }
   $('btnRefresh').disabled = false;
