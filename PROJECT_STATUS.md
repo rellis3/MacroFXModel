@@ -63,6 +63,23 @@ drift (the failure mode `TRADABILITY_REVIEW.md` warns about).
 
 ---
 
+## Reminders / TODO
+
+- **DST on the range-line "London" window.** The range window uses **fixed UTC**
+  hours (`boundaryHour`), no DST. London is **UTC+1 in summer (BST)** and **UTC+0
+  in winter (GMT)**, so for a *true* London midnight–6am:
+  - **Summer (BST, ~late-Mar → late-Oct):** London 00:00 = **23:00 UTC** → set
+    `boundaryHour = 23`.
+  - **Winter (GMT, ~late-Oct → late-Mar):** London 00:00 = **00:00 UTC** → set
+    `boundaryHour = 0` (the current default).
+  - So the shipped default (`0`) is correct **in winter** and **1h late in
+    summer**. When the clocks change (UK: last Sun Oct 2026 → GMT), `0` becomes
+    correct; through this summer use `23` for true London midnight. Permanent fix:
+    a DST-aware "London-anchored" window option (per-bar tz conversion) so nobody
+    has to remember — not yet built.
+
+---
+
 ## Findings already banked (don't re-litigate these)
 
 - **No spatial gate rescues the Asia fade.** grade / vol-stretch / day-type /
