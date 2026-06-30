@@ -50,7 +50,7 @@
         <option value="candleReject">candleReject (rejection)</option>
         <option value="roundNum">roundNum (round number)</option>
       </select></span>
-      <span><label>Universe</label><select id="universe" title="All = 26 pairs; Strong = curated gold+JPY+majors (drops wide-spread exotics)"><option value="all">All pairs</option><option value="strong">Strong only</option></select></span>
+      <span><label>Universe</label><select id="universe" title="All = 26 FX pairs; Strong = curated gold+JPY+majors; Indices = NAS100/SPX500/DAX/FTSE100/Dow30/Russell2000 (needs index M1 in R2); All+indices = both"><option value="all">All FX pairs</option><option value="strong">Strong only</option><option value="index">Indices only</option><option value="all_index">FX + indices</option></select></span>
       <span><label>Max level</label><select id="maxLevel" title="Cap |fib level| — near-mid only drops the rare far extensions"><option value="0">all levels</option><option value="3">≤ 3</option><option value="2">≤ 2 (near-mid)</option><option value="1.5">≤ 1.5</option></select></span>
       <span><label>min N / cell</label><input id="minN" type="number" value="50" min="5" max="500" style="width:64px"></span>
       <span><label>OOS</label><select id="splitFrac"><option value="0.4">40%</option><option value="0.6" selected>40/60</option><option value="0.5">50%</option></select></span>
