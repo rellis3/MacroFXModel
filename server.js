@@ -4412,14 +4412,34 @@ app.post('/api/volatility-bot/rebuild-book', (_req, res) => {
 // running guard, like the book rebuild. Window params (boundaryHour/asiaHrs) match
 // the §15 BST run by default and are stored IN the plan so the bot uses the same
 // window (no backtest/live drift).
-const RL_BOT_BOUNDARY_HOUR = Number(process.env.RANGE_BOT_BOUNDARY_HOUR ?? 23);   // BST London midnight = 23:00 UTC; set 0 for GMT/winter
-const RL_BOT_ASIA_HRS      = Number(process.env.RANGE_BOT_ASIA_HRS ?? 6);
+const RL_BOT_ASIA_HRS = Number(process.env.RANGE_BOT_ASIA_HRS ?? 6);
+// The Asia range MUST be London midnight–6am. The data is UTC, so the boundary in
+// UTC depends on DST: London 00:00 = 23:00 UTC in BST (summer) / 00:00 UTC in GMT
+// (winter). Compute it from the UK clock-change rule (forward 01:00 UTC last Sun
+// March, back 01:00 UTC last Sun October) so it is ALWAYS true London midnight with
+// nothing to remember. RANGE_BOT_BOUNDARY_HOUR overrides only for testing.
+function _lastSundayUTC(year, monthIdx) {                 // monthIdx: 2=Mar, 9=Oct (both 31 days)
+  const d = new Date(Date.UTC(year, monthIdx, 31, 1, 0, 0));
+  d.setUTCDate(31 - d.getUTCDay());                       // step back to the last Sunday
+  return d;
+}
+function _ukIsBST(now = new Date()) {
+  const y = now.getUTCFullYear();
+  return now >= _lastSundayUTC(y, 2) && now < _lastSundayUTC(y, 9);
+}
+function _rlBoundaryHour(now = new Date()) {
+  const env = process.env.RANGE_BOT_BOUNDARY_HOUR;
+  if (env != null && env !== '') return Number(env);     // explicit override (testing)
+  return _ukIsBST(now) ? 23 : 0;                          // London midnight in UTC, DST-aware
+}
 let _rlBotPlanRunning = false;
 async function _refreshRangeLineBotPlan() {
   if (_rlBotPlanRunning) { console.log('[range-line-bot] plan refresh already running — skipped'); return null; }
   _rlBotPlanRunning = true;
   const refreshLog = [];
   const onLog = m => { console.log('[range-line-bot]', m); refreshLog.push(m); };
+  const boundaryHour = _rlBoundaryHour();                 // DST-aware London midnight, computed at freeze time
+  onLog(`London-midnight boundary = ${String(boundaryHour).padStart(2, '0')}:00 UTC (${_ukIsBST() ? 'BST' : 'GMT'}); Asia range = London 00:00–${String(RL_BOT_ASIA_HRS).padStart(2, '0')}:00`);
   try {
     // getRecords: load the instrument's M1 → analyser line records using the frozen
     // window. Released after each instrument (only one M1 resident at a time).
@@ -4428,7 +4448,7 @@ async function _refreshRangeLineBotPlan() {
       if (!packed || !packed.n) return null;
       let pip = 0; try { pip = _pipSize(instr) || 0; } catch { pip = 0; }
       const records = recordsForPair(packed, ac, {
-        sources: ['asia', 'monday'], boundaryHour: RL_BOT_BOUNDARY_HOUR, asiaHrs: RL_BOT_ASIA_HRS, pip,
+        sources: ['asia', 'monday'], boundaryHour, asiaHrs: RL_BOT_ASIA_HRS, pip,
       });
       packed = null;                                   // release M1 for GC
       await new Promise(r => setImmediate(r));          // yield
@@ -4440,7 +4460,7 @@ async function _refreshRangeLineBotPlan() {
       kvPut: (k, v) => kv.put(k, v),
       assetClassFor: _assetClassFor,
       pipFor: (k) => { try { return _pipSize(k) || null; } catch { return null; } },
-      boundaryHour: RL_BOT_BOUNDARY_HOUR, asiaHrs: RL_BOT_ASIA_HRS,
+      boundaryHour, asiaHrs: RL_BOT_ASIA_HRS,
       onLog,
     });
     return { plan, log: refreshLog };

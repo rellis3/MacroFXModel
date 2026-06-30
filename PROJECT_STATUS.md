@@ -67,18 +67,19 @@ drift (the failure mode `TRADABILITY_REVIEW.md` warns about).
 
 ## Reminders / TODO
 
-- **DST on the range-line "London" window.** The range window uses **fixed UTC**
-  hours (`boundaryHour`), no DST. London is **UTC+1 in summer (BST)** and **UTC+0
-  in winter (GMT)**, so for a *true* London midnight–6am:
-  - **Summer (BST, ~late-Mar → late-Oct):** London 00:00 = **23:00 UTC** → set
-    `boundaryHour = 23`.
-  - **Winter (GMT, ~late-Oct → late-Mar):** London 00:00 = **00:00 UTC** → set
-    `boundaryHour = 0` (the current default).
-  - So the shipped default (`0`) is correct **in winter** and **1h late in
-    summer**. When the clocks change (UK: last Sun Oct 2026 → GMT), `0` becomes
-    correct; through this summer use `23` for true London midnight. Permanent fix:
-    a DST-aware "London-anchored" window option (per-bar tz conversion) so nobody
-    has to remember — not yet built.
+- **DST on the range-line "London" window — the LIVE BOT now auto-handles it.**
+  The Asia range must be **London midnight–6am**, but the data is UTC so the
+  boundary in UTC depends on DST (London 00:00 = **23:00 UTC** in BST / **00:00
+  UTC** in GMT). The **bot producer** (`server.js _rlBoundaryHour`) now computes
+  the boundary from the UK clock-change rule (forward 01:00 UTC last Sun March,
+  back 01:00 UTC last Sun October) **at each daily freeze** and stores it in the
+  plan; the bot reads it. So it is always true London midnight, year-round, with
+  nothing to set. `RANGE_BOT_BOUNDARY_HOUR` overrides only for testing.
+  - One residual edge: on the changeover Sunday the plan flips at the 06:15 UTC
+    freeze, so the range window for that single ambiguous night may be ±1h until
+    the next freeze. Inherent to the clock-change night; self-heals next day.
+  - The **dashboard backtest** (`range-line-strategy.html`) keeps its manual
+    "Range window" dropdown (BST/GMT) — that's the research UI, not the bot.
 
 ---
 
