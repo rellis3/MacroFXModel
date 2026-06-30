@@ -13,6 +13,8 @@ Two efforts. Both are essentially **done and merged**:
 1. **Lego refactor** — reusable bricks extracted, registered, live bots untouched. ✅
 2. **Range-Line Strategy** — the clean per-line confidence engine on Asia/Monday
    range levels, modules stripped, now scored with **honest** risk math. ✅ built.
+   **Now runs on equity indices too — and the US-index basket is the strongest,
+   most cost-robust book** (see *Findings* + `RANGE_EXTENSION_GUIDE.md §15`).
 
 Everything else (confluence gates, vol-stretch, approachVel, day-type) were
 **experiments that already gave their answer** — see *Findings*. They are not
@@ -94,6 +96,15 @@ drift (the failure mode `TRADABILITY_REVIEW.md` warns about).
   Sharpe on fewer trades, noise), candleReject *degrades* it. Uniform per-zone
   treatment (§13) is confirmed the robust architecture. Open, untested angle: a
   live read as a non-fragmenting FILTER/sizer on top of the fixed decision.
+- **The strategy transfers to indices — and is STRONGER there** (`§15`). On the
+  honest single-instrument unit, **5 of 6 equity indices beat eurusd at 3× cost**:
+  @3× NASDAQ +7.34, Russell +6.58, Dow +6.28, S&P +5.84, DAX +5.33 (eurusd +4.76,
+  FTSE +2.62 the laggard). Indices are far more **cost-robust** (decay ~1.3–1.8 vs
+  FX's 2.8 across 3×) because the point-range dwarfs the spread. Rigor is a clean
+  sweep on all three US majors tested (NASDAQ/Russell/Dow): OOS÷IS ≥1.0, DSR 100%,
+  every year + every fold green. The **US-index basket is a co-headline with /
+  better than the FX book** and the prime live-wiring target. (Pooling stays
+  banned — the all-6 pooled +9.75 was the §1.4 cross-instrument inflation.)
 - **The problem was construction/independence, not selection.** High-win-rate
   but losing levels proved R:R/exit is the lever, and the headline blow-up was
   the per-touch independence assumption — both now addressed honestly.
