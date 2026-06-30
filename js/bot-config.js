@@ -169,11 +169,19 @@ async function kvGet(key) {
 }
 
 async function kvSet(key, data) {
-  await fetch('/api/kv/set', {
+  // Surface write failures (e.g. the worker's 401 auth gate) instead of swallowing
+  // them — a silent failure here showed "Saved ✓" while the value never persisted,
+  // which is how the volatility bot's MT5 credentials looked saved but weren't.
+  const r = await fetch('/api/kv/set', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ key, data, timestamp: Date.now() }),
   });
+  if (!r.ok) {
+    let msg = `save failed (HTTP ${r.status})`;
+    try { const j = await r.json(); if (j?.error) msg = j.error; } catch { /* non-JSON body */ }
+    throw new Error(msg);
+  }
 }
 
 function _deepMerge(base, override) {

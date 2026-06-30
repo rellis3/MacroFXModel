@@ -145,6 +145,15 @@ def run(base_url: str, force_live: bool) -> None:
     if not paper:
         creds = kv.get_json("volatility_bot_credentials") or {}
         # Credential keys match the config page (_saveCreds): mt5_account/password/server/path.
+        # Refuse to start live with no account: MT5's initialize() would otherwise
+        # attach to whatever account the terminal is already logged into, silently
+        # trading the WRONG account. (connect()'s mismatch guard only fires when an
+        # account IS supplied, so the empty case must be caught here.)
+        if not creds.get("mt5_account"):
+            log.error("live mode but no mt5_account in volatility_bot_credentials — refusing to start. "
+                      "Save MT5 credentials on the bot config page first and confirm it shows 'Saved ✓' "
+                      "with no error.")
+            return
         if not broker.connect(creds.get("mt5_account"), creds.get("mt5_password"),
                               creds.get("mt5_server"), creds.get("mt5_path") or None):
             log.error("broker connect failed — exiting")
@@ -182,7 +191,12 @@ def run(base_url: str, force_live: bool) -> None:
                     except Exception as e:
                         log.warning(f"{p}: catch-up failed: {e}")
                     trackers[p] = tr
-                log.info(f"new session plan: {len(trackers)} pairs synced · {plan.get('generatedAt')}")
+                if trackers:
+                    log.info(f"new session plan: {len(trackers)} pairs synced · {plan.get('generatedAt')}")
+                else:
+                    log.warning(f"plan has 0 tradeable pairs · {plan.get('generatedAt')} — nothing will trade. "
+                                "Re-run the plan refresh (POST /api/volatility-bot/refresh-plan) once OANDA is "
+                                "reachable; check the server log for the producer's skip reasons.")
             last_plan = nowt
 
         # (b) Config + status — medium. Picks up kill-switch / paper↔live promptly.
