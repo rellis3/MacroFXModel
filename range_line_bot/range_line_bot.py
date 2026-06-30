@@ -125,6 +125,15 @@ def _window_bars(bars, start_epoch, secs):
     return [b for b in (bars or []) if start_epoch <= int(b.get("time", 0)) < end]
 
 
+def _in_formation(plan, now_epoch):
+    """True while the Asia range is still FORMING (London 00:00–06:00). No new
+    entries fire during this window — not Asia (its ladder isn't built yet) nor
+    Monday: trading only starts when the range is pulled at 06:00. Open positions
+    keep trailing through it."""
+    wc = session_anchor_epoch(now_epoch, plan["boundaryHour"]) + int(plan.get("asiaHrs", 6)) * 3600
+    return now_epoch < wc
+
+
 def _build_ladders(sess: RangeSession, broker, plan, now_epoch):
     """Lazily build the Asia (London-window) + Monday ladders once their ranges are
     known. Returns True if anything new was built (→ prime)."""
@@ -174,12 +183,13 @@ def _instr_lines(plan, sessions, broker):
     return out
 
 
-def build_status(cfg, broker, plan, paper, sessions):
+def build_status(cfg, broker, plan, paper, sessions, forming=False):
     bal = broker.account_balance()
     return {
         "running": True,
         "mode": "paper" if paper else "live",
         "kill_switch": bool(cfg.get("kill_switch")),
+        "forming": bool(forming),                   # Asia range building (00:00–06:00) → no new entries
         "balance": round(bal, 2) if bal is not None else None,
         "universe": (plan or {}).get("universe", []),
         "mt5_positions": broker.serialize_open_positions(),
@@ -278,7 +288,8 @@ def run(base_url: str, force_live: bool) -> None:
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:
-                kv.put_status("range_line_bot_status", build_status(cfg, broker, plan, paper, sessions))
+                forming = _in_formation(plan, nowt) if plan else False
+                kv.put_status("range_line_bot_status", build_status(cfg, broker, plan, paper, sessions, forming))
             except Exception as e:
                 log.warning(f"status push failed: {e}")
             last_status = nowt
@@ -290,6 +301,10 @@ def run(base_url: str, force_live: bool) -> None:
                 broker.check_barriers()                    # paper: native SL floor
             instruments = cfg.get("enabled_pairs") or plan.get("universe", [])
             bal = broker.account_balance() or 0.0
+            # No new entries while the Asia range is forming (00:00–06:00 London).
+            # dry_run still primes levels crossed overnight, so at 06:00 only
+            # genuinely-new post-pull crossings fire (no chasing a stale breakout).
+            forming = _in_formation(plan, nowt)
             for instr in instruments:
                 sess = sessions.get(instr)
                 ip = (plan.get("instruments") or {}).get(instr)
@@ -308,7 +323,7 @@ def run(base_url: str, force_live: bool) -> None:
                     continue
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
-                for spec in sess.decide(px, ip["policy"]):
+                for spec in sess.decide(px, ip["policy"], dry_run=forming):
                     sl = spec["protect_stop"]
                     far_tp = spec["entry"] + (1 if spec["dir_up"] else -1) * 100 * spec["rung"]  # chandelier is the real exit
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), spec["entry"] - sl, cfg.get("max_lot", 2.0))
