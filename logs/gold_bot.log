@@ -39263,3 +39263,641 @@
 [20:02:15]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
 [20:02:15]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
 [20:02:15] ──────────────────────────────────────────────────────────────────────
+[20:04:16] [REFRESH] Fetching bars and recomputing zones...
+[20:04:17] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:04:17] [PRICE]  4064.63  today_m1=1265  vol_m1=1265  m30=150
+[20:04:17] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:04:17] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:04:17] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:04:17] [ZONES]  H4: 60 raw (60 active)
+[20:04:17] [ZONES]  M30: 60 raw (60 active)
+[20:04:17] [ZONES]  111 active zones total
+[20:04:18] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:04:20] ──────────────────────────────────────────────────────────────────────
+[20:04:20] ZONE MAP  19:04 UTC  | HTF BULL (75%)  | NY  | VWAP 4024.9
+[20:04:20]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:04:20]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:04:20]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:04:20]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:04:20]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:04:20]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:04:20]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:04:20]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:04:20]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:04:20] ──────────────────────────────────────────────────────────────────────
+[20:06:17] [REFRESH] Fetching bars and recomputing zones...
+[20:06:17] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:06:17] [PRICE]  4065.43  today_m1=1267  vol_m1=1267  m30=150
+[20:06:18] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:06:18] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:06:18] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:06:18] [ZONES]  H4: 60 raw (60 active)
+[20:06:18] [ZONES]  M30: 60 raw (60 active)
+[20:06:18] [ZONES]  111 active zones total
+[20:06:18] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:06:19] ──────────────────────────────────────────────────────────────────────
+[20:06:19] ZONE MAP  19:06 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.0
+[20:06:19]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:06:19]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:06:19]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:06:19]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:06:19]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:06:19]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:06:19]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:06:19]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:06:19]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:06:19] ──────────────────────────────────────────────────────────────────────
+[20:08:15] [REFRESH] Fetching bars and recomputing zones...
+[20:08:15] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:08:15] [PRICE]  4066.28  today_m1=1269  vol_m1=1269  m30=150
+[20:08:16] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:08:16] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:08:16] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:08:16] [ZONES]  H4: 60 raw (60 active)
+[20:08:16] [ZONES]  M30: 60 raw (60 active)
+[20:08:16] [ZONES]  111 active zones total
+[20:08:16] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:08:17] ──────────────────────────────────────────────────────────────────────
+[20:08:17] ZONE MAP  19:08 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.0
+[20:08:17]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:08:17]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:08:17]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:08:17]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:08:17]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:08:17]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:08:17]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:08:17]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:08:17]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:08:17] ──────────────────────────────────────────────────────────────────────
+[20:10:24] [REFRESH] Fetching bars and recomputing zones...
+[20:10:24] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:10:24] [PRICE]  4066.88  today_m1=1271  vol_m1=1271  m30=150
+[20:10:25] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:10:25] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:10:25] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:10:25] [ZONES]  H4: 60 raw (60 active)
+[20:10:25] [ZONES]  M30: 60 raw (60 active)
+[20:10:25] [ZONES]  111 active zones total
+[20:10:25] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:10:26] ──────────────────────────────────────────────────────────────────────
+[20:10:26] ZONE MAP  19:10 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.1
+[20:10:26]   Vol: POC 3976.5  VAH 4065.5  VAL 3959.5  nPOC 4337.5
+[20:10:26]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:10:26]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:10:26]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:10:26]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:10:26]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:10:26]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:10:26]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:10:26]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:10:26] ──────────────────────────────────────────────────────────────────────
+[20:12:17] [REFRESH] Fetching bars and recomputing zones...
+[20:12:17] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:12:17] [PRICE]  4064.7  today_m1=1273  vol_m1=1273  m30=150
+[20:12:17] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:12:17] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:12:17] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:12:17] [ZONES]  H4: 60 raw (60 active)
+[20:12:17] [ZONES]  M30: 60 raw (60 active)
+[20:12:17] [ZONES]  111 active zones total
+[20:12:18] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:12:19] ──────────────────────────────────────────────────────────────────────
+[20:12:19] ZONE MAP  19:12 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.1
+[20:12:19]   Vol: POC 3976.5  VAH 4065.5  VAL 3959.5  nPOC 4337.5
+[20:12:19]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:12:19]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:12:19]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:12:19]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:12:19]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:12:19]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:12:19]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:12:19]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:12:19] ──────────────────────────────────────────────────────────────────────
+[20:14:18] [REFRESH] Fetching bars and recomputing zones...
+[20:14:18] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:14:18] [PRICE]  4066.03  today_m1=1275  vol_m1=1275  m30=150
+[20:14:18] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:14:18] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:14:18] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:14:18] [ZONES]  H4: 60 raw (60 active)
+[20:14:18] [ZONES]  M30: 60 raw (60 active)
+[20:14:18] [ZONES]  111 active zones total
+[20:14:18] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:14:19] ──────────────────────────────────────────────────────────────────────
+[20:14:19] ZONE MAP  19:14 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.2
+[20:14:19]   Vol: POC 3976.5  VAH 4065.5  VAL 3959.5  nPOC 4337.5
+[20:14:19]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:14:19]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:14:19]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:14:19]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:14:19]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:14:19]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:14:19]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:14:19]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:14:19] ──────────────────────────────────────────────────────────────────────
+[20:16:28] [REFRESH] Fetching bars and recomputing zones...
+[20:16:28] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:16:28] [PRICE]  4065.95  today_m1=1277  vol_m1=1277  m30=150
+[20:16:29] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:16:29] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:16:29] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:16:29] [ZONES]  H4: 60 raw (60 active)
+[20:16:29] [ZONES]  M30: 60 raw (60 active)
+[20:16:29] [ZONES]  111 active zones total
+[20:16:29] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:16:30] ──────────────────────────────────────────────────────────────────────
+[20:16:30] ZONE MAP  19:16 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.2
+[20:16:30]   Vol: POC 3976.5  VAH 4065.5  VAL 3959.5  nPOC 4337.5
+[20:16:30]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:16:30]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:16:30]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:16:30]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:16:30]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:16:30]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:16:30]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:16:30]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:16:30] ──────────────────────────────────────────────────────────────────────
+[20:18:31] [REFRESH] Fetching bars and recomputing zones...
+[20:18:31] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:18:31] [PRICE]  4063.36  today_m1=1279  vol_m1=1279  m30=150
+[20:18:32] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:18:32] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:18:32] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:18:32] [ZONES]  H4: 60 raw (60 active)
+[20:18:32] [ZONES]  M30: 60 raw (60 active)
+[20:18:32] [ZONES]  111 active zones total
+[20:18:32] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:18:33] ──────────────────────────────────────────────────────────────────────
+[20:18:33] ZONE MAP  19:18 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.3
+[20:18:33]   Vol: POC 3976.5  VAH 4065.5  VAL 3959.5  nPOC 4337.5
+[20:18:33]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:18:33]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:18:33]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:18:33]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:18:33]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:18:33]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:18:33]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:18:33]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:18:33] ──────────────────────────────────────────────────────────────────────
+[20:20:24] [REFRESH] Fetching bars and recomputing zones...
+[20:20:24] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:20:24] [PRICE]  4061.4  today_m1=1281  vol_m1=1281  m30=150
+[20:20:24] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:20:24] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:20:24] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:20:24] [ZONES]  H4: 60 raw (60 active)
+[20:20:24] [ZONES]  M30: 60 raw (60 active)
+[20:20:24] [ZONES]  111 active zones total
+[20:20:24] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:20:25] ──────────────────────────────────────────────────────────────────────
+[20:20:25] ZONE MAP  19:20 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.3
+[20:20:25]   Vol: POC 3976.5  VAH 4065.5  VAL 3959.5  nPOC 4337.5
+[20:20:25]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:20:25]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:20:25]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:20:25]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:20:25]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:20:25]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:20:25]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:20:25]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:20:25] ──────────────────────────────────────────────────────────────────────
+[20:22:26] [REFRESH] Fetching bars and recomputing zones...
+[20:22:27] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:22:27] [PRICE]  4059.49  today_m1=1283  vol_m1=1283  m30=150
+[20:22:27] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:22:27] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:22:27] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:22:27] [ZONES]  H4: 60 raw (60 active)
+[20:22:27] [ZONES]  M30: 60 raw (60 active)
+[20:22:27] [ZONES]  111 active zones total
+[20:22:27] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:22:28] ──────────────────────────────────────────────────────────────────────
+[20:22:28] ZONE MAP  19:22 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.3
+[20:22:28]   Vol: POC 3976.5  VAH 4065.5  VAL 3959.5  nPOC 4337.5
+[20:22:28]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:22:28]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:22:28]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:22:28]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:22:28]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:22:28]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:22:28]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:22:28]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:22:28] ──────────────────────────────────────────────────────────────────────
+[20:24:28] [REFRESH] Fetching bars and recomputing zones...
+[20:24:28] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:24:28] [PRICE]  4058.28  today_m1=1285  vol_m1=1285  m30=150
+[20:24:29] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:24:29] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:24:29] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:24:29] [ZONES]  H4: 60 raw (60 active)
+[20:24:29] [ZONES]  M30: 60 raw (60 active)
+[20:24:29] [ZONES]  111 active zones total
+[20:24:29] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:24:30] ──────────────────────────────────────────────────────────────────────
+[20:24:30] ZONE MAP  19:24 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.4
+[20:24:30]   Vol: POC 3976.5  VAH 4065.5  VAL 3959.5  nPOC 4337.5
+[20:24:30]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:24:30]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:24:30]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:24:30]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:24:30]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:24:30]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:24:30]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:24:30]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:24:30] ──────────────────────────────────────────────────────────────────────
+[20:26:30] [REFRESH] Fetching bars and recomputing zones...
+[20:26:30] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:26:30] [PRICE]  4059.1  today_m1=1287  vol_m1=1287  m30=150
+[20:26:31] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:26:31] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:26:31] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:26:31] [ZONES]  H4: 60 raw (60 active)
+[20:26:31] [ZONES]  M30: 60 raw (60 active)
+[20:26:31] [ZONES]  111 active zones total
+[20:26:31] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:26:32] ──────────────────────────────────────────────────────────────────────
+[20:26:32] ZONE MAP  19:26 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.4
+[20:26:32]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:26:32]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:26:32]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:26:32]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:26:32]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:26:32]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:26:32]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:26:32]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:26:32]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:26:32] ──────────────────────────────────────────────────────────────────────
+[20:28:32] [REFRESH] Fetching bars and recomputing zones...
+[20:28:33] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:28:33] [PRICE]  4058.85  today_m1=1289  vol_m1=1289  m30=150
+[20:28:33] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:28:33] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:28:33] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:28:33] [ZONES]  H4: 60 raw (60 active)
+[20:28:33] [ZONES]  M30: 60 raw (60 active)
+[20:28:33] [ZONES]  111 active zones total
+[20:28:33] [ZONES]  Dedup: 111 → 35 (76 merged)
+[20:28:34] ──────────────────────────────────────────────────────────────────────
+[20:28:34] ZONE MAP  19:28 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.5
+[20:28:34]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:28:34]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:28:34]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:28:34]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:28:34]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:28:34]    50.5  M30  LONG   4054.1–4056.0  M30 long GP, M30 382 cluster, M30 50pct cluster, M30 382 cluster *
+[20:28:34]    40.5  M30  SHORT  4057.9–4059.8  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:28:34]    40.5  M30  LONG   4065.0–4066.5  M30 long GP, H4 786 cluster, M30 382 cluster, M30 50pct cluster *
+[20:28:34]    38.9  M30  SHORT  4085.2–4087.8  M30 short GP, H4 786 cluster, H4 886 cluster, H4 786 cluster
+[20:28:34] ──────────────────────────────────────────────────────────────────────
+[20:30:35] [REFRESH] Fetching bars and recomputing zones...
+[20:30:35] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:30:35] [PRICE]  4059.76  today_m1=1291  vol_m1=1291  m30=150
+[20:30:35] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:30:36] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:30:36] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:30:36] [ZONES]  H4: 60 raw (60 active)
+[20:30:36] [ZONES]  M30: 60 raw (60 active)
+[20:30:36] [ZONES]  111 active zones total
+[20:30:36] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:30:37] ──────────────────────────────────────────────────────────────────────
+[20:30:37] ZONE MAP  19:30 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.5
+[20:30:37]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:30:37]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:30:37]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:30:37]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:30:37]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:30:37]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:30:37]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:30:37]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:30:37]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:30:37] ──────────────────────────────────────────────────────────────────────
+[20:32:37] [REFRESH] Fetching bars and recomputing zones...
+[20:32:37] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:32:37] [PRICE]  4056.97  today_m1=1293  vol_m1=1293  m30=150
+[20:32:37] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:32:37] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:32:37] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:32:37] [ZONES]  H4: 60 raw (60 active)
+[20:32:37] [ZONES]  M30: 60 raw (60 active)
+[20:32:37] [ZONES]  111 active zones total
+[20:32:37] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:32:38] ──────────────────────────────────────────────────────────────────────
+[20:32:38] ZONE MAP  19:32 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.5
+[20:32:38]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:32:38]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:32:38]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:32:38]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:32:38]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:32:38]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:32:38]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:32:38]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:32:38]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:32:38] ──────────────────────────────────────────────────────────────────────
+[20:34:38] [REFRESH] Fetching bars and recomputing zones...
+[20:34:38] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:34:38] [PRICE]  4056.74  today_m1=1295  vol_m1=1295  m30=150
+[20:34:39] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:34:39] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:34:39] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:34:39] [ZONES]  H4: 60 raw (60 active)
+[20:34:39] [ZONES]  M30: 60 raw (60 active)
+[20:34:39] [ZONES]  111 active zones total
+[20:34:39] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:34:40] ──────────────────────────────────────────────────────────────────────
+[20:34:40] ZONE MAP  19:34 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.6
+[20:34:40]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:34:40]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:34:40]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:34:40]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:34:40]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:34:40]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:34:40]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:34:40]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:34:40]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:34:40] ──────────────────────────────────────────────────────────────────────
+[20:36:40] [REFRESH] Fetching bars and recomputing zones...
+[20:36:40] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:36:40] [PRICE]  4056.33  today_m1=1297  vol_m1=1297  m30=150
+[20:36:40] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:36:40] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:36:40] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:36:40] [ZONES]  H4: 60 raw (60 active)
+[20:36:40] [ZONES]  M30: 60 raw (60 active)
+[20:36:40] [ZONES]  111 active zones total
+[20:36:40] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:36:41] ──────────────────────────────────────────────────────────────────────
+[20:36:41] ZONE MAP  19:36 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.6
+[20:36:41]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:36:41]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:36:41]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:36:41]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:36:41]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:36:41]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:36:41]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:36:41]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:36:41]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:36:41] ──────────────────────────────────────────────────────────────────────
+[20:38:41] [REFRESH] Fetching bars and recomputing zones...
+[20:38:41] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:38:41] [PRICE]  4055.86  today_m1=1299  vol_m1=1299  m30=150
+[20:38:41] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:38:41] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:38:41] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:38:41] [ZONES]  H4: 60 raw (60 active)
+[20:38:41] [ZONES]  M30: 60 raw (60 active)
+[20:38:41] [ZONES]  111 active zones total
+[20:38:41] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:38:42] ──────────────────────────────────────────────────────────────────────
+[20:38:42] ZONE MAP  19:38 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.7
+[20:38:42]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:38:42]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:38:42]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:38:42]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:38:42]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:38:42]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:38:42]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:38:42]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:38:42]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:38:42] ──────────────────────────────────────────────────────────────────────
+[20:40:43] [REFRESH] Fetching bars and recomputing zones...
+[20:40:43] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:40:43] [PRICE]  4054.76  today_m1=1301  vol_m1=1301  m30=150
+[20:40:43] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:40:43] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:40:43] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:40:43] [ZONES]  H4: 60 raw (60 active)
+[20:40:43] [ZONES]  M30: 60 raw (60 active)
+[20:40:43] [ZONES]  111 active zones total
+[20:40:43] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:40:44] ──────────────────────────────────────────────────────────────────────
+[20:40:44] ZONE MAP  19:40 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.7
+[20:40:44]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:40:44]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:40:44]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:40:44]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:40:44]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:40:44]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:40:44]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:40:44]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:40:44]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:40:44] ──────────────────────────────────────────────────────────────────────
+[20:42:43] [REFRESH] Fetching bars and recomputing zones...
+[20:42:43] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:42:43] [PRICE]  4054.22  today_m1=1303  vol_m1=1303  m30=150
+[20:42:44] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:42:44] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:42:44] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:42:44] [ZONES]  H4: 60 raw (60 active)
+[20:42:44] [ZONES]  M30: 60 raw (60 active)
+[20:42:44] [ZONES]  111 active zones total
+[20:42:44] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:42:45] ──────────────────────────────────────────────────────────────────────
+[20:42:45] ZONE MAP  19:42 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.7
+[20:42:45]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:42:45]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:42:45]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:42:45]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:42:45]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:42:45]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:42:45]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:42:45]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:42:45]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:42:45] ──────────────────────────────────────────────────────────────────────
+[20:44:44] [REFRESH] Fetching bars and recomputing zones...
+[20:44:44] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:44:44] [PRICE]  4053.82  today_m1=1305  vol_m1=1305  m30=150
+[20:44:45] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:44:45] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:44:45] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:44:45] [ZONES]  H4: 60 raw (60 active)
+[20:44:45] [ZONES]  M30: 60 raw (60 active)
+[20:44:45] [ZONES]  111 active zones total
+[20:44:45] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:44:45] ──────────────────────────────────────────────────────────────────────
+[20:44:45] ZONE MAP  19:44 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.8
+[20:44:45]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:44:45]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:44:45]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:44:45]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:44:45]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:44:45]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:44:45]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:44:45]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:44:45]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:44:45] ──────────────────────────────────────────────────────────────────────
+[20:46:47] [REFRESH] Fetching bars and recomputing zones...
+[20:46:47] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:46:47] [PRICE]  4052.26  today_m1=1307  vol_m1=1307  m30=150
+[20:46:47] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:46:47] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:46:47] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:46:47] [ZONES]  H4: 60 raw (60 active)
+[20:46:47] [ZONES]  M30: 60 raw (60 active)
+[20:46:47] [ZONES]  111 active zones total
+[20:46:47] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:46:48] ──────────────────────────────────────────────────────────────────────
+[20:46:48] ZONE MAP  19:46 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.8
+[20:46:48]   Vol: POC 3976.5  VAH 4065.0  VAL 3959.5  nPOC 4337.5
+[20:46:48]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:46:48]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:46:48]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:46:48]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:46:48]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:46:48]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:46:48]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:46:48]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:46:48] ──────────────────────────────────────────────────────────────────────
+[20:48:48] [REFRESH] Fetching bars and recomputing zones...
+[20:48:48] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:48:48] [PRICE]  4053.53  today_m1=1309  vol_m1=1309  m30=150
+[20:48:48] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:48:48] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:48:48] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:48:48] [ZONES]  H4: 60 raw (60 active)
+[20:48:48] [ZONES]  M30: 60 raw (60 active)
+[20:48:48] [ZONES]  111 active zones total
+[20:48:48] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:48:49] ──────────────────────────────────────────────────────────────────────
+[20:48:49] ZONE MAP  19:48 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.8
+[20:48:49]   Vol: POC 3976.5  VAH 4064.5  VAL 3959.5  nPOC 4337.5
+[20:48:49]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:48:49]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:48:49]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:48:49]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:48:49]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:48:49]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:48:49]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:48:49]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:48:49] ──────────────────────────────────────────────────────────────────────
+[20:50:49] [REFRESH] Fetching bars and recomputing zones...
+[20:50:50] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:50:50] [PRICE]  4049.55  today_m1=1311  vol_m1=1311  m30=150
+[20:50:50] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:50:50] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:50:50] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:50:50] [ZONES]  H4: 60 raw (60 active)
+[20:50:50] [ZONES]  M30: 60 raw (60 active)
+[20:50:50] [ZONES]  111 active zones total
+[20:50:50] [ZONES]  Dedup: 111 → 31 (80 merged)
+[20:50:51] ──────────────────────────────────────────────────────────────────────
+[20:50:51] ZONE MAP  19:50 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.8
+[20:50:51]   Vol: POC 3976.5  VAH 4064.5  VAL 3959.5  nPOC 4337.5
+[20:50:51]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:50:51]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:50:51]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:50:51]    66.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:50:51]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:50:51]    51.0  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:50:51]    35.0  M30  LONG   4071.4–4072.9  M30 long GP, H4 786 cluster, M30 382 cluster, M30 382 cluster *
+[20:50:51]    31.5  M30  LONG   4021.1–4023.7  M30 long GP, H4 886 cluster, M30 50pct cluster, M30 786 cluster *
+[20:50:51] ──────────────────────────────────────────────────────────────────────
+[20:52:51] [REFRESH] Fetching bars and recomputing zones...
+[20:52:51] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:52:51] [PRICE]  4041.43  today_m1=1313  vol_m1=1313  m30=150
+[20:52:51] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:52:51] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:52:51] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:52:51] [ZONES]  H4: 60 raw (60 active)
+[20:52:51] [ZONES]  M30: 60 raw (60 active)
+[20:52:51] [ZONES]  111 active zones total
+[20:52:51] [ZONES]  Dedup: 111 → 37 (74 merged)
+[20:52:52] ──────────────────────────────────────────────────────────────────────
+[20:52:52] ZONE MAP  19:52 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.7
+[20:52:52]   Vol: POC 3976.5  VAH 4064.5  VAL 3959.5  nPOC 4337.5
+[20:52:52]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:52:52]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:52:52]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:52:52]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:52:52]    48.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:52:52]    41.3  M30  SHORT  4047.4–4049.0  M30 short GP, M30 50pct cluster, M30 50pct cluster, M30 gp cluster
+[20:52:52]    40.7  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:52:52]    37.5  M30  SHORT  4058.3–4059.2  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:52:52] ──────────────────────────────────────────────────────────────────────
+[20:54:53] [REFRESH] Fetching bars and recomputing zones...
+[20:54:53] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:54:53] [PRICE]  4041.3  today_m1=1315  vol_m1=1315  m30=150
+[20:54:54] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:54:54] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:54:54] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:54:54] [ZONES]  H4: 60 raw (60 active)
+[20:54:54] [ZONES]  M30: 60 raw (60 active)
+[20:54:54] [ZONES]  111 active zones total
+[20:54:54] [ZONES]  Dedup: 111 → 37 (74 merged)
+[20:54:55] ──────────────────────────────────────────────────────────────────────
+[20:54:55] ZONE MAP  19:54 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.7
+[20:54:55]   Vol: POC 3976.5  VAH 4064.5  VAL 3959.5  nPOC 4337.5
+[20:54:55]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:54:55]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:54:55]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:54:55]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:54:55]    48.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:54:55]    41.3  M30  SHORT  4047.4–4049.0  M30 short GP, M30 50pct cluster, M30 50pct cluster, M30 gp cluster
+[20:54:55]    40.7  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:54:55]    37.5  M30  SHORT  4058.3–4059.2  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:54:55] ──────────────────────────────────────────────────────────────────────
+[20:56:56] [REFRESH] Fetching bars and recomputing zones...
+[20:56:56] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:56:56] [PRICE]  4038.22  today_m1=1317  vol_m1=1317  m30=150
+[20:56:57] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:56:57] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:56:57] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:56:57] [ZONES]  H4: 60 raw (60 active)
+[20:56:57] [ZONES]  M30: 60 raw (60 active)
+[20:56:57] [ZONES]  111 active zones total
+[20:56:57] [ZONES]  Dedup: 111 → 37 (74 merged)
+[20:56:58] ──────────────────────────────────────────────────────────────────────
+[20:56:58] ZONE MAP  19:56 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.7
+[20:56:58]   Vol: POC 3976.5  VAH 4064.5  VAL 3959.5  nPOC 4337.5
+[20:56:58]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:56:58]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:56:58]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:56:58]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:56:58]    48.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:56:58]    41.3  M30  SHORT  4047.4–4049.0  M30 short GP, M30 50pct cluster, M30 50pct cluster, M30 gp cluster
+[20:56:58]    40.7  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:56:58]    37.5  M30  SHORT  4058.3–4059.2  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:56:58] ──────────────────────────────────────────────────────────────────────
+[20:58:56] [REFRESH] Fetching bars and recomputing zones...
+[20:58:57] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[20:58:57] [PRICE]  4038.76  today_m1=1319  vol_m1=1319  m30=150
+[20:58:57] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[20:58:57] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[20:58:57] [TL]     12 trendlines: 6 descending, 6 ascending
+[20:58:57] [ZONES]  H4: 60 raw (60 active)
+[20:58:57] [ZONES]  M30: 60 raw (60 active)
+[20:58:57] [ZONES]  111 active zones total
+[20:58:57] [ZONES]  Dedup: 111 → 37 (74 merged)
+[20:58:58] ──────────────────────────────────────────────────────────────────────
+[20:58:58] ZONE MAP  19:58 UTC  | HTF BULL (75%)  | NY  | VWAP 4025.8
+[20:58:58]   Vol: POC 3976.5  VAH 4064.5  VAL 3960.5  nPOC 4337.5
+[20:58:58]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[20:58:58]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[20:58:58]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[20:58:58]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[20:58:58]    48.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[20:58:58]    41.3  M30  SHORT  4047.4–4049.0  M30 short GP, M30 50pct cluster, M30 50pct cluster, M30 gp cluster
+[20:58:58]    40.7  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[20:58:58]    37.5  M30  SHORT  4058.3–4059.2  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[20:58:58] ──────────────────────────────────────────────────────────────────────
+[21:00:58] [REFRESH] Fetching bars and recomputing zones...
+[21:00:58] [HTF]    BULL (75%) — Daily EMA bullish | 4H EMA bullish
+[21:00:58] [PRICE]  4038.84  today_m1=1320  vol_m1=1320  m30=150
+[21:00:58] [nPOC]   7 naked POCs: 4337.5(16d), 4339.0(15d), 4329.0(14d), 4243.5(13d)
+[21:00:58] [VWAP]   4 anchors: 4171.6(L9dU), 4208.2(N9dU), 4144.1(L8dD), 4122.3(N8dU)
+[21:00:58] [TL]     12 trendlines: 6 descending, 6 ascending
+[21:00:58] [ZONES]  H4: 60 raw (60 active)
+[21:00:58] [ZONES]  M30: 60 raw (60 active)
+[21:00:58] [ZONES]  111 active zones total
+[21:00:59] [ZONES]  Dedup: 111 → 37 (74 merged)
+[21:01:00] ──────────────────────────────────────────────────────────────────────
+[21:01:00] ZONE MAP  20:01 UTC  | HTF BULL (75%)  | OFF  | VWAP 4025.8
+[21:01:00]   Vol: POC 3976.5  VAH 4064.5  VAL 3960.5  nPOC 4337.5
+[21:01:00]   Daily open 4062.2  Asia 3970.2–4074.7  Pivot 4761.8
+[21:01:00]   SCORE   TF  DIR    GP ZONE            COMPOSITION
+[21:01:00]    67.5  M30  LONG   4011.7–4016.3  M30 long GP, H4 886 cluster, H4 886 cluster, H4 886 cluster *
+[21:01:00]    56.0  M30  LONG   4033.3–4035.9  M30 long GP, H4 886 cluster, H4 886 cluster, M30 382 cluster *
+[21:01:00]    48.5  M30  LONG   4049.5–4051.8  M30 long GP, M30 50pct cluster, M30 50pct cluster, M30 786 cluster *
+[21:01:00]    41.3  M30  SHORT  4047.4–4049.0  M30 short GP, M30 50pct cluster, M30 50pct cluster, M30 gp cluster
+[21:01:00]    40.7  M30  LONG   4059.2–4061.0  M30 long GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster *
+[21:01:00]    37.5  M30  SHORT  4058.3–4059.2  M30 short GP, M30 382 cluster, M30 382 cluster, M30 50pct cluster
+[21:01:00] ──────────────────────────────────────────────────────────────────────

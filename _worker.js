@@ -931,7 +931,7 @@ export default {
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
           await env.FX_SCORES.put(key, JSON.stringify({ data, timestamp }), kvOpts);
           // Persist closed trade history for bot status keys
-          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status']);
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'range_line_bot_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
           }
@@ -2073,7 +2073,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         if (!env.FX_SCORES) return json({ ok: false, trades: [], reason: 'KV not bound' });
         const from = url.searchParams.get('from') || new Date().toISOString().slice(0, 10);
         const to   = url.searchParams.get('to')   || from;
-        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status'];
+        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'range_line_bot_status'];
         const dates = [];
         const startD = new Date(from + 'T00:00:00Z');
         const endD   = new Date(to   + 'T00:00:00Z');
