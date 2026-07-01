@@ -64,20 +64,21 @@ def test_catch_up_rebuilds_extremes_and_velocity():
     assert bucket is not None                                    # velocity buffer is primed (no 15-min wait)
 
 
-def test_catch_up_reanchors_open_to_live_session_open():
-    # The plan's open is STALE (refreshed mid-session) — e.g. gold ctor 4075 while
-    # the live 22:00 session actually opened at 4015. catch_up must re-anchor on the
-    # first session bar's open so the OC/Close lines hang off the true session open.
-    tr = SessionTracker(4075.86)                                  # stale plan/D1 open
-    bars = [{"open": 4015.0, "high": 4020.0, "low": 4010.0, "close": 4018.0},
+def test_catch_up_keeps_plan_open_not_broker_first_bar():
+    # The plan open is now the authoritative London-midnight anchor (OANDA — the
+    # SAME basis the book learned on, #638/#640). catch_up must NOT re-anchor to the
+    # broker's first bar: MT5 server-time/feed differences drift the open (gold
+    # showed 3997.53 vs the plan's correct 4013.3). One source of truth = the plan.
+    tr = SessionTracker(4013.3)                                   # authoritative plan open
+    bars = [{"open": 3997.53, "high": 4020.0, "low": 3990.0, "close": 4018.0},
             {"open": 4018.0, "high": 4060.0, "low": 4016.0, "close": 4058.0}]
     tr.catch_up(bars)
-    assert tr.open == 4015.0                                      # re-anchored to live open, not 4075
-    assert tr.run_low == 4010.0 and tr.run_high == 4060.0         # extremes from the real session
-    # OC line now hangs off 4015, not the stale 4075.
+    assert tr.open == 4013.3                                      # keeps plan open, ignores broker 3997.53
+    assert tr.run_low == 3990.0 and tr.run_high == 4060.0         # extremes still from the real session
+    # OC line hangs off the plan open, matching the backtest/book basis.
     levels = decide.__globals__["line_levels"](tr.open, tr.run_low, tr.run_high,
                                                {"hl50": 0.025, "hl75": 0.03, "ocMed": 0.012, "oc75": 0.02})
-    assert abs(levels["OC50_dn"] - 4015.0 * (1 - 0.012)) < 1e-6
+    assert abs(levels["OC50_dn"] - 4013.3 * (1 - 0.012)) < 1e-6
 
 
 def test_catch_up_falls_back_to_plan_open_without_bar_opens():

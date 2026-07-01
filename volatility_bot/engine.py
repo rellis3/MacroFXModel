@@ -46,20 +46,17 @@ class SessionTracker:
         startup or a new-session reset the bot is in-sync with the live session
         WITHOUT any seeding. bars: iterable of {open, high, low, close}.
 
-        The FIRST bar's open re-anchors the session open. The plan ships the per-pair
-        σ/band FRACTIONS (open-independent) plus a session open; the producer now
-        anchors that open at MIDNIGHT EUROPE/LONDON, but it can still be stale if the
-        plan was refreshed before this session's midnight. `bars` here come from
-        ``session_bars(pair, session_open_epoch(now))`` — M1 from London midnight — so
-        bars[0].open IS the live London-midnight open, the correct anchor for the
-        OC/Close lines. The plan open is only a fallback when no bars arrive."""
+        The session OPEN stays the PLAN's open — do NOT re-anchor it from the
+        broker's first bar. The plan open is now the authoritative London-midnight
+        (or market-open) anchor from OANDA, the SAME basis the book learned on
+        (#638/#640). Re-anchoring on MT5's first bar reintroduced the drift this
+        bot exists to avoid: MT5 server-time/feed differences pulled the open back
+        to ~22:00-UTC (gold showed 3997.53 vs the plan's correct 4013.3). One
+        source of truth = the plan. We only rebuild extremes + velocity here."""
         bars = list(bars or [])
-        first_open = next((b.get("open") for b in bars if b.get("open") is not None), None)
-        if first_open is not None:
-            self.open = float(first_open)
-            self.run_low = self.run_high = self.open
-            self.closes.clear()
-            self.closes.append(self.open)
+        self.run_low = self.run_high = self.open        # extremes seed from the plan open
+        self.closes.clear()
+        self.closes.append(self.open)
         for b in bars:
             hi, lo, cl = b.get("high"), b.get("low"), b.get("close")
             if hi is not None:
@@ -115,8 +112,9 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False):
 
 # The forecast anchors the trading day at MIDNIGHT EUROPE/LONDON — i.e. 00:00
 # London wall-clock, which is 23:00 UTC during BST (summer) and 00:00 UTC during
-# GMT (winter). The bot fetches the session's bars from this anchor and takes the
-# first bar's open as the session open the OC/Close lines hang off.
+# GMT (winter). The bot fetches the session's bars from this anchor to rebuild the
+# running extremes; the session OPEN itself comes from the PLAN (the authoritative
+# London-midnight anchor from OANDA), NOT the broker's first bar.
 #
 # DST is computed without a tz database (Windows venvs often lack `tzdata`): UK
 # clocks go forward at 01:00 UTC on the last Sunday of March and back at 01:00 UTC
