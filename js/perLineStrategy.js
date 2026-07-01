@@ -23,7 +23,7 @@
 
 import { summarizeTrades } from './metricsCore.js';
 import { backtestStats, portfolioStats } from './backtestStats.js';
-import { intradayMtmDrawdown } from './intradayDrawdown.js';
+import { intradayMtmDrawdown, tradeTimingStats } from './intradayDrawdown.js';
 
 export const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
 export const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };  // extra on FOLLOW (stop) entries
@@ -289,7 +289,8 @@ function intradayDDBlock(trades, equity) {
   const id = intradayMtmDrawdown(trades);
   const closedRawDD = rawClosedDD(equity);
   const mult = closedRawDD < -1e-9 ? +(id.maxDD / closedRawDD).toFixed(2) : null;
-  return { maxDD: id.maxDD, closedRawDD, multipleVsClosed: mult, breakpoints: id.breakpoints };
+  return { maxDD: id.maxDD, closedRawDD, multipleVsClosed: mult, breakpoints: id.breakpoints,
+           tradeStats: tradeTimingStats(trades) };
 }
 function countDec(policy, d) { return Object.values(policy).filter(p => p.decision === d).length; }
 

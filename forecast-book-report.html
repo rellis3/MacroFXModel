@@ -109,7 +109,7 @@ function render(b){
   // Intraday MARK-TO-MARKET drawdown (MAE + concurrency). idd.maxDD is in raw % units;
   // express it on the headline vol-targeted basis by scaling the headline DD up by the
   // intraday/closed multiple, so it sits next to the historical/MC numbers like-for-like.
-  const idd=sv.intradayDD||{}, iddMult=idd.multipleVsClosed;
+  const idd=sv.intradayDD||{}, iddMult=idd.multipleVsClosed, its=idd.tradeStats||{};
   const iddVT=(iddMult!=null&&svt.maxDD!=null)?+(svt.maxDD*iddMult).toFixed(3):null;
   // Block-bootstrap MC (regime-clustered tails) sits alongside the IID reshuffle.
   // The stress Calmar quotes the DEEPER of the two p95s — block when available, else
@@ -194,6 +194,18 @@ function render(b){
   (ii) <b>intraday mark-to-market across concurrent positions</b> — the many positions open at once each day net to a single daily number, so simultaneous open-position drawdown is hidden.
   ${iddVT!=null?`The <b>Max drawdown (intraday MTM)</b> KPI above corrects exactly this: each trade is marked on a 3-point unrealised-PnL path anchored on its <i>actual</i> peak adverse excursion (the continuation extreme for a fade) and entry/exit times, and the portfolio is summed across <b>concurrent</b> open positions. On a raw basis that is <b>${fmt(idd.multipleVsClosed,1)}× deeper</b> than the closed-trade drawdown (raw ${fmt(idd.maxDD,2)}% vs ${fmt(idd.closedRawDD,2)}%), i.e. about <b>${pct(iddVT,1)}</b> on the headline ${svt.target||10}%-vol basis — that is the tradeable number to quote, not the ${pct(svt.maxDD,1)} historical figure.`:`The true tradeable (mark-to-market) drawdown is therefore <b>materially larger</b> than the historical figure shown.`}
   Note the intraday MTM model is MAE-anchored (real worst excursion + real timing, linear between the three points), not a full tick replay. ${svtBlk.p95!=null?`The Monte-Carlo is now reported BOTH as an <b>IID</b> reshuffle and as a <b>block bootstrap</b> (mean block ≈ ${fmt(svtBlk.blockMean||21,0)} days), the latter preserving the regime clustering the IID version breaks up — quote the block p95/p99 as the regime-aware tail.`:`The Monte-Carlo above is an <b>IID</b> reshuffle, which still understates regime-clustered tail drawdowns.`} <b>Size risk against the intraday MTM drawdown and the block-bootstrap MC, not the ~1–6% closed-trade floor.</b></div>
+
+  ${its.n?`<div class="note ${its.pctZeroDuration>5?'warn':''}">
+  <b>Trade micro-structure (survivor universe, ${(its.n||0).toLocaleString()} trades) — validity of the intraday-MTM uplift.</b>
+  <table style="margin-top:6px"><thead><tr><th>metric</th><th>avg</th><th>median</th><th>p95</th></tr></thead><tbody>
+    <tr><td>Trade duration (min)</td><td>${fmt(its.avgDurationMin,1)}</td><td>${fmt(its.medianDurationMin,1)}</td><td class="mut">—</td></tr>
+    <tr><td>Adverse excursion maePct (%)</td><td>${fmt(its.avgMaePct,3)}</td><td>${fmt(its.medianMaePct,3)}</td><td>${fmt(its.p95MaePct,3)}</td></tr>
+    <tr><td>Trades with exitTime == entryTime</td><td colspan="3" class="${its.pctZeroDuration>5?'neg':'pos'}">${fmt(its.pctZeroDuration,1)}%</td></tr>
+  </tbody></table>
+  <div class="cap">${its.pctZeroDuration>5
+    ? `⚠ ${fmt(its.pctZeroDuration,1)}% of trades are zero-duration — the records are missing real intraday timestamps (extTime/exitTime), so the ${fmt(iddMult,1)}× uplift is an artifact, NOT mean-reversion. Run <b>Refresh data</b> on the current analyser, then <b>Build book</b>, before quoting the intraday DD.`
+    : `Median duration ${fmt(its.medianDurationMin,0)} min with ${fmt(its.pctZeroDuration,1)}% zero-duration confirms these are genuinely short-lived intraday trades — so the ${fmt(iddMult,1)}× intraday-MTM uplift is real (short-lived mean-reversion with real MAE), not an artifact of missing timestamps.`}</div>
+  </div>`:''}
 
   <h2>3 · Equity &amp; Drawdown</h2>
   <div class="chart">${lineChart(toEquity(heq),{color:'#1f6feb',fill:'rgba(31,111,235,.08)'})}</div>
