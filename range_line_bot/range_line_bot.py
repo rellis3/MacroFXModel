@@ -198,29 +198,35 @@ def build_status(cfg, broker, plan, paper, sessions, forming=False):
     }
 
 
-def _manage_chandeliers(positions, broker, plan, cfg):
-    """Trail every open position by its chandelier stop; close at market when hit.
-    Native SL (= protect stop) is the disaster floor if the bot dies; the bot
-    enforces the tighter trailing exit here."""
+def _trail_stops(positions, broker, plan, cfg):
+    """Trail each open position's stop by the chandelier and push it to the broker
+    (modify the NATIVE SL) so the exit is BROKER-ENFORCED — it survives the bot
+    going offline or a dashboard 502. The SL only ever ratchets in the favourable
+    direction (through break-even and beyond); there is no take-profit. Positions
+    the broker has already closed (their trailed SL was hit) are dropped."""
     chand = plan.get("chandFrac", 0.5)
+    paper = cfg.get("paper_mode", True)
+    open_tickets = {p.get("ticket") for p in broker.serialize_open_positions()}
     for tid in list(positions):
+        if tid not in open_tickets:                  # broker closed it (SL hit) → stop tracking
+            positions.pop(tid, None)
+            continue
         pos = positions[tid]
         px = None
         try: px = broker.price(pos["instr"])
         except Exception: pass
         if px is None:
             continue
-        # advance the favourable peak
         pos["peak"] = max(pos["peak"], px) if pos["dir_up"] else min(pos["peak"], px)
         stop = chandelier_stop(pos["dir_up"], pos["entry"], pos["peak"], pos["rung"], pos["protect"], chand)
-        hit = (px <= stop) if pos["dir_up"] else (px >= stop)
-        if hit:
+        tighten = (stop > pos["sl"] + 1e-12) if pos["dir_up"] else (stop < pos["sl"] - 1e-12)
+        if tighten:
             try:
-                broker.stop(tid, pos["instr"], cfg.get("paper_mode", True), reason="chandelier")
-                log.info(f"{pos['instr']} chandelier exit @ {round(px,6)} (stop {round(stop,6)}) ticket {tid}")
+                if broker.modify(tid, pos["instr"], stop, paper_mode=paper):
+                    pos["sl"] = stop
+                    log.info(f"{pos['instr']} trail SL → {round(stop, 6)} (peak {round(pos['peak'], 6)}) ticket {tid}")
             except Exception as e:
-                log.warning(f"{pos['instr']}: chandelier close failed: {e}")
-            positions.pop(tid, None)
+                log.warning(f"{pos['instr']}: trail modify failed: {e}")
 
 
 def run(base_url: str, force_live: bool) -> None:
@@ -296,9 +302,9 @@ def run(base_url: str, force_live: bool) -> None:
 
         # (c) Tight loop: build ladders when ready, trail open positions, take entries.
         if plan and not cfg.get("kill_switch"):
-            _manage_chandeliers(positions, broker, plan, cfg)
+            _trail_stops(positions, broker, plan, cfg)     # ratchet the native SL (broker-enforced exit)
             if hasattr(broker, "check_barriers"):
-                broker.check_barriers()                    # paper: native SL floor
+                broker.check_barriers()                    # paper: execute the trailed SL
             instruments = cfg.get("enabled_pairs") or plan.get("universe", [])
             bal = broker.account_balance() or 0.0
             # No new entries while the Asia range is forming (00:00–06:00 London).
@@ -321,21 +327,33 @@ def run(base_url: str, force_live: bool) -> None:
                 px = broker.price(instr)
                 if px is None:
                     continue
+                # Skip a closed index market cleanly (MT5 retcode 10017) instead of
+                # firing a rejected order off a frozen price. Doesn't apply while
+                # forming (that path only primes).
+                if not forming and not broker.tradable(instr):
+                    continue
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
                 for spec in sess.decide(px, ip["policy"], dry_run=forming):
                     sl = spec["protect_stop"]
-                    far_tp = spec["entry"] + (1 if spec["dir_up"] else -1) * 100 * spec["rung"]  # chandelier is the real exit
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), spec["entry"] - sl, cfg.get("max_lot", 2.0))
                     direction = "LONG" if spec["dir_up"] else "SHORT"
-                    tid = broker.enter(instr, direction, sl, far_tp, lots,
+                    # No take-profit — the chandelier-trailed native SL is the exit
+                    # (see _trail_stops). tp=0 → MT5 sets no TP.
+                    tid = broker.enter(instr, direction, sl, 0.0, lots,
                                        cfg.get("max_spread_pips", 1e9), paper,
                                        comment=f"RL {spec['label']} {spec['decision'][0]}")
-                    if tid is not None and tid != -1 or paper:
-                        positions[tid] = {"instr": instr, "dir_up": spec["dir_up"], "entry": spec["entry"],
-                                          "peak": spec["entry"], "rung": spec["rung"], "protect": sl}
-                    log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['decision'].upper()} "
-                             f"{spec['label']} {spec['side']} → ticket {tid} lots {lots}")
+                    filled = (tid is not None and tid != -1) or paper
+                    if filled:
+                        positions[tid] = {"instr": instr, "ticket": tid, "dir_up": spec["dir_up"],
+                                          "entry": spec["entry"], "peak": spec["entry"],
+                                          "rung": spec["rung"], "protect": sl, "sl": sl}
+                        sess.mark_entered(spec["src"], spec["side"])   # burn the slot ONLY on a fill
+                        log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['decision'].upper()} "
+                                 f"{spec['label']} {spec['side']} → ticket {tid} lots {lots}")
+                    else:
+                        log.warning(f"{instr} {spec['decision']} {spec['label']} entry REJECTED — "
+                                    f"slot kept open for a later touch")
 
         time.sleep(max(cfg.get("tick_secs", 3), 1))
 

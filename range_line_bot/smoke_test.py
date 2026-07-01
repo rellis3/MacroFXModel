@@ -6,7 +6,7 @@ import sys
 
 from pylego.broker.paper import PaperBroker
 from range_line_bot.engine import RangeSession
-from range_line_bot.range_line_bot import _manage_chandeliers, size_for, _apply_broker_symbols, _broker_sym, _in_formation
+from range_line_bot.range_line_bot import _trail_stops, size_for, _apply_broker_symbols, _broker_sym, _in_formation
 
 _p = _f = 0
 def ok(name, cond):
@@ -36,19 +36,27 @@ spec = specs[0]
 
 positions = {}
 lots = size_for("nq", 10_000.0, 0.5, spec["entry"] - spec["protect_stop"], 2.0)
-tid = br.enter("nq", "LONG", spec["protect_stop"], spec["entry"] + 100 * spec["rung"], lots, 1e9, True, comment="RL A_1 f")
-positions[tid] = {"instr": "nq", "dir_up": True, "entry": spec["entry"],
-                  "peak": spec["entry"], "rung": spec["rung"], "protect": spec["protect_stop"]}
-ok("position opened on PaperBroker", len(br.serialize_open_positions()) == 1)
+# Enter with NO take-profit (tp=0); the chandelier-trailed native SL is the exit.
+tid = br.enter("nq", "LONG", spec["protect_stop"], 0.0, lots, 1e9, True, comment="RL A_1 f")
+positions[tid] = {"instr": "nq", "ticket": tid, "dir_up": True, "entry": spec["entry"],
+                  "peak": spec["entry"], "rung": spec["rung"], "protect": spec["protect_stop"],
+                  "sl": spec["protect_stop"]}
+ok("position opened on PaperBroker (no TP)", len(br.serialize_open_positions()) == 1)
 
-# Price runs up to 120 (peak), then drops to 116. Chandelier = max(105, 120-2.5)=117.5
-# → 116 < 117.5 → exit.
-br.set_price("nq", 120.0); _manage_chandeliers(positions, br, PLAN, {"paper_mode": True})
-ok("no exit while price keeps making highs", len(br.serialize_open_positions()) == 1)
-br.set_price("nq", 116.0); _manage_chandeliers(positions, br, PLAN, {"paper_mode": True})
-ok("chandelier closes when price retraces past peak-0.5*rung", len(br.serialize_open_positions()) == 0)
+# Price runs up to 120: chandelier = max(105, 120-2.5)=117.5 → the native SL trails
+# up to 117.5 (through break-even 110), broker-side. No exit yet (price above SL).
+CFG = {"paper_mode": True}
+br.set_price("nq", 120.0); _trail_stops(positions, br, PLAN, CFG); br.check_barriers()
+ok("native SL trailed up to peak-0.5*rung (117.5)", abs(positions[tid]["sl"] - 117.5) < 1e-9)
+ok("no exit while price holds above the trailed SL", len(br.serialize_open_positions()) == 1)
+ok("SL is above entry — profit locked (break-even and beyond)", positions[tid]["sl"] > spec["entry"])
+# Price retraces to 116 (< trailed SL 117.5) → broker closes at the SL.
+br.set_price("nq", 116.0); _trail_stops(positions, br, PLAN, CFG); br.check_barriers()
+ok("broker closes at the trailed SL when price retraces", len(br.serialize_open_positions()) == 0)
 ok("closed trade recorded for the journal/positions table", len(br.serialize_closed_trades()) == 1)
-ok("local position state cleared", not positions)
+_trail_stops(positions, br, PLAN, CFG)                # drops the now-closed ticket
+ok("local position state cleared after close", not positions)
+ok("PaperBroker.tradable is always open", br.tradable("nq") is True)
 
 print("[broker symbol overrides]")
 _apply_broker_symbols({"broker_symbols": {"nq": "USTEC", "us30": "  ", "spx500": "US500"}})

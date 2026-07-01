@@ -427,3 +427,44 @@ class Mt5Broker:
             f'Close failed: retcode={res.retcode}  comment={res.comment}  last_error={mt5.last_error()}'
         )
         return False
+
+    def modify(self, ticket: int, pair: str, sl: float, tp: float | None = None,
+               paper_mode: bool = False) -> bool:
+        """Update a live position's SL (and optionally TP) — used to trail the
+        chandelier stop BROKER-SIDE so the exit survives the bot going offline.
+        Returns True on success (or paper / already-closed)."""
+        if paper_mode or ticket < 0:
+            return True
+        if not self.available:
+            return False
+        mt5 = self.mt5
+        mt5_sym = self.resolve(pair)
+        positions = [p for p in (mt5.positions_get(symbol=mt5_sym) or [])
+                     if p.ticket == ticket and p.magic == self.magic]
+        if not positions:
+            return True                       # already closed by SL — nothing to trail
+        req = {'action': mt5.TRADE_ACTION_SLTP, 'symbol': mt5_sym,
+               'position': ticket, 'sl': round(float(sl), 5), 'magic': self.magic}
+        if tp is not None:
+            req['tp'] = round(float(tp), 5)
+        res = mt5.order_send(req)
+        if res is None:
+            self.log.error(f'Modify failed: order_send None  last_error={mt5.last_error()}')
+            return False
+        if res.retcode == mt5.TRADE_RETCODE_DONE:
+            return True
+        self.log.warning(f'Modify {ticket} retcode={res.retcode} comment={getattr(res, "comment", "")}')
+        return False
+
+    def tradable(self, pair: str) -> bool:
+        """True if the broker currently allows OPENING a trade on this symbol. MT5
+        disables index/CFD trading outside session hours (the retcode-10017 'Trade
+        disabled'); this lets the bot skip a closed market cleanly instead of firing
+        a rejected order. Unknown/uncheckable → True (don't block)."""
+        if not self.available:
+            return True
+        info = self.mt5.symbol_info(self.resolve(pair))
+        if info is None:
+            return True
+        disabled = (self.mt5.SYMBOL_TRADE_MODE_DISABLED, self.mt5.SYMBOL_TRADE_MODE_CLOSEONLY)
+        return info.trade_mode not in disabled

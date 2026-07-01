@@ -81,9 +81,12 @@ class RangeSession:
         ``dry_run=True`` marks touched levels acted but returns nothing — used after
         catch-up to prime levels price already crossed (never retro-enter).
         Returns specs: ``{instrument, src, label, side, decision, side_order, entry,
-        protect_stop, rung, dir_up}``.
+        protect_stop, rung, dir_up}``. The caller MUST call ``mark_entered(src, side)``
+        after a SUCCESSFUL fill — the slot is not burned here, so a broker-rejected
+        order (e.g. market closed) doesn't kill the day's trade on that side.
         """
         out = []
+        produced = set()                                 # one spec per (src, side) THIS tick
         for src_tag, lad in self.ladders.items():
             for lv in lad["levels"]:
                 key = (lv["label"], lv["side"])
@@ -95,15 +98,16 @@ class RangeSession:
                 self.acted.add(key)                      # one decision per level per session
                 if dry_run:
                     continue
-                if (src_tag, lv["side"]) in self.entered:
-                    continue                             # held position already open for this (src, side)
+                slot = (src_tag, lv["side"])
+                if slot in self.entered or slot in produced:
+                    continue                             # held position already taken/producing for this (src, side)
                 decision = (policy.get(cell_key(lv["label"], lv["side"])) or {}).get("decision")
                 if decision not in ("fade", "follow"):
                     continue                             # skip / unseen → no trade
                 spec = trade_spec(lv["level"], lv["side"], decision, lv["inner"], lv["outer"])
                 if not spec:
                     continue
-                self.entered.add((src_tag, lv["side"]))  # take the slot (one per src/side)
+                produced.add(slot)                       # don't also produce a second same-side spec this tick
                 out.append({
                     "instrument": self.instrument, "src": src_tag, "label": lv["label"],
                     "side": lv["side"], "decision": decision,
@@ -112,3 +116,8 @@ class RangeSession:
                     "dir_up": spec["side"] == "buy",
                 })
         return out
+
+    def mark_entered(self, src_tag, side):
+        """Record that a position was successfully opened for this (source, side) —
+        suppresses further entries on that slot for the session (held-position)."""
+        self.entered.add((src_tag, side))
