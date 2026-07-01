@@ -443,13 +443,16 @@ export function runSensitivity(touchesByPair, { base = {}, grids = {}, costByPai
 //   minN/marginPct — passed to buildPolicy (a cell trades only if its IS edge pays).
 //   costByPair/slipByPair — per-pair friction stamped onto each touch (mirrors runRigor).
 const _cap = s => s.charAt(0).toUpperCase() + s.slice(1);   // 'fade' → 'Fade'
-export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
+export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0.01,
                                               trailFrac = 0.5, beTrigger = 0.5,
                                               costByPair = {}, slipByPair = {} } = {}) {
-  // Stamp per-pair costs (mirror runRigor) so buildPolicy + the OOS netting use the
-  // right friction.
+  // Stamp per-pair costs so buildPolicy + the OOS netting use the SAME friction and
+  // margin as the deployed book — otherwise the study learns a looser policy (trading
+  // marginal cells the book skips) and mis-prices per pair, making the absolute level
+  // incomparable to the book. Default marginPct 0.01 = the book's after-cost gate;
+  // default cost = the per-pair PAIR_COST_PCT table (not a flat fx default).
   for (const [pair, touches] of Object.entries(touchesByPair)) {
-    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    const cost = costByPair[pair] ?? costForPair(pair), slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
     for (const t of touches) { t.cost = cost; t.slip = slip; }
   }
   const all = Object.values(touchesByPair).flat().sort(byDate);
