@@ -203,8 +203,16 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       n: s.n ?? null, expectancy: s.expectancy ?? null,
     }));
 
+    // Anchor ranges the fib ladder was marked from — BODY range (max/min of
+    // open&close), NOT wick high/low — so the card can show what the lines hang off.
+    const ranges = ladders.map(l => ({
+      src: l.srcTag === 'A' ? 'Asia' : l.srcTag === 'M' ? 'Monday' : l.srcTag,
+      low: +l.low.toFixed(digits), high: +l.high.toFixed(digits),
+      pips: +((l.high - l.low) / pip).toFixed(1),
+    }));
+
     await kv.put(`ai_entries_v2_${sym.replace('/', '')}`, JSON.stringify({
-      data: payload, skips: skipsPayload, timestamp: Date.now(), source: 'server-v2',
+      data: payload, skips: skipsPayload, ranges, timestamp: Date.now(), source: 'server-v2',
       policyBuiltAt: frozen.builtAt ?? null, currentPrice: +price.toFixed(digits),
     }));
 

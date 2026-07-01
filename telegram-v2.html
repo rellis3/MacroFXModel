@@ -9,7 +9,7 @@
   :root { --bg:#0b0e14; --panel:#141925; --panel2:#1b2230; --bd:#262e3d; --text:#e6edf3; --text2:#9aa7b8; --grn:#22c55e; --grnd:#16a34a; --amb:#f59e0b; --red:#ef4444; --blu:#5b9dff; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:'DM Sans',system-ui,sans-serif; font-size:14px; }
-  .wrap { max-width:1180px; margin:0 auto; padding:20px; }
+  .wrap { max-width:min(1800px,96vw); margin:0 auto; padding:20px; }
   h1 { font-size:20px; margin:0 0 4px; }
   .sub { color:var(--text2); font-size:12px; margin-bottom:18px; }
   .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
@@ -35,8 +35,9 @@
   .tab { padding:6px 14px; border-radius:8px; background:var(--panel); border:1px solid var(--bd); color:var(--text2); cursor:pointer; font-size:13px; font-weight:600; }
   .tab.on { background:var(--panel2); color:var(--text); border-color:#3a4a63; }
   /* per-pair cards */
-  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:12px; }
   .card { background:var(--panel); border:1px solid var(--bd); border-radius:12px; padding:12px; }
+  .ranges { font-size:11px; color:var(--text); margin:2px 0 8px; padding:4px 8px; background:var(--bg); border:1px solid var(--bd); border-radius:6px; }
   .card.long { border-left:3px solid var(--grn); } .card.short { border-left:3px solid var(--red); }
   .chead { display:flex; justify-content:space-between; align-items:baseline; }
   .chead .sym { font-weight:700; font-size:15px; }
@@ -307,8 +308,13 @@ function renderCards(entries) {
       </div>`
       : `<div class="det muted" style="padding:6px 0;">no tradeable zone near price — ${nSkip} discarded line${nSkip === 1 ? '' : 's'} below</div>`;
     const rowCount = list.length + skips.length;
+    const ranges = (blk?.ranges || []);
+    const rangeLine = ranges.length
+      ? `<div class="ranges mono">${ranges.map(r => `<span title="body range (open/close), not wick — the fibs are marked from this">${r.src} body <b>${r.low}</b>–<b>${r.high}</b> <span style="color:var(--text2)">(${r.pips}p)</span></span>`).join('<span style="color:var(--bd)"> · </span>')}</div>`
+      : '';
     cards.push(`<div class="card ${tilt}">
       <div class="chead"><span class="sym">${sym}</span><span class="px mono">${cur != null ? cur : ''}</span></div>
+      ${rangeLine}
       ${head}
       <div class="cbadges">
         <span class="badge">${list.length} zones</span>
