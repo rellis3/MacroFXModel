@@ -2,7 +2,7 @@
  * Offline tests for intradayMtmDrawdown — the MAE + concurrency-aware drawdown.
  * Run: node js/intradayDrawdown.test.mjs
  */
-import { intradayMtmDrawdown } from './intradayDrawdown.js';
+import { intradayMtmDrawdown, tradeTimingStats } from './intradayDrawdown.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -76,6 +76,28 @@ console.log('[intradayMtmDrawdown]');
   const b = { entryTime: 0, maeTime: 5, exitTime: 10, maePct: 0, pnl: -4 };
   const r = intradayMtmDrawdown([a, b]);
   ok('realised PnL read from `pnl` field (concurrent losers → -8)', near(r.maxDD, -8), `maxDD=${r.maxDD}`);
+}
+
+// 9. tradeTimingStats — the discriminator between real short-lived trades and
+//    zero-duration (missing-timestamp) records.
+{
+  // epoch-seconds: durations 5, 10, 15 min; maePct 1, 2, 3.
+  const s = 1700000000;
+  const real = [
+    { entryTime: s,        exitTime: s + 300,  maePct: 1 },
+    { entryTime: s + 100,  exitTime: s + 700,  maePct: 2 },
+    { entryTime: s + 200,  exitTime: s + 1100, maePct: 3 },
+  ];
+  const st = tradeTimingStats(real);
+  ok('tradeTimingStats counts all trades', st.n === 3, `n=${st.n}`);
+  ok('tradeTimingStats median duration in minutes', near(st.medianDurationMin, 10, 0.1), `median=${st.medianDurationMin}`);
+  ok('tradeTimingStats 0% zero-duration on real trades', st.pctZeroDuration === 0, `zero=${st.pctZeroDuration}`);
+  ok('tradeTimingStats median maePct', near(st.medianMaePct, 2, 1e-9), `median maePct=${st.medianMaePct}`);
+  ok('tradeTimingStats p95 maePct', st.p95MaePct === 3, `p95=${st.p95MaePct}`);
+  // Zero-duration records (entry==exit) → flagged at 100%.
+  const zero = [{ entryTime: s, exitTime: s, maePct: 0 }, { entryTime: s, exitTime: s, maePct: 0 }];
+  ok('tradeTimingStats flags zero-duration records', tradeTimingStats(zero).pctZeroDuration === 100);
+  ok('tradeTimingStats empty → {n:0}', tradeTimingStats([]).n === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

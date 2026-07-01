@@ -103,3 +103,37 @@ export function intradayMtmDrawdown(trades) {
   }
   return { maxDD: +maxDD.toFixed(4), peak: +peak.toFixed(4), trough: +trough.toFixed(4), breakpoints: grid.length };
 }
+
+// Summary stats over the SAME trade list intradayMtmDrawdown consumes — the
+// discriminator for whether the intraday-DD uplift is real. Genuine intraday trades
+// have durations of minutes-to-hours and pctZeroDuration ≈ 0; if the records lack
+// real extTime/exitTime the trades collapse to entry==exit (pctZeroDuration high) and
+// the uplift is an artifact, not mean-reversion. Durations in MINUTES; maePct is the
+// adverse-excursion magnitude (% of price). Times coerced with the same _ms as above.
+export function tradeTimingStats(trades) {
+  const durs = [], maes = [];
+  let n = 0, zero = 0;
+  for (const t of trades || []) {
+    if (!t) continue;
+    const e = _ms(t.entryTime), x = _ms(t.exitTime);
+    if (e == null || x == null) continue;
+    n++;
+    if (x <= e) zero++;
+    durs.push(Math.max(0, (x - e) / 60000));          // minutes
+    maes.push(Math.abs(+t.maePct || 0));
+  }
+  if (!n) return { n: 0 };
+  const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const sorted = a => [...a].sort((p, q) => p - q);
+  const median = a => { const s = sorted(a), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const pctl = (a, p) => { const s = sorted(a); return s[Math.min(s.length - 1, Math.max(0, Math.floor(p / 100 * s.length)))]; };
+  return {
+    n,
+    avgDurationMin:    +mean(durs).toFixed(1),
+    medianDurationMin: +median(durs).toFixed(1),
+    pctZeroDuration:   +(zero / n * 100).toFixed(1),
+    avgMaePct:         +mean(maes).toFixed(4),
+    medianMaePct:      +median(maes).toFixed(4),
+    p95MaePct:         +pctl(maes, 95).toFixed(4),
+  };
+}
