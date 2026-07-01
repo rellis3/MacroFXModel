@@ -53,16 +53,33 @@ export function costForPair(key, assetClass = 'fx') {
 // Each touch: { date, open, line, reverted, level, innerLvl, outerLvl, cell }.
 // `conditions` = the per-line condition fields keyed into the cell (default the
 // OOS-proven approach velocity; add 'budgetBucket' etc. to refine).
-export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
+//
+// Day-type gate (no lookahead): each WINDOW carries `signedT` — the EX-ANTE
+// trend-day forecast (classifyDayType's estimators loop closes[idx-win … idx-1],
+// strictly BEFORE session i, so it forecasts day i's trend-ness from prior days).
+// We bucket it SIGNED into { tU | rng | tD } (up-trend / range / down-trend) so
+// the policy can learn "fade an UP line on a tU day" as its own cell (skip/flip),
+// separate from a range day. When the condition name is 'dayType' the touch's
+// bucket is used instead of a line-level field. NEVER condition on realizedDir /
+// dirAction / outcome / close — those resolve during/after the session.
+export function extractTouches(records, { conditions = ['approachVel'], dtThresh = 0.33 } = {}) {
   const touches = [];
+  const dtBucketOf = (signedT) => {
+    if (signedT == null || !Number.isFinite(signedT)) return 'na';   // dropped by the na-guard, like any missing condition
+    return signedT >= dtThresh ? 'tU' : signedT <= -dtThresh ? 'tD' : 'rng';
+  };
   for (const w of records || []) {
+    const dayType = dtBucketOf(w.signedT);
     for (const ln of w.lines || []) {
       if (ln.outcome !== 'reverted' && ln.outcome !== 'continued') continue;   // decided only
       if (ln.innerLvl == null || ln.outerLvl == null || !(w.open > 0)) continue;
-      const condKey = conditions.map(c => ln[c] ?? 'na').join('|');
+      // A condition named 'dayType' reads the WINDOW-level ex-ante bucket; every
+      // other condition reads the per-line field ln[c] exactly as before.
+      const condKey = conditions.map(c => (c === 'dayType' ? dayType : (ln[c] ?? 'na'))).join('|');
       if (condKey.includes('na')) continue;   // missing a gating condition → not tradeable
       touches.push({
         date: w.date, open: w.open, line: `${ln.name}_${ln.side}`, name: ln.name, side: ln.side,
+        dayType, signedT: w.signedT ?? null, dtLabel: w.dtLabel ?? null,
         reverted: ln.outcome === 'reverted', fillTime: ln.firstTouchTime ?? null,
         level: ln.level, innerLvl: ln.innerLvl, outerLvl: ln.outerLvl,
         decidedBy: ln.decidedBy ?? 'barrier',           // 'barrier' (TP/SL hit) or 'close' (mark-to-close)
@@ -511,4 +528,100 @@ export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, margin
   }
 
   return { splitDate, trailFrac, beTrigger, missing, rules, bestByGroup };
+}
+
+// ── 8) Day-type gate A/B study — does conditioning fade/follow on the ex-ante ──
+// trend-day forecast beat the velocity-only policy? ("stop fading into a rally").
+//
+// Discipline / no-lookahead: the ONLY day-type signal used is each touch's
+// `dayType` bucket (derived from the WINDOW's `signedT`, which is EX-ANTE — see
+// extractTouches). We never touch realizedDir / outcome / close to decide the
+// bucket. buildPolicy still learns fade/follow/skip from IS after-cost PnL.
+//
+// Runs runPerLine TWICE on the SAME data / split / costs:
+//   • baseline: cells keyed by approach-velocity only  (t.cell as passed in)
+//   • gated:    cells keyed by approach-velocity × dayType (append |bucket)
+// so any OOS difference is the day-type gate, not the data or the split.
+//
+// touchesByPair: { pair: touches[] } — touches from extractTouches with the
+// deployed baseline conditions (['approachVel']); each carries .dayType/.signedT.
+// Returns the OOS A/B card + the focused "fade-into-trend" diagnostic (the exact
+// "selling into a rally" losers the gate is meant to cut).
+export function runDayTypeStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0.01,
+                                                 dtThresh = 0.33, costByPair = {}, slipByPair = {} } = {}) {
+  const pairs = Object.entries(touchesByPair || {});
+  if (!pairs.length) return null;
+  // Two views of the SAME touches, differing only in the cell key. Cloning keeps
+  // the incoming touches untouched (runPerLine stamps t.cost/t.slip in place).
+  const cloneWith = (cellFn) => {
+    const out = {};
+    for (const [pair, ts] of pairs) out[pair] = ts.map(t => ({ ...t, cell: cellFn(t) }));
+    return out;
+  };
+  const baseByPair  = cloneWith(t => t.cell);                         // approachVel-only cell (as extracted)
+  const gatedByPair = cloneWith(t => `${t.cell}|${t.dayType ?? 'na'}`); // + ex-ante day-type bucket
+
+  const opts = { splitFrac, minN, marginPct, costByPair, slipByPair, mcRuns: 0, bootRuns: 0 };
+  const baseRes  = runPerLine(baseByPair,  opts);
+  const gatedRes = runPerLine(gatedByPair, opts);
+  if (!baseRes || !gatedRes) return null;
+  const splitDate = baseRes.splitDate;
+
+  // OOS portfolio card for one runPerLine result (Sharpe/CAGR/maxDD from the daily
+  // portfolio series; expectancy from per-trade summary; cell breadth from policy).
+  const cardOf = (res) => {
+    const p = res.portfolio || {};
+    const exp = summarizeTrades(res.equity.map(e => e.pnl), res.equity.map(e => e.date)).expectancy;
+    return {
+      sharpe: p.sharpe ?? 0, cagr: p.cagr ?? 0, maxDD: p.maxDD ?? 0,
+      expectancy: exp, nTrades: res.nTrades,
+      cells: { fade: res.coverage.fadeCells, follow: res.coverage.followCells, skip: res.coverage.skipCells },
+    };
+  };
+  const baseline = cardOf(baseRes);
+  const gated    = cardOf(gatedRes);
+
+  // ── Fade-into-trend diagnostic ──────────────────────────────────────────────
+  // Over the OOS touches: isolate the ones the BASELINE policy FADES that go
+  // AGAINST the ex-ante day-type — i.e. fading an UP line on a tU (trend-up) day,
+  // or a DN line on a tD (trend-down) day. Those are the "selling into a rally"
+  // losers. Report their count + baseline net PnL, and what the GATED policy does
+  // with the SAME touches (skip / flip-to-follow / still-fade) + its net PnL.
+  const basePolicy  = baseRes.policy;
+  const gatedPolicy = gatedRes.policy;
+  const againstTrend = (t) => (t.side === 'up' && t.dayType === 'tU') || (t.side === 'dn' && t.dayType === 'tD');
+  let n = 0, baselineNetPnl = 0, gatedNetPnl = 0;
+  const gatedAction = { skip: 0, flip: 0, fade: 0 };
+  for (const [pair, ts] of pairs) {
+    for (const t of ts) {
+      if (t.date < splitDate) continue;                              // OOS only
+      if (!againstTrend(t)) continue;
+      const bp = basePolicy[t.cell];                                 // baseline cell (as extracted)
+      if (!bp || bp.decision !== 'fade') continue;                   // only the baseline fades-into-trend
+      n++;
+      const cost = { costPct: t.cost ?? costByPair[pair] ?? DEFAULT_COST_PCT.fx,
+                     slipPct: t.slip ?? slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx };
+      baselineNetPnl += pnlFor(t, 'fade', cost);
+      const gp = gatedPolicy[`${t.cell}|${t.dayType ?? 'na'}`];      // gated cell decision on the SAME touch
+      const gDec = (!gp || gp.decision === 'skip') ? 'skip' : gp.decision;
+      if (gDec === 'skip')        gatedAction.skip++;
+      else if (gDec === 'follow') { gatedAction.flip++; gatedNetPnl += pnlFor(t, 'follow', cost); }
+      else                        { gatedAction.fade++; gatedNetPnl += pnlFor(t, 'fade',   cost); }
+    }
+  }
+
+  const delta = {
+    sharpe: +((gated.sharpe ?? 0) - (baseline.sharpe ?? 0)).toFixed(3),
+    expectancy: +((gated.expectancy ?? 0) - (baseline.expectancy ?? 0)).toFixed(4),
+    nTrades: (gated.nTrades ?? 0) - (baseline.nTrades ?? 0),
+  };
+  // Gated "wins OOS" only with adequate breadth: Sharpe ≥ baseline AND n ≥ 30.
+  const gatedWinsOos = (gated.sharpe ?? -Infinity) >= (baseline.sharpe ?? Infinity) && (gated.nTrades ?? 0) >= 30;
+
+  return {
+    splitDate, dtThresh, baseline, gated, delta, gatedWinsOos,
+    fadeIntoTrend: {
+      n, baselineNetPnl: +baselineNetPnl.toFixed(4), gatedNetPnl: +gatedNetPnl.toFixed(4), gatedAction,
+    },
+  };
 }
