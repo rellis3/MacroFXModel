@@ -7,26 +7,21 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
 <style>
-/* ── Command Hub ──────────────────────────────────────────────────────────── */
-#commandHub{padding:10px 16px 8px;background:var(--s1,#111827);border-bottom:2px solid var(--border,#1e2a3a);}
-#commandHub.chub-collapsed .chub-rows{display:none}
-.chub-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.chub-brand{font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--text,#e2e8f0)}
-.chub-brand em{font-style:normal;color:#10b981}
-.chub-hint{font-size:10px;color:var(--text3,#4b5563);font-family:'DM Mono',monospace}
-.chub-toggler{margin-left:auto;background:none;border:1px solid var(--border,#1e2a3a);border-radius:4px;color:var(--text3,#4b5563);font-size:10px;cursor:pointer;padding:2px 8px;font-family:'DM Mono',monospace;transition:color .1s,border-color .1s}
-.chub-toggler:hover{color:var(--text2,#94a3b8);border-color:var(--border2,#2a3347)}
-.chub-rows{display:flex;flex-direction:column;gap:4px}
-.chub-row{display:flex;align-items:flex-start;gap:6px}
-.chub-lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-family:'DM Mono',monospace;min-width:60px;padding-top:4px;flex-shrink:0;text-align:right}
-.chub-pills{display:flex;flex-wrap:wrap;gap:3px}
-a.cp{display:inline-flex;align-items:center;gap:3px;background:var(--s2,#161b27);border:1px solid var(--border,#1e2a3a);border-radius:5px;padding:3px 7px 3px 6px;font-size:11px;color:var(--text2,#94a3b8);text-decoration:none;transition:background .1s,border-color .1s,color .1s;white-space:nowrap;line-height:1.3}
-a.cp:hover{background:var(--bg,#0d1117);border-color:var(--border2,#2a3347);color:var(--text,#e2e8f0)}
-.cp-star{background:none;border:none;cursor:pointer;font-size:10px;color:var(--text3,#4b5563);padding:0 0 0 1px;line-height:1;opacity:.2;transition:opacity .1s,color .1s;flex-shrink:0}
-a.cp:hover .cp-star{opacity:.65}
-.cp-star:hover{opacity:1!important;color:#f59e0b!important}
-.cp-star.starred{color:#f59e0b!important;opacity:1!important}
-#chubFavRow{display:none}
+/* ── Command Hub (dropdown bar) ────────────────────────────────────────────── */
+#commandHub{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:6px 14px;background:var(--s1,#111827);border-bottom:2px solid var(--border,#1e2a3a);}
+.chub-dd{position:relative;display:inline-block}
+.chub-btn{background:none;border:1px solid var(--border,#1e2a3a);border-radius:6px;color:var(--text2,#94a3b8);font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;font-family:'DM Sans',sans-serif;transition:background .1s,border-color .1s;white-space:nowrap}
+.chub-btn:hover,.chub-dd.open .chub-btn{background:var(--s2,#161b27)}
+.chub-menu{display:none;position:absolute;top:calc(100% + 3px);left:0;z-index:300;min-width:195px;max-height:72vh;overflow-y:auto;background:var(--s1,#111827);border:1px solid var(--border,#1e2a3a);border-radius:8px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.chub-dd.open .chub-menu{display:block}
+.chub-item{display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:var(--text2,#94a3b8);font-size:12px;padding:6px 8px;border-radius:5px;line-height:1.25;transition:background .1s,color .1s}
+.chub-item:hover{background:var(--s2,#161b27);color:var(--text,#e2e8f0)}
+.ci-txt{flex:1;min-width:0}
+.chub-star{background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3,#4b5563);padding:0 0 0 8px;line-height:1;opacity:.2;transition:opacity .1s,color .1s;flex-shrink:0}
+.chub-item:hover .chub-star{opacity:.7}
+.chub-star:hover{opacity:1!important;color:#f59e0b!important}
+.chub-star.starred{color:#f59e0b!important;opacity:1!important}
+#chubFavDD{display:none}
 </style>
 </head>
 <body>
@@ -34,127 +29,129 @@ a.cp:hover .cp-star{opacity:.65}
 
 <!-- ── Command Hub ────────────────────────────────────────────────────────── -->
 <div id="commandHub">
-  <div class="chub-head">
-    <span class="chub-brand">Macro<em>FX</em></span>
-    <span class="chub-hint">★ pin any tool to Favourites · click ☆ to star</span>
-    <button id="chubTogglerBtn" class="chub-toggler" onclick="chubToggleCollapse()">▾ collapse</button>
+
+  <!-- Favourites (shown when any starred) -->
+  <div class="chub-dd" id="chubFavDD">
+    <button class="chub-btn" style="color:#f59e0b;border-color:rgba(245,158,11,.4)" onclick="chubToggleDD(event,'chubFavDD')">★ Favs ▾</button>
+    <div class="chub-menu" id="chubFavMenu"></div>
   </div>
-  <div class="chub-rows">
 
-    <div class="chub-row" id="chubFavRow">
-      <div class="chub-lbl" style="color:#f59e0b">★ Favs</div>
-      <div class="chub-pills" id="chubFavPills"></div>
+  <!-- Live -->
+  <div class="chub-dd" id="chubDDlive">
+    <button class="chub-btn" style="color:#10b981;border-color:rgba(16,185,129,.35)" onclick="chubToggleDD(event,'chubDDlive')">Live ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="levels.html" target="_blank" data-href="levels.html"><span class="ci-txt">🎯 Entry Lens</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('levels.html')" data-href="levels.html">☆</button></a>
+      <a class="chub-item" href="vol-forecast-v2.html" target="_blank" data-href="vol-forecast-v2.html"><span class="ci-txt">📐 Vol Forecast v2</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast-v2.html')" data-href="vol-forecast-v2.html">☆</button></a>
+      <a class="chub-item" href="vol-forecast.html" target="_blank" data-href="vol-forecast.html"><span class="ci-txt">📐 Vol Forecast</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast.html')" data-href="vol-forecast.html">☆</button></a>
+      <a class="chub-item" href="telegram-v2.html" target="_blank" data-href="telegram-v2.html"><span class="ci-txt">📡 Telegram v2</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('telegram-v2.html')" data-href="telegram-v2.html">☆</button></a>
+      <a class="chub-item" href="performance.html" target="_blank" data-href="performance.html"><span class="ci-txt">📊 Performance</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('performance.html')" data-href="performance.html">☆</button></a>
+      <a class="chub-item" href="journal.html" target="_blank" data-href="journal.html"><span class="ci-txt">📒 Journal</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('journal.html')" data-href="journal.html">☆</button></a>
+      <a class="chub-item" href="bot-config.html" target="_blank" data-href="bot-config.html"><span class="ci-txt">🤖 Bot Config</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('bot-config.html')" data-href="bot-config.html">☆</button></a>
+      <a class="chub-item" href="gold.html" target="_blank" data-href="gold.html"><span class="ci-txt">🥇 Gold Model</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold.html')" data-href="gold.html">☆</button></a>
+      <a class="chub-item" href="gold-zones.html" target="_blank" data-href="gold-zones.html"><span class="ci-txt">🗺 Gold Zones</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-zones.html')" data-href="gold-zones.html">☆</button></a>
+      <a class="chub-item" href="nasdaq-threshold-engine.html" target="_blank" data-href="nasdaq-threshold-engine.html"><span class="ci-txt">📡 NQ Gate Live</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-threshold-engine.html')" data-href="nasdaq-threshold-engine.html">☆</button></a>
+      <a class="chub-item" href="cog-v2-engine.html" target="_blank" data-href="cog-v2-engine.html"><span class="ci-txt">⚙ COG v2</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('cog-v2-engine.html')" data-href="cog-v2-engine.html">☆</button></a>
+      <a class="chub-item" href="liquidity-pulse.html" target="_blank" data-href="liquidity-pulse.html"><span class="ci-txt">💧 Liq Pulse</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('liquidity-pulse.html')" data-href="liquidity-pulse.html">☆</button></a>
+      <a class="chub-item" href="global-liquidity.html" target="_blank" data-href="global-liquidity.html"><span class="ci-txt">🌊 Global Liq</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('global-liquidity.html')" data-href="global-liquidity.html">☆</button></a>
     </div>
-
-    <div class="chub-row">
-      <div class="chub-lbl" style="color:#10b981">Live</div>
-      <div class="chub-pills">
-        <a class="cp" href="levels.html" target="_blank" data-href="levels.html">🎯 Entry Lens<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('levels.html')" data-href="levels.html">☆</button></a>
-        <a class="cp" href="vol-forecast-v2.html" target="_blank" data-href="vol-forecast-v2.html">📐 Vol Forecast v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast-v2.html')" data-href="vol-forecast-v2.html">☆</button></a>
-        <a class="cp" href="vol-forecast.html" target="_blank" data-href="vol-forecast.html">📐 Vol Forecast<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast.html')" data-href="vol-forecast.html">☆</button></a>
-        <a class="cp" href="telegram-v2.html" target="_blank" data-href="telegram-v2.html">📡 Telegram v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('telegram-v2.html')" data-href="telegram-v2.html">☆</button></a>
-        <a class="cp" href="performance.html" target="_blank" data-href="performance.html">📊 Performance<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('performance.html')" data-href="performance.html">☆</button></a>
-        <a class="cp" href="journal.html" target="_blank" data-href="journal.html">📒 Journal<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('journal.html')" data-href="journal.html">☆</button></a>
-        <a class="cp" href="bot-config.html" target="_blank" data-href="bot-config.html">🤖 Bot Config<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('bot-config.html')" data-href="bot-config.html">☆</button></a>
-        <a class="cp" href="gold.html" target="_blank" data-href="gold.html">🥇 Gold Model<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold.html')" data-href="gold.html">☆</button></a>
-        <a class="cp" href="gold-zones.html" target="_blank" data-href="gold-zones.html">🗺 Gold Zones<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-zones.html')" data-href="gold-zones.html">☆</button></a>
-        <a class="cp" href="nasdaq-threshold-engine.html" target="_blank" data-href="nasdaq-threshold-engine.html">📡 NQ Gate Live<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-threshold-engine.html')" data-href="nasdaq-threshold-engine.html">☆</button></a>
-        <a class="cp" href="cog-v2-engine.html" target="_blank" data-href="cog-v2-engine.html">⚙ COG v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('cog-v2-engine.html')" data-href="cog-v2-engine.html">☆</button></a>
-        <a class="cp" href="liquidity-pulse.html" target="_blank" data-href="liquidity-pulse.html">💧 Liq Pulse<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('liquidity-pulse.html')" data-href="liquidity-pulse.html">☆</button></a>
-        <a class="cp" href="global-liquidity.html" target="_blank" data-href="global-liquidity.html">🌊 Global Liq<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('global-liquidity.html')" data-href="global-liquidity.html">☆</button></a>
-      </div>
-    </div>
-
-    <div class="chub-row">
-      <div class="chub-lbl" style="color:#4f7df0">Vol</div>
-      <div class="chub-pills">
-        <a class="cp" href="honest-forecast-harness.html" target="_blank" data-href="honest-forecast-harness.html">🔬 Honest Harness<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('honest-forecast-harness.html')" data-href="honest-forecast-harness.html">☆</button></a>
-        <a class="cp" href="vol-backtest.html" target="_blank" data-href="vol-backtest.html">📊 Vol BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-backtest.html')" data-href="vol-backtest.html">☆</button></a>
-        <a class="cp" href="vol-backtest-v2.html" target="_blank" data-href="vol-backtest-v2.html">📊 Vol BT v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-backtest-v2.html')" data-href="vol-backtest-v2.html">☆</button></a>
-        <a class="cp" href="weekly-vol-backtest.html" target="_blank" data-href="weekly-vol-backtest.html">📅 Weekly Vol BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('weekly-vol-backtest.html')" data-href="weekly-vol-backtest.html">☆</button></a>
-        <a class="cp" href="vol-forecast-bench.html" target="_blank" data-href="vol-forecast-bench.html">📐 σ Bench<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast-bench.html')" data-href="vol-forecast-bench.html">☆</button></a>
-        <a class="cp" href="forecaster-backtest.html" target="_blank" data-href="forecaster-backtest.html">📈 Forecaster BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecaster-backtest.html')" data-href="forecaster-backtest.html">☆</button></a>
-        <a class="cp" href="forecast-analysis.html" target="_blank" data-href="forecast-analysis.html">📊 Level Analyser<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-analysis.html')" data-href="forecast-analysis.html">☆</button></a>
-        <a class="cp" href="forecast-book-report.html" target="_blank" data-href="forecast-book-report.html">📄 Book Report<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-book-report.html')" data-href="forecast-book-report.html">☆</button></a>
-        <a class="cp" href="forecast-refresh.html" target="_blank" data-href="forecast-refresh.html">⟳ Data Refresh<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-refresh.html')" data-href="forecast-refresh.html">☆</button></a>
-      </div>
-    </div>
-
-    <div class="chub-row">
-      <div class="chub-lbl" style="color:#8b5cf6">FX BT</div>
-      <div class="chub-pills">
-        <a class="cp" href="backtest.html" target="_blank" data-href="backtest.html">📈 Backtest<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest.html')" data-href="backtest.html">☆</button></a>
-        <a class="cp" href="asia-range-backtest.html" target="_blank" data-href="asia-range-backtest.html">📐 Asia Range BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('asia-range-backtest.html')" data-href="asia-range-backtest.html">☆</button></a>
-        <a class="cp" href="asia-range-analysis.html" target="_blank" data-href="asia-range-analysis.html">📊 Asia Analysis<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('asia-range-analysis.html')" data-href="asia-range-analysis.html">☆</button></a>
-        <a class="cp" href="range-fib-backtest.html" target="_blank" data-href="range-fib-backtest.html">📏 Range-Fib BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('range-fib-backtest.html')" data-href="range-fib-backtest.html">☆</button></a>
-        <a class="cp" href="range-line-strategy.html" target="_blank" data-href="range-line-strategy.html">🎯 Range-Line<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('range-line-strategy.html')" data-href="range-line-strategy.html">☆</button></a>
-        <a class="cp" href="pivot-spike-backtest.html" target="_blank" data-href="pivot-spike-backtest.html">📍 Pivot Spike BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('pivot-spike-backtest.html')" data-href="pivot-spike-backtest.html">☆</button></a>
-        <a class="cp" href="regime-backtest.html" target="_blank" data-href="regime-backtest.html">⚡ Regime BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('regime-backtest.html')" data-href="regime-backtest.html">☆</button></a>
-        <a class="cp" href="claude-backtest.html" target="_blank" data-href="claude-backtest.html">🔬 Claude BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('claude-backtest.html')" data-href="claude-backtest.html">☆</button></a>
-        <a class="cp" href="backtest-viewer.html" target="_blank" data-href="backtest-viewer.html">▶ BT Viewer<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest-viewer.html')" data-href="backtest-viewer.html">☆</button></a>
-        <a class="cp" href="backtest-monitor.html" target="_blank" data-href="backtest-monitor.html">🖥 BT Monitor<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest-monitor.html')" data-href="backtest-monitor.html">☆</button></a>
-      </div>
-    </div>
-
-    <div class="chub-row">
-      <div class="chub-lbl" style="color:#f59e0b">Research</div>
-      <div class="chub-pills">
-        <a class="cp" href="correlations.html" target="_blank" data-href="correlations.html">⬡ Corr Lab<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('correlations.html')" data-href="correlations.html">☆</button></a>
-        <a class="cp" href="cot-extremes.html" target="_blank" data-href="cot-extremes.html">📋 COT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('cot-extremes.html')" data-href="cot-extremes.html">☆</button></a>
-        <a class="cp" href="regime-viewer.html" target="_blank" data-href="regime-viewer.html">🔍 Regime Viewer<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('regime-viewer.html')" data-href="regime-viewer.html">☆</button></a>
-        <a class="cp" href="analysis.html" target="_blank" data-href="analysis.html">📊 Pattern Lab<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('analysis.html')" data-href="analysis.html">☆</button></a>
-        <a class="cp" href="hedge-signals.html" target="_blank" data-href="hedge-signals.html">⚡ Signals v1<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-signals.html')" data-href="hedge-signals.html">☆</button></a>
-        <a class="cp" href="hedge-signals-v2.html" target="_blank" data-href="hedge-signals-v2.html">⚡ Signals v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-signals-v2.html')" data-href="hedge-signals-v2.html">☆</button></a>
-        <a class="cp" href="diversification.html" target="_blank" data-href="diversification.html">🔗 Book Explorer<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('diversification.html')" data-href="diversification.html">☆</button></a>
-      </div>
-    </div>
-
-    <div class="chub-row">
-      <div class="chub-lbl" style="color:#06b6d4">Equity</div>
-      <div class="chub-pills">
-        <a class="cp" href="macro-equity-backtest.html" target="_blank" data-href="macro-equity-backtest.html">📊 Macro Eq BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('macro-equity-backtest.html')" data-href="macro-equity-backtest.html">☆</button></a>
-        <a class="cp" href="nasdaq-threshold-backtest.html" target="_blank" data-href="nasdaq-threshold-backtest.html">🧮 NQ Threshold BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-threshold-backtest.html')" data-href="nasdaq-threshold-backtest.html">☆</button></a>
-        <a class="cp" href="nasdaq-liquidity-continuation.html" target="_blank" data-href="nasdaq-liquidity-continuation.html">📈 NQ Liq BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-liquidity-continuation.html')" data-href="nasdaq-liquidity-continuation.html">☆</button></a>
-        <a class="cp" href="liquidity-gate-backtest.html" target="_blank" data-href="liquidity-gate-backtest.html">💧 Liq Gate BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('liquidity-gate-backtest.html')" data-href="liquidity-gate-backtest.html">☆</button></a>
-        <a class="cp" href="nq-qmr-backtest.html" target="_blank" data-href="nq-qmr-backtest.html">⚡ NQ-QMR BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nq-qmr-backtest.html')" data-href="nq-qmr-backtest.html">☆</button></a>
-        <a class="cp" href="zscore-backtest.html" target="_blank" data-href="zscore-backtest.html">⚡ Yield Z-Score<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('zscore-backtest.html')" data-href="zscore-backtest.html">☆</button></a>
-        <a class="cp" href="vix-vol-carry-backtest.html" target="_blank" data-href="vix-vol-carry-backtest.html">🌋 VIX Vol-Carry<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vix-vol-carry-backtest.html')" data-href="vix-vol-carry-backtest.html">☆</button></a>
-      </div>
-    </div>
-
-    <div class="chub-row">
-      <div class="chub-lbl" style="color:#eab308">Gold</div>
-      <div class="chub-pills">
-        <a class="cp" href="gold.html" target="_blank" data-href="gold.html">🥇 Gold Model<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold.html')" data-href="gold.html">☆</button></a>
-        <a class="cp" href="gold-zones.html" target="_blank" data-href="gold-zones.html">🗺 Gold Zones<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-zones.html')" data-href="gold-zones.html">☆</button></a>
-        <a class="cp" href="gold-backtest.html" target="_blank" data-href="gold-backtest.html">📊 Gold BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-backtest.html')" data-href="gold-backtest.html">☆</button></a>
-        <a class="cp" href="gold-lab.html" target="_blank" data-href="gold-lab.html">🔬 Gold Lab<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-lab.html')" data-href="gold-lab.html">☆</button></a>
-        <a class="cp" href="system-gold-macro.html" target="_blank" data-href="system-gold-macro.html">📊 P6 Gold Macro<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-gold-macro.html')" data-href="system-gold-macro.html">☆</button></a>
-      </div>
-    </div>
-
-    <div class="chub-row">
-      <div class="chub-lbl" style="color:#14b8a6">Systems</div>
-      <div class="chub-pills">
-        <a class="cp" href="hub.html" target="_blank" data-href="hub.html">⬡ Risk Hub<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hub.html')" data-href="hub.html">☆</button></a>
-        <a class="cp" href="system-credit-equity.html" target="_blank" data-href="system-credit-equity.html">📊 P2 Credit<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-credit-equity.html')" data-href="system-credit-equity.html">☆</button></a>
-        <a class="cp" href="system-yield-curve.html" target="_blank" data-href="system-yield-curve.html">📊 P3 Yield<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-yield-curve.html')" data-href="system-yield-curve.html">☆</button></a>
-        <a class="cp" href="system-fx-carry.html" target="_blank" data-href="system-fx-carry.html">📊 P4 Carry<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-fx-carry.html')" data-href="system-fx-carry.html">☆</button></a>
-        <a class="cp" href="system-fx-momentum.html" target="_blank" data-href="system-fx-momentum.html">📊 P5 Momentum<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-fx-momentum.html')" data-href="system-fx-momentum.html">☆</button></a>
-        <a class="cp" href="hedge-backtest.html" target="_blank" data-href="hedge-backtest.html">📊 Hedge BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-backtest.html')" data-href="hedge-backtest.html">☆</button></a>
-        <a class="cp" href="results.html" target="_blank" data-href="results.html">📄 Tearsheet<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('results.html')" data-href="results.html">☆</button></a>
-      </div>
-    </div>
-
-    <div class="chub-row">
-      <div class="chub-lbl" style="color:#64748b">WIP</div>
-      <div class="chub-pills">
-        <a class="cp" href="indexv2.html" target="_blank" data-href="indexv2.html" style="opacity:.65">📊 Market State v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('indexv2.html')" data-href="indexv2.html">☆</button></a>
-        <a class="cp" href="level-chart-demo.html" target="_blank" data-href="level-chart-demo.html" style="opacity:.65">🧱 Level Demo<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-chart-demo.html')" data-href="level-chart-demo.html">☆</button></a>
-      </div>
-    </div>
-
   </div>
+
+  <!-- Vol & Forecast -->
+  <div class="chub-dd" id="chubDDvol">
+    <button class="chub-btn" style="color:#4f7df0;border-color:rgba(79,125,240,.35)" onclick="chubToggleDD(event,'chubDDvol')">Vol ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="honest-forecast-harness.html" target="_blank" data-href="honest-forecast-harness.html"><span class="ci-txt">🔬 Honest Harness</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('honest-forecast-harness.html')" data-href="honest-forecast-harness.html">☆</button></a>
+      <a class="chub-item" href="vol-backtest.html" target="_blank" data-href="vol-backtest.html"><span class="ci-txt">📊 Vol BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-backtest.html')" data-href="vol-backtest.html">☆</button></a>
+      <a class="chub-item" href="vol-backtest-v2.html" target="_blank" data-href="vol-backtest-v2.html"><span class="ci-txt">📊 Vol BT v2</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-backtest-v2.html')" data-href="vol-backtest-v2.html">☆</button></a>
+      <a class="chub-item" href="weekly-vol-backtest.html" target="_blank" data-href="weekly-vol-backtest.html"><span class="ci-txt">📅 Weekly Vol BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('weekly-vol-backtest.html')" data-href="weekly-vol-backtest.html">☆</button></a>
+      <a class="chub-item" href="vol-forecast-bench.html" target="_blank" data-href="vol-forecast-bench.html"><span class="ci-txt">📐 σ Benchmark</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast-bench.html')" data-href="vol-forecast-bench.html">☆</button></a>
+      <a class="chub-item" href="forecaster-backtest.html" target="_blank" data-href="forecaster-backtest.html"><span class="ci-txt">📈 Forecaster BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecaster-backtest.html')" data-href="forecaster-backtest.html">☆</button></a>
+      <a class="chub-item" href="forecast-analysis.html" target="_blank" data-href="forecast-analysis.html"><span class="ci-txt">📊 Level Analyser</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-analysis.html')" data-href="forecast-analysis.html">☆</button></a>
+      <a class="chub-item" href="forecast-book-report.html" target="_blank" data-href="forecast-book-report.html"><span class="ci-txt">📄 Book Report</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-book-report.html')" data-href="forecast-book-report.html">☆</button></a>
+      <a class="chub-item" href="forecast-refresh.html" target="_blank" data-href="forecast-refresh.html"><span class="ci-txt">⟳ Data Refresh</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-refresh.html')" data-href="forecast-refresh.html">☆</button></a>
+    </div>
+  </div>
+
+  <!-- FX Range Backtests -->
+  <div class="chub-dd" id="chubDDfxbt">
+    <button class="chub-btn" style="color:#8b5cf6;border-color:rgba(139,92,246,.35)" onclick="chubToggleDD(event,'chubDDfxbt')">FX BT ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="backtest.html" target="_blank" data-href="backtest.html"><span class="ci-txt">📈 Backtest Engine</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest.html')" data-href="backtest.html">☆</button></a>
+      <a class="chub-item" href="asia-range-backtest.html" target="_blank" data-href="asia-range-backtest.html"><span class="ci-txt">📐 Asia Range BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('asia-range-backtest.html')" data-href="asia-range-backtest.html">☆</button></a>
+      <a class="chub-item" href="asia-range-analysis.html" target="_blank" data-href="asia-range-analysis.html"><span class="ci-txt">📊 Asia Analysis</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('asia-range-analysis.html')" data-href="asia-range-analysis.html">☆</button></a>
+      <a class="chub-item" href="range-fib-backtest.html" target="_blank" data-href="range-fib-backtest.html"><span class="ci-txt">📏 Range-Fib BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('range-fib-backtest.html')" data-href="range-fib-backtest.html">☆</button></a>
+      <a class="chub-item" href="range-line-strategy.html" target="_blank" data-href="range-line-strategy.html"><span class="ci-txt">🎯 Range-Line</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('range-line-strategy.html')" data-href="range-line-strategy.html">☆</button></a>
+      <a class="chub-item" href="pivot-spike-backtest.html" target="_blank" data-href="pivot-spike-backtest.html"><span class="ci-txt">📍 Pivot Spike BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('pivot-spike-backtest.html')" data-href="pivot-spike-backtest.html">☆</button></a>
+      <a class="chub-item" href="regime-backtest.html" target="_blank" data-href="regime-backtest.html"><span class="ci-txt">⚡ Regime BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('regime-backtest.html')" data-href="regime-backtest.html">☆</button></a>
+      <a class="chub-item" href="claude-backtest.html" target="_blank" data-href="claude-backtest.html"><span class="ci-txt">🔬 Claude BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('claude-backtest.html')" data-href="claude-backtest.html">☆</button></a>
+      <a class="chub-item" href="backtest-viewer.html" target="_blank" data-href="backtest-viewer.html"><span class="ci-txt">▶ BT Viewer</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest-viewer.html')" data-href="backtest-viewer.html">☆</button></a>
+      <a class="chub-item" href="backtest-monitor.html" target="_blank" data-href="backtest-monitor.html"><span class="ci-txt">🖥 BT Monitor</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest-monitor.html')" data-href="backtest-monitor.html">☆</button></a>
+    </div>
+  </div>
+
+  <!-- Macro Research -->
+  <div class="chub-dd" id="chubDDresearch">
+    <button class="chub-btn" style="color:#f59e0b;border-color:rgba(245,158,11,.35)" onclick="chubToggleDD(event,'chubDDresearch')">Research ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="correlations.html" target="_blank" data-href="correlations.html"><span class="ci-txt">⬡ Corr Lab</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('correlations.html')" data-href="correlations.html">☆</button></a>
+      <a class="chub-item" href="cot-extremes.html" target="_blank" data-href="cot-extremes.html"><span class="ci-txt">📋 COT Extremes</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('cot-extremes.html')" data-href="cot-extremes.html">☆</button></a>
+      <a class="chub-item" href="regime-viewer.html" target="_blank" data-href="regime-viewer.html"><span class="ci-txt">🔍 Regime Viewer</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('regime-viewer.html')" data-href="regime-viewer.html">☆</button></a>
+      <a class="chub-item" href="analysis.html" target="_blank" data-href="analysis.html"><span class="ci-txt">📊 Pattern Lab</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('analysis.html')" data-href="analysis.html">☆</button></a>
+      <a class="chub-item" href="hedge-signals.html" target="_blank" data-href="hedge-signals.html"><span class="ci-txt">⚡ Signals v1</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-signals.html')" data-href="hedge-signals.html">☆</button></a>
+      <a class="chub-item" href="hedge-signals-v2.html" target="_blank" data-href="hedge-signals-v2.html"><span class="ci-txt">⚡ Signals v2</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-signals-v2.html')" data-href="hedge-signals-v2.html">☆</button></a>
+      <a class="chub-item" href="diversification.html" target="_blank" data-href="diversification.html"><span class="ci-txt">🔗 Book Explorer</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('diversification.html')" data-href="diversification.html">☆</button></a>
+    </div>
+  </div>
+
+  <!-- NASDAQ / Equity -->
+  <div class="chub-dd" id="chubDDequity">
+    <button class="chub-btn" style="color:#06b6d4;border-color:rgba(6,182,212,.35)" onclick="chubToggleDD(event,'chubDDequity')">Equity ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="macro-equity-backtest.html" target="_blank" data-href="macro-equity-backtest.html"><span class="ci-txt">📊 Macro Eq BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('macro-equity-backtest.html')" data-href="macro-equity-backtest.html">☆</button></a>
+      <a class="chub-item" href="nasdaq-threshold-backtest.html" target="_blank" data-href="nasdaq-threshold-backtest.html"><span class="ci-txt">🧮 NQ Threshold BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-threshold-backtest.html')" data-href="nasdaq-threshold-backtest.html">☆</button></a>
+      <a class="chub-item" href="nasdaq-liquidity-continuation.html" target="_blank" data-href="nasdaq-liquidity-continuation.html"><span class="ci-txt">📈 NQ Liq BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-liquidity-continuation.html')" data-href="nasdaq-liquidity-continuation.html">☆</button></a>
+      <a class="chub-item" href="liquidity-gate-backtest.html" target="_blank" data-href="liquidity-gate-backtest.html"><span class="ci-txt">💧 Liq Gate BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('liquidity-gate-backtest.html')" data-href="liquidity-gate-backtest.html">☆</button></a>
+      <a class="chub-item" href="nq-qmr-backtest.html" target="_blank" data-href="nq-qmr-backtest.html"><span class="ci-txt">⚡ NQ-QMR BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nq-qmr-backtest.html')" data-href="nq-qmr-backtest.html">☆</button></a>
+      <a class="chub-item" href="zscore-backtest.html" target="_blank" data-href="zscore-backtest.html"><span class="ci-txt">⚡ Yield Z-Score</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('zscore-backtest.html')" data-href="zscore-backtest.html">☆</button></a>
+      <a class="chub-item" href="vix-vol-carry-backtest.html" target="_blank" data-href="vix-vol-carry-backtest.html"><span class="ci-txt">🌋 VIX Vol-Carry</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vix-vol-carry-backtest.html')" data-href="vix-vol-carry-backtest.html">☆</button></a>
+    </div>
+  </div>
+
+  <!-- Gold -->
+  <div class="chub-dd" id="chubDDgold">
+    <button class="chub-btn" style="color:#eab308;border-color:rgba(234,179,8,.35)" onclick="chubToggleDD(event,'chubDDgold')">Gold ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="gold.html" target="_blank" data-href="gold.html"><span class="ci-txt">🥇 Gold Model</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold.html')" data-href="gold.html">☆</button></a>
+      <a class="chub-item" href="gold-zones.html" target="_blank" data-href="gold-zones.html"><span class="ci-txt">🗺 Gold Zones</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-zones.html')" data-href="gold-zones.html">☆</button></a>
+      <a class="chub-item" href="gold-backtest.html" target="_blank" data-href="gold-backtest.html"><span class="ci-txt">📊 Gold BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-backtest.html')" data-href="gold-backtest.html">☆</button></a>
+      <a class="chub-item" href="gold-lab.html" target="_blank" data-href="gold-lab.html"><span class="ci-txt">🔬 Gold Lab</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-lab.html')" data-href="gold-lab.html">☆</button></a>
+      <a class="chub-item" href="system-gold-macro.html" target="_blank" data-href="system-gold-macro.html"><span class="ci-txt">📊 P6 Gold Macro</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-gold-macro.html')" data-href="system-gold-macro.html">☆</button></a>
+    </div>
+  </div>
+
+  <!-- Portfolio Systems -->
+  <div class="chub-dd" id="chubDDsystems">
+    <button class="chub-btn" style="color:#14b8a6;border-color:rgba(20,184,166,.35)" onclick="chubToggleDD(event,'chubDDsystems')">Systems ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="hub.html" target="_blank" data-href="hub.html"><span class="ci-txt">⬡ Risk Hub</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hub.html')" data-href="hub.html">☆</button></a>
+      <a class="chub-item" href="system-credit-equity.html" target="_blank" data-href="system-credit-equity.html"><span class="ci-txt">📊 P2 Credit-Equity</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-credit-equity.html')" data-href="system-credit-equity.html">☆</button></a>
+      <a class="chub-item" href="system-yield-curve.html" target="_blank" data-href="system-yield-curve.html"><span class="ci-txt">📊 P3 Yield Curve</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-yield-curve.html')" data-href="system-yield-curve.html">☆</button></a>
+      <a class="chub-item" href="system-fx-carry.html" target="_blank" data-href="system-fx-carry.html"><span class="ci-txt">📊 P4 FX Carry</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-fx-carry.html')" data-href="system-fx-carry.html">☆</button></a>
+      <a class="chub-item" href="system-fx-momentum.html" target="_blank" data-href="system-fx-momentum.html"><span class="ci-txt">📊 P5 FX Momentum</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-fx-momentum.html')" data-href="system-fx-momentum.html">☆</button></a>
+      <a class="chub-item" href="hedge-backtest.html" target="_blank" data-href="hedge-backtest.html"><span class="ci-txt">📊 Hedge BT</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-backtest.html')" data-href="hedge-backtest.html">☆</button></a>
+      <a class="chub-item" href="results.html" target="_blank" data-href="results.html"><span class="ci-txt">📄 Tearsheet</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('results.html')" data-href="results.html">☆</button></a>
+    </div>
+  </div>
+
+  <!-- WIP -->
+  <div class="chub-dd" id="chubDDwip">
+    <button class="chub-btn" style="color:#64748b;border-color:rgba(100,116,139,.35)" onclick="chubToggleDD(event,'chubDDwip')">WIP ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="indexv2.html" target="_blank" data-href="indexv2.html" style="opacity:.7"><span class="ci-txt">📊 Market State v2</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('indexv2.html')" data-href="indexv2.html">☆</button></a>
+      <a class="chub-item" href="level-chart-demo.html" target="_blank" data-href="level-chart-demo.html" style="opacity:.7"><span class="ci-txt">🧱 Level Chart Demo</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-chart-demo.html')" data-href="level-chart-demo.html">☆</button></a>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -162,51 +159,49 @@ a.cp:hover .cp-star{opacity:.65}
   var FAV_KEY='macrofx_favs';
   function cGet(){try{return JSON.parse(localStorage.getItem(FAV_KEY)||'[]')}catch(e){return[]}}
   function cSet(f){try{localStorage.setItem(FAV_KEY,JSON.stringify(f))}catch(e){}}
+
+  window.chubToggleDD=function(e,id){
+    e.stopPropagation();
+    document.querySelectorAll('#commandHub .chub-dd.open').forEach(function(d){if(d.id!==id)d.classList.remove('open');});
+    document.getElementById(id).classList.toggle('open');
+  };
+  document.addEventListener('click',function(){
+    document.querySelectorAll('#commandHub .chub-dd.open').forEach(function(d){d.classList.remove('open');});
+  });
+
   window.chubToggleFav=function(href){
     var f=cGet(),i=f.indexOf(href);
     if(i>=0)f.splice(i,1);else f.push(href);
     cSet(f);cStars();cFavs();
   };
+
   function cStars(){
     var f=cGet();
-    document.querySelectorAll('#commandHub .cp-star[data-href]').forEach(function(b){
+    document.querySelectorAll('#commandHub .chub-star[data-href]').forEach(function(b){
       var s=f.indexOf(b.dataset.href)>=0;
       b.textContent=s?'★':'☆';b.classList.toggle('starred',s);
     });
   }
+
   function cFavs(){
-    var f=cGet(),row=document.getElementById('chubFavRow'),pills=document.getElementById('chubFavPills');
-    if(!row||!pills)return;
-    if(!f.length){row.style.display='none';return;}
-    row.style.display='flex';
+    var f=cGet();
+    var dd=document.getElementById('chubFavDD');
+    var menu=document.getElementById('chubFavMenu');
+    if(!dd||!menu)return;
+    if(!f.length){dd.style.display='none';return;}
+    dd.style.display='inline-block';
     var data={};
-    document.querySelectorAll('#commandHub .chub-row:not(#chubFavRow) a.cp[data-href]').forEach(function(a){
+    document.querySelectorAll('#commandHub .chub-dd:not(#chubFavDD) .chub-item[data-href]').forEach(function(a){
       var h=a.dataset.href;
-      if(h&&!data[h]){
-        var txt=Array.from(a.childNodes).filter(function(n){return n.nodeType===3;}).map(function(n){return n.textContent.trim();}).join('');
-        data[h]={href:h,text:txt||h};
-      }
+      if(h&&!data[h]){var t=a.querySelector('.ci-txt');data[h]={href:h,text:t?t.textContent:h};}
     });
-    pills.innerHTML=f.map(function(h){
+    menu.innerHTML=f.map(function(h){
       var d=data[h];if(!d)return'';
-      return'<a class="cp" href="'+h+'" target="_blank" data-href="'+h+'">'+d.text+'<button class="cp-star starred" onclick="event.preventDefault();event.stopPropagation();chubToggleFav(\''+h+'\')" data-href="'+h+'">★</button></a>';
+      return'<a class="chub-item" href="'+h+'" target="_blank" data-href="'+h+'"><span class="ci-txt">'+d.text+'</span><button class="chub-star starred" onclick="event.preventDefault();event.stopPropagation();chubToggleFav(\''+h+'\')" data-href="'+h+'">★</button></a>';
     }).filter(Boolean).join('');
   }
-  window.chubToggleCollapse=function(){
-    var hub=document.getElementById('commandHub'),btn=document.getElementById('chubTogglerBtn');
-    if(!hub)return;
-    hub.classList.toggle('chub-collapsed');
-    var c=hub.classList.contains('chub-collapsed');
-    try{localStorage.setItem('macrofx_chub_c',c?'1':'0')}catch(e){}
-    if(btn)btn.textContent=c?'▸ expand':'▾ collapse';
-  };
-  document.addEventListener('DOMContentLoaded',function(){
-    try{if(localStorage.getItem('macrofx_chub_c')==='1'){
-      var hub=document.getElementById('commandHub'),btn=document.getElementById('chubTogglerBtn');
-      if(hub){hub.classList.add('chub-collapsed');if(btn)btn.textContent='▸ expand';}
-    }}catch(e){}
-    cStars();cFavs();
-  });
+
+  document.addEventListener('DOMContentLoaded',function(){cStars();cFavs();});
 })();
 </script>
 
