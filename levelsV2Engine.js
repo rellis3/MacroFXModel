@@ -29,7 +29,7 @@ import { gradeLevelV2 } from './js/gradeLevelV2.js';
 import { buildRangeLadder } from './js/rangeLineAnalyser.js';
 import { isUsablePolicy } from './js/levelsV2Learn.js';
 import { recordEntries, resolvePair } from './js/entryLedgerV2.js';
-import { selectAlerts, pruneCooldowns, DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
+import { selectAlerts, pruneCooldowns, DEFAULT_V2_ALERT_CFG, GRADE_RANK } from './js/alertV2Core.js';
 import { formatV2Entry } from './js/alertFormatterV2.js';
 
 // Minimal Telegram sender (v2-owned; the cross-file JS Telegram sender is a known
@@ -262,39 +262,71 @@ export async function sendV2Test(text) {
 // applies the v2 alert config + cooldowns. Run every ~90s so an approach mid-cycle
 // still alerts. Alerts only — never trades.
 export async function checkV2AlertsNow(pairs = []) {
+  const at = Date.now();
   let cfg;
   try { const raw = await kv.get('tg_v2_alert_cfg'); cfg = raw ? { ...DEFAULT_V2_ALERT_CFG, ...JSON.parse(raw) } : { ...DEFAULT_V2_ALERT_CFG }; }
   catch { cfg = { ...DEFAULT_V2_ALERT_CFG }; }
-  if (!cfg.enabled) return { ok: true, skipped: 'disabled' };
   const creds = await loadV2Creds();
-  if (!creds) return { ok: true, skipped: 'no-telegram-creds' };
+  // Diagnostic snapshot — persisted every run so the page can show WHY 0 alerts
+  // fired (disabled / no-creds / no zones / grade-too-low / out-of-range / cooldown)
+  // instead of silent nothing. Read via GET /api/levels-v2/alert-diag.
+  const diag = { at, enabled: !!cfg.enabled, minGrade: cfg.minGrade, credsSource: creds?.source ?? null, sent: 0, checked: 0, reason: 'ok', perPair: [] };
+  const save = () => kv.put('tg_v2_alert_diag', JSON.stringify(diag)).catch(() => {});
+
+  if (!cfg.enabled) { diag.reason = 'alerts disabled — tick “Enable alerts” in ⚙ Alerts'; await save(); return { ok: true, skipped: 'disabled', diag }; }
+  if (!creds)       { diag.reason = 'no Telegram bot saved — add a v2 bot or the shared v1 tg_config'; await save(); return { ok: true, skipped: 'no-telegram-creds', diag }; }
 
   let cooldowns = {};
   try { const cd = await kv.get('tg_v2_cooldowns'); if (cd) cooldowns = JSON.parse(cd) || {}; } catch {}
-  cooldowns = pruneCooldowns(cooldowns, Date.now());
+  cooldowns = pruneCooldowns(cooldowns, at);
 
+  const minRank = GRADE_RANK[cfg.minGrade] ?? 3;
   const watch = (Array.isArray(cfg.pairs) && cfg.pairs.length) ? cfg.pairs : pairs;
-  let sent = 0, checked = 0;
+  let sent = 0, checked = 0, anyQual = 0, anyInRange = 0, anyZones = 0;
   for (const sym of watch) {
     let blk = null;
     try { const raw = await kv.get(`ai_entries_v2_${sym.replace('/', '')}`); blk = raw ? JSON.parse(raw) : null; } catch {}
     const zones = blk?.data;
-    if (!zones?.length) continue;
+    if (!zones?.length) { diag.perPair.push({ sym, zones: 0 }); continue; }
+    anyZones += zones.length;
     const price = await fetchPrice(sym);
-    if (price == null) continue;
+    if (price == null) { diag.perPair.push({ sym, zones: zones.length, price: null }); continue; }
     checked++;
     const pip = pipOf(sym), digits = digitsOf(sym);
-    const sel = selectAlerts({ sym, entries: zones, currentPrice: price, pip, cfg, cooldowns, now: Date.now() });
+    // Per-pair diagnostics: grade tally + nearest zone that clears minGrade.
+    const grades = {};
+    let nearestQual = null, qualCount = 0, inRangeCount = 0;
+    const prox = (cfg.proxPips?.[sym] ?? cfg.proxPips?.default ?? DEFAULT_V2_ALERT_CFG.proxPips.default);
+    for (const e of zones) {
+      grades[e.grade] = (grades[e.grade] ?? 0) + 1;
+      if ((GRADE_RANK[e.grade] ?? 0) < minRank || e.direction == null) continue;
+      qualCount++;
+      const dPips = Math.abs(e.price - price) / pip;
+      if (nearestQual == null || dPips < nearestQual) nearestQual = dPips;
+      if (dPips <= prox) inRangeCount++;
+    }
+    anyQual += qualCount; anyInRange += inRangeCount;
+    const sel = selectAlerts({ sym, entries: zones, currentPrice: price, pip, cfg, cooldowns, now: at });
     cooldowns = sel.cooldowns;
     for (const a of sel.alerts) {
       const msg = formatV2Entry(sym, a.entry, { currentPrice: price, digits, distPips: a.distPips });
       if (await sendTelegramV2(creds.token, creds.chatId, msg)) sent++;
     }
+    diag.perPair.push({ sym, zones: zones.length, grades, qual: qualCount,
+      nearestQualPips: nearestQual != null ? +nearestQual.toFixed(1) : null,
+      proxPips: prox, inRange: inRangeCount, fired: sel.alerts.length });
     await new Promise(r => setTimeout(r, 120));   // gentle on OANDA
   }
   try { await kv.put('tg_v2_cooldowns', JSON.stringify(cooldowns)); } catch {}
+  diag.sent = sent; diag.checked = checked;
+  if (sent) diag.reason = `sent ${sent}`;
+  else if (!anyZones)   diag.reason = 'no cached zones yet — run Refresh (or Learn if no policy)';
+  else if (!anyQual)    diag.reason = `no zones grade ≥ ${cfg.minGrade} — lower minGrade or wait for a stronger setup`;
+  else if (!anyInRange) diag.reason = `${anyQual} zone(s) ≥ ${cfg.minGrade} but price not within proxPips — widen proxPips or wait for approach`;
+  else                  diag.reason = 'qualifying zones in range but all within cooldown';
+  await save();
   if (sent) console.log(`[LEVELS-V2] alert loop: sent ${sent} (checked ${checked} pairs · via ${creds.source})`);
-  return { ok: true, sent, checked, via: creds.source };
+  return { ok: true, sent, checked, via: creds.source, diag };
 }
 
 // ── Refresh all pairs ───────────────────────────────────────────────────────

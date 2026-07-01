@@ -7577,6 +7577,15 @@ app.get('/api/levels-v2/alert-config', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// GET the last alert-loop diagnostic snapshot (why 0 alerts fired). Written every
+// ~90s by checkV2AlertsNow — memory-only (ephemeral), read from the same process.
+app.get('/api/levels-v2/alert-diag', async (req, res) => {
+  try {
+    const raw = await kv.get('tg_v2_alert_diag');
+    res.json({ ok: true, diag: raw ? JSON.parse(raw) : null, alertIntervalMs: V2_ALERT_MS });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // v2's OWN Telegram bot (separate token/chat from v1). GET status; POST saves;
 // DELETE reverts to the shared v1 bot. POST /test sends a test via the active bot.
 app.get('/api/levels-v2/telegram-config', async (req, res) => {
