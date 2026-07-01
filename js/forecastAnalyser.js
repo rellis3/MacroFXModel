@@ -35,6 +35,77 @@ function classifySession(t) {
   return 'NY';
 }
 
+// ── 1b) Exit-rule simulator along the REAL M1 path ───────────────────────────
+// PURE, no network. For ONE touch, walk the M1 bars from touchIdx and price all
+// six {fade,follow}×{fixed,chandelier,walk} combos as GROSS %-of-price PnL (×100,
+// NO costs). Isolates the STOP behaviour: fixed vs a chandelier trail vs a
+// walk-forward breakeven stop, with the TP active in every case.
+//
+// Direction & barriers per decision (up-line = touched an upper forecast line):
+//   fade   — enter AGAINST the touch. up → SELL (dir −1), TP = inner, SL = outer.
+//                                     dn → BUY  (dir +1), TP = inner, SL = outer.
+//   follow — enter WITH the touch.    up → BUY  (dir +1), TP = outer, SL = inner.
+//                                     dn → SELL (dir −1), TP = outer, SL = inner.
+// Entry E = touchLvl; initial risk R = |E − S0|.
+//
+// Conservative intrabar ordering (NO intrabar lookahead), applied EVERY bar in
+// this exact order:
+//   1) check the CURRENT stop vs this bar's ADVERSE extreme → hit ⇒ exit AT stop.
+//   2) else check TP vs this bar's FAVOURABLE extreme → hit ⇒ exit AT TP.
+//   3) else UPDATE the stop for later bars from this bar's favourable extreme
+//      (so the trail/BE never uses a bar it hasn't survived).
+// Never hit by the last bar ⇒ exit at the last bar's close (session-close fallback).
+// Gross PnL = dir · (exitPrice − E) / open · 100.
+//
+// trailFrac — chandelier trails the favourable extreme by trailFrac·R (ratchet-only).
+// beTrigger — walk moves the stop to breakeven once favourable progress reaches
+//             beTrigger·|TP − E|.
+export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, isUp,
+                                                       open, trailFrac = 0.5, beTrigger = 0.5 } = {}) {
+  // One rule's walk. dir +1 = buy (adverse=low, favourable=high); −1 = sell (mirror).
+  // rule ∈ 'fixed' | 'chand' | 'walk'. TP active for all.
+  const walk = (dir, E, S0, TP, rule) => {
+    const buy = dir > 0;
+    const R   = Math.abs(E - S0);
+    const beDist = Math.abs(TP - E);
+    let stop = S0, exitPrice = null;
+    for (let k = touchIdx; k < bars.length; k++) {
+      const bar = bars[k];
+      const adverse = buy ? bar.low  : bar.high;   // stop is tested against this
+      const favour  = buy ? bar.high : bar.low;    // TP + trail/BE update use this
+      // 1) current stop first (conservative: a bar spanning both exits at the stop).
+      if (buy ? adverse <= stop : adverse >= stop) { exitPrice = stop; break; }
+      // 2) then TP.
+      if (buy ? favour >= TP : favour <= TP) { exitPrice = TP; break; }
+      // 3) else update the stop for SUBSEQUENT bars from this bar's favourable extreme.
+      if (rule === 'chand') {
+        const newStop = buy ? favour - trailFrac * R : favour + trailFrac * R;
+        stop = buy ? Math.max(stop, newStop) : Math.min(stop, newStop);   // ratchet-only
+      } else if (rule === 'walk') {
+        const progress = buy ? favour - E : E - favour;
+        if (progress >= beTrigger * beDist) stop = buy ? Math.max(stop, E) : Math.min(stop, E);
+      }
+      // 'fixed' → stop stays S0.
+    }
+    if (exitPrice == null) exitPrice = bars[bars.length - 1]?.close ?? E;   // close fallback
+    return dir * (exitPrice - E) / open * 100;
+  };
+
+  const E = touchLvl;
+  // fade: dir against the touch; TP=inner, SL=outer.
+  const fadeDir = isUp ? -1 : 1;
+  // follow: dir with the touch; TP=outer, SL=inner.
+  const folDir  = isUp ? 1 : -1;
+  return {
+    exFadeFixed:   walk(fadeDir, E, outer, inner, 'fixed'),
+    exFadeChand:   walk(fadeDir, E, outer, inner, 'chand'),
+    exFadeWalk:    walk(fadeDir, E, outer, inner, 'walk'),
+    exFollowFixed: walk(folDir,  E, inner, outer, 'fixed'),
+    exFollowChand: walk(folDir,  E, inner, outer, 'chand'),
+    exFollowWalk:  walk(folDir,  E, inner, outer, 'walk'),
+  };
+}
+
 // ── 2) Analyse one window against the ladder ─────────────────────────────────
 // session = { open, bars:[{time,open,high,low,close}] } (M1). Returns a per-line
 // record array for both sides.
@@ -52,7 +123,7 @@ function classifySession(t) {
 //     — so freezing neighbours at the touch bar is faithful, not an approximation.
 export function analyseWindow(session, ladder, ctx = {}) {
   const { open, bars } = session;
-  const { sigma = 0, tf = null, pip = 0 } = ctx;   // daily-σ frac + configured touch-feature computer + pip size
+  const { sigma = 0, tf = null, pip = 0, trailFrac = 0.5, beTrigger = 0.5 } = ctx;   // daily-σ frac + touch-feature computer + pip size + exit-study trail/BE params
   const n = bars.length;
   const last = bars[n - 1];
   const closePx = last?.close ?? open;
@@ -187,11 +258,20 @@ export function analyseWindow(session, ladder, ctx = {}) {
       const extPct     = isUp ? (extremeFwd - touchLvl) / open * 100
                               : (touchLvl - extremeFwd) / open * 100;
 
+      // Exit-study: simulate the three exit rules (fixed / chandelier / walk) for
+      // BOTH fade and follow over the SAME real M1 path from the touch bar. Gross
+      // %-of-price PnL, no costs — the strategy layer nets them. Only on hit touches.
+      const ex = simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, isUp, open, trailFrac, beTrigger });
+      const round5 = x => +Number(x).toFixed(5);
+
       outRows.push({
         name: nm, side, level: +touchLvl.toFixed(6), distPct,
         hit: true, outcome, firstTouchTime, session: sess, budgetBucket,
         retraceTo: retraceTo ? +retraceTo.toFixed(6) : null, retracePct: +retracePct.toFixed(4),
         extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
+        // Six exit-variant gross PnLs (%-of-price, no cost) for the OOS exit study.
+        exFadeFixed: round5(ex.exFadeFixed), exFadeChand: round5(ex.exFadeChand), exFadeWalk: round5(ex.exFadeWalk),
+        exFollowFixed: round5(ex.exFollowFixed), exFollowChand: round5(ex.exFollowChand), exFollowWalk: round5(ex.exFollowWalk),
         // The frozen triple-barrier levels (TP=inner toward open, SL=outer away),
         // stored on EVERY decided touch so a strategy can price the trade
         // regardless of which barrier hit. decidedBy says whether a barrier was

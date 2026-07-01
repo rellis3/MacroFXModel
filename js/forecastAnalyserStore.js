@@ -17,7 +17,7 @@ import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
-import { extractTouches, runPerLine, runRigor, runSensitivity, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { deflatedSharpe } from './backtestStats.js';
 import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
 import { resampleTo } from './barUtils.js';
@@ -334,6 +334,33 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
         (result.missed ? ` · took ${result.missed.takenRate}% of touches` : ''));
   return out;
 }
+// ── Exit study — fixed vs chandelier vs walk-forward stop, IS/OOS × fade/follow ─
+// Loads the stored per-pair records for a horizon, flattens to touches (carrying
+// the six analyser-simulated exit PnLs), and runs runExitStudy. Returns null if
+// no dataset / no records for the horizon (route → 404). Numbers require the
+// records to carry the ex* fields (a post-exit-study Refresh) — older records are
+// counted in study.missing.
+export async function buildExitStudy({ horizon = 'daily', conditions = ['approachVel'],
+                                       minN = 50, splitFrac = 0.6, marginPct = 0 } = {}) {
+  const manifest = await getManifest();
+  if (!manifest) return null;
+  const pairs = Object.keys(manifest.pairs || {});
+  const touchesByPair = {}, costByPair = {}, slipByPair = {};
+  for (const pair of pairs) {
+    if (!manifest.pairs[pair]?.horizons?.[horizon]) continue;
+    const data = await getPairData(pair, horizon);
+    if (!data?.records?.length) continue;
+    const touches = extractTouches(data.records, { conditions });
+    if (!touches.length) continue;
+    touchesByPair[pair] = touches;
+    const ac = assetClassFor(pair);
+    costByPair[pair] = costForPair(pair, ac);
+    slipByPair[pair] = DEFAULT_SLIP_PCT[ac] ?? DEFAULT_SLIP_PCT.fx;
+  }
+  if (!Object.keys(touchesByPair).length) return null;
+  return runExitStudy(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+}
+
 export async function getPerLineBook(horizon = 'daily')        { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }
 export async function getPerLineTrades(pair, horizon = 'daily') { return getJSON(`${PREFIX}/per-line-trades/${pair}-${horizon}.json`); }
 
