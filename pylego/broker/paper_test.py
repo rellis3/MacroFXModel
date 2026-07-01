@@ -58,6 +58,23 @@ def test_no_barrier_when_inside():
     assert b.check_barriers() == [] and len(b.serialize_open_positions()) == 1
 
 
+def test_closed_trade_carries_history_fields():
+    # The server's mergeTradeHistory dedups on position_id and the Trade History tab
+    # renders profit/time_close — a closed paper trade MUST carry all of them or it
+    # never reaches the history (the volatility-bot "no trades logged" bug).
+    b = PaperBroker()
+    b.set_price("eurusd", 1.1100)
+    t = b.enter("eurusd", "SHORT", 1.1150, 1.1050, 0.5, BIG, True)
+    b.set_price("eurusd", 1.1049)                 # SHORT wins to TP
+    b.check_barriers()
+    c = b.serialize_closed_trades()[-1]
+    assert c["position_id"] == t                  # dedup key present
+    assert {"symbol", "direction", "lots", "open_price", "close_price",
+            "profit", "time_open", "time_close", "reason"} <= set(c)
+    assert c["profit"] > 0                          # SHORT from 1.1100 → 1.1049 = profit
+    assert c["time_close"] is not None
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

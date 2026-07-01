@@ -931,7 +931,7 @@ export default {
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
           await env.FX_SCORES.put(key, JSON.stringify({ data, timestamp }), kvOpts);
           // Persist closed trade history for bot status keys
-          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status']);
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'range_line_bot_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
           }
