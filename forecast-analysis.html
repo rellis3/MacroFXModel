@@ -102,7 +102,7 @@ const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'
 const COND_OPTS = [['approachVel','Approach velocity'],['roundNum','Round number (Osler)'],['volClimax','Volume climax'],['candleReject','Candle rejection'],['budgetBucket','Range budget'],['wtState','WaveTrend'],['approachER','Approach efficiency']];
 const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byApproachER:'Approach efficiency', byApproachVel:'Approach velocity', byWtState:'WaveTrend (touch)', byVolClimax:'Volume climax', byCandleReject:'Candle rejection', byRoundNum:'Round-number prox', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
-const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs','Book'];
+const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs','Book','Exits'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
 let BOOK_CONDS=null;   // the admin's pending cell-conditions selection (persists across re-renders)
 
@@ -176,6 +176,34 @@ function render(){
   if(TAB==='Candidates') return renderCandidates(v);
   if(TAB==='Pairs') return renderPairs(v);
   if(TAB==='Book') return renderBook(v);
+  if(TAB==='Exits') return renderExits(v);
+}
+
+// ── Exits: OOS exit study — fixed vs chandelier vs walk-forward (breakeven) stop
+// Same entry policy, three exit rules → any Sharpe gap is the STOP, not the entry.
+let EXIT_STUDY={};
+async function renderExits(v){
+  const h=$('horizon').value;
+  v.innerHTML=`<div class="card mut">Loading exit study…</div>`;
+  if(EXIT_STUDY[h]===undefined){ const r=await api(`/api/forecast-analysis/exit-study/${h}`);
+    EXIT_STUDY[h]= r.status===200 && r.j?.ok ? r.j.study : (r.j?.error||'none'); }
+  const s=EXIT_STUDY[h];
+  const caption=`<div class="hint" style="margin-top:10px">Same OOS entry policy for all three rows — only the <b>exit</b> changes, so any Sharpe gap is the stop behaviour, not the entry edge. <b>Fixed</b> = the triple-barrier stop stays put (TP=inner/outer as per fade/follow). <b>Chandelier</b> = the stop trails the favourable extreme by ${s&&typeof s!=='string'?fmt(s.trailFrac,2):'0.5'}×R (ratchet-only), locking profit as the trade runs. <b>Walk (breakeven)</b> = once the trade is ${s&&typeof s!=='string'?fmt((s.beTrigger||0.5)*100,0):'50'}% of the way to target, the stop moves to entry, killing give-back. Study is <b>out-of-sample</b> (IS = before the split date, used only to learn the entry policy). Bold = best OOS Sharpe in that column (n≥30). %-of-price, net of cost + follow-slip, no compounding.</div>`;
+  if(typeof s==='string'){ v.innerHTML=`<div class="card"><div class="mut">${s==='none'?'No exit study yet.':s} Needs a Refresh with the exit-variant fields.</div>${caption}</div>`; return; }
+  const RULES=[['fixed','Fixed (triple-barrier)'],['chand','Chandelier trail'],['walk','Walk (breakeven)']];
+  const GROUPS=[['overall','Overall'],['fade','Fade'],['follow','Follow']];
+  const best=s.bestByGroup||{};
+  const cell=(rule,group)=>{ const st=(s.rules?.[rule]?.[group])||{}; const n=st.trades??0;
+    const isBest=best[group]===rule && n>=30;
+    const sh=fmt(st.sharpe,2), ex=fmt(st.expectancy,4);
+    const shDisp=isBest?`<b>${sh}</b>`:sh;
+    return `<td class="${(st.sharpe??0)<0?'neg':'pos'}" style="${isBest?'background:#15251a':''}">Sharpe ${shDisp}<br><span class="mut" style="font-size:11px">exp ${ex}% · n ${n}</span></td>`; };
+  let html=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Exit study — fixed vs chandelier vs walk-forward stop <span class="mut" style="font-weight:400">(OOS from ${s.splitDate||'—'})</span></div>`;
+  if(s.missing){ html+=`<div class="hint" style="margin-bottom:8px">⚠ ${s.missing} OOS trade-legs skipped — those records predate the exit-variant fields. Re-run a full Refresh to fill them in.</div>`; }
+  html+=`<table><thead><tr><th>Exit rule</th>${GROUPS.map(g=>`<th>${g[1]}</th>`).join('')}</tr></thead><tbody>`;
+  for(const [rk,rl] of RULES){ html+=`<tr><td style="font-weight:600">${rl}</td>${GROUPS.map(g=>cell(rk,g[0])).join('')}</tr>`; }
+  html+=`</tbody></table>${caption}</div>`;
+  v.innerHTML=html;
 }
 
 // ── Book: per-line confidence engine — pooled-IS policy applied OOS, 26-pair book

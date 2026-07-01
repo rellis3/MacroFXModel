@@ -17,6 +17,7 @@ import {
   getPairData as getAnalyserPairData,
   runPerLineBook as runAnalyserPerLineBook, getPerLineBook as getAnalyserPerLineBook,
   getPerLineTrades as getAnalyserPerLineTrades, getSessionChart as getAnalyserSessionChart,
+  buildExitStudy as buildAnalyserExitStudy,
 } from './forecastAnalyserStore.js';
 
 function _analyserPw(req) {
@@ -200,6 +201,17 @@ export function mountAnalyserRoutes(app, express) {
       const t = await getAnalyserPerLineTrades(String(req.params.pair).toLowerCase(), req.params.horizon);
       if (!t) return res.status(404).json({ ok: false, error: 'No trade log for that pair — rebuild the book' });
       res.json({ ok: true, ...t });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // Exit study — fixed vs chandelier vs walk-forward stop, IS/OOS × fade/follow.
+  // Loads the stored records for the horizon, extracts touches, runs runExitStudy.
+  app.get('/api/forecast-analysis/exit-study/:horizon', async (req, res) => {
+    if (!_analyserAuth(req, res, 'view')) return;
+    try {
+      const study = await buildAnalyserExitStudy({ horizon: req.params.horizon });
+      if (!study) return res.status(404).json({ ok: false, error: 'No records for that horizon — run a refresh first' });
+      res.json({ ok: true, study });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
