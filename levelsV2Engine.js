@@ -85,21 +85,27 @@ function bodyRange(bars) {
   for (const b of bars) { hi = Math.max(hi, b.open, b.close); lo = Math.min(lo, b.open, b.close); }
   return hi > lo ? { low: lo, high: hi } : null;
 }
-const londonHour = epochSec => {
-  const s = new Date(epochSec * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' });
-  return parseInt(s.substring(11, 13), 10);
-};
-const utcDay = epochSec => new Date(epochSec * 1000).getUTCDay();   // 0=Sun..6=Sat
+const utcHour = epochSec => new Date(epochSec * 1000).getUTCHours();
+const utcDay  = epochSec => new Date(epochSec * 1000).getUTCDay();   // 0=Sun..6=Sat
 
-// Asia ladder = body range of the latest session's 00:00–06:00 London M5 bars.
+// Asia ladder = body range of the latest session's first ASIA_HRS hours.
+// CRITICAL — this window MUST match what the frozen policy was LEARNED on, else the
+// live ladder is anchored on a different range than the grades were computed for
+// (the LEGO §1 "live and backtest import the same definition" rule). The v2 learn
+// route buckets sessions at the 00:00-UTC boundary (boundaryHour default 0) and
+// takes the first asiaHrs=6 → 00:00–06:00 **UTC**. The old code filtered on
+// Europe/London local hours, which in BST is 23:00–05:00 UTC — a 1-hour drift that
+// shifted/clipped the anchor vs the policy (the body high could sit in the missed
+// 00:00–01:00 BST hour, so the live high read low). Keep it UTC to stay aligned.
+const ASIA_HRS = 6;
 function asiaRange(bars5m) {
   if (!bars5m?.length) return null;
-  const lastDay = new Date(bars5m[bars5m.length - 1].time * 1000).toISOString().slice(0, 10);
+  const lastDay = new Date(bars5m[bars5m.length - 1].time * 1000).toISOString().slice(0, 10);  // UTC day
   const asia = bars5m.filter(b => {
     const day = new Date(b.time * 1000).toISOString().slice(0, 10);
-    return day === lastDay && londonHour(b.time) < 6;
+    return day === lastDay && utcHour(b.time) < ASIA_HRS;
   });
-  return bodyRange(asia.length >= 12 ? asia : bars5m.filter(b => londonHour(b.time) < 6).slice(-72));
+  return bodyRange(asia.length >= 12 ? asia : bars5m.filter(b => utcHour(b.time) < ASIA_HRS).slice(-72));
 }
 // Monday ladder = body range of the current week's Monday M30 bars.
 function mondayRange(bars30m) {
