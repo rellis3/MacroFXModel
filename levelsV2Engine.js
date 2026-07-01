@@ -29,7 +29,7 @@ import { gradeLevelV2 } from './js/gradeLevelV2.js';
 import { buildRangeLadder } from './js/rangeLineAnalyser.js';
 import { isUsablePolicy } from './js/levelsV2Learn.js';
 import { recordEntries, resolvePair } from './js/entryLedgerV2.js';
-import { selectAlerts, pruneCooldowns, DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
+import { selectAlerts, pruneCooldowns, DEFAULT_V2_ALERT_CFG, GRADE_RANK } from './js/alertV2Core.js';
 import { formatV2Entry } from './js/alertFormatterV2.js';
 
 // Minimal Telegram sender (v2-owned; the cross-file JS Telegram sender is a known
@@ -85,21 +85,27 @@ function bodyRange(bars) {
   for (const b of bars) { hi = Math.max(hi, b.open, b.close); lo = Math.min(lo, b.open, b.close); }
   return hi > lo ? { low: lo, high: hi } : null;
 }
-const londonHour = epochSec => {
-  const s = new Date(epochSec * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' });
-  return parseInt(s.substring(11, 13), 10);
-};
-const utcDay = epochSec => new Date(epochSec * 1000).getUTCDay();   // 0=Sun..6=Sat
+const utcHour = epochSec => new Date(epochSec * 1000).getUTCHours();
+const utcDay  = epochSec => new Date(epochSec * 1000).getUTCDay();   // 0=Sun..6=Sat
 
-// Asia ladder = body range of the latest session's 00:00–06:00 London M5 bars.
+// Asia ladder = body range of the latest session's first ASIA_HRS hours.
+// CRITICAL — this window MUST match what the frozen policy was LEARNED on, else the
+// live ladder is anchored on a different range than the grades were computed for
+// (the LEGO §1 "live and backtest import the same definition" rule). The v2 learn
+// route buckets sessions at the 00:00-UTC boundary (boundaryHour default 0) and
+// takes the first asiaHrs=6 → 00:00–06:00 **UTC**. The old code filtered on
+// Europe/London local hours, which in BST is 23:00–05:00 UTC — a 1-hour drift that
+// shifted/clipped the anchor vs the policy (the body high could sit in the missed
+// 00:00–01:00 BST hour, so the live high read low). Keep it UTC to stay aligned.
+const ASIA_HRS = 6;
 function asiaRange(bars5m) {
   if (!bars5m?.length) return null;
-  const lastDay = new Date(bars5m[bars5m.length - 1].time * 1000).toISOString().slice(0, 10);
+  const lastDay = new Date(bars5m[bars5m.length - 1].time * 1000).toISOString().slice(0, 10);  // UTC day
   const asia = bars5m.filter(b => {
     const day = new Date(b.time * 1000).toISOString().slice(0, 10);
-    return day === lastDay && londonHour(b.time) < 6;
+    return day === lastDay && utcHour(b.time) < ASIA_HRS;
   });
-  return bodyRange(asia.length >= 12 ? asia : bars5m.filter(b => londonHour(b.time) < 6).slice(-72));
+  return bodyRange(asia.length >= 12 ? asia : bars5m.filter(b => utcHour(b.time) < ASIA_HRS).slice(-72));
 }
 // Monday ladder = body range of the current week's Monday M30 bars.
 function mondayRange(bars30m) {
@@ -195,8 +201,24 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       tp: e.tp != null ? +e.tp.toFixed(digits) : null,
     }));
 
+    // Discarded near-price lines (policy said skip / unseen), for the page's
+    // "show discarded" view — the whole ladder + why each line was filtered.
+    const skipsPayload = skipsArr.map(s => ({
+      price: +s.level.toFixed(digits), fib: s.name, side: s.side,
+      grade: 'SKIP', reason: s.reason ?? 'skip', cell: s.cell ?? null,
+      n: s.n ?? null, expectancy: s.expectancy ?? null,
+    }));
+
+    // Anchor ranges the fib ladder was marked from — BODY range (max/min of
+    // open&close), NOT wick high/low — so the card can show what the lines hang off.
+    const ranges = ladders.map(l => ({
+      src: l.srcTag === 'A' ? 'Asia' : l.srcTag === 'M' ? 'Monday' : l.srcTag,
+      low: +l.low.toFixed(digits), high: +l.high.toFixed(digits),
+      pips: +((l.high - l.low) / pip).toFixed(1),
+    }));
+
     await kv.put(`ai_entries_v2_${sym.replace('/', '')}`, JSON.stringify({
-      data: payload, timestamp: Date.now(), source: 'server-v2',
+      data: payload, skips: skipsPayload, ranges, timestamp: Date.now(), source: 'server-v2',
       policyBuiltAt: frozen.builtAt ?? null, currentPrice: +price.toFixed(digits),
     }));
 
@@ -262,39 +284,71 @@ export async function sendV2Test(text) {
 // applies the v2 alert config + cooldowns. Run every ~90s so an approach mid-cycle
 // still alerts. Alerts only — never trades.
 export async function checkV2AlertsNow(pairs = []) {
+  const at = Date.now();
   let cfg;
   try { const raw = await kv.get('tg_v2_alert_cfg'); cfg = raw ? { ...DEFAULT_V2_ALERT_CFG, ...JSON.parse(raw) } : { ...DEFAULT_V2_ALERT_CFG }; }
   catch { cfg = { ...DEFAULT_V2_ALERT_CFG }; }
-  if (!cfg.enabled) return { ok: true, skipped: 'disabled' };
   const creds = await loadV2Creds();
-  if (!creds) return { ok: true, skipped: 'no-telegram-creds' };
+  // Diagnostic snapshot — persisted every run so the page can show WHY 0 alerts
+  // fired (disabled / no-creds / no zones / grade-too-low / out-of-range / cooldown)
+  // instead of silent nothing. Read via GET /api/levels-v2/alert-diag.
+  const diag = { at, enabled: !!cfg.enabled, minGrade: cfg.minGrade, credsSource: creds?.source ?? null, sent: 0, checked: 0, reason: 'ok', perPair: [] };
+  const save = () => kv.put('tg_v2_alert_diag', JSON.stringify(diag)).catch(() => {});
+
+  if (!cfg.enabled) { diag.reason = 'alerts disabled — tick “Enable alerts” in ⚙ Alerts'; await save(); return { ok: true, skipped: 'disabled', diag }; }
+  if (!creds)       { diag.reason = 'no Telegram bot saved — add a v2 bot or the shared v1 tg_config'; await save(); return { ok: true, skipped: 'no-telegram-creds', diag }; }
 
   let cooldowns = {};
   try { const cd = await kv.get('tg_v2_cooldowns'); if (cd) cooldowns = JSON.parse(cd) || {}; } catch {}
-  cooldowns = pruneCooldowns(cooldowns, Date.now());
+  cooldowns = pruneCooldowns(cooldowns, at);
 
+  const minRank = GRADE_RANK[cfg.minGrade] ?? 3;
   const watch = (Array.isArray(cfg.pairs) && cfg.pairs.length) ? cfg.pairs : pairs;
-  let sent = 0, checked = 0;
+  let sent = 0, checked = 0, anyQual = 0, anyInRange = 0, anyZones = 0;
   for (const sym of watch) {
     let blk = null;
     try { const raw = await kv.get(`ai_entries_v2_${sym.replace('/', '')}`); blk = raw ? JSON.parse(raw) : null; } catch {}
     const zones = blk?.data;
-    if (!zones?.length) continue;
+    if (!zones?.length) { diag.perPair.push({ sym, zones: 0 }); continue; }
+    anyZones += zones.length;
     const price = await fetchPrice(sym);
-    if (price == null) continue;
+    if (price == null) { diag.perPair.push({ sym, zones: zones.length, price: null }); continue; }
     checked++;
     const pip = pipOf(sym), digits = digitsOf(sym);
-    const sel = selectAlerts({ sym, entries: zones, currentPrice: price, pip, cfg, cooldowns, now: Date.now() });
+    // Per-pair diagnostics: grade tally + nearest zone that clears minGrade.
+    const grades = {};
+    let nearestQual = null, qualCount = 0, inRangeCount = 0;
+    const prox = (cfg.proxPips?.[sym] ?? cfg.proxPips?.default ?? DEFAULT_V2_ALERT_CFG.proxPips.default);
+    for (const e of zones) {
+      grades[e.grade] = (grades[e.grade] ?? 0) + 1;
+      if ((GRADE_RANK[e.grade] ?? 0) < minRank || e.direction == null) continue;
+      qualCount++;
+      const dPips = Math.abs(e.price - price) / pip;
+      if (nearestQual == null || dPips < nearestQual) nearestQual = dPips;
+      if (dPips <= prox) inRangeCount++;
+    }
+    anyQual += qualCount; anyInRange += inRangeCount;
+    const sel = selectAlerts({ sym, entries: zones, currentPrice: price, pip, cfg, cooldowns, now: at });
     cooldowns = sel.cooldowns;
     for (const a of sel.alerts) {
       const msg = formatV2Entry(sym, a.entry, { currentPrice: price, digits, distPips: a.distPips });
       if (await sendTelegramV2(creds.token, creds.chatId, msg)) sent++;
     }
+    diag.perPair.push({ sym, zones: zones.length, grades, qual: qualCount,
+      nearestQualPips: nearestQual != null ? +nearestQual.toFixed(1) : null,
+      proxPips: prox, inRange: inRangeCount, fired: sel.alerts.length });
     await new Promise(r => setTimeout(r, 120));   // gentle on OANDA
   }
   try { await kv.put('tg_v2_cooldowns', JSON.stringify(cooldowns)); } catch {}
+  diag.sent = sent; diag.checked = checked;
+  if (sent) diag.reason = `sent ${sent}`;
+  else if (!anyZones)   diag.reason = 'no cached zones yet — run Refresh (or Learn if no policy)';
+  else if (!anyQual)    diag.reason = `no zones grade ≥ ${cfg.minGrade} — lower minGrade or wait for a stronger setup`;
+  else if (!anyInRange) diag.reason = `${anyQual} zone(s) ≥ ${cfg.minGrade} but price not within proxPips — widen proxPips or wait for approach`;
+  else                  diag.reason = 'qualifying zones in range but all within cooldown';
+  await save();
   if (sent) console.log(`[LEVELS-V2] alert loop: sent ${sent} (checked ${checked} pairs · via ${creds.source})`);
-  return { ok: true, sent, checked, via: creds.source };
+  return { ok: true, sent, checked, via: creds.source, diag };
 }
 
 // ── Refresh all pairs ───────────────────────────────────────────────────────

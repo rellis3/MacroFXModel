@@ -17,7 +17,7 @@ export const DEFAULT_V2_ALERT_CFG = {
   pairs:       [],                     // [] = all; else only these display symbols
 };
 
-const GRADE_RANK = { 'A+': 4, A: 3, B: 2, C: 1, SKIP: 0 };
+export const GRADE_RANK = { 'A+': 4, A: 3, B: 2, C: 1, SKIP: 0 };
 
 // Stable cooldown key for a standing level.
 export const alertKey = (sym, price, dir) => `${sym}|${price}|${dir}`;

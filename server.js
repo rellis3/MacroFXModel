@@ -7532,7 +7532,7 @@ app.get('/api/levels-v2/entries', async (req, res) => {
       const raw = await kv.get(`ai_entries_v2_${sym.replace('/', '')}`);
       if (raw) out[sym] = JSON.parse(raw);
     }
-    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, splitDate: policy.splitDate } : null, entries: out });
+    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, splitDate: policy.splitDate, bands: policy.bands ?? null } : null, entries: out });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -7574,6 +7574,15 @@ app.get('/api/levels-v2/alert-config', async (req, res) => {
       v2BotConfigured: !!(v2?.token && v2?.chatId),
       v2ChatId: v2?.chatId ?? null,
       activeBot: (v2?.token && v2?.chatId) ? 'v2-bot' : (tg?.token && tg?.chatId) ? 'shared-v1' : 'none' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// GET the last alert-loop diagnostic snapshot (why 0 alerts fired). Written every
+// ~90s by checkV2AlertsNow — memory-only (ephemeral), read from the same process.
+app.get('/api/levels-v2/alert-diag', async (req, res) => {
+  try {
+    const raw = await kv.get('tg_v2_alert_diag');
+    res.json({ ok: true, diag: raw ? JSON.parse(raw) : null, alertIntervalMs: V2_ALERT_MS });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

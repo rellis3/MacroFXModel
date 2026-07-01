@@ -9,7 +9,7 @@
   :root { --bg:#0b0e14; --panel:#141925; --panel2:#1b2230; --bd:#262e3d; --text:#e6edf3; --text2:#9aa7b8; --grn:#22c55e; --grnd:#16a34a; --amb:#f59e0b; --red:#ef4444; --blu:#5b9dff; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:'DM Sans',system-ui,sans-serif; font-size:14px; }
-  .wrap { max-width:1180px; margin:0 auto; padding:20px; }
+  .wrap { max-width:min(1800px,96vw); margin:0 auto; padding:20px; }
   h1 { font-size:20px; margin:0 0 4px; }
   .sub { color:var(--text2); font-size:12px; margin-bottom:18px; }
   .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
@@ -35,8 +35,9 @@
   .tab { padding:6px 14px; border-radius:8px; background:var(--panel); border:1px solid var(--bd); color:var(--text2); cursor:pointer; font-size:13px; font-weight:600; }
   .tab.on { background:var(--panel2); color:var(--text); border-color:#3a4a63; }
   /* per-pair cards */
-  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:12px; }
   .card { background:var(--panel); border:1px solid var(--bd); border-radius:12px; padding:12px; }
+  .ranges { font-size:11px; color:var(--text); margin:2px 0 8px; padding:4px 8px; background:var(--bg); border:1px solid var(--bd); border-radius:6px; }
   .card.long { border-left:3px solid var(--grn); } .card.short { border-left:3px solid var(--red); }
   .chead { display:flex; justify-content:space-between; align-items:baseline; }
   .chead .sym { font-weight:700; font-size:15px; }
@@ -124,6 +125,14 @@
       </div>
     </div>
     <div class="muted" style="margin-top:8px;">Alerts now fire on <b>live-price approach (~90s loop)</b>, not only at the 30-min refresh — zones recompute every 30 min; proximity is checked continuously.</div>
+
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b style="font-size:13px;">🔎 Why no alerts? <span class="muted" style="font-weight:400;">— live snapshot of the last ~90s alert check</span></b>
+        <button id="alDiag" class="alt">Refresh diagnostic</button>
+      </div>
+      <div id="alDiagOut" class="muted" style="margin-top:8px;">Click <b>Refresh diagnostic</b> to see why the last loop sent 0 (disabled / no bot / no zones / grade too low / out of range / cooldown).</div>
+    </div>
   </div>
 
   <div class="panel" id="policyPanel">
@@ -139,7 +148,10 @@
   <div class="panel" id="panelZones">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <b>Live v2 zones</b>
-      <span class="muted">collapsed = nearest zone · click a zone for its chart · expand for all</span>
+      <span style="display:flex;gap:14px;align-items:center;">
+        <label class="toggle" style="font-size:12px;"><input type="checkbox" id="showSkips"> show discarded (SKIP) lines</label>
+        <span class="muted">collapsed = nearest zone · click a zone for its chart · expand for all</span>
+      </span>
     </div>
     <div id="entries"><div class="muted">— nothing loaded —</div></div>
   </div>
@@ -182,6 +194,7 @@ const bestGrade = list => list.reduce((b, e) => (GRADE_RANK[e.grade] ?? 0) > (GR
 const fmtTime = ms => { try { return new Date(ms).toISOString().slice(5, 16).replace('T', ' '); } catch { return '—'; } };
 
 let _lastEntries = null;
+let _showSkips = false;
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function showTab(t) {
@@ -194,6 +207,29 @@ function showTab(t) {
 ['zones', 'trades', 'ledger'].forEach(t => { $('tab' + t[0].toUpperCase() + t.slice(1)).onclick = () => showTab(t); });
 
 // ── Policy panel ──────────────────────────────────────────────────────────────
+function gradeLegend(bands) {
+  // Fallback = DEFAULT_GRADE_BANDS in js/levelConfidenceCore.js; live policy sends
+  // its own percentile-fit bands (eB=33rd pct, eA=66th, eA+=85th of positive cells).
+  const b = bands || { eAplus: 0.08, eA: 0.05, eB: 0.02, nFull: 50, nMin: 30 };
+  const live = !!bands;
+  const pct = v => `+${(+v).toFixed(3)}%`;
+  const rows = [
+    ['A+', 'TAKE',    'g-Ap', `edge ≥ ${pct(b.eAplus)} <b>and</b> n ≥ ${b.nFull}`, 'strongest — top ~15% of the policy’s winning cells, deep sample'],
+    ['A',  'TAKE',    'g-A',  `edge ≥ ${pct(b.eA)} <b>and</b> n ≥ ${b.nMin}`,      'strong — top ~1/3, ≥30 historical touches'],
+    ['B',  'WATCH',   'g-B',  `edge ≥ ${pct(b.eB)}`,                                'positive but middling edge, or too few touches (n<30) to earn an A'],
+    ['C',  'CAUTION', 'g-C',  `edge > 0 (below ${pct(b.eB)})`,                      'thin positive edge — the weakest tradeable cells'],
+    ['SKIP','—',      'g-C',  `edge ≤ 0, or policy skipped / unseen in-sample`,     'no positive after-cost edge — not traded'],
+  ];
+  return `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);">
+      <b style="font-size:13px;">🎓 What A+/A/B/C mean</b>
+      <span class="muted" style="font-weight:400;"> — grade = the cell's after-cost <b>expectancy</b> (% of price per trade) + how many times it was seen (n). ${live ? 'Bands below are THIS policy’s own distribution.' : '(showing fallback bands — no live policy loaded)'}</span>
+      <table style="font-size:12px;margin-top:8px;"><thead><tr><th>Grade</th><th>Verdict</th><th>Rule</th><th>Meaning</th></tr></thead><tbody>
+        ${rows.map(([g, v, cls, rule, mean]) => `<tr><td class="${cls}">${g}</td><td class="mono">${v}</td><td class="mono">${rule}</td><td class="muted">${mean}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="muted" style="margin-top:6px;">Alerts fire at <b>Min grade</b> and above (⚙ Alerts). Edge is expectancy after spread+slippage; exits are the adjacent fib lines (R:R ≈ 1:1), so a small per-trade % compounds over many touches.</div>
+    </div>`;
+}
 function renderPolicy(p) {
   if (!p) { $('policyPanel').innerHTML = '<div class="muted">No frozen policy in KV yet — click Learn policy.</div>'; return; }
   const cov = p.coverage || {};
@@ -204,7 +240,8 @@ function renderPolicy(p) {
       <span class="kpi"><b style="color:var(--blu)">${cov.followCells ?? '—'}</b><span>follow</span></span>
       <span class="kpi"><b style="color:var(--text2)">${cov.skipCells ?? '—'}</b><span>skip</span></span>
     </div>
-    <div class="muted mono" style="margin-top:8px;">split ${p.splitDate || '?'} · built ${p.builtAt || '?'}</div>`;
+    <div class="muted mono" style="margin-top:8px;">split ${p.splitDate || '?'} · built ${p.builtAt || '?'}</div>
+    ${gradeLegend(p.bands)}`;
 }
 
 // ── Zones (per-pair cards: closest + expand) ─────────────────────────────────
@@ -230,36 +267,64 @@ function zoneRow(sym, e, cur) {
   </tr>`;
 }
 
+function skipRow(sym, s, cur) {
+  const dp = distPips(s.price, cur, sym);
+  return `<tr class="zrow" style="opacity:.5">
+    <td class="mono" style="color:var(--text2)">–</td>
+    <td class="mono">${s.price}</td>
+    <td class="mono">${dp == null ? '' : dp + 'p'}</td>
+    <td class="g-C">SKIP</td>
+    <td class="mono muted" colspan="4">${s.fib || ''} · ${s.reason || 'skip'}</td>
+  </tr>`;
+}
+
 function renderCards(entries) {
   const cards = [];
   for (const sym of Object.keys(entries).sort()) {
     const blk = entries[sym]; const cur = blk?.currentPrice;
     const list = (blk?.data || []).slice();
-    if (!list.length) continue;
-    // closest zone to current price
+    const skips = _showSkips ? (blk?.skips || []).slice() : [];
+    if (!list.length && !skips.length) continue;
+    // With only discarded lines and no tradeable ones, still render a card so the
+    // whole ladder is visible when "show discarded" is on.
     const byDist = cur != null ? [...list].sort((a, b) => Math.abs(a.price - cur) - Math.abs(b.price - cur)) : list;
-    const near = byDist[0];
-    const dp = distPips(near.price, cur, sym);
+    const near = byDist[0] ?? null;
+    const dp = near ? distPips(near.price, cur, sym) : null;
     const longs = list.filter(e => e.direction === 'long').length, shorts = list.length - longs;
-    const tilt = near.direction;
-    const allRows = byDist.map(e => zoneRow(sym, e, cur)).join('');
-    cards.push(`<div class="card ${tilt}">
-      <div class="chead"><span class="sym">${sym}</span><span class="px mono">${cur != null ? cur : ''}</span></div>
-      <div class="closest" data-sym="${sym}" data-price="${near.price}" data-sl="${near.sl}" data-tp="${near.tp}" data-cell="${near.cell}" data-dir="${near.direction}">
+    const tilt = near ? near.direction : '';
+    // Merge tradeable + (optionally) skip rows into one distance-sorted ladder view.
+    const rows = [
+      ...byDist.map(e => ({ d: Math.abs((e.price - (cur ?? e.price))), html: zoneRow(sym, e, cur) })),
+      ...skips.map(s => ({ d: Math.abs((s.price - (cur ?? s.price))), html: skipRow(sym, s, cur) })),
+    ].sort((a, b) => a.d - b.d).map(x => x.html).join('');
+    const nSkip = (blk?.skips || []).length;
+    const head = near
+      ? `<div class="closest" data-sym="${sym}" data-price="${near.price}" data-sl="${near.sl}" data-tp="${near.tp}" data-cell="${near.cell}" data-dir="${near.direction}">
         <div class="top">
           <span><span class="${near.direction}">${near.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span> <span class="mono">${near.price}</span> <span class="${gradeCls(near.grade)}">[${near.grade}]</span></span>
           <span class="mono" style="color:var(--text2)">${dp == null ? '' : dp + 'p away'}</span>
         </div>
         <div class="det">nearest zone · edge +${Number(near.expectancy).toFixed(3)}% (n=${near.n}) · ${near.decision} · SL ${near.sl} / TP ${near.tp} · 📈 chart</div>
-      </div>
+      </div>`
+      : `<div class="det muted" style="padding:6px 0;">no tradeable zone near price — ${nSkip} discarded line${nSkip === 1 ? '' : 's'} below</div>`;
+    const rowCount = list.length + skips.length;
+    const ranges = (blk?.ranges || []);
+    const rangeLine = ranges.length
+      ? `<div class="ranges mono">${ranges.map(r => `<span title="body range (open/close), not wick — the fibs are marked from this">${r.src} body <b>${r.low}</b>–<b>${r.high}</b> <span style="color:var(--text2)">(${r.pips}p)</span></span>`).join('<span style="color:var(--bd)"> · </span>')}</div>`
+      : '';
+    cards.push(`<div class="card ${tilt}">
+      <div class="chead"><span class="sym">${sym}</span><span class="px mono">${cur != null ? cur : ''}</span></div>
+      ${rangeLine}
+      ${head}
       <div class="cbadges">
         <span class="badge">${list.length} zones</span>
         <span class="badge">${longs}↑ / ${shorts}↓</span>
-        <span class="badge ${gradeCls(bestGrade(list))}">best ${bestGrade(list)}</span>
+        ${nSkip ? `<span class="badge" style="color:var(--text2)">${nSkip} skipped</span>` : ''}
+        ${near ? `<span class="badge ${gradeCls(bestGrade(list))}">best ${bestGrade(list)}</span>` : ''}
       </div>
-      <span class="expander" data-sym="${sym}">▸ all ${list.length} zones</span>
+      <span class="expander" data-sym="${sym}">▸ ${_showSkips && nSkip ? `all ${rowCount} lines (incl. ${skips.length} skip)` : `all ${list.length} zones`}</span>
       <div class="zlist" id="zl-${sym.replace('/', '')}">
-        <table><thead><tr><th>Dir</th><th>Level</th><th>Dist</th><th>Gr</th><th>Edge</th><th>Play</th><th>SL / TP</th><th>n</th></tr></thead><tbody>${allRows}</tbody></table>
+        <table><thead><tr><th>Dir</th><th>Level</th><th>Dist</th><th>Gr</th><th>Edge</th><th>Play</th><th>SL / TP</th><th>n</th></tr></thead><tbody>${rows}</tbody></table>
       </div>
     </div>`);
   }
@@ -284,10 +349,13 @@ function renderZeroDiag(j) {
 }
 
 function renderEntries(meta, entries) {
-  _lastEntries = entries || {};
-  const pairs = Object.keys(_lastEntries);
-  $('entries').innerHTML = pairs.length ? renderCards(_lastEntries) : '<div class="muted">— no live zones (run Refresh after a policy is learned) —</div>';
+  if (entries) _lastEntries = entries;
+  const src = _lastEntries || {};
+  const pairs = Object.keys(src);
+  $('entries').innerHTML = pairs.length ? renderCards(src) : '<div class="muted">— no live zones (run Refresh after a policy is learned) —</div>';
 }
+// Toggle discarded (SKIP) lines without refetching.
+$('showSkips').addEventListener('change', e => { _showSkips = e.target.checked; renderEntries(); });
 
 // expand + chart click via delegation
 $('entries').addEventListener('click', ev => {
@@ -538,6 +606,28 @@ $('alSave').onclick = async () => {
     $('alStatus').textContent = j.ok ? '✓ saved' : ('save failed: ' + (j.error || '?'));
     $('alStatus').style.color = j.ok ? 'var(--grn)' : 'var(--red)';
   } catch (e) { $('alStatus').textContent = 'save error: ' + e.message; $('alStatus').style.color = 'var(--red)'; }
+};
+
+// Alert diagnostic — "why no alerts?"
+$('alDiag').onclick = async () => {
+  $('alDiagOut').innerHTML = 'loading…';
+  try {
+    const r = await fetch('/api/levels-v2/alert-diag'); const j = await r.json();
+    const d = j.diag;
+    if (!d) { $('alDiagOut').innerHTML = '<span class="muted">no snapshot yet — the ~90s loop hasn\'t run since restart. Try again in a minute.</span>'; return; }
+    const ageS = Math.round((Date.now() - d.at) / 1000);
+    const col = d.sent > 0 ? 'var(--grn)' : (d.reason || '').startsWith('sent') ? 'var(--grn)' : 'var(--amb)';
+    const head = `<div style="color:${col};margin-bottom:6px;"><b>${d.sent > 0 ? `✓ sent ${d.sent}` : '0 sent'}</b> · ${d.reason} <span class="muted">(${ageS}s ago · every ${Math.round((j.alertIntervalMs||90000)/1000)}s · enabled=${d.enabled} · minGrade ${d.minGrade} · bot ${d.credsSource || 'none'})</span></div>`;
+    const rows = (d.perPair || []).filter(p => p.zones > 0).map(p => {
+      const g = Object.entries(p.grades || {}).map(([k, v]) => `${k}:${v}`).join(' ') || '—';
+      const near = p.nearestQualPips != null ? `${p.nearestQualPips}p (prox ${p.proxPips}p)` : '—';
+      return `<tr><td>${p.sym}</td><td class="mono">${p.zones}</td><td class="mono">${g}</td><td class="mono">${p.qual ?? 0}</td><td class="mono">${near}</td><td class="mono">${p.inRange ?? 0}</td><td class="mono">${p.fired ?? 0}</td></tr>`;
+    }).join('');
+    const empty = (d.perPair || []).filter(p => !p.zones).map(p => p.sym);
+    $('alDiagOut').innerHTML = head +
+      (rows ? `<table style="font-size:12px;"><thead><tr><th>Pair</th><th>zones</th><th>grades</th><th>≥min</th><th>nearest ≥min</th><th>in range</th><th>fired</th></tr></thead><tbody>${rows}</tbody></table>` : '<span class="muted">no pair had cached zones.</span>') +
+      (empty.length ? `<div class="muted" style="margin-top:6px;">no zones cached: ${empty.join(', ')}</div>` : '');
+  } catch (e) { $('alDiagOut').innerHTML = 'error: ' + e.message; }
 };
 
 // v2's own Telegram bot
