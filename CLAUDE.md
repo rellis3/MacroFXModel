@@ -176,6 +176,10 @@ unless that is explicitly the task.
   (`/api/honest-forecast/*`, `/api/vol-backtest-v2/*`).
 - **Dashboard pages** are self-contained HTML, dark theme, vanilla JS, served
   statically from repo root. Reuse the IS/OOS + cost-sensitivity card layout.
+- **`index.html` is THE Dashboard** — the primary landing page. `hub.html` is a
+  secondary link index. New user-facing features/links belong on **`index.html`**
+  (and the specific page they extend, e.g. the vol-bot lives on `bot-config.html`),
+  **not** on `hub.html`. Do not add things to `hub.html` unless explicitly asked.
 - **Data**: OANDA D1 via `fetchD1` (needs `OANDA_KEY`); M1 via `loadM1ForPair`
   (R2 / parquet / Drive). OANDA is reachable in Railway, not in the sandbox
   (expect 403 locally — that's environment, not a bug).

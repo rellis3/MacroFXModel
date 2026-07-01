@@ -44,7 +44,7 @@ import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForP
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './js/rangeLineAnalyser.js';
-import { pipSize as _pipSize } from './js/instrumentRegistry.js';
+import { pipSize as _pipSize, instrument } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
@@ -4405,6 +4405,44 @@ app.post('/api/volatility-bot/rebuild-book', (_req, res) => {
   if (_bookRebuildRunning) return res.status(409).json({ ok: false, error: 'rebuild already running' });
   _runBookRebuild();                                  // fire-and-forget; watch server logs ([book-rebuild])
   res.json({ ok: true, status: 'started', note: 'gap-fill → dataset → book → plan; watch server logs' });
+});
+
+// ── Volatility-bot live per-pair session M1 (for the line-chart modal) ─────────
+// Today's M1 candles from London midnight → now, for one pair. Feeds the live
+// line-chart modal on bot-config.html. Registered here, BEFORE the /api/* catch-all,
+// so it isn't swallowed by the worker proxy. OANDA is unreachable in the sandbox
+// (expect 403) — we return { ok:false, error } so the modal shows a message.
+// London-midnight epoch (00:00 Europe/London today) as a UTC-seconds value,
+// computed DST-safely from Intl (no hard-coded offset).
+function _londonMidnightSec(now = new Date()) {
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(now).reduce((o, x) => (o[x.type] = x.value, o), {});
+  // Reading the London wall-clock parts AS IF they were UTC, then differencing
+  // from the true UTC instant, yields London's current UTC offset (ms) — DST-safe.
+  const hh = p.hour === '24' ? 0 : +p.hour;
+  const wallAsUTC = Date.UTC(+p.year, +p.month - 1, +p.day, hh, +p.minute, +p.second);
+  const offsetMs = wallAsUTC - now.getTime();
+  // London midnight today = the local Y-M-D 00:00, shifted back to a UTC epoch.
+  const midnightUTC = Date.UTC(+p.year, +p.month - 1, +p.day, 0, 0, 0) - offsetMs;
+  return Math.floor(midnightUTC / 1000);
+}
+app.get('/api/volatility-bot/session-m1/:pair', async (req, res) => {
+  const pair = String(req.params.pair || '').toLowerCase();
+  try {
+    let oanda;
+    try { oanda = instrument(pair)?.oanda; } catch { /* unknown pair */ }
+    if (!oanda) return res.status(404).json({ ok: false, error: `unknown pair "${pair}" — no OANDA symbol` });
+    const fromSec = _londonMidnightSec();
+    const toSec = Math.floor(Date.now() / 1000);
+    const raw = await _btFetchM1Range(oanda, fromSec, toSec);
+    const bars = (raw || []).map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }));
+    res.json({ ok: true, pair, oanda, bars });
+  } catch (e) {
+    // OANDA unreachable (403 in sandbox) / any fetch failure — graceful, not a 500 crash.
+    res.status(502).json({ ok: false, error: e.message || String(e) });
+  }
 });
 
 // ── Range-Line Bot — freeze the §13/§15 per-instrument policy → KV plan ────────
