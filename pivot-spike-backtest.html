@@ -385,11 +385,16 @@ $('run').onclick = async () => {
   $('status').textContent = 'Submitting…';
 
   try {
-    const start = await fetch('/api/pivot-spike/run', {
+    const startResp = await fetch('/api/pivot-spike/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    }).then(r => r.json());
+    });
+    if (!startResp.ok) {
+      const txt = await startResp.text().catch(() => `HTTP ${startResp.status}`);
+      throw new Error(`Server returned ${startResp.status}: ${txt.slice(0, 120)}`);
+    }
+    const start = await startResp.json();
 
     if (!start.ok) throw new Error(start.error ?? 'Failed to start');
 

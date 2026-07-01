@@ -6,25 +6,16 @@
     "last_trade_by_pair": {
       "XAU/USD": 1782895019.7820017,
       "USD/JPY": 1782718031.73203,
-      "USD/CAD": 1782910185.2874937,
+      "USD/CAD": 1782916531.6902852,
       "EUR/USD": 1782889638.1370313,
       "USD/CHF": 1782900995.5558007,
       "EUR/GBP": 1782891226.0067055,
       "GBP/JPY": 1782461016.1106334,
       "AUD/USD": 1782817076.0447247,
-      "GBP/USD": 1782899896.2107189
+      "GBP/USD": 1782912158.2557135
     },
     "last_reset_date": "2026-07-01",
     "last_reset_month": "2026-07"
   },
-  "position_meta": {
-    "152282358542": {
-      "tp1": 1.42324,
-      "tp1_close_pct": 50,
-      "trailoffset_dist": 0.00053,
-      "tp1_hit": false,
-      "trail_active": false,
-      "trail_sl": null
-    }
-  }
+  "position_meta": {}
 }
