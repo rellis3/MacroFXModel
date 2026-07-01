@@ -341,7 +341,7 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
 // records to carry the ex* fields (a post-exit-study Refresh) — older records are
 // counted in study.missing.
 export async function buildExitStudy({ horizon = 'daily', conditions = ['approachVel'],
-                                       minN = 50, splitFrac = 0.6, marginPct = 0 } = {}) {
+                                       minN = 50, splitFrac = 0.6, marginPct = 0.01 } = {}) {
   const manifest = await getManifest();
   if (!manifest) return null;
   const pairs = Object.keys(manifest.pairs || {});
