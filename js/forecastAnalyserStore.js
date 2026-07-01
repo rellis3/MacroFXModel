@@ -17,7 +17,7 @@ import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
-import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, runDayTypeStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, runDayTypeStudy, runStopStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { deflatedSharpe } from './backtestStats.js';
 import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
 import { resampleTo } from './barUtils.js';
@@ -389,6 +389,34 @@ export async function buildDayTypeStudy({ horizon = 'daily', minN = 50, splitFra
   }
   if (!Object.keys(touchesByPair).length) return null;
   return runDayTypeStudy(touchesByPair, { splitFrac, minN, marginPct, dtThresh, costByPair, slipByPair });
+}
+
+// ── Stop-loss study — per-pair optimal SL from winners' MAE, OOS ──────────────
+// Loads the stored per-pair records for a horizon, flattens to touches (which
+// already carry extPct/reverted/innerLvl/outerLvl), and runs runStopStudy. Runs on
+// the EXISTING records — extPct is already stored, so NO Refresh is needed. Per-pair
+// costs mirror the deployed book (costForPair); the asset class per pair feeds the
+// asset-class-optimal variant. Returns null if no dataset / no records (route → 404).
+export async function buildStopStudy({ horizon = 'daily', conditions = ['approachVel'],
+                                       minN = 50, splitFrac = 0.6, marginPct = 0.01 } = {}) {
+  const manifest = await getManifest();
+  if (!manifest) return null;
+  const pairs = Object.keys(manifest.pairs || {});
+  const touchesByPair = {}, costByPair = {}, slipByPair = {}, classByPair = {};
+  for (const pair of pairs) {
+    if (!manifest.pairs[pair]?.horizons?.[horizon]) continue;
+    const data = await getPairData(pair, horizon);
+    if (!data?.records?.length) continue;
+    const touches = extractTouches(data.records, { conditions });
+    if (!touches.length) continue;
+    touchesByPair[pair] = touches;
+    const ac = assetClassFor(pair);
+    costByPair[pair]  = costForPair(pair, ac);
+    slipByPair[pair]  = DEFAULT_SLIP_PCT[ac] ?? DEFAULT_SLIP_PCT.fx;
+    classByPair[pair] = ac;
+  }
+  if (!Object.keys(touchesByPair).length) return null;
+  return runStopStudy(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair, classByPair });
 }
 
 export async function getPerLineBook(horizon = 'daily')        { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }

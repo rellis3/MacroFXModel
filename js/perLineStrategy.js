@@ -625,3 +625,166 @@ export function runDayTypeStudy(touchesByPair, { splitFrac = 0.6, minN = 50, mar
     },
   };
 }
+
+// ── 9) Stop-loss study — per-pair optimal SL from winners' MAE, out-of-sample ──
+// The fade stop is currently the OUTER band line — nobody chose it; it is just
+// where the triple-barrier put the far barrier. Each fade touch already stores
+// `extPct` (its ADVERSE excursion — how far price continued AGAINST the fade before
+// the barrier resolved) and `reverted` (did the fade win), so we can RE-PRICE every
+// fade under a TIGHTER candidate stop with NO M1 re-simulation:
+//   • candidate SL at distance s (% of price): if extPct > s → the stop triggers
+//     → loss −s; else the trade keeps its ORIGINAL barrier/close outcome.
+// This finds the stop that cuts losers without stopping the dip-then-revert winners.
+//
+// CAVEATS baked in (this is a screening study, not a tick replay):
+//   • TIGHTENING ONLY. extPct is capped at the ORIGINAL barrier resolution (a fade
+//     that continued past the outer line was recorded as decided there), so we can
+//     only test candidate SLs ≤ the current outer-band distance. Each candidate s is
+//     clamped PER TOUCH to min(s, distOut). Widening would need M1 re-simulation to
+//     see past the original stop — noted as a follow-up, NOT attempted here.
+//   • CONSERVATIVE ordering. extPct/mfePct are window extremes of unknown ORDER; if
+//     extPct > s we assume the stop was hit (conservative on the loss side).
+//   • OOS + n≥30. Per-pair tuning overfits, so a pair-specific SL only "wins" if it
+//     beats the band SL OOS with ≥30 fade trades for that pair; otherwise it falls
+//     back to the band SL. An asset-class-optimal variant (one SL per fx/index/
+//     commodity) is offered as the more-robust middle ground.
+//   • FADE cells only (the book is ~all fades — that's where the SL pain is). Follow
+//     cells (SL = the inner line) are analogous but out of scope for v1.
+
+// Re-price ONE fade touch under a candidate stop at distance `s` (% of price).
+// Conservative: if the stored adverse excursion exceeded s we assume the tighter
+// stop was hit → loss −s (net of cost). Otherwise the trade survived to its ORIGINAL
+// barrier/close resolution → keep the original fade PnL (pnlFor). No slip: a fade
+// is a limit entry. pnlAtSL(t, distOut) therefore reconciles with pnlFor's fade
+// result (extPct is capped at distOut, so the outer band never "stops" early).
+export function pnlAtSL(t, s, { costPct = 0.012 } = {}) {
+  const cost = costPct;
+  if (t.extPct != null && Number.isFinite(t.extPct) && t.extPct > s)
+    return +(-s - cost).toFixed(5);                              // stopped early by the tighter SL
+  return pnlFor(t, 'fade', { costPct: cost, slipPct: 0 });       // survived → original fade outcome
+}
+
+export function runStopStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0.01,
+                                              costByPair = {}, slipByPair = {}, classByPair = {} } = {}) {
+  // Stamp per-pair cost so buildPolicy + the OOS re-pricing use the SAME friction as
+  // the deployed book (mirrors runExitStudy). Default cost = the per-pair table.
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? costForPair(pair), slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
+  const all = Object.values(touchesByPair).flat().sort(byDate);
+  if (!all.length) return null;
+  const splitDate = all[Math.floor(all.length * splitFrac)]?.date ?? null;
+  // Same pooled IS policy the book learns — we only re-price the cells it FADES.
+  const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
+
+  // Collect OOS fade touches (policy decides fade), precomputing the barrier geom.
+  const byPair = {};
+  const oosFades = [];
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    for (const t of touches) {
+      if (t.date < splitDate) continue;                         // OOS only
+      const p = policy[t.cell];
+      if (!p || p.decision !== 'fade') continue;                // fade cells only (v1)
+      t.distIn  = Math.abs(t.level - t.innerLvl) / t.open * 100;   // TP (toward open)
+      t.distOut = Math.abs(t.outerLvl - t.level) / t.open * 100;   // current band SL (away)
+      (byPair[pair] ??= []).push(t);
+      oosFades.push(t);
+    }
+  }
+  if (!oosFades.length) return null;
+
+  // ── helpers ─────────────────────────────────────────────────────────────────
+  const sortAsc = a => [...a].sort((x, y) => x - y);
+  const pctAt = (arrAsc, q) => arrAsc.length ? arrAsc[Math.min(arrAsc.length - 1, Math.floor(q / 100 * arrAsc.length))] : null;
+  const medOf = a => { if (!a.length) return 0; const s = sortAsc(a); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  // Price one fade at candidate s (null = band SL = original outcome; tightening is
+  // clamped PER TOUCH to min(s, distOut) so we never test a WIDER stop than the band).
+  const priceOne = (t, s) => (s == null)
+    ? pnlFor(t, 'fade', { costPct: t.cost ?? DEFAULT_COST_PCT.fx, slipPct: 0 })
+    : pnlAtSL(t, Math.min(s, t.distOut), { costPct: t.cost ?? DEFAULT_COST_PCT.fx });
+  const rowsFor = (fades, s) => fades.map(t => ({ date: t.date, pnl: priceOne(t, s) }));
+  const statOf = (rows) => {
+    const port = portfolioStats(dailySeries(rows));
+    const trd  = summarizeTrades(rows.map(r => r.pnl), rows.map(r => r.date));
+    return { sharpe: port.sharpe, cagr: port.cagr, maxDD: port.maxDD, expectancy: trd.expectancy, trades: rows.length };
+  };
+  // Argmax-Sharpe (tie-break expectancy) over the tightening grid vs the band baseline.
+  // Returns the winning stop distance + its OOS stats + the `s` actually applied (null
+  // when the band wins or n<30 → the portfolio then prices that group at the band SL).
+  const pickBest = (fades) => {
+    const n = fades.length;
+    const dists = fades.map(t => t.distOut);
+    const bandSL = medOf(dists);                                 // representative current band SL
+    const winnersMae = sortAsc(fades.filter(t => t.reverted).map(t => t.extPct).filter(Number.isFinite));
+    const rawCands = [pctAt(winnersMae, 75), pctAt(winnersMae, 90), pctAt(winnersMae, 95), 0.5 * bandSL, 0.75 * bandSL];
+    const cands = [...new Set(rawCands.filter(s => s != null && s > 0 && s < bandSL).map(s => +s.toFixed(5)))];
+    const bandStat = statOf(rowsFor(fades, null));
+    let best = { sl: +bandSL.toFixed(5), sUsed: null, ...bandStat };
+    if (n >= 30) {
+      for (const s of cands) {
+        const st = statOf(rowsFor(fades, s));
+        if (st.sharpe > best.sharpe + 1e-9 ||
+            (Math.abs(st.sharpe - best.sharpe) <= 1e-9 && st.expectancy > best.expectancy))
+          best = { sl: s, sUsed: s, ...st };
+      }
+    }
+    return { n, bandSL, bandStat, best, winnersMae };
+  };
+
+  // ── per-pair ─────────────────────────────────────────────────────────────────
+  const perPair = {}, perPairSUsed = {};
+  for (const [pair, fades] of Object.entries(byPair)) {
+    const r = pickBest(fades);
+    perPairSUsed[pair] = r.best.sUsed;                          // s applied in the per-pair-optimal portfolio
+    perPair[pair] = {
+      n: r.n,
+      winnersMaeP50: r.winnersMae.length ? +pctAt(r.winnersMae, 50).toFixed(5) : null,
+      winnersMaeP75: r.winnersMae.length ? +pctAt(r.winnersMae, 75).toFixed(5) : null,
+      winnersMaeP90: r.winnersMae.length ? +pctAt(r.winnersMae, 90).toFixed(5) : null,
+      winnersMaeP95: r.winnersMae.length ? +pctAt(r.winnersMae, 95).toFixed(5) : null,
+      bandSL: +r.bandSL.toFixed(5),
+      bestSL: +r.best.sl.toFixed(5),
+      expBand: r.bandStat.expectancy, expBest: r.best.expectancy,
+      sharpeBand: r.bandStat.sharpe, sharpeBest: r.best.sharpe,
+      lowN: r.n < 30,
+    };
+  }
+
+  // ── asset-class-optimal (one SL per fx/index/commodity — the robust middle) ───
+  const byClass = {};
+  for (const [pair, fades] of Object.entries(byPair)) (byClass[classByPair[pair] || 'fx'] ??= []).push(...fades);
+  const classBestS = {}, classDetail = {};
+  for (const [cls, fades] of Object.entries(byClass)) {
+    const r = pickBest(fades);
+    classBestS[cls] = r.best.sUsed;
+    classDetail[cls] = { n: r.n, bandSL: +r.bandSL.toFixed(5), bestSL: +r.best.sl.toFixed(5),
+      expBand: r.bandStat.expectancy, expBest: r.best.expectancy,
+      sharpeBand: r.bandStat.sharpe, sharpeBest: r.best.sharpe, lowN: r.n < 30 };
+  }
+
+  // ── portfolio A/B (all three priced across the SAME OOS fades) ────────────────
+  const bandRows = [], perPairRows = [], acRows = [];
+  for (const [pair, fades] of Object.entries(byPair)) {
+    const cls = classByPair[pair] || 'fx';
+    for (const t of fades) {
+      bandRows.push({ date: t.date, pnl: priceOne(t, null) });
+      perPairRows.push({ date: t.date, pnl: priceOne(t, perPairSUsed[pair]) });
+      acRows.push({ date: t.date, pnl: priceOne(t, classBestS[cls] ?? null) });
+    }
+  }
+  const band = statOf(bandRows), perPairOpt = statOf(perPairRows), assetClassOpt = statOf(acRows);
+  const deltaOf = (a) => ({ sharpe: +(a.sharpe - band.sharpe).toFixed(3),
+                            expectancy: +(a.expectancy - band.expectancy).toFixed(4),
+                            trades: a.trades - band.trades });
+
+  return {
+    splitDate, minN, marginPct,
+    perPair, classDetail,
+    portfolio: { band, perPairOpt, assetClassOpt,
+      delta: { perPairOpt: deltaOf(perPairOpt), assetClassOpt: deltaOf(assetClassOpt) } },
+    note: 'OOS, tightening-only (candidate SL ≤ current outer band; wider stops need M1 re-sim). ' +
+          'Screening re-price off stored extPct (adverse excursion) with conservative ordering — not a tick replay. ' +
+          'Adopt a per-pair SL only where it beats the band SL OOS with n≥30 fade trades; else fall back to asset-class or the band SL.',
+  };
+}

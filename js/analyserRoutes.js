@@ -19,6 +19,7 @@ import {
   getPerLineTrades as getAnalyserPerLineTrades, getSessionChart as getAnalyserSessionChart,
   buildExitStudy as buildAnalyserExitStudy,
   buildDayTypeStudy as buildAnalyserDayTypeStudy,
+  buildStopStudy as buildAnalyserStopStudy,
 } from './forecastAnalyserStore.js';
 
 function _analyserPw(req) {
@@ -223,6 +224,18 @@ export function mountAnalyserRoutes(app, express) {
     if (!_analyserAuth(req, res, 'view')) return;
     try {
       const study = await buildAnalyserDayTypeStudy({ horizon: req.params.horizon });
+      if (!study) return res.status(404).json({ ok: false, error: 'No records for that horizon — run a refresh first' });
+      res.json({ ok: true, study });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // Stop-loss study — per-pair optimal SL from each pair's winners'-MAE distribution.
+  // Runs on the STORED records (extPct is already stored, so no Refresh needed).
+  // View-gated; 404 when no records for the horizon.
+  app.get('/api/forecast-analysis/stop-study/:horizon', async (req, res) => {
+    if (!_analyserAuth(req, res, 'view')) return;
+    try {
+      const study = await buildAnalyserStopStudy({ horizon: req.params.horizon });
       if (!study) return res.status(404).json({ ok: false, error: 'No records for that horizon — run a refresh first' });
       res.json({ ok: true, study });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
