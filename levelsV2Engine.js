@@ -201,8 +201,24 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       tp: e.tp != null ? +e.tp.toFixed(digits) : null,
     }));
 
+    // Discarded near-price lines (policy said skip / unseen), for the page's
+    // "show discarded" view — the whole ladder + why each line was filtered.
+    const skipsPayload = skipsArr.map(s => ({
+      price: +s.level.toFixed(digits), fib: s.name, side: s.side,
+      grade: 'SKIP', reason: s.reason ?? 'skip', cell: s.cell ?? null,
+      n: s.n ?? null, expectancy: s.expectancy ?? null,
+    }));
+
+    // Anchor ranges the fib ladder was marked from — BODY range (max/min of
+    // open&close), NOT wick high/low — so the card can show what the lines hang off.
+    const ranges = ladders.map(l => ({
+      src: l.srcTag === 'A' ? 'Asia' : l.srcTag === 'M' ? 'Monday' : l.srcTag,
+      low: +l.low.toFixed(digits), high: +l.high.toFixed(digits),
+      pips: +((l.high - l.low) / pip).toFixed(1),
+    }));
+
     await kv.put(`ai_entries_v2_${sym.replace('/', '')}`, JSON.stringify({
-      data: payload, timestamp: Date.now(), source: 'server-v2',
+      data: payload, skips: skipsPayload, ranges, timestamp: Date.now(), source: 'server-v2',
       policyBuiltAt: frozen.builtAt ?? null, currentPrice: +price.toFixed(digits),
     }));
 
