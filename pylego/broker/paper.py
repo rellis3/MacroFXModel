@@ -69,6 +69,21 @@ class PaperBroker:
         self._closed.append({**p, "reason": reason, "close_price": self._price.get(p["pair"])})
         return True
 
+    def modify(self, ticket, pair=None, sl=None, tp=None, paper_mode=True) -> bool:
+        """Update a position's SL/TP (mirrors Mt5Broker.modify) — the bot trails the
+        chandelier stop by raising the SL; check_barriers then exits on the SL."""
+        p = self._pos.get(ticket)
+        if not p:
+            return True
+        if sl is not None:
+            p["sl"] = float(sl)
+        if tp is not None:
+            p["tp"] = float(tp)
+        return True
+
+    def tradable(self, pair) -> bool:
+        return True                           # paper: always open
+
     # ── serialisers (the dashboard positions-tab payload — Mt5Broker shape) ────
     def serialize_open_positions(self) -> list:
         out = []
@@ -98,10 +113,11 @@ class PaperBroker:
             cur = self._price.get(p["pair"])
             if cur is None:
                 continue
+            # tp falsy (0/None) = no take-profit (the chandelier-trailed SL is the exit).
             if p["direction"] == "LONG":
-                reason = "sl" if cur <= p["sl"] else "tp" if cur >= p["tp"] else None
+                reason = "sl" if cur <= p["sl"] else ("tp" if p["tp"] and cur >= p["tp"] else None)
             else:
-                reason = "sl" if cur >= p["sl"] else "tp" if cur <= p["tp"] else None
+                reason = "sl" if cur >= p["sl"] else ("tp" if p["tp"] and cur <= p["tp"] else None)
             if reason:
                 self.stop(t, p["pair"], True, reason)
                 hit.append({"ticket": t, "reason": reason})

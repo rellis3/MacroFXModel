@@ -68,14 +68,22 @@ sess = RangeSession("nq", FIBS, chand_frac=0.5)
 ok("set_range builds the Asia ladder", sess.set_range("A", BARS) is True)
 
 # policy: follow the A_1 up-line; A_1.5 is also up but should be suppressed by the
-# held-position (one per src/side) rule once A_1 fires.
+# held-position (one per src/side) rule within a single tick.
 policy = {"A_1_up|": {"decision": "follow"}, "A_1.5_up|": {"decision": "follow"}}
 specs = sess.decide(115, policy)              # px 115 touches both 110 and 115
-ok("decide returns exactly ONE spec (held: one per src/side)", len(specs) == 1)
+ok("decide returns exactly ONE spec (one per src/side per tick)", len(specs) == 1)
 ok("decide picks the follow buy on A_1", specs[0]["label"] == "A_1" and specs[0]["side_order"] == "buy" and specs[0]["dir_up"])
-ok("(src,side) slot taken after entry", ("A", "up") in sess.entered)
+ok("decide does NOT auto-burn the slot (only mark_entered does)", ("A", "up") not in sess.entered)
+sess.mark_entered("A", "up")                  # the bot calls this after a SUCCESSFUL fill
+ok("(src,side) slot taken after mark_entered", ("A", "up") in sess.entered)
 specs2 = sess.decide(116, policy)             # same side touched again
 ok("no re-entry on an already-taken (src,side)", specs2 == [])
+
+# don't-burn-slot: a produced spec that is NOT marked entered (rejected order) can
+# still be retried on a fresh session (slot never taken).
+sret = RangeSession("nq", FIBS); sret.set_range("A", BARS)
+sret.decide(110, {"A_1_up|": {"decision": "follow"}})     # A_1 touched, spec produced, NOT marked
+ok("slot stays open when entry not marked (rejected order)", ("A", "up") not in sret.entered)
 
 # skip cell → no trade; dn side independent of the up slot.
 sess2 = RangeSession("eurusd", FIBS)
