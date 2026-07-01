@@ -7532,7 +7532,7 @@ app.get('/api/levels-v2/entries', async (req, res) => {
       const raw = await kv.get(`ai_entries_v2_${sym.replace('/', '')}`);
       if (raw) out[sym] = JSON.parse(raw);
     }
-    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, splitDate: policy.splitDate } : null, entries: out });
+    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, splitDate: policy.splitDate, bands: policy.bands ?? null } : null, entries: out });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
