@@ -195,8 +195,16 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       tp: e.tp != null ? +e.tp.toFixed(digits) : null,
     }));
 
+    // Discarded near-price lines (policy said skip / unseen), for the page's
+    // "show discarded" view — the whole ladder + why each line was filtered.
+    const skipsPayload = skipsArr.map(s => ({
+      price: +s.level.toFixed(digits), fib: s.name, side: s.side,
+      grade: 'SKIP', reason: s.reason ?? 'skip', cell: s.cell ?? null,
+      n: s.n ?? null, expectancy: s.expectancy ?? null,
+    }));
+
     await kv.put(`ai_entries_v2_${sym.replace('/', '')}`, JSON.stringify({
-      data: payload, timestamp: Date.now(), source: 'server-v2',
+      data: payload, skips: skipsPayload, timestamp: Date.now(), source: 'server-v2',
       policyBuiltAt: frozen.builtAt ?? null, currentPrice: +price.toFixed(digits),
     }));
 

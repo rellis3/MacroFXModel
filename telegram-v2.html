@@ -147,7 +147,10 @@
   <div class="panel" id="panelZones">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <b>Live v2 zones</b>
-      <span class="muted">collapsed = nearest zone · click a zone for its chart · expand for all</span>
+      <span style="display:flex;gap:14px;align-items:center;">
+        <label class="toggle" style="font-size:12px;"><input type="checkbox" id="showSkips"> show discarded (SKIP) lines</label>
+        <span class="muted">collapsed = nearest zone · click a zone for its chart · expand for all</span>
+      </span>
     </div>
     <div id="entries"><div class="muted">— nothing loaded —</div></div>
   </div>
@@ -190,6 +193,7 @@ const bestGrade = list => list.reduce((b, e) => (GRADE_RANK[e.grade] ?? 0) > (GR
 const fmtTime = ms => { try { return new Date(ms).toISOString().slice(5, 16).replace('T', ' '); } catch { return '—'; } };
 
 let _lastEntries = null;
+let _showSkips = false;
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function showTab(t) {
@@ -262,36 +266,59 @@ function zoneRow(sym, e, cur) {
   </tr>`;
 }
 
+function skipRow(sym, s, cur) {
+  const dp = distPips(s.price, cur, sym);
+  return `<tr class="zrow" style="opacity:.5">
+    <td class="mono" style="color:var(--text2)">–</td>
+    <td class="mono">${s.price}</td>
+    <td class="mono">${dp == null ? '' : dp + 'p'}</td>
+    <td class="g-C">SKIP</td>
+    <td class="mono muted" colspan="4">${s.fib || ''} · ${s.reason || 'skip'}</td>
+  </tr>`;
+}
+
 function renderCards(entries) {
   const cards = [];
   for (const sym of Object.keys(entries).sort()) {
     const blk = entries[sym]; const cur = blk?.currentPrice;
     const list = (blk?.data || []).slice();
-    if (!list.length) continue;
-    // closest zone to current price
+    const skips = _showSkips ? (blk?.skips || []).slice() : [];
+    if (!list.length && !skips.length) continue;
+    // With only discarded lines and no tradeable ones, still render a card so the
+    // whole ladder is visible when "show discarded" is on.
     const byDist = cur != null ? [...list].sort((a, b) => Math.abs(a.price - cur) - Math.abs(b.price - cur)) : list;
-    const near = byDist[0];
-    const dp = distPips(near.price, cur, sym);
+    const near = byDist[0] ?? null;
+    const dp = near ? distPips(near.price, cur, sym) : null;
     const longs = list.filter(e => e.direction === 'long').length, shorts = list.length - longs;
-    const tilt = near.direction;
-    const allRows = byDist.map(e => zoneRow(sym, e, cur)).join('');
-    cards.push(`<div class="card ${tilt}">
-      <div class="chead"><span class="sym">${sym}</span><span class="px mono">${cur != null ? cur : ''}</span></div>
-      <div class="closest" data-sym="${sym}" data-price="${near.price}" data-sl="${near.sl}" data-tp="${near.tp}" data-cell="${near.cell}" data-dir="${near.direction}">
+    const tilt = near ? near.direction : '';
+    // Merge tradeable + (optionally) skip rows into one distance-sorted ladder view.
+    const rows = [
+      ...byDist.map(e => ({ d: Math.abs((e.price - (cur ?? e.price))), html: zoneRow(sym, e, cur) })),
+      ...skips.map(s => ({ d: Math.abs((s.price - (cur ?? s.price))), html: skipRow(sym, s, cur) })),
+    ].sort((a, b) => a.d - b.d).map(x => x.html).join('');
+    const nSkip = (blk?.skips || []).length;
+    const head = near
+      ? `<div class="closest" data-sym="${sym}" data-price="${near.price}" data-sl="${near.sl}" data-tp="${near.tp}" data-cell="${near.cell}" data-dir="${near.direction}">
         <div class="top">
           <span><span class="${near.direction}">${near.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span> <span class="mono">${near.price}</span> <span class="${gradeCls(near.grade)}">[${near.grade}]</span></span>
           <span class="mono" style="color:var(--text2)">${dp == null ? '' : dp + 'p away'}</span>
         </div>
         <div class="det">nearest zone · edge +${Number(near.expectancy).toFixed(3)}% (n=${near.n}) · ${near.decision} · SL ${near.sl} / TP ${near.tp} · 📈 chart</div>
-      </div>
+      </div>`
+      : `<div class="det muted" style="padding:6px 0;">no tradeable zone near price — ${nSkip} discarded line${nSkip === 1 ? '' : 's'} below</div>`;
+    const rowCount = list.length + skips.length;
+    cards.push(`<div class="card ${tilt}">
+      <div class="chead"><span class="sym">${sym}</span><span class="px mono">${cur != null ? cur : ''}</span></div>
+      ${head}
       <div class="cbadges">
         <span class="badge">${list.length} zones</span>
         <span class="badge">${longs}↑ / ${shorts}↓</span>
-        <span class="badge ${gradeCls(bestGrade(list))}">best ${bestGrade(list)}</span>
+        ${nSkip ? `<span class="badge" style="color:var(--text2)">${nSkip} skipped</span>` : ''}
+        ${near ? `<span class="badge ${gradeCls(bestGrade(list))}">best ${bestGrade(list)}</span>` : ''}
       </div>
-      <span class="expander" data-sym="${sym}">▸ all ${list.length} zones</span>
+      <span class="expander" data-sym="${sym}">▸ ${_showSkips && nSkip ? `all ${rowCount} lines (incl. ${skips.length} skip)` : `all ${list.length} zones`}</span>
       <div class="zlist" id="zl-${sym.replace('/', '')}">
-        <table><thead><tr><th>Dir</th><th>Level</th><th>Dist</th><th>Gr</th><th>Edge</th><th>Play</th><th>SL / TP</th><th>n</th></tr></thead><tbody>${allRows}</tbody></table>
+        <table><thead><tr><th>Dir</th><th>Level</th><th>Dist</th><th>Gr</th><th>Edge</th><th>Play</th><th>SL / TP</th><th>n</th></tr></thead><tbody>${rows}</tbody></table>
       </div>
     </div>`);
   }
@@ -316,10 +343,13 @@ function renderZeroDiag(j) {
 }
 
 function renderEntries(meta, entries) {
-  _lastEntries = entries || {};
-  const pairs = Object.keys(_lastEntries);
-  $('entries').innerHTML = pairs.length ? renderCards(_lastEntries) : '<div class="muted">— no live zones (run Refresh after a policy is learned) —</div>';
+  if (entries) _lastEntries = entries;
+  const src = _lastEntries || {};
+  const pairs = Object.keys(src);
+  $('entries').innerHTML = pairs.length ? renderCards(src) : '<div class="muted">— no live zones (run Refresh after a policy is learned) —</div>';
 }
+// Toggle discarded (SKIP) lines without refetching.
+$('showSkips').addEventListener('change', e => { _showSkips = e.target.checked; renderEntries(); });
 
 // expand + chart click via delegation
 $('entries').addEventListener('click', ev => {
