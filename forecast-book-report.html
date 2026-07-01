@@ -117,6 +117,10 @@ function render(b){
   const svtBlk=svt.mcMaxDDBlock||{};
   const stressDD=(svtBlk.p95!=null)?svtBlk.p95:(svt.mcMaxDD?svt.mcMaxDD.p95:null);
   const stressLbl=(svtBlk.p95!=null)?'block p95':'MC p95';
+  // Raw (1× / unscaled) drawdowns + the lag-1 autocorrelation. All the volTarget.*
+  // DDs are scaled to the target vol; svRaw carries the unscaled 1× magnitudes, and
+  // acf1's SIGN explains block ≶ IID (negative = mean-reverting ⇒ block shallower).
+  const svRaw=svp.raw||{}, acf1=svp.acf1;
   const pp=Object.entries(b.perPair||{}).filter(([,s])=>s.trades>0).sort((a,b)=>b[1].sharpe-a[1].sharpe);
   const survSet=new Set(sv.pairs||[]);
   const posPairs=pp.filter(([,s])=>s.totalPnl>0).length;
@@ -154,7 +158,8 @@ function render(b){
     ${kpi(fmt(svp.sharpe,2),'Sharpe (annualised)',svp.sharpe<0)}
     ${kpi(svp.psr!=null?pct(svp.psr*100,0):'—','Prob. Sharpe &gt; 0',svp.psr<0.95)}
     ${kpi(pct(svt.cagr,1),`Return p.a. @ ${svt.target||10}% vol`,svt.cagr<0)}
-    ${kpi(pct(svt.maxDD,1),'Max drawdown (historical)',true)}
+    ${kpi(pct(svt.maxDD,1),`Max drawdown (historical @ ${svt.target||10}% vol)`,true)}
+    ${svp.maxDD!=null?kpi(pct(svp.maxDD,1),`Max drawdown (historical · raw 1×, ${fmt(svp.annVol,0)}% vol)`,true):''}
     ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC IID p95 @ ${svt.target||10}% vol)`,true):''}
     ${svtBlk.p95!=null?kpi(pct(svtBlk.p95,1),`Max drawdown (MC block p95 · regime-clustered)`,true):''}
     ${iddVT!=null?kpi(pct(iddVT,1),`Max drawdown (intraday MTM · MAE+concurrency, ${fmt(iddMult,1)}× closed)`,true):''}
@@ -178,6 +183,7 @@ function render(b){
     <li><b>Max DD</b> = the largest peak-to-trough fall of the SAME curve, as a % of the running peak — same basis as the return.</li>
     <li>Both are scaled to a fixed ${svt.target||10}% annual vol first (× ${svt.target||10}%/realised-vol), so they're leverage-comparable — this moves the cash scale, not the Sharpe.</li>
   </ul>
+  <b>Vol scaling — read this before comparing drawdowns.</b> Every "@ ${svt.target||10}% vol" figure (return, historical DD, MC IID/block) is scaled by ${svt.target||10}%/realised-vol. Realised vol here is <b>${fmt(svp.annVol,0)}%</b>, so the scale factor is ≈${svp.annVol>0?fmt((svt.target||10)/svp.annVol,2):'?'}× — i.e. the ${svt.target||10}%-vol drawdowns are roughly <b>${svp.annVol>0?fmt(svp.annVol/(svt.target||10),1):'?'}× smaller</b> than what you'd actually live through at 1× leverage. The <b>raw 1×</b> (unscaled) drawdowns — historical ${svp.maxDD!=null?`<b>${pct(svp.maxDD,1)}</b>`:''} and the raw MC columns in §4 — are the leverage-free "what actually happened" magnitudes. Size real risk against the 1× figures (or your own chosen leverage), not the ${svt.target||10}%-vol headline.
   <b>Why "Max drawdown (historical)" looks low:</b> it is the <i>single realised ordering</i> of trades, and this book's path ran smoother than the median.
   So we also resample the daily returns 1,000× at the same vol and report <b>Max drawdown (MC p95/p99)</b> two ways: an <b>IID</b> reshuffle (single-day order independent) and a <b>block</b> bootstrap (stationary, mean block ≈ ${fmt(svtBlk.blockMean||21,0)} days) that keeps losing streaks clumped so it does <i>not</i> understate regime-clustered tails. <b>Calmar (stress)</b> = Ann. return ÷ |the deeper of the two p95 DDs| — the conservative ratio. The historical figure is the lucky path; the block figure is the plan-for number.
   <span class="mut">(Both geometric/compounded; a strictly arithmetic view — Σreturns ÷ years and additive DD — is a one-line switch if preferred.)</span>
@@ -209,12 +215,12 @@ function render(b){
     </div>
     <div>
       <h3>Monte-Carlo (path/ordering risk)</h3>
-      ${svt.mcMaxDD?`<table><thead><tr><th>Max drawdown % @ ${svt.target||10}% vol</th><th>IID</th>${svtBlk.p95!=null?'<th>block</th>':''}</tr></thead><tbody>
-        <tr><td class="mut">p50</td><td class="neg">${fmt(svt.mcMaxDD.p50,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p50,1)}</td>`:''}</tr>
-        <tr><td class="mut">p95</td><td class="neg">${fmt(svt.mcMaxDD.p95,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p95,1)}</td>`:''}</tr>
-        <tr><td class="mut">p99 (worst)</td><td class="neg">${fmt(svt.mcMaxDD.p99,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p99,1)}</td>`:''}</tr>
+      ${svt.mcMaxDD?`<table><thead><tr><th>Max drawdown %</th><th>IID @${svt.target||10}%</th>${svtBlk.p95!=null?`<th>block @${svt.target||10}%</th>`:''}${svRaw.mcMaxDD?'<th>IID 1×</th><th>block 1×</th>':''}</tr></thead><tbody>
+        <tr><td class="mut">p50</td><td class="neg">${fmt(svt.mcMaxDD.p50,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p50,1)}</td>`:''}${svRaw.mcMaxDD?`<td class="neg">${fmt(svRaw.mcMaxDD.p50,1)}</td><td class="neg">${fmt(svRaw.mcMaxDDBlock.p50,1)}</td>`:''}</tr>
+        <tr><td class="mut">p95</td><td class="neg">${fmt(svt.mcMaxDD.p95,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p95,1)}</td>`:''}${svRaw.mcMaxDD?`<td class="neg">${fmt(svRaw.mcMaxDD.p95,1)}</td><td class="neg">${fmt(svRaw.mcMaxDDBlock.p95,1)}</td>`:''}</tr>
+        <tr><td class="mut">p99 (worst)</td><td class="neg">${fmt(svt.mcMaxDD.p99,1)}</td>${svtBlk.p95!=null?`<td class="neg">${fmt(svtBlk.p99,1)}</td>`:''}${svRaw.mcMaxDD?`<td class="neg">${fmt(svRaw.mcMaxDD.p99,1)}</td><td class="neg">${fmt(svRaw.mcMaxDDBlock.p99,1)}</td>`:''}</tr>
       </tbody></table>
-      <div class="cap">Daily portfolio returns resampled 1,000× at the headline ${svt.target||10}% vol (p99 = deepest). <b>IID</b> reshuffles single days — it breaks up losing streaks and so understates clustered tails. <b>Block</b> is a stationary bootstrap with mean block ≈ ${fmt(svtBlk.blockMean||0,0)} days, which keeps losing runs clumped — the honest, regime-aware tail to size against. The historical −${fmt(Math.abs(svt.maxDD||0),1)}% was one benign path.</div>`
+      <div class="cap">Daily portfolio returns resampled 1,000× (p99 = deepest). Columns <b>@${svt.target||10}%</b> are scaled to the ${svt.target||10}% vol target; <b>1×</b> are the RAW unscaled magnitudes at realised vol (${fmt(svp.annVol,0)}%) — the actual leverage-free drawdown, ≈${svp.annVol>0?fmt(svp.annVol/(svt.target||10),1):'?'}× the scaled figure. <b>IID</b> reshuffles single days; <b>block</b> is a stationary bootstrap (mean block ≈ ${fmt(svtBlk.blockMean||0,0)} days) that keeps runs intact. ${acf1!=null?`Here block ${Math.abs(svtBlk.p95)<=Math.abs(svt.mcMaxDD.p95)?'≤':'>'} IID because daily returns are ${acf1<0?`<b>mean-reverting</b> (lag-1 autocorr ${fmt(acf1,2)} &lt; 0) — losing days self-correct rather than clump, so preserving the real order gives a SHALLOWER tail than a random shuffle`:acf1>0?`<b>positively autocorrelated</b> (lag-1 ${fmt(acf1,2)} &gt; 0) — losses cluster, so block deepens the tail`:`serially independent (lag-1 ≈ 0)`}.` : ''}</div>`
       :(mc?`<table><tbody>
         <tr><td>Max drawdown % (per-trade)</td><td class="mut">p50</td><td class="neg">${fmt(mc.maxDD.p50,1)}</td></tr>
         <tr><td></td><td class="mut">p95</td><td class="neg">${fmt(mc.maxDD.p95,1)}</td></tr>
