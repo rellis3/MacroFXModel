@@ -581,7 +581,50 @@ function renderDayType(v){
     <tr><td class="lbl-dn">lean −ve (fade)</td><td class="cell-up">${cell(ct.agreeFade)}</td><td>${cell(ct.sysFollowLeanFade)}</td></tr>
     <tr><td class="lbl-up">lean +ve (follow)</td><td>${cell(ct.sysFadeLeanFollow)}</td><td class="cell-up">${cell(ct.agreeFollow)}</td></tr>
     </tbody></table></div>`;
+  // (d) OOS A/B: velocity-only vs velocity×ex-ante-day-type gated book — loaded async.
+  html+=`<div id="dtGateBox"><div class="card mut">Loading day-type gate A/B study…</div></div>`;
   v.innerHTML=html; $('dtPer').onchange=e=>{dtPeriod=e.target.value;render();};
+  loadDayTypeGate();
+}
+
+// ── (d) Day-type GATE A/B — does gating fade/follow on the ex-ante trend forecast
+// beat the velocity-only book OOS? "Gating" = don't fade a FORECAST trend day.
+let DT_GATE={};
+async function loadDayTypeGate(){
+  const h=$('horizon').value; const box=$('dtGateBox'); if(!box) return;
+  if(DT_GATE[h]===undefined){ const r=await api(`/api/forecast-analysis/daytype-study/${h}`);
+    DT_GATE[h]= r.status===200 && r.j?.ok ? r.j.study : (r.j?.error||'none'); }
+  const s=DT_GATE[h]; const cur=$('dtGateBox'); if(!cur) return;   // tab changed while loading
+  if(typeof s==='string'){ cur.innerHTML=`<div class="card"><div class="mut">${s==='none'?'No day-type gate study yet.':s}</div></div>`; return; }
+  const caption=`<div class="hint" style="margin-top:10px">All numbers are <b>out-of-sample</b> (IS = before ${s.splitDate||'the split'}, used only to learn the fade/follow/skip policy). <b>Day-type</b> is the <b>ex-ante</b> trend-day forecast (from the window's <code>signedT</code>, computed from days strictly BEFORE the session — no lookahead). <b>Gating</b> means "don't fade a forecast trend": the gated book keys each cell by approach-velocity × day-type bucket (tU / rng / tD, |signedT|≥${fmt(s.dtThresh,2)}), so it can learn to SKIP or FLIP a fade that leans into the forecast trend. Bold = winner. Same data / split / costs for both — the only difference is the day-type gate.</div>`;
+  const win=(a,b,hi=true)=>{ const better = hi ? a>=b : a<=b; return better; };
+  const bcell=(val,best,dp=2,suf='')=>`<td class="${(val||0)<0&&suf==''?'':''}">${best?`<b>${fmt(val,dp)}${suf}</b>`:`${fmt(val,dp)}${suf}`}</td>`;
+  const bs=s.baseline, gt=s.gated;
+  const shWin=win(gt.sharpe,bs.sharpe), exWin=win(gt.expectancy,bs.expectancy);
+  const cellsStr=c=>`${c.fade} / ${c.follow} / ${c.skip}`;
+  let out=`<div class="card"><div style="font-weight:600;margin-bottom:6px">(d) Day-type GATE A/B — velocity-only vs velocity×ex-ante-day-type <span class="mut" style="font-weight:400">(OOS from ${s.splitDate||'—'})</span></div>`;
+  out+=`<table><thead><tr><th>Policy</th><th>OOS Sharpe</th><th>expectancy %</th><th>OOS trades</th><th>cells fade/follow/skip</th></tr></thead><tbody>`;
+  out+=`<tr><td>baseline (approachVel)</td>${bcell(bs.sharpe,!shWin)}${bcell(bs.expectancy,!exWin,4)}<td>${bs.nTrades}</td><td class="mut">${cellsStr(bs.cells)}</td></tr>`;
+  out+=`<tr><td>gated (+ day-type)</td>${bcell(gt.sharpe,shWin)}${bcell(gt.expectancy,exWin,4)}<td>${gt.nTrades}</td><td class="mut">${cellsStr(gt.cells)}</td></tr>`;
+  out+=`</tbody></table>`;
+  const verdict = s.gatedWinsOos
+    ? `<span class="pos">Gated WINS OOS</span> — Sharpe ${fmt(gt.sharpe,2)} ≥ baseline ${fmt(bs.sharpe,2)} with ${gt.nTrades} OOS trades (≥30). ΔSharpe ${s.delta.sharpe>0?'+':''}${fmt(s.delta.sharpe,2)}, Δexpectancy ${s.delta.expectancy>0?'+':''}${fmt(s.delta.expectancy,4)}%.`
+    : `<span class="mut">Gated does NOT clear the bar</span> (needs OOS Sharpe ≥ baseline AND ≥30 OOS trades). ΔSharpe ${s.delta.sharpe>0?'+':''}${fmt(s.delta.sharpe,2)}.`;
+  out+=`<div class="find" style="margin-top:8px"><b>Verdict:</b> ${verdict}</div>`;
+  // Fade-into-trend diagnostic — the exact "selling into a rally" losers.
+  const fit=s.fadeIntoTrend||{}; const ga=fit.gatedAction||{};
+  out+=`<div style="font-weight:600;margin:12px 0 6px">Fade-into-trend — the "selling into a rally" case</div>
+    <div class="hint" style="margin-bottom:8px">OOS touches where the BASELINE policy fades AGAINST the ex-ante day-type (fade an up-line on a tU day, or a dn-line on a tD day) — the losers the gate is meant to cut. Shows baseline net PnL on them vs what the GATED policy does with the SAME touches.</div>
+    <table><thead><tr><th>metric</th><th>value</th></tr></thead><tbody>
+    <tr><td>fade-into-trend touches (baseline fades)</td><td>${fit.n||0}</td></tr>
+    <tr><td>baseline net PnL on them</td><td class="${(fit.baselineNetPnl||0)<0?'neg':'pos'}">${fmt(fit.baselineNetPnl,4)}%</td></tr>
+    <tr><td>gated net PnL on them</td><td class="${(fit.gatedNetPnl||0)<0?'neg':'pos'}">${fmt(fit.gatedNetPnl,4)}%</td></tr>
+    <tr><td>gate now: skip / flip-to-follow / still-fade</td><td>${ga.skip||0} / ${ga.flip||0} / ${ga.fade||0}</td></tr>
+    </tbody></table>`;
+  const cut=(fit.gatedNetPnl||0)-(fit.baselineNetPnl||0);
+  out+=`<div class="find" style="margin-top:8px"><b>Cut:</b> the gate changes net PnL on those touches by ${cut>0?'+':''}${fmt(cut,4)}% (${ga.skip||0} skipped, ${ga.flip||0} flipped to follow).</div>`;
+  out+=caption+`</div>`;
+  cur.innerHTML=out;
 }
 
 // ── Calibration (unique): do the lines hold their percentile? ────────────────

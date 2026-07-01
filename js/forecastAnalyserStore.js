@@ -17,7 +17,7 @@ import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
-import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, runDayTypeStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { deflatedSharpe } from './backtestStats.js';
 import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
 import { resampleTo } from './barUtils.js';
@@ -359,6 +359,36 @@ export async function buildExitStudy({ horizon = 'daily', conditions = ['approac
   }
   if (!Object.keys(touchesByPair).length) return null;
   return runExitStudy(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+}
+
+// ── Day-type gate A/B study — velocity-only vs velocity×ex-ante-day-type ──────
+// Loads the stored per-pair records for a horizon, flattens to touches with the
+// DEPLOYED baseline conditions (['approachVel']) — each touch also carries its
+// ex-ante `dayType` bucket (from the window's signedT, already stored, so NO
+// Refresh is needed) — and runs runDayTypeStudy to A/B the velocity-only book
+// against the same book gated on the day-type forecast. Per-pair costs mirror the
+// deployed book (costForPair). Returns null if no dataset / no records (→ 404).
+export async function buildDayTypeStudy({ horizon = 'daily', minN = 50, splitFrac = 0.6,
+                                          marginPct = 0.01, dtThresh = 0.33 } = {}) {
+  const manifest = await getManifest();
+  if (!manifest) return null;
+  const pairs = Object.keys(manifest.pairs || {});
+  const touchesByPair = {}, costByPair = {}, slipByPair = {};
+  for (const pair of pairs) {
+    if (!manifest.pairs[pair]?.horizons?.[horizon]) continue;
+    const data = await getPairData(pair, horizon);
+    if (!data?.records?.length) continue;
+    // Baseline (deployed) conditions; dtThresh sets the ex-ante day-type bucket
+    // attached to every touch (used only by the gated view + the diagnostic).
+    const touches = extractTouches(data.records, { conditions: ['approachVel'], dtThresh });
+    if (!touches.length) continue;
+    touchesByPair[pair] = touches;
+    const ac = assetClassFor(pair);
+    costByPair[pair] = costForPair(pair, ac);
+    slipByPair[pair] = DEFAULT_SLIP_PCT[ac] ?? DEFAULT_SLIP_PCT.fx;
+  }
+  if (!Object.keys(touchesByPair).length) return null;
+  return runDayTypeStudy(touchesByPair, { splitFrac, minN, marginPct, dtThresh, costByPair, slipByPair });
 }
 
 export async function getPerLineBook(horizon = 'daily')        { return getJSON(`${PREFIX}/per-line-${horizon}.json`); }
