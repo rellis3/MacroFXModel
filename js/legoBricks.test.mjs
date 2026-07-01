@@ -19,6 +19,7 @@ import { computeBands } from './forecastCore.js';
 import { buildVolatilityPlan } from './volatilityBotPlan.js';
 import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
+import { londonMidnightSec } from './volBacktestEngine.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -497,6 +498,22 @@ console.log('[backtestStats — drawdown honesty]');
   ok('mean-reverting series → block tail ≤ IID tail (block shallower, not a bug)',
      Math.abs(pr.volTarget.mcMaxDDBlock.p95) <= Math.abs(pr.volTarget.mcMaxDD.p95) + 1e-9,
      `block=${pr.volTarget.mcMaxDDBlock.p95} iid=${pr.volTarget.mcMaxDD.p95}`);
+}
+
+// londonMidnightSec — the session-open anchor. DST-safe, 23:00 UTC in BST / 00:00
+// UTC in GMT (the recurring "midnight is London, not 22:00 UTC" bug).
+console.log('[volBacktestEngine — londonMidnightSec]');
+{
+  const s = (y, mo, d, h) => Date.UTC(y, mo, d, h, 0, 0) / 1000;
+  // Summer (BST, +1): 2026-07-01 13:00Z → London day 07-01, midnight = 06-30 23:00Z.
+  ok('BST: London midnight is 23:00 UTC of the prior calendar day',
+     londonMidnightSec(new Date('2026-07-01T13:00:00Z')) === s(2026, 5, 30, 23));
+  // Just past London midnight in BST: 2026-07-01 23:30Z = 00:30 London 07-02.
+  ok('BST: just-after-midnight rolls to the new London day',
+     londonMidnightSec(new Date('2026-07-01T23:30:00Z')) === s(2026, 6, 1, 23));
+  // Winter (GMT, 0): 2026-01-15 13:00Z → midnight = 01-15 00:00Z.
+  ok('GMT: London midnight is 00:00 UTC same day',
+     londonMidnightSec(new Date('2026-01-15T13:00:00Z')) === s(2026, 0, 15, 0));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

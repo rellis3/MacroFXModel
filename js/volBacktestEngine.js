@@ -83,26 +83,33 @@ async function fetchD1(instrument, count = 5000) {
     .filter(c => c.close > 0);
 }
 
-// Today's session OPEN anchored at MIDNIGHT EUROPE/LONDON (00:00 London wall-clock,
-// DST-aware via Oanda's `alignmentTimezone` — 23:00 UTC in BST, 00:00 UTC in GMT).
-// This is the anchor the forecast/book session uses; `fetchD1` is NO good for it
-// because its bars open at 22:00 UTC AND it drops the incomplete forming candle, so
-// its "open" is a PRIOR session's 22:00-UTC open (the stale value the bot showed for
-// gold: 4018.65 vs the real London-midnight 4013.x). Here we daily-align to London
-// and KEEP the forming candle, so its open is the live midnight price.
-// Returns the open (number) or null if unavailable.
+// UTC epoch (seconds) of the most recent 00:00 Europe/London — DST-safe via Intl,
+// no hard-coded offset. Reads `now`'s London wall-clock parts AS IF UTC to recover
+// London's current offset, then shifts that day's local-midnight back to a UTC epoch.
+// 23:00 UTC in BST, 00:00 UTC in GMT. Exported so the anchor is defined ONCE.
+function londonMidnightSec(now = new Date()) {
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(now).reduce((o, x) => (o[x.type] = x.value, o), {});
+  const hh = p.hour === '24' ? 0 : +p.hour;                       // en-GB midnight → '24'
+  const wallAsUTC = Date.UTC(+p.year, +p.month - 1, +p.day, hh, +p.minute, +p.second);
+  const offsetMs  = wallAsUTC - now.getTime();                    // London offset from UTC
+  const midnight  = Date.UTC(+p.year, +p.month - 1, +p.day, 0, 0, 0) - offsetMs;
+  return Math.floor(midnight / 1000);
+}
+
+// Today's session OPEN anchored at MIDNIGHT EUROPE/LONDON — read from the FIRST M1
+// bar at/after London midnight. This is the anchor the forecast/book session uses.
+// The earlier daily-aligned-candle approach silently fell back to OANDA's 22:00-UTC
+// D1 open (gold showed 3997.53 vs the real London-midnight ~4013.x), so we read the
+// M1 open directly instead — deterministic and matches the forecaster's open.
+// Returns the open (number) or null if unavailable (e.g. market closed → producer
+// falls back to the D1 open and logs it).
 async function fetchSessionOpenLondon(instrument) {
-  const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
-            + `?granularity=D&count=3&price=M&dailyAlignment=0&alignmentTimezone=Europe%2FLondon`;
-  const r = await fetch(url, {
-    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
-    signal:  AbortSignal.timeout(30_000),
-  });
-  if (!r.ok) throw new Error(`Oanda ${instrument} session-open: HTTP ${r.status}`);
-  const data = await r.json();
-  const candles = (data.candles ?? []).filter(c => c.mid);   // KEEP incomplete: the forming London day
-  const last = candles[candles.length - 1];
-  const open = last ? parseFloat(last.mid.o) : NaN;
+  const from = londonMidnightSec();
+  const bars = await fetchM1Range(instrument, from, from + 3600);  // first hour of the London day
+  const open = bars && bars.length ? bars[0].open : NaN;          // first M1 bar's open = midnight open
   return open > 0 ? open : null;
 }
 
@@ -342,7 +349,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 // ── Public: run all instruments and return structured result ──────────────────
 
 export { ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75, G_ALPHA, G_BETA };
-export { fetchD1, fetchM1Range, fetchSessionOpenLondon };
+export { fetchD1, fetchM1Range, fetchSessionOpenLondon, londonMidnightSec };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');
