@@ -3392,6 +3392,8 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <span class="pos-bot-badge" style="background:#1a1200;border:1px solid #b45309;color:#f59e0b;font-weight:700">NQ-QMR</span>
         <span class="pos-bot-badge" style="background:#042f2e;border:1px solid #0f766e;color:#14b8a6">Regime V7</span>
         <span class="pos-bot-badge" style="background:#1e1b4b;border:1px solid #4338ca;color:#818cf8">MacroEquity</span>
+        <span class="pos-bot-badge pos-paper-badge" style="background:#292100;border:1px solid #78610a;color:#e0a93b">Volatility</span>
+        <span class="pos-bot-badge pos-paper-badge" style="background:#06302b;border:1px solid #0f766e;color:#4fd1c5">Range-Line</span>
       </div>
 
       <div class="pos-table-wrap">
@@ -5451,7 +5453,7 @@ window.loadHedgeAuditTab = loadHedgeAuditTab;
 
 // ── Trade History tab ─────────────────────────────────────────────────────────
 
-let _histActiveBots  = new Set(_POS_BOTS.filter(b => !b.paper).map(b => b.key));
+let _histActiveBots  = new Set(_POS_BOTS.map(b => b.key));
 let _histPreset      = 'today';
 let _calYear         = new Date().getFullYear();
 let _calMonth        = new Date().getMonth(); // 0-indexed
@@ -5466,11 +5468,12 @@ function _initHistoryView() {
   // Build bot filter pills
   const pillsEl = document.getElementById('histBotPills');
   if (pillsEl) {
-    pillsEl.innerHTML = _POS_BOTS.filter(b => !b.paper).map(b => {
+    pillsEl.innerHTML = _POS_BOTS.map(b => {
       const on = _histActiveBots.has(b.key);
+      const paperTag = b.paper ? `<span style="font-size:9px;opacity:.7;margin-left:2px">paper</span>` : '';
       return `<span class="pos-hist-pill${on ? '' : ' off'}" id="histPill_${b.key}"
         style="background:${b.bg};border:1px solid ${b.bd};color:${b.color}"
-        onclick="toggleHistBot('${b.key}')">${b.label}</span>`;
+        onclick="toggleHistBot('${b.key}')">${b.label}${paperTag}</span>`;
     }).join('');
   }
 

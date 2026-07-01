@@ -8,7 +8,7 @@
       "USD/JPY": 1782718031.73203,
       "USD/CAD": 1782916531.6902852,
       "EUR/USD": 1782889638.1370313,
-      "USD/CHF": 1782921844.4761455,
+      "USD/CHF": 1782925545.3753114,
       "EUR/GBP": 1782891226.0067055,
       "GBP/JPY": 1782461016.1106334,
       "AUD/USD": 1782817076.0447247,
@@ -17,14 +17,5 @@
     "last_reset_date": "2026-07-01",
     "last_reset_month": "2026-07"
   },
-  "position_meta": {
-    "152283885059": {
-      "tp1": 0.80838,
-      "tp1_close_pct": 50,
-      "trailoffset_dist": 0.00053,
-      "tp1_hit": false,
-      "trail_active": false,
-      "trail_sl": null
-    }
-  }
+  "position_meta": {}
 }
