@@ -202,6 +202,29 @@ function showTab(t) {
 ['zones', 'trades', 'ledger'].forEach(t => { $('tab' + t[0].toUpperCase() + t.slice(1)).onclick = () => showTab(t); });
 
 // ── Policy panel ──────────────────────────────────────────────────────────────
+function gradeLegend(bands) {
+  // Fallback = DEFAULT_GRADE_BANDS in js/levelConfidenceCore.js; live policy sends
+  // its own percentile-fit bands (eB=33rd pct, eA=66th, eA+=85th of positive cells).
+  const b = bands || { eAplus: 0.08, eA: 0.05, eB: 0.02, nFull: 50, nMin: 30 };
+  const live = !!bands;
+  const pct = v => `+${(+v).toFixed(3)}%`;
+  const rows = [
+    ['A+', 'TAKE',    'g-Ap', `edge ≥ ${pct(b.eAplus)} <b>and</b> n ≥ ${b.nFull}`, 'strongest — top ~15% of the policy’s winning cells, deep sample'],
+    ['A',  'TAKE',    'g-A',  `edge ≥ ${pct(b.eA)} <b>and</b> n ≥ ${b.nMin}`,      'strong — top ~1/3, ≥30 historical touches'],
+    ['B',  'WATCH',   'g-B',  `edge ≥ ${pct(b.eB)}`,                                'positive but middling edge, or too few touches (n<30) to earn an A'],
+    ['C',  'CAUTION', 'g-C',  `edge > 0 (below ${pct(b.eB)})`,                      'thin positive edge — the weakest tradeable cells'],
+    ['SKIP','—',      'g-C',  `edge ≤ 0, or policy skipped / unseen in-sample`,     'no positive after-cost edge — not traded'],
+  ];
+  return `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);">
+      <b style="font-size:13px;">🎓 What A+/A/B/C mean</b>
+      <span class="muted" style="font-weight:400;"> — grade = the cell's after-cost <b>expectancy</b> (% of price per trade) + how many times it was seen (n). ${live ? 'Bands below are THIS policy’s own distribution.' : '(showing fallback bands — no live policy loaded)'}</span>
+      <table style="font-size:12px;margin-top:8px;"><thead><tr><th>Grade</th><th>Verdict</th><th>Rule</th><th>Meaning</th></tr></thead><tbody>
+        ${rows.map(([g, v, cls, rule, mean]) => `<tr><td class="${cls}">${g}</td><td class="mono">${v}</td><td class="mono">${rule}</td><td class="muted">${mean}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="muted" style="margin-top:6px;">Alerts fire at <b>Min grade</b> and above (⚙ Alerts). Edge is expectancy after spread+slippage; exits are the adjacent fib lines (R:R ≈ 1:1), so a small per-trade % compounds over many touches.</div>
+    </div>`;
+}
 function renderPolicy(p) {
   if (!p) { $('policyPanel').innerHTML = '<div class="muted">No frozen policy in KV yet — click Learn policy.</div>'; return; }
   const cov = p.coverage || {};
@@ -212,7 +235,8 @@ function renderPolicy(p) {
       <span class="kpi"><b style="color:var(--blu)">${cov.followCells ?? '—'}</b><span>follow</span></span>
       <span class="kpi"><b style="color:var(--text2)">${cov.skipCells ?? '—'}</b><span>skip</span></span>
     </div>
-    <div class="muted mono" style="margin-top:8px;">split ${p.splitDate || '?'} · built ${p.builtAt || '?'}</div>`;
+    <div class="muted mono" style="margin-top:8px;">split ${p.splitDate || '?'} · built ${p.builtAt || '?'}</div>
+    ${gradeLegend(p.bands)}`;
 }
 
 // ── Zones (per-pair cards: closest + expand) ─────────────────────────────────
