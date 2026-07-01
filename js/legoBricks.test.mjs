@@ -450,6 +450,26 @@ console.log('[backtestStats — drawdown honesty]');
   ok('block MC absent unless requested', portfolioStats(clustered).volTarget.mcMaxDDBlock === undefined);
   ok('portfolioStats deterministic under fixed seed (block MC included)',
      JSON.stringify(portfolioStats(clustered, { mc: true })) === JSON.stringify(pc));
+  ok('clustered (positive dependence) → acf1 > 0', pc.acf1 > 0, `acf1=${pc.acf1}`);
+  // Raw (unscaled) MC is reported alongside the vol-scaled one; when realised vol
+  // exceeds the 10% target, scaling shrinks the DD, so raw must be DEEPER than scaled.
+  ok('raw (unscaled) MC drawdowns reported when mc requested', !!pc.raw?.mcMaxDD && !!pc.raw?.mcMaxDDBlock);
+  ok('raw MC deeper than vol-scaled MC when annVol > target',
+     pc.annVol > 10 && Math.abs(pc.raw.mcMaxDD.p95) > Math.abs(iid.p95), `raw=${pc.raw.mcMaxDD.p95} scaled=${iid.p95} annVol=${pc.annVol}`);
+}
+
+// Mean-reversion is WHY block can be SHALLOWER than IID (the reviewer's question).
+{
+  // Strictly alternating returns (up, down, up, …) with a mild net drift: strongly
+  // NEGATIVELY autocorrelated. IID shuffle can clump the downs → deeper tail; the
+  // block bootstrap preserves the self-correcting alternation → shallower tail.
+  const rev = [];
+  for (let i = 0; i < 120; i++) rev.push(i % 2 === 0 ? 1.4 : -1.1);
+  const pr = portfolioStats(rev, { mc: true });
+  ok('mean-reverting series → acf1 < 0', pr.acf1 < 0, `acf1=${pr.acf1}`);
+  ok('mean-reverting series → block tail ≤ IID tail (block shallower, not a bug)',
+     Math.abs(pr.volTarget.mcMaxDDBlock.p95) <= Math.abs(pr.volTarget.mcMaxDD.p95) + 1e-9,
+     `block=${pr.volTarget.mcMaxDDBlock.p95} iid=${pr.volTarget.mcMaxDD.p95}`);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

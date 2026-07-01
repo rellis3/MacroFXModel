@@ -217,27 +217,41 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252, mc
   const scale = annVol > 1e-9 ? targetVol / annVol : 0;
   const scaled = daily.map(x => x * scale);
   const vtCagr = cagrOf(scaled), vtDD = compoundedMaxDD(scaled);
-  // Monte-Carlo worst-case drawdown (opt-in — it's 1000 reshuffles, skip in the
-  // hot rigor sub-calls). The headline maxDD above is ONE historical ordering; this
-  // shuffles the daily returns to show the drawdown you could have lived through at
-  // the same vol. Reported as signed, deepening p50→p95→p99.
-  // IID reshuffle (mcMaxDD) destroys ordering, so it understates regime-clustered
-  // tails. The stationary BLOCK bootstrap (mcMaxDDBlock) resamples contiguous runs
-  // so losing streaks stay clumped — the honest, deeper tail to size risk against.
-  // Both are reported so the IID-vs-clustered gap is visible (the reviewer's ask).
-  let mcMaxDD = null, mcMaxDDBlock = null;
+  // Monte-Carlo worst-case drawdown (opt-in — 1000 reshuffles, skip in the hot
+  // rigor sub-calls). The headline maxDD above is ONE historical ordering; this
+  // resamples the daily returns to show the drawdown you could have lived through.
+  //   • IID reshuffle (mcMaxDD) — order-independent; understates regime-clustered
+  //     tails when losses cluster.
+  //   • stationary BLOCK bootstrap (mcMaxDDBlock) — keeps contiguous runs, so it
+  //     reflects the series' ACTUAL serial dependence. For a mean-reverting book
+  //     (negative acf1) block comes out SHALLOWER than IID — losing days self-correct
+  //     rather than clump; for a momentum/clustered book it comes out deeper. The
+  //     sign is `acf1` below, so block ≶ IID is explained rather than surprising.
+  // Run on BOTH the vol-scaled series (headline basis) AND the raw unscaled series
+  // (1× leverage — "what actually happened"), since a low target vol shrinks every
+  // scaled DD by targetVol/annVol and the reviewer needs the raw magnitude too.
+  const blockMean = Math.min(Math.max(5, Math.round(periodsPerYear / 12)), Math.max(5, Math.floor(n / 5)));
+  const mcDD = (series, rng) => {
+    const iid = new Array(mcRuns), blk = new Array(mcRuns);
+    for (let i = 0; i < mcRuns; i++) iid[i] = Math.abs(compoundedMaxDD(shuffle(series, rng)));
+    for (let i = 0; i < mcRuns; i++) blk[i] = Math.abs(compoundedMaxDD(blockResample(series, rng, blockMean)));
+    const pi = pctile(iid, [50, 95, 99]), pb = pctile(blk, [50, 95, 99]);
+    return { mcMaxDD:      { p50: -pi.p50, p95: -pi.p95, p99: -pi.p99 },
+             mcMaxDDBlock: { p50: -pb.p50, p95: -pb.p95, p99: -pb.p99, blockMean } };
+  };
+  let mcMaxDD = null, mcMaxDDBlock = null, rawMc = null;
   if (mc && scale > 0) {
     const rng = mulberry32(0x9e3779b9);
-    const mags = new Array(mcRuns);
-    for (let i = 0; i < mcRuns; i++) mags[i] = Math.abs(compoundedMaxDD(shuffle(scaled, rng)));
-    const p = pctile(mags, [50, 95, 99]);
-    mcMaxDD = { p50: -p.p50, p95: -p.p95, p99: -p.p99 };
-    // Mean block ≈ one trading month, capped so even short samples get several blocks.
-    const blockMean = Math.min(Math.max(5, Math.round(periodsPerYear / 12)), Math.max(5, Math.floor(n / 5)));
-    const bmags = new Array(mcRuns);
-    for (let i = 0; i < mcRuns; i++) bmags[i] = Math.abs(compoundedMaxDD(blockResample(scaled, rng, blockMean)));
-    const bp = pctile(bmags, [50, 95, 99]);
-    mcMaxDDBlock = { p50: -bp.p50, p95: -bp.p95, p99: -bp.p99, blockMean };
+    ({ mcMaxDD, mcMaxDDBlock } = mcDD(scaled, rng));   // headline (vol-scaled) basis
+    rawMc = mcDD(daily, rng);                          // raw 1× (unscaled) basis
+  }
+  // Lag-1 autocorrelation of daily returns — the SIGN that explains block vs IID:
+  // <0 ⇒ mean-reverting (block shallower); >0 ⇒ momentum/clustering (block deeper);
+  // ≈0 ⇒ block ≈ IID.
+  let acf1 = 0;
+  if (n > 2 && sd > 1e-12) {
+    let num = 0; for (let i = 1; i < n; i++) num += (daily[i] - m) * (daily[i - 1] - m);
+    acf1 = num / (n * sd * sd);
   }
   // Probabilistic Sharpe (P true Sharpe > 0) on the per-day Sharpe — penalises
   // short samples, negative skew and fat tails.
@@ -248,10 +262,14 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252, mc
     sharpe: +sharpe.toFixed(2),
     psr,
     skew: +skew.toFixed(2),
+    acf1: +acf1.toFixed(3),
     annVol: +annVol.toFixed(2),
     cagr:   +cagr.toFixed(2),
-    maxDD:  +maxDD.toFixed(2),
+    maxDD:  +maxDD.toFixed(2),                          // RAW (1×, unscaled) historical DD
     calmar: maxDD < 0 ? +(cagr / Math.abs(maxDD)).toFixed(2) : 0,
+    // Raw (unscaled, 1× leverage) drawdowns — same math as volTarget but NOT scaled
+    // to targetVol. maxDD here == the top-level historical maxDD; MC is the raw tail.
+    ...(rawMc ? { raw: { maxDD: +maxDD.toFixed(2), mcMaxDD: rawMc.mcMaxDD, mcMaxDDBlock: rawMc.mcMaxDDBlock } } : {}),
     volTarget: { target: targetVol, cagr: +vtCagr.toFixed(2), maxDD: +vtDD.toFixed(2),
                  calmar: vtDD < 0 ? +(vtCagr / Math.abs(vtDD)).toFixed(2) : 0,
                  ...(mcMaxDD ? { mcMaxDD } : {}), ...(mcMaxDDBlock ? { mcMaxDDBlock } : {}) },
