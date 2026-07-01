@@ -296,3 +296,21 @@ Adding a new instrument = adding one regex line to `FX_MAP` (TFF) or `DISAGG_MAP
 - **S&P 500 basic:** same yield curve T1 as DOW; OANDA likely carries SPX500_USD
 - **Macro surprise filter by asset class:** tag Finnhub events as `us_equity`, `uk_equity` etc. so the surprise score only fires for relevant instruments
 - **COT for existing NAS100:** already parsed; just needs URL wired in modal
+
+---
+
+## Backlog — to scope later
+
+- **Forecasting tool upgrade + "Z-system"** (external source — spec TBD).
+  User is bringing in an external methodology called a **"Z-system"** to upgrade the
+  forecaster. Not yet defined here; the term is from an outside source (book / video /
+  indicator), NOT an existing module. To scope when we revisit, we need: (a) the
+  source + its exact spec, and (b) which layer it upgrades — the **forecast** (how
+  σ / levels are computed), the **signal/decision** (how a touch is graded), or a
+  **new standalone strategy**.
+  Likely landing shape in this codebase: a Tier-2 feature brick that emits
+  standardized **z-features** (`z = (px − open)/σ`, approach velocity in σ-units,
+  forecast-error z = realized/expected) + a selector on top — consistent with the
+  "brain is a selector" rule. Note z-score machinery already exists to reuse:
+  `js/zscoreSpreadEngine.js`, `statsCore.rollingZScore`/`rollingZAt`. Placeholder
+  until the external spec is shared.
