@@ -68,10 +68,13 @@ export async function refreshVolatilityPlan({
       // the stale value the bot showed (gold 4018.65 vs the real ~4013.x). Prefer
       // the London-aligned session open; fall back to the D1 open only if it's
       // unavailable (keeps the producer working offline / if the call fails).
-      let open = null;
+      let open = null, openSrc = 'D1-fallback';
       if (typeof fetchSessionOpen === 'function') {
-        try { open = await fetchSessionOpen(inst.oanda); }
-        catch (e) { onLog(`${pair}: session-open fetch failed (${e.message}) — falling back to D1 open`); }
+        try {
+          const lon = await fetchSessionOpen(inst.oanda);
+          if (lon > 0) { open = lon; openSrc = 'London-midnight'; }
+          else onLog(`${pair}: London session-open returned null — falling back to D1 open`);
+        } catch (e) { onLog(`${pair}: session-open fetch failed (${e.message}) — falling back to D1 open`); }
       }
       if (!(open > 0)) open = bars[bars.length - 1]?.open;              // fallback: D1 open (22:00 UTC)
       if (!(sigma > 0) || !(open > 0)) {
@@ -83,6 +86,7 @@ export async function refreshVolatilityPlan({
       // lookup and silently drop EVERY pair → an empty universe.
       volByPair[String(pair).toLowerCase()] = { open, sigma, assetClass: inst.assetClass || 'fx', pip: inst.pip ?? null };
       seenOanda.add(inst.oanda);          // first priced wins; later aliases of it are skipped
+      onLog(`${pair}: open ${open} [${openSrc}]`);   // surface which anchor was used
       ok++;
     } catch (e) { onLog(`${pair}: ${e.message}`); fail++; }
   }
