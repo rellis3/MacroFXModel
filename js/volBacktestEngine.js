@@ -108,8 +108,14 @@ function londonMidnightSec(now = new Date()) {
 // falls back to the D1 open and logs it).
 async function fetchSessionOpenLondon(instrument) {
   const from = londonMidnightSec();
-  const bars = await fetchM1Range(instrument, from, from + 3600);  // first hour of the London day
-  const open = bars && bars.length ? bars[0].open : NaN;          // first M1 bar's open = midnight open
+  // Window from London midnight to NOW: bars[0] is the FIRST bar of the London day.
+  // For 24h instruments (FX/gold/US indices) that's the midnight bar. For markets
+  // that are CLOSED at midnight (European cash indices DE30/UK100 — a +1h window
+  // found nothing → stale D1 fallback), it's the market-OPEN bar, which is the
+  // correct session anchor and matches the book's London-session bucketing.
+  const to = Math.floor(Date.now() / 1000);
+  const bars = from < to ? await fetchM1Range(instrument, from, to) : [];
+  const open = bars && bars.length ? bars[0].open : NaN;          // first bar of the session
   return open > 0 ? open : null;
 }
 
