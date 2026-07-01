@@ -102,7 +102,7 @@ const LBL = { HL75:'Proj H/L 75p', HL50:'Proj H/L med', OC75:'Close 75p', OC50:'
 const COND_OPTS = [['approachVel','Approach velocity'],['roundNum','Round number (Osler)'],['volClimax','Volume climax'],['candleReject','Candle rejection'],['budgetBucket','Range budget'],['wtState','WaveTrend'],['approachER','Approach efficiency']];
 const SLICES = { byRegime:'Regime', byVol:'Volatility', bySession:'Session', byBudget:'Range budget', byApproachER:'Approach efficiency', byApproachVel:'Approach velocity', byWtState:'WaveTrend (touch)', byVolClimax:'Volume climax', byCandleReject:'Candle rejection', byRoundNum:'Round-number prox', byGap:'Gap', byEvent:'Event (NFP)', byPhase:'Month phase', byDow:'Day of week', byYear:'Year', byMonth:'Month' };
 const DOW = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
-const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs','Book','Exits'];
+const TABS = ['Overview','Levels','Conditioning','Drivers','Day-Type','Calibration','Excursion','Stability','Candidates','Pairs','Book','Exits','Stops'];
 let MANIFEST=null, AGG=null, LEVEL=null, TAB='Overview', condDim='byRegime';
 let BOOK_CONDS=null;   // the admin's pending cell-conditions selection (persists across re-renders)
 
@@ -177,6 +177,44 @@ function render(){
   if(TAB==='Pairs') return renderPairs(v);
   if(TAB==='Book') return renderBook(v);
   if(TAB==='Exits') return renderExits(v);
+  if(TAB==='Stops') return renderStops(v);
+}
+
+// ── Stops: OOS per-pair stop-loss study — is the outer-band SL too wide? ────────
+// Re-prices every OOS fade under a TIGHTER candidate stop off the stored adverse
+// excursion (extPct). Tightening-only (screening, not a tick replay). Portfolio A/B
+// (band vs per-pair-optimal vs asset-class-optimal) + a per-pair table.
+let STOP_STUDY={};
+async function renderStops(v){
+  const h=$('horizon').value;
+  v.innerHTML=`<div class="card mut">Loading stop study…</div>`;
+  if(STOP_STUDY[h]===undefined){ const r=await api(`/api/forecast-analysis/stop-study/${h}`);
+    STOP_STUDY[h]= r.status===200 && r.j?.ok ? r.j.study : (r.j?.error||'none'); }
+  const s=STOP_STUDY[h];
+  const caption=`<div class="hint" style="margin-top:10px">The fade stop is currently the <b>outer band line</b> — nobody chose it. Each fade already stored its <b>adverse excursion</b> (extPct) + whether it reverted, so we re-price every OOS fade under a tighter candidate stop with no M1 re-sim: if the adverse move exceeded the candidate <b>s</b>, the stop is hit (loss −s); else the trade keeps its original outcome. This is <b>out-of-sample</b>, <b>tightening-only</b> (candidate SL ≤ the current outer band — wider stops can't be seen from stored extPct and would need M1 re-simulation), and a <b>screening</b> re-price (extPct/MFE are window extremes of unknown order — if extPct &gt; s we conservatively assume the stop was hit), <b>not a tick replay</b>. Adopt a per-pair SL only where it beats the band SL OOS with <b>n≥30</b> fade trades; otherwise fall back to asset-class or the band SL. Follow cells (SL = inner) are analogous, out of scope for v1.</div>`;
+  if(typeof s==='string'){ v.innerHTML=`<div class="card"><div class="mut">${s==='none'?'No stop study yet.':s}</div>${caption}</div>`; return; }
+  const p=s.portfolio||{}, band=p.band||{}, ppo=p.perPairOpt||{}, aco=p.assetClassOpt||{}, d=p.delta||{};
+  // Which portfolio variant wins on OOS Sharpe (n≥30 implied by the book scale).
+  const variants=[['band','Band SL (current)',band],['perPairOpt','Per-pair optimal',ppo],['assetClassOpt','Asset-class optimal',aco]];
+  let bestV='band', bestSh=-Infinity; for(const [k,,st] of variants){ if((st.sharpe??-Infinity)>bestSh){ bestSh=st.sharpe; bestV=k; } }
+  const pcell=(k,st)=>{ const isB=k===bestV; const sh=fmt(st.sharpe,2); return `<td class="${(st.sharpe??0)<0?'neg':'pos'}" style="${isB?'background:#15251a':''}">Sharpe ${isB?`<b>${sh}</b>`:sh}<br><span class="mut" style="font-size:11px">exp ${fmt(st.expectancy,4)}% · CAGR ${fmt(st.cagr,1)}% · DD ${fmt(st.maxDD,1)}% · n ${st.trades??0}</span></td>`; };
+  let html=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Stop-loss study — is the outer-band stop too wide? <span class="mut" style="font-weight:400">(OOS from ${s.splitDate||'—'})</span></div>
+    <div class="hint" style="margin-bottom:8px">Portfolio A/B across the SAME OOS fades — <b>band SL</b> (every fade stopped at its outer line, = the current book) vs <b>per-pair optimal</b> (each fade at its pair's best SL, adopted only where it wins OOS with n≥30) vs <b>asset-class optimal</b> (one SL per fx/index/commodity — the robust middle ground). Bold = best OOS Sharpe.</div>
+    <table><thead><tr><th>Variant</th><th>OOS portfolio</th><th>Δ vs band SL</th></tr></thead><tbody>`;
+  for(const [k,lab,st] of variants){ const dl=k==='band'?null:d[k];
+    html+=`<tr><td style="font-weight:600">${lab}</td>${pcell(k,st)}<td class="mut">${dl?`Sharpe ${dl.sharpe>=0?'+':''}${fmt(dl.sharpe,2)} · exp ${dl.expectancy>=0?'+':''}${fmt(dl.expectancy,4)}%`:'—'}</td></tr>`; }
+  html+=`</tbody></table></div>`;
+  // Per-pair table — highlight pairs where bestSL ≪ bandSL (outer line was too wide).
+  const rows=Object.entries(s.perPair||{}).sort((a,b)=>((b[1].expBest-b[1].expBand)-(a[1].expBest-a[1].expBand)));
+  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-pair — winners' MAE vs the band stop</div>
+    <div class="hint" style="margin-bottom:8px">Winners' MAE = the adverse excursion of the fades that WON — where a tighter stop would sit without stopping the dip-then-revert winners. <b>Highlighted</b> rows = bestSL well below the band SL (≤60%) with n≥30 — the "outer line was too wide" pairs. Pairs with n&lt;30 (grey) keep the band SL — too thin to trust a pair-specific stop.</div>
+    <table><thead><tr><th>Pair</th><th>n</th><th>winners' MAE p90</th><th>p95</th><th>band SL %</th><th>best SL %</th><th>Δ expectancy %</th></tr></thead><tbody>`;
+  for(const [pair,r] of rows){ const dexp=(r.expBest??0)-(r.expBand??0);
+    const tooWide = !r.lowN && r.bestSL < r.bandSL*0.6;
+    const cls = r.lowN?'style="opacity:0.5"':(tooWide?'style="background:#15251a"':'');
+    html+=`<tr ${cls}><td style="font-weight:600">${pair.toUpperCase()}${r.lowN?' <span class="mut" style="font-weight:400">(n&lt;30)</span>':''}</td><td class="mut">${r.n}</td><td class="mut">${fmt(r.winnersMaeP90,3)}</td><td class="mut">${fmt(r.winnersMaeP95,3)}</td><td class="mut">${fmt(r.bandSL,3)}</td><td class="${tooWide?'pos':'mut'}">${fmt(r.bestSL,3)}${tooWide?' ◀':''}</td><td class="${dexp>0?'pos':dexp<0?'neg':'mut'}">${dexp>=0?'+':''}${fmt(dexp,4)}</td></tr>`; }
+  html+=`</tbody></table>${caption}</div>`;
+  v.innerHTML=html;
 }
 
 // ── Exits: OOS exit study — fixed vs chandelier vs walk-forward (breakeven) stop
