@@ -286,7 +286,15 @@ def main():
     ap.add_argument("--live", action="store_true", help="trade live on MT5 (default: paper)")
     ap.add_argument("--url", default=DASHBOARD_URL, help="dashboard base URL")
     args = ap.parse_args()
-    run(args.url, args.live)
+    # Graceful Ctrl-C: KeyboardInterrupt is a BaseException, so the loop's
+    # `except Exception` guards don't catch it — without this it dumps a raw
+    # traceback (usually mid status-push when the server is slow/502). Open MT5
+    # positions are GTC and stay on the broker; this just stops the process cleanly.
+    try:
+        run(args.url, args.live)
+    except KeyboardInterrupt:
+        logging.getLogger("volatility_bot").info(
+            "shutdown requested (Ctrl-C) — stopping cleanly (open positions stay on the broker)")
 
 
 if __name__ == "__main__":
