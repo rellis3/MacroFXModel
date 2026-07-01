@@ -9690,6 +9690,58 @@ app.all('/api/*', async (req, res) => {
   }
 });
 
+// ── Pivot Spike Backtest ─────────────────────────────────────────────────────
+
+const psJobs = new Map();
+
+function _purgeStalePsJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of psJobs) if (job.startedAt < cutoff) psJobs.delete(id);
+}
+
+app.post('/api/pivot-spike/run', express.json({ limit: '64kb' }), (req, res) => {
+  const b   = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    pair:        typeof b.pair === 'string' ? b.pair.toLowerCase().replace('/', '') : 'eurusd',
+    touchTolAtr: num(b.touchTolAtr, 0.5),
+    slAtr:       num(b.slAtr,       1.0),
+    maxBars:     Math.round(num(b.maxBars, 120)),
+    oosFrac:     Math.min(Math.max(num(b.oosFrac, 0.35), 0.1), 0.6),
+    costPct:     num(b.costPct, 0.0002),
+  };
+
+  const jobId     = `ps_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStalePsJobs();
+  psJobs.set(jobId, { status: 'running', startedAt, log: [] });
+
+  (async () => {
+    const log = [];
+    const onLog = msg => { log.push(msg); console.log(`[pivot-spike] ${msg}`); };
+    try {
+      const result = await runPivotSpike(opts, onLog);
+      psJobs.set(jobId, { status: 'done', result: { ...result, log }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown error';
+      console.error('[pivot-spike/run]', msg, e?.stack ?? '');
+      psJobs.set(jobId, { status: 'error', error: msg, log, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/pivot-spike/status/:jobId', (req, res) => {
+  const job = psJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), log: job.log });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
 // Dashboard static assets — served from project root.
 // journal.html and backtest.html are served as-is; index.html is the fallback.
 app.use(express.static(__dirname, {
@@ -11132,60 +11184,6 @@ async function _iqrRestoreFromKv(mon) {
   }, 60_000);
   console.log('[iqr-mon] SPX / DOW / DAX QMR monitors scheduled (Gates at 09:05 / 12:05 / 13:05 UTC)');
 })();
-
-// ── Pivot Spike Backtest ─────────────────────────────────────────────────────
-// Raw premise test: do Traditional daily pivots show mean-reversion edge?
-// No filters, no WaveTrend — just the level + M1 fill walk + IS/OOS split.
-
-const psJobs = new Map();
-
-function _purgeStalePsJobs() {
-  const cutoff = Date.now() - 60 * 60_000;
-  for (const [id, job] of psJobs) if (job.startedAt < cutoff) psJobs.delete(id);
-}
-
-app.post('/api/pivot-spike/run', express.json({ limit: '64kb' }), (req, res) => {
-  const b   = req.body ?? {};
-  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
-  const opts = {
-    pair:        typeof b.pair === 'string' ? b.pair.toLowerCase().replace('/', '') : 'eurusd',
-    touchTolAtr: num(b.touchTolAtr, 0.5),
-    slAtr:       num(b.slAtr,       1.0),
-    maxBars:     Math.round(num(b.maxBars, 120)),
-    oosFrac:     Math.min(Math.max(num(b.oosFrac, 0.35), 0.1), 0.6),
-    costPct:     num(b.costPct, 0.0002),
-  };
-
-  const jobId     = `ps_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const startedAt = Date.now();
-  _purgeStalePsJobs();
-  psJobs.set(jobId, { status: 'running', startedAt, log: [] });
-
-  (async () => {
-    const log = [];
-    const onLog = msg => { log.push(msg); console.log(`[pivot-spike] ${msg}`); };
-    try {
-      const result = await runPivotSpike(opts, onLog);
-      psJobs.set(jobId, { status: 'done', result: { ...result, log }, startedAt });
-    } catch (e) {
-      const msg = e?.message || String(e) || 'Unknown error';
-      console.error('[pivot-spike/run]', msg, e?.stack ?? '');
-      psJobs.set(jobId, { status: 'error', error: msg, log, startedAt });
-    }
-  })();
-
-  res.json({ ok: true, jobId });
-});
-
-app.get('/api/pivot-spike/status/:jobId', (req, res) => {
-  const job = psJobs.get(req.params.jobId);
-  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
-  if (job.status === 'running') {
-    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), log: job.log });
-  }
-  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
-  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 

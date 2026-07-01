@@ -3,12 +3,212 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Regime + Confluence Dashboard</title>
+<title>MacroFX — Command Centre</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
+<style>
+/* ── Command Hub ──────────────────────────────────────────────────────────── */
+#commandHub{padding:10px 16px 8px;background:var(--s1,#111827);border-bottom:2px solid var(--border,#1e2a3a);}
+#commandHub.chub-collapsed .chub-rows{display:none}
+.chub-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.chub-brand{font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--text,#e2e8f0)}
+.chub-brand em{font-style:normal;color:#10b981}
+.chub-hint{font-size:10px;color:var(--text3,#4b5563);font-family:'DM Mono',monospace}
+.chub-toggler{margin-left:auto;background:none;border:1px solid var(--border,#1e2a3a);border-radius:4px;color:var(--text3,#4b5563);font-size:10px;cursor:pointer;padding:2px 8px;font-family:'DM Mono',monospace;transition:color .1s,border-color .1s}
+.chub-toggler:hover{color:var(--text2,#94a3b8);border-color:var(--border2,#2a3347)}
+.chub-rows{display:flex;flex-direction:column;gap:4px}
+.chub-row{display:flex;align-items:flex-start;gap:6px}
+.chub-lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-family:'DM Mono',monospace;min-width:60px;padding-top:4px;flex-shrink:0;text-align:right}
+.chub-pills{display:flex;flex-wrap:wrap;gap:3px}
+a.cp{display:inline-flex;align-items:center;gap:3px;background:var(--s2,#161b27);border:1px solid var(--border,#1e2a3a);border-radius:5px;padding:3px 7px 3px 6px;font-size:11px;color:var(--text2,#94a3b8);text-decoration:none;transition:background .1s,border-color .1s,color .1s;white-space:nowrap;line-height:1.3}
+a.cp:hover{background:var(--bg,#0d1117);border-color:var(--border2,#2a3347);color:var(--text,#e2e8f0)}
+.cp-star{background:none;border:none;cursor:pointer;font-size:10px;color:var(--text3,#4b5563);padding:0 0 0 1px;line-height:1;opacity:.2;transition:opacity .1s,color .1s;flex-shrink:0}
+a.cp:hover .cp-star{opacity:.65}
+.cp-star:hover{opacity:1!important;color:#f59e0b!important}
+.cp-star.starred{color:#f59e0b!important;opacity:1!important}
+#chubFavRow{display:none}
+</style>
 </head>
 <body>
 <div id="app">
+
+<!-- ── Command Hub ────────────────────────────────────────────────────────── -->
+<div id="commandHub">
+  <div class="chub-head">
+    <span class="chub-brand">Macro<em>FX</em></span>
+    <span class="chub-hint">★ pin any tool to Favourites · click ☆ to star</span>
+    <button id="chubTogglerBtn" class="chub-toggler" onclick="chubToggleCollapse()">▾ collapse</button>
+  </div>
+  <div class="chub-rows">
+
+    <div class="chub-row" id="chubFavRow">
+      <div class="chub-lbl" style="color:#f59e0b">★ Favs</div>
+      <div class="chub-pills" id="chubFavPills"></div>
+    </div>
+
+    <div class="chub-row">
+      <div class="chub-lbl" style="color:#10b981">Live</div>
+      <div class="chub-pills">
+        <a class="cp" href="levels.html" target="_blank" data-href="levels.html">🎯 Entry Lens<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('levels.html')" data-href="levels.html">☆</button></a>
+        <a class="cp" href="vol-forecast-v2.html" target="_blank" data-href="vol-forecast-v2.html">📐 Vol Forecast v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast-v2.html')" data-href="vol-forecast-v2.html">☆</button></a>
+        <a class="cp" href="vol-forecast.html" target="_blank" data-href="vol-forecast.html">📐 Vol Forecast<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast.html')" data-href="vol-forecast.html">☆</button></a>
+        <a class="cp" href="telegram-v2.html" target="_blank" data-href="telegram-v2.html">📡 Telegram v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('telegram-v2.html')" data-href="telegram-v2.html">☆</button></a>
+        <a class="cp" href="performance.html" target="_blank" data-href="performance.html">📊 Performance<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('performance.html')" data-href="performance.html">☆</button></a>
+        <a class="cp" href="journal.html" target="_blank" data-href="journal.html">📒 Journal<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('journal.html')" data-href="journal.html">☆</button></a>
+        <a class="cp" href="bot-config.html" target="_blank" data-href="bot-config.html">🤖 Bot Config<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('bot-config.html')" data-href="bot-config.html">☆</button></a>
+        <a class="cp" href="gold.html" target="_blank" data-href="gold.html">🥇 Gold Model<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold.html')" data-href="gold.html">☆</button></a>
+        <a class="cp" href="gold-zones.html" target="_blank" data-href="gold-zones.html">🗺 Gold Zones<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-zones.html')" data-href="gold-zones.html">☆</button></a>
+        <a class="cp" href="nasdaq-threshold-engine.html" target="_blank" data-href="nasdaq-threshold-engine.html">📡 NQ Gate Live<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-threshold-engine.html')" data-href="nasdaq-threshold-engine.html">☆</button></a>
+        <a class="cp" href="cog-v2-engine.html" target="_blank" data-href="cog-v2-engine.html">⚙ COG v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('cog-v2-engine.html')" data-href="cog-v2-engine.html">☆</button></a>
+        <a class="cp" href="liquidity-pulse.html" target="_blank" data-href="liquidity-pulse.html">💧 Liq Pulse<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('liquidity-pulse.html')" data-href="liquidity-pulse.html">☆</button></a>
+        <a class="cp" href="global-liquidity.html" target="_blank" data-href="global-liquidity.html">🌊 Global Liq<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('global-liquidity.html')" data-href="global-liquidity.html">☆</button></a>
+      </div>
+    </div>
+
+    <div class="chub-row">
+      <div class="chub-lbl" style="color:#4f7df0">Vol</div>
+      <div class="chub-pills">
+        <a class="cp" href="honest-forecast-harness.html" target="_blank" data-href="honest-forecast-harness.html">🔬 Honest Harness<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('honest-forecast-harness.html')" data-href="honest-forecast-harness.html">☆</button></a>
+        <a class="cp" href="vol-backtest.html" target="_blank" data-href="vol-backtest.html">📊 Vol BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-backtest.html')" data-href="vol-backtest.html">☆</button></a>
+        <a class="cp" href="vol-backtest-v2.html" target="_blank" data-href="vol-backtest-v2.html">📊 Vol BT v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-backtest-v2.html')" data-href="vol-backtest-v2.html">☆</button></a>
+        <a class="cp" href="weekly-vol-backtest.html" target="_blank" data-href="weekly-vol-backtest.html">📅 Weekly Vol BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('weekly-vol-backtest.html')" data-href="weekly-vol-backtest.html">☆</button></a>
+        <a class="cp" href="vol-forecast-bench.html" target="_blank" data-href="vol-forecast-bench.html">📐 σ Bench<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast-bench.html')" data-href="vol-forecast-bench.html">☆</button></a>
+        <a class="cp" href="forecaster-backtest.html" target="_blank" data-href="forecaster-backtest.html">📈 Forecaster BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecaster-backtest.html')" data-href="forecaster-backtest.html">☆</button></a>
+        <a class="cp" href="forecast-analysis.html" target="_blank" data-href="forecast-analysis.html">📊 Level Analyser<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-analysis.html')" data-href="forecast-analysis.html">☆</button></a>
+        <a class="cp" href="forecast-book-report.html" target="_blank" data-href="forecast-book-report.html">📄 Book Report<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-book-report.html')" data-href="forecast-book-report.html">☆</button></a>
+        <a class="cp" href="forecast-refresh.html" target="_blank" data-href="forecast-refresh.html">⟳ Data Refresh<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-refresh.html')" data-href="forecast-refresh.html">☆</button></a>
+      </div>
+    </div>
+
+    <div class="chub-row">
+      <div class="chub-lbl" style="color:#8b5cf6">FX BT</div>
+      <div class="chub-pills">
+        <a class="cp" href="backtest.html" target="_blank" data-href="backtest.html">📈 Backtest<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest.html')" data-href="backtest.html">☆</button></a>
+        <a class="cp" href="asia-range-backtest.html" target="_blank" data-href="asia-range-backtest.html">📐 Asia Range BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('asia-range-backtest.html')" data-href="asia-range-backtest.html">☆</button></a>
+        <a class="cp" href="asia-range-analysis.html" target="_blank" data-href="asia-range-analysis.html">📊 Asia Analysis<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('asia-range-analysis.html')" data-href="asia-range-analysis.html">☆</button></a>
+        <a class="cp" href="range-fib-backtest.html" target="_blank" data-href="range-fib-backtest.html">📏 Range-Fib BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('range-fib-backtest.html')" data-href="range-fib-backtest.html">☆</button></a>
+        <a class="cp" href="range-line-strategy.html" target="_blank" data-href="range-line-strategy.html">🎯 Range-Line<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('range-line-strategy.html')" data-href="range-line-strategy.html">☆</button></a>
+        <a class="cp" href="pivot-spike-backtest.html" target="_blank" data-href="pivot-spike-backtest.html">📍 Pivot Spike BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('pivot-spike-backtest.html')" data-href="pivot-spike-backtest.html">☆</button></a>
+        <a class="cp" href="regime-backtest.html" target="_blank" data-href="regime-backtest.html">⚡ Regime BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('regime-backtest.html')" data-href="regime-backtest.html">☆</button></a>
+        <a class="cp" href="claude-backtest.html" target="_blank" data-href="claude-backtest.html">🔬 Claude BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('claude-backtest.html')" data-href="claude-backtest.html">☆</button></a>
+        <a class="cp" href="backtest-viewer.html" target="_blank" data-href="backtest-viewer.html">▶ BT Viewer<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest-viewer.html')" data-href="backtest-viewer.html">☆</button></a>
+        <a class="cp" href="backtest-monitor.html" target="_blank" data-href="backtest-monitor.html">🖥 BT Monitor<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('backtest-monitor.html')" data-href="backtest-monitor.html">☆</button></a>
+      </div>
+    </div>
+
+    <div class="chub-row">
+      <div class="chub-lbl" style="color:#f59e0b">Research</div>
+      <div class="chub-pills">
+        <a class="cp" href="correlations.html" target="_blank" data-href="correlations.html">⬡ Corr Lab<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('correlations.html')" data-href="correlations.html">☆</button></a>
+        <a class="cp" href="cot-extremes.html" target="_blank" data-href="cot-extremes.html">📋 COT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('cot-extremes.html')" data-href="cot-extremes.html">☆</button></a>
+        <a class="cp" href="regime-viewer.html" target="_blank" data-href="regime-viewer.html">🔍 Regime Viewer<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('regime-viewer.html')" data-href="regime-viewer.html">☆</button></a>
+        <a class="cp" href="analysis.html" target="_blank" data-href="analysis.html">📊 Pattern Lab<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('analysis.html')" data-href="analysis.html">☆</button></a>
+        <a class="cp" href="hedge-signals.html" target="_blank" data-href="hedge-signals.html">⚡ Signals v1<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-signals.html')" data-href="hedge-signals.html">☆</button></a>
+        <a class="cp" href="hedge-signals-v2.html" target="_blank" data-href="hedge-signals-v2.html">⚡ Signals v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-signals-v2.html')" data-href="hedge-signals-v2.html">☆</button></a>
+        <a class="cp" href="diversification.html" target="_blank" data-href="diversification.html">🔗 Book Explorer<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('diversification.html')" data-href="diversification.html">☆</button></a>
+      </div>
+    </div>
+
+    <div class="chub-row">
+      <div class="chub-lbl" style="color:#06b6d4">Equity</div>
+      <div class="chub-pills">
+        <a class="cp" href="macro-equity-backtest.html" target="_blank" data-href="macro-equity-backtest.html">📊 Macro Eq BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('macro-equity-backtest.html')" data-href="macro-equity-backtest.html">☆</button></a>
+        <a class="cp" href="nasdaq-threshold-backtest.html" target="_blank" data-href="nasdaq-threshold-backtest.html">🧮 NQ Threshold BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-threshold-backtest.html')" data-href="nasdaq-threshold-backtest.html">☆</button></a>
+        <a class="cp" href="nasdaq-liquidity-continuation.html" target="_blank" data-href="nasdaq-liquidity-continuation.html">📈 NQ Liq BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nasdaq-liquidity-continuation.html')" data-href="nasdaq-liquidity-continuation.html">☆</button></a>
+        <a class="cp" href="liquidity-gate-backtest.html" target="_blank" data-href="liquidity-gate-backtest.html">💧 Liq Gate BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('liquidity-gate-backtest.html')" data-href="liquidity-gate-backtest.html">☆</button></a>
+        <a class="cp" href="nq-qmr-backtest.html" target="_blank" data-href="nq-qmr-backtest.html">⚡ NQ-QMR BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('nq-qmr-backtest.html')" data-href="nq-qmr-backtest.html">☆</button></a>
+        <a class="cp" href="zscore-backtest.html" target="_blank" data-href="zscore-backtest.html">⚡ Yield Z-Score<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('zscore-backtest.html')" data-href="zscore-backtest.html">☆</button></a>
+        <a class="cp" href="vix-vol-carry-backtest.html" target="_blank" data-href="vix-vol-carry-backtest.html">🌋 VIX Vol-Carry<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vix-vol-carry-backtest.html')" data-href="vix-vol-carry-backtest.html">☆</button></a>
+      </div>
+    </div>
+
+    <div class="chub-row">
+      <div class="chub-lbl" style="color:#eab308">Gold</div>
+      <div class="chub-pills">
+        <a class="cp" href="gold.html" target="_blank" data-href="gold.html">🥇 Gold Model<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold.html')" data-href="gold.html">☆</button></a>
+        <a class="cp" href="gold-zones.html" target="_blank" data-href="gold-zones.html">🗺 Gold Zones<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-zones.html')" data-href="gold-zones.html">☆</button></a>
+        <a class="cp" href="gold-backtest.html" target="_blank" data-href="gold-backtest.html">📊 Gold BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-backtest.html')" data-href="gold-backtest.html">☆</button></a>
+        <a class="cp" href="gold-lab.html" target="_blank" data-href="gold-lab.html">🔬 Gold Lab<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('gold-lab.html')" data-href="gold-lab.html">☆</button></a>
+        <a class="cp" href="system-gold-macro.html" target="_blank" data-href="system-gold-macro.html">📊 P6 Gold Macro<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-gold-macro.html')" data-href="system-gold-macro.html">☆</button></a>
+      </div>
+    </div>
+
+    <div class="chub-row">
+      <div class="chub-lbl" style="color:#14b8a6">Systems</div>
+      <div class="chub-pills">
+        <a class="cp" href="hub.html" target="_blank" data-href="hub.html">⬡ Risk Hub<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hub.html')" data-href="hub.html">☆</button></a>
+        <a class="cp" href="system-credit-equity.html" target="_blank" data-href="system-credit-equity.html">📊 P2 Credit<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-credit-equity.html')" data-href="system-credit-equity.html">☆</button></a>
+        <a class="cp" href="system-yield-curve.html" target="_blank" data-href="system-yield-curve.html">📊 P3 Yield<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-yield-curve.html')" data-href="system-yield-curve.html">☆</button></a>
+        <a class="cp" href="system-fx-carry.html" target="_blank" data-href="system-fx-carry.html">📊 P4 Carry<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-fx-carry.html')" data-href="system-fx-carry.html">☆</button></a>
+        <a class="cp" href="system-fx-momentum.html" target="_blank" data-href="system-fx-momentum.html">📊 P5 Momentum<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('system-fx-momentum.html')" data-href="system-fx-momentum.html">☆</button></a>
+        <a class="cp" href="hedge-backtest.html" target="_blank" data-href="hedge-backtest.html">📊 Hedge BT<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('hedge-backtest.html')" data-href="hedge-backtest.html">☆</button></a>
+        <a class="cp" href="results.html" target="_blank" data-href="results.html">📄 Tearsheet<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('results.html')" data-href="results.html">☆</button></a>
+      </div>
+    </div>
+
+    <div class="chub-row">
+      <div class="chub-lbl" style="color:#64748b">WIP</div>
+      <div class="chub-pills">
+        <a class="cp" href="indexv2.html" target="_blank" data-href="indexv2.html" style="opacity:.65">📊 Market State v2<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('indexv2.html')" data-href="indexv2.html">☆</button></a>
+        <a class="cp" href="level-chart-demo.html" target="_blank" data-href="level-chart-demo.html" style="opacity:.65">🧱 Level Demo<button class="cp-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-chart-demo.html')" data-href="level-chart-demo.html">☆</button></a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  var FAV_KEY='macrofx_favs';
+  function cGet(){try{return JSON.parse(localStorage.getItem(FAV_KEY)||'[]')}catch(e){return[]}}
+  function cSet(f){try{localStorage.setItem(FAV_KEY,JSON.stringify(f))}catch(e){}}
+  window.chubToggleFav=function(href){
+    var f=cGet(),i=f.indexOf(href);
+    if(i>=0)f.splice(i,1);else f.push(href);
+    cSet(f);cStars();cFavs();
+  };
+  function cStars(){
+    var f=cGet();
+    document.querySelectorAll('#commandHub .cp-star[data-href]').forEach(function(b){
+      var s=f.indexOf(b.dataset.href)>=0;
+      b.textContent=s?'★':'☆';b.classList.toggle('starred',s);
+    });
+  }
+  function cFavs(){
+    var f=cGet(),row=document.getElementById('chubFavRow'),pills=document.getElementById('chubFavPills');
+    if(!row||!pills)return;
+    if(!f.length){row.style.display='none';return;}
+    row.style.display='flex';
+    var data={};
+    document.querySelectorAll('#commandHub .chub-row:not(#chubFavRow) a.cp[data-href]').forEach(function(a){
+      var h=a.dataset.href;
+      if(h&&!data[h]){
+        var txt=Array.from(a.childNodes).filter(function(n){return n.nodeType===3;}).map(function(n){return n.textContent.trim();}).join('');
+        data[h]={href:h,text:txt||h};
+      }
+    });
+    pills.innerHTML=f.map(function(h){
+      var d=data[h];if(!d)return'';
+      return'<a class="cp" href="'+h+'" target="_blank" data-href="'+h+'">'+d.text+'<button class="cp-star starred" onclick="event.preventDefault();event.stopPropagation();chubToggleFav(\''+h+'\')" data-href="'+h+'">★</button></a>';
+    }).filter(Boolean).join('');
+  }
+  window.chubToggleCollapse=function(){
+    var hub=document.getElementById('commandHub'),btn=document.getElementById('chubTogglerBtn');
+    if(!hub)return;
+    hub.classList.toggle('chub-collapsed');
+    var c=hub.classList.contains('chub-collapsed');
+    try{localStorage.setItem('macrofx_chub_c',c?'1':'0')}catch(e){}
+    if(btn)btn.textContent=c?'▸ expand':'▾ collapse';
+  };
+  document.addEventListener('DOMContentLoaded',function(){
+    try{if(localStorage.getItem('macrofx_chub_c')==='1'){
+      var hub=document.getElementById('commandHub'),btn=document.getElementById('chubTogglerBtn');
+      if(hub){hub.classList.add('chub-collapsed');if(btn)btn.textContent='▸ expand';}
+    }}catch(e){}
+    cStars();cFavs();
+  });
+})();
+</script>
 
 <div id="stickysentinel" style="height:0;position:absolute;top:0;left:0;width:100%"></div>
 <div class="sticky-header">
@@ -43,6 +243,7 @@
   <button class="dark-btn" onclick="openCfgModal()" id="cfgBtn" title="Confluence proximity config"><span>⚙</span><span>Caps</span></button>
   <button class="dark-btn" onclick="saveToJournal()" id="journalBtn" title="Save active pair's levels to Trade Journal" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>Journal</span></button>
   <button class="dark-btn" onclick="saveAllPairsToJournal()" id="journalAllBtn" title="Save ALL pairs' levels to Trade Journal in one go" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>All Pairs</span></button>
+  <a href="hub.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Command Centre — all tools grouped by category, with favourites" style="border-color:#10b981;color:#10b981">⬡ Hub</button></a>
   <a href="journal.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Open Trade Journal">📒</button></a>
   <a href="analysis.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="5-Year Pattern Analysis Engine">📊 Pattern Lab</button></a>
   <a href="correlations.html" target="_blank" style="text-decoration:none"><button class="dark-btn" title="Rolling Correlation &amp; Hedge Analysis" style="border-color:#8b5cf6;color:#8b5cf6">⬡ Corr Lab</button></a>
