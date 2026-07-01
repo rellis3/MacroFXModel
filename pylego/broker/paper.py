@@ -9,6 +9,8 @@ barrier. Pure + offline-testable; used whenever paper_mode is on (the default).
 """
 from __future__ import annotations
 
+import time
+
 
 class PaperBroker:
     available = True
@@ -59,14 +61,18 @@ class PaperBroker:
         self._next += 1
         self._pos[t] = {"ticket": t, "pair": pair, "direction": direction,
                         "lots": float(lots), "open_price": px, "sl": float(sl), "tp": float(tp),
-                        "comment": comment or ""}
+                        "comment": comment or "", "time_open": int(time.time())}
         return t
 
     def stop(self, ticket, pair=None, paper_mode=True, reason="", comment_prefix="Close") -> bool:
         p = self._pos.pop(ticket, None)
         if not p:
             return True                       # already gone
-        self._closed.append({**p, "reason": reason, "close_price": self._price.get(p["pair"])})
+        close = self._price.get(p["pair"], p["open_price"])
+        sign  = 1 if p["direction"] == "LONG" else -1
+        profit = (close - p["open_price"]) * sign * p["lots"]
+        self._closed.append({**p, "reason": reason, "close_price": close,
+                             "profit": profit, "time_close": int(time.time())})
         return True
 
     def modify(self, ticket, pair=None, sl=None, tp=None, paper_mode=True) -> bool:
@@ -96,14 +102,20 @@ class PaperBroker:
                 "direction": "BUY" if p["direction"] == "LONG" else "SELL",
                 "lots": round(p["lots"], 2), "open_price": round(p["open_price"], 5),
                 "price": round(cur, 5), "profit": round(profit, 4), "swap": 0.0,
+                "time_open": p.get("time_open"),
             })
         return out
 
     def serialize_closed_trades(self) -> list:
+        # position_id is REQUIRED: the server's mergeTradeHistory dedups on it, so a
+        # closed trade without it is dropped and never reaches the Trade History tab.
         return [{
+            "position_id": c["ticket"], "ticket": c["ticket"],
             "symbol": c["pair"], "direction": "BUY" if c["direction"] == "LONG" else "SELL",
             "lots": round(c["lots"], 2), "open_price": round(c["open_price"], 5),
-            "close_price": c.get("close_price"), "reason": c.get("reason"),
+            "close_price": round(c["close_price"], 5) if c.get("close_price") is not None else None,
+            "profit": round(c.get("profit", 0.0), 4), "reason": c.get("reason"),
+            "time_open": c.get("time_open"), "time_close": c.get("time_close"),
         } for c in self._closed[-50:]]
 
     # ── triple-barrier execution (what MT5 does natively via SL/TP) ────────────
