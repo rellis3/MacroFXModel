@@ -238,6 +238,7 @@
   <button class="dark-btn" onclick="openCfgModal()" id="cfgBtn" title="Confluence proximity config"><span>⚙</span><span>Caps</span></button>
   <button class="dark-btn" onclick="saveToJournal()" id="journalBtn" title="Save active pair's levels to Trade Journal" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>Journal</span></button>
   <button class="dark-btn" onclick="saveAllPairsToJournal()" id="journalAllBtn" title="Save ALL pairs' levels to Trade Journal in one go" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>All Pairs</span></button>
+  <button class="dark-btn" onclick="openSiteMap()" title="Site map — all pages with descriptions" style="border-color:#4f7df0;color:#4f7df0"><span>🗺</span><span>Site Map</span></button>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
   <span class="upd" id="upd"></span>
 </div>
@@ -2262,6 +2263,156 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
 .rb-wt-sel{background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-size:10px;padding:2px 4px;cursor:pointer}
 /* Range bias details/summary arrow */
 .rb-panel>summary::-webkit-details-marker{display:none}
+/* ── Site Map Modal ─────────────────────────────────────────────────────── */
+#smOverlay{display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.72);backdrop-filter:blur(3px);align-items:center;justify-content:center}
+#smOverlay.open{display:flex}
+#smModal{background:#0d1117;border:1px solid #1e2a3a;border-radius:14px;width:min(860px,96vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.7)}
+#smHeader{display:flex;align-items:center;gap:10px;padding:16px 20px 12px;border-bottom:1px solid #1e2a3a;flex-shrink:0}
+#smHeader h2{margin:0;font-size:15px;font-weight:700;color:#e2e8f0;flex:1}
+#smSearch{background:#111827;border:1px solid #1e2a3a;border-radius:7px;color:#e2e8f0;font-size:12px;padding:6px 11px;width:200px;outline:none;font-family:'DM Sans',sans-serif}
+#smSearch:focus{border-color:#4f7df0}
+#smClose{background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;line-height:1;padding:2px 6px}
+#smClose:hover{color:#e2e8f0}
+#smBody{overflow-y:auto;padding:16px 20px 20px;display:flex;flex-direction:column;gap:18px}
+.sm-group{display:flex;flex-direction:column;gap:2px}
+.sm-group-hd{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 0 6px;border-bottom:1px solid #1e2a3a;margin-bottom:4px}
+.sm-item{display:flex;align-items:baseline;gap:8px;text-decoration:none;padding:5px 6px;border-radius:6px;transition:background .1s}
+.sm-item:hover{background:#161b27}
+.sm-item-name{font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;min-width:160px}
+.sm-item-desc{font-size:11px;color:#64748b;line-height:1.4}
+.sm-item.sm-hidden{display:none}
 </style>
+
+<!-- ── Site Map Modal ──────────────────────────────────────────────────── -->
+<div id="smOverlay" onclick="if(event.target===this)closeSiteMap()">
+  <div id="smModal">
+    <div id="smHeader">
+      <h2>🗺 Site Map</h2>
+      <input id="smSearch" type="search" placeholder="Filter pages…" oninput="smFilter(this.value)" autocomplete="off">
+      <button id="smClose" onclick="closeSiteMap()">✕</button>
+    </div>
+    <div id="smBody">
+
+      <div class="sm-group" data-group="live">
+        <div class="sm-group-hd" style="color:#10b981">Live Trading</div>
+        <a class="sm-item" href="levels.html" target="_blank"><span class="sm-item-name">🎯 Entry Lens</span><span class="sm-item-desc">All-pairs view: macro regime, vol bands, Asia range, z-score conviction and entry bias in one table</span></a>
+        <a class="sm-item" href="vol-forecast-v2.html" target="_blank"><span class="sm-item-name">📐 Vol Forecast v2</span><span class="sm-item-desc">EWMA σ forecaster (v2 constants); per-pair daily / weekly / 20-day range projections — use this over v1</span></a>
+        <a class="sm-item" href="vol-forecast.html" target="_blank"><span class="sm-item-name">📐 Vol Forecast</span><span class="sm-item-desc">Original range forecaster (v1); retained for reference — vol math shared with backtest engine</span></a>
+        <a class="sm-item" href="telegram-v2.html" target="_blank"><span class="sm-item-name">📡 Telegram v2</span><span class="sm-item-desc">Confidence-engine alert system; offline-learned, after-cost-expectancy graded, sends via Railway server</span></a>
+        <a class="sm-item" href="performance.html" target="_blank"><span class="sm-item-name">📊 Performance</span><span class="sm-item-desc">Live trading P&amp;L tracker — cumulative returns, drawdown, win rate summary stats</span></a>
+        <a class="sm-item" href="journal.html" target="_blank"><span class="sm-item-name">📒 Trade Journal</span><span class="sm-item-desc">Log, tag and review trade entries by pair, session and setup type</span></a>
+        <a class="sm-item" href="bot-config.html" target="_blank"><span class="sm-item-name">🤖 Bot Config</span><span class="sm-item-desc">Python bot settings: MAGIC numbers, modes, MT5 accounts, live plan viewer (Gold on separate account)</span></a>
+        <a class="sm-item" href="gold.html" target="_blank"><span class="sm-item-name">🥇 Gold Model</span><span class="sm-item-desc">XAU/USD two-layer regime model with live levels, session bias and bot state</span></a>
+        <a class="sm-item" href="gold-zones.html" target="_blank"><span class="sm-item-name">🗺 Gold Zones</span><span class="sm-item-desc">Key S/R zones and fib extension levels for Gold, updated each session</span></a>
+        <a class="sm-item" href="nasdaq-threshold-engine.html" target="_blank"><span class="sm-item-name">📡 NQ Gate Live</span><span class="sm-item-desc">NASDAQ macro threshold live signal — gates equity exposure based on macro regime score</span></a>
+        <a class="sm-item" href="cog-v2-engine.html" target="_blank"><span class="sm-item-name">⚙ COG v2</span><span class="sm-item-desc">Centre-of-Gravity v2 live engine — intraday mean-reversion signals from price distribution</span></a>
+        <a class="sm-item" href="liquidity-pulse.html" target="_blank"><span class="sm-item-name">💧 Liquidity Pulse</span><span class="sm-item-desc">Intraday liquidity monitor: DXY, bonds, risk-on/off pulse; gates intraday entries</span></a>
+        <a class="sm-item" href="global-liquidity.html" target="_blank"><span class="sm-item-name">🌊 Global Liquidity</span><span class="sm-item-desc">GLI nowcast, macro regime classification, FX book target levels — mobile-friendly view</span></a>
+      </div>
+
+      <div class="sm-group" data-group="vol">
+        <div class="sm-group-hd" style="color:#4f7df0">Vol &amp; Forecast</div>
+        <a class="sm-item" href="honest-forecast-harness.html" target="_blank"><span class="sm-item-name">🔬 Honest Harness</span><span class="sm-item-desc">IS/OOS split backtester for vol-band strategies; the canonical OOS validation tool — costs on by default</span></a>
+        <a class="sm-item" href="vol-backtest.html" target="_blank"><span class="sm-item-name">📊 Vol BT v1</span><span class="sm-item-desc">Original M1 walk-forward vol-band backtest (seven legs); read-only production reference</span></a>
+        <a class="sm-item" href="vol-backtest-v2.html" target="_blank"><span class="sm-item-name">📊 Vol BT v2</span><span class="sm-item-desc">Per-horizon orchestration with regime A/B comparison; the active development backtest engine</span></a>
+        <a class="sm-item" href="weekly-vol-backtest.html" target="_blank"><span class="sm-item-name">📅 Weekly Vol BT</span><span class="sm-item-desc">Same engine as v2 parameterised for weekly horizon (σ × √5 scaling)</span></a>
+        <a class="sm-item" href="vol-forecast-bench.html" target="_blank"><span class="sm-item-name">📐 σ Benchmark</span><span class="sm-item-desc">Compares HV20 vs GARCH vs Yang-Zhang volatility forecasts head-to-head for any pair</span></a>
+        <a class="sm-item" href="forecaster-backtest.html" target="_blank"><span class="sm-item-name">📈 Forecaster BT</span><span class="sm-item-desc">Backtests the per-line level forecaster; shows hit rates by band, direction and session</span></a>
+        <a class="sm-item" href="forecast-analysis.html" target="_blank"><span class="sm-item-name">📊 Level Analyser</span><span class="sm-item-desc">Deep per-level analysis: hit rate, expectancy, timing distribution, by pair and session</span></a>
+        <a class="sm-item" href="forecast-book-report.html" target="_blank"><span class="sm-item-name">📄 Book Report</span><span class="sm-item-desc">Summary of the live forecast per-line book — what the bot currently sees for each pair</span></a>
+        <a class="sm-item" href="forecast-refresh.html" target="_blank"><span class="sm-item-name">⟳ Data Refresh</span><span class="sm-item-desc">Manually triggers the forecast analyser dataset reload from R2 parquet store</span></a>
+      </div>
+
+      <div class="sm-group" data-group="fxbt">
+        <div class="sm-group-hd" style="color:#8b5cf6">FX Range Backtests</div>
+        <a class="sm-item" href="backtest.html" target="_blank"><span class="sm-item-name">📈 Backtest Engine</span><span class="sm-item-desc">Main M1 FX backtest — configurable pair, date range, strategy leg, cost model</span></a>
+        <a class="sm-item" href="asia-range-backtest.html" target="_blank"><span class="sm-item-name">📐 Asia Range BT</span><span class="sm-item-desc">Asia session range-extension M1 backtest with vol gate, fib targets and session filter</span></a>
+        <a class="sm-item" href="asia-range-analysis.html" target="_blank"><span class="sm-item-name">📊 Asia Analysis</span><span class="sm-item-desc">OOS breakdown of Asia range BT results — hit rates by pair, session overlap, range size</span></a>
+        <a class="sm-item" href="range-fib-backtest.html" target="_blank"><span class="sm-item-name">📏 Range-Fib BT</span><span class="sm-item-desc">Range + fibonacci projection backtest; stripped-down fast version for iteration</span></a>
+        <a class="sm-item" href="range-line-strategy.html" target="_blank"><span class="sm-item-name">🎯 Range-Line</span><span class="sm-item-desc">Range boundary meets vol-band line strategy; fade/follow selector, confluence scored</span></a>
+        <a class="sm-item" href="pivot-spike-backtest.html" target="_blank"><span class="sm-item-name">📍 Pivot Spike BT</span><span class="sm-item-desc">Tests entries on pivot-point spike wicks with mean-reversion target and stop placement</span></a>
+        <a class="sm-item" href="regime-backtest.html" target="_blank"><span class="sm-item-name">⚡ Regime BT</span><span class="sm-item-desc">Regime-classified M1 backtest; compares trending vs ranging fill quality head-to-head</span></a>
+        <a class="sm-item" href="claude-backtest.html" target="_blank"><span class="sm-item-name">🔬 Claude BT</span><span class="sm-item-desc">AI-configured Asia session backtest experiment — parameter set chosen by Claude analysis</span></a>
+        <a class="sm-item" href="backtest-viewer.html" target="_blank"><span class="sm-item-name">▶ BT Viewer</span><span class="sm-item-desc">Replay and visualise any stored backtest run on a chart; inspect individual fills</span></a>
+        <a class="sm-item" href="backtest-monitor.html" target="_blank"><span class="sm-item-name">🖥 BT Monitor</span><span class="sm-item-desc">Live job queue for long-running async backtest tasks — status, progress, cancel</span></a>
+      </div>
+
+      <div class="sm-group" data-group="research">
+        <div class="sm-group-hd" style="color:#f59e0b">Macro Research</div>
+        <a class="sm-item" href="correlations.html" target="_blank"><span class="sm-item-name">⬡ Corr Lab</span><span class="sm-item-desc">Rolling 20/60-day correlation matrix + hedge pair scanner; compares any instrument set</span></a>
+        <a class="sm-item" href="cot-extremes.html" target="_blank"><span class="sm-item-name">📋 COT Extremes</span><span class="sm-item-desc">CFTC Commitment of Traders — flags extreme net positioning in FX, commodities and bonds</span></a>
+        <a class="sm-item" href="regime-viewer.html" target="_blank"><span class="sm-item-name">🔍 Regime Viewer</span><span class="sm-item-desc">V1 HMM and V2 Baum-Welch regime overlaid on price; compare classifier output and transitions</span></a>
+        <a class="sm-item" href="analysis.html" target="_blank"><span class="sm-item-name">📊 Pattern Lab</span><span class="sm-item-desc">5-year daily pattern analysis — day-of-week, monthly seasonality, session bias stats per pair</span></a>
+        <a class="sm-item" href="hedge-signals.html" target="_blank"><span class="sm-item-name">⚡ Signals v1</span><span class="sm-item-desc">Correlation-divergence hedge signal generator with Python bot integration and live alerts</span></a>
+        <a class="sm-item" href="hedge-signals-v2.html" target="_blank"><span class="sm-item-name">⚡ Signals v2</span><span class="sm-item-desc">Cointegration-gated pairs, money-matched sizing, half-life stop — more robust than v1</span></a>
+        <a class="sm-item" href="diversification.html" target="_blank"><span class="sm-item-name">🔗 Book Explorer</span><span class="sm-item-desc">Visualises open position book diversification; correlation heatmap of all live trades</span></a>
+      </div>
+
+      <div class="sm-group" data-group="equity">
+        <div class="sm-group-hd" style="color:#06b6d4">NASDAQ / Equity</div>
+        <a class="sm-item" href="macro-equity-backtest.html" target="_blank"><span class="sm-item-name">📊 Macro Equity BT</span><span class="sm-item-desc">Macro-regime-driven equity index strategy backtest (SPX / NAS100 / DAX)</span></a>
+        <a class="sm-item" href="nasdaq-threshold-backtest.html" target="_blank"><span class="sm-item-name">🧮 NQ Threshold BT</span><span class="sm-item-desc">Backtests the NASDAQ macro threshold gate strategy; IS/OOS split with cost sensitivity</span></a>
+        <a class="sm-item" href="nasdaq-liquidity-continuation.html" target="_blank"><span class="sm-item-name">📈 NQ Liq BT</span><span class="sm-item-desc">NASDAQ liquidity-continuation strategy backtest — enters on GLI-regime-confirmed breakouts</span></a>
+        <a class="sm-item" href="liquidity-gate-backtest.html" target="_blank"><span class="sm-item-name">💧 Liq Gate BT</span><span class="sm-item-desc">Liquidity-gate filter backtest — only trades when the GLI macro regime permits entry</span></a>
+        <a class="sm-item" href="nq-qmr-backtest.html" target="_blank"><span class="sm-item-name">⚡ NQ-QMR BT</span><span class="sm-item-desc">NASDAQ quantitative macro reversion backtest; z-score gated mean-reversion at extremes</span></a>
+        <a class="sm-item" href="zscore-backtest.html" target="_blank"><span class="sm-item-name">⚡ Yield Z-Score BT</span><span class="sm-item-desc">US yield z-score vs equity mean-reversion backtest — macro divergence entry signal</span></a>
+        <a class="sm-item" href="vix-vol-carry-backtest.html" target="_blank"><span class="sm-item-name">🌋 VIX Vol-Carry BT</span><span class="sm-item-desc">VIX term-structure carry strategy backtest — short vol carry in contango, exit on backwardation</span></a>
+      </div>
+
+      <div class="sm-group" data-group="gold">
+        <div class="sm-group-hd" style="color:#eab308">Gold</div>
+        <a class="sm-item" href="gold.html" target="_blank"><span class="sm-item-name">🥇 Gold Model</span><span class="sm-item-desc">XAU/USD two-layer regime model: macro layer (DXY, yields, risk) + technical layer (Asia range, vol)</span></a>
+        <a class="sm-item" href="gold-zones.html" target="_blank"><span class="sm-item-name">🗺 Gold Zones</span><span class="sm-item-desc">Annotated session S/R zones for Gold; updated automatically each session open</span></a>
+        <a class="sm-item" href="gold-backtest.html" target="_blank"><span class="sm-item-name">📊 Gold BT</span><span class="sm-item-desc">Gold-specific M1 backtest tuned to XAU/USD microstructure and wider spreads</span></a>
+        <a class="sm-item" href="gold-lab.html" target="_blank"><span class="sm-item-name">🔬 Gold Lab</span><span class="sm-item-desc">Experimental Gold strategy research — new ideas before promotion to the live Gold bot</span></a>
+        <a class="sm-item" href="system-gold-macro.html" target="_blank"><span class="sm-item-name">📊 P6 Gold Macro</span><span class="sm-item-desc">Portfolio System 6 — Gold macro regime used as a portfolio allocator alongside P1–P5</span></a>
+      </div>
+
+      <div class="sm-group" data-group="systems">
+        <div class="sm-group-hd" style="color:#14b8a6">Portfolio Systems</div>
+        <a class="sm-item" href="hub.html" target="_blank"><span class="sm-item-name">⬡ Risk Hub</span><span class="sm-item-desc">Master portfolio overview — all 6 systems, combined P&amp;L, macro regime, risk gate status</span></a>
+        <a class="sm-item" href="system-credit-equity.html" target="_blank"><span class="sm-item-name">📊 P2 Credit-Equity</span><span class="sm-item-desc">Portfolio System 2 — credit spread regime drives equity long/short allocation</span></a>
+        <a class="sm-item" href="system-yield-curve.html" target="_blank"><span class="sm-item-name">📊 P3 Yield Curve</span><span class="sm-item-desc">Portfolio System 3 — yield curve shape (2s10s, 2s30s) drives rates and FX positioning</span></a>
+        <a class="sm-item" href="system-fx-carry.html" target="_blank"><span class="sm-item-name">📊 P4 FX Carry</span><span class="sm-item-desc">Portfolio System 4 — carry trade allocator using interest rate differential and vol-adjusted sizing</span></a>
+        <a class="sm-item" href="system-fx-momentum.html" target="_blank"><span class="sm-item-name">📊 P5 FX Momentum</span><span class="sm-item-desc">Portfolio System 5 — cross-pair momentum signals; ranks pairs by risk-adjusted trend strength</span></a>
+        <a class="sm-item" href="hedge-backtest.html" target="_blank"><span class="sm-item-name">📊 Hedge BT</span><span class="sm-item-desc">Backtests the portfolio hedge overlay — DXY/bond correlation hedge sizing and timing</span></a>
+        <a class="sm-item" href="results.html" target="_blank"><span class="sm-item-name">📄 Tearsheet</span><span class="sm-item-desc">Full performance tearsheet across all live systems — Sharpe, Calmar, drawdown, monthly returns</span></a>
+      </div>
+
+      <div class="sm-group" data-group="wip">
+        <div class="sm-group-hd" style="color:#64748b">WIP — Work in Progress</div>
+        <a class="sm-item" href="indexv2.html" target="_blank" style="opacity:.7"><span class="sm-item-name">📊 Market State v2</span><span class="sm-item-desc">Experimental rework of the main dashboard — in progress, not production-ready</span></a>
+        <a class="sm-item" href="level-chart-demo.html" target="_blank" style="opacity:.7"><span class="sm-item-name">🧱 Level Chart Demo</span><span class="sm-item-desc">Development demo for the levelChart Tier-2 brick (Lightweight-Charts renderer)</span></a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  window.openSiteMap=function(){
+    document.getElementById('smOverlay').classList.add('open');
+    document.getElementById('smSearch').value='';
+    smFilter('');
+    setTimeout(function(){document.getElementById('smSearch').focus();},80);
+  };
+  window.closeSiteMap=function(){document.getElementById('smOverlay').classList.remove('open');};
+  window.smFilter=function(q){
+    var s=q.trim().toLowerCase();
+    document.querySelectorAll('#smBody .sm-item').forEach(function(el){
+      var txt=(el.textContent||'').toLowerCase();
+      el.classList.toggle('sm-hidden',s.length>0&&txt.indexOf(s)<0);
+    });
+    document.querySelectorAll('#smBody .sm-group').forEach(function(g){
+      var visible=Array.from(g.querySelectorAll('.sm-item')).some(function(i){return!i.classList.contains('sm-hidden');});
+      g.style.display=visible?'':'none';
+    });
+  };
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape')closeSiteMap();
+  });
+})();
+</script>
 </body>
 </html>
