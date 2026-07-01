@@ -9673,23 +9673,6 @@ app.post('/api/regime-history-export', async (req, res) => {
   res.json({ ok: true, uploaded: results.filter(r => r.ok).length, results });
 });
 
-// All other /api/* routes — call _worker.js and return the JSON response.
-app.all('/api/*', async (req, res) => {
-  try {
-    const response = await callWorker(req);
-    res.status(response.status);
-    response.headers.forEach((val, key) => {
-      const k = key.toLowerCase();
-      // Drop hop-by-hop headers that Express handles itself
-      if (k !== 'content-encoding' && k !== 'transfer-encoding') res.setHeader(key, val);
-    });
-    res.send(await response.text());
-  } catch (e) {
-    console.error('[API]', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // ── Pivot Spike Backtest ─────────────────────────────────────────────────────
 
 const psJobs = new Map();
@@ -9710,12 +9693,10 @@ app.post('/api/pivot-spike/run', express.json({ limit: '64kb' }), (req, res) => 
     oosFrac:     Math.min(Math.max(num(b.oosFrac, 0.35), 0.1), 0.6),
     costPct:     num(b.costPct, 0.0002),
   };
-
   const jobId     = `ps_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   _purgeStalePsJobs();
   psJobs.set(jobId, { status: 'running', startedAt, log: [] });
-
   (async () => {
     const log = [];
     const onLog = msg => { log.push(msg); console.log(`[pivot-spike] ${msg}`); };
@@ -9728,7 +9709,6 @@ app.post('/api/pivot-spike/run', express.json({ limit: '64kb' }), (req, res) => 
       psJobs.set(jobId, { status: 'error', error: msg, log, startedAt });
     }
   })();
-
   res.json({ ok: true, jobId });
 });
 
@@ -9740,6 +9720,23 @@ app.get('/api/pivot-spike/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// All other /api/* routes — call _worker.js and return the JSON response.
+app.all('/api/*', async (req, res) => {
+  try {
+    const response = await callWorker(req);
+    res.status(response.status);
+    response.headers.forEach((val, key) => {
+      const k = key.toLowerCase();
+      // Drop hop-by-hop headers that Express handles itself
+      if (k !== 'content-encoding' && k !== 'transfer-encoding') res.setHeader(key, val);
+    });
+    res.send(await response.text());
+  } catch (e) {
+    console.error('[API]', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Dashboard static assets — served from project root.
