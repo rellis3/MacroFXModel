@@ -94,7 +94,7 @@
     <a href="hub.html" class="back">← Hub</a>
     <div>
       <h1>Pivot Spike Backtest</h1>
-      <div class="sub">Raw premise test: do Traditional daily pivots show mean-reversion edge on M1 data? · No filters · IS/OOS split · Realistic costs</div>
+      <div class="sub">Traditional daily pivot mean-reversion · configurable session/level filters · IS/OOS split · Realistic costs</div>
     </div>
   </div>
 </header>
@@ -138,6 +138,34 @@
     <div>
       <label>Round-trip Cost (pct)</label>
       <input id="costPct" type="number" value="0.0002" step="0.00005" min="0" max="0.002" />
+    </div>
+    <div>
+      <label>Session Filter</label>
+      <select id="sessions">
+        <option value="all">All sessions</option>
+        <option value="asian_ny">Asian + NY</option>
+        <option value="asian">Asian only</option>
+        <option value="london">London only</option>
+        <option value="ny">NY only</option>
+      </select>
+    </div>
+    <div>
+      <label>Level Filter</label>
+      <select id="levFilter">
+        <option value="all">All levels</option>
+        <option value="s1s2">S1 + S2 (longs)</option>
+        <option value="s1">S1 only</option>
+        <option value="r1r2">R1 + R2 (shorts)</option>
+        <option value="r1">R1 only</option>
+      </select>
+    </div>
+    <div>
+      <label>Max R:R cap (0 = off)</label>
+      <input id="maxRR" type="number" value="0" step="0.5" min="0" max="20" />
+    </div>
+    <div>
+      <label>Min R:R gate (0 = off)</label>
+      <input id="minRR" type="number" value="0" step="0.25" min="0" max="10" />
     </div>
   </div>
   <button id="run">Run Spike</button>
@@ -371,6 +399,14 @@ async function poll(jobId) {
 
 // ── Run ──────────────────────────────────────────────────────────────────────
 $('run').onclick = async () => {
+  const sessMap = {
+    all: null, asian: ['Asian'], asian_ny: ['Asian','NY'],
+    london: ['London'], ny: ['NY'],
+  };
+  const levMap = {
+    all: null, s1s2: ['S1','S2'], s1: ['S1'],
+    r1r2: ['R1','R2'], r1: ['R1'],
+  };
   const body = {
     pair:        $('pair').value,
     touchTolAtr: +$('touchTolAtr').value,
@@ -378,6 +414,10 @@ $('run').onclick = async () => {
     maxBars:     +$('maxBars').value,
     oosFrac:     +$('oosFrac').value,
     costPct:     +$('costPct').value,
+    sessions:    sessMap[$('sessions').value],
+    levels:      levMap[$('levFilter').value],
+    maxRR:       +$('maxRR').value,
+    minRR:       +$('minRR').value,
   };
 
   $('run').disabled = true;

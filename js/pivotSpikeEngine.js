@@ -66,11 +66,15 @@ function buildCurve(ts) {
 export async function runPivotSpike(opts, onLog = () => {}) {
   const {
     pair        = 'eurusd',
-    touchTolAtr = 0.5,   // level touch zone = ATR × this
-    slAtr       = 1.0,   // stop = entry ± ATR × this
-    maxBars     = 120,   // max M1 bars to hold (120 = 2 h)
+    touchTolAtr = 0.5,    // level touch zone = ATR × this
+    slAtr       = 1.0,    // stop = entry ± ATR × this
+    maxBars     = 120,    // max M1 bars to hold (120 = 2 h)
     oosFrac     = 0.35,
     costPct     = 0.0002, // round-trip cost as fraction of price
+    sessions    = null,   // null = all; or e.g. ['Asian'] ['Asian','NY']
+    levels: levFilter = null, // null = all; or e.g. ['S1'] ['S1','S2']
+    maxRR       = 0,      // 0 = off; cap structural R:R — replace TP with entry ± maxRR×slDist
+    minRR       = 0,      // 0 = off; skip touch if structural R:R < this
   } = opts;
 
   const pairKey = pair.toLowerCase().replace('/', '');
@@ -129,19 +133,28 @@ export async function runPivotSpike(opts, onLog = () => {}) {
 
     // Level definitions — support → long reversion, resistance → short reversion
     // TP = next level toward PP (structure-based, not arbitrary R-multiple)
-    const levels = [
+    const allLevDefs = [
       { name: 'S2', price: s2, side: 'long',  tp: s1 },
       { name: 'S1', price: s1, side: 'long',  tp: pp },
       { name: 'R1', price: r1, side: 'short', tp: pp },
       { name: 'R2', price: r2, side: 'short', tp: r1 },
     ];
+    const levDefs = levFilter ? allLevDefs.filter(l => levFilter.includes(l.name)) : allLevDefs;
 
     const firedToday = new Set(); // one trade per level per day
 
     for (let bi = 0; bi < todayBars.length; bi++) {
       const bar = todayBars[bi];
 
-      for (const lev of levels) {
+      // Compute session once per bar for session filtering
+      const hour    = new Date(bar.time * 1000).getUTCHours();
+      const session = hour >= 22 || hour < 7 ? 'Asian'
+                    : hour < 12              ? 'London'
+                    : hour < 17              ? 'NY'
+                    :                          'Other';
+      if (sessions && !sessions.includes(session)) continue;
+
+      for (const lev of levDefs) {
         if (firedToday.has(lev.name)) continue;
 
         // Touch: bar range overlaps level ± tolerance
@@ -149,30 +162,36 @@ export async function runPivotSpike(opts, onLog = () => {}) {
 
         firedToday.add(lev.name);
 
-        const entry = lev.price;
-        const sl    = lev.side === 'long'
-          ? entry - atr * slAtr
-          : entry + atr * slAtr;
+        const entry  = lev.price;
+        const slDist = atr * slAtr;
+        const sl     = lev.side === 'long' ? entry - slDist : entry + slDist;
 
-        const walked = walkToExit(todayBars, bi, sl, lev.tp, maxBars, lev.side);
+        // Structural R:R from level spacing
+        const structuralRR = Math.abs(lev.tp - entry) / slDist;
+
+        // Min R:R gate — skip low-reward setups
+        if (minRR > 0 && structuralRR < minRR) continue;
+
+        // Max R:R cap — replace TP when structural target is unreachably far
+        let tp = lev.tp;
+        let rr = structuralRR;
+        if (maxRR > 0 && structuralRR > maxRR) {
+          tp  = lev.side === 'long' ? entry + maxRR * slDist : entry - maxRR * slDist;
+          rr  = maxRR;
+        }
+
+        const walked = walkToExit(todayBars, bi, sl, tp, maxBars, lev.side);
 
         const rawPnl = lev.side === 'long'
           ? (walked.exit - entry) / entry
           : (entry - walked.exit) / entry;
         const pnl = rawPnl - costPct; // costPct = full round-trip
 
-        const hour    = new Date(bar.time * 1000).getUTCHours();
-        const session = hour >= 22 || hour < 7 ? 'Asian'
-                      : hour < 12              ? 'London'
-                      : hour < 17              ? 'NY'
-                      :                          'Other';
-
         trades.push({
           date, isOOS,
           level: lev.name, side: lev.side,
-          entry, sl, tp: lev.tp, ...walked,
-          pnl, dayBias, session,
-          rr: Math.abs(lev.tp - entry) / Math.abs(sl - entry),
+          entry, sl, tp, ...walked,
+          pnl, dayBias, session, rr,
         });
       }
     }
@@ -215,7 +234,7 @@ export async function runPivotSpike(opts, onLog = () => {}) {
     meta: {
       pair: pairKey, oosFrom,
       totalBars: allBars.length, totalDays: dates.length,
-      opts: { touchTolAtr, slAtr, maxBars, oosFrac, costPct },
+      opts: { touchTolAtr, slAtr, maxBars, oosFrac, costPct, sessions, levFilter, maxRR, minRR },
     },
   };
 }
