@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pivot Spike Backtest</title>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --panel:   #161b22;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --text2:   #8b949e;
+      --text3:   #58a6ff;
+      --accent:  #58a6ff;
+      --green:   #3fb950;
+      --red:     #f85149;
+      --amber:   #d29922;
+      --purple:  #a371f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; min-height: 100vh; }
+
+    header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 18px; font-weight: 700; color: var(--accent); }
+    header .sub { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 3px; }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 16px 20px 40px; }
+
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+    .card-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .cfg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+
+    label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+    input, select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 8px; border-radius: 5px; font-size: 12px; font-family: 'DM Mono', monospace;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+    button#run {
+      background: var(--accent); color: #0d1117; border: none; padding: 8px 20px;
+      border-radius: 5px; font-weight: 700; font-size: 13px; cursor: pointer;
+    }
+    button#run:disabled { opacity: .5; cursor: default; }
+
+    #status { margin-top: 8px; font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; min-height: 18px; white-space: pre-wrap; }
+
+    .verdict { border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: 700; }
+    .verdict.pass  { background: rgba(63,185,80,.15); border: 1px solid var(--green); color: var(--green); }
+    .verdict.weak  { background: rgba(210,153,34,.15); border: 1px solid var(--amber); color: var(--amber); }
+    .verdict.fail  { background: rgba(248,81,73,.15);  border: 1px solid var(--red);   color: var(--red); }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+    .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; }
+    .stat-lbl { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+    .stat-val { font-size: 16px; font-weight: 700; margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
+    .neu { color: var(--text2); }
+    .amb { color: var(--amber); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 6px 8px; font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); }
+    td { padding: 6px 8px; border-bottom: 1px solid rgba(48,54,61,.6); font-family: 'DM Mono', monospace; }
+    tr:last-child td { border-bottom: none; }
+    tr.hover:hover { background: rgba(88,166,255,.05); }
+
+    #chartBox { height: 240px; }
+
+    .log-box { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 10px;
+               font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2);
+               max-height: 120px; overflow-y: auto; white-space: pre-wrap; }
+
+    .split-badge { display: inline-block; font-size: 10px; font-family: 'DM Mono', monospace;
+                   background: rgba(88,166,255,.1); color: var(--accent); border-radius: 3px;
+                   padding: 2px 6px; margin-left: 8px; }
+    .section-hdr { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase;
+                   letter-spacing: .06em; margin-bottom: 6px; }
+
+    a.back { font-size: 11px; color: var(--text2); text-decoration: none; font-family: 'DM Mono', monospace; }
+    a.back:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="hub.html" class="back">← Hub</a>
+    <div>
+      <h1>Pivot Spike Backtest</h1>
+      <div class="sub">Raw premise test: do Traditional daily pivots show mean-reversion edge on M1 data? · No filters · IS/OOS split · Realistic costs</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- Config ----------------------------------------------------------------->
+<div class="card">
+  <div class="card-title">Configuration</div>
+  <div class="cfg-grid">
+    <div>
+      <label>Pair</label>
+      <select id="pair">
+        <option value="eurusd">EUR/USD</option>
+        <option value="gbpusd">GBP/USD</option>
+        <option value="usdjpy">USD/JPY</option>
+        <option value="audusd">AUD/USD</option>
+        <option value="nzdusd">NZD/USD</option>
+        <option value="usdcad">USD/CAD</option>
+        <option value="usdchf">USD/CHF</option>
+        <option value="eurjpy">EUR/JPY</option>
+        <option value="gbpjpy">GBP/JPY</option>
+      </select>
+    </div>
+    <div>
+      <label>Touch Tolerance (ATR ×)</label>
+      <input id="touchTolAtr" type="number" value="0.5" step="0.1" min="0.1" max="2" />
+    </div>
+    <div>
+      <label>SL Distance (ATR ×)</label>
+      <input id="slAtr" type="number" value="1.0" step="0.1" min="0.2" max="3" />
+    </div>
+    <div>
+      <label>Max Hold (M1 bars)</label>
+      <input id="maxBars" type="number" value="120" step="10" min="10" max="480" />
+    </div>
+    <div>
+      <label>OOS Fraction</label>
+      <input id="oosFrac" type="number" value="0.35" step="0.05" min="0.1" max="0.6" />
+    </div>
+    <div>
+      <label>Round-trip Cost (pct)</label>
+      <input id="costPct" type="number" value="0.0002" step="0.00005" min="0" max="0.002" />
+    </div>
+  </div>
+  <button id="run">Run Spike</button>
+  <div id="status"></div>
+</div>
+
+<!-- Results (hidden until run) -------------------------------------------->
+<div id="results" style="display:none">
+
+  <!-- Verdict -->
+  <div id="verdictBox" class="verdict"></div>
+
+  <!-- IS / OOS summary cards -->
+  <div class="grid2" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-title">In-Sample <span id="isSplitBadge" class="split-badge"></span></div>
+      <div class="stat-grid" id="isStats"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Out-of-Sample <span id="oosSplitBadge" class="split-badge"></span></div>
+      <div class="stat-grid" id="oosStats"></div>
+    </div>
+  </div>
+
+  <!-- Equity curve -->
+  <div class="card">
+    <div class="card-title">Equity Curve — cumulative PnL (fraction of capital) <span style="font-size:10px;font-weight:400;color:var(--text2);">grey = IS · coloured = OOS</span></div>
+    <div id="chartBox"></div>
+  </div>
+
+  <!-- Per-level + splits -->
+  <div class="grid2" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-title">Per-Level Breakdown (OOS)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Level</th><th>n</th><th>Win%</th><th>PF</th><th>Sharpe</th><th>MaxDD%</th>
+          </tr>
+        </thead>
+        <tbody id="levelTable"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Day Bias &amp; Session (OOS)</div>
+      <div class="section-hdr" style="margin-top:0;">Day Open Bias</div>
+      <table style="margin-bottom:10px;">
+        <thead><tr><th>Bias</th><th>n</th><th>Sharpe</th><th>Win%</th></tr></thead>
+        <tbody id="biasTable"></tbody>
+      </table>
+      <div class="section-hdr">Session</div>
+      <table>
+        <thead><tr><th>Session</th><th>n</th><th>Sharpe</th><th>Win%</th></tr></thead>
+        <tbody id="sessTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Engine log -->
+  <div class="card">
+    <div class="card-title">Engine Log</div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <!-- Recent OOS trade log -->
+  <div class="card">
+    <div class="card-title">Recent OOS Trades (last 50)</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th><th>Level</th><th>Side</th><th>Session</th><th>Bias</th>
+          <th>Entry</th><th>Exit</th><th>Outcome</th><th>PnL%</th><th>R:R</th>
+        </tr>
+      </thead>
+      <tbody id="tradeTable"></tbody>
+    </table>
+  </div>
+
+</div><!-- /results -->
+
+</main>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = (v, dp = 4) => v == null ? '—' : (+v).toFixed(dp);
+const pct = v => v == null ? '—' : (v * 100).toFixed(2) + '%';
+const col = v => v == null ? 'neu' : v > 0.3 ? 'pos' : v > 0 ? 'amb' : 'neg';
+
+function statCard(lbl, val, cls) {
+  return `<div class="stat"><div class="stat-lbl">${lbl}</div><div class="stat-val ${cls ?? ''}">${val}</div></div>`;
+}
+
+function renderStats(el, s) {
+  if (!s) { el.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px;">No data</div>'; return; }
+  el.innerHTML =
+    statCard('Trades',       s.n,                          '')              +
+    statCard('Win Rate',     pct(s.winRate),               s.winRate > .5 ? 'pos' : 'neg') +
+    statCard('Profit Factor',fmt(s.profitFactor, 2),       s.profitFactor > 1 ? 'pos' : 'neg') +
+    statCard('Sharpe',       fmt(s.sharpe, 2),             col(s.sharpe))  +
+    statCard('Max DD',       pct(Math.abs(s.maxDD)),       'neg')          +
+    statCard('Total PnL',    pct(s.totalPnl),              s.totalPnl > 0 ? 'pos' : 'neg');
+}
+
+function renderLevelTable(tbody, byLevel) {
+  tbody.innerHTML = '';
+  for (const [ln, data] of Object.entries(byLevel)) {
+    const s = data.oos;
+    const tr = document.createElement('tr');
+    tr.className = 'hover';
+    tr.innerHTML = `
+      <td style="font-weight:600;color:var(--text3)">${ln}</td>
+      <td>${s?.n ?? '—'}</td>
+      <td class="${s ? (s.winRate > .5 ? 'pos' : 'neg') : ''}">${pct(s?.winRate)}</td>
+      <td class="${s ? (s.profitFactor > 1 ? 'pos' : 'neg') : ''}">${fmt(s?.profitFactor, 2)}</td>
+      <td class="${col(s?.sharpe)}">${fmt(s?.sharpe, 2)}</td>
+      <td class="neg">${pct(Math.abs(s?.maxDD ?? 0))}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderSmallTable(tbody, rows) {
+  tbody.innerHTML = '';
+  for (const [label, s] of rows) {
+    const tr = document.createElement('tr');
+    tr.className = 'hover';
+    tr.innerHTML = `
+      <td style="font-weight:600">${label}</td>
+      <td>${s?.n ?? '—'}</td>
+      <td class="${col(s?.sharpe)}">${fmt(s?.sharpe, 2)}</td>
+      <td class="${s ? (s.winRate > .5 ? 'pos' : 'neg') : ''}">${pct(s?.winRate)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+// ── Chart ────────────────────────────────────────────────────────────────────
+let chart = null;
+
+function buildChart(isCurve, oosCurve) {
+  $('chartBox').innerHTML = '';
+  chart = LightweightCharts.createChart($('chartBox'), {
+    layout:     { background: { color: '#0d1117' }, textColor: '#8b949e' },
+    grid:       { vertLines: { color: '#1c2128' }, horzLines: { color: '#1c2128' } },
+    crosshair:  { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#30363d' },
+    timeScale:  { borderColor: '#30363d', timeVisible: true },
+    width:  $('chartBox').clientWidth,
+    height: 240,
+  });
+
+  // IS series — grey
+  const isSeries = chart.addLineSeries({ color: '#58606a', lineWidth: 1, priceLineVisible: false });
+  // OOS series — green or red depending on final value
+  const oosColor = (oosCurve.at(-1)?.cum ?? 0) >= 0 ? '#3fb950' : '#f85149';
+  const oosSeries = chart.addLineSeries({ color: oosColor, lineWidth: 2, priceLineVisible: false });
+
+  if (isCurve.length) {
+    isSeries.setData(isCurve.map(p => ({ time: p.date, value: p.cum })));
+  }
+  if (oosCurve.length) {
+    // Offset OOS so it visually continues from IS end
+    const isEnd = isCurve.at(-1)?.cum ?? 0;
+    oosSeries.setData(oosCurve.map(p => ({ time: p.date, value: p.cum + isEnd })));
+  }
+
+  chart.timeScale().fitContent();
+}
+
+// ── Verdict ──────────────────────────────────────────────────────────────────
+function setVerdict(oos) {
+  const box = $('verdictBox');
+  if (!oos) { box.style.display = 'none'; return; }
+  const sh = oos.sharpe;
+  if (sh > 0.4) {
+    box.className = 'verdict pass';
+    box.textContent = `EDGE DETECTED ✓ — OOS Sharpe ${sh.toFixed(2)} · Worth building the full system`;
+  } else if (sh > 0) {
+    box.className = 'verdict weak';
+    box.textContent = `WEAK SIGNAL ⚠ — OOS Sharpe ${sh.toFixed(2)} · Marginal edge; refine filters before committing`;
+  } else {
+    box.className = 'verdict fail';
+    box.textContent = `NO EDGE ✗ — OOS Sharpe ${sh.toFixed(2)} · The raw premise does not hold; investigate before building`;
+  }
+}
+
+// ── Trade log ────────────────────────────────────────────────────────────────
+function renderTradeTable(trades) {
+  const oosTrades = trades.filter(t => t.isOOS).slice(-50);
+  const tbody = $('tradeTable');
+  tbody.innerHTML = '';
+  for (const t of oosTrades.reverse()) {
+    const pnlPct = (t.pnl * 100).toFixed(3);
+    const tr = document.createElement('tr');
+    tr.className = 'hover';
+    tr.innerHTML = `
+      <td>${t.date}</td>
+      <td style="color:var(--text3);font-weight:600">${t.level}</td>
+      <td>${t.side}</td>
+      <td>${t.session}</td>
+      <td class="${t.dayBias === 'bull' ? 'pos' : 'neg'}">${t.dayBias}</td>
+      <td>${t.entry?.toFixed(5)}</td>
+      <td>${t.exit?.toFixed(5)}</td>
+      <td class="${t.outcome === 'tp' ? 'pos' : t.outcome === 'sl' ? 'neg' : 'amb'}">${t.outcome}</td>
+      <td class="${t.pnl >= 0 ? 'pos' : 'neg'}">${pnlPct}%</td>
+      <td>${t.rr?.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+// ── Poll ─────────────────────────────────────────────────────────────────────
+async function poll(jobId) {
+  for (let i = 0; i < 240; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    let res;
+    try { res = await fetch(`/api/pivot-spike/status/${jobId}`).then(r => r.json()); }
+    catch { continue; }
+    if (!res) continue;
+    if (res.status === 'running') {
+      const lines = (res.log ?? []).slice(-3).join('\n');
+      $('status').textContent = `Running… ${res.elapsed ?? 0}s\n${lines}`;
+      continue;
+    }
+    if (res.status === 'done') return res;
+    throw new Error(res.error ?? 'Engine error');
+  }
+  throw new Error('Timed out after 8 minutes');
+}
+
+// ── Run ──────────────────────────────────────────────────────────────────────
+$('run').onclick = async () => {
+  const body = {
+    pair:        $('pair').value,
+    touchTolAtr: +$('touchTolAtr').value,
+    slAtr:       +$('slAtr').value,
+    maxBars:     +$('maxBars').value,
+    oosFrac:     +$('oosFrac').value,
+    costPct:     +$('costPct').value,
+  };
+
+  $('run').disabled = true;
+  $('results').style.display = 'none';
+  $('status').textContent = 'Submitting…';
+
+  try {
+    const start = await fetch('/api/pivot-spike/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+
+    if (!start.ok) throw new Error(start.error ?? 'Failed to start');
+
+    const out = await poll(start.jobId);
+    $('status').textContent = 'Done.';
+
+    // Populate
+    const meta = out.meta ?? {};
+    $('isSplitBadge').textContent  = meta.oosFrom ? `before ${meta.oosFrom}` : '';
+    $('oosSplitBadge').textContent = meta.oosFrom ? `from ${meta.oosFrom}` : '';
+
+    renderStats($('isStats'),  out.is);
+    renderStats($('oosStats'), out.oos);
+
+    setVerdict(out.oos);
+
+    buildChart(out.isCurve ?? [], out.oosCurve ?? []);
+
+    renderLevelTable($('levelTable'), out.byLevel ?? {});
+
+    renderSmallTable($('biasTable'), [
+      ['Bull open', out.byBias?.bull],
+      ['Bear open', out.byBias?.bear],
+    ]);
+    renderSmallTable($('sessTable'), [
+      ['Asian',  out.bySess?.Asian],
+      ['London', out.bySess?.London],
+      ['NY',     out.bySess?.NY],
+    ]);
+
+    $('logBox').textContent = (out.log ?? []).join('\n');
+
+    renderTradeTable(out.trades ?? []);
+
+    $('results').style.display = 'block';
+
+  } catch (e) {
+    $('status').innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
+  } finally {
+    $('run').disabled = false;
+  }
+};
+
+// Resize chart on window resize
+window.addEventListener('resize', () => {
+  if (chart) chart.resize($('chartBox').clientWidth, 240);
+});
+</script>
+</body>
+</html>
