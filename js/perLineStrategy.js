@@ -79,6 +79,12 @@ export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
         // (toward mid), so the chandelier/structural trail can price either entry.
         fStruct: ln.fStruct, fChand: ln.fChand,
         fStructFade: ln.fStructFade, fChandFade: ln.fChandFade,
+        // Exit-study gross PnLs (%-of-price, no cost) — six {fade,follow}×{fixed,
+        // chand,walk} combos simulated along the real M1 path by simulateExitVariants.
+        // Undefined on records refreshed before the exit study shipped (runExitStudy
+        // counts and skips those).
+        exFadeFixed: ln.exFadeFixed, exFadeChand: ln.exFadeChand, exFadeWalk: ln.exFadeWalk,
+        exFollowFixed: ln.exFollowFixed, exFollowChand: ln.exFollowChand, exFollowWalk: ln.exFollowWalk,
       });
     }
   }
@@ -423,4 +429,83 @@ export function runSensitivity(touchesByPair, { base = {}, grids = {}, costByPai
     sweeps[param] = vals.map(v => { const r = evalCombo({ ...B, [param]: v }); remember(r); return r; });
   const baseRow = evalCombo(B); remember(baseRow);
   return { base: B, baseRow, sweeps, nTrials: trials.length, trialSharpesRaw: trials.map(t => t.sharpeRaw) };
+}
+
+// ── 7) Exit study — fixed vs chandelier vs walk-forward (breakeven) stop ───────
+// Holds the ENTRY policy (same buildPolicy learned on IS) fixed and only swaps the
+// EXIT rule, so any Sharpe difference is the stop behaviour, not the entry edge.
+// For each non-skip OOS touch the study prices all three rules from the analyser's
+// pre-simulated gross PnLs (t.exFadeFixed / …Chand / …Walk etc. — computed along
+// the real M1 path by simulateExitVariants), then nets cost + follow-slip.
+// Aggregates each rule THREE ways (overall / fade-only / follow-only) via the
+// daily portfolio series (Sharpe/CAGR/DD) + summarizeTrades (expectancy/winRate).
+//   splitFrac — IS/OOS split (IS = date < splitDate, learns the policy).
+//   minN/marginPct — passed to buildPolicy (a cell trades only if its IS edge pays).
+//   costByPair/slipByPair — per-pair friction stamped onto each touch (mirrors runRigor).
+const _cap = s => s.charAt(0).toUpperCase() + s.slice(1);   // 'fade' → 'Fade'
+export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
+                                              trailFrac = 0.5, beTrigger = 0.5,
+                                              costByPair = {}, slipByPair = {} } = {}) {
+  // Stamp per-pair costs (mirror runRigor) so buildPolicy + the OOS netting use the
+  // right friction.
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
+  const all = Object.values(touchesByPair).flat().sort(byDate);
+  if (!all.length) return null;
+  const splitDate = all[Math.floor(all.length * splitFrac)]?.date ?? null;
+  // Entry policy learned on IS (same as the book), held fixed across all three exits.
+  const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
+
+  const RULES = ['fixed', 'chand', 'walk'];
+  // trades[rule][group] = {date,pnl}[]  where group ∈ overall|fade|follow.
+  const trades = Object.fromEntries(RULES.map(r => [r, { overall: [], fade: [], follow: [] }]));
+  let missing = 0;
+  for (const t of all) {
+    if (t.date < splitDate) continue;                       // OOS only
+    const p = policy[t.cell];
+    if (!p || p.decision === 'skip') continue;              // entry policy says don't trade this cell
+    const d = p.decision;                                   // 'fade' | 'follow'
+    const cost = (t.cost ?? DEFAULT_COST_PCT.fx) + (d === 'follow' ? (t.slip ?? DEFAULT_SLIP_PCT.fx) : 0);
+    for (const rule of RULES) {
+      const gross = t['ex' + _cap(d) + _cap(rule)];
+      if (gross == null) { missing++; continue; }           // older record without the ex* field
+      const pnl = +(gross - cost).toFixed(5);
+      const row = { date: t.date, pnl };
+      trades[rule].overall.push(row);
+      trades[rule][d].push(row);
+    }
+  }
+
+  const summarize = (rows) => {
+    const daily = dailySeries(rows);
+    const port  = portfolioStats(daily);                    // honest Sharpe/CAGR/maxDD (daily series)
+    const trd   = summarizeTrades(rows.map(r => r.pnl), rows.map(r => r.date));   // expectancy/winRate
+    // portfolio Sharpe/CAGR/maxDD are the headline (daily, concurrency-aware); take
+    // expectancy + winRate from summarizeTrades. trades = OOS trade count.
+    return { sharpe: port.sharpe, cagr: port.cagr, maxDD: port.maxDD, calmar: port.calmar,
+             annVol: port.annVol, psr: port.psr, days: port.days,
+             expectancy: trd.expectancy, winRate: trd.winRate, profitFactor: trd.profitFactor,
+             totalPnl: trd.totalPnl, trades: rows.length };
+  };
+  const rules = {};
+  for (const rule of RULES) rules[rule] = {
+    overall: summarize(trades[rule].overall),
+    fade:    summarize(trades[rule].fade),
+    follow:  summarize(trades[rule].follow),
+  };
+
+  // Winner per group = highest OOS Sharpe with n ≥ 30 (else null).
+  const bestByGroup = {};
+  for (const group of ['overall', 'fade', 'follow']) {
+    let best = null, bestSh = -Infinity;
+    for (const rule of RULES) {
+      const s = rules[rule][group];
+      if ((s.trades ?? 0) >= 30 && (s.sharpe ?? -Infinity) > bestSh) { bestSh = s.sharpe; best = rule; }
+    }
+    bestByGroup[group] = best;
+  }
+
+  return { splitDate, trailFrac, beTrigger, missing, rules, bestByGroup };
 }
