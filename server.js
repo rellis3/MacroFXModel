@@ -9296,9 +9296,11 @@ app.get('/api/hedge-signals/prices', (_req, res) => {
 // time-stop. All math lives in js/hedgeSignalV2Engine.js (unit-tested, no copy).
 // OANDA H4 bars are reachable in Railway, not the sandbox (403 ⇒ no_data, not a bug).
 
-const HEDGE_SIGNAL_V2_CFG_KEY = 'hedge_signal_v2_cfg';
-const HEDGE_V2_SIGNALS_PATH   = path.join(__dirname, 'bot', 'data', 'hedge_signals_v2.json');
-const HEDGE_V2_BARS_TTL       = 60 * 60 * 1000;   // reuse fetched bars for 1h
+const HEDGE_SIGNAL_V2_CFG_KEY  = 'hedge_signal_v2_cfg';
+const HEDGE_V2_SIGNALS_PATH    = path.join(__dirname, 'bot', 'data', 'hedge_signals_v2.json');
+const HEDGE_V2_BARS_TTL        = 60 * 60 * 1000;   // reuse fetched bars for 1h
+// Server-level defaults — enabled flag lives here, not in the engine (which is pure math).
+const HEDGE_V2_SERVER_DEFAULTS = { ...HEDGE_V2_DEFAULTS, enabled: true };
 
 // Candidate pairs likely to cointegrate — the gate filters which actually do.
 // Equity indices co-move strongly (the colleague's DAX/SP, DOW/NAS live here),
@@ -9336,12 +9338,15 @@ async function computeHedgeSignalsV2(force = false) {
   _hedgeV2Running = true;
   try {
     if (!process.env.OANDA_KEY) return { status: 'no_data', error: 'OANDA_KEY not set' };
+    // Load config first so we skip the OANDA fetch entirely when disabled.
+    const cfgRaw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
+    const cfg    = cfgRaw ? { ...HEDGE_V2_SERVER_DEFAULTS, ...JSON.parse(cfgRaw) } : { ...HEDGE_V2_SERVER_DEFAULTS };
+    if (!cfg.enabled && !force) return { status: 'disabled' };
+
     const closes = await _hedgeV2Bars(2, force);
     if (!Object.keys(closes).length)
       return { status: 'no_data', error: 'No OANDA bars (expected in sandbox; works in Railway)' };
 
-    const cfgRaw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
-    const cfg    = cfgRaw ? { ...HEDGE_V2_DEFAULTS, ...JSON.parse(cfgRaw) } : { ...HEDGE_V2_DEFAULTS };
     const now    = new Date().toISOString();
     const signals = [];
     for (const [a, b] of HEDGE_V2_PAIRS) {
@@ -9351,8 +9356,8 @@ async function computeHedgeSignalsV2(force = false) {
       if (sig) signals.push({ pair_a: a, pair_b: b, ...sig, updated: now });
     }
     const out = { last_run: now, signals };
-    fs.mkdirSync(path.dirname(HEDGE_V2_SIGNALS_PATH), { recursive: true });
-    fs.writeFileSync(HEDGE_V2_SIGNALS_PATH, JSON.stringify(out, null, 2));
+    await fs.promises.mkdir(path.dirname(HEDGE_V2_SIGNALS_PATH), { recursive: true });
+    await fs.promises.writeFile(HEDGE_V2_SIGNALS_PATH, JSON.stringify(out, null, 2));
     return { status: 'ok', total: signals.length, active: signals.filter(s => s.isEntry).length };
   } catch (e) {
     console.error('[HEDGE-SIG-V2]', e.message);
@@ -9375,11 +9380,11 @@ app.post('/api/hedge-signals-v2/check', async (_req, res) => {
 
 app.get('/api/hedge-signals-v2/config', async (_req, res) => {
   const raw = await kv.get(HEDGE_SIGNAL_V2_CFG_KEY).catch(() => null);
-  res.json(raw ? { ...HEDGE_V2_DEFAULTS, ...JSON.parse(raw) } : { ...HEDGE_V2_DEFAULTS });
+  res.json(raw ? { ...HEDGE_V2_SERVER_DEFAULTS, ...JSON.parse(raw) } : { ...HEDGE_V2_SERVER_DEFAULTS });
 });
 
 app.put('/api/hedge-signals-v2/config', express.json({ limit: '64kb' }), async (req, res) => {
-  const cfg = { ...HEDGE_V2_DEFAULTS, ...(req.body || {}) };
+  const cfg = { ...HEDGE_V2_SERVER_DEFAULTS, ...(req.body || {}) };
   await kv.put(HEDGE_SIGNAL_V2_CFG_KEY, JSON.stringify(cfg)).catch(() => {});
   res.json({ ok: true, cfg });
 });
@@ -9423,8 +9428,10 @@ app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
 });
 
 // Recompute live v2 signals on the same cadence as v1 (5 min after boot, then 15-min).
+// H4 bars only change every 4 hours — hourly cadence gives the same signal without
+// burning OANDA quota or CPU on 14 redundant identical runs per hour.
 setTimeout(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
-setInterval(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 15 * 60_000);
+setInterval(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
 
 // ── Regime log backfill (pure Node.js) ──────────────────────────────────────
 // Native JS log parser — no Python subprocess required.

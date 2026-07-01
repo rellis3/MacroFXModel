@@ -62,6 +62,13 @@ td{font-family:var(--mono)}
 .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:s .7s linear infinite;vertical-align:-1px}
 @keyframes s{to{transform:rotate(360deg)}}
 code{font-family:var(--mono);background:var(--bg3);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--cyan)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.toggle-row label{font-size:12px;color:var(--text)}
+.toggle{width:38px;height:20px;background:var(--bg4);border:1px solid var(--border2);border-radius:999px;position:relative;cursor:pointer;transition:.2s}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s}
+.toggle.on::after{left:20px}
+.btn.saved{background:#166534;border-color:#166534;color:#bbf7d0}
 </style>
 </head>
 <body>
@@ -102,6 +109,15 @@ code{font-family:var(--mono);background:var(--bg3);padding:1px 5px;border-radius
   <div class="sub" style="margin-bottom:12px">Both engines run on the same OANDA H4 bars. A change only "wins" on <b>OOS</b> Sharpe with ≥30 OOS trades (house rule).</div>
   <div id="btStatus" class="muted"></div>
   <div id="btResult"></div>
+</div>
+
+<div class="panel" id="cfgPanel" style="display:none">
+  <h2>Config</h2>
+  <div class="toggle-row">
+    <label>Auto-refresh enabled <span class="muted" style="font-size:11px">(hourly on Railway — disable to stop OANDA fetches)</span></label>
+    <div class="toggle on" id="enabled-toggle" onclick="this.classList.toggle('on')"></div>
+  </div>
+  <button class="btn primary" id="save-cfg-btn" onclick="saveConfig()">Save Config</button>
 </div>
 
 <script>
@@ -238,6 +254,28 @@ function renderBacktest(d){
 }
 
 loadSignals();
+
+let _cfg = {};
+async function loadConfig() {
+  try {
+    _cfg = await fetch('/api/hedge-signals-v2/config').then(r => r.json());
+    const tog = $('enabled-toggle');
+    if (tog) tog.classList.toggle('on', _cfg.enabled !== false);
+    $('cfgPanel').style.display = '';
+  } catch(e) { /* ignore on sandbox */ }
+}
+async function saveConfig() {
+  const btn = $('save-cfg-btn');
+  const cfg = { ..._cfg, enabled: $('enabled-toggle').classList.contains('on') };
+  btn.textContent = 'Saving…';
+  try {
+    await fetch('/api/hedge-signals-v2/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+    _cfg = cfg;
+    btn.textContent = '✓ Saved'; btn.classList.add('saved');
+    setTimeout(() => { btn.textContent = 'Save Config'; btn.classList.remove('saved'); }, 2000);
+  } catch(e) { btn.textContent = 'Error'; setTimeout(() => { btn.textContent = 'Save Config'; }, 2000); }
+}
+loadConfig();
 </script>
 </body>
 </html>
