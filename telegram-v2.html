@@ -124,6 +124,14 @@
       </div>
     </div>
     <div class="muted" style="margin-top:8px;">Alerts now fire on <b>live-price approach (~90s loop)</b>, not only at the 30-min refresh — zones recompute every 30 min; proximity is checked continuously.</div>
+
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b style="font-size:13px;">🔎 Why no alerts? <span class="muted" style="font-weight:400;">— live snapshot of the last ~90s alert check</span></b>
+        <button id="alDiag" class="alt">Refresh diagnostic</button>
+      </div>
+      <div id="alDiagOut" class="muted" style="margin-top:8px;">Click <b>Refresh diagnostic</b> to see why the last loop sent 0 (disabled / no bot / no zones / grade too low / out of range / cooldown).</div>
+    </div>
   </div>
 
   <div class="panel" id="policyPanel">
@@ -538,6 +546,28 @@ $('alSave').onclick = async () => {
     $('alStatus').textContent = j.ok ? '✓ saved' : ('save failed: ' + (j.error || '?'));
     $('alStatus').style.color = j.ok ? 'var(--grn)' : 'var(--red)';
   } catch (e) { $('alStatus').textContent = 'save error: ' + e.message; $('alStatus').style.color = 'var(--red)'; }
+};
+
+// Alert diagnostic — "why no alerts?"
+$('alDiag').onclick = async () => {
+  $('alDiagOut').innerHTML = 'loading…';
+  try {
+    const r = await fetch('/api/levels-v2/alert-diag'); const j = await r.json();
+    const d = j.diag;
+    if (!d) { $('alDiagOut').innerHTML = '<span class="muted">no snapshot yet — the ~90s loop hasn\'t run since restart. Try again in a minute.</span>'; return; }
+    const ageS = Math.round((Date.now() - d.at) / 1000);
+    const col = d.sent > 0 ? 'var(--grn)' : (d.reason || '').startsWith('sent') ? 'var(--grn)' : 'var(--amb)';
+    const head = `<div style="color:${col};margin-bottom:6px;"><b>${d.sent > 0 ? `✓ sent ${d.sent}` : '0 sent'}</b> · ${d.reason} <span class="muted">(${ageS}s ago · every ${Math.round((j.alertIntervalMs||90000)/1000)}s · enabled=${d.enabled} · minGrade ${d.minGrade} · bot ${d.credsSource || 'none'})</span></div>`;
+    const rows = (d.perPair || []).filter(p => p.zones > 0).map(p => {
+      const g = Object.entries(p.grades || {}).map(([k, v]) => `${k}:${v}`).join(' ') || '—';
+      const near = p.nearestQualPips != null ? `${p.nearestQualPips}p (prox ${p.proxPips}p)` : '—';
+      return `<tr><td>${p.sym}</td><td class="mono">${p.zones}</td><td class="mono">${g}</td><td class="mono">${p.qual ?? 0}</td><td class="mono">${near}</td><td class="mono">${p.inRange ?? 0}</td><td class="mono">${p.fired ?? 0}</td></tr>`;
+    }).join('');
+    const empty = (d.perPair || []).filter(p => !p.zones).map(p => p.sym);
+    $('alDiagOut').innerHTML = head +
+      (rows ? `<table style="font-size:12px;"><thead><tr><th>Pair</th><th>zones</th><th>grades</th><th>≥min</th><th>nearest ≥min</th><th>in range</th><th>fired</th></tr></thead><tbody>${rows}</tbody></table>` : '<span class="muted">no pair had cached zones.</span>') +
+      (empty.length ? `<div class="muted" style="margin-top:6px;">no zones cached: ${empty.join(', ')}</div>` : '');
+  } catch (e) { $('alDiagOut').innerHTML = 'error: ' + e.message; }
 };
 
 // v2's own Telegram bot

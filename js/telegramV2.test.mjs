@@ -13,7 +13,7 @@ import { freezePolicy, isUsablePolicy, deriveBands } from './levelsV2Learn.js';
 import { extractTouches } from './perLineStrategy.js';
 import { buildRangeLadder } from './rangeLineAnalyser.js';
 import { recordEntries, resolvePair, ledgerStats, refitFromLedger } from './entryLedgerV2.js';
-import { selectAlerts, alertKey, pruneCooldowns } from './alertV2Core.js';
+import { selectAlerts, alertKey, pruneCooldowns, GRADE_RANK } from './alertV2Core.js';
 import { countWithin, confluenceBucket } from './confluenceCount.js';
 import { mergeConfluence } from './confluenceTest.js';
 import { swingFibLevels, LEVEL_SOURCES } from './levelSources.js';
@@ -224,6 +224,9 @@ console.log('[alertV2Core]');
   const bGrade = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg: { ...cfg, minGrade: 'B' }, cooldowns: {}, now });
   ok('minGrade B includes the B zone', bGrade.alerts.length === 2);
   ok('prune drops stale', Object.keys(pruneCooldowns({ old: now - 25 * 3600_000, fresh: now }, now)).length === 1);
+  // GRADE_RANK exported + ordered (the alert-diag readout ranks zones by it)
+  ok('GRADE_RANK ordered A+ > A > B > C > SKIP',
+    GRADE_RANK['A+'] > GRADE_RANK.A && GRADE_RANK.A > GRADE_RANK.B && GRADE_RANK.B > GRADE_RANK.C && GRADE_RANK.C > GRADE_RANK.SKIP);
 }
 
 // ── 7. confluence helpers ────────────────────────────────────────────────────
