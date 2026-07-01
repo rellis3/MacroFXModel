@@ -1,6 +1,8 @@
 // Bot configuration page — manages both the Telegram signal bot (bot_config KV)
 // and the Backtest/MT5 bot (backtestsystem_live_config KV).
 
+import { createLevelChart } from './levelChart.js';
+
 // ── Telegram bot defaults ─────────────────────────────────────────────────────
 
 const DEFAULTS = {
@@ -2780,6 +2782,8 @@ const VB_DEFAULTS = {
   max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
 };
 let _vbCfg = { ...VB_DEFAULTS };
+// Cached latest status + plan so the live-lines modal reads a row without refetch.
+let _vbLastStatus = null, _vbLastPlan = null;
 
 function renderVbForm() {
   const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
@@ -2836,6 +2840,9 @@ async function loadVbLiveStatus() {
   const uniEl = document.getElementById('vbUniN');
   try {
     const [st, planWrap] = await Promise.all([kvGet('volatility_bot_status'), kvGet('volatility_bot_plan')]);
+    // Cache for the live-lines modal so openVbChart reads a row without refetching.
+    _vbLastStatus = st || null;
+    _vbLastPlan = planWrap || null;
     if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; return; }
     if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
     if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
@@ -2849,7 +2856,7 @@ async function loadVbLiveStatus() {
     if (body) {
       const rows = st.lines || [];
       if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no levels yet — waiting for the daily plan</td></tr>';
+        body.innerHTML = '<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no levels yet — waiting for the daily plan</td></tr>';
       } else {
         const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
         const acted = a => (a && a.length) ? a.map(s => s.replace('_', ' ')).join(', ') : '—';
@@ -2867,6 +2874,7 @@ async function loadVbLiveStatus() {
             <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL50_dn)}</td>
             <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL75_dn)}</td>
             <td style="padding:5px 10px;text-align:left;color:var(--text3)">${acted(r.acted)}</td>
+            <td style="padding:5px 10px;text-align:center"><button type="button" onclick="openVbChart('${r.pair}')" title="Live line chart" style="background:var(--s3);color:var(--text2);border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer">📈</button></td>
           </tr>`;
         }).join('');
       }
@@ -2876,6 +2884,169 @@ async function loadVbLiveStatus() {
 
 window.saveVbConfig = saveVbConfig; window.resetVbDefaults = resetVbDefaults;
 window.saveVbCreds = saveVbCreds; window.loadVbLiveStatus = loadVbLiveStatus;
+
+// ── Live per-pair line-chart modal ────────────────────────────────────────────
+// The 8 forecast lines, in table (name, side, arrow) form. Table cell key casing
+// mirrors pylego/strategy/volatility.line_levels: `${NAME}_${side}` (side up/dn).
+const VB_LINE_ROWS = [
+  { key: 'HL75_up', name: 'HL75', side: 'up', label: 'HL75↑' },
+  { key: 'HL50_up', name: 'HL50', side: 'up', label: 'HL50↑' },
+  { key: 'OC75_up', name: 'OC75', side: 'up', label: 'OC75↑' },
+  { key: 'OC50_up', name: 'OC50', side: 'up', label: 'OC50↑' },
+  { key: 'OC50_dn', name: 'OC50', side: 'dn', label: 'OC50↓' },
+  { key: 'OC75_dn', name: 'OC75', side: 'dn', label: 'OC75↓' },
+  { key: 'HL50_dn', name: 'HL50', side: 'dn', label: 'HL50↓' },
+  { key: 'HL75_dn', name: 'HL75', side: 'dn', label: 'HL75↓' },
+];
+
+let _vbChart = null, _vbChartPoll = null, _vbChartPair = null;
+
+// Resolve one line's live STATE from the plan policy + acted list.
+//   acted    → line id in r.acted (already traded this session).
+//   armed    → plan.policy has a fade/follow decision for `${name}_${side}|*`.
+//              Direction: fade+dn→BUY, fade+up→SELL, follow+up→BUY, follow+dn→SELL.
+//              Buckets that disagree on direction → mixed.
+//   idle     → neither.
+function vbLineState(lineRow, acted, policy) {
+  if ((acted || []).includes(lineRow.key)) {
+    return { kind: 'vbActed', tag: 'acted', dir: null, buckets: [] };
+  }
+  const prefix = `${lineRow.name}_${lineRow.side}|`;
+  const dirs = new Set(), armedBuckets = [];
+  for (const [cell, p] of Object.entries(policy || {})) {
+    if (!cell.startsWith(prefix)) continue;
+    const decision = p?.decision;
+    if (decision !== 'fade' && decision !== 'follow') continue;
+    const bucket = cell.slice(prefix.length);
+    // BUY when fading a down-line or following an up-line; else SELL (perLineStrategy.pnlFor).
+    const isBuy = (decision === 'fade' && lineRow.side === 'dn') || (decision === 'follow' && lineRow.side === 'up');
+    dirs.add(isBuy ? 'BUY' : 'SELL');
+    armedBuckets.push({ bucket, decision, dir: isBuy ? 'BUY' : 'SELL' });
+  }
+  if (!armedBuckets.length) return { kind: 'vbIdle', tag: 'idle', dir: null, buckets: [] };
+  if (dirs.size > 1) return { kind: 'vbMixed', tag: 'mixed', dir: 'MIXED', buckets: armedBuckets };
+  const dir = [...dirs][0];
+  return { kind: dir === 'BUY' ? 'vbBuy' : 'vbSell', tag: dir, dir, buckets: armedBuckets };
+}
+
+// Build the Level[] (levelChart.js contract) for one status row.
+function vbBuildLevels(r, policy) {
+  const isJpy = /jpy/i.test(r.pair);
+  const fmt = v => (+v).toFixed(isJpy ? 3 : 5);
+  const L = r.levels || {}, acted = r.acted || [];
+  const levels = [];
+  for (const row of VB_LINE_ROWS) {
+    const price = L[row.key];
+    if (price == null || !Number.isFinite(+price)) continue;
+    const st = vbLineState(row, acted, policy);
+    let label = `${row.label} @ ${fmt(price)}`;
+    if (st.tag === 'acted') label = `${row.label} (acted)`;
+    else if (st.dir === 'BUY' || st.dir === 'SELL') {
+      const vel = st.buckets.map(b => b.bucket).join(',');
+      const dec = st.buckets[0]?.decision?.toUpperCase() || '';
+      label = `${row.label} · ${dec}→${st.dir} (vel: ${vel})`;
+    } else if (st.dir === 'MIXED') {
+      label = `${row.label} · MIXED`;
+    }
+    levels.push({ price: +price, kind: st.kind, label });
+  }
+  if (r.open != null && Number.isFinite(+r.open)) levels.push({ price: +r.open, kind: 'vbOpen', label: `Open @ ${fmt(r.open)}` });
+  if (r.price != null && Number.isFinite(+r.price)) levels.push({ price: +r.price, kind: 'vbPrice', label: `Live @ ${fmt(r.price)}` });
+  return levels;
+}
+
+function vbSetChartStatus(msg) {
+  const el = document.getElementById('vbChartStatus');
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.style.display = 'flex'; }
+  else { el.style.display = 'none'; }
+}
+
+async function vbFetchBars(pair) {
+  const res = await fetch(`/api/volatility-bot/session-m1/${encodeURIComponent(pair)}`);
+  const j = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+  if (!j.ok) throw new Error(j.error || `HTTP ${res.status}`);
+  return j.bars || [];
+}
+
+function vbRenderLegend() {
+  const el = document.getElementById('vbChartLegend');
+  if (!el) return;
+  const items = [
+    ['BUY (armed)', 'var(--green)'],
+    ['SELL (armed)', 'var(--red)'],
+    ['mixed', 'var(--amber)'],
+    ['acted', '#9ca3af'],
+    ['idle', 'var(--text3)'],
+    ['open', '#5b9dff'],
+    ['live price', '#e0a93b'],
+  ];
+  el.innerHTML = items.map(([lbl, c]) =>
+    `<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:14px;height:3px;background:${c};border-radius:2px"></span>${lbl}</span>`
+  ).join('');
+  const note = document.getElementById('vbChartNote');
+  if (note) note.textContent = '"Armed" means the frozen plan WILL trade that line if price reaches it at the shown velocity bucket (velocity-conditioned). BUY/SELL is the direction it would take; grey/dashed lines have already been acted on this session.';
+}
+
+async function openVbChart(pair) {
+  const overlay = document.getElementById('vbChartModal');
+  const titleEl = document.getElementById('vbChartTitle');
+  const chartEl = document.getElementById('vbChartEl');
+  if (!overlay || !chartEl) return;
+  _vbChartPair = pair;
+  const row = (_vbLastStatus?.lines || []).find(r => r.pair === pair);
+  const policy = _vbLastPlan?.policy || {};
+  if (titleEl) titleEl.textContent = `${pair.toUpperCase()} — live forecast lines`;
+  overlay.classList.add('open');
+  vbRenderLegend();
+  vbSetChartStatus('Loading live M1…');
+
+  // Tear down any prior chart instance before making a new one.
+  if (_vbChart) { try { _vbChart.destroy(); } catch (e) {} _vbChart = null; }
+  if (_vbChartPoll) { clearInterval(_vbChartPoll); _vbChartPoll = null; }
+
+  if (!row) { vbSetChartStatus('No live status for this pair yet — is the bot running?'); return; }
+
+  const draw = async () => {
+    // Re-read the (possibly refreshed) row so live price + acted lines stay current.
+    const r = (_vbLastStatus?.lines || []).find(x => x.pair === pair) || row;
+    const pol = _vbLastPlan?.policy || policy;
+    let bars = [];
+    try { bars = await vbFetchBars(pair); }
+    catch (e) {
+      if (!_vbChart) { vbSetChartStatus(`Live M1 unavailable — is OANDA reachable? (${e.message})`); }
+      return;
+    }
+    if (_vbChartPair !== pair) return;   // modal switched/closed while awaiting
+    vbSetChartStatus('');
+    if (!_vbChart) {
+      try { _vbChart = createLevelChart(chartEl, { height: 420 }); }
+      catch (e) { vbSetChartStatus(`Chart failed to load: ${e.message}`); return; }
+    }
+    _vbChart.setCandles(bars);
+    _vbChart.setLevels(vbBuildLevels(r, pol), { showTitle: true });
+    _vbChart.fit();
+  };
+
+  await draw();
+  // Refresh candles + live lines every ~7s while the modal is open. Pull a fresh
+  // status snapshot too so the live price / acted lines update.
+  _vbChartPoll = setInterval(async () => {
+    try { const st = await kvGet('volatility_bot_status'); if (st) _vbLastStatus = st; } catch (e) {}
+    draw();
+  }, 7000);
+}
+
+function closeVbChart() {
+  const overlay = document.getElementById('vbChartModal');
+  if (overlay) overlay.classList.remove('open');
+  _vbChartPair = null;
+  if (_vbChartPoll) { clearInterval(_vbChartPoll); _vbChartPoll = null; }
+  if (_vbChart) { try { _vbChart.destroy(); } catch (e) {} _vbChart = null; }
+}
+
+window.openVbChart = openVbChart;
+window.closeVbChart = closeVbChart;
 
 document.querySelector('.tab-btn[data-tab="volatility"]')?.addEventListener('click', loadVbLiveStatus);
 loadVbConfig();

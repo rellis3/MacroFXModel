@@ -2842,10 +2842,11 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
               <th style="padding:6px 10px;text-align:right">Proj-H/L med ↓</th>
               <th style="padding:6px 10px;text-align:right">Proj-H/L 75 ↓</th>
               <th style="padding:6px 10px;text-align:left">Acted</th>
+              <th style="padding:6px 10px;text-align:center">Chart</th>
             </tr>
           </thead>
           <tbody id="vbLinesBody">
-            <tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Run the bot to see today's levels</td></tr>
+            <tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">Run the bot to see today's levels</td></tr>
           </tbody>
         </table>
       </div>
@@ -3878,6 +3879,24 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
   <h4 id="tipTitle"></h4>
   <p id="tipBody"></p>
   <div class="tip-ex" id="tipEx"></div>
+</div>
+
+<!-- Volatility-bot live per-pair line chart modal -->
+<div class="modal-overlay" id="vbChartModal" onclick="if(event.target===this)window.closeVbChart&&window.closeVbChart()">
+  <div class="modal" style="max-width:900px" onclick="event.stopPropagation()">
+    <div class="modal-hd">
+      <div class="modal-title" id="vbChartTitle">Live Lines</div>
+      <button type="button" class="modal-close" onclick="window.closeVbChart&&window.closeVbChart()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="tc-chart-wrap" style="height:420px">
+        <div id="vbChartEl" style="width:100%;height:100%"></div>
+        <div class="tc-status" id="vbChartStatus" style="display:none"></div>
+      </div>
+      <div id="vbChartLegend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px 18px;font-size:11px;color:var(--text2)"></div>
+      <div id="vbChartNote" style="margin-top:8px;font-size:10px;color:var(--text3);line-height:1.5"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Trade chart modal -->

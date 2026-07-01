@@ -49,6 +49,20 @@ export const KIND_STYLE = {
   vwap_anchor: { color: '#0d9488', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
   fib:         { color: '#22d3ee', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
   zone:        { color: '#e0a93b', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  // Volatility-bot live-lines modal (bot-config.html): a forecast line's live
+  // trade STATE. Kept generic here so any bot page can render the same key.
+  //   vbBuy  — armed & direction = BUY (green)   vbSell — armed & SELL (red)
+  //   vbMixed— buckets disagree on direction (amber)
+  //   vbActed— already traded this session (grey, dashed)
+  //   vbIdle — no armed bucket, not acted (faint neutral, dotted)
+  //   vbOpen — the session open   vbPrice — live price
+  vbBuy:       { color: '#10b981', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  vbSell:      { color: '#f87171', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  vbMixed:     { color: '#fbbf24', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  vbActed:     { color: '#9ca3af', lineStyle: LINE_STYLE.Dashed, lineWidth: 1 },
+  vbIdle:      { color: '#5a6380', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
+  vbOpen:      { color: '#5b9dff', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
+  vbPrice:     { color: '#e0a93b', lineStyle: LINE_STYLE.LargeDashed, lineWidth: 2 },
   _default:    { color: '#9ca3af', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
 };
 
