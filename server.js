@@ -75,6 +75,10 @@ import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
+import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
+import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
+import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, startRefresher as tdeStartRefresher, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
+import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -9724,6 +9728,79 @@ app.get('/api/pivot-spike/status/:jobId', (req, res) => {
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trade Decision Engine — per-event go/skip scoring API (fast loop).
+// Slow loop: featureState snapshots (manual /refresh, or auto via TDE_PAIRS env).
+// Registered BEFORE the /api/* catch-all so the worker proxy doesn't swallow it.
+// Full design: Trade_Decision_Engine/ARCHITECTURE.md. UI: trade-decision-engine.html.
+
+// Synthetic snapshots are cached so repeated harness calls stay in the ms range.
+const _tdeSynthCache = new Map();
+function tdeSnapshotFor(pair, mode) {
+  if (mode === 'synthetic') {
+    let s = _tdeSynthCache.get(pair);
+    if (!s || Date.now() - s.builtAt > 10 * 60_000) {
+      s = tdeSyntheticSnapshot(pair, { newsInMin: 180 });
+      _tdeSynthCache.set(pair, s);
+    }
+    return s;
+  }
+  return tdeGetState(pair);
+}
+
+// The bot-facing endpoint: { pair, price?, action?, direction?, approach_sigma?, mode? }
+app.post('/api/trade-decision/decide', express.json(), (req, res) => {
+  try {
+    const { pair, price, action, direction, approach_sigma, mode = 'live' } = req.body ?? {};
+    if (!pair) return res.status(400).json({ ok: false, error: 'pair required' });
+    const snap = tdeSnapshotFor(String(pair).toLowerCase(), mode);
+    const result = tdeDecide(snap, {
+      pair, price: price != null ? Number(price) : undefined,
+      action, direction, approachSigma: approach_sigma,
+    });
+    tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, mode }, result });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message ?? String(e) });
+  }
+});
+
+// Snapshot inspection (staleness, regime, zones) — ?mode=synthetic for the demo path
+app.get('/api/trade-decision/state/:pair', (req, res) => {
+  try {
+    const snap = tdeSnapshotFor(String(req.params.pair).toLowerCase(), req.query.mode ?? 'live');
+    if (!snap) return res.json({ ok: false, error: 'no snapshot — POST /api/trade-decision/refresh first (or use mode=synthetic)' });
+    const { zones, calendar, ...head } = snap;
+    res.json({ ok: true, ...head, age_ms: Date.now() - snap.builtAt, zones: zones.slice(0, 40), calendar_events: calendar.length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
+// Slow-loop refresh (OANDA + Finnhub) — { pair } or { pairs: [...] }
+app.post('/api/trade-decision/refresh', express.json(), async (req, res) => {
+  const pairs = req.body?.pairs ?? (req.body?.pair ? [req.body.pair] : TDE_DEFAULT_PAIRS);
+  const out = {};
+  for (const p of pairs) {
+    try { const s = await tdeRefreshPair(p); out[p] = { ok: true, builtAt: s.builtAt, zones: s.zones.length, regime: s.regime }; }
+    catch (e) { out[p] = { ok: false, error: e.message ?? String(e) }; }
+  }
+  res.json({ ok: Object.values(out).some(r => r.ok), pairs: out });
+});
+
+app.get('/api/trade-decision/log', (req, res) => {
+  res.json({ ok: true, decisions: tdeReadRecent(Math.min(parseInt(req.query.limit ?? '50'), 500)) });
+});
+
+app.get('/api/trade-decision/health', (_req, res) => {
+  res.json({ ok: true, model_version: TDE_MODEL.version, calibrated: TDE_MODEL.calibrated, snapshots: tdeStateSummary() });
+});
+
+// Opt-in auto refresher: TDE_PAIRS=eurusd,gbpusd (+ TDE_REFRESH_MIN, default 5)
+if (process.env.TDE_PAIRS) {
+  const tdePairs = process.env.TDE_PAIRS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const tdeMin = parseFloat(process.env.TDE_REFRESH_MIN || '5');
+  setTimeout(() => tdeStartRefresher(tdePairs, tdeMin * 60_000), 5_000);
+}
 
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {

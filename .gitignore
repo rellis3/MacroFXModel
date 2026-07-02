@@ -48,3 +48,4 @@ logs/macro_equity_bot.log
 
 # Trading safety layer runtime state (kill switch / risk gate baselines)
 safety/state/
+Trade_Decision_Engine/data/

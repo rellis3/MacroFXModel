@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Decision Engine — Test Harness</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding:18px;max-width:1180px;margin:0 auto}
+  h1{font-size:20px;margin-bottom:2px}
+  h2{font-size:14px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+  .sub{color:var(--text2);margin-bottom:16px;font-size:13px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;border:1px solid var(--border);color:var(--text2);margin-left:8px;vertical-align:middle}
+  .badge.warn{color:var(--amber);border-color:rgba(210,153,34,.4)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+  label{display:block;font-size:11px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+  select,input{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:13px;min-width:110px}
+  button{background:var(--blue);border:none;color:#fff;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button:hover{filter:brightness(1.15)}
+  button.ghost{background:var(--card2);border:1px solid var(--border);color:var(--text2)}
+  button:disabled{opacity:.5;cursor:wait}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{color:var(--text3);text-align:left;font-weight:500;padding:5px 8px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:5px 8px;border-bottom:1px solid rgba(48,54,61,.5)}
+  tr.zrow{cursor:pointer} tr.zrow:hover{background:var(--card2)}
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:10px}
+  .kv .k{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .kv .v{font-size:16px;font-weight:600}
+  .decision-big{font-size:34px;font-weight:800;letter-spacing:.03em}
+  .go{color:var(--green)} .skipd{color:var(--red)}
+  .pbar{height:10px;background:var(--card2);border-radius:5px;overflow:hidden;margin:8px 0}
+  .pbar>div{height:100%;border-radius:5px;transition:width .3s}
+  .factors li{margin:3px 0;color:var(--text2);font-size:12.5px;list-style:none}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  pre{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;color:var(--text2)}
+  .how li{margin:6px 0 6px 18px;color:var(--text2)}
+  .how b{color:var(--text)}
+  code{background:var(--card2);padding:1px 5px;border-radius:4px;font-size:12px;color:var(--blue)}
+  .muted{color:var(--text3);font-size:12px}
+  a{color:var(--blue)}
+  #decErr{color:var(--red);font-size:12.5px;margin-top:8px}
+</style>
+</head>
+<body>
+
+<h1>🎯 Trade Decision Engine <span class="badge" id="modelBadge">model …</span><span class="badge warn" id="calBadge" style="display:none">UNCALIBRATED PRIOR</span></h1>
+<div class="sub">Per-event go/skip scorer: a bot sees price entering a zone, fires one <code>POST /api/trade-decision/decide</code>, and gets probability + direction + size in milliseconds. Slow loop maintains per-pair feature snapshots; fast loop is a pure dot-product. Design: <code>Trade_Decision_Engine/ARCHITECTURE.md</code></div>
+
+<div class="card">
+  <h2>How to use</h2>
+  <ol class="how">
+    <li><b>Pick a pair and mode.</b> <code>synthetic</code> works anywhere (deterministic demo data, no OANDA needed — the sandbox default). <code>live</code> needs the server to have <code>OANDA_KEY</code> (Railway) and a refreshed snapshot.</li>
+    <li><b>Load the snapshot</b> (in live mode press <b>Refresh</b> first — that runs the slow loop: σ, regime, trend-day-ness T, vol percentile, level map). The zones table shows the confluence map — <b>click a zone row</b> to load its price into the decide form, simulating "price is touching this zone now".</li>
+    <li><b>Decide.</b> Leave action/direction on <code>auto</code> to let the engine derive them from the day-type selector, or set them to make the engine judge <i>your</i> proposal. <code>approach σ</code> simulates how fast price came into the level (in σ units — 1.5 = freight train).</li>
+    <li><b>Read the result:</b> GO/SKIP, the probability, the size dial, and <i>why</i> (top factors, hard-gate reasons). Every call is appended to the decision log below — that log is the future training set for the fitted (calibrated) model.</li>
+  </ol>
+  <div class="muted" style="margin-top:8px">Bot integration is the same call:</div>
+  <pre>curl -s -X POST $HOST/api/trade-decision/decide -H 'content-type: application/json' \
+  -d '{"pair":"eurusd","price":1.0852,"approach_sigma":0.4,"mode":"live"}'
+# → {"decision":"go","direction":"short","action":"fade","probability":0.61,"size_multiplier":0.8,...}</pre>
+</div>
+
+<div class="card">
+  <h2>Controls</h2>
+  <div class="row">
+    <div><label>Pair</label><select id="pair"></select></div>
+    <div><label>Mode</label><select id="mode"><option value="synthetic">synthetic (demo)</option><option value="live">live (OANDA)</option></select></div>
+    <button class="ghost" id="btnRefresh" onclick="doRefresh()">⟳ Refresh snapshot (slow loop)</button>
+    <button class="ghost" onclick="loadState()">Load state</button>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Feature snapshot <span class="muted" id="snapAge"></span></h2>
+    <div class="kv" id="snapKv"><div class="muted">No snapshot loaded — pick a pair and press Load state.</div></div>
+    <div id="zoneWrap" style="display:none">
+      <div class="muted" style="margin-bottom:4px">Zone map (click a row to decide at that level)</div>
+      <div style="max-height:300px;overflow-y:auto">
+      <table id="zoneTbl"><thead><tr><th>Price</th><th>Confluence</th><th>Score</th><th>Sources</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Decide</h2>
+    <div class="row" style="margin-bottom:12px">
+      <div><label>Price (zone touch)</label><input id="price" type="number" step="0.00001" placeholder="click a zone →"></div>
+      <div><label>Action</label><select id="action"><option value="">auto (selector)</option><option>fade</option><option>follow</option></select></div>
+      <div><label>Direction</label><select id="direction"><option value="">auto</option><option>long</option><option>short</option></select></div>
+      <div><label>Approach σ</label><input id="approach" type="number" step="0.1" value="0" style="min-width:80px"></div>
+      <button id="btnDecide" onclick="doDecide()">Decide ▸</button>
+    </div>
+    <div id="decOut" style="display:none">
+      <div class="decision-big" id="decBig"></div>
+      <div class="muted" id="decMeta"></div>
+      <div class="pbar"><div id="pfill" style="width:0;background:var(--blue)"></div></div>
+      <div class="kv">
+        <div><div class="k">Probability</div><div class="v" id="dProb">–</div></div>
+        <div><div class="k">Size ×</div><div class="v" id="dSize">–</div></div>
+        <div><div class="k">Direction</div><div class="v" id="dDir">–</div></div>
+        <div><div class="k">Action</div><div class="v" id="dAct">–</div></div>
+        <div><div class="k">Latency</div><div class="v" id="dLat">–</div></div>
+      </div>
+      <div class="muted" style="margin-top:6px">Top factors</div>
+      <ul class="factors" id="dFactors"></ul>
+      <div id="dReasons" class="muted"></div>
+    </div>
+    <div id="decErr"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Decision log <span class="muted">(the future training set)</span> <button class="ghost" style="float:right;padding:4px 10px" onclick="loadLog()">⟳</button></h2>
+  <div style="max-height:320px;overflow:auto">
+  <table id="logTbl"><thead><tr><th>Time</th><th>Pair</th><th>Mode</th><th>Decision</th><th>Dir</th><th>Action</th><th>Prob</th><th>Size</th><th>Reasons / top factor</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>API reference</h2>
+  <pre>POST /api/trade-decision/decide          { pair, price?, action?, direction?, approach_sigma?, mode? }
+GET  /api/trade-decision/state/:pair     ?mode=synthetic — inspect the snapshot the fast loop reads
+POST /api/trade-decision/refresh         { pair } | { pairs:[...] } — run the slow loop (needs OANDA)
+GET  /api/trade-decision/log             ?limit=50
+GET  /api/trade-decision/health          model version + snapshot staleness per pair
+
+Hard gates (fail-closed, probability=null): no_snapshot · stale_features · news_window · no_level_nearby
+Auto slow loop in Railway: set TDE_PAIRS=eurusd,gbpusd,usdjpy (+ TDE_REFRESH_MIN, default 5)</pre>
+  <div class="muted">Honesty box: the v0 model is a hand-weighted <b>prior, not evidence</b> — every response carries <code>calibrated:false</code>. It becomes a real meta-labeled model only after the decision log accumulates outcomes and a walk-forward fit proves OOS calibration (≥30 events per bucket). See ARCHITECTURE.md §7/§9.</div>
+</div>
+
+<script>
+const PAIRS = ['eurusd','gbpusd','usdjpy','audusd','usdcad','usdchf','nzdusd','eurgbp','eurjpy','gbpjpy','audjpy','euraud','eurchf','eurcad','eurnzd','gbpaud','gbpcad','gbpchf','gbpnzd','audcad','audchf','audnzd','cadjpy','chfjpy','nzdjpy','gold'];
+const $ = id => document.getElementById(id);
+PAIRS.forEach(p => { const o = document.createElement('option'); o.value = o.textContent = p; $('pair').appendChild(o); });
+
+let lastSnap = null;
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+async function health() {
+  try {
+    const h = await api('/api/trade-decision/health');
+    $('modelBadge').textContent = 'model ' + h.model_version;
+    if (!h.calibrated) $('calBadge').style.display = 'inline-block';
+  } catch { $('modelBadge').textContent = 'server unreachable'; }
+}
+
+async function doRefresh() {
+  const b = $('btnRefresh'); b.disabled = true; b.textContent = '⟳ refreshing…';
+  try {
+    if ($('mode').value === 'synthetic') { await loadState(); return; }
+    const r = await api('/api/trade-decision/refresh', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ pair: $('pair').value }) });
+    const pr = r.pairs?.[$('pair').value];
+    if (pr && !pr.ok) $('decErr').textContent = 'refresh failed: ' + pr.error + ' (OANDA is Railway-only — use synthetic mode locally)';
+    else { $('decErr').textContent = ''; await loadState(); }
+  } finally { b.disabled = false; b.textContent = '⟳ Refresh snapshot (slow loop)'; }
+}
+
+async function loadState() {
+  const s = await api(`/api/trade-decision/state/${$('pair').value}?mode=${$('mode').value}`);
+  if (!s.ok) { $('snapKv').innerHTML = `<div class="muted">${s.error}</div>`; $('zoneWrap').style.display='none'; return; }
+  lastSnap = s;
+  const pct = x => (100 * x).toFixed(0) + '%';
+  $('snapKv').innerHTML = `
+    <div><div class="k">Regime</div><div class="v">${s.regime}</div></div>
+    <div><div class="k">Trend-day T</div><div class="v">${s.T.toFixed(2)}</div></div>
+    <div><div class="k">σ daily</div><div class="v">${(100 * s.sigmaDaily).toFixed(2)}%</div></div>
+    <div><div class="k">Vol %ile</div><div class="v">${pct(s.volPct)}</div></div>
+    <div><div class="k">Ref price</div><div class="v">${s.price.toFixed(5)}</div></div>
+    <div><div class="k">News events</div><div class="v">${s.calendar_events}</div></div>`;
+  $('snapAge').textContent = `— ${s.mode}, age ${(s.age_ms / 1000).toFixed(0)}s, ${s.meta.bars} bars`;
+  const tb = $('zoneTbl').querySelector('tbody'); tb.innerHTML = '';
+  const sigmaAbs = s.sigmaDaily * s.dayOpen;
+  s.zones.slice().sort((a,b) => Math.abs(a.price - s.price) - Math.abs(b.price - s.price)).slice(0, 20).forEach(z => {
+    const tr = document.createElement('tr'); tr.className = 'zrow';
+    const d = ((z.price - s.price) / sigmaAbs).toFixed(2);
+    tr.innerHTML = `<td>${z.price.toFixed(5)} <span class="muted">(${d}σ)</span></td><td>${z.count}</td><td>${z.score}</td><td class="muted">${(z.sources || []).join(', ')}</td>`;
+    tr.onclick = () => { $('price').value = z.price.toFixed(5); doDecide(); };
+    tb.appendChild(tr);
+  });
+  $('zoneWrap').style.display = 'block';
+}
+
+async function doDecide() {
+  const b = $('btnDecide'); b.disabled = true; $('decErr').textContent = '';
+  try {
+    const body = { pair: $('pair').value, mode: $('mode').value };
+    if ($('price').value) body.price = parseFloat($('price').value);
+    if ($('action').value) body.action = $('action').value;
+    if ($('direction').value) body.direction = $('direction').value;
+    if ($('approach').value) body.approach_sigma = parseFloat($('approach').value);
+    const r = await api('/api/trade-decision/decide', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body) });
+    if (r.error) { $('decErr').textContent = r.error; return; }
+    $('decOut').style.display = 'block';
+    const go = r.decision === 'go';
+    $('decBig').textContent = go ? '✓ GO' : '✗ SKIP';
+    $('decBig').className = 'decision-big ' + (go ? 'go' : 'skipd');
+    $('decMeta').textContent = r.zone
+      ? `zone ${r.zone.price} · ${r.zone.confluence} source(s) · ${r.zone.distance_sigma}σ away · regime ${r.regime} · T ${r.T} · ${r.session_phase}`
+      : (r.reasons || []).join(', ');
+    const p = r.probability ?? 0;
+    $('pfill').style.width = (100 * p) + '%';
+    $('pfill').style.background = p >= 0.55 ? 'var(--green)' : p > 0 ? 'var(--amber)' : 'var(--red)';
+    $('dProb').textContent = r.probability == null ? 'gated' : (100 * r.probability).toFixed(1) + '%';
+    $('dSize').textContent = r.size_multiplier;
+    $('dDir').textContent = r.direction ?? '–';
+    $('dAct').textContent = r.action ?? '–';
+    $('dLat').textContent = r.latency_ms + 'ms';
+    $('dFactors').innerHTML = (r.top_factors || []).map(f =>
+      `<li class="${f.includes('(-') ? 'neg' : 'pos'}">${f}</li>`).join('');
+    $('dReasons').textContent = (r.reasons || []).length ? 'Reasons: ' + r.reasons.join(', ') + (r.news ? ' — ' + r.news : '') : '';
+    loadLog();
+  } catch (e) { $('decErr').textContent = String(e); }
+  finally { b.disabled = false; }
+}
+
+async function loadLog() {
+  const r = await api('/api/trade-decision/log?limit=40');
+  const tb = $('logTbl').querySelector('tbody'); tb.innerHTML = '';
+  (r.decisions || []).forEach(d => {
+    const res = d.result ?? {};
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="muted">${new Date(d.logged_at).toISOString().substring(11, 19)}</td>
+      <td>${d.request?.pair ?? ''}</td><td class="muted">${d.request?.mode ?? ''}</td>
+      <td class="${res.decision === 'go' ? 'pos' : 'neg'}">${res.decision ?? ''}</td>
+      <td>${res.direction ?? '–'}</td><td>${res.action ?? '–'}</td>
+      <td>${res.probability != null ? (100 * res.probability).toFixed(1) + '%' : 'gated'}</td>
+      <td>${res.size_multiplier ?? 0}</td>
+      <td class="muted">${(res.reasons || [])[0] ?? (res.top_factors || [])[0] ?? ''}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+health(); loadLog();
+</script>
+</body>
+</html>
