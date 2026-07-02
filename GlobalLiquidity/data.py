@@ -171,7 +171,10 @@ def load_synthetic(n_weeks: int = 600, seed: int = 7) -> Dataset:
     # Central-bank balance sheets driven by each currency's own cycle.
     cb_sid = {"USD": "WALCL", "EUR": "ECBASSETSW", "JPY": "JPNASSETS",
               "GBP": "UKASSETS", "CNY": "TRESEGCNM052N"}
-    base_levels = {"WALCL": 4000, "ECBASSETSW": 4500, "JPNASSETS": 5500,
+    # WALCL is generated in $MILLIONS (matching real FRED units) while the
+    # TGA/RRP drains stay $BILLIONS — the synthetic data must reproduce the
+    # real units mismatch or it can never catch a unit bug in the USD formula.
+    base_levels = {"WALCL": 4_000_000, "ECBASSETSW": 4500, "JPNASSETS": 5500,
                    "UKASSETS": 800, "TRESEGCNM052N": 3100}
     for ccy, sid in cb_sid.items():
         lvl = base_levels[sid]

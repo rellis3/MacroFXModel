@@ -135,8 +135,13 @@
 
     // Per-block USD liquidity → z and impulse.
     const blocks = {
+      // UNITS: WALCL is $MILLIONS on FRED; TGA (WTREGEN) and RRP (RRPONTSYD)
+      // are $BILLIONS — convert WALCL→$B or the drains are ~0.01% of the block
+      // and USD "net liquidity" is just the raw Fed balance sheet. (Cross-BLOCK
+      // units don't matter — each block is z-scored before aggregation — but
+      // the USD block mixes the three series inside one sum.)
       USD: () => { const w = ffill(S.walcl), t = ffill(S.tga), r = ffill(S.rrp);
-                   return w.map((v, i) => (isNum(v) ? v : 0) - (isNum(t[i]) ? t[i] : 0) - (isNum(r[i]) ? r[i] : 0)); },
+                   return w.map((v, i) => (isNum(v) ? v / 1000 : 0) - (isNum(t[i]) ? t[i] : 0) - (isNum(r[i]) ? r[i] : 0)); },
       EUR: () => { const a = ffill(S.ecb_assets), fx = ffill(S.dexuseu);
                    return a.map((v, i) => v * (isNum(fx[i]) ? fx[i] : NaN)); },
       JPY: () => { const a = ffill(S.boj_assets), fx = ffill(S.dexjpus);
@@ -322,8 +327,11 @@
     [[Math.floor(0.32 * nWeeks), 8, 1.0], [Math.floor(0.74 * nWeeks), 6, 1.3]].forEach(([c, w, m]) => t.forEach((i) => { stress[i] += m * Math.exp(-0.5 * ((i - c) / w) ** 2); }));
     const cum = (sc) => { let a = 0; return t.map(() => (a += sc * gauss())); };
     const series = {};
-    const base = { walcl: 4000, ecb_assets: 4500, boj_assets: 5500, cny_res: 3100 };
-    series.walcl = t.map((i) => base.walcl * (1 + 0.0025 * i + 0.25 * cyc.USD[i]) - base.walcl * 0.2 * stress[i] + 30 * gauss());
+    // walcl is generated in $MILLIONS (like real FRED WALCL) while tga/rrp stay
+    // $BILLIONS — the synthetic data must reproduce the real units mismatch or
+    // it can never catch a unit regression in the USD block (it didn't, once).
+    const base = { walcl: 4_000_000, ecb_assets: 4500, boj_assets: 5500, cny_res: 3100 };
+    series.walcl = t.map((i) => base.walcl * (1 + 0.0025 * i + 0.25 * cyc.USD[i]) - base.walcl * 0.2 * stress[i] + 30_000 * gauss());
     series.ecb_assets = t.map((i) => base.ecb_assets * (1 + 0.0025 * i + 0.25 * cyc.EUR[i]) - base.ecb_assets * 0.2 * stress[i]);
     series.boj_assets = t.map((i) => base.boj_assets * (1 + 0.0025 * i + 0.25 * cyc.JPY[i]));
     series.cny_res = t.map((i) => base.cny_res * (1 + 0.0025 * i + 0.25 * cyc.CNY[i]));

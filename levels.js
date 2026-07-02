@@ -344,29 +344,39 @@ function computeEmaAtr(bars30m) {
 // ── FRED macro scoring (optional) ─────────────────────────────────────────────
 // Returns 0–1 where 1 = fully aligned with entry direction
 
-function computeMacroScore(direction, sym, fredData) {
+export function computeMacroScore(direction, sym, fredData) {
   if (!fredData) return null;
   const isLong  = direction === 'long';
   const isGold  = sym.includes('XAU');
   const isNas   = sym === 'NAS100_USD';
-  const isJpy   = sym.includes('JPY');
-  const isChf   = sym.includes('CHF');
-  const safeHaven = isJpy || isChf;
+  // Safe-haven risk scoring is per-CURRENCY, mapped to the pair by LEG. The old
+  // `isJpy || isChf` treated risk-stress as bullish for the PAIR — but in every
+  // configured JPY/CHF pair the safe haven is the QUOTE leg, so stress drives
+  // the pair DOWN (VIX 30 + HY widening was BOOSTING long-GBP/JPY entry scores
+  // into a risk-off cascade — the opposite of fx-macro-model's riskSens sign).
+  // The logic was copied from gold, where XAU is the BASE — correct there only.
+  // shSign: +1 safe haven is the base, −1 it's the quote, 0 neither/both (a
+  // CHF/JPY-style cross nets to 0 = correctly neutral).
+  const shOf   = c => (c === 'JPY' || c === 'CHF') ? 1 : 0;
+  const [base = '', quote = ''] = sym.split('/');
+  const shSign = isGold ? 0 : shOf(base) - shOf(quote);
   const scores  = [];
 
   if (fredData.vix?.current != null) {
     const v = fredData.vix.current, rising = v > fredData.vix.prev;
     let s = 0;
-    if      (isGold || safeHaven) s = (v > 25 ? 2 : v > 18 ? 1 : -1) + (rising ? 1 : 0);
-    else if (isNas)               s = (v < 15 ? 2 : v > 25 ? -2 : 0) + (rising ? -1 : 0);
+    if      (isGold)  s = (v > 25 ? 2 : v > 18 ? 1 : -1) + (rising ? 1 : 0);
+    else if (isNas)   s = (v < 15 ? 2 : v > 25 ? -2 : 0) + (rising ? -1 : 0);
+    else if (shSign)  s = shSign * ((v > 25 ? 2 : v > 18 ? 1 : -1) + (rising ? 1 : 0));
     scores.push({ s, max: 3 });
   }
 
   if (fredData.hy?.current != null) {
     const widening = fredData.hy.current > fredData.hy.prev;
     let s = 0;
-    if      (isGold || safeHaven) s = widening ?  2 : -1;
-    else if (isNas)               s = widening ? -2 :  1;
+    if      (isGold)  s = widening ?  2 : -1;
+    else if (isNas)   s = widening ? -2 :  1;
+    else if (shSign)  s = shSign * (widening ? 2 : -1);
     scores.push({ s, max: 2 });
   }
 
