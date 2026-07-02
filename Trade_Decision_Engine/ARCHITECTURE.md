@@ -213,16 +213,50 @@ double-duty:
    same way `entryLedgerV2.resolvePair` does it), each row becomes a labeled
    meta-labeling example.
 
-## 7. Roadmap — from prior to fitted model
+## 7. Backfill — day-one training data (`backfill.js`)
 
-1. **v0 (this build):** plumbing + transparent prior + decision log. Synthetic
-   mode proves the loop end-to-end without OANDA.
-2. **Outcome labeler:** nightly job joins each logged `go`/`skip` (score
-   shadow-mode on skips too) with the realized outcome via M1 triple-barrier —
-   reuse `entryLedgerV2` / `perLineStrategy.pnlFor` machinery.
-3. **v1 fit:** logistic regression on the log, walk-forward split with embargo,
-   published only if OOS-calibrated (reliability curve) with ≥30 OOS events per
-   claimed bucket — the same honest-harness discipline as every other strategy.
+The engine does NOT start with an empty log. `runBackfill` replays the M1
+parquet history (the `loadM1ForPair` brick — ~12 years per pair) through the
+**same code path** the live API serves:
+
+```
+packed M1 ─ deriveD1Packed ─▶ per day i:
+   buildSnapshot(D1 < i)            ← identical to the live slow loop
+   first M1 touch of each top zone  ← approach-σ from the prior 30 min
+   decide(snapshot, touch)          ← identical to the live fast loop
+   labelOutcome(rest of day's M1)   ← triple-barrier: SL first (conservative),
+                                      TP, else mark-to-day-close; after-cost
+   → one labeled event (features + v0 probability + win/loss)
+```
+
+- **No lookahead:** the snapshot for day *i* sees only completed days `< i`
+  (same 320-bar window as the live `fetchD1` count); the outcome walker only
+  sees bars after the touch.
+- **Exits:** TP = 0.5σ with the trade, SL = 0.75σ against (configurable);
+  intrabar ambiguity resolves to the stop.
+- **Incremental by construction:** `data/backfill_state.json` records the last
+  processed date per pair, so re-running appends only new days. One full run
+  gives day-one training data; the nightly top-up (`TDE_BACKFILL_DAILY=1`, or
+  the harness button) keeps it growing each day the market adds a session.
+- **Fit + calibration:** `fitLogistic` trains on the same bounded features
+  (time-ordered split, 10-day embargo) and reports per-decile OOS calibration
+  + Brier for the fitted candidate AND the v0 prior. The candidate ships with
+  `calibrated:false` — promotion to `modelV1.js` is a manual decision on that
+  evidence (≥30-event buckets within ±10 pts, beats the prior on OOS Brier).
+
+Routes: `POST /api/trade-decision/backfill/run` (async-job pattern),
+`GET …/backfill/status/:jobId`, `GET …/backfill/report`.
+
+## 7b. Roadmap — remaining steps to a fitted live model
+
+1. ~~Backfill + outcome labeler + candidate fit~~ — built (§7).
+2. **Shadow labeling of live decisions:** join live `decisions.jsonl` rows with
+   realized outcomes the same way (they carry the same feature vector), so the
+   live stream extends the training set with the exact distribution the engine
+   sees in production.
+3. **v1 promotion:** when the calibration report earns it, publish the
+   candidate weights as `modelV1.js` with the evidence attached; the feature
+   builder is shared so nothing else changes.
 4. **Richer features:** COT percentile, broker sentiment, risk-reversal skew
    (the order-book substitutes), intraday approach features from M1.
 5. **Bot integration:** volatility/range-line bots call `decide` before entry;
@@ -238,7 +272,9 @@ double-duty:
 | `newsGate.js` | hard/soft news logic over a supplied calendar | ✅ (unit-tested) |
 | `featureState.js` | slow loop: snapshots (live via bricks / synthetic) | live path does I/O; `buildSnapshot` itself is pure |
 | `decisionLog.js` | JSONL append + tail read | file I/O |
+| `backfill.js` | history replay → labeled events + candidate fit (§7) | `deriveD1Packed`/`labelOutcome`/`backfillPair`/`fitLogistic` pure; `runBackfill` does file I/O |
 | `decisionCore.test.mjs` | synthetic no-network tests | — |
+| `backfill.test.mjs` | synthetic no-network tests for the backfill | — |
 
 Server routes (in `server.js`): `POST /api/trade-decision/decide`,
 `GET /api/trade-decision/state/:pair`, `POST /api/trade-decision/refresh`,

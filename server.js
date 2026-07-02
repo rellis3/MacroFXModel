@@ -79,6 +79,7 @@ import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, startRefresher as tdeStartRefresher, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
+import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport } from './Trade_Decision_Engine/backfill.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -9792,7 +9793,8 @@ app.get('/api/trade-decision/log', (req, res) => {
 });
 
 app.get('/api/trade-decision/health', (_req, res) => {
-  res.json({ ok: true, model_version: TDE_MODEL.version, calibrated: TDE_MODEL.calibrated, snapshots: tdeStateSummary() });
+  res.json({ ok: true, model_version: TDE_MODEL.version, calibrated: TDE_MODEL.calibrated,
+    weights: TDE_MODEL.weights, intercept: TDE_MODEL.intercept, snapshots: tdeStateSummary() });
 });
 
 // Opt-in auto refresher: TDE_PAIRS=eurusd,gbpusd (+ TDE_REFRESH_MIN, default 5)
@@ -9800,6 +9802,61 @@ if (process.env.TDE_PAIRS) {
   const tdePairs = process.env.TDE_PAIRS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const tdeMin = parseFloat(process.env.TDE_REFRESH_MIN || '5');
   setTimeout(() => tdeStartRefresher(tdePairs, tdeMin * 60_000), 5_000);
+}
+
+// Backfill: replay M1 parquet history through the SAME decide() path → labeled
+// event log + candidate-model fit with OOS calibration report. Incremental by
+// default (only new days). Async-job pattern like the other backtest routes.
+const tdeBackfillJobs = new Map();
+let tdeBackfillRunning = false;
+function tdeStartBackfillJob(pairs, { incremental }) {
+  const jobId = `tdebf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const job = { status: 'running', startedAt: Date.now(), log: [] };
+  tdeBackfillJobs.set(jobId, job);
+  tdeBackfillRunning = true;
+  (async () => {
+    try {
+      const report = await tdeRunBackfill(pairs, { incremental, onLog: m => { job.log.push(m); console.log(`[tde-backfill] ${m}`); } });
+      job.status = 'done'; job.report = report;
+    } catch (e) {
+      job.status = 'error'; job.error = e.message ?? String(e);
+      console.error('[tde-backfill]', e);
+    } finally { tdeBackfillRunning = false; }
+  })();
+  return jobId;
+}
+
+app.post('/api/trade-decision/backfill/run', express.json(), (req, res) => {
+  if (tdeBackfillRunning) return res.status(409).json({ ok: false, error: 'a backfill is already running' });
+  const pairs = (req.body?.pairs?.length ? req.body.pairs : Object.keys(M1_DRIVE_IDS)).map(p => String(p).toLowerCase());
+  const incremental = req.body?.full !== true;
+  res.json({ ok: true, jobId: tdeStartBackfillJob(pairs, { incremental }), pairs: pairs.length, incremental });
+});
+
+app.get('/api/trade-decision/backfill/status/:jobId', (req, res) => {
+  const job = tdeBackfillJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), log: job.log });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', report: job.report, log: job.log });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+app.get('/api/trade-decision/backfill/report', (_req, res) => {
+  const report = tdeReadBackfillReport();
+  if (!report) return res.json({ ok: false, error: 'no backfill yet — POST /api/trade-decision/backfill/run' });
+  res.json({ ok: true, report });
+});
+
+// Opt-in daily top-up (Railway): TDE_BACKFILL_DAILY=1 runs an incremental
+// backfill at ~23:40 UTC so the event log grows one day per day.
+if (process.env.TDE_BACKFILL_DAILY) {
+  setInterval(() => {
+    const now = new Date();
+    if (now.getUTCHours() === 23 && now.getUTCMinutes() === 40 && !tdeBackfillRunning) {
+      console.log('[tde-backfill] daily incremental top-up starting');
+      tdeStartBackfillJob(Object.keys(M1_DRIVE_IDS), { incremental: true });
+    }
+  }, 60_000);
 }
 
 // All other /api/* routes — call _worker.js and return the JSON response.

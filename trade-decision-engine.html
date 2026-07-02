@@ -123,6 +123,34 @@
 </div>
 
 <div class="card">
+  <h2>Historical backfill <span class="muted">(day-one training data from the M1 parquet history)</span></h2>
+  <div class="muted" style="margin-bottom:10px">Replays the full M1 history through the <b>same</b> snapshot + decide() path as live, labels every zone touch with a triple-barrier outcome (SL-first, after-cost), and fits a <b>candidate</b> model with a walk-forward OOS calibration report. Incremental: re-running only appends days newer than the last processed date — set <code>TDE_BACKFILL_DAILY=1</code> in Railway for an automatic nightly top-up.</div>
+  <div class="row" style="margin-bottom:10px">
+    <button id="btnBackfill" onclick="runBackfill(false)">▶ Run incremental backfill</button>
+    <button class="ghost" onclick="runBackfill(true)">Full rebuild</button>
+    <button class="ghost" onclick="loadBackfillReport()">Load report</button>
+    <span class="muted" id="bfStatus"></span>
+  </div>
+  <pre id="bfLog" style="display:none;max-height:180px;overflow-y:auto"></pre>
+  <div id="bfReport" style="display:none">
+    <div class="kv" id="bfKv"></div>
+    <div class="grid">
+      <div>
+        <div class="muted" style="margin:6px 0 4px">OOS calibration — fitted candidate (reliable = n≥30)</div>
+        <table id="bfCal"><thead><tr><th>Bucket</th><th>N</th><th>Predicted</th><th>Realized</th><th>OK</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div>
+        <div class="muted" style="margin:6px 0 4px">Candidate weights (fitted) vs v0 prior</div>
+        <div style="max-height:260px;overflow-y:auto">
+        <table id="bfW"><thead><tr><th>Feature</th><th>Fitted</th><th>v0 prior</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="muted" id="bfVerdict" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="card">
   <h2>API reference</h2>
   <pre>POST /api/trade-decision/decide          { pair, price?, action?, direction?, approach_sigma?, mode? }
 GET  /api/trade-decision/state/:pair     ?mode=synthetic — inspect the snapshot the fast loop reads
@@ -239,6 +267,56 @@ async function loadLog() {
       <td class="muted">${(res.reasons || [])[0] ?? (res.top_factors || [])[0] ?? ''}</td>`;
     tb.appendChild(tr);
   });
+}
+
+// ── Backfill ─────────────────────────────────────────────────────────────────
+let bfTimer = null;
+async function runBackfill(full) {
+  const r = await api('/api/trade-decision/backfill/run', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ full }) });
+  if (!r.ok) { $('bfStatus').textContent = r.error; return; }
+  $('bfStatus').textContent = `running (${r.pairs} pairs, ${r.incremental ? 'incremental' : 'full'})…`;
+  $('bfLog').style.display = 'block';
+  clearInterval(bfTimer);
+  bfTimer = setInterval(async () => {
+    const s = await api(`/api/trade-decision/backfill/status/${r.jobId}`);
+    $('bfLog').textContent = (s.log || []).join('\n');
+    $('bfLog').scrollTop = $('bfLog').scrollHeight;
+    if (s.status === 'running') { $('bfStatus').textContent = `running… ${s.elapsed}s`; return; }
+    clearInterval(bfTimer);
+    $('bfStatus').textContent = s.status === 'done' ? 'done ✓' : 'error: ' + s.error;
+    if (s.status === 'done') renderBackfillReport(s.report);
+  }, 3000);
+}
+async function loadBackfillReport() {
+  const r = await api('/api/trade-decision/backfill/report');
+  if (!r.ok) { $('bfStatus').textContent = r.error; return; }
+  renderBackfillReport(r.report);
+}
+function renderBackfillReport(rep) {
+  $('bfReport').style.display = 'block';
+  const fit = rep.fit ?? {};
+  $('bfKv').innerHTML = `
+    <div><div class="k">Events</div><div class="v">${rep.totals.events.toLocaleString()}</div></div>
+    <div><div class="k">Pairs</div><div class="v">${rep.totals.pairs}</div></div>
+    <div><div class="k">Base win rate</div><div class="v">${fit.base_rate ?? '–'}</div></div>
+    <div><div class="k">OOS n</div><div class="v">${fit.oos_n?.toLocaleString() ?? '–'}</div></div>
+    <div><div class="k">Brier fitted</div><div class="v">${fit.oos?.fitted?.brier ?? '–'}</div></div>
+    <div><div class="k">Brier v0 prior</div><div class="v">${fit.oos?.prior_v0?.brier ?? '–'}</div></div>`;
+  const cal = $('bfCal').querySelector('tbody'); cal.innerHTML = '';
+  (fit.oos?.fitted?.calibration ?? []).forEach(b => {
+    const off = b.predicted != null && b.realized != null && Math.abs(b.predicted - b.realized) > 0.10;
+    cal.innerHTML += `<tr><td>${b.bucket}</td><td>${b.n}</td><td>${b.predicted ?? '–'}</td><td>${b.realized ?? '–'}</td><td class="${b.reliable ? (off ? 'neg' : 'pos') : ''}">${b.reliable ? (off ? '✗' : '✓') : 'thin'}</td></tr>`;
+  });
+  const wt = $('bfW').querySelector('tbody'); wt.innerHTML = '';
+  api('/api/trade-decision/health').then(h => {
+    const v0w = h.weights ?? {};
+    Object.entries(fit.candidate?.weights ?? {}).forEach(([k, v]) => {
+      wt.innerHTML += `<tr><td>${k}</td><td class="${v >= 0 ? 'pos' : 'neg'}">${v}</td><td class="muted">${v0w[k] ?? '–'}</td></tr>`;
+    });
+  });
+  $('bfVerdict').textContent = fit.ok
+    ? `Split ${fit.split_date} (+${fit.embargo_days}d embargo) · fitted ${fit.oos?.fitted_beats_prior ? 'BEATS' : 'does NOT beat'} the v0 prior on OOS Brier · well-calibrated OOS: ${fit.candidate?.well_calibrated_oos ? 'yes' : 'no'} — promotion to modelV1 stays a manual decision on this evidence.`
+    : `Fit skipped: ${fit.error}`;
 }
 
 health(); loadLog();
