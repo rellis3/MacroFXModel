@@ -39,8 +39,12 @@ try:
 except ImportError:
     HAS_MT5 = False
 
-# ── Magic number (unique — no collision with 20260001/2/4/5) ──────────────────
-MAGIC = 20260006
+# ── Magic number — registered in pylego/magics.py (the ONE table; checked by
+# pylego/magics_test.py). Was 20260006, which COLLIDED with RegimeV4 and
+# MacroEquityBot: duplicate guards / EOD closes / serializers cross-contaminated
+# on a shared terminal. This bot is EOD-flat, so deploy the change after an EOD
+# close (a position opened under the old magic would be invisible for one day).
+MAGIC = 20260009
 
 # ── Brownian Motion calibration constants ─────────────────────────────────────
 _BM_P50       = 1.572   # 50th percentile BM range multiplier
