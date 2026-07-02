@@ -2805,6 +2805,38 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       </div>
     </div>
 
+    <!-- How it decides — plain-English explainer for the statuses on this page -->
+    <details class="card" style="padding:0;margin-bottom:14px">
+      <summary style="cursor:pointer;padding:12px 16px;font-size:12px;font-weight:600;color:#e0a93b;list-style:none">
+        ▸ How the bot decides &amp; what each status means <span style="color:var(--text3);font-weight:400">(read this if the table looks confusing)</span>
+      </summary>
+      <div style="padding:0 16px 14px;font-size:12px;line-height:1.6;color:var(--text2)">
+
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">The day, start to finish</div>
+        <ol style="margin:0 0 10px 18px;padding:0">
+          <li><b>Plan publishes once a day</b> (~23:05 UTC). It freezes today's survivor pairs, each pair's σ/open, the band fractions, and the fade/follow/skip <b>policy</b> — the bot never re-learns intraday.</li>
+          <li>The session runs <b>London midnight → 22:00 close</b>. Eight lines per pair are watched the whole time: <b>Close (OC50/OC75)</b> sit static off the open; <b>Proj-H/L (HL50/HL75)</b> trail the running low/high, so they drift during the day.</li>
+          <li>When price <b>touches</b> a line, the decision engine reads ONE policy cell — keyed by <b>which line</b> × <b>how fast price approached</b> (grind / med / spike) — and returns <b>fade</b>, <b>follow</b>, or <b>skip</b>.</li>
+          <li>fade/follow → enter <b>at the line</b> immediately. skip → no trade, and the line is marked done.</li>
+          <li><b>One decision per line per session.</b> Once a line is decided (traded OR skipped) it is never re-evaluated — price can sit beyond it without re-firing.</li>
+        </ol>
+
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">Reading the statuses</div>
+        <ul style="margin:0 0 10px 18px;padding:0">
+          <li><b>Acted ≠ traded.</b> The <b>Acted</b> column lists every line <i>decided</i> this session — <b>including skips</b>. A line shows as acted whether the engine faded it or rejected it as not worth the cost. So a busy Acted list with 0 open positions is normal.</li>
+          <li><b>▶ green badge / Open Positions table</b> = a line the bot is <i>actually holding right now</i>. That is the only place a live trade shows.</li>
+          <li><b>Open positions</b> counts live trades; <b>Today's trades</b> counts trades already closed today (they move to the Positions → Trade History audit).</li>
+        </ul>
+
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">Exit — mechanical, not discretionary</div>
+        <p style="margin:0 0 10px">A trade exits on a fixed <b>triple barrier</b>, set at entry and never second-guessed: a <b>fade</b> takes profit at the <b>inner line</b> (toward the open) and stops out at the <b>outer line</b> (further away); a <b>follow</b> is the reverse. The bot does <b>not</b> watch a live trade and decide "this is reverting, get out" — there is no mid-flight re-read. It either hits its target line, hits its stop line, or is still open at session close.</p>
+
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">Why the Close (OC) lines rarely trade</div>
+        <p style="margin:0">OC lines aren't excluded — each OC cell is judged the same way. But OC sits <b>close to the open</b>, so a fade's target (the inner line) is a <b>tiny move</b> that often doesn't clear spread + commission. In the honest, cost-aware out-of-sample test those cells come back <b>skip (edge below cost)</b>, so the live policy mostly fades the wider <b>Proj-H/L</b> lines. A gross/in-sample backtest that ignores cost <i>does</i> "trade" them — which is why they looked tradeable there but skip here. OC still trades where a specific cell (e.g. an OC75 spike touch) clears the margin.</p>
+
+      </div>
+    </details>
+
     <!-- Live status -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
