@@ -139,6 +139,7 @@ def _pair_lines(plan, trackers, broker):
             "run_low": round(tr.run_low, 6), "run_high": round(tr.run_high, 6),
             "levels": {k: round(v, 6) for k, v in lv.items()},
             "acted": sorted(tr.acted),
+            "audit": tr.audit,          # per-line WHY: traded / skip(reason) / primed
         })
     return out
 

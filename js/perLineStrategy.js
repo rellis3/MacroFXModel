@@ -53,16 +53,33 @@ export function costForPair(key, assetClass = 'fx') {
 // Each touch: { date, open, line, reverted, level, innerLvl, outerLvl, cell }.
 // `conditions` = the per-line condition fields keyed into the cell (default the
 // OOS-proven approach velocity; add 'budgetBucket' etc. to refine).
-export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
+//
+// Day-type gate (no lookahead): each WINDOW carries `signedT` — the EX-ANTE
+// trend-day forecast (classifyDayType's estimators loop closes[idx-win … idx-1],
+// strictly BEFORE session i, so it forecasts day i's trend-ness from prior days).
+// We bucket it SIGNED into { tU | rng | tD } (up-trend / range / down-trend) so
+// the policy can learn "fade an UP line on a tU day" as its own cell (skip/flip),
+// separate from a range day. When the condition name is 'dayType' the touch's
+// bucket is used instead of a line-level field. NEVER condition on realizedDir /
+// dirAction / outcome / close — those resolve during/after the session.
+export function extractTouches(records, { conditions = ['approachVel'], dtThresh = 0.33 } = {}) {
   const touches = [];
+  const dtBucketOf = (signedT) => {
+    if (signedT == null || !Number.isFinite(signedT)) return 'na';   // dropped by the na-guard, like any missing condition
+    return signedT >= dtThresh ? 'tU' : signedT <= -dtThresh ? 'tD' : 'rng';
+  };
   for (const w of records || []) {
+    const dayType = dtBucketOf(w.signedT);
     for (const ln of w.lines || []) {
       if (ln.outcome !== 'reverted' && ln.outcome !== 'continued') continue;   // decided only
       if (ln.innerLvl == null || ln.outerLvl == null || !(w.open > 0)) continue;
-      const condKey = conditions.map(c => ln[c] ?? 'na').join('|');
+      // A condition named 'dayType' reads the WINDOW-level ex-ante bucket; every
+      // other condition reads the per-line field ln[c] exactly as before.
+      const condKey = conditions.map(c => (c === 'dayType' ? dayType : (ln[c] ?? 'na'))).join('|');
       if (condKey.includes('na')) continue;   // missing a gating condition → not tradeable
       touches.push({
         date: w.date, open: w.open, line: `${ln.name}_${ln.side}`, name: ln.name, side: ln.side,
+        dayType, signedT: w.signedT ?? null, dtLabel: w.dtLabel ?? null,
         reverted: ln.outcome === 'reverted', fillTime: ln.firstTouchTime ?? null,
         level: ln.level, innerLvl: ln.innerLvl, outerLvl: ln.outerLvl,
         decidedBy: ln.decidedBy ?? 'barrier',           // 'barrier' (TP/SL hit) or 'close' (mark-to-close)
@@ -79,12 +96,13 @@ export function extractTouches(records, { conditions = ['approachVel'] } = {}) {
         // (toward mid), so the chandelier/structural trail can price either entry.
         fStruct: ln.fStruct, fChand: ln.fChand,
         fStructFade: ln.fStructFade, fChandFade: ln.fChandFade,
-        // Exit-study gross PnLs (%-of-price, no cost) — six {fade,follow}×{fixed,
-        // chand,walk} combos simulated along the real M1 path by simulateExitVariants.
-        // Undefined on records refreshed before the exit study shipped (runExitStudy
+        // Exit-study gross PnLs (%-of-price, no cost) — eight {fade,follow}×{fixed,
+        // chand,walk,ride} combos simulated along the real M1 path by simulateExitVariants.
+        // 'ride' = chandelier trail with NO TP cap (the range-line bot's winning exit).
+        // Undefined on records refreshed before each variant shipped (runExitStudy
         // counts and skips those).
-        exFadeFixed: ln.exFadeFixed, exFadeChand: ln.exFadeChand, exFadeWalk: ln.exFadeWalk,
-        exFollowFixed: ln.exFollowFixed, exFollowChand: ln.exFollowChand, exFollowWalk: ln.exFollowWalk,
+        exFadeFixed: ln.exFadeFixed, exFadeChand: ln.exFadeChand, exFadeWalk: ln.exFadeWalk, exFadeRide: ln.exFadeRide,
+        exFollowFixed: ln.exFollowFixed, exFollowChand: ln.exFollowChand, exFollowWalk: ln.exFollowWalk, exFollowRide: ln.exFollowRide,
       });
     }
   }
@@ -443,13 +461,16 @@ export function runSensitivity(touchesByPair, { base = {}, grids = {}, costByPai
 //   minN/marginPct — passed to buildPolicy (a cell trades only if its IS edge pays).
 //   costByPair/slipByPair — per-pair friction stamped onto each touch (mirrors runRigor).
 const _cap = s => s.charAt(0).toUpperCase() + s.slice(1);   // 'fade' → 'Fade'
-export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
+export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0.01,
                                               trailFrac = 0.5, beTrigger = 0.5,
                                               costByPair = {}, slipByPair = {} } = {}) {
-  // Stamp per-pair costs (mirror runRigor) so buildPolicy + the OOS netting use the
-  // right friction.
+  // Stamp per-pair costs so buildPolicy + the OOS netting use the SAME friction and
+  // margin as the deployed book — otherwise the study learns a looser policy (trading
+  // marginal cells the book skips) and mis-prices per pair, making the absolute level
+  // incomparable to the book. Default marginPct 0.01 = the book's after-cost gate;
+  // default cost = the per-pair PAIR_COST_PCT table (not a flat fx default).
   for (const [pair, touches] of Object.entries(touchesByPair)) {
-    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    const cost = costByPair[pair] ?? costForPair(pair), slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
     for (const t of touches) { t.cost = cost; t.slip = slip; }
   }
   const all = Object.values(touchesByPair).flat().sort(byDate);
@@ -458,7 +479,7 @@ export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, margin
   // Entry policy learned on IS (same as the book), held fixed across all three exits.
   const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
 
-  const RULES = ['fixed', 'chand', 'walk'];
+  const RULES = ['fixed', 'chand', 'walk', 'ride'];
   // trades[rule][group] = {date,pnl}[]  where group ∈ overall|fade|follow.
   const trades = Object.fromEntries(RULES.map(r => [r, { overall: [], fade: [], follow: [] }]));
   let missing = 0;
@@ -508,4 +529,263 @@ export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, margin
   }
 
   return { splitDate, trailFrac, beTrigger, missing, rules, bestByGroup };
+}
+
+// ── 8) Day-type gate A/B study — does conditioning fade/follow on the ex-ante ──
+// trend-day forecast beat the velocity-only policy? ("stop fading into a rally").
+//
+// Discipline / no-lookahead: the ONLY day-type signal used is each touch's
+// `dayType` bucket (derived from the WINDOW's `signedT`, which is EX-ANTE — see
+// extractTouches). We never touch realizedDir / outcome / close to decide the
+// bucket. buildPolicy still learns fade/follow/skip from IS after-cost PnL.
+//
+// Runs runPerLine TWICE on the SAME data / split / costs:
+//   • baseline: cells keyed by approach-velocity only  (t.cell as passed in)
+//   • gated:    cells keyed by approach-velocity × dayType (append |bucket)
+// so any OOS difference is the day-type gate, not the data or the split.
+//
+// touchesByPair: { pair: touches[] } — touches from extractTouches with the
+// deployed baseline conditions (['approachVel']); each carries .dayType/.signedT.
+// Returns the OOS A/B card + the focused "fade-into-trend" diagnostic (the exact
+// "selling into a rally" losers the gate is meant to cut).
+export function runDayTypeStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0.01,
+                                                 dtThresh = 0.33, costByPair = {}, slipByPair = {} } = {}) {
+  const pairs = Object.entries(touchesByPair || {});
+  if (!pairs.length) return null;
+  // Two views of the SAME touches, differing only in the cell key. Cloning keeps
+  // the incoming touches untouched (runPerLine stamps t.cost/t.slip in place).
+  const cloneWith = (cellFn) => {
+    const out = {};
+    for (const [pair, ts] of pairs) out[pair] = ts.map(t => ({ ...t, cell: cellFn(t) }));
+    return out;
+  };
+  const baseByPair  = cloneWith(t => t.cell);                         // approachVel-only cell (as extracted)
+  const gatedByPair = cloneWith(t => `${t.cell}|${t.dayType ?? 'na'}`); // + ex-ante day-type bucket
+
+  const opts = { splitFrac, minN, marginPct, costByPair, slipByPair, mcRuns: 0, bootRuns: 0 };
+  const baseRes  = runPerLine(baseByPair,  opts);
+  const gatedRes = runPerLine(gatedByPair, opts);
+  if (!baseRes || !gatedRes) return null;
+  const splitDate = baseRes.splitDate;
+
+  // OOS portfolio card for one runPerLine result (Sharpe/CAGR/maxDD from the daily
+  // portfolio series; expectancy from per-trade summary; cell breadth from policy).
+  const cardOf = (res) => {
+    const p = res.portfolio || {};
+    const exp = summarizeTrades(res.equity.map(e => e.pnl), res.equity.map(e => e.date)).expectancy;
+    return {
+      sharpe: p.sharpe ?? 0, cagr: p.cagr ?? 0, maxDD: p.maxDD ?? 0,
+      expectancy: exp, nTrades: res.nTrades,
+      cells: { fade: res.coverage.fadeCells, follow: res.coverage.followCells, skip: res.coverage.skipCells },
+    };
+  };
+  const baseline = cardOf(baseRes);
+  const gated    = cardOf(gatedRes);
+
+  // ── Fade-into-trend diagnostic ──────────────────────────────────────────────
+  // Over the OOS touches: isolate the ones the BASELINE policy FADES that go
+  // AGAINST the ex-ante day-type — i.e. fading an UP line on a tU (trend-up) day,
+  // or a DN line on a tD (trend-down) day. Those are the "selling into a rally"
+  // losers. Report their count + baseline net PnL, and what the GATED policy does
+  // with the SAME touches (skip / flip-to-follow / still-fade) + its net PnL.
+  const basePolicy  = baseRes.policy;
+  const gatedPolicy = gatedRes.policy;
+  const againstTrend = (t) => (t.side === 'up' && t.dayType === 'tU') || (t.side === 'dn' && t.dayType === 'tD');
+  let n = 0, baselineNetPnl = 0, gatedNetPnl = 0;
+  const gatedAction = { skip: 0, flip: 0, fade: 0 };
+  for (const [pair, ts] of pairs) {
+    for (const t of ts) {
+      if (t.date < splitDate) continue;                              // OOS only
+      if (!againstTrend(t)) continue;
+      const bp = basePolicy[t.cell];                                 // baseline cell (as extracted)
+      if (!bp || bp.decision !== 'fade') continue;                   // only the baseline fades-into-trend
+      n++;
+      const cost = { costPct: t.cost ?? costByPair[pair] ?? DEFAULT_COST_PCT.fx,
+                     slipPct: t.slip ?? slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx };
+      baselineNetPnl += pnlFor(t, 'fade', cost);
+      const gp = gatedPolicy[`${t.cell}|${t.dayType ?? 'na'}`];      // gated cell decision on the SAME touch
+      const gDec = (!gp || gp.decision === 'skip') ? 'skip' : gp.decision;
+      if (gDec === 'skip')        gatedAction.skip++;
+      else if (gDec === 'follow') { gatedAction.flip++; gatedNetPnl += pnlFor(t, 'follow', cost); }
+      else                        { gatedAction.fade++; gatedNetPnl += pnlFor(t, 'fade',   cost); }
+    }
+  }
+
+  const delta = {
+    sharpe: +((gated.sharpe ?? 0) - (baseline.sharpe ?? 0)).toFixed(3),
+    expectancy: +((gated.expectancy ?? 0) - (baseline.expectancy ?? 0)).toFixed(4),
+    nTrades: (gated.nTrades ?? 0) - (baseline.nTrades ?? 0),
+  };
+  // Gated "wins OOS" only with adequate breadth: Sharpe ≥ baseline AND n ≥ 30.
+  const gatedWinsOos = (gated.sharpe ?? -Infinity) >= (baseline.sharpe ?? Infinity) && (gated.nTrades ?? 0) >= 30;
+
+  return {
+    splitDate, dtThresh, baseline, gated, delta, gatedWinsOos,
+    fadeIntoTrend: {
+      n, baselineNetPnl: +baselineNetPnl.toFixed(4), gatedNetPnl: +gatedNetPnl.toFixed(4), gatedAction,
+    },
+  };
+}
+
+// ── 9) Stop-loss study — per-pair optimal SL from winners' MAE, out-of-sample ──
+// The fade stop is currently the OUTER band line — nobody chose it; it is just
+// where the triple-barrier put the far barrier. Each fade touch already stores
+// `extPct` (its ADVERSE excursion — how far price continued AGAINST the fade before
+// the barrier resolved) and `reverted` (did the fade win), so we can RE-PRICE every
+// fade under a TIGHTER candidate stop with NO M1 re-simulation:
+//   • candidate SL at distance s (% of price): if extPct > s → the stop triggers
+//     → loss −s; else the trade keeps its ORIGINAL barrier/close outcome.
+// This finds the stop that cuts losers without stopping the dip-then-revert winners.
+//
+// CAVEATS baked in (this is a screening study, not a tick replay):
+//   • TIGHTENING ONLY. extPct is capped at the ORIGINAL barrier resolution (a fade
+//     that continued past the outer line was recorded as decided there), so we can
+//     only test candidate SLs ≤ the current outer-band distance. Each candidate s is
+//     clamped PER TOUCH to min(s, distOut). Widening would need M1 re-simulation to
+//     see past the original stop — noted as a follow-up, NOT attempted here.
+//   • CONSERVATIVE ordering. extPct/mfePct are window extremes of unknown ORDER; if
+//     extPct > s we assume the stop was hit (conservative on the loss side).
+//   • OOS + n≥30. Per-pair tuning overfits, so a pair-specific SL only "wins" if it
+//     beats the band SL OOS with ≥30 fade trades for that pair; otherwise it falls
+//     back to the band SL. An asset-class-optimal variant (one SL per fx/index/
+//     commodity) is offered as the more-robust middle ground.
+//   • FADE cells only (the book is ~all fades — that's where the SL pain is). Follow
+//     cells (SL = the inner line) are analogous but out of scope for v1.
+
+// Re-price ONE fade touch under a candidate stop at distance `s` (% of price).
+// Conservative: if the stored adverse excursion exceeded s we assume the tighter
+// stop was hit → loss −s (net of cost). Otherwise the trade survived to its ORIGINAL
+// barrier/close resolution → keep the original fade PnL (pnlFor). No slip: a fade
+// is a limit entry. pnlAtSL(t, distOut) therefore reconciles with pnlFor's fade
+// result (extPct is capped at distOut, so the outer band never "stops" early).
+export function pnlAtSL(t, s, { costPct = 0.012 } = {}) {
+  const cost = costPct;
+  if (t.extPct != null && Number.isFinite(t.extPct) && t.extPct > s)
+    return +(-s - cost).toFixed(5);                              // stopped early by the tighter SL
+  return pnlFor(t, 'fade', { costPct: cost, slipPct: 0 });       // survived → original fade outcome
+}
+
+export function runStopStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0.01,
+                                              costByPair = {}, slipByPair = {}, classByPair = {} } = {}) {
+  // Stamp per-pair cost so buildPolicy + the OOS re-pricing use the SAME friction as
+  // the deployed book (mirrors runExitStudy). Default cost = the per-pair table.
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? costForPair(pair), slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
+  const all = Object.values(touchesByPair).flat().sort(byDate);
+  if (!all.length) return null;
+  const splitDate = all[Math.floor(all.length * splitFrac)]?.date ?? null;
+  // Same pooled IS policy the book learns — we only re-price the cells it FADES.
+  const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
+
+  // Collect OOS fade touches (policy decides fade), precomputing the barrier geom.
+  const byPair = {};
+  const oosFades = [];
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    for (const t of touches) {
+      if (t.date < splitDate) continue;                         // OOS only
+      const p = policy[t.cell];
+      if (!p || p.decision !== 'fade') continue;                // fade cells only (v1)
+      t.distIn  = Math.abs(t.level - t.innerLvl) / t.open * 100;   // TP (toward open)
+      t.distOut = Math.abs(t.outerLvl - t.level) / t.open * 100;   // current band SL (away)
+      (byPair[pair] ??= []).push(t);
+      oosFades.push(t);
+    }
+  }
+  if (!oosFades.length) return null;
+
+  // ── helpers ─────────────────────────────────────────────────────────────────
+  const sortAsc = a => [...a].sort((x, y) => x - y);
+  const pctAt = (arrAsc, q) => arrAsc.length ? arrAsc[Math.min(arrAsc.length - 1, Math.floor(q / 100 * arrAsc.length))] : null;
+  const medOf = a => { if (!a.length) return 0; const s = sortAsc(a); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  // Price one fade at candidate s (null = band SL = original outcome; tightening is
+  // clamped PER TOUCH to min(s, distOut) so we never test a WIDER stop than the band).
+  const priceOne = (t, s) => (s == null)
+    ? pnlFor(t, 'fade', { costPct: t.cost ?? DEFAULT_COST_PCT.fx, slipPct: 0 })
+    : pnlAtSL(t, Math.min(s, t.distOut), { costPct: t.cost ?? DEFAULT_COST_PCT.fx });
+  const rowsFor = (fades, s) => fades.map(t => ({ date: t.date, pnl: priceOne(t, s) }));
+  const statOf = (rows) => {
+    const port = portfolioStats(dailySeries(rows));
+    const trd  = summarizeTrades(rows.map(r => r.pnl), rows.map(r => r.date));
+    return { sharpe: port.sharpe, cagr: port.cagr, maxDD: port.maxDD, expectancy: trd.expectancy, trades: rows.length };
+  };
+  // Argmax-Sharpe (tie-break expectancy) over the tightening grid vs the band baseline.
+  // Returns the winning stop distance + its OOS stats + the `s` actually applied (null
+  // when the band wins or n<30 → the portfolio then prices that group at the band SL).
+  const pickBest = (fades) => {
+    const n = fades.length;
+    const dists = fades.map(t => t.distOut);
+    const bandSL = medOf(dists);                                 // representative current band SL
+    const winnersMae = sortAsc(fades.filter(t => t.reverted).map(t => t.extPct).filter(Number.isFinite));
+    const rawCands = [pctAt(winnersMae, 75), pctAt(winnersMae, 90), pctAt(winnersMae, 95), 0.5 * bandSL, 0.75 * bandSL];
+    const cands = [...new Set(rawCands.filter(s => s != null && s > 0 && s < bandSL).map(s => +s.toFixed(5)))];
+    const bandStat = statOf(rowsFor(fades, null));
+    let best = { sl: +bandSL.toFixed(5), sUsed: null, ...bandStat };
+    if (n >= 30) {
+      for (const s of cands) {
+        const st = statOf(rowsFor(fades, s));
+        if (st.sharpe > best.sharpe + 1e-9 ||
+            (Math.abs(st.sharpe - best.sharpe) <= 1e-9 && st.expectancy > best.expectancy))
+          best = { sl: s, sUsed: s, ...st };
+      }
+    }
+    return { n, bandSL, bandStat, best, winnersMae };
+  };
+
+  // ── per-pair ─────────────────────────────────────────────────────────────────
+  const perPair = {}, perPairSUsed = {};
+  for (const [pair, fades] of Object.entries(byPair)) {
+    const r = pickBest(fades);
+    perPairSUsed[pair] = r.best.sUsed;                          // s applied in the per-pair-optimal portfolio
+    perPair[pair] = {
+      n: r.n,
+      winnersMaeP50: r.winnersMae.length ? +pctAt(r.winnersMae, 50).toFixed(5) : null,
+      winnersMaeP75: r.winnersMae.length ? +pctAt(r.winnersMae, 75).toFixed(5) : null,
+      winnersMaeP90: r.winnersMae.length ? +pctAt(r.winnersMae, 90).toFixed(5) : null,
+      winnersMaeP95: r.winnersMae.length ? +pctAt(r.winnersMae, 95).toFixed(5) : null,
+      bandSL: +r.bandSL.toFixed(5),
+      bestSL: +r.best.sl.toFixed(5),
+      expBand: r.bandStat.expectancy, expBest: r.best.expectancy,
+      sharpeBand: r.bandStat.sharpe, sharpeBest: r.best.sharpe,
+      lowN: r.n < 30,
+    };
+  }
+
+  // ── asset-class-optimal (one SL per fx/index/commodity — the robust middle) ───
+  const byClass = {};
+  for (const [pair, fades] of Object.entries(byPair)) (byClass[classByPair[pair] || 'fx'] ??= []).push(...fades);
+  const classBestS = {}, classDetail = {};
+  for (const [cls, fades] of Object.entries(byClass)) {
+    const r = pickBest(fades);
+    classBestS[cls] = r.best.sUsed;
+    classDetail[cls] = { n: r.n, bandSL: +r.bandSL.toFixed(5), bestSL: +r.best.sl.toFixed(5),
+      expBand: r.bandStat.expectancy, expBest: r.best.expectancy,
+      sharpeBand: r.bandStat.sharpe, sharpeBest: r.best.sharpe, lowN: r.n < 30 };
+  }
+
+  // ── portfolio A/B (all three priced across the SAME OOS fades) ────────────────
+  const bandRows = [], perPairRows = [], acRows = [];
+  for (const [pair, fades] of Object.entries(byPair)) {
+    const cls = classByPair[pair] || 'fx';
+    for (const t of fades) {
+      bandRows.push({ date: t.date, pnl: priceOne(t, null) });
+      perPairRows.push({ date: t.date, pnl: priceOne(t, perPairSUsed[pair]) });
+      acRows.push({ date: t.date, pnl: priceOne(t, classBestS[cls] ?? null) });
+    }
+  }
+  const band = statOf(bandRows), perPairOpt = statOf(perPairRows), assetClassOpt = statOf(acRows);
+  const deltaOf = (a) => ({ sharpe: +(a.sharpe - band.sharpe).toFixed(3),
+                            expectancy: +(a.expectancy - band.expectancy).toFixed(4),
+                            trades: a.trades - band.trades });
+
+  return {
+    splitDate, minN, marginPct,
+    perPair, classDetail,
+    portfolio: { band, perPairOpt, assetClassOpt,
+      delta: { perPairOpt: deltaOf(perPairOpt), assetClassOpt: deltaOf(assetClassOpt) } },
+    note: 'OOS, tightening-only (candidate SL ≤ current outer band; wider stops need M1 re-sim). ' +
+          'Screening re-price off stored extPct (adverse excursion) with conservative ordering — not a tick replay. ' +
+          'Adopt a per-pair SL only where it beats the band SL OOS with n≥30 fade trades; else fall back to asset-class or the band SL.',
+  };
 }

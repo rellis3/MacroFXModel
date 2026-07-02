@@ -3037,6 +3037,21 @@ async function loadM5Chart(name, f) {
         });
       }
 
+      // Day high / low lines — running extremes of today's session, updated each redraw
+      const todayBars = todayBarsRaw ? hitsData : null;
+      if (todayBars && todayBars.length) {
+        const dayHigh = Math.max(...todayBars.map(b => b.high));
+        const dayLow  = Math.min(...todayBars.map(b => b.low));
+        if (isFinite(dayHigh)) series.createPriceLine({
+          price: dayHigh, color: '#fbbf24', lineWidth: 1, lineStyle: LS.Dashed,
+          title: 'Day H', axisLabelVisible: true,
+        });
+        if (isFinite(dayLow)) series.createPriceLine({
+          price: dayLow, color: '#fbbf24', lineWidth: 1, lineStyle: LS.Dashed,
+          title: 'Day L', axisLabelVisible: true,
+        });
+      }
+
       // Current price line — solid, coloured by direction vs open
       if (lastClose && dayOpen) {
         const isUp = lastClose >= dayOpen;
@@ -3178,6 +3193,7 @@ function _buildModalChart(name) {
 
   // Rebuild chart data from cache (prev day + today) for the modal view
   let srcData;
+  let dayHigh = null, dayLow = null;   // today's running extremes
   const dayOpen = meta?.dayOpen;
 
   if (cache?.values?.length) {
@@ -3187,6 +3203,10 @@ function _buildModalChart(name) {
     const prevBars = values.filter(c => !c.datetime?.startsWith(londonDate));
     const todayAsc = [...todayM5].reverse();
     const prevAsc  = [...prevBars].reverse();
+    if (todayAsc.length) {
+      dayHigh = Math.max(...todayAsc.map(c => parseFloat(c.high)));
+      dayLow  = Math.min(...todayAsc.map(c => parseFloat(c.low)));
+    }
     // Full week context: all ~1500 bars (prior week) + today
     const allBars  = todayAsc.length >= 1 ? [...prevAsc, ...todayAsc] : [...values].reverse();
     srcData = allBars.map(c => ({
@@ -3196,6 +3216,10 @@ function _buildModalChart(name) {
     })).filter(b => b.open && !isNaN(b.time));
   } else {
     srcData = meta?.chartData ?? [];
+    if (srcData.length) {
+      dayHigh = Math.max(...srcData.map(b => b.high));
+      dayLow  = Math.min(...srcData.map(b => b.low));
+    }
   }
 
   if (!srcData.length) {
@@ -3265,6 +3289,10 @@ function _buildModalChart(name) {
     const isUp = lastClose >= dayOpen;
     series.createPriceLine({ price: lastClose, color: isUp ? 'rgba(16,185,129,0.8)' : 'rgba(249,115,22,0.8)', lineWidth: 1, lineStyle: LS.Solid, title: isUp ? '▲' : '▼', axisLabelVisible: true });
   }
+
+  // Day high / low lines — running extremes of today's session
+  if (dayHigh != null && isFinite(dayHigh)) series.createPriceLine({ price: dayHigh, color: '#fbbf24', lineWidth: 1, lineStyle: LS.Dashed, title: 'Day H', axisLabelVisible: true });
+  if (dayLow  != null && isFinite(dayLow))  series.createPriceLine({ price: dayLow,  color: '#fbbf24', lineWidth: 1, lineStyle: LS.Dashed, title: 'Day L', axisLabelVisible: true });
 
   chart.timeScale().fitContent();
   _modalChart = chart;

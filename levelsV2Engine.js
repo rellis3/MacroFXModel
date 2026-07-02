@@ -27,7 +27,7 @@ import { volSigmaSeries } from './js/forecastCore.js';
 import { createTouchFeatures } from './js/touchFeatures.js';
 import { gradeLevelV2 } from './js/gradeLevelV2.js';
 import { buildRangeLadder } from './js/rangeLineAnalyser.js';
-import { isUsablePolicy } from './js/levelsV2Learn.js';
+import { isUsablePolicy, deriveBands } from './js/levelsV2Learn.js';
 import { recordEntries, resolvePair } from './js/entryLedgerV2.js';
 import { selectAlerts, pruneCooldowns, DEFAULT_V2_ALERT_CFG, GRADE_RANK } from './js/alertV2Core.js';
 import { formatV2Entry } from './js/alertFormatterV2.js';
@@ -188,7 +188,7 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
       ladders, bars: sessionBars, open, sigma, pip, price, proxDist, tf,
       policy: frozen.policy, condFields: frozen.conditions ?? ['approachVel'],
       includeSkips: true,
-      opts: { bands: frozen.bands ?? opts.bands },   // policy's own distribution-fit bands
+      opts: { bands: deriveBands(frozen.policy) ?? frozen.bands ?? opts.bands },   // recomputed live from the policy so band-calibration fixes apply without a re-learn
     });
     // gradeLevelV2 returns {entries,skips} with includeSkips, but [] on its early
     // guard — tolerate both shapes.

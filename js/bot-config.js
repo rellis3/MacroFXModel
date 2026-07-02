@@ -2847,10 +2847,49 @@ async function loadVbLiveStatus() {
     if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
     if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
     if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
-    if (openEl) openEl.textContent = (st.mt5_positions || []).length;
+    const positions = st.mt5_positions || [];
+    if (openEl) openEl.textContent = positions.length;
+    const tradesEl = document.getElementById('vbTradesN');
+    if (tradesEl) tradesEl.textContent = (st.today_closed_trades || []).length;
     if (uniEl)  uniEl.textContent  = (st.universe || []).length;
     const pa = document.getElementById('vbPlanAge');
     if (pa) pa.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+
+    // Map each open position to the line it's fading. The bot stores the line in the
+    // position comment as "Vol {line_id} {decision}" (e.g. "Vol HL50_dn fade"); we
+    // parse the line_id back to its ↑/↓ label. Also index open lines per-pair so the
+    // levels table below can flag which line is live.
+    const _lineLabel = Object.fromEntries(VB_LINE_ROWS.map(r => [r.key, r.label]));
+    const _posLine = p => {
+      const m = /Vol\s+([A-Z0-9]+_(?:up|dn))/i.exec(p.comment || '');
+      return m ? (_lineLabel[m[1]] || m[1].replace('_', ' ')) : '—';
+    };
+    const openByPair = {};
+    positions.forEach(p => {
+      const k = (p.symbol || '').toLowerCase();
+      (openByPair[k] = openByPair[k] || []).push(p);
+    });
+    const openBody = document.getElementById('vbOpenBody');
+    if (openBody) {
+      if (!positions.length) {
+        openBody.innerHTML = '<tr><td colspan="7" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>';
+      } else {
+        const dp = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+        openBody.innerHTML = positions.map(p => {
+          const buy = (p.direction || '').toUpperCase() === 'BUY';
+          const pnl = +(p.profit || 0);
+          return `<tr>
+            <td style="padding:5px 10px;font-weight:600;text-align:left">${(p.symbol || '?').toUpperCase()}</td>
+            <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+            <td style="padding:5px 10px;text-align:left">${_posLine(p)}</td>
+            <td style="padding:5px 10px;text-align:right">${(+(p.lots || 0)).toFixed(2)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${dp(p.symbol, p.open_price)}</td>
+            <td style="padding:5px 10px;text-align:right">${dp(p.symbol, p.price)}</td>
+            <td style="padding:5px 10px;text-align:right;color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
     // Per-pair: today's forecast levels the bot pulled + live price.
     const body = document.getElementById('vbLinesBody');
     if (body) {
@@ -2859,7 +2898,34 @@ async function loadVbLiveStatus() {
         body.innerHTML = '<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no levels yet — waiting for the daily plan</td></tr>';
       } else {
         const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
-        const acted = a => (a && a.length) ? a.map(s => s.replace('_', ' ')).join(', ') : '—';
+        // Per-line audit chip: WHY each decided line was traded or skipped. Falls back
+        // to a bare line list for older statuses that predate the audit field.
+        const REASON = { belowMargin: 'skip · edge < cost', lowN: 'skip · too few samples',
+                         unseen: 'skip · unseen cell', degenerate: 'skip · no room', skip: 'skip' };
+        const actedChip = (id, a) => {
+          const lbl = _lineLabel[id] || id.replace('_', ' ');
+          if (!a) return `<span style="color:var(--text3)">${lbl}</span>`;
+          const traded = a.status === 'traded', primed = a.status === 'primed';
+          const col = traded ? 'var(--amber)' : primed ? 'var(--text3)' : '#8a93a6';
+          const tag = traded ? (a.decision || 'trade') : primed ? 'primed (pre-open)' : (REASON[a.reason] || 'skip');
+          const bits = [a.bucket, a.expectancy != null ? `exp ${a.expectancy}%` : '',
+                        a.revRate != null ? `rev ${a.revRate}%` : '', a.n != null ? `n ${a.n}` : '']
+                       .filter(Boolean).join(' · ');
+          return `<span title="${bits}" style="color:${col};white-space:nowrap">${lbl} — ${tag}</span>`;
+        };
+        const acted = r => {
+          const au = r.audit || {};
+          const ids = (r.acted && r.acted.length) ? r.acted : Object.keys(au);
+          return ids.length ? ids.map(id => actedChip(id, au[id])).join('<br>') : '—';
+        };
+        // Live positions on this pair → a green "in trade" badge naming the line, so
+        // a currently-held level stands out from the (skip-inclusive) acted list.
+        const liveBadge = pair => {
+          const ps = openByPair[pair.toLowerCase()] || [];
+          if (!ps.length) return '';
+          const tags = ps.map(p => `<span style="color:${(p.direction||'').toUpperCase()==='BUY'?'var(--green)':'var(--red)'}">▶ ${_posLine(p)} ${(p.direction||'').toUpperCase()}</span>`).join(' ');
+          return `<div style="margin-top:2px;font-weight:600">${tags}</div>`;
+        };
         // price colour: green if above open, red if below.
         body.innerHTML = rows.map(r => {
           const L = r.levels || {}, up = r.price != null && r.open != null && r.price >= r.open;
@@ -2873,7 +2939,7 @@ async function loadVbLiveStatus() {
             <td style="padding:5px 10px;text-align:right;color:var(--text3)">${d(r.pair, L.OC50_dn)}</td>
             <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL50_dn)}</td>
             <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL75_dn)}</td>
-            <td style="padding:5px 10px;text-align:left;color:var(--text3)">${acted(r.acted)}</td>
+            <td style="padding:5px 10px;text-align:left;color:var(--text3);line-height:1.7">${acted(r)}${liveBadge(r.pair)}</td>
             <td style="padding:5px 10px;text-align:center"><button type="button" onclick="openVbChart('${r.pair}')" title="Live line chart" style="background:var(--s3);color:var(--text2);border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer">📈</button></td>
           </tr>`;
         }).join('');

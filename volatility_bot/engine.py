@@ -19,7 +19,8 @@ class SessionTracker:
       * ``open``                — the session open anchor (OC lines hang off it),
       * ``run_low`` / ``run_high`` — running extremes (drive the dynamic HL lines),
       * ``closes``              — a minutely close buffer (drives approach velocity),
-      * ``acted``               — line ids already decided this session (one shot).
+      * ``acted``               — line ids already decided this session (one shot),
+      * ``audit``               — WHY each acted line was traded/skipped (dashboard).
     """
 
     def __init__(self, open_px, vel_win=VEL_WIN):
@@ -29,6 +30,9 @@ class SessionTracker:
         self.closes = deque(maxlen=vel_win + 1)
         self.closes.append(float(open_px))
         self.acted = set()
+        # line_id → {status, bucket, decision?, reason?, expectancy?, n?, revRate?}
+        # so the config card can explain each decision instead of a bare "acted".
+        self.audit = {}
 
     def on_price(self, px):
         px = float(px)
@@ -98,15 +102,32 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False):
             if not touched:
                 continue
             tracker.acted.add(line_id)     # one decision per line per session
+            cell = policy.get(cell_key(name, side, bucket))
             if dry_run:
-                continue                   # prime only — never trade a stale crossing
-            decision = (policy.get(cell_key(name, side, bucket)) or {}).get("decision")
-            if decision not in ("fade", "follow"):
-                continue                   # skip cell / unseen → no trade
-            spec = trade_spec(name, side, levels, decision, tracker.open, frac)
-            if spec:
-                out.append({**spec, "line": line_id, "name": name, "ln_side": side,
-                            "decision": decision, "bucket": bucket, "velocity": val})
+                # Line was already crossed before the bot started watching — primed,
+                # never a live decision. Recorded so the card can say so.
+                tracker.audit[line_id] = {"status": "primed", "bucket": bucket}
+                continue
+            # Common cell stats for the audit (present whether we trade or skip).
+            info = {"bucket": bucket,
+                    "expectancy": (cell or {}).get("expectancy"),
+                    "n": (cell or {}).get("n"),
+                    "revRate": (cell or {}).get("revRate")}
+            decision = (cell or {}).get("decision")
+            if decision in ("fade", "follow"):
+                spec = trade_spec(name, side, levels, decision, tracker.open, frac)
+                if spec:
+                    tracker.audit[line_id] = {**info, "status": "traded", "decision": decision}
+                    out.append({**spec, "line": line_id, "name": name, "ln_side": side,
+                                "decision": decision, "bucket": bucket, "velocity": val})
+                    continue
+                # policy said trade but the neighbour lines left no valid TP/SL.
+                tracker.audit[line_id] = {**info, "status": "skip", "reason": "degenerate"}
+                continue
+            # skip cell (edge below cost / too few samples) or a line×bucket never
+            # seen in-sample → the honest book has no tradeable edge here.
+            tracker.audit[line_id] = {**info, "status": "skip",
+                                      "reason": (cell or {}).get("reason") or "unseen"}
     return out
 
 

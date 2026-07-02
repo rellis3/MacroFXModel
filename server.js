@@ -46,7 +46,7 @@ import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './js/rangeLineAnalyser.js';
 import { pipSize as _pipSize, instrument } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
-import { freezePolicy as freezePolicyV2 } from './js/levelsV2Learn.js';
+import { freezePolicy as freezePolicyV2, deriveBands as deriveBandsV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
@@ -7571,7 +7571,10 @@ app.get('/api/levels-v2/entries', async (req, res) => {
       const raw = await kv.get(`ai_entries_v2_${sym.replace('/', '')}`);
       if (raw) out[sym] = JSON.parse(raw);
     }
-    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, splitDate: policy.splitDate, bands: policy.bands ?? null } : null, entries: out });
+    // Recompute bands live from the policy so the legend matches what the live
+    // grader now uses (band-calibration fixes apply without a re-learn).
+    const liveBands = policy?.policy ? (deriveBandsV2(policy.policy) ?? policy.bands ?? null) : (policy?.bands ?? null);
+    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, splitDate: policy.splitDate, bands: liveBands } : null, entries: out });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
