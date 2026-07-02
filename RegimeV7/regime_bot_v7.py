@@ -476,9 +476,7 @@ def compute_m30_features(pair: str) -> Optional[dict]:
     closes = [b['close'] for b in bars]
     n      = len(closes)
     atr_sl = _build_atr(bars, 70)[-1]
-    trend_now  = _ols_slope(closes[n - ln:n])
-    trend_prev = _ols_slope(closes[n - 3 - ln:n - 3])
-    slope  = (trend_now - trend_prev) * 1000
+    slope  = _ols_slope(closes[n - ln:n])
     return {'atrSL': atr_sl, 'slope': slope}
 
 

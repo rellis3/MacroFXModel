@@ -3435,6 +3435,8 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <!-- Bot filter pills -->
       <div class="pos-hist-row">
         <span class="pos-hist-label">Bots:</span>
+        <button class="pos-preset-btn" style="padding:3px 10px;font-size:10px" onclick="selectAllHistBots()">All</button>
+        <button class="pos-preset-btn" style="padding:3px 10px;font-size:10px" onclick="deselectAllHistBots()">None</button>
         <div class="pos-hist-pills" id="histBotPills"></div>
       </div>
 
@@ -5496,6 +5498,20 @@ function toggleHistBot(key) {
 }
 window.toggleHistBot = toggleHistBot;
 
+function selectAllHistBots() {
+  _histActiveBots = new Set(_POS_BOTS.map(b => b.key));
+  _POS_BOTS.forEach(b => document.getElementById(`histPill_${b.key}`)?.classList.remove('off'));
+  loadHistoryTab();
+}
+window.selectAllHistBots = selectAllHistBots;
+
+function deselectAllHistBots() {
+  _histActiveBots = new Set();
+  _POS_BOTS.forEach(b => document.getElementById(`histPill_${b.key}`)?.classList.add('off'));
+  loadHistoryTab();
+}
+window.deselectAllHistBots = deselectAllHistBots;
+
 function setHistPreset(preset) {
   _histPreset = preset;
   ['today','week','month','custom'].forEach(p =>
@@ -6043,10 +6059,16 @@ function _londonOffsetMinutes(epochSec) {
   return Math.round((fakeEpoch - epochSec) / 60);
 }
 
-let _tcChart = null, _tcSeries = null, _tcPriceLines = [];
+let _tcChart = null, _tcSeries = null, _tcPriceLines = [], _tcResizeInit = false;
 
 function closeTradeChartModal() {
   document.getElementById('tradeChartModal').classList.remove('open');
+  if (_tcChart) {
+    try { _tcChart.remove(); } catch(e) {}
+    _tcChart = null;
+    _tcSeries = null;
+    _tcPriceLines = [];
+  }
 }
 window.closeTradeChartModal = closeTradeChartModal;
 
@@ -6061,26 +6083,29 @@ async function openTradeChartModal(idx) {
   modal.classList.add('open');
   status.style.display = 'flex';
   status.textContent = 'Loading M1 data…';
-  if (_tcSeries) _tcSeries.setData([]);
 
   const bot = _POS_BOTS.find(b => b.key === t.bot_key) || { label: t.bot_key || '—' };
   title.textContent = `${t.symbol || '—'} · ${bot.label}`;
 
   const net = (t.profit || 0) + (t.swap || 0);
+  const sym = _mt5ToOandaSymbol(t.symbol);
+  const isGold = (t.symbol || '').toUpperCase().includes('XAU') || (t.symbol || '').toUpperCase().includes('GOLD');
+  const priceFmt = v => v != null ? (isGold ? v.toFixed(2) : v.toFixed(5)) : '—';
   const metaItems = [
     ['Direction', t.direction || '—'],
     ['Lots', (t.lots || 0).toFixed(2)],
-    ['Entry', t.open_price  != null ? t.open_price.toFixed(5)  : '—'],
-    ['Close', t.close_price != null ? t.close_price.toFixed(5) : '—'],
+    ['Entry', priceFmt(t.open_price)],
+    ['Close', priceFmt(t.close_price)],
     ['Net P&L', `${net >= 0 ? '+' : ''}${net.toFixed(2)}`],
     ['Duration', (t.time_open && t.time_close) ? _fmtDuration(t.time_close - t.time_open) : '—'],
+    ['Open (UTC)', t.time_open  ? new Date(t.time_open  * 1000).toISOString().replace('T',' ').slice(0,16) : '—'],
+    ['Close (UTC)', t.time_close ? new Date(t.time_close * 1000).toISOString().replace('T',' ').slice(0,16) : '—'],
   ];
   if (t.comment) metaItems.push(['Comment', t.comment]);
   meta.innerHTML = metaItems.map(([lbl, val]) =>
     `<div class="tc-meta-item"><span class="tc-meta-lbl">${lbl}</span><span class="tc-meta-val">${val}</span></div>`
   ).join('');
 
-  const sym = _mt5ToOandaSymbol(t.symbol);
   if (!sym)                          { status.textContent = `Can't map symbol "${t.symbol}" to an OANDA instrument.`; return; }
   if (!t.time_open || !t.time_close) { status.textContent = 'Missing open/close time for this trade.'; return; }
 
@@ -6111,17 +6136,18 @@ async function openTradeChartModal(idx) {
     if (!data.length) throw new Error('No candles in trade window');
 
     const el = document.getElementById('tcChartEl');
-    if (!_tcChart) {
-      _tcChart = LightweightCharts.createChart(el, {
-        width: el.clientWidth || 760, height: el.clientHeight || 380,
-        layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
-        grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
-        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        rightPriceScale: { borderColor: '#1c2133' },
-        timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
-        handleScroll: true, handleScale: true,
-      });
-      _tcSeries = _tcChart.addCandlestickSeries({ priceLineVisible: false });
+    _tcChart = LightweightCharts.createChart(el, {
+      width: el.clientWidth || 760, height: el.clientHeight || 380,
+      layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
+      grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      rightPriceScale: { borderColor: '#1c2133' },
+      timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
+      handleScroll: true, handleScale: true,
+    });
+    _tcSeries = _tcChart.addCandlestickSeries({ priceLineVisible: false });
+    if (!_tcResizeInit) {
+      _tcResizeInit = true;
       window.addEventListener('resize', () => {
         if (_tcChart) try { _tcChart.resize(el.clientWidth, el.clientHeight); } catch(e) {}
       });
@@ -6133,12 +6159,17 @@ async function openTradeChartModal(idx) {
     const isLong = t.direction === 'BUY';
     const win    = net >= 0;
     const entryCol = isLong ? '#10b981' : '#f87171';
-    _tcSeries.setMarkers([
-      { time: entryTs, position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
-      { time: exitTs,  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
-    ]);
+    // Snap marker times into the data range so LW-Charts never rejects them.
+    const firstBarTs = data[0].time;
+    const lastBarTs  = data[data.length - 1].time;
+    const clamp = ts => Math.min(lastBarTs, Math.max(firstBarTs, ts));
+    try {
+      _tcSeries.setMarkers([
+        { time: clamp(entryTs), position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
+        { time: clamp(exitTs),  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
+      ]);
+    } catch(me) { /* markers failed — price lines still show entry/exit */ }
 
-    _tcPriceLines.forEach(pl => { try { _tcSeries.removePriceLine(pl); } catch(e) {} });
     _tcPriceLines = [];
     if (t.open_price  != null) _tcPriceLines.push(_tcSeries.createPriceLine({ price: t.open_price,  color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Entry' }));
     if (t.close_price != null) _tcPriceLines.push(_tcSeries.createPriceLine({ price: t.close_price, color: win ? '#10b981' : '#f87171', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Exit' }));

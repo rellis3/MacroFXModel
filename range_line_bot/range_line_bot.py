@@ -219,11 +219,13 @@ def _trail_stops(positions, broker, plan, cfg):
             continue
         pos["peak"] = max(pos["peak"], px) if pos["dir_up"] else min(pos["peak"], px)
         stop = chandelier_stop(pos["dir_up"], pos["entry"], pos["peak"], pos["rung"], pos["protect"], chand)
-        tighten = (stop > pos["sl"] + 1e-12) if pos["dir_up"] else (stop < pos["sl"] - 1e-12)
+        sl_new = round(stop, 5)
+        sl_cur = round(pos["sl"], 5)
+        tighten = (sl_new > sl_cur) if pos["dir_up"] else (sl_new < sl_cur)
         if tighten:
             try:
                 if broker.modify(tid, pos["instr"], stop, paper_mode=paper):
-                    pos["sl"] = stop
+                    pos["sl"] = sl_new          # store the rounded value MT5 holds
                     log.info(f"{pos['instr']} trail SL → {round(stop, 6)} (peak {round(pos['peak'], 6)}) ticket {tid}")
             except Exception as e:
                 log.warning(f"{pos['instr']}: trail modify failed: {e}")
