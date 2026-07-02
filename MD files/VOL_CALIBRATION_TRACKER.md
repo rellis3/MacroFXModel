@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-07-02 (Jul-2 checkpoint — GOLD YZ gap narrowing (−6.4%); NQ renewed +9.9% as ref declines; EURUSD HL/OC essentially perfect).
+Last updated: 2026-07-03 (Jul-3 pre-holiday — all ref values dropped ~9-18% same session; event-contaminated; NQ 3rd consecutive positive (+21%); decision point Jul-7).
 
 ---
 
@@ -45,14 +45,15 @@ Last updated: 2026-07-02 (Jul-2 checkpoint — GOLD YZ gap narrowing (−6.4%); 
   Do not touch correction factors yet. If gap stabilises ±5%, proceed to recalibrate
   oc_50_corr (1.12→~0.98, shape-only, see item 8).
 
-- index/NQ GARCH persistence: **ref-side noise confirmed (2026-06-29)** —
-  the Jun-25/26 negative gap (−4.9%→−21.0%) was almost entirely driven by
-  ref spiking (24.21%→27.76%→31.53%), not by our GARCH misbehaving. On
-  Jun-29 ref reverted fully to 22.56% while ours held at 24.49% — raw gap
-  is back positive at +8.6%. β=0.87 confirmed appropriate; no β adjustment
-  made. New shape-only correction factors (recalibrated 2026-06-26) validated
-  on first real test: displayed HL/OC Δ now tracks raw vol Δ proportionally
-  (+6%/+9%), no amplification.
+- index/NQ GARCH: **renewed positive gap developing post-Q2-end**. Jun-29 ref-side
+  noise resolved; Jun-30 Q2-end spike also reverted. But ref NQ has continued
+  declining (23.46% → 21.98% → 20.00%) while GARCH holds flat (~24.2%), generating
+  3 consecutive positive sessions: Jul-1 +4.4%, Jul-2 +9.9%, Jul-3 +21.0%. Jul-3
+  is pre-holiday (US Jul-4) — all three ref values dropped ~9-18% same session,
+  event-contaminated. **Decision point Jul-7** (first full post-holiday session):
+  if clean gap ≥ +10%, the no-whiplash 2-session bar is met and a β/α adjustment
+  discussion is warranted. Note: GARCH ω floor ≈ 20% annualized, matching ref
+  today exactly; if ref stabilises near 20%, gap may self-close as GARCH decays.
 
 ---
 
@@ -336,6 +337,7 @@ multiplier behavior specifically).
 | Jun-30 | NQ        | 24.64%   | 28.50%  | −13.5% | Possibly (Q2 end) | **ref surged** — ref jumped 22.56%→28.50% (+26.4%) in one session while GARCH barely moved (24.49%→24.64%); same ref-reactive-to-intraday pattern; do not touch β; watch Jul-1 |
 | Jul-1  | NQ        | 24.50%   | 23.46%  | +4.4%  | No         | **Q2-end noise confirmed** — ref fully reverted (28.50%→23.46%); GARCH held flat; HL +1.7%, OC 0.0%; β=0.87 correctly calibrated |
 | Jul-2  | NQ        | 24.16%   | 21.98%  | +9.9%  | No         | **renewed widening** — ref continuing to decline (23.46%→21.98%) while GARCH holds; HL +7.9%, OC +11.2% now meaningful; monitor Jul-3, do not act yet |
+| Jul-3  | NQ        | 24.20%   | 20.00%  | +21.0% | **Yes (pre-holiday Jul-4)** | ref dropped 21.98%→20.00%; all three ref values dropped 9-18% same session — pre-holiday liquidity thin-out; event-contaminated; HL +20.2%, OC +22.5%; **decision point Jul-7** |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
 on hand — only Δ was recorded in those sessions' analysis. Note: a Jun-23
@@ -371,6 +373,8 @@ all reference compares live in one place):
 | Jul-1  | EURUSD    | 5.58%    | 6.31%   | −11.6% | −6.6%    | −5.3%    | −10.3%   | −6.4%    | ref back up (5.61%→6.31%); persistent underestimate confirmed; Jun-30 was one-off ref noise; HL/OC gaps manageable (−5 to −10%) |
 | Jul-2  | GOLD (YZ) | 26.59%   | 28.42%  | −6.4%  | −8.7%    | −8.7%    | −8.6%    | −8.8%    | **gap narrowing** — YZ absorbing elevated sessions (25.49%→25.83%→26.59%); ref stable at 28.42%; HL/OC all improving; 1-2 more sessions to target ±5% band |
 | Jul-2  | EURUSD    | 5.55%    | 6.05%   | −8.3%  | −1.7%    | +1.4%    | 0.0%     | −4.4%    | **excellent HL/OC** — vol gap persists (−8.3%) but HL med −1.7%, OC med 0.0%; actual trading levels essentially at reference; no action |
+| Jul-3  | GOLD (YZ) | 26.71%   | 23.36%  | +14.3% | +12.4%   | +7.5%    | +14.4%   | +29.4%   | **pre-holiday flip** — ref dropped 28.42%→23.36% (−17.8%); all ref values dropped same session; event-contaminated; YZ barely moved; watch Jul-7 |
+| Jul-3  | EURUSD    | 5.67%    | 5.51%   | +2.9%  | +9.4%    | +12.3%   | +17.4%   | +22.2%   | pre-holiday flip to overestimate; ref 6.05%→5.51%; event-contaminated; watch Jul-7 |
 
 ---
 
