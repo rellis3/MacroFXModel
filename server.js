@@ -38,8 +38,9 @@ import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './j
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon } from './js/volBacktestEngine.js';
+import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
+import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -3965,12 +3966,21 @@ function _liqGateRollingZ(values, window = LIQ_GATE_Z_WINDOW, minWindow = LIQ_GA
 }
 
 // Net liquidity = WALCL - WTREGEN - RRPON, %-change, 5-day publication lag, 252d rolling z.
+// UNITS: FRED publishes WALCL in $MILLIONS but WTREGEN/RRPONTSYD in $BILLIONS.
+// Subtracting raw values made TGA/RRP ~0.01% of WALCL — "net liquidity"
+// degenerated to the bare Fed balance sheet and missed the 2022/23-style
+// TGA-rebuild/RRP-drain events the metric exists for. Convert WALCL→$B first.
 function computeNetLiqZ(fredRaw, dates) {
   const walcl   = forwardFillAlign(dates, fredRaw.walcl   ?? new Map());
   const wtregen = forwardFillAlign(dates, fredRaw.wtregen ?? new Map());
   const rrpon   = forwardFillAlign(dates, fredRaw.rrpon   ?? new Map());
+  // Unit sentinel: WALCL in $M is ~4,000,000–9,000,000. If FRED ever changes
+  // the series' units this goes quiet-wrong again — make it loud instead.
+  const walclSample = walcl.find(v => isFinite(v));
+  if (walclSample != null && walclSample < 100_000)
+    console.error(`[liquidity-gate] WALCL sample ${walclSample} does not look like $MILLIONS — check FRED units before trusting netLiqZ`);
   const netliqRaw = dates.map((_, i) =>
-    (isFinite(walcl[i]) && isFinite(wtregen[i]) && isFinite(rrpon[i])) ? walcl[i] - wtregen[i] - rrpon[i] : NaN
+    (isFinite(walcl[i]) && isFinite(wtregen[i]) && isFinite(rrpon[i])) ? walcl[i] / 1000 - wtregen[i] - rrpon[i] : NaN
   );
   const pctCh  = _liqGatePctChange(netliqRaw);
   const lagged = _liqGateApplyLag(pctCh, LIQ_GATE_PUB_LAG_WEEKLY);
@@ -10049,6 +10059,18 @@ async function refreshFredHistory(retry = 0) {
   }
 }
 
+// Mirror the dashboard FRED snapshot to KV key 'fred' — the Level Bot's
+// aggregate endpoint (worker /api/bot-config → regime_snapshot.fred) reads THIS
+// key, but nothing ever wrote it (the dashboard caches under 'fred2'), so the
+// bot's vol_gate VIX>30 block and vol size-mults had NEVER fired ("VIX
+// unavailable — no vol block applied", forever). Shape contract: the worker
+// unwraps `.data`; bot/modules/vol_gate.py reads `fred.vix.value`. fetched_at
+// (ms epoch) rides inside the data so vol_gate can refuse stale readings.
+async function _writeBotFredKey(d) {
+  try { await kv.put('fred', JSON.stringify({ data: { ...d, fetched_at: Date.now() }, timestamp: Date.now() })); }
+  catch (e) { console.warn('[FRED] bot fred key write failed:', e.message); }
+}
+
 async function refreshFredDashboard(retry = 0) {
   if (!process.env.FRED_KEY) {
     console.warn('[FRED] FRED_KEY not set — dashboard FRED data unavailable');
@@ -10062,7 +10084,10 @@ async function refreshFredDashboard(retry = 0) {
     if (existing) {
       const { d, t } = JSON.parse(existing);
       if (_FRED_DASH_CRIT.every(k => d[k]?.value != null) &&
-          Date.now() - (t || 0) < 5 * 60 * 60 * 1000) return;
+          Date.now() - (t || 0) < 5 * 60 * 60 * 1000) {
+        await _writeBotFredKey(d);   // keep the bot mirror alive even when the dash cache is fresh
+        return;
+      }
     }
   } catch {}
 
@@ -10090,6 +10115,7 @@ async function refreshFredDashboard(retry = 0) {
     const validCount = Object.values(out).filter(v => v.value != null).length;
     if (critOk && validCount >= 10) {
       await kv.put(_FRED_DASH_KV, JSON.stringify({ d: out, t: Date.now() }), { expirationTtl: 86400 });
+      await _writeBotFredKey(out);
       console.log(`[FRED] Dashboard cache ready — ${validCount}/31 valid` +
         ` VIX=${out.vix?.value} HY=${out.hy?.value} US10Y=${out.us10y?.value} NFCI=${out.nfci?.value}`);
     } else {
@@ -10201,6 +10227,35 @@ setInterval(refreshMacroContext, MACRO_REFRESH_MS);
 refreshFredDashboard().catch(console.error);
 setInterval(refreshFredDashboard, MACRO_REFRESH_MS);
 
+// Event-blackout windows — hourly Finnhub calendar → eventGateCore →
+// KV `event_windows_v1` for the Python bots ("ship timestamps, not logic":
+// the bots never parse a calendar, they read precomputed per-currency windows).
+// This is the risk-control gate that stops the volatility bot sitting on fade
+// limits straight through NFP/CPI/FOMC. Scheduled events are known days ahead,
+// so hourly is plenty; the bots fail OPEN (loudly) if this goes stale.
+async function _refreshEventWindows() {
+  const key = process.env.FINNHUB_KEY;
+  if (!key) return;   // no calendar feed — bots log the missing key and fail open
+  const from = new Date(Date.now() - 1 * 864e5).toISOString().slice(0, 10);
+  const to   = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
+  const r = await fetch(`https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`,
+                        { signal: AbortSignal.timeout(15_000) });
+  if (!r.ok) throw new Error(`Finnhub calendar ${r.status}`);
+  const cal = await r.json();
+  const preMin  = Number(process.env.EVENT_GATE_PRE_MIN  ?? 45);
+  const postMin = Number(process.env.EVENT_GATE_POST_MIN ?? 15);
+  const windows = _buildEventWindows(cal.economicCalendar ?? [], { preMin, postMin });
+  await kv.put('event_windows_v1', JSON.stringify({
+    data: { generatedAt: Date.now(), preMin, postMin, windows },
+    timestamp: Date.now(),
+  }));
+  console.log(`[event-gate] ${windows.length} high-impact windows published (${from} → ${to})`);
+}
+if (process.env.FINNHUB_KEY) {
+  _refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message));
+  setInterval(() => _refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message)), 60 * 60_000);
+}
+
 // fredhistory series cache — 21 series × 90 obs, starts 30s after dashboard refresh to avoid
 // concurrent FRED requests, then every 6h.  Allows /api/fredhistory to serve entirely from KV.
 setTimeout(() => {
@@ -10240,12 +10295,43 @@ function _scheduleDailyUtc(hour, minute, fn) {
   setTimeout(function fire() { fn(); setInterval(fn, 24 * 60 * 60_000); }, next - now);
   return next;
 }
+// Daily schedule in LONDON wall-clock (for jobs whose anchor is London midnight).
+// A fixed-UTC schedule is only correct for one DST season: 23:05 UTC is 00:05
+// London in BST but 23:05 London (55 min BEFORE midnight) in GMT — so all
+// winter the vol plan anchored on the PREVIOUS session's open. Re-armed with a
+// fresh computation after every firing (no setInterval) so the 23h/25h DST
+// transition days self-correct. Uses the same DST-safe londonMidnightSec the
+// session-open anchor itself uses — one definition of "London midnight".
+function _scheduleDailyLondon(hour, minute, fn) {
+  const delta = (hour * 60 + minute) * 60_000;
+  const nextAt = () => {
+    const now = Date.now();
+    let t = _btLondonMidnightSec(new Date(now)) * 1000 + delta;
+    if (t <= now) t = _btLondonMidnightSec(new Date(t + 30 * 3600_000)) * 1000 + delta;
+    return t;
+  };
+  const arm = () => {
+    const t = nextAt();
+    setTimeout(() => { try { fn(); } finally { arm(); } }, Math.max(1000, t - Date.now()));
+    return new Date(t);
+  };
+  return arm();
+}
 if (process.env.OANDA_KEY) {
   const _runVolPlan = () => _refreshVolatilityPlan().catch(e => console.error('[volatility-bot] plan refresh failed:', e.message));
-  const hour = Number(process.env.VOL_PLAN_UTC_HOUR ?? 23);
-  const min  = Number(process.env.VOL_PLAN_UTC_MIN ?? 5);
-  const next = _scheduleDailyUtc(hour, min, _runVolPlan);
-  console.log(`[volatility-bot] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
+  // Default: 00:05 EUROPE/LONDON — 5 min after the session-open anchor exists,
+  // in BOTH DST seasons. Setting VOL_PLAN_UTC_HOUR/MIN switches back to the
+  // legacy fixed-UTC schedule (ops escape hatch).
+  let next;
+  if (process.env.VOL_PLAN_UTC_HOUR != null || process.env.VOL_PLAN_UTC_MIN != null) {
+    const hour = Number(process.env.VOL_PLAN_UTC_HOUR ?? 23);
+    const min  = Number(process.env.VOL_PLAN_UTC_MIN ?? 5);
+    next = _scheduleDailyUtc(hour, min, _runVolPlan);
+    console.log(`[volatility-bot] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC — fixed-UTC override (next ${next.toISOString()})`);
+  } else {
+    next = _scheduleDailyLondon(0, 5, _runVolPlan);
+    console.log(`[volatility-bot] plan scheduled daily at 00:05 Europe/London (next ${next.toISOString()})`);
+  }
   // Bootstrap only when KV has no plan yet (first deploy) — don't clobber a good
   // overnight plan with a mid-session open on a midday restart.
   setTimeout(async () => {
