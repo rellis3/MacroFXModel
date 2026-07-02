@@ -48,3 +48,10 @@ logs/macro_equity_bot.log
 
 # Trading safety layer runtime state (kill switch / risk gate baselines)
 safety/state/
+GoldV2/logs/
+GoldV2/gold_v2_bot.log
+GoldV2/gold_v2_journal.jsonl
+GoldV2/gold_v2_trades.csv
+GoldV2/gold_v2_state.json
+GoldV2/__pycache__/
+GoldV2/modules/__pycache__/
