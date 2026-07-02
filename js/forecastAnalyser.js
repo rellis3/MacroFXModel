@@ -63,11 +63,17 @@ function classifySession(t) {
 export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, isUp,
                                                        open, trailFrac = 0.5, beTrigger = 0.5 } = {}) {
   // One rule's walk. dir +1 = buy (adverse=low, favourable=high); −1 = sell (mirror).
-  // rule ∈ 'fixed' | 'chand' | 'walk'. TP active for all.
+  // rule ∈ 'fixed' | 'chand' | 'walk' | 'ride'. TP active for all EXCEPT 'ride'.
+  //   ride — NO take-profit cap; exit only on the chandelier trail (or session close).
+  //   Mirrors the range-line bot's winning exit (rangeline.chandelier_stop / the
+  //   paper broker's tp-falsy mode): lets a reversion run past the inner line instead
+  //   of capping at it — the fix for "small wins, big losses". R (trail width ref) is
+  //   the entry→disaster-stop distance, same as chand.
   const walk = (dir, E, S0, TP, rule) => {
     const buy = dir > 0;
     const R   = Math.abs(E - S0);
     const beDist = Math.abs(TP - E);
+    const noTP = rule === 'ride';
     let stop = S0, exitPrice = null;
     for (let k = touchIdx; k < bars.length; k++) {
       const bar = bars[k];
@@ -75,10 +81,10 @@ export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, i
       const favour  = buy ? bar.high : bar.low;    // TP + trail/BE update use this
       // 1) current stop first (conservative: a bar spanning both exits at the stop).
       if (buy ? adverse <= stop : adverse >= stop) { exitPrice = stop; break; }
-      // 2) then TP.
-      if (buy ? favour >= TP : favour <= TP) { exitPrice = TP; break; }
+      // 2) then TP (skipped for 'ride' — the trail is the only profit exit).
+      if (!noTP && (buy ? favour >= TP : favour <= TP)) { exitPrice = TP; break; }
       // 3) else update the stop for SUBSEQUENT bars from this bar's favourable extreme.
-      if (rule === 'chand') {
+      if (rule === 'chand' || rule === 'ride') {
         const newStop = buy ? favour - trailFrac * R : favour + trailFrac * R;
         stop = buy ? Math.max(stop, newStop) : Math.min(stop, newStop);   // ratchet-only
       } else if (rule === 'walk') {
@@ -100,9 +106,11 @@ export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, i
     exFadeFixed:   walk(fadeDir, E, outer, inner, 'fixed'),
     exFadeChand:   walk(fadeDir, E, outer, inner, 'chand'),
     exFadeWalk:    walk(fadeDir, E, outer, inner, 'walk'),
+    exFadeRide:    walk(fadeDir, E, outer, inner, 'ride'),
     exFollowFixed: walk(folDir,  E, inner, outer, 'fixed'),
     exFollowChand: walk(folDir,  E, inner, outer, 'chand'),
     exFollowWalk:  walk(folDir,  E, inner, outer, 'walk'),
+    exFollowRide:  walk(folDir,  E, inner, outer, 'ride'),
   };
 }
 
@@ -269,9 +277,10 @@ export function analyseWindow(session, ladder, ctx = {}) {
         hit: true, outcome, firstTouchTime, session: sess, budgetBucket,
         retraceTo: retraceTo ? +retraceTo.toFixed(6) : null, retracePct: +retracePct.toFixed(4),
         extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
-        // Six exit-variant gross PnLs (%-of-price, no cost) for the OOS exit study.
-        exFadeFixed: round5(ex.exFadeFixed), exFadeChand: round5(ex.exFadeChand), exFadeWalk: round5(ex.exFadeWalk),
-        exFollowFixed: round5(ex.exFollowFixed), exFollowChand: round5(ex.exFollowChand), exFollowWalk: round5(ex.exFollowWalk),
+        // Eight exit-variant gross PnLs (%-of-price, no cost) for the OOS exit study.
+        // 'ride' = chandelier trail with NO TP cap (the range-line bot's winning exit).
+        exFadeFixed: round5(ex.exFadeFixed), exFadeChand: round5(ex.exFadeChand), exFadeWalk: round5(ex.exFadeWalk), exFadeRide: round5(ex.exFadeRide),
+        exFollowFixed: round5(ex.exFollowFixed), exFollowChand: round5(ex.exFollowChand), exFollowWalk: round5(ex.exFollowWalk), exFollowRide: round5(ex.exFollowRide),
         // The frozen triple-barrier levels (TP=inner toward open, SL=outer away),
         // stored on EVERY decided touch so a strategy can price the trade
         // regardless of which barrier hit. decidedBy says whether a barrier was
