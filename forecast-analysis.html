@@ -226,9 +226,9 @@ async function renderExits(v){
   if(EXIT_STUDY[h]===undefined){ const r=await api(`/api/forecast-analysis/exit-study/${h}`);
     EXIT_STUDY[h]= r.status===200 && r.j?.ok ? r.j.study : (r.j?.error||'none'); }
   const s=EXIT_STUDY[h];
-  const caption=`<div class="hint" style="margin-top:10px">Same OOS entry policy for all three rows — only the <b>exit</b> changes, so any Sharpe gap is the stop behaviour, not the entry edge. <b>Fixed</b> = the triple-barrier stop stays put (TP=inner/outer as per fade/follow). <b>Chandelier</b> = the stop trails the favourable extreme by ${s&&typeof s!=='string'?fmt(s.trailFrac,2):'0.5'}×R (ratchet-only), locking profit as the trade runs. <b>Walk (breakeven)</b> = once the trade is ${s&&typeof s!=='string'?fmt((s.beTrigger||0.5)*100,0):'50'}% of the way to target, the stop moves to entry, killing give-back. <b>Ride (trail, no TP)</b> = the range-line bot's winning exit — <b>no take-profit cap at all</b>; the chandelier trail is the only profit exit, so a reversion runs past the inner line instead of capping there (the fix for "small wins, big losses"). Study is <b>out-of-sample</b> (IS = before the split date, used only to learn the entry policy). Bold = best OOS Sharpe in that column (n≥30). %-of-price, net of cost + follow-slip, no compounding.</div>`;
+  const caption=`<div class="hint" style="margin-top:10px">Same OOS entry policy for every row — only the <b>exit</b> changes, so any Sharpe gap is the stop behaviour, not the entry edge. <b>Fixed</b> = the triple-barrier stop stays put (TP=inner/outer as per fade/follow). <b>Chandelier</b> = the stop trails the favourable extreme by ${s&&typeof s!=='string'?fmt(s.trailFrac,2):'0.5'}×R (ratchet-only), locking profit as the trade runs. <b>Walk (breakeven)</b> = once the trade is ${s&&typeof s!=='string'?fmt((s.beTrigger||0.5)*100,0):'50'}% of the way to target, the stop moves to entry, killing give-back. <b>Ride (trail, no TP)</b> = the range-line bot's winning exit — <b>no take-profit cap at all</b>; the chandelier trail is the only profit exit, so a reversion runs past the inner line instead of capping there (the fix for "small wins, big losses"). <b>Ride+ (hold past close)</b> = the same no-TP trail but it does NOT close at 22:00 — it runs into the next day(s) until the trail fires. Study is <b>out-of-sample</b> (IS = before the split date, used only to learn the entry policy). Bold = best OOS Sharpe in that column (n≥30). %-of-price, net of cost + follow-slip, no compounding.</div>`;
   if(typeof s==='string'){ v.innerHTML=`<div class="card"><div class="mut">${s==='none'?'No exit study yet.':s} Needs a Refresh with the exit-variant fields.</div>${caption}</div>`; return; }
-  const RULES=[['fixed','Fixed (triple-barrier)'],['chand','Chandelier trail'],['walk','Walk (breakeven)'],['ride','Ride (trail, no TP)']];
+  const RULES=[['fixed','Fixed (triple-barrier)'],['chand','Chandelier trail'],['walk','Walk (breakeven)'],['ride','Ride (trail, no TP)'],['ridehold','Ride+ (hold past close)']];
   const GROUPS=[['overall','Overall'],['fade','Fade'],['follow','Follow']];
   const best=s.bestByGroup||{};
   const cell=(rule,group)=>{ const st=(s.rules?.[rule]?.[group])||{}; const n=st.trades??0;
@@ -236,11 +236,28 @@ async function renderExits(v){
     const sh=fmt(st.sharpe,2), ex=fmt(st.expectancy,4);
     const shDisp=isBest?`<b>${sh}</b>`:sh;
     return `<td class="${(st.sharpe??0)<0?'neg':'pos'}" style="${isBest?'background:#15251a':''}">Sharpe ${shDisp}<br><span class="mut" style="font-size:11px">exp ${ex}% · n ${n}</span></td>`; };
-  let html=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Exit study — fixed vs chandelier vs walk vs ride (no-TP trail) <span class="mut" style="font-weight:400">(OOS from ${s.splitDate||'—'})</span></div>`;
+  let html=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Exit study — fixed vs chandelier vs walk vs ride vs ride+ (hold past close) <span class="mut" style="font-weight:400">(OOS from ${s.splitDate||'—'})</span></div>`;
   if(s.missing){ html+=`<div class="hint" style="margin-bottom:8px">⚠ ${s.missing} OOS trade-legs skipped — those records predate the exit-variant fields. Re-run a full Refresh to fill them in.</div>`; }
   html+=`<table><thead><tr><th>Exit rule</th>${GROUPS.map(g=>`<th>${g[1]}</th>`).join('')}</tr></thead><tbody>`;
   for(const [rk,rl] of RULES){ html+=`<tr><td style="font-weight:600">${rl}</td>${GROUPS.map(g=>cell(rk,g[0])).join('')}</tr>`; }
-  html+=`</tbody></table>${caption}</div>`;
+  html+=`</tbody></table>`;
+  // Exit composition for the no-TP rides — how each ride actually exits. High EOD-close
+  // ⇒ the trail rarely triggers within the session (really "hold to close").
+  const comp=(rk)=>{ const c=s.rules?.[rk]?.composition; if(!c) return ''; return `<tr><td style="font-weight:600">${rk==='ride'?'Ride':'Ride+'} exits</td><td colspan="3"><span class="pos">${fmt(c.trailPct,1)}% trail</span> · ${fmt(c.stopPct,1)}% disaster-stop · <b>${fmt(c.closePct,1)}% ${rk==='ride'?'EOD-close':'horizon-close'}</b> <span class="mut">(n ${c.n})</span></td></tr>`; };
+  if(s.rules?.ride?.composition||s.rules?.ridehold?.composition){
+    html+=`<div style="font-weight:600;margin:12px 0 4px">Exit composition <span class="mut" style="font-weight:400">— how the ride actually closed</span></div><table><tbody>${comp('ride')}${comp('ridehold')}</tbody></table>`;
+    html+=`<div class="hint" style="margin-top:6px">A high <b>EOD-close %</b> means the trailed stop rarely fires inside the session — the edge is really "hold to the close", so the live bot would need a forced 22:00 close to realise it. <b>Ride+</b> tests holding past 22:00 into the next day instead; compare its Sharpe + horizon-close % to plain Ride.</div>`;
+  }
+  // Cost-sensitivity — the make-or-break for a thin-expectancy edge. Overall Sharpe at
+  // 1× / 2× / 3× the round-trip cost; should stay positive to be tradeable.
+  if(s.rules?.ride?.costStress){
+    html+=`<div style="font-weight:600;margin:14px 0 4px">Cost stress <span class="mut" style="font-weight:400">— overall OOS Sharpe at 1× / 2× / 3× spread</span></div>`;
+    html+=`<table><thead><tr><th>Exit rule</th><th>1× cost</th><th>2× cost</th><th>3× cost</th></tr></thead><tbody>`;
+    for(const [rk,rl] of RULES){ const cs=s.rules?.[rk]?.costStress||[]; const c=m=>{ const x=cs.find(z=>z.mult===m); const v=x?x.sharpe:null; return `<td class="${(v??0)<0?'neg':'pos'}">${v==null?'—':fmt(v,2)}</td>`; };
+      html+=`<tr><td style="font-weight:600">${rl}</td>${c(1)}${c(2)}${c(3)}</tr>`; }
+    html+=`</tbody></table><div class="hint" style="margin-top:6px">If Ride stays positive at 2–3× spread it's robust to real friction; if it flips negative, the +2.18 was cost-fragile and not tradeable as-is.</div>`;
+  }
+  html+=`${caption}</div>`;
   v.innerHTML=html;
 }
 
