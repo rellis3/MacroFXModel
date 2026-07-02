@@ -103,6 +103,10 @@ class PaperBroker:
                 "lots": round(p["lots"], 2), "open_price": round(p["open_price"], 5),
                 "price": round(cur, 5), "profit": round(profit, 4), "swap": 0.0,
                 "time_open": p.get("time_open"),
+                # comment carries "Vol {line} {decision}" — the dashboard parses it to
+                # show WHICH line each open position is fading. Mt5Broker already emits
+                # it (PYTHON_LEGO.md §7); paper must match or the line is lost in paper mode.
+                "comment": p.get("comment", ""),
             })
         return out
 

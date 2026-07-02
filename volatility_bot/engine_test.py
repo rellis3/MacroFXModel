@@ -47,6 +47,33 @@ def test_decide_skips_when_no_policy_cell():
     assert specs == []
 
 
+def test_audit_records_trade_and_skip_reasons():
+    # A traded line and a skipped line both leave an audit entry explaining WHY —
+    # this is what the config card renders instead of a bare "acted".
+    tr = _spike_tracker()
+    policy = {
+        "HL50_up|3·spike": {"decision": "fade", "expectancy": 0.08, "n": 120, "revRate": 61.0},
+        "HL75_up|3·spike": {"decision": "skip", "reason": "belowMargin", "expectancy": -0.01, "n": 90},
+    }
+    decide(PP, policy, tr, 1.115)                   # px above both HL50_up and HL75_up
+    assert tr.audit["HL50_up"]["status"] == "traded"
+    assert tr.audit["HL50_up"]["decision"] == "fade" and tr.audit["HL50_up"]["expectancy"] == 0.08
+    assert tr.audit["HL75_up"]["status"] == "skip" and tr.audit["HL75_up"]["reason"] == "belowMargin"
+
+
+def test_audit_unseen_cell_marked():
+    tr = _spike_tracker()
+    decide(PP, {}, tr, 1.111)                        # touched HL50_up, no policy cell
+    assert tr.audit["HL50_up"] == {"bucket": "3·spike", "expectancy": None, "n": None,
+                                   "revRate": None, "status": "skip", "reason": "unseen"}
+
+
+def test_audit_primed_on_dry_run():
+    tr = _spike_tracker()
+    decide(PP, {"HL50_up|3·spike": {"decision": "fade"}}, tr, 1.111, dry_run=True)
+    assert tr.audit["HL50_up"] == {"status": "primed", "bucket": "3·spike"}
+
+
 def test_decide_needs_velocity_window():
     tr = SessionTracker(1.10)                       # only the init close → bucket None
     specs = decide(PP, {"HL50_up|3·spike": {"decision": "fade"}}, tr, 1.111)
