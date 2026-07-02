@@ -152,6 +152,16 @@ console.log('[formatter + freeze]');
     { 'A_4_dn|spike': { decision: 'fade', n: 60, expectancy: 0.089, revRate: 70 } }, { bands: b });
   ok('top cell grades A+ under fitted bands', top.grade === 'A+', `grade=${top.grade}`);
   ok('deriveBands null on tiny policy', deriveBands({ a: { decision: 'fade', expectancy: 0.05 } }) === null);
+  // Regression: a SMALL-edge policy (all sub-0.02%) must still spread across grades
+  // — the old absolute 0.02 floor pushed every band above the data → everything C.
+  const small = {};
+  [0.002, 0.005, 0.008, 0.011, 0.014, 0.017, 0.019, 0.020].forEach((e, i) => { small[`A_${i}_dn|spike`] = { decision: 'fade', n: 60, expectancy: e, revRate: 60 }; });
+  const sb = deriveBands(small);
+  ok('small-edge bands fit the small scale', sb && sb.eB < 0.02 && sb.eB < sb.eA && sb.eA < sb.eAplus, `eB=${sb?.eB} eA=${sb?.eA} eA+=${sb?.eAplus}`);
+  // top small cell (0.020) now reaches A+ instead of collapsing to C
+  const topSmall = decide({ name: 'A_7', side: 'dn', condKey: 'spike', level: 100, inner: 98, outer: 102 },
+    { 'A_7_dn|spike': { decision: 'fade', n: 60, expectancy: 0.020, revRate: 70 } }, { bands: sb });
+  ok('top small-edge cell no longer stuck at C', topSmall.grade === 'A+' || topSmall.grade === 'A', `grade=${topSmall.grade}`);
 }
 
 // ── 5. entryLedgerV2 (daily-learning loop) ───────────────────────────────────
