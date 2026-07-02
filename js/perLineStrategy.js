@@ -96,12 +96,13 @@ export function extractTouches(records, { conditions = ['approachVel'], dtThresh
         // (toward mid), so the chandelier/structural trail can price either entry.
         fStruct: ln.fStruct, fChand: ln.fChand,
         fStructFade: ln.fStructFade, fChandFade: ln.fChandFade,
-        // Exit-study gross PnLs (%-of-price, no cost) — six {fade,follow}×{fixed,
-        // chand,walk} combos simulated along the real M1 path by simulateExitVariants.
-        // Undefined on records refreshed before the exit study shipped (runExitStudy
+        // Exit-study gross PnLs (%-of-price, no cost) — eight {fade,follow}×{fixed,
+        // chand,walk,ride} combos simulated along the real M1 path by simulateExitVariants.
+        // 'ride' = chandelier trail with NO TP cap (the range-line bot's winning exit).
+        // Undefined on records refreshed before each variant shipped (runExitStudy
         // counts and skips those).
-        exFadeFixed: ln.exFadeFixed, exFadeChand: ln.exFadeChand, exFadeWalk: ln.exFadeWalk,
-        exFollowFixed: ln.exFollowFixed, exFollowChand: ln.exFollowChand, exFollowWalk: ln.exFollowWalk,
+        exFadeFixed: ln.exFadeFixed, exFadeChand: ln.exFadeChand, exFadeWalk: ln.exFadeWalk, exFadeRide: ln.exFadeRide,
+        exFollowFixed: ln.exFollowFixed, exFollowChand: ln.exFollowChand, exFollowWalk: ln.exFollowWalk, exFollowRide: ln.exFollowRide,
       });
     }
   }
@@ -478,7 +479,7 @@ export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, margin
   // Entry policy learned on IS (same as the book), held fixed across all three exits.
   const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
 
-  const RULES = ['fixed', 'chand', 'walk'];
+  const RULES = ['fixed', 'chand', 'walk', 'ride'];
   // trades[rule][group] = {date,pnl}[]  where group ∈ overall|fade|follow.
   const trades = Object.fromEntries(RULES.map(r => [r, { overall: [], fade: [], follow: [] }]));
   let missing = 0;
