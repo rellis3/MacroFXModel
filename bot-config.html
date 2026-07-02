@@ -2832,7 +2832,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         <p style="margin:0 0 10px">A trade exits on a fixed <b>triple barrier</b>, set at entry and never second-guessed: a <b>fade</b> takes profit at the <b>inner line</b> (toward the open) and stops out at the <b>outer line</b> (further away); a <b>follow</b> is the reverse. The bot does <b>not</b> watch a live trade and decide "this is reverting, get out" — there is no mid-flight re-read. It either hits its target line, hits its stop line, or is still open at session close.</p>
 
         <div style="font-weight:600;color:var(--text);margin-bottom:2px">Why the Close (OC) lines rarely trade</div>
-        <p style="margin:0">OC lines aren't excluded — each OC cell is judged the same way. But OC sits <b>close to the open</b>, so a fade's target (the inner line) is a <b>tiny move</b> that often doesn't clear spread + commission. In the honest, cost-aware out-of-sample test those cells come back <b>skip (edge below cost)</b>, so the live policy mostly fades the wider <b>Proj-H/L</b> lines. A gross/in-sample backtest that ignores cost <i>does</i> "trade" them — which is why they looked tradeable there but skip here. OC still trades where a specific cell (e.g. an OC75 spike touch) clears the margin.</p>
+        <p style="margin:0 0 6px">OC lines aren't excluded — each is judged the same way. The reason isn't spread (that's ~1 pip and trivial): it's <b>expectancy</b>. A fade takes profit at the near line and stops at the far line, so on the inner OC bands the trade often <b>risks more than it targets</b> (reward:risk &lt; 1). To pay, price has to <b>revert</b> off the Close line often enough to beat that ratio — and it doesn't: in a trending push price runs <i>through</i> the close line to the next band. So the average is a loss even though each winner looks fine — exactly the "small wins, big losses" pattern. In the honest, cost-aware out-of-sample book those cells come back <b>skip</b>; a gross/in-sample backtest that ignores this <i>does</i> "trade" them, which is why they looked tradeable there.</p>
+        <p style="margin:0">Every decided line now shows its verdict in the <b>Decided — why</b> column (hover for the cell's expectancy, reversion rate and sample count), so you can see per line whether it was <b>traded</b>, <b>skip · edge &lt; cost</b>, <b>skip · too few samples</b>, or an <b>unseen</b> line×speed combo.</p>
 
       </div>
     </details>
@@ -2900,7 +2901,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
               <th style="padding:6px 10px;text-align:right">Close med ↓</th>
               <th style="padding:6px 10px;text-align:right">Proj-H/L med ↓</th>
               <th style="padding:6px 10px;text-align:right">Proj-H/L 75 ↓</th>
-              <th style="padding:6px 10px;text-align:left">Acted</th>
+              <th style="padding:6px 10px;text-align:left">Decided — why <span style="font-weight:400;color:var(--text3)">(hover for stats)</span></th>
               <th style="padding:6px 10px;text-align:center">Chart</th>
             </tr>
           </thead>

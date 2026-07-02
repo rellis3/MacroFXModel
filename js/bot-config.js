@@ -2898,7 +2898,26 @@ async function loadVbLiveStatus() {
         body.innerHTML = '<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no levels yet — waiting for the daily plan</td></tr>';
       } else {
         const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
-        const acted = a => (a && a.length) ? a.map(s => s.replace('_', ' ')).join(', ') : '—';
+        // Per-line audit chip: WHY each decided line was traded or skipped. Falls back
+        // to a bare line list for older statuses that predate the audit field.
+        const REASON = { belowMargin: 'skip · edge < cost', lowN: 'skip · too few samples',
+                         unseen: 'skip · unseen cell', degenerate: 'skip · no room', skip: 'skip' };
+        const actedChip = (id, a) => {
+          const lbl = _lineLabel[id] || id.replace('_', ' ');
+          if (!a) return `<span style="color:var(--text3)">${lbl}</span>`;
+          const traded = a.status === 'traded', primed = a.status === 'primed';
+          const col = traded ? 'var(--amber)' : primed ? 'var(--text3)' : '#8a93a6';
+          const tag = traded ? (a.decision || 'trade') : primed ? 'primed (pre-open)' : (REASON[a.reason] || 'skip');
+          const bits = [a.bucket, a.expectancy != null ? `exp ${a.expectancy}%` : '',
+                        a.revRate != null ? `rev ${a.revRate}%` : '', a.n != null ? `n ${a.n}` : '']
+                       .filter(Boolean).join(' · ');
+          return `<span title="${bits}" style="color:${col};white-space:nowrap">${lbl} — ${tag}</span>`;
+        };
+        const acted = r => {
+          const au = r.audit || {};
+          const ids = (r.acted && r.acted.length) ? r.acted : Object.keys(au);
+          return ids.length ? ids.map(id => actedChip(id, au[id])).join('<br>') : '—';
+        };
         // Live positions on this pair → a green "in trade" badge naming the line, so
         // a currently-held level stands out from the (skip-inclusive) acted list.
         const liveBadge = pair => {
@@ -2920,7 +2939,7 @@ async function loadVbLiveStatus() {
             <td style="padding:5px 10px;text-align:right;color:var(--text3)">${d(r.pair, L.OC50_dn)}</td>
             <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL50_dn)}</td>
             <td style="padding:5px 10px;text-align:right">${d(r.pair, L.HL75_dn)}</td>
-            <td style="padding:5px 10px;text-align:left;color:var(--text3)">${acted(r.acted)}${liveBadge(r.pair)}</td>
+            <td style="padding:5px 10px;text-align:left;color:var(--text3);line-height:1.7">${acted(r)}${liveBadge(r.pair)}</td>
             <td style="padding:5px 10px;text-align:center"><button type="button" onclick="openVbChart('${r.pair}')" title="Live line chart" style="background:var(--s3);color:var(--text2);border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer">📈</button></td>
           </tr>`;
         }).join('');
