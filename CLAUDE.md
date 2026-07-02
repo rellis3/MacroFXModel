@@ -204,6 +204,8 @@ var is set in Railway first.
 | `ANALYSER_ADMIN_PASSWORD` | forecast-analyser admin/refresh gate |
 | `VOL_PLAN_UTC_HOUR` / `VOL_PLAN_UTC_MIN` | when the volatility-bot daily plan refreshes (default 23:05 UTC) |
 | `VOL_FORECAST_UTC` | when the vol-forecast recompute runs |
+| `TDE_PAIRS`, `TDE_REFRESH_MIN` | Trade Decision Engine live slow loop — pairs to keep snapshots warm (off if unset) + refresh cadence (default 5 min) |
+| `TDE_BACKFILL_UTC`, `TDE_BACKFILL_DAILY` | Trade Decision Engine nightly incremental backfill — time (default `03:05` UTC, **on by default**); `TDE_BACKFILL_DAILY=0` disables |
 
 > The volatility-bot plan producer recomputes σ from OANDA D1 via
 > `volSigmaSeries` (the backtest's exact math) — **not** `/api/vol-forecast`,

@@ -9847,16 +9847,24 @@ app.get('/api/trade-decision/backfill/report', (_req, res) => {
   res.json({ ok: true, report });
 });
 
-// Opt-in daily top-up (Railway): TDE_BACKFILL_DAILY=1 runs an incremental
-// backfill at ~23:40 UTC so the event log grows one day per day.
-if (process.env.TDE_BACKFILL_DAILY) {
+// Daily incremental top-up — ON by default at 03:05 UTC so the event log grows
+// one day per day with no manual step. Change the time with TDE_BACKFILL_UTC
+// ("HH:MM"), disable with TDE_BACKFILL_DAILY=0. Idempotent: if the R2 M1 store
+// hasn't gained a new session yet, the run appends nothing and exits.
+if (!['0', 'false', 'off'].includes(String(process.env.TDE_BACKFILL_DAILY ?? '').toLowerCase())) {
+  const [bfH, bfM] = (process.env.TDE_BACKFILL_UTC || '03:05').split(':').map(x => parseInt(x, 10));
+  let tdeLastAutoBackfill = null;
   setInterval(() => {
     const now = new Date();
-    if (now.getUTCHours() === 23 && now.getUTCMinutes() === 40 && !tdeBackfillRunning) {
-      console.log('[tde-backfill] daily incremental top-up starting');
+    const today = now.toISOString().substring(0, 10);
+    if (now.getUTCHours() === bfH && now.getUTCMinutes() === bfM
+        && tdeLastAutoBackfill !== today && !tdeBackfillRunning) {
+      tdeLastAutoBackfill = today;
+      console.log(`[tde-backfill] daily incremental top-up starting (${String(bfH).padStart(2, '0')}:${String(bfM).padStart(2, '0')} UTC)`);
       tdeStartBackfillJob(Object.keys(M1_DRIVE_IDS), { incremental: true });
     }
-  }, 60_000);
+  }, 20_000);
+  console.log(`[tde-backfill] daily top-up scheduled ${String(bfH).padStart(2, '0')}:${String(bfM).padStart(2, '0')} UTC (TDE_BACKFILL_DAILY=0 to disable)`);
 }
 
 // All other /api/* routes — call _worker.js and return the JSON response.

@@ -236,8 +236,11 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
   intrabar ambiguity resolves to the stop.
 - **Incremental by construction:** `data/backfill_state.json` records the last
   processed date per pair, so re-running appends only new days. One full run
-  gives day-one training data; the nightly top-up (`TDE_BACKFILL_DAILY=1`, or
-  the harness button) keeps it growing each day the market adds a session.
+  gives day-one training data; after that the server runs an **automatic daily
+  top-up at 03:05 UTC** (change with `TDE_BACKFILL_UTC="HH:MM"`, disable with
+  `TDE_BACKFILL_DAILY=0`; the harness buttons cover bootstrap/ad-hoc runs).
+  The top-up can only advance as far as the R2 M1 store has been topped up —
+  a run with no new sessions appends nothing and exits (idempotent).
 - **Fit + calibration:** `fitLogistic` trains on the same bounded features
   (time-ordered split, 10-day embargo) and reports per-decile OOS calibration
   + Brier for the fitted candidate AND the v0 prior. The candidate ships with

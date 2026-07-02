@@ -124,7 +124,7 @@
 
 <div class="card">
   <h2>Historical backfill <span class="muted">(day-one training data from the M1 parquet history)</span></h2>
-  <div class="muted" style="margin-bottom:10px">Replays the full M1 history through the <b>same</b> snapshot + decide() path as live, labels every zone touch with a triple-barrier outcome (SL-first, after-cost), and fits a <b>candidate</b> model with a walk-forward OOS calibration report. Incremental: re-running only appends days newer than the last processed date — set <code>TDE_BACKFILL_DAILY=1</code> in Railway for an automatic nightly top-up.</div>
+  <div class="muted" style="margin-bottom:10px">Replays the full M1 history through the <b>same</b> snapshot + decide() path as live, labels every zone touch with a triple-barrier outcome (SL-first, after-cost), and fits a <b>candidate</b> model with a walk-forward OOS calibration report. Incremental: re-running only appends days newer than the last processed date. The server tops up <b>automatically every day at 03:05 UTC</b> (change with <code>TDE_BACKFILL_UTC</code>, disable with <code>TDE_BACKFILL_DAILY=0</code>) — the buttons are for the one-time bootstrap and ad-hoc reruns.</div>
   <div class="row" style="margin-bottom:10px">
     <button id="btnBackfill" onclick="runBackfill(false)">▶ Run incremental backfill</button>
     <button class="ghost" onclick="runBackfill(true)">Full rebuild</button>
