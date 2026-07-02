@@ -1,0 +1,161 @@
+// Trade Decision Engine — synthetic, no-network unit tests.
+// Run: node Trade_Decision_Engine/decisionCore.test.mjs
+import assert from 'node:assert/strict';
+import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC } from './decisionCore.js';
+import { newsGate, pairCurrencies } from './newsGate.js';
+import { buildSnapshot, syntheticBars, syntheticSnapshot } from './featureState.js';
+import { MODEL_V0 } from './modelV0.js';
+
+let passed = 0;
+const ok = (cond, msg) => { assert.ok(cond, msg); passed++; };
+
+const NOW = Date.parse('2026-07-01T14:00:00Z');   // NY session, fixed for determinism
+
+// ── newsGate ─────────────────────────────────────────────────────────────────
+{
+  const cur = pairCurrencies('eurusd');
+  ok(cur[0] === 'EUR' && cur[1] === 'USD', 'pairCurrencies parses fx');
+  ok(pairCurrencies('gold').includes('USD'), 'gold is USD-exposed');
+
+  const ev = t => [{ timeMs: NOW + t * 60_000, impact: 'high', currency: 'USD', title: 'NFP' }];
+  ok(newsGate(ev(20), NOW, cur).blocked, 'high-impact in 20m → blocked');
+  ok(newsGate(ev(-10), NOW, cur).blocked, 'high-impact 10m ago → still blocked');
+  const soft = newsGate(ev(120), NOW, cur);
+  ok(!soft.blocked && soft.softNewsSoon, 'high-impact in 2h → soft flag, not blocked');
+  ok(!newsGate(ev(20), NOW, ['GBP', 'JPY']).blocked, 'other-currency event ignored');
+  ok(!newsGate([{ timeMs: NOW + 20 * 60_000, impact: 'low', currency: 'USD' }], NOW, cur).blocked,
+    'low impact never blocks');
+}
+
+// ── snapshot building (pure, synthetic bars) ─────────────────────────────────
+const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null });
+{
+  ok(snap.pair === 'eurusd' && snap.mode === 'synthetic', 'snapshot identity');
+  ok(snap.sigmaDaily > 0 && snap.sigmaDaily < 0.05, `σ sane (${snap.sigmaDaily.toFixed(4)})`);
+  ok(snap.volPct >= 0 && snap.volPct <= 1, 'vol percentile in [0,1]');
+  ok(['BULL', 'BEAR', 'RANGE'].includes(snap.regime), 'regime classified');
+  ok(snap.T >= 0 && snap.T <= 1, 'T in [0,1]');
+  ok(snap.zones.length > 3, `zone map built (${snap.zones.length} zones)`);
+  ok(snap.zones.every(z => Number.isFinite(z.price) && z.count >= 1), 'zones well-formed');
+  // no lookahead by construction: buildSnapshot only ever sees completed bars —
+  // assert determinism instead (same inputs → same snapshot)
+  const snap2 = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null });
+  assert.deepEqual(snap2.zones, snap.zones); passed++;
+  assert.equal(snap2.sigmaDaily, snap.sigmaDaily); passed++;
+}
+
+// ── nearestZone ──────────────────────────────────────────────────────────────
+{
+  const sigmaAbs = snap.sigmaDaily * snap.dayOpen;
+  const z = snap.zones[0];
+  const hit = nearestZone(snap.zones, z.price, sigmaAbs);
+  ok(hit && Math.abs(hit.zone.price - z.price) < 1e-9 && hit.distSigma === 0, 'exact touch found');
+  ok(nearestZone(snap.zones, z.price + 5 * sigmaAbs, sigmaAbs) === null
+    || Math.abs(nearestZone(snap.zones, z.price + 5 * sigmaAbs, sigmaAbs)?.distSigma) <= 0.35,
+    'far price → no zone (unless another zone is genuinely near)');
+}
+
+// ── decide: hard gates fail closed ───────────────────────────────────────────
+{
+  const r1 = decide(null, { pair: 'eurusd' }, { nowMs: NOW });
+  ok(r1.decision === 'skip' && r1.reasons.includes('no_snapshot') && r1.probability === null,
+    'no snapshot → skip, null probability');
+
+  const stale = { ...snap, mode: 'live', builtAt: NOW - 60 * 60_000 };
+  const r2 = decide(stale, { price: snap.zones[0].price }, { nowMs: NOW });
+  ok(r2.decision === 'skip' && r2.reasons.includes('stale_features'), 'stale live snapshot → fail closed');
+
+  const newsy = { ...snap, calendar: [{ timeMs: NOW + 10 * 60_000, impact: 'high', currency: 'USD', title: 'FOMC' }] };
+  const r3 = decide(newsy, { price: snap.zones[0].price }, { nowMs: NOW });
+  ok(r3.decision === 'skip' && r3.reasons.includes('news_window'), 'imminent news → hard gate');
+
+  const sigmaAbs = snap.sigmaDaily * snap.dayOpen;
+  const r4 = decide(snap, { price: snap.price + 20 * sigmaAbs }, { nowMs: NOW });
+  ok(r4.decision === 'skip' && r4.reasons.includes('no_level_nearby'), 'open space → no_level_nearby');
+}
+
+// ── decide: full path at a zone ──────────────────────────────────────────────
+{
+  const z = snap.zones[0];
+  const r = decide(snap, { pair: 'eurusd', price: z.price }, { nowMs: NOW });
+  ok(r.ok && ['go', 'skip'].includes(r.decision), 'decision resolves');
+  ok(r.probability > 0 && r.probability < 1, `probability in (0,1) — got ${r.probability}`);
+  ok(['long', 'short'].includes(r.direction) && ['fade', 'follow'].includes(r.action), 'direction+action set');
+  ok(r.zone.confluence === z.count, 'zone confluence echoed');
+  ok(Array.isArray(r.top_factors) && r.model_version === MODEL_V0.version, 'transparency fields');
+  ok(r.calibrated === false, 'v0 honestly flagged uncalibrated');
+  ok(r.latency_ms < 50, `fast (${r.latency_ms}ms)`);
+  ok((r.decision === 'go') === (r.probability >= MODEL_V0.goThreshold), 'threshold policy consistent');
+  ok(r.decision === 'go' ? r.size_multiplier > 0 : r.size_multiplier === 0, 'sizing consistent with decision');
+
+  // determinism: same inputs → same output (minus latency)
+  const r2 = decide(snap, { pair: 'eurusd', price: z.price }, { nowMs: NOW });
+  assert.equal(r2.probability, r.probability); passed++;
+}
+
+// ── model monotonicity (the priors point the right way) ──────────────────────
+{
+  const mkSnap = over => ({ ...snap, ...over });
+  const zonePrice = snap.zones[0].price;
+
+  // more confluence → higher probability, all else equal
+  const lo = { ...snap.zones[0], count: 1, score: 1, price: zonePrice };
+  const hi = { ...snap.zones[0], count: 4, score: 5, price: zonePrice };
+  const pLo = decide(mkSnap({ zones: [lo] }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  const pHi = decide(mkSnap({ zones: [hi] }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  ok(pHi > pLo, `confluence raises p (${pLo} → ${pHi})`);
+
+  // fading a trend day → lower probability than fading a quiet day
+  const pQuiet = decide(mkSnap({ T: 0.15, regime: 'RANGE' }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  const pTrend = decide(mkSnap({ T: 0.95, regime: 'BULL' }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  ok(pTrend < pQuiet, `fade-on-trend-day penalised (${pQuiet} → ${pTrend})`);
+
+  // extreme vol → lower probability
+  const pNorm = decide(mkSnap({ volPct: 0.5 }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  const pExtreme = decide(mkSnap({ volPct: 0.99 }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  ok(pExtreme < pNorm, `vol extreme penalised (${pNorm} → ${pExtreme})`);
+
+  // soft news lowers probability but does not gate
+  const softSnap = mkSnap({ calendar: [{ timeMs: NOW + 120 * 60_000, impact: 'high', currency: 'USD', title: 'CPI' }] });
+  const rSoft = decide(softSnap, { price: zonePrice, action: 'fade' }, { nowMs: NOW });
+  ok(rSoft.probability !== null && rSoft.probability < pNorm && rSoft.news_soon === true,
+    `news_soon is a feature, not a veto (${pNorm} → ${rSoft.probability})`);
+}
+
+// ── request overrides honoured (engine judges the bot's proposal) ────────────
+{
+  const z = snap.zones[0];
+  const r = decide(snap, { price: z.price, action: 'follow', direction: 'short' }, { nowMs: NOW });
+  ok(r.action === 'follow' && r.direction === 'short', 'bot proposal honoured');
+}
+
+// ── own_level: an external (hand-pulled) level is scored, not refused ────────
+{
+  const farPrice = snap.price * 1.6;   // far beyond any level source's span
+  const refused = decide(snap, { price: farPrice }, { nowMs: NOW });
+  ok(refused.decision === 'skip' && refused.reasons.includes('no_level_nearby'), 'unknown price still refused by default');
+  const scored = decide(snap, { price: farPrice, own_level: true }, { nowMs: NOW });
+  ok(scored.probability > 0 && scored.probability < 1, 'own_level scores instead of refusing');
+  ok(scored.zone.confluence === 1 && scored.zone.sources.includes('external'), 'standalone external level = confluence 1');
+  // at a mapped zone, own_level uses the map zone (agreement = real confluence)
+  const zc = snap.zones.find(z => z.count >= 2) ?? snap.zones[0];
+  const agree = decide(snap, { price: zc.price, own_level: true }, { nowMs: NOW });
+  ok(agree.zone.confluence === zc.count, 'own level agreeing with the map inherits its confluence');
+}
+
+// ── scoreLogistic sanity ─────────────────────────────────────────────────────
+{
+  const { p, contributions } = scoreLogistic({ confluence: 1, fade_on_trend_day: 0 }, MODEL_V0);
+  ok(p > 0.5, 'positive-only features → p > 0.5');
+  ok(contributions.every(c => Number.isFinite(c.contribution)), 'contributions finite');
+  ok(sessionPhaseUTC(Date.parse('2026-07-01T23:00:00Z')) === 'asia', 'session phase');
+}
+
+// ── gold path (different pip/class) doesn't blow up ──────────────────────────
+{
+  const g = syntheticSnapshot('gold', { seed: 3, nowMs: NOW, newsInMin: null });
+  const r = decide(g, { price: g.zones[0].price }, { nowMs: NOW });
+  ok(r.ok && r.probability > 0 && r.probability < 1, 'gold snapshot + decision works');
+}
+
+console.log(`decisionCore.test.mjs — ${passed} assertions passed`);
