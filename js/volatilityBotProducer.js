@@ -17,6 +17,7 @@
  */
 
 import { buildVolatilityPlan } from './volatilityBotPlan.js';
+import { nextSigma } from './forecastCore.js';
 import { instrument as _instrument, pipSize as _pipSize } from './instrumentRegistry.js';
 
 // Default symbol resolver: the canonical instrument registry (fail-loud).
@@ -55,13 +56,14 @@ export async function refreshVolatilityPlan({
       if (seenOanda.has(inst.oanda)) { onLog(`${pair}: duplicate of ${inst.oanda} — skipped`); continue; }
       const bars = await fetchD1(inst.oanda, count);
       if (!bars?.length) { onLog(`${pair}: no D1 bars — skipped`); fail++; continue; }
-      const sig = sigmaSeries(bars, inst.assetClass);
-      // volSigmaSeries returns a Float64Array — Array.isArray() is FALSE for typed
-      // arrays, so `sig` itself (not its last element) would leak through and
-      // `sigma > 0` would be false, silently skipping EVERY pair. Accept both
-      // plain arrays and typed arrays; treat anything else as a scalar.
-      const isSeries = Array.isArray(sig) || ArrayBuffer.isView(sig);
-      const sigma = isSeries ? sig[sig.length - 1] : sig;               // today's daily σ (frac)
+      // σ for TODAY'S (not-yet-traded) session. volSigmaSeries[i] predicts bar i
+      // from data < i, so the raw last element predicts YESTERDAY — the off-by-one
+      // this plan shipped with (bands ignored the most recent completed day; too
+      // tight after a vol spike). nextSigma extends the injected series one step
+      // (out[n], data ≤ n−1) — exactly the σ the backtest would use for today.
+      // It handles typed arrays/scalars internally and keeps the DI seam: the
+      // injected sigmaSeries is passed through, so offline fakes still work.
+      const sigma = nextSigma(bars, inst.assetClass, sigmaSeries);      // today's daily σ (frac)
       // OPEN must be the MIDNIGHT-EUROPE/LONDON session open (the bands hang off it,
       // and the book's sessions are London days). `fetchD1`'s last bar opens at
       // 22:00 UTC and drops the forming candle, so it's a prior session's open —
