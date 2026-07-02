@@ -22,9 +22,10 @@ import { collectLevels, clusterLevels } from '../js/levelSources.js';
 import { pipSize, assetClass, oandaSymbol, resolveKey } from '../js/instrumentRegistry.js';
 import { rollingPercentile } from '../js/statsCore.js';
 
-// Level sources usable from D1 bars alone. volume_profile / vwap need an
-// intraday feed — wired in later (ARCHITECTURE.md §9), not silently faked.
-export const TDE_LEVEL_SOURCES = ['daily_open', 'prior_hilo', 'pivots', 'swing_sr', 'round_number'];
+// Level sources usable from D1 bars alone (incl. swing_fib — multi-swing fib
+// clusters, so a "pulled fib" IS a first-class zone). volume_profile / vwap
+// need an intraday feed — wired in later (ARCHITECTURE.md §9), not silently faked.
+export const TDE_LEVEL_SOURCES = ['daily_open', 'prior_hilo', 'pivots', 'swing_sr', 'swing_fib', 'round_number'];
 export const TDE_DEFAULT_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'gold'];
 
 // ── Pure snapshot builder ────────────────────────────────────────────────────

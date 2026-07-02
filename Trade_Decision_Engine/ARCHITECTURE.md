@@ -156,7 +156,12 @@ The other hard gates, in order (each fail-closed):
    A confident answer from stale features is the worst silent failure mode.
 3. `news_window` — as above.
 4. `no_level_nearby` — no zone within `maxDistSigma` (default 0.35σ) of the
-   request price. The engine scores *zone touches*, not open space.
+   request price. The engine scores *zone touches*, not open space. Exception:
+   `own_level: true` in the request means the caller vouches for their own
+   level at that price (a hand-pulled fib, an order-flow line). If the map has
+   a zone there it is used — the caller's level agreeing with the map is real
+   confluence; otherwise the price is scored as a standalone external level
+   (confluence 1) instead of refused.
 
 `skip` from a gate carries `probability: null` and the reason — it is an explicit
 answer, not an error.
@@ -237,10 +242,15 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
 - **Incremental by construction:** `data/backfill_state.json` records the last
   processed date per pair, so re-running appends only new days. One full run
   gives day-one training data; after that the server runs an **automatic daily
-  top-up at 03:05 UTC** (change with `TDE_BACKFILL_UTC="HH:MM"`, disable with
-  `TDE_BACKFILL_DAILY=0`; the harness buttons cover bootstrap/ad-hoc runs).
-  The top-up can only advance as far as the R2 M1 store has been topped up —
-  a run with no new sessions appends nothing and exits (idempotent).
+  top-up** (default 03:05 UTC). Schedule/enable/gap-fill live in **KV runtime
+  config** (`trade_decision_cfg`, the caps pattern) — editable from the harness
+  page via `GET/POST /api/trade-decision/config`, applied live with no restart;
+  the `TDE_BACKFILL_*` env vars are only the defaults for a blank KV.
+- **Independent of the R2 refresh:** before each replay the stored parquet is
+  **gap-filled from the live OANDA M1 feed** (`m1GapFill` brick + `fetchM1Range`
+  — the analyser's exact machinery), so the nightly run advances even when the
+  R2 store hasn't been rebuilt. Gap-fill failure degrades to stored history,
+  never aborts; a run with no new sessions appends nothing (idempotent).
 - **Fit + calibration:** `fitLogistic` trains on the same bounded features
   (time-ordered split, 10-day embargo) and reports per-decile OOS calibration
   + Brier for the fitted candidate AND the v0 prior. The candidate ships with

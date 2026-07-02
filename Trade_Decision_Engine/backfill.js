@@ -27,9 +27,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
+import { gapFillPacked } from '../js/m1GapFill.js';
+import { fetchM1Range } from '../js/volBacktestEngine.js';
 import { bisect } from '../js/barUtils.js';
 import { DEFAULT_COST_PCT } from '../js/forecastCore.js';
-import { assetClass } from '../js/instrumentRegistry.js';
+import { assetClass, oandaSymbol } from '../js/instrumentRegistry.js';
 import { buildSnapshot } from './featureState.js';
 import { decide } from './decisionCore.js';
 import { MODEL_V0 } from './modelV0.js';
@@ -253,7 +255,12 @@ export function readEvents() {
 // Full or incremental run over `pairs` (sequential — one packed series in
 // memory at a time). Appends events, advances per-pair state, refits, writes
 // the report. onLog(msg) streams progress to the async-job log.
-export async function runBackfill(pairs, { incremental = true, cfg = {}, onLog = () => {} } = {}) {
+//
+// gapFill (default on when OANDA_KEY is set): the stored parquet is the frozen
+// history — the DIFFERENCE up to now is fetched live from OANDA M1 via the
+// m1GapFill brick, so the nightly top-up does NOT depend on the R2 store having
+// been refreshed. A gap-fill failure degrades to the stored history, never aborts.
+export async function runBackfill(pairs, { incremental = true, gapFill = true, cfg = {}, onLog = () => {} } = {}) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   const state = incremental ? readBackfillState() : {};
   if (!incremental) { try { fs.unlinkSync(EVENTS_FILE); } catch {} }
@@ -262,7 +269,13 @@ export async function runBackfill(pairs, { incremental = true, cfg = {}, onLog =
   for (const pair of pairs) {
     try {
       onLog(`${pair}: loading M1…`);
-      const packed = await loadM1ForPair(pair);
+      let packed = await loadM1ForPair(pair);
+      if (gapFill && process.env.OANDA_KEY) {
+        try {
+          packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range,
+            { nowSec: Math.floor(Date.now() / 1000), onLog });
+        } catch (e) { onLog(`${pair}: gap-fill failed (${e.message ?? e}) — using stored history`); }
+      }
       const lines = [];
       const res = backfillPair(pair, packed, {
         fromDate: state[pair]?.lastDate ?? null, cfg,

@@ -138,10 +138,19 @@ export function decide(snapshot, request = {}, opts = {}) {
     { ...DEFAULT_NEWS_CFG, ...(opts.newsCfg ?? {}) });
   if (gate.blocked) return skip('news_window', { news: gate.reason });
 
-  // 3) a zone must be in reach — the engine scores zone touches, not open space
+  // 3) a zone must be in reach — the engine scores zone touches, not open space.
+  //    own_level: the caller vouches that THEIR level (a hand-pulled fib, an
+  //    order-flow line…) sits at `price`. If the map already has a zone there,
+  //    it is used (their level agrees with the map → real confluence); if not,
+  //    the price is scored as a standalone external level (confluence 1) rather
+  //    than refused. Confluence features then measure how much the engine's own
+  //    map agrees with the caller's level.
   const price = Number(request.price) || snapshot.price;
   const sigmaAbs = snapshot.sigmaDaily * snapshot.dayOpen;
-  const hit = nearestZone(snapshot.zones, price, sigmaAbs, cfg.maxDistSigma);
+  let hit = nearestZone(snapshot.zones, price, sigmaAbs, cfg.maxDistSigma);
+  if (!hit && request.own_level) {
+    hit = { zone: { price, count: 1, score: 1, sources: ['external'], kinds: ['external'] }, distSigma: 0 };
+  }
   if (!hit) return skip('no_level_nearby', { price });
 
   // 4–5) features → probability

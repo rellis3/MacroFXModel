@@ -55,8 +55,8 @@
   <h2>How to use</h2>
   <ol class="how">
     <li><b>Pick a pair and mode.</b> <code>synthetic</code> works anywhere (deterministic demo data, no OANDA needed — the sandbox default). <code>live</code> needs the server to have <code>OANDA_KEY</code> (Railway) and a refreshed snapshot.</li>
-    <li><b>Load the snapshot</b> (in live mode press <b>Refresh</b> first — that runs the slow loop: σ, regime, trend-day-ness T, vol percentile, level map). The zones table shows the confluence map — <b>click a zone row</b> to load its price into the decide form, simulating "price is touching this zone now".</li>
-    <li><b>Decide.</b> Leave action/direction on <code>auto</code> to let the engine derive them from the day-type selector, or set them to make the engine judge <i>your</i> proposal. <code>approach σ</code> simulates how fast price came into the level (in σ units — 1.5 = freight train).</li>
+    <li><b>Load the snapshot</b> (in live mode press <b>Refresh</b> first — that runs the slow loop: σ, regime, trend-day-ness T, vol percentile, level map). <b>What is a zone?</b> The engine builds it automatically: it collects levels from the pluggable sources — daily opens, prior day/week high–low, pivots, swing S&amp;R, <b>multi-swing fib clusters</b>, round numbers — and merges any that sit within ~0.08σ of each other into one <i>zone</i> with a confluence count (how many distinct sources agree) and a weighted score. You never define zones by hand; the table IS the map. <b>Click a zone row</b> to load its price into the decide form, simulating "price is touching this zone now".</li>
+    <li><b>Decide.</b> Leave action/direction on <code>auto</code> to let the engine derive them from the day-type selector, or set them to make the engine judge <i>your</i> proposal. <code>approach σ</code> simulates how fast price came into the level (in σ units — 1.5 = freight train). <b>Your own level:</b> tick <code>my own level</code> to score a price the map doesn't know (your hand-pulled fib, an order-flow line). If the map has a zone there anyway, it's used — your level agreeing with the map counts as confluence; if not, it's scored as a standalone external level rather than refused.</li>
     <li><b>Read the result:</b> GO/SKIP, the probability, the size dial, and <i>why</i> (top factors, hard-gate reasons). Every call is appended to the decision log below — that log is the future training set for the fitted (calibrated) model.</li>
   </ol>
   <div class="muted" style="margin-top:8px">Bot integration is the same call:</div>
@@ -94,6 +94,7 @@
       <div><label>Action</label><select id="action"><option value="">auto (selector)</option><option>fade</option><option>follow</option></select></div>
       <div><label>Direction</label><select id="direction"><option value="">auto</option><option>long</option><option>short</option></select></div>
       <div><label>Approach σ</label><input id="approach" type="number" step="0.1" value="0" style="min-width:80px"></div>
+      <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12.5px;color:var(--text2);cursor:pointer"><input type="checkbox" id="ownLevel" style="min-width:auto"> my own level</label></div>
       <button id="btnDecide" onclick="doDecide()">Decide ▸</button>
     </div>
     <div id="decOut" style="display:none">
@@ -124,12 +125,19 @@
 
 <div class="card">
   <h2>Historical backfill <span class="muted">(day-one training data from the M1 parquet history)</span></h2>
-  <div class="muted" style="margin-bottom:10px">Replays the full M1 history through the <b>same</b> snapshot + decide() path as live, labels every zone touch with a triple-barrier outcome (SL-first, after-cost), and fits a <b>candidate</b> model with a walk-forward OOS calibration report. Incremental: re-running only appends days newer than the last processed date. The server tops up <b>automatically every day at 03:05 UTC</b> (change with <code>TDE_BACKFILL_UTC</code>, disable with <code>TDE_BACKFILL_DAILY=0</code>) — the buttons are for the one-time bootstrap and ad-hoc reruns.</div>
+  <div class="muted" style="margin-bottom:10px">Replays the full M1 history through the <b>same</b> snapshot + decide() path as live, labels every zone touch with a triple-barrier outcome (SL-first, after-cost), and fits a <b>candidate</b> model with a walk-forward OOS calibration report. Incremental: re-running only appends days newer than the last processed date. The stored parquet is the frozen history — <b>the difference up to now is gap-filled from the live OANDA M1 feed</b> before each replay, so the top-up never waits on the R2 store. The buttons are for the one-time bootstrap and ad-hoc reruns; the nightly run is automatic per the schedule below.</div>
   <div class="row" style="margin-bottom:10px">
     <button id="btnBackfill" onclick="runBackfill(false)">▶ Run incremental backfill</button>
     <button class="ghost" onclick="runBackfill(true)">Full rebuild</button>
     <button class="ghost" onclick="loadBackfillReport()">Load report</button>
     <span class="muted" id="bfStatus"></span>
+  </div>
+  <div class="row" style="margin-bottom:10px;padding:10px;background:var(--card2);border-radius:8px">
+    <div><label>Daily run (UTC)</label><input id="cfgTime" type="text" placeholder="03:05" style="min-width:80px;max-width:90px"></div>
+    <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12.5px;color:var(--text2);cursor:pointer"><input type="checkbox" id="cfgDaily" style="min-width:auto"> daily enabled</label></div>
+    <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12.5px;color:var(--text2);cursor:pointer"><input type="checkbox" id="cfgGapFill" style="min-width:auto"> OANDA gap-fill</label></div>
+    <button class="ghost" onclick="saveTdeConfig()">Save schedule</button>
+    <span class="muted" id="cfgStatus">stored in KV — applies live, no restart</span>
   </div>
   <pre id="bfLog" style="display:none;max-height:180px;overflow-y:auto"></pre>
   <div id="bfReport" style="display:none">
@@ -227,6 +235,7 @@ async function doDecide() {
     if ($('action').value) body.action = $('action').value;
     if ($('direction').value) body.direction = $('direction').value;
     if ($('approach').value) body.approach_sigma = parseFloat($('approach').value);
+    if ($('ownLevel').checked) body.own_level = true;
     const r = await api('/api/trade-decision/decide', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body) });
     if (r.error) { $('decErr').textContent = r.error; return; }
     $('decOut').style.display = 'block';
@@ -319,7 +328,24 @@ function renderBackfillReport(rep) {
     : `Fit skipped: ${fit.error}`;
 }
 
-health(); loadLog();
+// ── Runtime config (KV-backed, caps pattern) ─────────────────────────────────
+async function loadTdeConfig() {
+  try {
+    const r = await api('/api/trade-decision/config');
+    if (!r.ok) return;
+    $('cfgTime').value = r.config.backfill_utc;
+    $('cfgDaily').checked = r.config.backfill_daily !== false;
+    $('cfgGapFill').checked = r.config.gap_fill !== false;
+    if (r.config.updatedAt) $('cfgStatus').textContent = 'KV ✓ — saved ' + new Date(r.config.updatedAt).toLocaleString();
+  } catch {}
+}
+async function saveTdeConfig() {
+  const r = await api('/api/trade-decision/config', { method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({ backfill_utc: $('cfgTime').value, backfill_daily: $('cfgDaily').checked, gap_fill: $('cfgGapFill').checked }) });
+  $('cfgStatus').textContent = r.ok ? 'saved ✓ — applies live, no restart' : 'save failed: ' + r.error;
+}
+
+health(); loadLog(); loadTdeConfig();
 </script>
 </body>
 </html>

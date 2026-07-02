@@ -129,6 +129,20 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(r.action === 'follow' && r.direction === 'short', 'bot proposal honoured');
 }
 
+// ── own_level: an external (hand-pulled) level is scored, not refused ────────
+{
+  const farPrice = snap.price * 1.6;   // far beyond any level source's span
+  const refused = decide(snap, { price: farPrice }, { nowMs: NOW });
+  ok(refused.decision === 'skip' && refused.reasons.includes('no_level_nearby'), 'unknown price still refused by default');
+  const scored = decide(snap, { price: farPrice, own_level: true }, { nowMs: NOW });
+  ok(scored.probability > 0 && scored.probability < 1, 'own_level scores instead of refusing');
+  ok(scored.zone.confluence === 1 && scored.zone.sources.includes('external'), 'standalone external level = confluence 1');
+  // at a mapped zone, own_level uses the map zone (agreement = real confluence)
+  const zc = snap.zones.find(z => z.count >= 2) ?? snap.zones[0];
+  const agree = decide(snap, { price: zc.price, own_level: true }, { nowMs: NOW });
+  ok(agree.zone.confluence === zc.count, 'own level agreeing with the map inherits its confluence');
+}
+
 // ── scoreLogistic sanity ─────────────────────────────────────────────────────
 {
   const { p, contributions } = scoreLogistic({ confluence: 1, fade_on_trend_day: 0 }, MODEL_V0);
