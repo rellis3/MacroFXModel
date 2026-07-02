@@ -24,6 +24,17 @@ def test_open_and_serialize_position():
     assert {"symbol", "open_price", "price", "profit", "swap"} <= set(pos[0])
 
 
+def test_open_position_carries_comment():
+    # The dashboard maps an open position to the line it fades by parsing the
+    # comment ("Vol {line} {decision}"). Mt5Broker emits it; paper must too, or the
+    # vol-bot config card can't show WHICH level a paper position is trading.
+    b = PaperBroker(balance=10_000)
+    b.set_price("eurusd", 1.1100)
+    b.enter("eurusd", "SHORT", 1.1150, 1.1050, 0.5, BIG, True, comment="Vol HL50_dn fade")
+    pos = b.serialize_open_positions()
+    assert pos[0]["comment"] == "Vol HL50_dn fade"
+
+
 def test_enter_needs_a_price():
     b = PaperBroker()
     assert b.enter("eurusd", "LONG", 1.10, 1.12, 0.5, BIG, True) is None  # no price set

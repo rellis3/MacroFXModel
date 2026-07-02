@@ -2817,8 +2817,35 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       </div>
       <div style="display:flex;gap:20px;padding:4px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;flex-wrap:wrap">
         <span>Open positions: <b id="vbOpenN">—</b></span>
+        <span>Today's trades: <b id="vbTradesN">—</b></span>
         <span>Live universe: <b id="vbUniN">—</b></span>
         <span style="margin-left:auto">Plan: <b id="vbPlanAge">—</b></span>
+      </div>
+    </div>
+
+    <!-- Open positions the bot is currently holding, mapped to the line each fades -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#e0a93b">Open Positions</span>
+        <span class="bot-banner-sub" style="margin:0">what the bot is holding right now — the line each trade is fading and its live P&amp;L</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Dir</th>
+              <th style="padding:6px 10px;text-align:left">Line</th>
+              <th style="padding:6px 10px;text-align:right">Lots</th>
+              <th style="padding:6px 10px;text-align:right">Open</th>
+              <th style="padding:6px 10px;text-align:right">Live</th>
+              <th style="padding:6px 10px;text-align:right">P&amp;L</th>
+            </tr>
+          </thead>
+          <tbody id="vbOpenBody">
+            <tr><td colspan="7" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
