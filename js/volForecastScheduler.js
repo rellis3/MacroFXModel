@@ -21,6 +21,11 @@
 
 import * as kv from '../kv.js';
 import { computeForecast, computeForecastFromRV, detectNewsMultiplier } from './volForecast.js';
+import { harShadowFields } from './forecastExport.js';
+
+// HAR-RV shadow forecast (challenger σ through the incumbent band math, stored
+// as `f.har` per instrument — purely additive). Kill switch: VOL_FORECAST_HAR=0.
+const HAR_SHADOW_ON = process.env.VOL_FORECAST_HAR !== '0';
 
 // ── Instrument definitions ────────────────────────────────────────────────────
 // oandaInstrument: Oanda v20 instrument name (primary data source)
@@ -331,8 +336,13 @@ export async function runVolForecast(targetDate) {
       const ohlc = await fetchOHLC(cfg);
       forecastState.ohlcCache[cfg.name] = ohlc;
       const f    = computeForecast(ohlc, cfg.assetClass, newsMult);
+      if (HAR_SHADOW_ON) {
+        // Shadow must never break the primary forecast: any HAR failure → null.
+        try { f.har = harShadowFields(ohlc, cfg.assetClass, newsMult); }
+        catch (e) { f.har = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR shadow failed: ${e.message}`); }
+      }
       instruments[cfg.name] = f;
-      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  [${dataSource}]`);
+      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  ${f.har ? `har=${f.har.vol_annual.toFixed(2)}%  ` : ''}[${dataSource}]`);
     } catch (err) {
       console.error(`[VOL-FORECAST] ${cfg.name} error: ${err.message}`);
       errors.push({ name: cfg.name, error: err.message });
@@ -679,12 +689,15 @@ export async function startVolForecastScheduler() {
   const cachedInst  = forecastState.latest?.instruments ?? {};
   const missingFields = Object.values(cachedInst).some(f =>
     f.yz_vol_annual == null || f.hv_vol_annual == null ||
-    f.ewma_vol_annual == null || f.legacy_vol_annual == null
+    f.ewma_vol_annual == null || f.legacy_vol_annual == null ||
+    // har === undefined → shadow never attempted (pre-HAR cache) → recompute.
+    // har === null      → attempted but unavailable — do NOT re-run for it.
+    (HAR_SHADOW_ON && f.har === undefined)
   );
   const needsImmediateRun = !cachedDate || cachedDate !== neededDate || missingFields;
 
   if (needsImmediateRun) {
-    const reason = !cachedDate ? 'no cache' : cachedDate !== neededDate ? `date mismatch (${cachedDate})` : 'shadow fields missing (YZ/HV/EWMA)';
+    const reason = !cachedDate ? 'no cache' : cachedDate !== neededDate ? `date mismatch (${cachedDate})` : 'shadow fields missing (YZ/HV/EWMA/HAR)';
     console.log(`[VOL-FORECAST] ${reason} — computing on startup …`);
     runVolForecast(new Date(neededDate + 'T12:00:00Z'))
       .catch(e => console.error('[VOL-FORECAST] Startup run failed:', e.message));

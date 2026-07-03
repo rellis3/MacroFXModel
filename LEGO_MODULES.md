@@ -172,13 +172,21 @@ OLS-recovers-a-known-law test for HAR-RV).
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
 | **Vol-forecast bench** | `js/volForecastBench.js` | σ-estimator **evaluation** registry (`ESTIMATORS`) — EWMA(0.90/0.94), HV20/HV30, Yang-Zhang(30), GARCH(1,1) all **imported** from `volBacktestEngine.js` (no copies, re-aligned to a `predictVar(bars)→Float64Array` no-lookahead contract) plus the one new entrant **HAR-RV** (`harRvPred`, walk-forward OLS via incremental normal equations + `solve4`); realised-variance proxies (`realizedVarSeries`: Garman-Klass / squared-return / Parkinson); QLIKE+MSE scoring with full/IS/OOS split (`scoreSeries`); `runBench` ranks by OOS QLIKE; **next-session forecast** for the winning estimator (`latestSigmaForecast`, `sigmaSeriesForExport`, `harRvForecastNext`, `benchCtx`) | `server.js` `/api/vol-forecast-bench/*` + `vol-forecast-bench.html` (linked from `hub.html`) | ✅ |
-| **Forecast export** | `js/forecastExport.js` | reproduce the live forecaster's export TEXT for an arbitrary daily σ (e.g. the bench winner): `forecastFields` (delegates band math to `volForecast.js`'s `_buildOutput` + the v2 drift block via imported `_driftD`/`_bmMaxQuantile`/`ASSET_PARAMS` — **never copies the recalibrated correction factors**) + the three format builders `buildExportText`/`buildExportV2Text`/`buildExtendedText` (verbatim copies of the page functions, **golden-tested** byte-identical in `js/forecastExport.test.mjs`) | `server.js` `/api/vol-forecast-bench/*` (export strings in the job result) + `vol-forecast-bench.html` copy buttons | ✅ |
+| **Forecast export** | `js/forecastExport.js` | reproduce the live forecaster's export TEXT for an arbitrary daily σ (e.g. the bench winner): `forecastFields` (delegates band math to `volForecast.js`'s `_buildOutput` + the v2 drift block via imported `_driftD`/`_bmMaxQuantile`/`ASSET_PARAMS` — **never copies the recalibrated correction factors**) + the format builders `buildExportText`/`buildExportV2Text`/`buildExtendedText`/`buildExportHarText` (verbatim copies of the page functions, **golden-tested** byte-identical in `js/forecastExport.test.mjs`); **`harShadowFields` (2026-07-03)** — the daily HAR-RV challenger: bench `sigmaSeriesForExport('harRV')` σ through `forecastFields`, attached as `f.har` per instrument by the scheduler (purely additive — primary fields never move; kill switch `VOL_FORECAST_HAR=0`; delegation golden-tested byte-equal to hand-composing the two bricks) | `server.js` `/api/vol-forecast-bench/*` (export strings in the job result) + `vol-forecast-bench.html` copy buttons + `js/volForecastScheduler.js` (`f.har` shadow block in `/api/vol-forecast`) + `vol-forecast.html` ⬇ Export HAR button | ✅ |
 
 > Imports the incumbent estimators from `volBacktestEngine.js` rather than copying
 > them, so the benchmark and the live forecaster cannot silently disagree (Lego
 > Principle 1). HAR-RV is a *candidate* estimator — it only earns a place in the
 > forecaster if it beats the asset-class incumbent **out-of-sample**; the bench is
 > how that's decided, not an automatic adoption.
+>
+> **HAR-RV daily shadow (2026-07-03):** while that OOS case accumulates, the daily
+> forecast run now attaches a HAR-RV *shadow* block (`f.har`) beside every
+> instrument's primary fields (`harShadowFields`), and vol-forecast.html grows an
+> "⬇ Export HAR" button emitting the same text structure as the main export — so
+> incumbent vs HAR-RV vs the reference forecast can be compared line-for-line every
+> session. The primary forecast, the per-line book and the bot plan are untouched;
+> back-out = `VOL_FORECAST_HAR=0` (or drop the field render).
 >
 > **Additive exports (visibility-only, zero behaviour change):** to let
 > `forecastExport.js` reuse the forecaster's exact band math instead of copying the
