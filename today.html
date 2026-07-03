@@ -39,6 +39,18 @@
   .stile .v{font-size:19px;font-weight:700}
   .stile .s{font-size:11px;color:var(--text2);margin-top:2px}
 
+  /* ── Morning gate: calendar timeline ────────────────────── */
+  .gate{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 14px;
+        margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .gate .glbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+  .gev{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);
+       border-radius:6px;padding:3px 9px;font-size:11.5px;white-space:nowrap}
+  .gev .t{font-weight:700;font-variant-numeric:tabular-nums}
+  .gev.hi{border-color:rgba(210,153,34,.5)} .gev.hi .t{color:var(--amber)}
+  .gev.past{opacity:.42}
+  .gev.next{border-color:rgba(210,153,34,.9);background:var(--amber-bg)}
+  .gev .cd{font-size:10px;color:var(--amber);font-weight:700}
+
   /* ── Filter / sort row ──────────────────────────────────── */
   .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .fchip{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:14px;
@@ -68,6 +80,16 @@
   .chip.dim{background:var(--neu-bg);color:var(--text3);font-weight:600}
   .pc-bias{font-size:11.5px;color:var(--text2);margin-bottom:8px;min-height:17px}
   .pc-bias b{color:var(--text)}
+
+  /* proximity flash (zoom 3) */
+  @keyframes proxpulse{0%,100%{border-color:rgba(210,153,34,.9)}50%{border-color:rgba(210,153,34,.35)}}
+  .pcard.prox{animation:proxpulse 1.6s infinite}
+
+  /* story section (zoom 2) */
+  .story{display:flex;flex-direction:column;gap:7px}
+  .story .srow{display:flex;gap:10px;align-items:baseline;font-size:12.5px;line-height:1.45}
+  .story .sk{flex:0 0 58px;font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding-top:2px}
+  .story .sv{color:var(--text2)} .story .sv b{color:var(--text)}
 
   /* Range-used meter */
   .meter-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);margin-bottom:3px}
@@ -152,6 +174,8 @@
 <div class="wrap">
   <div class="summary" id="summary"></div>
 
+  <div class="gate" id="gate" style="display:none"></div>
+
   <div class="ctl">
     <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
     <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
@@ -181,6 +205,11 @@
     <h2 id="drName">—</h2>
     <span class="chip neu" id="drRegime"></span>
     <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
+  </div>
+
+  <div class="dr-sec">
+    <h3>The story</h3>
+    <div class="story" id="drStory"><span class="muted">loading…</span></div>
   </div>
 
   <div class="dr-sec">
@@ -246,6 +275,11 @@ const dispName = n => META[n]?.label ?? n.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/
 let brief = null;        // /api/daily-brief
 let session = null;      // /api/vol-forecast/session (live range used, bias)
 let forecast = null;     // /api/vol-forecast (oc/vov extras)
+let events = null;       // /api/events — today's economic calendar (zoom 0)
+let fred = null;         // /api/fred — VIX/HY/DXY risk state (zoom 0)
+let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges (story)
+let fredHist = null;     // /api/fredhistory — rate-spread driver series (story, lazy)
+let livePrices = null;   // /api/hedge-signals/prices — proximity watch (zoom 3)
 let filter = 'all';
 let tableMode = false;
 
@@ -273,6 +307,108 @@ async function loadAll(manual) {
   }
 }
 
+// ── Zoom 0: morning gate — calendar + risk state ─────────────────────────────
+const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
+
+async function loadGate() {
+  const [ev, fr, ss] = await Promise.all([
+    jget('/api/events').catch(() => null),
+    jget('/api/fred').catch(() => null),
+    jget('/api/session-stats').catch(() => null),
+  ]);
+  if (Array.isArray(ev)) events = ev;
+  if (fr && Object.keys(fr).length) fred = fr;
+  if (ss?.instruments) sessionStats = ss;
+  renderGate(); renderSummary();
+}
+
+function riskLight() {
+  const vix = fred?.vix?.value, hy = fred?.hy?.value;
+  if (vix == null && hy == null) return null;
+  const state = (vix > 24 || hy > 4.5) ? ['🔴', 'Stress', 'var(--red)']
+              : (vix > 16 || hy > 3.8) ? ['🟡', 'Mixed', 'var(--amber)']
+              : ['🟢', 'Calm', 'var(--bull)'];
+  const d = (cur, prev) => cur != null && prev != null ? (cur >= prev ? '↑' : '↓') : '';
+  return { icon: state[0], label: state[1], color: state[2],
+    detail: `VIX ${fmtN(vix, 1)}${d(vix, fred?.vix?.prev)} · HY ${fmtN(hy, 2)}${d(hy, fred?.hy?.prev)}${fred?.dxy?.value != null ? ` · DXY ${fmtN(fred.dxy.value, 1)}${d(fred.dxy.value, fred.dxy.prev)}` : ''}` };
+}
+
+function renderGate() {
+  const el = $('gate');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const evs = (events ?? [])
+    .filter(e => (e.time ?? '').startsWith(todayStr) && GATE_COUNTRIES.has(e.country))
+    .map(e => ({ ...e, ts: new Date(e.time.replace(' ', 'T') + 'Z').getTime() }))
+    .sort((a, b) => a.ts - b.ts);
+  const his = evs.filter(e => (e.impact ?? '').toLowerCase() === 'high');
+  const medCount = evs.filter(e => (e.impact ?? '').toLowerCase() === 'medium').length;
+  if (!his.length && !medCount) { el.style.display = 'none'; return; }
+  const now = Date.now();
+  const nextIdx = his.findIndex(e => e.ts > now);
+  const hh = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="glbl">Today's calendar</span>` +
+    his.map((e, i) => {
+      const mins = Math.round((e.ts - now) / 60000);
+      const cls = e.ts < now ? 'gev hi past' : i === nextIdx ? 'gev hi next' : 'gev hi';
+      return `<span class="${cls}" title="${e.event}${e.estimate != null ? ` · est ${e.estimate}` : ''}${e.prev != null ? ` · prev ${e.prev}` : ''}">
+        <span class="t">${hh(e.ts)}</span> ${e.country} · ${e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event}
+        ${i === nextIdx && mins < 600 ? `<span class="cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : ''}</span>`;
+    }).join('') +
+    (medCount ? `<span class="gev" style="opacity:.6">+${medCount} medium</span>` : '');
+}
+
+// ── Zoom 3: proximity watch — live prices vs ladder levels ───────────────────
+const PROX_LIMIT = { fx: 12, commodity: 5, index: 25 };   // pips / points
+
+function livePriceFor(d) {
+  if (!livePrices) return null;
+  for (const k of [d.sym, d.sym.replace('_', '/'), lvlKey(d.name, d.sym)]) {
+    if (livePrices[k]?.price != null) return livePrices[k].price;
+  }
+  return null;
+}
+
+async function pollPrices() {
+  try {
+    const r = await jget('/api/hedge-signals/prices');
+    if (!r?.prices) return;
+    livePrices = r.prices;
+    let changed = false;
+    for (const d of Object.values(brief?.instruments ?? {})) {
+      const p = livePriceFor(d);
+      if (p != null && p !== d.current_price) { d.current_price = p; changed = true; }
+    }
+    if (changed) { renderSummary(); render(); }
+  } catch (e) {}
+}
+
+// nearest ladder level: { tag, pips } or null
+function nearestLevel(d) {
+  const px = d.current_price;
+  if (px == null) return null;
+  const pipSz = d.sym.includes('JPY') ? 0.01 : (d.ac === 'fx' ? 0.0001 : 1);
+  let best = null;
+  for (const [tag, key] of [['OH med', 'oh_med'], ['OH 75', 'oh_75'], ['OL med', 'ol_med'], ['OL 75', 'ol_75']]) {
+    const p = d.levels?.[key]?.price;
+    if (p == null) continue;
+    const pips = Math.abs(p - px) / pipSz;
+    if (!best || pips < best.pips) best = { tag, pips };
+  }
+  return best;
+}
+
+// ── Zoom 1: do the signals agree? ────────────────────────────────────────────
+function agreement(r) {
+  const hmm = r.d.regime?.label === 'TREND' ? r.d.regime.trend_dir : null;
+  const bd  = r.s?.bias_detail ?? r.s?.bias ?? '';
+  const sess = /bull/i.test(bd) ? 'up' : /bear/i.test(bd) ? 'down' : null;
+  if (!hmm || !sess) return { chip: '', aligned: null };
+  return hmm === sess
+    ? { chip: `<span class="chip ${hmm === 'up' ? 'bull' : 'bear'}" title="HMM trend direction and live session bias point the same way">✓ aligned</span>`, aligned: true }
+    : { chip: `<span class="chip warn" title="HMM says trend ${hmm} but today's session bias is ${sess} — conflicting signals, lower conviction">⚠ mixed</span>`, aligned: false };
+}
+
 // ── Derived per-instrument row ────────────────────────────────────────────────
 function rows() {
   const out = [];
@@ -283,6 +419,9 @@ function rows() {
     const hl75  = d.levels?.hl_75?.pct  ?? fc?.hl_75 ?? null;
     const used  = (s?.hl != null && hlMed) ? s.hl / hlMed : null;   // fraction of median H-L consumed
     const trending = d.regime?.label === 'TREND';
+    const near = nearestLevel(d);
+    const isProx = near != null && near.pips <= (PROX_LIMIT[d.ac] ?? 12);
+    const agr = agreement({ d, s });
     // attention: how much this pair deserves a look right now
     let att = 0;
     if (used != null) att += Math.min(used, 1.6) * 50;
@@ -290,7 +429,9 @@ function rows() {
     if ((d.vol_pct ?? 0) >= 80) att += 15;
     if (d.news_flag) att += 20;
     if (s && /Strong/i.test(s.bias_detail ?? '')) att += 15;
-    out.push({ name, d, s, fc, hlMed, hl75, used, trending, att });
+    if (isProx) att += 40;
+    if (agr.aligned === true) att += 10;
+    out.push({ name, d, s, fc, hlMed, hl75, used, trending, att, near, isProx, agr });
   }
   return out.filter(r => filter === 'all' || r.d.ac === filter);
 }
@@ -343,7 +484,10 @@ function renderSummary() {
       <div class="s">instruments ≥80th vol percentile</div></div>
     <div class="stile"><div class="k">Event risk</div>
       <div class="v">${brief.news_flag ? '⚠' : '—'}</div>
-      <div class="s">${brief.news_flag ? `${brief.news_flag} (×${brief.news_mult})` : 'no high-impact flag on today'}</div></div>`;
+      <div class="s">${brief.news_flag ? `${brief.news_flag} (×${brief.news_mult})` : 'no high-impact flag on today'}</div></div>
+    ${(() => { const rl = riskLight(); return rl ? `<div class="stile"><div class="k">Risk state</div>
+      <div class="v" style="color:${rl.color}">${rl.icon} ${rl.label}</div>
+      <div class="s">${rl.detail}</div></div>` : ''; })()}`;
 }
 
 // ── Card rendering ────────────────────────────────────────────────────────────
@@ -427,13 +571,13 @@ function cardHtml(r) {
   const volPct = d.vol_pct;
   const volCls = volPct >= 80 ? 'warn' : volPct <= 20 ? 'dim' : 'neu';
   const rangePts = d.levels?.hl_med?.range_pts;
-  return `<div class="pcard ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''}" onclick="openDrawer('${r.name}')">
+  return `<div class="pcard ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
       <span class="pc-name">${dispName(r.name)}</span>
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="live price is close to a forecast level — decision time">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}</div>
     ${meterHtml(r)}
     ${ladderHtml(r)}
     <div class="pc-foot">
@@ -478,7 +622,7 @@ function render() {
     $('grid').style.display = 'grid';
     $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
   }
-  $('footNote').textContent = 'Range-used = today\'s H-L vs the median forecast H-L. Ladder = open±median/75th forecast levels with historical touch rates. Sizing chip = regime-confidence multiplier from the daily brief. Click a card for the M5 chart, the Decision Engine zone map and the bot level book.';
+  $('footNote').textContent = 'The morning funnel: calendar + risk state up top (should I trade today?) → cards (which pairs deserve attention? ✓ aligned = HMM trend and session bias agree) → click a card for the story, M5 chart and Decision Engine zones → a pulsing card means price is at a level now. Range-used = today\'s H-L vs the median forecast H-L; ladder = open±median/75th levels with historical touch rates.';
 }
 
 function setFilter(f) {
@@ -513,18 +657,22 @@ async function openDrawer(name) {
   $('drTdeErr').textContent = '';
   $('drChart').innerHTML = '<div class="muted" style="padding:20px">loading candles…</div>';
   $('drChartNote').textContent = '';
-  loadDrawerChart(r).catch(e => {
+  $('drStory').innerHTML = '<span class="muted">loading…</span>';
+  // One M5 fetch shared by the chart and the Asia story line
+  const barsP = jget(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(d.sym)}`).catch(e => ({ error: e.message }));
+  loadDrawerChart(r, barsP).catch(e => {
     const hint = /OANDA|HTTP|candles/.test(e.message) ? ' — OANDA feed is Railway-only (expected locally).' : '';
     $('drChart').innerHTML = `<div class="err" style="padding:20px">${e.message}${hint}</div>`;
   });
+  loadDrawerStory(r, barsP).catch(e => { $('drStory').innerHTML = `<span class="muted">story unavailable: ${e.message}</span>`; });
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
   loadDrawerLevels(name, d.sym).catch(() => {});
 }
 
-async function loadDrawerChart(r) {
+async function loadDrawerChart(r, barsP) {
   if (typeof LightweightCharts === 'undefined') throw new Error('Chart library not loaded (CDN unreachable in this environment)');
   const d = r.d;
-  const resp = await jget(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(d.sym)}`);
+  const resp = await barsP;
   if (!resp.values?.length) throw new Error(resp.error ?? 'no candles');
   // newest-first → ascending; datetime is London local 'YYYY-MM-DD HH:MM:SS'
   const asc = resp.values.slice().reverse();
@@ -582,6 +730,135 @@ async function loadDrawerChart(r) {
   lines.forEach(l => drSeries.createPriceLine({ price: l.price, color: l.color, lineStyle: l.style, lineWidth: 1, title: l.title, axisLabelVisible: true }));
   drChart.timeScale().fitContent();
   $('drChartNote').textContent = `· open ${fmtN(dayOpen, r.d.dp)} · ${todayBars.length} bars today`;
+}
+
+// ── Zoom 2: the story — what happened, what's driving it ─────────────────────
+// Rate-differential driver per pair: spread = a − b; sign = effect of a WIDENING
+// spread on the pair (+1 supports upside, −1 headwind). Mirrors COMPASS_CONFIG.
+const DRIVERS = {
+  EURUSD: { a: 'us10y', b: 'de10y', label: 'US–DE 10y', sign: -1 },
+  GBPUSD: { a: 'gb10y', b: 'us10y', label: 'GB–US 10y', sign: +1 },
+  USDJPY: { a: 'us10y', b: 'jp10y', label: 'US–JP 10y', sign: +1 },
+  AUDUSD: { a: 'au10y', b: 'us10y', label: 'AU–US 10y', sign: +1 },
+  USDCAD: { a: 'us10y', b: 'ca10y', label: 'US–CA 10y', sign: +1 },
+  USDCHF: { a: 'us10y', b: 'ch10y', label: 'US–CH 10y', sign: +1 },
+  GBPJPY: { a: 'gb10y', b: 'jp10y', label: 'GB–JP 10y', sign: +1 },
+  EURGBP: { a: 'de10y', b: 'gb10y', label: 'DE–GB 10y', sign: +1 },
+  EURJPY: { a: 'de10y', b: 'jp10y', label: 'DE–JP 10y', sign: +1 },
+  EURCHF: { a: 'de10y', b: 'ch10y', label: 'DE–CH 10y', sign: +1 },
+  GBPCHF: { a: 'gb10y', b: 'ch10y', label: 'GB–CH 10y', sign: +1 },
+  AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
+  CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
+};
+const FREDHIST_KEYS = 'us10y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,hy';
+
+async function getFredHist() {
+  if (fredHist) return fredHist;
+  try { fredHist = await jget(`/api/fredhistory?keys=${FREDHIST_KEYS}`); } catch (e) { fredHist = {}; }
+  return fredHist;
+}
+
+const _pipSz = d => d.sym.includes('JPY') ? 0.01 : (d.ac === 'fx' ? 0.0001 : 1);
+const _unit  = d => d.ac === 'fx' ? 'p' : 'pt';
+
+function storyAsia(r, resp) {
+  const d = r.d;
+  if (!resp?.values?.length) return null;
+  const asc = resp.values.slice().reverse();
+  const todayKey = asc[asc.length - 1].datetime.slice(0, 10);
+  // Asia = 00:00–06:00 London (same window as session-stats)
+  const asia = asc.filter(b => b.datetime.startsWith(todayKey) && +b.datetime.slice(11, 13) < 6);
+  if (asia.length < 6) return `<b>Asia session</b> — too few bars yet to read.`;
+  const hi = Math.max(...asia.map(b => +b.high)), lo = Math.min(...asia.map(b => +b.low));
+  const rangePips = (hi - lo) / _pipSz(d);
+  const lastClose = +asc[asc.length - 1].close;
+  const asiaClose = +asia[asia.length - 1].close;
+  const closePos = (asiaClose - lo) / Math.max(hi - lo, 1e-9);
+  const closeTxt = closePos > 0.7 ? 'closed near its high' : closePos < 0.3 ? 'closed near its low' : 'closed mid-range';
+  // vs typical Asia range (session-stats p50 is % of price)
+  let typTxt = '';
+  const st = sessionStats?.instruments?.[r.name]?.asia;
+  if (st?.p50 != null && lastClose) {
+    const typPips = lastClose * st.p50 / 100 / _pipSz(d);
+    if (typPips > 0) typTxt = ` — <b>${Math.round(100 * rangePips / typPips)}% of typical</b>`;
+  }
+  const nowTxt = lastClose > hi ? `price has since <b>broken above the Asia high</b>`
+              : lastClose < lo ? `price has since <b>broken below the Asia low</b>`
+              : `price is still <b>inside the Asia range</b>`;
+  return `<b>Asia ranged ${rangePips.toFixed(0)}${_unit(d)}</b>${typTxt}, ${closeTxt}; ${nowTxt}.`;
+}
+
+async function storyRecent(r) {
+  const d = r.d;
+  const resp = await jget(`/api/ohlc?symbol=${encodeURIComponent(d.sym.replace('_', '/'))}`).catch(() => null);
+  const vals = resp?.values;
+  if (!vals?.length) return null;
+  const days = vals.slice(0, 6);                       // newest first, up to yesterday + 5
+  const y = days[0];
+  const body = Math.abs(+y.close - +y.open), rng = Math.max(+y.high - +y.low, 1e-9);
+  const yChar = body / rng > 0.6 ? 'a strong trend day' : body / rng < 0.3 ? 'a rejection / range day' : 'a mixed day';
+  let streak = 0;
+  const dir0 = +days[0].close >= +days[0].open;
+  for (const b of days) { if ((+b.close >= +b.open) === dir0) streak++; else break; }
+  const net5 = days.length >= 5 ? (+days[0].close - +days[4].close) : null;
+  const netPips = net5 != null ? net5 / _pipSz(d) : null;
+  const hlMedPips = r.hlMed && d.current_price ? d.current_price * r.hlMed / 100 / _pipSz(d) : null;
+  const netInDays = netPips != null && hlMedPips ? Math.abs(netPips) / hlMedPips : null;
+  return `Yesterday was <b>${yChar}</b>; ${streak >= 2 ? `<b>${streak} consecutive ${dir0 ? 'up' : 'down'} days</b>` : `no daily streak`}` +
+    (netPips != null ? `; 5-day net <b>${netPips >= 0 ? '+' : ''}${netPips.toFixed(0)}${_unit(d)}</b>${netInDays != null ? ` (≈${netInDays.toFixed(1)}× a typical day's range)` : ''}.` : '.');
+}
+
+async function storyDriver(r) {
+  const h = await getFredHist();
+  const last = arr => arr?.length ? arr[arr.length - 1].value : null;
+  const prev = arr => arr?.length > 1 ? arr[arr.length - 2].value : null;
+  if (r.d.ac === 'commodity') {
+    const t = h?.tips; if (!last(t)) return null;
+    const dTips = last(t) - (prev(t) ?? last(t));
+    return `10y real yield <b>${fmtN(last(t), 2)}%</b>, ${dTips <= 0 ? 'falling — <b>tailwind for gold</b>' : 'rising — <b>headwind for gold</b>'} (real yields drive gold inversely).`;
+  }
+  if (r.d.ac === 'index') {
+    const v = h?.vix, hy = h?.hy;
+    if (!last(v) && !last(hy)) return null;
+    const dV = last(v) != null && prev(v) != null ? last(v) - prev(v) : null;
+    const dH = last(hy) != null && prev(hy) != null ? last(hy) - prev(hy) : null;
+    const calm = (last(v) ?? 99) < 18 && (last(hy) ?? 99) < 4;
+    return `VIX <b>${fmtN(last(v), 1)}</b>${dV != null ? ` (${dV >= 0 ? '+' : ''}${dV.toFixed(1)})` : ''}, HY spreads <b>${fmtN(last(hy), 2)}%</b>${dH != null ? ` (${dH >= 0 ? '+' : ''}${dH.toFixed(2)})` : ''} — ${calm ? 'risk appetite supported' : 'risk backdrop fragile'}.`;
+  }
+  const cfg = DRIVERS[r.name];
+  if (!cfg) return null;
+  const A = h?.[cfg.a], B = h?.[cfg.b];
+  if (!last(A) || !last(B)) return null;
+  const now = last(A) - last(B);
+  const before = (prev(A) ?? last(A)) - (prev(B) ?? last(B));
+  const widening = now > before;
+  const effect = (widening ? cfg.sign : -cfg.sign) > 0 ? 'supports upside' : 'a headwind';
+  return `<b>${cfg.label} spread ${fmtN(now, 2)}%</b>, ${widening ? 'widening' : 'narrowing'} vs the prior reading → <b>${effect}</b> for ${dispName(r.name)} (rate-differential driver; some legs update monthly).`;
+}
+
+async function loadDrawerStory(r, barsP) {
+  const el = $('drStory');
+  const put = lines => {
+    el.innerHTML = lines.filter(l => l && l[1]).map(([k, v]) => `<div class="srow"><span class="sk">${k}</span><span class="sv">${v}</span></div>`).join('') || '<span class="muted">no story data available</span>';
+  };
+  // Fast lines first (already-loaded data), slow lines fill in after
+  const lines = [
+    ['today', r.s ? `<b>${r.s.bias_detail ?? r.s.bias ?? ''}</b>${r.s.outlook ? ` — ${r.s.outlook}` : ''}` : null],
+    ['vol', r.fc ? `σ ${fmtN(r.fc.vol_annual, 1)}% (P${r.d.vol_pct ?? '–'})${r.fc.cone_5d != null && r.fc.vol_annual != null ? `, 5-day cone ${r.fc.cone_5d > r.fc.vol_annual ? 'above spot vol — pressure building' : 'below spot vol — cooling'}` : ''}${r.fc.vol_vov_label && r.fc.vol_vov_label !== 'normal' ? ` · vol-of-vol ${r.fc.vol_vov_label}` : ''}` : null],
+    ['asia', '<span class="muted">…</span>'],
+    ['recent', '<span class="muted">…</span>'],
+    ['driver', '<span class="muted">…</span>'],
+  ];
+  put(lines);
+  const [asiaLine, recentLine, driverLine] = await Promise.all([
+    barsP.then(resp => storyAsia(r, resp)).catch(() => null),
+    storyRecent(r).catch(() => null),
+    storyDriver(r).catch(() => null),
+  ]);
+  lines[2][1] = asiaLine;
+  lines[3][1] = recentLine;
+  lines[4][1] = driverLine;
+  if (drName === r.name) put(lines);   // pair may have changed while we fetched
 }
 
 async function loadDrawerTde(name) {
@@ -665,7 +942,11 @@ async function loadDrawerLevels(name, sym) {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
 // ── Boot + refresh cadence ────────────────────────────────────────────────────
-loadAll();
+loadAll().then(() => { pollPrices(); });
+loadGate();
+setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
+setInterval(pollPrices, 30_000);               // proximity watch, every 30s
+setInterval(renderGate, 60_000);               // tick the countdown / past-event dimming
 setInterval(async () => {           // live session + brief refresh (prices/regime move)
   try {
     const [s, b] = await Promise.all([
