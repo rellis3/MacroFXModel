@@ -179,6 +179,26 @@ test('smoke: three rules present with overall/fade/follow blocks', () => {
   assert.ok(study.rules.fixed.fade.trades > 0, 'fade trades taken OOS');
 });
 
+// Rides are charged an exit-slip leg the fixed TP is not (they exit on a stop). For
+// the SAME gross, ride net expectancy must be lower than fixed by ~one slip.
+test('rides pay exit slippage (ride net < fixed net for equal gross)', () => {
+  const g = { exFadeFixed: 1.0, exFadeChand: 1.0, exFadeWalk: 1.0, exFadeRide: 1.0, exFadeRideHold: 1.0,
+              exFadeRideWhy: 'trail', exFadeRideHoldWhy: 'trail',
+              exFollowFixed: -1, exFollowChand: -1, exFollowWalk: -1, exFollowRide: -1, exFollowRideHold: -1,
+              exFollowRideWhy: 'stop', exFollowRideHoldWhy: 'stop' };
+  const mk = date => ({ date, open: 100, line: 'OC50_up', name: 'OC50', side: 'up',
+    reverted: true, level: 102, innerLvl: 101, outerLvl: 103, decidedBy: 'barrier', closePx: 100,
+    cell: 'OC50_up|fast', extPct: 0.5, retracePct: 0.5, ...g });
+  const is = [], oos = [];
+  for (let i = 0; i < 60; i++) is.push(mk(`2019-${String((i % 12) + 1).padStart(2, '0')}-15`));
+  for (let i = 0; i < 40; i++) oos.push(mk(`2024-${String((i % 12) + 1).padStart(2, '0')}-15`));
+  const slip = 0.006;
+  const study = runExitStudy({ P: [...is, ...oos] }, { splitFrac: 0.6, minN: 20, marginPct: 0,
+    costByPair: { P: 0.01 }, slipByPair: { P: slip } });
+  const gap = study.rules.fixed.overall.expectancy - study.rules.ride.overall.expectancy;
+  assert.ok(gap > slip * 0.8, `ride should be ~one slip cheaper than fixed: gap ${gap} vs slip ${slip}`);
+});
+
 // A study touch missing an ex* field must be counted, not crash.
 test('missing ex* field is counted', () => {
   const t = { date: '2021-01-01', open: 100, line: 'OC50_up', name: 'OC50', side: 'up',

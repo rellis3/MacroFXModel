@@ -494,11 +494,21 @@ export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, margin
     const p = policy[t.cell];
     if (!p || p.decision === 'skip') continue;              // entry policy says don't trade this cell
     const d = p.decision;                                   // 'fade' | 'follow'
-    const cost = (t.cost ?? DEFAULT_COST_PCT.fx) + (d === 'follow' ? (t.slip ?? DEFAULT_SLIP_PCT.fx) : 0);
+    const baseCost  = t.cost ?? DEFAULT_COST_PCT.fx;        // round-trip spread + commission
+    const slipVal   = t.slip ?? DEFAULT_SLIP_PCT.fx;
+    const entrySlip = d === 'follow' ? slipVal : 0;         // follow ENTERS on a stop/breakout (slips); fade enters on a limit
     for (const rule of RULES) {
       const gross = t['ex' + _cap(d) + RULE_FIELD[rule]];
       if (gross == null) { missing++; continue; }           // older record without the ex* field
       const why = TRAIL_RULES.has(rule) ? t['ex' + _cap(d) + RULE_FIELD[rule] + 'Why'] : null;
+      // Exit slippage — the honest cost that decides ride's edge. A market/stop exit
+      // slips; a limit TP does not. The rides EXIT on a trailing/disaster stop (or a
+      // market close) ~99% of the time (no TP), so they pay an exit-slip leg the
+      // TP-capped rules mostly don't. Only the rides carry a per-trade `why`, so we
+      // apply it precisely there; fixed/chand/walk keep their prior model (immaterial —
+      // all deeply negative). why==='tp' (never for a ride) would be a limit → no slip.
+      const exitSlip = (TRAIL_RULES.has(rule) && why !== 'tp') ? slipVal : 0;
+      const cost = baseCost + entrySlip + exitSlip;
       const row = { date: t.date, gross, cost, why };
       trades[rule].overall.push(row);
       trades[rule][d].push(row);
