@@ -1071,6 +1071,7 @@
     <div class="vf-exp-menu">
       <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export</button>
       <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
+      <button class="vf-exp-item" id="vfExportHarBtn"     onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">shadow σ</span></button>
       <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
       <div class="vf-exp-sep"></div>
       <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"            disabled>⬇ Session</button>
@@ -1661,6 +1662,8 @@ async function loadForecast() {
     updatePositionSizes();
     document.getElementById('vfExportBtn').disabled    = false;
     document.getElementById('vfExportV2Btn').disabled = false;
+    document.getElementById('vfExportHarBtn').disabled =
+      !Object.values(data.instruments ?? {}).some(f => f && f.har);
     document.getElementById('vfExtendedBtn').disabled = false;
     document.getElementById('vfCZExportBtn').disabled = false;
     document.getElementById('vfExpPillBtn').disabled  = false;
@@ -1796,6 +1799,49 @@ function buildExportV2Text(data) {
     lines.push('');
   }
   return lines.join('\n');
+}
+
+// ── Export HAR-RV shadow: challenger σ (HAR-RV), incumbent band math ──────────
+// Same line format as the main export so the two blocks compare line-for-line;
+// instruments whose HAR shadow is unavailable are skipped.
+function buildExportHarText(data) {
+  const LINE_WIDTH = 29;
+  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+
+  const lines = [
+    '**VOL & RANGE FORECAST — HAR-RV**',
+    `**For session: ${data.session_label}**`,
+    '',
+  ];
+
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    const h = f?.har;
+    if (!h) continue;
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${h.vol_annual.toFixed(2)}%`);
+    lines.push(`High to Low range       : ${h.hl_median.toFixed(2)}% median · ${h.hl_75.toFixed(2)}% 75th Percentile`);
+    lines.push(`Open to Close move      : ${h.oc_median.toFixed(2)}% median · ${h.oc_75.toFixed(2)}% 75th Percentile`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+function exportHar() {
+  if (!currentForecast) return;
+  const text = buildExportHarText(currentForecast);
+  const pill = document.getElementById('vfExpPillBtn');
+  const orig = pill?.textContent;
+
+  navigator.clipboard.writeText(text).then(() => {
+    if (pill) { pill.textContent = '✓ HAR copied'; setTimeout(() => { pill.textContent = orig; }, 2200); }
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `vol-forecast-har-${currentForecast.session_date}.txt`;
+    a.click(); URL.revokeObjectURL(url);
+  });
 }
 
 function exportV2() {

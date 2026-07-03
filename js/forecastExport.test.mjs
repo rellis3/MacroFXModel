@@ -4,8 +4,9 @@
 //
 //   node js/forecastExport.test.mjs
 
-import { forecastFields, buildExportText, buildExportV2Text, buildExtendedText } from './forecastExport.js';
+import { forecastFields, harShadowFields, buildExportText, buildExportV2Text, buildExtendedText, buildExportHarText, buildAllExports } from './forecastExport.js';
 import { _buildOutput, _driftD, _bmMaxQuantile, ASSET_PARAMS } from './volForecast.js';
+import { realizedVarSeries, sigmaSeriesForExport } from './volForecastBench.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -73,6 +74,22 @@ function refBuildExtendedText(data) {
   return lines.join('\n');
 }
 
+function refBuildExportHarText(data) {
+  const LINE_WIDTH = 29;
+  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+  const lines = ['**VOL & RANGE FORECAST — HAR-RV**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    const h = f?.har;
+    if (!h) continue;
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${h.vol_annual.toFixed(2)}%`);
+    lines.push(`High to Low range       : ${h.hl_median.toFixed(2)}% median · ${h.hl_75.toFixed(2)}% 75th Percentile`);
+    lines.push(`Open to Close move      : ${h.oc_median.toFixed(2)}% median · ${h.oc_75.toFixed(2)}% 75th Percentile`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
 // ── Sample data covering the field set + drift label branches ─────────────────
 const sample = {
   session_label: 'Mon 30 Jun 2026',
@@ -86,10 +103,25 @@ const sample = {
   },
 };
 
+// HAR sample: one instrument with a shadow, one attempted-but-unavailable (null)
+const harSample = {
+  session_label: 'Mon 30 Jun 2026',
+  instruments: {
+    EURUSD: { ...sample.instruments.EURUSD,
+              har: { vol_annual: 6.44, hl_median: 0.50, hl_75: 0.67, oc_median: 0.30, oc_75: 0.51 } },
+    GOLD:   { ...sample.instruments.GOLD, har: null },
+  },
+};
+
 console.log('[format builders — byte-identical to vol-forecast.html]');
 ok('buildExportText matches page original',     buildExportText(sample)     === refBuildExportText(sample));
 ok('buildExportV2Text matches page original',   buildExportV2Text(sample)   === refBuildExportV2Text(sample));
 ok('buildExtendedText matches page original',   buildExtendedText(sample)   === refBuildExtendedText(sample));
+ok('buildExportHarText matches page original',  buildExportHarText(harSample) === refBuildExportHarText(harSample));
+ok('HAR export skips instruments without a shadow',
+   buildExportHarText(harSample).includes('EURUSD') && !buildExportHarText(harSample).includes('GOLD'));
+ok('buildAllExports includes har only when a shadow exists',
+   buildAllExports(harSample).har === buildExportHarText(harSample) && buildAllExports(sample).har === undefined);
 
 console.log('[forecastFields — uses the forecaster\'s own band math]');
 // deterministic synthetic bars (no Math.random)
@@ -115,6 +147,29 @@ const p = ASSET_PARAMS.fx, sp = sigmaFwd * 100, d = _driftD(ohlc, sigmaFwd), r2v
 ok('drift_d matches _driftD',     ff.drift_d === d, `d=${d}`);
 ok('oh_v2_75 matches forecaster',  ff.oh_v2_75 === r2v(_bmMaxQuantile( d, 0.75) * p.oc_75_corr * sp));
 ok('ol_v2_median matches forecaster', ff.ol_v2_median === r2v(_bmMaxQuantile(-d, 0.5) * p.oc_50_corr * sp));
+
+console.log('[harShadowFields — bench HAR-RV σ through the incumbent band math]');
+const har = harShadowFields(ohlc, 'fx', 1.0);
+ok('produces a shadow on sufficient synthetic bars', har !== null);
+if (har) {
+  ok('fields finite and ordered',
+     Number.isFinite(har.vol_annual) && har.vol_annual > 0
+     && har.hl_75 > har.hl_median && har.hl_median > 0
+     && har.oc_75 > har.oc_median && har.oc_median > 0);
+  // Delegation identity: byte-equal to composing the two bricks by hand — proves
+  // harShadowFields adds NO math of its own (only the news_mult display field).
+  const { series: hs, sigmaFwd: hsF } = sigmaSeriesForExport(ohlc, 'harRV', { rv: realizedVarSeries(ohlc, 'gk') });
+  const manual = forecastFields(hs, hsF, ohlc, 'fx');
+  manual.news_mult = 1.0;
+  ok('delegates exactly to sigmaSeriesForExport + forecastFields',
+     JSON.stringify(har) === JSON.stringify(manual));
+  // News multiplier scales σ before the bands, same convention as computeForecast.
+  const har12    = harShadowFields(ohlc, 'fx', 1.2);
+  const manual12 = forecastFields(hs, hsF * 1.2, ohlc, 'fx');
+  manual12.news_mult = 1.2;
+  ok('news multiplier scales bands via σ', JSON.stringify(har12) === JSON.stringify(manual12));
+}
+ok('returns null when bars are insufficient', harShadowFields(ohlc.slice(0, 70), 'fx', 1.0) === null);
 
 // round-trip: feed forecastFields output straight into the builders without throwing
 console.log('[round-trip]');

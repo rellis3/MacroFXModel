@@ -6,13 +6,19 @@
  *
  * Band MATH is NOT re-implemented: `forecastFields` imports `_buildOutput`,
  * `_driftD`, `_bmMaxQuantile` and `ASSET_PARAMS` from volForecast.js (the single
- * source — its June-recalibrated correction factors). Only the three FORMAT
- * builders are copied here (they live inside the HTML page and can't be imported);
+ * source — its June-recalibrated correction factors). Only the FORMAT builders
+ * are copied here (they live inside the HTML page and can't be imported);
  * `js/forecastExport.test.mjs` golden-tests them against verbatim reference copies
  * so they can't silently drift from the page.
+ *
+ * `harShadowFields` is the daily HAR-RV challenger: bench estimator in, incumbent
+ * band math out, attached as `f.har` beside the primary forecast (see
+ * volForecastScheduler.js). Disable with env VOL_FORECAST_HAR=0 — the primary
+ * forecast fields are never touched either way.
  */
 
 import { _buildOutput, _driftD, _bmMaxQuantile, ASSET_PARAMS } from './volForecast.js';
+import { realizedVarSeries, sigmaSeriesForExport } from './volForecastBench.js';
 
 // Build the full forecast field object for one instrument from a daily-σ series.
 // `series`   — daily σ history (fractional), last element = sigmaFwd (per the
@@ -33,6 +39,25 @@ function forecastFields(series, sigmaFwd, ohlc, assetClass = 'fx') {
     ol_v2_median: r2v(_bmMaxQuantile(-d, 0.5)  * p.oc_50_corr * sp),
     ol_v2_75:     r2v(_bmMaxQuantile(-d, 0.75) * p.oc_75_corr * sp),
   });
+}
+
+// ── HAR-RV shadow forecast (challenger σ, incumbent band math) ────────────────
+// Composes the benchmark's walk-forward HAR-RV estimator (volForecastBench.js —
+// fit on the Garman-Klass realised-variance proxy of the SAME daily bars the
+// primary forecast uses, no extra data dependency) with `forecastFields` above,
+// so the shadow's HL/OC bands go through the identical Feller/half-normal math
+// and correction factors as the incumbent. Purely additive: callers attach the
+// result as `f.har` next to the primary fields — the primary numbers never move.
+// Returns null when HAR can't produce a forecast (insufficient bars) — store the
+// null so consumers can tell "computed, unavailable" from "never attempted".
+function harShadowFields(ohlc, assetClass = 'fx', newsMult = 1.0) {
+  const { series, sigmaFwd } = sigmaSeriesForExport(ohlc, 'harRV', { rv: realizedVarSeries(ohlc, 'gk') });
+  if (!Number.isFinite(sigmaFwd) || sigmaFwd <= 0 || series.length < 60) return null;
+  // Same news-multiplier convention as computeForecast(): scale σ before bands.
+  const sF  = newsMult > 1 ? sigmaFwd * newsMult : sigmaFwd;
+  const out = forecastFields(series, sF, ohlc, assetClass);
+  out.news_mult = Math.round(newsMult * 100) / 100;
+  return out;
 }
 
 // ── Format builders — VERBATIM copies of vol-forecast.html (golden-tested) ────
@@ -127,13 +152,43 @@ function buildExtendedText(data) {
   return lines.join('\n');
 }
 
-// Convenience: all three export strings for a built `data` object.
+// HAR-RV shadow export — identical line format to buildExportText, HAR numbers.
+// Reads each instrument's `f.har` sub-object (attached by the scheduler);
+// instruments without a HAR shadow are skipped so the block never shows stale
+// or mixed-estimator numbers.
+function buildExportHarText(data) {
+  const LINE_WIDTH = 29;
+  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+
+  const lines = [
+    '**VOL & RANGE FORECAST — HAR-RV**',
+    `**For session: ${data.session_label}**`,
+    '',
+  ];
+
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    const h = f?.har;
+    if (!h) continue;
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${h.vol_annual.toFixed(2)}%`);
+    lines.push(`High to Low range       : ${h.hl_median.toFixed(2)}% median · ${h.hl_75.toFixed(2)}% 75th Percentile`);
+    lines.push(`Open to Close move      : ${h.oc_median.toFixed(2)}% median · ${h.oc_75.toFixed(2)}% 75th Percentile`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+// Convenience: all export strings for a built `data` object. `har` is included
+// only when at least one instrument carries a HAR shadow block.
 function buildAllExports(data) {
-  return {
+  const out = {
     plain:    buildExportText(data),
     v2:       buildExportV2Text(data),
     extended: buildExtendedText(data),
   };
+  if (Object.values(data.instruments ?? {}).some(f => f && f.har)) out.har = buildExportHarText(data);
+  return out;
 }
 
-export { forecastFields, buildExportText, buildExportV2Text, buildExtendedText, buildAllExports };
+export { forecastFields, harShadowFields, buildExportText, buildExportV2Text, buildExtendedText, buildExportHarText, buildAllExports };
