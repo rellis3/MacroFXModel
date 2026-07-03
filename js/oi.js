@@ -554,11 +554,15 @@ export function processOIData() {
     }
   }
 
+  // Headline wall = nearest spot-relative wall (call above spot, put below spot)
+  const _cwHead = callWalls.filter(w => w.strike >= spot).sort((a,b) => a.strike - b.strike)[0] ?? callWalls[0] ?? null;
+  const _pwHead = putWalls.filter(w => w.strike <= spot).sort((a,b) => b.strike - a.strike)[0] ?? putWalls[0] ?? null;
+
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
     maxPain, exposures, topLevels, gexProfile,
-    callWall: callWalls[0]?.strike ?? 0, putWall: putWalls[0]?.strike ?? 0,
-    callWallOI: callWalls[0]?.oi ?? 0,  putWallOI: putWalls[0]?.oi ?? 0,
+    callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
+    callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls,
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
     callChgAbove, callChgBelow, putChgAbove, putChgBelow,
@@ -735,10 +739,12 @@ export function renderOICard(inst) {
     else { flowBias = 'UNWINDING'; flowCol = 'var(--text3)'; flowNote = 'Positioning closing on both sides'; }
   }
 
-  // Side-by-side wall lists
-  const maxCallOI = callWalls.length ? callWalls[0].oi : 1;
-  const maxPutOI  = putWalls.length  ? putWalls[0].oi  : 1;
-  const callWallRows = callWalls.map((w, i) => {
+  // Side-by-side wall lists — calls above spot only, puts below spot only
+  const callWallsAbove = callWalls.filter(w => w.strike >= spot);
+  const putWallsBelow  = putWalls.filter(w => w.strike <= spot);
+  const maxCallOI = callWallsAbove.length ? callWallsAbove[0].oi : 1;
+  const maxPutOI  = putWallsBelow.length  ? putWallsBelow[0].oi  : 1;
+  const callWallRows = callWallsAbove.map((w, i) => {
     const bw   = Math.round((w.oi / maxCallOI) * 100);
     const chgStr = oiFmtChg(w.chg || 0);
     const chgCol = (w.chg||0) > 0 ? 'color:var(--green)' : (w.chg||0) < 0 ? 'color:var(--red)' : 'color:var(--text3)';
@@ -749,8 +755,8 @@ export function renderOICard(inst) {
       <span class="oi-wall-oi">${oiFmtOI(w.oi)}</span>
       <span class="oi-wall-chg" style="${chgCol}">${chgStr}</span>
     </div>`;
-  }).join('') || '<div class="oi-wall-empty">—</div>';
-  const putWallRows = putWalls.map((w, i) => {
+  }).join('') || '<div class="oi-wall-empty">none above spot</div>';
+  const putWallRows = putWallsBelow.map((w, i) => {
     const bw   = Math.round((w.oi / maxPutOI) * 100);
     const chgStr = oiFmtChg(w.chg || 0);
     const chgCol = (w.chg||0) > 0 ? 'color:var(--green)' : (w.chg||0) < 0 ? 'color:var(--red)' : 'color:var(--text3)';
@@ -761,7 +767,7 @@ export function renderOICard(inst) {
       <span class="oi-wall-oi">${oiFmtOI(w.oi)}</span>
       <span class="oi-wall-chg" style="${chgCol}">${chgStr}</span>
     </div>`;
-  }).join('') || '<div class="oi-wall-empty">—</div>';
+  }).join('') || '<div class="oi-wall-empty">none below spot</div>';
 
   const levelRows = topLevels.map((lvl,i)=>{
     const isAbove = lvl.strike > spot;
