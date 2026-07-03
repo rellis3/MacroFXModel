@@ -96,13 +96,15 @@ export function extractTouches(records, { conditions = ['approachVel'], dtThresh
         // (toward mid), so the chandelier/structural trail can price either entry.
         fStruct: ln.fStruct, fChand: ln.fChand,
         fStructFade: ln.fStructFade, fChandFade: ln.fChandFade,
-        // Exit-study gross PnLs (%-of-price, no cost) — eight {fade,follow}×{fixed,
-        // chand,walk,ride} combos simulated along the real M1 path by simulateExitVariants.
-        // 'ride' = chandelier trail with NO TP cap (the range-line bot's winning exit).
-        // Undefined on records refreshed before each variant shipped (runExitStudy
-        // counts and skips those).
-        exFadeFixed: ln.exFadeFixed, exFadeChand: ln.exFadeChand, exFadeWalk: ln.exFadeWalk, exFadeRide: ln.exFadeRide,
-        exFollowFixed: ln.exFollowFixed, exFollowChand: ln.exFollowChand, exFollowWalk: ln.exFollowWalk, exFollowRide: ln.exFollowRide,
+        // Exit-study gross PnLs (%-of-price, no cost) — {fade,follow}×{fixed,chand,
+        // walk,ride,ridehold} combos simulated along the real M1 path by simulateExitVariants.
+        // 'ride' = chandelier trail, no TP, session-close fallback; 'ridehold' = same but
+        // runs into the next day(s). Undefined on records refreshed before each variant
+        // shipped (runExitStudy counts and skips those). *Why = exit reason for the rides.
+        exFadeFixed: ln.exFadeFixed, exFadeChand: ln.exFadeChand, exFadeWalk: ln.exFadeWalk, exFadeRide: ln.exFadeRide, exFadeRideHold: ln.exFadeRideHold,
+        exFollowFixed: ln.exFollowFixed, exFollowChand: ln.exFollowChand, exFollowWalk: ln.exFollowWalk, exFollowRide: ln.exFollowRide, exFollowRideHold: ln.exFollowRideHold,
+        exFadeRideWhy: ln.exFadeRideWhy, exFadeRideHoldWhy: ln.exFadeRideHoldWhy,
+        exFollowRideWhy: ln.exFollowRideWhy, exFollowRideHoldWhy: ln.exFollowRideHoldWhy,
       });
     }
   }
@@ -479,8 +481,12 @@ export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, margin
   // Entry policy learned on IS (same as the book), held fixed across all three exits.
   const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
 
-  const RULES = ['fixed', 'chand', 'walk', 'ride'];
-  // trades[rule][group] = {date,pnl}[]  where group ∈ overall|fade|follow.
+  const RULES = ['fixed', 'chand', 'walk', 'ride', 'ridehold'];
+  // Rule → ex* field suffix (explicit: 'ridehold' → 'RideHold', which _cap can't make).
+  const RULE_FIELD = { fixed: 'Fixed', chand: 'Chand', walk: 'Walk', ride: 'Ride', ridehold: 'RideHold' };
+  const TRAIL_RULES = new Set(['ride', 'ridehold']);        // carry a *Why exit-reason field
+  // trades[rule][group] = {date,gross,cost,why}[]  group ∈ overall|fade|follow.
+  // gross + cost kept separate so cost-sensitivity can re-net at 2×/3× without re-walking.
   const trades = Object.fromEntries(RULES.map(r => [r, { overall: [], fade: [], follow: [] }]));
   let missing = 0;
   for (const t of all) {
@@ -490,32 +496,49 @@ export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, margin
     const d = p.decision;                                   // 'fade' | 'follow'
     const cost = (t.cost ?? DEFAULT_COST_PCT.fx) + (d === 'follow' ? (t.slip ?? DEFAULT_SLIP_PCT.fx) : 0);
     for (const rule of RULES) {
-      const gross = t['ex' + _cap(d) + _cap(rule)];
+      const gross = t['ex' + _cap(d) + RULE_FIELD[rule]];
       if (gross == null) { missing++; continue; }           // older record without the ex* field
-      const pnl = +(gross - cost).toFixed(5);
-      const row = { date: t.date, pnl };
+      const why = TRAIL_RULES.has(rule) ? t['ex' + _cap(d) + RULE_FIELD[rule] + 'Why'] : null;
+      const row = { date: t.date, gross, cost, why };
       trades[rule].overall.push(row);
       trades[rule][d].push(row);
     }
   }
 
-  const summarize = (rows) => {
-    const daily = dailySeries(rows);
+  // costMult re-nets gross − cost·mult on the fly (for the cost-sensitivity stress).
+  const summarize = (rows, costMult = 1) => {
+    const net = rows.map(r => ({ date: r.date, pnl: +(r.gross - r.cost * costMult).toFixed(5) }));
+    const daily = dailySeries(net);
     const port  = portfolioStats(daily);                    // honest Sharpe/CAGR/maxDD (daily series)
-    const trd   = summarizeTrades(rows.map(r => r.pnl), rows.map(r => r.date));   // expectancy/winRate
+    const trd   = summarizeTrades(net.map(r => r.pnl), net.map(r => r.date));   // expectancy/winRate
     // portfolio Sharpe/CAGR/maxDD are the headline (daily, concurrency-aware); take
     // expectancy + winRate from summarizeTrades. trades = OOS trade count.
     return { sharpe: port.sharpe, cagr: port.cagr, maxDD: port.maxDD, calmar: port.calmar,
              annVol: port.annVol, psr: port.psr, days: port.days,
              expectancy: trd.expectancy, winRate: trd.winRate, profitFactor: trd.profitFactor,
-             totalPnl: trd.totalPnl, trades: rows.length };
+             totalPnl: trd.totalPnl, trades: net.length };
+  };
+  // Exit composition for the no-TP rides: what fraction of taken OOS trades exited on
+  // the trailed stop vs the disaster stop vs the (session/horizon) close mark. A high
+  // closePct ⇒ it's really "hold-to-close", so the live bot would need an EOD close.
+  const composition = (rows) => {
+    const n = rows.length || 1, c = { trail: 0, stop: 0, close: 0, tp: 0 };
+    for (const r of rows) if (r.why && c[r.why] != null) c[r.why]++;
+    return { trailPct: +(c.trail / n * 100).toFixed(1), stopPct: +(c.stop / n * 100).toFixed(1),
+             closePct: +(c.close / n * 100).toFixed(1), n: rows.length };
   };
   const rules = {};
-  for (const rule of RULES) rules[rule] = {
-    overall: summarize(trades[rule].overall),
-    fade:    summarize(trades[rule].fade),
-    follow:  summarize(trades[rule].follow),
-  };
+  for (const rule of RULES) {
+    rules[rule] = {
+      overall: summarize(trades[rule].overall),
+      fade:    summarize(trades[rule].fade),
+      follow:  summarize(trades[rule].follow),
+    };
+    // Cost-sensitivity: OOS overall Sharpe at 1× / 2× / 3× the round-trip cost — the
+    // make-or-break check for a thin-expectancy edge like ride.
+    rules[rule].costStress = [1, 2, 3].map(m => ({ mult: m, sharpe: summarize(trades[rule].overall, m).sharpe }));
+    if (TRAIL_RULES.has(rule)) rules[rule].composition = composition(trades[rule].overall);
+  }
 
   // Winner per group = highest OOS Sharpe with n ≥ 30 (else null).
   const bestByGroup = {};

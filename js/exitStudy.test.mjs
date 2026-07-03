@@ -91,6 +91,19 @@ test('ride (no TP) rides past inner → beats fixed', () => {
   assert.ok(near(ex.exFadeFixed, 1), `fadeFixed caps at TP (+1): ${ex.exFadeFixed}`);
   assert.ok(near(ex.exFadeRide, 2), `fadeRide rides to trailed stop (+2): ${ex.exFadeRide}`);
   assert.ok(ex.exFadeRide > ex.exFadeFixed, `ride ${ex.exFadeRide} !> fixed ${ex.exFadeFixed}`);
+  assert.equal(ex.exFadeRideWhy, 'trail', `ride exit reason: ${ex.exFadeRideWhy}`);
+});
+
+// 4c) Ride vs Ride+ : a fade that doesn't resolve in-session exits flat at the close
+//     (ride, why='close'); Ride+ keeps trailing into forwardBars and captures the move.
+test('ride+ holds past close into next day → beats ride', () => {
+  const session = [ bar(102, 102.1, 101.9, 102) ];                 // hovers, no trail hit → EOD close ~flat
+  const forwardBars = [ bar(102, 102, 100, 100), bar(100, 100.6, 100, 100.6) ]; // next day drops then ticks up
+  const ex = simulateExitVariants(session, 0, { ...UP, forwardBars });
+  assert.equal(ex.exFadeRideWhy, 'close', `ride should EOD-close: ${ex.exFadeRideWhy}`);
+  assert.ok(near(ex.exFadeRide, 0), `ride exits ~flat at close: ${ex.exFadeRide}`);
+  assert.equal(ex.exFadeRideHoldWhy, 'trail', `ride+ should exit on the trail next day: ${ex.exFadeRideHoldWhy}`);
+  assert.ok(ex.exFadeRideHold > ex.exFadeRide, `ride+ ${ex.exFadeRideHold} !> ride ${ex.exFadeRide}`);
 });
 
 // 5) Conservative ordering: a single bar that spans BOTH the stop and the TP exits
@@ -131,8 +144,8 @@ test('smoke: three rules present with overall/fade/follow blocks', () => {
     ...ex,
   });
   // A fade-favourable cell: reverts often, so buildPolicy learns 'fade' on IS.
-  const win  = { exFadeFixed: 0.9, exFadeChand: 1.1, exFadeWalk: 0.7, exFadeRide: 1.4, exFollowFixed: -0.9, exFollowChand: -0.9, exFollowWalk: -0.9, exFollowRide: -0.9 };
-  const loss = { exFadeFixed: -0.5, exFadeChand: -0.3, exFadeWalk: -0.1, exFadeRide: -0.6, exFollowFixed: 0.5, exFollowChand: 0.5, exFollowWalk: 0.5, exFollowRide: 0.5 };
+  const win  = { exFadeFixed: 0.9, exFadeChand: 1.1, exFadeWalk: 0.7, exFadeRide: 1.4, exFadeRideHold: 1.6, exFadeRideWhy: 'trail', exFadeRideHoldWhy: 'trail', exFollowFixed: -0.9, exFollowChand: -0.9, exFollowWalk: -0.9, exFollowRide: -0.9, exFollowRideHold: -0.9 };
+  const loss = { exFadeFixed: -0.5, exFadeChand: -0.3, exFadeWalk: -0.1, exFadeRide: -0.6, exFadeRideHold: -0.7, exFadeRideWhy: 'close', exFadeRideHoldWhy: 'stop', exFollowFixed: 0.5, exFollowChand: 0.5, exFollowWalk: 0.5, exFollowRide: 0.5, exFollowRideHold: 0.5 };
   const touches = [];
   // 80 IS touches (mostly reverting winners) + 80 OOS touches.
   for (let i = 0; i < 80; i++) {
@@ -146,14 +159,20 @@ test('smoke: three rules present with overall/fade/follow blocks', () => {
   const study = runExitStudy({ EURUSD: touches }, { splitFrac: 0.5, minN: 20, marginPct: 0,
     costByPair: { EURUSD: 0.01 }, slipByPair: { EURUSD: 0.006 } });
   assert.ok(study, 'study returned');
-  for (const rule of ['fixed', 'chand', 'walk', 'ride']) {
+  for (const rule of ['fixed', 'chand', 'walk', 'ride', 'ridehold']) {
     assert.ok(study.rules[rule], `rule ${rule} present`);
     for (const g of ['overall', 'fade', 'follow']) {
       assert.ok(study.rules[rule][g], `rule ${rule}.${g} present`);
       assert.ok('sharpe' in study.rules[rule][g], `rule ${rule}.${g} has sharpe`);
       assert.ok('trades' in study.rules[rule][g], `rule ${rule}.${g} has trades`);
     }
+    // cost-sensitivity present on every rule.
+    assert.equal(study.rules[rule].costStress.length, 3, `rule ${rule} costStress 1×/2×/3×`);
   }
+  // exit composition only on the trailing rides, and it sums sensibly.
+  assert.ok(study.rules.ride.composition, 'ride composition present');
+  assert.ok(study.rules.ridehold.composition, 'ridehold composition present');
+  assert.ok(!study.rules.fixed.composition, 'fixed has no composition');
   assert.ok('bestByGroup' in study, 'bestByGroup present');
   assert.equal(study.missing, 0, 'no missing ex* fields');
   // OOS took the fade decision, so fade block should have trades and follow ~0.
@@ -168,7 +187,7 @@ test('missing ex* field is counted', () => {
   // Need a policy that trades this cell → give enough IS reverting touches.
   // 60 IS fade-winners (2019) + 20 OOS touches that DO have ex* + 3 OOS touches
   // that are MISSING ex* — the missing ones should be counted (policy trades the cell).
-  const withEx = { exFadeFixed: 1, exFadeChand: 1, exFadeWalk: 1, exFadeRide: 1, exFollowFixed: -1, exFollowChand: -1, exFollowWalk: -1, exFollowRide: -1 };
+  const withEx = { exFadeFixed: 1, exFadeChand: 1, exFadeWalk: 1, exFadeRide: 1, exFadeRideHold: 1, exFadeRideWhy: 'trail', exFadeRideHoldWhy: 'trail', exFollowFixed: -1, exFollowChand: -1, exFollowWalk: -1, exFollowRide: -1, exFollowRideHold: -1 };
   const is = [], oos = [];
   for (let i = 0; i < 60; i++) is.push({ ...t, date: `2019-${String((i % 12) + 1).padStart(2, '0')}-15`, ...withEx });
   for (let i = 0; i < 20; i++) oos.push({ ...t, date: `2024-${String((i % 12) + 1).padStart(2, '0')}-15`, ...withEx });

@@ -55,3 +55,4 @@ GoldV2/gold_v2_trades.csv
 GoldV2/gold_v2_state.json
 GoldV2/__pycache__/
 GoldV2/modules/__pycache__/
+Trade_Decision_Engine/data/

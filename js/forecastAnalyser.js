@@ -61,56 +61,65 @@ function classifySession(t) {
 // beTrigger — walk moves the stop to breakeven once favourable progress reaches
 //             beTrigger·|TP − E|.
 export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, isUp,
-                                                       open, trailFrac = 0.5, beTrigger = 0.5 } = {}) {
-  // One rule's walk. dir +1 = buy (adverse=low, favourable=high); −1 = sell (mirror).
-  // rule ∈ 'fixed' | 'chand' | 'walk' | 'ride'. TP active for all EXCEPT 'ride'.
-  //   ride — NO take-profit cap; exit only on the chandelier trail (or session close).
-  //   Mirrors the range-line bot's winning exit (rangeline.chandelier_stop / the
-  //   paper broker's tp-falsy mode): lets a reversion run past the inner line instead
-  //   of capping at it — the fix for "small wins, big losses". R (trail width ref) is
-  //   the entry→disaster-stop distance, same as chand.
-  const walk = (dir, E, S0, TP, rule) => {
+                                                       open, trailFrac = 0.5, beTrigger = 0.5,
+                                                       forwardBars = null } = {}) {
+  // One rule's walk over `wbars`. dir +1 = buy (adverse=low, favourable=high); −1 = sell.
+  // rule ∈ 'fixed' | 'chand' | 'walk' | 'ride' | 'ridehold'. TP active for all EXCEPT
+  // the two rides.
+  //   ride     — NO take-profit cap; exit on the chandelier trail or SESSION close.
+  //   ridehold — same, but walks INTO forwardBars (next day[s]) instead of closing at
+  //              session end — "leave it running past 22:00". Mirrors the range-line
+  //              bot's tp-falsy chandelier exit (rangeline.chandelier_stop). R (trail
+  //              width ref) = entry→disaster-stop distance, same as chand.
+  // Returns {pnl, why}: why ∈ 'stop' (disaster S0, never trailed) | 'trail' (a
+  // ratcheted stop) | 'tp' | 'close' (ran out of bars → marked to the last close).
+  const walk = (wbars, dir, E, S0, TP, rule) => {
     const buy = dir > 0;
     const R   = Math.abs(E - S0);
     const beDist = Math.abs(TP - E);
-    const noTP = rule === 'ride';
-    let stop = S0, exitPrice = null;
-    for (let k = touchIdx; k < bars.length; k++) {
-      const bar = bars[k];
+    const noTP = rule === 'ride' || rule === 'ridehold';
+    const trailing = rule === 'chand' || rule === 'ride' || rule === 'ridehold';
+    let stop = S0, stopMoved = false, exitPrice = null, why = null;
+    for (let k = touchIdx; k < wbars.length; k++) {
+      const bar = wbars[k];
       const adverse = buy ? bar.low  : bar.high;   // stop is tested against this
       const favour  = buy ? bar.high : bar.low;    // TP + trail/BE update use this
       // 1) current stop first (conservative: a bar spanning both exits at the stop).
-      if (buy ? adverse <= stop : adverse >= stop) { exitPrice = stop; break; }
-      // 2) then TP (skipped for 'ride' — the trail is the only profit exit).
-      if (!noTP && (buy ? favour >= TP : favour <= TP)) { exitPrice = TP; break; }
+      if (buy ? adverse <= stop : adverse >= stop) { exitPrice = stop; why = stopMoved ? 'trail' : 'stop'; break; }
+      // 2) then TP (skipped for the rides — the trail is the only profit exit).
+      if (!noTP && (buy ? favour >= TP : favour <= TP)) { exitPrice = TP; why = 'tp'; break; }
       // 3) else update the stop for SUBSEQUENT bars from this bar's favourable extreme.
-      if (rule === 'chand' || rule === 'ride') {
+      if (trailing) {
         const newStop = buy ? favour - trailFrac * R : favour + trailFrac * R;
-        stop = buy ? Math.max(stop, newStop) : Math.min(stop, newStop);   // ratchet-only
+        const upd = buy ? Math.max(stop, newStop) : Math.min(stop, newStop);   // ratchet-only
+        if (upd !== stop) { stop = upd; stopMoved = true; }
       } else if (rule === 'walk') {
         const progress = buy ? favour - E : E - favour;
-        if (progress >= beTrigger * beDist) stop = buy ? Math.max(stop, E) : Math.min(stop, E);
+        if (progress >= beTrigger * beDist) { const be = buy ? Math.max(stop, E) : Math.min(stop, E); if (be !== stop) { stop = be; stopMoved = true; } }
       }
       // 'fixed' → stop stays S0.
     }
-    if (exitPrice == null) exitPrice = bars[bars.length - 1]?.close ?? E;   // close fallback
-    return dir * (exitPrice - E) / open * 100;
+    if (exitPrice == null) { exitPrice = wbars[wbars.length - 1]?.close ?? E; why = 'close'; }
+    return { pnl: dir * (exitPrice - E) / open * 100, why };
   };
 
   const E = touchLvl;
-  // fade: dir against the touch; TP=inner, SL=outer.
+  const held = (forwardBars && forwardBars.length) ? bars.concat(forwardBars) : bars;
+  // fade: dir against the touch; TP=inner, SL=outer. follow: dir with; TP=outer, SL=inner.
   const fadeDir = isUp ? -1 : 1;
-  // follow: dir with the touch; TP=outer, SL=inner.
   const folDir  = isUp ? 1 : -1;
+  const fFix = walk(bars, fadeDir, E, outer, inner, 'fixed'),  fCh = walk(bars, fadeDir, E, outer, inner, 'chand');
+  const fWk  = walk(bars, fadeDir, E, outer, inner, 'walk'),   fRd = walk(bars, fadeDir, E, outer, inner, 'ride');
+  const fRdH = walk(held, fadeDir, E, outer, inner, 'ridehold');
+  const oFix = walk(bars, folDir,  E, inner, outer, 'fixed'),  oCh = walk(bars, folDir,  E, inner, outer, 'chand');
+  const oWk  = walk(bars, folDir,  E, inner, outer, 'walk'),   oRd = walk(bars, folDir,  E, inner, outer, 'ride');
+  const oRdH = walk(held, folDir,  E, inner, outer, 'ridehold');
   return {
-    exFadeFixed:   walk(fadeDir, E, outer, inner, 'fixed'),
-    exFadeChand:   walk(fadeDir, E, outer, inner, 'chand'),
-    exFadeWalk:    walk(fadeDir, E, outer, inner, 'walk'),
-    exFadeRide:    walk(fadeDir, E, outer, inner, 'ride'),
-    exFollowFixed: walk(folDir,  E, inner, outer, 'fixed'),
-    exFollowChand: walk(folDir,  E, inner, outer, 'chand'),
-    exFollowWalk:  walk(folDir,  E, inner, outer, 'walk'),
-    exFollowRide:  walk(folDir,  E, inner, outer, 'ride'),
+    exFadeFixed: fFix.pnl, exFadeChand: fCh.pnl, exFadeWalk: fWk.pnl, exFadeRide: fRd.pnl, exFadeRideHold: fRdH.pnl,
+    exFollowFixed: oFix.pnl, exFollowChand: oCh.pnl, exFollowWalk: oWk.pnl, exFollowRide: oRd.pnl, exFollowRideHold: oRdH.pnl,
+    // Exit reasons for the no-TP rides → the exit-composition (% EOD-close) stat.
+    exFadeRideWhy: fRd.why, exFadeRideHoldWhy: fRdH.why,
+    exFollowRideWhy: oRd.why, exFollowRideHoldWhy: oRdH.why,
   };
 }
 
@@ -131,7 +140,7 @@ export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, i
 //     — so freezing neighbours at the touch bar is faithful, not an approximation.
 export function analyseWindow(session, ladder, ctx = {}) {
   const { open, bars } = session;
-  const { sigma = 0, tf = null, pip = 0, trailFrac = 0.5, beTrigger = 0.5 } = ctx;   // daily-σ frac + touch-feature computer + pip size + exit-study trail/BE params
+  const { sigma = 0, tf = null, pip = 0, trailFrac = 0.5, beTrigger = 0.5, forwardBars = null } = ctx;   // daily-σ frac + touch-feature computer + pip size + exit-study trail/BE params + next-day M1 for the ride-hold exit
   const n = bars.length;
   const last = bars[n - 1];
   const closePx = last?.close ?? open;
@@ -269,7 +278,7 @@ export function analyseWindow(session, ladder, ctx = {}) {
       // Exit-study: simulate the three exit rules (fixed / chandelier / walk) for
       // BOTH fade and follow over the SAME real M1 path from the touch bar. Gross
       // %-of-price PnL, no costs — the strategy layer nets them. Only on hit touches.
-      const ex = simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, isUp, open, trailFrac, beTrigger });
+      const ex = simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, isUp, open, trailFrac, beTrigger, forwardBars });
       const round5 = x => +Number(x).toFixed(5);
 
       outRows.push({
@@ -277,10 +286,14 @@ export function analyseWindow(session, ladder, ctx = {}) {
         hit: true, outcome, firstTouchTime, session: sess, budgetBucket,
         retraceTo: retraceTo ? +retraceTo.toFixed(6) : null, retracePct: +retracePct.toFixed(4),
         extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
-        // Eight exit-variant gross PnLs (%-of-price, no cost) for the OOS exit study.
-        // 'ride' = chandelier trail with NO TP cap (the range-line bot's winning exit).
-        exFadeFixed: round5(ex.exFadeFixed), exFadeChand: round5(ex.exFadeChand), exFadeWalk: round5(ex.exFadeWalk), exFadeRide: round5(ex.exFadeRide),
-        exFollowFixed: round5(ex.exFollowFixed), exFollowChand: round5(ex.exFollowChand), exFollowWalk: round5(ex.exFollowWalk), exFollowRide: round5(ex.exFollowRide),
+        // Exit-variant gross PnLs (%-of-price, no cost) for the OOS exit study.
+        // 'ride' = chandelier trail with NO TP cap (session close fallback); 'ridehold'
+        // = same but runs INTO the next day(s) instead of closing at session end.
+        exFadeFixed: round5(ex.exFadeFixed), exFadeChand: round5(ex.exFadeChand), exFadeWalk: round5(ex.exFadeWalk), exFadeRide: round5(ex.exFadeRide), exFadeRideHold: round5(ex.exFadeRideHold),
+        exFollowFixed: round5(ex.exFollowFixed), exFollowChand: round5(ex.exFollowChand), exFollowWalk: round5(ex.exFollowWalk), exFollowRide: round5(ex.exFollowRide), exFollowRideHold: round5(ex.exFollowRideHold),
+        // Exit reason for the no-TP rides ('trail'|'stop'|'close') → % EOD-close stat.
+        exFadeRideWhy: ex.exFadeRideWhy, exFadeRideHoldWhy: ex.exFadeRideHoldWhy,
+        exFollowRideWhy: ex.exFollowRideWhy, exFollowRideHoldWhy: ex.exFollowRideHoldWhy,
         // The frozen triple-barrier levels (TP=inner toward open, SL=outer away),
         // stored on EVERY decided touch so a strategy can price the trade
         // regardless of which barrier hit. decidedBy says whether a barrier was
@@ -401,7 +414,15 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
     const ladder = buildLadder(open, sigma, assetClass);
     const regime = classifyRegime(closes, i, 20, 5, opts.slopeThresh ?? 0.002, 1.0);
     const dow    = new Date(date + 'T00:00:00Z').getUTCDay();
-    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf, pip: opts.pip ?? 0 });
+    // Next rideHoldDays sessions' M1, appended so the 'ridehold' exit can trail past
+    // session close into the following day(s) (default 1 = next session).
+    const holdDays = opts.rideHoldDays ?? 1;
+    let forwardBars = null;
+    if (horizon === 'daily' && holdDays > 0) {
+      forwardBars = [];
+      for (let k = i + 1; k <= Math.min(i + holdDays, dates.length - 1); k++) forwardBars.push(...sessions.get(dates[k]));
+    }
+    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf, pip: opts.pip ?? 0, forwardBars });
 
     // Day-type score (no lookahead: reads closes[< i] only) + the selector's
     // directional choice + the realized continuation/reversion label, for the

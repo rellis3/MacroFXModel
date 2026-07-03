@@ -75,6 +75,11 @@ import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
+import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
+import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
+import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, startRefresher as tdeStartRefresher, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
+import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
+import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport } from './Trade_Decision_Engine/backfill.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -9724,6 +9729,184 @@ app.get('/api/pivot-spike/status/:jobId', (req, res) => {
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trade Decision Engine — per-event go/skip scoring API (fast loop).
+// Slow loop: featureState snapshots (manual /refresh, or auto via TDE_PAIRS env).
+// Registered BEFORE the /api/* catch-all so the worker proxy doesn't swallow it.
+// Full design: Trade_Decision_Engine/ARCHITECTURE.md. UI: trade-decision-engine.html.
+
+// Synthetic snapshots are cached so repeated harness calls stay in the ms range.
+const _tdeSynthCache = new Map();
+function tdeSnapshotFor(pair, mode) {
+  if (mode === 'synthetic') {
+    let s = _tdeSynthCache.get(pair);
+    if (!s || Date.now() - s.builtAt > 10 * 60_000) {
+      s = tdeSyntheticSnapshot(pair, { newsInMin: 180 });
+      _tdeSynthCache.set(pair, s);
+    }
+    return s;
+  }
+  return tdeGetState(pair);
+}
+
+// The bot-facing endpoint:
+// { pair, price?, action?, direction?, approach_sigma?, own_level?, mode? }
+app.post('/api/trade-decision/decide', express.json(), (req, res) => {
+  try {
+    const { pair, price, action, direction, approach_sigma, own_level, mode = 'live' } = req.body ?? {};
+    if (!pair) return res.status(400).json({ ok: false, error: 'pair required' });
+    const snap = tdeSnapshotFor(String(pair).toLowerCase(), mode);
+    const result = tdeDecide(snap, {
+      pair, price: price != null ? Number(price) : undefined,
+      action, direction, approachSigma: approach_sigma, own_level: own_level === true,
+    });
+    tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message ?? String(e) });
+  }
+});
+
+// Snapshot inspection (staleness, regime, zones) — ?mode=synthetic for the demo path
+app.get('/api/trade-decision/state/:pair', (req, res) => {
+  try {
+    const snap = tdeSnapshotFor(String(req.params.pair).toLowerCase(), req.query.mode ?? 'live');
+    if (!snap) return res.json({ ok: false, error: 'no snapshot — POST /api/trade-decision/refresh first (or use mode=synthetic)' });
+    const { zones, calendar, ...head } = snap;
+    res.json({ ok: true, ...head, age_ms: Date.now() - snap.builtAt, zones: zones.slice(0, 40), calendar_events: calendar.length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
+// Slow-loop refresh (OANDA + Finnhub) — { pair } or { pairs: [...] }
+app.post('/api/trade-decision/refresh', express.json(), async (req, res) => {
+  const pairs = req.body?.pairs ?? (req.body?.pair ? [req.body.pair] : TDE_DEFAULT_PAIRS);
+  const out = {};
+  for (const p of pairs) {
+    try { const s = await tdeRefreshPair(p); out[p] = { ok: true, builtAt: s.builtAt, zones: s.zones.length, regime: s.regime }; }
+    catch (e) { out[p] = { ok: false, error: e.message ?? String(e) }; }
+  }
+  res.json({ ok: Object.values(out).some(r => r.ok), pairs: out });
+});
+
+app.get('/api/trade-decision/log', (req, res) => {
+  res.json({ ok: true, decisions: tdeReadRecent(Math.min(parseInt(req.query.limit ?? '50'), 500)) });
+});
+
+app.get('/api/trade-decision/health', (_req, res) => {
+  res.json({ ok: true, model_version: TDE_MODEL.version, calibrated: TDE_MODEL.calibrated,
+    weights: TDE_MODEL.weights, intercept: TDE_MODEL.intercept, snapshots: tdeStateSummary() });
+});
+
+// Opt-in auto refresher: TDE_PAIRS=eurusd,gbpusd (+ TDE_REFRESH_MIN, default 5)
+if (process.env.TDE_PAIRS) {
+  const tdePairs = process.env.TDE_PAIRS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const tdeMin = parseFloat(process.env.TDE_REFRESH_MIN || '5');
+  setTimeout(() => tdeStartRefresher(tdePairs, tdeMin * 60_000), 5_000);
+}
+
+// Backfill: replay M1 parquet history through the SAME decide() path → labeled
+// event log + candidate-model fit with OOS calibration report. Incremental by
+// default (only new days). Async-job pattern like the other backtest routes.
+const tdeBackfillJobs = new Map();
+let tdeBackfillRunning = false;
+function tdeStartBackfillJob(pairs, { incremental, gapFill = true }) {
+  const jobId = `tdebf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const job = { status: 'running', startedAt: Date.now(), log: [] };
+  tdeBackfillJobs.set(jobId, job);
+  tdeBackfillRunning = true;
+  (async () => {
+    try {
+      const report = await tdeRunBackfill(pairs, { incremental, gapFill, onLog: m => { job.log.push(m); console.log(`[tde-backfill] ${m}`); } });
+      job.status = 'done'; job.report = report;
+    } catch (e) {
+      job.status = 'error'; job.error = e.message ?? String(e);
+      console.error('[tde-backfill]', e);
+    } finally { tdeBackfillRunning = false; }
+  })();
+  return jobId;
+}
+
+app.post('/api/trade-decision/backfill/run', express.json(), async (req, res) => {
+  if (tdeBackfillRunning) return res.status(409).json({ ok: false, error: 'a backfill is already running' });
+  const pairs = (req.body?.pairs?.length ? req.body.pairs : Object.keys(M1_DRIVE_IDS)).map(p => String(p).toLowerCase());
+  const incremental = req.body?.full !== true;
+  const gapFill = typeof req.body?.gap_fill === 'boolean' ? req.body.gap_fill : (await tdeGetConfig()).gap_fill;
+  res.json({ ok: true, jobId: tdeStartBackfillJob(pairs, { incremental, gapFill }), pairs: pairs.length, incremental, gap_fill: gapFill });
+});
+
+app.get('/api/trade-decision/backfill/status/:jobId', (req, res) => {
+  const job = tdeBackfillJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), log: job.log });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', report: job.report, log: job.log });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+app.get('/api/trade-decision/backfill/report', (_req, res) => {
+  const report = tdeReadBackfillReport();
+  if (!report) return res.json({ ok: false, error: 'no backfill yet — POST /api/trade-decision/backfill/run' });
+  res.json({ ok: true, report });
+});
+
+// Runtime config — the caps pattern: stored in KV (survives deploys, editable
+// from the harness page without a restart); env vars are only the defaults for
+// a blank KV. The scheduler below re-reads it each cycle, so changing the time
+// or toggling the daily run takes effect live.
+const TDE_CFG_KEY = 'trade_decision_cfg';
+const TDE_CFG_DEFAULTS = {
+  backfill_utc: process.env.TDE_BACKFILL_UTC || '03:05',
+  backfill_daily: !['0', 'false', 'off'].includes(String(process.env.TDE_BACKFILL_DAILY ?? '').toLowerCase()),
+  gap_fill: true,   // top the parquet history up from live OANDA M1 before replaying
+};
+let _tdeCfgCache = null, _tdeCfgCacheAt = 0;
+async function tdeGetConfig(fresh = false) {
+  if (!fresh && _tdeCfgCache && Date.now() - _tdeCfgCacheAt < 5 * 60_000) return _tdeCfgCache;
+  let stored = {};
+  try { const raw = await kv.get(TDE_CFG_KEY); if (raw) stored = typeof raw === 'string' ? JSON.parse(raw) : raw; }
+  catch (e) { console.error('[tde] config read failed:', e.message ?? e); }
+  _tdeCfgCache = { ...TDE_CFG_DEFAULTS, ...stored };
+  _tdeCfgCacheAt = Date.now();
+  return _tdeCfgCache;
+}
+
+app.get('/api/trade-decision/config', async (_req, res) => {
+  res.json({ ok: true, config: await tdeGetConfig(true), defaults: TDE_CFG_DEFAULTS });
+});
+
+app.post('/api/trade-decision/config', express.json(), async (req, res) => {
+  try {
+    const cur = await tdeGetConfig(true);
+    const next = { ...cur };
+    if (typeof req.body?.backfill_utc === 'string' && /^\d{1,2}:\d{2}$/.test(req.body.backfill_utc)) next.backfill_utc = req.body.backfill_utc;
+    if (typeof req.body?.backfill_daily === 'boolean') next.backfill_daily = req.body.backfill_daily;
+    if (typeof req.body?.gap_fill === 'boolean') next.gap_fill = req.body.gap_fill;
+    next.updatedAt = Date.now();
+    await kv.put(TDE_CFG_KEY, JSON.stringify(next));
+    _tdeCfgCache = next; _tdeCfgCacheAt = Date.now();
+    res.json({ ok: true, config: next });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
+// Daily incremental top-up — ON by default at the configured UTC time (03:05
+// unless changed in the config above). The stored parquet history is gap-filled
+// from live OANDA M1 first (m1GapFill brick), so this does NOT depend on the R2
+// store having been refreshed. Idempotent: no new sessions → nothing appended.
+let tdeLastAutoBackfill = null;
+setInterval(async () => {
+  const cfg = await tdeGetConfig();
+  if (!cfg.backfill_daily) return;
+  const [bfH, bfM] = String(cfg.backfill_utc).split(':').map(x => parseInt(x, 10));
+  const now = new Date();
+  const today = now.toISOString().substring(0, 10);
+  if (now.getUTCHours() === bfH && now.getUTCMinutes() === bfM
+      && tdeLastAutoBackfill !== today && !tdeBackfillRunning) {
+    tdeLastAutoBackfill = today;
+    console.log(`[tde-backfill] daily incremental top-up starting (${cfg.backfill_utc} UTC, gap-fill ${cfg.gap_fill ? 'on' : 'off'})`);
+    tdeStartBackfillJob(Object.keys(M1_DRIVE_IDS), { incremental: true, gapFill: cfg.gap_fill });
+  }
+}, 20_000);
+console.log(`[tde-backfill] daily top-up armed (default ${TDE_CFG_DEFAULTS.backfill_utc} UTC — runtime-configurable at /api/trade-decision/config)`);
 
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
