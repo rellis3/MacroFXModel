@@ -17,7 +17,7 @@ import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
-import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, runDayTypeStudy, runStopStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, runExitGateSweep, runDayTypeStudy, runStopStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { deflatedSharpe } from './backtestStats.js';
 import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
 import { resampleTo } from './barUtils.js';
@@ -358,7 +358,10 @@ export async function buildExitStudy({ horizon = 'daily', conditions = ['approac
     slipByPair[pair] = DEFAULT_SLIP_PCT[ac] ?? DEFAULT_SLIP_PCT.fx;
   }
   if (!Object.keys(touchesByPair).length) return null;
-  return runExitStudy(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+  const study = runExitStudy(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
+  // Entry-gate sweep: does concentrating on higher-edge cells make ride survive 2×?
+  const gateSweep = runExitGateSweep(touchesByPair, { splitFrac, minN, costByPair, slipByPair });
+  return study ? { ...study, gateSweep } : study;
 }
 
 // ── Day-type gate A/B study — velocity-only vs velocity×ex-ante-day-type ──────

@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict';
 import { simulateExitVariants } from './forecastAnalyser.js';
-import { runExitStudy } from './perLineStrategy.js';
+import { runExitStudy, runExitGateSweep } from './perLineStrategy.js';
 
 let passed = 0;
 const test = (name, fn) => { try { fn(); passed++; console.log(`  ✓ ${name}`); }
@@ -197,6 +197,28 @@ test('rides pay exit slippage (ride net < fixed net for equal gross)', () => {
     costByPair: { P: 0.01 }, slipByPair: { P: slip } });
   const gap = study.rules.fixed.overall.expectancy - study.rules.ride.overall.expectancy;
   assert.ok(gap > slip * 0.8, `ride should be ~one slip cheaper than fixed: gap ${gap} vs slip ${slip}`);
+});
+
+// The entry-gate sweep returns one row per margin with ride/ridehold Sharpe +2×+n.
+test('gate sweep: one row per margin with ride 2× robustness fields', () => {
+  const g = { exFadeFixed: 0.9, exFadeChand: 1.0, exFadeWalk: 0.8, exFadeRide: 1.1, exFadeRideHold: 1.1,
+              exFadeRideWhy: 'trail', exFadeRideHoldWhy: 'trail',
+              exFollowFixed: -1, exFollowChand: -1, exFollowWalk: -1, exFollowRide: -1, exFollowRideHold: -1,
+              exFollowRideWhy: 'stop', exFollowRideHoldWhy: 'stop' };
+  const mk = (date, rev) => ({ date, open: 100, line: 'OC50_up', name: 'OC50', side: 'up',
+    reverted: rev, level: 102, innerLvl: 101, outerLvl: 103, decidedBy: 'barrier', closePx: 100,
+    cell: 'OC50_up|fast', extPct: 0.5, retracePct: 0.5, ...(rev ? g : { ...g, exFadeRide: -0.6 }) });
+  const touches = [];
+  for (let i = 0; i < 80; i++) touches.push(mk(`2020-01-${String((i % 28) + 1).padStart(2, '0')}`, i % 4 !== 0));
+  for (let i = 0; i < 80; i++) touches.push(mk(`2023-01-${String((i % 28) + 1).padStart(2, '0')}`, i % 4 !== 0));
+  const sweep = runExitGateSweep({ P: touches }, { margins: [0, 0.02], splitFrac: 0.5, minN: 20,
+    costByPair: { P: 0.01 }, slipByPair: { P: 0.006 } });
+  assert.equal(sweep.length, 2, 'one row per margin');
+  for (const row of sweep) {
+    assert.ok('margin' in row && row.ride && row.ridehold, 'row shape');
+    assert.ok('sharpe' in row.ride && 'sharpe2x' in row.ride && 'trades' in row.ride, 'ride fields');
+  }
+  assert.equal(sweep[0].margin, 0); assert.equal(sweep[1].margin, 0.02);
 });
 
 // A study touch missing an ex* field must be counted, not crash.

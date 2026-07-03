@@ -257,6 +257,16 @@ async function renderExits(v){
       html+=`<tr><td style="font-weight:600">${rl}</td>${c(1)}${c(2)}${c(3)}</tr>`; }
     html+=`</tbody></table><div class="hint" style="margin-top:6px">If Ride stays positive at 2–3× spread it's robust to real friction; if it flips negative, the +2.18 was cost-fragile and not tradeable as-is.</div>`;
   }
+  // Entry-gate sweep — does concentrating on higher-edge cells make ride survive 2×?
+  if(Array.isArray(s.gateSweep) && s.gateSweep.length){
+    html+=`<div style="font-weight:600;margin:14px 0 4px">Entry-gate sweep <span class="mut" style="font-weight:400">— can fewer, higher-edge trades make Ride survive 2× cost?</span></div>`;
+    html+=`<table><thead><tr><th>Gate (marginPct)</th><th>Ride Sharpe 1×</th><th>Ride @2×</th><th>Ride n</th><th>Ride+ @2×</th><th>Ride+ n</th></tr></thead><tbody>`;
+    const shc=v=>`<td class="${(v??0)<0?'neg':'pos'}">${v==null?'—':fmt(v,2)}</td>`;
+    for(const g of s.gateSweep){ const r=g.ride||{}, rh=g.ridehold||{};
+      const dim=(r.trades??0)<30?'opacity:.5':'';
+      html+=`<tr style="${dim}"><td style="font-weight:600">${fmt(g.margin,2)}%</td>${shc(r.sharpe)}${shc(r.sharpe2x)}<td class="mut">${r.trades??0}</td>${shc(rh.sharpe2x)}<td class="mut">${rh.trades??0}</td></tr>`; }
+    html+=`</tbody></table><div class="hint" style="margin-top:6px">Stricter gates keep only the highest-expectancy fade cells (fewer trades). <b>The test: does any gate get Ride positive at 2× with n≥30?</b> If yes, that concentrated subset is the tradeable candidate to paper-trade. If every row is red at 2×, the edge is genuinely too thin to deploy — the trailing exit is a real mechanism but there's no free money after honest costs.</div>`;
+  }
   html+=`${caption}</div>`;
   v.innerHTML=html;
 }
