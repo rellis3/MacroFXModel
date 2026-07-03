@@ -16,7 +16,7 @@
 // on synthetic bars with no network; only refreshPair/fetchCalendar do I/O.
 
 import { fetchD1 } from '../js/volBacktestEngine.js';
-import { volSigmaSeries, classifyRegime } from '../js/forecastCore.js';
+import { volSigmaSeries, nextSigma, classifyRegime } from '../js/forecastCore.js';
 import { dayTypeScore } from '../js/dayTypeCore.js';
 import { collectLevels, clusterLevels } from '../js/levelSources.js';
 import { pipSize, assetClass, oandaSymbol, resolveKey } from '../js/instrumentRegistry.js';
@@ -45,9 +45,14 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, no
   const closes = dailyBars.map(b => b.close);
   const cls = safeClass(key);
 
-  // σ (fractional, daily) — the backtests' exact walk-forward math
+  // σ (fractional, daily) — the backtests' exact walk-forward math, one step
+  // AHEAD: volSigmaSeries' last element predicts the last COMPLETED bar (i.e.
+  // yesterday); nextSigma extends it to the upcoming session using data ≤ the
+  // final bar (golden-tested identity in js/forecastCore.test.mjs). This
+  // retires the honesty-box "σ lags one bar" caveat.
   const sigmaSeries = volSigmaSeries(dailyBars, cls);
-  const sigmaDaily = lastFinite(sigmaSeries) ?? 0.005;
+  const sigmaNext = nextSigma(dailyBars, cls);
+  const sigmaDaily = (Number.isFinite(sigmaNext) && sigmaNext > 0 ? sigmaNext : lastFinite(sigmaSeries)) ?? 0.005;
 
   // σ percentile vs trailing year (rollingPercentile returns 0–100)
   const pctArr = rollingPercentile(Array.from(sigmaSeries), Math.min(252, dailyBars.length - 1));
