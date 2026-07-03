@@ -26,7 +26,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
+import { loadM1ForPair, M1_DRIVE_IDS } from '../js/volBacktestM1Engine.js';
 import { gapFillPacked } from '../js/m1GapFill.js';
 import { fetchM1Range } from '../js/volBacktestEngine.js';
 import { bisect } from '../js/barUtils.js';
@@ -41,6 +41,15 @@ const DATA_DIR    = process.env.TDE_DATA_DIR ?? path.join(__dirname, 'data');
 const EVENTS_FILE = path.join(DATA_DIR, 'backfill_events.jsonl');
 const STATE_FILE  = path.join(DATA_DIR, 'backfill_state.json');
 const REPORT_FILE = path.join(DATA_DIR, 'backfill_report.json');
+
+// Everything the backfill covers by default: the FX set + gold + the index
+// CFDs (Nasdaq/S&P/Dow/Russell/FTSE/DAX). The engine is asset-class-agnostic —
+// σ math, band constants, costs and pip size all switch on instrumentRegistry
+// (index → GARCH σ, ASSET_PARAMS.index, pip 1.0) — so indices flow through the
+// same code path. M1 loads from R2 as `<key>_m1.parquet`; a pair whose parquet
+// is absent fails per-pair with a logged error and the run continues, so the
+// run log IS the availability report.
+export const TDE_BACKFILL_PAIRS = [...Object.keys(M1_DRIVE_IDS), 'gold', 'nq', 'spx', 'dow', 'rut', 'ftse', 'dax'];
 
 export const BACKFILL_DEFAULTS = {
   warmupDays: 120,      // snapshot needs history before the first tradeable day

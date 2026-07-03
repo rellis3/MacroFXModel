@@ -81,7 +81,7 @@ import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
-import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic } from './Trade_Decision_Engine/backfill.js';
+import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -9936,7 +9936,7 @@ function tdeStartBackfillJob(pairs, { incremental, gapFill = true, macro = true 
 
 app.post('/api/trade-decision/backfill/run', express.json(), async (req, res) => {
   if (tdeBackfillRunning) return res.status(409).json({ ok: false, error: 'a backfill is already running' });
-  const pairs = (req.body?.pairs?.length ? req.body.pairs : Object.keys(M1_DRIVE_IDS)).map(p => String(p).toLowerCase());
+  const pairs = (req.body?.pairs?.length ? req.body.pairs : TDE_BACKFILL_PAIRS).map(p => String(p).toLowerCase());
   const incremental = req.body?.full !== true;
   const gapFill = typeof req.body?.gap_fill === 'boolean' ? req.body.gap_fill : (await tdeGetConfig()).gap_fill;
   const macro = req.body?.macro !== false;   // { macro: false } = incumbent-baseline mode (§7c sequencing)
@@ -10085,7 +10085,7 @@ setInterval(async () => {
       && tdeLastAutoBackfill !== today && !tdeBackfillRunning) {
     tdeLastAutoBackfill = today;
     console.log(`[tde-backfill] daily incremental top-up starting (${cfg.backfill_utc} UTC, gap-fill ${cfg.gap_fill ? 'on' : 'off'})`);
-    tdeStartBackfillJob(Object.keys(M1_DRIVE_IDS), { incremental: true, gapFill: cfg.gap_fill });
+    tdeStartBackfillJob(TDE_BACKFILL_PAIRS, { incremental: true, gapFill: cfg.gap_fill });
   }
 }, 20_000);
 console.log(`[tde-backfill] daily top-up armed (default ${TDE_CFG_DEFAULTS.backfill_utc} UTC — runtime-configurable at /api/trade-decision/config)`);

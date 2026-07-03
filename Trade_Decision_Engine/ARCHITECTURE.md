@@ -239,6 +239,16 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
   sees bars after the touch.
 - **Exits:** TP = 0.5σ with the trade, SL = 0.75σ against (configurable);
   intrabar ambiguity resolves to the stop.
+- **Instrument coverage — asset-class-agnostic by construction:** every
+  asset-specific number switches on `instrumentRegistry` — σ estimator (fx→YZ,
+  index→GARCH, commodity→HV20 via `volSigmaSeries`), band constants
+  (`ASSET_PARAMS`), round-trip costs (`DEFAULT_COST_PCT`), pip size for zone
+  tolerance. `TDE_BACKFILL_PAIRS` (the default run list) = 25 FX + gold + the
+  index CFDs (`nq`, `spx`, `dow`, `rut`, `ftse`, `dax`), whose M1 parquets load
+  from R2 under the same `<key>_m1.parquet` naming. A missing parquet fails
+  per-pair with a logged error and the run continues — the run log is the
+  availability report. (Verified on the real NQ parquet: 3,083 days → 8,214
+  labeled events through the identical code path.)
 - **Incremental by construction:** `data/backfill_state.json` records the last
   processed date per pair, so re-running appends only new days. One full run
   gives day-one training data; after that the server runs an **automatic daily
