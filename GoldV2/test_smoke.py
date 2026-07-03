@@ -171,6 +171,12 @@ check('fuel veto fires on relentless selling', vu3.vetoed or vu3.direction == 'N
       f'vetoed={vu3.vetoed} dir={vu3.direction} mf={vu3.mf_value}')
 
 check('confirmation swing exposed', vu.confirm_swing is None or vu.confirm_swing > 0)
+check('wt_confirmed flag exposed (oversold long)', vu.wt_confirmed is True,
+      str(vu.wt_confirmed))
+check('wt_confirmed false for opposing direction', vu2.wt_confirmed is False)
+check('veto path still reports component detail',
+      vu3.vetoed is False or (vu3.wt_signal != '' and vu3.mf_signal != ''),
+      f'{vu3.wt_signal}/{vu3.mf_signal}')
 
 
 print('\n── exits ────────────────────────────────────────────────────')

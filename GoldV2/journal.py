@@ -85,6 +85,15 @@ class GoldV2Journal:
                      'zone_id': zone_id, 'stage': stage, 'reason': reason})
         log.info(f'[SKIP]   {zone_id}  [{stage}]  {reason}')
 
+    def log_vu_watch(self, zone_id: str, snap: dict) -> None:
+        """Armed-zone confirmation state changed — record why it can('t) enter."""
+        self._write({'type': 'VU_WATCH', 'timestamp': _now(),
+                     'zone_id': zone_id, **snap})
+        vwap = snap['vwap'] + (f'/{snap["vwap_div"]}' if snap.get('vwap_div') not in (None, 'NONE') else '')
+        log.info(f'[WATCH]  {zone_id} — {snap["verdict"]}  '
+                 f'(WT {snap["wt1"]} {snap["wt"]} · MF {snap["mf"]} {snap["mf_sig"]} '
+                 f'· VWAP {vwap})')
+
     # ── Trade lifecycle ───────────────────────────────────────────────────────
 
     def log_entry(self, trade: Any, zone: Any, vu: Any, plan: Any) -> None:

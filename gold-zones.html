@@ -353,8 +353,17 @@ function _armedIds() {
   return a ? [a] : [];
 }
 function _armedTime(zoneId) {
-  if (_bot === 'v2') return _statusData?.armed_detail?.[zoneId] ?? null;
+  if (_bot === 'v2') {
+    const d = _statusData?.armed_detail?.[zoneId];
+    // Newer bots push {t, watch}; older pushes were the bare unix time.
+    return (d && typeof d === 'object') ? (d.t ?? null) : (d ?? null);
+  }
   return _statusData?.zone_gp_entry_time ?? null;
+}
+function _armedWatch(zoneId) {
+  if (_bot !== 'v2') return null;
+  const d = _statusData?.armed_detail?.[zoneId];
+  return (d && typeof d === 'object') ? (d.watch ?? null) : null;
 }
 
 function _applyBotBranding() {
@@ -1194,6 +1203,21 @@ function _renderZoneCards() {
       <div class="gz-zone-window ${isLong ? 'long' : 'short'}">
         ${isArmed ? '⚡ ' : ''}GP: ${z.gp_low?.toFixed(2) ?? '—'} – ${z.gp_high?.toFixed(2) ?? '—'}
       </div>
+      ${(() => {
+        // Live confirmation verdict for armed V2 zones — why it has(n't) entered
+        const w = isArmed ? _armedWatch(z.zone_id) : null;
+        if (!w) return '';
+        const col = w.veto ? 'var(--red)'
+                  : w.verdict?.startsWith('CONFIRMED') ? 'var(--green)'
+                  : 'var(--amber)';
+        const vwap = w.vwap + (w.vwap_div && w.vwap_div !== 'NONE' ? '/' + w.vwap_div : '');
+        return `<div style="margin-top:5px;padding:5px 8px;background:var(--bg3);border-left:2px solid ${col};border-radius:4px;font-size:10px;line-height:1.55">
+          <span style="color:${col};font-weight:700">👁 ${w.verdict}</span><br>
+          <span style="color:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">
+            WT ${w.wt1} ${w.wt}${w.wt_ok ? ' ✓' : ''} · MF ${w.mf} ${w.mf_sig} · VWAP ${vwap} · ${w.aligned} aligned · ${w.at ?? ''}
+          </span>
+        </div>`;
+      })()}
       <div class="gz-zone-fibs">${fibPills}</div>
       ${impulseHtml}
       <div class="gz-comp-tags" style="margin-top:6px">${compTags}</div>
