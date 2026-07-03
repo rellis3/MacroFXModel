@@ -151,9 +151,13 @@ News lives **inside the engine**, in two forms:
 
 The other hard gates, in order (each fail-closed):
 
-1. `no_snapshot` — pair never refreshed.
-2. `stale_features` — snapshot older than `maxStalenessMs` (default 15 min live).
-   A confident answer from stale features is the worst silent failure mode.
+1. `no_snapshot` — the pair has no snapshot AND the on-demand warm-up failed
+   (the server's decide route warms a missing/stale snapshot automatically —
+   a bot only ever sends pair + price; a warm-up failure is surfaced as
+   `slow_loop_error` in the response so the caller knows why).
+2. `stale_features` — snapshot older than `maxStalenessMs` (default 15 min live)
+   and the warm-up couldn't replace it. A confident answer from stale features
+   is the worst silent failure mode.
 3. `news_window` — as above.
 4. `no_level_nearby` — no zone within `maxDistSigma` (default 0.35σ) of the
    request price. The engine scores *zone touches*, not open space. Exception:
