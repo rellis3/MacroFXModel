@@ -68,6 +68,12 @@ const _CF_EXACT = new Set([
   'gold_ml_params',         // trained ML model coefficients — must survive redeploys
   'gold_optimiser_last',    // last optimiser run result — persists across restarts
   'gold_perf_snapshot',     // 30-day P&L snapshot for performance dashboard
+  'gold_v2_config',         // Gold V2 bot settings — must survive redeploys
+  'gold_v2_credentials',    // Gold V2 MT5 credentials — must survive redeploys
+  'gold_v2_trades',         // Gold V2 closed-trade history (rolling) — cannot be auto-rebuilt
+  // NOTE: gold_v2_status / gold_v2_zones are deliberately NOT here — the bot
+  // rewrites them every ~2 min, so they stay local/ephemeral to protect the
+  // CF KV write quota (same reasoning as volatility_bot_status).
   'fred_data_v3',           // FRED dashboard cache (31 series) — survives Railway restarts
   'policy_v2',              // Telegram-v2 frozen confidence policy — learned from a full M1 run (minutes); MUST survive redeploys or every restart wipes it
   'ledger_v2',              // Telegram-v2 daily-learning ledger — accumulated live signal outcomes; cannot be rebuilt, must survive redeploys
