@@ -2239,13 +2239,21 @@ async function loadGoldV2Status() {
     const zonesEl = document.getElementById('goldv2BsZones');
     if (zonesEl) {
       const zones = data.top_zones ?? [];
-      zonesEl.innerHTML = zones.length
+      let html = zones.length
         ? zones.map(z => {
             const col = z.dir === 'long' ? 'bs-green' : 'bs-red';
             const gp  = z.in_gp ? ' ◆GP' : '';
             return `<span class="${col}">${z.zone_id} ${z.entry_window} score=${z.score} legs=${z.legs}${gp}</span>`;
           }).join('')
         : '<span class="bs-dim">No active zones</span>';
+      // Armed-zone confirmation verdicts — why an armed zone has(n't) entered yet
+      for (const [zid, d] of Object.entries(data.armed_detail ?? {})) {
+        const w = d && typeof d === 'object' ? d.watch : null;
+        if (!w) continue;
+        const col = w.veto ? 'bs-red' : (w.verdict ?? '').startsWith('CONFIRMED') ? 'bs-green' : 'bs-dim';
+        html += `<span class="${col}">👁 ${zid}: ${w.verdict}</span>`;
+      }
+      zonesEl.innerHTML = html;
     }
 
     const tradesEl = document.getElementById('goldv2BsTrades');

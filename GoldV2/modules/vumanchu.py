@@ -44,6 +44,7 @@ class VuManChuSignal:
     zone_entry_bar_idx: int = 0
     vwap_divergence: str = 'NONE'
     vetoed: bool = False              # fuel veto fired — do NOT trade this zone now
+    wt_confirmed: bool = False        # the mandatory WT component is satisfied
     confirm_swing: Optional[float] = None   # bar-low swing (long) / bar-high swing (short)
     confirm_swing_time: int = 0
 
@@ -346,6 +347,11 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
     else:
         mf_sig = 'NEUTRAL'
 
+    if zone_direction == 'long':
+        wt_ok_now = wt_sig in ('OVERSOLD', 'DIVERGENCE_BULL', 'HIDDEN_BULL')
+    else:
+        wt_ok_now = wt_sig in ('OVERBOUGHT', 'DIVERGENCE_BEAR', 'HIDDEN_BEAR')
+
     # ── Fuel veto (reference: weak/no spike = price continues THROUGH) ────────
     # Long zone with money flow still pressing hard down and no bullish
     # exhaustion pattern = sellers have fuel left; mirror for shorts.
@@ -354,26 +360,29 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
                 and mf_sig != 'BULLISH_EXHAUSTION':
             sig = _neutral(f'FUEL VETO: MF {mf:.0f} still driving down, no exhaustion', True)
             sig.wt1, sig.wt2 = round(wt1, 2), round(wt2_v, 2)
+            sig.wt_signal, sig.wt_confirmed = wt_sig, wt_ok_now
             sig.mf_value, sig.mf_signal = round(mf, 1), mf_sig
+            sig.vwap_signal, sig.vwap_divergence = vwap_sig, vwap_div
             return sig
         if zone_direction == 'short' and mf >= MF_FUEL_THRESHOLD \
                 and mf_sig != 'BEARISH_EXHAUSTION':
             sig = _neutral(f'FUEL VETO: MF {mf:.0f} still driving up, no exhaustion', True)
             sig.wt1, sig.wt2 = round(wt1, 2), round(wt2_v, 2)
+            sig.wt_signal, sig.wt_confirmed = wt_sig, wt_ok_now
             sig.mf_value, sig.mf_signal = round(mf, 1), mf_sig
+            sig.vwap_signal, sig.vwap_divergence = vwap_sig, vwap_div
             return sig
 
     # ── Count aligned components ──────────────────────────────────────────────
     aligned = 0
     notes: list[str] = []
 
+    wt_confirmed = wt_ok_now
     if zone_direction == 'long':
-        wt_confirmed   = wt_sig in ('OVERSOLD', 'DIVERGENCE_BULL', 'HIDDEN_BULL')
         mf_confirmed   = mf_sig == 'BULLISH_EXHAUSTION'
         vwap_confirmed = (vwap_sig in ('EXHAUSTION', 'REVERSAL') or
                           vwap_div in ('DIVERGENCE_BULL', 'HIDDEN_BULL'))
     else:
-        wt_confirmed   = wt_sig in ('OVERBOUGHT', 'DIVERGENCE_BEAR', 'HIDDEN_BEAR')
         mf_confirmed   = mf_sig == 'BEARISH_EXHAUSTION'
         vwap_confirmed = (vwap_sig in ('EXHAUSTION', 'REVERSAL') or
                           vwap_div in ('DIVERGENCE_BEAR', 'HIDDEN_BEAR'))
@@ -413,6 +422,7 @@ def compute_vumanchu(bars: list[dict], zone_direction: str,
         zone_entry_bar_idx=zone_entry_bar_idx,
         vwap_divergence=vwap_div,
         vetoed=False,
+        wt_confirmed=wt_confirmed,
         confirm_swing=confirm_swing,
         confirm_swing_time=confirm_time,
     )

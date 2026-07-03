@@ -558,6 +558,12 @@ class GoldBotV2:
         self.vol_levels: list[tuple[float, str]] = []
         self.last_state_refresh = 0.0
         self._mt5_ok = False
+        # Live "why hasn't this armed zone entered" snapshots, keyed by zone_id.
+        # Updated every confirmation tick, logged on state change, pushed with
+        # status so the zones page can show the verdict next to the armed card.
+        self._watch: dict[str, dict] = {}
+        self._watch_dirty = False
+        self._last_watch_push = 0.0
 
     # ── lifecycle ─────────────────────────────────────────────────────────────
 
@@ -992,7 +998,54 @@ class GoldBotV2:
                 self.tm.arm(zone.zone_id, time.time(), inside)
                 self.journal.log_zone_approached(zone, price, dist / PIP)
 
+    def _update_watch(self, zone: ZoneV2, vu) -> None:
+        """Record the live confirmation verdict; log + journal on state change."""
+        min_comp = int(self.cfg.get('vu_min_components', 2))
+        if vu.vetoed:
+            verdict = vu.reason
+        elif vu.direction != 'NEUTRAL':
+            verdict = f'CONFIRMED {vu.direction} — {vu.reason}'
+        else:
+            parts = []
+            if self.cfg.get('vu_require_wt', True) and not vu.wt_confirmed:
+                parts.append('WT missing (need OS/OB or divergence)')
+            if vu.components_aligned < min_comp:
+                parts.append(f'{vu.components_aligned}/{min_comp} aligned'
+                             + (f' ({vu.reason})' if vu.reason != 'No alignment' else ''))
+            verdict = ' · '.join(parts) or vu.reason
+
+        snap = {
+            'wt1': vu.wt1, 'wt': vu.wt_signal, 'wt_ok': vu.wt_confirmed,
+            'mf': vu.mf_value, 'mf_sig': vu.mf_signal,
+            'vwap': vu.vwap_signal, 'vwap_div': vu.vwap_divergence,
+            'aligned': vu.components_aligned, 'veto': vu.vetoed,
+            'verdict': verdict,
+            'at': datetime.now(timezone.utc).strftime('%H:%M:%SZ'),
+        }
+        prev = self._watch.get(zone.zone_id)
+        state_key = (vu.wt_signal, vu.mf_signal, vu.vwap_signal, vu.vwap_divergence,
+                     vu.components_aligned, vu.vetoed)
+        prev_key = (prev['wt'], prev['mf_sig'], prev['vwap'], prev['vwap_div'],
+                    prev['aligned'], prev['veto']) if prev else None
+        self._watch[zone.zone_id] = snap
+        if state_key != prev_key:
+            self._watch_dirty = True
+            self.journal.log_vu_watch(zone.zone_id, snap)
+
+    def _push_watch_if_due(self, price: float) -> None:
+        """Watch snapshots change every few seconds — push at most every 30s."""
+        now = time.time()
+        if self._watch_dirty and now - self._last_watch_push >= 30:
+            self._push_status(price)
+            self._watch_dirty = False
+            self._last_watch_push = now
+
     def _check_armed_zones(self, price: float) -> None:
+        # Prune watch entries for zones no longer armed (disarmed / entered)
+        for zid in list(self._watch.keys()):
+            if zid not in self.tm.armed:
+                del self._watch[zid]
+                self._watch_dirty = True
         if not self.tm.armed:
             return
 
@@ -1029,6 +1082,7 @@ class GoldBotV2:
                 require_wt=bool(self.cfg.get('vu_require_wt', True)),
                 fuel_veto=bool(self.cfg.get('mf_fuel_veto', True)),
             )
+            self._update_watch(zone, vu)
             if vu.vetoed:
                 # Fuel remaining against the zone — keep watching, don't enter
                 continue
@@ -1036,6 +1090,8 @@ class GoldBotV2:
                 continue
 
             self._try_enter(zone, vu, price)
+
+        self._push_watch_if_due(price)
 
     def _try_enter(self, zone: ZoneV2, vu, price: float) -> None:
         direction = vu.direction
@@ -1145,7 +1201,11 @@ class GoldBotV2:
             'trades_today':  self.tm.trades_today,
             'open_trades':   len(self.tm.open_trades),
             'armed_zones':   list(self.tm.armed.keys()),
-            'armed_detail':  {zid: a.gp_entry_time
+            # Per armed zone: when price first entered the window ('t', unix)
+            # and the live confirmation verdict ('watch') — the zones page
+            # renders this so "armed but not entered" is self-explaining.
+            'armed_detail':  {zid: {'t': a.gp_entry_time,
+                                    'watch': self._watch.get(zid)}
                               for zid, a in self.tm.armed.items()},
             'paper_mode':    paper_mode,
             'squeeze_ratio': self.squeeze_ratio,
