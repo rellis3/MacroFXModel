@@ -123,6 +123,7 @@ class ZoneV2:
     swing_origin: float = 0.0     # structural invalidation (furthest leg origin)
     swing_end: float = 0.0        # primary leg's impulse end (TP reference)
     invalidation: float = 0.0     # == swing_origin (explicit alias)
+    primary: Optional[FibLeg] = None   # highest-weight contributing leg (viewer markup)
     tf: str = ''                  # dominant TF label (for journal/ML compat)
     score: float = 0.0
     htf_aligned: bool = False
@@ -452,6 +453,7 @@ def build_zones(legs_by_tf: dict[str, list[FibLeg]],
             swing_end = primary.end
             tf_label  = primary.tf
         else:
+            primary   = None
             origin    = lo if cl['direction'] == 'long' else hi
             swing_end = 0.0
             tf_label  = 'RT'
@@ -467,6 +469,7 @@ def build_zones(legs_by_tf: dict[str, list[FibLeg]],
             swing_origin=round(origin, 2),
             invalidation=round(origin, 2),
             swing_end=round(swing_end, 2),
+            primary=primary,
             tf=tf_label,
         ))
 

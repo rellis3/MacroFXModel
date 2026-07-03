@@ -924,7 +924,7 @@ export default {
             'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_audit_log',
             'backtestsystem_live_config', 'backtestsystem_credentials',
             'gold_bot_config', 'gold_ml_params', 'gold_optimiser_last', 'gold_perf_snapshot',
-            'gold_v2_config', 'gold_v2_credentials',
+            'gold_v2_config', 'gold_v2_credentials', 'gold_v2_trades',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
           ]);

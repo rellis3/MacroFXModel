@@ -52,6 +52,7 @@ class ManagedTrade:
     mae_pips: float = 0.0   # max adverse excursion (positive number)
     sl_basis: str = ''
     tp_basis: str = ''
+    zone_score: float = 0.0   # confluence score at entry (for the zones-page history)
 
     # ── outcome helpers ────────────────────────────────────────────────────
 

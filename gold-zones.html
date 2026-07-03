@@ -160,7 +160,11 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
   </div>
   <div>
     <div class="gz-title">Gold Zone Verifier</div>
-    <div class="gz-sub">Live fib zones · swing origins · session levels · bot state</div>
+    <div class="gz-sub" id="gzSubTitle">Live fib zones · swing origins · session levels · bot state</div>
+  </div>
+  <div class="gz-seg" id="gzBotSeg" style="margin-left:16px" title="Switch between the V1 bot's zones and the V2 level-matrix bot's zones">
+    <button class="on" data-bot="v1" style="color:#f4c430">Gold V1</button>
+    <button data-bot="v2" style="color:#ff9f43">Gold V2</button>
   </div>
   <div class="gz-spacer"></div>
   <span class="gz-price" id="gzLivePrice">XAU/USD —</span>
@@ -290,7 +294,7 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
   </div>
 
   <!-- Trade history -->
-  <div class="gz-trades-header">Paper trade history</div>
+  <div class="gz-trades-header" id="gzTradesHeader">Paper trade history</div>
   <div id="gzTradesWrap">
     <div class="gz-msg">Loading…</div>
   </div>
@@ -303,8 +307,22 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 'use strict';
 
 // ── State ─────────────────────────────────────────────────────────────
-let _zonesData  = null;   // gold_bot_zones KV payload
-let _statusData = null;   // gold_bot_status KV payload
+// Bot selector: 'v1' = Gold/main.py (gold_bot_* keys), 'v2' = GoldV2/main.py
+// (gold_v2_* keys, level-matrix zones with per-zone contributing legs).
+let _bot = localStorage.getItem('gzBot') || 'v1';
+const BOT_KV = {
+  v1: { zones: 'gold_bot_zones', status: 'gold_bot_status' },
+  v2: { zones: 'gold_v2_zones',  status: 'gold_v2_status'  },
+};
+// Score scales differ: V1 scores ran 3–50+ (pre-dedup inflation), V2 counts
+// distinct evidence and typically lands 3–12.
+const SCORE_SCALE = {
+  v1: { high: 40, mid: 15, bands: [[0,10],[10,20],[20,35],[35,Infinity]] },
+  v2: { high: 8,  mid: 5,  bands: [[0,4],[4,6],[6,9],[9,Infinity]] },
+};
+
+let _zonesData  = null;   // gold_bot_zones / gold_v2_zones KV payload
+let _statusData = null;   // gold_bot_status / gold_v2_status KV payload
 let _candles    = [];     // OHLC array (period matches _tf)
 let _chart      = null;
 let _cs         = null;   // candlestick series
@@ -326,10 +344,35 @@ let _sortMode = 'score';     // 'score' | 'price'
 
 const LS = window.LightweightCharts ? LightweightCharts.LineStyle : { Solid:0, Dotted:1, Dashed:2, LargeDashed:3, SparseDotted:4 };
 
+// ── Armed-zone helpers (V1: single armed id; V2: list + per-zone times) ─
+function _armedIds() {
+  if (_bot === 'v2') {
+    return _statusData?.armed_zones ?? _zonesData?.armed_zones ?? [];
+  }
+  const a = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+  return a ? [a] : [];
+}
+function _armedTime(zoneId) {
+  if (_bot === 'v2') return _statusData?.armed_detail?.[zoneId] ?? null;
+  return _statusData?.zone_gp_entry_time ?? null;
+}
+
+function _applyBotBranding() {
+  const sub = document.getElementById('gzSubTitle');
+  if (sub) sub.textContent = _bot === 'v2'
+    ? 'Gold V2 · level-matrix zones · contributing legs · σ forecast · bot state'
+    : 'Gold V1 · live fib zones · swing origins · session levels · bot state';
+  const th = document.getElementById('gzTradesHeader');
+  if (th) th.textContent = _bot === 'v2' ? 'Gold V2 trade history' : 'Paper trade history';
+  document.querySelectorAll('#gzBotSeg button').forEach(b =>
+    b.classList.toggle('on', b.dataset.bot === _bot));
+}
+
 // ── Init ──────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   _initChart();
   _bindControls();
+  _applyBotBranding();
   _load();
   setInterval(_load, 90_000);
 });
@@ -355,6 +398,19 @@ function _initChart() {
 
 // ── Control bindings ──────────────────────────────────────────────────
 function _bindControls() {
+  // Bot switcher — V1 ⟷ V2 swaps the KV keys and re-renders everything
+  document.getElementById('gzBotSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-bot]'); if (!btn) return;
+    if (btn.dataset.bot === _bot) return;
+    _bot = btn.dataset.bot;
+    try { localStorage.setItem('gzBot', _bot); } catch {}
+    _zonesData = null; _statusData = null; _selectedZoneId = null;
+    _applyBotBranding();
+    document.getElementById('gzZonesGrid').innerHTML = '<div class="gz-msg">Loading zones…</div>';
+    _load();
+    _loadTradeHistory();
+  });
+
   // TF selector — refetch candles on change so period is correct
   document.getElementById('gzTfSeg').addEventListener('click', async e => {
     const btn = e.target.closest('button[data-tf]'); if (!btn) return;
@@ -412,9 +468,10 @@ function _bindControls() {
 // ── Main data load ────────────────────────────────────────────────────
 async function _load() {
   try {
+    const kv = BOT_KV[_bot];
     const [zonesRes, statusRes, quoteRes] = await Promise.all([
-      fetch('/api/kv/get?key=gold_bot_zones'),
-      fetch('/api/kv/get?key=gold_bot_status'),
+      fetch(`/api/kv/get?key=${kv.zones}`),
+      fetch(`/api/kv/get?key=${kv.status}`),
       fetch('/api/quote?symbol=XAU/USD'),
     ]);
     const zonesJ  = await zonesRes.json();
@@ -607,7 +664,7 @@ function _rebuildChart() {
   _priceLines = [];
   _cs.setMarkers([]);
 
-  const armedId   = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+  const armedId   = _armedIds()[0];
   const allZones  = _filteredZones();
   const focusId   = _selectedZoneId || armedId;
   const focusZone = focusId ? allZones.find(z => z.zone_id === focusId) : null;
@@ -663,28 +720,44 @@ function _drawTrade(z, markers = []) {
   const atrBuf  = atr * 0.3;
   const atrSlMin = atr * 1.5;
 
-  // Mirrors bot SL logic (swing_origin anchor)
-  let sl;
-  if (!isLong) {
-    sl = Math.min(z.swing_origin + atrBuf, entry + maxSl);
-  } else {
-    sl = Math.max(z.swing_origin - atrBuf, entry - maxSl);
-  }
-  let slDist = Math.abs(entry - sl);
-  if (slDist < atrSlMin) { sl = !isLong ? entry + atrSlMin : entry - atrSlMin; slDist = atrSlMin; }
-  if (slDist > maxSl)    { sl = !isLong ? entry + maxSl    : entry - maxSl;    slDist = maxSl;    }
-
-  const sign = isLong ? 1 : -1;
-  // Dynamic TP2: mirrors bot logic — continuation (HTF aligned) runs to 3R,
-  // counter-trend (if allowed) uses tighter 1.5R target
+  const sign       = isLong ? 1 : -1;
   const htfAligned = !!z.htf_aligned;
   const htfBias    = _zonesData?.htf_bias;
   const htfConf    = _zonesData?.htf_confidence ?? 0;
-  const tp2_r = htfAligned ? 3.0
-              : (htfBias && htfBias !== 'NEUTRAL' && htfConf >= 0.5) ? 1.5
-              : 2.0;
-  const tp1  = entry + sign * slDist * 1.0;
-  const tp2  = entry + sign * slDist * tp2_r;
+  let sl, slDist, tp1, tp2, tp2Note, approx = false;
+
+  if (_bot === 'v2') {
+    // V2's live SL anchors to the M5 confirmation swing at entry time and TPs
+    // are level-to-level — neither is knowable before the trade fires, so this
+    // preview approximates: SL just beyond the zone's far edge, TP2 at ~2R.
+    approx = true;
+    sl = isLong ? z.gp_low - atrBuf : z.gp_high + atrBuf;
+    slDist = Math.abs(entry - sl);
+    if (slDist > maxSl) { sl = isLong ? entry - maxSl : entry + maxSl; slDist = maxSl; }
+    const tp2_r = htfAligned ? 2.5 : 1.5;
+    tp1 = entry + sign * slDist * 1.0;
+    tp2 = entry + sign * slDist * tp2_r;
+    tp2Note = `~${tp2_r}R est — live TP is level-to-level`;
+  } else {
+    // Mirrors V1 bot SL logic (swing_origin anchor)
+    if (!isLong) {
+      sl = Math.min(z.swing_origin + atrBuf, entry + maxSl);
+    } else {
+      sl = Math.max(z.swing_origin - atrBuf, entry - maxSl);
+    }
+    slDist = Math.abs(entry - sl);
+    if (slDist < atrSlMin) { sl = !isLong ? entry + atrSlMin : entry - atrSlMin; slDist = atrSlMin; }
+    if (slDist > maxSl)    { sl = !isLong ? entry + maxSl    : entry - maxSl;    slDist = maxSl;    }
+
+    // Dynamic TP2: mirrors bot logic — continuation (HTF aligned) runs to 3R,
+    // counter-trend (if allowed) uses tighter 1.5R target
+    const tp2_r = htfAligned ? 3.0
+                : (htfBias && htfBias !== 'NEUTRAL' && htfConf >= 0.5) ? 1.5
+                : 2.0;
+    tp1 = entry + sign * slDist * 1.0;
+    tp2 = entry + sign * slDist * tp2_r;
+    tp2Note = htfAligned ? `${tp2_r}R trend+` : `${tp2_r}R`;
+  }
 
   const add = (price, color, title, width = 2, style = 0) => {
     if (price == null || price <= 0) return;
@@ -702,12 +775,11 @@ function _drawTrade(z, markers = []) {
   add(entry, 'rgba(244,196,48,0.55)', `ENTRY ~${entry.toFixed(1)}`, 1, 2);
 
   // SL
-  add(sl, '#ef5350', `SL  ${sl.toFixed(1)}  (${slDist.toFixed(0)}p)`, 2, 0);
+  add(sl, '#ef5350', `SL${approx ? '~' : ''}  ${sl.toFixed(1)}  (${slDist.toFixed(0)}p${approx ? ' zone-edge est' : ''})`, 2, 0);
 
   // TPs
-  const tp2Label = htfAligned ? `TP2  ${tp2.toFixed(1)}  (${tp2_r}R trend+)` : `TP2  ${tp2.toFixed(1)}  (${tp2_r}R)`;
-  add(tp1, 'rgba(38,166,154,0.85)', `TP1  ${tp1.toFixed(1)}  (1R)`, 1, 2);
-  add(tp2, '#26a69a', tp2Label, 2, 0);
+  add(tp1, 'rgba(38,166,154,0.85)', `TP1${approx ? '~' : ''}  ${tp1.toFixed(1)}  (1R)`, 1, 2);
+  add(tp2, '#26a69a', `TP2${approx ? '~' : ''}  ${tp2.toFixed(1)}  (${tp2Note})`, 2, 0);
 
   // ── Time-bounded zone box + detection/armed markers ──────────────────
   const period = _tf === 'H4' ? 14400 : _tf === 'M30' ? 1800 : 300;
@@ -741,9 +813,8 @@ function _drawTrade(z, markers = []) {
   }
 
   // "ARMED ⚡" marker when bot entered GP proximity for this zone
-  const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
-  if (z.zone_id === armedId) {
-    const armedTs  = _statusData?.zone_gp_entry_time;
+  if (_armedIds().includes(z.zone_id)) {
+    const armedTs  = _armedTime(z.zone_id);
     if (armedTs) {
       const armedBar = Math.floor(armedTs / period) * period;
       markers.push({
@@ -774,6 +845,46 @@ function _drawZoneOverlays(z, markers) {
       }));
     } catch {}
   };
+
+  // ── V2: draw EVERY contributing leg — this is the zone's provenance ────
+  // Each leg gets its swing origin/end markers and its full fib ladder, so
+  // you can see exactly which impulse legs stacked their levels here.
+  if (_bot === 'v2' && z.legs?.length) {
+    const LEG_COLS = ['#26c6da', '#ab47bc', '#ffa726', '#4f7df0', '#66bb6a', '#ec407a'];
+    z.legs.slice(0, 6).forEach((lg, i) => {
+      const col  = LEG_COLS[i % LEG_COLS.length];
+      const r    = Math.abs(lg.end - lg.origin);
+      const fSgn = isLong ? -1 : 1;   // retracement measured back from the end
+      const tag  = `[${lg.tf} leg${z.legs.length > 1 ? ' ' + (i + 1) : ''}]`;
+
+      if (_showSwings) {
+        add(lg.origin, isLong ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)',
+            `${isLong ? '▼ Low' : '▲ High'} ${lg.origin.toFixed(1)} ${tag} origin`, 2, 3);
+        add(lg.end, isLong ? 'rgba(239,83,80,0.7)' : 'rgba(38,166,154,0.7)',
+            `${isLong ? '▲ High' : '▼ Low'} ${lg.end.toFixed(1)} ${tag} fib anchor`, 2, 3);
+        if (lg.origin_time > 0) markers.push({
+          time: lg.origin_time, position: isLong ? 'belowBar' : 'aboveBar',
+          color: col, shape: isLong ? 'arrowUp' : 'arrowDown',
+          text: `${lg.tf} ${isLong ? 'Low' : 'High'} ${i + 1}`, size: 2,
+        });
+        if (lg.end_time > 0) markers.push({
+          time: lg.end_time, position: isLong ? 'aboveBar' : 'belowBar',
+          color: col, shape: isLong ? 'arrowDown' : 'arrowUp',
+          text: `${lg.tf} ${isLong ? 'High' : 'Low'} ${i + 1}`, size: 2,
+        });
+      }
+
+      if (_showFibs) {
+        add(lg.end + fSgn * 0.382 * r, col, `.382 ${tag}`, 1, 2);
+        add(lg.end + fSgn * 0.500 * r, col, `.500 ${tag}`, 1, 2);
+        add(lg.end + fSgn * 0.618 * r, 'rgba(244,196,48,0.6)', `.618 ${tag}`, 1, 1);
+        add(lg.end + fSgn * 0.650 * r, 'rgba(244,196,48,0.6)', `.650 ${tag}`, 1, 1);
+        add(lg.end + fSgn * 0.786 * r, col, `.786 ${tag}`, 1, 2);
+        add(lg.end + fSgn * 0.886 * r, col, `.886 ${tag}`, 1, 2);
+      }
+    });
+    return;
+  }
 
   if (_showSwings) {
     const originCol = isLong ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)';
@@ -908,10 +1019,10 @@ function _updateStatusBar() {
   const state = d?.bot_state || st?.state || '—';
   document.getElementById('gzBotStateBadge').textContent = `Bot: ${state}`;
 
-  const armedId = d?.armed_zone || st?.armed_zone_id;
+  const armedIds = _armedIds();
   const armedEl = document.getElementById('gzArmedBadge');
-  if (armedId) {
-    armedEl.textContent = `⚡ ${armedId}`;
+  if (armedIds.length) {
+    armedEl.textContent = `⚡ ${armedIds[0]}${armedIds.length > 1 ? ` +${armedIds.length - 1}` : ''}`;
     armedEl.style.display = '';
   } else {
     armedEl.style.display = 'none';
@@ -950,8 +1061,10 @@ function _updateStats() {
 
   const zones = d?.zones ?? [];
   document.getElementById('gsZones').textContent = zones.length;
-  const armedId = d?.armed_zone || st?.armed_zone_id;
-  document.getElementById('gsArmed').textContent = armedId ? `Armed: ${armedId.split('_').slice(0,3).join('_')}` : 'No armed zone';
+  const armedIds = _armedIds();
+  document.getElementById('gsArmed').textContent = armedIds.length
+    ? `Armed: ${armedIds[0].split('_').slice(0,3).join('_')}${armedIds.length > 1 ? ` +${armedIds.length - 1}` : ''}`
+    : 'No armed zone';
 
   const state = d?.bot_state || st?.state || '—';
   document.getElementById('gsBotState').textContent = state;
@@ -962,7 +1075,7 @@ function _updateStats() {
 function _renderZoneCards() {
   const grid = document.getElementById('gzZonesGrid');
   const zones = _filteredZones();
-  const armedId = _zonesData?.armed_zone || _statusData?.armed_zone_id;
+  const armedIds = _armedIds();
 
   const countEl = document.getElementById('gzZoneCount');
   if (countEl) countEl.textContent = zones.length;
@@ -979,11 +1092,12 @@ function _renderZoneCards() {
            d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
+  const scale = SCORE_SCALE[_bot];
   grid.innerHTML = zones.map(z => {
     const isLong   = z.direction === 'long';
-    const isArmed  = z.zone_id === armedId;
+    const isArmed  = armedIds.includes(z.zone_id);
     const scoreStr = (z.score ?? 0).toFixed(1);
-    const scoreClass = z.score >= 40 ? 'high' : z.score >= 15 ? 'mid' : 'low';
+    const scoreClass = z.score >= scale.high ? 'high' : z.score >= scale.mid ? 'mid' : 'low';
 
     // Distance from current price
     let distHtml = '';
@@ -1036,7 +1150,11 @@ function _renderZoneCards() {
             ${z.swing_end.toFixed(2)}</span>
           <span style="color:var(--text3);font-size:9px"> ${endDate}</span>
           <span style="color:var(--amber);font-size:9.5px;margin-left:6px">${sz}pts</span>
-          <span style="color:var(--text3);font-size:9px;margin-left:4px">→ .${z.zone_variant === 'gp' ? '618/.650 GP' : z.zone_variant} retrace</span>
+          <span style="color:var(--text3);font-size:9px;margin-left:4px">${
+            _bot === 'v2'
+              ? `→ primary of ${z.distinct_legs ?? 1} leg${(z.distinct_legs ?? 1) > 1 ? 's' : ''} (${(z.line_kinds ?? []).join(', ') || 'GP'})`
+              : `→ .${z.zone_variant === 'gp' ? '618/.650 GP' : z.zone_variant} retrace`
+          }</span>
         </div>`;
     })() : '';
 
@@ -1046,7 +1164,7 @@ function _renderZoneCards() {
           return d.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) + ' ' +
                  d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12:false }); })()
       : null;
-    const armedTs   = _statusData?.zone_gp_entry_time;
+    const armedTs   = _armedTime(z.zone_id);
     const armedStr  = (isArmed && armedTs)
       ? new Date(armedTs * 1000).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12:false })
       : null;
@@ -1058,6 +1176,8 @@ function _renderZoneCards() {
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <div class="gz-zone-id">${z.zone_id}</div>
           ${distHtml}
+          ${_bot === 'v2' && z.in_gp ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(244,196,48,.4);padding:1px 5px;border-radius:3px">◆ GP</span>' : ''}
+          ${_bot === 'v2' && z.distinct_legs ? `<span style="font-size:9px;color:#ff9f43;border:1px solid rgba(255,159,67,.35);padding:1px 5px;border-radius:3px">${z.distinct_legs} leg${z.distinct_legs > 1 ? 's' : ''}</span>` : ''}
           ${z.htf_aligned
             ? '<span style="font-size:9px;color:var(--cyan);border:1px solid rgba(38,198,218,.3);padding:1px 5px;border-radius:3px">HTF✓</span>'
             : ((_zonesData?.htf_bias && _zonesData.htf_bias !== 'NEUTRAL')
@@ -1106,35 +1226,46 @@ async function _tickPrice() {
 setInterval(_tickPrice, 5000);
 _tickPrice();
 
-// ── Trade history — live from CSV via /api/gold/trades ────────────────
+// ── Trade history — V1: CSV via /api/gold/trades · V2: KV gold_v2_trades ──
 async function _loadTradeHistory() {
   const wrap = document.getElementById('gzTradesWrap');
+  const bot  = _bot;   // capture — a switch mid-fetch must not render stale data
   try {
-    const res = await fetch('/api/gold/trades');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { trades } = await res.json();
-    if (!trades?.length) { wrap.innerHTML = '<div class="gz-msg">No trades logged yet</div>'; return; }
+    let trades;
+    if (bot === 'v2') {
+      const res = await fetch('/api/kv/get?key=gold_v2_trades');
+      const j   = await res.json();
+      trades = (!j.miss && j.data?.trades) ? j.data.trades : [];
+    } else {
+      const res = await fetch('/api/gold/trades');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      trades = (await res.json()).trades;
+    }
+    if (bot !== _bot) return;
+    if (!trades?.length) {
+      wrap.innerHTML = `<div class="gz-msg">No ${bot.toUpperCase()} trades logged yet</div>`;
+      return;
+    }
 
     // Sort newest first
     const sorted = [...trades].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
 
-    // ── Score band analytics ──────────────────────────────────────────────
-    const BANDS = [
-      { label: '< 10',  lo: 0,  hi: 10  },
-      { label: '10–20', lo: 10, hi: 20  },
-      { label: '20–35', lo: 20, hi: 35  },
-      { label: '35+',   lo: 35, hi: Infinity },
-    ];
+    // ── Score band analytics (band edges match the bot's score scale) ─────
+    const BANDS = SCORE_SCALE[bot].bands.map(([lo, hi]) => ({
+      label: hi === Infinity ? `${lo}+` : lo === 0 ? `< ${hi}` : `${lo}–${hi}`,
+      lo, hi,
+    }));
     const bandStats = BANDS.map(b => {
       const bt = trades.filter(t => t.score >= b.lo && t.score < b.hi);
       const wins     = bt.filter(t => t.result === 'WIN').length;
       const losses   = bt.filter(t => t.result === 'LOSS').length;
       const expired  = bt.filter(t => t.result === 'EXPIRED').length;
-      const closed   = wins + losses + expired;
+      const be       = bt.filter(t => t.result === 'BREAKEVEN').length;
+      const closed   = wins + losses + expired + be;
       const netPips  = bt.reduce((s, t) => s + (t.pnl_pips || 0), 0);
       const avgPips  = closed ? (netPips / closed) : null;
       const wr       = closed ? Math.round(wins / closed * 100) : null;
-      return { ...b, count: bt.length, wins, losses, expired, closed, netPips, avgPips, wr };
+      return { ...b, count: bt.length, wins, losses, expired, be, closed, netPips, avgPips, wr };
     });
 
     const bandRows = bandStats.map(b => {
@@ -1144,7 +1275,7 @@ async function _loadTradeHistory() {
       return `<tr>
         <td style="font-weight:700;color:var(--gold)">${b.label}</td>
         <td>${b.count}</td>
-        <td><span style="color:var(--green)">${b.wins}W</span> / <span style="color:var(--red)">${b.losses}L</span> / <span style="color:var(--text3)">${b.expired}E</span></td>
+        <td><span style="color:var(--green)">${b.wins}W</span> / <span style="color:var(--red)">${b.losses}L</span> / <span style="color:var(--text3)">${b.expired}E</span>${b.be ? ` / <span style="color:var(--text2)">${b.be}BE</span>` : ''}</td>
         <td style="color:${wrCol};font-weight:700">${b.wr !== null ? b.wr + '%' : '—'}</td>
         <td style="color:${netCol};font-weight:700">${b.netPips >= 0 ? '+' : ''}${b.netPips.toFixed(1)}p</td>
         <td style="color:${b.avgPips >= 0 ? 'var(--green)' : 'var(--red)'}">${b.avgPips !== null ? (b.avgPips >= 0 ? '+' : '') + b.avgPips.toFixed(1) + 'p avg' : '—'}</td>
@@ -1155,12 +1286,14 @@ async function _loadTradeHistory() {
     const wins    = trades.filter(t => t.result === 'WIN').length;
     const losses  = trades.filter(t => t.result === 'LOSS').length;
     const expired = trades.filter(t => t.result === 'EXPIRED').length;
-    const closed  = wins + losses + expired;
+    const beCount = trades.filter(t => t.result === 'BREAKEVEN').length;
+    const closed  = wins + losses + expired + beCount;
     const net     = trades.reduce((s, t) => s + (t.pnl_pips || 0), 0);
     const wr      = closed ? Math.round(wins / closed * 100) : 0;
     const netCol  = net >= 0 ? 'var(--green)' : 'var(--red)';
 
     // ── Trade rows ────────────────────────────────────────────────────────
+    const scScale = SCORE_SCALE[bot];
     const tradeRows = sorted.map(t => {
       const isLong   = t.direction === 'LONG';
       const result   = t.result ?? '—';
@@ -1169,7 +1302,7 @@ async function _loadTradeHistory() {
       const pnlStr   = pnl != null ? `${pnl >= 0 ? '+' : ''}${Number(pnl).toFixed(1)}p` : '—';
       const pnlCol   = pnl >= 0 ? 'var(--green)' : 'var(--red)';
       const score    = t.score ?? 0;
-      const scoreCol = score >= 35 ? 'var(--gold)' : score >= 20 ? 'var(--amber)' : score >= 10 ? 'var(--text2)' : 'var(--text3)';
+      const scoreCol = score >= scScale.high ? 'var(--gold)' : score >= scScale.mid ? 'var(--amber)' : 'var(--text3)';
       return `<tr>
         <td style="color:var(--text3);white-space:nowrap">${t.date} ${t.time?.slice(0,5)}</td>
         <td style="color:${isLong?'var(--green)':'var(--red)'};">${t.direction}</td>
@@ -1186,9 +1319,11 @@ async function _loadTradeHistory() {
     <div style="margin-bottom:16px;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);display:flex;gap:28px;flex-wrap:wrap;align-items:center">
       <div><span style="color:var(--text3);font-size:10px">CLOSED</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace">${closed}</span></div>
       <div><span style="color:var(--text3);font-size:10px">WIN RATE</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:${wr>=50?'var(--green)':wr>=33?'var(--amber)':'var(--red)'}">${wr}%</span></div>
-      <div><span style="color:var(--text3);font-size:10px">W/L/E</span><span style="margin-left:8px;font-family:'DM Mono',monospace"><span style="color:var(--green)">${wins}</span><span style="color:var(--text3)"> / </span><span style="color:var(--red)">${losses}</span><span style="color:var(--text3)"> / </span>${expired}</span></div>
+      <div><span style="color:var(--text3);font-size:10px">W/L/E${beCount ? '/BE' : ''}</span><span style="margin-left:8px;font-family:'DM Mono',monospace"><span style="color:var(--green)">${wins}</span><span style="color:var(--text3)"> / </span><span style="color:var(--red)">${losses}</span><span style="color:var(--text3)"> / </span>${expired}${beCount ? `<span style="color:var(--text3)"> / </span><span style="color:var(--text2)">${beCount}</span>` : ''}</span></div>
       <div><span style="color:var(--text3);font-size:10px">NET PIPS</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:${netCol}">${net>=0?'+':''}${net.toFixed(1)}p</span></div>
-      <div style="color:var(--text3);font-size:10px;align-self:center">Scores shown are pre-dedup (inflated) for trades before 19 Jun 2026</div>
+      ${bot === 'v1'
+        ? '<div style="color:var(--text3);font-size:10px;align-self:center">Scores shown are pre-dedup (inflated) for trades before 19 Jun 2026</div>'
+        : '<div style="color:var(--text3);font-size:10px;align-self:center">Gold V2 · distinct-leg scores · BE = breakeven stop after TP1</div>'}
     </div>
 
     <div style="margin-bottom:16px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">

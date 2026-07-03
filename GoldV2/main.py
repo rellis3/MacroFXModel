@@ -825,7 +825,7 @@ class GoldBotV2:
                     self.journal.log_tp1_hit(trade, price)
                 elif event in ('TP2_HIT', 'SL_HIT', 'BE_STOP'):
                     self.journal.log_trade_closed(trade, price, event)
-                    self._on_trade_closed(trade)
+                    self._on_trade_closed(trade, price, event)
 
     def _manage_live_trade(self, trade: ManagedTrade, price: float) -> None:
         ticket = trade.ticket
@@ -873,13 +873,13 @@ class GoldBotV2:
             else:
                 reason = 'SL_HIT'
             self.journal.log_trade_closed(trade, px, reason)
-        else:
-            event = trade.check_outcome(price, self.cfg.get('be_after_tp1', True))
-            if event not in ('TP2_HIT', 'SL_HIT', 'BE_STOP'):
-                return
-            self.journal.log_trade_closed(trade, price, event)
-
-        self._on_trade_closed(trade)
+            self._on_trade_closed(trade, px, reason)
+            return
+        event = trade.check_outcome(price, self.cfg.get('be_after_tp1', True))
+        if event not in ('TP2_HIT', 'SL_HIT', 'BE_STOP'):
+            return
+        self.journal.log_trade_closed(trade, price, event)
+        self._on_trade_closed(trade, price, event)
 
     def _expire_trades(self, price: float) -> None:
         if not _past_window_end(self.cfg):
@@ -894,13 +894,64 @@ class GoldBotV2:
                     log.warning(f'[EXPIRE] Live close failed for {trade.ticket} — will retry')
                     continue
             self.journal.log_trade_closed(trade, price, 'EXPIRED')
-            self._on_trade_closed(trade)
+            self._on_trade_closed(trade, price, 'EXPIRED')
 
-    def _on_trade_closed(self, trade: ManagedTrade) -> None:
+    def _on_trade_closed(self, trade: ManagedTrade, close_price: float,
+                         reason: str) -> None:
         self.tm.close_trade(trade)
         self.tm.start_zone_cooldown(trade.zone_id,
                                     int(self.cfg.get('cooldown_minutes', 30)))
         self.tm.save()
+        self._push_trade_kv(trade, close_price, reason)
+
+    def _push_trade_kv(self, trade: ManagedTrade, close_price: float,
+                       reason: str) -> None:
+        """
+        Append the closed trade to KV gold_v2_trades (rolling list, newest
+        last) so gold-zones.html can show the V2 trade history regardless of
+        which host the bot runs on. Field names mirror the V1 CSV columns the
+        page already renders.
+        """
+        try:
+            sign = 1 if trade.direction == 'LONG' else -1
+            pnl  = round(sign * (close_price - trade.entry_price), 1)
+            if reason == 'BE_STOP':
+                result = 'BREAKEVEN'
+            elif reason == 'EXPIRED':
+                result = 'EXPIRED'
+            else:
+                result = 'WIN' if pnl > 0 else ('LOSS' if pnl < 0 else 'BREAKEVEN')
+            entry_dt = trade.entry_dt()
+            rec = {
+                'trade_id':     trade.trade_id,
+                'date':         entry_dt.strftime('%Y-%m-%d'),
+                'time':         entry_dt.strftime('%H:%M:%S'),
+                'zone_id':      trade.zone_id,
+                'direction':    trade.direction,
+                'score':        trade.zone_score,
+                'entry':        trade.entry_price,
+                'sl_pips':      round(abs(trade.entry_price - trade.sl), 1),
+                'close_reason': reason,
+                'close_price':  round(close_price, 2),
+                'pnl_pips':     pnl,
+                'mfe_pips':     trade.mfe_pips,
+                'mae_pips':     trade.mae_pips,
+                'result':       result,
+                'mode':         trade.mode,
+                'sl_basis':     trade.sl_basis,
+                'tp_basis':     trade.tp_basis,
+            }
+            existing = _kv_get('gold_v2_trades', self.base_url) or {}
+            trades = existing.get('trades', [])
+            trades = [t for t in trades if t.get('trade_id') != rec['trade_id']]
+            trades.append(rec)
+            trades = trades[-400:]
+            _kv_put('gold_v2_trades',
+                    {'updated_at': datetime.now(timezone.utc).isoformat(),
+                     'trades': trades},
+                    self.base_url)
+        except Exception as exc:
+            log.debug(f'[KV] trade history push failed: {exc}')
 
     # ── arming & confirmation ─────────────────────────────────────────────────
 
@@ -1055,6 +1106,7 @@ class GoldBotV2:
             ticket=ticket,
             htf_aligned=zone.htf_aligned,
             sl_basis=plan.sl_basis, tp_basis=plan.tp2_basis,
+            zone_score=zone.score,
         )
         self.tm.open_trade(trade)
         self.tm.start_global_cooldown(int(self.cfg.get('global_cooldown_minutes', 10)))
@@ -1093,6 +1145,8 @@ class GoldBotV2:
             'trades_today':  self.tm.trades_today,
             'open_trades':   len(self.tm.open_trades),
             'armed_zones':   list(self.tm.armed.keys()),
+            'armed_detail':  {zid: a.gp_entry_time
+                              for zid, a in self.tm.armed.items()},
             'paper_mode':    paper_mode,
             'squeeze_ratio': self.squeeze_ratio,
             'account_login': _mt5_account_login(),
@@ -1104,6 +1158,62 @@ class GoldBotV2:
                              if self.vol_fc else None),
         }
         _kv_put(KV_STATUS, status, self.base_url)
+
+    @staticmethod
+    def _zone_kv_dict(z: ZoneV2, existing_detected: dict, now_iso: str) -> dict:
+        """
+        Zone → KV dict for gold_v2_zones. Includes the raw contributing legs
+        (the "where did this zone come from" markup for gold-zones.html) plus
+        primary-leg compat fields (fib ladder, swing times, impulse size) so
+        the V1 zone viewer's overlays work unchanged in V2 mode.
+        """
+        d = {
+            'zone_id':       z.zone_id,
+            'tf':            z.tf,
+            'direction':     z.direction,
+            'in_gp':         z.in_gp,
+            'zone_variant':  'gp' if z.in_gp else ('+'.join(z.line_kinds) or 'cluster'),
+            'gp_low':        z.gp_low,
+            'gp_high':       z.gp_high,
+            'centre':        z.centre,
+            'distinct_legs': z.distinct_legs,
+            'line_kinds':    z.line_kinds,
+            'swing_origin':  z.swing_origin,
+            'swing_end':     z.swing_end,
+            'score':         z.score,
+            'htf_aligned':   z.htf_aligned,
+            'composition':   z.composition,
+            'detected_at':   existing_detected.get(z.zone_id, now_iso),
+            'legs': [
+                {
+                    'leg_id':      lg.leg_id,
+                    'tf':          lg.tf,
+                    'origin':      lg.origin,
+                    'end':         lg.end,
+                    'origin_time': lg.origin_time,
+                    'end_time':    lg.end_time,
+                    'size':        lg.size,
+                }
+                for lg in z.legs
+            ],
+        }
+        p = z.primary
+        if p:
+            r    = p.size
+            sign = -1 if z.direction == 'long' else 1
+            base = p.end
+            d.update({
+                'swing_origin_time': p.origin_time,
+                'swing_end_time':    p.end_time,
+                'impulse_size':      p.size,
+                'level_382':         round(base + sign * 0.382 * r, 2),
+                'level_500':         round(base + sign * 0.500 * r, 2),
+                'level_618':         round(base + sign * 0.618 * r, 2),
+                'level_650':         round(base + sign * 0.650 * r, 2),
+                'level_786':         round(base + sign * 0.786 * r, 2),
+                'level_886':         round(base + sign * 0.886 * r, 2),
+            })
+        return d
 
     def _push_zones_kv(self) -> None:
         try:
@@ -1127,26 +1237,8 @@ class GoldBotV2:
                 'open_trades':    len(self.tm.open_trades),
                 'squeeze_ratio':  self.squeeze_ratio,
                 'vol_forecast':   self.vol_fc,
-                'zones': [
-                    {
-                        'zone_id':       z.zone_id,
-                        'tf':            z.tf,
-                        'direction':     z.direction,
-                        'in_gp':         z.in_gp,
-                        'gp_low':        z.gp_low,
-                        'gp_high':       z.gp_high,
-                        'centre':        z.centre,
-                        'distinct_legs': z.distinct_legs,
-                        'line_kinds':    z.line_kinds,
-                        'swing_origin':  z.swing_origin,
-                        'swing_end':     z.swing_end,
-                        'score':         z.score,
-                        'htf_aligned':   z.htf_aligned,
-                        'composition':   z.composition,
-                        'detected_at':   existing_detected.get(z.zone_id, now_iso),
-                    }
-                    for z in self.zones if z.active
-                ],
+                'zones': [self._zone_kv_dict(z, existing_detected, now_iso)
+                          for z in self.zones if z.active],
                 'npoc_stack': [
                     {'price': n.price, 'age_days': n.age_days, 'date': n.date}
                     for n in (self.vol_prof.npoc_stack if self.vol_prof else [])
