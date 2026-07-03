@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Trading Brief</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{
+    --bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);
+    --blue-bg:rgba(79,125,240,.12);--neu-bg:rgba(110,118,129,.15);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+
+  /* ── Header ─────────────────────────────────────────────── */
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);
+       border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700;letter-spacing:.01em}
+  .hdr .sess{font-size:12px;color:var(--text2)}
+  .hdr .spacer{flex:1}
+  .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;
+        padding:5px 12px;font-size:12px;font-weight:600}
+  .hbtn:hover{color:var(--text);border-color:var(--text3)}
+  .news-banner{background:var(--amber-bg);border:1px solid rgba(210,153,34,.45);color:var(--amber);
+        border-radius:6px;padding:4px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+
+  /* ── Summary strip ──────────────────────────────────────── */
+  .wrap{max-width:1500px;margin:0 auto;padding:14px 18px}
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+  .stile{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+  .stile .k{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  .stile .v{font-size:19px;font-weight:700}
+  .stile .s{font-size:11px;color:var(--text2);margin-top:2px}
+
+  /* ── Filter / sort row ──────────────────────────────────── */
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .fchip{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:14px;
+         padding:4px 13px;font-size:12px;font-weight:600}
+  .fchip.on{background:var(--blue-bg);border-color:rgba(79,125,240,.5);color:var(--blue)}
+  .ctl select{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;
+         padding:5px 9px;font-size:12px}
+  .ctl .lbl{font-size:11px;color:var(--text3)}
+
+  /* ── Cards grid ─────────────────────────────────────────── */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+  .pcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;
+         cursor:pointer;transition:border-color .15s}
+  .pcard:hover{border-color:var(--text3)}
+  .pcard.hot{border-color:rgba(210,153,34,.55)}
+  .pc-top{display:flex;align-items:baseline;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+  .pc-name{font-size:15.5px;font-weight:700}
+  .pc-price{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text2)}
+  .pc-top .push{margin-left:auto;display:flex;gap:5px}
+  .chip{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:1.5px 7px;
+        font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+  .chip.bull{background:var(--bull-bg);color:var(--bull)}
+  .chip.bear{background:var(--bear-bg);color:var(--bear)}
+  .chip.range{background:var(--blue-bg);color:var(--blue)}
+  .chip.neu{background:var(--neu-bg);color:var(--text2)}
+  .chip.warn{background:var(--amber-bg);color:var(--amber)}
+  .chip.dim{background:var(--neu-bg);color:var(--text3);font-weight:600}
+  .pc-bias{font-size:11.5px;color:var(--text2);margin-bottom:8px;min-height:17px}
+  .pc-bias b{color:var(--text)}
+
+  /* Range-used meter */
+  .meter-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);margin-bottom:3px}
+  .meter-lbl b{color:var(--text2);font-weight:600}
+  .meter{position:relative;height:14px;background:var(--card2);border-radius:7px;overflow:visible;margin-bottom:12px}
+  .meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--blue);min-width:2px;
+               transition:width .4s}
+  .meter .fill.warn{background:var(--amber)}
+  .meter .fill.max{background:var(--bear)}
+  .meter .tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text3);opacity:.85}
+  .meter .tick.t75{opacity:.5}
+  .meter .tick span{position:absolute;top:15px;left:-8px;font-size:8.5px;color:var(--text3);letter-spacing:.02em}
+
+  /* Level ladder */
+  .ladder{margin:14px 0 8px;font-variant-numeric:tabular-nums}
+  .lrow{display:flex;align-items:center;gap:8px;padding:2.5px 6px;border-radius:5px;font-size:11.5px}
+  .lrow .tag{width:52px;font-size:10px;font-weight:700;letter-spacing:.03em;color:var(--text3)}
+  .lrow.up .tag{color:var(--bull)}
+  .lrow.dn .tag{color:var(--bear)}
+  .lrow .px{width:86px;font-weight:600}
+  .lrow .dist{width:70px;color:var(--text3);font-size:10.5px}
+  .lrow .hit{color:var(--text3);font-size:10.5px;margin-left:auto}
+  .lrow.now{background:var(--card2);border:1px solid var(--border)}
+  .lrow.now .tag{color:var(--text2)}
+  .lrow.near{outline:1px solid rgba(210,153,34,.5)}
+
+  .pc-foot{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  .pc-foot .vol{font-size:11px;color:var(--text2)}
+  .pc-foot .vol b{color:var(--text)}
+
+  /* ── Table view ─────────────────────────────────────────── */
+  .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
+  table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  th{color:var(--text3);text-align:left;font-weight:600;padding:7px 9px;border-bottom:1px solid var(--border);
+     font-size:10px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;white-space:nowrap}
+  td{padding:6px 9px;border-bottom:1px solid rgba(48,54,61,.5);white-space:nowrap}
+  tr.trow{cursor:pointer} tr.trow:hover{background:var(--card2)}
+
+  /* ── Detail drawer ──────────────────────────────────────── */
+  .ovl{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;display:none}
+  .ovl.open{display:block}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(760px,100vw);background:var(--bg);z-index:95;
+          border-left:1px solid var(--border);transform:translateX(102%);transition:transform .22s;overflow-y:auto;padding:16px 20px}
+  .drawer.open{transform:none}
+  .dr-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .dr-top h2{font-size:18px;font-weight:700}
+  .dr-close{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);
+            border-radius:6px;padding:4px 12px;font-size:13px}
+  .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
+  .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+  #drChart{height:300px}
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:9px}
+  .kv .k{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .kv .v{font-size:15px;font-weight:700;margin-top:1px}
+  .zrow{cursor:pointer}
+  .zrow:hover{background:var(--card2)}
+  .decide-out{margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--card2);display:none}
+  .decide-out .big{font-size:22px;font-weight:800}
+  .go{color:var(--bull)} .skip{color:var(--bear)}
+  .factors li{list-style:none;font-size:11.5px;color:var(--text2);margin:2px 0}
+  .muted{color:var(--text3);font-size:11.5px}
+  .err{color:var(--red);font-size:12px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin-top:6px}
+  .legend i{display:inline-block;width:14px;height:0;border-top:2px dashed;margin-right:4px;vertical-align:middle}
+  @media(max-width:640px){ .grid{grid-template-columns:1fr} .lrow .hit{display:none} }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>☀️ Daily Trading Brief</h1>
+  <span class="sess" id="hdrSess">—</span>
+  <span class="news-banner" id="hdrNews" style="display:none"></span>
+  <span class="spacer"></span>
+  <span class="stamp" id="hdrStamp"></span>
+  <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
+  <a class="hbtn" href="index.html">Dashboard</a>
+  <a class="hbtn" href="vol-forecast-v2.html">Vol Forecast v2</a>
+  <a class="hbtn" href="trade-decision-engine.html">Decision Engine</a>
+</div>
+
+<div class="wrap">
+  <div class="summary" id="summary"></div>
+
+  <div class="ctl">
+    <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
+    <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
+    <button class="fchip" data-f="index" onclick="setFilter('index')">Indices</button>
+    <button class="fchip" data-f="commodity" onclick="setFilter('commodity')">Gold</button>
+    <span class="lbl" style="margin-left:8px">Sort</span>
+    <select id="sortSel" onchange="render()">
+      <option value="attention">Attention (hot first)</option>
+      <option value="used">Range used</option>
+      <option value="vol">Vol percentile</option>
+      <option value="trend">Trending first</option>
+      <option value="name">Name</option>
+    </select>
+    <button class="fchip" id="viewBtn" onclick="toggleView()" style="margin-left:auto">☰ Table view</button>
+  </div>
+
+  <div class="grid" id="grid"><div class="muted">Loading forecast…</div></div>
+  <div class="tview" id="tview"></div>
+
+  <div class="muted" style="margin-top:14px" id="footNote"></div>
+</div>
+
+<!-- Detail drawer -->
+<div class="ovl" id="ovl" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="dr-top">
+    <h2 id="drName">—</h2>
+    <span class="chip neu" id="drRegime"></span>
+    <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
+  </div>
+
+  <div class="dr-sec">
+    <h3>Today vs forecast — M5 <span class="muted" id="drChartNote"></span></h3>
+    <div id="drChart"></div>
+    <div class="legend">
+      <span><i style="border-color:#06b6d4"></i>O-H / O-L median</span>
+      <span><i style="border-color:#4f7df0"></i>O-H / O-L 75th</span>
+      <span><i style="border-color:#fbbf24"></i>day high / low</span>
+      <span><i style="border-color:#e6edf3;border-top-style:solid"></i>price</span>
+    </div>
+  </div>
+
+  <div class="dr-sec">
+    <h3>Decision Engine snapshot <span class="chip warn" title="v0 model is a hand-weighted prior — not yet calibrated on outcomes">UNCALIBRATED PRIOR</span></h3>
+    <div class="kv" id="drTdeKv"><span class="muted">loading…</span></div>
+    <div style="max-height:220px;overflow-y:auto;margin-top:10px">
+      <table id="drZones" style="display:none">
+        <thead><tr><th>Zone</th><th>Dist</th><th>Confluence</th><th>Sources</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="decide-out" id="decideOut">
+      <span class="big" id="decideBig"></span>
+      <span class="muted" id="decideMeta" style="margin-left:10px"></span>
+      <ul class="factors" id="decideFactors"></ul>
+    </div>
+    <div class="err" id="drTdeErr" style="margin-top:6px"></div>
+  </div>
+
+  <div class="dr-sec">
+    <h3>Bot level book (stars)</h3>
+    <div style="max-height:240px;overflow-y:auto">
+      <table id="drLevels" style="display:none">
+        <thead><tr><th>Price</th><th>Dir</th><th>Stars</th><th>Tags</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="muted" id="drLevelsNote"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const fmtN = (v, dp) => v == null ? '–' : Number(v).toFixed(dp);
+
+// Map daily-brief instrument NAME → TDE pair key + /api/levels key + display label
+const META = {
+  GOLD:   { tde: 'gold',   lk: 'XAU/USD',    label: 'Gold'    },
+  NQ:     { tde: 'nq',     lk: 'NAS100_USD', label: 'NAS100'  },
+  SPX500: { tde: 'spx',    lk: 'SPX500_USD', label: 'SPX500'  },
+  DE30:   { tde: 'dax',    lk: 'DE30_USD',   label: 'DAX'     },
+  UK100:  { tde: 'ftse',   lk: 'UK100_GBP',  label: 'FTSE100' },
+  US30:   { tde: 'dow',    lk: 'US30_USD',   label: 'DOW30'   },
+  US2000: { tde: 'rut',    lk: 'US2000_USD', label: 'RUS2000' },
+};
+const tdeKey  = n => META[n]?.tde ?? n.toLowerCase();
+const lvlKey  = (n, sym) => META[n]?.lk ?? sym.replace('_', '/');
+const dispName = n => META[n]?.label ?? n.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2');
+
+// State
+let brief = null;        // /api/daily-brief
+let session = null;      // /api/vol-forecast/session (live range used, bias)
+let forecast = null;     // /api/vol-forecast (oc/vov extras)
+let filter = 'all';
+let tableMode = false;
+
+async function jget(url) {
+  const r = await fetch(url);
+  if (!r.ok && r.status !== 202) throw new Error(`${url} → HTTP ${r.status}`);
+  return r.json();
+}
+
+async function loadAll(manual) {
+  try {
+    const [b, s, f] = await Promise.all([
+      jget('/api/daily-brief').catch(e => ({ ok: false, error: e.message })),
+      jget('/api/vol-forecast/session').catch(() => null),
+      jget('/api/vol-forecast').catch(() => null),
+    ]);
+    brief = b; session = s; forecast = f;
+    if (!b?.ok) {
+      $('grid').innerHTML = `<div class="err">Daily brief unavailable: ${b?.error ?? 'no data'} — the forecast may still be computing, or OANDA/R2 keys are missing in this environment.</div>`;
+      return;
+    }
+    renderHeader(); renderSummary(); render();
+  } catch (e) {
+    $('grid').innerHTML = `<div class="err">${e.message}</div>`;
+  }
+}
+
+// ── Derived per-instrument row ────────────────────────────────────────────────
+function rows() {
+  const out = [];
+  for (const [name, d] of Object.entries(brief.instruments ?? {})) {
+    const s  = session?.instruments?.[name] ?? null;
+    const fc = forecast?.instruments?.[name] ?? null;
+    const hlMed = d.levels?.hl_med?.pct ?? fc?.hl_median ?? null;
+    const hl75  = d.levels?.hl_75?.pct  ?? fc?.hl_75 ?? null;
+    const used  = (s?.hl != null && hlMed) ? s.hl / hlMed : null;   // fraction of median H-L consumed
+    const trending = d.regime?.label === 'TREND';
+    // attention: how much this pair deserves a look right now
+    let att = 0;
+    if (used != null) att += Math.min(used, 1.6) * 50;
+    if (trending && d.regime?.reliable) att += 25;
+    if ((d.vol_pct ?? 0) >= 80) att += 15;
+    if (d.news_flag) att += 20;
+    if (s && /Strong/i.test(s.bias_detail ?? '')) att += 15;
+    out.push({ name, d, s, fc, hlMed, hl75, used, trending, att });
+  }
+  return out.filter(r => filter === 'all' || r.d.ac === filter);
+}
+
+function sortRows(rs) {
+  const m = $('sortSel').value;
+  const by = {
+    attention: (a, b) => b.att - a.att,
+    used:      (a, b) => (b.used ?? -1) - (a.used ?? -1),
+    vol:       (a, b) => (b.d.vol_pct ?? 0) - (a.d.vol_pct ?? 0),
+    trend:     (a, b) => (b.trending - a.trending) || (b.d.regime?.trend_prob ?? 0) - (a.d.regime?.trend_prob ?? 0),
+    name:      (a, b) => a.name.localeCompare(b.name),
+  }[m];
+  return rs.sort(by);
+}
+
+// ── Header & summary ──────────────────────────────────────────────────────────
+function renderHeader() {
+  $('hdrSess').textContent = `${brief.session_date ?? ''}${forecast?.session_label ? ' · ' + forecast.session_label : ''}`;
+  const n = $('hdrNews');
+  if (brief.news_flag && (brief.news_mult ?? 1) > 1) {
+    n.style.display = 'flex';
+    n.innerHTML = `⚠ ${brief.news_flag} — ranges scaled ×${brief.news_mult}`;
+  } else n.style.display = 'none';
+  const stamps = [];
+  if (forecast?.computed_at) stamps.push(`forecast ${new Date(forecast.computed_at).toLocaleTimeString()}`);
+  if (session?.fetched_at)   stamps.push(`live ${new Date(session.fetched_at).toLocaleTimeString()}`);
+  if (brief.has_hit_rates && brief.hit_rates_age) stamps.push(`hit-rates ${new Date(brief.hit_rates_age).toLocaleDateString()}`);
+  $('hdrStamp').textContent = stamps.join(' · ');
+}
+
+function renderSummary() {
+  const rs = rows();
+  const trending = rs.filter(r => r.trending);
+  const up   = trending.filter(r => r.d.regime?.trend_dir === 'up').length;
+  const down = trending.filter(r => r.d.regime?.trend_dir === 'down').length;
+  const hot  = rs.filter(r => (r.used ?? 0) >= 0.8);
+  const hiVol = rs.filter(r => (r.d.vol_pct ?? 0) >= 80);
+  const topUsed = rs.slice().sort((a, b) => (b.used ?? -1) - (a.used ?? -1))[0];
+  const liveOk = rs.some(r => r.s);
+  $('summary').innerHTML = `
+    <div class="stile"><div class="k">Regime mix</div>
+      <div class="v">${trending.length} <span style="font-size:12px;font-weight:600;color:var(--text2)">trend</span> · ${rs.length - trending.length} <span style="font-size:12px;font-weight:600;color:var(--text2)">range</span></div>
+      <div class="s">${up}↑ / ${down}↓ trending of ${rs.length} instruments</div></div>
+    <div class="stile"><div class="k">Range consumed</div>
+      <div class="v">${liveOk ? hot.length : '–'}</div>
+      <div class="s">${liveOk ? `≥80% of expected range${topUsed?.used != null ? ` · max ${dispName(topUsed.name)} ${(100 * topUsed.used).toFixed(0)}%` : ''}` : 'live session feed unavailable'}</div></div>
+    <div class="stile"><div class="k">Elevated vol</div>
+      <div class="v">${hiVol.length}</div>
+      <div class="s">instruments ≥80th vol percentile</div></div>
+    <div class="stile"><div class="k">Event risk</div>
+      <div class="v">${brief.news_flag ? '⚠' : '—'}</div>
+      <div class="s">${brief.news_flag ? `${brief.news_flag} (×${brief.news_mult})` : 'no high-impact flag on today'}</div></div>`;
+}
+
+// ── Card rendering ────────────────────────────────────────────────────────────
+function regimeChip(d) {
+  const r = d.regime;
+  if (!r) return `<span class="chip neu">NO REGIME</span>`;
+  if (r.label === 'TREND') {
+    const upD = r.trend_dir === 'up';
+    return `<span class="chip ${upD ? 'bull' : 'bear'}">${upD ? '▲ TREND UP' : '▼ TREND DOWN'} ${r.trend_prob}%</span>`;
+  }
+  return `<span class="chip range">↔ RANGE ${r.range_prob}%</span>`;
+}
+function sizeChip(d) {
+  const r = d.regime;
+  if (!r?.sizing_label) return '';
+  const cls = r.sizing_label === 'Full' ? 'bull' : r.sizing_label === 'Moderate' ? 'warn' : 'dim';
+  return `<span class="chip ${cls}" title="suggested size multiplier from regime confidence">${r.sizing_label} ×${r.sizing_mult}</span>`;
+}
+function biasLine(r) {
+  if (!r.s) return `<span class="muted">no live session data</span>`;
+  const b = r.s.bias_detail ?? r.s.bias ?? '';
+  const arrow = /bull/i.test(b) ? '▲ ' : /bear/i.test(b) ? '▼ ' : '';
+  return `<b>${arrow}${b}</b>${r.s.shape ? ` · ${r.s.shape}` : ''}${r.s.dir != null ? ` · directionality ${Math.round(r.s.dir)}%` : ''}`;
+}
+
+function meterHtml(r) {
+  if (r.used == null || !r.hlMed) {
+    return `<div class="meter-lbl"><span>Expected range used</span><b>–</b></div>
+            <div class="meter"><div class="tick" style="left:70%"><span>med</span></div></div>`;
+  }
+  const scale = (r.hl75 ?? r.hlMed * 1.3) * 1.15;              // full bar = 75th +15%
+  const w  = Math.min(100, 100 * (r.s.hl / scale));
+  const tM = Math.min(98, 100 * (r.hlMed / scale));
+  const t7 = Math.min(98, 100 * ((r.hl75 ?? r.hlMed) / scale));
+  const pct = 100 * r.used;
+  const cls = pct >= 100 ? 'max' : pct >= 80 ? 'warn' : '';
+  return `<div class="meter-lbl"><span>Expected range used</span>
+            <b>${pct.toFixed(0)}% of median${pct >= 100 ? ' — beyond typical day' : ''}</b></div>
+          <div class="meter">
+            <div class="fill ${cls}" style="width:${w}%"></div>
+            <div class="tick" style="left:${tM}%"><span>med</span></div>
+            <div class="tick t75" style="left:${t7}%"><span>75th</span></div>
+          </div>`;
+}
+
+function ladderHtml(r) {
+  const d = r.d, L = d.levels ?? {};
+  const px = d.current_price;
+  const pipSz = d.sym.includes('JPY') ? 0.01 : (d.ac === 'fx' ? 0.0001 : 1);
+  const unit  = d.ac === 'fx' ? 'p' : 'pt';
+  const dist = p => (px != null && p != null) ? `${Math.abs((p - px) / pipSz).toFixed(0)}${unit}` : '';
+  const hit  = l => l?.hit_pct != null ? `hits ${Math.round(l.hit_pct)}%${l.median_utc ? ` · ~${l.median_utc}` : ''}` : '';
+  const rowsDef = [
+    ['OH 75',  L.oh_75,  'up'], ['OH med', L.oh_med, 'up'],
+    ['NOW',    null,     'now'],
+    ['OL med', L.ol_med, 'dn'], ['OL 75',  L.ol_75,  'dn'],
+  ];
+  // nearest level flag
+  let nearTag = null, nearD = Infinity;
+  for (const [tag, l] of rowsDef) {
+    if (!l?.price || px == null) continue;
+    const dd = Math.abs(l.price - px);
+    if (dd < nearD) { nearD = dd; nearTag = tag; }
+  }
+  const nearPips = isFinite(nearD) && px != null ? nearD / pipSz : null;
+  return `<div class="ladder">` + rowsDef.map(([tag, l, cls]) => {
+    if (cls === 'now') {
+      return `<div class="lrow now"><span class="tag">NOW</span><span class="px">${px != null ? fmtN(px, d.dp) : 'no live price'}</span>
+              <span class="hit">${nearTag && nearPips != null && nearPips <= 25 ? `⚑ ${nearTag} ${nearPips.toFixed(0)}${unit} away` : ''}</span></div>`;
+    }
+    return `<div class="lrow ${cls} ${tag === nearTag && nearPips != null && nearPips <= 25 ? 'near' : ''}">
+      <span class="tag">${tag}</span>
+      <span class="px">${l?.price != null ? fmtN(l.price, d.dp) : '–'}</span>
+      <span class="dist">${dist(l?.price)}</span>
+      <span class="hit">${hit(l)}</span></div>`;
+  }).join('') + `</div>`;
+}
+
+function cardHtml(r) {
+  const d = r.d;
+  const volPct = d.vol_pct;
+  const volCls = volPct >= 80 ? 'warn' : volPct <= 20 ? 'dim' : 'neu';
+  const rangePts = d.levels?.hl_med?.range_pts;
+  return `<div class="pcard ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''}" onclick="openDrawer('${r.name}')">
+    <div class="pc-top">
+      <span class="pc-name">${dispName(r.name)}</span>
+      <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
+      <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
+    </div>
+    <div class="pc-bias">${biasLine(r)}</div>
+    ${meterHtml(r)}
+    ${ladderHtml(r)}
+    <div class="pc-foot">
+      <span class="chip ${volCls}" title="annualised vol + its percentile vs history (P80 = higher than 80% of days)">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>
+      ${rangePts != null ? `<span class="vol">expected day range <b>${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}</b> (med)</span>` : ''}
+      ${d.news_flag ? `<span class="chip warn">⚠ ${d.news_flag} ×${d.news_mult}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+function tableHtml(rs) {
+  const row = r => {
+    const d = r.d;
+    return `<tr class="trow" onclick="openDrawer('${r.name}')">
+      <td><b>${dispName(r.name)}</b></td>
+      <td>${d.current_price != null ? fmtN(d.current_price, d.dp) : '–'}</td>
+      <td>${regimeChip(d)}</td>
+      <td>${r.s?.bias_detail ?? '–'}</td>
+      <td>${r.used != null ? (100 * r.used).toFixed(0) + '%' : '–'}</td>
+      <td>${d.vol_pct != null ? 'P' + d.vol_pct : '–'}</td>
+      <td>${d.levels?.hl_med?.range_pts ?? '–'}</td>
+      <td>${fmtN(d.levels?.oh_med?.price, d.dp)}</td>
+      <td>${fmtN(d.levels?.ol_med?.price, d.dp)}</td>
+      <td>${d.regime?.sizing_label ?? '–'}</td>
+      <td>${d.news_flag ? '⚠ ' + d.news_flag : ''}</td>
+    </tr>`;
+  };
+  return `<table>
+    <thead><tr><th>Pair</th><th>Price</th><th>Regime</th><th>Session bias</th><th>Range used</th>
+    <th>Vol %ile</th><th>Exp range</th><th>OH med</th><th>OL med</th><th>Size</th><th>News</th></tr></thead>
+    <tbody>${rs.map(row).join('')}</tbody></table>`;
+}
+
+function render() {
+  const rs = sortRows(rows());
+  if (tableMode) {
+    $('grid').style.display = 'none';
+    $('tview').style.display = 'block';
+    $('tview').innerHTML = tableHtml(rs);
+  } else {
+    $('tview').style.display = 'none';
+    $('grid').style.display = 'grid';
+    $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
+  }
+  $('footNote').textContent = 'Range-used = today\'s H-L vs the median forecast H-L. Ladder = open±median/75th forecast levels with historical touch rates. Sizing chip = regime-confidence multiplier from the daily brief. Click a card for the M5 chart, the Decision Engine zone map and the bot level book.';
+}
+
+function setFilter(f) {
+  filter = f;
+  document.querySelectorAll('.fchip[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f));
+  renderSummary(); render();
+}
+function toggleView() {
+  tableMode = !tableMode;
+  $('viewBtn').textContent = tableMode ? '▦ Card view' : '☰ Table view';
+  render();
+}
+
+// ── Detail drawer ─────────────────────────────────────────────────────────────
+let drChart = null, drSeries = null, drName = null;
+
+function closeDrawer() {
+  $('ovl').classList.remove('open');
+  $('drawer').classList.remove('open');
+  if (drChart) { try { drChart.remove(); } catch (e) {} drChart = null; drSeries = null; }
+}
+
+async function openDrawer(name) {
+  drName = name;
+  const r = rows().find(x => x.name === name) ?? { d: brief.instruments[name], s: session?.instruments?.[name], fc: forecast?.instruments?.[name] };
+  const d = r.d;
+  $('drName').textContent = dispName(name);
+  $('drRegime').textContent = d.regime ? (d.regime.label === 'TREND' ? `TREND ${d.regime.trend_dir === 'up' ? '▲' : '▼'} ${d.regime.trend_prob}%` : `RANGE ${d.regime.range_prob}%`) : 'no regime';
+  $('ovl').classList.add('open');
+  $('drawer').classList.add('open');
+  $('decideOut').style.display = 'none';
+  $('drTdeErr').textContent = '';
+  $('drChart').innerHTML = '<div class="muted" style="padding:20px">loading candles…</div>';
+  $('drChartNote').textContent = '';
+  loadDrawerChart(r).catch(e => {
+    const hint = /OANDA|HTTP|candles/.test(e.message) ? ' — OANDA feed is Railway-only (expected locally).' : '';
+    $('drChart').innerHTML = `<div class="err" style="padding:20px">${e.message}${hint}</div>`;
+  });
+  loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
+  loadDrawerLevels(name, d.sym).catch(() => {});
+}
+
+async function loadDrawerChart(r) {
+  if (typeof LightweightCharts === 'undefined') throw new Error('Chart library not loaded (CDN unreachable in this environment)');
+  const d = r.d;
+  const resp = await jget(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(d.sym)}`);
+  if (!resp.values?.length) throw new Error(resp.error ?? 'no candles');
+  // newest-first → ascending; datetime is London local 'YYYY-MM-DD HH:MM:SS'
+  const asc = resp.values.slice().reverse();
+  const bars = asc.map(b => ({
+    time: Math.floor(new Date(b.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+    open: +b.open, high: +b.high, low: +b.low, close: +b.close,
+  }));
+  const todayKey = asc[asc.length - 1].datetime.slice(0, 10);
+  const todayBars = asc.filter(b => b.datetime.startsWith(todayKey));
+  const dayOpen = todayBars.length ? +todayBars[0].open : +asc[asc.length - 1].close;
+  const dayHigh = todayBars.length ? Math.max(...todayBars.map(b => +b.high)) : null;
+  const dayLow  = todayBars.length ? Math.min(...todayBars.map(b => +b.low))  : null;
+  const last    = bars[bars.length - 1];
+
+  const fc = r.fc ?? {};
+  const lines = [];
+  const addPct = (pct, side, color, style, title) => {
+    if (pct == null) return;
+    lines.push({ price: dayOpen * (1 + side * pct / 100), color, style, title });
+  };
+  const LS = LightweightCharts.LineStyle;
+  addPct(fc.oh_median, +1, '#06b6d4', LS.Dotted, 'OH med');
+  addPct(fc.ol_median, -1, '#06b6d4', LS.Dotted, 'OL med');
+  addPct(fc.oh_75,     +1, '#4f7df0', LS.Dashed, 'OH 75');
+  addPct(fc.ol_75,     -1, '#4f7df0', LS.Dashed, 'OL 75');
+  if (dayHigh != null) lines.push({ price: dayHigh, color: '#fbbf24', style: LS.Dashed, title: 'day H' });
+  if (dayLow  != null) lines.push({ price: dayLow,  color: '#fbbf24', style: LS.Dashed, title: 'day L' });
+  const levelPrices = lines.map(l => l.price);
+
+  $('drChart').innerHTML = '';
+  drChart = LightweightCharts.createChart($('drChart'), {
+    width: $('drChart').clientWidth || 700, height: 300,
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9da7b3', fontSize: 10 },
+    grid: { vertLines: { color: 'rgba(48,54,61,.35)' }, horzLines: { color: 'rgba(48,54,61,.35)' } },
+    timeScale: { timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+    rightPriceScale: { scaleMargins: { top: 0.08, bottom: 0.08 } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  });
+  drSeries = drChart.addCandlestickSeries({
+    upColor: '#10b981', downColor: '#f97316',
+    borderUpColor: '#10b981', borderDownColor: '#f97316',
+    wickUpColor: '#10b981', wickDownColor: '#f97316',
+    autoscaleInfoProvider: orig => {
+      const base = orig();
+      if (!base?.priceRange || !levelPrices.length) return base;
+      return { ...base, priceRange: {
+        minValue: Math.min(base.priceRange.minValue, ...levelPrices),
+        maxValue: Math.max(base.priceRange.maxValue, ...levelPrices),
+      } };
+    },
+  });
+  drSeries.setData(bars);
+  const upDay = last.close >= dayOpen;
+  lines.push({ price: last.close, color: upDay ? '#10b981' : '#f97316', style: LS.Solid, title: upDay ? '▲' : '▼' });
+  lines.forEach(l => drSeries.createPriceLine({ price: l.price, color: l.color, lineStyle: l.style, lineWidth: 1, title: l.title, axisLabelVisible: true }));
+  drChart.timeScale().fitContent();
+  $('drChartNote').textContent = `· open ${fmtN(dayOpen, r.d.dp)} · ${todayBars.length} bars today`;
+}
+
+async function loadDrawerTde(name) {
+  $('drTdeKv').innerHTML = '<span class="muted">loading…</span>';
+  $('drZones').style.display = 'none';
+  const pair = tdeKey(name);
+  const s = await jget(`/api/trade-decision/state/${pair}`);
+  if (!s.ok) {
+    $('drTdeKv').innerHTML = `<span class="muted">${s.error ?? 'no snapshot'} — snapshots warm on Railway (TDE_PAIRS) or on the first live decide.</span>`;
+    return;
+  }
+  const pc = x => x == null ? '–' : (100 * x).toFixed(0) + '%';
+  $('drTdeKv').innerHTML = `
+    <div><div class="k">Regime</div><div class="v">${s.regime ?? '–'}</div></div>
+    <div><div class="k">Trend-day T</div><div class="v">${s.T != null ? s.T.toFixed(2) : '–'}</div></div>
+    <div><div class="k">σ daily</div><div class="v">${s.sigmaDaily != null ? (100 * s.sigmaDaily).toFixed(2) + '%' : '–'}</div></div>
+    <div><div class="k">Vol %ile</div><div class="v">${pc(s.volPct)}</div></div>
+    ${s.intraday ? `
+    <div><div class="k">Range used</div><div class="v">${pc(s.intraday.rangeUsed)}</div></div>
+    <div><div class="k">Pos in range</div><div class="v">${pc(s.intraday.posInRange)}</div></div>
+    <div><div class="k">VWAP dist</div><div class="v">${s.intraday.vwapDistSigma ?? '–'}σ</div></div>` : ''}
+    <div><div class="k">News events</div><div class="v">${s.calendar_events ?? 0}</div></div>
+    <div><div class="k">Snapshot age</div><div class="v">${s.age_ms != null ? Math.round(s.age_ms / 1000) + 's' : '–'}</div></div>`;
+  const zones = (s.zones ?? []).slice();
+  if (!zones.length) return;
+  const sigmaAbs = (s.sigmaDaily ?? 0) * (s.dayOpen ?? s.price ?? 1);
+  zones.sort((a, b) => Math.abs(a.price - (s.price ?? 0)) - Math.abs(b.price - (s.price ?? 0)));
+  const tb = $('drZones').querySelector('tbody');
+  tb.innerHTML = zones.slice(0, 12).map(z => {
+    const dSig = sigmaAbs ? ((z.price - s.price) / sigmaAbs).toFixed(2) : '?';
+    return `<tr class="zrow">
+      <td><b>${z.price}</b></td><td class="muted">${dSig}σ</td><td>${z.count}</td>
+      <td class="muted">${(z.sources ?? []).slice(0, 4).join(', ')}</td>
+      <td><button class="hbtn" style="padding:2px 9px;font-size:11px" onclick="event.stopPropagation();decideAt('${name}',${z.price})">Decide ▸</button></td></tr>`;
+  }).join('');
+  $('drZones').style.display = 'table';
+}
+
+async function decideAt(name, price) {
+  $('decideOut').style.display = 'block';
+  $('decideBig').textContent = '…';
+  $('decideBig').className = 'big';
+  $('decideMeta').textContent = '';
+  $('decideFactors').innerHTML = '';
+  try {
+    const r = await fetch('/api/trade-decision/decide', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pair: tdeKey(name), price, mode: 'live' }),
+    }).then(x => x.json());
+    if (r.error && !r.decision) throw new Error(r.error);
+    const go = r.decision === 'go';
+    $('decideBig').textContent = go ? '✓ GO' : '✗ SKIP';
+    $('decideBig').className = 'big ' + (go ? 'go' : 'skip');
+    $('decideMeta').textContent =
+      `${r.direction ?? ''} ${r.action ?? ''} · ${r.probability != null ? (100 * r.probability).toFixed(1) + '%' : 'gated'} · size ×${r.size_multiplier ?? 0}` +
+      (r.reasons?.length ? ` · ${r.reasons.join(', ')}` : '');
+    $('decideFactors').innerHTML = (r.top_factors ?? []).slice(0, 5).map(f => `<li>${f}</li>`).join('');
+  } catch (e) {
+    $('decideBig').textContent = '—';
+    $('decideMeta').textContent = e.message;
+  }
+}
+
+async function loadDrawerLevels(name, sym) {
+  $('drLevels').style.display = 'none';
+  $('drLevelsNote').textContent = 'loading…';
+  const r = await jget('/api/levels');
+  const key = lvlKey(name, sym);
+  const list = r.pairs?.[key];
+  if (!list?.length) { $('drLevelsNote').textContent = `no bot levels loaded for ${key}`; return; }
+  const tb = $('drLevels').querySelector('tbody');
+  tb.innerHTML = list.slice(0, 14).map(l => `<tr>
+    <td><b>${l.price}</b></td>
+    <td>${l.direction === 'long' ? '▲ long' : l.direction === 'short' ? '▼ short' : '–'}</td>
+    <td>${'★'.repeat(Math.min(5, l.stars ?? 0)) || '–'}</td>
+    <td class="muted">${l.tags ?? ''}</td></tr>`).join('');
+  $('drLevels').style.display = 'table';
+  $('drLevelsNote').textContent = `loaded ${r.loadedAt ? new Date(r.loadedAt).toLocaleString() : '–'} · ${list.length} levels`;
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+// ── Boot + refresh cadence ────────────────────────────────────────────────────
+loadAll();
+setInterval(async () => {           // live session + brief refresh (prices/regime move)
+  try {
+    const [s, b] = await Promise.all([
+      jget('/api/vol-forecast/session').catch(() => null),
+      jget('/api/daily-brief').catch(() => null),
+    ]);
+    if (s?.ok) session = s;
+    if (b?.ok) brief = b;
+    renderHeader(); renderSummary(); render();
+  } catch (e) {}
+}, 60_000);
+setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) forecast = f; }).catch(() => {}); }, 5 * 60_000);
+</script>
+</body>
+</html>
