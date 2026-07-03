@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from volatility_bot.engine import SessionTracker, decide, session_open_epoch  # noqa: E402
+from volatility_bot.engine import SessionTracker, decide, session_open_epoch, ride_trail_stop  # noqa: E402
 from volatility_bot.volatility_bot import _max_spread                          # noqa: E402
 
 PP = {"open": 1.10, "sigma": 0.006, "hl50": 0.0094, "hl75": 0.0123, "ocMed": 0.0040, "oc75": 0.0069}
@@ -45,6 +45,32 @@ def test_decide_skips_when_no_policy_cell():
     tr = _spike_tracker()
     specs = decide(PP, {}, tr, 1.111)               # touched but no tradeable cell
     assert specs == []
+
+
+def test_min_expectancy_gate_skips_thin_cells():
+    # The ride A/B variant gates on expectancy — a cell below the gate is skipped
+    # (below_ride_gate), reproducing buildPolicy(marginPct=gate) off the same plan.
+    tr = _spike_tracker()
+    policy = {"HL50_up|3·spike": {"decision": "fade", "expectancy": 0.02}}
+    assert decide(PP, policy, tr, 1.111, min_expectancy=0.05) == []
+    assert tr.audit["HL50_up"]["status"] == "skip" and tr.audit["HL50_up"]["reason"] == "below_ride_gate"
+
+
+def test_min_expectancy_gate_keeps_strong_cells():
+    tr = _spike_tracker()
+    policy = {"HL50_up|3·spike": {"decision": "fade", "expectancy": 0.08}}
+    specs = decide(PP, policy, tr, 1.111, min_expectancy=0.05)
+    assert len(specs) == 1 and tr.audit["HL50_up"]["status"] == "traded"
+
+
+def test_ride_trail_stop_ratchets_and_never_loosens():
+    # long: entry 100, disaster stop 98 (R=2), trail 0.5·R=1.0 below the running high.
+    sl = ride_trail_stop(True, 100, 98, 101, 98.0)      # high 101 → 100.0
+    assert sl == 100.0
+    assert ride_trail_stop(True, 100, 98, 100.5, sl) == 100.0   # lower high → holds (ratchet)
+    assert ride_trail_stop(True, 100, 98, 103, sl) == 102.0     # new high → tightens to 102
+    # short mirrors: entry 100, disaster stop 102, low 99 → 100.0
+    assert ride_trail_stop(False, 100, 102, 99, 102.0) == 100.0
 
 
 def test_audit_records_trade_and_skip_reasons():
