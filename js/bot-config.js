@@ -2987,7 +2987,9 @@ loadMeLiveStatus();
 const VB_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
+  broker_symbols: {},  // { nq:'USTECH100', spx:'SP500', de30:'GER40', … } — blank = built-in default
 };
+const VB_INDEX_KEYS = ['nq', 'spx', 'de30', 'us30', 'us2000', 'uk100'];
 let _vbCfg = { ...VB_DEFAULTS };
 // Cached latest status + plan so the live-lines modal reads a row without refetch.
 let _vbLastStatus = null, _vbLastPlan = null;
@@ -3005,6 +3007,8 @@ function renderVbForm() {
   set('vb_status_secs',     _vbCfg.status_secs     ?? VB_DEFAULTS.status_secs);
   set('vb_plan_secs',       _vbCfg.plan_secs       ?? VB_DEFAULTS.plan_secs);
   set('vb_enabled_pairs',  (_vbCfg.enabled_pairs ?? []).join(', '));
+  const syms = _vbCfg.broker_symbols || {};
+  VB_INDEX_KEYS.forEach(k => { const el = document.getElementById(`vb_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
 }
 
 function readVbForm() {
@@ -3020,6 +3024,9 @@ function readVbForm() {
   _vbCfg.plan_secs       = Math.round(num('vb_plan_secs', VB_DEFAULTS.plan_secs));
   _vbCfg.enabled_pairs   = (document.getElementById('vb_enabled_pairs')?.value || '')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const syms = {};
+  VB_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`vb_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
+  _vbCfg.broker_symbols = syms;
 }
 
 async function loadVbConfig() {

@@ -3226,6 +3226,24 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
       </div>
     </div>
 
+    <!-- ── Broker index symbols (override per broker) ────────────────────────── -->
+    <div class="card">
+      <div class="card-title">Broker Symbols — Indices</div>
+      <div class="bot-banner-sub" style="margin-bottom:10px">Brokers name the index CFDs differently. Set what YOUR MT5 broker calls each one (leave blank to use the built-in default in brackets). FX pairs and gold resolve automatically.</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+        <div class="form-row"><span class="form-lbl">NASDAQ 100 <small>nq</small></span><input type="text" id="vb_sym_nq" placeholder="USTECH100" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">S&amp;P 500 <small>spx</small></span><input type="text" id="vb_sym_spx" placeholder="SP500" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">DAX 40 <small>de30</small></span><input type="text" id="vb_sym_de30" placeholder="GER40" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Dow 30 <small>us30</small></span><input type="text" id="vb_sym_us30" placeholder="US30" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Russell 2000 <small>us2000</small></span><input type="text" id="vb_sym_us2000" placeholder="US2000" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">UK 100 <small>uk100</small></span><input type="text" id="vb_sym_uk100" placeholder="UK100" style="width:140px;text-align:left"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+        <button class="btn-save" style="background:#e0a93b;color:#1a1400" onclick="saveVbConfig()">Save Symbols</button>
+        <span class="bot-banner-sub" style="margin:0">saved with the config — applies on the bot's next config refresh (no restart needed for FX; restart needed for live index trades)</span>
+      </div>
+    </div>
+
   </div><!-- /tab-volatility -->
 
   <!-- ══════════════════════════════════════════════════════ RANGE-LINE TAB -->

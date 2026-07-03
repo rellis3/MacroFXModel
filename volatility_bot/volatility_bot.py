@@ -51,6 +51,9 @@ DEFAULT_CFG = {
     "status_secs": 30,            # read config (kill/paper toggle) + push status
     "tick_secs": 3,               # local price watch + touch detection
     "enabled_pairs": [],           # [] = use the plan's survivor universe
+    "broker_symbols": {},          # broker-specific MT5 names for index CFDs
+                                   # e.g. {"nq": "USTECH100", "spx": "SP500", "de30": "GER40"}
+                                   # blank keys fall back to the built-in defaults below
 }
 
 
@@ -82,7 +85,20 @@ def make_broker(cfg: dict):
     if cfg.get("paper_mode", True):
         return PaperBroker(balance=10_000.0), True
     from pylego.broker.mt5 import Mt5Broker
-    broker = Mt5Broker(MAGIC, _broker_sym, I.pip_size, log=log)
+    # Merge user-configured overrides (from the config page) on top of the built-in
+    # defaults. User config wins — lets the config page fix broker naming without a
+    # code change.
+    user_overrides = {k.lower(): v for k, v in (cfg.get("broker_symbols") or {}).items() if v}
+    merged = {**_BROKER_OVERRIDE, **user_overrides}
+    def _sym(pair: str) -> str:
+        p = pair.lower()
+        if p in merged:
+            return merged[p]
+        try:
+            return I.mt5_symbol(pair) or pair.upper()
+        except Exception:
+            return pair.upper()
+    broker = Mt5Broker(MAGIC, _sym, I.pip_size, log=log)
     if not broker.available:
         log.warning("live requested but MetaTrader5 missing — falling back to PAPER")
         return PaperBroker(balance=10_000.0), True

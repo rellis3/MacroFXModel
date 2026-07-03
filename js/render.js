@@ -335,6 +335,71 @@ function renderAllInner() {
     } catch { return ''; }
   })();
 
+  const setupsHtml = `
+    <div class="sec-lbl">
+      Trade Setups
+      <span class="sec-badge green">MULTI-LAYER</span>
+      <span id="entryScannerCount" class="count-badge" style="display:none"></span>
+    </div>
+    <div class="hint" style="margin-bottom:8px">
+      <strong>How entry stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot · +★ OI wall · +★ signal aligned · +★ gamma flip / range boundary. Max 5★. More sources = higher probability.
+    </div>
+    <div id="entryScannerCard"></div>
+
+    <div class="sec-lbl">
+      Level Map
+      <span class="sec-badge purple">TIER 2</span>
+      <span class="count-badge" title="${!_showAllZones && _rawZoneCount > enhanced.length ? `${_rawZoneCount} total zones — ${_rawZoneCount - enhanced.length} removed (outside 4× ATR window or weak density)` : ''}">${_zoneCountLabel}</span>
+      <span onclick="window.toggleShowAllZones()" style="cursor:pointer;font-size:10px;font-weight:500;color:${_showAllZones ? 'var(--orange,#f59e0b)' : 'var(--text3)'};margin-left:6px;user-select:none" title="${_showAllZones ? 'Showing all zones — click to filter to 4× ATR window' : 'Click to show all zones beyond 4× ATR window'}">${_showAllZones ? '▲ Filter' : '▼ Show all'}</span>
+    </div>
+    ${(() => {
+      const ds = window._lastDecisionState;
+      if (!ds || ds.mode === 'NO_TRADE') return ds ? `<div style="font-size:10px;color:var(--text3);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:8px">⛔ Decision Engine: NO TRADE — ${ds.reasons[0] ?? 'conditions not met'}</div>` : '';
+      const modeCol = ds.mode === 'TREND_CONTINUATION' ? 'var(--green)' : ds.mode === 'MEAN_REVERSION' ? 'var(--blue)' : ds.mode === 'EXHAUSTION' ? 'var(--red)' : '#f59e0b';
+      const p = ds.permissions;
+      const chips = [
+        p.long     ? '<span style="color:var(--green);font-weight:700">↑L</span>' : '<span style="color:var(--text3);text-decoration:line-through">↑L</span>',
+        p.short    ? '<span style="color:var(--red);font-weight:700">↓S</span>'   : '<span style="color:var(--text3);text-decoration:line-through">↓S</span>',
+        p.breakout ? '<span style="color:#f59e0b;font-weight:700">BRK</span>'     : '<span style="color:var(--text3);text-decoration:line-through">BRK</span>',
+        p.fade     ? '<span style="color:var(--blue);font-weight:700">FADE</span>': '<span style="color:var(--text3);text-decoration:line-through">FADE</span>',
+      ].join(' · ');
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:10px;background:${modeCol}08;border:1px solid ${modeCol}33;border-radius:6px;padding:5px 10px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-weight:700;color:${modeCol}">${ds.mode.replace(/_/g,' ')}</span>
+        <span style="color:var(--border2)">·</span>
+        <span style="color:var(--text3)">${ds.participation}</span>
+        <span style="color:var(--border2)">·</span>
+        ${chips}
+        <span style="color:var(--border2)">·</span>
+        <span style="color:var(--text3)">Risk ${ds.riskMult.toFixed(2)}×</span>
+      </div>`;
+    })()}
+
+    <div class="hint">
+      <strong>How stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot/OI · +★ PDH/PDL · +★ PWH/PWL · +★ daily Fib · +★ structural Fib · +★ RSI/WT divergence. Max 5★. Tight levels (🟢) overlap two sessions — highest-probability zones.
+    </div>
+
+    <div class="legend">
+      <div class="lg-item"><div class="lg-bar green"></div>Tight (<${(getConfluenceThreshold(S.currentPair.symbol) * 0.1).toFixed(1)} ${S.currentPair.isEquity ? 'pts' : 'pips'})</div>
+      <div class="lg-item"><div class="lg-bar orange"></div>Normal (<${getConfluenceThreshold(S.currentPair.symbol)} ${S.currentPair.isEquity ? 'pts' : 'pips'})</div>
+      <div class="lg-item">📍 Asia · 🗓️ Monday</div>
+    </div>
+
+    <div class="conf-sort-bar">
+      ${['stars','price','proximity'].map(m => `<button
+        class="conf-sort-btn${_confSortMode === m ? ' active' : ''}"
+        onclick="window.setConfSortMode('${m}')">${m === 'stars' ? '★ Stars' : m === 'price' ? '$ Price' : '📍 Proximity'}</button>`).join('')}
+    </div>
+
+    <div class="card">
+      ${enhanced.length > 0 ? renderConfluences(sortConfluences(enhanced, _confSortMode), quote.price, pipSize, digits, tierData, approachArrow) :
+        `<div class="empty-state">
+          <div class="em-icon">🎯</div>
+          <div>No confluences detected for this session.</div>
+          <div style="font-size:11px;margin-top:5px">Asia/Monday session ranges may be too narrow, or OHLC data not yet loaded.</div>
+        </div>`}
+    </div>
+  `;
+
   const html = `
 <!-- SUPPRESSED ALERTS BANNER -->
 ${suppressedBanner}
@@ -717,70 +782,27 @@ ${calendarCtx.warnings.length > 0 ? `
     </div>
     <div id="signalEngineCard"></div>
 
-    <!-- ENTRY SCANNER -->
-    <div class="sec-lbl">
-      Trade Setups
-      <span class="sec-badge green">MULTI-LAYER</span>
-      <span id="entryScannerCount" class="count-badge" style="display:none"></span>
-    </div>
-    <div class="hint" style="margin-bottom:8px">
-      <strong>How entry stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot · +★ OI wall · +★ signal aligned · +★ gamma flip / range boundary. Max 5★. More sources = higher probability.
-    </div>
-    <div id="entryScannerCard"></div>
-
-    <!-- CONFLUENCES -->
-    <div class="sec-lbl">
-      Level Map
-      <span class="sec-badge purple">TIER 2</span>
-      <span class="count-badge" title="${!_showAllZones && _rawZoneCount > enhanced.length ? `${_rawZoneCount} total zones — ${_rawZoneCount - enhanced.length} removed (outside 4× ATR window or weak density)` : ''}">${_zoneCountLabel}</span>
-      <span onclick="window.toggleShowAllZones()" style="cursor:pointer;font-size:10px;font-weight:500;color:${_showAllZones ? 'var(--orange,#f59e0b)' : 'var(--text3)'};margin-left:6px;user-select:none" title="${_showAllZones ? 'Showing all zones — click to filter to 4× ATR window' : 'Click to show all zones beyond 4× ATR window'}">${_showAllZones ? '▲ Filter' : '▼ Show all'}</span>
-    </div>
+    <!-- NEAREST LEVEL CHIP + SETUPS MODAL TRIGGER -->
     ${(() => {
-      const ds = window._lastDecisionState;
-      if (!ds || ds.mode === 'NO_TRADE') return ds ? `<div style="font-size:10px;color:var(--text3);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:8px">⛔ Decision Engine: NO TRADE — ${ds.reasons[0] ?? 'conditions not met'}</div>` : '';
-      const modeCol = ds.mode === 'TREND_CONTINUATION' ? 'var(--green)' : ds.mode === 'MEAN_REVERSION' ? 'var(--blue)' : ds.mode === 'EXHAUSTION' ? 'var(--red)' : '#f59e0b';
-      const p = ds.permissions;
-      const chips = [
-        p.long     ? '<span style="color:var(--green);font-weight:700">↑L</span>' : '<span style="color:var(--text3);text-decoration:line-through">↑L</span>',
-        p.short    ? '<span style="color:var(--red);font-weight:700">↓S</span>'   : '<span style="color:var(--text3);text-decoration:line-through">↓S</span>',
-        p.breakout ? '<span style="color:#f59e0b;font-weight:700">BRK</span>'     : '<span style="color:var(--text3);text-decoration:line-through">BRK</span>',
-        p.fade     ? '<span style="color:var(--blue);font-weight:700">FADE</span>': '<span style="color:var(--text3);text-decoration:line-through">FADE</span>',
-      ].join(' · ');
-      return `<div style="display:flex;align-items:center;gap:8px;font-size:10px;background:${modeCol}08;border:1px solid ${modeCol}33;border-radius:6px;padding:5px 10px;margin-bottom:8px;flex-wrap:wrap">
-        <span style="font-weight:700;color:${modeCol}">${ds.mode.replace(/_/g,' ')}</span>
-        <span style="color:var(--border2)">·</span>
-        <span style="color:var(--text3)">${ds.participation}</span>
-        <span style="color:var(--border2)">·</span>
-        ${chips}
-        <span style="color:var(--border2)">·</span>
-        <span style="color:var(--text3)">Risk ${ds.riskMult.toFixed(2)}×</span>
+      const _cls = enhanced.length > 0 ? sortConfluences([...enhanced], 'proximity')[0] : null;
+      const _chip = _cls ? (() => {
+        const _ab = quote.price < _cls.price;
+        const _dc = _cls.direction === 'long' ? 'var(--green)' : _cls.direction === 'short' ? 'var(--red)' : 'var(--text3)';
+        const _st = '★'.repeat(_cls.stars) + '☆'.repeat(Math.max(0, 5 - _cls.stars));
+        return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0">
+          <span style="font-size:9.5px;font-weight:700;color:var(--text3);letter-spacing:.07em;flex-shrink:0">NEAREST</span>
+          <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace">${_cls.price.toFixed(digits)}</span>
+          <span style="color:#f59e0b;font-size:11px">${_st}</span>
+          <span style="font-size:11px;font-weight:700;color:${_dc}">${_cls.direction === 'long' ? '↑ BUY' : _cls.direction === 'short' ? '↓ SELL' : '◎'}</span>
+          <span style="font-size:10.5px;color:var(--text3)">${_ab ? '▲' : '▼'} ${_cls.distance.toFixed(0)}${S.currentPair.isEquity ? 'pts' : 'p'}</span>
+          ${_cls.isTight ? '<span style="font-size:9px;color:var(--green);font-weight:700;padding:1px 5px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px">TIGHT</span>' : ''}
+        </div>`;
+      })() : `<span style="font-size:11px;color:var(--text3)">No levels — load Asia/Monday data</span>`;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;flex-wrap:wrap">
+        ${_chip}
+        <button onclick="document.getElementById('setupsModalOverlay').style.display='flex'" style="flex-shrink:0;background:none;border:1px solid var(--blue,#4f7df0);border-radius:6px;color:var(--blue,#4f7df0);font-size:11px;font-weight:600;padding:6px 14px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">🎯 ${enhanced.length} Level${enhanced.length!==1?'s':''} &amp; Setups →</button>
       </div>`;
     })()}
-
-    <div class="hint">
-      <strong>How stars work:</strong> ★ Fib confluence · +★ tight · +★ macro bias · +★ pivot/OI · +★ PDH/PDL · +★ PWH/PWL · +★ daily Fib · +★ structural Fib · +★ RSI/WT divergence. Max 5★. Tight levels (🟢) overlap two sessions — highest-probability zones.
-    </div>
-
-    <div class="legend">
-      <div class="lg-item"><div class="lg-bar green"></div>Tight (<${(getConfluenceThreshold(S.currentPair.symbol) * 0.1).toFixed(1)} ${S.currentPair.isEquity ? 'pts' : 'pips'})</div>
-      <div class="lg-item"><div class="lg-bar orange"></div>Normal (<${getConfluenceThreshold(S.currentPair.symbol)} ${S.currentPair.isEquity ? 'pts' : 'pips'})</div>
-      <div class="lg-item">📍 Asia · 🗓️ Monday</div>
-    </div>
-
-    <div class="conf-sort-bar">
-      ${['stars','price','proximity'].map(m => `<button
-        class="conf-sort-btn${_confSortMode === m ? ' active' : ''}"
-        onclick="window.setConfSortMode('${m}')">${m === 'stars' ? '★ Stars' : m === 'price' ? '$ Price' : '📍 Proximity'}</button>`).join('')}
-    </div>
-
-    <div class="card">
-      ${enhanced.length > 0 ? renderConfluences(sortConfluences(enhanced, _confSortMode), quote.price, pipSize, digits, tierData, approachArrow) :
-        `<div class="empty-state">
-          <div class="em-icon">🎯</div>
-          <div>No confluences detected for this session.</div>
-          <div style="font-size:11px;margin-top:5px">Asia/Monday session ranges may be too narrow, or OHLC data not yet loaded.</div>
-        </div>`}
-    </div>
   </div>
 
   <!-- RIGHT SIDEBAR -->
@@ -1051,6 +1073,8 @@ ${calendarCtx.warnings.length > 0 ? `
   `;
 
   document.getElementById('mainContent').innerHTML = html;
+  const _setupsEl = document.getElementById('setupsModalContent');
+  if (_setupsEl) _setupsEl.innerHTML = setupsHtml;
   document.getElementById('upd').textContent = new Date().toLocaleTimeString();
   aiRenderCardOnUpdate();
   loadAndRenderCompass();

@@ -495,6 +495,20 @@ Example:
   </div>
 </div>
 
+<!-- SETUPS & LEVEL MAP MODAL -->
+<div class="oi-modal-overlay" id="setupsModalOverlay" onclick="if(event.target===this)this.style.display='none'" style="display:none">
+  <div class="oi-modal" style="max-width:960px;max-height:92vh;overflow-y:auto">
+    <div class="oi-modal-hd">
+      <div>
+        <div class="oi-modal-title">🎯 Trade Setups &amp; Level Map</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">Entry scanner · Confluence zones · Sort by Stars / Price / Proximity</div>
+      </div>
+      <button class="oi-btn" onclick="document.getElementById('setupsModalOverlay').style.display='none'">✕ Close</button>
+    </div>
+    <div id="setupsModalContent" style="padding:4px 0"></div>
+  </div>
+</div>
+
 <script type="module" src="./js/main.js"></script>
 <script type="module" src="./js/regime-v2.js"></script>
 
