@@ -400,8 +400,9 @@ function buildDivergenceAlert(snap) {
 async function refresh() {
   document.getElementById('refreshLbl').textContent = 'Refreshing…';
 
-  const [goldStatus, regimeStatus, mainStatus, goldPerf, mlParams, mlSignal, optLast] = await Promise.all([
+  const [goldStatus, goldV2Status, regimeStatus, mainStatus, goldPerf, mlParams, mlSignal, optLast] = await Promise.all([
     kvGet('gold_bot_status'),
+    kvGet('gold_v2_status'),
     kvGet('regime_bot_status'),
     kvGet('bot_status'),
     kvGet('gold_perf_snapshot'),
@@ -413,6 +414,7 @@ async function refresh() {
   // Bot status cards
   document.getElementById('botCards').innerHTML = [
     buildBotCard('Gold Bot  (XAU/USD)',  goldStatus,   'gold_bot_status'),
+    buildBotCard('Gold V2  (matrix)',    goldV2Status, 'gold_v2_status'),
     buildBotCard('Regime Bot  (HMM)',    regimeStatus, 'regime_bot_status'),
     buildBotCard('Main Bot  (Levels)',   mainStatus,   'bot_status'),
   ].join('');

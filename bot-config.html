@@ -374,6 +374,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="dynanchor" onclick="switchTab('dynanchor')" style="color:#f59e0b" id="daTabBtn">⚓ Dyn Anchor</button>
     <button class="tab-btn" data-tab="beta" onclick="switchTab('beta')" style="color:#9d96f0" id="betaTabBtn">β Beta Targets</button>
     <button class="tab-btn" data-tab="gold" onclick="switchTab('gold')" style="color:#f4c430" id="goldTabBtn">⚡ Gold Bot</button>
+    <button class="tab-btn" data-tab="goldv2" onclick="switchTab('goldv2')" style="color:#ff9f43" id="goldv2TabBtn">⚡ Gold V2</button>
     <button class="tab-btn" data-tab="hedgebot" onclick="switchTab('hedgebot')" style="color:#06b6d4" id="hbTabBtn">🔀 Hedge Bot</button>
     <button class="tab-btn" data-tab="poshedgebot" onclick="switchTab('poshedgebot')" style="color:#10b981" id="phbTabBtn">🛡 Pos Hedge</button>
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
@@ -2590,6 +2591,262 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   </div><!-- /tab-gold -->
 
+  <!-- ═══════════════════════ TAB: GOLD BOT V2 ═══════════════════════ -->
+  <div id="tab-goldv2" class="tab-pane">
+
+    <div class="bot-banner" style="background:rgba(255,159,67,0.08);border:1px solid rgba(255,159,67,0.25)">
+      <div class="bot-banner-icon">⚡</div>
+      <div>
+        <div class="bot-banner-title" style="color:#ff9f43">Gold Bot V2 — XAU/USD (level-matrix)</div>
+        <div class="bot-banner-sub">Valid-extreme fib matrix → level clustering → distinct-leg scoring · structure-anchored SL, level-to-level TP with σ-forecast cap · multi-trade portfolio · GoldV2/main.py · magic 20260005</div>
+      </div>
+    </div>
+
+    <!-- Live status strip -->
+    <div class="bs-strip">
+      <div class="bs-head">
+        <span class="bs-lbl">Gold V2 Runtime</span>
+        <span id="goldv2BsAge"   class="bs-dim">Checking…</span>
+        <span id="goldv2BsMode"  class="bs-dim"></span>
+        <span id="goldv2BsState" class="bs-dim"></span>
+        <span id="goldv2BsHTF"   class="bs-dim"></span>
+      </div>
+      <div class="bs-rows">
+        <div id="goldv2BsZones"></div>
+        <div id="goldv2BsTrades"></div>
+      </div>
+    </div>
+
+    <!-- Row: MT5 Credentials | Bot Control -->
+    <div class="grid">
+
+      <!-- MT5 Credentials -->
+      <div class="card">
+        <div class="card-title">MT5 Credentials — Gold V2</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+          Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">gold_v2_credentials</code>).
+          The bot reads these on startup (env vars are the fallback). Uses its own magic number so V1 and V2 can share an account without touching each other's positions.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Account number</span>
+          <input type="number" id="goldv2_mt5_account" placeholder="e.g. 99887766" style="width:130px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Password</span>
+          <input type="password" id="goldv2_mt5_password" placeholder="••••••••" style="width:130px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Server <small>e.g. ICMarkets-Demo01</small></span>
+          <input type="text" id="goldv2_mt5_server" placeholder="Broker-Demo01" style="width:180px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Terminal path <small>optional</small></span>
+          <input type="text" id="goldv2_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
+        </div>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+          <button class="btn-save" style="background:#ff9f43;color:#111;max-width:200px;padding:9px" onclick="saveGoldV2Creds()">Save V2 Credentials</button>
+          <span id="goldv2CredsStatus" class="inline-status"></span>
+        </div>
+      </div>
+
+      <!-- Bot Control -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="goldv2_enabled">
+          <label for="goldv2_enabled">Enabled <small>uncheck to pause without stopping the process</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="goldv2_paper_mode">
+          <label for="goldv2_paper_mode">Paper mode <small>journal signals, no real MT5 orders</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="goldv2_macro_gate">
+          <label for="goldv2_macro_gate">Macro gate <small>block if AI gold model strongly opposes direction</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="goldv2_ml_gate">
+          <label for="goldv2_ml_gate">ML gate <small>own flag in V2 — block PASS-rated zones (off until model has data)</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="goldv2_htf_block">
+          <label for="goldv2_htf_block">HTF direction block <small>hard-skip counter-trend zones when HTF bias is established</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="goldv2_use_vol_forecast">
+          <label for="goldv2_use_vol_forecast">σ forecast <small>use /api/vol-forecast for the TP range cap + exhaustion confluence</small></label>
+        </div>
+        <div class="form-row" style="margin-top:8px">
+          <span class="form-lbl">HTF block confidence <small>HTF confidence ≥ this hard-blocks counter-trend</small></span>
+          <input type="number" id="goldv2_htf_block_confidence" min="0.3" max="1.0" step="0.05" style="width:80px">
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <span class="form-lbl">Trade window start <small>UTC</small></span>
+          <input type="time" id="goldv2_window_start" style="width:110px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trade window end <small>UTC</small></span>
+          <input type="time" id="goldv2_window_end" style="width:110px;text-align:left">
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Row: Level Matrix / Entry Gate | Confirmation -->
+    <div class="grid">
+
+      <!-- Level matrix + entry gate -->
+      <div class="card">
+        <div class="card-title">Level Matrix &amp; Entry Gate</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+          Fibs are drawn from every <b>valid</b> (unbroken) high/low pair; level lines within <b>cluster tolerance</b> collapse into one zone scored by <b>distinct legs</b>.
+          The golden pocket (.618–.650) is a band — a zone inside it gets a confluence bonus.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min zone score <small>confluence threshold to arm</small></span>
+          <input type="number" id="goldv2_min_zone_score" min="1" max="15" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Cluster tolerance <small>$ — lines within this merge into one zone</small></span>
+          <input type="number" id="goldv2_cluster_tolerance" min="1" max="10" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min distinct legs <small>independent fib legs required per zone</small></span>
+          <input type="number" id="goldv2_min_distinct_legs" min="1" max="5" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Proximity pips <small>$-distance from window edge to arm</small></span>
+          <input type="number" id="goldv2_proximity_pips" min="2" max="30" step="1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max armed zones <small>watched simultaneously</small></span>
+          <input type="number" id="goldv2_max_armed_zones" min="1" max="6" step="1" style="width:70px">
+        </div>
+        <div class="toggle-wrap" style="margin-top:8px">
+          <input type="checkbox" id="goldv2_include_retests">
+          <label for="goldv2_include_retests">Retest levels <small>recently broken highs/lows as levels</small></label>
+        </div>
+      </div>
+
+      <!-- Confirmation -->
+      <div class="card">
+        <div class="card-title">VuManChu Confirmation</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+          V2 tightening: <b>WT is mandatory</b> (oversold/overbought or divergence), Money Flow counts <b>exhaustion patterns only</b>, and the <b>fuel veto</b> blocks entries while MF still drives hard against the zone.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Components required <small>of WT / MF-exhaustion / VWAP</small></span>
+          <div class="radio-group">
+            <label><input type="radio" name="goldv2_vu_min" value="2"> 2</label>
+            <label><input type="radio" name="goldv2_vu_min" value="3"> 3</label>
+          </div>
+        </div>
+        <div class="toggle-wrap" style="margin-top:8px">
+          <input type="checkbox" id="goldv2_vu_require_wt">
+          <label for="goldv2_vu_require_wt">WT mandatory <small>no entry without a WaveTrend exhaustion/divergence signal</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="goldv2_mf_fuel_veto">
+          <label for="goldv2_mf_fuel_veto">Money-flow fuel veto <small>no spike at the level = fuel remaining = skip</small></label>
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Row: Exits | Portfolio & Risk -->
+    <div class="grid">
+
+      <!-- Exits -->
+      <div class="card">
+        <div class="card-title">Exits — Structure SL, Level TPs</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          SL anchors to the M5 <b>confirmation swing</b> + ATR buffer; if it exceeds <b>max SL</b> the trade is <b>skipped</b>, never truncated.
+          TP1/TP2 are the nearest mapped obstacles (opposing zones, nPOCs, pivots…), clamped by R-multiples and the σ-forecast remaining range.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max SL pips <small>skip filter — structural stop must fit</small></span>
+          <input type="number" id="goldv2_max_sl_pips" min="10" max="100" step="5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">SL buffer <small>× ATR(15m) beyond the swing</small></span>
+          <input type="number" id="goldv2_sl_buffer_atr" min="0.1" max="1.5" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">TP1 min R <small>skip if no obstacle at least this far</small></span>
+          <input type="number" id="goldv2_tp1_r_min" min="0.5" max="3" step="0.25" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">TP2 R range <small>min / max R-multiple window</small></span>
+          <span style="display:flex;gap:6px">
+            <input type="number" id="goldv2_tp2_r_min" min="1" max="5" step="0.25" style="width:70px">
+            <input type="number" id="goldv2_tp2_r_max" min="2" max="10" step="0.5" style="width:70px">
+          </span>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Range cap × <small>expected day range multiplier</small></span>
+          <input type="number" id="goldv2_range_cap_mult" min="0.8" max="2" step="0.1" style="width:80px">
+        </div>
+        <div class="toggle-wrap" style="margin-top:8px">
+          <input type="checkbox" id="goldv2_be_after_tp1">
+          <label for="goldv2_be_after_tp1">Breakeven after TP1 <small>SL → entry once TP1 trades</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="goldv2_allow_overnight">
+          <label for="goldv2_allow_overnight">Overnight if HTF-aligned <small>continuation trades may run past the window; others expire</small></label>
+        </div>
+      </div>
+
+      <!-- Portfolio & Risk -->
+      <div class="card">
+        <div class="card-title">Portfolio &amp; Risk</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          Concurrent trades are guarded by <b>aggregate</b> limits — gold positions are ~100% correlated, so open risk is capped as a sum, not a count.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Risk % per trade</span>
+          <input type="number" id="goldv2_risk_pct" min="0.1" max="5" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max trades per day</span>
+          <input type="number" id="goldv2_max_trades_per_day" min="1" max="12" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max concurrent trades</span>
+          <input type="number" id="goldv2_max_concurrent" min="1" max="5" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max open risk % <small>sum across open trades</small></span>
+          <input type="number" id="goldv2_max_open_risk" min="0.2" max="5" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max per direction</span>
+          <input type="number" id="goldv2_max_per_direction" min="1" max="5" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Entry separation <small>min $ between same-direction entries</small></span>
+          <input type="number" id="goldv2_min_entry_sep" min="5" max="60" step="5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Zone cooldown <small>minutes after a close, per zone</small></span>
+          <input type="number" id="goldv2_cooldown_minutes" min="5" max="240" step="5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Global cooldown <small>minutes between consecutive entries</small></span>
+          <input type="number" id="goldv2_global_cooldown" min="0" max="120" step="5" style="width:80px">
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Save / Reset -->
+    <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+      <button class="btn-save" style="background:#ff9f43;color:#111;max-width:190px;padding:9px" onclick="saveGoldV2Config()">Save Gold V2 Config</button>
+      <button class="btn-save" style="background:var(--s2);color:var(--text1);max-width:160px;padding:9px;border:1px solid var(--bd)" onclick="resetGoldV2Defaults()">Reset Defaults</button>
+      <span id="goldv2SaveStatus" class="inline-status"></span>
+    </div>
+
+  </div><!-- /tab-goldv2 -->
+
   <!-- ══════════════════════════════════════════════════════ POSITIONS TAB -->
   <!-- ═══════════════════ TAB: MACRO-REGIME EQUITY BACKTEST ═══════════════════ -->
   <div class="tab-pane" id="tab-macroequity">
@@ -3446,6 +3703,7 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <span class="pos-bot-badge" style="background:#172554;border:1px solid #1e40af;color:#60a5fa">MacroFX V1</span>
         <span class="pos-bot-badge" style="background:#0d2b22;border:1px solid #1a4a38;color:#34d399">Regime V1</span>
         <span class="pos-bot-badge" style="background:#292100;border:1px solid #78610a;color:#fbbf24">Gold</span>
+        <span class="pos-bot-badge" style="background:#2a1a00;border:1px solid #92540a;color:#ff9f43">Gold V2</span>
         <span class="pos-bot-badge" style="background:#1e1b4b;border:1px solid #4338ca;color:#a78bfa">Regime V2</span>
         <span class="pos-bot-badge" style="background:var(--s2);border:1px solid var(--border);color:var(--text3)">Backtest</span>
         <span class="pos-bot-badge" style="background:#292100;border:1px solid #78610a;color:#f59e0b">DynAnchor</span>
@@ -4890,6 +5148,7 @@ const _POS_BOTS = [
   { key: 'bot_status',            label: 'MacroFX V1', color: '#60a5fa', bg: '#172554', bd: '#1e40af', paper: false },
   { key: 'regime_bot_status',     label: 'Regime V1',  color: '#34d399', bg: '#0d2b22', bd: '#1a4a38', paper: false },
   { key: 'gold_bot_status',       label: 'Gold',       color: '#fbbf24', bg: '#292100', bd: '#78610a', paper: false },
+  { key: 'gold_v2_status',        label: 'Gold V2',    color: '#ff9f43', bg: '#2a1a00', bd: '#92540a', paper: false },
   { key: 'regime_bot_v2_status',  label: 'Regime V2',  color: '#a78bfa', bg: '#1e1b4b', bd: '#4338ca', paper: false },
   { key: 'backtestsystem_status', label: 'Backtest',   color: '#9ba3bf', bg: 'var(--s2)', bd: 'var(--border)', paper: false },
   { key: 'dyn_anchor_status',     label: 'DynAnchor',  color: '#f59e0b', bg: '#292100',  bd: '#78610a', paper: false },

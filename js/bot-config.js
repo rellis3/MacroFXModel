@@ -2065,6 +2065,211 @@ async function loadGoldStatus() {
 window.saveGoldConfig   = saveGoldConfig;
 window.resetGoldDefaults = resetGoldDefaults;
 
+// ── Gold Bot V2 (level-matrix edition) ────────────────────────────────────────
+// KV: gold_v2_config / gold_v2_credentials / gold_v2_status. Field names must
+// match GoldV2/main.py DEFAULT_CFG exactly — the bot merges KV over defaults.
+
+const GOLDV2_DEFAULTS = {
+  enabled:                     true,
+  paper_mode:                  true,
+  // level matrix / entry gate
+  min_zone_score:              4.0,
+  cluster_tolerance:           3.0,
+  min_distinct_legs:           1,
+  proximity_pips:              5.0,
+  max_armed_zones:             3,
+  include_retests:             true,
+  // confirmation
+  vu_min_components:           2,
+  vu_require_wt:               true,
+  mf_fuel_veto:                true,
+  // exits
+  max_sl_pips:                 40,
+  sl_buffer_atr:               0.3,
+  tp1_r_min:                   1.0,
+  tp2_r_min:                   1.5,
+  tp2_r_max:                   4.0,
+  range_cap_mult:              1.2,
+  be_after_tp1:                true,
+  allow_overnight_htf_aligned: true,
+  // portfolio / risk
+  risk_pct:                    0.5,
+  max_trades_per_day:          4,
+  max_concurrent_trades:       2,
+  max_open_risk_pct:           1.0,
+  max_per_direction:           2,
+  min_entry_separation_pips:   15,
+  cooldown_minutes:            30,
+  global_cooldown_minutes:     10,
+  // session
+  trade_window_start:          '07:00',
+  trade_window_end:            '20:00',
+  // gates
+  gold_macro_gate:             true,
+  ml_gate:                     false,
+  htf_block:                   true,
+  htf_block_confidence:        0.5,
+  use_vol_forecast:            true,
+};
+
+let _goldV2Cfg = JSON.parse(JSON.stringify(GOLDV2_DEFAULTS));
+
+function readGoldV2Form() {
+  _goldV2Cfg.enabled                     = chk('goldv2_enabled');
+  _goldV2Cfg.paper_mode                  = chk('goldv2_paper_mode');
+  _goldV2Cfg.gold_macro_gate             = chk('goldv2_macro_gate');
+  _goldV2Cfg.ml_gate                     = chk('goldv2_ml_gate');
+  _goldV2Cfg.htf_block                   = chk('goldv2_htf_block');
+  _goldV2Cfg.use_vol_forecast            = chk('goldv2_use_vol_forecast');
+  _goldV2Cfg.htf_block_confidence        = num('goldv2_htf_block_confidence', 0.5);
+  _goldV2Cfg.trade_window_start          = str('goldv2_window_start', '07:00');
+  _goldV2Cfg.trade_window_end            = str('goldv2_window_end',   '20:00');
+  _goldV2Cfg.min_zone_score              = num('goldv2_min_zone_score',     4.0);
+  _goldV2Cfg.cluster_tolerance           = num('goldv2_cluster_tolerance',  3.0);
+  _goldV2Cfg.min_distinct_legs           = parseInt(num('goldv2_min_distinct_legs', 1), 10);
+  _goldV2Cfg.proximity_pips              = num('goldv2_proximity_pips',     5.0);
+  _goldV2Cfg.max_armed_zones             = parseInt(num('goldv2_max_armed_zones', 3), 10);
+  _goldV2Cfg.include_retests             = chk('goldv2_include_retests');
+  _goldV2Cfg.vu_min_components           = parseInt(radio('goldv2_vu_min', '2'), 10);
+  _goldV2Cfg.vu_require_wt               = chk('goldv2_vu_require_wt');
+  _goldV2Cfg.mf_fuel_veto                = chk('goldv2_mf_fuel_veto');
+  _goldV2Cfg.max_sl_pips                 = num('goldv2_max_sl_pips',    40);
+  _goldV2Cfg.sl_buffer_atr               = num('goldv2_sl_buffer_atr', 0.3);
+  _goldV2Cfg.tp1_r_min                   = num('goldv2_tp1_r_min',     1.0);
+  _goldV2Cfg.tp2_r_min                   = num('goldv2_tp2_r_min',     1.5);
+  _goldV2Cfg.tp2_r_max                   = num('goldv2_tp2_r_max',     4.0);
+  _goldV2Cfg.range_cap_mult              = num('goldv2_range_cap_mult', 1.2);
+  _goldV2Cfg.be_after_tp1                = chk('goldv2_be_after_tp1');
+  _goldV2Cfg.allow_overnight_htf_aligned = chk('goldv2_allow_overnight');
+  _goldV2Cfg.risk_pct                    = num('goldv2_risk_pct',           0.5);
+  _goldV2Cfg.max_trades_per_day          = parseInt(num('goldv2_max_trades_per_day', 4), 10);
+  _goldV2Cfg.max_concurrent_trades       = parseInt(num('goldv2_max_concurrent', 2), 10);
+  _goldV2Cfg.max_open_risk_pct           = num('goldv2_max_open_risk',      1.0);
+  _goldV2Cfg.max_per_direction           = parseInt(num('goldv2_max_per_direction', 2), 10);
+  _goldV2Cfg.min_entry_separation_pips   = num('goldv2_min_entry_sep',      15);
+  _goldV2Cfg.cooldown_minutes            = num('goldv2_cooldown_minutes',   30);
+  _goldV2Cfg.global_cooldown_minutes     = num('goldv2_global_cooldown',    10);
+}
+
+function renderGoldV2Form() {
+  setChk('goldv2_enabled',              _goldV2Cfg.enabled                     ?? true);
+  setChk('goldv2_paper_mode',           _goldV2Cfg.paper_mode                  ?? true);
+  setChk('goldv2_macro_gate',           _goldV2Cfg.gold_macro_gate             ?? true);
+  setChk('goldv2_ml_gate',              _goldV2Cfg.ml_gate                     ?? false);
+  setChk('goldv2_htf_block',            _goldV2Cfg.htf_block                   ?? true);
+  setChk('goldv2_use_vol_forecast',     _goldV2Cfg.use_vol_forecast            ?? true);
+  setVal('goldv2_htf_block_confidence', _goldV2Cfg.htf_block_confidence        ?? 0.5);
+  setVal('goldv2_window_start',         _goldV2Cfg.trade_window_start          ?? '07:00');
+  setVal('goldv2_window_end',           _goldV2Cfg.trade_window_end            ?? '20:00');
+  setVal('goldv2_min_zone_score',       _goldV2Cfg.min_zone_score              ?? 4.0);
+  setVal('goldv2_cluster_tolerance',    _goldV2Cfg.cluster_tolerance           ?? 3.0);
+  setVal('goldv2_min_distinct_legs',    _goldV2Cfg.min_distinct_legs           ?? 1);
+  setVal('goldv2_proximity_pips',       _goldV2Cfg.proximity_pips              ?? 5.0);
+  setVal('goldv2_max_armed_zones',      _goldV2Cfg.max_armed_zones             ?? 3);
+  setChk('goldv2_include_retests',      _goldV2Cfg.include_retests             ?? true);
+  setRadio('goldv2_vu_min',             String(_goldV2Cfg.vu_min_components    ?? 2));
+  setChk('goldv2_vu_require_wt',        _goldV2Cfg.vu_require_wt               ?? true);
+  setChk('goldv2_mf_fuel_veto',         _goldV2Cfg.mf_fuel_veto                ?? true);
+  setVal('goldv2_max_sl_pips',          _goldV2Cfg.max_sl_pips                 ?? 40);
+  setVal('goldv2_sl_buffer_atr',        _goldV2Cfg.sl_buffer_atr               ?? 0.3);
+  setVal('goldv2_tp1_r_min',            _goldV2Cfg.tp1_r_min                   ?? 1.0);
+  setVal('goldv2_tp2_r_min',            _goldV2Cfg.tp2_r_min                   ?? 1.5);
+  setVal('goldv2_tp2_r_max',            _goldV2Cfg.tp2_r_max                   ?? 4.0);
+  setVal('goldv2_range_cap_mult',       _goldV2Cfg.range_cap_mult              ?? 1.2);
+  setChk('goldv2_be_after_tp1',         _goldV2Cfg.be_after_tp1                ?? true);
+  setChk('goldv2_allow_overnight',      _goldV2Cfg.allow_overnight_htf_aligned ?? true);
+  setVal('goldv2_risk_pct',             _goldV2Cfg.risk_pct                    ?? 0.5);
+  setVal('goldv2_max_trades_per_day',   _goldV2Cfg.max_trades_per_day          ?? 4);
+  setVal('goldv2_max_concurrent',       _goldV2Cfg.max_concurrent_trades       ?? 2);
+  setVal('goldv2_max_open_risk',        _goldV2Cfg.max_open_risk_pct           ?? 1.0);
+  setVal('goldv2_max_per_direction',    _goldV2Cfg.max_per_direction           ?? 2);
+  setVal('goldv2_min_entry_sep',        _goldV2Cfg.min_entry_separation_pips   ?? 15);
+  setVal('goldv2_cooldown_minutes',     _goldV2Cfg.cooldown_minutes            ?? 30);
+  setVal('goldv2_global_cooldown',      _goldV2Cfg.global_cooldown_minutes     ?? 10);
+}
+
+async function loadGoldV2Config() {
+  try {
+    const stored = await kvGet('gold_v2_config');
+    if (stored) { _goldV2Cfg = { ...JSON.parse(JSON.stringify(GOLDV2_DEFAULTS)), ...stored }; }
+    renderGoldV2Form();
+  } catch (e) { /* non-critical */ }
+}
+
+async function saveGoldV2Config() {
+  readGoldV2Form();
+  const el = document.getElementById('goldv2SaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('gold_v2_config', _goldV2Cfg);
+    if (el) { el.textContent = 'Saved ✓ — bot picks up within 2 min'; el.style.color = '#ff9f43'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 4000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetGoldV2Defaults() {
+  _goldV2Cfg = JSON.parse(JSON.stringify(GOLDV2_DEFAULTS));
+  renderGoldV2Form();
+  const el = document.getElementById('goldv2SaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadGoldV2Creds() {
+  try { _applyCredsToForm(await kvGet('gold_v2_credentials'), 'goldv2_', 'goldv2_mt5_password'); } catch (e) {}
+}
+async function saveGoldV2Creds() {
+  await _saveCreds('gold_v2_credentials', 'goldv2_', 'goldv2_mt5_password', 'goldv2CredsStatus');
+}
+
+async function loadGoldV2Status() {
+  try {
+    const data = await kvGet('gold_v2_status');
+    if (!data) { setText('goldv2BsAge', 'No status — bot has not run yet'); return; }
+
+    const ts  = data.timestamp ? new Date(data.timestamp).getTime() : 0;
+    const age = Math.round((Date.now() - ts) / 60000);
+    setText('goldv2BsAge',   age < 3 ? 'Live' : `Last update ${age}m ago`);
+    setText('goldv2BsMode',  data.paper_mode ? '· paper' : '· LIVE');
+    setText('goldv2BsState', data.state ? `· ${data.state}` : '');
+    setText('goldv2BsHTF',   data.htf_bias
+      ? `· HTF ${data.htf_bias}${data.htf_detail ? ` (${data.htf_detail})` : ''}` : '');
+
+    const zonesEl = document.getElementById('goldv2BsZones');
+    if (zonesEl) {
+      const zones = data.top_zones ?? [];
+      zonesEl.innerHTML = zones.length
+        ? zones.map(z => {
+            const col = z.dir === 'long' ? 'bs-green' : 'bs-red';
+            const gp  = z.in_gp ? ' ◆GP' : '';
+            return `<span class="${col}">${z.zone_id} ${z.entry_window} score=${z.score} legs=${z.legs}${gp}</span>`;
+          }).join('')
+        : '<span class="bs-dim">No active zones</span>';
+    }
+
+    const tradesEl = document.getElementById('goldv2BsTrades');
+    if (tradesEl) {
+      const parts = [];
+      if (data.trades_today != null) parts.push(`trades today: ${data.trades_today}`);
+      if (data.open_trades  != null) parts.push(`open: ${data.open_trades}`);
+      if (data.squeeze_ratio != null) parts.push(`squeeze: ${data.squeeze_ratio.toFixed(2)}`);
+      if (data.vol_forecast?.expected_range != null)
+        parts.push(`σ range: ${data.vol_forecast.expected_range}p`);
+      (data.mt5_positions ?? []).forEach(p => {
+        const col = p.direction === 'BUY' ? 'bs-green' : 'bs-red';
+        const pnl = p.profit != null ? ` $${p.profit > 0 ? '+' : ''}${p.profit.toFixed(2)}` : '';
+        parts.push(`<span class="${col}">${p.symbol} ${p.direction} @ ${p.open_price}${pnl}</span>`);
+      });
+      tradesEl.innerHTML = parts.join(' · ') || '';
+    }
+  } catch (e) { /* non-critical */ }
+}
+
+window.saveGoldV2Config    = saveGoldV2Config;
+window.resetGoldV2Defaults = resetGoldV2Defaults;
+window.saveGoldV2Creds     = saveGoldV2Creds;
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
@@ -2076,12 +2281,14 @@ loadRgV2Config();
 loadRgV7Config();
 loadDaConfig();
 loadGoldConfig();
+loadGoldV2Config();
 loadCreds();
 loadBtCreds();
 loadRgCreds();
 loadRgV2Creds();
 loadRgV7Creds();
 loadDaCreds();
+loadGoldV2Creds();
 loadBotStatus();
 loadBtBotStatus();
 loadRgBotStatus();
@@ -3229,6 +3436,7 @@ loadRlLiveStatus();
 
 loadDaStatus();
 loadGoldStatus();
+loadGoldV2Status();
 loadBtJournal();
 loadHbConfig();
 loadHbCreds();
@@ -3243,6 +3451,7 @@ setInterval(loadRgV2Status,   30_000);
 setInterval(loadRgV7Status,   30_000);
 setInterval(loadDaStatus,     60_000);
 setInterval(loadGoldStatus,   60_000);
+setInterval(loadGoldV2Status, 60_000);
 setInterval(loadBtJournal,   120_000);
 setInterval(loadHbStatus,     60_000);
 setInterval(loadPhbStatus,    60_000);
