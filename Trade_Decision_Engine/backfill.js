@@ -29,7 +29,7 @@ import { fileURLToPath } from 'url';
 import { loadM1ForPair, M1_DRIVE_IDS } from '../js/volBacktestM1Engine.js';
 import { gapFillPacked } from '../js/m1GapFill.js';
 import { fetchM1Range, londonMidnightSec } from '../js/volBacktestEngine.js';
-import { bisect } from '../js/barUtils.js';
+import { bisect, extractBars } from '../js/barUtils.js';
 import { DEFAULT_COST_PCT } from '../js/forecastCore.js';
 import { assetClass, oandaSymbol } from '../js/instrumentRegistry.js';
 import { buildSnapshot } from './featureState.js';
@@ -133,6 +133,8 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
   const d1 = deriveD1Packed(packed);
   const costPct = DEFAULT_COST_PCT[safeClass(pair)] ?? DEFAULT_COST_PCT.fx;
   let events = 0, days = 0, lastDate = fromDate;
+  const dayIdxByTime = new Map(d1.map((b, j) => [b.time, j]));
+  const mondayBarsCache = new Map();   // monStartSec → bars | null
 
   for (let i = C.warmupDays; i < d1.length; i++) {
     // window = this London day's bars; capped at 25h (the longest DST day) so
@@ -150,9 +152,33 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
     // gets from today's M1), not the last-close approximation.
     const dailyBars = d1.slice(Math.max(0, i - C.snapshotWindow), i);
     const dayCtx = contextByDate?.[date] ?? {};
+
+    // session ladders, the analyser's way: Asia = today's first 6h (the ladder
+    // is validFrom-gated inside decide, so pre-close touches can't see it);
+    // Monday = THIS week's Monday session (never on Monday itself).
+    const asiaBars = extractBars(packed, dayStart, Math.min(dayStart + 6 * 3600, dayEnd));
+    let mondayBars = null;
+    {
+      const dow = new Date((dayStart + 12 * 3600) * 1000).getUTCDay();
+      if (dow >= 2 && dow <= 5) {
+        for (let back = 1; back <= 6 && !mondayBars; back++) {
+          const jt = d1[i - back]?.time;
+          if (jt == null || dayStart - jt > 6 * 86400) break;
+          if (dayIdxByTime.has(jt) && new Date((jt + 12 * 3600) * 1000).getUTCDay() === 1) {
+            if (!mondayBarsCache.has(jt)) {
+              const jEnd = Math.min(d1[dayIdxByTime.get(jt) + 1]?.time ?? jt + 86400, jt + 25 * 3600);
+              mondayBarsCache.set(jt, extractBars(packed, jt, jEnd));
+            }
+            mondayBars = mondayBarsCache.get(jt);
+          }
+        }
+      }
+    }
+
     let snap;
     try {
       snap = buildSnapshot({ pair, dailyBars, calendar: dayCtx.calendar ?? [], macro: dayCtx.macro ?? null,
+        intradayBars: asiaBars.length >= 2 ? asiaBars : null, mondayBars,
         sessionOpen: packed.opens[s], nowMs: dayStart * 1000, mode: 'backfill' });
     } catch { continue; }
     const sigmaAbs = snap.sigmaDaily * snap.dayOpen;
@@ -173,16 +199,34 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
     }
     const hl50Abs = snap.meta.hl50Abs;
 
-    // top zones within reach of the day's likely path
-    const zones = snap.zones
+    // touch candidates: top static zones within reach + the range-line bot's
+    // ladder lines (the bot ENTERS at those lines, so the training universe
+    // must include them) — each ladder line only from its validFrom onward,
+    // and skipped when a zone candidate already covers its price
+    const tolAbs = snap.meta.tolAbs ?? 0;
+    const zoneCands = snap.zones
       .filter(z => Math.abs(z.price - snap.dayOpen) <= 1.5 * sigmaAbs)
       .sort((a, b) => b.score - a.score)
-      .slice(0, C.maxTouchesPerDay);
+      .slice(0, C.maxTouchesPerDay)
+      .map(z => ({ price: z.price, fromIdx: s }));
+    const ladderCands = [];
+    for (const src of ['asia', 'monday']) {
+      const lad = snap.ladders?.[src];
+      if (!lad) continue;
+      const fromIdx = Math.max(s, bisect(packed.times, lad.validFromSec));
+      if (fromIdx >= e) continue;
+      for (const ln of lad.lines) {
+        if (zoneCands.some(c => Math.abs(c.price - ln.price) <= tolAbs)) continue;
+        ladderCands.push({ price: ln.price, fromIdx });
+      }
+    }
+    ladderCands.sort((a, b) => Math.abs(a.price - snap.dayOpen) - Math.abs(b.price - snap.dayOpen));
+    const cands = [...zoneCands, ...ladderCands.slice(0, C.maxTouchesPerDay)];
 
-    for (const z of zones) {
-      // first M1 touch of the zone price
+    for (const cand of cands) {
+      // first M1 touch of the candidate price (from its validity onward)
       let t = -1;
-      for (let k = s; k < e; k++) { if (packed.lows[k] <= z.price && packed.highs[k] >= z.price) { t = k; break; } }
+      for (let k = cand.fromIdx; k < e; k++) { if (packed.lows[k] <= cand.price && packed.highs[k] >= cand.price) { t = k; break; } }
       if (t < 0) continue;
 
       const back = Math.max(s, t - C.approachBars);
@@ -194,6 +238,7 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
       const k = t - s;
       const vwap = cumVol[k] > 0 ? cumTPV[k] / cumVol[k] : null;
       const intraday = {
+        high: runHi[k], low: runLo[k],   // developing session extremes → session_hilo dynamic zones
         rangeUsed: hl50Abs > 0 ? +((runHi[k] - runLo[k]) / hl50Abs).toFixed(3) : null,
         posInRange: runHi[k] > runLo[k] ? +((packed.closes[t] - runLo[k]) / (runHi[k] - runLo[k])).toFixed(3) : 0.5,
         vwapDistSigma: vwap != null ? +((packed.closes[t] - vwap) / sigmaAbs).toFixed(3) : 0,
@@ -203,17 +248,19 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
       // the SAME fast loop the live API serves. One snapshot per day here, so
       // the live 15-min staleness gate is widened to the session length —
       // that gate is about a dead slow loop, not about intraday drift.
-      const dec = decide(snap, { pair, price: z.price, approachSigma, intraday },
+      const dec = decide(snap, { pair, price: cand.price, approachSigma, intraday },
         { nowMs: touchMs, maxStalenessMs: 26 * 3600_000 });
       if (dec.probability == null) continue;   // gated (shouldn't happen without calendar)
 
       const dirSign = dec.direction === 'long' ? 1 : -1;
-      const outcome = labelOutcome(packed, t + 1, e, z.price, dirSign, sigmaAbs, C, costPct);
+      const outcome = labelOutcome(packed, t + 1, e, cand.price, dirSign, sigmaAbs, C, costPct);
 
       events++;
       onEvent?.({
-        source: 'backfill', pair, date, ts: packed.times[t],
-        zone: { price: +z.price.toFixed(5), confluence: z.count, score: z.score, sources: z.sources },
+        source: 'backfill', pair, date, ts: packed.times[t], session_start: dayStart,
+        // the MERGED zone from decide (incl. dynamic session-hilo / ladder
+        // confluence) — the same view the fit and the live log see
+        zone: dec.zone,
         action: dec.action, direction: dec.direction,
         probability: dec.probability, features: dec.features,
         regime: snap.regime, T: +snap.T.toFixed(3), vol_pct: +snap.volPct.toFixed(3),

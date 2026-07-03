@@ -2,7 +2,7 @@
 // Run: node Trade_Decision_Engine/decisionCore.test.mjs
 import assert from 'node:assert/strict';
 import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN, INTRADAY_FEATURES } from './decisionCore.js';
-import { computeIntradayState } from './featureState.js';
+import { computeIntradayState, computeSessionLadders } from './featureState.js';
 import { newsGate, pairCurrencies } from './newsGate.js';
 import { buildSnapshot, syntheticBars, syntheticSnapshot } from './featureState.js';
 import { MODEL_V0 } from './modelV0.js';
@@ -219,6 +219,32 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   const app = decide(snap, { price: z.price, action: 'fade', direction: 'long',
     intraday: { rangeUsed: 0.8, vwapDistSigma: 0, approachSigma: 2.0 } }, { nowMs: NOW });
   ok(app.features.fast_approach_fade > 0, 'approach speed falls back to intraday state');
+}
+
+// ── dynamic zones: range ladders (time-valid) + session high/low ─────────────
+{
+  const mk = (t, o, h, l, c) => ({ time: t, open: o, high: h, low: l, close: c });
+  const t0 = 1_700_000_000 - (1_700_000_000 % 86400);
+  const asia = []; for (let m = 0; m < 360; m++) asia.push(mk(t0 + m * 60, 1.0, 1.002, 0.998, 1.001));
+  const lad = computeSessionLadders({ intradayBars: asia, sessionOpen: 1.0, sigmaAbs: 0.01 });
+  ok(lad?.asia && lad.asia.validFromSec === t0 + 6 * 3600, 'asia ladder validFrom = session start + 6h (the analyser gate)');
+  ok(lad.asia.lines.every(l => Math.abs(l.price - 1.0) <= 1.5 * 0.01), 'only lines within reach carried');
+  ok(lad.asia.lines.some(l => l.label === 'A_0') && lad.asia.lines.some(l => l.label === 'A_1'), 'range edges present (bot labels)');
+
+  const zoneless = { ...snap, zones: [], ladders: lad, intraday: null };
+  const line = lad.asia.lines.find(l => l.label === 'A_1');
+  const before = decide(zoneless, { price: line.price }, { nowMs: (lad.asia.validFromSec - 600) * 1000 });
+  ok(before.decision === 'skip' && before.reasons.includes('no_level_nearby'), 'ladder invisible BEFORE Asia closes');
+  const after = decide(zoneless, { price: line.price }, { nowMs: (lad.asia.validFromSec + 600) * 1000 });
+  ok(after.probability != null && after.zone.sources.includes('asia_ladder'), 'ladder line scores as a zone after validFrom');
+
+  // session high as a dynamic zone merging with a static level (cross-boundary confluence)
+  const zPDH = { price: 1.2345, score: 2, count: 1, sources: ['prior_hilo'], kinds: ['pdh'] };
+  const shSnap = { ...snap, zones: [zPDH], ladders: null };
+  const r = decide(shSnap, { price: 1.2345,
+    intraday: { high: 1.2345 + snap.meta.tolAbs * 0.5, low: 1.1, rangeUsed: 0.8, vwapDistSigma: 0 } }, { nowMs: NOW });
+  ok(r.zone.confluence === 2 && r.zone.sources.includes('session_hilo'), 'PDH + developing session high merge into confluence 2');
+  ok(r.zone.kinds.includes('session_high'), 'merged kinds show the dynamic member');
 }
 
 // ── other asset classes (pip/σ-math/costs switch on the registry) ────────────

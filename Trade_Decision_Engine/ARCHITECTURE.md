@@ -256,8 +256,21 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
   `computeBands ∘ volSigma` math the volatility bot's daily plan uses — the
   lines the bot trades ARE zones, so a touch on a book line carries it in its
   confluence and "agrees with a vol band" is fit-measurable like any source.
-  (The range-line bot's ladder is the planned second bot-level source, wired
-  when that bot is hooked to the engine.)
+- **Dynamic zones (resolved at decide() time, NOT frozen at midnight):** the
+  static zone map is per-snapshot; levels that move or become valid during the
+  session are merged per decision — (a) **today's developing high/low**
+  (`session_hilo`, from the intraday state: live snapshot block / exact
+  per-touch in the backfill), and (b) **the range-line bot's Asia + Monday
+  ladders** (`computeSessionLadders`, built with the bot's own
+  `buildRangeLadder` + `bodyRange` bricks: Asia = first 6h 5m-bodies, VALID
+  only after the formation window closes — the analyser's no-lookahead gate;
+  Monday = this week's Monday 15m-bodies, never on Monday itself; only lines
+  within 1.5σ of the open carried — the full ±10 extension grid would blanket
+  the price axis). Confluence merges across the static/dynamic boundary: a PDH
+  that is also today's session high and an Asia line counts all three. Ladder
+  lines are also backfill TOUCH CANDIDATES (the bot enters there), each
+  scanned only from its validFrom onward — verified zero violations over a
+  12-year replay.
 - **Instrument coverage — asset-class-agnostic by construction:** every
   asset-specific number switches on `instrumentRegistry` — σ estimator (fx→YZ,
   index→GARCH, commodity→HV20 via `volSigmaSeries`), band constants

@@ -21,6 +21,8 @@ import { dayTypeScore } from '../js/dayTypeCore.js';
 import { collectLevels, clusterLevels } from '../js/levelSources.js';
 import { pipSize, assetClass, oandaSymbol, resolveKey } from '../js/instrumentRegistry.js';
 import { rollingPercentile } from '../js/statsCore.js';
+import { bodyRange } from '../js/barUtils.js';
+import { buildRangeLadder } from '../js/rangeLineAnalyser.js';
 
 // Level sources usable from D1 bars alone (incl. swing_fib — multi-swing fib
 // clusters, so a "pulled fib" IS a first-class zone). volume_profile / vwap
@@ -57,6 +59,37 @@ export function computeIntradayState(bars, { sigmaAbs, hl50Abs, approachBars = 3
   };
 }
 
+// ── Session range ladders (pure) — the RANGE-LINE BOT's lines, time-valid ────
+// Built with the bot's OWN brick (buildRangeLadder + bodyRange, the analyser's
+// exact Asia/Monday derivation) so live, backfill and bot see identical lines:
+//   asia   — first `asiaHrs` of the session, 5m bodies; VALID only after the
+//            formation window closes (validFromSec — the analyser's
+//            no-lookahead gate). Recomputed fresh each session.
+//   monday — this week's Monday session, 15m bodies; never on Monday itself.
+// These are DYNAMIC levels: they are kept out of the static zone map and merged
+// at decide() time so a touch before Asia closes cannot see Asia lines.
+// Only lines within `reachSigma` of the session open are carried — the bot's
+// full ±10-extension grid would blanket the price axis and make "near a level"
+// meaningless for confluence.
+export function computeSessionLadders({ intradayBars = null, mondayBars = null, asiaHrs = 6, sessionOpen = null, sigmaAbs = null, reachSigma = 1.5 } = {}) {
+  const within = p => sessionOpen == null || sigmaAbs == null || Math.abs(p - sessionOpen) <= reachSigma * sigmaAbs;
+  const out = { asia: null, monday: null };
+  if (Array.isArray(intradayBars) && intradayBars.length >= 2) {
+    const t0 = intradayBars[0].time;
+    const asiaClose = t0 + asiaHrs * 3600;
+    const ar = bodyRange(intradayBars.filter(b => b.time < asiaClose), 5);
+    if (ar) out.asia = { low: ar.low, high: ar.high, validFromSec: asiaClose,
+      lines: buildRangeLadder(ar.low, ar.range, 'A').map(l => ({ price: l.level, label: l.label })).filter(l => within(l.price)) };
+  }
+  if (Array.isArray(mondayBars) && mondayBars.length >= 2) {
+    const mr = bodyRange(mondayBars, 15);
+    if (mr) out.monday = { low: mr.low, high: mr.high,
+      validFromSec: mondayBars[mondayBars.length - 1].time + 60,
+      lines: buildRangeLadder(mr.low, mr.range, 'M').map(l => ({ price: l.level, label: l.label })).filter(l => within(l.price)) };
+  }
+  return (out.asia?.lines?.length || out.monday?.lines?.length) ? out : null;
+}
+
 // ── Pure snapshot builder ────────────────────────────────────────────────────
 // dailyBars: chronological COMPLETED D1 [{time(sec), open, high, low, close}].
 // calendar: [{ timeMs, impact, currency, title }].
@@ -71,7 +104,7 @@ export function computeIntradayState(bars, { sigmaAbs, hl50Abs, approachBars = 3
 // dayOpen to the TRUE session open (first bar). sessionOpen (optional number)
 // sets the open without bars — the backfill uses it (per-touch intraday state
 // travels on the decide REQUEST there, to stay lookahead-free within the day).
-export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, intradayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
+export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, intradayBars = null, mondayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
   const key = safeKey(pair);
   if (!Array.isArray(dailyBars) || dailyBars.length < 80) {
     throw new Error(`buildSnapshot(${key}): need ≥80 completed D1 bars, got ${dailyBars?.length ?? 0}`);
@@ -136,12 +169,15 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
   const sigmaAbs = sigmaDaily * dayOpen;
   const intraday = intradayBars ? computeIntradayState(intradayBars, { sigmaAbs, hl50Abs }) : null;
 
+  // range-line bot ladders (time-valid dynamic levels — merged at decide() time)
+  const ladders = computeSessionLadders({ intradayBars, mondayBars, sessionOpen: dayOpen, sigmaAbs });
+
   return {
     pair: key, mode, builtAt: nowMs,
     price: refPrice, dayOpen,
     sigmaDaily, volPct, regime, T,
-    zones, calendar, macro: macroCtx, intraday,
-    meta: { bars: dailyBars.length, lastBarTime: dailyBars[dailyBars.length - 1].time, tolPips: +tolPips.toFixed(1), hl50Abs: +hl50Abs.toFixed(6), levelSources: TDE_LEVEL_SOURCES },
+    zones, calendar, macro: macroCtx, intraday, ladders,
+    meta: { bars: dailyBars.length, lastBarTime: dailyBars[dailyBars.length - 1].time, tolPips: +tolPips.toFixed(1), tolAbs: +(tolPips * pip).toFixed(8), hl50Abs: +hl50Abs.toFixed(6), levelSources: TDE_LEVEL_SOURCES },
   };
 }
 
@@ -208,9 +244,12 @@ export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, m
     // intraday state + true session open. Optional: a failed fetch degrades to
     // the D1-only snapshot (intraday features resolve 0) rather than aborting.
     const nowSec = Math.floor(nowMs / 1000);
-    const intradayBars = await fetchM1Range(oandaSymbol(key), londonMidnightSec(nowSec), nowSec)
+    const dayStartSec = londonMidnightSec(new Date(nowMs));
+    const intradayBars = await fetchM1Range(oandaSymbol(key), dayStartSec, nowSec)
       .catch(e => { console.warn(`[trade-decision] ${key} intraday fetch failed (D1-only snapshot):`, e.message ?? e); return null; });
-    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, intradayBars, nowMs, mode: 'live' });
+    const mondayBars = await fetchMondayBars(key, dayStartSec)
+      .catch(() => null);
+    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, intradayBars, mondayBars, nowMs, mode: 'live' });
     state.set(key, snap);
     errors.delete(key);
     return snap;
@@ -237,6 +276,24 @@ export function startRefresher(pairs = TDE_DEFAULT_PAIRS, intervalMs = 5 * 60_00
   refresherTimer = setInterval(tick, intervalMs);
   log(`[trade-decision] slow loop started: ${pairs.join(', ')} every ${Math.round(intervalMs / 1000)}s`);
   return () => { clearInterval(refresherTimer); refresherTimer = null; };
+}
+
+// ── This week's Monday session bars (for the Monday ladder) ──────────────────
+// Weekly-static → cached per pair+monday-date. Null on Monday itself (the
+// analyser's rule: Monday levels never trade on Monday) and on fetch failure.
+const _mondayCache = new Map();   // `${pair}|${mondayDate}` → bars | null
+export async function fetchMondayBars(pair, dayStartSec) {
+  const mid = new Date((dayStartSec + 12 * 3600) * 1000);
+  const dow = mid.getUTCDay();
+  if (dow === 1 || dow === 0 || dow === 6) return null;   // Monday itself / weekend
+  const monStart = londonMidnightSec(new Date((dayStartSec - ((dow + 6) % 7) * 86400) * 1000));
+  const cacheKey = `${pair}|${monStart}`;
+  if (_mondayCache.has(cacheKey)) return _mondayCache.get(cacheKey);
+  const bars = await fetchM1Range(oandaSymbol(pair), monStart, monStart + 25 * 3600)
+    .catch(() => null);
+  _mondayCache.set(cacheKey, bars?.length ? bars : null);
+  if (_mondayCache.size > 200) _mondayCache.delete(_mondayCache.keys().next().value);
+  return _mondayCache.get(cacheKey);
 }
 
 // ── Finnhub economic calendar → engine event shape (optional feed) ───────────

@@ -67,6 +67,28 @@ export function sessionPhaseUTC(ms) {
   return 'late';
 }
 
+// ── Dynamic zones — levels that move or become valid DURING the session ──────
+// The static zone map is per-snapshot; these are resolved at decide() time:
+//   session_hilo — today's developing high/low (live: snapshot.intraday,
+//                  backfill: exact per-touch state on the request)
+//   asia/monday ladder — the range-line bot's lines, visible only once their
+//                  formation window has closed (the analyser's validFrom gate)
+export function dynamicZones(snapshot, intra, nowSec) {
+  const out = [];
+  if (intra && Number.isFinite(intra.high) && Number.isFinite(intra.low) && intra.high > intra.low) {
+    out.push({ price: intra.high, score: 1.4, count: 1, sources: ['session_hilo'], kinds: ['session_high'], dyn: true });
+    out.push({ price: intra.low,  score: 1.4, count: 1, sources: ['session_hilo'], kinds: ['session_low'],  dyn: true });
+  }
+  for (const src of ['asia', 'monday']) {
+    const lad = snapshot.ladders?.[src];
+    if (!lad || !(nowSec >= lad.validFromSec)) continue;
+    for (const ln of lad.lines) {
+      out.push({ price: ln.price, score: 1.2, count: 1, sources: [`${src}_ladder`], kinds: [ln.label], dyn: true });
+    }
+  }
+  return out;
+}
+
 // ── Nearest zone within tolerance (distance in σ-of-price units) ─────────────
 export function nearestZone(zones, price, sigmaAbs, maxDistSigma = DECIDE_DEFAULTS.maxDistSigma) {
   if (!Array.isArray(zones) || !zones.length || !(sigmaAbs > 0)) return null;
@@ -189,15 +211,35 @@ export function decide(snapshot, request = {}, opts = {}) {
   if (gate.blocked) return skip('news_window', { news: gate.reason });
 
   // 3) a zone must be in reach — the engine scores zone touches, not open space.
+  //    Candidates = the static per-snapshot map PLUS the dynamic levels valid
+  //    right now (today's developing high/low, the range ladders past their
+  //    formation windows). After the hit, confluence merges across the
+  //    static/dynamic boundary: a PDH that is ALSO today's session high and an
+  //    Asia ladder line counts all three.
   //    own_level: the caller vouches that THEIR level (a hand-pulled fib, an
   //    order-flow line…) sits at `price`. If the map already has a zone there,
   //    it is used (their level agrees with the map → real confluence); if not,
   //    the price is scored as a standalone external level (confluence 1) rather
-  //    than refused. Confluence features then measure how much the engine's own
-  //    map agrees with the caller's level.
+  //    than refused.
   const price = Number(request.price) || snapshot.price;
   const sigmaAbs = snapshot.sigmaDaily * snapshot.dayOpen;
-  let hit = nearestZone(snapshot.zones, price, sigmaAbs, cfg.maxDistSigma);
+  const intra = request.intraday ?? snapshot.intraday ?? null;
+  const dyn = dynamicZones(snapshot, intra, Math.floor(nowMs / 1000));
+  let hit = nearestZone([...(snapshot.zones ?? []), ...dyn], price, sigmaAbs, cfg.maxDistSigma);
+  if (hit) {
+    const tolAbs = snapshot.meta?.tolAbs ?? 0;
+    const pool = hit.zone.dyn ? (snapshot.zones ?? []) : dyn;   // merge across the boundary only
+    const near = pool.filter(z => z !== hit.zone && Math.abs(z.price - hit.zone.price) <= tolAbs);
+    if (near.length) {
+      hit = { ...hit, zone: {
+        ...hit.zone,
+        count: hit.zone.count + near.reduce((s, z) => s + z.count, 0),
+        score: +(hit.zone.score + near.reduce((s, z) => s + z.score, 0)).toFixed(3),
+        sources: [...new Set([...hit.zone.sources, ...near.flatMap(z => z.sources)])],
+        kinds: [...new Set([...hit.zone.kinds, ...near.flatMap(z => z.kinds)])],
+      } };
+    }
+  }
   if (!hit && request.own_level) {
     hit = { zone: { price, count: 1, score: 1, sources: ['external'], kinds: ['external'] }, distSigma: 0 };
   }

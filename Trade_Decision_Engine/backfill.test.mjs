@@ -107,6 +107,18 @@ const packed = synthPacked();
   ok(evts.every(e => e.intraday.rangeUsed >= 0), 'rangeUsed non-negative as-of touch');
 }
 
+// ── ladder touch candidates: validFrom respected in the replay ───────────────
+{
+  const evts = [];
+  backfillPair('eurusd', packed, { onEvent: e => evts.push(e) });
+  ok(evts.every(e => Number.isFinite(e.zone.confluence)), 'merged decide zone recorded on every event');
+  const asiaEvts = evts.filter(e => (e.zone.sources ?? []).includes('asia_ladder'));
+  ok(asiaEvts.length > 0, `asia-ladder touches generated (${asiaEvts.length})`);
+  ok(asiaEvts.every(e => e.ts >= e.session_start + 6 * 3600), 'no asia-ladder event before the formation window closes');
+  const shilo = evts.filter(e => (e.zone.sources ?? []).includes('session_hilo'));
+  ok(shilo.length > 0, `session high/low confluence occurs (${shilo.length})`);
+}
+
 // ── contextByDate: per-day macro injection reaches the event features ────────
 {
   // every replay day risk-off; eurusd riskSens −0.5 (risk pair)
