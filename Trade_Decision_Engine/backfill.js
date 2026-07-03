@@ -157,6 +157,8 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
     // is validFrom-gated inside decide, so pre-close touches can't see it);
     // Monday = THIS week's Monday session (never on Monday itself).
     const asiaBars = extractBars(packed, dayStart, Math.min(dayStart + 6 * 3600, dayEnd));
+    const prevAsiaBars = i > 0 && dayStart - d1[i - 1].time <= 6 * 86400
+      ? extractBars(packed, d1[i - 1].time, d1[i - 1].time + 6 * 3600) : null;
     let mondayBars = null;
     {
       const dow = new Date((dayStart + 12 * 3600) * 1000).getUTCDay();
@@ -179,6 +181,7 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
     try {
       snap = buildSnapshot({ pair, dailyBars, calendar: dayCtx.calendar ?? [], macro: dayCtx.macro ?? null,
         intradayBars: asiaBars.length >= 2 ? asiaBars : null, mondayBars,
+        prevAsiaBars: prevAsiaBars?.length >= 10 ? prevAsiaBars : null,
         sessionOpen: packed.opens[s], nowMs: dayStart * 1000, mode: 'backfill' });
     } catch { continue; }
     const sigmaAbs = snap.sigmaDaily * snap.dayOpen;
@@ -210,9 +213,9 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
       .slice(0, C.maxTouchesPerDay)
       .map(z => ({ price: z.price, fromIdx: s }));
     const ladderCands = [];
-    for (const src of ['asia', 'monday']) {
-      const lad = snap.ladders?.[src];
-      if (!lad) continue;
+    for (const src of Object.keys(snap.ladders ?? {})) {
+      const lad = snap.ladders[src];
+      if (!lad?.lines) continue;
       const fromIdx = Math.max(s, bisect(packed.times, lad.validFromSec));
       if (fromIdx >= e) continue;
       for (const ln of lad.lines) {

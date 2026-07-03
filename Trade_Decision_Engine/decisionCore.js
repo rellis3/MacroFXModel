@@ -73,20 +73,67 @@ export function sessionPhaseUTC(ms) {
 //                  backfill: exact per-touch state on the request)
 //   asia/monday ladder — the range-line bot's lines, visible only once their
 //                  formation window has closed (the analyser's validFrom gate)
+// Zone styling per ladder key. asiaAlign carries count 2 — a today-line and a
+// yesterday-line agreeing within the 2-pip rule IS two sources of confluence —
+// and tight alignment (≤10% of the threshold / same fib) gets a score bump.
+export const LADDER_ZONE_STYLE = {
+  asia:      { source: 'asia_ladder',      score: 1.2, count: 1 },
+  monday:    { source: 'monday_ladder',    score: 1.2, count: 1 },
+  prevAsia:  { source: 'prev_asia_ladder', score: 1.0, count: 1 },
+  asiaAlign: { source: 'asia_prev_align',  score: 2.0, count: 2 },
+};
+
 export function dynamicZones(snapshot, intra, nowSec) {
   const out = [];
   if (intra && Number.isFinite(intra.high) && Number.isFinite(intra.low) && intra.high > intra.low) {
     out.push({ price: intra.high, score: 1.4, count: 1, sources: ['session_hilo'], kinds: ['session_high'], dyn: true });
     out.push({ price: intra.low,  score: 1.4, count: 1, sources: ['session_hilo'], kinds: ['session_low'],  dyn: true });
   }
-  for (const src of ['asia', 'monday']) {
-    const lad = snapshot.ladders?.[src];
-    if (!lad || !(nowSec >= lad.validFromSec)) continue;
+  for (const [key, style] of Object.entries(LADDER_ZONE_STYLE)) {
+    const lad = snapshot.ladders?.[key];
+    if (!lad?.lines || !(nowSec >= lad.validFromSec)) continue;
     for (const ln of lad.lines) {
-      out.push({ price: ln.price, score: 1.2, count: 1, sources: [`${src}_ladder`], kinds: [ln.label], dyn: true });
+      out.push({ price: ln.price, score: ln.tight ? +(style.score + 0.4).toFixed(2) : style.score,
+        count: style.count, sources: [style.source], kinds: [ln.label], dyn: true });
     }
   }
-  return out;
+
+  // Consolidate COINCIDENT dynamic levels (within ~2 pips — the alignment
+  // threshold, deliberately much tighter than the zone tolerance so adjacent
+  // ladder rungs never chain-merge): one representative per SOURCE (a grid
+  // cannot confirm itself), and an asia_prev_align member SUBSUMES its
+  // constituent asia/prev lines — its count 2 already represents them.
+  const epsAbs = snapshot.meta?.tolPips > 0 ? 2 * (snapshot.meta.tolAbs / snapshot.meta.tolPips) : 0;
+  if (!(epsAbs > 0) || out.length < 2) return out;
+  out.sort((a, b) => a.price - b.price);
+  const merged = [];
+  let group = [];
+  const flush = () => {
+    if (!group.length) return;
+    const bySource = new Map();
+    for (const z of group) {
+      const src = z.sources[0];
+      if (!bySource.has(src) || z.score > bySource.get(src).score) bySource.set(src, z);
+    }
+    if (bySource.has('asia_prev_align')) { bySource.delete('asia_ladder'); bySource.delete('prev_asia_ladder'); }
+    const reps = [...bySource.values()];
+    const base = reps.reduce((a, b) => (b.score > a.score ? b : a));
+    merged.push(reps.length === 1 ? base : {
+      price: base.price,
+      score: +reps.reduce((s, z) => s + z.score, 0).toFixed(3),
+      count: reps.reduce((s, z) => s + z.count, 0),
+      sources: [...new Set(reps.flatMap(z => z.sources))],
+      kinds: [...new Set(reps.flatMap(z => z.kinds))],
+      dyn: true,
+    });
+    group = [];
+  };
+  for (const z of out) {
+    if (group.length && z.price - group[group.length - 1].price > epsAbs) flush();
+    group.push(z);
+  }
+  flush();
+  return merged;
 }
 
 // ── Nearest zone within tolerance (distance in σ-of-price units) ─────────────

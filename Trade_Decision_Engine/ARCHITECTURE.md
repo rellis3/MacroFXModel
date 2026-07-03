@@ -271,6 +271,15 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
   lines are also backfill TOUCH CANDIDATES (the bot enters there), each
   scanned only from its validFrom onward — verified zero violations over a
   12-year replay.
+- **Cross-session 2-pip alignment (`asia_prev_align`):** the PREVIOUS session's
+  Asia ladder is carried all day (`prev_asia_ladder`), and today's Asia lines
+  are matched against yesterday's through `detectConfluencesCore` — the SAME
+  brick the dashboard/Asia backtest/Pine export share — at the live defaults
+  (2.0-pip threshold, tight = 10% of it, 0.3× cluster merge, session-range
+  cap, ≥5-pip minimum Asia range). Aligned clusters carry **count 2** (two
+  independent sessions agreeing IS confluence) and subsume their constituent
+  lines; coincident dynamic levels consolidate per-source within ~2 pips (a
+  grid cannot confirm itself; adjacent rungs never chain-merge).
 - **Instrument coverage — asset-class-agnostic by construction:** every
   asset-specific number switches on `instrumentRegistry` — σ estimator (fx→YZ,
   index→GARCH, commodity→HV20 via `volSigmaSeries`), band constants

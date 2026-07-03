@@ -238,6 +238,28 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   const after = decide(zoneless, { price: line.price }, { nowMs: (lad.asia.validFromSec + 600) * 1000 });
   ok(after.probability != null && after.zone.sources.includes('asia_ladder'), 'ladder line scores as a zone after validFrom');
 
+  // prev-Asia ladder + the 2-pip cross-session alignment (detectConfluencesCore)
+  const prevAligned = []; for (let m = 0; m < 360; m++) prevAligned.push(mk(t0 - 86400 + m * 60, 1.0, 1.002, 0.998, 1.001));
+  const lad2 = computeSessionLadders({ intradayBars: asia, prevAsiaBars: prevAligned, sessionOpen: 1.0, sigmaAbs: 0.01, pip: 0.0001 });
+  ok(lad2.prevAsia?.lines?.length > 0 && lad2.prevAsia.validFromSec === 0, 'prev-Asia ladder valid all day');
+  ok(lad2.asiaAlign?.lines?.length > 0, `identical ranges align (${lad2.asiaAlign?.lines?.length} clusters)`);
+  ok(lad2.asiaAlign.lines.every(l => l.tight === true), 'exact alignment flags tight (same fib / ≤10% of 2 pips)');
+  ok(lad2.asiaAlign.validFromSec === lad2.asia.validFromSec, 'alignment needs today\'s lines → inherits Asia validFrom');
+  // shift yesterday's range OFF-GRID (52.5 pips — not a multiple of the ladder
+  // half-step, or the dense grids would legitimately overlap) → no alignment
+  const prevFar = prevAligned.map(b => ({ ...b, open: b.open + 0.00525, high: b.high + 0.00525, low: b.low + 0.00525, close: b.close + 0.00525 }));
+  const lad3 = computeSessionLadders({ intradayBars: asia, prevAsiaBars: prevFar, sessionOpen: 1.0, sigmaAbs: 0.01, pip: 0.0001 });
+  ok(lad3.asiaAlign === null && lad3.prevAsia?.lines?.length > 0, 'misaligned sessions produce no alignment clusters');
+  // degenerate guard: a <5-pip Asia range produces no ladder at all
+  const flat = []; for (let m = 0; m < 360; m++) flat.push(mk(t0 + m * 60, 1.0, 1.0002, 0.9999, 1.0001));
+  ok(computeSessionLadders({ intradayBars: flat, sessionOpen: 1.0, sigmaAbs: 0.01, pip: 0.0001 }) === null, '<5-pip range → no ladder (degenerate guard)');
+
+  // through decide: alignment cluster = count 2 (two sessions agree)
+  const alignSnap = { ...snap, zones: [], ladders: lad2, intraday: null };
+  const aLine = lad2.asiaAlign.lines[0];
+  const rA = decide(alignSnap, { price: aLine.price }, { nowMs: (lad2.asia.validFromSec + 600) * 1000 });
+  ok(rA.zone.confluence >= 2 && rA.zone.sources.includes('asia_prev_align'), 'aligned line scores confluence ≥2 through decide');
+
   // session high as a dynamic zone merging with a static level (cross-boundary confluence)
   const zPDH = { price: 1.2345, score: 2, count: 1, sources: ['prior_hilo'], kinds: ['pdh'] };
   const shSnap = { ...snap, zones: [zPDH], ladders: null };

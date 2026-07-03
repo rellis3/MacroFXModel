@@ -23,6 +23,7 @@ import { pipSize, assetClass, oandaSymbol, resolveKey } from '../js/instrumentRe
 import { rollingPercentile } from '../js/statsCore.js';
 import { bodyRange } from '../js/barUtils.js';
 import { buildRangeLadder } from '../js/rangeLineAnalyser.js';
+import { detectConfluencesCore } from '../js/confluence-core.js';
 
 // Level sources usable from D1 bars alone (incl. swing_fib — multi-swing fib
 // clusters, so a "pulled fib" IS a first-class zone). volume_profile / vwap
@@ -71,23 +72,58 @@ export function computeIntradayState(bars, { sigmaAbs, hl50Abs, approachBars = 3
 // Only lines within `reachSigma` of the session open are carried — the bot's
 // full ±10-extension grid would blanket the price axis and make "near a level"
 // meaningless for confluence.
-export function computeSessionLadders({ intradayBars = null, mondayBars = null, asiaHrs = 6, sessionOpen = null, sigmaAbs = null, reachSigma = 1.5 } = {}) {
+// prevAsiaBars (optional) = the PREVIOUS session's Asia window: its ladder is
+// valid ALL day (formed yesterday), and — the signal the Asia engine keys on —
+// today's lines are matched against yesterday's through the SAME
+// detectConfluencesCore brick the dashboard/backtest/Pine export share:
+// 2.0-pip threshold, tight at 10% of it, 0.3× cluster merge, session-range cap
+// (asiaRangeEngine's live defaults). Aligned clusters come out as `asiaAlign`
+// lines with count 2 — two independent sessions agreeing IS confluence.
+// Both sessions need a ≥5-pip Asia body range (the engine's degenerate guard).
+export function computeSessionLadders({ intradayBars = null, mondayBars = null, prevAsiaBars = null,
+    asiaHrs = 6, sessionOpen = null, sigmaAbs = null, reachSigma = 1.5, pip = 0.0001,
+    confluenceThreshPips = 2.0, tightPct = 10, mergeFactor = 0.30 } = {}) {
   const within = p => sessionOpen == null || sigmaAbs == null || Math.abs(p - sessionOpen) <= reachSigma * sigmaAbs;
-  const out = { asia: null, monday: null };
+  const minRange = pip * 5;
+  const mkLines = (low, range, tag) => buildRangeLadder(low, range, tag)
+    .map(l => ({ price: l.level, label: l.label, fib: l.fibL }));
+  const out = { asia: null, monday: null, prevAsia: null, asiaAlign: null };
+
+  let asiaLines = null, ar = null;
   if (Array.isArray(intradayBars) && intradayBars.length >= 2) {
     const t0 = intradayBars[0].time;
     const asiaClose = t0 + asiaHrs * 3600;
-    const ar = bodyRange(intradayBars.filter(b => b.time < asiaClose), 5);
-    if (ar) out.asia = { low: ar.low, high: ar.high, validFromSec: asiaClose,
-      lines: buildRangeLadder(ar.low, ar.range, 'A').map(l => ({ price: l.level, label: l.label })).filter(l => within(l.price)) };
+    ar = bodyRange(intradayBars.filter(b => b.time < asiaClose), 5);
+    if (ar && ar.range >= minRange) {
+      asiaLines = mkLines(ar.low, ar.range, 'A');
+      out.asia = { low: ar.low, high: ar.high, validFromSec: asiaClose, lines: asiaLines.filter(l => within(l.price)) };
+    }
   }
   if (Array.isArray(mondayBars) && mondayBars.length >= 2) {
     const mr = bodyRange(mondayBars, 15);
-    if (mr) out.monday = { low: mr.low, high: mr.high,
+    if (mr && mr.range >= minRange) out.monday = { low: mr.low, high: mr.high,
       validFromSec: mondayBars[mondayBars.length - 1].time + 60,
-      lines: buildRangeLadder(mr.low, mr.range, 'M').map(l => ({ price: l.level, label: l.label })).filter(l => within(l.price)) };
+      lines: mkLines(mr.low, mr.range, 'M').filter(l => within(l.price)) };
   }
-  return (out.asia?.lines?.length || out.monday?.lines?.length) ? out : null;
+  if (Array.isArray(prevAsiaBars) && prevAsiaBars.length >= 2) {
+    const pr = bodyRange(prevAsiaBars, 5);
+    if (pr && pr.range >= minRange) {
+      const prevLines = mkLines(pr.low, pr.range, 'P');
+      out.prevAsia = { low: pr.low, high: pr.high, validFromSec: 0, lines: prevLines.filter(l => within(l.price)) };
+      if (asiaLines && ar) {
+        const thresh = confluenceThreshPips * pip;
+        const clusters = detectConfluencesCore(
+          asiaLines.map(l => ({ price: l.price, fib: l.fib })),
+          prevLines.map(l => ({ price: l.price, fib: l.fib })),
+          { pipSize: pip, normalDistance: thresh, tightDistance: thresh * (tightPct / 100),
+            mergeDistance: thresh * mergeFactor, sessionRange: ar.range });
+        const lines = clusters.filter(c => within(c.price))
+          .map(c => ({ price: c.price, label: `A${c.todayFib}×P${c.yesterdayFib}`, tight: c.isTight === true }));
+        if (lines.length) out.asiaAlign = { validFromSec: out.asia?.validFromSec ?? 0, lines };
+      }
+    }
+  }
+  return (out.asia?.lines?.length || out.monday?.lines?.length || out.prevAsia?.lines?.length) ? out : null;
 }
 
 // ── Pure snapshot builder ────────────────────────────────────────────────────
@@ -104,7 +140,7 @@ export function computeSessionLadders({ intradayBars = null, mondayBars = null, 
 // dayOpen to the TRUE session open (first bar). sessionOpen (optional number)
 // sets the open without bars — the backfill uses it (per-touch intraday state
 // travels on the decide REQUEST there, to stay lookahead-free within the day).
-export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, intradayBars = null, mondayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
+export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, intradayBars = null, mondayBars = null, prevAsiaBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
   const key = safeKey(pair);
   if (!Array.isArray(dailyBars) || dailyBars.length < 80) {
     throw new Error(`buildSnapshot(${key}): need ≥80 completed D1 bars, got ${dailyBars?.length ?? 0}`);
@@ -170,7 +206,7 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
   const intraday = intradayBars ? computeIntradayState(intradayBars, { sigmaAbs, hl50Abs }) : null;
 
   // range-line bot ladders (time-valid dynamic levels — merged at decide() time)
-  const ladders = computeSessionLadders({ intradayBars, mondayBars, sessionOpen: dayOpen, sigmaAbs });
+  const ladders = computeSessionLadders({ intradayBars, mondayBars, prevAsiaBars, sessionOpen: dayOpen, sigmaAbs, pip });
 
   return {
     pair: key, mode, builtAt: nowMs,
@@ -249,7 +285,9 @@ export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, m
       .catch(e => { console.warn(`[trade-decision] ${key} intraday fetch failed (D1-only snapshot):`, e.message ?? e); return null; });
     const mondayBars = await fetchMondayBars(key, dayStartSec)
       .catch(() => null);
-    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, intradayBars, mondayBars, nowMs, mode: 'live' });
+    const prevAsiaBars = await fetchPrevAsiaBars(key, dayStartSec)
+      .catch(() => null);
+    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, intradayBars, mondayBars, prevAsiaBars, nowMs, mode: 'live' });
     state.set(key, snap);
     errors.delete(key);
     return snap;
@@ -294,6 +332,24 @@ export async function fetchMondayBars(pair, dayStartSec) {
   _mondayCache.set(cacheKey, bars?.length ? bars : null);
   if (_mondayCache.size > 200) _mondayCache.delete(_mondayCache.keys().next().value);
   return _mondayCache.get(cacheKey);
+}
+
+// ── Previous session's Asia window (for the prev-Asia ladder + 2-pip align) ──
+// Scans back up to 4 calendar days for the most recent session with ≥10 Asia
+// bars (the asiaRangeEngine's _prevAsia semantics over weekends). Cached.
+const _prevAsiaCache = new Map();
+export async function fetchPrevAsiaBars(pair, dayStartSec) {
+  for (let d = 1; d <= 4; d++) {
+    const prevStart = londonMidnightSec(new Date((dayStartSec - d * 86400 + 3600) * 1000));
+    const ck = `${pair}|${prevStart}`;
+    if (!_prevAsiaCache.has(ck)) {
+      _prevAsiaCache.set(ck, await fetchM1Range(oandaSymbol(pair), prevStart, prevStart + 6 * 3600).catch(() => null));
+      if (_prevAsiaCache.size > 300) _prevAsiaCache.delete(_prevAsiaCache.keys().next().value);
+    }
+    const bars = _prevAsiaCache.get(ck);
+    if (bars?.length >= 10) return bars;
+  }
+  return null;
 }
 
 // ── Finnhub economic calendar → engine event shape (optional feed) ───────────
