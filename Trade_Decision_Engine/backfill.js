@@ -28,7 +28,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { loadM1ForPair, M1_DRIVE_IDS } from '../js/volBacktestM1Engine.js';
 import { gapFillPacked } from '../js/m1GapFill.js';
-import { fetchM1Range } from '../js/volBacktestEngine.js';
+import { fetchM1Range, londonMidnightSec } from '../js/volBacktestEngine.js';
 import { bisect } from '../js/barUtils.js';
 import { DEFAULT_COST_PCT } from '../js/forecastCore.js';
 import { assetClass, oandaSymbol } from '../js/instrumentRegistry.js';
@@ -60,25 +60,43 @@ export const BACKFILL_DEFAULTS = {
   approachBars: 30,     // M1 bars used for approach-speed feature
 };
 
-// ── D1 derivation from packed M1 (one typed-array pass, no object churn) ─────
+// ── D1 derivation from packed M1 — LONDON-midnight session days ──────────────
+// Days are bucketed at 00:00 Europe/London (DST-safe via the exported
+// londonMidnightSec anchor — 23:00 UTC in BST, 00:00 UTC in GMT), matching the
+// live snapshot's session anchor and the forecaster/book convention. Weekend
+// stubs (Sunday-evening broker bars spanning < 6h) are DROPPED: live fetchD1
+// has no such bars (OANDA merges them into Monday's broker day), so keeping
+// them would feed the σ estimator tiny fake ranges the live path never sees.
 export function deriveD1Packed(packed) {
   const { n, times, opens, highs, lows, closes } = packed;
   const out = [];
-  let day = -1, o = 0, h = 0, l = 0, c = 0;
+  let end = -Infinity, cur = null, firstT = 0, lastT = 0;
+  const flush = () => { if (cur && lastT - firstT >= 6 * 3600) out.push(cur); cur = null; };
   for (let i = 0; i < n; i++) {
-    const d = times[i] - (times[i] % 86400);
-    if (d !== day) {
-      if (day >= 0) out.push({ time: day, open: o, high: h, low: l, close: c });
-      day = d; o = opens[i]; h = highs[i]; l = lows[i]; c = closes[i];
+    if (times[i] >= end) {
+      flush();
+      const start = londonMidnightSec(new Date(times[i] * 1000));
+      let next = londonMidnightSec(new Date((start + 26 * 3600) * 1000));
+      if (!(next > start)) next = start + 86400;
+      end = next;
+      cur = { time: start, open: opens[i], high: highs[i], low: lows[i], close: closes[i] };
+      firstT = lastT = times[i];
     } else {
-      if (highs[i] > h) h = highs[i];
-      if (lows[i] < l) l = lows[i];
-      c = closes[i];
+      if (highs[i] > cur.high) cur.high = highs[i];
+      if (lows[i] < cur.low) cur.low = lows[i];
+      cur.close = closes[i];
+      lastT = times[i];
     }
   }
-  if (day >= 0) out.push({ time: day, open: o, high: h, low: l, close: c });
+  flush();
   return out;
 }
+
+// The day's CALENDAR date: day-midpoint, so a BST session starting 23:00 UTC
+// the previous evening still labels as the trading day traders would call it.
+// contextByDate keys (macro loader) use this same convention.
+export const backfillDayDate = dayStartSec =>
+  new Date((dayStartSec + 12 * 3600) * 1000).toISOString().substring(0, 10);
 
 // ── Triple-barrier outcome on the rest of the day (pure) ─────────────────────
 // packed M1, [fromIdx, endIdx): SL first (conservative), then TP, else honest
@@ -117,8 +135,11 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
   let events = 0, days = 0, lastDate = fromDate;
 
   for (let i = C.warmupDays; i < d1.length; i++) {
-    const dayStart = d1[i].time, dayEnd = dayStart + 86400;
-    const date = new Date(dayStart * 1000).toISOString().substring(0, 10);
+    // window = this London day's bars; capped at 25h (the longest DST day) so
+    // a weekend gap can't fold Sunday-evening stub bars into Friday's session
+    const dayStart = d1[i].time;
+    const dayEnd = Math.min(i + 1 < d1.length ? d1[i + 1].time : dayStart + 86400, dayStart + 25 * 3600);
+    const date = backfillDayDate(dayStart);
     if (fromDate && date <= fromDate) continue;
 
     const s = bisect(packed.times, dayStart), e = bisect(packed.times, dayEnd);

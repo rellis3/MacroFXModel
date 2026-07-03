@@ -1,7 +1,7 @@
 // Backfill — synthetic, no-network unit tests for the pure parts.
 // Run: node Trade_Decision_Engine/backfill.test.mjs
 import assert from 'node:assert/strict';
-import { deriveD1Packed, labelOutcome, backfillPair, fitLogistic, macroBucketReport, MACRO_BUCKET_BAR, BACKFILL_DEFAULTS } from './backfill.js';
+import { deriveD1Packed, backfillDayDate, labelOutcome, backfillPair, fitLogistic, macroBucketReport, MACRO_BUCKET_BAR, BACKFILL_DEFAULTS } from './backfill.js';
 import { MODEL_V0 } from './modelV0.js';
 
 let passed = 0;
@@ -112,7 +112,7 @@ const packed = synthPacked();
   // every replay day risk-off; eurusd riskSens −0.5 (risk pair)
   const ctx = {};
   const d1 = deriveD1Packed(packed);
-  for (const b of d1) ctx[new Date(b.time * 1000).toISOString().substring(0, 10)] =
+  for (const b of d1) ctx[backfillDayDate(b.time)] =
     { macro: { regime: 'RISK_OFF', riskSens: -0.5 } };
   const evts = [];
   backfillPair('eurusd', packed, { contextByDate: ctx, onEvent: e => evts.push(e) });

@@ -101,11 +101,26 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
   // completed-D1 approximation (≈ last close) only as the fallback
   const dayOpen = Number(sessionOpen) || intradayBars?.[0]?.open || lastClose;
 
-  // zone map: collect D1-derivable levels, cluster to confluence zones.
+  // the forecaster's bands off the session open — the SAME computeBands ∘
+  // volSigma math the volatility bot's daily plan lines are built from
+  const bands = computeBands(dayOpen, sigmaDaily, cls);
+
+  // zone map: D1-derivable level sources + the vol-band lines as a first-class
+  // source (`vol_band`) — the lines the volatility bot trades ARE zones, so a
+  // touch on a book line scores with the book line in its confluence, and
+  // "level agrees with a vol band" is measurable by the fit like any source.
   // Tolerance scales with σ (≈0.08σ), clamped to a sane pip band.
   const pip = safePip(key);
   const tolPips = Math.max(5, Math.min(25, (0.08 * sigmaDaily * refPrice) / pip));
-  const levels = collectLevels({ dailyBars, instrument: key, price: refPrice }, TDE_LEVEL_SOURCES);
+  const bandLevels = [
+    ['up50', 'Proj H (median)', 1.6], ['dn50', 'Proj L (median)', 1.6],
+    ['up75', 'Proj H (75th)', 1.3],   ['dn75', 'Proj L (75th)', 1.3],
+    ['ocUp', 'Proj Close +', 1.0],    ['ocDn', 'Proj Close −', 1.0],
+  ].map(([k, label, weight]) => ({ price: bands[k], kind: 'vol_band', label, weight, source: 'vol_band', meta: { band: k } }));
+  const levels = [
+    ...collectLevels({ dailyBars, instrument: key, price: refPrice }, TDE_LEVEL_SOURCES),
+    ...bandLevels.filter(l => Number.isFinite(l.price) && l.price > 0),
+  ];
   const zones = clusterLevels(levels, tolPips, pip)
     .map(({ price: p, score, count, sources, kinds }) => ({ price: p, score, count, sources, kinds }));
 
@@ -116,8 +131,8 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
     : null;
 
   // expected MEDIAN daily range (price units) — the rangeUsed denominator,
-  // straight from the forecaster's band math (one source of truth)
-  const hl50Abs = computeBands(dayOpen, sigmaDaily, cls).hl50 * dayOpen;
+  // from the same bands as the vol_band zone lines (one source of truth)
+  const hl50Abs = bands.hl50 * dayOpen;
   const sigmaAbs = sigmaDaily * dayOpen;
   const intraday = intradayBars ? computeIntradayState(intradayBars, { sigmaAbs, hl50Abs }) : null;
 

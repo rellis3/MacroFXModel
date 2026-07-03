@@ -243,6 +243,21 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
   sees bars after the touch.
 - **Exits:** TP = 0.5σ with the trade, SL = 0.75σ against (configurable);
   intrabar ambiguity resolves to the stop.
+- **Session anchoring — London midnight everywhere:** live snapshots and the
+  backfill both bucket the trading day at 00:00 Europe/London (the
+  `londonMidnightSec` brick — the forecaster/book anchor), and `dayOpen` is the
+  session's first M1 open on both paths. The backfill DROPS weekend stub
+  sessions (<6h of bars): live `fetchD1` never sees them (OANDA merges Sunday
+  evening into Monday's broker day), and under the old UTC bucketing ~540 such
+  stubs were being replayed as fake tradeable days. `contextByDate` keys use
+  the day-midpoint calendar date (`backfillDayDate`).
+- **`vol_band` level source:** the forecaster's six band lines (median/75th
+  proj H&L + proj closes), computed off the session open with the same
+  `computeBands ∘ volSigma` math the volatility bot's daily plan uses — the
+  lines the bot trades ARE zones, so a touch on a book line carries it in its
+  confluence and "agrees with a vol band" is fit-measurable like any source.
+  (The range-line bot's ladder is the planned second bot-level source, wired
+  when that bot is hooked to the engine.)
 - **Instrument coverage — asset-class-agnostic by construction:** every
   asset-specific number switches on `instrumentRegistry` — σ estimator (fx→YZ,
   index→GARCH, commodity→HV20 via `volSigmaSeries`), band constants
