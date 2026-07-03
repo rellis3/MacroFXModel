@@ -17,7 +17,7 @@ import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
 import { pipSize, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
-import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, runExitGateSweep, runDayTypeStudy, runStopStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, runExitGateSweep, runRideRigor, runDayTypeStudy, runStopStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { deflatedSharpe } from './backtestStats.js';
 import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
 import { resampleTo } from './barUtils.js';
@@ -341,7 +341,8 @@ export async function runPerLineBook({ horizon = 'daily', conditions = ['approac
 // records to carry the ex* fields (a post-exit-study Refresh) — older records are
 // counted in study.missing.
 export async function buildExitStudy({ horizon = 'daily', conditions = ['approachVel'],
-                                       minN = 50, splitFrac = 0.6, marginPct = 0.01 } = {}) {
+                                       minN = 50, splitFrac = 0.6, marginPct = 0.01,
+                                       rideGate = 0.05 } = {}) {   // the gate-sweep's cost-robust winner
   const manifest = await getManifest();
   if (!manifest) return null;
   const pairs = Object.keys(manifest.pairs || {});
@@ -361,7 +362,10 @@ export async function buildExitStudy({ horizon = 'daily', conditions = ['approac
   const study = runExitStudy(touchesByPair, { splitFrac, minN, marginPct, costByPair, slipByPair });
   // Entry-gate sweep: does concentrating on higher-edge cells make ride survive 2×?
   const gateSweep = runExitGateSweep(touchesByPair, { splitFrac, minN, costByPair, slipByPair });
-  return study ? { ...study, gateSweep } : study;
+  // Strict-gate ride rigor: walk-forward / per-year / breadth at the winning gate —
+  // guards against single-split luck / gate-overfit before we trust the ride edge.
+  const rideRigor = runRideRigor(touchesByPair, { splitFrac, minN, marginPct: rideGate, costByPair, slipByPair });
+  return study ? { ...study, gateSweep, rideRigor } : study;
 }
 
 // ── Day-type gate A/B study — velocity-only vs velocity×ex-ante-day-type ──────
