@@ -46,12 +46,16 @@ CYCLE_LENGTH_WEEKS = 282
 CB_BLOCKS = {
     "USD": {
         # Fed net liquidity = WALCL - TGA - RRP (already in USD).
+        # UNITS: FRED publishes WALCL in $MILLIONS but WTREGEN/RRPONTSYD in
+        # $BILLIONS. The raw subtraction made the drains ~0.01% of the block —
+        # "net liquidity" was effectively just the Fed balance sheet and missed
+        # the 2022/23 TGA-rebuild / RRP-drain moves entirely. walcl/1000 → $B.
         "components": {
-            "walcl": "WALCL",         # Fed total assets
-            "tga": "WTREGEN",         # Treasury General Account (drains)
-            "rrp": "RRPONTSYD",       # Reverse repo (drains)
+            "walcl": "WALCL",         # Fed total assets ($ MILLIONS on FRED)
+            "tga": "WTREGEN",         # Treasury General Account, drains ($ BILLIONS)
+            "rrp": "RRPONTSYD",       # Reverse repo, drains ($ BILLIONS)
         },
-        "formula": "walcl - tga - rrp",
+        "formula": "walcl / 1000 - tga - rrp",
         "fx": None,                   # already USD
         "proxy": False,
     },

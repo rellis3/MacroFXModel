@@ -39,7 +39,17 @@ try:
 except ImportError:
     HAS_MT5 = False
 
-MAGIC = 20260006
+# Registered in pylego/magics.py (checked by pylego/magics_test.py). Was
+# 20260006, which COLLIDED with RegimeV4 and DynAnchorBot. MT5 cannot retag an
+# open position's magic, and this bot's book is long-lived (monthly rebalance),
+# so positions opened BEFORE the change still carry 20260006 — MAGICS_MINE keeps
+# them visible to the read paths. The sizing/trim reads are symbol-scoped (an FX
+# position from the old co-owners can't leak in); only the dashboard serializer
+# is unscoped and may DISPLAY a co-owner's position until turnover (cosmetic).
+# New orders always use MAGIC. Drop the legacy entry once the pre-change book
+# has fully turned over.
+MAGIC = 20260010
+MAGICS_MINE = {MAGIC, 20260006}   # reads only — orders use MAGIC
 
 KV_CONFIG = 'macro_equity_config'
 KV_CREDS  = 'macro_equity_credentials'
@@ -229,7 +239,7 @@ def get_current_lots(symbol: str) -> float:
     if not HAS_MT5:
         return 0.0
     positions = mt5.positions_get(symbol=symbol) or []
-    total = sum(p.volume for p in positions if p.magic == MAGIC and p.type == 0)
+    total = sum(p.volume for p in positions if p.magic in MAGICS_MINE and p.type == 0)
     return round(total, 2)
 
 
@@ -351,7 +361,7 @@ def rebalance_instrument(
         # For equity-long-only: reduce position by selling existing lots
         if not paper_mode and HAS_MT5:
             positions = [p for p in (mt5.positions_get(symbol=symbol) or [])
-                         if p.magic == MAGIC and p.type == 0]
+                         if p.magic in MAGICS_MINE and p.type == 0]
             remaining = close_lots
             for pos in sorted(positions, key=lambda p: p.volume):
                 if remaining <= 0:
@@ -422,7 +432,7 @@ def _serialize_open_positions() -> list[dict]:
             'comment':    str(p.comment or ''),
         }
         for p in (mt5.positions_get() or [])
-        if p.magic == MAGIC
+        if p.magic in MAGICS_MINE
     ]
 
 
@@ -433,7 +443,7 @@ def _serialize_closed_trades() -> list[dict]:
     deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
     by_pos: dict[int, list] = {}
     for d in deals:
-        if d.magic != MAGIC:
+        if d.magic not in MAGICS_MINE:
             continue
         by_pos.setdefault(d.position_id, []).append(d)
     out = []

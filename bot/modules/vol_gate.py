@@ -1,4 +1,10 @@
+import time
+
 from .base import BaseModule, ModuleResult
+
+# A VIX reading older than this is treated as unavailable (fail-open for a
+# size gate, but LOUDLY — a silent stale block/no-block is the worst mode).
+MAX_FRED_AGE_MS = 24 * 3600 * 1000
 
 
 class VolGateModule(BaseModule):
@@ -27,6 +33,18 @@ class VolGateModule(BaseModule):
                 passed=True, signal='NEUTRAL', score=0.5, confidence='LOW',
                 reason='VIX unavailable — no vol block applied',
                 metadata={'vol_regime': 'UNKNOWN', 'size_mult': 1.0},
+            )
+
+        # Staleness: the server stamps fetched_at (ms epoch) into the fred
+        # snapshot. A confident block/size decision from days-old data is worse
+        # than no decision — treat stale as unavailable, but say so.
+        fetched_at = fred.get('fetched_at')
+        if fetched_at and (time.time() * 1000 - fetched_at) > MAX_FRED_AGE_MS:
+            age_h = (time.time() * 1000 - fetched_at) / 3600_000
+            return ModuleResult(
+                passed=True, signal='NEUTRAL', score=0.5, confidence='LOW',
+                reason=f'FRED VIX stale ({age_h:.0f}h old) — no vol block applied',
+                metadata={'vol_regime': 'STALE', 'vix': vix, 'size_mult': 1.0},
             )
 
         max_vix = (config.get('vol_gate') or {}).get('max_vix', 30)

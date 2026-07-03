@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pylego.kv import KvClient                              # noqa: E402
 from pylego import instruments as I                          # noqa: E402
 from pylego import point_values as PV                        # noqa: E402
+from pylego import events as EV                              # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
 from volatility_bot.engine import SessionTracker, decide, session_open_epoch  # noqa: E402
@@ -119,6 +120,34 @@ def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot
     return position_size(balance, risk_pct, abs(sl_dist), pip=pip, pip_value=pv, max_lot=max_lot)
 
 
+def _pair_event_ccys(pair: str) -> list[str]:
+    """Event-relevant currencies for a plan pair — resolve through the
+    instrument registry (OANDA symbol carries the legs, e.g. 'us30' → US30_USD
+    → USD) and fall back to parsing the name itself."""
+    try:
+        sym = I.instrument(pair).get("oanda") or pair
+    except Exception:
+        sym = pair
+    return EV.pair_ccys(sym)
+
+
+def _plan_is_current(plan, now_epoch: float) -> bool:
+    """True when the plan was generated at/after the CURRENT session open.
+    A plan from a previous session means the nightly producer run failed (or
+    the scheduler misfired) — its open/σ anchor the WRONG day, so entries must
+    halt (fail closed) rather than trade lines the book never validated.
+    Unparseable/missing generatedAt fails closed too."""
+    gen = (plan or {}).get("generatedAt")
+    if not gen:
+        return False
+    try:
+        from datetime import datetime
+        gen_epoch = datetime.fromisoformat(str(gen).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return False
+    return gen_epoch >= session_open_epoch(now_epoch)
+
+
 def _pair_lines(plan, trackers, broker):
     """Per-pair snapshot the config page renders: today's forecast line levels the
     bot pulled (OC static off open, HL dynamic off the running extreme) + the live
@@ -195,6 +224,9 @@ def run(base_url: str, force_live: bool) -> None:
     trackers: dict[str, SessionTracker] = {}
     plan = None
     last_plan = last_status = last_minute = 0.0
+    event_windows = None                    # KV event_windows_v1 payload (or None)
+    event_ccys: dict[str, list[str]] = {}   # pair → event currencies (cached)
+    warned_events = warned_stale_plan = False   # log loud, but once per state
 
     # The trading loop runs at tick_secs off LIVE price. σ/fractions/open and the
     # policy come from the daily plan (pulled slowly, trackers reset only when a
@@ -242,6 +274,21 @@ def run(base_url: str, force_live: bool) -> None:
                 cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or cfg)
             except Exception as e:
                 log.warning(f"config fetch failed: {e} — keeping current config")
+            # Event-blackout windows (server publishes hourly; scheduled events are
+            # known in advance so this cadence is generous). FAIL-OPEN on missing/
+            # stale — it's a suppression gate — but say so loudly, once per outage.
+            try:
+                event_windows = kv.get_json("event_windows_v1")
+            except Exception as e:
+                log.warning(f"event windows fetch failed: {e} — keeping current windows")
+            sr = EV.stale_reason(event_windows, nowt * 1000)
+            if sr and not warned_events:
+                log.warning(f"EVENT GATE INACTIVE (fail-open): {sr} — entries will NOT be "
+                            "suppressed around high-impact events until this recovers")
+                warned_events = True
+            elif not sr and warned_events:
+                log.info("event gate active again — blackout windows fresh")
+                warned_events = False
             try:
                 kv.put_status("volatility_bot_status", build_status(cfg, broker, plan, paper, trackers))
             except Exception as e:
@@ -250,6 +297,22 @@ def run(base_url: str, force_live: bool) -> None:
 
         # (c) Price watch + touch detection — tight, local, off live price.
         if plan and not cfg.get("kill_switch"):
+            # Plan-staleness gate (FAIL CLOSED): a plan generated before the
+            # current London session open carries the PREVIOUS day's open/σ —
+            # its lines are not the book's lines. Track prices normally (so a
+            # fresh plan starts with warm extremes/velocity) but place no
+            # entries until a current plan lands. This also covers the first
+            # ~5 min of each session (plan refresh fires 00:05 London).
+            plan_current = _plan_is_current(plan, nowt)
+            if not plan_current and not warned_stale_plan:
+                log.warning(f"STALE PLAN (generatedAt {plan.get('generatedAt')}) predates the current "
+                            "London session — entries HALTED until a fresh plan is published "
+                            "(check the server's 00:05-London plan refresh / POST /api/volatility-bot/refresh-plan)")
+                warned_stale_plan = True
+            elif plan_current and warned_stale_plan:
+                log.info("fresh session plan active — entries resumed")
+                warned_stale_plan = False
+            ev_payload = None if EV.stale_reason(event_windows, nowt * 1000) else event_windows
             pairs = cfg.get("enabled_pairs") or plan.get("universe", [])
             sample_minute = (nowt - last_minute) >= 60
             for pair in pairs:
@@ -264,10 +327,19 @@ def run(base_url: str, force_live: bool) -> None:
                     tr.on_minute(px)                  # feeds the approach-velocity buffer
                 if hasattr(broker, "check_barriers"):
                     broker.check_barriers()           # paper triple-barrier (MT5 does it natively)
+                if not plan_current:
+                    continue                          # tracking only — no entries off a stale plan
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
+                bl_reason = None
+                if ev_payload:
+                    ccys = event_ccys.get(pair)
+                    if ccys is None:
+                        ccys = event_ccys[pair] = _pair_event_ccys(pair)
+                    hit, bl_reason = EV.blackout(ccys, nowt * 1000, ev_payload.get("windows"))
+                    bl_reason = bl_reason if hit else None
                 bal = broker.account_balance() or 0.0
-                for spec in decide(pp, plan.get("policy", {}), tr, px):
+                for spec in decide(pp, plan.get("policy", {}), tr, px, blackout=bl_reason):
                     lots = size_for(pair, bal, cfg.get("risk_pct", 0.5),
                                     spec["entry"] - spec["sl"], cfg.get("max_lot", 2.0))
                     direction = "LONG" if spec["side"] == "buy" else "SHORT"

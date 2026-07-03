@@ -106,7 +106,9 @@ try:
 except ImportError:
     HAS_MT5 = False
 
-MAGIC = 20260007   # V1=20260002, main=20260001, Gold=20260004, V2bot=20260005, V4=20260006
+MAGIC = 20260007   # canonical table: pylego/magics.py (checked by pylego/magics_test.py).
+                   # NOTE: bot/hedge_bot legs opened before 2026-07 also carry 20260007 —
+                   # don't orphan-adopt a position whose comment isn't this bot's.
 
 _PIP_SIZES: dict[str, float] = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,

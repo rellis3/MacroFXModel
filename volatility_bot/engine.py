@@ -72,7 +72,7 @@ class SessionTracker:
         return self
 
 
-def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False):
+def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False, blackout=None):
     """Lines newly touched this tick that map to a tradeable (fade/follow) cell.
 
     Returns a list of specs: ``{side, entry, tp, sl, line, name, ln_side,
@@ -82,6 +82,14 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False):
     ``dry_run=True`` marks touched lines as acted but places NO trades — used right
     after ``catch_up`` to "prime" lines price already crossed earlier in the
     session, so the bot only trades GENUINELY NEW crossings (never retro-enters).
+
+    ``blackout`` (falsy | reason string): a scheduled-event blackout for this
+    pair. A touch during a blackout is DEFERRED, not consumed — the line stays
+    armed (not ``acted``) so if price is still beyond it after the window it
+    re-triggers on the first clear tick; the entry/TP/SL still come from the
+    line levels, so the modeled trade shape is preserved. Deferring beats
+    burning: burning silently deletes the line for the whole session over a
+    45-minute window. Priming (dry_run) ignores blackout by design.
     """
     frac = {"hl50": plan_pair["hl50"], "hl75": plan_pair["hl75"],
             "ocMed": plan_pair["ocMed"], "oc75": plan_pair["oc75"]}
@@ -100,6 +108,11 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False):
             lvl = levels[line_id]
             touched = (px >= lvl) if side == "up" else (px <= lvl)
             if not touched:
+                continue
+            if blackout and not dry_run:
+                # Event window: defer — audit it, do NOT burn the line's one shot.
+                tracker.audit[line_id] = {"status": "deferred", "reason": f"event_blackout: {blackout}",
+                                          "bucket": bucket}
                 continue
             tracker.acted.add(line_id)     # one decision per line per session
             cell = policy.get(cell_key(name, side, bucket))

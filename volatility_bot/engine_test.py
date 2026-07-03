@@ -160,6 +160,40 @@ def test_spread_cap_widens_for_indices_and_commodities():
     assert _max_spread("eurusd", {}) > 0 and _max_spread("uk100", {}) > _max_spread("eurusd", {})
 
 
+def test_decide_blackout_defers_without_burning_the_line():
+    # A touch during an event blackout is deferred: no trade, line NOT acted —
+    # it re-fires on the first clear tick (price still beyond the level).
+    tr = _spike_tracker()
+    policy = {"HL50_up|3·spike": {"decision": "fade"}}
+    assert decide(PP, policy, tr, 1.111, blackout="USD Nonfarm Payrolls in 12m") == []
+    assert "HL50_up" not in tr.acted
+    assert tr.audit["HL50_up"]["status"] == "deferred"
+    assert "event_blackout" in tr.audit["HL50_up"]["reason"]
+    specs = decide(PP, policy, tr, 1.111)            # window over → same touch trades
+    assert len(specs) == 1 and specs[0]["line"] == "HL50_up"
+
+
+def test_decide_dry_run_priming_ignores_blackout():
+    # Priming after catch_up must consume lines already crossed REGARDLESS of a
+    # blackout — otherwise a restart during an event window retro-trades them later.
+    tr = _spike_tracker()
+    decide(PP, {"HL50_up|3·spike": {"decision": "fade"}}, tr, 1.111,
+           dry_run=True, blackout="USD CPI in 5m")
+    assert "HL50_up" in tr.acted
+    assert tr.audit["HL50_up"]["status"] == "primed"
+
+
+def test_plan_staleness_gate():
+    from datetime import datetime, timezone
+    from volatility_bot.volatility_bot import _plan_is_current
+    now = datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc).timestamp()  # BST session opened 23:00 UTC Jul 1
+    assert _plan_is_current({"generatedAt": "2026-07-01T23:05:00.000Z"}, now) is True   # this session's plan
+    assert _plan_is_current({"generatedAt": "2026-06-30T23:05:00.000Z"}, now) is False  # yesterday's plan
+    assert _plan_is_current({"generatedAt": None}, now) is False                        # fail closed
+    assert _plan_is_current({}, now) is False
+    assert _plan_is_current({"generatedAt": "not a date"}, now) is False
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

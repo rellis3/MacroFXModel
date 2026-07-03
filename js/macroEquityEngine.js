@@ -131,9 +131,12 @@ function buildRawFactors(data) {
   const ismLag       = applyLag(napm,          PUB_LAG_MONTHLY);
   const ismEULag     = applyLag(eupmi,         PUB_LAG_MONTHLY);
 
+  // UNITS: WALCL is $MILLIONS on FRED; WTREGEN/RRPONTSYD are $BILLIONS. Raw
+  // subtraction reduced TGA/RRP to ~0.01% of the factor — the highest-weighted
+  // composite input (netLiq 0.40) was effectively just the Fed balance sheet.
   const netliq = walclLag.map((w, i) => {
     const wt = wtregenLag[i], rr = rrpoLag[i];
-    return (isFinite(w) && isFinite(wt) && isFinite(rr)) ? w - wt - rr : NaN;
+    return (isFinite(w) && isFinite(wt) && isFinite(rr)) ? w / 1000 - wt - rr : NaN;
   });
   const netliqPct = pctChange(netliq, ME_DEFAULT_CONFIG.netLiqChangeDays);
 

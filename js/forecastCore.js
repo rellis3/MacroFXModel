@@ -68,24 +68,38 @@ export function computeBands(open, sigma, assetClass) {
 // entry (limit on the resting side, stop on the breakout side), then resolves
 // SL/TP intrabar in time order (SL checked first = conservative). If never
 // stopped/targeted, exits at the window's last close (mark-to-window-end).
+//
+// Fill-bar causality: on the bar that FILLS the order, the intrabar path is
+// unknown. For a LIMIT (fade) entry the TP sits between the approach path and
+// the entry, so the bar necessarily traversed the TP region BEFORE the fill —
+// counting `bar` extremes as a TP hit there books wins that may have printed
+// hours earlier (fatal on D1 window bars: weekly/monthly horizons and the
+// daily D1 fallback). So TP is only resolvable on the fill bar when reaching
+// it requires passing through the entry first: stop entries yes, limit
+// entries no (their TP starts on the NEXT bar). SL is always checked
+// (pessimistic). If the fill bar is the window's last bar, the trade marks to
+// the window close like any other unresolved position.
 // Returns { filled, outcome, pnlPct(gross), fillTime, exitTime } or null (no fill).
 export function walkBars(bars, entry, tp, sl, isBuy, entryType, open) {
   let filled = false, fillTime = null;
   for (const bar of bars) {
+    let isFillBar = false;
     if (!filled) {
       const hit = isBuy
         ? (entryType === 'stop' ? bar.high >= entry : bar.low <= entry)
         : (entryType === 'stop' ? bar.low  <= entry : bar.high >= entry);
       if (!hit) continue;
-      filled = true; fillTime = bar.time ?? null;
+      filled = true; fillTime = bar.time ?? null; isFillBar = true;
     }
-    // SL first (conservative), then TP — within this and every later bar.
+    // SL first (conservative), then TP — TP is skipped on a limit fill bar
+    // (see fill-bar causality note above).
+    const tpKnowable = !isFillBar || entryType === 'stop';
     if (isBuy) {
       if (bar.low  <= sl) return { filled: true, outcome: 'loss', pnlPct: -((entry - sl) / open * 100), fillTime, exitTime: bar.time ?? null };
-      if (bar.high >= tp) return { filled: true, outcome: 'win',  pnlPct:  ((tp - entry) / open * 100), fillTime, exitTime: bar.time ?? null };
+      if (tpKnowable && bar.high >= tp) return { filled: true, outcome: 'win',  pnlPct:  ((tp - entry) / open * 100), fillTime, exitTime: bar.time ?? null };
     } else {
       if (bar.high >= sl) return { filled: true, outcome: 'loss', pnlPct: -((sl - entry) / open * 100), fillTime, exitTime: bar.time ?? null };
-      if (bar.low  <= tp) return { filled: true, outcome: 'win',  pnlPct:  ((entry - tp) / open * 100), fillTime, exitTime: bar.time ?? null };
+      if (tpKnowable && bar.low  <= tp) return { filled: true, outcome: 'win',  pnlPct:  ((entry - tp) / open * 100), fillTime, exitTime: bar.time ?? null };
     }
   }
   if (!filled) return null;
@@ -170,12 +184,18 @@ function walkDynamicHL(bars, open, bands, spec) {
   const { band, action, dir, wantUp, wantDn, slMult, slipPct } = spec;
   const n = bars.length;
   if (!n) return null;
+  // runHi[k]/runLo[k] = running extremes of bars STRICTLY BEFORE bar k, seeded
+  // with the session open. Using bar k's own extreme to place the level that
+  // bar k is then fill-tested against is lookahead (the anchor is only knowable
+  // in hindsight — self-fulfilling on D1 window bars, the defect BUG_LIST #8
+  // documented for the Python port). Lagging one bar makes the level a resting
+  // order that existed at bar k's open. On M1 bars the lag is one minute.
   const runHi = new Array(n), runLo = new Array(n);
-  { let rh = -Infinity, rl = Infinity;
+  { let rh = open, rl = open;
     for (let k = 0; k < n; k++) {
+      runHi[k] = rh; runLo[k] = rl;
       if (bars[k].high > rh) rh = bars[k].high;
       if (bars[k].low  < rl) rl = bars[k].low;
-      runHi[k] = rh; runLo[k] = rl;
     } }
   const hl    = band === 'hl50' ? bands.hl50 : bands.hl75;
   const hlOut = bands.hl75;                       // next band out for an hl50 follow
@@ -213,21 +233,25 @@ function resolveDynOrder(bars, open, o, slD) {
   let filled = false, fillTime = null, entry = 0, sl = 0, tpLvl = 0;
   for (let k = 0; k < bars.length; k++) {
     const bar = bars[k];
+    let isFillBar = false;
     if (!filled) {
       const L = lvl(k);
       const hit = isBuy ? (type === 'stop' ? bar.high >= L : bar.low <= L)
                         : (type === 'stop' ? bar.low  <= L : bar.high >= L);
       if (!hit) continue;
-      filled = true; fillTime = bar.time ?? null; entry = L;
+      filled = true; fillTime = bar.time ?? null; entry = L; isFillBar = true;
       sl = entry + slSign * slD;
       tpLvl = tp(k);
     }
+    // Same fill-bar causality rule as walkBars: a limit (fade) TP sits on the
+    // approach side of the entry, so it is not resolvable on the fill bar.
+    const tpKnowable = !isFillBar || type === 'stop';
     if (isBuy) {
       if (bar.low  <= sl)    return { filled: true, outcome: 'loss', pnlPct: -((entry - sl) / open * 100), fillTime, exitTime: bar.time ?? null };
-      if (bar.high >= tpLvl) return { filled: true, outcome: 'win',  pnlPct:  ((tpLvl - entry) / open * 100), fillTime, exitTime: bar.time ?? null };
+      if (tpKnowable && bar.high >= tpLvl) return { filled: true, outcome: 'win',  pnlPct:  ((tpLvl - entry) / open * 100), fillTime, exitTime: bar.time ?? null };
     } else {
       if (bar.high >= sl)    return { filled: true, outcome: 'loss', pnlPct: -((sl - entry) / open * 100), fillTime, exitTime: bar.time ?? null };
-      if (bar.low  <= tpLvl) return { filled: true, outcome: 'win',  pnlPct:  ((entry - tpLvl) / open * 100), fillTime, exitTime: bar.time ?? null };
+      if (tpKnowable && bar.low  <= tpLvl) return { filled: true, outcome: 'win',  pnlPct:  ((entry - tpLvl) / open * 100), fillTime, exitTime: bar.time ?? null };
     }
   }
   if (!filled) return null;
@@ -274,6 +298,24 @@ export function volSigmaSeries(bars, assetClass) {
     for (let i = 1; i < bars.length; i++) out[i] = yz[i - 1] || 1e-6;
   }
   return out;
+}
+
+// ── 6b) One-step-ahead σ (for TODAY'S not-yet-traded session) ────────────────
+// volSigmaSeries[i] predicts bar i using data < i, so its LAST element predicts
+// the last COMPLETED bar — i.e. yesterday. A live plan/forecast needs σ for the
+// upcoming session (index n, one past the end). Extend the series with a
+// phantom bar whose values cannot matter (out[n] only reads data < n) and take
+// out[n]. This is the identity `nextSigma(bars[0..n-1]) === volSigmaSeries(
+// bars[0..n])[n]` for ANY real bar n — golden-tested in forecastCore.test.mjs.
+// `seriesFn` is injectable so offline tests (and the plan producer's DI) can
+// fake the series while keeping this indexing contract.
+export function nextSigma(bars, assetClass, seriesFn = volSigmaSeries) {
+  if (!bars?.length) return 0;
+  const last = bars[bars.length - 1];
+  const phantom = { open: last.close, high: last.close, low: last.close, close: last.close, time: last.time };
+  const s = seriesFn(bars.concat([phantom]), assetClass);
+  const isSeries = Array.isArray(s) || ArrayBuffer.isView(s);
+  return isSeries ? s[s.length - 1] : s;
 }
 
 export { ASSET_PARAMS, classifyRegime, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT };

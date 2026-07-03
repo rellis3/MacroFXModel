@@ -43,7 +43,17 @@ except ImportError:
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-MAGIC    = 20260007
+# Registered in pylego/magics.py (checked by pylego/magics_test.py). Was
+# 20260007 — the SAME magic as RegimeV7, so V7's orphan-adoption / close logic
+# could act on hedge legs and vice versa. MT5 can't retag open positions:
+# legs opened before the change still carry 20260007, so MAGICS_MINE keeps them
+# visible to the serializer / closed-trade journal / SL-hit detection (the
+# SL check is a membership test against OUR ticket ids, so V7 positions in the
+# set are harmless; the display may show a V7 position until pre-change legs
+# close — close/roll those legs ASAP, they remain in V7's magic-space).
+# New orders always use MAGIC.
+MAGIC    = 20260011
+MAGICS_MINE = {MAGIC, 20260007}   # reads only — orders use MAGIC
 BOT_KEY  = 'hedge_bot_status'
 CFG_KEY  = 'hedge_bot_config'
 STATE_FILE = Path('hedge_bot_state.json')
@@ -217,7 +227,7 @@ def _serialize_open_positions() -> list:
             'comment':    str(p.comment or ''),
         }
         for p in (mt5.positions_get() or [])
-        if p.magic == MAGIC
+        if p.magic in MAGICS_MINE
     ]
 
 
@@ -228,7 +238,7 @@ def _serialize_closed_trades() -> list:
     deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
     by_pos: dict = {}
     for d in deals:
-        if d.magic != MAGIC:
+        if d.magic not in MAGICS_MINE:
             continue
         pid = int(d.position_id)
         if pid not in by_pos:
@@ -485,7 +495,7 @@ def run(base_url: str, live: bool) -> None:
 
             # Detect MT5-side SL hit (both tickets gone)
             if close_reason is None and HAS_MT5 and not paper_mode:
-                open_tkts = {p.ticket for p in (mt5.positions_get() or []) if p.magic == MAGIC}
+                open_tkts = {p.ticket for p in (mt5.positions_get() or []) if p.magic in MAGICS_MINE}
                 if pos['ticket_a'] not in open_tkts and pos['ticket_b'] not in open_tkts:
                     close_reason = 'DISMISSED'  # SL hit — server signal stays active
 
