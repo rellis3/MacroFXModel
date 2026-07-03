@@ -28,7 +28,8 @@ export function pairCurrencies(symbol) {
   }
   if (key === 'gold') return ['USD', 'XAU'];
   if (key === 'dax')  return ['EUR'];
-  return ['USD'];  // indices and anything else: USD events dominate
+  if (key === 'ftse') return ['GBP'];
+  return ['USD'];  // US indices and anything else: USD events dominate
 }
 
 // events × now × pair currencies → gate result.

@@ -89,10 +89,11 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, no
 }
 
 // ── Synthetic mode (deterministic, no network — sandbox/demo/tests) ──────────
+const SYNTH_START_PX = { gold: 2400, nq: 20000, spx: 5500, dow: 40000, rut: 2200, ftse: 8000, dax: 18000 };
 export function syntheticBars(pair, n = 320, seed = 42) {
   const key = safeKey(pair);
   const rand = mulberry32(seed + hashCode(key));
-  let p = key === 'gold' ? 2400 : /jpy$/.test(key) ? 155 : 1.10;
+  let p = SYNTH_START_PX[key] ?? (/jpy$/.test(key) ? 155 : 1.10);
   const daySec = 86400;
   const t0 = Math.floor(Date.now() / 1000 / daySec) * daySec - n * daySec;
   const bars = [];

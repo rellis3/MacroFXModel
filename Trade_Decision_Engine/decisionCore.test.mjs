@@ -182,11 +182,19 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(bad.macro === null, 'malformed macro → null, not a silent wrong sign');
 }
 
-// ── gold path (different pip/class) doesn't blow up ──────────────────────────
+// ── other asset classes (pip/σ-math/costs switch on the registry) ────────────
 {
   const g = syntheticSnapshot('gold', { seed: 3, nowMs: NOW, newsInMin: null });
   const r = decide(g, { price: g.zones[0].price }, { nowMs: NOW });
   ok(r.ok && r.probability > 0 && r.probability < 1, 'gold snapshot + decision works');
+
+  // indices: GARCH σ path, pip 1.0, ASSET_PARAMS.index — same code path
+  for (const idx of ['nq', 'spx', 'dow', 'rut', 'ftse', 'dax']) {
+    const s = syntheticSnapshot(idx, { seed: 5, nowMs: NOW, newsInMin: null });
+    ok(s.sigmaDaily > 0 && s.sigmaDaily < 0.05 && s.zones.length > 3, `${idx}: snapshot sane (σ ${(100 * s.sigmaDaily).toFixed(2)}%, ${s.zones.length} zones)`);
+    const d = decide(s, { price: s.zones[0].price }, { nowMs: NOW });
+    ok(d.ok && d.probability > 0 && d.probability < 1 && ['long', 'short'].includes(d.direction), `${idx}: decision works`);
+  }
 }
 
 console.log(`decisionCore.test.mjs — ${passed} assertions passed`);

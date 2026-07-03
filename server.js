@@ -81,7 +81,7 @@ import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
-import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic } from './Trade_Decision_Engine/backfill.js';
+import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -9743,7 +9743,8 @@ app.get('/api/pivot-spike/status/:jobId', (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Trade Decision Engine — per-event go/skip scoring API (fast loop).
-// Slow loop: featureState snapshots (manual /refresh, or auto via TDE_PAIRS env).
+// Slow loop: snapshots warm ON DEMAND inside decide (a bot only ever needs
+// pair + price); TDE_PAIRS keeps them pre-warmed so calls stay in the ms range.
 // Registered BEFORE the /api/* catch-all so the worker proxy doesn't swallow it.
 // Full design: Trade_Decision_Engine/ARCHITECTURE.md. UI: trade-decision-engine.html.
 
@@ -9761,17 +9762,51 @@ function tdeSnapshotFor(pair, mode) {
   return tdeGetState(pair);
 }
 
-// The bot-facing endpoint:
+// On-demand slow loop: decide() warms its own snapshot when missing or stale.
+// First call per pair pays the OANDA fetch (~1–2 s); subsequent calls hit the
+// in-memory snapshot in ms. Per-pair in-flight dedup so simultaneous zone
+// touches don't double-fetch. Never rejects: a failed warm-up falls back to
+// whatever snapshot exists (decide then fails closed on staleness) and the
+// error is surfaced as `slow_loop_error` so the caller knows WHY.
+const TDE_WARM_STALE_MS = 15 * 60_000;   // matches decisionCore DECIDE_DEFAULTS.maxStalenessMs
+const _tdeWarmInflight = new Map();
+function tdeWarmSnapshot(pair) {
+  const cur = tdeGetState(pair);
+  if (cur && Date.now() - cur.builtAt <= TDE_WARM_STALE_MS) {
+    return Promise.resolve({ snap: cur, refreshed: false });
+  }
+  let inflight = _tdeWarmInflight.get(pair);
+  if (!inflight) {
+    inflight = (async () => {
+      try { return { snap: await tdeRefreshPair(pair, { macro: await _tdeMacroFor(pair) }), refreshed: true }; }
+      catch (e) { return { snap: tdeGetState(pair), refreshed: false, error: e.message ?? String(e) }; }
+      finally { _tdeWarmInflight.delete(pair); }
+    })();
+    _tdeWarmInflight.set(pair, inflight);
+  }
+  return inflight;
+}
+
+// The bot-facing endpoint — pair + price is enough, the engine sorts the rest:
 // { pair, price?, action?, direction?, approach_sigma?, own_level?, mode? }
-app.post('/api/trade-decision/decide', express.json(), (req, res) => {
+app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
+  const t0 = Date.now();
   try {
     const { pair, price, action, direction, approach_sigma, own_level, mode = 'live' } = req.body ?? {};
     if (!pair) return res.status(400).json({ ok: false, error: 'pair required' });
-    const snap = tdeSnapshotFor(String(pair).toLowerCase(), mode);
+    const key = String(pair).toLowerCase();
+    let snap, warm = null;
+    if (mode === 'synthetic') snap = tdeSnapshotFor(key, 'synthetic');
+    else { warm = await tdeWarmSnapshot(key); snap = warm.snap; }
     const result = tdeDecide(snap, {
       pair, price: price != null ? Number(price) : undefined,
       action, direction, approachSigma: approach_sigma, own_level: own_level === true,
     });
+    if (warm) {
+      result.snapshot_refreshed = warm.refreshed;
+      if (warm.error) result.slow_loop_error = warm.error;
+    }
+    result.total_ms = Date.now() - t0;
     tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
     res.json(result);
   } catch (e) {
@@ -9783,7 +9818,7 @@ app.post('/api/trade-decision/decide', express.json(), (req, res) => {
 app.get('/api/trade-decision/state/:pair', (req, res) => {
   try {
     const snap = tdeSnapshotFor(String(req.params.pair).toLowerCase(), req.query.mode ?? 'live');
-    if (!snap) return res.json({ ok: false, error: 'no snapshot — POST /api/trade-decision/refresh first (or use mode=synthetic)' });
+    if (!snap) return res.json({ ok: false, error: 'no snapshot yet — decide warms one automatically on first call; or POST /api/trade-decision/refresh, or use mode=synthetic' });
     const { zones, calendar, ...head } = snap;
     res.json({ ok: true, ...head, age_ms: Date.now() - snap.builtAt, zones: zones.slice(0, 40), calendar_events: calendar.length });
   } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
@@ -9936,7 +9971,7 @@ function tdeStartBackfillJob(pairs, { incremental, gapFill = true, macro = true 
 
 app.post('/api/trade-decision/backfill/run', express.json(), async (req, res) => {
   if (tdeBackfillRunning) return res.status(409).json({ ok: false, error: 'a backfill is already running' });
-  const pairs = (req.body?.pairs?.length ? req.body.pairs : Object.keys(M1_DRIVE_IDS)).map(p => String(p).toLowerCase());
+  const pairs = (req.body?.pairs?.length ? req.body.pairs : TDE_BACKFILL_PAIRS).map(p => String(p).toLowerCase());
   const incremental = req.body?.full !== true;
   const gapFill = typeof req.body?.gap_fill === 'boolean' ? req.body.gap_fill : (await tdeGetConfig()).gap_fill;
   const macro = req.body?.macro !== false;   // { macro: false } = incumbent-baseline mode (§7c sequencing)
@@ -10085,7 +10120,7 @@ setInterval(async () => {
       && tdeLastAutoBackfill !== today && !tdeBackfillRunning) {
     tdeLastAutoBackfill = today;
     console.log(`[tde-backfill] daily incremental top-up starting (${cfg.backfill_utc} UTC, gap-fill ${cfg.gap_fill ? 'on' : 'off'})`);
-    tdeStartBackfillJob(Object.keys(M1_DRIVE_IDS), { incremental: true, gapFill: cfg.gap_fill });
+    tdeStartBackfillJob(TDE_BACKFILL_PAIRS, { incremental: true, gapFill: cfg.gap_fill });
   }
 }, 20_000);
 console.log(`[tde-backfill] daily top-up armed (default ${TDE_CFG_DEFAULTS.backfill_utc} UTC — runtime-configurable at /api/trade-decision/config)`);
