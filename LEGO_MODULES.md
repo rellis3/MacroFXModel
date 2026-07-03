@@ -241,6 +241,18 @@ that ended the MT5 magic-number collisions found in `PLATFORM_REVIEW_2026-07.md`
 | **Event gate (Python consumer)** | `pylego/events.py` | `blackout(ccys, now_ms, windows)`, `pair_ccys`, `stale_reason` — reads the server's PRECOMPUTED windows ("ship timestamps, not logic": no calendar parsing in Python, nothing to drift). Fail-OPEN on stale/missing, loudly. Tested `pylego/events_test.py` | `volatility_bot` (touch during blackout is **deferred, not burned** — the line re-arms after the window; priming ignores blackout; see `engine_test.py`) | ✅ |
 | **MT5 magic registry** | `pylego/magics.py` | The ONE table of bot → magic number. `pylego/magics_test.py` parses every registered bot source and fails on mismatch/duplicate/unregistered magic. 2026-07 de-collision: DynAnchorBot 20260006→**20260009**, MacroEquityBot 20260006→**20260010** (legacy read-set until its book turns over), bot/hedge_bot 20260007→**20260011** (legacy read-set; pre-change legs stay in RegimeV7's magic-space until closed) | all MT5 bots (data + CI check; no runtime import) | ✅ |
 
+### 1h. Macro regime brick (2026-07-03) — platform review #7, TDE §7c
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Macro core** | `js/macroCore.js` | `macroRegime(fredHistory, asOfMs)` — the PRE-REGISTERED risk-regime classifier (VIXCLS level+trend, HY OAS 20-obs change; `MACRO_THRESHOLDS` **frozen 2026-07-03 before any backfill result** — editing them after seeing results voids the falsification test); `effectiveDate` (+1-business-day publication lag, Fri→Mon); `macroContext(pair, …)` → the TDE §7c snapshot object (stale >3d ⇒ NEUTRAL + `stale:true`, fail-neutral never fail-closed); `macroContextByDate(pair, …)` → the backfill injection map (per PAIR — riskSens is pair-specific; golden identity: map ≡ `macroRegime` pointwise); `riskSensFor` — **derived from `fx-macro-model.PAIR_DRIVERS` via `resolveKey` at import, zero hand copies** (golden-equality-tested, both key forms). Tested `js/macroCore.test.mjs` (25 asserts incl. end-to-end with `decisionCore.macroState`) | `server.js` (live slow loop `refreshPair(p,{macro})`, backfill route per-pair `contextByDate`, `_loadMacroFredHistoryFull` KV cache) | ✅ |
+
+The verdict machinery lives TDE-side (`macroBucketReport` PRIMARY, ablation
+SECONDARY — §7c #5). Sequencing (frozen): one full macro-OFF rebuild on the
+`nextSigma` σ (the incumbent baseline — `POST /api/trade-decision/backfill/run
+{full:true, macro:false}`), then the macro-ON run, then the two tests. Both
+fail ⇒ macro stays out of the feature vector permanently.
+
 Also in this pass (fixes, not bricks — full detail in `PLATFORM_REVIEW_2026-07.md`):
 the vol-plan scheduler now fires at **00:05 Europe/London** (fixed 23:05 UTC was
 55 min BEFORE London midnight all GMT season → every winter plan anchored on the

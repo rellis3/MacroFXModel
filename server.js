@@ -41,6 +41,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
+import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES } from './js/macroCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -78,7 +79,7 @@ import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MIN
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
 import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
-import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, startRefresher as tdeStartRefresher, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
+import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
 import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport } from './Trade_Decision_Engine/backfill.js';
 
@@ -9788,12 +9789,45 @@ app.get('/api/trade-decision/state/:pair', (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
 });
 
+// Live macro context for the TDE (ARCHITECTURE §7c #1): resolve the obs-dated
+// FRED history already cached by refreshFredHistory (fredhistory_series_vix /
+// _hy — 90 obs each, plenty for the 20-obs HY window) through macroCore, and
+// hand refreshPair the pre-resolved { regime, riskSens, asOf, stale } object.
+// FAIL-NEUTRAL: any miss (KV empty, FRED down, driverless pair) yields a null
+// or stale-NEUTRAL context — macro is a modifier, never a gate.
+let _tdeMacroHist = null, _tdeMacroHistAt = 0;
+async function _tdeMacroHistory() {
+  if (_tdeMacroHist && Date.now() - _tdeMacroHistAt < 10 * 60_000) return _tdeMacroHist;
+  try {
+    const [vixRaw, hyRaw] = await Promise.all([
+      kv.get('fredhistory_series_vix'), kv.get('fredhistory_series_hy'),
+    ]);
+    const parse = raw => { const d = typeof raw === 'string' ? JSON.parse(raw) : raw; return Array.isArray(d) ? d : (d?.data ?? null); };
+    const vix = parse(vixRaw), hy = parse(hyRaw);
+    _tdeMacroHist = vix?.length && hy?.length ? { vix, hy } : null;
+  } catch (e) {
+    console.warn('[trade-decision] macro history read failed (fail-neutral):', e.message ?? e);
+    _tdeMacroHist = null;
+  }
+  _tdeMacroHistAt = Date.now();
+  return _tdeMacroHist;
+}
+async function _tdeMacroFor(pair) {
+  const hist = await _tdeMacroHistory();
+  if (!hist) return null;                       // no data → snapshot stamps null (neutral)
+  try { return _macroContext(pair, hist, Date.now()); } catch { return null; }
+}
+
 // Slow-loop refresh (OANDA + Finnhub) — { pair } or { pairs: [...] }
 app.post('/api/trade-decision/refresh', express.json(), async (req, res) => {
   const pairs = req.body?.pairs ?? (req.body?.pair ? [req.body.pair] : TDE_DEFAULT_PAIRS);
   const out = {};
   for (const p of pairs) {
-    try { const s = await tdeRefreshPair(p); out[p] = { ok: true, builtAt: s.builtAt, zones: s.zones.length, regime: s.regime }; }
+    try {
+      const s = await tdeRefreshPair(p, { macro: await _tdeMacroFor(p) });
+      out[p] = { ok: true, builtAt: s.builtAt, zones: s.zones.length, regime: s.regime,
+                 macro: s.macro ? { regime: s.macro.regime, stale: s.macro.stale } : null };
+    }
     catch (e) { out[p] = { ok: false, error: e.message ?? String(e) }; }
   }
   res.json({ ok: Object.values(out).some(r => r.ok), pairs: out });
@@ -9808,26 +9842,89 @@ app.get('/api/trade-decision/health', (_req, res) => {
     weights: TDE_MODEL.weights, intercept: TDE_MODEL.intercept, snapshots: tdeStateSummary() });
 });
 
-// Opt-in auto refresher: TDE_PAIRS=eurusd,gbpusd (+ TDE_REFRESH_MIN, default 5)
+// Opt-in auto refresher: TDE_PAIRS=eurusd,gbpusd (+ TDE_REFRESH_MIN, default 5).
+// Runs the slow loop HERE (not featureState.startRefresher) so every snapshot
+// carries the live macro context via the refreshPair({ macro }) socket —
+// featureState stays untouched, per the §7c frozen-contract split.
 if (process.env.TDE_PAIRS) {
   const tdePairs = process.env.TDE_PAIRS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const tdeMin = parseFloat(process.env.TDE_REFRESH_MIN || '5');
-  setTimeout(() => tdeStartRefresher(tdePairs, tdeMin * 60_000), 5_000);
+  let _tdeLoopBusy = false;
+  const _tdeTick = async () => {
+    if (_tdeLoopBusy) return;
+    _tdeLoopBusy = true;
+    for (const p of tdePairs) {
+      try { await tdeRefreshPair(p, { macro: await _tdeMacroFor(p) }); }
+      catch (e) { console.log(`[trade-decision] refresh ${p} failed: ${e.message ?? e}`); }
+    }
+    _tdeLoopBusy = false;
+  };
+  setTimeout(() => {
+    _tdeTick();
+    setInterval(_tdeTick, tdeMin * 60_000);
+    console.log(`[trade-decision] macro-aware slow loop started: ${tdePairs.join(', ')} every ${Math.round(tdeMin * 60)}s`);
+  }, 5_000);
 }
 
 // Backfill: replay M1 parquet history through the SAME decide() path → labeled
 // event log + candidate-model fit with OOS calibration report. Incremental by
 // default (only new days). Async-job pattern like the other backtest routes.
+// Full obs-dated FRED history for the backfill's macro injection (VIXCLS +
+// BAMLH0A0HYM2, ~12y — the two PRE-REGISTERED factors, nothing else). Cached
+// in KV for 24h; any failure returns null and the backfill runs macro-neutral
+// with a loud log (fail-neutral, §7c #6 — never block the replay on FRED).
+const _MACRO_HIST_KV = 'macro_fred_history_v1';
+async function _loadMacroFredHistoryFull(onLog = () => {}) {
+  try {
+    const cached = await kv.get(_MACRO_HIST_KV);
+    if (cached) {
+      const d = typeof cached === 'string' ? JSON.parse(cached) : cached;
+      if (d?.vix?.length && d?.hy?.length && Date.now() - (d.fetchedAt ?? 0) < 24 * 3600_000) return d;
+    }
+  } catch {}
+  if (!process.env.FRED_KEY) { onLog('macro: FRED_KEY not set — backfill runs macro-neutral'); return null; }
+  const out = { fetchedAt: Date.now() };
+  for (const [key, id] of Object.entries(_MACRO_FRED_SERIES)) {
+    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
+      `&api_key=${process.env.FRED_KEY}&file_type=json&observation_start=2012-01-01`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
+    const d = await r.json();
+    out[key] = (d.observations || [])
+      .filter(o => o.value && o.value !== '.')
+      .map(o => ({ date: o.date, value: parseFloat(o.value) }));
+    if (!out[key].length) throw new Error(`FRED ${id}: no observations`);
+  }
+  await kv.put(_MACRO_HIST_KV, JSON.stringify(out)).catch(e => console.warn('[tde-backfill] macro history cache write failed:', e.message));
+  onLog(`macro: FRED history loaded (${out.vix.length} VIX obs, ${out.hy.length} HY obs)`);
+  return out;
+}
+
 const tdeBackfillJobs = new Map();
 let tdeBackfillRunning = false;
-function tdeStartBackfillJob(pairs, { incremental, gapFill = true }) {
+function tdeStartBackfillJob(pairs, { incremental, gapFill = true, macro = true }) {
   const jobId = `tdebf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const job = { status: 'running', startedAt: Date.now(), log: [] };
   tdeBackfillJobs.set(jobId, job);
   tdeBackfillRunning = true;
   (async () => {
+    const onLog = m => { job.log.push(m); console.log(`[tde-backfill] ${m}`); };
     try {
-      const report = await tdeRunBackfill(pairs, { incremental, gapFill, onLog: m => { job.log.push(m); console.log(`[tde-backfill] ${m}`); } });
+      // riskSens is PAIR-specific, so the §7c contextByDate socket is fed per
+      // pair: one runBackfill call per pair with that pair's own macro map.
+      // (Each call re-reads the full event log and rewrites the report, so the
+      // LAST call's report covers everything — same net result as one call.)
+      let fredHist = null;
+      if (macro) {
+        try { fredHist = await _loadMacroFredHistoryFull(onLog); }
+        catch (e) { onLog(`macro: FRED history load FAILED (${e.message ?? e}) — running macro-neutral`); }
+      } else onLog('macro: disabled for this run (baseline/incumbent mode)');
+      let report = null;
+      for (const pair of pairs) {
+        const contextByDate = fredHist ? _macroContextByDate(pair, fredHist) : null;
+        if (fredHist) onLog(`${pair}: macro context ${contextByDate && Object.keys(contextByDate).length ? `${Object.keys(contextByDate).length} days` : 'none (no riskSens driver) — macro-neutral'}`);
+        report = await tdeRunBackfill([pair], { incremental, gapFill, contextByDate, onLog });
+      }
       job.status = 'done'; job.report = report;
     } catch (e) {
       job.status = 'error'; job.error = e.message ?? String(e);
@@ -9842,7 +9939,8 @@ app.post('/api/trade-decision/backfill/run', express.json(), async (req, res) =>
   const pairs = (req.body?.pairs?.length ? req.body.pairs : Object.keys(M1_DRIVE_IDS)).map(p => String(p).toLowerCase());
   const incremental = req.body?.full !== true;
   const gapFill = typeof req.body?.gap_fill === 'boolean' ? req.body.gap_fill : (await tdeGetConfig()).gap_fill;
-  res.json({ ok: true, jobId: tdeStartBackfillJob(pairs, { incremental, gapFill }), pairs: pairs.length, incremental, gap_fill: gapFill });
+  const macro = req.body?.macro !== false;   // { macro: false } = incumbent-baseline mode (§7c sequencing)
+  res.json({ ok: true, jobId: tdeStartBackfillJob(pairs, { incremental, gapFill, macro }), pairs: pairs.length, incremental, gap_fill: gapFill, macro });
 });
 
 app.get('/api/trade-decision/backfill/status/:jobId', (req, res) => {
