@@ -564,6 +564,30 @@ export function runExitStudy(touchesByPair, { splitFrac = 0.6, minN = 50, margin
   return { splitDate, trailFrac, beTrigger, missing, rules, bestByGroup };
 }
 
+// ── 7b) Entry-gate sweep — can concentration rescue the ride's cost-robustness? ──
+// Ride is +1.39 at 1× but dies at 2× because the edge is spread thin across ~13k
+// marginal fade cells. This re-learns the ENTRY policy at progressively stricter
+// after-cost gates (marginPct) and reports, per gate, the RIDE / RIDEHOLD overall
+// Sharpe + its 2×/3× cost-stress + trade count. If a stricter gate keeps fewer,
+// higher-expectancy trades that stay POSITIVE AT 2× (n≥30), that subset is the
+// tradeable candidate; if none does, the edge is genuinely too thin to deploy.
+// Reuses runExitStudy per gate (DRY) — same split/costs, only marginPct changes.
+export function runExitGateSweep(touchesByPair, { margins = [0.01, 0.02, 0.03, 0.05],
+                                                  splitFrac = 0.6, minN = 50,
+                                                  costByPair = {}, slipByPair = {} } = {}) {
+  const pick = (s, rule) => {
+    const o = s?.rules?.[rule]?.overall || {};
+    const cs = s?.rules?.[rule]?.costStress || [];
+    const at = m => cs.find(z => z.mult === m)?.sharpe ?? null;
+    return { sharpe: o.sharpe ?? null, expectancy: o.expectancy ?? null,
+             trades: o.trades ?? 0, sharpe2x: at(2), sharpe3x: at(3) };
+  };
+  return margins.map(m => {
+    const s = runExitStudy(touchesByPair, { splitFrac, minN, marginPct: m, costByPair, slipByPair });
+    return { margin: m, ride: pick(s, 'ride'), ridehold: pick(s, 'ridehold') };
+  });
+}
+
 // ── 8) Day-type gate A/B study — does conditioning fade/follow on the ex-ante ──
 // trend-day forecast beat the velocity-only policy? ("stop fading into a rally").
 //
