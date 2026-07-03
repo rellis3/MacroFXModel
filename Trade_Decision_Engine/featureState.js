@@ -24,6 +24,17 @@ import { rollingPercentile } from '../js/statsCore.js';
 import { bodyRange } from '../js/barUtils.js';
 import { buildRangeLadder } from '../js/rangeLineAnalyser.js';
 import { detectConfluencesCore } from '../js/confluence-core.js';
+import { CAP_DEFAULTS } from '../js/config.js';
+
+// Per-instrument confluence thresholds — the live caps model's numbers, zero-copy
+// (fx 2 pips; gold 200 gold-pips of $0.10 = $20; indices per-point ≈0.5% of px).
+// KV-saved caps overrides are a dashboard concern; the engine mirrors the
+// defaults so backfill and live agree (flagged in LEGO registry as the seam).
+const _CAPS_KEY = { gold: 'gold', nq: 'nas100', spx: 'spx500', dax: 'de30', ftse: 'uk100', dow: 'us30', rut: 'us2000' };
+export function confluenceCapsFor(pair) {
+  const caps = CAP_DEFAULTS[_CAPS_KEY[safeKey(pair)] ?? 'fx'] ?? CAP_DEFAULTS.fx;
+  return { confluencePips: caps.confluencePips ?? 2, mergeFactor: caps.mergeFactor ?? 0.30 };
+}
 
 // Level sources usable from D1 bars alone (incl. swing_fib — multi-swing fib
 // clusters, so a "pulled fib" IS a first-class zone). volume_profile / vwap
@@ -80,14 +91,26 @@ export function computeIntradayState(bars, { sigmaAbs, hl50Abs, approachBars = 3
 // (asiaRangeEngine's live defaults). Aligned clusters come out as `asiaAlign`
 // lines with count 2 — two independent sessions agreeing IS confluence.
 // Both sessions need a ≥5-pip Asia body range (the engine's degenerate guard).
-export function computeSessionLadders({ intradayBars = null, mondayBars = null, prevAsiaBars = null,
+export function computeSessionLadders({ intradayBars = null, mondayBars = null, prevAsiaBars = null, prevMondayBars = null,
     asiaHrs = 6, sessionOpen = null, sigmaAbs = null, reachSigma = 1.5, pip = 0.0001,
     confluenceThreshPips = 2.0, tightPct = 10, mergeFactor = 0.30 } = {}) {
   const within = p => sessionOpen == null || sigmaAbs == null || Math.abs(p - sessionOpen) <= reachSigma * sigmaAbs;
   const minRange = pip * 5;
   const mkLines = (low, range, tag) => buildRangeLadder(low, range, tag)
     .map(l => ({ price: l.level, label: l.label, fib: l.fibL }));
-  const out = { asia: null, monday: null, prevAsia: null, asiaAlign: null };
+  // the cross-session matcher — the SAME brick the dashboard/backtest/Pine use,
+  // at the per-instrument caps thresholds passed in by the caller
+  const alignLines = (curLines, prevLines, sessionRange, curTag, prevTag) => {
+    const thresh = confluenceThreshPips * pip;
+    return detectConfluencesCore(
+      curLines.map(l => ({ price: l.price, fib: l.fib })),
+      prevLines.map(l => ({ price: l.price, fib: l.fib })),
+      { pipSize: pip, normalDistance: thresh, tightDistance: thresh * (tightPct / 100),
+        mergeDistance: thresh * mergeFactor, sessionRange })
+      .filter(c => within(c.price))
+      .map(c => ({ price: c.price, label: `${curTag}${c.todayFib}×${prevTag}${c.yesterdayFib}`, tight: c.isTight === true }));
+  };
+  const out = { asia: null, monday: null, prevAsia: null, asiaAlign: null, mondayAlign: null };
 
   let asiaLines = null, ar = null;
   if (Array.isArray(intradayBars) && intradayBars.length >= 2) {
@@ -99,11 +122,15 @@ export function computeSessionLadders({ intradayBars = null, mondayBars = null, 
       out.asia = { low: ar.low, high: ar.high, validFromSec: asiaClose, lines: asiaLines.filter(l => within(l.price)) };
     }
   }
+  let mondayLines = null, mr = null;
   if (Array.isArray(mondayBars) && mondayBars.length >= 2) {
-    const mr = bodyRange(mondayBars, 15);
-    if (mr && mr.range >= minRange) out.monday = { low: mr.low, high: mr.high,
-      validFromSec: mondayBars[mondayBars.length - 1].time + 60,
-      lines: mkLines(mr.low, mr.range, 'M').filter(l => within(l.price)) };
+    mr = bodyRange(mondayBars, 15);
+    if (mr && mr.range >= minRange) {
+      mondayLines = mkLines(mr.low, mr.range, 'M');
+      out.monday = { low: mr.low, high: mr.high,
+        validFromSec: mondayBars[mondayBars.length - 1].time + 60,
+        lines: mondayLines.filter(l => within(l.price)) };
+    }
   }
   if (Array.isArray(prevAsiaBars) && prevAsiaBars.length >= 2) {
     const pr = bodyRange(prevAsiaBars, 5);
@@ -111,16 +138,19 @@ export function computeSessionLadders({ intradayBars = null, mondayBars = null, 
       const prevLines = mkLines(pr.low, pr.range, 'P');
       out.prevAsia = { low: pr.low, high: pr.high, validFromSec: 0, lines: prevLines.filter(l => within(l.price)) };
       if (asiaLines && ar) {
-        const thresh = confluenceThreshPips * pip;
-        const clusters = detectConfluencesCore(
-          asiaLines.map(l => ({ price: l.price, fib: l.fib })),
-          prevLines.map(l => ({ price: l.price, fib: l.fib })),
-          { pipSize: pip, normalDistance: thresh, tightDistance: thresh * (tightPct / 100),
-            mergeDistance: thresh * mergeFactor, sessionRange: ar.range });
-        const lines = clusters.filter(c => within(c.price))
-          .map(c => ({ price: c.price, label: `A${c.todayFib}×P${c.yesterdayFib}`, tight: c.isTight === true }));
+        const lines = alignLines(asiaLines, prevLines, ar.range, 'A', 'P');
         if (lines.length) out.asiaAlign = { validFromSec: out.asia?.validFromSec ?? 0, lines };
       }
+    }
+  }
+  // Monday vs the PREVIOUS week's Monday — same mechanism, 15m bodies (the
+  // asiaRangeEngine's mondayFibs × prevMondayFibs confluence). The prev-Monday
+  // grid is NOT carried standalone (the engine only uses it for marking).
+  if (mondayLines && mr && Array.isArray(prevMondayBars) && prevMondayBars.length >= 2) {
+    const pm = bodyRange(prevMondayBars, 15);
+    if (pm && pm.range >= minRange) {
+      const lines = alignLines(mondayLines, mkLines(pm.low, pm.range, 'PM'), mr.range, 'M', 'PM');
+      if (lines.length) out.mondayAlign = { validFromSec: out.monday.validFromSec, lines };
     }
   }
   return (out.asia?.lines?.length || out.monday?.lines?.length || out.prevAsia?.lines?.length) ? out : null;
@@ -140,7 +170,7 @@ export function computeSessionLadders({ intradayBars = null, mondayBars = null, 
 // dayOpen to the TRUE session open (first bar). sessionOpen (optional number)
 // sets the open without bars — the backfill uses it (per-touch intraday state
 // travels on the decide REQUEST there, to stay lookahead-free within the day).
-export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, intradayBars = null, mondayBars = null, prevAsiaBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
+export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, intradayBars = null, mondayBars = null, prevAsiaBars = null, prevMondayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
   const key = safeKey(pair);
   if (!Array.isArray(dailyBars) || dailyBars.length < 80) {
     throw new Error(`buildSnapshot(${key}): need ≥80 completed D1 bars, got ${dailyBars?.length ?? 0}`);
@@ -206,7 +236,10 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
   const intraday = intradayBars ? computeIntradayState(intradayBars, { sigmaAbs, hl50Abs }) : null;
 
   // range-line bot ladders (time-valid dynamic levels — merged at decide() time)
-  const ladders = computeSessionLadders({ intradayBars, mondayBars, prevAsiaBars, sessionOpen: dayOpen, sigmaAbs, pip });
+  // with the per-instrument confluence thresholds from the live caps model
+  const caps = confluenceCapsFor(key);
+  const ladders = computeSessionLadders({ intradayBars, mondayBars, prevAsiaBars, prevMondayBars,
+    sessionOpen: dayOpen, sigmaAbs, pip, confluenceThreshPips: caps.confluencePips, mergeFactor: caps.mergeFactor });
 
   return {
     pair: key, mode, builtAt: nowMs,
@@ -287,7 +320,10 @@ export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, m
       .catch(() => null);
     const prevAsiaBars = await fetchPrevAsiaBars(key, dayStartSec)
       .catch(() => null);
-    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, intradayBars, mondayBars, prevAsiaBars, nowMs, mode: 'live' });
+    // previous week's Monday: same fetcher shifted one week back (cached weekly)
+    const prevMondayBars = await fetchMondayBars(key, dayStartSec - 7 * 86400)
+      .catch(() => null);
+    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, intradayBars, mondayBars, prevAsiaBars, prevMondayBars, nowMs, mode: 'live' });
     state.set(key, snap);
     errors.delete(key);
     return snap;

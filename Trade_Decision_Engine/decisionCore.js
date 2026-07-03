@@ -77,10 +77,11 @@ export function sessionPhaseUTC(ms) {
 // yesterday-line agreeing within the 2-pip rule IS two sources of confluence —
 // and tight alignment (≤10% of the threshold / same fib) gets a score bump.
 export const LADDER_ZONE_STYLE = {
-  asia:      { source: 'asia_ladder',      score: 1.2, count: 1 },
-  monday:    { source: 'monday_ladder',    score: 1.2, count: 1 },
-  prevAsia:  { source: 'prev_asia_ladder', score: 1.0, count: 1 },
-  asiaAlign: { source: 'asia_prev_align',  score: 2.0, count: 2 },
+  asia:        { source: 'asia_ladder',       score: 1.2, count: 1 },
+  monday:      { source: 'monday_ladder',     score: 1.2, count: 1 },
+  prevAsia:    { source: 'prev_asia_ladder',  score: 1.0, count: 1 },
+  asiaAlign:   { source: 'asia_prev_align',   score: 2.0, count: 2 },
+  mondayAlign: { source: 'monday_prev_align', score: 2.0, count: 2 },
 };
 
 export function dynamicZones(snapshot, intra, nowSec) {
@@ -116,6 +117,7 @@ export function dynamicZones(snapshot, intra, nowSec) {
       if (!bySource.has(src) || z.score > bySource.get(src).score) bySource.set(src, z);
     }
     if (bySource.has('asia_prev_align')) { bySource.delete('asia_ladder'); bySource.delete('prev_asia_ladder'); }
+    if (bySource.has('monday_prev_align')) bySource.delete('monday_ladder');
     const reps = [...bySource.values()];
     const base = reps.reduce((a, b) => (b.score > a.score ? b : a));
     merged.push(reps.length === 1 ? base : {

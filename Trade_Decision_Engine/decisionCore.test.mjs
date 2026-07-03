@@ -2,7 +2,7 @@
 // Run: node Trade_Decision_Engine/decisionCore.test.mjs
 import assert from 'node:assert/strict';
 import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN, INTRADAY_FEATURES } from './decisionCore.js';
-import { computeIntradayState, computeSessionLadders } from './featureState.js';
+import { computeIntradayState, computeSessionLadders, confluenceCapsFor } from './featureState.js';
 import { newsGate, pairCurrencies } from './newsGate.js';
 import { buildSnapshot, syntheticBars, syntheticSnapshot } from './featureState.js';
 import { MODEL_V0 } from './modelV0.js';
@@ -259,6 +259,26 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   const aLine = lad2.asiaAlign.lines[0];
   const rA = decide(alignSnap, { price: aLine.price }, { nowMs: (lad2.asia.validFromSec + 600) * 1000 });
   ok(rA.zone.confluence >= 2 && rA.zone.sources.includes('asia_prev_align'), 'aligned line scores confluence ≥2 through decide');
+
+  // Monday vs previous week's Monday — same mechanism, 15m bodies
+  const mkMon = (start, lo, hi) => { const b = []; for (let m = 0; m < 720; m++) b.push(mk(start + m * 60, lo, hi, lo, lo + (hi - lo) * 0.7)); return b; };
+  const monday = mkMon(t0 - 3 * 86400, 1.0, 1.004);
+  const prevMonAligned = mkMon(t0 - 10 * 86400, 1.0, 1.004);
+  const ladM = computeSessionLadders({ mondayBars: monday, prevMondayBars: prevMonAligned, sessionOpen: 1.0, sigmaAbs: 0.02, pip: 0.0001 });
+  ok(ladM.mondayAlign?.lines?.length > 0, 'Monday × prev-Monday alignment fires on identical ranges');
+  ok(ladM.mondayAlign.validFromSec === ladM.monday.validFromSec, 'monday alignment shares the Monday validity (never on Monday itself)');
+  const prevMonFar = mkMon(t0 - 10 * 86400, 1.00525, 1.00925);
+  const ladM2 = computeSessionLadders({ mondayBars: monday, prevMondayBars: prevMonFar, sessionOpen: 1.0, sigmaAbs: 0.02, pip: 0.0001 });
+  ok(ladM2.mondayAlign === null && ladM2.monday?.lines?.length > 0, 'off-grid prev Monday → no alignment');
+  // prev-Monday grid is never carried standalone
+  ok(!('prevMonday' in (ladM ?? {})) || ladM.prevMonday == null, 'prev-Monday used for marking only, not standalone levels');
+
+  // per-instrument confluence thresholds mirror the live caps model
+  ok(confluenceCapsFor('eurusd').confluencePips === 2, 'fx = 2 pips');
+  ok(confluenceCapsFor('gold').confluencePips === 200, 'gold = 200 gold-pips ($20)');
+  ok(confluenceCapsFor('nq').confluencePips === 100 && confluenceCapsFor('dow').confluencePips === 60
+    && confluenceCapsFor('dax').confluencePips === 80 && confluenceCapsFor('ftse').confluencePips === 40
+    && confluenceCapsFor('rut').confluencePips === 15, 'index thresholds per caps');
 
   // session high as a dynamic zone merging with a static level (cross-boundary confluence)
   const zPDH = { price: 1.2345, score: 2, count: 1, sources: ['prior_hilo'], kinds: ['pdh'] };

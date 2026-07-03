@@ -159,19 +159,29 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
     const asiaBars = extractBars(packed, dayStart, Math.min(dayStart + 6 * 3600, dayEnd));
     const prevAsiaBars = i > 0 && dayStart - d1[i - 1].time <= 6 * 86400
       ? extractBars(packed, d1[i - 1].time, d1[i - 1].time + 6 * 3600) : null;
-    let mondayBars = null;
+    let mondayBars = null, prevMondayBars = null;
     {
-      const dow = new Date((dayStart + 12 * 3600) * 1000).getUTCDay();
-      if (dow >= 2 && dow <= 5) {
+      const dowOf = t => new Date((t + 12 * 3600) * 1000).getUTCDay();
+      const mondaySession = jt => {   // day-start epoch → that Monday's bars (cached)
+        if (!mondayBarsCache.has(jt)) {
+          const jEnd = Math.min(d1[dayIdxByTime.get(jt) + 1]?.time ?? jt + 86400, jt + 25 * 3600);
+          mondayBarsCache.set(jt, extractBars(packed, jt, jEnd));
+        }
+        return mondayBarsCache.get(jt);
+      };
+      if (dowOf(dayStart) >= 2 && dowOf(dayStart) <= 5) {
         for (let back = 1; back <= 6 && !mondayBars; back++) {
           const jt = d1[i - back]?.time;
           if (jt == null || dayStart - jt > 6 * 86400) break;
-          if (dayIdxByTime.has(jt) && new Date((jt + 12 * 3600) * 1000).getUTCDay() === 1) {
-            if (!mondayBarsCache.has(jt)) {
-              const jEnd = Math.min(d1[dayIdxByTime.get(jt) + 1]?.time ?? jt + 86400, jt + 25 * 3600);
-              mondayBarsCache.set(jt, extractBars(packed, jt, jEnd));
+          if (dayIdxByTime.has(jt) && dowOf(jt) === 1) {
+            mondayBars = mondaySession(jt);
+            // the week BEFORE's Monday — for the Monday-vs-prev-Monday alignment
+            const monIdx = dayIdxByTime.get(jt);
+            for (let b2 = 1; b2 <= 6 && !prevMondayBars; b2++) {
+              const pt = d1[monIdx - b2]?.time;
+              if (pt == null || jt - pt > 8 * 86400) break;
+              if (dowOf(pt) === 1) prevMondayBars = mondaySession(pt);
             }
-            mondayBars = mondayBarsCache.get(jt);
           }
         }
       }
@@ -182,6 +192,7 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
       snap = buildSnapshot({ pair, dailyBars, calendar: dayCtx.calendar ?? [], macro: dayCtx.macro ?? null,
         intradayBars: asiaBars.length >= 2 ? asiaBars : null, mondayBars,
         prevAsiaBars: prevAsiaBars?.length >= 10 ? prevAsiaBars : null,
+        prevMondayBars: prevMondayBars?.length >= 20 ? prevMondayBars : null,
         sessionOpen: packed.opens[s], nowMs: dayStart * 1000, mode: 'backfill' });
     } catch { continue; }
     const sigmaAbs = snap.sigmaDaily * snap.dayOpen;
