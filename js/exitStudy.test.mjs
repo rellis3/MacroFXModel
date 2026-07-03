@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict';
 import { simulateExitVariants } from './forecastAnalyser.js';
-import { runExitStudy, runExitGateSweep } from './perLineStrategy.js';
+import { runExitStudy, runExitGateSweep, runRideRigor } from './perLineStrategy.js';
 
 let passed = 0;
 const test = (name, fn) => { try { fn(); passed++; console.log(`  ✓ ${name}`); }
@@ -219,6 +219,27 @@ test('gate sweep: one row per margin with ride 2× robustness fields', () => {
     assert.ok('sharpe' in row.ride && 'sharpe2x' in row.ride && 'trades' in row.ride, 'ride fields');
   }
   assert.equal(sweep[0].margin, 0); assert.equal(sweep[1].margin, 0.02);
+});
+
+// Ride rigor returns walk-forward / per-year / breadth blocks on the ride exit.
+test('ride rigor: walk-forward, per-year and per-pair breadth blocks', () => {
+  const g = { exFadeFixed: 0.9, exFadeChand: 1.0, exFadeWalk: 0.8, exFadeRide: 1.2, exFadeRideHold: 1.2,
+              exFadeRideWhy: 'trail', exFadeRideHoldWhy: 'trail',
+              exFollowFixed: -1, exFollowChand: -1, exFollowWalk: -1, exFollowRide: -1, exFollowRideHold: -1,
+              exFollowRideWhy: 'stop', exFollowRideHoldWhy: 'stop' };
+  const mk = (pair, date, rev) => ({ date, open: 100, line: 'OC50_up', name: 'OC50', side: 'up',
+    reverted: rev, level: 102, innerLvl: 101, outerLvl: 103, decidedBy: 'barrier', closePx: 100,
+    cell: 'OC50_up|fast', extPct: 0.5, retracePct: 0.5, ...(rev ? g : { ...g, exFadeRide: -0.6 }) });
+  const mkPair = () => { const a = []; for (let y = 2020; y <= 2024; y++) for (let i = 0; i < 40; i++)
+    a.push(mk('P', `${y}-${String((i % 12) + 1).padStart(2, '0')}-15`, i % 4 !== 0)); return a; };
+  const rr = runRideRigor({ AA: mkPair(), BB: mkPair() }, { splitFrac: 0.5, minN: 20, marginPct: 0,
+    folds: 3, costByPair: { AA: 0.01, BB: 0.01 }, slipByPair: { AA: 0.006, BB: 0.006 } });
+  assert.ok(rr && rr.walkForward && rr.isVsOos, 'core blocks present');
+  assert.ok(Array.isArray(rr.walkForward.folds) && rr.walkForward.folds.length >= 1, 'walk-forward folds');
+  assert.ok(Array.isArray(rr.perYear) && rr.perYear.length >= 2, 'per-year rows');
+  assert.ok(Array.isArray(rr.perPair) && rr.perPair.length === 2, 'per-pair breadth (2 pairs)');
+  assert.ok(rr.breadth && rr.breadth.pairs === 2 && 'top3SharePct' in rr.breadth, 'breadth summary');
+  assert.ok('degradation' in rr.isVsOos, 'IS→OOS degradation');
 });
 
 // A study touch missing an ex* field must be counted, not crash.

@@ -588,6 +588,92 @@ export function runExitGateSweep(touchesByPair, { margins = [0.01, 0.02, 0.03, 0
   });
 }
 
+// Price OOS trades under the RIDE exit (gross = exFadeRide/exFollowRide) with the
+// honest cost (base + follow entry-slip + ride exit-slip via each trade's `why`).
+// rideField = 'Ride' | 'RideHold'. mult scales the whole friction (cost-stress).
+function priceRideTrades(touches, policy, mult = 1, rideField = 'Ride') {
+  const out = [];
+  for (const t of touches) {
+    const p = policy[t.cell];
+    if (!p || p.decision === 'skip') continue;
+    const d = p.decision;
+    const gross = t['ex' + _cap(d) + rideField];
+    if (gross == null) continue;                              // record predates the field
+    const base = t.cost ?? DEFAULT_COST_PCT.fx, slip = t.slip ?? DEFAULT_SLIP_PCT.fx;
+    const why  = t['ex' + _cap(d) + rideField + 'Why'];
+    const entrySlip = d === 'follow' ? slip : 0;              // follow enters on a stop
+    const exitSlip  = why !== 'tp' ? slip : 0;                // ride ~always market/stop exit
+    out.push({ date: t.date, pnl: +(gross - (base + entrySlip + exitSlip) * mult).toFixed(5) });
+  }
+  return out;
+}
+
+// ── 7c) Ride rigor — walk-forward / per-year / breadth on the STRICT-GATE ride ──
+// The gate sweep showed the strict-gate (marginPct≈0.05) ride survives 2× on one
+// split. Before trusting it we must rule out (a) single-split luck / gate-overfit —
+// via anchored WALK-FORWARD folds (retrain the entry policy before each test chunk)
+// + PER-YEAR stability — and (b) fragile CONCENTRATION — via a PER-PAIR breakdown.
+// Mirrors runRigor but prices the ride exit. Same honest cost as the exit study.
+export function runRideRigor(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0.05,
+                                              folds = 5, initialFrac = 0.4, rideField = 'Ride',
+                                              costByPair = {}, slipByPair = {} } = {}) {
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? costForPair(pair), slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) { t.cost = cost; t.slip = slip; }
+  }
+  const all = Object.values(touchesByPair).flat().sort(byDate);
+  if (all.length < 100) return null;
+  const dates = all.map(t => t.date);
+  const ps = trades => portfolioStats(dailySeries(trades));
+  const price = (touches, pol, mult = 1) => priceRideTrades(touches, pol, mult, rideField);
+
+  // IS vs OOS on the single split (degradation = OOS Sharpe ÷ IS Sharpe).
+  const splitDate = dates[Math.floor(dates.length * splitFrac)];
+  const isPol     = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
+  const isStats   = ps(price(all.filter(t => t.date < splitDate), isPol));
+  const oosTouches = all.filter(t => t.date >= splitDate);
+  const oosTrades  = price(oosTouches, isPol);
+  const oosStats   = ps(oosTrades);
+  const isVsOos = { splitDate, is: isStats, oos: oosStats,
+                    degradation: isStats.sharpe ? +(oosStats.sharpe / isStats.sharpe).toFixed(2) : null };
+
+  // Walk-forward: retrain the entry policy before each of `folds` test chunks.
+  const startIdx = Math.floor(dates.length * initialFrac);
+  const tailDates = dates.slice(startIdx);
+  const wfTrades = [], foldStats = [];
+  for (let f = 0; f < folds; f++) {
+    const a = tailDates[Math.floor(f * tailDates.length / folds)];
+    const b = tailDates[Math.floor((f + 1) * tailDates.length / folds)] ?? null;
+    const train = all.filter(t => t.date < a);
+    if (train.length < minN) continue;
+    const pol = buildPolicy(train, { minN, marginPct });
+    const tr = price(all.filter(t => t.date >= a && (b == null || t.date < b)), pol);
+    wfTrades.push(...tr);
+    foldStats.push({ from: a, to: b ?? dates[dates.length - 1], trades: tr.length, ...ps(tr) });
+  }
+  const walkForward = { folds: foldStats, overall: ps(wfTrades), trades: wfTrades.length };
+
+  // Cost-stress on the OOS ride book (1×/2×/3×) — same honest friction, scaled.
+  const costSensitivity = [1, 2, 3].map(mult => ({ mult, ...ps(price(oosTouches, isPol, mult)) }));
+
+  // Per-year (OOS) sub-period stability.
+  const byYear = {};
+  for (const t of oosTrades) (byYear[t.date.slice(0, 4)] ??= []).push(t);
+  const perYear = Object.entries(byYear).sort().map(([year, tr]) => ({ year, trades: tr.length, ...ps(tr) }));
+
+  // Per-pair breadth — is the edge broad or concentrated in a few pairs?
+  const perPair = Object.entries(touchesByPair).map(([pair, touches]) => {
+    const tr = price(touches.filter(t => t.date >= splitDate), isPol);
+    return tr.length ? { pair, trades: tr.length, ...ps(tr) } : null;
+  }).filter(Boolean).sort((a, b) => b.trades - a.trades);
+  const totalTr = perPair.reduce((s, p) => s + p.trades, 0) || 1;
+  const breadth = { pairs: perPair.length,
+                    positivePairs: perPair.filter(p => (p.sharpe ?? 0) > 0).length,
+                    top3SharePct: +(perPair.slice(0, 3).reduce((s, p) => s + p.trades, 0) / totalTr * 100).toFixed(1) };
+
+  return { marginPct, splitDate, isVsOos, walkForward, costSensitivity, perYear, perPair, breadth };
+}
+
 // ── 8) Day-type gate A/B study — does conditioning fade/follow on the ex-ante ──
 // trend-day forecast beat the velocity-only policy? ("stop fading into a rally").
 //

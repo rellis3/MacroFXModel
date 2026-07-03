@@ -267,6 +267,28 @@ async function renderExits(v){
       html+=`<tr style="${dim}"><td style="font-weight:600">${fmt(g.margin,2)}%</td>${shc(r.sharpe)}${shc(r.sharpe2x)}<td class="mut">${r.trades??0}</td>${shc(rh.sharpe2x)}<td class="mut">${rh.trades??0}</td></tr>`; }
     html+=`</tbody></table><div class="hint" style="margin-top:6px">Stricter gates keep only the highest-expectancy fade cells (fewer trades). <b>The test: does any gate get Ride positive at 2× with n≥30?</b> If yes, that concentrated subset is the tradeable candidate to paper-trade. If every row is red at 2×, the edge is genuinely too thin to deploy — the trailing exit is a real mechanism but there's no free money after honest costs.</div>`;
   }
+  // Strict-gate ride rigor — the guard against single-split luck / gate-overfit.
+  const rr=s.rideRigor;
+  if(rr){
+    const wf=rr.walkForward||{}, io=rr.isVsOos||{}, bd=rr.breadth||{};
+    html+=`<div style="font-weight:600;margin:16px 0 4px">Strict-gate ride rigor <span class="mut" style="font-weight:400">— walk-forward · per-year · breadth at marginPct ${fmt(rr.marginPct,2)}% (guards against gate-overfit)</span></div>`;
+    // headline KPIs
+    const kp=(v,lbl,bad)=>`<div style="display:inline-block;min-width:120px;margin:0 14px 6px 0"><div style="font-size:18px;font-weight:700;color:${bad?'var(--neg,#e06666)':'var(--pos,#3fb27f)'}">${v}</div><div class="mut" style="font-size:11px">${lbl}</div></div>`;
+    html+=`<div style="margin:4px 0 8px">${kp(fmt(wf.overall?.sharpe,2),`Walk-forward Sharpe (n ${wf.trades??0})`,(wf.overall?.sharpe??0)<0)}${kp(fmt(io.oos?.sharpe,2),'OOS single-split',(io.oos?.sharpe??0)<0)}${kp(fmt(io.degradation,2)+'×','IS→OOS retention',(io.degradation??0)<0.5)}${kp(`${bd.positivePairs??0}/${bd.pairs??0}`,'pairs positive OOS',(bd.positivePairs??0)<(bd.pairs??0)*0.5)}${kp(fmt(bd.top3SharePct,0)+'%','top-3 pairs share',(bd.top3SharePct??0)>50)}</div>`;
+    // walk-forward folds
+    if(wf.folds?.length){ html+=`<div style="font-weight:600;margin:8px 0 2px;font-size:12px">Walk-forward folds</div><table><thead><tr><th>From</th><th>Sharpe</th><th>exp</th><th>n</th></tr></thead><tbody>`;
+      for(const f of wf.folds) html+=`<tr><td>${f.from||'—'}</td><td class="${(f.sharpe??0)<0?'neg':'pos'}">${fmt(f.sharpe,2)}</td><td>${fmt(f.expectancy,4)}%</td><td class="mut">${f.trades}</td></tr>`;
+      html+=`</tbody></table>`; }
+    // per-year
+    if(rr.perYear?.length){ html+=`<div style="font-weight:600;margin:10px 0 2px;font-size:12px">Per-year (OOS)</div><table><thead><tr><th>Year</th><th>Sharpe</th><th>exp</th><th>n</th></tr></thead><tbody>`;
+      for(const y of rr.perYear) html+=`<tr><td>${y.year}</td><td class="${(y.sharpe??0)<0?'neg':'pos'}">${fmt(y.sharpe,2)}</td><td>${fmt(y.expectancy,4)}%</td><td class="mut">${y.trades}</td></tr>`;
+      html+=`</tbody></table>`; }
+    // per-pair breadth (top 12)
+    if(rr.perPair?.length){ html+=`<div style="font-weight:600;margin:10px 0 2px;font-size:12px">Per-pair breadth <span class="mut" style="font-weight:400">(OOS, top 12 by trades)</span></div><table><thead><tr><th>Pair</th><th>Sharpe</th><th>exp</th><th>n</th></tr></thead><tbody>`;
+      for(const p of rr.perPair.slice(0,12)) html+=`<tr><td style="font-weight:600">${p.pair.toUpperCase()}</td><td class="${(p.sharpe??0)<0?'neg':'pos'}">${fmt(p.sharpe,2)}</td><td>${fmt(p.expectancy,4)}%</td><td class="mut">${p.trades}</td></tr>`;
+      html+=`</tbody></table>`; }
+    html+=`<div class="hint" style="margin-top:6px">This is the go/no-go before paper. <b>Walk-forward Sharpe</b> retrains the entry policy before each fold — if it holds near the single-split number, the +3.24 isn't one lucky split. <b>IS→OOS retention</b> &gt; ~0.5 = the edge generalises. <b>Per-year</b> should be broadly green (no single year carrying it). <b>Breadth</b>: most pairs positive + a low top-3 share = a broad edge, not 3 pairs of luck. Green across all four ⇒ wire the strict-gate ride into the bot in PAPER and measure realised slippage; a red flag in any ⇒ dig before risking capital.</div>`;
+  }
   html+=`${caption}</div>`;
   v.innerHTML=html;
 }
