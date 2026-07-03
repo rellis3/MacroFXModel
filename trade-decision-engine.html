@@ -159,12 +159,61 @@
 </div>
 
 <div class="card">
+  <h2>Macro verdict — #7 <span class="muted">(does macro earn a place in the entry path?)</span></h2>
+  <div class="muted" style="margin-bottom:10px">
+    The pre-registered falsification test (TDE §7c / <code>js/macroCore.js</code>). Run order:
+    <b>1)</b> full rebuild with macro <b>OFF</b> — the incumbent baseline on the fixed σ;
+    <b>2)</b> full rebuild with macro <b>ON</b> — every event gets its day's risk-regime context;
+    <b>3)</b> compute the verdict — PRIMARY bucket test (<b>OPPOSED must underperform NEUTRAL with
+    n ≥ 30, ≥ 8 episodes, ≥ 3 calendar years, sign-stable per year</b> — bar frozen before any
+    results) + SECONDARY ablation (<code>macro_align</code> in/out on OOS Brier, 30-day embargo,
+    L2-exempt re-run applied automatically on disagreement).
+    <b>Both fail ⇒ macro stays out of the feature vector permanently.</b> Promotion is a manual
+    decision on this evidence either way.
+  </div>
+  <div class="row" style="margin-bottom:8px">
+    <button id="btnMvSeq" onclick="runMacroVerdictSequence()">▶ Run FULL verdict sequence (1 → 2 → 3)</button>
+    <span class="muted">two full 12-year replays — this takes hours; progress survives if you close the tab (each step is a server job)</span>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <button class="ghost" id="btnMv1" onclick="mvStep(1)">1 · Baseline rebuild (macro OFF)</button>
+    <button class="ghost" id="btnMv2" onclick="mvStep(2)">2 · Macro rebuild (macro ON)</button>
+    <button class="ghost" id="btnMv3" onclick="mvStep(3)">3 · Compute verdict</button>
+    <button class="ghost" onclick="loadMacroVerdict()">Load last verdict</button>
+    <span class="muted" id="mvStatus"></span>
+  </div>
+  <pre id="mvLog" style="display:none;max-height:180px;overflow-y:auto"></pre>
+  <div id="mvOut" style="display:none">
+    <div class="decision-big" id="mvBanner"></div>
+    <div class="muted" id="mvSummary" style="margin-bottom:8px"></div>
+    <div class="kv" id="mvKv" style="margin-bottom:10px"></div>
+    <div class="grid">
+      <div>
+        <div class="muted" style="margin:6px 0 4px">PRIMARY — bucket test (frozen bar: n ≥ 30 · episodes ≥ 8 · years ≥ 3)</div>
+        <table id="mvBuckets"><thead><tr><th>Bucket</th><th>N</th><th>Episodes</th><th>Years</th><th>Win rate</th><th>Avg PnL %</th><th>Bar</th></tr></thead><tbody></tbody></table>
+        <div class="muted" style="margin:10px 0 4px">Per-year: OPPOSED vs NEUTRAL avg PnL % (sign-stable = opposed below neutral every qualifying year)</div>
+        <table id="mvYears"><thead><tr><th>Year</th><th>Opp n</th><th>Opp PnL%</th><th>Neu PnL%</th><th>Opp worse?</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div>
+        <div class="muted" style="margin:6px 0 4px">SECONDARY — ablation (OOS Brier, lower = better; embargo 30d)</div>
+        <table id="mvAbl"><thead><tr><th>Model</th><th>OOS Brier</th></tr></thead><tbody></tbody></table>
+        <div class="muted" id="mvAblNote" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="muted" id="mvNote" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div class="card">
   <h2>API reference</h2>
   <pre>POST /api/trade-decision/decide          { pair, price?, action?, direction?, approach_sigma?, mode? }
 GET  /api/trade-decision/state/:pair     ?mode=synthetic — inspect the snapshot the fast loop reads
 POST /api/trade-decision/refresh         { pair } | { pairs:[...] } — run the slow loop (needs OANDA)
 GET  /api/trade-decision/log             ?limit=50
 GET  /api/trade-decision/health          model version + snapshot staleness per pair
+POST /api/trade-decision/backfill/run    { full?, gap_fill?, macro? } — macro:false = baseline mode
+POST /api/trade-decision/macro-verdict/run   compute the #7 verdict over the event log
+GET  /api/trade-decision/macro-verdict       last verdict (bucket test + ablation + frozen bar)
 
 Hard gates (fail-closed, probability=null): no_snapshot · stale_features · news_window · no_level_nearby
 Auto slow loop in Railway: set TDE_PAIRS=eurusd,gbpusd,usdjpy (+ TDE_REFRESH_MIN, default 5)</pre>
@@ -343,6 +392,133 @@ async function saveTdeConfig() {
   const r = await api('/api/trade-decision/config', { method:'POST', headers:{'content-type':'application/json'},
     body: JSON.stringify({ backfill_utc: $('cfgTime').value, backfill_daily: $('cfgDaily').checked, gap_fill: $('cfgGapFill').checked }) });
   $('cfgStatus').textContent = r.ok ? 'saved ✓ — applies live, no restart' : 'save failed: ' + r.error;
+}
+
+// ── Macro verdict (#7) — clickable run order, no curl needed ─────────────────
+const MV_COLOR = { PASS: '#34d399', PASS_PRIMARY_ONLY: '#fbbf24', FAIL: '#f87171', NO_MACRO_DATA: '#9ca3af' };
+const MV_LABEL = {
+  PASS: 'PASS — macro earns a place (promotion is still a manual call)',
+  PASS_PRIMARY_ONLY: 'PARTIAL — bucket test passes, ablation does not. Human call.',
+  FAIL: 'FAIL — macro stays OUT of the feature vector (that is a valid answer)',
+  NO_MACRO_DATA: 'NO MACRO DATA — run step 2 (macro-ON rebuild) first',
+};
+let mvBusy = false;
+function mvSay(msg) {
+  $('mvLog').style.display = 'block';
+  $('mvLog').textContent += (mvLogStamp() + msg + '\n');
+  $('mvLog').scrollTop = $('mvLog').scrollHeight;
+}
+const mvLogStamp = () => new Date().toISOString().substring(11, 19) + '  ';
+const mvSleep = ms => new Promise(r => setTimeout(r, ms));
+
+// One backfill rebuild as a promise: start the job, poll status, stream its log.
+async function mvRebuild(macroOn) {
+  const label = macroOn ? 'step 2 — macro-ON rebuild' : 'step 1 — baseline rebuild (macro OFF)';
+  mvSay(`${label}: starting full rebuild…`);
+  const r = await api('/api/trade-decision/backfill/run', { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ full: true, macro: macroOn }) });
+  if (!r.ok) throw new Error(`${label}: ${r.error}`);
+  let seen = 0;
+  for (;;) {
+    await mvSleep(5000);
+    let s;
+    try { s = await api(`/api/trade-decision/backfill/status/${r.jobId}`); }
+    catch { continue; }                                  // transient — keep polling
+    const lines = s.log ?? [];
+    for (; seen < lines.length; seen++) mvSay('   ' + lines[seen]);
+    $('mvStatus').textContent = `${label} — ${s.status}${s.elapsed ? ` (${Math.round(s.elapsed / 60)}m)` : ''}`;
+    if (s.status === 'done') { mvSay(`${label}: done ✓`); return; }
+    if (s.status === 'error') throw new Error(`${label}: ${s.error}`);
+  }
+}
+
+async function mvVerdict() {
+  mvSay('step 3 — computing verdict (bucket test + ablation)…');
+  const r = await api('/api/trade-decision/macro-verdict/run', { method: 'POST' });
+  if (!r.ok) throw new Error('verdict: ' + r.error);
+  for (;;) {
+    await mvSleep(3000);
+    let v;
+    try { v = await api('/api/trade-decision/macro-verdict'); } catch { continue; }
+    if (v.status === 'running') { $('mvStatus').textContent = `verdict computing… ${v.elapsed}s`; continue; }
+    if (!v.ok) throw new Error('verdict: ' + v.error);
+    mvSay(`verdict: ${v.verdict}`);
+    renderMacroVerdict(v);
+    return;
+  }
+}
+
+async function mvStep(n) {
+  if (mvBusy) { $('mvStatus').textContent = 'a step is already running'; return; }
+  mvBusy = true;
+  try {
+    if (n === 1) await mvRebuild(false);
+    else if (n === 2) await mvRebuild(true);
+    else await mvVerdict();
+    $('mvStatus').textContent = `step ${n} done ✓`;
+  } catch (e) { $('mvStatus').textContent = String(e.message ?? e); mvSay('✗ ' + (e.message ?? e)); }
+  finally { mvBusy = false; }
+}
+
+async function runMacroVerdictSequence() {
+  if (mvBusy) { $('mvStatus').textContent = 'a step is already running'; return; }
+  if (!confirm('Run the full verdict sequence?\n\nThis replays the entire 12-year M1 history TWICE (baseline + macro) before computing the verdict — expect hours. Each step is a server-side job, so it keeps running if you close this tab; come back and press "Load last verdict".')) return;
+  mvBusy = true;
+  try {
+    await mvRebuild(false);
+    await mvRebuild(true);
+    await mvVerdict();
+    $('mvStatus').textContent = 'sequence complete ✓';
+  } catch (e) { $('mvStatus').textContent = String(e.message ?? e); mvSay('✗ ' + (e.message ?? e)); }
+  finally { mvBusy = false; }
+}
+
+async function loadMacroVerdict() {
+  const v = await api('/api/trade-decision/macro-verdict');
+  if (!v.ok) { $('mvStatus').textContent = v.error; return; }
+  if (v.status === 'running') { $('mvStatus').textContent = `verdict computing… ${v.elapsed}s`; return; }
+  renderMacroVerdict(v);
+}
+
+function renderMacroVerdict(v) {
+  $('mvOut').style.display = 'block';
+  $('mvBanner').textContent = v.verdict.replaceAll('_', ' ');
+  $('mvBanner').style.color = MV_COLOR[v.verdict] ?? 'var(--text)';
+  $('mvSummary').textContent = MV_LABEL[v.verdict] ?? '';
+  if (v.verdict === 'NO_MACRO_DATA') { $('mvKv').innerHTML = `<div><div class="k">Events</div><div class="v">${(v.events ?? 0).toLocaleString()}</div></div>`; return; }
+  const p = v.primary ?? {}, s = v.secondary ?? {}, bk = p.bucket ?? {};
+  $('mvKv').innerHTML = `
+    <div><div class="k">Events</div><div class="v">${(v.events ?? 0).toLocaleString()}</div></div>
+    <div><div class="k">Primary (bucket)</div><div class="v" style="color:${p.pass ? '#34d399' : '#f87171'}">${p.pass ? 'PASS' : 'fail'}</div></div>
+    <div><div class="k">Opp underperforms</div><div class="v">${p.oppUnderperforms == null ? '–' : p.oppUnderperforms ? 'yes' : 'no'}</div></div>
+    <div><div class="k">Sign-stable years</div><div class="v">${p.stableYears ?? 0}/${p.checkedYears ?? 0}</div></div>
+    <div><div class="k">Secondary (ablation)</div><div class="v" style="color:${s.pass ? '#34d399' : '#f87171'}">${s.pass == null ? '–' : s.pass ? 'PASS' : 'fail'}${s.l2ExemptApplied ? ' (L2-exempt)' : ''}</div></div>
+    <div><div class="k">macro_align weight</div><div class="v">${s.macroWeight ?? '–'}</div></div>`;
+  const bt = $('mvBuckets').querySelector('tbody'); bt.innerHTML = '';
+  for (const key of ['aligned', 'neutral', 'opposed']) {
+    const b = bk[key]; if (!b) continue;
+    bt.innerHTML += `<tr><td>${key.toUpperCase()}</td><td>${b.n}</td><td>${b.episodes}</td><td>${b.years}</td>
+      <td>${b.winRate ?? '–'}</td><td class="${(b.avgPnlPct ?? 0) >= 0 ? 'pos' : 'neg'}">${b.avgPnlPct ?? '–'}</td>
+      <td>${b.meetsBar ? '✓' : '✗ thin'}</td></tr>`;
+  }
+  const yt = $('mvYears').querySelector('tbody'); yt.innerHTML = '';
+  const oppY = bk.opposed?.perYear ?? {}, neuY = bk.neutral?.perYear ?? {};
+  for (const y of Object.keys(oppY).sort()) {
+    const o = oppY[y], nn = neuY[y];
+    const qualify = o.n >= 5 && nn && nn.n >= 5;
+    const worse = qualify ? o.avgPnlPct < nn.avgPnlPct : null;
+    yt.innerHTML += `<tr><td>${y}</td><td>${o.n}</td><td class="${o.avgPnlPct >= 0 ? 'pos' : 'neg'}">${o.avgPnlPct}</td>
+      <td>${nn ? nn.avgPnlPct : '–'}</td><td>${!qualify ? 'thin' : worse ? '✓' : '<span class="neg">✗</span>'}</td></tr>`;
+  }
+  const at = $('mvAbl').querySelector('tbody');
+  at.innerHTML = `
+    <tr><td>baseline (no macro)</td><td>${s.brier?.baseline ?? '–'}</td></tr>
+    <tr><td>+ macro_align</td><td class="${s.brier?.withMacro != null && s.brier?.baseline != null && s.brier.withMacro < s.brier.baseline ? 'pos' : ''}">${s.brier?.withMacro ?? '–'}</td></tr>
+    ${s.brier?.withMacroL2Exempt != null ? `<tr><td>+ macro_align (L2-exempt)</td><td>${s.brier.withMacroL2Exempt}</td></tr>` : ''}`;
+  $('mvAblNote').textContent = s.l2ExemptApplied
+    ? 'Bucket test and plain ablation disagreed — the pre-registered L2-exempt re-run was applied (shrinkage on a rare feature biases toward "macro fails").'
+    : '';
+  $('mvNote').textContent = v.note ?? '';
 }
 
 health(); loadLog(); loadTdeConfig();

@@ -81,7 +81,7 @@ import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
-import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport } from './Trade_Decision_Engine/backfill.js';
+import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic } from './Trade_Decision_Engine/backfill.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -9955,6 +9955,80 @@ app.get('/api/trade-decision/backfill/report', (_req, res) => {
   const report = tdeReadBackfillReport();
   if (!report) return res.json({ ok: false, error: 'no backfill yet — POST /api/trade-decision/backfill/run' });
   res.json({ ok: true, report });
+});
+
+// ── Macro verdict (#7) — the two frozen falsification tests over the event log.
+// PRIMARY: macroBucketReport vs the frozen MACRO_BUCKET_BAR (OPPOSED must
+// underperform NEUTRAL with n≥30, ≥8 episodes, ≥3 years, sign-stable per year).
+// SECONDARY: ablation — fitLogistic with vs without macro_align, embargo 30d;
+// on primary-pass/ablation-fail disagreement, the L2-exempt re-run is applied
+// automatically (§7c #5: shrinkage on a rare feature biases toward "fails").
+// The endpoint REPORTS; promotion stays a human decision on this evidence.
+function tdeComputeMacroVerdict() {
+  const events = tdeReadEvents();
+  const bucket = tdeMacroBucketReport(events);
+  const macroEvents = (bucket.aligned?.n ?? 0) + (bucket.opposed?.n ?? 0);
+  if (!events.length) return { ok: false, error: 'no events — run a backfill first' };
+  if (!macroEvents) return {
+    ok: true, verdict: 'NO_MACRO_DATA', events: events.length, bucket,
+    note: 'every event is macro-neutral — run the macro-ON full rebuild (step 2) first',
+  };
+
+  // PRIMARY — bucket test against the frozen bar
+  const opp = bucket.opposed, neu = bucket.neutral;
+  const oppUnderperforms = opp.n > 0 && neu.n > 0 ? opp.avgPnlPct < neu.avgPnlPct : null;
+  let checkedYears = 0, stableYears = 0;
+  for (const [y, s] of Object.entries(opp.perYear ?? {})) {
+    const ny = neu.perYear?.[y];
+    if (s.n >= 5 && ny && ny.n >= 5) { checkedYears++; if (s.avgPnlPct < ny.avgPnlPct) stableYears++; }
+  }
+  const signStable = checkedYears >= bucket.bar.minYears && stableYears === checkedYears;
+  const primaryPass = opp.meetsBar === true && oppUnderperforms === true && signStable;
+
+  // SECONDARY — ablation on identical splits (macro runs use embargo 30d)
+  const baseFeatures = Object.keys(TDE_MODEL.weights).filter(k => k !== 'macro_align');
+  const withMacro = [...new Set([...baseFeatures, 'macro_align'])];
+  const fitBase  = tdeFitLogistic(events, { features: baseFeatures, embargoDays: 30 });
+  const fitMacro = tdeFitLogistic(events, { features: withMacro,  embargoDays: 30 });
+  const brier = f => (f?.ok ? f.oos?.fitted?.brier ?? null : null);
+  let secondaryPass = brier(fitBase) != null && brier(fitMacro) != null ? brier(fitMacro) < brier(fitBase) : null;
+  let fitMacroL2Exempt = null, l2ExemptApplied = false;
+  if (primaryPass && secondaryPass === false) {
+    fitMacroL2Exempt = tdeFitLogistic(events, { features: withMacro, embargoDays: 30, l2ExemptFeatures: ['macro_align'] });
+    if (brier(fitMacroL2Exempt) != null && brier(fitMacroL2Exempt) < brier(fitBase)) { secondaryPass = true; l2ExemptApplied = true; }
+  }
+
+  const verdict = primaryPass && secondaryPass ? 'PASS'
+    : primaryPass ? 'PASS_PRIMARY_ONLY'   // bucket evidence real, ablation shy — human call
+    : 'FAIL';
+  return {
+    ok: true, verdict, generatedAt: Date.now(), events: events.length,
+    primary: { pass: primaryPass, oppUnderperforms, signStable,
+               stableYears, checkedYears, bucket },
+    secondary: { pass: secondaryPass, l2ExemptApplied,
+                 brier: { baseline: brier(fitBase), withMacro: brier(fitMacro), withMacroL2Exempt: brier(fitMacroL2Exempt) },
+                 macroWeight: fitMacro?.ok ? fitMacro.candidate?.weights?.macro_align ?? null : null,
+                 baseline: fitBase, withMacro: fitMacro, withMacroL2Exempt: fitMacroL2Exempt },
+    note: 'Promotion to modelV1 is a MANUAL decision on this evidence (TDE §7c). '
+        + 'Both tests failing means macro stays out of the feature vector permanently.',
+  };
+}
+
+let _tdeVerdictJob = null;   // { status, startedAt, result?, error? } — one at a time
+app.post('/api/trade-decision/macro-verdict/run', (_req, res) => {
+  if (_tdeVerdictJob?.status === 'running') return res.status(409).json({ ok: false, error: 'verdict already computing' });
+  _tdeVerdictJob = { status: 'running', startedAt: Date.now() };
+  setImmediate(() => {
+    try { _tdeVerdictJob = { status: 'done', startedAt: _tdeVerdictJob.startedAt, result: tdeComputeMacroVerdict() }; }
+    catch (e) { _tdeVerdictJob = { status: 'error', error: e.message ?? String(e) }; console.error('[tde-verdict]', e); }
+  });
+  res.json({ ok: true, status: 'running' });
+});
+app.get('/api/trade-decision/macro-verdict', (_req, res) => {
+  if (!_tdeVerdictJob) return res.json({ ok: false, error: 'no verdict computed yet — POST /api/trade-decision/macro-verdict/run' });
+  if (_tdeVerdictJob.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - _tdeVerdictJob.startedAt) / 1000) });
+  if (_tdeVerdictJob.status === 'error') return res.status(500).json({ ok: false, status: 'error', error: _tdeVerdictJob.error });
+  res.json({ ok: true, status: 'done', ..._tdeVerdictJob.result });
 });
 
 // Runtime config — the caps pattern: stored in KV (survives deploys, editable
