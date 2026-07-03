@@ -35,6 +35,17 @@ export const DECIDE_DEFAULTS = {
 // and resolve NEUTRAL. Threshold frozen BEFORE any results exist (pre-registered).
 export const MACRO_RISK_SENS_MIN = 0.4;
 
+// ── Intraday feature names (zero-weighted in v0 — the macro discipline) ──────
+// Computed and logged on every event (live + backfill) but ABSENT from
+// MODEL_V0.weights, so they cannot move a live score until an ablation fit
+// (fitLogistic features: [...v0, ...INTRADAY_FEATURES]) earns them promotion.
+export const INTRADAY_FEATURES = [
+  'intraday_range_exhausted_follow',  // chasing after >100% of median range used
+  'intraday_range_exhausted_fade',    // fading at the edge of the expected range
+  'intraday_fade_too_early',          // fading before the day has shown a range
+  'intraday_vwap_stretch_fade',       // fading stretched from session VWAP
+];
+
 // → +1 aligned / 0 neutral / −1 opposed
 export function macroState(riskSens, regime, direction) {
   if (!regime || regime === 'NEUTRAL' || !Number.isFinite(riskSens)) return 0;
@@ -54,6 +65,77 @@ export function sessionPhaseUTC(ms) {
   if (h < 12) return 'london';
   if (h < 19) return 'ny';
   return 'late';
+}
+
+// ── Dynamic zones — levels that move or become valid DURING the session ──────
+// The static zone map is per-snapshot; these are resolved at decide() time:
+//   session_hilo — today's developing high/low (live: snapshot.intraday,
+//                  backfill: exact per-touch state on the request)
+//   asia/monday ladder — the range-line bot's lines, visible only once their
+//                  formation window has closed (the analyser's validFrom gate)
+// Zone styling per ladder key. asiaAlign carries count 2 — a today-line and a
+// yesterday-line agreeing within the 2-pip rule IS two sources of confluence —
+// and tight alignment (≤10% of the threshold / same fib) gets a score bump.
+export const LADDER_ZONE_STYLE = {
+  asia:        { source: 'asia_ladder',       score: 1.2, count: 1 },
+  monday:      { source: 'monday_ladder',     score: 1.2, count: 1 },
+  prevAsia:    { source: 'prev_asia_ladder',  score: 1.0, count: 1 },
+  asiaAlign:   { source: 'asia_prev_align',   score: 2.0, count: 2 },
+  mondayAlign: { source: 'monday_prev_align', score: 2.0, count: 2 },
+};
+
+export function dynamicZones(snapshot, intra, nowSec) {
+  const out = [];
+  if (intra && Number.isFinite(intra.high) && Number.isFinite(intra.low) && intra.high > intra.low) {
+    out.push({ price: intra.high, score: 1.4, count: 1, sources: ['session_hilo'], kinds: ['session_high'], dyn: true });
+    out.push({ price: intra.low,  score: 1.4, count: 1, sources: ['session_hilo'], kinds: ['session_low'],  dyn: true });
+  }
+  for (const [key, style] of Object.entries(LADDER_ZONE_STYLE)) {
+    const lad = snapshot.ladders?.[key];
+    if (!lad?.lines || !(nowSec >= lad.validFromSec)) continue;
+    for (const ln of lad.lines) {
+      out.push({ price: ln.price, score: ln.tight ? +(style.score + 0.4).toFixed(2) : style.score,
+        count: style.count, sources: [style.source], kinds: [ln.label], dyn: true });
+    }
+  }
+
+  // Consolidate COINCIDENT dynamic levels (within ~2 pips — the alignment
+  // threshold, deliberately much tighter than the zone tolerance so adjacent
+  // ladder rungs never chain-merge): one representative per SOURCE (a grid
+  // cannot confirm itself), and an asia_prev_align member SUBSUMES its
+  // constituent asia/prev lines — its count 2 already represents them.
+  const epsAbs = snapshot.meta?.tolPips > 0 ? 2 * (snapshot.meta.tolAbs / snapshot.meta.tolPips) : 0;
+  if (!(epsAbs > 0) || out.length < 2) return out;
+  out.sort((a, b) => a.price - b.price);
+  const merged = [];
+  let group = [];
+  const flush = () => {
+    if (!group.length) return;
+    const bySource = new Map();
+    for (const z of group) {
+      const src = z.sources[0];
+      if (!bySource.has(src) || z.score > bySource.get(src).score) bySource.set(src, z);
+    }
+    if (bySource.has('asia_prev_align')) { bySource.delete('asia_ladder'); bySource.delete('prev_asia_ladder'); }
+    if (bySource.has('monday_prev_align')) bySource.delete('monday_ladder');
+    const reps = [...bySource.values()];
+    const base = reps.reduce((a, b) => (b.score > a.score ? b : a));
+    merged.push(reps.length === 1 ? base : {
+      price: base.price,
+      score: +reps.reduce((s, z) => s + z.score, 0).toFixed(3),
+      count: reps.reduce((s, z) => s + z.count, 0),
+      sources: [...new Set(reps.flatMap(z => z.sources))],
+      kinds: [...new Set(reps.flatMap(z => z.kinds))],
+      dyn: true,
+    });
+    group = [];
+  };
+  for (const z of out) {
+    if (group.length && z.price - group[group.length - 1].price > epsAbs) flush();
+    group.push(z);
+  }
+  flush();
+  return merged;
 }
 
 // ── Nearest zone within tolerance (distance in σ-of-price units) ─────────────
@@ -89,7 +171,11 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
   }
 
   const stretch = sigmaAbs > 0 ? Math.abs(zone.price - dayOpen) / sigmaAbs : 0;
-  const approach = Math.abs(Number(request.approachSigma) || 0);
+  // intraday state: per-call override (backfill's per-touch state, or a bot
+  // computing its own) → slow-loop snapshot block (≤ staleness gate old) → none
+  const intra = request.intraday ?? snapshot.intraday ?? null;
+  const approach = Math.abs(Number(request.approachSigma) || intra?.approachSigma || 0);
+  const rangeUsed = Number.isFinite(intra?.rangeUsed) ? intra.rangeUsed : null;
   const phase = sessionPhaseUTC(nowMs);
   const trendy = regime === 'BULL' || regime === 'BEAR';
   const isFade = action === 'fade';
@@ -116,9 +202,15 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
     // v0 carries NO weight for it: it enters scoring only via a promoted fit.
     macro_align:           snapshot.macro
       ? macroState(snapshot.macro.riskSens, snapshot.macro.regime, direction) : 0,
+    // intraday (zero-weighted in v0 — see INTRADAY_FEATURES): all 0 when no
+    // intraday state exists, so D1-only rows are unchanged
+    intraday_range_exhausted_follow: !isFade && rangeUsed != null ? clamp01((rangeUsed - 1.0) / 0.5) : 0,
+    intraday_range_exhausted_fade:    isFade && rangeUsed != null ? clamp01((rangeUsed - 1.0) / 0.5) : 0,
+    intraday_fade_too_early:          isFade && rangeUsed != null ? clamp01((0.4 - rangeUsed) / 0.4) : 0,
+    intraday_vwap_stretch_fade:       isFade && intra ? clamp01((Math.abs(intra.vwapDistSigma ?? 0) - 0.5) / 1.0) : 0,
   };
 
-  return { features, meta: { action, direction, stretch: +stretch.toFixed(3), phase, zoneAbove } };
+  return { features, meta: { action, direction, stretch: +stretch.toFixed(3), phase, zoneAbove, intraday: intra ? { rangeUsed, posInRange: intra.posInRange ?? null, vwapDistSigma: intra.vwapDistSigma ?? null, source: request.intraday ? 'request' : 'snapshot' } : null } };
 }
 
 // ── Logistic scorer with per-feature contributions (for top_factors) ─────────
@@ -168,15 +260,35 @@ export function decide(snapshot, request = {}, opts = {}) {
   if (gate.blocked) return skip('news_window', { news: gate.reason });
 
   // 3) a zone must be in reach — the engine scores zone touches, not open space.
+  //    Candidates = the static per-snapshot map PLUS the dynamic levels valid
+  //    right now (today's developing high/low, the range ladders past their
+  //    formation windows). After the hit, confluence merges across the
+  //    static/dynamic boundary: a PDH that is ALSO today's session high and an
+  //    Asia ladder line counts all three.
   //    own_level: the caller vouches that THEIR level (a hand-pulled fib, an
   //    order-flow line…) sits at `price`. If the map already has a zone there,
   //    it is used (their level agrees with the map → real confluence); if not,
   //    the price is scored as a standalone external level (confluence 1) rather
-  //    than refused. Confluence features then measure how much the engine's own
-  //    map agrees with the caller's level.
+  //    than refused.
   const price = Number(request.price) || snapshot.price;
   const sigmaAbs = snapshot.sigmaDaily * snapshot.dayOpen;
-  let hit = nearestZone(snapshot.zones, price, sigmaAbs, cfg.maxDistSigma);
+  const intra = request.intraday ?? snapshot.intraday ?? null;
+  const dyn = dynamicZones(snapshot, intra, Math.floor(nowMs / 1000));
+  let hit = nearestZone([...(snapshot.zones ?? []), ...dyn], price, sigmaAbs, cfg.maxDistSigma);
+  if (hit) {
+    const tolAbs = snapshot.meta?.tolAbs ?? 0;
+    const pool = hit.zone.dyn ? (snapshot.zones ?? []) : dyn;   // merge across the boundary only
+    const near = pool.filter(z => z !== hit.zone && Math.abs(z.price - hit.zone.price) <= tolAbs);
+    if (near.length) {
+      hit = { ...hit, zone: {
+        ...hit.zone,
+        count: hit.zone.count + near.reduce((s, z) => s + z.count, 0),
+        score: +(hit.zone.score + near.reduce((s, z) => s + z.score, 0)).toFixed(3),
+        sources: [...new Set([...hit.zone.sources, ...near.flatMap(z => z.sources)])],
+        kinds: [...new Set([...hit.zone.kinds, ...near.flatMap(z => z.kinds)])],
+      } };
+    }
+  }
   if (!hit && request.own_level) {
     hit = { zone: { price, count: 1, score: 1, sources: ['external'], kinds: ['external'] }, distSigma: 0 };
   }
@@ -218,6 +330,7 @@ export function decide(snapshot, request = {}, opts = {}) {
     macro: snapshot.macro
       ? { regime: snapshot.macro.regime, align: features.macro_align, stale: snapshot.macro.stale === true }
       : null,
+    intraday: meta.intraday,
     latency_ms: Date.now() - t0,
   };
 }

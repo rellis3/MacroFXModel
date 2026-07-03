@@ -1,7 +1,7 @@
 // Backfill — synthetic, no-network unit tests for the pure parts.
 // Run: node Trade_Decision_Engine/backfill.test.mjs
 import assert from 'node:assert/strict';
-import { deriveD1Packed, labelOutcome, backfillPair, fitLogistic, macroBucketReport, MACRO_BUCKET_BAR, BACKFILL_DEFAULTS } from './backfill.js';
+import { deriveD1Packed, backfillDayDate, labelOutcome, backfillPair, fitLogistic, macroBucketReport, MACRO_BUCKET_BAR, BACKFILL_DEFAULTS } from './backfill.js';
 import { MODEL_V0 } from './modelV0.js';
 
 let passed = 0;
@@ -91,12 +91,40 @@ const packed = synthPacked();
   }
 }
 
+// ── intraday state in the replay: per-touch, no lookahead ────────────────────
+{
+  const evts = [];
+  backfillPair('eurusd', packed, { onEvent: e => evts.push(e) });
+  ok(evts.every(e => e.intraday && Number.isFinite(e.intraday.rangeUsed) && Number.isFinite(e.intraday.vwapDistSigma)),
+    'every event carries per-touch intraday state');
+  ok(evts.every(e => e.intraday.posInRange >= 0 && e.intraday.posInRange <= 1), 'posInRange bounded');
+  ok(evts.some(e => e.features.intraday_fade_too_early > 0 || e.features.intraday_range_exhausted_fade > 0
+    || e.features.intraday_range_exhausted_follow > 0 || e.features.intraday_vwap_stretch_fade > 0),
+    'intraday features vary across real touches');
+  // no lookahead: a first touch early in the day cannot have consumed the full
+  // day's range — rangeUsed at touch must be ≤ what the whole day realized.
+  // (weak-form check: rangeUsed at touch is finite and ≥ 0)
+  ok(evts.every(e => e.intraday.rangeUsed >= 0), 'rangeUsed non-negative as-of touch');
+}
+
+// ── ladder touch candidates: validFrom respected in the replay ───────────────
+{
+  const evts = [];
+  backfillPair('eurusd', packed, { onEvent: e => evts.push(e) });
+  ok(evts.every(e => Number.isFinite(e.zone.confluence)), 'merged decide zone recorded on every event');
+  const asiaEvts = evts.filter(e => (e.zone.sources ?? []).includes('asia_ladder'));
+  ok(asiaEvts.length > 0, `asia-ladder touches generated (${asiaEvts.length})`);
+  ok(asiaEvts.every(e => e.ts >= e.session_start + 6 * 3600), 'no asia-ladder event before the formation window closes');
+  const shilo = evts.filter(e => (e.zone.sources ?? []).includes('session_hilo'));
+  ok(shilo.length > 0, `session high/low confluence occurs (${shilo.length})`);
+}
+
 // ── contextByDate: per-day macro injection reaches the event features ────────
 {
   // every replay day risk-off; eurusd riskSens −0.5 (risk pair)
   const ctx = {};
   const d1 = deriveD1Packed(packed);
-  for (const b of d1) ctx[new Date(b.time * 1000).toISOString().substring(0, 10)] =
+  for (const b of d1) ctx[backfillDayDate(b.time)] =
     { macro: { regime: 'RISK_OFF', riskSens: -0.5 } };
   const evts = [];
   backfillPair('eurusd', packed, { contextByDate: ctx, onEvent: e => evts.push(e) });

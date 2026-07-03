@@ -243,6 +243,49 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
   sees bars after the touch.
 - **Exits:** TP = 0.5σ with the trade, SL = 0.75σ against (configurable);
   intrabar ambiguity resolves to the stop.
+- **Session anchoring — London midnight everywhere:** live snapshots and the
+  backfill both bucket the trading day at 00:00 Europe/London (the
+  `londonMidnightSec` brick — the forecaster/book anchor), and `dayOpen` is the
+  session's first M1 open on both paths. The backfill DROPS weekend stub
+  sessions (<6h of bars): live `fetchD1` never sees them (OANDA merges Sunday
+  evening into Monday's broker day), and under the old UTC bucketing ~540 such
+  stubs were being replayed as fake tradeable days. `contextByDate` keys use
+  the day-midpoint calendar date (`backfillDayDate`).
+- **`vol_band` level source:** the forecaster's six band lines (median/75th
+  proj H&L + proj closes), computed off the session open with the same
+  `computeBands ∘ volSigma` math the volatility bot's daily plan uses — the
+  lines the bot trades ARE zones, so a touch on a book line carries it in its
+  confluence and "agrees with a vol band" is fit-measurable like any source.
+- **Dynamic zones (resolved at decide() time, NOT frozen at midnight):** the
+  static zone map is per-snapshot; levels that move or become valid during the
+  session are merged per decision — (a) **today's developing high/low**
+  (`session_hilo`, from the intraday state: live snapshot block / exact
+  per-touch in the backfill), and (b) **the range-line bot's Asia + Monday
+  ladders** (`computeSessionLadders`, built with the bot's own
+  `buildRangeLadder` + `bodyRange` bricks: Asia = first 6h 5m-bodies, VALID
+  only after the formation window closes — the analyser's no-lookahead gate;
+  Monday = this week's Monday 15m-bodies, never on Monday itself; only lines
+  within 1.5σ of the open carried — the full ±10 extension grid would blanket
+  the price axis). Confluence merges across the static/dynamic boundary: a PDH
+  that is also today's session high and an Asia line counts all three. Ladder
+  lines are also backfill TOUCH CANDIDATES (the bot enters there), each
+  scanned only from its validFrom onward — verified zero violations over a
+  12-year replay.
+- **Cross-session alignment (`asia_prev_align`, `monday_prev_align`):** the
+  PREVIOUS session's Asia ladder is carried all day (`prev_asia_ladder`), and
+  today's Asia lines are matched against yesterday's — and this week's Monday
+  lines against the PREVIOUS week's Monday (15m bodies, marking only, never
+  standalone) — through `detectConfluencesCore`, the SAME brick the
+  dashboard/Asia backtest/Pine export share. Thresholds are **per instrument
+  from the live caps model** (`confluenceCapsFor`, zero-copy from
+  `CAP_DEFAULTS`): fx 2 pips, gold 200 gold-pips ($20), indices per-point
+  (NQ 100 / SPX 25 / DAX 80 / FTSE 40 / Dow 60 / Russell 15); tight = 10% of
+  the threshold, 0.3× cluster merge, session-range cap, ≥5-pip minimum range.
+  Aligned clusters carry **count 2** (two independent sessions agreeing IS
+  confluence) and subsume their constituent lines; coincident dynamic levels
+  consolidate per-source within ~2 pips (a grid cannot confirm itself;
+  adjacent rungs never chain-merge). KV-saved caps overrides are a dashboard
+  concern — the engine mirrors the defaults so backfill and live agree.
 - **Instrument coverage — asset-class-agnostic by construction:** every
   asset-specific number switches on `instrumentRegistry` — σ estimator (fx→YZ,
   index→GARCH, commodity→HV20 via `volSigmaSeries`), band constants
@@ -367,11 +410,24 @@ Test harness UI: `trade-decision-engine.html` (linked from the Dashboard).
 - The v0 probability is a **prior, not evidence**. Nothing here claims edge until
   the fitted model beats the incumbent on OOS with calibration proof (Lego
   Principle 5).
-- Live snapshots are built from **completed D1 bars** — `dayOpen ≈ last close`,
-  σ lags one bar. Good enough for v0; the session-open anchor
-  (`fetchSessionOpenLondon`) is the known upgrade.
-- Level sources needing intraday data (volume profile, VWAP) are OFF in the live
-  slow loop until an M1 feed is wired in; the zone map uses
-  `daily_open / prior_hilo / pivots / swing_sr / round_number`.
+- ~~`dayOpen ≈ last close`, σ lags one bar~~ — RETIRED: σ uses `nextSigma`, and
+  `dayOpen` is the **true session open** (today's first M1 since London
+  midnight live; the day's first M1 open in the backfill), falling back to
+  last close only when the intraday fetch fails.
+- **Intraday state is in** (`snapshot.intraday` / per-touch in the backfill):
+  range-used vs the forecaster's median expected range, position-in-range,
+  session VWAP distance, self-computed approach speed. The four
+  `INTRADAY_FEATURES` are **zero-weighted in v0** (the macro discipline —
+  computed + logged everywhere, promoted only via an ablation fit; first
+  real-data read: exhausted-range fades UNDERPERFORM the base rate, opposite
+  of the intuitive hand prior, which is exactly why they carry no weight yet).
+  Known train/serve skew: live intraday state is as old as the snapshot
+  (≤15 min); backfill state is exact at the touch. Bots can close the gap by
+  passing fresh `intraday` on the request. Changing `dayOpen` redefines the
+  stretch features → the training set needs one **full rebuild** before the
+  next fit.
+- The `volume_profile` level SOURCE stays OFF in the zone map (needs a deeper
+  intraday history than the one-day fetch); session VWAP is now computed as
+  intraday state instead.
 - OANDA is unreachable in the sandbox (403) — that's environment, not a bug.
   Synthetic mode exists exactly so the engine is testable anywhere.

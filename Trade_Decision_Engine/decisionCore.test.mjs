@@ -1,7 +1,8 @@
 // Trade Decision Engine — synthetic, no-network unit tests.
 // Run: node Trade_Decision_Engine/decisionCore.test.mjs
 import assert from 'node:assert/strict';
-import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN } from './decisionCore.js';
+import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN, INTRADAY_FEATURES } from './decisionCore.js';
+import { computeIntradayState, computeSessionLadders, confluenceCapsFor } from './featureState.js';
 import { newsGate, pairCurrencies } from './newsGate.js';
 import { buildSnapshot, syntheticBars, syntheticSnapshot } from './featureState.js';
 import { MODEL_V0 } from './modelV0.js';
@@ -180,6 +181,112 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(good.macro.regime === 'RISK_ON' && good.macro.stale === false, 'well-formed macro stamped');
   const bad = buildSnapshot({ pair: 'eurusd', dailyBars: syntheticBars('eurusd', 320, 7), macro: { regime: 'RISK_ON', riskSens: 'high' }, nowMs: NOW });
   ok(bad.macro === null, 'malformed macro → null, not a silent wrong sign');
+}
+
+// ── intraday state: pure compute + features through decide ───────────────────
+{
+  // hand-built session: open 1.0, ranges up to 1.010, down to 0.998, closes 1.008
+  const mkBar = (t, o, h, l, c, v = 10) => ({ time: t, open: o, high: h, low: l, close: c, volume: v });
+  const bars = [mkBar(0, 1.0, 1.004, 0.999, 1.003), mkBar(60, 1.003, 1.010, 1.002, 1.009), mkBar(120, 1.009, 1.0095, 0.998, 1.008)];
+  const st = computeIntradayState(bars, { sigmaAbs: 0.006, hl50Abs: 0.008, approachBars: 2 });
+  ok(st.sessionOpen === 1.0 && st.high === 1.010 && st.low === 0.998, 'session OHL tracked');
+  ok(Math.abs(st.rangeUsed - (0.012 / 0.008)) < 1e-9, `rangeUsed = range/median (${st.rangeUsed})`);
+  ok(st.posInRange > 0.8, 'position in range near the high');
+  ok(Number.isFinite(st.vwapDistSigma) && st.vwap > 0.998 && st.vwap < 1.010, 'session VWAP sane');
+  ok(computeIntradayState([], { sigmaAbs: 0.006, hl50Abs: 0.008 }) === null, 'no bars → null, not fake state');
+
+  // through decide: request.intraday populates the zero-weighted features and
+  // must NOT move the v0 probability (macro discipline)
+  const z = snap.zones[0];
+  const base = decide(snap, { price: z.price, action: 'fade', direction: 'long' }, { nowMs: NOW });
+  const withIntra = decide(snap, { price: z.price, action: 'fade', direction: 'long',
+    intraday: { rangeUsed: 1.4, posInRange: 0.05, vwapDistSigma: -1.2, approachSigma: 0 } }, { nowMs: NOW });
+  ok(withIntra.features.intraday_range_exhausted_fade > 0, 'exhausted-range fade feature fires');
+  ok(withIntra.features.intraday_vwap_stretch_fade > 0, 'vwap-stretch fade feature fires');
+  ok(withIntra.features.intraday_fade_too_early === 0, 'too-early does not fire at 140% range');
+  ok(withIntra.probability === base.probability, 'v0 scoring is intraday-blind — enters only via a promoted fit');
+  ok(withIntra.intraday && withIntra.intraday.source === 'request', 'response surfaces intraday state + source');
+  ok(base.features.intraday_range_exhausted_fade === 0 && INTRADAY_FEATURES.every(f => f in base.features),
+    'no intraday state → features present but 0');
+  const early = decide(snap, { price: z.price, action: 'fade', direction: 'long',
+    intraday: { rangeUsed: 0.15, vwapDistSigma: 0 } }, { nowMs: NOW });
+  ok(early.features.intraday_fade_too_early > 0.5, 'fading a rangeless day flags too-early');
+  const follow = decide(snap, { price: z.price, action: 'follow', direction: 'long',
+    intraday: { rangeUsed: 1.4, vwapDistSigma: 0 } }, { nowMs: NOW });
+  ok(follow.features.intraday_range_exhausted_follow > 0 && follow.features.intraday_range_exhausted_fade === 0,
+    'exhaustion attributes to the right action');
+  // approach fallback: request omits approachSigma → intraday's value is used
+  const app = decide(snap, { price: z.price, action: 'fade', direction: 'long',
+    intraday: { rangeUsed: 0.8, vwapDistSigma: 0, approachSigma: 2.0 } }, { nowMs: NOW });
+  ok(app.features.fast_approach_fade > 0, 'approach speed falls back to intraday state');
+}
+
+// ── dynamic zones: range ladders (time-valid) + session high/low ─────────────
+{
+  const mk = (t, o, h, l, c) => ({ time: t, open: o, high: h, low: l, close: c });
+  const t0 = 1_700_000_000 - (1_700_000_000 % 86400);
+  const asia = []; for (let m = 0; m < 360; m++) asia.push(mk(t0 + m * 60, 1.0, 1.002, 0.998, 1.001));
+  const lad = computeSessionLadders({ intradayBars: asia, sessionOpen: 1.0, sigmaAbs: 0.01 });
+  ok(lad?.asia && lad.asia.validFromSec === t0 + 6 * 3600, 'asia ladder validFrom = session start + 6h (the analyser gate)');
+  ok(lad.asia.lines.every(l => Math.abs(l.price - 1.0) <= 1.5 * 0.01), 'only lines within reach carried');
+  ok(lad.asia.lines.some(l => l.label === 'A_0') && lad.asia.lines.some(l => l.label === 'A_1'), 'range edges present (bot labels)');
+
+  const zoneless = { ...snap, zones: [], ladders: lad, intraday: null };
+  const line = lad.asia.lines.find(l => l.label === 'A_1');
+  const before = decide(zoneless, { price: line.price }, { nowMs: (lad.asia.validFromSec - 600) * 1000 });
+  ok(before.decision === 'skip' && before.reasons.includes('no_level_nearby'), 'ladder invisible BEFORE Asia closes');
+  const after = decide(zoneless, { price: line.price }, { nowMs: (lad.asia.validFromSec + 600) * 1000 });
+  ok(after.probability != null && after.zone.sources.includes('asia_ladder'), 'ladder line scores as a zone after validFrom');
+
+  // prev-Asia ladder + the 2-pip cross-session alignment (detectConfluencesCore)
+  const prevAligned = []; for (let m = 0; m < 360; m++) prevAligned.push(mk(t0 - 86400 + m * 60, 1.0, 1.002, 0.998, 1.001));
+  const lad2 = computeSessionLadders({ intradayBars: asia, prevAsiaBars: prevAligned, sessionOpen: 1.0, sigmaAbs: 0.01, pip: 0.0001 });
+  ok(lad2.prevAsia?.lines?.length > 0 && lad2.prevAsia.validFromSec === 0, 'prev-Asia ladder valid all day');
+  ok(lad2.asiaAlign?.lines?.length > 0, `identical ranges align (${lad2.asiaAlign?.lines?.length} clusters)`);
+  ok(lad2.asiaAlign.lines.every(l => l.tight === true), 'exact alignment flags tight (same fib / ≤10% of 2 pips)');
+  ok(lad2.asiaAlign.validFromSec === lad2.asia.validFromSec, 'alignment needs today\'s lines → inherits Asia validFrom');
+  // shift yesterday's range OFF-GRID (52.5 pips — not a multiple of the ladder
+  // half-step, or the dense grids would legitimately overlap) → no alignment
+  const prevFar = prevAligned.map(b => ({ ...b, open: b.open + 0.00525, high: b.high + 0.00525, low: b.low + 0.00525, close: b.close + 0.00525 }));
+  const lad3 = computeSessionLadders({ intradayBars: asia, prevAsiaBars: prevFar, sessionOpen: 1.0, sigmaAbs: 0.01, pip: 0.0001 });
+  ok(lad3.asiaAlign === null && lad3.prevAsia?.lines?.length > 0, 'misaligned sessions produce no alignment clusters');
+  // degenerate guard: a <5-pip Asia range produces no ladder at all
+  const flat = []; for (let m = 0; m < 360; m++) flat.push(mk(t0 + m * 60, 1.0, 1.0002, 0.9999, 1.0001));
+  ok(computeSessionLadders({ intradayBars: flat, sessionOpen: 1.0, sigmaAbs: 0.01, pip: 0.0001 }) === null, '<5-pip range → no ladder (degenerate guard)');
+
+  // through decide: alignment cluster = count 2 (two sessions agree)
+  const alignSnap = { ...snap, zones: [], ladders: lad2, intraday: null };
+  const aLine = lad2.asiaAlign.lines[0];
+  const rA = decide(alignSnap, { price: aLine.price }, { nowMs: (lad2.asia.validFromSec + 600) * 1000 });
+  ok(rA.zone.confluence >= 2 && rA.zone.sources.includes('asia_prev_align'), 'aligned line scores confluence ≥2 through decide');
+
+  // Monday vs previous week's Monday — same mechanism, 15m bodies
+  const mkMon = (start, lo, hi) => { const b = []; for (let m = 0; m < 720; m++) b.push(mk(start + m * 60, lo, hi, lo, lo + (hi - lo) * 0.7)); return b; };
+  const monday = mkMon(t0 - 3 * 86400, 1.0, 1.004);
+  const prevMonAligned = mkMon(t0 - 10 * 86400, 1.0, 1.004);
+  const ladM = computeSessionLadders({ mondayBars: monday, prevMondayBars: prevMonAligned, sessionOpen: 1.0, sigmaAbs: 0.02, pip: 0.0001 });
+  ok(ladM.mondayAlign?.lines?.length > 0, 'Monday × prev-Monday alignment fires on identical ranges');
+  ok(ladM.mondayAlign.validFromSec === ladM.monday.validFromSec, 'monday alignment shares the Monday validity (never on Monday itself)');
+  const prevMonFar = mkMon(t0 - 10 * 86400, 1.00525, 1.00925);
+  const ladM2 = computeSessionLadders({ mondayBars: monday, prevMondayBars: prevMonFar, sessionOpen: 1.0, sigmaAbs: 0.02, pip: 0.0001 });
+  ok(ladM2.mondayAlign === null && ladM2.monday?.lines?.length > 0, 'off-grid prev Monday → no alignment');
+  // prev-Monday grid is never carried standalone
+  ok(!('prevMonday' in (ladM ?? {})) || ladM.prevMonday == null, 'prev-Monday used for marking only, not standalone levels');
+
+  // per-instrument confluence thresholds mirror the live caps model
+  ok(confluenceCapsFor('eurusd').confluencePips === 2, 'fx = 2 pips');
+  ok(confluenceCapsFor('gold').confluencePips === 200, 'gold = 200 gold-pips ($20)');
+  ok(confluenceCapsFor('nq').confluencePips === 100 && confluenceCapsFor('dow').confluencePips === 60
+    && confluenceCapsFor('dax').confluencePips === 80 && confluenceCapsFor('ftse').confluencePips === 40
+    && confluenceCapsFor('rut').confluencePips === 15, 'index thresholds per caps');
+
+  // session high as a dynamic zone merging with a static level (cross-boundary confluence)
+  const zPDH = { price: 1.2345, score: 2, count: 1, sources: ['prior_hilo'], kinds: ['pdh'] };
+  const shSnap = { ...snap, zones: [zPDH], ladders: null };
+  const r = decide(shSnap, { price: 1.2345,
+    intraday: { high: 1.2345 + snap.meta.tolAbs * 0.5, low: 1.1, rangeUsed: 0.8, vwapDistSigma: 0 } }, { nowMs: NOW });
+  ok(r.zone.confluence === 2 && r.zone.sources.includes('session_hilo'), 'PDH + developing session high merge into confluence 2');
+  ok(r.zone.kinds.includes('session_high'), 'merged kinds show the dynamic member');
 }
 
 // ── other asset classes (pip/σ-math/costs switch on the registry) ────────────
