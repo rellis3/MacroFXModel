@@ -190,6 +190,22 @@ survivor universe). Each slice is its own PR, golden-tested, smallest diff:
    bot's credential keys (`mt5_account`/`mt5_password`/`mt5_server`/`mt5_path`). ✅
    **The Volatility Bot is complete — paper-runnable end to end.**
 
+8. **A/B variant — the `ride` exit (validated candidate).** `volatility_bot.py`
+   is now variant-aware (`--variant book|ride`, `VARIANTS` table): both run off the
+   SAME `volatility_bot_plan` but with their own identity so they A/B in paper.
+   `book` = the incumbent (full 0.01 book, fixed triple-barrier exit, magic 20260099,
+   `volatility_bot_*` keys). `ride` = the exit study's cost-robust winner — a
+   **strict entry gate** (`decide(min_expectancy=0.05)` filters the plan's cells at
+   runtime, reproducing `buildPolicy(marginPct=0.05)`) + a **no-TP chandelier trailing
+   exit** (`engine.ride_trail_stop`, ratchet-only) + a **22:00-London force-close**
+   (`_manage_ride`), magic 20260098, `volatility_ride_*` keys. Registered in
+   `_worker.js` `STATUS_KEYS` + a `Vol-Ride` `_POS_BOTS` row so its paper trades show
+   in the Positions tab + Trade History alongside `book`. Rationale + OOS evidence:
+   the exit study's gate sweep + `runRideRigor` (walk-forward 2.88, IS→OOS 1.37×,
+   30/31 pairs positive). Offline-tested: `engine_test.py` (gate + trail) +
+   `ride_smoke_test.py` (trail→exit→EOD on the PaperBroker). **Paper only — measuring
+   realised slippage vs the modelled exit-slip before any live capital.**
+
 **Why `bot/regime_bot.py` is the pilot:** it's no longer traded, so it's the
 safe sandbox to extract the *full* execution surface (sizing, risk, and next the
 MT5 broker bricks) without any risk of changing live behaviour — and the bricks

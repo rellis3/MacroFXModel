@@ -29,7 +29,7 @@ from pylego import point_values as PV                        # noqa: E402
 from pylego import events as EV                              # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
-from volatility_bot.engine import SessionTracker, decide, session_open_epoch  # noqa: E402
+from volatility_bot.engine import SessionTracker, decide, session_open_epoch, ride_trail_stop  # noqa: E402
 from pylego.strategy.volatility import line_levels                             # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -37,6 +37,20 @@ log = logging.getLogger("volatility_bot")
 
 MAGIC = 20260099
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
+
+# A/B variants — two strategies off the SAME frozen plan (volatility_bot_plan), each
+# with its own identity (magic + KV keys) so they run as separate paper processes and
+# compare side-by-side in the dashboard. 'book' = the incumbent (full 0.01 book, fixed
+# triple-barrier exit). 'ride' = the validated candidate (strict-gate entry + no-TP
+# chandelier-trailing exit + 22:00 close) — see the exit study's gate sweep + ride rigor.
+PLAN_KEY = "volatility_bot_plan"
+VARIANTS = {
+    "book": {"magic": 20260099, "cfg": "volatility_bot_config",  "status": "volatility_bot_status",
+             "creds": "volatility_bot_credentials",  "ride_gate": None, "exit_mode": "barrier", "trail_frac": 0.5},
+    "ride": {"magic": 20260098, "cfg": "volatility_ride_config", "status": "volatility_ride_status",
+             "creds": "volatility_ride_credentials", "ride_gate": 0.05, "exit_mode": "ride",    "trail_frac": 0.5},
+}
+SESSION_LEN_SEC = 22 * 3600      # London midnight → 22:00 close (the book's session)
 
 DEFAULT_CFG = {
     "kill_switch": False,          # hard stop — no new entries
@@ -78,10 +92,11 @@ def _deep_merge(base: dict, over: dict) -> dict:
     return out
 
 
-def make_broker(cfg: dict):
+def make_broker(cfg: dict, magic: int = MAGIC):
     """PaperBroker unless live + MT5 available. Uses the canonical pylego
     `Mt5Broker` brick (shared with the regime bots) for the live path; PaperBroker
-    exposes the same surface so the loop is broker-agnostic."""
+    exposes the same surface so the loop is broker-agnostic. `magic` isolates the
+    A/B variant's positions on a shared account."""
     if cfg.get("paper_mode", True):
         return PaperBroker(balance=10_000.0), True
     from pylego.broker.mt5 import Mt5Broker
@@ -98,7 +113,7 @@ def make_broker(cfg: dict):
             return I.mt5_symbol(pair) or pair.upper()
         except Exception:
             return pair.upper()
-    broker = Mt5Broker(MAGIC, _sym, I.pip_size, log=log)
+    broker = Mt5Broker(magic, _sym, I.pip_size, log=log)
     if not broker.available:
         log.warning("live requested but MetaTrader5 missing — falling back to PAPER")
         return PaperBroker(balance=10_000.0), True
@@ -189,6 +204,40 @@ def _pair_lines(plan, trackers, broker):
     return out
 
 
+def _manage_ride(broker, ride_state: dict, pair: str, px: float, nowt: float,
+                 trail_frac: float, paper: bool) -> None:
+    """Ride-variant position management for ONE pair, each tick:
+      • trail the no-TP chandelier stop (ratchet-only) toward the favourable extreme,
+      • force-close at the 22:00-London session end,
+      • drop tickets the broker already closed (the trailed stop fired).
+    The trailed SL is the exit itself (check_barriers in paper / native SL live) — we
+    don't place a separate close on a trail hit, only the EOD sweep."""
+    eod = session_open_epoch(nowt) + SESSION_LEN_SEC
+    open_tickets = {p["ticket"] for p in broker.serialize_open_positions()}
+    for tid in list(ride_state.keys()):
+        st = ride_state[tid]
+        if st["pair"] != pair:
+            continue
+        if tid not in open_tickets:
+            ride_state.pop(tid, None)                 # stop already fired → forget it
+            continue
+        if nowt >= eod:                               # session over → go flat
+            try:
+                broker.stop(tid, pair, paper, reason="eod")
+            except Exception as e:
+                log.warning(f"{pair}: EOD close {tid} failed: {e}")
+            ride_state.pop(tid, None)
+            continue
+        st["peak"] = max(st["peak"], px) if st["is_long"] else min(st["peak"], px)
+        new_sl = ride_trail_stop(st["is_long"], st["entry"], st["sl0"], st["peak"], st["cur_sl"], trail_frac)
+        if new_sl != st["cur_sl"]:
+            try:
+                broker.modify(tid, pair, sl=new_sl, paper_mode=paper)
+                st["cur_sl"] = new_sl
+            except Exception as e:
+                log.warning(f"{pair}: trail modify {tid} failed: {e}")
+
+
 def build_status(cfg: dict, broker, plan, paper: bool, trackers: dict | None = None) -> dict:
     bal = broker.account_balance()
     return {
@@ -203,22 +252,28 @@ def build_status(cfg: dict, broker, plan, paper: bool, trackers: dict | None = N
     }
 
 
-def run(base_url: str, force_live: bool) -> None:
+def run(base_url: str, force_live: bool, variant: str = "book") -> None:
     kv = KvClient(base_url)
+    V = VARIANTS.get(variant) or VARIANTS["book"]
+    ride_gate = V["ride_gate"]                 # None → book (trade every kept cell)
+    ride_mode = V["exit_mode"] == "ride"       # no-TP trailing exit + EOD close
+    trail_frac = V.get("trail_frac", 0.5)
+    log.info(f"variant={variant} magic={V['magic']} status={V['status']} "
+             f"gate={ride_gate} exit={V['exit_mode']}")
     # KvClient already retries transient blips; if the dashboard is still
     # unreachable at startup, exit with a clear message rather than a traceback.
     try:
-        cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or {})
+        cfg = _deep_merge(DEFAULT_CFG, kv.get_json(V["cfg"]) or {})
     except Exception as e:
         log.error(f"could not reach dashboard at {base_url} to read config: {e} — exiting")
         return
     if force_live:
         cfg["paper_mode"] = False
-    broker, paper = make_broker(cfg)
+    broker, paper = make_broker(cfg, V["magic"])
 
     if not paper:
         try:
-            creds = kv.get_json("volatility_bot_credentials") or {}
+            creds = kv.get_json(V["creds"]) or {}
         except Exception as e:
             log.error(f"could not reach dashboard at {base_url} to read credentials: {e} — exiting")
             return
@@ -228,7 +283,7 @@ def run(base_url: str, force_live: bool) -> None:
         # trading the WRONG account. (connect()'s mismatch guard only fires when an
         # account IS supplied, so the empty case must be caught here.)
         if not creds.get("mt5_account"):
-            log.error("live mode but no mt5_account in volatility_bot_credentials — refusing to start. "
+            log.error(f"live mode but no mt5_account in {V['creds']} — refusing to start. "
                       "Save MT5 credentials on the bot config page first and confirm it shows 'Saved ✓' "
                       "with no error.")
             return
@@ -239,6 +294,8 @@ def run(base_url: str, force_live: bool) -> None:
 
     trackers: dict[str, SessionTracker] = {}
     plan = None
+    # ride variant only: per-open-position trail state {ticket: {pair, entry, sl0, is_long, peak, cur_sl}}
+    ride_state: dict = {}
     last_plan = last_status = last_minute = 0.0
     event_windows = None                    # KV event_windows_v1 payload (or None)
     event_ccys: dict[str, list[str]] = {}   # pair → event currencies (cached)
@@ -255,7 +312,7 @@ def run(base_url: str, force_live: bool) -> None:
         # (a) Session plan — slow. Reset trackers only on a genuinely new plan.
         if nowt - last_plan >= cfg.get("plan_secs", 600) or plan is None:
             try:
-                new_plan = kv.get_json("volatility_bot_plan")
+                new_plan = kv.get_json(PLAN_KEY)
             except Exception as e:
                 log.warning(f"plan fetch failed: {e} — keeping current plan, retrying next cycle")
                 new_plan = None
@@ -287,7 +344,7 @@ def run(base_url: str, force_live: bool) -> None:
         # (b) Config + status — medium. Picks up kill-switch / paper↔live promptly.
         if nowt - last_status >= cfg.get("status_secs", 30):
             try:
-                cfg = _deep_merge(DEFAULT_CFG, kv.get_json("volatility_bot_config") or cfg)
+                cfg = _deep_merge(DEFAULT_CFG, kv.get_json(V["cfg"]) or cfg)
             except Exception as e:
                 log.warning(f"config fetch failed: {e} — keeping current config")
             # Event-blackout windows (server publishes hourly; scheduled events are
@@ -306,7 +363,7 @@ def run(base_url: str, force_live: bool) -> None:
                 log.info("event gate active again — blackout windows fresh")
                 warned_events = False
             try:
-                kv.put_status("volatility_bot_status", build_status(cfg, broker, plan, paper, trackers))
+                kv.put_status(V["status"], build_status(cfg, broker, plan, paper, trackers))
             except Exception as e:
                 log.warning(f"status push failed: {e}")
             last_status = nowt
@@ -341,10 +398,18 @@ def run(base_url: str, force_live: bool) -> None:
                 tr.on_price(px)                       # updates running extremes → moves the HL lines
                 if sample_minute:
                     tr.on_minute(px)                  # feeds the approach-velocity buffer
+                # ride variant: trail the no-TP stops + force-close at 22:00 BEFORE the
+                # barrier check, so the freshly-trailed SL is what the exit reads.
+                if ride_mode and ride_state:
+                    _manage_ride(broker, ride_state, pair, px, nowt, trail_frac, paper)
                 if hasattr(broker, "check_barriers"):
                     broker.check_barriers()           # paper triple-barrier (MT5 does it natively)
                 if not plan_current:
                     continue                          # tracking only — no entries off a stale plan
+                # ride variant: no NEW entries after the 22:00 session close (they'd be
+                # force-closed immediately) — matches the backtest's session window.
+                if ride_mode and nowt >= session_open_epoch(nowt) + SESSION_LEN_SEC:
+                    continue
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
                 bl_reason = None
@@ -355,13 +420,20 @@ def run(base_url: str, force_live: bool) -> None:
                     hit, bl_reason = EV.blackout(ccys, nowt * 1000, ev_payload.get("windows"))
                     bl_reason = bl_reason if hit else None
                 bal = broker.account_balance() or 0.0
-                for spec in decide(pp, plan.get("policy", {}), tr, px, blackout=bl_reason):
+                for spec in decide(pp, plan.get("policy", {}), tr, px, blackout=bl_reason,
+                                   min_expectancy=ride_gate):
                     lots = size_for(pair, bal, cfg.get("risk_pct", 0.5),
                                     spec["entry"] - spec["sl"], cfg.get("max_lot", 2.0))
                     direction = "LONG" if spec["side"] == "buy" else "SHORT"
-                    tid = broker.enter(pair, direction, spec["sl"], spec["tp"], lots,
+                    # ride: NO take-profit — the trailing stop is the only profit exit.
+                    tp = 0 if ride_mode else spec["tp"]
+                    tid = broker.enter(pair, direction, spec["sl"], tp, lots,
                                        _max_spread(pair, cfg), paper,
                                        comment=f"Vol {spec['line']} {spec['decision'][0]}")
+                    if tid and ride_mode:
+                        ride_state[tid] = {"pair": pair, "entry": spec["entry"], "sl0": spec["sl"],
+                                           "is_long": direction == "LONG", "peak": spec["entry"],
+                                           "cur_sl": spec["sl"]}
                     log.info(f"{'[PAPER] ' if paper else ''}{pair} {spec['decision'].upper()} "
                              f"{spec['line']} {spec['bucket']} → ticket {tid} lots {lots}")
             if sample_minute:
@@ -374,13 +446,17 @@ def main():
     ap = argparse.ArgumentParser(description="MacroFX Volatility Bot")
     ap.add_argument("--live", action="store_true", help="trade live on MT5 (default: paper)")
     ap.add_argument("--url", default=DASHBOARD_URL, help="dashboard base URL")
+    ap.add_argument("--variant", default="book", choices=sorted(VARIANTS),
+                    help="'book' = full 0.01 book + fixed exit (default); 'ride' = strict-gate "
+                         "entry + no-TP trailing exit + 22:00 close (the A/B candidate). Runs as a "
+                         "separate identity (own magic/KV keys) off the SAME plan — run both to A/B.")
     args = ap.parse_args()
     # Graceful Ctrl-C: KeyboardInterrupt is a BaseException, so the loop's
     # `except Exception` guards don't catch it — without this it dumps a raw
     # traceback (usually mid status-push when the server is slow/502). Open MT5
     # positions are GTC and stay on the broker; this just stops the process cleanly.
     try:
-        run(args.url, args.live)
+        run(args.url, args.live, args.variant)
     except KeyboardInterrupt:
         logging.getLogger("volatility_bot").info(
             "shutdown requested (Ctrl-C) — stopping cleanly (open positions stay on the broker)")

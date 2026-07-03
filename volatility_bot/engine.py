@@ -72,7 +72,8 @@ class SessionTracker:
         return self
 
 
-def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False, blackout=None):
+def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False, blackout=None,
+           min_expectancy=None):
     """Lines newly touched this tick that map to a tradeable (fade/follow) cell.
 
     Returns a list of specs: ``{side, entry, tp, sl, line, name, ln_side,
@@ -90,6 +91,13 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False, blackou
     line levels, so the modeled trade shape is preserved. Deferring beats
     burning: burning silently deletes the line for the whole session over a
     45-minute window. Priming (dry_run) ignores blackout by design.
+
+    ``min_expectancy`` (None | float): the STRICT-GATE filter for the ride A/B
+    variant. When set, a fade/follow cell whose learned after-cost expectancy is
+    below the gate is skipped (audited ``below_ride_gate``). This reproduces
+    ``buildPolicy(marginPct=gate)`` at runtime off the SAME plan — the exit study's
+    gate sweep showed only the top cells (gate≈0.05) survive 2× cost. None = the
+    book variant (trade every fade/follow cell the plan already kept).
     """
     frac = {"hl50": plan_pair["hl50"], "hl75": plan_pair["hl75"],
             "ocMed": plan_pair["ocMed"], "oc75": plan_pair["oc75"]}
@@ -128,6 +136,12 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False, blackou
                     "revRate": (cell or {}).get("revRate")}
             decision = (cell or {}).get("decision")
             if decision in ("fade", "follow"):
+                # Strict-gate (ride A/B): drop cells below the expectancy gate — the
+                # thin marginal fades that only the full 0.01 book trades.
+                if min_expectancy is not None and (info["expectancy"] is None
+                                                   or info["expectancy"] < min_expectancy):
+                    tracker.audit[line_id] = {**info, "status": "skip", "reason": "below_ride_gate"}
+                    continue
                 spec = trade_spec(name, side, levels, decision, tracker.open, frac)
                 if spec:
                     tracker.audit[line_id] = {**info, "status": "traded", "decision": decision}
@@ -142,6 +156,26 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False, blackou
             tracker.audit[line_id] = {**info, "status": "skip",
                                       "reason": (cell or {}).get("reason") or "unseen"}
     return out
+
+
+def ride_trail_stop(is_long, entry, sl0, extreme, cur_sl, trail_frac=0.5):
+    """Chandelier trail for the RIDE exit (the range-line bot's winning stop).
+
+    The ride has NO take-profit; the trailing stop is the only profit exit. It
+    trails the favourable extreme by ``trail_frac·R`` (R = |entry − sl0|, the
+    entry→disaster-stop distance — same basis the exit study priced), RATCHET-ONLY:
+    it never loosens. Mirrors ``simulateExitVariants``'s 'ride' rule and
+    ``rangeline.chandelier_stop``.
+
+    is_long  — True for a BUY (favourable extreme = session high), else SELL.
+    sl0      — the initial disaster stop (the outer band line).
+    extreme  — the best favourable price reached since entry (peak/trough).
+    cur_sl   — the stop currently on the broker (so we only move it inward).
+    Returns the new stop; caller modifies the order only if it changed.
+    """
+    R = abs(entry - sl0)
+    cand = (extreme - trail_frac * R) if is_long else (extreme + trail_frac * R)
+    return max(cur_sl, cand) if is_long else min(cur_sl, cand)
 
 
 # The forecast anchors the trading day at MIDNIGHT EUROPE/LONDON — i.e. 00:00
