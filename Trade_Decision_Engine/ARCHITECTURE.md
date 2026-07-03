@@ -260,6 +260,57 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
 Routes: `POST /api/trade-decision/backfill/run` (async-job pattern),
 `GET …/backfill/status/:jobId`, `GET …/backfill/report`.
 
+## 7c. Macro sockets — the frozen contract for `macroCore` (platform review #7)
+
+The TDE side of the macro falsification plan is BUILT and tested; `macroCore.js`
+(the Tier-1 brick: VIX + HY-OAS regime with publication lags, the FRED history
+loader, the KV `fred` live read) plugs into these sockets without touching TDE
+internals:
+
+1. **Snapshot socket** — `buildSnapshot({ …, macro })` takes a pre-resolved,
+   direction-agnostic context object (never raw FRED):
+   `{ regime: 'RISK_ON'|'NEUTRAL'|'RISK_OFF', riskSens, asOf, stale? }`.
+   Malformed input stamps `null` (fail-neutral), not a wrong sign.
+   `refreshPair(pair, { macro })` passes it through for the live loop.
+2. **Direction resolution** — `decisionCore.macroState(riskSens, regime,
+   direction) → ±1|0`, applied inside `buildEventFeatures` after
+   action/direction defaulting. Sign convention (frozen): `riskSens > 0` ⇒ pair
+   rises in risk-off. `|riskSens| < MACRO_RISK_SENS_MIN (0.4)` ⇒ NEUTRAL —
+   ambiguous pairs (EUR/GBP, AUD/NZD, CHF/JPY…) don't get a noisy sign.
+   **`riskSens` must be derived from `fx-macro-model`'s `PAIR_DRIVERS` (import
+   or registry promotion + golden equality test) — never a hand copy.**
+3. **The feature** — ONE signed `macro_align ∈ {−1, 0, +1}` (the sole exception
+   to the 0..1 convention): one degree of freedom ties the aligned bonus to the
+   opposed penalty and halves the variance of a rarely-active feature. Zero
+   when no context → pre-macro training rows unchanged. `modelV0` carries NO
+   weight for it; it can only enter scoring through a promoted fit.
+4. **Historical injection** — `backfillPair`/`runBackfill` accept
+   `contextByDate: { 'YYYY-MM-DD': { macro?, calendar? } }`. The macro loader
+   fills `macro` per day (obs-dated, +1-business-day publication lag); a
+   historical calendar adopts the same shape later (today `news_soon` is
+   structurally zero in training — its fitted weight is meaningless).
+5. **Evidence, in priority order** —
+   - PRIMARY: `macroBucketReport(events)` — per-bucket win rate / after-cost
+     expectancy / per-year breakdown / **episode count** (≤7-day-gap runs;
+     events inside one macro episode are one observation). Pre-registered bar
+     (`MACRO_BUCKET_BAR`, frozen before results): OPPOSED underperforms with
+     **n ≥ 30 AND ≥ 8 episodes over ≥ 3 calendar years**, sign-stable per year.
+   - SECONDARY: ablation — `fitLogistic(events, { features: [...v0Keys,
+     'macro_align'], embargoDays: 30 })` vs the same call without it, same
+     time-ordered split, judged on OOS Brier + decile calibration. L2 shrinkage
+     on a rare feature biases toward "macro fails": if the bucket test and the
+     ablation disagree, re-run with `l2ExemptFeatures: ['macro_align']` before
+     concluding.
+6. **Sequencing** — adopt `nextSigma` (PR #654) in `featureState` and run ONE
+   full rebuild first, so the macro ablation compares against an incumbent
+   baseline on the fixed σ; then the macro loader; then the tests. Live KV
+   `fred` older than ~48h ⇒ regime NEUTRAL + `stale: true` surfaced in the
+   decide response (macro is a modifier, never a gate — a FRED outage must not
+   block trading, but the degradation must be visible).
+7. **Both tests fail ⇒ macro stays out of the feature vector permanently** and
+   the platform's macro layer stays display-only. That is an acceptable
+   outcome; the point is the answer.
+
 ## 7b. Roadmap — remaining steps to a fitted live model
 
 1. ~~Backfill + outcome labeler + candidate fit~~ — built (§7).

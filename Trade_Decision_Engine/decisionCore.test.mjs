@@ -1,7 +1,7 @@
 // Trade Decision Engine — synthetic, no-network unit tests.
 // Run: node Trade_Decision_Engine/decisionCore.test.mjs
 import assert from 'node:assert/strict';
-import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC } from './decisionCore.js';
+import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN } from './decisionCore.js';
 import { newsGate, pairCurrencies } from './newsGate.js';
 import { buildSnapshot, syntheticBars, syntheticSnapshot } from './featureState.js';
 import { MODEL_V0 } from './modelV0.js';
@@ -149,6 +149,37 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(p > 0.5, 'positive-only features → p > 0.5');
   ok(contributions.every(c => Number.isFinite(c.contribution)), 'contributions finite');
   ok(sessionPhaseUTC(Date.parse('2026-07-01T23:00:00Z')) === 'asia', 'session phase');
+}
+
+// ── macro socket: macroState resolver + macro_align feature ──────────────────
+{
+  // sign convention: riskSens > 0 ⇒ pair rises in risk-off (defensive)
+  ok(macroState(+0.8, 'RISK_OFF', 'long') === 1, 'defensive pair long in risk-off = aligned');
+  ok(macroState(+0.8, 'RISK_OFF', 'short') === -1, 'defensive pair short in risk-off = opposed');
+  ok(macroState(-1.0, 'RISK_OFF', 'long') === -1, 'risk pair (AUD/JPY-like) long in risk-off = opposed');
+  ok(macroState(-1.0, 'RISK_ON', 'long') === 1, 'risk pair long in risk-on = aligned');
+  ok(macroState(-0.8, 'NEUTRAL', 'long') === 0, 'neutral regime resolves 0');
+  ok(macroState(+0.3, 'RISK_OFF', 'long') === 0, `|riskSens| < ${MACRO_RISK_SENS_MIN} resolves NEUTRAL (ambiguous pairs)`);
+  ok(macroState(undefined, 'RISK_OFF', 'long') === 0 && macroState(-0.8, 'GARBAGE', 'long') === 0, 'malformed inputs fail neutral');
+
+  // through the full decide path: snapshot without macro → feature 0; with macro → signed
+  const z = snap.zones[0];
+  const rNone = decide(snap, { price: z.price, direction: 'long', action: 'fade' }, { nowMs: NOW });
+  ok(rNone.features.macro_align === 0 && rNone.macro === null, 'no macro context → feature 0, macro null in response');
+  const riskOff = { ...snap, macro: { regime: 'RISK_OFF', riskSens: -0.8, asOf: NOW } };
+  const rOpp = decide(riskOff, { price: z.price, direction: 'long', action: 'fade' }, { nowMs: NOW });
+  ok(rOpp.features.macro_align === -1 && rOpp.macro.align === -1 && rOpp.macro.regime === 'RISK_OFF',
+    'opposed direction carries macro_align −1 through decide()');
+  const rAli = decide(riskOff, { price: z.price, direction: 'short', action: 'fade' }, { nowMs: NOW });
+  ok(rAli.features.macro_align === 1, 'aligned direction carries +1');
+  ok(rAli.probability === rNone.probability || Math.abs(rAli.probability - decide(snap, { price: z.price, direction: 'short', action: 'fade' }, { nowMs: NOW }).probability) < 1e-9,
+    'v0 scoring is macro-blind (no weight) — macro enters only via a promoted fit');
+
+  // buildSnapshot stamps only well-formed macro
+  const good = buildSnapshot({ pair: 'eurusd', dailyBars: syntheticBars('eurusd', 320, 7), macro: { regime: 'RISK_ON', riskSens: -0.5 }, nowMs: NOW });
+  ok(good.macro.regime === 'RISK_ON' && good.macro.stale === false, 'well-formed macro stamped');
+  const bad = buildSnapshot({ pair: 'eurusd', dailyBars: syntheticBars('eurusd', 320, 7), macro: { regime: 'RISK_ON', riskSens: 'high' }, nowMs: NOW });
+  ok(bad.macro === null, 'malformed macro → null, not a silent wrong sign');
 }
 
 // ── gold path (different pip/class) doesn't blow up ──────────────────────────

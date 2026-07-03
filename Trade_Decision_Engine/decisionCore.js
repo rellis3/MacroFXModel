@@ -22,6 +22,28 @@ export const DECIDE_DEFAULTS = {
   maxDistSigma: 0.35,           // a zone farther than this from price ≠ a touch
 };
 
+// ── Macro alignment (the TDE-side half of the macro contract) ────────────────
+// The snapshot carries a direction-agnostic macro context (regime + the pair's
+// risk-sensitivity from the canonical PAIR_DRIVERS-derived source); the
+// per-direction ALIGNED/OPPOSED resolution happens HERE, after action/direction
+// defaulting — exactly like the fade/follow features. macroCore (the Tier-1
+// brick, built separately) owns computing {regime}; this resolver owns nothing
+// but the sign convention:
+//   riskSens > 0  ⇒ pair RISES in risk-off (defensive, e.g. EUR/AUD)
+//   riskSens < 0  ⇒ pair FALLS in risk-off (risk proxy, e.g. AUD/JPY)
+// Pairs with |riskSens| below MACRO_RISK_SENS_MIN have ambiguous risk character
+// and resolve NEUTRAL. Threshold frozen BEFORE any results exist (pre-registered).
+export const MACRO_RISK_SENS_MIN = 0.4;
+
+// → +1 aligned / 0 neutral / −1 opposed
+export function macroState(riskSens, regime, direction) {
+  if (!regime || regime === 'NEUTRAL' || !Number.isFinite(riskSens)) return 0;
+  if (Math.abs(riskSens) < MACRO_RISK_SENS_MIN) return 0;
+  if (regime !== 'RISK_ON' && regime !== 'RISK_OFF') return 0;
+  const expected = (regime === 'RISK_OFF') === (riskSens > 0) ? 'long' : 'short';
+  return direction === expected ? 1 : -1;
+}
+
 const clamp01 = x => Math.max(0, Math.min(1, x));
 const sigmoid = z => 1 / (1 + Math.exp(-z));
 
@@ -87,6 +109,13 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
     late_session:          phase === 'late' ? 1 : 0,
     fast_approach_fade:    isFade ? clamp01((approach - 0.8) / 1.5) : 0,
     fast_approach_follow: !isFade ? clamp01((approach - 0.8) / 1.5) : 0,
+    // SIGNED −1..+1 (the one exception to the 0..1 convention): one degree of
+    // freedom ties the aligned bonus to the opposed penalty — the symmetric
+    // prior — and halves the variance of a rarely-active feature. Zero when the
+    // snapshot has no macro context, so pre-macro training rows are unaffected.
+    // v0 carries NO weight for it: it enters scoring only via a promoted fit.
+    macro_align:           snapshot.macro
+      ? macroState(snapshot.macro.riskSens, snapshot.macro.regime, direction) : 0,
   };
 
   return { features, meta: { action, direction, stretch: +stretch.toFixed(3), phase, zoneAbove } };
@@ -186,6 +215,9 @@ export function decide(snapshot, request = {}, opts = {}) {
     features,               // full vector — this is what the decision log stores
     reasons: go ? [] : ['probability_below_threshold'],
     news_soon: gate.softNewsSoon, next_high_impact_min: gate.nextHighImpactMin,
+    macro: snapshot.macro
+      ? { regime: snapshot.macro.regime, align: features.macro_align, stale: snapshot.macro.stale === true }
+      : null,
     latency_ms: Date.now() - t0,
   };
 }

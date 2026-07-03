@@ -1,7 +1,7 @@
 // Backfill — synthetic, no-network unit tests for the pure parts.
 // Run: node Trade_Decision_Engine/backfill.test.mjs
 import assert from 'node:assert/strict';
-import { deriveD1Packed, labelOutcome, backfillPair, fitLogistic, BACKFILL_DEFAULTS } from './backfill.js';
+import { deriveD1Packed, labelOutcome, backfillPair, fitLogistic, macroBucketReport, MACRO_BUCKET_BAR, BACKFILL_DEFAULTS } from './backfill.js';
 import { MODEL_V0 } from './modelV0.js';
 
 let passed = 0;
@@ -88,6 +88,48 @@ const packed = synthPacked();
     ok(fit.candidate.calibrated === false, 'candidate never self-promotes');
   } else {
     ok(fitLogistic(evts).ok === false, 'fit refuses thin samples');
+  }
+}
+
+// ── contextByDate: per-day macro injection reaches the event features ────────
+{
+  // every replay day risk-off; eurusd riskSens −0.5 (risk pair)
+  const ctx = {};
+  const d1 = deriveD1Packed(packed);
+  for (const b of d1) ctx[new Date(b.time * 1000).toISOString().substring(0, 10)] =
+    { macro: { regime: 'RISK_OFF', riskSens: -0.5 } };
+  const evts = [];
+  backfillPair('eurusd', packed, { contextByDate: ctx, onEvent: e => evts.push(e) });
+  ok(evts.length > 20, 'events still generated with context');
+  ok(evts.every(e => e.features.macro_align === 1 || e.features.macro_align === -1),
+    'macro_align resolved ±1 on every event under a hard regime');
+  ok(evts.some(e => e.features.macro_align === 1) && evts.some(e => e.features.macro_align === -1),
+    'both alignments occur (long and short events exist)');
+  // shorts are aligned in risk-off for a negative-riskSens pair
+  ok(evts.filter(e => e.direction === 'short').every(e => e.features.macro_align === 1), 'short = aligned under RISK_OFF, riskSens<0');
+  // absent context ⇒ zero (unchanged training rows)
+  const plain = [];
+  backfillPair('eurusd', packed, { onEvent: e => plain.push(e) });
+  ok(plain.every(e => e.features.macro_align === 0), 'no context → macro_align 0 everywhere');
+
+  // ── macroBucketReport: episode counting, not event counting ────────────────
+  const rep = macroBucketReport(evts);
+  ok(rep.aligned.n + rep.opposed.n === evts.length && rep.neutral.n === 0, 'buckets partition the events');
+  ok(rep.opposed.episodes >= 1 && rep.opposed.episodes < rep.opposed.n, 'episodes collapse adjacent days');
+  ok(rep.opposed.years >= 1, `year spread tracked (${rep.opposed.years}y over a 200-day fixture)`);
+  ok(typeof rep.opposed.meetsBar === 'boolean' && rep.bar.minEpisodes === MACRO_BUCKET_BAR.minEpisodes, 'pre-registered bar attached');
+  ok(rep.opposed.perYear && Object.keys(rep.opposed.perYear).length === rep.opposed.years, 'per-year breakdown');
+
+  // sparse events far apart = distinct episodes
+  const sparse = ['2024-01-02', '2024-01-03', '2024-03-01', '2024-06-01'].map(date => ({
+    date, features: { macro_align: -1 }, outcome: { win: 0, pnlPct: -0.1 } }));
+  ok(macroBucketReport(sparse).opposed.episodes === 3, 'gap > 7d starts a new episode');
+
+  // ── fitLogistic ablation socket: extra feature name is fitted ──────────────
+  if (evts.length >= 200) {
+    const names = [...Object.keys(MODEL_V0.weights), 'macro_align'];
+    const fit = fitLogistic(evts, { features: names, embargoDays: 30, l2ExemptFeatures: ['macro_align'] });
+    ok(fit.ok && 'macro_align' in fit.candidate.weights, 'ablation fit carries the macro coefficient');
   }
 }
 

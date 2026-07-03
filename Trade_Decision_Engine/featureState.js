@@ -31,7 +31,13 @@ export const TDE_DEFAULT_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'gold'
 // ── Pure snapshot builder ────────────────────────────────────────────────────
 // dailyBars: chronological COMPLETED D1 [{time(sec), open, high, low, close}].
 // calendar: [{ timeMs, impact, currency, title }].
-export function buildSnapshot({ pair, dailyBars, calendar = [], nowMs = Date.now(), mode = 'live', price = null }) {
+// macro (optional, PRE-RESOLVED by the caller — buildSnapshot never parses FRED):
+//   { regime: 'RISK_ON'|'NEUTRAL'|'RISK_OFF', riskSens: number, asOf: ms, stale?: bool }
+//   Live: slow loop computes it from the KV `fred` mirror via macroCore
+//   (fail-NEUTRAL + stale:true when the mirror is >48h old — macro is a
+//   modifier, never a gate). Backfill: injected per day from obs-dated FRED
+//   history. Direction resolution happens in the fast loop (decisionCore.macroState).
+export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, nowMs = Date.now(), mode = 'live', price = null }) {
   const key = safeKey(pair);
   if (!Array.isArray(dailyBars) || dailyBars.length < 80) {
     throw new Error(`buildSnapshot(${key}): need ≥80 completed D1 bars, got ${dailyBars?.length ?? 0}`);
@@ -62,11 +68,17 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], nowMs = Date.now
   const zones = clusterLevels(levels, tolPips, pip)
     .map(({ price: p, score, count, sources, kinds }) => ({ price: p, score, count, sources, kinds }));
 
+  // macro context: stamped only when well-formed — a malformed object becomes
+  // null (feature resolves 0) rather than a silent wrong sign.
+  const macroCtx = macro && typeof macro.regime === 'string' && Number.isFinite(macro.riskSens)
+    ? { regime: macro.regime, riskSens: macro.riskSens, asOf: macro.asOf ?? null, stale: macro.stale === true }
+    : null;
+
   return {
     pair: key, mode, builtAt: nowMs,
     price: refPrice, dayOpen,
     sigmaDaily, volPct, regime, T,
-    zones, calendar,
+    zones, calendar, macro: macroCtx,
     meta: { bars: dailyBars.length, lastBarTime: dailyBars[dailyBars.length - 1].time, tolPips: +tolPips.toFixed(1), levelSources: TDE_LEVEL_SOURCES },
   };
 }
@@ -121,13 +133,15 @@ export function stateSummary() {
 
 // Refresh one pair from OANDA (+ optional Finnhub calendar). Throws on failure
 // and records the error — the fast loop then fails closed on staleness.
-export async function refreshPair(pair, { nowMs = Date.now(), calendar = null } = {}) {
+// `macro` is passed through to buildSnapshot — the caller (server slow loop)
+// resolves it from the KV `fred` mirror via macroCore; absent ⇒ macro-neutral.
+export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, macro = null } = {}) {
   const key = safeKey(pair);
   try {
     const raw = await fetchD1(oandaSymbol(key), 400);
     const bars = raw.map(b => ({ ...b, time: b.time ?? Math.floor(Date.parse(`${b.date}T00:00:00Z`) / 1000) }));
     const cal = calendar ?? await fetchCalendar().catch(() => []);
-    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, nowMs, mode: 'live' });
+    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, nowMs, mode: 'live' });
     state.set(key, snap);
     errors.delete(key);
     return snap;

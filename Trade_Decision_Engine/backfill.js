@@ -94,7 +94,14 @@ export function labelOutcome(packed, fromIdx, endIdx, entry, dirSign, sigmaAbs, 
 // For each day past warmup: snapshot from D1 < today (same buildSnapshot as
 // live), then scan today's M1 for FIRST touches of the top zones and push each
 // through the same decide() the API serves. onEvent(evt) receives each event.
-export function backfillPair(pair, packed, { fromDate = null, cfg = {}, onEvent } = {}) {
+//
+// contextByDate (optional): { 'YYYY-MM-DD': { macro?, calendar? } } — the
+// historical-context injection socket. A macro loader (obs-dated FRED with
+// publication lags) supplies per-day { regime, riskSens }; a historical
+// calendar can adopt the same shape later (today the replayed calendar is []
+// — which is why the fitted news_soon weight is currently meaningless).
+// Absent dates ⇒ macro-neutral, empty calendar: pre-context rows are unchanged.
+export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextByDate = null, onEvent } = {}) {
   const C = { ...BACKFILL_DEFAULTS, ...cfg };
   const d1 = deriveD1Packed(packed);
   const costPct = DEFAULT_COST_PCT[safeClass(pair)] ?? DEFAULT_COST_PCT.fx;
@@ -107,9 +114,12 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, onEvent 
 
     // snapshot from COMPLETED days only (< today) — the live no-lookahead rule
     const dailyBars = d1.slice(Math.max(0, i - C.snapshotWindow), i);
+    const dayCtx = contextByDate?.[date] ?? {};
     let snap;
-    try { snap = buildSnapshot({ pair, dailyBars, calendar: [], nowMs: dayStart * 1000, mode: 'backfill' }); }
-    catch { continue; }
+    try {
+      snap = buildSnapshot({ pair, dailyBars, calendar: dayCtx.calendar ?? [], macro: dayCtx.macro ?? null,
+        nowMs: dayStart * 1000, mode: 'backfill' });
+    } catch { continue; }
     const sigmaAbs = snap.sigmaDaily * snap.dayOpen;
     if (!(sigmaAbs > 0)) continue;
 
@@ -162,8 +172,21 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, onEvent 
 // Time-ordered split with an embargo gap; gradient descent with L2; reports
 // per-decile OOS calibration and Brier for BOTH the fitted model and the v0
 // prior. The output is a candidate — calibrated:false until a human promotes it.
-export function fitLogistic(events, { oosFrac = 0.35, embargoDays = 10, epochs = 300, lr = 0.5, l2 = 1e-3 } = {}) {
-  const names = Object.keys(MODEL_V0.weights);
+//
+// Ablation support: `features` selects the feature-name list (default = the v0
+// weight keys). An ablation = two calls on the SAME events with and without the
+// extra feature (e.g. [...default, 'macro_align']), compared on OOS Brier +
+// calibration. Macro-bearing runs should pass embargoDays: 30 (macro episodes
+// are weeks-long — see ARCHITECTURE §7c) and pair the fit with
+// macroBucketReport + a per-era sign check; a pooled OOS number alone can be
+// era memorization. `l2ExemptFeatures` exempts named features from the L2
+// penalty — shrinkage on a rare feature biases toward "it fails", so a
+// bucket-test-vs-ablation disagreement should be re-run with the macro
+// coefficient unpenalized before concluding.
+export function fitLogistic(events, { oosFrac = 0.35, embargoDays = 10, epochs = 300, lr = 0.5, l2 = 1e-3,
+                                      features = null, l2ExemptFeatures = [] } = {}) {
+  const names = features ?? Object.keys(MODEL_V0.weights);
+  const l2Mask = names.map(k => (l2ExemptFeatures.includes(k) ? 0 : 1));
   const rows = events
     .filter(ev => ev.features && ev.outcome)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
@@ -190,7 +213,7 @@ export function fitLogistic(events, { oosFrac = 0.35, embargoDays = 10, epochs =
       for (let j = 0; j < names.length; j++) gw[j] += err * X[r][j];
       gb += err;
     }
-    for (let j = 0; j < names.length; j++) w[j] = w[j] - lr * (gw[j] / trainEnd + l2 * w[j]);
+    for (let j = 0; j < names.length; j++) w[j] = w[j] - lr * (gw[j] / trainEnd + l2 * l2Mask[j] * w[j]);
     b -= lr * (gb / trainEnd);
   }
 
@@ -238,6 +261,46 @@ export function fitLogistic(events, { oosFrac = 0.35, embargoDays = 10, epochs =
   };
 }
 
+// ── Macro bucket test (pure) — the PRIMARY macro evidence ────────────────────
+// Buckets labeled events by the sign of features.macro_align and reports, per
+// bucket: n, win rate, after-cost expectancy, per-year breakdown, and the
+// EPISODE count — a maximal run of same-bucket events with ≤maxGapDays between
+// consecutive dates. Events inside one macro episode are not independent: 800
+// OPPOSED events inside March 2020 are ONE observation. The pre-registered bar
+// for "macro is real" (frozen here, before any results): OPPOSED underperforms
+// with n ≥ 30 AND ≥ 8 distinct episodes spread over ≥ 3 calendar years.
+export const MACRO_BUCKET_BAR = { minEvents: 30, minEpisodes: 8, minYears: 3 };
+
+export function macroBucketReport(events, { maxGapDays = 7 } = {}) {
+  const rows = (events ?? [])
+    .filter(ev => ev.features && ev.outcome && ev.date)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const mk = () => ({ n: 0, wins: 0, pnlSum: 0, episodes: 0, _lastDate: null, years: new Set(), perYear: {} });
+  const buckets = { aligned: mk(), neutral: mk(), opposed: mk() };
+  for (const ev of rows) {
+    const a = ev.features.macro_align ?? 0;
+    const b = buckets[a > 0 ? 'aligned' : a < 0 ? 'opposed' : 'neutral'];
+    const year = ev.date.substring(0, 4);
+    if (b._lastDate == null || daysBetween(b._lastDate, ev.date) > maxGapDays) b.episodes++;
+    b._lastDate = ev.date;
+    b.n++; b.wins += ev.outcome.win; b.pnlSum += ev.outcome.pnlPct;
+    b.years.add(year);
+    (b.perYear[year] ??= { n: 0, wins: 0, pnlSum: 0 });
+    b.perYear[year].n++; b.perYear[year].wins += ev.outcome.win; b.perYear[year].pnlSum += ev.outcome.pnlPct;
+  }
+  const fin = b => ({
+    n: b.n, episodes: b.episodes, years: b.years.size,
+    winRate: b.n ? +(b.wins / b.n).toFixed(4) : null,
+    avgPnlPct: b.n ? +(b.pnlSum / b.n).toFixed(4) : null,
+    meetsBar: b.n >= MACRO_BUCKET_BAR.minEvents && b.episodes >= MACRO_BUCKET_BAR.minEpisodes && b.years.size >= MACRO_BUCKET_BAR.minYears,
+    perYear: Object.fromEntries(Object.entries(b.perYear).map(([y, s]) =>
+      [y, { n: s.n, winRate: +(s.wins / s.n).toFixed(3), avgPnlPct: +(s.pnlSum / s.n).toFixed(4) }])),
+  });
+  return { bar: MACRO_BUCKET_BAR, aligned: fin(buckets.aligned), neutral: fin(buckets.neutral), opposed: fin(buckets.opposed) };
+}
+
+function daysBetween(d1, d2) { return Math.round((Date.parse(d2 + 'T00:00:00Z') - Date.parse(d1 + 'T00:00:00Z')) / 86400_000); }
+
 // ── Orchestration (file-backed, incremental) ─────────────────────────────────
 export function readBackfillState() {
   try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; }
@@ -260,7 +323,7 @@ export function readEvents() {
 // history — the DIFFERENCE up to now is fetched live from OANDA M1 via the
 // m1GapFill brick, so the nightly top-up does NOT depend on the R2 store having
 // been refreshed. A gap-fill failure degrades to the stored history, never aborts.
-export async function runBackfill(pairs, { incremental = true, gapFill = true, cfg = {}, onLog = () => {} } = {}) {
+export async function runBackfill(pairs, { incremental = true, gapFill = true, cfg = {}, contextByDate = null, onLog = () => {} } = {}) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   const state = incremental ? readBackfillState() : {};
   if (!incremental) { try { fs.unlinkSync(EVENTS_FILE); } catch {} }
@@ -278,7 +341,7 @@ export async function runBackfill(pairs, { incremental = true, gapFill = true, c
       }
       const lines = [];
       const res = backfillPair(pair, packed, {
-        fromDate: state[pair]?.lastDate ?? null, cfg,
+        fromDate: state[pair]?.lastDate ?? null, cfg, contextByDate,
         onEvent: ev => lines.push(JSON.stringify(ev)),
       });
       if (lines.length) fs.appendFileSync(EVENTS_FILE, lines.join('\n') + '\n');
