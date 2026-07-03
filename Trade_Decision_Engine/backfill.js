@@ -121,20 +121,36 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
     const date = new Date(dayStart * 1000).toISOString().substring(0, 10);
     if (fromDate && date <= fromDate) continue;
 
-    // snapshot from COMPLETED days only (< today) — the live no-lookahead rule
+    const s = bisect(packed.times, dayStart), e = bisect(packed.times, dayEnd);
+    if (e - s < 60) continue;   // holiday / broken day
+
+    // snapshot from COMPLETED days only (< today) — the live no-lookahead rule.
+    // sessionOpen = the day's first M1 open (the same true-open the live path
+    // gets from today's M1), not the last-close approximation.
     const dailyBars = d1.slice(Math.max(0, i - C.snapshotWindow), i);
     const dayCtx = contextByDate?.[date] ?? {};
     let snap;
     try {
       snap = buildSnapshot({ pair, dailyBars, calendar: dayCtx.calendar ?? [], macro: dayCtx.macro ?? null,
-        nowMs: dayStart * 1000, mode: 'backfill' });
+        sessionOpen: packed.opens[s], nowMs: dayStart * 1000, mode: 'backfill' });
     } catch { continue; }
     const sigmaAbs = snap.sigmaDaily * snap.dayOpen;
     if (!(sigmaAbs > 0)) continue;
-
-    const s = bisect(packed.times, dayStart), e = bisect(packed.times, dayEnd);
-    if (e - s < 60) continue;   // holiday / broken day
     days++; lastDate = date;
+
+    // prefix state over the day's bars → per-touch intraday features with no
+    // lookahead: everything indexed at t uses bars [s..t] only
+    const dayN = e - s;
+    const runHi = new Float64Array(dayN), runLo = new Float64Array(dayN);
+    const cumTPV = new Float64Array(dayN), cumVol = new Float64Array(dayN);
+    for (let k = 0; k < dayN; k++) {
+      const g = s + k, v = packed.volumes?.[g] || 1;
+      runHi[k] = k ? Math.max(runHi[k - 1], packed.highs[g]) : packed.highs[g];
+      runLo[k] = k ? Math.min(runLo[k - 1], packed.lows[g]) : packed.lows[g];
+      cumTPV[k] = (k ? cumTPV[k - 1] : 0) + ((packed.highs[g] + packed.lows[g] + packed.closes[g]) / 3) * v;
+      cumVol[k] = (k ? cumVol[k - 1] : 0) + v;
+    }
+    const hl50Abs = snap.meta.hl50Abs;
 
     // top zones within reach of the day's likely path
     const zones = snap.zones
@@ -152,10 +168,21 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
       const approachSigma = Math.abs(packed.closes[t] - packed.closes[back]) / sigmaAbs;
       const touchMs = packed.times[t] * 1000;
 
+      // intraday state AS-OF the touch (prefix arrays — bars [s..t] only),
+      // matching the live snapshot.intraday shape via the request override
+      const k = t - s;
+      const vwap = cumVol[k] > 0 ? cumTPV[k] / cumVol[k] : null;
+      const intraday = {
+        rangeUsed: hl50Abs > 0 ? +((runHi[k] - runLo[k]) / hl50Abs).toFixed(3) : null,
+        posInRange: runHi[k] > runLo[k] ? +((packed.closes[t] - runLo[k]) / (runHi[k] - runLo[k])).toFixed(3) : 0.5,
+        vwapDistSigma: vwap != null ? +((packed.closes[t] - vwap) / sigmaAbs).toFixed(3) : 0,
+        approachSigma: +approachSigma.toFixed(3),
+      };
+
       // the SAME fast loop the live API serves. One snapshot per day here, so
       // the live 15-min staleness gate is widened to the session length —
       // that gate is about a dead slow loop, not about intraday drift.
-      const dec = decide(snap, { pair, price: z.price, approachSigma },
+      const dec = decide(snap, { pair, price: z.price, approachSigma, intraday },
         { nowMs: touchMs, maxStalenessMs: 26 * 3600_000 });
       if (dec.probability == null) continue;   // gated (shouldn't happen without calendar)
 
@@ -169,7 +196,7 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
         action: dec.action, direction: dec.direction,
         probability: dec.probability, features: dec.features,
         regime: snap.regime, T: +snap.T.toFixed(3), vol_pct: +snap.volPct.toFixed(3),
-        approach_sigma: +approachSigma.toFixed(3),
+        approach_sigma: +approachSigma.toFixed(3), intraday,
         outcome, model_version: dec.model_version,
       });
     }

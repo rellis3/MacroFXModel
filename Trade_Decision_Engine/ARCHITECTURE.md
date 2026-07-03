@@ -367,11 +367,24 @@ Test harness UI: `trade-decision-engine.html` (linked from the Dashboard).
 - The v0 probability is a **prior, not evidence**. Nothing here claims edge until
   the fitted model beats the incumbent on OOS with calibration proof (Lego
   Principle 5).
-- Live snapshots are built from **completed D1 bars** — `dayOpen ≈ last close`,
-  σ lags one bar. Good enough for v0; the session-open anchor
-  (`fetchSessionOpenLondon`) is the known upgrade.
-- Level sources needing intraday data (volume profile, VWAP) are OFF in the live
-  slow loop until an M1 feed is wired in; the zone map uses
-  `daily_open / prior_hilo / pivots / swing_sr / round_number`.
+- ~~`dayOpen ≈ last close`, σ lags one bar~~ — RETIRED: σ uses `nextSigma`, and
+  `dayOpen` is the **true session open** (today's first M1 since London
+  midnight live; the day's first M1 open in the backfill), falling back to
+  last close only when the intraday fetch fails.
+- **Intraday state is in** (`snapshot.intraday` / per-touch in the backfill):
+  range-used vs the forecaster's median expected range, position-in-range,
+  session VWAP distance, self-computed approach speed. The four
+  `INTRADAY_FEATURES` are **zero-weighted in v0** (the macro discipline —
+  computed + logged everywhere, promoted only via an ablation fit; first
+  real-data read: exhausted-range fades UNDERPERFORM the base rate, opposite
+  of the intuitive hand prior, which is exactly why they carry no weight yet).
+  Known train/serve skew: live intraday state is as old as the snapshot
+  (≤15 min); backfill state is exact at the touch. Bots can close the gap by
+  passing fresh `intraday` on the request. Changing `dayOpen` redefines the
+  stretch features → the training set needs one **full rebuild** before the
+  next fit.
+- The `volume_profile` level SOURCE stays OFF in the zone map (needs a deeper
+  intraday history than the one-day fetch); session VWAP is now computed as
+  intraday state instead.
 - OANDA is unreachable in the sandbox (403) — that's environment, not a bug.
   Synthetic mode exists exactly so the engine is testable anywhere.

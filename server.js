@@ -9788,11 +9788,13 @@ function tdeWarmSnapshot(pair) {
 }
 
 // The bot-facing endpoint — pair + price is enough, the engine sorts the rest:
-// { pair, price?, action?, direction?, approach_sigma?, own_level?, mode? }
+// { pair, price?, action?, direction?, approach_sigma?, own_level?, intraday?, mode? }
+// intraday (optional bot override): { rangeUsed, posInRange, vwapDistSigma,
+// approachSigma } — fresher than the snapshot's slow-loop block if you have it.
 app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
   const t0 = Date.now();
   try {
-    const { pair, price, action, direction, approach_sigma, own_level, mode = 'live' } = req.body ?? {};
+    const { pair, price, action, direction, approach_sigma, own_level, intraday, mode = 'live' } = req.body ?? {};
     if (!pair) return res.status(400).json({ ok: false, error: 'pair required' });
     const key = String(pair).toLowerCase();
     let snap, warm = null;
@@ -9801,6 +9803,7 @@ app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
     const result = tdeDecide(snap, {
       pair, price: price != null ? Number(price) : undefined,
       action, direction, approachSigma: approach_sigma, own_level: own_level === true,
+      intraday: intraday && typeof intraday === 'object' ? intraday : undefined,
     });
     if (warm) {
       result.snapshot_refreshed = warm.refreshed;

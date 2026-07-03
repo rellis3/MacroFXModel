@@ -15,8 +15,8 @@
 // `buildSnapshot` itself is pure (data in → snapshot out) so it is unit-testable
 // on synthetic bars with no network; only refreshPair/fetchCalendar do I/O.
 
-import { fetchD1 } from '../js/volBacktestEngine.js';
-import { volSigmaSeries, nextSigma, classifyRegime } from '../js/forecastCore.js';
+import { fetchD1, fetchM1Range, londonMidnightSec } from '../js/volBacktestEngine.js';
+import { volSigmaSeries, nextSigma, classifyRegime, computeBands } from '../js/forecastCore.js';
 import { dayTypeScore } from '../js/dayTypeCore.js';
 import { collectLevels, clusterLevels } from '../js/levelSources.js';
 import { pipSize, assetClass, oandaSymbol, resolveKey } from '../js/instrumentRegistry.js';
@@ -28,6 +28,35 @@ import { rollingPercentile } from '../js/statsCore.js';
 export const TDE_LEVEL_SOURCES = ['daily_open', 'prior_hilo', 'pivots', 'swing_sr', 'swing_fib', 'round_number'];
 export const TDE_DEFAULT_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'gold'];
 
+// ── Intraday state (pure) — today's developing session, not more D1 ─────────
+// bars: TODAY's chronological M1/M5 [{time,open,high,low,close,volume?}] up to
+// "now" (live: since London midnight; backfill: up to the touch — no lookahead).
+// sigmaAbs = daily σ in price units; hl50Abs = the forecaster's MEDIAN expected
+// daily high–low range in price units (computeBands.hl50 × open) — so
+// rangeUsed ≈ 1.0 on a median day, >1.25 = exhaustion territory.
+export function computeIntradayState(bars, { sigmaAbs, hl50Abs, approachBars = 30 } = {}) {
+  if (!Array.isArray(bars) || !bars.length || !(sigmaAbs > 0)) return null;
+  let hi = -Infinity, lo = Infinity, cumTPV = 0, cumVol = 0;
+  for (const b of bars) {
+    if (b.high > hi) hi = b.high;
+    if (b.low < lo) lo = b.low;
+    const v = b.volume ?? 1;
+    cumTPV += ((b.high + b.low + b.close) / 3) * v;
+    cumVol += v;
+  }
+  const price = bars[bars.length - 1].close;
+  const back = bars[Math.max(0, bars.length - 1 - approachBars)].close;
+  const vwap = cumVol > 0 ? cumTPV / cumVol : null;
+  return {
+    sessionOpen: bars[0].open, high: hi, low: lo, price,
+    rangeUsed: hl50Abs > 0 ? +((hi - lo) / hl50Abs).toFixed(3) : null,
+    posInRange: hi > lo ? +((price - lo) / (hi - lo)).toFixed(3) : 0.5,
+    vwap, vwapDistSigma: vwap != null ? +((price - vwap) / sigmaAbs).toFixed(3) : 0,
+    approachSigma: +(Math.abs(price - back) / sigmaAbs).toFixed(3),
+    bars: bars.length, asOf: bars[bars.length - 1].time,
+  };
+}
+
 // ── Pure snapshot builder ────────────────────────────────────────────────────
 // dailyBars: chronological COMPLETED D1 [{time(sec), open, high, low, close}].
 // calendar: [{ timeMs, impact, currency, title }].
@@ -37,7 +66,12 @@ export const TDE_DEFAULT_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'gold'
 //   (fail-NEUTRAL + stale:true when the mirror is >48h old — macro is a
 //   modifier, never a gate). Backfill: injected per day from obs-dated FRED
 //   history. Direction resolution happens in the fast loop (decisionCore.macroState).
-export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, nowMs = Date.now(), mode = 'live', price = null }) {
+// intradayBars (optional): TODAY's M1/M5 bars up to now → snapshot.intraday
+// (range-used / position-in-range / session VWAP / approach) AND upgrades
+// dayOpen to the TRUE session open (first bar). sessionOpen (optional number)
+// sets the open without bars — the backfill uses it (per-touch intraday state
+// travels on the decide REQUEST there, to stay lookahead-free within the day).
+export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, intradayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
   const key = safeKey(pair);
   if (!Array.isArray(dailyBars) || dailyBars.length < 80) {
     throw new Error(`buildSnapshot(${key}): need ≥80 completed D1 bars, got ${dailyBars?.length ?? 0}`);
@@ -63,7 +97,9 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, no
 
   const lastClose = closes[closes.length - 1];
   const refPrice = Number(price) || lastClose;
-  const dayOpen = lastClose;   // completed-D1 approximation: next session opens ≈ last close
+  // true session open when we have it (today's first bar / backfill day open);
+  // completed-D1 approximation (≈ last close) only as the fallback
+  const dayOpen = Number(sessionOpen) || intradayBars?.[0]?.open || lastClose;
 
   // zone map: collect D1-derivable levels, cluster to confluence zones.
   // Tolerance scales with σ (≈0.08σ), clamped to a sane pip band.
@@ -79,12 +115,18 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, no
     ? { regime: macro.regime, riskSens: macro.riskSens, asOf: macro.asOf ?? null, stale: macro.stale === true }
     : null;
 
+  // expected MEDIAN daily range (price units) — the rangeUsed denominator,
+  // straight from the forecaster's band math (one source of truth)
+  const hl50Abs = computeBands(dayOpen, sigmaDaily, cls).hl50 * dayOpen;
+  const sigmaAbs = sigmaDaily * dayOpen;
+  const intraday = intradayBars ? computeIntradayState(intradayBars, { sigmaAbs, hl50Abs }) : null;
+
   return {
     pair: key, mode, builtAt: nowMs,
     price: refPrice, dayOpen,
     sigmaDaily, volPct, regime, T,
-    zones, calendar, macro: macroCtx,
-    meta: { bars: dailyBars.length, lastBarTime: dailyBars[dailyBars.length - 1].time, tolPips: +tolPips.toFixed(1), levelSources: TDE_LEVEL_SOURCES },
+    zones, calendar, macro: macroCtx, intraday,
+    meta: { bars: dailyBars.length, lastBarTime: dailyBars[dailyBars.length - 1].time, tolPips: +tolPips.toFixed(1), hl50Abs: +hl50Abs.toFixed(6), levelSources: TDE_LEVEL_SOURCES },
   };
 }
 
@@ -147,7 +189,13 @@ export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, m
     const raw = await fetchD1(oandaSymbol(key), 400);
     const bars = raw.map(b => ({ ...b, time: b.time ?? Math.floor(Date.parse(`${b.date}T00:00:00Z`) / 1000) }));
     const cal = calendar ?? await fetchCalendar().catch(() => []);
-    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, nowMs, mode: 'live' });
+    // today's M1 since London midnight (the repo's canonical session anchor) →
+    // intraday state + true session open. Optional: a failed fetch degrades to
+    // the D1-only snapshot (intraday features resolve 0) rather than aborting.
+    const nowSec = Math.floor(nowMs / 1000);
+    const intradayBars = await fetchM1Range(oandaSymbol(key), londonMidnightSec(nowSec), nowSec)
+      .catch(e => { console.warn(`[trade-decision] ${key} intraday fetch failed (D1-only snapshot):`, e.message ?? e); return null; });
+    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, intradayBars, nowMs, mode: 'live' });
     state.set(key, snap);
     errors.delete(key);
     return snap;

@@ -35,6 +35,17 @@ export const DECIDE_DEFAULTS = {
 // and resolve NEUTRAL. Threshold frozen BEFORE any results exist (pre-registered).
 export const MACRO_RISK_SENS_MIN = 0.4;
 
+// ── Intraday feature names (zero-weighted in v0 — the macro discipline) ──────
+// Computed and logged on every event (live + backfill) but ABSENT from
+// MODEL_V0.weights, so they cannot move a live score until an ablation fit
+// (fitLogistic features: [...v0, ...INTRADAY_FEATURES]) earns them promotion.
+export const INTRADAY_FEATURES = [
+  'intraday_range_exhausted_follow',  // chasing after >100% of median range used
+  'intraday_range_exhausted_fade',    // fading at the edge of the expected range
+  'intraday_fade_too_early',          // fading before the day has shown a range
+  'intraday_vwap_stretch_fade',       // fading stretched from session VWAP
+];
+
 // → +1 aligned / 0 neutral / −1 opposed
 export function macroState(riskSens, regime, direction) {
   if (!regime || regime === 'NEUTRAL' || !Number.isFinite(riskSens)) return 0;
@@ -89,7 +100,11 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
   }
 
   const stretch = sigmaAbs > 0 ? Math.abs(zone.price - dayOpen) / sigmaAbs : 0;
-  const approach = Math.abs(Number(request.approachSigma) || 0);
+  // intraday state: per-call override (backfill's per-touch state, or a bot
+  // computing its own) → slow-loop snapshot block (≤ staleness gate old) → none
+  const intra = request.intraday ?? snapshot.intraday ?? null;
+  const approach = Math.abs(Number(request.approachSigma) || intra?.approachSigma || 0);
+  const rangeUsed = Number.isFinite(intra?.rangeUsed) ? intra.rangeUsed : null;
   const phase = sessionPhaseUTC(nowMs);
   const trendy = regime === 'BULL' || regime === 'BEAR';
   const isFade = action === 'fade';
@@ -116,9 +131,15 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
     // v0 carries NO weight for it: it enters scoring only via a promoted fit.
     macro_align:           snapshot.macro
       ? macroState(snapshot.macro.riskSens, snapshot.macro.regime, direction) : 0,
+    // intraday (zero-weighted in v0 — see INTRADAY_FEATURES): all 0 when no
+    // intraday state exists, so D1-only rows are unchanged
+    intraday_range_exhausted_follow: !isFade && rangeUsed != null ? clamp01((rangeUsed - 1.0) / 0.5) : 0,
+    intraday_range_exhausted_fade:    isFade && rangeUsed != null ? clamp01((rangeUsed - 1.0) / 0.5) : 0,
+    intraday_fade_too_early:          isFade && rangeUsed != null ? clamp01((0.4 - rangeUsed) / 0.4) : 0,
+    intraday_vwap_stretch_fade:       isFade && intra ? clamp01((Math.abs(intra.vwapDistSigma ?? 0) - 0.5) / 1.0) : 0,
   };
 
-  return { features, meta: { action, direction, stretch: +stretch.toFixed(3), phase, zoneAbove } };
+  return { features, meta: { action, direction, stretch: +stretch.toFixed(3), phase, zoneAbove, intraday: intra ? { rangeUsed, posInRange: intra.posInRange ?? null, vwapDistSigma: intra.vwapDistSigma ?? null, source: request.intraday ? 'request' : 'snapshot' } : null } };
 }
 
 // ── Logistic scorer with per-feature contributions (for top_factors) ─────────
@@ -218,6 +239,7 @@ export function decide(snapshot, request = {}, opts = {}) {
     macro: snapshot.macro
       ? { regime: snapshot.macro.regime, align: features.macro_align, stale: snapshot.macro.stale === true }
       : null,
+    intraday: meta.intraday,
     latency_ms: Date.now() - t0,
   };
 }

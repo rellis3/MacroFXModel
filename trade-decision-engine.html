@@ -262,7 +262,11 @@ async function loadState() {
     <div><div class="k">σ daily</div><div class="v">${(100 * s.sigmaDaily).toFixed(2)}%</div></div>
     <div><div class="k">Vol %ile</div><div class="v">${pct(s.volPct)}</div></div>
     <div><div class="k">Ref price</div><div class="v">${s.price.toFixed(5)}</div></div>
-    <div><div class="k">News events</div><div class="v">${s.calendar_events}</div></div>`;
+    <div><div class="k">News events</div><div class="v">${s.calendar_events}</div></div>
+    ${s.intraday ? `
+    <div><div class="k">Range used</div><div class="v">${pct(s.intraday.rangeUsed)}</div></div>
+    <div><div class="k">Pos in range</div><div class="v">${pct(s.intraday.posInRange)}</div></div>
+    <div><div class="k">VWAP dist</div><div class="v">${s.intraday.vwapDistSigma}σ</div></div>` : ''}`;
   $('snapAge').textContent = `— ${s.mode}, age ${(s.age_ms / 1000).toFixed(0)}s, ${s.meta.bars} bars`;
   const tb = $('zoneTbl').querySelector('tbody'); tb.innerHTML = '';
   const sigmaAbs = s.sigmaDaily * s.dayOpen;
@@ -293,6 +297,7 @@ async function doDecide() {
     $('decBig').className = 'decision-big ' + (go ? 'go' : 'skipd');
     $('decMeta').textContent = r.zone
       ? `zone ${r.zone.price} · ${r.zone.confluence} source(s) · ${r.zone.distance_sigma}σ away · regime ${r.regime} · T ${r.T} · ${r.session_phase}`
+        + (r.intraday && r.intraday.rangeUsed != null ? ` · range used ${(100 * r.intraday.rangeUsed).toFixed(0)}% · vwap ${r.intraday.vwapDistSigma}σ` : '')
       : (r.reasons || []).join(', ');
     const p = r.probability ?? 0;
     $('pfill').style.width = (100 * p) + '%';

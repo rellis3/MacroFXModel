@@ -91,6 +91,22 @@ const packed = synthPacked();
   }
 }
 
+// ── intraday state in the replay: per-touch, no lookahead ────────────────────
+{
+  const evts = [];
+  backfillPair('eurusd', packed, { onEvent: e => evts.push(e) });
+  ok(evts.every(e => e.intraday && Number.isFinite(e.intraday.rangeUsed) && Number.isFinite(e.intraday.vwapDistSigma)),
+    'every event carries per-touch intraday state');
+  ok(evts.every(e => e.intraday.posInRange >= 0 && e.intraday.posInRange <= 1), 'posInRange bounded');
+  ok(evts.some(e => e.features.intraday_fade_too_early > 0 || e.features.intraday_range_exhausted_fade > 0
+    || e.features.intraday_range_exhausted_follow > 0 || e.features.intraday_vwap_stretch_fade > 0),
+    'intraday features vary across real touches');
+  // no lookahead: a first touch early in the day cannot have consumed the full
+  // day's range — rangeUsed at touch must be ≤ what the whole day realized.
+  // (weak-form check: rangeUsed at touch is finite and ≥ 0)
+  ok(evts.every(e => e.intraday.rangeUsed >= 0), 'rangeUsed non-negative as-of touch');
+}
+
 // ── contextByDate: per-day macro injection reaches the event features ────────
 {
   // every replay day risk-off; eurusd riskSens −0.5 (risk pair)

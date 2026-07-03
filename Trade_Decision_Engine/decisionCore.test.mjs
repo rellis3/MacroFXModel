@@ -1,7 +1,8 @@
 // Trade Decision Engine — synthetic, no-network unit tests.
 // Run: node Trade_Decision_Engine/decisionCore.test.mjs
 import assert from 'node:assert/strict';
-import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN } from './decisionCore.js';
+import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN, INTRADAY_FEATURES } from './decisionCore.js';
+import { computeIntradayState } from './featureState.js';
 import { newsGate, pairCurrencies } from './newsGate.js';
 import { buildSnapshot, syntheticBars, syntheticSnapshot } from './featureState.js';
 import { MODEL_V0 } from './modelV0.js';
@@ -180,6 +181,44 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(good.macro.regime === 'RISK_ON' && good.macro.stale === false, 'well-formed macro stamped');
   const bad = buildSnapshot({ pair: 'eurusd', dailyBars: syntheticBars('eurusd', 320, 7), macro: { regime: 'RISK_ON', riskSens: 'high' }, nowMs: NOW });
   ok(bad.macro === null, 'malformed macro → null, not a silent wrong sign');
+}
+
+// ── intraday state: pure compute + features through decide ───────────────────
+{
+  // hand-built session: open 1.0, ranges up to 1.010, down to 0.998, closes 1.008
+  const mkBar = (t, o, h, l, c, v = 10) => ({ time: t, open: o, high: h, low: l, close: c, volume: v });
+  const bars = [mkBar(0, 1.0, 1.004, 0.999, 1.003), mkBar(60, 1.003, 1.010, 1.002, 1.009), mkBar(120, 1.009, 1.0095, 0.998, 1.008)];
+  const st = computeIntradayState(bars, { sigmaAbs: 0.006, hl50Abs: 0.008, approachBars: 2 });
+  ok(st.sessionOpen === 1.0 && st.high === 1.010 && st.low === 0.998, 'session OHL tracked');
+  ok(Math.abs(st.rangeUsed - (0.012 / 0.008)) < 1e-9, `rangeUsed = range/median (${st.rangeUsed})`);
+  ok(st.posInRange > 0.8, 'position in range near the high');
+  ok(Number.isFinite(st.vwapDistSigma) && st.vwap > 0.998 && st.vwap < 1.010, 'session VWAP sane');
+  ok(computeIntradayState([], { sigmaAbs: 0.006, hl50Abs: 0.008 }) === null, 'no bars → null, not fake state');
+
+  // through decide: request.intraday populates the zero-weighted features and
+  // must NOT move the v0 probability (macro discipline)
+  const z = snap.zones[0];
+  const base = decide(snap, { price: z.price, action: 'fade', direction: 'long' }, { nowMs: NOW });
+  const withIntra = decide(snap, { price: z.price, action: 'fade', direction: 'long',
+    intraday: { rangeUsed: 1.4, posInRange: 0.05, vwapDistSigma: -1.2, approachSigma: 0 } }, { nowMs: NOW });
+  ok(withIntra.features.intraday_range_exhausted_fade > 0, 'exhausted-range fade feature fires');
+  ok(withIntra.features.intraday_vwap_stretch_fade > 0, 'vwap-stretch fade feature fires');
+  ok(withIntra.features.intraday_fade_too_early === 0, 'too-early does not fire at 140% range');
+  ok(withIntra.probability === base.probability, 'v0 scoring is intraday-blind — enters only via a promoted fit');
+  ok(withIntra.intraday && withIntra.intraday.source === 'request', 'response surfaces intraday state + source');
+  ok(base.features.intraday_range_exhausted_fade === 0 && INTRADAY_FEATURES.every(f => f in base.features),
+    'no intraday state → features present but 0');
+  const early = decide(snap, { price: z.price, action: 'fade', direction: 'long',
+    intraday: { rangeUsed: 0.15, vwapDistSigma: 0 } }, { nowMs: NOW });
+  ok(early.features.intraday_fade_too_early > 0.5, 'fading a rangeless day flags too-early');
+  const follow = decide(snap, { price: z.price, action: 'follow', direction: 'long',
+    intraday: { rangeUsed: 1.4, vwapDistSigma: 0 } }, { nowMs: NOW });
+  ok(follow.features.intraday_range_exhausted_follow > 0 && follow.features.intraday_range_exhausted_fade === 0,
+    'exhaustion attributes to the right action');
+  // approach fallback: request omits approachSigma → intraday's value is used
+  const app = decide(snap, { price: z.price, action: 'fade', direction: 'long',
+    intraday: { rangeUsed: 0.8, vwapDistSigma: 0, approachSigma: 2.0 } }, { nowMs: NOW });
+  ok(app.features.fast_approach_fade > 0, 'approach speed falls back to intraday state');
 }
 
 // ── other asset classes (pip/σ-math/costs switch on the registry) ────────────
