@@ -283,6 +283,15 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 |---|---|---|---|---|
 | **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
 
+The core also emits the **divergence-events** test (`computeDivergenceEvents`) —
+the CONDITIONAL edge an unconditional correlation can't see: buckets days by the
+SIZE of the spread-vs-FX divergence (vol-scaled trailing gap) and reports, per
+forward horizon, how often FX moves to CLOSE the gap. The signature of a real
+discretionary edge is a hit-rate RISING with divergence size (the ~5% of big-move
+days that a per-day Pearson correlation averages into 95% noise). Rendered as a
+size-bucket × horizon table (daily + intraday). Diagnostic, in-sample — the test
+that matches "big spread move, FX hasn't followed, fade the gap".
+
 The core also emits the **daily lead-lag** test (`computeDailyLeadLag`, endpoint
 `granularity=D`) — the macro "spread leads EUR/USD by days" thesis (Cole/
 Transatlantic-spread): cross-correlation of daily FX returns vs daily spread

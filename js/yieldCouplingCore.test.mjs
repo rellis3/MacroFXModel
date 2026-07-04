@@ -7,7 +7,7 @@ import {
   gapSeries, bestLag, directionSignal, computeCoupling,
   toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
   laggedAutocorr, computeCouplingPersistence, couplingState,
-  computePriorDayProjection, computeDailyLeadLag,
+  computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -240,6 +240,28 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   ok('dailyLeadLag strong at lead', Math.abs(ll.bestCorr) > 0.9);
   ok('dailyLeadLag momentum predicts', ll.momentum.hitRate > 0.8 && ll.momentum.n > 50);
   ok('dailyLeadLag profile length', ll.profile.length === 11);
+}
+
+// ── computeDivergenceEvents (big gap ⇒ FX converges; edge rises with size) ─────
+{
+  // fx ≈ spread + small noise, with periodic LARGE divergences injected that then
+  // revert to spread over 8 bars. Large |gap| days (the injections) should show a
+  // high forward convergence hit-rate; small-gap (noise) days ≈ chance.
+  const n = 1000; const spread = [], fx = [];
+  let sp = 0;
+  for (let i = 0; i < n; i++) { sp += (((i * 2654435761) % 100) / 100 - 0.5); spread.push(sp); }
+  for (let i = 0; i < n; i++) fx.push(spread[i] + (((i * 40503) % 100) / 100 - 0.5) * 0.3);
+  for (let t = 40; t < n - 15; t += 30) {
+    const mag = 8 * (((t / 30) % 2) ? 1 : -1);          // alternate up/down divergences
+    for (let k = 0; k < 8; k++) if (t + k < n) fx[t + k] = spread[t + k] + mag * (1 - k / 8);
+  }
+  const de = computeDivergenceEvents(fx, spread, { window: 8, horizons: [6], buckets: 4 });
+  ok('divEvents has buckets', de.buckets.length === 4);
+  const small = de.buckets[0].horizons[6].hit;
+  const largeMax = Math.max(de.buckets[2].horizons[6].hit, de.buckets[3].horizons[6].hit);
+  ok('divEvents large-gap converges', largeMax > 0.6);
+  ok('divEvents edge rises with size', largeMax > small);
+  ok('divEvents counts present', de.buckets[3].horizons[6].n > 20);
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);

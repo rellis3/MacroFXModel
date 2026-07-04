@@ -361,6 +361,54 @@ export function computeDailyLeadLag(fx, spread, { maxLagDays = 30, lookback = 5,
   };
 }
 
+// ── Divergence events: the CONDITIONAL edge an average correlation can't see ──
+// The trader's setup is not "every day" — it's a LARGE divergence (spread moved,
+// FX hasn't), then FX converges. An unconditional correlation averages the ~5%
+// signal days into 95% noise → looks coincident. This buckets days by divergence
+// SIZE and measures whether FX then moves to close the gap. The signature of a
+// real edge: hit-rate RISING with divergence magnitude. gap>0 ⇒ spread has
+// outrun FX upward ⇒ expect FX to rise. No lookahead (gap from a trailing window;
+// the forward move is what's predicted).
+export function computeDivergenceEvents(fx, spread, { window = 10, horizons = [1, 3, 5, 10], buckets = 4 } = {}) {
+  const fxRet = toReturns(fx), spRet = toReturns(spread);
+  const gaps = new Array(fx.length).fill(NaN);
+  for (let t = window; t < fx.length; t++) {
+    const fWin = fxRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+    const sWin = spRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+    const fSd = stdev(fWin, 0), sSd = stdev(sWin, 0);
+    if (fSd <= 0 || sSd <= 0) continue;
+    const fMove = (fx[t]     - fx[t - window])     / (fSd * Math.sqrt(window));
+    const sMove = (spread[t] - spread[t - window]) / (sSd * Math.sqrt(window));
+    gaps[t] = sMove - fMove;                       // spread ahead of FX (both vol-scaled)
+  }
+  const idx = gaps.map((g, i) => ({ i, g })).filter(x => Number.isFinite(x.g));
+  const sorted = [...idx].sort((a, b) => Math.abs(a.g) - Math.abs(b.g));
+  const per = Math.floor(sorted.length / buckets) || 1;
+  const bucketStats = [];
+  for (let b = 0; b < buckets; b++) {
+    const slice = sorted.slice(b * per, b === buckets - 1 ? sorted.length : (b + 1) * per);
+    const hz = {};
+    for (const h of horizons) {
+      let hit = 0, n = 0;
+      for (const { i, g } of slice) {
+        if (i + h >= fx.length) continue;
+        const fwd = fx[i + h] - fx[i];
+        if (!Number.isFinite(fwd) || fwd === 0 || g === 0) continue;
+        if ((g > 0) === (fwd > 0)) hit++;
+        n++;
+      }
+      hz[h] = { hit: n ? hit / n : NaN, n };
+    }
+    bucketStats.push({
+      bucket: b,
+      minAbs: slice.length ? Math.abs(slice[0].g) : NaN,
+      maxAbs: slice.length ? Math.abs(slice[slice.length - 1].g) : NaN,
+      horizons: hz,
+    });
+  }
+  return { window, horizons, buckets: bucketStats };
+}
+
 // ── Prior-day projection: does TODAY's price follow YESTERDAY's yield? ────────
 // The user's indicator projects yesterday's yield path forward as today's
 // expected price path — a ~1-DAY-lagged relationship, far outside the intraday
