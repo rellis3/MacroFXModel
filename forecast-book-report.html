@@ -114,12 +114,18 @@ function render(b){
   // express it on the headline vol-targeted basis by scaling the headline DD up by the
   // intraday/closed multiple, so it sits next to the historical/MC numbers like-for-like.
   const idd=sv.intradayDD||{}, iddMult=idd.multipleVsClosed, its=idd.tradeStats||{};
-  const iddVT=(iddMult!=null&&svt.maxDD!=null)?+(svt.maxDD*iddMult).toFixed(3):null;
+  // Mark-to-market DD on the vol-targeted basis is the PRIMARY drawdown. Prefer the
+  // book's centralized field (svt.maxDDMtm from withMtmDD — one source of truth); fall
+  // back to deriving it from the multiple for books built before that field existed.
+  const iddVT=(svt.maxDDMtm!=null)?svt.maxDDMtm
+             :((iddMult!=null&&svt.maxDD!=null)?+(svt.maxDD*iddMult).toFixed(3):null);
   // Only trust the MTM DD when trades carry real intraday timestamps. On a stale
   // dataset most trades collapse to zero duration, their MAE never enters the path,
   // and iddVT decays to ~1× the closed floor — an understated, flattering figure we
   // must NOT present as the tradeable drawdown. `iddValid` gates the headline KPIs.
   const iddValid = idd.valid === true && iddVT != null && iddVT < -1e-9;
+  const calmarMtm=(svt.calmarMtm!=null)?svt.calmarMtm
+                 :(iddValid?+(svt.cagr/Math.abs(iddVT)).toFixed(2):null);
   // Block-bootstrap MC (regime-clustered tails) sits alongside the IID reshuffle.
   // The stress Calmar quotes the DEEPER of the two p95s — block when available, else
   // IID — so it's the conservative, honest ratio rather than the lucky ordering.
@@ -167,16 +173,16 @@ function render(b){
     ${kpi(fmt(svp.sharpe,2),'Sharpe (annualised)',svp.sharpe<0)}
     ${kpi(svp.psr!=null?pct(svp.psr*100,0):'—','Prob. Sharpe &gt; 0',svp.psr<0.95)}
     ${kpi(pct(svt.cagr,1),`Return p.a. @ ${svt.target||10}% vol`,svt.cagr<0)}
-    ${kpi(pct(svt.maxDD,1),`Max drawdown (historical @ ${svt.target||10}% vol)`,true)}
-    ${svp.maxDD!=null?kpi(pct(svp.maxDD,1),`Max drawdown (historical · raw 1×, ${fmt(svp.annVol,0)}% vol)`,true):''}
+    ${iddValid
+        ? kpi(pct(iddVT,1),`Max drawdown (MTM · MAE+concurrency, ${fmt(iddMult,1)}× closed) @ ${svt.target||10}% vol`,true)
+        : (iddVT!=null?kpiNA('Max drawdown (MTM · MAE+concurrency)',`${fmt(idd.zeroDurPct,0)}% zero-duration — refresh data`):'')}
+    ${kpi(pct(svt.maxDD,1),`Max drawdown (closed daily-net · lower bound @ ${svt.target||10}% vol)`,true)}
+    ${svp.maxDD!=null?kpi(pct(svp.maxDD,1),`Max drawdown (raw 1×, ${fmt(svp.annVol,0)}% vol)`,true):''}
     ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC IID p95 @ ${svt.target||10}% vol)`,true):''}
     ${svtBlk.p95!=null?kpi(pct(svtBlk.p95,1),`Max drawdown (MC block p95 · regime-clustered)`,true):''}
-    ${iddValid
-        ? kpi(pct(iddVT,1),`Max drawdown (intraday MTM · MAE+concurrency, ${fmt(iddMult,1)}× closed)`,true)
-        : (iddVT!=null?kpiNA('Max drawdown (intraday MTM · MAE+concurrency)',`${fmt(idd.zeroDurPct,0)}% zero-duration — refresh data`):'')}
-    ${kpi(fmt(svt.calmar,2),'Calmar (historical)',svp.calmar<0)}
+    ${calmarMtm!=null?kpi(fmt(calmarMtm,2),'Calmar (MTM · primary)',calmarMtm<0):kpiNA('Calmar (MTM · primary)','stale timestamps')}
+    ${kpi(fmt(svt.calmar,2),'Calmar (closed · lower bound)',svp.calmar<0)}
     ${stressDD!=null?kpi(fmt(svt.cagr/Math.abs(stressDD),2),`Calmar (stress · ${stressLbl})`,false):''}
-    ${iddValid?kpi(fmt(svt.cagr/Math.abs(iddVT),2),'Calmar (intraday MTM)',false):(iddVT!=null?kpiNA('Calmar (intraday MTM)','stale timestamps'):'')}
     ${kpi(pct(svp.annVol,1),'Realised volatility')}
     ${kpi(fmt(svp.avgTradesPerDay,1),'Avg trades / day')}
     ${kpi(fmt(sv.count,0)+'/'+fmt(sv.total,0),'Instruments traded')}
