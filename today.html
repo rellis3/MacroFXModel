@@ -74,6 +74,29 @@
   .mread-watch .wk{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
   .mread-watch .pl{cursor:pointer;color:var(--text);border-bottom:1px dotted var(--text3)}
 
+  /* ── Macro backdrop: plain-English "why" ────────────────── */
+  .macro{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden}
+  .macro-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none}
+  .macro-hd:hover{background:var(--card2)}
+  .macro-hd .ic{font-size:17px}
+  .macro-hd .ti{font-size:13.5px;font-weight:700;color:var(--text)}
+  .macro-hd .sum{font-size:12px;color:var(--text2);flex:1}
+  .macro-hd .tw{font-size:11px;color:var(--text3);white-space:nowrap}
+  .macro-body{padding:0 16px 14px;display:none}
+  .macro.open .macro-body{display:block}
+  .macro.open .macro-hd .sum{display:none}
+  .mth{border-top:1px solid var(--border);padding:11px 0}
+  .mth:first-child{border-top:none}
+  .mth-t{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+  .mth-b{font-size:13px;line-height:1.55;color:var(--text2)}
+  .mth-b b{color:var(--text)}
+  .mth-so{font-size:12.5px;line-height:1.5;color:var(--text2);margin-top:4px;padding-left:10px;border-left:2px solid var(--blue)}
+  .mth-so b{color:var(--text)}
+  .mccy{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:6px 16px;margin-top:8px}
+  .mccy-row{font-size:12px;line-height:1.4}
+  .mccy-row .c{font-weight:700;color:var(--text)}
+  .mccy-row.pos .c{color:var(--bull)} .mccy-row.neg .c{color:var(--bear)}
+
   /* ── Morning gate: calendar timeline ────────────────────── */
   .gate{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 14px;
         margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -212,6 +235,8 @@
 
 <div class="wrap">
   <div class="mread" id="mread" style="display:none"></div>
+
+  <div class="macro" id="macro" style="display:none"></div>
 
   <div class="summary" id="summary"></div>
 
@@ -636,6 +661,149 @@ function nextHighImpactPlain() {
   return { text, soon: mins <= 90 };
 }
 
+// ── Macro backdrop — the world's news, in plain English, tied to your pairs ──
+// Deterministic: reads /api/fred (rates, real yields, inflation, risk, oil), each
+// value + its prior so we know the direction, and explains the causal chain.
+let _macroOpen = (() => { try { return localStorage.getItem('macro_open') !== '0'; } catch { return true; } })();
+function toggleMacro() {
+  _macroOpen = !_macroOpen;
+  try { localStorage.setItem('macro_open', _macroOpen ? '1' : '0'); } catch {}
+  $('macro').classList.toggle('open', _macroOpen);
+}
+window.toggleMacro = toggleMacro;
+
+function buildMacro() {
+  if (!fred) return null;
+  const v = k => fred[k]?.value ?? null;
+  const p = k => fred[k]?.prev ?? null;
+  const has = k => v(k) != null;
+  const dirOf = (k, dead = 0) => { const a = v(k), b = p(k); if (a == null || b == null) return 0; const d = a - b; return Math.abs(d) <= dead ? 0 : (d > 0 ? 1 : -1); };
+  const arrow = d => d > 0 ? 'rising' : d < 0 ? 'falling' : 'steady';
+  const threads = [];
+
+  // 1) Interest rates & the dollar (carry) — the single biggest FX force
+  if (has('us10y') && (has('de10y') || has('jp10y'))) {
+    const us = v('us10y'), de = v('de10y'), jp = v('jp10y');
+    const dUs = dirOf('us10y', 0.02);
+    let body = `Money flows toward whoever pays more to hold their cash, so interest rates are the biggest force in currencies. Right now the US pays <b>${us.toFixed(2)}%</b> to lend for 10 years`;
+    const cmp = [];
+    if (de != null) cmp.push(`${de.toFixed(2)}% in Germany`);
+    if (jp != null) cmp.push(`${jp.toFixed(2)}% in Japan`);
+    if (has('gb10y')) cmp.push(`${v('gb10y').toFixed(2)}% in the UK`);
+    body += cmp.length ? ` — versus ${cmp.join(', ')}. ` : '. ';
+    body += `That gap is why the <b>US dollar has stayed firm</b>, most of all against the low-paying Japanese yen: you get paid to hold dollars.`;
+    const so = dUs > 0
+      ? `US rates are still <b>rising</b> this week — that <b>adds to the dollar's pull</b> and keeps the pressure on the yen.`
+      : dUs < 0
+      ? `But US rates have been <b>slipping</b> this week — that quietly <b>chips away at the dollar's edge</b>, so its strength could soften.`
+      : `US rates are steady, so this support for the dollar is holding rather than growing.`;
+    threads.push({ ic: '💵', t: 'Interest rates & the dollar', body, so });
+  }
+
+  // 2) Real yields & gold
+  if (has('tips')) {
+    const t = v('tips'), d = dirOf('tips', 0.02);
+    const body = `Gold pays no interest, so it competes with the <b>“real” (after-inflation) return</b> on safe US bonds — currently <b>${t.toFixed(2)}%</b>. When that real return is high, cash looks better than gold; when it falls, gold looks better.`;
+    const so = d < 0
+      ? `That real return is <b>falling</b> — a <b>tailwind for gold</b> and other things that don't pay a yield.`
+      : d > 0
+      ? `That real return is <b>rising</b> — a <b>headwind for gold</b>, which looks less attractive next to bonds.`
+      : `It's holding steady, so gold's backdrop is neutral on this front.`;
+    threads.push({ ic: '🥇', t: 'Real yields & gold', body, so });
+  }
+
+  // 3) Risk mood / financial conditions
+  if (has('vix') || has('hy')) {
+    const vix = v('vix'), hy = v('hy'), nfci = v('nfci');
+    const vixW = vix == null ? '' : vix < 15 ? 'very calm' : vix < 20 ? 'calm' : vix < 27 ? 'jittery' : 'fearful';
+    const hyW = hy == null ? '' : hy < 3 ? 'low' : hy < 4.5 ? 'normal' : 'wide (stressed)';
+    let body = `How nervous are investors? `;
+    if (vix != null) body += `The <b>“fear gauge” (VIX) is ${vix.toFixed(1)}</b> — ${vixW}. `;
+    if (hy != null) body += `The extra interest risky companies must pay to borrow is <b>${hy.toFixed(2)}%</b> — ${hyW}. `;
+    if (nfci != null) body += `Overall, lending and financial conditions are <b>${nfci < -0.1 ? 'easy' : nfci > 0.1 ? 'tight' : 'about average'}</b>.`;
+    const calm = (vix == null || vix < 20) && (hy == null || hy < 4);
+    const so = calm
+      ? `Calm like this, investors reach for higher returns — that tends to <b>help the growth / commodity currencies (Aussie, Kiwi, and the Canadian dollar)</b> and <b>weigh on the safe-havens (yen, franc, gold)</b>. If the mood flips nervous, expect the reverse.`
+      : `Nervy like this, money runs for safety — that <b>favours the safe-havens (yen, Swiss franc, gold)</b> and <b>hurts the riskier Aussie, Kiwi and stocks</b>. Trade lighter until it settles.`;
+    threads.push({ ic: '🌡️', t: 'The market mood', body, so });
+  }
+
+  // 4) Yield curve — recession/rate-cut signal
+  if (has('us2y') && has('us10y')) {
+    const s = v('us2y'), l = v('us10y'), inv = s > l;
+    const body = `A signal to keep half an eye on: short-term US rates (<b>${s.toFixed(2)}%</b>) versus long-term (<b>${l.toFixed(2)}%</b>). ${inv ? `Short is <b>above</b> long — an “inverted curve”, historically a sign markets expect the Fed to <b>cut rates</b> as growth slows.` : `The normal upward slope (long above short) suggests <b>no imminent recession fear</b> priced in.`}`;
+    const so = inv
+      ? `If rate-cut bets grow, that typically <b>softens the dollar</b> over time and <b>helps gold</b>.`
+      : `Steady as it is, this isn't pushing the dollar around today — it's a slow-moving backdrop.`;
+    threads.push({ ic: '📉', t: 'The yield curve', body, so });
+  }
+
+  // 5) Oil (CAD)
+  if (has('wti')) {
+    const o = v('wti'), d = dirOf('wti', 0.5);
+    if (d !== 0) {
+      const body = `Oil is <b>${arrow(d)}</b> (around <b>$${o.toFixed(0)}</b>).`;
+      const so = `That <b>${d > 0 ? 'helps' : 'pressures'} the oil-exporting Canadian dollar</b>${d > 0 ? ', and nudges inflation higher (which can keep rates up)' : ''}.`;
+      threads.push({ ic: '🛢️', t: 'Oil', body, so });
+    }
+  }
+
+  // Per-currency "what this means for you"
+  const usd = has('us10y') ? v('us10y') : null;
+  const gap = k => (usd != null && v(k) != null) ? (usd - v(k)) : null;
+  const dUs = dirOf('us10y', 0.02);
+  const vix = v('vix');
+  const calm = vix == null || vix < 20;
+  const ccy = [];
+  const push = (c, sign, txt) => ccy.push({ c, sign, txt });
+  push('US dollar', dUs >= 0 ? 1 : 0, `backed by high US rates${dUs < 0 ? ', though they are easing this week' : ''}. The one to beat.`);
+  if (gap('de10y') != null) push('Euro', -1, `held back by lower euro-zone rates — it pays ${gap('de10y').toFixed(2)} points less than the US to hold.`);
+  if (v('jp10y') != null) push('Japanese yen', -1, `the market's punching bag while US rates tower over Japan's near-zero — only the threat of government intervention caps how weak it gets.`);
+  if (gap('gb10y') != null) push('British pound', gap('gb10y') < 0.5 ? 1 : 0, `UK rates are ${Math.abs(gap('gb10y')).toFixed(2)} points ${gap('gb10y') > 0 ? 'below' : 'above'} the US — ${gap('gb10y') < 0.5 ? 'not far off, so it holds up better than most' : 'a modest drag'}.`);
+  push('Aussie & Kiwi', calm ? 1 : -1, `“risk-on” currencies — ${calm ? 'helped while markets are calm like now' : 'hurt while markets are nervous'} and when commodities are firm.`);
+  push('Canadian dollar', 0, `follows oil and US rates — a bit of both worlds.`);
+  push('Swiss franc', calm ? -1 : 1, `a safe-haven — ${calm ? 'quiet while the mood is calm' : 'bid while markets are nervous'}.`);
+  push('Gold', (dirOf('tips', 0.02) < 0 ? 1 : dirOf('tips', 0.02) > 0 ? -1 : 0), `driven by real yields (${arrow(dirOf('tips', 0.02))}) and the mood — ${dirOf('tips', 0.02) < 0 ? 'currently supported' : dirOf('tips', 0.02) > 0 ? 'currently pressured' : 'neutral'}.`);
+
+  // headline summary (collapsed teaser)
+  const ratesTone = usd != null ? (dUs >= 0 ? 'Rates favour the dollar' : 'Dollar support easing') : 'Rates mixed';
+  const moodTone = calm ? 'mood calm' : 'mood nervous';
+  const goldTone = dirOf('tips', 0.02) < 0 ? 'gold supported' : dirOf('tips', 0.02) > 0 ? 'gold pressured' : 'gold neutral';
+  const summary = `${ratesTone}; ${moodTone}; ${goldTone}.`;
+
+  return { threads, ccy, summary };
+}
+
+function renderMacro() {
+  const el = $('macro');
+  const m = buildMacro();
+  if (!m || !m.threads.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.classList.toggle('open', _macroOpen);
+  const threadsHtml = m.threads.map(th => `
+    <div class="mth">
+      <div class="mth-t">${th.ic} ${th.t}</div>
+      <div class="mth-b">${th.body}</div>
+      ${th.so ? `<div class="mth-so"><b>What it means for you:</b> ${th.so}</div>` : ''}
+    </div>`).join('');
+  const ccyHtml = m.ccy.map(x => `<div class="mccy-row ${x.sign > 0 ? 'pos' : x.sign < 0 ? 'neg' : ''}"><span class="c">${x.c}:</span> ${x.txt}</div>`).join('');
+  el.innerHTML = `
+    <div class="macro-hd" onclick="toggleMacro()">
+      <span class="ic">🌍</span>
+      <span class="ti">The macro picture — in plain English</span>
+      <span class="sum">${m.summary}</span>
+      <span class="tw">${_macroOpen ? 'hide ▲' : 'why is this happening? ▾'}</span>
+    </div>
+    <div class="macro-body">
+      ${threadsHtml}
+      <div class="mth">
+        <div class="mth-t">🎯 What this means for each currency</div>
+        <div class="mccy">${ccyHtml}</div>
+      </div>
+      <div class="muted" style="font-size:10.5px;margin-top:9px">Built from official rate, inflation and risk data (US Fed / FRED), refreshed through the day. Directions compare the latest reading with the one before.</div>
+    </div>`;
+}
+
 function nextHighImpact() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const now = Date.now();
@@ -964,6 +1132,7 @@ function tableHtml(rs) {
 
 function render() {
   renderMarketRead();
+  renderMacro();
   const rs = sortRows(rows());
   if (tableMode) {
     $('grid').style.display = 'none';
