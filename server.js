@@ -34,6 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
+import { computeCoupling, alignByTime, buildSpread }                from './js/yieldCouplingCore.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -3430,6 +3431,135 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[oanda_ohlc5m]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/yield-coupling — measure-first price↔yield-spread overlay ───────────
+// ?symbol=EUR/USD[&granularity=M5][&count=1500][&corrWindow=60][&maxLag=24]
+// Fetches the FX price + the configured bond-CFD legs, standardizes, and returns
+// the overlay series + coupling primitives (rolling corr, gap, lead-lag,
+// direction) for each spread — PLUS an honest data-availability report so we can
+// see how much intraday history each OANDA bond CFD actually has.
+//
+// Bond price is the INVERSE of yield. Legs carry a signed coefficient `k` on
+// bond PRICE so the spread is oriented FX-bullish-when-positive. OANDA carries
+// US Treasury CFDs (2/5/10/30Y) + the Bund (DE10YB_EUR) and Gilt (UK10YB_GBP)
+// 10Y only — there is no German/UK 2Y CFD, so 2Y spreads are US-leg-only
+// (flagged `partial`). That limitation is the point of measuring first.
+const YIELD_COUPLING_LEGS = {
+  // pair → [{ tenor, label, partial?, legs:[{ inst, k }] }]
+  //   k on bond PRICE; +US_leg −foreign_leg ∝ (yield_foreign − yield_US)
+  'EUR/USD': [
+    { tenor: '10Y', label: 'DE–US 10Y (Bund vs T-Note)', legs: [{ inst: 'USB10Y_USD', k: +1 }, { inst: 'DE10YB_EUR', k: -1 }] },
+    { tenor: '2Y',  label: 'US 2Y only (no OANDA DE 2Y)', partial: true, legs: [{ inst: 'USB02Y_USD', k: +1 }] },
+  ],
+  'GBP/USD': [
+    { tenor: '10Y', label: 'UK–US 10Y (Gilt vs T-Note)', legs: [{ inst: 'USB10Y_USD', k: +1 }, { inst: 'UK10YB_GBP', k: -1 }] },
+    { tenor: '2Y',  label: 'US 2Y only (no OANDA UK 2Y)', partial: true, legs: [{ inst: 'USB02Y_USD', k: +1 }] },
+  ],
+  'EUR/GBP': [
+    { tenor: '10Y', label: 'DE–UK 10Y (Bund vs Gilt)', legs: [{ inst: 'DE10YB_EUR', k: +1 }, { inst: 'UK10YB_GBP', k: -1 }] },
+  ],
+  'USD/JPY': [
+    { tenor: '10Y', label: 'US 10Y only (no OANDA JGB)', partial: true, legs: [{ inst: 'USB10Y_USD', k: +1 }] },
+    { tenor: '2Y',  label: 'US 2Y only (no OANDA JGB)',  partial: true, legs: [{ inst: 'USB02Y_USD', k: +1 }] },
+  ],
+};
+
+const _yieldCoupCache = new Map();
+async function _fetchCouplingCandles(instrument, gran, count) {
+  const base = _oandaBaseMe();
+  const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal:  AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) { const t = await r.text().catch(() => 'err'); throw new Error(`OANDA ${r.status}: ${t.slice(0, 160)}`); }
+  const data = await r.json();
+  if (!data.candles) throw new Error('No candles returned');
+  // Ascending [{ t:ISO, v:close }]. `t` is the raw OANDA ISO time (a shared join key).
+  return data.candles
+    .filter(c => c.complete && c.mid)
+    .map(c => ({ t: c.time, v: Number(c.mid.c) }));
+}
+
+app.get('/api/yield-coupling', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (expected in sandbox; runs on Railway)' });
+  const symbol = req.query.symbol || 'EUR/USD';
+  const spec = YIELD_COUPLING_LEGS[symbol];
+  if (!spec) return res.status(400).json({ error: `No yield-leg config for ${symbol}. Supported: ${Object.keys(YIELD_COUPLING_LEGS).join(', ')}` });
+  const gran       = (req.query.granularity || 'M5').toUpperCase();
+  if (!/^(M1|M5|M15|H1)$/.test(gran)) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
+  const count      = Math.min(Math.max(parseInt(req.query.count) || 1500, 100), 5000);
+  const corrWindow = Math.min(Math.max(parseInt(req.query.corrWindow) || 60, 5), 500);
+  const maxLag     = Math.min(Math.max(parseInt(req.query.maxLag) || 24, 1), 120);
+
+  const cacheKey = `yc_${symbol}_${gran}_${count}_${corrWindow}_${maxLag}`;
+  const cached   = _yieldCoupCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 45_000) return res.json(cached.data);
+
+  try {
+    const fxInstrument = _liqGateOandaSym(symbol.replace('/', '_'));
+    // Gather every distinct instrument we need (price + all legs), fetch once each.
+    const instruments = new Set([fxInstrument]);
+    for (const s of spec) for (const l of s.legs) instruments.add(l.inst);
+
+    const availability = [];
+    const seriesByInst = {};
+    await Promise.all([...instruments].map(async (inst) => {
+      try {
+        const s = await _fetchCouplingCandles(inst, gran, count);
+        seriesByInst[inst] = s;
+        availability.push({ instrument: inst, ok: s.length > 0, bars: s.length,
+          first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null });
+      } catch (e) {
+        seriesByInst[inst] = null;
+        availability.push({ instrument: inst, ok: false, bars: 0, error: e.message });
+      }
+    }));
+
+    const priceSeries = seriesByInst[fxInstrument];
+    if (!priceSeries || !priceSeries.length) {
+      return res.status(502).json({ error: `No price data for ${fxInstrument}`, availability });
+    }
+
+    const spreads = [];
+    for (const s of spec) {
+      const legSeries = s.legs.map(l => seriesByInst[l.inst]);
+      if (legSeries.some(x => !x || !x.length)) {
+        spreads.push({ tenor: s.tenor, label: s.label, partial: !!s.partial, available: false,
+          reason: 'one or more legs returned no data' });
+        continue;
+      }
+      // Align price + all legs on their common timestamps.
+      const { times, columns } = alignByTime([priceSeries, ...legSeries]);
+      if (times.length < corrWindow + 5) {
+        spreads.push({ tenor: s.tenor, label: s.label, partial: !!s.partial, available: false,
+          reason: `only ${times.length} aligned bars (need > ${corrWindow + 5})` });
+        continue;
+      }
+      const priceCol = columns[0];
+      const legCols  = columns.slice(1);
+      const spreadRaw = buildSpread(s.legs.map((l, i) => ({ price: legCols[i], k: l.k })));
+      const c = computeCoupling(priceCol, spreadRaw, { corrWindow, maxLag });
+      spreads.push({
+        tenor: s.tenor, label: s.label, partial: !!s.partial, available: true,
+        bars: times.length,
+        times,
+        priceZ: c.priceZ, spreadZ: c.spreadZ, corr: c.corr, gap: c.gap,
+        coincident: c.coincident, lag: c.lag.lag, lagCorr: c.lag.corr,
+        lagProfile: c.lag.profile, direction: c.direction,
+      });
+    }
+
+    const result = { symbol, granularity: gran, count, corrWindow, maxLag,
+      fxInstrument, availability, spreads,
+      note: 'Standardized (z) overlay. Bond price is inverse yield; spread oriented FX-bullish-when-positive. 2Y spreads are US-leg-only where OANDA has no foreign 2Y CFD.' };
+    _yieldCoupCache.set(cacheKey, { data: result, ts: Date.now() });
+    res.json(result);
+  } catch (err) {
+    console.error('[yield-coupling]', err.message);
     res.status(500).json({ error: err.message });
   }
 });

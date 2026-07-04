@@ -274,6 +274,24 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 
 ---
 
+### 1i. Yield-coupling brick (2026-07-04) — measure-first
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
+
+The measure-first stage: prove the coupling is real on 5m and learn how much
+intraday bond-CFD history OANDA actually serves, **before** wiring the planned
+consumers (daily brief reading, coupling-gated z-score strategy, directional
+drift hook into `dayTypeScore`/`selectStrategy`, regime filter, divergence
+alert). Data reality it surfaces: OANDA carries US Treasury CFDs (2/5/10/30Y) +
+the Bund (`DE10YB_EUR`) and Gilt (`UK10YB_GBP`) 10Y only — **no German/UK 2Y
+CFD**, so 2Y spreads are US-leg-only (flagged `partial`). The 10Y spread is the
+fully-constructible one. A backtest consumer is gated on the bond M1 history
+depth the tool reports; the live/display consumers are not.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
