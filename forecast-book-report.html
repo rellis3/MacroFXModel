@@ -101,6 +101,10 @@ function barRow(label, val, max, color){ const w=max>0?Math.min(100,Math.abs(val
 }
 
 function kpi(v,l,neg){ return `<div class="kpi"><div class="v ${neg===true?'neg':neg===false?'pos':''}">${v}</div><div class="l">${l}</div></div>`; }
+// Greyed "not available" KPI — used when a figure exists but is not trustworthy (e.g.
+// the intraday-MTM DD on a stale dataset), so we never print an understated number as
+// if it were the headline. `note` explains why it's suppressed.
+function kpiNA(l,note){ return `<div class="kpi" style="opacity:.55"><div class="v mut">n/a</div><div class="l">${l}${note?` <span class="mut">· ${note}</span>`:''}</div></div>`; }
 
 function render(b){
   const pf=b.portfolio||{}, sv=b.survivors||{}, svp=sv.portfolio||{}, svt=svp.volTarget||{};
@@ -111,6 +115,11 @@ function render(b){
   // intraday/closed multiple, so it sits next to the historical/MC numbers like-for-like.
   const idd=sv.intradayDD||{}, iddMult=idd.multipleVsClosed, its=idd.tradeStats||{};
   const iddVT=(iddMult!=null&&svt.maxDD!=null)?+(svt.maxDD*iddMult).toFixed(3):null;
+  // Only trust the MTM DD when trades carry real intraday timestamps. On a stale
+  // dataset most trades collapse to zero duration, their MAE never enters the path,
+  // and iddVT decays to ~1× the closed floor — an understated, flattering figure we
+  // must NOT present as the tradeable drawdown. `iddValid` gates the headline KPIs.
+  const iddValid = idd.valid === true && iddVT != null && iddVT < -1e-9;
   // Block-bootstrap MC (regime-clustered tails) sits alongside the IID reshuffle.
   // The stress Calmar quotes the DEEPER of the two p95s — block when available, else
   // IID — so it's the conservative, honest ratio rather than the lucky ordering.
@@ -162,10 +171,12 @@ function render(b){
     ${svp.maxDD!=null?kpi(pct(svp.maxDD,1),`Max drawdown (historical · raw 1×, ${fmt(svp.annVol,0)}% vol)`,true):''}
     ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC IID p95 @ ${svt.target||10}% vol)`,true):''}
     ${svtBlk.p95!=null?kpi(pct(svtBlk.p95,1),`Max drawdown (MC block p95 · regime-clustered)`,true):''}
-    ${iddVT!=null?kpi(pct(iddVT,1),`Max drawdown (intraday MTM · MAE+concurrency, ${fmt(iddMult,1)}× closed)`,true):''}
+    ${iddValid
+        ? kpi(pct(iddVT,1),`Max drawdown (intraday MTM · MAE+concurrency, ${fmt(iddMult,1)}× closed)`,true)
+        : (iddVT!=null?kpiNA('Max drawdown (intraday MTM · MAE+concurrency)',`${fmt(idd.zeroDurPct,0)}% zero-duration — refresh data`):'')}
     ${kpi(fmt(svt.calmar,2),'Calmar (historical)',svp.calmar<0)}
     ${stressDD!=null?kpi(fmt(svt.cagr/Math.abs(stressDD),2),`Calmar (stress · ${stressLbl})`,false):''}
-    ${(iddVT!=null&&iddVT<-1e-9)?kpi(fmt(svt.cagr/Math.abs(iddVT),2),'Calmar (intraday MTM)',false):''}
+    ${iddValid?kpi(fmt(svt.cagr/Math.abs(iddVT),2),'Calmar (intraday MTM)',false):(iddVT!=null?kpiNA('Calmar (intraday MTM)','stale timestamps'):'')}
     ${kpi(pct(svp.annVol,1),'Realised volatility')}
     ${kpi(fmt(svp.avgTradesPerDay,1),'Avg trades / day')}
     ${kpi(fmt(sv.count,0)+'/'+fmt(sv.total,0),'Instruments traded')}
@@ -192,7 +203,7 @@ function render(b){
   <b>closed-trade PnL netted per day</b> (triple-barrier outcome only), so it does <b>not</b> include
   (i) <b>intratrade MAE</b> — a fade that runs most of the way to its stop before reverting to target books as a clean win, its unrealised drawdown invisible; or
   (ii) <b>intraday mark-to-market across concurrent positions</b> — the many positions open at once each day net to a single daily number, so simultaneous open-position drawdown is hidden.
-  ${iddVT!=null?`The <b>Max drawdown (intraday MTM)</b> KPI above corrects exactly this: each trade is marked on a 3-point unrealised-PnL path anchored on its <i>actual</i> peak adverse excursion (the continuation extreme for a fade) and entry/exit times, and the portfolio is summed across <b>concurrent</b> open positions. On a raw basis that is <b>${fmt(idd.multipleVsClosed,1)}× deeper</b> than the closed-trade drawdown (raw ${fmt(idd.maxDD,2)}% vs ${fmt(idd.closedRawDD,2)}%), i.e. about <b>${pct(iddVT,1)}</b> on the headline ${svt.target||10}%-vol basis — that is the tradeable number to quote, not the ${pct(svt.maxDD,1)} historical figure.`:`The true tradeable (mark-to-market) drawdown is therefore <b>materially larger</b> than the historical figure shown.`}
+  ${iddValid?`The <b>Max drawdown (intraday MTM)</b> KPI above corrects exactly this: each trade is marked on a 3-point unrealised-PnL path anchored on its <i>actual</i> peak adverse excursion (the continuation extreme for a fade) and entry/exit times, and the portfolio is summed across <b>concurrent</b> open positions. On a raw basis that is <b>${fmt(idd.multipleVsClosed,1)}× deeper</b> than the closed-trade drawdown (raw ${fmt(idd.maxDD,2)}% vs ${fmt(idd.closedRawDD,2)}%), i.e. about <b>${pct(iddVT,1)}</b> on the headline ${svt.target||10}%-vol basis — that is the tradeable number to quote, not the ${pct(svt.maxDD,1)} historical figure.`:`The <b>Max drawdown (intraday MTM)</b> correction cannot be trusted on this dataset — <b>${fmt(idd.zeroDurPct,0)}% of trades are zero-duration</b> (records missing real extTime/exitTime), so their MAE never enters the path and the figure decays to ≈1× the closed floor. It is shown as <b>n/a</b> above until a data <b>Refresh</b> + <b>Build book</b> repopulates the timestamps. Until then treat the true tradeable drawdown as <b>materially larger</b> than the historical figure shown.`}
   Note the intraday MTM model is MAE-anchored (real worst excursion + real timing, linear between the three points), not a full tick replay. ${svtBlk.p95!=null?`The Monte-Carlo is now reported BOTH as an <b>IID</b> reshuffle and as a <b>block bootstrap</b> (mean block ≈ ${fmt(svtBlk.blockMean||21,0)} days), the latter preserving the regime clustering the IID version breaks up — quote the block p95/p99 as the regime-aware tail.`:`The Monte-Carlo above is an <b>IID</b> reshuffle, which still understates regime-clustered tail drawdowns.`} <b>Size risk against the intraday MTM drawdown and the block-bootstrap MC, not the ~1–6% closed-trade floor.</b></div>
 
   ${its.n?`<div class="note ${its.pctZeroDuration>5?'warn':''}">

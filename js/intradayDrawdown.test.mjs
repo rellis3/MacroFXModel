@@ -100,5 +100,27 @@ console.log('[intradayMtmDrawdown]');
   ok('tradeTimingStats empty → {n:0}', tradeTimingStats([]).n === 0);
 }
 
+// 10. Coverage — zero-duration trades (missing timestamps) contribute NO MAE and are
+//     reported via `coverage`, so a caller can tell a real correction from a stale-data
+//     artifact. Two winners that each dipped -3 but collapsed to entry==exit must show
+//     0 drawdown and coverage 0; mixing in one real-duration trade lifts coverage.
+{
+  const zeroDur = [
+    { entryTime: 0, exitTime: 0, maePct: 3, finalPnl: 2 },
+    { entryTime: 0, exitTime: 0, maePct: 3, finalPnl: 2 },
+  ];
+  const rz = intradayMtmDrawdown(zeroDur);
+  ok('zero-duration trades expose no MAE (DD stays 0)', near(rz.maxDD, 0), `maxDD=${rz.maxDD}`);
+  ok('coverage is 0 when all trades are zero-duration', rz.coverage === 0, `coverage=${rz.coverage}`);
+  ok('nZeroDur counts the collapsed trades', rz.nZeroDur === 2 && rz.nPlaced === 2);
+  const mixed = [
+    { entryTime: 0, maeTime: 5, exitTime: 10, maePct: 3, finalPnl: 2 },  // real
+    { entryTime: 0, exitTime: 0, maePct: 3, finalPnl: 2 },               // collapsed
+  ];
+  const rm = intradayMtmDrawdown(mixed);
+  ok('mixed book: only the real trade contributes MAE (-3)', near(rm.maxDD, -3), `maxDD=${rm.maxDD}`);
+  ok('mixed book coverage = 0.5', rm.coverage === 0.5, `coverage=${rm.coverage}`);
+}
+
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 if (failures) process.exit(1);

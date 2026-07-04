@@ -315,8 +315,18 @@ function intradayDDBlock(trades, equity) {
   const id = intradayMtmDrawdown(trades);
   const closedRawDD = rawClosedDD(equity);
   const mult = closedRawDD < -1e-9 ? +(id.maxDD / closedRawDD).toFixed(2) : null;
+  const tradeStats = tradeTimingStats(trades);
+  // The MTM DD is only trustworthy when trades carry real intraday timestamps. When a
+  // large share collapse to zero duration (records missing extTime/exitTime, fallen back
+  // to fillTime), their MAE never enters the path and the "correction" decays back to the
+  // closed-trade floor — so we flag it rather than let a stale dataset quote a flattering,
+  // near-1× DD as if it were the honest number. A refresh with real timestamps clears it.
+  const ZERO_DUR_MAX = 5;   // % zero-duration trades tolerated before the MTM DD is untrustworthy
+  const zeroDurPct = tradeStats.pctZeroDuration ?? 100;
+  const valid = tradeStats.n > 0 && zeroDurPct <= ZERO_DUR_MAX;
   return { maxDD: id.maxDD, closedRawDD, multipleVsClosed: mult, breakpoints: id.breakpoints,
-           tradeStats: tradeTimingStats(trades) };
+           valid, zeroDurPct: tradeStats.n ? zeroDurPct : null, coverage: id.coverage,
+           tradeStats };
 }
 function countDec(policy, d) { return Object.values(policy).filter(p => p.decision === d).length; }
 

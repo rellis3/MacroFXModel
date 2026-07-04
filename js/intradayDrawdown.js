@@ -56,10 +56,19 @@ function _uPnL(tr, t) {
 export function intradayMtmDrawdown(trades) {
   // Normalise to numeric ms times and drop anything we can't place on the clock.
   const ts = [];
+  // Coverage bookkeeping: a trade only exposes its MAE to the path if it has a real
+  // duration (exit > entry). A zero-duration trade (exit == entry, i.e. the record
+  // was missing extTime/exitTime and fell back to fillTime) is added and realised in
+  // the same instant, so its dip is never sampled — it contributes 0 MAE and quietly
+  // pulls the MTM drawdown back toward the closed-trade floor. We count these so the
+  // caller can tell a genuine correction from a stale-data artifact.
+  let placed = 0, zeroDur = 0;
   for (const t of trades || []) {
     if (!t) continue;
     const e = _ms(t.entryTime), x = _ms(t.exitTime);
     if (e == null || x == null || x < e) continue;
+    placed++;
+    if (x === e) zeroDur++;
     let m = _ms(t.maeTime);
     if (m == null || m < e || m > x) m = (e + x) / 2;   // default / clamp to (entry,exit)
     // Realised PnL: accept the house-convention `pnl` field (what the per-line
@@ -69,7 +78,9 @@ export function intradayMtmDrawdown(trades) {
     const f = +(t.finalPnl ?? t.pnl) || 0;
     ts.push({ e, x, m, f, dip: -Math.abs(t.maePct || 0) });
   }
-  if (!ts.length) return { maxDD: 0, peak: 0, trough: 0, breakpoints: 0 };
+  // Fraction of placed trades that carry a real duration (and so can expose MAE).
+  const coverage = placed ? +((placed - zeroDur) / placed).toFixed(4) : 0;
+  if (!ts.length) return { maxDD: 0, peak: 0, trough: 0, breakpoints: 0, nPlaced: placed, nZeroDur: zeroDur, coverage };
 
   // All breakpoints where the piecewise-linear equity can change slope.
   const times = new Set();
@@ -101,7 +112,8 @@ export function intradayMtmDrawdown(trades) {
     const dd = eq - peak;
     if (dd < maxDD) { maxDD = dd; trough = eq; }
   }
-  return { maxDD: +maxDD.toFixed(4), peak: +peak.toFixed(4), trough: +trough.toFixed(4), breakpoints: grid.length };
+  return { maxDD: +maxDD.toFixed(4), peak: +peak.toFixed(4), trough: +trough.toFixed(4), breakpoints: grid.length,
+           nPlaced: placed, nZeroDur: zeroDur, coverage };
 }
 
 // Summary stats over the SAME trade list intradayMtmDrawdown consumes — the

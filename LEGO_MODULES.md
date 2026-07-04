@@ -206,13 +206,15 @@ reverting to target books as a clean win, its unrealised drawdown invisible — 
 (ii) **intraday concurrency** — many positions open at once net to one daily
 number, hiding simultaneous open-position drawdown. Both make the closed-trade DD
 a *lower bound*; this brick computes the honest tradeable number. Pure, no-network,
-covered by `js/intradayDrawdown.test.mjs` (8 synthetic checks: MAE exposure on a
+covered by `js/intradayDrawdown.test.mjs` (synthetic checks: MAE exposure on a
 winning trade, concurrency stacking vs sequential non-stacking, loss = its DD,
-midpoint default, malformed→0, MTM deeper than closed).
+midpoint default, malformed→0, MTM deeper than closed, and **coverage** — zero-
+duration trades expose no MAE and are counted so a stale dataset can't quote a
+flattering ≈1× DD as if it were the correction).
 
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
-| **Intraday MTM drawdown** | `js/intradayDrawdown.js` | `intradayMtmDrawdown(trades)` — portfolio mark-to-market drawdown including intratrade MAE + concurrency. Each trade is a 3-point unrealised-PnL path (0 @entry → −maePct @maeTime → finalPnl @exit, linear between) anchored on its **actual** peak adverse excursion; an active-set sweep over the breakpoint grid sums concurrent open marks + realised PnL and takes peak-to-trough. Self-coerces bar times (epoch-sec / epoch-ms / ISO) to one ms clock so cross-pair concurrency is meaningful. MAE-anchored approximation (real worst excursion + real timing), **not** a tick replay. Also exports **`tradeTimingStats`** (avg/median duration, %zero-duration, avg/median/p95 maePct) — the discriminator proving the intraday uplift is real short-lived mean-reversion, not missing-timestamp zero-duration records | `perLineStrategy.js` `runPerLine` (book `intradayDD`) + `buildSurvivors` (survivor `intradayDD`), surfaced as the "Max drawdown (intraday MTM)" KPI in `forecast-book-report.html` | ✅ |
+| **Intraday MTM drawdown** | `js/intradayDrawdown.js` | `intradayMtmDrawdown(trades)` — portfolio mark-to-market drawdown including intratrade MAE + concurrency. Each trade is a 3-point unrealised-PnL path (0 @entry → −maePct @maeTime → finalPnl @exit, linear between) anchored on its **actual** peak adverse excursion; an active-set sweep over the breakpoint grid sums concurrent open marks + realised PnL and takes peak-to-trough. Self-coerces bar times (epoch-sec / epoch-ms / ISO) to one ms clock so cross-pair concurrency is meaningful. MAE-anchored approximation (real worst excursion + real timing), **not** a tick replay. Also returns **`coverage`/`nPlaced`/`nZeroDur`** (fraction of trades with a real duration — the ones that can expose MAE; zero-duration records contribute realised PnL only and quietly pull the DD back to the closed floor). Also exports **`tradeTimingStats`** (avg/median duration, %zero-duration, avg/median/p95 maePct) — the discriminator proving the intraday uplift is real short-lived mean-reversion, not missing-timestamp zero-duration records | `perLineStrategy.js` `runPerLine` (book `intradayDD`) + `buildSurvivors` (survivor `intradayDD`) — `intradayDDBlock` adds a **`valid`** flag (false when %zero-duration > 5) that gates the "Max drawdown (intraday MTM)" + "Calmar (intraday MTM)" KPIs in `forecast-book-report.html` (shown **n/a** on a stale dataset rather than an understated number) | ✅ |
 
 > `forecastAnalyser.js` also exports **`simulateExitVariants(bars, touchIdx, {…})`**
 > — a PURE exit-rule simulator that walks the same real M1 path from a touch and
