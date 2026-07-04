@@ -6,6 +6,7 @@ import {
   standardize, alignByTime, buildSpread, pearson, rollingCorr,
   gapSeries, bestLag, directionSignal, computeCoupling,
   toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
+  laggedAutocorr, computeCouplingPersistence,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -149,6 +150,36 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   const rc = computeReturnsCoupling(price, spread, times, { corrWindow: 20, maxLag: 5 });
   ok('returns corr NaN on constant diffs', Number.isNaN(rc.coincident));
   ok('returns emits bySession', typeof rc.bySession.London === 'object');
+}
+
+// ── laggedAutocorr ────────────────────────────────────────────────────────────
+{
+  const ramp = Array.from({ length: 50 }, (_, i) => i);   // monotone → high short-lag autocorr
+  ok('laggedAutocorr high on ramp', laggedAutocorr(ramp, 1) > 0.99);
+  const alt = Array.from({ length: 50 }, (_, i) => (i % 2 ? 1 : -1));
+  ok('laggedAutocorr −1 on alternating', approx(laggedAutocorr(alt, 1), -1, 1e-9));
+}
+
+// ── computeCouplingPersistence (sticky regime + structure) ────────────────────
+{
+  // Two regimes: first half strongly coupled (b=+a moves), second half decoupled
+  // (independent). Rolling coupling should be persistent within each half.
+  const n = 800;
+  const price = [0], spread = [0];
+  for (let i = 1; i < n; i++) {
+    const step = ((i * 2654435761) % 1000) / 1000 - 0.5;       // deterministic pseudo-noise
+    price.push(price[i-1] + step);
+    const coupled = i < n/2;
+    const sStep = coupled ? step : (((i * 40503) % 1000)/1000 - 0.5);
+    spread.push(spread[i-1] + sStep);
+  }
+  const times = Array.from({ length: n }, (_, i) => `2026-01-05T${String(9 + (i % 6)).padStart(2,'0')}:00:00Z`);
+  const p = computeCouplingPersistence(price, spread, times, { corrWindow: 40, fwdBars: 20, autocorrLags: [5, 20] });
+  ok('persistence emits autocorr', p.autocorr.length === 2 && Number.isFinite(p.autocorr[0].corr));
+  ok('persistence coupling is sticky', p.autocorr[0].corr > 0.3);
+  ok('persistence forward buckets', p.forwardCoupling.coupled.n > 0 && p.forwardCoupling.decoupled.n > 0);
+  ok('persistence coupled fwd > decoupled fwd', p.forwardCoupling.coupled.mean > p.forwardCoupling.decoupled.mean);
+  ok('persistence directional buckets', Number.isFinite(p.directional.coupled.hit));
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);
