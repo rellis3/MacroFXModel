@@ -280,6 +280,9 @@ let fred = null;         // /api/fred — VIX/HY/DXY risk state (zoom 0)
 let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges (story)
 let fredHist = null;     // /api/fredhistory — rate-spread driver series (story, lazy)
 let livePrices = null;   // /api/hedge-signals/prices — proximity watch (zoom 3)
+let cot = null;          // /api/cot-extremes — spec positioning per instrument (story + chip)
+let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
+const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
 
@@ -311,15 +314,19 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss] = await Promise.all([
+  const [ev, fr, ss, ct, oi] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
+    jget('/api/cot-extremes').catch(() => null),
+    jget('/api/kv/get?key=oi_store').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
   if (ss?.instruments) sessionStats = ss;
-  renderGate(); renderSummary();
+  if (ct?.instruments) cot = Object.fromEntries(ct.instruments.map(i => [i.sym, i]));
+  if (oi && !oi.miss) oiStore = oi.data ?? oi;
+  renderGate(); renderSummary(); render();
 }
 
 function riskLight() {
@@ -398,6 +405,45 @@ function nearestLevel(d) {
   return best;
 }
 
+// ── COT positioning (auto, weekly) — brief NAME → CFTC contract ──────────────
+// flip = CFTC tracks the FOREIGN ccy, so spec-long-foreign = pair-SHORT (USD base).
+const COT_MAP = {
+  EURUSD: { sym: 'EUR', flip: false }, GBPUSD: { sym: 'GBP', flip: false },
+  USDJPY: { sym: 'JPY', flip: true  }, AUDUSD: { sym: 'AUD', flip: false },
+  NZDUSD: { sym: 'NZD', flip: false }, USDCAD: { sym: 'CAD', flip: true  },
+  USDCHF: { sym: 'CHF', flip: true  }, GOLD:   { sym: 'GOLD', flip: false },
+  NQ:     { sym: 'NQ',  flip: false }, SPX500: { sym: 'ES',  flip: false },
+  US30:   { sym: 'YM',  flip: false }, US2000: { sym: 'RTY', flip: false },
+};
+function cotFor(name) {
+  const m = COT_MAP[name];
+  if (!m || !cot?.[m.sym]) return null;
+  const c = cot[m.sym];
+  const specNet = c.specNet ?? 0;
+  const pairNet = m.flip ? -specNet : specNet;           // net in the PAIR's direction
+  const oi = c.openInterest ?? 0;
+  const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
+  const level = crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null;
+  return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
+    pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
+    pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null };
+}
+
+// ── OI (manual CME paste, KV oi_store) — walls, max pain, PIN/BREAKOUT ────────
+const OI_FRESH_H = 30;   // hours before pasted OI is treated as stale
+function oiFor(name, sym) {
+  if (!oiStore) return null;
+  const inst = oiStore[lvlKey(name, sym)] ?? oiStore[sym] ?? oiStore[sym.replace('_', '/')];
+  if (!inst || !inst.savedAtMs) return null;
+  const ageH = (Date.now() - inst.savedAtMs) / 3.6e6;
+  const gex = inst.exposures?.gex ?? 0;
+  // Positive GEX → dealers long gamma → dampen moves (PIN); negative → amplify (BREAKOUT)
+  const regime = gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : null;
+  return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime,
+    maxPain: inst.maxPain, callWall: inst.callWall, putWall: inst.putWall,
+    callWallOI: inst.callWallOI, putWallOI: inst.putWallOI, pcRatio: inst.pcRatio };
+}
+
 // ── Zoom 1: do the signals agree? ────────────────────────────────────────────
 function agreement(r) {
   const hmm = r.d.regime?.label === 'TREND' ? r.d.regime.trend_dir : null;
@@ -422,6 +468,8 @@ function rows() {
     const near = nearestLevel(d);
     const isProx = near != null && near.pips <= (PROX_LIMIT[d.ac] ?? 12);
     const agr = agreement({ d, s });
+    const ct = cotFor(name);
+    const oi = oiFor(name, d.sym);
     // attention: how much this pair deserves a look right now
     let att = 0;
     if (used != null) att += Math.min(used, 1.6) * 50;
@@ -431,7 +479,9 @@ function rows() {
     if (s && /Strong/i.test(s.bias_detail ?? '')) att += 15;
     if (isProx) att += 40;
     if (agr.aligned === true) att += 10;
-    out.push({ name, d, s, fc, hlMed, hl75, used, trending, att, near, isProx, agr });
+    if (ct?.level === 'EXTREME') att += 12;
+    if (oi && !oi.stale) att += 8;
+    out.push({ name, d, s, fc, hlMed, hl75, used, trending, att, near, isProx, agr, ct, oi });
   }
   return out.filter(r => filter === 'all' || r.d.ac === filter);
 }
@@ -577,7 +627,7 @@ function cardHtml(r) {
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="live price is close to a forecast level — decision time">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="live price is close to a forecast level — decision time">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="CFTC spec positioning is crowded ${r.ct.dir} (${r.ct.pct.toFixed(0)}% of OI) — contrarian / squeeze risk">⚠ COT ${r.ct.dir} extreme</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="CME gamma exposure ${r.oi.regime === 'PIN' ? 'positive — dealers dampen moves, mean-reversion / pin' : 'negative — dealers amplify moves, breakout risk'}">◎ ${r.oi.regime}</span>` : ''}</div>
     ${meterHtml(r)}
     ${ladderHtml(r)}
     <div class="pc-foot">
@@ -622,7 +672,7 @@ function render() {
     $('grid').style.display = 'grid';
     $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
   }
-  $('footNote').textContent = 'The morning funnel: calendar + risk state up top (should I trade today?) → cards (which pairs deserve attention? ✓ aligned = HMM trend and session bias agree) → click a card for the story, M5 chart and Decision Engine zones → a pulsing card means price is at a level now. Range-used = today\'s H-L vs the median forecast H-L; ladder = open±median/75th levels with historical touch rates.';
+  $('footNote').innerHTML = 'The morning funnel: calendar + risk state up top (should I trade today?) → cards (which pairs deserve attention? ✓ aligned = HMM trend and session bias agree; ⚠ COT extreme = crowded positioning / squeeze risk; ◎ PIN/BREAKOUT = CME gamma regime) → click a card for the full story (Asia, recent days, rate driver, COT positioning, options walls, cached AI read), M5 chart and Decision Engine zones → a pulsing card means price is at a level now.<br>Range-used = today\'s H-L vs the median forecast H-L; ladder = open±median/75th levels with historical touch rates. COT is automatic (weekly CFTC); options/OI is manual CME paste (shown with age, only pairs with a CME chain); AI shows the last Analyse run, not a fresh call.';
 }
 
 function setFilter(f) {
@@ -836,6 +886,48 @@ async function storyDriver(r) {
   return `<b>${cfg.label} spread ${fmtN(now, 2)}%</b>, ${widening ? 'widening' : 'narrowing'} vs the prior reading → <b>${effect}</b> for ${dispName(r.name)} (rate-differential driver; some legs update monthly).`;
 }
 
+function storyPositioning(r) {
+  const c = r.ct ?? cotFor(r.name);
+  if (!c) return null;
+  const tag = c.level ? `<b>${c.level} ${c.dir}</b>` : `net ${c.dir}`;
+  const bits = [];
+  if (c.pct != null) bits.push(`${c.pct.toFixed(0)}% of OI`);
+  if (c.pctile != null) bits.push(`${Math.round(c.pctile)}th %ile`);
+  if (c.z != null) bits.push(`z ${c.z >= 0 ? '+' : ''}${c.z.toFixed(1)}`);
+  if (c.wkChg != null) bits.push(`${c.wkChg >= 0 ? '+' : ''}${(c.wkChg / 1000).toFixed(1)}k wk`);
+  const contra = c.level === 'EXTREME' ? ' — crowded, contrarian / squeeze risk' : '';
+  return `Specs ${tag} (${bits.join(' · ')})${contra}.${c.reportDate ? ` <span class="muted">CFTC ${c.reportDate}</span>` : ''}`;
+}
+
+function storyOptions(r) {
+  const o = r.oi ?? oiFor(r.name, r.d.sym);
+  if (!o) return null;
+  const dp = r.d.dp;
+  const bits = [];
+  if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)`);
+  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})`);
+  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})`);
+  const reg = o.regime ? ` · <b>${o.regime}</b> ${o.regime === 'PIN' ? '(positive GEX — mean-revert)' : '(negative GEX — breakout)'}` : '';
+  const age = o.stale ? ` <span class="chip warn" style="font-size:9px">stale ${Math.round(o.ageH)}h</span>` : ` <span class="muted">${o.ageH < 1 ? 'fresh' : Math.round(o.ageH) + 'h old'}</span>`;
+  return `${bits.join(' · ')}${reg}.${age}`;
+}
+
+async function storyAI(r) {
+  const symKey = lvlKey(r.name, r.d.sym).replace('/', '');
+  let a = aiCache[symKey];
+  if (a === undefined) {
+    const kv = await jget(`/api/kv/get?key=ai_${symKey}`).catch(() => null);
+    a = (kv && !kv.miss) ? (kv.data?.analysis ? { ...kv.data.analysis, generatedAt: kv.data.generatedAt } : null) : null;
+    aiCache[symKey] = a;
+  }
+  if (!a) return null;
+  const bias = a.overallBias ? `<b>${a.overallBias}</b>` : '';
+  const conv = a.convictionScore != null ? ` (conviction ${Math.round(a.convictionScore)}/10)` : a.conviction ? ` (${a.conviction})` : '';
+  const firstLine = (a.tldr ?? '').split('\n').map(s => s.trim()).filter(Boolean)[0] ?? '';
+  const age = a.generatedAt ? ` <span class="muted">— Analyse run ${new Date(a.generatedAt).toLocaleString()}</span>` : '';
+  return `${bias}${conv}${firstLine ? ` — ${firstLine.replace(/</g, '&lt;')}` : ''}${age}`;
+}
+
 async function loadDrawerStory(r, barsP) {
   const el = $('drStory');
   const put = lines => {
@@ -848,16 +940,21 @@ async function loadDrawerStory(r, barsP) {
     ['asia', '<span class="muted">…</span>'],
     ['recent', '<span class="muted">…</span>'],
     ['driver', '<span class="muted">…</span>'],
+    ['posn', storyPositioning(r)],
+    ['options', storyOptions(r)],
+    ['ai', '<span class="muted">…</span>'],
   ];
   put(lines);
-  const [asiaLine, recentLine, driverLine] = await Promise.all([
+  const [asiaLine, recentLine, driverLine, aiLine] = await Promise.all([
     barsP.then(resp => storyAsia(r, resp)).catch(() => null),
     storyRecent(r).catch(() => null),
     storyDriver(r).catch(() => null),
+    storyAI(r).catch(() => null),
   ]);
   lines[2][1] = asiaLine;
   lines[3][1] = recentLine;
   lines[4][1] = driverLine;
+  lines[7][1] = aiLine;
   if (drName === r.name) put(lines);   // pair may have changed while we fetched
 }
 
