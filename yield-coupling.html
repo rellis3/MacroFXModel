@@ -169,6 +169,32 @@ function stateCard(st) {
   </div>`;
 }
 
+function priorDayBlock(pd) {
+  if (!pd) return '';
+  const pct = x => Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '–';
+  const sc = pd.shapeCorr, dh = pd.dailyDirHit;
+  const dEdge = Number.isFinite(dh.hit) ? dh.hit - 0.5 : NaN;
+  const thin = (sc.nDays||0) < 20;
+  // verdict: does yesterday's yield forecast today's price?
+  const dirGood = Number.isFinite(dEdge) && dEdge >= 0.05 && dh.n >= 30;
+  const shapeGood = Number.isFinite(sc.pctPositive) && sc.pctPositive >= 0.58;
+  const verdict = thin ? 'need a deeper pull (use History)'
+    : (dirGood || shapeGood) ? "yesterday's yield HAS forecast content"
+    : 'no next-day forecast content';
+  const vcol = thin ? 'var(--dim)' : (dirGood||shapeGood) ? '#6ee7b7' : '#fdba74';
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:2px solid var(--blue)">
+      <h2 style="font-size:13px">🔮 Prior-day projection <span class="sub" style="font-weight:400">— does TODAY's price follow YESTERDAY's yield? (your indicator's actual claim)</span></h2>
+      <div class="metrics">
+        <div class="metric"><div class="v" style="font-size:15px;font-weight:700;color:${vcol}">${verdict}</div><div class="l">verdict · ${sc.nDays||0} day-pairs</div></div>
+        <div class="metric"><div class="v" style="color:${Number.isFinite(dEdge)&&dEdge>=0.05?'#6ee7b7':'#fdba74'}">${pct(dh.hit)}</div><div class="l">Calls the day · ${Number.isFinite(dEdge)?(dEdge>=0?'+':'')+pct(dEdge):'–'} vs 50%</div></div>
+        <div class="metric"><div class="v">${pct(sc.pctPositive)}</div><div class="l">Days price-shape tracks</div></div>
+        <div class="metric"><div class="v">${fmt(sc.pooled)}</div><div class="l">Pooled shape corr</div></div>
+      </div>
+      <div class="cap">"Calls the day" = does yesterday's net yield direction predict today's net price direction (hit vs 50%, n=${dh.n||0}). "Shape tracks" = % of days today's price path positively correlates with yesterday's yield path. ${thin?'<b>Only '+(sc.nDays||0)+' day-pairs</b> — set History to 3–12 months for a real read.':'Diagnostic (in-sample, no costs). If positive, next is the divergence-reversion-at-zone test with your forecast bands.'}</div>
+    </div>`;
+}
+
 function persistenceBlock(p) {
   if (!p) return '';
   const pct = x => Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '–';
@@ -341,6 +367,7 @@ function render(j) {
       </div>
       <div style="margin-bottom:10px">${dirChip(s.direction, s.coincident)} &nbsp;·&nbsp; <span class="sub">${leadTxt}</span></div>
       <div class="cap" style="margin:0 0 12px">Numbers above are <b>level</b> correlation (the standardized lines below). The <b>returns</b> and <b>regime</b> blocks are the trading-relevant ones.</div>
+      ${priorDayBlock(s.priorDay)}
       ${returnsBlock(s.returns)}
       ${persistenceBlock(s.persistence)}
       <div class="legend" style="margin-top:16px">

@@ -7,6 +7,7 @@ import {
   gapSeries, bestLag, directionSignal, computeCoupling,
   toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
   laggedAutocorr, computeCouplingPersistence, couplingState,
+  computePriorDayProjection,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -197,6 +198,35 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   const flatSpread = Array.from({ length: n }, (_, i) => (((i*13)%5)-2)*0.01);
   const st2 = couplingState(price, flatSpread, times, { corrWindow: 30, look: 10 });
   ok('couplingState decoupled state', st2.state === 'decoupled' || st2.coupled === false);
+}
+
+// ── computePriorDayProjection (today price = yesterday yield ⇒ perfect) ───────
+{
+  const T = 50, D = 8;
+  const yieldPaths = [];
+  for (let d = 0; d < D; d++) { const path = []; let v = 0; for (let t = 0; t < T; t++) { v += ((d*7 + t*13) % 5) - 2; path.push(v); } yieldPaths.push(path); }
+  const times = [], price = [], spread = [];
+  for (let d = 0; d < D; d++) for (let t = 0; t < T; t++) {
+    times.push(`2026-01-${String(d+1).padStart(2,'0')}T00:${String(t).padStart(2,'0')}:00Z`);
+    spread.push(yieldPaths[d][t]);
+    price.push(d > 0 ? yieldPaths[d-1][t] : 0);   // today's price = yesterday's yield path
+  }
+  const proj = computePriorDayProjection(price, spread, times, { minBarsPerDay: 20 });
+  ok('priorDay shape pooled high', proj.shapeCorr.pooled > 0.9);
+  ok('priorDay pctPositive high', proj.shapeCorr.pctPositive > 0.8);
+  ok('priorDay dirHit high', proj.dailyDirHit.hit > 0.8);
+  ok('priorDay nDays counted', proj.shapeCorr.nDays >= 6);
+}
+// null case: price independent of yesterday's yield ⇒ dirHit not near-perfect
+{
+  const T = 50, D = 12, times = [], price = [], spread = [];
+  for (let d = 0; d < D; d++) { let pv = 0, sv = 0; for (let t = 0; t < T; t++) {
+    times.push(`2026-02-${String(d+1).padStart(2,'0')}T00:${String(t).padStart(2,'0')}:00Z`);
+    pv += ((d*31 + t*17) % 7) - 3; sv += ((d*13 + t*29) % 7) - 3;   // unrelated walks
+    price.push(pv); spread.push(sv);
+  } }
+  const proj = computePriorDayProjection(price, spread, times, { minBarsPerDay: 20 });
+  ok('priorDay null dirHit not perfect', !(proj.dailyDirHit.hit > 0.9));
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);
