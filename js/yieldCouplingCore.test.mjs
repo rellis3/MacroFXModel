@@ -7,7 +7,7 @@ import {
   gapSeries, bestLag, directionSignal, computeCoupling,
   toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
   laggedAutocorr, computeCouplingPersistence, couplingState,
-  computePriorDayProjection,
+  computePriorDayProjection, computeDailyLeadLag,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -227,6 +227,19 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   } }
   const proj = computePriorDayProjection(price, spread, times, { minBarsPerDay: 20 });
   ok('priorDay null dirHit not perfect', !(proj.dailyDirHit.hit > 0.9));
+}
+
+// ── computeDailyLeadLag (spread leads price by a known lag) ────────────────────
+{
+  // Deterministic spread random-walk; fx follows it with a 3-day lag: fx[t]=spread[t-3].
+  let s = 0; const spread = [];
+  for (let i = 0; i < 400; i++) { s += ((i * 2654435761) % 1000) / 1000 - 0.5; spread.push(s); }
+  const fx = spread.map((_, i) => (i - 3 >= 0 ? spread[i - 3] : spread[0]));
+  const ll = computeDailyLeadLag(fx, spread, { maxLagDays: 10, lookback: 3, horizon: 3 });
+  ok('dailyLeadLag finds +3 lead', ll.bestLag === 3);
+  ok('dailyLeadLag strong at lead', Math.abs(ll.bestCorr) > 0.9);
+  ok('dailyLeadLag momentum predicts', ll.momentum.hitRate > 0.8 && ll.momentum.n > 50);
+  ok('dailyLeadLag profile length', ll.profile.length === 11);
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);
