@@ -63,8 +63,16 @@
       </select></div>
     <div class="ctl"><label>Granularity</label>
       <select id="gran"><option>M5</option><option>M1</option><option>M15</option><option>H1</option></select></div>
-    <div class="ctl"><label>Bars</label>
+    <div class="ctl"><label>Bars (fast)</label>
       <select id="count"><option>1500</option><option>3000</option><option>5000</option><option>500</option></select></div>
+    <div class="ctl"><label>History (deep)</label>
+      <select id="days">
+        <option value="">1 week · fast</option>
+        <option value="30">1 month</option>
+        <option value="90">3 months</option>
+        <option value="180">6 months</option>
+        <option value="365">1 year</option>
+      </select></div>
     <div class="ctl"><label>Corr window</label>
       <input id="corrWindow" type="number" value="60" min="5" max="500" style="width:90px"></div>
     <div class="ctl"><label>Max lag (bars)</label>
@@ -75,7 +83,8 @@
 
   <div class="panel" id="availPanel" style="display:none">
     <h2>Data availability <span class="sub" style="font-weight:400">— how much intraday history each OANDA instrument actually returned</span></h2>
-    <table id="availTbl"><thead><tr><th>Instrument</th><th>Status</th><th>Bars</th><th>First bar</th><th>Last bar</th></tr></thead><tbody></tbody></table>
+    <div id="ceiling" style="display:none"></div>
+    <table id="availTbl"><thead><tr><th>Instrument</th><th>Status</th><th>Bars</th><th>Window first</th><th>Window last</th><th>Earliest M5 (ceiling)</th></tr></thead><tbody></tbody></table>
     <div class="cap" id="availCap"></div>
   </div>
 
@@ -151,44 +160,59 @@ function dirChip(d, coincident) {
 
 async function run() {
   const pair=$('pair').value, gran=$('gran').value, count=$('count').value;
-  const corrWindow=$('corrWindow').value, maxLag=$('maxLag').value;
-  $('run').disabled=true; $('status').textContent='Fetching '+pair+' + bond CFDs…'; $('status').className='status';
+  const corrWindow=$('corrWindow').value, maxLag=$('maxLag').value, days=$('days').value;
+  $('run').disabled=true;
+  $('status').textContent = days ? `Deep fetch (${days}d) — paginating bond history, may take 10–30s…` : 'Fetching '+pair+' + bond CFDs…';
+  $('status').className='status';
   $('spreads').innerHTML=''; $('availPanel').style.display='none'; $('note').style.display='none';
   try {
-    const url = `/api/yield-coupling?symbol=${encodeURIComponent(pair)}&granularity=${gran}&count=${count}&corrWindow=${corrWindow}&maxLag=${maxLag}`;
+    let url = `/api/yield-coupling?symbol=${encodeURIComponent(pair)}&granularity=${gran}&count=${count}&corrWindow=${corrWindow}&maxLag=${maxLag}`;
+    if (days) url += `&days=${days}`;
     const r = await fetch(url);
     const j = await r.json();
-    if (!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+    if (!r.ok) { render(j); throw new Error(j.error || ('HTTP '+r.status)); }
     render(j);
-    $('status').textContent = `Done — ${j.spreads.filter(s=>s.available).length}/${j.spreads.length} spreads measurable on ${gran}.`;
+    $('status').textContent = `Done — ${j.spreads.filter(s=>s.available).length}/${j.spreads.length} spreads measurable on ${gran}${days?` over ${days}d`:''}.`;
   } catch(e) {
     $('status').innerHTML = '<span class="err">'+e.message+'</span>';
   } finally { $('run').disabled=false; }
 }
 
 function render(j) {
+  if (!j.availability) return; // nothing to render (early error)
+  // ceiling verdict banner
+  const cv = $('ceiling');
+  if (j.ceiling) {
+    const c = j.ceiling;
+    const cls = c.verdict==='feasible'?'on':c.verdict==='marginal'?'warn':'off';
+    const word = c.verdict==='feasible'?'BACKTEST FEASIBLE':c.verdict==='marginal'?'BACKTEST MARGINAL':'BACKTEST NOT FEASIBLE';
+    cv.innerHTML = `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:11px">
+      <span class="chip ${cls}" style="font-weight:700">${word}</span>
+      <span class="sub">Common M5 history back to <b>${c.shallowest.slice(0,10)}</b> · ≈${c.months} months</span></div>
+      <div class="cap" style="margin:0 2px 11px">${c.note}</div>`;
+    cv.style.display='';
+  } else { cv.style.display='none'; }
   // availability
   const tb = $('availTbl').querySelector('tbody'); tb.innerHTML='';
-  let minBars=Infinity;
   for (const a of j.availability) {
-    if (a.ok) minBars=Math.min(minBars,a.bars);
     tb.insertAdjacentHTML('beforeend',
       `<tr><td class="mono">${a.instrument}</td>
        <td>${a.ok?'<span class="chip on">ok</span>':'<span class="chip off">'+(a.error?'error':'no data')+'</span>'}</td>
        <td class="mono">${a.bars||'–'}</td>
        <td class="mono">${a.first?a.first.slice(0,16).replace('T',' '):'–'}</td>
-       <td class="mono">${a.last?a.last.slice(0,16).replace('T',' '):'–'}</td></tr>`);
+       <td class="mono">${a.last?a.last.slice(0,16).replace('T',' '):'–'}</td>
+       <td class="mono">${a.earliest?a.earliest.slice(0,10):'–'}</td></tr>`);
   }
-  const span = j.availability.filter(a=>a.ok && a.first).map(a=>new Date(a.first));
-  const earliest = span.length ? new Date(Math.max(...span)) : null; // most-recent first bar = the binding history limit
-  $('availCap').innerHTML = earliest
-    ? `Common intraday history is bounded to <b>${earliest.toISOString().slice(0,10)}</b> (the shallowest leg). This is the honest ceiling for any <i>backtest</i> — the live/display lenses don't need history.`
-    : 'No instruments returned data (expected in the sandbox — OANDA answers from Railway).';
+  $('availCap').innerHTML = j.ceiling
+    ? `“Earliest M5” is the deepest bar OANDA serves per instrument. The shallowest one is the binding wall for a <i>backtest</i>; the live/display lenses don't need history.`
+    : (j.availability.some(a=>a.ok)
+        ? `Window bounded to the bars fetched. Pick a deeper <b>History</b> to probe the true ceiling.`
+        : 'No instruments returned data (expected in the sandbox — OANDA answers from Railway).');
   $('availPanel').style.display='';
 
   // spreads
   const host = $('spreads'); host.innerHTML='';
-  for (const s of j.spreads) {
+  for (const s of (j.spreads||[])) {
     const el = document.createElement('div'); el.className='panel';
     if (!s.available) {
       el.innerHTML = `<h2>${s.tenor} — ${s.label}
@@ -196,7 +220,9 @@ function render(j) {
         <div class="status">${s.reason||'unavailable'}</div>`;
       host.appendChild(el); continue;
     }
-    const spreadColor = s.tenor==='2Y' ? 'var(--yellow)' : 'var(--blue)';
+    // Literal hex — the canvas 2D API can't resolve CSS var() (silently keeps the
+    // prior stroke colour, which is why the spread previously drew green).
+    const spreadColor = s.tenor==='2Y' ? '#eab308' : '#4f7df0';
     const lastGap = [...s.gap].reverse().find(Number.isFinite);
     const lastCorr = [...s.corr].reverse().find(Number.isFinite);
     const leadTxt = s.lag>0 ? `spread leads price by ${s.lag} bar${s.lag>1?'s':''}`
@@ -235,7 +261,7 @@ function render(j) {
       {height:120, zeroLine:true, yDec:1});
   }
 
-  $('note').textContent = j.note; $('note').style.display='';
+  if (j.note) { $('note').textContent = j.note; $('note').style.display=''; }
 }
 
 $('run').addEventListener('click', run);

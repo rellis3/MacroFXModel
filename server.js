@@ -3484,6 +3484,52 @@ async function _fetchCouplingCandles(instrument, gran, count) {
     .map(c => ({ t: c.time, v: Number(c.mid.c) }));
 }
 
+// Paginated forward fetch from `fromISO` to now (OANDA caps count at 5000/page).
+// Returns ascending [{ t, v }], deduped, capped at maxBars. Reveals the true
+// history ceiling: if fromISO precedes the instrument's inception, OANDA clamps
+// to the earliest available bar, so out[0].t is that ceiling.
+async function _fetchCouplingRange(instrument, gran, fromISO, maxBars) {
+  const base = _oandaBaseMe();
+  const out = [];
+  let from = fromISO;
+  for (let page = 0; page < 60 && out.length < maxBars; page++) {
+    const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+              + `?granularity=${gran}&from=${encodeURIComponent(from)}&count=5000&price=M`;
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+      signal:  AbortSignal.timeout(25_000),
+    });
+    if (!r.ok) { const t = await r.text().catch(() => 'err'); throw new Error(`OANDA ${r.status}: ${t.slice(0, 160)}`); }
+    const data = await r.json();
+    const candles = (data.candles || []).filter(c => c.complete && c.mid);
+    if (!candles.length) break;
+    for (const c of candles) out.push({ t: c.time, v: Number(c.mid.c) });
+    if (candles.length < 5000) break;                       // reached the present
+    from = new Date(new Date(candles[candles.length - 1].time).getTime() + 1000).toISOString();
+  }
+  const seen = new Set(), dedup = [];
+  for (const b of out) if (!seen.has(b.t)) { seen.add(b.t); dedup.push(b); }
+  return dedup.slice(0, maxBars);
+}
+
+// Cheapest probe of the earliest available bar (the history ceiling): ask for a
+// handful of candles from long before inception; OANDA returns the oldest it
+// has. Returns the ISO time of the first bar, or null on error / no data.
+async function _probeEarliestBar(instrument, gran) {
+  const base = _oandaBaseMe();
+  const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+             + `?granularity=${gran}&from=2005-01-01T00:00:00Z&count=5&price=M`;
+  try {
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+      signal:  AbortSignal.timeout(15_000),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return (data.candles || []).filter(c => c.mid)[0]?.time ?? null;
+  } catch { return null; }
+}
+
 app.get('/api/yield-coupling', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (expected in sandbox; runs on Railway)' });
   const symbol = req.query.symbol || 'EUR/USD';
@@ -3494,10 +3540,15 @@ app.get('/api/yield-coupling', async (req, res) => {
   const count      = Math.min(Math.max(parseInt(req.query.count) || 1500, 100), 5000);
   const corrWindow = Math.min(Math.max(parseInt(req.query.corrWindow) || 60, 5), 500);
   const maxLag     = Math.min(Math.max(parseInt(req.query.maxLag) || 24, 1), 120);
+  // `days` (optional) switches from the fast count-based view to a date-paginated
+  // deep-history fetch. Capped so a synchronous request stays responsive.
+  const days       = req.query.days ? Math.min(Math.max(parseInt(req.query.days), 1), 400) : 0;
+  const DEEP_MAXBARS = 30_000;
 
-  const cacheKey = `yc_${symbol}_${gran}_${count}_${corrWindow}_${maxLag}`;
+  const cacheKey = `yc_${symbol}_${gran}_${count}_${corrWindow}_${maxLag}_${days}`;
   const cached   = _yieldCoupCache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < 45_000) return res.json(cached.data);
+  const ttl      = days ? 5 * 60_000 : 45_000;              // deep history is stable; cache longer
+  if (cached && Date.now() - cached.ts < ttl) return res.json(cached.data);
 
   try {
     const fxInstrument = _liqGateOandaSym(symbol.replace('/', '_'));
@@ -3505,23 +3556,53 @@ app.get('/api/yield-coupling', async (req, res) => {
     const instruments = new Set([fxInstrument]);
     for (const s of spec) for (const l of s.legs) instruments.add(l.inst);
 
+    const fromISO = days ? new Date(Date.now() - days * 86_400_000).toISOString() : null;
     const availability = [];
     const seriesByInst = {};
     await Promise.all([...instruments].map(async (inst) => {
-      try {
-        const s = await _fetchCouplingCandles(inst, gran, count);
+      // Series (deep or fast) + the earliest-available probe run concurrently.
+      const [seriesRes, earliest] = await Promise.allSettled([
+        days ? _fetchCouplingRange(inst, gran, fromISO, DEEP_MAXBARS)
+             : _fetchCouplingCandles(inst, gran, count),
+        _probeEarliestBar(inst, gran),
+      ]);
+      const ceiling = earliest.status === 'fulfilled' ? earliest.value : null;
+      if (seriesRes.status === 'fulfilled') {
+        const s = seriesRes.value;
         seriesByInst[inst] = s;
         availability.push({ instrument: inst, ok: s.length > 0, bars: s.length,
-          first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null });
-      } catch (e) {
+          first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null, earliest: ceiling });
+      } else {
         seriesByInst[inst] = null;
-        availability.push({ instrument: inst, ok: false, bars: 0, error: e.message });
+        availability.push({ instrument: inst, ok: false, bars: 0, error: seriesRes.reason?.message || 'fetch failed', earliest: ceiling });
       }
     }));
 
+    // History-ceiling verdict: the shallowest earliest-available bar is the binding
+    // limit for any honest OOS backtest of the coupling-gated strategy (lens 2).
+    const ceilings = availability.map(a => a.earliest).filter(Boolean).map(t => new Date(t).getTime());
+    let ceiling = null;
+    if (ceilings.length === instruments.size && ceilings.length) {
+      const shallowest = Math.max(...ceilings);           // most-recent inception = the wall
+      const months = (Date.now() - shallowest) / (30.44 * 86_400_000);
+      const verdict = months >= 24 ? 'feasible'
+                    : months >= 6  ? 'marginal'
+                    : 'too_shallow';
+      ceiling = {
+        shallowest: new Date(shallowest).toISOString(),
+        months: Math.round(months * 10) / 10,
+        verdict,
+        note: verdict === 'feasible'
+          ? `≈${Math.round(months)} months of common intraday history — enough to attempt an honest IS/OOS backtest (lens 2).`
+          : verdict === 'marginal'
+          ? `≈${Math.round(months)} months of common intraday history — a backtest is possible but thin; treat any OOS result with caution.`
+          : `only ≈${Math.round(months)} months of common intraday history — too shallow for an honest OOS test. Live/display lenses (1 & 3) are unaffected.`,
+      };
+    }
+
     const priceSeries = seriesByInst[fxInstrument];
     if (!priceSeries || !priceSeries.length) {
-      return res.status(502).json({ error: `No price data for ${fxInstrument}`, availability });
+      return res.status(502).json({ error: `No price data for ${fxInstrument}`, availability, ceiling });
     }
 
     const spreads = [];
@@ -3543,19 +3624,27 @@ app.get('/api/yield-coupling', async (req, res) => {
       const legCols  = columns.slice(1);
       const spreadRaw = buildSpread(s.legs.map((l, i) => ({ price: legCols[i], k: l.k })));
       const c = computeCoupling(priceCol, spreadRaw, { corrWindow, maxLag });
+      // Stats (coincident/lag) are computed on the FULL series above; only the
+      // plotted arrays are downsampled to keep the payload light on deep pulls.
+      // Evenly-spaced indices, always including the last bar (the live values).
+      const PLOT_PTS = 2500;
+      const pick = times.length > PLOT_PTS
+        ? Array.from({ length: PLOT_PTS }, (_, i) => Math.round(i * (times.length - 1) / (PLOT_PTS - 1)))
+        : times.map((_, i) => i);
+      const ds = arr => pick.map(i => arr[i]);
       spreads.push({
         tenor: s.tenor, label: s.label, partial: !!s.partial, available: true,
         bars: times.length,
-        times,
-        priceZ: c.priceZ, spreadZ: c.spreadZ, corr: c.corr, gap: c.gap,
+        times: ds(times),
+        priceZ: ds(c.priceZ), spreadZ: ds(c.spreadZ), corr: ds(c.corr), gap: ds(c.gap),
         coincident: c.coincident, lag: c.lag.lag, lagCorr: c.lag.corr,
         lagProfile: c.lag.profile, direction: c.direction,
       });
     }
 
-    const result = { symbol, granularity: gran, count, corrWindow, maxLag,
-      fxInstrument, availability, spreads,
-      note: 'Standardized (z) overlay. Bond price is inverse yield; spread oriented FX-bullish-when-positive. 2Y spreads are US-leg-only where OANDA has no foreign 2Y CFD.' };
+    const result = { symbol, granularity: gran, count, corrWindow, maxLag, days,
+      fxInstrument, availability, ceiling, spreads,
+      note: 'Standardized (z) overlay. Bond price is inverse yield; spread oriented FX-bullish-when-positive. 2Y spreads are US-leg-only where OANDA has no foreign 2Y CFD. "Earliest" is the deepest M5 bar OANDA serves per instrument — the ceiling for any backtest.' };
     _yieldCoupCache.set(cacheKey, { data: result, ts: Date.now() });
     res.json(result);
   } catch (err) {
