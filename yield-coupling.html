@@ -62,7 +62,7 @@
         <option>EUR/USD</option><option>GBP/USD</option><option>EUR/GBP</option><option>USD/JPY</option>
       </select></div>
     <div class="ctl"><label>Granularity</label>
-      <select id="gran"><option>M5</option><option>M1</option><option>M15</option><option>H1</option></select></div>
+      <select id="gran"><option>M5</option><option>M1</option><option>M15</option><option>H1</option><option value="D">D · daily lead-lag</option></select></div>
     <div class="ctl"><label>Bars (fast)</label>
       <select id="count"><option>1500</option><option>3000</option><option>5000</option><option>500</option></select></div>
     <div class="ctl"><label>History (deep)</label>
@@ -167,6 +167,68 @@ function stateCard(st) {
     </div>
     <div class="cap" style="margin:7px 0 0">${st.note}. <span style="color:var(--dim)">Context/conviction only — not a direction call.</span></div>
   </div>`;
+}
+
+function dailyLeadLagBlock(ll) {
+  if (!ll) return '';
+  const pct = x => Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '–';
+  const m = ll.momentum;
+  const mEdge = Number.isFinite(m.hitRate) ? m.hitRate - 0.5 : NaN;
+  const leads = ll.bestLag > 0 && Math.abs(ll.bestCorr) >= 0.1;
+  const momGood = Number.isFinite(mEdge) && mEdge >= 0.04 && m.n >= 100;
+  const verdict = leads ? `spread LEADS price by ${ll.bestLag} day${ll.bestLag>1?'s':''}`
+    : (Math.abs(ll.coincident) >= 0.1 ? 'coincident (no daily lead)' : 'no daily relationship');
+  const vcol = leads ? '#6ee7b7' : Math.abs(ll.coincident)>=0.1 ? '#fcd34d' : '#fdba74';
+  // lag-profile bars: lag 0..N, height ∝ |corr|, green +, orange −, best outlined
+  const maxAbs = Math.max(...ll.profile.map(p=>Number.isFinite(p.corr)?Math.abs(p.corr):0), 0.05);
+  const bars = ll.profile.map(p=>{
+    const h = Number.isFinite(p.corr) ? Math.abs(p.corr)/maxAbs*100 : 0;
+    const col = !Number.isFinite(p.corr) ? '#2a3543' : p.corr>=0 ? '#4f7df0' : '#f97316';
+    const isBest = p.lag===ll.bestLag;
+    return `<div title="lag ${p.lag}d: ${fmt(p.corr)}" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px">
+      <div style="width:100%;height:${h}%;min-height:1px;background:${col};border-radius:2px 2px 0 0;outline:${isBest?'2px solid #6ee7b7':'none'}"></div>
+      ${p.lag%5===0?`<span style="font-size:8px;color:var(--dim)">${p.lag}</span>`:'<span style="font-size:8px">&nbsp;</span>'}
+    </div>`;
+  }).join('');
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:2px solid var(--blue)">
+      <h2 style="font-size:13px">📅 Daily lead-lag <span class="sub" style="font-weight:400">— does the spread lead EUR/USD by days? (the macro flows thesis)</span></h2>
+      <div class="metrics">
+        <div class="metric"><div class="v" style="font-size:15px;font-weight:700;color:${vcol}">${verdict}</div><div class="l">optimal lag · corr ${fmt(ll.bestCorr)}</div></div>
+        <div class="metric"><div class="v">${fmt(ll.coincident)}</div><div class="l">Same-day corr (lag 0)</div></div>
+        <div class="metric"><div class="v" style="color:${momGood?'#6ee7b7':'#fdba74'}">${pct(m.hitRate)}</div><div class="l">Momentum → ${m.horizon}d fwd · ${Number.isFinite(mEdge)?(mEdge>=0?'+':'')+pct(mEdge):'–'} vs 50%</div></div>
+        <div class="metric"><div class="v">${fmt(m.corr)}</div><div class="l">Momentum corr · n=${m.n||0}</div></div>
+      </div>
+      <div class="legend"><span>Lead-lag profile — corr of today's FX return vs the spread's return <b>N days earlier</b>. A peak at lag&gt;0 ⇒ the spread led. Blue +, orange −, best outlined.</span></div>
+      <div style="display:flex;align-items:flex-end;gap:2px;height:90px;background:var(--panel2);border-radius:7px;padding:8px 8px 2px">${bars}</div>
+      <div class="cap" style="margin-top:8px">"Momentum → fwd" = does the past ${m.lookback}-day spread move predict the next ${m.horizon}-day FX direction (hit vs 50%, n=${m.n||0}). Diagnostic, in-sample. The lesson's edge lives here — <b>daily</b>, not intraday.</div>
+    </div>`;
+}
+
+function priorDayBlock(pd) {
+  if (!pd) return '';
+  const pct = x => Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '–';
+  const sc = pd.shapeCorr, dh = pd.dailyDirHit;
+  const dEdge = Number.isFinite(dh.hit) ? dh.hit - 0.5 : NaN;
+  const thin = (sc.nDays||0) < 20;
+  // verdict: does yesterday's yield forecast today's price?
+  const dirGood = Number.isFinite(dEdge) && dEdge >= 0.05 && dh.n >= 30;
+  const shapeGood = Number.isFinite(sc.pctPositive) && sc.pctPositive >= 0.58;
+  const verdict = thin ? 'need a deeper pull (use History)'
+    : (dirGood || shapeGood) ? "yesterday's yield HAS forecast content"
+    : 'no next-day forecast content';
+  const vcol = thin ? 'var(--dim)' : (dirGood||shapeGood) ? '#6ee7b7' : '#fdba74';
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:2px solid var(--blue)">
+      <h2 style="font-size:13px">🔮 Prior-day projection <span class="sub" style="font-weight:400">— does TODAY's price follow YESTERDAY's yield? (your indicator's actual claim)</span></h2>
+      <div class="metrics">
+        <div class="metric"><div class="v" style="font-size:15px;font-weight:700;color:${vcol}">${verdict}</div><div class="l">verdict · ${sc.nDays||0} day-pairs</div></div>
+        <div class="metric"><div class="v" style="color:${Number.isFinite(dEdge)&&dEdge>=0.05?'#6ee7b7':'#fdba74'}">${pct(dh.hit)}</div><div class="l">Calls the day · ${Number.isFinite(dEdge)?(dEdge>=0?'+':'')+pct(dEdge):'–'} vs 50%</div></div>
+        <div class="metric"><div class="v">${pct(sc.pctPositive)}</div><div class="l">Days price-shape tracks</div></div>
+        <div class="metric"><div class="v">${fmt(sc.pooled)}</div><div class="l">Pooled shape corr</div></div>
+      </div>
+      <div class="cap">"Calls the day" = does yesterday's net yield direction predict today's net price direction (hit vs 50%, n=${dh.n||0}). "Shape tracks" = % of days today's price path positively correlates with yesterday's yield path. ${thin?'<b>Only '+(sc.nDays||0)+' day-pairs</b> — set History to 3–12 months for a real read.':'Diagnostic (in-sample, no costs). If positive, next is the divergence-reversion-at-zone test with your forecast bands.'}</div>
+    </div>`;
 }
 
 function persistenceBlock(p) {
@@ -340,9 +402,10 @@ function render(j) {
         <div class="metric"><div class="v">${s.lag>0?'+':''}${s.lag}</div><div class="l">Best lag · ${fmt(s.lagCorr)}</div></div>
       </div>
       <div style="margin-bottom:10px">${dirChip(s.direction, s.coincident)} &nbsp;·&nbsp; <span class="sub">${leadTxt}</span></div>
-      <div class="cap" style="margin:0 0 12px">Numbers above are <b>level</b> correlation (the standardized lines below). The <b>returns</b> and <b>regime</b> blocks are the trading-relevant ones.</div>
-      ${returnsBlock(s.returns)}
-      ${persistenceBlock(s.persistence)}
+      <div class="cap" style="margin:0 0 12px">Numbers above are <b>level</b> correlation (the standardized lines below).${s.dailyLeadLag?'':' The <b>returns</b> and <b>regime</b> blocks are the trading-relevant ones.'}</div>
+      ${s.dailyLeadLag
+        ? dailyLeadLagBlock(s.dailyLeadLag)
+        : `${priorDayBlock(s.priorDay)}${returnsBlock(s.returns)}${persistenceBlock(s.persistence)}`}
       <div class="legend" style="margin-top:16px">
         <span><i style="background:var(--green)"></i>Price (z)</span>
         <span><i style="background:${spreadColor}"></i>Yield spread (z)</span>

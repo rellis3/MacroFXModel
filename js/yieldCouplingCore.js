@@ -318,3 +318,108 @@ export function computeCouplingPersistence(price, spread, times, {
 
   return { autocorr, forwardCoupling, directional, corrWindow, fwdBars, coupledThresh, decoupledThresh };
 }
+
+// ── Daily lead-lag: at what lag (in days) does the spread LEAD price? ─────────
+// The macro thesis (Cole/"Transatlantic spread"): the yield spread leads EUR/USD
+// by hours→weeks because institutional flows are slow — so at DAILY resolution
+// the optimal lead lag should be POSITIVE (spread moves first). Intraday it's
+// ~coincident (which matches the ±2h finding); the edge is at the daily horizon.
+// Also tests whether spread MOMENTUM (change over `lookback` days) predicts the
+// FORWARD price return (over `horizon` days) — the "spread momentum" signal.
+// fx/spread are daily LEVEL series (spread oriented FX-bullish-when-positive).
+export function computeDailyLeadLag(fx, spread, { maxLagDays = 30, lookback = 5, horizon = 5 } = {}) {
+  const fxRet = toReturns(fx);
+  const spRet = toReturns(spread);
+  // lag profile: corr(fxRet[t], spRet[t-lag]); lag>0 ⇒ spread LEADS price by `lag` days
+  const profile = [];
+  let best = { lag: 0, corr: NaN };
+  for (let lag = 0; lag <= maxLagDays; lag++) {
+    const a = [], b = [];
+    for (let t = 0; t < fxRet.length; t++) {
+      const j = t - lag;
+      if (j < 0) continue;
+      if (Number.isFinite(fxRet[t]) && Number.isFinite(spRet[j])) { a.push(fxRet[t]); b.push(spRet[j]); }
+    }
+    const c = pearson(a, b);
+    profile.push({ lag, corr: c });
+    if (Number.isFinite(c) && (!Number.isFinite(best.corr) || Math.abs(c) > Math.abs(best.corr))) best = { lag, corr: c };
+  }
+  // momentum → forward return: past `lookback`-day spread change vs next `horizon`-day fx return
+  const mS = [], mF = []; let hit = 0, n = 0;
+  for (let t = lookback; t + horizon < fx.length; t++) {
+    const sMom = spread[t] - spread[t - lookback];
+    const fFwd = fx[t + horizon] - fx[t];
+    if (!Number.isFinite(sMom) || !Number.isFinite(fFwd) || sMom === 0 || fFwd === 0) continue;
+    mS.push(sMom); mF.push(fFwd);
+    if ((sMom > 0) === (fFwd > 0)) hit++;
+    n++;
+  }
+  return {
+    coincident: profile[0]?.corr ?? NaN,
+    bestLag: best.lag, bestCorr: best.corr, profile,
+    momentum: { corr: pearson(mS, mF), hitRate: n ? hit / n : NaN, n, lookback, horizon },
+  };
+}
+
+// ── Prior-day projection: does TODAY's price follow YESTERDAY's yield? ────────
+// The user's indicator projects yesterday's yield path forward as today's
+// expected price path — a ~1-DAY-lagged relationship, far outside the intraday
+// (≤2h) lead-lag everything else measured, so it's a genuinely separate test.
+// Bars are grouped by UTC date and matched across consecutive days by
+// time-of-day (HH:MM). Everything uses change-from-day-open (paths), no lookahead
+// beyond "yesterday" (the projection input).
+//   • shapeCorr   — pooled corr of today's price path vs yesterday's yield path,
+//                   plus the per-day correlation distribution (% of days positive)
+//   • dailyDirHit — does yesterday's NET yield direction predict today's NET price
+//                   direction? hit rate vs 0.5 — the "calls the day right" number
+export function computePriorDayProjection(price, spread, times, { minBarsPerDay = 40 } = {}) {
+  const byDate = new Map();
+  for (let i = 0; i < times.length; i++) {
+    const d = times[i].slice(0, 10);
+    if (!byDate.has(d)) byDate.set(d, []);
+    byDate.get(d).push(i);
+  }
+  const dates = [...byDate.keys()].sort();
+  const perDay = dates.map(d => {
+    const idx = byDate.get(d);
+    const p0 = price[idx[0]], s0 = spread[idx[0]];
+    const map = new Map();                       // 'HH:MM' -> { pc, yc } (change from day open)
+    for (const i of idx) {
+      if (!Number.isFinite(price[i]) || !Number.isFinite(spread[i])) continue;
+      map.set(times[i].slice(11, 16), { pc: price[i] - p0, yc: spread[i] - s0 });
+    }
+    const last = idx[idx.length - 1];
+    return { d, n: map.size, map, netP: price[last] - p0, netY: spread[last] - s0 };
+  });
+
+  const allP = [], allY = [], perDayCorr = [];
+  let dirHit = 0, dirN = 0;
+  for (let i = 1; i < perDay.length; i++) {
+    const today = perDay[i], yest = perDay[i - 1];
+    if (today.n < minBarsPerDay || yest.n < minBarsPerDay) continue;
+    // "calls the day": yesterday's net yield direction → today's net price direction
+    if (Number.isFinite(yest.netY) && Number.isFinite(today.netP) && yest.netY !== 0 && today.netP !== 0) {
+      if ((yest.netY > 0) === (today.netP > 0)) dirHit++;
+      dirN++;
+    }
+    // shape: match today's price path to yesterday's yield path by time-of-day
+    const tp = [], yy = [];
+    for (const [tod, v] of today.map) {
+      const yv = yest.map.get(tod);
+      if (yv) { tp.push(v.pc); yy.push(yv.yc); }
+    }
+    if (tp.length >= minBarsPerDay) { allP.push(...tp); allY.push(...yy); perDayCorr.push(pearson(tp, yy)); }
+  }
+  const valid = perDayCorr.filter(Number.isFinite).sort((a, b) => a - b);
+  const meanC = valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : NaN;
+  return {
+    shapeCorr: {
+      pooled: pearson(allP, allY),
+      mean: meanC,
+      median: valid.length ? valid[Math.floor(valid.length / 2)] : NaN,
+      pctPositive: valid.length ? valid.filter(c => c > 0).length / valid.length : NaN,
+      nDays: valid.length,
+    },
+    dailyDirHit: { hit: dirN ? dirHit / dirN : NaN, n: dirN },
+  };
+}

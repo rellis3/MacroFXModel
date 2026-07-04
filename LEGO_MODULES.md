@@ -281,6 +281,24 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 |---|---|---|---|---|
 | **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
 
+The core also emits the **daily lead-lag** test (`computeDailyLeadLag`, endpoint
+`granularity=D`) — the macro "spread leads EUR/USD by days" thesis (Cole/
+Transatlantic-spread): cross-correlation of daily FX returns vs daily spread
+returns across lags 0–30d (optimal lead + full profile) + a spread-momentum →
+forward-return test (past N-day spread move → next M-day FX direction, hit vs
+50%). Intraday everything was ~coincident (matches the ±2h finding); this tests
+the DAILY horizon where the flows thesis says the lead actually lives.
+Diagnostic, in-sample.
+
+The core also emits the **prior-day projection** test (`computePriorDayProjection`)
+— does TODAY's price path follow YESTERDAY's yield path? (the user's indicator
+projects yesterday's yield forward). Groups bars by UTC date, matches consecutive
+days by time-of-day, reports pooled/per-day shape correlation (% of days price
+tracks) + a "calls the day" hit-rate (yesterday net yield dir → today net price
+dir vs 50%). This is a **~1-day-lagged** relationship — outside the ≤2h intraday
+lead-lag everything else measured, so the earlier "coincident / weak direction"
+verdict never tested it. Diagnostic, in-sample; needs a deep `days=` pull.
+
 The core also emits the **live confirmation reading** (`couplingState`) — the
 daily-brief "rates-backed / divergent / decoupled" flag for the newest bar
 (regime coupling + session + whether the latest move is rates-corroborated).

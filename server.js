@@ -34,7 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
-import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
+import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -3536,7 +3536,8 @@ app.get('/api/yield-coupling', async (req, res) => {
   const spec = YIELD_COUPLING_LEGS[symbol];
   if (!spec) return res.status(400).json({ error: `No yield-leg config for ${symbol}. Supported: ${Object.keys(YIELD_COUPLING_LEGS).join(', ')}` });
   const gran       = (req.query.granularity || 'M5').toUpperCase();
-  if (!/^(M1|M5|M15|H1)$/.test(gran)) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
+  if (!/^(M1|M5|M15|H1|D)$/.test(gran)) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
+  const isDaily    = gran === 'D';
   const count      = Math.min(Math.max(parseInt(req.query.count) || 1500, 100), 5000);
   const corrWindow = Math.min(Math.max(parseInt(req.query.corrWindow) || 60, 5), 500);
   const maxLag     = Math.min(Math.max(parseInt(req.query.maxLag) || 24, 1), 120);
@@ -3632,6 +3633,13 @@ app.get('/api/yield-coupling', async (req, res) => {
       const fwdBars = gran === 'M1' ? 240 : gran === 'M5' ? 48 : gran === 'M15' ? 16 : 4;
       const persistence = computeCouplingPersistence(priceCol, spreadRaw, times, { corrWindow, fwdBars });
       const state = couplingState(priceCol, spreadRaw, times, { corrWindow });
+      // Prior-day projection: does today's price path follow yesterday's yield path?
+      // (The user's indicator projects yesterday's yield forward.) Needs many days
+      // → only meaningful on a deep `days=` pull.
+      const priorDay = computePriorDayProjection(priceCol, spreadRaw, times);
+      // Daily lead-lag (the macro "spread leads EUR/USD by days" thesis) — only at
+      // D granularity, where a positive optimal lag would show the spread leading.
+      const dailyLeadLag = isDaily ? computeDailyLeadLag(priceCol, spreadRaw, { maxLagDays: 30 }) : null;
       // Stats (coincident/lag) are computed on the FULL series above; only the
       // plotted arrays are downsampled to keep the payload light on deep pulls.
       // Evenly-spaced indices, always including the last bar (the live values).
@@ -3652,7 +3660,7 @@ app.get('/api/yield-coupling', async (req, res) => {
           lag: rc.lag.lag, lagCorr: rc.lag.corr,
           bySession: rc.bySession,
         },
-        persistence, state,
+        persistence, state, priorDay, dailyLeadLag,
       });
     }
 
