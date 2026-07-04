@@ -149,6 +149,55 @@ function plot(canvas, series, opts={}) {
   }
 }
 
+function persistenceBlock(p) {
+  if (!p) return '';
+  const pct = x => Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '–';
+  // autocorr rows: is the coupling regime sticky?
+  const barsToTxt = b => b>=60 ? (b/60)+'h' : b+' bars';
+  const acRows = p.autocorr.map(a=>`<tr><td>${barsToTxt(a.lag)} ahead</td><td class="mono" style="color:${a.corr>=0.2?'#6ee7b7':a.corr>=0?'#fcd34d':'#fdba74'}">${fmt(a.corr)}</td></tr>`).join('');
+  const stickiest = p.autocorr.reduce((m,a)=>Number.isFinite(a.corr)&&(!m||a.corr>m.corr)?a:m, null);
+  const sticky = stickiest && stickiest.corr >= 0.2;
+  // forward coupling
+  const fc = p.forwardCoupling;
+  const fwdSpread = (Number.isFinite(fc.coupled.mean)&&Number.isFinite(fc.decoupled.mean)) ? fc.coupled.mean - fc.decoupled.mean : NaN;
+  // directional
+  const d = p.directional;
+  const dEdge = Number.isFinite(d.coupled.hit) ? d.coupled.hit - 0.5 : NaN;
+  const dCtrl = Number.isFinite(d.decoupled.hit) ? d.decoupled.hit - 0.5 : NaN;
+  const predictable = sticky && Number.isFinite(fwdSpread) && fwdSpread>0.05;
+  const verdict = !predictable ? 'regime NOT predictable'
+    : (Number.isFinite(dEdge) && dEdge>0.02 && (!Number.isFinite(dCtrl)||dEdge>dCtrl)) ? 'predictable + directional edge'
+    : 'regime predictable, weak direction';
+  const vcol = verdict.startsWith('predictable + direction') ? '#6ee7b7' : verdict.startsWith('regime predictable') ? '#fcd34d' : '#fdba74';
+  const hz = barsToTxt(p.fwdBars);
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+      <h2 style="font-size:13px">Regime persistence & forward forecast <span class="sub" style="font-weight:400">— can we predict WHEN price follows the yield? (diagnostic, in-sample)</span></h2>
+      <div class="metrics"><div class="metric"><div class="v" style="font-size:15px;font-weight:700;color:${vcol}">${verdict}</div><div class="l">verdict · ${hz} horizon</div></div></div>
+      <div style="display:flex;gap:22px;flex-wrap:wrap">
+        <div>
+          <div class="legend"><span><b>1. Sticky?</b> autocorr of rolling coupling</span></div>
+          <table style="max-width:230px"><thead><tr><th>Coupling…</th><th>corr</th></tr></thead><tbody>${acRows}</tbody></table>
+        </div>
+        <div>
+          <div class="legend"><span><b>2. Forward coupling</b> (${hz} ahead)</span></div>
+          <table style="max-width:270px"><thead><tr><th>Now</th><th>→ mean fwd corr</th><th>n</th></tr></thead><tbody>
+            <tr><td>coupled</td><td class="mono" style="color:#6ee7b7">${fmt(fc.coupled.mean)}</td><td class="mono">${fc.coupled.n}</td></tr>
+            <tr><td>decoupled</td><td class="mono" style="color:#fdba74">${fmt(fc.decoupled.mean)}</td><td class="mono">${fc.decoupled.n}</td></tr>
+          </tbody></table>
+        </div>
+        <div>
+          <div class="legend"><span><b>3. Direction</b> (divergence → fwd price, hit vs 50%)</span></div>
+          <table style="max-width:290px"><thead><tr><th>Regime</th><th>hit rate</th><th>edge</th><th>n</th></tr></thead><tbody>
+            <tr><td>coupled ◄</td><td class="mono" style="color:${dEdge>0.02?'#6ee7b7':'#fdba74'}">${pct(d.coupled.hit)}</td><td class="mono">${Number.isFinite(dEdge)?(dEdge>=0?'+':'')+pct(dEdge):'–'}</td><td class="mono">${d.coupled.n}</td></tr>
+            <tr><td>decoupled</td><td class="mono">${pct(d.decoupled.hit)}</td><td class="mono">${Number.isFinite(dCtrl)?(dCtrl>=0?'+':'')+pct(dCtrl):'–'}</td><td class="mono">${d.decoupled.n}</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+      <div class="cap" style="margin-top:8px">Sticky coupling (col 1) + coupled-now→coupled-later (col 2) means the regime is <b>knowable in advance</b>. If the coupled row in col 3 beats 50% while decoupled doesn't, the yield forecasts price <i>during</i> predictable regimes. Diagnostic only — a tradeable version needs the honest IS/OOS harness with costs.</div>
+    </div>`;
+}
+
 function returnsBlock(rt) {
   if (!rt) return '';
   const sess = rt.bySession || {};
@@ -270,8 +319,9 @@ function render(j) {
         <div class="metric"><div class="v">${s.lag>0?'+':''}${s.lag}</div><div class="l">Best lag · ${fmt(s.lagCorr)}</div></div>
       </div>
       <div style="margin-bottom:10px">${dirChip(s.direction, s.coincident)} &nbsp;·&nbsp; <span class="sub">${leadTxt}</span></div>
-      <div class="cap" style="margin:0 0 12px">Numbers above are <b>level</b> correlation (the standardized lines below). The <b>returns</b> block after the charts is the trading-relevant one.</div>
+      <div class="cap" style="margin:0 0 12px">Numbers above are <b>level</b> correlation (the standardized lines below). The <b>returns</b> and <b>regime</b> blocks are the trading-relevant ones.</div>
       ${returnsBlock(s.returns)}
+      ${persistenceBlock(s.persistence)}
       <div class="legend" style="margin-top:16px">
         <span><i style="background:var(--green)"></i>Price (z)</span>
         <span><i style="background:${spreadColor}"></i>Yield spread (z)</span>

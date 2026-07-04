@@ -224,3 +224,72 @@ export function computeReturnsCoupling(price, spread, times, { corrWindow = 60, 
     bySession: sessionBreakdown(priceRet, spreadRet, times),
   };
 }
+
+// ── Autocorrelation of a series at a forward lag (finite pairs only) ──────────
+export function laggedAutocorr(series, lag) {
+  const a = [], b = [];
+  for (let i = 0; i + lag < series.length; i++) {
+    if (Number.isFinite(series[i]) && Number.isFinite(series[i + lag])) { a.push(series[i]); b.push(series[i + lag]); }
+  }
+  return pearson(a, b);
+}
+
+// ── Coupling-regime persistence & forward forecast (the "predict WHEN" test) ──
+// The coupling is intermittent; this measures whether the REGIME is predictable:
+//   • autocorr   — is the rolling (returns) coupling sticky? coupled-now → coupled-later?
+//   • forwardCoupling — mean coupling `fwdBars` ahead, given coupled-now vs decoupled-now
+//   • directional — during coupled regimes only, does the trailing yield-vs-price
+//     divergence predict the FORWARD price direction? (hit rate vs 0.5) — with the
+//     decoupled bucket as the control. Diagnostic (in-sample, no costs): tells us
+//     if the edge EXISTS; a tradeable version still needs the honest harness.
+// No-lookahead in the directional test: trailing-window moves only; the forward
+// price move is the thing predicted.
+export function computeCouplingPersistence(price, spread, times, {
+  corrWindow = 60, fwdBars = 48, coupledThresh = 0.5, decoupledThresh = 0.15,
+  autocorrLags = [12, 48, 96],
+} = {}) {
+  const priceRet  = toReturns(price);
+  const spreadRet = toReturns(spread);
+  const coup = rollingCorr(priceRet, spreadRet, corrWindow);      // returns-based rolling coupling
+
+  const autocorr = autocorrLags.map(lag => ({ lag, corr: laggedAutocorr(coup, lag) }));
+
+  // conditional forward coupling
+  const cF = [], dF = [];
+  for (let i = 0; i + fwdBars < coup.length; i++) {
+    const c = coup[i], f = coup[i + fwdBars];
+    if (!Number.isFinite(c) || !Number.isFinite(f)) continue;
+    if (c >= coupledThresh) cF.push(f);
+    else if (Math.abs(c) <= decoupledThresh) dF.push(f);
+  }
+  const forwardCoupling = {
+    coupled:   { mean: cF.length ? mean(cF) : NaN, n: cF.length },
+    decoupled: { mean: dF.length ? mean(dF) : NaN, n: dF.length },
+  };
+
+  // directional payoff: trailing divergence → forward price direction, by regime
+  let cHit = 0, cN = 0, dHit = 0, dN = 0;
+  for (let i = corrWindow; i + fwdBars < price.length; i++) {
+    const c = coup[i];
+    if (!Number.isFinite(c)) continue;
+    const pWin = priceRet.slice(i - corrWindow + 1, i + 1).filter(Number.isFinite);
+    const sWin = spreadRet.slice(i - corrWindow + 1, i + 1).filter(Number.isFinite);
+    const pSd = stdev(pWin, 0), sSd = stdev(sWin, 0);
+    if (pSd <= 0 || sSd <= 0) continue;
+    // trailing moves scaled by their own volatility → comparable units
+    const pMove = (price[i]  - price[i  - corrWindow]) / (pSd * Math.sqrt(corrWindow));
+    const sMove = (spread[i] - spread[i - corrWindow]) / (sSd * Math.sqrt(corrWindow));
+    const gap = sMove - pMove;                    // yield outran price ⇒ price should catch up (rise)
+    const pf  = price[i + fwdBars] - price[i];
+    if (!Number.isFinite(gap) || !Number.isFinite(pf) || gap === 0 || pf === 0) continue;
+    const hit = (gap > 0) === (pf > 0) ? 1 : 0;
+    if (c >= coupledThresh) { cHit += hit; cN++; }
+    else if (Math.abs(c) <= decoupledThresh) { dHit += hit; dN++; }
+  }
+  const directional = {
+    coupled:   { hit: cN ? cHit / cN : NaN, n: cN },
+    decoupled: { hit: dN ? dHit / dN : NaN, n: dN },
+  };
+
+  return { autocorr, forwardCoupling, directional, corrWindow, fwdBars, coupledThresh, decoupledThresh };
+}
