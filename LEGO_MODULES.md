@@ -283,6 +283,16 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 |---|---|---|---|---|
 | **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
 
+The same core is also run on the **REAL DE–US yields** (not the CFD proxy):
+`server.js` `/api/yield-coupling-real` fetches actual daily yields — US from FRED
+(`DGS2`/`DGS10`), German (euro-area AAA) from the ECB yield curve, EUR/USD from
+FRED (`DEXUSEU`) — builds `spread = DE − US` and runs `computeDivergenceEvents` +
+`computeDailyLeadLag` on it. This is the only path that can test the **2Y**
+(OANDA has no German 2Y CFD — the 2Y is the lesson's stated *direction* leg).
+Viewer `yield-coupling-real.html` (2Y/10Y toggle). `_fetchFredDaily` /
+`_fetchEcbDaily` are full-history fetchers (the existing `_worker.js` ECB fetch
+only pulls the latest 5 obs).
+
 The core also emits the **divergence-events** test (`computeDivergenceEvents`) —
 the CONDITIONAL edge an unconditional correlation can't see: buckets days by the
 SIZE of the spread-vs-FX divergence (vol-scaled trailing gap) and reports, per
