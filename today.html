@@ -39,6 +39,37 @@
   .stile .v{font-size:19px;font-weight:700}
   .stile .s{font-size:11px;color:var(--text2);margin-top:2px}
 
+  /* ── Market Read: top-of-page synthesis ─────────────────── */
+  .mread{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+  .mread-verdict{font-size:15px;line-height:1.5;color:var(--text);margin-bottom:12px}
+  .mread-verdict b{color:var(--text)}
+  .mread-verdict .tone{font-weight:800;letter-spacing:.01em}
+  .mread-verdict .tone.off{color:var(--bear)} .mread-verdict .tone.on{color:var(--bull)} .mread-verdict .tone.mix{color:var(--amber)}
+  .mread-verdict .pl{cursor:pointer;border-bottom:1px dotted var(--text3)}
+  .mread-verdict .pl:hover{color:var(--text)}
+  .mread-cols{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+  @media(max-width:760px){.mread-cols{grid-template-columns:1fr}}
+  .mread-h{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+  /* currency strength diverging bars */
+  .csrow{display:grid;grid-template-columns:38px 1fr 42px;align-items:center;gap:8px;margin-bottom:4px;font-variant-numeric:tabular-nums}
+  .csrow .ccy{font-size:12px;font-weight:700;color:var(--text2)}
+  .csrow .track{position:relative;height:13px;background:var(--card2);border-radius:4px}
+  .csrow .track .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border)}
+  .csrow .track .barp{position:absolute;left:50%;top:0;bottom:0;background:var(--bull);border-radius:0 4px 4px 0}
+  .csrow .track .barn{position:absolute;right:50%;top:0;bottom:0;background:var(--bear);border-radius:4px 0 0 4px}
+  .csrow .val{font-size:10.5px;color:var(--text3);text-align:right}
+  .csrow.top .ccy{color:var(--bull)} .csrow.bot .ccy{color:var(--bear)}
+  /* equities & risk strip */
+  .eqgrid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+  .eqchip{display:inline-flex;align-items:center;gap:3px;background:var(--card2);border:1px solid var(--border);
+          border-radius:5px;padding:2px 7px;font-size:10.5px;font-weight:600}
+  .eqchip.up{color:var(--bull);border-color:rgba(16,185,129,.35)} .eqchip.dn{color:var(--bear);border-color:rgba(249,115,22,.35)}
+  .eqchip.flat{color:var(--text3)}
+  .riskverdict{font-size:12px;color:var(--text2)} .riskverdict b{font-size:13px}
+  .mread-watch{margin-top:11px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .mread-watch .wk{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+  .mread-watch .pl{cursor:pointer;color:var(--text);border-bottom:1px dotted var(--text3)}
+
   /* ── Morning gate: calendar timeline ────────────────────── */
   .gate{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 14px;
         margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -172,6 +203,8 @@
 </div>
 
 <div class="wrap">
+  <div class="mread" id="mread" style="display:none"></div>
+
   <div class="summary" id="summary"></div>
 
   <div class="gate" id="gate" style="display:none"></div>
@@ -365,6 +398,186 @@ function renderGate() {
     (medCount ? `<span class="gev" style="opacity:.6">+${medCount} medium</span>` : '');
 }
 
+// ── Market Read: cross-pair synthesis (the gestalt) ──────────────────────────
+// Which two currencies each brief instrument is made of (FX only).
+const PAIR_CCY = {
+  EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDJPY: ['USD', 'JPY'],
+  AUDUSD: ['AUD', 'USD'], NZDUSD: ['NZD', 'USD'], USDCAD: ['USD', 'CAD'],
+  USDCHF: ['USD', 'CHF'], GBPJPY: ['GBP', 'JPY'], EURGBP: ['EUR', 'GBP'],
+  EURJPY: ['EUR', 'JPY'], EURCHF: ['EUR', 'CHF'], GBPCHF: ['GBP', 'CHF'],
+  AUDJPY: ['AUD', 'JPY'], CADJPY: ['CAD', 'JPY'],
+};
+const CCY_ORDER = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD'];
+
+// Directional conviction for a pair in [-1,+1]: +1 = bought hard today.
+// Blend of the HMM regime (structural) and the live session bias (today).
+function pairSignal(r) {
+  let reg = null, sess = null;
+  const g = r.d.regime;
+  if (g?.label === 'TREND' && g.trend_dir) {
+    reg = (g.trend_dir === 'up' ? 1 : -1) * ((g.trend_prob ?? 60) / 100) * (g.reliable ? 1 : 0.6);
+  } else if (g?.label === 'RANGE') { reg = 0; }
+  const bd = r.s?.bias_detail ?? r.s?.bias ?? '';
+  if (/bull/i.test(bd)) sess = 1; else if (/bear/i.test(bd)) sess = -1;
+  if (sess != null && r.s?.dir != null) sess *= Math.min(1, Math.max(0.3, r.s.dir / 100));
+  if (reg == null && sess == null) return null;
+  if (reg == null) return sess;
+  if (sess == null) return reg;
+  return Math.max(-1, Math.min(1, 0.6 * reg + 0.4 * sess));
+}
+
+// Per-currency net strength, averaged across every pair it appears in.
+function currencyStrength(rs) {
+  const sum = {}, cnt = {}, pairsOf = {};
+  for (const r of rs) {
+    const cc = PAIR_CCY[r.name];
+    if (!cc) continue;
+    const sig = pairSignal(r);
+    if (sig == null) continue;
+    const [base, quote] = cc;
+    sum[base] = (sum[base] ?? 0) + sig;  cnt[base] = (cnt[base] ?? 0) + 1;
+    sum[quote] = (sum[quote] ?? 0) - sig; cnt[quote] = (cnt[quote] ?? 0) + 1;
+    (pairsOf[base] ??= []).push(dispName(r.name));
+    (pairsOf[quote] ??= []).push(dispName(r.name));
+  }
+  const out = [];
+  for (const c of CCY_ORDER) {
+    if (!cnt[c]) continue;
+    out.push({ ccy: c, score: sum[c] / cnt[c], n: cnt[c], pairs: pairsOf[c] });
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out;
+}
+
+// Equities breadth + risk-on/off verdict (spans the indices).
+function equitiesRisk(rs) {
+  const idx = rs.filter(r => r.d.ac === 'index');
+  const chips = idx.map(r => {
+    const g = r.d.regime, s = r.s;
+    const dir = g?.label === 'TREND' ? g.trend_dir : (/bull/i.test(s?.bias_detail ?? '') ? 'up' : /bear/i.test(s?.bias_detail ?? '') ? 'down' : null);
+    return { name: dispName(r.name), dir };
+  });
+  const up = chips.filter(c => c.dir === 'up').length;
+  const dn = chips.filter(c => c.dir === 'down').length;
+  const goldRow = rs.find(r => r.name === 'GOLD');
+  const goldSig = goldRow ? pairSignalGold(goldRow) : null;
+  const vix = fred?.vix?.value ?? null, hy = fred?.hy?.value ?? null;
+  // Haven demand: JPY/CHF strong + gold bid; risk appetite: indices bid, vol low.
+  const cs = currencyStrength(rs);
+  const strOf = c => cs.find(x => x.ccy === c)?.score ?? 0;
+  const haven = (strOf('JPY') + strOf('CHF')) / 2 + (goldSig ?? 0) * 0.5;
+  const equity = idx.length ? (up - dn) / idx.length : 0;
+  let tone, cls;
+  const volStress = (vix != null && vix > 22) || (hy != null && hy > 4.3);
+  if (equity <= -0.34 && (haven > 0.05 || volStress)) { tone = 'RISK-OFF'; cls = 'off'; }
+  else if (equity >= 0.34 && haven < 0.1 && !volStress) { tone = 'RISK-ON'; cls = 'on'; }
+  else { tone = 'MIXED / two-way'; cls = 'mix'; }
+  return { chips, up, dn, tone, cls, goldSig, vix, hy, equity, haven };
+}
+function pairSignalGold(r) {
+  const g = r.d.regime;
+  if (g?.label === 'TREND' && g.trend_dir) return (g.trend_dir === 'up' ? 1 : -1) * ((g.trend_prob ?? 60) / 100);
+  if (/bull/i.test(r.s?.bias_detail ?? '')) return 0.4;
+  if (/bear/i.test(r.s?.bias_detail ?? '')) return -0.4;
+  return 0;
+}
+
+function renderMarketRead() {
+  const el = $('mread');
+  if (!brief?.instruments) { el.style.display = 'none'; return; }
+  const rs = allRows();   // global synthesis — ignores the FX/Indices/Gold filter
+  if (rs.length < 4) { el.style.display = 'none'; return; }
+  const cs = currencyStrength(rs);
+  const risk = equitiesRisk(rs);
+  const trending = rs.filter(r => r.trending);
+  const tUp = trending.filter(r => r.d.regime?.trend_dir === 'up').length;
+  const tDn = trending.filter(r => r.d.regime?.trend_dir === 'down').length;
+
+  // USD tone across its pairs
+  const usd = cs.find(c => c.ccy === 'USD');
+  const strongest = cs[0], weakest = cs[cs.length - 1];
+  const usdPairs = rs.filter(r => PAIR_CCY[r.name]?.includes('USD'));
+  const usdBid = usdPairs.filter(r => { const sig = pairSignal(r); const isBase = PAIR_CCY[r.name][0] === 'USD'; return sig != null && (isBase ? sig > 0.1 : sig < -0.1); }).length;
+
+  // Standouts — top attention pairs
+  const hot = rs.slice().sort((a, b) => b.att - a.att).slice(0, 3);
+
+  // ── Narrative sentence ──
+  const parts = [];
+  parts.push(`<span class="tone ${risk.cls}">${risk.tone === 'MIXED / two-way' ? 'Mixed, two-way' : risk.tone}</span> morning`);
+  if (usd && Math.abs(usd.score) > 0.12) {
+    parts.push(`the <b>dollar is ${usd.score > 0 ? 'broadly bid' : 'on the back foot'}</b>${usdPairs.length ? ` (${usd.score > 0 ? usdBid : usdPairs.length - usdBid}/${usdPairs.length} USD pairs)` : ''}`);
+  }
+  if (strongest && weakest && strongest.ccy !== weakest.ccy) {
+    parts.push(`<b>${ccyName(strongest.ccy)} strongest, ${ccyName(weakest.ccy)} weakest</b>`);
+  }
+  const verdictSentence = parts[0] + (parts.length > 1 ? ' — ' + parts.slice(1).join(', ') : '') + '.';
+  const breadthSentence = `${trending.length}/${rs.length} instruments trending (${tUp}↑ ${tDn}↓); ${risk.up}/${risk.chips.length || 0} equity indices bid.`;
+
+  // ── Currency strength bars ──
+  const maxAbs = Math.max(0.25, ...cs.map(c => Math.abs(c.score)));
+  const barsHtml = cs.map((c, i) => {
+    const pct = Math.min(50, 50 * Math.abs(c.score) / maxAbs);
+    const cls = i === 0 ? 'top' : i === cs.length - 1 ? 'bot' : '';
+    const bar = c.score >= 0
+      ? `<div class="barp" style="width:${pct}%"></div>`
+      : `<div class="barn" style="width:${pct}%"></div>`;
+    return `<div class="csrow ${cls}" title="${c.ccy}: net ${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)} across ${c.pairs.join(', ')}">
+      <span class="ccy">${c.ccy}</span>
+      <span class="track"><span class="mid"></span>${bar}</span>
+      <span class="val">${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)}</span></div>`;
+  }).join('');
+
+  // ── Equities & risk strip ──
+  const eqChips = risk.chips.map(c =>
+    `<span class="eqchip ${c.dir === 'up' ? 'up' : c.dir === 'down' ? 'dn' : 'flat'}">${c.name} ${c.dir === 'up' ? '▲' : c.dir === 'down' ? '▼' : '·'}</span>`).join('');
+  const goldChip = risk.goldSig != null
+    ? `<span class="eqchip ${risk.goldSig > 0.1 ? 'up' : risk.goldSig < -0.1 ? 'dn' : 'flat'}">Gold ${risk.goldSig > 0.1 ? '▲' : risk.goldSig < -0.1 ? '▼' : '·'}</span>` : '';
+
+  // ── Watch line ──
+  const nextEv = nextHighImpact();
+  const hotHtml = hot.map(r => `<span class="pl" onclick="openDrawer('${r.name}')">${dispName(r.name)}${r.isProx ? ' ⚑' : r.ct?.level === 'EXTREME' ? ' ⚠' : ''}</span>`).join(', ');
+
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="mread-verdict">${verdictSentence} <span style="color:var(--text2)">${breadthSentence}</span></div>
+    <div class="mread-cols">
+      <div>
+        <div class="mread-h">Currency strength — strong → weak (FX + haven)</div>
+        ${barsHtml}
+      </div>
+      <div>
+        <div class="mread-h">Equities &amp; risk</div>
+        <div class="eqgrid">${eqChips}${goldChip}</div>
+        <div class="riskverdict">Risk: <b class="tone ${risk.cls}" style="font-weight:800">${risk.tone}</b>
+          ${risk.vix != null ? `<span class="muted"> · VIX ${fmtN(risk.vix, 1)}</span>` : ''}</div>
+      </div>
+    </div>
+    <div class="mread-watch">
+      <span class="wk">Watch</span>
+      ${nextEv ? `<span>${nextEv}</span>` : '<span class="muted">no high-impact event imminent</span>'}
+      <span class="wk" style="margin-left:6px">Hottest</span>
+      <span>${hotHtml || '—'}</span>
+    </div>`;
+}
+
+const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
+const ccyName = c => CCY_NAMES[c] ?? c;
+
+function nextHighImpact() {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
+  const upcoming = (events ?? [])
+    .filter(e => (e.impact ?? '').toLowerCase() === 'high' && (e.time ?? '').startsWith(todayStr))
+    .map(e => ({ ...e, ts: new Date(e.time.replace(' ', 'T') + 'Z').getTime() }))
+    .filter(e => e.ts > now)
+    .sort((a, b) => a.ts - b.ts)[0];
+  if (!upcoming) return null;
+  const mins = Math.round((upcoming.ts - now) / 60000);
+  const hh = new Date(upcoming.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `<b>${hh}</b> ${upcoming.country} ${upcoming.event.length > 30 ? upcoming.event.slice(0, 29) + '…' : upcoming.event}${mins < 600 ? ` (in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? mins % 60 + 'm' : '') : mins + 'm'})` : ''}`;
+}
+
 // ── Zoom 3: proximity watch — live prices vs ladder levels ───────────────────
 const PROX_LIMIT = { fx: 12, commodity: 5, index: 25 };   // pips / points
 
@@ -456,7 +669,7 @@ function agreement(r) {
 }
 
 // ── Derived per-instrument row ────────────────────────────────────────────────
-function rows() {
+function allRows() {
   const out = [];
   for (const [name, d] of Object.entries(brief.instruments ?? {})) {
     const s  = session?.instruments?.[name] ?? null;
@@ -483,7 +696,10 @@ function rows() {
     if (oi && !oi.stale) att += 8;
     out.push({ name, d, s, fc, hlMed, hl75, used, trending, att, near, isProx, agr, ct, oi });
   }
-  return out.filter(r => filter === 'all' || r.d.ac === filter);
+  return out;
+}
+function rows() {
+  return allRows().filter(r => filter === 'all' || r.d.ac === filter);
 }
 
 function sortRows(rs) {
@@ -662,6 +878,7 @@ function tableHtml(rs) {
 }
 
 function render() {
+  renderMarketRead();
   const rs = sortRows(rows());
   if (tableMode) {
     $('grid').style.display = 'none';
@@ -672,7 +889,7 @@ function render() {
     $('grid').style.display = 'grid';
     $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
   }
-  $('footNote').innerHTML = 'The morning funnel: calendar + risk state up top (should I trade today?) → cards (which pairs deserve attention? ✓ aligned = HMM trend and session bias agree; ⚠ COT extreme = crowded positioning / squeeze risk; ◎ PIN/BREAKOUT = CME gamma regime) → click a card for the full story (Asia, recent days, rate driver, COT positioning, options walls, cached AI read), M5 chart and Decision Engine zones → a pulsing card means price is at a level now.<br>Range-used = today\'s H-L vs the median forecast H-L; ladder = open±median/75th levels with historical touch rates. COT is automatic (weekly CFTC); options/OI is manual CME paste (shown with age, only pairs with a CME chain); AI shows the last Analyse run, not a fresh call.';
+  $('footNote').innerHTML = 'The morning funnel: <b>Market Read</b> up top synthesises the whole board in one sentence + a currency-strength meter (FX + haven) and an equities/risk strip (what is the market thinking?) → calendar + risk state (should I trade today?) → cards (which pairs deserve attention? ✓ aligned = HMM trend and session bias agree; ⚠ COT extreme = crowded positioning / squeeze risk; ◎ PIN/BREAKOUT = CME gamma regime) → click a card for the full story (Asia, recent days, rate driver, COT positioning, options walls, cached AI read), M5 chart and Decision Engine zones → a pulsing card means price is at a level now.<br>Range-used = today\'s H-L vs the median forecast H-L; ladder = open±median/75th levels with historical touch rates. COT is automatic (weekly CFTC); options/OI is manual CME paste (shown with age, only pairs with a CME chain); AI shows the last Analyse run, not a fresh call.';
 }
 
 function setFilter(f) {
