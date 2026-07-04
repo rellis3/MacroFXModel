@@ -280,6 +280,13 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 |---|---|---|---|---|
 | **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
 
+The `/api/yield-coupling` endpoint also has a **deep-history mode** (`?days=`):
+date-paginated forward fetch (`_fetchCouplingRange`, ≤30k bars) plus a cheap
+earliest-available-bar probe per instrument (`_probeEarliestBar`), yielding a
+**history-ceiling verdict** (feasible ≥24mo / marginal ≥6mo / too-shallow) — the
+binding limit for any lens-2 backtest. Deep-pull plot arrays are downsampled to
+~2500 pts; the coupling stats are computed on the full series.
+
 The measure-first stage: prove the coupling is real on 5m and learn how much
 intraday bond-CFD history OANDA actually serves, **before** wiring the planned
 consumers (daily brief reading, coupling-gated z-score strategy, directional
