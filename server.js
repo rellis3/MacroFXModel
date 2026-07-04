@@ -3680,6 +3680,80 @@ app.get('/api/yield-coupling', async (req, res) => {
   }
 });
 
+// ── /api/yield-coupling-real — the REAL DE-US spread from FRED + ECB ──────────
+// The bond-CFD tool proxies yields with CFD prices and can't build the German 2Y
+// (no OANDA Schatz). This uses the ACTUAL daily yields: US from FRED (DGS2/DGS10),
+// German (euro-area AAA) from the ECB yield curve, EUR/USD from FRED (DEXUSEU).
+// spread = DE − US (yield), oriented FX-bullish-when-positive. Runs the same
+// divergence-events + daily lead-lag core on the real series. ?tenor=2Y|10Y
+async function _fetchFredDaily(seriesId, start = '2004-01-01') {
+  if (!process.env.FRED_KEY) throw new Error('FRED_KEY not configured (set in Railway)');
+  const url = `https://api.stlouisfed.org/fred/series/observations`
+            + `?series_id=${seriesId}&api_key=${process.env.FRED_KEY}&file_type=json&observation_start=${start}`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`FRED ${seriesId} ${r.status}`);
+  const d = await r.json();
+  return (d.observations || [])
+    .filter(o => o.value != null && o.value !== '.')
+    .map(o => ({ t: o.date, v: Number(o.value) }))
+    .filter(o => Number.isFinite(o.v));
+}
+async function _fetchEcbDaily(seriesKey) {
+  const url = `https://data-api.ecb.europa.eu/service/data/${seriesKey}?format=jsondata`;
+  const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`ECB ${r.status}`);
+  const d = await r.json();
+  const seriesObj = d?.dataSets?.[0]?.series;
+  const obs = seriesObj && Object.values(seriesObj)[0]?.observations;
+  const dates = d?.structure?.dimensions?.observation?.[0]?.values;   // [{id:'2004-09-06'}, …]
+  if (!obs || !dates) throw new Error('ECB: unexpected response structure');
+  const out = [];
+  for (const [idx, arr] of Object.entries(obs)) {
+    const dt = dates[+idx]?.id, v = arr?.[0];
+    if (dt && v != null && Number.isFinite(Number(v))) out.push({ t: dt, v: Number(v) });
+  }
+  out.sort((a, b) => (a.t < b.t ? -1 : 1));
+  return out;
+}
+
+const _ycRealCache = new Map();
+const _YC_REAL = {
+  '2Y':  { us: 'DGS2',  ecb: 'YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y',  label: 'DE–US 2Y (ECB AAA 2Y vs US 2Y)' },
+  '10Y': { us: 'DGS10', ecb: 'YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y', label: 'DE–US 10Y (ECB AAA 10Y vs US 10Y)' },
+};
+app.get('/api/yield-coupling-real', async (req, res) => {
+  const tenor = (req.query.tenor || '2Y').toUpperCase();
+  const cfg = _YC_REAL[tenor];
+  if (!cfg) return res.status(400).json({ error: 'tenor must be 2Y or 10Y' });
+  const cached = _ycRealCache.get(tenor);
+  if (cached && Date.now() - cached.ts < 6 * 3600_000) return res.json(cached.data);
+  try {
+    const [fx, us, de] = await Promise.all([
+      _fetchFredDaily('DEXUSEU'),
+      _fetchFredDaily(cfg.us),
+      _fetchEcbDaily(cfg.ecb),
+    ]);
+    const availability = { fx: fx.length, us: us.length, de: de.length };
+    const { times, columns } = alignByTime([fx, us, de]);
+    if (times.length < 200) return res.status(502).json({ error: `only ${times.length} aligned days`, availability });
+    const fxCol  = columns[0];
+    const spread = columns[2].map((deV, i) => deV - columns[1][i]);   // DE − US yield (FX-bullish +)
+    const divergenceEvents = computeDivergenceEvents(fxCol, spread, { window: 10, horizons: [1, 3, 5, 10] });
+    const dailyLeadLag     = computeDailyLeadLag(fxCol, spread, { maxLagDays: 30 });
+    const result = {
+      tenor, label: cfg.label, bars: times.length, first: times[0], last: times[times.length - 1],
+      sources: { fx: 'FRED DEXUSEU', us: `FRED ${cfg.us}`, de: `ECB AAA ${tenor}` },
+      availability, divergenceEvents, dailyLeadLag,
+      note: 'Real daily yields (not CFD proxy). spread = DE − US yield, FX-bullish-when-positive. Diagnostic, in-sample.',
+    };
+    _ycRealCache.set(tenor, { data: result, ts: Date.now() });
+    res.json(result);
+  } catch (err) {
+    console.error('[yield-coupling-real]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
 app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
