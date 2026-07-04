@@ -149,6 +149,37 @@ function plot(canvas, series, opts={}) {
   }
 }
 
+function returnsBlock(rt) {
+  if (!rt) return '';
+  const sess = rt.bySession || {};
+  const order = ['Asia','London','Overlap','NY'];
+  let best=null;
+  for (const s of order){ const c=sess[s]; if(c && c.n>=100 && Number.isFinite(c.corr)){ if(!best||Math.abs(c.corr)>Math.abs(sess[best].corr)) best=s; } }
+  const rows = order.map(s=>{
+    const c=sess[s]||{corr:NaN,n:0};
+    const hl = s===best ? ' style="background:rgba(16,185,129,.10)"':'';
+    const col = Number.isFinite(c.corr) ? (c.corr>=0?'#6ee7b7':'#fdba74') : 'var(--dim)';
+    return `<tr${hl}><td>${s}${s===best?' ◄':''}</td><td class="mono" style="color:${col}">${fmt(c.corr)}</td><td class="mono">${c.n||'–'}</td></tr>`;
+  }).join('');
+  const cc = rt.coincident;
+  const verdict = !Number.isFinite(cc) ? 'no returns variance'
+    : Math.abs(cc)>=0.15 ? 'meaningful Δ coupling'
+    : Math.abs(cc)>=0.06 ? 'weak Δ coupling'
+    : 'no Δ coupling';
+  const vcol = !Number.isFinite(cc)?'var(--dim)':Math.abs(cc)>=0.15?'#6ee7b7':Math.abs(cc)>=0.06?'#fcd34d':'#fdba74';
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+      <h2 style="font-size:13px">Returns coupling (Δ) <span class="sub" style="font-weight:400">— price changes vs spread changes; the trading-relevant test (level corr is spurious for drifting series)</span></h2>
+      <div class="metrics">
+        <div class="metric"><div class="v" style="color:${Number.isFinite(cc)&&cc<0?'#fdba74':'#6ee7b7'}">${fmt(cc)}</div><div class="l">Coincident Δ corr</div></div>
+        <div class="metric"><div class="v">${rt.lag>0?'+':''}${rt.lag}</div><div class="l">Δ best lag · ${fmt(rt.lagCorr)}</div></div>
+        <div class="metric"><div class="v" style="font-size:15px;font-weight:700;color:${vcol}">${verdict}</div><div class="l">overall</div></div>
+      </div>
+      <div class="legend"><span>By session (coincident Δ corr) — a real rates→FX coupling should concentrate in London / Overlap, not Asia</span></div>
+      <table style="max-width:380px"><thead><tr><th>Session (UTC)</th><th>Δ corr</th><th>bars</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+}
+
 function dirChip(d, coincident) {
   if (!d) return '<span class="chip">no direction</span>';
   const s = d.sign;
@@ -239,7 +270,9 @@ function render(j) {
         <div class="metric"><div class="v">${s.lag>0?'+':''}${s.lag}</div><div class="l">Best lag · ${fmt(s.lagCorr)}</div></div>
       </div>
       <div style="margin-bottom:10px">${dirChip(s.direction, s.coincident)} &nbsp;·&nbsp; <span class="sub">${leadTxt}</span></div>
-      <div class="legend">
+      <div class="cap" style="margin:0 0 12px">Numbers above are <b>level</b> correlation (the standardized lines below). The <b>returns</b> block after the charts is the trading-relevant one.</div>
+      ${returnsBlock(s.returns)}
+      <div class="legend" style="margin-top:16px">
         <span><i style="background:var(--green)"></i>Price (z)</span>
         <span><i style="background:${spreadColor}"></i>Yield spread (z)</span>
       </div>
