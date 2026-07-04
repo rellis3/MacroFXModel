@@ -169,3 +169,58 @@ export function computeCoupling(price, spread, { corrWindow = 60, maxLag = 24, d
   const direction = directionSignal(spreadZ, lastCorr ?? coincident, { look: dirLook, minCoupling });
   return { priceZ, spreadZ, corr, gap, lag, coincident, direction };
 }
+
+// ── Returns (first differences) ───────────────────────────────────────────────
+// out[0] = NaN; out[i] = arr[i] − arr[i-1]. The right transform for the TRADING
+// question — do price CHANGES track spread CHANGES — vs the level correlation,
+// which is spurious for two drifting series (two random walks can level-correlate
+// by accident yet have uncorrelated returns).
+export function toReturns(arr) {
+  const out = new Array(arr.length).fill(NaN);
+  for (let i = 1; i < arr.length; i++) {
+    out[i] = (Number.isFinite(arr[i]) && Number.isFinite(arr[i - 1])) ? arr[i] - arr[i - 1] : NaN;
+  }
+  return out;
+}
+
+// ── FX session buckets by UTC hour ────────────────────────────────────────────
+// Rates-lead-FX operates in the active hours (London, and the London+NY overlap
+// where US data lands), not the Asia lull — so a REAL coupling should concentrate
+// by session. `times` here are ISO-8601 UTC strings (OANDA candle times).
+export const SESSIONS = ['Asia', 'London', 'Overlap', 'NY'];
+export function sessionOfUTCHour(h) {
+  if (h >= 7  && h < 12) return 'London';
+  if (h >= 12 && h < 16) return 'Overlap';   // London+NY; US data (12:30/13:30/14:00 UTC) lands here
+  if (h >= 16 && h < 21) return 'NY';
+  return 'Asia';                             // 21:00–07:00 UTC
+}
+
+// ── Per-session coincident correlation of two aligned return series ───────────
+// Returns { [session]: { corr, n } } — the decisive readout: does the coupling
+// light up in London/Overlap and vanish in Asia?
+export function sessionBreakdown(aRet, bRet, times) {
+  const buckets = {}; for (const s of SESSIONS) buckets[s] = { a: [], b: [] };
+  for (let i = 0; i < times.length; i++) {
+    if (!Number.isFinite(aRet[i]) || !Number.isFinite(bRet[i])) continue;
+    const s = sessionOfUTCHour(new Date(times[i]).getUTCHours());
+    buckets[s].a.push(aRet[i]); buckets[s].b.push(bRet[i]);
+  }
+  const out = {};
+  for (const s of SESSIONS) out[s] = { corr: pearson(buckets[s].a, buckets[s].b), n: buckets[s].a.length };
+  return out;
+}
+
+// ── Returns-based coupling (the trading-relevant measurement) ─────────────────
+// Correlates price CHANGES vs spread CHANGES, overall + rolling + lead-lag, and
+// breaks the coincident correlation down by session. No "gap" — returns have no
+// level to revert to.
+export function computeReturnsCoupling(price, spread, times, { corrWindow = 60, maxLag = 24 } = {}) {
+  const priceRet  = toReturns(price);
+  const spreadRet = toReturns(spread);
+  return {
+    coincident: pearson(priceRet, spreadRet),
+    corr: rollingCorr(priceRet, spreadRet, corrWindow),
+    lag: bestLag(priceRet, spreadRet, maxLag),
+    bySession: sessionBreakdown(priceRet, spreadRet, times),
+  };
+}

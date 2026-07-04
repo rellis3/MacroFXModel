@@ -34,7 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
-import { computeCoupling, alignByTime, buildSpread }                from './js/yieldCouplingCore.js';
+import { computeCoupling, computeReturnsCoupling, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -3624,6 +3624,9 @@ app.get('/api/yield-coupling', async (req, res) => {
       const legCols  = columns.slice(1);
       const spreadRaw = buildSpread(s.legs.map((l, i) => ({ price: legCols[i], k: l.k })));
       const c = computeCoupling(priceCol, spreadRaw, { corrWindow, maxLag });
+      // Returns-based coupling (price CHANGES vs spread CHANGES) + per-session
+      // breakdown — the trading-relevant measurement. Computed on full series.
+      const rc = computeReturnsCoupling(priceCol, spreadRaw, times, { corrWindow, maxLag });
       // Stats (coincident/lag) are computed on the FULL series above; only the
       // plotted arrays are downsampled to keep the payload light on deep pulls.
       // Evenly-spaced indices, always including the last bar (the live values).
@@ -3639,6 +3642,11 @@ app.get('/api/yield-coupling', async (req, res) => {
         priceZ: ds(c.priceZ), spreadZ: ds(c.spreadZ), corr: ds(c.corr), gap: ds(c.gap),
         coincident: c.coincident, lag: c.lag.lag, lagCorr: c.lag.corr,
         lagProfile: c.lag.profile, direction: c.direction,
+        returns: {
+          coincident: rc.coincident,
+          lag: rc.lag.lag, lagCorr: rc.lag.corr,
+          bySession: rc.bySession,
+        },
       });
     }
 

@@ -5,6 +5,7 @@
 import {
   standardize, alignByTime, buildSpread, pearson, rollingCorr,
   gapSeries, bestLag, directionSignal, computeCoupling,
+  toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -102,6 +103,52 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   ok('computeCoupling detects lead', r.lag.lag >= 1);
   ok('computeCoupling emits series', r.priceZ.length === n && r.corr.length === n && r.gap.length === n);
   ok('computeCoupling direction set', [-1, 0, 1].includes(r.direction.sign));
+}
+
+// ── toReturns ─────────────────────────────────────────────────────────────────
+{
+  const r = toReturns([10, 12, 11, 15]);
+  ok('toReturns[0] NaN', Number.isNaN(r[0]));
+  ok('toReturns diffs', approx(r[1], 2) && approx(r[2], -1) && approx(r[3], 4));
+}
+
+// ── sessionOfUTCHour ──────────────────────────────────────────────────────────
+{
+  ok('session Asia early', sessionOfUTCHour(3) === 'Asia');
+  ok('session London', sessionOfUTCHour(9) === 'London');
+  ok('session Overlap', sessionOfUTCHour(13) === 'Overlap');
+  ok('session NY', sessionOfUTCHour(18) === 'NY');
+  ok('session Asia late', sessionOfUTCHour(23) === 'Asia');
+}
+
+// ── sessionBreakdown (coupling concentrated in one session) ───────────────────
+{
+  // Build return pairs: London hours perfectly correlated, Asia hours anti-correlated.
+  const times = [], a = [], b = [];
+  for (let i = 0; i < 20; i++) {
+    const hour = i < 10 ? 9 : 3;               // first 10 = London, next 10 = Asia
+    times.push(`2026-01-05T${String(hour).padStart(2,'0')}:${String(i%60).padStart(2,'0')}:00Z`);
+    const x = (i % 5) - 2;
+    a.push(x); b.push(hour === 9 ? x : -x);    // London: b=+a; Asia: b=−a
+  }
+  const bd = sessionBreakdown(a, b, times);
+  ok('sessionBreakdown London +1', approx(bd.London.corr, 1, 1e-9));
+  ok('sessionBreakdown Asia −1', approx(bd.Asia.corr, -1, 1e-9));
+  ok('sessionBreakdown counts', bd.London.n === 10 && bd.Asia.n === 10);
+}
+
+// ── computeReturnsCoupling (returns corr differs from level corr) ─────────────
+{
+  // A rising ramp + a rising ramp: levels correlate ~+1, but their returns are
+  // both constant → returns correlation is NaN (no variance). Confirms returns ≠ levels.
+  const n = 60;
+  const price  = Array.from({ length: n }, (_, i) => i);
+  const spread = Array.from({ length: n }, (_, i) => 2 * i);
+  const times  = Array.from({ length: n }, (_, i) => `2026-01-05T${String(9 + (i % 6)).padStart(2,'0')}:00:00Z`);
+  ok('level corr ~1 on ramps', approx(pearson(price, spread), 1, 1e-9));
+  const rc = computeReturnsCoupling(price, spread, times, { corrWindow: 20, maxLag: 5 });
+  ok('returns corr NaN on constant diffs', Number.isNaN(rc.coincident));
+  ok('returns emits bySession', typeof rc.bySession.London === 'object');
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);

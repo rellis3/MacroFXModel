@@ -280,6 +280,15 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 |---|---|---|---|---|
 | **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
 
+The core also emits **returns-based coupling** (`toReturns`, `computeReturnsCoupling`,
+`sessionBreakdown`, `sessionOfUTCHour`, `SESSIONS`) — correlating price *changes*
+vs spread *changes* (the trading-relevant test; level correlation is spurious for
+two drifting series) plus a per-session (Asia/London/Overlap/NY, UTC-hour)
+coincident-corr breakdown, so we can see whether the coupling concentrates in the
+active rates-lead-FX hours. Measured finding (EUR/USD, ~5mo M5): level coupling
+washes out to ~0 over months (the +0.55 one-week reading was a transient regime);
+returns/session is the deciding test for whether any tradeable edge survives.
+
 The `/api/yield-coupling` endpoint also has a **deep-history mode** (`?days=`):
 date-paginated forward fetch (`_fetchCouplingRange`, ≤30k bars) plus a cheap
 earliest-available-bar probe per instrument (`_probeEarliestBar`), yielding a
