@@ -225,6 +225,31 @@ export function computeReturnsCoupling(price, spread, times, { corrWindow = 60, 
   };
 }
 
+// ── Live coupling state — the daily-brief "rates confirmation" reading ───────
+// Honest scope: a CONTEXT / CONVICTION flag, NOT a directional forecast (the
+// aggregate directional test came back weak). It answers two live questions:
+// is the yield currently a useful lens (coupled + which session), and is the
+// latest price move corroborated by rates? Returns the newest-bar reading.
+export function couplingState(price, spread, times, { corrWindow = 60, minCoupling = 0.35, look = 12 } = {}) {
+  const n = price.length;
+  const priceRet  = toReturns(price);
+  const spreadRet = toReturns(spread);
+  const coup = rollingCorr(priceRet, spreadRet, corrWindow);
+  const regimeCorr = [...coup].reverse().find(Number.isFinite) ?? NaN;
+  const session = n ? sessionOfUTCHour(new Date(times[n - 1]).getUTCHours()) : null;
+  const coupled = Number.isFinite(regimeCorr) && Math.abs(regimeCorr) >= minCoupling;
+  const sign = Number.isFinite(regimeCorr) && regimeCorr < 0 ? -1 : 1;   // inverse coupling still corroborates by leg sign
+  const pMove = (n > look) ? price[n - 1]  - price[n - 1 - look]  : NaN;
+  const sMove = (n > look) ? spread[n - 1] - spread[n - 1 - look] : NaN;
+  const corroborated = Number.isFinite(pMove) && Number.isFinite(sMove)
+    && Math.sign(pMove) === Math.sign(sMove * sign);
+  let state, note;
+  if (!coupled) { state = 'decoupled'; note = 'rates not driving price right now — yield uninformative'; }
+  else if (corroborated) { state = 'confirmed'; note = 'move is rates-backed — the yield corroborates it (higher conviction)'; }
+  else { state = 'divergent'; note = 'price running against rates — move is unconfirmed (lower conviction; direction not predicted)'; }
+  return { regimeCorr, coupled, session, priceMove: pMove, spreadMove: sMove, corroborated, state, note };
+}
+
 // ── Autocorrelation of a series at a forward lag (finite pairs only) ──────────
 export function laggedAutocorr(series, lag) {
   const a = [], b = [];
