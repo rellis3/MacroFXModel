@@ -6,7 +6,7 @@ import {
   standardize, alignByTime, buildSpread, pearson, rollingCorr,
   gapSeries, bestLag, directionSignal, computeCoupling,
   toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
-  laggedAutocorr, computeCouplingPersistence,
+  laggedAutocorr, computeCouplingPersistence, couplingState,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -180,6 +180,23 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   ok('persistence forward buckets', p.forwardCoupling.coupled.n > 0 && p.forwardCoupling.decoupled.n > 0);
   ok('persistence coupled fwd > decoupled fwd', p.forwardCoupling.coupled.mean > p.forwardCoupling.decoupled.mean);
   ok('persistence directional buckets', Number.isFinite(p.directional.coupled.hit));
+}
+
+// ── couplingState (live confirmation reading) ─────────────────────────────────
+{
+  const n = 120;
+  const times = Array.from({ length: n }, (_, i) => `2026-01-05T13:${String(i%60).padStart(2,'0')}:00Z`); // Overlap
+  // Coupled + both rising over the last `look` → confirmed.
+  const price = Array.from({ length: n }, (_, i) => i + (((i*7)%3)-1)*0.1);
+  const spread = Array.from({ length: n }, (_, i) => 2*i + (((i*7)%3)-1)*0.2);
+  const st = couplingState(price, spread, times, { corrWindow: 30, look: 10 });
+  ok('couplingState coupled', st.coupled === true);
+  ok('couplingState session Overlap', st.session === 'Overlap');
+  ok('couplingState confirmed', st.state === 'confirmed');
+  // Decoupled: spread is flat noise, price trends → low coupling.
+  const flatSpread = Array.from({ length: n }, (_, i) => (((i*13)%5)-2)*0.01);
+  const st2 = couplingState(price, flatSpread, times, { corrWindow: 30, look: 10 });
+  ok('couplingState decoupled state', st2.state === 'decoupled' || st2.coupled === false);
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);

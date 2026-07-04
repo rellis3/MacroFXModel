@@ -96,6 +96,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const fmt = (x, d=2) => (x==null || Number.isNaN(x)) ? '–' : Number(x).toFixed(d);
+let MPB = 5; // minutes per bar, set from granularity in render()
+function barsToTime(b){ const m=b*MPB; return m>=60 ? +(m/60).toFixed(m%60?1:0)+'h' : m+'m'; }
 
 // ── tiny dependency-free line plotter ────────────────────────────────────────
 function plot(canvas, series, opts={}) {
@@ -149,12 +151,29 @@ function plot(canvas, series, opts={}) {
   }
 }
 
+function stateCard(st) {
+  if (!st) return '';
+  const map = {
+    confirmed: { cls:'on',   label:'RATES-BACKED',  emoji:'✅' },
+    divergent: { cls:'warn', label:'DIVERGENT',     emoji:'⚠️' },
+    decoupled: { cls:'off',  label:'DECOUPLED',     emoji:'➖' },
+  };
+  const m = map[st.state] || map.decoupled;
+  return `<div style="background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin:2px 0 14px">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em">Live read</span>
+      <span class="chip ${m.cls}" style="font-weight:700">${m.emoji} ${m.label}</span>
+      <span class="sub">${st.session||'—'} session · rolling coupling ${fmt(st.regimeCorr)}</span>
+    </div>
+    <div class="cap" style="margin:7px 0 0">${st.note}. <span style="color:var(--dim)">Context/conviction only — not a direction call.</span></div>
+  </div>`;
+}
+
 function persistenceBlock(p) {
   if (!p) return '';
   const pct = x => Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '–';
   // autocorr rows: is the coupling regime sticky?
-  const barsToTxt = b => b>=60 ? (b/60)+'h' : b+' bars';
-  const acRows = p.autocorr.map(a=>`<tr><td>${barsToTxt(a.lag)} ahead</td><td class="mono" style="color:${a.corr>=0.2?'#6ee7b7':a.corr>=0?'#fcd34d':'#fdba74'}">${fmt(a.corr)}</td></tr>`).join('');
+  const acRows = p.autocorr.map(a=>`<tr><td>${barsToTime(a.lag)} ahead</td><td class="mono" style="color:${a.corr>=0.2?'#6ee7b7':a.corr>=0?'#fcd34d':'#fdba74'}">${fmt(a.corr)}</td></tr>`).join('');
   const stickiest = p.autocorr.reduce((m,a)=>Number.isFinite(a.corr)&&(!m||a.corr>m.corr)?a:m, null);
   const sticky = stickiest && stickiest.corr >= 0.2;
   // forward coupling
@@ -169,7 +188,7 @@ function persistenceBlock(p) {
     : (Number.isFinite(dEdge) && dEdge>0.02 && (!Number.isFinite(dCtrl)||dEdge>dCtrl)) ? 'predictable + directional edge'
     : 'regime predictable, weak direction';
   const vcol = verdict.startsWith('predictable + direction') ? '#6ee7b7' : verdict.startsWith('regime predictable') ? '#fcd34d' : '#fdba74';
-  const hz = barsToTxt(p.fwdBars);
+  const hz = barsToTime(p.fwdBars);
   return `
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
       <h2 style="font-size:13px">Regime persistence & forward forecast <span class="sub" style="font-weight:400">— can we predict WHEN price follows the yield? (diagnostic, in-sample)</span></h2>
@@ -260,6 +279,7 @@ async function run() {
 
 function render(j) {
   if (!j.availability) return; // nothing to render (early error)
+  MPB = ({M1:1,M5:5,M15:15,H1:60})[j.granularity] || 5;
   // ceiling verdict banner
   const cv = $('ceiling');
   if (j.ceiling) {
@@ -312,6 +332,7 @@ function render(j) {
       <h2>${s.tenor} — ${s.label}
         ${s.partial?'<span class="chip warn">US-leg only</span>':'<span class="chip on">full spread</span>'}
         <span class="chip">${s.bars} bars</span></h2>
+      ${stateCard(s.state)}
       <div class="metrics">
         <div class="metric"><div class="v" style="color:${lastCorr>=0?'#6ee7b7':'#fdba74'}">${fmt(lastCorr)}</div><div class="l">Coupling (rolling)</div></div>
         <div class="metric"><div class="v">${fmt(s.coincident)}</div><div class="l">Coincident corr</div></div>

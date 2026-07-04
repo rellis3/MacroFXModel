@@ -34,7 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
-import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
+import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -3631,6 +3631,7 @@ app.get('/api/yield-coupling', async (req, res) => {
       // fwdBars scales with granularity so the horizon is ~4h regardless of TF.
       const fwdBars = gran === 'M1' ? 240 : gran === 'M5' ? 48 : gran === 'M15' ? 16 : 4;
       const persistence = computeCouplingPersistence(priceCol, spreadRaw, times, { corrWindow, fwdBars });
+      const state = couplingState(priceCol, spreadRaw, times, { corrWindow });
       // Stats (coincident/lag) are computed on the FULL series above; only the
       // plotted arrays are downsampled to keep the payload light on deep pulls.
       // Evenly-spaced indices, always including the last bar (the live values).
@@ -3651,7 +3652,7 @@ app.get('/api/yield-coupling', async (req, res) => {
           lag: rc.lag.lag, lagCorr: rc.lag.corr,
           bySession: rc.bySession,
         },
-        persistence,
+        persistence, state,
       });
     }
 

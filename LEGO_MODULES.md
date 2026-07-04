@@ -281,6 +281,15 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 |---|---|---|---|---|
 | **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
 
+The core also emits the **live confirmation reading** (`couplingState`) — the
+daily-brief "rates-backed / divergent / decoupled" flag for the newest bar
+(regime coupling + session + whether the latest move is rates-corroborated).
+Measured verdict that scoped it: coupling is real + regime is predictable
+(1h autocorr ≈0.82) but **coincident, weak direction** → confirmation/conviction
+grade, not a price forecast; `couplingState` is deliberately a context flag, not
+a direction call. Lens-1 engine (surfaced on `yield-coupling.html`; daily-brief
+`today.html` wiring is the next step).
+
 The core also emits **regime persistence** (`computeCouplingPersistence`,
 `laggedAutocorr`) — the "can we predict WHEN price follows the yield" test:
 autocorrelation of the rolling coupling (is the regime sticky?), conditional
