@@ -41,8 +41,12 @@
 
   /* ── Market Read: top-of-page synthesis ─────────────────── */
   .mread{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px}
-  .mread-verdict{font-size:15px;line-height:1.5;color:var(--text);margin-bottom:12px}
+  .mread-verdict{font-size:15px;line-height:1.55;color:var(--text);margin-bottom:9px}
   .mread-verdict b{color:var(--text)}
+  .mread-bottom{font-size:13.5px;line-height:1.5;color:var(--text2);background:var(--card2);
+    border-left:3px solid var(--amber);border-radius:0 7px 7px 0;padding:8px 12px;margin-bottom:8px}
+  .mread-bottom .bl-k{font-size:9.5px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.07em;margin-right:6px}
+  .mread-precise{font-size:10.5px;color:var(--text3);font-variant-numeric:tabular-nums;margin-bottom:12px}
   .mread-verdict .tone{font-weight:800;letter-spacing:.01em}
   .mread-verdict .tone.off{color:var(--bear)} .mread-verdict .tone.on{color:var(--bull)} .mread-verdict .tone.mix{color:var(--amber)}
   .mread-verdict .pl{cursor:pointer;border-bottom:1px dotted var(--text3)}
@@ -502,17 +506,45 @@ function renderMarketRead() {
   // Standouts — top attention pairs
   const hot = rs.slice().sort((a, b) => b.att - a.att).slice(0, 3);
 
-  // ── Narrative sentence ──
-  const parts = [];
-  parts.push(`<span class="tone ${risk.cls}">${risk.tone === 'MIXED / two-way' ? 'Mixed, two-way' : risk.tone}</span> morning`);
+  // ── Plain-English narrative ──
+  const partOfDay = (() => { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'; })();
+  const sentences = [];
+  // 1) mood opener
+  const mood = risk.cls === 'off'
+    ? `<span class="tone off">Markets are in a cautious, defensive mood</span> this ${partOfDay}`
+    : risk.cls === 'on'
+    ? `<span class="tone on">Markets are in a risk-taking mood</span> this ${partOfDay}`
+    : `<span class="tone mix">Markets are drifting with no clear direction</span> this ${partOfDay}`;
+  sentences.push(mood + '.');
+  // 2) the dollar, in plain words
   if (usd && Math.abs(usd.score) > 0.12) {
-    parts.push(`the <b>dollar is ${usd.score > 0 ? 'broadly bid' : 'on the back foot'}</b>${usdPairs.length ? ` (${usd.score > 0 ? usdBid : usdPairs.length - usdBid}/${usdPairs.length} USD pairs)` : ''}`);
+    sentences.push(`The <b>US dollar is being ${usd.score > 0 ? 'bought' : 'sold off'}</b> against most currencies.`);
+  } else if (usd) {
+    sentences.push(`The US dollar is fairly flat.`);
   }
-  if (strongest && weakest && strongest.ccy !== weakest.ccy) {
-    parts.push(`<b>${ccyName(strongest.ccy)} strongest, ${ccyName(weakest.ccy)} weakest</b>`);
+  // 3) strongest / weakest + the trade with momentum
+  if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
+    sentences.push(`Today's <b>strongest is the ${ccyFull(strongest.ccy)}</b>, weakest is the <b>${ccyFull(weakest.ccy)}</b> — so buying the ${ccyShort(strongest.ccy)} and selling the ${ccyShort(weakest.ccy)} is the trade with the wind behind it.`);
   }
-  const verdictSentence = parts[0] + (parts.length > 1 ? ' — ' + parts.slice(1).join(', ') : '') + '.';
-  const breadthSentence = `${trending.length}/${rs.length} instruments trending (${tUp}↑ ${tDn}↓); ${risk.up}/${risk.chips.length || 0} equity indices bid.`;
+  // 4) trending vs chopping
+  const trendMaj = trending.length > rs.length / 2;
+  sentences.push(trendMaj
+    ? `Most markets are <b>moving in clear trends</b> today.`
+    : `Most markets are <b>chopping sideways</b> rather than trending.`);
+  // 5) stocks
+  if (risk.chips.length) {
+    const eqTxt = risk.up > risk.dn ? 'mostly higher' : risk.dn > risk.up ? 'mostly lower' : 'mixed';
+    sentences.push(`Stock indexes are <b>${eqTxt}</b>.`);
+  }
+  // 6) next event
+  const evPlain = nextHighImpactPlain();
+  if (evPlain) sentences.push(evPlain.text);
+
+  // Bottom line — what to actually do
+  const bottom = plainBottomLine({ risk, strongest, weakest, trendMaj, evSoon: !!evPlain && evPlain.soon });
+  const verdictSentence = sentences.join(' ');
+  // precise stats, demoted to a small grey line for the number-minded
+  const breadthSentence = `Precise: ${trending.length}/${rs.length} trending (${tUp}↑ ${tDn}↓) · ${risk.up}/${risk.chips.length || 0} indices bid · risk ${risk.tone}${usd ? ` · USD net ${usd.score >= 0 ? '+' : ''}${usd.score.toFixed(2)}` : ''}.`;
 
   // ── Currency strength bars ──
   const maxAbs = Math.max(0.25, ...cs.map(c => Math.abs(c.score)));
@@ -540,17 +572,19 @@ function renderMarketRead() {
 
   el.style.display = 'block';
   el.innerHTML = `
-    <div class="mread-verdict">${verdictSentence} <span style="color:var(--text2)">${breadthSentence}</span></div>
+    <div class="mread-verdict">${verdictSentence}</div>
+    <div class="mread-bottom"><span class="bl-k">Bottom line</span> ${bottom}</div>
+    <div class="mread-precise">${breadthSentence}</div>
     <div class="mread-cols">
       <div>
-        <div class="mread-h">Currency strength — strong → weak (FX + haven)</div>
+        <div class="mread-h">Who's being bought (top) vs sold (bottom)</div>
         ${barsHtml}
       </div>
       <div>
-        <div class="mread-h">Equities &amp; risk</div>
+        <div class="mread-h">Stocks &amp; the market mood</div>
         <div class="eqgrid">${eqChips}${goldChip}</div>
-        <div class="riskverdict">Risk: <b class="tone ${risk.cls}" style="font-weight:800">${risk.tone}</b>
-          ${risk.vix != null ? `<span class="muted"> · VIX ${fmtN(risk.vix, 1)}</span>` : ''}</div>
+        <div class="riskverdict">Mood: <b class="tone ${risk.cls}" style="font-weight:800">${riskPlain(risk.cls)}</b>
+          ${risk.vix != null ? `<span class="muted"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${risk.vix > 20 ? ' — jittery' : ' — calm'}</span>` : ''}</div>
       </div>
     </div>
     <div class="mread-watch">
@@ -563,6 +597,40 @@ function renderMarketRead() {
 
 const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
 const ccyName = c => CCY_NAMES[c] ?? c;
+// Plain-English currency names for the narrative
+const CCY_FULL  = { USD: 'US dollar', EUR: 'euro', GBP: 'British pound', JPY: 'Japanese yen', CHF: 'Swiss franc', AUD: 'Australian dollar', CAD: 'Canadian dollar', NZD: 'New Zealand dollar' };
+const CCY_SHORT = { USD: 'dollar', EUR: 'euro', GBP: 'pound', JPY: 'yen', CHF: 'franc', AUD: 'Aussie', CAD: 'Canadian dollar', NZD: 'Kiwi' };
+const ccyFull  = c => CCY_FULL[c] ?? c;
+const ccyShort = c => CCY_SHORT[c] ?? c;
+const riskPlain = cls => cls === 'off' ? 'Cautious (risk-off)' : cls === 'on' ? 'Risk-taking (risk-on)' : 'Undecided (mixed)';
+
+// The "so what do I do" line, in plain words.
+function plainBottomLine({ risk, strongest, weakest, trendMaj, evSoon }) {
+  if (evSoon) return `Big news is due shortly — many traders will sit on their hands until it's out. Don't get caught on the wrong side of the spike.`;
+  const clearTheme = strongest && weakest && (strongest.score - weakest.score) > 0.45 && trendMaj;
+  if (risk.cls === 'off') return `It's a defensive mood: the safe-haven yen, franc and gold tend to hold up, while the Aussie, Kiwi and stocks are more exposed. Trade smaller and be picky.`;
+  if (clearTheme) return `There's a clear theme — the ${ccyShort(strongest.ccy)} is strong and the ${ccyShort(weakest.ccy)} is weak. Look to buy the ${ccyShort(strongest.ccy)} on dips and sell the ${ccyShort(weakest.ccy)} on bounces, rather than fighting it.`;
+  if (risk.cls === 'on') return `Appetite for risk is healthy, but no single theme dominates — take the cleaner setups and let the messy ones go.`;
+  return `No strong theme to lean on today — better to wait for price to reach a key level than to chase a move. Let the setups come to you.`;
+}
+
+// Plain-English version of the next high-impact event, with a "soon" flag.
+function nextHighImpactPlain() {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
+  const up = (events ?? [])
+    .filter(e => (e.impact ?? '').toLowerCase() === 'high' && (e.time ?? '').startsWith(todayStr))
+    .map(e => ({ ...e, ts: new Date(e.time.replace(' ', 'T') + 'Z').getTime() }))
+    .filter(e => e.ts > now)
+    .sort((a, b) => a.ts - b.ts)[0];
+  if (!up) return null;
+  const mins = Math.round((up.ts - now) / 60000);
+  if (mins > 600) return null;   // too far out to headline
+  const hh = new Date(up.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const inTxt = mins >= 60 ? `${Math.floor(mins / 60)}h${mins % 60 ? mins % 60 + 'm' : ''}` : `${mins}m`;
+  const text = `A big ${up.country} economic release (${up.event.length > 34 ? up.event.slice(0, 33) + '…' : up.event}) is due at <b>${hh}</b> (${inTxt} away) — expect things to stay quiet until then.`;
+  return { text, soon: mins <= 90 };
+}
 
 function nextHighImpact() {
   const todayStr = new Date().toISOString().slice(0, 10);
