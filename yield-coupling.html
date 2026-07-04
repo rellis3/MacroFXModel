@@ -97,6 +97,7 @@
 const $ = id => document.getElementById(id);
 const fmt = (x, d=2) => (x==null || Number.isNaN(x)) ? '–' : Number(x).toFixed(d);
 let MPB = 5; // minutes per bar, set from granularity in render()
+let IS_DAILY = false;
 function barsToTime(b){ const m=b*MPB; return m>=60 ? +(m/60).toFixed(m%60?1:0)+'h' : m+'m'; }
 
 // ── tiny dependency-free line plotter ────────────────────────────────────────
@@ -167,6 +168,34 @@ function stateCard(st) {
     </div>
     <div class="cap" style="margin:7px 0 0">${st.note}. <span style="color:var(--dim)">Context/conviction only — not a direction call.</span></div>
   </div>`;
+}
+
+function divergenceBlock(de) {
+  if (!de || !de.buckets) return '';
+  const pct = x => Number.isFinite(x) ? (x*100).toFixed(0)+'%' : '–';
+  const hzLabel = h => IS_DAILY ? h+'d' : barsToTime(h);
+  const hs = de.horizons, nB = de.buckets.length;
+  const small = de.buckets[0], large = de.buckets[nB-1];
+  let bestEdge = -Infinity, bestHz = null;
+  for (const h of hs){ const e = (large.horizons[h]?.hit ?? NaN) - (small.horizons[h]?.hit ?? NaN); if (Number.isFinite(e) && e > bestEdge){ bestEdge=e; bestHz=h; } }
+  const rows = de.buckets.map((b,bi)=>{
+    const cells = hs.map(h=>{ const c=b.horizons[h]||{}; const col = !Number.isFinite(c.hit)?'var(--dim)':c.hit>=0.58?'#6ee7b7':c.hit>=0.53?'#fcd34d':'#fdba74';
+      return `<td class="mono" style="color:${col}">${pct(c.hit)}<span style="color:var(--dim);font-size:10px"> ${c.n||0}</span></td>`; }).join('');
+    const emph = bi===nB-1 ? ' style="font-weight:700;background:rgba(79,125,240,.08)"' : '';
+    const label = bi===0?'smallest':bi===nB-1?'LARGEST ◄':'b'+bi;
+    return `<tr${emph}><td>${label}<br><span class="sub" style="font-size:10px">|gap| ${fmt(b.minAbs)}–${fmt(b.maxAbs)}</span></td>${cells}</tr>`;
+  }).join('');
+  const verdict = !Number.isFinite(bestEdge) ? '—'
+    : bestEdge>=0.08 ? `edge grows with size (+${(bestEdge*100).toFixed(0)}pts at ${hzLabel(bestHz)})`
+    : bestEdge>=0.03 ? 'weak size effect' : 'no size effect';
+  const vcol = bestEdge>=0.08?'#6ee7b7':bestEdge>=0.03?'#fcd34d':'#fdba74';
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:2px solid var(--yellow)">
+      <h2 style="font-size:13px">🎯 Divergence events <span class="sub" style="font-weight:400">— does FX converge after a BIG divergence? (conditional on size — what an average hides)</span></h2>
+      <div class="metrics"><div class="metric"><div class="v" style="font-size:15px;font-weight:700;color:${vcol}">${verdict}</div><div class="l">largest vs smallest bucket</div></div></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Divergence size</th>${hs.map(h=>`<th>${hzLabel(h)} fwd</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="cap" style="margin-top:8px">Each cell = % of times FX moved to CLOSE the gap over that horizon (hit vs 50%), with n below. <b>Read down each column:</b> if the hit-rate climbs from "smallest" to "LARGEST", the edge lives in big divergences — exactly the setup an all-days correlation averages away. Diagnostic, in-sample.</div>
+    </div>`;
 }
 
 function dailyLeadLagBlock(ll) {
@@ -341,7 +370,8 @@ async function run() {
 
 function render(j) {
   if (!j.availability) return; // nothing to render (early error)
-  MPB = ({M1:1,M5:5,M15:15,H1:60})[j.granularity] || 5;
+  MPB = ({M1:1,M5:5,M15:15,H1:60,D:1440})[j.granularity] || 5;
+  IS_DAILY = j.granularity === 'D';
   // ceiling verdict banner
   const cv = $('ceiling');
   if (j.ceiling) {
@@ -404,8 +434,8 @@ function render(j) {
       <div style="margin-bottom:10px">${dirChip(s.direction, s.coincident)} &nbsp;·&nbsp; <span class="sub">${leadTxt}</span></div>
       <div class="cap" style="margin:0 0 12px">Numbers above are <b>level</b> correlation (the standardized lines below).${s.dailyLeadLag?'':' The <b>returns</b> and <b>regime</b> blocks are the trading-relevant ones.'}</div>
       ${s.dailyLeadLag
-        ? dailyLeadLagBlock(s.dailyLeadLag)
-        : `${priorDayBlock(s.priorDay)}${returnsBlock(s.returns)}${persistenceBlock(s.persistence)}`}
+        ? `${divergenceBlock(s.divergenceEvents)}${dailyLeadLagBlock(s.dailyLeadLag)}`
+        : `${divergenceBlock(s.divergenceEvents)}${priorDayBlock(s.priorDay)}${returnsBlock(s.returns)}${persistenceBlock(s.persistence)}`}
       <div class="legend" style="margin-top:16px">
         <span><i style="background:var(--green)"></i>Price (z)</span>
         <span><i style="background:${spreadColor}"></i>Yield spread (z)</span>

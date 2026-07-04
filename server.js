@@ -34,7 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
-import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
+import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -3640,6 +3640,11 @@ app.get('/api/yield-coupling', async (req, res) => {
       // Daily lead-lag (the macro "spread leads EUR/USD by days" thesis) — only at
       // D granularity, where a positive optimal lag would show the spread leading.
       const dailyLeadLag = isDaily ? computeDailyLeadLag(priceCol, spreadRaw, { maxLagDays: 30 }) : null;
+      // Divergence events — the CONDITIONAL edge (big divergence → FX converges) an
+      // average correlation can't see. Horizons/window in the granularity's units.
+      const divWindow   = isDaily ? 10 : 48;
+      const divHorizons = isDaily ? [1, 3, 5, 10] : [12, 48, 96, 192];
+      const divergenceEvents = computeDivergenceEvents(priceCol, spreadRaw, { window: divWindow, horizons: divHorizons });
       // Stats (coincident/lag) are computed on the FULL series above; only the
       // plotted arrays are downsampled to keep the payload light on deep pulls.
       // Evenly-spaced indices, always including the last bar (the live values).
@@ -3660,7 +3665,7 @@ app.get('/api/yield-coupling', async (req, res) => {
           lag: rc.lag.lag, lagCorr: rc.lag.corr,
           bySession: rc.bySession,
         },
-        persistence, state, priorDay, dailyLeadLag,
+        persistence, state, priorDay, dailyLeadLag, divergenceEvents,
       });
     }
 
