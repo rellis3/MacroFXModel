@@ -40,6 +40,7 @@
   <div class="chub-dd" id="chubDDlive">
     <button class="chub-btn" style="color:#10b981;border-color:rgba(16,185,129,.35)" onclick="chubToggleDD(event,'chubDDlive')">Live ▾</button>
     <div class="chub-menu">
+      <a class="chub-item" href="today.html" target="_blank" data-href="today.html"><span class="ci-txt">☀️ Daily Brief</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('today.html')" data-href="today.html">☆</button></a>
       <a class="chub-item" href="levels.html" target="_blank" data-href="levels.html"><span class="ci-txt">🎯 Entry Lens</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('levels.html')" data-href="levels.html">☆</button></a>
       <a class="chub-item" href="vol-forecast-v2.html" target="_blank" data-href="vol-forecast-v2.html"><span class="ci-txt">📐 Vol Forecast v2</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast-v2.html')" data-href="vol-forecast-v2.html">☆</button></a>
       <a class="chub-item" href="vol-forecast.html" target="_blank" data-href="vol-forecast.html"><span class="ci-txt">📐 Vol Forecast</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('vol-forecast.html')" data-href="vol-forecast.html">☆</button></a>
@@ -2310,6 +2311,7 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
 
       <div class="sm-group" data-group="live">
         <div class="sm-group-hd" style="color:#10b981">Live Trading</div>
+        <a class="sm-item" href="today.html" target="_blank"><span class="sm-item-name">☀️ Daily Brief</span><span class="sm-item-desc">5-minute morning read: per-pair direction, range-used gauge, forecast levels with hit rates, sizing + news risk; drill into M5 chart, Decision Engine zones and the bot level book</span></a>
         <a class="sm-item" href="levels.html" target="_blank"><span class="sm-item-name">🎯 Entry Lens</span><span class="sm-item-desc">All-pairs view: macro regime, vol bands, Asia range, z-score conviction and entry bias in one table</span></a>
         <a class="sm-item" href="vol-forecast-v2.html" target="_blank"><span class="sm-item-name">📐 Vol Forecast v2</span><span class="sm-item-desc">EWMA σ forecaster (v2 constants); per-pair daily / weekly / 20-day range projections — use this over v1</span></a>
         <a class="sm-item" href="vol-forecast.html" target="_blank"><span class="sm-item-name">📐 Vol Forecast</span><span class="sm-item-desc">Original range forecaster (v1); retained for reference — vol math shared with backtest engine</span></a>
