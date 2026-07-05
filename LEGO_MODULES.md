@@ -308,6 +308,16 @@ Rendered as a data-only per-fold table on `yield-coupling-real.html`
 (`?wfQuantile=&wfHorizon=&wfFolds=` tunable). Purpose: is the tail edge stable
 across time or one lucky fold.
 
+The core also runs the **convexity analyzer** (`computeConvexity`) — the payoff
+SHAPE a hit-rate hides: for each big-divergence event it records **MFE** (max
+favorable excursion) and **MAE** (max adverse), normalised by the expected move
+(σ·√H), then simulates a **stop + target with PATH-AWARE first-touch** (walk the
+bars; whichever hits first wins) across a stop×target grid, netting cost, and
+reports EV + hit-rate per cell + the best cell. A green cell = **positive EV even
+at a low hit-rate** (the user's convexity thesis, measured) — it can't rescue
+symmetric noise after cost. Panels on both `yield-coupling.html` (intraday) and
+`yield-coupling-real.html` (daily).
+
 The core also runs the **fade-to-yield backtest** (`backtestDivergenceFade`) —
 the actual trade, not a diagnostic: enter when |divergence gap| ≥ an **IS-learned**
 threshold (no OOS lookahead), fade toward the yield (gap>0 ⇒ long FX), hold N days,

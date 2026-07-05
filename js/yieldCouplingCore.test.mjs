@@ -9,6 +9,7 @@ import {
   laggedAutocorr, computeCouplingPersistence, couplingState,
   computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents,
   backtestDivergenceFade, walkForwardDivergence, computeProjectionGate,
+  computeConvexity,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -324,6 +325,30 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   ok('projGate morning tracking predicts afternoon', g.earlyLatePersistence > 0.3);
   ok('projGate high-early → better late tracking', g.gate.highEarly.meanLateCorr > g.gate.lowEarly.meanLateCorr);
   ok('projGate follow-rate computed on gated days', Number.isFinite(g.gate.highEarly.followRate) && g.gate.highEarly.days > 0);
+}
+
+// ── computeConvexity (convex setup ⇒ big MFE, small MAE, a +EV cell) ──────────
+{
+  // Clean lead-lag: fx follows spread by 3 bars. When spread outruns fx (big gap,
+  // dir = +1), fx catches up over the next few bars → large favorable move (MFE)
+  // with little adverse move (MAE) → a convex, +EV setup.
+  const n = 1200; const spread = [];
+  let s = 0; for (let i = 0; i < n; i++) { s += (((i * 2654435761) % 1000) / 1000 - 0.5); spread.push(s); }
+  const fx = spread.map((_, i) => (i - 3 >= 0 ? spread[i - 3] : spread[0]) + (((i * 40503) % 100) / 100 - 0.5) * 0.02);
+  const cx = computeConvexity(fx, spread, spread.map((_, i) => 't' + i), { window: 8, gapQuantile: 0.8, horizon: 8, costUnits: 0 });
+  ok('convexity finds events', cx.n > 15);
+  ok('convexity MFE distribution', Number.isFinite(cx.dist.mfeMed) && cx.dist.mfeMed > 0);
+  ok('convexity favorable dominates (MFE>MAE)', cx.dist.mfeMed > cx.dist.maeMed);
+  ok('convexity R:R null or finite', cx.dist.rrMed === null || Number.isFinite(cx.dist.rrMed));
+  ok('convexity grid + best cell', cx.grid.length > 0 && cx.best && Number.isFinite(cx.best.ev));
+  ok('convexity best cell positive on convex data', cx.best.ev > 0);
+  ok('convexity hitRate in [0,1]', cx.grid.every(c => c.hitRate >= 0 && c.hitRate <= 1));
+}
+// empty / no-event guard
+{
+  const flat = new Array(300).fill(1);
+  const cx = computeConvexity(flat, flat, flat.map((_, i) => 't' + i), { window: 10, gapQuantile: 0.9, horizon: 10 });
+  ok('convexity guards no events', cx.n === 0);
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);

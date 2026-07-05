@@ -34,7 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
-import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
+import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, computeConvexity, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runTrendBasket } from './js/trendBasketEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
@@ -3655,6 +3655,9 @@ app.get('/api/yield-coupling', async (req, res) => {
       const divWindow   = isDaily ? 10 : 48;
       const divHorizons = isDaily ? [1, 3, 5, 10] : [12, 48, 96, 192];
       const divergenceEvents = computeDivergenceEvents(priceCol, spreadRaw, { window: divWindow, horizons: divHorizons });
+      // Convexity — MFE/MAE payoff shape of the big-divergence setup at this TF.
+      const cxHorizon = isDaily ? 10 : divHorizons[1];
+      const convexity = computeConvexity(priceCol, spreadRaw, times, { window: divWindow, gapQuantile: 0.9, horizon: cxHorizon });
       // Stats (coincident/lag) are computed on the FULL series above; only the
       // plotted arrays are downsampled to keep the payload light on deep pulls.
       // Evenly-spaced indices, always including the last bar (the live values).
@@ -3675,7 +3678,7 @@ app.get('/api/yield-coupling', async (req, res) => {
           lag: rc.lag.lag, lagCorr: rc.lag.corr,
           bySession: rc.bySession,
         },
-        persistence, state, priorDay, dailyLeadLag, divergenceEvents, projectionGate,
+        persistence, state, priorDay, dailyLeadLag, divergenceEvents, projectionGate, convexity,
       });
     }
 
@@ -3750,6 +3753,9 @@ app.get('/api/yield-coupling-real', async (req, res) => {
     const spread = columns[2].map((deV, i) => deV - columns[1][i]);   // DE − US yield (FX-bullish +)
     const divergenceEvents = computeDivergenceEvents(fxCol, spread, { window: 10, horizons: [1, 3, 5, 10] });
     const dailyLeadLag     = computeDailyLeadLag(fxCol, spread, { maxLagDays: 30 });
+    // Convexity — the MFE/MAE payoff shape of the big-divergence setup (does a low
+    // hit-rate still pay because winners run far and losers stop small?).
+    const convexity = computeConvexity(fxCol, spread, times, { window: 10, gapQuantile: 0.9, horizon: 10 });
     // The real trade: fade a big divergence back to the yield, honest IS/OOS + costs.
     const costPct  = Math.min(Math.max(parseFloat(req.query.cost) || 0.00015, 0), 0.002);
     const backtest = backtestDivergenceFade(fxCol, spread, times, { window: 10, gapQuantile: 0.75, horizon: 5, costPct });
@@ -3768,7 +3774,7 @@ app.get('/api/yield-coupling-real', async (req, res) => {
     const result = {
       tenor, label: cfg.label, bars: times.length, first: times[0], last: times[times.length - 1],
       sources: { fx: 'FRED DEXUSEU', us: `FRED ${cfg.us}`, de: `ECB AAA ${tenor}` },
-      availability, divergenceEvents, dailyLeadLag, backtest, sweep, walkForward, costPct,
+      availability, divergenceEvents, dailyLeadLag, backtest, sweep, walkForward, convexity, costPct,
       note: 'Real daily yields (not CFD proxy). spread = DE − US yield, FX-bullish-when-positive. Backtest = fade big divergence toward yield, mark-to-close, IS/OOS, after cost. Diagnostic (daily mark-to-close; a target/stop version needs intraday fills).',
     };
     _ycRealCache.set(tenor, { data: result, ts: Date.now() });

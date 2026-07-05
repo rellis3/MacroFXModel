@@ -128,6 +128,29 @@ function wfPanel(wf){
     <div class="cap">Dimmed rows have &lt;10 events (too few to read). Tune via ?wfQuantile= &amp;wfHorizon= &amp;wfFolds= in the URL.</div></div>`;
 }
 
+function cxTable(cx){
+  if(!cx||!cx.n) return '';
+  const d=cx.dist, pctf=x=>Number.isFinite(x)?(x*100).toFixed(0)+'%':'–';
+  const stops=[...new Set(cx.grid.map(c=>c.stop))], targets=[...new Set(cx.grid.map(c=>c.target))];
+  const cellFor=(s,t)=>cx.grid.find(c=>c.stop===s&&c.target===t);
+  const rows=stops.map(s=>`<tr><td>stop ${s}</td>${targets.map(t=>{const c=cellFor(s,t);const best=cx.best&&c.stop===cx.best.stop&&c.target===cx.best.target;
+    const col=!c?'var(--dim)':c.ev>0.05?'#6ee7b7':c.ev>0?'#fcd34d':'#fdba74';
+    return `<td class="mono" style="color:${col};${best?'background:rgba(16,185,129,.14);font-weight:700':''}">${c?(c.ev>=0?'+':'')+c.ev.toFixed(2):'–'}<span style="color:var(--dim);font-size:10px"> ${c?pctf(c.hitRate):''}</span></td>`;}).join('')}</tr>`).join('');
+  const b=cx.best;
+  const verdict=!b?'—':b.ev>0.05?`convex — a stop/target pays (+${b.ev.toFixed(2)} at ${b.target}:${b.stop}, ${pctf(b.hitRate)} hit)`:b.ev>0?'marginally convex':'not convex (no +EV cell)';
+  const vcol=!b?'var(--dim)':b.ev>0.05?'#6ee7b7':b.ev>0?'#fcd34d':'#fdba74';
+  return `<div class="panel"><h2>🎢 Convexity (MFE/MAE) <span class="sub" style="font-weight:400">— does the payoff SHAPE pay even at low hit-rate? (${cx.n} events, ${cx.params.horizon}d hold)</span></h2>
+    <div class="metrics">
+      <div class="metric"><div class="v" style="font-size:14px;color:${vcol}">${verdict}</div><div class="l">verdict</div></div>
+      <div class="metric"><div class="v">${fmt(d.mfeMed)}</div><div class="l">Median MFE (σ·√H)</div></div>
+      <div class="metric"><div class="v">${fmt(d.maeMed)}</div><div class="l">Median MAE</div></div>
+      <div class="metric"><div class="v">${d.rrMed==null?'∞':fmt(d.rrMed)}</div><div class="l">MFE:MAE</div></div>
+    </div>
+    <div class="legend">MFE = how far price ran the trade's way; MAE = how far against (σ·√H units). Grid = EV per unit risk, path-aware stop+target, hit-rate below, net cost.</div>
+    <table style="max-width:520px"><thead><tr><th>stop \\ target →</th>${targets.map(t=>`<th>${t}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <div class="cap">A green cell = positive EV <b>even at a low hit-rate</b> — convexity, measured. All orange = the shape doesn't rescue it after cost. In-sample, first-touch sim.</div></div>`;
+}
+
 async function run(){
   const tenor=$('tenor').value;
   $('run').disabled=true; $('status').textContent='Fetching FRED + ECB…'; $('status').className='status'; $('out').innerHTML='';
@@ -138,6 +161,7 @@ async function run(){
     $('out').innerHTML =
       `<div class="panel"><h2>${j.label} <span class="chip">${j.bars} days</span></h2>
         <div class="cap">${j.first} → ${j.last} · sources: ${j.sources.fx}, ${j.sources.us}, ${j.sources.de} · raw obs: FX ${j.availability.fx}, US ${j.availability.us}, DE ${j.availability.de}</div></div>`
+      + (j.convexity ? cxTable(j.convexity) : '')
       + (j.walkForward ? wfPanel(j.walkForward) : '')
       + (j.backtest ? btPanel(j.backtest, j.costPct) : '')
       + (j.sweep ? sweepPanel(j.sweep) : '')

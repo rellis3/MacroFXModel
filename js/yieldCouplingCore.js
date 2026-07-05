@@ -410,6 +410,79 @@ export function computeDivergenceEvents(fx, spread, { window = 10, horizons = [1
   return { window, horizons, buckets: bucketStats };
 }
 
+// ── Convexity: MFE/MAE shape of a setup — where a low hit-rate still pays ─────
+// A hit-rate hides the PAYOFF SHAPE. This measures, for each big-divergence event,
+// how far price runs the trade's way (MFE) vs against it (MAE) over the forward
+// window — then simulates a STOP + TARGET with PATH-AWARE first-touch (walk the
+// bars in order; whichever level is hit first wins) across a grid, netting cost.
+// Excursions are normalised by the expected move over the horizon (σ·√H) so it's
+// scale/horizon-free. Convex setup = MFE ≫ MAE ⇒ some (stop,target) cell is
+// positive EV even at a low hit-rate. It CANNOT rescue symmetric noise after cost.
+export function computeConvexity(fx, spread, times, {
+  window = 10, gapQuantile = 0.9, horizon = 10,
+  stops = [0.5, 1, 1.5], targets = [1, 1.5, 2, 3], costUnits = 0.05,
+} = {}) {
+  const fxRet = toReturns(fx), spRet = toReturns(spread);
+  const gaps = new Array(fx.length).fill(NaN);
+  for (let t = window; t < fx.length; t++) {
+    const fWin = fxRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+    const sWin = spRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+    const fSd = stdev(fWin, 0), sSd = stdev(sWin, 0);
+    if (fSd <= 0 || sSd <= 0) continue;
+    gaps[t] = (spread[t] - spread[t - window]) / (sSd * Math.sqrt(window))
+            - (fx[t]     - fx[t - window])     / (fSd * Math.sqrt(window));
+  }
+  const absG = gaps.filter(Number.isFinite).map(Math.abs).sort((a, b) => a - b);
+  const thr = absG.length ? absG[Math.min(absG.length - 1, Math.floor(gapQuantile * absG.length))] : Infinity;
+
+  const events = [];
+  let t = window;
+  while (t + horizon < fx.length) {
+    const g = gaps[t];
+    if (Number.isFinite(g) && Math.abs(g) >= thr) {
+      const dir = g > 0 ? 1 : -1, entry = fx[t];
+      const win = fxRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+      const sd1 = stdev(win, 0);
+      const norm = sd1 > 0 ? sd1 * Math.sqrt(horizon) : null;
+      if (norm && entry > 0) {
+        let mfe = 0, mae = 0; const path = [];
+        for (let j = t + 1; j <= t + horizon; j++) {
+          const rn = (dir * (fx[j] - entry) / entry) / norm;
+          if (!Number.isFinite(rn)) break;
+          path.push(rn); if (rn > mfe) mfe = rn; if (rn < mae) mae = rn;
+        }
+        if (path.length) { events.push({ mfe, mae, terminal: path[path.length - 1], path }); t += horizon; continue; }
+      }
+    }
+    t++;
+  }
+  const n = events.length;
+  if (!n) return { n: 0, params: { window, gapQuantile, horizon, costUnits } };
+
+  const pctile = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return +s[Math.min(s.length - 1, Math.floor(p * s.length))].toFixed(2); };
+  const mfes = events.map(e => e.mfe), maes = events.map(e => Math.abs(e.mae));
+  const maeMed = pctile(maes, 0.5), mfeMed = pctile(mfes, 0.5);
+  const dist = {
+    mfeMed, mfeP75: pctile(mfes, 0.75), mfeP90: pctile(mfes, 0.9),
+    maeMed, maeP75: pctile(maes, 0.75), maeP90: pctile(maes, 0.9),
+    rrMed: maeMed > 0 ? +(mfeMed / maeMed).toFixed(2) : null,
+  };
+  const grid = [];
+  for (const stop of stops) for (const target of targets) {
+    let wins = 0, losses = 0, other = 0, pnl = 0;
+    for (const e of events) {
+      let outcome = null;
+      for (const rn of e.path) { if (rn <= -stop) { outcome = -stop; break; } if (rn >= target) { outcome = target; break; } }
+      if (outcome === null) outcome = e.terminal;
+      if (outcome >= target - 1e-9) wins++; else if (outcome <= -stop + 1e-9) losses++; else other++;
+      pnl += outcome - costUnits;
+    }
+    grid.push({ stop, target, rr: +(target / stop).toFixed(2), hitRate: +(wins / n).toFixed(3), ev: +(pnl / n).toFixed(3), wins, losses, other });
+  }
+  const best = grid.reduce((m, c) => (c.ev > (m?.ev ?? -Infinity) ? c : m), null);
+  return { n, dist, grid, best, params: { window, gapQuantile, horizon, costUnits }, unit: 'σ·√H (expected move over the horizon)' };
+}
+
 // ── Backtest: fade a big divergence back toward the yield (the real trade) ────
 // The diagnostics measured DIRECTION hit-rate; a mean-reversion trade's edge is
 // in R:R (target = the gap, stop = further divergence), which a hit-rate can't
