@@ -255,13 +255,17 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
     byReason,
     topCells: Object.values(missedCells).sort((a, b) => b.n - a.n).slice(0, 40),
   };
+  const bookIdd = intradayDDBlock(bookTrades, equity);
   return {
     splitDate, policy, perPair, equity, nTrades: bookTrades.length, tradesByPair, missed,
     book: backtestStats(bookTrades.map(x => x.pnl), bookTrades.map(x => x.date), { mcRuns, bootRuns }),
-    // HONEST headline: Sharpe/CAGR/DD on the daily portfolio series (captures
-    // same-day concurrency + cross-pair correlation), not per-trade ×√(trades/yr).
-    portfolio: { ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(bookTrades.length / equity.length).toFixed(1) : 0 },
-    intradayDD: intradayDDBlock(bookTrades, equity),
+    // HONEST headline: Sharpe/CAGR on the daily portfolio series (captures same-day
+    // concurrency + cross-pair correlation), not per-trade ×√(trades/yr). Drawdown is
+    // taken on the MARK-TO-MARKET path (withMtmDD) — the closed daily-net curve hides
+    // intratrade MAE + concurrent open-position dips, so its peak-to-trough is only a
+    // lower bound (kept, labelled, as volTarget.maxDDClosed).
+    portfolio: withMtmDD({ ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(bookTrades.length / equity.length).toFixed(1) : 0 }, bookIdd),
+    intradayDD: bookIdd,
     survivors,
     coverage: { fadeCells: countDec(policy, 'fade'), followCells: countDec(policy, 'follow'), skipCells: countDec(policy, 'skip') },
   };
@@ -286,13 +290,42 @@ export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMa
   let cum = 0;
   const equity = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(4), cum: +(cum += pnl).toFixed(4) }));
+  const survIdd = intradayDDBlock(survTrades, equity);
   return {
     margin: survivorMargin, minTrades: minSurvivorTrades,
     pairs: keep, count: keep.length, total: all.length,
     excluded: excluded.sort((a, b) => a.expectancy - b.expectancy),
     nTrades: survTrades.length, equity,
-    portfolio: { ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 },
-    intradayDD: intradayDDBlock(survTrades, equity),
+    portfolio: withMtmDD({ ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 }, survIdd),
+    intradayDD: survIdd,
+  };
+}
+
+// Fold the marked-to-market drawdown into a portfolio-stats object as the PRIMARY
+// drawdown basis. The closed-trade daily-netted equity curve nets ~12 concurrent,
+// highly-correlated positions into one number per day BEFORE measuring drawdown, and
+// records only closed outcomes — so it hides both intratrade MAE and same-day
+// concurrent open-position dips, making its peak-to-trough a lower bound. The MTM path
+// (intradayMtmDrawdown, via intradayDDBlock) restores both. We express the MTM DD on
+// the SAME vol-targeted basis by scaling the closed vol-targeted DD by the raw MTM/closed
+// multiple — unit-consistent because both raw DDs are additive %-of-price. Only when the
+// MTM path is valid (trades carry real timestamps); otherwise maxDDMtm/calmarMtm are null
+// so the UI shows n/a rather than a stale near-1× number dressed up as the honest one.
+// The closed figures are preserved (maxDDClosed / calmarClosed) as the labelled lower bound.
+export function withMtmDD(port, idd) {
+  const vt = port.volTarget || {};
+  const mtmValid = !!(idd && idd.valid);
+  const mult = mtmValid ? idd.multipleVsClosed : null;
+  const maxDDMtm  = (mult != null && vt.maxDD != null) ? +(vt.maxDD * mult).toFixed(2) : null;
+  const calmarMtm = (maxDDMtm != null && maxDDMtm < -1e-9) ? +(vt.cagr / Math.abs(maxDDMtm)).toFixed(2) : null;
+  return {
+    ...port,
+    mtmValid,
+    volTarget: {
+      ...vt,
+      maxDDClosed: vt.maxDD, calmarClosed: vt.calmar,   // the closed daily-net lower bound
+      maxDDMtm, calmarMtm,                              // PRIMARY (mark-to-market) — null when data stale
+    },
   };
 }
 
