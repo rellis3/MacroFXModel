@@ -11,6 +11,16 @@
  *     OC75_up/dn  = open ± HN_P75 × oc_75_corr × σ_w (75th pct OC body)
  *   Fade: limit orders placed at those levels, TP = Monday open (mean reversion).
  *
+ * Regime fade/follow gate (opt-in; `regimeMode`, default 'off' = unchanged):
+ *   The incumbent fades EVERY touch regardless of the week's trend — the exact
+ *   "always-fade" failure mode TRADABILITY_REVIEW.md warns about. This gate ports
+ *   the bot/daily-engine lesson (don't fade into a trend) via the shared bricks:
+ *     'counter'   — skip the with-trend fade side (BULL→no SELL-from-high,
+ *                   BEAR→no BUY-from-low), classifyRegime on the weekly anchor.
+ *     'skipTrend' — skip all fades on TREND weeks (dayTypeScore T ≥ trendMin).
+ *   Every trade is tagged with `regime` + `dayType_t` so a per-regime breakdown
+ *   shows how fades fare by regime even in 'off' mode.
+ *
  * Modes:
  *   revHL50   — entry HL50, TP = Mon open, SL = HL75            (~3.8:1 R:R)
  *   revHL75   — entry HL75, TP = Mon open, SL = HL75 × slMult
@@ -36,8 +46,11 @@ import path                                       from 'path';
 import { fileURLToPath }                          from 'url';
 import {
   fetchD1, ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas,
-  ASSET_PARAMS, BM_P50, BM_P75, HN_P50, HN_P75,
+  ASSET_PARAMS, BM_P50, BM_P75, HN_P50, HN_P75, classifyRegime,
 } from './volBacktestEngine.js';
+// The canonical fade-vs-follow brain — imported, never copied (CLAUDE.md Lego #1).
+// dayTypeScore returns trend-day-ness T ∈ [0,1] (0 = chop/fade, 1 = trend/follow).
+import { dayTypeScore } from './dayTypeCore.js';
 import {
   readM1Parquet, groupByDate, fetchFromR2, fetchFromDrive, M1_DRIVE_IDS,
 } from './volBacktestM1Engine.js';
@@ -300,6 +313,13 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     smiFilter       = false,
     smiBuyThresh    = -40,
     smiSellThresh   =  40,
+    // Regime fade/follow gate (computed per-week in runWeeklyBacktest). When a
+    // side is disallowed, that side's fades (fade-the-high = SELL, fade-the-low
+    // = BUY) are skipped for ALL levels this week — mirrors the daily engine's
+    // counter-regime filter (simulateRevHL50M1 revMode='counter'). Default true
+    // (=off) leaves the incumbent blind-fade behaviour byte-identical.
+    allowSellFade   = true,
+    allowBuyFade    = true,
   } = opts;
 
   const pip     = PIP_SIZE[pair] ?? 0.0001;
@@ -381,6 +401,11 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     // ── Check new fills (only first hit per slot) ────────────────────────────
     const tryFill = (key, side, level, entry) => {
       if (!slots[key]) {
+        // Regime gate: skip the with-trend fade side on trending weeks (or the
+        // whole week in skipTrend mode). All levels are fades to Monday open, so
+        // SELL = fade-the-high, BUY = fade-the-low.
+        if (side === 'SELL' && !allowSellFade) return;
+        if (side === 'BUY'  && !allowBuyFade)  return;
         // Z-Score filter: skip fill if price isn't sufficiently extended
         if (zScoreFilter && bar.zScore != null) {
           if (side === 'BUY'  && bar.zScore > zScoreBuyThresh)  return;
@@ -478,6 +503,21 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
           carryMode = false, maxOnePerPair = false,
           m1ByWeek = null,   // Map<weekKey, m1bar[]> — M1 simulation when provided
           maeCalibPct = 85, maeCalibLookback = 100, maeCalibMinSamples = 20,
+          // Regime fade/follow gate (opt-in; default 'off' = incumbent blind fade):
+          //   'off'       — fade both sides at every level (unchanged).
+          //   'counter'   — skip the with-trend fade side: on BULL weeks skip
+          //                 SELL-from-high, on BEAR weeks skip BUY-from-low
+          //                 (fading a directional week gets stopped at the outer
+          //                 band). RANGE weeks fade both. Mirrors the daily
+          //                 engine's counter-regime filter.
+          //   'skipTrend' — skip ALL fades on TREND weeks (dayTypeScore T ≥
+          //                 trendMin); fade both on RANGE/MIXED weeks. Uses the
+          //                 canonical trend-day-ness brain directly.
+          regimeMode  = 'off',
+          slopeThresh = 0.002,   // classifyRegime EMA-slope threshold (weekly-anchored)
+          bearMult    = 1.0,     // BEAR asymmetry (raise to require a steeper downtrend)
+          dayTypeWin  = 14,      // dayTypeScore lookback (daily closes before Monday)
+          trendMin    = 0.55,    // T ≥ this ⇒ TREND week (skipTrend mode)
         } = opts;
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
@@ -584,6 +624,7 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
           pnl_pips: cPips(pnl), mfe_pips: c.mfe != null ? cPips(c.mfe) : null,
           mae_pips: c.mae != null ? cPips(c.mae) : null,
           carried: true, m1_sim: c.m1_sim ?? false,
+          regime: c.regime ?? null, dayType_t: c.dayType_t ?? null,
         });
       }
       carryTrades.length = 0;
@@ -593,6 +634,21 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     // Vol sigma for Monday = pre-computed through Friday's close (no lookahead)
     const sigmaD = Math.max(volSigmas[mondayIdx] ?? 1e-6, 1e-6);
     const sigmaW = sigmaD * SQRT5;
+
+    // ── Weekly regime + trend-day-ness (no lookahead: both read closes < mondayIdx,
+    // i.e. data through the prior Friday, all known before Monday opens) ─────────
+    const regime = classifyRegime(closes, mondayIdx, 20, 5, slopeThresh, bearMult);
+    const dtT    = +dayTypeScore(closes, mondayIdx, dayTypeWin).toFixed(4);
+
+    // Derive the per-side fade gate from the regime mode.
+    let allowSellFade = true, allowBuyFade = true;   // 'off' → fade both (unchanged)
+    if (regimeMode === 'counter') {
+      allowSellFade = regime !== 'BULL';   // don't fade the high into an uptrend
+      allowBuyFade  = regime !== 'BEAR';   // don't fade the low into a downtrend
+    } else if (regimeMode === 'skipTrend') {
+      const isTrend = dtT >= trendMin;     // strong trend week → stand aside
+      allowSellFade = allowBuyFade = !isTrend;
+    }
 
     const hl50pct  = BM_P50 * p.hl_50_corr  * sigmaW * 100;
     const hl75pct  = BM_P75 * p.hl_75_corr  * sigmaW * 100;
@@ -610,7 +666,7 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     // maxOnePerPair: skip new orders while any carry is still open
     const skipNewOrders = maxOnePerPair && carryTrades.length > 0;
     const trades        = skipNewOrders
-      ? [] : simulateWeek(mondayOpen, simBars, levelPcts, { ...opts, noEowClose: carryMode, calibCtx });
+      ? [] : simulateWeek(mondayOpen, simBars, levelPcts, { ...opts, noEowClose: carryMode, calibCtx, allowSellFade, allowBuyFade });
 
     // Calibration update happens after this week's fills are known, so next
     // week's getSl() sees this week's data but this week's own getSl() calls
@@ -630,6 +686,7 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
           hl50_pct:   +hl50pct.toFixed(4),  hl75_pct:   +hl75pct.toFixed(4),
           oc_med_pct: +ocMedpct.toFixed(4), oc75_pct:   +oc75pct.toFixed(4),
           atr30:       +atr30.toFixed(6),
+          regime,      dayType_t: dtT,
         });
       } else {
         records.push({
@@ -658,6 +715,7 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
           mae_pips:    t.mae   != null ? toPips(t.mae) : null,
           carried:     false,
           m1_sim:      !!(m1WeekBars && m1WeekBars.length >= 10),
+          regime,      dayType_t: dtT,
         });
       }
     }
@@ -691,6 +749,7 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
         pnl_pips: fPips(pnl), mfe_pips: c.mfe != null ? fPips(c.mfe) : null,
         mae_pips: c.mae != null ? fPips(c.mae) : null,
         carried: true,
+        regime: c.regime ?? null, dayType_t: c.dayType_t ?? null,
       });
     }
   }
