@@ -8,6 +8,7 @@ import {
   toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
   laggedAutocorr, computeCouplingPersistence, couplingState,
   computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents,
+  backtestDivergenceFade,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -262,6 +263,25 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   ok('divEvents large-gap converges', largeMax > 0.6);
   ok('divEvents edge rises with size', largeMax > small);
   ok('divEvents counts present', de.buckets[3].horizons[6].n > 20);
+}
+
+// ── backtestDivergenceFade (reverting series ⇒ positive OOS; structure sane) ───
+{
+  const n = 1200; const spread = [], fx = [], times = [];
+  let sp = 0;
+  for (let i = 0; i < n; i++) { sp += (((i * 2654435761) % 100) / 100 - 0.5); spread.push(sp);
+    const d = new Date(Date.UTC(2010, 0, 1) + i * 86400000).toISOString().slice(0, 10); times.push(d); }
+  for (let i = 0; i < n; i++) fx.push(spread[i] + (((i * 40503) % 100) / 100 - 0.5) * 0.3);
+  for (let t = 40; t < n - 15; t += 25) {
+    const mag = 8 * (((t / 25) % 2) ? 1 : -1);
+    for (let k = 0; k < 8; k++) if (t + k < n) fx[t + k] = spread[t + k] + mag * (1 - k / 8);
+  }
+  const bt = backtestDivergenceFade(fx, spread, times, { window: 8, gapQuantile: 0.8, horizon: 6, costPct: 0, isFrac: 0.6 });
+  ok('backtest produces trades', bt.nTrades > 10);
+  ok('backtest has IS+OOS', bt.is.trades > 0 && bt.oos.trades > 0);
+  ok('backtest OOS positive expectancy', bt.oos.expectancy > 0);
+  ok('backtest cost-stress present', bt.costStress.length === 3);
+  ok('backtest R:R computed', Number.isFinite(bt.oos.rr));
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);
