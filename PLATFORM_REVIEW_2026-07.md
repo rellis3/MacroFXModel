@@ -317,6 +317,10 @@ and the `/api/refresh` staleness "fix" just re-stamps old data's timestamp.
 1. **Fix `walkBars` fill-bar TP + `dynamicHL` same-bar anchor**
    (`forecastCore.js`) and re-run the v2 A/B suite — the selector evidence is
    contaminated on D1 paths. (§1.1, §1.2)
+   ✅ **DONE** — fix in `60ece89` (2026-07-02); A/B re-run 2026-07-05, see
+   `V2_AB_RERUN_2026-07.md`. Verdict unchanged (selector adds nothing OOS),
+   and the pre-fix *weekly fade* positives (Sharpe ≈ +1 on majors) are
+   confirmed phantom-TP artifacts — retracted.
 2. **Fix the producer σ off-by-one and the 23:05-UTC/London-midnight anchor**,
    add the plan-staleness fail-closed gate. (§2.1)
 3. **De-collide MT5 magics**; add `positions_get`-by-magic reconciliation to the
