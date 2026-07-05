@@ -97,6 +97,18 @@
   .mccy-row .c{font-weight:700;color:var(--text)}
   .mccy-row.pos .c{color:var(--bull)} .mccy-row.neg .c{color:var(--bear)}
 
+  /* ── Quick-stat strips (daily-check zoom levels) ────────── */
+  .qstrip{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--border);
+          border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12.5px;line-height:1.5;color:var(--text2)}
+  .qstrip .qk{font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;
+              white-space:nowrap;padding-top:2px;flex:0 0 auto}
+  .qstrip .qv{flex:1}
+  .qstrip .qv b{color:var(--text)}
+  .qstrip .pl{cursor:pointer;color:var(--text);border-bottom:1px dotted var(--text3)}
+  .qstrip.delta{border-color:rgba(79,125,240,.45);background:linear-gradient(90deg,rgba(79,125,240,.08),transparent)}
+  .qstrip.delta .qk{color:var(--blue)}
+  .chg-up{color:var(--bull);font-weight:600} .chg-dn{color:var(--bear);font-weight:600} .chg-warn{color:var(--amber);font-weight:600}
+
   /* ── News playbook: what-ifs for today's events ─────────── */
   .news{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden}
   .news-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none}
@@ -263,13 +275,20 @@
 </div>
 
 <div class="wrap">
+  <div class="qstrip delta" id="sinceYday" style="display:none"></div>
+
   <div class="mread" id="mread" style="display:none"></div>
+
+  <div class="qstrip" id="weekCtx" style="display:none"></div>
+  <div class="qstrip" id="concentration" style="display:none"></div>
 
   <div class="macro" id="macro" style="display:none"></div>
 
   <div class="summary" id="summary"></div>
 
   <div class="gate" id="gate" style="display:none"></div>
+
+  <div class="qstrip" id="whenWatch" style="display:none"></div>
 
   <div class="news" id="newsPlay" style="display:none"></div>
 
@@ -378,6 +397,7 @@ let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges
 let fredHist = null;     // /api/fredhistory — rate-spread driver series (story, lazy)
 let livePrices = null;   // /api/hedge-signals/prices — proximity watch (zoom 3)
 let cot = null;          // /api/cot-extremes — spec positioning per instrument (story + chip)
+let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
@@ -411,18 +431,20 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi] = await Promise.all([
+  const [ev, fr, ss, ct, oi, wk] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
     jget('/api/cot-extremes').catch(() => null),
     jget('/api/kv/get?key=oi_store').catch(() => null),
+    jget('/api/vol-forecast/weekly').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
   if (ss?.instruments) sessionStats = ss;
   if (ct?.instruments) cot = Object.fromEntries(ct.instruments.map(i => [i.sym, i]));
   if (oi && !oi.miss) oiStore = oi.data ?? oi;
+  if (wk?.ok && wk.instruments) weekly = wk;
   renderGate(); renderNewsPlay(); renderSummary(); render();
 }
 
@@ -605,6 +627,134 @@ function renderGate() {
         ${i === nextIdx && mins < 600 ? `<span class="cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : ''}</span>`;
     }).join('') +
     (medCount ? `<span class="gev" style="opacity:.6">+${medCount} medium</span>` : '');
+}
+
+// ══ Daily-check zoom levels ══════════════════════════════════════════════════
+
+// ── ZOOM: the delta — what changed since you last looked ─────────────────────
+function _briefSnapshot(rs, cs) {
+  const pairs = {};
+  for (const r of rs) pairs[r.name] = {
+    r: r.d.regime ? (r.d.regime.label === 'TREND' ? 'T_' + r.d.regime.trend_dir : 'R') : '?',
+    cot: r.ct?.level ?? null, vol: r.d.vol_pct ?? null,
+  };
+  const ccy = {}; for (const c of cs) ccy[c.ccy] = +c.score.toFixed(2);
+  return { ts: Date.now(), date: new Date().toISOString().slice(0, 10), pairs, ccy };
+}
+// Baseline is frozen ONCE at page load, so re-renders through the session always
+// diff against your last real visit — not against a snapshot saved seconds ago.
+let _snapBase = (() => { try { return JSON.parse(localStorage.getItem('brief_snap') || 'null'); } catch { return null; } })();
+let _snapSaved = false;
+function renderSinceYesterday() {
+  const el = $('sinceYday');
+  if (!brief?.instruments) { el.style.display = 'none'; return; }
+  const rs = allRows();
+  const cs = currencyStrength(rs);
+  const cur = _briefSnapshot(rs, cs);
+  const base = _snapBase;
+  const gapH = base ? (cur.ts - base.ts) / 3.6e6 : null;
+  // Persist this session's state for next time — once, only when data is complete
+  // (cot loaded), and never touching the frozen in-session baseline.
+  if (!_snapSaved && cot != null) { try { localStorage.setItem('brief_snap', JSON.stringify(cur)); _snapSaved = true; } catch {} }
+  if (!base || gapH < 1) { el.style.display = 'none'; return; }   // too soon to be interesting
+
+  const changes = [];
+  const rdesc = c => c === 'T_up' ? 'trending up' : c === 'T_down' ? 'trending down' : c === 'R' ? 'ranging' : 'unclear';
+  for (const r of rs) {
+    const b = base.pairs[r.name]; if (!b) continue;
+    const c = cur.pairs[r.name];
+    if (b.r !== c.r && b.r !== '?' && c.r !== '?') {
+      const cls = c.r === 'T_up' ? 'chg-up' : c.r === 'T_down' ? 'chg-dn' : '';
+      changes.push({ pri: 3, name: r.name, html: `<b>${dispName(r.name)}</b> flipped to <span class="${cls}">${rdesc(c.r)}</span>` });
+    }
+    if (b.cot !== 'EXTREME' && c.cot === 'EXTREME') changes.push({ pri: 2, name: r.name, html: `<b>${dispName(r.name)}</b> positioning now <span class="chg-warn">crowded</span>` });
+    if (b.vol != null && c.vol != null && c.vol - b.vol >= 20) changes.push({ pri: 1, name: r.name, html: `<b>${dispName(r.name)}</b> got <span class="chg-warn">more volatile</span> (vol P${b.vol}→P${c.vol})` });
+  }
+  for (const c of cs) {
+    const bs = base.ccy[c.ccy]; if (bs == null) continue;
+    const d = c.score - bs;
+    if (Math.abs(d) >= 0.3) changes.push({ pri: 2, name: c.ccy, html: `the <b>${ccyFull(c.ccy)}</b> has ${d > 0 ? '<span class="chg-up">firmed</span>' : '<span class="chg-dn">softened</span>'}` });
+  }
+  changes.sort((a, b) => b.pri - a.pri);
+  const label = gapH >= 16 || base.date !== cur.date ? 'Since yesterday' : `Since last check (${gapH < 2 ? Math.round(gapH * 60) + 'm' : Math.round(gapH) + 'h'} ago)`;
+  if (!changes.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="qk">${label}</span><span class="qv">${changes.slice(0, 5).map(c => c.html).join(' · ')}.</span>`;
+}
+
+// ── ZOOM: the week — where we are in the weekly range ────────────────────────
+function renderWeekly() {
+  const el = $('weekCtx');
+  if (!weekly?.instruments) { el.style.display = 'none'; return; }
+  const rows = Object.entries(weekly.instruments)
+    .map(([name, w]) => ({ name, used: w.hl_consumed_pct }))
+    .filter(x => x.used != null);
+  if (rows.length < 3) { el.style.display = 'none'; return; }
+  const avg = Math.round(rows.reduce((a, x) => a + x.used, 0) / rows.length);
+  rows.sort((a, b) => b.used - a.used);
+  const most = rows[0], least = rows[rows.length - 1];
+  const dispW = n => ({ GOLD: 'Gold', NQ: 'NAS100', SPX500: 'SPX500', DE30: 'DAX', UK100: 'FTSE', US30: 'DOW', US2000: 'RUS2000' }[n] ?? n.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2'));
+  const tone = avg >= 80 ? '<span class="chg-warn">stretched — the week has mostly played out</span>' : avg <= 40 ? 'plenty of room left in the week' : 'about mid-way through a normal week';
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="qk">This week</span><span class="qv">The average pair has used <b>~${avg}%</b> of a typical <b>week's</b> range — ${tone}. Most spent: <b>${dispW(most.name)}</b> (${Math.round(most.used)}%); most room left: <b>${dispW(least.name)}</b> (${Math.round(least.used)}%).</span>`;
+}
+
+// ── ZOOM: the clock — when the day usually moves + when news lands ────────────
+const _LDN_FMT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false });
+function londonHour() { return parseInt(_LDN_FMT.format(new Date()), 10); }
+function currentSession() { const h = londonHour(); return h < 6 ? 'Asia' : h < 8 ? 'pre-London' : h < 13 ? 'London' : h < 21 ? 'US' : 'after-hours'; }
+function renderWhenToWatch() {
+  const el = $('whenWatch');
+  if (!sessionStats?.instruments) { el.style.display = 'none'; return; }
+  // which session historically carries the most range, tallied across pairs
+  const tally = { asia: 0, london: 0, ny: 0 };
+  let n = 0;
+  for (const s of Object.values(sessionStats.instruments)) {
+    const cand = [['asia', s.asia?.p50], ['london', s.london?.p50], ['ny', s.ny?.p50]].filter(x => x[1] != null);
+    if (cand.length < 2) continue;
+    cand.sort((a, b) => b[1] - a[1]); tally[cand[0][0]]++; n++;
+  }
+  if (!n) { el.style.display = 'none'; return; }
+  const best = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+  const bestTxt = best === 'asia' ? 'the Asia session (roughly midnight–6am UK)' : best === 'london' ? 'the London morning (roughly 8am–1pm UK)' : 'the US session / London-NY overlap (roughly 1pm–5pm UK)';
+  const sess = currentSession();
+  const sessTxt = sess === 'Asia' ? 'the quieter Asia session' : sess === 'pre-London' ? 'the pre-London lull' : sess === 'London' ? 'the busy London morning' : sess === 'US' ? 'the busy US session' : 'the after-hours lull';
+  // news clustering by half-day
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
+  const his = (events ?? []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && (e.time ?? '').startsWith(todayStr))
+    .map(e => new Date(e.time.replace(' ', 'T') + 'Z').getTime()).filter(t => t > now);
+  let newsTxt = '';
+  if (his.length) {
+    const hrs = his.map(t => parseInt(_LDN_FMT.format(new Date(t)), 10));
+    const am = hrs.filter(h => h < 12).length, pm = hrs.length - am;
+    newsTxt = ` Today's news lands mostly in the <b>${pm > am ? 'afternoon' : 'morning'}</b> (UK).`;
+  }
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="qk">When to watch</span><span class="qv">Most pairs make their biggest moves in <b>${bestTxt}</b>. Right now it's <b>${sessTxt}</b>.${newsTxt}</span>`;
+}
+
+// ── ZOOM: concentration — today's themes & crowded trades ────────────────────
+function renderConcentration() {
+  const el = $('concentration');
+  if (!brief?.instruments) { el.style.display = 'none'; return; }
+  const rs = allRows();
+  const cs = currencyStrength(rs);
+  if (cs.length < 3) { el.style.display = 'none'; return; }
+  const bits = [];
+  const strongest = cs[0], weakest = cs[cs.length - 1];
+  // themes: a dominant currency drives many pairs
+  const themes = [];
+  const nps = n => `${n} pair${n === 1 ? '' : 's'}`;
+  if (strongest && strongest.score > 0.2) themes.push(`<b>${ccyShort(strongest.ccy)} strength</b> (in ${nps(strongest.n)})`);
+  if (weakest && weakest.score < -0.2) themes.push(`<b>${ccyShort(weakest.ccy)} weakness</b> (in ${nps(weakest.n)})`);
+  if (themes.length) bits.push(`Today is mostly a story of ${themes.join(' and ')} — most tradeable pairs are versions of the same bet, so <b>don't count them as separate trades</b>.`);
+  // crowded (COT extreme) pairs
+  const crowded = rs.filter(r => r.ct?.level === 'EXTREME').map(r => `${dispName(r.name)} ${r.ct.dir}`);
+  if (crowded.length) bits.push(`<span class="chg-warn">Crowded</span> (squeeze risk): ${crowded.join(', ')}.`);
+  if (!bits.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="qk">Concentration</span><span class="qv">${bits.join(' ')}</span>`;
 }
 
 // ── Market Read: cross-pair synthesis (the gestalt) ──────────────────────────
@@ -1308,6 +1458,10 @@ function tableHtml(rs) {
 
 function render() {
   renderMarketRead();
+  renderSinceYesterday();
+  renderWeekly();
+  renderConcentration();
+  renderWhenToWatch();
   renderMacro();
   const rs = sortRows(rows());
   if (tableMode) {
