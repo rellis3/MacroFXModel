@@ -144,9 +144,20 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False, blackou
                     continue
                 spec = trade_spec(name, side, levels, decision, tracker.open, frac)
                 if spec:
-                    tracker.audit[line_id] = {**info, "status": "traded", "decision": decision}
+                    # Line attribution for the audit/log — makes an entry explainable:
+                    # OC lines are STATIC off the session open; HL (Proj-H/L) lines are
+                    # DYNAMIC off the running extreme, so their level (and the entry) is
+                    # BELOW the static bands early in a move and rises through the day.
+                    # This is why a fill can look "off" vs the chart's final line — it's
+                    # the dynamic line at the moment of touch, off `anchor`.
+                    is_hl = name in ("HL50", "HL75")
+                    anchor = (tracker.run_low if side == "up" else tracker.run_high) if is_hl else tracker.open
+                    attrib = {"level": round(lvl, 6),
+                              "kind": "HL(dynamic)" if is_hl else "OC(static)",
+                              "anchor": round(anchor, 6)}
+                    tracker.audit[line_id] = {**info, **attrib, "status": "traded", "decision": decision}
                     out.append({**spec, "line": line_id, "name": name, "ln_side": side,
-                                "decision": decision, "bucket": bucket, "velocity": val})
+                                "decision": decision, "bucket": bucket, "velocity": val, **attrib})
                     continue
                 # policy said trade but the neighbour lines left no valid TP/SL.
                 tracker.audit[line_id] = {**info, "status": "skip", "reason": "degenerate"}

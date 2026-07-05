@@ -2996,7 +2996,12 @@ const VB_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
   broker_symbols: {},  // { nq:'USTECH100', spx:'SP500', de30:'GER40', … } — blank = built-in default
+  // Per-asset-class sizing OVERRIDES (blank = use the global risk_pct/max_lot). Lets gold
+  // (commodity) be dialled down independently so one instrument can't carry a week.
+  risk_pct_by_class: {}, max_lot_by_class: {},
 };
+// The asset classes the per-class sizing overrides expose (fx uses the globals above).
+const VB_SIZE_CLASSES = ['commodity', 'index'];
 const VB_INDEX_KEYS = ['nq', 'spx', 'de30', 'us30', 'us2000', 'uk100'];
 let _vbCfg = { ...VB_DEFAULTS };
 // Cached latest status + plan so the live-lines modal reads a row without refetch.
@@ -3015,6 +3020,12 @@ function renderVbForm() {
   set('vb_status_secs',     _vbCfg.status_secs     ?? VB_DEFAULTS.status_secs);
   set('vb_plan_secs',       _vbCfg.plan_secs       ?? VB_DEFAULTS.plan_secs);
   set('vb_enabled_pairs',  (_vbCfg.enabled_pairs ?? []).join(', '));
+  // Per-class sizing overrides (blank cell = fall back to the global).
+  const rpc = _vbCfg.risk_pct_by_class || {}, mlc = _vbCfg.max_lot_by_class || {};
+  VB_SIZE_CLASSES.forEach(c => {
+    set(`vb_risk_${c}`,   rpc[c] ?? '');
+    set(`vb_maxlot_${c}`, mlc[c] ?? '');
+  });
   const syms = _vbCfg.broker_symbols || {};
   VB_INDEX_KEYS.forEach(k => { const el = document.getElementById(`vb_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
 }
@@ -3032,6 +3043,17 @@ function readVbForm() {
   _vbCfg.plan_secs       = Math.round(num('vb_plan_secs', VB_DEFAULTS.plan_secs));
   _vbCfg.enabled_pairs   = (document.getElementById('vb_enabled_pairs')?.value || '')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  // Per-class sizing overrides: only keep cells the user actually filled with a positive
+  // number — blank / 0 stays out of the map so the bot falls back to the global.
+  const rpc = {}, mlc = {};
+  VB_SIZE_CLASSES.forEach(c => {
+    const rp = parseFloat(document.getElementById(`vb_risk_${c}`)?.value);
+    const ml = parseFloat(document.getElementById(`vb_maxlot_${c}`)?.value);
+    if (Number.isFinite(rp) && rp > 0) rpc[c] = rp;
+    if (Number.isFinite(ml) && ml > 0) mlc[c] = ml;
+  });
+  _vbCfg.risk_pct_by_class = rpc;
+  _vbCfg.max_lot_by_class  = mlc;
   const syms = {};
   VB_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`vb_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
   _vbCfg.broker_symbols = syms;
@@ -3172,6 +3194,40 @@ async function loadVbLiveStatus() {
 
 window.saveVbConfig = saveVbConfig; window.resetVbDefaults = resetVbDefaults;
 window.saveVbCreds = saveVbCreds; window.loadVbLiveStatus = loadVbLiveStatus;
+
+// ── Forecast drift vs reference ───────────────────────────────────────────────
+// For each live-universe pair, call /api/forecast-drift/:pair (plan lines vs the
+// recalibrated reference forecaster) and render the per-line % drift. A large negative
+// drift = the bot's lines sit INSIDE the reference (enters early), the "why 22 pts below
+// the real resistance" case. Falls back to a small default set if no plan universe yet.
+async function loadVbDrift() {
+  const body = document.getElementById('vbDriftBody');
+  if (!body) return;
+  const pairs = (_vbLastPlan?.universe && _vbLastPlan.universe.length)
+    ? _vbLastPlan.universe
+    : (_vbLastStatus?.universe && _vbLastStatus.universe.length ? _vbLastStatus.universe : ['gold', 'eurusd', 'nq']);
+  body.innerHTML = `<tr><td colspan="9" style="padding:12px;text-align:center;color:var(--text3)">Measuring ${pairs.length} pairs…</td></tr>`;
+  const fmt = (v, d = 2) => (v == null || Number.isNaN(v)) ? '—' : (+v).toFixed(d);
+  const sign = v => (v == null ? 'color:var(--text3)' : v > 0 ? 'color:#3fb27f' : v < 0 ? 'color:#e06666' : 'color:var(--text3)');
+  const rows = [];
+  for (const pair of pairs) {
+    try {
+      const r = await fetch(`/api/forecast-drift/${encodeURIComponent(pair)}`).then(x => x.json());
+      if (!r?.ok) { rows.push(`<tr><td>${pair.toUpperCase()}</td><td colspan="8" style="color:var(--text3)">${(r?.error || 'error')}</td></tr>`); continue; }
+      const d = r.driftPct || {}, s = r.sigma || {};
+      const cell = v => `<td style="text-align:right;${sign(v)}">${v == null ? '—' : (v > 0 ? '+' : '') + fmt(v)}</td>`;
+      rows.push(`<tr><td style="text-align:left">${pair.toUpperCase()} <span style="color:var(--text3)">${r.assetClass || ''}</span></td>`
+        + `<td style="text-align:right">${fmt(s.planVol, 1)}</td><td style="text-align:right">${fmt(s.refVol, 1)}</td>${cell(s.driftPct)}`
+        + `${cell(d.hl50)}${cell(d.hl75)}${cell(d.ocMed)}${cell(d.oc75)}`
+        + `<td style="text-align:right;font-weight:600">${fmt(r.avgAbsDriftPct)}</td></tr>`);
+    } catch (e) {
+      rows.push(`<tr><td>${pair.toUpperCase()}</td><td colspan="8" style="color:var(--text3)">${e.message || 'fetch failed'}</td></tr>`);
+    }
+    body.innerHTML = rows.join('');   // progressive render as each pair resolves
+  }
+  if (!rows.length) body.innerHTML = `<tr><td colspan="9" style="padding:12px;text-align:center;color:var(--text3)">No pairs to measure</td></tr>`;
+}
+window.loadVbDrift = loadVbDrift;
 
 // ── Live per-pair line-chart modal ────────────────────────────────────────────
 // The 8 forecast lines, in table (name, side, arrow) form. Table cell key casing

@@ -41,6 +41,7 @@ import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
+import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES } from './js/macroCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
@@ -4797,6 +4798,27 @@ app.get('/api/volatility-bot/session-m1/:pair', async (req, res) => {
     res.json({ ok: true, pair, oanda, bars });
   } catch (e) {
     // OANDA unreachable (403 in sandbox) / any fetch failure — graceful, not a 500 crash.
+    res.status(502).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+// ── Forecast drift — PLAN forecaster (bot lines) vs REFERENCE (/api/vol-forecast) ──
+// Measures whether the volatility bot's entry lines (frozen volSigmaSeries + forecastCore
+// corrections) sit systematically inside/outside the dashboard's reference forecaster
+// (recalibrated YZ/GARCH). Answers "is the forecaster funky?" with a number per pair
+// instead of eyeballing one chart. Live D1 → 502 in the sandbox (OANDA 403), fine on Railway.
+app.get('/api/forecast-drift/:pair', async (req, res) => {
+  const pair = String(req.params.pair || '').toLowerCase();
+  try {
+    let oanda;
+    try { oanda = instrument(pair)?.oanda; } catch { /* unknown pair */ }
+    if (!oanda) return res.status(404).json({ ok: false, error: `unknown pair "${pair}" — no OANDA symbol` });
+    const bars = await _btFetchD1(oanda, 400);
+    if (!bars?.length || bars.length < 60)
+      return res.status(502).json({ ok: false, error: `insufficient D1 bars for ${pair} (${bars?.length ?? 0})` });
+    const assetClass = _assetClassFor(pair);
+    res.json({ ok: true, pair, oanda, ..._compareForecastLines(bars, assetClass) });
+  } catch (e) {
     res.status(502).json({ ok: false, error: e.message || String(e) });
   }
 });
