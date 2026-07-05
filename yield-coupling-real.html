@@ -83,6 +83,32 @@ function leadTable(ll){
     </div></div>`;
 }
 
+function btPanel(bt, costPct){
+  const cell=(s)=>`<td class="mono">${s.trades}</td><td class="mono" style="color:${s.sharpe>0.3?'#6ee7b7':s.sharpe>0?'#fcd34d':'#fdba74'}">${fmt(s.sharpe)}</td><td class="mono">${s.winRate}%</td><td class="mono">${fmt(s.profitFactor)}</td><td class="mono">${fmt(s.expectancy*100,3)}%</td><td class="mono">${fmt(s.rr)}</td><td class="mono">${fmt(s.maxDD*100,2)}%</td>`;
+  const cs=bt.costStress.map(c=>`<span class="chip" style="color:${c.sharpe>0.3?'#6ee7b7':c.sharpe>0?'#fcd34d':'#fdba74'}">${c.mult}× → Sh ${fmt(c.sharpe)}</span>`).join(' ');
+  const oosGood = bt.oos.sharpe>0.5 && bt.oos.trades>=30 && bt.costStress[1].sharpe>0.3;
+  const verdict = bt.oos.trades<30 ? 'too few OOS trades' : oosGood ? 'survives OOS + 2× cost' : bt.oos.sharpe>0 ? 'positive but thin' : 'no OOS edge';
+  const vcol = oosGood?'#6ee7b7':bt.oos.sharpe>0?'#fcd34d':'#fdba74';
+  return `<div class="panel"><h2>🧪 Fade-to-yield backtest <span class="sub" style="font-weight:400">— enter big divergence, fade toward yield, hold ${bt.params.horizon}d, mark-to-close</span></h2>
+    <div class="metrics"><div class="metric"><div class="v" style="font-size:15px;color:${vcol}">${verdict}</div><div class="l">OOS verdict · cost ${(costPct*100).toFixed(3)}%/side</div></div></div>
+    <table><thead><tr><th></th><th>trades</th><th>Sharpe</th><th>win%</th><th>PF</th><th>exp/trade</th><th>R:R</th><th>maxDD</th></tr></thead><tbody>
+      <tr><td>IS (70%)</td>${cell(bt.is)}</tr>
+      <tr style="font-weight:700;background:rgba(79,125,240,.08)"><td>OOS (30%) ◄</td>${cell(bt.oos)}</tr>
+    </tbody></table>
+    <div class="legend" style="margin-top:8px">OOS cost sensitivity: ${cs}</div>
+    <div class="cap">A "win" is only 54% by count — but the trade has a target (the gap) and a stop, so R:R matters more than win%. Ships only if OOS Sharpe clears the incumbent at a non-trivial trade count AND survives 2× cost. Daily mark-to-close (a target/stop version needs intraday fills).</div></div>`;
+}
+function sweepPanel(sweep){
+  const hs=[...new Set(sweep.map(s=>s.horizon))], qs=[...new Set(sweep.map(s=>s.quantile))];
+  const cellFor=(h,q)=>sweep.find(s=>s.horizon===h&&s.quantile===q);
+  const rows=qs.map(q=>`<tr><td>top ${Math.round((1-q)*100)}%</td>${hs.map(h=>{const c=cellFor(h,q);const col=!c?'var(--dim)':c.oosSharpe>0.5?'#6ee7b7':c.oosSharpe>0?'#fcd34d':'#fdba74';return `<td class="mono" style="color:${col}">${c?fmt(c.oosSharpe):'–'}<span style="color:var(--dim);font-size:10px"> ${c?c.n:0}</span></td>`;}).join('')}</tr>`).join('');
+  const pos=sweep.filter(s=>s.oosSharpe>0.5&&s.n>=30).length;
+  return `<div class="panel"><h2>🔬 Robustness sweep <span class="sub" style="font-weight:400">— OOS Sharpe across horizon × divergence-size; lucky cell or broad?</span></h2>
+    <div class="metrics"><div class="metric"><div class="v" style="color:${pos>=4?'#6ee7b7':pos>=1?'#fcd34d':'#fdba74'}">${pos}/${sweep.length}</div><div class="l">cells with OOS Sharpe&gt;0.5 &amp; n≥30</div></div></div>
+    <table><thead><tr><th>gap size \\ hold</th>${hs.map(h=>`<th>${h}d</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <div class="cap">Each cell = OOS Sharpe (n below). A real edge is broad (many green cells); one green cell in a sea of noise is overfitting.</div></div>`;
+}
+
 async function run(){
   const tenor=$('tenor').value;
   $('run').disabled=true; $('status').textContent='Fetching FRED + ECB…'; $('status').className='status'; $('out').innerHTML='';
@@ -93,6 +119,8 @@ async function run(){
     $('out').innerHTML =
       `<div class="panel"><h2>${j.label} <span class="chip">${j.bars} days</span></h2>
         <div class="cap">${j.first} → ${j.last} · sources: ${j.sources.fx}, ${j.sources.us}, ${j.sources.de} · raw obs: FX ${j.availability.fx}, US ${j.availability.us}, DE ${j.availability.de}</div></div>`
+      + (j.backtest ? btPanel(j.backtest, j.costPct) : '')
+      + (j.sweep ? sweepPanel(j.sweep) : '')
       + divTable(j.divergenceEvents) + leadTable(j.dailyLeadLag)
       + `<div class="cap">${j.note}</div>`;
     $('status').textContent=`Done — ${j.bars} aligned days.`;

@@ -34,7 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
-import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
+import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -3740,11 +3740,20 @@ app.get('/api/yield-coupling-real', async (req, res) => {
     const spread = columns[2].map((deV, i) => deV - columns[1][i]);   // DE − US yield (FX-bullish +)
     const divergenceEvents = computeDivergenceEvents(fxCol, spread, { window: 10, horizons: [1, 3, 5, 10] });
     const dailyLeadLag     = computeDailyLeadLag(fxCol, spread, { maxLagDays: 30 });
+    // The real trade: fade a big divergence back to the yield, honest IS/OOS + costs.
+    const costPct  = Math.min(Math.max(parseFloat(req.query.cost) || 0.00015, 0), 0.002);
+    const backtest = backtestDivergenceFade(fxCol, spread, times, { window: 10, gapQuantile: 0.75, horizon: 5, costPct });
+    // Robustness sweep (OOS): horizons × gap-quantiles — is the result a lucky cell or broad?
+    const sweep = [];
+    for (const hz of [1, 3, 5, 10]) for (const q of [0.5, 0.75, 0.9]) {
+      const b = backtestDivergenceFade(fxCol, spread, times, { window: 10, gapQuantile: q, horizon: hz, costPct });
+      sweep.push({ horizon: hz, quantile: q, oosSharpe: b.oos.sharpe, oosExpectancy: b.oos.expectancy, n: b.oos.trades });
+    }
     const result = {
       tenor, label: cfg.label, bars: times.length, first: times[0], last: times[times.length - 1],
       sources: { fx: 'FRED DEXUSEU', us: `FRED ${cfg.us}`, de: `ECB AAA ${tenor}` },
-      availability, divergenceEvents, dailyLeadLag,
-      note: 'Real daily yields (not CFD proxy). spread = DE − US yield, FX-bullish-when-positive. Diagnostic, in-sample.',
+      availability, divergenceEvents, dailyLeadLag, backtest, sweep, costPct,
+      note: 'Real daily yields (not CFD proxy). spread = DE − US yield, FX-bullish-when-positive. Backtest = fade big divergence toward yield, mark-to-close, IS/OOS, after cost. Diagnostic (daily mark-to-close; a target/stop version needs intraday fills).',
     };
     _ycRealCache.set(tenor, { data: result, ts: Date.now() });
     res.json(result);

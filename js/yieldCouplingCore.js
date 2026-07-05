@@ -31,6 +31,7 @@
  */
 
 import { mean, stdev } from './statsCore.js';
+import { summarizeTrades } from './metricsCore.js';
 
 // ── Standardize (population z over the whole window) ──────────────────────────
 // Returns { z:number[], mean, std }. Non-finite inputs pass through as NaN.
@@ -407,6 +408,72 @@ export function computeDivergenceEvents(fx, spread, { window = 10, horizons = [1
     });
   }
   return { window, horizons, buckets: bucketStats };
+}
+
+// ── Backtest: fade a big divergence back toward the yield (the real trade) ────
+// The diagnostics measured DIRECTION hit-rate; a mean-reversion trade's edge is
+// in R:R (target = the gap, stop = further divergence), which a hit-rate can't
+// see. This runs the actual trade honestly: enter when |gap| ≥ an IS-learned
+// threshold, fade toward the yield (gap>0 ⇒ long FX), hold `horizon` days,
+// mark-to-close (no intrabar path assumption), net of round-trip cost.
+// Threshold is learned on the IS window only (no OOS lookahead); trades are
+// non-overlapping. Reuses `summarizeTrades` (metricsCore) for honest metrics.
+export function backtestDivergenceFade(fx, spread, times, {
+  window = 10, gapQuantile = 0.75, horizon = 5, costPct = 0.0002, isFrac = 0.7,
+} = {}) {
+  const fxRet = toReturns(fx), spRet = toReturns(spread);
+  const gaps = new Array(fx.length).fill(NaN);
+  for (let t = window; t < fx.length; t++) {
+    const fWin = fxRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+    const sWin = spRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+    const fSd = stdev(fWin, 0), sSd = stdev(sWin, 0);
+    if (fSd <= 0 || sSd <= 0) continue;
+    const fMove = (fx[t]     - fx[t - window])     / (fSd * Math.sqrt(window));
+    const sMove = (spread[t] - spread[t - window]) / (sSd * Math.sqrt(window));
+    gaps[t] = sMove - fMove;
+  }
+  // threshold learned on the IS window only (no OOS lookahead)
+  const boundary = Math.floor(fx.length * isFrac);
+  const absIS = [];
+  for (let i = window; i < boundary; i++) if (Number.isFinite(gaps[i])) absIS.push(Math.abs(gaps[i]));
+  absIS.sort((a, b) => a - b);
+  const thresh = absIS.length ? absIS[Math.min(absIS.length - 1, Math.floor(gapQuantile * absIS.length))] : Infinity;
+
+  const trades = [];
+  let t = window;
+  while (t + horizon < fx.length) {
+    const g = gaps[t];
+    if (Number.isFinite(g) && Math.abs(g) >= thresh) {
+      const dir = g > 0 ? 1 : -1;                    // gap>0: spread outran FX up → fade = long FX to close it
+      const entry = fx[t], exit = fx[t + horizon];
+      if (Number.isFinite(entry) && Number.isFinite(exit) && entry !== 0) {
+        const gross = dir * (exit - entry) / entry;
+        trades.push({ i: t, date: times[t], gross, ret: gross - costPct, oos: t >= boundary });
+        t += horizon;                                // non-overlapping
+        continue;
+      }
+    }
+    t++;
+  }
+  const isT = trades.filter(x => !x.oos), oosT = trades.filter(x => x.oos);
+  const summ = arr => {
+    const s = summarizeTrades(arr.map(x => x.ret), arr.map(x => x.date));
+    const wins = arr.map(x => x.ret).filter(r => r > 0), losses = arr.map(x => x.ret).filter(r => r < 0);
+    s.avgWin  = wins.length   ? +mean(wins).toFixed(5)   : 0;
+    s.avgLoss = losses.length ? +mean(losses).toFixed(5) : 0;
+    s.rr = s.avgLoss < 0 ? +(s.avgWin / -s.avgLoss).toFixed(2) : 0;
+    return s;
+  };
+  // OOS cost sensitivity — re-net gross at 1×/2×/3× the base cost
+  const costStress = [1, 2, 3].map(mult => ({
+    mult, sharpe: summarizeTrades(oosT.map(x => x.gross - mult * costPct), oosT.map(x => x.date)).sharpe,
+    expectancy: +mean(oosT.map(x => x.gross - mult * costPct)).toFixed(5),
+  }));
+  return {
+    params: { window, gapQuantile, horizon, costPct: +costPct.toFixed(5) },
+    thresh: +thresh.toFixed(3), nTrades: trades.length,
+    is: summ(isT), oos: summ(oosT), costStress,
+  };
 }
 
 // ── Prior-day projection: does TODAY's price follow YESTERDAY's yield? ────────
