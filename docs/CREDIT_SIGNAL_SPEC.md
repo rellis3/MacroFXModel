@@ -112,9 +112,13 @@ Now implemented as `js/creditLeadLagEngine.js` + `/api/credit-leadlag/*` +
   features (position/velocity/accel/persistence/quality), importable by the
   dashboard, a backtest, and the bots so they can't drift. Register in
   `LEGO_MODULES.md`.
-- **Consumers:** the Daily Brief credit gate (below); the Trade Decision Engine as
-  a macro gate; the Telegram alerts (fire on regime flip); a dedicated credit
-  research/backtest page for the §4 study.
+- **Consumers:** the Daily Brief credit gate (below); the **Trade Decision Engine**
+  — credit is now wired in as **logged-but-inert candidate features**
+  (`credit_widening`/`credit_stress`/`credit_fade_in_stress`, zero v0 weight; see
+  `Trade_Decision_Engine/ARCHITECTURE.md §7c`), so the macro-verdict/backfill can
+  judge them OOS — they gate a real trade only after a promoted fit clears the
+  falsification bar; the **Telegram credit-flip alert** (`_creditFlipCheck`, fires
+  on a gate change, cooldown 1h); and `credit-leadlag.html` for the §4 study.
 - **History:** add `hy_bb` / `hy_ccc` (and IG) to `_FREDHISTORY_SERIES` for proper
   long-window percentiles/z (currently only `hy` is in the history cache).
 

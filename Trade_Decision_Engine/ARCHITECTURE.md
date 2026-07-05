@@ -368,6 +368,19 @@ internals:
    the platform's macro layer stays display-only. That is an acceptable
    outcome; the point is the answer.
 
+**Credit sockets (same contract).** Corporate credit spreads (HY OAS) are wired
+in exactly like macro: `_tdeCreditContext()` resolves a market-wide gate from the
+`fredhistory_series_hy` mirror via the shared `creditCore`/`creditHmm` bricks
+(cached — pair-independent), `buildSnapshot({ credit })` stamps `snapshot.credit`
+when well-formed, and `CREDIT_FEATURES = ['credit_widening','credit_stress',
+'credit_fade_in_stress']` are computed in `buildEventFeatures` (0 when absent).
+They carry **NO v0 weight** — logged-but-inert, so live decisions are unchanged
+(golden-tested: identical probability with/without credit context). They become
+live only via a promoted fit, and only if credit clears the same falsification
+bar — with the external `credit-leadlag.html` OOS study (does credit-Δ lead NQ
+vol beyond vol's own persistence?) as the pre-registered evidence. Do not
+hand-weight them.
+
 ## 7b. Roadmap — remaining steps to a fitted live model
 
 1. ~~Backfill + outcome labeler + candidate fit~~ — built (§7).

@@ -173,7 +173,7 @@ export function computeSessionLadders({ intradayBars = null, mondayBars = null, 
 // dayOpen to the TRUE session open (first bar). sessionOpen (optional number)
 // sets the open without bars — the backfill uses it (per-touch intraday state
 // travels on the decide REQUEST there, to stay lookahead-free within the day).
-export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, intradayBars = null, mondayBars = null, prevAsiaBars = null, prevMondayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
+export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, credit = null, intradayBars = null, mondayBars = null, prevAsiaBars = null, prevMondayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
   const key = safeKey(pair);
   if (!Array.isArray(dailyBars) || dailyBars.length < 80) {
     throw new Error(`buildSnapshot(${key}): need ≥80 completed D1 bars, got ${dailyBars?.length ?? 0}`);
@@ -238,6 +238,15 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
     ? { regime: macro.regime, riskSens: macro.riskSens, asOf: macro.asOf ?? null, stale: macro.stale === true }
     : null;
 
+  // credit context (market-wide HY-OAS gate; pair-independent) — same discipline
+  // as macro: stamped only when well-formed, else null (features resolve 0). It
+  // is LOGGED-BUT-INERT (no v0 weight) — a candidate for the §7c falsification.
+  const creditCtx = credit && typeof credit.gate === 'string'
+    ? { gate: credit.gate, widening: credit.widening ?? 0, wideningBps: Number.isFinite(credit.wideningBps) ? credit.wideningBps : null,
+        pct: Number.isFinite(credit.pct) ? credit.pct : null, stressProb: Number.isFinite(credit.stressProb) ? credit.stressProb : null,
+        accel: credit.accel ?? 0, asOf: credit.asOf ?? null, stale: credit.stale === true }
+    : null;
+
   // expected MEDIAN daily range (price units) — the rangeUsed denominator,
   // from the same bands as the vol_band zone lines (one source of truth)
   const hl50Abs = bands.hl50 * dayOpen;
@@ -254,7 +263,7 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
     pair: key, mode, builtAt: nowMs,
     price: refPrice, dayOpen,
     sigmaDaily, volPct, regime, T,
-    zones, calendar, macro: macroCtx, intraday, ladders, htfTrend,
+    zones, calendar, macro: macroCtx, credit: creditCtx, intraday, ladders, htfTrend,
     meta: { bars: dailyBars.length, lastBarTime: dailyBars[dailyBars.length - 1].time, tolPips: +tolPips.toFixed(1), tolAbs: +(tolPips * pip).toFixed(8), hl50Abs: +hl50Abs.toFixed(6), levelSources: TDE_LEVEL_SOURCES },
   };
 }
@@ -312,7 +321,7 @@ export function stateSummary() {
 // and records the error — the fast loop then fails closed on staleness.
 // `macro` is passed through to buildSnapshot — the caller (server slow loop)
 // resolves it from the KV `fred` mirror via macroCore; absent ⇒ macro-neutral.
-export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, macro = null } = {}) {
+export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, macro = null, credit = null } = {}) {
   const key = safeKey(pair);
   try {
     const raw = await fetchD1(oandaSymbol(key), 400);
@@ -332,7 +341,7 @@ export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, m
     // previous week's Monday: same fetcher shifted one week back (cached weekly)
     const prevMondayBars = await fetchMondayBars(key, dayStartSec - 7 * 86400)
       .catch(() => null);
-    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, intradayBars, mondayBars, prevAsiaBars, prevMondayBars, nowMs, mode: 'live' });
+    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, credit, intradayBars, mondayBars, prevAsiaBars, prevMondayBars, nowMs, mode: 'live' });
     state.set(key, snap);
     errors.delete(key);
     return snap;
