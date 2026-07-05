@@ -518,7 +518,7 @@ export function computeProjectionGate(price, spread, times, { gateHourUTC = 12, 
   const valid = rows.filter(r => Number.isFinite(r.earlyCorr) && Number.isFinite(r.lateCorr));
   const persistence = pearson(valid.map(r => r.earlyCorr), valid.map(r => r.lateCorr));
   const hi = valid.filter(r => r.earlyCorr >= trackThresh), lo = valid.filter(r => r.earlyCorr < trackThresh);
-  const followStats = arr => { const f = arr.filter(r => r.followHit != null); return { n: f.length, followRate: f.length ? mean(f.map(r => r.followHit)) : NaN }; };
+  const followStats = arr => { const f = arr.filter(r => r.followHit != null); return { followN: f.length, followRate: f.length ? mean(f.map(r => r.followHit)) : NaN }; };
   return {
     params: { gateHourUTC, trackThresh },
     nDays: valid.length,
@@ -526,8 +526,8 @@ export function computeProjectionGate(price, spread, times, { gateHourUTC = 12, 
     meanEarly: valid.length ? +mean(valid.map(r => r.earlyCorr)).toFixed(3) : NaN,
     pctDaysLateTracking: valid.length ? +(valid.filter(r => r.lateCorr > trackThresh).length / valid.length).toFixed(3) : NaN,
     gate: {
-      highEarly: { n: hi.length, meanLateCorr: hi.length ? +mean(hi.map(r => r.lateCorr)).toFixed(3) : NaN, ...followStats(hi) },
-      lowEarly:  { n: lo.length, meanLateCorr: lo.length ? +mean(lo.map(r => r.lateCorr)).toFixed(3) : NaN, ...followStats(lo) },
+      highEarly: { days: hi.length, meanLateCorr: hi.length ? +mean(hi.map(r => r.lateCorr)).toFixed(3) : NaN, ...followStats(hi) },
+      lowEarly:  { days: lo.length, meanLateCorr: lo.length ? +mean(lo.map(r => r.lateCorr)).toFixed(3) : NaN, ...followStats(lo) },
     },
   };
 }
