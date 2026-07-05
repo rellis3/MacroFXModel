@@ -2153,13 +2153,14 @@ async function loadDrawerTde(name) {
     kv('Snapshot age', s.age_ms != null ? Math.round(s.age_ms / 1000) + 's' : '–', "How fresh this data is — seconds since it was last refreshed.");
   const zones = (s.zones ?? []).slice();
   if (!zones.length) return;
+  const dp = brief.instruments[name]?.dp ?? 5;
   const sigmaAbs = (s.sigmaDaily ?? 0) * (s.dayOpen ?? s.price ?? 1);
   zones.sort((a, b) => Math.abs(a.price - (s.price ?? 0)) - Math.abs(b.price - (s.price ?? 0)));
   const tb = $('drZones').querySelector('tbody');
   tb.innerHTML = zones.slice(0, 12).map(z => {
     const dSig = sigmaAbs ? ((z.price - s.price) / sigmaAbs).toFixed(2) : '?';
     return `<tr class="zrow">
-      <td><b>${z.price}</b></td><td class="muted">${dSig}σ</td><td>${z.count}</td>
+      <td><b>${fmtN(z.price, dp)}</b></td><td class="muted">${dSig}σ</td><td>${z.count}</td>
       <td class="muted">${(z.sources ?? []).slice(0, 4).join(', ')}</td>
       <td><button class="hbtn" style="padding:2px 9px;font-size:11px" onclick="event.stopPropagation();decideAt('${name}',${z.price})">Decide ▸</button></td></tr>`;
   }).join('');
@@ -2198,9 +2199,10 @@ async function loadDrawerLevels(name, sym) {
   const key = lvlKey(name, sym);
   const list = r.pairs?.[key];
   if (!list?.length) { $('drLevelsNote').textContent = `no bot levels loaded for ${key}`; return; }
+  const dp = brief.instruments[name]?.dp ?? 5;
   const tb = $('drLevels').querySelector('tbody');
   tb.innerHTML = list.slice(0, 14).map(l => `<tr>
-    <td><b>${l.price}</b></td>
+    <td><b>${fmtN(l.price, dp)}</b></td>
     <td>${l.direction === 'long' ? '▲ long' : l.direction === 'short' ? '▼ short' : '–'}</td>
     <td>${'★'.repeat(Math.min(5, l.stars ?? 0)) || '–'}</td>
     <td class="muted">${l.tags ?? ''}</td></tr>`).join('');
