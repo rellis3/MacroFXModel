@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Credit → NQ-vol Lead-Lag Study</title>
+<title>Credit → Risk-vol Lead-Lag Study</title>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
         --green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;}
@@ -39,19 +39,28 @@
 </head>
 <body>
 
-<h1>Credit → NQ-vol Lead-Lag Study</h1>
-<div class="sub">Does a widening in <b>corporate credit spreads</b> (ICE BofA US HY OAS) lead <b>NAS100 realized volatility</b> — and does it add anything <b>beyond vol's own persistence</b>? Honest IS/OOS information-coefficient test. Predictor brick: <code>js/creditCore.js</code> + <code>js/creditHmm.js</code>. Design: <code>docs/CREDIT_SIGNAL_SPEC.md</code>. <a href="today.html">← Daily Brief</a></div>
+<h1>Credit → Risk-vol Lead-Lag Study</h1>
+<div class="sub">Does a widening in <b>corporate credit spreads</b> (ICE BofA US HY OAS) lead a <b>risk instrument's realized volatility</b> — and does it add anything <b>beyond vol's own persistence</b>? Honest IS/OOS information-coefficient test. Proven for NQ (+0.36 OOS IC); use the <b>sweep</b> to check whether it generalises to the risk-FX pairs the TDE actually trades <b>before</b> any promotion. Predictor brick: <code>js/creditCore.js</code> + <code>js/creditHmm.js</code>. Design: <code>docs/CREDIT_SIGNAL_SPEC.md</code>. <a href="today.html">← Daily Brief</a></div>
 
 <div class="card">
   <div class="row">
+    <div><label>Target instrument</label><select id="instrument" style="min-width:150px"></select></div>
     <div><label>Forward vol horizon (days)</label><input id="horizon" type="number" value="5" min="2" max="20"></div>
     <div><label>Max lead/lag (days)</label><input id="maxLag" type="number" value="10" min="3" max="20"></div>
     <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.35" step="0.05" min="0.2" max="0.5"></div>
     <div><label>History from</label><input id="fromDate" type="text" value="2013-01-01" style="width:120px"></div>
-    <button id="runBtn" onclick="run()">Run study ▸</button>
+    <button id="runBtn" onclick="run()">Run one ▸</button>
+    <button id="sweepBtn" onclick="sweep()">Run sweep (all) ▸</button>
     <span class="muted" id="status"></span>
   </div>
   <div class="err" id="err" style="margin-top:8px"></div>
+</div>
+
+<div id="sweepOut" class="card" style="display:none">
+  <h2>Multi-target sweep — does the NQ result generalise?</h2>
+  <div class="muted" style="margin-bottom:8px">Same study, each target run in turn. "Beats" = credit OOS IC positive (&gt;+0.05) AND above the vol-persistence benchmark. Survivors across several correlated-but-distinct targets are the honest evidence the signal is real, not an NQ fluke.</div>
+  <table id="sweepTbl"><thead><tr><th>Target</th><th>Credit OOS IC</th><th>Benchmark OOS IC</th><th>Best lead</th><th>OOS n</th><th>Verdict</th></tr></thead><tbody></tbody></table>
+  <div class="muted" id="sweepStatus" style="margin-top:8px"></div>
 </div>
 
 <div id="out" style="display:none">
@@ -63,7 +72,7 @@
   </div>
 
   <div class="card">
-    <h2>Lead-lag correlation — credit velocity(t) vs NQ forward vol(t+lag)</h2>
+    <h2 id="llTitle">Lead-lag correlation — credit velocity(t) vs target forward vol(t+lag)</h2>
     <div class="muted" style="margin-bottom:8px">lag &gt; 0 means credit <b>leads</b> vol. The amber bar is the strongest positive lead.</div>
     <div id="ll"></div>
   </div>
@@ -82,6 +91,16 @@
 
 <script>
 const $ = id => document.getElementById(id);
+let TARGETS = { NAS100_USD: 'NQ (Nasdaq)' };
+async function loadTargets() {
+  try {
+    const r = await fetch('/api/credit-leadlag/targets').then(r => r.json());
+    if (r.ok && r.targets) TARGETS = r.targets;
+  } catch {}
+  $('instrument').innerHTML = Object.entries(TARGETS)
+    .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+}
+loadTargets();
 async function poll(jobId) {
   for (let i = 0; i < 150; i++) {
     await new Promise(r => setTimeout(r, 2000));
@@ -93,15 +112,21 @@ async function poll(jobId) {
   }
   throw new Error('timed out');
 }
+function baseBody() {
+  return { horizon: +$('horizon').value, maxLag: +$('maxLag').value, oosFrac: +$('oosFrac').value, fromDate: $('fromDate').value };
+}
+async function runOne(instrument) {
+  const start = await fetch('/api/credit-leadlag/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...baseBody(), instrument }) }).then(r => r.json());
+  if (!start.ok) throw new Error(start.error || 'could not start');
+  const res = await poll(start.jobId);
+  if (!res.ok) throw new Error(res.error || 'no result');
+  return res;
+}
 async function run() {
   const btn = $('runBtn'); btn.disabled = true; $('err').textContent = ''; $('out').style.display = 'none';
   $('status').textContent = 'Starting…';
   try {
-    const body = { horizon: +$('horizon').value, maxLag: +$('maxLag').value, oosFrac: +$('oosFrac').value, fromDate: $('fromDate').value };
-    const start = await fetch('/api/credit-leadlag/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
-    if (!start.ok) throw new Error(start.error || 'could not start');
-    const res = await poll(start.jobId);
-    if (!res.ok) throw new Error(res.error || 'no result');
+    const res = await runOne($('instrument').value);
     render(res);
     $('status').textContent = 'Done ✓';
   } catch (e) {
@@ -109,16 +134,52 @@ async function run() {
     $('status').textContent = '';
   } finally { btn.disabled = false; }
 }
+async function sweep() {
+  const rBtn = $('runBtn'), sBtn = $('sweepBtn');
+  rBtn.disabled = sBtn.disabled = true; $('err').textContent = '';
+  $('sweepOut').style.display = 'block';
+  const tbody = $('sweepTbl').querySelector('tbody'); tbody.innerHTML = '';
+  const keys = Object.keys(TARGETS);
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    $('sweepStatus').textContent = `Running ${TARGETS[k]} (${i + 1}/${keys.length})…`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${TARGETS[k]}</td><td colspan="5" class="muted">running…</td>`;
+    tbody.appendChild(tr);
+    try {
+      const res = await runOne(k);
+      const v = res.verdict || {};
+      const good = v.beatsBenchmark && v.credit_oos_ic > 0.05;
+      const some = !good && v.credit_oos_ic > 0.05;
+      const cls = x => x == null ? '' : x > 0.05 ? 'pos' : x < -0.05 ? 'neg' : '';
+      tr.innerHTML = `<td>${TARGETS[k]}</td>
+        <td class="${cls(v.credit_oos_ic)}">${f2(v.credit_oos_ic)}</td>
+        <td>${f2(v.benchmark_oos_ic)}</td>
+        <td>${res.bestLead ? (res.bestLead.lag >= 0 ? '+' : '') + res.bestLead.lag + 'd' : '–'}</td>
+        <td>${res.split != null && res.coverage?.rows != null ? (res.coverage.rows - res.split) : '–'}</td>
+        <td class="${good ? 'pos' : some ? 'warn' : 'neg'}">${good ? 'leads ✓ beats bench' : some ? 'some signal, not vs bench' : 'no lead'}</td>`;
+      if (k === $('instrument').value) render(res);   // also show the full detail for the selected one
+    } catch (e) {
+      tr.innerHTML = `<td>${TARGETS[k]}</td><td colspan="5" class="neg">${e.message}</td>`;
+      if (/OANDA|FRED|403|thin/.test(e.message)) { $('err').textContent = 'FRED/OANDA are Railway-only; this runs on the deployed server, not the sandbox.'; break; }
+    }
+  }
+  $('sweepStatus').textContent = 'Sweep done ✓';
+  rBtn.disabled = sBtn.disabled = false;
+}
 const f2 = x => x == null ? '–' : (x >= 0 ? '+' : '') + x.toFixed(2);
 function render(r) {
   $('out').style.display = 'block';
   const v = r.verdict || {};
+  const m = r.meta || {};
+  const tgt = m.instrumentLabel || 'the target';
+  $('llTitle') && ($('llTitle').textContent = `Lead-lag correlation — credit velocity(t) vs ${tgt} forward vol(t+lag)`);
   const good = v.beatsBenchmark && v.credit_oos_ic > 0.05;
   $('verdict').innerHTML = good
-    ? `<span class="pos">Credit leads NQ vol out-of-sample — and beats vol's own persistence.</span>`
+    ? `<span class="pos">Credit leads ${tgt} vol out-of-sample — and beats vol's own persistence.</span>`
     : (v.credit_oos_ic > 0.05
-      ? `<span class="warn">Credit has some out-of-sample signal, but does NOT clearly beat vol-predicts-vol.</span>`
-      : `<span class="neg">No reliable out-of-sample lead from credit here.</span>`);
+      ? `<span class="warn">Credit has some out-of-sample signal for ${tgt}, but does NOT clearly beat vol-predicts-vol.</span>`
+      : `<span class="neg">No reliable out-of-sample lead from credit for ${tgt} here.</span>`);
   $('verdictSub').innerHTML = `Credit OOS IC <b>${f2(v.credit_oos_ic)}</b> vs vol-persistence benchmark <b>${f2(v.benchmark_oos_ic)}</b>` +
     (r.bestLead ? ` · strongest lead at <b>${r.bestLead.lag >= 0 ? '+' : ''}${r.bestLead.lag}d</b> (r ${f2(r.bestLead.r)}, t ${r.bestLead.t?.toFixed(1)})` : '');
   $('verdictNote').textContent = v.note || '';
@@ -154,8 +215,8 @@ function render(r) {
     ? `Hit-rate: above-median credit widening predicted above-median forward vol <b>${(100 * h.rate).toFixed(0)}%</b> of the time OOS (n ${h.n}). Coin-flip = 50%.`
     : '';
 
-  const c = r.coverage || {}, m = r.meta || {};
-  $('coverage').innerHTML = `Aligned rows: <b>${c.rows ?? m.alignedRows ?? '–'}</b> (HY ${c.hyFinite ?? '–'} / NQ ${c.nqFinite ?? '–'} finite) · ${m.firstDate ?? '?'} → ${m.lastDate ?? '?'} · horizon ${r.horizon}d · OOS from split index ${r.split}.`;
+  const c = r.coverage || {};
+  $('coverage').innerHTML = `Target: <b>${tgt}</b> (<code>${m.instrument ?? '?'}</code>) · Aligned rows: <b>${c.rows ?? m.alignedRows ?? '–'}</b> (HY ${c.hyFinite ?? '–'} / target ${c.nqFinite ?? '–'} finite) · ${m.firstDate ?? '?'} → ${m.lastDate ?? '?'} · horizon ${r.horizon}d · OOS from split index ${r.split}.`;
 }
 </script>
 </body>

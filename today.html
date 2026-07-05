@@ -206,6 +206,26 @@
   .meter .tick.t75{opacity:.5}
   .meter .tick span{position:absolute;top:15px;left:-8px;font-size:8.5px;color:var(--text3);letter-spacing:.02em}
 
+  /* Range map — price position vs forecast cone + travelled range */
+  .rmap-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);margin-bottom:4px;gap:8px}
+  .rmap-lbl b{color:var(--text2);font-weight:600;white-space:nowrap}
+  .rmap{position:relative;height:16px;background:var(--card2);border-radius:8px;margin:0 0 22px;overflow:visible}
+  .rmap .band{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--blue-bg);
+              border-left:1px solid rgba(79,125,240,.5);border-right:1px solid rgba(79,125,240,.5)}
+  .rmap .band.up{background:var(--bull-bg);border-color:rgba(16,185,129,.5)}
+  .rmap .band.dn{background:var(--bear-bg);border-color:rgba(249,115,22,.5)}
+  .rmap .rt{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--text3);opacity:.55}
+  .rmap .rt.open{background:var(--text2);opacity:.95;width:2px}
+  .rmap .rt.o75{opacity:.35}
+  .rmap .rt span{position:absolute;top:16px;left:50%;transform:translateX(-50%);font-size:8px;
+                 color:var(--text3);letter-spacing:.02em;white-space:nowrap}
+  .rmap .rt.open span{color:var(--text2);font-weight:600}
+  .rmap .now{position:absolute;top:-6px;width:0;height:0;border-left:5px solid transparent;
+             border-right:5px solid transparent;border-top:8px solid var(--blue);
+             margin-left:-5px;z-index:3;filter:drop-shadow(0 0 2px rgba(0,0,0,.5))}
+  .rmap .now.up{border-top-color:var(--bull)}
+  .rmap .now.dn{border-top-color:var(--bear)}
+
   /* Level ladder */
   .ladder{margin:14px 0 8px;font-variant-numeric:tabular-nums}
   .lrow{display:flex;align-items:center;gap:8px;padding:2.5px 6px;border-radius:5px;font-size:11.5px}
@@ -1419,6 +1439,39 @@ function meterHtml(r) {
           </div>`;
 }
 
+// Range map: where price sits in the forecast cone (OL75·OLmed·OPEN·OHmed·OH75,
+// all anchored to the London-midnight open) with the range price has ACTUALLY
+// travelled today shaded in — so you read at a glance how much of the expected
+// day-range is used and whether price is stretched to one side. Superset of the
+// old "range used" bar; falls back to it if levels/open aren't available yet.
+function rangeMapHtml(r) {
+  const d = r.d, L = d.levels || {}, s = r.s;
+  const open = d.session_open ?? s?.anchor_open ?? null;
+  const px   = d.current_price;
+  const ol75 = L.ol_75?.price, olM = L.ol_med?.price, ohM = L.oh_med?.price, oh75 = L.oh_75?.price;
+  if (open == null || px == null || ol75 == null || oh75 == null || olM == null || ohM == null)
+    return meterHtml(r);                       // graceful fallback — no map without a real anchor + cone
+  const padd = Math.max(1e-9, (oh75 - ol75) * 0.10), lo = ol75 - padd, hi = oh75 + padd;
+  const X = p => Math.max(0, Math.min(100, (p - lo) / (hi - lo) * 100));
+  const sHi = (s?.oh != null) ? open * (1 + s.oh / 100) : null;   // session high so far
+  const sLo = (s?.ol != null) ? open * (1 - s.ol / 100) : null;   // session low so far
+  const fromOpen = (px - open) / open * 100;
+  const dir = fromOpen >= 0 ? 'up' : 'dn';
+  const usedPct = r.used != null ? Math.round(100 * r.used) : null;
+  const hm = t => { if (!t) return null; const dt = new Date(t); return isNaN(dt) ? null : dt.toISOString().substr(11, 5); };
+  const hiT = hm(s?.oh_reached_at), loT = hm(s?.ol_reached_at);
+  const bandTip = `Shaded = the range price has actually travelled today (session low ${sLo != null ? fmtN(sLo, d.dp) : '?'}${loT ? ' at ' + loT : ''} → high ${sHi != null ? fmtN(sHi, d.dp) : '?'}${hiT ? ' at ' + hiT : ''}, UK time).`;
+  const band = (sHi != null && sLo != null)
+    ? `<div class="band ${dir}" style="left:${X(sLo)}%;width:${Math.max(1.2, X(sHi) - X(sLo))}%" title="${bandTip}"></div>` : '';
+  const ticks = [['OL75', ol75, 'o75'], ['OL', olM, ''], ['OPEN', open, 'open'], ['OH', ohM, ''], ['OH75', oh75, 'o75']]
+    .map(([lbl, p, cls]) => `<div class="rt ${cls}" style="left:${X(p)}%"><span>${lbl}</span></div>`).join('');
+  const marker = `<div class="now ${dir}" style="left:${X(px)}%" title="Now ${fmtN(px, d.dp)} · ${fromOpen >= 0 ? '+' : ''}${fromOpen.toFixed(2)}% from the London-midnight open"></div>`;
+  const tip = `How price is moving through the day versus its expected volatility. Ticks = the forecast cone (typical & 75th-percentile up/down moves from the London-midnight open). Shaded band = the range actually travelled so far. Triangle = price now. Band filling the cone and price at one edge = stretched; small band near the middle = quiet.`;
+  return `<div class="rmap-lbl"><span class="help" title="${tip}">Range map — price vs forecast cone</span>
+      <b>${usedPct != null ? usedPct + '% range used · ' : ''}${fromOpen >= 0 ? '+' : ''}${fromOpen.toFixed(2)}% from open</b></div>
+    <div class="rmap">${band}${ticks}${marker}</div>`;
+}
+
 function ladderHtml(r) {
   const d = r.d, L = d.levels ?? {};
   const px = d.current_price;
@@ -1475,7 +1528,7 @@ function cardHtml(r) {
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
     <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market. Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}</div>
-    ${meterHtml(r)}
+    ${rangeMapHtml(r)}
     ${ladderHtml(r)}
     <div class="pc-foot">
       <span class="chip ${volCls}" title="How big this market's swings tend to be. 'P${volPct ?? '?'}' compares today to its own history: ${volPct != null ? (volPct >= 80 ? `calmer than only ${volPct}% of days — unusually jumpy right now, use wider stops` : volPct <= 20 ? `calmer than ${100 - volPct}% of days — an unusually quiet stretch` : `middle of its normal range`) : 'unknown'}.">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>
