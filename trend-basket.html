@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trend Basket — diversified G10 FX momentum</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#233042; --txt:#e6edf3;
+          --dim:#8b98a9; --green:#10b981; --blue:#4f7df0; --red:#f97316; --amber:#eab308; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); background:var(--panel); }
+  h1 { margin:0 0 2px; font-size:19px; } .sub { color:var(--dim); font-size:12.5px; }
+  .wrap { max-width:1000px; margin:0 auto; padding:18px 20px 60px; }
+  .controls { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px; }
+  .ctl { display:flex; flex-direction:column; gap:3px; }
+  .ctl label { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; }
+  select, input, button { background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:7px; padding:7px 10px; font-size:13px; }
+  input { width:80px; }
+  button.go { background:var(--blue); border-color:var(--blue); color:#fff; cursor:pointer; font-weight:600; }
+  button.go:disabled { opacity:.5; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:15px 16px; margin-bottom:16px; }
+  h2 { margin:0 0 10px; font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td { text-align:left; padding:6px 9px; border-bottom:1px solid var(--line); }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; }
+  td.mono, .mono { font-variant-numeric:tabular-nums; font-family:ui-monospace,Menlo,monospace; }
+  canvas { width:100%; display:block; border-radius:7px; background:var(--panel2); }
+  .cap { color:var(--dim); font-size:11.5px; margin-top:8px; }
+  .status { color:var(--dim); } .err { color:#fca5a5; }
+  .chip { display:inline-block; font-size:11.5px; padding:2px 9px; border-radius:999px; border:1px solid var(--line); }
+  .long { background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.4); color:#6ee7b7; }
+  .short { background:rgba(249,115,22,.14); border-color:rgba(249,115,22,.4); color:#fdba74; }
+  .flat { color:var(--dim); }
+  .note { color:var(--dim); font-size:12.5px; line-height:1.6; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:11px 13px; margin-bottom:16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📈 Trend Basket <span class="sub">— diversified G10 FX momentum</span></h1>
+  <div class="sub">Long the up-trending currencies vs USD, short the down-trending, vol-scaled (equal risk), rebalanced, net of cost. The honest factor version — a modest, drawdown-heavy diversifier, not a wealth engine.</div>
+</header>
+<div class="wrap">
+  <div class="note">
+    <b>Read this first.</b> This is a diversified <b>factor</b> strategy (time-series momentum / "managed futures"), tested IS/OOS after costs. Historically these run ~0.4–0.7 Sharpe with 20–40% drawdowns and multi-year flat stretches. It's real and evidence-backed, but it is a <b>satellite diversifier</b>, not a way to get rich — and it may still come back thin here. Not financial advice.
+  </div>
+  <div class="controls">
+    <div class="ctl"><label>Trend lookback (days)</label><input id="lookback" type="number" value="252" min="20" max="500"></div>
+    <div class="ctl"><label>Rebalance (days)</label><input id="rebal" type="number" value="5" min="1" max="60"></div>
+    <div class="ctl"><label>Target vol</label><input id="targetVol" type="number" value="0.10" step="0.01" min="0.02" max="0.4"></div>
+    <div class="ctl"><label>Cost (bps/rebal)</label><input id="cost" type="number" value="2" min="0" max="50"></div>
+    <div class="ctl"><label>&nbsp;</label><button class="go" id="run">Run backtest ▸</button></div>
+    <div class="ctl" style="flex:1"><label>&nbsp;</label><div class="status" id="status">Ready.</div></div>
+  </div>
+  <div id="out"></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => (x==null||Number.isNaN(x))?'–':Number(x).toFixed(d);
+
+function plotEquity(canvas, eq, height=240) {
+  const dpr=window.devicePixelRatio||1, W=canvas.clientWidth, H=height;
+  canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
+  const padL=46,padR=10,padT=10,padB=20, pw=W-padL-padR, ph=H-padT-padB;
+  const vals=eq.map(p=>p.v); let lo=Math.min(...vals), hi=Math.max(...vals);
+  const pad=(hi-lo)*0.06||0.1; lo-=pad; hi+=pad;
+  const n=eq.length, X=i=>padL+(n<=1?0:i/(n-1)*pw), Y=v=>padT+ph-((v-lo)/(hi-lo))*ph;
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.fillStyle='#6b7a8d'; ctx.font='10px monospace';
+  for(let t=0;t<=4;t++){ const v=lo+(hi-lo)*t/4, y=Y(v); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); ctx.fillText(v.toFixed(2)+'x',2,y+3); }
+  if(lo<1&&hi>1){ ctx.strokeStyle='rgba(255,255,255,.2)'; const y=Y(1); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); }
+  // year labels
+  ctx.fillStyle='#6b7a8d'; let lastY='';
+  for(let i=0;i<n;i++){ const yr=eq[i].t.slice(0,4); if(yr!==lastY && i%Math.ceil(n/8)<1){ ctx.fillText(yr, X(i)-12, H-6); lastY=yr; } }
+  ctx.strokeStyle='#4f7df0'; ctx.lineWidth=1.8; ctx.beginPath();
+  eq.forEach((p,i)=>{ const x=X(i),y=Y(p.v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
+}
+
+function statRow(label, s, hl) {
+  return `<tr${hl?' style="font-weight:700;background:rgba(79,125,240,.08)"':''}><td>${label}</td>
+    <td class="mono" style="color:${s.sharpe>0.5?'#6ee7b7':s.sharpe>0?'#fcd34d':'#fdba74'}">${fmt(s.sharpe)}</td>
+    <td class="mono">${fmt(s.cagr,1)}%</td><td class="mono">${fmt(s.vol,1)}%</td>
+    <td class="mono" style="color:#fdba74">${fmt(s.maxDD,1)}%</td><td class="mono">${fmt(s.calmar)}</td>
+    <td class="mono">${fmt(s.winRate,1)}%</td></tr>`;
+}
+
+async function run(){
+  const q=`lookback=${$('lookback').value}&rebal=${$('rebal').value}&targetVol=${$('targetVol').value}&cost=${$('cost').value}`;
+  $('run').disabled=true; $('status').textContent='Fetching ~20yr D1 for 7 currencies + backtesting…'; $('status').className='status'; $('out').innerHTML='';
+  try{
+    const r=await fetch(`/api/trend-basket?${q}`); const j=await r.json();
+    if(!r.ok) throw new Error(j.error||('HTTP '+r.status));
+    if(j.error) throw new Error(j.error);
+    render(j); $('status').textContent=`Done — ${j.nDays} days, ${j.first}→${j.last}.`;
+  }catch(e){ $('status').innerHTML='<span class="err">'+e.message+'</span>'; }
+  finally{ $('run').disabled=false; }
+}
+
+function render(j){
+  const cur=j.current.map(c=>`<span class="chip ${c.trend>0?'long':c.trend<0?'short':'flat'}">${c.ccy} ${c.trend>0?'▲ long':c.trend<0?'▼ short':'flat'}</span>`).join(' ');
+  const perYear=j.perYear.map(y=>`<td class="mono" style="color:${y.ret>0?'#6ee7b7':'#fdba74'}">${y.ret>0?'+':''}${y.ret}%<br><span style="color:var(--dim);font-size:10px">${y.year}</span></td>`).join('');
+  const avail=j.availability.map(a=>`<tr><td>${a.ccy}</td><td class="mono">${a.inst}</td><td class="mono">${a.bars||'–'}</td><td class="mono">${a.first||a.error||'–'}</td><td class="mono">${a.last||''}</td></tr>`).join('');
+  $('out').innerHTML=`
+    <div class="panel"><h2>Current positions <span class="sub" style="font-weight:400">— what the model holds today (${j.params.lookback}d trend)</span></h2>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">${cur}</div></div>
+    <div class="panel"><h2>Performance — IS / OOS vs benchmark</h2>
+      <table><thead><tr><th></th><th>Sharpe</th><th>CAGR</th><th>Vol</th><th>maxDD</th><th>Calmar</th><th>win%</th></tr></thead><tbody>
+        ${statRow('In-sample (70%)', j.is)}
+        ${statRow('Out-of-sample (30%) ◄', j.oos, true)}
+        ${statRow('Full period', j.all)}
+        ${statRow('Benchmark (equal-wt long basket)', j.benchmark)}
+      </tbody></table>
+      <div class="cap">The <b>OOS</b> row is the one that counts — it's data the strategy never "saw". The benchmark is just holding all currencies long (short USD); the basket should beat it on risk-adjusted terms if the trend factor is real, not just a USD bet. Diagnostic, after ${j.params.costBps}bps/rebalance cost.</div>
+    </div>
+    <div class="panel"><h2>Equity curve <span class="sub" style="font-weight:400">— growth of 1 (log-return compounded, after cost)</span></h2>
+      <canvas id="eqc"></canvas>
+      <div class="cap">Watch the <b>drawdowns and flat stretches</b> — this is what you'd have to sit through. A smooth line here would be a red flag (overfit).</div></div>
+    <div class="panel"><h2>Per-year return</h2>
+      <div style="overflow-x:auto"><table><tbody><tr>${perYear}</tr></tbody></table></div>
+      <div class="cap">Real factor strategies have losing years. A string of them is normal, not broken.</div></div>
+    <div class="panel"><h2>Data</h2>
+      <table><thead><tr><th>Ccy</th><th>Instrument</th><th>bars</th><th>from</th><th>to</th></tr></thead><tbody>${avail}</tbody></table></div>`;
+  plotEquity($('eqc'), j.equity);
+}
+$('run').addEventListener('click', run);
+run();
+</script>
+</body>
+</html>

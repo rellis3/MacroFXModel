@@ -405,6 +405,21 @@ depth the tool reports; the live/display consumers are not.
 
 ---
 
+### 1j. Trend-basket engine (2026-07-05) — the honest factor strategy
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Trend basket** | `js/trendBasketEngine.js` | diversified G10-FX time-series-momentum backtest — `alignSeries` (inner-join `{ccy:[{t,v}]}`), `runTrendBasket` (per-currency 12-mo trend sign → long up / short down, **inverse-vol / equal-risk** sizing to a target vol, weekly rebalance, **round-trip cost on turnover**, true IS/OOS split, equity curve, per-year, current positions, + an **equal-weight long-basket benchmark** so we know it's the *factor* not a USD bet). Pure; reuses `statsCore` + `metricsCore` (`sharpeRatio`, `maxDrawdownFromEquity`). Tested `js/trendBasketEngine.test.mjs` (10 asserts incl. trends-profit + cost-drag). | `server.js` `/api/trend-basket` (fetches ~20yr D1 for 7 ccys vs USD via `fetchOandaD1Range`, `USD_*` inverted); `trend-basket.html` viewer (IS/OOS card, equity curve, per-year, positions, honest "diversifier not wealth-engine" framing) | ✅ built |
+
+The pivot after the yield investigation nulled: instead of hunting a directional
+signal on one liquid pair (the picked-clean spot), harvest the **replicated,
+diversified** momentum premium across many currencies — small Sharpe, real
+drawdowns, honest. Distinct family from the yield work; new engine + page. Phase 2
+(carry: rank by short-rate, blend 50/50 with trend) needs G10 short-rate data
+(FRED/ECB partial; the rest is the sourcing work).
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
