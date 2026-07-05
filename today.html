@@ -242,6 +242,8 @@
   #drNews .nname{flex:1}
   #drNews .nname b.warn{font-size:9px;color:var(--amber);letter-spacing:.03em}
   #drNews .nval{color:var(--text2);font-size:11px;text-align:right;white-space:nowrap}
+  #drNews .nimpact{font-size:11px;color:var(--text2);padding:3px 6px 7px 62px;line-height:1.45}
+  #drNews .nimpact b.pos{color:var(--bull)} #drNews .nimpact b.neg{color:var(--bear)}
 
   /* Level ladder */
   .ladder{margin:14px 0 8px;font-variant-numeric:tabular-nums}
@@ -468,6 +470,34 @@ function nextPairEvent(name) {
   return pairEvents(name).find(e => e.ms >= now - 20 * 60000) ?? null;   // next (or one just released)
 }
 const evtTime = e => new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+// country → currency code, and a friendly word for it
+const CC_TO_CCY = { US:'USD', EU:'EUR', DE:'EUR', FR:'EUR', IT:'EUR', ES:'EUR', GB:'GBP', UK:'GBP', JP:'JPY', CH:'CHF', AU:'AUD', CA:'CAD', NZ:'NZD', CN:'CNH' };
+const CCY_WORD  = { USD:'dollar', EUR:'euro', GBP:'pound', JPY:'yen', CHF:'franc', AUD:'Aussie', CAD:'Canadian dollar', NZD:'Kiwi', CNH:'yuan' };
+// Plain-English "what this print does to THIS pair" — reuses newsKind/newsOutcome.
+// Framed by CURRENCY direction so it's correct even for inverted indicators
+// (unemployment/claims, where a higher number is weaker). Returns '' if we can't
+// map it cleanly (keeps us honest rather than guessing).
+function pairImpactLine(e, name) {
+  const ccy = CC_TO_CCY[e.country];
+  if (!ccy) return '';
+  const subj = CCY_WORD[ccy] ?? ccy;
+  const legs = PAIR_CCY[name];        // [base, quote] for FX majors
+  let dir = null;                     // pair direction on a CURRENCY-POSITIVE surprise
+  if (legs) { if (legs[0] === ccy) dir = 'up'; else if (legs[1] === ccy) dir = 'dn'; }
+  else if (name === 'GOLD' && ccy === 'USD') dir = 'dn';   // gold quoted in USD; strong $ → gold down
+  else if (['NQ','SPX500','DE30','US30','US2000','UK100'].includes(name))
+    return `A hot print is <b>mixed for stocks</b> — good for growth but it can lift rates and squeeze valuations. Watch the reaction, not the number.`;
+  if (!dir) return '';
+  const hi = `${dispName(name)} <b class="pos">higher</b>`, lo = `${dispName(name)} <b class="neg">lower</b>`;
+  const posPair = dir === 'up' ? hi : lo;    // currency-positive → this
+  const negPair = dir === 'up' ? lo : hi;
+  const oc = newsOutcome(newsKind(e.event), e.actual, e.estimate);
+  if (oc && oc.side !== 'mid') {
+    const pos = oc.side === 'up';
+    return `Came in <b>${subj}-${pos ? 'positive' : 'negative'}</b> → ${pos ? posPair : negPair}.`;
+  }
+  return `A <b>${subj}-positive</b> surprise → ${posPair}; ${subj}-negative → ${negPair}.`;
+}
 
 // State
 let brief = null;        // /api/daily-brief
@@ -1716,12 +1746,14 @@ function loadDrawerNews(name) {
     const surprise = (past && e.actual != null && e.estimate != null)
       ? (e.actual > e.estimate ? '<span class="pos">beat</span>' : e.actual < e.estimate ? '<span class="neg">miss</span>' : 'in-line')
       : '';
+    // human impact on THIS pair — shown for high-impact events (and any released print)
+    const impact = (hi || (past && e.actual != null)) ? pairImpactLine(e, name) : '';
     return `<div class="nrow ${past ? 'past' : ''}">
       <span class="ntime">${evtTime(e)}</span>
       <span class="nflag ${hi ? 'hi' : ''}">${e.country}</span>
       <span class="nname">${e.event ?? '—'}${hi ? ' <b class="warn">HIGH</b>' : ''}</span>
       <span class="nval">${e.actual != null ? `${e.actual}${e.estimate != null ? ` vs ${e.estimate}e` : ''} ${surprise}` : (e.estimate != null ? `${e.estimate}e` : '')}</span>
-    </div>`;
+    </div>${impact ? `<div class="nimpact">${impact}</div>` : ''}`;
   }).join('');
   const next = nextPairEvent(name);
   box.innerHTML = (next && next.ms >= now ? `<div class="muted" style="margin-bottom:6px">Next: <b>${next.event}</b> at <b>${evtTime(next)}</b> (UK) — expect the range to widen around it.</div>` : '') + rows;
