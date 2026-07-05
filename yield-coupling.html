@@ -170,6 +170,32 @@ function stateCard(st) {
   </div>`;
 }
 
+function convexityBlock(cx) {
+  if (!cx || !cx.n) return '';
+  const d = cx.dist, pct = x => Number.isFinite(x) ? (x*100).toFixed(0)+'%' : '–';
+  const stops = [...new Set(cx.grid.map(c=>c.stop))], targets = [...new Set(cx.grid.map(c=>c.target))];
+  const cellFor = (s,t) => cx.grid.find(c=>c.stop===s&&c.target===t);
+  const rows = stops.map(s=>`<tr><td>stop ${s}</td>${targets.map(t=>{const c=cellFor(s,t);const isBest=cx.best&&c.stop===cx.best.stop&&c.target===cx.best.target;
+    const col=!c?'var(--dim)':c.ev>0.05?'#6ee7b7':c.ev>0?'#fcd34d':'#fdba74';
+    return `<td class="mono" style="color:${col};${isBest?'background:rgba(16,185,129,.14);font-weight:700':''}">${c?(c.ev>=0?'+':'')+c.ev.toFixed(2):'–'}<span style="color:var(--dim);font-size:10px"> ${c?pct(c.hitRate):''}</span></td>`;}).join('')}</tr>`).join('');
+  const b = cx.best;
+  const verdict = !b ? '—' : b.ev>0.05 ? `convex — a stop/target pays (+${b.ev.toFixed(2)} at ${b.target}:${b.stop}, ${pct(b.hitRate)} hit)` : b.ev>0 ? 'marginally convex' : 'not convex (no +EV cell)';
+  const vcol = !b?'var(--dim)':b.ev>0.05?'#6ee7b7':b.ev>0?'#fcd34d':'#fdba74';
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:2px solid var(--yellow)">
+      <h2 style="font-size:13px">🎢 Convexity (MFE/MAE) <span class="sub" style="font-weight:400">— does the payoff SHAPE pay even at low hit-rate? (${cx.n} big-divergence events)</span></h2>
+      <div class="metrics">
+        <div class="metric"><div class="v" style="font-size:14px;font-weight:700;color:${vcol}">${verdict}</div><div class="l">verdict</div></div>
+        <div class="metric"><div class="v">${fmt(d.mfeMed)}</div><div class="l">Median MFE (σ·√H)</div></div>
+        <div class="metric"><div class="v">${fmt(d.maeMed)}</div><div class="l">Median MAE</div></div>
+        <div class="metric"><div class="v">${d.rrMed==null?'∞':fmt(d.rrMed)}</div><div class="l">MFE:MAE ratio</div></div>
+      </div>
+      <div class="legend">Excursions in σ·√H (the expected move over the window). <b>MFE</b> = how far price ran the trade's way; <b>MAE</b> = how far against. Grid = EV per unit risk with a path-aware stop+target (hit-rate below), net cost.</div>
+      <div style="overflow-x:auto"><table style="max-width:520px"><thead><tr><th>stop \\ target →</th>${targets.map(t=>`<th>${t}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="cap" style="margin-top:8px">A green cell = a stop/target combo with <b>positive EV even if the hit-rate is low</b> — that's your convexity thesis, measured. If every cell is orange, the payoff shape doesn't rescue it after cost. Diagnostic, in-sample, first-touch path sim.</div>
+    </div>`;
+}
+
 function projectionGateBlock(g) {
   if (!g || !g.nDays) return '';
   const pctf = x => Number.isFinite(x) ? (x*100).toFixed(0)+'%' : '–';
@@ -458,7 +484,7 @@ function render(j) {
       <div class="cap" style="margin:0 0 12px">Numbers above are <b>level</b> correlation (the standardized lines below).${s.dailyLeadLag?'':' The <b>returns</b> and <b>regime</b> blocks are the trading-relevant ones.'}</div>
       ${s.dailyLeadLag
         ? `${divergenceBlock(s.divergenceEvents)}${dailyLeadLagBlock(s.dailyLeadLag)}`
-        : `${projectionGateBlock(s.projectionGate)}${divergenceBlock(s.divergenceEvents)}${priorDayBlock(s.priorDay)}${returnsBlock(s.returns)}${persistenceBlock(s.persistence)}`}
+        : `${projectionGateBlock(s.projectionGate)}${divergenceBlock(s.divergenceEvents)}${convexityBlock(s.convexity)}${priorDayBlock(s.priorDay)}${returnsBlock(s.returns)}${persistenceBlock(s.persistence)}`}
       <div class="legend" style="margin-top:16px">
         <span><i style="background:var(--green)"></i>Price (z)</span>
         <span><i style="background:${spreadColor}"></i>Yield spread (z)</span>
