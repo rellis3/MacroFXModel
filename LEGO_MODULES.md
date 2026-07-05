@@ -283,6 +283,16 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 |---|---|---|---|---|
 | **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
 
+The core also runs a **neutral walk-forward** (`walkForwardDivergence`) — the RAW
+per-time-fold behaviour with NO trade bias: for each fold it reports the event
+count, **reverted%** (the *sign of what price did* — >50% mean-reversion, <50%
+momentum — measured, not assumed), mean forward move gross AND net-of-cost, and
+Sharpe. No verdict; the numbers are the user's to judge (they flagged that baked-in
+trade bias/verdicts were unwanted). Per-fold |gap| threshold, non-overlapping.
+Rendered as a data-only per-fold table on `yield-coupling-real.html`
+(`?wfQuantile=&wfHorizon=&wfFolds=` tunable). Purpose: is the tail edge stable
+across time or one lucky fold.
+
 The core also runs the **fade-to-yield backtest** (`backtestDivergenceFade`) —
 the actual trade, not a diagnostic: enter when |divergence gap| ≥ an **IS-learned**
 threshold (no OOS lookahead), fade toward the yield (gap>0 ⇒ long FX), hold N days,

@@ -476,6 +476,73 @@ export function backtestDivergenceFade(fx, spread, times, {
   };
 }
 
+// ── Walk-forward: the RAW relationship per time-fold (no trade bias) ─────────
+// Neutral by design — reports what price DID after a big divergence, per fold, so
+// you judge it yourself. The signed forward return uses sign(gap): POSITIVE means
+// price REVERTED toward the yield (mean-reversion), NEGATIVE means it CONTINUED
+// away (momentum). That sign is the DATA, not an assumed trade. Per-fold |gap|
+// threshold (each period judged on its own extremes), non-overlapping events,
+// gross AND net-of-cost. No verdict — just numbers.
+export function walkForwardDivergence(fx, spread, times, {
+  window = 10, gapQuantile = 0.9, horizon = 3, folds = 6, costPct = 0.00015,
+} = {}) {
+  const fxRet = toReturns(fx), spRet = toReturns(spread);
+  const gaps = new Array(fx.length).fill(NaN);
+  for (let t = window; t < fx.length; t++) {
+    const fWin = fxRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+    const sWin = spRet.slice(t - window + 1, t + 1).filter(Number.isFinite);
+    const fSd = stdev(fWin, 0), sSd = stdev(sWin, 0);
+    if (fSd <= 0 || sSd <= 0) continue;
+    gaps[t] = (spread[t] - spread[t - window]) / (sSd * Math.sqrt(window))
+            - (fx[t]     - fx[t - window])     / (fSd * Math.sqrt(window));
+  }
+  const N = fx.length, foldSize = Math.floor(N / folds), out = [];
+  for (let f = 0; f < folds; f++) {
+    const lo = f * foldSize, hi = f === folds - 1 ? N : (f + 1) * foldSize;
+    const absF = [];
+    for (let i = Math.max(lo, window); i < hi; i++) if (Number.isFinite(gaps[i])) absF.push(Math.abs(gaps[i]));
+    absF.sort((a, b) => a - b);
+    const thr = absF.length ? absF[Math.min(absF.length - 1, Math.floor(gapQuantile * absF.length))] : Infinity;
+    const rets = [], dates = [];
+    let t = Math.max(lo, window);
+    while (t + horizon < hi) {
+      const g = gaps[t];
+      if (Number.isFinite(g) && Math.abs(g) >= thr) {
+        const dir = g > 0 ? 1 : -1, entry = fx[t], exit = fx[t + horizon];
+        if (Number.isFinite(entry) && Number.isFinite(exit) && entry !== 0) {
+          rets.push(dir * (exit - entry) / entry); dates.push(times[t]); t += horizon; continue;
+        }
+      }
+      t++;
+    }
+    const n = rets.length;
+    const meanGross = n ? mean(rets) : NaN;
+    const meanNet   = n ? meanGross - costPct : NaN;
+    const sd = n > 1 ? stdev(rets, 0) : 0;
+    const yrs = n > 1 ? Math.max((Date.parse(dates[n - 1]) - Date.parse(dates[0])) / (365.25 * 864e5), 0.25) : 0.25;
+    const sharpeNet = sd > 1e-9 ? (meanNet / sd) * Math.sqrt(n / yrs) : 0;
+    out.push({
+      fold: f + 1, from: times[lo]?.slice(0, 10) ?? null, to: times[hi - 1]?.slice(0, 10) ?? null,
+      n, reverted: n ? rets.filter(r => r > 0).length / n : NaN,
+      meanGrossPct: n ? +(meanGross * 100).toFixed(4) : NaN,
+      meanNetPct:   n ? +(meanNet   * 100).toFixed(4) : NaN,
+      sharpeNet: +sharpeNet.toFixed(3),
+    });
+  }
+  const valid = out.filter(o => o.n >= 10);
+  const revs = valid.map(o => o.reverted).sort((a, b) => a - b);
+  return {
+    params: { window, gapQuantile, horizon, folds, costPct: +costPct.toFixed(5) },
+    folds: out,
+    summary: {
+      foldsWithData: valid.length,
+      foldsRevertGt50: valid.filter(o => o.reverted > 0.5).length,
+      foldsNetPositive: valid.filter(o => o.meanNetPct > 0).length,
+      medianReverted: revs.length ? +revs[Math.floor(revs.length / 2)].toFixed(3) : NaN,
+    },
+  };
+}
+
 // ── Prior-day projection: does TODAY's price follow YESTERDAY's yield? ────────
 // The user's indicator projects yesterday's yield path forward as today's
 // expected price path — a ~1-DAY-lagged relationship, far outside the intraday

@@ -109,6 +109,25 @@ function sweepPanel(sweep){
     <div class="cap">Each cell = OOS Sharpe (n below). A real edge is broad (many green cells); one green cell in a sea of noise is overfitting.</div></div>`;
 }
 
+function wfPanel(wf){
+  const p=wf.params, s=wf.summary;
+  const rows=wf.folds.map(f=>{
+    const thin=f.n<10;
+    const rc = !Number.isFinite(f.reverted)?'var(--dim)':f.reverted>0.5?'#6ee7b7':'#fdba74';
+    const nc = !Number.isFinite(f.meanNetPct)?'var(--dim)':f.meanNetPct>0?'#6ee7b7':'#fdba74';
+    return `<tr style="${thin?'opacity:.5':''}"><td class="mono">${f.from}→${(f.to||'').slice(2)}</td><td class="mono">${f.n}</td>
+      <td class="mono" style="color:${rc}">${Number.isFinite(f.reverted)?(f.reverted*100).toFixed(0)+'%':'–'}</td>
+      <td class="mono">${Number.isFinite(f.meanGrossPct)?f.meanGrossPct.toFixed(3)+'%':'–'}</td>
+      <td class="mono" style="color:${nc}">${Number.isFinite(f.meanNetPct)?f.meanNetPct.toFixed(3)+'%':'–'}</td>
+      <td class="mono">${fmt(f.sharpeNet)}</td></tr>`;
+  }).join('');
+  return `<div class="panel"><h2>📆 Walk-forward — raw data, your call <span class="sub" style="font-weight:400">— top ${Math.round((1-p.gapQuantile)*100)}% divergences, ${p.horizon}d, ${p.folds} time-folds</span></h2>
+    <div class="legend">Each fold is a separate time period. <b>Reverted%</b> = how often price moved back toward the yield (the sign is the data: &gt;50% = mean-reversion, &lt;50% = momentum). <b>Net</b> = mean move after ${(p.costPct*100).toFixed(3)}%/side cost. No verdict — the numbers are yours to read.</div>
+    <table><thead><tr><th>Period</th><th>events</th><th>reverted</th><th>mean gross</th><th>mean net</th><th>Sharpe(net)</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="legend" style="margin-top:8px">Across ${s.foldsWithData} folds with data: <b>${s.foldsRevertGt50}</b> had &gt;50% reversion, <b>${s.foldsNetPositive}</b> were net-positive, median reversion <b>${Number.isFinite(s.medianReverted)?(s.medianReverted*100).toFixed(0)+'%':'–'}</b>. A stable edge shows up in most folds; a one-fold spike doesn't.</div>
+    <div class="cap">Dimmed rows have &lt;10 events (too few to read). Tune via ?wfQuantile= &amp;wfHorizon= &amp;wfFolds= in the URL.</div></div>`;
+}
+
 async function run(){
   const tenor=$('tenor').value;
   $('run').disabled=true; $('status').textContent='Fetching FRED + ECB…'; $('status').className='status'; $('out').innerHTML='';
@@ -119,6 +138,7 @@ async function run(){
     $('out').innerHTML =
       `<div class="panel"><h2>${j.label} <span class="chip">${j.bars} days</span></h2>
         <div class="cap">${j.first} → ${j.last} · sources: ${j.sources.fx}, ${j.sources.us}, ${j.sources.de} · raw obs: FX ${j.availability.fx}, US ${j.availability.us}, DE ${j.availability.de}</div></div>`
+      + (j.walkForward ? wfPanel(j.walkForward) : '')
       + (j.backtest ? btPanel(j.backtest, j.costPct) : '')
       + (j.sweep ? sweepPanel(j.sweep) : '')
       + divTable(j.divergenceEvents) + leadTable(j.dailyLeadLag)
