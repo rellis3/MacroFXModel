@@ -330,6 +330,30 @@
   </div>
 </div>
 
+<!-- ── Convexity / payoff shape ─────────────────────────────────────────────── -->
+<div class="bt-card" id="cvxCard" style="display:none">
+  <div class="bt-card-hdr">Convexity &amp; Payoff Shape
+    <span style="color:var(--text3);font-size:11px;font-weight:400">R-multiple = P&amp;L ÷ initial risk (entry→SL). A low win-rate is fine if the payoff is convex — small losers, fat-tailed winners.</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 14px">
+    <div class="bt-sec"><span class="bt-sec-lbl" title="Mean realized R across all filled trades. >0 = positive edge per unit risk.">Mean R</span><span class="bt-sec-val" id="cvMeanR">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl" title="Median R — the typical trade. Fade-to-open tends to sit near the modest fixed win.">Median R</span><span class="bt-sec-val" id="cvMedR">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl" title="Skewness of the R distribution. Positive = convex (fat right tail = the good kind).">R-Skew</span><span class="bt-sec-val" id="cvSkew">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl" title="Tail ratio = mean of top-decile R ÷ |mean of bottom-decile R|. >1 = winners' tail beats losers' tail.">Tail Ratio</span><span class="bt-sec-val" id="cvTail">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl" title="Gain-to-pain = Σ R ÷ Σ|negative R|. Smoothness of the edge per unit of pain taken.">Gain/Pain</span><span class="bt-sec-val" id="cvGtp">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl" title="Omega(0) = Σ gains ÷ Σ|losses| in R (probability-weighted payoff ratio above 0).">Omega</span><span class="bt-sec-val" id="cvOmega">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl" title="Avg MFE in R — how far the trade ran in your favour before exit. The convex potential.">Avg MFE (R)</span><span class="bt-sec-val pos" id="cvMfeR">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl" title="MFE capture = mean captured R ÷ mean MFE R. Low = the fixed exit truncates winners (leaving convexity on the table).">MFE Capture</span><span class="bt-sec-val amber" id="cvCapture">—</span></div>
+  </div>
+  <div class="bt-card-body" style="padding:6px 18px 4px"><div class="bt-chart-wrap" style="height:220px"><canvas id="cvxChart"></canvas></div></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px 14px 8px">
+    <div class="bt-sec"><span class="bt-sec-lbl">Trades reaching ≥1R MFE</span><span class="bt-sec-val blue" id="cvMfe1">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">≥2R MFE</span><span class="bt-sec-val blue" id="cvMfe2">—</span></div>
+    <div class="bt-sec"><span class="bt-sec-lbl">≥3R MFE</span><span class="bt-sec-val blue" id="cvMfe3">—</span></div>
+  </div>
+  <div style="padding:0 14px 12px;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace" id="cvxNote"></div>
+</div>
+
 <!-- ── Equity curve ────────────────────────────────────────────────────────── -->
 <div class="bt-card" id="eqCard" style="display:none">
   <div class="bt-card-hdr">
@@ -536,7 +560,7 @@ let _allTrades  = [];
 let _filtTrades = [];
 let _page       = 0;
 const PAGE_SIZE = 50;
-let _eqChart = null, _pieChart = null, _fillDayChart = null;
+let _eqChart = null, _pieChart = null, _fillDayChart = null, _cvxChart = null;
 let _eqMode  = 'combined';
 
 // ── Weekly stats (client-side, mirrors server _wbtStats) ──────────────────────
@@ -707,6 +731,7 @@ function renderAll(data) {
   renderSecondary(data.overall);
   renderMfeCard(data.overall);
   renderNearMissCard(data.overall);
+  renderConvexity(data);
   renderEquityCurve(data);
   renderMonthlyHeatmap(data.monthlyPnl);
   renderWalkForward(data.walkForward);
@@ -782,6 +807,139 @@ function renderNearMissCard(s) {
   set('nmPipLoss',  s.avgPipLoss    != null ? s.avgPipLoss + ' pip' : '—');
   set('nmMfePips',  s.avgMfePips    != null ? '+' + s.avgMfePips + ' pip' : '—');
   set('nmMaePips',  s.avgMaePips    != null ? s.avgMaePips + ' pip' : '—');
+}
+
+// ── Convexity / payoff shape ─────────────────────────────────────────────────
+// All R-based, computed client-side from fields already in allTrades:
+//   risk% = |entry − sl| / mondayOpen × 100  (the initial 1R stop distance)
+//   R     = pnl_pct / risk%      (pnl_pct is already cost-adjusted → honest R)
+//   mfeR  = mfe_pct / risk%, maeR = mae_pct / risk%
+// The point: fade-to-Monday-open caps winners at a fixed modest R while losers
+// sit at −1R (concave). The MFE-in-R distribution shows how much convex tail a
+// trailing/runner exit could harvest.
+function clientConvexity(trades) {
+  const Rs = [], mfeRs = [], captured = [];
+  for (const r of trades) {
+    if (!r.filled || r.entry == null || r.sl == null || !r.monday_open) continue;
+    const riskPct = Math.abs(r.entry - r.sl) / r.monday_open * 100;
+    if (!(riskPct > 1e-9)) continue;
+    const R = r.pnl_pct / riskPct;
+    Rs.push(R);
+    if (r.mfe_pct != null) { const m = r.mfe_pct / riskPct; mfeRs.push(m); captured.push({ R, mfeR: m }); }
+  }
+  const n = Rs.length;
+  if (!n) return null;
+
+  const sum   = a => a.reduce((s, v) => s + v, 0);
+  const mean  = a => a.length ? sum(a) / a.length : 0;
+  const sorted = [...Rs].sort((a, b) => a - b);
+  const pctl  = p => sorted[Math.min(n - 1, Math.max(0, Math.round(p * (n - 1))))];
+  const _med  = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); const m = (s.length - 1) / 2; return (s[Math.floor(m)] + s[Math.ceil(m)]) / 2; };
+
+  const mu = mean(Rs);
+  const m2 = mean(Rs.map(x => (x - mu) ** 2));
+  const m3 = mean(Rs.map(x => (x - mu) ** 3));
+  const skew = m2 > 1e-12 ? m3 / Math.pow(m2, 1.5) : 0;
+
+  // Tail ratio: mean of the top decile vs |mean of the bottom decile|.
+  const p90 = pctl(0.90), p10 = pctl(0.10);
+  const topDec = Rs.filter(x => x >= p90), botDec = Rs.filter(x => x <= p10);
+  const mTop = mean(topDec), mBot = mean(botDec);
+  const tailRatio = mBot < -1e-9 ? mTop / Math.abs(mBot) : (mTop > 0 ? 99 : 0);
+
+  const gains  = Rs.filter(x => x > 0), losses = Rs.filter(x => x < 0);
+  const gSum   = sum(gains), lSum = Math.abs(sum(losses));
+  const gainToPain = lSum > 1e-9 ? sum(Rs) / lSum : (gSum > 0 ? 99 : 0);
+  const omega      = lSum > 1e-9 ? gSum / lSum : (gSum > 0 ? 99 : 0);
+
+  const avgMfeR = mean(mfeRs);
+  const capture = avgMfeR > 1e-9 ? mu / avgMfeR : 0;   // captured R ÷ available MFE R
+  const pctMfe = k => mfeRs.length ? mfeRs.filter(m => m >= k).length / mfeRs.length * 100 : 0;
+
+  // Histogram of R (bins −2 … +4 in 0.5R steps, with under/overflow).
+  const lo = -2, hi = 4, step = 0.5;
+  const nb = Math.round((hi - lo) / step);
+  const bins = new Array(nb).fill(0);
+  for (const x of Rs) {
+    let idx = Math.floor((x - lo) / step);
+    idx = Math.min(nb - 1, Math.max(0, idx));
+    bins[idx]++;
+  }
+  const binLabels = bins.map((_, i) => {
+    const a = lo + i * step;
+    if (i === 0)       return '≤' + (lo + step).toFixed(1);
+    if (i === nb - 1)  return '≥' + (hi - step).toFixed(1);
+    return a.toFixed(1);
+  });
+  const binCenters = bins.map((_, i) => lo + i * step + step / 2);
+
+  return {
+    n, meanR: mu, medianR: _med(Rs), skew, tailRatio, gainToPain, omega,
+    avgMfeR, capture, medWinR: _med(gains), worstR: sorted[0], bestR: sorted[n - 1],
+    pctMfe1: pctMfe(1), pctMfe2: pctMfe(2), pctMfe3: pctMfe(3),
+    bins, binLabels, binCenters,
+  };
+}
+
+function renderConvexity(data) {
+  const card = document.getElementById('cvxCard');
+  const c = clientConvexity(data.allTrades || []);
+  if (!card) return;
+  if (!c) { card.style.display = 'none'; return; }
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const colr = (id, cls) => { const el = document.getElementById(id); if (el) el.className = 'bt-sec-val ' + cls; };
+
+  set('cvMeanR',  (c.meanR >= 0 ? '+' : '') + fmt(c.meanR, 3) + 'R');  colr('cvMeanR', c.meanR >= 0 ? 'pos' : 'neg');
+  set('cvMedR',   (c.medianR >= 0 ? '+' : '') + fmt(c.medianR, 3) + 'R'); colr('cvMedR', c.medianR >= 0 ? 'pos' : 'neg');
+  set('cvSkew',   (c.skew >= 0 ? '+' : '') + fmt(c.skew, 2));  colr('cvSkew', c.skew >= 0.15 ? 'pos' : c.skew <= -0.15 ? 'neg' : 'amber');
+  set('cvTail',   fmt(c.tailRatio, 2) + '×');                 colr('cvTail', c.tailRatio >= 1 ? 'pos' : 'neg');
+  set('cvGtp',    fmt(c.gainToPain, 2));                      colr('cvGtp', c.gainToPain >= 0 ? 'pos' : 'neg');
+  set('cvOmega',  fmt(c.omega, 2));                           colr('cvOmega', c.omega >= 1 ? 'pos' : 'neg');
+  set('cvMfeR',   '+' + fmt(c.avgMfeR, 2) + 'R');
+  set('cvCapture',fmt(c.capture * 100, 0) + '%');             colr('cvCapture', c.capture >= 0.6 ? 'pos' : c.capture >= 0.3 ? 'amber' : 'neg');
+  set('cvMfe1',   fmt(c.pctMfe1, 1) + '%');
+  set('cvMfe2',   fmt(c.pctMfe2, 1) + '%');
+  set('cvMfe3',   fmt(c.pctMfe3, 1) + '%');
+
+  const note = document.getElementById('cvxNote');
+  if (note) {
+    const shape  = c.skew > 0.15 && c.tailRatio >= 1.2 ? 'convex (fat right tail — the good kind)'
+                 : c.skew < -0.15 ? 'concave (winners capped small, losers run) — the payoff to fix'
+                 : 'near-symmetric';
+    note.innerHTML = `Payoff is <strong>${shape}</strong> — mean <strong>${c.meanR >= 0 ? '+' : ''}${fmt(c.meanR, 2)}R</strong>, median winner <strong>+${fmt(c.medWinR, 2)}R</strong>, tail ratio <strong>${fmt(c.tailRatio, 1)}×</strong> (${c.n.toLocaleString()} trades). `
+      + `MFE capture <strong>${fmt(c.capture * 100, 0)}%</strong>`
+      + (c.capture < 0.6
+          ? ' — the gap is mostly <strong>losing trades handing back favourable excursion</strong> before stopping out; a chandelier/trailing stop banks part of that (the real convexity lever, not a further fixed target).'
+          : ' — the current exit already keeps most of the available move.')
+      + ` <span style="color:var(--text3)">Caveat: MFE is censored at the exit — TP winners close at Monday-open, so their run <em>past</em> open is invisible here; an uncapped-MFE engine pass (exit-mode step) measures the full right tail. The ≥R-MFE counts are therefore a floor.</span>`;
+  }
+
+  const ctx = document.getElementById('cvxChart')?.getContext('2d');
+  if (ctx) {
+    if (_cvxChart) _cvxChart.destroy();
+    _cvxChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: c.binLabels,
+        datasets: [{
+          label: 'Trades',
+          data: c.bins,
+          backgroundColor: c.binCenters.map(v => v >= 0 ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)'),
+          borderRadius: 2,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        scales: {
+          x: { title: { display: true, text: 'Realized R-multiple (P&L ÷ initial risk)', color: '#6b7280', font: { size: 10 } },
+               ticks: { color: '#6b7280', font: { size: 9 } }, grid: { display: false } },
+          y: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        },
+        plugins: { legend: { display: false } },
+      },
+    });
+  }
+  card.style.display = '';
 }
 
 let _rwfChart = null;
