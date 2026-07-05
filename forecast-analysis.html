@@ -331,10 +331,14 @@ async function renderBook(v){
   // (intratrade MAE + concurrency); the closed daily-net figure is kept alongside as a
   // labelled LOWER BOUND. MTM shows n/a when the book predates MTM or has stale
   // timestamps (maxDDMtm null) — a rebuild ("Build book" on fresh data) populates it.
-  const ddKpis=(t)=>{ const mtmOK=t.maxDDMtm!=null;
-    return `${mtmOK?kpi(fmt(t.maxDDMtm,1)+'%',`max DD (MTM) @ ${t.target||10}% vol`,true):kpiNA(`max DD (MTM) @ ${t.target||10}% vol`,'rebuild on fresh data')}`
-      + `${kpi(fmt(t.maxDDClosed??t.maxDD,1)+'%','max DD (closed · lower bound)',true)}`
-      + `${mtmOK?kpi(fmt(t.calmarMtm,2),'Calmar (MTM)',t.calmarMtm<0):kpiNA('Calmar (MTM)','stale')}`; };
+  // Leads with the FULL (raw 1×, un-vol-scaled) MTM drawdown — the actual magnitude at the
+  // book's realised vol — then the 10%-vol figure for comparability, the closed lower bound,
+  // and Calmar. `port` carries maxDDMtmRaw + annVol.
+  const ddKpis=(t,port)=>{ const mtmOK=t.maxDDMtm!=null; const rawMtm=port&&port.maxDDMtmRaw, vol=port&&port.annVol;
+    return (mtmOK&&rawMtm!=null?kpi(fmt(rawMtm,1)+'%',`max DD (MTM · FULL, ${fmt(vol,0)}% vol)`,true):'')
+      + (mtmOK?kpi(fmt(t.maxDDMtm,1)+'%',`max DD (MTM @ ${t.target||10}% vol)`,true):kpiNA(`max DD (MTM)`,'rebuild on fresh data'))
+      + kpi(fmt(t.maxDDClosed??t.maxDD,1)+'%','max DD (closed · lower bound)',true)
+      + (mtmOK?kpi(fmt(t.calmarMtm,2),'Calmar (MTM)',t.calmarMtm<0):kpiNA('Calmar (MTM)','stale')); };
   // Standard backtest KPIs from a backtestStats object — the SAME battery every other
   // system reports through (one equity curve, per-trade Sharpe, additive max-DD, Calmar).
   const stdLive=b.survivors?.book, stdFull=b.book;
@@ -349,8 +353,8 @@ async function renderBook(v){
     <div style="margin-top:12px">${equitySVG((b.survivors?.equity?.length>1)?b.survivors.equity:b.equity)}</div>${hint}</div>
   <div class="card">
     <div style="font-weight:600;margin-bottom:6px">Concurrency-adjusted view <span class="mut" style="font-weight:400">(secondary — daily portfolio ×√252, mark-to-market DD)</span></div>
-    <div class="kpi-grid">${kpi(fmt(pf.sharpe,2),'Portfolio Sharpe',pf.sharpe<0)}${kpi(pf.psr!=null?fmt(pf.psr*100,0)+'%':'—','prob. Sharpe>0',pf.psr<0.95)}${kpi(fmt(pf.annVol,1)+'%','annual vol')}${kpi(fmt(vt.cagr,1)+'%',`CAGR @ ${vt.target||10}% vol`,vt.cagr<0)}${ddKpis(vt)}${kpi(fmt(pf.avgTradesPerDay,1),'avg trades/day')}</div>
-    <div class="hint" style="margin-top:8px">Secondary risk view: daily portfolio returns ×√252, so ${nPairs} correlated pairs trading at once count as one day's risk (this is why the Sharpe here is far below the standard per-trade figure above). Drawdown is the <b>mark-to-market</b> path (intratrade MAE + concurrent positions); the <b>closed · lower bound</b> is the daily-netted curve. CAGR/DD at a fixed ${vt.target||10}% annual vol.</div>
+    <div class="kpi-grid">${kpi(fmt(pf.sharpe,2),'Portfolio Sharpe',pf.sharpe<0)}${kpi(pf.psr!=null?fmt(pf.psr*100,0)+'%':'—','prob. Sharpe>0',pf.psr<0.95)}${kpi(fmt(pf.annVol,1)+'%','annual vol')}${kpi(fmt(vt.cagr,1)+'%',`CAGR @ ${vt.target||10}% vol`,vt.cagr<0)}${ddKpis(vt,pf)}${kpi(fmt(pf.avgTradesPerDay,1),'avg trades/day')}</div>
+    <div class="hint" style="margin-top:8px">Secondary risk view: daily portfolio returns ×√252, so ${nPairs} correlated pairs trading at once count as one day's risk (this is why the Sharpe here is far below the standard per-trade figure above). Drawdown is the <b>mark-to-market</b> path (intratrade MAE + concurrent positions); the <b>closed · lower bound</b> is the daily-netted curve. <b>max DD (MTM · FULL)</b> is the actual leverage-free magnitude at the book's realised <b>${fmt(pf.annVol,0)}% vol</b> — size real risk against THAT (× your account, or your chosen leverage); <b>max DD (MTM @ ${vt.target||10}% vol)</b> is the same drawdown scaled down to a fixed ${vt.target||10}% vol only so it's comparable across strategies.</div>
     <div style="margin-top:12px">${equitySVG(b.equity)}</div></div>`;
   // Live universe — survivors only (pairs that clear their own cost by a margin),
   // portfolio re-aggregated from just their daily PnL. The book you'd actually trade.
@@ -358,7 +362,7 @@ async function renderBook(v){
   if(sv){ const sp=sv.portfolio||{}, svt=sp.volTarget||{};
     html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Live universe — survivors only <span class="mut" style="font-weight:400">(${sv.count}/${sv.total} pairs · net edge ≥ ${fmt(sv.margin,2)}× own spread · ≥${sv.minTrades} trades)</span></div>
       <div class="hint" style="margin-bottom:8px">Costs are the binding constraint, so this is the book you'd actually trade: pairs whose OOS net expectancy clears their own round-trip spread by a margin. Stats are <b>re-aggregated from just these pairs' daily PnL</b> — same concurrency/correlation honesty as the full book, not an average of per-pair Sharpes.</div>
-      <div class="kpi-grid">${kpi(fmt(sp.sharpe,2),'Survivor Sharpe',sp.sharpe<0)}${kpi(sp.psr!=null?fmt(sp.psr*100,0)+'%':'—','prob. Sharpe>0',sp.psr<0.95)}${kpi(fmt(sp.annVol,1)+'%','annual vol')}${kpi(fmt(svt.cagr,1)+'%',`CAGR @ ${svt.target||10}% vol`,svt.cagr<0)}${ddKpis(svt)}${kpi(fmt(sp.avgTradesPerDay,1),'avg trades/day')}</div>
+      <div class="kpi-grid">${kpi(fmt(sp.sharpe,2),'Survivor Sharpe',sp.sharpe<0)}${kpi(sp.psr!=null?fmt(sp.psr*100,0)+'%':'—','prob. Sharpe>0',sp.psr<0.95)}${kpi(fmt(sp.annVol,1)+'%','annual vol')}${kpi(fmt(svt.cagr,1)+'%',`CAGR @ ${svt.target||10}% vol`,svt.cagr<0)}${ddKpis(svt,sp)}${kpi(fmt(sp.avgTradesPerDay,1),'avg trades/day')}</div>
       <div class="hint" style="margin-top:8px">Full book Sharpe ${fmt((b.portfolio||{}).sharpe,2)} → survivors ${fmt(sp.sharpe,2)} on ${sv.count} pairs. Dropping cost-killed pairs removes dead weight rather than diversification.</div>
       ${sv.concentration?`<div class="find" style="margin-top:10px"><b>Concentration &amp; correlation</b> — why breadth &amp; the per-trade Sharpe flatter. ~<b>${fmt(sv.concentration.nEff,1)} effective independent bets</b> from ${sv.concentration.pairs} live pairs (avg pairwise daily-PnL correlation <b>${fmt(sv.concentration.avgCorr,2)}</b>): correlated pairs (the USD complex) fire together, so "${sv.count}/${sv.total} profitable" is far fewer real bets than it looks. Single biggest instrument <b>${(sv.concentration.topPair||'').toUpperCase()} = ${fmt(sv.concentration.topPairSharePct,0)}%</b> of gross PnL · top&nbsp;3 = ${fmt(sv.concentration.top3SharePct,0)}% — one instrument (e.g. gold) can carry a week's drawdown even when the breadth stat looks safe.</div>`:''}
       <div style="margin-top:12px">${equitySVG(sv.equity)}</div>`;

@@ -12,7 +12,7 @@ const near = (a, b, t = 1e-6) => Math.abs(a - b) <= t;
 console.log('[withMtmDD]');
 
 // Base portfolio: vol-targeted CAGR 35%, closed DD -1.2%, closed Calmar ~29.
-const basePort = () => ({ sharpe: 3.07, cagr: 35, volTarget: { target: 10, cagr: 35, maxDD: -1.2, calmar: 29.13 } });
+const basePort = () => ({ sharpe: 3.07, cagr: 35, maxDD: -8.1, annVol: 68, volTarget: { target: 10, cagr: 35, maxDD: -1.2, calmar: 29.13 } });
 
 // 1. Valid MTM path (2× deeper) → maxDDMtm = -2.4, Calmar recomputed on it, closed kept.
 {
@@ -21,6 +21,8 @@ const basePort = () => ({ sharpe: 3.07, cagr: 35, volTarget: { target: 10, cagr:
   ok('maxDDMtm = closed vol-targeted DD × multiple', near(p.volTarget.maxDDMtm, -2.4), `maxDDMtm=${p.volTarget.maxDDMtm}`);
   ok('calmarMtm = cagr / |maxDDMtm|', near(p.volTarget.calmarMtm, +(35 / 2.4).toFixed(2), 0.01), `calmarMtm=${p.volTarget.calmarMtm}`);
   ok('closed DD preserved as lower bound', p.volTarget.maxDDClosed === -1.2 && p.volTarget.calmarClosed === 29.13);
+  ok('maxDDMtmRaw = raw closed DD × multiple (the FULL leverage-free magnitude)', near(p.maxDDMtmRaw, -16.2), `maxDDMtmRaw=${p.maxDDMtmRaw}`);
+  ok('full raw MTM DD is deeper than the 10%-vol figure', Math.abs(p.maxDDMtmRaw) > Math.abs(p.volTarget.maxDDMtm));
   ok('MTM Calmar is below the flattering closed Calmar', p.volTarget.calmarMtm < p.volTarget.calmarClosed);
 }
 
