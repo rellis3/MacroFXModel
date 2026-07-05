@@ -359,6 +359,7 @@
   <div class="dr-top">
     <h2 id="drName">—</h2>
     <span class="chip neu" id="drRegime"></span>
+    <span class="chip neu" id="drArima" style="display:none"></span>
     <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
   </div>
 
@@ -1732,6 +1733,41 @@ async function openDrawer(name) {
   loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
   loadDrawerNews(name);
   loadDrawerCorr(name);
+  loadDrawerArima(name, d.sym);
+}
+
+// ARIMA context — the HONEST read: a fair-value stretch (mean-reversion bias) and
+// a reliability flag, NOT a forecast path. At a daily horizon FX is near-random-
+// walk, so the point forecast is tiny and its band ≈ the whole vol cone; the
+// value is "how stretched from fair value" + "is the model even trustworthy now".
+// Data is written per pair to KV (arima_price_<SYM>) by the bot on Railway.
+async function loadDrawerArima(name, sym) {
+  const chip = $('drArima');
+  chip.style.display = 'none';
+  const key = 'arima_price_' + (sym ?? '').replace(/[_/]/g, '');
+  let a = null;
+  try {
+    const r = await jget('/api/kv/get?key=' + encodeURIComponent(key));
+    a = (r && !r.miss) ? (r.data ?? r) : null;
+  } catch { return; }
+  if (!a || a.fairValueDev == null) return;
+  const dev = a.fairValueDev, ratio = a.residualRatio ?? null, ci = a.ci68Pips ?? null;
+  const unpredictable = ratio != null && ratio > 1.5;
+  let label, cls, tip;
+  if (unpredictable) {
+    label = '⌁ unpredictable'; cls = 'warn';
+    tip = `ARIMA residuals ${(ratio * 100).toFixed(0)}% above normal — price is behaving erratically, so any fair-value read is unreliable right now. Treat mean-reversion setups with caution.`;
+  } else if (Math.abs(dev) >= 1.0) {
+    const richCheap = dev > 0 ? 'rich' : 'cheap';
+    label = `⌁ ${dev > 0 ? '+' : ''}${dev.toFixed(1)}σ ${richCheap}`;
+    cls = Math.abs(dev) >= 1.5 ? 'warn' : 'neu';
+    tip = `Price is ${Math.abs(dev).toFixed(1)}σ ${dev > 0 ? 'ABOVE' : 'BELOW'} the ARIMA fair value — a mean-reversion bias ${dev > 0 ? 'DOWN' : 'UP'} toward fair value${ci != null ? ` (±${ci}p 1-day band)` : ''}. Context, not a signal: FX barely trends at a daily horizon, so this flags stretch, it does NOT predict a path.`;
+  } else {
+    label = '⌁ near fair value'; cls = 'neu';
+    tip = `Price is within 1σ of the ARIMA fair value — no meaningful stretch either way${ci != null ? ` (±${ci}p 1-day band)` : ''}. No mean-reversion edge here.`;
+  }
+  chip.textContent = label; chip.className = 'chip ' + cls; chip.title = tip;
+  chip.style.display = 'inline-block';
 }
 
 // News for THIS pair — the calendar filtered to its own two economies, soonest first.
