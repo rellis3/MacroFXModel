@@ -8,7 +8,7 @@ import {
   toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
   laggedAutocorr, computeCouplingPersistence, couplingState,
   computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents,
-  backtestDivergenceFade,
+  backtestDivergenceFade, walkForwardDivergence,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -282,6 +282,26 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   ok('backtest OOS positive expectancy', bt.oos.expectancy > 0);
   ok('backtest cost-stress present', bt.costStress.length === 3);
   ok('backtest R:R computed', Number.isFinite(bt.oos.rr));
+}
+
+// ── walkForwardDivergence (reverting series ⇒ most folds revert; neutral) ─────
+{
+  const n = 1500; const spread = [], fx = [], times = [];
+  let sp = 0;
+  for (let i = 0; i < n; i++) { sp += (((i * 2654435761) % 100) / 100 - 0.5); spread.push(sp);
+    times.push(new Date(Date.UTC(2008, 0, 1) + i * 86400000).toISOString().slice(0, 10)); }
+  for (let i = 0; i < n; i++) fx.push(spread[i] + (((i * 40503) % 100) / 100 - 0.5) * 0.3);
+  for (let t = 40; t < n - 15; t += 22) {
+    const mag = 8 * (((t / 22) % 2) ? 1 : -1);
+    for (let k = 0; k < 8; k++) if (t + k < n) fx[t + k] = spread[t + k] + mag * (1 - k / 8);
+  }
+  const wf = walkForwardDivergence(fx, spread, times, { window: 8, gapQuantile: 0.85, horizon: 6, folds: 5, costPct: 0 });
+  ok('walkForward emits folds', wf.folds.length === 5);
+  ok('walkForward per-fold counts', wf.folds.every(f => Number.isFinite(f.n)));
+  ok('walkForward folds chronological', wf.folds[0].from < wf.folds[4].from);
+  ok('walkForward reverted is a valid probability', wf.folds.filter(f=>f.n>=10).every(f => f.reverted >= 0 && f.reverted <= 1));
+  ok('walkForward summary counts sane', wf.summary.foldsWithData >= 1 && wf.summary.foldsNetPositive <= wf.summary.foldsWithData);
+  ok('walkForward gross≥net (cost applied)', wf.folds.filter(f=>f.n>0).every(f => f.meanGrossPct >= f.meanNetPct));
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);

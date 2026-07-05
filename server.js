@@ -34,7 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
-import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
+import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -3749,10 +3749,16 @@ app.get('/api/yield-coupling-real', async (req, res) => {
       const b = backtestDivergenceFade(fxCol, spread, times, { window: 10, gapQuantile: q, horizon: hz, costPct });
       sweep.push({ horizon: hz, quantile: q, oosSharpe: b.oos.sharpe, oosExpectancy: b.oos.expectancy, n: b.oos.trades });
     }
+    // Neutral walk-forward: raw per-fold behaviour of the flagged config (top-10%
+    // gap, short hold). Query-tunable so you can explore, not just accept a default.
+    const wfQuantile = Math.min(Math.max(parseFloat(req.query.wfQuantile) || 0.9, 0.5), 0.98);
+    const wfHorizon  = Math.min(Math.max(parseInt(req.query.wfHorizon)  || 3, 1), 20);
+    const wfFolds    = Math.min(Math.max(parseInt(req.query.wfFolds)    || 6, 3), 12);
+    const walkForward = walkForwardDivergence(fxCol, spread, times, { gapQuantile: wfQuantile, horizon: wfHorizon, folds: wfFolds, costPct });
     const result = {
       tenor, label: cfg.label, bars: times.length, first: times[0], last: times[times.length - 1],
       sources: { fx: 'FRED DEXUSEU', us: `FRED ${cfg.us}`, de: `ECB AAA ${tenor}` },
-      availability, divergenceEvents, dailyLeadLag, backtest, sweep, costPct,
+      availability, divergenceEvents, dailyLeadLag, backtest, sweep, walkForward, costPct,
       note: 'Real daily yields (not CFD proxy). spread = DE − US yield, FX-bullish-when-positive. Backtest = fade big divergence toward yield, mark-to-close, IS/OOS, after cost. Diagnostic (daily mark-to-close; a target/stop version needs intraday fills).',
     };
     _ycRealCache.set(tenor, { data: result, ts: Date.now() });
