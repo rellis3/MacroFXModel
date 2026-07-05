@@ -2996,7 +2996,12 @@ const VB_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
   broker_symbols: {},  // { nq:'USTECH100', spx:'SP500', de30:'GER40', … } — blank = built-in default
+  // Per-asset-class sizing OVERRIDES (blank = use the global risk_pct/max_lot). Lets gold
+  // (commodity) be dialled down independently so one instrument can't carry a week.
+  risk_pct_by_class: {}, max_lot_by_class: {},
 };
+// The asset classes the per-class sizing overrides expose (fx uses the globals above).
+const VB_SIZE_CLASSES = ['commodity', 'index'];
 const VB_INDEX_KEYS = ['nq', 'spx', 'de30', 'us30', 'us2000', 'uk100'];
 let _vbCfg = { ...VB_DEFAULTS };
 // Cached latest status + plan so the live-lines modal reads a row without refetch.
@@ -3015,6 +3020,12 @@ function renderVbForm() {
   set('vb_status_secs',     _vbCfg.status_secs     ?? VB_DEFAULTS.status_secs);
   set('vb_plan_secs',       _vbCfg.plan_secs       ?? VB_DEFAULTS.plan_secs);
   set('vb_enabled_pairs',  (_vbCfg.enabled_pairs ?? []).join(', '));
+  // Per-class sizing overrides (blank cell = fall back to the global).
+  const rpc = _vbCfg.risk_pct_by_class || {}, mlc = _vbCfg.max_lot_by_class || {};
+  VB_SIZE_CLASSES.forEach(c => {
+    set(`vb_risk_${c}`,   rpc[c] ?? '');
+    set(`vb_maxlot_${c}`, mlc[c] ?? '');
+  });
   const syms = _vbCfg.broker_symbols || {};
   VB_INDEX_KEYS.forEach(k => { const el = document.getElementById(`vb_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
 }
@@ -3032,6 +3043,17 @@ function readVbForm() {
   _vbCfg.plan_secs       = Math.round(num('vb_plan_secs', VB_DEFAULTS.plan_secs));
   _vbCfg.enabled_pairs   = (document.getElementById('vb_enabled_pairs')?.value || '')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  // Per-class sizing overrides: only keep cells the user actually filled with a positive
+  // number — blank / 0 stays out of the map so the bot falls back to the global.
+  const rpc = {}, mlc = {};
+  VB_SIZE_CLASSES.forEach(c => {
+    const rp = parseFloat(document.getElementById(`vb_risk_${c}`)?.value);
+    const ml = parseFloat(document.getElementById(`vb_maxlot_${c}`)?.value);
+    if (Number.isFinite(rp) && rp > 0) rpc[c] = rp;
+    if (Number.isFinite(ml) && ml > 0) mlc[c] = ml;
+  });
+  _vbCfg.risk_pct_by_class = rpc;
+  _vbCfg.max_lot_by_class  = mlc;
   const syms = {};
   VB_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`vb_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
   _vbCfg.broker_symbols = syms;
