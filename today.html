@@ -450,60 +450,22 @@ async function loadGate() {
 }
 
 // ── Credit gate — corporate-spread risk appetite, the market's early warning ──
-// HY OAS (ICE BofA, FRED `hy`) with the "credit-Greeks" feature set:
-//   position (percentile) · velocity (Δ) · acceleration (quadrant) · persistence.
-// Change/percentile-based by design, so the slow liquidity-premium level washes out.
+// Delegates to the shared brick js/creditCore.js (loaded as a module → window.creditBrick)
+// so the dashboard, the backtest and any bot share ONE definition. Returns the same
+// field names the rest of the page already uses; null until the brick has loaded.
 function creditGate() {
-  if (!fred) return null;
-  const hyNow = fred.hy?.value, hyPrev = fred.hy?.prev;
-  if (hyNow == null) return null;
+  if (!fred || !window.creditBrick) return null;
   const hist = (fredHist?.hy ?? []).map(o => o.value).filter(v => v != null);   // oldest→newest
-  const bp = pp => Math.round(pp * 100);                                          // pct-points → bps
-  // position — percentile of the level within its own recent history
-  let pct = null;
-  if (hist.length >= 20) {
-    const below = hist.filter(v => v <= hyNow).length;
-    pct = Math.round(100 * below / hist.length);
-  }
-  // velocity — 1-day and ~5-day change in bps
-  const d1 = hyPrev != null ? bp(hyNow - hyPrev) : null;
-  const d5 = hist.length >= 6 ? bp(hyNow - hist[hist.length - 6]) : null;
-  // acceleration — is the 5-day pace increasing? (smoothed 2nd difference, sign only)
-  let accel = 0;
-  if (hist.length >= 11) {
-    const slopeNow  = hist[hist.length - 1] - hist[hist.length - 6];
-    const slopePrev = hist[hist.length - 6] - hist[hist.length - 11];
-    const dd = slopeNow - slopePrev;
-    accel = Math.abs(dd) < 0.03 ? 0 : (dd > 0 ? 1 : -1);   // +1 widening-faster, -1 easing-faster
-  }
-  // persistence — consecutive days above the 20-day average (regime stickiness ~ "theta")
-  let daysInRegime = 0, aboveAvg = false;
-  if (hist.length >= 21) {
-    const ma20 = hist.slice(-20).reduce((a, b) => a + b, 0) / 20;
-    aboveAvg = hyNow > ma20;
-    for (let i = hist.length - 1; i >= 0; i--) {
-      const w = hist.slice(Math.max(0, i - 19), i + 1);
-      const m = w.reduce((a, b) => a + b, 0) / w.length;
-      if ((hist[i] > m) === aboveAvg) daysInRegime++; else break;
-    }
-  }
-  // quality spread — CCC minus BB (risk-appetite tail), level + 1d direction
-  const ccc = fred.hy_ccc?.value, bb = fred.hy_bb?.value;
-  const qNow = (ccc != null && bb != null) ? ccc - bb : null;
-  const qPrev = (fred.hy_ccc?.prev != null && fred.hy_bb?.prev != null) ? fred.hy_ccc.prev - fred.hy_bb.prev : null;
-  const qDir = (qNow != null && qPrev != null) ? Math.sign(bp(qNow - qPrev)) : 0;
-  // direction over the meaningful (5d) horizon; fall back to 1d
-  const wideningBps = d5 ?? d1 ?? 0;
-  const widening = wideningBps > 3 ? 1 : wideningBps < -3 ? -1 : 0;
-  // verdict — a simple gate combining level + direction + acceleration
-  let gate, cls;
-  const stressedLvl = (pct != null && pct >= 80) || hyNow > 4.5;
-  if (widening > 0 && (accel > 0 || stressedLvl)) { gate = 'RISK-OFF'; cls = 'off'; }
-  else if (widening > 0)                          { gate = 'CAUTION'; cls = 'mix'; }
-  else if (widening < 0 && !stressedLvl)          { gate = 'RISK-ON'; cls = 'on'; }
-  else                                            { gate = 'NEUTRAL'; cls = 'mix'; }
-  return { hyNow, hyBps: bp(hyNow), pct, d1, d5, accel, daysInRegime, aboveAvg,
-    qNow, qDir, wideningBps, widening, gate, cls, stressedLvl };
+  const f = window.creditBrick.creditGate(hist, {
+    nowValue:  fred.hy?.value,   prevValue: fred.hy?.prev,
+    cccNow:    fred.hy_ccc?.value, cccPrev: fred.hy_ccc?.prev,
+    bbNow:     fred.hy_bb?.value,  bbPrev:  fred.hy_bb?.prev,
+  });
+  if (!f) return null;
+  return { hyNow: f.level, hyBps: f.levelBps, pct: f.pct, d1: f.d1, d5: f.d5,
+    accel: f.accel, daysInRegime: f.daysInRegime, aboveAvg: f.aboveAvg,
+    qNow: f.quality, qDir: f.qualityDir, wideningBps: f.wideningBps,
+    widening: f.widening, gate: f.gate, cls: f.cls, stressedLvl: f.stressedLvl };
 }
 
 // ── Today's news playbook — what happens if it beats / matches / misses ──────
@@ -1950,6 +1912,13 @@ setInterval(async () => {           // live session + brief refresh (prices/regi
   } catch (e) {}
 }, 60_000);
 setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) forecast = f; }).catch(() => {}); }, 5 * 60_000);
+</script>
+<!-- Import the shared credit brick (one definition, per LEGO_MODULES.md) and expose
+     it to the inline script; re-render once it's available. -->
+<script type="module">
+  import * as CreditCore from './js/creditCore.js';
+  window.creditBrick = CreditCore;
+  try { window.render?.(); } catch (e) {}
 </script>
 </body>
 </html>
