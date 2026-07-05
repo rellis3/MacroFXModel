@@ -4778,11 +4778,20 @@ app.post('/api/vol-forecast/refresh', async (_req, res) => {
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
 });
 
-// ── Credit → NQ-vol lead-lag study (async-job) ────────────────────────────────
-// Does credit-spread Δ (HY OAS) lead NQ realized vol, beyond vol's own persistence?
+// ── Credit → risk-vol lead-lag study (async-job) ──────────────────────────────
+// Does credit-spread Δ (HY OAS) lead a risk instrument's realized vol, beyond
+// vol's own persistence? Proven for NQ (default); parameterised so the SAME
+// study can be replicated on the risk-FX pairs the TDE actually trades and on
+// other risk indices — the honest generalisation test before any TDE promotion.
 // Pure engine js/creditLeadLagEngine.js; here we fetch the real data (FRED HY OAS
-// full history + OANDA NAS100 daily bars), align by date, and run it. Needs
-// FRED_KEY + OANDA_KEY (Railway) — 403/empty in the sandbox is environmental.
+// full history + OANDA daily bars for the chosen target), align by date, and run
+// it. Needs FRED_KEY + OANDA_KEY (Railway) — 403/empty in the sandbox is env.
+// Allowlist of risk targets — the proven NQ, a replication index (SPX), and the
+// risk-FX pairs credit is meant to gate in the TDE. Value = display label.
+const CREDIT_LL_TARGETS = {
+  NAS100_USD: 'NQ (Nasdaq)', SPX500_USD: 'S&P 500', DE30_EUR: 'DAX',
+  EUR_USD: 'EUR/USD', AUD_USD: 'AUD/USD', NZD_USD: 'NZD/USD', USD_JPY: 'USD/JPY',
+};
 const _creditLLJobs = new Map();
 function _purgeStaleCreditLLJobs() {
   const now = Date.now();
@@ -4790,8 +4799,9 @@ function _purgeStaleCreditLLJobs() {
 }
 app.post('/api/credit-leadlag/run', express.json({ limit: '64kb' }), (req, res) => {
   if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch HY OAS history' });
-  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch NAS100 bars' });
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch target bars' });
   const b = req.body ?? {};
+  const instrument = CREDIT_LL_TARGETS[b.instrument] ? b.instrument : 'NAS100_USD';
   const opts = {
     horizon: Math.min(20, Math.max(2, parseInt(b.horizon ?? 5))),
     maxLag:  Math.min(20, Math.max(3, parseInt(b.maxLag ?? 10))),
@@ -4806,16 +4816,17 @@ app.post('/api/credit-leadlag/run', express.json({ limit: '64kb' }), (req, res) 
       // FRED HY OAS (full history) → [{date,value}] ascending
       const hyMap = await fetchFredSeries('BAMLH0A0HYM2', opts.fromDate, process.env.FRED_KEY);
       const hySeries = [...hyMap.entries()].map(([date, value]) => ({ date, value })).sort((a, c) => a.date < c.date ? -1 : 1);
-      // OANDA NAS100 daily bars → [{date, value:close}]
-      const bars = await _btFetchD1('NAS100_USD', 4000);
-      const nqSeries = (bars ?? []).map(bar => ({ date: bar.date, value: bar.close }));
-      if (hySeries.length < 100 || nqSeries.length < 100) {
-        _creditLLJobs.set(jobId, { status: 'error', error: `thin source data (HY ${hySeries.length}, NQ ${nqSeries.length})`, startedAt: Date.now() });
+      // OANDA target daily bars → [{date, value:close}]
+      const bars = await _btFetchD1(instrument, 4000);
+      const tgtSeries = (bars ?? []).map(bar => ({ date: bar.date, value: bar.close }));
+      if (hySeries.length < 100 || tgtSeries.length < 100) {
+        _creditLLJobs.set(jobId, { status: 'error', error: `thin source data (HY ${hySeries.length}, ${instrument} ${tgtSeries.length})`, startedAt: Date.now() });
         return;
       }
-      const aligned = _alignByDate(hySeries, nqSeries);   // inner-join on common business days
+      const aligned = _alignByDate(hySeries, tgtSeries);   // inner-join on common business days
       const result = _runCreditLeadLag(aligned.a, aligned.b, opts);
-      result.meta = { hyObs: hySeries.length, nqObs: nqSeries.length, alignedRows: aligned.dates.length,
+      result.meta = { instrument, instrumentLabel: CREDIT_LL_TARGETS[instrument],
+        hyObs: hySeries.length, targetObs: tgtSeries.length, alignedRows: aligned.dates.length,
         firstDate: aligned.dates[0], lastDate: aligned.dates[aligned.dates.length - 1], opts };
       _creditLLJobs.set(jobId, { status: 'done', result, startedAt: Date.now() });
     } catch (e) {
@@ -4824,6 +4835,8 @@ app.post('/api/credit-leadlag/run', express.json({ limit: '64kb' }), (req, res) 
   })();
   res.json({ ok: true, jobId });
 });
+// Expose the allowlist so the page can build its target selector.
+app.get('/api/credit-leadlag/targets', (_req, res) => res.json({ ok: true, targets: CREDIT_LL_TARGETS }));
 app.get('/api/credit-leadlag/status/:jobId', (req, res) => {
   const job = _creditLLJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
