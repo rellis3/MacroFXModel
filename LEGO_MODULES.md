@@ -283,6 +283,17 @@ can actually fire (with a 24h staleness refusal in `bot/modules/vol_gate.py`).
 |---|---|---|---|---|
 | **Yield-coupling core** | `js/yieldCouplingCore.js` | the price↔yield-spread coupling compute — `standardize` (population-z overlay), `alignByTime` (inner-join two/N `{t,v}` series on common timestamps), `buildSpread` (signed bond-PRICE legs → a yield spread oriented FX-bullish-when-positive; bond price is inverse yield, so the yield sign is the leg coefficient `k`, never a hidden default), `pearson`/`rollingCorr` (**candidates to promote into `statsCore`** once a 2nd consumer wants them), `gapSeries` (standardized price − spread = the error-correction residual in σ-units), `bestLag` (cross-correlation lead-lag scan; +lag ⇒ spread leads price), `directionSignal` (recent standardized-spread slope, gated by \|coupling\| and flipped on inverse coupling), `computeCoupling` (one call → priceZ/spreadZ + the four primitives). Pure, horizon/-resolution-agnostic, no network/DOM. Tested `js/yieldCouplingCore.test.mjs` (29 asserts on synthetic data). | `server.js` `/api/yield-coupling` (measure-first overlay endpoint — fetches the FX pair + OANDA bond-CFD legs, reports per-instrument data availability, returns the overlay + primitives per tenor); `yield-coupling.html` viewer | ✅ built (measure-first) |
 
+The core also runs the **projection gate** (`computeProjectionGate`) — the
+trader's ACTUAL method (FOLLOW, not fade): yesterday's yield path is projected
+onto today; if price tracks it early in the session, trade ALONG it. Per day it
+aligns today's price path vs YESTERDAY's yield path by time-of-day, splits at a
+gate hour, and reports whether EARLY tracking predicts LATE tracking
+(persistence) and whether high-early-tracking ("gate ON") days show better
+afternoon tracking + a >50% follow-through of the projection's direction vs
+"gate OFF" days. Intraday only (`/api/yield-coupling` non-daily; `?gateHour=`
+tunable); neutral, no verdict. Distinct from the divergence/reversion tests — this
+is the confidence-to-follow gate. Panel on `yield-coupling.html`.
+
 The core also runs a **neutral walk-forward** (`walkForwardDivergence`) — the RAW
 per-time-fold behaviour with NO trade bias: for each fold it reports the event
 count, **reverted%** (the *sign of what price did* — >50% mean-reversion, <50%

@@ -8,7 +8,7 @@ import {
   toReturns, sessionOfUTCHour, sessionBreakdown, computeReturnsCoupling,
   laggedAutocorr, computeCouplingPersistence, couplingState,
   computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents,
-  backtestDivergenceFade, walkForwardDivergence,
+  backtestDivergenceFade, walkForwardDivergence, computeProjectionGate,
 } from './yieldCouplingCore.js';
 
 let pass = 0, fail = 0;
@@ -302,6 +302,28 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   ok('walkForward reverted is a valid probability', wf.folds.filter(f=>f.n>=10).every(f => f.reverted >= 0 && f.reverted <= 1));
   ok('walkForward summary counts sane', wf.summary.foldsWithData >= 1 && wf.summary.foldsNetPositive <= wf.summary.foldsWithData);
   ok('walkForward gross≥net (cost applied)', wf.folds.filter(f=>f.n>0).every(f => f.meanGrossPct >= f.meanNetPct));
+}
+
+// ── computeProjectionGate (follow-days track, others don't ⇒ gate discriminates) ─
+{
+  const days = 24, bpd = 24;
+  const yPath = [];
+  for (let d = 0; d < days; d++) { const p = []; let v = 0; for (let h = 0; h < bpd; h++) { v += Math.sin((d + h) / 3); p.push(v); } yPath.push(p); }
+  const times = [], price = [], spread = [];
+  for (let d = 0; d < days; d++) {
+    const follow = d % 2 === 0;                    // even days: price = yesterday's yield path
+    for (let h = 0; h < bpd; h++) {
+      times.push(`2010-03-${String(d + 1).padStart(2,'0')}T${String(h).padStart(2,'0')}:00:00Z`);
+      spread.push(yPath[d][h]);                     // today's yield (becomes yesterday's next day)
+      const yesterday = d > 0 ? yPath[d - 1][h] : 0;
+      price.push(follow ? yesterday + (((d*7 + h*13) % 10) / 10 - 0.5) * 0.05 : ((d*31 + h*17) % 20) - 10);
+    }
+  }
+  const g = computeProjectionGate(price, spread, times, { gateHourUTC: 12, minBarsPerHalf: 8 });
+  ok('projGate emits days', g.nDays > 5);
+  ok('projGate morning tracking predicts afternoon', g.earlyLatePersistence > 0.3);
+  ok('projGate high-early → better late tracking', g.gate.highEarly.meanLateCorr > g.gate.lowEarly.meanLateCorr);
+  ok('projGate follow-rate computed on gated days', Number.isFinite(g.gate.highEarly.followRate) && g.gate.highEarly.n > 0);
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);

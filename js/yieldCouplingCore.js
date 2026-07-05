@@ -476,6 +476,62 @@ export function backtestDivergenceFade(fx, spread, times, {
   };
 }
 
+// ── Projection gate: is price FOLLOWING yesterday's-yield path today? ────────
+// The trader's ACTUAL method: yesterday's yield shape is projected onto today; if
+// price tracks it (>50%) early in the session, trade ALONG it for the rest of the
+// day; if not, stand aside. This tests that gate directly, intraday. For each day
+// it aligns today's price path vs YESTERDAY's yield path by time-of-day, splits at
+// `gateHourUTC`, and asks: does EARLY tracking predict LATE tracking, and on
+// high-early-tracking days does the projection's late direction match price's late
+// move (>50% follow)? Neutral — reports the numbers, no verdict. Intraday `times`
+// are ISO UTC. This is FOLLOW (not the fade the other panels test).
+export function computeProjectionGate(price, spread, times, { gateHourUTC = 12, minBarsPerHalf = 10, trackThresh = 0.5 } = {}) {
+  const byDate = new Map();
+  for (let i = 0; i < times.length; i++) { const d = times[i].slice(0, 10); if (!byDate.has(d)) byDate.set(d, []); byDate.get(d).push(i); }
+  const dates = [...byDate.keys()].sort();
+  const perDay = dates.map(d => {
+    const idx = byDate.get(d);
+    const p0 = price[idx[0]], s0 = spread[idx[0]];
+    const map = new Map();                         // 'HH:MM' -> { pc, yc, hour }
+    for (const i of idx) {
+      if (!Number.isFinite(price[i]) || !Number.isFinite(spread[i])) continue;
+      map.set(times[i].slice(11, 16), { pc: price[i] - p0, yc: spread[i] - s0, hour: +times[i].slice(11, 13) });
+    }
+    return { d, map };
+  });
+  const rows = [];
+  for (let k = 1; k < perDay.length; k++) {
+    const today = perDay[k], yest = perDay[k - 1];
+    const eP = [], eY = [], lP = [], lY = [];
+    for (const [hhmm, v] of today.map) {
+      const yv = yest.map.get(hhmm); if (!yv) continue;
+      if (v.hour < gateHourUTC) { eP.push(v.pc); eY.push(yv.yc); }
+      else { lP.push(v.pc); lY.push(yv.yc); }
+    }
+    if (eP.length < minBarsPerHalf || lP.length < minBarsPerHalf) continue;
+    const earlyCorr = pearson(eP, eY), lateCorr = pearson(lP, lY);
+    const projDir = Math.sign(lY[lY.length - 1] - lY[0]);     // yesterday-yield's late-session direction (the forecast)
+    const priceLate = lP[lP.length - 1] - lP[0];              // today's price late-session move
+    const followHit = (projDir !== 0 && priceLate !== 0) ? ((projDir > 0) === (priceLate > 0) ? 1 : 0) : null;
+    rows.push({ date: today.d, earlyCorr, lateCorr, followHit });
+  }
+  const valid = rows.filter(r => Number.isFinite(r.earlyCorr) && Number.isFinite(r.lateCorr));
+  const persistence = pearson(valid.map(r => r.earlyCorr), valid.map(r => r.lateCorr));
+  const hi = valid.filter(r => r.earlyCorr >= trackThresh), lo = valid.filter(r => r.earlyCorr < trackThresh);
+  const followStats = arr => { const f = arr.filter(r => r.followHit != null); return { n: f.length, followRate: f.length ? mean(f.map(r => r.followHit)) : NaN }; };
+  return {
+    params: { gateHourUTC, trackThresh },
+    nDays: valid.length,
+    earlyLatePersistence: persistence,             // does morning tracking predict afternoon tracking?
+    meanEarly: valid.length ? +mean(valid.map(r => r.earlyCorr)).toFixed(3) : NaN,
+    pctDaysLateTracking: valid.length ? +(valid.filter(r => r.lateCorr > trackThresh).length / valid.length).toFixed(3) : NaN,
+    gate: {
+      highEarly: { n: hi.length, meanLateCorr: hi.length ? +mean(hi.map(r => r.lateCorr)).toFixed(3) : NaN, ...followStats(hi) },
+      lowEarly:  { n: lo.length, meanLateCorr: lo.length ? +mean(lo.map(r => r.lateCorr)).toFixed(3) : NaN, ...followStats(lo) },
+    },
+  };
+}
+
 // ── Walk-forward: the RAW relationship per time-fold (no trade bias) ─────────
 // Neutral by design — reports what price DID after a big divergence, per fold, so
 // you judge it yourself. The signed forward return uses sign(gap): POSITIVE means
