@@ -213,6 +213,44 @@ var is set in Railway first.
 > bit-identical to the per-line book's, so the producer never sources the live
 > forecast. Don't "simplify" it to read `/api/vol-forecast`.
 
+## How we talk about results (working agreement, earned the hard way)
+
+This project is a falsification harness. Most trading ideas are null; the value
+is finding that out honestly and cheaply. To keep our conversations real:
+
+- **"Built" ≠ "works" ≠ "has edge."** State which one you mean. Infrastructure
+  can be sound while the strategy on top of it is worthless. Never let
+  enthusiasm for a *method* imply it produces edge.
+- **A method is not a strategy.** Meta-labeling, calibration, an ensemble —
+  these size/filter an edge that must already exist. State the dependency
+  up front, not after the primary signal tests empty.
+- **Name the benchmark before claiming improvement.** A fitted model that beats
+  a bad prior but only reaches the *base-rate Brier* has found nothing. An
+  equity curve that looks great next to nothing looks worse next to
+  buy-and-hold. Always show the floor and the naive benchmark.
+- **Pre-register both outcomes before running a test.** Say what "it worked" and
+  "it didn't" each look like, so a null can't be re-narrated into a maybe.
+- **Pooled nulls hide subset edges — disaggregate before declaring null.** But
+  count the cells and state the chance-baseline (multiple testing): finding a
+  few "winners" among 70 slices is what noise does. Survivors must beat chance
+  *and* be IS-consistent.
+- **Costs and a true OOS split are non-negotiable.** An in-sample or no-cost
+  number is not a result; do not report it as one.
+- **Folklore is not literature.** S/R levels, range-fibs, Asia breakouts are
+  practitioner heuristics with weak evidence; momentum/carry/vol-premium are the
+  replicated ones. Don't dress the former up as the latter.
+- **Lead with what survived, but never inflate it.** Report the green honestly
+  and the red honestly; don't bury a real positive under caveats, and don't
+  sell a weak survivor as the answer.
+- **Data limits beat fake productivity.** If the sandbox can't test something
+  honestly (e.g. carry needs FRED rates / swap-inclusive returns, not OANDA
+  mids), say so and defer it — don't run a lookalike and call it the thing.
+- **Don't oversell the next idea to soften a null.** If the next test is a
+  coin-flip, say "coin-flip." Comfort that gets falsified next turn is the
+  thing that actually erodes trust.
+
+---
+
 ## Anti-patterns (do not do)
 
 - Copying the vol math or the fill walker into a new file.
