@@ -1449,8 +1449,11 @@ function ladderHtml(r) {
   const nearPips = isFinite(nearD) && px != null ? nearD / pipSz : null;
   return `<div class="ladder" title="Where the day's high and low usually reach from the open price — your ready-made levels to trade around.">` + rowsDef.map(([tag, l, cls]) => {
     if (cls === 'now') {
+      const openRef = d.session_open != null
+        ? `<span class="dist" title="The London-midnight session open — the day's high/low levels project as %-moves from this fixed anchor, so they don't drift with price.">open ${fmtN(d.session_open, d.dp)}</span>`
+        : '';
       return `<div class="lrow now"><span class="tag" title="The live price right now.">NOW</span><span class="px">${px != null ? fmtN(px, d.dp) : 'no live price'}</span>
-              <span class="hit">${nearTag && nearPips != null && nearPips <= 25 ? `⚑ ${nearTag} ${nearPips.toFixed(0)}${unit} away` : ''}</span></div>`;
+              ${openRef}<span class="hit">${nearTag && nearPips != null && nearPips <= 25 ? `⚑ ${nearTag} ${nearPips.toFixed(0)}${unit} away` : ''}</span></div>`;
     }
     return `<div class="lrow ${cls} ${tag === nearTag && nearPips != null && nearPips <= 25 ? 'near' : ''}">
       <span class="tag help" title="${TAG_T[tag] ?? ''}">${tag}</span>
