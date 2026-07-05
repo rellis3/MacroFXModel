@@ -97,6 +97,35 @@
   .mccy-row .c{font-weight:700;color:var(--text)}
   .mccy-row.pos .c{color:var(--bull)} .mccy-row.neg .c{color:var(--bear)}
 
+  /* ── News playbook: what-ifs for today's events ─────────── */
+  .news{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden}
+  .news-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none}
+  .news-hd:hover{background:var(--card2)}
+  .news-hd .ic{font-size:16px}
+  .news-hd .ti{font-size:13.5px;font-weight:700;color:var(--text)}
+  .news-hd .sum{font-size:12px;color:var(--text2);flex:1}
+  .news-hd .tw{font-size:11px;color:var(--text3);white-space:nowrap}
+  .news-body{padding:0 16px 12px;display:none}
+  .news.open .news-body{display:block}
+  .news.open .news-hd .sum{display:none}
+  .nev{border-top:1px solid var(--border);padding:11px 0}
+  .nev:first-child{border-top:none}
+  .nev-hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+  .nev-hd .tm{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--amber)}
+  .nev-hd .nm{font-size:13px;font-weight:700;color:var(--text)}
+  .nev-hd .exp{font-size:11.5px;color:var(--text2)}
+  .nev-hd .cd{font-size:10px;font-weight:700;color:var(--amber)}
+  .nev-meas{font-size:11.5px;color:var(--text3);margin-bottom:8px;line-height:1.4}
+  .nev-scen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media(max-width:720px){.nev-scen{grid-template-columns:1fr}}
+  .nscen{background:var(--card2);border-radius:7px;padding:7px 10px;border-left:3px solid var(--text3)}
+  .nscen.up{border-left-color:var(--bull)} .nscen.dn{border-left-color:var(--bear)} .nscen.mid{border-left-color:var(--text3)}
+  .nscen .l{font-size:11px;font-weight:700;color:var(--text);margin-bottom:2px}
+  .nscen.up .l{color:var(--bull)} .nscen.dn .l{color:var(--bear)}
+  .nscen .e{font-size:11.5px;line-height:1.45;color:var(--text2)}
+  .nev-result{margin-top:8px;font-size:12px;padding:6px 10px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+  .nev-result b{color:var(--text)}
+
   /* ── Morning gate: calendar timeline ────────────────────── */
   .gate{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 14px;
         margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -241,6 +270,8 @@
   <div class="summary" id="summary"></div>
 
   <div class="gate" id="gate" style="display:none"></div>
+
+  <div class="news" id="newsPlay" style="display:none"></div>
 
   <div class="ctl">
     <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
@@ -392,8 +423,153 @@ async function loadGate() {
   if (ss?.instruments) sessionStats = ss;
   if (ct?.instruments) cot = Object.fromEntries(ct.instruments.map(i => [i.sym, i]));
   if (oi && !oi.miss) oiStore = oi.data ?? oi;
-  renderGate(); renderSummary(); render();
+  renderGate(); renderNewsPlay(); renderSummary(); render();
 }
+
+// ── Today's news playbook — what happens if it beats / matches / misses ──────
+const NEWS_FLAG = { US: '🇺🇸', EU: '🇪🇺', DE: '🇩🇪', FR: '🇫🇷', GB: '🇬🇧', UK: '🇬🇧', JP: '🇯🇵', CH: '🇨🇭', AU: '🇦🇺', CA: '🇨🇦', NZ: '🇳🇿', CN: '🇨🇳', IT: '🇮🇹', ES: '🇪🇸' };
+const NEWS_CCY  = { US: 'US dollar', EU: 'euro', DE: 'euro', FR: 'euro', IT: 'euro', ES: 'euro', GB: 'pound', UK: 'pound', JP: 'yen', CH: 'franc', AU: 'Aussie dollar', CA: 'Canadian dollar', NZ: 'Kiwi dollar', CN: 'markets (via risk appetite)' };
+
+// classify an event by name → a scenario "kind"
+function newsKind(name) {
+  const n = (name || '').toLowerCase();
+  if (/rate decision|interest rate|policy rate|bank rate|rate statement|cash rate|refi rate|deposit rate/.test(n)) return 'rate';
+  if (/\bcpi\b|\bppi\b|\bpce\b|inflation|price index|consumer prices|producer prices/.test(n)) return 'inflation';
+  if (/unemployment rate|jobless rate/.test(n)) return 'unemp';
+  if (/jobless claims|initial claims|continuing claims/.test(n)) return 'claims';
+  if (/nonfarm|non-farm|payroll|employment change|employment report|\bjobs\b/.test(n)) return 'jobs';
+  if (/\bgdp\b|growth rate/.test(n)) return 'growth';
+  if (/\bpmi\b|\bism\b|business climate|manufacturing|services|sentiment|confidence|zew|ifo|tankan/.test(n)) return 'survey';
+  if (/retail sales|consumer spending/.test(n)) return 'spending';
+  if (/trade balance|current account/.test(n)) return 'trade';
+  if (/durable goods|factory orders|industrial production/.test(n)) return 'output';
+  return 'generic';
+}
+const NEWS_MEASURES = {
+  rate:      "The central bank sets its interest rate — the single biggest lever on a currency.",
+  inflation: "How fast prices are rising — the main thing that decides interest rates.",
+  unemp:     "The share of people out of work.",
+  claims:    "How many people filed for jobless benefits last week — a quick read on the job market.",
+  jobs:      "How many jobs the economy added — a headline read on its health.",
+  growth:    "How fast the whole economy is growing.",
+  survey:    "A survey of businesses/consumers on whether things are getting better or worse.",
+  spending:  "How much people are spending in the shops.",
+  trade:     "The gap between what the country exports and imports.",
+  output:    "How much industry is producing and ordering.",
+  generic:   "An economic update that can move the currency.",
+};
+// three branches: {up, mid, dn} each { l: label, e: plain effect }
+function newsScenarios(kind, ccy, isUsd) {
+  const strong = `the <b>${ccy} usually strengthens</b>`;
+  const weak   = `the <b>${ccy} usually weakens</b>`;
+  const riskOn  = ` and risk appetite improves — a lift for stocks and the Aussie/Kiwi`;
+  const riskOff = ` and money heads for safety — the yen, franc and gold tend to gain`;
+  const goldDn  = isUsd ? ` and, with rates staying higher, <b>gold and stocks often slip</b>` : ` and rate-sensitive assets soften`;
+  const goldUp  = isUsd ? ` and, with rate-cut hopes rising, <b>gold and stocks often catch a bid</b>` : ` and rate-sensitive assets firm up`;
+  const drift = `Little surprise — markets shrug and drift back to the day's underlying trend.`;
+  if (kind === 'inflation') return {
+    up:  { l: 'Hotter (above forecast)', e: `${strong}${goldDn}.` },
+    mid: { l: 'In line', e: drift },
+    dn:  { l: 'Cooler (below forecast)', e: `${weak}${goldUp}.` },
+  };
+  if (kind === 'rate') return {
+    up:  { l: 'Hawkish (hike / fewer cuts)', e: `${strong}${goldDn}.` },
+    mid: { l: 'As expected', e: `The move itself is priced in — the <b>tone of the statement</b> decides direction. Little change if it matches expectations.` },
+    dn:  { l: 'Dovish (cut / more cuts)', e: `${weak}${goldUp}.` },
+  };
+  if (kind === 'unemp' || kind === 'claims') return {
+    up:  { l: 'Stronger (fewer out of work)', e: `${strong}${riskOn}.` },
+    mid: { l: 'In line', e: drift },
+    dn:  { l: 'Weaker (more out of work)', e: `${weak}${riskOff}.` },
+  };
+  // jobs / growth / survey / spending / output / trade / generic
+  return {
+    up:  { l: 'Stronger than expected', e: `${strong}${riskOn}.` },
+    mid: { l: 'In line', e: drift },
+    dn:  { l: 'Weaker than expected', e: `${weak}${riskOff}.` },
+  };
+}
+// once released: which way did it break vs forecast?
+function newsOutcome(kind, actual, est) {
+  if (actual == null || est == null) return null;
+  const a = parseFloat(actual), e = parseFloat(est);
+  if (isNaN(a) || isNaN(e)) return null;
+  const inverted = (kind === 'unemp' || kind === 'claims');   // higher number = weaker
+  const diff = a - e;
+  const dead = Math.max(Math.abs(e) * 0.02, 0.05);
+  let side;                                                    // 'up' = strong-for-ccy, 'dn' = weak, 'mid'
+  if (Math.abs(diff) <= dead) side = 'mid';
+  else side = (diff > 0) === !inverted ? 'up' : 'dn';
+  return { a, e, side, hotter: diff > 0 };
+}
+
+function renderNewsPlay() {
+  const el = $('newsPlay');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
+  const evs = (events ?? [])
+    .filter(e => (e.impact ?? '').toLowerCase() === 'high' && (e.time ?? '').startsWith(todayStr) && NEWS_CCY[e.country])
+    .map(e => ({ ...e, ts: new Date(e.time.replace(' ', 'T') + 'Z').getTime() }))
+    .sort((a, b) => a.ts - b.ts)
+    .slice(0, 6);
+  if (!evs.length) { el.style.display = 'none'; return; }
+
+  const hh = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const upcoming = evs.filter(e => e.ts > now).length;
+  const done = evs.length - upcoming;
+  const summary = `${evs.length} big event${evs.length > 1 ? 's' : ''} today${upcoming ? ` · next ${hh(evs.find(e => e.ts > now).ts)}` : ' · all released'}.`;
+
+  const blocks = evs.map(e => {
+    const kind = newsKind(e.event);
+    const ccy = NEWS_CCY[e.country];
+    const isUsd = e.country === 'US';
+    const sc = newsScenarios(kind, ccy, isUsd);
+    const flag = NEWS_FLAG[e.country] ?? '';
+    const released = e.actual != null && e.actual !== '';
+    const out = released ? newsOutcome(kind, e.actual, e.estimate) : null;
+    const mins = Math.round((e.ts - now) / 60000);
+    const cd = (!released && e.ts > now && mins < 600) ? `<span class="cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? mins % 60 + 'm' : '') : mins + 'm'}</span>` : '';
+    const expTxt = e.estimate != null && e.estimate !== ''
+      ? `expected <b>${e.estimate}</b>${e.prev != null && e.prev !== '' ? ` · was ${e.prev}` : ''}`
+      : (e.prev != null && e.prev !== '' ? `previously ${e.prev}` : '');
+    const scen = ['up', 'mid', 'dn'].map(k => {
+      const fired = out && out.side === k;
+      return `<div class="nscen ${k}" style="${fired ? 'outline:2px solid var(--amber);outline-offset:-1px' : ''}">
+        <div class="l">${sc[k].l}${fired ? ' ← happened' : ''}</div><div class="e">${sc[k].e}</div></div>`;
+    }).join('');
+    const resultLine = out
+      ? `<div class="nev-result">Result: came in at <b>${e.actual}</b> vs <b>${e.estimate}</b> expected — ${out.side === 'mid' ? 'about in line' : out.hotter ? 'higher' : 'lower'} than forecast. ${out.side === 'up' ? `Supportive for the <b>${ccy}</b>.` : out.side === 'dn' ? `A drag on the <b>${ccy}</b>.` : 'Muted reaction likely.'}</div>`
+      : '';
+    return `<div class="nev">
+      <div class="nev-hd"><span class="tm">${hh(e.ts)}</span> ${flag} <span class="nm">${e.event}</span>
+        <span class="exp">${expTxt}</span> ${cd}</div>
+      <div class="nev-meas">${NEWS_MEASURES[kind]} A move in the <b>${ccy}</b> is the main knock-on.</div>
+      <div class="nev-scen">${scen}</div>
+      ${resultLine}
+    </div>`;
+  }).join('');
+
+  el.style.display = 'block';
+  el.classList.toggle('open', _newsOpen);
+  el.innerHTML = `
+    <div class="news-hd" onclick="toggleNews()">
+      <span class="ic">📅</span>
+      <span class="ti">Today's news playbook</span>
+      <span class="sum">${summary}</span>
+      <span class="tw">${_newsOpen ? 'hide ▲' : 'what if it surprises? ▾'}</span>
+    </div>
+    <div class="news-body">
+      ${blocks}
+      <div class="muted" style="font-size:10.5px;margin-top:6px">Scenarios are the typical reaction — the current backdrop (see the macro panel) can amplify or mute them. Not a prediction of the number.</div>
+    </div>`;
+}
+let _newsOpen = (() => { try { return localStorage.getItem('news_open') !== '0'; } catch { return true; } })();
+function toggleNews() {
+  _newsOpen = !_newsOpen;
+  try { localStorage.setItem('news_open', _newsOpen ? '1' : '0'); } catch {}
+  $('newsPlay').classList.toggle('open', _newsOpen);
+}
+window.toggleNews = toggleNews;
 
 function riskLight() {
   const vix = fred?.vix?.value, hy = fred?.hy?.value;
@@ -1526,7 +1702,7 @@ loadAll().then(() => { pollPrices(); });
 loadGate();
 setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
 setInterval(pollPrices, 30_000);               // proximity watch, every 30s
-setInterval(renderGate, 60_000);               // tick the countdown / past-event dimming
+setInterval(() => { renderGate(); renderNewsPlay(); }, 60_000);  // tick countdowns / released-event updates
 setInterval(async () => {           // live session + brief refresh (prices/regime move)
   try {
     const [s, b] = await Promise.all([
