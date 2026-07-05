@@ -80,15 +80,29 @@ acceleration sign):
 
 ---
 
-## 4. Validation protocol (non-negotiable, per repo discipline)
+## 4. Validation protocol (non-negotiable, per repo discipline) — **BUILT**
 
-The thesis is *credit leads equity vol* — so test exactly that, **out of sample**:
-- Target: NQ/SPX next-day..5-day realized vol, or a risk-off indicator.
-- Predictors: the features in §2 (contemporaneous + recent credit; lag equity).
-- **True IS/OOS split**, ≥30 OOS events, realistic costs where a trade is implied.
-- Report OOS calibration / Brier or Sharpe uplift vs an incumbent, not IS fit.
-- Honest-harness modules already in the repo (`honestForecastEngine`,
-  `metricsCore`, `statsCore`) are the tools; grade OOS only.
+The thesis is *credit leads equity vol* — so test exactly that, **out of sample**.
+Now implemented as `js/creditLeadLagEngine.js` + `/api/credit-leadlag/*` +
+`credit-leadlag.html`:
+- Target: NQ **forward realized vol** over (t, t+h] (`forwardRealizedVol`).
+- Predictors: the §2 features (velocity / level-percentile / accel / HMM stress
+  prob), computed **causally** (data ≤ t only).
+- **Lead-lag table:** corr(predictor[t], vol[t+k]) for k∈±maxLag, with t-stats
+  (lag>0 = credit leads).
+- **True IS/OOS split** (chronological), reporting the **information coefficient**
+  (rank corr) IS vs OOS + a hit-rate.
+- **Named benchmark:** vol's own persistence (trailing realized vol). Credit only
+  "wins" if its OOS IC is positive AND beats the past-vol benchmark — because vol
+  is autocorrelated, that's the honest bar.
+- Since the target is a vol *level* (not a traded price), this is a
+  forecast-quality (IC) study, not a PnL backtest — no cost model applies.
+- **Validation status:** the engine + HMM are unit-tested to recover *planted*
+  signal on synthetic data (`creditLeadLagEngine.test.mjs` 17, `creditHmm.test.mjs`
+  18, `creditCore.test.mjs` 28). The **real** verdict on live FRED HY OAS + OANDA
+  NQ runs on Railway (FRED/OANDA are Railway-only). Prerequisite still open: confirm
+  FRED `BAMLH0A0HYM2` daily-history coverage is adequate (the NASDAQ pipeline
+  switched to an HYG/LQD proxy for coverage reasons).
 
 ---
 

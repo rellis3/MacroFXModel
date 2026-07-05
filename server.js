@@ -41,6 +41,7 @@ import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
+import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES } from './js/macroCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
@@ -4685,6 +4686,60 @@ app.get('/api/vol-forecast/history', (_req, res) => {
 app.post('/api/vol-forecast/refresh', async (_req, res) => {
   res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
+});
+
+// ── Credit → NQ-vol lead-lag study (async-job) ────────────────────────────────
+// Does credit-spread Δ (HY OAS) lead NQ realized vol, beyond vol's own persistence?
+// Pure engine js/creditLeadLagEngine.js; here we fetch the real data (FRED HY OAS
+// full history + OANDA NAS100 daily bars), align by date, and run it. Needs
+// FRED_KEY + OANDA_KEY (Railway) — 403/empty in the sandbox is environmental.
+const _creditLLJobs = new Map();
+function _purgeStaleCreditLLJobs() {
+  const now = Date.now();
+  for (const [id, j] of _creditLLJobs) if (now - (j.startedAt ?? 0) > 30 * 60_000) _creditLLJobs.delete(id);
+}
+app.post('/api/credit-leadlag/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch HY OAS history' });
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch NAS100 bars' });
+  const b = req.body ?? {};
+  const opts = {
+    horizon: Math.min(20, Math.max(2, parseInt(b.horizon ?? 5))),
+    maxLag:  Math.min(20, Math.max(3, parseInt(b.maxLag ?? 10))),
+    oosFrac: Math.min(0.5, Math.max(0.2, parseFloat(b.oosFrac ?? 0.35))),
+    fromDate: /^\d{4}-\d{2}-\d{2}$/.test(b.fromDate ?? '') ? b.fromDate : '2013-01-01',
+  };
+  const jobId = `cll_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  _purgeStaleCreditLLJobs();
+  _creditLLJobs.set(jobId, { status: 'running', startedAt: Date.now() });
+  (async () => {
+    try {
+      // FRED HY OAS (full history) → [{date,value}] ascending
+      const hyMap = await fetchFredSeries('BAMLH0A0HYM2', opts.fromDate, process.env.FRED_KEY);
+      const hySeries = [...hyMap.entries()].map(([date, value]) => ({ date, value })).sort((a, c) => a.date < c.date ? -1 : 1);
+      // OANDA NAS100 daily bars → [{date, value:close}]
+      const bars = await _btFetchD1('NAS100_USD', 4000);
+      const nqSeries = (bars ?? []).map(bar => ({ date: bar.date, value: bar.close }));
+      if (hySeries.length < 100 || nqSeries.length < 100) {
+        _creditLLJobs.set(jobId, { status: 'error', error: `thin source data (HY ${hySeries.length}, NQ ${nqSeries.length})`, startedAt: Date.now() });
+        return;
+      }
+      const aligned = _alignByDate(hySeries, nqSeries);   // inner-join on common business days
+      const result = _runCreditLeadLag(aligned.a, aligned.b, opts);
+      result.meta = { hyObs: hySeries.length, nqObs: nqSeries.length, alignedRows: aligned.dates.length,
+        firstDate: aligned.dates[0], lastDate: aligned.dates[aligned.dates.length - 1], opts };
+      _creditLLJobs.set(jobId, { status: 'done', result, startedAt: Date.now() });
+    } catch (e) {
+      _creditLLJobs.set(jobId, { status: 'error', error: e?.message ?? String(e), startedAt: Date.now() });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/credit-leadlag/status/:jobId', (req, res) => {
+  const job = _creditLLJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done')    return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
 // ── Volatility Bot — frozen plan producer/consumer ────────────────────────────
