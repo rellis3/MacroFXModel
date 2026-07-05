@@ -3195,6 +3195,40 @@ async function loadVbLiveStatus() {
 window.saveVbConfig = saveVbConfig; window.resetVbDefaults = resetVbDefaults;
 window.saveVbCreds = saveVbCreds; window.loadVbLiveStatus = loadVbLiveStatus;
 
+// ── Forecast drift vs reference ───────────────────────────────────────────────
+// For each live-universe pair, call /api/forecast-drift/:pair (plan lines vs the
+// recalibrated reference forecaster) and render the per-line % drift. A large negative
+// drift = the bot's lines sit INSIDE the reference (enters early), the "why 22 pts below
+// the real resistance" case. Falls back to a small default set if no plan universe yet.
+async function loadVbDrift() {
+  const body = document.getElementById('vbDriftBody');
+  if (!body) return;
+  const pairs = (_vbLastPlan?.universe && _vbLastPlan.universe.length)
+    ? _vbLastPlan.universe
+    : (_vbLastStatus?.universe && _vbLastStatus.universe.length ? _vbLastStatus.universe : ['gold', 'eurusd', 'nq']);
+  body.innerHTML = `<tr><td colspan="9" style="padding:12px;text-align:center;color:var(--text3)">Measuring ${pairs.length} pairs…</td></tr>`;
+  const fmt = (v, d = 2) => (v == null || Number.isNaN(v)) ? '—' : (+v).toFixed(d);
+  const sign = v => (v == null ? 'color:var(--text3)' : v > 0 ? 'color:#3fb27f' : v < 0 ? 'color:#e06666' : 'color:var(--text3)');
+  const rows = [];
+  for (const pair of pairs) {
+    try {
+      const r = await fetch(`/api/forecast-drift/${encodeURIComponent(pair)}`).then(x => x.json());
+      if (!r?.ok) { rows.push(`<tr><td>${pair.toUpperCase()}</td><td colspan="8" style="color:var(--text3)">${(r?.error || 'error')}</td></tr>`); continue; }
+      const d = r.driftPct || {}, s = r.sigma || {};
+      const cell = v => `<td style="text-align:right;${sign(v)}">${v == null ? '—' : (v > 0 ? '+' : '') + fmt(v)}</td>`;
+      rows.push(`<tr><td style="text-align:left">${pair.toUpperCase()} <span style="color:var(--text3)">${r.assetClass || ''}</span></td>`
+        + `<td style="text-align:right">${fmt(s.planVol, 1)}</td><td style="text-align:right">${fmt(s.refVol, 1)}</td>${cell(s.driftPct)}`
+        + `${cell(d.hl50)}${cell(d.hl75)}${cell(d.ocMed)}${cell(d.oc75)}`
+        + `<td style="text-align:right;font-weight:600">${fmt(r.avgAbsDriftPct)}</td></tr>`);
+    } catch (e) {
+      rows.push(`<tr><td>${pair.toUpperCase()}</td><td colspan="8" style="color:var(--text3)">${e.message || 'fetch failed'}</td></tr>`);
+    }
+    body.innerHTML = rows.join('');   // progressive render as each pair resolves
+  }
+  if (!rows.length) body.innerHTML = `<tr><td colspan="9" style="padding:12px;text-align:center;color:var(--text3)">No pairs to measure</td></tr>`;
+}
+window.loadVbDrift = loadVbDrift;
+
 // ── Live per-pair line-chart modal ────────────────────────────────────────────
 // The 8 forecast lines, in table (name, side, arrow) form. Table cell key casing
 // mirrors pylego/strategy/volatility.line_levels: `${NAME}_${side}` (side up/dn).

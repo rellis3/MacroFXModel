@@ -3169,6 +3169,35 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       </div>
     </div>
 
+    <!-- Forecast drift vs reference — bot lines vs the dashboard forecaster -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#e0a93b">Forecast drift vs reference</span>
+        <span class="bot-banner-sub" style="margin:0">how far the bot's frozen lines sit from the recalibrated /api/vol-forecast — <b>+</b> = wider (enters later), <b>−</b> = narrower (enters early/inside)</span>
+        <button onclick="loadVbDrift()" style="margin-left:auto;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↻ Measure</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:right">σ plan</th>
+              <th style="padding:6px 10px;text-align:right">σ ref</th>
+              <th style="padding:6px 10px;text-align:right">σ Δ%</th>
+              <th style="padding:6px 10px;text-align:right">HL50 Δ%</th>
+              <th style="padding:6px 10px;text-align:right">HL75 Δ%</th>
+              <th style="padding:6px 10px;text-align:right">OC50 Δ%</th>
+              <th style="padding:6px 10px;text-align:right">OC75 Δ%</th>
+              <th style="padding:6px 10px;text-align:right">avg |Δ|</th>
+            </tr>
+          </thead>
+          <tbody id="vbDriftBody">
+            <tr><td colspan="9" style="padding:12px;text-align:center;color:var(--text3)">Click Measure — compares each live-universe pair's bot lines to the reference forecaster (live D1)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- How to run -->
     <div class="card">
       <div class="card-title">How to run</div>
