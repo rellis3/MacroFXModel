@@ -113,6 +113,10 @@ function render(b){
   // Intraday MARK-TO-MARKET drawdown (MAE + concurrency). idd.maxDD is in raw % units;
   // express it on the headline vol-targeted basis by scaling the headline DD up by the
   // intraday/closed multiple, so it sits next to the historical/MC numbers like-for-like.
+  // Standard backtest battery for the live universe — the SAME method every other system
+  // reports (one equity curve, per-trade Sharpe, additive max-DD, Calmar). This is the
+  // comparable, explainable headline; the concurrency-adjusted portfolio view is secondary.
+  const sb=sv.book||f;
   const idd=sv.intradayDD||{}, iddMult=idd.multipleVsClosed, its=idd.tradeStats||{};
   // Mark-to-market DD on the vol-targeted basis is the PRIMARY drawdown. Prefer the
   // book's centralized field (svt.maxDDMtm from withMtmDD — one source of truth); fall
@@ -168,9 +172,23 @@ function render(b){
   significance alone is not sufficient. The headline figures below are the <b>live universe</b>: the subset
   of instruments whose out-of-sample net edge clears their own round-trip cost by a margin.</p>
 
-  <h2>2 · Headline Performance <span class="sub" style="font-weight:400;text-transform:none;letter-spacing:0">— live universe, out-of-sample</span></h2>
+  <h2>2 · Headline Performance <span class="sub" style="font-weight:400;text-transform:none;letter-spacing:0">— standard backtest, live universe, out-of-sample</span></h2>
   <div class="kpis">
-    ${kpi(fmt(svp.sharpe,2),'Sharpe (annualised)',svp.sharpe<0)}
+    ${kpi(fmt(sb.sharpe,2),'Sharpe (per-trade, annualised)',sb.sharpe<0)}
+    ${kpi(pct(sb.cagr,1),'CAGR',sb.cagr<0)}
+    ${kpi(pct(sb.maxDD,1),'Max drawdown',true)}
+    ${kpi(fmt(sb.calmar,2),'Calmar',sb.calmar<0)}
+    ${kpi(fmt(sb.profitFactor,2),'Profit factor',sb.profitFactor<1)}
+    ${kpi(pct(sb.winRate*100,1),'Win rate')}
+    ${kpi(pct(sb.expectancy,4),'Expectancy / trade',sb.expectancy<0)}
+    ${kpi(pct(sb.totalPnl,1),'Total return',sb.totalPnl<0)}
+    ${kpi(fmt(sv.count,0)+'/'+fmt(sv.total,0),'Instruments traded')}
+  </div>
+  <div class="note">Computed identically to every other backtest on the desk (<code>metricsCore</code> / <code>backtestStats</code>): one equity curve, per-trade Sharpe annualised by trade frequency, additive peak-to-trough <b>max drawdown</b>, Calmar = CAGR ÷ |maxDD|. This is the directly-comparable, explainable basis. <b>⚠ Caveat:</b> the per-trade Sharpe treats each trade as an independent bet; this book fires ~${fmt(svp.avgTradesPerDay,0)} correlated trades at once, so it <b>overstates</b> the risk-adjusted return — §2b re-states the risk on a concurrency-adjusted basis.</div>
+
+  <h2>2b · Concurrency-adjusted risk <span class="sub" style="font-weight:400;text-transform:none;letter-spacing:0">— secondary, accounts for many-at-once positions</span></h2>
+  <div class="kpis">
+    ${kpi(fmt(svp.sharpe,2),'Portfolio Sharpe (daily ×√252)',svp.sharpe<0)}
     ${kpi(svp.psr!=null?pct(svp.psr*100,0):'—','Prob. Sharpe &gt; 0',svp.psr<0.95)}
     ${kpi(pct(svt.cagr,1),`Return p.a. @ ${svt.target||10}% vol`,svt.cagr<0)}
     ${iddValid
@@ -180,12 +198,10 @@ function render(b){
     ${svp.maxDD!=null?kpi(pct(svp.maxDD,1),`Max drawdown (raw 1×, ${fmt(svp.annVol,0)}% vol)`,true):''}
     ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC IID p95 @ ${svt.target||10}% vol)`,true):''}
     ${svtBlk.p95!=null?kpi(pct(svtBlk.p95,1),`Max drawdown (MC block p95 · regime-clustered)`,true):''}
-    ${calmarMtm!=null?kpi(fmt(calmarMtm,2),'Calmar (MTM · primary)',calmarMtm<0):kpiNA('Calmar (MTM · primary)','stale timestamps')}
-    ${kpi(fmt(svt.calmar,2),'Calmar (closed · lower bound)',svp.calmar<0)}
+    ${calmarMtm!=null?kpi(fmt(calmarMtm,2),'Calmar (MTM)',calmarMtm<0):kpiNA('Calmar (MTM)','stale timestamps')}
     ${stressDD!=null?kpi(fmt(svt.cagr/Math.abs(stressDD),2),`Calmar (stress · ${stressLbl})`,false):''}
     ${kpi(pct(svp.annVol,1),'Realised volatility')}
     ${kpi(fmt(svp.avgTradesPerDay,1),'Avg trades / day')}
-    ${kpi(fmt(sv.count,0)+'/'+fmt(sv.total,0),'Instruments traded')}
   </div>
   <div class="note">Sharpe is computed on <b>daily portfolio returns ×√252</b>, so concurrent positions across
   correlated instruments count as one day's risk — not thousands of independent bets. Return and drawdown are
