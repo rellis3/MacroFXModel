@@ -1,7 +1,7 @@
 // Trade Decision Engine — synthetic, no-network unit tests.
 // Run: node Trade_Decision_Engine/decisionCore.test.mjs
 import assert from 'node:assert/strict';
-import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN, INTRADAY_FEATURES } from './decisionCore.js';
+import { decide, nearestZone, buildEventFeatures, scoreLogistic, sessionPhaseUTC, macroState, MACRO_RISK_SENS_MIN, INTRADAY_FEATURES, HTF_FEATURES } from './decisionCore.js';
 import { computeIntradayState, computeSessionLadders, confluenceCapsFor } from './featureState.js';
 import { newsGate, pairCurrencies } from './newsGate.js';
 import { buildSnapshot, syntheticBars, syntheticSnapshot } from './featureState.js';
@@ -287,6 +287,31 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
     intraday: { high: 1.2345 + snap.meta.tolAbs * 0.5, low: 1.1, rangeUsed: 0.8, vwapDistSigma: 0 } }, { nowMs: NOW });
   ok(r.zone.confluence === 2 && r.zone.sources.includes('session_hilo'), 'PDH + developing session high merge into confluence 2');
   ok(r.zone.kinds.includes('session_high'), 'merged kinds show the dynamic member');
+}
+
+// ── htf_align: the research arc's one survivor (trend alignment) ─────────────
+{
+  const z = snap.zones[0];
+  ok(HTF_FEATURES.length === 1 && HTF_FEATURES[0] === 'htf_align', 'HTF_FEATURES exported');
+  // no trend on the snapshot → feature 0
+  const flat = decide({ ...snap, htfTrend: 0 }, { price: z.price, direction: 'long' }, { nowMs: NOW });
+  ok(flat.features.htf_align === 0 && flat.htf_trend === 'flat', 'no HTF trend → htf_align 0');
+  // uptrend: long aligns (+1), short opposes (−1)
+  const up = { ...snap, htfTrend: 1 };
+  ok(decide(up, { price: z.price, direction: 'long' }, { nowMs: NOW }).features.htf_align === 1, 'long into uptrend = +1');
+  ok(decide(up, { price: z.price, direction: 'short' }, { nowMs: NOW }).features.htf_align === -1, 'short into uptrend = −1');
+  // downtrend: short aligns, long opposes
+  const down = { ...snap, htfTrend: -1 };
+  ok(decide(down, { price: z.price, direction: 'short' }, { nowMs: NOW }).features.htf_align === 1, 'short into downtrend = +1');
+  ok(decide(down, { price: z.price, direction: 'long' }, { nowMs: NOW }).features.htf_align === -1, 'long into downtrend = −1');
+  // v0 is htf-blind (zero-weighted): probability unchanged with/without trend
+  const withT = decide(up, { price: z.price, direction: 'long', action: 'fade' }, { nowMs: NOW });
+  const noT = decide({ ...snap, htfTrend: 0 }, { price: z.price, direction: 'long', action: 'fade' }, { nowMs: NOW });
+  ok(withT.probability === noT.probability, 'v0 scoring is htf-blind — enters only via a promoted fit');
+  ok(withT.htf_trend === 'up' && withT.htf_align === 1, 'response surfaces htf_trend + htf_align');
+  // buildSnapshot computes htfTrend from an uptrending synthetic series
+  const upBars = Array.from({ length: 320 }, (_, i) => ({ time: i * 86400, open: 1 + i * 0.001, high: 1 + i * 0.001 + 0.002, low: 1 + i * 0.001 - 0.002, close: 1 + i * 0.001 }));
+  ok(buildSnapshot({ pair: 'eurusd', dailyBars: upBars, nowMs: NOW }).htfTrend === 1, 'rising series → htfTrend +1');
 }
 
 // ── other asset classes (pip/σ-math/costs switch on the registry) ────────────

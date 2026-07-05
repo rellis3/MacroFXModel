@@ -46,6 +46,16 @@ export const INTRADAY_FEATURES = [
   'intraday_vwap_stretch_fade',       // fading stretched from session VWAP
 ];
 
+// Higher-timeframe TREND-ALIGNMENT — the ONE feature that survived honest
+// OOS+cost testing (built≠works≠edge: this one has edge). Signed −1/0/+1: does
+// the proposed direction agree with the pair's trailing-20d trend? Aligned
+// touches were net-positive after cost, opposed net-negative, IS AND OOS, and
+// it improved the fit's OOS Brier ~10× more than the whole intraday block —
+// over a baseline that already had v0's trend features, so it's not redundant.
+// Zero-weighted in v0 like every other feature; the fit decides its live weight
+// (and that fit is where the reversion→continuation lesson finally pays off).
+export const HTF_FEATURES = ['htf_align'];
+
 // → +1 aligned / 0 neutral / −1 opposed
 export function macroState(riskSens, regime, direction) {
   if (!regime || regime === 'NEUTRAL' || !Number.isFinite(riskSens)) return 0;
@@ -202,6 +212,11 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
     // v0 carries NO weight for it: it enters scoring only via a promoted fit.
     macro_align:           snapshot.macro
       ? macroState(snapshot.macro.riskSens, snapshot.macro.regime, direction) : 0,
+    // htf_align: +1 if the trade direction agrees with the pair's HTF trend
+    // (long into an uptrend / short into a downtrend), −1 against, 0 no trend.
+    // The research arc's one survivor — zero-weighted in v0, promoted by fit.
+    htf_align:             snapshot.htfTrend
+      ? ((direction === 'long' ? 1 : -1) === snapshot.htfTrend ? 1 : -1) : 0,
     // intraday (zero-weighted in v0 — see INTRADAY_FEATURES): all 0 when no
     // intraday state exists, so D1-only rows are unchanged
     intraday_range_exhausted_follow: !isFade && rangeUsed != null ? clamp01((rangeUsed - 1.0) / 0.5) : 0,
@@ -331,6 +346,8 @@ export function decide(snapshot, request = {}, opts = {}) {
       ? { regime: snapshot.macro.regime, align: features.macro_align, stale: snapshot.macro.stale === true }
       : null,
     intraday: meta.intraday,
+    htf_trend: snapshot.htfTrend ? (snapshot.htfTrend > 0 ? 'up' : 'down') : 'flat',
+    htf_align: features.htf_align,
     latency_ms: Date.now() - t0,
   };
 }

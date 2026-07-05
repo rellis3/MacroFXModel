@@ -405,11 +405,54 @@ default 5) in Railway to keep live snapshots warm.
 
 Test harness UI: `trade-decision-engine.html` (linked from the Dashboard).
 
+## 8b. Research-arc findings (2026-07 — what was tested and what survived)
+
+The engine's own honest harness (backfill → fit → disaggregation) was turned on
+the strategy ideas it was built to score. Recorded so nobody re-runs the dead ends:
+
+- **Ablation (macro deferred — no FRED in sandbox):** v0's hand weights are
+  overconfident; the fitted OOS Brier lands at the **base-rate floor** — the
+  price-derived features (v0 + intraday) carry essentially **no** OOS
+  discrimination on the average touch. Intraday block adds ~0.0002–0.0003 Brier
+  (noise).
+- **Selection (decile test):** the fit DOES rank the tails (bottom decile ~49%
+  win vs top ~59% on FX majors) — real "skip the worst" value — but every decile
+  is net-negative after cost. Ranking a losing base ⇒ less-losing, not winning.
+- **Exit sweep:** NO barrier geometry (incl. pure mark-to-close) rescues FX/gold;
+  mark-to-close being negative is the tell that **touch→close has no directional
+  edge** in the engine's chosen direction. The exit is not the fix.
+- **Disaggregation (74 subset cells):** ZERO passed IS>0 ∧ OOS>0 (chance ≈ 5) —
+  **reversion / level-touching is comprehensively null** on every source /
+  regime / session slice.
+- **Portfolio momentum (TS-mom, daily):** null on this universe (best OOS Sharpe
+  0.13); FX is the weak corner for momentum. The always-long benchmark's 1.05 is
+  a period artifact (gold/NQ bull run), NOT an edge.
+- **✅ THE SURVIVOR — higher-timeframe trend alignment (`htf_align`):** taking
+  level-touches **with** the pair's trailing-20d trend robustly beats taking them
+  against it (aligned − opposed ≈ **+0.05%/touch**, consistent IS *and* OOS), and
+  it improves the fit's OOS Brier ~**10×** more than the whole intraday block —
+  over a baseline that already has v0's trend features, so it's not redundant.
+  **Calibration (do not oversell):** the *separation* is the robust, real result;
+  the aligned bucket is net-*positive* only **pooled across instruments, OOS**
+  (+0.016%) — single instruments (e.g. eurusd) show the same direction but sit
+  marginally negative. So it's a genuine directional *filter* worth ~5bps of
+  separation, not a standalone profitable signal. The cross-asset USD-index
+  alignment was a weak positive (+0.007%); equity-risk alignment was dead — both
+  dropped. Lesson: the level says *where*; the higher-timeframe **trend** says
+  *which way*. Fading levels (the original engine thesis) was backwards.
+- **Next honest tests (untested here):** macro ablation on Railway (FRED
+  reachable); carry (needs FRED rates / swap-inclusive returns — OANDA mids
+  exclude the swap); realistic-slippage stress on the htf_align filter before
+  calling it tradeable.
+
 ## 9. Honesty box
 
 - The v0 probability is a **prior, not evidence**. Nothing here claims edge until
   the fitted model beats the incumbent on OOS with calibration proof (Lego
   Principle 5).
+- **`htf_align` is the one feature with demonstrated OOS information** (§8b) —
+  still zero-weighted in v0, promoted only by a fit; and even it is a *filter*
+  (separation), not a standalone profitable signal.
 - ~~`dayOpen ≈ last close`, σ lags one bar~~ — RETIRED: σ uses `nextSigma`, and
   `dayOpen` is the **true session open** (today's first M1 since London
   midnight live; the day's first M1 open in the backfill), falling back to
