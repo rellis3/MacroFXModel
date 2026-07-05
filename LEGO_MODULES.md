@@ -356,6 +356,11 @@ verdict never tested it. Diagnostic, in-sample; needs a deep `days=` pull.
 The core also emits the **live confirmation reading** (`couplingState`) — the
 daily-brief "rates-backed / divergent / decoupled" flag for the newest bar
 (regime coupling + session + whether the latest move is rates-corroborated).
+**Wired into the daily brief (lens 1, shipped):** `/api/yield-context?symbol=`
+(lightweight, cached, reuses the M5 fetch + `couplingState` + a spread percentile)
+feeds a "Rates context" section in the `today.html` per-pair drawer — CONTEXT
+only, explicitly no direction call (the 22yr conclusion: yield confirms moves, it
+does not forecast them).
 Measured verdict that scoped it: coupling is real + regime is predictable
 (1h autocorr ≈0.82) but **coincident, weak direction** → confirmation/conviction
 grade, not a price forecast; `couplingState` is deliberately a context flag, not

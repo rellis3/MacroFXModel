@@ -3775,6 +3775,47 @@ app.get('/api/yield-coupling-real', async (req, res) => {
   }
 });
 
+// ── /api/yield-context — the neutral daily-brief "rates context" reading ─────
+// Lightweight, per-pair: current coupling regime (rates-backed / divergent /
+// decoupled), session, and where the spread sits in its recent range. CONTEXT
+// only — no direction call (the measured conclusion: yield is confirmation, not
+// a forecast). Reuses the M5 fetch + couplingState. Fast + cached.
+const _ycCtxCache = new Map();
+app.get('/api/yield-context', async (req, res) => {
+  const symbol = (req.query.symbol || '').replace('_', '/').toUpperCase();
+  const spec = YIELD_COUPLING_LEGS[symbol];
+  if (!spec) return res.json({ available: false, reason: `no yield spread for ${symbol}` });
+  if (!process.env.OANDA_KEY) return res.json({ available: false, reason: 'OANDA not configured' });
+  const cached = _ycCtxCache.get(symbol);
+  if (cached && Date.now() - cached.ts < 60_000) return res.json(cached.data);
+  const s = spec[0];                                     // primary (full) spread
+  try {
+    const fxInstrument = _liqGateOandaSym(symbol.replace('/', '_'));
+    const insts = [fxInstrument, ...s.legs.map(l => l.inst)];
+    const series = {};
+    await Promise.all(insts.map(async inst => { try { series[inst] = await _fetchCouplingCandles(inst, 'M5', 500); } catch { series[inst] = null; } }));
+    const price = series[fxInstrument];
+    if (!price || !price.length || s.legs.some(l => !series[l.inst]?.length)) return res.json({ available: false, reason: 'rate data unavailable' });
+    const { times, columns } = alignByTime([price, ...s.legs.map(l => series[l.inst])]);
+    if (times.length < 80) return res.json({ available: false, reason: 'thin data' });
+    const spread = buildSpread(s.legs.map((l, i) => ({ price: columns[i + 1], k: l.k })));
+    const st = couplingState(columns[0], spread, times, { corrWindow: 60 });
+    const finite = spread.filter(Number.isFinite);
+    const sorted = [...finite].sort((a, b) => a - b);
+    const cur = finite[finite.length - 1];
+    const pctile = sorted.length ? Math.round(sorted.filter(x => x <= cur).length / sorted.length * 100) : null;
+    const data = {
+      available: true, symbol, tenor: s.tenor, label: s.label, partial: !!s.partial,
+      state: st.state, session: st.session, regimeCorr: st.regimeCorr,
+      spreadPercentile: pctile, note: st.note,
+    };
+    _ycCtxCache.set(symbol, { data, ts: Date.now() });
+    res.json(data);
+  } catch (err) {
+    res.json({ available: false, reason: err.message });
+  }
+});
+
 // ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
 app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
