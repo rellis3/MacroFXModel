@@ -226,6 +226,25 @@
   .rmap .now.up{border-top-color:var(--bull)}
   .rmap .now.dn{border-top-color:var(--bear)}
 
+  /* Drawer: correlations / hedges / beta */
+  .corrline{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:5px 0;font-size:12px}
+  .corrline .clbl{width:92px;min-width:92px;color:var(--text3);font-size:10.5px;letter-spacing:.02em}
+  .corrchip{display:inline-block;padding:2px 8px;border-radius:11px;font-size:11px;font-weight:600;
+            font-variant-numeric:tabular-nums;background:var(--neu-bg);border:1px solid var(--border)}
+  .corrchip.pos{background:var(--bull-bg);color:var(--bull);border-color:rgba(16,185,129,.3)}
+  .corrchip.neg{background:var(--bear-bg);color:var(--bear);border-color:rgba(249,115,22,.3)}
+  /* Drawer: per-pair news list */
+  #drNews .nrow{display:flex;align-items:center;gap:10px;padding:4px 6px;border-radius:5px;font-size:12px;border-bottom:1px solid var(--border)}
+  #drNews .nrow.past{opacity:.55}
+  #drNews .ntime{width:46px;color:var(--text2);font-variant-numeric:tabular-nums}
+  #drNews .nflag{width:26px;font-size:10px;font-weight:700;color:var(--text3)}
+  #drNews .nflag.hi{color:var(--amber)}
+  #drNews .nname{flex:1}
+  #drNews .nname b.warn{font-size:9px;color:var(--amber);letter-spacing:.03em}
+  #drNews .nval{color:var(--text2);font-size:11px;text-align:right;white-space:nowrap}
+  #drNews .nimpact{font-size:11px;color:var(--text2);padding:3px 6px 7px 62px;line-height:1.45}
+  #drNews .nimpact b.pos{color:var(--bull)} #drNews .nimpact b.neg{color:var(--bear)}
+
   /* Level ladder */
   .ladder{margin:14px 0 8px;font-variant-numeric:tabular-nums}
   .lrow{display:flex;align-items:center;gap:8px;padding:2.5px 6px;border-radius:5px;font-size:11.5px}
@@ -340,12 +359,23 @@
   <div class="dr-top">
     <h2 id="drName">—</h2>
     <span class="chip neu" id="drRegime"></span>
+    <span class="chip neu" id="drArima" style="display:none"></span>
     <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
   </div>
 
   <div class="dr-sec">
     <h3>The story</h3>
     <div class="story" id="drStory"><span class="muted">loading…</span></div>
+  </div>
+
+  <div class="dr-sec" id="drNewsSec" style="display:none">
+    <h3 class="help" title="Scheduled economic events that move THIS pair — the calendar filtered to its own two economies, soonest first. High-impact events can spike the range well beyond the forecast, so many traders wait until they're out.">Today's news for this pair</h3>
+    <div id="drNews"></div>
+  </div>
+
+  <div class="dr-sec" id="drCorrSec" style="display:none">
+    <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair.">Correlations, hedges &amp; beta</h3>
+    <div id="drCorr"><span class="muted">loading…</span></div>
   </div>
 
   <div class="dr-sec" id="drRatesSec" style="display:none">
@@ -412,6 +442,64 @@ const tdeKey  = n => META[n]?.tde ?? n.toLowerCase();
 const lvlKey  = (n, sym) => META[n]?.lk ?? sym.replace('_', '/');
 const dispName = n => META[n]?.label ?? n.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2');
 
+// brief name → key used by /api/hedge-alerts (corr/beta engine, CORR_PAIRS format)
+const CORR_KEY = { GOLD:'XAUUSD', NQ:'NAS100_USD', SPX500:'SPX500_USD', US30:'US30_USD', US2000:'US2000_USD' };
+const corrKey = n => CORR_KEY[n] ?? n;   // FX names (EURUSD…) already match
+// brief name → the economies whose scheduled data actually moves this market
+const PAIR_NEWS_CC = {
+  EURUSD:['US','EU','DE'], GBPUSD:['US','GB'], USDJPY:['US','JP'], AUDUSD:['US','AU'],
+  NZDUSD:['US','NZ'], USDCAD:['US','CA'], USDCHF:['US','CH'], GBPJPY:['GB','JP'],
+  EURGBP:['EU','DE','GB'], EURJPY:['EU','DE','JP'], AUDJPY:['AU','JP'], CADJPY:['CA','JP'],
+  GOLD:['US'], NQ:['US'], SPX500:['US'], US30:['US'], US2000:['US'], DE30:['DE','EU'], UK100:['GB'],
+};
+const dispCorr = k => {   // corr key → friendly label
+  const m = { XAUUSD:'Gold', XAGUSD:'Silver', XPTUSD:'Platinum', XCUUSD:'Copper', WTICO_USD:'WTI oil',
+    BCO_USD:'Brent oil', NAS100_USD:'Nasdaq', SPX500_USD:'S&P 500', US30_USD:'Dow', US2000_USD:'Russell',
+    USDCNH:'USD/CNH', USDZAR:'USD/ZAR' };
+  return m[k] ?? k.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2');
+};
+function pairEvents(name) {
+  const cc = PAIR_NEWS_CC[name] ?? ['US'];
+  return (events ?? [])
+    .filter(e => cc.includes(e.country) && ['high', 'medium'].includes((e.impact ?? '').toLowerCase()))
+    .map(e => ({ ...e, ms: new Date(e.time).getTime() }))
+    .filter(e => !isNaN(e.ms))
+    .sort((a, b) => a.ms - b.ms);
+}
+function nextPairEvent(name) {
+  const now = Date.now();
+  return pairEvents(name).find(e => e.ms >= now - 20 * 60000) ?? null;   // next (or one just released)
+}
+const evtTime = e => new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+// country → currency code, and a friendly word for it
+const CC_TO_CCY = { US:'USD', EU:'EUR', DE:'EUR', FR:'EUR', IT:'EUR', ES:'EUR', GB:'GBP', UK:'GBP', JP:'JPY', CH:'CHF', AU:'AUD', CA:'CAD', NZ:'NZD', CN:'CNH' };
+const CCY_WORD  = { USD:'dollar', EUR:'euro', GBP:'pound', JPY:'yen', CHF:'franc', AUD:'Aussie', CAD:'Canadian dollar', NZD:'Kiwi', CNH:'yuan' };
+// Plain-English "what this print does to THIS pair" — reuses newsKind/newsOutcome.
+// Framed by CURRENCY direction so it's correct even for inverted indicators
+// (unemployment/claims, where a higher number is weaker). Returns '' if we can't
+// map it cleanly (keeps us honest rather than guessing).
+function pairImpactLine(e, name) {
+  const ccy = CC_TO_CCY[e.country];
+  if (!ccy) return '';
+  const subj = CCY_WORD[ccy] ?? ccy;
+  const legs = PAIR_CCY[name];        // [base, quote] for FX majors
+  let dir = null;                     // pair direction on a CURRENCY-POSITIVE surprise
+  if (legs) { if (legs[0] === ccy) dir = 'up'; else if (legs[1] === ccy) dir = 'dn'; }
+  else if (name === 'GOLD' && ccy === 'USD') dir = 'dn';   // gold quoted in USD; strong $ → gold down
+  else if (['NQ','SPX500','DE30','US30','US2000','UK100'].includes(name))
+    return `A hot print is <b>mixed for stocks</b> — good for growth but it can lift rates and squeeze valuations. Watch the reaction, not the number.`;
+  if (!dir) return '';
+  const hi = `${dispName(name)} <b class="pos">higher</b>`, lo = `${dispName(name)} <b class="neg">lower</b>`;
+  const posPair = dir === 'up' ? hi : lo;    // currency-positive → this
+  const negPair = dir === 'up' ? lo : hi;
+  const oc = newsOutcome(newsKind(e.event), e.actual, e.estimate);
+  if (oc && oc.side !== 'mid') {
+    const pos = oc.side === 'up';
+    return `Came in <b>${subj}-${pos ? 'positive' : 'negative'}</b> → ${pos ? posPair : negPair}.`;
+  }
+  return `A <b>${subj}-positive</b> surprise → ${posPair}; ${subj}-negative → ${negPair}.`;
+}
+
 // State
 let brief = null;        // /api/daily-brief
 let session = null;      // /api/vol-forecast/session (live range used, bias)
@@ -424,6 +512,7 @@ let livePrices = null;   // /api/hedge-signals/prices — proximity watch (zoom 
 let cot = null;          // /api/cot-extremes — spec positioning per instrument (story + chip)
 let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
+let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
@@ -456,13 +545,14 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk] = await Promise.all([
+  const [ev, fr, ss, ct, oi, wk, ha] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
     jget('/api/cot-extremes').catch(() => null),
     jget('/api/kv/get?key=oi_store').catch(() => null),
     jget('/api/vol-forecast/weekly').catch(() => null),
+    jget('/api/hedge-alerts').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -470,6 +560,7 @@ async function loadGate() {
   if (ct?.instruments) cot = Object.fromEntries(ct.instruments.map(i => [i.sym, i]));
   if (oi && !oi.miss) oiStore = oi.data ?? oi;
   if (wk?.ok && wk.instruments) weekly = wk;
+  if (ha?.last_corr || ha?.last_betas) hedgeAlerts = ha;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   renderGate(); renderNewsPlay(); renderSummary(); render();
 }
@@ -1534,6 +1625,7 @@ function cardHtml(r) {
       <span class="chip ${volCls}" title="How big this market's swings tend to be. 'P${volPct ?? '?'}' compares today to its own history: ${volPct != null ? (volPct >= 80 ? `calmer than only ${volPct}% of days — unusually jumpy right now, use wider stops` : volPct <= 20 ? `calmer than ${100 - volPct}% of days — an unusually quiet stretch` : `middle of its normal range`) : 'unknown'}.">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>
       ${rangePts != null ? `<span class="vol help" title="On an average day this market travels about ${rangePts} ${d.ac === 'fx' ? 'pips' : 'points'} from its high to its low. Use it to size stops and targets.">expected day range <b>${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}</b> (med)</span>` : ''}
       ${d.news_flag ? `<span class="chip warn" title="A major scheduled news event today (${d.news_flag}). Big news moves markets fast — expected ranges are scaled up ×${d.news_mult}. Consider waiting until it's out.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : ''}
+      ${(() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 22 ? e.event.slice(0, 20) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.${hi ? ' High impact — the range can blow past the forecast; many wait until it clears.' : ''}">⏰ ${nm} ${evtTime(e)}</span>`; })()}
     </div>
   </div>`;
 }
@@ -1606,7 +1698,22 @@ async function openDrawer(name) {
   const r = rows().find(x => x.name === name) ?? { d: brief.instruments[name], s: session?.instruments?.[name], fc: forecast?.instruments?.[name] };
   const d = r.d;
   $('drName').textContent = dispName(name);
-  $('drRegime').textContent = d.regime ? (d.regime.label === 'TREND' ? `TREND ${d.regime.trend_dir === 'up' ? '▲' : '▼'} ${d.regime.trend_prob}%` : `RANGE ${d.regime.range_prob}%`) : 'no regime';
+  // Regime chip: prefer the HMM daily regime; when it isn't computed for this
+  // instrument (indices other than NQ), fall back to today's live session read
+  // rather than a bare "no regime", labelled so it's clear it's the live tape.
+  const drChip = $('drRegime');
+  if (d.regime) {
+    drChip.textContent = d.regime.label === 'TREND'
+      ? `TREND ${d.regime.trend_dir === 'up' ? '▲' : '▼'} ${d.regime.trend_prob}%`
+      : `RANGE ${d.regime.range_prob}%`;
+    drChip.title = 'Structural HMM daily regime.';
+  } else {
+    const bd = r.s?.bias_detail ?? r.s?.bias ?? null;
+    drChip.textContent = bd ? `live: ${bd}` : 'no regime';
+    drChip.title = bd
+      ? "No HMM regime is computed for this market — this is today's LIVE session read (how the tape is actually moving), not the structural regime."
+      : 'No regime available for this market.';
+  }
   $('ovl').classList.add('open');
   $('drawer').classList.add('open');
   $('decideOut').style.display = 'none';
@@ -1624,6 +1731,114 @@ async function openDrawer(name) {
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
   loadDrawerLevels(name, d.sym).catch(() => {});
   loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
+  loadDrawerNews(name);
+  loadDrawerCorr(name);
+  loadDrawerArima(name, d.sym);
+}
+
+// ARIMA context — the HONEST read: a fair-value stretch (mean-reversion bias) and
+// a reliability flag, NOT a forecast path. At a daily horizon FX is near-random-
+// walk, so the point forecast is tiny and its band ≈ the whole vol cone; the
+// value is "how stretched from fair value" + "is the model even trustworthy now".
+// Data is written per pair to KV (arima_price_<SYM>) by the bot on Railway.
+async function loadDrawerArima(name, sym) {
+  const chip = $('drArima');
+  chip.style.display = 'none';
+  const key = 'arima_price_' + (sym ?? '').replace(/[_/]/g, '');
+  let a = null;
+  try {
+    const r = await jget('/api/kv/get?key=' + encodeURIComponent(key));
+    a = (r && !r.miss) ? (r.data ?? r) : null;
+  } catch { return; }
+  if (!a || a.fairValueDev == null) return;
+  const dev = a.fairValueDev, ratio = a.residualRatio ?? null, ci = a.ci68Pips ?? null;
+  const unpredictable = ratio != null && ratio > 1.5;
+  let label, cls, tip;
+  if (unpredictable) {
+    label = '⌁ unpredictable'; cls = 'warn';
+    tip = `ARIMA residuals ${(ratio * 100).toFixed(0)}% above normal — price is behaving erratically, so any fair-value read is unreliable right now. Treat mean-reversion setups with caution.`;
+  } else if (Math.abs(dev) >= 1.0) {
+    const richCheap = dev > 0 ? 'rich' : 'cheap';
+    label = `⌁ ${dev > 0 ? '+' : ''}${dev.toFixed(1)}σ ${richCheap}`;
+    cls = Math.abs(dev) >= 1.5 ? 'warn' : 'neu';
+    tip = `Price is ${Math.abs(dev).toFixed(1)}σ ${dev > 0 ? 'ABOVE' : 'BELOW'} the ARIMA fair value — a mean-reversion bias ${dev > 0 ? 'DOWN' : 'UP'} toward fair value${ci != null ? ` (±${ci}p 1-day band)` : ''}. Context, not a signal: FX barely trends at a daily horizon, so this flags stretch, it does NOT predict a path.`;
+  } else {
+    label = '⌁ near fair value'; cls = 'neu';
+    tip = `Price is within 1σ of the ARIMA fair value — no meaningful stretch either way${ci != null ? ` (±${ci}p 1-day band)` : ''}. No mean-reversion edge here.`;
+  }
+  chip.textContent = label; chip.className = 'chip ' + cls; chip.title = tip;
+  chip.style.display = 'inline-block';
+}
+
+// News for THIS pair — the calendar filtered to its own two economies, soonest first.
+function loadDrawerNews(name) {
+  const sec = $('drNewsSec'), box = $('drNews');
+  const evs = pairEvents(name);
+  if (!evs.length) { sec.style.display = 'none'; return; }
+  const now = Date.now();
+  const rows = evs.slice(0, 6).map(e => {
+    const past = e.ms < now - 20 * 60000;
+    const hi = (e.impact ?? '').toLowerCase() === 'high';
+    const surprise = (past && e.actual != null && e.estimate != null)
+      ? (e.actual > e.estimate ? '<span class="pos">beat</span>' : e.actual < e.estimate ? '<span class="neg">miss</span>' : 'in-line')
+      : '';
+    // human impact on THIS pair — shown for high-impact events (and any released print)
+    const impact = (hi || (past && e.actual != null)) ? pairImpactLine(e, name) : '';
+    return `<div class="nrow ${past ? 'past' : ''}">
+      <span class="ntime">${evtTime(e)}</span>
+      <span class="nflag ${hi ? 'hi' : ''}">${e.country}</span>
+      <span class="nname">${e.event ?? '—'}${hi ? ' <b class="warn">HIGH</b>' : ''}</span>
+      <span class="nval">${e.actual != null ? `${e.actual}${e.estimate != null ? ` vs ${e.estimate}e` : ''} ${surprise}` : (e.estimate != null ? `${e.estimate}e` : '')}</span>
+    </div>${impact ? `<div class="nimpact">${impact}</div>` : ''}`;
+  }).join('');
+  const next = nextPairEvent(name);
+  box.innerHTML = (next && next.ms >= now ? `<div class="muted" style="margin-bottom:6px">Next: <b>${next.event}</b> at <b>${evtTime(next)}</b> (UK) — expect the range to widen around it.</div>` : '') + rows;
+  sec.style.display = 'block';
+}
+
+// Correlations, hedges & beta — reads the corr/beta engine (/api/hedge-alerts).
+// CONTEXT only: backward-looking, regime-dependent; a historical hedge can fail
+// in a real risk-off when correlations snap toward 1. Not a signal.
+function loadDrawerCorr(name) {
+  const sec = $('drCorrSec'), box = $('drCorr');
+  const ha = hedgeAlerts;
+  const key = corrKey(name);
+  if (!ha || (!ha.last_corr && !ha.last_betas)) {
+    box.innerHTML = `<span class="muted">Correlation history isn't built yet — it runs on Railway (5yr OANDA H4). Rebuild from the Positions/correlation tool.</span>`;
+    sec.style.display = 'block'; return;
+  }
+  // pull this instrument's correlations vs every other pair
+  const lc = ha.last_corr ?? {};
+  const partners = [];
+  for (const [k, v] of Object.entries(lc)) {
+    const [a, b] = k.split('_');
+    // corr keys join two CORR_PAIRS with '_', but some names themselves contain '_'
+    // (e.g. NAS100_USD) — match by prefix/suffix against our key.
+    let other = null;
+    if (k.startsWith(key + '_')) other = k.slice(key.length + 1);
+    else if (k.endsWith('_' + key)) other = k.slice(0, k.length - key.length - 1);
+    if (other != null) partners.push({ other, v });
+  }
+  const betas = (ha.last_betas ?? {})[key] ?? null;
+  if (!partners.length && !betas) {
+    box.innerHTML = `<span class="muted">No correlation data for ${dispName(name)} in the current build.</span>`;
+    sec.style.display = 'block'; return;
+  }
+  partners.sort((a, b) => b.v - a.v);
+  const withIt = partners.filter(p => p.v >= 0.3).slice(0, 3);
+  const against = partners.filter(p => p.v <= -0.3).slice(-3).reverse();
+  const chip = (p, cls) => `<span class="corrchip ${cls}" title="10-day rolling correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — moves ${p.v >= 0 ? 'WITH' : 'OPPOSITE'} ${dispCorr(p.other)}.">${dispCorr(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
+  const bLine = betas ? [
+    betas.dxy != null ? `<b>${betas.dxy >= 0 ? '+' : ''}${betas.dxy.toFixed(2)}β</b> to the US dollar` : null,
+    betas.rates != null ? `<b>${betas.rates >= 0 ? '+' : ''}${betas.rates.toFixed(2)}β</b> to rates` : null,
+    betas.vix != null ? `<b>${betas.vix >= 0 ? '+' : ''}${betas.vix.toFixed(2)}β</b> to risk (VIX)` : null,
+  ].filter(Boolean).join(' · ') : '';
+  box.innerHTML =
+    (withIt.length ? `<div class="corrline"><span class="clbl help" title="These move WITH this market over the last ~10 days — trading several together is really one bet, not diversification. Don't double up.">Moves with</span> ${withIt.map(p => chip(p, 'pos')).join(' ')}</div>` : '') +
+    (against.length ? `<div class="corrline"><span class="clbl help" title="These move OPPOSITE — a natural hedge. But correlations snap toward 1 in a real risk-off, so treat as a cushion, not a guarantee.">Natural hedge</span> ${against.map(p => chip(p, 'neg')).join(' ')}</div>` : '') +
+    (bLine ? `<div class="corrline"><span class="clbl help" title="Sensitivity (regression beta) of this market to each driver over the window. |β|>1 means it amplifies that driver; sign shows direction. What actually pushes this pair around.">Driven by</span> <span class="muted">${bLine}</span></div>` : '') +
+    `<div class="muted" style="font-size:10px;margin-top:6px">10-day rolling window${ha.generated ? ` · built ${new Date(ha.generated).toLocaleDateString('en-GB')}` : ''} · context only, not a signal.</div>`;
+  sec.style.display = 'block';
 }
 
 // Neutral rates-context reading (yield spread) — CONTEXT, not a direction call.
@@ -1901,9 +2116,25 @@ async function loadDrawerTde(name) {
   $('drTdeKv').innerHTML = '<span class="muted">loading…</span>';
   $('drZones').style.display = 'none';
   const pair = tdeKey(name);
-  const s = await jget(`/api/trade-decision/state/${pair}`);
+  let s = await jget(`/api/trade-decision/state/${pair}`);
   if (!s.ok) {
-    $('drTdeKv').innerHTML = `<span class="muted">${s.error ?? 'no snapshot'} — snapshots warm on Railway (TDE_PAIRS) or on the first live decide.</span>`;
+    // No warmed snapshot for this pair (not in TDE_PAIRS). Rather than a dead-end,
+    // warm one on demand, then re-read — turns "no snapshot yet" into a live panel.
+    $('drTdeKv').innerHTML = '<span class="muted">no snapshot — warming one…</span>';
+    try {
+      const w = await fetch('/api/trade-decision/refresh', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pair }),
+      }).then(x => x.json());
+      if (w?.pairs?.[pair]?.ok || w?.ok) s = await jget(`/api/trade-decision/state/${pair}`);
+      else if (w?.pairs?.[pair]?.error) throw new Error(w.pairs[pair].error);
+    } catch (e) {
+      $('drTdeKv').innerHTML = `<span class="muted">no snapshot, and warming failed (${e.message}). This engine may not cover ${dispName(name)} — it's tuned for FX. Snapshots also warm on Railway (TDE_PAIRS).</span>`;
+      return;
+    }
+  }
+  if (!s.ok) {
+    $('drTdeKv').innerHTML = `<span class="muted">${s.error ?? 'no snapshot'} — this engine may not cover ${dispName(name)} (it's tuned for FX). Snapshots warm on Railway (TDE_PAIRS) or on the first live decide.</span>`;
     return;
   }
   const pc = x => x == null ? '–' : (100 * x).toFixed(0) + '%';
