@@ -183,6 +183,37 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(bad.macro === null, 'malformed macro → null, not a silent wrong sign');
 }
 
+// ── credit socket: logged-but-inert candidate features (§7c) ─────────────────
+{
+  const z = snap.zones[0];
+  const req = { price: z.price, direction: 'long', action: 'fade' };
+  const rNone = decide(snap, req, { nowMs: NOW });
+  ok(rNone.features.credit_widening === 0 && rNone.features.credit_stress === 0 && rNone.features.credit_fade_in_stress === 0 && rNone.credit === null,
+    'no credit context → all credit features 0, credit null in response');
+
+  // widening + stressed credit context
+  const stressed = { ...snap, credit: { gate: 'RISK-OFF', widening: 1, wideningBps: 30, pct: 92, accel: 1, stressProb: 0.8, stale: false } };
+  const rStr = decide(stressed, req, { nowMs: NOW });
+  ok(Math.abs(rStr.features.credit_widening - 0.75) < 1e-9, 'wideningBps 30 → credit_widening 0.75');
+  ok(rStr.features.credit_stress === 0.8, 'stressProb 0.8 → credit_stress 0.8');
+  ok(rStr.features.credit_fade_in_stress === 0.8, 'fade under stress → credit_fade_in_stress = stressProb');
+  ok(rStr.credit && rStr.credit.gate === 'RISK-OFF' && rStr.credit.stressProb === 0.8, 'credit context surfaced in the response');
+
+  // THE SAFETY INVARIANT: credit is zero-weighted in v0 → identical probability
+  ok(rStr.probability === rNone.probability,
+    `credit is inert — same probability with/without credit context (${rNone.probability})`);
+
+  // a follow (not fade) → credit_fade_in_stress is 0
+  const rFollow = decide(stressed, { price: z.price, direction: 'short', action: 'follow' }, { nowMs: NOW });
+  ok(rFollow.features.credit_fade_in_stress === 0, 'credit_fade_in_stress only active on fades');
+
+  // buildSnapshot stamps only well-formed credit
+  const good = buildSnapshot({ pair: 'eurusd', dailyBars: syntheticBars('eurusd', 320, 7), credit: { gate: 'CAUTION', widening: 1, wideningBps: 12, pct: 60, stressProb: 0.4 }, nowMs: NOW });
+  ok(good.credit && good.credit.gate === 'CAUTION' && good.credit.stressProb === 0.4, 'well-formed credit stamped');
+  const badc = buildSnapshot({ pair: 'eurusd', dailyBars: syntheticBars('eurusd', 320, 7), credit: { widening: 1 }, nowMs: NOW });
+  ok(badc.credit === null, 'malformed credit (no gate) → null');
+}
+
 // ── intraday state: pure compute + features through decide ───────────────────
 {
   // hand-built session: open 1.0, ranges up to 1.010, down to 0.998, closes 1.008

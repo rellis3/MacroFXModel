@@ -56,6 +56,14 @@ export const INTRADAY_FEATURES = [
 // (and that fit is where the reversion→continuation lesson finally pays off).
 export const HTF_FEATURES = ['htf_align'];
 
+// CREDIT — corporate-spread (HY OAS) risk-appetite candidate features. The thesis
+// (credit widening leads equity vol / risk-off) is being falsified separately in
+// credit-leadlag.html; here the features are LOGGED-BUT-INERT (no v0 weight, like
+// macro_align/htf_align) so the §7c macro-verdict / backfill can judge them OOS.
+// All 0 when the snapshot has no credit context, so pre-credit rows are unchanged.
+// They only become live via a promoted fit — never a hand-set weight (§7c #3).
+export const CREDIT_FEATURES = ['credit_widening', 'credit_stress', 'credit_fade_in_stress'];
+
 // → +1 aligned / 0 neutral / −1 opposed
 export function macroState(riskSens, regime, direction) {
   if (!regime || regime === 'NEUTRAL' || !Number.isFinite(riskSens)) return 0;
@@ -223,6 +231,11 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
     intraday_range_exhausted_fade:    isFade && rangeUsed != null ? clamp01((rangeUsed - 1.0) / 0.5) : 0,
     intraday_fade_too_early:          isFade && rangeUsed != null ? clamp01((0.4 - rangeUsed) / 0.4) : 0,
     intraday_vwap_stretch_fade:       isFade && intra ? clamp01((Math.abs(intra.vwapDistSigma ?? 0) - 0.5) / 1.0) : 0,
+    // CREDIT (zero-weighted in v0 — see CREDIT_FEATURES): all 0 when no credit
+    // context, so pre-credit rows are unchanged. Fit decides any live weight.
+    credit_widening:        snapshot.credit && snapshot.credit.widening > 0 ? clamp01((snapshot.credit.wideningBps ?? 0) / 40) : 0,
+    credit_stress:          snapshot.credit && Number.isFinite(snapshot.credit.stressProb) ? clamp01(snapshot.credit.stressProb) : 0,
+    credit_fade_in_stress:  isFade && snapshot.credit && Number.isFinite(snapshot.credit.stressProb) ? clamp01(snapshot.credit.stressProb) : 0,
   };
 
   return { features, meta: { action, direction, stretch: +stretch.toFixed(3), phase, zoneAbove, intraday: intra ? { rangeUsed, posInRange: intra.posInRange ?? null, vwapDistSigma: intra.vwapDistSigma ?? null, source: request.intraday ? 'request' : 'snapshot' } : null } };
@@ -344,6 +357,11 @@ export function decide(snapshot, request = {}, opts = {}) {
     news_soon: gate.softNewsSoon, next_high_impact_min: gate.nextHighImpactMin,
     macro: snapshot.macro
       ? { regime: snapshot.macro.regime, align: features.macro_align, stale: snapshot.macro.stale === true }
+      : null,
+    // logged-but-inert (no v0 weight) — surfaced for the log + UI, does not move the score
+    credit: snapshot.credit
+      ? { gate: snapshot.credit.gate, wideningBps: snapshot.credit.wideningBps, pct: snapshot.credit.pct,
+          stressProb: snapshot.credit.stressProb != null ? +snapshot.credit.stressProb.toFixed(3) : null, stale: snapshot.credit.stale === true }
       : null,
     intraday: meta.intraday,
     htf_trend: snapshot.htfTrend ? (snapshot.htfTrend > 0 ? 'up' : 'down') : 'flat',

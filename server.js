@@ -45,6 +45,8 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES } from './js/macroCore.js';
+import { creditGate as _creditGateBrick } from './js/creditCore.js';
+import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -10236,7 +10238,7 @@ function tdeWarmSnapshot(pair) {
   let inflight = _tdeWarmInflight.get(pair);
   if (!inflight) {
     inflight = (async () => {
-      try { return { snap: await tdeRefreshPair(pair, { macro: await _tdeMacroFor(pair) }), refreshed: true }; }
+      try { return { snap: await tdeRefreshPair(pair, { macro: await _tdeMacroFor(pair), credit: await _tdeCreditContext() }), refreshed: true }; }
       catch (e) { return { snap: tdeGetState(pair), refreshed: false, error: e.message ?? String(e) }; }
       finally { _tdeWarmInflight.delete(pair); }
     })();
@@ -10314,13 +10316,74 @@ async function _tdeMacroFor(pair) {
   try { return _macroContext(pair, hist, Date.now()); } catch { return null; }
 }
 
+// Credit context for the TDE snapshot (market-wide HY-OAS gate; pair-INDEPENDENT,
+// so resolved ONCE and cached — the HMM EM is the only pricey bit). Reuses the HY
+// history the macro loop already loaded. LOGGED-BUT-INERT: it stamps
+// snapshot.credit → the credit_* candidate features, which carry NO v0 weight, so
+// live decisions are unchanged until a promoted fit earns them (§7c). Fail-neutral.
+let _tdeCreditCtx = null, _tdeCreditCtxAt = 0;
+async function _tdeCreditContext() {
+  if (_tdeCreditCtx !== null && Date.now() - _tdeCreditCtxAt < 10 * 60_000) return _tdeCreditCtx;
+  _tdeCreditCtxAt = Date.now();
+  try {
+    const hist = await _tdeMacroHistory();
+    const hy = (hist?.hy ?? []).map(o => o.value).filter(Number.isFinite);   // oldest→newest
+    if (hy.length < 30) { _tdeCreditCtx = null; return null; }
+    const g = _creditGateBrick(hy);                                          // gate + features
+    const reg = hy.length >= 60 ? _creditRegime(hy) : null;                  // HMM persistence
+    _tdeCreditCtx = g ? {
+      gate: g.gate, widening: g.widening, wideningBps: g.d5 ?? g.d1 ?? null, pct: g.pct ?? null,
+      accel: g.accel ?? 0, stressProb: reg?.curStressProb ?? null,
+      asOf: hist?.hy?.[hist.hy.length - 1]?.date ?? null, stale: false,
+    } : null;
+  } catch (e) {
+    console.warn('[trade-decision] credit context failed (fail-neutral):', e.message ?? e);
+    _tdeCreditCtx = null;
+  }
+  return _tdeCreditCtx;
+}
+
+// ── Telegram alert when the credit gate flips regime ─────────────────────────
+// Credit is the market's early-warning system; a flip (e.g. RISK-ON → CAUTION →
+// RISK-OFF, or back) is a "re-check your risk" event worth one push. Server-side,
+// gated by the same state.tg / state.cfg as the other alerts; cooldown 1h.
+let _lastCreditGate = null, _lastCreditAlertAt = 0;
+const CREDIT_ALERT_COOLDOWN_MS = 60 * 60_000;
+async function _creditFlipCheck() {
+  try {
+    const ctx = await _tdeCreditContext();
+    if (!ctx?.gate) return;
+    const prev = _lastCreditGate;
+    _lastCreditGate = ctx.gate;
+    if (!prev || prev === ctx.gate) return;                       // first read or no change
+    if (state.cfg?.enabled === false || !state.tg?.token || !state.tg?.chatId) return;
+    if (Date.now() - _lastCreditAlertAt < CREDIT_ALERT_COOLDOWN_MS) return;
+    const worse = ['RISK-ON', 'NEUTRAL', 'CAUTION', 'RISK-OFF'].indexOf(ctx.gate) > ['RISK-ON', 'NEUTRAL', 'CAUTION', 'RISK-OFF'].indexOf(prev);
+    const so = ctx.widening > 0
+      ? 'Spreads widening — credit stress can lead equity vol / risk-off. Headwind for NAS100/SPX; watch risk FX.'
+      : ctx.widening < 0 ? 'Spreads tightening — improving risk appetite, supportive for stocks.' : 'Credit direction has shifted.';
+    const msg = [
+      `${worse ? '🚨' : '🟢'} <b>Credit regime change</b>`,
+      `${prev} → <b>${ctx.gate}</b>`,
+      `HY OAS <b>${ctx.wideningBps != null ? (ctx.wideningBps >= 0 ? '+' : '') + ctx.wideningBps + 'bps/wk' : '—'}</b>${ctx.pct != null ? ` · P${ctx.pct}` : ''}${ctx.stressProb != null ? ` · stress ${(100 * ctx.stressProb).toFixed(0)}%` : ''}`,
+      so,
+      `<i>${new Date().toISOString().replace('T', ' ').substring(0, 16)} UTC · not yet OOS-validated</i>`,
+    ].join('\n');
+    const sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+    if (sent) _lastCreditAlertAt = Date.now();
+  } catch (e) { console.warn('[credit-alert] check failed:', e.message ?? e); }
+}
+if (process.env.FRED_KEY) {
+  setTimeout(() => { _creditFlipCheck(); setInterval(_creditFlipCheck, 30 * 60_000); }, 90_000);
+}
+
 // Slow-loop refresh (OANDA + Finnhub) — { pair } or { pairs: [...] }
 app.post('/api/trade-decision/refresh', express.json(), async (req, res) => {
   const pairs = req.body?.pairs ?? (req.body?.pair ? [req.body.pair] : TDE_DEFAULT_PAIRS);
   const out = {};
   for (const p of pairs) {
     try {
-      const s = await tdeRefreshPair(p, { macro: await _tdeMacroFor(p) });
+      const s = await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext() });
       out[p] = { ok: true, builtAt: s.builtAt, zones: s.zones.length, regime: s.regime,
                  macro: s.macro ? { regime: s.macro.regime, stale: s.macro.stale } : null };
     }
@@ -10350,7 +10413,7 @@ if (process.env.TDE_PAIRS) {
     if (_tdeLoopBusy) return;
     _tdeLoopBusy = true;
     for (const p of tdePairs) {
-      try { await tdeRefreshPair(p, { macro: await _tdeMacroFor(p) }); }
+      try { await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext() }); }
       catch (e) { console.log(`[trade-decision] refresh ${p} failed: ${e.message ?? e}`); }
     }
     _tdeLoopBusy = false;
