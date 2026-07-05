@@ -323,7 +323,7 @@ function ok(name, cond) { if (cond) { pass++; } else { fail++; console.error('  
   ok('projGate emits days', g.nDays > 5);
   ok('projGate morning tracking predicts afternoon', g.earlyLatePersistence > 0.3);
   ok('projGate high-early → better late tracking', g.gate.highEarly.meanLateCorr > g.gate.lowEarly.meanLateCorr);
-  ok('projGate follow-rate computed on gated days', Number.isFinite(g.gate.highEarly.followRate) && g.gate.highEarly.n > 0);
+  ok('projGate follow-rate computed on gated days', Number.isFinite(g.gate.highEarly.followRate) && g.gate.highEarly.days > 0);
 }
 
 console.log(`yieldCouplingCore: ${pass} passed, ${fail} failed`);
