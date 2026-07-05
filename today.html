@@ -445,7 +445,27 @@ async function loadGate() {
   if (ct?.instruments) cot = Object.fromEntries(ct.instruments.map(i => [i.sym, i]));
   if (oi && !oi.miss) oiStore = oi.data ?? oi;
   if (wk?.ok && wk.instruments) weekly = wk;
+  getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   renderGate(); renderNewsPlay(); renderSummary(); render();
+}
+
+// ── Credit gate — corporate-spread risk appetite, the market's early warning ──
+// Delegates to the shared brick js/creditCore.js (loaded as a module → window.creditBrick)
+// so the dashboard, the backtest and any bot share ONE definition. Returns the same
+// field names the rest of the page already uses; null until the brick has loaded.
+function creditGate() {
+  if (!fred || !window.creditBrick) return null;
+  const hist = (fredHist?.hy ?? []).map(o => o.value).filter(v => v != null);   // oldest→newest
+  const f = window.creditBrick.creditGate(hist, {
+    nowValue:  fred.hy?.value,   prevValue: fred.hy?.prev,
+    cccNow:    fred.hy_ccc?.value, cccPrev: fred.hy_ccc?.prev,
+    bbNow:     fred.hy_bb?.value,  bbPrev:  fred.hy_bb?.prev,
+  });
+  if (!f) return null;
+  return { hyNow: f.level, hyBps: f.levelBps, pct: f.pct, d1: f.d1, d5: f.d5,
+    accel: f.accel, daysInRegime: f.daysInRegime, aboveAvg: f.aboveAvg,
+    qNow: f.quality, qDir: f.qualityDir, wideningBps: f.wideningBps,
+    widening: f.widening, gate: f.gate, cls: f.cls, stressedLvl: f.stressedLvl };
 }
 
 // ── Today's news playbook — what happens if it beats / matches / misses ──────
@@ -826,12 +846,17 @@ function equitiesRisk(rs) {
   const strOf = c => cs.find(x => x.ccy === c)?.score ?? 0;
   const haven = (strOf('JPY') + strOf('CHF')) / 2 + (goldSig ?? 0) * 0.5;
   const equity = idx.length ? (up - dn) / idx.length : 0;
+  // Credit is a leading risk gate — widening/accelerating = stress ahead; tightening = all-clear.
+  const cg = creditGate();
+  const creditStress = cg ? (cg.gate === 'RISK-OFF' ? 1 : cg.gate === 'CAUTION' ? 0.5 : 0) : 0;
+  const creditEase   = cg && cg.gate === 'RISK-ON' ? 1 : 0;
   let tone, cls;
-  const volStress = (vix != null && vix > 22) || (hy != null && hy > 4.3);
-  if (equity <= -0.34 && (haven > 0.05 || volStress)) { tone = 'RISK-OFF'; cls = 'off'; }
-  else if (equity >= 0.34 && haven < 0.1 && !volStress) { tone = 'RISK-ON'; cls = 'on'; }
+  const volStress = (vix != null && vix > 22) || (hy != null && hy > 4.3) || creditStress >= 1;
+  if (equity <= -0.34 && (haven > 0.05 || volStress || creditStress >= 1)) { tone = 'RISK-OFF'; cls = 'off'; }
+  else if (equity >= 0.34 && haven < 0.1 && !volStress && creditStress === 0) { tone = 'RISK-ON'; cls = 'on'; }
+  else if (creditStress >= 1 && equity < 0.34) { tone = 'CAUTION (credit widening)'; cls = 'mix'; }
   else { tone = 'MIXED / two-way'; cls = 'mix'; }
-  return { chips, up, dn, tone, cls, goldSig, vix, hy, equity, haven };
+  return { chips, up, dn, tone, cls, goldSig, vix, hy, equity, haven, credit: cg };
 }
 function pairSignalGold(r) {
   const g = r.d.regime;
@@ -940,6 +965,7 @@ function renderMarketRead() {
         <div class="eqgrid">${eqChips}${goldChip}</div>
         <div class="riskverdict">Mood: <b class="tone ${risk.cls}" style="font-weight:800">${riskPlain(risk.cls)}</b>
           ${risk.vix != null ? `<span class="muted"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${risk.vix > 20 ? ' — jittery' : ' — calm'}</span>` : ''}</div>
+        ${risk.credit ? `<div class="riskverdict" style="margin-top:3px" title="Corporate bond spreads lead equity stress. Widening = warning for stocks; tightening = supportive.">Credit: <b class="tone ${risk.credit.cls}" style="font-weight:800">${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}</b><span class="muted"> · HY ${risk.credit.hyBps}bps${risk.credit.pct != null ? ` (P${risk.credit.pct})` : ''}${risk.credit.d5 != null ? ` · ${risk.credit.d5 >= 0 ? '+' : ''}${risk.credit.d5}bps/wk` : ''} — ${risk.credit.widening > 0 ? 'headwind for stocks' : risk.credit.widening < 0 ? 'supportive' : 'neutral'}</span></div>` : ''}
       </div>
     </div>
     <div class="mread-watch">
@@ -1052,6 +1078,23 @@ function buildMacro() {
       ? `Calm like this, investors reach for higher returns — that tends to <b>help the growth / commodity currencies (Aussie, Kiwi, and the Canadian dollar)</b> and <b>weigh on the safe-havens (yen, franc, gold)</b>. If the mood flips nervous, expect the reverse.`
       : `Nervy like this, money runs for safety — that <b>favours the safe-havens (yen, Swiss franc, gold)</b> and <b>hurts the riskier Aussie, Kiwi and stocks</b>. Trade lighter until it settles.`;
     threads.push({ ic: '🌡️', t: 'The market mood', body, so });
+  }
+
+  // 3b) Credit spreads — the bond market's early-warning system (risk appetite)
+  const cg = creditGate();
+  if (cg) {
+    const dirWord = cg.widening > 0 ? 'widening' : cg.widening < 0 ? 'tightening' : 'flat';
+    const lvlWord = cg.pct != null ? (cg.pct >= 80 ? 'historically high' : cg.pct <= 25 ? 'historically low (tight)' : 'around its normal range') : (cg.hyNow > 4.5 ? 'elevated' : 'contained');
+    let body = `Corporate bond investors are the market's early-warning system — they carry the downside of a bad economy, so they get nervous <b>before</b> stocks do. The extra yield they demand over government bonds (the “spread”) is <b>${cg.hyBps} bps</b>, ${lvlWord}`;
+    body += cg.pct != null ? ` (${cg.pct}th percentile of the last few months). ` : '. ';
+    body += `It has been <b>${dirWord}</b>${cg.d5 != null ? ` (${cg.d5 >= 0 ? '+' : ''}${cg.d5} bps over ~a week)` : ''}${cg.widening > 0 && cg.accel > 0 ? ' and the move is <b>speeding up</b>' : cg.widening < 0 && cg.accel < 0 ? ' and easing quickly' : ''}.`;
+    if (cg.qNow != null) body += ` The riskiest borrowers (CCC-rated) are being treated ${cg.qDir > 0 ? '<b>more</b> harshly' : cg.qDir < 0 ? '<b>less</b> harshly' : 'about the same'} vs safer high-yield — the sharpest read on risk appetite.`;
+    const so = cg.widening > 0
+      ? `Spreads widening is a <b>warning</b>: credit stress often <b>leads equity volatility and risk-off moves</b>. Headwind for <b>NAS100 / SPX500</b>, and it tends to <b>weigh on EUR/USD</b> (a risk proxy) while helping the safe-haven yen, franc and gold.`
+      : cg.widening < 0
+      ? `Spreads tightening means <b>improving risk appetite</b> — supportive for <b>NAS100 / SPX500</b> and, at the margin, for <b>EUR/USD</b> and the growth currencies. The all-clear, until it turns.`
+      : `Spreads are steady — no fresh signal from credit today; it's neither confirming nor warning.`;
+    threads.push({ ic: '🚨', t: 'Credit spreads — the early warning', body, so });
   }
 
   // 4) Yield curve — recession/rate-cut signal
@@ -1869,6 +1912,13 @@ setInterval(async () => {           // live session + brief refresh (prices/regi
   } catch (e) {}
 }, 60_000);
 setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) forecast = f; }).catch(() => {}); }, 5 * 60_000);
+</script>
+<!-- Import the shared credit brick (one definition, per LEGO_MODULES.md) and expose
+     it to the inline script; re-render once it's available. -->
+<script type="module">
+  import * as CreditCore from './js/creditCore.js';
+  window.creditBrick = CreditCore;
+  try { window.render?.(); } catch (e) {}
 </script>
 </body>
 </html>
