@@ -328,6 +328,11 @@
     <div class="story" id="drStory"><span class="muted">loading…</span></div>
   </div>
 
+  <div class="dr-sec" id="drRatesSec" style="display:none">
+    <h3 class="help" title="How the DE–US yield spread relates to this pair right now. CONTEXT only — measured over 22yr, the yield confirms moves but does NOT forecast direction. Use it to gauge whether the current move is rates-backed, not to pick a direction.">Rates context (yield spread)</h3>
+    <div id="drRates"><span class="muted">loading…</span></div>
+  </div>
+
   <div class="dr-sec">
     <h3>Today vs forecast — M5 <span class="muted" id="drChartNote"></span></h3>
     <div id="drChart"></div>
@@ -1562,6 +1567,29 @@ async function openDrawer(name) {
   loadDrawerStory(r, barsP).catch(e => { $('drStory').innerHTML = `<span class="muted">story unavailable: ${e.message}</span>`; });
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
   loadDrawerLevels(name, d.sym).catch(() => {});
+  loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
+}
+
+// Neutral rates-context reading (yield spread) — CONTEXT, not a direction call.
+async function loadDrawerRates(sym) {
+  const sec = $('drRatesSec'), box = $('drRates');
+  const j = await jget(`/api/yield-context?symbol=${encodeURIComponent(sym)}`).catch(e => ({ available: false, reason: e.message }));
+  if (!j || !j.available) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const M = {
+    confirmed: { cls: 'bull', label: '✅ RATES-BACKED', txt: 'this move is corroborated by the yield spread — higher conviction' },
+    divergent: { cls: 'warn', label: '⚠️ DIVERGENT', txt: 'price is running against rates — move is unconfirmed (direction not predicted)' },
+    decoupled: { cls: 'neu', label: '➖ DECOUPLED', txt: 'rates aren\'t driving price right now — yield is uninformative' },
+  };
+  const m = M[j.state] || M.decoupled;
+  const pctl = j.spreadPercentile != null ? `${j.spreadPercentile}th pctile of its recent range` : '';
+  box.innerHTML =
+    `<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:7px">
+       <span class="chip ${m.cls}">${m.label}</span>
+       <span class="muted">${j.session || ''} session · coupling ${j.regimeCorr != null ? j.regimeCorr.toFixed(2) : '–'}</span>
+     </div>
+     <div style="font-size:13px;line-height:1.5;color:var(--text2)">${m.txt}.</div>
+     <div class="muted" style="margin-top:6px;font-size:12px">${j.label}${pctl ? ' · ' + pctl : ''}${j.partial ? ' · US-leg only' : ''}. <b>Context, not a direction call</b> — the yield confirms moves, it doesn't forecast them.</div>`;
 }
 
 async function loadDrawerChart(r, barsP) {

@@ -42,6 +42,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
+import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES } from './js/macroCore.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
@@ -3775,6 +3776,47 @@ app.get('/api/yield-coupling-real', async (req, res) => {
   }
 });
 
+// ── /api/yield-context — the neutral daily-brief "rates context" reading ─────
+// Lightweight, per-pair: current coupling regime (rates-backed / divergent /
+// decoupled), session, and where the spread sits in its recent range. CONTEXT
+// only — no direction call (the measured conclusion: yield is confirmation, not
+// a forecast). Reuses the M5 fetch + couplingState. Fast + cached.
+const _ycCtxCache = new Map();
+app.get('/api/yield-context', async (req, res) => {
+  const symbol = (req.query.symbol || '').replace('_', '/').toUpperCase();
+  const spec = YIELD_COUPLING_LEGS[symbol];
+  if (!spec) return res.json({ available: false, reason: `no yield spread for ${symbol}` });
+  if (!process.env.OANDA_KEY) return res.json({ available: false, reason: 'OANDA not configured' });
+  const cached = _ycCtxCache.get(symbol);
+  if (cached && Date.now() - cached.ts < 60_000) return res.json(cached.data);
+  const s = spec[0];                                     // primary (full) spread
+  try {
+    const fxInstrument = _liqGateOandaSym(symbol.replace('/', '_'));
+    const insts = [fxInstrument, ...s.legs.map(l => l.inst)];
+    const series = {};
+    await Promise.all(insts.map(async inst => { try { series[inst] = await _fetchCouplingCandles(inst, 'M5', 500); } catch { series[inst] = null; } }));
+    const price = series[fxInstrument];
+    if (!price || !price.length || s.legs.some(l => !series[l.inst]?.length)) return res.json({ available: false, reason: 'rate data unavailable' });
+    const { times, columns } = alignByTime([price, ...s.legs.map(l => series[l.inst])]);
+    if (times.length < 80) return res.json({ available: false, reason: 'thin data' });
+    const spread = buildSpread(s.legs.map((l, i) => ({ price: columns[i + 1], k: l.k })));
+    const st = couplingState(columns[0], spread, times, { corrWindow: 60 });
+    const finite = spread.filter(Number.isFinite);
+    const sorted = [...finite].sort((a, b) => a - b);
+    const cur = finite[finite.length - 1];
+    const pctile = sorted.length ? Math.round(sorted.filter(x => x <= cur).length / sorted.length * 100) : null;
+    const data = {
+      available: true, symbol, tenor: s.tenor, label: s.label, partial: !!s.partial,
+      state: st.state, session: st.session, regimeCorr: st.regimeCorr,
+      spreadPercentile: pctile, note: st.note,
+    };
+    _ycCtxCache.set(symbol, { data, ts: Date.now() });
+    res.json(data);
+  } catch (err) {
+    res.json({ available: false, reason: err.message });
+  }
+});
+
 // ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
 app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
@@ -4852,6 +4894,27 @@ app.get('/api/volatility-bot/session-m1/:pair', async (req, res) => {
     res.json({ ok: true, pair, oanda, bars });
   } catch (e) {
     // OANDA unreachable (403 in sandbox) / any fetch failure — graceful, not a 500 crash.
+    res.status(502).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+// ── Forecast drift — PLAN forecaster (bot lines) vs REFERENCE (/api/vol-forecast) ──
+// Measures whether the volatility bot's entry lines (frozen volSigmaSeries + forecastCore
+// corrections) sit systematically inside/outside the dashboard's reference forecaster
+// (recalibrated YZ/GARCH). Answers "is the forecaster funky?" with a number per pair
+// instead of eyeballing one chart. Live D1 → 502 in the sandbox (OANDA 403), fine on Railway.
+app.get('/api/forecast-drift/:pair', async (req, res) => {
+  const pair = String(req.params.pair || '').toLowerCase();
+  try {
+    let oanda;
+    try { oanda = instrument(pair)?.oanda; } catch { /* unknown pair */ }
+    if (!oanda) return res.status(404).json({ ok: false, error: `unknown pair "${pair}" — no OANDA symbol` });
+    const bars = await _btFetchD1(oanda, 400);
+    if (!bars?.length || bars.length < 60)
+      return res.status(502).json({ ok: false, error: `insufficient D1 bars for ${pair} (${bars?.length ?? 0})` });
+    const assetClass = _assetClassFor(pair);
+    res.json({ ok: true, pair, oanda, ..._compareForecastLines(bars, assetClass) });
+  } catch (e) {
     res.status(502).json({ ok: false, error: e.message || String(e) });
   }
 });

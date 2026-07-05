@@ -32,6 +32,10 @@ def test_decide_fires_fade_on_spike_touch():
     assert s["line"] == "HL50_up" and s["decision"] == "fade" and s["side"] == "sell"
     assert s["bucket"] == "3·spike"
     assert s["tp"] < s["entry"] < s["sl"]           # fade an up-line: TP toward open, SL away
+    # Line attribution (explains WHY the entry sits where it does): HL is a DYNAMIC line
+    # off the running extreme, so the audit/spec carry its kind + level + anchor.
+    assert s["kind"] == "HL(dynamic)" and "level" in s and "anchor" in s
+    assert tr.audit["HL50_up"]["kind"] == "HL(dynamic)"
 
 
 def test_decide_dedups_per_session():

@@ -55,8 +55,14 @@ SESSION_LEN_SEC = 22 * 3600      # London midnight → 22:00 close (the book's s
 DEFAULT_CFG = {
     "kill_switch": False,          # hard stop — no new entries
     "paper_mode": True,            # flip to live from the config page
-    "risk_pct": 0.5,               # % of balance risked per trade
-    "max_lot": 2.0,
+    "risk_pct": 0.5,               # % of balance risked per trade (global default)
+    "max_lot": 2.0,                # lot cap (global default)
+    # Per-asset-class OVERRIDES ({fx,index,commodity}) so a high-$/point instrument
+    # (e.g. gold) can be sized down independently of FX without touching the globals.
+    # Blank / 0 / missing class → falls back to the global scalar above. Editable on the
+    # config page and re-read every status_secs, so it changes size on the fly.
+    "risk_pct_by_class": {},
+    "max_lot_by_class": {},
     "max_open": 12,                # cap concurrent positions
     # Three DECOUPLED cadences (see run()): σ/fractions/open only change once per
     # session, so the plan is pulled slowly; config/status on a medium timer; the
@@ -149,6 +155,36 @@ def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot
     except Exception:
         pip, pv = 0.0001, 10.0
     return position_size(balance, risk_pct, abs(sl_dist), pip=pip, pip_value=pv, max_lot=max_lot)
+
+
+def size_params(pair: str, cfg: dict):
+    """Resolve (risk_pct, max_lot) for a pair, honouring per-asset-class overrides.
+
+    ``risk_pct_by_class`` / ``max_lot_by_class`` are ``{fx,index,commodity}`` maps from
+    the config page; a present, non-zero entry for the pair's class WINS, otherwise we
+    fall back to the global ``risk_pct`` / ``max_lot`` scalar. This lets gold (commodity)
+    be dialled down without shrinking FX — the fix for one instrument carrying a week —
+    and, because the config is re-read every ``status_secs``, it takes effect on the fly.
+    """
+    try:
+        ac = I.asset_class(pair)
+    except Exception:
+        ac = "fx"
+
+    def _override(m):
+        if isinstance(m, dict):
+            v = m.get(ac)
+            try:
+                v = float(v)
+            except (TypeError, ValueError):
+                return None
+            return v if v > 0 else None          # blank / 0 → use the global
+        return None
+
+    rp = _override(cfg.get("risk_pct_by_class"))
+    ml = _override(cfg.get("max_lot_by_class"))
+    return (rp if rp is not None else float(cfg.get("risk_pct", 0.5)),
+            ml if ml is not None else float(cfg.get("max_lot", 2.0)))
 
 
 def _pair_event_ccys(pair: str) -> list[str]:
@@ -422,8 +458,8 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
                 bal = broker.account_balance() or 0.0
                 for spec in decide(pp, plan.get("policy", {}), tr, px, blackout=bl_reason,
                                    min_expectancy=ride_gate):
-                    lots = size_for(pair, bal, cfg.get("risk_pct", 0.5),
-                                    spec["entry"] - spec["sl"], cfg.get("max_lot", 2.0))
+                    rp, ml = size_params(pair, cfg)          # per-asset-class risk/lot override
+                    lots = size_for(pair, bal, rp, spec["entry"] - spec["sl"], ml)
                     direction = "LONG" if spec["side"] == "buy" else "SHORT"
                     # ride: NO take-profit — the trailing stop is the only profit exit.
                     tp = 0 if ride_mode else spec["tp"]
