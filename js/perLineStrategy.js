@@ -213,9 +213,18 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
       // Adverse excursion (intratrade MAE, % of price) for the chosen decision:
       // a fade is hurt by CONTINUATION (extPct toward its stop); a follow by REVERSION.
       const maePct = Math.abs((p.decision === 'fade' ? t.extPct : t.retracePct) ?? 0);
-      trades.push({ date: t.date, pnl,
-        entryTime: t.fillTime, exitTime: t.exitTime ?? t.fillTime,
-        maeTime: p.decision === 'fade' ? (t.extTime ?? t.fillTime) : t.fillTime, maePct });
+      // Defensive timing floor (mirrors the analyser fix) so a book built from OLDER stored
+      // records — where a same-bar barrier resolution left exitTime == fillTime — still
+      // yields a non-degenerate MTM path instead of collapsing to zero duration. Epoch-sec
+      // M1 ⇒ a 60s minimum hold; the MAE is placed mid-window when its own time is degenerate.
+      const entryTime = t.fillTime;
+      let exitTime = t.exitTime ?? t.fillTime;
+      if (typeof entryTime === 'number' && (typeof exitTime !== 'number' || exitTime <= entryTime)) exitTime = entryTime + 60;
+      let maeTime = p.decision === 'fade' ? (t.extTime ?? t.fillTime) : t.fillTime;
+      if (typeof entryTime === 'number' && !(typeof maeTime === 'number' && maeTime > entryTime && maeTime < exitTime)) {
+        maeTime = entryTime + (exitTime - entryTime) / 2;
+      }
+      trades.push({ date: t.date, pnl, entryTime, exitTime, maeTime, maePct });
       // Full trade geometry for the log + the (Phase 2) M1 chart drill-down.
       const tp = p.decision === 'fade' ? t.innerLvl : t.outerLvl;
       const sl = p.decision === 'fade' ? t.outerLvl : t.innerLvl;
@@ -296,6 +305,7 @@ export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMa
     pairs: keep, count: keep.length, total: all.length,
     excluded: excluded.sort((a, b) => a.expectancy - b.expectancy),
     nTrades: survTrades.length, equity,
+    concentration: concentrationStats(keep, pnlByPair, perPair),
     portfolio: withMtmDD({ ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 }, survIdd),
     // Standard backtest battery on the survivor trades — the SAME metricsCore/backtestStats
     // method every other system in the repo reports through (one equity curve, per-trade
@@ -331,6 +341,51 @@ export function withMtmDD(port, idd) {
       maxDDClosed: vt.maxDD, calmarClosed: vt.calmar,   // the closed daily-net lower bound
       maxDDMtm, calmarMtm,                              // PRIMARY (mark-to-market) — null when data stale
     },
+  };
+}
+
+// Concentration & correlation of the live book — quantifies WHY the standard per-trade
+// Sharpe overstates and why "N pairs profitable" breadth is partly illusory. Correlated
+// pairs that fire together (e.g. the USD complex) are one bet split many ways, and one
+// instrument (e.g. gold) can carry the drawdown. Returns the average pairwise correlation
+// of daily PnL, the effective number of INDEPENDENT bets (N / (1+(N-1)·avgCorr)), and the
+// gross-PnL share of the single biggest / top-3 pairs. Pure, unit-testable.
+export function concentrationStats(pairs, pnlByPair, perPair) {
+  const N = pairs.length;
+  if (N < 2) return null;
+  // Daily-summed PnL per pair on the union calendar (0 on non-trading days — a day one
+  // pair fires and another sits out is genuine co-movement information, not missing data).
+  const perDay = pairs.map(p => {
+    const m = new Map();
+    for (const t of pnlByPair[p] || []) m.set(t.date, (m.get(t.date) || 0) + t.pnl);
+    return m;
+  });
+  const dates = [...new Set(pairs.flatMap(p => (pnlByPair[p] || []).map(t => t.date)))].sort();
+  if (dates.length < 3) return null;
+  const vecs = perDay.map(m => dates.map(d => m.get(d) || 0));
+  const corr = (a, b) => {
+    const n = a.length; let sa = 0, sb = 0;
+    for (let i = 0; i < n; i++) { sa += a[i]; sb += b[i]; }
+    const ma = sa / n, mb = sb / n; let num = 0, va = 0, vb = 0;
+    for (let i = 0; i < n; i++) { const da = a[i] - ma, db = b[i] - mb; num += da * db; va += da * da; vb += db * db; }
+    return (va > 0 && vb > 0) ? num / Math.sqrt(va * vb) : 0;
+  };
+  let sum = 0, cnt = 0;
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) { sum += corr(vecs[i], vecs[j]); cnt++; }
+  const avgCorr = cnt ? sum / cnt : 0;
+  // Effective independent bets: with average correlation ρ, N correlated series carry the
+  // risk of N/(1+(N-1)ρ) independent ones (=1 when ρ=1, =N when ρ=0). Clamp ρ≥0 for the count.
+  const rho = Math.max(0, avgCorr);
+  const nEff = N / (1 + (N - 1) * rho);
+  // Concentration of gross PnL — how much one/three instruments carry (the gold problem).
+  const rows = pairs.map(p => ({ pair: p, gross: Math.abs(perPair[p]?.totalPnl ?? 0) })).sort((a, b) => b.gross - a.gross);
+  const gross = rows.reduce((s, r) => s + r.gross, 0) || 1;
+  return {
+    pairs: N,
+    avgCorr: +avgCorr.toFixed(3),
+    nEff: +nEff.toFixed(1),
+    topPair: rows[0].pair, topPairSharePct: +(rows[0].gross / gross * 100).toFixed(1),
+    top3SharePct: +(rows.slice(0, 3).reduce((s, r) => s + r.gross, 0) / gross * 100).toFixed(1),
   };
 }
 

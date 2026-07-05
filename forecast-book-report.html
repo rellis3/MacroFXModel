@@ -207,6 +207,8 @@ function render(b){
   correlated instruments count as one day's risk — not thousands of independent bets. Return and drawdown are
   shown at a fixed ${svt.target||10}% annualised volatility so they are leverage-honest and comparable.
   Full-book (all OOS-profitable instruments) Sharpe for reference: <b>${fmt(pf.sharpe,2)}</b>.</div>
+  ${sv.concentration?`<div class="note warn"><b>Concentration &amp; correlation — read this before trusting the breadth.</b>
+  The live universe carries only about <b>${fmt(sv.concentration.nEff,1)} effective independent bets</b> from its ${sv.concentration.pairs} pairs (average pairwise daily-PnL correlation <b>${fmt(sv.concentration.avgCorr,2)}</b>): the pairs that fire together — the USD complex especially — move as one, so "${sv.count}/${sv.total} instruments profitable" overstates the real diversification, and the standard §2 per-trade Sharpe (which assumes independence) is inflated for the same reason. The single biggest instrument is <b>${(sv.concentration.topPair||'').toUpperCase()} at ${fmt(sv.concentration.topPairSharePct,0)}%</b> of gross PnL (top&nbsp;3 = ${fmt(sv.concentration.top3SharePct,0)}%) — a reminder that one market (e.g. gold) can drive a week's drawdown even while the breadth statistic looks safe. Size against the effective bet count, not the raw pair count.</div>`:''}
 
   <div class="note warn"><b>Returns &amp; drawdown basis — Ann. return &amp; Max DD as % of starting capital.</b>
   Both are read off <b>one compounded equity curve</b>, so Calmar is a like-for-like ratio:

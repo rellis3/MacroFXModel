@@ -265,6 +265,23 @@ export function analyseWindow(session, ladder, ctx = {}) {
         }
       }
       if (exitTime == null) exitTime = bars[n - 1]?.time ?? firstTouchTime;   // close-fallback exit
+      // Timing floor for the intraday mark-to-market drawdown: the barrier walk starts AT
+      // the touch bar, so a barrier that resolves on that same bar gives exitTime ==
+      // firstTouchTime (a zero holding span). That collapses the trade's adverse excursion
+      // out of the MTM path and, in bulk, trips the "too many zero-duration trades" gate so
+      // the whole concurrency-aware drawdown reads n/a. The sub-bar path within one M1 bar
+      // is unknown, so assign a one-bar minimum holding period (the exit happened somewhere
+      // after the touch inside that bar) and place the MAE strictly inside the window. This
+      // changes ONLY the timing fields — outcome / retracePct / extPct are untouched.
+      if (typeof firstTouchTime === 'number' && typeof exitTime === 'number' && exitTime <= firstTouchTime) {
+        const dt = (typeof bars[1]?.time === 'number' && typeof bars[0]?.time === 'number')
+          ? Math.max(1, bars[1].time - bars[0].time) : 60;   // bar interval (epoch-sec M1 ⇒ 60)
+        exitTime = firstTouchTime + dt;
+      }
+      if (typeof firstTouchTime === 'number' && typeof exitTime === 'number' &&
+          !(typeof extTime === 'number' && extTime > firstTouchTime && extTime < exitTime)) {
+        extTime = firstTouchTime + (exitTime - firstTouchTime) / 2;   // MAE mid-window when its time is degenerate
+      }
       if (outcome === 'undecided') {
         outcome = isUp ? (closePx > touchLvl ? 'continued' : 'reverted')
                        : (closePx < touchLvl ? 'continued' : 'reverted');
