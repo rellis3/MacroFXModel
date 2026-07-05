@@ -189,10 +189,12 @@
   .pcard.prox{animation:proxpulse 1.6s infinite}
 
   /* story section (zoom 2) */
-  .story{display:flex;flex-direction:column;gap:7px}
-  .story .srow{display:flex;gap:10px;align-items:baseline;font-size:12.5px;line-height:1.45}
-  .story .sk{flex:0 0 58px;font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding-top:2px}
-  .story .sv{color:var(--text2)} .story .sv b{color:var(--text)}
+  .story{display:flex;flex-direction:column;gap:12px}
+  .story .srow{font-size:13px;line-height:1.5}
+  .story .sk{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:2px;letter-spacing:.01em}
+  .story .sk .ic{font-size:13px;filter:saturate(.85)}
+  .story .sv{color:var(--text2);padding-left:23px;border-left:2px solid var(--border);margin-left:6px}
+  .story .sv b{color:var(--text);font-weight:600}
 
   /* Range-used meter */
   .meter-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);margin-bottom:3px}
@@ -2084,13 +2086,35 @@ async function loadDrawerStory(r, barsP) {
     options: "What the options market implies — magnet levels (max pain, walls) and whether price is likely to stick here (PIN) or break out.",
     ai:      "The last full AI analysis you ran for this pair — its overall call and a one-line summary. Run 'Analyse' on the main dashboard to refresh it.",
   };
+  const KEY_LABEL = {
+    today:   ['📊', 'Today so far'],
+    vol:     ['🌊', 'How jumpy it is'],
+    asia:    ['🌏', 'Overnight (Asia)'],
+    recent:  ['📅', 'The last few days'],
+    driver:  ['🏦', "What's driving it"],
+    posn:    ['👥', 'The crowd (positioning)'],
+    options: ['🎯', 'Options market'],
+    ai:      ['🧠', 'AI read'],
+  };
   const put = lines => {
-    el.innerHTML = lines.filter(l => l && l[1]).map(([k, v]) => `<div class="srow"><span class="sk help" title="${KEY_TIP[k] ?? ''}">${k}</span><span class="sv">${v}</span></div>`).join('') || '<span class="muted">no story data available</span>';
+    el.innerHTML = lines.filter(l => l && l[1]).map(([k, v]) => {
+      const [ic, lbl] = KEY_LABEL[k] ?? ['•', k];
+      return `<div class="srow"><div class="sk help" title="${KEY_TIP[k] ?? ''}"><span class="ic">${ic}</span>${lbl}</div><div class="sv">${v}</div></div>`;
+    }).join('') || '<span class="muted">no story data available</span>';
   };
   // Fast lines first (already-loaded data), slow lines fill in after
   const lines = [
-    ['today', r.s ? `<b>${r.s.bias_detail ?? r.s.bias ?? ''}</b>${r.s.outlook ? ` — ${r.s.outlook}` : ''}` : null],
-    ['vol', r.fc ? `σ ${fmtN(r.fc.vol_annual, 1)}% (P${r.d.vol_pct ?? '–'})${r.fc.cone_5d != null && r.fc.vol_annual != null ? `, 5-day cone ${r.fc.cone_5d > r.fc.vol_annual ? 'above spot vol — pressure building' : 'below spot vol — cooling'}` : ''}${r.fc.vol_vov_label && r.fc.vol_vov_label !== 'normal' ? ` · vol-of-vol ${r.fc.vol_vov_label}` : ''}` : null],
+    ['today', r.s ? `${/bull/i.test(r.s.bias_detail ?? '') ? 'Leaning <b>up</b>' : /bear/i.test(r.s.bias_detail ?? '') ? 'Leaning <b>down</b>' : 'No clear lean'} so far — <b>${r.s.bias_detail ?? r.s.bias ?? ''}</b>.${r.s.outlook ? ` ${r.s.outlook}` : ''}` : null],
+    ['vol', r.fc ? (() => {
+      const p = r.d.vol_pct;
+      const size = p == null ? 'about average' : p >= 80 ? '<b>unusually big</b>' : p >= 60 ? 'a bit bigger than usual' : p <= 20 ? '<b>unusually quiet</b>' : p <= 40 ? 'a bit calmer than usual' : 'about average';
+      const cmp  = p == null ? '' : p >= 50 ? ` — jumpier than ${p}% of its recent days` : ` — calmer than ${100 - p}% of its recent days`;
+      const cone = (r.fc.cone_5d != null && r.fc.vol_annual != null)
+        ? (r.fc.cone_5d > r.fc.vol_annual ? ' Pressure is <b>building</b> — moves may get bigger over the next few days.' : ' Looks to be <b>cooling off</b> from here.')
+        : '';
+      const vov = (r.fc.vol_vov_label && r.fc.vol_vov_label !== 'normal') ? ` (swings themselves are ${r.fc.vol_vov_label}).` : '';
+      return `Swings are ${size} today${cmp}.${cone}${vov}`;
+    })() : null],
     ['asia', '<span class="muted">…</span>'],
     ['recent', '<span class="muted">…</span>'],
     ['driver', '<span class="muted">…</span>'],
@@ -2153,13 +2177,14 @@ async function loadDrawerTde(name) {
     kv('Snapshot age', s.age_ms != null ? Math.round(s.age_ms / 1000) + 's' : '–', "How fresh this data is — seconds since it was last refreshed.");
   const zones = (s.zones ?? []).slice();
   if (!zones.length) return;
+  const dp = brief.instruments[name]?.dp ?? 5;
   const sigmaAbs = (s.sigmaDaily ?? 0) * (s.dayOpen ?? s.price ?? 1);
   zones.sort((a, b) => Math.abs(a.price - (s.price ?? 0)) - Math.abs(b.price - (s.price ?? 0)));
   const tb = $('drZones').querySelector('tbody');
   tb.innerHTML = zones.slice(0, 12).map(z => {
     const dSig = sigmaAbs ? ((z.price - s.price) / sigmaAbs).toFixed(2) : '?';
     return `<tr class="zrow">
-      <td><b>${z.price}</b></td><td class="muted">${dSig}σ</td><td>${z.count}</td>
+      <td><b>${fmtN(z.price, dp)}</b></td><td class="muted">${dSig}σ</td><td>${z.count}</td>
       <td class="muted">${(z.sources ?? []).slice(0, 4).join(', ')}</td>
       <td><button class="hbtn" style="padding:2px 9px;font-size:11px" onclick="event.stopPropagation();decideAt('${name}',${z.price})">Decide ▸</button></td></tr>`;
   }).join('');
@@ -2198,9 +2223,10 @@ async function loadDrawerLevels(name, sym) {
   const key = lvlKey(name, sym);
   const list = r.pairs?.[key];
   if (!list?.length) { $('drLevelsNote').textContent = `no bot levels loaded for ${key}`; return; }
+  const dp = brief.instruments[name]?.dp ?? 5;
   const tb = $('drLevels').querySelector('tbody');
   tb.innerHTML = list.slice(0, 14).map(l => `<tr>
-    <td><b>${l.price}</b></td>
+    <td><b>${fmtN(l.price, dp)}</b></td>
     <td>${l.direction === 'long' ? '▲ long' : l.direction === 'short' ? '▼ short' : '–'}</td>
     <td>${'★'.repeat(Math.min(5, l.stars ?? 0)) || '–'}</td>
     <td class="muted">${l.tags ?? ''}</td></tr>`).join('');
