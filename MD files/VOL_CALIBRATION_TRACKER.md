@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-07-03 (Jul-3 pre-holiday — all ref values dropped ~9-18% same session; event-contaminated; NQ 3rd consecutive positive (+21%); decision point Jul-7).
+Last updated: 2026-07-06 (Jul-6 partially contaminated — ref provider noted Friday early-close bleed-through; decision point confirmed as Tue Jul-7; NQ gap back to ~+7% encouraging).
 
 ---
 
@@ -338,6 +338,7 @@ multiplier behavior specifically).
 | Jul-1  | NQ        | 24.50%   | 23.46%  | +4.4%  | No         | **Q2-end noise confirmed** — ref fully reverted (28.50%→23.46%); GARCH held flat; HL +1.7%, OC 0.0%; β=0.87 correctly calibrated |
 | Jul-2  | NQ        | 24.16%   | 21.98%  | +9.9%  | No         | **renewed widening** — ref continuing to decline (23.46%→21.98%) while GARCH holds; HL +7.9%, OC +11.2% now meaningful; monitor Jul-3, do not act yet |
 | Jul-3  | NQ        | 24.20%   | 20.00%  | +21.0% | **Yes (pre-holiday Jul-4)** | ref dropped 21.98%→20.00%; all three ref values dropped 9-18% same session — pre-holiday liquidity thin-out; event-contaminated; HL +20.2%, OC +22.5%; **decision point Jul-7** |
+| Jul-6  | NQ        | 23.61%   | ~22%    | ~+7.3% | **Partial** (Fri early-close bleed) | ref provider confirmed Monday data uses Friday early-close; ref bounced 20%→~22%; gap back to ~+7% (from +21% Fri); encouraging; GARCH slowly decaying (24.20%→23.61%); **real decision Tue Jul-7** |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
 on hand — only Δ was recorded in those sessions' analysis. Note: a Jun-23
@@ -375,6 +376,8 @@ all reference compares live in one place):
 | Jul-2  | EURUSD    | 5.55%    | 6.05%   | −8.3%  | −1.7%    | +1.4%    | 0.0%     | −4.4%    | **excellent HL/OC** — vol gap persists (−8.3%) but HL med −1.7%, OC med 0.0%; actual trading levels essentially at reference; no action |
 | Jul-3  | GOLD (YZ) | 26.71%   | 23.36%  | +14.3% | +12.4%   | +7.5%    | +14.4%   | +29.4%   | **pre-holiday flip** — ref dropped 28.42%→23.36% (−17.8%); all ref values dropped same session; event-contaminated; YZ barely moved; watch Jul-7 |
 | Jul-3  | EURUSD    | 5.67%    | 5.51%   | +2.9%  | +9.4%    | +12.3%   | +17.4%   | +22.2%   | pre-holiday flip to overestimate; ref 6.05%→5.51%; event-contaminated; watch Jul-7 |
+| Jul-6  | GOLD (YZ) | 26.83%   | ~28%    | ~−4.2% | ~−9.3%   | —        | ~−8.6%   | —        | ref bounced ~23→~28 (Fri contamination clearing); gap back to ~−4%; partial contamination (Mon uses Fri close); **real read Tue Jul-7** |
+| Jul-6  | EURUSD    | 5.70%    | 5.71%   | −0.2%  | +9.3%    | —        | +12.5%   | —        | vol essentially flat; HL/OC inflated by ref's depressed Friday numbers (confirmed by ref provider note); partial contamination |
 
 ---
 
