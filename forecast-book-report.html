@@ -130,6 +130,10 @@ function render(b){
   const iddValid = idd.valid === true && iddVT != null && iddVT < -1e-9;
   const calmarMtm=(svt.calmarMtm!=null)?svt.calmarMtm
                  :(iddValid?+(svt.cagr/Math.abs(iddVT)).toFixed(2):null);
+  // FULL (raw 1×, un-vol-scaled) MTM drawdown — the actual magnitude at realised vol, not
+  // the 10%-vol fraction. Prefer the engine field; fall back to raw-closed × the multiple.
+  const iddRaw=(svp.maxDDMtmRaw!=null)?svp.maxDDMtmRaw
+              :((iddMult!=null&&svp.maxDD!=null)?+(svp.maxDD*iddMult).toFixed(2):null);
   // Block-bootstrap MC (regime-clustered tails) sits alongside the IID reshuffle.
   // The stress Calmar quotes the DEEPER of the two p95s — block when available, else
   // IID — so it's the conservative, honest ratio rather than the lucky ordering.
@@ -191,11 +195,12 @@ function render(b){
     ${kpi(fmt(svp.sharpe,2),'Portfolio Sharpe (daily ×√252)',svp.sharpe<0)}
     ${kpi(svp.psr!=null?pct(svp.psr*100,0):'—','Prob. Sharpe &gt; 0',svp.psr<0.95)}
     ${kpi(pct(svt.cagr,1),`Return p.a. @ ${svt.target||10}% vol`,svt.cagr<0)}
+    ${(iddValid&&iddRaw!=null)?kpi(pct(iddRaw,1),`Max drawdown (MTM · FULL / raw 1×, ${fmt(svp.annVol,0)}% vol)`,true):''}
     ${iddValid
-        ? kpi(pct(iddVT,1),`Max drawdown (MTM · MAE+concurrency, ${fmt(iddMult,1)}× closed) @ ${svt.target||10}% vol`,true)
+        ? kpi(pct(iddVT,1),`Max drawdown (MTM @ ${svt.target||10}% vol · ${fmt(iddMult,1)}× closed)`,true)
         : (iddVT!=null?kpiNA('Max drawdown (MTM · MAE+concurrency)',`${fmt(idd.zeroDurPct,0)}% zero-duration — refresh data`):'')}
     ${kpi(pct(svt.maxDD,1),`Max drawdown (closed daily-net · lower bound @ ${svt.target||10}% vol)`,true)}
-    ${svp.maxDD!=null?kpi(pct(svp.maxDD,1),`Max drawdown (raw 1×, ${fmt(svp.annVol,0)}% vol)`,true):''}
+    ${svp.maxDD!=null?kpi(pct(svp.maxDD,1),`Max drawdown (closed · raw 1×, ${fmt(svp.annVol,0)}% vol)`,true):''}
     ${svt.mcMaxDD?kpi(pct(svt.mcMaxDD.p95,1),`Max drawdown (MC IID p95 @ ${svt.target||10}% vol)`,true):''}
     ${svtBlk.p95!=null?kpi(pct(svtBlk.p95,1),`Max drawdown (MC block p95 · regime-clustered)`,true):''}
     ${calmarMtm!=null?kpi(fmt(calmarMtm,2),'Calmar (MTM)',calmarMtm<0):kpiNA('Calmar (MTM)','stale timestamps')}

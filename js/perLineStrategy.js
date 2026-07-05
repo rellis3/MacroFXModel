@@ -333,9 +333,15 @@ export function withMtmDD(port, idd) {
   const mult = mtmValid ? idd.multipleVsClosed : null;
   const maxDDMtm  = (mult != null && vt.maxDD != null) ? +(vt.maxDD * mult).toFixed(2) : null;
   const calmarMtm = (maxDDMtm != null && maxDDMtm < -1e-9) ? +(vt.cagr / Math.abs(maxDDMtm)).toFixed(2) : null;
+  // FULL (raw 1×, un-vol-scaled) MTM drawdown — the actual leverage-free magnitude at the
+  // book's REALISED vol, not the 10%-vol fraction. `port.maxDD` is the raw compounded closed
+  // DD; scale it by the same MTM/closed multiple. This is the "what you'd actually feel at
+  // full size" number the vol-targeted headline shrinks by (targetVol/realisedVol).
+  const rawClosed = port.raw?.maxDD ?? port.maxDD;
+  const maxDDMtmRaw = (mult != null && rawClosed != null) ? +(rawClosed * mult).toFixed(2) : null;
   return {
     ...port,
-    mtmValid,
+    mtmValid, maxDDMtmRaw,
     volTarget: {
       ...vt,
       maxDDClosed: vt.maxDD, calmarClosed: vt.calmar,   // the closed daily-net lower bound
