@@ -35,6 +35,7 @@ import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
+import { runTrendBasket } from './js/trendBasketEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -3816,6 +3817,51 @@ app.get('/api/yield-context', async (req, res) => {
     res.json(data);
   } catch (err) {
     res.json({ available: false, reason: err.message });
+  }
+});
+
+// ── /api/trend-basket — diversified G10 FX time-series momentum basket ───────
+// The HONEST factor strategy: long the up-trending currencies vs USD, short the
+// down-trending, vol-scaled (equal risk), rebalanced weekly, net of cost, IS/OOS.
+// A modest, drawdown-heavy diversifier — not a wealth engine. Price-only (D1).
+const TREND_UNIVERSE = [
+  { ccy: 'EUR', inst: 'EUR_USD', invert: false },
+  { ccy: 'GBP', inst: 'GBP_USD', invert: false },
+  { ccy: 'AUD', inst: 'AUD_USD', invert: false },
+  { ccy: 'NZD', inst: 'NZD_USD', invert: false },
+  { ccy: 'JPY', inst: 'USD_JPY', invert: true },
+  { ccy: 'CAD', inst: 'USD_CAD', invert: true },
+  { ccy: 'CHF', inst: 'USD_CHF', invert: true },
+];
+const _trendCache = new Map();
+app.get('/api/trend-basket', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (runs on Railway)' });
+  const clamp = (x, lo, hi, dflt) => Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : dflt;
+  const lookback  = clamp(parseInt(req.query.lookback), 20, 500, 252);
+  const rebalDays = clamp(parseInt(req.query.rebal), 1, 60, 5);
+  const targetVol = clamp(parseFloat(req.query.targetVol), 0.02, 0.40, 0.10);
+  const costBps   = clamp(parseFloat(req.query.cost), 0, 50, 2);
+  const cacheKey = `tb_${lookback}_${rebalDays}_${targetVol}_${costBps}`;
+  const cached = _trendCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 3600_000) return res.json(cached.data);
+  try {
+    const from = '2005-01-01';
+    const seriesByCcy = {}, availability = [];
+    await Promise.all(TREND_UNIVERSE.map(async u => {
+      try {
+        const bars = await fetchOandaD1Range(u.inst, from);
+        const s = bars.map(b => ({ t: b.date, v: u.invert ? 1 / b.close : b.close })).filter(x => Number.isFinite(x.v) && x.v > 0);
+        seriesByCcy[u.ccy] = s;
+        availability.push({ ccy: u.ccy, inst: u.inst, bars: s.length, first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null });
+      } catch (e) { availability.push({ ccy: u.ccy, inst: u.inst, error: e.message }); }
+    }));
+    const result = runTrendBasket(seriesByCcy, { lookback, rebalDays, targetVol, costBps });
+    const data = { ...result, availability, universe: TREND_UNIVERSE.map(u => u.ccy) };
+    _trendCache.set(cacheKey, { data, ts: Date.now() });
+    res.json(data);
+  } catch (err) {
+    console.error('[trend-basket]', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
