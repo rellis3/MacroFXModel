@@ -40,6 +40,9 @@ export function confluenceCapsFor(pair) {
 // clusters, so a "pulled fib" IS a first-class zone). volume_profile / vwap
 // need an intraday feed — wired in later (ARCHITECTURE.md §9), not silently faked.
 export const TDE_LEVEL_SOURCES = ['daily_open', 'prior_hilo', 'pivots', 'swing_sr', 'swing_fib', 'round_number'];
+// Higher-timeframe trend lookback (trading days) for htf_align — the one
+// survivor of the research arc (see decisionCore.HTF_FEATURES).
+export const HTF_TREND_DAYS = 20;
 export const TDE_DEFAULT_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'gold'];
 
 // ── Intraday state (pure) — today's developing session, not more D1 ─────────
@@ -193,6 +196,12 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
 
   const regime = classifyRegime(closes, closes.length);
   const T = dayTypeScore(closes, closes.length);
+  // higher-timeframe trend sign (trailing HTF_TREND_DAYS return) — the ONLY
+  // feature that survived honest OOS+cost testing across the research arc:
+  // touches taken WITH this trend are net-positive, against it are net-negative
+  // (IS and OOS). Direction resolution happens in the fast loop (htf_align).
+  const htfTrend = closes.length > HTF_TREND_DAYS
+    ? Math.sign(Math.log(closes[closes.length - 1] / closes[closes.length - 1 - HTF_TREND_DAYS])) : 0;
 
   const lastClose = closes[closes.length - 1];
   const refPrice = Number(price) || lastClose;
@@ -245,7 +254,7 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, in
     pair: key, mode, builtAt: nowMs,
     price: refPrice, dayOpen,
     sigmaDaily, volPct, regime, T,
-    zones, calendar, macro: macroCtx, intraday, ladders,
+    zones, calendar, macro: macroCtx, intraday, ladders, htfTrend,
     meta: { bars: dailyBars.length, lastBarTime: dailyBars[dailyBars.length - 1].time, tolPips: +tolPips.toFixed(1), tolAbs: +(tolPips * pip).toFixed(8), hl50Abs: +hl50Abs.toFixed(6), levelSources: TDE_LEVEL_SOURCES },
   };
 }
