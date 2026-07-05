@@ -6007,6 +6007,26 @@ app.post('/api/vol-forecast/hit-rates/compute', async (req, res) => {
 // indicated in the response so the UI can prompt the user.
 // GET /api/daily-brief
 
+// London-midnight session-open cache. The forecast's %-moves (oh/ol/hl) are
+// session moves relative to the London-midnight open — the SAME anchor the
+// per-line book and the volatility-bot plan use (`_btFetchSessionOpenLondon`,
+// server.js:4803). The Daily Brief must anchor its absolute level prices to that
+// open, NOT to live price, or its levels drift intraday and disagree with the
+// forecaster/book. Cache keyed by session date so a batch of dashboard polls
+// costs one M1 fetch per instrument per session.
+const _briefOpenCache = { date: null, opens: new Map() };
+async function _briefSessionOpen(sym, sessionDate) {
+  if (_briefOpenCache.date !== sessionDate) {
+    _briefOpenCache.date = sessionDate;
+    _briefOpenCache.opens.clear();
+  }
+  if (_briefOpenCache.opens.has(sym)) return _briefOpenCache.opens.get(sym);
+  let open = null;
+  try { open = await _btFetchSessionOpenLondon(sym); } catch {}
+  if (open != null) _briefOpenCache.opens.set(sym, open);   // don't cache transient failures
+  return open;
+}
+
 app.get('/api/daily-brief', async (_req, res) => {
   try {
   const forecast = forecastState.latest;
@@ -6043,12 +6063,24 @@ app.get('/api/daily-brief', async (_req, res) => {
     } catch {}
   }
 
+  // London-midnight session opens — the anchor the forecast %-moves are relative
+  // to (same as the book/plan). Fetched once per instrument, cached per session.
+  const sessionOpens = {};
+  if (process.env.OANDA_KEY) {
+    await Promise.all(HR_INSTRUMENTS.map(async ({ sym }) => {
+      sessionOpens[sym] = await _briefSessionOpen(sym, forecast.session_date);
+    }));
+  }
+
   const instruments = {};
   for (const { name, sym, ac } of HR_INSTRUMENTS) {
     const fc = forecast.instruments[name];
     if (!fc) continue;
 
-    const livePrice = prices[sym] ?? null;
+    const livePrice   = prices[sym] ?? null;
+    // Anchor forecast levels to the London-midnight session open (falls back to
+    // live price only if the open is unavailable, e.g. no Oanda key).
+    const anchorOpen  = sessionOpens[sym] ?? livePrice;
     const hr        = hitRates?.instruments?.[name] ?? null;
     const hmmKey    = BRIEF_HMM_KEYS[name] ?? null;
     const regRaw    = hmmKey ? (state.hmmRegimes[hmmKey] ?? null) : null;
@@ -6076,15 +6108,15 @@ app.get('/api/daily-brief', async (_req, res) => {
       const pct = fc[pctField] ?? 0;
       lvls[key] = {
         pct,
-        price:       livePrice ? fmt(livePrice * (1 + dir * pct / 100)) : null,
+        price:       anchorOpen ? fmt(anchorOpen * (1 + dir * pct / 100)) : null,
         hit_pct:     null, median_utc: null, earliest_utc: null, latest_utc: null,
         ...(hr?.levels?.[key] ?? {}),
       };
     }
     for (const [key, pctField] of [['hl_med', 'hl_median'], ['hl_75', 'hl_75']]) {
       const pct = fc[pctField] ?? 0;
-      const rangePts = livePrice
-        ? parseFloat((livePrice * pct / 100 / pipSz).toFixed(1))
+      const rangePts = anchorOpen
+        ? parseFloat((anchorOpen * pct / 100 / pipSz).toFixed(1))
         : null;
       lvls[key] = {
         pct,
@@ -6097,6 +6129,7 @@ app.get('/api/daily-brief', async (_req, res) => {
     instruments[name] = {
       name, sym, ac, dp,
       current_price: livePrice,
+      session_open:  anchorOpen != null ? fmt(anchorOpen) : null,   // London-midnight anchor for the levels
       news_mult:     fc.news_mult  ?? 1,
       news_flag:     (fc.news_mult ?? 1) > 1 ? (forecast.meta?.news_flag ?? 'Event') : null,
       vol_annual:    fc.vol_annual,

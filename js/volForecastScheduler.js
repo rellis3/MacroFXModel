@@ -22,6 +22,7 @@
 import * as kv from '../kv.js';
 import { computeForecast, computeForecastFromRV, detectNewsMultiplier } from './volForecast.js';
 import { harShadowFields } from './forecastExport.js';
+import { londonMidnightSec } from './volBacktestEngine.js';
 
 // HAR-RV shadow forecast (challenger σ through the incumbent band math, stored
 // as `f.har` per instrument — purely additive). Kill switch: VOL_FORECAST_HAR=0.
@@ -398,18 +399,17 @@ export async function runVolForecast(targetDate) {
 // Ratio of expected |O-C| to expected H-L from BM theory: HN_P50 / BM_P50
 const EXPECTED_DIRECTIONALITY = 0.6745 / 1.572 * 100;  // ~42.9%
 
-// Anchor the open to the first H1 bar at/after 00:00 UTC today.
-// High = rolling max of all H1 highs since midnight.
-// Low  = rolling min of all H1 lows  since midnight.
-// Close = last available H1 bar's close (current price).
-// For FX/Gold the 00:00 bar exists; for equity indices (NQ) the first bar
-// is the market open (~13:00 UTC), which becomes the effective anchor.
+// Anchor the open to the first H1 bar at/after London midnight (00:00
+// Europe/London — 23:00 UTC in BST, 00:00 UTC in GMT). This is the SAME
+// DST-safe anchor the per-line book, the volatility-bot plan and the Daily
+// Brief use (`londonMidnightSec` / `fetchSessionOpenLondon`) — defined once so
+// every consumer forecasts from the identical open. London midnight is a quiet
+// mid-Asia hour, deliberately chosen to avoid session-open volatility.
+// High = rolling max of all H1 highs since the anchor; Low = rolling min;
+// Close = last available H1 bar's close (current price). For markets closed at
+// the anchor (some equity indices) the first available bar becomes the anchor.
 async function fetchMidnightAnchoredBar(instrument) {
-  const now = new Date();
-  const midnight = new Date(Date.UTC(
-    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
-    0, 0, 0,
-  ));
+  const midnight = new Date(londonMidnightSec() * 1000);
   const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
             + `?granularity=H1&from=${encodeURIComponent(midnight.toISOString())}&price=M`;
   const res = await fetch(url, {
@@ -422,7 +422,7 @@ async function fetchMidnightAnchoredBar(instrument) {
   const candles = ((await res.json()).candles ?? []).filter(c => c.mid);
   if (candles.length === 0) throw new Error('No bars since midnight');
 
-  const open  = parseFloat(candles[0].mid.o);  // midnight (or market open) anchor
+  const open  = parseFloat(candles[0].mid.o);  // London-midnight (or first-available) anchor
   const high  = Math.max(...candles.map(c => parseFloat(c.mid.h)));
   const low   = Math.min(...candles.map(c => parseFloat(c.mid.l)));
   const last  = candles.at(-1);
