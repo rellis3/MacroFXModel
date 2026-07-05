@@ -335,12 +335,23 @@ async function renderBook(v){
     return `${mtmOK?kpi(fmt(t.maxDDMtm,1)+'%',`max DD (MTM) @ ${t.target||10}% vol`,true):kpiNA(`max DD (MTM) @ ${t.target||10}% vol`,'rebuild on fresh data')}`
       + `${kpi(fmt(t.maxDDClosed??t.maxDD,1)+'%','max DD (closed · lower bound)',true)}`
       + `${mtmOK?kpi(fmt(t.calmarMtm,2),'Calmar (MTM)',t.calmarMtm<0):kpiNA('Calmar (MTM)','stale')}`; };
-  // HONEST headline — portfolio (daily, time-aggregated) stats.
+  // Standard backtest KPIs from a backtestStats object — the SAME battery every other
+  // system reports through (one equity curve, per-trade Sharpe, additive max-DD, Calmar).
+  const stdLive=b.survivors?.book, stdFull=b.book;
+  const stdKpis=(bk)=>`${kpi(fmt(bk.sharpe,2),'Sharpe (per-trade, ann.)',bk.sharpe<0)}${kpi(fmt(bk.cagr,1)+'%','CAGR',bk.cagr<0)}${kpi(fmt(bk.maxDD,1)+'%','max drawdown',true)}${kpi(fmt(bk.calmar,2),'Calmar',bk.calmar<0)}${kpi(fmt(bk.profitFactor,2),'profit factor')}${kpi(fmt(bk.winRate*100,1)+'%','win rate')}${kpi(fmt(bk.expectancy,4)+'%','expectancy/trade',bk.expectancy<0)}${kpi(fmt(bk.totalPnl,1)+'%','total return',bk.totalPnl<0)}`;
+  // HEADLINE = standard backtest (comparable to every other system); the concurrency-
+  // adjusted daily-portfolio view sits below as a labelled secondary.
   let html=`<div class="card"><div class="controls" style="margin-bottom:10px">${buildBtn}<a href="forecast-book-report.html?h=${$('horizon').value}" target="_blank" style="align-self:center"><button class="sec">📄 Institutional tearsheet</button></a><div class="mut" style="align-self:center">OOS from <b>${b.splitDate||'—'}</b> · ${b.nTrades} trades · cond ${(b.conditions||[]).join('+')} · minN ${b.minN}</div></div>
-    <div style="font-weight:600;margin-bottom:6px">Portfolio — honest (daily, time-aggregated)</div>
+    <div style="font-weight:600;margin-bottom:6px">Standard backtest <span class="mut" style="font-weight:400">— same method as every other system (one equity curve · per-trade Sharpe · additive max-DD · Calmar)</span></div>
+    <div class="hint" style="margin-bottom:8px">Computed identically to the rest of the desk's backtests (<code>metricsCore</code> / <code>backtestStats</code>), so the figures are directly comparable and easy to explain. Shown for the <b>live universe</b> (the book you'd actually trade). <b>⚠ Caveat:</b> the per-trade Sharpe treats each trade as an independent bet — this book fires ~${fmt(pf.avgTradesPerDay,0)} correlated trades at once, so it <b>overstates</b> the risk-adjusted return; the concurrency-adjusted Sharpe is in the secondary view below.</div>
+    <div class="kpi-grid">${stdLive?stdKpis(stdLive):(stdFull?stdKpis(stdFull):'<span class="mut">no standard stats — rebuild book</span>')}</div>
+    ${(stdFull&&stdLive)?`<div class="hint" style="margin-top:8px">Full book (all OOS-profitable pairs) for reference: Sharpe ${fmt(stdFull.sharpe,2)} · CAGR ${fmt(stdFull.cagr,1)}% · maxDD ${fmt(stdFull.maxDD,1)}% · Calmar ${fmt(stdFull.calmar,2)}.</div>`:''}
+    <div style="margin-top:12px">${equitySVG((b.survivors?.equity?.length>1)?b.survivors.equity:b.equity)}</div>${hint}</div>
+  <div class="card">
+    <div style="font-weight:600;margin-bottom:6px">Concurrency-adjusted view <span class="mut" style="font-weight:400">(secondary — daily portfolio ×√252, mark-to-market DD)</span></div>
     <div class="kpi-grid">${kpi(fmt(pf.sharpe,2),'Portfolio Sharpe',pf.sharpe<0)}${kpi(pf.psr!=null?fmt(pf.psr*100,0)+'%':'—','prob. Sharpe>0',pf.psr<0.95)}${kpi(fmt(pf.annVol,1)+'%','annual vol')}${kpi(fmt(vt.cagr,1)+'%',`CAGR @ ${vt.target||10}% vol`,vt.cagr<0)}${ddKpis(vt)}${kpi(fmt(pf.avgTradesPerDay,1),'avg trades/day')}</div>
-    <div class="hint" style="margin-top:8px">This is the Sharpe that's real: daily portfolio returns ×√252, so ${nPairs} correlated pairs trading at once count as one day's risk — not ${f.tradesPerYr||'thousands of'} independent bets. Drawdown is the <b>mark-to-market</b> path (intratrade MAE + concurrent open positions); the <b>closed · lower bound</b> is the daily-netted closed-trade curve, which hides both and understates DD — Calmar off it (${fmt(vt.calmar,2)}) is not the honest ratio. CAGR/DD at a fixed ${vt.target||10}% annual vol so they're comparable and leverage-honest.</div>
-    <div style="margin-top:12px">${equitySVG(b.equity)}</div>${hint}</div>`;
+    <div class="hint" style="margin-top:8px">Secondary risk view: daily portfolio returns ×√252, so ${nPairs} correlated pairs trading at once count as one day's risk (this is why the Sharpe here is far below the standard per-trade figure above). Drawdown is the <b>mark-to-market</b> path (intratrade MAE + concurrent positions); the <b>closed · lower bound</b> is the daily-netted curve. CAGR/DD at a fixed ${vt.target||10}% annual vol.</div>
+    <div style="margin-top:12px">${equitySVG(b.equity)}</div></div>`;
   // Live universe — survivors only (pairs that clear their own cost by a margin),
   // portfolio re-aggregated from just their daily PnL. The book you'd actually trade.
   const sv=b.survivors;
@@ -356,9 +367,8 @@ async function renderBook(v){
       html+=`</tbody></table>`; }
     html+=`</div>`;
   }
-  // Per-trade stats (kept for reference — the Sharpe here ASSUMES independence and overstates).
-  html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Per-trade stats <span class="mut" style="font-weight:400">(reference — per-trade Sharpe assumes independence, overstated)</span></div>
-    <div class="kpi-grid">${kpi(fmt(f.sharpe,2),'per-trade Sharpe ⚠',f.sharpe<0)}${kpi(fmt(f.totalPnl,1)+'%','total (sum, full size)',f.totalPnl<0)}${kpi(fmt(f.expectancy,4)+'%','expectancy/trade',f.expectancy<0)}${kpi(fmt(f.winRate*100,1)+'%','win rate')}${kpi(fmt(f.payoff,2),'payoff (avgW/avgL)')}${kpi(fmt(f.profitFactor,2),'profit factor')}</div></div>`;
+  // (The standard per-trade battery is now the headline "Standard backtest" card above,
+  // so the old duplicate "Per-trade stats (reference)" card is removed.)
   // Robustness — bootstrap CI + Monte-Carlo drawdown
   const bs=f.bootstrap, mc=f.montecarlo;
   if(bs&&mc){ html+=`<div class="card"><div style="font-weight:600;margin-bottom:6px">Robustness — bootstrap &amp; Monte-Carlo</div>

@@ -244,7 +244,7 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
   // trades to mean it). The survivor portfolio is RE-AGGREGATED from just those
   // pairs' daily PnL — so its Sharpe still honours same-day concurrency and
   // cross-pair correlation, not a naive average of per-pair Sharpes.
-  const survivors = buildSurvivors(perPair, pnlByPair, costByPair, { survivorMargin, minSurvivorTrades });
+  const survivors = buildSurvivors(perPair, pnlByPair, costByPair, { survivorMargin, minSurvivorTrades, mcRuns, bootRuns });
   // Missed-trades summary: counts by reason + the most-skipped cells (with their
   // IS estimate, so a skip with negative est reads as correctly avoided).
   const byReason = {};
@@ -274,7 +274,7 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
 // Pick the "live universe" (pairs that clear their own cost by a margin) and
 // re-aggregate ONLY their daily PnL into an honest portfolio. perPair holds the
 // OOS stats; pnlByPair holds each pair's {date,pnl}[]; costByPair the spreads.
-export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMargin = 0.5, minSurvivorTrades = 30 } = {}) {
+export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMargin = 0.5, minSurvivorTrades = 30, mcRuns = 1000, bootRuns = 1000 } = {}) {
   const all = Object.keys(perPair);
   const keep = [], excluded = [];
   for (const p of all) {
@@ -297,6 +297,11 @@ export function buildSurvivors(perPair, pnlByPair, costByPair = {}, { survivorMa
     excluded: excluded.sort((a, b) => a.expectancy - b.expectancy),
     nTrades: survTrades.length, equity,
     portfolio: withMtmDD({ ...portfolioStats(equity.map(e => e.pnl), { mc: true }), avgTradesPerDay: equity.length ? +(survTrades.length / equity.length).toFixed(1) : 0 }, survIdd),
+    // Standard backtest battery on the survivor trades — the SAME metricsCore/backtestStats
+    // method every other system in the repo reports through (one equity curve, per-trade
+    // Sharpe annualised by trade frequency, additive peak-to-trough maxDD, Calmar). Lets the
+    // live-universe headline be shown on a basis directly comparable to the other backtests.
+    book: backtestStats(survTrades.map(t => t.pnl), survTrades.map(t => t.date), { mcRuns, bootRuns }),
     intradayDD: survIdd,
   };
 }
