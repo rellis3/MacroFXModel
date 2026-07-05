@@ -71,8 +71,8 @@
 #wbtChartModal { display:none;position:fixed;inset:0;z-index:1000;background:#0d0f14;flex-direction:column; }
 .wbt-chart-hdr { display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #2a2f45;background:#131722;flex-shrink:0; }
 #wbtChartContainer { flex:1;min-height:0; }
-.wbt-atr-params,.wbt-pip-params,.wbt-ind-params,.wbt-mae-params,.wbt-regime-params { display:none;gap:6px;align-items:center;flex-wrap:wrap; }
-.wbt-atr-params.visible,.wbt-pip-params.visible,.wbt-ind-params.visible,.wbt-mae-params.visible,.wbt-regime-params.visible { display:flex; }
+.wbt-atr-params,.wbt-pip-params,.wbt-ind-params,.wbt-mae-params,.wbt-regime-params,.wbt-exit-params { display:none;gap:6px;align-items:center;flex-wrap:wrap; }
+.wbt-atr-params.visible,.wbt-pip-params.visible,.wbt-ind-params.visible,.wbt-mae-params.visible,.wbt-regime-params.visible,.wbt-exit-params.visible { display:flex; }
 
 .bt-run-bar { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
 .bt-run-bar input,.bt-run-bar select { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px; }
@@ -220,12 +220,41 @@
     <option value="skipTrend">Regime: Skip trend weeks</option>
   </select>
 
+  <select id="runRegimeSource" class="bt-sel" title="How BULL/BEAR/RANGE is derived for the counter gate. EMA slope is a crude proxy; ADX (trend strength), Hurst (persistence) and Day-type (efficiency/variance-ratio blend) are alternatives from the shared bricks. Direction always taken from the drift sign." onchange="updateParamVis()">
+    <option value="emaSlope">Src: EMA slope</option>
+    <option value="adx">Src: ADX</option>
+    <option value="hurst">Src: Hurst</option>
+    <option value="dayType">Src: Day-type</option>
+  </select>
+
   <div id="regimeParams" class="wbt-regime-params">
     <span class="bt-run-lbl" style="color:var(--blue)">Slope:</span>
     <input type="number" id="runSlopeThresh" value="0.002" step="0.001" min="0.0005" max="0.02" style="width:64px" class="bt-sel" title="EMA-20 slope threshold for BULL/BEAR classification (weekly-anchored). Higher = requires a steeper trend before gating.">
     <input type="number" id="runBearMult" value="1.0" step="0.25" min="0.5" max="2.5" style="width:52px" class="bt-sel" title="BEAR asymmetry multiplier — raise to require a steeper downtrend before classifying BEAR.">
     <span class="bt-run-lbl" style="margin-left:4px;color:var(--amber)">TrendMin:</span>
     <input type="number" id="runTrendMin" value="0.55" step="0.05" min="0.3" max="0.9" style="width:56px" class="bt-sel" title="Skip-trend mode: skip all fades when day-type T ≥ this (a strong trend week).">
+    <span id="adxParams" style="display:none;gap:6px;align-items:center">
+      <span class="bt-run-lbl" style="margin-left:4px;color:var(--green)">ADX:</span>
+      <input type="number" id="runAdxPeriod" value="14" step="1" min="5" max="50" style="width:48px" class="bt-sel" title="ADX period (D1 bars).">
+      <input type="number" id="runAdxTrend" value="25" step="1" min="10" max="50" style="width:48px" class="bt-sel" title="ADX ≥ this ⇒ TREND week (direction from drift), else RANGE.">
+    </span>
+    <span id="hurstParams" style="display:none;gap:6px;align-items:center">
+      <span class="bt-run-lbl" style="margin-left:4px;color:var(--green)">Hurst:</span>
+      <input type="number" id="runHurstWin" value="40" step="5" min="20" max="120" style="width:52px" class="bt-sel" title="Hurst R/S window (D1 closes).">
+      <input type="number" id="runHurstTrend" value="0.55" step="0.05" min="0.5" max="0.75" style="width:56px" class="bt-sel" title="Mapped Hurst ≥ this ⇒ TREND (direction from drift), else RANGE.">
+    </span>
+  </div>
+
+  <select id="runExitMode" class="bt-sel" title="How the fade is exited. Open (incumbent) = full reversion to Monday open. OC-median = the nearer average-move target (higher win rate, smaller win). Opp-band = the mirror band, a full-range convex runner. Chandelier = trail a stop chandMult×ATR from the best price — the convexity lever that lets winners run past the open." style="border-left:1px solid #2a3348;padding-left:8px;margin-left:2px" onchange="updateParamVis()">
+    <option value="open">Exit: Mon open</option>
+    <option value="ocMed">Exit: OC-median</option>
+    <option value="oppBand">Exit: Opp band</option>
+    <option value="chandelier">Exit: Chandelier</option>
+  </select>
+
+  <div id="exitParams" class="wbt-exit-params">
+    <span class="bt-run-lbl" style="color:var(--amber)">Chand ×ATR:</span>
+    <input type="number" id="runChandMult" value="2.0" step="0.5" min="0.5" max="6" style="width:52px" class="bt-sel" title="Chandelier trail distance = this × ATR30 from the best favourable price.">
   </div>
 
   <label class="bt-run-lbl" title="Filter entries: only fill if D1 Z-Score is extended (oversold for BUY, overbought for SELL)" style="border-left:1px solid #2a3348;padding-left:8px;margin-left:2px;display:flex;align-items:center;gap:3px;cursor:pointer">
@@ -267,7 +296,9 @@
   <strong style="color:var(--text)">Regime fade/follow gate</strong> (opt-in, default Off) — the incumbent fades <em>every</em> touch regardless of the week's trend, the exact "always-fade is wrong half the time by construction" failure mode. The gate ports the vol-bot / per-line-book lesson (<em>don't fade into a trend</em>) using the shared bricks <code>classifyRegime</code> + <code>dayTypeScore</code>, classified on the weekly anchor with no lookahead:
   <span style="color:var(--blue)">Counter-trend</span> skips the with-trend fade side (BULL → no SELL-from-high, BEAR → no BUY-from-low; RANGE fades both).
   <span style="color:var(--amber)">Skip trend weeks</span> stands aside entirely when day-type T ≥ TrendMin.
-  Every trade is tagged with its regime — see the <strong>Per Regime</strong> card to judge where fades bleed vs hold, even in Off mode.
+  <strong>Regime source</strong> swaps the crude EMA slope for ADX / Hurst / Day-type. Every trade is tagged with its regime — see the <strong>Per Regime</strong> card to judge where fades bleed vs hold, even in Off mode.
+  <br><br>
+  <strong style="color:var(--text)">Exit &amp; convexity</strong> — the fixed Monday-open target caps winners (concave). <strong>Exit mode</strong> offers the OC-median (average move), the opposite band (full-range runner), or a <strong>chandelier</strong> ATR-trail that lets the reversion run — the convexity lever. The <strong>Convexity &amp; Payoff Shape</strong> card scores the R-multiple distribution (skew, tail ratio, MFE capture) using the true uncapped favourable excursion, so a low win-rate with a fat winner tail reads as what it is. <strong>Approach velocity</strong> tags each fill spike/med/grind (a fast drive into a level reverts more), and <strong>Cost sensitivity</strong> stress-tests the edge at 2×/3× spread.
 </div>
 
 <!-- ── Status bar ─────────────────────────────────────────────────────────── -->
@@ -387,6 +418,15 @@
   </div>
 </div>
 
+<!-- ── Cost sensitivity ────────────────────────────────────────────────────── -->
+<div class="bt-card" id="costCard" style="display:none">
+  <div class="bt-card-hdr">Cost Sensitivity <span style="color:var(--text3);font-size:11px;font-weight:400">a thin mean-reversion edge that dies at 2×/3× cost is not real (book robustness lesson)</span></div>
+  <div id="costBody" style="padding:4px 0"></div>
+  <div style="padding:4px 14px 12px;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace">
+    Each step adds a round-trip spread of ~0.012% of price on top of whatever the run already applied (re-scored client-side, no re-run). Green in the last column = Sharpe holds ≥70% of the as-run value at that cost; red = the edge is cost-fragile.
+  </div>
+</div>
+
 <!-- ── Trade quality / near-miss card ─────────────────────────────────────── -->
 <div class="bt-card" id="nmCard" style="display:none">
   <div class="bt-card-hdr">Trade Quality Analysis <span style="color:var(--text3);font-size:11px;font-weight:400">Near-miss, leave-on-table, and pip metrics</span></div>
@@ -450,6 +490,24 @@
   </div>
   <div style="padding:8px 14px 12px;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace">
     <strong>Read this even in "Regime: Off" mode</strong> — if fades bleed in BULL/BEAR weeks but hold in RANGE, the counter-trend gate has something to cut. BULL = fading the high (SELL) into an uptrend; BEAR = fading the low (BUY) into a downtrend; RANGE = chop where fading the open works. This is the fade-vs-follow thesis from the vol bot &amp; per-line book, applied to the weekly horizon.
+  </div>
+</div>
+
+<!-- ── Per approach-velocity bucket ────────────────────────────────────────── -->
+<div class="bt-card" id="velCard" style="display:none">
+  <div class="bt-card-hdr">Per Approach Velocity <span style="color:var(--text3);font-size:11px;font-weight:400">σ-normalised speed of the drive into the level — the per-line book's strongest OOS feature</span></div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl" id="velTbl">
+      <thead><tr>
+        <th>Approach</th><th class="num">Win%</th><th class="num">Fills</th>
+        <th class="num">Expectancy</th><th class="num">Total P&amp;L</th>
+        <th class="num">Sharpe</th><th class="num">PF</th><th class="num">MaxDD%</th>
+      </tr></thead>
+      <tbody id="velTblBody"></tbody>
+    </table>
+  </div>
+  <div style="padding:8px 14px 12px;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace">
+    <strong>The book's thesis:</strong> a fast <strong>spike</strong> into a level reverts far more than a slow <strong>grind</strong> (~72% reversion on a spike, p&lt;0.001 OOS at the daily horizon). If spike fades beat grind fades here, a velocity filter (spike-only) is the highest-EV selector to add. Weekly proxy: σ<sub>w</sub>-normalised distance-to-level ÷ trading-days-to-fill — a Monday punch to HL50 ≈ 1.5 (spike), a Friday drift ≈ 0.3 (grind).
   </div>
 </div>
 
@@ -739,6 +797,8 @@ function renderAll(data) {
   renderInstTable(data.byInstrument);
   renderLevelTable(data.byLevel);
   renderRegimeTable(data.byRegime);
+  renderVelocityTable(data.byVelocity);
+  renderCostSensitivity(data);
   renderFillDayChart(data.byFillDay);
   renderYearTable(data.allTrades);
   renderPieChart(data.overall);
@@ -825,8 +885,13 @@ function clientConvexity(trades) {
     if (!(riskPct > 1e-9)) continue;
     const R = r.pnl_pct / riskPct;
     Rs.push(R);
-    if (r.mfe_pct != null) { const m = r.mfe_pct / riskPct; mfeRs.push(m); captured.push({ R, mfeR: m }); }
+    // Prefer the UNCAPPED MFE (favourable excursion through EOW, ignoring the
+    // exit) so "available move" is the true right tail, not the exit-censored
+    // one. Falls back to capped MFE for older runs without the field.
+    const mfeSrc = r.uncapped_mfe_pct != null ? r.uncapped_mfe_pct : r.mfe_pct;
+    if (mfeSrc != null) { const m = mfeSrc / riskPct; mfeRs.push(m); captured.push({ R, mfeR: m }); }
   }
+  const usingUncapped = trades.some(r => r.filled && r.uncapped_mfe_pct != null);
   const n = Rs.length;
   if (!n) return null;
 
@@ -877,7 +942,7 @@ function clientConvexity(trades) {
     n, meanR: mu, medianR: _med(Rs), skew, tailRatio, gainToPain, omega,
     avgMfeR, capture, medWinR: _med(gains), worstR: sorted[0], bestR: sorted[n - 1],
     pctMfe1: pctMfe(1), pctMfe2: pctMfe(2), pctMfe3: pctMfe(3),
-    bins, binLabels, binCenters,
+    bins, binLabels, binCenters, usingUncapped,
   };
 }
 
@@ -911,7 +976,9 @@ function renderConvexity(data) {
       + (c.capture < 0.6
           ? ' — the gap is mostly <strong>losing trades handing back favourable excursion</strong> before stopping out; a chandelier/trailing stop banks part of that (the real convexity lever, not a further fixed target).'
           : ' — the current exit already keeps most of the available move.')
-      + ` <span style="color:var(--text3)">Caveat: MFE is censored at the exit — TP winners close at Monday-open, so their run <em>past</em> open is invisible here; an uncapped-MFE engine pass (exit-mode step) measures the full right tail. The ≥R-MFE counts are therefore a floor.</span>`;
+      + (c.usingUncapped
+          ? ` <span style="color:var(--text3)">MFE here is the <strong>uncapped</strong> favourable excursion through EOW (ignores the exit), so the ≥R-MFE counts are the TRUE available tail — the gap between that and captured R is exactly what a trailing/runner exit can recover.</span>`
+          : ` <span style="color:var(--text3)">Caveat: this run predates uncapped-MFE — the counts are exit-censored (a floor). Re-run to measure the full right tail.</span>`);
   }
 
   const ctx = document.getElementById('cvxChart')?.getContext('2d');
@@ -1137,6 +1204,70 @@ function renderRegimeTable(by) {
       <td class="num neg">${fmt(s.maxDd)}%</td>
     </tr>`;
   }).join('');
+}
+
+const VEL_CLASS = { '3·spike': 'hl50', '2·med': 'hl75', '1·grind': 'ocmed' };
+function renderVelocityTable(by) {
+  const tbody = document.getElementById('velTblBody');
+  const card  = document.getElementById('velCard');
+  if (!tbody || !card) return;
+  if (!by || !Object.values(by).some(s => (s?.nFilled ?? 0) > 0)) { card.style.display = 'none'; return; }
+  const order = ['3·spike', '2·med', '1·grind'];
+  const label = { '3·spike': 'Spike (fast)', '2·med': 'Med', '1·grind': 'Grind (slow)' };
+  tbody.innerHTML = order.filter(v => by[v]).map(v => {
+    const s = by[v]; const wr = s.winRate ?? 0, pf = s.profitFactor ?? 0, ev = s.expectancy ?? 0;
+    return `<tr>
+      <td><span class="lv ${VEL_CLASS[v]}">${label[v]}</span></td>
+      <td class="num ${wr >= 30 ? 'pos' : wr >= 20 ? '' : 'neg'}">${fmt(wr)}%</td>
+      <td class="num">${s.nFilled ?? 0}</td>
+      <td class="num ${ev >= 0 ? 'pos' : 'neg'}">${fmt(ev, 4)}%</td>
+      <td class="num ${(s.totalPnl ?? 0) >= 0 ? 'pos' : 'neg'}">${fmtPct(s.totalPnl)}</td>
+      <td class="num ${(s.sharpe ?? 0) >= 0 ? 'pos' : 'neg'}">${fmt(s.sharpe)}</td>
+      <td class="num ${pf >= 1 ? 'pos' : 'neg'}">${fmt(pf)}</td>
+      <td class="num neg">${fmt(s.maxDd)}%</td>
+    </tr>`;
+  }).join('');
+  card.style.display = '';
+}
+
+// ── Cost sensitivity (client-side: re-apply extra round-trip spread) ─────────
+// The book's robustness lesson — a thin mean-reversion edge that dies at 2×/3×
+// cost is not real. clientWbtStats(trades, extraSpread) subtracts extra % per
+// trade, so we can stress the CURRENT run's costs without re-running the engine.
+function renderCostSensitivity(data) {
+  const card = document.getElementById('costCard');
+  const body = document.getElementById('costBody');
+  if (!card || !body) return;
+  const trades = data.allTrades || [];
+  if (!trades.length) { card.style.display = 'none'; return; }
+  // Base extra step ≈ a typical FX round-trip (0.012% of price). ×1/×2/×3 on top
+  // of whatever spread the run already applied.
+  const step = 0.012;
+  const rows = [
+    { label: 'As run (×0)', extra: 0 },
+    { label: '+1× spread',  extra: step },
+    { label: '+2× spread',  extra: step * 2 },
+    { label: '+3× spread',  extra: step * 3 },
+  ].map(r => ({ ...r, s: clientWbtStats(trades, r.extra) }));
+  const base = rows[0].s;
+  body.innerHTML = `<div class="bt-tbl-scroll"><table class="bt-tbl">
+    <thead><tr><th>Cost</th><th class="num">Sharpe</th><th class="num">PF</th>
+      <th class="num">Expectancy</th><th class="num">Total P&amp;L</th><th class="num">Win%</th>
+      <th class="num">vs base Sharpe</th></tr></thead>
+    <tbody>${rows.map(r => {
+      const s = r.s; const ratio = base.sharpe ? s.sharpe / base.sharpe : 0;
+      const rc = ratio >= 0.7 ? 'pos' : ratio >= 0.4 ? 'amber' : 'neg';
+      return `<tr>
+        <td>${r.label}</td>
+        <td class="num ${s.sharpe >= 0 ? 'pos' : 'neg'}">${fmt(s.sharpe)}</td>
+        <td class="num ${s.profitFactor >= 1 ? 'pos' : 'neg'}">${fmt(s.profitFactor)}</td>
+        <td class="num ${s.expectancy >= 0 ? 'pos' : 'neg'}">${fmt(s.expectancy, 4)}%</td>
+        <td class="num ${s.totalPnl >= 0 ? 'pos' : 'neg'}">${fmtPct(s.totalPnl)}</td>
+        <td class="num">${fmt(s.winRate)}%</td>
+        <td class="num ${r.extra === 0 ? 'neu' : rc}">${r.extra === 0 ? '—' : (ratio * 100).toFixed(0) + '%'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+  card.style.display = '';
 }
 
 // ── Suggestions ────────────────────────────────────────────────────────────────
@@ -1583,6 +1714,13 @@ async function runBacktest() {
     slopeThresh:     document.getElementById('runSlopeThresh').value,
     bearMult:        document.getElementById('runBearMult').value,
     trendMin:        document.getElementById('runTrendMin').value,
+    regimeSource:    document.getElementById('runRegimeSource').value,
+    adxPeriod:       document.getElementById('runAdxPeriod').value,
+    adxTrend:        document.getElementById('runAdxTrend').value,
+    hurstWin:        document.getElementById('runHurstWin').value,
+    hurstTrend:      document.getElementById('runHurstTrend').value,
+    exitMode:        document.getElementById('runExitMode').value,
+    chandMult:       document.getElementById('runChandMult').value,
   };
 
   try {
@@ -1636,7 +1774,13 @@ function updateParamVis() {
   const needInd = document.getElementById('cbZScore').checked || document.getElementById('cbSMI').checked;
   document.getElementById('indParams').classList.toggle('visible', needInd);
   const regimeMode = document.getElementById('runRegimeMode').value;
-  document.getElementById('regimeParams').classList.toggle('visible', regimeMode !== 'off');
+  const regimeSource = document.getElementById('runRegimeSource').value;
+  // Regime params show when the gate is active OR a non-default source is chosen.
+  document.getElementById('regimeParams').classList.toggle('visible', regimeMode !== 'off' || regimeSource !== 'emaSlope');
+  document.getElementById('adxParams').style.display   = regimeSource === 'adx'   ? 'inline-flex' : 'none';
+  document.getElementById('hurstParams').style.display = regimeSource === 'hurst' ? 'inline-flex' : 'none';
+  const exitMode = document.getElementById('runExitMode').value;
+  document.getElementById('exitParams').classList.toggle('visible', exitMode === 'chandelier');
   document.getElementById('runSlMult').style.display = sl === 'level' ? '' : 'none';
   const carry = document.getElementById('runCarryMode').value === 'true';
   document.getElementById('runMaxOnePerPair').style.display = carry ? '' : 'none';
