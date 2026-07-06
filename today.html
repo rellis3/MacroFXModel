@@ -2486,7 +2486,7 @@ async function loadMorningBrief() {
 function renderMorningBrief(r) {
   const el = $('mbrief');
   const esc = s => (s ?? '').toString().replace(/</g, '&lt;');
-  const gen = `<button class="mb-btn" id="mbBtn" onclick="generateMorningBrief()">↻ Generate</button>`;
+  const gen = `<a class="mb-btn" href="brief-config.html" style="text-decoration:none" title="Turn on auto-generation and pick which pairs auto-analyse each morning">⚙ Auto</a><button class="mb-btn" id="mbBtn" onclick="generateMorningBrief()">↻ Generate</button>`;
   if (!r || !r.ok || !r.analysis) {
     el.innerHTML = `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${gen}</div>` +
       `<div class="mb-theme">No brief generated yet — hit <b>Generate</b> for today's top-down macro read (the market backdrop → the dollar → the FX complex), grounded in the data + real headlines. Runs on Railway (needs ANT_KEY).</div>`;

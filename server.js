@@ -2056,6 +2056,91 @@ app.post('/api/morning-brief', async (_req, res) => {
   finally { _morningBriefRunning = false; }
 });
 
+// ── Auto-generation config + scheduler (Morning Brief + selected per-pair AI) ──
+// User-controlled from brief-config.html: turn the Morning Brief auto-refresh on/
+// off, and tick which pairs get an auto per-pair analysis each morning (the ones
+// checked daily). Everything else stays manual (the drawer's Analyse button).
+const _AUTO_BRIEF_CFG_KV = 'brief_auto_cfg';
+const _AUTO_BRIEF_DEFAULT = { morningBrief: false, pairs: {}, hourLondon: 6 };
+async function _getAutoBriefCfg() {
+  try { const r = await kv.get(_AUTO_BRIEF_CFG_KV); return r ? { ..._AUTO_BRIEF_DEFAULT, ...JSON.parse(r) } : { ..._AUTO_BRIEF_DEFAULT }; }
+  catch { return { ..._AUTO_BRIEF_DEFAULT }; }
+}
+// KV key EXACTLY as the drawer reads it: ai_<lvlKey(name,sym) with '/' stripped>.
+const _AI_LK = { GOLD: 'XAU/USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', DE30: 'DE30_USD', UK100: 'UK100_GBP', US30: 'US30_USD', US2000: 'US2000_USD' };
+const _aiPairName = (name, sym) => _AI_LK[name] ?? sym.replace('_', '/');
+const _aiKvKey = (name, sym) => 'ai_' + _aiPairName(name, sym).replace('/', '');
+// Assemble a per-pair snapshot server-side (partial — buildAnalysisPrompt is N/A-tolerant).
+async function _serverSnapshotFor(name, sym) {
+  const fc = forecastState.latest?.instruments?.[name];
+  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null); const fred = fredRaw ? JSON.parse(fredRaw) : {};
+  const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
+  let session = null; try { const st = await getSessionStatus(); session = st?.instruments?.[name] ?? null; } catch {}
+  let price = null;
+  try {
+    const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const r = await fetch(`${oB}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(sym)}`, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8000) });
+    if (r.ok) { const d = await r.json(); const p = d.prices?.[0]; if (p?.asks?.[0] && p?.bids?.[0]) price = (+p.asks[0].price + +p.bids[0].price) / 2; }
+  } catch {}
+  const snap = {
+    price, vix: g('vix'), vixPrev: gp('vix'),
+    hy: g('hy') != null ? Math.round(g('hy') * 100) : undefined, hyPrev: gp('hy') != null ? Math.round(gp('hy') * 100) : undefined,
+    dxy: g('dxy'), dxyPrev: gp('dxy'),
+    us2s10s: (g('us10y') != null && g('us2y') != null) ? Math.round((g('us10y') - g('us2y')) * 100) : undefined,
+    volRegime: fc?.vol_pct != null ? (fc.vol_pct >= 80 ? 'ELEVATED' : fc.vol_pct <= 20 ? 'COMPRESSED' : 'NORMAL') : undefined,
+    atrPct: fc?.vol_pct, priceVsAsia: session?.bias_detail,
+  };
+  try { const oiRaw = await kv.get('oi_store'); if (oiRaw) { const od = JSON.parse(oiRaw); const o = od.data?.[sym.replace('_', '/')] ?? od.data?.[sym]; if (o) snap.oi = { maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall, pcRatio: o.pcRatio, gex: o.exposures?.gex }; } } catch {}
+  return snap;
+}
+async function _buildPairAnalysis(name, sym) {
+  const key = process.env.ANT_KEY; if (!key) throw new Error('ANT_KEY not configured');
+  const snapshot = await _serverSnapshotFor(name, sym);
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Keep each string value to 1-2 sentences. Arrays max 3 items.', messages: [{ role: 'user', content: buildAnalysisPrompt(_aiPairName(name, sym), snapshot) }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}`);
+  const antData = await antRes.json();
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+  await kv.put(_aiKvKey(name, sym), JSON.stringify({ data: { analysis, generatedAt: new Date().toISOString(), pair: name }, timestamp: Date.now() })).catch(() => {});
+}
+async function _runAutoBrief(reason = 'schedule') {
+  const cfg = await _getAutoBriefCfg(); const log = [];
+  if (cfg.morningBrief && process.env.ANT_KEY) { try { await _buildMorningBrief(); log.push('morning-brief ✓'); } catch (e) { log.push('morning-brief ✗ ' + e.message); } }
+  for (const i of HR_INSTRUMENTS.filter(x => cfg.pairs?.[x.name])) {
+    try { await _buildPairAnalysis(i.name, i.sym); log.push(i.name + ' ✓'); } catch (e) { log.push(i.name + ' ✗ ' + e.message); }
+  }
+  if (log.length) console.log(`[auto-brief] (${reason}) ${log.join(' · ')}`);
+  return log;
+}
+app.get('/api/brief-auto/config', async (_req, res) => {
+  res.json({ ok: true, config: await _getAutoBriefCfg(), instruments: HR_INSTRUMENTS.map(i => ({ name: i.name, ac: i.ac })) });
+});
+app.post('/api/brief-auto/config', express.json(), async (req, res) => {
+  const b = req.body ?? {};
+  const pairs = {}; if (b.pairs && typeof b.pairs === 'object') for (const i of HR_INSTRUMENTS) if (b.pairs[i.name]) pairs[i.name] = true;
+  const cfg = { morningBrief: !!b.morningBrief, pairs, hourLondon: Math.min(23, Math.max(0, parseInt(b.hourLondon ?? 6) || 6)) };
+  await kv.put(_AUTO_BRIEF_CFG_KV, JSON.stringify(cfg)).catch(() => {});
+  res.json({ ok: true, config: cfg });
+});
+app.post('/api/brief-auto/run-now', async (_req, res) => {
+  try { res.json({ ok: true, log: await _runAutoBrief('manual') }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Hourly-ish poll: fire once/day at the configured London hour when anything is enabled.
+let _autoBriefLastRun = null;
+setInterval(async () => {
+  try {
+    const cfg = await _getAutoBriefCfg();
+    if (!cfg.morningBrief && !Object.keys(cfg.pairs || {}).length) return;
+    const lonHour = parseInt(new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }));
+    const today = new Date().toISOString().slice(0, 10);
+    if (lonHour === cfg.hourLondon && _autoBriefLastRun !== today) { _autoBriefLastRun = today; _runAutoBrief('daily').catch(() => {}); }
+  } catch {}
+}, 20 * 60_000);
+
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
 app.post('/api/ai-backtest', async (req, res) => {
   const key = process.env.ANT_KEY;
