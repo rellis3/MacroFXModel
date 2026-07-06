@@ -2070,6 +2070,24 @@ async function _getAutoBriefCfg() {
 }
 // KV key EXACTLY as the drawer reads it: ai_<lvlKey(name,sym) with '/' stripped>.
 const _AI_LK = { GOLD: 'XAU/USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', DE30: 'DE30_USD', UK100: 'UK100_GBP', US30: 'US30_USD', US2000: 'US2000_USD' };
+// brief name → [COT symbol, flip] and → relevant news countries (ported from today.html)
+const _COT_MAP = { EURUSD:['EUR',false], GBPUSD:['GBP',false], USDJPY:['JPY',true], AUDUSD:['AUD',false], NZDUSD:['NZD',false], USDCAD:['CAD',true], USDCHF:['CHF',true], GOLD:['GOLD',false], NQ:['NQ',false], SPX500:['ES',false], US30:['YM',false], US2000:['RTY',false] };
+const _PAIR_NEWS_CC = { EURUSD:['US','EU','DE'], GBPUSD:['US','GB'], USDJPY:['US','JP'], AUDUSD:['US','AU'], NZDUSD:['US','NZ'], USDCAD:['US','CA'], USDCHF:['US','CH'], GBPJPY:['GB','JP'], EURJPY:['EU','DE','JP'], AUDJPY:['AU','JP'], CADJPY:['CA','JP'], GOLD:['US'], NQ:['US'], SPX500:['US'], US30:['US'], US2000:['US'], DE30:['DE','EU'], UK100:['GB'] };
+// Today's economic calendar — fetched once, cached 30 min (one Finnhub call feeds every pair).
+let _todayEventsCache = { data: null, at: 0 };
+async function _fetchTodayEvents() {
+  if (!process.env.FINNHUB_KEY) return [];
+  if (_todayEventsCache.data && Date.now() - _todayEventsCache.at < 30 * 60_000) return _todayEventsCache.data;
+  try {
+    const d = new Date().toISOString().slice(0, 10);
+    const r = await fetch(`https://finnhub.io/api/v1/calendar/economic?from=${d}&to=${d}&token=${process.env.FINNHUB_KEY}`, { signal: AbortSignal.timeout(10_000) });
+    if (!r.ok) return _todayEventsCache.data ?? [];
+    const j = await r.json();
+    const evs = (j.economicCalendar ?? []).map(e => ({ country: e.country, impact: e.impact, event: e.event, ms: new Date(e.time).getTime() })).filter(e => !isNaN(e.ms));
+    _todayEventsCache = { data: evs, at: Date.now() };
+    return evs;
+  } catch { return _todayEventsCache.data ?? []; }
+}
 const _aiPairName = (name, sym) => _AI_LK[name] ?? sym.replace('_', '/');
 const _aiKvKey = (name, sym) => 'ai_' + _aiPairName(name, sym).replace('/', '');
 // Assemble a per-pair snapshot server-side (partial — buildAnalysisPrompt is N/A-tolerant).
@@ -2093,6 +2111,31 @@ async function _serverSnapshotFor(name, sym) {
     atrPct: fc?.vol_pct, priceVsAsia: session?.bias_detail,
   };
   try { const oiRaw = await kv.get('oi_store'); if (oiRaw) { const od = JSON.parse(oiRaw); const o = od.data?.[sym.replace('_', '/')] ?? od.data?.[sym]; if (o) snap.oi = { maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall, pcRatio: o.pcRatio, gex: o.exposures?.gex }; } } catch {}
+  // COT positioning (real spec/leveraged-fund data) — same shape the prompt reads.
+  try {
+    const cotRaw = await kv.get('cot_extremes_v2');
+    const m = _COT_MAP[name];
+    if (cotRaw && m) {
+      const cd = JSON.parse(cotRaw); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
+      const c = (Array.isArray(arr) ? arr : []).find(x => x.sym === m[0]);
+      if (c) {
+        const oi = c.openInterest ?? 0, net = m[1] ? -(c.specNet ?? 0) : (c.specNet ?? 0);
+        snap.cot = { reportDate: c.reportDate, openInterest: oi, levNet: net, levNetChg: c.weeklyChg,
+          levPct: c.specPct, crowdingPct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : c.specPct };
+      }
+    }
+  } catch {}
+  // Event risk for THIS pair — today's calendar filtered to its own economies.
+  try {
+    const cc = _PAIR_NEWS_CC[name] ?? ['US'];
+    const evs = (await _fetchTodayEvents()).filter(e => cc.includes(e.country) && ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 20 * 60000);
+    if (evs.length) {
+      const next4h = evs.filter(e => (e.ms - Date.now()) < 4 * 3600e3);
+      const hasHigh = next4h.some(e => (e.impact ?? '').toLowerCase() === 'high');
+      snap.eventRisk = { level: hasHigh ? 'high' : next4h.length ? 'medium' : 'low', sizeMult: hasHigh ? 0.5 : 1,
+        inNext4h: next4h.slice(0, 4).map(e => ({ country: e.country, impact: e.impact, event: e.event, time: new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) })) };
+    }
+  } catch {}
   return snap;
 }
 async function _buildPairAnalysis(name, sym) {
