@@ -1,0 +1,119 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morning Brief — Auto Config</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;margin:0;padding:20px;max-width:820px;margin:0 auto}
+  a{color:var(--blue);text-decoration:none}
+  h1{font-size:20px;margin:0 0 3px}
+  .sub{color:var(--text2);font-size:12.5px;margin-bottom:20px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+  h2{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px}
+  .row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .row:last-child{margin-bottom:0}
+  .lbl{font-size:13.5px;font-weight:600}
+  .lbl .d{font-weight:400;color:var(--text3);font-size:11.5px;display:block;margin-top:1px}
+  /* toggle */
+  .sw{position:relative;width:44px;height:24px;flex:0 0 44px;margin-left:auto}
+  .sw input{opacity:0;width:0;height:0}
+  .sl{position:absolute;inset:0;background:var(--card2);border:1px solid var(--border);border-radius:24px;cursor:pointer;transition:.15s}
+  .sl:before{content:"";position:absolute;height:18px;width:18px;left:2px;top:2px;background:var(--text2);border-radius:50%;transition:.15s}
+  input:checked+.sl{background:var(--bull);border-color:var(--bull)} input:checked+.sl:before{transform:translateX(20px);background:#fff}
+  select,input[type=number]{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .pair{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;cursor:pointer}
+  .pair input{width:16px;height:16px;accent-color:var(--bull)}
+  .pair.on{border-color:rgba(16,185,129,.4)}
+  .pair .pn{font-size:12.5px;font-weight:600}
+  .grp-h{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px}
+  .grp-h:first-child{margin-top:0}
+  .btns{display:flex;gap:10px;align-items:center;margin-top:6px}
+  button.act{background:var(--blue);color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer}
+  button:disabled{opacity:.55}
+  .status{color:var(--text2);font-size:12px}
+  .note{color:var(--text3);font-size:11px;line-height:1.5;margin-top:10px}
+</style>
+
+<h1>Morning Brief — Auto Config</h1>
+<div class="sub">Choose what generates automatically each morning, and what you'll run by hand. <a href="today.html">← Daily Brief</a></div>
+
+<div class="card">
+  <h2>Auto-generation</h2>
+  <div class="row">
+    <div class="lbl">🗞 Morning Brief <span class="d">The top-down macro front page, refreshed automatically each morning.</span></div>
+    <label class="sw"><input type="checkbox" id="mbToggle"><span class="sl"></span></label>
+  </div>
+  <div class="row">
+    <div class="lbl">Run at <span class="d">London time — before you sit down.</span></div>
+    <select id="hour" style="margin-left:auto"></select>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Auto-analyse these pairs</h2>
+  <div class="note" style="margin:0 0 12px">Tick the pairs you check every day — they'll get a full AI analysis generated with the Morning Brief, ready when you open the drill-in. Everything unticked stays <b>manual</b> (the 🧠 Analyse button in the drawer). Fewer ticks = fewer AI calls.</div>
+  <div id="pairs"></div>
+</div>
+
+<div class="card">
+  <div class="btns">
+    <button class="act" id="saveBtn" onclick="save()">Save</button>
+    <button class="ghost" id="runBtn" onclick="runNow()">▶ Run now</button>
+    <span class="status" id="status"></span>
+  </div>
+  <div class="note">Auto-generation runs on the server (Railway) at the chosen hour — it needs <code>ANT_KEY</code> for the AI and pulls live macro data + Yahoo headlines. "Run now" triggers it immediately so you can test. Both the Morning Brief and per-pair reads are AI opinion, grounded in data — not backtested signals.</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const GRP = { fx:'FX majors', index:'Indices', commodity:'Commodities' };
+let cfg = { morningBrief:false, pairs:{}, hourLondon:6 }, instruments = [];
+
+for (let h = 0; h < 24; h++) { const o = document.createElement('option'); o.value = h; o.textContent = String(h).padStart(2,'0') + ':00'; $('hour').appendChild(o); }
+
+function renderPairs() {
+  const byGrp = {};
+  for (const i of instruments) (byGrp[i.ac] ??= []).push(i);
+  $('pairs').innerHTML = Object.entries(byGrp).map(([ac, list]) =>
+    `<div class="grp-h">${GRP[ac] ?? ac}</div><div class="grid">` +
+    list.map(i => `<label class="pair ${cfg.pairs[i.name] ? 'on' : ''}" data-n="${i.name}">
+      <input type="checkbox" ${cfg.pairs[i.name] ? 'checked' : ''} onchange="togglePair('${i.name}',this.checked)">
+      <span class="pn">${i.name}</span></label>`).join('') + `</div>`
+  ).join('');
+}
+function togglePair(name, on) { cfg.pairs[name] = on; if (!on) delete cfg.pairs[name]; document.querySelector(`.pair[data-n="${name}"]`)?.classList.toggle('on', on); }
+
+async function load() {
+  try {
+    const r = await fetch('/api/brief-auto/config').then(x => x.json());
+    if (r.ok) { cfg = r.config; instruments = r.instruments || []; }
+  } catch {}
+  $('mbToggle').checked = !!cfg.morningBrief;
+  $('hour').value = cfg.hourLondon ?? 6;
+  renderPairs();
+}
+async function save() {
+  const btn = $('saveBtn'); btn.disabled = true; $('status').textContent = 'Saving…';
+  cfg.morningBrief = $('mbToggle').checked;
+  cfg.hourLondon = parseInt($('hour').value);
+  try {
+    const r = await fetch('/api/brief-auto/config', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(cfg) }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || 'failed');
+    cfg = r.config; $('status').textContent = 'Saved ✓';
+  } catch (e) { $('status').textContent = 'Save failed: ' + e.message; }
+  finally { btn.disabled = false; }
+}
+async function runNow() {
+  const btn = $('runBtn'); btn.disabled = true; $('status').textContent = 'Running (~15s per item)…';
+  try {
+    const r = await fetch('/api/brief-auto/run-now', { method:'POST' }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || 'failed');
+    $('status').textContent = 'Done: ' + (r.log?.join(' · ') || 'nothing enabled');
+  } catch (e) { $('status').textContent = 'Run failed: ' + e.message + (/ANT_KEY|503|Railway/.test(e.message) ? ' — runs on Railway (ANT_KEY).' : ''); }
+  finally { btn.disabled = false; }
+}
+load();
+</script>
