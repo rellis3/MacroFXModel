@@ -67,6 +67,7 @@ import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
 import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
+import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -8768,6 +8769,102 @@ app.get('/api/zscore-backtest/pairs', (_req, res) => {
     pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) =>
       [k, { label: v.label, pairDisplay: v.pairDisplay, defaultThreshold: v.defaultThreshold }])),
   });
+});
+
+// ── Z-Score V2 — confidence-scored (A/B vs the v1 binary gate) ─────────────────
+// Runs BOTH engines over the same window and returns the A/B: v1 (yield-spread z
+// as a HARD GATE) vs v2 (z demoted to one weighted CONFIDENCE factor alongside a
+// risk-off veto, approach-velocity and fib-depth; fade geometry sets direction).
+// Headline is the OOS card. Engines: js/zscoreSpreadV2Engine.js + js/zscoreConfidenceCore.js
+const zsV2Jobs = new Map();
+
+function _purgeStaleZsV2Jobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of zsV2Jobs) if (job.startedAt < cutoff) zsV2Jobs.delete(id);
+}
+
+app.get('/api/zscore-v2/defaults', (_req, res) => {
+  res.json({ ok: true, defaults: ZS_V2_DEFAULTS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) =>
+      [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/zscore-v2/run', (req, res) => {
+  if (!process.env.FRED_KEY) {
+    return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch yield-spread + risk-off data' });
+  }
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined,
+    dateTo:   b.dateTo   || undefined,
+    zWindow:       parseInt(b.zWindow) || 90,
+    entryWindow:   parseInt(b.entryWindow) || 6,
+    splitFrac:     num(b.splitFrac,     ZS_V2_DEFAULTS.splitFrac),
+    confThreshold: num(b.confThreshold, ZS_V2_DEFAULTS.confThreshold),
+    zGateMin:      num(b.zGateMin,      ZS_V2_DEFAULTS.zGateMin),
+    velWin:        parseInt(b.velWin) || ZS_V2_DEFAULTS.velWin,
+    velRef:        num(b.velRef,        ZS_V2_DEFAULTS.velRef),
+    slFrac:        num(b.slFrac,        ZS_V2_DEFAULTS.slFrac),
+    minRR:         num(b.minRR,         ZS_V2_DEFAULTS.minRR),
+    // Ablation-friendly weights: any 0 removes that factor from the composite.
+    weights: (b.weights && typeof b.weights === 'object')
+      ? { z: num(b.weights.z, ZS_V2_DEFAULTS.weights.z),
+          riskOff: num(b.weights.riskOff, ZS_V2_DEFAULTS.weights.riskOff),
+          vel: num(b.weights.vel, ZS_V2_DEFAULTS.weights.vel),
+          struct: num(b.weights.struct, ZS_V2_DEFAULTS.weights.struct) }
+      : ZS_V2_DEFAULTS.weights,
+    invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, b.invert?.[k] === true || b.invert?.[k] === 'true'])),
+  };
+  const pairsToRun = b.pair
+    ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p])
+    : Object.keys(ZSCORE_PAIRS);
+  if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+
+  const jobId = `zsv2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleZsV2Jobs();
+  zsV2Jobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      // Baseline (v1 gate) and v2 (confidence) over the same window/pairs.
+      const v1Opts = { dateFrom: opts.dateFrom, dateTo: opts.dateTo, zWindow: opts.zWindow,
+        entryWindow: opts.entryWindow, invert: opts.invert,
+        thresholds: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k => [k, ZSCORE_PAIRS[k].defaultThreshold])) };
+      const [baseline, v2] = await Promise.all([
+        runFullZScoreBacktest(v1Opts, pairsToRun),
+        runFullZScoreV2Backtest(opts, pairsToRun),
+      ]);
+      zsV2Jobs.set(jobId, {
+        status: 'done', startedAt,
+        result: {
+          ok: true,
+          message: `Z-Score V2 A/B complete — baseline ${baseline.trades.length} trades, v2 ${v2.trades.length} trades`,
+          baseline: { combined: baseline.combined, perPair: baseline.perPair, log: baseline.log },
+          v2:       { combined: v2.combined, perPair: v2.perPair, log: v2.log },
+          opts,
+        },
+      });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[zscore-v2/run]', msg, e?.stack ?? '');
+      zsV2Jobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/zscore-v2/status/:jobId', (req, res) => {
+  const job = zsV2Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
 // ── NASDAQ Liquidity Continuation Framework ───────────────────────────────────
