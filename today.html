@@ -289,6 +289,8 @@
   .ai-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
   .ai-head{font-style:italic;color:var(--text);font-size:13px;line-height:1.5;border-left:3px solid var(--amber);
            padding:2px 0 2px 12px;margin-bottom:12px}
+  .ai-brief{font-size:13.5px;line-height:1.65;color:var(--text)}
+  .ai-brief p{margin:0 0 11px} .ai-brief p:last-child{margin-bottom:0}
   .ai-body{display:flex;flex-direction:column;gap:11px;position:relative}
   .ai-body.clamp{max-height:230px;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent)}
   .ai-read .ai-rk{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:2px}
@@ -2259,12 +2261,19 @@ async function loadDrawerAnalysis(r) {
   const risks = a.riskWarnings?.length ? `<div class="ai-read"><div class="ai-rk"><span>🚨</span>Risk warnings</div><div class="ai-rv">${a.riskWarnings.filter(Boolean).map(esc).join(' · ')}</div></div>` : '';
   const levels = a.keyLevels?.length ? `<div class="ai-read"><div class="ai-rk"><span>📍</span>Key levels</div><div class="ai-rv">${a.keyLevels.filter(l => l && l.price).map(l => `<b>${esc(l.price)}</b> ${esc(l.type)}${l.significance ? ` — ${esc(l.significance)}` : ''}`).join(' · ')}</div></div>` : '';
   const age = a.generatedAt ? `<div class="muted" style="font-size:10px;margin-top:9px">Generated ${new Date(a.generatedAt).toLocaleString()} · AI opinion, not a backtested signal.</div>` : '';
-  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}<div class="ai-body">${reads}${framework}${dodont}${risks}${levels}</div>${age}`;
+  // The flowing "brief" is the PRIMARY read (newspaper style); the field-by-field
+  // reads are optional detail, hidden behind a toggle so the story reads first.
+  const brief = a.brief ? `<div class="ai-brief">${esc(a.brief).split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${p}</p>`).join('')}</div>` : '';
+  const detail = `${reads}${framework}${dodont}${risks}${levels}`;
+  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}` +
+    (detail ? `<div class="ai-body" style="display:none;margin-top:10px">${detail}</div>` : '') + age;
   const body = box.querySelector('.ai-body');
-  let open = false;
-  const apply = () => { body.classList.toggle('clamp', !open); tgl.textContent = open ? 'show less ▴' : 'show all ▾'; };
-  tgl.onclick = e => { e.stopPropagation(); open = !open; apply(); };
-  apply();
+  if (body) {
+    let open = false;
+    const apply = () => { body.style.display = open ? 'flex' : 'none'; tgl.textContent = open ? 'hide detail ▴' : 'signal detail ▾'; };
+    tgl.onclick = e => { e.stopPropagation(); open = !open; apply(); };
+    apply();
+  } else { tgl.textContent = ''; }
   sec.style.display = 'block';
 }
 
