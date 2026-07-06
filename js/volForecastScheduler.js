@@ -442,14 +442,20 @@ function computeSessionMetrics(bar, fc, bars = []) {
   const hlVsMed = r2(hl - fc.hl_median);
   const hlVs75  = r2(hl - fc.hl_75);
 
-  // Remaining vs oc_median (absolute one-sided expected move)
-  const ocRem = r2(Math.max(fc.oc_median - Math.abs(oc), 0));
-  const ohRem = r2(Math.max(fc.oc_median - oh, 0));
-  const olRem = r2(Math.max(fc.oc_median - ol, 0));
+  // Asymmetric v2 targets (drift-adjusted) — fall back to symmetric when absent
+  const ohTargetMed = fc.oh_v2_median ?? fc.oc_median;
+  const ohTarget75  = fc.oh_v2_75    ?? fc.oc_75;
+  const olTargetMed = fc.ol_v2_median ?? fc.oc_median;
+  const olTarget75  = fc.ol_v2_75    ?? fc.oc_75;
 
-  // Ratios of actual to forecast (%)
-  const ohRatio = r2(fc.oc_median > 0 ? oh / fc.oc_median * 100 : 0);
-  const olRatio = r2(fc.oc_median > 0 ? ol / fc.oc_median * 100 : 0);
+  // Remaining vs targets (absolute one-sided expected move)
+  const ocRem = r2(Math.max(fc.oc_median - Math.abs(oc), 0));
+  const ohRem = r2(Math.max(ohTargetMed - oh, 0));
+  const olRem = r2(Math.max(olTargetMed - ol, 0));
+
+  // Ratios of actual to asymmetric target (%)
+  const ohRatio = r2(ohTargetMed > 0 ? oh / ohTargetMed * 100 : 0);
+  const olRatio = r2(olTargetMed > 0 ? ol / olTargetMed * 100 : 0);
 
   // Reach times — walk H1 bars chronologically.
   // For directional levels (O-H, O-L, O-C): use bar CLOSE to avoid spike false-triggers.
@@ -461,6 +467,10 @@ function computeSessionMetrics(bar, fc, bars = []) {
   if (bars.length > 0) {
     const oc_med_p = fc.oc_median > 0 ? fc.oc_median / 100 * o : Infinity;
     const oc_75_p  = fc.oc_75    > 0 ? fc.oc_75    / 100 * o : Infinity;
+    const oh_med_p = ohTargetMed  > 0 ? ohTargetMed  / 100 * o : Infinity;
+    const oh_75_p  = ohTarget75   > 0 ? ohTarget75   / 100 * o : Infinity;
+    const ol_med_p = olTargetMed  > 0 ? olTargetMed  / 100 * o : Infinity;
+    const ol_75_p  = olTarget75   > 0 ? olTarget75   / 100 * o : Infinity;
     const hl_med_p = fc.hl_median > 0 ? fc.hl_median / 100 * o : Infinity;
     const hl_75_p  = fc.hl_75    > 0 ? fc.hl_75    / 100 * o : Infinity;
 
@@ -474,11 +484,11 @@ function computeSessionMetrics(bar, fc, bars = []) {
       rollingLow  = Math.min(rollingLow,  bL);
       const rollingHL = rollingHigh - rollingLow;
 
-      if (!ohReachedAt   && (bC - o) >=  oc_med_p)            ohReachedAt   = b.time;
-      if (!olReachedAt   && (o - bC) >=  oc_med_p)            olReachedAt   = b.time;
+      if (!ohReachedAt   && (bC - o) >=  oh_med_p)            ohReachedAt   = b.time;
+      if (!olReachedAt   && (o - bC) >=  ol_med_p)            olReachedAt   = b.time;
       if (!ocReachedAt   && Math.abs(bC - o) >= oc_med_p)     ocReachedAt   = b.time;
-      if (!oh75ReachedAt && (bC - o) >=  oc_75_p)             oh75ReachedAt = b.time;
-      if (!ol75ReachedAt && (o - bC) >=  oc_75_p)             ol75ReachedAt = b.time;
+      if (!oh75ReachedAt && (bC - o) >=  oh_75_p)             oh75ReachedAt = b.time;
+      if (!ol75ReachedAt && (o - bC) >=  ol_75_p)             ol75ReachedAt = b.time;
       if (!oc75ReachedAt && Math.abs(bC - o) >= oc_75_p)      oc75ReachedAt = b.time;
       if (!hlMedReachedAt && rollingHL >= hl_med_p)            hlMedReachedAt = b.time;
       if (!hl75ReachedAt  && rollingHL >= hl_75_p)             hl75ReachedAt  = b.time;
@@ -518,6 +528,9 @@ function computeSessionMetrics(bar, fc, bars = []) {
     hl_vs_med: hlVsMed, hl_vs_75: hlVs75,
     oc_rem: ocRem, oh_rem: ohRem, ol_rem: olRem,
     oh_ratio: ohRatio, ol_ratio: olRatio,
+    oh_target_med: r2(ohTargetMed), oh_target_75: r2(ohTarget75),
+    ol_target_med: r2(olTargetMed), ol_target_75: r2(olTarget75),
+    drift_d: fc.drift_d ?? 0,
     anchor_open: r2(o),
     oh_reached_at:    ohReachedAt,
     ol_reached_at:    olReachedAt,

@@ -1701,11 +1701,16 @@ function updateV2CardSession(name, s, data) {
     const ocAbs = Math.abs(s.oc ?? 0);
     const hlPct = fc.hl_median > 0 ? Math.round(s.hl / fc.hl_median * 100) : null;
     const ocPct = fc.oc_median > 0 ? Math.round(ocAbs / fc.oc_median * 100) : null;
+    const ohMed = s.oh_target_med ?? fc.oc_median, ohP75 = s.oh_target_75 ?? fc.oc_75;
+    const olMed = s.ol_target_med ?? fc.oc_median, olP75 = s.ol_target_75 ?? fc.oc_75;
+    const ohMax = Math.max(ohP75, ocMax) * 1.05, olMax = Math.max(olP75, ocMax) * 1.05;
+    const ohPct = ohMed > 0 ? Math.round(s.oh / ohMed * 100) : null;
+    const olPct = olMed > 0 ? Math.round(s.ol / olMed * 100) : null;
     mb.innerHTML =
-      v2MetricBar('H-L', fc.hl_median, fc.hl_75, hlMax, s.hl,   s.hl>=fc.hl_75,        hlPct ? `${hlPct}% med` : '') +
-      v2MetricBar('O-C', fc.oc_median, fc.oc_75, ocMax, ocAbs,  ocAbs>=fc.oc_75,        ocPct ? `${ocPct}% med` : '') +
-      v2MetricBar('O-H', fc.oc_median, fc.oc_75, ocMax, s.oh,   s.oh>=fc.oc_75,         s.oh_reached_at ? '✓' : '') +
-      v2MetricBar('O-L', fc.oc_median, fc.oc_75, ocMax, s.ol,   s.ol>=fc.oc_75,         s.ol_reached_at ? '✓' : '');
+      v2MetricBar('H-L', fc.hl_median, fc.hl_75, hlMax, s.hl,  s.hl>=fc.hl_75,   hlPct ? `${hlPct}% med` : '') +
+      v2MetricBar('O-C', fc.oc_median, fc.oc_75, ocMax, ocAbs, ocAbs>=fc.oc_75,   ocPct ? `${ocPct}% med` : '') +
+      v2MetricBar('O-H', ohMed, ohP75, ohMax, s.oh, s.oh>=ohP75, ohPct ? `${ohPct}% med` : (s.oh_reached_at ? '✓' : '')) +
+      v2MetricBar('O-L', olMed, olP75, olMax, s.ol, s.ol>=olP75, olPct ? `${olPct}% med` : (s.ol_reached_at ? '✓' : ''));
   }
 
   // Update tiles
@@ -1879,11 +1884,14 @@ function buildSessionText(data) {
     const vsM = s.hl_vs_med>=0?`+${p2(s.hl_vs_med)}`:p2(s.hl_vs_med), vsP = s.hl_vs_75>=0?`+${p2(s.hl_vs_75)}`:p2(s.hl_vs_75);
     lines.push(`  vs median  ${vsM}%  |  vs 75th  ${vsP}%`, '');
     const ocSign = s.oc>=0?'+':'';
+    const _ohMed = s.oh_target_med ?? fc.oc_median, _ohP75 = s.oh_target_75 ?? fc.oc_75;
+    const _olMed = s.ol_target_med ?? fc.oc_median, _olP75 = s.ol_target_75 ?? fc.oc_75;
     lines.push(`O-C:  ${ocSign}${p2(s.oc)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.oc_rem,Math.abs(s.oc),fc.oc_75,s.oc_reached_at)}`);
-    lines.push(`O-H:  ${p2(s.oh)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.oh_rem,s.oh,fc.oc_75,s.oh_reached_at)}`);
-    lines.push(`O-L:  ${p2(s.ol)}%  (med ${p2(fc.oc_median)}%  |  75th ${p2(fc.oc_75)}%)  — ${remTxt(s.ol_rem,s.ol,fc.oc_75,s.ol_reached_at)}`, '');
+    lines.push(`O-H:  ${p2(s.oh)}%  (med ${p2(_ohMed)}%  |  75th ${p2(_ohP75)}%)  — ${remTxt(s.oh_rem,s.oh,_ohP75,s.oh_reached_at)}`);
+    lines.push(`O-L:  ${p2(s.ol)}%  (med ${p2(_olMed)}%  |  75th ${p2(_olP75)}%)  — ${remTxt(s.ol_rem,s.ol,_olP75,s.ol_reached_at)}`, '');
     lines.push(`Bias:  ${s.bias} — ${s.bias_detail}`);
-    lines.push(`  O-H ${s.oh.toFixed(3)}% / ${fc.oc_median.toFixed(3)}% forecast (${Math.round(s.oh_ratio)}%)  |  O-L ${s.ol.toFixed(3)}% / ${fc.oc_median.toFixed(3)}% forecast (${Math.round(s.ol_ratio)}%)`, '');
+    const _driftLbl = Math.abs(s.drift_d ?? 0) > 0.05 ? `  |  d=${(s.drift_d??0)>=0?'+':''}${(s.drift_d??0).toFixed(2)}` : '';
+    lines.push(`  O-H ${s.oh.toFixed(3)}% / ${_ohMed.toFixed(3)}% target (${Math.round(s.oh_ratio)}%)  |  O-L ${s.ol.toFixed(3)}% / ${_olMed.toFixed(3)}% target (${Math.round(s.ol_ratio)}%)${_driftLbl}`, '');
     lines.push(`Directionality:  ${p2(s.dir)}%  (expected ~${p2(data.expected_dir)}%)`);
     lines.push(`Shape:  ${s.shape}`, '', `Outlook:  ${s.outlook}`, '');
   }
