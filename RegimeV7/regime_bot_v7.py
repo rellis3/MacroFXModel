@@ -459,11 +459,15 @@ def fetch_m30_bars(pair: str, count: int = 300) -> Optional[list]:
     if not HAS_MT5:
         return None
     try:
-        bars = mt5.copy_rates_from_pos(_mt5_sym(pair), mt5.TIMEFRAME_M30, 0, count)
+        sym = _mt5_sym(pair)
+        mt5.symbol_select(sym, True)
+        bars = mt5.copy_rates_from_pos(sym, mt5.TIMEFRAME_M30, 0, count)
         if bars is None or len(bars) < 80:
+            log.warning(f'fetch_m30_bars({pair}): got {len(bars) if bars is not None else "None"} bars')
             return None
         return [{'high': float(b['high']), 'low': float(b['low']), 'close': float(b['close'])} for b in bars]
-    except Exception:
+    except Exception as exc:
+        log.warning(f'fetch_m30_bars({pair}): {exc}')
         return None
 
 
@@ -478,7 +482,7 @@ def compute_m30_features(pair: str) -> Optional[dict]:
     closes = [b['close'] for b in bars]
     n      = len(closes)
     atr_sl = _build_atr(bars, 70)[-1]
-    slope  = _ols_slope(closes[n - ln:n])
+    slope  = _ols_slope(closes[n - 8:n])  # short window — confirms recent direction only
     return {'atrSL': atr_sl, 'slope': slope}
 
 
@@ -807,7 +811,17 @@ def _serialize_closed_trades() -> list:
             outs = grp['out']
             if not outs:
                 continue
-            ind      = grp['in']
+            ind = grp['in']
+            if ind is None:
+                # Entry deal isn't in today's window — the position was opened
+                # on an earlier day (swing hold) and just closed today. Look
+                # it up directly by position id (unbounded by date) so
+                # multi-day trades still get an open_price/time_open.
+                try:
+                    pos_deals = mt5.history_deals_get(position=pid) or []
+                    ind = next((d for d in pos_deals if d.entry == 0), None)
+                except Exception:
+                    ind = None
             last_out = max(outs, key=lambda d: d.time)
             if ind:
                 direction  = 'BUY' if ind.type == 0 else 'SELL'
@@ -1353,6 +1367,12 @@ def run(url: str, paper_mode: bool) -> None:
             if cfg.get('htf_require', False) and htf_rd:
                 ok_htf = (htf_regime == regime)
 
+            log.info(
+                f'[{pair}] NEW_BAR gates: dir={is_dir} conf={ok_conf}({eff_conf:.0f}%) '
+                f'score={ok_score}({reg_score.total:.0f}) slope={ok_slope}({slope:.6f}) '
+                f'atrSL={atr_sl:.5f} feats={"ok" if feats else "NONE"} '
+                f'dbc={debounce_ctr.get(pair, 0)}'
+            )
             if is_dir and ok_conf and ok_score and ok_slope and ok_htf:
                 debounce_ctr[pair] = debounce_ctr.get(pair, 0) + 1
             else:

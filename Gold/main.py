@@ -242,7 +242,18 @@ def _serialize_closed_trades(magic: int) -> list:
             outs = grp['out']
             if not outs:
                 continue
-            ind      = grp['in']
+            ind = grp['in']
+            if ind is None:
+                # Entry deal isn't in today's window — the position was opened
+                # on an earlier day (swing hold) and just hit SL/TP today.
+                # Look it up directly by position id (unbounded by date) so
+                # multi-day trades still get an open_price/time_open instead
+                # of the audit trail going blank.
+                try:
+                    pos_deals = mt5.history_deals_get(position=pid) or []
+                    ind = next((d for d in pos_deals if d.entry == 0), None)
+                except Exception:
+                    ind = None
             last_out = max(outs, key=lambda d: d.time)
             if ind:
                 direction  = 'BUY' if ind.type == 0 else 'SELL'

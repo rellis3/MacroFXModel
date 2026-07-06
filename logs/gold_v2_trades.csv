@@ -1,0 +1,2 @@
+date,time,trade_id,zone_id,tf,direction,score,in_gp,legs,entry,sl,tp1,tp2,sl_pips,sl_basis,tp2_basis,rr,close_reason,close_price,pnl_pips,mfe_pips,mae_pips,result,vu_components,vu_confidence,composition
+2026-07-03,12:05:11,2026-07-03-001,v2_long_4182_gp,H4,LONG,10.5,True,3,4178.89,4165.22,4243.5,4243.5,13.7,confirm_swing,nPOC 4243.5 (15d),4.72,SL_HIT,4164.69,-14.2,3.9,14.2,LOSS,2,MEDIUM,3 legs (3H4); golden pocket; POC 4180.0; Daily open; HTF BULL

@@ -258,7 +258,16 @@ def _serialize_closed_trades() -> list:
         outs = grp['out']
         if not outs:
             continue
-        ind      = grp['in']
+        ind = grp['in']
+        if ind is None:
+            # Entry deal isn't in today's window — the position was opened
+            # on an earlier day and just closed today. Look it up directly
+            # by position id (unbounded by date).
+            try:
+                pos_deals = mt5.history_deals_get(position=pid) or []
+                ind = next((d for d in pos_deals if d.entry == 0), None)
+            except Exception:
+                ind = None
         last_out = max(outs, key=lambda d: d.time)
         result.append({
             'position_id': pid,

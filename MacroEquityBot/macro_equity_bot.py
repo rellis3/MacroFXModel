@@ -454,6 +454,15 @@ def _serialize_closed_trades() -> list[dict]:
             continue
         ex = exits[-1]
         en = entries[0] if entries else None
+        if en is None:
+            # Entry deal isn't in today's window — the position was opened
+            # on an earlier day and just closed today. Look it up directly
+            # by position id (unbounded by date).
+            try:
+                pos_deals = mt5.history_deals_get(position=pos_id) or []
+                en = next((d for d in pos_deals if d.entry == 0), None)
+            except Exception:
+                en = None
         out.append({
             'position_id': int(pos_id),
             'symbol':      ex.symbol,

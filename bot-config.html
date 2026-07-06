@@ -6454,7 +6454,7 @@ async function openTradeChartModal(idx) {
   const title  = document.getElementById('tcTitle');
   modal.classList.add('open');
   status.style.display = 'flex';
-  status.textContent = 'Loading M1 data…';
+  status.textContent = 'Loading 5m data…';
 
   const bot = _POS_BOTS.find(b => b.key === t.bot_key) || { label: t.bot_key || '—' };
   title.textContent = `${t.symbol || '—'} · ${bot.label}`;
@@ -6503,8 +6503,22 @@ async function openTradeChartModal(idx) {
       open: +v.open, high: +v.high, low: +v.low, close: +v.close,
     }));
 
-    const padded = bars.filter(b => b.time >= entryTs - 600 && b.time <= exitTs + 600);
-    const data = padded.length >= 5 ? padded : bars;
+    // Display at 5m — reuse the shared resample brick (js/barUtils.js) rather
+    // than re-bucketing M1 inline (Lego principle: one copy of the hot path).
+    const { resampleTo } = await import('./js/barUtils.js');
+    const BUCKET_SECS = 5 * 60;
+    const bars5 = resampleTo(bars, 5);
+
+    // Snap entry/exit to the 5m bucket that actually contains them — markers
+    // must land on a time value that exists in the series data, otherwise
+    // Lightweight Charts silently misplaces (or drops) them.
+    const snapToBucket = ts => ts - (((ts % BUCKET_SECS) + BUCKET_SECS) % BUCKET_SECS);
+    const entryBucket = snapToBucket(entryTs);
+    const exitBucket  = snapToBucket(exitTs);
+
+    const padSecs = BUCKET_SECS * 6; // 30 min of context either side
+    const padded = bars5.filter(b => b.time >= entryBucket - padSecs && b.time <= exitBucket + padSecs);
+    const data = padded.length >= 5 ? padded : bars5;
     if (!data.length) throw new Error('No candles in trade window');
 
     const el = document.getElementById('tcChartEl');
@@ -6537,8 +6551,8 @@ async function openTradeChartModal(idx) {
     const clamp = ts => Math.min(lastBarTs, Math.max(firstBarTs, ts));
     try {
       _tcSeries.setMarkers([
-        { time: clamp(entryTs), position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
-        { time: clamp(exitTs),  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
+        { time: clamp(entryBucket), position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
+        { time: clamp(exitBucket),  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
       ]);
     } catch(me) { /* markers failed — price lines still show entry/exit */ }
 
