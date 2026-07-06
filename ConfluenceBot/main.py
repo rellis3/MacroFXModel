@@ -74,7 +74,7 @@ from modules.trade_manager import TradeManager, ManagedTrade
 from modules.exits import plan_exits
 
 # Shared multi-instrument bricks — never re-inline a pip table or a sizing formula.
-from pylego.instruments import instrument
+from pylego.instruments import instrument, oanda_symbol
 from pylego.point_values import point_value
 from pylego.sizing import position_size
 
@@ -209,6 +209,7 @@ class InstrCtx:
     key: str               # canonical registry key (e.g. 'eurusd', 'gold')
     display: str           # registry display form (e.g. 'EUR/USD', 'XAU/USD')
     symbol: str            # broker MT5 symbol to trade / query
+    oanda: str             # OANDA symbol (for the dashboard's candle/quote fetch)
     pip: float
     digits: int
     point_val: float       # cash per pip per lot (for sizing / paper PnL)
@@ -245,6 +246,7 @@ def build_instr(input_symbol: str, broker_overrides: dict) -> Optional[InstrCtx]
         key=key,
         display=display,
         symbol=override or rec.get('mt5') or input_symbol,
+        oanda=rec.get('oanda') or oanda_symbol(input_symbol),
         pip=float(rec['pip']),
         digits=int(rec['digits']),
         point_val=float(point_value(input_symbol)),
@@ -659,6 +661,9 @@ class SymbolEngine:
         self._watch: dict[str, dict] = {}
         self._watch_dirty = False
         self._last_watch_push = 0.0
+        # First-seen timestamp per zone_id, so the viewer can draw the zone box
+        # from when it was detected (mirrors GoldV2's detected_at).
+        self._zone_detected: dict[str, str] = {}
 
     @property
     def cfg(self) -> dict:
@@ -780,6 +785,16 @@ class SymbolEngine:
         for zid in list(self.tm.armed.keys()):
             if zid not in live_ids:
                 self.tm.disarm(zid)
+
+        # Track first-seen time per active zone (for the viewer's zone box) and
+        # drop entries for zones that no longer exist.
+        now_iso = datetime.now(timezone.utc).isoformat()
+        for zid in live_ids:
+            self._zone_detected.setdefault(zid, now_iso)
+        for zid in list(self._zone_detected.keys()):
+            if zid not in live_ids:
+                del self._zone_detected[zid]
+
         self.tm.save()
 
     def _refresh_vol_forecast(self) -> None:
@@ -1217,27 +1232,99 @@ class SymbolEngine:
             'price':        self.last_price,
         }
 
-    def zone_payload(self) -> dict:
-        return {
-            'instrument':   self.instr.display,
-            'htf_bias':     self.htf_bias.bias if self.htf_bias else 'UNKNOWN',
-            'htf_confidence': round(self.htf_bias.confidence, 2) if self.htf_bias else 0.0,
-            'session':      self.sess_lvls.current_session if self.sess_lvls else 'UNKNOWN',
-            'atr':          round(self.atr_15m, self.instr.digits),
-            'armed_zones':  list(self.tm.armed.keys()),
-            'open_trades':  len(self.tm.open_trades),
-            'squeeze_ratio': self.squeeze_ratio,
-            'zones': [
-                {'zone_id': z.zone_id, 'tf': z.tf, 'direction': z.direction,
-                 'in_gp': z.in_gp, 'gp_low': z.gp_low, 'gp_high': z.gp_high,
-                 'centre': z.centre, 'score': z.score, 'distinct_legs': z.distinct_legs,
-                 'htf_aligned': z.htf_aligned, 'composition': z.composition}
-                for z in self.zones if z.active
+    def _zone_kv_dict(self, z: ZoneV2) -> dict:
+        """Zone → KV dict, shaped identically to GoldV2's gold_v2_zones entry
+        (raw legs + primary-leg fib ladder / swing times) so the gold-zones.html
+        V2 viewer renders a Confluence pair with no renderer changes. Prices are
+        rounded to this instrument's digit precision."""
+        d = self.instr.digits
+        out = {
+            'zone_id':       z.zone_id,
+            'tf':            z.tf,
+            'direction':     z.direction,
+            'in_gp':         z.in_gp,
+            'zone_variant':  'gp' if z.in_gp else ('+'.join(z.line_kinds) or 'cluster'),
+            'gp_low':        z.gp_low,
+            'gp_high':       z.gp_high,
+            'centre':        z.centre,
+            'distinct_legs': z.distinct_legs,
+            'line_kinds':    z.line_kinds,
+            'swing_origin':  z.swing_origin,
+            'swing_end':     z.swing_end,
+            'score':         z.score,
+            'htf_aligned':   z.htf_aligned,
+            'composition':   z.composition,
+            'detected_at':   self._zone_detected.get(z.zone_id),
+            'legs': [
+                {'leg_id': lg.leg_id, 'tf': lg.tf, 'origin': lg.origin, 'end': lg.end,
+                 'origin_time': lg.origin_time, 'end_time': lg.end_time, 'size': lg.size}
+                for lg in z.legs
             ],
+        }
+        p = z.primary
+        if p:
+            r    = p.size
+            sign = -1 if z.direction == 'long' else 1
+            base = p.end
+            out.update({
+                'swing_origin_time': p.origin_time,
+                'swing_end_time':    p.end_time,
+                'impulse_size':      p.size,
+                'level_382':         round(base + sign * 0.382 * r, d),
+                'level_500':         round(base + sign * 0.500 * r, d),
+                'level_618':         round(base + sign * 0.618 * r, d),
+                'level_650':         round(base + sign * 0.650 * r, d),
+                'level_786':         round(base + sign * 0.786 * r, d),
+                'level_886':         round(base + sign * 0.886 * r, d),
+            })
+        return out
+
+    def zone_payload(self) -> dict:
+        """Full per-symbol payload, shaped like gold_v2_zones plus page meta
+        (oanda symbol, digits, pip) so gold-zones.html can fetch the right
+        candles/quote and format prices for this instrument."""
+        s = self.sess_lvls
+        v = self.vol_prof
+        return {
+            'timestamp':      datetime.now(timezone.utc).isoformat(),
+            # ── page meta (per-instrument fetch + formatting) ──
+            'instrument':     self.instr.display,
+            'symbol':         self.instr.symbol,
+            'oanda':          self.instr.oanda,
+            'digits':         self.instr.digits,
+            'pip':            self.instr.pip,
+            # ── v2-shaped payload ──
+            'atr':            round(self.atr_15m, self.instr.digits),
+            'daily_atr':      round(self.daily_atr, self.instr.digits),
+            'htf_bias':       self.htf_bias.bias if self.htf_bias else 'UNKNOWN',
+            'htf_confidence': round(self.htf_bias.confidence, 2) if self.htf_bias else 0.0,
+            'session':        s.current_session if s else 'UNKNOWN',
+            'vwap':           s.vwap if s else 0.0,
+            'armed_zones':    list(self.tm.armed.keys()),
+            'open_trades':    len(self.tm.open_trades),
+            'squeeze_ratio':  self.squeeze_ratio,
+            'vol_forecast':   self.vol_fc,
+            'zones':          [self._zone_kv_dict(z) for z in self.zones if z.active],
             'npoc_stack': [
                 {'price': n.price, 'age_days': n.age_days, 'date': n.date}
-                for n in (self.vol_prof.npoc_stack if self.vol_prof else [])
+                for n in (v.npoc_stack if v else [])
             ],
+            'vwap_anchors': [
+                {'price': a.price, 'session': a.session, 'age_days': a.age_days,
+                 'direction': a.direction, 'drive_size': a.drive_size, 'date': a.date}
+                for a in (s.vwap_anchors if s else [])
+            ],
+            'trendlines': [
+                {'tf': tl.tf, 'kind': tl.kind, 'touches': tl.touches,
+                 'projected': tl.projected, 'slope': tl.slope}
+                for tl in self.trendlines
+            ],
+            'pivot_levels': {
+                'pp': s.pivot, 'r1': s.r1, 'r2': s.r2, 's1': s.s1, 's2': s.s2,
+                'vah': v.vah if v else None, 'val': v.val if v else None,
+                'poc': v.poc if v else None, 'vwap': s.vwap,
+                'daily_open': s.daily_open,
+            } if s else None,
         }
 
     def paper_positions(self) -> list:

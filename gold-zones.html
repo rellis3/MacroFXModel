@@ -162,10 +162,13 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
     <div class="gz-title">Gold Zone Verifier</div>
     <div class="gz-sub" id="gzSubTitle">Live fib zones · swing origins · session levels · bot state</div>
   </div>
-  <div class="gz-seg" id="gzBotSeg" style="margin-left:16px" title="Switch between the V1 bot's zones and the V2 level-matrix bot's zones">
+  <div class="gz-seg" id="gzBotSeg" style="margin-left:16px" title="Switch between the V1/V2 gold bots and the multi-instrument Confluence bot">
     <button class="on" data-bot="v1" style="color:#f4c430">Gold V1</button>
     <button data-bot="v2" style="color:#ff9f43">Gold V2</button>
+    <button data-bot="cf" style="color:#c084fc">Confluence</button>
   </div>
+  <select id="gzPairSel" title="Confluence bot — pick the instrument to view"
+          style="display:none;margin-left:8px;background:var(--s2);color:var(--text1);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;cursor:pointer"></select>
   <div class="gz-spacer"></div>
   <span class="gz-price" id="gzLivePrice">XAU/USD —</span>
   <div class="gz-dot"></div>
@@ -311,15 +314,29 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 // (gold_v2_* keys, level-matrix zones with per-zone contributing legs).
 let _bot = localStorage.getItem('gzBot') || 'v1';
 const BOT_KV = {
-  v1: { zones: 'gold_bot_zones', status: 'gold_bot_status' },
-  v2: { zones: 'gold_v2_zones',  status: 'gold_v2_status'  },
+  v1: { zones: 'gold_bot_zones',       status: 'gold_bot_status'       },
+  v2: { zones: 'gold_v2_zones',        status: 'gold_v2_status'        },
+  cf: { zones: 'confluence_bot_zones', status: 'confluence_bot_status', trades: 'confluence_bot_trades' },
 };
-// Score scales differ: V1 scores ran 3–50+ (pre-dedup inflation), V2 counts
-// distinct evidence and typically lands 3–12.
+// Score scales differ: V1 scores ran 3–50+ (pre-dedup inflation); V2 and the
+// Confluence bot (same engine) count distinct evidence and typically land 3–12.
 const SCORE_SCALE = {
   v1: { high: 40, mid: 15, bands: [[0,10],[10,20],[20,35],[35,Infinity]] },
   v2: { high: 8,  mid: 5,  bands: [[0,4],[4,6],[6,9],[9,Infinity]] },
+  cf: { high: 8,  mid: 5,  bands: [[0,4],[4,6],[6,9],[9,Infinity]] },
 };
+
+// Confluence bot: the KV payload is nested per instrument ({symbols:{key:{...}}}).
+// _cfRaw holds the raw payloads; _cfPair is the selected instrument key; the
+// per-pair slice is what gets assigned to _zonesData/_statusData (V2 shape).
+let _cfRaw     = null;   // { zones:{symbols:{}}, status:{symbols:[],mt5_positions}, trades:[] }
+let _cfPair    = localStorage.getItem('gzCfPair') || null;
+let _digits    = 2;      // price precision of the active instrument (gold=2, FX=5, index=1)
+let _pip       = 1.0;    // pip size of the active instrument (for distance-in-pips labels)
+let _activeOanda = 'XAU_USD';   // OANDA symbol for candle/quote fetch
+let _activeDisplay = 'XAU/USD'; // human label for the price chip
+const _fmt  = (x, extra = 0) => (x == null ? '—' : Number(x).toFixed(Math.min(8, _digits + extra)));
+const _pips = diff => (_pip > 0 ? diff / _pip : diff);   // price delta → pips
 
 let _zonesData  = null;   // gold_bot_zones / gold_v2_zones KV payload
 let _statusData = null;   // gold_bot_status / gold_v2_status KV payload
@@ -346,14 +363,14 @@ const LS = window.LightweightCharts ? LightweightCharts.LineStyle : { Solid:0, D
 
 // ── Armed-zone helpers (V1: single armed id; V2: list + per-zone times) ─
 function _armedIds() {
-  if (_bot === 'v2') {
+  if (_bot !== 'v1') {   // v2 + cf share the level-matrix status shape
     return _statusData?.armed_zones ?? _zonesData?.armed_zones ?? [];
   }
   const a = _zonesData?.armed_zone || _statusData?.armed_zone_id;
   return a ? [a] : [];
 }
 function _armedTime(zoneId) {
-  if (_bot === 'v2') {
+  if (_bot !== 'v1') {
     const d = _statusData?.armed_detail?.[zoneId];
     // Newer bots push {t, watch}; older pushes were the bare unix time.
     return (d && typeof d === 'object') ? (d.t ?? null) : (d ?? null);
@@ -361,20 +378,25 @@ function _armedTime(zoneId) {
   return _statusData?.zone_gp_entry_time ?? null;
 }
 function _armedWatch(zoneId) {
-  if (_bot !== 'v2') return null;
+  if (_bot === 'v1') return null;
   const d = _statusData?.armed_detail?.[zoneId];
   return (d && typeof d === 'object') ? (d.watch ?? null) : null;
 }
 
 function _applyBotBranding() {
   const sub = document.getElementById('gzSubTitle');
-  if (sub) sub.textContent = _bot === 'v2'
-    ? 'Gold V2 · level-matrix zones · contributing legs · σ forecast · bot state'
-    : 'Gold V1 · live fib zones · swing origins · session levels · bot state';
+  if (sub) sub.textContent =
+      _bot === 'cf' ? `Confluence · ${_activeDisplay} · level-matrix zones · per-pair · bot state`
+    : _bot === 'v2' ? 'Gold V2 · level-matrix zones · contributing legs · σ forecast · bot state'
+    :                 'Gold V1 · live fib zones · swing origins · session levels · bot state';
   const th = document.getElementById('gzTradesHeader');
-  if (th) th.textContent = _bot === 'v2' ? 'Gold V2 trade history' : 'Paper trade history';
+  if (th) th.textContent =
+      _bot === 'cf' ? `Confluence trade history — ${_activeDisplay}`
+    : _bot === 'v2' ? 'Gold V2 trade history' : 'Paper trade history';
   document.querySelectorAll('#gzBotSeg button').forEach(b =>
     b.classList.toggle('on', b.dataset.bot === _bot));
+  const pairSel = document.getElementById('gzPairSel');
+  if (pairSel) pairSel.style.display = _bot === 'cf' ? '' : 'none';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
@@ -417,7 +439,16 @@ function _bindControls() {
     _applyBotBranding();
     document.getElementById('gzZonesGrid').innerHTML = '<div class="gz-msg">Loading zones…</div>';
     _load();
-    _loadTradeHistory();
+    _loadTradeHistory();   // cf reloads again at the end of _load once _cfRaw is fresh
+  });
+
+  // Confluence pair selector — reload the selected instrument's zones/candles
+  document.getElementById('gzPairSel').addEventListener('change', e => {
+    _cfPair = e.target.value || null;
+    try { localStorage.setItem('gzCfPair', _cfPair); } catch {}
+    _selectedZoneId = null;
+    document.getElementById('gzZonesGrid').innerHTML = '<div class="gz-msg">Loading zones…</div>';
+    _load();   // re-slices to the new pair and reloads its candles + trade history
   });
 
   // TF selector — refetch candles on change so period is correct
@@ -478,39 +509,79 @@ function _bindControls() {
 async function _load() {
   try {
     const kv = BOT_KV[_bot];
-    const [zonesRes, statusRes, quoteRes] = await Promise.all([
-      fetch(`/api/kv/get?key=${kv.zones}`),
-      fetch(`/api/kv/get?key=${kv.status}`),
-      fetch('/api/quote?symbol=XAU/USD'),
-    ]);
-    const zonesJ  = await zonesRes.json();
-    const statusJ = await statusRes.json();
+    const reqs = [fetch(`/api/kv/get?key=${kv.zones}`), fetch(`/api/kv/get?key=${kv.status}`)];
+    if (_bot === 'cf') reqs.push(fetch(`/api/kv/get?key=${kv.trades}`));
+    const res = await Promise.all(reqs);
+    const zonesJ  = await res[0].json();
+    const statusJ = await res[1].json();
+    const zData = (!zonesJ.miss  && zonesJ.data)  ? zonesJ.data  : null;
+    const sData = (!statusJ.miss && statusJ.data) ? statusJ.data : null;
 
-    if (!zonesJ.miss && zonesJ.data) _zonesData = zonesJ.data;
-    if (!statusJ.miss && statusJ.data) _statusData = statusJ.data;
+    if (_bot === 'cf') {
+      let tData = null;
+      try { const tj = res[2] ? await res[2].json() : null; tData = (tj && !tj.miss) ? tj.data : null; } catch {}
+      _cfRaw = { zones: zData, status: sData, trades: tData };
+      _cfApplyPairSlice();          // sets _zonesData/_statusData/_digits/_activeOanda/_activeDisplay + dropdown
+    } else {
+      _zonesData = zData; _statusData = sData;
+      _digits = 2; _pip = 1.0; _activeOanda = 'XAU_USD'; _activeDisplay = 'XAU/USD';
+    }
+    _applyBotBranding();
 
-    // Seed _currentPrice before chart is built so session-level filter works on first render
+    // Seed _currentPrice (per active instrument) before the chart is built.
     try {
-      const qj = await quoteRes.json();
+      const qj = await (await fetch(`/api/quote?symbol=${encodeURIComponent(_activeDisplay)}`)).json();
       const px = qj.price ?? qj.close ?? qj.ask;
       if (px) {
         _currentPrice = parseFloat(px);
-        document.getElementById('gzLivePrice').textContent = `XAU/USD ${_currentPrice.toFixed(2)}`;
-        document.getElementById('gsPrice').textContent = _currentPrice.toFixed(2);
+        document.getElementById('gzLivePrice').textContent = `${_activeDisplay} ${_fmt(_currentPrice)}`;
+        document.getElementById('gsPrice').textContent = _fmt(_currentPrice);
       }
     } catch {}
 
     _updateStatusBar();
     _updateStats();
 
-    // Fetch candles for the chart
     await _fetchCandles();
     _rebuildChart();
     _renderZoneCards();
+    if (_bot === 'cf') _loadTradeHistory();   // now that _cfRaw is fresh for this pair
 
   } catch(e) {
     console.error('Load error', e);
   }
+}
+
+// Confluence: pick the selected instrument's slice out of the nested payloads
+// and shape it exactly like a gold_v2_zones/status payload so the V2 renderer
+// works unchanged. Also (re)populates the pair dropdown.
+function _cfApplyPairSlice() {
+  const symbols = _cfRaw?.zones?.symbols || {};
+  const statusSyms = _cfRaw?.status?.symbols || [];
+  const allKeys = [...new Set([...Object.keys(symbols), ...statusSyms.map(s => s.key)])];
+  const dispOf = k => symbols[k]?.instrument || statusSyms.find(s => s.key === k)?.instrument || k;
+
+  if (!_cfPair || !allKeys.includes(_cfPair)) _cfPair = allKeys[0] || null;
+
+  const sel = document.getElementById('gzPairSel');
+  if (sel) {
+    sel.innerHTML = allKeys.length
+      ? allKeys.map(k => `<option value="${k}"${k === _cfPair ? ' selected' : ''}>${dispOf(k)}</option>`).join('')
+      : '<option value="">— no instruments —</option>';
+  }
+
+  const slice = _cfPair ? symbols[_cfPair] : null;
+  _zonesData     = slice || null;
+  _digits        = slice?.digits ?? 2;
+  _pip           = slice?.pip    ?? 1.0;
+  _activeOanda   = slice?.oanda   || 'XAU_USD';
+  _activeDisplay = slice?.instrument || (_cfPair ? dispOf(_cfPair) : 'XAU/USD');
+
+  // Per-pair status slice (armed_zones / armed_detail / state) + this pair's positions.
+  const st       = _cfRaw?.status;
+  const symEntry = statusSyms.find(s => s.key === _cfPair) || {};
+  const posits   = (st?.mt5_positions || []).filter(p => slice && p.symbol === slice.symbol);
+  _statusData = { ...symEntry, paper_mode: st?.paper_mode, mt5_positions: posits };
 }
 
 // ── Candle fetch + aggregation ────────────────────────────────────────
@@ -529,7 +600,7 @@ async function _fetchCandles() {
   try {
     // Server only supports M5 and H1; always fetch M5 and aggregate up if needed
     const oandaGran = _tf === 'H4' ? 'H1' : 'M5';
-    const res = await fetch(`/api/oanda_ohlc5m?symbol=XAU/USD&granularity=${oandaGran}`);
+    const res = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(_activeOanda)}&granularity=${oandaGran}`);
     if (res.ok) {
       const j = await res.json();
       if (j.values?.length) {
@@ -550,6 +621,10 @@ async function _fetchCandles() {
       }
     }
   } catch {}
+
+  // Fallbacks 2 & 3 are gold-only (xauusd-specific sources). For other
+  // Confluence instruments the OANDA proxy above is the source of truth.
+  if (_activeOanda !== 'XAU_USD') { el.classList.add('hidden'); return; }
 
   // 2. vol-backtest endpoint (works when a backtest has run recently)
   try {
@@ -735,7 +810,7 @@ function _drawTrade(z, markers = []) {
   const htfConf    = _zonesData?.htf_confidence ?? 0;
   let sl, slDist, tp1, tp2, tp2Note, approx = false;
 
-  if (_bot === 'v2') {
+  if (_bot !== 'v1') {
     // V2's live SL anchors to the M5 confirmation swing at entry time and TPs
     // are level-to-level — neither is knowable before the trade fires, so this
     // preview approximates: SL just beyond the zone's far edge, TP2 at ~2R.
@@ -779,16 +854,16 @@ function _drawTrade(z, markers = []) {
   };
 
   // Entry window (GP zone band)
-  add(z.gp_high, '#f4c430', `${isLong ? '▲' : '▼'} GP HIGH  ${z.gp_high.toFixed(1)}`, 2, 0);
-  add(z.gp_low,  '#f4c430', `${isLong ? '▲' : '▼'} GP LOW   ${z.gp_low.toFixed(1)}`,  2, 0);
-  add(entry, 'rgba(244,196,48,0.55)', `ENTRY ~${entry.toFixed(1)}`, 1, 2);
+  add(z.gp_high, '#f4c430', `${isLong ? '▲' : '▼'} GP HIGH  ${_fmt(z.gp_high)}`, 2, 0);
+  add(z.gp_low,  '#f4c430', `${isLong ? '▲' : '▼'} GP LOW   ${_fmt(z.gp_low)}`,  2, 0);
+  add(entry, 'rgba(244,196,48,0.55)', `ENTRY ~${_fmt(entry)}`, 1, 2);
 
   // SL
-  add(sl, '#ef5350', `SL${approx ? '~' : ''}  ${sl.toFixed(1)}  (${slDist.toFixed(0)}p${approx ? ' zone-edge est' : ''})`, 2, 0);
+  add(sl, '#ef5350', `SL${approx ? '~' : ''}  ${_fmt(sl)}  (${_pips(slDist).toFixed(0)}p${approx ? ' zone-edge est' : ''})`, 2, 0);
 
   // TPs
-  add(tp1, 'rgba(38,166,154,0.85)', `TP1${approx ? '~' : ''}  ${tp1.toFixed(1)}  (1R)`, 1, 2);
-  add(tp2, '#26a69a', `TP2${approx ? '~' : ''}  ${tp2.toFixed(1)}  (${tp2Note})`, 2, 0);
+  add(tp1, 'rgba(38,166,154,0.85)', `TP1${approx ? '~' : ''}  ${_fmt(tp1)}  (1R)`, 1, 2);
+  add(tp2, '#26a69a', `TP2${approx ? '~' : ''}  ${_fmt(tp2)}  (${tp2Note})`, 2, 0);
 
   // ── Time-bounded zone box + detection/armed markers ──────────────────
   const period = _tf === 'H4' ? 14400 : _tf === 'M30' ? 1800 : 300;
@@ -858,7 +933,7 @@ function _drawZoneOverlays(z, markers) {
   // ── V2: draw EVERY contributing leg — this is the zone's provenance ────
   // Each leg gets its swing origin/end markers and its full fib ladder, so
   // you can see exactly which impulse legs stacked their levels here.
-  if (_bot === 'v2' && z.legs?.length) {
+  if (_bot !== 'v1' && z.legs?.length) {
     const LEG_COLS = ['#26c6da', '#ab47bc', '#ffa726', '#4f7df0', '#66bb6a', '#ec407a'];
     z.legs.slice(0, 6).forEach((lg, i) => {
       const col  = LEG_COLS[i % LEG_COLS.length];
@@ -868,9 +943,9 @@ function _drawZoneOverlays(z, markers) {
 
       if (_showSwings) {
         add(lg.origin, isLong ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)',
-            `${isLong ? '▼ Low' : '▲ High'} ${lg.origin.toFixed(1)} ${tag} origin`, 2, 3);
+            `${isLong ? '▼ Low' : '▲ High'} ${_fmt(lg.origin)} ${tag} origin`, 2, 3);
         add(lg.end, isLong ? 'rgba(239,83,80,0.7)' : 'rgba(38,166,154,0.7)',
-            `${isLong ? '▲ High' : '▼ Low'} ${lg.end.toFixed(1)} ${tag} fib anchor`, 2, 3);
+            `${isLong ? '▲ High' : '▼ Low'} ${_fmt(lg.end)} ${tag} fib anchor`, 2, 3);
         if (lg.origin_time > 0) markers.push({
           time: lg.origin_time, position: isLong ? 'belowBar' : 'aboveBar',
           color: col, shape: isLong ? 'arrowUp' : 'arrowDown',
@@ -1053,7 +1128,7 @@ function _updateStats() {
 
   if (pl?.vwap && price) {
     const diff = price - pl.vwap;
-    document.getElementById('gsPriceVwap').textContent = `${diff > 0 ? '▲ +' : '▼ '}${diff.toFixed(1)} vs VWAP`;
+    document.getElementById('gsPriceVwap').textContent = `${diff > 0 ? '▲ +' : '▼ '}${_pips(diff).toFixed(1)}p vs VWAP`;
   }
 
   const bias = d?.htf_bias || '—';
@@ -1062,10 +1137,10 @@ function _updateStats() {
   document.getElementById('gsBiasConf').textContent = d?.htf_confidence != null ? `${(d.htf_confidence * 100).toFixed(0)}% confidence` : '—';
 
   if (pl) {
-    document.getElementById('gsVwap').textContent = pl.vwap?.toFixed(2) ?? '—';
-    document.getElementById('gsPoc').textContent  = pl.poc  != null ? `POC ${pl.poc?.toFixed(2)}` : '—';
-    document.getElementById('gsVah').textContent  = pl.vah?.toFixed(2) ?? '—';
-    document.getElementById('gsVal').textContent  = pl.val?.toFixed(2) ?? '—';
+    document.getElementById('gsVwap').textContent = pl.vwap != null ? _fmt(pl.vwap) : '—';
+    document.getElementById('gsPoc').textContent  = pl.poc  != null ? `POC ${_fmt(pl.poc)}` : '—';
+    document.getElementById('gsVah').textContent  = pl.vah  != null ? _fmt(pl.vah) : '—';
+    document.getElementById('gsVal').textContent  = pl.val  != null ? _fmt(pl.val) : '—';
   }
 
   const zones = d?.zones ?? [];
@@ -1115,20 +1190,20 @@ function _renderZoneCards() {
       if (px >= z.gp_low && px <= z.gp_high) {
         distHtml = `<span style="color:var(--gold);font-weight:700;font-size:10px">● INSIDE GP</span>`;
       } else {
-        const dist = px > z.gp_high ? px - z.gp_high : z.gp_low - px;
+        const distP = _pips(px > z.gp_high ? px - z.gp_high : z.gp_low - px);
         const dir  = px > z.gp_high ? (isLong ? '↓ ' : '↑ ') : (isLong ? '↑ ' : '↓ ');
-        const col  = dist < 15 ? 'var(--amber)' : dist < 40 ? 'var(--text2)' : 'var(--text3)';
-        distHtml = `<span style="color:${col};font-size:10px">${dir}${dist.toFixed(1)}p</span>`;
+        const col  = distP < 15 ? 'var(--amber)' : distP < 40 ? 'var(--text2)' : 'var(--text3)';
+        distHtml = `<span style="color:${col};font-size:10px">${dir}${distP.toFixed(1)}p</span>`;
       }
     }
 
     const fibPills = [
-      `<span class="gz-fib-pill r382">.382 ${z.level_382?.toFixed(1) ?? '—'}</span>`,
-      `<span class="gz-fib-pill r500">.500 ${z.level_500?.toFixed(1) ?? '—'}</span>`,
-      `<span class="gz-fib-pill gp">.618 ${z.level_618?.toFixed(1) ?? '—'}</span>`,
-      `<span class="gz-fib-pill gp">.650 ${z.level_650?.toFixed(1) ?? '—'}</span>`,
-      `<span class="gz-fib-pill r786">.786 ${z.level_786?.toFixed(1) ?? '—'}</span>`,
-      `<span class="gz-fib-pill r886">.886 ${z.level_886?.toFixed(1) ?? '—'}</span>`,
+      `<span class="gz-fib-pill r382">.382 ${z.level_382 != null ? _fmt(z.level_382) : '—'}</span>`,
+      `<span class="gz-fib-pill r500">.500 ${z.level_500 != null ? _fmt(z.level_500) : '—'}</span>`,
+      `<span class="gz-fib-pill gp">.618 ${z.level_618 != null ? _fmt(z.level_618) : '—'}</span>`,
+      `<span class="gz-fib-pill gp">.650 ${z.level_650 != null ? _fmt(z.level_650) : '—'}</span>`,
+      `<span class="gz-fib-pill r786">.786 ${z.level_786 != null ? _fmt(z.level_786) : '—'}</span>`,
+      `<span class="gz-fib-pill r886">.886 ${z.level_886 != null ? _fmt(z.level_886) : '—'}</span>`,
     ].join('');
 
     const compTags = (z.composition ?? [])
@@ -1146,21 +1221,21 @@ function _renderZoneCards() {
     const impulseHtml = hasSwing ? (() => {
       const originDate = fmtTs(z.swing_origin_time);
       const endDate    = fmtTs(z.swing_end_time);
-      const sz = z.impulse_size?.toFixed(1) ?? ((Math.abs(z.swing_end - z.swing_origin)).toFixed(1));
+      const sz = _pips(z.impulse_size ?? Math.abs(z.swing_end - z.swing_origin)).toFixed(1);
       return `
         <div style="font-size:10px;color:var(--text3);margin-top:6px;padding:5px 8px;background:var(--bg3);border-radius:4px;line-height:1.6">
           <span style="color:var(--text2)">${isLong ? '▲ Impulse' : '▼ Impulse'}</span>
           <span style="color:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px;margin-left:6px">${z.tf}</span><br>
           <span style="font-family:'DM Mono',monospace;color:${isLong ? 'var(--red)' : 'var(--green)'}">
-            ${z.swing_origin.toFixed(2)}</span>
+            ${_fmt(z.swing_origin)}</span>
           <span style="color:var(--text3);font-size:9px"> ${originDate}</span>
           <br>→&nbsp;
           <span style="font-family:'DM Mono',monospace;color:${isLong ? 'var(--green)' : 'var(--red)'}">
-            ${z.swing_end.toFixed(2)}</span>
+            ${_fmt(z.swing_end)}</span>
           <span style="color:var(--text3);font-size:9px"> ${endDate}</span>
           <span style="color:var(--amber);font-size:9.5px;margin-left:6px">${sz}pts</span>
           <span style="color:var(--text3);font-size:9px;margin-left:4px">${
-            _bot === 'v2'
+            _bot !== 'v1'
               ? `→ primary of ${z.distinct_legs ?? 1} leg${(z.distinct_legs ?? 1) > 1 ? 's' : ''} (${(z.line_kinds ?? []).join(', ') || 'GP'})`
               : `→ .${z.zone_variant === 'gp' ? '618/.650 GP' : z.zone_variant} retrace`
           }</span>
@@ -1185,8 +1260,8 @@ function _renderZoneCards() {
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <div class="gz-zone-id">${z.zone_id}</div>
           ${distHtml}
-          ${_bot === 'v2' && z.in_gp ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(244,196,48,.4);padding:1px 5px;border-radius:3px">◆ GP</span>' : ''}
-          ${_bot === 'v2' && z.distinct_legs ? `<span style="font-size:9px;color:#ff9f43;border:1px solid rgba(255,159,67,.35);padding:1px 5px;border-radius:3px">${z.distinct_legs} leg${z.distinct_legs > 1 ? 's' : ''}</span>` : ''}
+          ${_bot !== 'v1' && z.in_gp ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(244,196,48,.4);padding:1px 5px;border-radius:3px">◆ GP</span>' : ''}
+          ${_bot !== 'v1' && z.distinct_legs ? `<span style="font-size:9px;color:#ff9f43;border:1px solid rgba(255,159,67,.35);padding:1px 5px;border-radius:3px">${z.distinct_legs} leg${z.distinct_legs > 1 ? 's' : ''}</span>` : ''}
           ${z.htf_aligned
             ? '<span style="font-size:9px;color:var(--cyan);border:1px solid rgba(38,198,218,.3);padding:1px 5px;border-radius:3px">HTF✓</span>'
             : ((_zonesData?.htf_bias && _zonesData.htf_bias !== 'NEUTRAL')
@@ -1201,7 +1276,7 @@ function _renderZoneCards() {
         </div>
       </div>
       <div class="gz-zone-window ${isLong ? 'long' : 'short'}">
-        ${isArmed ? '⚡ ' : ''}GP: ${z.gp_low?.toFixed(2) ?? '—'} – ${z.gp_high?.toFixed(2) ?? '—'}
+        ${isArmed ? '⚡ ' : ''}GP: ${z.gp_low != null ? _fmt(z.gp_low) : '—'} – ${z.gp_high != null ? _fmt(z.gp_high) : '—'}
       </div>
       ${(() => {
         // Live confirmation verdict for armed V2 zones — why it has(n't) entered
@@ -1234,13 +1309,13 @@ function _selectZone(zoneId) {
 // ── Live price update ───────────────────────────────────────────────
 async function _tickPrice() {
   try {
-    const r = await fetch('/api/quote?symbol=XAU/USD');
+    const r = await fetch(`/api/quote?symbol=${encodeURIComponent(_activeDisplay)}`);
     const j = await r.json();
     const p = j.price ?? j.close ?? j.ask;
     if (p) {
       const px = parseFloat(p);
-      document.getElementById('gzLivePrice').textContent = `XAU/USD ${px.toFixed(2)}`;
-      document.getElementById('gsPrice').textContent     = px.toFixed(2);
+      document.getElementById('gzLivePrice').textContent = `${_activeDisplay} ${_fmt(px)}`;
+      document.getElementById('gsPrice').textContent     = _fmt(px);
       const changed = _currentPrice !== px;
       _currentPrice = px;
       if (changed && _zonesData) _renderZoneCards();
@@ -1260,6 +1335,12 @@ async function _loadTradeHistory() {
       const res = await fetch('/api/kv/get?key=gold_v2_trades');
       const j   = await res.json();
       trades = (!j.miss && j.data?.trades) ? j.data.trades : [];
+    } else if (bot === 'cf') {
+      // Confluence: one rolling KV list for all instruments — filter to the pair.
+      const all   = _cfRaw?.trades?.trades ?? [];
+      const slice = _cfRaw?.zones?.symbols?.[_cfPair];
+      trades = all.filter(t => (slice && (t.symbol === slice.symbol || t.instrument === slice.instrument))
+                               || (!slice && true));
     } else {
       const res = await fetch('/api/gold/trades');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1331,7 +1412,7 @@ async function _loadTradeHistory() {
         <td style="color:var(--text3);white-space:nowrap">${t.date} ${t.time?.slice(0,5)}</td>
         <td style="color:${isLong?'var(--green)':'var(--red)'};">${t.direction}</td>
         <td style="color:${scoreCol};font-weight:700">${score}</td>
-        <td>${Number(t.entry).toFixed(2)}</td>
+        <td>${t.entry != null ? _fmt(Number(t.entry)) : '—'}</td>
         <td style="color:var(--text3)">${Number(t.sl_pips).toFixed(0)}p SL</td>
         <td class="gz-result ${rCls}">${result}</td>
         <td style="color:${pnlCol};font-weight:700">${pnlStr}</td>
