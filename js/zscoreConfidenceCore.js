@@ -4,15 +4,30 @@
 // (js/zscoreSpreadV2Engine.js is the I/O engine that wires them to FRED + M1 data).
 // Kept pure so they unit-test on synthetic data without the network — CLAUDE.md's
 // brick rule (d). Every factor is tiered by EVIDENCE and independently ABLATABLE
-// (set its weight to 0) so the A/B can INVALIDATE ideas one at a time:
+// (set its weight to 0) so the A/B can INVALIDATE ideas one at a time. A factor
+// with NO data for a given trade returns null and drops out of the composite
+// (renormalised), so "no data" behaves exactly like "ablated" — never a free bias.
 //
-//   • zAlign   — rate-differential/carry sets the directional lean; the fade must
-//                AGREE. REPLICATED macro factor. (Nominal spread, not real — a
-//                documented limitation vs the literature's preference for real rates.)
+// Phase 1 factors:
+//   • zAlign   — nominal rate-differential/carry sets the directional lean; the fade
+//                must AGREE. REPLICATED macro factor.
 //   • riskOff  — VIX + HY-credit regime. REPLICATED carry-crash gate: a stressed
 //                regime VETOES (dampens) the carry-aligned fade.
 //   • approachVel — fast spike into the line → fade. INTERNAL OOS-proven winner.
 //   • fibDepth — deeper extension = more stretched. FOLKLORE (weak) — smallest weight.
+//
+// Phase 1.5 factors (added from the cross-asset macro framework docs):
+//   • realRate    — US 10Y REAL yield (DFII10) as a USD-strength bias, oriented to the
+//                   pair's USD role. REPLICATED and the literature's PREFERRED read over
+//                   nominal — closes v1's nominal-only gap.
+//   • coherence   — cross-asset agreement: fraction of the directional macro lenses
+//                   (nominal-carry, real-rate) that AGREE with the fade. The docs' central
+//                   "coherence → conviction" idea. (Overlaps the align factors by design —
+//                   it scores concordance, not level; ablate to test its marginal value.)
+//   • positioning — COT net-spec extreme the fade OPPOSES (crowded longs → fade shorts have
+//                   fuel). MEDIUM evidence; neutral/null until a positioning series is wired.
+//   • eventVeto   — hard SKIP on FOMC/NFP/CPI days (never fade into a print). A GATE, not a
+//                   weighted factor. NFP is deterministic (first Friday); FOMC/CPI via a date list.
 
 export const V2_DEFAULTS = {
   splitFrac:     0.6,   // in-sample fraction; headline stats reported on the OOS tail
@@ -23,16 +38,28 @@ export const V2_DEFAULTS = {
   slFrac:        0.25,  // SL distance beyond the fib level, in Asia-range units (as v1)
   minRR:         0.8,   // reject a zone whose reward:risk < this (as v1)
   zCap:          3,     // |z| saturation for the alignment score
-  vixZWindow:    252,   // rolling window (days) for the VIX/HY risk-off z-scores
+  vixZWindow:    252,   // rolling window (days) for the VIX/HY/real-yield z-scores
+  eventVeto:     true,  // skip FOMC/NFP/CPI days (hard veto — never fade into a print)
+  eventDates:    [],    // extra 'YYYY-MM-DD' event dates (FOMC/CPI) to veto; NFP is intrinsic
   // Weights TIERED BY EVIDENCE (replicated macro > internal-OOS > folklore).
   // Set any weight to 0 to ABLATE that factor and re-run the A/B to invalidate it.
-  weights:       { z: 0.35, riskOff: 0.20, vel: 0.30, struct: 0.15 },
+  // A factor with no data drops out and the rest renormalise (no dilution).
+  weights: {
+    z:           0.22,  // nominal carry             — replicated
+    realRate:    0.18,  // real-yield USD bias       — replicated, docs-preferred
+    riskOff:     0.15,  // VIX+HY carry-crash gate   — replicated
+    coherence:   0.12,  // cross-asset agreement     — docs-central (overlaps aligns)
+    positioning: 0.08,  // COT extreme the fade opposes — medium
+    vel:         0.20,  // approach spike            — internal OOS-proven
+    struct:      0.05,  // fib depth                 — folklore, ablate-first
+  },
   fibMults:      [0.25, 0.75, 1.25, 1.5, 2.0],          // extension ladder (both sides)
 };
 
-// Risk-off regime series (pair-independent; fetched once per run). Both are FRED
-// series already used elsewhere in the platform.
-export const RISKOFF_SERIES = { vix: 'VIXCLS', hy: 'BAMLH0A0HYM2' };
+// FRED series fetched once per run (pair-independent). All already used elsewhere
+// in the platform.
+export const RISKOFF_SERIES  = { vix: 'VIXCLS', hy: 'BAMLH0A0HYM2' };
+export const REALRATE_SERIES = 'DFII10';   // US 10Y TIPS (real) yield
 
 // ── Pure confidence-scoring bricks ────────────────────────────────────────────────
 
@@ -86,17 +113,79 @@ export function riskOffScore(vixZ, hyZ, { stressCap = 2 } = {}) {
   return 1 - Math.min(1, stress / stressCap);
 }
 
-// Weighted composite ∈ [0,1]. Weights need not pre-sum to 1 — normalised here.
-// Any factor with weight 0 (ablated) drops out cleanly.
-export function compositeConfidence({ zAlign01, riskOff, velScore, struct }, weights = V2_DEFAULTS.weights) {
-  const w = { z: 0, riskOff: 0, vel: 0, struct: 0, ...weights };
-  const wSum = w.z + w.riskOff + w.vel + w.struct;
-  if (!(wSum > 0)) return 0;
-  const raw = w.z       * (zAlign01 ?? 0)
-            + w.riskOff * (riskOff  ?? 0.5)
-            + w.vel     * (velScore ?? 0)
-            + w.struct  * (struct   ?? 0);
-  return raw / wSum;
+// US 10Y REAL-yield (DFII10) rolling-z → a USD-strength bias, oriented to the pair's
+// USD role and the fade → [0,1], 0.5 neutral. Rising real yield = USD bid (the docs'
+// real-yield channel). Same shape as zAlignScore but on real, not nominal, rates —
+// the literature's preferred read. usdRole: +1 USD is base (USDJPY), −1 USD is quote
+// (EURUSD), 0 neither. Returns null (drops out) when the real-yield z is unavailable.
+export function realRateAlignScore(realYieldZ, fadeDir, usdRole, { zCap = 3 } = {}) {
+  if (!Number.isFinite(realYieldZ) || !usdRole) return null;
+  // Does this fade profit from USD strength? LONG a USD-base pair, or SHORT a USD-quote pair.
+  const fadeWantsStrongUsd = (usdRole > 0 && fadeDir === 'LONG') || (usdRole < 0 && fadeDir === 'SHORT');
+  const usdStrong = realYieldZ > 0;
+  const mag    = Math.min(Math.abs(realYieldZ), zCap) / zCap;
+  const signed = (fadeWantsStrongUsd === usdStrong ? 1 : -1) * mag;
+  return (signed + 1) / 2;
+}
+
+// USD role of a pair key → +1 (USD base, e.g. usdjpy), −1 (USD quote, e.g. eurusd), 0.
+export function usdRole(pairKey) {
+  const k = String(pairKey || '').toLowerCase();
+  if (k.startsWith('usd')) return 1;
+  if (k.endsWith('usd'))   return -1;
+  return 0;
+}
+
+// Cross-asset coherence → [0,1]: the fraction of the directional macro lenses that
+// AGREE with the fade. Each lens is an align score in [0,1] (>hi = agree, <lo =
+// disagree, else abstain). The docs' "coherence → conviction" — high agreement means
+// several independent macro reads point the same way. 0.5 when all lenses abstain.
+export function coherenceScore(alignScores, { hi = 0.55, lo = 0.45 } = {}) {
+  let agree = 0, disagree = 0;
+  for (const a of alignScores) {
+    if (a == null) continue;
+    if (a >= hi) agree++;
+    else if (a <= lo) disagree++;
+  }
+  const tot = agree + disagree;
+  return tot > 0 ? agree / tot : 0.5;
+}
+
+// COT positioning → [0,1]: boost when the fade OPPOSES a crowded position (the fuel for
+// mean reversion), dampen when the fade sides with the crowd. posZ = z of net-spec
+// positioning where + = net LONG the pair. Fade SHORT vs crowded long, or fade LONG vs
+// crowded short, agrees. Returns null (drops out) when no positioning data.
+export function positioningBoostScore(posZ, fadeDir, { zCap = 3 } = {}) {
+  if (!Number.isFinite(posZ)) return null;
+  const fadeOpposesCrowd = (posZ > 0 && fadeDir === 'SHORT') || (posZ < 0 && fadeDir === 'LONG');
+  const mag    = Math.min(Math.abs(posZ), zCap) / zCap;
+  const signed = (fadeOpposesCrowd ? 1 : -1) * mag;
+  return (signed + 1) / 2;
+}
+
+// Weighted composite ∈ [0,1]. Each factor may be a [0,1] score or null; a factor with
+// weight 0 (ablated) OR a null value (no data) drops out and the rest renormalise, so
+// missing data never biases the score. `factors` keys mirror `weights` keys.
+export function compositeConfidence(factors = {}, weights = V2_DEFAULTS.weights) {
+  const keys = ['z', 'realRate', 'riskOff', 'coherence', 'positioning', 'vel', 'struct'];
+  let num = 0, den = 0;
+  for (const k of keys) {
+    const w = weights[k] ?? 0;
+    const v = factors[k];
+    if (w > 0 && v != null) { num += w * v; den += w; }
+  }
+  return den > 0 ? num / den : 0;
+}
+
+// ── Event veto (hard gate — never fade into a scheduled print) ────────────────────
+// NFP = first Friday of the month (deterministic, no feed). FOMC/CPI dates are passed
+// in as a list. eventVetoActive → true means SKIP every trade that day.
+export function isNfpFriday(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return d.getUTCDay() === 5 && d.getUTCDate() <= 7;
+}
+export function eventVetoActive(dateStr, extraDates = []) {
+  return isNfpFriday(dateStr) || (Array.isArray(extraDates) && extraDates.includes(dateStr));
 }
 
 export function confBucketOf(conf) {

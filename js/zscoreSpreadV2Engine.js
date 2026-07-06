@@ -57,13 +57,14 @@ import {
   computeZScoreStats,
 } from './zscoreSpreadEngine.js';
 import {
-  V2_DEFAULTS, RISKOFF_SERIES,
+  V2_DEFAULTS, RISKOFF_SERIES, REALRATE_SERIES,
   zAlignScore, approachVelRangeScaled, velToScore, structScore,
-  riskOffScore, compositeConfidence, confBucketOf,
-  buildRiskOffByDate, computeConfBuckets, splitTradesByDate,
+  riskOffScore, realRateAlignScore, usdRole, coherenceScore, positioningBoostScore,
+  compositeConfidence, confBucketOf, eventVetoActive,
+  buildRiskOffByDate, buildSingleRollingZByDate, computeConfBuckets, splitTradesByDate,
 } from './zscoreConfidenceCore.js';
 
-export { ZSCORE_PAIRS, V2_DEFAULTS, RISKOFF_SERIES };
+export { ZSCORE_PAIRS, V2_DEFAULTS, RISKOFF_SERIES, REALRATE_SERIES };
 
 // ── Per-day zone scan (both sides) ────────────────────────────────────────────────
 
@@ -78,15 +79,17 @@ function buildTwoSidedFibLevels(asia, mults) {
   return levels;
 }
 
-function findDayTradesV2(packed, asia, winStart, winEnd, exitIdx, dayEnd, z, zTier, dateStr, cfg, meta, riskInfo) {
+function findDayTradesV2(packed, asia, winStart, winEnd, exitIdx, dayEnd, z, zTier, dateStr, cfg, meta, riskInfo, realYieldZ, posZ) {
   const { times, opens, highs, lows, closes } = packed;
   const trades = [];
+  // Event veto — a hard SKIP of the whole day (never fade into an FOMC/NFP/CPI print).
+  if (cfg.eventVeto && eventVetoActive(dateStr, cfg.eventDates)) return trades;
   const traded = new Set();
   const levels = buildTwoSidedFibLevels(asia, cfg.fibMults);
   const zApplies = Math.abs(z) >= cfg.zGateMin;   // optional soft floor (default 0)
   const vixZ = riskInfo?.vixZ ?? null;
   const hyZ  = riskInfo?.hyZ ?? null;
-  const riskOff = riskOffScore(vixZ, hyZ);
+  const riskOff = (vixZ != null || hyZ != null) ? riskOffScore(vixZ, hyZ) : null;
 
   for (let i = winStart; i < winEnd; i++) {
     for (const lvl of levels) {
@@ -106,11 +109,15 @@ function findDayTradesV2(packed, asia, winStart, winEnd, exitIdx, dayEnd, z, zTi
       if (riskPips <= 0 || rewardPips < riskPips * cfg.minRR) continue;
 
       // Confidence factors (all lookahead-safe: use bars up to & including the touch).
-      const zAlign01 = zAlignScore(z, lvl.dir, { inverted: meta.inverted, zCap: cfg.zCap });
-      const velRaw   = approachVelRangeScaled(closes, i, cfg.velWin, asia.range);
-      const velScore = velToScore(velRaw, cfg.velRef);
-      const struct   = structScore(lvl.mult);
-      const confidence = compositeConfidence({ zAlign01, riskOff, velScore, struct }, cfg.weights);
+      const zAlign01  = zAlignScore(z, lvl.dir, { inverted: meta.inverted, zCap: cfg.zCap });
+      const realAlign = realRateAlignScore(realYieldZ, lvl.dir, meta.usdRole, { zCap: cfg.zCap });
+      const coherence = coherenceScore([zAlign01, realAlign]);
+      const posBoost  = positioningBoostScore(posZ, lvl.dir, { zCap: cfg.zCap });
+      const velRaw    = approachVelRangeScaled(closes, i, cfg.velWin, asia.range);
+      const velScore  = velToScore(velRaw, cfg.velRef);
+      const struct    = structScore(lvl.mult);
+      const factors = { z: zAlign01, realRate: realAlign, riskOff, coherence, positioning: posBoost, vel: velScore, struct };
+      const confidence = compositeConfidence(factors, cfg.weights);
       if (confidence < cfg.confThreshold) continue;
 
       const walk = walkTrade(times, highs, lows, opens, closes, i,
@@ -123,9 +130,14 @@ function findDayTradesV2(packed, asia, winStart, winEnd, exitIdx, dayEnd, z, zTi
         dir: lvl.dir, side: lvl.side, fibLevel: lvl.mult,
         z: +z.toFixed(2), zTier,
         confidence: +confidence.toFixed(3), confBucket: confBucketOf(confidence),
-        zAlign: +zAlign01.toFixed(3), riskOff: +riskOff.toFixed(3),
+        zAlign: +zAlign01.toFixed(3),
+        realRate: realAlign != null ? +realAlign.toFixed(3) : null,
+        riskOff: riskOff != null ? +riskOff.toFixed(3) : null,
+        coherence: +coherence.toFixed(3),
+        positioning: posBoost != null ? +posBoost.toFixed(3) : null,
         velScore: +velScore.toFixed(3), structScore: +struct.toFixed(3),
         vixZ: vixZ != null ? +vixZ.toFixed(2) : null, hyZ: hyZ != null ? +hyZ.toFixed(2) : null,
+        realYieldZ: realYieldZ != null ? +realYieldZ.toFixed(2) : null,
         entry: +entry.toFixed(6), sl: +sl.toFixed(6), tp: +tp.toFixed(6),
         rr: +(rewardPips / riskPips).toFixed(2),
         asia_low: +asia.lo.toFixed(6), asia_high: +asia.hi.toFixed(6),
@@ -169,6 +181,8 @@ export async function runZScoreV2Backtest(pairKey, opts = {}) {
     zCap:          opts.zCap          ?? V2_DEFAULTS.zCap,
     weights:       opts.weights       ?? V2_DEFAULTS.weights,
     fibMults:      opts.fibMults      ?? V2_DEFAULTS.fibMults,
+    eventVeto:     opts.eventVeto     ?? V2_DEFAULTS.eventVeto,
+    eventDates:    opts.eventDates    ?? V2_DEFAULTS.eventDates,
   };
 
   const packed = await loadM1ForPair(pairKey);
@@ -178,19 +192,26 @@ export async function runZScoreV2Backtest(pairKey, opts = {}) {
   const vixZWindow = opts.vixZWindow ?? V2_DEFAULTS.vixZWindow;
   const riskFrom = _shiftDate(dateFrom, -(vixZWindow + 14));
   const wantRisk = (cf.weights.riskOff ?? 0) > 0;
-  const [usObs, otherObs, vixObs, hyObs] = await Promise.all([
+  const wantReal = (cf.weights.realRate ?? 0) > 0 && usdRole(pairKey) !== 0;
+  // Positioning (COT) is passed in via opts.posByDate (a date→z Map) when available;
+  // no historical feed is wired yet, so it defaults to absent (factor drops out).
+  const posByDate = opts.posByDate instanceof Map ? opts.posByDate : null;
+  const [usObs, otherObs, vixObs, hyObs, realObs] = await Promise.all([
     fetchFredObservations(cfg.baseSeries, fredFrom, fredKey),
     fetchFredObservations(cfg.quoteSeries, fredFrom, fredKey),
     wantRisk ? fetchFredObservations(RISKOFF_SERIES.vix, riskFrom, fredKey).catch(() => new Map()) : new Map(),
     wantRisk ? fetchFredObservations(RISKOFF_SERIES.hy,  riskFrom, fredKey).catch(() => new Map()) : new Map(),
+    wantReal ? fetchFredObservations(REALRATE_SERIES,    riskFrom, fredKey).catch(() => new Map()) : new Map(),
   ]);
   const zByDate    = buildRollingZSeries(usObs, otherObs, zWindow, dateFrom, dateTo);
   const riskByDate = buildRiskOffByDate(vixObs, hyObs, vixZWindow, dateFrom, dateTo);
+  const realByDate = buildSingleRollingZByDate(realObs, vixZWindow, dateFrom, dateTo);
 
   const dayIndex = buildDayIndex(packed.times);
   const trades = [];
   let daysConsidered = 0, daysSkippedIncomplete = 0, daysNoZ = 0;
-  const meta = { pip: cfg.pip, pairKey, pairDisplay: cfg.pairDisplay, inverted: !!invert[pairKey] };
+  const meta = { pip: cfg.pip, pairKey, pairDisplay: cfg.pairDisplay,
+    inverted: !!invert[pairKey], usdRole: usdRole(pairKey) };
 
   for (const [dateStr, { start, end }] of dayIndex) {
     if (dateStr < dateFrom || dateStr > dateTo) continue;
@@ -205,7 +226,8 @@ export async function runZScoreV2Backtest(pairKey, opts = {}) {
     const zTier = Math.abs(zInfo.z) >= 3 ? '3.0+' : Math.abs(zInfo.z) >= 2.5 ? '2.5-3.0'
                 : Math.abs(zInfo.z) >= 2 ? '2.0-2.5' : '<2.0';
     trades.push(...findDayTradesV2(packed, asia, winStart, winEnd, exitIdx, end,
-      zInfo.z, zTier, dateStr, cf, meta, riskByDate.get(dateStr)));
+      zInfo.z, zTier, dateStr, cf, meta, riskByDate.get(dateStr),
+      realByDate.get(dateStr) ?? null, posByDate?.get(dateStr) ?? null));
   }
 
   const { splitDate, is, oos } = splitTradesByDate(trades, cf.splitFrac);

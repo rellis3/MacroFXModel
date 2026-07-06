@@ -8807,12 +8807,12 @@ app.post('/api/zscore-v2/run', (req, res) => {
     velRef:        num(b.velRef,        ZS_V2_DEFAULTS.velRef),
     slFrac:        num(b.slFrac,        ZS_V2_DEFAULTS.slFrac),
     minRR:         num(b.minRR,         ZS_V2_DEFAULTS.minRR),
+    eventVeto:     b.eventVeto == null ? ZS_V2_DEFAULTS.eventVeto : (b.eventVeto === true || b.eventVeto === 'true'),
+    eventDates:    Array.isArray(b.eventDates) ? b.eventDates : ZS_V2_DEFAULTS.eventDates,
     // Ablation-friendly weights: any 0 removes that factor from the composite.
     weights: (b.weights && typeof b.weights === 'object')
-      ? { z: num(b.weights.z, ZS_V2_DEFAULTS.weights.z),
-          riskOff: num(b.weights.riskOff, ZS_V2_DEFAULTS.weights.riskOff),
-          vel: num(b.weights.vel, ZS_V2_DEFAULTS.weights.vel),
-          struct: num(b.weights.struct, ZS_V2_DEFAULTS.weights.struct) }
+      ? Object.fromEntries(Object.keys(ZS_V2_DEFAULTS.weights).map(k =>
+          [k, num(b.weights[k], ZS_V2_DEFAULTS.weights[k])]))
       : ZS_V2_DEFAULTS.weights,
     invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
       [k, b.invert?.[k] === true || b.invert?.[k] === 'true'])),

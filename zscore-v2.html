@@ -64,11 +64,17 @@
     </div>
     <h2 style="margin-top:18px">Factor weights <span class="muted">— set any to 0 to ablate &amp; invalidate that idea</span></h2>
     <div class="weights">
-      <div><label>z-align <span class="tag rep">replicated</span></label><input id="wz" value="0.35"></div>
-      <div><label>risk-off <span class="tag rep">replicated</span></label><input id="wriskOff" value="0.20"></div>
-      <div><label>velocity <span class="tag oos">OOS-proven</span></label><input id="wvel" value="0.30"></div>
-      <div><label>fib-depth <span class="tag folk">folklore</span></label><input id="wstruct" value="0.15"></div>
+      <div><label>z-align <span class="tag rep">replicated</span></label><input id="wz" value="0.22"></div>
+      <div><label>real-rate <span class="tag rep">replicated</span></label><input id="wrealRate" value="0.18"></div>
+      <div><label>risk-off <span class="tag rep">replicated</span></label><input id="wriskOff" value="0.15"></div>
+      <div><label>coherence <span class="tag rep">docs-central</span></label><input id="wcoherence" value="0.12"></div>
+      <div><label>positioning <span class="tag oos">COT</span></label><input id="wpositioning" value="0.08"></div>
+      <div><label>velocity <span class="tag oos">OOS-proven</span></label><input id="wvel" value="0.20"></div>
+      <div><label>fib-depth <span class="tag folk">folklore</span></label><input id="wstruct" value="0.05"></div>
+      <div><label>event veto <span class="tag rep">FOMC/NFP/CPI</span></label>
+        <select id="eventVeto"><option value="true" selected>on (skip prints)</option><option value="false">off</option></select></div>
     </div>
+    <div class="muted" style="margin-top:8px">real-rate = US 10Y TIPS (DFII10) USD bias · coherence = agreement of the carry lenses · positioning = COT extreme the fade opposes (neutral until a COT series is wired) · event veto = hard skip of NFP (intrinsic) &amp; any FOMC/CPI dates.</div>
     <button id="runBtn">Run A/B</button>
     <div class="status" id="status"></div>
   </div>
@@ -144,7 +150,10 @@ async function run(){
   const body={
     pair:$('pair').value, dateFrom:$('dateFrom').value, dateTo:$('dateTo').value,
     zWindow:$('zWindow').value, splitFrac:$('splitFrac').value, confThreshold:$('confThreshold').value,
-    weights:{ z:$('wz').value, riskOff:$('wriskOff').value, vel:$('wvel').value, struct:$('wstruct').value },
+    eventVeto:$('eventVeto').value,
+    weights:{ z:$('wz').value, realRate:$('wrealRate').value, riskOff:$('wriskOff').value,
+      coherence:$('wcoherence').value, positioning:$('wpositioning').value,
+      vel:$('wvel').value, struct:$('wstruct').value },
   };
   try{
     const r=await fetch('/api/zscore-v2/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
