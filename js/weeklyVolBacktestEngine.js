@@ -11,6 +11,16 @@
  *     OC75_up/dn  = open ± HN_P75 × oc_75_corr × σ_w (75th pct OC body)
  *   Fade: limit orders placed at those levels, TP = Monday open (mean reversion).
  *
+ * Regime fade/follow gate (opt-in; `regimeMode`, default 'off' = unchanged):
+ *   The incumbent fades EVERY touch regardless of the week's trend — the exact
+ *   "always-fade" failure mode TRADABILITY_REVIEW.md warns about. This gate ports
+ *   the bot/daily-engine lesson (don't fade into a trend) via the shared bricks:
+ *     'counter'   — skip the with-trend fade side (BULL→no SELL-from-high,
+ *                   BEAR→no BUY-from-low), classifyRegime on the weekly anchor.
+ *     'skipTrend' — skip all fades on TREND weeks (dayTypeScore T ≥ trendMin).
+ *   Every trade is tagged with `regime` + `dayType_t` so a per-regime breakdown
+ *   shows how fades fare by regime even in 'off' mode.
+ *
  * Modes:
  *   revHL50   — entry HL50, TP = Mon open, SL = HL75            (~3.8:1 R:R)
  *   revHL75   — entry HL75, TP = Mon open, SL = HL75 × slMult
@@ -36,8 +46,14 @@ import path                                       from 'path';
 import { fileURLToPath }                          from 'url';
 import {
   fetchD1, ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas,
-  ASSET_PARAMS, BM_P50, BM_P75, HN_P50, HN_P75,
+  ASSET_PARAMS, BM_P50, BM_P75, HN_P50, HN_P75, classifyRegime,
 } from './volBacktestEngine.js';
+// The canonical fade-vs-follow brain — imported, never copied (CLAUDE.md Lego #1).
+// dayTypeScore returns trend-day-ness T ∈ [0,1] (0 = chop/fade, 1 = trend/follow);
+// classifyDayType exposes the same estimators (Hurst, VR, ER…) as a label.
+import { dayTypeScore, classifyDayType } from './dayTypeCore.js';
+// ADX (Wilder) — trend-strength regime source, an alternative to the EMA slope.
+import { adxWilder } from './indicatorCore.js';
 import {
   readM1Parquet, groupByDate, fetchFromR2, fetchFromDrive, M1_DRIVE_IDS,
 } from './volBacktestM1Engine.js';
@@ -300,10 +316,32 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     smiFilter       = false,
     smiBuyThresh    = -40,
     smiSellThresh   =  40,
+    // Regime fade/follow gate (computed per-week in runWeeklyBacktest). When a
+    // side is disallowed, that side's fades (fade-the-high = SELL, fade-the-low
+    // = BUY) are skipped for ALL levels this week — mirrors the daily engine's
+    // counter-regime filter (simulateRevHL50M1 revMode='counter'). Default true
+    // (=off) leaves the incumbent blind-fade behaviour byte-identical.
+    allowSellFade   = true,
+    allowBuyFade    = true,
+    // Exit management (opt-in; default 'open' = incumbent target = Monday open):
+    //   'open'       — TP at Monday open (full reversion). Unchanged.
+    //   'ocMed'      — TP at the OC-median band (the "average move"): a nearer
+    //                  target → higher win rate, smaller win.
+    //   'oppBand'    — TP at the MIRROR band (full-range runner): deeper target,
+    //                  lower win rate, fat-tailed win. The convex target.
+    //   'chandelier' — no fixed TP; trail a stop chandMult×ATR from the best
+    //                  favourable price, hard SL unchanged. Lets the reversion
+    //                  run and harvests the convex tail. Needs ATR (else falls
+    //                  back to 'open').
+    exitMode  = 'open',
+    chandMult = 2.0,
   } = opts;
 
   const pip     = PIP_SIZE[pair] ?? 0.0001;
   const safeAtr = atr30 > 0 ? atr30 : null; // null → ATR mode falls back to level-based
+  // Chandelier needs an ATR to trail against; without one, degrade to fixed 'open'.
+  const effExit = (exitMode === 'chandelier' && !safeAtr) ? 'open' : exitMode;
+  const chandDist = safeAtr ? safeAtr * chandMult : 0;
 
   // ── Entry price levels ────────────────────────────────────────────────────────
   const hl50Up  = mondayOpen * (1 + hl50pct  / 100);
@@ -353,15 +391,31 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     SELL_OC75:  getSl('SELL', oc75Up,  hl50Up),
     BUY_OC75:   getSl('BUY',  oc75Dn,  hl50Dn),
   };
+  // Take-profit target per slot. In the default 'open' exit (and the atr/pips
+  // tpMode overrides) this is the incumbent Monday-open fallback. The 'ocMed'
+  // and 'oppBand' exits retarget the fade to a nearer (average-move) or deeper
+  // (mirror-band, convex) level; 'chandelier' ignores tpMap and trails instead.
+  //   ocMed target  = the OC-median band on the entry's own side (nearer to open)
+  //   oppBand target = the MIRROR of the entry level (full-range reversion)
+  const ocMedTgt = { SELL: ocMedUp, BUY: ocMedDn };   // nearer target, same side as entry
+  const oppTgt = {
+    SELL_HL50: hl50Dn, BUY_HL50: hl50Up, SELL_HL75: hl75Dn, BUY_HL75: hl75Up,
+    SELL_OCMed: ocMedDn, BUY_OCMed: ocMedUp, SELL_OC75: oc75Dn, BUY_OC75: oc75Up,
+  };
+  const fadeTp = (side, key, entry) => {
+    if (effExit === 'ocMed')   return ocMedTgt[side];
+    if (effExit === 'oppBand') return oppTgt[key];
+    return getTp(side, entry, mondayOpen);   // 'open' (+ atr/pips tpMode) — unchanged
+  };
   const tpMap = {
-    SELL_HL50:  getTp('SELL', hl50Up,  mondayOpen),
-    BUY_HL50:   getTp('BUY',  hl50Dn,  mondayOpen),
-    SELL_HL75:  getTp('SELL', hl75Up,  mondayOpen),
-    BUY_HL75:   getTp('BUY',  hl75Dn,  mondayOpen),
-    SELL_OCMed: getTp('SELL', ocMedUp, mondayOpen),
-    BUY_OCMed:  getTp('BUY',  ocMedDn, mondayOpen),
-    SELL_OC75:  getTp('SELL', oc75Up,  mondayOpen),
-    BUY_OC75:   getTp('BUY',  oc75Dn,  mondayOpen),
+    SELL_HL50:  fadeTp('SELL', 'SELL_HL50',  hl50Up),
+    BUY_HL50:   fadeTp('BUY',  'BUY_HL50',   hl50Dn),
+    SELL_HL75:  fadeTp('SELL', 'SELL_HL75',  hl75Up),
+    BUY_HL75:   fadeTp('BUY',  'BUY_HL75',   hl75Dn),
+    SELL_OCMed: fadeTp('SELL', 'SELL_OCMed', ocMedUp),
+    BUY_OCMed:  fadeTp('BUY',  'BUY_OCMed',  ocMedDn),
+    SELL_OC75:  fadeTp('SELL', 'SELL_OC75',  oc75Up),
+    BUY_OC75:   fadeTp('BUY',  'BUY_OC75',   oc75Dn),
   };
 
   const slots = {
@@ -379,29 +433,31 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     const { date, high, low } = bar;
 
     // ── Check new fills (only first hit per slot) ────────────────────────────
+    // The fill only ARMS the position — it never resolves TP on the fill bar
+    // (see the causality note in the resolution pass below).
     const tryFill = (key, side, level, entry) => {
-      if (!slots[key]) {
-        // Z-Score filter: skip fill if price isn't sufficiently extended
-        if (zScoreFilter && bar.zScore != null) {
-          if (side === 'BUY'  && bar.zScore > zScoreBuyThresh)  return;
-          if (side === 'SELL' && bar.zScore < zScoreSellThresh) return;
-        }
-        // SMI filter: skip fill if momentum isn't overbought/oversold
-        if (smiFilter && bar.smi != null) {
-          if (side === 'BUY'  && bar.smi > smiBuyThresh)  return;
-          if (side === 'SELL' && bar.smi < smiSellThresh) return;
-        }
-        const sl = slMap[key], tp = tpMap[key];
-        const res = resolveOnBar(side, entry, tp, sl, bar, mondayOpen);
-        const mfe0 = side === 'SELL'
-          ? Math.max(0, entry - bar.low)  / mondayOpen * 100
-          : Math.max(0, bar.high - entry) / mondayOpen * 100;
-        const mae0 = side === 'SELL'
-          ? Math.max(0, bar.high - entry) / mondayOpen * 100
-          : Math.max(0, entry - bar.low)  / mondayOpen * 100;
-        slots[key] = { side, level, entry, tp, sl, fillDate: date, mfe: mfe0, mae: mae0,
-                       ...(res ?? { outcome: 'open', pnlPct: 0 }) };
+      if (slots[key]) return;
+      // Regime gate: skip the with-trend fade side on trending weeks (or the
+      // whole week in skipTrend mode). All levels are fades to Monday open, so
+      // SELL = fade-the-high, BUY = fade-the-low.
+      if (side === 'SELL' && !allowSellFade) return;
+      if (side === 'BUY'  && !allowBuyFade)  return;
+      // Z-Score filter: skip fill if price isn't sufficiently extended
+      if (zScoreFilter && bar.zScore != null) {
+        if (side === 'BUY'  && bar.zScore > zScoreBuyThresh)  return;
+        if (side === 'SELL' && bar.zScore < zScoreSellThresh) return;
       }
+      // SMI filter: skip fill if momentum isn't overbought/oversold
+      if (smiFilter && bar.smi != null) {
+        if (side === 'BUY'  && bar.smi > smiBuyThresh)  return;
+        if (side === 'SELL' && bar.smi < smiSellThresh) return;
+      }
+      slots[key] = {
+        side, level, entry, tp: tpMap[key], sl: slMap[key], fillDate: date,
+        outcome: 'open', pnlPct: 0, mfe: 0, mae: 0,
+        _justFilled: true, _best: side === 'SELL' ? low : high,
+        _uncappedMfe: 0, _uncappedMae: 0,
+      };
     };
 
     if (doHL50  && high >= hl50Up)  tryFill('SELL_HL50',  'SELL', 'HL50',  hl50Up);
@@ -413,30 +469,64 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
     if (doOC75  && high >= oc75Up)  tryFill('SELL_OC75',  'SELL', 'OC75',  oc75Up);
     if (doOC75  && low  <= oc75Dn)  tryFill('BUY_OC75',   'BUY',  'OC75',  oc75Dn);
 
-    // ── Carry open trades into this bar ─────────────────────────────────────
+    // ── Resolve every armed slot against this bar ───────────────────────────
     for (const t of Object.values(slots)) {
       if (!t) continue;
-      // Uncapped MAE (raw price units, regardless of outcome) — feeds the
-      // maeCalib SL's walk-forward percentile via calibCtx; tracks the true
-      // adverse excursion through EOW even past whatever stop this trade
-      // actually closed against.
-      const adverseRaw = t.side === 'SELL'
-        ? Math.max(0, bar.high - t.entry)
-        : Math.max(0, t.entry - bar.low);
-      if (adverseRaw > (t._uncappedMae ?? 0)) t._uncappedMae = adverseRaw;
 
-      if (t.outcome === 'open') {
-        const mfeInc = t.side === 'SELL'
-          ? Math.max(0, t.entry - bar.low)  / mondayOpen * 100
-          : Math.max(0, bar.high - t.entry) / mondayOpen * 100;
-        const maeInc = t.side === 'SELL'
-          ? Math.max(0, bar.high - t.entry) / mondayOpen * 100
-          : Math.max(0, t.entry - bar.low)  / mondayOpen * 100;
-        if (mfeInc > (t.mfe ?? 0)) t.mfe = mfeInc;
-        if (maeInc > (t.mae ?? 0)) t.mae = maeInc;
-        const res = resolveOnBar(t.side, t.entry, t.tp, t.sl, bar, mondayOpen);
-        if (res) Object.assign(t, res);
+      // Uncapped excursions through EOW (raw price, regardless of this trade's
+      // own exit). Adverse feeds the maeCalib SL's walk-forward percentile;
+      // favourable feeds the convexity panel's TRUE right tail (how far the
+      // reversion ran past whatever fixed target closed the trade).
+      const favRaw = t.side === 'SELL' ? Math.max(0, t.entry - low) : Math.max(0, high - t.entry);
+      const advRaw = t.side === 'SELL' ? Math.max(0, high - t.entry) : Math.max(0, t.entry - low);
+      if (favRaw > t._uncappedMfe) t._uncappedMfe = favRaw;
+      if (advRaw > t._uncappedMae) t._uncappedMae = advRaw;
+
+      if (t.outcome !== 'open') continue;
+
+      // Capped MFE/MAE — the excursion the OPEN trade actually saw (%).
+      const mfeInc = favRaw / mondayOpen * 100;
+      const maeInc = advRaw / mondayOpen * 100;
+      if (mfeInc > t.mfe) t.mfe = mfeInc;
+      if (maeInc > t.mae) t.mae = maeInc;
+
+      // Chandelier: track the best favourable price for the trailing stop.
+      if (t.side === 'SELL') { if (low  < t._best) t._best = low;  }
+      else                   { if (high > t._best) t._best = high; }
+
+      // SL is always checked (pessimistic, even on the fill bar). TP / trailing
+      // is skipped on the fill bar: a limit (fade) fill sits between the
+      // approach path and the target, so the bar reached the target region
+      // BEFORE the fill — booking it here is lookahead (fatal on D1 window bars;
+      // negligible on the 1-minute M1 fill bar). Mirrors forecastCore.walkBars.
+      const canExitFav = !t._justFilled;
+      if (t.side === 'SELL') {
+        if (high >= t.sl) {
+          t.outcome = 'loss'; t.pnlPct = (t.entry - t.sl) / mondayOpen * 100; t.closeDate = date;
+        } else if (effExit === 'chandelier') {
+          const trail = t._best + chandDist;
+          if (canExitFav && high >= trail) {
+            t.pnlPct = (t.entry - trail) / mondayOpen * 100;
+            t.outcome = t.pnlPct > 0 ? 'win' : 'loss'; t.closeDate = date;
+          }
+        } else if (canExitFav && low <= t.tp) {
+          t.outcome = 'win'; t.pnlPct = (t.entry - t.tp) / mondayOpen * 100; t.closeDate = date;
+        }
+      } else {
+        if (low <= t.sl) {
+          t.outcome = 'loss'; t.pnlPct = (t.sl - t.entry) / mondayOpen * 100; t.closeDate = date;
+        } else if (effExit === 'chandelier') {
+          const trail = t._best - chandDist;
+          if (canExitFav && low <= trail) {
+            t.pnlPct = (trail - t.entry) / mondayOpen * 100;
+            t.outcome = t.pnlPct > 0 ? 'win' : 'loss'; t.closeDate = date;
+          }
+        } else if (canExitFav && high >= t.tp) {
+          t.outcome = 'win'; t.pnlPct = (t.tp - t.entry) / mondayOpen * 100; t.closeDate = date;
+        }
       }
+
+      t._justFilled = false;
     }
   }
 
@@ -458,9 +548,12 @@ function simulateWeek(mondayOpen, weekBars, levelPcts, opts) {
   // ── Collect filled trades, apply spread (skip spread for open carries) ───
   const result = Object.values(slots)
     .filter(Boolean)
-    .map(({ _uncappedMae, ...t }) => ({
+    .map(({ _uncappedMae, _uncappedMfe, _best, _justFilled, ...t }) => ({
       ...t, filled: true,
       uncappedMaeAtr: safeAtr ? _uncappedMae / safeAtr : null,
+      // True favourable excursion through EOW (%), ignoring the exit — lets the
+      // convexity panel measure how far winners ran PAST the fixed target.
+      uncappedMfePct: +(_uncappedMfe / mondayOpen * 100).toFixed(5),
       pnlPct: (opts.noEowClose && t.outcome === 'open')
         ? t.pnlPct  // spread applied at carry resolution to avoid double-count
         : +(t.pnlPct - spreadPct).toFixed(5),
@@ -478,6 +571,38 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
           carryMode = false, maxOnePerPair = false,
           m1ByWeek = null,   // Map<weekKey, m1bar[]> — M1 simulation when provided
           maeCalibPct = 85, maeCalibLookback = 100, maeCalibMinSamples = 20,
+          // Regime fade/follow gate (opt-in; default 'off' = incumbent blind fade):
+          //   'off'       — fade both sides at every level (unchanged).
+          //   'counter'   — skip the with-trend fade side: on BULL weeks skip
+          //                 SELL-from-high, on BEAR weeks skip BUY-from-low
+          //                 (fading a directional week gets stopped at the outer
+          //                 band). RANGE weeks fade both. Mirrors the daily
+          //                 engine's counter-regime filter.
+          //   'skipTrend' — skip ALL fades on TREND weeks (dayTypeScore T ≥
+          //                 trendMin); fade both on RANGE/MIXED weeks. Uses the
+          //                 canonical trend-day-ness brain directly.
+          regimeMode  = 'off',
+          slopeThresh = 0.002,   // classifyRegime EMA-slope threshold (weekly-anchored)
+          bearMult    = 1.0,     // BEAR asymmetry (raise to require a steeper downtrend)
+          dayTypeWin  = 14,      // dayTypeScore lookback (daily closes before Monday)
+          trendMin    = 0.55,    // T ≥ this ⇒ TREND week (skipTrend mode)
+          // Regime SOURCE — how BULL/BEAR/RANGE is derived for the counter gate.
+          // EMA slope is a crude proxy; these are alternatives from the shared
+          // bricks (direction always taken from the drift sign so each yields a
+          // clean 3-state). skipTrend's T stays dayTypeScore regardless.
+          //   'emaSlope' (default) — classifyRegime (unchanged).
+          //   'adx'      — ADX(adxPeriod) ≥ adxTrend ⇒ trend (dir=drift), else RANGE.
+          //   'hurst'    — Hurst ≥ hurstTrend ⇒ trend (dir=drift), else RANGE.
+          //   'dayType'  — classifyDayType label TREND ⇒ trend (dir=drift), else RANGE.
+          regimeSource = 'emaSlope',
+          adxPeriod = 14, adxTrend = 25,
+          hurstWin = 40,  hurstTrend = 0.55,
+          // Approach velocity — the per-line book's single strongest OOS feature
+          // (a fast spike into a level reverts far more than a slow grind). Weekly
+          // proxy, horizon-robust across M1/D1: σ_w-normalised distance from Monday
+          // open to the fill level, per trading-day taken to reach it. A Monday
+          // punch to HL50 ≈ 1.5σ_w/day (spike); a Friday drift ≈ 0.3 (grind).
+          velFast = 0.7, velSlow = 0.4,
         } = opts;
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
 
@@ -515,6 +640,11 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     weekMap.get(wk).push(bar);
   }
   const sortedWeeks = [...weekMap.entries()].sort(([a], [b]) => a < b ? -1 : 1);
+
+  // Precompute the ADX series once (only when it's the chosen regime source).
+  // adxSeries[k] is ADX as of bar k; the week loop indexes mondayIdx−1 (prior
+  // Friday) so Monday's own not-yet-known bar never leaks in.
+  const adxSeries = regimeSource === 'adx' ? adxWilder(bars, adxPeriod) : null;
 
   const records     = [];
   const carryTrades = []; // Positions held open beyond EOW in carry mode
@@ -584,6 +714,9 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
           pnl_pips: cPips(pnl), mfe_pips: c.mfe != null ? cPips(c.mfe) : null,
           mae_pips: c.mae != null ? cPips(c.mae) : null,
           carried: true, m1_sim: c.m1_sim ?? false,
+          regime: c.regime ?? null, dayType_t: c.dayType_t ?? null,
+          uncapped_mfe_pct: c.uncappedMfePct ?? null,
+          approach_vel: c.approach_vel ?? null, vel_bucket: c.vel_bucket ?? null,
         });
       }
       carryTrades.length = 0;
@@ -593,6 +726,36 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     // Vol sigma for Monday = pre-computed through Friday's close (no lookahead)
     const sigmaD = Math.max(volSigmas[mondayIdx] ?? 1e-6, 1e-6);
     const sigmaW = sigmaD * SQRT5;
+
+    // ── Weekly regime + trend-day-ness (no lookahead: all read closes < mondayIdx,
+    // i.e. data through the prior Friday, all known before Monday opens) ─────────
+    // Direction for the non-EMA sources: sign of the drift over dayTypeWin.
+    const driftSign = mondayIdx >= dayTypeWin + 1
+      ? Math.sign(closes[mondayIdx - 1] - closes[mondayIdx - 1 - dayTypeWin]) : 0;
+    let regime;
+    if (regimeSource === 'adx') {
+      const adx = adxSeries ? (adxSeries[Math.max(0, mondayIdx - 1)] || 0) : 0;
+      regime = adx >= adxTrend ? (driftSign >= 0 ? 'BULL' : 'BEAR') : 'RANGE';
+    } else if (regimeSource === 'hurst') {
+      const H = classifyDayType({ closes, idx: mondayIdx, win: hurstWin }, { weights: { hurst: 1 } }).T;
+      regime = H >= hurstTrend ? (driftSign >= 0 ? 'BULL' : 'BEAR') : 'RANGE';
+    } else if (regimeSource === 'dayType') {
+      const dt = classifyDayType({ closes, idx: mondayIdx, win: dayTypeWin });
+      regime = dt.label === 'TREND' ? (driftSign >= 0 ? 'BULL' : 'BEAR') : 'RANGE';
+    } else {
+      regime = classifyRegime(closes, mondayIdx, 20, 5, slopeThresh, bearMult); // emaSlope (default)
+    }
+    const dtT = +dayTypeScore(closes, mondayIdx, dayTypeWin).toFixed(4);
+
+    // Derive the per-side fade gate from the regime mode.
+    let allowSellFade = true, allowBuyFade = true;   // 'off' → fade both (unchanged)
+    if (regimeMode === 'counter') {
+      allowSellFade = regime !== 'BULL';   // don't fade the high into an uptrend
+      allowBuyFade  = regime !== 'BEAR';   // don't fade the low into a downtrend
+    } else if (regimeMode === 'skipTrend') {
+      const isTrend = dtT >= trendMin;     // strong trend week → stand aside
+      allowSellFade = allowBuyFade = !isTrend;
+    }
 
     const hl50pct  = BM_P50 * p.hl_50_corr  * sigmaW * 100;
     const hl75pct  = BM_P75 * p.hl_75_corr  * sigmaW * 100;
@@ -607,10 +770,20 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
     const levelPcts     = { hl50pct, hl75pct, ocMedpct, oc75pct, atr30 };
     const pip           = PIP_SIZE[opts.pair ?? ''] ?? 0.0001;
     const toPips        = pct => mondayOpen > 0 ? +(pct / 100 * mondayOpen / pip).toFixed(1) : null;
+    // Approach velocity at the fill (σ_w-normalised distance-to-level per trading
+    // day to reach it) → spike / med / grind bucket. No lookahead: uses only the
+    // fill date and this week's σ_w.
+    const velAt = (entry, fillDate) => {
+      if (entry == null || !fillDate || !(sigmaW > 0)) return { vel: null, bucket: null };
+      const fi = dateToIdx.get(fillDate);
+      const daysToFill = Math.max(1, (fi != null ? fi - mondayIdx : 0) + 1);
+      const vel = (Math.abs(entry - mondayOpen) / mondayOpen / sigmaW) / daysToFill;
+      return { vel: +vel.toFixed(3), bucket: vel >= velFast ? '3·spike' : vel <= velSlow ? '1·grind' : '2·med' };
+    };
     // maxOnePerPair: skip new orders while any carry is still open
     const skipNewOrders = maxOnePerPair && carryTrades.length > 0;
     const trades        = skipNewOrders
-      ? [] : simulateWeek(mondayOpen, simBars, levelPcts, { ...opts, noEowClose: carryMode, calibCtx });
+      ? [] : simulateWeek(mondayOpen, simBars, levelPcts, { ...opts, noEowClose: carryMode, calibCtx, allowSellFade, allowBuyFade });
 
     // Calibration update happens after this week's fills are known, so next
     // week's getSl() sees this week's data but this week's own getSl() calls
@@ -630,8 +803,11 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
           hl50_pct:   +hl50pct.toFixed(4),  hl75_pct:   +hl75pct.toFixed(4),
           oc_med_pct: +ocMedpct.toFixed(4), oc75_pct:   +oc75pct.toFixed(4),
           atr30:       +atr30.toFixed(6),
+          regime,      dayType_t: dtT,
+          ...(v => ({ approach_vel: v.vel, vel_bucket: v.bucket }))(velAt(t.entry, t.fillDate)),
         });
       } else {
+        const vb = velAt(t.entry, t.fillDate);
         records.push({
           week:        weekKey,
           date:        mondayDate,
@@ -653,11 +829,14 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
           close_date:  t.closeDate ?? null,
           mfe_pct:     t.mfe != null ? +t.mfe.toFixed(5) : null,
           mae_pct:     t.mae != null ? +t.mae.toFixed(5) : null,
+          uncapped_mfe_pct: t.uncappedMfePct ?? null,
           pnl_pips:    t.filled ? toPips(t.pnlPct) : null,
           mfe_pips:    t.mfe   != null ? toPips(t.mfe) : null,
           mae_pips:    t.mae   != null ? toPips(t.mae) : null,
           carried:     false,
           m1_sim:      !!(m1WeekBars && m1WeekBars.length >= 10),
+          regime,      dayType_t: dtT,
+          approach_vel: vb.vel, vel_bucket: vb.bucket,
         });
       }
     }
@@ -691,6 +870,9 @@ export function runWeeklyBacktest(bars, assetClass, opts = {}) {
         pnl_pips: fPips(pnl), mfe_pips: c.mfe != null ? fPips(c.mfe) : null,
         mae_pips: c.mae != null ? fPips(c.mae) : null,
         carried: true,
+        regime: c.regime ?? null, dayType_t: c.dayType_t ?? null,
+        uncapped_mfe_pct: c.uncappedMfePct ?? null,
+        approach_vel: c.approach_vel ?? null, vel_bucket: c.vel_bucket ?? null,
       });
     }
   }

@@ -7248,6 +7248,22 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       levels.map(lv => [lv, _wbtStats(trades.filter(r => r.level === lv))])
     );
 
+    // Per-regime breakdown (how fades fare by the week's trend regime) — the key
+    // analytical payoff: even in blind-fade 'off' mode this shows fades bleeding
+    // in BULL/BEAR weeks vs holding in RANGE, validating the fade/follow thesis.
+    const regimes = ['BULL', 'BEAR', 'RANGE'];
+    const byRegime = Object.fromEntries(
+      regimes.map(rg => [rg, _wbtStats(trades.filter(r => r.regime === rg))])
+    );
+
+    // Per approach-velocity bucket — the book's edge: a fast spike into a level
+    // reverts far more than a slow grind. If spike fades beat grind fades here,
+    // the velocity gate has something to select on.
+    const velBuckets = ['3·spike', '2·med', '1·grind'];
+    const byVelocity = Object.fromEntries(
+      velBuckets.map(v => [v, _wbtStats(trades.filter(r => r.vel_bucket === v))])
+    );
+
     // Fill-day breakdown (which day of the week was the limit order triggered)
     const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const byFillDay = {};
@@ -7324,6 +7340,11 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
         mfe_pips:    r.mfe_pips,
         mae_pips:    r.mae_pips,
         carried:     r.carried ?? false,
+        regime:      r.regime ?? null,
+        dayType_t:   r.dayType_t ?? null,
+        uncapped_mfe_pct: r.uncapped_mfe_pct ?? null,
+        approach_vel: r.approach_vel ?? null,
+        vel_bucket:  r.vel_bucket ?? null,
       }));
 
     // Compact allTrades for client-side stats + chart modal
@@ -7352,6 +7373,11 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       mfe_pips:    r.mfe_pips,
       mae_pips:    r.mae_pips,
       carried:     r.carried ?? false,
+      regime:      r.regime ?? null,
+      dayType_t:   r.dayType_t ?? null,
+      uncapped_mfe_pct: r.uncapped_mfe_pct ?? null,
+      approach_vel: r.approach_vel ?? null,
+      vel_bucket:  r.vel_bucket ?? null,
     }));
 
     const overall = _wbtStats(trades);
@@ -7395,6 +7421,8 @@ app.get('/api/weekly-vol-backtest', (req, res) => {
       overall,
       byInstrument,
       byLevel,
+      byRegime,
+      byVelocity,
       byFillDay:   byFillDayStats,
       equityCurve,
       instEquity,
@@ -7445,6 +7473,12 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     lvHL50, lvHL75, lvOCMed, lvOC75,
     zScoreFilter    = 'false', zScoreBuyThresh  = '-1.5', zScoreSellThresh = '1.5', zScoreLen = '20',
     smiFilter       = 'false', smiBuyThresh     = '-40',  smiSellThresh    = '40',  smiKLen   = '10',
+    regimeMode      = 'off',   slopeThresh      = '0.002', bearMult        = '1.0',
+    dayTypeWin      = '14',     trendMin         = '0.55',
+    regimeSource    = 'emaSlope', adxPeriod = '14', adxTrend = '25',
+    hurstWin        = '40',    hurstTrend       = '0.55',
+    exitMode        = 'open',  chandMult        = '2.0',
+    velFast         = '0.7',   velSlow          = '0.4',
   } = req.body || {};
 
   const opts = {
@@ -7473,6 +7507,20 @@ app.post('/api/weekly-vol-backtest/run', (req, res) => {
     smiBuyThresh:     parseFloat(smiBuyThresh)      || -40,
     smiSellThresh:    parseFloat(smiSellThresh)     ||  40,
     smiKLen:          parseInt(smiKLen)              ||  10,
+    regimeMode:       ['off', 'counter', 'skipTrend'].includes(regimeMode) ? regimeMode : 'off',
+    slopeThresh:      parseFloat(slopeThresh)        ||  0.002,
+    bearMult:         parseFloat(bearMult)           ||  1.0,
+    dayTypeWin:       parseInt(dayTypeWin)           ||  14,
+    trendMin:         parseFloat(trendMin)           ||  0.55,
+    regimeSource:     ['emaSlope', 'adx', 'hurst', 'dayType'].includes(regimeSource) ? regimeSource : 'emaSlope',
+    adxPeriod:        parseInt(adxPeriod)            ||  14,
+    adxTrend:         parseFloat(adxTrend)           ||  25,
+    hurstWin:         parseInt(hurstWin)             ||  40,
+    hurstTrend:       parseFloat(hurstTrend)         ||  0.55,
+    exitMode:         ['open', 'ocMed', 'oppBand', 'chandelier'].includes(exitMode) ? exitMode : 'open',
+    chandMult:        parseFloat(chandMult)          ||  2.0,
+    velFast:          parseFloat(velFast)            ||  0.7,
+    velSlow:          parseFloat(velSlow)            ||  0.4,
   };
   if (lvHL50  !== undefined) opts.doHL50  = Boolean(lvHL50);
   if (lvHL75  !== undefined) opts.doHL75  = Boolean(lvHL75);
