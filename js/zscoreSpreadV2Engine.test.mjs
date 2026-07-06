@@ -7,6 +7,8 @@ import {
   zAlignScore, approachVelRangeScaled, velToScore, structScore,
   riskOffScore, compositeConfidence, confBucketOf,
   buildSingleRollingZByDate, buildRiskOffByDate, splitTradesByDate,
+  realRateAlignScore, usdRole, coherenceScore, positioningBoostScore,
+  isNfpFriday, eventVetoActive,
 } from './zscoreConfidenceCore.js';
 
 let passed = 0;
@@ -60,22 +62,76 @@ t('riskOff neutral (0.5) when both series missing — never a free veto', () =>
 t('riskOff ignores below-mean (negative) z as non-stress', () =>
   assert(approx(riskOffScore(-3, -3), 1.0)));
 
-// ── compositeConfidence ──────────────────────────────────────────────────────────
+// ── compositeConfidence (null-skipping + new factor keys) ─────────────────────────
 t('composite is the normalised weighted blend', () => {
-  const w = { z: 0.5, riskOff: 0.5, vel: 0, struct: 0 };
-  assert(approx(compositeConfidence({ zAlign01: 1, riskOff: 0, velScore: 0, struct: 0 }, w), 0.5));
+  const w = { z: 0.5, riskOff: 0.5 };
+  assert(approx(compositeConfidence({ z: 1, riskOff: 0 }, w), 0.5));
 });
 t('ablating a factor (weight 0) removes it cleanly', () => {
-  const w = { z: 1, riskOff: 0, vel: 0, struct: 0 };
-  assert(approx(compositeConfidence({ zAlign01: 0.8, riskOff: 0, velScore: 0, struct: 0 }, w), 0.8));
+  const w = { z: 1, riskOff: 0 };
+  assert(approx(compositeConfidence({ z: 0.8, riskOff: 0 }, w), 0.8));
+});
+t('a null factor (no data) drops out and the rest renormalise', () => {
+  const w = { z: 0.5, realRate: 0.5 };
+  // realRate null → composite is just z, not diluted toward 0
+  assert(approx(compositeConfidence({ z: 0.8, realRate: null }, w), 0.8));
 });
 t('composite 0 when all weights ablated', () =>
-  assert(approx(compositeConfidence({ zAlign01: 1, riskOff: 1, velScore: 1, struct: 1 }, { z: 0, riskOff: 0, vel: 0, struct: 0 }), 0)));
+  assert(approx(compositeConfidence({ z: 1, riskOff: 1, vel: 1, struct: 1 }, { z: 0, riskOff: 0, vel: 0, struct: 0 }), 0)));
 t('a stressed regime pulls a strong-carry setup below a 0.5 bar', () => {
   const w = { z: 0.35, riskOff: 0.20, vel: 0.30, struct: 0.15 };
-  const calm     = compositeConfidence({ zAlign01: 1, riskOff: 1, velScore: 0.4, struct: 0.5 }, w);
-  const stressed = compositeConfidence({ zAlign01: 1, riskOff: 0, velScore: 0.4, struct: 0.5 }, w);
+  const calm     = compositeConfidence({ z: 1, riskOff: 1, vel: 0.4, struct: 0.5 }, w);
+  const stressed = compositeConfidence({ z: 1, riskOff: 0, vel: 0.4, struct: 0.5 }, w);
   assert(stressed < calm, 'risk-off must reduce confidence');
+});
+
+// ── realRateAlignScore + usdRole ──────────────────────────────────────────────────
+t('usdRole: base / quote / neither', () => {
+  assert.equal(usdRole('usdjpy'), 1);
+  assert.equal(usdRole('eurusd'), -1);
+  assert.equal(usdRole('eurgbp'), 0);
+});
+t('realRate: rising US real yield favours LONG on a USD-base pair', () =>
+  assert(approx(realRateAlignScore(3, 'LONG', 1, { zCap: 3 }), 1.0)));
+t('realRate: rising US real yield favours SHORT on a USD-quote pair (pair falls)', () =>
+  assert(approx(realRateAlignScore(3, 'SHORT', -1, { zCap: 3 }), 1.0)));
+t('realRate: opposes a LONG USD-quote fade at full magnitude', () =>
+  assert(approx(realRateAlignScore(3, 'LONG', -1, { zCap: 3 }), 0.0)));
+t('realRate: null when no z or usdRole 0', () => {
+  assert.equal(realRateAlignScore(NaN, 'LONG', 1), null);
+  assert.equal(realRateAlignScore(2, 'LONG', 0), null);
+});
+
+// ── coherenceScore ────────────────────────────────────────────────────────────────
+t('coherence 1.0 when all present lenses agree', () =>
+  assert(approx(coherenceScore([0.9, 0.8]), 1.0)));
+t('coherence 0.5 when lenses split', () =>
+  assert(approx(coherenceScore([0.9, 0.1]), 0.5)));
+t('coherence 0.5 when all abstain / all null', () => {
+  assert(approx(coherenceScore([0.5, 0.5]), 0.5));
+  assert(approx(coherenceScore([null, null]), 0.5));
+});
+t('coherence ignores null lenses', () =>
+  assert(approx(coherenceScore([0.9, null]), 1.0)));
+
+// ── positioningBoostScore ─────────────────────────────────────────────────────────
+t('positioning: fade SHORT vs crowded long → boost', () =>
+  assert(approx(positioningBoostScore(3, 'SHORT', { zCap: 3 }), 1.0)));
+t('positioning: fade LONG with crowded long → dampen', () =>
+  assert(approx(positioningBoostScore(3, 'LONG', { zCap: 3 }), 0.0)));
+t('positioning: null when no data', () =>
+  assert.equal(positioningBoostScore(null, 'LONG'), null));
+
+// ── event veto ────────────────────────────────────────────────────────────────────
+t('isNfpFriday: first Friday true, later Friday false', () => {
+  assert.equal(isNfpFriday('2024-03-01'), true);   // 2024-03-01 is the first Friday
+  assert.equal(isNfpFriday('2024-03-08'), false);  // second Friday
+  assert.equal(isNfpFriday('2024-03-04'), false);  // Monday
+});
+t('eventVetoActive: NFP intrinsic + extra date list', () => {
+  assert.equal(eventVetoActive('2024-03-01'), true);
+  assert.equal(eventVetoActive('2024-03-20', ['2024-03-20']), true);  // FOMC in list
+  assert.equal(eventVetoActive('2024-03-12', ['2024-03-20']), false);
 });
 
 // ── confBucketOf ─────────────────────────────────────────────────────────────────
