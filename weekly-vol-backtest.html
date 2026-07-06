@@ -767,20 +767,27 @@ function setStatus(type, msg) {
 // ── Load data ──────────────────────────────────────────────────────────────────
 async function loadData() {
   setStatus('spin', 'Loading weekly backtest results…');
-  try {
-    const r = await fetch('/api/weekly-vol-backtest');
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({ error: r.statusText }));
-      setStatus('err', e.error || 'No data — click ▶ Run to generate.');
+  // Light retry: the server can be briefly busy right after a heavy run, so a
+  // single transient failure shouldn't surface as "no data".
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(res => setTimeout(res, 1500 * attempt));
+    try {
+      const r = await fetch('/api/weekly-vol-backtest');
+      if (r.status === 404) {   // genuinely no data yet — don't retry
+        const e = await r.json().catch(() => ({ error: r.statusText }));
+        setStatus('err', e.error || 'No data — click ▶ Run to generate.');
+        return;
+      }
+      if (!r.ok) { lastErr = new Error('HTTP ' + r.status); continue; }
+      _data = await r.json();
+      renderAll(_data);
+      setStatus('ok', `Loaded · ${_data.totalTrades.toLocaleString()} filled trades · ${_data.file}`);
+      document.getElementById('wbtComputedAt').textContent = 'computed ' + new Date(_data.computedAt).toLocaleString();
       return;
-    }
-    _data = await r.json();
-    renderAll(_data);
-    setStatus('ok', `Loaded · ${_data.totalTrades.toLocaleString()} filled trades · ${_data.file}`);
-    document.getElementById('wbtComputedAt').textContent = 'computed ' + new Date(_data.computedAt).toLocaleString();
-  } catch (e) {
-    setStatus('err', 'Error: ' + e.message);
+    } catch (e) { lastErr = e; }
   }
+  setStatus('err', 'Error loading results: ' + (lastErr?.message || 'network') + ' — the run may still be finishing; reload in a minute.');
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────────
@@ -1731,10 +1738,31 @@ async function runBacktest() {
     const jobId = jb.jobId;
     document.getElementById('runStatus').textContent = `Job ${jobId} running…`;
 
+    // A heavy run (All pairs + M1 + multi-year) briefly blocks the server's event
+    // loop while it crunches a pair, and mobile connections hiccup — a single
+    // failed /status poll must NOT kill the run. Tolerate consecutive failures
+    // (~60s) before giving up, and when we do give up, try to load whatever the
+    // job wrote to disk (it usually finished server-side).
+    let failCount = 0;
+    const MAX_FAILS = 20;   // × 3s ≈ 60s of dropped polls before giving up
+
+    // Stop polling and load any results the run may have written server-side.
+    async function pollGaveUp(reason) {
+      if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+      btn.disabled = false;
+      document.getElementById('runStatus').textContent = reason + ' — checking for saved results…';
+      await loadData();   // shows the run if it finished on the server, else its own error
+    }
+
     _pollInterval = setInterval(async () => {
       try {
-        const sr  = await fetch(`/api/weekly-vol-backtest/status/${jobId}`);
-        const sj  = await sr.json();
+        const sr = await fetch(`/api/weekly-vol-backtest/status/${jobId}`);
+        // 404 = the job is gone (server restarted / job expired). Polling can't
+        // recover it; fall back to loading whatever was written.
+        if (sr.status === 404) return pollGaveUp('Run no longer tracked (server may have restarted)');
+        if (!sr.ok) throw new Error('HTTP ' + sr.status);
+        const sj = await sr.json();
+        failCount = 0;   // recovered from any transient blips
         if (sj.status === 'running') {
           document.getElementById('runStatus').textContent = `Running… ${sj.elapsed ?? 0}s`;
           return;
@@ -1750,9 +1778,14 @@ async function runBacktest() {
         }
         btn.disabled = false;
       } catch (e) {
-        clearInterval(_pollInterval); _pollInterval = null;
-        setStatus('err', 'Poll error: ' + e.message);
-        btn.disabled = false;
+        // Transient network/server-busy failure — keep polling, don't die.
+        failCount++;
+        if (failCount < MAX_FAILS) {
+          setStatus('spin', 'Backtest still running — server busy, reconnecting…');
+          document.getElementById('runStatus').textContent = `Reconnecting… (${failCount}/${MAX_FAILS})`;
+          return;
+        }
+        await pollGaveUp('Lost contact with the run after ' + (MAX_FAILS * 3) + 's');
       }
     }, 3000);
   } catch (e) {
