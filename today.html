@@ -275,10 +275,13 @@
   /* ── Detail drawer ──────────────────────────────────────── */
   .ovl{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;display:none}
   .ovl.open{display:block}
-  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(760px,100vw);background:var(--bg);z-index:95;
-          border-left:1px solid var(--border);transform:translateX(102%);transition:transform .22s;overflow-y:auto;padding:16px 20px}
-  .drawer.open{transform:none}
-  .dr-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .drawer{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%) scale(.97);
+          width:min(880px,94vw);max-height:92vh;background:var(--bg);z-index:95;
+          border:1px solid var(--border);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.55);
+          opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;overflow-y:auto;padding:16px 20px}
+  .drawer.open{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+  .dr-top{position:sticky;top:-16px;background:var(--bg);padding:10px 0 8px;margin:-16px 0 12px;z-index:5;
+          display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
   .dr-top h2{font-size:18px;font-weight:700}
   .dr-close{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);
             border-radius:6px;padding:4px 12px;font-size:13px}
@@ -1903,9 +1906,13 @@ async function loadDrawerChart(r, barsP) {
     width: $('drChart').clientWidth || 700, height: 300,
     layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9da7b3', fontSize: 10 },
     grid: { vertLines: { color: 'rgba(48,54,61,.35)' }, horzLines: { color: 'rgba(48,54,61,.35)' } },
-    timeScale: { timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
-    rightPriceScale: { scaleMargins: { top: 0.08, bottom: 0.08 } },
+    // Free movement like TradingView: edges NOT fixed, trailing space so the last
+    // candle isn't jammed under the axis labels, full scroll/zoom/pinch enabled.
+    timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 10, barSpacing: 7 },
+    rightPriceScale: { scaleMargins: { top: 0.10, bottom: 0.10 } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+    handleScale:  { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
   });
   drSeries = drChart.addCandlestickSeries({
     upColor: '#10b981', downColor: '#f97316',
