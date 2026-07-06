@@ -6,7 +6,7 @@ each session's ours-vs-reference compare comes in — don't let it go stale.
 `ESTIMATOR_CHANGE_LOG.md` is the historical record of *completed* changes; this
 file is the working plan for *in-progress* ones.
 
-Last updated: 2026-07-06 (Jul-6 partially contaminated — ref provider noted Friday early-close bleed-through; decision point confirmed as Tue Jul-7; NQ gap back to ~+7% encouraging).
+Last updated: 2026-07-07 (Jul-7 CLEAN — NQ +12.7% vol gap: decision point reached, β/α adjustment discussion NOW open. GOLD vol gap −0.04%: YZ convergence complete. EURUSD first flip to slight positive +1.4% vol / +7.4% HL — single point, watch next session).
 
 ---
 
@@ -38,22 +38,23 @@ Last updated: 2026-07-06 (Jul-6 partially contaminated — ref provider noted Fr
   factors, displayed HL/OC error will now track raw vol Δ linearly instead
   of amplifying/sign-flipping it. Next checkpoint will validate.
 
-- GOLD primary estimator: **switched HV20 → YZ (2026-06-30, live)**. Three post-switch sessions:
-  Jun-30: −8.7%, Jul-1: −9.7%, Jul-2: −6.4%. Gap is narrowing — YZ is slowly absorbing
-  the elevated post-Q2 sessions (YZ series: 25.49%→25.83%→26.59%); ref stable at 28-29%.
-  Trajectory is positive: if YZ reaches ~27% by Jul-3/4, vol gap will be within ±5% target.
-  Do not touch correction factors yet. If gap stabilises ±5%, proceed to recalibrate
-  oc_50_corr (1.12→~0.98, shape-only, see item 8).
+- GOLD primary estimator: **YZ convergence COMPLETE (Jul-7)**. Post-switch vol gaps:
+  Jun-30 −8.7%, Jul-1 −9.7%, Jul-2 −6.4%, Jul-3 +14.3% (contaminated), Jul-6 ~−4.2%
+  (partial), Jul-7 **−0.04%** — essentially zero. HL/OC gaps on Jul-7: −2.3% to −3.3%,
+  all within the ±5% target. The YZ switch is done. oc_50_corr recalibration: with
+  vol at parity the OC gap is −2.3% — the 0.98 target in item 8 was over-corrected
+  (shape calibration from Jul-7 gives ~1.147, not 0.98); actual adjustment is tiny
+  and non-urgent. Do not touch oc_50_corr until 2+ more clean sessions confirm.
 
-- index/NQ GARCH: **renewed positive gap developing post-Q2-end**. Jun-29 ref-side
-  noise resolved; Jun-30 Q2-end spike also reverted. But ref NQ has continued
-  declining (23.46% → 21.98% → 20.00%) while GARCH holds flat (~24.2%), generating
-  3 consecutive positive sessions: Jul-1 +4.4%, Jul-2 +9.9%, Jul-3 +21.0%. Jul-3
-  is pre-holiday (US Jul-4) — all three ref values dropped ~9-18% same session,
-  event-contaminated. **Decision point Jul-7** (first full post-holiday session):
-  if clean gap ≥ +10%, the no-whiplash 2-session bar is met and a β/α adjustment
-  discussion is warranted. Note: GARCH ω floor ≈ 20% annualized, matching ref
-  today exactly; if ref stabilises near 20%, gap may self-close as GARCH decays.
+- index/NQ GARCH: **β/α adjustment discussion NOW open**. Jul-7 (first confirmed
+  clean session post-holiday) showed +12.7% vol gap. Clean session sequence:
+  Jul-1 +4.4%, Jul-2 +9.9%, Jul-7 +12.7% — three consecutive positive sessions,
+  gap widening not narrowing. No-whiplash bar met. GARCH slowly decaying
+  (24.64%→24.50%→24.16%→24.20%→23.61%→23.73%), but ref declining faster
+  (23.46%→21.98%→20.00%→~22%→21.06%). HL/OC overestimate now +9-12% on clean
+  sessions. **Next step**: user decision on whether to nudge β_interim from
+  0.87 → ~0.84 (accelerate decay toward 20% floor) or wait for natural
+  convergence. See open items §9.
 
 ---
 
@@ -339,6 +340,7 @@ multiplier behavior specifically).
 | Jul-2  | NQ        | 24.16%   | 21.98%  | +9.9%  | No         | **renewed widening** — ref continuing to decline (23.46%→21.98%) while GARCH holds; HL +7.9%, OC +11.2% now meaningful; monitor Jul-3, do not act yet |
 | Jul-3  | NQ        | 24.20%   | 20.00%  | +21.0% | **Yes (pre-holiday Jul-4)** | ref dropped 21.98%→20.00%; all three ref values dropped 9-18% same session — pre-holiday liquidity thin-out; event-contaminated; HL +20.2%, OC +22.5%; **decision point Jul-7** |
 | Jul-6  | NQ        | 23.61%   | ~22%    | ~+7.3% | **Partial** (Fri early-close bleed) | ref provider confirmed Monday data uses Friday early-close; ref bounced 20%→~22%; gap back to ~+7% (from +21% Fri); encouraging; GARCH slowly decaying (24.20%→23.61%); **real decision Tue Jul-7** |
+| Jul-7  | NQ        | 23.73%   | 21.06%  | +12.7% | No — **first confirmed clean session** | HL +9.6%/+11.2%, OC +10.3%/+11.8%; 3 consecutive positive clean sessions (Jul-1 +4.4%, Jul-2 +9.9%, Jul-7 +12.7%); no-whiplash bar met; GARCH drifted up slightly (23.61%→23.73%, α×r² still elevated); β/α adjustment discussion warranted — see open item §9 |
 
 *(Fill in raw ours/ref % for Jun-18/19 NQ rows next time those numbers are
 on hand — only Δ was recorded in those sessions' analysis. Note: a Jun-23
@@ -378,6 +380,8 @@ all reference compares live in one place):
 | Jul-3  | EURUSD    | 5.67%    | 5.51%   | +2.9%  | +9.4%    | +12.3%   | +17.4%   | +22.2%   | pre-holiday flip to overestimate; ref 6.05%→5.51%; event-contaminated; watch Jul-7 |
 | Jul-6  | GOLD (YZ) | 26.83%   | ~28%    | ~−4.2% | ~−9.3%   | —        | ~−8.6%   | —        | ref bounced ~23→~28 (Fri contamination clearing); gap back to ~−4%; partial contamination (Mon uses Fri close); **real read Tue Jul-7** |
 | Jul-6  | EURUSD    | 5.70%    | 5.71%   | −0.2%  | +9.3%    | —        | +12.5%   | —        | vol essentially flat; HL/OC inflated by ref's depressed Friday numbers (confirmed by ref provider note); partial contamination |
+| Jul-7  | GOLD (YZ) | 26.89%   | 26.90%  | **−0.04%** | −3.3% | −2.1%    | −2.3%    | −1.9%    | **CONVERGED** — vol at parity; HL/OC −2 to −3%, all within ±5% target; YZ switch complete; oc_50_corr=1.12 is fine (shape calibration from this session → ~1.147, not 0.98 — the 0.98 target was incorrect, actual adjustment is tiny and non-urgent) |
+| Jul-7  | EURUSD    | 5.66%    | 5.58%   | +1.4%  | +7.4%    | +7.5%    | +4.0%    | +7.3%    | first flip to slight positive; ref came down (6.31%→5.58%); vol +1.4%, HL/OC +4-8%; single data point, within noise band, no action; watch next session |
 
 ---
 
@@ -418,12 +422,29 @@ all reference compares live in one place):
    slightly over-corrects with YZ's near-zero bias. Wait 3+ sessions before refit;
    today's session was Q2-end elevated ref (potentially event-contaminated).
 
-8. **GOLD oc_50_corr recalibration — pending (after 3+ clean YZ sessions)**.
-   Current 1.12 was calibrated for HV20's +4–7% bias. With YZ (~zero vol bias),
-   shape-only target is ~0.98. Once 3+ non-event YZ sessions confirm vol gap is
-   stable (target ±5% band), extract new oc_50_corr and update
-   ASSET_PARAMS.commodity. Also update backtest engines separately (low priority;
-   they are read-only reference, not live).
+8. **GOLD oc_50_corr recalibration — low priority, revised estimate**.
+   Jul-7 with vol at essentially zero gap shows OC med still −2.3% below ref.
+   Shape calibration from Jul-7 → oc_50_corr ≈ 1.147 (NOT 0.98 — the original
+   0.98 estimate was incorrect; it assumed composite-factor structure that doesn't
+   apply here). The −2.3% gap is within the ±5% target; no urgent action needed.
+   Wait 2+ more clean YZ sessions, then decide whether to nudge 1.12 → 1.15 or
+   leave it (2% under-report is a conservative fade bias, not harmful for trading).
+
+9. **NQ GARCH β/α adjustment — decision point reached (2026-07-07)**.
+   Three consecutive clean positive sessions: Jul-1 +4.4%, Jul-2 +9.9%, Jul-7
+   +12.7%. No-whiplash bar met. GARCH (23.73%) is naturally decaying toward 20%
+   floor, but ref (21.06%) is also declining — gap is widening on clean sessions.
+   Current HL/OC overestimate is +9-12%, material for fade trade level calibration.
+   **Options (need user decision)**:
+   - **Wait**: GARCH will converge to 20% eventually (~4-8 more clean sessions);
+     at 20% it will undershoot ref (21%), so gap closes in middle. No code change.
+   - **Lower β_interim 0.87 → 0.84**: half-life drops from 9.5 to ~7 days; GARCH
+     decays faster toward 20% floor. Should close gap 3-4 sessions sooner.
+     Risk: if ref bounces up (new shock), our series undershoots more than before.
+   - **Lower ω_interim 1.11e-5 → ~8.5e-6**: drop long-run target from 20% → ~18.5%.
+     GARCH converges lower, possibly undershooting ref. Not recommended alone.
+   **Recommended**: option 2 (lower β to 0.84) — gentle, reversible nudge.
+   One-line change in `js/volForecast.js` ASSET_PARAMS.index.garch_beta_interim.
 
 ---
 
