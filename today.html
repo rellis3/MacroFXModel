@@ -2296,7 +2296,21 @@ function assembleSnapshot(r) {
   const oi = r.oi;
   if (oi && !oi.stale) s.oi = { maxPain: oi.maxPain, callWall: oi.callWall, putWall: oi.putWall,
     callWallOI: oi.callWallOI, putWallOI: oi.putWallOI, pcRatio: oi.pcRatio, gex: oi.exposures?.gex ?? oi.gex, gexRead: oi.regime };
-  if (r.ct) s.cotBias = `specs ${r.ct.dir ?? '?'}${r.ct.level === 'EXTREME' ? ' (EXTREME)' : ''}`;
+  // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
+  const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];
+  if (ct && rawCot) {
+    const flip = COT_MAP[r.name]?.flip, net = flip ? -(rawCot.specNet ?? 0) : (rawCot.specNet ?? 0);
+    s.cot = { reportDate: ct.reportDate, openInterest: rawCot.openInterest, levNet: net,
+      levNetChg: ct.wkChg, levPct: ct.pctile, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined };
+    s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}`;
+  }
+  // Event risk for THIS pair — the calendar filtered to its own economies
+  const evs = pairEvents(r.name).filter(e => e.ms >= Date.now() - 20 * 60000);
+  if (evs.length) {
+    const next4h = evs.filter(e => (e.ms - Date.now()) < 4 * 3600e3).map(e => ({ country: e.country, impact: e.impact, event: e.event, time: evtTime(e) }));
+    const hasHigh = next4h.some(e => (e.impact ?? '').toLowerCase() === 'high');
+    s.eventRisk = { level: hasHigh ? 'high' : next4h.length ? 'medium' : 'low', sizeMult: hasHigh ? 0.5 : 1, inNext4h: next4h.slice(0, 4) };
+  }
   return s;
 }
 // On-demand per-pair analysis — generate + persist so it's cached next time.
