@@ -2278,6 +2278,245 @@ window.saveGoldV2Config    = saveGoldV2Config;
 window.resetGoldV2Defaults = resetGoldV2Defaults;
 window.saveGoldV2Creds     = saveGoldV2Creds;
 
+// ── Confluence Bot (multi-instrument) ───────────────────────────────────────────
+// KV: confluence_bot_config / confluence_bot_credentials / confluence_bot_status.
+// Field names must match ConfluenceBot/main.py DEFAULT_CFG exactly — the bot
+// merges KV over defaults. Distances are in PIPS (scaled per instrument).
+
+const CONFLUENCE_DEFAULTS = {
+  enabled:                     true,
+  paper_mode:                  true,
+  // universe
+  pairs: ['EUR/USD','GBP/USD','USD/JPY','AUD/USD','NZD/USD','USD/CAD','USD/CHF',
+          'EUR/GBP','EUR/JPY','GBP/JPY','AUD/JPY','EUR/AUD','GOLD','NQ','SPX','DAX','DOW'],
+  broker_overrides:            {},
+  // level matrix / entry gate (pips)
+  min_zone_score:              4.0,
+  cluster_tolerance:           3.0,
+  min_distinct_legs:           1,
+  proximity_pips:              5.0,
+  max_armed_zones:             3,
+  include_retests:             true,
+  bucket_pips:                 0.5,
+  // confirmation
+  vu_min_components:           2,
+  vu_require_wt:               true,
+  mf_fuel_veto:                true,
+  // exits (pips)
+  max_sl_pips:                 40,
+  min_sl_pips:                 4,
+  sl_buffer_atr:               0.3,
+  tp1_r_min:                   1.0,
+  tp2_r_min:                   1.5,
+  tp2_r_max:                   4.0,
+  range_cap_mult:              1.2,
+  be_after_tp1:                true,
+  allow_overnight_htf_aligned: true,
+  // risk — per instrument
+  risk_pct:                    0.5,
+  max_lot:                     5.0,
+  max_trades_per_day:          4,
+  max_concurrent_trades:       2,
+  max_open_risk_pct:           1.0,
+  max_per_direction:           2,
+  min_entry_separation_pips:   15,
+  cooldown_minutes:            30,
+  global_cooldown_minutes:     10,
+  // risk — global
+  max_total_open_trades:       6,
+  max_total_open_risk_pct:     3.0,
+  max_total_per_direction:     5,
+  // session
+  trade_window_start:          '07:00',
+  trade_window_end:            '20:00',
+  // gates
+  gold_macro_gate:             true,
+  ml_gate:                     false,
+  htf_block:                   true,
+  htf_block_confidence:        0.5,
+  use_vol_forecast:            true,
+  // data
+  m1_lookback_bars:            18500,
+};
+
+let _cfCfg = JSON.parse(JSON.stringify(CONFLUENCE_DEFAULTS));
+
+function _cfParsePairs() {
+  const raw = (document.getElementById('confluence_pairs')?.value ?? '');
+  return raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+}
+
+function readConfluenceForm() {
+  _cfCfg.enabled                     = chk('confluence_enabled');
+  _cfCfg.paper_mode                  = chk('confluence_paper_mode');
+  _cfCfg.gold_macro_gate             = chk('confluence_macro_gate');
+  _cfCfg.ml_gate                     = chk('confluence_ml_gate');
+  _cfCfg.htf_block                   = chk('confluence_htf_block');
+  _cfCfg.use_vol_forecast            = chk('confluence_use_vol_forecast');
+  _cfCfg.htf_block_confidence        = num('confluence_htf_block_confidence', 0.5);
+  _cfCfg.trade_window_start          = str('confluence_window_start', '07:00');
+  _cfCfg.trade_window_end            = str('confluence_window_end',   '20:00');
+  _cfCfg.pairs                       = _cfParsePairs();
+  try { _cfCfg.broker_overrides = JSON.parse(str('confluence_broker_overrides', '{}') || '{}'); }
+  catch (e) { _cfCfg.broker_overrides = {}; }
+  _cfCfg.min_zone_score              = num('confluence_min_zone_score',    4.0);
+  _cfCfg.cluster_tolerance           = num('confluence_cluster_tolerance', 3.0);
+  _cfCfg.min_distinct_legs           = parseInt(num('confluence_min_distinct_legs', 1), 10);
+  _cfCfg.proximity_pips              = num('confluence_proximity_pips',    5.0);
+  _cfCfg.max_armed_zones             = parseInt(num('confluence_max_armed_zones', 3), 10);
+  _cfCfg.bucket_pips                 = num('confluence_bucket_pips',       0.5);
+  _cfCfg.include_retests             = chk('confluence_include_retests');
+  _cfCfg.vu_min_components           = parseInt(radio('confluence_vu_min', '2'), 10);
+  _cfCfg.vu_require_wt               = chk('confluence_vu_require_wt');
+  _cfCfg.mf_fuel_veto                = chk('confluence_mf_fuel_veto');
+  _cfCfg.m1_lookback_bars            = parseInt(num('confluence_m1_lookback_bars', 18500), 10);
+  _cfCfg.max_sl_pips                 = num('confluence_max_sl_pips',   40);
+  _cfCfg.min_sl_pips                 = num('confluence_min_sl_pips',    4);
+  _cfCfg.sl_buffer_atr               = num('confluence_sl_buffer_atr', 0.3);
+  _cfCfg.tp1_r_min                   = num('confluence_tp1_r_min',     1.0);
+  _cfCfg.tp2_r_min                   = num('confluence_tp2_r_min',     1.5);
+  _cfCfg.tp2_r_max                   = num('confluence_tp2_r_max',     4.0);
+  _cfCfg.range_cap_mult              = num('confluence_range_cap_mult', 1.2);
+  _cfCfg.be_after_tp1                = chk('confluence_be_after_tp1');
+  _cfCfg.allow_overnight_htf_aligned = chk('confluence_allow_overnight');
+  _cfCfg.risk_pct                    = num('confluence_risk_pct',          0.5);
+  _cfCfg.max_lot                     = num('confluence_max_lot',           5.0);
+  _cfCfg.max_trades_per_day          = parseInt(num('confluence_max_trades_per_day', 4), 10);
+  _cfCfg.max_concurrent_trades       = parseInt(num('confluence_max_concurrent', 2), 10);
+  _cfCfg.max_open_risk_pct           = num('confluence_max_open_risk',     1.0);
+  _cfCfg.max_per_direction           = parseInt(num('confluence_max_per_direction', 2), 10);
+  _cfCfg.min_entry_separation_pips   = num('confluence_min_entry_sep',     15);
+  _cfCfg.cooldown_minutes            = num('confluence_cooldown_minutes',  30);
+  _cfCfg.global_cooldown_minutes     = num('confluence_global_cooldown',   10);
+  _cfCfg.max_total_open_trades       = parseInt(num('confluence_max_total_open', 6), 10);
+  _cfCfg.max_total_open_risk_pct     = num('confluence_max_total_risk',    3.0);
+  _cfCfg.max_total_per_direction     = parseInt(num('confluence_max_total_per_dir', 5), 10);
+}
+
+function renderConfluenceForm() {
+  setChk('confluence_enabled',              _cfCfg.enabled                     ?? true);
+  setChk('confluence_paper_mode',           _cfCfg.paper_mode                  ?? true);
+  setChk('confluence_macro_gate',           _cfCfg.gold_macro_gate             ?? true);
+  setChk('confluence_ml_gate',              _cfCfg.ml_gate                     ?? false);
+  setChk('confluence_htf_block',            _cfCfg.htf_block                   ?? true);
+  setChk('confluence_use_vol_forecast',     _cfCfg.use_vol_forecast            ?? true);
+  setVal('confluence_htf_block_confidence', _cfCfg.htf_block_confidence        ?? 0.5);
+  setVal('confluence_window_start',         _cfCfg.trade_window_start          ?? '07:00');
+  setVal('confluence_window_end',           _cfCfg.trade_window_end            ?? '20:00');
+  const pairsEl = document.getElementById('confluence_pairs');
+  if (pairsEl) pairsEl.value = (_cfCfg.pairs ?? []).join('\n');
+  setVal('confluence_broker_overrides',     JSON.stringify(_cfCfg.broker_overrides ?? {}));
+  setVal('confluence_min_zone_score',       _cfCfg.min_zone_score              ?? 4.0);
+  setVal('confluence_cluster_tolerance',    _cfCfg.cluster_tolerance           ?? 3.0);
+  setVal('confluence_min_distinct_legs',    _cfCfg.min_distinct_legs           ?? 1);
+  setVal('confluence_proximity_pips',       _cfCfg.proximity_pips              ?? 5.0);
+  setVal('confluence_max_armed_zones',      _cfCfg.max_armed_zones             ?? 3);
+  setVal('confluence_bucket_pips',          _cfCfg.bucket_pips                 ?? 0.5);
+  setChk('confluence_include_retests',      _cfCfg.include_retests             ?? true);
+  setRadio('confluence_vu_min',             String(_cfCfg.vu_min_components    ?? 2));
+  setChk('confluence_vu_require_wt',        _cfCfg.vu_require_wt               ?? true);
+  setChk('confluence_mf_fuel_veto',         _cfCfg.mf_fuel_veto                ?? true);
+  setVal('confluence_m1_lookback_bars',     _cfCfg.m1_lookback_bars            ?? 18500);
+  setVal('confluence_max_sl_pips',          _cfCfg.max_sl_pips                 ?? 40);
+  setVal('confluence_min_sl_pips',          _cfCfg.min_sl_pips                 ?? 4);
+  setVal('confluence_sl_buffer_atr',        _cfCfg.sl_buffer_atr               ?? 0.3);
+  setVal('confluence_tp1_r_min',            _cfCfg.tp1_r_min                   ?? 1.0);
+  setVal('confluence_tp2_r_min',            _cfCfg.tp2_r_min                   ?? 1.5);
+  setVal('confluence_tp2_r_max',            _cfCfg.tp2_r_max                   ?? 4.0);
+  setVal('confluence_range_cap_mult',       _cfCfg.range_cap_mult              ?? 1.2);
+  setChk('confluence_be_after_tp1',         _cfCfg.be_after_tp1                ?? true);
+  setChk('confluence_allow_overnight',      _cfCfg.allow_overnight_htf_aligned ?? true);
+  setVal('confluence_risk_pct',             _cfCfg.risk_pct                    ?? 0.5);
+  setVal('confluence_max_lot',              _cfCfg.max_lot                     ?? 5.0);
+  setVal('confluence_max_trades_per_day',   _cfCfg.max_trades_per_day          ?? 4);
+  setVal('confluence_max_concurrent',       _cfCfg.max_concurrent_trades       ?? 2);
+  setVal('confluence_max_open_risk',        _cfCfg.max_open_risk_pct           ?? 1.0);
+  setVal('confluence_max_per_direction',    _cfCfg.max_per_direction           ?? 2);
+  setVal('confluence_min_entry_sep',        _cfCfg.min_entry_separation_pips   ?? 15);
+  setVal('confluence_cooldown_minutes',     _cfCfg.cooldown_minutes            ?? 30);
+  setVal('confluence_global_cooldown',      _cfCfg.global_cooldown_minutes     ?? 10);
+  setVal('confluence_max_total_open',       _cfCfg.max_total_open_trades       ?? 6);
+  setVal('confluence_max_total_risk',       _cfCfg.max_total_open_risk_pct     ?? 3.0);
+  setVal('confluence_max_total_per_dir',    _cfCfg.max_total_per_direction     ?? 5);
+}
+
+async function loadConfluenceConfig() {
+  try {
+    const stored = await kvGet('confluence_bot_config');
+    if (stored) { _cfCfg = { ...JSON.parse(JSON.stringify(CONFLUENCE_DEFAULTS)), ...stored }; }
+    renderConfluenceForm();
+  } catch (e) { /* non-critical */ }
+}
+
+async function saveConfluenceConfig() {
+  readConfluenceForm();
+  const el = document.getElementById('confluenceSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try {
+    await kvSet('confluence_bot_config', _cfCfg);
+    if (el) { el.textContent = `Saved ✓ (${_cfCfg.pairs.length} pairs) — bot picks up within 2 min`; el.style.color = '#c084fc'; }
+    setTimeout(() => { if (el) el.textContent = ''; }, 4000);
+  } catch (e) {
+    if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; }
+  }
+}
+
+function resetConfluenceDefaults() {
+  _cfCfg = JSON.parse(JSON.stringify(CONFLUENCE_DEFAULTS));
+  renderConfluenceForm();
+  const el = document.getElementById('confluenceSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+
+async function loadConfluenceCreds() {
+  try { _applyCredsToForm(await kvGet('confluence_bot_credentials'), 'confluence_', 'confluence_mt5_password'); } catch (e) {}
+}
+async function saveConfluenceCreds() {
+  await _saveCreds('confluence_bot_credentials', 'confluence_', 'confluence_mt5_password', 'confluenceCredsStatus');
+}
+
+async function loadConfluenceStatus() {
+  try {
+    const data = await kvGet('confluence_bot_status');
+    if (!data) { setText('cfBsAge', 'No status — bot has not run yet'); return; }
+
+    const ts  = data.timestamp ? new Date(data.timestamp).getTime()
+              : (data.pushed_at ? data.pushed_at * 1000 : 0);
+    const age = Math.round((Date.now() - ts) / 60000);
+    setText('cfBsAge',   age < 3 ? 'Live' : `Last update ${age}m ago`);
+    setText('cfBsMode',  data.paper_mode ? '· paper' : '· LIVE');
+    setText('cfBsState', data.state ? `· ${data.state}` : '');
+    setText('cfBsCount', `· ${data.instruments ?? 0} instruments · ${data.open_trades ?? 0} open · ${data.trades_today ?? 0} today`);
+
+    const symEl = document.getElementById('cfBsSymbols');
+    if (symEl) {
+      const syms = data.symbols ?? [];
+      symEl.innerHTML = syms.length
+        ? syms.map(s => {
+            const active = s.state === 'MANAGING' ? 'bs-green' : s.state === 'ARMED' ? 'bs-amber' : 'bs-dim';
+            const htf = s.htf_bias && s.htf_bias !== 'UNKNOWN' ? ` ${s.htf_bias}` : '';
+            return `<span class="${active}" title="${s.symbol}">${s.instrument}: ${s.state}${htf} · z${s.zones_active ?? 0}${s.open_trades ? ` · ${s.open_trades} open` : ''}</span>`;
+          }).join('')
+        : '<span class="bs-dim">No instruments active</span>';
+    }
+
+    const tradesEl = document.getElementById('cfBsTrades');
+    if (tradesEl) {
+      const parts = [];
+      (data.mt5_positions ?? []).forEach(p => {
+        const col = p.direction === 'BUY' ? 'bs-green' : 'bs-red';
+        const pnl = p.profit != null ? ` $${p.profit > 0 ? '+' : ''}${p.profit.toFixed(2)}` : '';
+        parts.push(`<span class="${col}">${p.symbol} ${p.direction} @ ${p.open_price}${pnl}</span>`);
+      });
+      tradesEl.innerHTML = parts.join(' · ') || '';
+    }
+  } catch (e) { /* non-critical */ }
+}
+
+window.saveConfluenceConfig    = saveConfluenceConfig;
+window.resetConfluenceDefaults = resetConfluenceDefaults;
+window.saveConfluenceCreds     = saveConfluenceCreds;
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
@@ -2290,6 +2529,7 @@ loadRgV7Config();
 loadDaConfig();
 loadGoldConfig();
 loadGoldV2Config();
+loadConfluenceConfig();
 loadCreds();
 loadBtCreds();
 loadRgCreds();
@@ -2297,6 +2537,7 @@ loadRgV2Creds();
 loadRgV7Creds();
 loadDaCreds();
 loadGoldV2Creds();
+loadConfluenceCreds();
 loadBotStatus();
 loadBtBotStatus();
 loadRgBotStatus();
@@ -3508,6 +3749,7 @@ loadRlLiveStatus();
 loadDaStatus();
 loadGoldStatus();
 loadGoldV2Status();
+loadConfluenceStatus();
 loadBtJournal();
 loadHbConfig();
 loadHbCreds();
@@ -3523,6 +3765,7 @@ setInterval(loadRgV7Status,   30_000);
 setInterval(loadDaStatus,     60_000);
 setInterval(loadGoldStatus,   60_000);
 setInterval(loadGoldV2Status, 60_000);
+setInterval(loadConfluenceStatus, 60_000);
 setInterval(loadBtJournal,   120_000);
 setInterval(loadHbStatus,     60_000);
 setInterval(loadPhbStatus,    60_000);

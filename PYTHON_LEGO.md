@@ -155,6 +155,7 @@ values for that bot's instruments.
 | 4 | `RegimeV2/regime_bot_v2.py` | the full set (pip value behind a sizing review) | ⬜ |
 | 5 | `DynAnchorBot`, `RegimeV4/7` | the full set | ⬜ |
 | 6 | **`volatility_bot` (NEW)** — first bot built natively on `pylego` | consumes the frozen `volatility_bot_plan` (Category A); stands up the planned Category-B bricks (`broker/mt5`, `orders`, `kv`) as its execution layer | 🟡 Slice 1 (plan contract) built |
+| 7 | **`ConfluenceBot` (NEW)** — GoldV2 strategy opened up to every instrument | `instruments` (pip/digits/mt5 symbol), `point_values`, `sizing` — resolved per instrument so one engine runs FX/gold/indices. All distances pip-denominated ×`pip_size`, so gold stays byte-identical to GoldV2. | 🟡 this PR |
 
 ### Volatility Bot — slices (§7)
 
