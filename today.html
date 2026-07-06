@@ -247,6 +247,20 @@
   #drNews .nimpact{font-size:11px;color:var(--text2);padding:3px 6px 7px 62px;line-height:1.45}
   #drNews .nimpact b.pos{color:var(--bull)} #drNews .nimpact b.neg{color:var(--bear)}
 
+  /* Trade thesis scorecard */
+  .th-top{font-size:13px;margin-bottom:11px}
+  .th-grp{margin-bottom:9px}
+  .th-h{font-size:10.5px;font-weight:700;letter-spacing:.03em;margin-bottom:5px}
+  .th-h.pos{color:var(--bull)} .th-h.neg{color:var(--bear)} .th-h.ctx{color:var(--text3)}
+  .th-row{display:flex;gap:10px;align-items:baseline;font-size:12.5px;padding:3px 8px;border-radius:6px;margin-bottom:3px;border-left:3px solid var(--border)}
+  .th-row.pos{background:var(--bull-bg);border-left-color:var(--bull)}
+  .th-row.neg{background:var(--bear-bg);border-left-color:var(--bear)}
+  .th-row.ctx{background:var(--neu-bg)}
+  .th-row .th-k{flex:0 0 96px;font-weight:700;color:var(--text);font-size:11.5px}
+  .th-row .th-d{color:var(--text2)}
+  .th-net{margin-top:10px;padding:8px 11px;background:var(--card2);border:1px solid var(--border);border-radius:8px;font-size:12.5px;color:var(--text2)}
+  .th-net b{color:var(--text)}
+
   /* Full AI analysis */
   .ai-toggle{float:right;font-size:10px;font-weight:600;color:var(--blue);cursor:pointer;text-transform:none;letter-spacing:0}
   .ai-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -383,6 +397,11 @@
     <span class="chip neu" id="drRegime"></span>
     <span class="chip neu" id="drArima" style="display:none"></span>
     <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
+  </div>
+
+  <div class="dr-sec" id="drThesisSec" style="display:none">
+    <h3 class="help" title="The working trade idea for this pair, and — from every signal we compute — what BACKS it versus what ARGUES AGAINST it. A consistency check to frame the trade, not a prediction. Read down: thesis → what supports → what challenges → then the levels below.">The trade thesis — what supports it, what challenges it</h3>
+    <div id="drThesis"></div>
   </div>
 
   <div class="dr-sec">
@@ -1762,6 +1781,80 @@ async function openDrawer(name) {
   loadDrawerCorr(name);
   loadDrawerArima(name, d.sym);
   loadDrawerAnalysis(r).catch(() => { $('drAnalysisSec').style.display = 'none'; });
+  loadDrawerThesis(r).catch(() => { $('drThesisSec').style.display = 'none'; });
+}
+
+// ── The trade thesis scorecard — the narrative spine ──────────────────────────
+// Takes the pair's working bias and tags every signal we compute as SUPPORTS /
+// CHALLENGES / context. A consistency check that frames the trade, not a
+// prediction — turns the stack of readings into a running argument.
+const arimaCache = {};
+async function getArima(sym) {
+  const key = (sym ?? '').replace(/[_/]/g, '');
+  if (arimaCache[key] !== undefined) return arimaCache[key];
+  let a = null;
+  try { const r = await jget('/api/kv/get?key=arima_price_' + encodeURIComponent(key)); a = (r && !r.miss) ? (r.data ?? r) : null; } catch {}
+  arimaCache[key] = a; return a;
+}
+// risk-on lean: +1 = a risk-on backdrop is BULLISH for this pair, -1 = bearish, 0 = neutral
+const RISK_LEAN = { EURUSD:1, GBPUSD:1, AUDUSD:1, NZDUSD:1, USDCAD:-1, USDJPY:1, USDCHF:1,
+  GBPJPY:1, EURJPY:1, EURGBP:0, AUDJPY:1, CADJPY:1, GOLD:-1, NQ:1, SPX500:1, DE30:1, US30:1, US2000:1, UK100:1 };
+function globalRisk() {
+  const cg = creditGate(); const vix = fred?.vix?.value; let s = 0;
+  if (cg) { if (cg.gate === 'RISK-ON') s += 1; else if (cg.gate === 'RISK-OFF') s -= 1; else if (cg.gate === 'CAUTION') s -= 0.5; }
+  if (vix != null) { if (vix < 15) s += 0.5; else if (vix > 22) s -= 0.5; }
+  return s > 0.4 ? 1 : s < -0.4 ? -1 : 0;
+}
+function thesisFor(r) {
+  const ai = aiCache[lvlKey(r.name, r.d.sym).replace('/', '')];
+  if (ai?.overallBias) { if (/LONG|BULL/i.test(ai.overallBias)) return { dir:1, label:'LONG', src:'AI call' }; if (/SHORT|BEAR/i.test(ai.overallBias)) return { dir:-1, label:'SHORT', src:'AI call' }; }
+  const g = r.d.regime;
+  if (g?.label === 'TREND' && g.trend_dir) return { dir: g.trend_dir === 'up' ? 1 : -1, label: g.trend_dir === 'up' ? 'LONG' : 'SHORT', src:'HTF trend' };
+  const bd = r.s?.bias_detail ?? '';
+  if (/bull/i.test(bd)) return { dir:1, label:'LONG (lean)', src:'today’s tape' };
+  if (/bear/i.test(bd)) return { dir:-1, label:'SHORT (lean)', src:'today’s tape' };
+  return { dir:0, label:'NO CLEAR BIAS', src:'—' };
+}
+function biasFactors(r, arima) {
+  const F = [], g = r.d.regime;
+  if (g?.label === 'TREND' && g.trend_dir) F.push({ k:'HTF trend', dir: g.trend_dir === 'up' ? 1 : -1, d:`HMM trending ${g.trend_dir} (${g.trend_prob}%)` });
+  else if (g?.label === 'RANGE') F.push({ k:'HTF regime', dir:0, d:`ranging (${g.range_prob}%) — no trend to back a directional trade` });
+  const bd = r.s?.bias_detail; if (bd) F.push({ k:'Today’s tape', dir: /bull/i.test(bd) ? 1 : /bear/i.test(bd) ? -1 : 0, d: bd.toLowerCase() });
+  if (r.ct?.level === 'EXTREME') { const cdir = /long/i.test(r.ct.dir) ? 1 : -1; F.push({ k:'Positioning', dir: -cdir, d:`specs extreme ${r.ct.dir} — crowded, squeeze risk against the crowd` }); }
+  else if (r.ct?.dir) F.push({ k:'Positioning', dir:0, d:`specs ${r.ct.dir} — not crowded` });
+  const rl = RISK_LEAN[r.name], gr = globalRisk();
+  if (rl != null && rl !== 0 && gr !== 0) F.push({ k:'Risk mood', dir: rl * gr, d:`${gr > 0 ? 'risk-on' : 'risk-off'} backdrop ${rl * gr > 0 ? 'supports' : 'weighs on'} this ${rl > 0 ? 'risk-sensitive' : 'haven'} pair` });
+  if (r.oi && !r.oi.stale && r.oi.regime) F.push({ k:'Options', dir:0, d: r.oi.regime === 'PIN' ? 'PIN gamma — favours fading the edges, caps a trend' : 'negative gamma — breakout-friendly, amplifies a move' });
+  if (arima?.fairValueDev != null && Math.abs(arima.fairValueDev) >= 1 && !(arima.residualRatio > 1.5)) { const dv = arima.fairValueDev; F.push({ k:'Fair value', dir: dv > 0 ? -1 : 1, d:`${Math.abs(dv).toFixed(1)}σ ${dv > 0 ? 'rich — mean-revert bias lower' : 'cheap — mean-revert bias higher'}` }); }
+  const ev = nextPairEvent(r.name); if (ev && (ev.impact ?? '').toLowerCase() === 'high' && (ev.ms - Date.now()) < 14 * 3600e3) F.push({ k:'Event risk', dir:0, d:`${ev.event} at ${evtTime(ev)} — the number can override the setup; size down / wait` });
+  return F;
+}
+async function loadDrawerThesis(r) {
+  const sec = $('drThesisSec'), box = $('drThesis');
+  const arima = await getArima(r.d.sym).catch(() => null);
+  const th = thesisFor(r);
+  const F = biasFactors(r, arima);
+  if (!F.length) { sec.style.display = 'none'; return; }
+  const supports = [], challenges = [], context = [];
+  for (const f of F) {
+    if (th.dir !== 0 && f.dir === th.dir) supports.push(f);
+    else if (th.dir !== 0 && f.dir === -th.dir) challenges.push(f);
+    else context.push(f);
+  }
+  const thCls = th.dir > 0 ? 'range' : th.dir < 0 ? 'bear' : 'neu';
+  const row = (f, cls) => `<div class="th-row ${cls}"><span class="th-k">${f.k}</span><span class="th-d">${f.d}</span></div>`;
+  const net = th.dir === 0
+    ? 'No clear directional bias yet — the signals below are mixed; wait for one side to win.'
+    : supports.length > challenges.length + 1 ? `<b>Well supported</b> — the evidence mostly backs the ${th.label} idea.`
+    : challenges.length > supports.length ? `<b>Fighting the evidence</b> — more argues against the ${th.label} than for it; be cautious or wait.`
+    : `<b>Mixed</b> — the ${th.label} idea has real support but real pushback too; needs a trigger.`;
+  box.innerHTML =
+    `<div class="th-top">Thesis: <span class="chip ${thCls}">${th.label}</span> <span class="muted">from ${th.src}</span></div>` +
+    (supports.length ? `<div class="th-grp"><div class="th-h pos">✓ Supports</div>${supports.map(f => row(f, 'pos')).join('')}</div>` : '') +
+    (challenges.length ? `<div class="th-grp"><div class="th-h neg">✗ Challenges</div>${challenges.map(f => row(f, 'neg')).join('')}</div>` : '') +
+    (context.length ? `<div class="th-grp"><div class="th-h ctx">• Context</div>${context.map(f => row(f, 'ctx')).join('')}</div>` : '') +
+    `<div class="th-net">${net}</div>`;
+  sec.style.display = 'block';
 }
 
 // ARIMA context — the HONEST read: a fair-value stretch (mean-reversion bias) and
@@ -1772,12 +1865,7 @@ async function openDrawer(name) {
 async function loadDrawerArima(name, sym) {
   const chip = $('drArima');
   chip.style.display = 'none';
-  const key = 'arima_price_' + (sym ?? '').replace(/[_/]/g, '');
-  let a = null;
-  try {
-    const r = await jget('/api/kv/get?key=' + encodeURIComponent(key));
-    a = (r && !r.miss) ? (r.data ?? r) : null;
-  } catch { return; }
+  const a = await getArima(sym).catch(() => null);
   if (!a || a.fairValueDev == null) return;
   const dev = a.fairValueDev, ratio = a.residualRatio ?? null, ci = a.ci68Pips ?? null;
   const unpredictable = ratio != null && ratio > 1.5;
