@@ -247,6 +247,27 @@
   #drNews .nimpact{font-size:11px;color:var(--text2);padding:3px 6px 7px 62px;line-height:1.45}
   #drNews .nimpact b.pos{color:var(--bull)} #drNews .nimpact b.neg{color:var(--bear)}
 
+  /* Morning Brief — the top-down macro front page */
+  .mbrief{background:linear-gradient(180deg,rgba(79,125,240,.08),var(--card));border:1px solid var(--border);
+          border-radius:14px;padding:16px 20px;margin-bottom:16px}
+  .mbrief .mb-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .mbrief .mb-eyebrow{font-size:10px;font-weight:700;letter-spacing:.09em;color:var(--blue);text-transform:uppercase}
+  .mbrief .mb-btn{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:3px 11px;font-size:11px;font-weight:600;cursor:pointer}
+  .mbrief .mb-btn:disabled{opacity:.55}
+  .mbrief .mb-head{font-size:17px;font-weight:700;line-height:1.4;margin:2px 0 10px}
+  .mbrief .mb-theme{font-size:13.5px;color:var(--text2);line-height:1.55;margin-bottom:12px}
+  .mbrief .mb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:12px}
+  .mbrief .mb-cell{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
+  .mbrief .mb-cl{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--text3);text-transform:uppercase;margin-bottom:3px}
+  .mbrief .mb-cv{font-size:12.5px;color:var(--text2);line-height:1.5}
+  .mbrief .mb-assets{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+  .mbrief .mb-a{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11.5px}
+  .mbrief .mb-a b{font-weight:700} .mbrief .mb-a.up b{color:var(--bull)} .mbrief .mb-a.dn b{color:var(--bear)} .mbrief .mb-a.nu b{color:var(--text2)}
+  .mbrief .mb-a .mb-an{color:var(--text3)}
+  .mbrief .mb-watch{font-size:12.5px;color:var(--text2);margin-bottom:6px}
+  .mbrief .mb-watch b{color:var(--text)}
+  .mbrief .mb-foot{font-size:10px;color:var(--text3);margin-top:6px}
+
   /* Trade thesis scorecard */
   .th-top{font-size:13px;margin-bottom:11px}
   .th-grp{margin-bottom:9px}
@@ -352,6 +373,8 @@
 </div>
 
 <div class="wrap">
+  <div class="mbrief" id="mbrief" style="display:none"></div>
+
   <div class="qstrip delta" id="sinceYday" style="display:none"></div>
 
   <div class="mread" id="mread" style="display:none"></div>
@@ -2455,9 +2478,52 @@ async function loadDrawerLevels(name, sym) {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
+// ── Morning Brief — top-down macro front page (its own AI instruction set) ─────
+async function loadMorningBrief() {
+  const r = await jget('/api/morning-brief').catch(() => null);
+  renderMorningBrief(r);
+}
+function renderMorningBrief(r) {
+  const el = $('mbrief');
+  const esc = s => (s ?? '').toString().replace(/</g, '&lt;');
+  const gen = `<button class="mb-btn" id="mbBtn" onclick="generateMorningBrief()">↻ Generate</button>`;
+  if (!r || !r.ok || !r.analysis) {
+    el.innerHTML = `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${gen}</div>` +
+      `<div class="mb-theme">No brief generated yet — hit <b>Generate</b> for today's top-down macro read (the market backdrop → the dollar → the FX complex), grounded in the data + real headlines. Runs on Railway (needs ANT_KEY).</div>`;
+    el.style.display = 'block'; return;
+  }
+  const a = r.analysis;
+  const regChip = /RISK-ON/i.test(a.regime) ? 'range' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'neu';
+  const aCls = l => /BULL/i.test(l) ? 'up' : /BEAR/i.test(l) ? 'dn' : 'nu';
+  const cell = (lbl, v) => v ? `<div class="mb-cell"><div class="mb-cl">${lbl}</div><div class="mb-cv">${esc(v)}</div></div>` : '';
+  el.innerHTML =
+    `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}<span class="chip warn" style="font-size:9px">AI · grounded, not backtested</span>${gen}</div>` +
+    (a.headline ? `<div class="mb-head">${esc(a.headline)}</div>` : '') +
+    (a.theme ? `<div class="mb-theme">${esc(a.theme)}</div>` : '') +
+    `<div class="mb-grid">${cell('The dollar', a.dollar)}${cell('Rates & curve', a.rates)}${cell('Risk mood', a.risk)}${cell('The FX complex', a.complex)}</div>` +
+    (a.byAsset?.length ? `<div class="mb-assets">${a.byAsset.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
+    (a.watch?.length ? `<div class="mb-watch"><b>Watch:</b> ${a.watch.map(esc).join(' · ')}</div>` : '') +
+    `<div class="mb-foot">${r.generatedAt ? `Generated ${new Date(r.generatedAt).toLocaleString()} · ` : ''}${r.headlineCount != null ? `${r.headlineCount} live headlines · ` : ''}AI grounded in macro data + Yahoo headlines — not a backtested signal.</div>`;
+  el.style.display = 'block';
+}
+async function generateMorningBrief() {
+  const btn = $('mbBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Generating… ~15s'; }
+  try {
+    const r = await fetch('/api/morning-brief', { method: 'POST' }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || 'failed');
+    renderMorningBrief(r);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Generate'; }
+    const n = document.createElement('div'); n.className = 'mb-foot'; n.style.color = 'var(--bear)';
+    n.textContent = 'Generate failed: ' + e.message + (/ANT_KEY|503|Railway/.test(e.message) ? ' — the Morning Brief runs on Railway (ANT_KEY).' : '');
+    $('mbrief').appendChild(n);
+  }
+}
+
 // ── Boot + refresh cadence ────────────────────────────────────────────────────
 loadAll().then(() => { pollPrices(); });
 loadGate();
+loadMorningBrief();
 setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
 setInterval(pollPrices, 30_000);               // proximity watch, every 30s
 setInterval(() => { renderGate(); renderNewsPlay(); }, 60_000);  // tick countdowns / released-event updates

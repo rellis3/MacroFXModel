@@ -1975,6 +1975,87 @@ Rules for your response:
   }
 });
 
+// ── Morning Brief — the top-down macro "front page" (a DIFFERENT instruction set) ──
+// Not per-pair: starts from the macro/policy/risk backdrop and walks down to the
+// dollar and the FX complex. GROUNDED in the data + real Yahoo headlines we feed
+// it — never free-recall (LLMs confabulate current events). Needs ANT_KEY (Railway).
+const _YAHOO_NEWS_TICKERS = ['^GSPC', '^IXIC', 'GC=F', 'CL=F', 'DX-Y.NYB', '^TNX'];
+async function _fetchYahooHeadlines(tickers = _YAHOO_NEWS_TICKERS, perTicker = 4) {
+  const out = [];
+  await Promise.all(tickers.map(async t => {
+    try {
+      const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(t)}&region=US&lang=en-US`;
+      const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' }, signal: AbortSignal.timeout(10_000) });
+      if (!r.ok) return;
+      const xml = await r.text();
+      const items = [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g)].slice(0, perTicker);
+      for (const m of items) {
+        const title = m[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+        if (title) out.push({ ticker: t, title });
+      }
+    } catch { /* thin/absent is fine — flagged in the prompt */ }
+  }));
+  return out;
+}
+const _MORNING_BRIEF_KV = 'morning_brief_v1';
+let _morningBriefRunning = false;
+async function _buildMorningBrief() {
+  const key = process.env.ANT_KEY;
+  if (!key) throw new Error('ANT_KEY not configured');
+  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
+  const fred = fredRaw ? JSON.parse(fredRaw) : {};
+  const headlines = await _fetchYahooHeadlines();
+  const fc = forecastState.latest;
+  const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
+  const s2s10 = (g('us10y') != null && g('us2y') != null) ? ((g('us10y') - g('us2y')) * 100).toFixed(0) + 'bp' : '?';
+  const macro = [
+    `VIX ${g('vix')} (prev ${gp('vix')})`,
+    `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
+    `DXY ${g('dxy')} (prev ${gp('dxy')})`,
+    `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}`,
+    `DE10Y ${g('de10y')} · JP10Y ${g('jp10y')} · GB10Y ${g('gb10y')}`,
+    `Real 10Y (TIPS) ${g('tips')} · WTI ${g('wti')}`,
+  ].join('\n');
+  const heads = headlines.map(h => `• [${h.ticker}] ${h.title}`).join('\n') || '(no headlines fetched — read the macro data instead)';
+  const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data and headlines below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
+
+=== MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
+${macro}
+${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
+
+=== REAL HEADLINES (Yahoo Finance) ===
+${heads}
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 sentences on what's driving markets today","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"tldr":"one-line bottom line"}`;
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
+  const antData = await antRes.json();
+  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+  const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null };
+  await kv.put(_MORNING_BRIEF_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/morning-brief', async (_req, res) => {
+  try {
+    const raw = await kv.get(_MORNING_BRIEF_KV).catch(() => null);
+    if (raw) return res.json({ ok: true, ...JSON.parse(raw), cached: true });
+    return res.json({ ok: false, error: 'No morning brief yet — click Generate.' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/morning-brief', async (_req, res) => {
+  if (_morningBriefRunning) return res.status(409).json({ ok: false, error: 'a morning brief is already generating' });
+  _morningBriefRunning = true;
+  try { res.json({ ok: true, ...(await _buildMorningBrief()) }); }
+  catch (e) { res.status(/ANT_KEY/.test(e.message) ? 503 : 500).json({ ok: false, error: e.message }); }
+  finally { _morningBriefRunning = false; }
+});
+
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
 app.post('/api/ai-backtest', async (req, res) => {
   const key = process.env.ANT_KEY;
