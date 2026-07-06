@@ -1,0 +1,128 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rate Differential Matrix</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;margin:0;padding:18px 20px 60px;max-width:1100px;margin:0 auto}
+  a{color:var(--blue);text-decoration:none}
+  h1{font-size:20px;margin:0 0 3px}
+  .sub{color:var(--text2);font-size:12.5px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px 17px;margin-bottom:16px}
+  h2{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tab{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .tab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .yrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .ycell{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 11px;min-width:92px}
+  .ycell .c{font-size:12px;font-weight:700} .ycell .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+  .ycell .d{font-size:10.5px} .ycell .d.up{color:var(--bull)} .ycell .d.dn{color:var(--bear)}
+  table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12px}
+  th,td{padding:7px 6px;text-align:center;border:1px solid rgba(48,54,61,.5)}
+  th{color:var(--text3);font-weight:600;font-size:11px}
+  td.rh{color:var(--text);font-weight:700;background:var(--card2)}
+  .mtxwrap{overflow-x:auto}
+  .muted{color:var(--text3)} .note{color:var(--text3);font-size:11px;margin-top:10px;line-height:1.5}
+  .carry{width:100%;font-size:12.5px}
+  .carry th{text-align:left;padding:6px 8px} .carry td{text-align:left;padding:7px 8px;border:none;border-bottom:1px solid var(--border)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:700;font-size:11px}
+  .pill.long{background:rgba(16,185,129,.14);color:var(--bull)} .pill.short{background:rgba(249,115,22,.14);color:var(--bear)}
+  .err{color:var(--bear);padding:14px}
+</style>
+
+<h1>Rate Differential Matrix</h1>
+<div class="sub">Interest-rate spreads across the majors — the engine behind <b>carry</b> and the fundamental pull on FX. Long the higher-yielder, short the lower-yielder. Carry is a <b>replicated</b> factor, but this is the rate snapshot, <b>not</b> a backtested strategy — direction confirms, it doesn't guarantee. <a href="today.html">← Daily Brief</a></div>
+
+<div class="card">
+  <div class="tabs">
+    <button class="tab on" data-t="short" onclick="pick('short')">Short / policy rates</button>
+    <button class="tab" data-t="y10" onclick="pick('y10')">10-year yields</button>
+  </div>
+  <div id="yrow" class="yrow"></div>
+  <div class="mtxwrap"><table id="mtx"></table></div>
+  <div class="note" id="mtxNote"></div>
+</div>
+
+<div class="card">
+  <h2>Best carry expressions — widest rate gaps</h2>
+  <table class="carry"><thead><tr><th>Pair</th><th>Long</th><th>Short</th><th>Gap</th><th>Trend</th></tr></thead><tbody id="carry"></tbody></table>
+  <div class="note">Carry = you earn (roughly) the rate gap for holding the higher-yielder against the lower. A <b>widening</b> gap is a tailwind for the trade; a narrowing one erodes it. Rank is by the current gap only — not risk-adjusted, not backtested. Short/policy rates drive carry; 10Y drives the longer-term fundamental lean.</div>
+</div>
+
+<div class="note" id="src"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const CCY = [
+  { c:'USD', y10:'us10y', short:'us2y',    flag:'🇺🇸' },
+  { c:'EUR', y10:'de10y', short:'de_short', flag:'🇪🇺' },
+  { c:'GBP', y10:'gb10y', short:'gb_short', flag:'🇬🇧' },
+  { c:'JPY', y10:'jp10y', short:'jp_short', flag:'🇯🇵' },
+  { c:'AUD', y10:'au10y', short:'au_short', flag:'🇦🇺' },
+  { c:'CAD', y10:'ca10y', short:'ca_short', flag:'🇨🇦' },
+  { c:'CHF', y10:'ch10y', short:'ch_short', flag:'🇨🇭' },
+];
+let fred = null, mode = 'short';
+const val  = (ccy, m) => { const k = ccy[m]; const o = fred?.[k]; return (o && o.value != null) ? +o.value : null; };
+const prev = (ccy, m) => { const k = ccy[m]; const o = fred?.[k]; return (o && o.prev  != null) ? +o.prev  : null; };
+const bpsCol = bp => { const a = Math.min(1, Math.abs(bp) / 400); const c = bp >= 0 ? '16,185,129' : '249,115,22'; return `rgba(${c},${(0.10 + a * 0.45).toFixed(2)})`; };
+
+function pick(m){ mode = m; document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.t === m)); render(); }
+
+function render(){
+  if (!fred) return;
+  const rows = CCY.filter(c => val(c, mode) != null);
+  // yields row
+  $('yrow').innerHTML = rows.map(c => {
+    const v = val(c, mode), p = prev(c, mode), d = (v != null && p != null) ? v - p : null;
+    const darr = d == null ? '' : `<span class="d ${d >= 0 ? 'up' : 'dn'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(d * 100).toFixed(0)}bp</span>`;
+    return `<div class="ycell"><div class="c">${c.flag} ${c.c}</div><div class="v">${v.toFixed(2)}%</div>${darr}</div>`;
+  }).join('');
+  // matrix: row − col (bps). Positive (green) = row yields MORE → carry-positive to long row / short col.
+  let h = '<thead><tr><th></th>' + rows.map(c => `<th>${c.c}</th>`).join('') + '</tr></thead><tbody>';
+  for (const ri of rows) {
+    h += `<tr><td class="rh">${ri.c}</td>`;
+    for (const ci of rows) {
+      if (ri.c === ci.c) { h += '<td class="muted">·</td>'; continue; }
+      const bp = (val(ri, mode) - val(ci, mode)) * 100;
+      h += `<td style="background:${bpsCol(bp)}" title="Long ${ri.c} / short ${ci.c}: ${bp >= 0 ? '+' : ''}${bp.toFixed(0)}bp carry">${bp >= 0 ? '+' : ''}${bp.toFixed(0)}</td>`;
+    }
+    h += '</tr>';
+  }
+  $('mtx').innerHTML = h + '</tbody>';
+  $('mtxNote').innerHTML = mode === 'short'
+    ? 'Cell = row-currency rate minus column-currency rate, in bps. Green = the row currency pays more, so <b>long row / short column</b> earns carry. US uses the 2Y as its short-rate proxy; others use policy/3-month rates.'
+    : 'Cell = row 10-year yield minus column 10-year yield, in bps. The 10Y differential is the longer-term fundamental pull on the pair. Non-US 10Y are OECD monthly series (they lag daily moves).';
+  // best carry (short rates drive carry; fall back to current mode)
+  const cm = 'short';
+  const cr = CCY.filter(c => val(c, cm) != null);
+  const pairs = [];
+  for (const a of cr) for (const b of cr) if (a.c !== b.c) {
+    const gap = (val(a, cm) - val(b, cm)) * 100;
+    if (gap > 0) pairs.push({ hi: a, lo: b, gap, trend: (prev(a, cm) != null && prev(b, cm) != null) ? gap - (prev(a, cm) - prev(b, cm)) * 100 : null });
+  }
+  pairs.sort((x, y) => y.gap - x.gap);
+  const seen = new Set();
+  const top = pairs.filter(p => { const k = [p.hi.c, p.lo.c].sort().join(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 8);
+  $('carry').innerHTML = top.map(p => {
+    const tr = p.trend == null ? '<span class="muted">–</span>'
+      : p.trend >= 0 ? `<span class="d up" style="color:var(--bull)">▲ widening ${Math.abs(p.trend).toFixed(0)}bp</span>`
+      : `<span class="d dn" style="color:var(--bear)">▼ narrowing ${Math.abs(p.trend).toFixed(0)}bp</span>`;
+    return `<tr><td><b>${p.hi.c}/${p.lo.c}</b></td><td><span class="pill long">▲ ${p.hi.c}</span></td><td><span class="pill short">▼ ${p.lo.c}</span></td><td><b>+${p.gap.toFixed(0)}bp</b></td><td>${tr}</td></tr>`;
+  }).join('');
+}
+
+(async () => {
+  try {
+    const r = await fetch('/api/fred').then(x => x.json());
+    if (!r || !Object.keys(r).length) throw new Error('no FRED data');
+    fred = r;
+    render();
+    $('src').innerHTML = 'Source: FRED via <code>/api/fred</code> (cached). Short rates: US 2Y (GS2), others policy/3-month. 10Y: US GS10 + OECD long-term (monthly). Runs on Railway — the sandbox has no FRED.';
+  } catch (e) {
+    $('mtx').innerHTML = `<tr><td class="err">Rate data unavailable: ${e.message} — FRED is Railway-only; this loads on the deployed server.</td></tr>`;
+  }
+})();
+</script>
