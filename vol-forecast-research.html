@@ -123,6 +123,12 @@
     <div class="rz-hdr">Where the forecast is reliable <span style="color:var(--text3);font-size:11px;font-weight:400">daily H-L median-exceedance & MAE by regime, vol-of-vol tercile, day-of-week</span></div>
     <div class="rz-body" id="matBody"></div>
   </div>
+
+  <!-- Session structure (Asia/London/NY) -->
+  <div class="rz-card" id="sessCard" style="display:none">
+    <div class="rz-hdr">Session Structure <span style="color:var(--text3);font-size:11px;font-weight:400">how the day's range is built across Asia / London / New York (OANDA H1, London-time windows)</span></div>
+    <div class="rz-body" id="sessBody"></div>
+  </div>
 </div>
 
 <script>
@@ -246,6 +252,42 @@ function renderPair() {
       ${miniTbl('By Day', s.byDow || {}, ['Mon','Tue','Wed','Thu','Fri'])}
     </div>
     <div class="rz-lbl" style="margin-top:10px">Persistence / clustering: after an above-75th day, next day exceeds its median <strong class="${(p.afterAbove75Pct-p.baseExceedMedianPct)>8?'pos':'neu'}">${fmt(p.afterAbove75Pct,1)}%</strong> vs <strong>${fmt(p.baseExceedMedianPct,1)}%</strong> base rate (${p.n} events). ${s.fcSkewDirHitPct!=null?`&nbsp;·&nbsp; Forecast O-H/O-L skew predicts direction <strong class="${s.fcSkewDirHitPct>55?'pos':'neu'}">${fmt(s.fcSkewDirHitPct,1)}%</strong> (vs 50% base).`:''}</div>`;
+
+  renderSession(s.session);
+}
+
+// ── Session Structure (v2a) ─────────────────────────────────────────────────
+function renderSession(sess) {
+  const card = document.getElementById('sessCard');
+  if (!card) return;
+  if (!sess || sess.insufficient) { card.style.display = 'none'; return; }
+  const icons = { good: '✓', warn: '⚠', info: '•' };
+  const findHtml = (sess.findings || []).map(f =>
+    `<div class="find ${f.sev}"><span class="fi">${icons[f.sev] || '•'}</span><span class="ft">${f.text}</span></div>`).join('');
+  const row = (name, o) => o ? `<tr>
+      <td><strong>${name}</strong></td>
+      <td class="num">${fmt(o.hlMeanPct,1)}%</td>
+      <td class="num">${fmt(o.hlP50,1)}%</td>
+      <td class="num">${fmt(o.hlP75,1)}%</td>
+      <td class="num">${fmt(o.ocMeanPct,1)}%</td>
+      <td class="num ${o.exceedExpectedPct!=null&&Math.abs(o.exceedExpectedPct-50)<10?'pos':'amber'}">${o.exceedExpectedPct!=null?fmt(o.exceedExpectedPct,1)+'%':'—'}</td>
+    </tr>` : '';
+  const ps = sess.perSession || {};
+  const seq = sess.sequencing || {}, comp = sess.compensation || {};
+  card.style.display = '';
+  document.getElementById('sessBody').innerHTML = `
+    ${findHtml}
+    <div class="rz-scroll" style="margin-top:6px"><table class="rz-tbl">
+      <thead><tr><th>Session</th><th class="num">H-L share (mean)</th><th class="num">P50</th><th class="num">P75</th>
+        <th class="num">O-C share</th><th class="num">Delivers expected % (tgt 50)</th></tr></thead>
+      <tbody>${row('Asia', ps.asia)}${row('London', ps.london)}${row('New York', ps.ny)}</tbody>
+    </table></div>
+    <div class="rz-lbl" style="margin-top:10px">
+      Sequencing: Asia→London corr <strong class="${Math.abs(seq.asiaLondonCorr)>=0.2?(seq.asiaLondonCorr>0?'pos':'amber'):'neu'}">${fmt(seq.asiaLondonCorr,2)}</strong>,
+      London→NY corr <strong class="${Math.abs(seq.londonNyCorr)>=0.2?(seq.londonNyCorr>0?'pos':'amber'):'neu'}">${fmt(seq.londonNyCorr,2)}</strong>.
+      &nbsp;·&nbsp; Compensation: London contributes <strong>${fmt(comp.londonAfterSmallAsia,1)}%</strong> after a small Asia vs <strong>${fmt(comp.londonAfterBigAsia,1)}%</strong> after a big Asia.
+      <span style="color:var(--text3)"> (${sess.nDays} days · shares are session H-L ÷ daily H-L, so they overlap-sum &gt;100%)</span>
+    </div>`;
 }
 
 // ── Run ─────────────────────────────────────────────────────────────────────

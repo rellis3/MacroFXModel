@@ -51,8 +51,10 @@ const INSTRUMENTS = {
   CADJPY:  'CAD_JPY',
 };
 
-// Session windows — London local time [inclusive start, exclusive end)
-const SESSIONS = {
+// Session windows — London local time [inclusive start, exclusive end).
+// Exported as the single source of truth: the forecast-session research
+// (js/forecastSessionResearch.js) imports these so the two never drift.
+export const SESSIONS = {
   asia:   [0,  6],   // 00:00–06:00
   london: [8,  13],  // 08:00–13:00
   ny:     [13, 21],  // 13:00–21:00  (US open → NY close)
@@ -106,7 +108,7 @@ async function _fetchChunk(instrument, fromDate) {
   return [];
 }
 
-async function _fetchAllH1(instrument, years) {
+export async function _fetchAllH1(instrument, years) {
   const all    = [];
   let   cursor = new Date(Date.now() - years * 365.25 * 24 * 60 * 60 * 1000);
   const now    = new Date();
@@ -138,7 +140,7 @@ const _londonFmt = new Intl.DateTimeFormat('en-GB', {
   hour:     '2-digit', hour12: false,
 });
 
-function _londonParts(date) {
+export function _londonParts(date) {
   const parts = _londonFmt.formatToParts(date);
   const get = t => parts.find(p => p.type === t).value;
   return {
