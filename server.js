@@ -76,6 +76,7 @@ import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats } from './js/zs
 import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
+import { runFullRangeLevelEdge, RANGE_LEVEL_DEFAULTS } from './js/rangeLevelEdgeEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -9127,6 +9128,59 @@ app.post('/api/macro-direction/run', (req, res) => {
 
 app.get('/api/macro-direction/status/:jobId', (req, res) => {
   const job = macroDirJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Range-Level edge (does a 5m range level have ANY standalone edge vs placebo?) ──
+// No macro, no z — just "does price respect the level more than a shifted placebo".
+// Engine: js/rangeLevelEdgeEngine.js + js/rangeLevelCore.js
+const rangeLvlJobs = new Map();
+function _purgeStaleRangeLvlJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of rangeLvlJobs) if (job.startedAt < cutoff) rangeLvlJobs.delete(id);
+}
+
+app.get('/api/range-level-edge/defaults', (_req, res) => {
+  res.json({ ok: true, defaults: RANGE_LEVEL_DEFAULTS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) => [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/range-level-edge/run', (req, res) => {
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined,
+    dateTo:   b.dateTo   || undefined,
+    confluenceTolPips: num(b.confluenceTolPips, RANGE_LEVEL_DEFAULTS.confluenceTolPips),
+    barrierFrac:       num(b.barrierFrac,       RANGE_LEVEL_DEFAULTS.barrierFrac),
+    spreadPips:        num(b.spreadPips,        RANGE_LEVEL_DEFAULTS.spreadPips),
+    splitFrac:         num(b.splitFrac,         RANGE_LEVEL_DEFAULTS.splitFrac),
+  };
+  const pairsToRun = b.pair ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p]) : Object.keys(ZSCORE_PAIRS);
+  if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+
+  const jobId = `rl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleRangeLvlJobs();
+  rangeLvlJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const { perPair, pooled, log } = await runFullRangeLevelEdge(opts, pairsToRun);
+      rangeLvlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, perPair, pooled, log, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[range-level-edge/run]', msg, e?.stack ?? '');
+      rangeLvlJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/range-level-edge/status/:jobId', (req, res) => {
+  const job = rangeLvlJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
