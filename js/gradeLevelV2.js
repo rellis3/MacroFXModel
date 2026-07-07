@@ -47,7 +47,9 @@ function neighbours(prices, level, side) {
  *   proxDist: only grade levels within this price distance of `price`.
  *   tf      : a createTouchFeatures(...) instance (shared brick).
  *   policy  : frozen per-cell policy (from the offline learner).
- *   condFields : condition fields forming the cell key (default ['approachVel']).
+ *   condFields : condition fields forming the cell key (default [] — §14 found no
+ *                live touch-read beats the unconditioned cell; pass e.g.
+ *                ['approachVel'] to reproduce the pre-§14 conditioned policy).
  *   opts    : { bands } forwarded to decide().
  *
  * Returns graded entries (action:'enter'), sorted by expectancy desc. `includeSkips`
@@ -55,7 +57,7 @@ function neighbours(prices, level, side) {
  */
 export function gradeLevelV2(args) {
   const { ladders = [], bars = [], open, sigma = 0, pip = 0, price, proxDist = Infinity,
-          tf = null, policy = {}, condFields = ['approachVel'], includeSkips = false, opts = {} } = args;
+          tf = null, policy = {}, condFields = [], includeSkips = false, opts = {} } = args;
   if (!bars.length || price == null) return includeSkips ? { entries: [], skips: [] } : [];
 
   const touchIdx = bars.length - 1;          // "now" is the touch for the live approach
@@ -74,11 +76,17 @@ export function gradeLevelV2(args) {
       const { inner, outer } = neighbours(prices, level, side);
       if (inner == null || outer == null) continue;          // extreme line, no barrier
 
-      // Same approachVel bucket the offline cell was keyed on.
-      let condKey = 'na';
-      if (tf) {
-        const f = tf.compute({ bars, touchIdx, open, sigma, side, wt1, level, pip });
-        condKey = condFields.map(c => f[c]?.bucket ?? 'na').join('|');
+      // condFields defaults to [] (§14: no live touch-read beats the unconditioned
+      // cell) → condKey '' and no tf needed. A caller that DOES pass condFields
+      // (e.g. explicit ['approachVel']) still needs tf to compute the bucket —
+      // missing tf there means the gate can't be evaluated, so skip (as before).
+      let condKey = '';
+      if (condFields.length) {
+        if (!tf) condKey = 'na';
+        else {
+          const f = tf.compute({ bars, touchIdx, open, sigma, side, wt1, level, pip });
+          condKey = condFields.map(c => f[c]?.bucket ?? 'na').join('|');
+        }
       }
       if (condKey.includes('na')) continue;                  // missing a gating condition
 
@@ -97,11 +105,13 @@ export function gradeLevelV2(args) {
         verdict:    d.verdict,
         expectancy: d.expectancy,
         n:          d.n,
+        winRate:    d.winRate,
         revRate:    d.revRate,
         confidence: d.confidence,
         sl:         d.sl,
-        tp:         d.tp,
-        rrRatio:    d.rr,
+        rung:       d.rung,
+        trailFrac:  d.trailFrac,
+        exit:       d.exit,
         cell:       d.cell,
         reasons:    d.reasons,
         warnings:   d.warnings,

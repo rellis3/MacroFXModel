@@ -9,12 +9,20 @@
  * over M1 history — never re-fit live). The grade is a function of money + breadth,
  * not a vibe.
  *
- *   1. Zone      — `level` (+ `inner`/`outer` triple-barrier neighbours), supplied.
+ *   1. Zone      — `level` (+ `inner`/`outer` neighbours, for the initial stop),
+ *                  supplied.
  *   2. Direction — fade vs follow is the policy cell's learned `decision`; mapped to
  *                  long/short with the SAME isBuy rule as perLineStrategy.pnlFor so
  *                  the live trade matches the backtested one bit-for-bit.
  *   3. Confidence— the cell's `expectancy` (% of price, after costs) + sample `n`;
  *                  unseen / skip cells return SKIP. Grade bands are on expectancy.
+ *
+ * Exit — HELD-POSITION CHANDELIER TRAIL, not a fixed TP (RANGE_EXTENSION_GUIDE.md
+ * §12/§13: the fixed adjacent-line barrier LOSES to the chandelier, Sharpe 3.16 vs
+ * 6.11 @2x cost eurusd OOS). The policy's `expectancy` is priced on that same trail
+ * (perLineStrategy.pnlHeld), so there's no separate fixed target to display — only
+ * the initial protective stop (`sl`, same geometry as before) plus the trail's
+ * give-back (`rung`/`trailFrac`).
  *
  * The cell key is reproduced EXACTLY as perLineStrategy.extractTouches builds it
  * (`${name}_${side}|${condKey}`) so the policy learned offline is the policy applied
@@ -24,28 +32,27 @@
  */
 
 // Default expectancy grade bands (units = % of price after costs, the unit
-// perLineStrategy.pnlFor returns). Calibrated for FX session-fib cells; override
+// perLineStrategy.pnlHeld returns). Calibrated for FX session-fib cells; override
 // per asset class via opts. A cell only reaches here if the frozen policy already
 // gated it above its cost margin, so every graded cell has positive expectancy.
+// These are the FALLBACK — the live engine prefers per-policy bands derived from
+// the actual expectancy distribution at learn time (levelsV2Learn.freezePolicy →
+// frozen.bands), so the grade always fits the policy rather than a hard-coded
+// number that may leave A+ unreachable.
 //
-// NOTE on R:R: the triple-barrier exits are ADJACENT ladder lines, which on the
-// half-integer fib grid are ~equidistant ⇒ rr is structurally ~1:1. Crucially the
-// cell's `expectancy` ALREADY encodes that 1:1 payoff (perLineStrategy.pnlFor sizes
-// wins/losses by the inner/outer distances). So the grade is on expectancy, NOT rr
-// — an rr≥1.5 gate would just make A+ unreachable by construction. We keep only a
-// floor demotion when rr is genuinely poor (`rrFloor`), as a sanity guard.
-// Defaults calibrated to the observed session-fib expectancy scale (best cells
-// ~+0.09%/touch after costs). These are the FALLBACK — the live engine prefers
-// per-policy bands derived from the actual expectancy distribution at learn time
-// (levelsV2Learn.freezePolicy → frozen.bands), so the grade always fits the policy
-// rather than a hard-coded number that may leave A+ unreachable.
+// No `rrFloor` here (removed): that was a geometric proxy for "is the payoff any
+// good" back when the exit was a fixed adjacent-line target with a roughly-1:1
+// R:R by construction. Now `expectancy` is priced directly off the REALIZED
+// chandelier-trail PnL (perLineStrategy.pnlHeld), so it already prices the real
+// payoff — a poor trail outcome shows up as low/negative expectancy and gets
+// filtered by buildPolicy's marginPct gate, making a separate geometric floor
+// redundant.
 export const DEFAULT_GRADE_BANDS = {
   eAplus: 0.08, // ≥ this expectancy (and nFull) → A+
   eA:     0.05, // ≥ this expectancy (and nMin) → A
   eB:     0.02, // ≥ this expectancy → B
   nFull:  50,   // sample size for full confidence / A+
   nMin:   30,   // minimum sample to earn an A (matches the OOS ≥30 floor)
-  rrFloor: 1.0, // demote a top grade only if rr falls below this (sanity, not the gate)
 };
 
 const clamp01 = x => Math.max(0, Math.min(1, x));
@@ -66,14 +73,16 @@ export function directionFor(decision, side) {
   return isBuy ? 'long' : 'short';
 }
 
-// Triple-barrier exits for a decision: FADE targets the inner line (toward the
-// range mid) with the outer as stop; FOLLOW is the reverse. Same as the geometry
-// perLineStrategy logs per trade.
+// Initial protective stop for a decision: FADE risks to the outer line (away from
+// the range mid); FOLLOW risks to the inner (back toward the mid) — same geometry
+// as before. There is no fixed target: the position is held with a chandelier
+// trail (RANGE_EXTENSION_GUIDE.md §13) that ratchets in from `rung` (the ladder
+// step — ladder lines are evenly spaced, so |outer-level| == |level-inner|) by
+// `trailFrac` of a rung as price moves favourably.
 export function exitsFor(decision, { level, inner, outer }) {
-  const tp = decision === 'fade' ? inner : outer;
   const sl = decision === 'fade' ? outer : inner;
-  const rr = Math.abs(level - sl) > 0 ? Math.abs(tp - level) / Math.abs(level - sl) : 0;
-  return { tp, sl, rr: +rr.toFixed(2) };
+  const rung = Math.abs(outer - level);
+  return { sl, rung: +rung.toFixed(6) };
 }
 
 // A readable 0-1 confidence for display only — the DECISION variable is expectancy,
@@ -110,27 +119,19 @@ export function decide(touch, policy, opts = {}) {
 
   const decision  = p.decision;                 // 'fade' | 'follow'
   const direction = directionFor(decision, touch.side);
-  const { tp, sl, rr } = exitsFor(decision, touch);
+  const { sl, rung } = exitsFor(decision, touch);
   const expectancy = p.expectancy ?? 0;
   const n          = p.n ?? 0;
-  const revRate    = p.revRate ?? null;
+  const winRate    = p.winRate ?? null;          // decision-aware win% under the held trail (buildPolicy)
+  const revRate    = p.revRate ?? null;          // direction-only reversion% (kept for back-compat display)
 
-  // Grade off expectancy + breadth (NOT a 0-100 heuristic; NOT rr — see bands note).
+  // Grade off expectancy + breadth (NOT a 0-100 heuristic).
   let grade;
   if      (expectancy >= bands.eAplus && n >= bands.nFull) grade = 'A+';
   else if (expectancy >= bands.eA     && n >= bands.nMin)  grade = 'A';
   else if (expectancy >= bands.eB)                         grade = 'B';
   else if (expectancy >  0)                                grade = 'C';
   else                                                     grade = 'SKIP';
-
-  // Sanity floor only: a genuinely poor payoff (rr below the floor) can't be a top
-  // grade. With the equidistant ladder rr≈1.0 so this rarely fires — it guards the
-  // extreme/edge cases, it is NOT the grading gate.
-  const warnings = [];
-  if (rr > 0 && rr < bands.rrFloor && (grade === 'A+' || grade === 'A')) {
-    grade = 'B';
-    warnings.push(`R:R 1:${rr} — below floor`);
-  }
 
   const verdict = grade === 'A+' || grade === 'A' ? 'TAKE'
                 : grade === 'B'                    ? 'WATCH'
@@ -139,14 +140,14 @@ export function decide(touch, policy, opts = {}) {
 
   const reasons = [
     `Edge +${expectancy.toFixed(3)}% after costs (n=${n})`,
-    revRate != null ? `${decision} · ${revRate}% reversion` : decision,
+    winRate != null ? `${decision} · ${winRate}% win (held trail)` : decision,
   ];
 
   return {
     action: 'enter', cell, decision, direction,
-    grade, verdict, reasons, warnings,
-    expectancy: +expectancy.toFixed(4), n, revRate,
-    confidence: confidenceScore(expectancy, n, revRate, bands),
-    tp: +tp.toFixed(6), sl: +sl.toFixed(6), rr,
+    grade, verdict, reasons, warnings: [],
+    expectancy: +expectancy.toFixed(4), n, winRate, revRate,
+    confidence: confidenceScore(expectancy, n, winRate ?? revRate, bands),
+    sl: +sl.toFixed(6), rung: +rung.toFixed(6), trailFrac: 0.5, exit: 'chandelier',
   };
 }

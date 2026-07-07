@@ -14,7 +14,7 @@ const GRADE_EMOJI = { 'A+': '🟢', A: '🟢', B: '🟡', C: '⚪', SKIP: '🔴'
 // Format one v2 entry into a Telegram HTML message.
 //   sym   : display symbol, e.g. 'EUR/USD'
 //   entry : a gradeLevelV2 entry { price, direction, grade, verdict, expectancy, n,
-//           revRate, rrRatio, sl, tp, decision, cell, confidence, tags }
+//           winRate, revRate, sl, rung, trailFrac, decision, cell, confidence, tags }
 //   ctx   : { currentPrice, digits, unit?, distPips?, policyBuiltAt? }
 export function formatV2Entry(sym, entry, ctx = {}) {
   const { currentPrice, digits = 5, unit = 'p', distPips = null, policyBuiltAt = null } = ctx;
@@ -28,11 +28,13 @@ export function formatV2Entry(sym, entry, ctx = {}) {
     currentPrice != null ? `Current: ${Number(currentPrice).toFixed(digits)}` : null,
     // The decision variable — measured after-cost expectancy + the sample behind it.
     `Edge: <b>+${Number(entry.expectancy).toFixed(3)}%</b> after costs · n=${entry.n}` +
-      (entry.revRate != null ? ` · ${entry.revRate}% rev` : ''),
+      (entry.winRate != null ? ` · ${entry.winRate}% win` : entry.revRate != null ? ` · ${entry.revRate}% rev` : ''),
     `Play: ${entry.decision === 'fade' ? 'Fade (mean-revert)' : 'Follow (breakout)'}` +
       (entry.confidence != null ? ` · conf ${Math.round(entry.confidence * 100)}%` : ''),
-    entry.sl != null && entry.tp != null
-      ? `SL ${Number(entry.sl).toFixed(digits)} · TP ${Number(entry.tp).toFixed(digits)} · R:R 1:${entry.rrRatio}`
+    // No fixed TP — held position with a chandelier trail (RANGE_EXTENSION_GUIDE §13):
+    // initial risk to `sl`, then the stop ratchets in trailFrac×rung from the peak.
+    entry.sl != null
+      ? `Initial SL ${Number(entry.sl).toFixed(digits)} · then trail ${Math.round((entry.trailFrac ?? 0.5) * 100)}% of a rung from peak (no fixed TP)`
       : null,
     (entry.tags ?? []).length ? `Tags: ${entry.tags.slice(0, 4).join(' · ')}` : null,
     (entry.warnings ?? []).length ? `⚠ ${entry.warnings.slice(0, 2).join(' · ')}` : null,

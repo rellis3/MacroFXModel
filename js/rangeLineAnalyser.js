@@ -48,26 +48,33 @@ export function buildRangeLadder(low, range, srcTag) {
 // touch. `dirUp` = the trade profits when price RISES. `protectStop` = the initial
 // stop (against the trade). `rung` = ladder step; `trailW` = chandelier give-back.
 // Adverse-first within a bar (conservative); the chandelier never starts tighter
-// than `protectStop`. Returns realised exit prices {sExit, cExit} (closePx if
-// neither stop is hit by session end). Used for BOTH the follow (away) and the
-// fade (toward-mid) directions, so the trail runs on either entry type.
-function _trailExits(bars, touchIdx, n, L, dirUp, protectStop, rung, trailW, closePx) {
-  let sStop = protectStop, sPeak = L, sExit = null, cPeak = L, cStop = protectStop, cExit = null;
+// than `protectStop`. Used for BOTH the follow (away) and the fade (toward-mid)
+// directions, so the trail runs on either entry type.
+//
+// EXPORTED (the §13-proven exit, shared by the backtest AND the live v2 grader /
+// ledger — TELEGRAM_V2.md / RANGE_EXTENSION_GUIDE.md §13). Returns realised exit
+// prices + the bar index they exited at: {sExit,sExitIdx,cExit,cExitIdx}, all
+// `null` when neither stop was hit within `bars` — the caller decides the
+// fallback (analyseRangeWindow marks-to-session-close; the live ledger instead
+// leaves the position OPEN and re-walks on the next refresh with more bars).
+export function walkChandelierExit(bars, touchIdx, n, L, dirUp, protectStop, rung, trailW) {
+  let sStop = protectStop, sPeak = L, sExit = null, sExitIdx = null;
+  let cPeak = L, cStop = protectStop, cExit = null, cExitIdx = null;
   for (let k = touchIdx; k < n && (sExit === null || cExit === null); k++) {
     const bar = bars[k];
     if (dirUp) {
-      if (sExit === null) { if (bar.low <= sStop) sExit = sStop;
+      if (sExit === null) { if (bar.low <= sStop) { sExit = sStop; sExitIdx = k; }
         else while (bar.high >= sPeak + rung - 1e-12) { sPeak += rung; sStop = sPeak - rung; } }
-      if (cExit === null) { if (bar.low <= cStop) cExit = cStop;
+      if (cExit === null) { if (bar.low <= cStop) { cExit = cStop; cExitIdx = k; }
         else if (bar.high > cPeak) { cPeak = bar.high; cStop = Math.max(protectStop, cPeak - trailW); } }
     } else {
-      if (sExit === null) { if (bar.high >= sStop) sExit = sStop;
+      if (sExit === null) { if (bar.high >= sStop) { sExit = sStop; sExitIdx = k; }
         else while (bar.low <= sPeak - rung + 1e-12) { sPeak -= rung; sStop = sPeak + rung; } }
-      if (cExit === null) { if (bar.high >= cStop) cExit = cStop;
+      if (cExit === null) { if (bar.high >= cStop) { cExit = cStop; cExitIdx = k; }
         else if (bar.low < cPeak) { cPeak = bar.low; cStop = Math.min(protectStop, cPeak + trailW); } }
     }
   }
-  return { sExit: sExit ?? closePx, cExit: cExit ?? closePx };
+  return { sExit, sExitIdx, cExit, cExitIdx };
 }
 
 // ── Analyse one session's M1 path against one or more range ladders ───────────
@@ -175,17 +182,19 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
       // FADE-direction trail (toward mid; protective stop = outer) — so the proven
       // chandelier/structural trail runs on FADE entries too, not just follow.
       const upF = side === 'up';                     // follow on an up-side level profits UP
-      const fEx = _trailExits(bars, touchIdx, n, L, upF, inner, rung, trailW, closePx);
-      const fStruct = (upF ? fEx.sExit - L : L - fEx.sExit) / open * 100;
-      const fChand  = (upF ? fEx.cExit - L : L - fEx.cExit) / open * 100;
+      const fEx = walkChandelierExit(bars, touchIdx, n, L, upF, inner, rung, trailW);
+      const fSExit = fEx.sExit ?? closePx, fCExit = fEx.cExit ?? closePx;   // mark-to-session-close fallback
+      const fStruct = (upF ? fSExit - L : L - fSExit) / open * 100;
+      const fChand  = (upF ? fCExit - L : L - fCExit) / open * 100;
       const upD = side === 'dn';                      // fade on a dn-side level profits UP (toward mid)
-      const dEx = _trailExits(bars, touchIdx, n, L, upD, outer, rung, trailW, closePx);
-      const fStructFade = (upD ? dEx.sExit - L : L - dEx.sExit) / open * 100;
-      const fChandFade  = (upD ? dEx.cExit - L : L - dEx.cExit) / open * 100;
+      const dEx = walkChandelierExit(bars, touchIdx, n, L, upD, outer, rung, trailW);
+      const dSExit = dEx.sExit ?? closePx, dCExit = dEx.cExit ?? closePx;
+      const fStructFade = (upD ? dSExit - L : L - dSExit) / open * 100;
+      const fChandFade  = (upD ? dCExit - L : L - dCExit) / open * 100;
 
       out.push({
         name: ln.label, side, level: +L.toFixed(6),
-        innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6),
+        innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6), rung: +rung.toFixed(6),
         decidedBy, firstTouchTime: ftt, outcome,
         approachVel: feats?.approachVel ?? null, approachER: feats?.approachER ?? null,
         wtState: feats?.wtState ?? null, volClimax: feats?.volClimax ?? null,

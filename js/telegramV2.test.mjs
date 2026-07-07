@@ -3,14 +3,18 @@
 // Proves: (1) the confidence decision maps expectancy→grade correctly and skips
 // unseen/low cells; (2) the LIVE cell key gradeLevelV2 builds equals the OFFLINE
 // cell key perLineStrategy.extractTouches builds for the same ladder/touch (the
-// live↔backtest parity that is the whole point); (3) direction/SL/TP geometry
-// matches perLineStrategy.pnlFor; (4) the formatter + freeze helpers behave.
+// live↔backtest parity that is the whole point); (3) direction/SL + chandelier-
+// trail geometry matches perLineStrategy.pnlHeld (RANGE_EXTENSION_GUIDE.md §13 —
+// no fixed TP); (4) buildPolicy's pricer is pluggable (pnlFor vs pnlHeld) and
+// learnAndFreeze/freezePolicy/flattenPolicy build the PER-INSTRUMENT artifact
+// (§15 — no cross-pair pooling); (5) the formatter + ledger trailing-stop walk
+// behave.
 
 import { cellKey, directionFor, exitsFor, decide } from './levelConfidenceCore.js';
 import { gradeLevelV2 } from './gradeLevelV2.js';
 import { formatV2Entry } from './alertFormatterV2.js';
-import { freezePolicy, isUsablePolicy, deriveBands } from './levelsV2Learn.js';
-import { extractTouches } from './perLineStrategy.js';
+import { freezePolicy, isUsablePolicy, deriveBands, flattenPolicy, learnAndFreeze } from './levelsV2Learn.js';
+import { extractTouches, buildPolicy, pnlFor, pnlHeld } from './perLineStrategy.js';
 import { buildRangeLadder } from './rangeLineAnalyser.js';
 import { recordEntries, resolvePair, ledgerStats, refitFromLedger } from './entryLedgerV2.js';
 import { selectAlerts, alertKey, pruneCooldowns, GRADE_RANK } from './alertV2Core.js';
@@ -31,49 +35,40 @@ ok('follow up → long',  directionFor('follow', 'up') === 'long');
 ok('follow dn → short', directionFor('follow', 'dn') === 'short');
 {
   const e = exitsFor('fade', { level: 100, inner: 98, outer: 103 });
-  ok('fade TP=inner SL=outer', e.tp === 98 && e.sl === 103);
-  ok('fade rr = 2/3', approx(e.rr, +(2 / 3).toFixed(2)));
+  ok('fade SL=outer', e.sl === 103);
+  ok('fade rung = |outer-level|', e.rung === 3);
   const f = exitsFor('follow', { level: 100, inner: 98, outer: 103 });
-  ok('follow TP=outer SL=inner', f.tp === 103 && f.sl === 98);
+  ok('follow SL=inner', f.sl === 98);
+  ok('follow rung = |outer-level|', f.rung === 3);
 }
 
 // ── 2. decide() grade banding + skips ────────────────────────────────────────
 console.log('[decide]');
 const baseTouch = { name: 'A_1.5', side: 'dn', condKey: 'spike', level: 100, inner: 96, outer: 102 };
-// fade dn: TP=inner=96 (dist 4), SL=outer=102 (dist 2) → rr=2.0 → A+ eligible
-ok('A+ on high edge + n + rr', decide(baseTouch,
-  { 'A_1.5_dn|spike': { decision: 'fade', n: 80, expectancy: 0.20, revRate: 70 } }).grade === 'A+');
+ok('A+ on high edge + n', decide(baseTouch,
+  { 'A_1.5_dn|spike': { decision: 'fade', n: 80, expectancy: 0.20, winRate: 70 } }).grade === 'A+');
 ok('A on mid edge', decide(baseTouch,
-  { 'A_1.5_dn|spike': { decision: 'fade', n: 40, expectancy: 0.10, revRate: 60 } }).grade === 'A');
+  { 'A_1.5_dn|spike': { decision: 'fade', n: 40, expectancy: 0.10, winRate: 60 } }).grade === 'A');
 ok('B on low edge', decide(baseTouch,
-  { 'A_1.5_dn|spike': { decision: 'fade', n: 40, expectancy: 0.04, revRate: 55 } }).grade === 'B');
+  { 'A_1.5_dn|spike': { decision: 'fade', n: 40, expectancy: 0.04, winRate: 55 } }).grade === 'B');
 ok('C on marginal edge', decide(baseTouch,
-  { 'A_1.5_dn|spike': { decision: 'fade', n: 40, expectancy: 0.01, revRate: 52 } }).grade === 'C');
+  { 'A_1.5_dn|spike': { decision: 'fade', n: 40, expectancy: 0.01, winRate: 52 } }).grade === 'C');
 ok('skip when unseen', decide(baseTouch, {}).action === 'skip');
 ok('skip when policy skips', decide(baseTouch,
   { 'A_1.5_dn|spike': { decision: 'skip', n: 5, reason: 'lowN' } }).grade === 'SKIP');
 {
-  // rr gate: high expectancy but rr<1 (inner far past, outer near) → demote from A+
-  const poorRR = { name: 'A_1', side: 'dn', condKey: 'spike', level: 100, inner: 90, outer: 105 };
-  // fade: TP=inner=90 (dist 10), SL=outer=105 (dist 5) → rr=2.0 (good). Flip to follow-poor:
-  const followPoor = { name: 'A_1', side: 'up', condKey: 'spike', level: 100, inner: 99, outer: 101 };
-  // follow up: TP=outer=101 (dist1), SL=inner=99 (dist1) rr=1 — fine. Construct genuine rr<1:
-  const rrUnder1 = { name: 'A_1', side: 'dn', condKey: 'spike', level: 100, inner: 101, outer: 90 };
-  // fade dn: TP=inner=101 (dist1), SL=outer=90 (dist10) → rr=0.1 → demote to B
-  const d = decide(rrUnder1, { 'A_1_dn|spike': { decision: 'fade', n: 80, expectancy: 0.30, revRate: 75 } });
-  ok('rr<floor demotes to B', d.grade === 'B' && d.warnings.some(w => w.includes('below floor')));
-  void poorRR; void followPoor;
+  // No rr-floor demotion any more (removed — expectancy is now priced directly off
+  // the realized chandelier PnL, so a poor payoff already shows up as low/negative
+  // expectancy). A+ must be reachable regardless of the inner/outer geometry.
+  const anyGeom = { name: 'A_1', side: 'dn', condKey: 'spike', level: 100, inner: 101, outer: 90 };
+  const d = decide(anyGeom, { 'A_1_dn|spike': { decision: 'fade', n: 80, expectancy: 0.30, winRate: 75 } });
+  ok('A+ reachable regardless of geometry', d.grade === 'A+' && d.warnings.length === 0);
 }
 {
-  // Fix #1: A+ must be reachable at rr≈1.0 (equidistant ladder neighbours).
-  const rrOne = { name: 'A_1.5', side: 'dn', condKey: 'spike', level: 100, inner: 98, outer: 102 };
-  const d = decide(rrOne, { 'A_1.5_dn|spike': { decision: 'fade', n: 80, expectancy: 0.20, revRate: 70 } });
-  ok('A+ reachable at rr=1.0', d.rr === 1 && d.grade === 'A+');
-}
-{
-  const d = decide(baseTouch, { 'A_1.5_dn|spike': { decision: 'fade', n: 80, expectancy: 0.20, revRate: 70 } });
+  const d = decide(baseTouch, { 'A_1.5_dn|spike': { decision: 'fade', n: 80, expectancy: 0.20, winRate: 70 } });
   ok('direction fade dn → long', d.direction === 'long');
-  ok('TP=inner SL=outer', d.tp === 96 && d.sl === 102);
+  ok('SL=outer, rung set, no fixed tp/rr', d.sl === 102 && d.rung === 2 && d.tp === undefined && d.rr === undefined);
+  ok('exit is chandelier', d.exit === 'chandelier' && d.trailFrac === 0.5);
   ok('verdict TAKE for A+', d.verdict === 'TAKE');
 }
 
@@ -110,34 +105,68 @@ console.log('[live↔offline cell parity]');
   const out = gradeLevelV2({
     ladders: [{ srcTag, low, high: low + range }],
     bars, open: 104, sigma: 1, pip: 0.0001, price: target.level, proxDist: 1,
-    tf, policy: { [offlineCell]: { decision: 'fade', n: 80, expectancy: 0.2, revRate: 70 } },
+    tf, condFields: ['approachVel'], policy: { [offlineCell]: { decision: 'fade', n: 80, expectancy: 0.2, winRate: 70 } },
   });
   ok('offline cell built', !!offlineCell, offlineCell);
   ok('live produced an entry for that cell', out.length === 1 && out[0].cell === offlineCell,
      `live=${out[0]?.cell} offline=${offlineCell}`);
-  ok('live entry carries grade + geometry',
-     out[0] && out[0].grade !== 'SKIP' && out[0].tp != null && out[0].sl != null && out[0].direction === 'short',
+  ok('live entry carries grade + trail geometry (no fixed tp)',
+     out[0] && out[0].grade !== 'SKIP' && out[0].rung != null && out[0].sl != null && out[0].tp === undefined && out[0].direction === 'short',
      `grade=${out[0]?.grade} dir=${out[0]?.direction}`);
+}
+
+// ── 3b. Default (§14) NO-CONDITION parity — condFields=[] matches conditions:[] ─
+console.log('[live↔offline parity, no condition]');
+{
+  const low = 100, range = 10, srcTag = 'M';
+  const grid = buildRangeLadder(low, range, srcTag);
+  const mid = low + range / 2;
+  const target = grid.find(g => g.fibL === -1);   // a safely-interior dn line (has neighbours both sides)
+  const prices = grid.map(g => g.level);
+  let belowP = null, aboveP = null;
+  for (const p of prices) { if (p < target.level - 1e-12) belowP = p; else if (p > target.level + 1e-12 && aboveP == null) aboveP = p; }
+  const offlineRecord = {
+    date: '2024-01-02', open: 104, realized: { close: 104 },
+    lines: [{ name: target.label, side: 'dn', level: target.level,
+              innerLvl: belowP, outerLvl: aboveP, decidedBy: 'barrier', firstTouchTime: 1, outcome: 'continued' }],
+  };
+  const offlineCell = extractTouches([offlineRecord], { conditions: [] })[0]?.cell;
+  ok('no-condition offline cell has empty condKey', offlineCell?.endsWith('|'), offlineCell);
+
+  const bars = [
+    { time: 0, open: 104, high: 104.2, low: 103.8, close: 104 },
+    { time: 60, open: 104, high: 104.1, low: target.level - 0.01, close: target.level },
+  ];
+  const out = gradeLevelV2({
+    ladders: [{ srcTag, low, high: low + range }],
+    bars, open: 104, sigma: 1, pip: 0.0001, price: target.level, proxDist: 1,
+    policy: { [offlineCell]: { decision: 'follow', n: 60, expectancy: 0.09, winRate: 45 } },   // no tf, no condFields → default []
+  });
+  ok('live (no tf/condFields) still matches the no-condition offline cell',
+     out.length === 1 && out[0].cell === offlineCell, `live=${out[0]?.cell} offline=${offlineCell}`);
 }
 
 // ── 4. formatter + freeze ────────────────────────────────────────────────────
 console.log('[formatter + freeze]');
 {
   const entry = { price: 1.2345, direction: 'long', grade: 'A+', verdict: 'TAKE',
-    expectancy: 0.2, n: 80, revRate: 70, rrRatio: 2.0, sl: 1.2300, tp: 1.2400,
-    decision: 'fade', cell: 'A_1.5_dn|spike', confidence: 0.8, tags: ['Asia Fib 1.5', 'fade'], warnings: [] };
+    expectancy: 0.2, n: 80, winRate: 70, sl: 1.2300, rung: 0.005, trailFrac: 0.5,
+    decision: 'fade', cell: 'A_1.5_dn|', confidence: 0.8, tags: ['Asia Fib 1.5', 'fade'], warnings: [] };
   const msg = formatV2Entry('EUR/USD', entry, { currentPrice: 1.2350, digits: 4, distPips: 5 });
   ok('msg has BUY + grade', msg.includes('BUY') && msg.includes('[A+]'));
-  ok('msg leads with edge', msg.includes('+0.200%') && msg.includes('n=80'));
-  ok('msg shows SL/TP/RR', msg.includes('SL 1.2300') && msg.includes('TP 1.2400') && msg.includes('1:2'));
+  ok('msg leads with edge', msg.includes('+0.200%') && msg.includes('n=80') && msg.includes('70% win'));
+  ok('msg shows initial SL + trail, no fixed TP', msg.includes('Initial SL 1.2300') && msg.includes('trail 50% of a rung') && !msg.includes('TP '));
 }
 {
-  const book = { policy: { 'A_1.5_dn|spike': { decision: 'fade', n: 80, expectancy: 0.2 } },
-                 splitDate: '2023-06-01', coverage: { fadeCells: 1, followCells: 0, skipCells: 0 } };
-  const f = freezePolicy(book, { conditions: ['approachVel'], sources: ['asia', 'monday'], minN: 50 }, '2024-01-01T00:00:00Z');
-  ok('freeze carries policy + meta', f.version === 2 && f.nCells === 1 && f.builtAt === '2024-01-01T00:00:00Z');
+  const perInstrument = { eurusd: { policy: { 'A_1.5_dn|': { decision: 'fade', n: 80, expectancy: 0.2 } },
+                                     splitDate: '2023-06-01', assetClass: 'fx' } };
+  const f = freezePolicy(perInstrument, { conditions: [], sources: ['asia', 'monday'], minN: 50 }, '2024-01-01T00:00:00Z');
+  ok('freeze carries per-instrument policy + meta', f.version === 3 && f.nCells === 1 && f.builtAt === '2024-01-01T00:00:00Z');
+  ok('freeze coverage rolls up', f.coverage.fadeCells === 1 && f.coverage.followCells === 0);
   ok('isUsablePolicy true', isUsablePolicy(f) === true);
-  ok('isUsablePolicy false on empty', isUsablePolicy({ policy: {} }) === false);
+  ok('isUsablePolicy false on empty', isUsablePolicy({ perInstrument: {} }) === false);
+  const flat = flattenPolicy(perInstrument);
+  ok('flattenPolicy prefixes by instrument', flat['eurusd::A_1.5_dn|']?.decision === 'fade');
 }
 {
   // deriveBands: bands fit the policy's own scale; A+ reachable for the top cells.
@@ -164,50 +193,114 @@ console.log('[formatter + freeze]');
   ok('top small-edge cell no longer stuck at C', topSmall.grade === 'A+' || topSmall.grade === 'A', `grade=${topSmall.grade}`);
 }
 
+// ── 4b. pnlHeld / buildPolicy(pricer) / learnAndFreeze (§12/§13/§15) ─────────
+console.log('[held-chandelier pricer + per-instrument learn]');
+{
+  // pnlHeld reads fChand (follow) / fChandFade (fade), nets the same cost pnlFor does.
+  const t = { fChand: 0.10, fChandFade: 0.05 };
+  ok('pnlHeld follow uses fChand net of cost', approx(pnlHeld(t, 'follow', { costPct: 0.012, slipPct: 0.006 }), 0.10 - 0.018));
+  ok('pnlHeld fade uses fChandFade net of cost (no slip)', approx(pnlHeld(t, 'fade', { costPct: 0.012, slipPct: 0.006 }), 0.05 - 0.012));
+  ok('pnlHeld null when trail fields missing', pnlHeld({}, 'fade', {}) === null);
+}
+{
+  // buildPolicy's pricer is pluggable — same touches, different exit model, can
+  // pick a DIFFERENT winning decision (this is the whole §12 finding: the fixed
+  // barrier and the chandelier trail don't have to agree on fade vs follow).
+  const mkTouch = (date, reverted, fChand, fChandFade) => ({
+    date, cell: 'A_1_dn|', reverted,
+    level: 100, innerLvl: 102, outerLvl: 98, decidedBy: 'barrier', closePx: 100, open: 100,
+    fChand, fChandFade, cost: 0.01, slip: 0.005,
+  });
+  // Alternating reverted/continued nets the FIXED barrier to ~0 (minus cost) →
+  // skip; but the trail fields are consistently a strong fade → the chandelier
+  // pricer finds a real edge the fixed barrier misses entirely (the §12 point:
+  // the two exit models can disagree on whether there's ANY edge, not just which
+  // side of it).
+  const touches = [];
+  for (let i = 0; i < 60; i++) touches.push(mkTouch(`2024-01-${String((i % 28) + 1).padStart(2, '0')}`, i % 2 === 0, -0.30, 0.20));
+  const fixedPolicy = buildPolicy(touches, { minN: 50, pricer: pnlFor });
+  const heldPolicy  = buildPolicy(touches, { minN: 50, pricer: pnlHeld });
+  ok('fixed-barrier pricer finds no edge here (alternating win/loss nets ~0)', fixedPolicy['A_1_dn|'].decision === 'skip');
+  ok('held-chandelier pricer finds the consistent fade edge the barrier misses',
+     heldPolicy['A_1_dn|'].decision === 'fade' && heldPolicy['A_1_dn|'].expectancy > 0);
+  ok('held policy exposes winRate (decision-aware)', heldPolicy['A_1_dn|'].winRate === 100);
+}
+{
+  // learnAndFreeze: per-instrument, no pooling — one instrument's touches never
+  // leak into another's policy, unlike the old cross-pair pooled book.
+  // 100 touches spread over ~90 days so the 60% IS split alone clears minN=50.
+  const eurusdTouches = [];
+  for (let i = 0; i < 100; i++) {
+    const d = new Date(Date.UTC(2024, 0, 1 + i));
+    eurusdTouches.push({
+      date: d.toISOString().slice(0, 10), cell: 'A_1_dn|',
+      reverted: true, level: 100, innerLvl: 102, outerLvl: 98, decidedBy: 'barrier', closePx: 100, open: 100,
+      fChand: -0.30, fChandFade: 0.20,
+    });
+  }
+  const getTouches = async (pair) => (pair === 'eurusd' ? eurusdTouches : []);   // gbpusd has none
+  const { frozen, perInstrument } = await learnAndFreeze(['eurusd', 'gbpusd'], getTouches, { minN: 50, splitFrac: 0.6 }, '2024-06-01T00:00:00Z');
+  ok('only the instrument with tradeable touches survives', Object.keys(perInstrument).length === 1 && !!perInstrument.eurusd);
+  ok('frozen is per-instrument (not pooled)', frozen.perInstrument.eurusd.policy['A_1_dn|'].decision === 'fade' && frozen.perInstrument.gbpusd === undefined);
+  ok('frozen version bumped to 3', frozen.version === 3 && frozen.conditions.length === 0);
+}
+
 // ── 5. entryLedgerV2 (daily-learning loop) ───────────────────────────────────
 console.log('[entryLedgerV2]');
 {
-  const mk = (cell, price, dir, sl, tp, grade) => ({ cell, price, direction: dir, decision: 'fade', grade, expectancy: 0.2, n: 80, sl, tp });
+  // sl = initial protective stop (one rung away, same as before); rung/trailFrac
+  // drive the chandelier walk — no more fixed tp.
+  const mk = (cell, price, dir, sl, rung, grade) => ({ cell, price, direction: dir, decision: 'fade', grade, expectancy: 0.2, n: 80, sl, rung, trailFrac: 0.5 });
   const t0 = 1_000_000_000_000;
   // record + dedup
-  let L = recordEntries([], 'EUR/USD', [mk('A_1.5_dn|spike', 1.10, 'long', 1.09, 1.11, 'A+')], t0);
+  let L = recordEntries([], 'EUR/USD', [mk('A_1.5_dn|', 1.10, 'long', 1.095, 0.005, 'A+')], t0);
   ok('records a signal', L.length === 1);
-  L = recordEntries(L, 'EUR/USD', [mk('A_1.5_dn|spike', 1.10, 'long', 1.09, 1.11, 'A+')], t0 + 1000);
+  L = recordEntries(L, 'EUR/USD', [mk('A_1.5_dn|', 1.10, 'long', 1.095, 0.005, 'A+')], t0 + 1000);
   ok('dedups standing level', L.length === 1);
-  L = recordEntries(L, 'EUR/USD', [mk('A_1_up|grind', 1.12, 'short', 1.13, 1.11, 'B')], t0 + 2000);
+  L = recordEntries(L, 'EUR/USD', [mk('A_1_up|', 1.12, 'short', 1.13, 0.01, 'B')], t0 + 2000);
   ok('records a second distinct cell', L.length === 2);
 
-  // resolve: long@1.10 fills then TP@1.11 → win
+  // resolve: long@1.10 fills, trails up favourably, then the chandelier stop is
+  // hit ABOVE entry → a win (not a fixed TP — the trail captured a runner).
   const bars = [
-    { time: (t0/1000) + 60, open: 1.105, high: 1.106, low: 1.099, close: 1.10 },  // touches 1.10 → fill
-    { time: (t0/1000) + 120, open: 1.10, high: 1.111, low: 1.10, close: 1.111 },  // hits TP 1.11
+    { time: (t0/1000) + 60,  open: 1.100, high: 1.101, low: 1.099, close: 1.100 },  // touches 1.10 → fill
+    { time: (t0/1000) + 120, open: 1.100, high: 1.108, low: 1.100, close: 1.108 },  // peak 1.108
+    { time: (t0/1000) + 180, open: 1.108, high: 1.108, low: 1.104, close: 1.105 },  // pulls back, trail stops it out (still above entry)
   ];
   const now = t0 + 10 * 60_000;
   let R = resolvePair(L, 'EUR/USD', bars, now);
-  const longRec = R.find(r => r.cell === 'A_1.5_dn|spike');
-  ok('long fills + wins at TP', longRec.outcome === 'win' && longRec.realizedPct > 0, `outcome=${longRec.outcome}`);
+  const longRec = R.find(r => r.cell === 'A_1.5_dn|');
+  ok('long fills + trails to a win above entry', longRec.outcome === 'win' && longRec.realizedPct > 0, `outcome=${longRec.outcome} pct=${longRec.realizedPct}`);
 
-  // short@1.12 fills then SL@1.13 → loss
+  // short@1.12 fills then price runs straight through the initial stop → loss
+  // (no favourable excursion first, so the trail never tightens).
   const bars2 = [
-    { time: (t0/1000) + 60, open: 1.121, high: 1.121, low: 1.119, close: 1.12 }, // touches 1.12 → fill
-    { time: (t0/1000) + 120, open: 1.12, high: 1.131, low: 1.12, close: 1.13 },  // hits SL 1.13
+    { time: (t0/1000) + 60,  open: 1.121, high: 1.121, low: 1.119, close: 1.120 }, // touches 1.12 → fill
+    { time: (t0/1000) + 120, open: 1.120, high: 1.135, low: 1.120, close: 1.130 }, // runs straight up through the stop
   ];
   R = resolvePair(R, 'EUR/USD', bars2, now);
-  const shortRec = R.find(r => r.cell === 'A_1_up|grind');
-  ok('short fills + loses at SL', shortRec.outcome === 'loss' && shortRec.realizedPct < 0, `outcome=${shortRec.outcome}`);
+  const shortRec = R.find(r => r.cell === 'A_1_up|');
+  ok('short fills + stopped at initial risk → loss', shortRec.outcome === 'loss' && shortRec.realizedPct < 0, `outcome=${shortRec.outcome}`);
 
-  // never-touched → expired after maxAge
-  let E = recordEntries([], 'GBP/USD', [mk('A_2_dn|spike', 1.30, 'long', 1.29, 1.31, 'A')], t0);
+  // never-touched → expired after maxAge (unaffected by the trail geometry —
+  // it never even fills).
+  let E = recordEntries([], 'GBP/USD', [mk('A_2_dn|', 1.30, 'long', 1.295, 0.005, 'A')], t0);
   E = resolvePair(E, 'GBP/USD', [{ time: (t0/1000) + 60, open: 1.32, high: 1.33, low: 1.315, close: 1.32 }], t0 + 4 * 86400_000);
   ok('untouched expires', E[0].outcome === 'expired');
+
+  // a record missing trail geometry (pre-chandelier ledger entry) can't be
+  // resolved honestly — it just waits to expire rather than guessing.
+  let G = [{ id: 'x', sym: 'AUD/USD', cell: 'A_1_dn|', price: 0.65, direction: 'long', recordedAt: t0, filledAt: null, resolvedAt: null, outcome: null, realizedPct: null }];
+  G = resolvePair(G, 'AUD/USD', [{ time: (t0/1000) + 60, open: 0.651, high: 0.652, low: 0.649, close: 0.650 }], now);
+  ok('missing rung/sl stays open (not resolved) before maxAge', G[0].outcome === null);
 
   // stats + refit
   const st = ledgerStats(R);
   ok('stats count decided', st.decided === 2 && st.byGrade['A+']?.wins === 1 && st.byGrade['B']?.losses === 1);
   const many = [];
-  for (let i = 0; i < 30; i++) many.push({ cell: 'A_1.5_dn|spike', outcome: i % 3 === 0 ? 'loss' : 'win', realizedPct: i % 3 === 0 ? -0.1 : 0.2, decision: 'fade' });
+  for (let i = 0; i < 30; i++) many.push({ cell: 'A_1.5_dn|', outcome: i % 3 === 0 ? 'loss' : 'win', realizedPct: i % 3 === 0 ? -0.1 : 0.2, decision: 'fade' });
   const cand = refitFromLedger(many, { minN: 30 });
-  ok('refit produces a candidate cell', cand['A_1.5_dn|spike']?.n === 30 && cand['A_1.5_dn|spike'].source === 'ledger-realized');
+  ok('refit produces a candidate cell', cand['A_1.5_dn|']?.n === 30 && cand['A_1.5_dn|'].source === 'ledger-realized');
 }
 
 // ── 6. alertV2Core (proximity + grade + cooldown selection) ──────────────────

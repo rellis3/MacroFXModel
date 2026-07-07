@@ -54,12 +54,11 @@ import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './js/rangeLineAnalyser.js';
 import { pipSize as _pipSize, instrument } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
-import { freezePolicy as freezePolicyV2, deriveBands as deriveBandsV2 } from './js/levelsV2Learn.js';
+import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
-import { buildPolicy as buildPolicyV2, DEFAULT_SLIP_PCT as V2_DEFAULT_SLIP } from './js/perLineStrategy.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
@@ -8291,9 +8290,12 @@ const lv2Jobs = new Map();
 // `policy_v2_status` so the page shows it across refreshes/restarts, decoupled from
 // the in-memory jobId. Only one learn runs at a time (guarded).
 const V2_TOUCH_TTL = 7 * 86400_000;     // reuse cached touches for a week
+// Keep the trail fields (rung/fChand/fChandFade) — the §13 held-chandelier pricer
+// (perLineStrategy.pnlHeld) needs them; older cached touches without them just
+// price as null and get filtered out (buildPolicy's pricer-null guard).
 const _v2TrimTouch = t => ({ date: t.date, name: t.name, line: t.line, side: t.side, reverted: t.reverted,
-  level: t.level, innerLvl: t.innerLvl, outerLvl: t.outerLvl, decidedBy: t.decidedBy, closePx: t.closePx, open: t.open, cell: t.cell });
-const _v2Byd = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  level: t.level, innerLvl: t.innerLvl, outerLvl: t.outerLvl, rung: t.rung, decidedBy: t.decidedBy,
+  closePx: t.closePx, open: t.open, cell: t.cell, fChand: t.fChand, fChandFade: t.fChandFade });
 let _v2LearnRunning = false;
 
 async function _setLearnStatus(s) { try { await kv.put('policy_v2_status', JSON.stringify({ ...s, at: Date.now() })); } catch {} }
@@ -8306,7 +8308,10 @@ app.post('/api/levels-v2/learn', async (req, res) => {
   if (_v2LearnRunning) return res.json({ ok: true, jobId: 'in-progress', already: true });   // idempotent — don't stack heavy runs
   const opts = {
     sources:    Array.isArray(b.sources) ? b.sources : ['asia', 'monday'],
-    conditions: Array.isArray(b.conditions) ? b.conditions : ['approachVel'],
+    // §14 (RANGE_EXTENSION_GUIDE.md): approachVel + five other live touch-reads were
+    // tested and ALL lost to the unconditioned cell on the honest single-pair unit —
+    // default to no condition, not approachVel.
+    conditions: Array.isArray(b.conditions) ? b.conditions : [],
     minN: parseInt(b.minN) || 50, splitFrac: parseFloat(b.splitFrac) || 0.6,
     marginPct: parseFloat(b.marginPct) || 0, minLookback: parseInt(b.minLookback) || 20,
   };
@@ -8320,42 +8325,39 @@ app.post('/api/levels-v2/learn', async (req, res) => {
 
   (async () => {
     try {
-      const touchesByPair = {};
       let i = 0, fromCache = 0;
-      for (const p of pairs) {
+      // Per-instrument, resumable touch loader (injected into learnAndFreeze) — each
+      // pair learns on its OWN history (RANGE_EXTENSION_GUIDE.md §15, the honest
+      // unit), no cross-pair pooling. Cache/resume behaviour unchanged from before.
+      const getTouches = async (p, ac) => {
         const prog = { state: 'running', startedAt, currentPair: p, pairsDone: i, pairsTotal: pairs.length, fromCache };
         lv2Jobs.set(jobId, { status: 'running', ...prog }); await _setLearnStatus(prog);
-        const ac = _assetClassFor(p);
         let touches = null;
         if (!force) {
           try { const raw = await kv.get(`v2_touch_${p}`); const o = raw ? JSON.parse(raw) : null;
             if (o && o.sig === sig && Date.now() - o.ts < V2_TOUCH_TTL && Array.isArray(o.touches)) { touches = o.touches; fromCache++; } } catch {}
         }
         if (!touches) {
-          let packed = await loadM1ForPair(p, BT_M1_DIR);
+          const packed = await loadM1ForPair(p, BT_M1_DIR);
           if (packed && packed.n) { touches = touchesForPair(packed, ac, opts).map(_v2TrimTouch); await kv.put(`v2_touch_${p}`, JSON.stringify({ sig, ts: Date.now(), touches })); }
-          packed = null;
-        }
-        if (touches?.length) {
-          const cost = costForPair(p, ac), slip = V2_DEFAULT_SLIP[ac] ?? V2_DEFAULT_SLIP.fx;
-          for (const t of touches) { t.cost = cost; t.slip = slip; }   // price pooled trades at the pair's real friction
-          touchesByPair[p] = touches;
         }
         await new Promise(r => setImmediate(r));
         i++;
+        return touches;
+      };
+      const { frozen, perInstrument } = await learnAndFreezeV2(
+        pairs, getTouches,
+        { ...opts, assetClassFor: _assetClassFor, pipFor: (k) => { try { return _pipSize(k) || null; } catch { return null; } } },
+        new Date().toISOString(),
+      );
+      if (!Object.keys(perInstrument).length) {
+        const e = { state: 'error', error: 'No tradeable instrument (no M1 data, or every policy skipped)', startedAt };
+        lv2Jobs.set(jobId, { status: 'error', ...e }); await _setLearnStatus(e); return;
       }
-      const all = Object.values(touchesByPair).flat().sort(_v2Byd);
-      if (!all.length) { const e = { state: 'error', error: 'No M1 data', startedAt }; lv2Jobs.set(jobId, { status: 'error', ...e }); await _setLearnStatus(e); return; }
 
-      // Light freeze: pooled-IS policy via buildPolicy (no MC/bootstrap) + coverage.
-      const splitDate = all[Math.floor(all.length * opts.splitFrac)]?.date ?? null;
-      const policy = buildPolicyV2(all.filter(t => t.date < splitDate), { minN: opts.minN, marginPct: opts.marginPct });
-      const coverage = { fadeCells: 0, followCells: 0, skipCells: 0 };
-      for (const c of Object.values(policy)) coverage[c.decision === 'fade' ? 'fadeCells' : c.decision === 'follow' ? 'followCells' : 'skipCells']++;
-      const frozen = freezePolicyV2({ policy, splitDate, coverage }, opts, new Date().toISOString());
       await kv.put('policy_v2', JSON.stringify(frozen));
       _setV2PolicyCache(frozen);
-      const done = { state: 'done', startedAt, builtAt: frozen.builtAt, nCells: frozen.nCells, coverage: frozen.coverage, splitDate: frozen.splitDate, fromCache, pairs: Object.keys(touchesByPair).length };
+      const done = { state: 'done', startedAt, builtAt: frozen.builtAt, nCells: frozen.nCells, coverage: frozen.coverage, fromCache, pairs: Object.keys(perInstrument).length };
       lv2Jobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...done } });
       await _setLearnStatus(done);
     } catch (e) {
@@ -8408,8 +8410,8 @@ app.get('/api/levels-v2/entries', async (req, res) => {
     }
     // Recompute bands live from the policy so the legend matches what the live
     // grader now uses (band-calibration fixes apply without a re-learn).
-    const liveBands = policy?.policy ? (deriveBandsV2(policy.policy) ?? policy.bands ?? null) : (policy?.bands ?? null);
-    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, splitDate: policy.splitDate, bands: liveBands } : null, entries: out });
+    const liveBands = policy?.perInstrument ? (deriveBandsV2(flattenPolicyV2(policy.perInstrument)) ?? policy.bands ?? null) : (policy?.bands ?? null);
+    res.json({ ok: true, policy: policy ? { builtAt: policy.builtAt, nCells: policy.nCells, coverage: policy.coverage, instruments: policy.perInstrument ? Object.keys(policy.perInstrument).length : null, bands: liveBands } : null, entries: out });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -8427,7 +8429,7 @@ app.get('/api/levels-v2/ledger', async (req, res) => {
       const n = Math.min(parseInt(req.query.records) || 200, 1000);
       out.records = ledger.slice(-n).reverse().map(r => ({
         sym: r.sym, cell: r.cell, direction: r.direction, decision: r.decision, grade: r.grade,
-        price: r.price, sl: r.sl, tp: r.tp, n: r.n, policyExpectancy: r.policyExpectancy,
+        price: r.price, sl: r.sl, rung: r.rung, trailFrac: r.trailFrac, n: r.n, policyExpectancy: r.policyExpectancy,
         recordedAt: r.recordedAt, filledAt: r.filledAt, resolvedAt: r.resolvedAt,
         outcome: r.outcome, realizedPct: r.realizedPct,
       }));

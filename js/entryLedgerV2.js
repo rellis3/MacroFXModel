@@ -17,6 +17,8 @@
  * Tested on synthetic bars in js/telegramV2.test.mjs.
  */
 
+import { walkChandelierExit } from './rangeLineAnalyser.js';
+
 export const DEFAULT_LEDGER_OPTS = {
   maxRecords: 8000,           // cap the ledger; oldest resolved drop first
   maxAgeMs:   3 * 86400_000,  // unfilled/unresolved after 3 days → expired
@@ -40,7 +42,7 @@ export function recordEntries(ledger, sym, entries, ts, opts = {}) {
     out.push({
       id: `${k}|${ts}`, sym, cell: e.cell, price: e.price, direction: e.direction,
       decision: e.decision, grade: e.grade, side: e.cell.includes('_up|') ? 'up' : 'dn',
-      policyExpectancy: e.expectancy, n: e.n, sl: e.sl, tp: e.tp,
+      policyExpectancy: e.expectancy, n: e.n, sl: e.sl, rung: e.rung, trailFrac: e.trailFrac,
       recordedAt: ts, filledAt: null, resolvedAt: null, outcome: null, realizedPct: null,
     });
   }
@@ -54,7 +56,9 @@ export function recordEntries(ledger, sym, entries, ts, opts = {}) {
 
 // ── 2) Resolve one pair's open records from its M1 bars ──────────────────────
 // bars = oldest-first [{time(sec),open,high,low,close}]. nowTs = epoch ms.
-// Limit-fill: the level must be TOUCHED after recordedAt to count; then TP/SL.
+// Limit-fill: the level must be TOUCHED after recordedAt to count; then the SAME
+// held-position chandelier trail the live grade is priced on (RANGE_EXTENSION_
+// GUIDE.md §13 — reuses rangeLineAnalyser.walkChandelierExit, never re-derived).
 export function resolvePair(ledger, sym, bars, nowTs, opts = {}) {
   const o = { ...DEFAULT_LEDGER_OPTS, ...opts };
   if (!bars?.length) return ledger;
@@ -71,19 +75,31 @@ export function resolvePair(ledger, sym, bars, nowTs, opts = {}) {
       if (nowTs - rec.recordedAt > o.maxAgeMs) { rec.outcome = 'expired'; rec.resolvedAt = nowTs; }
       return rec;
     }
-    // Triple-barrier from the fill bar onward. Same-bar TP+SL → conservative loss.
-    const isLong = rec.direction === 'long';
-    for (let i = fillIdx; i < bars.length; i++) {
-      const b = bars[i];
-      const hitTp = isLong ? b.high >= rec.tp : b.low  <= rec.tp;
-      const hitSl = isLong ? b.low  <= rec.sl : b.high >= rec.sl;
-      if (hitSl) { rec.outcome = 'loss'; rec.resolvedAt = b.time * 1000; break; }   // conservative: SL checked first
-      if (hitTp) { rec.outcome = 'win';  rec.resolvedAt = b.time * 1000; break; }
+    // A record from before the trail-geometry fields shipped can't be resolved
+    // honestly (no rung/sl to walk) — let it expire rather than guess.
+    if (rec.rung == null || rec.sl == null) {
+      if (nowTs - rec.recordedAt > o.maxAgeMs) { rec.outcome = 'expired'; rec.resolvedAt = nowTs; }
+      return rec;
     }
-    if (rec.outcome == null && nowTs - rec.recordedAt > o.maxAgeMs) { rec.outcome = 'timeout'; rec.resolvedAt = nowTs; }
-    if (rec.outcome === 'win')  rec.realizedPct = +(Math.abs(rec.tp - rec.price) / rec.price * 100 - o.costPct).toFixed(5);
-    if (rec.outcome === 'loss') rec.realizedPct = +(-Math.abs(rec.price - rec.sl) / rec.price * 100 - o.costPct).toFixed(5);
-    if (rec.outcome === 'timeout') rec.realizedPct = +(-o.costPct).toFixed(5);   // closed flat at cost
+    const isLong = rec.direction === 'long';
+    const trailW = rec.rung * (rec.trailFrac ?? 0.5);
+    const { cExit, cExitIdx } = walkChandelierExit(bars, fillIdx, bars.length, rec.price, isLong, rec.sl, rec.rung, trailW);
+    if (cExit != null) {
+      const gross = (isLong ? cExit - rec.price : rec.price - cExit) / rec.price * 100;
+      rec.outcome = gross > 0 ? 'win' : 'loss';
+      rec.resolvedAt = bars[cExitIdx]?.time != null ? bars[cExitIdx].time * 1000 : nowTs;
+      rec.realizedPct = +(gross - o.costPct).toFixed(5);
+      return rec;
+    }
+    // Still open (the trail hasn't been stopped out within these bars yet) — only
+    // force-close on timeout, marking to the CURRENT price (an honest live mark),
+    // not a fixed barrier that a trailing exit never had.
+    if (nowTs - rec.recordedAt > o.maxAgeMs) {
+      const cur = bars[bars.length - 1].close;
+      const gross = (isLong ? cur - rec.price : rec.price - cur) / rec.price * 100;
+      rec.outcome = 'timeout'; rec.resolvedAt = nowTs;
+      rec.realizedPct = +(gross - o.costPct).toFixed(5);
+    }
     return rec;
   });
 }

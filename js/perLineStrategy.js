@@ -81,7 +81,7 @@ export function extractTouches(records, { conditions = ['approachVel'], dtThresh
         date: w.date, open: w.open, line: `${ln.name}_${ln.side}`, name: ln.name, side: ln.side,
         dayType, signedT: w.signedT ?? null, dtLabel: w.dtLabel ?? null,
         reverted: ln.outcome === 'reverted', fillTime: ln.firstTouchTime ?? null,
-        level: ln.level, innerLvl: ln.innerLvl, outerLvl: ln.outerLvl,
+        level: ln.level, innerLvl: ln.innerLvl, outerLvl: ln.outerLvl, rung: ln.rung ?? null,
         decidedBy: ln.decidedBy ?? 'barrier',           // 'barrier' (TP/SL hit) or 'close' (mark-to-close)
         closePx: w.realized?.close ?? w.open,            // for honest mark-to-close of undecided outcomes
         cell: `${ln.name}_${ln.side}|${condKey}`,
@@ -132,13 +132,36 @@ export function pnlFor(t, decision, { costPct = 0.012, slipPct = 0.006 } = {}) {
   return +(gross - cost).toFixed(5);
 }
 
+// ── 2b) Price one touch under the HELD-POSITION CHANDELIER trail ─────────────
+// RANGE_EXTENSION_GUIDE.md §12/§13: a fixed-barrier ("zone-walk") exit LOSES to a
+// held position with a chandelier trail (Sharpe 3.16 vs 6.11 @2x cost, eurusd
+// OOS) — the trail is the proven exit, not the adjacent ladder line. Reuses the
+// SAME per-touch trail PnL (`fChand`/`fChandFade`, gross % of price) the §13 book
+// and `runHeldPosition` already compute in `rangeLineAnalyser.analyseRangeWindow`
+// — never re-simulate the trail here. Returns null (not prunable via pnlFor's
+// 0-default) when a record predates the trail fields, so callers can exclude it.
+export function pnlHeld(t, decision, { costPct = 0.012, slipPct = 0.006 } = {}) {
+  const gross = decision === 'fade' ? t.fChandFade : t.fChand;
+  if (gross == null) return null;
+  const cost = costPct + (decision === 'follow' ? slipPct : 0);
+  return +(gross - cost).toFixed(5);
+}
+
 // ── 3) Learn the fade/follow/skip policy from IS touches ─────────────────────
 // Keep a cell ONLY if its in-sample AFTER-COST expectancy (with the real TP/SL +
 // honest mark-to-close) clears a positive margin — being right > 50% is NOT
 // enough if the wins are smaller than the losses or thinner than the spread.
 // Picks whichever of fade/follow is the more profitable side. Per-touch cost is
 // taken from t.cost/t.slip (stamped by runPerLine) with a fallback default.
-export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012, slipPct = 0.006 } = {}) {
+//
+// `pricer` (default `pnlFor`, the fixed triple-barrier) is the ONE place the exit
+// model plugs in — pass `pnlHeld` to gate/price cells on the proven §13 chandelier
+// trail instead (Lego Principle 2: one primitive, parameterised, not a second
+// buildPolicy). `winRate` is the decision-aware win% under whichever pricer was
+// used (unlike `revRate`, which is direction-only and NOT decision-aware — a
+// 'follow' cell's revRate is its miss rate, not its win rate; kept for
+// backward-compat display, prefer `winRate` for a "how often does this pay" read).
+export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012, slipPct = 0.006, pricer = pnlFor } = {}) {
   const cells = {};
   for (const t of touches) (cells[t.cell] ??= []).push(t);
   const mean = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
@@ -147,14 +170,19 @@ export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012
     const n = ts.length;
     if (n < minN) { policy[cell] = { decision: 'skip', n, reason: 'lowN' }; continue; }
     const cost = t => ({ costPct: t.cost ?? costPct, slipPct: t.slip ?? slipPct });
-    const fadeExp   = mean(ts.map(t => pnlFor(t, 'fade',   cost(t))));
-    const followExp = mean(ts.map(t => pnlFor(t, 'follow', cost(t))));
+    const fadePnl   = ts.map(t => pricer(t, 'fade',   cost(t))).filter(x => x != null);
+    const followPnl = ts.map(t => pricer(t, 'follow', cost(t))).filter(x => x != null);
+    if (fadePnl.length < minN && followPnl.length < minN) { policy[cell] = { decision: 'skip', n, reason: 'lowN' }; continue; }
+    const fadeExp   = mean(fadePnl);
+    const followExp = mean(followPnl);
     const revRate   = ts.filter(t => t.reverted).length / n;
     const best = fadeExp >= followExp ? 'fade' : 'follow';
     const bestExp = Math.max(fadeExp, followExp);
+    const bestPnl = best === 'fade' ? fadePnl : followPnl;
+    const winRate = bestPnl.length ? bestPnl.filter(x => x > 0).length / bestPnl.length : 0;
     const decision = bestExp > marginPct ? best : 'skip';   // must PAY after costs, not just be directional
     policy[cell] = {
-      decision, n, revRate: +(revRate * 100).toFixed(1),
+      decision, n, revRate: +(revRate * 100).toFixed(1), winRate: +(winRate * 100).toFixed(1),
       z: +((revRate - 0.5) / Math.sqrt(0.25 / n)).toFixed(2),
       fadeExp: +fadeExp.toFixed(4), followExp: +followExp.toFixed(4), expectancy: +bestExp.toFixed(4),
       ...(decision === 'skip' ? { reason: 'belowMargin' } : {}),   // edge < cost (vs 'lowN' above)

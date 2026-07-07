@@ -27,7 +27,7 @@ import { volSigmaSeries } from './js/forecastCore.js';
 import { createTouchFeatures } from './js/touchFeatures.js';
 import { gradeLevelV2 } from './js/gradeLevelV2.js';
 import { buildRangeLadder } from './js/rangeLineAnalyser.js';
-import { isUsablePolicy, deriveBands } from './js/levelsV2Learn.js';
+import { isUsablePolicy, deriveBands, flattenPolicy } from './js/levelsV2Learn.js';
 import { recordEntries, resolvePair } from './js/entryLedgerV2.js';
 import { selectAlerts, pruneCooldowns, DEFAULT_V2_ALERT_CFG, GRADE_RANK } from './js/alertV2Core.js';
 import { formatV2Entry } from './js/alertFormatterV2.js';
@@ -49,6 +49,13 @@ async function sendTelegramV2(token, chatId, html) {
 function pipOf(sym) { try { return pipSizeOf(sym); } catch { return sym.includes('JPY') ? 0.01 : sym.includes('XAU') ? 0.1 : 0.0001; } }
 function digitsOf(sym) { return sym.includes('JPY') ? 3 : sym.includes('XAU') ? 2 : sym === 'NAS100_USD' ? 1 : 5; }
 function assetClassFor(sym) { return sym.includes('XAU') || sym.includes('GOLD') ? 'commodity' : sym === 'NAS100_USD' ? 'index' : 'fx'; }
+// The learn universe (server.js ASIA_INSTRUMENTS) keys FX pairs lowercase/no-slash
+// ('EUR/USD' → 'eurusd') and gold as 'gold' (not 'xauusd') — match that convention
+// so refreshPairV2 looks up the SAME per-instrument policy the learner froze.
+// Symbols outside that universe (indices etc.) correctly find no policy — v2 was
+// never learned on them; §15's index validation is the LIVE range-line bot's own
+// separate universe (RL_BOT_INDEX), not telegram-v2's.
+function instrKeyFor(sym) { return (sym.includes('XAU') || sym.includes('GOLD')) ? 'gold' : sym.replace('/', '').toLowerCase(); }
 
 // ── OANDA fetch (candidate shared brick #16; kept local for now) ──────────────
 function oandaBase() {
@@ -134,6 +141,12 @@ export function _setPolicyCache(frozen) { _policyCache = frozen; _policyAt = Dat
 export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
   const t0 = Date.now();
   const pip = pipOf(sym), digits = digitsOf(sym), ac = assetClassFor(sym);
+  // Per-instrument policy (RANGE_EXTENSION_GUIDE.md §15 — no cross-pair pooling).
+  // A symbol outside the learned universe (e.g. an index telegram-v2 never learned)
+  // correctly finds nothing here — that's honest, not a bug.
+  const instrKey = instrKeyFor(sym);
+  const instrRec = frozen.perInstrument?.[instrKey];
+  if (!instrRec) return { n: 0, reason: `no-policy(${instrKey})` };
   try {
     // M1 for the approach path (matches the offline learner's M1 bars so the
     // approachVel bucket — velWin=15 → 15 min — is comparable to the learned cell;
@@ -186,9 +199,12 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
 
     const graded = gradeLevelV2({
       ladders, bars: sessionBars, open, sigma, pip, price, proxDist, tf,
-      policy: frozen.policy, condFields: frozen.conditions ?? ['approachVel'],
+      policy: instrRec.policy, condFields: frozen.conditions ?? [],
       includeSkips: true,
-      opts: { bands: deriveBands(frozen.policy) ?? frozen.bands ?? opts.bands },   // recomputed live from the policy so band-calibration fixes apply without a re-learn
+      // Recomputed live from the FULL cross-instrument pool (same flattening the
+      // freeze used) so band-calibration fixes apply without a re-learn, and a
+      // thin single-instrument policy still gets a well-fit percentile scale.
+      opts: { bands: deriveBands(flattenPolicy(frozen.perInstrument)) ?? frozen.bands ?? opts.bands },
     });
     // gradeLevelV2 returns {entries,skips} with includeSkips, but [] on its early
     // guard — tolerate both shapes.
@@ -198,7 +214,7 @@ export async function refreshPairV2(sym, frozen, opts = {}, ledgerRef = null) {
     const payload = entries.map(e => ({
       ...e, price: +e.price.toFixed(digits),
       sl: e.sl != null ? +e.sl.toFixed(digits) : null,
-      tp: e.tp != null ? +e.tp.toFixed(digits) : null,
+      rung: e.rung != null ? +e.rung.toFixed(digits) : null,
     }));
 
     // Discarded near-price lines (policy said skip / unseen), for the page's

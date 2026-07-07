@@ -227,7 +227,7 @@ function gradeLegend(bands) {
       <table style="font-size:12px;margin-top:8px;"><thead><tr><th>Grade</th><th>Verdict</th><th>Rule</th><th>Meaning</th></tr></thead><tbody>
         ${rows.map(([g, v, cls, rule, mean]) => `<tr><td class="${cls}">${g}</td><td class="mono">${v}</td><td class="mono">${rule}</td><td class="muted">${mean}</td></tr>`).join('')}
       </tbody></table>
-      <div class="muted" style="margin-top:6px;">Alerts fire at <b>Min grade</b> and above (⚙ Alerts). Edge is expectancy after spread+slippage; exits are the adjacent fib lines (R:R ≈ 1:1), so a small per-trade % compounds over many touches.</div>
+      <div class="muted" style="margin-top:6px;">Alerts fire at <b>Min grade</b> and above (⚙ Alerts). Edge is expectancy after spread+slippage, priced on a HELD position with a chandelier trail (risk to the initial SL, then the stop ratchets in from the peak) — not a fixed target — so a small per-trade % compounds over many touches.</div>
     </div>`;
 }
 function renderPolicy(p) {
@@ -240,7 +240,7 @@ function renderPolicy(p) {
       <span class="kpi"><b style="color:var(--blu)">${cov.followCells ?? '—'}</b><span>follow</span></span>
       <span class="kpi"><b style="color:var(--text2)">${cov.skipCells ?? '—'}</b><span>skip</span></span>
     </div>
-    <div class="muted mono" style="margin-top:8px;">split ${p.splitDate || '?'} · built ${p.builtAt || '?'}</div>
+    <div class="muted mono" style="margin-top:8px;">${p.instruments != null ? `${p.instruments} instruments (each its own split)` : `split ${p.splitDate || '?'}`} · built ${p.builtAt || '?'}</div>
     ${gradeLegend(p.bands)}`;
 }
 
@@ -253,17 +253,24 @@ function freshness(entries) {
   $('updated').textContent = `· entries ${agoMin <= 0 ? 'just now' : agoMin + 'm ago'} (server ~30m)`;
 }
 
+// No fixed TP any more (chandelier trail, RANGE_EXTENSION_GUIDE §13) — show the
+// initial SL + the trail's give-back instead of a "SL / TP" pair.
+function trailTxt(e) {
+  if (e?.sl == null) return '';
+  const pct = e.trailFrac != null ? Math.round(e.trailFrac * 100) : 50;
+  return `SL ${e.sl} · trail ${pct}%`;
+}
 function zoneRow(sym, e, cur) {
   const dp = distPips(e.price, cur, sym);
-  return `<tr class="zrow" data-sym="${sym}" data-price="${e.price}" data-sl="${e.sl}" data-tp="${e.tp}" data-cell="${e.cell}" data-dir="${e.direction}">
+  return `<tr class="zrow" data-sym="${sym}" data-price="${e.price}" data-sl="${e.sl}" data-rung="${e.rung}" data-trailfrac="${e.trailFrac}" data-cell="${e.cell}" data-dir="${e.direction}">
     <td class="${e.direction}">${e.direction === 'long' ? '↑' : '↓'}</td>
     <td class="mono">${e.price}</td>
     <td class="mono">${dp == null ? '' : dp + 'p'}</td>
     <td class="${gradeCls(e.grade)}">${e.grade}</td>
     <td class="mono">+${Number(e.expectancy).toFixed(3)}%</td>
     <td>${e.decision}</td>
-    <td class="mono">${e.sl} / ${e.tp}</td>
-    <td class="cell mono" title="n=${e.n} · R:R 1:${e.rrRatio}">${e.n}n</td>
+    <td class="mono">${trailTxt(e)}</td>
+    <td class="cell mono" title="n=${e.n}${e.winRate != null ? ` · ${e.winRate}% win` : ''}">${e.n}n</td>
   </tr>`;
 }
 
@@ -299,12 +306,12 @@ function renderCards(entries) {
     ].sort((a, b) => a.d - b.d).map(x => x.html).join('');
     const nSkip = (blk?.skips || []).length;
     const head = near
-      ? `<div class="closest" data-sym="${sym}" data-price="${near.price}" data-sl="${near.sl}" data-tp="${near.tp}" data-cell="${near.cell}" data-dir="${near.direction}">
+      ? `<div class="closest" data-sym="${sym}" data-price="${near.price}" data-sl="${near.sl}" data-rung="${near.rung}" data-trailfrac="${near.trailFrac}" data-cell="${near.cell}" data-dir="${near.direction}">
         <div class="top">
           <span><span class="${near.direction}">${near.direction === 'long' ? '↑ BUY' : '↓ SELL'}</span> <span class="mono">${near.price}</span> <span class="${gradeCls(near.grade)}">[${near.grade}]</span></span>
           <span class="mono" style="color:var(--text2)">${dp == null ? '' : dp + 'p away'}</span>
         </div>
-        <div class="det">nearest zone · edge +${Number(near.expectancy).toFixed(3)}% (n=${near.n}) · ${near.decision} · SL ${near.sl} / TP ${near.tp} · 📈 chart</div>
+        <div class="det">nearest zone · edge +${Number(near.expectancy).toFixed(3)}% (n=${near.n}) · ${near.decision} · ${trailTxt(near)} · 📈 chart</div>
       </div>`
       : `<div class="det muted" style="padding:6px 0;">no tradeable zone near price — ${nSkip} discarded line${nSkip === 1 ? '' : 's'} below</div>`;
     const rowCount = list.length + skips.length;
@@ -368,8 +375,9 @@ $('entries').addEventListener('click', ev => {
 // ── Chart modal (levelChart lego brick) ──────────────────────────────────────
 let _chart = null;
 async function openChart(d) {
+  const trailPct = d.trailfrac != null && d.trailfrac !== 'undefined' ? Math.round(+d.trailfrac * 100) : 50;
   $('mtitle').textContent = `${d.sym} ${d.dir === 'long' ? '↑ BUY' : '↓ SELL'} @ ${d.price}`;
-  $('mfoot').textContent = `cell ${d.cell} · SL ${d.sl} · TP ${d.tp}`;
+  $('mfoot').textContent = `cell ${d.cell} · SL ${d.sl} · trail ${trailPct}% of a rung (no fixed TP)`;
   $('modal').classList.add('open');
   $('chartBox').innerHTML = '';
   _chart = createLevelChart($('chartBox'), { height: 440 });
@@ -385,7 +393,6 @@ async function openChart(d) {
     _chart.setLevels([
       { price: +d.price, kind: 'pivot',      label: `Entry ${d.price}` },
       { price: +d.sl,    kind: 'support',    label: `SL ${d.sl}` },
-      { price: +d.tp,    kind: 'resistance', label: `TP ${d.tp}` },
     ]);
     if (_chart.fit) _chart.fit();
   } catch (e) { $('mfoot').textContent = 'Chart error: ' + e.message; }
@@ -418,13 +425,13 @@ async function loadTrades() {
         <td class="${r.direction}">${r.direction === 'long' ? '↑' : '↓'}</td>
         <td class="${gradeCls(r.grade)}">${r.grade}</td>
         <td class="mono">${r.price}</td>
-        <td class="mono">${r.sl} / ${r.tp}</td>
+        <td class="mono">${trailTxt(r)}</td>
         <td class="${cls}">${lbl}</td>
         <td class="mono ${r.realizedPct >= 0 ? 'o-win' : r.realizedPct < 0 ? 'o-loss' : ''}">${real}</td>
         <td class="cell mono">${r.cell}</td>
       </tr>`;
     }).join('');
-    $('trades').innerHTML = `<table><thead><tr><th>Recorded</th><th>Pair</th><th>Dir</th><th>Gr</th><th>Entry</th><th>SL / TP</th><th>Status</th><th>Realized</th><th>Cell</th></tr></thead><tbody>${rows}</tbody></table>`;
+    $('trades').innerHTML = `<table><thead><tr><th>Recorded</th><th>Pair</th><th>Dir</th><th>Gr</th><th>Entry</th><th>SL · trail</th><th>Status</th><th>Realized</th><th>Cell</th></tr></thead><tbody>${rows}</tbody></table>`;
   } catch (e) { $('trades').innerHTML = '<div class="muted">trades error: ' + e.message + '</div>'; }
 }
 
