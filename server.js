@@ -63,6 +63,8 @@ import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEV
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
+import { evaluateSessions } from './js/forecastSessionResearch.js';
+import { _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
@@ -7829,12 +7831,23 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
   (async () => {
     const perPair = {}; const log = [];
     try {
+      const wantSessions = (req.body?.sessions ?? 'true') !== 'false';
+      const sessionYears = parseInt(req.body?.sessionYears) || 8;
       for (const cfg of insts) {
         try {
           const bars = await _btFetchD1(cfg.oanda, 5000);
           const { summary } = evaluateForecast(bars, cfg.assetClass || 'fx');
+          // Session structure (Asia/London/NY) from OANDA H1 — separate, optional,
+          // and non-fatal: a session failure must not drop the daily result.
+          if (wantSessions) {
+            try {
+              const h1 = await _fetchH1(cfg.oanda, sessionYears);
+              const sess = evaluateSessions(h1);
+              if (!sess.insufficient) summary.session = sess;
+            } catch (se) { log.push(`${cfg.name} sessions: ${se?.message}`); }
+          }
           perPair[cfg.name] = summary;
-          log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo})`);
+          log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo})${summary.session ? ` · sessions ${summary.session.nDays}d` : ''}`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);
