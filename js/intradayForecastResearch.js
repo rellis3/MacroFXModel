@@ -75,39 +75,58 @@ export function _levelOutcome(bars, level, dir, pip, hyst) {
   };
 }
 
-// ── Main: walk-forward over London days ───────────────────────────────────────
-export function evaluateIntraday(intraday, { assetClass = 'fx', pip = 0.0001, minLookback = 60 } = {}) {
+// ── Horizon config — daily / weekly (5d) / 20-day. Levels differ only by which
+//    forecast fields feed them and the window length (Lego principle: never
+//    hard-code "daily"). Expansion time is a London-hour for daily, a day-of-
+//    window index for the multi-day horizons.
+export const HORIZONS = {
+  daily:  { windowDays: 1,  label: 'Daily',  timeUnit: 'hour', hl: 'hl_median', ohMed: 'oh_median', ohP75: 'oh_75',    olMed: 'ol_median', olP75: 'ol_75'    },
+  weekly: { windowDays: 5,  label: 'Weekly', timeUnit: 'day',  hl: 'hl_5d',     ohMed: 'oh_5d',     ohP75: 'oh_5d_75', olMed: 'ol_5d',     olP75: 'ol_5d_75' },
+  d20:    { windowDays: 20, label: '20-day', timeUnit: 'day',  hl: 'hl_20d',    ohMed: 'oh_20d',    ohP75: 'oh_20d_75',olMed: 'ol_20d',    olP75: 'ol_20d_75'},
+};
+
+// ── Main: walk-forward over London windows for one horizon ────────────────────
+export function evaluateIntraday(intraday, { assetClass = 'fx', pip = 0.0001, minLookback = 60, horizon = 'daily' } = {}) {
+  const H = HORIZONS[horizon] || HORIZONS.daily;
+  const W = H.windowDays;
   const lond = buildLondonDaily(intraday);
-  if (lond.length < minLookback + 40) return { insufficient: true, nDays: lond.length };
+  if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
   const dailyOHLC = lond.map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close }));
   const closes = dailyOHLC.map(d => d.close);
 
-  const expRows = [];                 // expansion timing per day
+  const expRows = [];
   const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [] };
   let firstUpper = 0, firstLower = 0, eitherTouched = 0;
 
-  for (let i = minLookback; i < lond.length; i++) {
+  // Non-overlapping windows (step = W) — avoids autocorrelation inflation across
+  // overlapping multi-day windows; for daily this is the original per-day walk.
+  for (let i = minLookback; i + W <= lond.length; i += W) {
     let fc; try { fc = computeForecast(dailyOHLC.slice(0, i), assetClass); } catch { continue; }
-    const day = lond[i]; const bars = day.bars; if (!bars || bars.length < 6) continue;
-    const open = day.open; if (!(open > 0)) continue;
+    // Window intraday bars, tagged with a 0-based day index within the window.
+    const bars = [];
+    for (let d = 0; d < W; d++) { const day = lond[i + d]; if (!day.bars) continue; for (const b of day.bars) bars.push({ ...b, _day: d }); }
+    if (bars.length < 6 * W) continue;
+    bars.sort((a, b) => a._t - b._t);
+    const open = lond[i].open; if (!(open > 0)) continue;
     const regime = classifyRegime(closes, i, 20, 5, 0.002, 1.0);
 
-    // Forecast levels (price). O-H/O-L are % of price; H-L median is the expected range.
-    const expRange = open * (fc.hl_median ?? 0) / 100;
-    const upMed = open * (1 + (fc.oh_median ?? 0) / 100), upP75 = open * (1 + (fc.oh_75 ?? 0) / 100);
-    const dnMed = open * (1 - (fc.ol_median ?? 0) / 100), dnP75 = open * (1 - (fc.ol_75 ?? 0) / 100);
+    // Horizon forecast levels (% of price → price). H-L median = expected window range.
+    const expRange = open * (fc[H.hl] ?? 0) / 100;
+    const upMed = open * (1 + (fc[H.ohMed] ?? 0) / 100), upP75 = open * (1 + (fc[H.ohP75] ?? 0) / 100);
+    const dnMed = open * (1 - (fc[H.olMed] ?? 0) / 100), dnP75 = open * (1 - (fc[H.olP75] ?? 0) / 100);
     const hyst = Math.max(pip, 0.15 * expRange);
+    const _time = b => H.timeUnit === 'hour' ? _hourOf(b._t) : b._day + 1;   // hour-of-day or day-of-window
 
-    // ── Expansion timing ──
+    // ── Expansion timing (in hours for daily, in days-of-window otherwise) ──
     if (expRange > 0) {
       let hi = -Infinity, lo = Infinity; const cross = { 25: null, 50: null, 75: null, 100: null };
       for (const b of bars) {
         if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low;
         const frac = (hi - lo) / expRange * 100;
-        for (const p of [25, 50, 75, 100]) if (cross[p] == null && frac >= p) cross[p] = _hourOf(b._t);
+        for (const p of [25, 50, 75, 100]) if (cross[p] == null && frac >= p) cross[p] = _time(b);
       }
       const realizedHl = (hi - lo) / open * 100;
-      expRows.push({ regime, cross, reached100: cross[100] != null, big: realizedHl > (fc.hl_median ?? 0),
+      expRows.push({ regime, cross, reached100: cross[100] != null, big: realizedHl > (fc[H.hl] ?? 0),
         eff: (hi - lo) > 0 ? Math.min(1, Math.abs(bars.at(-1).close - open) / (hi - lo)) : null });
     }
 
@@ -118,7 +137,6 @@ export function evaluateIntraday(intraday, { assetClass = 'fx', pip = 0.0001, mi
     if (oDnMed) touchRows.dnMed.push({ ...oDnMed, regime });
     if (oUpP75) touchRows.upP75.push({ ...oUpP75, regime });
     if (oDnP75) touchRows.dnP75.push({ ...oDnP75, regime });
-    // Direction: which median extension is hit first?
     if (oUpMed || oDnMed) {
       eitherTouched++;
       const uh = oUpMed ? oUpMed.firstIdx : Infinity, dh = oDnMed ? oDnMed.firstIdx : Infinity;
@@ -126,14 +144,16 @@ export function evaluateIntraday(intraday, { assetClass = 'fx', pip = 0.0001, mi
     }
   }
 
-  return summarize(expRows, touchRows, { firstUpper, firstLower, eitherTouched }, lond);
+  return summarize(expRows, touchRows, { firstUpper, firstLower, eitherTouched }, lond, H);
 }
 
 // ── Aggregation ───────────────────────────────────────────────────────────────
-function summarize(expRows, touchRows, dir, lond) {
-  // Expansion: median hour to each completion fraction, + big vs small day split.
+function summarize(expRows, touchRows, dir, lond, H) {
+  const unit = H.timeUnit;   // 'hour' (daily) | 'day' (weekly / 20-day)
+  // Expansion: median time to each completion fraction, + big vs small split.
   const _hrs = (rows, p) => rows.map(r => r.cross[p]).filter(v => v != null);
   const expansion = {
+    timeUnit: unit,
     n: expRows.length,
     medianHourTo: Object.fromEntries([25, 50, 75, 100].map(p => [p, +(_median(_hrs(expRows, p))).toFixed(1)])),
     reached100Pct: +(_rate(expRows.map(r => r.reached100)) ?? 0).toFixed(1),
@@ -165,15 +185,16 @@ function summarize(expRows, touchRows, dir, lond) {
       reverse20ManyRetestPct:  many.length ? +(_rate(many.map(r => r.rev20))).toFixed(1) : null,
     };
   };
-  const totalDays = lond.length;
+  const totalWindows = expRows.length || 1;   // denominator = evaluated windows, not calendar days
+  const minReg = H.windowDays >= 20 ? 6 : 15;  // 20-day windows are scarce — lower the regime-cell floor
   const _byRegime = (rows) => {
     const out = {};
-    for (const rg of ['BULL', 'BEAR', 'RANGE']) { const g = rows.filter(r => r.regime === rg); if (g.length >= 15) out[rg] = { n: g.length, continuePct: +(_rate(g.map(r => r.outcome === 'continue')) ?? 0).toFixed(1), reverse20Pct: +(_rate(g.map(r => r.rev20)) ?? 0).toFixed(1), meanMfePips: +_mean(g.map(r => r.mfePips)).toFixed(1) }; }
+    for (const rg of ['BULL', 'BEAR', 'RANGE']) { const g = rows.filter(r => r.regime === rg); if (g.length >= minReg) out[rg] = { n: g.length, continuePct: +(_rate(g.map(r => r.outcome === 'continue')) ?? 0).toFixed(1), reverse20Pct: +(_rate(g.map(r => r.rev20)) ?? 0).toFixed(1), meanMfePips: +_mean(g.map(r => r.mfePips)).toFixed(1) }; }
     return out;
   };
   const touches = {
-    medianExtension: { ...(_touchStats(med, totalDays)), byRegime: _byRegime(med) },
-    p75Extension:    { ...(_touchStats(p75, totalDays)), byRegime: _byRegime(p75) },
+    medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med) },
+    p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75) },
     direction: {
       eitherTouchedDays: dir.eitherTouched,
       firstUpperPct: dir.eitherTouched ? +(dir.firstUpper / dir.eitherTouched * 100).toFixed(1) : null,
@@ -181,21 +202,23 @@ function summarize(expRows, touchRows, dir, lond) {
     },
   };
 
-  // ── Findings ──
+  // ── Findings ── (unit-aware: hours for daily, days-of-window otherwise)
+  const at = v => unit === 'hour' ? `~${v}:00 London` : `~day ${v}`;
+  const per = unit === 'hour' ? 'days' : 'windows';
   const findings = [];
   const add = (sev, text) => findings.push({ sev, text });
-  if (expansion.n) add('info', `Expansion: the day reaches 50% of its expected range by ~${expansion.medianHourTo[50]}:00 London and 100% by ~${expansion.medianHourTo[100]}:00; ${expansion.reached100Pct}% of days complete the full forecast range. Big days hit the halfway mark earlier (${expansion.bigDayMedianTo50}:00 vs ${expansion.smallDayMedianTo50}:00 on quiet days).`);
+  if (expansion.n) add('info', `Expansion (${H.label}): reaches 50% of its expected range by ${at(expansion.medianHourTo[50])} and 100% by ${at(expansion.medianHourTo[100])}; ${expansion.reached100Pct}% of ${per} complete the full forecast range. Big ${per} expand earlier (50% by ${at(expansion.bigDayMedianTo50)} vs ${at(expansion.smallDayMedianTo50)} on quiet ${per}).`);
   const M = touches.medianExtension;
   if (M.n) {
-    add('info', `Median extension is touched ${M.touchRatePct}% of days; after the first touch price continues ${M.continuePct}% vs reverses ${M.reversePct}%. Pullback probability: ${M.reverse10Pct}% ≥10 pips, ${M.reverse20Pct}% ≥20, ${M.reverse50Pct}% ≥50.`);
+    add('info', `${H.label} median extension is touched ${M.touchRatePct}% of ${per}; after the first touch price continues ${M.continuePct}% vs reverses ${M.reversePct}%. Pullback probability: ${M.reverse10Pct}% ≥10 pips, ${M.reverse20Pct}% ≥20, ${M.reverse50Pct}% ≥50.`);
     if (M.reverse20SingleTouchPct != null && M.reverse20ManyRetestPct != null && Math.abs(M.reverse20SingleTouchPct - M.reverse20ManyRetestPct) > 8)
-      add('info', `Retest signal: single-touch days reverse ≥20 pips ${M.reverse20SingleTouchPct}% vs ${M.reverse20ManyRetestPct}% on heavily-retested days — ${M.reverse20SingleTouchPct > M.reverse20ManyRetestPct ? 'a clean first tap fades more often' : 'repeated retests precede the bigger fade'}.`);
+      add('info', `Retest signal: single-touch ${per} reverse ≥20 pips ${M.reverse20SingleTouchPct}% vs ${M.reverse20ManyRetestPct}% on heavily-retested ${per} — ${M.reverse20SingleTouchPct > M.reverse20ManyRetestPct ? 'a clean first tap fades more often' : 'repeated retests precede the bigger fade'}.`);
   }
   if (touches.direction.firstUpperPct != null)
-    add('info', `Direction: the upper median extension is hit first ${touches.direction.firstUpperPct}% of days vs the lower ${touches.direction.firstLowerPct}% (of ${touches.direction.eitherTouchedDays} days that reach either).`);
+    add('info', `Direction: the upper median extension is hit first ${touches.direction.firstUpperPct}% of ${per} vs the lower ${touches.direction.firstLowerPct}% (of ${touches.direction.eitherTouchedDays} ${per} that reach either).`);
   const P = touches.p75Extension;
   if (P.n && M.n && P.continuePct < M.continuePct - 5)
-    add('good', `Exhaustion at the extreme: the 75th extension continues only ${P.continuePct}% of the time vs ${M.continuePct}% at the median — deeper touches are more likely to be the day's turn.`);
+    add('good', `Exhaustion at the extreme: the 75th extension continues only ${P.continuePct}% of the time vs ${M.continuePct}% at the median — deeper touches are more likely to be the turn.`);
 
-  return { nDays: lond.length, dateFrom: lond[0].date, dateTo: lond.at(-1).date, expansion, touches, findings };
+  return { horizon: H.label, timeUnit: unit, nDays: lond.length, dateFrom: lond[0].date, dateTo: lond.at(-1).date, expansion, touches, findings };
 }

@@ -52,10 +52,14 @@ const COMPONENTS = {
   d5:  [
     { key: 'hl', label: '5d H-L', med: 'hl_5d', p75: 'hl_5d_75' },
     { key: 'oc', label: '5d O-C', med: 'oc_5d', p75: 'oc_5d_75' },
+    { key: 'oh', label: '5d O-H up',   med: 'oh_5d', p75: 'oh_5d_75', dir: 'up'   },
+    { key: 'ol', label: '5d O-L down', med: 'ol_5d', p75: 'ol_5d_75', dir: 'down' },
   ],
   d20: [
     { key: 'hl', label: '20d H-L', med: 'hl_20d', p75: 'hl_20d_75' },
     { key: 'oc', label: '20d O-C', med: 'oc_20d', p75: 'oc_20d_75' },
+    { key: 'oh', label: '20d O-H up',   med: 'oh_20d', p75: 'oh_20d_75', dir: 'up'   },
+    { key: 'ol', label: '20d O-L down', med: 'ol_20d', p75: 'ol_20d_75', dir: 'down' },
   ],
 };
 
@@ -299,6 +303,24 @@ function summarize(rows) {
     byVov:    complBy(r => r.vov == null ? null : r.vov <= vLo ? '1·low' : r.vov >= vHi ? '3·high' : '2·mid'),
   };
 
+  // Completion at ALL horizons (brief: the analysis covers daily / weekly / 20-day).
+  // Same shape as `completion`, computed per horizon from that horizon's H-L cells.
+  const _complHz = (hz) => {
+    const cells = rows.map(r => r.comp[hz]?.hl).filter(Boolean).map(x => x.med > 0 ? x.actual / x.med * 100 : null).filter(v => v != null);
+    if (!cells.length) return { n: 0 };
+    const hist = Object.fromEntries(complBuckets.map(b => [b, 0]));
+    for (const v of cells) hist[_bucket(v)]++;
+    const nn = cells.length;
+    return {
+      n: nn, meanPct: +_mean(cells).toFixed(1), medianPct: +_median(cells).toFixed(1),
+      reachedMedianPct: +(_mean(cells.map(v => v >= 100 ? 1 : 0)) * 100).toFixed(1),
+      neverHalfPct:     +(_mean(cells.map(v => v <  50 ? 1 : 0)) * 100).toFixed(1),
+      blewThroughPct:   +(_mean(cells.map(v => v > 165 ? 1 : 0)) * 100).toFixed(1),
+      hist: Object.fromEntries(complBuckets.map(b => [b, +(hist[b] / nn * 100).toFixed(1)])),
+    };
+  };
+  const completionByHorizon = { daily: completion, d5: _complHz('d5'), d20: _complHz('d20') };
+
   // ══ PR-B daily aggregations (no intraday needed) ═══════════════════════════
   // Per-row daily-H-L features, in chronological order, for the miss / multi-day /
   // confidence / day-type studies. completion = realized ÷ median forecast (%);
@@ -496,6 +518,7 @@ function summarize(rows) {
     fcSkewDirHitPct: dirHit == null ? null : +dirHit.toFixed(1),
     persistence,
     completion,
+    completionByHorizon,
     errorDist,
     misses,
     seasonal,
