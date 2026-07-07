@@ -63,6 +63,7 @@ import { buildPolicy as buildPolicyV2, DEFAULT_SLIP_PCT as V2_DEFAULT_SLIP } fro
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
+import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
@@ -7789,6 +7790,92 @@ app.get('/api/weekly-vol-backtest/status/:jobId', (req, res) => {
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Vol-forecast research — evaluate the forecast itself (not a strategy) ─────
+// Walk-forward, no-lookahead: for each instrument, fetch D1, run the research
+// engine, store ONLY the aggregates + a tiny sample (never the raw per-day rows
+// — the point is readable findings, not a 100k-hit dump).
+const vfrJobs = new Map();
+const _latestVfrFile = () => {
+  try {
+    const files = fs.readdirSync(WBT_DATA_DIR).filter(f => f.startsWith('vfr_research_') && f.endsWith('.json'));
+    if (!files.length) return null;
+    return path.join(WBT_DATA_DIR, files.sort().at(-1));
+  } catch { return null; }
+};
+
+app.get('/api/vol-forecast-research', (req, res) => {
+  const filePath = _latestVfrFile();
+  if (!filePath) return res.status(404).json({ ok: false, error: 'No research run yet. Click ▶ Run to generate.' });
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    res.json({ ok: true, file: path.basename(filePath), computedAt: fs.statSync(filePath).mtime.toISOString(), ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  const { pair = '' } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+
+  const jobId = `vfr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of vfrJobs) if (j.startedAt < Date.now() - 60 * 60_000) vfrJobs.delete(id);
+  vfrJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    const perPair = {}; const log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const bars = await _btFetchD1(cfg.oanda, 5000);
+          const { summary } = evaluateForecast(bars, cfg.assetClass || 'fx');
+          perPair[cfg.name] = summary;
+          log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { vfrJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+
+      // Cross-pair aggregate of the headline daily H-L metrics (the consistency view).
+      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k]) ?? 0), 0) / names.length).toFixed(4);
+      const cross = {
+        nPairs: names.length,
+        hlBias:        _avg(s => s.perComponent?.daily?.hl?.bias),
+        hlExceedMed:   _avg(s => s.perComponent?.daily?.hl?.exceedMedianPct),
+        hlSharpness:   _avg(s => s.perComponent?.daily?.hl?.sharpnessCorr),
+        hlSkill:       _avg(s => s.dailyHlSkillVsClimatology),
+        efficiencyMean:_avg(s => s.efficiencyMean),
+        // pairs ranked by how informative (sharp) their forecast is
+        ranked: names.map(k => ({ pair: k,
+          sharpness: perPair[k].perComponent?.daily?.hl?.sharpnessCorr ?? 0,
+          bias:      perPair[k].perComponent?.daily?.hl?.bias ?? 0,
+          skill:     perPair[k].dailyHlSkillVsClimatology ?? 0,
+          exceedMed: perPair[k].perComponent?.daily?.hl?.exceedMedianPct ?? 0,
+        })).sort((a, b) => b.sharpness - a.sharpness),
+      };
+
+      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(WBT_DATA_DIR, `vfr_research_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
+      vfrJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Evaluated ${names.length} pair(s)`, log, file: path.basename(outFile) } });
+    } catch (e) {
+      vfrJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/vol-forecast-research/status/:jobId', (req, res) => {
+  const job = vfrJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });

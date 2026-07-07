@@ -204,12 +204,13 @@ function summarize(rows) {
   const dirHit = dirCells.length
     ? _mean(dirCells.map(r => (Math.sign(r.fcSkew) === r.dailyDir ? 1 : 0))) * 100 : null;
 
-  // Slices of the daily H-L absolute error / exceedance by regime and day-of-week.
-  const sliceBy = keyFn => {
+  // Generic slice of a daily component's cells by a key function → compact stats.
+  const sliceComp = (compKey, keyFn) => {
     const g = {};
     for (const r of rows) {
-      const cell = r.comp.daily?.hl; if (!cell) continue;
-      const k = keyFn(r); (g[k] = g[k] || []).push(cell);
+      const cell = r.comp.daily?.[compKey]; if (!cell) continue;
+      const k = keyFn(r); if (k == null) continue;
+      (g[k] = g[k] || []).push(cell);
     }
     return Object.fromEntries(Object.entries(g).map(([k, cs]) => [k, {
       n: cs.length,
@@ -219,16 +220,73 @@ function summarize(rows) {
     }]));
   };
 
+  // Regime × component matrix (the decision-relevant daily legs), day-of-week,
+  // and vol-of-vol terciles — where the forecast is reliable vs where it breaks.
+  const regimeMatrix = {};
+  for (const comp of ['hl', 'oc', 'oh', 'ol']) regimeMatrix[comp] = sliceComp(comp, r => r.regime);
+  const byDow = sliceComp('hl', r => r.dow);
+  const vovs  = rows.map(r => r.vov).filter(v => v != null).sort((a, b) => a - b);
+  const vLo = vovs[Math.floor(vovs.length / 3)], vHi = vovs[Math.floor(2 * vovs.length / 3)];
+  const byVov = sliceComp('hl', r => r.vov == null ? null : r.vov <= vLo ? '1·low' : r.vov >= vHi ? '3·high' : '2·mid');
+
+  // Persistence / vol-clustering: after an above-75th day, is the NEXT day more
+  // likely to exceed its own median than the unconditional base rate?
+  let baseEx = 0, baseN = 0, condEx = 0, condN = 0;
+  for (let i = 0; i < rows.length - 1; i++) {
+    const t = rows[i].comp.daily?.hl, nx = rows[i + 1].comp.daily?.hl;
+    if (!t || !nx) continue;
+    baseEx += nx.exMed; baseN++;
+    if (t.ex75) { condEx += nx.exMed; condN++; }
+  }
+  const persistence = {
+    baseExceedMedianPct: +(baseN ? baseEx / baseN * 100 : 0).toFixed(1),
+    afterAbove75Pct:     +(condN ? condEx / condN * 100 : 0).toFixed(1),
+    n: condN,
+  };
+
+  // ── Auto-generated findings (the readable layer — not a hit dump) ───────────
+  const findings = [];
+  const add = (sev, text) => findings.push({ sev, text });
+  const H = perComponent.daily?.hl;
+  if (H) {
+    const exM = H.exceedMedianPct;
+    if (Math.abs(exM - 50) > 8)
+      add('warn', `H-L forecast is ${exM < 50 ? 'HIGH-biased (median runs too wide)' : 'LOW-biased (median runs too tight)'}: realized exceeds the median ${exM}% of days vs a 50% target (bias ${H.bias >= 0 ? '+' : ''}${H.bias}%).`);
+    else
+      add('good', `H-L median is well-calibrated — realized exceeds it ${exM}% of days (target 50%).`);
+    if (H.sharpnessCorr >= 0.4)
+      add('good', `Forecast is INFORMATIVE: corr(forecast, realized H-L) = ${H.sharpnessCorr} — bigger forecasts genuinely precede bigger days.`);
+    else if (H.sharpnessCorr < 0.15)
+      add('warn', `Forecast may be FLAT: corr(forecast, realized H-L) = ${H.sharpnessCorr} — it barely separates big days from small ones.`);
+    else
+      add('info', `Forecast sharpness is moderate: corr(forecast, realized H-L) = ${H.sharpnessCorr}.`);
+  }
+  if (hlSkill > 0.05) add('good', `Beats climatology: skill = ${hlSkill} vs a trailing-mean benchmark.`);
+  else if (hlSkill <= 0) add('warn', `No skill over climatology (skill = ${hlSkill}) — a trailing average forecasts the range about as well.`);
+  const effTrend = +(_mean(effs.map(e => e >= 0.5 ? 1 : 0)) * 100).toFixed(1);
+  add('info', `${effTrend}% of days are "efficient" (O-C ≥ ½ H-L, trend-like); mean efficiency ${+_mean(effs).toFixed(3)} — the fade-vs-follow split.`);
+  if (dirHit != null)
+    add(dirHit > 55 ? 'good' : 'info', `The forecast's O-H/O-L skew predicts the day's direction ${+dirHit.toFixed(1)}% of the time (vs 50% base rate).`);
+  if (persistence.afterAbove75Pct - persistence.baseExceedMedianPct > 8)
+    add('good', `Vol CLUSTERS: after an above-75th day the next day exceeds its median ${persistence.afterAbove75Pct}% vs ${persistence.baseExceedMedianPct}% base — expansion persists.`);
+  const vh = byVov['3·high'], vl = byVov['1·low'];
+  if (vh && vl && vh.mae > vl.mae * 1.3)
+    add('info', `Trust the forecast LESS when vol-of-vol is high: H-L MAE ${vh.mae} (high-VoV) vs ${vl.mae} (low-VoV).`);
+
   return {
     nDays: rows.length,
     dateFrom: rows[0]?.date ?? null, dateTo: rows.at(-1)?.date ?? null,
     perComponent,
     dailyHlSkillVsClimatology: hlSkill,
     efficiencyMean: +_mean(effs).toFixed(3),
-    efficiencyTrendPct: +(_mean(effs.map(e => e >= 0.5 ? 1 : 0)) * 100).toFixed(1), // O-C≥½H-L
-    fcSkewDirHitPct: dirHit == null ? null : +dirHit.toFixed(1),  // vs 50 base rate
-    byRegime: sliceBy(r => r.regime),
-    byDow:    sliceBy(r => r.dow),
+    efficiencyTrendPct: effTrend,
+    fcSkewDirHitPct: dirHit == null ? null : +dirHit.toFixed(1),
+    persistence,
+    regimeMatrix,
+    byDow,
+    byVov,
+    byRegime: regimeMatrix.hl,   // back-compat: daily H-L by regime
+    findings,
   };
 }
 
