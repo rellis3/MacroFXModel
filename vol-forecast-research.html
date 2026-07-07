@@ -26,10 +26,15 @@
 .rz-run-btn:disabled { opacity:.5;cursor:wait; }
 .rz-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
 .find { display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:7px;font-size:12.5px;line-height:1.5;margin:0 0 8px; }
-.find.good { background:#0f2a1c;border:1px solid #1a5c35; } .find.good .fi { color:#34d399; }
-.find.warn { background:#2d2110;border:1px solid #5c4010; } .find.warn .fi { color:#fbbf24; }
-.find.info { background:#0f1d35;border:1px solid #1a3660; } .find.info .fi { color:#60a5fa; }
-.fi { font-size:14px;flex-shrink:0; } .find .ft { color:var(--text); }
+/* Translucent tints over the card background → readable in BOTH light and dark
+   themes (var(--text) contrasts with the tint either way). */
+.find.good { background:rgba(16,185,129,0.13);border:1px solid rgba(16,185,129,0.42); } .find.good .fi { color:#059669; }
+.find.warn { background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.46); } .find.warn .fi { color:#b45309; }
+.find.info { background:rgba(59,130,246,0.13);border:1px solid rgba(59,130,246,0.42); } .find.info .fi { color:#2563eb; }
+.fi { font-size:14px;flex-shrink:0;font-weight:700; } .find .ft { color:var(--text); }
+@media (prefers-color-scheme: dark) {
+  .find.good .fi { color:#34d399; } .find.warn .fi { color:#fbbf24; } .find.info .fi { color:#60a5fa; }
+}
 .kpis { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px; }
 @media (max-width:900px){ .kpis { grid-template-columns:repeat(2,1fr); } }
 .kpi { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;display:flex;flex-direction:column;gap:3px; }
