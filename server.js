@@ -65,6 +65,7 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
+import { evaluateIntraday } from './js/intradayForecastResearch.js';
 import { loadWeeklyM1 as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { resampleTo as _resampleTo } from './js/barUtils.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
@@ -8007,6 +8008,75 @@ app.post('/api/estimator-ab/run', express.json({ limit: '64kb' }), (req, res) =>
 
 app.get('/api/estimator-ab/status/:jobId', (req, res) => {
   const job = abJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Intraday forecast research — expansion curves + level-touch/pip-excursion ──
+// Loads intraday (M1 parquet → 5-min, else H1), runs evaluateIntraday per pair
+// (London-anchored, walk-forward), stores per-pair aggregates + a cross summary.
+const intraJobs = new Map();
+const _latestIntraFile = () => {
+  try { const fs2 = fs.readdirSync(WBT_DATA_DIR).filter(f => f.startsWith('intraday_research_') && f.endsWith('.json')); return fs2.length ? path.join(WBT_DATA_DIR, fs2.sort().at(-1)) : null; } catch { return null; }
+};
+
+app.get('/api/intraday-research', (req, res) => {
+  const fp = _latestIntraFile();
+  if (!fp) return res.status(404).json({ ok: false, error: 'No intraday run yet. Click ▶ Run.' });
+  try { const data = JSON.parse(fs.readFileSync(fp, 'utf8')); res.json({ ok: true, file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data }); }
+  catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '' } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+
+  const jobId = `intra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of intraJobs) if (j.startedAt < Date.now() - 60 * 60_000) intraJobs.delete(id);
+  intraJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);   // reuse the estimator's intraday loader
+          let pip = 0.0001; try { pip = _pipSize(cfg.name) || 0.0001; } catch { /* default */ }
+          const r = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip });
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nDays}d, src ${src})`); continue; }
+          r.src = src; perPair[cfg.name] = r;
+          log.push(`${cfg.name}: ${r.nDays}d src=${src} touch=${r.touches?.medianExtension?.touchRatePct}% cont=${r.touches?.medianExtension?.continuePct}%`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k]) ?? 0), 0) / names.length).toFixed(1);
+      const cross = {
+        nPairs: names.length,
+        medianTouchRatePct: _avg(r => r.touches?.medianExtension?.touchRatePct),
+        medianContinuePct:  _avg(r => r.touches?.medianExtension?.continuePct),
+        medianReverse20Pct: _avg(r => r.touches?.medianExtension?.reverse20Pct),
+        reached100Pct:      _avg(r => r.expansion?.reached100Pct),
+        ranked: names.map(k => ({ pair: k, touchRate: perPair[k].touches?.medianExtension?.touchRatePct ?? 0, continuePct: perPair[k].touches?.medianExtension?.continuePct ?? 0, reverse20Pct: perPair[k].touches?.medianExtension?.reverse20Pct ?? 0, src: perPair[k].src })).sort((a, b) => b.continuePct - a.continuePct),
+      };
+      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(WBT_DATA_DIR, `intraday_research_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
+      intraJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Intraday research on ${names.length} pair(s)`, log, file: path.basename(outFile) } });
+    } catch (e) { intraJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/intraday-research/status/:jobId', (req, res) => {
+  const job = intraJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });

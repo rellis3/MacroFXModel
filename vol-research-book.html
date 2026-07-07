@@ -89,6 +89,7 @@
     <span class="bk-lbl">Refresh data:</span>
     <select id="runPair"><option value="">All pairs</option></select>
     <button class="bk-run-btn" id="runBtn" onclick="runResearch()">▶ Run</button>
+    <button class="bk-run-btn" id="runIntraBtn" onclick="runIntraday()" style="background:var(--blue)">▶ Intraday</button>
     <span id="runStatus" class="bk-lbl"></span>
     <span style="flex:1"></span>
     <span class="bk-lbl">Drill into pair:</span>
@@ -106,6 +107,7 @@
       <a href="#c4"><span class="qn">Q4</span>Regime behaviour</a>
       <a href="#c5"><span class="qn">Q5</span>Session behaviour</a>
       <a href="#c6"><span class="qn">Q6</span>Daily expansion</a>
+      <a href="#cTouch"><span class="qn">Hit</span>Level touches &amp; pips</a>
       <a href="#c7"><span class="qn">Q7</span>Forecast completion</a>
       <a href="#cD"><span class="qn">DoW</span>Day-of-week</a>
       <a href="#cP"><span class="qn">Seq</span>Persistence &amp; clustering</a>
@@ -205,13 +207,13 @@
       <section class="chap" id="c6">
         <div class="chap-h">Daily expansion process <span class="qtag">Q6</span></div>
         <div class="chap-q">Rather than only the final range — how does the day develop? How quickly is 25 / 50 / 75 / 100% of the expected range achieved? Do large days expand early? Do reversal days expand late?</div>
-        <div class="answer open" id="a6">
-          <strong>Open chapter — not yet measured.</strong> This is the one question in the brief the current engines can't answer:
-          it needs <em>intraday completion curves</em> (time-to-X% of the expected range) built on the M1 parquet path, per London-day —
-          a new intraday engine, not a slice of the existing daily aggregates. I've left it explicitly empty rather than fill it with a
-          proxy that would read as an answer. <span class="muted">Planned next: a <code>dailyExpansionEngine</code> that, per day, records the
-          London-time at which cumulative range crosses 25/50/75/100% of the forecast, then clusters early- vs late-expansion days.</span>
-        </div>
+        <div class="answer" id="a6">—</div>
+        <div class="sec-sub">Time to reach each fraction of the expected range — <span class="pair-badge" id="c6pair"></span> (median London-hour)</div>
+        <div class="rz-card"><div class="rz-body" style="padding:16px 18px">
+          <div class="bars" id="c6bars"></div>
+          <div class="tiles" id="c6tiles" style="margin-top:14px"></div>
+          <div class="note" id="c6note"></div>
+        </div></div>
       </section>
 
       <!-- ── Ch 7 — Forecast completion ───────────────────────────────── -->
@@ -229,6 +231,25 @@
           <thead><tr><th>Condition</th><th class="num">n</th><th class="num">Mean completion %</th><th class="num">Reaches median %</th></tr></thead>
           <tbody id="c7by"></tbody>
         </table></div></div>
+      </section>
+
+      <!-- ── Level touches & pip excursions ───────────────────────────── -->
+      <section class="chap" id="cTouch">
+        <div class="chap-h">Level touches &amp; pip excursions <span class="qtag">Hit</span></div>
+        <div class="chap-q">Treat each forecast extension line (open ± the O-H/O-L median and 75th) as a level. When price reaches one — how many pips does it move, does it continue or reverse, which side is hit first, and how often does it pull back 10/20/50 pips? The bridge to the SD-level touch study.</div>
+        <div class="answer" id="aTouch">—</div>
+        <div class="sec-sub">After the first touch — <span class="pair-badge" id="cTouchPair"></span> (median vs 75th extension)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Level</th><th class="num">Touch rate %</th><th class="num">Continue %</th><th class="num">Reverse %</th><th class="num">Rev ≥10p</th><th class="num">Rev ≥20p</th><th class="num">Rev ≥50p</th><th class="num">Mean MFE (p)</th><th class="num">Mean MAE (p)</th><th class="num">Retests</th></tr></thead>
+          <tbody id="cTouchTbl"></tbody>
+        </table></div></div>
+        <div class="tiles" id="cTouchTiles" style="margin-top:12px"></div>
+        <div class="sec-sub">Median-extension outcome by regime</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Regime</th><th class="num">n</th><th class="num">Continue %</th><th class="num">Reverse ≥20p %</th><th class="num">Mean MFE (p)</th></tr></thead>
+          <tbody id="cTouchReg"></tbody>
+        </table></div></div>
+        <div class="note" id="cTouchNote"></div>
       </section>
 
       <!-- ── Day-of-week ──────────────────────────────────────────────── -->
@@ -338,8 +359,10 @@
           <br><br>
           <strong style="color:var(--amber)">Anchoring.</strong> <span id="anchorNote">The daily/5d/20d evaluation builds its days from intraday grouped by London calendar date — the same London-midnight boundary the live forecaster uses — when H1 is available (falls back to OANDA D1 only if it isn't).</span>
           <br><br>
-          <strong style="color:var(--amber)">Not yet covered.</strong> Q6 intraday expansion curves (needs the intraday engine, Ch 6) and the
-          news-week / holiday-week stability slices in Q3 (needs an economic-calendar feed). Both are flagged, not faked.
+          <strong style="color:var(--amber)">Not yet covered.</strong> The news-week / holiday-week stability slices in Q3 (needs an economic-calendar
+          feed), the &gt;95th calibration bucket (needs a 95th forecast band), and per-touch outcome sequencing beyond first-vs-retested in the Level-touches
+          chapter. All flagged, not faked. <span class="muted">Q6 expansion and the level-touch / pip-excursion study are now built (intraday chapters) —
+          click ▶ Intraday to populate them.</span>
         </div>
       </section>
     </main>
@@ -349,6 +372,7 @@
 <script>
 let _R = null;   // research data (/api/vol-forecast-research)
 let _AB = null;  // estimator data (/api/estimator-ab)
+let _IN = null;  // intraday data (/api/intraday-research)
 const fmt = (v,d=2) => v==null || (typeof v==='number' && !isFinite(v)) ? '—' : typeof v==='number' ? v.toFixed(d) : v;
 const sgn = (v,d=3) => v==null ? '—' : (v>=0?'+':'') + (+v).toFixed(d);
 const setStatus = (t,m) => { document.getElementById('bkDot').className='sdot '+t; document.getElementById('bkMsg').textContent=m; };
@@ -373,6 +397,7 @@ async function loadAll() {
     el('bkComputedAt').textContent = 'computed ' + new Date(_R.computedAt).toLocaleString();
   } catch (e) { setStatus('err','Error: '+e.message); return; }
   try { const a = await fetch('/api/estimator-ab'); if (a.ok) _AB = await a.json(); } catch {}
+  try { const iv = await fetch('/api/intraday-research'); if (iv.ok) _IN = await iv.json(); } catch {}
   initView();
 }
 
@@ -386,7 +411,7 @@ function initView() {
   renderPair();
   const anc = _R.cross?.anchor || (Object.values(_R.perPair||{})[0]?.anchor) || 'utc-d1';
   const ancLbl = anc === 'london-h1' ? 'London-anchored' : 'UTC-D1 anchored';
-  setStatus('ok', `Loaded · ${pairs.length} pair(s) · ${ancLbl}${_AB?' · A/B ✓':' · A/B not run'} · ${_R.file||''}`);
+  setStatus('ok', `Loaded · ${pairs.length} pair(s) · ${ancLbl}${_AB?' · A/B ✓':''}${_IN?' · intraday ✓':' · intraday not run'} · ${_R.file||''}`);
   const an = el('anchorNote');
   if (an) an.innerHTML = anc === 'london-h1'
     ? `This run is <strong>London-midnight anchored</strong> — daily bars were rebuilt from H1 grouped by London calendar date, the same day boundary the live forecaster uses. The numbers now match your engine's day; the estimator A/B (Ch 8) shares the same anchor.`
@@ -565,6 +590,59 @@ function renderPair() {
   el('cPnote').innerHTML = `<span class="bk-lbl">1-step persistence shown here; the full multi-day chains (3-quiet→expansion, errors→next-day vol) are in the Multi-day chapter below.</span>`;
 
   renderPRB(s, pair);
+  renderIntraday(pair);
+}
+
+// ── PR-D intraday chapters (expansion + level touches) ───────────────────────
+function renderIntraday(pair) {
+  ['c6pair','cTouchPair'].forEach(id=>el(id) && (el(id).textContent = pair));
+  const r = _IN?.perPair?.[pair];
+
+  // Ch6 — expansion
+  if (!r || !r.expansion) {
+    el('a6').innerHTML = `<span class="muted">Intraday research not run yet. Open the book's Run control (it triggers <code>/api/intraday-research</code>, which loads M1/H1 per pair), or run it once — then this chapter and Level touches populate. It measures the London-hour at which the day builds 25/50/75/100% of its expected range.</span>`;
+    el('c6bars').innerHTML=''; el('c6tiles').innerHTML=''; el('c6note').textContent='';
+  } else {
+    const ex = r.expansion, fr=['25','50','75','100'];
+    const maxH = Math.max(...fr.map(f=>ex.medianHourTo[f]||0), 1);
+    el('c6bars').innerHTML = fr.map(f=>{ const h=ex.medianHourTo[f]||0; return `<div class="bar"><span class="bv">${fmt(h,1)}h</span><span class="bb" style="height:${h/maxH*100}%;background:${f==='100'?'var(--green)':'var(--blue)'}"></span><span class="bl">${f}%</span></div>`; }).join('');
+    el('c6tiles').innerHTML = [
+      ['Reaches 50%','~'+fmt(ex.medianHourTo['50'],1)+':00','London hour'],
+      ['Reaches 100%','~'+fmt(ex.medianHourTo['100'],1)+':00','London hour'],
+      ['Complete full range', fmt(ex.reached100Pct,0)+'%','of days'],
+      ['Big-day 50% by', '~'+fmt(ex.bigDayMedianTo50,1)+':00','vs quiet '+fmt(ex.smallDayMedianTo50,1)+':00'],
+    ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv">${v}</div><div class="td">${d}</div></div>`).join('');
+    el('c6note').innerHTML = `Bars show the median London-hour at which the cumulative range crosses each fraction of the <em>forecast</em> range. Big days (realized &gt; forecast) reach the halfway mark by <strong>${fmt(ex.bigDayMedianTo50,1)}:00</strong> vs <strong>${fmt(ex.smallDayMedianTo50,1)}:00</strong> on quiet days — ${ex.bigDayMedianTo50<ex.smallDayMedianTo50?'expansion days declare themselves early':'the gap is small on this pair'}.`;
+    el('a6').innerHTML = `For ${pair}, the day builds 50% of its expected range by ~<strong>${fmt(ex.medianHourTo['50'],1)}:00</strong> London and the full range by ~<strong>${fmt(ex.medianHourTo['100'],1)}:00</strong>; <strong>${fmt(ex.reached100Pct,0)}%</strong> of days complete the forecast range. ${ex.bigDayMedianTo50<ex.smallDayMedianTo50?'<strong>Large days expand early</strong> — a fast first-half range is a tell.':'Expansion timing is similar for large and small days here.'}`;
+  }
+
+  // Level touches
+  if (!r || !r.touches) {
+    el('aTouch').innerHTML = `<span class="muted">Run intraday research to populate the level-touch / pip-excursion study.</span>`;
+    ['cTouchTbl','cTouchReg'].forEach(id=>el(id).innerHTML='<tr><td colspan="10" class="neu">—</td></tr>');
+    el('cTouchTiles').innerHTML=''; el('cTouchNote').textContent=''; return;
+  }
+  const t = r.touches, M = t.medianExtension, P = t.p75Extension;
+  const trow = (lbl,o)=> o && o.n ? `<tr><td><strong>${lbl}</strong></td><td class="num">${fmt(o.touchRatePct,1)}</td>
+    <td class="num ${o.continuePct>o.reversePct?'pos':''}">${fmt(o.continuePct,1)}</td><td class="num ${o.reversePct>o.continuePct?'amber':''}">${fmt(o.reversePct,1)}</td>
+    <td class="num">${fmt(o.reverse10Pct,0)}%</td><td class="num">${fmt(o.reverse20Pct,0)}%</td><td class="num">${fmt(o.reverse50Pct,0)}%</td>
+    <td class="num">${fmt(o.meanMfePips,1)}</td><td class="num">${fmt(o.meanMaePips,1)}</td><td class="num">${fmt(o.meanRetests,2)}</td></tr>` : `<tr><td><strong>${lbl}</strong></td><td colspan="9" class="neu">no touches</td></tr>`;
+  el('cTouchTbl').innerHTML = trow('Median extension', M) + trow('75th extension', P);
+  const dir = t.direction||{};
+  el('cTouchTiles').innerHTML = [
+    ['Upper hit first', dir.firstUpperPct==null?'—':fmt(dir.firstUpperPct,0)+'%', 'vs lower '+(dir.firstLowerPct==null?'—':fmt(dir.firstLowerPct,0)+'%')],
+    ['Median continue', M.n?fmt(M.continuePct,0)+'%':'—', 'past the level'],
+    ['Median reverse ≥20p', M.n?fmt(M.reverse20Pct,0)+'%':'—', 'pullback'],
+    ['75th continue', P.n?fmt(P.continuePct,0)+'%':'—', 'exhaustion check'],
+  ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv">${v}</div><div class="td">${d}</div></div>`).join('');
+  const reg = M.byRegime||{};
+  el('cTouchReg').innerHTML = Object.keys(reg).map(rg=>{ const o=reg[rg]; return `<tr><td><strong>${rg}</strong></td><td class="num">${o.n}</td>
+    <td class="num">${fmt(o.continuePct,1)}</td><td class="num">${fmt(o.reverse20Pct,1)}</td><td class="num">${fmt(o.meanMfePips,1)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+  (r.findings||[]).length; // findings live on the intraday result
+  el('cTouchNote').innerHTML = `<span class="bk-lbl">Levels = open ± the forecast O-H/O-L median &amp; 75th. Touch detection walks ${r.src||'intraday'} bars; MFE = continuation past the level, MAE = pullback toward open (pips). Per-touch outcome sequencing beyond first-vs-retested is a later extension.</span>`;
+  el('aTouch').innerHTML = M.n
+    ? `For ${pair}, the median extension is reached <strong>${fmt(M.touchRatePct,0)}%</strong> of days; after the first touch price <strong>${M.continuePct>=M.reversePct?`continues ${fmt(M.continuePct,0)}%`:`reverses ${fmt(M.reversePct,0)}%`}</strong> of the time, with a ${fmt(M.reverse20Pct,0)}% chance of a ≥20-pip pullback. ${P.n && P.continuePct < M.continuePct-5 ? `The <strong>75th extension continues only ${fmt(P.continuePct,0)}%</strong> vs ${fmt(M.continuePct,0)}% at the median — deeper touches look more like exhaustion.` : ''} ${dir.firstUpperPct!=null?`The upper side is hit first ${fmt(dir.firstUpperPct,0)}% of days.`:''}`
+    : '<span class="muted">No level touches recorded for this pair.</span>';
 }
 
 // ── PR-B daily-aggregation chapters ──────────────────────────────────────────
@@ -705,19 +783,20 @@ function setupToc() {
 }
 
 let _poll = null;
-async function runResearch() {
-  const btn = el('runBtn'); btn.disabled = true;
-  setStatus('spin','Running research (per pair — can take a while)…'); el('runStatus').textContent='Starting…';
+// Generic async-job runner with a resilient poller (shared by both run buttons).
+async function _runJob(base, btnId, startMsg) {
+  const btn = el(btnId); btn.disabled = true;
+  setStatus('spin', startMsg); el('runStatus').textContent='Starting…';
   if (_poll) clearInterval(_poll);
   try {
-    const r = await fetch('/api/vol-forecast-research/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pair:el('runPair').value})});
+    const r = await fetch(`/api/${base}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pair:el('runPair').value})});
     const jb = await r.json();
     if (!jb.ok) { setStatus('err', jb.error||'Failed'); btn.disabled=false; return; }
     let fails = 0; const MAX = 20;
     const done = async (msg) => { if(_poll){clearInterval(_poll);_poll=null;} btn.disabled=false; el('runStatus').textContent=msg; await loadAll(); };
     _poll = setInterval(async () => {
       try {
-        const sr = await fetch(`/api/vol-forecast-research/status/${jb.jobId}`);
+        const sr = await fetch(`/api/${base}/status/${jb.jobId}`);
         if (sr.status===404) return done('Run no longer tracked');
         if (!sr.ok) throw new Error('HTTP '+sr.status);
         const sj = await sr.json(); fails=0;
@@ -729,6 +808,8 @@ async function runResearch() {
     }, 3000);
   } catch(e) { setStatus('err','Error: '+e.message); btn.disabled=false; }
 }
+function runResearch() { return _runJob('vol-forecast-research', 'runBtn', 'Running research (per pair — can take a while)…'); }
+function runIntraday() { return _runJob('intraday-research', 'runIntraBtn', 'Running intraday research (loads M1/H1 per pair — slow)…'); }
 </script>
 </body>
 </html>
