@@ -107,6 +107,8 @@
       <a href="#c5"><span class="qn">Q5</span>Session behaviour</a>
       <a href="#c6"><span class="qn">Q6</span>Daily expansion</a>
       <a href="#c7"><span class="qn">Q7</span>Forecast completion</a>
+      <a href="#cD"><span class="qn">DoW</span>Day-of-week</a>
+      <a href="#cP"><span class="qn">Seq</span>Persistence &amp; clustering</a>
       <a href="#c8"><span class="qn">A/B</span>Estimator comparison</a>
       <a href="#cM"><span class="qn">§</span>Method &amp; caveats</a>
     </nav>
@@ -144,6 +146,16 @@
         <div class="answer" id="a2">—</div>
         <div class="sec-sub">Exceedance — <span class="pair-badge" id="c2pair"></span> · bar = realized rate, white line = nominal target</div>
         <div class="rz-card"><div class="rz-body" id="c2cal" style="padding:14px 18px"></div></div>
+        <div class="sec-sub">Where the day's range lands — share of days in each forecast band (H-L)</div>
+        <div class="rz-card"><div class="rz-body" style="padding:16px 18px">
+          <div id="c2buckets"></div>
+          <div class="note">Below median / median–75th / above 75th. A calibrated forecast puts ~50% below the median and ~25% above the 75th. <span id="c2b95"></span></div>
+        </div></div>
+        <div class="sec-sub">Distribution of forecast errors (H-L) — signed % error <span class="pair-badge">(actual − median) / median</span></div>
+        <div class="rz-card"><div class="rz-body" style="padding:16px 18px">
+          <div class="bars" id="c2err"></div>
+          <div class="note" id="c2errNote"></div>
+        </div></div>
       </section>
 
       <!-- ── Ch 3 — Forecast stability ────────────────────────────────── -->
@@ -212,6 +224,27 @@
           <thead><tr><th>Condition</th><th class="num">n</th><th class="num">Mean completion %</th><th class="num">Reaches median %</th></tr></thead>
           <tbody id="c7by"></tbody>
         </table></div></div>
+      </section>
+
+      <!-- ── Day-of-week ──────────────────────────────────────────────── -->
+      <section class="chap" id="cD">
+        <div class="chap-h">Day-of-week effects <span class="qtag">DoW</span></div>
+        <div class="chap-q">Which day has the most accurate forecasts, and which day most frequently exceeds expectations? (Range-building is not uniform across the week.)</div>
+        <div class="answer" id="aD">—</div>
+        <div class="sec-sub">Daily H-L by weekday — <span class="pair-badge" id="cDpair"></span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Day</th><th class="num">n</th><th class="num">H-L MAE</th><th class="num">Bias</th><th class="num">Med-exceed % (tgt 50)</th></tr></thead>
+          <tbody id="cDtbl"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Persistence & clustering ─────────────────────────────────── -->
+      <section class="chap" id="cP">
+        <div class="chap-h">Persistence &amp; clustering <span class="qtag">Seq</span></div>
+        <div class="chap-q">When the market exceeds the forecast, does elevated volatility persist into the next day? Do large exceedances cluster? (Volatility persistence is the one replicated regularity — worth isolating.)</div>
+        <div class="answer" id="aP">—</div>
+        <div class="tiles" id="cPtiles"></div>
+        <div class="note" id="cPnote"></div>
       </section>
 
       <!-- ── Ch 8 — Estimator comparison ──────────────────────────────── -->
@@ -356,7 +389,7 @@ function renderPair() {
   const pair = el('viewPair').value;
   const s = _R?.perPair?.[pair];
   if (!s) return;
-  ['c1pair','c2pair','c3pair','c4pair','c5pair','c7pair'].forEach(id=>el(id).textContent = pair);
+  ['c1pair','c2pair','c3pair','c4pair','c5pair','c7pair','cDpair'].forEach(id=>el(id).textContent = pair);
 
   // Ch1 — components table
   const comps = [];
@@ -383,6 +416,24 @@ function renderPair() {
     `If the forecast is well-formed, realized exceeds the <strong>median ~50%</strong> of days and the <strong>75th ~25%</strong>.
      For ${pair}, H-L exceeds its median <strong class="${clsEx(hl.exceedMedianPct,50)}">${fmt(hl.exceedMedianPct,1)}%</strong> and its 75th <strong class="${clsEx(hl.exceed75Pct,25)}">${fmt(hl.exceed75Pct,1)}%</strong>.
      ${hl.exceedMedianPct!=null && hl.exceedMedianPct<42 ? 'Both sit below target ⇒ the bands run <strong>too wide</strong> (the forecast over-states the range) — this is the recalibration signal.' : hl.exceedMedianPct>58 ? 'Both sit above target ⇒ the bands run <strong>too tight</strong> (the forecast under-states the range).' : 'Close to target ⇒ reasonably calibrated.'}`;
+
+  // Ch2 — distribution buckets (from exceedance) + error histogram
+  const exM = hl.exceedMedianPct, ex75 = hl.exceed75Pct;
+  if (exM!=null && ex75!=null) {
+    const below = Math.max(0, 100-exM), mid = Math.max(0, exM-ex75), above = Math.max(0, ex75);
+    const seg = (w,c,lbl,v)=>`<div style="width:${w}%;background:${c};display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;min-width:0;overflow:hidden;white-space:nowrap">${w>10?`${lbl} ${fmt(v,0)}%`:''}</div>`;
+    el('c2buckets').innerHTML = `<div style="display:flex;height:34px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">
+      ${seg(below,'var(--blue)','< median',below)}${seg(mid,'#8b5cf6','med–75th',mid)}${seg(above,'var(--amber)','> 75th',above)}</div>`;
+    el('c2b95').textContent = 'A dedicated >95th bucket needs a 95th-percentile band added to the forecast (currently median + 75th only) — a small forecast-side add, deferred.';
+  }
+  const ed = s.errorDist;
+  if (ed && ed.hist) {
+    const ebs = ['<-50','-50..-25','-25..0','0..25','25..50','50..100','>100'];
+    const emax = Math.max(...ebs.map(b=>ed.hist[b]||0), 1);
+    el('c2err').innerHTML = ebs.map(b=>{ const v=ed.hist[b]||0; const center = b==='-25..0'||b==='0..25';
+      return `<div class="bar"><span class="bv">${fmt(v,0)}%</span><span class="bb" style="height:${v/emax*100}%;background:${center?'var(--green)':'var(--blue)'}"></span><span class="bl">${b}</span></div>`; }).join('');
+    el('c2errNote').innerHTML = `Median error <strong>${sgn(ed.medianPctErr,0)}%</strong>, mean <strong>${sgn(ed.meanPctErr,0)}%</strong>; the range falls short of the median forecast <strong>${fmt(ed.overStatePct,0)}%</strong> of days. Mass to the <em>left</em> of 0 ⇒ the forecast over-states the range (bands too wide).`;
+  }
 
   // Ch3 — VoV stability
   const vov = s.byVov || {};
@@ -416,6 +467,33 @@ function renderPair() {
 
   // Ch7 — completion
   renderCompletion(s, pair);
+
+  // Day-of-week
+  const dow = s.byDow || {};
+  const dowOrder = ['Mon','Tue','Wed','Thu','Fri'];
+  const dowRows = dowOrder.filter(d=>dow[d]);
+  el('cDtbl').innerHTML = dowRows.map(d=>{ const o=dow[d]; return `<tr>
+    <td><strong>${d}</strong></td><td class="num">${o.n}</td><td class="num">${fmt(o.mae,3)}</td>
+    <td class="num ${clsBias(o.bias)}">${sgn(o.bias,3)}</td><td class="num ${clsEx(o.exceedMedianPct,50)}">${fmt(o.exceedMedianPct,1)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+  if (dowRows.length) {
+    const byMae = dowRows.map(d=>({d,mae:dow[d].mae})).sort((a,b)=>a.mae-b.mae);
+    const byEx  = dowRows.map(d=>({d,ex:dow[d].exceedMedianPct})).sort((a,b)=>b.ex-a.ex);
+    el('aD').innerHTML = `For ${pair}, the forecast is <strong>most accurate on ${byMae[0].d}</strong> (lowest H-L MAE) and least on ${byMae.at(-1).d}. <strong>${byEx[0].d}</strong> most often exceeds its median (${fmt(byEx[0].ex,1)}%), <strong>${byEx.at(-1).d}</strong> least (${fmt(byEx.at(-1).ex,1)}%) — the classic quiet-Monday / active-midweek shape shows up as calibration drift by weekday.`;
+  } else el('aD').innerHTML = '<span class="muted">Day-of-week breakdown unavailable for this pair.</span>';
+
+  // Persistence & clustering
+  const p = s.persistence || {};
+  const lift = (p.afterAbove75Pct!=null && p.baseExceedMedianPct!=null) ? +(p.afterAbove75Pct - p.baseExceedMedianPct).toFixed(1) : null;
+  el('cPtiles').innerHTML = [
+    ['Base next-day exceed', fmt(p.baseExceedMedianPct,1)+'%', 'unconditional'],
+    ['After an above-75th day', fmt(p.afterAbove75Pct,1)+'%', 'next-day exceed'],
+    ['Clustering lift', (lift==null?'—':sgn(lift,1)+' pp'), 'persistence signal'],
+    ['Events', (p.n??'—'), 'above-75th days'],
+  ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv ${k==='Clustering lift'&&lift>0?'pos':''}">${v}</div><div class="td">${d}</div></div>`).join('');
+  el('aP').innerHTML = lift==null ? '<span class="muted">Persistence data unavailable.</span>'
+    : lift > 6 ? `Volatility <strong>clusters</strong> for ${pair}: after a day that exceeds its 75th percentile, the next day exceeds its median <strong class="pos">${fmt(p.afterAbove75Pct,1)}%</strong> of the time vs a <strong>${fmt(p.baseExceedMedianPct,1)}%</strong> base rate (+${fmt(lift,1)}pp). Expansion begets expansion — the one regularity worth leaning on, and the basis for a "stay wide after a big day" rule.`
+    : `For ${pair}, an above-75th day gives only a <strong>${sgn(lift,1)}pp</strong> lift to the next day's exceedance (${fmt(p.afterAbove75Pct,1)}% vs ${fmt(p.baseExceedMedianPct,1)}% base) — clustering is weak here; treat each day closer to independent.`;
+  el('cPnote').innerHTML = `<span class="bk-lbl">Multi-day chains (3 consecutive quiet days → expansion probability; whether forecast errors themselves predict next-day vol) are the next extension — a dedicated multi-day study.</span>`;
 }
 
 function calBar(label, val, tgt) {

@@ -65,6 +65,19 @@ test('completion: monotone shares are all in [0,100] and median is sane', () => 
   assert.ok(c.medianPct > 20 && c.medianPct < 250, `median completion plausible (${c.medianPct})`);
 });
 
+test('error distribution: histogram sums to 100, over-state share tracks calibration', () => {
+  const { summary } = evaluateForecast(synthDaily(500, 5), 'fx');
+  const e = summary.errorDist;
+  assert.ok(e && e.n > 100, 'errorDist computed');
+  const sum = Object.values(e.hist).reduce((s, v) => s + v, 0);
+  assert.ok(Math.abs(sum - 100) < 0.5, `error hist sums to ~100 (got ${sum})`);
+  // Days that fall short of the median forecast = 100 − median-exceedance.
+  const exceed = summary.perComponent.daily.hl.exceedMedianPct;
+  assert.ok(Math.abs(e.overStatePct - (100 - exceed)) < 3, `overState ${e.overStatePct} ≈ 100−exceed ${100 - exceed}`);
+  for (const b of ['<-50', '-50..-25', '-25..0', '0..25', '25..50', '50..100', '>100'])
+    assert.ok(b in e.hist, `error bucket ${b} present`);
+});
+
 test('no lookahead: truncating the series does not change earlier completion cells', () => {
   // The forecast for day i uses bars[0..i-1] only; evaluating a longer series
   // must reproduce the same early rows. Compare completion.n growth is monotone

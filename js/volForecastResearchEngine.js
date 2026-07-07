@@ -267,6 +267,26 @@ function summarize(rows) {
     n: condN,
   };
 
+  // Error distribution (brief Q1: "distribution of errors", median error). Signed
+  // percentage error of the daily H-L forecast: (actual − median) / median × 100.
+  // A calibrated median sits near the centre; a left-heavy mass ⇒ the forecast
+  // routinely over-states the range (bands too wide). Reuses the walk-forward cells.
+  const errCells = rows.map(r => r.comp.daily?.hl).filter(c => c && c.med > 0)
+    .map(c => (c.actual - c.med) / c.med * 100);
+  const errBuckets = ['<-50', '-50..-25', '-25..0', '0..25', '25..50', '50..100', '>100'];
+  const _errBucket = v => v < -50 ? '<-50' : v < -25 ? '-50..-25' : v < 0 ? '-25..0'
+    : v < 25 ? '0..25' : v < 50 ? '25..50' : v <= 100 ? '50..100' : '>100';
+  const errHist = Object.fromEntries(errBuckets.map(b => [b, 0]));
+  for (const v of errCells) errHist[_errBucket(v)]++;
+  const errN = errCells.length || 1;
+  const errorDist = {
+    n: errCells.length,
+    meanPctErr:   +_mean(errCells).toFixed(1),
+    medianPctErr: +_median(errCells).toFixed(1),
+    overStatePct: +(_mean(errCells.map(v => v < 0 ? 1 : 0)) * 100).toFixed(1),   // days the range fell short of the median forecast
+    hist: Object.fromEntries(errBuckets.map(b => [b, +(errHist[b] / errN * 100).toFixed(1)])),
+  };
+
   const completion = {
     n: complCells.length,
     meanPct:          +_mean(complCells).toFixed(1),
@@ -320,6 +340,7 @@ function summarize(rows) {
     fcSkewDirHitPct: dirHit == null ? null : +dirHit.toFixed(1),
     persistence,
     completion,
+    errorDist,
     regimeMatrix,
     byDow,
     byVov,
