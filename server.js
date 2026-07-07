@@ -64,8 +64,11 @@ import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEV
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
+import { evaluateEstimatorAB } from './js/volEstimatorAB.js';
+import { loadWeeklyM1 as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
+import { resampleTo as _resampleTo } from './js/barUtils.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
-import { _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
+import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
@@ -7887,6 +7890,99 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
 
 app.get('/api/vol-forecast-research/status/:jobId', (req, res) => {
   const job = vfrJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Vol-estimator A/B — Yang-Zhang vs Realized-Variance+HAR (London-anchored) ──
+// Loads intraday (M1 parquet → 5-min, else OANDA H1), runs the A/B per pair,
+// stores aggregates + a cross-pair ranking by pinball skill. Aggregates only.
+const abJobs = new Map();
+const _latestAbFile = () => {
+  try {
+    const files = fs.readdirSync(WBT_DATA_DIR).filter(f => f.startsWith('estimator_ab_') && f.endsWith('.json'));
+    return files.length ? path.join(WBT_DATA_DIR, files.sort().at(-1)) : null;
+  } catch { return null; }
+};
+
+// Intraday bars for the A/B: prefer M1 parquet resampled to 5-min RV granularity,
+// fall back to OANDA H1. Returns { bars, src } — bars carry unix-second time.
+async function _intradayForAB(cfg) {
+  try {
+    const byWeek = await _loadM1ForAB(cfg.name.toLowerCase());
+    if (byWeek && byWeek.size) {
+      const m1 = [];
+      for (const arr of byWeek.values()) for (const b of arr) {
+        const t = Math.floor(new Date(String(b.time).replace(' ', 'T').replace(/Z?$/, 'Z')).getTime() / 1000);
+        if (Number.isFinite(t)) m1.push({ time: t, open: b.open, high: b.high, low: b.low, close: b.close });
+      }
+      m1.sort((a, b) => a.time - b.time);
+      const bars5 = _resampleTo(m1, 5);
+      if (bars5.length > 5000) return { bars: bars5, src: 'm1-5min' };
+    }
+  } catch { /* fall through to H1 */ }
+  const h1 = await _fetchH1AB(cfg.oanda, 10);   // Date-typed time; the module handles it
+  return { bars: h1, src: 'h1' };
+}
+
+app.get('/api/estimator-ab', (req, res) => {
+  const fp = _latestAbFile();
+  if (!fp) return res.status(404).json({ ok: false, error: 'No A/B run yet. Click ▶ Run.' });
+  try {
+    const data = JSON.parse(fs.readFileSync(fp, 'utf8'));
+    res.json({ ok: true, file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.post('/api/estimator-ab/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '' } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+
+  const jobId = `ab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of abJobs) if (j.startedAt < Date.now() - 60 * 60_000) abJobs.delete(id);
+  abJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const ab = evaluateEstimatorAB(bars, cfg.assetClass || 'fx');
+          if (ab.insufficient) { log.push(`${cfg.name}: insufficient (${ab.nDays}d, src ${src})`); continue; }
+          ab.src = src;
+          perPair[cfg.name] = ab;
+          log.push(`${cfg.name}: ${ab.nDays}d src=${src} skill=${ab.pinballSkill} win=${ab.winRateHAR}%`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { abJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const ranked = names.map(k => ({
+        pair: k, skill: perPair[k].pinballSkill, win: perPair[k].winRateHAR,
+        yzSharp: perPair[k].yz?.sharpness ?? null, harSharp: perPair[k].har?.sharpness ?? null, src: perPair[k].src,
+      })).sort((a, b) => b.skill - a.skill);
+      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k]) ?? 0), 0) / names.length).toFixed(3);
+      const cross = { nPairs: names.length, meanSkill: _avg(s => s.pinballSkill), meanWin: _avg(s => s.winRateHAR),
+        harWins: ranked.filter(r => r.skill > 0.02).length, ranked };
+
+      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(WBT_DATA_DIR, `estimator_ab_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
+      abJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `A/B on ${names.length} pair(s)`, log, file: path.basename(outFile) } });
+    } catch (e) { abJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/estimator-ab/status/:jobId', (req, res) => {
+  const job = abJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
