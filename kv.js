@@ -96,6 +96,7 @@ const _CF_EXACT = new Set([
   'range_line_bot_audit_log',   // Range-Line bot entry/exit audit log — cannot be auto-rebuilt
   // NOTE: range_line_bot_status is deliberately NOT here — the bot rewrites it every
   // ~30s (same reason as volatility_bot_status).
+  'morning_brief_v1',       // Daily Brief top-down macro read (AI, ~1 gen/day) — must survive redeploys or the front page goes blank until regenerated
   'hedge_audit_log',        // forward-test log for advisory hedge suggestions — must survive redeploys
   'hedge_alerts_cache',     // summary of corr_history.json pushed by /api/hedge-alerts — survives redeploys
   'vol_hit_rates',          // historical price-level hit rates — expensive to recompute (~10 min full, ~1 min incremental)
