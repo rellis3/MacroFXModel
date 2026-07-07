@@ -108,7 +108,7 @@ async function _fetchChunk(instrument, fromDate) {
   return [];
 }
 
-async function _fetchAllH1(instrument, years) {
+export async function _fetchAllH1(instrument, years) {
   const all    = [];
   let   cursor = new Date(Date.now() - years * 365.25 * 24 * 60 * 60 * 1000);
   const now    = new Date();
