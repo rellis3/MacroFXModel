@@ -77,7 +77,9 @@ console.log('[walkBars fill-bar causality]');
 console.log('[dynamic-HL anchor lag]');
 {
   // hl75 ≈ 5% of open: sigma chosen so BM_P75 × fx-corr × σ ≈ 0.05.
-  const bands = computeBands(100, 0.05 / (2.049 * 0.912), 'fx');
+  // fx hl_75_corr was recalibrated 2026-07-07 (0.912→0.817); σ divisor tracks it
+  // so the setup still yields hl75 = 5% (the intent) for the anchor-lag checks.
+  const bands = computeBands(100, 0.05 / (2.049 * 0.817), 'fx');
   ok('test setup: hl75 ≈ 5%', Math.abs(bands.hl75 - 0.05) < 1e-9);
 
   // Single bar {high 104, low 96}. With the OLD self-anchoring, the sell level
