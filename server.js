@@ -40,7 +40,7 @@ import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './j
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec } from './js/volBacktestEngine.js';
+import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -7899,6 +7899,37 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
           exceedMed: perPair[k].perComponent?.daily?.hl?.exceedMedianPct ?? 0,
         })).sort((a, b) => b.sharpness - a.sharpness),
       };
+
+      // ── Recalibration → proposed ASSET_PARAMS (per asset class) ──────────────
+      // Aggregate the per-pair walk-forward recalibration factors up to the asset-
+      // class level (fx / commodity / index) — the granularity ASSET_PARAMS uses.
+      // proposed corr = current corr × class-median factor. A validated swap-in;
+      // the live constants are NOT changed here — this is the number to adopt.
+      const _classOf = Object.fromEntries(insts.map(i => [i.name, i.assetClass || 'fx']));
+      const _med = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+      const byClass = {};
+      for (const k of names) {
+        const rc = perPair[k].recalibration; if (!rc || rc.insufficient) continue;
+        const cl = _classOf[k] || 'fx';
+        (byClass[cl] = byClass[cl] || { med: [], p75: [], exB: [], exA: [], e7B: [], e7A: [], pairs: [] });
+        const g = byClass[cl];
+        g.med.push(rc.medFactor); g.p75.push(rc.p75Factor);
+        g.exB.push(rc.exceedMedianBefore); g.exA.push(rc.exceedMedianAfter);
+        g.e7B.push(rc.exceed75Before); g.e7A.push(rc.exceed75After); g.pairs.push(k);
+      }
+      const recalProposal = {};
+      for (const [cl, g] of Object.entries(byClass)) {
+        const cur = _ASSET_PARAMS[cl] || _ASSET_PARAMS.fx;
+        const mf = _med(g.med), pf = _med(g.p75);
+        recalProposal[cl] = {
+          nPairs: g.pairs.length, medFactor: +mf.toFixed(3), p75Factor: +pf.toFixed(3),
+          current:  { hl_50_corr: cur.hl_50_corr, hl_75_corr: cur.hl_75_corr },
+          proposed: { hl_50_corr: +(cur.hl_50_corr * mf).toFixed(4), hl_75_corr: +(cur.hl_75_corr * pf).toFixed(4) },
+          exceedMedianBefore: +_med(g.exB).toFixed(1), exceedMedianAfter: +_med(g.exA).toFixed(1),
+          exceed75Before: +_med(g.e7B).toFixed(1), exceed75After: +_med(g.e7A).toFixed(1),
+        };
+      }
+      cross.recalProposal = recalProposal;
 
       if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
       const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
