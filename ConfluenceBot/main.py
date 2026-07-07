@@ -46,6 +46,7 @@ import argparse
 import logging
 import os
 import sys
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
@@ -337,6 +338,33 @@ def _init_mt5(creds: dict) -> bool:
             mt5.shutdown()
             return False
     return True
+
+
+def _run_with_timeout(fn, timeout: float, *args, **kwargs):
+    """Run fn in a fresh daemon thread and enforce a wall-clock timeout.
+
+    Used to bound per-instrument state_refresh() calls: a hang inside one
+    (an MT5 IPC call with no native timeout, or a runaway compute loop) would
+    otherwise freeze the whole bot forever. On timeout the worker thread is
+    abandoned (Python can't force-kill a thread) rather than reused, so a
+    single stuck call can't permanently block subsequent cycles.
+    """
+    result: dict = {}
+
+    def _target():
+        try:
+            result['value'] = fn(*args, **kwargs)
+        except Exception as exc:
+            result['exc'] = exc
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        raise TimeoutError(f'{fn!r} did not complete within {timeout}s')
+    if 'exc' in result:
+        raise result['exc']
+    return result.get('value')
 
 
 def _bars(symbol: str, tf: str, count: int) -> list[dict]:
@@ -1468,7 +1496,9 @@ class ConfluenceBot:
         log.info(f'[REFRESH] {len(self.engines)} instrument(s)...')
         for e in self.engines.values():
             try:
-                e.state_refresh()
+                _run_with_timeout(e.state_refresh, self.args.refresh_timeout)
+            except TimeoutError as exc:
+                log.error(f'[{e.instr.symbol}] state refresh TIMED OUT — skipping this cycle: {exc}')
             except Exception as exc:
                 log.error(f'[{e.instr.symbol}] state refresh failed: {exc}', exc_info=True)
         self.push_status()
@@ -1537,6 +1567,10 @@ def _parse_args() -> argparse.Namespace:
                    help='Price tick interval (default 3s)')
     p.add_argument('--state-interval', type=float, default=120.0, metavar='SECS',
                    help='State refresh interval (default 120s)')
+    p.add_argument('--refresh-timeout', type=float, default=30.0, metavar='SECS',
+                   help='Max seconds for a single instrument\'s state refresh before it is '
+                        'skipped this cycle (default 30s) — guards against a hung MT5 call '
+                        'or runaway compute freezing the whole bot')
     p.add_argument('--once',           action='store_true',
                    help='Run a single state refresh + price tick then exit')
     p.add_argument('--log-dir',        default='.', metavar='DIR',

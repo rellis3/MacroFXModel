@@ -50,13 +50,22 @@ class PaperBroker:
         return self._bal
 
     # ── orders (mirror Mt5Broker.enter/stop signatures) ───────────────────────
-    def enter(self, pair, direction, sl, tp, lots, max_spread_pips, paper_mode, comment=None):
+    def enter(self, pair, direction, sl, tp, lots, max_spread_pips, paper_mode, comment=None,
+              dedupe_tag=None):
         """Simulate a market fill at the current price. direction 'LONG'/'SHORT'.
         Returns a positive paper ticket (the bot only uses PaperBroker in paper
-        mode, where we want real position tracking + barrier exits)."""
+        mode, where we want real position tracking + barrier exits).
+
+        ``dedupe_tag`` mirrors ``Mt5Broker.enter``: when given, blocks the fill if
+        a position already open on ``pair`` has ``[{dedupe_tag}]`` in its comment
+        (unset by default — paper stacks freely, same as before)."""
         px = self._price.get(pair)
         if px is None:
             return None
+        if dedupe_tag is not None:
+            tag = f'[{dedupe_tag}]'
+            if any(p['pair'] == pair and tag in (p.get('comment') or '') for p in self._pos.values()):
+                return None
         t = self._next
         self._next += 1
         self._pos[t] = {"ticket": t, "pair": pair, "direction": direction,

@@ -46,6 +46,13 @@ DEFAULT_CFG = {
     "max_lot": 2.0,
     "max_open": 12,
     "max_spread_pips": 1e9,        # indices: set a real cap on the config page
+    "single_position_per_pair": True,  # True = at most one open position per pair
+                                        # (today's default). False = one per
+                                        # (source, side) ladder slot instead, matching
+                                        # the offline backtest's held-position model
+                                        # (js/rangeLineAnalyser.js runHeldPosition) —
+                                        # lets an Asia-ladder and Monday-ladder trade
+                                        # run concurrently on the same pair.
     "plan_secs": 600,              # re-pull the daily plan
     "status_secs": 30,             # read config + push status
     "tick_secs": 3,                # local price watch + touch detection + chandelier trail
@@ -340,12 +347,21 @@ def run(base_url: str, force_live: bool) -> None:
                     sl = spec["protect_stop"]
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), spec["entry"] - sl, cfg.get("max_lot", 2.0))
                     direction = "LONG" if spec["dir_up"] else "SHORT"
+                    slot_tag = f"{spec['src']}{spec['side']}"
+                    # single_position_per_pair=True (default): dedupe_tag=None → the
+                    # broker blocks on ANY open position for this pair (today's
+                    # behaviour). False: dedupe_tag=slot_tag → the broker only blocks
+                    # a repeat fill on THIS (source, side) slot, so an Asia-ladder and
+                    # Monday-ladder position can run concurrently on the same pair —
+                    # matching the offline held-position backtest (js/rangeLineAnalyser.js).
+                    dedupe_tag = None if cfg.get("single_position_per_pair", True) else slot_tag
                     # No take-profit — the chandelier-trailed native SL is the exit
                     # (see _trail_stops). tp=0 → MT5 sets no TP.
                     tid = broker.enter(instr, direction, sl, 0.0, lots,
                                        cfg.get("max_spread_pips", 1e9), paper,
-                                       comment=f"RL {spec['label']} {spec['decision'][0]}")
-                    filled = (tid is not None and tid != -1) or paper
+                                       comment=f"RL [{slot_tag}] {spec['label']} {spec['decision'][0]}",
+                                       dedupe_tag=dedupe_tag)
+                    filled = tid is not None and tid != -1
                     if filled:
                         positions[tid] = {"instr": instr, "ticket": tid, "dir_up": spec["dir_up"],
                                           "entry": spec["entry"], "peak": spec["entry"],

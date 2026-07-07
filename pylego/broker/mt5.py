@@ -275,9 +275,17 @@ class Mt5Broker:
         max_spread_pips: float,
         paper_mode: bool,
         comment: str | None = None,
+        dedupe_tag: str | None = None,
     ) -> int | None:
         """Open a position. Returns ticket on success, -1 for paper, None on
-        failure (incl. spread/duplicate blocks). Mirrors regime_bot.open_position."""
+        failure (incl. spread/duplicate blocks). Mirrors regime_bot.open_position.
+
+        By default the duplicate guard blocks on ANY open position for ``pair``
+        with this bot's magic number (one position per pair — the historical
+        behaviour every caller still gets). Pass ``dedupe_tag`` to narrow that to
+        positions whose comment contains ``[{dedupe_tag}]`` instead, letting a
+        caller hold several concurrent positions per pair as long as each comes
+        from a distinct tag (e.g. range_line_bot's per source/side slot)."""
         pip = self.pip(pair)
         self.log.info(
             f'TRADE {pair} {direction}  SL={sl:.5f}  TP={tp:.5f}  lot={lots}'
@@ -324,6 +332,9 @@ class Mt5Broker:
             return None
 
         existing = [p for p in (mt5.positions_get(symbol=mt5_sym) or []) if p.magic == self.magic]
+        if dedupe_tag is not None:
+            tag = f'[{dedupe_tag}]'
+            existing = [p for p in existing if tag in (p.comment or '')]
         if existing:
             self.log.warning(f'DUPLICATE BLOCK {pair}: ticket {existing[0].ticket} already open')
             return None

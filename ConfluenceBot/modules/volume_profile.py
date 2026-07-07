@@ -52,15 +52,16 @@ class VolumeProfile:
 def _build_histogram(bars: list[dict], bucket: float = BUCKET_SIZE) -> dict[float, float]:
     hist: dict[float, float] = {}
     for b in bars:
-        lo_b = math.floor(b['low']  / bucket) * bucket
-        hi_b = math.floor(b['high'] / bucket) * bucket
-        n_buckets = max(1, round((hi_b - lo_b) / bucket) + 1)
+        lo_i = math.floor(b['low']  / bucket)
+        hi_i = math.floor(b['high'] / bucket)
+        n_buckets = max(1, hi_i - lo_i + 1)
         vol_each  = b.get('tick_volume', 1) / n_buckets
-        cur = lo_b
-        while cur <= hi_b + 1e-9:
-            key = round(cur, 2)
+        # Iterate by integer bucket index, not by adding `bucket` to a float and
+        # re-rounding to 2dp — for FX-scale buckets (e.g. 0.00005) that rounding
+        # never moves `cur`, which spun this into an infinite loop on EUR/USD.
+        for i in range(lo_i, hi_i + 1):
+            key = round(i * bucket, 8)
             hist[key] = hist.get(key, 0.0) + vol_each
-            cur = round(cur + bucket, 2)
     return hist
 
 
