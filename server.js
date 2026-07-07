@@ -11575,6 +11575,31 @@ setInterval(async () => {
 }, 20_000);
 console.log(`[tde-backfill] daily top-up armed (default ${TDE_CFG_DEFAULTS.backfill_utc} UTC — runtime-configurable at /api/trade-decision/config)`);
 
+// ── Nightly research refresh ──────────────────────────────────────────────────
+// Re-runs the vol-forecast research (all pairs) so the recalibration factors that
+// feed the calibrated export stay current without any manual step. OFF unless
+// VFR_REFRESH_UTC is set (HH:MM UTC, e.g. '02:30'). Fires an internal POST to the
+// local route, reusing its exact logic (walk-forward eval, recalProposal, local +
+// R2 persist). Heavy (~minutes) — meant for off-hours; the daily σ already updates
+// itself, this only refreshes the slow structural correction factor.
+const VFR_REFRESH_UTC = process.env.VFR_REFRESH_UTC || '';
+let _vfrLastRefresh = '';
+if (VFR_REFRESH_UTC && process.env.OANDA_KEY) {
+  const [rH, rM] = VFR_REFRESH_UTC.split(':').map(x => parseInt(x, 10));
+  setInterval(async () => {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    if (now.getUTCHours() === rH && now.getUTCMinutes() === rM && _vfrLastRefresh !== today) {
+      _vfrLastRefresh = today;
+      try {
+        await fetch(`http://127.0.0.1:${PORT}/api/vol-forecast-research/run`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        console.log(`[vfr-refresh] nightly research kicked (${VFR_REFRESH_UTC} UTC)`);
+      } catch (e) { console.warn(`[vfr-refresh] failed: ${e?.message}`); }
+    }
+  }, 20_000);
+  console.log(`[vfr-refresh] nightly research refresh armed (${VFR_REFRESH_UTC} UTC)`);
+}
+
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {
   try {

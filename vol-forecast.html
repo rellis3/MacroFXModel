@@ -1074,11 +1074,13 @@
       <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
       <button class="vf-exp-item" id="vfExportHarBtn"     onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">shadow σ</span></button>
       <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
+      <button class="vf-exp-item" id="vfCalExtBtn"        onclick="closeExpDropdown();exportCalibratedExtended()" disabled>⬇ Extended (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
       <div class="vf-exp-sep"></div>
       <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"            disabled>⬇ Session</button>
       <button class="vf-exp-item" id="vfV3ExportBtn"      onclick="closeExpDropdown();exportV3()"                 disabled>⬇ V+S</button>
       <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z</button>
       <button class="vf-exp-item" id="vfWeeklyBtn"        onclick="closeExpDropdown();exportWeekly()"             disabled>⬇ Weekly</button>
+      <button class="vf-exp-item" id="vfCalWkBtn"         onclick="closeExpDropdown();exportCalibratedWeekly()"   disabled>⬇ Weekly (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
     </div>
   </div>
   <button class="dark-btn" id="vfHistoryBtn" onclick="toggleHistory()" disabled title="Show/hide session history table — click rows to load a past day, use ← Older / Newer → to navigate">⊞ History</button>
@@ -1667,6 +1669,7 @@ async function loadForecast() {
     document.getElementById('vfExportHarBtn').disabled =
       !Object.values(data.instruments ?? {}).some(f => f && f.har);
     document.getElementById('vfExtendedBtn').disabled = false;
+    document.getElementById('vfCalExtBtn').disabled = false;
     document.getElementById('vfCZExportBtn').disabled = false;
     document.getElementById('vfExpPillBtn').disabled  = false;
     setStatus('ok', `Forecast ready — session ${data.session_date}`);
@@ -1789,26 +1792,28 @@ async function loadRecalFactors() {
   _recalFactors = f;
   return f;
 }
-function buildCalibratedExportText(data, factors) {
-  const LINE_WIDTH = 29;
-  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
-  const live = Object.values(factors).some(x => x.live);
-  const lines = [
-    '**VOL & RANGE FORECAST — BACKTEST-CALIBRATED**',
-    `**For session: ${data.session_label}**`,
-    `H-L bands recalibrated to ~50th/75th realized (fx ×${factors.fx.hl50}, commodity ×${factors.commodity.hl50}; index held). O-C unchanged. Factors: ${live ? 'live from research run' : 'book default'}.`,
-    '',
-  ];
-  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+// Deep-clone the forecast/weekly data and scale EVERY H-L field (hl_median, hl_75,
+// hl_5d, hl_5d_75, hl_20d, hl_20d_75 …) by the instrument's class factor — median
+// fields ×hl50, 75th fields ×hl75. O-C and everything else is left untouched.
+// One helper calibrates the daily, extended and weekly exports uniformly (all share
+// the hl_50_corr the factor corrects). Returns a new object; the input is unchanged.
+function _calibrateForecast(data, factors) {
+  if (!data || !data.instruments) return data;
+  const clone = JSON.parse(JSON.stringify(data));
+  for (const [name, f] of Object.entries(clone.instruments)) {
+    if (!f || typeof f !== 'object') continue;
     const fct = factors[_assetClassOf(name)] || factors.fx;
-    const hlM = f.hl_median * fct.hl50, hl7 = f.hl_75 * fct.hl75;
-    lines.push(divider(name));
-    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
-    lines.push(`High to Low range       : ${hlM.toFixed(2)}% median · ${hl7.toFixed(2)}% 75th Percentile`);
-    lines.push(`Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th Percentile`);
-    lines.push('');
+    for (const k of Object.keys(f)) if (/^hl_/.test(k) && typeof f[k] === 'number') f[k] *= /75/.test(k) ? fct.hl75 : fct.hl50;
   }
-  return lines.join('\n');
+  return clone;
+}
+function _calNote(factors) {
+  const live = Object.values(factors).some(x => x.live);
+  return `[BACKTEST-CALIBRATED — H-L bands ×fx ${factors.fx.hl50} / commodity ${factors.commodity.hl50}, index held; O-C unchanged; factors ${live ? 'live from research run' : 'book default'}]`;
+}
+// Daily calibrated export — reuse the standard builder on calibrated data.
+function buildCalibratedExportText(data, factors) {
+  return _calNote(factors) + '\n' + buildExportText(_calibrateForecast(data, factors));
 }
 
 // ── Export pill dropdown toggle ───────────────────────────────────────────────
@@ -1940,23 +1945,37 @@ function exportForecast() {
   });
 }
 
-async function exportCalibrated() {
-  if (!currentForecast) return;
-  const btn = document.getElementById('vfCalibratedBtn');
-  const orig = btn.textContent; btn.textContent = '… factors'; btn.disabled = true;
-  const factors = await loadRecalFactors();
-  const text = buildCalibratedExportText(currentForecast, factors);
+// Shared copy-or-download for a calibrated text export.
+function _emitCalibrated(btnId, text, fname) {
+  const btn = document.getElementById(btnId), orig = btn.dataset.orig || btn.textContent;
+  btn.dataset.orig = orig;
   navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '✓ Copied!';
+    btn.textContent = '✓ Copied!'; btn.disabled = true;
     setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
   }).catch(() => {
     const blob = new Blob([text], { type: 'text/plain' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `vol-forecast-calibrated-${currentForecast.session_date}.txt`;
-    a.click(); URL.revokeObjectURL(url);
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = fname; a.click(); URL.revokeObjectURL(url);
     btn.textContent = orig; btn.disabled = false;
   });
+}
+async function exportCalibrated() {
+  if (!currentForecast) return;
+  const btn = document.getElementById('vfCalibratedBtn'); btn.dataset.orig = btn.textContent; btn.textContent = '… factors';
+  const factors = await loadRecalFactors();
+  _emitCalibrated('vfCalibratedBtn', buildCalibratedExportText(currentForecast, factors), `vol-forecast-calibrated-${currentForecast.session_date}.txt`);
+}
+async function exportCalibratedExtended() {
+  if (!currentForecast) return;
+  const factors = await loadRecalFactors();
+  const text = _calNote(factors) + '\n' + buildExtendedText(_calibrateForecast(currentForecast, factors));
+  _emitCalibrated('vfCalExtBtn', text, `vol-extended-calibrated-${currentForecast.session_date ?? 'latest'}.txt`);
+}
+async function exportCalibratedWeekly() {
+  if (!currentWeekly) return;
+  const factors = await loadRecalFactors();
+  const text = _calNote(factors) + '\n' + _buildWeeklyText(_calibrateForecast(currentWeekly, factors));
+  _emitCalibrated('vfCalWkBtn', text, `vol-weekly-calibrated-${(currentWeekly.week_label ?? 'latest').replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`);
 }
 
 // ── Session export ────────────────────────────────────────────────────────────
@@ -2504,6 +2523,7 @@ async function loadWeekly() {
     if (!data.ok) return;
     currentWeekly = data;
     document.getElementById('vfWeeklyBtn').disabled = false;
+    document.getElementById('vfCalWkBtn').disabled = false;
     renderWeekly(data);
     renderCurrencyStrength(data);
   } catch { /* silent */ }
