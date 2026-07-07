@@ -447,6 +447,16 @@ Railway; do not read any local run as edge.
 
 ---
 
+### 1l. Macro-direction predictiveness test (2026-07-07) — falsification-first, before levels/z
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Macro-direction core** | `js/macroDirectionCore.js` | pure, network-free scoring for "does macro DIRECTION lead forward FX drift?": `pairLegs`/`usdRole`/`havenTilt`/`CURRENCY_HAVEN` (pair orientation), `carryVote`/`realVote`/`riskVote` (replicated FX-directional factors as ±1 votes — 2Y-diff momentum, US real-yield momentum, VIX momentum by haven leg), `macroDirScore` (mean of votes, null/0-weight drops out), `forwardReturn`, `spearman` (rank corr), `summarizeDirection` (hit%, mean ret, Sharpe, corr — non-overlapping samples), `splitByDate` (IS/OOS). Tested `js/macroDirectionCore.test.mjs` (18 asserts). | `js/macroDirectionEngine.js` (I/O: reuses z-engine's `fetchFredObservations`/`buildDayIndex` + `loadM1ForPair` for M1→daily closes; per-horizon 1/5/20d, per-factor attribution, buy-&-hold benchmark, cross-pair pooled OOS); `server.js` `/api/macro-direction/*`; `macro-direction.html` (pooled OOS verdict + per-pair + per-factor) | 🟡 built, **not yet run** (needs live FRED + M1 on Railway) |
+
+This is the **falsification-first** step under the "macro sets direction, levels time the entry, z-score exits" bot: test the *foundation* (does macro direction predict drift at all) before building level entries or the z-exit on top. No fib levels, no z-gate — just macro→forward return. If it's null, the premise is dead cheaply; if it leads, the entry/exit build has a load-bearing base. Z-score is explicitly demoted here to a future **exit** (z-exit), not part of this direction test.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
