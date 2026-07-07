@@ -75,7 +75,7 @@ from modules.exits import plan_exits
 
 # Shared multi-instrument bricks — never re-inline a pip table or a sizing formula.
 from pylego.instruments import instrument, oanda_symbol
-from pylego.point_values import point_value
+from pylego.point_values import point_value, DEFAULT_POINT_VALUE
 from pylego.sizing import position_size
 
 from journal import ConfluenceJournal
@@ -241,6 +241,16 @@ def build_instr(input_symbol: str, broker_overrides: dict) -> Optional[InstrCtx]
     # short code the user typed (NQ, DAX) reads better.
     reg_display = rec.get('display', input_symbol)
     display = reg_display if '/' in reg_display else input_symbol.upper()
+    # Pip VALUE is an approximate sizing input and the shared table doesn't cover
+    # every FX cross this bot can trade. Use the documented default fallback
+    # (mirrors the live bots' `.get(pair, 10.0)`) instead of failing loud, and
+    # warn so it's clear sizing is approximate for that pair (paper-first).
+    try:
+        point_val = float(point_value(input_symbol))
+    except KeyError:
+        point_val = float(DEFAULT_POINT_VALUE)
+        log.warning(f'[INSTR]  {input_symbol}: no point value in the sizing table — '
+                    f'using default ${point_val}/pip/lot (approximate sizing; paper-first)')
     return InstrCtx(
         input_symbol=input_symbol,
         key=key,
@@ -249,7 +259,7 @@ def build_instr(input_symbol: str, broker_overrides: dict) -> Optional[InstrCtx]
         oanda=rec.get('oanda') or oanda_symbol(input_symbol),
         pip=float(rec['pip']),
         digits=int(rec['digits']),
-        point_val=float(point_value(input_symbol)),
+        point_val=point_val,
         asset_class=rec.get('assetClass', 'fx'),
         vol_name=_VOL_FORECAST_NAME.get(key, key.upper()),
     )
