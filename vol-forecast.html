@@ -1070,6 +1070,7 @@
     <button class="dark-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
     <div class="vf-exp-menu">
       <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export</button>
+      <button class="vf-exp-item" id="vfCalibratedBtn"    onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">backtest %</span></button>
       <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
       <button class="vf-exp-item" id="vfExportHarBtn"     onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">shadow σ</span></button>
       <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
@@ -1661,6 +1662,7 @@ async function loadForecast() {
     renderForecast(data);
     updatePositionSizes();
     document.getElementById('vfExportBtn').disabled    = false;
+    document.getElementById('vfCalibratedBtn').disabled = false;
     document.getElementById('vfExportV2Btn').disabled = false;
     document.getElementById('vfExportHarBtn').disabled =
       !Object.values(data.instruments ?? {}).some(f => f && f.har);
@@ -1752,6 +1754,60 @@ function buildExportText(data) {
     lines.push('');
   }
 
+  return lines.join('\n');
+}
+
+// ── Backtest-calibrated export ────────────────────────────────────────────────
+// Same structure as buildExportText, but the H-L bands are scaled by the
+// recalibration factors from the Vol Forecast Research Book (which found the raw
+// forecast runs ~15% wide — realized exceeds the median only ~34% of days vs 50%).
+// The factors are the walk-forward median(realized ÷ forecast) ratios, pulled
+// live from /api/vol-forecast-research so they refresh whenever the book re-runs;
+// a book-derived default is used if that hasn't run. O-C is carried through
+// unchanged (only H-L was recalibrated). The live forecaster is NOT modified —
+// this is purely an alternative view for comparison.
+const RECAL_FALLBACK = { fx: { hl50: 0.850, hl75: 0.896 }, commodity: { hl50: 0.878, hl75: 0.972 }, index: { hl50: 1, hl75: 1 } };
+function _assetClassOf(name) {
+  const n = String(name).toUpperCase();
+  if (/GOLD|XAU|XAG|SILVER|OIL|WTI|BRENT/.test(n)) return 'commodity';
+  if (/NAS100|NQ|SPX|US30|US500|US2000|DE30|DE40|UK100|DOW|DAX|FTSE|GER40/.test(n)) return 'index';
+  return 'fx';
+}
+let _recalFactors = null;   // cached per page load
+async function loadRecalFactors() {
+  if (_recalFactors) return _recalFactors;
+  const f = JSON.parse(JSON.stringify(RECAL_FALLBACK));
+  try {
+    const r = await fetch('/api/vol-forecast-research');
+    if (r.ok) {
+      const rp = (await r.json())?.cross?.recalProposal;
+      // medFactor / p75Factor are the raw median-ratio multipliers (base-independent).
+      // Adopt fx + commodity; HOLD index (its recalibration overshoots — see the book).
+      for (const c of ['fx', 'commodity']) if (rp?.[c]?.medFactor) f[c] = { hl50: rp[c].medFactor, hl75: rp[c].p75Factor, live: true };
+    }
+  } catch { /* keep defaults */ }
+  _recalFactors = f;
+  return f;
+}
+function buildCalibratedExportText(data, factors) {
+  const LINE_WIDTH = 29;
+  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+  const live = Object.values(factors).some(x => x.live);
+  const lines = [
+    '**VOL & RANGE FORECAST — BACKTEST-CALIBRATED**',
+    `**For session: ${data.session_label}**`,
+    `H-L bands recalibrated to ~50th/75th realized (fx ×${factors.fx.hl50}, commodity ×${factors.commodity.hl50}; index held). O-C unchanged. Factors: ${live ? 'live from research run' : 'book default'}.`,
+    '',
+  ];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    const fct = factors[_assetClassOf(name)] || factors.fx;
+    const hlM = f.hl_median * fct.hl50, hl7 = f.hl_75 * fct.hl75;
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
+    lines.push(`High to Low range       : ${hlM.toFixed(2)}% median · ${hl7.toFixed(2)}% 75th Percentile`);
+    lines.push(`Open to Close move      : ${f.oc_median.toFixed(2)}% median · ${f.oc_75.toFixed(2)}% 75th Percentile`);
+    lines.push('');
+  }
   return lines.join('\n');
 }
 
@@ -1881,6 +1937,25 @@ function exportForecast() {
     a.download = `vol-forecast-${currentForecast.session_date}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  });
+}
+
+async function exportCalibrated() {
+  if (!currentForecast) return;
+  const btn = document.getElementById('vfCalibratedBtn');
+  const orig = btn.textContent; btn.textContent = '… factors'; btn.disabled = true;
+  const factors = await loadRecalFactors();
+  const text = buildCalibratedExportText(currentForecast, factors);
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `vol-forecast-calibrated-${currentForecast.session_date}.txt`;
+    a.click(); URL.revokeObjectURL(url);
+    btn.textContent = orig; btn.disabled = false;
   });
 }
 
