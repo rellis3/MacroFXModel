@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vol Forecast Research</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#vfrApp { padding:0 20px 40px; max-width:1280px; margin:0 auto; }
+.rz-card { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px; }
+.rz-hdr { padding:12px 18px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px; }
+.rz-hdr .tabs { display:flex;gap:4px;margin-left:auto; }
+.rz-body { padding:14px 18px; }
+.rz-tbl { width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px; }
+.rz-tbl th { padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap; }
+.rz-tbl td { padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap; }
+.rz-tbl tr:last-child td { border-bottom:none; }
+.rz-tbl tr:hover td { background:var(--s2); }
+.rz-tbl td.num, .rz-tbl th.num { text-align:right; }
+.pos { color:var(--green); } .neg { color:var(--red); } .amber { color:var(--amber); } .blue { color:var(--blue); } .neu { color:var(--text2); }
+.rz-scroll { overflow-x:auto; }
+.rz-run { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
+.rz-run select { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;cursor:pointer; }
+.rz-run-btn { background:var(--green);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;padding:6px 18px;cursor:pointer; }
+.rz-run-btn:disabled { opacity:.5;cursor:wait; }
+.rz-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+.find { display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:7px;font-size:12.5px;line-height:1.5;margin:0 0 8px; }
+.find.good { background:#0f2a1c;border:1px solid #1a5c35; } .find.good .fi { color:#34d399; }
+.find.warn { background:#2d2110;border:1px solid #5c4010; } .find.warn .fi { color:#fbbf24; }
+.find.info { background:#0f1d35;border:1px solid #1a3660; } .find.info .fi { color:#60a5fa; }
+.fi { font-size:14px;flex-shrink:0; } .find .ft { color:var(--text); }
+.kpis { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px; }
+@media (max-width:900px){ .kpis { grid-template-columns:repeat(2,1fr); } }
+.kpi { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;display:flex;flex-direction:column;gap:3px; }
+.kpi-l { font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace; }
+.kpi-v { font-size:24px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);line-height:1.1; }
+.kpi-s { font-size:10.5px;color:var(--text3);font-family:'DM Mono',monospace; }
+.ptab { background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;padding:3px 12px;border-radius:5px;font-size:11px;font-family:'DM Mono',monospace; }
+.ptab.active { border-color:var(--blue);color:var(--blue); }
+.calbar { position:relative;height:22px;background:var(--s2);border-radius:4px;overflow:hidden;flex:1; }
+.calbar > span { position:absolute;top:0;bottom:0;left:0;background:var(--blue);opacity:.55; }
+.calbar > .tgt { left:var(--tgt);width:2px;background:#fff;opacity:.9; }
+.info-box { background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-top:10px;font-size:12px;line-height:1.7;color:var(--text2); }
+</style>
+</head>
+<body>
+<div id="vfrApp">
+  <div class="topbar">
+    <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
+    <div class="title-block">
+      <div class="title" style="font-size:15px;font-weight:700;">Volatility Forecast Research</div>
+      <div class="sub">Daily Market Expectation Model · walk-forward · no lookahead · evaluate the forecast, not a strategy</div>
+    </div>
+    <div style="flex:1"></div>
+    <span class="upd" id="vfrComputedAt"></span>
+    <a href="vol-forecast.html" style="text-decoration:none"><button class="dark-btn" style="border-color:var(--blue);color:var(--blue)">📐 Vol Forecast</button></a>
+    <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+  </div>
+
+  <div class="rz-run">
+    <span class="rz-lbl">Run research:</span>
+    <select id="runPair"><option value="">All pairs</option></select>
+    <button class="rz-run-btn" id="runBtn" onclick="runResearch()">▶ Run</button>
+    <span id="runStatus" class="rz-lbl"></span>
+    <span style="flex:1"></span>
+    <span class="rz-lbl">View pair:</span>
+    <select id="viewPair" onchange="renderPair()"></select>
+    <div class="tabs" style="display:flex;gap:4px">
+      <button class="ptab active" data-h="daily" onclick="switchHorizon('daily',this)">Daily</button>
+      <button class="ptab" data-h="d5" onclick="switchHorizon('d5',this)">5-day</button>
+      <button class="ptab" data-h="d20" onclick="switchHorizon('d20',this)">20-day</button>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong style="color:var(--text)">What this measures</strong> — for every day, the forecast is built from data <em>before</em> that day (the live-forecaster engine that draws your chart levels), then scored against what actually happened. <strong>Calibration</strong>: realized should exceed the median 50% of days, the 75th 25% — departures reveal forecast bias. <strong>Sharpness</strong>: corr(forecast, realized) — is a bigger forecast actually informative, or just unbiased on average? <strong>Skill</strong>: vs a trailing-mean benchmark. <strong>Efficiency</strong> |O-C|/(H-L): trend vs chop. Findings are auto-distilled — read those first.
+  </div>
+
+  <div class="status-bar" id="vfrStatus" style="margin-top:10px"><div class="sdot spin" id="vfrDot"></div><span class="stxt" id="vfrMsg">Loading…</span></div>
+
+  <!-- Cross-pair ranking (only when >1 pair) -->
+  <div class="rz-card" id="crossCard" style="display:none">
+    <div class="rz-hdr">Cross-Pair Consistency <span style="color:var(--text3);font-size:11px;font-weight:400">a real behaviour shows up across pairs; a fluke shows in one — ranked by forecast sharpness</span></div>
+    <div class="rz-scroll"><table class="rz-tbl" id="crossTbl">
+      <thead><tr><th>Pair</th><th class="num">Sharpness</th><th class="num">Bias %</th><th class="num">Skill</th><th class="num">Median-exceed %</th></tr></thead>
+      <tbody id="crossBody"></tbody>
+    </table></div>
+  </div>
+
+  <!-- Findings -->
+  <div class="rz-card" id="findCard" style="display:none">
+    <div class="rz-hdr">Findings <span style="color:var(--text3);font-size:11px;font-weight:400" id="findSub"></span></div>
+    <div class="rz-body" id="findBody"></div>
+  </div>
+
+  <!-- Headline KPIs -->
+  <div class="kpis" id="kpis" style="display:none"></div>
+
+  <!-- Scorecard -->
+  <div class="rz-card" id="scoreCard" style="display:none">
+    <div class="rz-hdr">Forecast Scorecard <span style="color:var(--text3);font-size:11px;font-weight:400" id="scoreSub"></span></div>
+    <div class="rz-scroll"><table class="rz-tbl" id="scoreTbl">
+      <thead><tr><th>Component</th><th class="num">n</th><th class="num">MAE</th><th class="num">Bias</th><th class="num">MAPE</th>
+        <th class="num">Med-exceed % (tgt 50)</th><th class="num">75th-exceed % (tgt 25)</th><th class="num">Sharpness</th></tr></thead>
+      <tbody id="scoreBody"></tbody>
+    </table></div>
+  </div>
+
+  <!-- Calibration -->
+  <div class="rz-card" id="calCard" style="display:none">
+    <div class="rz-hdr">Calibration <span style="color:var(--text3);font-size:11px;font-weight:400">how often reality exceeds each band vs the nominal target (white line)</span></div>
+    <div class="rz-body" id="calBody"></div>
+  </div>
+
+  <!-- Regime matrix + VoV + DoW -->
+  <div class="rz-card" id="matCard" style="display:none">
+    <div class="rz-hdr">Where the forecast is reliable <span style="color:var(--text3);font-size:11px;font-weight:400">daily H-L median-exceedance & MAE by regime, vol-of-vol tercile, day-of-week</span></div>
+    <div class="rz-body" id="matBody"></div>
+  </div>
+</div>
+
+<script>
+let _data = null, _horizon = 'daily';
+const fmt = (v, d=2) => v == null ? '—' : typeof v === 'number' ? v.toFixed(d) : v;
+const setStatus = (t, m) => { document.getElementById('vfrDot').className = 'sdot ' + t; document.getElementById('vfrMsg').textContent = m; };
+const PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD','AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF','GBPNZD','CADJPY','CHFJPY','NZDJPY','GOLD'];
+
+document.addEventListener('DOMContentLoaded', () => {
+  const rp = document.getElementById('runPair');
+  rp.innerHTML = '<option value="">All pairs</option>' + PAIRS.map(p => `<option>${p}</option>`).join('');
+  loadData();
+});
+
+async function loadData() {
+  setStatus('spin', 'Loading research results…');
+  try {
+    const r = await fetch('/api/vol-forecast-research');
+    if (!r.ok) { const e = await r.json().catch(() => ({})); setStatus('err', e.error || 'No data — click ▶ Run.'); return; }
+    _data = await r.json();
+    initView();
+    document.getElementById('vfrComputedAt').textContent = 'computed ' + new Date(_data.computedAt).toLocaleString();
+  } catch (e) { setStatus('err', 'Error: ' + e.message); }
+}
+
+function initView() {
+  const pairs = _data.pairs || Object.keys(_data.perPair || {});
+  if (!pairs.length) { setStatus('err', 'Empty result.'); return; }
+  const vp = document.getElementById('viewPair');
+  // default to the most informative (top-ranked) pair when several
+  const ranked = _data.cross?.ranked?.map(x => x.pair) || pairs;
+  vp.innerHTML = pairs.slice().sort((a, b) => ranked.indexOf(a) - ranked.indexOf(b)).map(p => `<option>${p}</option>`).join('');
+
+  const cross = _data.cross;
+  const crossCard = document.getElementById('crossCard');
+  if (cross && cross.nPairs > 1) {
+    crossCard.style.display = '';
+    document.getElementById('crossBody').innerHTML = (cross.ranked || []).map(x => `<tr>
+      <td><strong>${x.pair}</strong></td>
+      <td class="num ${x.sharpness >= 0.4 ? 'pos' : x.sharpness >= 0.15 ? 'amber' : 'neg'}">${fmt(x.sharpness, 3)}</td>
+      <td class="num ${Math.abs(x.bias) < 0.05 ? 'pos' : 'amber'}">${x.bias >= 0 ? '+' : ''}${fmt(x.bias, 3)}</td>
+      <td class="num ${x.skill > 0.05 ? 'pos' : 'neg'}">${fmt(x.skill, 3)}</td>
+      <td class="num ${Math.abs(x.exceedMed - 50) < 8 ? 'pos' : 'amber'}">${fmt(x.exceedMed, 1)}</td>
+    </tr>`).join('');
+  } else crossCard.style.display = 'none';
+
+  setStatus('ok', `Loaded · ${pairs.length} pair(s) · ${_data.file}`);
+  renderPair();
+}
+
+function switchHorizon(h, btn) {
+  _horizon = h;
+  document.querySelectorAll('.ptab').forEach(b => b.classList.toggle('active', b === btn));
+  renderPair();
+}
+
+function renderPair() {
+  const pair = document.getElementById('viewPair').value;
+  const s = _data?.perPair?.[pair];
+  if (!s) return;
+  ['findCard','kpis','scoreCard','calCard','matCard'].forEach(id => document.getElementById(id).style.display = '');
+
+  // Findings
+  document.getElementById('findSub').textContent = `${pair} · ${s.nDays} days · ${s.dateFrom}→${s.dateTo}`;
+  const icons = { good: '✓', warn: '⚠', info: '•' };
+  document.getElementById('findBody').innerHTML = (s.findings || []).map(f =>
+    `<div class="find ${f.sev}"><span class="fi">${icons[f.sev] || '•'}</span><span class="ft">${f.text}</span></div>`).join('') || '<span class="rz-lbl">No findings.</span>';
+
+  // KPIs
+  const kpi = (l, v, sub, cls='') => `<div class="kpi"><div class="kpi-l">${l}</div><div class="kpi-v ${cls}">${v}</div><div class="kpi-s">${sub}</div></div>`;
+  const hl = s.perComponent?.daily?.hl || {};
+  document.getElementById('kpis').innerHTML =
+    kpi('Sharpness', fmt(hl.sharpnessCorr, 3), 'corr(forecast, realized H-L)', hl.sharpnessCorr >= 0.4 ? 'pos' : hl.sharpnessCorr >= 0.15 ? 'amber' : 'neg') +
+    kpi('Skill vs clim', fmt(s.dailyHlSkillVsClimatology, 3), '1 − MAE/MAE_naive', s.dailyHlSkillVsClimatology > 0.05 ? 'pos' : 'neg') +
+    kpi('H-L bias', (hl.bias >= 0 ? '+' : '') + fmt(hl.bias, 3) + '%', hl.bias < 0 ? 'forecast runs high' : 'forecast runs low', Math.abs(hl.bias) < 0.05 ? 'pos' : 'amber') +
+    kpi('Efficiency', fmt(s.efficiencyMean, 3), `${fmt(s.efficiencyTrendPct,0)}% trend-like days`, 'blue');
+
+  // Scorecard (current horizon)
+  const comps = s.perComponent?.[_horizon] || {};
+  const order = _horizon === 'daily' ? ['hl','oc','oh','ol'] : ['hl','oc'];
+  document.getElementById('scoreSub').textContent = { daily:'Daily', d5:'5-day', d20:'20-day' }[_horizon];
+  document.getElementById('scoreBody').innerHTML = order.filter(k => comps[k]).map(k => {
+    const c = comps[k];
+    return `<tr><td>${c.label}</td><td class="num">${c.n}</td>
+      <td class="num">${fmt(c.mae,3)}</td>
+      <td class="num ${Math.abs(c.bias) < 0.05 ? 'pos' : 'amber'}">${c.bias >= 0 ? '+' : ''}${fmt(c.bias,3)}</td>
+      <td class="num">${fmt(c.mape,0)}%</td>
+      <td class="num ${Math.abs(c.exceedMedianPct-50) < 8 ? 'pos' : 'neg'}">${fmt(c.exceedMedianPct,1)}</td>
+      <td class="num ${Math.abs(c.exceed75Pct-25) < 8 ? 'pos' : 'neg'}">${fmt(c.exceed75Pct,1)}</td>
+      <td class="num ${c.sharpnessCorr >= 0.4 ? 'pos' : c.sharpnessCorr >= 0.15 ? 'amber' : 'neg'}">${fmt(c.sharpnessCorr,3)}</td></tr>`;
+  }).join('');
+
+  // Calibration bars (median target 50, 75th target 25)
+  const calRow = (label, val, target) => {
+    const w = Math.max(0, Math.min(100, val));
+    return `<div style="display:flex;align-items:center;gap:10px;margin:6px 0;font-family:'DM Mono',monospace;font-size:11px">
+      <span style="width:120px;color:var(--text3)">${label}</span>
+      <div class="calbar" style="--tgt:${target}%"><span style="width:${w}%"></span><span class="tgt"></span></div>
+      <span style="width:120px;text-align:right" class="${Math.abs(val-target)<8?'pos':'neg'}">${fmt(val,1)}% <span style="color:var(--text3)">(tgt ${target})</span></span></div>`;
+  };
+  document.getElementById('calBody').innerHTML = order.filter(k => comps[k]).map(k =>
+    calRow(comps[k].label + ' > median', comps[k].exceedMedianPct, 50) +
+    calRow(comps[k].label + ' > 75th', comps[k].exceed75Pct, 25)).join('');
+
+  // Regime matrix + VoV + DoW (daily H-L)
+  const miniTbl = (title, obj, keys) => {
+    const rows = (keys || Object.keys(obj)).filter(k => obj[k]).map(k => {
+      const c = obj[k];
+      return `<tr><td>${k}</td><td class="num">${c.n}</td>
+        <td class="num ${Math.abs(c.exceedMedianPct-50)<8?'pos':'neg'}">${fmt(c.exceedMedianPct,1)}</td>
+        <td class="num">${fmt(c.mae,3)}</td></tr>`;
+    }).join('');
+    return `<div style="min-width:220px;flex:1"><div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px">${title}</div>
+      <table class="rz-tbl"><thead><tr><th>${title.split(' ')[1]||''}</th><th class="num">n</th><th class="num">Med-ex%</th><th class="num">MAE</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  };
+  const p = s.persistence || {};
+  document.getElementById('matBody').innerHTML =
+    `<div style="display:flex;gap:18px;flex-wrap:wrap">
+      ${miniTbl('By Regime', s.regimeMatrix?.hl || {}, ['BULL','BEAR','RANGE'])}
+      ${miniTbl('By VoV', s.byVov || {}, ['1·low','2·mid','3·high'])}
+      ${miniTbl('By Day', s.byDow || {}, ['Mon','Tue','Wed','Thu','Fri'])}
+    </div>
+    <div class="rz-lbl" style="margin-top:10px">Persistence / clustering: after an above-75th day, next day exceeds its median <strong class="${(p.afterAbove75Pct-p.baseExceedMedianPct)>8?'pos':'neu'}">${fmt(p.afterAbove75Pct,1)}%</strong> vs <strong>${fmt(p.baseExceedMedianPct,1)}%</strong> base rate (${p.n} events). ${s.fcSkewDirHitPct!=null?`&nbsp;·&nbsp; Forecast O-H/O-L skew predicts direction <strong class="${s.fcSkewDirHitPct>55?'pos':'neu'}">${fmt(s.fcSkewDirHitPct,1)}%</strong> (vs 50% base).`:''}</div>`;
+}
+
+// ── Run ─────────────────────────────────────────────────────────────────────
+let _poll = null;
+async function runResearch() {
+  const btn = document.getElementById('runBtn'); btn.disabled = true;
+  setStatus('spin', 'Running research…'); document.getElementById('runStatus').textContent = 'Starting…';
+  if (_poll) clearInterval(_poll);
+  try {
+    const r = await fetch('/api/vol-forecast-research/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pair: document.getElementById('runPair').value }) });
+    const jb = await r.json();
+    if (!jb.ok) { setStatus('err', jb.error || 'Failed'); btn.disabled = false; return; }
+    let fails = 0; const MAX = 20;
+    const done = async (msg) => { if (_poll){clearInterval(_poll);_poll=null;} btn.disabled = false; document.getElementById('runStatus').textContent = msg; await loadData(); };
+    _poll = setInterval(async () => {
+      try {
+        const sr = await fetch(`/api/vol-forecast-research/status/${jb.jobId}`);
+        if (sr.status === 404) return done('Run no longer tracked');
+        if (!sr.ok) throw new Error('HTTP ' + sr.status);
+        const sj = await sr.json(); fails = 0;
+        if (sj.status === 'running') { document.getElementById('runStatus').textContent = `Running… ${sj.elapsed ?? 0}s`; return; }
+        clearInterval(_poll); _poll = null; btn.disabled = false;
+        if (sj.status === 'done') { document.getElementById('runStatus').textContent = sj.message || 'Done'; setStatus('ok','Complete — loading…'); await loadData(); }
+        else { setStatus('err', sj.error || 'Failed'); document.getElementById('runStatus').textContent = 'Error: ' + (sj.error || '?'); }
+      } catch (e) { if (++fails < MAX) { document.getElementById('runStatus').textContent = `Reconnecting… (${fails}/${MAX})`; return; } await done('Lost contact — loaded latest'); }
+    }, 3000);
+  } catch (e) { setStatus('err', 'Error: ' + e.message); btn.disabled = false; }
+}
+</script>
+</body>
+</html>
