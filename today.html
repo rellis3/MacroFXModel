@@ -331,7 +331,7 @@
   .ovl{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;display:none}
   .ovl.open{display:block}
   .drawer{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%) scale(.97);
-          width:min(880px,94vw);max-height:92vh;background:var(--bg);z-index:95;
+          width:min(1180px,95vw);max-height:93vh;background:var(--bg);z-index:95;
           border:1px solid var(--border);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.55);
           opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;overflow-y:auto;padding:16px 20px}
   .drawer.open{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
@@ -342,7 +342,10 @@
             border-radius:6px;padding:4px 12px;font-size:13px}
   .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
   .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
-  #drChart{height:300px}
+  #drChart{height:300px;transition:height .18s ease}
+  .chart-resize{float:right;background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:5px;
+                padding:1px 8px;font-size:12px;cursor:pointer;line-height:1.5}
+  .chart-resize:hover{color:var(--text);border-color:var(--text3)}
   .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:9px}
   .kv .k{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
   .kv .v{font-size:15px;font-weight:700;margin-top:1px}
@@ -457,7 +460,7 @@
   </div>
 
   <div class="dr-sec">
-    <h3>Today vs forecast — M5 <span class="muted" id="drChartNote"></span></h3>
+    <h3>Today vs forecast — M5 <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div id="drChart"></div>
     <div class="legend">
       <span><i style="border-color:#06b6d4"></i>O-H / O-L median</span>
@@ -2042,8 +2045,10 @@ async function loadDrawerChart(r, barsP) {
   const levelPrices = lines.map(l => l.price);
 
   $('drChart').innerHTML = '';
+  $('drChart').style.height = (_drChartTall ? 580 : 300) + 'px';
   drChart = LightweightCharts.createChart($('drChart'), {
-    width: $('drChart').clientWidth || 700, height: 300,
+    autoSize: true,   // track the container (wider modal + the taller/shorter toggle)
+    width: $('drChart').clientWidth || 700, height: _drChartTall ? 580 : 300,
     layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9da7b3', fontSize: 10 },
     grid: { vertLines: { color: 'rgba(48,54,61,.35)' }, horzLines: { color: 'rgba(48,54,61,.35)' } },
     // Free movement like TradingView: edges NOT fixed, trailing space so the last
@@ -2073,6 +2078,15 @@ async function loadDrawerChart(r, barsP) {
   lines.forEach(l => drSeries.createPriceLine({ price: l.price, color: l.color, lineStyle: l.style, lineWidth: 1, title: l.title, axisLabelVisible: true }));
   drChart.timeScale().fitContent();
   $('drChartNote').textContent = `· open ${fmtN(dayOpen, r.d.dp)} · ${todayBars.length} bars today`;
+}
+// Taller / shorter chart toggle (persists across drawer opens, like vol-forecast-v2).
+let _drChartTall = false;
+function resizeDrawerChart() {
+  _drChartTall = !_drChartTall;
+  const el = $('drChart'), h = _drChartTall ? 580 : 300;
+  el.style.height = h + 'px';
+  if (drChart) { try { drChart.applyOptions({ height: h, width: el.clientWidth }); drChart.timeScale().fitContent(); } catch {} }
+  const b = $('drChartBtn'); if (b) b.textContent = _drChartTall ? '⤡' : '⤢';
 }
 
 // ── Zoom 2: the story — what happened, what's driving it ─────────────────────
