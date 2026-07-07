@@ -85,14 +85,11 @@ export const HORIZONS = {
   d20:    { windowDays: 20, label: '20-day', timeUnit: 'day',  hl: 'hl_20d',    ohMed: 'oh_20d',    ohP75: 'oh_20d_75',olMed: 'ol_20d',    olP75: 'ol_20d_75'},
 };
 
-// ── Main: walk-forward over London windows for one horizon ────────────────────
-export function evaluateIntraday(intraday, { assetClass = 'fx', pip = 0.0001, minLookback = 60, horizon = 'daily' } = {}) {
+// ── Walk-forward over London windows for ONE horizon (London days pre-built) ──
+function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001, minLookback = 60, horizon = 'daily' }) {
   const H = HORIZONS[horizon] || HORIZONS.daily;
   const W = H.windowDays;
-  const lond = buildLondonDaily(intraday);
   if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
-  const dailyOHLC = lond.map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close }));
-  const closes = dailyOHLC.map(d => d.close);
 
   const expRows = [];
   const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [] };
@@ -145,6 +142,27 @@ export function evaluateIntraday(intraday, { assetClass = 'fx', pip = 0.0001, mi
   }
 
   return summarize(expRows, touchRows, { firstUpper, firstLower, eitherTouched }, lond, H);
+}
+
+// Build the London daily series (with intraday sub-bars) once, for reuse.
+function _prep(intraday) {
+  const lond = buildLondonDaily(intraday);
+  const dailyOHLC = lond.map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close }));
+  return { lond, dailyOHLC, closes: dailyOHLC.map(d => d.close) };
+}
+
+// ── Public: one horizon (back-compat) ─────────────────────────────────────────
+export function evaluateIntraday(intraday, opts = {}) {
+  const { lond, dailyOHLC, closes } = _prep(intraday);
+  return _walkHorizon(lond, dailyOHLC, closes, { horizon: 'daily', ...opts });
+}
+
+// ── Public: all three horizons off ONE London-day build (≈3× faster than calling
+//    evaluateIntraday per horizon — buildLondonDaily runs once, not three times) ──
+export function evaluateIntradayAllHorizons(intraday, opts = {}) {
+  const { lond, dailyOHLC, closes } = _prep(intraday);
+  const run = h => _walkHorizon(lond, dailyOHLC, closes, { ...opts, horizon: h });
+  return { nDays: lond.length, daily: run('daily'), weekly: run('weekly'), d20: run('d20') };
 }
 
 // ── Aggregation ───────────────────────────────────────────────────────────────
