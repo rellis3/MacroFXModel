@@ -229,6 +229,29 @@ function summarize(rows) {
   const vLo = vovs[Math.floor(vovs.length / 3)], vHi = vovs[Math.floor(2 * vovs.length / 3)];
   const byVov = sliceComp('hl', r => r.vov == null ? null : r.vov <= vLo ? '1·low' : r.vov >= vHi ? '3·high' : '2·mid');
 
+  // Forecast completion (brief Q7): realized daily H-L as a % of the forecast
+  // MEDIAN H-L. Buckets show how often the day never reaches / matches / blows
+  // through the expected range. The median is calibrated to ~50% exceedance, so
+  // ~half of days land >100% by construction — the informative part is the SHAPE
+  // of the tail (how many days barely move vs how many blow through). No lookahead:
+  // uses the same walk-forward cells as everything else.
+  const complCells = rows.map(r => r.comp.daily?.hl).filter(Boolean)
+    .map(x => x.med > 0 ? x.actual / x.med * 100 : null).filter(v => v != null);
+  const complBuckets = ['<40', '40-65', '65-92', '92-118', '118-165', '>165'];
+  const _bucket = v => v < 40 ? '<40' : v < 65 ? '40-65' : v < 92 ? '65-92'
+    : v < 118 ? '92-118' : v < 165 ? '118-165' : '>165';
+  const complHist = Object.fromEntries(complBuckets.map(b => [b, 0]));
+  for (const v of complCells) complHist[_bucket(v)]++;
+  const complN = complCells.length || 1;
+  const _median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+  // Completion sliced by a condition (regime / vol-of-vol) — "what conditions
+  // produce each outcome" (Q7): mean completion % and how often the median is met.
+  const complBy = keyFn => {
+    const g = {};
+    for (const r of rows) { const c = r.comp.daily?.hl; if (!c || !(c.med > 0)) continue; const k = keyFn(r); if (k == null) continue; (g[k] = g[k] || []).push(c.actual / c.med * 100); }
+    return Object.fromEntries(Object.entries(g).map(([k, a]) => [k, { n: a.length, meanPct: +_mean(a).toFixed(1), reachedMedianPct: +(_mean(a.map(v => v >= 100 ? 1 : 0)) * 100).toFixed(1) }]));
+  };
+
   // Persistence / vol-clustering: after an above-75th day, is the NEXT day more
   // likely to exceed its own median than the unconditional base rate?
   let baseEx = 0, baseN = 0, condEx = 0, condN = 0;
@@ -242,6 +265,18 @@ function summarize(rows) {
     baseExceedMedianPct: +(baseN ? baseEx / baseN * 100 : 0).toFixed(1),
     afterAbove75Pct:     +(condN ? condEx / condN * 100 : 0).toFixed(1),
     n: condN,
+  };
+
+  const completion = {
+    n: complCells.length,
+    meanPct:          +_mean(complCells).toFixed(1),
+    medianPct:        +_median(complCells).toFixed(1),
+    reachedMedianPct: +(_mean(complCells.map(v => v >= 100 ? 1 : 0)) * 100).toFixed(1),  // day makes the full median forecast
+    neverHalfPct:     +(_mean(complCells.map(v => v <  50 ? 1 : 0)) * 100).toFixed(1),   // day fails to make even ½ the forecast
+    blewThroughPct:   +(_mean(complCells.map(v => v > 165 ? 1 : 0)) * 100).toFixed(1),   // day blows through 165% (expansion tail)
+    hist: Object.fromEntries(complBuckets.map(b => [b, +(complHist[b] / complN * 100).toFixed(1)])),
+    byRegime: complBy(r => r.regime),
+    byVov:    complBy(r => r.vov == null ? null : r.vov <= vLo ? '1·low' : r.vov >= vHi ? '3·high' : '2·mid'),
   };
 
   // ── Auto-generated findings (the readable layer — not a hit dump) ───────────
@@ -269,6 +304,8 @@ function summarize(rows) {
     add(dirHit > 55 ? 'good' : 'info', `The forecast's O-H/O-L skew predicts the day's direction ${+dirHit.toFixed(1)}% of the time (vs 50% base rate).`);
   if (persistence.afterAbove75Pct - persistence.baseExceedMedianPct > 8)
     add('good', `Vol CLUSTERS: after an above-75th day the next day exceeds its median ${persistence.afterAbove75Pct}% vs ${persistence.baseExceedMedianPct}% base — expansion persists.`);
+  if (completion.n)
+    add('info', `Forecast completion: the day makes the FULL median range ${completion.reachedMedianPct}% of days, falls short of even half ${completion.neverHalfPct}% of days, and blows through 165% ${completion.blewThroughPct}% of days (median completion ${completion.medianPct}% of forecast).`);
   const vh = byVov['3·high'], vl = byVov['1·low'];
   if (vh && vl && vh.mae > vl.mae * 1.3)
     add('info', `Trust the forecast LESS when vol-of-vol is high: H-L MAE ${vh.mae} (high-VoV) vs ${vl.mae} (low-VoV).`);
@@ -282,6 +319,7 @@ function summarize(rows) {
     efficiencyTrendPct: effTrend,
     fcSkewDirHitPct: dirHit == null ? null : +dirHit.toFixed(1),
     persistence,
+    completion,
     regimeMatrix,
     byDow,
     byVov,
