@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vol Forecast Research Book</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#bkApp { padding:0 20px 60px; max-width:1220px; margin:0 auto; }
+.bk-run { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:20; }
+.bk-run select { background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;cursor:pointer; }
+.bk-run-btn { background:var(--green);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;padding:6px 18px;cursor:pointer; }
+.bk-run-btn:disabled { opacity:.5;cursor:wait; }
+.bk-lbl { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
+/* Book layout: sticky TOC + chapters */
+.bk-grid { display:grid;grid-template-columns:210px 1fr;gap:26px;margin-top:16px;align-items:start; }
+.bk-toc { position:sticky;top:64px;font-family:'DM Mono',monospace;font-size:12px;border-left:2px solid var(--border);padding-left:2px; }
+.bk-toc a { display:block;padding:6px 12px;color:var(--text3);text-decoration:none;border-left:2px solid transparent;margin-left:-2px;line-height:1.3; }
+.bk-toc a:hover { color:var(--text); }
+.bk-toc a.on { color:var(--text);border-left-color:var(--green);font-weight:600; }
+.bk-toc .qn { color:var(--text3);font-size:10px;margin-right:5px; }
+@media (max-width:820px){ .bk-grid{grid-template-columns:1fr;} .bk-toc{position:static;display:flex;flex-wrap:wrap;border-left:none;padding-left:0;gap:2px;} .bk-toc a{border-left:none;border-bottom:2px solid transparent;} }
+.chap { scroll-margin-top:70px;margin-bottom:34px; }
+.chap-h { font-size:19px;font-weight:700;margin:0 0 3px;display:flex;align-items:baseline;gap:10px; }
+.chap-h .qtag { font-family:'DM Mono',monospace;font-size:11px;color:var(--green);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-weight:600; }
+.chap-q { font-size:13px;color:var(--text3);font-style:italic;margin:0 0 12px;line-height:1.5; }
+.answer { background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:8px;padding:13px 16px;margin:0 0 14px;font-size:13.5px;line-height:1.65;color:var(--text); }
+.answer strong { color:var(--text); }
+.answer .muted { color:var(--text3); }
+.answer.open { border-left-color:var(--amber); }
+.sec-sub { font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin:16px 0 7px; }
+/* Cards / tables reused from the A/B page */
+.rz-card { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:12px; }
+.rz-scroll { overflow-x:auto; }
+.rz-tbl { width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px; }
+.rz-tbl th { padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap; }
+.rz-tbl td { padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap; }
+.rz-tbl tr:last-child td { border-bottom:none; }
+.rz-tbl td.num, .rz-tbl th.num { text-align:right; }
+.rz-tbl tbody tr:hover { background:var(--s2); }
+.pos { color:var(--green); } .neg { color:var(--red); } .amber { color:var(--amber); } .blue { color:var(--blue); } .neu { color:var(--text2); }
+/* Findings tints (theme-safe) */
+.find { display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-radius:7px;font-size:12.5px;line-height:1.5;margin:0 0 7px; }
+.find.good { background:rgba(16,185,129,0.13);border:1px solid rgba(16,185,129,0.42); } .find.good .fi { color:#059669; }
+.find.warn { background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.46); } .find.warn .fi { color:#b45309; }
+.find.info { background:rgba(59,130,246,0.13);border:1px solid rgba(59,130,246,0.42); } .find.info .fi { color:#2563eb; }
+.fi { font-size:14px;flex-shrink:0;font-weight:700; } .find .ft { color:var(--text); }
+@media (prefers-color-scheme: dark){ .find.good .fi{color:#34d399;} .find.warn .fi{color:#fbbf24;} .find.info .fi{color:#60a5fa;} }
+/* Stat tiles */
+.tiles { display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:10px 0; }
+.tile { background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:11px 13px; }
+.tile .tk { font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace; }
+.tile .tv { font-size:20px;font-weight:700;font-family:'DM Mono',monospace;margin-top:3px; }
+.tile .td { font-size:10.5px;color:var(--text3);margin-top:2px;font-family:'DM Mono',monospace; }
+/* Calibration / hist mini-bars */
+.cal { display:flex;align-items:center;gap:9px;margin:5px 0;font-family:'DM Mono',monospace;font-size:11px; }
+.cal .cl { width:150px;color:var(--text2);flex-shrink:0; }
+.cal .track { flex:1;height:14px;background:var(--s2);border-radius:4px;position:relative;overflow:hidden;min-width:120px; }
+.cal .fill { height:100%;border-radius:4px; }
+.cal .tgt { position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--text);opacity:.75; }
+.cal .cv { width:110px;text-align:right;flex-shrink:0;color:var(--text); }
+.bars { display:flex;align-items:flex-end;gap:6px;height:120px;padding:6px 0;border-bottom:1px solid var(--border); }
+.bars .bar { flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%; }
+.bars .bar .bb { width:100%;background:var(--blue);border-radius:4px 4px 0 0;min-height:2px; }
+.bars .bar .bl { font-family:'DM Mono',monospace;font-size:9.5px;color:var(--text3);margin-top:5px;text-align:center;line-height:1.2; }
+.bars .bar .bv { font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);margin-bottom:3px; }
+.note { font-size:11.5px;color:var(--text3);line-height:1.6;margin-top:8px;font-family:'DM Mono',monospace; }
+.info-box { background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:13px 17px;margin-top:10px;font-size:12px;line-height:1.7;color:var(--text2); }
+.pair-badge { font-family:'DM Mono',monospace;font-size:11px;color:var(--green);font-weight:600; }
+</style>
+</head>
+<body>
+<div id="bkApp">
+  <div class="topbar">
+    <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14 L8 2 L14 14" stroke="white" stroke-width="2" stroke-linejoin="round" fill="none"/><path d="M4.5 9.5 h7" stroke="white" stroke-width="1.5"/></svg></div>
+    <div class="title-block">
+      <div class="title" style="font-size:15px;font-weight:700;">Vol Forecast Research Book</div>
+      <div class="sub">Answers to the forecast-quality questions · walk-forward · no lookahead · aggregated across pairs, drill down per pair</div>
+    </div>
+    <div style="flex:1"></div>
+    <span class="upd" id="bkComputedAt"></span>
+    <a href="estimator-ab.html" style="text-decoration:none"><button class="dark-btn" style="border-color:var(--blue);color:var(--blue)">⚖️ Estimator A/B</button></a>
+    <a href="vol-forecast-research.html" style="text-decoration:none"><button class="dark-btn">🔬 Dashboard view</button></a>
+    <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Home</button></a>
+  </div>
+
+  <div class="bk-run">
+    <span class="bk-lbl">Refresh data:</span>
+    <select id="runPair"><option value="">All pairs</option></select>
+    <button class="bk-run-btn" id="runBtn" onclick="runResearch()">▶ Run</button>
+    <button class="bk-run-btn" id="runIntraBtn" onclick="runIntraday()" style="background:var(--blue)">▶ Intraday</button>
+    <span id="runStatus" class="bk-lbl"></span>
+    <span style="flex:1"></span>
+    <span class="bk-lbl">Horizon:</span>
+    <select id="horizon" onchange="onHorizon()"><option value="daily">Daily</option><option value="weekly">Weekly (5d)</option><option value="d20">20-day</option></select>
+    <span class="bk-lbl">Drill into pair:</span>
+    <select id="viewPair" onchange="renderPair()"></select>
+  </div>
+
+  <div class="status-bar" id="bkStatus" style="margin-top:10px"><div class="sdot spin" id="bkDot"></div><span class="stxt" id="bkMsg">Loading…</span></div>
+
+  <div class="bk-grid">
+    <nav class="bk-toc" id="toc">
+      <a href="#c0"><span class="qn">§</span>Executive summary</a>
+      <a href="#c1"><span class="qn">Q1</span>Forecast accuracy</a>
+      <a href="#c2"><span class="qn">Q2</span>Distribution / calibration</a>
+      <a href="#c3"><span class="qn">Q3</span>Forecast stability</a>
+      <a href="#c4"><span class="qn">Q4</span>Regime behaviour</a>
+      <a href="#c5"><span class="qn">Q5</span>Session behaviour</a>
+      <a href="#c6"><span class="qn">Q6</span>Daily expansion</a>
+      <a href="#cTouch"><span class="qn">Hit</span>Level touches &amp; pips</a>
+      <a href="#c7"><span class="qn">Q7</span>Forecast completion</a>
+      <a href="#cD"><span class="qn">DoW</span>Day-of-week</a>
+      <a href="#cP"><span class="qn">Seq</span>Persistence &amp; clustering</a>
+      <a href="#cMiss"><span class="qn">Miss</span>Forecast misses</a>
+      <a href="#cMulti"><span class="qn">nDay</span>Multi-day relationships</a>
+      <a href="#cSeason"><span class="qn">Cal</span>Monthly &amp; seasonal</a>
+      <a href="#cConf"><span class="qn">Conf</span>Forecast confidence</a>
+      <a href="#cType"><span class="qn">Type</span>Day-type clusters</a>
+      <a href="#c8"><span class="qn">A/B</span>Estimator comparison</a>
+      <a href="#cM"><span class="qn">§</span>Method &amp; caveats</a>
+    </nav>
+
+    <main id="book">
+      <!-- ── Ch 0 — Executive summary ─────────────────────────────────── -->
+      <section class="chap" id="c0">
+        <div class="chap-h">Executive summary</div>
+        <div class="chap-q">What does the volatility forecast actually do well, and where does it fail — across every pair?</div>
+        <div class="answer" id="a0">Run the research to populate this book.</div>
+        <div class="tiles" id="t0"></div>
+      </section>
+
+      <!-- ── Ch 1 — Forecast accuracy ─────────────────────────────────── -->
+      <section class="chap" id="c1">
+        <div class="chap-h">Forecast accuracy <span class="qtag">Q1</span></div>
+        <div class="chap-q">How accurate is each forecast component? MAE / RMSE / bias / % error — and does the forecast systematically over- or under-estimate volatility? Does accuracy vary by instrument?</div>
+        <div class="answer" id="a1">—</div>
+        <div class="sec-sub">All pairs — ranked by how informative the forecast is (sharpness)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Pair</th><th class="num">Sharpness</th><th class="num">Bias %</th><th class="num">Skill vs clim</th><th class="num">Med-exceed % (tgt 50)</th></tr></thead>
+          <tbody id="c1cross"></tbody>
+        </table></div></div>
+        <div class="sec-sub">Per component — <span class="pair-badge" id="c1pair"></span> (error of each forecast leg vs its median)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Horizon · Component</th><th class="num">n</th><th class="num">MAE</th><th class="num">RMSE</th><th class="num">Bias</th><th class="num">MAPE %</th><th class="num">Sharpness</th></tr></thead>
+          <tbody id="c1comp"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Ch 2 — Distribution accuracy / calibration ───────────────── -->
+      <section class="chap" id="c2">
+        <div class="chap-h">Distribution accuracy — calibration <span class="qtag">Q2</span></div>
+        <div class="chap-q">The model predicts a median and a 75th percentile. How often does reality actually fall below the median, between median and 75th, and above the 75th? Is that probability stable?</div>
+        <div class="answer" id="a2">—</div>
+        <div class="sec-sub">Exceedance — <span class="pair-badge" id="c2pair"></span> · bar = realized rate, white line = nominal target</div>
+        <div class="rz-card"><div class="rz-body" id="c2cal" style="padding:14px 18px"></div></div>
+        <div class="sec-sub">Where the day's range lands — share of days in each forecast band (H-L)</div>
+        <div class="rz-card"><div class="rz-body" style="padding:16px 18px">
+          <div id="c2buckets"></div>
+          <div class="note">Below median / median–75th / above 75th. A calibrated forecast puts ~50% below the median and ~25% above the 75th. <span id="c2b95"></span></div>
+        </div></div>
+        <div class="sec-sub">Distribution of forecast errors (H-L) — signed % error <span class="pair-badge">(actual − median) / median</span></div>
+        <div class="rz-card"><div class="rz-body" style="padding:16px 18px">
+          <div class="bars" id="c2err"></div>
+          <div class="note" id="c2errNote"></div>
+        </div></div>
+      </section>
+
+      <!-- ── Ch 3 — Forecast stability ────────────────────────────────── -->
+      <section class="chap" id="c3">
+        <div class="chap-h">Forecast stability <span class="qtag">Q3</span></div>
+        <div class="chap-q">Does the model become more or less accurate in high vs low volatility, and in transition regimes? (News-week / holiday-week slicing needs an economic-calendar feed — see caveat.)</div>
+        <div class="answer" id="a3">—</div>
+        <div class="sec-sub">Daily H-L error by vol-of-vol tercile — <span class="pair-badge" id="c3pair"></span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Vol-of-vol</th><th class="num">n</th><th class="num">MAE</th><th class="num">Bias</th><th class="num">Med-exceed %</th></tr></thead>
+          <tbody id="c3vov"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Ch 4 — Regime behaviour ──────────────────────────────────── -->
+      <section class="chap" id="c4">
+        <div class="chap-h">Regime behaviour <span class="qtag">Q4</span></div>
+        <div class="chap-q">Group results by regime. Does forecast error increase in trending (BULL/BEAR) vs range-bound markets? Is the forecast most reliable in one regime?</div>
+        <div class="answer" id="a4">—</div>
+        <div class="sec-sub">Daily legs by regime — <span class="pair-badge" id="c4pair"></span> (MAE · median-exceedance)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Regime</th><th class="num">n (H-L)</th><th class="num">H-L MAE</th><th class="num">H-L ex%</th><th class="num">O-C MAE</th><th class="num">O-H MAE</th><th class="num">O-L MAE</th></tr></thead>
+          <tbody id="c4reg"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Ch 5 — Session behaviour ─────────────────────────────────── -->
+      <section class="chap" id="c5">
+        <div class="chap-h">Session behaviour <span class="qtag">Q5</span></div>
+        <div class="chap-q">The model forecasts Asia / London / NY contributions. How often does each session deliver its expected share? Does Asia predict London, London predict NY? Does one session compensate for weakness in another? (London-local session windows.)</div>
+        <div class="answer" id="a5">—</div>
+        <div class="sec-sub">Session contribution — <span class="pair-badge" id="c5pair"></span> (share of the day's H-L range)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Session</th><th class="num">Mean %</th><th class="num">P50 %</th><th class="num">P75 %</th><th class="num">O-C %</th><th class="num">Delivers expected % (tgt 50)</th></tr></thead>
+          <tbody id="c5sess"></tbody>
+        </table></div></div>
+        <div class="note" id="c5seq"></div>
+        <div class="find-wrap" id="c5find" style="margin-top:10px"></div>
+      </section>
+
+      <!-- ── Ch 6 — Daily expansion (open chapter) ────────────────────── -->
+      <section class="chap" id="c6">
+        <div class="chap-h">Daily expansion process <span class="qtag">Q6</span></div>
+        <div class="chap-q">Rather than only the final range — how does the day develop? How quickly is 25 / 50 / 75 / 100% of the expected range achieved? Do large days expand early? Do reversal days expand late?</div>
+        <div class="answer" id="a6">—</div>
+        <div class="sec-sub">Time to reach each fraction of the expected range — <span class="pair-badge" id="c6pair"></span> (median London-hour)</div>
+        <div class="rz-card"><div class="rz-body" style="padding:16px 18px">
+          <div class="bars" id="c6bars"></div>
+          <div class="tiles" id="c6tiles" style="margin-top:14px"></div>
+          <div class="note" id="c6note"></div>
+        </div></div>
+      </section>
+
+      <!-- ── Ch 7 — Forecast completion ───────────────────────────────── -->
+      <section class="chap" id="c7">
+        <div class="chap-h">Forecast completion <span class="qtag">Q7</span></div>
+        <div class="chap-q">For every day, what percentage of the forecast did the market complete? How often is it completed, exceeded, or never reached — and what conditions produce each outcome?</div>
+        <div class="answer" id="a7">—</div>
+        <div class="sec-sub">Completion distribution — <span class="pair-badge" id="c7pair"></span> (realized H-L as % of the forecast median)</div>
+        <div class="rz-card"><div class="rz-body" style="padding:16px 18px">
+          <div class="bars" id="c7hist"></div>
+          <div class="tiles" id="c7tiles" style="margin-top:14px"></div>
+        </div></div>
+        <div class="sec-sub">By condition — where the day over- or under-delivers</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Condition</th><th class="num">n</th><th class="num">Mean completion %</th><th class="num">Reaches median %</th></tr></thead>
+          <tbody id="c7by"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Level touches & pip excursions ───────────────────────────── -->
+      <section class="chap" id="cTouch">
+        <div class="chap-h">Level touches &amp; pip excursions <span class="qtag">Hit</span></div>
+        <div class="chap-q">Treat each forecast extension line (open ± the O-H/O-L median and 75th) as a level. When price reaches one — how many pips does it move, does it continue or reverse, which side is hit first, and how often does it pull back 10/20/50 pips? The bridge to the SD-level touch study.</div>
+        <div class="answer" id="aTouch">—</div>
+        <div class="sec-sub">After the first touch — <span class="pair-badge" id="cTouchPair"></span> (median vs 75th extension)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Level</th><th class="num">Touch rate %</th><th class="num">Continue %</th><th class="num">Reverse %</th><th class="num">Rev ≥10p</th><th class="num">Rev ≥20p</th><th class="num">Rev ≥50p</th><th class="num">Mean MFE (p)</th><th class="num">Mean MAE (p)</th><th class="num">Retests</th></tr></thead>
+          <tbody id="cTouchTbl"></tbody>
+        </table></div></div>
+        <div class="tiles" id="cTouchTiles" style="margin-top:12px"></div>
+        <div class="sec-sub">Median-extension outcome by regime</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Regime</th><th class="num">n</th><th class="num">Continue %</th><th class="num">Reverse ≥20p %</th><th class="num">Mean MFE (p)</th></tr></thead>
+          <tbody id="cTouchReg"></tbody>
+        </table></div></div>
+        <div class="note" id="cTouchNote"></div>
+      </section>
+
+      <!-- ── Day-of-week ──────────────────────────────────────────────── -->
+      <section class="chap" id="cD">
+        <div class="chap-h">Day-of-week effects <span class="qtag">DoW</span></div>
+        <div class="chap-q">Which day has the most accurate forecasts, and which day most frequently exceeds expectations? (Range-building is not uniform across the week.)</div>
+        <div class="answer" id="aD">—</div>
+        <div class="sec-sub">Daily H-L by weekday — <span class="pair-badge" id="cDpair"></span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Day</th><th class="num">n</th><th class="num">H-L MAE</th><th class="num">Bias</th><th class="num">Med-exceed % (tgt 50)</th></tr></thead>
+          <tbody id="cDtbl"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Persistence & clustering ─────────────────────────────────── -->
+      <section class="chap" id="cP">
+        <div class="chap-h">Persistence &amp; clustering <span class="qtag">Seq</span></div>
+        <div class="chap-q">When the market exceeds the forecast, does elevated volatility persist into the next day? Do large exceedances cluster? (Volatility persistence is the one replicated regularity — worth isolating.)</div>
+        <div class="answer" id="aP">—</div>
+        <div class="tiles" id="cPtiles"></div>
+        <div class="note" id="cPnote"></div>
+      </section>
+
+      <!-- ── Forecast misses ──────────────────────────────────────────── -->
+      <section class="chap" id="cMiss">
+        <div class="chap-h">Forecast misses <span class="qtag">Miss</span></div>
+        <div class="chap-q">Study the big-error days. What do the days the forecast badly under-called (overshoot ≥150% of median) or over-called (undershoot ≤50%) have in common — regime, trend-shape, the prior day? These failures are the most valuable trading filters.</div>
+        <div class="answer" id="aMiss">—</div>
+        <div class="sec-sub">Miss profiles — <span class="pair-badge" id="cMissPair"></span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Miss type</th><th class="num">n</th><th class="num">% of days</th><th class="num">Mean efficiency</th><th class="num">Mean VoV</th><th>Top regime</th><th>Top weekday</th><th class="num">Prior-day completion</th></tr></thead>
+          <tbody id="cMissTbl"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Multi-day relationships ──────────────────────────────────── -->
+      <section class="chap" id="cMulti">
+        <div class="chap-h">Multi-day relationships <span class="qtag">nDay</span></div>
+        <div class="chap-q">Do forecast errors predict future volatility? After three consecutive quiet (below-median) days, does expansion become more likely? Can the forecast's own misses forecast tomorrow?</div>
+        <div class="answer" id="aMulti">—</div>
+        <div class="tiles" id="cMultiTiles"></div>
+      </section>
+
+      <!-- ── Monthly & seasonal ───────────────────────────────────────── -->
+      <section class="chap" id="cSeason">
+        <div class="chap-h">Monthly &amp; seasonal <span class="qtag">Cal</span></div>
+        <div class="chap-q">Does forecast performance change seasonally — by month, over summer, December, month-end, quarter-end? (Liquidity and flow calendars leave a footprint in realized range.)</div>
+        <div class="answer" id="aSeason">—</div>
+        <div class="sec-sub">By month — <span class="pair-badge" id="cSeasonPair"></span> (H-L error, exceedance, mean completion)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Month</th><th class="num">n</th><th class="num">H-L MAE %</th><th class="num">Med-exceed %</th><th class="num">Mean completion %</th></tr></thead>
+          <tbody id="cSeasonTbl"></tbody>
+        </table></div></div>
+        <div class="sec-sub">Named periods</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Period</th><th class="num">n</th><th class="num">H-L MAE %</th><th class="num">Med-exceed %</th><th class="num">Mean completion %</th></tr></thead>
+          <tbody id="cSeasonPer"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Forecast confidence ──────────────────────────────────────── -->
+      <section class="chap" id="cConf">
+        <div class="chap-h">Forecast confidence <span class="qtag">Conf</span></div>
+        <div class="chap-q">Not just a forecast, but how much to trust it. Does recent forecast accuracy predict forward accuracy? If the last ~20 days were well-forecast, is today more reliable? (A walk-forward, self-referential confidence signal.)</div>
+        <div class="answer" id="aConf">—</div>
+        <div class="sec-sub">Reliability by recent-accuracy tercile — <span class="pair-badge" id="cConfPair"></span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Confidence bin</th><th class="num">n</th><th class="num">Forward H-L MAE %</th><th class="num">Forward med-exceed %</th></tr></thead>
+          <tbody id="cConfTbl"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Day-type clusters ────────────────────────────────────────── -->
+      <section class="chap" id="cType">
+        <div class="chap-h">Day-type clusters <span class="qtag">Type</span></div>
+        <div class="chap-q">Can days be grouped into a small number of recurring volatility "day types"? Clustering by trend-efficiency, completion and vol-of-vol reveals the market's repeating shapes — the taxonomy a decision engine can condition on.</div>
+        <div class="answer" id="aType">—</div>
+        <div class="sec-sub">Recurring day types — <span class="pair-badge" id="cTypePair"></span> (deterministic k-means, k=4)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Type</th><th class="num">Share %</th><th class="num">n</th><th class="num">Mean completion %</th><th class="num">Mean efficiency</th><th class="num">Mean VoV</th></tr></thead>
+          <tbody id="cTypeTbl"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Ch 8 — Estimator comparison ──────────────────────────────── -->
+      <section class="chap" id="c8">
+        <div class="chap-h">Estimator comparison <span class="qtag">A/B</span></div>
+        <div class="chap-q">Is a Realized-Variance + HAR-RV vol input more accurate than the current Yang-Zhang estimator? Both feed the identical band geometry, London-anchored — so any difference is the σ input alone.</div>
+        <div class="answer" id="a8">—</div>
+        <div class="rz-card" id="c8card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Pair</th><th class="num">Pinball skill</th><th class="num">Paired win %</th><th class="num">Sharpness YZ→HAR</th><th>Source</th></tr></thead>
+          <tbody id="c8cross"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Method ───────────────────────────────────────────────────── -->
+      <section class="chap" id="cM">
+        <div class="chap-h">Method &amp; caveats</div>
+        <div class="info-box">
+          <strong style="color:var(--text)">How every number is made.</strong> Each trading day is one experiment. The forecast for day <em>i</em>
+          is built from data strictly before <em>i</em> (the same live-forecaster math that draws your chart levels), then scored against what day
+          <em>i</em> actually did — the forecast never sees the bar it is graded on. Aggregates only: this book ships distilled statistics, never
+          a dump of per-day rows.
+          <br><br>
+          <strong style="color:var(--text)">Calibration reading.</strong> A well-formed median is exceeded ~50% of days and the 75th ~25%.
+          Below target ⇒ the band runs <em>too wide</em> (forecast over-estimates); above ⇒ <em>too tight</em> (under-estimates).
+          <br><br>
+          <strong style="color:var(--amber)">Anchoring.</strong> <span id="anchorNote">The daily/5d/20d evaluation builds its days from intraday grouped by London calendar date — the same London-midnight boundary the live forecaster uses — when H1 is available (falls back to OANDA D1 only if it isn't).</span>
+          <br><br>
+          <strong style="color:var(--amber)">Not yet covered.</strong> The news-week / holiday-week stability slices in Q3 (needs an economic-calendar
+          feed), the &gt;95th calibration bucket (needs a 95th forecast band), and per-touch outcome sequencing beyond first-vs-retested in the Level-touches
+          chapter. All flagged, not faked. <span class="muted">Q6 expansion and the level-touch / pip-excursion study are now built (intraday chapters) —
+          click ▶ Intraday to populate them.</span>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+let _R = null;   // research data (/api/vol-forecast-research)
+let _AB = null;  // estimator data (/api/estimator-ab)
+let _IN = null;  // intraday data (/api/intraday-research)
+// Horizon toggle: UI value → research-engine key (daily/d5/d20) and intraday key (daily/weekly/d20).
+const HZ = () => el('horizon')?.value || 'daily';
+const HZ_RES = { daily:'daily', weekly:'d5', d20:'d20' };
+const HZ_LBL = { daily:'Daily', weekly:'Weekly (5d)', d20:'20-day' };
+function onHorizon() { renderPair(); }
+const fmt = (v,d=2) => v==null || (typeof v==='number' && !isFinite(v)) ? '—' : typeof v==='number' ? v.toFixed(d) : v;
+const sgn = (v,d=3) => v==null ? '—' : (v>=0?'+':'') + (+v).toFixed(d);
+const setStatus = (t,m) => { document.getElementById('bkDot').className='sdot '+t; document.getElementById('bkMsg').textContent=m; };
+const el = id => document.getElementById(id);
+const PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD','AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF','GBPNZD','CADJPY','CHFJPY','NZDJPY','GOLD'];
+const clsBias = b => b==null ? 'neu' : Math.abs(b)<0.02 ? 'pos' : 'amber';
+const clsEx   = (v,tgt,tol=8) => v==null ? 'neu' : Math.abs(v-tgt)<tol ? 'pos' : 'neg';
+
+document.addEventListener('DOMContentLoaded', () => {
+  el('runPair').innerHTML = '<option value="">All pairs</option>' + PAIRS.map(p=>`<option>${p}</option>`).join('');
+  setupToc();
+  loadAll();
+});
+
+async function loadAll() {
+  setStatus('spin','Loading research…');
+  // Research is required; estimator is optional (may not have been run).
+  try {
+    const r = await fetch('/api/vol-forecast-research');
+    if (!r.ok) { const e = await r.json().catch(()=>({})); setStatus('err', e.error || 'No research yet — click ▶ Run.'); return; }
+    _R = await r.json();
+    el('bkComputedAt').textContent = 'computed ' + new Date(_R.computedAt).toLocaleString();
+  } catch (e) { setStatus('err','Error: '+e.message); return; }
+  try { const a = await fetch('/api/estimator-ab'); if (a.ok) _AB = await a.json(); } catch {}
+  try { const iv = await fetch('/api/intraday-research'); if (iv.ok) _IN = await iv.json(); } catch {}
+  initView();
+}
+
+function initView() {
+  const pairs = _R.pairs || Object.keys(_R.perPair||{});
+  if (!pairs.length) { setStatus('err','Empty research result.'); return; }
+  const ranked = (_R.cross?.ranked||[]).map(x=>x.pair);
+  const ordered = pairs.slice().sort((a,b)=>{ const ia=ranked.indexOf(a),ib=ranked.indexOf(b); return (ia<0?1e9:ia)-(ib<0?1e9:ib); });
+  el('viewPair').innerHTML = ordered.map(p=>`<option>${p}</option>`).join('');
+  renderCross();
+  renderPair();
+  const anc = _R.cross?.anchor || (Object.values(_R.perPair||{})[0]?.anchor) || 'utc-d1';
+  const ancLbl = anc === 'london-h1' ? 'London-anchored' : 'UTC-D1 anchored';
+  setStatus('ok', `Loaded · ${pairs.length} pair(s) · ${ancLbl}${_AB?' · A/B ✓':''}${_IN?' · intraday ✓':' · intraday not run'} · ${_R.file||''}`);
+  const an = el('anchorNote');
+  if (an) an.innerHTML = anc === 'london-h1'
+    ? `This run is <strong>London-midnight anchored</strong> — daily bars were rebuilt from H1 grouped by London calendar date, the same day boundary the live forecaster uses. The numbers now match your engine's day; the estimator A/B (Ch 8) shares the same anchor.`
+    : `This run used <strong>OANDA D1 (22:00-UTC)</strong> days — H1 wasn't available to rebuild London days, so the boundary differs from your engine's London-midnight day. Re-run to pick up the London anchor. Treat the <em>direction</em> of each finding as robust and the last digit as provisional.`;
+}
+
+// ── Cross-pair sections (run once) ───────────────────────────────────────────
+function renderCross() {
+  const c = _R.cross || {}; const perPair = _R.perPair || {};
+  const pairs = _R.pairs || Object.keys(perPair);
+
+  // Exec summary
+  const dir = c.hlExceedMed==null ? '' : c.hlExceedMed < 50 ? 'runs WIDE (over-estimates range)' : 'runs TIGHT (under-estimates range)';
+  const skillTxt = (c.hlSkill??0) > 0.03 ? `beats a trailing-mean benchmark (skill ${fmt(c.hlSkill,3)})` : `does NOT beat a trailing-mean benchmark (skill ${fmt(c.hlSkill,3)})`;
+  el('a0').innerHTML =
+    `Across <strong>${c.nPairs??pairs.length} pairs</strong>, the daily H-L forecast is <strong>${c.hlSharpness>=0.4?'informative':'weakly informative'}</strong>
+     (mean sharpness <strong>${fmt(c.hlSharpness,3)}</strong> — bigger forecasts do precede bigger days), but on average it <strong>${dir}</strong>:
+     realized exceeds the median <strong>${fmt(c.hlExceedMed,1)}%</strong> of days vs a 50% target (mean bias ${sgn(c.hlBias,3)}%).
+     As a point forecast it <strong>${skillTxt}</strong> — consistent with vol being persistent but hard to beat with a level.
+     Mean efficiency <strong>${fmt(c.efficiencyMean,3)}</strong> (${'>'}0.5 = trend-like).
+     ${_AB ? `The RV+HAR estimator ${(_AB.cross?.meanSkill??0)>0.02?'improves':'does not clearly improve'} on Yang-Zhang (mean pinball skill ${fmt(_AB.cross?.meanSkill,3)}, see Ch 8).` : ''}
+     <span class="muted">Use the pair selector to drill into any pair; every chapter re-renders for it.</span>`;
+
+  el('t0').innerHTML = [
+    ['Pairs', c.nPairs??pairs.length, 'evaluated'],
+    ['Mean sharpness', fmt(c.hlSharpness,3), 'corr(fc,real) H-L'],
+    ['Mean bias', sgn(c.hlBias,3)+'%', c.hlBias<0?'forecast high':'forecast low'],
+    ['Med-exceed', fmt(c.hlExceedMed,1)+'%', 'target 50%'],
+    ['Skill vs clim', fmt(c.hlSkill,3), 'vs trailing mean'],
+    ['Efficiency', fmt(c.efficiencyMean,3), 'trend↔chop'],
+  ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv ${typeof v==='string'&&v.includes('-')&&v.includes('%')?'amber':''}">${v}</div><div class="td">${d}</div></div>`).join('');
+
+  // Ch1 cross ranking
+  el('c1cross').innerHTML = (c.ranked||[]).map(x=>`<tr>
+    <td><strong>${x.pair}</strong></td>
+    <td class="num ${x.sharpness>=0.4?'pos':x.sharpness<0.15?'neg':'neu'}">${fmt(x.sharpness,3)}</td>
+    <td class="num ${clsBias(x.bias)}">${sgn(x.bias,3)}</td>
+    <td class="num ${x.skill>0.03?'pos':x.skill<=0?'neg':'neu'}">${fmt(x.skill,3)}</td>
+    <td class="num ${clsEx(x.exceedMed,50)}">${fmt(x.exceedMed,1)}</td></tr>`).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+
+  el('a1').innerHTML =
+    `The forecast is a <strong>range</strong> estimate, so bias is reported in price-% and the honest accuracy test is <strong>sharpness</strong> (does a bigger forecast precede a bigger day) and <strong>skill vs climatology</strong> (does it beat a trailing average). Accuracy <strong>varies materially by instrument</strong> — the table is ranked most- to least-informative. A negative bias means the median band sits <em>above</em> realized (too wide); positive means too tight.`;
+
+  // Ch8 estimator cross
+  renderEstimator();
+}
+
+function renderEstimator() {
+  const card = el('c8card');
+  if (!_AB || !_AB.cross) {
+    el('a8').innerHTML = `<span class="muted">The estimator A/B has not been run yet in this environment. Open the <a href="estimator-ab.html" style="color:var(--blue)">⚖️ Estimator A/B</a> page and click Run, or refresh here once it has data. It compares Yang-Zhang against a 5-min Realized-Variance + HAR-RV σ, London-anchored, feeding the same bands.</span>`;
+    card.style.display='none'; return;
+  }
+  card.style.display='';
+  const c = _AB.cross;
+  const good = (c.meanSkill??0) > 0.02;
+  el('a8').innerHTML =
+    `RV+HAR <strong class="${good?'pos':(c.meanSkill<-0.02?'neg':'neu')}">${good?'beats':(c.meanSkill<-0.02?'loses to':'ties')}</strong> Yang-Zhang on <strong>${c.harWins??0}/${c.nPairs}</strong> pairs (mean pinball skill ${fmt(c.meanSkill,3)}, mean paired win ${fmt(c.meanWin,1)}%). Positive skill ⇒ swapping the σ input is a drop-in improvement for the band engine on that pair. <span class="muted">London-midnight anchored — the one part of this book that already matches your engine's day.</span>`;
+  el('c8cross').innerHTML = (c.ranked||[]).map(x=>`<tr>
+    <td><strong>${x.pair}</strong></td>
+    <td class="num ${x.skill>0.02?'pos':x.skill<-0.02?'neg':'neu'}">${fmt(x.skill,3)}</td>
+    <td class="num ${x.win>50?'pos':'neu'}">${fmt(x.win,1)}%</td>
+    <td class="num">${fmt(x.yzSharp,2)} → <span class="${x.harSharp>x.yzSharp?'pos':'neu'}">${fmt(x.harSharp,2)}</span></td>
+    <td class="bk-lbl">${x.src||'—'}</td></tr>`).join('');
+}
+
+// ── Per-pair sections ────────────────────────────────────────────────────────
+function renderPair() {
+  const pair = el('viewPair').value;
+  const s = _R?.perPair?.[pair];
+  if (!s) return;
+  ['c1pair','c2pair','c3pair','c4pair','c5pair','c7pair','cDpair'].forEach(id=>el(id).textContent = pair);
+
+  // Ch1 — components table
+  const comps = [];
+  const push = (hz,hzLabel) => { const g = s.perComponent?.[hz]; if(!g) return; for (const k of Object.keys(g)) comps.push([hzLabel, g[k]]); };
+  push('daily','Daily'); push('d5','5-day'); push('d20','20-day');
+  el('c1comp').innerHTML = comps.map(([hz,o])=>`<tr>
+    <td>${hz} · ${o.label}</td><td class="num">${o.n}</td>
+    <td class="num">${fmt(o.mae,3)}</td><td class="num">${fmt(o.rmse,3)}</td>
+    <td class="num ${clsBias(o.bias)}">${sgn(o.bias,3)}</td>
+    <td class="num">${fmt(o.mape,0)}</td>
+    <td class="num ${o.sharpnessCorr>=0.4?'pos':o.sharpnessCorr<0.15?'neg':'neu'}">${fmt(o.sharpnessCorr,3)}</td></tr>`).join('') || '<tr><td colspan="7" class="neu">—</td></tr>';
+
+  // Ch2 — calibration bars for each component at the selected horizon
+  const _hz = HZ(), _rk = HZ_RES[_hz];
+  const calRows = [];
+  const dC = s.perComponent?.[_rk] || s.perComponent?.daily || {};
+  for (const [k,lbl] of [['hl','H-L range'],['oc','O-C move'],['oh','O-H up'],['ol','O-L down']]) {
+    const o = dC[k]; if (!o) continue;
+    calRows.push(calBar(`${lbl} > median`, o.exceedMedianPct, 50));
+    calRows.push(calBar(`${lbl} > 75th`,   o.exceed75Pct,     25));
+  }
+  el('c2cal').innerHTML = calRows.join('') || '<div class="neu">—</div>';
+  const hl = dC.hl || {};
+  el('a2').innerHTML =
+    `If the forecast is well-formed, realized exceeds the <strong>median ~50%</strong> and the <strong>75th ~25%</strong> of the time.
+     At the <strong>${HZ_LBL[_hz]}</strong> horizon for ${pair}, H-L exceeds its median <strong class="${clsEx(hl.exceedMedianPct,50)}">${fmt(hl.exceedMedianPct,1)}%</strong> and its 75th <strong class="${clsEx(hl.exceed75Pct,25)}">${fmt(hl.exceed75Pct,1)}%</strong>.
+     ${hl.exceedMedianPct!=null && hl.exceedMedianPct<42 ? 'Both sit below target ⇒ the bands run <strong>too wide</strong> (the forecast over-states the range) — this is the recalibration signal.' : hl.exceedMedianPct>58 ? 'Both sit above target ⇒ the bands run <strong>too tight</strong> (the forecast under-states the range).' : 'Close to target ⇒ reasonably calibrated.'}`;
+
+  // Ch2 — distribution buckets (from exceedance) + error histogram
+  const exM = hl.exceedMedianPct, ex75 = hl.exceed75Pct;
+  if (exM!=null && ex75!=null) {
+    const below = Math.max(0, 100-exM), mid = Math.max(0, exM-ex75), above = Math.max(0, ex75);
+    const seg = (w,c,lbl,v)=>`<div style="width:${w}%;background:${c};display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;min-width:0;overflow:hidden;white-space:nowrap">${w>10?`${lbl} ${fmt(v,0)}%`:''}</div>`;
+    el('c2buckets').innerHTML = `<div style="display:flex;height:34px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">
+      ${seg(below,'var(--blue)','< median',below)}${seg(mid,'#8b5cf6','med–75th',mid)}${seg(above,'var(--amber)','> 75th',above)}</div>`;
+    el('c2b95').textContent = 'A dedicated >95th bucket needs a 95th-percentile band added to the forecast (currently median + 75th only) — a small forecast-side add, deferred.';
+  }
+  const ed = s.errorDist;
+  if (ed && ed.hist) {
+    const ebs = ['<-50','-50..-25','-25..0','0..25','25..50','50..100','>100'];
+    const emax = Math.max(...ebs.map(b=>ed.hist[b]||0), 1);
+    el('c2err').innerHTML = ebs.map(b=>{ const v=ed.hist[b]||0; const center = b==='-25..0'||b==='0..25';
+      return `<div class="bar"><span class="bv">${fmt(v,0)}%</span><span class="bb" style="height:${v/emax*100}%;background:${center?'var(--green)':'var(--blue)'}"></span><span class="bl">${b}</span></div>`; }).join('');
+    el('c2errNote').innerHTML = `Median error <strong>${sgn(ed.medianPctErr,0)}%</strong>, mean <strong>${sgn(ed.meanPctErr,0)}%</strong>; the range falls short of the median forecast <strong>${fmt(ed.overStatePct,0)}%</strong> of days. Mass to the <em>left</em> of 0 ⇒ the forecast over-states the range (bands too wide).`;
+  }
+
+  // Ch3 — VoV stability
+  const vov = s.byVov || {};
+  const vovOrder = ['1·low','2·mid','3·high'];
+  el('c3vov').innerHTML = vovOrder.filter(k=>vov[k]).map(k=>{ const o=vov[k]; return `<tr>
+    <td>${k}</td><td class="num">${o.n}</td><td class="num">${fmt(o.mae,3)}</td>
+    <td class="num ${clsBias(o.bias)}">${sgn(o.bias,3)}</td><td class="num ${clsEx(o.exceedMedianPct,50)}">${fmt(o.exceedMedianPct,1)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+  const vl=vov['1·low'], vh=vov['3·high'];
+  el('a3').innerHTML = (vl&&vh)
+    ? `Forecast error ${vh.mae>vl.mae*1.15?'<strong>rises</strong>':'is <strong>stable</strong>'} when volatility itself is volatile: daily H-L MAE is <strong>${fmt(vh.mae,3)}</strong> in the high vol-of-vol tercile vs <strong>${fmt(vl.mae,3)}</strong> in the low. ${vh.mae>vl.mae*1.15?'Trust the level <em>less</em> in transition/high-VoV conditions.':'The forecast holds up across vol-of-vol regimes.'} <span class="muted">News/holiday-week slices need a calendar feed — deferred (see caveat).</span>`
+    : '<span class="muted">Not enough data for the vol-of-vol breakdown on this pair.</span>';
+
+  // Ch4 — regime matrix
+  const rm = s.regimeMatrix || {};
+  const regs = Array.from(new Set([...Object.keys(rm.hl||{}), ...Object.keys(rm.oc||{})]));
+  const cell = (comp,reg,f) => rm[comp]?.[reg] ? f(rm[comp][reg]) : null;
+  el('c4reg').innerHTML = regs.map(reg=>{ const h=rm.hl?.[reg]||{}; return `<tr>
+    <td><strong>${reg}</strong></td><td class="num">${h.n??'—'}</td>
+    <td class="num">${fmt(h.mae,3)}</td><td class="num ${clsEx(h.exceedMedianPct,50)}">${fmt(h.exceedMedianPct,1)}</td>
+    <td class="num">${fmt(cell('oc',reg,x=>x.mae),3)}</td>
+    <td class="num">${fmt(cell('oh',reg,x=>x.mae),3)}</td>
+    <td class="num">${fmt(cell('ol',reg,x=>x.mae),3)}</td></tr>`; }).join('') || '<tr><td colspan="7" class="neu">—</td></tr>';
+  // Which regime is most reliable (lowest H-L MAE)?
+  const regMae = regs.map(r=>({r, mae:rm.hl?.[r]?.mae})).filter(x=>x.mae!=null).sort((a,b)=>a.mae-b.mae);
+  el('a4').innerHTML = regMae.length
+    ? `For ${pair}, the daily H-L forecast is <strong>most reliable in ${regMae[0].r}</strong> (MAE ${fmt(regMae[0].mae,3)}) and <strong>least reliable in ${regMae.at(-1).r}</strong> (MAE ${fmt(regMae.at(-1).mae,3)}). Range-bound days are typically the easiest to forecast; strong trends stretch the range past the median more often.`
+    : '<span class="muted">Regime breakdown unavailable for this pair.</span>';
+
+  // Ch5 — sessions
+  renderSessions(s, pair);
+
+  // Ch7 — completion
+  renderCompletion(s, pair);
+
+  // Day-of-week
+  const dow = s.byDow || {};
+  const dowOrder = ['Mon','Tue','Wed','Thu','Fri'];
+  const dowRows = dowOrder.filter(d=>dow[d]);
+  el('cDtbl').innerHTML = dowRows.map(d=>{ const o=dow[d]; return `<tr>
+    <td><strong>${d}</strong></td><td class="num">${o.n}</td><td class="num">${fmt(o.mae,3)}</td>
+    <td class="num ${clsBias(o.bias)}">${sgn(o.bias,3)}</td><td class="num ${clsEx(o.exceedMedianPct,50)}">${fmt(o.exceedMedianPct,1)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+  if (dowRows.length) {
+    const byMae = dowRows.map(d=>({d,mae:dow[d].mae})).sort((a,b)=>a.mae-b.mae);
+    const byEx  = dowRows.map(d=>({d,ex:dow[d].exceedMedianPct})).sort((a,b)=>b.ex-a.ex);
+    el('aD').innerHTML = `For ${pair}, the forecast is <strong>most accurate on ${byMae[0].d}</strong> (lowest H-L MAE) and least on ${byMae.at(-1).d}. <strong>${byEx[0].d}</strong> most often exceeds its median (${fmt(byEx[0].ex,1)}%), <strong>${byEx.at(-1).d}</strong> least (${fmt(byEx.at(-1).ex,1)}%) — the classic quiet-Monday / active-midweek shape shows up as calibration drift by weekday.`;
+  } else el('aD').innerHTML = '<span class="muted">Day-of-week breakdown unavailable for this pair.</span>';
+
+  // Persistence & clustering
+  const p = s.persistence || {};
+  const lift = (p.afterAbove75Pct!=null && p.baseExceedMedianPct!=null) ? +(p.afterAbove75Pct - p.baseExceedMedianPct).toFixed(1) : null;
+  el('cPtiles').innerHTML = [
+    ['Base next-day exceed', fmt(p.baseExceedMedianPct,1)+'%', 'unconditional'],
+    ['After an above-75th day', fmt(p.afterAbove75Pct,1)+'%', 'next-day exceed'],
+    ['Clustering lift', (lift==null?'—':sgn(lift,1)+' pp'), 'persistence signal'],
+    ['Events', (p.n??'—'), 'above-75th days'],
+  ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv ${k==='Clustering lift'&&lift>0?'pos':''}">${v}</div><div class="td">${d}</div></div>`).join('');
+  el('aP').innerHTML = lift==null ? '<span class="muted">Persistence data unavailable.</span>'
+    : lift > 6 ? `Volatility <strong>clusters</strong> for ${pair}: after a day that exceeds its 75th percentile, the next day exceeds its median <strong class="pos">${fmt(p.afterAbove75Pct,1)}%</strong> of the time vs a <strong>${fmt(p.baseExceedMedianPct,1)}%</strong> base rate (+${fmt(lift,1)}pp). Expansion begets expansion — the one regularity worth leaning on, and the basis for a "stay wide after a big day" rule.`
+    : `For ${pair}, an above-75th day gives only a <strong>${sgn(lift,1)}pp</strong> lift to the next day's exceedance (${fmt(p.afterAbove75Pct,1)}% vs ${fmt(p.baseExceedMedianPct,1)}% base) — clustering is weak here; treat each day closer to independent.`;
+  el('cPnote').innerHTML = `<span class="bk-lbl">1-step persistence shown here; the full multi-day chains (3-quiet→expansion, errors→next-day vol) are in the Multi-day chapter below.</span>`;
+
+  renderPRB(s, pair);
+  renderIntraday(pair);
+}
+
+// ── PR-D/E intraday chapters (expansion + level touches), horizon-aware ──────
+function renderIntraday(pair) {
+  ['c6pair','cTouchPair'].forEach(id=>el(id) && (el(id).textContent = pair));
+  const hz = HZ(), parent = _IN?.perPair?.[pair];
+  const r = parent?.[hz];
+  const src = parent?.src;
+  // Time-unit helpers: daily = London hour, weekly/20d = day-of-window.
+  const isDay = r?.expansion?.timeUnit === 'day';
+  const at = v => isDay ? `~day ${fmt(v,1)}` : `~${fmt(v,1)}:00`;
+  const barLbl = v => isDay ? `d${fmt(v,1)}` : `${fmt(v,1)}h`;
+  const unit = hz==='daily' ? 'days' : (hz==='weekly' ? 'weeks' : '20-day windows');
+  const unitAxis = isDay ? 'day-of-window' : 'London-hour';
+
+  // Ch6 — expansion
+  if (!r || !r.expansion || !r.expansion.n) {
+    el('a6').innerHTML = parent
+      ? `<span class="muted">No ${HZ_LBL[hz]} expansion data for ${pair} — the ${hz} horizon may have too few windows in this run. Try Daily, or a longer history.</span>`
+      : `<span class="muted">Intraday research not run yet. Click <strong>▶ Intraday</strong> above (loads M1/H1 per pair and runs all three horizons) — then this chapter and Level touches populate.</span>`;
+    el('c6bars').innerHTML=''; el('c6tiles').innerHTML=''; el('c6note').textContent='';
+  } else {
+    const ex = r.expansion, fr=['25','50','75','100'];
+    const maxH = Math.max(...fr.map(f=>ex.medianHourTo[f]||0), 1);
+    el('c6bars').innerHTML = fr.map(f=>{ const h=ex.medianHourTo[f]||0; return `<div class="bar"><span class="bv">${barLbl(h)}</span><span class="bb" style="height:${h/maxH*100}%;background:${f==='100'?'var(--green)':'var(--blue)'}"></span><span class="bl">${f}%</span></div>`; }).join('');
+    el('c6tiles').innerHTML = [
+      ['Reaches 50%', at(ex.medianHourTo['50']), unitAxis],
+      ['Reaches 100%', at(ex.medianHourTo['100']), unitAxis],
+      ['Complete full range', fmt(ex.reached100Pct,0)+'%','of '+unit],
+      ['Big 50% by', at(ex.bigDayMedianTo50),'vs quiet '+at(ex.smallDayMedianTo50)],
+    ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv">${v}</div><div class="td">${d}</div></div>`).join('');
+    el('c6note').innerHTML = `Bars show the median ${unitAxis} at which cumulative range crosses each fraction of the <em>${HZ_LBL[hz]}</em> forecast range. Big ${unit} reach halfway by <strong>${at(ex.bigDayMedianTo50)}</strong> vs <strong>${at(ex.smallDayMedianTo50)}</strong> on quiet ${unit} — ${ex.bigDayMedianTo50<ex.smallDayMedianTo50?'expansion declares itself early':'the gap is small on this pair'}.`;
+    el('a6').innerHTML = `At the <strong>${HZ_LBL[hz]}</strong> horizon, ${pair} builds 50% of its expected range by <strong>${at(ex.medianHourTo['50'])}</strong> and the full range by <strong>${at(ex.medianHourTo['100'])}</strong>; <strong>${fmt(ex.reached100Pct,0)}%</strong> of ${unit} complete the forecast range. ${ex.bigDayMedianTo50<ex.smallDayMedianTo50?'<strong>Large '+unit+' expand early</strong> — a fast early range is a tell.':'Expansion timing is similar for large and small '+unit+' here.'}`;
+  }
+
+  // Level touches
+  if (!r || !r.touches || !r.touches.medianExtension?.n) {
+    el('aTouch').innerHTML = parent
+      ? `<span class="muted">No ${HZ_LBL[hz]} level touches for ${pair} in this run.</span>`
+      : `<span class="muted">Click <strong>▶ Intraday</strong> to populate the level-touch / pip-excursion study (runs all three horizons).</span>`;
+    ['cTouchTbl','cTouchReg'].forEach(id=>el(id).innerHTML='<tr><td colspan="10" class="neu">—</td></tr>');
+    el('cTouchTiles').innerHTML=''; el('cTouchNote').textContent=''; return;
+  }
+  const t = r.touches, M = t.medianExtension, P = t.p75Extension;
+  const trow = (lbl,o)=> o && o.n ? `<tr><td><strong>${lbl}</strong></td><td class="num">${fmt(o.touchRatePct,1)}</td>
+    <td class="num ${o.continuePct>o.reversePct?'pos':''}">${fmt(o.continuePct,1)}</td><td class="num ${o.reversePct>o.continuePct?'amber':''}">${fmt(o.reversePct,1)}</td>
+    <td class="num">${fmt(o.reverse10Pct,0)}%</td><td class="num">${fmt(o.reverse20Pct,0)}%</td><td class="num">${fmt(o.reverse50Pct,0)}%</td>
+    <td class="num">${fmt(o.meanMfePips,1)}</td><td class="num">${fmt(o.meanMaePips,1)}</td><td class="num">${fmt(o.meanRetests,2)}</td></tr>` : `<tr><td><strong>${lbl}</strong></td><td colspan="9" class="neu">no touches</td></tr>`;
+  el('cTouchTbl').innerHTML = trow('Median extension', M) + trow('75th extension', P);
+  const dir = t.direction||{};
+  el('cTouchTiles').innerHTML = [
+    ['Upper hit first', dir.firstUpperPct==null?'—':fmt(dir.firstUpperPct,0)+'%', 'vs lower '+(dir.firstLowerPct==null?'—':fmt(dir.firstLowerPct,0)+'%')],
+    ['Median continue', M.n?fmt(M.continuePct,0)+'%':'—', 'past the level'],
+    ['Median reverse ≥20p', M.n?fmt(M.reverse20Pct,0)+'%':'—', 'pullback'],
+    ['75th continue', P.n?fmt(P.continuePct,0)+'%':'—', 'exhaustion check'],
+  ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv">${v}</div><div class="td">${d}</div></div>`).join('');
+  const reg = M.byRegime||{};
+  el('cTouchReg').innerHTML = Object.keys(reg).map(rg=>{ const o=reg[rg]; return `<tr><td><strong>${rg}</strong></td><td class="num">${o.n}</td>
+    <td class="num">${fmt(o.continuePct,1)}</td><td class="num">${fmt(o.reverse20Pct,1)}</td><td class="num">${fmt(o.meanMfePips,1)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+  el('cTouchNote').innerHTML = `<span class="bk-lbl">${HZ_LBL[hz]} levels = open ± the forecast O-H/O-L median &amp; 75th (√-scaled for weekly/20-day). Touch detection walks ${src||'intraday'} bars over the ${hz==='daily'?'day':(hz==='weekly'?'5-day':'20-day')} window; MFE = continuation past the level, MAE = pullback toward open (pips). Per-touch sequencing beyond first-vs-retested is a later extension.</span>`;
+  el('aTouch').innerHTML = M.n
+    ? `At the <strong>${HZ_LBL[hz]}</strong> horizon, ${pair}'s median extension is reached <strong>${fmt(M.touchRatePct,0)}%</strong> of ${unit}; after the first touch price <strong>${M.continuePct>=M.reversePct?`continues ${fmt(M.continuePct,0)}%`:`reverses ${fmt(M.reversePct,0)}%`}</strong> of the time, with a ${fmt(M.reverse20Pct,0)}% chance of a ≥20-pip pullback. ${P.n && P.continuePct < M.continuePct-5 ? `The <strong>75th extension continues only ${fmt(P.continuePct,0)}%</strong> vs ${fmt(M.continuePct,0)}% at the median — deeper touches look more like exhaustion.` : ''} ${dir.firstUpperPct!=null?`The upper side is hit first ${fmt(dir.firstUpperPct,0)}% of ${unit}.`:''}`
+    : '<span class="muted">No level touches recorded for this pair/horizon.</span>';
+}
+
+// ── PR-B daily-aggregation chapters ──────────────────────────────────────────
+function renderPRB(s, pair) {
+  ['cMissPair','cSeasonPair','cConfPair','cTypePair'].forEach(id=>el(id).textContent = pair);
+
+  // Misses
+  const m = s.misses;
+  if (m && (m.overshoot || m.undershoot)) {
+    const mrow = (lbl, o) => o && o.n ? `<tr><td><strong>${lbl}</strong></td><td class="num">${o.n}</td><td class="num">${fmt(o.pctOfDays,1)}%</td>
+      <td class="num">${fmt(o.meanEff,3)}</td><td class="num">${fmt(o.meanVov,4)}</td><td>${o.topRegime||'—'}</td><td>${o.topDow||'—'}</td>
+      <td class="num">${o.priorDayComplMean==null?'—':fmt(o.priorDayComplMean,0)+'%'}</td></tr>` : `<tr><td><strong>${lbl}</strong></td><td colspan="7" class="neu">no days in this tail</td></tr>`;
+    el('cMissTbl').innerHTML = mrow('Overshoot ≥150%', m.overshoot) + mrow('Undershoot ≤50%', m.undershoot)
+      + `<tr><td class="neu">Baseline (all days)</td><td colspan="3" class="neu">mean efficiency ${fmt(m.all?.meanEff,3)} · mean VoV ${fmt(m.all?.meanVov,4)}</td><td colspan="4"></td></tr>`;
+    const ov = m.overshoot;
+    el('aMiss').innerHTML = ov && ov.n
+      ? `The days the forecast most <strong>under-calls</strong> (${ov.pctOfDays}% of days, realized ≥150% of the median) are <strong>${ov.topRegime}</strong> and run <strong>trend-like</strong> (efficiency ${fmt(ov.meanEff,3)} vs ${fmt(m.all?.meanEff,3)} baseline)${ov.priorDayComplMean!=null?`, typically <strong>following an already-large day</strong> (${fmt(ov.priorDayComplMean,0)}% prior completion)`:''}. That combination — trend regime + a big prior day — is a candidate "expect an expansion the band won't hold" filter.`
+      : '<span class="muted">Too few big-miss days on this pair to profile.</span>';
+  }
+
+  // Multi-day
+  const md = s.multiDay;
+  if (md) {
+    const lift = (md.afterThreeQuietExpandPct!=null) ? +(md.afterThreeQuietExpandPct - md.baseExceedMedianPct).toFixed(1) : null;
+    el('cMultiTiles').innerHTML = [
+      ['Err → next-day vol', sgn(md.errorPredictsNextVolCorr,2), 'corr(%err, tmrw H-L)'],
+      ['Base next-day exceed', fmt(md.baseExceedMedianPct,1)+'%', 'unconditional'],
+      ['After 3+ quiet days', md.afterThreeQuietExpandPct==null?'—':fmt(md.afterThreeQuietExpandPct,1)+'%', 'next-day exceed'],
+      ['Expansion lift', lift==null?'—':sgn(lift,1)+' pp', `${md.afterThreeQuietN??0} events`],
+    ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv ${k==='Expansion lift'&&lift>0?'pos':''}">${v}</div><div class="td">${d}</div></div>`).join('');
+    el('aMulti').innerHTML =
+      `${lift!=null && lift>4 ? `<strong>Compression mean-reverts</strong>: after 3+ consecutive below-median days, the next day exceeds its median <strong class="pos">${fmt(md.afterThreeQuietExpandPct,1)}%</strong> vs a ${fmt(md.baseExceedMedianPct,1)}% base (+${fmt(lift,1)}pp). ` : `After 3+ quiet days the next-day exceedance is ${fmt(md.afterThreeQuietExpandPct,1)}% vs ${fmt(md.baseExceedMedianPct,1)}% base — little mean-reversion signal here. `}
+       Forecast errors ${Math.abs(md.errorPredictsNextVolCorr)>=0.1 ? `<strong>carry information</strong> (corr ${sgn(md.errorPredictsNextVolCorr,2)} with tomorrow's range — a big surprise today ${md.errorPredictsNextVolCorr>0?'precedes a bigger':'precedes a smaller'} tomorrow)` : `barely predict tomorrow's range (corr ${sgn(md.errorPredictsNextVolCorr,2)})`}.`;
+  }
+
+  // Seasonal
+  const se = s.seasonal;
+  if (se && se.byMonth) {
+    const MN = {'01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun','07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec'};
+    const months = Object.keys(se.byMonth).sort();
+    el('cSeasonTbl').innerHTML = months.map(mk=>{ const o=se.byMonth[mk]; return `<tr><td><strong>${MN[mk]}</strong></td><td class="num">${o.n}</td>
+      <td class="num">${fmt(o.mae,1)}</td><td class="num ${clsEx(o.exceedMedianPct,50)}">${fmt(o.exceedMedianPct,1)}</td><td class="num">${fmt(o.meanCompletion,0)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+    const per = se.periods||{}; const pn = {summer:'Summer (Jul–Aug)',december:'December',monthEnd:'Month-end (≥26th)',quarterEnd:'Quarter-end'};
+    el('cSeasonPer').innerHTML = Object.keys(pn).map(k=>{ const o=per[k]; return o ? `<tr><td>${pn[k]}</td><td class="num">${o.n}</td>
+      <td class="num">${fmt(o.mae,1)}</td><td class="num ${clsEx(o.exceedMedianPct,50)}">${fmt(o.exceedMedianPct,1)}</td><td class="num">${fmt(o.meanCompletion,0)}</td></tr>` : ''; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+    // best/worst month by exceedance drift
+    const byDrift = months.map(mk=>({mk,d:Math.abs(se.byMonth[mk].exceedMedianPct-50)})).sort((a,b)=>a.d-b.d);
+    el('aSeason').innerHTML = months.length
+      ? `Calibration drifts across the calendar for ${pair}: <strong>${MN[byDrift[0].mk]}</strong> is the best-calibrated month and <strong>${MN[byDrift.at(-1).mk]}</strong> the most off-target. ${per.summer&&per.december?`Summer runs ${fmt(per.summer.meanCompletion,0)}% mean completion vs December ${fmt(per.december.meanCompletion,0)}% — ${per.summer.meanCompletion<per.december.meanCompletion?'thinner summer ranges the forecast tends to over-call':'watch the seasonal completion gap'}.`:''}`
+      : '<span class="muted">Seasonal breakdown unavailable.</span>';
+  }
+
+  // Confidence
+  const cf = s.confidence;
+  if (cf && cf.terciles) {
+    el('cConfTbl').innerHTML = cf.terciles.map(t=>`<tr><td>${t.label}</td><td class="num">${t.n}</td>
+      <td class="num">${fmt(t.fwdMae,1)}</td><td class="num ${clsEx(t.fwdExceedMedianPct,50)}">${fmt(t.fwdExceedMedianPct,1)}</td></tr>`).join('');
+    const hi=cf.terciles[0], lo=cf.terciles[2];
+    el('aConf').innerHTML = (hi&&lo)
+      ? `${cf.spreadMae>0.05 ? `<strong>Recent accuracy predicts forward accuracy</strong>: days following a well-forecast stretch (low recent error) have H-L MAE <strong class="pos">${fmt(hi.fwdMae,1)}</strong> vs <strong>${fmt(lo.fwdMae,1)}</strong> after a poorly-forecast stretch — a usable ${fmt(cf.spreadMae,1)}pp confidence spread.` : `Recent accuracy barely predicts forward accuracy (MAE ${fmt(hi.fwdMae,1)} vs ${fmt(lo.fwdMae,1)}, spread ${fmt(cf.spreadMae,1)}pp) — trust is roughly constant day-to-day for ${pair}.`} <span class="muted">Trailing window ${cf.window} days, walk-forward.</span>`
+      : '<span class="muted">Confidence breakdown unavailable.</span>';
+  }
+
+  // Day-types
+  const dt = s.dayTypes;
+  if (dt && dt.clusters) {
+    el('cTypeTbl').innerHTML = dt.clusters.map(c=>`<tr><td><strong>${c.label}</strong></td><td class="num">${fmt(c.sharePct,1)}%</td><td class="num">${c.n}</td>
+      <td class="num">${fmt(c.meanCompletion,0)}</td><td class="num">${fmt(c.meanEfficiency,3)}</td><td class="num">${fmt(c.meanVov,4)}</td></tr>`).join('');
+    const top = dt.clusters.slice().sort((a,b)=>b.sharePct-a.sharePct)[0];
+    el('aType').innerHTML = `${pair}'s days fall into ${dt.k} recurring shapes; the most common is <strong>${top.label}</strong> (${fmt(top.sharePct,1)}% of days). Reading the table top-to-bottom is high-to-low completion: expansion/trend days at the top, quiet/chop days at the bottom — the taxonomy a fade-vs-follow selector would condition on.`;
+  } else el('aType').innerHTML = '<span class="muted">Not enough days to cluster on this pair.</span>';
+}
+
+function calBar(label, val, tgt) {
+  const v = val==null ? 0 : val;
+  const col = Math.abs(v-tgt)<8 ? 'var(--green)' : v<tgt ? 'var(--amber)' : 'var(--red)';
+  return `<div class="cal"><span class="cl">${label}</span>
+    <span class="track"><span class="fill" style="width:${Math.min(100,v)}%;background:${col}"></span><span class="tgt" style="left:${tgt}%"></span></span>
+    <span class="cv">${fmt(val,1)}% <span class="bk-lbl">(tgt ${tgt})</span></span></div>`;
+}
+
+function renderSessions(s, pair) {
+  const sess = s.session;
+  if (!sess || !sess.perSession) {
+    el('c5sess').innerHTML = '<tr><td colspan="6" class="neu">No session data — run with sessions enabled (needs OANDA H1).</td></tr>';
+    el('c5seq').textContent = ''; el('c5find').innerHTML = '';
+    el('a5').innerHTML = '<span class="muted">Session structure not available for this pair in the latest run.</span>';
+    return;
+  }
+  const ps = sess.perSession, names = { asia:'Asia', london:'London', ny:'New York' };
+  el('c5sess').innerHTML = ['asia','london','ny'].filter(k=>ps[k]).map(k=>{ const o=ps[k]; return `<tr>
+    <td><strong>${names[k]}</strong></td><td class="num">${fmt(o.hlMeanPct,1)}</td><td class="num">${fmt(o.hlP50,1)}</td>
+    <td class="num">${fmt(o.hlP75,1)}</td><td class="num">${fmt(o.ocMeanPct,1)}</td>
+    <td class="num ${o.exceedExpectedPct==null?'neu':clsEx(o.exceedExpectedPct,50,10)}">${o.exceedExpectedPct==null?'—':fmt(o.exceedExpectedPct,1)}</td></tr>`; }).join('');
+  const sq = sess.sequencing||{}, cp = sess.compensation||{};
+  el('c5seq').innerHTML = `Sequencing: Asia→London corr <strong>${fmt(sq.asiaLondonCorr,2)}</strong>, London→NY corr <strong>${fmt(sq.londonNyCorr,2)}</strong>. · Compensation: London contributes <strong>${fmt(cp.londonAfterSmallAsia,1)}%</strong> after a small Asia vs <strong>${fmt(cp.londonAfterBigAsia,1)}%</strong> after a big Asia. <span class="bk-lbl">(shares overlap-sum &gt;100%)</span>`;
+  const icons = { good:'✓', warn:'⚠', info:'•' };
+  el('c5find').innerHTML = (sess.findings||[]).map(f=>`<div class="find ${f.sev}"><span class="fi">${icons[f.sev]||'•'}</span><span class="ft">${f.text}</span></div>`).join('');
+  const dom = ['asia','london','ny'].filter(k=>ps[k]).sort((a,b)=>ps[b].hlMeanPct-ps[a].hlMeanPct);
+  el('a5').innerHTML = dom.length
+    ? `The day's range for ${pair} is built mostly in <strong>${names[dom[0]]}</strong> (${fmt(ps[dom[0]].hlMeanPct,1)}% of daily H-L), then ${names[dom[1]]} (${fmt(ps[dom[1]].hlMeanPct,1)}%), then ${names[dom[2]]} (${fmt(ps[dom[2]].hlMeanPct,1)}%). ${sq.asiaLondonCorr>=0.2?'Asia <strong>predicts</strong> London (active Asia → active London).':cp.londonAfterSmallAsia-cp.londonAfterBigAsia>5?'A quiet Asia tends to <strong>hand the range to London</strong> (compensation).':'Sessions are largely independent.'}`
+    : '<span class="muted">Session data incomplete.</span>';
+}
+
+function renderCompletion(s, pair) {
+  const hz = HZ(), rk = HZ_RES[hz], unit = hz==='daily' ? 'days' : (hz==='weekly' ? 'weeks' : '20-day windows');
+  const c = hz==='daily' ? s.completion : (s.completionByHorizon?.[rk] || s.completion);
+  if (!c || !c.hist || !c.n) {
+    el('c7hist').innerHTML=''; el('c7tiles').innerHTML=''; el('c7by').innerHTML='<tr><td colspan="4" class="neu">—</td></tr>';
+    el('a7').innerHTML=`<span class="muted">No ${HZ_LBL[hz]} completion data for ${pair} — the ${hz} horizon may have too few windows in this run.</span>`; return;
+  }
+  const buckets = ['<40','40-65','65-92','92-118','118-165','>165'];
+  const max = Math.max(...buckets.map(b=>c.hist[b]||0), 1);
+  el('c7hist').innerHTML = buckets.map(b=>{ const v=c.hist[b]||0; const isMed = b==='92-118';
+    return `<div class="bar"><span class="bv">${fmt(v,0)}%</span><span class="bb" style="height:${v/max*100}%;background:${isMed?'var(--green)':'var(--blue)'}"></span><span class="bl">${b}%</span></div>`; }).join('');
+  el('c7tiles').innerHTML = [
+    ['Median completion', fmt(c.medianPct,0)+'%', 'of the forecast'],
+    ['Reaches full median', fmt(c.reachedMedianPct,0)+'%', 'of '+unit],
+    ['Falls short of ½', fmt(c.neverHalfPct,0)+'%', 'of '+unit],
+    ['Blows through 165%', fmt(c.blewThroughPct,0)+'%', 'expansion tail'],
+  ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv">${v}</div><div class="td">${d}</div></div>`).join('');
+  // by condition (daily only — the 5d/20d completion is the histogram + tiles)
+  const rows = [];
+  for (const [k,o] of Object.entries(c.byRegime||{})) rows.push([`Regime · ${k}`, o]);
+  for (const [k,o] of Object.entries(c.byVov||{}))    rows.push([`VoV · ${k}`, o]);
+  el('c7by').innerHTML = rows.length
+    ? rows.map(([lbl,o])=>`<tr><td>${lbl}</td><td class="num">${o.n}</td><td class="num">${fmt(o.meanPct,0)}%</td><td class="num">${fmt(o.reachedMedianPct,0)}%</td></tr>`).join('')
+    : `<tr><td colspan="4" class="neu">By-condition slices are computed at the daily horizon; switch to Daily to see them.</td></tr>`;
+  el('a7').innerHTML =
+    `At the <strong>${HZ_LBL[hz]}</strong> horizon, ${pair} completes the <strong>full median forecast ${fmt(c.reachedMedianPct,0)}%</strong> of ${unit}, <strong>falls short of half ${fmt(c.neverHalfPct,0)}%</strong>, and <strong>blows through 165% ${fmt(c.blewThroughPct,0)}%</strong> (median completion ${fmt(c.medianPct,0)}% of forecast). The green bar is the "as-forecast" bucket (92–118%); a fat left tail = many quiet ${unit}, a fat right tail = expansion the median can't hold.`;
+}
+
+// ── TOC scroll-spy + run ─────────────────────────────────────────────────────
+function setupToc() {
+  const links = Array.from(document.querySelectorAll('.bk-toc a'));
+  const byId = Object.fromEntries(links.map(a=>[a.getAttribute('href').slice(1), a]));
+  const obs = new IntersectionObserver(es=>{ es.forEach(e=>{ if(e.isIntersecting){ links.forEach(l=>l.classList.remove('on')); byId[e.target.id]?.classList.add('on'); } }); }, { rootMargin:'-64px 0px -70% 0px' });
+  document.querySelectorAll('.chap').forEach(c=>obs.observe(c));
+  links.forEach(a=>a.addEventListener('click', e=>{ e.preventDefault(); document.getElementById(a.getAttribute('href').slice(1)).scrollIntoView({behavior:'smooth'}); }));
+}
+
+let _poll = null;
+// Generic async-job runner with a resilient poller (shared by both run buttons).
+async function _runJob(base, btnId, startMsg) {
+  const btn = el(btnId); btn.disabled = true;
+  setStatus('spin', startMsg); el('runStatus').textContent='Starting…';
+  if (_poll) clearInterval(_poll);
+  try {
+    const r = await fetch(`/api/${base}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pair:el('runPair').value})});
+    const jb = await r.json();
+    if (!jb.ok) { setStatus('err', jb.error||'Failed'); btn.disabled=false; return; }
+    let fails = 0; const MAX = 20;
+    const done = async (msg) => { if(_poll){clearInterval(_poll);_poll=null;} btn.disabled=false; el('runStatus').textContent=msg; await loadAll(); };
+    _poll = setInterval(async () => {
+      try {
+        const sr = await fetch(`/api/${base}/status/${jb.jobId}`);
+        if (sr.status===404) return done('Run no longer tracked');
+        if (!sr.ok) throw new Error('HTTP '+sr.status);
+        const sj = await sr.json(); fails=0;
+        if (sj.status==='running') { el('runStatus').textContent=`Running… ${sj.elapsed??0}s`; return; }
+        clearInterval(_poll); _poll=null; btn.disabled=false;
+        if (sj.status==='done') { el('runStatus').textContent=sj.message||'Done'; setStatus('ok','Complete — loading…'); await loadAll(); }
+        else { setStatus('err', sj.error||'Failed'); el('runStatus').textContent='Error: '+(sj.error||'?'); }
+      } catch(e) { if(++fails<MAX){ el('runStatus').textContent=`Reconnecting… (${fails}/${MAX})`; return; } await done('Lost contact — loaded latest'); }
+    }, 3000);
+  } catch(e) { setStatus('err','Error: '+e.message); btn.disabled=false; }
+}
+function runResearch() { return _runJob('vol-forecast-research', 'runBtn', 'Running research (per pair — can take a while)…'); }
+function runIntraday() { return _runJob('intraday-research', 'runIntraBtn', 'Running intraday research (loads M1/H1 per pair — slow)…'); }
+</script>
+</body>
+</html>

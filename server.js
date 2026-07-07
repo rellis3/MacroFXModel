@@ -63,14 +63,20 @@ import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEV
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
+import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
+import { evaluateIntraday } from './js/intradayForecastResearch.js';
+import { loadWeeklyM1 as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
+import { resampleTo as _resampleTo } from './js/barUtils.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
-import { _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
+import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
 import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats } from './js/zscoreSpreadEngine.js';
 import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
+import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
+import { runFullRangeLevelEdge, RANGE_LEVEL_DEFAULTS } from './js/rangeLevelEdgeEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -7832,22 +7838,41 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
     const perPair = {}; const log = [];
     try {
       const wantSessions = (req.body?.sessions ?? 'true') !== 'false';
+      // Anchor: 'london' (default) rebuilds daily bars from H1 grouped by London
+      // calendar date — the SAME day boundary the live forecaster uses — so the
+      // book's numbers match the engine. 'utc' keeps OANDA's 22:00-UTC D1 (old
+      // behaviour). London falls back to D1 automatically if H1 is thin.
+      const anchor = (req.body?.anchor ?? 'london');
       const sessionYears = parseInt(req.body?.sessionYears) || 8;
+      const anchorYears  = parseInt(req.body?.anchorYears)  || 10;
       for (const cfg of insts) {
         try {
-          const bars = await _btFetchD1(cfg.oanda, 5000);
-          const { summary } = evaluateForecast(bars, cfg.assetClass || 'fx');
-          // Session structure (Asia/London/NY) from OANDA H1 — separate, optional,
-          // and non-fatal: a session failure must not drop the daily result.
+          let summary = null, usedAnchor = 'utc-d1', h1 = null;
+          if (anchor === 'london') {
+            try {
+              h1 = await _fetchH1(cfg.oanda, anchorYears);
+              // London-midnight daily OHLC (strip the intraday sub-bars before eval).
+              const lond = buildLondonDaily(h1).map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close }));
+              if (lond.length >= 200) { summary = evaluateForecast(lond, cfg.assetClass || 'fx').summary; usedAnchor = 'london-h1'; }
+            } catch (le) { log.push(`${cfg.name} london-anchor fell back: ${le?.message}`); }
+          }
+          if (!summary) {
+            const bars = await _btFetchD1(cfg.oanda, 5000);
+            summary = evaluateForecast(bars, cfg.assetClass || 'fx').summary;
+            usedAnchor = 'utc-d1';
+          }
+          summary.anchor = usedAnchor;
+          // Session structure (Asia/London/NY) from H1 — reuse the anchor fetch if
+          // we have it; non-fatal (a session failure must not drop the daily result).
           if (wantSessions) {
             try {
-              const h1 = await _fetchH1(cfg.oanda, sessionYears);
-              const sess = evaluateSessions(h1);
+              const sh1 = h1 || await _fetchH1(cfg.oanda, sessionYears);
+              const sess = evaluateSessions(sh1);
               if (!sess.insufficient) summary.session = sess;
             } catch (se) { log.push(`${cfg.name} sessions: ${se?.message}`); }
           }
           perPair[cfg.name] = summary;
-          log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo})${summary.session ? ` · sessions ${summary.session.nDays}d` : ''}`);
+          log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo}) anchor=${usedAnchor}${summary.session ? ` · sessions ${summary.session.nDays}d` : ''}`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);
@@ -7855,8 +7880,11 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
 
       // Cross-pair aggregate of the headline daily H-L metrics (the consistency view).
       const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k]) ?? 0), 0) / names.length).toFixed(4);
+      // Dominant anchor across the evaluated pairs (london-h1 / utc-d1).
+      const _anchorMode = (() => { const a = {}; for (const k of names) { const x = perPair[k].anchor || 'utc-d1'; a[x] = (a[x] || 0) + 1; } return Object.entries(a).sort((p, q) => q[1] - p[1])[0]?.[0] || 'utc-d1'; })();
       const cross = {
         nPairs: names.length,
+        anchor: _anchorMode,
         hlBias:        _avg(s => s.perComponent?.daily?.hl?.bias),
         hlExceedMed:   _avg(s => s.perComponent?.daily?.hl?.exceedMedianPct),
         hlSharpness:   _avg(s => s.perComponent?.daily?.hl?.sharpnessCorr),
@@ -7886,6 +7914,171 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
 
 app.get('/api/vol-forecast-research/status/:jobId', (req, res) => {
   const job = vfrJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Vol-estimator A/B — Yang-Zhang vs Realized-Variance+HAR (London-anchored) ──
+// Loads intraday (M1 parquet → 5-min, else OANDA H1), runs the A/B per pair,
+// stores aggregates + a cross-pair ranking by pinball skill. Aggregates only.
+const abJobs = new Map();
+const _latestAbFile = () => {
+  try {
+    const files = fs.readdirSync(WBT_DATA_DIR).filter(f => f.startsWith('estimator_ab_') && f.endsWith('.json'));
+    return files.length ? path.join(WBT_DATA_DIR, files.sort().at(-1)) : null;
+  } catch { return null; }
+};
+
+// Intraday bars for the A/B: prefer M1 parquet resampled to 5-min RV granularity,
+// fall back to OANDA H1. Returns { bars, src } — bars carry unix-second time.
+async function _intradayForAB(cfg) {
+  try {
+    const byWeek = await _loadM1ForAB(cfg.name.toLowerCase());
+    if (byWeek && byWeek.size) {
+      const m1 = [];
+      for (const arr of byWeek.values()) for (const b of arr) {
+        const t = Math.floor(new Date(String(b.time).replace(' ', 'T').replace(/Z?$/, 'Z')).getTime() / 1000);
+        if (Number.isFinite(t)) m1.push({ time: t, open: b.open, high: b.high, low: b.low, close: b.close });
+      }
+      m1.sort((a, b) => a.time - b.time);
+      const bars5 = _resampleTo(m1, 5);
+      if (bars5.length > 5000) return { bars: bars5, src: 'm1-5min' };
+    }
+  } catch { /* fall through to H1 */ }
+  const h1 = await _fetchH1AB(cfg.oanda, 10);   // Date-typed time; the module handles it
+  return { bars: h1, src: 'h1' };
+}
+
+app.get('/api/estimator-ab', (req, res) => {
+  const fp = _latestAbFile();
+  if (!fp) return res.status(404).json({ ok: false, error: 'No A/B run yet. Click ▶ Run.' });
+  try {
+    const data = JSON.parse(fs.readFileSync(fp, 'utf8'));
+    res.json({ ok: true, file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.post('/api/estimator-ab/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '' } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+
+  const jobId = `ab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of abJobs) if (j.startedAt < Date.now() - 60 * 60_000) abJobs.delete(id);
+  abJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const ab = evaluateEstimatorAB(bars, cfg.assetClass || 'fx');
+          if (ab.insufficient) { log.push(`${cfg.name}: insufficient (${ab.nDays}d, src ${src})`); continue; }
+          ab.src = src;
+          perPair[cfg.name] = ab;
+          log.push(`${cfg.name}: ${ab.nDays}d src=${src} skill=${ab.pinballSkill} win=${ab.winRateHAR}%`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { abJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const ranked = names.map(k => ({
+        pair: k, skill: perPair[k].pinballSkill, win: perPair[k].winRateHAR,
+        yzSharp: perPair[k].yz?.sharpness ?? null, harSharp: perPair[k].har?.sharpness ?? null, src: perPair[k].src,
+      })).sort((a, b) => b.skill - a.skill);
+      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k]) ?? 0), 0) / names.length).toFixed(3);
+      const cross = { nPairs: names.length, meanSkill: _avg(s => s.pinballSkill), meanWin: _avg(s => s.winRateHAR),
+        harWins: ranked.filter(r => r.skill > 0.02).length, ranked };
+
+      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(WBT_DATA_DIR, `estimator_ab_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
+      abJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `A/B on ${names.length} pair(s)`, log, file: path.basename(outFile) } });
+    } catch (e) { abJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/estimator-ab/status/:jobId', (req, res) => {
+  const job = abJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Intraday forecast research — expansion curves + level-touch/pip-excursion ──
+// Loads intraday (M1 parquet → 5-min, else H1), runs evaluateIntraday per pair
+// (London-anchored, walk-forward), stores per-pair aggregates + a cross summary.
+const intraJobs = new Map();
+const _latestIntraFile = () => {
+  try { const fs2 = fs.readdirSync(WBT_DATA_DIR).filter(f => f.startsWith('intraday_research_') && f.endsWith('.json')); return fs2.length ? path.join(WBT_DATA_DIR, fs2.sort().at(-1)) : null; } catch { return null; }
+};
+
+app.get('/api/intraday-research', (req, res) => {
+  const fp = _latestIntraFile();
+  if (!fp) return res.status(404).json({ ok: false, error: 'No intraday run yet. Click ▶ Run.' });
+  try { const data = JSON.parse(fs.readFileSync(fp, 'utf8')); res.json({ ok: true, file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data }); }
+  catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '' } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+
+  const jobId = `intra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of intraJobs) if (j.startedAt < Date.now() - 60 * 60_000) intraJobs.delete(id);
+  intraJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);   // reuse the estimator's intraday loader
+          let pip = 0.0001; try { pip = _pipSize(cfg.name) || 0.0001; } catch { /* default */ }
+          // Run all three horizons — daily / weekly / 20-day — off the same bars.
+          const daily  = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'daily' });
+          if (daily.insufficient) { log.push(`${cfg.name}: insufficient (${daily.nDays}d, src ${src})`); continue; }
+          const weekly = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'weekly' });
+          const d20    = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'd20' });
+          perPair[cfg.name] = { src, daily, weekly: weekly.insufficient ? null : weekly, d20: d20.insufficient ? null : d20 };
+          log.push(`${cfg.name}: ${daily.nDays}d src=${src} D-touch=${daily.touches?.medianExtension?.touchRatePct}% W=${weekly.insufficient ? 'n/a' : weekly.touches?.medianExtension?.touchRatePct + '%'}`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k].daily) ?? 0), 0) / names.length).toFixed(1);
+      const cross = {
+        nPairs: names.length,
+        medianTouchRatePct: _avg(r => r.touches?.medianExtension?.touchRatePct),
+        medianContinuePct:  _avg(r => r.touches?.medianExtension?.continuePct),
+        medianReverse20Pct: _avg(r => r.touches?.medianExtension?.reverse20Pct),
+        reached100Pct:      _avg(r => r.expansion?.reached100Pct),
+        ranked: names.map(k => ({ pair: k, touchRate: perPair[k].daily.touches?.medianExtension?.touchRatePct ?? 0, continuePct: perPair[k].daily.touches?.medianExtension?.continuePct ?? 0, reverse20Pct: perPair[k].daily.touches?.medianExtension?.reverse20Pct ?? 0, src: perPair[k].src })).sort((a, b) => b.continuePct - a.continuePct),
+      };
+      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      const outFile = path.join(WBT_DATA_DIR, `intraday_research_${ts}.json`);
+      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
+      intraJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Intraday research on ${names.length} pair(s)`, log, file: path.basename(outFile) } });
+    } catch (e) { intraJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/intraday-research/status/:jobId', (req, res) => {
+  const job = intraJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
@@ -8975,6 +9168,118 @@ app.get('/api/zscore-v2/status/:jobId', (req, res) => {
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Macro-Direction predictiveness (falsification-first, before levels/z) ──────
+// Does the macro DIRECTION call lead forward FX drift at all? Engine:
+// js/macroDirectionEngine.js + js/macroDirectionCore.js. No levels, no z-gate.
+const macroDirJobs = new Map();
+function _purgeStaleMacroDirJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of macroDirJobs) if (job.startedAt < cutoff) macroDirJobs.delete(id);
+}
+
+app.get('/api/macro-direction/defaults', (_req, res) => {
+  res.json({ ok: true, defaults: MACRO_DIR_DEFAULTS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) => [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/macro-direction/run', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch macro data' });
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined,
+    dateTo:   b.dateTo   || undefined,
+    changeWindow: parseInt(b.changeWindow) || MACRO_DIR_DEFAULTS.changeWindow,
+    costPct:      num(b.costPct,   MACRO_DIR_DEFAULTS.costPct),
+    splitFrac:    num(b.splitFrac, MACRO_DIR_DEFAULTS.splitFrac),
+    weights: (b.weights && typeof b.weights === 'object')
+      ? { carry: num(b.weights.carry, 1), real: num(b.weights.real, 1), risk: num(b.weights.risk, 1) }
+      : MACRO_DIR_DEFAULTS.weights,
+  };
+  const pairsToRun = b.pair
+    ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p])
+    : Object.keys(ZSCORE_PAIRS);
+  if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+
+  const jobId = `md_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMacroDirJobs();
+  macroDirJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { perPair, pooled, log } = await runFullMacroDirection(opts, pairsToRun);
+      macroDirJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, perPair, pooled, log, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[macro-direction/run]', msg, e?.stack ?? '');
+      macroDirJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/macro-direction/status/:jobId', (req, res) => {
+  const job = macroDirJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Range-Level edge (does a 5m range level have ANY standalone edge vs placebo?) ──
+// No macro, no z — just "does price respect the level more than a shifted placebo".
+// Engine: js/rangeLevelEdgeEngine.js + js/rangeLevelCore.js
+const rangeLvlJobs = new Map();
+function _purgeStaleRangeLvlJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of rangeLvlJobs) if (job.startedAt < cutoff) rangeLvlJobs.delete(id);
+}
+
+app.get('/api/range-level-edge/defaults', (_req, res) => {
+  res.json({ ok: true, defaults: RANGE_LEVEL_DEFAULTS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) => [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/range-level-edge/run', (req, res) => {
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined,
+    dateTo:   b.dateTo   || undefined,
+    confluenceTolPips: num(b.confluenceTolPips, RANGE_LEVEL_DEFAULTS.confluenceTolPips),
+    barrierFrac:       num(b.barrierFrac,       RANGE_LEVEL_DEFAULTS.barrierFrac),
+    spreadPips:        num(b.spreadPips,        RANGE_LEVEL_DEFAULTS.spreadPips),
+    splitFrac:         num(b.splitFrac,         RANGE_LEVEL_DEFAULTS.splitFrac),
+  };
+  const pairsToRun = b.pair ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p]) : Object.keys(ZSCORE_PAIRS);
+  if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+
+  const jobId = `rl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleRangeLvlJobs();
+  rangeLvlJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const { perPair, pooled, log } = await runFullRangeLevelEdge(opts, pairsToRun);
+      rangeLvlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, perPair, pooled, log, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[range-level-edge/run]', msg, e?.stack ?? '');
+      rangeLvlJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/range-level-edge/status/:jobId', (req, res) => {
+  const job = rangeLvlJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });

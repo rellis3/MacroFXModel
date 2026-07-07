@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macro Direction — does macro lead FX drift?</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#141924; --panel2:#1b2230; --fg:#dfe6f2; --dim:#8b97ad;
+          --grn:#22c55e; --red:#ef4444; --amb:#f59e0b; --blu:#4a90d9; --border:#26314a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--border); background:var(--panel); }
+  h1 { margin:0 0 4px; font-size:19px; }
+  .sub { color:var(--dim); font-size:13px; max-width:940px; }
+  .wrap { padding:22px; max-width:1200px; margin:0 auto; }
+  .banner { background:#3a2a12; border:1px solid #7a5316; color:#f4c77b; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+  .panel h2 { margin:0 0 12px; font-size:15px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  input, select { width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--blu); color:#fff; border:0; border-radius:7px; padding:10px 20px; font-size:14px; font-weight:600; cursor:pointer; margin-top:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { margin-top:10px; color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:right; padding:6px 10px; border-bottom:1px solid var(--border); }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .pos { color:var(--grn); } .neg { color:var(--red); } .muted { color:var(--dim); font-size:12px; }
+  .verdict { font-size:13px; padding:10px 14px; border-radius:8px; margin-top:12px; }
+  .verdict.good { background:#0f2a18; border:1px solid #1f6b3a; color:#8fe6ab; }
+  .verdict.bad  { background:#2a1212; border:1px solid #6b1f1f; color:#e69a9a; }
+  .verdict.warn { background:#2a2312; border:1px solid #6b551f; color:#e6cf9a; }
+  h3 { font-size:13px; margin:16px 0 6px; color:var(--dim); }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Macro Direction — does macro lead FX drift?</h1>
+  <div class="sub">Falsification-first test <b>before</b> any levels or z-exit are built on top. Per pair, per day, it
+  scores a macro <b>direction</b> from the replicated FX-directional factors — <b>carry</b> (2Y rate-differential momentum),
+  <b>real</b> (US 10Y real-yield momentum), <b>risk</b> (VIX momentum, oriented by safe-haven leg) — then measures the
+  forward return in that direction. No fib levels, no z-gate. If macro direction has no edge here, the whole
+  "macro sets direction, levels time entry, z-score exits" bot is built on sand.</div>
+</header>
+<div class="wrap">
+  <div class="banner">⚠️ <b>Built, not proven.</b> Needs a live <code>FRED_KEY</code> + M1 data (Railway). Read the
+  <b>pooled OOS</b> row and the per-factor attribution — a hit rate near 50%, ~0 Spearman correlation, and OOS Sharpe
+  no better than buy-&-hold means macro direction does <b>not</b> lead, and we stop before building entries on it.</div>
+
+  <div class="panel">
+    <h2>Run parameters</h2>
+    <div class="grid">
+      <div><label>Pair</label><select id="pair"><option value="">All pairs</option></select></div>
+      <div><label>Date from</label><input id="dateFrom" placeholder="2015-01-01"></div>
+      <div><label>Date to</label><input id="dateTo" placeholder="today"></div>
+      <div><label>momentum window (cal days)</label><input id="changeWindow" value="30"></div>
+      <div><label>cost % round-trip</label><input id="costPct" value="0.02"></div>
+      <div><label>IS/OOS split frac</label><input id="splitFrac" value="0.6"></div>
+    </div>
+    <h2 style="margin-top:16px">Factor weights <span class="muted">— 0 ablates a factor</span></h2>
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);max-width:480px">
+      <div><label>carry</label><input id="wcarry" value="1"></div>
+      <div><label>real</label><input id="wreal" value="1"></div>
+      <div><label>risk</label><input id="wrisk" value="1"></div>
+    </div>
+    <button id="runBtn">Run test</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="results" style="display:none">
+    <div class="panel">
+      <h2>Pooled OOS — does the blended macro direction lead? (cross-pair)</h2>
+      <div class="scroll"><div id="pooled"></div></div>
+      <div id="verdict"></div>
+    </div>
+    <div class="panel">
+      <h2>Per-pair OOS by horizon</h2>
+      <div class="muted" style="margin-bottom:8px">Hit% = share of forward moves in the predicted direction (50% = no skill). Corr = Spearman(score, forward return). Hold = always-long benchmark.</div>
+      <div class="scroll"><div id="perpair"></div></div>
+    </div>
+    <div class="panel">
+      <h2>Per-factor attribution (OOS, all pairs · 20-day horizon)</h2>
+      <div class="muted" style="margin-bottom:8px">Which single factor (if any) leads — even if the blend doesn't.</div>
+      <div class="scroll"><div id="factors"></div></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d=1) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : '';
+let RESULT = null;
+
+fetch('/api/macro-direction/defaults').then(r=>r.json()).then(j=>{
+  if(!j.ok) return;
+  for(const [k,v] of Object.entries(j.pairs||{})){ const o=document.createElement('option'); o.value=k; o.textContent=v.pairDisplay; $('pair').appendChild(o); }
+}).catch(()=>{});
+
+function pooledTable(pooled){
+  const hs = Object.keys(pooled||{}).filter(h=>pooled[h]);
+  if(!hs.length) return '<div class="muted">no data</div>';
+  let rows='';
+  for(const h of hs){ const p=pooled[h];
+    rows+=`<tr><td>${h}d</td><td>${p.pairs}</td><td>${p.pairsPositiveOosSharpe}/${p.pairs}</td>
+      <td class="${cls(p.avgOosSharpe)}">${fmt(p.avgOosSharpe,2)}</td>
+      <td>${fmt(p.avgOosHitRate)}%</td><td class="${cls(p.avgOosCorr)}">${fmt(p.avgOosCorr,3)}</td>
+      <td class="${cls(p.avgOosMeanRetPct)}">${fmt(p.avgOosMeanRetPct,3)}%</td></tr>`; }
+  return `<table><thead><tr><th>Horizon</th><th>Pairs</th><th>+Sharpe</th><th>Avg OOS Sharpe</th><th>Avg Hit%</th><th>Avg Corr</th><th>Avg Ret/trade</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function verdict(pooled){
+  // headline on the 20d horizon (the docs' weeks-months sweet spot), falling back to any
+  const p = pooled['20'] || pooled['5'] || pooled['1'];
+  if(!p){ return ''; }
+  const leads = p.avgOosSharpe > 0.3 && p.avgOosHitRate > 52 && p.pairsPositiveOosSharpe > p.pairs/2 && Math.abs(p.avgOosCorr) > 0.03;
+  if(leads) return `<div class="verdict good">✓ Macro direction leads on the 20d OOS card (avg Sharpe ${fmt(p.avgOosSharpe,2)}, hit ${fmt(p.avgOosHitRate)}%, ${p.pairsPositiveOosSharpe}/${p.pairs} pairs positive, corr ${fmt(p.avgOosCorr,3)}). Foundation is load-bearing — proceed to build level-timed entries + the z-exit on top.</div>`;
+  return `<div class="verdict bad">✗ Macro direction does NOT clearly lead (20d avg OOS Sharpe ${fmt(p.avgOosSharpe,2)}, hit ${fmt(p.avgOosHitRate)}%, ${p.pairsPositiveOosSharpe}/${p.pairs} pairs positive, corr ${fmt(p.avgOosCorr,3)}). The premise underneath the bot is weak on this data — don't build levels/z-exit on it. Check the per-factor table before concluding (one factor may lead even if the blend doesn't).</div>`;
+}
+
+function perPairTable(perPair){
+  const pairs = Object.values(perPair);
+  if(!pairs.length) return '<div class="muted">no data</div>';
+  const hs = Object.keys(pairs[0].perHorizon);
+  let rows='';
+  for(const p of pairs){ for(const h of hs){ const o=p.perHorizon[h]?.oos, bh=p.perHorizon[h]?.benchmarkHold?.oos;
+    if(!o) continue;
+    rows+=`<tr><td>${p.pairDisplay}</td><td>${h}d</td><td>${o.n}</td><td>${fmt(o.hitRate)}%</td>
+      <td class="${o.sharpe>=0?'pos':'neg'}">${fmt(o.sharpe,2)}</td><td class="${cls(o.corr)}">${fmt(o.corr,3)}</td>
+      <td class="muted">${fmt(bh?.sharpe,2)}</td></tr>`; }}
+  return `<table><thead><tr><th>Pair</th><th>Horizon</th><th>Trades</th><th>Hit%</th><th>OOS Sharpe</th><th>Corr</th><th>Hold Sharpe</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function factorTable(perPair){
+  const pairs = Object.values(perPair);
+  if(!pairs.length) return '<div class="muted">no data</div>';
+  const H = pairs[0].perHorizon['20'] ? '20' : Object.keys(pairs[0].perHorizon)[0];
+  // average each factor's OOS stats across pairs
+  const acc = { carry:[], real:[], risk:[] };
+  for(const p of pairs){ const f=p.perHorizon[H]?.factors; if(!f) continue;
+    for(const k of ['carry','real','risk']){ if(f[k]?.oos?.n>0) acc[k].push(f[k].oos); } }
+  const avg = (arr,key) => arr.length ? +(arr.reduce((a,s)=>a+s[key],0)/arr.length).toFixed(3) : null;
+  let rows='';
+  for(const k of ['carry','real','risk']){ const arr=acc[k];
+    rows+=`<tr><td>${k}</td><td>${arr.length}</td><td>${fmt(avg(arr,'hitRate'))}%</td>
+      <td class="${cls(avg(arr,'sharpe'))}">${fmt(avg(arr,'sharpe'),2)}</td>
+      <td class="${cls(avg(arr,'corr'))}">${fmt(avg(arr,'corr'),3)}</td></tr>`; }
+  return `<table><thead><tr><th>Factor</th><th>Pairs</th><th>Avg Hit%</th><th>Avg OOS Sharpe</th><th>Avg Corr</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function run(){
+  $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
+  const body={ pair:$('pair').value, dateFrom:$('dateFrom').value, dateTo:$('dateTo').value,
+    changeWindow:$('changeWindow').value, costPct:$('costPct').value, splitFrac:$('splitFrac').value,
+    weights:{ carry:$('wcarry').value, real:$('wreal').value, risk:$('wrisk').value } };
+  try{
+    const r=await fetch('/api/macro-direction/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok){ $('status').textContent='Error: '+j.error; $('runBtn').disabled=false; return; }
+    poll(j.jobId);
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+async function poll(jobId){
+  try{
+    const r=await fetch('/api/macro-direction/status/'+jobId); const j=await r.json();
+    if(j.status==='running'){ $('status').textContent=`Running… ${j.elapsed||0}s (fetching FRED + M1, scoring)`; setTimeout(()=>poll(jobId),2000); return; }
+    if(j.status==='done'){
+      RESULT=j; $('status').textContent='Done';
+      $('pooled').innerHTML=pooledTable(j.pooled);
+      $('verdict').innerHTML=verdict(j.pooled);
+      $('perpair').innerHTML=perPairTable(j.perPair);
+      $('factors').innerHTML=factorTable(j.perPair);
+      $('results').style.display='block'; $('runBtn').disabled=false; return;
+    }
+    $('status').textContent='Error: '+(j.error||'unknown'); $('runBtn').disabled=false;
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+$('runBtn').addEventListener('click', run);
+</script>
+</body>
+</html>

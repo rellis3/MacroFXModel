@@ -52,10 +52,14 @@ const COMPONENTS = {
   d5:  [
     { key: 'hl', label: '5d H-L', med: 'hl_5d', p75: 'hl_5d_75' },
     { key: 'oc', label: '5d O-C', med: 'oc_5d', p75: 'oc_5d_75' },
+    { key: 'oh', label: '5d O-H up',   med: 'oh_5d', p75: 'oh_5d_75', dir: 'up'   },
+    { key: 'ol', label: '5d O-L down', med: 'ol_5d', p75: 'ol_5d_75', dir: 'down' },
   ],
   d20: [
     { key: 'hl', label: '20d H-L', med: 'hl_20d', p75: 'hl_20d_75' },
     { key: 'oc', label: '20d O-C', med: 'oc_20d', p75: 'oc_20d_75' },
+    { key: 'oh', label: '20d O-H up',   med: 'oh_20d', p75: 'oh_20d_75', dir: 'up'   },
+    { key: 'ol', label: '20d O-L down', med: 'ol_20d', p75: 'ol_20d_75', dir: 'down' },
   ],
 };
 
@@ -229,6 +233,29 @@ function summarize(rows) {
   const vLo = vovs[Math.floor(vovs.length / 3)], vHi = vovs[Math.floor(2 * vovs.length / 3)];
   const byVov = sliceComp('hl', r => r.vov == null ? null : r.vov <= vLo ? '1·low' : r.vov >= vHi ? '3·high' : '2·mid');
 
+  // Forecast completion (brief Q7): realized daily H-L as a % of the forecast
+  // MEDIAN H-L. Buckets show how often the day never reaches / matches / blows
+  // through the expected range. The median is calibrated to ~50% exceedance, so
+  // ~half of days land >100% by construction — the informative part is the SHAPE
+  // of the tail (how many days barely move vs how many blow through). No lookahead:
+  // uses the same walk-forward cells as everything else.
+  const complCells = rows.map(r => r.comp.daily?.hl).filter(Boolean)
+    .map(x => x.med > 0 ? x.actual / x.med * 100 : null).filter(v => v != null);
+  const complBuckets = ['<40', '40-65', '65-92', '92-118', '118-165', '>165'];
+  const _bucket = v => v < 40 ? '<40' : v < 65 ? '40-65' : v < 92 ? '65-92'
+    : v < 118 ? '92-118' : v < 165 ? '118-165' : '>165';
+  const complHist = Object.fromEntries(complBuckets.map(b => [b, 0]));
+  for (const v of complCells) complHist[_bucket(v)]++;
+  const complN = complCells.length || 1;
+  const _median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+  // Completion sliced by a condition (regime / vol-of-vol) — "what conditions
+  // produce each outcome" (Q7): mean completion % and how often the median is met.
+  const complBy = keyFn => {
+    const g = {};
+    for (const r of rows) { const c = r.comp.daily?.hl; if (!c || !(c.med > 0)) continue; const k = keyFn(r); if (k == null) continue; (g[k] = g[k] || []).push(c.actual / c.med * 100); }
+    return Object.fromEntries(Object.entries(g).map(([k, a]) => [k, { n: a.length, meanPct: +_mean(a).toFixed(1), reachedMedianPct: +(_mean(a.map(v => v >= 100 ? 1 : 0)) * 100).toFixed(1) }]));
+  };
+
   // Persistence / vol-clustering: after an above-75th day, is the NEXT day more
   // likely to exceed its own median than the unconditional base rate?
   let baseEx = 0, baseN = 0, condEx = 0, condN = 0;
@@ -243,6 +270,202 @@ function summarize(rows) {
     afterAbove75Pct:     +(condN ? condEx / condN * 100 : 0).toFixed(1),
     n: condN,
   };
+
+  // Error distribution (brief Q1: "distribution of errors", median error). Signed
+  // percentage error of the daily H-L forecast: (actual − median) / median × 100.
+  // A calibrated median sits near the centre; a left-heavy mass ⇒ the forecast
+  // routinely over-states the range (bands too wide). Reuses the walk-forward cells.
+  const errCells = rows.map(r => r.comp.daily?.hl).filter(c => c && c.med > 0)
+    .map(c => (c.actual - c.med) / c.med * 100);
+  const errBuckets = ['<-50', '-50..-25', '-25..0', '0..25', '25..50', '50..100', '>100'];
+  const _errBucket = v => v < -50 ? '<-50' : v < -25 ? '-50..-25' : v < 0 ? '-25..0'
+    : v < 25 ? '0..25' : v < 50 ? '25..50' : v <= 100 ? '50..100' : '>100';
+  const errHist = Object.fromEntries(errBuckets.map(b => [b, 0]));
+  for (const v of errCells) errHist[_errBucket(v)]++;
+  const errN = errCells.length || 1;
+  const errorDist = {
+    n: errCells.length,
+    meanPctErr:   +_mean(errCells).toFixed(1),
+    medianPctErr: +_median(errCells).toFixed(1),
+    overStatePct: +(_mean(errCells.map(v => v < 0 ? 1 : 0)) * 100).toFixed(1),   // days the range fell short of the median forecast
+    hist: Object.fromEntries(errBuckets.map(b => [b, +(errHist[b] / errN * 100).toFixed(1)])),
+  };
+
+  const completion = {
+    n: complCells.length,
+    meanPct:          +_mean(complCells).toFixed(1),
+    medianPct:        +_median(complCells).toFixed(1),
+    reachedMedianPct: +(_mean(complCells.map(v => v >= 100 ? 1 : 0)) * 100).toFixed(1),  // day makes the full median forecast
+    neverHalfPct:     +(_mean(complCells.map(v => v <  50 ? 1 : 0)) * 100).toFixed(1),   // day fails to make even ½ the forecast
+    blewThroughPct:   +(_mean(complCells.map(v => v > 165 ? 1 : 0)) * 100).toFixed(1),   // day blows through 165% (expansion tail)
+    hist: Object.fromEntries(complBuckets.map(b => [b, +(complHist[b] / complN * 100).toFixed(1)])),
+    byRegime: complBy(r => r.regime),
+    byVov:    complBy(r => r.vov == null ? null : r.vov <= vLo ? '1·low' : r.vov >= vHi ? '3·high' : '2·mid'),
+  };
+
+  // Completion at ALL horizons (brief: the analysis covers daily / weekly / 20-day).
+  // Same shape as `completion`, computed per horizon from that horizon's H-L cells.
+  const _complHz = (hz) => {
+    const cells = rows.map(r => r.comp[hz]?.hl).filter(Boolean).map(x => x.med > 0 ? x.actual / x.med * 100 : null).filter(v => v != null);
+    if (!cells.length) return { n: 0 };
+    const hist = Object.fromEntries(complBuckets.map(b => [b, 0]));
+    for (const v of cells) hist[_bucket(v)]++;
+    const nn = cells.length;
+    return {
+      n: nn, meanPct: +_mean(cells).toFixed(1), medianPct: +_median(cells).toFixed(1),
+      reachedMedianPct: +(_mean(cells.map(v => v >= 100 ? 1 : 0)) * 100).toFixed(1),
+      neverHalfPct:     +(_mean(cells.map(v => v <  50 ? 1 : 0)) * 100).toFixed(1),
+      blewThroughPct:   +(_mean(cells.map(v => v > 165 ? 1 : 0)) * 100).toFixed(1),
+      hist: Object.fromEntries(complBuckets.map(b => [b, +(hist[b] / nn * 100).toFixed(1)])),
+    };
+  };
+  const completionByHorizon = { daily: completion, d5: _complHz('d5'), d20: _complHz('d20') };
+
+  // ══ PR-B daily aggregations (no intraday needed) ═══════════════════════════
+  // Per-row daily-H-L features, in chronological order, for the miss / multi-day /
+  // confidence / day-type studies. completion = realized ÷ median forecast (%);
+  // errP = signed % error; all derived from the same walk-forward cells.
+  const feats = [];
+  for (let i = 0; i < rows.length; i++) {
+    const c = rows[i].comp.daily?.hl; if (!c || !(c.med > 0)) continue;
+    feats.push({
+      i, date: rows[i].date, regime: rows[i].regime, dow: rows[i].dow,
+      month: rows[i].month, dom: +rows[i].date.slice(8, 10),
+      vov: rows[i].vov, eff: rows[i].efficiency,
+      completion: c.actual / c.med * 100, errP: (c.actual - c.med) / c.med * 100,
+      absErrP: Math.abs((c.actual - c.med) / c.med * 100),
+      exMed: c.exMed, hlActual: c.actual,
+    });
+  }
+
+  // ── Forecast MISSES — profile the big-error tail (brief: "what do big-miss
+  //    days have in common"). Overshoot = realized ≥150% of median (expansion the
+  //    forecast missed low); undershoot = realized ≤50% (a dead day it missed high).
+  const _profile = (grp) => {
+    if (!grp.length) return { n: 0 };
+    const regCount = {}; for (const f of grp) regCount[f.regime] = (regCount[f.regime] || 0) + 1;
+    const dowCount = {}; for (const f of grp) dowCount[f.dow] = (dowCount[f.dow] || 0) + 1;
+    const topReg = Object.entries(regCount).sort((a, b) => b[1] - a[1])[0];
+    const topDow = Object.entries(dowCount).sort((a, b) => b[1] - a[1])[0];
+    // prior-day completion (does a big day follow a big day?)
+    const priorCompl = grp.map(f => feats.find(x => x.i === f.i - 1)?.completion).filter(v => v != null);
+    return {
+      n: grp.length, pctOfDays: +(grp.length / feats.length * 100).toFixed(1),
+      meanEff: +_mean(grp.map(f => f.eff).filter(v => v != null)).toFixed(3),
+      meanVov: +_mean(grp.map(f => f.vov).filter(v => v != null)).toFixed(4),
+      topRegime: topReg ? `${topReg[0]} (${+(topReg[1] / grp.length * 100).toFixed(0)}%)` : '—',
+      topDow: topDow ? `${topDow[0]} (${+(topDow[1] / grp.length * 100).toFixed(0)}%)` : '—',
+      priorDayComplMean: priorCompl.length ? +_mean(priorCompl).toFixed(0) : null,
+    };
+  };
+  const misses = {
+    overshoot: _profile(feats.filter(f => f.completion >= 150)),   // day much bigger than forecast
+    undershoot: _profile(feats.filter(f => f.completion <= 50)),   // day much smaller than forecast
+    // baseline for comparison
+    all: { meanEff: +_mean(feats.map(f => f.eff).filter(v => v != null)).toFixed(3), meanVov: +_mean(feats.map(f => f.vov).filter(v => v != null)).toFixed(4) },
+  };
+
+  // ── SEASONAL — by calendar month + a few named periods (summer, December,
+  //    month-end, quarter-end). Compact stats: n, H-L MAE (price-%), exceedance.
+  const _seasBucket = (sel) => {
+    const g = feats.filter(sel); if (!g.length) return null;
+    return { n: g.length, mae: +_mean(g.map(f => f.absErrP)).toFixed(1), exceedMedianPct: +(_mean(g.map(f => f.exMed)) * 100).toFixed(1), meanCompletion: +_mean(g.map(f => f.completion)).toFixed(0) };
+  };
+  const byMonth = {};
+  for (let m = 1; m <= 12; m++) { const b = _seasBucket(f => +f.month === m); if (b) byMonth[String(m).padStart(2, '0')] = b; }
+  const seasonal = {
+    byMonth,
+    periods: {
+      summer:     _seasBucket(f => f.month === '07' || f.month === '08'),
+      december:   _seasBucket(f => f.month === '12'),
+      monthEnd:   _seasBucket(f => f.dom >= 26),
+      quarterEnd: _seasBucket(f => ['03', '06', '09', '12'].includes(f.month) && f.dom >= 24),
+    },
+  };
+
+  // ── MULTI-DAY relationships. (a) Do forecast errors predict tomorrow's vol?
+  //    corr(today signed %err, tomorrow realized H-L). (b) After ≥3 consecutive
+  //    quiet (below-median) days, is the next day more likely to expand?
+  const errNextHl = { xs: [], ys: [] };
+  for (let k = 0; k < feats.length - 1; k++) if (feats[k + 1].i === feats[k].i + 1) { errNextHl.xs.push(feats[k].errP); errNextHl.ys.push(feats[k + 1].hlActual); }
+  let quietRun = 0, afterQuietEx = 0, afterQuietN = 0;
+  for (let k = 0; k < feats.length; k++) {
+    if (quietRun >= 3) { afterQuietEx += feats[k].exMed; afterQuietN++; }
+    quietRun = feats[k].exMed ? 0 : quietRun + 1;   // exMed=0 ⇒ below median ⇒ quiet
+  }
+  const baseExMed = _mean(feats.map(f => f.exMed)) * 100;
+  const multiDay = {
+    errorPredictsNextVolCorr: +_corr(errNextHl.xs, errNextHl.ys).toFixed(3),
+    baseExceedMedianPct: +baseExMed.toFixed(1),
+    afterThreeQuietExpandPct: afterQuietN ? +(afterQuietEx / afterQuietN * 100).toFixed(1) : null,
+    afterThreeQuietN: afterQuietN,
+  };
+
+  // ── CONFIDENCE — does RECENT forecast accuracy predict FORWARD accuracy?
+  //    Walk-forward: for each day, trailing mean |%err| over the previous 20 days
+  //    (its own past only). Bin into terciles; a real confidence signal ⇒ the
+  //    low-trailing-error tercile also has lower error TODAY. No lookahead.
+  const CW = 20, trailing = [];
+  for (let k = 0; k < feats.length; k++) {
+    const hist = feats.slice(Math.max(0, k - CW), k).map(f => f.absErrP);
+    trailing.push(hist.length >= 10 ? _mean(hist) : null);
+  }
+  const withTrail = feats.map((f, k) => ({ f, t: trailing[k] })).filter(x => x.t != null);
+  const tsorted = withTrail.map(x => x.t).sort((a, b) => a - b);
+  const tLo = tsorted[Math.floor(tsorted.length / 3)], tHi = tsorted[Math.floor(2 * tsorted.length / 3)];
+  const confBin = (lab, sel) => { const g = withTrail.filter(sel); return { label: lab, n: g.length, fwdMae: +_mean(g.map(x => x.f.absErrP)).toFixed(1), fwdExceedMedianPct: +(_mean(g.map(x => x.f.exMed)) * 100).toFixed(1) }; };
+  const confidence = {
+    window: CW,
+    terciles: [
+      confBin('high (low recent error)', x => x.t <= tLo),
+      confBin('mid', x => x.t > tLo && x.t < tHi),
+      confBin('low (high recent error)', x => x.t >= tHi),
+    ],
+  };
+  confidence.spreadMae = +((confidence.terciles[2].fwdMae ?? 0) - (confidence.terciles[0].fwdMae ?? 0)).toFixed(1);
+
+  // ── DAY-TYPE clustering — group days into recurring "volatility day types" by
+  //    [efficiency, completion(÷100, capped 3), log1p(vov·1e4)]. Deterministic
+  //    k-means (k=4, quantile-seeded init, no RNG) so it's reproducible/testable.
+  //    Descriptive, not predictive — a taxonomy of how days actually resolve.
+  const dpts = feats.filter(f => f.eff != null && f.vov != null).map(f => ({
+    f, x: [f.eff, Math.min(3, f.completion / 100), Math.log1p((f.vov || 0) * 1e4)],
+  }));
+  let dayTypes = { insufficient: true, n: dpts.length };
+  if (dpts.length >= 80) {
+    const D = 3, K = 4;
+    const mean = Array(D).fill(0), sd = Array(D).fill(0);
+    for (const p of dpts) for (let d = 0; d < D; d++) mean[d] += p.x[d]; for (let d = 0; d < D; d++) mean[d] /= dpts.length;
+    for (const p of dpts) for (let d = 0; d < D; d++) sd[d] += (p.x[d] - mean[d]) ** 2; for (let d = 0; d < D; d++) sd[d] = Math.sqrt(sd[d] / dpts.length) || 1;
+    const Z = dpts.map(p => p.x.map((v, d) => (v - mean[d]) / sd[d]));
+    // Seed centroids at the 12.5/37.5/62.5/87.5 quantiles of the completion dim (index 1).
+    const order = Z.map((z, idx) => [z[1], idx]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+    let cent = [0.125, 0.375, 0.625, 0.875].map(q => Z[order[Math.floor(q * (order.length - 1))]].slice());
+    const assign = new Array(Z.length).fill(0);
+    for (let iter = 0; iter < 12; iter++) {
+      for (let n2 = 0; n2 < Z.length; n2++) {
+        let best = 0, bd = Infinity;
+        for (let c = 0; c < K; c++) { let dist = 0; for (let d = 0; d < D; d++) dist += (Z[n2][d] - cent[c][d]) ** 2; if (dist < bd) { bd = dist; best = c; } }
+        assign[n2] = best;
+      }
+      const sum = Array.from({ length: K }, () => Array(D).fill(0)), cnt = Array(K).fill(0);
+      for (let n2 = 0; n2 < Z.length; n2++) { cnt[assign[n2]]++; for (let d = 0; d < D; d++) sum[assign[n2]][d] += Z[n2][d]; }
+      for (let c = 0; c < K; c++) if (cnt[c]) for (let d = 0; d < D; d++) cent[c][d] = sum[c][d] / cnt[c];
+    }
+    const clusters = Array.from({ length: K }, () => []);
+    dpts.forEach((p, idx) => clusters[assign[idx]].push(p.f));
+    const label = (eff, compl) => compl >= 130 && eff >= 0.55 ? 'trend expansion'
+      : compl >= 130 && eff < 0.45 ? 'wide reversal'
+      : compl <= 70 && eff < 0.45 ? 'quiet chop'
+      : compl <= 70 ? 'quiet directional' : 'normal';
+    dayTypes = {
+      n: dpts.length, k: K,
+      clusters: clusters.map(g => {
+        const eff = +_mean(g.map(f => f.eff)).toFixed(3), compl = +_mean(g.map(f => f.completion)).toFixed(0);
+        return { n: g.length, sharePct: +(g.length / dpts.length * 100).toFixed(1), meanEfficiency: eff, meanCompletion: compl, meanVov: +_mean(g.map(f => f.vov)).toFixed(4), label: label(eff, compl) };
+      }).sort((a, b) => b.meanCompletion - a.meanCompletion),
+    };
+  }
 
   // ── Auto-generated findings (the readable layer — not a hit dump) ───────────
   const findings = [];
@@ -269,9 +492,21 @@ function summarize(rows) {
     add(dirHit > 55 ? 'good' : 'info', `The forecast's O-H/O-L skew predicts the day's direction ${+dirHit.toFixed(1)}% of the time (vs 50% base rate).`);
   if (persistence.afterAbove75Pct - persistence.baseExceedMedianPct > 8)
     add('good', `Vol CLUSTERS: after an above-75th day the next day exceeds its median ${persistence.afterAbove75Pct}% vs ${persistence.baseExceedMedianPct}% base — expansion persists.`);
+  if (completion.n)
+    add('info', `Forecast completion: the day makes the FULL median range ${completion.reachedMedianPct}% of days, falls short of even half ${completion.neverHalfPct}% of days, and blows through 165% ${completion.blewThroughPct}% of days (median completion ${completion.medianPct}% of forecast).`);
   const vh = byVov['3·high'], vl = byVov['1·low'];
   if (vh && vl && vh.mae > vl.mae * 1.3)
     add('info', `Trust the forecast LESS when vol-of-vol is high: H-L MAE ${vh.mae} (high-VoV) vs ${vl.mae} (low-VoV).`);
+  if (misses.overshoot?.n)
+    add('info', `Big-miss days: the forecast most under-calls the range in ${misses.overshoot.topRegime} regimes; overshoot days run trend-like (efficiency ${misses.overshoot.meanEff} vs ${misses.all.meanEff} overall)${misses.overshoot.priorDayComplMean != null ? `, and tend to follow an already-large prior day (${misses.overshoot.priorDayComplMean}% completion)` : ''}.`);
+  if (multiDay.afterThreeQuietExpandPct != null && multiDay.afterThreeQuietExpandPct - multiDay.baseExceedMedianPct > 6)
+    add('good', `Mean-reversion of quiet: after 3+ below-median days, the next day exceeds its median ${multiDay.afterThreeQuietExpandPct}% vs ${multiDay.baseExceedMedianPct}% base — compressed ranges tend to expand.`);
+  if (Math.abs(multiDay.errorPredictsNextVolCorr) >= 0.1)
+    add('info', `Forecast errors carry information: corr(today's %error, tomorrow's realized range) = ${multiDay.errorPredictsNextVolCorr} — a big surprise today ${multiDay.errorPredictsNextVolCorr > 0 ? 'precedes a bigger' : 'precedes a smaller'} tomorrow.`);
+  if (confidence.spreadMae > 0.05)
+    add('good', `A confidence signal exists: days following LOW recent error have H-L MAE ${confidence.terciles[0].fwdMae} vs ${confidence.terciles[2].fwdMae} for days following high recent error — recent accuracy predicts forward accuracy.`);
+  if (dayTypes.clusters?.length)
+    add('info', `Days cluster into ${dayTypes.k} recurring types: ${dayTypes.clusters.map(c => `${c.label} (${c.sharePct}%)`).join(', ')}.`);
 
   return {
     nDays: rows.length,
@@ -282,6 +517,14 @@ function summarize(rows) {
     efficiencyTrendPct: effTrend,
     fcSkewDirHitPct: dirHit == null ? null : +dirHit.toFixed(1),
     persistence,
+    completion,
+    completionByHorizon,
+    errorDist,
+    misses,
+    seasonal,
+    multiDay,
+    confidence,
+    dayTypes,
     regimeMatrix,
     byDow,
     byVov,

@@ -52,8 +52,9 @@ const INSTRUMENTS = {
 };
 
 // Session windows — London local time [inclusive start, exclusive end).
-// Exported as the single source of truth: the forecast-session research
-// (js/forecastSessionResearch.js) imports these so the two never drift.
+// Exported as the single source of truth for London-anchored day/session logic —
+// the forecast-session and estimator-A/B research modules import these so the
+// definitions never drift.
 export const SESSIONS = {
   asia:   [0,  6],   // 00:00–06:00
   london: [8,  13],  // 08:00–13:00
