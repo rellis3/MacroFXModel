@@ -90,6 +90,7 @@
     <select id="runPair"><option value="">All pairs</option></select>
     <button class="bk-run-btn" id="runBtn" onclick="runResearch()">▶ Run</button>
     <button class="bk-run-btn" id="runIntraBtn" onclick="runIntraday()" style="background:var(--blue)">▶ Intraday</button>
+    <button class="bk-run-btn" id="exportBtn" onclick="exportJSON()" style="background:var(--s2);color:var(--text);border:1px solid var(--border)" title="Download the loaded research + intraday aggregate JSON (hand it to an AI for cross-pair analysis)">⬇ Export JSON</button>
     <span id="runStatus" class="bk-lbl"></span>
     <span style="flex:1"></span>
     <span class="bk-lbl">Horizon:</span>
@@ -900,6 +901,21 @@ async function _runJob(base, btnId, startMsg) {
 }
 function runResearch() { return _runJob('vol-forecast-research', 'runBtn', 'Running research (per pair — can take a while)…'); }
 function runIntraday() { return _runJob('intraday-research', 'runIntraBtn', 'Running intraday research (loads M1/H1 per pair — slow)…'); }
+
+// Download the loaded aggregates as one JSON — for handing to an AI / your own
+// cross-pair analysis. Aggregates only (no raw rows), same data the book renders.
+function exportJSON() {
+  if (!_R) { setStatus('err','Nothing to export yet — run the research first.'); return; }
+  const payload = { exportedAt: new Date().toISOString(), research: _R, intraday: _IN, estimator: _AB };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `vol-research-book_${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  el('runStatus').textContent = 'Exported JSON ✓';
+}
 </script>
 </body>
 </html>

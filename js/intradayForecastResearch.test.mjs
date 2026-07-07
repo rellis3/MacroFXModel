@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateIntraday, _levelOutcome } from './intradayForecastResearch.js';
+import { evaluateIntraday, evaluateIntradayAllHorizons, _levelOutcome } from './intradayForecastResearch.js';
 
 const PIP = 0.0001;
 const bar = (t, o, h, l, c) => ({ open: o, high: h, low: l, close: c, _t: Date.UTC(2021, 0, 4, 8) + t * 60000 });
@@ -111,6 +111,18 @@ test('evaluateIntraday weekly horizon: multi-day window, timeUnit=day, levels to
   assert.ok(e['25'] <= e['50'] + 1e-9 && e['50'] <= e['100'] + 1e-9, 'monotone');
   const M = r.touches.medianExtension;
   if (M.n) assert.ok(M.reverse10Pct >= M.reverse20Pct - 1e-9, 'reversal thresholds monotone at weekly horizon too');
+});
+
+test('evaluateIntradayAllHorizons: one London build, same results as per-horizon calls', () => {
+  const h1 = synthH1(500, 4);
+  const all = evaluateIntradayAllHorizons(h1, { pip: PIP });
+  assert.ok(all.daily && all.weekly && all.d20, 'all three horizons returned');
+  assert.equal(all.daily.horizon, 'Daily');
+  assert.equal(all.weekly.horizon, 'Weekly');
+  // Must equal the standalone per-horizon call (build-once is just a speedup).
+  const solo = evaluateIntraday(h1, { pip: PIP, horizon: 'weekly' });
+  assert.equal(all.weekly.touches?.medianExtension?.n ?? 0, solo.touches?.medianExtension?.n ?? 0, 'weekly identical to standalone');
+  assert.equal(all.daily.expansion?.n, evaluateIntraday(h1, { pip: PIP, horizon: 'daily' }).expansion?.n, 'daily identical');
 });
 
 test('evaluateIntraday 20-day horizon runs and stays within its window', () => {

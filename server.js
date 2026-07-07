@@ -65,7 +65,8 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
-import { evaluateIntraday } from './js/intradayForecastResearch.js';
+import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
+import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import { loadWeeklyM1 as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { resampleTo as _resampleTo } from './js/barUtils.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
@@ -7815,13 +7816,31 @@ const _latestVfrFile = () => {
   } catch { return null; }
 };
 
-app.get('/api/vol-forecast-research', (req, res) => {
-  const filePath = _latestVfrFile();
-  if (!filePath) return res.status(404).json({ ok: false, error: 'No research run yet. Click ▶ Run to generate.' });
+// ── Result persistence — local disk (fast) + R2 (durable across Railway restarts).
+// `kind` = 'vfr_research' | 'intraday_research'. R2 keeps a single "…_latest.json".
+async function _persistResult(kind, data) {
+  if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+  const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+  const file = `${kind}_${ts}.json`;
+  fs.writeFileSync(path.join(WBT_DATA_DIR, file), JSON.stringify(data, null, 0) + '\n');
+  try { if (_r2Ok()) await _r2PutJSON(`research/${kind}_latest.json`, { file, computedAt: new Date().toISOString(), ...data }); }
+  catch (e) { console.warn(`[research] R2 persist ${kind} failed: ${e?.message}`); }
+  return file;
+}
+// Load latest: newest local file first, else the durable R2 copy (survives restart).
+async function _loadResult(kind, latestLocalFn) {
+  const fp = latestLocalFn();
+  if (fp) { const data = JSON.parse(fs.readFileSync(fp, 'utf8')); return { ok: true, src: 'disk', file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data }; }
+  if (_r2Ok()) { try { const r2 = await _r2GetJSON(`research/${kind}_latest.json`); if (r2) return { ok: true, src: 'r2', ...r2 }; } catch { /* fall through to 404 */ } }
+  return null;
+}
+
+app.get('/api/vol-forecast-research', async (req, res) => {
   try {
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    res.json({ ok: true, file: path.basename(filePath), computedAt: fs.statSync(filePath).mtime.toISOString(), ...data });
-  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+    const out = await _loadResult('vfr_research', _latestVfrFile);
+    if (!out) return res.status(404).json({ ok: false, error: 'No research run yet. Click ▶ Run to generate.' });
+    return res.json(out);
+  } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req, res) => {
@@ -7931,11 +7950,8 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
       }
       cross.recalProposal = recalProposal;
 
-      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
-      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
-      const outFile = path.join(WBT_DATA_DIR, `vfr_research_${ts}.json`);
-      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
-      vfrJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Evaluated ${names.length} pair(s)`, log, file: path.basename(outFile) } });
+      const outFile = await _persistResult('vfr_research', { perPair, cross, pairs: names });
+      vfrJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Evaluated ${names.length} pair(s)`, log, file: outFile } });
     } catch (e) {
       vfrJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt });
     }
@@ -8053,11 +8069,25 @@ const _latestIntraFile = () => {
   try { const fs2 = fs.readdirSync(WBT_DATA_DIR).filter(f => f.startsWith('intraday_research_') && f.endsWith('.json')); return fs2.length ? path.join(WBT_DATA_DIR, fs2.sort().at(-1)) : null; } catch { return null; }
 };
 
-app.get('/api/intraday-research', (req, res) => {
-  const fp = _latestIntraFile();
-  if (!fp) return res.status(404).json({ ok: false, error: 'No intraday run yet. Click ▶ Run.' });
-  try { const data = JSON.parse(fs.readFileSync(fp, 'utf8')); res.json({ ok: true, file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data }); }
-  catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+// Cross-pair summary from the per-pair intraday results (daily horizon headline).
+function _intraCross(perPair, names) {
+  const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k].daily) ?? 0), 0) / names.length).toFixed(1);
+  return {
+    nPairs: names.length,
+    medianTouchRatePct: _avg(r => r.touches?.medianExtension?.touchRatePct),
+    medianContinuePct:  _avg(r => r.touches?.medianExtension?.continuePct),
+    medianReverse20Pct: _avg(r => r.touches?.medianExtension?.reverse20Pct),
+    reached100Pct:      _avg(r => r.expansion?.reached100Pct),
+    ranked: names.map(k => ({ pair: k, touchRate: perPair[k].daily.touches?.medianExtension?.touchRatePct ?? 0, continuePct: perPair[k].daily.touches?.medianExtension?.continuePct ?? 0, reverse20Pct: perPair[k].daily.touches?.medianExtension?.reverse20Pct ?? 0, src: perPair[k].src })).sort((a, b) => b.continuePct - a.continuePct),
+  };
+}
+
+app.get('/api/intraday-research', async (req, res) => {
+  try {
+    const out = await _loadResult('intraday_research', _latestIntraFile);
+    if (!out) return res.status(404).json({ ok: false, error: 'No intraday run yet. Click ▶ Intraday.' });
+    return res.json(out);
+  } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, res) => {
@@ -8069,42 +8099,37 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
   const jobId = `intra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   for (const [id, j] of intraJobs) if (j.startedAt < Date.now() - 60 * 60_000) intraJobs.delete(id);
-  intraJobs.set(jobId, { status: 'running', startedAt });
+  intraJobs.set(jobId, { status: 'running', startedAt, progress: `0/${insts.length}` });
 
   (async () => {
     const perPair = {}, log = [];
+    // Persist whatever has completed so far — a slow all-31 run always leaves a
+    // loadable file (partial results survive a reload or a container restart).
+    const flush = async () => { const nm = Object.keys(perPair); if (nm.length) { try { await _persistResult('intraday_research', { perPair, cross: _intraCross(perPair, nm), pairs: nm }); } catch { /* best-effort */ } } };
+    let done = 0;
     try {
       for (const cfg of insts) {
         try {
           const { bars, src } = await _intradayForAB(cfg);   // reuse the estimator's intraday loader
           // Prefer the instrument's explicit pip (indices = 1 point); else registry; else FX default.
           let pip = cfg.pip; if (!pip) { try { pip = _pipSize(cfg.name) || _pipSize(cfg.oanda) || 0.0001; } catch { pip = 0.0001; } }
-          // Run all three horizons — daily / weekly / 20-day — off the same bars.
-          const daily  = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'daily' });
-          if (daily.insufficient) { log.push(`${cfg.name}: insufficient (${daily.nDays}d, src ${src})`); continue; }
-          const weekly = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'weekly' });
-          const d20    = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'd20' });
-          perPair[cfg.name] = { src, daily, weekly: weekly.insufficient ? null : weekly, d20: d20.insufficient ? null : d20 };
-          log.push(`${cfg.name}: ${daily.nDays}d src=${src} D-touch=${daily.touches?.medianExtension?.touchRatePct}% W=${weekly.insufficient ? 'n/a' : weekly.touches?.medianExtension?.touchRatePct + '%'}`);
-        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+          // All three horizons off ONE London-day build (≈3× faster than per-horizon).
+          const all = evaluateIntradayAllHorizons(bars, { assetClass: cfg.assetClass || 'fx', pip });
+          if (all.daily.insufficient) { log.push(`${cfg.name}: insufficient (${all.nDays}d, src ${src})`); }
+          else {
+            perPair[cfg.name] = { src, daily: all.daily, weekly: all.weekly.insufficient ? null : all.weekly, d20: all.d20.insufficient ? null : all.d20 };
+            log.push(`${cfg.name}: ${all.nDays}d src=${src} D-touch=${all.daily.touches?.medianExtension?.touchRatePct ?? '—'}%`);
+          }
+        } catch (e) { log.push(`${cfg.name}: ERROR ${e?.message}`); }
+        done++;
+        intraJobs.set(jobId, { status: 'running', startedAt, progress: `${done}/${insts.length}` });
+        if (done % 5 === 0) await flush();   // checkpoint every 5 pairs
       }
       const names = Object.keys(perPair);
-      if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
-      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k].daily) ?? 0), 0) / names.length).toFixed(1);
-      const cross = {
-        nPairs: names.length,
-        medianTouchRatePct: _avg(r => r.touches?.medianExtension?.touchRatePct),
-        medianContinuePct:  _avg(r => r.touches?.medianExtension?.continuePct),
-        medianReverse20Pct: _avg(r => r.touches?.medianExtension?.reverse20Pct),
-        reached100Pct:      _avg(r => r.expansion?.reached100Pct),
-        ranked: names.map(k => ({ pair: k, touchRate: perPair[k].daily.touches?.medianExtension?.touchRatePct ?? 0, continuePct: perPair[k].daily.touches?.medianExtension?.continuePct ?? 0, reverse20Pct: perPair[k].daily.touches?.medianExtension?.reverse20Pct ?? 0, src: perPair[k].src })).sort((a, b) => b.continuePct - a.continuePct),
-      };
-      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
-      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
-      const outFile = path.join(WBT_DATA_DIR, `intraday_research_${ts}.json`);
-      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
-      intraJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Intraday research on ${names.length} pair(s)`, log, file: path.basename(outFile) } });
-    } catch (e) { intraJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+      if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated — see log for per-pair reasons', log, startedAt }); return; }
+      const outFile = await _persistResult('intraday_research', { perPair, cross: _intraCross(perPair, names), pairs: names });
+      intraJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Intraday research on ${names.length}/${insts.length} pair(s)`, log, file: outFile } });
+    } catch (e) { await flush(); intraJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
   })();
 
   res.json({ ok: true, jobId });
@@ -8113,7 +8138,7 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
 app.get('/api/intraday-research/status/:jobId', (req, res) => {
   const job = intraJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
-  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), progress: job.progress });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
