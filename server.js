@@ -67,6 +67,7 @@ import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
 import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
+import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -1734,13 +1735,15 @@ Rules for your response:
 8. avoidNow must also be specific. "Do not chase the move if price is already below 1.0830" not "avoid chasing".
 9. riskWarnings must reference actual values from the snapshot. "VIX at 24 (prev 19) - rising fear, USD bid likely to persist" not "volatility risk".
 10. If retailCrowding is EXTREME and retailContrarian is true, call out the squeeze setup explicitly in the headline or tradingFramework.
+11. NEVER mention that data is unavailable, offline, not loaded, missing, or "N/A". The snapshot above may itself contain placeholder lines like "COT data not available", "GARCH not available", "N/A", or "not loaded" — IGNORE those completely, never repeat or acknowledge them. If you weren't given something, simply DON'T write about it — leave that field an empty string "". No caveats about missing inputs. Write only from the real numbers you actually have.
+12. "brief" is the MAIN OUTPUT: 3-5 short, connected paragraphs written like a sharp market columnist — it must FLOW as one story a trader reads top-to-bottom, not a list. Weave it together in this arc: the macro backdrop and what's driving THIS pair right now → positioning and options context → the specific levels that matter → the trade and the single biggest risk. Reference real numbers. Make it read like a briefing, not a form. The other fields (macroRead, cotRead, etc.) are OPTIONAL supporting detail — fill only the ones you have real data for, and leave the rest "".
 
-Respond with a single valid JSON object. No markdown. No text outside the JSON. All string values 1-2 sentences max. Max 3 items per arrays.
+Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
 tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newlines with \\n):
 "[PAIR] [BIAS] [SCORE]/10 | [REGIME]\\n[1-2 sentence market read]\\nWatch: [up to 3 key levels with price and type]\\nDo: [specific action]. Avoid: [what to avoid]. Risk: [main risk or event]"
 
-{"overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":""}`;
+{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":""}`;
 }
 
 // ── Express app ───────────────────────────────────────────────────────────────
@@ -1974,6 +1977,215 @@ Rules for your response:
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── Morning Brief — the top-down macro "front page" (a DIFFERENT instruction set) ──
+// Not per-pair: starts from the macro/policy/risk backdrop and walks down to the
+// dollar and the FX complex. GROUNDED in the data + real Yahoo headlines we feed
+// it — never free-recall (LLMs confabulate current events). Needs ANT_KEY (Railway).
+const _YAHOO_NEWS_TICKERS = ['^GSPC', '^IXIC', 'GC=F', 'CL=F', 'DX-Y.NYB', '^TNX'];
+async function _fetchYahooHeadlines(tickers = _YAHOO_NEWS_TICKERS, perTicker = 4) {
+  const out = [];
+  await Promise.all(tickers.map(async t => {
+    try {
+      const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(t)}&region=US&lang=en-US`;
+      const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' }, signal: AbortSignal.timeout(10_000) });
+      if (!r.ok) return;
+      const xml = await r.text();
+      const items = [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g)].slice(0, perTicker);
+      for (const m of items) {
+        const title = m[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+        if (title) out.push({ ticker: t, title });
+      }
+    } catch { /* thin/absent is fine — flagged in the prompt */ }
+  }));
+  return out;
+}
+const _MORNING_BRIEF_KV = 'morning_brief_v1';
+let _morningBriefRunning = false;
+async function _buildMorningBrief() {
+  const key = process.env.ANT_KEY;
+  if (!key) throw new Error('ANT_KEY not configured');
+  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
+  const fred = fredRaw ? JSON.parse(fredRaw) : {};
+  const headlines = await _fetchYahooHeadlines();
+  const fc = forecastState.latest;
+  const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
+  const s2s10 = (g('us10y') != null && g('us2y') != null) ? ((g('us10y') - g('us2y')) * 100).toFixed(0) + 'bp' : '?';
+  const macro = [
+    `VIX ${g('vix')} (prev ${gp('vix')})`,
+    `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
+    `DXY ${g('dxy')} (prev ${gp('dxy')})`,
+    `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}`,
+    `DE10Y ${g('de10y')} · JP10Y ${g('jp10y')} · GB10Y ${g('gb10y')}`,
+    `Real 10Y (TIPS) ${g('tips')} · WTI ${g('wti')}`,
+  ].join('\n');
+  const heads = headlines.map(h => `• [${h.ticker}] ${h.title}`).join('\n') || '(no headlines fetched — read the macro data instead)';
+  const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data and headlines below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
+
+=== MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
+${macro}
+${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
+
+=== REAL HEADLINES (Yahoo Finance) ===
+${heads}
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 sentences on what's driving markets today","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"tldr":"one-line bottom line"}`;
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
+  const antData = await antRes.json();
+  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+  const payload = { analysis, generatedAt: new Date().toISOString(), headlineCount: headlines.length, session: fc?.session_label ?? null };
+  await kv.put(_MORNING_BRIEF_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/morning-brief', async (_req, res) => {
+  try {
+    const raw = await kv.get(_MORNING_BRIEF_KV).catch(() => null);
+    if (raw) return res.json({ ok: true, ...JSON.parse(raw), cached: true });
+    return res.json({ ok: false, error: 'No morning brief yet — click Generate.' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/morning-brief', async (_req, res) => {
+  if (_morningBriefRunning) return res.status(409).json({ ok: false, error: 'a morning brief is already generating' });
+  _morningBriefRunning = true;
+  try { res.json({ ok: true, ...(await _buildMorningBrief()) }); }
+  catch (e) { res.status(/ANT_KEY/.test(e.message) ? 503 : 500).json({ ok: false, error: e.message }); }
+  finally { _morningBriefRunning = false; }
+});
+
+// ── Auto-generation config + scheduler (Morning Brief + selected per-pair AI) ──
+// User-controlled from brief-config.html: turn the Morning Brief auto-refresh on/
+// off, and tick which pairs get an auto per-pair analysis each morning (the ones
+// checked daily). Everything else stays manual (the drawer's Analyse button).
+const _AUTO_BRIEF_CFG_KV = 'brief_auto_cfg';
+const _AUTO_BRIEF_DEFAULT = { morningBrief: false, pairs: {}, hourLondon: 6 };
+async function _getAutoBriefCfg() {
+  try { const r = await kv.get(_AUTO_BRIEF_CFG_KV); return r ? { ..._AUTO_BRIEF_DEFAULT, ...JSON.parse(r) } : { ..._AUTO_BRIEF_DEFAULT }; }
+  catch { return { ..._AUTO_BRIEF_DEFAULT }; }
+}
+// KV key EXACTLY as the drawer reads it: ai_<lvlKey(name,sym) with '/' stripped>.
+const _AI_LK = { GOLD: 'XAU/USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', DE30: 'DE30_USD', UK100: 'UK100_GBP', US30: 'US30_USD', US2000: 'US2000_USD' };
+// brief name → [COT symbol, flip] and → relevant news countries (ported from today.html)
+const _COT_MAP = { EURUSD:['EUR',false], GBPUSD:['GBP',false], USDJPY:['JPY',true], AUDUSD:['AUD',false], NZDUSD:['NZD',false], USDCAD:['CAD',true], USDCHF:['CHF',true], GOLD:['GOLD',false], NQ:['NQ',false], SPX500:['ES',false], US30:['YM',false], US2000:['RTY',false] };
+const _PAIR_NEWS_CC = { EURUSD:['US','EU','DE'], GBPUSD:['US','GB'], USDJPY:['US','JP'], AUDUSD:['US','AU'], NZDUSD:['US','NZ'], USDCAD:['US','CA'], USDCHF:['US','CH'], GBPJPY:['GB','JP'], EURJPY:['EU','DE','JP'], AUDJPY:['AU','JP'], CADJPY:['CA','JP'], GOLD:['US'], NQ:['US'], SPX500:['US'], US30:['US'], US2000:['US'], DE30:['DE','EU'], UK100:['GB'] };
+// Today's economic calendar — fetched once, cached 30 min (one Finnhub call feeds every pair).
+let _todayEventsCache = { data: null, at: 0 };
+async function _fetchTodayEvents() {
+  if (!process.env.FINNHUB_KEY) return [];
+  if (_todayEventsCache.data && Date.now() - _todayEventsCache.at < 30 * 60_000) return _todayEventsCache.data;
+  try {
+    const d = new Date().toISOString().slice(0, 10);
+    const r = await fetch(`https://finnhub.io/api/v1/calendar/economic?from=${d}&to=${d}&token=${process.env.FINNHUB_KEY}`, { signal: AbortSignal.timeout(10_000) });
+    if (!r.ok) return _todayEventsCache.data ?? [];
+    const j = await r.json();
+    const evs = (j.economicCalendar ?? []).map(e => ({ country: e.country, impact: e.impact, event: e.event, ms: new Date(e.time).getTime() })).filter(e => !isNaN(e.ms));
+    _todayEventsCache = { data: evs, at: Date.now() };
+    return evs;
+  } catch { return _todayEventsCache.data ?? []; }
+}
+const _aiPairName = (name, sym) => _AI_LK[name] ?? sym.replace('_', '/');
+const _aiKvKey = (name, sym) => 'ai_' + _aiPairName(name, sym).replace('/', '');
+// Assemble a per-pair snapshot server-side (partial — buildAnalysisPrompt is N/A-tolerant).
+async function _serverSnapshotFor(name, sym) {
+  const fc = forecastState.latest?.instruments?.[name];
+  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null); const fred = fredRaw ? JSON.parse(fredRaw) : {};
+  const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
+  let session = null; try { const st = await getSessionStatus(); session = st?.instruments?.[name] ?? null; } catch {}
+  let price = null;
+  try {
+    const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const r = await fetch(`${oB}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(sym)}`, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8000) });
+    if (r.ok) { const d = await r.json(); const p = d.prices?.[0]; if (p?.asks?.[0] && p?.bids?.[0]) price = (+p.asks[0].price + +p.bids[0].price) / 2; }
+  } catch {}
+  const snap = {
+    price, vix: g('vix'), vixPrev: gp('vix'),
+    hy: g('hy') != null ? Math.round(g('hy') * 100) : undefined, hyPrev: gp('hy') != null ? Math.round(gp('hy') * 100) : undefined,
+    dxy: g('dxy'), dxyPrev: gp('dxy'),
+    us2s10s: (g('us10y') != null && g('us2y') != null) ? Math.round((g('us10y') - g('us2y')) * 100) : undefined,
+    volRegime: fc?.vol_pct != null ? (fc.vol_pct >= 80 ? 'ELEVATED' : fc.vol_pct <= 20 ? 'COMPRESSED' : 'NORMAL') : undefined,
+    atrPct: fc?.vol_pct, priceVsAsia: session?.bias_detail,
+  };
+  try { const oiRaw = await kv.get('oi_store'); if (oiRaw) { const od = JSON.parse(oiRaw); const o = od.data?.[sym.replace('_', '/')] ?? od.data?.[sym]; if (o) snap.oi = { maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall, pcRatio: o.pcRatio, gex: o.exposures?.gex }; } } catch {}
+  // COT positioning (real spec/leveraged-fund data) — same shape the prompt reads.
+  try {
+    const cotRaw = await kv.get('cot_extremes_v2');
+    const m = _COT_MAP[name];
+    if (cotRaw && m) {
+      const cd = JSON.parse(cotRaw); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
+      const c = (Array.isArray(arr) ? arr : []).find(x => x.sym === m[0]);
+      if (c) {
+        const oi = c.openInterest ?? 0, net = m[1] ? -(c.specNet ?? 0) : (c.specNet ?? 0);
+        snap.cot = { reportDate: c.reportDate, openInterest: oi, levNet: net, levNetChg: c.weeklyChg,
+          levPct: c.specPct, crowdingPct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : c.specPct };
+      }
+    }
+  } catch {}
+  // Event risk for THIS pair — today's calendar filtered to its own economies.
+  try {
+    const cc = _PAIR_NEWS_CC[name] ?? ['US'];
+    const evs = (await _fetchTodayEvents()).filter(e => cc.includes(e.country) && ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 20 * 60000);
+    if (evs.length) {
+      const next4h = evs.filter(e => (e.ms - Date.now()) < 4 * 3600e3);
+      const hasHigh = next4h.some(e => (e.impact ?? '').toLowerCase() === 'high');
+      snap.eventRisk = { level: hasHigh ? 'high' : next4h.length ? 'medium' : 'low', sizeMult: hasHigh ? 0.5 : 1,
+        inNext4h: next4h.slice(0, 4).map(e => ({ country: e.country, impact: e.impact, event: e.event, time: new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) })) };
+    }
+  } catch {}
+  return snap;
+}
+async function _buildPairAnalysis(name, sym) {
+  const key = process.env.ANT_KEY; if (!key) throw new Error('ANT_KEY not configured');
+  const snapshot = await _serverSnapshotFor(name, sym);
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Keep each string value to 1-2 sentences. Arrays max 3 items.', messages: [{ role: 'user', content: buildAnalysisPrompt(_aiPairName(name, sym), snapshot) }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}`);
+  const antData = await antRes.json();
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+  await kv.put(_aiKvKey(name, sym), JSON.stringify({ data: { analysis, generatedAt: new Date().toISOString(), pair: name }, timestamp: Date.now() })).catch(() => {});
+}
+async function _runAutoBrief(reason = 'schedule') {
+  const cfg = await _getAutoBriefCfg(); const log = [];
+  if (cfg.morningBrief && process.env.ANT_KEY) { try { await _buildMorningBrief(); log.push('morning-brief ✓'); } catch (e) { log.push('morning-brief ✗ ' + e.message); } }
+  for (const i of HR_INSTRUMENTS.filter(x => cfg.pairs?.[x.name])) {
+    try { await _buildPairAnalysis(i.name, i.sym); log.push(i.name + ' ✓'); } catch (e) { log.push(i.name + ' ✗ ' + e.message); }
+  }
+  if (log.length) console.log(`[auto-brief] (${reason}) ${log.join(' · ')}`);
+  return log;
+}
+app.get('/api/brief-auto/config', async (_req, res) => {
+  res.json({ ok: true, config: await _getAutoBriefCfg(), instruments: HR_INSTRUMENTS.map(i => ({ name: i.name, ac: i.ac })) });
+});
+app.post('/api/brief-auto/config', express.json(), async (req, res) => {
+  const b = req.body ?? {};
+  const pairs = {}; if (b.pairs && typeof b.pairs === 'object') for (const i of HR_INSTRUMENTS) if (b.pairs[i.name]) pairs[i.name] = true;
+  const cfg = { morningBrief: !!b.morningBrief, pairs, hourLondon: Math.min(23, Math.max(0, parseInt(b.hourLondon ?? 6) || 6)) };
+  await kv.put(_AUTO_BRIEF_CFG_KV, JSON.stringify(cfg)).catch(() => {});
+  res.json({ ok: true, config: cfg });
+});
+app.post('/api/brief-auto/run-now', async (_req, res) => {
+  try { res.json({ ok: true, log: await _runAutoBrief('manual') }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Hourly-ish poll: fire once/day at the configured London hour when anything is enabled.
+let _autoBriefLastRun = null;
+setInterval(async () => {
+  try {
+    const cfg = await _getAutoBriefCfg();
+    if (!cfg.morningBrief && !Object.keys(cfg.pairs || {}).length) return;
+    const lonHour = parseInt(new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }));
+    const today = new Date().toISOString().slice(0, 10);
+    if (lonHour === cfg.hourLondon && _autoBriefLastRun !== today) { _autoBriefLastRun = today; _runAutoBrief('daily').catch(() => {}); }
+  } catch {}
+}, 20 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
 app.post('/api/ai-backtest', async (req, res) => {
@@ -8557,6 +8769,102 @@ app.get('/api/zscore-backtest/pairs', (_req, res) => {
     pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) =>
       [k, { label: v.label, pairDisplay: v.pairDisplay, defaultThreshold: v.defaultThreshold }])),
   });
+});
+
+// ── Z-Score V2 — confidence-scored (A/B vs the v1 binary gate) ─────────────────
+// Runs BOTH engines over the same window and returns the A/B: v1 (yield-spread z
+// as a HARD GATE) vs v2 (z demoted to one weighted CONFIDENCE factor alongside a
+// risk-off veto, approach-velocity and fib-depth; fade geometry sets direction).
+// Headline is the OOS card. Engines: js/zscoreSpreadV2Engine.js + js/zscoreConfidenceCore.js
+const zsV2Jobs = new Map();
+
+function _purgeStaleZsV2Jobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of zsV2Jobs) if (job.startedAt < cutoff) zsV2Jobs.delete(id);
+}
+
+app.get('/api/zscore-v2/defaults', (_req, res) => {
+  res.json({ ok: true, defaults: ZS_V2_DEFAULTS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) =>
+      [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/zscore-v2/run', (req, res) => {
+  if (!process.env.FRED_KEY) {
+    return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch yield-spread + risk-off data' });
+  }
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined,
+    dateTo:   b.dateTo   || undefined,
+    zWindow:       parseInt(b.zWindow) || 90,
+    entryWindow:   parseInt(b.entryWindow) || 6,
+    splitFrac:     num(b.splitFrac,     ZS_V2_DEFAULTS.splitFrac),
+    confThreshold: num(b.confThreshold, ZS_V2_DEFAULTS.confThreshold),
+    zGateMin:      num(b.zGateMin,      ZS_V2_DEFAULTS.zGateMin),
+    velWin:        parseInt(b.velWin) || ZS_V2_DEFAULTS.velWin,
+    velRef:        num(b.velRef,        ZS_V2_DEFAULTS.velRef),
+    slFrac:        num(b.slFrac,        ZS_V2_DEFAULTS.slFrac),
+    minRR:         num(b.minRR,         ZS_V2_DEFAULTS.minRR),
+    eventVeto:     b.eventVeto == null ? ZS_V2_DEFAULTS.eventVeto : (b.eventVeto === true || b.eventVeto === 'true'),
+    eventDates:    Array.isArray(b.eventDates) ? b.eventDates : ZS_V2_DEFAULTS.eventDates,
+    // Ablation-friendly weights: any 0 removes that factor from the composite.
+    weights: (b.weights && typeof b.weights === 'object')
+      ? Object.fromEntries(Object.keys(ZS_V2_DEFAULTS.weights).map(k =>
+          [k, num(b.weights[k], ZS_V2_DEFAULTS.weights[k])]))
+      : ZS_V2_DEFAULTS.weights,
+    invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k =>
+      [k, b.invert?.[k] === true || b.invert?.[k] === 'true'])),
+  };
+  const pairsToRun = b.pair
+    ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p])
+    : Object.keys(ZSCORE_PAIRS);
+  if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+
+  const jobId = `zsv2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleZsV2Jobs();
+  zsV2Jobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      // Baseline (v1 gate) and v2 (confidence) over the same window/pairs.
+      const v1Opts = { dateFrom: opts.dateFrom, dateTo: opts.dateTo, zWindow: opts.zWindow,
+        entryWindow: opts.entryWindow, invert: opts.invert,
+        thresholds: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k => [k, ZSCORE_PAIRS[k].defaultThreshold])) };
+      const [baseline, v2] = await Promise.all([
+        runFullZScoreBacktest(v1Opts, pairsToRun),
+        runFullZScoreV2Backtest(opts, pairsToRun),
+      ]);
+      zsV2Jobs.set(jobId, {
+        status: 'done', startedAt,
+        result: {
+          ok: true,
+          message: `Z-Score V2 A/B complete — baseline ${baseline.trades.length} trades, v2 ${v2.trades.length} trades`,
+          baseline: { combined: baseline.combined, perPair: baseline.perPair, log: baseline.log },
+          v2:       { combined: v2.combined, perPair: v2.perPair, log: v2.log },
+          opts,
+        },
+      });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[zscore-v2/run]', msg, e?.stack ?? '');
+      zsV2Jobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/zscore-v2/status/:jobId', (req, res) => {
+  const job = zsV2Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
 // ── NASDAQ Liquidity Continuation Framework ───────────────────────────────────

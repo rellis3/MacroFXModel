@@ -428,6 +428,23 @@ drawdowns, honest. Distinct family from the yield work; new engine + page. Phase
 (carry: rank by short-rate, blend 50/50 with trend) needs G10 short-rate data
 (FRED/ECB partial; the rest is the sourcing work).
 
+### 1k. Z-Score V2 confidence core (2026-07-06) — macro as confidence, not gate
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Z-Score confidence core** | `js/zscoreConfidenceCore.js` | pure, network-free confidence-scoring bricks for the "z as confidence, not gate" reframe. **Phase 1:** `zAlignScore` (nominal carry confirms/vetoes the fade), `riskOffScore` (VIX+HY carry-crash veto), `approachVelRangeScaled`/`velToScore` (OOS-proven approach spike), `structScore` (fib depth — folklore, ablate-first). **Phase 1.5** (cross-asset macro docs): `realRateAlignScore`+`usdRole` (US 10Y real-yield DFII10 USD bias — the literature's preferred read over nominal), `coherenceScore` (fraction of directional macro lenses agreeing — the docs' "coherence→conviction"), `positioningBoostScore` (COT extreme the fade opposes), `isNfpFriday`/`eventVetoActive` (FOMC/NFP/CPI hard veto — NFP intrinsic). `compositeConfidence` is evidence-tiered + **null-skipping** (weight-0 OR no-data → factor drops out, rest renormalise). Plus `confBucketOf`/`computeConfBuckets` (monotonicity falsification), `buildSingleRollingZByDate`/`buildRiskOffByDate`, `splitTradesByDate` (IS/OOS). Tested `js/zscoreSpreadV2Engine.test.mjs` (40 asserts). | `js/zscoreSpreadV2Engine.js` (I/O engine: imports v1's FRED/session/fill helpers — now exported — + this core; fetches GS2/foreign-short/VIX/HY/DFII10; `runFullZScoreV2Backtest`); `server.js` `/api/zscore-v2/*` (A/B vs v1 gate); `zscore-v2.html` (OOS A/B card + 7 ablation weights + event-veto + bucket falsification) | 🟡 built, **not yet validated** (needs live `FRED_KEY` on Railway — sandbox can't reach FRED, and synthetic FRED is unreliable for this exact change). Positioning factor is null until a historical COT series is wired. |
+
+Phase 1 of the zone→direction→confidence build. Reframes v1's binary z-gate:
+the fib zone is the **structure**, direction comes from **fade geometry**, and the
+yield-spread z-score is demoted to **one weighted confidence factor** beside a
+research-backed **risk-off veto** (the literature's carry-crash gate) and the
+internally-OOS-proven **approach-velocity**. Every factor is evidence-tiered and
+independently ablatable so the A/B can *invalidate* ideas on the OOS card. v1's
+`fetchFredObservations`/`_shiftDate`/`buildRollingZSeries`/`buildDayIndex`/
+`analyzeDay`/`walkTrade` were exported (no logic change) so V2 imports, never copies.
+**Built ≠ proven** — the real "does confidence beat the gate?" A/B must run on
+Railway; do not read any local run as edge.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

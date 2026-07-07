@@ -2305,9 +2305,9 @@ function buildSessionHtml(name, s, data) {
   const fmtReachTime = iso => iso
     ? new Date(iso).toUTCString().replace(/.*(\d\d:\d\d):\d\d GMT$/, '$1 UTC')
     : null;
-  const remLabel = (rem, actual, reachedAt) => {
+  const remLabel = (rem, actual, reachedAt, target75 = fc.oc_75) => {
     const t = fmtReachTime(reachedAt);
-    if (actual >= fc.oc_75) return `<span class="vf-srow-rem exceeded">75th reached${t ? ' ' + t : '!'}</span>`;
+    if (actual >= target75)  return `<span class="vf-srow-rem exceeded">75th reached${t ? ' ' + t : '!'}</span>`;
     if (rem <= 0)            return `<span class="vf-srow-rem reached">reached${t ? ' ' + t : ''}</span>`;
     return `<span class="vf-srow-rem ok">${p2(rem)}% rem</span>`;
   };
@@ -2352,19 +2352,20 @@ function buildSessionHtml(name, s, data) {
     <div class="vf-srow">
       <span class="vf-srow-lbl">O-H</span>
       <span class="vf-srow-val">${p2(s.oh)}%</span>
-      <span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>
-      ${remLabel(s.oh_rem, s.oh, s.oh_reached_at)}
+      <span class="vf-srow-fc">med ${p2(s.oh_target_med ?? fc.oc_median)}% · 75th ${p2(s.oh_target_75 ?? fc.oc_75)}%</span>
+      ${remLabel(s.oh_rem, s.oh, s.oh_reached_at, s.oh_target_75 ?? fc.oc_75)}
     </div>
     <div class="vf-srow">
       <span class="vf-srow-lbl">O-L</span>
       <span class="vf-srow-val">${p2(s.ol)}%</span>
-      <span class="vf-srow-fc">med ${p2(fc.oc_median)}% · 75th ${p2(fc.oc_75)}%</span>
-      ${remLabel(s.ol_rem, s.ol, s.ol_reached_at)}
+      <span class="vf-srow-fc">med ${p2(s.ol_target_med ?? fc.oc_median)}% · 75th ${p2(s.ol_target_75 ?? fc.oc_75)}%</span>
+      ${remLabel(s.ol_rem, s.ol, s.ol_reached_at, s.ol_target_75 ?? fc.oc_75)}
     </div>
 
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <span class="vf-bias-chip ${biasCls}">${s.bias}</span>
       <span class="vf-bias-detail">${s.bias_detail}</span>
+      ${Math.abs(s.drift_d ?? 0) > 0.05 ? `<span class="vf-bias-detail" title="14-day drift d=μ/σ">d=${(s.drift_d ?? 0) >= 0 ? '+' : ''}${(s.drift_d ?? 0).toFixed(2)}</span>` : ''}
     </div>
 
     <div class="vf-dir-row">

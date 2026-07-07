@@ -53,7 +53,7 @@ const ASIA_MAX_HOUR_REQUIRED = 5;
 
 // ── FRED ──────────────────────────────────────────────────────────────────────
 
-async function fetchFredObservations(seriesId, fromDate, fredKey) {
+export async function fetchFredObservations(seriesId, fromDate, fredKey) {
   const url = `https://api.stlouisfed.org/fred/series/observations`
             + `?series_id=${seriesId}&api_key=${fredKey}&file_type=json`
             + `&observation_start=${fromDate}&sort_order=asc`;
@@ -69,7 +69,7 @@ async function fetchFredObservations(seriesId, fromDate, fredKey) {
   return out;
 }
 
-function _shiftDate(dateStr, deltaDays) {
+export function _shiftDate(dateStr, deltaDays) {
   const d = new Date(dateStr + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + deltaDays);
   return d.toISOString().substring(0, 10);
@@ -88,7 +88,7 @@ function _dateRangeDays(fromStr, toStr) {
 
 // Rolling z-score of (us - other), forward-filled across calendar days so monthly
 // OECD short-rate series (JP/DE) carry forward between releases.
-function buildRollingZSeries(usObs, otherObs, zWindow, dateFrom, dateTo) {
+export function buildRollingZSeries(usObs, otherObs, zWindow, dateFrom, dateTo) {
   const fredFrom = _shiftDate(dateFrom, -(zWindow + 14));
   const days = _dateRangeDays(fredFrom, dateTo);
 
@@ -124,7 +124,7 @@ function buildRollingZSeries(usObs, otherObs, zWindow, dateFrom, dateTo) {
 
 // ── M1 day grouping & session analysis ──────────────────────────────────────────
 
-function buildDayIndex(times) {
+export function buildDayIndex(times) {
   const dayIndex = new Map();
   let dayStart = 0, curDate = null;
   for (let i = 0; i < times.length; i++) {
@@ -141,7 +141,7 @@ function buildDayIndex(times) {
 
 // One pass over a day's bars: Asia body range, entry-window bounds, and the
 // hour>=22 time-exit cutoff index.
-function analyzeDay(times, opens, highs, lows, closes, start, end, entryWindow) {
+export function analyzeDay(times, opens, highs, lows, closes, start, end, entryWindow) {
   let aHi = -Infinity, aLo = Infinity, aCount = 0, aMaxHour = -1;
   let winStart = -1, winEnd = end, exitIdx = end;
   for (let i = start; i < end; i++) {
@@ -169,7 +169,7 @@ function buildFibLevels(asia, dir, fibLevelMode) {
   }));
 }
 
-function walkTrade(times, highs, lows, opens, closes, entryIdx, exitDeadlineIdx, dir, entry, sl, tp) {
+export function walkTrade(times, highs, lows, opens, closes, entryIdx, exitDeadlineIdx, dir, entry, sl, tp) {
   for (let i = entryIdx; i < exitDeadlineIdx; i++) {
     if (dir === 'LONG') {
       if (lows[i] <= sl) return { result: 'SL', exitPrice: sl, exitIdx: i };

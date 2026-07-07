@@ -375,6 +375,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="beta" onclick="switchTab('beta')" style="color:#9d96f0" id="betaTabBtn">β Beta Targets</button>
     <button class="tab-btn" data-tab="gold" onclick="switchTab('gold')" style="color:#f4c430" id="goldTabBtn">⚡ Gold Bot</button>
     <button class="tab-btn" data-tab="goldv2" onclick="switchTab('goldv2')" style="color:#ff9f43" id="goldv2TabBtn">⚡ Gold V2</button>
+    <button class="tab-btn" data-tab="confluence" onclick="switchTab('confluence')" style="color:#c084fc" id="confluenceTabBtn">🧭 Confluence</button>
     <button class="tab-btn" data-tab="hedgebot" onclick="switchTab('hedgebot')" style="color:#06b6d4" id="hbTabBtn">🔀 Hedge Bot</button>
     <button class="tab-btn" data-tab="poshedgebot" onclick="switchTab('poshedgebot')" style="color:#10b981" id="phbTabBtn">🛡 Pos Hedge</button>
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
@@ -2847,6 +2848,311 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 
   </div><!-- /tab-goldv2 -->
 
+  <!-- ══════════════════════════════════════════════ TAB: CONFLUENCE BOT -->
+  <div id="tab-confluence" class="tab-pane">
+
+    <div class="bot-banner" style="background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.28)">
+      <div class="bot-banner-icon">🧭</div>
+      <div>
+        <div class="bot-banner-title" style="color:#c084fc">Confluence Bot — multi-instrument (level-matrix)</div>
+        <div class="bot-banner-sub">The Gold V2 strategy opened up to ANY registry instrument — FX, gold and indices at once. Per-instrument pip/sizing from the shared pylego bricks; all distances pip-scaled so gold stays identical. ConfluenceBot/main.py · magic 20260006 · <b>paper-first, judge each instrument on its own OOS record</b></div>
+      </div>
+    </div>
+
+    <!-- Live status strip -->
+    <div class="bs-strip">
+      <div class="bs-head">
+        <span class="bs-lbl">Confluence Runtime</span>
+        <span id="cfBsAge"   class="bs-dim">Checking…</span>
+        <span id="cfBsMode"  class="bs-dim"></span>
+        <span id="cfBsState" class="bs-dim"></span>
+        <span id="cfBsCount" class="bs-dim"></span>
+      </div>
+      <div class="bs-rows">
+        <div id="cfBsSymbols"></div>
+        <div id="cfBsTrades"></div>
+      </div>
+    </div>
+
+    <!-- Row: MT5 Credentials | Bot Control -->
+    <div class="grid">
+
+      <!-- MT5 Credentials -->
+      <div class="card">
+        <div class="card-title">MT5 Credentials — Confluence</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+          Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">confluence_bot_credentials</code>).
+          Read on startup (env vars are the fallback). Its own magic number (20260006) means it can share an account with the other bots without touching their positions.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Account number</span>
+          <input type="number" id="confluence_mt5_account" placeholder="e.g. 99887766" style="width:130px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Password</span>
+          <input type="password" id="confluence_mt5_password" placeholder="••••••••" style="width:130px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Server <small>e.g. ICMarkets-Demo01</small></span>
+          <input type="text" id="confluence_mt5_server" placeholder="Broker-Demo01" style="width:180px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Terminal path <small>optional</small></span>
+          <input type="text" id="confluence_mt5_path" placeholder="C:\Program Files\MetaTrader 5\terminal64.exe" style="width:280px;text-align:left">
+        </div>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+          <button class="btn-save" style="background:#c084fc;color:#111;max-width:220px;padding:9px" onclick="saveConfluenceCreds()">Save Confluence Credentials</button>
+          <span id="confluenceCredsStatus" class="inline-status"></span>
+        </div>
+      </div>
+
+      <!-- Bot Control -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="confluence_enabled">
+          <label for="confluence_enabled">Enabled <small>uncheck to pause without stopping the process</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="confluence_paper_mode">
+          <label for="confluence_paper_mode">Paper mode <small>journal signals, no real MT5 orders</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="confluence_macro_gate">
+          <label for="confluence_macro_gate">Gold macro gate <small>gold only — block if AI gold model strongly opposes</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="confluence_ml_gate">
+          <label for="confluence_ml_gate">Gold ML gate <small>gold only — block PASS-rated zones</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="confluence_htf_block">
+          <label for="confluence_htf_block">HTF direction block <small>hard-skip counter-trend zones when HTF bias is established</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="confluence_use_vol_forecast">
+          <label for="confluence_use_vol_forecast">σ forecast <small>use /api/vol-forecast for the TP range cap + exhaustion confluence</small></label>
+        </div>
+        <div class="form-row" style="margin-top:8px">
+          <span class="form-lbl">HTF block confidence <small>HTF confidence ≥ this hard-blocks counter-trend</small></span>
+          <input type="number" id="confluence_htf_block_confidence" min="0.3" max="1.0" step="0.05" style="width:80px">
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <span class="form-lbl">Trade window start <small>UTC</small></span>
+          <input type="time" id="confluence_window_start" style="width:110px;text-align:left">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trade window end <small>UTC</small></span>
+          <input type="time" id="confluence_window_end" style="width:110px;text-align:left">
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Instrument universe -->
+    <div class="card">
+      <div class="card-title">Instruments — the pairs this bot trades</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        One instrument per line (or comma-separated). Any symbol the shared registry knows resolves — display form (<code>EUR/USD</code>), or short codes <code>GOLD</code>, <code>NQ</code>, <code>SPX</code>, <code>DAX</code>, <code>DOW</code>, <code>FTSE</code>, <code>RUT</code>. Unknown symbols are skipped (logged, never defaulted).
+        Each instrument runs its own engine + risk state; the <b>global caps</b> below bound the whole fleet.
+      </div>
+      <textarea id="confluence_pairs" rows="5" placeholder="EUR/USD&#10;GBP/USD&#10;GOLD&#10;NQ" style="width:100%;font-family:monospace;font-size:12px;background:var(--s3);color:var(--text1);border:1px solid var(--bd);border-radius:6px;padding:8px;resize:vertical"></textarea>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">
+        Available FX: EUR/USD GBP/USD USD/JPY AUD/USD NZD/USD USD/CAD USD/CHF EUR/GBP EUR/JPY GBP/JPY AUD/JPY EUR/AUD EUR/CAD EUR/CHF EUR/NZD AUD/NZD AUD/CAD AUD/CHF GBP/CHF GBP/CAD CAD/JPY NZD/JPY CHF/JPY GBP/NZD GBP/AUD · Metals: GOLD · Indices: NQ SPX DAX FTSE DOW RUT
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <span class="form-lbl">Broker symbol overrides <small>JSON — {"dax":"GER40.cash"} when your broker's symbol differs</small></span>
+        <input type="text" id="confluence_broker_overrides" placeholder='{}' style="width:280px;text-align:left;font-family:monospace">
+      </div>
+    </div>
+
+    <!-- Row: Level Matrix / Entry Gate | Confirmation -->
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-title">Level Matrix &amp; Entry Gate</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+          All distances are in <b>pips</b> and scaled by each instrument's pip size — gold (pip=1.0) keeps the same numbers as Gold V2; FX/indices scale automatically.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min zone score <small>confluence threshold to arm</small></span>
+          <input type="number" id="confluence_min_zone_score" min="1" max="15" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Cluster tolerance <small>pips — lines within this merge into one zone</small></span>
+          <input type="number" id="confluence_cluster_tolerance" min="1" max="30" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min distinct legs <small>independent fib legs required per zone</small></span>
+          <input type="number" id="confluence_min_distinct_legs" min="1" max="5" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Proximity pips <small>distance from window edge to arm</small></span>
+          <input type="number" id="confluence_proximity_pips" min="2" max="60" step="1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max armed zones <small>per instrument</small></span>
+          <input type="number" id="confluence_max_armed_zones" min="1" max="6" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Bucket pips <small>volume-profile histogram granularity</small></span>
+          <input type="number" id="confluence_bucket_pips" min="0.1" max="5" step="0.1" style="width:80px">
+        </div>
+        <div class="toggle-wrap" style="margin-top:8px">
+          <input type="checkbox" id="confluence_include_retests">
+          <label for="confluence_include_retests">Retest levels <small>recently broken highs/lows as levels</small></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">VuManChu Confirmation</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+          <b>WT is mandatory</b>, Money Flow counts <b>exhaustion patterns only</b>, and the <b>fuel veto</b> blocks entries while MF still drives hard against the zone. WaveTrend is normalised, so these thresholds are instrument-agnostic.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Components required <small>of WT / MF-exhaustion / VWAP</small></span>
+          <div class="radio-group">
+            <label><input type="radio" name="confluence_vu_min" value="2"> 2</label>
+            <label><input type="radio" name="confluence_vu_min" value="3"> 3</label>
+          </div>
+        </div>
+        <div class="toggle-wrap" style="margin-top:8px">
+          <input type="checkbox" id="confluence_vu_require_wt">
+          <label for="confluence_vu_require_wt">WT mandatory <small>no entry without a WaveTrend exhaustion/divergence signal</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="confluence_mf_fuel_veto">
+          <label for="confluence_mf_fuel_veto">Money-flow fuel veto <small>no spike at the level = fuel remaining = skip</small></label>
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <span class="form-lbl">M1 lookback bars <small>per instrument, for the nPOC stack</small></span>
+          <input type="number" id="confluence_m1_lookback_bars" min="1000" max="30000" step="500" style="width:100px">
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Row: Exits | Per-instrument Risk -->
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-title">Exits — Structure SL, Level TPs</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          SL anchors to the M5 <b>confirmation swing</b> + ATR buffer; if it exceeds <b>max SL pips</b> the trade is <b>skipped</b>, never truncated. TP1/TP2 are the nearest mapped obstacles clamped by R-multiples and the σ-forecast remaining range.
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max SL pips <small>skip filter — structural stop must fit</small></span>
+          <input type="number" id="confluence_max_sl_pips" min="10" max="500" step="5" style="width:90px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Min SL pips <small>skip if tighter than this</small></span>
+          <input type="number" id="confluence_min_sl_pips" min="1" max="50" step="1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">SL buffer <small>× ATR(15m) beyond the swing</small></span>
+          <input type="number" id="confluence_sl_buffer_atr" min="0.1" max="1.5" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">TP1 min R</span>
+          <input type="number" id="confluence_tp1_r_min" min="0.5" max="3" step="0.25" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">TP2 R range <small>min / max</small></span>
+          <span style="display:flex;gap:6px">
+            <input type="number" id="confluence_tp2_r_min" min="1" max="5" step="0.25" style="width:70px">
+            <input type="number" id="confluence_tp2_r_max" min="2" max="10" step="0.5" style="width:70px">
+          </span>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Range cap ×</span>
+          <input type="number" id="confluence_range_cap_mult" min="0.8" max="2" step="0.1" style="width:80px">
+        </div>
+        <div class="toggle-wrap" style="margin-top:8px">
+          <input type="checkbox" id="confluence_be_after_tp1">
+          <label for="confluence_be_after_tp1">Breakeven after TP1 <small>SL → entry once TP1 trades</small></label>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="confluence_allow_overnight">
+          <label for="confluence_allow_overnight">Overnight if HTF-aligned <small>continuation trades may run past the window</small></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Risk — Per Instrument</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+          These caps apply to <b>each instrument's own engine</b>. Lots are sized from risk % via the shared pylego sizing brick (per-pip cash value per instrument).
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Risk % per trade</span>
+          <input type="number" id="confluence_risk_pct" min="0.1" max="5" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max lot <small>hard clamp on position size</small></span>
+          <input type="number" id="confluence_max_lot" min="0.01" max="50" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max trades / day</span>
+          <input type="number" id="confluence_max_trades_per_day" min="1" max="20" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max concurrent trades</span>
+          <input type="number" id="confluence_max_concurrent" min="1" max="5" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max open risk % <small>sum across this instrument's trades</small></span>
+          <input type="number" id="confluence_max_open_risk" min="0.2" max="5" step="0.1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max per direction</span>
+          <input type="number" id="confluence_max_per_direction" min="1" max="5" step="1" style="width:70px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Entry separation <small>min pips between same-dir entries</small></span>
+          <input type="number" id="confluence_min_entry_sep" min="1" max="200" step="1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Zone cooldown <small>min after a close, per zone</small></span>
+          <input type="number" id="confluence_cooldown_minutes" min="5" max="240" step="5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Global cooldown <small>min between entries, per instrument</small></span>
+          <input type="number" id="confluence_global_cooldown" min="0" max="120" step="5" style="width:80px">
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Global portfolio caps -->
+    <div class="card">
+      <div class="card-title">Risk — Global (across ALL instruments)</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        The fleet-wide ceiling. An entry must pass both its instrument's per-instrument caps <b>and</b> these global caps. Keeps total exposure bounded no matter how many pairs are configured.
+      </div>
+      <div class="grid" style="margin-top:0">
+        <div class="form-row">
+          <span class="form-lbl">Max total open trades</span>
+          <input type="number" id="confluence_max_total_open" min="1" max="40" step="1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max total open risk %</span>
+          <input type="number" id="confluence_max_total_risk" min="0.5" max="20" step="0.5" style="width:80px">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Max total per direction</span>
+          <input type="number" id="confluence_max_total_per_dir" min="1" max="30" step="1" style="width:80px">
+        </div>
+      </div>
+    </div>
+
+    <!-- Save / Reset -->
+    <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+      <button class="btn-save" style="background:#c084fc;color:#111;max-width:210px;padding:9px" onclick="saveConfluenceConfig()">Save Confluence Config</button>
+      <button class="btn-save" style="background:var(--s2);color:var(--text1);max-width:160px;padding:9px;border:1px solid var(--bd)" onclick="resetConfluenceDefaults()">Reset Defaults</button>
+      <span id="confluenceSaveStatus" class="inline-status"></span>
+    </div>
+
+  </div><!-- /tab-confluence -->
+
   <!-- ══════════════════════════════════════════════════════ POSITIONS TAB -->
   <!-- ═══════════════════ TAB: MACRO-REGIME EQUITY BACKTEST ═══════════════════ -->
   <div class="tab-pane" id="tab-macroequity">
@@ -5201,6 +5507,7 @@ const _POS_BOTS = [
   { key: 'regime_bot_status',     label: 'Regime V1',  color: '#34d399', bg: '#0d2b22', bd: '#1a4a38', paper: false },
   { key: 'gold_bot_status',       label: 'Gold',       color: '#fbbf24', bg: '#292100', bd: '#78610a', paper: false },
   { key: 'gold_v2_status',        label: 'Gold V2',    color: '#ff9f43', bg: '#2a1a00', bd: '#92540a', paper: false },
+  { key: 'confluence_bot_status', label: 'Confluence', color: '#c084fc', bg: '#1e1633', bd: '#6d28d9', paper: false },
   { key: 'regime_bot_v2_status',  label: 'Regime V2',  color: '#a78bfa', bg: '#1e1b4b', bd: '#4338ca', paper: false },
   { key: 'backtestsystem_status', label: 'Backtest',   color: '#9ba3bf', bg: 'var(--s2)', bd: 'var(--border)', paper: false },
   { key: 'dyn_anchor_status',     label: 'DynAnchor',  color: '#f59e0b', bg: '#292100',  bd: '#78610a', paper: false },
