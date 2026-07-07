@@ -52,8 +52,9 @@ const INSTRUMENTS = {
 };
 
 // Session windows — London local time [inclusive start, exclusive end).
-// Exported as the single source of truth for London-anchored day/session logic
-// (imported by the forecast-session + estimator-A/B research modules).
+// Exported as the single source of truth for London-anchored day/session logic —
+// the forecast-session and estimator-A/B research modules import these so the
+// definitions never drift.
 export const SESSIONS = {
   asia:   [0,  6],   // 00:00–06:00
   london: [8,  13],  // 08:00–13:00
@@ -108,7 +109,7 @@ async function _fetchChunk(instrument, fromDate) {
   return [];
 }
 
-async function _fetchAllH1(instrument, years) {
+export async function _fetchAllH1(instrument, years) {
   const all    = [];
   let   cursor = new Date(Date.now() - years * 365.25 * 24 * 60 * 60 * 1000);
   const now    = new Date();
