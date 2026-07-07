@@ -75,6 +75,7 @@ import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliN
 import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats } from './js/zscoreSpreadEngine.js';
 import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
+import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -9069,6 +9070,65 @@ app.get('/api/zscore-v2/status/:jobId', (req, res) => {
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Macro-Direction predictiveness (falsification-first, before levels/z) ──────
+// Does the macro DIRECTION call lead forward FX drift at all? Engine:
+// js/macroDirectionEngine.js + js/macroDirectionCore.js. No levels, no z-gate.
+const macroDirJobs = new Map();
+function _purgeStaleMacroDirJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of macroDirJobs) if (job.startedAt < cutoff) macroDirJobs.delete(id);
+}
+
+app.get('/api/macro-direction/defaults', (_req, res) => {
+  res.json({ ok: true, defaults: MACRO_DIR_DEFAULTS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) => [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/macro-direction/run', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch macro data' });
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined,
+    dateTo:   b.dateTo   || undefined,
+    changeWindow: parseInt(b.changeWindow) || MACRO_DIR_DEFAULTS.changeWindow,
+    costPct:      num(b.costPct,   MACRO_DIR_DEFAULTS.costPct),
+    splitFrac:    num(b.splitFrac, MACRO_DIR_DEFAULTS.splitFrac),
+    weights: (b.weights && typeof b.weights === 'object')
+      ? { carry: num(b.weights.carry, 1), real: num(b.weights.real, 1), risk: num(b.weights.risk, 1) }
+      : MACRO_DIR_DEFAULTS.weights,
+  };
+  const pairsToRun = b.pair
+    ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p])
+    : Object.keys(ZSCORE_PAIRS);
+  if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+
+  const jobId = `md_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMacroDirJobs();
+  macroDirJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { perPair, pooled, log } = await runFullMacroDirection(opts, pairsToRun);
+      macroDirJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, perPair, pooled, log, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[macro-direction/run]', msg, e?.stack ?? '');
+      macroDirJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/macro-direction/status/:jobId', (req, res) => {
+  const job = macroDirJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
