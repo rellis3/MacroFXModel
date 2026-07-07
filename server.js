@@ -66,8 +66,9 @@ import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
-import { runFullZScoreBacktest, ZSCORE_PAIRS } from './js/zscoreSpreadEngine.js';
+import { runFullZScoreBacktest, ZSCORE_PAIRS, computeZScoreStats } from './js/zscoreSpreadEngine.js';
 import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zscoreSpreadV2Engine.js';
+import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -8837,12 +8838,21 @@ app.post('/api/zscore-v2/run', (req, res) => {
         runFullZScoreBacktest(v1Opts, pairsToRun),
         runFullZScoreV2Backtest(opts, pairsToRun),
       ]);
+      // v1's engine returns a POOLED `combined` with no IS/OOS split — reshape it to
+      // the same {all,is,oos:{stats}} the page expects so the OOS A/B actually renders.
+      const bSplit = zsSplitTradesByDate(baseline.trades, opts.splitFrac);
+      const baselineCombined = {
+        all: { stats: computeZScoreStats(baseline.trades) },
+        is:  { stats: computeZScoreStats(bSplit.is) },
+        oos: { stats: computeZScoreStats(bSplit.oos) },
+        splitDate: bSplit.splitDate,
+      };
       zsV2Jobs.set(jobId, {
         status: 'done', startedAt,
         result: {
           ok: true,
           message: `Z-Score V2 A/B complete — baseline ${baseline.trades.length} trades, v2 ${v2.trades.length} trades`,
-          baseline: { combined: baseline.combined, perPair: baseline.perPair, log: baseline.log },
+          baseline: { combined: baselineCombined, perPair: baseline.perPair, log: baseline.log },
           v2:       { combined: v2.combined, perPair: v2.perPair, log: v2.log },
           opts,
         },
