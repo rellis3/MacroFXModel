@@ -400,7 +400,7 @@ const fmt = (v,d=2) => v==null || (typeof v==='number' && !isFinite(v)) ? '—' 
 const sgn = (v,d=3) => v==null ? '—' : (v>=0?'+':'') + (+v).toFixed(d);
 const setStatus = (t,m) => { document.getElementById('bkDot').className='sdot '+t; document.getElementById('bkMsg').textContent=m; };
 const el = id => document.getElementById(id);
-const PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD','AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF','GBPNZD','CADJPY','CHFJPY','NZDJPY','GOLD','NAS100','SPX500','US30','DE30','UK100'];
+const PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD','AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF','GBPNZD','CADJPY','CHFJPY','NZDJPY','GOLD','NQ','SPX500','US30','DE30','UK100'];
 const clsBias = b => b==null ? 'neu' : Math.abs(b)<0.02 ? 'pos' : 'amber';
 const clsEx   = (v,tgt,tol=8) => v==null ? 'neu' : Math.abs(v-tgt)<tol ? 'pos' : 'neg';
 
