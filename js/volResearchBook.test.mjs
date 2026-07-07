@@ -78,6 +78,46 @@ test('error distribution: histogram sums to 100, over-state share tracks calibra
     assert.ok(b in e.hist, `error bucket ${b} present`);
 });
 
+test('PR-B seasonal: month buckets present, stats in range', () => {
+  const { summary } = evaluateForecast(synthDaily(800, 4), 'fx');
+  const s = summary.seasonal;
+  assert.ok(s && s.byMonth && Object.keys(s.byMonth).length >= 6, 'several months populated');
+  for (const b of Object.values(s.byMonth)) { assert.ok(b.n > 0 && b.exceedMedianPct >= 0 && b.exceedMedianPct <= 100); }
+  assert.ok('summer' in s.periods && 'monthEnd' in s.periods, 'named periods present');
+});
+
+test('PR-B confidence: three terciles, forward MAE non-negative', () => {
+  const { summary } = evaluateForecast(synthDaily(700, 6), 'fx');
+  const c = summary.confidence;
+  assert.equal(c.terciles.length, 3);
+  for (const t of c.terciles) { assert.ok(t.n > 0, 'tercile populated'); assert.ok(t.fwdMae >= 0, 'MAE ≥ 0'); }
+  assert.equal(typeof c.spreadMae, 'number');
+});
+
+test('PR-B multiDay: correlation is a valid coefficient', () => {
+  const { summary } = evaluateForecast(synthDaily(700, 8), 'fx');
+  const m = summary.multiDay;
+  assert.ok(m.errorPredictsNextVolCorr >= -1 && m.errorPredictsNextVolCorr <= 1, 'corr in [-1,1]');
+  assert.ok(m.baseExceedMedianPct >= 0 && m.baseExceedMedianPct <= 100);
+  if (m.afterThreeQuietExpandPct != null) assert.ok(m.afterThreeQuietExpandPct >= 0 && m.afterThreeQuietExpandPct <= 100);
+});
+
+test('PR-B day-types: shares sum to 100 and clustering is deterministic', () => {
+  const a = evaluateForecast(synthDaily(800, 2), 'fx').summary.dayTypes;
+  const b = evaluateForecast(synthDaily(800, 2), 'fx').summary.dayTypes;   // same seed ⇒ identical
+  assert.ok(!a.insufficient && a.clusters.length === 4, '4 clusters');
+  const share = a.clusters.reduce((s, c) => s + c.sharePct, 0);
+  assert.ok(Math.abs(share - 100) < 1.5, `shares sum ~100 (got ${share})`);
+  assert.deepEqual(a.clusters.map(c => c.n), b.clusters.map(c => c.n), 'deterministic (no RNG)');
+});
+
+test('PR-B misses: overshoot/undershoot profiles are shaped', () => {
+  const { summary } = evaluateForecast(synthDaily(700, 3), 'fx');
+  const m = summary.misses;
+  assert.ok('overshoot' in m && 'undershoot' in m && 'all' in m);
+  if (m.overshoot.n) { assert.ok(m.overshoot.pctOfDays > 0 && m.overshoot.pctOfDays < 100); assert.ok(typeof m.overshoot.topRegime === 'string'); }
+});
+
 test('no lookahead: truncating the series does not change earlier completion cells', () => {
   // The forecast for day i uses bars[0..i-1] only; evaluating a longer series
   // must reproduce the same early rows. Compare completion.n growth is monotone

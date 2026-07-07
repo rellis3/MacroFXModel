@@ -109,6 +109,11 @@
       <a href="#c7"><span class="qn">Q7</span>Forecast completion</a>
       <a href="#cD"><span class="qn">DoW</span>Day-of-week</a>
       <a href="#cP"><span class="qn">Seq</span>Persistence &amp; clustering</a>
+      <a href="#cMiss"><span class="qn">Miss</span>Forecast misses</a>
+      <a href="#cMulti"><span class="qn">nDay</span>Multi-day relationships</a>
+      <a href="#cSeason"><span class="qn">Cal</span>Monthly &amp; seasonal</a>
+      <a href="#cConf"><span class="qn">Conf</span>Forecast confidence</a>
+      <a href="#cType"><span class="qn">Type</span>Day-type clusters</a>
       <a href="#c8"><span class="qn">A/B</span>Estimator comparison</a>
       <a href="#cM"><span class="qn">§</span>Method &amp; caveats</a>
     </nav>
@@ -245,6 +250,67 @@
         <div class="answer" id="aP">—</div>
         <div class="tiles" id="cPtiles"></div>
         <div class="note" id="cPnote"></div>
+      </section>
+
+      <!-- ── Forecast misses ──────────────────────────────────────────── -->
+      <section class="chap" id="cMiss">
+        <div class="chap-h">Forecast misses <span class="qtag">Miss</span></div>
+        <div class="chap-q">Study the big-error days. What do the days the forecast badly under-called (overshoot ≥150% of median) or over-called (undershoot ≤50%) have in common — regime, trend-shape, the prior day? These failures are the most valuable trading filters.</div>
+        <div class="answer" id="aMiss">—</div>
+        <div class="sec-sub">Miss profiles — <span class="pair-badge" id="cMissPair"></span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Miss type</th><th class="num">n</th><th class="num">% of days</th><th class="num">Mean efficiency</th><th class="num">Mean VoV</th><th>Top regime</th><th>Top weekday</th><th class="num">Prior-day completion</th></tr></thead>
+          <tbody id="cMissTbl"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Multi-day relationships ──────────────────────────────────── -->
+      <section class="chap" id="cMulti">
+        <div class="chap-h">Multi-day relationships <span class="qtag">nDay</span></div>
+        <div class="chap-q">Do forecast errors predict future volatility? After three consecutive quiet (below-median) days, does expansion become more likely? Can the forecast's own misses forecast tomorrow?</div>
+        <div class="answer" id="aMulti">—</div>
+        <div class="tiles" id="cMultiTiles"></div>
+      </section>
+
+      <!-- ── Monthly & seasonal ───────────────────────────────────────── -->
+      <section class="chap" id="cSeason">
+        <div class="chap-h">Monthly &amp; seasonal <span class="qtag">Cal</span></div>
+        <div class="chap-q">Does forecast performance change seasonally — by month, over summer, December, month-end, quarter-end? (Liquidity and flow calendars leave a footprint in realized range.)</div>
+        <div class="answer" id="aSeason">—</div>
+        <div class="sec-sub">By month — <span class="pair-badge" id="cSeasonPair"></span> (H-L error, exceedance, mean completion)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Month</th><th class="num">n</th><th class="num">H-L MAE %</th><th class="num">Med-exceed %</th><th class="num">Mean completion %</th></tr></thead>
+          <tbody id="cSeasonTbl"></tbody>
+        </table></div></div>
+        <div class="sec-sub">Named periods</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Period</th><th class="num">n</th><th class="num">H-L MAE %</th><th class="num">Med-exceed %</th><th class="num">Mean completion %</th></tr></thead>
+          <tbody id="cSeasonPer"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Forecast confidence ──────────────────────────────────────── -->
+      <section class="chap" id="cConf">
+        <div class="chap-h">Forecast confidence <span class="qtag">Conf</span></div>
+        <div class="chap-q">Not just a forecast, but how much to trust it. Does recent forecast accuracy predict forward accuracy? If the last ~20 days were well-forecast, is today more reliable? (A walk-forward, self-referential confidence signal.)</div>
+        <div class="answer" id="aConf">—</div>
+        <div class="sec-sub">Reliability by recent-accuracy tercile — <span class="pair-badge" id="cConfPair"></span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Confidence bin</th><th class="num">n</th><th class="num">Forward H-L MAE %</th><th class="num">Forward med-exceed %</th></tr></thead>
+          <tbody id="cConfTbl"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ── Day-type clusters ────────────────────────────────────────── -->
+      <section class="chap" id="cType">
+        <div class="chap-h">Day-type clusters <span class="qtag">Type</span></div>
+        <div class="chap-q">Can days be grouped into a small number of recurring volatility "day types"? Clustering by trend-efficiency, completion and vol-of-vol reveals the market's repeating shapes — the taxonomy a decision engine can condition on.</div>
+        <div class="answer" id="aType">—</div>
+        <div class="sec-sub">Recurring day types — <span class="pair-badge" id="cTypePair"></span> (deterministic k-means, k=4)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Type</th><th class="num">Share %</th><th class="num">n</th><th class="num">Mean completion %</th><th class="num">Mean efficiency</th><th class="num">Mean VoV</th></tr></thead>
+          <tbody id="cTypeTbl"></tbody>
+        </table></div></div>
       </section>
 
       <!-- ── Ch 8 — Estimator comparison ──────────────────────────────── -->
@@ -493,7 +559,80 @@ function renderPair() {
   el('aP').innerHTML = lift==null ? '<span class="muted">Persistence data unavailable.</span>'
     : lift > 6 ? `Volatility <strong>clusters</strong> for ${pair}: after a day that exceeds its 75th percentile, the next day exceeds its median <strong class="pos">${fmt(p.afterAbove75Pct,1)}%</strong> of the time vs a <strong>${fmt(p.baseExceedMedianPct,1)}%</strong> base rate (+${fmt(lift,1)}pp). Expansion begets expansion — the one regularity worth leaning on, and the basis for a "stay wide after a big day" rule.`
     : `For ${pair}, an above-75th day gives only a <strong>${sgn(lift,1)}pp</strong> lift to the next day's exceedance (${fmt(p.afterAbove75Pct,1)}% vs ${fmt(p.baseExceedMedianPct,1)}% base) — clustering is weak here; treat each day closer to independent.`;
-  el('cPnote').innerHTML = `<span class="bk-lbl">Multi-day chains (3 consecutive quiet days → expansion probability; whether forecast errors themselves predict next-day vol) are the next extension — a dedicated multi-day study.</span>`;
+  el('cPnote').innerHTML = `<span class="bk-lbl">1-step persistence shown here; the full multi-day chains (3-quiet→expansion, errors→next-day vol) are in the Multi-day chapter below.</span>`;
+
+  renderPRB(s, pair);
+}
+
+// ── PR-B daily-aggregation chapters ──────────────────────────────────────────
+function renderPRB(s, pair) {
+  ['cMissPair','cSeasonPair','cConfPair','cTypePair'].forEach(id=>el(id).textContent = pair);
+
+  // Misses
+  const m = s.misses;
+  if (m && (m.overshoot || m.undershoot)) {
+    const mrow = (lbl, o) => o && o.n ? `<tr><td><strong>${lbl}</strong></td><td class="num">${o.n}</td><td class="num">${fmt(o.pctOfDays,1)}%</td>
+      <td class="num">${fmt(o.meanEff,3)}</td><td class="num">${fmt(o.meanVov,4)}</td><td>${o.topRegime||'—'}</td><td>${o.topDow||'—'}</td>
+      <td class="num">${o.priorDayComplMean==null?'—':fmt(o.priorDayComplMean,0)+'%'}</td></tr>` : `<tr><td><strong>${lbl}</strong></td><td colspan="7" class="neu">no days in this tail</td></tr>`;
+    el('cMissTbl').innerHTML = mrow('Overshoot ≥150%', m.overshoot) + mrow('Undershoot ≤50%', m.undershoot)
+      + `<tr><td class="neu">Baseline (all days)</td><td colspan="3" class="neu">mean efficiency ${fmt(m.all?.meanEff,3)} · mean VoV ${fmt(m.all?.meanVov,4)}</td><td colspan="4"></td></tr>`;
+    const ov = m.overshoot;
+    el('aMiss').innerHTML = ov && ov.n
+      ? `The days the forecast most <strong>under-calls</strong> (${ov.pctOfDays}% of days, realized ≥150% of the median) are <strong>${ov.topRegime}</strong> and run <strong>trend-like</strong> (efficiency ${fmt(ov.meanEff,3)} vs ${fmt(m.all?.meanEff,3)} baseline)${ov.priorDayComplMean!=null?`, typically <strong>following an already-large day</strong> (${fmt(ov.priorDayComplMean,0)}% prior completion)`:''}. That combination — trend regime + a big prior day — is a candidate "expect an expansion the band won't hold" filter.`
+      : '<span class="muted">Too few big-miss days on this pair to profile.</span>';
+  }
+
+  // Multi-day
+  const md = s.multiDay;
+  if (md) {
+    const lift = (md.afterThreeQuietExpandPct!=null) ? +(md.afterThreeQuietExpandPct - md.baseExceedMedianPct).toFixed(1) : null;
+    el('cMultiTiles').innerHTML = [
+      ['Err → next-day vol', sgn(md.errorPredictsNextVolCorr,2), 'corr(%err, tmrw H-L)'],
+      ['Base next-day exceed', fmt(md.baseExceedMedianPct,1)+'%', 'unconditional'],
+      ['After 3+ quiet days', md.afterThreeQuietExpandPct==null?'—':fmt(md.afterThreeQuietExpandPct,1)+'%', 'next-day exceed'],
+      ['Expansion lift', lift==null?'—':sgn(lift,1)+' pp', `${md.afterThreeQuietN??0} events`],
+    ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv ${k==='Expansion lift'&&lift>0?'pos':''}">${v}</div><div class="td">${d}</div></div>`).join('');
+    el('aMulti').innerHTML =
+      `${lift!=null && lift>4 ? `<strong>Compression mean-reverts</strong>: after 3+ consecutive below-median days, the next day exceeds its median <strong class="pos">${fmt(md.afterThreeQuietExpandPct,1)}%</strong> vs a ${fmt(md.baseExceedMedianPct,1)}% base (+${fmt(lift,1)}pp). ` : `After 3+ quiet days the next-day exceedance is ${fmt(md.afterThreeQuietExpandPct,1)}% vs ${fmt(md.baseExceedMedianPct,1)}% base — little mean-reversion signal here. `}
+       Forecast errors ${Math.abs(md.errorPredictsNextVolCorr)>=0.1 ? `<strong>carry information</strong> (corr ${sgn(md.errorPredictsNextVolCorr,2)} with tomorrow's range — a big surprise today ${md.errorPredictsNextVolCorr>0?'precedes a bigger':'precedes a smaller'} tomorrow)` : `barely predict tomorrow's range (corr ${sgn(md.errorPredictsNextVolCorr,2)})`}.`;
+  }
+
+  // Seasonal
+  const se = s.seasonal;
+  if (se && se.byMonth) {
+    const MN = {'01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun','07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec'};
+    const months = Object.keys(se.byMonth).sort();
+    el('cSeasonTbl').innerHTML = months.map(mk=>{ const o=se.byMonth[mk]; return `<tr><td><strong>${MN[mk]}</strong></td><td class="num">${o.n}</td>
+      <td class="num">${fmt(o.mae,1)}</td><td class="num ${clsEx(o.exceedMedianPct,50)}">${fmt(o.exceedMedianPct,1)}</td><td class="num">${fmt(o.meanCompletion,0)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+    const per = se.periods||{}; const pn = {summer:'Summer (Jul–Aug)',december:'December',monthEnd:'Month-end (≥26th)',quarterEnd:'Quarter-end'};
+    el('cSeasonPer').innerHTML = Object.keys(pn).map(k=>{ const o=per[k]; return o ? `<tr><td>${pn[k]}</td><td class="num">${o.n}</td>
+      <td class="num">${fmt(o.mae,1)}</td><td class="num ${clsEx(o.exceedMedianPct,50)}">${fmt(o.exceedMedianPct,1)}</td><td class="num">${fmt(o.meanCompletion,0)}</td></tr>` : ''; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
+    // best/worst month by exceedance drift
+    const byDrift = months.map(mk=>({mk,d:Math.abs(se.byMonth[mk].exceedMedianPct-50)})).sort((a,b)=>a.d-b.d);
+    el('aSeason').innerHTML = months.length
+      ? `Calibration drifts across the calendar for ${pair}: <strong>${MN[byDrift[0].mk]}</strong> is the best-calibrated month and <strong>${MN[byDrift.at(-1).mk]}</strong> the most off-target. ${per.summer&&per.december?`Summer runs ${fmt(per.summer.meanCompletion,0)}% mean completion vs December ${fmt(per.december.meanCompletion,0)}% — ${per.summer.meanCompletion<per.december.meanCompletion?'thinner summer ranges the forecast tends to over-call':'watch the seasonal completion gap'}.`:''}`
+      : '<span class="muted">Seasonal breakdown unavailable.</span>';
+  }
+
+  // Confidence
+  const cf = s.confidence;
+  if (cf && cf.terciles) {
+    el('cConfTbl').innerHTML = cf.terciles.map(t=>`<tr><td>${t.label}</td><td class="num">${t.n}</td>
+      <td class="num">${fmt(t.fwdMae,1)}</td><td class="num ${clsEx(t.fwdExceedMedianPct,50)}">${fmt(t.fwdExceedMedianPct,1)}</td></tr>`).join('');
+    const hi=cf.terciles[0], lo=cf.terciles[2];
+    el('aConf').innerHTML = (hi&&lo)
+      ? `${cf.spreadMae>0.05 ? `<strong>Recent accuracy predicts forward accuracy</strong>: days following a well-forecast stretch (low recent error) have H-L MAE <strong class="pos">${fmt(hi.fwdMae,1)}</strong> vs <strong>${fmt(lo.fwdMae,1)}</strong> after a poorly-forecast stretch — a usable ${fmt(cf.spreadMae,1)}pp confidence spread.` : `Recent accuracy barely predicts forward accuracy (MAE ${fmt(hi.fwdMae,1)} vs ${fmt(lo.fwdMae,1)}, spread ${fmt(cf.spreadMae,1)}pp) — trust is roughly constant day-to-day for ${pair}.`} <span class="muted">Trailing window ${cf.window} days, walk-forward.</span>`
+      : '<span class="muted">Confidence breakdown unavailable.</span>';
+  }
+
+  // Day-types
+  const dt = s.dayTypes;
+  if (dt && dt.clusters) {
+    el('cTypeTbl').innerHTML = dt.clusters.map(c=>`<tr><td><strong>${c.label}</strong></td><td class="num">${fmt(c.sharePct,1)}%</td><td class="num">${c.n}</td>
+      <td class="num">${fmt(c.meanCompletion,0)}</td><td class="num">${fmt(c.meanEfficiency,3)}</td><td class="num">${fmt(c.meanVov,4)}</td></tr>`).join('');
+    const top = dt.clusters.slice().sort((a,b)=>b.sharePct-a.sharePct)[0];
+    el('aType').innerHTML = `${pair}'s days fall into ${dt.k} recurring shapes; the most common is <strong>${top.label}</strong> (${fmt(top.sharePct,1)}% of days). Reading the table top-to-bottom is high-to-low completion: expansion/trend days at the top, quiet/chop days at the bottom — the taxonomy a fade-vs-follow selector would condition on.`;
+  } else el('aType').innerHTML = '<span class="muted">Not enough days to cluster on this pair.</span>';
 }
 
 function calBar(label, val, tgt) {
