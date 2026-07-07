@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Range-Level Edge — do levels beat a placebo?</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#141924; --panel2:#1b2230; --fg:#dfe6f2; --dim:#8b97ad;
+          --grn:#22c55e; --red:#ef4444; --amb:#f59e0b; --blu:#4a90d9; --border:#26314a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--border); background:var(--panel); }
+  h1 { margin:0 0 4px; font-size:19px; }
+  .sub { color:var(--dim); font-size:13px; max-width:940px; }
+  .wrap { padding:22px; max-width:1120px; margin:0 auto; }
+  .banner { background:#3a2a12; border:1px solid #7a5316; color:#f4c77b; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+  .panel h2 { margin:0 0 12px; font-size:15px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  input, select { width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--blu); color:#fff; border:0; border-radius:7px; padding:10px 20px; font-size:14px; font-weight:600; cursor:pointer; margin-top:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { margin-top:10px; color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:right; padding:6px 10px; border-bottom:1px solid var(--border); }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .pos { color:var(--grn); } .neg { color:var(--red); } .muted { color:var(--dim); font-size:12px; }
+  .verdict { font-size:13px; padding:10px 14px; border-radius:8px; margin-top:12px; }
+  .verdict.good { background:#0f2a18; border:1px solid #1f6b3a; color:#8fe6ab; }
+  .verdict.bad  { background:#2a1212; border:1px solid #6b1f1f; color:#e69a9a; }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Range-Level Edge — do levels beat a placebo?</h1>
+  <div class="sub">The foundation test, <b>before</b> any macro/z/confidence. When price first tags a 5m Asia-range level
+  (raw session high/low, and today∩yesterday fib confluence), we race a <b>symmetric ±D barrier</b>: does it bounce
+  (revert) or break? The only honest S/R test is vs a <b>placebo</b> — the same level shifted to the wrong price. If real
+  levels don't bounce more than shifted placebos, "price respects the level" is folklore and the levels-time-the-entry
+  premise is dead.</div>
+</header>
+<div class="wrap">
+  <div class="banner">⚠️ <b>Built, not proven.</b> Needs M1 data (Railway). Read the pooled row: if <b>real bounce ≈ placebo bounce</b>
+  (delta ≈ 0) and OOS expectancy ≤ 0 after cost, levels have no standalone edge — stop before adding filters on top.</div>
+
+  <div class="panel">
+    <h2>Run parameters</h2>
+    <div class="grid">
+      <div><label>Pair</label><select id="pair"><option value="">All pairs</option></select></div>
+      <div><label>Date from</label><input id="dateFrom" placeholder="2018-01-01"></div>
+      <div><label>Date to</label><input id="dateTo" placeholder="today"></div>
+      <div><label>confluence tol (pips)</label><input id="confluenceTolPips" value="2"></div>
+      <div><label>barrier D (× Asia range)</label><input id="barrierFrac" value="0.25"></div>
+      <div><label>spread cost (pips)</label><input id="spreadPips" value="1.0"></div>
+    </div>
+    <button id="runBtn">Run test</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="results" style="display:none">
+    <div class="panel">
+      <h2>Pooled OOS — real levels vs placebo (cross-pair)</h2>
+      <div class="scroll"><div id="pooled"></div></div>
+      <div id="verdict"></div>
+    </div>
+    <div class="panel">
+      <h2>Per-pair OOS bounce rate (real vs placebo)</h2>
+      <div class="muted" style="margin-bottom:8px">Bounce% = share of resolved races that reverted off the level. Delta = real − placebo (the edge, if any). Exp = after-cost expectancy in pips.</div>
+      <div class="scroll"><div id="perpair"></div></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d=1) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : '';
+
+fetch('/api/range-level-edge/defaults').then(r=>r.json()).then(j=>{
+  if(!j.ok) return;
+  for(const [k,v] of Object.entries(j.pairs||{})){ const o=document.createElement('option'); o.value=k; o.textContent=v.pairDisplay; $('pair').appendChild(o); }
+}).catch(()=>{});
+
+function pooledTable(p){
+  if(!p) return '<div class="muted">no data</div>';
+  return `<table><thead><tr><th>Level type</th><th>Bounce% (OOS)</th><th>Placebo bounce%</th><th>Delta</th><th>Exp pips (OOS)</th></tr></thead><tbody>
+    <tr><td>Raw Asia edges</td><td>${fmt(p.edgeBounceOos)}%</td><td class="muted">${fmt(p.placeboBounceOos)}%</td><td class="${cls(p.edgeDelta)}">${fmt(p.edgeDelta)}</td><td class="${cls(p.edgeExpectancyOos)}">${fmt(p.edgeExpectancyOos,2)}</td></tr>
+    <tr><td>Today∩Yesterday confluence</td><td>${fmt(p.confluenceBounceOos)}%</td><td class="muted">${fmt(p.placeboBounceOos)}%</td><td class="${cls(p.confluenceDelta)}">${fmt(p.confluenceDelta)}</td><td class="${cls(p.confluenceExpectancyOos)}">${fmt(p.confluenceExpectancyOos,2)}</td></tr>
+    </tbody></table><div class="muted" style="margin-top:6px">Confluence beats placebo on ${p.pairsConfluenceBeatsPlacebo}/${p.pairs} pairs.</div>`;
+}
+
+function verdict(p){
+  if(!p) return '';
+  const cEdge = p.confluenceDelta, cExp = p.confluenceExpectancyOos, eEdge = p.edgeDelta;
+  const real = (cEdge > 2 && cExp > 0 && p.pairsConfluenceBeatsPlacebo > p.pairs/2) || (eEdge > 2 && p.edgeExpectancyOos > 0);
+  if(real) return `<div class="verdict good">✓ Levels beat the placebo — confluence delta ${fmt(cEdge)}pp, OOS expectancy ${fmt(cExp,2)} pips, ${p.pairsConfluenceBeatsPlacebo}/${p.pairs} pairs. There's a real level edge to build entries on. Next: add the (weak) macro directional filter and see if it improves selection.</div>`;
+  return `<div class="verdict bad">✗ Levels do NOT beat the placebo (confluence delta ${fmt(cEdge)}pp, edge delta ${fmt(eEdge)}pp, OOS expectancy ${fmt(cExp,2)} pips). "Price respects the level" is not showing up vs a shifted placebo — the levels-time-the-entry premise is folklore on this data. Don't build filters on top; redirect to the trend-basket work.</div>`;
+}
+
+function perPairTable(perPair){
+  const rows = Object.values(perPair||{});
+  if(!rows.length) return '<div class="muted">no data</div>';
+  let out='';
+  for(const r of rows){
+    const c=r.confluence.oos, e=r.edge.oos, pl=r.placebo.oos;
+    out+=`<tr><td>${r.pairDisplay}</td><td>edge</td><td>${e.n}</td><td>${fmt(e.bounceRate)}%</td><td class="muted">${fmt(pl.bounceRate)}%</td><td class="${cls(r.vsPlacebo.edge.bounceRateDelta)}">${fmt(r.vsPlacebo.edge.bounceRateDelta)}</td><td class="${cls(e.expectancyPips)}">${fmt(e.expectancyPips,2)}</td></tr>`;
+    out+=`<tr><td></td><td>confluence</td><td>${c.n}</td><td>${fmt(c.bounceRate)}%</td><td class="muted">${fmt(pl.bounceRate)}%</td><td class="${cls(r.vsPlacebo.confluence.bounceRateDelta)}">${fmt(r.vsPlacebo.confluence.bounceRateDelta)}</td><td class="${cls(c.expectancyPips)}">${fmt(c.expectancyPips,2)}</td></tr>`;
+  }
+  return `<table><thead><tr><th>Pair</th><th>Level</th><th>Races</th><th>Bounce%</th><th>Placebo%</th><th>Delta</th><th>Exp pips</th></tr></thead><tbody>${out}</tbody></table>`;
+}
+
+async function run(){
+  $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
+  const body={ pair:$('pair').value, dateFrom:$('dateFrom').value, dateTo:$('dateTo').value,
+    confluenceTolPips:$('confluenceTolPips').value, barrierFrac:$('barrierFrac').value, spreadPips:$('spreadPips').value };
+  try{
+    const r=await fetch('/api/range-level-edge/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok){ $('status').textContent='Error: '+j.error; $('runBtn').disabled=false; return; }
+    poll(j.jobId);
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+async function poll(jobId){
+  try{
+    const r=await fetch('/api/range-level-edge/status/'+jobId); const j=await r.json();
+    if(j.status==='running'){ $('status').textContent=`Running… ${j.elapsed||0}s (loading M1, racing barriers)`; setTimeout(()=>poll(jobId),2000); return; }
+    if(j.status==='done'){
+      $('status').textContent='Done';
+      $('pooled').innerHTML=pooledTable(j.pooled);
+      $('verdict').innerHTML=verdict(j.pooled);
+      $('perpair').innerHTML=perPairTable(j.perPair);
+      $('results').style.display='block'; $('runBtn').disabled=false; return;
+    }
+    $('status').textContent='Error: '+(j.error||'unknown'); $('runBtn').disabled=false;
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+$('runBtn').addEventListener('click', run);
+</script>
+</body>
+</html>

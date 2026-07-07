@@ -457,6 +457,16 @@ This is the **falsification-first** step under the "macro sets direction, levels
 
 ---
 
+### 1m. Range-level edge test (2026-07-07) — the S/R folklore falsification
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Range-level core** | `js/rangeLevelCore.js` | pure test of "does a 5m range level have ANY standalone edge vs a placebo": `FIB_LADDER`/`buildLadder` (half-integer grid off a session range), `findConfluence` (today∩yesterday ladder match within tol), `mulberry32` (seeded PRNG for reproducible placebo shifts), `barrierRace` (symmetric ±D bounce-vs-break race, same-bar tie → break), `summarizeRace` (bounce rate + after-cost expectancy over resolved races), `edgeVsPlacebo` (real − placebo bounce delta). Re-exports `splitByDate`. Tested `js/rangeLevelCore.test.mjs` (13 asserts). | `js/rangeLevelEdgeEngine.js` (I/O: reuses `loadM1ForPair` + the z-engine's `analyzeDay`/`buildDayIndex`; real levels = Asia edges + today∩yesterday confluence, each with a shifted PLACEBO control; per-pair + pooled OOS); `server.js` `/api/range-level-edge/*`; `range-level-edge.html` | 🟡 built, **not yet run** (needs M1 on Railway) |
+
+The **foundation-below-the-foundation** test: before macro/z/confidence, does price "respect" a range level more than a random price? The only honest S/R test is vs a **placebo** (same level shifted to the wrong spot) — if real ≈ placebo, "levels work" is folklore. Symmetric barrier (no R:R to game), after-cost, IS/OOS. Ordered after the macro-direction null: prove the *level* has edge before asking whether a (weak) macro filter improves entry selection.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
