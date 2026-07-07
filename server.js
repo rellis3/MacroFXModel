@@ -8047,22 +8047,25 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
         try {
           const { bars, src } = await _intradayForAB(cfg);   // reuse the estimator's intraday loader
           let pip = 0.0001; try { pip = _pipSize(cfg.name) || 0.0001; } catch { /* default */ }
-          const r = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip });
-          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nDays}d, src ${src})`); continue; }
-          r.src = src; perPair[cfg.name] = r;
-          log.push(`${cfg.name}: ${r.nDays}d src=${src} touch=${r.touches?.medianExtension?.touchRatePct}% cont=${r.touches?.medianExtension?.continuePct}%`);
+          // Run all three horizons — daily / weekly / 20-day — off the same bars.
+          const daily  = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'daily' });
+          if (daily.insufficient) { log.push(`${cfg.name}: insufficient (${daily.nDays}d, src ${src})`); continue; }
+          const weekly = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'weekly' });
+          const d20    = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'd20' });
+          perPair[cfg.name] = { src, daily, weekly: weekly.insufficient ? null : weekly, d20: d20.insufficient ? null : d20 };
+          log.push(`${cfg.name}: ${daily.nDays}d src=${src} D-touch=${daily.touches?.medianExtension?.touchRatePct}% W=${weekly.insufficient ? 'n/a' : weekly.touches?.medianExtension?.touchRatePct + '%'}`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);
       if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
-      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k]) ?? 0), 0) / names.length).toFixed(1);
+      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k].daily) ?? 0), 0) / names.length).toFixed(1);
       const cross = {
         nPairs: names.length,
         medianTouchRatePct: _avg(r => r.touches?.medianExtension?.touchRatePct),
         medianContinuePct:  _avg(r => r.touches?.medianExtension?.continuePct),
         medianReverse20Pct: _avg(r => r.touches?.medianExtension?.reverse20Pct),
         reached100Pct:      _avg(r => r.expansion?.reached100Pct),
-        ranked: names.map(k => ({ pair: k, touchRate: perPair[k].touches?.medianExtension?.touchRatePct ?? 0, continuePct: perPair[k].touches?.medianExtension?.continuePct ?? 0, reverse20Pct: perPair[k].touches?.medianExtension?.reverse20Pct ?? 0, src: perPair[k].src })).sort((a, b) => b.continuePct - a.continuePct),
+        ranked: names.map(k => ({ pair: k, touchRate: perPair[k].daily.touches?.medianExtension?.touchRatePct ?? 0, continuePct: perPair[k].daily.touches?.medianExtension?.continuePct ?? 0, reverse20Pct: perPair[k].daily.touches?.medianExtension?.reverse20Pct ?? 0, src: perPair[k].src })).sort((a, b) => b.continuePct - a.continuePct),
       };
       if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
       const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);

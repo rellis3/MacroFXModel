@@ -150,6 +150,18 @@ test('PR-C re-anchor: London daily bars group by London date and feed evaluateFo
   assert.ok(summary.completion && summary.errorDist && summary.dayTypes, 'all aggregates present on London-anchored eval');
 });
 
+test('PR-E: completion computed at all three horizons', () => {
+  const { summary } = evaluateForecast(synthDaily(700, 4), 'fx');
+  const cbh = summary.completionByHorizon;
+  assert.ok(cbh && cbh.daily && cbh.d5 && cbh.d20, 'completion present for daily/5d/20d');
+  assert.ok(cbh.daily.n > 100, 'daily completion populated');
+  // 5d/20d completion buckets (when populated) sum to ~100.
+  for (const hz of ['d5', 'd20']) if (cbh[hz].n) {
+    const s = Object.values(cbh[hz].hist).reduce((a, b) => a + b, 0);
+    assert.ok(Math.abs(s - 100) < 0.6, `${hz} hist sums ~100 (got ${s})`);
+  }
+});
+
 test('PR-C: London midnight is the day boundary (23:00 vs 01:00 split across dates)', () => {
   // A bar at 22:30 UTC in winter is 22:30 London (same date); one at 00:30 UTC is
   // 00:30 London (next date). Verify _londonParts assigns them to different dates.

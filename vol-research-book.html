@@ -92,6 +92,8 @@
     <button class="bk-run-btn" id="runIntraBtn" onclick="runIntraday()" style="background:var(--blue)">▶ Intraday</button>
     <span id="runStatus" class="bk-lbl"></span>
     <span style="flex:1"></span>
+    <span class="bk-lbl">Horizon:</span>
+    <select id="horizon" onchange="onHorizon()"><option value="daily">Daily</option><option value="weekly">Weekly (5d)</option><option value="d20">20-day</option></select>
     <span class="bk-lbl">Drill into pair:</span>
     <select id="viewPair" onchange="renderPair()"></select>
   </div>
@@ -373,6 +375,11 @@
 let _R = null;   // research data (/api/vol-forecast-research)
 let _AB = null;  // estimator data (/api/estimator-ab)
 let _IN = null;  // intraday data (/api/intraday-research)
+// Horizon toggle: UI value → research-engine key (daily/d5/d20) and intraday key (daily/weekly/d20).
+const HZ = () => el('horizon')?.value || 'daily';
+const HZ_RES = { daily:'daily', weekly:'d5', d20:'d20' };
+const HZ_LBL = { daily:'Daily', weekly:'Weekly (5d)', d20:'20-day' };
+function onHorizon() { renderPair(); }
 const fmt = (v,d=2) => v==null || (typeof v==='number' && !isFinite(v)) ? '—' : typeof v==='number' ? v.toFixed(d) : v;
 const sgn = (v,d=3) => v==null ? '—' : (v>=0?'+':'') + (+v).toFixed(d);
 const setStatus = (t,m) => { document.getElementById('bkDot').className='sdot '+t; document.getElementById('bkMsg').textContent=m; };
@@ -496,9 +503,10 @@ function renderPair() {
     <td class="num">${fmt(o.mape,0)}</td>
     <td class="num ${o.sharpnessCorr>=0.4?'pos':o.sharpnessCorr<0.15?'neg':'neu'}">${fmt(o.sharpnessCorr,3)}</td></tr>`).join('') || '<tr><td colspan="7" class="neu">—</td></tr>';
 
-  // Ch2 — calibration bars for each daily component
+  // Ch2 — calibration bars for each component at the selected horizon
+  const _hz = HZ(), _rk = HZ_RES[_hz];
   const calRows = [];
-  const dC = s.perComponent?.daily || {};
+  const dC = s.perComponent?.[_rk] || s.perComponent?.daily || {};
   for (const [k,lbl] of [['hl','H-L range'],['oc','O-C move'],['oh','O-H up'],['ol','O-L down']]) {
     const o = dC[k]; if (!o) continue;
     calRows.push(calBar(`${lbl} > median`, o.exceedMedianPct, 50));
@@ -507,8 +515,8 @@ function renderPair() {
   el('c2cal').innerHTML = calRows.join('') || '<div class="neu">—</div>';
   const hl = dC.hl || {};
   el('a2').innerHTML =
-    `If the forecast is well-formed, realized exceeds the <strong>median ~50%</strong> of days and the <strong>75th ~25%</strong>.
-     For ${pair}, H-L exceeds its median <strong class="${clsEx(hl.exceedMedianPct,50)}">${fmt(hl.exceedMedianPct,1)}%</strong> and its 75th <strong class="${clsEx(hl.exceed75Pct,25)}">${fmt(hl.exceed75Pct,1)}%</strong>.
+    `If the forecast is well-formed, realized exceeds the <strong>median ~50%</strong> and the <strong>75th ~25%</strong> of the time.
+     At the <strong>${HZ_LBL[_hz]}</strong> horizon for ${pair}, H-L exceeds its median <strong class="${clsEx(hl.exceedMedianPct,50)}">${fmt(hl.exceedMedianPct,1)}%</strong> and its 75th <strong class="${clsEx(hl.exceed75Pct,25)}">${fmt(hl.exceed75Pct,1)}%</strong>.
      ${hl.exceedMedianPct!=null && hl.exceedMedianPct<42 ? 'Both sit below target ⇒ the bands run <strong>too wide</strong> (the forecast over-states the range) — this is the recalibration signal.' : hl.exceedMedianPct>58 ? 'Both sit above target ⇒ the bands run <strong>too tight</strong> (the forecast under-states the range).' : 'Close to target ⇒ reasonably calibrated.'}`;
 
   // Ch2 — distribution buckets (from exceedance) + error histogram
@@ -593,32 +601,44 @@ function renderPair() {
   renderIntraday(pair);
 }
 
-// ── PR-D intraday chapters (expansion + level touches) ───────────────────────
+// ── PR-D/E intraday chapters (expansion + level touches), horizon-aware ──────
 function renderIntraday(pair) {
   ['c6pair','cTouchPair'].forEach(id=>el(id) && (el(id).textContent = pair));
-  const r = _IN?.perPair?.[pair];
+  const hz = HZ(), parent = _IN?.perPair?.[pair];
+  const r = parent?.[hz];
+  const src = parent?.src;
+  // Time-unit helpers: daily = London hour, weekly/20d = day-of-window.
+  const isDay = r?.expansion?.timeUnit === 'day';
+  const at = v => isDay ? `~day ${fmt(v,1)}` : `~${fmt(v,1)}:00`;
+  const barLbl = v => isDay ? `d${fmt(v,1)}` : `${fmt(v,1)}h`;
+  const unit = hz==='daily' ? 'days' : (hz==='weekly' ? 'weeks' : '20-day windows');
+  const unitAxis = isDay ? 'day-of-window' : 'London-hour';
 
   // Ch6 — expansion
-  if (!r || !r.expansion) {
-    el('a6').innerHTML = `<span class="muted">Intraday research not run yet. Open the book's Run control (it triggers <code>/api/intraday-research</code>, which loads M1/H1 per pair), or run it once — then this chapter and Level touches populate. It measures the London-hour at which the day builds 25/50/75/100% of its expected range.</span>`;
+  if (!r || !r.expansion || !r.expansion.n) {
+    el('a6').innerHTML = parent
+      ? `<span class="muted">No ${HZ_LBL[hz]} expansion data for ${pair} — the ${hz} horizon may have too few windows in this run. Try Daily, or a longer history.</span>`
+      : `<span class="muted">Intraday research not run yet. Click <strong>▶ Intraday</strong> above (loads M1/H1 per pair and runs all three horizons) — then this chapter and Level touches populate.</span>`;
     el('c6bars').innerHTML=''; el('c6tiles').innerHTML=''; el('c6note').textContent='';
   } else {
     const ex = r.expansion, fr=['25','50','75','100'];
     const maxH = Math.max(...fr.map(f=>ex.medianHourTo[f]||0), 1);
-    el('c6bars').innerHTML = fr.map(f=>{ const h=ex.medianHourTo[f]||0; return `<div class="bar"><span class="bv">${fmt(h,1)}h</span><span class="bb" style="height:${h/maxH*100}%;background:${f==='100'?'var(--green)':'var(--blue)'}"></span><span class="bl">${f}%</span></div>`; }).join('');
+    el('c6bars').innerHTML = fr.map(f=>{ const h=ex.medianHourTo[f]||0; return `<div class="bar"><span class="bv">${barLbl(h)}</span><span class="bb" style="height:${h/maxH*100}%;background:${f==='100'?'var(--green)':'var(--blue)'}"></span><span class="bl">${f}%</span></div>`; }).join('');
     el('c6tiles').innerHTML = [
-      ['Reaches 50%','~'+fmt(ex.medianHourTo['50'],1)+':00','London hour'],
-      ['Reaches 100%','~'+fmt(ex.medianHourTo['100'],1)+':00','London hour'],
-      ['Complete full range', fmt(ex.reached100Pct,0)+'%','of days'],
-      ['Big-day 50% by', '~'+fmt(ex.bigDayMedianTo50,1)+':00','vs quiet '+fmt(ex.smallDayMedianTo50,1)+':00'],
+      ['Reaches 50%', at(ex.medianHourTo['50']), unitAxis],
+      ['Reaches 100%', at(ex.medianHourTo['100']), unitAxis],
+      ['Complete full range', fmt(ex.reached100Pct,0)+'%','of '+unit],
+      ['Big 50% by', at(ex.bigDayMedianTo50),'vs quiet '+at(ex.smallDayMedianTo50)],
     ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv">${v}</div><div class="td">${d}</div></div>`).join('');
-    el('c6note').innerHTML = `Bars show the median London-hour at which the cumulative range crosses each fraction of the <em>forecast</em> range. Big days (realized &gt; forecast) reach the halfway mark by <strong>${fmt(ex.bigDayMedianTo50,1)}:00</strong> vs <strong>${fmt(ex.smallDayMedianTo50,1)}:00</strong> on quiet days — ${ex.bigDayMedianTo50<ex.smallDayMedianTo50?'expansion days declare themselves early':'the gap is small on this pair'}.`;
-    el('a6').innerHTML = `For ${pair}, the day builds 50% of its expected range by ~<strong>${fmt(ex.medianHourTo['50'],1)}:00</strong> London and the full range by ~<strong>${fmt(ex.medianHourTo['100'],1)}:00</strong>; <strong>${fmt(ex.reached100Pct,0)}%</strong> of days complete the forecast range. ${ex.bigDayMedianTo50<ex.smallDayMedianTo50?'<strong>Large days expand early</strong> — a fast first-half range is a tell.':'Expansion timing is similar for large and small days here.'}`;
+    el('c6note').innerHTML = `Bars show the median ${unitAxis} at which cumulative range crosses each fraction of the <em>${HZ_LBL[hz]}</em> forecast range. Big ${unit} reach halfway by <strong>${at(ex.bigDayMedianTo50)}</strong> vs <strong>${at(ex.smallDayMedianTo50)}</strong> on quiet ${unit} — ${ex.bigDayMedianTo50<ex.smallDayMedianTo50?'expansion declares itself early':'the gap is small on this pair'}.`;
+    el('a6').innerHTML = `At the <strong>${HZ_LBL[hz]}</strong> horizon, ${pair} builds 50% of its expected range by <strong>${at(ex.medianHourTo['50'])}</strong> and the full range by <strong>${at(ex.medianHourTo['100'])}</strong>; <strong>${fmt(ex.reached100Pct,0)}%</strong> of ${unit} complete the forecast range. ${ex.bigDayMedianTo50<ex.smallDayMedianTo50?'<strong>Large '+unit+' expand early</strong> — a fast early range is a tell.':'Expansion timing is similar for large and small '+unit+' here.'}`;
   }
 
   // Level touches
-  if (!r || !r.touches) {
-    el('aTouch').innerHTML = `<span class="muted">Run intraday research to populate the level-touch / pip-excursion study.</span>`;
+  if (!r || !r.touches || !r.touches.medianExtension?.n) {
+    el('aTouch').innerHTML = parent
+      ? `<span class="muted">No ${HZ_LBL[hz]} level touches for ${pair} in this run.</span>`
+      : `<span class="muted">Click <strong>▶ Intraday</strong> to populate the level-touch / pip-excursion study (runs all three horizons).</span>`;
     ['cTouchTbl','cTouchReg'].forEach(id=>el(id).innerHTML='<tr><td colspan="10" class="neu">—</td></tr>');
     el('cTouchTiles').innerHTML=''; el('cTouchNote').textContent=''; return;
   }
@@ -638,11 +658,10 @@ function renderIntraday(pair) {
   const reg = M.byRegime||{};
   el('cTouchReg').innerHTML = Object.keys(reg).map(rg=>{ const o=reg[rg]; return `<tr><td><strong>${rg}</strong></td><td class="num">${o.n}</td>
     <td class="num">${fmt(o.continuePct,1)}</td><td class="num">${fmt(o.reverse20Pct,1)}</td><td class="num">${fmt(o.meanMfePips,1)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
-  (r.findings||[]).length; // findings live on the intraday result
-  el('cTouchNote').innerHTML = `<span class="bk-lbl">Levels = open ± the forecast O-H/O-L median &amp; 75th. Touch detection walks ${r.src||'intraday'} bars; MFE = continuation past the level, MAE = pullback toward open (pips). Per-touch outcome sequencing beyond first-vs-retested is a later extension.</span>`;
+  el('cTouchNote').innerHTML = `<span class="bk-lbl">${HZ_LBL[hz]} levels = open ± the forecast O-H/O-L median &amp; 75th (√-scaled for weekly/20-day). Touch detection walks ${src||'intraday'} bars over the ${hz==='daily'?'day':(hz==='weekly'?'5-day':'20-day')} window; MFE = continuation past the level, MAE = pullback toward open (pips). Per-touch sequencing beyond first-vs-retested is a later extension.</span>`;
   el('aTouch').innerHTML = M.n
-    ? `For ${pair}, the median extension is reached <strong>${fmt(M.touchRatePct,0)}%</strong> of days; after the first touch price <strong>${M.continuePct>=M.reversePct?`continues ${fmt(M.continuePct,0)}%`:`reverses ${fmt(M.reversePct,0)}%`}</strong> of the time, with a ${fmt(M.reverse20Pct,0)}% chance of a ≥20-pip pullback. ${P.n && P.continuePct < M.continuePct-5 ? `The <strong>75th extension continues only ${fmt(P.continuePct,0)}%</strong> vs ${fmt(M.continuePct,0)}% at the median — deeper touches look more like exhaustion.` : ''} ${dir.firstUpperPct!=null?`The upper side is hit first ${fmt(dir.firstUpperPct,0)}% of days.`:''}`
-    : '<span class="muted">No level touches recorded for this pair.</span>';
+    ? `At the <strong>${HZ_LBL[hz]}</strong> horizon, ${pair}'s median extension is reached <strong>${fmt(M.touchRatePct,0)}%</strong> of ${unit}; after the first touch price <strong>${M.continuePct>=M.reversePct?`continues ${fmt(M.continuePct,0)}%`:`reverses ${fmt(M.reversePct,0)}%`}</strong> of the time, with a ${fmt(M.reverse20Pct,0)}% chance of a ≥20-pip pullback. ${P.n && P.continuePct < M.continuePct-5 ? `The <strong>75th extension continues only ${fmt(P.continuePct,0)}%</strong> vs ${fmt(M.continuePct,0)}% at the median — deeper touches look more like exhaustion.` : ''} ${dir.firstUpperPct!=null?`The upper side is hit first ${fmt(dir.firstUpperPct,0)}% of ${unit}.`:''}`
+    : '<span class="muted">No level touches recorded for this pair/horizon.</span>';
 }
 
 // ── PR-B daily-aggregation chapters ──────────────────────────────────────────
@@ -748,10 +767,11 @@ function renderSessions(s, pair) {
 }
 
 function renderCompletion(s, pair) {
-  const c = s.completion;
-  if (!c || !c.hist) {
+  const hz = HZ(), rk = HZ_RES[hz], unit = hz==='daily' ? 'days' : (hz==='weekly' ? 'weeks' : '20-day windows');
+  const c = hz==='daily' ? s.completion : (s.completionByHorizon?.[rk] || s.completion);
+  if (!c || !c.hist || !c.n) {
     el('c7hist').innerHTML=''; el('c7tiles').innerHTML=''; el('c7by').innerHTML='<tr><td colspan="4" class="neu">—</td></tr>';
-    el('a7').innerHTML='<span class="muted">Completion data unavailable — refresh the research run.</span>'; return;
+    el('a7').innerHTML=`<span class="muted">No ${HZ_LBL[hz]} completion data for ${pair} — the ${hz} horizon may have too few windows in this run.</span>`; return;
   }
   const buckets = ['<40','40-65','65-92','92-118','118-165','>165'];
   const max = Math.max(...buckets.map(b=>c.hist[b]||0), 1);
@@ -759,18 +779,19 @@ function renderCompletion(s, pair) {
     return `<div class="bar"><span class="bv">${fmt(v,0)}%</span><span class="bb" style="height:${v/max*100}%;background:${isMed?'var(--green)':'var(--blue)'}"></span><span class="bl">${b}%</span></div>`; }).join('');
   el('c7tiles').innerHTML = [
     ['Median completion', fmt(c.medianPct,0)+'%', 'of the forecast'],
-    ['Reaches full median', fmt(c.reachedMedianPct,0)+'%', 'of days'],
-    ['Falls short of ½', fmt(c.neverHalfPct,0)+'%', 'of days'],
+    ['Reaches full median', fmt(c.reachedMedianPct,0)+'%', 'of '+unit],
+    ['Falls short of ½', fmt(c.neverHalfPct,0)+'%', 'of '+unit],
     ['Blows through 165%', fmt(c.blewThroughPct,0)+'%', 'expansion tail'],
   ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv">${v}</div><div class="td">${d}</div></div>`).join('');
-  // by condition
+  // by condition (daily only — the 5d/20d completion is the histogram + tiles)
   const rows = [];
   for (const [k,o] of Object.entries(c.byRegime||{})) rows.push([`Regime · ${k}`, o]);
   for (const [k,o] of Object.entries(c.byVov||{}))    rows.push([`VoV · ${k}`, o]);
-  el('c7by').innerHTML = rows.map(([lbl,o])=>`<tr><td>${lbl}</td><td class="num">${o.n}</td>
-    <td class="num">${fmt(o.meanPct,0)}%</td><td class="num">${fmt(o.reachedMedianPct,0)}%</td></tr>`).join('') || '<tr><td colspan="4" class="neu">—</td></tr>';
+  el('c7by').innerHTML = rows.length
+    ? rows.map(([lbl,o])=>`<tr><td>${lbl}</td><td class="num">${o.n}</td><td class="num">${fmt(o.meanPct,0)}%</td><td class="num">${fmt(o.reachedMedianPct,0)}%</td></tr>`).join('')
+    : `<tr><td colspan="4" class="neu">By-condition slices are computed at the daily horizon; switch to Daily to see them.</td></tr>`;
   el('a7').innerHTML =
-    `For ${pair}, the day completes the <strong>full median forecast ${fmt(c.reachedMedianPct,0)}%</strong> of the time, <strong>fails to make even half ${fmt(c.neverHalfPct,0)}%</strong> of days, and <strong>blows through 165% ${fmt(c.blewThroughPct,0)}%</strong> of days (median completion ${fmt(c.medianPct,0)}% of forecast). The green bar is the "as-forecast" bucket (92–118%); a fat left tail means many quiet days, a fat right tail means expansion days the median can't hold.`;
+    `At the <strong>${HZ_LBL[hz]}</strong> horizon, ${pair} completes the <strong>full median forecast ${fmt(c.reachedMedianPct,0)}%</strong> of ${unit}, <strong>falls short of half ${fmt(c.neverHalfPct,0)}%</strong>, and <strong>blows through 165% ${fmt(c.blewThroughPct,0)}%</strong> (median completion ${fmt(c.medianPct,0)}% of forecast). The green bar is the "as-forecast" bucket (92–118%); a fat left tail = many quiet ${unit}, a fat right tail = expansion the median can't hold.`;
 }
 
 // ── TOC scroll-spy + run ─────────────────────────────────────────────────────

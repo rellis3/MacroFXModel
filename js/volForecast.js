@@ -404,6 +404,17 @@ export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
     oh_75:      r2(oc_75v),
     ol_median:  r2(oc_med),
     ol_75:      r2(oc_75v),
+    // Weekly / 20-day directional legs — same √-time scaling as oc_5d/oc_20d, so
+    // the horizon research can project extension lines and test touches at the
+    // weekly and 20-day horizons (not just daily). Additive; daily fields unchanged.
+    oh_5d:      r2(oc_med * sqrt5),
+    oh_5d_75:   r2(oc_75v * sqrt5),
+    ol_5d:      r2(oc_med * sqrt5),
+    ol_5d_75:   r2(oc_75v * sqrt5),
+    oh_20d:     r2(oc_med * sqrt20),
+    oh_20d_75:  r2(oc_75v * sqrt20),
+    ol_20d:     r2(oc_med * sqrt20),
+    ol_20d_75:  r2(oc_75v * sqrt20),
     news_mult:  r2(newsMult),
   };
 }

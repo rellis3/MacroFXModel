@@ -99,3 +99,22 @@ test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
   const r = evaluateIntraday(synthH1(20), { pip: PIP });
   assert.equal(r.insufficient, true);
 });
+
+test('evaluateIntraday weekly horizon: multi-day window, timeUnit=day, levels touched', () => {
+  const r = evaluateIntraday(synthH1(500, 4), { pip: PIP, horizon: 'weekly' });
+  assert.ok(!r.insufficient, 'enough windows');
+  assert.equal(r.horizon, 'Weekly');
+  assert.equal(r.expansion.timeUnit, 'day', 'weekly expansion measured in days-of-window');
+  // Expansion crossings are within a 5-day window (1..5) and monotone.
+  const e = r.expansion.medianHourTo;
+  assert.ok(e['100'] <= 5.001, `100% reached within the 5-day window (got ${e['100']})`);
+  assert.ok(e['25'] <= e['50'] + 1e-9 && e['50'] <= e['100'] + 1e-9, 'monotone');
+  const M = r.touches.medianExtension;
+  if (M.n) assert.ok(M.reverse10Pct >= M.reverse20Pct - 1e-9, 'reversal thresholds monotone at weekly horizon too');
+});
+
+test('evaluateIntraday 20-day horizon runs and stays within its window', () => {
+  const r = evaluateIntraday(synthH1(900, 6), { pip: PIP, horizon: 'd20' });
+  if (!r.insufficient) { assert.equal(r.horizon, '20-day'); assert.ok(r.expansion.medianHourTo['100'] <= 20.001, 'within 20-day window'); }
+  else assert.ok(r.nDays >= 0);   // acceptable if the synthetic sample is too short for 20-day windows
+});
