@@ -336,10 +336,7 @@
           <strong style="color:var(--text)">Calibration reading.</strong> A well-formed median is exceeded ~50% of days and the 75th ~25%.
           Below target ⇒ the band runs <em>too wide</em> (forecast over-estimates); above ⇒ <em>too tight</em> (under-estimates).
           <br><br>
-          <strong style="color:var(--amber)">Anchoring caveat.</strong> The daily/5d/20d evaluation (Q1–Q7) currently builds its days from OANDA D1
-          (22:00-UTC boundary), <em>not</em> your engine's London-midnight day. Only the <strong>Estimator A/B</strong> (Ch 8) is London-anchored so
-          far. So the exact bias/exceedance figures here are on the UTC day boundary and will shift once the daily eval is re-anchored — a known,
-          scheduled fix. Treat the <em>direction</em> of each finding as robust and the last digit as provisional.
+          <strong style="color:var(--amber)">Anchoring.</strong> <span id="anchorNote">The daily/5d/20d evaluation builds its days from intraday grouped by London calendar date — the same London-midnight boundary the live forecaster uses — when H1 is available (falls back to OANDA D1 only if it isn't).</span>
           <br><br>
           <strong style="color:var(--amber)">Not yet covered.</strong> Q6 intraday expansion curves (needs the intraday engine, Ch 6) and the
           news-week / holiday-week stability slices in Q3 (needs an economic-calendar feed). Both are flagged, not faked.
@@ -387,7 +384,13 @@ function initView() {
   el('viewPair').innerHTML = ordered.map(p=>`<option>${p}</option>`).join('');
   renderCross();
   renderPair();
-  setStatus('ok', `Loaded · ${pairs.length} pair(s)${_AB?' · A/B ✓':' · A/B not run'} · ${_R.file||''}`);
+  const anc = _R.cross?.anchor || (Object.values(_R.perPair||{})[0]?.anchor) || 'utc-d1';
+  const ancLbl = anc === 'london-h1' ? 'London-anchored' : 'UTC-D1 anchored';
+  setStatus('ok', `Loaded · ${pairs.length} pair(s) · ${ancLbl}${_AB?' · A/B ✓':' · A/B not run'} · ${_R.file||''}`);
+  const an = el('anchorNote');
+  if (an) an.innerHTML = anc === 'london-h1'
+    ? `This run is <strong>London-midnight anchored</strong> — daily bars were rebuilt from H1 grouped by London calendar date, the same day boundary the live forecaster uses. The numbers now match your engine's day; the estimator A/B (Ch 8) shares the same anchor.`
+    : `This run used <strong>OANDA D1 (22:00-UTC)</strong> days — H1 wasn't available to rebuild London days, so the boundary differs from your engine's London-midnight day. Re-run to pick up the London anchor. Treat the <em>direction</em> of each finding as robust and the last digit as provisional.`;
 }
 
 // ── Cross-pair sections (run once) ───────────────────────────────────────────

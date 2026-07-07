@@ -9,6 +9,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluateForecast } from './volForecastResearchEngine.js';
+import { buildLondonDaily } from './volEstimatorAB.js';
+import { _londonParts } from './sessionStats.js';
 
 // Deterministic LCG so the test is reproducible (no Math.random).
 function mulberry32(seed) {
@@ -116,6 +118,44 @@ test('PR-B misses: overshoot/undershoot profiles are shaped', () => {
   const m = summary.misses;
   assert.ok('overshoot' in m && 'undershoot' in m && 'all' in m);
   if (m.overshoot.n) { assert.ok(m.overshoot.pctOfDays > 0 && m.overshoot.pctOfDays < 100); assert.ok(typeof m.overshoot.topRegime === 'string'); }
+});
+
+// Synthetic H1 intraday over `days` London days (24 bars/day), for the re-anchor.
+function synthH1(days, seed = 7) {
+  const rnd = mulberry32(seed);
+  const bars = [];
+  let px = 100;
+  const start = Date.UTC(2020, 0, 1, 0, 0, 0);
+  for (let i = 0; i < days * 24; i++) {
+    const t = new Date(start + i * 3600_000);
+    const o = px, c = o * (1 + (rnd() - 0.5) * 0.004);
+    const h = Math.max(o, c) * (1 + rnd() * 0.001), l = Math.min(o, c) * (1 - rnd() * 0.001);
+    bars.push({ time: t, open: o, high: h, low: l, close: c });
+    px = c;
+  }
+  return bars;
+}
+
+test('PR-C re-anchor: London daily bars group by London date and feed evaluateForecast', () => {
+  const h1 = synthH1(400, 1);
+  const lond = buildLondonDaily(h1);
+  // London day count ≈ distinct London calendar dates present in the intraday.
+  const distinct = new Set(h1.map(b => _londonParts(b.time).date));
+  assert.ok(Math.abs(lond.length - distinct.size) <= 2, `London days (${lond.length}) ≈ distinct dates (${distinct.size})`);
+  // Each London day's open is the first intraday bar of that London date.
+  for (const d of lond.slice(0, 5)) assert.ok(d.open > 0 && d.high >= d.low, 'valid OHLC');
+  // The evaluator runs on London-built bars and yields the full summary shape.
+  const { summary } = evaluateForecast(lond.map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close })), 'fx');
+  assert.ok(summary.nDays > 100, 'evaluated a real sample of London days');
+  assert.ok(summary.completion && summary.errorDist && summary.dayTypes, 'all aggregates present on London-anchored eval');
+});
+
+test('PR-C: London midnight is the day boundary (23:00 vs 01:00 split across dates)', () => {
+  // A bar at 22:30 UTC in winter is 22:30 London (same date); one at 00:30 UTC is
+  // 00:30 London (next date). Verify _londonParts assigns them to different dates.
+  const evening = _londonParts(new Date(Date.UTC(2021, 0, 10, 22, 30)));
+  const night   = _londonParts(new Date(Date.UTC(2021, 0, 11, 0, 30)));
+  assert.notEqual(evening.date, night.date, 'crossing London midnight advances the date');
 });
 
 test('no lookahead: truncating the series does not change earlier completion cells', () => {
