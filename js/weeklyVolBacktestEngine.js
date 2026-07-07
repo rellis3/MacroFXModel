@@ -76,6 +76,7 @@ export const PIP_SIZE = {
   AUDCAD: 0.0001, AUDCHF: 0.0001, GBPAUD: 0.0001, GBPCAD: 0.0001,
   GBPCHF: 0.0001, GBPNZD: 0.0001, CADJPY: 0.01,   CHFJPY: 0.01,
   NZDJPY: 0.01,   GOLD:   0.1,
+  NQ: 1, SPX500: 1, US30: 1, DE30: 1, UK100: 1,   // index CFDs — 1 point
 };
 
 // ── All 26 instruments (Asia Range pair set) ──────────────────────────────────
@@ -113,6 +114,16 @@ export const WEEKLY_INSTRUMENTS = [
   { name: 'NZDJPY', oanda: 'NZD_JPY',  assetClass: 'fx'        },
   // Commodity
   { name: 'GOLD',   oanda: 'XAU_USD',  assetClass: 'commodity' },
+  // Equity indices — the forecaster supports assetClass 'index' (GARCH σ). D1/H1
+  // via OANDA; the M1 intraday path looks for <name.toLowerCase()>_m1.parquet
+  // (nas100 / spx500 / us30 / de30 / uk100), else falls back to H1. pip = 1 point.
+  // NB: OANDA quotes DAX in EUR (DE30_EUR); DE30_USD has no candles.
+  // Parquet basenames follow R2 (m1/): nq / spx500 / us30 / de30 / uk100.
+  { name: 'NQ',     oanda: 'NAS100_USD', assetClass: 'index', pip: 1 },
+  { name: 'SPX500', oanda: 'SPX500_USD', assetClass: 'index', pip: 1 },
+  { name: 'US30',   oanda: 'US30_USD',   assetClass: 'index', pip: 1 },
+  { name: 'DE30',   oanda: 'DE30_EUR',   assetClass: 'index', pip: 1 },
+  { name: 'UK100',  oanda: 'UK100_GBP',  assetClass: 'index', pip: 1 },
 ];
 
 // ── Date helpers ──────────────────────────────────────────────────────────────

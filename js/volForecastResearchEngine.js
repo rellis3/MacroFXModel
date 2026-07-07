@@ -321,6 +321,41 @@ function summarize(rows) {
   };
   const completionByHorizon = { daily: completion, d5: _complHz('d5'), d20: _complHz('d20') };
 
+  // ── Empirical recalibration — the fix for the "bands too wide" finding ────────
+  // The book shows realized exceeds the median far less than 50% (bands over-state
+  // the range). Derive correction multipliers walk-forward: for day i, use the
+  // realized/forecast ratios of days < i ONLY to set c50 = median(realized/median)
+  // and c75 = 75th-pctile(realized/p75), apply them to day i's bands, and record
+  // whether realized exceeds the RECALIBRATED band. Because every day uses only
+  // prior data, the "after" exceedance is out-of-sample by construction. The full-
+  // sample factors are the recommended swap-in for hl_50_corr / hl_75_corr (a
+  // proposal — NOT applied to the live forecaster here).
+  const _pctl = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const idx = p / 100 * (s.length - 1); const lo = Math.floor(idx), hi = Math.ceil(idx); return s[lo] + (s[hi] - s[lo]) * (idx - lo); };
+  const RECAL_MIN = 60;
+  const hlSeq = rows.map(r => r.comp.daily?.hl).filter(c => c && c.med > 0 && c.p75 > 0);
+  let exMedB = 0, exMedA = 0, ex75B = 0, ex75A = 0, recalN = 0;
+  const rM = [], r7 = [];
+  for (const c of hlSeq) {
+    if (rM.length >= RECAL_MIN) {
+      const c50 = _median(rM), c75 = _pctl(r7, 75);
+      exMedB += c.actual > c.med ? 1 : 0;
+      ex75B  += c.actual > c.p75 ? 1 : 0;
+      exMedA += c.actual > c50 * c.med ? 1 : 0;
+      ex75A  += c.actual > c75 * c.p75 ? 1 : 0;
+      recalN++;
+    }
+    rM.push(c.actual / c.med); r7.push(c.actual / c.p75);
+  }
+  const recalibration = recalN < 100 ? { insufficient: true, n: recalN } : {
+    n: recalN,
+    medFactor: +_median(rM).toFixed(3),        // × current hl_50_corr → recalibrated median band
+    p75Factor: +_pctl(r7, 75).toFixed(3),      // × current hl_75_corr → recalibrated 75th band
+    exceedMedianBefore: +(exMedB / recalN * 100).toFixed(1),
+    exceedMedianAfter:  +(exMedA / recalN * 100).toFixed(1),   // target 50
+    exceed75Before:     +(ex75B / recalN * 100).toFixed(1),
+    exceed75After:      +(ex75A / recalN * 100).toFixed(1),    // target 25
+  };
+
   // ══ PR-B daily aggregations (no intraday needed) ═══════════════════════════
   // Per-row daily-H-L features, in chronological order, for the miss / multi-day /
   // confidence / day-type studies. completion = realized ÷ median forecast (%);
@@ -454,15 +489,23 @@ function summarize(rows) {
     }
     const clusters = Array.from({ length: K }, () => []);
     dpts.forEach((p, idx) => clusters[assign[idx]].push(p.f));
-    const label = (eff, compl) => compl >= 130 && eff >= 0.55 ? 'trend expansion'
-      : compl >= 130 && eff < 0.45 ? 'wide reversal'
-      : compl <= 70 && eff < 0.45 ? 'quiet chop'
-      : compl <= 70 ? 'quiet directional' : 'normal';
+    // Label by the cluster's SIGNATURE across all three dims (completion, trend-
+    // efficiency, vol-of-vol relative to the cohort) so the four types get
+    // distinct, descriptive names instead of collapsing to "normal".
+    const vovMed = _median(dpts.map(p => p.f.vov));
+    const label = (eff, compl, vov) =>
+      compl >= 120 && eff >= 0.5  ? 'trend expansion'          // big + directional
+      : compl >= 120              ? 'wide reversal'            // big range, round-trips
+      : compl <= 75 && eff < 0.4  ? 'quiet chop'               // small + choppy
+      : vov >= vovMed * 1.5       ? 'turbulent'                // unstable vol-of-vol
+      : eff >= 0.55               ? 'steady trend'             // directional, normal size
+      : eff < 0.35                ? 'choppy range'             // rangey, normal size
+      : 'normal';
     dayTypes = {
       n: dpts.length, k: K,
       clusters: clusters.map(g => {
-        const eff = +_mean(g.map(f => f.eff)).toFixed(3), compl = +_mean(g.map(f => f.completion)).toFixed(0);
-        return { n: g.length, sharePct: +(g.length / dpts.length * 100).toFixed(1), meanEfficiency: eff, meanCompletion: compl, meanVov: +_mean(g.map(f => f.vov)).toFixed(4), label: label(eff, compl) };
+        const eff = +_mean(g.map(f => f.eff)).toFixed(3), compl = +_mean(g.map(f => f.completion)).toFixed(0), vov = +_mean(g.map(f => f.vov)).toFixed(4);
+        return { n: g.length, sharePct: +(g.length / dpts.length * 100).toFixed(1), meanEfficiency: eff, meanCompletion: compl, meanVov: vov, label: label(eff, compl, vov) };
       }).sort((a, b) => b.meanCompletion - a.meanCompletion),
     };
   }
@@ -494,6 +537,8 @@ function summarize(rows) {
     add('good', `Vol CLUSTERS: after an above-75th day the next day exceeds its median ${persistence.afterAbove75Pct}% vs ${persistence.baseExceedMedianPct}% base — expansion persists.`);
   if (completion.n)
     add('info', `Forecast completion: the day makes the FULL median range ${completion.reachedMedianPct}% of days, falls short of even half ${completion.neverHalfPct}% of days, and blows through 165% ${completion.blewThroughPct}% of days (median completion ${completion.medianPct}% of forecast).`);
+  if (!recalibration.insufficient && Math.abs(recalibration.exceedMedianBefore - 50) > 6)
+    add(Math.abs(recalibration.exceedMedianAfter - 50) < 6 ? 'good' : 'info', `Recalibration: scaling the median band ×${recalibration.medFactor} and the 75th ×${recalibration.p75Factor} (walk-forward) moves median-exceedance ${recalibration.exceedMedianBefore}%→${recalibration.exceedMedianAfter}% (target 50) and 75th ${recalibration.exceed75Before}%→${recalibration.exceed75After}% (target 25) — the recommended hl_50_corr / hl_75_corr multipliers.`);
   const vh = byVov['3·high'], vl = byVov['1·low'];
   if (vh && vl && vh.mae > vl.mae * 1.3)
     add('info', `Trust the forecast LESS when vol-of-vol is high: H-L MAE ${vh.mae} (high-VoV) vs ${vl.mae} (low-VoV).`);
@@ -519,6 +564,7 @@ function summarize(rows) {
     persistence,
     completion,
     completionByHorizon,
+    recalibration,
     errorDist,
     misses,
     seasonal,
