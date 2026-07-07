@@ -44,12 +44,26 @@ a:hover { color: var(--text); }
 .page { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
 
 /* Tab navigation */
-.tab-nav { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+.tab-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
 .tab-btn { padding: 10px 22px; border: none; background: none; color: var(--text3); font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; font-family: 'DM Sans', sans-serif; }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active.tg { color: var(--blue); border-bottom-color: var(--blue); }
 .tab-btn.active.bt { color: var(--green); border-bottom-color: var(--green); }
 .tab-btn.active.rg { color: var(--purple); border-bottom-color: var(--purple); }
+
+/* Tab archive / declutter */
+.tab-item { display: inline-flex; align-items: center; }
+.tab-archive-btn { background: none; border: none; color: var(--text3); font-size: 11px; opacity: 0; cursor: pointer; padding: 0 8px 0 0; margin-left: -10px; transition: opacity .15s, color .15s; }
+.tab-item:hover .tab-archive-btn { opacity: .55; }
+.tab-archive-btn:hover { opacity: 1 !important; color: var(--red); }
+.tab-archived-toggle { background: none; border: 1px dashed var(--border); border-radius: 6px; color: var(--text3) !important; font-size: 11px !important; font-weight: 600; padding: 5px 12px !important; cursor: pointer; margin: 6px 0; }
+.tab-archived-toggle:hover { color: var(--text) !important; border-color: var(--text3); }
+.tab-archived-panel { display: none; flex-wrap: wrap; gap: 6px; padding: 10px 0; border-bottom: 2px solid var(--border); margin: -2px 0 20px; }
+.tab-archived-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--s2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 4px 3px 12px; font-size: 12px; }
+.tab-archived-chip-label { background: none; border: none; color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; font-family: 'DM Sans', sans-serif; }
+.tab-archived-chip-label:hover { color: var(--text); }
+.tab-archived-chip-restore { cursor: pointer; color: var(--text3); font-size: 13px; line-height: 1; padding: 3px 7px; border-radius: 50%; }
+.tab-archived-chip-restore:hover { color: var(--green); background: var(--s3); }
 
 /* Tab panes */
 .tab-pane { display: none; }
@@ -4116,6 +4130,12 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <div class="pos-hist-pills" id="histBotPills"></div>
       </div>
 
+      <!-- Bots archived from the tab bar — hidden here too, expandable -->
+      <div class="pos-hist-row" id="histArchivedRow" style="display:none">
+        <button class="tab-archived-toggle" id="histArchivedToggle" onclick="toggleHistArchivedPanel()"></button>
+        <div class="tab-archived-panel" id="histArchivedPanel" style="display:none;border-bottom:none;padding:0;margin:0"></div>
+      </div>
+
       <!-- Date range presets + custom range -->
       <div class="pos-hist-row" style="margin-bottom:14px">
         <span class="pos-hist-label">Range:</span>
@@ -4608,7 +4628,171 @@ function switchTab(tab) {
   try { localStorage.setItem('botConfigTab', tab); } catch(e) {}
 }
 window.switchTab = switchTab;
+
+// ── Tab archive / declutter ─────────────────────────────────────────────────────
+// Too many bot tabs to keep on one line — each gets a small archive icon that
+// tucks it away into a collapsible "Archived" panel at the end of the bar.
+// The archive set is shared (via bot key, not tab id) with the Positions →
+// Trade History bot-pill filter so an archived bot disappears from both places.
+
+// tab data-tab → _POS_BOTS key(s). Tabs with no live-bot counterpart (Beta
+// Targets, Liquidity Gate) or that aren't archivable (Positions) are omitted —
+// archiving them only affects the tab bar, nothing to sync.
+const TAB_BOT_KEY_MAP = {
+  original:    'bot_status',
+  backtest:    'backtestsystem_status',
+  regime:      'regime_bot_status',
+  regimev2:    'regime_bot_v2_status',
+  regimev7:    'regime_bot_v7_status',
+  dynanchor:   'dyn_anchor_status',
+  gold:        'gold_bot_status',
+  goldv2:      'gold_v2_status',
+  confluence:  'confluence_bot_status',
+  hedgebot:    'hedge_bot_status',
+  poshedgebot: 'position_hedge_bot_status',
+  macroequity: 'macro_equity_bot_status',
+  volatility:  ['volatility_bot_status', 'volatility_ride_status'],
+  rangeline:   'range_line_bot_status',
+  nqqmr:       ['nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status'],
+};
+
+let _archivedTabs = new Set();
+try { _archivedTabs = new Set(JSON.parse(localStorage.getItem('botConfigArchivedTabs') || '[]')); } catch(e) {}
+
+function _saveArchivedTabs() {
+  try { localStorage.setItem('botConfigArchivedTabs', JSON.stringify([..._archivedTabs])); } catch(e) {}
+}
+
+function _archivedPosBotKeys() {
+  const keys = new Set();
+  _archivedTabs.forEach(tab => {
+    const k = TAB_BOT_KEY_MAP[tab];
+    if (!k) return;
+    (Array.isArray(k) ? k : [k]).forEach(kk => keys.add(kk));
+  });
+  return keys;
+}
+
+function archiveTab(tab) {
+  _archivedTabs.add(tab);
+  _saveArchivedTabs();
+  _renderTabArchiveState();
+  // Don't leave the user staring at a pane whose tab just vanished.
+  if (document.querySelector(`.tab-btn[data-tab="${tab}"]`)?.classList.contains('active')) {
+    switchTab('positions');
+  }
+}
+window.archiveTab = archiveTab;
+
+function unarchiveTab(tab) {
+  _archivedTabs.delete(tab);
+  _saveArchivedTabs();
+  // Restore to "on" in the trade-history filter too, not just visible-but-off.
+  // (Only reachable via a user click well after full page load, but guard
+  // against the Positions view's `let`s regardless — see _renderTabArchiveState.)
+  try {
+    const k = TAB_BOT_KEY_MAP[tab];
+    (Array.isArray(k) ? k : k ? [k] : []).forEach(kk => _histActiveBots.add(kk));
+  } catch (e) {}
+  _renderTabArchiveState();
+}
+window.unarchiveTab = unarchiveTab;
+
+function toggleArchivedTabsPanel() {
+  const panel = document.getElementById('tabArchivedPanel');
+  if (panel) panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+}
+window.toggleArchivedTabsPanel = toggleArchivedTabsPanel;
+
+function _initTabArchive() {
+  const nav = document.querySelector('.tab-nav');
+  if (!nav) return;
+
+  [...nav.querySelectorAll(':scope > .tab-btn')].forEach(btn => {
+    const tab = btn.dataset.tab;
+    if (tab === 'positions') return; // always stays on the bar
+
+    const wrap = document.createElement('span');
+    wrap.className = 'tab-item';
+    wrap.dataset.tab = tab;
+    btn.parentNode.insertBefore(wrap, btn);
+    wrap.appendChild(btn);
+
+    const archiveBtn = document.createElement('button');
+    archiveBtn.className = 'tab-archive-btn';
+    archiveBtn.type = 'button';
+    archiveBtn.title = 'Archive this tab';
+    archiveBtn.textContent = '🗄';
+    archiveBtn.onclick = (e) => { e.stopPropagation(); archiveTab(tab); };
+    wrap.appendChild(archiveBtn);
+  });
+
+  const toggle = document.createElement('button');
+  toggle.className = 'tab-archived-toggle';
+  toggle.type = 'button';
+  toggle.id = 'tabArchivedToggle';
+  toggle.onclick = toggleArchivedTabsPanel;
+  nav.appendChild(toggle);
+
+  const panel = document.createElement('div');
+  panel.className = 'tab-archived-panel';
+  panel.id = 'tabArchivedPanel';
+  nav.parentNode.insertBefore(panel, nav.nextSibling);
+
+  _renderTabArchiveState();
+
+  // If the tab restored from localStorage got archived in a prior session,
+  // don't land on a hidden pane.
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if (activeTab && _archivedTabs.has(activeTab)) switchTab('positions');
+}
+
+function _renderTabArchiveState() {
+  const nav = document.querySelector('.tab-nav');
+  if (!nav) return;
+
+  nav.querySelectorAll('.tab-item').forEach(wrap => {
+    wrap.style.display = _archivedTabs.has(wrap.dataset.tab) ? 'none' : '';
+  });
+
+  const toggle = document.getElementById('tabArchivedToggle');
+  if (toggle) {
+    toggle.textContent = `🗄 Archived (${_archivedTabs.size})`;
+    toggle.style.display = _archivedTabs.size ? '' : 'none';
+  }
+
+  const panel = document.getElementById('tabArchivedPanel');
+  if (panel) {
+    if (!_archivedTabs.size) {
+      panel.style.display = 'none';
+      panel.innerHTML = '';
+    } else {
+      panel.innerHTML = [..._archivedTabs].map(tab => {
+        const label = document.querySelector(`.tab-item[data-tab="${tab}"] .tab-btn`)?.textContent || tab;
+        return `<span class="tab-archived-chip">
+          <button type="button" class="tab-archived-chip-label" onclick="switchTab('${tab}')">${label}</button>
+          <span class="tab-archived-chip-restore" onclick="unarchiveTab('${tab}')" title="Restore to tab bar">↺</span>
+        </span>`;
+      }).join('');
+    }
+  }
+
+  // Keep the Positions → Trade History bot-pill filter in sync — but only
+  // once that view's `let`s further down the script have actually run; at
+  // initial page load this fires before they're declared, so referencing
+  // them here would throw (TDZ), not just read as undefined. Harmless to
+  // skip: _histActiveBots' own init line already filters by archive state.
+  try {
+    if (_histInitDone) {
+      _histActiveBots.forEach(k => { if (_archivedPosBotKeys().has(k)) _histActiveBots.delete(k); });
+      _renderHistBotPills();
+      loadHistoryTab();
+    }
+  } catch (e) { /* Positions view not initialized yet this page load */ }
+}
+
 try { switchTab(localStorage.getItem('botConfigTab') || 'original'); } catch(e) { switchTab('original'); }
+_initTabArchive();
 
 // ── Beta Targets ──────────────────────────────────────────────────────────────
 async function _kvGet(key) {
@@ -6134,7 +6318,9 @@ window.loadHedgeAuditTab = loadHedgeAuditTab;
 
 // ── Trade History tab ─────────────────────────────────────────────────────────
 
-let _histActiveBots  = new Set(_POS_BOTS.map(b => b.key));
+// Bots archived from the tab bar default to OFF here too (see TAB_BOT_KEY_MAP
+// / _archivedPosBotKeys in the tab-switching script above).
+let _histActiveBots  = new Set(_POS_BOTS.map(b => b.key).filter(k => !_archivedPosBotKeys().has(k)));
 let _histPreset      = 'today';
 let _calYear         = new Date().getFullYear();
 let _calMonth        = new Date().getMonth(); // 0-indexed
@@ -6142,21 +6328,14 @@ let _calTradeMap     = {};   // 'YYYY-MM-DD' → [{bot_key,...}, ...]
 let _histInitDone    = false;
 let _lastHistTrades  = [];   // last loaded trade-history rows, indexed for the chart modal
 
+function _visibleHistBots()  { const arch = _archivedPosBotKeys(); return _POS_BOTS.filter(b => !arch.has(b.key)); }
+function _archivedHistBots() { const arch = _archivedPosBotKeys(); return _POS_BOTS.filter(b => arch.has(b.key)); }
+
 function _initHistoryView() {
   if (_histInitDone) return;
   _histInitDone = true;
 
-  // Build bot filter pills
-  const pillsEl = document.getElementById('histBotPills');
-  if (pillsEl) {
-    pillsEl.innerHTML = _POS_BOTS.map(b => {
-      const on = _histActiveBots.has(b.key);
-      const paperTag = b.paper ? `<span style="font-size:9px;opacity:.7;margin-left:2px">paper</span>` : '';
-      return `<span class="pos-hist-pill${on ? '' : ' off'}" id="histPill_${b.key}"
-        style="background:${b.bg};border:1px solid ${b.bd};color:${b.color}"
-        onclick="toggleHistBot('${b.key}')">${b.label}${paperTag}</span>`;
-    }).join('');
-  }
+  _renderHistBotPills();
 
   // Set today's date as default for custom range
   const today = new Date().toISOString().slice(0, 10);
@@ -6166,6 +6345,65 @@ function _initHistoryView() {
   if (toEl)   toEl.value   = today;
 }
 
+function _renderHistBotPills() {
+  const pillsEl = document.getElementById('histBotPills');
+  if (!pillsEl) return;
+  pillsEl.innerHTML = _visibleHistBots().map(b => {
+    const on = _histActiveBots.has(b.key);
+    const paperTag = b.paper ? `<span style="font-size:9px;opacity:.7;margin-left:2px">paper</span>` : '';
+    return `<span class="pos-hist-pill${on ? '' : ' off'}" id="histPill_${b.key}"
+      style="background:${b.bg};border:1px solid ${b.bd};color:${b.color}"
+      onclick="toggleHistBot('${b.key}')">${b.label}${paperTag}</span>`;
+  }).join('');
+  _renderHistArchivedBots();
+}
+
+// Mirrors the tab bar's "Archived (N)" panel — bots archived from the tab bar
+// are hidden from the main pill row above and tucked in here instead. Clicking
+// a chip's label still includes it in the trade-history query without fully
+// restoring its tab; the ↺ restores the tab (and this pill row) permanently.
+function _renderHistArchivedBots() {
+  const row   = document.getElementById('histArchivedRow');
+  const toggle = document.getElementById('histArchivedToggle');
+  const panel = document.getElementById('histArchivedPanel');
+  if (!row || !toggle || !panel) return;
+
+  const archived = _archivedHistBots();
+  if (!archived.length) {
+    row.style.display = 'none';
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+
+  row.style.display = 'flex';
+  toggle.textContent = `🗄 Archived (${archived.length})`;
+  panel.innerHTML = archived.map(b => {
+    const on = _histActiveBots.has(b.key);
+    return `<span class="tab-archived-chip">
+      <button type="button" class="tab-archived-chip-label" style="color:${b.color}" onclick="toggleHistBot('${b.key}')">${b.label}${on ? ' ✓' : ''}</button>
+      <span class="tab-archived-chip-restore" onclick="unarchiveTabForBot('${b.key}')" title="Restore this bot's tab">↺</span>
+    </span>`;
+  }).join('');
+}
+
+function toggleHistArchivedPanel() {
+  const panel = document.getElementById('histArchivedPanel');
+  if (panel) panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+}
+window.toggleHistArchivedPanel = toggleHistArchivedPanel;
+
+// Reverse-lookup TAB_BOT_KEY_MAP so the Positions view can restore a bot's
+// tab without needing to know its tab id.
+function unarchiveTabForBot(botKey) {
+  const tab = Object.keys(TAB_BOT_KEY_MAP).find(t => {
+    const k = TAB_BOT_KEY_MAP[t];
+    return Array.isArray(k) ? k.includes(botKey) : k === botKey;
+  });
+  if (tab) unarchiveTab(tab); // also re-renders this pill row via _renderTabArchiveState
+}
+window.unarchiveTabForBot = unarchiveTabForBot;
+
 function toggleHistBot(key) {
   if (_histActiveBots.has(key)) {
     if (_histActiveBots.size > 1) _histActiveBots.delete(key);
@@ -6173,20 +6411,19 @@ function toggleHistBot(key) {
     _histActiveBots.add(key);
   }
   document.getElementById(`histPill_${key}`)?.classList.toggle('off', !_histActiveBots.has(key));
+  if (_archivedPosBotKeys().has(key)) _renderHistArchivedBots(); // refresh the ✓ mark
   loadHistoryTab();
 }
 window.toggleHistBot = toggleHistBot;
 
 function selectAllHistBots() {
-  _histActiveBots = new Set(_POS_BOTS.map(b => b.key));
-  _POS_BOTS.forEach(b => document.getElementById(`histPill_${b.key}`)?.classList.remove('off'));
+  _visibleHistBots().forEach(b => { _histActiveBots.add(b.key); document.getElementById(`histPill_${b.key}`)?.classList.remove('off'); });
   loadHistoryTab();
 }
 window.selectAllHistBots = selectAllHistBots;
 
 function deselectAllHistBots() {
-  _histActiveBots = new Set();
-  _POS_BOTS.forEach(b => document.getElementById(`histPill_${b.key}`)?.classList.add('off'));
+  _visibleHistBots().forEach(b => { _histActiveBots.delete(b.key); document.getElementById(`histPill_${b.key}`)?.classList.add('off'); });
   loadHistoryTab();
 }
 window.deselectAllHistBots = deselectAllHistBots;

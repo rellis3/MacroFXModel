@@ -197,8 +197,8 @@ DEFAULT_CFG: dict = {
     'sl_atr_mult':        2.3,
     'candle_hold':        3,      # MTF bars regime+gates must persist before entry
     'conf_floor':         55.0,
-    'mfe_retrace_pct':    0.27,
-    'mfe_min_r':          1.1,
+    'mfe_retrace_pct':    0.15,
+    'mfe_min_r':          0.7,
     'max_hold_bars':      49,     # MTF bars — backstop timeout
     'exit_regime_bars':   4,      # consecutive non-trend MTF bars before exit
     'window_start':       7,      # UTC hour, entries only
@@ -1207,14 +1207,21 @@ def run(url: str, paper_mode: bool) -> None:
                 mfe_dist = running_mfe.get(pair, 0.0)
                 mfe_r    = mfe_dist / sl_dist if sl_dist > 0 else 0.0
 
-                # ── Breakeven at 1.0R (hardcoded, matches simulateV7) ────────
-                if mfe_r >= 1.0:
-                    moves_to_be = (direction == 'LONG'  and pos['sl'] < pos['entry_price']) or \
-                                  (direction == 'SHORT' and pos['sl'] > pos['entry_price'])
-                    if moves_to_be and modify_sl(pos['ticket'], pair, pos['entry_price'], paper_mode):
-                        pos['sl']          = pos['entry_price']
-                        be_activated[pair] = True
-                        log.info(f'[{pair}] SL -> breakeven {pos["entry_price"]:.5f} (MFE {mfe_r:.2f}R)')
+                # ── Breakeven at 1.0R then step-trail every R thereafter ────
+                # Steps: 1R MFE → SL to 0R (BE), 2R MFE → SL to +1R, 3R → +2R …
+                if mfe_r >= 1.0 and sl_dist > 0:
+                    trail_r    = max(0.0, int(mfe_r) - 1)   # 0 at 1R, 1 at 2R, 2 at 3R …
+                    target_sl  = pos['entry_price'] + trail_r * sl_dist * sign
+                    current_sl = pos['sl']
+                    moves_fwd  = (direction == 'LONG'  and target_sl > current_sl) or \
+                                 (direction == 'SHORT' and target_sl < current_sl)
+                    if moves_fwd and modify_sl(pos['ticket'], pair, target_sl, paper_mode):
+                        pos['sl'] = target_sl
+                        if trail_r == 0:
+                            be_activated[pair] = True
+                            log.info(f'[{pair}] SL -> breakeven {target_sl:.5f} (MFE {mfe_r:.2f}R)')
+                        else:
+                            log.info(f'[{pair}] SL -> +{trail_r:.0f}R trail {target_sl:.5f} (MFE {mfe_r:.2f}R)')
 
                 close_reason: Optional[str] = None
                 exit_code:    str           = ''
