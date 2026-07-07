@@ -64,7 +64,7 @@ import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEV
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
-import { evaluateEstimatorAB } from './js/volEstimatorAB.js';
+import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { loadWeeklyM1 as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { resampleTo as _resampleTo } from './js/barUtils.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
@@ -7838,22 +7838,41 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
     const perPair = {}; const log = [];
     try {
       const wantSessions = (req.body?.sessions ?? 'true') !== 'false';
+      // Anchor: 'london' (default) rebuilds daily bars from H1 grouped by London
+      // calendar date — the SAME day boundary the live forecaster uses — so the
+      // book's numbers match the engine. 'utc' keeps OANDA's 22:00-UTC D1 (old
+      // behaviour). London falls back to D1 automatically if H1 is thin.
+      const anchor = (req.body?.anchor ?? 'london');
       const sessionYears = parseInt(req.body?.sessionYears) || 8;
+      const anchorYears  = parseInt(req.body?.anchorYears)  || 10;
       for (const cfg of insts) {
         try {
-          const bars = await _btFetchD1(cfg.oanda, 5000);
-          const { summary } = evaluateForecast(bars, cfg.assetClass || 'fx');
-          // Session structure (Asia/London/NY) from OANDA H1 — separate, optional,
-          // and non-fatal: a session failure must not drop the daily result.
+          let summary = null, usedAnchor = 'utc-d1', h1 = null;
+          if (anchor === 'london') {
+            try {
+              h1 = await _fetchH1(cfg.oanda, anchorYears);
+              // London-midnight daily OHLC (strip the intraday sub-bars before eval).
+              const lond = buildLondonDaily(h1).map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close }));
+              if (lond.length >= 200) { summary = evaluateForecast(lond, cfg.assetClass || 'fx').summary; usedAnchor = 'london-h1'; }
+            } catch (le) { log.push(`${cfg.name} london-anchor fell back: ${le?.message}`); }
+          }
+          if (!summary) {
+            const bars = await _btFetchD1(cfg.oanda, 5000);
+            summary = evaluateForecast(bars, cfg.assetClass || 'fx').summary;
+            usedAnchor = 'utc-d1';
+          }
+          summary.anchor = usedAnchor;
+          // Session structure (Asia/London/NY) from H1 — reuse the anchor fetch if
+          // we have it; non-fatal (a session failure must not drop the daily result).
           if (wantSessions) {
             try {
-              const h1 = await _fetchH1(cfg.oanda, sessionYears);
-              const sess = evaluateSessions(h1);
+              const sh1 = h1 || await _fetchH1(cfg.oanda, sessionYears);
+              const sess = evaluateSessions(sh1);
               if (!sess.insufficient) summary.session = sess;
             } catch (se) { log.push(`${cfg.name} sessions: ${se?.message}`); }
           }
           perPair[cfg.name] = summary;
-          log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo})${summary.session ? ` · sessions ${summary.session.nDays}d` : ''}`);
+          log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo}) anchor=${usedAnchor}${summary.session ? ` · sessions ${summary.session.nDays}d` : ''}`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);
@@ -7861,8 +7880,11 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
 
       // Cross-pair aggregate of the headline daily H-L metrics (the consistency view).
       const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k]) ?? 0), 0) / names.length).toFixed(4);
+      // Dominant anchor across the evaluated pairs (london-h1 / utc-d1).
+      const _anchorMode = (() => { const a = {}; for (const k of names) { const x = perPair[k].anchor || 'utc-d1'; a[x] = (a[x] || 0) + 1; } return Object.entries(a).sort((p, q) => q[1] - p[1])[0]?.[0] || 'utc-d1'; })();
       const cross = {
         nPairs: names.length,
+        anchor: _anchorMode,
         hlBias:        _avg(s => s.perComponent?.daily?.hl?.bias),
         hlExceedMed:   _avg(s => s.perComponent?.daily?.hl?.exceedMedianPct),
         hlSharpness:   _avg(s => s.perComponent?.daily?.hl?.sharpnessCorr),
