@@ -8046,7 +8046,8 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
       for (const cfg of insts) {
         try {
           const { bars, src } = await _intradayForAB(cfg);   // reuse the estimator's intraday loader
-          let pip = 0.0001; try { pip = _pipSize(cfg.name) || 0.0001; } catch { /* default */ }
+          // Prefer the instrument's explicit pip (indices = 1 point); else registry; else FX default.
+          let pip = cfg.pip; if (!pip) { try { pip = _pipSize(cfg.name) || _pipSize(cfg.oanda) || 0.0001; } catch { pip = 0.0001; } }
           // Run all three horizons — daily / weekly / 20-day — off the same bars.
           const daily  = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'daily' });
           if (daily.insufficient) { log.push(`${cfg.name}: insufficient (${daily.nDays}d, src ${src})`); continue; }
