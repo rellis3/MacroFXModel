@@ -107,6 +107,32 @@ test('analyze: intraday payload adds the touch-continue consistency metric', () 
   assert.equal(inC.direction, 'negative', 'reverse dominates in this synthetic set');
 });
 
+test('analyze: hidden relationships aggregate the per-pair feature scans', () => {
+  // Attach a featureScan to each pair where vov consistently drives misses (+ρ),
+  // across majors/JPY/EUR/gold — a robust, type-diverse hidden relationship.
+  const book = goodBook();
+  const scan = (vovRho) => ({
+    nDays: 400,
+    correlations: [
+      { key: 'vov', label: 'Vol-of-vol (forecast-time)', n: 400, rhoAbsErr: vovRho, rhoCompletion: 0.1 },
+      { key: 'volAnnual', label: 'Annualised vol', n: 400, rhoAbsErr: 0.01, rhoCompletion: 0.0 },
+    ],
+    importance: [{ key: 'vov', label: 'Vol-of-vol', absRho: Math.abs(vovRho), rho: vovRho }],
+    missProfile: { bigMissRatePct: 12, n: 400, features: [] },
+    dayTypes: { k: 4, n: 380, clusters: [{ n: 150, sharePct: 39.5, meanCompletion: 60, meanEfficiency: 0.3, meanAbsErr: 30, label: 'quiet & range-bound' }] },
+  });
+  const rhos = { EURUSD: 0.22, GBPUSD: 0.19, USDJPY: 0.25, EURJPY: 0.2, GBPJPY: 0.18, EURGBP: 0.21, EURAUD: 0.17, GOLD: 0.23, USDCHF: 0.05 };
+  for (const [p, rho] of Object.entries(rhos)) book.perPair[p].featureScan = scan(rho);
+  const r = analyzeCrossPair(book);
+  assert.ok(r.hidden, 'hidden section present');
+  assert.equal(r.generatedFrom.scannedPairs, 9);
+  const vov = r.hidden.relationships.find(x => x.key === 'vov');
+  assert.equal(vov.direction, 'higher → bigger miss');
+  assert.equal(vov.robust, true, 'vov→miss is robust across types');
+  assert.ok(r.hidden.dayTypes.some(d => d.label === 'quiet & range-bound'), 'pooled day-types present');
+  assert.ok(r.hypotheses.some(h => /Vol-of-vol/i.test(h.text) && h.dataNeeded.includes('per-day scan')));
+});
+
 test('analyze: empty input returns insufficient, not a throw', () => {
   assert.equal(analyzeCrossPair({ perPair: {} }).insufficient, true);
   assert.equal(analyzeCrossPair(null).insufficient, true);

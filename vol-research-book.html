@@ -162,6 +162,17 @@
           <tbody id="cTrendTypes"></tbody>
         </table></div></div>
 
+        <div class="sec-sub">Hidden relationships — what KNOWN-at-open condition predicts a bigger forecast miss? <span class="muted">(causal predictors only; robust = replicates across ≥2 types)</span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Predictor</th><th class="num">Pairs agree</th><th>Direction</th><th class="num">Median ρ</th><th class="num">p</th><th>Robust?</th></tr></thead>
+          <tbody id="cTrendHidden"></tbody>
+        </table></div></div>
+        <div class="sec-sub">Recurring day-types — <span class="muted">days clustered by realized signature (completion · efficiency · miss size), pooled across pairs</span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Day-type</th><th class="num">Pairs</th><th class="num">Mean share %</th><th class="num">Mean completion</th><th class="num">Mean efficiency</th><th class="num">Mean |miss| %</th></tr></thead>
+          <tbody id="cTrendDayTypes"></tbody>
+        </table></div></div>
+
         <div class="sec-sub">Hypotheses for later testing — <span class="muted">candidates, explicitly not trade rules</span></div>
         <div class="find-wrap" id="cTrendHyp"></div>
         <div class="note" id="cTrendNotes" style="margin-top:8px"></div>
@@ -548,6 +559,7 @@ function renderTrendSpotter() {
     `Across <strong>${cp.nPairs} pairs</strong> the trend spotter finds <strong>${robust.length}</strong> pattern${robust.length===1?'':'s'} that hold across ≥2 pair types (sign-test, BH-corrected).
      Trust tiers: <span class="pos">${cp.trust.trade.length} trade</span> · <span class="amber">${cp.trust.caution.length} caution</span> · <span class="neg">${cp.trust.exclude.length} exclude</span>${cp.trust.exclude.length?` (${cp.trust.exclude.join(', ')})`:''}.
      Most reliable: <strong>${top?.pair??'—'}</strong> (${fmt(top?.score,1)}); least: <strong>${bot?.pair??'—'}</strong> (${fmt(bot?.score,1)}).
+     ${cp.hidden?`Per-day scan on ${cp.generatedFrom.scannedPairs} pairs → <strong>${(cp.hidden.relationships||[]).filter(h=>h.robust).length}</strong> hidden predictor(s) of forecast misses replicate across types.`:''}
      ${cp.generatedFrom.intradayPairs?`Intraday touch behaviour folded in for ${cp.generatedFrom.intradayPairs} pairs.`:'<span class="muted">Run Intraday to add the touch-continue metric.</span>'}`;
 
   // Reliability ranking
@@ -586,6 +598,22 @@ function renderTrendSpotter() {
     <td class="num ${v.medianSharpness>=0.4?'pos':'neu'}">${fmt(v.medianSharpness,3)}</td>
     <td class="num ${v.medianSkill>0.03?'pos':v.medianSkill<=0?'neg':'neu'}">${fmt(v.medianSkill,3)}</td>
     <td class="num ${clsEx(v.medianExceedMed,50)}">${fmt(v.medianExceedMed,1)}</td></tr>`).join('') || '<tr><td colspan="6" class="neu">—</td></tr>';
+
+  // Hidden relationships (Phase 2)
+  const hid = cp.hidden;
+  el('cTrendHidden').innerHTML = hid ? (hid.relationships||[]).map(h=>`<tr>
+    <td>${h.label}</td>
+    <td class="num">${h.agree}/${h.nPairs} <span class="muted">${h.typeSpread}t</span></td>
+    <td class="${h.direction.includes('bigger')?'amber':'pos'}">${h.direction}</td>
+    <td class="num ${Math.abs(h.medianRho)>=0.15?'amber':'neu'}">${sgn(h.medianRho,3)}</td>
+    <td class="num ${h.pValue<0.05?'pos':'neu'}">${fmt(h.pValue,3)}</td>
+    <td>${h.robust?'<span class="pos">✓ robust</span>':'<span class="neu">—</span>'}</td></tr>`).join('')
+    : `<tr><td colspan="6" class="neu">Per-day feature scan not present — re-run the research (it now attaches the scan per pair).</td></tr>`;
+  el('cTrendDayTypes').innerHTML = hid ? (hid.dayTypes||[]).map(d=>`<tr>
+    <td><strong>${d.label}</strong></td><td class="num">${d.nPairs}</td>
+    <td class="num">${fmt(d.meanSharePct,1)}</td><td class="num ${d.meanCompletion>=100?'pos':d.meanCompletion<70?'amber':'neu'}">${d.meanCompletion}</td>
+    <td class="num ${d.meanEfficiency>=0.5?'pos':'neu'}">${fmt(d.meanEfficiency,2)}</td><td class="num">${d.meanAbsErr}</td></tr>`).join('')
+    : `<tr><td colspan="6" class="neu">—</td></tr>`;
 
   // Hypotheses
   el('cTrendHyp').innerHTML = (cp.hypotheses||[]).map(h=>{

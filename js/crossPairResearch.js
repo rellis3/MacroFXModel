@@ -193,6 +193,41 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
   const consistency = raw.map((x, i) => ({ ...x, robust: sig.has(i) && x.typeSpread >= 2 }))
     .sort((a, b) => a.pValue - b.pValue);
 
+  // ── Hidden relationships (Phase 2): cross-pair consistency of each causal
+  //    predictor→miss-size correlation, + pooled day-types. Only pairs whose
+  //    per-day feature scan ran contribute. ──
+  let hidden = null;
+  const scans = recs.filter(r => r.s?.featureScan && !r.s.featureScan.insufficient);
+  if (scans.length >= minPairsForConsistency) {
+    const first = scans[0].s.featureScan.correlations;
+    const labelOf = Object.fromEntries(first.map(c => [c.key, c.label]));
+    const rawH = first.map(c => c.key).map(key => {
+      const vals = scans.map(r => { const c = r.s.featureScan.correlations.find(x => x.key === key); return (c && c.rhoAbsErr != null) ? { r, v: c.rhoAbsErr } : null; }).filter(Boolean);
+      const nz = vals.filter(x => x.v !== 0);
+      const up = nz.filter(x => x.v > 0), down = nz.filter(x => x.v < 0);
+      const n = nz.length, k = Math.max(up.length, down.length);
+      const maj = up.length >= down.length ? up : down;
+      return { key, label: labelOf[key], nPairs: n, agree: k,
+        direction: up.length >= down.length ? 'higher → bigger miss' : 'higher → smaller miss',
+        medianRho: +(_median(vals.map(x => x.v)) ?? 0).toFixed(3),
+        pValue: +signTestP(n, k).toFixed(4), typeSpread: new Set(maj.map(x => x.r.type)).size };
+    }).filter(x => x.nPairs >= minPairsForConsistency);
+    const sigH = _bhSignificant(rawH.map(x => x.pValue), fdrQ);
+    const relationships = rawH.map((x, i) => ({ ...x, robust: sigH.has(i) && x.typeSpread >= 2 })).sort((a, b) => a.pValue - b.pValue);
+    // Pool day-types by label across pairs (track pair identity so nPairs counts
+    // DISTINCT pairs, not cluster instances — a pair can yield the same label twice).
+    const byLabel = {};
+    for (const r of scans) { const dt = r.s.featureScan.dayTypes; if (!dt || dt.insufficient) continue; for (const c of dt.clusters) (byLabel[c.label] = byLabel[c.label] || []).push({ ...c, pair: r.name }); }
+    const dayTypes = Object.entries(byLabel).map(([label, arr]) => ({
+      label, nPairs: new Set(arr.map(c => c.pair)).size,
+      meanSharePct: +(_mean(arr.map(c => c.sharePct))).toFixed(1),
+      meanCompletion: +(_mean(arr.map(c => c.meanCompletion))).toFixed(0),
+      meanEfficiency: +(_mean(arr.map(c => c.meanEfficiency))).toFixed(2),
+      meanAbsErr: +(_mean(arr.map(c => c.meanAbsErr))).toFixed(0),
+    })).sort((a, b) => b.meanSharePct - a.meanSharePct);
+    hidden = { nPairs: scans.length, relationships, dayTypes };
+  }
+
   // ── Hypotheses (from robust findings + type differences) — candidates, not rules ──
   const hypotheses = [];
   for (const c of consistency.filter(x => x.robust)) {
@@ -205,13 +240,20 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
     const lo = typeScores[0], hi = typeScores.at(-1);
     if (hi.s - lo.s >= 20) hypotheses.push({ text: `Forecast reliability clusters by type: ${PAIR_TYPE_LABELS[hi.t]} (median ${hi.s}) rank well above ${PAIR_TYPE_LABELS[lo.t]} (median ${lo.s}).`, evidence: `${hi.s - lo.s} pt reliability gap`, dataNeeded: 'none (testable now)' });
   }
-  hypotheses.push({ text: 'Do hidden day-level relationships (small Asia → bigger errors; recent RV vs long-term RV; variable combinations) predict forecast quality?', evidence: 'not computable from aggregates', dataNeeded: 'per-day rows export (Phase 2)' });
+  // Hidden-relationship hypotheses (Phase 2) — now computed from the per-day scan.
+  if (hidden) {
+    for (const h of hidden.relationships.filter(x => x.robust))
+      hypotheses.push({ text: `${h.label}: ${h.direction} — consistent across ${h.agree}/${h.nPairs} pairs (${h.typeSpread} types).`, evidence: `sign-test p=${h.pValue}, median ρ ${h.medianRho}`, dataNeeded: 'none (per-day scan)' });
+    if (!hidden.relationships.some(x => x.robust))
+      hypotheses.push({ text: 'No causal predictor of forecast-miss size replicates across pair types — misses look conditionally unpredictable from the current feature set.', evidence: `${hidden.nPairs} pairs scanned, none BH-significant + type-diverse`, dataNeeded: 'none (per-day scan)' });
+  }
+  hypotheses.push({ text: 'Does session structure (small Asia → bigger errors; London↔NY) predict forecast quality?', evidence: 'needs the session per-day series joined to the forecast rows', dataNeeded: 'session per-day export (Phase 2b)' });
 
   return {
     nPairs: names.length, pairs: names,
-    generatedFrom: { vfrPairs: names.length, intradayPairs: Object.keys(inPer).length },
+    generatedFrom: { vfrPairs: names.length, intradayPairs: Object.keys(inPer).length, scannedPairs: scans.length },
     fdrQ, weights,
-    reliability, trust, byType, consistency, hypotheses,
+    reliability, trust, byType, consistency, hidden, hypotheses,
     notes: [
       'Reliability sub-scores are percentile ranks WITHIN this pair set — relative, not absolute.',
       'Correlated pairs are not independent: within-type agreement is down-weighted via the ≥2-type-spread requirement for "robust".',
