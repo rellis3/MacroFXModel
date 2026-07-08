@@ -880,10 +880,21 @@ async function _runJob(base, btnId, startMsg) {
   setStatus('spin', startMsg); el('runStatus').textContent='Starting…';
   if (_poll) clearInterval(_poll);
   try {
-    const r = await fetch(`/api/${base}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pair:el('runPair').value})});
-    const jb = await r.json();
-    if (!jb.ok) { setStatus('err', jb.error||'Failed'); btn.disabled=false; return; }
-    let fails = 0; const MAX = 20;
+    // POST with one retry — a heavy in-flight run can briefly block the server, so
+    // a transient "Failed to fetch" on kickoff shouldn't abort the whole thing.
+    let jb = null;
+    for (let attempt = 0; attempt < 2 && !jb; attempt++) {
+      try {
+        const r = await fetch(`/api/${base}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pair:el('runPair').value})});
+        jb = await r.json();
+      } catch (e) {
+        if (attempt === 0) { el('runStatus').textContent='Server busy — retrying…'; await new Promise(res=>setTimeout(res,2500)); }
+        else { setStatus('err','Server not responding — a heavy run may be in progress. Try a single pair, or wait a moment and retry.'); btn.disabled=false; return; }
+      }
+    }
+    if (!jb || !jb.ok) { setStatus('err', jb?.error||'Failed'); btn.disabled=false; return; }
+    if (jb.reused) el('runStatus').textContent = jb.message || 'Attaching to the run already in progress…';
+    let fails = 0; const MAX = 30;
     const done = async (msg) => { if(_poll){clearInterval(_poll);_poll=null;} btn.disabled=false; el('runStatus').textContent=msg; await loadAll(); };
     _poll = setInterval(async () => {
       try {
