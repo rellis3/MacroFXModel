@@ -8110,7 +8110,7 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
     const perPair = {}, log = [];
     // Persist whatever has completed so far — a slow all-31 run always leaves a
     // loadable file (partial results survive a reload or a container restart).
-    const flush = async () => { const nm = Object.keys(perPair); if (nm.length) { try { await _persistResult('intraday_research', { perPair, cross: _intraCross(perPair, nm), pairs: nm }); } catch { /* best-effort */ } } };
+    const flush = async () => { const nm = Object.keys(perPair); if (nm.length) { try { await _persistResult('intraday_research', { perPair, cross: _intraCross(perPair, nm), pairs: nm, log }); } catch { /* best-effort */ } } };
     let done = 0;
     try {
       for (const cfg of insts) {
@@ -8136,7 +8136,7 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
       }
       const names = Object.keys(perPair);
       if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated — see log for per-pair reasons', log, startedAt }); return; }
-      const outFile = await _persistResult('intraday_research', { perPair, cross: _intraCross(perPair, names), pairs: names });
+      const outFile = await _persistResult('intraday_research', { perPair, cross: _intraCross(perPair, names), pairs: names, log });
       intraJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Intraday research on ${names.length}/${insts.length} pair(s)`, log, file: outFile } });
     } catch (e) { await flush(); intraJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
   })();

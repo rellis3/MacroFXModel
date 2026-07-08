@@ -436,12 +436,17 @@ function initView() {
   if (!pairs.length) { setStatus('err','Empty research result.'); return; }
   const ranked = (_R.cross?.ranked||[]).map(x=>x.pair);
   const ordered = pairs.slice().sort((a,b)=>{ const ia=ranked.indexOf(a),ib=ranked.indexOf(b); return (ia<0?1e9:ia)-(ib<0?1e9:ib); });
-  el('viewPair').innerHTML = ordered.map(p=>`<option>${p}</option>`).join('');
+  // Which pairs actually have intraday data (may be a subset — a partial/aborted run).
+  const inPairs = _IN ? (_IN.pairs || Object.keys(_IN.perPair||{})) : [];
+  el('viewPair').innerHTML = ordered.map(p=>`<option value="${p}">${p}${inPairs.length && !inPairs.includes(p) ? ' ·no-intraday' : ''}</option>`).join('');
+  // Land the drill-down on a pair that HAS intraday, so its chapters populate on load.
+  if (inPairs.length) { const firstIn = ordered.find(p=>inPairs.includes(p)); if (firstIn) el('viewPair').value = firstIn; }
   renderCross();
   renderPair();
   const anc = _R.cross?.anchor || (Object.values(_R.perPair||{})[0]?.anchor) || 'utc-d1';
   const ancLbl = anc === 'london-h1' ? 'London-anchored' : 'UTC-D1 anchored';
-  setStatus('ok', `Loaded · ${pairs.length} pair(s) · ${ancLbl}${_AB?' · A/B ✓':''}${_IN?' · intraday ✓':' · intraday not run'} · ${_R.file||''}`);
+  const inCov = _IN ? ` · intraday ✓ (${inPairs.length}/${pairs.length})` : ' · intraday not run';
+  setStatus('ok', `Loaded · ${pairs.length} pair(s) · ${ancLbl}${_AB?' · A/B ✓':''}${inCov} · ${_R.file||''}`);
   const an = el('anchorNote');
   if (an) an.innerHTML = anc === 'london-h1'
     ? `This run is <strong>London-midnight anchored</strong> — daily bars were rebuilt from H1 grouped by London calendar date, the same day boundary the live forecaster uses. The numbers now match your engine's day; the estimator A/B (Ch 8) shares the same anchor.`
@@ -672,6 +677,12 @@ function renderRecal(s, pair) {
 }
 
 // ── PR-D/E intraday chapters (expansion + level touches), horizon-aware ──────
+function _intradayCoverageNote(pair) {
+  const inPairs = _IN ? (_IN.pairs || Object.keys(_IN.perPair||{})) : [];
+  if (!_IN) return `Click <strong>▶ Intraday</strong> to run the level-touch / expansion study (loads M1/H1 per pair, all three horizons).`;
+  if (!inPairs.length) return `The last intraday run produced no pairs — check the run log.`;
+  return `<strong>${pair} isn't in the intraday run.</strong> ${inPairs.length} pair(s) have intraday data — pick one from “Drill into pair”: <span class="bk-lbl">${inPairs.join(', ')}</span>. <br><span class="muted">Indices are processed last and carry the heaviest M1, so a partial run often has the FX pairs but not the indices — re-run Intraday (ideally one index at a time) to fill them.</span>`;
+}
 function renderIntraday(pair) {
   ['c6pair','cTouchPair'].forEach(id=>el(id) && (el(id).textContent = pair));
   const hz = HZ(), parent = _IN?.perPair?.[pair];
@@ -688,7 +699,7 @@ function renderIntraday(pair) {
   if (!r || !r.expansion || !r.expansion.n) {
     el('a6').innerHTML = parent
       ? `<span class="muted">No ${HZ_LBL[hz]} expansion data for ${pair} — the ${hz} horizon may have too few windows in this run. Try Daily, or a longer history.</span>`
-      : `<span class="muted">Intraday research not run yet. Click <strong>▶ Intraday</strong> above (loads M1/H1 per pair and runs all three horizons) — then this chapter and Level touches populate.</span>`;
+      : `<span class="muted">${_intradayCoverageNote(pair)}</span>`;
     el('c6bars').innerHTML=''; el('c6tiles').innerHTML=''; el('c6note').textContent='';
   } else {
     const ex = r.expansion, fr=['25','50','75','100'];
@@ -708,7 +719,7 @@ function renderIntraday(pair) {
   if (!r || !r.touches || !r.touches.medianExtension?.n) {
     el('aTouch').innerHTML = parent
       ? `<span class="muted">No ${HZ_LBL[hz]} level touches for ${pair} in this run.</span>`
-      : `<span class="muted">Click <strong>▶ Intraday</strong> to populate the level-touch / pip-excursion study (runs all three horizons).</span>`;
+      : `<span class="muted">${_intradayCoverageNote(pair)}</span>`;
     ['cTouchTbl','cTouchReg'].forEach(id=>el(id).innerHTML='<tr><td colspan="10" class="neu">—</td></tr>');
     el('cTouchTiles').innerHTML=''; el('cTouchNote').textContent=''; return;
   }
