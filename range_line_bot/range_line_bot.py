@@ -274,7 +274,11 @@ def run(base_url: str, force_live: bool) -> None:
     while True:
         nowt = time.time()
 
-        # (a) Plan — slow pull. New plan OR new session day → rebuild the ladders.
+        # (a) Plan — slow pull. Adopt a refreshed plan but PRESERVE per-session
+        # one-shot state (acted/entered/ladders): only a genuine new session anchor
+        # resets it. Wiping `sessions` on every plan refresh (the producer restamps
+        # generatedAt intraday) dropped the held-position suppression mid-day, so a
+        # level that already had an open position could re-fire → duplicate fills.
         if nowt - last_plan >= cfg.get("plan_secs", 600) or plan is None:
             try:
                 new_plan = kv.get_json("range_line_bot_plan")
@@ -283,8 +287,6 @@ def run(base_url: str, force_live: bool) -> None:
                 new_plan = None
             if new_plan and new_plan.get("generatedAt") != (plan or {}).get("generatedAt"):
                 plan = new_plan
-                sessions = {}
-                last_anchor = None
                 log.info(f"new plan loaded · {plan.get('generatedAt')} · {len(plan.get('universe', []))} instruments")
             last_plan = nowt
 
@@ -294,6 +296,17 @@ def run(base_url: str, force_live: bool) -> None:
                 sessions = {instr: RangeSession(instr, plan["ladderFibs"], chand_frac=plan.get("chandFrac", 0.5))
                             for instr in plan.get("universe", [])}
                 last_anchor = anchor
+            else:
+                # Same session, refreshed plan: add sessions for any NEW universe
+                # members without disturbing existing one-shot state (drop members
+                # no longer in the universe so a stale ladder can't keep firing).
+                universe = set(plan.get("universe", []))
+                for instr in universe:
+                    if instr not in sessions:
+                        sessions[instr] = RangeSession(instr, plan["ladderFibs"], chand_frac=plan.get("chandFrac", 0.5))
+                for instr in list(sessions):
+                    if instr not in universe:
+                        del sessions[instr]
 
         # (b) Config + status — medium.
         if nowt - last_status >= cfg.get("status_secs", 30):
@@ -343,6 +356,7 @@ def run(base_url: str, force_live: bool) -> None:
                     continue
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
+                single = cfg.get("single_position_per_pair", True)
                 for spec in sess.decide(px, ip["policy"], dry_run=forming):
                     sl = spec["protect_stop"]
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), spec["entry"] - sl, cfg.get("max_lot", 2.0))
@@ -369,6 +383,12 @@ def run(base_url: str, force_live: bool) -> None:
                         sess.mark_entered(spec["src"], spec["side"])   # burn the slot ONLY on a fill
                         log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['decision'].upper()} "
                                  f"{spec['label']} {spec['side']} → ticket {tid} lots {lots}")
+                        # One position per pair per tick when single_position_per_pair:
+                        # two coincident ladder slots (e.g. Asia + Monday, same side)
+                        # could otherwise both fill this tick before the broker's
+                        # positions_get reflects the first → identical duplicate fills.
+                        if single:
+                            break
                     else:
                         log.warning(f"{instr} {spec['decision']} {spec['label']} entry REJECTED — "
                                     f"slot kept open for a later touch")
