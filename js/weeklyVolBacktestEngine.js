@@ -55,7 +55,7 @@ import { dayTypeScore, classifyDayType } from './dayTypeCore.js';
 // ADX (Wilder) — trend-strength regime source, an alternative to the EMA slope.
 import { adxWilder } from './indicatorCore.js';
 import {
-  readM1Parquet, groupByDate, fetchFromR2, fetchFromDrive, M1_DRIVE_IDS,
+  readM1Parquet, readM1Resampled, groupByDate, fetchFromR2, fetchFromDrive, M1_DRIVE_IDS,
 } from './volBacktestM1Engine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -267,6 +267,34 @@ export async function loadWeeklyM1(pairKey, m1Dir = BT_WEEKLY_M1_DIR) {
   }
   console.log(`[WBT-M1] ${pairKey}: ${rows.length.toLocaleString()} M1 bars across ${byWeek.size} weeks`);
   return byWeek; // Map<'YYYY-MM-DD' (Mon), m1bar[]>
+}
+
+// Memory-frugal sibling of loadWeeklyM1 for the intraday-research path: resolves
+// the same disk → R2 → Drive source, then streams the parquet through
+// readM1Resampled (row-range chunks) into N-minute bars WITHOUT ever holding the
+// full decoded M1 (the intraday OOM cause). Returns [{time:epochSec,o,h,l,c}] or
+// null. Keeps 5-min precision — no H1 fallback, so intrabar touches aren't lost.
+export async function loadM1Resampled(pairKey, minutes = 5, m1Dir = BT_WEEKLY_M1_DIR) {
+  const localFile = path.join(m1Dir, `${pairKey}_m1.parquet`);
+  if (existsSync(localFile)) {
+    console.log(`[WBT-M1] Resampling ${pairKey} from disk (${minutes}m chunks)…`);
+    return readM1Resampled(localFile, minutes);
+  }
+  try {
+    const r2ab = await fetchFromR2(pairKey);
+    if (r2ab) {
+      console.log(`[WBT-M1] Resampling ${pairKey} from R2 (${minutes}m chunks)…`);
+      return readM1Resampled(r2ab, minutes);
+    }
+  } catch (e) {
+    console.warn(`[WBT-M1] R2 failed for ${pairKey}: ${e?.message}`);
+  }
+  const driveAb = await fetchFromDrive(pairKey, m1Dir);
+  if (driveAb) {
+    console.log(`[WBT-M1] Resampled ${pairKey} from Drive (${minutes}m chunks)`);
+    return readM1Resampled(driveAb, minutes);
+  }
+  return null;
 }
 
 // ── Per-bar trade resolution ───────────────────────────────────────────────────

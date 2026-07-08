@@ -66,8 +66,7 @@ import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
-import { loadWeeklyM1 as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
-import { resampleTo as _resampleTo } from './js/barUtils.js';
+import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
 import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
@@ -7981,18 +7980,12 @@ const _latestAbFile = () => {
 // Intraday bars for the A/B: prefer M1 parquet resampled to 5-min RV granularity,
 // fall back to OANDA H1. Returns { bars, src } — bars carry unix-second time.
 async function _intradayForAB(cfg) {
+  // Stream the M1 parquet in row-range chunks straight to 5-min bars — never holds
+  // the full decoded M1 (the OOM that killed the run ~9 pairs in). Keeps 5-min
+  // precision so intrabar touches aren't lost (no coarse H1 bias in the touch study).
   try {
-    const byWeek = await _loadM1ForAB(cfg.name.toLowerCase());
-    if (byWeek && byWeek.size) {
-      const m1 = [];
-      for (const arr of byWeek.values()) for (const b of arr) {
-        const t = Math.floor(new Date(String(b.time).replace(' ', 'T').replace(/Z?$/, 'Z')).getTime() / 1000);
-        if (Number.isFinite(t)) m1.push({ time: t, open: b.open, high: b.high, low: b.low, close: b.close });
-      }
-      m1.sort((a, b) => a.time - b.time);
-      const bars5 = _resampleTo(m1, 5);
-      if (bars5.length > 5000) return { bars: bars5, src: 'm1-5min' };
-    }
+    const bars5 = await _loadM1ForAB(cfg.name.toLowerCase(), 5);
+    if (bars5 && bars5.length > 5000) return { bars: bars5, src: 'm1-5min' };
   } catch { /* fall through to H1 */ }
   const h1 = await _fetchH1AB(cfg.oanda, 10);   // Date-typed time; the module handles it
   return { bars: h1, src: 'h1' };
