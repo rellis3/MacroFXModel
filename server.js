@@ -65,7 +65,7 @@ import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
-import { analyzeCrossPair } from './js/crossPairResearch.js';
+import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
@@ -7865,21 +7865,27 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
       const anchor = (req.body?.anchor ?? 'london');
       const sessionYears = parseInt(req.body?.sessionYears) || 8;
       const anchorYears  = parseInt(req.body?.anchorYears)  || 10;
+      const returnsByPair = {};   // G3: per-pair daily close→close returns, keyed by date
       for (const cfg of insts) {
         try {
-          let summary = null, usedAnchor = 'utc-d1', h1 = null, evRows = null;
+          let summary = null, usedAnchor = 'utc-d1', h1 = null, evRows = null, dailyBars = null;
           if (anchor === 'london') {
             try {
               h1 = await _fetchH1(cfg.oanda, anchorYears);
               // London-midnight daily OHLC (strip the intraday sub-bars before eval).
               const lond = buildLondonDaily(h1).map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close }));
-              if (lond.length >= 200) { const ev = evaluateForecast(lond, cfg.assetClass || 'fx'); summary = ev.summary; evRows = ev.rows; usedAnchor = 'london-h1'; }
+              if (lond.length >= 200) { const ev = evaluateForecast(lond, cfg.assetClass || 'fx'); summary = ev.summary; evRows = ev.rows; dailyBars = lond; usedAnchor = 'london-h1'; }
             } catch (le) { log.push(`${cfg.name} london-anchor fell back: ${le?.message}`); }
           }
           if (!summary) {
             const bars = await _btFetchD1(cfg.oanda, 5000);
-            const ev = evaluateForecast(bars, cfg.assetClass || 'fx'); summary = ev.summary; evRows = ev.rows;
+            const ev = evaluateForecast(bars, cfg.assetClass || 'fx'); summary = ev.summary; evRows = ev.rows; dailyBars = bars;
             usedAnchor = 'utc-d1';
+          }
+          // G3: daily close→close returns keyed by date, for the cross-pair correlation.
+          if (dailyBars && dailyBars.length > 60) {
+            const ret = {}; for (let k = 1; k < dailyBars.length; k++) { const p0 = dailyBars[k - 1].close, p1 = dailyBars[k].close; if (p0 > 0 && dailyBars[k].date) ret[dailyBars[k].date] = p1 / p0 - 1; }
+            returnsByPair[cfg.name] = ret;
           }
           summary.anchor = usedAnchor;
           // Session structure (Asia/London/NY) from H1 — reuse the anchor fetch if
@@ -7925,6 +7931,8 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
           exceedMed: perPair[k].perComponent?.daily?.hl?.exceedMedianPct ?? 0,
         })).sort((a, b) => b.sharpness - a.sharpness),
       };
+      // G3: effective independent bets from the daily-return correlation matrix.
+      try { cross.portfolio = portfolioIndependence(returnsByPair, names); } catch (pe) { log.push(`portfolio: ${pe?.message}`); }
 
       // ── Recalibration → proposed ASSET_PARAMS (per asset class) ──────────────
       // Aggregate the per-pair walk-forward recalibration factors up to the asset-

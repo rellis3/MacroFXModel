@@ -66,6 +66,61 @@ slippage.
 
 ---
 
+---
+
+# The gates — questions that come BEFORE the mechanics (fresh-eyes review)
+
+The eight questions above are **mechanics** ("how does the level behave?"). A quant
+handed this data cold would refuse to touch mechanics until three **gates** pass.
+If any gate fails, the mechanics are theatre. These are now built (`G1`–`G3` on
+`cross-pair-research.html`).
+
+## G1 — Is the FORECAST the source of edge, or just a band? (placebo)
+Fade-the-median might work equally well at a **randomly-placed line** the same
+distance from the open. If fade-at-forecast ≈ fade-at-placebo, you've found
+mean-reversion, not a forecast edge.
+- *Built:* the intraday engine now evaluates a seeded **jittered placebo** level
+  beside every real forecast level and reports `edgeVsPlacebo` (real reversal rate
+  − placebo reversal rate), folded cross-pair with the sign-test + type-spread
+  discipline. Near-zero ⇒ the forecast's exact placement adds nothing.
+
+## G2 — What is the PAYOFF SHAPE? Is fading selling underpriced vol insurance? (short gamma)
+Fading wins small often and loses big on breakouts — a **negatively-skewed,
+short-gamma** payoff that looks like edge in a win-rate table and blows up in the
+tail. Win rate is the wrong lens; the loss tail is the truth.
+- *Built:* the engine computes the **hold-to-close fade PnL distribution** per
+  touched median (revert-toward-open = win, break-away = loss) and reports mean,
+  median, **skew**, p5/p95, worst loss, win rate, and **avg-win ÷ avg-loss**. A
+  negative skew with avg-loss ≫ avg-win is the insurance-selling signature — the
+  net edge must pay for that tail, not just win often.
+
+## G3 — How many INDEPENDENT bets are there really? (portfolio concentration)
+26 pairs but 3 USD blocs + EUR/GBP/AUD crosses. Fading EURUSD+GBPUSD+AUDUSD at
+once is ~one leveraged USD bet. "31/31 pairs agree" is mostly correlation.
+- *Built:* the run computes the daily-return **correlation matrix** across pairs
+  and the **effective number of independent bets** = n² ÷ ΣᵢⱼCᵢⱼ² (participation
+  ratio), plus mean pairwise correlation. Tells you the *real* breadth behind any
+  cross-pair claim and the true portfolio risk.
+
+**Order:** G1 first (no edge over placebo ⇒ stop), then G2 (a real gross edge that
+is underpriced insurance ⇒ stop), then G3 (size the portfolio to the *effective*
+bet count, not 26). Only past all three do the mechanics (Q1–Q8) and Phase 3 mean
+anything.
+
+## Deliberately NOT built yet (the next layer, if the gates pass)
+- **Regime-conditioned EDGE** (not behaviour): is the cost-surviving edge only in
+  low-vol/ranging states, negative in trends?
+- **Time-stability / decay**: rolling-window edge — has it been arbed away?
+- **Directional vs range alpha**: does the forecast *skew* predict direction,
+  separately from fading the *range*?
+- **Fill realism**: can you get the limit fill at the line on the days that matter
+  (adverse selection on breakouts)?
+- **The reframe**: a vol forecast's *replicated* use is **risk-sizing / vol-target
+  / a don't-trade filter**, not entry signals. "Does sizing an existing momentum/
+  carry edge by the forecast beat trading it flat?" may be the higher-EV question.
+
+---
+
 ## Validation discipline (applies to every question)
 - **Out-of-sample** split, **≥30 events**, **costs on**.
 - **Per pair-type**, and **cross-pair consistency** (a pattern must hold across

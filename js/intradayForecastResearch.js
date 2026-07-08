@@ -67,13 +67,21 @@ export function _levelOutcome(bars, level, dir, pip, hyst) {
   const outcome = contIdx < 0 && revIdx < 0 ? 'stall'
     : revIdx < 0 ? 'continue' : contIdx < 0 ? 'reverse'
     : revIdx < contIdx ? 'reverse' : contIdx < revIdx ? 'continue' : 'ambig';
+  // Hold-to-close fade PnL (G2): enter a FADE at the level (bet on reversion toward
+  // the open), exit at the window close. +ve = price ended back toward open (win),
+  // −ve = broke away (the short-gamma loss tail lives here).
+  const lastClose = bars.at(-1).close;
+  const closeFadePips = +(((dir > 0 ? (level - lastClose) : (lastClose - level)) / pip)).toFixed(1);
   return {
     touched: true, firstIdx, retests: episodes,
     hour: _hourOf(bars[firstIdx]._t), session: _session(bars[firstIdx]._t),
     mfePips: +mfe.toFixed(1), maePips: +mae.toFixed(1),
-    rev10: mae >= 10, rev20: mae >= 20, rev50: mae >= 50, outcome,
+    rev10: mae >= 10, rev20: mae >= 20, rev50: mae >= 50, outcome, closeFadePips,
   };
 }
+
+// Seeded PRNG for the deterministic placebo jitter (G1).
+function _mulberry32(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 // ── Horizon config — daily / weekly (5d) / 20-day. Levels differ only by which
 //    forecast fields feed them and the window length (Lego principle: never
@@ -92,7 +100,7 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
 
   const expRows = [];
-  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [] };
+  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [] };
   let firstUpper = 0, firstLower = 0, eitherTouched = 0;
 
   // Non-overlapping windows (step = W) — avoids autocorrelation inflation across
@@ -134,6 +142,17 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     if (oDnMed) touchRows.dnMed.push({ ...oDnMed, regime });
     if (oUpP75) touchRows.upP75.push({ ...oUpP75, regime });
     if (oDnP75) touchRows.dnP75.push({ ...oDnP75, regime });
+    // ── G1 placebo: the median lines jittered by a seeded same-scale offset — a
+    // control at a similar distance but NOT the forecast's exact prediction. If the
+    // real level reverses no more than this, the forecast placement adds no edge.
+    if (expRange > 0) {
+      const rng = _mulberry32(7919 * i + 104729);
+      const jit = expRange * (0.25 + 0.35 * rng());
+      const oPlUp = _levelOutcome(bars, upMed + (rng() < 0.5 ? jit : -jit), +1, pip, hyst);
+      const oPlDn = _levelOutcome(bars, dnMed + (rng() < 0.5 ? jit : -jit), -1, pip, hyst);
+      if (oPlUp) touchRows.plMed.push({ ...oPlUp, regime });
+      if (oPlDn) touchRows.plMed.push({ ...oPlDn, regime });
+    }
     if (oUpMed || oDnMed) {
       eitherTouched++;
       const uh = oUpMed ? oUpMed.firstIdx : Infinity, dh = oDnMed ? oDnMed.firstIdx : Infinity;
@@ -210,9 +229,31 @@ function summarize(expRows, touchRows, dir, lond, H) {
     for (const rg of ['BULL', 'BEAR', 'RANGE']) { const g = rows.filter(r => r.regime === rg); if (g.length >= minReg) out[rg] = { n: g.length, continuePct: +(_rate(g.map(r => r.outcome === 'continue')) ?? 0).toFixed(1), reverse20Pct: +(_rate(g.map(r => r.rev20)) ?? 0).toFixed(1), meanMfePips: +_mean(g.map(r => r.mfePips)).toFixed(1) }; }
     return out;
   };
+  // ── G1 placebo (does the exact forecast placement beat a same-scale jittered
+  //    level?) + G2 fade payoff shape (hold-to-close fade PnL distribution) ──
+  const plMed = touchRows.plMed || [];
+  const _pctl = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const i = p / 100 * (s.length - 1); const lo = Math.floor(i), hi = Math.ceil(i); return +(s[lo] + (s[hi] - s[lo]) * (i - lo)).toFixed(1); };
+  const _skew = a => { if (a.length < 3) return null; const m = _mean(a); const sd = Math.sqrt(_mean(a.map(x => (x - m) ** 2))); if (!sd) return 0; return +(_mean(a.map(x => ((x - m) / sd) ** 3))).toFixed(2); };
+  const _fadePayoff = rows => {
+    const pnl = rows.map(r => r.closeFadePips).filter(v => v != null);
+    if (pnl.length < 20) return { n: pnl.length };
+    const wins = pnl.filter(v => v > 0), losses = pnl.filter(v => v < 0);
+    const avgWin = wins.length ? _mean(wins) : 0, avgLoss = losses.length ? _mean(losses) : 0;
+    return { n: pnl.length, meanPips: +_mean(pnl).toFixed(1), medianPips: +_median(pnl).toFixed(1), skew: _skew(pnl),
+      p5: _pctl(pnl, 5), p95: _pctl(pnl, 95), worstPips: +Math.min(...pnl).toFixed(1),
+      winRatePct: +(_rate(pnl.map(v => v > 0)) ?? 0).toFixed(1),
+      avgWinPips: +avgWin.toFixed(1), avgLossPips: +avgLoss.toFixed(1),
+      winLossRatio: avgLoss ? +(avgWin / -avgLoss).toFixed(2) : null };
+  };
+  const medRev = _rate(med.map(r => r.outcome === 'reverse'));
+  const plRev  = _rate(plMed.map(r => r.outcome === 'reverse'));
   const touches = {
     medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med) },
     p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75) },
+    placebo: { n: plMed.length, reversePct: plRev == null ? null : +plRev.toFixed(1),
+      realReversePct: medRev == null ? null : +medRev.toFixed(1),
+      edgeVsPlaceboPp: (medRev != null && plRev != null) ? +(medRev - plRev).toFixed(1) : null },
+    fadePayoff: _fadePayoff(med),
     direction: {
       eitherTouchedDays: dir.eitherTouched,
       firstUpperPct: dir.eitherTouched ? +(dir.firstUpper / dir.eitherTouched * 100).toFixed(1) : null,
