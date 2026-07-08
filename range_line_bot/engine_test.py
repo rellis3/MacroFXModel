@@ -96,6 +96,23 @@ sess3.set_range("A", BARS)
 ok("dry_run primes without trading", sess3.decide(115, {"A_1_up|": {"decision": "follow"}}, dry_run=True) == [])
 ok("primed level does not retro-fire", sess3.decide(115, {"A_1_up|": {"decision": "follow"}}) == [])
 
+# Two ladders (Asia + Monday) can EACH produce a same-side spec in ONE tick — the
+# condition the loop's single_position_per_pair guard collapses to one fill/pair/tick
+# (else two coincident slots open identical duplicate positions before the broker's
+# positions_get reflects the first). decide() itself returns one-per-(src,side).
+print("[engine — two-source same-tick coincidence]")
+MBARS = [
+    {"time": 0,   "open": 100, "high": 100, "low": 100, "close": 100},
+    {"time": 900, "open": 110, "high": 110, "low": 110, "close": 110},
+]
+sboth = RangeSession("eurusd", FIBS)
+sboth.set_range("A", BARS)
+ok("Monday ladder builds (15m body range)", sboth.set_range("M", MBARS) is True)
+both = sboth.decide(115, {"A_1_up|": {"decision": "follow"}, "M_1_up|": {"decision": "follow"}})
+ok("decide returns one spec PER source at a coincident touch (2 specs)", len(both) == 2)
+ok("both specs are the same pair/side (loop must dedupe to one fill/tick)",
+   {s["src"] for s in both} == {"A", "M"} and all(s["side"] == "up" for s in both))
+
 print("[engine — session anchor]")
 # 2026-06-30 10:00:00 UTC; boundary 23 → most recent 23:00 UTC = 2026-06-29 23:00.
 now = int(datetime(2026, 6, 30, 10, 0, 0, tzinfo=timezone.utc).timestamp())
