@@ -19,23 +19,33 @@ So: **real information, wrong harvest.** The blind median fade is short-gamma an
 dies on costs. This note is the honest attempt to harvest the G1 information a
 better way — and to say clearly what "it worked" vs "it didn't" looks like.
 
-## Which forecast lines we fade (and which we don't)
+## The three level sets (and a forecaster finding)
 
-The touch study places levels at the **Open-High / Open-Low projections**, upper
-*and* lower, at the **median** and the **75th** (chart: "Proj H med / Proj L med"
-and "Proj H 75p / Proj L 75p"). It does **not** use the **Open-Close** lines
-("Close Med", "Close 75p") — those are the expected *close displacement*, a
-directional **target**, not a range **extreme** you fade. (Fading the O-C line is
-a separate study; noted, not built.)
+There are three families of forecast level, and the study now analyses all of them:
 
-This screen now tests **three fade lines** side by side, each net of cost:
-1. **Median line** — the blind fade. (Fails on FX.)
-2. **75th line** — more *extended*, so it should revert harder (the exhaustion
-   finding) and is touched less often. Might clear costs where the median can't.
-   Your NAS example is the intuition: price blew *through* the upper median but
-   reverted hard at the more-distant lower line.
-3. **Calm-day median** — the median fade restricted to **low-tail-risk days**
-   (the tail filter, below).
+1. **Open-Close** median & 75th (chart: "Close Med", "Close 75p") — displacement
+   from the open. **Finding:** in the current forecaster `oh_median`/`ol_median`
+   are set *equal* to `oc_median` (same for the 75th) — so **the Open-Close and
+   Open-High/Open-Low levels are the SAME numbers.** The existing median/75th
+   study already covers both; they are not independent level sets today.
+2. **Open-High / Open-Low** median & 75th ("Proj H/L med", "Proj H/L 75p") — as
+   above, currently identical to #1.
+3. **Dynamic H-L / L-H range** median & 75th — the opposite extreme projected from
+   the **running high/low** by the forecast H-L range (2.17% / 2.72%), and it
+   **moves intrabar** as new extremes form. This is the genuinely distinct set,
+   the reason the M1 walk matters, and exactly the NAS example: the morning **high**
+   anchored a projected **low** a full range below; price hit it later and reverted.
+
+So the screen now compares **five fade lines** net of cost:
+1. **Median line** (≡ open-close) — the blind fade. (Fails on FX.)
+2. **75th line** — more extended → should revert harder (exhaustion), touched less.
+3. **Calm-day median** — median fade on low-tail-risk days only (the filter below).
+4. **Dynamic H-L (median)** — fade the projected extreme from the running high/low.
+5. **Dynamic H-L (75th)** — same, at the wider 75th range (the most extended level).
+
+The dynamic levels are the most *extended*, so on the exhaustion logic they should
+show the strongest reversion — the question the cost screen answers is whether that
+reversion is big enough per touch (they're touched less often) to clear costs on FX.
 
 ## The tail filter (conditional fade)
 

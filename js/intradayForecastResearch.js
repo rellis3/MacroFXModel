@@ -45,20 +45,13 @@ function _hourOf(tMs) { const p = _londonParts(new Date(tMs)); return p.hour + (
 // ── One level's outcome within a day (post-first-touch pip excursion) ─────────
 // dir: +1 for an UP level (touched when high ≥ level), −1 for a DOWN level.
 // Returns null if never touched. pip = price units per pip.
-export function _levelOutcome(bars, level, dir, pip, hyst) {
-  let firstIdx = -1, episodes = 0, armed = true;
-  for (let k = 0; k < bars.length; k++) {
-    const at = dir > 0 ? bars[k].high >= level : bars[k].low <= level;
-    if (at && armed) { episodes++; armed = false; if (firstIdx < 0) firstIdx = k; }
-    if (!armed) { const away = dir > 0 ? bars[k].high < level - hyst : bars[k].low > level + hyst; if (away) armed = true; }
-  }
-  if (firstIdx < 0) return null;
-  // Post-touch excursion over the remainder of the day, in pips from the level.
+// Post-first-touch excursion from a FIXED level (shared by static + dynamic levels).
+function _postTouch(bars, firstIdx, level, dir, pip) {
   let mfe = 0, mae = 0, contIdx = -1, revIdx = -1;
   const TH = 20;   // pip threshold for the reverse-vs-continue race
   for (let k = firstIdx; k < bars.length; k++) {
     const cont = dir > 0 ? (bars[k].high - level) / pip : (level - bars[k].low) / pip; // further in touch dir
-    const pull = dir > 0 ? (level - bars[k].low) / pip : (bars[k].high - level) / pip;  // back toward open
+    const pull = dir > 0 ? (level - bars[k].low) / pip : (bars[k].high - level) / pip;  // back toward the interior
     if (cont > mfe) mfe = cont;
     if (pull > mae) mae = pull;
     if (contIdx < 0 && cont >= TH) contIdx = k;
@@ -67,17 +60,45 @@ export function _levelOutcome(bars, level, dir, pip, hyst) {
   const outcome = contIdx < 0 && revIdx < 0 ? 'stall'
     : revIdx < 0 ? 'continue' : contIdx < 0 ? 'reverse'
     : revIdx < contIdx ? 'reverse' : contIdx < revIdx ? 'continue' : 'ambig';
-  // Hold-to-close fade PnL (G2): enter a FADE at the level (bet on reversion toward
-  // the open), exit at the window close. +ve = price ended back toward open (win),
-  // −ve = broke away (the short-gamma loss tail lives here).
+  // Hold-to-close fade PnL (G2): fade at the level, exit at close. +ve = reverted.
   const lastClose = bars.at(-1).close;
   const closeFadePips = +(((dir > 0 ? (level - lastClose) : (lastClose - level)) / pip)).toFixed(1);
-  return {
-    touched: true, firstIdx, retests: episodes,
+  return { mfePips: +mfe.toFixed(1), maePips: +mae.toFixed(1), rev10: mae >= 10, rev20: mae >= 20, rev50: mae >= 50, outcome, closeFadePips };
+}
+
+export function _levelOutcome(bars, level, dir, pip, hyst) {
+  let firstIdx = -1, episodes = 0, armed = true;
+  for (let k = 0; k < bars.length; k++) {
+    const at = dir > 0 ? bars[k].high >= level : bars[k].low <= level;
+    if (at && armed) { episodes++; armed = false; if (firstIdx < 0) firstIdx = k; }
+    if (!armed) { const away = dir > 0 ? bars[k].high < level - hyst : bars[k].low > level + hyst; if (away) armed = true; }
+  }
+  if (firstIdx < 0) return null;
+  return { touched: true, firstIdx, retests: episodes,
     hour: _hourOf(bars[firstIdx]._t), session: _session(bars[firstIdx]._t),
-    mfePips: +mfe.toFixed(1), maePips: +mae.toFixed(1),
-    rev10: mae >= 10, rev20: mae >= 20, rev50: mae >= 50, outcome, closeFadePips,
-  };
+    ...(_postTouch(bars, firstIdx, level, dir, pip)) };
+}
+
+// DYNAMIC range level (level-set #3): the opposite extreme projected from the
+// RUNNING high/low by the forecast range fraction `r`, and it MOVES as new extremes
+// form — which is why this needs the intrabar walk. dir −1 = projected LOW from the
+// running high (support, fade long: touched when a bar low ≤ runHigh×(1−r)); dir +1
+// = projected HIGH from the running low (resistance, fade short: high ≥ runLow×(1+r)).
+// Excursion is then measured from the FIXED level at the moment of first touch.
+export function _dynLevelOutcome(bars, r, dir, pip) {
+  if (!(r > 0) || !bars.length) return null;
+  let runHi = bars[0].high, runLo = bars[0].low, firstIdx = -1, entry = null;
+  for (let k = 0; k < bars.length; k++) {
+    if (bars[k].high > runHi) runHi = bars[k].high;
+    if (bars[k].low  < runLo) runLo = bars[k].low;
+    const lvl = dir > 0 ? runLo * (1 + r) : runHi * (1 - r);
+    const hit = dir > 0 ? bars[k].high >= lvl : bars[k].low <= lvl;
+    if (hit) { firstIdx = k; entry = lvl; break; }
+  }
+  if (firstIdx < 0) return null;
+  return { touched: true, firstIdx, retests: 1, entry: +entry.toFixed(5),
+    hour: _hourOf(bars[firstIdx]._t), session: _session(bars[firstIdx]._t),
+    ...(_postTouch(bars, firstIdx, entry, dir, pip)) };
 }
 
 // Seeded PRNG for the deterministic placebo jitter (G1).
@@ -88,9 +109,9 @@ function _mulberry32(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t =
 //    hard-code "daily"). Expansion time is a London-hour for daily, a day-of-
 //    window index for the multi-day horizons.
 export const HORIZONS = {
-  daily:  { windowDays: 1,  label: 'Daily',  timeUnit: 'hour', hl: 'hl_median', ohMed: 'oh_median', ohP75: 'oh_75',    olMed: 'ol_median', olP75: 'ol_75'    },
-  weekly: { windowDays: 5,  label: 'Weekly', timeUnit: 'day',  hl: 'hl_5d',     ohMed: 'oh_5d',     ohP75: 'oh_5d_75', olMed: 'ol_5d',     olP75: 'ol_5d_75' },
-  d20:    { windowDays: 20, label: '20-day', timeUnit: 'day',  hl: 'hl_20d',    ohMed: 'oh_20d',    ohP75: 'oh_20d_75',olMed: 'ol_20d',    olP75: 'ol_20d_75'},
+  daily:  { windowDays: 1,  label: 'Daily',  timeUnit: 'hour', hl: 'hl_median', hl75: 'hl_75',     ohMed: 'oh_median', ohP75: 'oh_75',    olMed: 'ol_median', olP75: 'ol_75'    },
+  weekly: { windowDays: 5,  label: 'Weekly', timeUnit: 'day',  hl: 'hl_5d',     hl75: 'hl_5d_75',  ohMed: 'oh_5d',     ohP75: 'oh_5d_75', olMed: 'ol_5d',     olP75: 'ol_5d_75' },
+  d20:    { windowDays: 20, label: '20-day', timeUnit: 'day',  hl: 'hl_20d',    hl75: 'hl_20d_75', ohMed: 'oh_20d',    ohP75: 'oh_20d_75',olMed: 'ol_20d',    olP75: 'ol_20d_75'},
 };
 
 // ── Walk-forward over London windows for ONE horizon (London days pre-built) ──
@@ -100,7 +121,7 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
 
   const expRows = [];
-  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [] };
+  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [] };
   let firstUpper = 0, firstLower = 0, eitherTouched = 0;
   // WALK-FORWARD recalibration of the TOUCH LEVELS (the reference forecaster runs
   // wide; a bot would place tighter bands). factor = trailing median(realized ÷
@@ -173,6 +194,17 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
       if (oPlUp) touchRows.plMed.push({ ...oPlUp, regime });
       if (oPlDn) touchRows.plMed.push({ ...oPlDn, regime });
     }
+    // ── Level-set #3: DYNAMIC H-L / L-H range — the opposite extreme projected from
+    // the RUNNING high/low by the (recalibrated) forecast H-L range, updated intrabar.
+    // Two per window: projected-low-from-high (fade long) + projected-high-from-low
+    // (fade short), at the median and the 75th range. This is the M1-justifying level.
+    const rMed = (fc[H.hl] ?? 0) / 100 * recalF, r75 = (fc[H.hl75] ?? 0) / 100 * recalF;
+    const dLoMed = _dynLevelOutcome(bars, rMed, -1, pip), dHiMed = _dynLevelOutcome(bars, rMed, +1, pip);
+    const dLoP75 = _dynLevelOutcome(bars, r75, -1, pip), dHiP75 = _dynLevelOutcome(bars, r75, +1, pip);
+    if (dLoMed) touchRows.dynMed.push({ ...dLoMed, regime, calm });
+    if (dHiMed) touchRows.dynMed.push({ ...dHiMed, regime, calm });
+    if (dLoP75) touchRows.dynP75.push({ ...dLoP75, regime, calm });
+    if (dHiP75) touchRows.dynP75.push({ ...dHiP75, regime, calm });
     if (oUpMed || oDnMed) {
       eitherTouched++;
       const uh = oUpMed ? oUpMed.firstIdx : Infinity, dh = oDnMed ? oDnMed.firstIdx : Infinity;
@@ -276,6 +308,9 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
     bandsRecalibrated: recalMeta.applied, recalFactor: recalMeta.medianFactor,
     medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med), fadePayoff: _fadePayoff(med) },
     p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75), fadePayoff: _fadePayoff(p75) },
+    // Level-set #3: dynamic H-L range from the running extreme (median + 75th).
+    dynExtension:    { ...(_touchStats(touchRows.dynMed || [], totalWindows)), byRegime: _byRegime(touchRows.dynMed || []), fadePayoff: _fadePayoff(touchRows.dynMed || []) },
+    dynP75Extension: { ...(_touchStats(touchRows.dynP75 || [], totalWindows)), byRegime: _byRegime(touchRows.dynP75 || []), fadePayoff: _fadePayoff(touchRows.dynP75 || []) },
     // Conditional fade: median-line touches restricted to CALM days (the tail filter).
     conditionalCalm: { filter: 'calm = vov ≤ trailing-median AND prior window ≤ 118% forecast',
       ...(_touchStats(medCalm, totalWindows)), fadePayoff: _fadePayoff(medCalm) },
