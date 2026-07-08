@@ -2022,11 +2022,26 @@ async function _buildMorningBrief() {
     `Real 10Y (TIPS) ${g('tips')} · WTI ${g('wti')}`,
   ].join('\n');
   const heads = headlines.map(h => `• [${h.ticker}] ${h.title}`).join('\n') || '(no headlines fetched — read the macro data instead)';
-  const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data and headlines below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
+  // Today's scheduled economic calendar (central-bank decisions, CPI/NFP, etc.).
+  // Without this the brief cannot mention FOMC/ECB/BoE days — the prompt forbids
+  // inventing events, so a tier-1 event that isn't fed here is silently omitted.
+  const events = await _fetchTodayEvents().catch(() => []);
+  const bigEvents = events
+    .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 60 * 60000)
+    .sort((a, b) => a.ms - b.ms)
+    .slice(0, 12)
+    .map(e => `• ${new Date(e.ms).toISOString().slice(11, 16)} UTC — [${e.country}] ${e.event} (${(e.impact ?? '').toLowerCase()} impact)`)
+    .join('\n') || '(no tier-1/2 scheduled events on the calendar today)';
+  const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data, headlines and scheduled events below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
+
+If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it, say what's expected/at stake, and frame the day as a wait-for-it around that event. Do not bury it.
 
 === MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
 ${macro}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
+
+=== TODAY'S SCHEDULED ECONOMIC EVENTS ===
+${bigEvents}
 
 === REAL HEADLINES (Yahoo Finance) ===
 ${heads}
