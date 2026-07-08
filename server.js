@@ -66,6 +66,7 @@ import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair } from './js/crossPairResearch.js';
+import { scanFeatures } from './js/forecastFeatureScan.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
@@ -7872,12 +7873,12 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
               h1 = await _fetchH1(cfg.oanda, anchorYears);
               // London-midnight daily OHLC (strip the intraday sub-bars before eval).
               const lond = buildLondonDaily(h1).map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close }));
-              if (lond.length >= 200) { summary = evaluateForecast(lond, cfg.assetClass || 'fx').summary; usedAnchor = 'london-h1'; }
+              if (lond.length >= 200) { const ev = evaluateForecast(lond, cfg.assetClass || 'fx'); summary = ev.summary; summary.featureScan = scanFeatures(ev.rows); usedAnchor = 'london-h1'; }
             } catch (le) { log.push(`${cfg.name} london-anchor fell back: ${le?.message}`); }
           }
           if (!summary) {
             const bars = await _btFetchD1(cfg.oanda, 5000);
-            summary = evaluateForecast(bars, cfg.assetClass || 'fx').summary;
+            const ev = evaluateForecast(bars, cfg.assetClass || 'fx'); summary = ev.summary; summary.featureScan = scanFeatures(ev.rows);
             usedAnchor = 'utc-d1';
           }
           summary.anchor = usedAnchor;

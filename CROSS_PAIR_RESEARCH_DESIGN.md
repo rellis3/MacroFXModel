@@ -164,9 +164,12 @@ Roughly: **10 of 16 are "have it per-pair → just synthesise cross-pair now"**,
   A pure module (`js/crossPairResearch.js`) consuming `vfr_research` +
   `intraday_research` → jobs A–D of §2 + the ✅ rows of §3, with the §5
   discipline. Unit-tested on synthetic per-pair JSON. This is the trend spotter.
-- **Phase 2 — Per-day-rows export + the hidden-relationship scan.** Opt-in export
-  of the engine's per-day `rows`; then cross-pair correlation, feature-importance
-  and day-type clustering over real rows (the ❌/⚠️ rows that need them).
+- **Phase 2 — hidden-relationship scan + day-types. ✅ BUILT.** Rather than persist
+  65k raw rows, the scan (`js/forecastFeatureScan.js`) runs where the engine's per-day
+  `rows` exist (server run-time) and attaches compact results as `summary.featureScan`;
+  `crossPairResearch.hidden` folds them cross-pair (causal predictor→miss sign test +
+  BH + type-spread, pooled seeded-k-means day-types). **Remaining (2b):** session-joined
+  relationships need a session per-day export; macro/news needs a calendar join.
 - **Phase 3 (deferred, gated on Phase 1–2) — decision layer.** *Only if* the
   research surfaces robust, type-diverse, OOS-consistent structure does it become
   a filter/selector — and then through the honest A/B harness. Not before. The
