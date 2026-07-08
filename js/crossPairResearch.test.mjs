@@ -133,6 +133,29 @@ test('analyze: hidden relationships aggregate the per-pair feature scans', () =>
   assert.ok(r.hypotheses.some(h => /Vol-of-vol/i.test(h.text) && h.dataNeeded.includes('per-day scan')));
 });
 
+test('analyze: session relationships fold into hidden.session across pairs', () => {
+  const book = goodBook();
+  const sessScan = (asiaRho) => ({
+    nDays: 400,
+    correlations: [{ key: 'vov', label: 'Vol-of-vol', n: 400, rhoAbsErr: 0.2, rhoCompletion: 0.1 }],
+    importance: [{ key: 'vov', label: 'Vol-of-vol', absRho: 0.2, rho: 0.2 }],
+    missProfile: { bigMissRatePct: 12, n: 400, features: [] },
+    dayTypes: { k: 4, n: 380, clusters: [{ n: 150, sharePct: 40, meanCompletion: 60, meanEfficiency: 0.3, meanAbsErr: 30, label: 'quiet & range-bound' }] },
+    sessionRelationships: { nDays: 400, note: 'within-day (session shares are end-of-day)', correlations: [
+      { key: 'asiaPct', label: 'Asia share of daily range', n: 400, rhoAbsErr: asiaRho, rhoCompletion: 0.05 },
+      { key: 'londonPct', label: 'London share of daily range', n: 400, rhoAbsErr: 0.02, rhoCompletion: 0.0 },
+    ] },
+  });
+  const rhos = { EURUSD: -0.2, GBPUSD: -0.18, USDJPY: -0.22, EURJPY: -0.19, GBPJPY: -0.17, EURGBP: -0.21, EURAUD: -0.16, GOLD: -0.2, USDCHF: -0.05 };
+  for (const [p, rho] of Object.entries(rhos)) book.perPair[p].featureScan = sessScan(rho);
+  const r = analyzeCrossPair(book);
+  assert.ok(r.hidden.session, 'hidden.session present');
+  const asia = r.hidden.session.relationships.find(x => x.key === 'asiaPct');
+  assert.equal(asia.direction, 'bigger share → smaller miss');
+  assert.equal(asia.robust, true, 'Asia-share relationship robust across types');
+  assert.ok(r.hypotheses.some(h => /Asia share/i.test(h.text) && h.dataNeeded.includes('session join')));
+});
+
 test('analyze: empty input returns insufficient, not a throw', () => {
   assert.equal(analyzeCrossPair({ perPair: {} }).insufficient, true);
   assert.equal(analyzeCrossPair(null).insufficient, true);

@@ -168,8 +168,14 @@ Roughly: **10 of 16 are "have it per-pair → just synthesise cross-pair now"**,
   65k raw rows, the scan (`js/forecastFeatureScan.js`) runs where the engine's per-day
   `rows` exist (server run-time) and attaches compact results as `summary.featureScan`;
   `crossPairResearch.hidden` folds them cross-pair (causal predictor→miss sign test +
-  BH + type-spread, pooled seeded-k-means day-types). **Remaining (2b):** session-joined
-  relationships need a session per-day export; macro/news needs a calendar join.
+  BH + type-spread, pooled seeded-k-means day-types).
+- **Phase 2b — within-day session relationships. ✅ BUILT.** The per-day session series
+  (`dailySessionContributions`) is joined into the scan (`sessionRelationships`) and
+  folded cross-pair as `hidden.session` — Asia/London/NY share → miss, labelled
+  within-day/descriptive (session shares are end-of-day, not a pre-open predictor).
+  Presented on the canonical **`cross-pair-research.html`** page (linked from the
+  dashboard). **Remaining (2b-ii / 2c):** session-contribution *accuracy* needs the
+  forecaster to emit an expected session split; macro/news/holiday needs a calendar join.
 - **Phase 3 (deferred, gated on Phase 1–2) — decision layer.** *Only if* the
   research surfaces robust, type-diverse, OOS-consistent structure does it become
   a filter/selector — and then through the honest A/B harness. Not before. The

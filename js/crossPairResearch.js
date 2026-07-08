@@ -225,7 +225,30 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
       meanEfficiency: +(_mean(arr.map(c => c.meanEfficiency))).toFixed(2),
       meanAbsErr: +(_mean(arr.map(c => c.meanAbsErr))).toFixed(0),
     })).sort((a, b) => b.meanSharePct - a.meanSharePct);
-    hidden = { nPairs: scans.length, relationships, dayTypes };
+    // Within-day SESSION relationships (Phase 2b) — cross-pair consistency of each
+    // session-share → miss-size correlation. Only pairs whose scan joined session
+    // data contribute. Labelled descriptive/within-day, not a pre-open predictor.
+    let session = null;
+    const sessScans = scans.filter(r => r.s.featureScan.sessionRelationships?.correlations?.length);
+    if (sessScans.length >= minPairsForConsistency) {
+      const sfirst = sessScans[0].s.featureScan.sessionRelationships.correlations;
+      const slabelOf = Object.fromEntries(sfirst.map(c => [c.key, c.label]));
+      const rawS = sfirst.map(c => c.key).map(key => {
+        const vals = sessScans.map(r => { const c = r.s.featureScan.sessionRelationships.correlations.find(x => x.key === key); return (c && c.rhoAbsErr != null) ? { r, v: c.rhoAbsErr } : null; }).filter(Boolean);
+        const nz = vals.filter(x => x.v !== 0);
+        const up = nz.filter(x => x.v > 0), down = nz.filter(x => x.v < 0);
+        const n = nz.length, k = Math.max(up.length, down.length);
+        const maj = up.length >= down.length ? up : down;
+        return { key, label: slabelOf[key], nPairs: n, agree: k,
+          direction: up.length >= down.length ? 'bigger share → bigger miss' : 'bigger share → smaller miss',
+          medianRho: +(_median(vals.map(x => x.v)) ?? 0).toFixed(3),
+          pValue: +signTestP(n, k).toFixed(4), typeSpread: new Set(maj.map(x => x.r.type)).size };
+      }).filter(x => x.nPairs >= minPairsForConsistency);
+      const sigS = _bhSignificant(rawS.map(x => x.pValue), fdrQ);
+      session = { nPairs: sessScans.length, note: 'within-day (session shares are end-of-day — descriptive, not pre-open)',
+        relationships: rawS.map((x, i) => ({ ...x, robust: sigS.has(i) && x.typeSpread >= 2 })).sort((a, b) => a.pValue - b.pValue) };
+    }
+    hidden = { nPairs: scans.length, relationships, dayTypes, session };
   }
 
   // ── Hypotheses (from robust findings + type differences) — candidates, not rules ──
@@ -246,8 +269,15 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
       hypotheses.push({ text: `${h.label}: ${h.direction} — consistent across ${h.agree}/${h.nPairs} pairs (${h.typeSpread} types).`, evidence: `sign-test p=${h.pValue}, median ρ ${h.medianRho}`, dataNeeded: 'none (per-day scan)' });
     if (!hidden.relationships.some(x => x.robust))
       hypotheses.push({ text: 'No causal predictor of forecast-miss size replicates across pair types — misses look conditionally unpredictable from the current feature set.', evidence: `${hidden.nPairs} pairs scanned, none BH-significant + type-diverse`, dataNeeded: 'none (per-day scan)' });
+    // Session (2b) — within-day, descriptive.
+    if (hidden.session) {
+      for (const h of hidden.session.relationships.filter(x => x.robust))
+        hypotheses.push({ text: `${h.label}: ${h.direction} — within-day pattern consistent across ${h.agree}/${h.nPairs} pairs (${h.typeSpread} types).`, evidence: `sign-test p=${h.pValue}, median ρ ${h.medianRho} · descriptive, not pre-open`, dataNeeded: 'none (session join)' });
+      if (!hidden.session.relationships.some(x => x.robust))
+        hypotheses.push({ text: 'No session-share → forecast-miss relationship replicates across pair types (within-day).', evidence: `${hidden.session.nPairs} pairs with session data`, dataNeeded: 'none (session join)' });
+    }
   }
-  hypotheses.push({ text: 'Does session structure (small Asia → bigger errors; London↔NY) predict forecast quality?', evidence: 'needs the session per-day series joined to the forecast rows', dataNeeded: 'session per-day export (Phase 2b)' });
+  hypotheses.push({ text: 'Session-contribution ACCURACY (forecast Asia/London/NY share vs realized) and macro/news/holiday conditioning of misses.', evidence: 'the forecast emits no session split; no macro/calendar join', dataNeeded: 'forecaster session split + calendar join (Phase 2b-ii / 2c)' });
 
   return {
     nPairs: names.length, pairs: names,

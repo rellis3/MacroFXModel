@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cross-Pair Research — the trend spotter</title>
+<style>
+  :root{--bg:#0b0e14;--s1:#111725;--s2:#0f1420;--card:#131a28;--border:#222c40;--text:#e6ebf5;--muted:#8a97b1;--blue:#4f8cff;--green:#10b981;--amber:#f59e0b;--red:#ef4444;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+  a{color:var(--blue);text-decoration:none;} a:hover{text-decoration:underline;}
+  .wrap{max-width:1100px;margin:0 auto;padding:22px 18px 80px;}
+  header{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:8px;}
+  h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.2px;}
+  .sub{color:var(--muted);font-size:12px;}
+  .nav{margin-left:auto;font-size:12px;display:flex;gap:14px;}
+  .status{margin:10px 0 18px;padding:8px 12px;border-radius:8px;background:var(--s1);border:1px solid var(--border);color:var(--muted);font-size:12px;}
+  h2{font-size:14px;margin:26px 0 4px;font-weight:700;}
+  .qd{color:var(--muted);font-size:12px;margin:0 0 10px;max-width:820px;}
+  .answer{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:6px 0 4px;font-size:13px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:8px 0;}
+  .scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{text-align:left;padding:7px 11px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  tr:last-child td{border-bottom:none;}
+  .pos{color:var(--green);} .neg{color:var(--red);} .amber{color:var(--amber);} .neu{color:var(--muted);}
+  .tiles{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;}
+  .tile{flex:1;min-width:150px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 13px;}
+  .tk{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;} .tv{font-size:20px;font-weight:700;margin:2px 0;} .td{font-size:11px;color:var(--muted);}
+  .note{color:var(--muted);font-size:11.5px;margin:6px 2px;}
+  .find{display:flex;gap:9px;align-items:flex-start;padding:8px 12px;border-radius:8px;margin:0 0 6px;font-size:12.5px;}
+  .find.good{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);} .find.good .fi{color:var(--green);}
+  .find.info{background:rgba(79,140,255,.12);border:1px solid rgba(79,140,255,.4);} .find.info .fi{color:var(--blue);}
+  .fi{font-weight:700;flex-shrink:0;} .muted{color:var(--muted);}
+  .pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600;}
+  .pill.trade{background:rgba(16,185,129,.16);color:var(--green);} .pill.caution{background:rgba(245,158,11,.16);color:var(--amber);} .pill.exclude{background:rgba(239,68,68,.16);color:var(--red);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Cross-Pair Research</h1>
+    <span class="sub" id="computedAt">the trend spotter — analysis across all pairs, not a strategy</span>
+    <nav class="nav"><a href="index.html">← Dashboard</a><a href="vol-research-book.html">Research book</a><a href="vol-forecast.html">Forecaster</a></nav>
+  </header>
+  <div class="status" id="status">Loading…</div>
+
+  <div class="answer" id="answer" style="display:none"></div>
+
+  <h2>Forecast-reliability ranking</h2>
+  <p class="qd">Which pairs is the Daily Market Expectation Model actually good at? Composite of calibration · skill · sharpness · low-error, percentile-ranked <em>within</em> this set (0–100). Trust tier is rule-based (hard exclusions + robust-z outliers + bottom-tertile).</p>
+  <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th>Trust</th><th class="num">Score</th><th class="num">Calib</th><th class="num">Skill</th><th class="num">Sharp</th><th class="num">LowErr</th></tr></thead><tbody id="rank"></tbody></table></div>
+  <div class="tiles" id="tiers"></div>
+  <div class="note" id="tierNote"></div>
+
+  <h2>Cross-pair consistency</h2>
+  <p class="qd">A pattern is <strong>robust</strong> only if it beats a sign-test (Benjamini–Hochberg corrected across metrics) <em>and</em> spans ≥2 pair types — so a signal carried by a few correlated crosses doesn't count as a trend.</p>
+  <div class="card scroll"><table><thead><tr><th>Finding</th><th class="num">Pairs agree</th><th>Direction</th><th class="num">Median effect</th><th class="num">p</th><th>Robust?</th></tr></thead><tbody id="consist"></tbody></table></div>
+
+  <h2>Pair-type profiles</h2>
+  <p class="qd">Does forecast quality cluster by instrument type?</p>
+  <div class="card scroll"><table><thead><tr><th>Type</th><th class="num">n</th><th class="num">Med reliability</th><th class="num">Med sharpness</th><th class="num">Med skill</th><th class="num">Med exceed-med %</th></tr></thead><tbody id="types"></tbody></table></div>
+
+  <h2>Hidden relationships — what predicts a bigger miss?</h2>
+  <p class="qd">Causal predictors only (known at the open); ρ &gt; 0 ⇒ higher predictor → bigger forecast miss. Robust = replicates across ≥2 pair types.</p>
+  <div class="card scroll"><table><thead><tr><th>Predictor</th><th class="num">Pairs agree</th><th>Direction</th><th class="num">Median ρ</th><th class="num">p</th><th>Robust?</th></tr></thead><tbody id="hidden"></tbody></table></div>
+  <div class="note" id="hiddenNote"></div>
+
+  <h2>Within-day session structure</h2>
+  <p class="qd">Session shares are an <strong>end-of-day</strong> decomposition — these are <em>descriptive</em> (what miss days look like session-wise), not a pre-open predictor.</p>
+  <div class="card scroll"><table><thead><tr><th>Session feature</th><th class="num">Pairs agree</th><th>Direction</th><th class="num">Median ρ</th><th class="num">p</th><th>Robust?</th></tr></thead><tbody id="session"></tbody></table></div>
+
+  <h2>Recurring day-types</h2>
+  <p class="qd">Days clustered by realized signature (completion · efficiency · miss size), pooled across pairs.</p>
+  <div class="card scroll"><table><thead><tr><th>Day-type</th><th class="num">Pairs</th><th class="num">Mean share %</th><th class="num">Mean completion</th><th class="num">Mean efficiency</th><th class="num">Mean |miss| %</th></tr></thead><tbody id="dayTypes"></tbody></table></div>
+
+  <h2>Hypotheses for later testing</h2>
+  <p class="qd">Candidates, explicitly <strong>not</strong> trade rules — each tagged with the data it needs. Correlation ≠ edge.</p>
+  <div id="hyp"></div>
+  <div class="note" id="notes" style="margin-top:10px"></div>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=2) => v==null||(typeof v==='number'&&!isFinite(v))?'—':typeof v==='number'?v.toFixed(d):v;
+const sgn = (v,d=3) => v==null?'—':(v>=0?'+':'')+(+v).toFixed(d);
+const pr = v => v==null?'—':Math.round(v*100);
+const TYPE_LBL = {major:'FX majors',eur_cross:'EUR crosses',jpy_cross:'JPY crosses',other_cross:'Other crosses',gold:'Gold',index:'Indices'};
+const clsEx = (v,t,tol=8) => v==null?'neu':Math.abs(v-t)<tol?'pos':'neg';
+
+(async function(){
+  let cp;
+  try { const r = await fetch('/api/cross-pair-research'); if (!r.ok){ const e=await r.json().catch(()=>({})); el('status').innerHTML = (e.error||'No cross-pair data yet.')+' Run the <a href="vol-research-book.html">research book</a> first (it produces the per-pair JSON this reads).'; return; } cp = await r.json(); }
+  catch(e){ el('status').textContent='Error: '+e.message; return; }
+  if (cp.insufficient){ el('status').textContent='Research JSON has no per-pair data.'; return; }
+  render(cp);
+})();
+
+function render(cp){
+  el('status').innerHTML = `Loaded · <strong>${cp.nPairs}</strong> pairs · scanned ${cp.generatedFrom?.scannedPairs??0} · intraday ${cp.generatedFrom?.intradayPairs??0}${cp.vfrComputedAt?` · computed ${new Date(cp.vfrComputedAt).toLocaleString()}`:''}`;
+  const robust = (cp.consistency||[]).filter(c=>c.robust);
+  const top = cp.reliability?.[0], bot = cp.reliability?.filter(r=>r.score!=null).at(-1);
+  const a = el('answer'); a.style.display='';
+  a.innerHTML = `Across <strong>${cp.nPairs} pairs</strong>: <strong>${robust.length}</strong> cross-pair pattern(s) hold across ≥2 types. Trust — <span class="pos">${cp.trust.trade.length} trade</span> · <span class="amber">${cp.trust.caution.length} caution</span> · <span class="neg">${cp.trust.exclude.length} exclude</span>${cp.trust.exclude.length?` (${cp.trust.exclude.join(', ')})`:''}. Most reliable <strong>${top?.pair??'—'}</strong> (${fmt(top?.score,1)}); least <strong>${bot?.pair??'—'}</strong> (${fmt(bot?.score,1)}).`;
+
+  el('rank').innerHTML = (cp.reliability||[]).map(r=>{ const t=cp.trust.perPair?.[r.pair]?.tier||'trade';
+    return `<tr><td><strong>${r.pair}</strong></td><td class="muted">${TYPE_LBL[r.type]||r.type}</td>
+      <td><span class="pill ${t}">${t}</span></td>
+      <td class="num ${r.score>=66?'pos':r.score<33?'neg':'neu'}">${fmt(r.score,1)}</td>
+      <td class="num">${pr(r.sub.calibration)}</td><td class="num">${pr(r.sub.skill)}</td><td class="num">${pr(r.sub.sharpness)}</td><td class="num">${pr(r.sub.lowError)}</td></tr>`;}).join('');
+
+  el('tiers').innerHTML = ['trade','caution','exclude'].map(t=>{ const arr=cp.trust[t]||[];
+    return `<div class="tile"><div class="tk"><span class="pill ${t}">${t}</span></div><div class="tv">${arr.length}</div><div class="td">${arr.length?arr.slice(0,8).join(', ')+(arr.length>8?'…':''):'none'}</div></div>`;}).join('');
+  const reasons = Object.entries(cp.trust.perPair||{}).filter(([,v])=>v.tier!=='trade').map(([p,v])=>`<strong>${p}</strong>: ${v.reasons.join('; ')}`);
+  el('tierNote').innerHTML = reasons.length?'Why demoted — '+reasons.join(' · '):'All pairs pass the tradeable bar.';
+
+  el('consist').innerHTML = (cp.consistency||[]).map(c=>rowConsist(c,'meaning')).join('') || empty(6);
+  el('types').innerHTML = Object.entries(cp.byType||{}).sort((a,b)=>(b[1].medianReliability??-1)-(a[1].medianReliability??-1)).map(([t,v])=>`<tr>
+    <td><strong>${v.label}</strong></td><td class="num">${v.n}</td>
+    <td class="num ${v.medianReliability>=66?'pos':v.medianReliability<33?'neg':'neu'}">${fmt(v.medianReliability,1)}</td>
+    <td class="num ${v.medianSharpness>=0.4?'pos':'neu'}">${fmt(v.medianSharpness,3)}</td>
+    <td class="num ${v.medianSkill>0.03?'pos':v.medianSkill<=0?'neg':'neu'}">${fmt(v.medianSkill,3)}</td>
+    <td class="num ${clsEx(v.medianExceedMed,50)}">${fmt(v.medianExceedMed,1)}</td></tr>`).join('') || empty(6);
+
+  const hid = cp.hidden;
+  el('hidden').innerHTML = hid ? (hid.relationships||[]).map(h=>rowRel(h)).join('') : `<tr><td colspan="6" class="neu">Per-day scan not present — re-run the research (it now attaches the scan per pair).</td></tr>`;
+  el('hiddenNote').textContent = hid ? 'Causal predictors: forecast-time vol/vov, trailing climatology, regime, recent÷baseline range, yesterday’s outcome.' : '';
+  el('session').innerHTML = hid?.session ? (hid.session.relationships||[]).map(h=>rowRel(h)).join('') : `<tr><td colspan="6" class="neu">No session join (run the book with sessions enabled).</td></tr>`;
+  el('dayTypes').innerHTML = hid ? (hid.dayTypes||[]).map(d=>`<tr><td><strong>${d.label}</strong></td><td class="num">${d.nPairs}</td><td class="num">${fmt(d.meanSharePct,1)}</td><td class="num ${d.meanCompletion>=100?'pos':d.meanCompletion<70?'amber':'neu'}">${d.meanCompletion}</td><td class="num ${d.meanEfficiency>=0.5?'pos':'neu'}">${fmt(d.meanEfficiency,2)}</td><td class="num">${d.meanAbsErr}</td></tr>`).join('') : empty(6);
+
+  el('hyp').innerHTML = (cp.hypotheses||[]).map(h=>{ const now=h.dataNeeded.startsWith('none'); return `<div class="find ${now?'good':'info'}"><span class="fi">${now?'✓':'⋯'}</span><span>${h.text} <span class="muted">— ${h.evidence} · <em>${now?'testable now':h.dataNeeded}</em></span></span></div>`;}).join('');
+  el('notes').innerHTML = (cp.notes||[]).map(n=>'• '+n).join('<br>');
+}
+function rowConsist(c){ return `<tr><td>${c.label} <span class="muted">Q${c.question}</span></td>
+  <td class="num">${c.agree}/${c.nPairs} <span class="muted">${c.typeSpread}t</span></td>
+  <td class="${c.direction==='positive'?'pos':'amber'}">${c.meaning}</td>
+  <td class="num">${sgn(c.medianEffect,2)}${c.unit||''}</td>
+  <td class="num ${c.pValue<0.05?'pos':'neu'}">${fmt(c.pValue,3)}</td>
+  <td>${c.robust?'<span class="pos">✓ robust</span>':'<span class="neu">—</span>'}</td></tr>`; }
+function rowRel(h){ return `<tr><td>${h.label}</td>
+  <td class="num">${h.agree}/${h.nPairs} <span class="muted">${h.typeSpread}t</span></td>
+  <td class="${h.direction.includes('bigger miss')?'amber':'pos'}">${h.direction}</td>
+  <td class="num ${Math.abs(h.medianRho)>=0.15?'amber':'neu'}">${sgn(h.medianRho,3)}</td>
+  <td class="num ${h.pValue<0.05?'pos':'neu'}">${fmt(h.pValue,3)}</td>
+  <td>${h.robust?'<span class="pos">✓ robust</span>':'<span class="neu">—</span>'}</td></tr>`; }
+function empty(n){ return `<tr><td colspan="${n}" class="neu">—</td></tr>`; }
+</script>
+</body>
+</html>
