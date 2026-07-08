@@ -59,8 +59,8 @@
   <p class="qd">The decision funnel a level-trading bot walks — <strong>not</strong> "is the forecast calibrated?" but "does the level behave tradeably?" Each tagged with whether the current data answers it. Full write-up: <a href="BOT_DECISION_QUESTIONS.md">BOT_DECISION_QUESTIONS.md</a>.</p>
   <div id="botq"></div>
 
-  <h2>Touch behaviour — the tradeable layer</h2>
-  <p class="qd">Does price REACH the forecast line, and once it does, FADE (revert to open) or FOLLOW (break through)? Overall + by regime — what a level bot actually trades. <span class="muted">Needs the intraday run; folds the per-pair touch study cross-pair.</span></p>
+  <h2>Touch behaviour — the tradeable layer <span class="muted" id="recalBadge"></span></h2>
+  <p class="qd">Does price REACH the forecast line, and once it does, FADE (revert to open) or FOLLOW (break through)? Overall + by regime — what a level bot actually trades. <span class="muted">Levels are <strong>walk-forward recalibrated</strong> (tightened toward realized) so the study reflects the bands a bot would place, not the too-wide raw lines. Folds the per-pair touch study cross-pair.</span></p>
   <div class="tiles" id="touchTiles"></div>
   <div class="note" id="touchNote"></div>
   <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th class="num">Touch %</th><th>At the line</th><th class="num">Net cont.</th><th class="num">MFE</th><th class="num">MAE</th><th class="num">Range rev20%</th><th class="num">Trend cont%</th></tr></thead><tbody id="touch"></tbody></table></div>
@@ -156,6 +156,7 @@ function render(cp){
 
   // Touch behaviour (the tradeable layer).
   const tb = cp.touchBehaviour;
+  const rb = el('recalBadge'); if (rb) rb.textContent = tb && tb.recalFactor != null ? `· bands recalibrated ×${fmt(tb.recalFactor,2)}` : '';
   if (tb && !tb.insufficient){
     el('touchTiles').innerHTML = [
       ['Median touch rate', fmt(tb.medianTouchRatePct,1)+'%', 'reaches the median line'],

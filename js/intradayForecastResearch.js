@@ -94,7 +94,7 @@ export const HORIZONS = {
 };
 
 // ── Walk-forward over London windows for ONE horizon (London days pre-built) ──
-function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001, minLookback = 60, horizon = 'daily' }) {
+function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001, minLookback = 60, horizon = 'daily', recalibrate = true }) {
   const H = HORIZONS[horizon] || HORIZONS.daily;
   const W = H.windowDays;
   if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
@@ -102,6 +102,12 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   const expRows = [];
   const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [] };
   let firstUpper = 0, firstLower = 0, eitherTouched = 0;
+  // WALK-FORWARD recalibration of the TOUCH LEVELS (the reference forecaster runs
+  // wide; a bot would place tighter bands). factor = trailing median(realized ÷
+  // forecast H-L) from PRIOR windows only (causal), clamped. Applied to the level
+  // DISTANCES so the touch/fade/cost study measures the bands a bot would trade,
+  // not the too-wide raw lines. Expansion (vs the raw forecast) stays un-scaled.
+  const hlRatioHist = [], recalFactors = [];
 
   // Non-overlapping windows (step = W) — avoids autocorrelation inflation across
   // overlapping multi-day windows; for daily this is the original per-day walk.
@@ -117,12 +123,17 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
 
     // Horizon forecast levels (% of price → price). H-L median = expected window range.
     const expRange = open * (fc[H.hl] ?? 0) / 100;
-    const upMed = open * (1 + (fc[H.ohMed] ?? 0) / 100), upP75 = open * (1 + (fc[H.ohP75] ?? 0) / 100);
-    const dnMed = open * (1 - (fc[H.olMed] ?? 0) / 100), dnP75 = open * (1 - (fc[H.olP75] ?? 0) / 100);
+    // Walk-forward recalibration factor from PRIOR windows (causal), clamped.
+    const recalF = (recalibrate && hlRatioHist.length >= 20)
+      ? Math.min(1.5, Math.max(0.5, _median(hlRatioHist.slice(-80)))) : 1;
+    recalFactors.push(recalF);
+    const upMed = open * (1 + (fc[H.ohMed] ?? 0) / 100 * recalF), upP75 = open * (1 + (fc[H.ohP75] ?? 0) / 100 * recalF);
+    const dnMed = open * (1 - (fc[H.olMed] ?? 0) / 100 * recalF), dnP75 = open * (1 - (fc[H.olP75] ?? 0) / 100 * recalF);
     const hyst = Math.max(pip, 0.15 * expRange);
     const _time = b => H.timeUnit === 'hour' ? _hourOf(b._t) : b._day + 1;   // hour-of-day or day-of-window
 
     // ── Expansion timing (in hours for daily, in days-of-window otherwise) ──
+    let realizedHl = null;
     if (expRange > 0) {
       let hi = -Infinity, lo = Infinity; const cross = { 25: null, 50: null, 75: null, 100: null };
       for (const b of bars) {
@@ -130,7 +141,7 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
         const frac = (hi - lo) / expRange * 100;
         for (const p of [25, 50, 75, 100]) if (cross[p] == null && frac >= p) cross[p] = _time(b);
       }
-      const realizedHl = (hi - lo) / open * 100;
+      realizedHl = (hi - lo) / open * 100;
       expRows.push({ regime, cross, reached100: cross[100] != null, big: realizedHl > (fc[H.hl] ?? 0),
         eff: (hi - lo) > 0 ? Math.min(1, Math.abs(bars.at(-1).close - open) / (hi - lo)) : null });
     }
@@ -158,9 +169,12 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
       const uh = oUpMed ? oUpMed.firstIdx : Infinity, dh = oDnMed ? oDnMed.firstIdx : Infinity;
       if (uh < dh) firstUpper++; else if (dh < uh) firstLower++;
     }
+    // Feed the walk-forward recalibration (prior windows only — pushed AFTER use).
+    if (realizedHl != null && (fc[H.hl] ?? 0) > 0) hlRatioHist.push(realizedHl / (fc[H.hl]));
   }
 
-  return summarize(expRows, touchRows, { firstUpper, firstLower, eitherTouched }, lond, H);
+  const recalMeta = { applied: recalibrate, medianFactor: recalFactors.length ? +(_median(recalFactors)).toFixed(3) : 1 };
+  return summarize(expRows, touchRows, { firstUpper, firstLower, eitherTouched }, lond, H, recalMeta);
 }
 
 // Build the London daily series (with intraday sub-bars) once, for reuse.
@@ -185,7 +199,7 @@ export function evaluateIntradayAllHorizons(intraday, opts = {}) {
 }
 
 // ── Aggregation ───────────────────────────────────────────────────────────────
-function summarize(expRows, touchRows, dir, lond, H) {
+function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: false, medianFactor: 1 }) {
   const unit = H.timeUnit;   // 'hour' (daily) | 'day' (weekly / 20-day)
   // Expansion: median time to each completion fraction, + big vs small split.
   const _hrs = (rows, p) => rows.map(r => r.cross[p]).filter(v => v != null);
@@ -248,6 +262,7 @@ function summarize(expRows, touchRows, dir, lond, H) {
   const medRev = _rate(med.map(r => r.outcome === 'reverse'));
   const plRev  = _rate(plMed.map(r => r.outcome === 'reverse'));
   const touches = {
+    bandsRecalibrated: recalMeta.applied, recalFactor: recalMeta.medianFactor,
     medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med) },
     p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75) },
     placebo: { n: plMed.length, reversePct: plRev == null ? null : +plRev.toFixed(1),

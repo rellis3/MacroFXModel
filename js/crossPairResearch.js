@@ -203,8 +203,12 @@ function _touchBehaviour(recs, minPairs) {
       : `not clearly short-gamma (median skew ${payoffShape.medianSkew}, win/loss ${payoffShape.medianWinLoss})`;
   }
 
+  // Median recalibration factor applied to the touch levels (from the engine).
+  const recalFactors = recs.map(r => r.in?.daily?.touches?.recalFactor).filter(v => v != null);
   return {
     nPairs: rows.length,
+    bandsRecalibrated: recs.some(r => r.in?.daily?.touches?.bandsRecalibrated),
+    recalFactor: recalFactors.length ? +(_median(recalFactors)).toFixed(2) : null,
     medianTouchRatePct: +(_median(col(r => r.touchRatePct)) ?? 0).toFixed(1),
     medianContinuePct: +(_median(col(r => r.continuePct)) ?? 0).toFixed(1),
     medianReversePct: +(_median(col(r => r.reversePct)) ?? 0).toFixed(1),

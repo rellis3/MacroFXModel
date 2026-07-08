@@ -95,6 +95,17 @@ test('evaluateIntraday: structural invariants on synthetic intraday', () => {
   if (d.firstUpperPct != null) assert.ok(d.firstUpperPct + d.firstLowerPct <= 100.01, 'direction shares ≤ 100');
 });
 
+test('evaluateIntraday: recalibrate flag scales the touch levels (walk-forward)', () => {
+  const on = evaluateIntraday(synthH1(400, 3), { pip: PIP, recalibrate: true });
+  const off = evaluateIntraday(synthH1(400, 3), { pip: PIP, recalibrate: false });
+  assert.equal(on.touches.bandsRecalibrated, true);
+  assert.equal(off.touches.bandsRecalibrated, false);
+  assert.equal(off.touches.recalFactor, 1, 'no scaling when off');
+  assert.ok(on.touches.recalFactor > 0 && on.touches.recalFactor <= 1.5, 'clamped factor');
+  // Tighter levels are reached at least as often as the raw ones.
+  assert.ok(on.touches.medianExtension.touchRatePct >= off.touches.medianExtension.touchRatePct - 1e-9, 'recalibrated (tighter) levels touched ≥ raw');
+});
+
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
   const r = evaluateIntraday(synthH1(20), { pip: PIP });
   assert.equal(r.insufficient, true);
