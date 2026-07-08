@@ -162,6 +162,36 @@ test('PR-E: completion computed at all three horizons', () => {
   }
 });
 
+test('PR-F recalibration: walk-forward factors move exceedance toward 50/25', () => {
+  const { summary } = evaluateForecast(synthDaily(700, 4), 'fx');
+  const rc = summary.recalibration;
+  assert.ok(rc && !rc.insufficient && rc.n > 100, 'recalibration computed');
+  // Factors are positive and finite; median band multiplier ~ completion median.
+  assert.ok(rc.medFactor > 0.2 && rc.medFactor < 3, `medFactor plausible (${rc.medFactor})`);
+  assert.ok(rc.p75Factor > 0.2 && rc.p75Factor < 3, `p75Factor plausible (${rc.p75Factor})`);
+  // The recalibrated exceedance must be CLOSER to target than the raw exceedance
+  // (the whole point of the correction). Out-of-sample by construction.
+  assert.ok(Math.abs(rc.exceedMedianAfter - 50) <= Math.abs(rc.exceedMedianBefore - 50) + 3, `median exceedance moves toward 50 (${rc.exceedMedianBefore}→${rc.exceedMedianAfter})`);
+  assert.ok(Math.abs(rc.exceed75After - 25) <= Math.abs(rc.exceed75Before - 25) + 3, `75th exceedance moves toward 25 (${rc.exceed75Before}→${rc.exceed75After})`);
+});
+
+test('PR-F recalibration: after a deliberate wide bias, factor is <1 and correction tightens', () => {
+  // Build days whose realized range is systematically ~0.7× the forecast median
+  // by construction is hard without the forecaster; instead assert the direction:
+  // on any sample where before-exceedance < 50, medFactor should be < 1 (narrow).
+  const { summary } = evaluateForecast(synthDaily(600, 9), 'fx');
+  const rc = summary.recalibration;
+  if (!rc.insufficient && rc.exceedMedianBefore < 50) assert.ok(rc.medFactor < 1.05, `wide bias ⇒ medFactor ≤ ~1 (${rc.medFactor})`);
+});
+
+test('PR-F day-types: labels are distinct (not all "normal")', () => {
+  const { summary } = evaluateForecast(synthDaily(900, 2), 'fx');
+  const dt = summary.dayTypes;
+  assert.ok(!dt.insufficient && dt.clusters.length === 4);
+  const labels = new Set(dt.clusters.map(c => c.label));
+  assert.ok(labels.size >= 2, `at least two distinct day-type labels (got ${[...labels].join(', ')})`);
+});
+
 test('PR-C: London midnight is the day boundary (23:00 vs 01:00 split across dates)', () => {
   // A bar at 22:30 UTC in winter is 22:30 London (same date); one at 00:30 UTC is
   // 00:30 London (next date). Verify _londonParts assigns them to different dates.

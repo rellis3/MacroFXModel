@@ -27,10 +27,23 @@ const HN_P75       = 1.1503;
 const G_ALPHA = 0.06;
 const G_BETA  = 0.91;
 
+// H-L correction constants recalibrated 2026-07-07 from the Vol Forecast Research
+// Book's walk-forward, per-pair factors (aggregated to the class median). The
+// prior values ran the median band too WIDE: realized exceeded the median only
+// ~34% (fx) / ~38% (commodity) of days vs a 50% target. The recalibration moves
+// fx → 50.2% and commodity → 50.8% median exceedance OUT-OF-SAMPLE (75th → 25.7% /
+// 26.5% vs a 25% target). Only the H-L corrections changed; oc_corr / oc_75_corr /
+// garch_omega are unchanged (O-C was not recalibrated).
+//   fx:        hl_50 0.965→0.820, hl_75 0.912→0.817   (25 pairs — lands on target)
+//   commodity: hl_50 1.023→0.898, hl_75 0.940→0.914   (gold — lands on target)
+//   index:     HELD at prior values — the recalibration OVERSHOT (median 23%→60%,
+//              i.e. it over-narrowed to too-tight), and the 5 indices are
+//              heterogeneous (US/European, EUR-quoted DAX). A gentler / per-index
+//              factor is needed before adopting; see the book's Recalibration card.
 const ASSET_PARAMS = {
-  commodity: { hl_75_corr: 0.940, oc_corr: 1.144, hl_50_corr: 1.023, oc_75_corr: 1.092 },
+  commodity: { hl_75_corr: 0.914, oc_corr: 1.144, hl_50_corr: 0.898, oc_75_corr: 1.092 },
   index:     { hl_75_corr: 0.967, oc_corr: 1.092, hl_50_corr: 1.010, oc_75_corr: 1.115, garch_omega: 4.76e-6 },
-  fx:        { hl_75_corr: 0.912, oc_corr: 1.038, hl_50_corr: 0.965, oc_75_corr: 1.015 },
+  fx:        { hl_75_corr: 0.817, oc_corr: 1.038, hl_50_corr: 0.820, oc_75_corr: 1.015 },
 };
 
 const INSTRUMENTS = [

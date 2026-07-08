@@ -40,7 +40,7 @@ import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './j
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec } from './js/volBacktestEngine.js';
+import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -64,7 +64,8 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
-import { evaluateIntraday } from './js/intradayForecastResearch.js';
+import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
+import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import { loadWeeklyM1 as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { resampleTo as _resampleTo } from './js/barUtils.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
@@ -7814,13 +7815,31 @@ const _latestVfrFile = () => {
   } catch { return null; }
 };
 
-app.get('/api/vol-forecast-research', (req, res) => {
-  const filePath = _latestVfrFile();
-  if (!filePath) return res.status(404).json({ ok: false, error: 'No research run yet. Click ▶ Run to generate.' });
+// ── Result persistence — local disk (fast) + R2 (durable across Railway restarts).
+// `kind` = 'vfr_research' | 'intraday_research'. R2 keeps a single "…_latest.json".
+async function _persistResult(kind, data) {
+  if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+  const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+  const file = `${kind}_${ts}.json`;
+  fs.writeFileSync(path.join(WBT_DATA_DIR, file), JSON.stringify(data, null, 0) + '\n');
+  try { if (_r2Ok()) await _r2PutJSON(`research/${kind}_latest.json`, { file, computedAt: new Date().toISOString(), ...data }); }
+  catch (e) { console.warn(`[research] R2 persist ${kind} failed: ${e?.message}`); }
+  return file;
+}
+// Load latest: newest local file first, else the durable R2 copy (survives restart).
+async function _loadResult(kind, latestLocalFn) {
+  const fp = latestLocalFn();
+  if (fp) { const data = JSON.parse(fs.readFileSync(fp, 'utf8')); return { ok: true, src: 'disk', file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data }; }
+  if (_r2Ok()) { try { const r2 = await _r2GetJSON(`research/${kind}_latest.json`); if (r2) return { ok: true, src: 'r2', ...r2 }; } catch { /* fall through to 404 */ } }
+  return null;
+}
+
+app.get('/api/vol-forecast-research', async (req, res) => {
   try {
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    res.json({ ok: true, file: path.basename(filePath), computedAt: fs.statSync(filePath).mtime.toISOString(), ...data });
-  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+    const out = await _loadResult('vfr_research', _latestVfrFile);
+    if (!out) return res.status(404).json({ ok: false, error: 'No research run yet. Click ▶ Run to generate.' });
+    return res.json(out);
+  } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req, res) => {
@@ -7899,11 +7918,39 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
         })).sort((a, b) => b.sharpness - a.sharpness),
       };
 
-      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
-      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
-      const outFile = path.join(WBT_DATA_DIR, `vfr_research_${ts}.json`);
-      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
-      vfrJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Evaluated ${names.length} pair(s)`, log, file: path.basename(outFile) } });
+      // ── Recalibration → proposed ASSET_PARAMS (per asset class) ──────────────
+      // Aggregate the per-pair walk-forward recalibration factors up to the asset-
+      // class level (fx / commodity / index) — the granularity ASSET_PARAMS uses.
+      // proposed corr = current corr × class-median factor. A validated swap-in;
+      // the live constants are NOT changed here — this is the number to adopt.
+      const _classOf = Object.fromEntries(insts.map(i => [i.name, i.assetClass || 'fx']));
+      const _med = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+      const byClass = {};
+      for (const k of names) {
+        const rc = perPair[k].recalibration; if (!rc || rc.insufficient) continue;
+        const cl = _classOf[k] || 'fx';
+        (byClass[cl] = byClass[cl] || { med: [], p75: [], exB: [], exA: [], e7B: [], e7A: [], pairs: [] });
+        const g = byClass[cl];
+        g.med.push(rc.medFactor); g.p75.push(rc.p75Factor);
+        g.exB.push(rc.exceedMedianBefore); g.exA.push(rc.exceedMedianAfter);
+        g.e7B.push(rc.exceed75Before); g.e7A.push(rc.exceed75After); g.pairs.push(k);
+      }
+      const recalProposal = {};
+      for (const [cl, g] of Object.entries(byClass)) {
+        const cur = _ASSET_PARAMS[cl] || _ASSET_PARAMS.fx;
+        const mf = _med(g.med), pf = _med(g.p75);
+        recalProposal[cl] = {
+          nPairs: g.pairs.length, medFactor: +mf.toFixed(3), p75Factor: +pf.toFixed(3),
+          current:  { hl_50_corr: cur.hl_50_corr, hl_75_corr: cur.hl_75_corr },
+          proposed: { hl_50_corr: +(cur.hl_50_corr * mf).toFixed(4), hl_75_corr: +(cur.hl_75_corr * pf).toFixed(4) },
+          exceedMedianBefore: +_med(g.exB).toFixed(1), exceedMedianAfter: +_med(g.exA).toFixed(1),
+          exceed75Before: +_med(g.e7B).toFixed(1), exceed75After: +_med(g.e7A).toFixed(1),
+        };
+      }
+      cross.recalProposal = recalProposal;
+
+      const outFile = await _persistResult('vfr_research', { perPair, cross, pairs: names });
+      vfrJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Evaluated ${names.length} pair(s)`, log, file: outFile } });
     } catch (e) {
       vfrJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt });
     }
@@ -8021,11 +8068,25 @@ const _latestIntraFile = () => {
   try { const fs2 = fs.readdirSync(WBT_DATA_DIR).filter(f => f.startsWith('intraday_research_') && f.endsWith('.json')); return fs2.length ? path.join(WBT_DATA_DIR, fs2.sort().at(-1)) : null; } catch { return null; }
 };
 
-app.get('/api/intraday-research', (req, res) => {
-  const fp = _latestIntraFile();
-  if (!fp) return res.status(404).json({ ok: false, error: 'No intraday run yet. Click ▶ Run.' });
-  try { const data = JSON.parse(fs.readFileSync(fp, 'utf8')); res.json({ ok: true, file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data }); }
-  catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+// Cross-pair summary from the per-pair intraday results (daily horizon headline).
+function _intraCross(perPair, names) {
+  const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k].daily) ?? 0), 0) / names.length).toFixed(1);
+  return {
+    nPairs: names.length,
+    medianTouchRatePct: _avg(r => r.touches?.medianExtension?.touchRatePct),
+    medianContinuePct:  _avg(r => r.touches?.medianExtension?.continuePct),
+    medianReverse20Pct: _avg(r => r.touches?.medianExtension?.reverse20Pct),
+    reached100Pct:      _avg(r => r.expansion?.reached100Pct),
+    ranked: names.map(k => ({ pair: k, touchRate: perPair[k].daily.touches?.medianExtension?.touchRatePct ?? 0, continuePct: perPair[k].daily.touches?.medianExtension?.continuePct ?? 0, reverse20Pct: perPair[k].daily.touches?.medianExtension?.reverse20Pct ?? 0, src: perPair[k].src })).sort((a, b) => b.continuePct - a.continuePct),
+  };
+}
+
+app.get('/api/intraday-research', async (req, res) => {
+  try {
+    const out = await _loadResult('intraday_research', _latestIntraFile);
+    if (!out) return res.status(404).json({ ok: false, error: 'No intraday run yet. Click ▶ Intraday.' });
+    return res.json(out);
+  } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, res) => {
@@ -8034,44 +8095,50 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
   const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
   if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
 
+  // One run at a time — the M1-per-pair load is heavy; a 2nd concurrent run would
+  // just double the event-loop pressure and make every request "Failed to fetch".
+  // A repeat click ATTACHES to the in-flight job instead of starting another.
+  const inflight = [...intraJobs.entries()].find(([, j]) => j.status === 'running' && j.startedAt > Date.now() - 30 * 60_000);
+  if (inflight) return res.json({ ok: true, jobId: inflight[0], reused: true, message: `An intraday run is already in progress (${inflight[1].progress || '…'}) — attaching.` });
+
   const jobId = `intra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   for (const [id, j] of intraJobs) if (j.startedAt < Date.now() - 60 * 60_000) intraJobs.delete(id);
-  intraJobs.set(jobId, { status: 'running', startedAt });
+  intraJobs.set(jobId, { status: 'running', startedAt, progress: `0/${insts.length}` });
 
   (async () => {
     const perPair = {}, log = [];
+    // Persist whatever has completed so far — a slow all-31 run always leaves a
+    // loadable file (partial results survive a reload or a container restart).
+    const flush = async () => { const nm = Object.keys(perPair); if (nm.length) { try { await _persistResult('intraday_research', { perPair, cross: _intraCross(perPair, nm), pairs: nm }); } catch { /* best-effort */ } } };
+    let done = 0;
     try {
       for (const cfg of insts) {
         try {
           const { bars, src } = await _intradayForAB(cfg);   // reuse the estimator's intraday loader
-          let pip = 0.0001; try { pip = _pipSize(cfg.name) || 0.0001; } catch { /* default */ }
-          // Run all three horizons — daily / weekly / 20-day — off the same bars.
-          const daily  = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'daily' });
-          if (daily.insufficient) { log.push(`${cfg.name}: insufficient (${daily.nDays}d, src ${src})`); continue; }
-          const weekly = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'weekly' });
-          const d20    = evaluateIntraday(bars, { assetClass: cfg.assetClass || 'fx', pip, horizon: 'd20' });
-          perPair[cfg.name] = { src, daily, weekly: weekly.insufficient ? null : weekly, d20: d20.insufficient ? null : d20 };
-          log.push(`${cfg.name}: ${daily.nDays}d src=${src} D-touch=${daily.touches?.medianExtension?.touchRatePct}% W=${weekly.insufficient ? 'n/a' : weekly.touches?.medianExtension?.touchRatePct + '%'}`);
-        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+          // Prefer the instrument's explicit pip (indices = 1 point); else registry; else FX default.
+          let pip = cfg.pip; if (!pip) { try { pip = _pipSize(cfg.name) || _pipSize(cfg.oanda) || 0.0001; } catch { pip = 0.0001; } }
+          // All three horizons off ONE London-day build (≈3× faster than per-horizon).
+          const all = evaluateIntradayAllHorizons(bars, { assetClass: cfg.assetClass || 'fx', pip });
+          if (all.daily.insufficient) { log.push(`${cfg.name}: insufficient (${all.nDays}d, src ${src})`); }
+          else {
+            perPair[cfg.name] = { src, daily: all.daily, weekly: all.weekly.insufficient ? null : all.weekly, d20: all.d20.insufficient ? null : all.d20 };
+            log.push(`${cfg.name}: ${all.nDays}d src=${src} D-touch=${all.daily.touches?.medianExtension?.touchRatePct ?? '—'}%`);
+          }
+        } catch (e) { log.push(`${cfg.name}: ERROR ${e?.message}`); }
+        done++;
+        intraJobs.set(jobId, { status: 'running', startedAt, progress: `${done}/${insts.length}` });
+        if (done % 5 === 0) await flush();   // checkpoint every 5 pairs
+        // Yield the event loop between pairs so the server stays responsive during
+        // the (heavy, minutes-long) run — otherwise the status poller and repeat
+        // clicks fail with "Failed to fetch" while a pair's M1 compute blocks.
+        await new Promise(r => setImmediate(r));
       }
       const names = Object.keys(perPair);
-      if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
-      const _avg = f => +(names.reduce((s, k) => s + (f(perPair[k].daily) ?? 0), 0) / names.length).toFixed(1);
-      const cross = {
-        nPairs: names.length,
-        medianTouchRatePct: _avg(r => r.touches?.medianExtension?.touchRatePct),
-        medianContinuePct:  _avg(r => r.touches?.medianExtension?.continuePct),
-        medianReverse20Pct: _avg(r => r.touches?.medianExtension?.reverse20Pct),
-        reached100Pct:      _avg(r => r.expansion?.reached100Pct),
-        ranked: names.map(k => ({ pair: k, touchRate: perPair[k].daily.touches?.medianExtension?.touchRatePct ?? 0, continuePct: perPair[k].daily.touches?.medianExtension?.continuePct ?? 0, reverse20Pct: perPair[k].daily.touches?.medianExtension?.reverse20Pct ?? 0, src: perPair[k].src })).sort((a, b) => b.continuePct - a.continuePct),
-      };
-      if (!fs.existsSync(WBT_DATA_DIR)) fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
-      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
-      const outFile = path.join(WBT_DATA_DIR, `intraday_research_${ts}.json`);
-      fs.writeFileSync(outFile, JSON.stringify({ perPair, cross, pairs: names }, null, 0) + '\n');
-      intraJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Intraday research on ${names.length} pair(s)`, log, file: path.basename(outFile) } });
-    } catch (e) { intraJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+      if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated — see log for per-pair reasons', log, startedAt }); return; }
+      const outFile = await _persistResult('intraday_research', { perPair, cross: _intraCross(perPair, names), pairs: names });
+      intraJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, message: `Intraday research on ${names.length}/${insts.length} pair(s)`, log, file: outFile } });
+    } catch (e) { await flush(); intraJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
   })();
 
   res.json({ ok: true, jobId });
@@ -8080,7 +8147,7 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
 app.get('/api/intraday-research/status/:jobId', (req, res) => {
   const job = intraJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
-  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), progress: job.progress });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
@@ -11519,6 +11586,31 @@ setInterval(async () => {
   }
 }, 20_000);
 console.log(`[tde-backfill] daily top-up armed (default ${TDE_CFG_DEFAULTS.backfill_utc} UTC — runtime-configurable at /api/trade-decision/config)`);
+
+// ── Nightly research refresh ──────────────────────────────────────────────────
+// Re-runs the vol-forecast research (all pairs) so the recalibration factors that
+// feed the calibrated export stay current without any manual step. OFF unless
+// VFR_REFRESH_UTC is set (HH:MM UTC, e.g. '02:30'). Fires an internal POST to the
+// local route, reusing its exact logic (walk-forward eval, recalProposal, local +
+// R2 persist). Heavy (~minutes) — meant for off-hours; the daily σ already updates
+// itself, this only refreshes the slow structural correction factor.
+const VFR_REFRESH_UTC = process.env.VFR_REFRESH_UTC || '';
+let _vfrLastRefresh = '';
+if (VFR_REFRESH_UTC && process.env.OANDA_KEY) {
+  const [rH, rM] = VFR_REFRESH_UTC.split(':').map(x => parseInt(x, 10));
+  setInterval(async () => {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    if (now.getUTCHours() === rH && now.getUTCMinutes() === rM && _vfrLastRefresh !== today) {
+      _vfrLastRefresh = today;
+      try {
+        await fetch(`http://127.0.0.1:${PORT}/api/vol-forecast-research/run`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        console.log(`[vfr-refresh] nightly research kicked (${VFR_REFRESH_UTC} UTC)`);
+      } catch (e) { console.warn(`[vfr-refresh] failed: ${e?.message}`); }
+    }
+  }, 20_000);
+  console.log(`[vfr-refresh] nightly research refresh armed (${VFR_REFRESH_UTC} UTC)`);
+}
 
 // All other /api/* routes — call _worker.js and return the JSON response.
 app.all('/api/*', async (req, res) => {

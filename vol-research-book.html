@@ -90,6 +90,7 @@
     <select id="runPair"><option value="">All pairs</option></select>
     <button class="bk-run-btn" id="runBtn" onclick="runResearch()">▶ Run</button>
     <button class="bk-run-btn" id="runIntraBtn" onclick="runIntraday()" style="background:var(--blue)">▶ Intraday</button>
+    <button class="bk-run-btn" id="exportBtn" onclick="exportJSON()" style="background:var(--s2);color:var(--text);border:1px solid var(--border)" title="Download the loaded research + intraday aggregate JSON (hand it to an AI for cross-pair analysis)">⬇ Export JSON</button>
     <span id="runStatus" class="bk-lbl"></span>
     <span style="flex:1"></span>
     <span class="bk-lbl">Horizon:</span>
@@ -105,6 +106,7 @@
       <a href="#c0"><span class="qn">§</span>Executive summary</a>
       <a href="#c1"><span class="qn">Q1</span>Forecast accuracy</a>
       <a href="#c2"><span class="qn">Q2</span>Distribution / calibration</a>
+      <a href="#cRecal"><span class="qn">Fix</span>Recalibration</a>
       <a href="#c3"><span class="qn">Q3</span>Forecast stability</a>
       <a href="#c4"><span class="qn">Q4</span>Regime behaviour</a>
       <a href="#c5"><span class="qn">Q5</span>Session behaviour</a>
@@ -165,6 +167,27 @@
           <div class="bars" id="c2err"></div>
           <div class="note" id="c2errNote"></div>
         </div></div>
+      </section>
+
+      <!-- ── Recalibration (the fix) ──────────────────────────────────── -->
+      <section class="chap" id="cRecal">
+        <div class="chap-h">Recalibration — the fix <span class="qtag">Fix</span></div>
+        <div class="chap-q">The bands run wide (median exceeded far less than 50% of the time). What correction factor re-centres them? Derived walk-forward — each day's factor uses only prior data, so the "after" is out-of-sample.</div>
+        <div class="answer" id="aRecal">—</div>
+        <div class="sec-sub">Before → after — <span class="pair-badge" id="cRecalPair"></span> (walk-forward recalibrated exceedance)</div>
+        <div class="tiles" id="cRecalTiles"></div>
+        <div class="sec-sub">Recommended per-pair multipliers <span style="color:var(--text3);font-size:11px;font-weight:400">× current hl_50_corr / hl_75_corr — ranked by how wide the median runs</span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Pair</th><th class="num">Med ×</th><th class="num">75th ×</th><th class="num">Med-exceed before→after</th><th class="num">75th before→after</th></tr></thead>
+          <tbody id="cRecalTbl"></tbody>
+        </table></div></div>
+        <div class="note">Multipliers are a proposed swap-in for the forecaster's correction constants (the live engine is unchanged here). &lt;1 ⇒ narrow the band; the walk-forward "after" should land near 50 / 25. Adopt per-pair, or take the cross-pair median per asset class below.</div>
+        <div class="sec-sub">Proposed ASSET_PARAMS <span style="color:var(--text3);font-size:11px;font-weight:400">per asset class — current → recalibrated (class-median factor). This is the block to adopt into the live forecaster.</span></div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Class</th><th class="num">pairs</th><th class="num">hl_50_corr</th><th class="num">hl_75_corr</th><th class="num">med-exceed before→after</th><th class="num">75th before→after</th></tr></thead>
+          <tbody id="cRecalClass"></tbody>
+        </table></div>
+        <div class="rz-body"><pre id="cRecalCode" style="margin:0;font-family:'DM Mono',monospace;font-size:11.5px;line-height:1.6;color:var(--text);white-space:pre;overflow-x:auto"></pre></div></div>
       </section>
 
       <!-- ── Ch 3 — Forecast stability ────────────────────────────────── -->
@@ -384,7 +407,7 @@ const fmt = (v,d=2) => v==null || (typeof v==='number' && !isFinite(v)) ? '—' 
 const sgn = (v,d=3) => v==null ? '—' : (v>=0?'+':'') + (+v).toFixed(d);
 const setStatus = (t,m) => { document.getElementById('bkDot').className='sdot '+t; document.getElementById('bkMsg').textContent=m; };
 const el = id => document.getElementById(id);
-const PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD','AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF','GBPNZD','CADJPY','CHFJPY','NZDJPY','GOLD'];
+const PAIRS = ['EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY','EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD','AUDJPY','AUDNZD','AUDCAD','AUDCHF','GBPAUD','GBPCAD','GBPCHF','GBPNZD','CADJPY','CHFJPY','NZDJPY','GOLD','NQ','SPX500','US30','DE30','UK100'];
 const clsBias = b => b==null ? 'neu' : Math.abs(b)<0.02 ? 'pos' : 'amber';
 const clsEx   = (v,tgt,tol=8) => v==null ? 'neu' : Math.abs(v-tgt)<tol ? 'pos' : 'neg';
 
@@ -464,6 +487,26 @@ function renderCross() {
 
   // Ch8 estimator cross
   renderEstimator();
+  // Recalibration → proposed ASSET_PARAMS (per asset class)
+  renderRecalProposal();
+}
+
+function renderRecalProposal() {
+  const rp = _R.cross?.recalProposal;
+  const tb = el('cRecalClass'), code = el('cRecalCode');
+  if (!tb) return;
+  if (!rp || !Object.keys(rp).length) { tb.innerHTML='<tr><td colspan="6" class="neu">Run the research to derive the proposed constants.</td></tr>'; if(code) code.textContent=''; return; }
+  const order = ['fx','commodity','index'].filter(c=>rp[c]).concat(Object.keys(rp).filter(c=>!['fx','commodity','index'].includes(c)));
+  tb.innerHTML = order.map(c=>{ const o=rp[c]; return `<tr>
+    <td><strong>${c}</strong></td><td class="num">${o.nPairs}</td>
+    <td class="num">${fmt(o.current.hl_50_corr,3)} → <span class="${o.medFactor<1?'amber':'pos'}">${fmt(o.proposed.hl_50_corr,3)}</span></td>
+    <td class="num">${fmt(o.current.hl_75_corr,3)} → <span class="${o.p75Factor<1?'amber':'pos'}">${fmt(o.proposed.hl_75_corr,3)}</span></td>
+    <td class="num">${fmt(o.exceedMedianBefore,1)} → <span class="${Math.abs(o.exceedMedianAfter-50)<6?'pos':''}">${fmt(o.exceedMedianAfter,1)}</span></td>
+    <td class="num">${fmt(o.exceed75Before,1)} → <span class="${Math.abs(o.exceed75After-25)<6?'pos':''}">${fmt(o.exceed75After,1)}</span></td></tr>`; }).join('');
+  // Ready-to-paste ASSET_PARAMS block (only the two H-L corrections are recalibrated;
+  // oc_corr / oc_75_corr / garch_omega are carried through unchanged).
+  const line = c => { const o=rp[c]; return `  ${c}:${' '.repeat(Math.max(1,10-c.length))}{ hl_75_corr: ${fmt(o.proposed.hl_75_corr,3)}, hl_50_corr: ${fmt(o.proposed.hl_50_corr,3)}, /* oc_corr, oc_75_corr unchanged */ },`; };
+  if (code) code.textContent = '// proposed (recalibrated) — H-L corrections only; keep oc_* as-is\nconst ASSET_PARAMS = {\n' + order.map(line).join('\n') + '\n};';
 }
 
 function renderEstimator() {
@@ -599,6 +642,33 @@ function renderPair() {
 
   renderPRB(s, pair);
   renderIntraday(pair);
+  renderRecal(s, pair);
+}
+
+// ── PR-F recalibration chapter ───────────────────────────────────────────────
+function renderRecal(s, pair) {
+  if (el('cRecalPair')) el('cRecalPair').textContent = pair;
+  const rc = s.recalibration;
+  if (!rc || rc.insufficient) {
+    el('aRecal').innerHTML = '<span class="muted">Not enough history to derive a recalibration factor for this pair.</span>';
+    el('cRecalTiles').innerHTML=''; el('cRecalTbl').innerHTML='<tr><td colspan="5" class="neu">—</td></tr>'; return;
+  }
+  const near = (v,t) => Math.abs(v-t) < 6;
+  el('cRecalTiles').innerHTML = [
+    ['Median × factor', rc.medFactor, '× hl_50_corr'],
+    ['Med-exceed after', fmt(rc.exceedMedianAfter,1)+'%', 'from '+fmt(rc.exceedMedianBefore,1)+'% (tgt 50)'],
+    ['75th × factor', rc.p75Factor, '× hl_75_corr'],
+    ['75th-exceed after', fmt(rc.exceed75After,1)+'%', 'from '+fmt(rc.exceed75Before,1)+'% (tgt 25)'],
+  ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv ${k.includes('after')&&near(parseFloat(v),k.startsWith('Med')?50:25)?'pos':''}">${v}</div><div class="td">${d}</div></div>`).join('');
+  el('aRecal').innerHTML =
+    `For ${pair}, the median band runs wide — realized exceeds it only <strong>${fmt(rc.exceedMedianBefore,1)}%</strong> of days. Scaling it <strong>×${rc.medFactor}</strong> (and the 75th ×${rc.p75Factor}), derived walk-forward, moves exceedance to <strong class="${near(rc.exceedMedianAfter,50)?'pos':''}">${fmt(rc.exceedMedianAfter,1)}%</strong> (median, tgt 50) and <strong class="${near(rc.exceed75After,25)?'pos':''}">${fmt(rc.exceed75After,1)}%</strong> (75th, tgt 25). ${near(rc.exceedMedianAfter,50)?'The correction lands the median on target — a clean, out-of-sample recalibration.':'The correction improves calibration but doesn\'t fully centre it — the distribution shape (not just scale) is off.'} These are the recommended <code>hl_50_corr</code> / <code>hl_75_corr</code> multipliers.`;
+  // Cross-pair table (all pairs, ranked by how wide the median runs = lowest factor)
+  const pp = _R.perPair || {};
+  const recRows = Object.keys(pp).map(k=>({ pair:k, rc:pp[k].recalibration })).filter(x=>x.rc && !x.rc.insufficient).sort((a,b)=>a.rc.medFactor-b.rc.medFactor);
+  el('cRecalTbl').innerHTML = recRows.map(x=>`<tr${x.pair===pair?' style="background:var(--s2)"':''}>
+    <td><strong>${x.pair}</strong></td><td class="num ${x.rc.medFactor<1?'amber':''}">${fmt(x.rc.medFactor,3)}</td><td class="num">${fmt(x.rc.p75Factor,3)}</td>
+    <td class="num">${fmt(x.rc.exceedMedianBefore,1)} → <span class="${Math.abs(x.rc.exceedMedianAfter-50)<6?'pos':''}">${fmt(x.rc.exceedMedianAfter,1)}</span></td>
+    <td class="num">${fmt(x.rc.exceed75Before,1)} → <span class="${Math.abs(x.rc.exceed75After-25)<6?'pos':''}">${fmt(x.rc.exceed75After,1)}</span></td></tr>`).join('') || '<tr><td colspan="5" class="neu">—</td></tr>';
 }
 
 // ── PR-D/E intraday chapters (expansion + level touches), horizon-aware ──────
@@ -810,10 +880,21 @@ async function _runJob(base, btnId, startMsg) {
   setStatus('spin', startMsg); el('runStatus').textContent='Starting…';
   if (_poll) clearInterval(_poll);
   try {
-    const r = await fetch(`/api/${base}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pair:el('runPair').value})});
-    const jb = await r.json();
-    if (!jb.ok) { setStatus('err', jb.error||'Failed'); btn.disabled=false; return; }
-    let fails = 0; const MAX = 20;
+    // POST with one retry — a heavy in-flight run can briefly block the server, so
+    // a transient "Failed to fetch" on kickoff shouldn't abort the whole thing.
+    let jb = null;
+    for (let attempt = 0; attempt < 2 && !jb; attempt++) {
+      try {
+        const r = await fetch(`/api/${base}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pair:el('runPair').value})});
+        jb = await r.json();
+      } catch (e) {
+        if (attempt === 0) { el('runStatus').textContent='Server busy — retrying…'; await new Promise(res=>setTimeout(res,2500)); }
+        else { setStatus('err','Server not responding — a heavy run may be in progress. Try a single pair, or wait a moment and retry.'); btn.disabled=false; return; }
+      }
+    }
+    if (!jb || !jb.ok) { setStatus('err', jb?.error||'Failed'); btn.disabled=false; return; }
+    if (jb.reused) el('runStatus').textContent = jb.message || 'Attaching to the run already in progress…';
+    let fails = 0; const MAX = 30;
     const done = async (msg) => { if(_poll){clearInterval(_poll);_poll=null;} btn.disabled=false; el('runStatus').textContent=msg; await loadAll(); };
     _poll = setInterval(async () => {
       try {
@@ -831,6 +912,21 @@ async function _runJob(base, btnId, startMsg) {
 }
 function runResearch() { return _runJob('vol-forecast-research', 'runBtn', 'Running research (per pair — can take a while)…'); }
 function runIntraday() { return _runJob('intraday-research', 'runIntraBtn', 'Running intraday research (loads M1/H1 per pair — slow)…'); }
+
+// Download the loaded aggregates as one JSON — for handing to an AI / your own
+// cross-pair analysis. Aggregates only (no raw rows), same data the book renders.
+function exportJSON() {
+  if (!_R) { setStatus('err','Nothing to export yet — run the research first.'); return; }
+  const payload = { exportedAt: new Date().toISOString(), research: _R, intraday: _IN, estimator: _AB };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `vol-research-book_${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  el('runStatus').textContent = 'Exported JSON ✓';
+}
 </script>
 </body>
 </html>
