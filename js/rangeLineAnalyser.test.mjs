@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches } from './perLineStrategy.js';
 
@@ -56,6 +56,35 @@ console.log('[extractTouches consumes the records]');
 const touches = extractTouches(records, { conditions: [] });   // cell = line only (dense, for the test)
 ok('extractTouches yields decided touches', touches.length > 0, `${touches.length} touches`);
 ok('touches have cell + barrier prices', touches.every(t => t.cell && Number.isFinite(t.innerLvl) && Number.isFinite(t.outerLvl)));
+
+console.log('[structural-confluence bucket — pure helper, known answers]');
+// Two distinct sources within tol of 1.1000 → multi; one → single; none → none.
+const cl = [{ price: 1.1001, source: 'pivots' }, { price: 1.1002, source: 'poc' }, { price: 1.2000, source: 'vwap' }];
+ok('confluenceBucketAt: 2 distinct sources within tol → 3·multi', confluenceBucketAt(1.1000, cl, 0.0005) === '3·multi');
+ok('confluenceBucketAt: 1 source within tol → 2·single', confluenceBucketAt(1.1000, [{ price: 1.1001, source: 'pivots' }], 0.0005) === '2·single');
+ok('confluenceBucketAt: none within tol → 1·none', confluenceBucketAt(1.1000, cl, 0.00001) === '1·none');
+ok('confluenceBucketAt: same source twice counts once (distinct)',
+   confluenceBucketAt(1.1000, [{ price: 1.1001, source: 'pivots' }, { price: 1.1002, source: 'pivots' }], 0.0005) === '2·single');
+ok('confluenceBucketAt: null when no levels / no tol', confluenceBucketAt(1.1000, [], 0.0005) === null && confluenceBucketAt(1.1000, cl, 0) === null);
+ok('CONFLUENCE_SOURCES lists the fibs/pivots/HVN-POC-VAH-VAL/S&R/round/vwap brick ids',
+   CONFLUENCE_SOURCES.includes('pivots') && CONFLUENCE_SOURCES.includes('volume_profile') && CONFLUENCE_SOURCES.includes('swing_fib'));
+
+console.log('[confluence condition — end-to-end through the analyser + extractTouches]');
+const confRecords = runRangeLineAnalyser(sessions, 'fx',
+  { sources: ['asia', 'monday'], minLookback: 20, minBarsPerSession: 30, asiaHrs: 0.5, pip: 0.0001,
+    confluence: { enabled: true, tolFrac: 0.2, lookbackDays: 5 } });
+const confLines = confRecords.flatMap(r => r.lines);
+ok('confluence-enabled lines carry a confluence bucket field', confLines.length > 0 && confLines.every(l => 'confluence' in l));
+ok('confluence buckets are the expected labels (or null)',
+   confLines.every(l => l.confluence == null || ['1·none', '2·single', '3·multi'].includes(l.confluence)),
+   `sample=${[...new Set(confLines.map(l => l.confluence))].join(',')}`);
+ok('at least some lines are backed by a structural confluence (bucket set)',
+   confLines.some(l => l.confluence === '2·single' || l.confluence === '3·multi'));
+const confTouches = extractTouches(confRecords, { conditions: ['confluence'] });
+ok('extractTouches keys cells on the confluence bucket', confTouches.length > 0 && confTouches.every(t => /\|[123]·(none|single|multi)$/.test(t.cell)),
+   `${confTouches.length} touches, e.g. ${confTouches[0]?.cell}`);
+ok('default run (confluence off) leaves the bucket null → not conditionable',
+   allLines.every(l => l.confluence == null || l.confluence === undefined));
 
 console.log('[analyseRangeWindow direct — inner toward mid, outer away]');
 const oneDay = sessions.get([...sessions.keys()].sort()[30]);
