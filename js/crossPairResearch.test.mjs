@@ -133,6 +133,54 @@ test('analyze: hidden relationships aggregate the per-pair feature scans', () =>
   assert.ok(r.hypotheses.some(h => /Vol-of-vol/i.test(h.text) && h.dataNeeded.includes('per-day scan')));
 });
 
+test('analyze: touch behaviour + bot questions surface from intraday data', () => {
+  const book = goodBook();
+  const mk = (touch, cont, rev, rangeRev, bullCont) => ({ daily: { touches: {
+    medianExtension: { n: 200, touchRatePct: touch, continuePct: cont, reversePct: rev, meanMfePips: 22, meanMaePips: 18,
+      byRegime: { BULL: { continuePct: bullCont }, BEAR: { continuePct: bullCont - 3 }, RANGE: { reverse20Pct: rangeRev } } },
+    direction: { firstUpperPct: 55 } } } });
+  // Every pair fades at the line (reverse > continue) and fades-in-range/follows-in-trend.
+  const intr = { perPair: {
+    EURUSD: mk(70, 40, 48, 58, 55), GBPUSD: mk(66, 38, 47, 55, 53), USDJPY: mk(72, 42, 46, 60, 56),
+    EURJPY: mk(64, 39, 49, 57, 52), GBPJPY: mk(61, 37, 50, 54, 51), GOLD: mk(75, 35, 52, 62, 58),
+  } };
+  const r = analyzeCrossPair(book, intr, { minPairsForConsistency: 5 });
+  assert.ok(r.touchBehaviour && !r.touchBehaviour.insufficient, 'touch behaviour computed');
+  assert.equal(r.touchBehaviour.fadeVsFollow.direction, 'fade (reversion at the line dominates)');
+  assert.equal(r.touchBehaviour.fadeVsFollow.robust, true, 'fade tendency robust across types');
+  assert.ok(r.touchBehaviour.ranked[0].touchRatePct >= r.touchBehaviour.ranked.at(-1).touchRatePct, 'ranked by touch rate');
+  // Bot questions present and correctly tagged (Q4 retest is the remaining gap;
+  // Q8 costs is now answerable via the screen because intraday data is present).
+  assert.equal(r.botQuestions.length, 8);
+  assert.match(r.botQuestions[3].status, /GAP/);        // retest sequence still a gap
+  assert.match(r.botQuestions[2].status, /answerable/); // direction
+  assert.match(r.botQuestions[7].status, /screen/);     // costs → screen
+});
+
+test('analyze: cost-survival screen nets the ±20-pip bracket and flags survivors', () => {
+  const book = goodBook();
+  // EURUSD/GBPUSD fade hard (survive ×1); GBPJPY marginal (dies); NQ follows weakly (dies).
+  const mk = (rev, cont) => ({ daily: { touches: {
+    medianExtension: { n: 200, touchRatePct: 70, continuePct: cont, reversePct: rev, meanMfePips: 22, meanMaePips: 18,
+      byRegime: { BULL: { continuePct: 54 }, BEAR: { continuePct: 51 }, RANGE: { reverse20Pct: 56 } } },
+    direction: { firstUpperPct: 54 } } } });
+  const rv = { EURUSD: [58, 33], GBPUSD: [57, 34], USDJPY: [55, 36], EURJPY: [47, 45], GBPJPY: [46, 44], GOLD: [59, 32] };
+  const intr = { perPair: {} };
+  for (const [p, [rev, cont]] of Object.entries(rv)) intr.perPair[p] = mk(rev, cont);
+  const r = analyzeCrossPair(book, intr, { minPairsForConsistency: 5 });
+  const cs = r.costSurvival;
+  assert.ok(cs && !cs.insufficient, 'cost survival computed');
+  assert.equal(cs.barrierPips, 20);
+  const eur = cs.ranked.find(x => x.pair === 'EURUSD');
+  assert.equal(eur.side, 'fade');
+  assert.ok(eur.grossPips > eur.costPips, 'EURUSD gross beats its cost');
+  assert.equal(eur.survivesX1, true);
+  const jpy = cs.ranked.find(x => x.pair === 'GBPJPY');
+  assert.equal(jpy.survivesX1, false, 'marginal pair dies on costs');
+  assert.ok(cs.survivingX1 >= 3 && cs.survivingX1 <= 6);
+  assert.match(cs.note, /SCREEN/);
+});
+
 test('analyze: session relationships fold into hidden.session across pairs', () => {
   const book = goodBook();
   const sessScan = (asiaRho) => ({

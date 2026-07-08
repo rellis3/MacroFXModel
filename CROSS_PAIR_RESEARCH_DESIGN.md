@@ -176,10 +176,20 @@ Roughly: **10 of 16 are "have it per-pair → just synthesise cross-pair now"**,
   Presented on the canonical **`cross-pair-research.html`** page (linked from the
   dashboard). **Remaining (2b-ii / 2c):** session-contribution *accuracy* needs the
   forecaster to emit an expected session split; macro/news/holiday needs a calendar join.
-- **Phase 3 (deferred, gated on Phase 1–2) — decision layer.** *Only if* the
-  research surfaces robust, type-diverse, OOS-consistent structure does it become
-  a filter/selector — and then through the honest A/B harness. Not before. The
-  earlier "dynamic selector" idea lives here, downstream of the evidence.
+- **Phase 2c — the BOT-relevant reframe. ✅ BUILT.** The page was answering
+  *"is the forecast calibrated?"*; a bot needs *"does the level behave tradeably?"*
+  Added `touchBehaviour` (folds the intraday touch study cross-pair: touch rate,
+  fade-vs-follow, MFE/MAE, fade-in-range/follow-in-trend) and `botQuestions` (the
+  8-question decision funnel, `BOT_DECISION_QUESTIONS.md`). Fixed the trust tiers
+  (relative terciles + a sharpness≤0 floor — the old absolute skill/calibration
+  gates excluded the whole universe) and surfaced the reference-forecaster drift
+  (`recal` + link to the calibrated export). **Two GAPs gate a real bot answer:**
+  Q4 retest 1st/2nd/3rd sequence (engine change) and Q8 cost-survival at the level
+  (fill/cost model) — Q8 first.
+- **Phase 3 (deferred, gated) — decision layer.** *Only if* a **cost-surviving**,
+  OOS-consistent, type-diverse **touch edge** exists does it become a
+  filter/selector — through the honest A/B harness. Not before. The earlier
+  "dynamic selector" idea lives here, downstream of the evidence.
 
 Each phase is its own draft PR, linked from the research book.
 
