@@ -108,6 +108,11 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   // DISTANCES so the touch/fade/cost study measures the bands a bot would trade,
   // not the too-wide raw lines. Expansion (vs the raw forecast) stays un-scaled.
   const hlRatioHist = [], recalFactors = [];
+  // CONDITIONAL-fade filter state (causal): a "calm" day = forecast-time vov at/below
+  // its trailing median AND the prior window didn't blow through (realized ≤ 118% of
+  // forecast). These are the days the hidden-relationship scan flags as low-miss —
+  // the filter that should trim the short-gamma tail off a blind fade.
+  const vovHist = []; let prevRatio = null;
 
   // Non-overlapping windows (step = W) — avoids autocorrelation inflation across
   // overlapping multi-day windows; for daily this is the original per-day walk.
@@ -131,6 +136,10 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     const dnMed = open * (1 - (fc[H.olMed] ?? 0) / 100 * recalF), dnP75 = open * (1 - (fc[H.olP75] ?? 0) / 100 * recalF);
     const hyst = Math.max(pip, 0.15 * expRange);
     const _time = b => H.timeUnit === 'hour' ? _hourOf(b._t) : b._day + 1;   // hour-of-day or day-of-window
+    // Calm-day filter (causal — vov is forecast-time, prevRatio is the PRIOR window).
+    const vov = fc.vol_vov ?? null;
+    const vovMed = vovHist.length >= 20 ? _median(vovHist.slice(-120)) : null;
+    const calm = (vov == null || vovMed == null || vov <= vovMed) && (prevRatio == null || prevRatio <= 1.18);
 
     // ── Expansion timing (in hours for daily, in days-of-window otherwise) ──
     let realizedHl = null;
@@ -149,10 +158,10 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     // ── Level touches ──
     const oUpMed = _levelOutcome(bars, upMed, +1, pip, hyst), oDnMed = _levelOutcome(bars, dnMed, -1, pip, hyst);
     const oUpP75 = _levelOutcome(bars, upP75, +1, pip, hyst), oDnP75 = _levelOutcome(bars, dnP75, -1, pip, hyst);
-    if (oUpMed) touchRows.upMed.push({ ...oUpMed, regime });
-    if (oDnMed) touchRows.dnMed.push({ ...oDnMed, regime });
-    if (oUpP75) touchRows.upP75.push({ ...oUpP75, regime });
-    if (oDnP75) touchRows.dnP75.push({ ...oDnP75, regime });
+    if (oUpMed) touchRows.upMed.push({ ...oUpMed, regime, calm });
+    if (oDnMed) touchRows.dnMed.push({ ...oDnMed, regime, calm });
+    if (oUpP75) touchRows.upP75.push({ ...oUpP75, regime, calm });
+    if (oDnP75) touchRows.dnP75.push({ ...oDnP75, regime, calm });
     // ── G1 placebo: the median lines jittered by a seeded same-scale offset — a
     // control at a similar distance but NOT the forecast's exact prediction. If the
     // real level reverses no more than this, the forecast placement adds no edge.
@@ -169,8 +178,9 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
       const uh = oUpMed ? oUpMed.firstIdx : Infinity, dh = oDnMed ? oDnMed.firstIdx : Infinity;
       if (uh < dh) firstUpper++; else if (dh < uh) firstLower++;
     }
-    // Feed the walk-forward recalibration (prior windows only — pushed AFTER use).
-    if (realizedHl != null && (fc[H.hl] ?? 0) > 0) hlRatioHist.push(realizedHl / (fc[H.hl]));
+    // Feed the walk-forward recalibration + calm-day state (prior windows only).
+    if (realizedHl != null && (fc[H.hl] ?? 0) > 0) { hlRatioHist.push(realizedHl / (fc[H.hl])); prevRatio = realizedHl / (fc[H.hl]); }
+    if (vov != null) vovHist.push(vov);
   }
 
   const recalMeta = { applied: recalibrate, medianFactor: recalFactors.length ? +(_median(recalFactors)).toFixed(3) : 1 };
@@ -261,10 +271,14 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
   };
   const medRev = _rate(med.map(r => r.outcome === 'reverse'));
   const plRev  = _rate(plMed.map(r => r.outcome === 'reverse'));
+  const medCalm = med.filter(r => r.calm);   // conditional-fade subset (calm days)
   const touches = {
     bandsRecalibrated: recalMeta.applied, recalFactor: recalMeta.medianFactor,
-    medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med) },
-    p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75) },
+    medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med), fadePayoff: _fadePayoff(med) },
+    p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75), fadePayoff: _fadePayoff(p75) },
+    // Conditional fade: median-line touches restricted to CALM days (the tail filter).
+    conditionalCalm: { filter: 'calm = vov ≤ trailing-median AND prior window ≤ 118% forecast',
+      ...(_touchStats(medCalm, totalWindows)), fadePayoff: _fadePayoff(medCalm) },
     placebo: { n: plMed.length, reversePct: plRev == null ? null : +plRev.toFixed(1),
       realReversePct: medRev == null ? null : +medRev.toFixed(1),
       edgeVsPlaceboPp: (medRev != null && plRev != null) ? +(medRev - plRev).toFixed(1) : null },
