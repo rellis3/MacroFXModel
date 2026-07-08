@@ -43,14 +43,25 @@
   <header>
     <h1>Cross-Pair Research</h1>
     <span class="sub" id="computedAt">the trend spotter — analysis across all pairs, not a strategy</span>
-    <nav class="nav"><a href="index.html">← Dashboard</a><a href="vol-research-book.html">Research book</a><a href="vol-forecast.html">Forecaster</a></nav>
+    <nav class="nav"><a href="index.html">← Dashboard</a><a href="vol-research-book.html">Research book</a><a href="vol-forecast.html" title="Calibrated / recalibrated export lives here">🎯 Recalibrated forecaster</a></nav>
   </header>
   <div class="status" id="status">Loading…</div>
 
   <div class="answer" id="answer" style="display:none"></div>
+  <div class="note" id="recalNote" style="display:none"></div>
+
+  <h2>Questions a bot needs answered</h2>
+  <p class="qd">The decision funnel a level-trading bot walks — <strong>not</strong> "is the forecast calibrated?" but "does the level behave tradeably?" Each tagged with whether the current data answers it. Full write-up: <a href="BOT_DECISION_QUESTIONS.md">BOT_DECISION_QUESTIONS.md</a>.</p>
+  <div id="botq"></div>
+
+  <h2>Touch behaviour — the tradeable layer</h2>
+  <p class="qd">Does price REACH the forecast line, and once it does, FADE (revert to open) or FOLLOW (break through)? Overall + by regime — what a level bot actually trades. <span class="muted">Needs the intraday run; folds the per-pair touch study cross-pair.</span></p>
+  <div class="tiles" id="touchTiles"></div>
+  <div class="note" id="touchNote"></div>
+  <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th class="num">Touch %</th><th>At the line</th><th class="num">Net cont.</th><th class="num">MFE</th><th class="num">MAE</th><th class="num">Range rev20%</th><th class="num">Trend cont%</th></tr></thead><tbody id="touch"></tbody></table></div>
 
   <h2>Forecast-reliability ranking</h2>
-  <p class="qd">Which pairs is the Daily Market Expectation Model actually good at? Composite of calibration · skill · sharpness · low-error, percentile-ranked <em>within</em> this set (0–100). Trust tier is rule-based (hard exclusions + robust-z outliers + bottom-tertile).</p>
+  <p class="qd">Which pairs is the Daily Market Expectation Model relatively best at? Composite of calibration · skill · sharpness · low-error, percentile-ranked <em>within</em> this set (0–100). Trust tiers are <strong>relative terciles</strong> of that score (+ a sharpness ≤ 0 floor) — a ranking within this universe, <em>not</em> absolute tradeability (that needs the touch + cost layer above).</p>
   <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th>Trust</th><th class="num">Score</th><th class="num">Calib</th><th class="num">Skill</th><th class="num">Sharp</th><th class="num">LowErr</th></tr></thead><tbody id="rank"></tbody></table></div>
   <div class="tiles" id="tiers"></div>
   <div class="note" id="tierNote"></div>
@@ -103,7 +114,40 @@ function render(cp){
   const robust = (cp.consistency||[]).filter(c=>c.robust);
   const top = cp.reliability?.[0], bot = cp.reliability?.filter(r=>r.score!=null).at(-1);
   const a = el('answer'); a.style.display='';
-  a.innerHTML = `Across <strong>${cp.nPairs} pairs</strong>: <strong>${robust.length}</strong> cross-pair pattern(s) hold across ≥2 types. Trust — <span class="pos">${cp.trust.trade.length} trade</span> · <span class="amber">${cp.trust.caution.length} caution</span> · <span class="neg">${cp.trust.exclude.length} exclude</span>${cp.trust.exclude.length?` (${cp.trust.exclude.join(', ')})`:''}. Most reliable <strong>${top?.pair??'—'}</strong> (${fmt(top?.score,1)}); least <strong>${bot?.pair??'—'}</strong> (${fmt(bot?.score,1)}).`;
+  a.innerHTML = `Across <strong>${cp.nPairs} pairs</strong>: <strong>${robust.length}</strong> cross-pair pattern(s) hold across ≥2 types. Trust (relative) — <span class="pos">${cp.trust.trade.length} trade</span> · <span class="amber">${cp.trust.caution.length} caution</span> · <span class="neg">${cp.trust.exclude.length} exclude</span>. Most reliable <strong>${top?.pair??'—'}</strong> (${fmt(top?.score,1)}); least <strong>${bot?.pair??'—'}</strong> (${fmt(bot?.score,1)}).`;
+
+  // Recalibration / drift banner.
+  const rn = el('recalNote');
+  if (cp.recal && Object.keys(cp.recal).length){ rn.style.display='';
+    const cls = Object.entries(cp.recal).map(([c,o])=>`${c}: exceed-med ${fmt(o.exceedMedianBefore,0)}% → <span class="pos">${fmt(o.exceedMedianAfter,0)}%</span>`).join(' · ');
+    rn.innerHTML = `⚠️ Calibration/skill above are measured on the <strong>reference (un-recalibrated) forecaster</strong> — that's why bands read wide. The walk-forward recalibration closes it: ${cls}. See the <a href="vol-research-book.html#cRecal">Recalibration chapter</a> and the <a href="vol-forecast.html">🎯 calibrated export</a>.`;
+  } else { rn.style.display=''; rn.innerHTML = `⚠️ Calibration/skill are measured on the <strong>reference (un-recalibrated) forecaster</strong> (<code>volForecast.js</code>). The recalibrated constants live in the bot engine + the <a href="vol-forecast.html">🎯 calibrated export</a>.`; }
+
+  // Bot-question set.
+  el('botq').innerHTML = (cp.botQuestions||[]).map(q=>{ const now=/answerable/.test(q.status); const gap=/GAP/.test(q.status);
+    return `<div class="find ${now?'good':'info'}"><span class="fi">${now?'✓':gap?'✗':'⋯'}</span><span>${q.q} <span class="muted">— ${q.note} · <em>${q.status}</em></span></span></div>`;}).join('');
+
+  // Touch behaviour (the tradeable layer).
+  const tb = cp.touchBehaviour;
+  if (tb && !tb.insufficient){
+    el('touchTiles').innerHTML = [
+      ['Median touch rate', fmt(tb.medianTouchRatePct,1)+'%', 'reaches the median line'],
+      ['At the line', tb.fadeVsFollow.direction.split(' ')[0], `net ${sgn(tb.fadeVsFollow.medianNetContinue,1)}pp · ${tb.fadeVsFollow.robust?'robust':'not robust'}`],
+      ['MFE / MAE', `${fmt(tb.medianMfePips,0)} / ${fmt(tb.medianMaePips,0)}`, 'pips after touch (means)'],
+      ['Fade-range/follow-trend', `${tb.regimeContrast.pairsFadeRangeFollowTrend}/${tb.regimeContrast.nPairs}`, 'pairs showing the split'],
+    ].map(([k,v,d])=>`<div class="tile"><div class="tk">${k}</div><div class="tv">${v}</div><div class="td">${d}</div></div>`).join('');
+    el('touchNote').innerHTML = `Fade-vs-follow sign test: ${tb.fadeVsFollow.agree}/${tb.fadeVsFollow.nPairs} pairs agree (${tb.fadeVsFollow.typeSpread} types), p=${fmt(tb.fadeVsFollow.pValue,3)}. ${tb.fadeVsFollow.direction}.`;
+    el('touch').innerHTML = (tb.ranked||[]).map(t=>`<tr><td><strong>${t.pair}</strong></td><td class="muted">${TYPE_LBL[t.type]||t.type}</td>
+      <td class="num">${fmt(t.touchRatePct,1)}</td>
+      <td class="${t.netContinue<0?'amber':'pos'}">${t.netContinue<0?'fade':'follow'}</td>
+      <td class="num ${t.netContinue<0?'amber':'pos'}">${sgn(t.netContinue,1)}</td>
+      <td class="num">${fmt(t.mfePips,0)}</td><td class="num">${fmt(t.maePips,0)}</td>
+      <td class="num ${t.rangeReverse20>=50?'pos':'neu'}">${fmt(t.rangeReverse20,0)}</td>
+      <td class="num ${t.trendContinuePct>=50?'pos':'neu'}">${fmt(t.trendContinuePct,0)}</td></tr>`).join('');
+  } else {
+    el('touchTiles').innerHTML=''; el('touchNote').textContent = tb?.insufficient ? `Only ${tb.nPairs} pairs have intraday touch data — need more for the cross-pair view.` : 'Run the Intraday study in the research book to populate this.';
+    el('touch').innerHTML = `<tr><td colspan="9" class="neu">No intraday touch data yet.</td></tr>`;
+  }
 
   el('rank').innerHTML = (cp.reliability||[]).map(r=>{ const t=cp.trust.perPair?.[r.pair]?.tier||'trade';
     return `<tr><td><strong>${r.pair}</strong></td><td class="muted">${TYPE_LBL[r.type]||r.type}</td>

@@ -133,6 +133,29 @@ test('analyze: hidden relationships aggregate the per-pair feature scans', () =>
   assert.ok(r.hypotheses.some(h => /Vol-of-vol/i.test(h.text) && h.dataNeeded.includes('per-day scan')));
 });
 
+test('analyze: touch behaviour + bot questions surface from intraday data', () => {
+  const book = goodBook();
+  const mk = (touch, cont, rev, rangeRev, bullCont) => ({ daily: { touches: {
+    medianExtension: { n: 200, touchRatePct: touch, continuePct: cont, reversePct: rev, meanMfePips: 22, meanMaePips: 18,
+      byRegime: { BULL: { continuePct: bullCont }, BEAR: { continuePct: bullCont - 3 }, RANGE: { reverse20Pct: rangeRev } } },
+    direction: { firstUpperPct: 55 } } } });
+  // Every pair fades at the line (reverse > continue) and fades-in-range/follows-in-trend.
+  const intr = { perPair: {
+    EURUSD: mk(70, 40, 48, 58, 55), GBPUSD: mk(66, 38, 47, 55, 53), USDJPY: mk(72, 42, 46, 60, 56),
+    EURJPY: mk(64, 39, 49, 57, 52), GBPJPY: mk(61, 37, 50, 54, 51), GOLD: mk(75, 35, 52, 62, 58),
+  } };
+  const r = analyzeCrossPair(book, intr, { minPairsForConsistency: 5 });
+  assert.ok(r.touchBehaviour && !r.touchBehaviour.insufficient, 'touch behaviour computed');
+  assert.equal(r.touchBehaviour.fadeVsFollow.direction, 'fade (reversion at the line dominates)');
+  assert.equal(r.touchBehaviour.fadeVsFollow.robust, true, 'fade tendency robust across types');
+  assert.ok(r.touchBehaviour.ranked[0].touchRatePct >= r.touchBehaviour.ranked.at(-1).touchRatePct, 'ranked by touch rate');
+  // Bot questions present and correctly tagged (Q4 retest + Q8 costs are gaps).
+  assert.equal(r.botQuestions.length, 8);
+  assert.match(r.botQuestions[3].status, /GAP/);
+  assert.match(r.botQuestions[7].status, /GAP/);
+  assert.match(r.botQuestions[2].status, /answerable/);
+});
+
 test('analyze: session relationships fold into hidden.session across pairs', () => {
   const book = goodBook();
   const sessScan = (asiaRho) => ({

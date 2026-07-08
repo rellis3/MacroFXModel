@@ -94,6 +94,61 @@ const CONSISTENCY = [
   { key: 'in_continue', q: 6, label: 'Touched median line continues (intraday)', get: r => { const t = r.in?.daily?.touches?.medianExtension; return (t && t.n) ? t.continuePct - t.reversePct : null; }, pos: 'break-and-go dominates', neg: 'fade dominates at the line', unit: 'pp' },
 ];
 
+// ── Touch behaviour (the BOT-relevant layer) ──────────────────────────────────
+// Elevates the per-pair intraday touch study into a cross-pair decision view:
+// does price REACH the forecast line, and once it does, FADE (revert to open) or
+// FOLLOW (break through) — overall and split by regime. This is what a level bot
+// trades on, as opposed to whether the forecast is statistically calibrated.
+function _touchBehaviour(recs, minPairs) {
+  const rows = [];
+  for (const r of recs) {
+    const t = r.in?.daily?.touches?.medianExtension; const dir = r.in?.daily?.touches?.direction;
+    if (!t || !t.n) continue;
+    const bBull = t.byRegime?.BULL, bBear = t.byRegime?.BEAR, bRange = t.byRegime?.RANGE;
+    const trendCont = [bBull?.continuePct, bBear?.continuePct].filter(v => v != null);
+    rows.push({
+      pair: r.name, type: r.type,
+      touchRatePct: t.touchRatePct ?? null,
+      continuePct: t.continuePct ?? null, reversePct: t.reversePct ?? null,
+      netContinue: (t.continuePct != null && t.reversePct != null) ? +(t.continuePct - t.reversePct).toFixed(1) : null,
+      mfePips: t.meanMfePips ?? null, maePips: t.meanMaePips ?? null,
+      firstUpperPct: dir?.firstUpperPct ?? null,
+      rangeReverse20: bRange?.reverse20Pct ?? null,
+      trendContinuePct: trendCont.length ? +_mean(trendCont).toFixed(1) : null,
+    });
+  }
+  if (rows.length < minPairs) return rows.length ? { insufficient: true, nPairs: rows.length } : null;
+  const col = f => rows.map(f).filter(v => v != null);
+  // Fade-vs-follow: sign test on net-continue across pairs.
+  const nz = rows.filter(r => r.netContinue != null && r.netContinue !== 0);
+  const up = nz.filter(r => r.netContinue > 0), down = nz.filter(r => r.netContinue < 0);
+  const maj = up.length >= down.length ? up : down;
+  const fadeVsFollow = {
+    nPairs: nz.length, agree: Math.max(up.length, down.length),
+    direction: up.length >= down.length ? 'follow (break-and-go dominates)' : 'fade (reversion at the line dominates)',
+    medianNetContinue: +(_median(col(r => r.netContinue)) ?? 0).toFixed(1),
+    pValue: +signTestP(nz.length, Math.max(up.length, down.length)).toFixed(4),
+    typeSpread: new Set(maj.map(r => r.type)).size,
+  };
+  fadeVsFollow.robust = fadeVsFollow.typeSpread >= 2 && fadeVsFollow.pValue <= 0.10;
+  // Regime contrast: do RANGE days fade MORE than trend days continue? (the classic
+  // fade-in-range / follow-in-trend split a bot would switch on.)
+  const contrastRows = rows.filter(r => r.rangeReverse20 != null && r.trendContinuePct != null);
+  const showing = contrastRows.filter(r => r.rangeReverse20 >= 50 && r.trendContinuePct >= 50);
+  return {
+    nPairs: rows.length,
+    medianTouchRatePct: +(_median(col(r => r.touchRatePct)) ?? 0).toFixed(1),
+    medianContinuePct: +(_median(col(r => r.continuePct)) ?? 0).toFixed(1),
+    medianReversePct: +(_median(col(r => r.reversePct)) ?? 0).toFixed(1),
+    medianMfePips: +(_median(col(r => r.mfePips)) ?? 0).toFixed(1),
+    medianMaePips: +(_median(col(r => r.maePips)) ?? 0).toFixed(1),
+    fadeVsFollow,
+    regimeContrast: { nPairs: contrastRows.length, pairsFadeRangeFollowTrend: showing.length,
+      note: 'pairs where RANGE days reverse ≥50% AND trend days continue ≥50% (fade-in-range / follow-in-trend)' },
+    ranked: rows.sort((a, b) => (b.touchRatePct ?? 0) - (a.touchRatePct ?? 0)),
+  };
+}
+
 // ── Public: build the cross-pair report ───────────────────────────────────────
 // vfr = the vfr_research payload ({ perPair, cross, pairs }); intraday = optional
 // intraday_research payload. opts.fdrQ (default 0.10), opts.minPairsForConsistency.
@@ -125,35 +180,31 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
     return { pair: r.name, type: r.type, score, sub };
   }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
 
-  // ── B. Outlier discounting → trust tiers ──
-  // Hard exclusion rules (a forecast that fails these is not tradeable), plus a
-  // robust-z outlier flag on any quality metric, plus a bottom-tertile catch.
+  // ── B. Trust tiers — RELATIVE ranking within this universe + one real floor ──
+  // NOTE: the old absolute gates ("skill < 0" / "|exceed-med − 50| > 20") were
+  // wrong here: (a) they fired on the WHOLE universe (every pair has negative
+  // skill vs a trailing-mean and wide bands on the un-recalibrated reference
+  // forecaster), which makes the tier useless; and (b) beating a trailing mean at
+  // POINT-forecasting the range is the wrong bar for a DISTRIBUTION forecast.
+  // So tiers are now relative terciles of the composite reliability score, plus a
+  // genuine floor: sharpness ≤ 0 means a bigger forecast does NOT precede a bigger
+  // day — the forecast is uninformative, the one real "don't trade" signal we can
+  // read here. These tiers rank RELATIVE quality; true tradeability needs the
+  // touch-behaviour + cost layer (see `touchBehaviour` and the bot-question set).
   const scoreByPair = Object.fromEntries(reliability.map(r => [r.pair, r.score]));
   const scores = reliability.map(r => r.score).filter(v => v != null).sort((a, b) => a - b);
-  const bottomTertile = scores.length ? scores[Math.floor(scores.length / 3)] : 0;
-  const trust = { perPair: {}, trade: [], caution: [], exclude: [] };
+  const q = p => scores.length ? scores[Math.min(scores.length - 1, Math.floor(p * scores.length))] : 0;
+  const topT = q(2 / 3), botT = q(1 / 3);   // tercile cut points on score
+  const trust = { perPair: {}, trade: [], caution: [], exclude: [], relative: true };
   for (const r of recs) {
-    const hl = _hl(r.s); const reasons = [];
-    const sharp = hl?.sharpnessCorr, skill = r.s?.dailyHlSkillVsClimatology;
-    const exMed = hl?.exceedMedianPct;
-    let tier = 'trade';
-    // Hard exclusions.
-    if (sharp != null && sharp <= 0) { tier = 'exclude'; reasons.push(`forecast uninformative (sharpness ${sharp})`); }
-    if (skill != null && skill < -0.05) { tier = 'exclude'; reasons.push(`worse than climatology (skill ${skill})`); }
-    if (exMed != null && Math.abs(exMed - 50) > 20) { tier = 'exclude'; reasons.push(`badly miscalibrated (exceed-median ${exMed}% vs 50%)`); }
-    // Robust-z outlier on any quality metric (only demote, never promote).
-    if (tier !== 'exclude') {
-      for (const m of QUALITY) {
-        const v = m.get(r); if (v == null) continue;
-        const z = _robustZ(v, cols[m.key]);
-        const bad = m.betterHigh ? z < -3.5 : z > 3.5;
-        if (bad) { tier = 'caution'; reasons.push(`outlier on ${m.label} (robust z ${z.toFixed(1)})`); }
-      }
-      // Bottom-tertile reliability.
-      const sc = scoreByPair[r.name];
-      if (tier === 'trade' && sc != null && sc <= bottomTertile && scores.length >= 6) { tier = 'caution'; reasons.push(`bottom-tertile reliability (${sc})`); }
-    }
-    trust.perPair[r.name] = { tier, score: scoreByPair[r.name], reasons };
+    const sharp = _hl(r.s)?.sharpnessCorr; const sc = scoreByPair[r.name]; const reasons = [];
+    let tier;
+    if (sharp != null && sharp <= 0) { tier = 'exclude'; reasons.push(`forecast uninformative — sharpness ${sharp} ≤ 0 (a bigger forecast doesn't precede a bigger day)`); }
+    else if (scores.length < 6 || sc == null) { tier = 'caution'; reasons.push('too few pairs for a relative tier'); }
+    else if (sc >= topT) { tier = 'trade'; reasons.push(`top-tercile reliability (${sc})`); }
+    else if (sc <= botT) { tier = 'exclude'; reasons.push(`bottom-tercile reliability (${sc}) — relative to this universe`); }
+    else { tier = 'caution'; reasons.push(`mid-tercile reliability (${sc})`); }
+    trust.perPair[r.name] = { tier, score: sc, reasons };
     trust[tier].push(r.name);
   }
 
@@ -279,15 +330,41 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
   }
   hypotheses.push({ text: 'Session-contribution ACCURACY (forecast Asia/London/NY share vs realized) and macro/news/holiday conditioning of misses.', evidence: 'the forecast emits no session split; no macro/calendar join', dataNeeded: 'forecaster session split + calendar join (Phase 2b-ii / 2c)' });
 
+  // ── The BOT-relevant layer: touch behaviour + the decision-question set ──
+  const touchBehaviour = _touchBehaviour(recs, minPairsForConsistency);
+  const tb = touchBehaviour && !touchBehaviour.insufficient ? touchBehaviour : null;
+  const botQuestions = _botQuestions(tb, hidden);
+  // Recalibration passthrough — the reference forecaster runs wide; these are the
+  // walk-forward factors that bring exceed-median back to ~50% (already in vfr).
+  const recal = vfr?.cross?.recalProposal ?? null;
+
   return {
     nPairs: names.length, pairs: names,
     generatedFrom: { vfrPairs: names.length, intradayPairs: Object.keys(inPer).length, scannedPairs: scans.length },
     fdrQ, weights,
-    reliability, trust, byType, consistency, hidden, hypotheses,
+    forecaster: 'reference (un-recalibrated volForecast.computeForecast) — see recal + calibrated export',
+    reliability, trust, byType, consistency, hidden, touchBehaviour, botQuestions, recal, hypotheses,
     notes: [
+      'Trust tiers are RELATIVE terciles of reliability within this universe (+ a sharpness≤0 floor) — not absolute tradeability, which needs the touch-behaviour + cost layer.',
+      'Calibration/skill metrics are measured on the REFERENCE forecaster (volForecast.js), which is NOT recalibrated — that is why bands read wide. The recal block + the calibrated export show the corrected picture.',
       'Reliability sub-scores are percentile ranks WITHIN this pair set — relative, not absolute.',
       'Correlated pairs are not independent: within-type agreement is down-weighted via the ≥2-type-spread requirement for "robust".',
-      'Session-contribution accuracy and macro/news conditioning are not derivable from the current JSON (see design §4).',
     ],
   };
+}
+
+// The questions a level-trading bot actually needs answered, tagged with whether
+// the current data answers them. Not trade rules — the research agenda for a bot.
+function _botQuestions(tb, hidden) {
+  const st = (have, gap) => have ? 'answerable now' : gap;
+  return [
+    { q: '1. Universe — which pairs behave consistently enough to trade at all?', status: st(!!tb, 'run intraday'), note: tb ? `touch data on ${tb.nPairs} pairs; needs IS/OOS consistency of the touch edge` : 'needs the intraday touch study' },
+    { q: '2. Setup — how often does price actually REACH the median / 75th line, and on which days?', status: st(!!tb, 'run intraday'), note: tb ? `median touch rate ${tb.medianTouchRatePct}% across pairs` : 'touchRatePct per pair' },
+    { q: '3. Direction — at the line, does price FADE (revert) or FOLLOW (break)? overall and by regime?', status: st(!!tb, 'run intraday'), note: tb ? `${tb.fadeVsFollow.direction} (net ${tb.fadeVsFollow.medianNetContinue}pp); ${tb.regimeContrast.pairsFadeRangeFollowTrend}/${tb.regimeContrast.nPairs} pairs fade-in-range/follow-in-trend` : 'continue% vs reverse%, byRegime' },
+    { q: '4. Retest — does the edge change on the 1st vs 2nd vs 3rd touch of the same level?', status: 'GAP — engine change', note: 'intraday has single-vs-many-retest only; a clean 1st/2nd/3rd sequence needs an intradayForecastResearch change' },
+    { q: '5. Timing — which session is the touch/fade cleanest in?', status: st(!!tb, 'run intraday'), note: 'touches.bySession per pair (not yet folded cross-pair)' },
+    { q: '6. Exit — what target/stop does the post-touch MFE/MAE distribution support?', status: st(!!tb, 'run intraday'), note: tb ? `median MFE ${tb.medianMfePips} / MAE ${tb.medianMaePips} pips — means only; full distributions would sharpen R:R` : 'meanMfePips / meanMaePips per pair' },
+    { q: '7. Direction skew — is one side of the band hit first systematically?', status: st(!!tb, 'run intraday'), note: 'direction.firstUpperPct per pair' },
+    { q: '8. Costs — does the touch-edge survive spread + slippage?', status: 'GAP — cost layer', note: 'THE make-or-break test — not yet applied at the level; needs the fill/cost model on touch trades' },
+  ];
 }
