@@ -71,3 +71,35 @@ test('scan: deterministic — same rows give identical clusters', () => {
   const b = scanFeatures(plantedRows(600, 9));
   assert.deepEqual(a.dayTypes.clusters, b.dayTypes.clusters, 'seeded k-means is reproducible');
 });
+
+// Sequential unique dates + a planted "big Asia share → bigger miss" relationship.
+function sessionRows(n, seed = 4) {
+  const rnd = mulberry32(seed); const rows = []; const sessionByDate = {};
+  const base = Date.UTC(2018, 0, 1);
+  for (let i = 0; i < n; i++) {
+    const asiaShare = 10 + rnd() * 60;                     // 10..70% driver
+    const med = 1.0;
+    const shock = (rnd() - 0.5) * 2 * (0.05 + 0.012 * asiaShare); // bigger miss when Asia share high
+    const actual = Math.max(0.05, med * (1 + shock));
+    const date = new Date(base + i * 86400_000).toISOString().slice(0, 10);
+    rows.push({ date, regime: 'BULL', volAnnual: 8, vov: 0.5, efficiency: 0.4, climHl: 1.0,
+      comp: { daily: { hl: { actual: +actual.toFixed(4), med, exMed: actual > med ? 1 : 0, ex75: 0 } } } });
+    const london = (100 - asiaShare) * (0.5 + rnd() * 0.3);
+    sessionByDate[date] = { asia: { hlPct: +asiaShare.toFixed(2) }, london: { hlPct: +london.toFixed(2) }, ny: { hlPct: +(100 - asiaShare - london).toFixed(2) } };
+  }
+  return { rows, sessionByDate };
+}
+
+test('scan: no session block when session data not supplied', () => {
+  const r = scanFeatures(plantedRows(400));
+  assert.equal(r.sessionRelationships, null, 'session block absent without join');
+});
+
+test('scan: session join recovers the planted Asia-share → miss relationship', () => {
+  const { rows, sessionByDate } = sessionRows(600);
+  const r = scanFeatures(rows, { sessionByDate });
+  assert.ok(r.sessionRelationships, 'session block present when joined');
+  assert.match(r.sessionRelationships.note, /within-day/);
+  const asia = r.sessionRelationships.correlations.find(c => c.key === 'asiaPct');
+  assert.ok(asia.rhoAbsErr > 0.15, `Asia share correlates with miss size (rho ${asia.rhoAbsErr})`);
+});

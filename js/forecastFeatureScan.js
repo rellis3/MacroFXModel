@@ -47,7 +47,10 @@ const PREDICTORS = [
 ];
 
 // Build causal day records from the engine's rows (daily H-L component).
-function _records(rows) {
+// sessionByDate (optional): Map/obj date → { asia:{hlPct}, london:{hlPct}, ny:{hlPct} }
+// from dailySessionContributions — joined for the WITHIN-DAY session block only.
+function _records(rows, sessionByDate = null) {
+  const sget = sessionByDate instanceof Map ? d => sessionByDate.get(d) : d => sessionByDate?.[d];
   const recs = [];
   const hlHist = [];                                  // realized daily H-L, in order
   let prev = null;
@@ -59,6 +62,7 @@ function _records(rows) {
     const bigMiss = absPctErr > 50 ? 1 : 0;
     const recent = hlHist.slice(-5), base = hlHist.slice(-20);
     const recentVsBase = (base.length >= 10 && _mean(base) > 0) ? _mean(recent) / _mean(base) : null;
+    const sd = sessionByDate ? sget(r.date) : null;
     recs.push({
       date: r.date,
       // predictors (causal)
@@ -67,6 +71,8 @@ function _records(rows) {
       recentVsBase,
       prevCompletion: prev ? prev.completion : null,
       prevBigMiss: prev ? prev.bigMiss : null,
+      // WITHIN-DAY session shares (end-of-day decomposition — descriptive, NOT pre-open)
+      asiaPct: sd?.asia?.hlPct ?? null, londonPct: sd?.london?.hlPct ?? null, nyPct: sd?.ny?.hlPct ?? null,
       // targets (realized outcome of the day)
       completion, absPctErr, bigMiss,
       efficiency: r.efficiency ?? null,
@@ -77,10 +83,20 @@ function _records(rows) {
   return recs;
 }
 
+// Within-day session predictors — deliberately SEPARATE from the causal set,
+// because session shares are known only at end of day (they characterise miss
+// days, they don't predict them at the open).
+const SESSION_PREDICTORS = [
+  { key: 'asiaPct',        label: 'Asia share of daily range' },
+  { key: 'londonPct',      label: 'London share of daily range' },
+  { key: 'nyPct',          label: 'New York share of daily range' },
+  { key: 'asiaMinusLondon', label: 'Asia − London share' },
+];
+
 // ── Public: scan one pair's rows ──────────────────────────────────────────────
 export function scanFeatures(rows, opts = {}) {
-  const { minDays = 150, k = 4, seed = 7 } = opts;
-  const recs = _records(rows || []);
+  const { minDays = 150, k = 4, seed = 7, sessionByDate = null } = opts;
+  const recs = _records(rows || [], sessionByDate);
   if (recs.length < minDays) return { insufficient: true, nDays: recs.length };
 
   // Correlations: each causal predictor vs miss size (absPctErr) and completion.
@@ -114,7 +130,26 @@ export function scanFeatures(rows, opts = {}) {
   // Day-type clusters (k-means on standardized realized signature).
   const dayTypes = _cluster(recs, k, seed);
 
-  return { nDays: recs.length, correlations, importance, missProfile, dayTypes };
+  // Within-day session relationships (Phase 2b) — only when session data joined.
+  let sessionRelationships = null;
+  if (sessionByDate) {
+    const withSess = recs.filter(r => r.asiaPct != null && r.londonPct != null);
+    for (const r of withSess) r.asiaMinusLondon = r.asiaPct - r.londonPct;
+    if (withSess.length >= minDays) {
+      sessionRelationships = {
+        nDays: withSess.length, note: 'within-day (session shares are end-of-day; descriptive, not a pre-open predictor)',
+        correlations: SESSION_PREDICTORS.map(p => {
+          const xs = withSess.map(r => r[p.key]).filter(v => v != null);
+          if (xs.length < minDays) return { key: p.key, label: p.label, n: xs.length, rhoAbsErr: null, rhoCompletion: null };
+          return { key: p.key, label: p.label, n: withSess.length,
+            rhoAbsErr: _spearman(withSess.map(r => r[p.key]), withSess.map(r => r.absPctErr)),
+            rhoCompletion: _spearman(withSess.map(r => r[p.key]), withSess.map(r => r.completion)) };
+        }),
+      };
+    }
+  }
+
+  return { nDays: recs.length, correlations, importance, missProfile, dayTypes, sessionRelationships };
 }
 
 // ── k-means on [completion, efficiency, absPctErr] (standardized), seeded ──────

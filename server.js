@@ -69,7 +69,7 @@ import { analyzeCrossPair } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
-import { evaluateSessions } from './js/forecastSessionResearch.js';
+import { evaluateSessions, dailySessionContributions } from './js/forecastSessionResearch.js';
 import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
@@ -7867,30 +7867,37 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
       const anchorYears  = parseInt(req.body?.anchorYears)  || 10;
       for (const cfg of insts) {
         try {
-          let summary = null, usedAnchor = 'utc-d1', h1 = null;
+          let summary = null, usedAnchor = 'utc-d1', h1 = null, evRows = null;
           if (anchor === 'london') {
             try {
               h1 = await _fetchH1(cfg.oanda, anchorYears);
               // London-midnight daily OHLC (strip the intraday sub-bars before eval).
               const lond = buildLondonDaily(h1).map(d => ({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close }));
-              if (lond.length >= 200) { const ev = evaluateForecast(lond, cfg.assetClass || 'fx'); summary = ev.summary; summary.featureScan = scanFeatures(ev.rows); usedAnchor = 'london-h1'; }
+              if (lond.length >= 200) { const ev = evaluateForecast(lond, cfg.assetClass || 'fx'); summary = ev.summary; evRows = ev.rows; usedAnchor = 'london-h1'; }
             } catch (le) { log.push(`${cfg.name} london-anchor fell back: ${le?.message}`); }
           }
           if (!summary) {
             const bars = await _btFetchD1(cfg.oanda, 5000);
-            const ev = evaluateForecast(bars, cfg.assetClass || 'fx'); summary = ev.summary; summary.featureScan = scanFeatures(ev.rows);
+            const ev = evaluateForecast(bars, cfg.assetClass || 'fx'); summary = ev.summary; evRows = ev.rows;
             usedAnchor = 'utc-d1';
           }
           summary.anchor = usedAnchor;
           // Session structure (Asia/London/NY) from H1 — reuse the anchor fetch if
           // we have it; non-fatal (a session failure must not drop the daily result).
+          let sessionByDate = null;
           if (wantSessions) {
             try {
               const sh1 = h1 || await _fetchH1(cfg.oanda, sessionYears);
               const sess = evaluateSessions(sh1);
               if (!sess.insufficient) summary.session = sess;
+              // Per-day session series → join into the within-day feature scan (2b).
+              const sdays = dailySessionContributions(sh1);
+              if (sdays.length) { sessionByDate = {}; for (const d of sdays) sessionByDate[d.date] = d; }
             } catch (se) { log.push(`${cfg.name} sessions: ${se?.message}`); }
           }
+          // Feature scan LAST — so it can join the session series when available.
+          try { summary.featureScan = scanFeatures(evRows, sessionByDate ? { sessionByDate } : {}); }
+          catch (fe) { log.push(`${cfg.name} scan: ${fe?.message}`); }
           perPair[cfg.name] = summary;
           log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo}) anchor=${usedAnchor}${summary.session ? ` · sessions ${summary.session.nDays}d` : ''}`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
