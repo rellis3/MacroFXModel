@@ -183,10 +183,11 @@ function render(cp){
     const v = el('csVerdict'); v.style.display='';
     const bl = cs.byLine || {};
     const lineRow = (name, s) => s && !s.insufficient ? `<div><strong>${name}:</strong> <span class="${s.fxSurvivingX2>=3?'pos':s.fxSurvivingX1>=3?'amber':'neg'}">${s.verdict}</span> <span class="muted">(FX clear ×2: ${s.fxSurvivingX2 ?? 0}; median FX net ×1 ${sgn(s.medianFxNetX1,2)} pips)</span></div>` : `<div><strong>${name}:</strong> <span class="muted">n/a</span></div>`;
-    v.innerHTML = `<div style="margin-bottom:6px">The fade lines, FX-aware (indices discounted — ≈1–2 correlated bets, fattest tails):</div>
-      ${lineRow('Median line (open±, ≡ open-close)', bl.median)}
-      ${lineRow('75th line', bl.p75)}
-      ${lineRow('Calm-day median (tail-filtered)', bl.calm)}
+    v.innerHTML = `<div style="margin-bottom:6px">The forecast level sets, FX-aware (indices discounted — ≈1–2 correlated bets, fattest tails):</div>
+      ${lineRow('Open-Close (median)', bl.oc)}
+      ${lineRow('Open-High/Open-Low, drift-adjusted (median)', bl.median)}
+      ${lineRow('Open-High/Open-Low (75th)', bl.p75)}
+      ${lineRow('O-H/O-L median, calm-day only (tail-filtered)', bl.calm)}
       ${lineRow('Dynamic H-L from running extreme (median)', bl.dyn)}
       ${lineRow('Dynamic H-L from running extreme (75th)', bl.dyn75)}`;
     el('cost').innerHTML = (cs.ranked||[]).map(r=>`<tr><td><strong>${r.pair}</strong></td><td class="muted">${TYPE_LBL[r.type]||r.type}</td>

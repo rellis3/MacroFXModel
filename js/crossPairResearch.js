@@ -281,7 +281,9 @@ function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
   const calm = _summCost(_costRows(recs, 'conditionalCalm', costTable), minPairs);
   const dyn = _summCost(_costRows(recs, 'dynExtension', costTable), minPairs);      // dynamic H-L from running extreme
   const dyn75 = _summCost(_costRows(recs, 'dynP75Extension', costTable), minPairs);  // dynamic 75th H-L
-  return { ...median, byLine: { median, p75, calm, dyn, dyn75 } };
+  const oc = _summCost(_costRows(recs, 'ocExtension', costTable), minPairs);         // open-close line (distinct from O-H/O-L)
+  // `median`/`p75` are the drift-adjusted O-H/O-L lines (level-set #2).
+  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75 } };
 }
 
 // ── Public: build the cross-pair report ───────────────────────────────────────
@@ -508,6 +510,6 @@ function _botQuestions(tb, hidden, cs, portfolio) {
     { q: '5. Timing — which session is the touch/fade cleanest in?', status: st(!!tb, 'run intraday'), note: 'touches.bySession per pair (not yet folded cross-pair)' },
     { q: '6. Exit — what target/stop does the post-touch MFE/MAE distribution support?', status: st(!!tb, 'run intraday'), note: tb ? `median MFE ${tb.medianMfePips} / MAE ${tb.medianMaePips} pips — means only; full distributions would sharpen R:R` : 'meanMfePips / meanMaePips per pair' },
     { q: '7. Direction skew — is one side of the band hit first systematically?', status: st(!!tb, 'run intraday'), note: 'direction.firstUpperPct per pair' },
-    { q: '8. Costs — does the touch-edge survive? (median / 75th / calm / dynamic H-L)', status: cs ? 'answerable now (screen)' : 'GAP — run intraday', note: cs ? `median: ${cs.byLine?.median?.verdict ?? cs.verdict} · 75th: ${cs.byLine?.p75?.verdict ?? 'n/a'} · calm: ${cs.byLine?.calm?.verdict ?? 'n/a'} · dyn H-L: ${cs.byLine?.dyn?.verdict ?? 'n/a'} · dyn 75th: ${cs.byLine?.dyn75?.verdict ?? 'n/a'}` : 'THE make-or-break test — ±20-pip bracket net of costs; needs the intraday touch data' },
+    { q: '8. Costs — does the touch-edge survive? (median / 75th / calm / dynamic H-L)', status: cs ? 'answerable now (screen)' : 'GAP — run intraday', note: cs ? `O-C: ${cs.byLine?.oc?.verdict ?? 'n/a'} · O-H/O-L: ${cs.byLine?.median?.verdict ?? cs.verdict} · 75th: ${cs.byLine?.p75?.verdict ?? 'n/a'} · calm: ${cs.byLine?.calm?.verdict ?? 'n/a'} · dyn H-L: ${cs.byLine?.dyn?.verdict ?? 'n/a'} · dyn 75th: ${cs.byLine?.dyn75?.verdict ?? 'n/a'}` : 'THE make-or-break test — ±20-pip bracket net of costs; needs the intraday touch data' },
   ]);
 }

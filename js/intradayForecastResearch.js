@@ -108,10 +108,14 @@ function _mulberry32(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t =
 //    forecast fields feed them and the window length (Lego principle: never
 //    hard-code "daily"). Expansion time is a London-hour for daily, a day-of-
 //    window index for the multi-day horizons.
+// O-H/O-L for DAILY use the drift-adjusted v2 fields (asymmetric — the real
+// Proj-H/Proj-L the forecaster exports); `oh_median`/`ol_median` are flat aliases
+// of oc_median, so using them collapses O-H, O-L and O-C into one line. Weekly/20d
+// have no v2 field yet, so their O-H/O-L stay flat (≡ O-C) — noted, not duplicated.
 export const HORIZONS = {
-  daily:  { windowDays: 1,  label: 'Daily',  timeUnit: 'hour', hl: 'hl_median', hl75: 'hl_75',     ohMed: 'oh_median', ohP75: 'oh_75',    olMed: 'ol_median', olP75: 'ol_75'    },
-  weekly: { windowDays: 5,  label: 'Weekly', timeUnit: 'day',  hl: 'hl_5d',     hl75: 'hl_5d_75',  ohMed: 'oh_5d',     ohP75: 'oh_5d_75', olMed: 'ol_5d',     olP75: 'ol_5d_75' },
-  d20:    { windowDays: 20, label: '20-day', timeUnit: 'day',  hl: 'hl_20d',    hl75: 'hl_20d_75', ohMed: 'oh_20d',    ohP75: 'oh_20d_75',olMed: 'ol_20d',    olP75: 'ol_20d_75'},
+  daily:  { windowDays: 1,  label: 'Daily',  timeUnit: 'hour', hl: 'hl_median', hl75: 'hl_75',     ocMed: 'oc_median', ocP75: 'oc_75',     ohMed: 'oh_v2_median', ohP75: 'oh_v2_75',  olMed: 'ol_v2_median', olP75: 'ol_v2_75'  },
+  weekly: { windowDays: 5,  label: 'Weekly', timeUnit: 'day',  hl: 'hl_5d',     hl75: 'hl_5d_75',  ocMed: 'oc_5d',     ocP75: 'oc_5d_75',  ohMed: 'oh_5d',        ohP75: 'oh_5d_75',  olMed: 'ol_5d',        olP75: 'ol_5d_75' },
+  d20:    { windowDays: 20, label: '20-day', timeUnit: 'day',  hl: 'hl_20d',    hl75: 'hl_20d_75', ocMed: 'oc_20d',    ocP75: 'oc_20d_75', ohMed: 'oh_20d',       ohP75: 'oh_20d_75', olMed: 'ol_20d',       olP75: 'ol_20d_75'},
 };
 
 // ── Walk-forward over London windows for ONE horizon (London days pre-built) ──
@@ -121,7 +125,7 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
 
   const expRows = [];
-  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [] };
+  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [], ocMed: [], ocP75: [] };
   let firstUpper = 0, firstLower = 0, eitherTouched = 0;
   // WALK-FORWARD recalibration of the TOUCH LEVELS (the reference forecaster runs
   // wide; a bot would place tighter bands). factor = trailing median(realized ÷
@@ -155,6 +159,9 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     recalFactors.push(recalF);
     const upMed = open * (1 + (fc[H.ohMed] ?? 0) / 100 * recalF), upP75 = open * (1 + (fc[H.ohP75] ?? 0) / 100 * recalF);
     const dnMed = open * (1 - (fc[H.olMed] ?? 0) / 100 * recalF), dnP75 = open * (1 - (fc[H.olP75] ?? 0) / 100 * recalF);
+    // Level-set #1: Open-Close (symmetric displacement) — distinct from the drift-
+    // adjusted O-H/O-L above and from the dynamic H-L below.
+    const ocMed = (fc[H.ocMed] ?? 0) / 100 * recalF, ocP = (fc[H.ocP75] ?? 0) / 100 * recalF;
     const hyst = Math.max(pip, 0.15 * expRange);
     const _time = b => H.timeUnit === 'hour' ? _hourOf(b._t) : b._day + 1;   // hour-of-day or day-of-window
     // Calm-day filter (causal — vov is forecast-time, prevRatio is the PRIOR window).
@@ -205,6 +212,15 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     if (dHiMed) touchRows.dynMed.push({ ...dHiMed, regime, calm });
     if (dLoP75) touchRows.dynP75.push({ ...dLoP75, regime, calm });
     if (dHiP75) touchRows.dynP75.push({ ...dHiP75, regime, calm });
+    // Level-set #1: Open-Close touches (open ± oc), median + 75th.
+    if (ocMed > 0) {
+      const ocU = _levelOutcome(bars, open * (1 + ocMed), +1, pip, hyst), ocD = _levelOutcome(bars, open * (1 - ocMed), -1, pip, hyst);
+      if (ocU) touchRows.ocMed.push({ ...ocU, regime, calm }); if (ocD) touchRows.ocMed.push({ ...ocD, regime, calm });
+    }
+    if (ocP > 0) {
+      const ocU7 = _levelOutcome(bars, open * (1 + ocP), +1, pip, hyst), ocD7 = _levelOutcome(bars, open * (1 - ocP), -1, pip, hyst);
+      if (ocU7) touchRows.ocP75.push({ ...ocU7, regime, calm }); if (ocD7) touchRows.ocP75.push({ ...ocD7, regime, calm });
+    }
     if (oUpMed || oDnMed) {
       eitherTouched++;
       const uh = oUpMed ? oUpMed.firstIdx : Infinity, dh = oDnMed ? oDnMed.firstIdx : Infinity;
@@ -308,6 +324,9 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
     bandsRecalibrated: recalMeta.applied, recalFactor: recalMeta.medianFactor,
     medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med), fadePayoff: _fadePayoff(med) },
     p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75), fadePayoff: _fadePayoff(p75) },
+    // Level-set #1: Open-Close (distinct from the drift-adjusted O-H/O-L above).
+    ocExtension:    { ...(_touchStats(touchRows.ocMed || [], totalWindows)), fadePayoff: _fadePayoff(touchRows.ocMed || []) },
+    ocP75Extension: { ...(_touchStats(touchRows.ocP75 || [], totalWindows)), fadePayoff: _fadePayoff(touchRows.ocP75 || []) },
     // Level-set #3: dynamic H-L range from the running extreme (median + 75th).
     dynExtension:    { ...(_touchStats(touchRows.dynMed || [], totalWindows)), byRegime: _byRegime(touchRows.dynMed || []), fadePayoff: _fadePayoff(touchRows.dynMed || []) },
     dynP75Extension: { ...(_touchStats(touchRows.dynP75 || [], totalWindows)), byRegime: _byRegime(touchRows.dynP75 || []), fadePayoff: _fadePayoff(touchRows.dynP75 || []) },

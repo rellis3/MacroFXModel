@@ -23,25 +23,28 @@ better way — and to say clearly what "it worked" vs "it didn't" looks like.
 
 There are three families of forecast level, and the study now analyses all of them:
 
-1. **Open-Close** median & 75th (chart: "Close Med", "Close 75p") — displacement
-   from the open. **Finding:** in the current forecaster `oh_median`/`ol_median`
-   are set *equal* to `oc_median` (same for the 75th) — so **the Open-Close and
-   Open-High/Open-Low levels are the SAME numbers.** The existing median/75th
-   study already covers both; they are not independent level sets today.
-2. **Open-High / Open-Low** median & 75th ("Proj H/L med", "Proj H/L 75p") — as
-   above, currently identical to #1.
+1. **Open-Close** median & 75th (chart: "Close Med", "Close 75p") — symmetric
+   displacement from the open (`oc_median`/`oc_75`).
+2. **Open-High / Open-Low** median & 75th ("Proj H/L med / 75p") — the
+   **drift-adjusted, asymmetric** levels the forecaster exports (GOLD: +1.13% up
+   vs −1.44% down). **Correction:** the touch study *was* reading the flat
+   `oh_median`/`ol_median` fields, which `computeForecast` aliases to `oc_median`
+   — collapsing O-H, O-L and O-C into one line. It now reads the **`oh_v2_*` /
+   `ol_v2_*`** drifted-BM fields (daily), so O-H ≠ O-L ≠ O-C — no duplicated lines.
+   (Weekly/20d have no v2 field, so their O-H/O-L stay flat ≡ O-C — noted.)
 3. **Dynamic H-L / L-H range** median & 75th — the opposite extreme projected from
    the **running high/low** by the forecast H-L range (2.17% / 2.72%), and it
-   **moves intrabar** as new extremes form. This is the genuinely distinct set,
-   the reason the M1 walk matters, and exactly the NAS example: the morning **high**
-   anchored a projected **low** a full range below; price hit it later and reverted.
+   **moves intrabar** as new extremes form. The genuinely distinct set, the reason
+   the M1 walk matters, and exactly the NAS example: the morning **high** anchored
+   a projected **low** a full range below; price hit it later and reverted.
 
-So the screen now compares **five fade lines** net of cost:
-1. **Median line** (≡ open-close) — the blind fade. (Fails on FX.)
-2. **75th line** — more extended → should revert harder (exhaustion), touched less.
-3. **Calm-day median** — median fade on low-tail-risk days only (the filter below).
-4. **Dynamic H-L (median)** — fade the projected extreme from the running high/low.
-5. **Dynamic H-L (75th)** — same, at the wider 75th range (the most extended level).
+So the screen now compares **six fade lines** net of cost:
+1. **Open-Close** — symmetric displacement fade.
+2. **Open-High/Open-Low (drift-adjusted)** — the real asymmetric extremes.
+3. **75th O-H/O-L** — more extended → should revert harder (exhaustion), touched less.
+4. **Calm-day O-H/O-L median** — the fade on low-tail-risk days only (filter below).
+5. **Dynamic H-L (median)** — fade the projected extreme from the running high/low.
+6. **Dynamic H-L (75th)** — same, at the wider 75th range (the most extended level).
 
 The dynamic levels are the most *extended*, so on the exhaustion logic they should
 show the strongest reversion — the question the cost screen answers is whether that

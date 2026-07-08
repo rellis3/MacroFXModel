@@ -89,7 +89,8 @@ test('evaluateIntraday: structural invariants on synthetic intraday', () => {
   assert.ok(e['25'] <= e['50'] + 1e-9 && e['50'] <= e['75'] + 1e-9 && e['75'] <= e['100'] + 1e-9, `monotone expansion ${JSON.stringify(e)}`);
   // Touch reversal rates are monotone: rev10 ≥ rev20 ≥ rev50.
   const M = r.touches.medianExtension;
-  if (M.n) { assert.ok(M.reverse10Pct >= M.reverse20Pct - 1e-9 && M.reverse20Pct >= M.reverse50Pct - 1e-9, 'reversal rates monotone in threshold'); assert.ok(M.touchRatePct >= 0 && M.touchRatePct <= 100); }
+  // touchRatePct combines upper+lower touches per window, so it can reach ~200 (not a %-of-windows).
+  if (M.n) { assert.ok(M.reverse10Pct >= M.reverse20Pct - 1e-9 && M.reverse20Pct >= M.reverse50Pct - 1e-9, 'reversal rates monotone in threshold'); assert.ok(M.touchRatePct >= 0 && M.touchRatePct <= 200); }
   // Direction split is a valid partition.
   const d = r.touches.direction;
   if (d.firstUpperPct != null) assert.ok(d.firstUpperPct + d.firstLowerPct <= 100.01, 'direction shares ≤ 100');
