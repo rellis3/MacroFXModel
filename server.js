@@ -8096,6 +8096,12 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
   const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
   if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
 
+  // One run at a time — the M1-per-pair load is heavy; a 2nd concurrent run would
+  // just double the event-loop pressure and make every request "Failed to fetch".
+  // A repeat click ATTACHES to the in-flight job instead of starting another.
+  const inflight = [...intraJobs.entries()].find(([, j]) => j.status === 'running' && j.startedAt > Date.now() - 30 * 60_000);
+  if (inflight) return res.json({ ok: true, jobId: inflight[0], reused: true, message: `An intraday run is already in progress (${inflight[1].progress || '…'}) — attaching.` });
+
   const jobId = `intra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   for (const [id, j] of intraJobs) if (j.startedAt < Date.now() - 60 * 60_000) intraJobs.delete(id);
@@ -8124,6 +8130,10 @@ app.post('/api/intraday-research/run', express.json({ limit: '64kb' }), (req, re
         done++;
         intraJobs.set(jobId, { status: 'running', startedAt, progress: `${done}/${insts.length}` });
         if (done % 5 === 0) await flush();   // checkpoint every 5 pairs
+        // Yield the event loop between pairs so the server stays responsive during
+        // the (heavy, minutes-long) run — otherwise the status poller and repeat
+        // clicks fail with "Failed to fetch" while a pair's M1 compute blocks.
+        await new Promise(r => setImmediate(r));
       }
       const names = Object.keys(perPair);
       if (!names.length) { intraJobs.set(jobId, { status: 'error', error: 'No pairs evaluated — see log for per-pair reasons', log, startedAt }); return; }
