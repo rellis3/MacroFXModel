@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateIntraday, evaluateIntradayAllHorizons, _levelOutcome } from './intradayForecastResearch.js';
+import { evaluateIntraday, evaluateIntradayAllHorizons, _levelOutcome, _dynLevelOutcome } from './intradayForecastResearch.js';
 
 const PIP = 0.0001;
 const bar = (t, o, h, l, c) => ({ open: o, high: h, low: l, close: c, _t: Date.UTC(2021, 0, 4, 8) + t * 60000 });
@@ -89,7 +89,8 @@ test('evaluateIntraday: structural invariants on synthetic intraday', () => {
   assert.ok(e['25'] <= e['50'] + 1e-9 && e['50'] <= e['75'] + 1e-9 && e['75'] <= e['100'] + 1e-9, `monotone expansion ${JSON.stringify(e)}`);
   // Touch reversal rates are monotone: rev10 ≥ rev20 ≥ rev50.
   const M = r.touches.medianExtension;
-  if (M.n) { assert.ok(M.reverse10Pct >= M.reverse20Pct - 1e-9 && M.reverse20Pct >= M.reverse50Pct - 1e-9, 'reversal rates monotone in threshold'); assert.ok(M.touchRatePct >= 0 && M.touchRatePct <= 100); }
+  // touchRatePct combines upper+lower touches per window, so it can reach ~200 (not a %-of-windows).
+  if (M.n) { assert.ok(M.reverse10Pct >= M.reverse20Pct - 1e-9 && M.reverse20Pct >= M.reverse50Pct - 1e-9, 'reversal rates monotone in threshold'); assert.ok(M.touchRatePct >= 0 && M.touchRatePct <= 200); }
   // Direction split is a valid partition.
   const d = r.touches.direction;
   if (d.firstUpperPct != null) assert.ok(d.firstUpperPct + d.firstLowerPct <= 100.01, 'direction shares ≤ 100');
@@ -104,6 +105,25 @@ test('evaluateIntraday: recalibrate flag scales the touch levels (walk-forward)'
   assert.ok(on.touches.recalFactor > 0 && on.touches.recalFactor <= 1.5, 'clamped factor');
   // Tighter levels are reached at least as often as the raw ones.
   assert.ok(on.touches.medianExtension.touchRatePct >= off.touches.medianExtension.touchRatePct - 1e-9, 'recalibrated (tighter) levels touched ≥ raw');
+});
+
+test('dyn level: projected low from the RUNNING high, touched as the anchor extends', () => {
+  const b = (h, l, c) => ({ high: h, low: l, close: c, _t: Date.UTC(2021, 0, 4, 8) });
+  // Running high reaches 102 by bar 2; support = 102×(1−0.03)=98.94; bar 3 low 98.5 touches it.
+  const bars = [b(100, 99.5, 100), b(101, 100, 101), b(102, 101, 101.5), b(101.5, 98.5, 99.2), b(99.5, 99, 99.4)];
+  const o = _dynLevelOutcome(bars, 0.03, -1, 0.01);
+  assert.ok(o && o.touched, 'projected low touched');
+  assert.equal(o.firstIdx, 3, 'touched on the down bar, anchored by the earlier high');
+  assert.ok(Math.abs(o.entry - 98.94) < 0.01, `entry = runHigh×(1−r) (${o.entry})`);
+  assert.ok(o.closeFadePips > 0, 'price reverted up from the projected low → fade-long win');
+  assert.equal(_dynLevelOutcome(bars, 0, -1, 0.01), null, 'r=0 → no level');
+});
+
+test('evaluateIntraday: dynamic H-L extension blocks present, more extended than median', () => {
+  const t = evaluateIntraday(synthH1(500, 3), { pip: PIP }).touches;
+  assert.ok(t.dynExtension && t.dynP75Extension, 'dynamic blocks present');
+  if (t.dynExtension.n && t.medianExtension.n)
+    assert.ok(t.dynExtension.touchRatePct <= t.medianExtension.touchRatePct + 1e-9, 'dynamic extreme touched no more than the median line');
 });
 
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {

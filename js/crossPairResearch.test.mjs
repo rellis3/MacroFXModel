@@ -203,6 +203,30 @@ test('analyze: G1 placebo + G2 payoff-shape fold from the intraday touch data', 
   assert.match(r.botQuestions[1].q, /^G2/);
 });
 
+test('analyze: cost-survival compares median / 75th / calm lines, FX-aware', () => {
+  const book = goodBook();
+  // Median fades weakly (dies); 75th fades harder (bigger gross); calm-day median
+  // fades hardest. All FX so the FX-aware verdict applies (no index rescue).
+  const blk = (rev, cont) => ({ n: 200, touchRatePct: 70, continuePct: cont, reversePct: rev });
+  const mk = (mRev, pRev, cRev) => ({ daily: { touches: {
+    medianExtension: { ...blk(mRev, 100 - mRev), byRegime: {} },
+    p75Extension: blk(pRev, 100 - pRev),
+    conditionalCalm: blk(cRev, 100 - cRev),
+    direction: { firstUpperPct: 54 } } } });
+  // Use goodBook's own pairs (so they exist in recs); all non-index FX/crosses.
+  const fxPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'EURJPY', 'GBPJPY', 'EURGBP', 'EURAUD'];
+  const intr = { perPair: {} };
+  // median rev 54 (gross ~1.6, dies vs 1.5-2.5 cost at ×2), 75th rev 62, calm rev 66 (hardest fade)
+  for (const p of fxPairs) intr.perPair[p] = mk(54, 62, 66);
+  const r = analyzeCrossPair(book, intr, { minPairsForConsistency: 5 });
+  const bl = r.costSurvival.byLine;
+  assert.ok(bl.median && bl.p75 && bl.calm, 'all three lines summarised');
+  // 75th and calm clear ×2 on FX where the median doesn't.
+  assert.ok(bl.p75.fxSurvivingX2 >= bl.median.fxSurvivingX2, '75th survives ≥ median');
+  assert.ok(bl.calm.fxSurvivingX2 >= bl.p75.fxSurvivingX2, 'calm survives ≥ 75th');
+  assert.ok(bl.median.medianFxNetX1 <= bl.calm.medianFxNetX1, 'calm net ≥ median net');
+});
+
 test('analyze: cost-survival screen nets the ±20-pip bracket and flags survivors', () => {
   const book = goodBook();
   // EURUSD/GBPUSD fade hard (survive ×1); GBPJPY marginal (dies); NQ follows weakly (dies).

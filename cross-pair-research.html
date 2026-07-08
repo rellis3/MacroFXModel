@@ -181,8 +181,15 @@ function render(cp){
   const cs = cp.costSurvival;
   if (cs && !cs.insufficient){
     const v = el('csVerdict'); v.style.display='';
-    const good = cs.survivingX1>0 && cs.survivingTypesX1>=2;
-    v.innerHTML = `<strong class="${good?'pos':'amber'}">${cs.verdict}</strong> · ×1 cost: <strong>${cs.survivingX1}/${cs.nPairs}</strong> survive · ×2: ${cs.survivingX2} · median net ×1 <strong>${sgn(cs.medianNetX1,2)}</strong> pips (gross ${fmt(cs.medianGrossPips,2)}).`;
+    const bl = cs.byLine || {};
+    const lineRow = (name, s) => s && !s.insufficient ? `<div><strong>${name}:</strong> <span class="${s.fxSurvivingX2>=3?'pos':s.fxSurvivingX1>=3?'amber':'neg'}">${s.verdict}</span> <span class="muted">(FX clear ×2: ${s.fxSurvivingX2 ?? 0}; median FX net ×1 ${sgn(s.medianFxNetX1,2)} pips)</span></div>` : `<div><strong>${name}:</strong> <span class="muted">n/a</span></div>`;
+    v.innerHTML = `<div style="margin-bottom:6px">The forecast level sets, FX-aware (indices discounted — ≈1–2 correlated bets, fattest tails):</div>
+      ${lineRow('Open-Close (median)', bl.oc)}
+      ${lineRow('Open-High/Open-Low, drift-adjusted (median)', bl.median)}
+      ${lineRow('Open-High/Open-Low (75th)', bl.p75)}
+      ${lineRow('O-H/O-L median, calm-day only (tail-filtered)', bl.calm)}
+      ${lineRow('Dynamic H-L from running extreme (median)', bl.dyn)}
+      ${lineRow('Dynamic H-L from running extreme (75th)', bl.dyn75)}`;
     el('cost').innerHTML = (cs.ranked||[]).map(r=>`<tr><td><strong>${r.pair}</strong></td><td class="muted">${TYPE_LBL[r.type]||r.type}</td>
       <td class="${r.side==='fade'?'amber':'pos'}">${r.side}</td>
       <td class="num">${fmt(r.grossPips,2)}</td><td class="num muted">${fmt(r.costPips,1)}</td>

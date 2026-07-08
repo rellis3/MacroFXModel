@@ -230,36 +230,60 @@ function _touchBehaviour(recs, minPairs) {
 // ×1/×2/×3 so a thin edge can't survive on an optimistic spread assumption.
 // Honest scope: a SCREEN, not a path-level backtest — it says which pairs are even
 // in the running; the clean answer still wants real fills + full-path PnL.
-function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
+// Per-pair net for ONE touch-stat block (medianExtension | p75Extension | conditionalCalm).
+function _costRows(recs, blockKey, costTable) {
   const rows = [];
   for (const r of recs) {
-    const t = r.in?.daily?.touches?.medianExtension; if (!t || !t.n) continue;
+    const t = r.in?.daily?.touches?.[blockKey]; if (!t || !t.n) continue;
     const rev = t.reversePct, cont = t.continuePct; if (rev == null || cont == null) continue;
     const revFrac = rev / 100, contFrac = cont / 100;
     const grossPips = +(TOUCH_BARRIER_PIPS * Math.abs(revFrac - contFrac)).toFixed(2);
-    const side = revFrac >= contFrac ? 'fade' : 'follow';
     const cost = costTable[r.type] ?? 2.0;
     const net = m => +(grossPips - m * cost).toFixed(2);
-    rows.push({ pair: r.name, type: r.type, side, touchRatePct: t.touchRatePct ?? null,
+    rows.push({ pair: r.name, type: r.type, side: revFrac >= contFrac ? 'fade' : 'follow', touchRatePct: t.touchRatePct ?? null,
       grossPips, costPips: cost, netX1: net(1), netX2: net(2), netX3: net(3),
       survivesX1: net(1) > 0, survivesX2: net(2) > 0, survivesX3: net(3) > 0 });
   }
+  return rows;
+}
+// Summarise a block's rows — FX-aware: indices are discounted (≈1–2 correlated
+// bets, worst tails, optimistic index cost), so the honest test is whether FX
+// pairs clear ×2, not the raw count.
+function _summCost(rows, minPairs) {
   if (rows.length < minPairs) return rows.length ? { insufficient: true, nPairs: rows.length } : null;
-  const survivorsX1 = rows.filter(r => r.survivesX1), survivorsX2 = rows.filter(r => r.survivesX2);
+  const s1 = rows.filter(r => r.survivesX1), s2 = rows.filter(r => r.survivesX2);
+  const fx = rows.filter(r => r.type !== 'index'), fxS2 = fx.filter(r => r.survivesX2), fxS1 = fx.filter(r => r.survivesX1);
   const byType = {};
   for (const t of Object.keys(PAIR_TYPE_LABELS)) { const g = rows.filter(r => r.type === t); if (g.length) byType[t] = { n: g.length, survivesX1: g.filter(r => r.survivesX1).length, medianNetX1: +(_median(g.map(r => r.netX1)) ?? 0).toFixed(2) }; }
+  const fxTypes = new Set(fxS2.map(r => r.type)).size;
   return {
     nPairs: rows.length, barrierPips: TOUCH_BARRIER_PIPS,
-    survivingX1: survivorsX1.length, survivingX2: survivorsX2.length,
-    survivingTypesX1: new Set(survivorsX1.map(r => r.type)).size,
+    survivingX1: s1.length, survivingX2: s2.length, survivingTypesX1: new Set(s1.map(r => r.type)).size,
+    fxSurvivingX1: fxS1.length, fxSurvivingX2: fxS2.length, fxSurvivingTypesX2: fxTypes,
     medianGrossPips: +(_median(rows.map(r => r.grossPips)) ?? 0).toFixed(2),
     medianNetX1: +(_median(rows.map(r => r.netX1)) ?? 0).toFixed(2),
-    verdict: survivorsX1.length === 0 ? 'no pair clears costs — the touch edge is gross-only'
-      : new Set(survivorsX1.map(r => r.type)).size >= 2 ? `${survivorsX1.length} pairs across ${new Set(survivorsX1.map(r => r.type)).size} types clear ×1 cost — worth a path-level backtest`
-      : `${survivorsX1.length} pairs clear ×1 but concentrated in one type — likely noise`,
+    medianFxNetX1: fx.length ? +(_median(fx.map(r => r.netX1)) ?? 0).toFixed(2) : null,
+    verdict: fxS2.length >= 3 && fxTypes >= 2 ? `${fxS2.length} FX pairs across ${fxTypes} types clear ×2 — worth a path-level backtest`
+      : fxS1.length >= 3 && new Set(fxS1.map(r => r.type)).size >= 2 ? `${fxS1.length} FX pairs clear ×1 but not ×2 — marginal, likely dies on realistic slippage`
+      : s2.length && s2.every(r => r.type === 'index') ? 'only indices clear costs — discount them (≈1–2 correlated bets, fattest tails, optimistic index cost) → no FX edge'
+      : 'no FX pair clears costs — the touch edge is gross-only',
     byType, ranked: rows.sort((a, b) => b.netX1 - a.netX1),
     note: 'SCREEN only: ±20-pip symmetric bracket, assumed cost table (replace with real fills), stalls ≈ breakeven-gross. Not a path-level backtest.',
   };
+}
+// Cost survival for the median line + the 75th line + the calm-day (conditional)
+// median — so we can see whether the more-extended 75th, or the tail-filtered fade,
+// survives where the blind median doesn't.
+function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
+  const median = _summCost(_costRows(recs, 'medianExtension', costTable), minPairs);
+  if (!median || median.insufficient) return median;
+  const p75 = _summCost(_costRows(recs, 'p75Extension', costTable), minPairs);
+  const calm = _summCost(_costRows(recs, 'conditionalCalm', costTable), minPairs);
+  const dyn = _summCost(_costRows(recs, 'dynExtension', costTable), minPairs);      // dynamic H-L from running extreme
+  const dyn75 = _summCost(_costRows(recs, 'dynP75Extension', costTable), minPairs);  // dynamic 75th H-L
+  const oc = _summCost(_costRows(recs, 'ocExtension', costTable), minPairs);         // open-close line (distinct from O-H/O-L)
+  // `median`/`p75` are the drift-adjusted O-H/O-L lines (level-set #2).
+  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75 } };
 }
 
 // ── Public: build the cross-pair report ───────────────────────────────────────
@@ -486,6 +510,6 @@ function _botQuestions(tb, hidden, cs, portfolio) {
     { q: '5. Timing — which session is the touch/fade cleanest in?', status: st(!!tb, 'run intraday'), note: 'touches.bySession per pair (not yet folded cross-pair)' },
     { q: '6. Exit — what target/stop does the post-touch MFE/MAE distribution support?', status: st(!!tb, 'run intraday'), note: tb ? `median MFE ${tb.medianMfePips} / MAE ${tb.medianMaePips} pips — means only; full distributions would sharpen R:R` : 'meanMfePips / meanMaePips per pair' },
     { q: '7. Direction skew — is one side of the band hit first systematically?', status: st(!!tb, 'run intraday'), note: 'direction.firstUpperPct per pair' },
-    { q: '8. Costs — does the touch-edge survive spread + slippage?', status: cs ? 'answerable now (screen)' : 'GAP — run intraday', note: cs ? `${cs.verdict} (median net ×1 ${cs.medianNetX1} pips)` : 'THE make-or-break test — ±20-pip bracket net of costs; needs the intraday touch data' },
+    { q: '8. Costs — does the touch-edge survive? (median / 75th / calm / dynamic H-L)', status: cs ? 'answerable now (screen)' : 'GAP — run intraday', note: cs ? `O-C: ${cs.byLine?.oc?.verdict ?? 'n/a'} · O-H/O-L: ${cs.byLine?.median?.verdict ?? cs.verdict} · 75th: ${cs.byLine?.p75?.verdict ?? 'n/a'} · calm: ${cs.byLine?.calm?.verdict ?? 'n/a'} · dyn H-L: ${cs.byLine?.dyn?.verdict ?? 'n/a'} · dyn 75th: ${cs.byLine?.dyn75?.verdict ?? 'n/a'}` : 'THE make-or-break test — ±20-pip bracket net of costs; needs the intraday touch data' },
   ]);
 }
