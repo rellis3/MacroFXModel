@@ -38,6 +38,14 @@ export function pairType(name) {
   if (n.startsWith('EUR')) return 'eur_cross';
   return 'other_cross';
 }
+// Round-trip cost in the instrument's OWN pips (spread + typical slippage), by
+// type. A DOCUMENTED ASSUMPTION to replace with real per-pair fills — the ×2/×3
+// sensitivity below is exactly so a thin edge can't hide behind an optimistic
+// cost. The barrier the touch study races is ±20 of these same pips (TH in
+// intradayForecastResearch), so cost and payoff share units.
+export const COST_PIPS = { major: 1.5, eur_cross: 2.5, jpy_cross: 2.0, other_cross: 3.0, gold: 3.0, index: 1.5 };
+const TOUCH_BARRIER_PIPS = 20;   // must match intradayForecastResearch _levelOutcome TH
+
 export const PAIR_TYPE_LABELS = {
   major: 'FX majors', eur_cross: 'EUR crosses', jpy_cross: 'JPY crosses',
   other_cross: 'Other crosses', gold: 'Gold', index: 'Indices',
@@ -146,6 +154,47 @@ function _touchBehaviour(recs, minPairs) {
     regimeContrast: { nPairs: contrastRows.length, pairsFadeRangeFollowTrend: showing.length,
       note: 'pairs where RANGE days reverse ≥50% AND trend days continue ≥50% (fade-in-range / follow-in-trend)' },
     ranked: rows.sort((a, b) => (b.touchRatePct ?? 0) - (a.touchRatePct ?? 0)),
+  };
+}
+
+// ── Cost survival (Q8 — the make-or-break test) ───────────────────────────────
+// Every fade/follow number is GROSS. Turn each touch into the ±20-pip symmetric
+// bracket the engine already races and net the round-trip cost. With a 1:1 barrier
+// the per-touch expectancy of the dominant side is BARRIER × |reverseFrac −
+// continueFrac| − cost (stalls contribute ~0 gross but still cost, so they only
+// drag — captured by using the touched-day fractions directly). Reported at cost
+// ×1/×2/×3 so a thin edge can't survive on an optimistic spread assumption.
+// Honest scope: a SCREEN, not a path-level backtest — it says which pairs are even
+// in the running; the clean answer still wants real fills + full-path PnL.
+function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
+  const rows = [];
+  for (const r of recs) {
+    const t = r.in?.daily?.touches?.medianExtension; if (!t || !t.n) continue;
+    const rev = t.reversePct, cont = t.continuePct; if (rev == null || cont == null) continue;
+    const revFrac = rev / 100, contFrac = cont / 100;
+    const grossPips = +(TOUCH_BARRIER_PIPS * Math.abs(revFrac - contFrac)).toFixed(2);
+    const side = revFrac >= contFrac ? 'fade' : 'follow';
+    const cost = costTable[r.type] ?? 2.0;
+    const net = m => +(grossPips - m * cost).toFixed(2);
+    rows.push({ pair: r.name, type: r.type, side, touchRatePct: t.touchRatePct ?? null,
+      grossPips, costPips: cost, netX1: net(1), netX2: net(2), netX3: net(3),
+      survivesX1: net(1) > 0, survivesX2: net(2) > 0, survivesX3: net(3) > 0 });
+  }
+  if (rows.length < minPairs) return rows.length ? { insufficient: true, nPairs: rows.length } : null;
+  const survivorsX1 = rows.filter(r => r.survivesX1), survivorsX2 = rows.filter(r => r.survivesX2);
+  const byType = {};
+  for (const t of Object.keys(PAIR_TYPE_LABELS)) { const g = rows.filter(r => r.type === t); if (g.length) byType[t] = { n: g.length, survivesX1: g.filter(r => r.survivesX1).length, medianNetX1: +(_median(g.map(r => r.netX1)) ?? 0).toFixed(2) }; }
+  return {
+    nPairs: rows.length, barrierPips: TOUCH_BARRIER_PIPS,
+    survivingX1: survivorsX1.length, survivingX2: survivorsX2.length,
+    survivingTypesX1: new Set(survivorsX1.map(r => r.type)).size,
+    medianGrossPips: +(_median(rows.map(r => r.grossPips)) ?? 0).toFixed(2),
+    medianNetX1: +(_median(rows.map(r => r.netX1)) ?? 0).toFixed(2),
+    verdict: survivorsX1.length === 0 ? 'no pair clears costs — the touch edge is gross-only'
+      : new Set(survivorsX1.map(r => r.type)).size >= 2 ? `${survivorsX1.length} pairs across ${new Set(survivorsX1.map(r => r.type)).size} types clear ×1 cost — worth a path-level backtest`
+      : `${survivorsX1.length} pairs clear ×1 but concentrated in one type — likely noise`,
+    byType, ranked: rows.sort((a, b) => b.netX1 - a.netX1),
+    note: 'SCREEN only: ±20-pip symmetric bracket, assumed cost table (replace with real fills), stalls ≈ breakeven-gross. Not a path-level backtest.',
   };
 }
 
@@ -333,7 +382,9 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
   // ── The BOT-relevant layer: touch behaviour + the decision-question set ──
   const touchBehaviour = _touchBehaviour(recs, minPairsForConsistency);
   const tb = touchBehaviour && !touchBehaviour.insufficient ? touchBehaviour : null;
-  const botQuestions = _botQuestions(tb, hidden);
+  const costSurvival = _costSurvival(recs, minPairsForConsistency);
+  const cs = costSurvival && !costSurvival.insufficient ? costSurvival : null;
+  const botQuestions = _botQuestions(tb, hidden, cs);
   // Recalibration passthrough — the reference forecaster runs wide; these are the
   // walk-forward factors that bring exceed-median back to ~50% (already in vfr).
   const recal = vfr?.cross?.recalProposal ?? null;
@@ -343,7 +394,7 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
     generatedFrom: { vfrPairs: names.length, intradayPairs: Object.keys(inPer).length, scannedPairs: scans.length },
     fdrQ, weights,
     forecaster: 'reference (un-recalibrated volForecast.computeForecast) — see recal + calibrated export',
-    reliability, trust, byType, consistency, hidden, touchBehaviour, botQuestions, recal, hypotheses,
+    reliability, trust, byType, consistency, hidden, touchBehaviour, costSurvival, botQuestions, recal, hypotheses,
     notes: [
       'Trust tiers are RELATIVE terciles of reliability within this universe (+ a sharpness≤0 floor) — not absolute tradeability, which needs the touch-behaviour + cost layer.',
       'Calibration/skill metrics are measured on the REFERENCE forecaster (volForecast.js), which is NOT recalibrated — that is why bands read wide. The recal block + the calibrated export show the corrected picture.',
@@ -355,7 +406,7 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
 
 // The questions a level-trading bot actually needs answered, tagged with whether
 // the current data answers them. Not trade rules — the research agenda for a bot.
-function _botQuestions(tb, hidden) {
+function _botQuestions(tb, hidden, cs) {
   const st = (have, gap) => have ? 'answerable now' : gap;
   return [
     { q: '1. Universe — which pairs behave consistently enough to trade at all?', status: st(!!tb, 'run intraday'), note: tb ? `touch data on ${tb.nPairs} pairs; needs IS/OOS consistency of the touch edge` : 'needs the intraday touch study' },
@@ -365,6 +416,6 @@ function _botQuestions(tb, hidden) {
     { q: '5. Timing — which session is the touch/fade cleanest in?', status: st(!!tb, 'run intraday'), note: 'touches.bySession per pair (not yet folded cross-pair)' },
     { q: '6. Exit — what target/stop does the post-touch MFE/MAE distribution support?', status: st(!!tb, 'run intraday'), note: tb ? `median MFE ${tb.medianMfePips} / MAE ${tb.medianMaePips} pips — means only; full distributions would sharpen R:R` : 'meanMfePips / meanMaePips per pair' },
     { q: '7. Direction skew — is one side of the band hit first systematically?', status: st(!!tb, 'run intraday'), note: 'direction.firstUpperPct per pair' },
-    { q: '8. Costs — does the touch-edge survive spread + slippage?', status: 'GAP — cost layer', note: 'THE make-or-break test — not yet applied at the level; needs the fill/cost model on touch trades' },
+    { q: '8. Costs — does the touch-edge survive spread + slippage?', status: cs ? 'answerable now (screen)' : 'GAP — run intraday', note: cs ? `${cs.verdict} (median net ×1 ${cs.medianNetX1} pips)` : 'THE make-or-break test — ±20-pip bracket net of costs; needs the intraday touch data' },
   ];
 }

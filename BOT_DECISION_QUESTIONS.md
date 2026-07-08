@@ -50,13 +50,19 @@ target the level pays and what stop it survives.
 Is the upper band hit first systematically (drift/skew to exploit)?
 - *Now:* `direction.firstUpperPct` per pair.
 
-## 8. Costs — does the touch-edge survive spread + slippage?  **[GAP — make-or-break]**
+## 8. Costs — does the touch-edge survive spread + slippage?  **[SCREEN built; path-level backtest still to do]**
 Every fade/follow number above is **gross**. The only question that decides
 whether any of this is real is whether the edge clears round-trip spread +
-slippage on stop/limit fills.
-- *Needs:* the fill/cost model applied to touch trades (the honest harness the
-  rest of the repo already uses — `simulateEntry` + per-pair costs). This is the
-  gate before anything becomes a bot.
+slippage.
+- *Now (`costSurvival`):* each touch becomes the ±20-pip symmetric bracket the
+  engine already races; per-touch expectancy of the dominant side =
+  `20 × |reverseFrac − continueFrac| − cost`, netted at cost **×1 / ×2 / ×3**
+  (documented cost table, sensitivity so a thin edge can't hide). Reports which
+  pairs clear ×1 and whether survivors span ≥2 types. **A SCREEN** — it says which
+  pairs are in the running.
+- *Still to do:* a **path-level backtest** with real per-pair fills, the actual
+  entry (limit vs stop) and a real target/stop from Q6's MFE/MAE distribution,
+  not the symmetric ±20 proxy. That's the clean answer.
 
 ---
 

@@ -60,6 +60,12 @@
   <div class="note" id="touchNote"></div>
   <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th class="num">Touch %</th><th>At the line</th><th class="num">Net cont.</th><th class="num">MFE</th><th class="num">MAE</th><th class="num">Range rev20%</th><th class="num">Trend cont%</th></tr></thead><tbody id="touch"></tbody></table></div>
 
+  <h2>Cost survival — does the edge clear spread + slippage? <span class="muted">(the make-or-break test)</span></h2>
+  <p class="qd">Every fade/follow number above is <strong>gross</strong>. This turns each touch into the ±20-pip symmetric bracket the engine races and nets a round-trip cost at ×1 / ×2 / ×3 (so a thin edge can't hide behind an optimistic spread). <span class="muted">A SCREEN, not a path-level backtest — it says which pairs are even in the running.</span></p>
+  <div class="answer" id="csVerdict" style="display:none"></div>
+  <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th>Side</th><th class="num">Gross pips</th><th class="num">Cost</th><th class="num">Net ×1</th><th class="num">Net ×2</th><th class="num">Net ×3</th><th>Survives</th></tr></thead><tbody id="cost"></tbody></table></div>
+  <div class="note" id="costNote"></div>
+
   <h2>Forecast-reliability ranking</h2>
   <p class="qd">Which pairs is the Daily Market Expectation Model relatively best at? Composite of calibration · skill · sharpness · low-error, percentile-ranked <em>within</em> this set (0–100). Trust tiers are <strong>relative terciles</strong> of that score (+ a sharpness ≤ 0 floor) — a ranking within this universe, <em>not</em> absolute tradeability (that needs the touch + cost layer above).</p>
   <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th>Trust</th><th class="num">Score</th><th class="num">Calib</th><th class="num">Skill</th><th class="num">Sharp</th><th class="num">LowErr</th></tr></thead><tbody id="rank"></tbody></table></div>
@@ -147,6 +153,26 @@ function render(cp){
   } else {
     el('touchTiles').innerHTML=''; el('touchNote').textContent = tb?.insufficient ? `Only ${tb.nPairs} pairs have intraday touch data — need more for the cross-pair view.` : 'Run the Intraday study in the research book to populate this.';
     el('touch').innerHTML = `<tr><td colspan="9" class="neu">No intraday touch data yet.</td></tr>`;
+  }
+
+  // Cost survival.
+  const cs = cp.costSurvival;
+  if (cs && !cs.insufficient){
+    const v = el('csVerdict'); v.style.display='';
+    const good = cs.survivingX1>0 && cs.survivingTypesX1>=2;
+    v.innerHTML = `<strong class="${good?'pos':'amber'}">${cs.verdict}</strong> · ×1 cost: <strong>${cs.survivingX1}/${cs.nPairs}</strong> survive · ×2: ${cs.survivingX2} · median net ×1 <strong>${sgn(cs.medianNetX1,2)}</strong> pips (gross ${fmt(cs.medianGrossPips,2)}).`;
+    el('cost').innerHTML = (cs.ranked||[]).map(r=>`<tr><td><strong>${r.pair}</strong></td><td class="muted">${TYPE_LBL[r.type]||r.type}</td>
+      <td class="${r.side==='fade'?'amber':'pos'}">${r.side}</td>
+      <td class="num">${fmt(r.grossPips,2)}</td><td class="num muted">${fmt(r.costPips,1)}</td>
+      <td class="num ${r.netX1>0?'pos':'neg'}">${sgn(r.netX1,2)}</td>
+      <td class="num ${r.netX2>0?'pos':'neg'}">${sgn(r.netX2,2)}</td>
+      <td class="num ${r.netX3>0?'pos':'neg'}">${sgn(r.netX3,2)}</td>
+      <td>${r.survivesX1?(r.survivesX2?'<span class="pos">✓ ×2</span>':'<span class="amber">✓ ×1</span>'):'<span class="neg">✗</span>'}</td></tr>`).join('');
+    el('costNote').textContent = cs.note;
+  } else {
+    if(el('csVerdict')) el('csVerdict').style.display='none';
+    el('cost').innerHTML = `<tr><td colspan="9" class="neu">No intraday touch data yet — run the Intraday study.</td></tr>`;
+    el('costNote').textContent='';
   }
 
   el('rank').innerHTML = (cp.reliability||[]).map(r=>{ const t=cp.trust.perPair?.[r.pair]?.tier||'trade';
