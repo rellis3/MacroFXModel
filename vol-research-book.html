@@ -104,6 +104,7 @@
   <div class="bk-grid">
     <nav class="bk-toc" id="toc">
       <a href="#c0"><span class="qn">§</span>Executive summary</a>
+      <a href="#cTrend"><span class="qn">★</span>Cross-pair trend spotter</a>
       <a href="#c1"><span class="qn">Q1</span>Forecast accuracy</a>
       <a href="#c2"><span class="qn">Q2</span>Distribution / calibration</a>
       <a href="#cRecal"><span class="qn">Fix</span>Recalibration</a>
@@ -131,6 +132,39 @@
         <div class="chap-q">What does the volatility forecast actually do well, and where does it fail — across every pair?</div>
         <div class="answer" id="a0">Run the research to populate this book.</div>
         <div class="tiles" id="t0"></div>
+      </section>
+
+      <!-- ── Cross-pair trend spotter ─────────────────────────────────── -->
+      <section class="chap" id="cTrend">
+        <div class="chap-h">Cross-pair trend spotter <span class="qtag">★</span></div>
+        <div class="chap-q">Not "was one pair's forecast right?" but "how does the market behave relative to its expected distribution <em>across all pairs</em>?" Which patterns are robust across pairs of different <strong>types</strong> (worth trusting) vs pair-specific noise; which pairs to discount; and how the pairs rank on forecast reliability. Analysis, not a strategy — <span class="muted">reads the per-pair JSON already produced above.</span></div>
+        <div class="answer" id="aTrend">Run the research (and optionally Intraday) to populate the cross-pair synthesis.</div>
+
+        <div class="sec-sub">Forecast-reliability ranking — composite of calibration · skill · sharpness · low-error (percentile-ranked within this set; 0–100)</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Pair</th><th>Type</th><th>Trust</th><th class="num">Score</th><th class="num">Calib</th><th class="num">Skill</th><th class="num">Sharp</th><th class="num">LowErr</th></tr></thead>
+          <tbody id="cTrendRank"></tbody>
+        </table></div></div>
+
+        <div class="sec-sub">Trust tiers — <span class="muted">rule-based, not eyeballed (hard exclusions + robust-z outliers + bottom-tertile)</span></div>
+        <div class="tiles" id="cTrendTiers"></div>
+        <div class="note" id="cTrendTierNote"></div>
+
+        <div class="sec-sub">Cross-pair consistency — a pattern is <strong>robust</strong> only if it beats a sign-test (BH-corrected) <em>and</em> spans ≥2 pair types</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Finding</th><th class="num">Pairs agree</th><th>Direction</th><th class="num">Median effect</th><th class="num">p</th><th>Robust?</th></tr></thead>
+          <tbody id="cTrendConsist"></tbody>
+        </table></div></div>
+
+        <div class="sec-sub">Pair-type profiles — does forecast quality cluster by instrument type?</div>
+        <div class="rz-card"><div class="rz-scroll"><table class="rz-tbl">
+          <thead><tr><th>Type</th><th class="num">n</th><th class="num">Med reliability</th><th class="num">Med sharpness</th><th class="num">Med skill</th><th class="num">Med exceed-med %</th></tr></thead>
+          <tbody id="cTrendTypes"></tbody>
+        </table></div></div>
+
+        <div class="sec-sub">Hypotheses for later testing — <span class="muted">candidates, explicitly not trade rules</span></div>
+        <div class="find-wrap" id="cTrendHyp"></div>
+        <div class="note" id="cTrendNotes" style="margin-top:8px"></div>
       </section>
 
       <!-- ── Ch 1 — Forecast accuracy ─────────────────────────────────── -->
@@ -398,6 +432,7 @@
 let _R = null;   // research data (/api/vol-forecast-research)
 let _AB = null;  // estimator data (/api/estimator-ab)
 let _IN = null;  // intraday data (/api/intraday-research)
+let _CP = null;  // cross-pair trend spotter (/api/cross-pair-research)
 // Horizon toggle: UI value → research-engine key (daily/d5/d20) and intraday key (daily/weekly/d20).
 const HZ = () => el('horizon')?.value || 'daily';
 const HZ_RES = { daily:'daily', weekly:'d5', d20:'d20' };
@@ -428,6 +463,7 @@ async function loadAll() {
   } catch (e) { setStatus('err','Error: '+e.message); return; }
   try { const a = await fetch('/api/estimator-ab'); if (a.ok) _AB = await a.json(); } catch {}
   try { const iv = await fetch('/api/intraday-research'); if (iv.ok) _IN = await iv.json(); } catch {}
+  try { const cp = await fetch('/api/cross-pair-research'); if (cp.ok) _CP = await cp.json(); } catch {}
   initView();
 }
 
@@ -494,6 +530,69 @@ function renderCross() {
   renderEstimator();
   // Recalibration → proposed ASSET_PARAMS (per asset class)
   renderRecalProposal();
+  // Cross-pair trend spotter
+  renderTrendSpotter();
+}
+
+const TYPE_LBL = { major:'FX majors', eur_cross:'EUR crosses', jpy_cross:'JPY crosses', other_cross:'Other crosses', gold:'Gold', index:'Indices' };
+const TIER_META = { trade:['✓ Trade','pos'], caution:['◐ Caution','amber'], exclude:['✕ Exclude','neg'] };
+function renderTrendSpotter() {
+  const cp = _CP;
+  if (!cp || cp.insufficient) {
+    el('aTrend').innerHTML = `<span class="muted">No cross-pair synthesis yet — run the research (▶ Run) to produce the per-pair JSON this reads. It builds automatically from the loaded book${_IN?'':' (Intraday adds the touch-continue metric)'}.</span>`;
+    return;
+  }
+  const robust = (cp.consistency||[]).filter(c=>c.robust);
+  const top = cp.reliability?.[0], bot = cp.reliability?.filter(r=>r.score!=null).at(-1);
+  el('aTrend').innerHTML =
+    `Across <strong>${cp.nPairs} pairs</strong> the trend spotter finds <strong>${robust.length}</strong> pattern${robust.length===1?'':'s'} that hold across ≥2 pair types (sign-test, BH-corrected).
+     Trust tiers: <span class="pos">${cp.trust.trade.length} trade</span> · <span class="amber">${cp.trust.caution.length} caution</span> · <span class="neg">${cp.trust.exclude.length} exclude</span>${cp.trust.exclude.length?` (${cp.trust.exclude.join(', ')})`:''}.
+     Most reliable: <strong>${top?.pair??'—'}</strong> (${fmt(top?.score,1)}); least: <strong>${bot?.pair??'—'}</strong> (${fmt(bot?.score,1)}).
+     ${cp.generatedFrom.intradayPairs?`Intraday touch behaviour folded in for ${cp.generatedFrom.intradayPairs} pairs.`:'<span class="muted">Run Intraday to add the touch-continue metric.</span>'}`;
+
+  // Reliability ranking
+  const pr = v => v==null?'—':Math.round(v*100);
+  el('cTrendRank').innerHTML = (cp.reliability||[]).map(r=>{
+    const t = cp.trust.perPair?.[r.pair]?.tier || 'trade'; const [tl,tc]=TIER_META[t];
+    return `<tr>
+      <td><strong>${r.pair}</strong></td><td class="bk-lbl">${TYPE_LBL[r.type]||r.type}</td>
+      <td class="${tc}">${tl.split(' ')[0]}</td>
+      <td class="num ${r.score>=66?'pos':r.score<33?'neg':'neu'}">${fmt(r.score,1)}</td>
+      <td class="num">${pr(r.sub.calibration)}</td><td class="num">${pr(r.sub.skill)}</td>
+      <td class="num">${pr(r.sub.sharpness)}</td><td class="num">${pr(r.sub.lowError)}</td></tr>`;
+  }).join('') || '<tr><td colspan="8" class="neu">—</td></tr>';
+
+  // Trust tiers as tiles
+  el('cTrendTiers').innerHTML = ['trade','caution','exclude'].map(t=>{
+    const [lbl,cls]=TIER_META[t]; const arr=cp.trust[t]||[];
+    return `<div class="tile"><div class="tk ${cls}">${lbl}</div><div class="tv ${cls}">${arr.length}</div><div class="td">${arr.length?arr.slice(0,6).join(', ')+(arr.length>6?'…':''):'none'}</div></div>`;
+  }).join('');
+  const reasons = Object.entries(cp.trust.perPair||{}).filter(([,v])=>v.tier!=='trade').map(([p,v])=>`<strong>${p}</strong>: ${v.reasons.join('; ')}`);
+  el('cTrendTierNote').innerHTML = reasons.length ? 'Why demoted — '+reasons.join(' · ') : 'All pairs pass the tradeable bar.';
+
+  // Consistency table
+  el('cTrendConsist').innerHTML = (cp.consistency||[]).map(c=>`<tr>
+    <td>${c.label} <span class="muted">Q${c.question}</span></td>
+    <td class="num">${c.agree}/${c.nPairs} <span class="muted">${c.typeSpread}t</span></td>
+    <td class="${c.direction==='positive'?'pos':'amber'}">${c.meaning}</td>
+    <td class="num">${sgn(c.medianEffect,2)}${c.unit||''}</td>
+    <td class="num ${c.pValue<0.05?'pos':'neu'}">${fmt(c.pValue,3)}</td>
+    <td>${c.robust?'<span class="pos">✓ robust</span>':'<span class="neu">—</span>'}</td></tr>`).join('') || '<tr><td colspan="6" class="neu">Need ≥6 pairs for the cross-pair sign test.</td></tr>';
+
+  // Type profiles
+  el('cTrendTypes').innerHTML = Object.entries(cp.byType||{}).sort((a,b)=>(b[1].medianReliability??-1)-(a[1].medianReliability??-1)).map(([t,v])=>`<tr>
+    <td><strong>${v.label}</strong></td><td class="num">${v.n}</td>
+    <td class="num ${v.medianReliability>=66?'pos':v.medianReliability<33?'neg':'neu'}">${fmt(v.medianReliability,1)}</td>
+    <td class="num ${v.medianSharpness>=0.4?'pos':'neu'}">${fmt(v.medianSharpness,3)}</td>
+    <td class="num ${v.medianSkill>0.03?'pos':v.medianSkill<=0?'neg':'neu'}">${fmt(v.medianSkill,3)}</td>
+    <td class="num ${clsEx(v.medianExceedMed,50)}">${fmt(v.medianExceedMed,1)}</td></tr>`).join('') || '<tr><td colspan="6" class="neu">—</td></tr>';
+
+  // Hypotheses
+  el('cTrendHyp').innerHTML = (cp.hypotheses||[]).map(h=>{
+    const now = h.dataNeeded.startsWith('none');
+    return `<div class="find ${now?'good':'info'}"><span class="fi">${now?'✓':'⋯'}</span><span class="ft">${h.text} <span class="muted">— ${h.evidence} · <em>${now?'testable now':h.dataNeeded}</em></span></span></div>`;
+  }).join('') || '<div class="note">No hypotheses yet.</div>';
+  el('cTrendNotes').innerHTML = (cp.notes||[]).map(n=>`• ${n}`).join('<br>');
 }
 
 function renderRecalProposal() {

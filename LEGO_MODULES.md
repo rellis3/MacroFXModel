@@ -465,6 +465,14 @@ This is the **falsification-first** step under the "macro sets direction, levels
 
 The **foundation-below-the-foundation** test: before macro/z/confidence, does price "respect" a range level more than a random price? The only honest S/R test is vs a **placebo** (same level shifted to the wrong spot) — if real ≈ placebo, "levels work" is folklore. Symmetric barrier (no R:R to game), after-cost, IS/OOS. Ordered after the macro-direction null: prove the *level* has edge before asking whether a (weak) macro filter improves entry selection.
 
+### 1n. Cross-pair forecast-behaviour research (2026-07-08) — the "trend spotter"
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Cross-pair research** | `js/crossPairResearch.js` | pure SYNTHESIS over the already-persisted per-pair research JSON (`vfr_research` + optional `intraday_research`) — reads the AGGREGATES, does not re-run engines. `pairType`/`PAIR_TYPE_LABELS` (major/eur-cross/jpy-cross/other-cross/gold/index), `signTestP` (two-sided binomial), `analyzeCrossPair(vfr, intraday, opts)` → `{ reliability, trust, byType, consistency, hypotheses }`: (A) cross-pair **consistency** — per-metric sign test → Benjamini–Hochberg → `robust` only if it also spans ≥2 pair types; (B) **trust tiers** trade/caution/exclude via hard rules + robust-z (median/MAD) outliers + bottom-tertile; (C) **pair-type profiles**; (D) percentile-ranked composite **reliability score** (calibration/skill/sharpness/low-error, weights 0.30/0.30/0.25/0.15). Tested `js/crossPairResearch.test.mjs` (8 asserts: broken pair excluded, robust trend flagged, coin-flip not flagged, intraday metric folds in). | `server.js` `GET /api/cross-pair-research` (folds the latest `vfr_research`+`intraday_research`); `vol-research-book.html` "Cross-pair trend spotter" chapter | ✅ built (Phase 1) |
+
+The **anti-overfit layer** over the per-pair book: not "was one pair's forecast right?" but "which patterns hold across pairs of different *types* (worth trusting) vs pair-specific noise, and which pairs to discount." Analysis, **not** a strategy — the decision/selector layer is an explicitly deferred Phase 3, gated on this surfacing robust, type-diverse structure (see `CROSS_PAIR_RESEARCH_DESIGN.md`). Honest boundaries: works on aggregates; the correlation/feature-importance/clustering scan needs a Phase-2 per-day-rows export, and session-contribution accuracy + macro/news conditioning need data the current JSON doesn't carry.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
