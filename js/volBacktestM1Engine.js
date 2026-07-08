@@ -142,6 +142,51 @@ async function readM1Parquet(source) {
   return rows;
 }
 
+// Fold array-format M1 rows ([open,high,low,close,vol,time]) into an N-minute
+// bucket accumulator (Map<bucketStartSec, {time,open,high,low,close}>). Pure and
+// SAFE ACROSS CHUNKS — a bucket that straddles a chunk boundary keeps its open
+// (first row seen) and gets the last row's close, because `acc` persists between
+// calls. Rows are assumed time-ordered (M1 parquets are).
+export function _foldM1Buckets(acc, rows, bucketSec) {
+  for (const row of rows) {
+    const tv = row[5];
+    const ms = tv instanceof Date ? tv.getTime()
+      : Date.parse(String(tv).replace(' ', 'T').replace(/Z?$/, 'Z'));
+    if (!Number.isFinite(ms)) continue;
+    const b = Math.floor(ms / 1000 / bucketSec) * bucketSec;
+    const cur = acc.get(b);
+    if (!cur) acc.set(b, { time: b, open: row[0], high: row[1], low: row[2], close: row[3] });
+    else { if (row[1] > cur.high) cur.high = row[1]; if (row[2] < cur.low) cur.low = row[2]; cur.close = row[3]; }
+  }
+  return acc;
+}
+
+// Memory-frugal M1 → N-minute loader: reads the parquet in row-range CHUNKS and
+// resamples each chunk into a shared bucket accumulator, so the full decoded M1 is
+// never in memory at once (the intraday-research OOM cause — the old path held ~3
+// full copies). Keeps 5-min precision. `source` = file path | ArrayBuffer.
+// Returns [{time:epochSec, open, high, low, close}] sorted, or null.
+export async function readM1Resampled(source, minutes = 5, chunkRows = 400_000) {
+  let ab;
+  if (source instanceof ArrayBuffer) ab = source;
+  else { const b = readFileSync(source); ab = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); }
+  const file = { byteLength: ab.byteLength, slice: (s, e) => Promise.resolve(ab.slice(s, e)) };
+  const meta = await parquetMetadataAsync(file);
+  const total = Number(meta.num_rows ?? 0);
+  if (!total) return null;
+  const bucketSec = minutes * 60;
+  const acc = new Map();
+  for (let start = 0; start < total; start += chunkRows) {
+    const end = Math.min(start + chunkRows, total);
+    let chunk;
+    await parquetRead({ file, metadata: meta, rowStart: start, rowEnd: end, onComplete: d => (chunk = d) });
+    _foldM1Buckets(acc, chunk, bucketSec);
+    chunk = null;                              // free the decoded chunk before the next
+    await new Promise(r => setImmediate(r));   // yield so the server stays responsive
+  }
+  return [...acc.values()].sort((a, b) => a.time - b.time);
+}
+
 // Groups raw parquet rows into Map<'YYYY-MM-DD', [{open,high,low,close}]>
 // row[5] is a Date object from hyparquet; use .toISOString() to get a stable
 // ISO string instead of the locale-dependent Date.toString() output.
