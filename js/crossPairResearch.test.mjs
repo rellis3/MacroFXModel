@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeCrossPair, pairType, signTestP } from './crossPairResearch.js';
+import { analyzeCrossPair, pairType, signTestP, portfolioIndependence } from './crossPairResearch.js';
 
 // Minimal per-pair summary in the vfr_research shape the engine emits.
 function summary({ sharp = 0.5, skill = 0.15, exMed = 55, ex75 = 27, medErr = 8, dirHit = 53, persistBase = 45, persistAfter = 58 } = {}) {
@@ -149,12 +149,58 @@ test('analyze: touch behaviour + bot questions surface from intraday data', () =
   assert.equal(r.touchBehaviour.fadeVsFollow.direction, 'fade (reversion at the line dominates)');
   assert.equal(r.touchBehaviour.fadeVsFollow.robust, true, 'fade tendency robust across types');
   assert.ok(r.touchBehaviour.ranked[0].touchRatePct >= r.touchBehaviour.ranked.at(-1).touchRatePct, 'ranked by touch rate');
-  // Bot questions present and correctly tagged (Q4 retest is the remaining gap;
-  // Q8 costs is now answerable via the screen because intraday data is present).
-  assert.equal(r.botQuestions.length, 8);
-  assert.match(r.botQuestions[3].status, /GAP/);        // retest sequence still a gap
-  assert.match(r.botQuestions[2].status, /answerable/); // direction
-  assert.match(r.botQuestions[7].status, /screen/);     // costs → screen
+  // Bot questions = 3 gates (G1-G3) + 8 mechanics. This mock has touch data but no
+  // placebo/fadePayoff blocks, so G1/G2 are GAP here; Q3 direction answerable; Q4
+  // retest is the remaining mechanics gap; Q8 costs → screen.
+  assert.equal(r.botQuestions.length, 11);
+  assert.match(r.botQuestions[0].q, /^G1/);
+  const q = lbl => r.botQuestions.find(x => x.q.startsWith(lbl));
+  assert.match(q('4.').status, /GAP/);                  // retest sequence still a gap
+  assert.match(q('3.').status, /answerable/);           // direction
+  assert.match(q('8.').status, /screen/);               // costs → screen
+});
+
+test('portfolioIndependence: correlated pairs collapse to fewer effective bets', () => {
+  // Three pairs move almost identically (one bet); a fourth is independent.
+  const dates = Array.from({ length: 200 }, (_, i) => `d${i}`);
+  // deterministic pseudo returns (seeded LCG)
+  let s = 1; const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff - 0.5; };
+  const common = dates.map(() => rnd());
+  const mk = (corrWithCommon) => { const o = {}; dates.forEach((d, i) => { o[d] = corrWithCommon * common[i] + (1 - corrWithCommon) * rnd(); }); return o; };
+  const returnsByPair = { A: mk(0.98), B: mk(0.97), C: mk(0.96), D: mk(0.0) };
+  const p = portfolioIndependence(returnsByPair, ['A', 'B', 'C', 'D']);
+  assert.ok(p, 'portfolio computed');
+  assert.equal(p.nPairs, 4);
+  assert.ok(p.effectiveBets < 4, `effective bets < 4 given the ABC cluster (got ${p.effectiveBets})`);
+  assert.ok(p.effectiveBets >= 1.5, 'but more than 1 (D is independent)');
+  assert.ok(p.meanCorr > 0, 'positive mean correlation from the cluster');
+});
+
+test('analyze: G1 placebo + G2 payoff-shape fold from the intraday touch data', () => {
+  const book = goodBook();
+  // Real median reverses a lot (55%); placebo reverses less (40%) → forecast beats placebo.
+  // Fade PnL negatively skewed with avg-loss > avg-win → short gamma.
+  const mk = (edge, skew, winLoss) => ({ daily: { touches: {
+    medianExtension: { n: 200, touchRatePct: 70, continuePct: 30, reversePct: 55, meanMfePips: 22, meanMaePips: 18,
+      byRegime: { BULL: { continuePct: 54 }, BEAR: { continuePct: 51 }, RANGE: { reverse20Pct: 56 } } },
+    placebo: { n: 180, reversePct: 55 - edge, realReversePct: 55, edgeVsPlaceboPp: edge },
+    fadePayoff: { n: 200, meanPips: 0.5, medianPips: 2, skew, p5: -40, p95: 15, worstPips: -80, winRatePct: 58, avgWinPips: 8, avgLossPips: -14, winLossRatio: winLoss },
+    direction: { firstUpperPct: 54 } } } });
+  const intr = { perPair: {
+    EURUSD: mk(14, -1.2, 0.57), GBPUSD: mk(12, -1.0, 0.6), USDJPY: mk(15, -1.4, 0.55),
+    EURJPY: mk(11, -0.9, 0.62), GBPJPY: mk(13, -1.1, 0.58), GOLD: mk(16, -1.3, 0.5),
+  } };
+  const r = analyzeCrossPair(book, intr, { minPairsForConsistency: 5 });
+  const tb = r.touchBehaviour;
+  assert.ok(tb.placebo, 'G1 placebo folded');
+  assert.equal(tb.placebo.robust, true, 'forecast beats placebo robustly across types');
+  assert.ok(tb.placebo.medianEdgePp > 1);
+  assert.ok(tb.payoffShape, 'G2 payoff shape folded');
+  assert.equal(tb.payoffShape.shortGamma, true, 'flagged short-gamma (neg skew + avg-loss > avg-win)');
+  assert.match(tb.payoffShape.verdict, /SHORT-GAMMA/);
+  // Gate questions present + answerable.
+  assert.match(r.botQuestions[0].q, /^G1/);
+  assert.match(r.botQuestions[1].q, /^G2/);
 });
 
 test('analyze: cost-survival screen nets the ±20-pip bracket and flags survivors', () => {

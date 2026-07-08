@@ -95,9 +95,36 @@ test('evaluateIntraday: structural invariants on synthetic intraday', () => {
   if (d.firstUpperPct != null) assert.ok(d.firstUpperPct + d.firstLowerPct <= 100.01, 'direction shares ≤ 100');
 });
 
+test('evaluateIntraday: recalibrate flag scales the touch levels (walk-forward)', () => {
+  const on = evaluateIntraday(synthH1(400, 3), { pip: PIP, recalibrate: true });
+  const off = evaluateIntraday(synthH1(400, 3), { pip: PIP, recalibrate: false });
+  assert.equal(on.touches.bandsRecalibrated, true);
+  assert.equal(off.touches.bandsRecalibrated, false);
+  assert.equal(off.touches.recalFactor, 1, 'no scaling when off');
+  assert.ok(on.touches.recalFactor > 0 && on.touches.recalFactor <= 1.5, 'clamped factor');
+  // Tighter levels are reached at least as often as the raw ones.
+  assert.ok(on.touches.medianExtension.touchRatePct >= off.touches.medianExtension.touchRatePct - 1e-9, 'recalibrated (tighter) levels touched ≥ raw');
+});
+
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
   const r = evaluateIntraday(synthH1(20), { pip: PIP });
   assert.equal(r.insufficient, true);
+});
+
+test('evaluateIntraday: G1 placebo + G2 fade-payoff blocks present with sane invariants', () => {
+  const r = evaluateIntraday(synthH1(400), { pip: PIP });
+  assert.ok(!r.insufficient);
+  const pl = r.touches.placebo;
+  assert.ok(pl && pl.n > 0, 'placebo evaluated');
+  if (pl.realReversePct != null && pl.reversePct != null)
+    assert.ok(Math.abs(pl.edgeVsPlaceboPp - (pl.realReversePct - pl.reversePct)) < 0.2, 'edge = real − placebo reversal');
+  const fp = r.touches.fadePayoff;
+  if (fp.n >= 20) {
+    assert.ok(fp.p5 <= fp.medianPips + 1e-9 && fp.medianPips <= fp.p95 + 1e-9, 'p5 ≤ median ≤ p95');
+    assert.ok(fp.worstPips <= fp.p5 + 1e-9, 'worst ≤ p5');
+    assert.ok(fp.winRatePct >= 0 && fp.winRatePct <= 100);
+    if (fp.winLossRatio != null) assert.ok(fp.winLossRatio >= 0);
+  }
 });
 
 test('evaluateIntraday weekly horizon: multi-day window, timeUnit=day, levels touched', () => {

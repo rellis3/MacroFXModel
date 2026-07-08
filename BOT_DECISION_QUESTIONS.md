@@ -66,12 +66,97 @@ slippage.
 
 ---
 
+---
+
+# The gates — questions that come BEFORE the mechanics (fresh-eyes review)
+
+The eight questions above are **mechanics** ("how does the level behave?"). A quant
+handed this data cold would refuse to touch mechanics until three **gates** pass.
+If any gate fails, the mechanics are theatre. These are now built (`G1`–`G3` on
+`cross-pair-research.html`).
+
+## G1 — Is the FORECAST the source of edge, or just a band? (placebo)
+Fade-the-median might work equally well at a **randomly-placed line** the same
+distance from the open. If fade-at-forecast ≈ fade-at-placebo, you've found
+mean-reversion, not a forecast edge.
+- *Built:* the intraday engine now evaluates a seeded **jittered placebo** level
+  beside every real forecast level and reports `edgeVsPlacebo` (real reversal rate
+  − placebo reversal rate), folded cross-pair with the sign-test + type-spread
+  discipline. Near-zero ⇒ the forecast's exact placement adds nothing.
+
+## G2 — What is the PAYOFF SHAPE? Is fading selling underpriced vol insurance? (short gamma)
+Fading wins small often and loses big on breakouts — a **negatively-skewed,
+short-gamma** payoff that looks like edge in a win-rate table and blows up in the
+tail. Win rate is the wrong lens; the loss tail is the truth.
+- *Built:* the engine computes the **hold-to-close fade PnL distribution** per
+  touched median (revert-toward-open = win, break-away = loss) and reports mean,
+  median, **skew**, p5/p95, worst loss, win rate, and **avg-win ÷ avg-loss**. A
+  negative skew with avg-loss ≫ avg-win is the insurance-selling signature — the
+  net edge must pay for that tail, not just win often.
+
+## G3 — How many INDEPENDENT bets are there really? (portfolio concentration)
+26 pairs but 3 USD blocs + EUR/GBP/AUD crosses. Fading EURUSD+GBPUSD+AUDUSD at
+once is ~one leveraged USD bet. "31/31 pairs agree" is mostly correlation.
+- *Built:* the run computes the daily-return **correlation matrix** across pairs
+  and the **effective number of independent bets** = n² ÷ ΣᵢⱼCᵢⱼ² (participation
+  ratio), plus mean pairwise correlation. Tells you the *real* breadth behind any
+  cross-pair claim and the true portfolio risk.
+
+**Order:** G1 first (no edge over placebo ⇒ stop), then G2 (a real gross edge that
+is underpriced insurance ⇒ stop), then G3 (size the portfolio to the *effective*
+bet count, not 26). Only past all three do the mechanics (Q1–Q8) and Phase 3 mean
+anything.
+
+## Deliberately NOT built yet (the next layer, if the gates pass)
+- **Regime-conditioned EDGE** (not behaviour): is the cost-surviving edge only in
+  low-vol/ranging states, negative in trends?
+- **Time-stability / decay**: rolling-window edge — has it been arbed away?
+- **Directional vs range alpha**: does the forecast *skew* predict direction,
+  separately from fading the *range*?
+- **Fill realism**: can you get the limit fill at the line on the days that matter
+  (adverse selection on breakouts)?
+- **The reframe**: a vol forecast's *replicated* use is **risk-sizing / vol-target
+  / a don't-trade filter**, not entry signals. "Does sizing an existing momentum/
+  carry edge by the forecast beat trading it flat?" may be the higher-EV question.
+
+---
+
 ## Validation discipline (applies to every question)
 - **Out-of-sample** split, **≥30 events**, **costs on**.
 - **Per pair-type**, and **cross-pair consistency** (a pattern must hold across
   ≥2 types, sign-test + BH-corrected) — a signal in three correlated crosses is
   not a trend.
 - **Pre-register both outcomes** before running, so a null can't be re-narrated.
+
+## Which bands the touch study uses (recalibrated, not raw)
+The reference forecaster runs **wide** (exceed-median ~34% vs 50%). The touch /
+fade / cost study now places its levels on **walk-forward recalibrated** bands —
+each window's level distance is scaled by the trailing median(realized ÷ forecast
+H-L) from prior windows only (causal), so it measures the bands a bot would
+actually trade, not the too-wide raw lines (`touches.bandsRecalibrated`,
+`recalFactor`). Note the likely direction: tighter bands sit *closer* to the open,
+a *less-extended* level where mean-reversion is usually **weaker** — so
+recalibration tends to **confirm** a fade null, not rescue it. Daily calibration
+(exceed-median) stays reported on the *raw* forecaster (that's the honest "how
+wide is it" measure); the recal factor + calibrated export show the correction.
+
+## Move 2 — the risk-tool pivot (next build, scoped)
+The replicated use of a vol forecast is **risk-sizing / gating**, not entry
+signals. The test: *does using the forecast to size or gate an existing edge beat
+trading that edge flat?* Concretely, in priority order:
+1. **Don't-trade filter** — the hidden-relationship results say the forecast is
+   least reliable on high-vol / high-vov / post-big-miss days. Test: on those days
+   is realized-vs-forecast materially worse, and does skipping them improve a
+   simple baseline's risk-adjusted return? (Needs a baseline edge to gate.)
+2. **Vol-target sizing** — size inversely to forecast vol; compare Sharpe / max-DD
+   vs flat sizing on the same baseline. This is the classic, evidence-backed use.
+3. **Stop placement** — stops beyond the 75th line vs a fixed ATR stop, measured
+   on the same trades.
+**Dependency, stated up front:** 1 and 2 need an *existing* edge to size/gate —
+the forecast can only improve something that already has positive expectancy. If
+we don't have a live baseline edge, the honest first step is to pick one
+(momentum / carry are the replicated candidates) rather than invent one. That's a
+decision to confirm before building, not a default.
 
 ## What is NOT on the critical path (deferred)
 - **Session-contribution accuracy (2b-ii)** — needs the forecaster to emit an

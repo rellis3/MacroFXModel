@@ -50,12 +50,17 @@
   <div class="answer" id="answer" style="display:none"></div>
   <div class="note" id="recalNote" style="display:none"></div>
 
+  <h2>The gates — pass these before any mechanics</h2>
+  <p class="qd">A quant handed this data cold would refuse to trade the mechanics until three gates pass. If any fails, the rest is theatre. Full write-up: <a href="BOT_DECISION_QUESTIONS.md">BOT_DECISION_QUESTIONS.md</a>.</p>
+  <div class="tiles" id="gates"></div>
+  <div class="card scroll" id="gateDetailWrap" style="display:none"><table><thead><tr><th>Pair</th><th>Type</th><th class="num">Edge vs placebo (pp)</th><th class="num">Fade skew</th><th class="num">Win/loss</th><th class="num">Worst pips</th></tr></thead><tbody id="gateDetail"></tbody></table></div>
+
   <h2>Questions a bot needs answered</h2>
   <p class="qd">The decision funnel a level-trading bot walks — <strong>not</strong> "is the forecast calibrated?" but "does the level behave tradeably?" Each tagged with whether the current data answers it. Full write-up: <a href="BOT_DECISION_QUESTIONS.md">BOT_DECISION_QUESTIONS.md</a>.</p>
   <div id="botq"></div>
 
-  <h2>Touch behaviour — the tradeable layer</h2>
-  <p class="qd">Does price REACH the forecast line, and once it does, FADE (revert to open) or FOLLOW (break through)? Overall + by regime — what a level bot actually trades. <span class="muted">Needs the intraday run; folds the per-pair touch study cross-pair.</span></p>
+  <h2>Touch behaviour — the tradeable layer <span class="muted" id="recalBadge"></span></h2>
+  <p class="qd">Does price REACH the forecast line, and once it does, FADE (revert to open) or FOLLOW (break through)? Overall + by regime — what a level bot actually trades. <span class="muted">Levels are <strong>walk-forward recalibrated</strong> (tightened toward realized) so the study reflects the bands a bot would place, not the too-wide raw lines. Folds the per-pair touch study cross-pair.</span></p>
   <div class="tiles" id="touchTiles"></div>
   <div class="note" id="touchNote"></div>
   <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th class="num">Touch %</th><th>At the line</th><th class="num">Net cont.</th><th class="num">MFE</th><th class="num">MAE</th><th class="num">Range rev20%</th><th class="num">Trend cont%</th></tr></thead><tbody id="touch"></tbody></table></div>
@@ -129,12 +134,29 @@ function render(cp){
     rn.innerHTML = `⚠️ Calibration/skill above are measured on the <strong>reference (un-recalibrated) forecaster</strong> — that's why bands read wide. The walk-forward recalibration closes it: ${cls}. See the <a href="vol-research-book.html#cRecal">Recalibration chapter</a> and the <a href="vol-forecast.html">🎯 calibrated export</a>.`;
   } else { rn.style.display=''; rn.innerHTML = `⚠️ Calibration/skill are measured on the <strong>reference (un-recalibrated) forecaster</strong> (<code>volForecast.js</code>). The recalibrated constants live in the bot engine + the <a href="vol-forecast.html">🎯 calibrated export</a>.`; }
 
+  // Gates G1–G3.
+  const tbz = cp.touchBehaviour, pf = cp.portfolio;
+  const g1 = tbz && !tbz.insufficient ? tbz.placebo : null;
+  const g2 = tbz && !tbz.insufficient ? tbz.payoffShape : null;
+  const gate = (name, ok, headline, sub) => `<div class="tile"><div class="tk">${name}</div><div class="tv ${ok===true?'pos':ok===false?'neg':'neu'}" style="font-size:14px;line-height:1.3">${headline}</div><div class="td">${sub}</div></div>`;
+  el('gates').innerHTML = [
+    g1 ? gate('G1 · Placebo', g1.medianEdgePp>1 && g1.robust, g1.medianEdgePp<=1?'≈ placebo (no edge)':`+${g1.medianEdgePp}pp vs placebo`, g1.verdict) : gate('G1 · Placebo', null, 'run intraday', 'forecast line vs same-distance jittered control'),
+    g2 ? gate('G2 · Payoff shape', g2.shortGamma?false:null, g2.shortGamma?'SHORT-GAMMA':`skew ${g2.medianSkew}, W/L ${g2.medianWinLoss}`, g2.verdict) : gate('G2 · Payoff shape', null, 'run intraday', 'hold-to-close fade PnL skew + win/loss'),
+    pf ? gate('G3 · Independent bets', null, `~${Math.round(pf.effectiveBets)} of ${pf.nPairs}`, pf.note) : gate('G3 · Independent bets', null, 'needs re-run', 'participation ratio of the return-correlation matrix'),
+  ].join('');
+  if (g1 || g2){ el('gateDetailWrap').style.display=''; el('gateDetail').innerHTML = (tbz.ranked||[]).map(t=>`<tr><td><strong>${t.pair}</strong></td><td class="muted">${TYPE_LBL[t.type]||t.type}</td>
+    <td class="num ${t.edgeVsPlaceboPp>1?'pos':t.edgeVsPlaceboPp<=0?'neg':'neu'}">${t.edgeVsPlaceboPp==null?'—':sgn(t.edgeVsPlaceboPp,1)}</td>
+    <td class="num ${t.fadeSkew<0?'neg':'neu'}">${t.fadeSkew==null?'—':fmt(t.fadeSkew,2)}</td>
+    <td class="num ${t.fadeWinLoss<1?'neg':'pos'}">${t.fadeWinLoss==null?'—':fmt(t.fadeWinLoss,2)}</td>
+    <td class="num neg">${t.fadeWorstPips==null?'—':fmt(t.fadeWorstPips,0)}</td></tr>`).join(''); }
+
   // Bot-question set.
   el('botq').innerHTML = (cp.botQuestions||[]).map(q=>{ const now=/answerable/.test(q.status); const gap=/GAP/.test(q.status);
     return `<div class="find ${now?'good':'info'}"><span class="fi">${now?'✓':gap?'✗':'⋯'}</span><span>${q.q} <span class="muted">— ${q.note} · <em>${q.status}</em></span></span></div>`;}).join('');
 
   // Touch behaviour (the tradeable layer).
   const tb = cp.touchBehaviour;
+  const rb = el('recalBadge'); if (rb) rb.textContent = tb && tb.recalFactor != null ? `· bands recalibrated ×${fmt(tb.recalFactor,2)}` : '';
   if (tb && !tb.insufficient){
     el('touchTiles').innerHTML = [
       ['Median touch rate', fmt(tb.medianTouchRatePct,1)+'%', 'reaches the median line'],

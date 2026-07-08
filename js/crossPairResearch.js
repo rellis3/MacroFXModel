@@ -102,6 +102,29 @@ const CONSISTENCY = [
   { key: 'in_continue', q: 6, label: 'Touched median line continues (intraday)', get: r => { const t = r.in?.daily?.touches?.medianExtension; return (t && t.n) ? t.continuePct - t.reversePct : null; }, pos: 'break-and-go dominates', neg: 'fade dominates at the line', unit: 'pp' },
 ];
 
+// ── G3: portfolio independence — how many EFFECTIVE bets among correlated pairs ─
+// returnsByPair: { PAIR: {date: ret} | Map }. Effective bets = participation ratio
+// of the daily-return correlation matrix = n² / ΣᵢⱼCᵢⱼ² (n if independent, 1 if
+// all move together). Cheap: ΣC² is the Frobenius norm, no eigensolver needed.
+export function portfolioIndependence(returnsByPair, names) {
+  const use = (names || Object.keys(returnsByPair || {})).filter(n => returnsByPair[n]);
+  const n = use.length; if (n < 2) return null;
+  const maps = use.map(nm => returnsByPair[nm] instanceof Map ? returnsByPair[nm] : new Map(Object.entries(returnsByPair[nm])));
+  const corr = (a, b) => {
+    const xs = [], ys = [];
+    for (const [d, v] of a) { const w = b.get(d); if (w != null && Number.isFinite(v) && Number.isFinite(w)) { xs.push(v); ys.push(w); } }
+    if (xs.length < 30) return null;
+    const mx = _mean(xs), my = _mean(ys); let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < xs.length; i++) { const dx = xs[i] - mx, dy = ys[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+    return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : 0;
+  };
+  let sumSq = 0; const off = [];
+  for (let i = 0; i < n; i++) { sumSq += 1; for (let j = i + 1; j < n; j++) { const c = corr(maps[i], maps[j]) ?? 0; sumSq += 2 * c * c; off.push(c); } }
+  const effectiveBets = +(n * n / sumSq).toFixed(2);
+  return { nPairs: n, effectiveBets, meanCorr: off.length ? +(_mean(off)).toFixed(3) : null,
+    note: `${n} pairs behave like ~${Math.round(effectiveBets)} independent bets — a cross-pair "N/N agree" is really ~${Math.round(effectiveBets)} votes, and portfolio risk is concentrated accordingly.` };
+}
+
 // ── Touch behaviour (the BOT-relevant layer) ──────────────────────────────────
 // Elevates the per-pair intraday touch study into a cross-pair decision view:
 // does price REACH the forecast line, and once it does, FADE (revert to open) or
@@ -110,10 +133,11 @@ const CONSISTENCY = [
 function _touchBehaviour(recs, minPairs) {
   const rows = [];
   for (const r of recs) {
-    const t = r.in?.daily?.touches?.medianExtension; const dir = r.in?.daily?.touches?.direction;
+    const tt = r.in?.daily?.touches; const t = tt?.medianExtension; const dir = tt?.direction;
     if (!t || !t.n) continue;
     const bBull = t.byRegime?.BULL, bBear = t.byRegime?.BEAR, bRange = t.byRegime?.RANGE;
     const trendCont = [bBull?.continuePct, bBear?.continuePct].filter(v => v != null);
+    const fp = tt.fadePayoff;
     rows.push({
       pair: r.name, type: r.type,
       touchRatePct: t.touchRatePct ?? null,
@@ -123,6 +147,10 @@ function _touchBehaviour(recs, minPairs) {
       firstUpperPct: dir?.firstUpperPct ?? null,
       rangeReverse20: bRange?.reverse20Pct ?? null,
       trendContinuePct: trendCont.length ? +_mean(trendCont).toFixed(1) : null,
+      // G1 placebo edge (real − placebo reversal rate) · G2 fade payoff shape.
+      edgeVsPlaceboPp: tt.placebo?.edgeVsPlaceboPp ?? null,
+      fadeSkew: fp?.skew ?? null, fadeWinLoss: fp?.winLossRatio ?? null,
+      fadeMeanPips: fp?.meanPips ?? null, fadeWorstPips: fp?.worstPips ?? null, fadeWinRatePct: fp?.winRatePct ?? null,
     });
   }
   if (rows.length < minPairs) return rows.length ? { insufficient: true, nPairs: rows.length } : null;
@@ -143,14 +171,50 @@ function _touchBehaviour(recs, minPairs) {
   // fade-in-range / follow-in-trend split a bot would switch on.)
   const contrastRows = rows.filter(r => r.rangeReverse20 != null && r.trendContinuePct != null);
   const showing = contrastRows.filter(r => r.rangeReverse20 >= 50 && r.trendContinuePct >= 50);
+
+  // G1 — does the forecast level beat its jittered placebo? sign test on edge.
+  const pl = rows.filter(r => r.edgeVsPlaceboPp != null);
+  let placebo = null;
+  if (pl.length >= minPairs) {
+    const nz = pl.filter(r => r.edgeVsPlaceboPp !== 0);
+    const up = nz.filter(r => r.edgeVsPlaceboPp > 0), maj = up.length >= (nz.length - up.length) ? up : nz.filter(r => r.edgeVsPlaceboPp < 0);
+    placebo = { nPairs: pl.length, medianEdgePp: +(_median(pl.map(r => r.edgeVsPlaceboPp)) ?? 0).toFixed(1),
+      pairsBeatingPlacebo: up.length, pValue: +signTestP(nz.length, Math.max(up.length, nz.length - up.length)).toFixed(4),
+      typeSpread: new Set(maj.map(r => r.type)).size };
+    placebo.robust = placebo.pairsBeatingPlacebo > nz.length / 2 && placebo.typeSpread >= 2 && placebo.pValue <= 0.10;
+    placebo.verdict = placebo.medianEdgePp <= 1 ? 'forecast level ≈ placebo — the exact placement adds ~no edge (fading any same-distance band would do as well)'
+      : placebo.robust ? `forecast beats placebo by ${placebo.medianEdgePp}pp across ${placebo.typeSpread} types — the placement carries information`
+      : `forecast edges placebo by ${placebo.medianEdgePp}pp but not robustly (concentrated / weak)`;
+  }
+  // G2 — payoff shape: is fading short-gamma (negative skew, avg-loss ≫ avg-win)?
+  const fp = rows.filter(r => r.fadeSkew != null || r.fadeWinLoss != null);
+  let payoffShape = null;
+  if (fp.length >= minPairs) {
+    const negSkew = fp.filter(r => r.fadeSkew != null && r.fadeSkew < 0).length;
+    const wlLt1 = fp.filter(r => r.fadeWinLoss != null && r.fadeWinLoss < 1).length;
+    payoffShape = { nPairs: fp.length,
+      medianSkew: +(_median(fp.map(r => r.fadeSkew).filter(v => v != null)) ?? 0).toFixed(2),
+      medianWinLoss: +(_median(fp.map(r => r.fadeWinLoss).filter(v => v != null)) ?? 0).toFixed(2),
+      medianFadeMeanPips: +(_median(fp.map(r => r.fadeMeanPips).filter(v => v != null)) ?? 0).toFixed(1),
+      pairsNegSkew: negSkew, pairsAvgLossGtWin: wlLt1 };
+    payoffShape.shortGamma = negSkew > fp.length / 2 && wlLt1 > fp.length / 2;
+    payoffShape.verdict = payoffShape.shortGamma
+      ? `SHORT-GAMMA: ${negSkew}/${fp.length} pairs negatively skewed, ${wlLt1}/${fp.length} lose more per loss than they win — fading is selling insurance; the net edge must pay for the tail`
+      : `not clearly short-gamma (median skew ${payoffShape.medianSkew}, win/loss ${payoffShape.medianWinLoss})`;
+  }
+
+  // Median recalibration factor applied to the touch levels (from the engine).
+  const recalFactors = recs.map(r => r.in?.daily?.touches?.recalFactor).filter(v => v != null);
   return {
     nPairs: rows.length,
+    bandsRecalibrated: recs.some(r => r.in?.daily?.touches?.bandsRecalibrated),
+    recalFactor: recalFactors.length ? +(_median(recalFactors)).toFixed(2) : null,
     medianTouchRatePct: +(_median(col(r => r.touchRatePct)) ?? 0).toFixed(1),
     medianContinuePct: +(_median(col(r => r.continuePct)) ?? 0).toFixed(1),
     medianReversePct: +(_median(col(r => r.reversePct)) ?? 0).toFixed(1),
     medianMfePips: +(_median(col(r => r.mfePips)) ?? 0).toFixed(1),
     medianMaePips: +(_median(col(r => r.maePips)) ?? 0).toFixed(1),
-    fadeVsFollow,
+    fadeVsFollow, placebo, payoffShape,
     regimeContrast: { nPairs: contrastRows.length, pairsFadeRangeFollowTrend: showing.length,
       note: 'pairs where RANGE days reverse ≥50% AND trend days continue ≥50% (fade-in-range / follow-in-trend)' },
     ranked: rows.sort((a, b) => (b.touchRatePct ?? 0) - (a.touchRatePct ?? 0)),
@@ -384,7 +448,7 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
   const tb = touchBehaviour && !touchBehaviour.insufficient ? touchBehaviour : null;
   const costSurvival = _costSurvival(recs, minPairsForConsistency);
   const cs = costSurvival && !costSurvival.insufficient ? costSurvival : null;
-  const botQuestions = _botQuestions(tb, hidden, cs);
+  const botQuestions = _botQuestions(tb, hidden, cs, vfr?.cross?.portfolio ?? null);
   // Recalibration passthrough — the reference forecaster runs wide; these are the
   // walk-forward factors that bring exceed-median back to ~50% (already in vfr).
   const recal = vfr?.cross?.recalProposal ?? null;
@@ -394,7 +458,8 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
     generatedFrom: { vfrPairs: names.length, intradayPairs: Object.keys(inPer).length, scannedPairs: scans.length },
     fdrQ, weights,
     forecaster: 'reference (un-recalibrated volForecast.computeForecast) — see recal + calibrated export',
-    reliability, trust, byType, consistency, hidden, touchBehaviour, costSurvival, botQuestions, recal, hypotheses,
+    reliability, trust, byType, consistency, hidden, touchBehaviour, costSurvival,
+    portfolio: vfr?.cross?.portfolio ?? null, botQuestions, recal, hypotheses,
     notes: [
       'Trust tiers are RELATIVE terciles of reliability within this universe (+ a sharpness≤0 floor) — not absolute tradeability, which needs the touch-behaviour + cost layer.',
       'Calibration/skill metrics are measured on the REFERENCE forecaster (volForecast.js), which is NOT recalibrated — that is why bands read wide. The recal block + the calibrated export show the corrected picture.',
@@ -406,9 +471,14 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
 
 // The questions a level-trading bot actually needs answered, tagged with whether
 // the current data answers them. Not trade rules — the research agenda for a bot.
-function _botQuestions(tb, hidden, cs) {
+function _botQuestions(tb, hidden, cs, portfolio) {
   const st = (have, gap) => have ? 'answerable now' : gap;
-  return [
+  const g = [
+    { q: 'G1. Is the FORECAST the edge, or just a band? (placebo)', status: tb?.placebo ? 'answerable now' : 'GAP — run intraday', note: tb?.placebo ? tb.placebo.verdict : 'evaluate the forecast line vs a same-distance jittered placebo' },
+    { q: 'G2. Payoff SHAPE — is fading selling underpriced vol insurance? (short gamma)', status: tb?.payoffShape ? 'answerable now' : 'GAP — run intraday', note: tb?.payoffShape ? tb.payoffShape.verdict : 'hold-to-close fade PnL skew + avg-win/avg-loss' },
+    { q: 'G3. How many INDEPENDENT bets among the correlated pairs?', status: portfolio ? 'answerable now' : 'GAP — needs the return-correlation pass', note: portfolio ? portfolio.note : 'effective bets = participation ratio of the daily-return correlation matrix' },
+  ];
+  return g.concat([
     { q: '1. Universe — which pairs behave consistently enough to trade at all?', status: st(!!tb, 'run intraday'), note: tb ? `touch data on ${tb.nPairs} pairs; needs IS/OOS consistency of the touch edge` : 'needs the intraday touch study' },
     { q: '2. Setup — how often does price actually REACH the median / 75th line, and on which days?', status: st(!!tb, 'run intraday'), note: tb ? `median touch rate ${tb.medianTouchRatePct}% across pairs` : 'touchRatePct per pair' },
     { q: '3. Direction — at the line, does price FADE (revert) or FOLLOW (break)? overall and by regime?', status: st(!!tb, 'run intraday'), note: tb ? `${tb.fadeVsFollow.direction} (net ${tb.fadeVsFollow.medianNetContinue}pp); ${tb.regimeContrast.pairsFadeRangeFollowTrend}/${tb.regimeContrast.nPairs} pairs fade-in-range/follow-in-trend` : 'continue% vs reverse%, byRegime' },
@@ -417,5 +487,5 @@ function _botQuestions(tb, hidden, cs) {
     { q: '6. Exit — what target/stop does the post-touch MFE/MAE distribution support?', status: st(!!tb, 'run intraday'), note: tb ? `median MFE ${tb.medianMfePips} / MAE ${tb.medianMaePips} pips — means only; full distributions would sharpen R:R` : 'meanMfePips / meanMaePips per pair' },
     { q: '7. Direction skew — is one side of the band hit first systematically?', status: st(!!tb, 'run intraday'), note: 'direction.firstUpperPct per pair' },
     { q: '8. Costs — does the touch-edge survive spread + slippage?', status: cs ? 'answerable now (screen)' : 'GAP — run intraday', note: cs ? `${cs.verdict} (median net ×1 ${cs.medianNetX1} pips)` : 'THE make-or-break test — ±20-pip bracket net of costs; needs the intraday touch data' },
-  ];
+  ]);
 }
