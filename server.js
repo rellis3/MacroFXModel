@@ -65,6 +65,7 @@ import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
+import { analyzeCrossPair } from './js/crossPairResearch.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { evaluateSessions } from './js/forecastSessionResearch.js';
@@ -8143,6 +8144,22 @@ app.get('/api/intraday-research/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), progress: job.progress });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Cross-pair research (the "trend spotter") ────────────────────────────────
+// A cheap, deterministic SYNTHESIS over the already-persisted per-pair research:
+// reads the latest vfr_research (+ intraday_research if present) and computes the
+// cross-pair consistency / trust-tiers / pair-type profiles / reliability ranking.
+// No heavy compute, no job — it just re-reads the output JSON and folds it.
+app.get('/api/cross-pair-research', async (req, res) => {
+  try {
+    const vfr = await _loadResult('vfr_research', _latestVfrFile);
+    if (!vfr) return res.status(404).json({ ok: false, error: 'No vol-forecast-research run yet — run the research book first.' });
+    const intraday = await _loadResult('intraday_research', _latestIntraFile);   // optional
+    const report = analyzeCrossPair(vfr, intraday, {});
+    if (report.insufficient) return res.status(404).json({ ok: false, error: 'Research JSON has no per-pair data.' });
+    return res.json({ ok: true, src: vfr.src, vfrFile: vfr.file, vfrComputedAt: vfr.computedAt, intradayFile: intraday?.file ?? null, ...report });
+  } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 // Weekly backtest D1 candle viewer — fetches D1 bars from OANDA for a date range.
