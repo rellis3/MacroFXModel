@@ -147,7 +147,7 @@ function render(cp){
     const bv = el('bandVerdict'); bv.style.display='';
     bv.innerHTML = bc.verdict;
     el('bandCalc').innerHTML = bc.calcs.map((c,i)=>`<tr>
-      <td>${i===0?'<strong>':''}${c.label}${i===0?' ✓</strong>':''}${c.key==='page_approx'?' <span class="muted">(current page)</span>':''}</td>
+      <td>${i===0?'<strong>':''}${c.label}${i===0?' ✓</strong>':''}${c.key==='page_live'?' <span class="amber">(live page)</span>':''}${c.key==='bot_recal'?' <span class="muted">(bot)</span>':''}</td>
       <td class="num">${c.nPairs}</td>
       <td class="num ${Math.abs(c.medianExceedMedian-50)<6?'pos':'amber'}">${fmt(c.medianExceedMedian,1)}</td>
       <td class="num ${Math.abs(c.medianExceed75-25)<6?'pos':'amber'}">${fmt(c.medianExceed75,1)}</td>
