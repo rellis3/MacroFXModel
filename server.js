@@ -54,6 +54,7 @@ import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter } from './js/rangeLineAnalyser.js';
 import { pipSize as _pipSize, instrument } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
+import { refreshRangeLineConfluence } from './js/rangeLineConfluenceProducer.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
@@ -5303,6 +5304,44 @@ app.get('/api/range-line-bot/plan', async (_req, res) => {
     if (!raw) return res.status(404).json({ ok: false, error: 'No plan yet — POST /api/range-line-bot/refresh-plan (needs M1 data)' });
     const parsed = JSON.parse(raw);
     res.json({ ok: true, plan: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Range-line CONFLUENCE producer — today's structural levels for the bot gate ─
+// Ships range_line_confluence (per-instrument level prices) so the bot's optional
+// confluence_min entry-gate is checked against the exact levels the OOS result
+// validated. Same M1 source + boundary as the plan; refreshed daily alongside it.
+let _rlConfRunning = false;
+async function _refreshRangeLineConfluence() {
+  if (_rlConfRunning) { console.log('[range-line-conf] refresh already running — skipped'); return null; }
+  _rlConfRunning = true;
+  const log = [];
+  const onLog = m => { console.log('[range-line-conf]', m); log.push(m); };
+  const boundaryHour = _rlBoundaryHour();
+  try {
+    const artifact = await refreshRangeLineConfluence({
+      universe: RL_BOT_UNIVERSE,
+      getPacked: (instr) => loadM1ForPair(instr, BT_M1_DIR),
+      kvPut: (k, v) => kv.put(k, v),
+      assetClassFor: _assetClassFor,
+      pipFor: (k) => { try { return _pipSize(k) || null; } catch { return null; } },
+      boundaryHour, confLookback: 5, tolFrac: 0.1,
+      onLog,
+    });
+    return { artifact, log };
+  } catch (e) { e.refreshLog = log; throw e; } finally { _rlConfRunning = false; }
+}
+app.post('/api/range-line-bot/refresh-confluence', (_req, res) => {
+  if (_rlConfRunning) return res.status(409).json({ ok: false, error: 'confluence refresh already running' });
+  _refreshRangeLineConfluence().catch(e => console.error('[range-line-conf] refresh failed:', e.message));
+  res.json({ ok: true, status: 'started', note: 'computing today\'s confluence levels → range_line_confluence; watch [range-line-conf] logs' });
+});
+app.get('/api/range-line-bot/confluence', async (_req, res) => {
+  try {
+    const raw = await kv.get('range_line_confluence');
+    if (!raw) return res.status(404).json({ ok: false, error: 'No confluence artifact yet — POST /api/range-line-bot/refresh-confluence (needs M1 data)' });
+    const parsed = JSON.parse(raw);
+    res.json({ ok: true, confluence: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -12301,13 +12340,19 @@ if (process.env.OANDA_KEY) {
 // producer refuses to publish an empty plan if M1 is unreachable.
 {
   const _runRlBotPlan = () => _refreshRangeLineBotPlan().catch(e => console.error('[range-line-bot] plan refresh failed:', e.message));
+  // Confluence levels refresh alongside the plan (same M1 source + London boundary),
+  // so the bot's optional gate always has today's levels.
+  const _runRlConf = () => _refreshRangeLineConfluence().catch(e => console.error('[range-line-conf] refresh failed:', e.message));
+  const _runRlDaily = () => { _runRlBotPlan(); _runRlConf(); };
   const hour = Number(process.env.RANGE_BOT_PLAN_UTC_HOUR ?? 6);
   const min  = Number(process.env.RANGE_BOT_PLAN_UTC_MIN ?? 15);
-  const next = _scheduleDailyUtc(hour, min, _runRlBotPlan);
-  console.log(`[range-line-bot] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
+  const next = _scheduleDailyUtc(hour, min, _runRlDaily);
+  console.log(`[range-line-bot] plan+confluence scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
   setTimeout(async () => {
     try { if (!(await kv.get('range_line_bot_plan'))) { console.log('[range-line-bot] no plan in KV — bootstrap refresh'); await _runRlBotPlan(); } }
     catch (e) { console.error('[range-line-bot] bootstrap check failed:', e.message); }
+    try { if (!(await kv.get('range_line_confluence'))) { console.log('[range-line-conf] no artifact in KV — bootstrap refresh'); await _runRlConf(); } }
+    catch (e) { console.error('[range-line-conf] bootstrap check failed:', e.message); }
   }, 120_000);
 }
 

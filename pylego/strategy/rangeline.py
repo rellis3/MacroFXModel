@@ -137,3 +137,33 @@ def chandelier_stop(dir_up, entry, peak, rung, protect_stop, chand_frac=0.5):
     if peak >= entry:
         return protect_stop
     return min(protect_stop, peak + trail_w)
+
+
+# ── Structural-confluence entry gate (optional; default off) ──────────────────
+# The bot consumes today's confluence LEVEL PRICES from the range_line_confluence
+# artifact (shipped by the dashboard from the SAME validated levelSources code —
+# no port, no drift). Here it only does the trivial proximity count that grades a
+# ladder level by how many DISTINCT structural sources back it. Byte-for-byte the
+# same buckets as ``rangeLineAnalyser.confluenceBucketAt``.
+
+_CONF_RANK = {"3·multi": 2, "2·single": 1, "1·none": 0}
+
+
+def confluence_bucket(level, conf_levels, tol):
+    """Distinct confluence sources within ``tol`` (price units) of ``level`` →
+    ``"3·multi"`` (>=2) / ``"2·single"`` (1) / ``"1·none"`` (0). ``conf_levels`` =
+    ``[{"price":.., "source":..}]``. Returns None when there are no levels / tol<=0
+    (mirrors confluenceBucketAt: an ungraded level)."""
+    if not conf_levels or tol <= 0:
+        return None
+    srcs = set()
+    for lv in conf_levels:
+        if abs(lv["price"] - level) <= tol:
+            srcs.add(lv.get("source") or lv.get("kind"))
+    n = len(srcs)
+    return "3·multi" if n >= 2 else ("2·single" if n == 1 else "1·none")
+
+
+def confluence_rank(bucket):
+    """Ordinal for gating: none=0, single=1, multi=2; unknown/None=-1."""
+    return _CONF_RANK.get(bucket, -1)

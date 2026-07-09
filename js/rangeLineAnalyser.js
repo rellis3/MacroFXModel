@@ -760,6 +760,29 @@ export function recordsForPair(packed, assetClass = 'fx', opts = {}) {
   return runRangeLineAnalyser(sessions, assetClass, opts);
 }
 
+// ── TODAY's structural-confluence levels for the LIVE bot gate ─────────────────
+// Packed M1 → session split (the SAME bucketing the backtest uses) → today's
+// confluence level prices, from completed prior days only (structural levels —
+// pivots/POC/VAH/VAL/fibs — don't depend on today's forming range, so they're
+// known at the open). Reuses `sessionConfluenceLevels` — identical to the OOS
+// path, no drift. Returns { date, levels:[{price,source}] }. The dashboard producer
+// ships this per instrument; the bot pairs it with its live range via the tolerance.
+export function latestSessionConfluence(packed, {
+  boundaryHour = 0, confLookback = 5, pip = 0,
+  sources = CONFLUENCE_SOURCES, fib15 = true, fib15ClusterPips = 8,
+} = {}) {
+  const sessions = bucketM1IntoSessions(packed, boundaryHour);
+  const dates = [...sessions.keys()].sort();
+  if (!dates.length) return { date: null, levels: [] };
+  const d1 = sessionsToD1(sessions, dates);              // all completed sessions (prior days)
+  const n = dates.length;
+  let intraday = [];
+  for (let j = Math.max(0, n - confLookback); j < n; j++) { const pb = sessions.get(dates[j]); if (pb) intraday = intraday.concat(pb); }
+  const levels = sessionConfluenceLevels({ dailyBars: d1, intraday, pip, price: d1[n - 1].close,
+    sources, fib15, fib15Lookback: confLookback, fib15ClusterPips });
+  return { date: dates[n - 1], levels };
+}
+
 // ── Full book: packed M1 per pair → records → pooled-IS policy → per-pair OOS ──
 // packedByPair: { pair: packed }.  assetClassByPair optional. Returns the
 // perLineStrategy.runPerLine result (policy + per-pair OOS + book stats + equity).
