@@ -42,6 +42,18 @@ async function run(){
   document.getElementById('status').textContent = `${j.cogDates} COG days stored · generated ${j.generatedAt}`;
   if(!j.results?.length || !j.cogDates){ document.getElementById('out').innerHTML = `<div class="card muted">${j.note||'No COG data.'}</div>`; return; }
 
+  // Diagnostics — surfaces WHY matches fail (date-range mismatch vs parse/name).
+  const dbg = j.debug || {};
+  let diag = `<div class="card" style="font-family:'DM Mono',monospace;font-size:11px">
+    <div><strong>Diagnostics</strong></div>
+    <div class="muted">COG date range: ${dbg.cogDateRange||'—'}</div>
+    <div class="muted">Sample COG instruments parsed (${dbg.sampleDate||'—'}): ${(dbg.sampleCogInstruments||[]).join(', ')||'none'}</div>
+    <div class="muted">Sample EURUSD levels: ${dbg.sampleCogEURUSD?JSON.stringify(dbg.sampleCogEURUSD):'none'}</div>`;
+  for(const r of j.results){ const d=r.debug||{};
+    diag += `<div class="muted">${r.pair}: M1 bars ${d.barsLoaded??'—'}, London days ${d.londonDays??'—'} (${d.londonFirst||'—'} … ${d.londonLast||'—'}), matched ${r.matchedDays??0}/${r.cogDatesForPair??0} — skips: ${d.skipReasons?`notInM1 ${d.skipReasons.notInByDate}, noHL ${d.skipReasons.noHlMed}, noBars ${d.skipReasons.noBars}`:'—'}</div>`;
+  }
+  diag += `</div>`;
+
   const LV = [['dynMed','COG median (dynamic H-L)'],['dyn75','COG 75th (dynamic H-L)'],['ocMed','COG O-C (open ± move)']];
   let h = '';
   for(const r of j.results){
@@ -64,7 +76,7 @@ async function run(){
     }
     h += `</table><div class="muted" style="font-size:10px">Revert = price pulled back toward the interior after touching (a fade win). "Revert by" = mean pullback. "Ran past" = mean continuation past the level (the risk). Hold-to-close fade = enter at the level, exit at day close; +ve = reverted profitably.</div></div>`;
   }
-  document.getElementById('out').innerHTML = h;
+  document.getElementById('out').innerHTML = diag + h;
 }
 </script>
 </body>
