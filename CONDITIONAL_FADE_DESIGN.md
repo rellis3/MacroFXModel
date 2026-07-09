@@ -66,6 +66,25 @@ The dynamic levels are the most *extended*, so on the exhaustion logic they shou
 show the strongest reversion — the question the cost screen answers is whether that
 reversion is big enough per touch (they're touched less often) to clear costs on FX.
 
+### Level DISTANCE sweep — where does the fade clear cost, and where does COG sit?
+
+The σ A/B showed the dynamic *median* doesn't clear ×2 in any σ, while the *75th*
+(more extended) clears ×2 on 2 pairs — consistent with exhaustion needing DISTANCE.
+And COG's median runs **wider** than ours (gold +7%, NQ +12%; ~20–40% of the way
+from our median to our 75th on the instruments the user actually trades), which is
+plausibly *why* COG's "median" is tradeable: it is a more-extended level.
+
+So the sweep pushes the dynamic median distance out `×1.0 … ×1.4` (median → past the
+Feller 75th) and reports net-of-cost at each distance, **both FX-only and
+all-instrument (indices/gold INCLUDED, un-discounted)** — because the wide-COG
+instruments (NQ, US30, DE30, gold) are exactly the ×2 survivors, and the FX-aware
+verdict was hiding them. `touches.dynSweep{100..140}Extension` per multiplier;
+`costSurvival.costSweep` folds them; the sweep table renders on
+`cross-pair-research.html`. **Reads:** if net-of-cost peaks *between* median and 75th
+(where COG sits) on ≥3 instruments, that distance is the tradeable exhaustion zone
+and COG's level is explained; if it only peaks at the far 75th, COG's "median" is
+just our 75th relabelled.
+
 ### σ half-life A/B — do responsive bands exhaust better? (level-set #3c)
 
 The COG-gap diagnostic (`COG_GAP_FINDINGS.md`) found the production primary

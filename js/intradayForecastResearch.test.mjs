@@ -197,6 +197,19 @@ test('evaluateIntraday: σ half-life A/B dynamic blocks (EWMA λ0.94 / λ0.90) p
   }
 });
 
+test('evaluateIntraday: level-distance sweep emits a block per multiplier (×1.0…×1.4)', () => {
+  const t = evaluateIntraday(synthH1(500, 3), { pip: PIP, recalibrate: true }).touches;
+  for (const k of [100, 110, 120, 130, 140]) {
+    const b = t[`dynSweep${k}Extension`];
+    assert.ok(b, `dynSweep${k}Extension present`);
+    assert.equal(b.mult, k / 100, 'multiplier tagged');
+    if (b.n) assert.ok(b.reversePct >= 0 && b.reversePct <= 100, 'valid reversion %');
+  }
+  // Farther-out level is reached no more often than the nearest (×1.0) — monotone.
+  const near = t.dynSweep100Extension, far = t.dynSweep140Extension;
+  if (near.n && far.n) assert.ok(far.touchRatePct <= near.touchRatePct + 1e-9, 'wider level touched no more than the nearest');
+});
+
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
   const r = evaluateIntraday(synthH1(20), { pip: PIP });
   assert.equal(r.insufficient, true);
