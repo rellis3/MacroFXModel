@@ -60,6 +60,7 @@
         <option value="session" selected>session (static)</option>
         <option value="touch">touch (intraday-dynamic)</option>
       </select></label></span>
+      <span><label title="Add UNTESTED prior highs/lows (virgin levels) as an extra distinct confluence source. A prior extreme only acts as a magnet while price hasn't traded back through it (~30-session scan). Turn on with the confluence filter to A/B: do naked levels lift the ≥2 (strong) book, or just dilute it? (nPOC needs per-session volume profiles — deferred.)">naked levels <input id="confNaked" type="checkbox"></label></span>
       <button class="run" id="runBtn" onclick="run()">▶ Run</button>
       <span id="status" class="muted"></span>
     </div>
@@ -187,6 +188,7 @@ async function run() {
     splitFrac: parseFloat($('splitFrac').value) || 0.6,
     confluenceFilter: $('confluenceFilter').checked,
     confMode: $('confMode').value,
+    confNaked: $('confNaked').checked,
   };
   const [bh, ah] = ($('rangeWindow').value || '23,6').split(',');
   body.boundaryHour = parseInt(bh); body.asiaHrs = parseFloat(ah);

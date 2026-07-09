@@ -8800,6 +8800,11 @@ app.post('/api/range-line/run', async (req, res) => {
       sources:      Array.isArray(b.confSources) && b.confSources.length ? b.confSources : undefined,
       fib15:        b.confFib15 !== false,
       fib15ClusterPips: (b.confFib15ClusterPips != null && b.confFib15ClusterPips !== '') ? parseFloat(b.confFib15ClusterPips) : undefined,
+      // Untested prior H/L (virgin levels) as an extra distinct source — off by
+      // default; the A/B toggle answers "do naked levels lift the ≥2 book?".
+      naked:        !!b.confNaked,
+      nakedLookback:   (b.confNakedLookback != null && b.confNakedLookback !== '') ? parseInt(b.confNakedLookback) : 30,
+      nakedBufferPips: (b.confNakedBufferPips != null && b.confNakedBufferPips !== '') ? parseFloat(b.confNakedBufferPips) : 0,
     };
   }
 
@@ -8819,7 +8824,7 @@ app.post('/api/range-line/run', async (req, res) => {
       // `confluence`, whose bucket is baked into the records at build time — so its
       // params (on/tol/lookback/sources) MUST join the key or a toggle would reuse
       // stale (confluence-less) records.
-      const cSig = opts.confluence ? `conf:${opts.confluence.mode}:${opts.confluence.tolFrac}:${opts.confluence.lookbackDays}:${(opts.confluence.sources || []).join(',')}:${opts.confluence.fib15}` : 'noconf';
+      const cSig = opts.confluence ? `conf:${opts.confluence.mode}:${opts.confluence.tolFrac}:${opts.confluence.lookbackDays}:${(opts.confluence.sources || []).join(',')}:${opts.confluence.fib15}:${opts.confluence.naked}:${opts.confluence.nakedLookback}:${opts.confluence.nakedBufferPips}` : 'noconf';
       const recKey = [opts.sources.join(','), opts.minLookback, opts.dateFrom, opts.dateTo, opts.boundaryHour, opts.asiaHrs, cSig].join('|');
       const touchesByPair = {}, costByPair = {};
       let done = 0;
