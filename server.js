@@ -67,6 +67,7 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
+import { analyzeCogLevels as _analyzeCogLevels } from './js/cogLevelPoc.js';   // COG-level POC
 import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
@@ -5741,6 +5742,53 @@ app.get('/api/vol-forecast/reference/:date', async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── COG-level POC — COG's ACTUAL forecast levels vs ACTUAL price, on the days we
+// have COG reference data for (EURUSD / NQ / GOLD). GET /api/cog-level-poc.
+// Reads the stored COG exports from KV, parses each day's levels, loads that pair's
+// intraday bars, and measures reversion at COG's median/75th/O-C levels. Railway
+// only (KV + M1). Descriptive on however many COG days exist — not a big-N claim.
+const _COG_ALIASES = { EURUSD: ['EURUSD', 'EUR/USD', 'EUR_USD'], NQ: ['NQ', 'NAS100', 'NAS100_USD', 'US100', 'NAS'], GOLD: ['GOLD', 'XAUUSD', 'XAU/USD', 'XAU_USD'] };
+app.get('/api/cog-level-poc', async (_req, res) => {
+  try {
+    // 1. COG reference dates (newest first, from the index).
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean) : [];
+    if (!dates.length) return res.json({ ok: true, cogDates: 0, results: [], note: 'No COG reference data stored yet (paste some on vol-forecast → Ref Data).' });
+    // 2. Parse each stored COG export into per-instrument levels.
+    const cogByDate = {};
+    for (const date of dates) {
+      const raw = await kv.get(`vol_reference_${date}`).catch(() => null);
+      if (!raw) continue;
+      try { cogByDate[date] = _parseExportText(JSON.parse(raw).text); } catch { /* skip malformed */ }
+    }
+    const _cog = (date, name) => { const rec = cogByDate[date]; if (!rec) return null; for (const a of _COG_ALIASES[name]) if (rec[a]) return rec[a]; return null; };
+    // 3. Per pair: load intraday (5-min), split into London days, match COG dates, measure.
+    const PAIRS = [{ name: 'EURUSD' }, { name: 'NQ' }, { name: 'GOLD' }];
+    const results = [];
+    for (const p of PAIRS) {
+      const row = { pair: p.name };
+      try {
+        let pip = 0.0001; try { pip = _pipSize(p.name) || pip; } catch { /* keep default */ }
+        const bars5 = await _loadM1ForAB(p.name.toLowerCase(), 5);
+        const byDate = new Map(buildLondonDaily(bars5).map(d => [d.date, d]));
+        const recs = [];
+        for (const date of Object.keys(cogByDate)) {
+          const cog = _cog(date, p.name); const day = byDate.get(date);
+          if (!cog || !(cog.hl_med > 0) || !day?.bars?.length || !(day.open > 0)) continue;
+          recs.push({ date, open: day.open, bars: day.bars, pip, cog });
+        }
+        row.pip = pip; row.cogDatesForPair = Object.keys(cogByDate).filter(d => _cog(d, p.name)).length;
+        row.matchedDays = recs.length;
+        row.result = _analyzeCogLevels(recs);
+      } catch (e) { row.error = e.message; }
+      results.push(row);
+    }
+    res.json({ ok: true, generatedAt: new Date().toISOString(), cogDates: dates.length,
+      note: 'COG\'s actual median/75th (dynamic H-L from the running extreme) and O-C levels vs actual price, on the COG days we have. revert% = touches that faded back; meanRevertPips/Pct = how far; meanCloseFadePips = enter-at-level, hold-to-close fade PnL.',
+      results });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // Parse plain-text forecast export (our format or reference) into { instrumentName: {vol,hl_med,hl_75,oc_med,oc_75} }
