@@ -185,6 +185,18 @@ test('evaluateIntraday: ratio_yz dynamic 75th block present with an empirical p7
   }
 });
 
+test('evaluateIntraday: σ half-life A/B dynamic blocks (EWMA λ0.94 / λ0.90) present', () => {
+  const t = evaluateIntraday(synthH1(500, 3), { pip: PIP, recalibrate: true }).touches;
+  assert.ok(t.dynE94Extension && t.dynE90Extension, 'shorter-σ dynamic blocks present');
+  // Same exhaustion metrics shape as the YZ30 dyn median so they compare directly.
+  for (const b of [t.dynE94Extension, t.dynE90Extension]) {
+    if (!b.n) continue;
+    assert.ok(b.touchRatePct >= 0, 'touch rate present');
+    assert.ok(b.reversePct >= 0 && b.reversePct <= 100, 'reversion (exhaustion) rate is a valid %');
+    assert.ok(b.reverse10Pct >= b.reverse20Pct - 1e-9, 'reversal thresholds monotone');
+  }
+});
+
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
   const r = evaluateIntraday(synthH1(20), { pip: PIP });
   assert.equal(r.insufficient, true);

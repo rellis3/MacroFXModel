@@ -310,9 +310,13 @@ function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
   const dyn = _summCost(_costRows(recs, 'dynExtension', costTable), minPairs);      // dynamic H-L from running extreme
   const dyn75 = _summCost(_costRows(recs, 'dynP75Extension', costTable), minPairs);  // dynamic 75th H-L (Feller p75/p50)
   const dynRatio75 = _summCost(_costRows(recs, 'dynRatioP75Extension', costTable), minPairs);  // dynamic 75th H-L (empirical ratio_yz p75)
+  // σ half-life A/B — dynamic H-L median from a shorter-half-life σ (does a more
+  // responsive band catch exhaustion better than the sticky YZ30 dyn median?).
+  const dynE94 = _summCost(_costRows(recs, 'dynE94Extension', costTable), minPairs);  // EWMA λ0.94 dynamic median
+  const dynE90 = _summCost(_costRows(recs, 'dynE90Extension', costTable), minPairs);  // EWMA λ0.90 dynamic median
   const oc = _summCost(_costRows(recs, 'ocExtension', costTable), minPairs);         // open-close line (distinct from O-H/O-L)
   // `median`/`p75` are the drift-adjusted O-H/O-L lines (level-set #2).
-  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75 } };
+  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75, dynE94, dynE90 } };
 }
 
 // ── Public: build the cross-pair report ───────────────────────────────────────
