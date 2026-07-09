@@ -8743,7 +8743,9 @@ app.post('/api/range-line/run', async (req, res) => {
       // → strong(≥2) levels, on the honest held-position chandelier — does filtering
       // to stronger levels lift the book? Only when confluence was computed.
       const confluenceFilter = opts.confluence?.enabled
-        ? runConfluenceFilter(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair })
+        ? runConfluenceFilter(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair,
+            minN: opts.minN, marginPct: opts.marginPct,
+            rigorMinConf: (b.confRigorMinConf != null && b.confRigorMinConf !== '') ? parseInt(b.confRigorMinConf) : 2 })
         : null;
       rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated, eRatio, exitAB, heldPosition, badLevels, zoneWalk, confluenceFilter } });
     } catch (e) {

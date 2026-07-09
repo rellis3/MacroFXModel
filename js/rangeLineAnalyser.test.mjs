@@ -105,6 +105,8 @@ ok('filtering to stronger levels keeps ≤ the trades of "all"',
    (cf.books[2].all.trades ?? 0) <= (cf.books[0].all.trades ?? 0) && (cf.books[1].all.trades ?? 0) <= (cf.books[0].all.trades ?? 0),
    `all=${cf.books[0].all.trades} ≥1=${cf.books[1].all.trades} ≥2=${cf.books[2].all.trades}`);
 ok('per-bucket rows carry expectancy + follow%', cf.bucketStats.every(r => 'expectancy' in r && 'followPct' in r));
+ok('filter carries rigor (per-year + walk-forward on the ≥2 book)', cf.rigor && cf.rigor.minConf === 2 && Array.isArray(cf.rigor.perYear) && Array.isArray(cf.rigor.walkForward),
+   `perYear=${cf.rigor?.perYear?.length} folds=${cf.rigor?.walkForward?.length}`);
 
 console.log('[analyseRangeWindow direct — inner toward mid, outer away]');
 const oneDay = sessions.get([...sessions.keys()].sort()[30]);

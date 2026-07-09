@@ -28,7 +28,7 @@ import { FIB_LEVELS } from './fibProjection.js';
 import { volSigmaSeries } from './forecastCore.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { createTouchFeatures } from './touchFeatures.js';
-import { extractTouches, runPerLine, pnlFor, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
+import { extractTouches, runPerLine, buildPolicy, pnlFor, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { portfolioStats } from './backtestStats.js';
 import { collectLevels, swingFibLevels } from './levelSources.js';
 
@@ -524,7 +524,8 @@ export function runHeldPosition(touchesByPair, { policy, splitDate, costByPair =
 // "strong is worse" = the breakout-friction effect (clean-air levels run further).
 // Requires the touches to carry `confluence` (analyser run with confluence enabled).
 const _confRank = b => b === '3·multi' ? 2 : b === '2·single' ? 1 : b === '1·none' ? 0 : -1;
-export function runConfluenceFilter(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, costMults = [1, 2, 3] } = {}) {
+export function runConfluenceFilter(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, costMults = [1, 2, 3],
+                                                     rigorMinConf = 2, minN = 50, marginPct = 0, folds = 5, initialFrac = 0.4 } = {}) {
   if (!policy || !splitDate) return null;
   // Per-bucket OOS per-trade expectancy under the FIXED policy decision (no
   // re-learning per bucket — that's the direction-conditioning we already ruled out).
@@ -573,7 +574,43 @@ export function runConfluenceFilter(touchesByPair, { policy, splitDate, costByPa
   const label = { 0: 'all levels', 1: 'confluent (≥1)', 2: 'strong (≥2)' };
   const books = [0, 1, 2].map(min => ({ filter: label[min], all: heldRow(min, null),
                                         fade: heldRow(min, 'fade'), follow: heldRow(min, 'follow') }));
-  return { bucketStats, books };
+
+  // ── Rigor on the FILTERED book (default ≥2 strong) — is the confluence-filtered
+  // edge stable across YEARS and anchored WALK-FORWARD folds, or one good era? The
+  // last honest check before it goes live. Same held-position chandelier pricing as
+  // the books above; walk-forward RETRAINS the direction policy per fold (the filter
+  // is applied at trade time, exactly as live), so it's a true out-of-sample read.
+  const _chandRow = hp => { const c = hp?.chand || {}; const at = m => (c.costStress || []).find(z => z.mult === m)?.sharpe ?? null;
+    return { sharpe1: c.sharpe ?? null, sharpe2: at(2), sharpe3: at(3), tradesPerDay: c.tradesPerDay ?? null, trades: c.trades ?? 0, winRate: c.winRate ?? null, expectancy: c.expectancy ?? null }; };
+  const _filtWindow = (from, to) => {                          // ≥rigorMinConf touches in [from,to)
+    const out = {};
+    for (const [pair, touches] of Object.entries(touchesByPair))
+      out[pair] = touches.filter(t => _confRank(t.confluence) >= rigorMinConf && (!from || t.date >= from) && (!to || t.date < to));
+    return out;
+  };
+  const ZERO = '0000-01-01';                                   // splitDate floor so runHeldPosition keeps every windowed touch
+  // Per-year on the fixed-policy OOS filtered book.
+  const oosYears = [...new Set(Object.values(_filtWindow(splitDate, '')).flat().map(t => t.date.slice(0, 4)))].sort();
+  const perYear = oosYears.map(y => ({ year: y, ..._chandRow(runHeldPosition(_filtWindow(`${y}-01-01`, `${+y + 1}-01-01`),
+                                        { policy, splitDate: ZERO, costByPair, slipByPair, costMults })) }))
+                          .filter(r => r.trades > 0);
+  // Anchored walk-forward: retrain the policy before each test chunk, apply the filter.
+  const allSorted = Object.values(touchesByPair).flat().slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const dates = allSorted.map(t => t.date);
+  const wfFolds = [];
+  if (dates.length >= 100) {
+    const tail = dates.slice(Math.floor(dates.length * initialFrac));
+    for (let f = 0; f < folds; f++) {
+      const a = tail[Math.floor(f * tail.length / folds)], b = tail[Math.floor((f + 1) * tail.length / folds)] ?? null;
+      const train = allSorted.filter(t => t.date < a);
+      if (train.length < minN) continue;
+      const pol = buildPolicy(train, { minN, marginPct });
+      wfFolds.push({ from: a, to: b ?? dates[dates.length - 1],
+        ..._chandRow(runHeldPosition(_filtWindow(a, b ?? ''), { policy: pol, splitDate: ZERO, costByPair, slipByPair, costMults })) });
+    }
+  }
+  const rigor = { minConf: rigorMinConf, perYear, walkForward: wfFolds };
+  return { bucketStats, books, rigor };
 }
 
 // ── Per-(pair × level) quality scan + an honest veto ──────────────────────────

@@ -115,6 +115,9 @@
     <table id="confFilter"><thead><tr><th>Filter</th><th>Dir</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Payoff</th><th>Expectancy</th><th>Trades</th></tr></thead><tbody></tbody></table>
     <div class="muted" style="margin:10px 0 4px">Per-bucket OOS expectancy (each level's confluence count, under the fixed policy) — is more confluence actually higher expectancy?</div>
     <table id="confBuckets"><thead><tr><th>Bucket</th><th>Trades</th><th>Expectancy</th><th>Win%</th><th>Follow%</th></tr></thead><tbody></tbody></table>
+    <div class="muted" id="confRigorHead" style="margin:12px 0 4px;display:none"></div>
+    <table id="confPerYear" style="display:none"><thead><tr><th>Year</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Expectancy</th><th>Trades</th></tr></thead><tbody></tbody></table>
+    <table id="confWalkFwd" style="margin-top:8px;display:none"><thead><tr><th>Walk-forward fold</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Trades</th></tr></thead><tbody></tbody></table>
     <div class="muted" id="confFilterVerdict" style="margin-top:8px"></div>
   </div>
 
@@ -373,6 +376,20 @@ function render(d) {
       `<tr><td>${r.bucket}</td><td class="mut">${r.trades}</td>
         <td class="${(r.expectancy??0)>0?'pos':'neg'}">${fmt(r.expectancy,4)}</td>
         <td>${r.winRate??'—'}%</td><td class="mut">${r.followPct??'—'}%</td></tr>`).join('');
+    // Rigor on the filtered (≥2) book — per-year + walk-forward stability.
+    const rg = cf.rigor;
+    if (rg && ((rg.perYear||[]).length || (rg.walkForward||[]).length)) {
+      $('confRigorHead').style.display = ''; $('confRigorHead').innerHTML =
+        `Rigor on the <b>strong (≥${rg.minConf})</b> filtered book — is the edge stable across years / walk-forward folds (retraining the policy each fold), or one good era?`;
+      const yr = (rg.perYear||[]).map(r =>
+        `<tr><td>${r.year}</td>${cell(r.sharpe2)}${cell(r.sharpe3)}<td class="mut">${r.tradesPerDay??'—'}</td><td>${r.winRate??'—'}%</td>
+          <td class="${(r.expectancy??0)>0?'pos':'neg'}">${fmt(r.expectancy,4)}</td><td class="mut">${r.trades}</td></tr>`).join('');
+      if (yr) { $('confPerYear').style.display=''; document.querySelector('#confPerYear tbody').innerHTML = yr; }
+      const wf = (rg.walkForward||[]).map(r =>
+        `<tr><td class="mut">${r.from} → ${r.to}</td>${cell(r.sharpe2)}${cell(r.sharpe3)}<td class="mut">${r.tradesPerDay??'—'}</td><td>${r.winRate??'—'}%</td><td class="mut">${r.trades}</td></tr>`).join('');
+      if (wf) { $('confWalkFwd').style.display=''; document.querySelector('#confWalkFwd tbody').innerHTML = wf; }
+    }
+
     // Verdict: does the strong filter beat "all" on held-chandelier Sharpe @2×?
     const all2 = cf.books[0]?.all?.sharpe2, strong2 = cf.books[2]?.all?.sharpe2;
     const fFade = cf.books[2]?.fade?.sharpe2, aFade = cf.books[0]?.fade?.sharpe2;
