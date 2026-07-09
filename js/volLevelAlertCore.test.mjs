@@ -3,7 +3,7 @@
 import assert from 'node:assert';
 import {
   approachSpeed, momentumZ, divergenceLabel, scanNearLevels,
-  formatAlert, evaluatePair, LEVEL_LABELS, ALERT_LEVEL_KEYS,
+  formatAlert, evaluatePair, pairIcon, LEVEL_LABELS, ALERT_LEVEL_KEYS,
 } from './volLevelAlertCore.js';
 
 let passed = 0;
@@ -91,7 +91,7 @@ t('scanNearLevels respects the enabled whitelist', () => {
   assert.deepStrictEqual(near.map(n => n.key), ['ol_med']);
 });
 
-t('formatAlert includes pair, level, speed, momentum, divergence', () => {
+t('formatAlert includes flag icon, level, narrative, both prices, speed, momentum, divergence', () => {
   const txt = formatAlert({
     pair: 'EUR/USD', price: 1.10052, dp: 5,
     near: { key: 'oh_med', label: LEVEL_LABELS.oh_med, levelPrice: 1.10100, distPips: 4.8, side: 'above' },
@@ -100,10 +100,23 @@ t('formatAlert includes pair, level, speed, momentum, divergence', () => {
     divergence: 'HIDDEN_BEAR',
   });
   assert.ok(txt.includes('EUR/USD'));
+  assert.ok(txt.includes('🇪🇺🇺🇸'), 'should show both country flags');
   assert.ok(txt.includes('O-H Median'));
+  assert.ok(txt.includes('median expected high'), 'should include the level narrative');
+  assert.ok(txt.includes('1.10052') && txt.includes('1.10100'), 'both current and level price shown');
   assert.ok(/toward/.test(txt), 'blast up toward an above level should say toward');
   assert.ok(txt.includes('Hidden bearish'));
   assert.ok(txt.includes('Informational'));
+});
+
+t('pairIcon maps FX crosses, gold and indices', () => {
+  assert.strictEqual(pairIcon('EUR/USD'), '🇪🇺🇺🇸');
+  assert.strictEqual(pairIcon('GBP/JPY'), '🇬🇧🇯🇵');
+  assert.strictEqual(pairIcon('XAU/USD'), '🥇');
+  assert.strictEqual(pairIcon('NAS100/USD'), '💻');
+  assert.strictEqual(pairIcon('NAS100_USD'), '💻');
+  assert.strictEqual(pairIcon('SPX500_USD'), '📈');
+  assert.strictEqual(pairIcon('DE30_EUR'), '🇩🇪');
 });
 
 t('evaluatePair returns one event per near level with text', () => {

@@ -31,6 +31,49 @@ export const LEVEL_LABELS = {
 // The full set of alertable keys (used by the config UI + defaults).
 export const ALERT_LEVEL_KEYS = Object.keys(LEVEL_LABELS);
 
+// Plain-English "what is this level" narrative for the alert.
+export const LEVEL_NARRATIVE = {
+  oh_med: 'median expected high — a normal day often reverts here',
+  oh_75:  '75th-percentile high — a stretch reached ~25% of days',
+  ol_med: 'median expected low — a normal day often reverts here',
+  ol_75:  '75th-percentile low — a stretch reached ~25% of days',
+  hl_med_hi: 'top of the median daily range, projected from the open',
+  hl_med_lo: 'bottom of the median daily range, projected from the open',
+  hl_75_hi:  'top of the 75th-percentile (wide-day) range',
+  hl_75_lo:  'bottom of the 75th-percentile (wide-day) range',
+};
+
+// Country flags per currency + dedicated icons for metals/indices — a quirky
+// visual tag so each alert is instantly recognisable at a glance.
+const FLAGS = {
+  EUR: '🇪🇺', USD: '🇺🇸', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺',
+  NZD: '🇳🇿', CAD: '🇨🇦', CHF: '🇨🇭', SGD: '🇸🇬', CNH: '🇨🇳', MXN: '🇲🇽',
+};
+const INDEX_ICONS = {
+  NAS100: '💻',  // NASDAQ 100 — tech
+  SPX500: '📈',  // S&P 500
+  US30:   '🏛️',  // Dow Jones
+  US2000: '🐤',  // Russell 2000 — small caps
+  DE30:   '🇩🇪',  // DAX
+  UK100:  '🇬🇧',  // FTSE 100
+  JP225:  '🗾',  // Nikkei
+};
+
+// Icon for a pair/instrument: two flags for an FX cross, a medal for metals,
+// a dedicated glyph for indices. Accepts slash or underscore syms.
+export function pairIcon(pair) {
+  const parts = String(pair).toUpperCase().split(/[/_]/);
+  const base = parts[0], quote = parts[1] ?? '';
+  if (INDEX_ICONS[base]) return INDEX_ICONS[base];
+  if (base === 'XAU' || base === 'GOLD') return '🥇';
+  if (base === 'XAG') return '🥈';
+  if (base === 'WTICO' || base === 'BCO' || base === 'OIL') return '🛢️';
+  const b = FLAGS[base], q = FLAGS[quote];
+  if (b && q) return `${b}${q}`;
+  if (b) return b;
+  return '💱';
+}
+
 // ── Approach speed ────────────────────────────────────────────────────────────
 // "Is price blasting toward the level or drifting?" Net displacement over the
 // last `lookback` bars, expressed in pips/min, as a multiple of the typical bar
@@ -147,25 +190,44 @@ export function scanNearLevels({ levels, price, pipSize, sessionOpen, thresholdP
 // Build the informational Telegram text for one near-level event. All fields are
 // optional; missing enrichment is simply omitted (e.g. no candles → no speed).
 export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence }) {
-  const px = v => (v == null ? '—' : Number(v).toFixed(dp));
+  const px      = v => (v == null ? '—' : Number(v).toFixed(dp));
+  const icon    = pairIcon(pair);
+  const dirArrow = near.side === 'above' ? '⬆️' : '⬇️';         // which way price must go to reach it
+  const sideTxt  = near.side === 'above' ? 'below' : 'above';   // where price sits vs the level
   const lines = [];
-  lines.push(`📍 <b>${pair}</b> approaching <b>${near.label}</b>`);
-  lines.push(`Price ${px(price)} · Level ${px(near.levelPrice)} · ${near.distPips} pips ${near.side === 'above' ? 'below' : 'above'} level`);
+
+  // Header — quirky flags + pair + what's happening.
+  lines.push(`${icon} <b>${pair}</b> ${dirArrow} nearing a level`);
+  lines.push('');
+
+  // The level + its narrative.
+  lines.push(`<b>${near.label}</b>`);
+  const narrative = LEVEL_NARRATIVE[near.key];
+  if (narrative) lines.push(`<i>${narrative}</i>`);
+  lines.push('');
+
+  // Explicit prices: current, level, distance.
+  lines.push(`💵 Price  <code>${px(price)}</code>`);
+  lines.push(`🎯 Level  <code>${px(near.levelPrice)}</code>`);
+  lines.push(`📏 <b>${near.distPips} pips</b> ${sideTxt} the level`);
+  lines.push('');
 
   if (speed) {
     const toward = speed.direction !== 0 &&
       ((near.side === 'above' && speed.direction > 0) || (near.side === 'below' && speed.direction < 0));
-    const verb = { blasting: 'Blasting', moving: 'Moving', drifting: 'Drifting', flat: 'Flat' }[speed.label] ?? speed.label;
-    lines.push(`⚡ ${verb} ${toward ? 'toward' : 'away from'} level · ${speed.pipsPerMin} pips/min · ${speed.atrMult}× typical bar`);
+    const emoji = { blasting: '🚀', moving: '🏃', drifting: '🐌', flat: '😴' }[speed.label] ?? '⚡';
+    const verb  = { blasting: 'Blasting', moving: 'Moving', drifting: 'Drifting', flat: 'Flat' }[speed.label] ?? speed.label;
+    lines.push(`${emoji} ${verb} ${toward ? 'toward' : 'away from'} level · ${speed.pipsPerMin} pips/min · ${speed.atrMult}× a typical bar`);
   }
   if (mom) {
-    const tag = mom.z >= 1.5 ? 'stretched up' : mom.z <= -1.5 ? 'stretched down' : 'neutral';
+    const tag = mom.z >= 1.5 ? 'stretched up 🔥' : mom.z <= -1.5 ? 'stretched down 🧊' : 'neutral';
     lines.push(`📊 Momentum WT ${mom.wt} · z ${mom.z >= 0 ? '+' : ''}${mom.z} (${tag})`);
   }
   const dt = DIV_TEXT[divergence];
   if (dt) lines.push(dt);
 
-  lines.push('<i>Informational — no trade signal.</i>');
+  lines.push('');
+  lines.push('<i>ℹ️ Informational — no trade signal.</i>');
   return lines.join('\n');
 }
 
