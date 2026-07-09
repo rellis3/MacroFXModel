@@ -60,6 +60,7 @@ import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flatt
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
+import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS } from './js/volLevelAlertCore.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
@@ -6408,11 +6409,14 @@ async function _briefSessionOpen(sym, sessionDate) {
   return open;
 }
 
-app.get('/api/daily-brief', async (_req, res) => {
-  try {
+// Build the daily-brief payload — precise per-level prices, hit rates, regime,
+// live price and the London-midnight session open. Extracted from the route so
+// the level-proximity Telegram alert loop (checkVolLevelAlertsNow) reads the
+// SAME levels the dashboard shows — one source of truth, never a second copy.
+async function computeDailyBrief() {
   const forecast = forecastState.latest;
   if (!forecast?.instruments) {
-    return res.json({ ok: false, error: 'No forecast available — click ↻ Refresh first.' });
+    return { ok: false, error: 'No forecast available — click ↻ Refresh first.' };
   }
 
   // Hit rates from KV (optional)
@@ -6528,7 +6532,7 @@ app.get('/api/daily-brief', async (_req, res) => {
     };
   }
 
-  res.json({
+  return {
     ok:            true,
     generated_at:  new Date().toISOString(),
     session_date:  forecast.session_date,
@@ -6538,7 +6542,12 @@ app.get('/api/daily-brief', async (_req, res) => {
     hit_rates_age: hitRates?.computed_at ?? null,
     has_regime:    Object.keys(state.hmmRegimes).length > 0,
     instruments,
-  });
+  };
+}
+
+app.get('/api/daily-brief', async (_req, res) => {
+  try {
+    res.json(await computeDailyBrief());
   } catch (e) {
     console.error('[DAILY-BRIEF]', e.message);
     res.status(500).json({ ok: false, error: `Server error: ${e.message}` });
@@ -9001,6 +9010,169 @@ app.delete('/api/levels-v2/telegram-config', async (req, res) => {
 });
 app.post('/api/levels-v2/telegram-test', async (req, res) => {
   try { res.json(await sendV2Test('✅ Telegram v2 — test alert. This is the bot your v2 zone alerts will use.')); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Vol-forecast level-proximity Telegram alerts ──────────────────────────────
+// Informational alerts fired when live price approaches a vol-forecast-v2 level
+// (O-H/O-L med+75th, plus projected H-L extremes). Each alert reports the pair,
+// price, level, approach speed (blasting vs drifting), the WaveTrend momentum
+// z-score, and any regular/hidden divergence — all via the volLevelAlertCore
+// brick, which composes existing bricks (indicatorCore/statsCore/vumanchu). Uses
+// its OWN dedicated Telegram bot (separate token/chat from v1 + levels-v2).
+const VOL_LEVEL_CFG_KEY   = 'vol_level_alert_cfg';
+const VOL_LEVEL_CREDS_KEY = 'tg_vollevel_config';
+const DEFAULT_VOL_LEVEL_CFG = {
+  enabled:      false,
+  cooldownMin:  30,                 // per pair+level minutes before re-alerting
+  levels:       [...VOL_LEVEL_KEYS], // which forecast levels to watch
+  pairs:        [],                 // canonical syms; empty = all forecast instruments
+  // Per-pair proximity threshold in pips (pip size differs wildly by asset).
+  thresholdPips: { default: 10, 'XAU/USD': 40, 'NAS100_USD': 60, 'SPX500_USD': 20,
+                   'DE30_USD': 40, 'US30_USD': 60, 'UK100_GBP': 30, 'US2000_USD': 20 },
+};
+// Ephemeral (per-process) cooldown + recent-alert ring for UI visibility.
+const _volLevelState = { lastAlert: {}, recent: [] };
+
+async function loadVolLevelCfg() {
+  try { const raw = await kv.get(VOL_LEVEL_CFG_KEY); return raw ? { ...DEFAULT_VOL_LEVEL_CFG, ...JSON.parse(raw) } : { ...DEFAULT_VOL_LEVEL_CFG }; }
+  catch { return { ...DEFAULT_VOL_LEVEL_CFG }; }
+}
+async function loadVolLevelCreds() {
+  try { const raw = await kv.get(VOL_LEVEL_CREDS_KEY); const c = raw ? JSON.parse(raw) : null; if (c?.token && c?.chatId) return c; } catch {}
+  return null;
+}
+
+// Fetch recent numeric M5 bars for the enrichment (speed / momentum / divergence).
+// Reuses the shared OANDA candle path; returns oldest→newest {open,high,low,close}.
+async function _fetchVolLevelCandles(sym, gran = 'M5', count = 150) {
+  if (!process.env.OANDA_KEY) return null;
+  const instrument = _liqGateOandaSym(sym.replace('/', '_'));
+  const cacheKey   = `vlcandles_${gran}_${instrument}`;
+  const cached     = _m5SrvCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 45_000) return cached.data;
+  try {
+    const base = _oandaBaseMe();
+    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.candles) return null;
+    const bars = d.candles
+      .filter(c => c.complete && c.mid)
+      .map(c => ({ open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+    _m5SrvCache.set(cacheKey, { data: bars, ts: Date.now() });
+    return bars;
+  } catch { return null; }
+}
+
+// One scan cycle: for each forecast instrument, if live price is within the
+// per-pair pip threshold of any enabled level, enrich (once, lazily) and send.
+async function checkVolLevelAlertsNow() {
+  const cfg = await loadVolLevelCfg();
+  if (!cfg.enabled) return;
+  const creds = await loadVolLevelCreds();
+  if (!creds) return;                                   // no dedicated bot configured
+
+  const brief = await computeDailyBrief();
+  if (!brief?.ok || !brief.instruments) return;
+
+  const now  = Date.now();
+  const cdMs = Math.max(1, cfg.cooldownMin) * 60_000;
+  const want = cfg.pairs?.length ? new Set(cfg.pairs) : null;
+
+  for (const inst of Object.values(brief.instruments)) {
+    const { sym, current_price: price, session_open: open, dp, levels } = inst;
+    if (!sym || !price || !open || !levels) continue;
+    const canonical = sym.replace('_', '/');
+    if (want && !want.has(sym) && !want.has(canonical)) continue;
+
+    // PIP_SIZE keys FX with a slash but indices with an underscore — try both.
+    // An unresolved instrument keeps the 0.0001 default, which just makes the pip
+    // distance huge so it never fires (safe: no wrong alert, only no alert).
+    const pipSize   = PIP_SIZE[canonical] ?? PIP_SIZE[sym] ?? PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
+    const threshold = cfg.thresholdPips?.[canonical] ?? cfg.thresholdPips?.[sym] ?? cfg.thresholdPips?.default ?? 10;
+
+    // Cheap threshold scan without candles — skip the OANDA call unless near.
+    const pre = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
+      levels, thresholdPips: threshold, enabled: cfg.levels, bars: null });
+    if (!pre.length) continue;
+    // …but only if at least one near level is off cooldown (else don't fetch).
+    if (!pre.some(ev => now - (_volLevelState.lastAlert[`${canonical}|${ev.key}`] ?? 0) >= cdMs)) continue;
+
+    const bars   = await _fetchVolLevelCandles(sym);
+    const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
+      levels, thresholdPips: threshold, enabled: cfg.levels, bars });
+
+    for (const ev of events) {
+      const ck = `${canonical}|${ev.key}`;
+      if (now - (_volLevelState.lastAlert[ck] ?? 0) < cdMs) continue;
+      _volLevelState.lastAlert[ck] = now;
+      const sent = await sendTelegram(creds.token, creds.chatId, ev.text);
+      _volLevelState.recent.unshift({ pair: canonical, key: ev.key, label: ev.near.label,
+        dist: ev.near.distPips, at: new Date(now).toISOString(), sent });
+      _volLevelState.recent = _volLevelState.recent.slice(0, 30);
+      console.log(`[VOL-LEVEL-ALERT] ${canonical} ${ev.near.label} ${ev.near.distPips}p — Telegram ${sent ? 'OK' : 'FAILED'}`);
+    }
+  }
+}
+
+// Config: GET status, POST save, (levels/threshold/cooldown/pairs).
+app.get('/api/vol-forecast/level-alerts/config', async (_req, res) => {
+  try {
+    const cfg   = await loadVolLevelCfg();
+    const creds = await loadVolLevelCreds();
+    res.json({ ok: true, cfg, allLevels: VOL_LEVEL_KEYS,
+      telegramConfigured: !!creds, chatId: creds?.chatId ?? null, recent: _volLevelState.recent });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/vol-forecast/level-alerts/config', async (req, res) => {
+  try {
+    const b = req.body ?? {};
+    const cur = await loadVolLevelCfg();
+    const next = { ...cur };
+    if (typeof b.enabled === 'boolean')     next.enabled = b.enabled;
+    if (Number.isFinite(+b.cooldownMin))    next.cooldownMin = Math.max(1, +b.cooldownMin);
+    if (Array.isArray(b.levels))            next.levels = b.levels.filter(k => VOL_LEVEL_KEYS.includes(k));
+    if (Array.isArray(b.pairs))             next.pairs = b.pairs.map(p => String(p).toUpperCase());
+    if (b.thresholdPips && typeof b.thresholdPips === 'object') {
+      const tp = {}; for (const [k, v] of Object.entries(b.thresholdPips)) if (Number.isFinite(+v) && +v > 0) tp[k] = +v;
+      if (Number.isFinite(+tp.default) === false) tp.default = cur.thresholdPips?.default ?? 10;
+      next.thresholdPips = tp;
+    }
+    await kv.put(VOL_LEVEL_CFG_KEY, JSON.stringify(next));
+    res.json({ ok: true, cfg: next });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Dedicated bot creds: GET status / POST save / DELETE.
+app.get('/api/vol-forecast/level-alerts/telegram-config', async (_req, res) => {
+  try { const c = await loadVolLevelCreds(); res.json({ ok: true, configured: !!c, chatId: c?.chatId ?? null }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/vol-forecast/level-alerts/telegram-config', async (req, res) => {
+  try {
+    const token = (req.body?.token || '').trim(), chatId = (req.body?.chatId || '').toString().trim();
+    if (!token || !chatId) return res.status(400).json({ ok: false, error: 'token and chatId required' });
+    await kv.put(VOL_LEVEL_CREDS_KEY, JSON.stringify({ token, chatId }));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.delete('/api/vol-forecast/level-alerts/telegram-config', async (_req, res) => {
+  try { await kv.del(VOL_LEVEL_CREDS_KEY); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/vol-forecast/level-alerts/test', async (_req, res) => {
+  try {
+    const c = await loadVolLevelCreds();
+    if (!c) return res.json({ ok: false, error: 'Dedicated bot not configured' });
+    const ok = await sendTelegram(c.token, c.chatId,
+      '✅ <b>Vol-forecast level alerts</b> — test message. Your proximity alerts will arrive here.\n<i>Informational — no trade signal.</i>');
+    res.json({ ok, error: ok ? null : 'Telegram API returned error' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Manual scan trigger (also runs automatically on the loop below).
+app.post('/api/vol-forecast/level-alerts/scan', async (_req, res) => {
+  try { await checkVolLevelAlertsNow(); res.json({ ok: true, recent: _volLevelState.recent }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/levels-v2/confluence-test — does confluence amplify probability?
@@ -12218,6 +12390,14 @@ setInterval(() => {
   const v2pairs = (state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS).map(p => p.toUpperCase?.() ?? p);
   checkV2AlertsNow(v2pairs).catch(e => console.error('[LEVELS-V2] alert loop error:', e.message));
 }, V2_ALERT_MS);
+
+// Vol-forecast level-proximity alert loop — checks live price vs forecast levels
+// every 90s (no-op unless enabled + a dedicated bot is configured). See
+// checkVolLevelAlertsNow / /api/vol-forecast/level-alerts/*.
+const VOL_LEVEL_ALERT_MS = parseInt(process.env.VOL_LEVEL_ALERT_MS || String(90 * 1000));
+setInterval(() => {
+  checkVolLevelAlertsNow().catch(e => console.error('[VOL-LEVEL-ALERT] loop error:', e.message));
+}, VOL_LEVEL_ALERT_MS);
 
 // Live 5m HMM — runs every minute, initial run after a short delay so levels load first
 setTimeout(() => {
