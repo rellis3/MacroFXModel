@@ -5345,6 +5345,14 @@ app.get('/api/range-line-bot/confluence', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// KV persistence health — does bot config/credentials survive a redeploy? The
+// bot-config page polls this to show a red banner when the backend is the ephemeral
+// file store (the "account details keep being lost" failure) so it's never silent.
+app.get('/api/kv-health', (_req, res) => {
+  try { res.json({ ok: true, ...kv.health() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Text-format export helpers ────────────────────────────────────────────────
 // Mirrors the client-side buildExportText() / buildSessionText() in vol-forecast.html
 

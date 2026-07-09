@@ -2521,6 +2521,22 @@ window.saveConfluenceCreds     = saveConfluenceCreds;
 
 document.getElementById('unlockBtn')?.addEventListener('click', forceUnlock);
 
+// Persistence health — warn loudly if bot config/credentials won't survive a
+// redeploy (the ephemeral file backend, the "account details keep being lost" bug).
+async function checkKvHealth() {
+  try {
+    const r = await fetch('/api/kv-health');
+    const h = await r.json();
+    const el = document.getElementById('kvHealthBanner');
+    if (el && h && h.ok && !h.persistent) {
+      el.textContent = '⚠ Config & MT5 credentials are NOT persistent — they will be wiped on the next redeploy. '
+        + 'Set CF_ACCOUNT_ID + CF_API_TOKEN in the Railway env (or mount a volume at DATA_DIR) to fix.';
+      el.style.display = 'block';
+    }
+  } catch (e) {}
+}
+checkKvHealth();
+
 loadConfig();
 loadBtConfig();
 loadRgConfig();
