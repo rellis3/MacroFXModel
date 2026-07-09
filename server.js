@@ -8566,6 +8566,19 @@ app.post('/api/range-line/run', async (req, res) => {
     dateFrom:   b.dateFrom || '', dateTo: b.dateTo || '',
     mcRuns: 1000, bootRuns: 1000,
   };
+  // Structural-confluence condition (fibs/pivots/HVN-POC-VAH-VAL/S&R/round/VWAP via
+  // the levelSources brick). Only computed when the `confluence` condition is
+  // requested — it tags each line with how many distinct sources back it, so the
+  // policy can trade confluence-backed lines and skip the bare ones. Its params
+  // change the line RECORDS (not just the cell key), so they join the cache key.
+  if (opts.conditions.includes('confluence')) {
+    opts.confluence = {
+      enabled: true,
+      tolFrac:      (b.confTolFrac != null && b.confTolFrac !== '') ? parseFloat(b.confTolFrac) : 0.1,
+      lookbackDays: (b.confLookbackDays != null && b.confLookbackDays !== '') ? parseInt(b.confLookbackDays) : 5,
+      sources:      Array.isArray(b.confSources) && b.confSources.length ? b.confSources : undefined,
+    };
+  }
 
   const jobId = `rl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
@@ -8579,7 +8592,12 @@ app.post('/api/range-line/run', async (req, res) => {
       // only changes how extractTouches keys cells — so a none↔approachVel toggle
       // re-derives touches from cached records for free. Policy knobs
       // (minN/splitFrac/marginPct) don't touch records either → also cached.
-      const recKey = [opts.sources.join(','), opts.minLookback, opts.dateFrom, opts.dateTo, opts.boundaryHour, opts.asiaHrs].join('|');
+      // `conditions` is NOT in the key (it only re-keys cells post-hoc) EXCEPT
+      // `confluence`, whose bucket is baked into the records at build time — so its
+      // params (on/tol/lookback/sources) MUST join the key or a toggle would reuse
+      // stale (confluence-less) records.
+      const cSig = opts.confluence ? `conf:${opts.confluence.tolFrac}:${opts.confluence.lookbackDays}:${(opts.confluence.sources || []).join(',')}` : 'noconf';
+      const recKey = [opts.sources.join(','), opts.minLookback, opts.dateFrom, opts.dateTo, opts.boundaryHour, opts.asiaHrs, cSig].join('|');
       const touchesByPair = {}, costByPair = {};
       let done = 0;
       const setProg = cur => rlJobs.set(jobId, { status: 'running', startedAt, currentPair: cur, pairsDone: done, pairsTotal: pairs.length });

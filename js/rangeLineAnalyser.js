@@ -30,6 +30,28 @@ import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { createTouchFeatures } from './touchFeatures.js';
 import { extractTouches, runPerLine, pnlFor, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { portfolioStats } from './backtestStats.js';
+import { collectLevels } from './levelSources.js';
+
+// ── Structural-confluence condition (the fibs/pivots/HVN-POC-VAH-VAL brick lift) ─
+// Reuses the Tier-2 `levelSources` brick — NEVER re-derives pivots/profile/S&R — to
+// ask, per fib line: does a structural level (pivot, PDH/PDL, POC/VAH/VAL, swing
+// S&R, swing-fib cluster, round number, VWAP) sit within tolerance of it? The
+// touched line is bucketed by how many DISTINCT sources confirm it, so the per-line
+// policy can learn "trade a line only when a confluence backs it, skip a bare line".
+// The count of distinct sources is the signal (Osler/market-profile confluence).
+export const CONFLUENCE_SOURCES = ['pivots', 'prior_hilo', 'volume_profile', 'swing_sr', 'swing_fib', 'round_number', 'vwap'];
+
+// Bucket a level by how many DISTINCT confluence sources land within `tol` (price
+// units) of it. `1·none` (no source) is a real cell too — the policy skips it if it
+// doesn't pay, which IS the "skip a line with no confluence" test. Returns null when
+// there are no confluence levels / tol so extractTouches drops the (uncomputed) cell.
+export function confluenceBucketAt(level, confLevels, tol) {
+  if (!confLevels || !confLevels.length || !(tol > 0)) return null;
+  const srcs = new Set();
+  for (const lv of confLevels) if (Math.abs(lv.price - level) <= tol) srcs.add(lv.source || lv.kind);
+  const n = srcs.size;
+  return n >= 2 ? '3·multi' : n === 1 ? '2·single' : '1·none';
+}
 
 // Sparse STRUCTURAL ladder — half-integer fib grid (…−1,−0.5,0,0.5,1,1.5…) so the
 // triple-barrier neighbours are real distances, not the 0.25-dense grid.
@@ -82,7 +104,7 @@ export function walkChandelierExit(bars, touchIdx, n, L, dirUp, protectStop, run
 // resolved against the SAME intraday path (this session's bars). Emits line
 // records in perLineStrategy's shape.
 export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
-  const { sigma = 0, tf = null, pip = 0 } = ctx;
+  const { sigma = 0, tf = null, pip = 0, confLevels = null, confTolFrac = 0.1 } = ctx;
   const n = bars.length;
   if (n < 2) return [];
   const closePx = bars[n - 1].close;
@@ -92,6 +114,9 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
   for (const lad of ladders) {
     const mid = (lad.low + lad.high) / 2;
     const prices = lad.levels.map(l => l.level);          // sorted ascending
+    // Confluence tolerance is a fraction of THIS range (a rung = 0.5·range), so
+    // "on the line" auto-scales across fx / gold / indices instead of a fixed pip.
+    const confTol = confLevels ? confTolFrac * (lad.high - lad.low) : 0;
     // NO LOOKAHEAD: a level isn't tradeable until its range is KNOWN. The Asia
     // low/high (A_0/A_1) are defined by the formation window, so a touch DURING
     // formation + "revert to mid" is circular (price is inside its own range by
@@ -130,6 +155,11 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
                   wtState: f.wtState?.bucket ?? null, volClimax: f.volClimax?.bucket ?? null,
                   candleReject: f.candleReject?.bucket ?? null, roundNum: f.roundNum?.bucket ?? null };
       }
+
+      // Structural-confluence bucket (session-level levels precomputed in ctx):
+      // how many distinct sources sit within confTol of this line (null when the
+      // confluence brick wasn't run for this session).
+      const confluence = confLevels ? confluenceBucketAt(L, confLevels, confTol) : null;
 
       // Triple-barrier walk from the touch: inner first = reverted, outer = continued.
       let outcome = 'undecided', decidedBy = 'close';
@@ -199,6 +229,7 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
         approachVel: feats?.approachVel ?? null, approachER: feats?.approachER ?? null,
         wtState: feats?.wtState ?? null, volClimax: feats?.volClimax ?? null,
         candleReject: feats?.candleReject ?? null, roundNum: feats?.roundNum ?? null,
+        confluence,
         excMid: +excMid.toFixed(5), excAway: +excAway.toFixed(5),
         fStructFade: +fStructFade.toFixed(5), fChandFade: +fChandFade.toFixed(5),
         fStruct: +fStruct.toFixed(5), fChand: +fChand.toFixed(5),
@@ -209,12 +240,15 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
 }
 
 // Daily OHLC from the M1 sessions (open=first, close=last) — for σ + Monday range.
+// `time` = the session date's UTC-midnight epoch (seconds), so the levelSources
+// brick (pivots / prior-hilo / swing-fib) can date/group the daily bars.
 function sessionsToD1(sessions, dates) {
   return dates.map(date => {
     const b = sessions.get(date);
     let hi = -Infinity, lo = Infinity;
     for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
-    return { date, open: b[0].open, high: hi, low: lo, close: b[b.length - 1].close };
+    return { date, time: Math.floor(Date.parse(date + 'T00:00:00Z') / 1000),
+             open: b[0].open, high: hi, low: lo, close: b[b.length - 1].close };
   });
 }
 
@@ -234,6 +268,15 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
   const { sources = ['asia', 'monday'], minLookback = 20, minBarsPerSession = 30,
           asiaHrs = 6, dateFrom = '', dateTo = '' } = opts;
   const tf = createTouchFeatures(opts.touchCfg);
+
+  // Structural-confluence config (opts.confluence). Off unless enabled — computing
+  // the level sources per session is only worth it when the `confluence` condition
+  // is actually being tested.
+  const conf = opts.confluence || {};
+  const confOn = !!conf.enabled;
+  const confSources = Array.isArray(conf.sources) && conf.sources.length ? conf.sources : CONFLUENCE_SOURCES;
+  const confLookback = conf.lookbackDays ?? 5;
+  const confTolFrac = conf.tolFrac ?? 0.1;
 
   const dates = [...sessions.keys()].sort()
     .filter(d => (sessions.get(d)?.length ?? 0) >= minBarsPerSession);
@@ -283,7 +326,21 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
     }
     if (!ladders.length) continue;
 
-    const lines = analyseRangeWindow({ open, bars }, ladders, { sigma, tf, pip: opts.pip ?? 0 });
+    // Structural confluence for THIS session, from completed prior days only (no
+    // lookahead): daily bars strictly before today + the prior `confLookback`
+    // sessions' M1 for the volume-profile / VWAP sources. Computed once per session
+    // (same levels feed both the Asia and Monday ladders).
+    let confLevels = null;
+    if (confOn) {
+      const dailyBars = d1.slice(0, i);
+      let intraday = [];
+      for (let j = Math.max(0, i - confLookback); j < i; j++) {
+        const pb = sessions.get(dates[j]); if (pb) intraday = intraday.concat(pb);
+      }
+      confLevels = collectLevels({ dailyBars, intraday, pipSize: opts.pip || undefined, price: open }, confSources);
+    }
+
+    const lines = analyseRangeWindow({ open, bars }, ladders, { sigma, tf, pip: opts.pip ?? 0, confLevels, confTolFrac });
     if (lines.length) records.push({ date, open: +open.toFixed(6), realized: { close: +bars[bars.length - 1].close.toFixed(6) }, lines });
   }
   return records;
