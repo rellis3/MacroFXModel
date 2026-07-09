@@ -308,10 +308,11 @@ function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
   const p75 = _summCost(_costRows(recs, 'p75Extension', costTable), minPairs);
   const calm = _summCost(_costRows(recs, 'conditionalCalm', costTable), minPairs);
   const dyn = _summCost(_costRows(recs, 'dynExtension', costTable), minPairs);      // dynamic H-L from running extreme
-  const dyn75 = _summCost(_costRows(recs, 'dynP75Extension', costTable), minPairs);  // dynamic 75th H-L
+  const dyn75 = _summCost(_costRows(recs, 'dynP75Extension', costTable), minPairs);  // dynamic 75th H-L (Feller p75/p50)
+  const dynRatio75 = _summCost(_costRows(recs, 'dynRatioP75Extension', costTable), minPairs);  // dynamic 75th H-L (empirical ratio_yz p75)
   const oc = _summCost(_costRows(recs, 'ocExtension', costTable), minPairs);         // open-close line (distinct from O-H/O-L)
   // `median`/`p75` are the drift-adjusted O-H/O-L lines (level-set #2).
-  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75 } };
+  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75 } };
 }
 
 // ── Public: build the cross-pair report ───────────────────────────────────────

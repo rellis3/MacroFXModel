@@ -32,6 +32,7 @@ import { classifyRegime } from './volBacktestEngine.js';
 
 const _mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
 const _median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+const _pctile = (a, p) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); const i = p / 100 * (s.length - 1); const lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
 const _rate = a => a.length ? _mean(a.map(v => v ? 1 : 0)) * 100 : null;
 
 // London session bucket for a timestamp (ms). Windows from sessionStats.SESSIONS.
@@ -125,14 +126,14 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
 
   const expRows = [];
-  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [], ocMed: [], ocP75: [] };
+  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [], dynRatioP75: [], ocMed: [], ocP75: [] };
   let firstUpper = 0, firstLower = 0, eitherTouched = 0;
   // WALK-FORWARD recalibration of the TOUCH LEVELS (the reference forecaster runs
   // wide; a bot would place tighter bands). factor = trailing median(realized ÷
   // forecast H-L) from PRIOR windows only (causal), clamped. Applied to the level
   // DISTANCES so the touch/fade/cost study measures the bands a bot would trade,
   // not the too-wide raw lines. Expansion (vs the raw forecast) stays un-scaled.
-  const hlRatioHist = [], recalFactors = [];
+  const hlRatioHist = [], recalFactors = [], ratioP75Factors = [];
   // CONDITIONAL-fade filter state (causal): a "calm" day = forecast-time vov at/below
   // its trailing median AND the prior window didn't blow through (realized ≤ 118% of
   // forecast). These are the days the hidden-relationship scan flags as low-miss —
@@ -212,6 +213,20 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     if (dHiMed) touchRows.dynMed.push({ ...dHiMed, regime, calm });
     if (dLoP75) touchRows.dynP75.push({ ...dLoP75, regime, calm });
     if (dHiP75) touchRows.dynP75.push({ ...dHiP75, regime, calm });
+    // Level-set #3b: ratio_yz DYNAMIC 75th — the band-calc A/B winner. The dynamic
+    // MEDIAN band already equals ratio_yz.med (recalF = median(realized÷forecast H-L)
+    // × Feller-median ≡ σ × median(realized÷σ)), so only the 75th is a genuine
+    // re-test: replace the Feller p75/p50 ratio (a fixed 1.303× the median) with the
+    // EMPIRICAL 75th percentile of realized÷forecast (causal, prior windows, clamped).
+    const f75 = (recalibrate && hlRatioHist.length >= 20)
+      ? Math.min(2.0, Math.max(0.5, _pctile(hlRatioHist.slice(-80), 75))) : null;
+    if (f75 != null) {
+      ratioP75Factors.push(f75);
+      const r75R = (fc[H.hl] ?? 0) / 100 * f75;
+      const dLoR = _dynLevelOutcome(bars, r75R, -1, pip), dHiR = _dynLevelOutcome(bars, r75R, +1, pip);
+      if (dLoR) touchRows.dynRatioP75.push({ ...dLoR, regime, calm });
+      if (dHiR) touchRows.dynRatioP75.push({ ...dHiR, regime, calm });
+    }
     // Level-set #1: Open-Close touches (open ± oc), median + 75th.
     if (ocMed > 0) {
       const ocU = _levelOutcome(bars, open * (1 + ocMed), +1, pip, hyst), ocD = _levelOutcome(bars, open * (1 - ocMed), -1, pip, hyst);
@@ -231,7 +246,8 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     if (vov != null) vovHist.push(vov);
   }
 
-  const recalMeta = { applied: recalibrate, medianFactor: recalFactors.length ? +(_median(recalFactors)).toFixed(3) : 1 };
+  const recalMeta = { applied: recalibrate, medianFactor: recalFactors.length ? +(_median(recalFactors)).toFixed(3) : 1,
+    ratioP75Factor: ratioP75Factors.length ? +(_median(ratioP75Factors)).toFixed(3) : null };
   return summarize(expRows, touchRows, { firstUpper, firstLower, eitherTouched }, lond, H, recalMeta);
 }
 
@@ -330,6 +346,8 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
     // Level-set #3: dynamic H-L range from the running extreme (median + 75th).
     dynExtension:    { ...(_touchStats(touchRows.dynMed || [], totalWindows)), byRegime: _byRegime(touchRows.dynMed || []), fadePayoff: _fadePayoff(touchRows.dynMed || []) },
     dynP75Extension: { ...(_touchStats(touchRows.dynP75 || [], totalWindows)), byRegime: _byRegime(touchRows.dynP75 || []), fadePayoff: _fadePayoff(touchRows.dynP75 || []) },
+    // Level-set #3b: ratio_yz dynamic 75th (empirical p75 factor, the band-calc winner).
+    dynRatioP75Extension: { p75Factor: recalMeta.ratioP75Factor, ...(_touchStats(touchRows.dynRatioP75 || [], totalWindows)), byRegime: _byRegime(touchRows.dynRatioP75 || []), fadePayoff: _fadePayoff(touchRows.dynRatioP75 || []) },
     // Conditional fade: median-line touches restricted to CALM days (the tail filter).
     conditionalCalm: { filter: 'calm = vov ≤ trailing-median AND prior window ≤ 118% forecast',
       ...(_touchStats(medCalm, totalWindows)), fadePayoff: _fadePayoff(medCalm) },
