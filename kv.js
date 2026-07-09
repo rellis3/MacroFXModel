@@ -93,6 +93,7 @@ const _CF_EXACT = new Set([
   'range_line_bot_config',      // Range-Line bot settings — must survive redeploys
   'range_line_bot_credentials', // Range-Line bot MT5 credentials — must survive redeploys
   'range_line_bot_plan',        // Range-Line bot daily plan (per-instrument policy) — keep last good plan across a redeploy
+  'range_line_confluence',      // Range-Line bot daily confluence levels (for the entry gate) — must live in CF KV so the worker's /api/kv/get can serve it to the bot (same store the plan uses)
   'range_line_bot_audit_log',   // Range-Line bot entry/exit audit log — cannot be auto-rebuilt
   // NOTE: range_line_bot_status is deliberately NOT here — the bot rewrites it every
   // ~30s (same reason as volatility_bot_status).
