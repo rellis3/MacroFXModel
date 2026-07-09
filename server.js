@@ -5365,7 +5365,12 @@ app.get('/api/range-line-bot/zones', async (req, res) => {
     let out = vm;
     const pair = (req.query.pair || '').toLowerCase();
     if (pair) out = { ...vm, pairs: vm.pairs.filter(p => p.pair === pair) };
+    // The Asia formation window so the page can mark it up: boundaryHour (London
+    // midnight in UTC, DST-aware) + asiaHrs. From the plan (authoritative), else
+    // the live server values.
     res.json({ ok: true, ...out, hasStatus: !!status, hasConfluence: !!confluence,
+      boundaryHour: plan?.boundaryHour ?? confluence?.boundaryHour ?? _rlBoundaryHour(),
+      asiaHrs: plan?.asiaHrs ?? RL_BOT_ASIA_HRS,
       confluenceGeneratedAt: confluence?.generatedAt ?? null, planGeneratedAt: plan?.generatedAt ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

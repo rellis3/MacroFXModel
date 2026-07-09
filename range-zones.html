@@ -62,6 +62,7 @@
     <select id="pairSel" title="instrument"></select>
     <span class="price" id="price">—</span>
     <span style="flex:1"></span>
+    <label class="muted" title="tint the candles that formed today's Asia range + draw its high/low, to check it's marked right"><input type="checkbox" id="asiaMarks" checked> Asia range</label>
     <label class="muted"><input type="checkbox" id="strongOnly"> strong (≥2) only</label>
     <select id="cmin" title="gate threshold to highlight">
       <option value="2" selected>gate = strong (≥2)</option>
@@ -78,6 +79,7 @@
     <span style="color:var(--teal)">▸ ringed = gated (would trade live)</span>
     <span style="color:var(--amber)">▸ dashed = already taken today</span>
     <span>thicker line = more confluence</span>
+    <span style="color:var(--teal)">▸ teal candles + Asia H/L = the range formation window</span>
   </div>
   <div class="chips" id="counts"></div>
   <div class="grid" id="zones"></div>
@@ -184,10 +186,23 @@ async function drawChart(p, d) {
     const now = Math.floor(Date.now()/1000), buf = p.price*0.002;
     for (let i=60;i>=0;i--) candles.push({ time: now-i*300, open:p.price, high:p.price+buf, low:p.price-buf, close:p.price });
   }
+  // Asia formation window — tint the candles that built today's range so you can
+  // eyeball whether it's marked right. Toggle it off once checked.
+  const showAsia = $('asiaMarks').checked;
+  if (showAsia && candles.length) {
+    const w = asiaWindow();
+    candles = candles.map(c => (c.time >= w.start && c.time < w.end)
+      ? { ...c, color:'#2f6f6a', wickColor:'#4fd1c5', borderColor:'#4fd1c5' } : c);
+  }
   if (candles.length) _series.setData(candles);
   // Zone price-lines: green follow / red fade, thicker + solid when more confluence.
   _priceLines.forEach(pl => { try { _series.removePriceLine(pl); } catch{} });
   _priceLines = [];
+  // Asia range band (the extremes the ladder hangs off) — solid teal, labelled.
+  if (showAsia && p.asia) {
+    _priceLines.push(_series.createPriceLine({ price:p.asia.high, color:'#4fd1c5', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'Asia H' }));
+    _priceLines.push(_series.createPriceLine({ price:p.asia.low,  color:'#4fd1c5', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:'Asia L' }));
+  }
   const strongOnly = $('strongOnly').checked;
   for (const z of p.zones.filter(z=>z.tradeable && (!strongOnly || z.gated))) {
     const color = z.decision==='follow' ? '#34d399' : '#f87171';
@@ -199,8 +214,19 @@ async function drawChart(p, d) {
   if (p.price) _priceLines.push(_series.createPriceLine({ price:p.price, color:'#facc15', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'price' }));
 }
 
+// Most-recent London-midnight (boundaryHour:00 UTC) anchor + the Asia window end.
+function asiaWindow() {
+  const bh = _data?.boundaryHour ?? 0, ah = _data?.asiaHrs ?? 6;
+  const now = Date.now();
+  let anchor = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate(), bh, 0, 0);
+  if (anchor > now) anchor -= 86400000;
+  const start = Math.floor(anchor / 1000);
+  return { start, end: start + ah * 3600 };
+}
+
 $('pairSel').addEventListener('change', render);
 $('strongOnly').addEventListener('change', render);
+$('asiaMarks').addEventListener('change', render);
 $('cmin').addEventListener('change', load);
 load();
 setInterval(load, 30000);   // zones + price refresh as the day moves
