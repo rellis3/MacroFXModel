@@ -5772,20 +5772,37 @@ app.get('/api/cog-level-poc', async (_req, res) => {
       try {
         let pip = 0.0001; try { pip = _pipSize(p.name) || pip; } catch { /* keep default */ }
         const bars5 = await _loadM1ForAB(p.name.toLowerCase(), 5);
-        const byDate = new Map(buildLondonDaily(bars5).map(d => [d.date, d]));
+        const lond = buildLondonDaily(bars5 || []);
+        const byDate = new Map(lond.map(d => [d.date, d]));
         const recs = [];
+        const why = { notInByDate: 0, noHlMed: 0, noBars: 0 };   // why a COG date was skipped
         for (const date of Object.keys(cogByDate)) {
-          const cog = _cog(date, p.name); const day = byDate.get(date);
-          if (!cog || !(cog.hl_med > 0) || !day?.bars?.length || !(day.open > 0)) continue;
+          const cog = _cog(date, p.name); if (!cog) continue;
+          const day = byDate.get(date);
+          if (!day) { why.notInByDate++; continue; }
+          if (!(cog.hl_med > 0)) { why.noHlMed++; continue; }
+          if (!day.bars?.length || !(day.open > 0)) { why.noBars++; continue; }
           recs.push({ date, open: day.open, bars: day.bars, pip, cog });
         }
         row.pip = pip; row.cogDatesForPair = Object.keys(cogByDate).filter(d => _cog(d, p.name)).length;
         row.matchedDays = recs.length;
+        row.debug = {
+          barsLoaded: bars5?.length ?? 0, londonDays: lond.length,
+          londonFirst: lond[0]?.date ?? null, londonLast: lond.at(-1)?.date ?? null,
+          skipReasons: why,
+        };
         row.result = _analyzeCogLevels(recs);
       } catch (e) { row.error = e.message; }
       results.push(row);
     }
+    // Top-level debug: the COG date range + a sample parsed record, to see if it's a
+    // date-range mismatch (M1 doesn't cover recent COG days) or a parse/name issue.
+    const firstDate = Object.keys(cogByDate)[0];
     res.json({ ok: true, generatedAt: new Date().toISOString(), cogDates: dates.length,
+      debug: { cogDateRange: dates.length ? `${dates[dates.length - 1]} … ${dates[0]}` : null,
+        cogDatesList: dates, sampleDate: firstDate ?? null,
+        sampleCogInstruments: firstDate ? Object.keys(cogByDate[firstDate] || {}) : [],
+        sampleCogEURUSD: firstDate ? (_cog(firstDate, 'EURUSD') || null) : null },
       note: 'COG\'s actual median/75th (dynamic H-L from the running extreme) and O-C levels vs actual price, on the COG days we have. revert% = touches that faded back; meanRevertPips/Pct = how far; meanCloseFadePips = enter-at-level, hold-to-close fade PnL.',
       results });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
