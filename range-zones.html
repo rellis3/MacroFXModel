@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Range-Line Zones</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0b0e13;--s1:#141922;--s2:#1b2230;--s3:#232c3d;--border:#2a3346;--border2:#3a465e;
+    --text:#e6ebf2;--text2:#9fb0c6;--text3:#6b7a90;--r:10px;--teal:#4fd1c5;--green:#34d399;--red:#f87171;
+    --amber:#f59e0b;--purple:#c084fc;--gold:#facc15;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px}
+  a{color:var(--teal);text-decoration:none}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 20px 60px}
+  .topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+  .title{font-size:18px;font-weight:700;color:var(--teal)}
+  .sub{color:var(--text3);font-size:12px}
+  select,button{background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:7px;
+    padding:6px 10px;font-size:13px;font-family:inherit;cursor:pointer}
+  .price{font-family:'DM Mono',monospace;font-weight:700;font-size:15px;color:var(--gold)}
+  .muted{color:var(--text3);font-size:12px}
+  .banner{background:#3b0d0d;border:1px solid var(--red);color:#fecaca;border-radius:8px;padding:8px 12px;
+    font-size:12.5px;margin:8px 0;display:none}
+  .card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+  #chart{height:340px;width:100%;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);background:var(--s1)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .chip{font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);background:var(--s2);
+    border:1px solid var(--border);border-radius:20px;padding:3px 10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:14px}
+  .zone{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 13px;position:relative}
+  .zone.follow{border-left:3px solid var(--green)}
+  .zone.fade{border-left:3px solid var(--red)}
+  .zone.skip{opacity:.5;border-left:3px solid var(--border2)}
+  .zone.gated{box-shadow:0 0 0 1px rgba(79,209,197,.4);border-color:var(--teal)}
+  .zone.taken{outline:2px dashed var(--amber);outline-offset:-2px}
+  .zrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .zlabel{font-family:'DM Mono',monospace;font-weight:600;font-size:13px}
+  .zlevel{font-family:'DM Mono',monospace;color:var(--text2);font-size:13px}
+  .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-radius:5px;padding:2px 7px}
+  .b-follow{background:rgba(52,211,153,.14);color:var(--green)}
+  .b-fade{background:rgba(248,113,113,.14);color:var(--red)}
+  .b-skip{background:var(--s3);color:var(--text3)}
+  .b-strong{background:rgba(79,209,197,.16);color:var(--teal)}
+  .b-single{background:rgba(250,204,21,.14);color:var(--gold)}
+  .b-none{background:var(--s3);color:var(--text3)}
+  .b-taken{background:rgba(245,158,11,.16);color:var(--amber)}
+  .srcs{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 6px}
+  .src{font-size:10px;font-family:'DM Mono',monospace;background:var(--s3);border:1px solid var(--border);
+    border-radius:4px;padding:1px 6px;color:var(--text2)}
+  .tpsl{display:flex;gap:16px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);margin-top:8px}
+  .tpsl b{color:var(--text)}
+  .dist{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text3);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <span class="title">📊 Range-Line Zones</span>
+    <select id="pairSel" title="instrument"></select>
+    <span class="price" id="price">—</span>
+    <span style="flex:1"></span>
+    <label class="muted"><input type="checkbox" id="strongOnly"> strong (≥2) only</label>
+    <select id="cmin" title="gate threshold to highlight">
+      <option value="2" selected>gate = strong (≥2)</option>
+      <option value="1">gate = confluent (≥1)</option>
+    </select>
+    <button id="refreshBtn" onclick="load()">↺</button>
+  </div>
+  <div class="sub" id="meta">Today's Asia/Monday range levels the bot is watching — direction, confluence strength, and stop/target per zone. <a href="range-line-strategy.html" target="_blank">backtest ↗</a></div>
+  <div class="banner" id="banner"></div>
+
+  <div style="margin-top:12px"><div id="chart"></div></div>
+  <div class="legend">
+    <span>🟢 follow (breakout)</span><span>🔴 fade (reversion)</span>
+    <span style="color:var(--teal)">▸ ringed = gated (would trade live)</span>
+    <span style="color:var(--amber)">▸ dashed = already taken today</span>
+    <span>thicker line = more confluence</span>
+  </div>
+  <div class="chips" id="counts"></div>
+  <div class="grid" id="zones"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let _data = null, _chart = null, _series = null, _priceLines = [];
+const OANDA = p => ({eurusd:'EUR_USD',gbpusd:'GBP_USD',usdjpy:'USD_JPY',usdchf:'USD_CHF',usdcad:'USD_CAD',
+  audusd:'AUD_USD',nzdusd:'NZD_USD',eurjpy:'EUR_JPY',eurgbp:'EUR_GBP',euraud:'EUR_AUD',eurcad:'EUR_CAD',
+  eurchf:'EUR_CHF',eurnzd:'EUR_NZD',gbpjpy:'GBP_JPY',gbpaud:'GBP_AUD',gbpcad:'GBP_CAD',gbpchf:'GBP_CHF',
+  gbpnzd:'GBP_NZD',audjpy:'AUD_JPY',audcad:'AUD_CAD',audchf:'AUD_CHF',audnzd:'AUD_NZD',cadjpy:'CAD_JPY',
+  chfjpy:'CHF_JPY',nzdjpy:'NZD_JPY',gold:'XAU_USD',nq:'NAS100_USD',spx500:'SPX500_USD',de30:'DE30_EUR',
+  us30:'US30_USD',us2000:'US2000_USD'}[p] || p.toUpperCase());
+const digitsFor = pip => pip >= 1 ? 1 : pip >= 0.01 ? 2 : pip >= 0.001 ? 3 : 5;
+const fmt = (v, d) => v == null ? '—' : Number(v).toFixed(d);
+
+async function load() {
+  const cmin = $('cmin').value;
+  try {
+    const r = await fetch(`/api/range-line-bot/zones?confluenceMin=${cmin}`);
+    _data = await r.json();
+  } catch (e) { _data = { ok:false, error:e.message }; }
+  const b = $('banner');
+  if (!_data.ok) { b.style.display='block'; b.textContent = 'Error: ' + (_data.error||'failed'); return; }
+  if (!_data.hasStatus) { b.style.display='block'; b.textContent = 'No live bot status yet — the ladders appear once the Range-Line bot is running and the London range has formed (after 06:00 London). ' + (!_data.hasConfluence ? 'Confluence artifact also missing — POST /api/range-line-bot/refresh-confluence.' : ''); }
+  else if (!_data.hasConfluence) { b.style.display='block'; b.textContent = 'Confluence artifact missing — all zones show as 1·none. POST /api/range-line-bot/refresh-confluence.'; }
+  else b.style.display='none';
+
+  // Populate pair selector (preserve selection).
+  const sel = $('pairSel'), prev = sel.value;
+  const pairs = (_data.pairs||[]).map(p=>p.pair);
+  sel.innerHTML = pairs.map(p=>`<option value="${p}">${p.toUpperCase()}</option>`).join('') || '<option>—</option>';
+  if (pairs.includes(prev)) sel.value = prev;
+  render();
+}
+
+function activePair(){ return (_data?.pairs||[]).find(p => p.pair === $('pairSel').value) || (_data?.pairs||[])[0]; }
+
+function render() {
+  const p = activePair();
+  if (!p) { $('zones').innerHTML=''; $('price').textContent='—'; return; }
+  const d = digitsFor(p.pip||0.0001);
+  $('price').textContent = (p.price!=null ? fmt(p.price,d) : '—') + '  ' + p.pair.toUpperCase();
+  $('counts').innerHTML = [
+    `<span class="chip">${p.zones.length} zones</span>`,
+    `<span class="chip">${p.counts.tradeable} tradeable</span>`,
+    `<span class="chip" style="color:var(--teal)">${p.counts.strong} strong (gated)</span>`,
+    p.asia ? `<span class="chip">Asia ${fmt(p.asia.low,d)}–${fmt(p.asia.high,d)}</span>`:'',
+    p.monday ? `<span class="chip">Monday ${fmt(p.monday.low,d)}–${fmt(p.monday.high,d)}</span>`:'',
+    _data.confluenceGeneratedAt ? `<span class="chip">conf ${_data.confluenceGeneratedAt.slice(0,16).replace('T',' ')}Z</span>`:'',
+  ].join('');
+  renderCards(p, d);
+  drawChart(p, d);
+}
+
+function renderCards(p, d) {
+  const strongOnly = $('strongOnly').checked;
+  let zs = p.zones.filter(z => z.tradeable);        // hide skip levels from the cards
+  if (strongOnly) zs = zs.filter(z => z.gated);
+  if (!zs.length) { $('zones').innerHTML = `<div class="muted" style="padding:20px">No ${strongOnly?'strong ':''}tradeable zones for ${p.pair.toUpperCase()} right now.</div>`; return; }
+  $('zones').innerHTML = zs.map(z => {
+    const bkt = z.confluence.bucket, bkClass = bkt==='3·multi'?'b-strong':bkt==='2·single'?'b-single':'b-none';
+    const bkLabel = bkt==='3·multi'?`strong · ${z.confluence.count} sources`:bkt==='2·single'?'single source':'no confluence';
+    const cls = ['zone', z.decision, z.gated?'gated':'', z.taken?'taken':''].join(' ');
+    const dist = z.distPips!=null ? `${z.distPips>0?'+':''}${z.distPips} pips` : '';
+    return `<div class="${cls}">
+      <div class="zrow">
+        <span class="zlabel">${z.label} <span class="muted">${z.side}</span></span>
+        <span class="zlevel">${fmt(z.level,d)}</span>
+      </div>
+      <div class="zrow" style="margin-top:6px">
+        <span><span class="badge b-${z.decision}">${z.decision}</span> <span class="badge ${bkClass}">${bkLabel}</span>${z.taken?' <span class="badge b-taken">taken</span>':''}</span>
+        <span class="dist">${dist}</span>
+      </div>
+      ${z.confluence.sources.length ? `<div class="srcs">${z.confluence.sources.map(s=>`<span class="src">${s}</span>`).join('')}</div>`:''}
+      <div class="tpsl">
+        <span>SL <b>${fmt(z.sl,d)}</b></span>
+        <span>Target <b>${fmt(z.target,d)}</b> <span class="muted">(trail)</span></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function drawChart(p, d) {
+  const el = $('chart');
+  if (!_chart) {
+    _chart = LightweightCharts.createChart(el, { layout:{background:{color:'#141922'},textColor:'#9fb0c6'},
+      grid:{vertLines:{color:'#1b2230'},horzLines:{color:'#1b2230'}}, rightPriceScale:{borderColor:'#2a3346'},
+      timeScale:{borderColor:'#2a3346',timeVisible:true}, height:340, autoSize:true });
+    _series = _chart.addCandlestickSeries({ upColor:'#34d399',downColor:'#f87171',borderVisible:false,
+      wickUpColor:'#34d399',wickDownColor:'#f87171' });
+  }
+  // Candles — best-effort; fall back to a flat ghost around price so lines have a scale.
+  let candles = [];
+  try {
+    const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(OANDA(p.pair))}`);
+    const j = await r.json();
+    const arr = j.candles || j.bars || j;
+    if (Array.isArray(arr)) candles = arr.map(c => ({ time: Math.floor((c.time||c.t)/ (String(c.time||c.t).length>=13?1000:1)),
+      open:+(c.open??c.o), high:+(c.high??c.h), low:+(c.low??c.l), close:+(c.close??c.c) })).filter(c=>c.time&&isFinite(c.close));
+  } catch (e) {}
+  if (!candles.length && p.price) {
+    const now = Math.floor(Date.now()/1000), buf = p.price*0.002;
+    for (let i=60;i>=0;i--) candles.push({ time: now-i*300, open:p.price, high:p.price+buf, low:p.price-buf, close:p.price });
+  }
+  if (candles.length) _series.setData(candles);
+  // Zone price-lines: green follow / red fade, thicker + solid when more confluence.
+  _priceLines.forEach(pl => { try { _series.removePriceLine(pl); } catch{} });
+  _priceLines = [];
+  const strongOnly = $('strongOnly').checked;
+  for (const z of p.zones.filter(z=>z.tradeable && (!strongOnly || z.gated))) {
+    const color = z.decision==='follow' ? '#34d399' : '#f87171';
+    const w = z.confluence.count>=2 ? 2 : 1;
+    _priceLines.push(_series.createPriceLine({ price:z.level, color,
+      lineWidth:w, lineStyle: z.gated?0:2, axisLabelVisible:true,
+      title:`${z.label} ${z.decision[0]}${z.confluence.count?('·'+z.confluence.count):''}` }));
+  }
+  if (p.price) _priceLines.push(_series.createPriceLine({ price:p.price, color:'#facc15', lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'price' }));
+}
+
+$('pairSel').addEventListener('change', render);
+$('strongOnly').addEventListener('change', render);
+$('cmin').addEventListener('change', load);
+load();
+setInterval(load, 30000);   // zones + price refresh as the day moves
+</script>
+</body>
+</html>

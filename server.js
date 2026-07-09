@@ -55,6 +55,7 @@ import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair
 import { pipSize as _pipSize, instrument } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence } from './js/rangeLineConfluenceProducer.js';
+import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
@@ -5342,6 +5343,30 @@ app.get('/api/range-line-bot/confluence', async (_req, res) => {
     if (!raw) return res.status(404).json({ ok: false, error: 'No confluence artifact yet — POST /api/range-line-bot/refresh-confluence (needs M1 data)' });
     const parsed = JSON.parse(raw);
     res.json({ ok: true, confluence: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Range-line ZONES — today's tradeable zones per pair for the range-zones page:
+// joins the live bot status (ladders + price), the frozen plan (fade/follow/skip)
+// and the confluence artifact (which sources make a zone stronger). Pure join in
+// js/rangeLineZones.js; this just reads KV + resolves pip.
+app.get('/api/range-line-bot/zones', async (req, res) => {
+  try {
+    const unwrap = raw => { if (!raw) return null; const p = JSON.parse(raw); return p?.data ?? p; };
+    const [status, plan, confluence] = (await Promise.all([
+      kv.get('range_line_bot_status'), kv.get('range_line_bot_plan'), kv.get('range_line_confluence'),
+    ])).map(unwrap);
+    const confluenceMin = (req.query.confluenceMin != null && req.query.confluenceMin !== '')
+      ? parseInt(req.query.confluenceMin) : 2;
+    const vm = buildRangeZones({ status, plan, confluence }, {
+      confluenceMin,
+      pipFor: (p) => { try { return _pipSize(p) || 0; } catch { return 0; } },
+    });
+    let out = vm;
+    const pair = (req.query.pair || '').toLowerCase();
+    if (pair) out = { ...vm, pairs: vm.pairs.filter(p => p.pair === pair) };
+    res.json({ ok: true, ...out, hasStatus: !!status, hasConfluence: !!confluence,
+      confluenceGeneratedAt: confluence?.generatedAt ?? null, planGeneratedAt: plan?.generatedAt ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
