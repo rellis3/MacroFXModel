@@ -65,6 +65,20 @@ history) — no lookahead. Fading only on calm days should trim the tail and lif
 net-of-cost. Implemented as `touches.conditionalCalm` in the engine; folded into
 `costSurvival.byLine.calm`.
 
+## Live result (2026-07-09 re-run, recalibrated ×0.84)
+
+Cost survival, FX-only (indices discounted), median net ×1 per line:
+- Open-Close −1.03 · O-H/O-L (drift) −1.04 · O-H/O-L 75th −0.54 · calm-day −1.20
+- **Dynamic H-L (median) −0.08 (≈breakeven)** · **Dynamic H-L (75th) +0.28, 2 FX pairs clear ×2**
+
+**The dynamic (running-extreme) levels are dramatically better than the static
+open-anchored ones** — the static fades are all ≈ −1 pip; the dynamic 75th is the
+only line with a positive FX net and the only one where any FX pair clears ×2.
+That validates the M1-walk thesis and the user's NAS example. **But it does NOT
+clear the pre-registered bar** (≥3 FX pairs across ≥2 types at ×2 — we got 2),
++0.28 pips is inside the cost-assumption noise, and it's still short-gamma. Verdict:
+**best of the family, first non-null, "worth a proper look" — not proven edge.**
+
 ## Pre-registered outcome (so a null can't be re-narrated)
 
 The screen tests each of the three lines FX-only (indices discounted), at cost ×2:

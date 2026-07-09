@@ -274,6 +274,22 @@ test('analyze: session relationships fold into hidden.session across pairs', () 
   assert.ok(r.hypotheses.some(h => /Asia share/i.test(h.text) && h.dataNeeded.includes('session join')));
 });
 
+test('analyze: band-calc A/B folds across pairs and ranks by calibration', () => {
+  const book = goodBook();
+  const mkBC = (climMiss, pageMiss) => ({ results: [
+    { key: 'climatology', label: 'Climatology', exceedMedianPct: 50 - climMiss / 2, exceed75Pct: 25, sharpness: 0.05, calibMiss: climMiss },
+    { key: 'page_approx', label: 'Current page', exceedMedianPct: 34, exceed75Pct: 18, sharpness: 0.42, calibMiss: pageMiss },
+    { key: 'ratio_yz', label: 'Ratio×YZ', exceedMedianPct: 49, exceed75Pct: 26, sharpness: 0.30, calibMiss: 3 },
+  ] });
+  for (const p of Object.keys(book.perPair)) book.perPair[p].bandCalcAB = mkBC(2, 24);
+  const r = analyzeCrossPair(book);
+  assert.ok(r.bandCalc, 'band-calc folded');
+  assert.equal(r.bandCalc.calcs[0].key, 'climatology', 'best-calibrated calc ranked first');
+  const page = r.bandCalc.calcs.find(c => c.key === 'page_approx');
+  assert.ok(page.medianExceedMedian < 45, 'page calc flagged wide');
+  assert.match(r.bandCalc.verdict, /too wide/);
+});
+
 test('analyze: empty input returns insufficient, not a throw', () => {
   assert.equal(analyzeCrossPair({ perPair: {} }).insufficient, true);
   assert.equal(analyzeCrossPair(null).insufficient, true);
