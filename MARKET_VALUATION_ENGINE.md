@@ -373,6 +373,91 @@ is what separates this from the desks you named.
 
 ---
 
+## Part 9 — North Star & sequencing (the build order)
+
+Two grander targets get proposed once the MVE idea lands: a **Market State Space Model** (each
+model estimates a hidden state; a filter fuses them) and a **Market Relationship Engine** (every
+instrument valued as part of one connected macro system). Verdict on each, then the concrete steps.
+
+### 9.1 Verdict — is each a better target, or too far?
+
+| Target | Verdict | Why |
+|---|---|---|
+| **Market State Space Model** | **Adopt the framing; take the Kalman upgrade — reachable, not too far.** | It is the *same object* as the MVE, one abstraction up. The genuine upgrade over a static precision-weighted mean is a **Kalman / dynamic-linear model**: consensus fair value = a **hidden state that evolves**; each model = a **noisy observation**. That buys recursive online updates, time-varying precision weighting, and forward-propagated uncertainty (σ/CI for free). The machinery already exists (`compute5mKalmanDev`, `beta_estimator.py KalmanBeta`). **Caveat:** a filter over unvalidated observations makes bad inputs look *precise* — build and OOS-validate the emitters first, then wrap them. |
+| **Relationship Engine — factor-model form** | **Right long-term destination.** | Model a *small* set of shared macro factors (real rates, DXY, risk appetite, inflation expectations, liquidity); each instrument's fair value is a **loading** on them. Cross-asset coherence falls out automatically. Estimable, honest, and the repo already has seeds (5-factor macro beta, Kalman-OLS β, cross-pair USD strength, correlations dash). |
+| **Relationship Engine — causal propagation graph** | **🚫 Too far, and an overfitting trap.** | "Shock in oil → inflation → bonds → FX → gold" as an *estimated directed network*: parameters scale as N², relationships are non-stationary (correlations break in exactly the crises you built it for — `SYSTEM_ASSESSMENT §2.4`), and causal identification isn't recoverable from correlations on ~10–15y of daily data. Looks brilliant in-sample, dissolves OOS. Build the factor model, not the graph. |
+
+**The rule that governs all tiers:** each step (ensemble → SSM → cross-asset) multiplies the number
+of *estimated relationships*, which multiplies overfitting risk. So the unglamorous validation harness
+must exist **first** and scale with the ambition. The grander the target, the earlier the harness.
+
+### 9.2 The emitter contract (the thing every phase depends on)
+
+Every fair-value model implements one interface — a Tier-1 brick contract, so the ensemble, the
+filter, and the UI all consume the same shape:
+
+```
+  estimate(ctx) → { fairValue, sigma, confidence, asOf }   // fairValue in price units; sigma = OOS residual std
+```
+
+`sigma` **must** be an out-of-sample residual std (walk-forward), not the in-sample fit residual —
+this single choice is what keeps every downstream confidence honest.
+
+### 9.3 The steps
+
+**Phase 0 — Validation harness (do FIRST; it gates everything).**
+- Build a shared brick: purged/embedded walk-forward split + **deflated Sharpe** (adjust for trials).
+- Acceptance: reproduce one existing in-sample number *and* print its deflated counterpart beside it.
+- Why first: without it, every later "it works" is unfalsifiable (`SYSTEM_ASSESSMENT §2.1`).
+
+**Phase 1 — Emitter contract + first two fair-value models.**
+- Define the `estimate()` contract above as a brick; register it in `LEGO_MODULES.md`.
+- Refactor the two existing fair values to it: `compassDivergence` (FX) and `system-gold-macro.html`'s
+  OLS (gold). Extend the FX one from single-driver (spread) to **BEER-lite**: real-rate diff + DXY + curve.
+- Acceptance (per model, per instrument): emits `(fairValue, sigma)`; residual is stationary
+  (Engle-Granger / OU t-stat passes); OOS residual is calibrated (coverage of the 68/95 bands).
+
+**Phase 2 — Mispricing + convergence (per model, before any ensemble).**
+- Mispricing = **prediction-interval-adjusted standardized residual** (fold in β estimation error).
+- Point the existing OU/half-life primitive (`hedgeSignalV2Engine.js`) at the FV residual → emit
+  `P(convergence), expected magnitude, half-life, CI`, plus an **empirical/EVT tail** alongside the OU CI.
+- Acceptance: OU convergence probability is **benchmarked against the measured snap-back base rate**
+  OOS (the Pine indicator already computes one) — it must at least match it, honestly reported if not.
+
+**Phase 3 — Ensemble consensus + regime-adaptive weights.**
+- Combine emitters as **precision-weighted, de-correlated** gaps (reuse the PCA-decorrelation + T1/T3
+  discount patterns). Output consensus `fairValue`, `sigma_FV`, and **dispersion** (member disagreement).
+- Add regime-adaptive weights by **lifting `gold-model.js REGIME_WEIGHTS`** to the ensemble, gated by
+  the HMM/macro regime (mixture-of-experts). Weights capped per regime; table proven OOS, not swept.
+- Acceptance: ensemble OOS error ≤ best single member; dispersion moves confidence sensibly.
+
+**Phase 4 — Wire into the decision surface (make it change decisions, not just display).**
+- 6th **valuation factor** in `computeSignalScore` (renormalize weights).
+- Mispricing **tag + weight** in `runEntryScanner`; fair value as a non-arbitrary **TP target**.
+- MVE block into `aiCollectSnapshot` → the AI narrates valuation, not just structure.
+- Per-trade **valuation card** (Part 7); **journal logs FV & mispricing at entry** (feeds Phase 6/learning).
+
+**Phase 5 — Kalman SSM wrapper.**
+- Replace the static combiner with a DLM: hidden state = consensus FV; observations = emitters, each
+  with its `sigma`. Reuse the repo's Kalman code.
+- Acceptance: SSM OOS ≤ static ensemble error and CIs are **calibrated** (not just tighter).
+
+**Phase 6 — Shared-factor cross-asset model (the safe Relationship Engine). ONLY after 1–5 prove OOS edge.**
+- Small common-factor set → per-instrument loadings; values update jointly. Explicitly **not** a
+  propagation graph. Start read-only (a coherence check on the independent FVs) before it feeds sizing.
+
+**Deferred / do-not-build (restated):** learned/online weight updating (Phase 5.5 at earliest, heavily
+regularized), live options-Greeks pricer (get an IV *feed* instead), deep-learning price predictor,
+more confluence sources/tiers.
+
+### 9.4 The minimal first slice (if you build one thing this week)
+Phase 0's deflated-Sharpe walk-forward brick + Phase 1 on **EUR/USD only**: refactor `compassDivergence`
+to the `estimate()` contract, add the real-rate and DXY factors, and print its **OOS** mispricing z with
+calibrated bands. That single vertical slice proves the contract, the validation, and the honesty of the
+σ end-to-end — everything else is repetition and composition on top of it.
+
+---
+
 *Reviewed against the working tree (JS modules, Python bots/backtests, Pine, HTML, `server.js`,
 `_worker.js`). Module classifications and "exists/missing" claims were grep-verified. All
 forecasting/edge estimates are ex-ante and in-sample unless noted; treat this as a build-map and a
