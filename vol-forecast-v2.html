@@ -697,6 +697,7 @@
     <button class="v2-tool-btn" id="vfEventBtn"           onclick="toggleEventImpact()">Events</button>
     <button class="v2-tool-btn" id="vfRefDataBtn"         onclick="toggleRefPanel()">Ref Data</button>
     <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
+    <button class="v2-tool-btn" id="vfLevelAlertsBtn"     onclick="toggleLevelAlerts()">🔔 Level Alerts</button>
     <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
     <div class="v2-tool-sep"></div>
     <div class="vf-exp-dd" id="vfExpDropdown">
@@ -816,6 +817,77 @@
       <thead id="vfWeeklyHead"></thead>
       <tbody id="vfWeeklyBody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- LEVEL PROXIMITY ALERTS PANEL -->
+<div class="v2-panel" id="vfLevelAlertsPanel" style="display:none">
+  <div class="v2-panel-nav">
+    <span class="v2-panel-title">🔔 Level Proximity Alerts</span>
+    <span class="v2-panel-sub">Telegram alert when live price nears a forecast level — with approach speed, momentum z-score &amp; hidden divergence. Informational only.</span>
+  </div>
+  <div style="padding:14px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);display:flex;flex-direction:column;gap:16px;max-width:720px">
+
+    <!-- master enable -->
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" id="vlaEnabled"> <b style="color:var(--text)">Enable alerts</b>
+      <span style="color:var(--text3)">— server checks every ~90s</span>
+    </label>
+
+    <!-- threshold + cooldown -->
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <label style="display:flex;flex-direction:column;gap:4px">
+        <span style="color:var(--text3)">Default trigger distance (pips)</span>
+        <input type="number" id="vlaThreshDefault" min="1" step="1" style="width:110px" class="v2-hist-date">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px">
+        <span style="color:var(--text3)">Re-alert cooldown (minutes)</span>
+        <input type="number" id="vlaCooldown" min="1" step="1" style="width:110px" class="v2-hist-date">
+      </label>
+    </div>
+    <div style="color:var(--text3);font-size:10px;line-height:1.5">
+      Pip size differs by asset — gold/indices need a wider threshold. Per-pair overrides (JSON, canonical syms):
+      <input type="text" id="vlaThreshOverrides" placeholder='{"XAU/USD":40,"NAS100_USD":60}' style="width:100%;margin-top:4px" class="v2-hist-date">
+    </div>
+
+    <!-- which levels -->
+    <div>
+      <div style="color:var(--text3);margin-bottom:6px">Levels to watch</div>
+      <div id="vlaLevels" style="display:flex;flex-wrap:wrap;gap:6px 14px"></div>
+    </div>
+
+    <!-- pairs -->
+    <label style="display:flex;flex-direction:column;gap:4px">
+      <span style="color:var(--text3)">Pairs (comma-separated canonical syms, blank = all forecast instruments)</span>
+      <input type="text" id="vlaPairs" placeholder="EUR/USD, GBP/USD, XAU/USD" style="width:100%" class="v2-hist-date">
+    </label>
+
+    <!-- dedicated bot -->
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div style="color:var(--text);font-weight:600;margin-bottom:6px">Dedicated Telegram bot <span id="vlaBotStatus" style="font-weight:400;color:var(--text3)"></span></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <input type="text" id="vlaToken"  placeholder="Bot token (from @BotFather)" style="flex:1;min-width:220px" class="v2-hist-date">
+        <input type="text" id="vlaChatId" placeholder="Chat ID" style="width:150px" class="v2-hist-date">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="dark-btn" style="padding:4px 12px;font-size:11px" onclick="saveLevelAlertBot()">Save bot</button>
+        <button class="dark-btn" style="padding:4px 12px;font-size:11px" onclick="testLevelAlertBot()">Send test</button>
+        <button class="dark-btn" style="padding:4px 12px;font-size:11px" onclick="deleteLevelAlertBot()">Remove bot</button>
+      </div>
+    </div>
+
+    <!-- actions -->
+    <div style="display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);padding-top:12px">
+      <button class="dark-btn" style="padding:5px 16px;font-size:11px;border-color:var(--blue);color:var(--blue)" onclick="saveLevelAlertCfg()">Save settings</button>
+      <button class="dark-btn" style="padding:5px 12px;font-size:11px" onclick="scanLevelAlertsNow()">Scan now</button>
+      <span id="vlaMsg" style="color:var(--text3)"></span>
+    </div>
+
+    <!-- recent -->
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div style="color:var(--text3);margin-bottom:6px">Recent alerts (this server session)</div>
+      <div id="vlaRecent" style="color:var(--text3);font-size:10px;line-height:1.6">None yet.</div>
+    </div>
   </div>
 </div>
 
@@ -2829,6 +2901,86 @@ function toggleProfile() {
   const shown=panel.style.display!=='none';
   panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
   if (!shown&&!currentProfile) document.getElementById('vfProfileChart').innerHTML='<div style="padding:20px;font-size:11px;color:var(--text2);line-height:1.6"><strong>No profile data yet.</strong><br><br>Click <strong>⟳ Session Stats</strong> to compute the hourly vol profile.<br>Takes ~3–5 minutes once computed.</div>';
+}
+
+// ── Level proximity alerts ────────────────────────────────────────────────────
+const VLA_LABELS = {
+  oh_med:'O-H Median (up)', oh_75:'O-H 75th (up)',
+  ol_med:'O-L Median (down)', ol_75:'O-L 75th (down)',
+  hl_med_hi:'Proj High (H-L med)', hl_med_lo:'Proj Low (H-L med)',
+  hl_75_hi:'Proj High (H-L 75th)', hl_75_lo:'Proj Low (H-L 75th)',
+};
+let _vlaLoaded=false;
+function toggleLevelAlerts() {
+  const panel=document.getElementById('vfLevelAlertsPanel'), btn=document.getElementById('vfLevelAlertsBtn');
+  const shown=panel.style.display!=='none';
+  panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
+  if (!shown && !_vlaLoaded) loadLevelAlertCfg();
+}
+async function loadLevelAlertCfg() {
+  try {
+    const r=await fetch('/api/vol-forecast/level-alerts/config'); const d=await r.json();
+    if (!d.ok) return;
+    const cfg=d.cfg||{};
+    document.getElementById('vlaEnabled').checked=!!cfg.enabled;
+    document.getElementById('vlaCooldown').value=cfg.cooldownMin??30;
+    const tp=cfg.thresholdPips||{};
+    document.getElementById('vlaThreshDefault').value=tp.default??10;
+    const ov={}; for (const [k,v] of Object.entries(tp)) if (k!=='default') ov[k]=v;
+    document.getElementById('vlaThreshOverrides').value=Object.keys(ov).length?JSON.stringify(ov):'';
+    document.getElementById('vlaPairs').value=(cfg.pairs||[]).join(', ');
+    // level checkboxes
+    const keys=d.allLevels||Object.keys(VLA_LABELS); const on=new Set(cfg.levels||keys);
+    document.getElementById('vlaLevels').innerHTML=keys.map(k=>
+      `<label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="vla-lvl" value="${k}" ${on.has(k)?'checked':''}> ${VLA_LABELS[k]||k}</label>`).join('');
+    // bot status
+    document.getElementById('vlaBotStatus').textContent=d.telegramConfigured?`— configured (chat ${d.chatId})`:'— not configured';
+    _renderVlaRecent(d.recent);
+    _vlaLoaded=true;
+  } catch(e){ document.getElementById('vlaMsg').textContent='Load failed: '+e.message; }
+}
+function _renderVlaRecent(recent) {
+  const el=document.getElementById('vlaRecent');
+  if (!recent||!recent.length){ el.textContent='None yet.'; return; }
+  el.innerHTML=recent.map(a=>`<div>${a.at?.replace('T',' ').slice(0,19)} · <b>${a.pair}</b> ${a.label} · ${a.dist}p · ${a.sent?'✓':'✗'}</div>`).join('');
+}
+function _vlaMsg(t){ const el=document.getElementById('vlaMsg'); el.textContent=t; setTimeout(()=>{if(el.textContent===t)el.textContent='';},4000); }
+async function saveLevelAlertCfg() {
+  let overrides={};
+  const ovRaw=document.getElementById('vlaThreshOverrides').value.trim();
+  if (ovRaw){ try{ overrides=JSON.parse(ovRaw); }catch{ _vlaMsg('Overrides must be valid JSON'); return; } }
+  const thresholdPips={ default:+document.getElementById('vlaThreshDefault').value||10, ...overrides };
+  const levels=[...document.querySelectorAll('.vla-lvl:checked')].map(c=>c.value);
+  const pairs=document.getElementById('vlaPairs').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
+  const body={ enabled:document.getElementById('vlaEnabled').checked,
+    cooldownMin:+document.getElementById('vlaCooldown').value||30, thresholdPips, levels, pairs };
+  try {
+    const r=await fetch('/api/vol-forecast/level-alerts/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json(); _vlaMsg(d.ok?'Settings saved ✓':'Save failed: '+(d.error||''));
+  } catch(e){ _vlaMsg('Save failed: '+e.message); }
+}
+async function saveLevelAlertBot() {
+  const token=document.getElementById('vlaToken').value.trim(), chatId=document.getElementById('vlaChatId').value.trim();
+  if (!token||!chatId){ _vlaMsg('Token and chat ID required'); return; }
+  try {
+    const r=await fetch('/api/vol-forecast/level-alerts/telegram-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,chatId})});
+    const d=await r.json();
+    if (d.ok){ _vlaMsg('Bot saved ✓'); document.getElementById('vlaToken').value=''; document.getElementById('vlaBotStatus').textContent=`— configured (chat ${chatId})`; }
+    else _vlaMsg('Save failed: '+(d.error||''));
+  } catch(e){ _vlaMsg('Save failed: '+e.message); }
+}
+async function testLevelAlertBot() {
+  try { const r=await fetch('/api/vol-forecast/level-alerts/test',{method:'POST'}); const d=await r.json(); _vlaMsg(d.ok?'Test sent ✓':'Test failed: '+(d.error||'')); }
+  catch(e){ _vlaMsg('Test failed: '+e.message); }
+}
+async function deleteLevelAlertBot() {
+  try { await fetch('/api/vol-forecast/level-alerts/telegram-config',{method:'DELETE'}); _vlaMsg('Bot removed'); document.getElementById('vlaBotStatus').textContent='— not configured'; }
+  catch(e){ _vlaMsg('Remove failed: '+e.message); }
+}
+async function scanLevelAlertsNow() {
+  _vlaMsg('Scanning…');
+  try { const r=await fetch('/api/vol-forecast/level-alerts/scan',{method:'POST'}); const d=await r.json(); _renderVlaRecent(d.recent); _vlaMsg(d.ok?'Scan complete':'Scan failed'); }
+  catch(e){ _vlaMsg('Scan failed: '+e.message); }
 }
 
 function _buildProfileTabs(data) {
