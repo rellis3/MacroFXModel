@@ -51,7 +51,7 @@ import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
-import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk } from './js/rangeLineAnalyser.js';
+import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter } from './js/rangeLineAnalyser.js';
 import { pipSize as _pipSize, instrument } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
@@ -8575,12 +8575,18 @@ app.post('/api/range-line/run', async (req, res) => {
   // requested — it tags each line with how many distinct sources back it, so the
   // policy can trade confluence-backed lines and skip the bare ones. Its params
   // change the line RECORDS (not just the cell key), so they join the cache key.
-  if (opts.conditions.includes('confluence')) {
+  // `confluenceFilter` runs confluence as a QUALITY GATE (direction unchanged) —
+  // compute the bucket but keep conditions as-is (usually 'none') so the policy is
+  // NOT split per bucket. The `confluence` condition also enables computation.
+  const wantConfluence = opts.conditions.includes('confluence') || b.confluenceFilter;
+  if (wantConfluence) {
     opts.confluence = {
       enabled: true,
       tolFrac:      (b.confTolFrac != null && b.confTolFrac !== '') ? parseFloat(b.confTolFrac) : 0.1,
       lookbackDays: (b.confLookbackDays != null && b.confLookbackDays !== '') ? parseInt(b.confLookbackDays) : 5,
       sources:      Array.isArray(b.confSources) && b.confSources.length ? b.confSources : undefined,
+      fib15:        b.confFib15 !== false,
+      fib15ClusterPips: (b.confFib15ClusterPips != null && b.confFib15ClusterPips !== '') ? parseFloat(b.confFib15ClusterPips) : undefined,
     };
   }
 
@@ -8682,7 +8688,13 @@ app.post('/api/range-line/run', async (req, res) => {
       // Zone-walk: the fade/follow policy used as the live exit oracle at every zone
       // (full ladder, fade can flip to a runner, re-entry after flat).
       const zoneWalk = runZoneWalk(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair });
-      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated, eRatio, exitAB, heldPosition, badLevels, zoneWalk } });
+      // Confluence QUALITY FILTER: hold the (none) policy, trade all → confluent(≥1)
+      // → strong(≥2) levels, on the honest held-position chandelier — does filtering
+      // to stronger levels lift the book? Only when confluence was computed.
+      const confluenceFilter = opts.confluence?.enabled
+        ? runConfluenceFilter(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair })
+        : null;
+      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated, eRatio, exitAB, heldPosition, badLevels, zoneWalk, confluenceFilter } });
     } catch (e) {
       console.error('[range-line/run]', e?.message, e?.stack ?? '');
       rlJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });

@@ -92,6 +92,11 @@ export function extractTouches(records, { conditions = ['approachVel'], dtThresh
         // Optional MFE/MAE excursion (range-line analyser supplies these; forecast
         // records don't — harmless undefined). Used by the E-ratio exit study.
         excMid: ln.excMid, excAway: ln.excAway,
+        // Structural-confluence bucket for THIS line (1·none/2·single/3·multi), carried
+        // even when confluence is NOT the cell condition — so a quality FILTER (trade
+        // only confluent levels, direction unchanged) can read it without fragmenting
+        // the policy into per-bucket cells. Undefined unless the analyser computed it.
+        confluence: ln.confluence ?? null,
         // Optional trail PnLs (gross %): follow-direction (away) + fade-direction
         // (toward mid), so the chandelier/structural trail can price either entry.
         fStruct: ln.fStruct, fChand: ln.fChand,

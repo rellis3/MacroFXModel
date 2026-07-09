@@ -3,9 +3,9 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES, runConfluenceFilter } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
-import { extractTouches } from './perLineStrategy.js';
+import { extractTouches, buildPolicy } from './perLineStrategy.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -85,6 +85,26 @@ ok('extractTouches keys cells on the confluence bucket', confTouches.length > 0 
    `${confTouches.length} touches, e.g. ${confTouches[0]?.cell}`);
 ok('default run (confluence off) leaves the bucket null → not conditionable',
    allLines.every(l => l.confluence == null || l.confluence === undefined));
+
+console.log('[confluence QUALITY FILTER — direction held, levels filtered]');
+// Touches keyed on NONE (direction-agnostic policy) but carrying the confluence
+// bucket — the shape the quality filter consumes.
+const noneConfTouches = extractTouches(confRecords, { conditions: [] });
+ok('none-condition touches still carry a confluence field', noneConfTouches.length > 0 && noneConfTouches.every(t => 'confluence' in t));
+ok('cells are NOT split by confluence when condition=none', noneConfTouches.every(t => /\|$/.test(t.cell)));
+const cfSplit = '2024-01-25';   // synthetic data runs 2024-01-01 … ~2024-03; split mid-window
+const cfPolicy = buildPolicy(noneConfTouches.filter(t => t.date < cfSplit), { minN: 3, marginPct: 0 });
+const cf = runConfluenceFilter({ eurusd: noneConfTouches }, { policy: cfPolicy, splitDate: cfSplit, costByPair: { eurusd: 0.008 } });
+ok('runConfluenceFilter returns per-bucket expectancy + filter books', cf && Array.isArray(cf.bucketStats) && Array.isArray(cf.books) && cf.books.length === 3,
+   `buckets=${cf?.bucketStats?.length} books=${cf?.books?.length}`);
+ok('books are labelled all / confluent(≥1) / strong(≥2)',
+   cf.books.map(b => b.filter).join(' | ') === 'all levels | confluent (≥1) | strong (≥2)');
+ok('each filter book carries held-chandelier Sharpe @1/2/3× + trades', cf.books.every(b =>
+   'sharpe2' in b.all && 'sharpe3' in b.all && Number.isFinite(b.all.trades)));
+ok('filtering to stronger levels keeps ≤ the trades of "all"',
+   (cf.books[2].all.trades ?? 0) <= (cf.books[0].all.trades ?? 0) && (cf.books[1].all.trades ?? 0) <= (cf.books[0].all.trades ?? 0),
+   `all=${cf.books[0].all.trades} ≥1=${cf.books[1].all.trades} ≥2=${cf.books[2].all.trades}`);
+ok('per-bucket rows carry expectancy + follow%', cf.bucketStats.every(r => 'expectancy' in r && 'followPct' in r));
 
 console.log('[analyseRangeWindow direct — inner toward mid, outer away]');
 const oneDay = sessions.get([...sessions.keys()].sort()[30]);

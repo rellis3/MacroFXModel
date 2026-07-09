@@ -55,6 +55,7 @@
       <span><label>min N / cell</label><input id="minN" type="number" value="50" min="5" max="500" style="width:64px"></span>
       <span><label>OOS</label><select id="splitFrac"><option value="0.4">40%</option><option value="0.6" selected>40/60</option><option value="0.5">50%</option></select></span>
       <span><label>Range window</label><select id="rangeWindow" title="The window that forms the range; the breakout is traded after it. London midnight–6am, but the data is UTC so the right option depends on DST: BST/summer = 23:00–05:00 UTC, GMT/winter = 00:00–06:00 UTC."><option value="23,6" selected>London midnight–6am · BST/summer (23:00–05:00 UTC)</option><option value="0,6">London midnight–6am · GMT/winter (00:00–06:00 UTC)</option><option value="22,6">Asia 22:00–04:00 UTC (legacy)</option><option value="0,8">00:00–08:00 UTC</option></select></span>
+      <span><label title="Hold the (none) direction policy fixed and only trade levels backed by structural confluence (15m fibs / pivots / POC-VAH-VAL / S&amp;R / round / VWAP). Answers 'do stronger levels trade better?' as a QUALITY FILTER — not a direction condition. Leave Condition on 'none'.">confluence filter <input id="confluenceFilter" type="checkbox"></label></span>
       <button class="run" id="runBtn" onclick="run()">▶ Run</button>
       <span id="status" class="muted"></span>
     </div>
@@ -106,6 +107,15 @@
     <h2>Zone-walk — policy as the exit oracle (fade + follow, full ladder, re-entry)</h2>
     <div class="muted" style="margin-bottom:8px">The honest use of the engine's <b>fade AND follow</b> decisions: open at the first non-skip zone, then at <b>every</b> zone the trade reaches consult its learned decision — <b>continuation → hold, reversal → close</b> — and re-enter after flat. A <b>fade can turn into a runner</b>: enter fading toward the mid, break through, and the far-side zones flip to continue in the same price direction → one trade rides many zones to the day's extreme. Run with <b>Max level = all</b> to use the extremes. Judge on Sharpe @2–3× cost vs the Held-position card.</div>
     <table id="zoneWalk"><thead><tr><th>Model</th><th>Sharpe @1×</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Payoff</th><th>CAGR@10%</th><th>MaxDD@10%</th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="card" id="confFilterCard" style="display:none">
+    <h2>Confluence quality filter — do STRONGER levels trade better?</h2>
+    <div class="muted" style="margin-bottom:8px">The trader's real use of confluence: it <b>selects the levels worth trading</b> (a range level lining up with 15m fibs / pivots / POC-VAH-VAL / round / VWAP is "stronger"), it does <b>not</b> set direction. So the SAME learned decision is held and only WHICH levels are eligible changes — <b>all → confluent (≥1 source) → strong (≥2)</b> — priced on the honest <b>held-position chandelier</b> (the live exit). A win = filtering keeps <b>fewer, higher-expectancy</b> trades whose Sharpe @2–3× holds or rises. Split by direction because confluence is expected to <b>help fades</b> (support holds) and <b>hurt follows</b> (structure = friction that caps the breakout run). Turn on the <b>confluence filter</b> checkbox with Condition = none.</div>
+    <table id="confFilter"><thead><tr><th>Filter</th><th>Dir</th><th>Sharpe @2×</th><th>Sharpe @3×</th><th>Trades/day</th><th>Win%</th><th>Payoff</th><th>Expectancy</th><th>Trades</th></tr></thead><tbody></tbody></table>
+    <div class="muted" style="margin:10px 0 4px">Per-bucket OOS expectancy (each level's confluence count, under the fixed policy) — is more confluence actually higher expectancy?</div>
+    <table id="confBuckets"><thead><tr><th>Bucket</th><th>Trades</th><th>Expectancy</th><th>Win%</th><th>Follow%</th></tr></thead><tbody></tbody></table>
+    <div class="muted" id="confFilterVerdict" style="margin-top:8px"></div>
   </div>
 
   <div class="card" id="badLevelsCard" style="display:none">
@@ -168,6 +178,7 @@ async function run() {
     maxLevel: parseFloat($('maxLevel').value) || 0,
     minN: parseInt($('minN').value) || 50,
     splitFrac: parseFloat($('splitFrac').value) || 0.6,
+    confluenceFilter: $('confluenceFilter').checked,
   };
   const [bh, ah] = ($('rangeWindow').value || '23,6').split(',');
   body.boundaryHour = parseInt(bh); body.asiaHrs = parseFloat(ah);
@@ -343,6 +354,33 @@ function render(d) {
         <td class="${(ss(zw,3)??0)>0?'pos':'neg'}">${fmt(ss(zw,3),2)}</td>
         <td class="mut">${zw.tradesPerDay}</td><td>${zw.winRate}%</td><td>${zw.payoff??'—'}</td>
         <td class="${(zw.cagr??0)>=0?'pos':'neg'}">${fmt(zw.cagr,1)}%</td><td class="neg">${fmt(zw.maxDD,1)}%</td></tr>`;
+  }
+
+  // Confluence quality filter — do stronger levels trade better?
+  const cf = d.confluenceFilter;
+  if (cf && Array.isArray(cf.books) && cf.books.length) {
+    $('confFilterCard').style.display = '';
+    const cell = v => `<td class="${(v??0)>0?'pos':'neg'}">${fmt(v,2)}</td>`;
+    const row = (label, dir, m) => `<tr${dir==='all'?' style="font-weight:700"':''}>
+        <td>${dir==='all'?label:''}</td><td class="mut">${dir}</td>
+        ${cell(m.sharpe2)}${cell(m.sharpe3)}
+        <td class="mut">${m.tradesPerDay??'—'}</td><td>${m.winRate??'—'}%</td>
+        <td>${m.payoff??'—'}</td><td class="${(m.expectancy??0)>0?'pos':'neg'}">${fmt(m.expectancy,4)}</td>
+        <td class="mut">${m.trades??0}</td></tr>`;
+    document.querySelector('#confFilter tbody').innerHTML = cf.books.map(b =>
+      row(b.filter,'all',b.all) + row(b.filter,'fade',b.fade) + row(b.filter,'follow',b.follow)).join('');
+    document.querySelector('#confBuckets tbody').innerHTML = (cf.bucketStats||[]).map(r =>
+      `<tr><td>${r.bucket}</td><td class="mut">${r.trades}</td>
+        <td class="${(r.expectancy??0)>0?'pos':'neg'}">${fmt(r.expectancy,4)}</td>
+        <td>${r.winRate??'—'}%</td><td class="mut">${r.followPct??'—'}%</td></tr>`).join('');
+    // Verdict: does the strong filter beat "all" on held-chandelier Sharpe @2×?
+    const all2 = cf.books[0]?.all?.sharpe2, strong2 = cf.books[2]?.all?.sharpe2;
+    const fFade = cf.books[2]?.fade?.sharpe2, aFade = cf.books[0]?.fade?.sharpe2;
+    $('confFilterVerdict').innerHTML = (all2!=null && strong2!=null)
+      ? `Whole book: strong-only Sharpe @2× ${fmt(strong2,2)} vs all ${fmt(all2,2)} — ${strong2>all2?'<b class="pos">filter helps</b>':'<b class="neg">filter does NOT help the whole book</b>'}. `
+        + (fFade!=null&&aFade!=null ? `Fades only: strong ${fmt(fFade,2)} vs all ${fmt(aFade,2)} — ${fFade>aFade?'<b class="pos">confluence helps fades</b> (support holds)':'flat/negative'}. ` : '')
+        + `Judge on @2–3× with trades falling; if strong beats all only on fades, confluence is a reversal tool, not a breakout one.`
+      : '';
   }
 
   // Bad-level scan — which (pair × level) reliably lose.
