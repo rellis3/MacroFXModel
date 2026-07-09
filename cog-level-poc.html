@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COG-level POC — did price revert at COG's levels?</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:20px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:860px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace; margin-bottom:6px }
+  th,td { padding:4px 10px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  .err { color:var(--neg) } .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  code { background:#21262d; padding:1px 5px; border-radius:4px }
+</style>
+</head>
+<body>
+  <h1>COG-level POC <span class="muted" style="font-size:12px">— COG's actual levels vs actual price</span></h1>
+  <div class="sub">
+    For every day we have COG reference data, this sets <b>COG's own median / 75th / O-C levels</b> and walks that day's intraday price to answer directly: did price <b>reach</b> the level, did it <b>revert</b> (fade) or blow through, <b>by how much</b>, and <b>how many times</b>. Median &amp; 75th are the dynamic H-L (opposite extreme projected from the running high/low — the "NAS" level); O-C is open ± COG's open-close move. Railway only (reads KV + M1).
+  </div>
+  <button onclick="run()">↻ Run</button>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const fmt = (v,d=1) => v==null ? '—' : (+v).toFixed(d);
+const sgn = (v,d=1) => v==null ? '—' : (v>=0?'+':'')+(+v).toFixed(d);
+const pcls = v => v==null?'muted':v>0?'pos':v<0?'neg':'';
+
+async function run(){
+  document.getElementById('status').textContent = 'Loading COG days + intraday…';
+  document.getElementById('out').innerHTML = '';
+  let j; try { j = await (await fetch('/api/cog-level-poc')).json(); }
+  catch(e){ document.getElementById('status').innerHTML = '<span class="err">fetch failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ document.getElementById('status').innerHTML='<span class="err">'+(j.error||'error')+'</span>'; return; }
+  document.getElementById('status').textContent = `${j.cogDates} COG days stored · generated ${j.generatedAt}`;
+  if(!j.results?.length || !j.cogDates){ document.getElementById('out').innerHTML = `<div class="card muted">${j.note||'No COG data.'}</div>`; return; }
+
+  const LV = [['dynMed','COG median (dynamic H-L)'],['dyn75','COG 75th (dynamic H-L)'],['ocMed','COG O-C (open ± move)']];
+  let h = '';
+  for(const r of j.results){
+    h += `<div class="card"><h2>${r.pair} <span class="muted" style="font-size:11px">· ${r.matchedDays ?? 0} of ${r.cogDatesForPair ?? 0} COG days had intraday data · pip ${r.pip ?? '—'}</span></h2>`;
+    if(r.error){ h += `<div class="err">${r.error}</div></div>`; continue; }
+    const res = r.result || {};
+    h += `<table><tr>
+      <th>COG level</th><th>Touches</th><th>Reverted</th><th>Revert %</th><th>Continue %</th>
+      <th>Revert by (pips)</th><th>Revert by (%)</th><th>Ran past (pips)</th><th>≥20p</th><th>≥50p</th>
+      <th>Hold-to-close fade (pips)</th><th>Fade win %</th></tr>`;
+    for(const [k,lbl] of LV){
+      const s = res[k];
+      if(!s || !s.n){ h += `<tr><td>${lbl}</td><td colspan="11" class="muted">no touches in the days we have</td></tr>`; continue; }
+      h += `<tr><td>${lbl}</td>
+        <td>${s.n}</td><td>${s.revertCount}</td>
+        <td class="${s.revertPct>=50?'pos':'amber'}">${fmt(s.revertPct)}</td><td class="muted">${fmt(s.continuePct)}</td>
+        <td class="pos">${fmt(s.meanRevertPips)}</td><td class="muted">${fmt(s.meanRevertPct,3)}</td>
+        <td class="neg">${fmt(s.meanAdversePips)}</td><td>${fmt(s.rev20Pct)}</td><td>${fmt(s.rev50Pct)}</td>
+        <td class="${pcls(s.meanCloseFadePips)}">${sgn(s.meanCloseFadePips)}</td><td>${fmt(s.closeFadeWinPct)}</td></tr>`;
+    }
+    h += `</table><div class="muted" style="font-size:10px">Revert = price pulled back toward the interior after touching (a fade win). "Revert by" = mean pullback. "Ran past" = mean continuation past the level (the risk). Hold-to-close fade = enter at the level, exit at day close; +ve = reverted profitably.</div></div>`;
+  }
+  document.getElementById('out').innerHTML = h;
+}
+</script>
+</body>
+</html>
