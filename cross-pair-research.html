@@ -211,10 +211,11 @@ function render(cp){
       ${lineRow('Open-High/Open-Low (75th)', bl.p75)}
       ${lineRow('O-H/O-L median, calm-day only (tail-filtered)', bl.calm)}
       ${lineRow('Dynamic H-L from running extreme (median)', bl.dyn)}
-      ${lineRow('Dynamic H-L from running extreme (75th)', bl.dyn75)}`;
+      ${lineRow('Dynamic H-L from running extreme (75th, Feller)', bl.dyn75)}
+      ${lineRow('Dynamic H-L from running extreme (75th, empirical ratio_yz)', bl.dynRatio75)}`;
     // Per-pair drill-down — pick which level-set line to inspect (default the
     // best FX line so the new dynamic levels are visible, not just the median).
-    const LINES = [['oc','Open-Close'],['median','O-H/O-L (drift)'],['p75','O-H/O-L 75th'],['calm','Calm-day O-H/O-L'],['dyn','Dynamic H-L (median)'],['dyn75','Dynamic H-L (75th)']].filter(([k])=>bl[k] && !bl[k].insufficient);
+    const LINES = [['oc','Open-Close'],['median','O-H/O-L (drift)'],['p75','O-H/O-L 75th'],['calm','Calm-day O-H/O-L'],['dyn','Dynamic H-L (median)'],['dyn75','Dynamic H-L (75th Feller)'],['dynRatio75','Dynamic H-L (75th ratio_yz)']].filter(([k])=>bl[k] && !bl[k].insufficient);
     const bestKey = LINES.map(([k])=>k).sort((a,b)=>(bl[b].fxSurvivingX2-bl[a].fxSurvivingX2)||((bl[b].medianFxNetX1??-9)-(bl[a].medianFxNetX1??-9)))[0] || 'median';
     window._CP_BL = bl;
     el('costPickWrap').innerHTML = `Per-pair detail for line: <select id="costLine" onchange="renderCostLine(this.value)" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 8px">${LINES.map(([k,lbl])=>`<option value="${k}" ${k===bestKey?'selected':''}>${lbl}${bl[k].fxSurvivingX2>=1?` · ${bl[k].fxSurvivingX2} FX clear ×2`:''}</option>`).join('')}</select> <span class="muted">(FX pairs highlighted; indices shown but discounted)</span>`;

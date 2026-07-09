@@ -38,13 +38,29 @@ There are three families of forecast level, and the study now analyses all of th
    the M1 walk matters, and exactly the NAS example: the morning **high** anchored
    a projected **low** a full range below; price hit it later and reverted.
 
-So the screen now compares **six fade lines** net of cost:
+So the screen now compares **seven fade lines** net of cost:
 1. **Open-Close** — symmetric displacement fade.
 2. **Open-High/Open-Low (drift-adjusted)** — the real asymmetric extremes.
 3. **75th O-H/O-L** — more extended → should revert harder (exhaustion), touched less.
 4. **Calm-day O-H/O-L median** — the fade on low-tail-risk days only (filter below).
 5. **Dynamic H-L (median)** — fade the projected extreme from the running high/low.
-6. **Dynamic H-L (75th)** — same, at the wider 75th range (the most extended level).
+6. **Dynamic H-L (75th, Feller)** — same, at the wider Feller 75th range (fixed 1.303× the median).
+7. **Dynamic H-L (75th, empirical ratio_yz)** — same running-extreme fade, but the
+   75th band is the **band-calc A/B winner**: the *empirical* 75th percentile of
+   realized÷forecast H-L (causal, prior windows), not the theoretical Feller p75/p50.
+
+### Why the ratio_yz line is only a **75th** re-test
+
+The band-calc A/B (`bandCalcAB.js`) found `ratio_yz = σ × trailing_quantile(realized÷σ)`
+the best-calibrated range calc (exceed-median 50.2% / exceed-75 25.9%, keeping the
+vol-forecast's sharpness). But the touch study's **recalibrated dynamic median**
+band already *is* `ratio_yz.med`: the recal factor is `median(realized÷forecast H-L)`
+and `forecast H-L = BM_P50 × corr × σ`, so the constant cancels and
+`forecast × recalF ≡ σ × median(realized÷σ)`. The only band that was **not**
+properly calibrated was the dynamic 75th — it multiplied the *median* recal factor
+onto the Feller-75 line, i.e. a fixed `BM_P75/BM_P50 = 1.303×` the median. Line 7
+replaces that with the genuine empirical p75 factor, so it is the one material
+re-test of the fade on ratio_yz bands.
 
 The dynamic levels are the most *extended*, so on the exhaustion logic they should
 show the strongest reversion — the question the cost screen answers is whether that

@@ -126,6 +126,18 @@ test('evaluateIntraday: dynamic H-L extension blocks present, more extended than
     assert.ok(t.dynExtension.touchRatePct <= t.medianExtension.touchRatePct + 1e-9, 'dynamic extreme touched no more than the median line');
 });
 
+test('evaluateIntraday: ratio_yz dynamic 75th block present with an empirical p75 factor', () => {
+  const t = evaluateIntraday(synthH1(500, 3), { pip: PIP, recalibrate: true }).touches;
+  assert.ok(t.dynRatioP75Extension, 'ratio_yz dynamic 75th block present');
+  if (t.dynRatioP75Extension.n) {
+    assert.ok(t.dynRatioP75Extension.p75Factor > 0, 'empirical p75 factor emitted');
+    // The empirical-p75 band is at least as far out as the median band → touched no more.
+    if (t.dynExtension.n)
+      assert.ok(t.dynRatioP75Extension.touchRatePct <= t.dynExtension.touchRatePct + 1e-9,
+        'ratio_yz 75th touched no more than the dynamic median');
+  }
+});
+
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
   const r = evaluateIntraday(synthH1(20), { pip: PIP });
   assert.equal(r.insufficient, true);
