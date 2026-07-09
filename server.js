@@ -63,7 +63,6 @@ import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEV
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
-import { feedAB as _cogFeedAB, responsivenessTrace as _cogRespTrace } from './js/cogGapPoc.js';   // build-and-kill POC
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
@@ -2340,56 +2339,6 @@ app.get('/api/futures-quote', async (req, res) => {
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
-});
-
-// ── COG-gap POC (build-and-kill diagnostic — delete once we've read the answer) ──
-// Part 1: our EXACT calc on OANDA spot vs Yahoo futures (same math, feed differs).
-// Part 2: HL-median-raw trajectory per estimator (fast→slow) to see which half-life
-// tracks COG's day-to-day movement. GET /api/cog-gap-poc  (no job pattern — quick).
-async function _fetchYahooDailyOHLC(ticker, days = 400) {
-  const period2 = Math.floor(Date.now() / 1000);
-  const period1 = period2 - days * 86400;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`
-            + `?interval=1d&period1=${period1}&period2=${period2}`;
-  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' }, signal: AbortSignal.timeout(20_000) });
-  if (!r.ok) throw new Error(`Yahoo ${ticker} HTTP ${r.status}`);
-  const result = (await r.json())?.chart?.result?.[0];
-  if (!result) throw new Error(`Yahoo ${ticker}: unexpected response`);
-  const ts = result.timestamp ?? [], q = result.indicators?.quote?.[0] ?? {};
-  const out = [];
-  for (let i = 0; i < ts.length; i++) {
-    const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i];
-    if ([o, h, l, c].some(v => v == null || !isFinite(v)) || c <= 0) continue;
-    out.push({ date: new Date(ts[i] * 1000).toISOString().substring(0, 10), open: o, high: h, low: l, close: c });
-  }
-  return out;   // oldest→newest
-}
-
-app.get('/api/cog-gap-poc', async (_req, res) => {
-  // OANDA spot instrument, Yahoo futures ticker, computeForecast class.
-  const PAIRS = [
-    { key: 'GOLD',   oanda: 'XAU_USD',    yahoo: 'GC=F', cls: 'commodity' },
-    { key: 'NQ',     oanda: 'NAS100_USD', yahoo: 'NQ=F', cls: 'index'     },
-    { key: 'EURUSD', oanda: 'EUR_USD',    yahoo: '6E=F', cls: 'fx'        },
-  ];
-  const out = [];
-  for (const p of PAIRS) {
-    const row = { key: p.key, assetClass: p.cls };
-    try {
-      const [spot, fut] = await Promise.all([
-        _btFetchD1(p.oanda, 500).catch(e => { throw new Error(`OANDA ${p.oanda}: ${e.message}`); }),
-        _fetchYahooDailyOHLC(p.yahoo, 500).catch(e => { throw new Error(`Yahoo ${p.yahoo}: ${e.message}`); }),
-      ]);
-      row.feed = _cogFeedAB(spot, fut, p.cls);          // Part 1
-      row.responsiveness = _cogRespTrace(spot, 8);      // Part 2 (on the spot feed we actually trade)
-    } catch (e) {
-      row.error = e.message;
-    }
-    out.push(row);
-  }
-  res.json({ ok: true, generatedAt: new Date().toISOString(),
-    note: 'Part 1 futVsSpotHlPct >0 ⇒ futures forecasts a WIDER median than spot (moves toward COG if COG is higher). Part 2: compare each estimator movementPct/trajectory to COG’s day-to-day moves.',
-    results: out });
 });
 
 // Live 5m HMM regime data for all pairs
