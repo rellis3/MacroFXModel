@@ -50,6 +50,12 @@
   <div class="answer" id="answer" style="display:none"></div>
   <div class="note" id="recalNote" style="display:none"></div>
 
+  <h2>Base calc — is there a better range calc than the Feller constant?</h2>
+  <p class="qd">The production band is <code>1.572 × corr × σ</code> (a fixed Feller/BM constant + a per-class fudge). This tests candidate calcs <strong>walk-forward</strong> on the <em>daily</em> range: does realized H-L exceed the median ~50% and the 75th ~25% (calibration), and does a bigger forecast precede a bigger day (sharpness)? The best calc is <strong>both</strong> well-calibrated and sharp.</p>
+  <div class="answer" id="bandVerdict" style="display:none"></div>
+  <div class="card scroll"><table><thead><tr><th>Range calc</th><th class="num">Pairs</th><th class="num">Exceed-med % (tgt 50)</th><th class="num">Exceed-75 % (tgt 25)</th><th class="num">Sharpness</th><th class="num">Calib miss</th></tr></thead><tbody id="bandCalc"></tbody></table></div>
+  <div class="note" id="bandNote"></div>
+
   <h2>The gates — pass these before any mechanics</h2>
   <p class="qd">A quant handed this data cold would refuse to trade the mechanics until three gates pass. If any fails, the rest is theatre. Full write-up: <a href="BOT_DECISION_QUESTIONS.md">BOT_DECISION_QUESTIONS.md</a>.</p>
   <div class="tiles" id="gates"></div>
@@ -134,6 +140,21 @@ function render(cp){
     const cls = Object.entries(cp.recal).map(([c,o])=>`${c}: exceed-med ${fmt(o.exceedMedianBefore,0)}% → <span class="pos">${fmt(o.exceedMedianAfter,0)}%</span>`).join(' · ');
     rn.innerHTML = `⚠️ Calibration/skill above are measured on the <strong>reference (un-recalibrated) forecaster</strong> — that's why bands read wide. The walk-forward recalibration closes it: ${cls}. See the <a href="vol-research-book.html#cRecal">Recalibration chapter</a> and the <a href="vol-forecast.html">🎯 calibrated export</a>.`;
   } else { rn.style.display=''; rn.innerHTML = `⚠️ Calibration/skill are measured on the <strong>reference (un-recalibrated) forecaster</strong> (<code>volForecast.js</code>). The recalibrated constants live in the bot engine + the <a href="vol-forecast.html">🎯 calibrated export</a>.`; }
+
+  // Base calc A/B.
+  const bc = cp.bandCalc;
+  if (bc && bc.calcs){
+    const bv = el('bandVerdict'); bv.style.display='';
+    bv.innerHTML = bc.verdict;
+    el('bandCalc').innerHTML = bc.calcs.map((c,i)=>`<tr>
+      <td>${i===0?'<strong>':''}${c.label}${i===0?' ✓</strong>':''}${c.key==='page_approx'?' <span class="muted">(current page)</span>':''}</td>
+      <td class="num">${c.nPairs}</td>
+      <td class="num ${Math.abs(c.medianExceedMedian-50)<6?'pos':'amber'}">${fmt(c.medianExceedMedian,1)}</td>
+      <td class="num ${Math.abs(c.medianExceed75-25)<6?'pos':'amber'}">${fmt(c.medianExceed75,1)}</td>
+      <td class="num ${c.medianSharpness>=0.3?'pos':'neu'}">${fmt(c.medianSharpness,3)}</td>
+      <td class="num ${c.medianCalibMiss<8?'pos':c.medianCalibMiss>20?'neg':'amber'}">${fmt(c.medianCalibMiss,1)}</td></tr>`).join('');
+    el('bandNote').textContent = bc.note;
+  } else { el('bandCalc').innerHTML = `<tr><td colspan="6" class="neu">Re-run the research book — the band-calc A/B attaches per pair on the daily run.</td></tr>`; }
 
   // Gates G1–G3.
   const tbz = cp.touchBehaviour, pf = cp.portfolio;

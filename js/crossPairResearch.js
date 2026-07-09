@@ -125,6 +125,32 @@ export function portfolioIndependence(returnsByPair, names) {
     note: `${n} pairs behave like ~${Math.round(effectiveBets)} independent bets — a cross-pair "N/N agree" is really ~${Math.round(effectiveBets)} votes, and portfolio risk is concentrated accordingly.` };
 }
 
+// ── Band-calc A/B fold: which range CALC is best-calibrated across pairs? ──────
+// Each pair's summary.bandCalcAB.results = [{key,label,exceedMedianPct,exceed75Pct,
+// sharpness,calibMiss}]. Aggregate per calc: median exceed-median/75 (target 50/25),
+// median sharpness, median calibration miss. Rank by calibration, sharpness tiebreak.
+function _bandCalcFold(recs) {
+  const per = recs.map(r => r.s?.bandCalcAB?.results).filter(Boolean);
+  if (per.length < 3) return null;
+  const keys = per[0].map(c => c.key);
+  const calcs = keys.map(key => {
+    const rows = per.map(list => list.find(c => c.key === key)).filter(Boolean);
+    const col = f => rows.map(f).filter(v => v != null);
+    return {
+      key, label: rows[0]?.label ?? key, nPairs: rows.length,
+      medianExceedMedian: +(_median(col(r => r.exceedMedianPct)) ?? 0).toFixed(1),
+      medianExceed75: +(_median(col(r => r.exceed75Pct)) ?? 0).toFixed(1),
+      medianSharpness: +(_median(col(r => r.sharpness)) ?? 0).toFixed(3),
+      medianCalibMiss: +(_median(col(r => r.calibMiss)) ?? 0).toFixed(1),
+    };
+  }).sort((a, b) => (a.medianCalibMiss - b.medianCalibMiss) || (b.medianSharpness - a.medianSharpness));
+  const best = calcs[0], page = calcs.find(c => c.key === 'page_approx');
+  return { nPairs: per.length, calcs,
+    verdict: `Best-calibrated calc across pairs: ${best.label} (exceed-median ${best.medianExceedMedian}% vs 50, sharpness ${best.medianSharpness}). ` +
+      (page ? `The current page calc reads ${page.medianExceedMedian}% (miss ${page.medianCalibMiss}) — ${page.medianExceedMedian < 45 ? 'bands too wide' : page.medianExceedMedian > 55 ? 'bands too tight' : 'roughly calibrated'}.` : ''),
+    note: 'Empirical calcs (climatology / ratio) self-calibrate by construction; the value is a calc that is BOTH well-calibrated AND sharp (bigger forecast → bigger day).' };
+}
+
 // ── Touch behaviour (the BOT-relevant layer) ──────────────────────────────────
 // Elevates the per-pair intraday touch study into a cross-pair decision view:
 // does price REACH the forecast line, and once it does, FADE (revert to open) or
@@ -476,6 +502,8 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
   // Recalibration passthrough — the reference forecaster runs wide; these are the
   // walk-forward factors that bring exceed-median back to ~50% (already in vfr).
   const recal = vfr?.cross?.recalProposal ?? null;
+  // Band-calc A/B fold — which range CALC is best-calibrated across pairs?
+  const bandCalc = _bandCalcFold(recs);
 
   return {
     nPairs: names.length, pairs: names,
@@ -483,7 +511,7 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
     fdrQ, weights,
     forecaster: 'reference (un-recalibrated volForecast.computeForecast) — see recal + calibrated export',
     reliability, trust, byType, consistency, hidden, touchBehaviour, costSurvival,
-    portfolio: vfr?.cross?.portfolio ?? null, botQuestions, recal, hypotheses,
+    portfolio: vfr?.cross?.portfolio ?? null, bandCalc, botQuestions, recal, hypotheses,
     notes: [
       'Trust tiers are RELATIVE terciles of reliability within this universe (+ a sharpness≤0 floor) — not absolute tradeability, which needs the touch-behaviour + cost layer.',
       'Calibration/skill metrics are measured on the REFERENCE forecaster (volForecast.js), which is NOT recalibrated — that is why bands read wide. The recal block + the calibrated export show the corrected picture.',

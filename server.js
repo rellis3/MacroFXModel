@@ -67,6 +67,7 @@ import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
+import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { evaluateSessions, dailySessionContributions } from './js/forecastSessionResearch.js';
@@ -7904,6 +7905,9 @@ app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req
           // Feature scan LAST — so it can join the session series when available.
           try { summary.featureScan = scanFeatures(evRows, sessionByDate ? { sessionByDate } : {}); }
           catch (fe) { log.push(`${cfg.name} scan: ${fe?.message}`); }
+          // Band-calc A/B — is there a better range calc than the Feller-constant one?
+          try { if (dailyBars && dailyBars.length > 200) summary.bandCalcAB = bandCalcAB(dailyBars, cfg.assetClass || 'fx'); }
+          catch (be) { log.push(`${cfg.name} bandcalc: ${be?.message}`); }
           perPair[cfg.name] = summary;
           log.push(`${cfg.name}: ${summary.nDays} days (${summary.dateFrom}→${summary.dateTo}) anchor=${usedAnchor}${summary.session ? ` · sessions ${summary.session.nDays}d` : ''}`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
