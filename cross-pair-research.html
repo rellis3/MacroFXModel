@@ -68,6 +68,7 @@
   <h2>Cost survival — does the edge clear spread + slippage? <span class="muted">(the make-or-break test)</span></h2>
   <p class="qd">Every fade/follow number above is <strong>gross</strong>. This turns each touch into the ±20-pip symmetric bracket the engine races and nets a round-trip cost at ×1 / ×2 / ×3 (so a thin edge can't hide behind an optimistic spread). <span class="muted">A SCREEN, not a path-level backtest — it says which pairs are even in the running.</span></p>
   <div class="answer" id="csVerdict" style="display:none"></div>
+  <div style="margin:8px 0 4px" id="costPickWrap"></div>
   <div class="card scroll"><table><thead><tr><th>Pair</th><th>Type</th><th>Side</th><th class="num">Gross pips</th><th class="num">Cost</th><th class="num">Net ×1</th><th class="num">Net ×2</th><th class="num">Net ×3</th><th>Survives</th></tr></thead><tbody id="cost"></tbody></table></div>
   <div class="note" id="costNote"></div>
 
@@ -190,13 +191,13 @@ function render(cp){
       ${lineRow('O-H/O-L median, calm-day only (tail-filtered)', bl.calm)}
       ${lineRow('Dynamic H-L from running extreme (median)', bl.dyn)}
       ${lineRow('Dynamic H-L from running extreme (75th)', bl.dyn75)}`;
-    el('cost').innerHTML = (cs.ranked||[]).map(r=>`<tr><td><strong>${r.pair}</strong></td><td class="muted">${TYPE_LBL[r.type]||r.type}</td>
-      <td class="${r.side==='fade'?'amber':'pos'}">${r.side}</td>
-      <td class="num">${fmt(r.grossPips,2)}</td><td class="num muted">${fmt(r.costPips,1)}</td>
-      <td class="num ${r.netX1>0?'pos':'neg'}">${sgn(r.netX1,2)}</td>
-      <td class="num ${r.netX2>0?'pos':'neg'}">${sgn(r.netX2,2)}</td>
-      <td class="num ${r.netX3>0?'pos':'neg'}">${sgn(r.netX3,2)}</td>
-      <td>${r.survivesX1?(r.survivesX2?'<span class="pos">✓ ×2</span>':'<span class="amber">✓ ×1</span>'):'<span class="neg">✗</span>'}</td></tr>`).join('');
+    // Per-pair drill-down — pick which level-set line to inspect (default the
+    // best FX line so the new dynamic levels are visible, not just the median).
+    const LINES = [['oc','Open-Close'],['median','O-H/O-L (drift)'],['p75','O-H/O-L 75th'],['calm','Calm-day O-H/O-L'],['dyn','Dynamic H-L (median)'],['dyn75','Dynamic H-L (75th)']].filter(([k])=>bl[k] && !bl[k].insufficient);
+    const bestKey = LINES.map(([k])=>k).sort((a,b)=>(bl[b].fxSurvivingX2-bl[a].fxSurvivingX2)||((bl[b].medianFxNetX1??-9)-(bl[a].medianFxNetX1??-9)))[0] || 'median';
+    window._CP_BL = bl;
+    el('costPickWrap').innerHTML = `Per-pair detail for line: <select id="costLine" onchange="renderCostLine(this.value)" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 8px">${LINES.map(([k,lbl])=>`<option value="${k}" ${k===bestKey?'selected':''}>${lbl}${bl[k].fxSurvivingX2>=1?` · ${bl[k].fxSurvivingX2} FX clear ×2`:''}</option>`).join('')}</select> <span class="muted">(FX pairs highlighted; indices shown but discounted)</span>`;
+    renderCostLine(bestKey);
     el('costNote').textContent = cs.note;
   } else {
     if(el('csVerdict')) el('csVerdict').style.display='none';
@@ -231,6 +232,17 @@ function render(cp){
 
   el('hyp').innerHTML = (cp.hypotheses||[]).map(h=>{ const now=h.dataNeeded.startsWith('none'); return `<div class="find ${now?'good':'info'}"><span class="fi">${now?'✓':'⋯'}</span><span>${h.text} <span class="muted">— ${h.evidence} · <em>${now?'testable now':h.dataNeeded}</em></span></span></div>`;}).join('');
   el('notes').innerHTML = (cp.notes||[]).map(n=>'• '+n).join('<br>');
+}
+function renderCostLine(key){
+  const s = (window._CP_BL||{})[key]; if(!s || s.insufficient){ el('cost').innerHTML=`<tr><td colspan="9" class="neu">n/a for this line</td></tr>`; return; }
+  el('cost').innerHTML = (s.ranked||[]).map(r=>{ const isFx = r.type!=='index';
+    return `<tr style="${isFx?'':'opacity:.5'}"><td><strong>${r.pair}</strong>${isFx?'':' <span class="muted">idx</span>'}</td><td class="muted">${TYPE_LBL[r.type]||r.type}</td>
+    <td class="${r.side==='fade'?'amber':'pos'}">${r.side}</td>
+    <td class="num">${fmt(r.grossPips,2)}</td><td class="num muted">${fmt(r.costPips,1)}</td>
+    <td class="num ${r.netX1>0?'pos':'neg'}">${sgn(r.netX1,2)}</td>
+    <td class="num ${r.netX2>0?'pos':'neg'}">${sgn(r.netX2,2)}</td>
+    <td class="num ${r.netX3>0?'pos':'neg'}">${sgn(r.netX3,2)}</td>
+    <td>${r.survivesX1?(r.survivesX2?'<span class="pos">✓ ×2</span>':'<span class="amber">✓ ×1</span>'):'<span class="neg">✗</span>'}</td></tr>`;}).join('');
 }
 function rowConsist(c){ return `<tr><td>${c.label} <span class="muted">Q${c.question}</span></td>
   <td class="num">${c.agree}/${c.nPairs} <span class="muted">${c.typeSpread}t</span></td>
