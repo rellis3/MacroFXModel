@@ -129,6 +129,13 @@ function _mulberry32(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t =
 // Proj-H/Proj-L the forecaster exports); `oh_median`/`ol_median` are flat aliases
 // of oc_median, so using them collapses O-H, O-L and O-C into one line. Weekly/20d
 // have no v2 field yet, so their O-H/O-L stay flat (≡ O-C) — noted, not duplicated.
+// Level DISTANCE sweep multipliers — the dynamic H-L median scaled from its
+// (recalibrated) distance ×1.0 out toward the Feller 75th (≈×1.30) and beyond.
+// COG's median sits wider than ours (~×1.05–1.15 on gold/indices); the sweep finds
+// where reversion clears cost as a function of DISTANCE, so the tradeable sweet
+// spot (and where COG's level lands) is visible.
+export const SWEEP_MULTS = [1.0, 1.1, 1.2, 1.3, 1.4];
+
 export const HORIZONS = {
   daily:  { windowDays: 1,  label: 'Daily',  timeUnit: 'hour', hl: 'hl_median', hl75: 'hl_75',     ocMed: 'oc_median', ocP75: 'oc_75',     ohMed: 'oh_v2_median', ohP75: 'oh_v2_75',  olMed: 'ol_v2_median', olP75: 'ol_v2_75'  },
   weekly: { windowDays: 5,  label: 'Weekly', timeUnit: 'day',  hl: 'hl_5d',     hl75: 'hl_5d_75',  ocMed: 'oc_5d',     ocP75: 'oc_5d_75',  ohMed: 'oh_5d',        ohP75: 'oh_5d_75',  olMed: 'ol_5d',        olP75: 'ol_5d_75' },
@@ -142,7 +149,7 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
 
   const expRows = [];
-  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [], dynRatioP75: [], dynE94: [], dynE90: [], ocMed: [], ocP75: [] };
+  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [], dynRatioP75: [], dynE94: [], dynE90: [], ocMed: [], ocP75: [], sweep: {} };
   // σ-half-life A/B: precompute shorter-half-life daily σ series ONCE (causal —
   // EWMA is prefix-consistent, so series[i-1] = σ using data < i, matching the
   // per-window forecast). Feeds a parallel dynamic H-L level built from a faster σ.
@@ -267,6 +274,17 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
       const r = hlE90 / 100 * _recal(hlRatioHistE90);
       const lo = _dynLevelOutcome(bars, r, -1, pip), hi = _dynLevelOutcome(bars, r, +1, pip);
       if (lo) touchRows.dynE90.push({ ...lo, regime, calm }); if (hi) touchRows.dynE90.push({ ...hi, regime, calm });
+    }
+    // ── Level DISTANCE sweep — dynamic H-L MEDIAN scaled ×1.0…×1.4 out from its
+    // recalibrated distance toward (and past) the 75th. Finds where reversion clears
+    // cost as a function of DISTANCE, so the tradeable sweet spot — and where COG's
+    // wider-than-ours median lands (~×1.05–1.15 on gold/indices) — is visible.
+    const rMedBase = (fc[H.hl] ?? 0) / 100 * recalF;
+    if (rMedBase > 0) for (const mlt of SWEEP_MULTS) {
+      const k = Math.round(mlt * 100);
+      const lo = _dynLevelOutcome(bars, rMedBase * mlt, -1, pip), hi = _dynLevelOutcome(bars, rMedBase * mlt, +1, pip);
+      (touchRows.sweep[k] ??= []);
+      if (lo) touchRows.sweep[k].push({ ...lo, regime, calm }); if (hi) touchRows.sweep[k].push({ ...hi, regime, calm });
     }
     // Level-set #1: Open-Close touches (open ± oc), median + 75th.
     if (ocMed > 0) {
@@ -423,6 +441,10 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
     // the reversion + cost survival compare directly against the sticky YZ30 dyn line.
     dynE94Extension: { ...(_touchStats(touchRows.dynE94 || [], totalWindows)), byRegime: _byRegime(touchRows.dynE94 || []), fadePayoff: _fadePayoff(touchRows.dynE94 || []) },
     dynE90Extension: { ...(_touchStats(touchRows.dynE90 || [], totalWindows)), byRegime: _byRegime(touchRows.dynE90 || []), fadePayoff: _fadePayoff(touchRows.dynE90 || []) },
+    // Level DISTANCE sweep — one exhaustion block per multiplier (×1.0…×1.4 of the
+    // recalibrated median distance). Reversion + cost as a function of DISTANCE.
+    ...Object.fromEntries(SWEEP_MULTS.map(m => { const k = Math.round(m * 100); const rows = (touchRows.sweep && touchRows.sweep[k]) || [];
+      return [`dynSweep${k}Extension`, { mult: m, ...(_touchStats(rows, totalWindows)), fadePayoff: _fadePayoff(rows) }]; })),
     // Conditional fade: median-line touches restricted to CALM days (the tail filter).
     conditionalCalm: { filter: 'calm = vov ≤ trailing-median AND prior window ≤ 118% forecast',
       ...(_touchStats(medCalm, totalWindows)), fadePayoff: _fadePayoff(medCalm) },

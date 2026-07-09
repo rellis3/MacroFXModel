@@ -315,8 +315,19 @@ function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
   const dynE94 = _summCost(_costRows(recs, 'dynE94Extension', costTable), minPairs);  // EWMA λ0.94 dynamic median
   const dynE90 = _summCost(_costRows(recs, 'dynE90Extension', costTable), minPairs);  // EWMA λ0.90 dynamic median
   const oc = _summCost(_costRows(recs, 'ocExtension', costTable), minPairs);         // open-close line (distinct from O-H/O-L)
+  // Level DISTANCE sweep — dynamic median scaled ×1.0…×1.4 toward the 75th. Shows
+  // net-of-cost as a function of DISTANCE (where the exhaustion fade peaks, and
+  // where COG's wider-than-ours median lands). Both views: FX-only AND all-instrument.
+  const costSweep = [100, 110, 120, 130, 140].map(k => {
+    const s = _summCost(_costRows(recs, `dynSweep${k}Extension`, costTable), minPairs);
+    return (s && !s.insufficient) ? {
+      mult: k / 100,
+      fxSurvivingX2: s.fxSurvivingX2, medianFxNetX1: s.medianFxNetX1,
+      allSurvivingX2: s.survivingX2, medianAllNetX1: s.medianNetX1,   // indices INCLUDED (un-discounted)
+    } : null;
+  }).filter(Boolean);
   // `median`/`p75` are the drift-adjusted O-H/O-L lines (level-set #2).
-  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75, dynE94, dynE90 } };
+  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75, dynE94, dynE90 }, costSweep };
 }
 
 // ── Public: build the cross-pair report ───────────────────────────────────────
