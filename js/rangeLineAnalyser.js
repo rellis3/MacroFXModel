@@ -73,6 +73,34 @@ export function sessionConfluenceLevels({ dailyBars = [], intraday = [], pip = 0
   return levels;
 }
 
+// The DAILY (session-fixed) confluence sources — everything that's set at the open
+// from prior completed data and does NOT move intraday. `swing_fib`/`fib15` and
+// `vwap` are EXCLUDED because they re-anchor through the day (see intradayConfluenceAt).
+export const DAILY_CONFLUENCE_SOURCES = ['pivots', 'prior_hilo', 'volume_profile', 'swing_sr', 'round_number'];
+
+// ── Touch-time (intraday-dynamic) confluence ─────────────────────────────────
+// The confluence sources that CHANGE through the session, evaluated at the instant
+// of a touch using ONLY bars up to `idx` (NO lookahead) — so as price makes new
+// highs/lows before the touch, the fib grid re-anchors, exactly like pulling fibs
+// live on the 15m chart, and VWAP is cumulative to that point. Both collapse to a
+// single source id (`swing_fib` / `vwap`) so multiple aligning fib lines still count
+// as ONE distinct source (matches the distinct-source bucket). Pure.
+export function intradayConfluenceAt(bars, idx, { ratios = [0.236, 0.382, 0.5, 0.618, 0.65, 0.786] } = {}) {
+  if (!Array.isArray(bars) || !(idx >= 1) || idx >= bars.length) return [];
+  let hi = -Infinity, lo = Infinity, cumTpv = 0, cumVol = 0;
+  for (let k = 0; k <= idx; k++) {
+    const b = bars[k];
+    if (b.high > hi) hi = b.high;
+    if (b.low < lo) lo = b.low;
+    const tp = (b.high + b.low + b.close) / 3, v = b.volume ?? 1;
+    cumTpv += tp * v; cumVol += v;
+  }
+  const out = [], range = hi - lo;
+  if (range > 1e-12) for (const r of ratios) out.push({ price: lo + range * r, source: 'swing_fib' });   // retrace grid off the running swing
+  if (cumVol > 0) out.push({ price: cumTpv / cumVol, source: 'vwap' });
+  return out;
+}
+
 // Sparse STRUCTURAL ladder — half-integer fib grid (…−1,−0.5,0,0.5,1,1.5…) so the
 // triple-barrier neighbours are real distances, not the 0.25-dense grid.
 // Exported so the LIVE v2 producer (levelsV2Engine.js) builds the IDENTICAL ladder
@@ -124,7 +152,7 @@ export function walkChandelierExit(bars, touchIdx, n, L, dirUp, protectStop, run
 // resolved against the SAME intraday path (this session's bars). Emits line
 // records in perLineStrategy's shape.
 export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
-  const { sigma = 0, tf = null, pip = 0, confLevels = null, confTolFrac = 0.1 } = ctx;
+  const { sigma = 0, tf = null, pip = 0, confLevels = null, confTolFrac = 0.1, confMode = 'session' } = ctx;
   const n = bars.length;
   if (n < 2) return [];
   const closePx = bars[n - 1].close;
@@ -179,7 +207,15 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
       // Structural-confluence bucket (session-level levels precomputed in ctx):
       // how many distinct sources sit within confTol of this line (null when the
       // confluence brick wasn't run for this session).
-      const confluence = confLevels ? confluenceBucketAt(L, confLevels, confTol) : null;
+      // Confluence bucket. 'session' = the fixed session-open level set (all sources).
+      // 'touch' = the DAILY fixed set (confLevels) PLUS the intraday-dynamic fibs/VWAP
+      // as of THIS touch (bars ≤ touchIdx, no lookahead) — so the count reflects what
+      // a live trader would see at the moment price arrived, fibs re-anchored to the
+      // running swing. `.slice` keeps the pure daily list untouched across lines.
+      const confluence = !confLevels ? null
+        : confMode === 'touch'
+          ? confluenceBucketAt(L, confLevels.concat(intradayConfluenceAt(bars, touchIdx)), confTol)
+          : confluenceBucketAt(L, confLevels, confTol);
 
       // Triple-barrier walk from the touch: inner first = reverted, outer = continued.
       let outcome = 'undecided', decidedBy = 'close';
@@ -294,9 +330,14 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
   // is actually being tested.
   const conf = opts.confluence || {};
   const confOn = !!conf.enabled;
-  const confSources = Array.isArray(conf.sources) && conf.sources.length ? conf.sources : CONFLUENCE_SOURCES;
+  const confMode = conf.mode === 'touch' ? 'touch' : 'session';
+  // 'touch' mode: the session set is DAILY sources only (fibs/VWAP become intraday,
+  // computed at each touch), so they aren't double-counted as fixed AND dynamic.
+  const confSources = Array.isArray(conf.sources) && conf.sources.length ? conf.sources
+    : (confMode === 'touch' ? DAILY_CONFLUENCE_SOURCES : CONFLUENCE_SOURCES);
   const confLookback = conf.lookbackDays ?? 5;
   const confTolFrac = conf.tolFrac ?? 0.1;
+  const confFib15 = confMode === 'touch' ? false : (conf.fib15 !== false);
 
   const dates = [...sessions.keys()].sort()
     .filter(d => (sessions.get(d)?.length ?? 0) >= minBarsPerSession);
@@ -357,11 +398,11 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
         const pb = sessions.get(dates[j]); if (pb) intraday = intraday.concat(pb);
       }
       confLevels = sessionConfluenceLevels({ dailyBars: d1.slice(0, i), intraday, pip: opts.pip || 0,
-        price: open, sources: confSources, fib15: conf.fib15 !== false,
+        price: open, sources: confSources, fib15: confFib15,
         fib15Lookback: confLookback, fib15ClusterPips: conf.fib15ClusterPips ?? 8 });
     }
 
-    const lines = analyseRangeWindow({ open, bars }, ladders, { sigma, tf, pip: opts.pip ?? 0, confLevels, confTolFrac });
+    const lines = analyseRangeWindow({ open, bars }, ladders, { sigma, tf, pip: opts.pip ?? 0, confLevels, confTolFrac, confMode });
     if (lines.length) records.push({ date, open: +open.toFixed(6), realized: { close: +bars[bars.length - 1].close.toFixed(6) }, lines });
   }
   return records;

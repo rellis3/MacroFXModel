@@ -8659,6 +8659,9 @@ app.post('/api/range-line/run', async (req, res) => {
   if (wantConfluence) {
     opts.confluence = {
       enabled: true,
+      // 'touch' = intraday-dynamic confluence (fibs re-anchor to the running swing +
+      // VWAP as of each touch); 'session' (default) = the fixed session-open set.
+      mode:         b.confMode === 'touch' ? 'touch' : 'session',
       tolFrac:      (b.confTolFrac != null && b.confTolFrac !== '') ? parseFloat(b.confTolFrac) : 0.1,
       lookbackDays: (b.confLookbackDays != null && b.confLookbackDays !== '') ? parseInt(b.confLookbackDays) : 5,
       sources:      Array.isArray(b.confSources) && b.confSources.length ? b.confSources : undefined,
@@ -8683,7 +8686,7 @@ app.post('/api/range-line/run', async (req, res) => {
       // `confluence`, whose bucket is baked into the records at build time — so its
       // params (on/tol/lookback/sources) MUST join the key or a toggle would reuse
       // stale (confluence-less) records.
-      const cSig = opts.confluence ? `conf:${opts.confluence.tolFrac}:${opts.confluence.lookbackDays}:${(opts.confluence.sources || []).join(',')}` : 'noconf';
+      const cSig = opts.confluence ? `conf:${opts.confluence.mode}:${opts.confluence.tolFrac}:${opts.confluence.lookbackDays}:${(opts.confluence.sources || []).join(',')}:${opts.confluence.fib15}` : 'noconf';
       const recKey = [opts.sources.join(','), opts.minLookback, opts.dateFrom, opts.dateTo, opts.boundaryHour, opts.asiaHrs, cSig].join('|');
       const touchesByPair = {}, costByPair = {};
       let done = 0;

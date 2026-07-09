@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES, runConfluenceFilter } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES, runConfluenceFilter, intradayConfluenceAt, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches, buildPolicy } from './perLineStrategy.js';
 
@@ -85,6 +85,37 @@ ok('extractTouches keys cells on the confluence bucket', confTouches.length > 0 
    `${confTouches.length} touches, e.g. ${confTouches[0]?.cell}`);
 ok('default run (confluence off) leaves the bucket null → not conditionable',
    allLines.every(l => l.confluence == null || l.confluence === undefined));
+
+console.log('[intradayConfluenceAt — running-swing fibs + VWAP, no lookahead]');
+// Bars: low 100 rising to a running high; VWAP ~ mid. At idx=2 the running range is
+// [100,104]; fibs project off it. A LATER high (idx=4=110) must NOT affect idx=2.
+const ib = [
+  { high: 101, low: 100, close: 100.5, volume: 1 },
+  { high: 103, low: 100, close: 102,   volume: 1 },
+  { high: 104, low: 100, close: 103,   volume: 1 },   // idx=2 → running range 100–104
+  { high: 106, low: 103, close: 105,   volume: 1 },
+  { high: 110, low: 105, close: 109,   volume: 1 },   // new high AFTER idx 2
+];
+const iat2 = intradayConfluenceAt(ib, 2);
+ok('emits fib (swing_fib) + vwap sources', iat2.some(l => l.source === 'swing_fib') && iat2.some(l => l.source === 'vwap'));
+ok('fibs anchored to running range 100–104 (0.5 → 102)', iat2.some(l => l.source === 'swing_fib' && Math.abs(l.price - 102) < 1e-6));
+ok('NO lookahead — a later high (110) does not enter idx=2 (max fib ≤ 104)',
+   Math.max(...iat2.filter(l => l.source === 'swing_fib').map(l => l.price)) <= 104 + 1e-9);
+const iat4 = intradayConfluenceAt(ib, 4);
+ok('by idx=4 the running high (110) DOES move the fibs (max fib > 104)',
+   Math.max(...iat4.filter(l => l.source === 'swing_fib').map(l => l.price)) > 104);
+ok('idx<1 / out-of-range → []', intradayConfluenceAt(ib, 0).length === 0 && intradayConfluenceAt(ib, 99).length === 0);
+ok('DAILY_CONFLUENCE_SOURCES excludes the intraday-dynamic fib/vwap', !DAILY_CONFLUENCE_SOURCES.includes('vwap') && !DAILY_CONFLUENCE_SOURCES.includes('swing_fib') && !DAILY_CONFLUENCE_SOURCES.includes('fib15'));
+
+console.log('[touch-time confluence mode — end to end]');
+const touchRecords = runRangeLineAnalyser(sessions, 'fx',
+  { sources: ['asia', 'monday'], minLookback: 20, minBarsPerSession: 30, asiaHrs: 0.5, pip: 0.0001,
+    confluence: { enabled: true, mode: 'touch', tolFrac: 0.2, lookbackDays: 5 } });
+const touchLines = touchRecords.flatMap(r => r.lines);
+ok('touch-mode lines carry a confluence bucket', touchLines.length > 0 && touchLines.every(l => 'confluence' in l));
+ok('touch-mode buckets are the expected labels (or null)',
+   touchLines.every(l => l.confluence == null || ['1·none', '2·single', '3·multi'].includes(l.confluence)),
+   `sample=${[...new Set(touchLines.map(l => l.confluence))].join(',')}`);
 
 console.log('[confluence QUALITY FILTER — direction held, levels filtered]');
 // Touches keyed on NONE (direction-agnostic policy) but carrying the confluence
