@@ -19,6 +19,51 @@
 
 import { latestSessionConfluence } from './rangeLineAnalyser.js';
 
+// ── Fresh-M1 packing (live path) ─────────────────────────────────────────────
+// The backtest sources confluence from the M1 STORE (loadM1ForPair). Live, that
+// store is stale (updated on a slow cadence), so the shipped confluence dates lag
+// by weeks. These helpers pack FRESH OANDA M1 into the identical packed shape
+// (`{n,times,opens,highs,lows,closes,volumes}`, epoch-second times) the store
+// returns — so `latestSessionConfluence` runs the SAME validated path on current
+// data, no drift.
+
+// Start-of-current-session epoch (UTC), given the DST-aware London-midnight
+// boundaryHour (23 in BST, 0 in GMT). Bars at/after this belong to the STILL-
+// FORMING session and must be dropped — the confluence is "levels known at today's
+// open", so it may only use completed prior sessions (the no-lookahead rule the
+// touch-mode test enforces). boundaryHour=23,now=05:00Z → yesterday 23:00Z.
+export function sessionStartEpoch(boundaryHour, nowSec) {
+  const d = new Date(nowSec * 1000);
+  const startToday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), boundaryHour, 0, 0) / 1000;
+  return d.getUTCHours() >= boundaryHour ? startToday : startToday - 86400;
+}
+
+// Raw bars [{time(epochSec),open,high,low,close,volume}] → packed arrays, sorted,
+// deduped by time, with the forming session dropped (see sessionStartEpoch). Pure
+// — offline-testable, no network/clock (pass nowSec).
+export function packLiveM1(bars, { boundaryHour = 0, nowSec = null } = {}) {
+  const clean = (Array.isArray(bars) ? bars : []).filter(b => b && Number.isFinite(b.time));
+  clean.sort((a, b) => a.time - b.time);
+  const now = Number.isFinite(nowSec) ? nowSec : (clean.length ? clean[clean.length - 1].time : 0);
+  const cut = sessionStartEpoch(boundaryHour, now);
+  const kept = [];
+  let lastT = null;
+  for (const b of clean) {
+    if (b.time >= cut) continue;             // drop the still-forming session
+    if (b.time === lastT) continue;          // dedupe overlapping page boundaries
+    lastT = b.time; kept.push(b);
+  }
+  const n = kept.length;
+  const times = new Array(n), opens = new Array(n), highs = new Array(n),
+        lows = new Array(n), closes = new Array(n), volumes = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const b = kept[i];
+    times[i] = b.time; opens[i] = b.open; highs[i] = b.high;
+    lows[i] = b.low; closes[i] = b.close; volumes[i] = b.volume ?? 0;
+  }
+  return { n, times, opens, highs, lows, closes, volumes };
+}
+
 // Refresh the confluence artifact and persist it to KV. `getPacked(instr, ac)` must
 // return the instrument's packed M1 (server wires loadM1ForPair). Instruments with
 // no M1 / no levels are skipped. Writes `range_line_confluence`:

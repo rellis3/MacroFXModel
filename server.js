@@ -52,9 +52,9 @@ import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForP
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter } from './js/rangeLineAnalyser.js';
-import { pipSize as _pipSize, instrument } from './js/instrumentRegistry.js';
+import { pipSize as _pipSize, instrument, oandaSymbol } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
-import { refreshRangeLineConfluence } from './js/rangeLineConfluenceProducer.js';
+import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
@@ -2475,6 +2475,40 @@ function _oandaBaseMe() {
 }
 
 // Paginated OANDA D1 fetch from a start date until today (handles >5000 bars).
+// Fresh OANDA M1 over a time window (epoch-second `sinceSec` → now), forward-
+// paginated (count max 5000/request). Returns [{time(epochSec),open,high,low,
+// close,volume}] — the raw shape packLiveM1 packs. Used by the range-line
+// confluence producer so it runs on CURRENT data, not the stale M1 store.
+async function fetchOandaM1Range(instrument, sinceSec) {
+  const key  = process.env.OANDA_KEY;
+  const base = _oandaBaseMe();
+  let from   = new Date(sinceSec * 1000).toISOString();
+  const out  = [];
+  for (let page = 0; page < 14; page++) {
+    const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+              + `?granularity=M1&from=${encodeURIComponent(from)}&count=5000&price=M`;
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal:  AbortSignal.timeout(30_000),
+    });
+    if (!r.ok) throw new Error(`OANDA ${instrument} M1 HTTP ${r.status}`);
+    const data    = await r.json();
+    const candles = data.candles ?? [];
+    for (const c of candles) {
+      if (c.complete === false || !c.mid) continue;    // skip the forming minute
+      out.push({
+        time:   Math.floor(Date.parse(c.time) / 1000),
+        open:   parseFloat(c.mid.o), high: parseFloat(c.mid.h),
+        low:    parseFloat(c.mid.l), close: parseFloat(c.mid.c),
+        volume: Number(c.volume) || 0,
+      });
+    }
+    if (candles.length < 5000) break;                  // caught up to now
+    from = candles[candles.length - 1].time;           // advance past last (dedupe in packLiveM1)
+  }
+  return out;
+}
+
 async function fetchOandaD1Range(instrument, fromDate) {
   const key  = process.env.OANDA_KEY;
   const base = _oandaBaseMe();
@@ -5320,16 +5354,41 @@ async function _refreshRangeLineConfluence() {
   const log = [];
   const onLog = m => { console.log('[range-line-conf]', m); log.push(m); };
   const boundaryHour = _rlBoundaryHour();
+  const nowSec = Math.floor(Date.now() / 1000);
+  const sinceSec = nowSec - 35 * 86400;                  // ~24+ sessions ≥ swing_sr/extremes 20d lookback
+  // Fresh OANDA M1 (current data, forming session dropped) → identical packed shape;
+  // falls back to the stale M1 store only if OANDA is unreachable / too sparse.
+  const getPacked = async (instr) => {
+    let osym = null;
+    try { osym = oandaSymbol(instr); } catch { /* not on OANDA */ }
+    if (osym && process.env.OANDA_KEY) {
+      try {
+        const bars = await fetchOandaM1Range(osym, sinceSec);
+        const packed = packLiveM1(bars, { boundaryHour, nowSec });
+        if (packed.n >= 500) return packed;              // enough completed sessions to be valid
+        onLog(`${instr}: fresh OANDA M1 sparse (${packed.n} bars) — falling back to store`);
+      } catch (e) { onLog(`${instr}: OANDA M1 fetch failed (${e.message}) — falling back to store`); }
+    }
+    return loadM1ForPair(instr, BT_M1_DIR);
+  };
   try {
     const artifact = await refreshRangeLineConfluence({
       universe: RL_BOT_UNIVERSE,
-      getPacked: (instr) => loadM1ForPair(instr, BT_M1_DIR),
+      getPacked,
       kvPut: (k, v) => kv.put(k, v),
       assetClassFor: _assetClassFor,
       pipFor: (k) => { try { return _pipSize(k) || null; } catch { return null; } },
       boundaryHour, confLookback: 5, tolFrac: 0.1,
       onLog,
     });
+    // Staleness guard: the whole point of the fresh path — surface if the shipped
+    // confluence is still lagging (all instruments fell back to a stale store).
+    const dates = Object.values(artifact.instruments || {}).map(v => v.date).filter(Boolean).sort();
+    if (dates.length) {
+      const newest = dates[dates.length - 1];
+      const ageDays = Math.floor((nowSec - Date.parse(newest + 'T00:00:00Z') / 1000) / 86400);
+      onLog(`confluence as-of ${newest} (${ageDays}d old)${ageDays > 4 ? ' ⚠ STALE — check OANDA_KEY/M1 reachability' : ''}`);
+    }
     return { artifact, log };
   } catch (e) { e.refreshLog = log; throw e; } finally { _rlConfRunning = false; }
 }
@@ -5346,6 +5405,23 @@ app.get('/api/range-line-bot/confluence', async (_req, res) => {
     res.json({ ok: true, confluence: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+
+// Daily confluence refresh at 6am London (Asia range just completed, DST-aware:
+// 05:00 UTC in BST, 06:00 UTC in GMT = (boundaryHour + 6) % 24). Fires once per UTC
+// day at that hour:MIN. The confluence VALUES are anchored at the session open
+// (prior-day data only), so 6am is simply when the bot needs today's graded zones.
+const RL_CONF_UTC_MIN = Number(process.env.RANGE_LINE_CONF_UTC_MIN ?? 10);
+let _rlConfLastFired = null;
+setInterval(() => {
+  const now = new Date();
+  const targetHour = (_rlBoundaryHour(now) + 6) % 24;    // 6am London in UTC, DST-aware
+  const dateKey = now.toISOString().slice(0, 10);
+  if (now.getUTCHours() === targetHour && now.getUTCMinutes() === RL_CONF_UTC_MIN && _rlConfLastFired !== dateKey) {
+    _rlConfLastFired = dateKey;
+    console.log(`[range-line-conf] scheduled 6am-London refresh firing (${targetHour}:${String(RL_CONF_UTC_MIN).padStart(2, '0')} UTC)`);
+    _refreshRangeLineConfluence().catch(e => console.error('[range-line-conf] scheduled refresh failed:', e.message));
+  }
+}, 60_000);
 
 // Range-line ZONES — today's tradeable zones per pair for the range-zones page:
 // joins the live bot status (ladders + price), the frozen plan (fade/follow/skip)
