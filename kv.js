@@ -257,8 +257,29 @@ export async function load() {
     await fileLoad();
     const count = Object.keys(store).filter(k => !k.startsWith('__ttl_')).length;
     console.log(`[KV] File backend — ${count} keys (${KV_FILE})`);
-    console.log('[KV] Tip: set CF_ACCOUNT_ID + CF_API_TOKEN to persist across deploys');
+    // LOUD warning: on Railway the container filesystem is ephemeral, so the file
+    // backend is WIPED on every redeploy — bot configs + MT5 credentials silently
+    // vanish. This is the "account details keep being lost" failure. Make it
+    // impossible to miss so it gets configured, not rediscovered each deploy.
+    console.warn('┌───────────────────────────────────────────────────────────────────────┐');
+    console.warn('│ [KV] ⚠  NO PERSISTENT BACKEND — bot CONFIG + CREDENTIALS will be LOST   │');
+    console.warn('│      on the next redeploy (file store is ephemeral on Railway).        │');
+    console.warn('│      FIX: set CF_ACCOUNT_ID + CF_API_TOKEN (Cloudflare KV) in the       │');
+    console.warn('│      Railway service env, OR mount a persistent volume at DATA_DIR.     │');
+    console.warn('└───────────────────────────────────────────────────────────────────────┘');
   }
+}
+
+// Persistence health — is a redeploy-durable backend active? Surfaced via
+// /api/kv-health + the bot-config banner so the user SEES the risk before it bites.
+export function health() {
+  return {
+    persistent: USE_CF,
+    backend: USE_CF ? 'cloudflare-kv' : 'file',
+    file: USE_CF ? null : KV_FILE,
+    warning: USE_CF ? null
+      : 'Ephemeral file backend: bot config + MT5 credentials are WIPED on every redeploy. Set CF_ACCOUNT_ID + CF_API_TOKEN in Railway (or mount a volume at DATA_DIR).',
+  };
 }
 
 export async function get(key) {

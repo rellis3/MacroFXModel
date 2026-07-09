@@ -57,6 +57,12 @@ DEFAULT_CFG = {
     "status_secs": 30,             # read config + push status
     "tick_secs": 3,                # local price watch + touch detection + chandelier trail
     "enabled_pairs": [],           # [] = the plan's universe
+    "confluence_min": 0,           # structural-confluence entry gate (OOS-validated "trade
+                                    # only stronger levels"). 0 = OFF (no behaviour change,
+                                    # today's default); 1 = confluent (>=1 source); 2 =
+                                    # strong (>=2, the best OOS book). Needs the dashboard's
+                                    # range_line_confluence artifact; falls back to OFF if
+                                    # it's missing so a stale artifact can't silently halt trading.
 }
 
 # Broker symbol routing (instrument identity stays shared; routing is local).
@@ -268,8 +274,16 @@ def run(base_url: str, force_live: bool) -> None:
     sessions: dict[str, RangeSession] = {}
     positions: dict = {}                                   # ticket -> chandelier state
     plan = None
+    conf_art: dict | None = None                           # range_line_confluence artifact
     last_anchor = None
     last_plan = last_status = 0.0
+
+    def _attach_conf(sess: RangeSession) -> None:
+        """Set today's confluence levels on a freshly-built session (no-op unless
+        the artifact has this instrument)."""
+        inst = ((conf_art or {}).get("instruments") or {}).get(sess.instrument)
+        if inst:
+            sess.set_confluence(inst.get("levels") or [], (conf_art or {}).get("tolFrac", 0.1))
 
     while True:
         nowt = time.time()
@@ -288,6 +302,18 @@ def run(base_url: str, force_live: bool) -> None:
             if new_plan and new_plan.get("generatedAt") != (plan or {}).get("generatedAt"):
                 plan = new_plan
                 log.info(f"new plan loaded · {plan.get('generatedAt')} · {len(plan.get('universe', []))} instruments")
+            # Confluence levels (for the optional entry gate). Best-effort: a missing
+            # artifact just leaves sessions ungated (with confluence_min>0 that means
+            # no trades until it appears — logged once so it's visible).
+            try:
+                new_conf = kv.get_json("range_line_confluence")
+                if new_conf and new_conf.get("generatedAt") != (conf_art or {}).get("generatedAt"):
+                    conf_art = new_conf
+                    for instr in sessions:                 # refresh already-built sessions in place
+                        _attach_conf(sessions[instr])
+                    log.info(f"confluence levels loaded · {conf_art.get('generatedAt')} · {len(conf_art.get('instruments', {}))} instruments")
+            except Exception as e:
+                log.warning(f"confluence fetch failed: {e} — gate ungated this cycle")
             last_plan = nowt
 
         if plan:
@@ -295,6 +321,8 @@ def run(base_url: str, force_live: bool) -> None:
             if anchor != last_anchor:                      # new session day → fresh ladders/one-shots
                 sessions = {instr: RangeSession(instr, plan["ladderFibs"], chand_frac=plan.get("chandFrac", 0.5))
                             for instr in plan.get("universe", [])}
+                for s in sessions.values():
+                    _attach_conf(s)
                 last_anchor = anchor
             else:
                 # Same session, refreshed plan: add sessions for any NEW universe
@@ -304,6 +332,7 @@ def run(base_url: str, force_live: bool) -> None:
                 for instr in universe:
                     if instr not in sessions:
                         sessions[instr] = RangeSession(instr, plan["ladderFibs"], chand_frac=plan.get("chandFrac", 0.5))
+                        _attach_conf(sessions[instr])
                 for instr in list(sessions):
                     if instr not in universe:
                         del sessions[instr]
@@ -357,7 +386,8 @@ def run(base_url: str, force_live: bool) -> None:
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
                 single = cfg.get("single_position_per_pair", True)
-                for spec in sess.decide(px, ip["policy"], dry_run=forming):
+                conf_min = int(cfg.get("confluence_min", 0) or 0)
+                for spec in sess.decide(px, ip["policy"], dry_run=forming, confluence_min=conf_min):
                     sl = spec["protect_stop"]
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), spec["entry"] - sl, cfg.get("max_lot", 2.0))
                     direction = "LONG" if spec["dir_up"] else "SHORT"

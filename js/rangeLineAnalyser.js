@@ -53,6 +53,26 @@ export function confluenceBucketAt(level, confLevels, tol) {
   return n >= 2 ? '3·multi' : n === 1 ? '2·single' : '1·none';
 }
 
+// Build ONE session's structural-confluence level list — the SINGLE source of truth
+// shared by the backtest (runRangeLineAnalyser) AND the live producer that ships
+// today's levels to the range_line_bot (no drift — the live gate is checked against
+// the exact levels the OOS result was validated on). `dailyBars` = completed prior
+// D1 (no lookahead), `intraday` = the prior sessions' M1 (for volume-profile / VWAP
+// / the 15m fib). Returns `[{price, source}, …]`.
+export function sessionConfluenceLevels({ dailyBars = [], intraday = [], pip = 0, price = null,
+                                          sources = CONFLUENCE_SOURCES, fib15 = true,
+                                          fib15Lookback = 5, fib15ClusterPips = 8 } = {}) {
+  const levels = collectLevels({ dailyBars, intraday, pipSize: pip || undefined, price }, sources);
+  // 15-MINUTE fib clusters (the trader's actual tool: fibs pulled on the 15m chart).
+  if (fib15 && intraday.length) {
+    const bars15 = resampleTo(intraday, 15);
+    const f15 = swingFibLevels({ dailyBars: bars15, pipSize: pip || undefined,
+      params: { lookbackDays: fib15Lookback + 1, strength: 3, clusterPips: fib15ClusterPips, minConfluence: 2 } });
+    for (const lv of f15) levels.push({ ...lv, source: 'fib15' });
+  }
+  return levels;
+}
+
 // Sparse STRUCTURAL ladder — half-integer fib grid (…−1,−0.5,0,0.5,1,1.5…) so the
 // triple-barrier neighbours are real distances, not the 0.25-dense grid.
 // Exported so the LIVE v2 producer (levelsV2Engine.js) builds the IDENTICAL ladder
@@ -332,22 +352,13 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
     // (same levels feed both the Asia and Monday ladders).
     let confLevels = null;
     if (confOn) {
-      const dailyBars = d1.slice(0, i);
       let intraday = [];
       for (let j = Math.max(0, i - confLookback); j < i; j++) {
         const pb = sessions.get(dates[j]); if (pb) intraday = intraday.concat(pb);
       }
-      confLevels = collectLevels({ dailyBars, intraday, pipSize: opts.pip || undefined, price: open }, confSources);
-      // 15-MINUTE fib clusters (the trader's actual tool: fibs pulled on the 15m
-      // chart of recent price). Resample the prior sessions' M1 to 15m and project
-      // swing-fib clusters off it — the intraday-timeframe confluence the daily
-      // sources can't see. Tagged as a distinct source so it counts toward the bucket.
-      if (conf.fib15 !== false && intraday.length) {
-        const bars15 = resampleTo(intraday, 15);
-        const fib15 = swingFibLevels({ dailyBars: bars15, pipSize: opts.pip || undefined,
-          params: { lookbackDays: confLookback + 1, strength: 3, clusterPips: conf.fib15ClusterPips ?? 8, minConfluence: 2 } });
-        for (const lv of fib15) confLevels.push({ ...lv, source: 'fib15' });
-      }
+      confLevels = sessionConfluenceLevels({ dailyBars: d1.slice(0, i), intraday, pip: opts.pip || 0,
+        price: open, sources: confSources, fib15: conf.fib15 !== false,
+        fib15Lookback: confLookback, fib15ClusterPips: conf.fib15ClusterPips ?? 8 });
     }
 
     const lines = analyseRangeWindow({ open, bars }, ladders, { sigma, tf, pip: opts.pip ?? 0, confLevels, confTolFrac });
@@ -747,6 +758,29 @@ export function touchesForPair(packed, assetClass = 'fx', opts = {}) {
 export function recordsForPair(packed, assetClass = 'fx', opts = {}) {
   const sessions = bucketM1IntoSessions(packed, opts.boundaryHour ?? 22);
   return runRangeLineAnalyser(sessions, assetClass, opts);
+}
+
+// ── TODAY's structural-confluence levels for the LIVE bot gate ─────────────────
+// Packed M1 → session split (the SAME bucketing the backtest uses) → today's
+// confluence level prices, from completed prior days only (structural levels —
+// pivots/POC/VAH/VAL/fibs — don't depend on today's forming range, so they're
+// known at the open). Reuses `sessionConfluenceLevels` — identical to the OOS
+// path, no drift. Returns { date, levels:[{price,source}] }. The dashboard producer
+// ships this per instrument; the bot pairs it with its live range via the tolerance.
+export function latestSessionConfluence(packed, {
+  boundaryHour = 0, confLookback = 5, pip = 0,
+  sources = CONFLUENCE_SOURCES, fib15 = true, fib15ClusterPips = 8,
+} = {}) {
+  const sessions = bucketM1IntoSessions(packed, boundaryHour);
+  const dates = [...sessions.keys()].sort();
+  if (!dates.length) return { date: null, levels: [] };
+  const d1 = sessionsToD1(sessions, dates);              // all completed sessions (prior days)
+  const n = dates.length;
+  let intraday = [];
+  for (let j = Math.max(0, n - confLookback); j < n; j++) { const pb = sessions.get(dates[j]); if (pb) intraday = intraday.concat(pb); }
+  const levels = sessionConfluenceLevels({ dailyBars: d1, intraday, pip, price: d1[n - 1].close,
+    sources, fib15, fib15Lookback: confLookback, fib15ClusterPips });
+  return { date: dates[n - 1], levels };
 }
 
 // ── Full book: packed M1 per pair → records → pooled-IS policy → per-pair OOS ──

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from pylego.strategy.rangeline import (
     body_range, build_ladder, ladder_side, neighbours, trade_spec, chandelier_stop, cell_key,
+    confluence_bucket, confluence_rank,
 )
 from range_line_bot.engine import RangeSession, session_anchor_epoch
 
@@ -112,6 +113,35 @@ both = sboth.decide(115, {"A_1_up|": {"decision": "follow"}, "M_1_up|": {"decisi
 ok("decide returns one spec PER source at a coincident touch (2 specs)", len(both) == 2)
 ok("both specs are the same pair/side (loop must dedupe to one fill/tick)",
    {s["src"] for s in both} == {"A", "M"} and all(s["side"] == "up" for s in both))
+
+print("[confluence bucket — parity with rangeLineAnalyser.confluenceBucketAt]")
+CL = [{"price": 110.001, "source": "pivots"}, {"price": 110.002, "source": "poc"}, {"price": 120.0, "source": "vwap"}]
+ok("2 distinct sources within tol → 3·multi", confluence_bucket(110.0, CL, 0.01) == "3·multi")
+ok("1 source within tol → 2·single", confluence_bucket(110.0, [{"price": 110.001, "source": "pivots"}], 0.01) == "2·single")
+ok("0 within tol → 1·none", confluence_bucket(110.0, CL, 0.0001) == "1·none")
+ok("same source twice counts once", confluence_bucket(110.0, [{"price": 110.001, "source": "p"}, {"price": 110.002, "source": "p"}], 0.01) == "2·single")
+ok("None when no levels / tol<=0", confluence_bucket(110.0, [], 0.01) is None and confluence_bucket(110.0, CL, 0) is None)
+ok("rank: multi>single>none, unknown=-1", confluence_rank("3·multi") == 2 and confluence_rank("2·single") == 1 and confluence_rank("1·none") == 0 and confluence_rank(None) == -1)
+
+print("[confluence gate in decide() — opt-in, direction unchanged]")
+# Range 100-110 (mid 105); A_1 = 110 (up). Confluence: 2 sources at 110 → strong.
+sg = RangeSession("eurusd", FIBS); sg.set_range("A", BARS)
+sg.set_confluence([{"price": 110.0, "source": "pivots"}, {"price": 110.0, "source": "poc"}], tol_frac=0.1)   # tol = 0.1×10 = 1.0
+polg = {"A_1_up|": {"decision": "follow"}}
+ok("gate OFF (confluence_min=0) → trades as today", len(sg.decide(110, polg, confluence_min=0)) == 1)
+sg2 = RangeSession("eurusd", FIBS); sg2.set_range("A", BARS)
+sg2.set_confluence([{"price": 110.0, "source": "pivots"}, {"price": 110.0, "source": "poc"}], tol_frac=0.1)
+ok("strong level passes the ≥2 gate", len(sg2.decide(110, polg, confluence_min=2)) == 1)
+sg3 = RangeSession("eurusd", FIBS); sg3.set_range("A", BARS)
+sg3.set_confluence([{"price": 130.0, "source": "pivots"}], tol_frac=0.1)     # nothing near 110 → 1·none
+ok("bare level (no confluence) is gated out at ≥2", sg3.decide(110, polg, confluence_min=2) == [])
+sg4 = RangeSession("eurusd", FIBS); sg4.set_range("A", BARS)
+sg4.set_confluence([{"price": 110.0, "source": "pivots"}], tol_frac=0.1)     # 1 source → 2·single
+ok("single-source level passes ≥1 but fails ≥2",
+   len(sg4.decide(110, polg, confluence_min=1)) == 1)
+sg5 = RangeSession("eurusd", FIBS); sg5.set_range("A", BARS)
+sg5.set_confluence([{"price": 110.0, "source": "pivots"}], tol_frac=0.1)
+ok("single-source level gated out at ≥2", sg5.decide(110, polg, confluence_min=2) == [])
 
 print("[engine — session anchor]")
 # 2026-06-30 10:00:00 UTC; boundary 23 → most recent 23:00 UTC = 2026-06-29 23:00.

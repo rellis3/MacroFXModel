@@ -18,6 +18,7 @@ from datetime import datetime, timezone, timedelta
 
 from pylego.strategy.rangeline import (
     build_ladder, ladder_side, neighbours, trade_spec, cell_key, body_range,
+    confluence_bucket, confluence_rank,
 )
 
 # Resample minutes per source (matches the backtest: Asia=5m bodies, Monday=15m).
@@ -48,6 +49,16 @@ class RangeSession:
         self.ladders = {}          # src_tag -> {low, high, levels:[{label,side,level,inner,outer,rung}]}
         self.acted = set()         # (label, side) decided once this session
         self.entered = set()       # (src_tag, side) with a position taken (held-position suppression)
+        self.conf_levels = []      # today's structural-confluence level prices [{price,source}]
+        self.conf_tol_frac = 0.1   # "on the line" tolerance as a fraction of the ladder range
+
+    # ── confluence entry-gate inputs (optional; set from the shipped artifact) ──
+    def set_confluence(self, levels, tol_frac=0.1):
+        """Attach today's confluence level prices (from range_line_confluence) +
+        the tolerance fraction. The gate is only ENFORCED when decide() is called
+        with confluence_min > 0, so this is a no-op for a bot that hasn't opted in."""
+        self.conf_levels = levels or []
+        self.conf_tol_frac = tol_frac if tol_frac and tol_frac > 0 else 0.1
 
     # ── ladder construction (call once the range is known) ────────────────────
     def set_range(self, src_tag, bars):
@@ -73,13 +84,16 @@ class RangeSession:
         return src_tag in self.ladders
 
     # ── decision (call each tick with the current price + frozen policy) ───────
-    def decide(self, px, policy, *, dry_run=False):
+    def decide(self, px, policy, *, dry_run=False, confluence_min=0):
         """Ladder levels newly touched this tick that map to a tradeable cell and
         whose (source, side) slot is still open. Marks them acted/entered so a
         level fires once and only ONE position opens per (source, side).
 
         ``dry_run=True`` marks touched levels acted but returns nothing — used after
         catch-up to prime levels price already crossed (never retro-enter).
+        ``confluence_min`` (0=off) gates entries by structural-confluence strength:
+        a level whose distinct-source count ranks below the threshold (1=confluent,
+        2=strong) is skipped — the OOS-validated "trade only stronger levels" filter.
         Returns specs: ``{instrument, src, label, side, decision, side_order, entry,
         protect_stop, rung, dir_up}``. The caller MUST call ``mark_entered(src, side)``
         after a SUCCESSFUL fill — the slot is not burned here, so a broker-rejected
@@ -104,6 +118,14 @@ class RangeSession:
                 decision = (policy.get(cell_key(lv["label"], lv["side"])) or {}).get("decision")
                 if decision not in ("fade", "follow"):
                     continue                             # skip / unseen → no trade
+                # Confluence gate (opt-in): only trade levels backed by >= confluence_min
+                # DISTINCT structural sources. tol scales with THIS ladder's range so
+                # "on the line" matches the backtest's per-range tolerance exactly.
+                if confluence_min > 0:
+                    tol = self.conf_tol_frac * (lad["high"] - lad["low"])
+                    bucket = confluence_bucket(lv["level"], self.conf_levels, tol)
+                    if confluence_rank(bucket) < confluence_min:
+                        continue                         # too weak a level → skip
                 spec = trade_spec(lv["level"], lv["side"], decision, lv["inner"], lv["outer"])
                 if not spec:
                     continue
