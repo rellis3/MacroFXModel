@@ -18,6 +18,7 @@
  * Pure, synthetic-testable. Reuses the σ estimators + BM constants (never copies).
  */
 import { ewmaVarSeries, hvVarSeries, yzVolSeries, BM_P50, BM_P75, ASSET_PARAMS } from './volBacktestEngine.js';
+import { ASSET_PARAMS as PAGE_PARAMS } from './volForecast.js';   // the LIVE page constants (distinct from the bot's)
 
 const _mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
 const _median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -46,7 +47,8 @@ function _sigmaPctSeries(bars, method) {
 // Candidate calcs. Each returns { med, p75 } in % of price for day i, from data < i.
 // ctx: { realizedHL, sigYZ, sigHV20, sigEWMA, corr50, corr75, win }.
 const CALCS = {
-  page_approx: { label: 'Current page (Feller×corr, YZ σ)', fn: (i, c) => c.sigYZ[i] == null ? null : ({ med: BM_P50 * c.corr50 * c.sigYZ[i], p75: BM_P75 * c.corr75 * c.sigYZ[i] }) },
+  page_live:   { label: 'LIVE page (Feller×corr, YZ σ)',   fn: (i, c) => c.sigYZ[i] == null ? null : ({ med: BM_P50 * c.pageCorr50 * c.sigYZ[i], p75: BM_P75 * c.pageCorr75 * c.sigYZ[i] }) },
+  bot_recal:   { label: 'Bot recalibrated (Feller×corr, YZ σ)', fn: (i, c) => c.sigYZ[i] == null ? null : ({ med: BM_P50 * c.corr50 * c.sigYZ[i], p75: BM_P75 * c.corr75 * c.sigYZ[i] }) },
   feller_yz:   { label: 'Feller, YZ σ (no fudge)',          fn: (i, c) => c.sigYZ[i] == null ? null : ({ med: BM_P50 * c.sigYZ[i], p75: BM_P75 * c.sigYZ[i] }) },
   feller_hv20: { label: 'Feller, HV20 σ (no fudge)',        fn: (i, c) => c.sigHV20[i] == null ? null : ({ med: BM_P50 * c.sigHV20[i], p75: BM_P75 * c.sigHV20[i] }) },
   feller_ewma: { label: 'Feller, EWMA0.94 σ (no fudge)',    fn: (i, c) => c.sigEWMA[i] == null ? null : ({ med: BM_P50 * c.sigEWMA[i], p75: BM_P75 * c.sigEWMA[i] }) },
@@ -59,11 +61,13 @@ export function bandCalcAB(bars, assetClass = 'fx', opts = {}) {
   const { minLookback = 120, win = 120, keys = Object.keys(CALCS) } = opts;
   if (!bars || bars.length < minLookback + 40) return { insufficient: true, nDays: bars?.length ?? 0 };
   const realizedHL = bars.map(b => (b.open > 0 ? (b.high - b.low) / b.open * 100 : null));
-  const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
+  const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;        // bot (recalibrated)
+  const pg = PAGE_PARAMS[assetClass] ?? PAGE_PARAMS.fx;          // live page
   const ctx = {
     realizedHL, win,
     sigYZ: _sigmaPctSeries(bars, 'yz'), sigHV20: _sigmaPctSeries(bars, 'hv20'), sigEWMA: _sigmaPctSeries(bars, 'ewma094'),
     corr50: p.hl_50_corr ?? 1, corr75: p.hl_75_corr ?? 1,
+    pageCorr50: pg.hl_50_corr ?? 1, pageCorr75: pg.hl_75_corr ?? 1,
   };
   const results = keys.filter(k => CALCS[k]).map(key => {
     const medF = [], actF = [], exMed = [], ex75 = [], absErr = [];

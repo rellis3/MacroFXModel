@@ -144,10 +144,12 @@ function _bandCalcFold(recs) {
       medianCalibMiss: +(_median(col(r => r.calibMiss)) ?? 0).toFixed(1),
     };
   }).sort((a, b) => (a.medianCalibMiss - b.medianCalibMiss) || (b.medianSharpness - a.medianSharpness));
-  const best = calcs[0], page = calcs.find(c => c.key === 'page_approx');
+  const best = calcs[0], page = calcs.find(c => c.key === 'page_live'), bot = calcs.find(c => c.key === 'bot_recal');
+  const wide = c => c ? (c.medianExceedMedian < 45 ? 'too wide' : c.medianExceedMedian > 55 ? 'too tight' : 'roughly calibrated') : '';
   return { nPairs: per.length, calcs,
     verdict: `Best-calibrated calc across pairs: ${best.label} (exceed-median ${best.medianExceedMedian}% vs 50, sharpness ${best.medianSharpness}). ` +
-      (page ? `The current page calc reads ${page.medianExceedMedian}% (miss ${page.medianCalibMiss}) — ${page.medianExceedMedian < 45 ? 'bands too wide' : page.medianExceedMedian > 55 ? 'bands too tight' : 'roughly calibrated'}.` : ''),
+      (page ? `The LIVE page reads ${page.medianExceedMedian}% (${wide(page)}); ` : '') +
+      (bot ? `the bot-recalibrated set reads ${bot.medianExceedMedian}% (${wide(bot)}).` : ''),
     note: 'Empirical calcs (climatology / ratio) self-calibrate by construction; the value is a calc that is BOTH well-calibrated AND sharp (bigger forecast → bigger day).' };
 }
 
