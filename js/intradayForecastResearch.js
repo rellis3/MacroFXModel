@@ -67,16 +67,32 @@ function _postTouch(bars, firstIdx, level, dir, pip) {
   return { mfePips: +mfe.toFixed(1), maePips: +mae.toFixed(1), rev10: mae >= 10, rev20: mae >= 20, rev50: mae >= 50, outcome, closeFadePips };
 }
 
+// Post-touch excursion measured SEPARATELY from each of the first N taps of a
+// FIXED level, so the fade-vs-blow-through split can be read per hit (1st / 2nd /
+// 3rd+ tap of the same line). This is the "does the 3rd hit blow through?" study.
+// % is expressed vs the level price so it composes across pairs. Static levels only
+// (dynamic levels move intrabar — "the same line" isn't what gets re-touched).
+const MAX_HITS = 6;
+function _perHitExcursions(bars, episodeIdxs, level, dir, pip) {
+  return episodeIdxs.slice(0, MAX_HITS).map(idx => {
+    const pt = _postTouch(bars, idx, level, dir, pip);
+    return { mfePips: pt.mfePips, maePips: pt.maePips, outcome: pt.outcome,
+      mfePct: +(pt.mfePips * pip / level * 100).toFixed(4),   // continuation (blow-through) as % of price
+      maePct: +(pt.maePips * pip / level * 100).toFixed(4) }; // pullback (fade) as % of price
+  });
+}
+
 export function _levelOutcome(bars, level, dir, pip, hyst) {
-  let firstIdx = -1, episodes = 0, armed = true;
+  let firstIdx = -1, episodes = 0, armed = true; const episodeIdxs = [];
   for (let k = 0; k < bars.length; k++) {
     const at = dir > 0 ? bars[k].high >= level : bars[k].low <= level;
-    if (at && armed) { episodes++; armed = false; if (firstIdx < 0) firstIdx = k; }
+    if (at && armed) { episodes++; armed = false; episodeIdxs.push(k); if (firstIdx < 0) firstIdx = k; }
     if (!armed) { const away = dir > 0 ? bars[k].high < level - hyst : bars[k].low > level + hyst; if (away) armed = true; }
   }
   if (firstIdx < 0) return null;
   return { touched: true, firstIdx, retests: episodes,
     hour: _hourOf(bars[firstIdx]._t), session: _session(bars[firstIdx]._t),
+    hits: _perHitExcursions(bars, episodeIdxs, level, dir, pip),   // per-tap excursions (1st/2nd/3rd+)
     ...(_postTouch(bars, firstIdx, level, dir, pip)) };
 }
 
@@ -317,6 +333,33 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
     for (const rg of ['BULL', 'BEAR', 'RANGE']) { const g = rows.filter(r => r.regime === rg); if (g.length >= minReg) out[rg] = { n: g.length, continuePct: +(_rate(g.map(r => r.outcome === 'continue')) ?? 0).toFixed(1), reverse20Pct: +(_rate(g.map(r => r.rev20)) ?? 0).toFixed(1), meanMfePips: +_mean(g.map(r => r.mfePips)).toFixed(1) }; }
     return out;
   };
+  // ── Per-hit fade study — for one static line, split every recorded tap into the
+  // 1st / 2nd / 3rd+ bucket and report how far it faded (MAE, reversion back toward
+  // the interior) vs blew through (MFE, continuation past the line), and the
+  // continue/reverse rates. "meanFadePct" is the average move a fade captures from
+  // that tap; a rising continuePct with hit number is the "3rd hit blows through"
+  // signature. Also sliced by regime. Returns { total, '1','2','3plus', byRegime }.
+  const _hitStat = arr => arr.length ? {
+    n: arr.length,
+    continuePct: +(_rate(arr.map(h => h.outcome === 'continue')) ?? 0).toFixed(1),
+    reversePct:  +(_rate(arr.map(h => h.outcome === 'reverse')) ?? 0).toFixed(1),
+    meanFadePct: +_mean(arr.map(h => h.maePct)).toFixed(3),
+    meanContPct: +_mean(arr.map(h => h.mfePct)).toFixed(3),
+    meanFadePips: +_mean(arr.map(h => h.maePips)).toFixed(1),
+    meanContPips: +_mean(arr.map(h => h.mfePips)).toFixed(1),
+  } : { n: 0 };
+  const _collectHits = (rows) => {
+    const b = { '1': [], '2': [], '3plus': [] }, all = [];
+    for (const r of rows) { const hs = r.hits || []; for (let i = 0; i < hs.length; i++) { (i === 0 ? b['1'] : i === 1 ? b['2'] : b['3plus']).push(hs[i]); all.push(hs[i]); } }
+    return { total: _hitStat(all), '1': _hitStat(b['1']), '2': _hitStat(b['2']), '3plus': _hitStat(b['3plus']) };
+  };
+  const _perHitLine = (rows) => {
+    const withHits = rows.filter(r => Array.isArray(r.hits) && r.hits.length);
+    const out = _collectHits(withHits);
+    out.byRegime = {};
+    for (const rg of ['BULL', 'BEAR', 'RANGE']) { const g = withHits.filter(r => r.regime === rg); if (g.length) out.byRegime[rg] = _collectHits(g); }
+    return out;
+  };
   // ── G1 placebo (does the exact forecast placement beat a same-scale jittered
   //    level?) + G2 fade payoff shape (hold-to-close fade PnL distribution) ──
   const plMed = touchRows.plMed || [];
@@ -355,6 +398,20 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
       realReversePct: medRev == null ? null : +medRev.toFixed(1),
       edgeVsPlaceboPp: (medRev != null && plRev != null) ? +(medRev - plRev).toFixed(1) : null },
     fadePayoff: _fadePayoff(med),
+    // ── Per-hit fade study (1st / 2nd / 3rd+ tap of each static line), by regime.
+    // Fade = pullback back toward the interior (MAE); blow-through = continuation
+    // past the line (MFE, continuePct). Lines kept separate (upper vs lower) so the
+    // card can show O-H and O-L rows; OC lines pool upper+lower. Dynamic day-H/L
+    // lines are excluded (they move intrabar, so the Nth "same line" tap isn't defined).
+    perHit: {
+      note: 'Per tap of a fixed line: meanFadePct = avg reversion (%) back toward the interior; continuePct = blow-through rate; sliced 1st/2nd/3rd+ and by regime. Rising continuePct with hit number = the line stops holding.',
+      ohMed: _perHitLine(touchRows.upMed),
+      olMed: _perHitLine(touchRows.dnMed),
+      ohP75: _perHitLine(touchRows.upP75),
+      olP75: _perHitLine(touchRows.dnP75),
+      ocMed: _perHitLine(touchRows.ocMed || []),
+      ocP75: _perHitLine(touchRows.ocP75 || []),
+    },
     direction: {
       eitherTouchedDays: dir.eitherTouched,
       firstUpperPct: dir.eitherTouched ? +(dir.firstUpper / dir.eitherTouched * 100).toFixed(1) : null,
@@ -373,6 +430,16 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
     add('info', `${H.label} median extension is touched ${M.touchRatePct}% of ${per}; after the first touch price continues ${M.continuePct}% vs reverses ${M.reversePct}%. Pullback probability: ${M.reverse10Pct}% ≥10 pips, ${M.reverse20Pct}% ≥20, ${M.reverse50Pct}% ≥50.`);
     if (M.reverse20SingleTouchPct != null && M.reverse20ManyRetestPct != null && Math.abs(M.reverse20SingleTouchPct - M.reverse20ManyRetestPct) > 8)
       add('info', `Retest signal: single-touch ${per} reverse ≥20 pips ${M.reverse20SingleTouchPct}% vs ${M.reverse20ManyRetestPct}% on heavily-retested ${per} — ${M.reverse20SingleTouchPct > M.reverse20ManyRetestPct ? 'a clean first tap fades more often' : 'repeated retests precede the bigger fade'}.`);
+  }
+  // Per-hit blow-through trend on the (combined) median line — the "3rd hit blows
+  // through" test. Compare the 1st-tap vs 3rd+-tap continuation rate.
+  const PH = _perHitLine(med);
+  const h1 = PH['1'], h3 = PH['3plus'];
+  if (h1?.n >= 20 && h3?.n >= 20) {
+    const dc = +(h3.continuePct - h1.continuePct).toFixed(1);
+    if (dc > 5) add('good', `Hit-sequence: the median line blows through ${h1.continuePct}% of the time on the 1st tap but ${h3.continuePct}% by the 3rd+ tap (+${dc}pp) — repeated taps stop holding, so fade the 1st touch and stand aside (or flip) by the 3rd.`);
+    else if (dc < -5) add('info', `Hit-sequence: the median line actually holds better on later taps (blow-through 1st ${h1.continuePct}% → 3rd+ ${h3.continuePct}%), so the fade improves with retests here.`);
+    else add('info', `Hit-sequence: blow-through is roughly flat across taps (1st ${h1.continuePct}% → 3rd+ ${h3.continuePct}%) — no clear 3rd-hit break edge on the median line.`);
   }
   if (touches.direction.firstUpperPct != null)
     add('info', `Direction: the upper median extension is hit first ${touches.direction.firstUpperPct}% of ${per} vs the lower ${touches.direction.firstLowerPct}% (of ${touches.direction.eitherTouchedDays} ${per} that reach either).`);

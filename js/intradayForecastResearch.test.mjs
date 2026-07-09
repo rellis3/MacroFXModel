@@ -68,6 +68,53 @@ test('touch detector: retest counting with hysteresis', () => {
   assert.equal(o.retests, 2, 'two distinct touch episodes');
 });
 
+test('per-hit excursions: 1st tap fades, 3rd tap blows through', () => {
+  // Level 1.1050 (UP). Tap 1 → 30-pip pullback (fade). Tap 2 → 30-pip pullback.
+  // Tap 3 → continues +40 pips (blow-through). Each episode separated by a >hyst move.
+  const bars = [
+    bar(0, 1.1000, 1.1051, 1.1005, 1.1010),   // tap #1
+    bar(1, 1.1010, 1.1015, 1.1020, 1.1012),   // (kept above? no) away below 1.1045
+    bar(2, 1.1012, 1.1020, 1.1010, 1.1015),   // stays away → re-arm
+    bar(3, 1.1015, 1.1052, 1.1049, 1.1050),   // tap #2
+    bar(4, 1.1050, 1.1051, 1.1020, 1.1022),   // pull back 30 pips → away + fade on tap 2
+    bar(5, 1.1022, 1.1030, 1.1018, 1.1025),   // stays away → re-arm
+    bar(6, 1.1025, 1.1053, 1.1049, 1.1052),   // tap #3
+    bar(7, 1.1052, 1.1092, 1.1051, 1.1090),   // continues +40 pips → blow-through on tap 3
+  ];
+  const o = _levelOutcome(bars, 1.1050, +1, PIP, 0.0005);
+  assert.ok(Array.isArray(o.hits), 'hits array present');
+  assert.ok(o.hits.length >= 3, `at least 3 taps recorded (${o.hits.length})`);
+  // 3rd tap continues past the line; earlier taps have a real pullback.
+  assert.equal(o.hits[2].outcome, 'continue', '3rd tap blows through');
+  assert.ok(o.hits[2].mfePips >= 20, `3rd tap continuation ${o.hits[2].mfePips} ≥ 20`);
+  assert.ok(o.hits[1].maePips >= 20, `2nd tap fade ${o.hits[1].maePips} ≥ 20`);
+  // % fields are consistent with pips (mfePct = mfePips*pip/level*100).
+  const expPct = +(o.hits[2].mfePips * PIP / 1.1050 * 100).toFixed(4);
+  assert.ok(Math.abs(o.hits[2].mfePct - expPct) < 1e-6, 'mfePct matches pips×pip/level');
+});
+
+test('evaluateIntraday: perHit block present, buckets partition the taps, regimes valid', () => {
+  const t = evaluateIntraday(synthH1(500, 4), { pip: PIP }).touches;
+  assert.ok(t.perHit && t.perHit.ohMed && t.perHit.olMed, 'perHit lines present');
+  for (const key of ['ohMed', 'olMed', 'ohP75', 'olP75']) {
+    const L = t.perHit[key];
+    if (!L.total.n) continue;
+    // 1st + 2nd + 3rd+ counts must sum to the total tap count (clean partition).
+    const parts = (L['1'].n || 0) + (L['2'].n || 0) + (L['3plus'].n || 0);
+    assert.equal(parts, L.total.n, `${key}: hit buckets partition the total (${parts} vs ${L.total.n})`);
+    // Every rate is a valid percentage.
+    for (const b of ['1', '2', '3plus', 'total']) if (L[b].n) {
+      assert.ok(L[b].continuePct >= 0 && L[b].continuePct <= 100, `${key}.${b} continuePct in range`);
+      assert.ok(L[b].meanFadePct >= 0, `${key}.${b} fade% non-negative`);
+    }
+    // Regime sub-buckets, where present, also partition their own total.
+    for (const rg of Object.keys(L.byRegime)) {
+      const R = L.byRegime[rg];
+      assert.equal((R['1'].n || 0) + (R['2'].n || 0) + (R['3plus'].n || 0), R.total.n, `${key}.${rg} partition`);
+    }
+  }
+});
+
 // ── End-to-end on synthetic intraday ─────────────────────────────────────────
 function mulberry32(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function synthH1(days, seed = 5) {
