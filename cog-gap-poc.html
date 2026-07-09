@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COG-gap POC (build-and-kill)</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:14px; margin:22px 0 8px; color:var(--text3) }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:820px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace; margin-bottom:6px }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input { background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:3px 6px; width:64px; font:11px 'DM Mono',monospace; text-align:right }
+  .err { color:var(--neg) } .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  code { background:#21262d; padding:1px 5px; border-radius:4px }
+</style>
+</head>
+<body>
+  <h1>COG-gap POC <span class="muted" style="font-size:12px">— build-and-kill</span></h1>
+  <div class="sub">
+    Temporary diagnostic. <b>Part 1 (feed):</b> our exact <code>computeForecast</code> on OANDA <i>spot</i> vs Yahoo <i>futures</i> — same math, only the feed differs. Type your COG median to see if futures closes the gap. <b>Part 2 (responsiveness):</b> HL-median-raw per estimator over the last 8 sessions — which half-life moves like COG day-to-day? Delete this page + <code>/api/cog-gap-poc</code> + <code>js/cogGapPoc.js</code> once read.
+  </div>
+  <button onclick="run()">↻ Run (fetches OANDA + Yahoo — Railway only)</button>
+  <div id="status" class="muted" style="margin:10px 0"></div>
+  <div id="out"></div>
+
+<script>
+const COG = { GOLD: '', NQ: '', EURUSD: '' };   // your pasted COG HL-median %, per pair
+const fmt = (v,d=2) => v==null ? '—' : (+v).toFixed(d);
+function dCls(v){ if(v==null) return 'muted'; const a=Math.abs(v); return a<=3?'pos':a<=8?'amber':'neg'; }
+function sgn(v,d=1){ if(v==null) return '—'; return (v>=0?'+':'')+(+v).toFixed(d)+'%'; }
+
+async function run(){
+  document.getElementById('status').textContent='Fetching…';
+  document.getElementById('out').innerHTML='';
+  let j; try { j = await (await fetch('/api/cog-gap-poc')).json(); }
+  catch(e){ document.getElementById('status').innerHTML='<span class="err">fetch failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ document.getElementById('status').innerHTML='<span class="err">'+(j.error||'error')+'</span>'; return; }
+  _last = j;
+  document.getElementById('status').textContent='Generated '+j.generatedAt;
+  const wrap = document.getElementById('out');
+
+  // ── Part 1 — feed A/B ──
+  let h = '<div class="card"><h2>Part 1 — feed A/B (spot vs futures, same calc)</h2>';
+  h += '<table><tr><th>Pair</th><th>Class</th><th>Spot HL med %</th><th>Fut HL med %</th><th>Fut vs Spot</th>'
+     + '<th>Your COG</th><th>Spot Δ COG</th><th>Fut Δ COG</th><th>Fut closes gap?</th><th>Spot/Fut vol%</th></tr>';
+  for(const r of j.results){
+    if(r.error){ h+='<tr><td>'+r.key+'</td><td colspan="9" class="err">'+r.error+'</td></tr>'; continue; }
+    const f=r.feed, sp=f.spot, fu=f.fut;
+    const cog = parseFloat(COG[r.key]);
+    const dSpot = isFinite(cog)&&sp.hl_median>0 ? (cog/sp.hl_median-1)*100 : null;
+    const dFut  = isFinite(cog)&&fu.hl_median>0 ? (cog/fu.hl_median-1)*100 : null;
+    const closes = (dSpot!=null&&dFut!=null) ? (Math.abs(dFut)<Math.abs(dSpot)-0.5 ? 'yes' : Math.abs(dFut)>Math.abs(dSpot)+0.5 ? 'no (worse)' : '≈ same') : '—';
+    h += '<tr><td>'+r.key+'</td><td class="muted">'+r.assetClass+'</td>'
+      + '<td>'+fmt(sp.hl_median)+'</td><td>'+fmt(fu.hl_median)+'</td>'
+      + '<td class="'+dCls(f.futVsSpotHlPct)+'">'+sgn(f.futVsSpotHlPct)+'</td>'
+      + '<td><input id="cog_'+r.key+'" value="'+(COG[r.key]||'')+'" oninput="COG.'+r.key+'=this.value;run2('+"'"+r.key+"'"+',this.value)" placeholder="med%"></td>'
+      + '<td id="ds_'+r.key+'" class="'+dCls(dSpot)+'">'+sgn(dSpot)+'</td>'
+      + '<td id="df_'+r.key+'" class="'+dCls(dFut)+'">'+sgn(dFut)+'</td>'
+      + '<td id="cl_'+r.key+'" class="'+(closes==='yes'?'pos':closes.startsWith('no')?'neg':'muted')+'">'+closes+'</td>'
+      + '<td class="muted">'+fmt(sp.vol_annual,1)+' / '+fmt(fu.vol_annual,1)+'</td></tr>';
+  }
+  h += '</table><div class="muted" style="font-size:10px">Δ COG = (COG ÷ ours − 1)×100; +ve ⇒ COG higher (we under). "Fut closes gap" = futures Δ is smaller in magnitude than spot Δ. Fut-vs-spot &gt;0 ⇒ futures forecasts wider.</div></div>';
+
+  // ── Part 2 — responsiveness ──
+  for(const r of j.results){
+    if(r.error||!r.responsiveness||r.responsiveness.insufficient) continue;
+    const rp=r.responsiveness;
+    h += '<div class="card"><h2>Part 2 — responsiveness · '+r.key+' (HL-median-raw %, last 8 sessions)</h2>';
+    h += '<table><tr><th>Estimator</th><th>Move %/day</th>'+rp.dates.map(d=>'<th>'+d.substring(5)+'</th>').join('')+'</tr>';
+    for(const [k,e] of Object.entries(rp.estimators)){
+      h += '<tr><td>'+e.label+'</td><td class="'+(e.movementPct>=e.movementPct?'':'')+'">'+fmt(e.movementPct)+'</td>'
+        + e.traj.map(v=>'<td>'+fmt(v)+'</td>').join('')+'</tr>';
+    }
+    h += '</table><div class="muted" style="font-size:10px">Higher "Move %/day" = faster half-life. Compare the trajectory + move-rate to COG’s own day-to-day path for this pair — whichever estimator moves like COG is COG’s effective half-life.</div></div>';
+  }
+  wrap.innerHTML = h;
+}
+
+// Recompute the COG-delta cells live as you type, without re-fetching.
+let _last=null;
+function run2(key,val){
+  if(!_last) return;
+  const r = _last.results.find(x=>x.key===key); if(!r||r.error) return;
+  const cog = parseFloat(val);
+  const sp=r.feed.spot.hl_median, fu=r.feed.fut.hl_median;
+  const dSpot = isFinite(cog)&&sp>0 ? (cog/sp-1)*100 : null;
+  const dFut  = isFinite(cog)&&fu>0 ? (cog/fu-1)*100 : null;
+  const closes = (dSpot!=null&&dFut!=null) ? (Math.abs(dFut)<Math.abs(dSpot)-0.5?'yes':Math.abs(dFut)>Math.abs(dSpot)+0.5?'no (worse)':'≈ same') : '—';
+  const set=(id,txt,cls)=>{ const el=document.getElementById(id); if(el){ el.textContent=txt; el.className=cls; } };
+  set('ds_'+key, sgn(dSpot), dCls(dSpot));
+  set('df_'+key, sgn(dFut), dCls(dFut));
+  set('cl_'+key, closes, closes==='yes'?'pos':closes.startsWith('no')?'neg':'muted');
+}
+</script>
+</body>
+</html>
