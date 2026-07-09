@@ -23,14 +23,14 @@
  * range mid (inner), SL = next away (outer); else mark-to-close. No confluence.
  */
 
-import { bodyRange, extractBars } from './barUtils.js';
+import { bodyRange, extractBars, resampleTo } from './barUtils.js';
 import { FIB_LEVELS } from './fibProjection.js';
 import { volSigmaSeries } from './forecastCore.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { createTouchFeatures } from './touchFeatures.js';
 import { extractTouches, runPerLine, pnlFor, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { portfolioStats } from './backtestStats.js';
-import { collectLevels } from './levelSources.js';
+import { collectLevels, swingFibLevels } from './levelSources.js';
 
 // ── Structural-confluence condition (the fibs/pivots/HVN-POC-VAH-VAL brick lift) ─
 // Reuses the Tier-2 `levelSources` brick — NEVER re-derives pivots/profile/S&R — to
@@ -338,6 +338,16 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
         const pb = sessions.get(dates[j]); if (pb) intraday = intraday.concat(pb);
       }
       confLevels = collectLevels({ dailyBars, intraday, pipSize: opts.pip || undefined, price: open }, confSources);
+      // 15-MINUTE fib clusters (the trader's actual tool: fibs pulled on the 15m
+      // chart of recent price). Resample the prior sessions' M1 to 15m and project
+      // swing-fib clusters off it — the intraday-timeframe confluence the daily
+      // sources can't see. Tagged as a distinct source so it counts toward the bucket.
+      if (conf.fib15 !== false && intraday.length) {
+        const bars15 = resampleTo(intraday, 15);
+        const fib15 = swingFibLevels({ dailyBars: bars15, pipSize: opts.pip || undefined,
+          params: { lookbackDays: confLookback + 1, strength: 3, clusterPips: conf.fib15ClusterPips ?? 8, minConfluence: 2 } });
+        for (const lv of fib15) confLevels.push({ ...lv, source: 'fib15' });
+      }
     }
 
     const lines = analyseRangeWindow({ open, bars }, ladders, { sigma, tf, pip: opts.pip ?? 0, confLevels, confTolFrac });
@@ -500,6 +510,70 @@ export function runHeldPosition(touchesByPair, { policy, splitDate, costByPair =
     out[mode] = _bookFromTrades(trades, byMult, costMults);
   }
   return out;
+}
+
+// ── Confluence QUALITY FILTER — does trading only STRONGER levels help? ────────
+// The trader's actual use of confluence: it SELECTS the levels worth trading (a
+// level lining up with 15m fibs / pivots / POC-VAH-VAL / round / VWAP is
+// "stronger"); it does NOT set direction. So this holds the SAME learned fade/
+// follow decision fixed and only varies WHICH levels are eligible — all → confluent
+// (≥1 source) → strong (≥2) — then prices the survivors on the honest held-position
+// chandelier (the live exit) so the comparison is tradeable, plus a per-bucket
+// per-trade expectancy read. A win = filtering keeps fewer, HIGHER-expectancy
+// trades whose held-chandelier Sharpe @2-3× holds or rises; a null = flat; and
+// "strong is worse" = the breakout-friction effect (clean-air levels run further).
+// Requires the touches to carry `confluence` (analyser run with confluence enabled).
+const _confRank = b => b === '3·multi' ? 2 : b === '2·single' ? 1 : b === '1·none' ? 0 : -1;
+export function runConfluenceFilter(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, costMults = [1, 2, 3] } = {}) {
+  if (!policy || !splitDate) return null;
+  // Per-bucket OOS per-trade expectancy under the FIXED policy decision (no
+  // re-learning per bucket — that's the direction-conditioning we already ruled out).
+  const buckets = {};
+  let haveConf = false;
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    for (const t of touches) {
+      if (t.date < splitDate) continue;
+      const p = policy[t.cell]; if (!p || p.decision === 'skip') continue;
+      const b = t.confluence ?? 'na';
+      if (b !== 'na') haveConf = true;
+      (buckets[b] ??= []).push({ pnl: pnlFor(t, p.decision, { costPct: cost, slipPct: slip }), decision: p.decision });
+    }
+  }
+  if (!haveConf) return { error: 'touches carry no confluence bucket — run the analyser with confluence enabled', bucketStats: [], books: [] };
+  const bucketStats = Object.entries(buckets).map(([bucket, rows]) => ({
+    bucket, trades: rows.length,
+    expectancy: rows.length ? +(rows.reduce((s, x) => s + x.pnl, 0) / rows.length).toFixed(4) : null,
+    winRate: rows.length ? +(rows.filter(x => x.pnl > 0).length / rows.length * 100).toFixed(1) : null,
+    followPct: rows.length ? +(rows.filter(x => x.decision === 'follow').length / rows.length * 100).toFixed(0) : null,
+  })).sort((a, b) => _confRank(a.bucket) - _confRank(b.bucket));
+
+  // Held-position chandelier book at each filter threshold (0=all, 1=≥single, 2=≥multi),
+  // split by direction too (fade vs follow) — confluence is expected to help fades
+  // (support holds) and hurt follows (structure = friction that caps the breakout run).
+  const filterTouches = (min, dir) => {
+    const out = {};
+    for (const [pair, touches] of Object.entries(touchesByPair)) {
+      out[pair] = touches.filter(t => {
+        if (min > 0 && _confRank(t.confluence) < min) return false;
+        if (dir) { const p = policy[t.cell]; if (!p || p.decision !== dir) return false; }
+        return true;
+      });
+    }
+    return out;
+  };
+  const heldRow = (min, dir) => {
+    const hp = runHeldPosition(filterTouches(min, dir), { policy, splitDate, costByPair, slipByPair, costMults });
+    const c = hp?.chand || {};
+    const at = m => (c.costStress || []).find(z => z.mult === m)?.sharpe ?? null;
+    return { sharpe1: c.sharpe ?? null, sharpe2: at(2), sharpe3: at(3),
+             tradesPerDay: c.tradesPerDay ?? null, winRate: c.winRate ?? null,
+             payoff: c.payoff ?? null, expectancy: c.expectancy ?? null, trades: c.trades ?? 0 };
+  };
+  const label = { 0: 'all levels', 1: 'confluent (≥1)', 2: 'strong (≥2)' };
+  const books = [0, 1, 2].map(min => ({ filter: label[min], all: heldRow(min, null),
+                                        fade: heldRow(min, 'fade'), follow: heldRow(min, 'follow') }));
+  return { bucketStats, books };
 }
 
 // ── Per-(pair × level) quality scan + an honest veto ──────────────────────────
