@@ -343,6 +343,17 @@
   .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
   .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
   #drChart{height:300px;transition:height .18s ease}
+  .hits-tgl{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:2px 9px;font-size:11px;cursor:pointer}
+  .hits-tgl.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+  table.hits{width:100%;border-collapse:collapse;font-size:12px}
+  table.hits th{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center;padding:4px 5px;border-bottom:1px solid var(--border)}
+  table.hits th:first-child{text-align:left}
+  table.hits td{padding:5px 5px;border-bottom:1px solid var(--border2,#1c2230);text-align:center}
+  table.hits td:first-child{text-align:left;color:var(--text2);font-weight:600}
+  table.hits .fade{font-weight:700}
+  table.hits .thru{font-size:10px;color:var(--text3)}
+  table.hits td.thin{opacity:.4}
+  table.hits td.blow .thru{color:#f0883e}
   .chart-resize{float:right;background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:5px;
                 padding:1px 8px;font-size:12px;cursor:pointer;line-height:1.5}
   .chart-resize:hover{color:var(--text);border-color:var(--text3)}
@@ -468,6 +479,18 @@
       <span><i style="border-color:#fbbf24"></i>day high / low</span>
       <span><i style="border-color:#e6edf3;border-top-style:solid"></i>price</span>
     </div>
+  </div>
+
+  <div class="dr-sec" id="drHitsSec" style="display:none">
+    <h3 class="help" title="For each forecast line (O-H/O-L median & 75th), how far price fades back from the line and how often it blows straight through — split by which tap it is (1st / 2nd / 3rd+). A rising blow-through% by the 3rd tap means the line has stopped holding: fade the 1st touch, stand aside by the 3rd.">
+      Line fade by hit <span class="muted" id="drHitsNote"></span>
+      <span style="float:right;font-weight:400;font-size:12px">
+        <button class="hits-tgl" id="drHitsDaily" onclick="setHitsHorizon('daily')">Daily</button><button class="hits-tgl" id="drHitsWeekly" onclick="setHitsHorizon('weekly')">Weekly</button>
+        <select id="drHitsRegime" onchange="renderDrawerHits()" style="margin-left:8px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:5px;padding:2px 4px"></select>
+      </span>
+    </h3>
+    <div id="drHits"><span class="muted">loading…</span></div>
+    <div class="muted" id="drHitsTakeaway" style="margin-top:6px"></div>
   </div>
 
   <div class="dr-sec">
@@ -1814,6 +1837,117 @@ async function openDrawer(name) {
   loadDrawerArima(name, d.sym);
   loadDrawerAnalysis(r).catch(() => { $('drAnalysisSec').style.display = 'none'; });
   loadDrawerThesis(r).catch(() => { $('drThesisSec').style.display = 'none'; });
+  loadDrawerHits(name, d).catch(() => { $('drHitsSec').style.display = 'none'; });
+}
+
+// ── Line fade by hit (1st / 2nd / 3rd+ tap) — from the intraday research book ──
+// Reads the persisted /api/intraday-research (one shared fetch, cached), pulls this
+// pair's per-hit fade study, and renders the fade%/blow-through% per tap by regime.
+let _intraResearchP = null;                 // shared in-flight promise (fetch once)
+const _HITS = { name: null, perPair: null, horizon: 'daily', regime: 'total' };
+const _HIT_LINES = [
+  { k: 'ohMed', label: 'O-H median' }, { k: 'olMed', label: 'O-L median' },
+  { k: 'ohP75', label: 'O-H 75th'   }, { k: 'olP75', label: 'O-L 75th'   },
+  { k: 'ocMed', label: 'O-C median' }, { k: 'ocP75', label: 'O-C 75th'   },
+];
+function getIntraResearch() {
+  if (!_intraResearchP) _intraResearchP = jget('/api/intraday-research').catch(e => { _intraResearchP = null; throw e; });
+  return _intraResearchP;
+}
+// Map the drawer's live regime → the book's BULL/BEAR/RANGE key (null when unknown).
+function _regimeKey(d) {
+  const rg = d?.regime; if (!rg) return null;
+  if (rg.label === 'TREND') return rg.trend_dir === 'up' ? 'BULL' : 'BEAR';
+  if (rg.label === 'RANGE') return 'RANGE';
+  return null;
+}
+async function loadDrawerHits(name, d) {
+  const sec = $('drHitsSec');
+  sec.style.display = 'block';
+  $('drHits').innerHTML = '<span class="muted">loading…</span>';
+  $('drHitsNote').textContent = ''; $('drHitsTakeaway').textContent = '';
+  let res;
+  try { res = await getIntraResearch(); }
+  catch (e) {
+    const no = /HTTP 404/.test(e.message);
+    $('drHits').innerHTML = `<span class="muted">${no ? 'No intraday research run yet — click ▶ Intraday on the research book to populate per-hit fade stats.' : 'Per-hit data unavailable: ' + e.message}</span>`;
+    $('drHitsRegime').innerHTML = ''; return;
+  }
+  const pp = res?.perPair?.[name] ?? res?.perPair?.[(name || '').toUpperCase()];
+  if (!pp || (!pp.daily && !pp.weekly)) {
+    sec.style.display = 'block';
+    $('drHits').innerHTML = '<span class="muted">No per-hit data for this pair yet — run ▶ Intraday on the research book.</span>';
+    $('drHitsNote').textContent = ''; $('drHitsTakeaway').textContent = ''; $('drHitsRegime').innerHTML = '';
+    return;
+  }
+  _HITS.name = name; _HITS.perPair = pp;
+  _HITS.horizon = pp.daily ? 'daily' : 'weekly';
+  // Regime dropdown: current regime first (if the book has it), then All + each regime present.
+  const cur = _regimeKey(d);
+  const present = new Set();
+  for (const hz of ['daily', 'weekly']) { const ph = pp[hz]?.touches?.perHit; if (ph) for (const L of _HIT_LINES) for (const rg of Object.keys(ph[L.k]?.byRegime || {})) present.add(rg); }
+  const opts = [];
+  if (cur && present.has(cur)) opts.push(`<option value="${cur}">${cur} (now)</option>`);
+  opts.push('<option value="total">All regimes</option>');
+  for (const rg of ['BULL', 'BEAR', 'RANGE']) if (present.has(rg) && rg !== cur) opts.push(`<option value="${rg}">${rg}</option>`);
+  $('drHitsRegime').innerHTML = opts.join('');
+  _HITS.regime = (cur && present.has(cur)) ? cur : 'total';
+  $('drHitsRegime').value = _HITS.regime;
+  sec.style.display = 'block';
+  renderDrawerHits();
+}
+function setHitsHorizon(h) {
+  if (h === 'weekly' && !_HITS.perPair?.weekly) return;
+  _HITS.horizon = h; renderDrawerHits();
+}
+function _hitStatAt(perHit, lineKey, bucket, regime) {
+  const L = perHit?.[lineKey]; if (!L) return null;
+  const src = regime === 'total' ? L : L.byRegime?.[regime];
+  return src?.[bucket] || null;
+}
+function _hitCell(st) {
+  if (!st || !st.n) return '<td class="thin">–</td>';
+  const thin = st.n < 8 ? ' thin' : '';
+  const blow = (st.continuePct > st.reversePct) ? ' blow' : '';   // line not holding = blow-through wins
+  return `<td class="${thin}${blow}"><span class="fade">${st.meanFadePct.toFixed(2)}%</span><br>` +
+         `<span class="thru">thru ${st.continuePct.toFixed(0)}% · n${st.n}</span></td>`;
+}
+function renderDrawerHits() {
+  const pp = _HITS.perPair; if (!pp) return;
+  _HITS.regime = $('drHitsRegime').value || 'total';
+  const hz = _HITS.horizon;
+  $('drHitsDaily').classList.toggle('on', hz === 'daily');
+  $('drHitsWeekly').classList.toggle('on', hz === 'weekly');
+  $('drHitsWeekly').disabled = !pp.weekly;
+  const H = pp[hz]; const perHit = H?.touches?.perHit;
+  const nDays = H?.nDays;
+  $('drHitsNote').textContent = perHit ? `${hz === 'daily' ? 'daily' : 'weekly'} · ${nDays ?? '?'} windows · fade = avg reversion back from the line` : '';
+  if (!perHit) { $('drHits').innerHTML = `<span class="muted">No ${hz} per-hit data for this pair.</span>`; $('drHitsTakeaway').textContent = ''; return; }
+  const rg = _HITS.regime;
+  const rows = _HIT_LINES.map(L => {
+    const c1 = _hitStatAt(perHit, L.k, '1', rg), c2 = _hitStatAt(perHit, L.k, '2', rg), c3 = _hitStatAt(perHit, L.k, '3plus', rg);
+    if (!c1?.n && !c2?.n && !c3?.n) return '';
+    return `<tr><td>${L.label}</td>${_hitCell(c1)}${_hitCell(c2)}${_hitCell(c3)}</tr>`;
+  }).filter(Boolean).join('');
+  $('drHits').innerHTML = rows
+    ? `<table class="hits"><thead><tr><th>Line</th><th>1st tap</th><th>2nd tap</th><th>3rd+ tap</th></tr></thead><tbody>${rows}</tbody></table>`
+    : `<span class="muted">Not enough ${rg === 'total' ? '' : rg + ' '}samples for this slice.</span>`;
+  // Takeaway: pooled blow-through on the median O-H/O-L lines, 1st vs 3rd+ tap.
+  let n1 = 0, c1w = 0, n3 = 0, c3w = 0;
+  for (const k of ['ohMed', 'olMed']) {
+    const a = _hitStatAt(perHit, k, '1', rg), b = _hitStatAt(perHit, k, '3plus', rg);
+    if (a?.n) { n1 += a.n; c1w += a.continuePct * a.n; }
+    if (b?.n) { n3 += b.n; c3w += b.continuePct * b.n; }
+  }
+  if (n1 >= 20 && n3 >= 15) {
+    const b1 = c1w / n1, b3 = c3w / n3, d = b3 - b1;
+    const msg = d > 5
+      ? `Median line blows through ${b1.toFixed(0)}% on the 1st tap → ${b3.toFixed(0)}% by the 3rd+ (+${d.toFixed(0)}pp): later taps stop holding — fade the 1st, stand aside/flip by the 3rd. ✓ matches "3rd hit blows through".`
+      : d < -5
+        ? `Blow-through falls with taps (${b1.toFixed(0)}% → ${b3.toFixed(0)}%): the fade actually improves on retests here — the opposite of the 3rd-hit-breaks idea.`
+        : `Blow-through is roughly flat across taps (${b1.toFixed(0)}% → ${b3.toFixed(0)}%): no clear 3rd-hit break edge for this slice.`;
+    $('drHitsTakeaway').textContent = msg;
+  } else { $('drHitsTakeaway').textContent = 'Too few 3rd+ taps in this slice to judge the hit-sequence trend.'; }
 }
 
 // ── The trade thesis scorecard — the narrative spine ──────────────────────────
