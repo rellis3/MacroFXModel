@@ -24,11 +24,11 @@
  * heavily-retested, and macro/news conditioning — flagged for a later pass.
  */
 
-import { computeForecast } from './volForecast.js';
+import { computeForecast, ewmaVolSeries } from './volForecast.js';
 import { buildLondonDaily } from './volEstimatorAB.js';
 import { _londonParts } from './sessionStats.js';
 import { SESSIONS } from './sessionStats.js';
-import { classifyRegime } from './volBacktestEngine.js';
+import { classifyRegime, BM_P50 } from './volBacktestEngine.js';
 
 const _mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
 const _median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
@@ -142,7 +142,13 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   if (lond.length < minLookback + Math.max(40, W * 3)) return { insufficient: true, nDays: lond.length, horizon };
 
   const expRows = [];
-  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [], dynRatioP75: [], ocMed: [], ocP75: [] };
+  const touchRows = { upMed: [], dnMed: [], upP75: [], dnP75: [], plMed: [], dynMed: [], dynP75: [], dynRatioP75: [], dynE94: [], dynE90: [], ocMed: [], ocP75: [] };
+  // σ-half-life A/B: precompute shorter-half-life daily σ series ONCE (causal —
+  // EWMA is prefix-consistent, so series[i-1] = σ using data < i, matching the
+  // per-window forecast). Feeds a parallel dynamic H-L level built from a faster σ.
+  const sqrtW = Math.sqrt(W);
+  const e94Ser = ewmaVolSeries(dailyOHLC, 0.94), e90Ser = ewmaVolSeries(dailyOHLC, 0.90);
+  const hlRatioHistE94 = [], hlRatioHistE90 = [];
   let firstUpper = 0, firstLower = 0, eitherTouched = 0;
   // WALK-FORWARD recalibration of the TOUCH LEVELS (the reference forecaster runs
   // wide; a bot would place tighter bands). factor = trailing median(realized ÷
@@ -243,6 +249,25 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
       if (dLoR) touchRows.dynRatioP75.push({ ...dLoR, regime, calm });
       if (dHiR) touchRows.dynRatioP75.push({ ...dHiR, regime, calm });
     }
+    // ── Level-set #3c: σ HALF-LIFE A/B — dynamic H-L MEDIAN from a SHORTER half-life
+    // σ (EWMA λ0.94 / λ0.90) instead of the sticky YZ30 that feeds fc[H.hl]. Each is
+    // self-recalibrated to realized (its own trailing ratio), so the comparison
+    // isolates RESPONSIVENESS: does a band that widens/narrows with recent vol catch
+    // EXHAUSTION (reversion) better than the sticky one, net of cost — or does price
+    // fly through it? (The whole reason these levels exist is exhaustion dynamics.)
+    const hlE94 = (e94Ser[i - 1] > 0) ? e94Ser[i - 1] * BM_P50 * 100 * sqrtW : 0;
+    const hlE90 = (e90Ser[i - 1] > 0) ? e90Ser[i - 1] * BM_P50 * 100 * sqrtW : 0;
+    const _recal = hist => (recalibrate && hist.length >= 20) ? Math.min(1.5, Math.max(0.5, _median(hist.slice(-80)))) : 1;
+    if (hlE94 > 0) {
+      const r = hlE94 / 100 * _recal(hlRatioHistE94);
+      const lo = _dynLevelOutcome(bars, r, -1, pip), hi = _dynLevelOutcome(bars, r, +1, pip);
+      if (lo) touchRows.dynE94.push({ ...lo, regime, calm }); if (hi) touchRows.dynE94.push({ ...hi, regime, calm });
+    }
+    if (hlE90 > 0) {
+      const r = hlE90 / 100 * _recal(hlRatioHistE90);
+      const lo = _dynLevelOutcome(bars, r, -1, pip), hi = _dynLevelOutcome(bars, r, +1, pip);
+      if (lo) touchRows.dynE90.push({ ...lo, regime, calm }); if (hi) touchRows.dynE90.push({ ...hi, regime, calm });
+    }
     // Level-set #1: Open-Close touches (open ± oc), median + 75th.
     if (ocMed > 0) {
       const ocU = _levelOutcome(bars, open * (1 + ocMed), +1, pip, hyst), ocD = _levelOutcome(bars, open * (1 - ocMed), -1, pip, hyst);
@@ -259,6 +284,8 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     }
     // Feed the walk-forward recalibration + calm-day state (prior windows only).
     if (realizedHl != null && (fc[H.hl] ?? 0) > 0) { hlRatioHist.push(realizedHl / (fc[H.hl])); prevRatio = realizedHl / (fc[H.hl]); }
+    if (realizedHl != null && hlE94 > 0) hlRatioHistE94.push(realizedHl / hlE94);
+    if (realizedHl != null && hlE90 > 0) hlRatioHistE90.push(realizedHl / hlE90);
     if (vov != null) vovHist.push(vov);
   }
 
@@ -391,6 +418,11 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
     dynP75Extension: { ...(_touchStats(touchRows.dynP75 || [], totalWindows)), byRegime: _byRegime(touchRows.dynP75 || []), fadePayoff: _fadePayoff(touchRows.dynP75 || []) },
     // Level-set #3b: ratio_yz dynamic 75th (empirical p75 factor, the band-calc winner).
     dynRatioP75Extension: { p75Factor: recalMeta.ratioP75Factor, ...(_touchStats(touchRows.dynRatioP75 || [], totalWindows)), byRegime: _byRegime(touchRows.dynRatioP75 || []), fadePayoff: _fadePayoff(touchRows.dynRatioP75 || []) },
+    // Level-set #3c: σ half-life A/B — dynamic H-L median from a shorter-half-life σ
+    // (EWMA λ0.94 / λ0.90), self-recalibrated. Same exhaustion metrics as dynMed so
+    // the reversion + cost survival compare directly against the sticky YZ30 dyn line.
+    dynE94Extension: { ...(_touchStats(touchRows.dynE94 || [], totalWindows)), byRegime: _byRegime(touchRows.dynE94 || []), fadePayoff: _fadePayoff(touchRows.dynE94 || []) },
+    dynE90Extension: { ...(_touchStats(touchRows.dynE90 || [], totalWindows)), byRegime: _byRegime(touchRows.dynE90 || []), fadePayoff: _fadePayoff(touchRows.dynE90 || []) },
     // Conditional fade: median-line touches restricted to CALM days (the tail filter).
     conditionalCalm: { filter: 'calm = vov ≤ trailing-median AND prior window ≤ 118% forecast',
       ...(_touchStats(medCalm, totalWindows)), fadePayoff: _fadePayoff(medCalm) },

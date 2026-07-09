@@ -66,6 +66,28 @@ The dynamic levels are the most *extended*, so on the exhaustion logic they shou
 show the strongest reversion — the question the cost screen answers is whether that
 reversion is big enough per touch (they're touched less often) to clear costs on FX.
 
+### σ half-life A/B — do responsive bands exhaust better? (level-set #3c)
+
+The COG-gap diagnostic (`COG_GAP_FINDINGS.md`) found the production primary
+**Yang-Zhang(30) is the stickiest estimator we have** — the daily forecast barely
+moves while realized vol changes. That raises the exhaustion question directly: if
+the band is built from a **shorter half-life** σ (EWMA λ0.94 / λ0.90) so it widens
+and narrows with recent vol, does price **exhaust** (revert) at it more reliably —
+or just fly through? Two extra dynamic-median lines answer it:
+
+- `dynE94Extension` — dynamic H-L median from **EWMA λ0.94** σ (~11-day half-life).
+- `dynE90Extension` — dynamic H-L median from **EWMA λ0.90** σ (~6.6-day half-life).
+
+Each is **self-recalibrated to realized** (its own trailing `median(realized ÷ σ-HL)`),
+so the A/B isolates *responsiveness*, not calibration — both land at the same
+average width; only their day-to-day movement differs. Compared head-to-head with
+the sticky YZ30 dynamic median (`dynExtension`) on the SAME exhaustion metrics
+(reversion rate + cost survival). **Pre-registered:** a shorter σ "wins" only if it
+clears cost on **≥3 FX pairs across ≥2 types at ×2** *and* beats the YZ30 dyn line's
+reversion — otherwise price flies through the more-responsive band and there is **no
+case to change the engine's estimator.** Folded into `costSurvival.byLine.dynE94 /
+dynE90`; visible in the cost-line picker on `cross-pair-research.html`.
+
 ## The tail filter (conditional fade)
 
 The short-gamma tail lives on the **7.8% of trend-expansion days** (195%
