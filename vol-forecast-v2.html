@@ -187,6 +187,38 @@
   padding: 2px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--s2); }
 .v2-vov-chip   { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3);
   padding: 2px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--s2); }
+/* ── Vol cone detail strip (ported from v1 — the actual 5d/21d/63d/252d percentile
+   numbers behind the compact trend/vov header chips) ─────────────────────────── */
+.vf-cone-strip {
+  display: flex; align-items: center; gap: 6px; font-size: 9px;
+  font-family: 'DM Mono', monospace; color: var(--text3);
+  padding: 3px 0 2px; flex-wrap: wrap;
+}
+.vf-cone-strip b { color: var(--text2); }
+.vf-cone-strip .expanding b { color: var(--amber); }
+.vf-cone-strip .contracting b { color: var(--green); }
+.vf-cone-lbl { opacity: .55; }
+.vf-cone-sep { opacity: .3; }
+.vf-vov-badge {
+  font-size: 9px; font-family: 'DM Mono', monospace; font-weight: 600;
+  padding: 1px 6px; border-radius: 3px; border: 1px solid var(--border);
+  background: var(--s2); color: var(--text3); white-space: nowrap; margin-left: auto;
+}
+.vf-vov-badge.stable   { border-color: var(--green-bd); color: var(--green); background: var(--green-bg); }
+.vf-vov-badge.unstable { border-color: var(--red-bd);   color: var(--red);   background: var(--red-bg);   }
+.vf-vov-badge.moderate { border-color: var(--amber-bd); color: var(--amber); background: var(--amber-bg); }
+/* ── Multi-day (5d/20d) range block — ported from v1 ───────────────────────────── */
+.vf-nday-block { display: flex; flex-direction: column; gap: 6px; padding: 6px 0 2px; }
+.vf-nday-title {
+  font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text3); font-family: 'DM Mono', monospace;
+}
+.vf-nday-title span { font-weight: 400; letter-spacing: .02em; text-transform: none; opacity: .7; }
+.vf-nday-row { display: flex; align-items: baseline; gap: 8px; }
+.vf-nday-lbl { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; width: 42px; flex-shrink: 0; text-align: right; }
+.vf-nday-val { font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
+.vf-nday-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.vf-nday-hint { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); line-height: 1.5; padding-left: 52px; opacity: .75; }
 /* Range detail toggle */
 .v2-bars-toggle { display: flex; align-items: center; gap: 5px; padding: 3px 8px;
   font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3);
@@ -604,10 +636,15 @@
 /* ── Export pill dropdown ──────────────────────────────────────────────── */
 .vf-exp-dd { position: relative; display: inline-flex; }
 .vf-exp-menu {
-  display: none; position: absolute; top: calc(100% + 6px); right: 0;
+  /* position: fixed (not absolute) — the pill lives inside .v2-btn-row, which is
+     horizontally scrollable (overflow-x: auto). Per the CSS spec that forces
+     overflow-y to clip too, so an absolutely-positioned popover anchored to a
+     child of that row gets silently clipped. Fixed + JS-computed coords (see
+     toggleExpDropdown) escapes the scroll container's clipping box entirely. */
+  display: none; position: fixed;
   background: var(--s1); border: 1.5px solid var(--border);
   border-radius: 10px; padding: 6px; gap: 3px; flex-direction: column;
-  z-index: 300; min-width: 170px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  z-index: 9000; min-width: 170px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
 }
 .vf-exp-dd.open .vf-exp-menu { display: flex; }
 .vf-exp-item {
@@ -665,14 +702,18 @@
     <div class="vf-exp-dd" id="vfExpDropdown">
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
-        <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"          disabled>⬇ Export</button>
-        <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
-        <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"          disabled>⬇ Extended</button>
+        <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export</button>
+        <button class="vf-exp-item" id="vfCalibratedBtn"    onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">backtest %</span></button>
+        <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
+        <button class="vf-exp-item" id="vfExportHarBtn"     onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">shadow σ</span></button>
+        <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
+        <button class="vf-exp-item" id="vfCalExtBtn"        onclick="closeExpDropdown();exportCalibratedExtended()" disabled>⬇ Extended (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"           disabled>⬇ Session</button>
         <button class="vf-exp-item" id="vfV3ExportBtn"      onclick="closeExpDropdown();exportV3()"                disabled>⬇ V+S</button>
         <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z</button>
         <button class="vf-exp-item" id="vfWeeklyExportBtn"  onclick="closeExpDropdown();exportWeekly()"            disabled>⬇ Weekly</button>
+        <button class="vf-exp-item" id="vfCalWkBtn"         onclick="closeExpDropdown();exportCalibratedWeekly()"  disabled>⬇ Weekly (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
       </div>
     </div>
     <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
@@ -1296,10 +1337,12 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfExportBtn','vfExportV2Btn','vfExtendedBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfExportBtn','vfCalibratedBtn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
+      const harBtn = document.getElementById('vfExportHarBtn');
+      if (harBtn) harBtn.disabled = !Object.values(data.instruments ?? {}).some(f => f && f.har);
 
       // Build the instrument grid
       renderV2Grid(data);
@@ -1553,10 +1596,39 @@ function buildV2Card(name, f, meta, isHistorical = false) {
   const pct = f.vol_pct ?? null;
   const pctClass = pct != null ? (pct >= 80 ? 'hi' : pct <= 20 ? 'lo' : '') : '';
 
-  // Compact cone strip — now just chips for the header, no separate row
+  // Compact cone chips for the header (quick glance) ...
   const volVovChip = f.vol_vov_label
     ? `<span class="v2-vov-chip">${f.vol_vov_label}</span>` : '';
-  const coneHtml = ''; // row removed — trend/vov moved into header pills below
+  // ...plus the full detail strip (ported from v1) showing the actual 5d/21d/63d/252d
+  // percentile numbers + vol-of-vol badge, since the header chips only show direction.
+  const coneHtml = (f.cone_5d != null || f.cone_21d != null) ? (() => {
+    const c252 = f.vol_pct ?? 0;
+    const expanding   = (f.cone_5d ?? c252) > c252;
+    const contracting = (f.cone_5d ?? c252) < c252;
+    const expCls = expanding ? 'expanding' : contracting ? 'contracting' : '';
+    const items = [
+      f.cone_5d  != null ? `<span class="${expCls}"><span class="vf-cone-lbl">5d</span> <b>${f.cone_5d}th</b></span>` : null,
+      f.cone_21d != null ? `<span><span class="vf-cone-lbl">21d</span> <b>${f.cone_21d}th</b></span>` : null,
+      f.cone_63d != null ? `<span><span class="vf-cone-lbl">63d</span> <b>${f.cone_63d}th</b></span>` : null,
+      c252       != null ? `<span><span class="vf-cone-lbl">252d</span> <b>${c252}th</b></span>` : null,
+    ].filter(Boolean).join('<span class="vf-cone-sep"> · </span>');
+    const trend = expanding ? '↑ expanding' : contracting ? '↓ contracting' : '→ stable';
+    const vovCls = (f.vol_vov_label ?? '').toLowerCase();
+    const vovBadge = f.vol_vov_label
+      ? `<span class="vf-vov-badge ${vovCls}" title="Vol-of-vol: ${f.vol_vov}% CV — how much the vol estimate itself is moving">Vol ${f.vol_vov_label}</span>`
+      : '';
+    return `<div class="vf-cone-strip" title="Vol cone — percentile of today's σ across different lookback windows. ${trend} = short-term vol ${expanding ? 'above' : 'below'} long-term average.">${items}${vovBadge}</div>`;
+  })() : '';
+
+  // Multi-day H-L projections (√T scaling) — ported from v1, folded into the
+  // collapsible "Range detail" section to keep the default card compact.
+  const ndayHtml = (f.hl_5d != null && f.hl_20d != null) ? `
+    <div class="vf-nday-block">
+      <div class="vf-nday-title">Multi-Day Range <span>— H-L across N sessions</span></div>
+      <div class="vf-nday-row"><span class="vf-nday-lbl">5-day</span><span class="vf-nday-val">${f.hl_5d.toFixed(2)}%</span><span class="vf-nday-sub">highest high to lowest low over a full week</span></div>
+      <div class="vf-nday-row"><span class="vf-nday-lbl">20-day</span><span class="vf-nday-val">${f.hl_20d.toFixed(2)}%</span><span class="vf-nday-sub">highest high to lowest low over a month</span></div>
+      <div class="vf-nday-hint">Grows by √N (not N×): daily moves partially cancel — 5d ≈ 1d × 2.24, not × 5</div>
+    </div>` : '';
 
   const c252 = f.vol_pct ?? 0;
   const trendDir = (f.cone_5d ?? c252) > c252 ? 'exp' : (f.cone_5d ?? c252) < c252 ? 'ctr' : 'stbl';
@@ -1580,6 +1652,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
       <span class="v2-inst-name">${name}</span>
       <div class="v2-hdr-pills">${trendChip}${volVovChip}${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
     </div>
+    ${coneHtml}
     <div style="position:relative">
       <div class="v2-m5-wrap" id="m5wrap-${name}" onclick="openChartModal('${name}')" title="Click to expand chart"></div>
       <button class="v2-m5-expand" onclick="openChartModal('${name}')" title="Expand chart">⤢</button>
@@ -1592,6 +1665,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
     <div class="v2-metric-bars" id="mbars-${name}" style="display:none">
       ${v2MetricBar('H-L', f.hl_median, f.hl_75, hlMax)}
       ${v2MetricBar('O-C', f.oc_median, f.oc_75, ocMax)}
+      ${ndayHtml}
     </div>
     <div class="v2-metric-tiles">
       <div class="v2-tile" id="tile-hl75-${name}"><div class="v2-tile-val">${f.hl_75.toFixed(2)}%</div><div class="v2-tile-lbl">H-L 75th</div></div>
@@ -1788,12 +1862,145 @@ function timeAgo(date) {
 // ── Export pill dropdown toggle ───────────────────────────────────────────────
 function toggleExpDropdown(e) {
   e.stopPropagation();
-  document.getElementById('vfExpDropdown').classList.toggle('open');
+  const dd = document.getElementById('vfExpDropdown');
+  const opening = !dd.classList.contains('open');
+  dd.classList.toggle('open');
+  if (opening) {
+    const menu = dd.querySelector('.vf-exp-menu');
+    const btn  = document.getElementById('vfExpPillBtn');
+    if (menu && btn) {
+      const r = btn.getBoundingClientRect();
+      menu.style.top   = `${r.bottom + 6}px`;
+      menu.style.right = `${window.innerWidth - r.right}px`;
+      menu.style.left  = 'auto';
+    }
+  }
 }
 function closeExpDropdown() {
   document.getElementById('vfExpDropdown').classList.remove('open');
 }
 document.addEventListener('click', closeExpDropdown);
+
+// ── Backtest-calibrated export ────────────────────────────────────────────────
+// Same structure as buildExportText, but the H-L bands are scaled by the
+// recalibration factors from the Vol Forecast Research Book (which found the raw
+// forecast runs ~15% wide — realized exceeds the median only ~34% of days vs 50%).
+// The factors are the walk-forward median(realized ÷ forecast) ratios, pulled
+// live from /api/vol-forecast-research so they refresh whenever the book re-runs;
+// a book-derived default is used if that hasn't run. O-C is carried through
+// unchanged (only H-L was recalibrated). The live forecaster is NOT modified —
+// this is purely an alternative view for comparison.
+const RECAL_FALLBACK = { fx: { hl50: 0.850, hl75: 0.896 }, commodity: { hl50: 0.878, hl75: 0.972 }, index: { hl50: 1, hl75: 1 } };
+function _assetClassOf(name) {
+  const n = String(name).toUpperCase();
+  if (/GOLD|XAU|XAG|SILVER|OIL|WTI|BRENT/.test(n)) return 'commodity';
+  if (/NAS100|NQ|SPX|US30|US500|US2000|DE30|DE40|UK100|DOW|DAX|FTSE|GER40/.test(n)) return 'index';
+  return 'fx';
+}
+let _recalFactors = null;   // cached per page load
+async function loadRecalFactors() {
+  if (_recalFactors) return _recalFactors;
+  const f = JSON.parse(JSON.stringify(RECAL_FALLBACK));
+  try {
+    const r = await fetch('/api/vol-forecast-research');
+    if (r.ok) {
+      const rp = (await r.json())?.cross?.recalProposal;
+      // medFactor / p75Factor are the raw median-ratio multipliers (base-independent).
+      // Adopt fx + commodity; HOLD index (its recalibration overshoots — see the book).
+      for (const c of ['fx', 'commodity']) if (rp?.[c]?.medFactor) f[c] = { hl50: rp[c].medFactor, hl75: rp[c].p75Factor, live: true };
+    }
+  } catch { /* keep defaults */ }
+  _recalFactors = f;
+  return f;
+}
+// Deep-clone the forecast/weekly data and scale EVERY H-L field (hl_median, hl_75,
+// hl_5d, hl_5d_75, hl_20d, hl_20d_75 …) by the instrument's class factor — median
+// fields ×hl50, 75th fields ×hl75. O-C and everything else is left untouched.
+function _calibrateForecast(data, factors) {
+  if (!data || !data.instruments) return data;
+  const clone = JSON.parse(JSON.stringify(data));
+  for (const [name, f] of Object.entries(clone.instruments)) {
+    if (!f || typeof f !== 'object') continue;
+    const fct = factors[_assetClassOf(name)] || factors.fx;
+    for (const k of Object.keys(f)) if (/^hl_/.test(k) && typeof f[k] === 'number') f[k] *= /75/.test(k) ? fct.hl75 : fct.hl50;
+  }
+  return clone;
+}
+function _calNote(factors) {
+  const live = Object.values(factors).some(x => x.live);
+  return `[BACKTEST-CALIBRATED — H-L bands ×fx ${factors.fx.hl50} / commodity ${factors.commodity.hl50}, index held; O-C unchanged; factors ${live ? 'live from research run' : 'book default'}]`;
+}
+// Daily calibrated export — reuse the standard builder on calibrated data.
+function buildCalibratedExportText(data, factors) {
+  return _calNote(factors) + '\n' + buildExportText(_calibrateForecast(data, factors));
+}
+
+// Shared copy-or-download for a calibrated text export.
+function _emitCalibrated(btnId, text, fname) {
+  const btn = document.getElementById(btnId), orig = btn.dataset.orig || btn.textContent;
+  btn.dataset.orig = orig;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied!'; btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = fname; a.click(); URL.revokeObjectURL(url);
+    btn.textContent = orig; btn.disabled = false;
+  });
+}
+async function exportCalibrated() {
+  if (!currentForecast) return;
+  const btn = document.getElementById('vfCalibratedBtn'); btn.dataset.orig = btn.textContent; btn.textContent = '… factors';
+  const factors = await loadRecalFactors();
+  _emitCalibrated('vfCalibratedBtn', buildCalibratedExportText(currentForecast, factors), `vol-forecast-calibrated-${currentForecast.session_date}.txt`);
+}
+async function exportCalibratedExtended() {
+  if (!currentForecast) return;
+  const factors = await loadRecalFactors();
+  const text = _calNote(factors) + '\n' + buildExtendedText(_calibrateForecast(currentForecast, factors));
+  _emitCalibrated('vfCalExtBtn', text, `vol-extended-calibrated-${currentForecast.session_date ?? 'latest'}.txt`);
+}
+async function exportCalibratedWeekly() {
+  if (!currentWeekly) return;
+  const factors = await loadRecalFactors();
+  const text = _calNote(factors) + '\n' + _buildWeeklyText(_calibrateForecast(currentWeekly, factors));
+  _emitCalibrated('vfCalWkBtn', text, `vol-weekly-calibrated-${(currentWeekly.week_label ?? 'latest').replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`);
+}
+
+// ── Export HAR-RV shadow: challenger σ (HAR-RV), incumbent band math ──────────
+// Same line format as the main export so the two blocks compare line-for-line;
+// instruments whose HAR shadow is unavailable are skipped.
+function buildExportHarText(data) {
+  const LINE_WIDTH = 29;
+  const divider = name => { const p = `──── ${name} `; return p + '─'.repeat(Math.max(0, LINE_WIDTH - p.length)); };
+  const lines = ['**VOL & RANGE FORECAST — HAR-RV**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    const h = f?.har;
+    if (!h) continue;
+    lines.push(divider(name));
+    lines.push(`Volatility (annualized) : ${h.vol_annual.toFixed(2)}%`);
+    lines.push(`High to Low range       : ${h.hl_median.toFixed(2)}% median · ${h.hl_75.toFixed(2)}% 75th Percentile`);
+    lines.push(`Open to Close move      : ${h.oc_median.toFixed(2)}% median · ${h.oc_75.toFixed(2)}% 75th Percentile`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+function exportHar() {
+  if (!currentForecast) return;
+  const text = buildExportHarText(currentForecast);
+  const pill = document.getElementById('vfExpPillBtn');
+  const orig = pill?.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    if (pill) { pill.textContent = '✓ HAR copied'; setTimeout(() => { pill.textContent = orig; }, 2200); }
+  }).catch(() => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `vol-forecast-har-${currentForecast.session_date}.txt`;
+    a.click(); URL.revokeObjectURL(url);
+  });
+}
 
 // ── Export v2: asymmetric O-H / O-L from drifted-BM math (d = μ_14d / σ_fwd) ─
 function buildExportV2Text(data) {
@@ -2049,6 +2256,8 @@ async function loadWeekly() {
     currentWeekly = data;
     const btn = document.getElementById('vfWeeklyBtn');
     if (btn) btn.disabled = false;
+    const calWkBtn = document.getElementById('vfCalWkBtn');
+    if (calWkBtn) calWkBtn.disabled = false;
     renderWeekly(data);
     renderCurrencyStrength(data);
   } catch { /* silent */ }
@@ -3001,7 +3210,8 @@ async function loadM5Chart(name, f) {
           timeVisible:     true,
           secondsVisible:  false,
           fixLeftEdge:     true,
-          fixRightEdge:    true,
+          fixRightEdge:    false,
+          rightOffset:     14,
         },
         rightPriceScale: {
           borderColor:  'rgba(255,255,255,0.1)',
@@ -3261,7 +3471,7 @@ function _buildModalChart(name) {
     },
     timeScale: {
       borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, secondsVisible: false,
-      fixLeftEdge: true, fixRightEdge: false,
+      fixLeftEdge: true, fixRightEdge: false, rightOffset: 10,
     },
     rightPriceScale: {
       borderColor: 'rgba(255,255,255,0.1)',
