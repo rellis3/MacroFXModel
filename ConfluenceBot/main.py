@@ -702,6 +702,10 @@ class SymbolEngine:
         # First-seen timestamp per zone_id, so the viewer can draw the zone box
         # from when it was detected (mirrors GoldV2's detected_at).
         self._zone_detected: dict[str, str] = {}
+        # Today's PAPER closes in the dashboard positions-tab schema, so paper
+        # trades reach the Positions → Trade History audit (live closes come from
+        # MT5 deals). Cleared on UTC rollover so each day files under its date.
+        self.closed_today: list[dict] = []
 
     @property
     def cfg(self) -> dict:
@@ -720,7 +724,8 @@ class SymbolEngine:
 
     def state_refresh(self) -> None:
         instr = self.instr
-        self.tm.roll_day_if_needed()
+        if self.tm.roll_day_if_needed():
+            self.closed_today.clear()
 
         m1_n = int(self.cfg.get('m1_lookback_bars', 18_500))
         daily_bars = _bars(instr.symbol, 'D1',  60)
@@ -891,7 +896,8 @@ class SymbolEngine:
             if price < self.sess_lvls.today_low:
                 self.sess_lvls.today_low = round(price, self.instr.digits)
 
-        self.tm.roll_day_if_needed()
+        if self.tm.roll_day_if_needed():
+            self.closed_today.clear()
         self._manage_trades(price)
         self._expire_trades(price)
 
@@ -985,7 +991,36 @@ class SymbolEngine:
         self.tm.close_trade(trade)
         self.tm.start_zone_cooldown(trade.zone_id, int(self.cfg.get('cooldown_minutes', 30)))
         self.tm.save()
+        self._record_closed_for_audit(trade, close_price, reason)
         self._push_trade_kv(trade, close_price, reason)
+
+    def _record_closed_for_audit(self, trade: ManagedTrade, close_price: float,
+                                 reason: str) -> None:
+        """Append a PAPER close to closed_today in the dashboard positions-tab
+        schema (real $ P&L) so it lands in Positions → Trade History. Live
+        closes are already carried by _serialize_closed_trades(MAGIC)."""
+        if trade.mode != 'PAPER':
+            return
+        instr = self.instr
+        sign  = 1 if trade.direction == 'LONG' else -1
+        profit = sign * (close_price - trade.entry_price) / instr.pip * instr.point_val * trade.lot_size
+        entry_dt = trade.entry_dt()
+        self.closed_today.append({
+            # position_id is unique+stable per trade so repeated status pushes
+            # dedupe idempotently in the worker's mergeTradeHistory.
+            'position_id': f'cf_{instr.key}_{trade.trade_id}',
+            'symbol':      instr.symbol,
+            'direction':   'BUY' if trade.direction == 'LONG' else 'SELL',
+            'lots':        trade.lot_size,
+            'open_price':  round(trade.entry_price, instr.digits),
+            'close_price': round(close_price, instr.digits),
+            'profit':      round(profit, 2),
+            'swap':        0.0,
+            'commission':  0.0,
+            'time_open':   int(entry_dt.timestamp()),
+            'time_close':  int(datetime.now(timezone.utc).timestamp()),
+            'comment':     f'paper {trade.trade_id} {reason} [{instr.display}]',
+        })
 
     def _push_trade_kv(self, trade: ManagedTrade, close_price: float, reason: str) -> None:
         """Append the closed trade to KV confluence_bot_trades (rolling history)."""
@@ -1527,6 +1562,12 @@ class ConfluenceBot:
         total_armed = sum(len(s['armed_zones']) for s in symbols)
         state = ('MANAGING' if total_open else 'ARMED' if total_armed else 'WAITING')
 
+        # Live closes come from MT5 deals; paper closes are carried per engine so
+        # both flow into the Positions → Trade History audit.
+        closed_today = _serialize_closed_trades(MAGIC)
+        for e in self.engines.values():
+            closed_today += e.closed_today
+
         status = {
             'bot': 'confluence_bot',
             'timestamp': datetime.now(timezone.utc).isoformat(),
@@ -1540,7 +1581,7 @@ class ConfluenceBot:
             'symbols': symbols,
             'account_login': _mt5_account_login(),
             'mt5_positions': positions,
-            'today_closed_trades': _serialize_closed_trades(MAGIC),
+            'today_closed_trades': closed_today,
         }
         _kv_put(KV_STATUS, status, self.base_url)
 
