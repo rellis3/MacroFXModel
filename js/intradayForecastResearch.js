@@ -140,6 +140,40 @@ export function _dynLevelOutcome(bars, r, dir, pip) {
     ...(_postTouch(bars, firstIdx, entry, dir, pip)) };
 }
 
+// CONFIRMATION-entry fade — do NOT fade at the level. After the touch, let price
+// overshoot, and enter only when a bar CLOSES back through the level (the turn),
+// with the stop beyond the overshoot extreme and a modest target. Two structural
+// advantages over the blind fade: (1) the stop sits past where price actually
+// overshot, so the ~36-pip overshoot can't chop you out; (2) on pure blow-through
+// (trend) days there is no close-back, so NO TRADE is taken — it skips exactly the
+// short-gamma tail days that kill the blind fade. Returns per-target PnL (pips) or
+// null if price never confirmed (correctly a no-trade). dir/level as _dynLevelOutcome.
+export const CONFIRM_TARGETS = [20, 30, 40];
+export function _confirmFade(bars, firstIdx, level, dir, pip, buffer = 2) {
+  let ext = dir > 0 ? bars[firstIdx].high : bars[firstIdx].low;   // running overshoot extreme
+  let entryIdx = -1, entry = null;
+  for (let k = firstIdx; k < bars.length; k++) {
+    if (dir > 0) { if (bars[k].high > ext) ext = bars[k].high; } else { if (bars[k].low < ext) ext = bars[k].low; }
+    const closedBack = dir > 0 ? bars[k].close < level : bars[k].close > level;   // the turn (rejection close)
+    if (k > firstIdx && closedBack) { entryIdx = k; entry = bars[k].close; break; }
+  }
+  if (entryIdx < 0) return null;   // never turned back → blow-through → no trade (dodges the tail)
+  const stopPx = dir > 0 ? ext + buffer * pip : ext - buffer * pip;
+  const stopPips = Math.abs(entry - stopPx) / pip;
+  return { entryIdx, confirmed: true,
+    pnl: CONFIRM_TARGETS.map(t => {
+      const tgtPx = dir > 0 ? entry - t * pip : entry + t * pip;
+      for (let k = entryIdx + 1; k < bars.length; k++) {
+        const hitStop = dir > 0 ? bars[k].high >= stopPx : bars[k].low <= stopPx;
+        const hitTgt  = dir > 0 ? bars[k].low <= tgtPx : bars[k].high >= tgtPx;
+        if (hitStop) return +(-stopPips).toFixed(1);   // conservative: stop resolves first on a same-bar tie
+        if (hitTgt) return t;
+      }
+      const last = bars.at(-1).close;   // unresolved → exit at close
+      return +(((dir > 0 ? entry - last : last - entry)) / pip).toFixed(1);
+    }) };
+}
+
 // Seeded PRNG for the deterministic placebo jitter (G1).
 function _mulberry32(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
@@ -273,10 +307,13 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     const rMed = (fc[H.hl] ?? 0) / 100 * recalF, r75 = (fc[H.hl75] ?? 0) / 100 * recalF;
     const dLoMed = _dynLevelOutcome(bars, rMed, -1, pip), dHiMed = _dynLevelOutcome(bars, rMed, +1, pip);
     const dLoP75 = _dynLevelOutcome(bars, r75, -1, pip), dHiP75 = _dynLevelOutcome(bars, r75, +1, pip);
-    if (dLoMed) touchRows.dynMed.push({ ...dLoMed, regime, calm });
-    if (dHiMed) touchRows.dynMed.push({ ...dHiMed, regime, calm });
-    if (dLoP75) touchRows.dynP75.push({ ...dLoP75, regime, calm });
-    if (dHiP75) touchRows.dynP75.push({ ...dHiP75, regime, calm });
+    // Confirmation-entry fade attached to each dynamic touch (enter on the turn, not
+    // the touch; stop beyond the overshoot; no-trade on blow-throughs).
+    const _cf = (o, dir) => o ? _confirmFade(bars, o.firstIdx, o.entry, dir, pip) : null;
+    if (dLoMed) touchRows.dynMed.push({ ...dLoMed, regime, calm, confirm: _cf(dLoMed, -1) });
+    if (dHiMed) touchRows.dynMed.push({ ...dHiMed, regime, calm, confirm: _cf(dHiMed, +1) });
+    if (dLoP75) touchRows.dynP75.push({ ...dLoP75, regime, calm, confirm: _cf(dLoP75, -1) });
+    if (dHiP75) touchRows.dynP75.push({ ...dHiP75, regime, calm, confirm: _cf(dHiP75, +1) });
     // Level-set #3b: ratio_yz DYNAMIC 75th — the band-calc A/B winner. The dynamic
     // MEDIAN band already equals ratio_yz.med (recalF = median(realized÷forecast H-L)
     // × Feller-median ≡ σ × median(realized÷σ)), so only the 75th is a genuine
@@ -472,11 +509,29 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
         meanPips: +(_mean(pnls)).toFixed(2) };
     }) };
   };
+  // CONFIRMATION-entry aggregation — enter on the turn (close back through the level),
+  // stop beyond the overshoot, no-trade on blow-throughs. Per target: confirm RATE
+  // (how often a turn happened), win% and GROSS expectancy on the CONFIRMED trades.
+  const _confirmExit = rows => {
+    if (!rows.length) return { n: 0 };
+    const confd = rows.filter(r => r.confirm && r.confirm.confirmed);
+    return { nTouches: rows.length, nConfirmed: confd.length,
+      confirmRatePct: +(confd.length / rows.length * 100).toFixed(1),
+      byTarget: CONFIRM_TARGETS.map((t, ti) => {
+        const pnls = confd.map(r => r.confirm.pnl?.[ti]).filter(v => v != null);
+        if (!pnls.length) return { target: t, n: 0 };
+        return { target: t, n: pnls.length,
+          winPct: +(pnls.filter(v => v > 0).length / pnls.length * 100).toFixed(1),
+          meanPips: +(_mean(pnls)).toFixed(2) };   // gross expectancy per confirmed trade
+      }) };
+  };
   const touches = {
     bandsRecalibrated: recalMeta.applied, recalFactor: recalMeta.medianFactor,
     // SCALP exits (tight stop / modest target, NOT hold-to-close) on the median +
     // dynamic median + dynamic 75th — the "is it a short scalp" test.
     scalpExit: { median: _scalpExit(med), dynMed: _scalpExit(touchRows.dynMed || []), dyn75: _scalpExit(touchRows.dynP75 || []) },
+    // CONFIRMATION-entry fade — enter on the turn, not the touch (dynamic median + 75th).
+    confirmEntry: { dynMed: _confirmExit(touchRows.dynMed || []), dyn75: _confirmExit(touchRows.dynP75 || []) },
     medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med), fadePayoff: _fadePayoff(med) },
     p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75), fadePayoff: _fadePayoff(p75) },
     // Level-set #1: Open-Close (distinct from the drift-adjusted O-H/O-L above).
