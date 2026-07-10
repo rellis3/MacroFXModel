@@ -69,6 +69,7 @@ import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
+import { reversalStudy as _reversalStudy } from './js/reversalPointResearch.js';   // separate reversal-point calc
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { analyzeCogLevels as _analyzeCogLevels } from './js/cogLevelPoc.js';   // COG-level POC
@@ -8659,6 +8660,48 @@ app.post('/api/estimator-ab/run', express.json({ limit: '64kb' }), (req, res) =>
 
 app.get('/api/estimator-ab/status/:jobId', (req, res) => {
   const job = abJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Reversal-Point Research — a SEPARATE calc: where does price ACTUALLY reverse?
+// Extracts intraday reversal swings (that held) and measures them vs the London-open
+// (O-C anchor) + the running extreme (H-L dynamic anchor). Full M1 history per pair.
+const revJobs = new Map();
+app.post('/api/reversal-study/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '', revFrac } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `rev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of revJobs) if (j.startedAt < Date.now() - 60 * 60_000) revJobs.delete(id);
+  revJobs.set(jobId, { status: 'running', startedAt });
+  const opts = { revFrac: Number.isFinite(+revFrac) ? +revFrac : 0.25 };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);   // M5 (chunked) or H1 fallback
+          const rs = _reversalStudy(bars, opts);
+          if (rs.insufficient) { log.push(`${cfg.name}: insufficient (${rs.nDays}d)`); continue; }
+          rs.src = src; rs.type = cfg.assetClass || 'fx';
+          perPair[cfg.name] = rs;
+          log.push(`${cfg.name}: ${rs.nDays}d ${rs.nReversals} revs, run P50 ${rs.runFromExtremePct.p50}% vs medRange ${rs.medRangePct}% (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { revJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      revJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, revFrac: opts.revFrac, perPair, pairs: names, log } });
+    } catch (e) { revJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/reversal-study/status/:jobId', (req, res) => {
+  const job = revJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
