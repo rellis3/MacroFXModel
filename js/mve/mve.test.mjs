@@ -19,6 +19,7 @@ import { fitLoadings, factorImpliedReturn, coherenceCheck } from './factorModel.
 import { confidenceEngine, agreementScore } from './confidence.js';
 import { runMVE, valuationText } from './index.js';
 import { augmentSignalScore, mveFactorScore } from './signalAdapter.js';
+import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC } from './liveAdapter.js';
 
 let failures = 0, tests = 0;
 const ok = (name, cond, extra = '') => { tests++; console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -226,6 +227,57 @@ console.log('\n── end-to-end runMVE ──');
   const augLong  = augmentSignalScore(60, v, 'long');
   ok('adapter favours short over long when rich', augShort.score > augLong.score, `short=${augShort.score} long=${augLong.score}`);
   ok('mveFactorScore aligned≥0.5, opposed≤0.5', mveFactorScore(v, 'short') >= 0.5 && mveFactorScore(v, 'long') <= 0.5);
+}
+
+console.log('\n── live adapter (pure builder, no network) ──');
+{
+  // Build 300 daily bars + FRED series, price driven by a rate differential so the
+  // adapter's regression should recover a real relationship.
+  const r = rng(31);
+  const bars = [], usMap = new Map(), deMap = new Map(), us2Map = new Map(), deSMap = new Map(), beiMap = new Map();
+  let d = new Date(Date.UTC(2023, 0, 2));
+  let us10 = 3.8, de10 = 2.4, us2 = 4.4, de2 = 3.0, bei = 2.3;
+  for (let i = 0; i < 300; i++) {
+    // advance one weekday
+    do { d = new Date(d.getTime() + 86400000); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+    const iso = d.toISOString().slice(0, 10);
+    us10 += 0.02 * gauss(r); de10 += 0.02 * gauss(r); us2 += 0.02 * gauss(r); de2 += 0.02 * gauss(r); bei += 0.01 * gauss(r);
+    const diff = us10 - de10;
+    const px = 1.10 - 0.05 * diff + 0.002 * gauss(r);   // higher US-DE diff ⇒ weaker EUR
+    bars.push({ date: iso, close: px });
+    usMap.set(iso, us10); deMap.set(iso, de10); us2Map.set(iso, us2); deSMap.set(iso, de2); beiMap.set(iso, bei);
+  }
+  const fred = { us10y: usMap, de10y: deMap, us2y: us2Map, de_s: deSMap, bei: beiMap };
+  const ctx = buildContext('EUR/USD', bars, fred);
+  ok('buildContext produces price + 3 factors', ctx.price.length > 200 && ctx.factors.length === 3, `rows=${ctx.price.length}`);
+  ok('factor names as specified', ctx.factors.map(f => f.name).join(',') === 'rate_diff_10y,rate_diff_2y,breakeven');
+  ok('marketPrice = last close', near(ctx.marketPrice, bars[bars.length - 1].close, 1e-9));
+  const v = runMVE(ctx);
+  ok('end-to-end live-shaped ctx values ok', v.ok === true && Number.isFinite(v.fairValue) && v.sigma > 0);
+  ok('recovers rate-diff relationship (r²>0.5)', v.ensemble.members.find(m => m.name === 'macro_fv') && v.estimates.find(e => e.name === 'macro_fv').meta.r2 > 0.5, `r²=${v.estimates.find(e => e.name === 'macro_fv')?.meta.r2}`);
+
+  // ffAlign forward-fills sparse (monthly) series across trading days
+  const sparse = new Map([['2023-01-05', 2.0], ['2023-02-05', 3.0]]);
+  const idx = ['2023-01-04', '2023-01-05', '2023-01-20', '2023-02-05', '2023-02-10'];
+  const filled = ffAlign(idx, sparse);
+  ok('ffAlign: NaN before first obs', Number.isNaN(filled[0]));
+  ok('ffAlign: carries value forward', filled[2] === 2.0 && filled[4] === 3.0, `=${filled.join(',')}`);
+
+  ok('normalizeSym strips punctuation', normalizeSym('EUR/USD') === 'EURUSD' && normalizeSym('xau usd') === 'XAUUSD');
+  ok('gold spec uses real_yield + dxy', FACTOR_SPEC.XAUUSD.fred.join(',') === 'tips,dxy');
+
+  // runLiveMVE with INJECTED fake fetchers (proves the wiring without network)
+  const fakeDeps = {
+    fredKey: 'TEST',
+    fetchD1: async () => bars,
+    fetchFred: async (id) => ({ DGS10: usMap, IRLTLT01DEM156N: deMap, DGS2: us2Map, IRSTCI01DEM156N: deSMap, T10YIE: beiMap }[id]),
+  };
+  const live = await runLiveMVE({ sym: 'EUR/USD', deps: fakeDeps });
+  ok('runLiveMVE (injected) returns valuation', live.ok === true && live.dataSource && live.dataSource.usableRows > 200, live.error || '');
+  const bad = await runLiveMVE({ sym: 'EUR/USD', deps: { fetchD1: fakeDeps.fetchD1, fetchFred: fakeDeps.fetchFred } });
+  ok('runLiveMVE guards missing FRED_KEY', bad.ok === false && /FRED_KEY/.test(bad.error));
+  const unsup = await runLiveMVE({ sym: 'ZZZ/USD', deps: fakeDeps });
+  ok('runLiveMVE rejects unsupported symbol', unsup.ok === false && /unsupported/.test(unsup.error));
 }
 
 console.log(`\n${failures === 0 ? '✅' : '❌'} MVE tests: ${tests - failures}/${tests} passed${failures ? `, ${failures} FAILED` : ''}\n`);

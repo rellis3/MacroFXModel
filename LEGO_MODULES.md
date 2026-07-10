@@ -700,8 +700,10 @@ P0 cross-language unification
 | Confidence engine | `js/mve/confidence.js` | logistic over agreement/fit/calibration/regime/reversion | ✅ |
 | Orchestrator + card | `js/mve/index.js` | `runMVE()`, `valuationCard()`, `valuationText()` | ✅ |
 | Signal adapter (opt-in) | `js/mve/signalAdapter.js` | blend MVE into `computeSignalScore` — **not wired** | ✅ 📄 |
-| Demo page | `mve.html` | standalone synthetic sandbox (no route, unlinked) | ✅ |
+| Live data adapter | `js/mve/liveAdapter.js` | real OANDA D1 + FRED → `runMVE` ctx (FX=rate diffs, gold=real yield+DXY); injected fetchers, pure `buildContext` | ✅ |
+| Live endpoint | `server.js` `/api/mve/:sym` | additive read-only route (1h cache); does NOT feed any signal/bot | ✅ |
+| Demo page | `mve.html` | synthetic sandbox + **live** (OANDA+FRED) toggle | ✅ |
 
-**Not yet built (deliberate next steps, per `MVE_RUN_GUIDE.md` §6–7):** live data
-adapter (OANDA/FRED → `runMVE` ctx), dashboard wiring (signal score / entry scanner /
-AI summary), and OOS proof on real feeds before any real capital.
+**Not yet built (deliberate next steps, per `MVE_RUN_GUIDE.md` §7):** dashboard wiring
+(signal score / entry scanner / AI summary — the opt-in `signalAdapter` shows the blend),
+and OOS proof on real feeds before any real capital. The live endpoint is surfacing-only.
