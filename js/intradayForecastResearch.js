@@ -190,6 +190,12 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
   // forecast). These are the days the hidden-relationship scan flags as low-miss —
   // the filter that should trim the short-gamma tail off a blind fade.
   const vovHist = []; let prevRatio = null;
+  // VOL-conditioned exhaustion curve: classify each window's forecast-time vol into
+  // low/mid/high terciles (causal — vs the pair's OWN trailing vol distribution), so
+  // the sweep's reversion-by-distance can be read per vol regime — does the exhaustion
+  // point slide OUTWARD (P50 on calm days → P75+ on live days), and is there a shallow-
+  // P50 / deep-P75 two-stage pattern on high-vol days?
+  const volHist = [];
 
   // Non-overlapping windows (step = W) — avoids autocorrelation inflation across
   // overlapping multi-day windows; for daily this is the original per-day walk.
@@ -220,6 +226,13 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     const vov = fc.vol_vov ?? null;
     const vovMed = vovHist.length >= 20 ? _median(vovHist.slice(-120)) : null;
     const calm = (vov == null || vovMed == null || vov <= vovMed) && (prevRatio == null || prevRatio <= 1.18);
+    // Vol-regime bucket (causal terciles of forecast-time annualized vol vs trailing).
+    const volA = fc.vol_annual ?? null;
+    let volBucket = 'mid';
+    if (volA != null && volHist.length >= 30) {
+      const lo = _pctile(volHist.slice(-250), 33), hi = _pctile(volHist.slice(-250), 67);
+      volBucket = volA <= lo ? 'low' : volA >= hi ? 'high' : 'mid';
+    }
 
     // ── Expansion timing (in hours for daily, in days-of-window otherwise) ──
     let realizedHl = null;
@@ -306,7 +319,7 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
       const k = Math.round(mlt * 100);
       const lo = _dynLevelOutcome(bars, rMedBase * mlt, -1, pip), hi = _dynLevelOutcome(bars, rMedBase * mlt, +1, pip);
       (touchRows.sweep[k] ??= []);
-      if (lo) touchRows.sweep[k].push({ ...lo, regime, calm }); if (hi) touchRows.sweep[k].push({ ...hi, regime, calm });
+      if (lo) touchRows.sweep[k].push({ ...lo, regime, calm, volBucket }); if (hi) touchRows.sweep[k].push({ ...hi, regime, calm, volBucket });
     }
     // Level-set #1: Open-Close touches (open ± oc), median + 75th.
     if (ocMed > 0) {
@@ -327,6 +340,7 @@ function _walkHorizon(lond, dailyOHLC, closes, { assetClass = 'fx', pip = 0.0001
     if (realizedHl != null && hlE94 > 0) hlRatioHistE94.push(realizedHl / hlE94);
     if (realizedHl != null && hlE90 > 0) hlRatioHistE90.push(realizedHl / hlE90);
     if (vov != null) vovHist.push(vov);
+    if (volA != null) volHist.push(volA);
   }
 
   const recalMeta = { applied: recalibrate, medianFactor: recalFactors.length ? +(_median(recalFactors)).toFixed(3) : 1,
@@ -482,6 +496,24 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
     // recalibrated median distance). Reversion + cost as a function of DISTANCE.
     ...Object.fromEntries(SWEEP_MULTS.map(m => { const k = Math.round(m * 100); const rows = (touchRows.sweep && touchRows.sweep[k]) || [];
       return [`dynSweep${k}Extension`, { mult: m, ...(_touchStats(rows, totalWindows)), fadePayoff: _fadePayoff(rows) }]; })),
+    // VOL-CONDITIONED exhaustion curve — reversion depth by (vol regime × distance),
+    // approx-percentile-labelled (×1.0≈P50 … ×1.4≈P82). Does the exhaustion point
+    // slide out with vol, and is there a shallow-P50 / deep-P75 two-stage pattern?
+    exhaustionCurve: (() => {
+      const PCT = { 100: 50, 110: 62, 120: 69, 130: 75, 140: 82 };   // approx range-percentile of each ×median level
+      const byVol = {};
+      for (const vb of ['low', 'mid', 'high']) {
+        byVol[vb] = SWEEP_MULTS.map(m => { const k = Math.round(m * 100);
+          const rows = ((touchRows.sweep && touchRows.sweep[k]) || []).filter(r => r.volBucket === vb);
+          if (!rows.length) return { mult: m, approxPctile: PCT[k] ?? null, n: 0 };
+          return { mult: m, approxPctile: PCT[k] ?? null, n: rows.length,
+            reversePct: +(_rate(rows.map(r => r.outcome === 'reverse')) ?? 0).toFixed(1),
+            meanPullbackPips: +_mean(rows.map(r => r.maePips)).toFixed(1),   // depth of the revert (favourable to a fade)
+            meanContPips: +_mean(rows.map(r => r.mfePips)).toFixed(1) };     // how far it ran past (the overshoot)
+        });
+      }
+      return byVol;
+    })(),
     // Conditional fade: median-line touches restricted to CALM days (the tail filter).
     conditionalCalm: { filter: 'calm = vov ≤ trailing-median AND prior window ≤ 118% forecast',
       ...(_touchStats(medCalm, totalWindows)), fadePayoff: _fadePayoff(medCalm) },
