@@ -5750,6 +5750,26 @@ app.get('/api/vol-forecast/reference/:date', async (req, res) => {
 // intraday bars, and measures reversion at COG's median/75th/O-C levels. Railway
 // only (KV + M1). Descriptive on however many COG days exist — not a big-N claim.
 const _COG_ALIASES = { EURUSD: ['EURUSD', 'EUR/USD', 'EUR_USD'], NQ: ['NQ', 'NAS100', 'NAS100_USD', 'US100', 'NAS'], GOLD: ['GOLD', 'XAUUSD', 'XAU/USD', 'XAU_USD'] };
+// Fetch OANDA M5 candles for a date range (chunked under the 5000-bar cap). The R2
+// parquet lags weeks behind, so the recent COG days must come straight from OANDA.
+async function _fetchOandaM5(sym, fromSec, toSec) {
+  const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const out = [];
+  const STEP = 13 * 86400;   // ~13 days × 288 M5 bars ≈ 3744 < 5000 cap
+  for (let s = fromSec; s < toSec; s += STEP) {
+    const e = Math.min(s + STEP, toSec);
+    const url = `${base}/v3/instruments/${encodeURIComponent(sym)}/candles`
+              + `?granularity=M5&price=M&from=${encodeURIComponent(new Date(s * 1000).toISOString())}&to=${encodeURIComponent(new Date(e * 1000).toISOString())}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`OANDA M5 ${sym}: HTTP ${r.status}`);
+    for (const c of ((await r.json()).candles ?? [])) {
+      if (c.complete === false || !c.mid) continue;
+      const cl = parseFloat(c.mid.c); if (!(cl > 0)) continue;
+      out.push({ time: Math.floor(new Date(c.time).getTime() / 1000), open: parseFloat(c.mid.o), high: parseFloat(c.mid.h), low: parseFloat(c.mid.l), close: cl });
+    }
+  }
+  return out;
+}
 app.get('/api/cog-level-poc', async (_req, res) => {
   try {
     // 1. COG reference dates (newest first, from the index).
@@ -5764,14 +5784,18 @@ app.get('/api/cog-level-poc', async (_req, res) => {
       try { cogByDate[date] = _parseExportText(JSON.parse(raw).text); } catch { /* skip malformed */ }
     }
     const _cog = (date, name) => { const rec = cogByDate[date]; if (!rec) return null; for (const a of _COG_ALIASES[name]) if (rec[a]) return rec[a]; return null; };
-    // 3. Per pair: load intraday (5-min), split into London days, match COG dates, measure.
-    const PAIRS = [{ name: 'EURUSD' }, { name: 'NQ' }, { name: 'GOLD' }];
+    // 3. Per pair: fetch OANDA M5 for the COG date range (the parquet lags weeks),
+    //    split into London days, match COG dates, measure.
+    const PAIRS = [{ name: 'EURUSD', sym: 'EUR_USD' }, { name: 'NQ', sym: 'NAS100_USD' }, { name: 'GOLD', sym: 'XAU_USD' }];
+    const cogDatesSorted = Object.keys(cogByDate).sort();
+    const fromSec = Math.floor(new Date(cogDatesSorted[0] + 'T00:00:00Z').getTime() / 1000) - 2 * 86400;   // pad for the London boundary
+    const toSec   = Math.floor(new Date(cogDatesSorted.at(-1) + 'T00:00:00Z').getTime() / 1000) + 2 * 86400;
     const results = [];
     for (const p of PAIRS) {
       const row = { pair: p.name };
       try {
         let pip = 0.0001; try { pip = _pipSize(p.name) || pip; } catch { /* keep default */ }
-        const bars5 = await _loadM1ForAB(p.name.toLowerCase(), 5);
+        const bars5 = await _fetchOandaM5(p.sym, fromSec, toSec);
         const lond = buildLondonDaily(bars5 || []);
         const byDate = new Map(lond.map(d => [d.date, d]));
         const recs = [];
