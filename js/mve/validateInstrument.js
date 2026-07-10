@@ -114,42 +114,58 @@ export function validateInstrument(ctx, { window = 150, minTrain = 180,
     };
   }
 
-  // ── Simple z-fade strategy (1-bar hold, reforming) + deflated Sharpe ────────
-  // position = −sign(z) when |z| ≥ threshold, pnl = position · next-bar return.
-  const nextRet = i => (i + 1 < price.length ? (price[i + 1] - price[i]) / price[i] : null);
-  const perThreshold = thresholds.map(thr => {
-    const daily = [];
-    let trades = 0, wins = 0;
-    for (let k = 0; k < idx.length; k++) {
-      const i = idx[k], r = nextRet(i);
-      if (r == null) continue;
-      if (Math.abs(z[k]) >= thr) { const pnl = -Math.sign(z[k]) * r; daily.push(pnl); trades++; if (pnl > 0) wins++; }
-      else daily.push(0);
+  // ── z-fade strategy, HORIZON-MATCHED holding + deflated Sharpe ──────────────
+  // The IC shows the edge lives at multi-bar horizons, so a 1-bar hold can't
+  // harvest it. Here each (hold, threshold) config enters when |z| ≥ threshold and
+  // holds `hold` bars, taking NON-OVERLAPPING entries (spaced ≥ hold bars) so the
+  // trade returns are independent — no autocorrelation-inflated Sharpe. Deflated
+  // Sharpe is computed across ALL configs tried (holds × thresholds) so searching
+  // for the best holding period is paid for.
+  const fwdRetH = (i, H) => (i + H < price.length ? (price[i + H] - price[i]) / price[i] : null);
+  const configs = [];
+  for (const hold of horizons) {
+    for (const thr of thresholds) {
+      const trPnls = [];
+      let lastEntry = -Infinity, wins = 0;
+      for (let k = 0; k < idx.length; k++) {
+        const i = idx[k];
+        if (Math.abs(z[k]) < thr) continue;
+        if (i - lastEntry < hold) continue;                 // non-overlapping
+        const r = fwdRetH(i, hold);
+        if (r == null) continue;
+        const pnl = -Math.sign(z[k]) * r;                    // fade the mispricing
+        trPnls.push(pnl); if (pnl > 0) wins++; lastEntry = i;
+      }
+      const m = mean(trPnls), sd = std(trPnls);
+      const perTradeSR = sd > 0 ? m / sd : 0;
+      const tradesPerYear = periodsPerYear / hold;            // non-overlapping H-bar holds
+      const annSharpe = sd > 0 ? perTradeSR * Math.sqrt(tradesPerYear) : 0;
+      configs.push({ hold, threshold: thr, trades: trPnls.length, hitRate: trPnls.length ? +(wins / trPnls.length).toFixed(3) : null,
+                     annualizedSharpe: +annSharpe.toFixed(2), perTradeSR, trPnls });
     }
-    const m = mean(daily), sd = std(daily);
-    const perObsSR = sd > 0 ? m / sd : 0;
-    const sharpe = sd > 0 ? perObsSR * Math.sqrt(periodsPerYear) : 0;
-    return { threshold: thr, trades, hitRate: trades ? +(wins / trades).toFixed(3) : null, sharpe: +sharpe.toFixed(2), perObsSR, daily };
-  });
-  // Best by annualized Sharpe; deflate for the thresholds tried.
-  const best = perThreshold.slice().sort((a, b) => b.sharpe - a.sharpe)[0];
-  const dsr = deflatedSharpe(best.daily, perThreshold.map(t => t.perObsSR));
+  }
+  // Best config by annualized Sharpe (require enough trades to be meaningful).
+  const eligible = configs.filter(c => c.trades >= 15);
+  const best = (eligible.length ? eligible : configs).slice().sort((a, b) => b.annualizedSharpe - a.annualizedSharpe)[0];
+  const dsr = best ? deflatedSharpe(best.trPnls, configs.map(c => c.perTradeSR)) : null;
   const strategy = {
-    bestThreshold: best.threshold, trades: best.trades, hitRate: best.hitRate,
-    annualizedSharpe: best.sharpe,
-    deflatedSharpe: dsr ? dsr.dsr : null,   // P(true Sharpe>0) after trials adjustment
-    perThreshold: perThreshold.map(({ daily, perObsSR, ...t }) => t),
+    bestHold: best?.hold, bestThreshold: best?.threshold, trades: best?.trades, hitRate: best?.hitRate,
+    annualizedSharpe: best?.annualizedSharpe,
+    deflatedSharpe: dsr ? dsr.dsr : null,   // P(true Sharpe>0) after trials adjustment (holds × thresholds)
+    nConfigsTried: configs.length,
+    perConfig: configs.map(({ trPnls, perTradeSR, ...c }) => c),
   };
 
   // ── Honest verdict — keyed off icEDGE (beating the spurious trailing anchor) ──
   const edges = Object.entries(perHorizon).filter(([, r]) => r.icEdge != null);
   const bestH = edges.sort((a, b) => b[1].icEdge - a[1].icEdge)[0];
   const bestEdge = bestH ? bestH[1].icEdge : 0;
+  const holdStr = best ? `${best.hold}-bar hold @ z≥${best.threshold}` : 'n/a';
   let verdict;
   if (bestEdge > 0.03 && dsr && dsr.dsr >= 0.95)
-    verdict = `SURVIVES: the FACTOR fair value beats a naive trailing-mean anchor OOS (best icEdge ${bestEdge} at ${bestH[0]}-bar) and the z-fade clears deflated-Sharpe ${dsr.dsr}. Candidate for wiring in — confirm on more history first.`;
+    verdict = `SURVIVES: the FACTOR fair value beats a naive trailing-mean anchor OOS (best icEdge ${bestEdge} at ${bestH[0]}-bar) and the horizon-matched z-fade (${holdStr}) clears deflated-Sharpe ${dsr.dsr}. Candidate for wiring in — confirm on more history / other instruments first.`;
   else if (bestEdge > 0.03)
-    verdict = `WEAK/INCONCLUSIVE: the factor fair value shows some edge over the benchmark (icEdge ${bestEdge} at ${bestH[0]}-bar) but the z-fade deflated Sharpe (${dsr?.dsr ?? 'n/a'}) does not clear the multiple-testing bar. Do NOT wire in yet.`;
+    verdict = `WEAK/INCONCLUSIVE: the factor fair value shows real edge over the benchmark (icEdge ${bestEdge} at ${bestH[0]}-bar, the right slow-macro shape), but the best horizon-matched z-fade (${holdStr}) only reaches deflated Sharpe ${dsr?.dsr ?? 'n/a'} — short of the 0.95 bar. Promising, NOT proven. Do NOT wire in yet.`;
   else
     verdict = `NULL: the factor fair value does NOT beat a naive trailing-mean anchor OOS (best icEdge ${bestEdge}). Any apparent "reversion" is the spurious mean-reversion any anchor shows — there is no macro-factor edge here. Do NOT wire in. This is the expected, honest outcome for a slow macro anchor at daily horizons.`;
 
@@ -161,6 +177,6 @@ export function validateInstrument(ctx, { window = 150, minTrain = 180,
     perHorizon,
     strategy,
     verdict,
-    note: 'icEdge = model icPredictive − trailing-mean-benchmark icPredictive; it is the REAL signal (raw icPredictive is inflated by spurious detrending reversion any anchor shows on a random walk). Deflated Sharpe = P(true Sharpe>0) after adjusting for thresholds tried. Slow macro fair values often show edge only at 20–60+ bar horizons, if at all.',
+    note: 'icEdge = model icPredictive − trailing-mean-benchmark icPredictive; it is the REAL signal (raw icPredictive is inflated by the spurious detrending reversion any anchor shows). The z-fade now HOLDS for the horizon where the edge lives (non-overlapping entries, so trade returns are independent), and its deflated Sharpe is discounted for every hold×threshold config tried. Slow macro fair values show edge — if at all — at 20–60+ bar horizons.',
   };
 }

@@ -74,6 +74,7 @@
     <button id="run">Regenerate &amp; value</button>
     <button id="seed" class="alt">New random seed</button>
     <button id="validate" class="alt" style="display:none">🔬 Run OOS validation</button>
+    <button id="validateAll" class="alt" style="display:none">🧪 Validate ALL (cross-instrument)</button>
   </div>
 
   <div id="valout"></div>
@@ -148,10 +149,33 @@ async function runValidation() {
           <thead><tr style="color:#8891a0;text-align:left"><th>Horizon</th><th>IC (raw)</th><th>IC benchmark</th><th>IC edge</th><th>Hit rate</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-        <div style="margin-top:10px;font-size:12px;color:#cdd3dc">z-fade strategy: deflated Sharpe <b>${rep.strategy.deflatedSharpe ?? '—'}</b>, annualized Sharpe ${rep.strategy.annualizedSharpe}, ${rep.strategy.trades} trades @ z≥${rep.strategy.bestThreshold}.</div>
+        <div style="margin-top:10px;font-size:12px;color:#cdd3dc">z-fade strategy (horizon-matched): deflated Sharpe <b>${rep.strategy.deflatedSharpe ?? '—'}</b>, annualized Sharpe ${rep.strategy.annualizedSharpe}, ${rep.strategy.trades} non-overlapping trades @ <b>${rep.strategy.bestHold}-bar hold</b>, z≥${rep.strategy.bestThreshold} (best of ${rep.strategy.nConfigsTried} configs).</div>
         <div style="margin-top:8px;font-size:10.5px;color:#5b6270;line-height:1.5">${rep.note}</div>
       </div>`;
   } catch(e) { $('valout').innerHTML = `<div class="panel">Validation fetch failed: ${e.message}</div>`; }
+}
+
+async function runValidateAll() {
+  $('valout').innerHTML = '<div class="panel">⏳ Validating all instruments (first run fetches ~20y history each — can take a minute)…</div>';
+  try {
+    const rep = await (await fetch('/api/mve-validate-all')).json();
+    if (!rep.ok) { $('valout').innerHTML = `<div class="panel">Error: ${rep.error} (deployed server only)</div>`; return; }
+    const consistent = /^CONSISTENT/.test(rep.consistency.read);
+    const col = consistent ? '#22c55e' : '#ef4444';
+    const rows = rep.instruments.map(o => o.ok
+      ? `<tr><td>${o.instrument}</td><td style="font-family:monospace;color:${o.slowIcEdge>0.03?'#22c55e':o.slowIcEdge<0?'#ef4444':'#8891a0'}">${o.slowIcEdge ?? '—'}</td><td style="font-family:monospace">${o.slowHorizon ?? '—'}b</td><td style="font-family:monospace">${o.slowHitRate ?? '—'}</td><td style="font-family:monospace">${o.deflatedSharpe ?? '—'}</td><td style="font-size:10.5px;color:#8891a0">${(o.verdict||'').split(':')[0]}</td></tr>`
+      : `<tr><td>${o.instrument}</td><td colspan="5" style="color:#8891a0">${o.error}</td></tr>`).join('');
+    $('valout').innerHTML = `
+      <div class="panel" style="border-color:${col}55">
+        <div style="font-weight:700;color:${col};margin-bottom:8px">Cross-instrument consistency</div>
+        <div style="font-size:12.5px;color:#cdd3dc;margin-bottom:12px;line-height:1.5">${rep.consistency.read}<br><span style="color:#8891a0">mean slow-horizon icEdge ${rep.consistency.meanSlowIcEdge}</span></div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="color:#8891a0;text-align:left"><th>Instrument</th><th>Slow icEdge</th><th>Horizon</th><th>Hit</th><th>Defl.Sharpe</th><th>Verdict</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="margin-top:8px;font-size:10.5px;color:#5b6270;line-height:1.5">The pooled view: one instrument's Sharpe can't prove a slow signal (too few independent 20–60 bar windows in the history), but consistent positive slow-horizon icEdge across partly-independent instruments is the real evidence.</div>
+      </div>`;
+  } catch(e) { $('valout').innerHTML = `<div class="panel">Fetch failed: ${e.message}</div>`; }
 }
 
 async function go() {
@@ -159,6 +183,7 @@ async function go() {
   $('symWrap').style.display = live ? '' : 'none';
   $('synthControls').style.display = live ? 'none' : 'flex';
   $('validate').style.display = live ? '' : 'none';
+  $('validateAll').style.display = live ? '' : 'none';
   if (!live) $('valout').innerHTML = '';
   if (live) {
     $('card').innerHTML = '<div class="panel">⏳ Fetching OANDA + FRED…</div>';
@@ -194,6 +219,7 @@ $('seed').onclick  = () => { seed = Math.floor(Date.now() % 100000); go(); };
 $('regime').onchange = go; $('method').onchange = go; $('misp').onchange = go;
 $('src').onchange = go; $('sym').onchange = go;
 $('validate').onclick = runValidation;
+$('validateAll').onclick = runValidateAll;
 go();
 </script>
 </body>
