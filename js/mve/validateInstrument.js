@@ -180,3 +180,36 @@ export function validateInstrument(ctx, { window = 150, minTrain = 180,
     note: 'icEdge = model icPredictive − trailing-mean-benchmark icPredictive; it is the REAL signal (raw icPredictive is inflated by the spurious detrending reversion any anchor shows). The z-fade now HOLDS for the horizon where the edge lives (non-overlapping entries, so trade returns are independent), and its deflated Sharpe is discounted for every hold×threshold config tried. Slow macro fair values show edge — if at all — at 20–60+ bar horizons.',
   };
 }
+
+// ── Cross-instrument consistency (the pooled evidence view) ──────────────────
+// A slow macro signal can't be proven on one instrument's Sharpe (too few
+// independent 20–60 bar windows), so we look for the SAME edge across partly-
+// independent instruments. But this must not overcall: a tiny positive icEdge with
+// a sub-50% hit rate and a ~0 deflated Sharpe is noise, and "3 of 5 positive" at a
+// low threshold is a coin-flip outcome. So an instrument counts as REAL evidence
+// only if it clears magnitude AND directional AND (soft) tradeability corroboration,
+// and the verdict states the chance baseline explicitly.
+//
+// rows: [{ instrument, slowIcEdge, slowHitRate, deflatedSharpe }]
+export function poolConsistency(rows, {
+  minEdge = 0.03,      // icEdge magnitude
+  minHit = 0.50,       // must beat a coin flip on direction
+  minDsr = 0.60,       // some tradeability life (soft — not the 0.95 wiring bar)
+} = {}) {
+  const scored = rows.filter(r => r && r.slowIcEdge != null);
+  const n = scored.length;
+  // "real" = positive edge AND directional corroboration (hit rate > coin flip).
+  const real = scored.filter(r => r.slowIcEdge > minEdge && (r.slowHitRate ?? 0) > minHit);
+  const tradeable = real.filter(r => (r.deflatedSharpe ?? 0) >= minDsr);
+  const positiveSign = scored.filter(r => r.slowIcEdge > minEdge).length;   // sign-only (what NOT to trust)
+  const meanEdge = n ? +(scored.reduce((s, r) => s + r.slowIcEdge, 0) / n).toFixed(4) : null;
+  const meanHit = n ? +(scored.reduce((s, r) => s + (r.slowHitRate ?? 0), 0) / n).toFixed(3) : null;
+
+  // Chance baseline: sign-only "positive at threshold" is ~a coin flip per instrument,
+  // so getting positiveSign/n by luck is common. Only corroborated hits are evidence.
+  const consistent = real.length >= Math.max(3, Math.ceil(n * 0.6)) && tradeable.length >= 2;
+  const read = consistent
+    ? `CONSISTENT: ${real.length}/${n} instruments show a positive slow-horizon icEdge WITH an above-coin-flip hit rate (${tradeable.length} also show tradeability life) — cross-sectional evidence of a small but real macro edge. Worth pursuing at portfolio scale.`
+    : `NULL / INCONSISTENT: only ${real.length}/${n} instruments clear both a positive icEdge AND a >50% hit rate (mean hit ${meanHit}). ${positiveSign}/${n} are positive on SIGN alone, but that is a coin-flip outcome at this magnitude (mean icEdge ${meanEdge}) and the hit rates/deflated Sharpes do not corroborate. No tradeable macro edge — do NOT wire in.`;
+  return { instruments: n, realEvidence: real.length, tradeable: tradeable.length, positiveSignOnly: positiveSign, meanSlowIcEdge: meanEdge, meanSlowHitRate: meanHit, consistent, read };
+}

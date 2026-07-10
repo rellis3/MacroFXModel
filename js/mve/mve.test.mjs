@@ -20,7 +20,7 @@ import { confidenceEngine, agreementScore, scaleAgreementByIndependence, baseRat
 import { runMVE, valuationText } from './index.js';
 import { augmentSignalScore, mveFactorScore } from './signalAdapter.js';
 import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC } from './liveAdapter.js';
-import { validateInstrument, oosMispricingSeries } from './validateInstrument.js';
+import { validateInstrument, oosMispricingSeries, poolConsistency } from './validateInstrument.js';
 
 let failures = 0, tests = 0;
 const ok = (name, cond, extra = '') => { tests++; console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -328,6 +328,33 @@ console.log('\n── OOS validation (does mispricing predict returns?) ──')
   // no-lookahead: OOS series length is bounded and starts after the train window
   const { idx } = oosMispricingSeries(price, [{ name: 'f1', series: f1 }, { name: 'f2', series: f2 }], { window: 150, minTrain: 180 });
   ok('OOS series starts after warmup', idx[0] >= 180 && idx.length > 100, `start=${idx[0]} n=${idx.length}`);
+}
+
+console.log('\n── cross-instrument consistency (must not overcall) ──');
+{
+  // The ACTUAL live 5-instrument result: tiny icEdges, hit rates mostly <0.5,
+  // deflated Sharpes ~0. This must read NULL, not CONSISTENT (the bug we're fixing).
+  const real = [
+    { instrument: 'XAUUSD', slowIcEdge: 0.0193, slowHitRate: 0.476, deflatedSharpe: 0 },
+    { instrument: 'EURUSD', slowIcEdge: 0.0475, slowHitRate: 0.481, deflatedSharpe: 0.889 },
+    { instrument: 'GBPUSD', slowIcEdge: 0.0389, slowHitRate: 0.547, deflatedSharpe: 0.344 },
+    { instrument: 'USDJPY', slowIcEdge: 0.0481, slowHitRate: 0.467, deflatedSharpe: 0.001 },
+    { instrument: 'AUDUSD', slowIcEdge: -0.0263, slowHitRate: 0.471, deflatedSharpe: 0.017 },
+  ];
+  const pc = poolConsistency(real);
+  ok('real live result reads NULL, not CONSISTENT', pc.consistent === false && /NULL|INCONSISTENT/.test(pc.read), pc.read.slice(0, 40));
+  ok('only hit-rate-corroborated instruments count as evidence', pc.realEvidence === 1, `real=${pc.realEvidence} signOnly=${pc.positiveSignOnly}`);
+  ok('reports sign-only count separately (3/5) so the coin-flip is visible', pc.positiveSignOnly === 3);
+
+  // A genuinely strong, corroborated cross-section SHOULD read CONSISTENT.
+  const strong = [
+    { instrument: 'A', slowIcEdge: 0.08, slowHitRate: 0.56, deflatedSharpe: 0.97 },
+    { instrument: 'B', slowIcEdge: 0.07, slowHitRate: 0.55, deflatedSharpe: 0.96 },
+    { instrument: 'C', slowIcEdge: 0.06, slowHitRate: 0.54, deflatedSharpe: 0.72 },
+    { instrument: 'D', slowIcEdge: 0.05, slowHitRate: 0.53, deflatedSharpe: 0.61 },
+    { instrument: 'E', slowIcEdge: 0.01, slowHitRate: 0.49, deflatedSharpe: 0.2 },
+  ];
+  ok('genuinely strong cross-section reads CONSISTENT', poolConsistency(strong).consistent === true);
 }
 
 console.log(`\n${failures === 0 ? '✅' : '❌'} MVE tests: ${tests - failures}/${tests} passed${failures ? `, ${failures} FAILED` : ''}\n`);
