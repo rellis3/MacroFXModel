@@ -70,6 +70,7 @@ import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEV
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { reversalStudy as _reversalStudy } from './js/reversalPointResearch.js';   // separate reversal-point calc
+import { reversalFade as _reversalFade } from './js/reversalFadeEngine.js';   // fade-at-k×median falsification test
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { analyzeCogLevels as _analyzeCogLevels } from './js/cogLevelPoc.js';   // COG-level POC
@@ -8704,6 +8705,52 @@ app.post('/api/reversal-study/run', express.json({ limit: '16kb' }), (req, res) 
 });
 app.get('/api/reversal-study/status/:jobId', (req, res) => {
   const job = revJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Reversal-Fade — the falsification test: does fading at k×median (per-pair, k
+//    from IS dominant reversals) beat fading at the median (k=1), after cost, OOS? ──
+const revFadeJobs = new Map();
+app.post('/api/reversal-fade/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '', revFrac, isFrac, trailWin } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `revf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of revFadeJobs) if (j.startedAt < Date.now() - 60 * 60_000) revFadeJobs.delete(id);
+  revFadeJobs.set(jobId, { status: 'running', startedAt });
+  const opts = {
+    revFrac: Number.isFinite(+revFrac) ? +revFrac : 0.25,
+    isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5,
+    trailWin: Number.isFinite(+trailWin) ? +trailWin : 252,
+  };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);   // M5 (chunked) or H1 fallback
+          const rf = _reversalFade(bars, { ...opts, pair: cfg.name });
+          if (rf.insufficient) { log.push(`${cfg.name}: insufficient (${rf.reason || rf.nDays + 'd'})`); continue; }
+          rf.src = src;
+          perPair[cfg.name] = rf;
+          const bo = rf.base.confirm.oos, to = rf.test.confirm.oos;
+          log.push(`${cfg.name}: k ${rf.kIS} · confirm OOS Sharpe base ${bo.sharpe}(${bo.trades}) → test ${to.sharpe}(${to.trades}) (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { revFadeJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      revFadeJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, perPair, pairs: names, log } });
+    } catch (e) { revFadeJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/reversal-fade/status/:jobId', (req, res) => {
+  const job = revFadeJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
