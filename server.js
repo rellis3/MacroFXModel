@@ -43,7 +43,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
-import { backtestBasket as _trendBacktestBasket, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
+import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -5197,6 +5197,8 @@ app.get('/api/trend/backtest', async (req, res) => {
     if (markets.length < 3) return res.status(502).json({ ok: false, error: `only ${markets.length} markets fetched`, skipped });
     const result = _trendBacktestBasket(markets, { costBp, longShort, volTargetPort });
     result.universe = { requested: _TREND_UNIVERSE.length, used: markets.map(m => m.symbol), skipped };
+    // Honest-read robustness: sub-period Sharpe, rolling 1y, cost sensitivity, concentration.
+    if (result.ok) { try { result.robustness = _trendRobustness(markets, { longShort, volTargetPort }); } catch (e) { result.robustness = { ok: false, error: e.message }; } }
     if (result.ok) _trendBtCache.set(key, { at: Date.now(), data: result });
     res.status(result.ok ? 200 : 502).json(result);
   } catch (e) {
