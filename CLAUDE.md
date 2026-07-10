@@ -185,6 +185,21 @@ unless that is explicitly the task.
   (expect 403 locally — that's environment, not a bug).
 - **Validate locally before committing**: `node --check` the engine + `server.js`,
   and unit-test the core on synthetic data (no network needed).
+- **KV persistence is opt-in per key — the #1 recurring "my settings vanished on
+  deploy" bug.** `kv.js` has two backends: Cloudflare KV (survives Railway
+  redeploys) and a local file store (**wiped on every redeploy**). A key only
+  reaches CF KV if `isCfKey(key)` says so — i.e. it's in the `_CF_EXACT` set or
+  matches a persistent prefix rule (`journal_`, `ai_`, `vol_forecast_`, …).
+  **Any new `kv.put` for user-entered data that must outlive a deploy — bot
+  tokens/chat IDs, credentials, saved configs, learned policies — MUST be added
+  to `_CF_EXACT` in `kv.js`.** If you don't, it silently lands in the ephemeral
+  file store and disappears on the next deploy (this is exactly how the
+  vol-level-alert Telegram creds were lost). Mirror an existing entry like
+  `tg_v2_config` / `volatility_bot_credentials`. Ephemeral caches and
+  bot-rewritten-every-30s status keys are deliberately **left out** to protect
+  the CF KV free-plan write quota — persist only what a user typed or what's
+  expensive/impossible to rebuild. Check with `/api/kv-health`
+  (`persistent: true/false`).
 
 ### Environment variables (set in Railway — values live there, never in git)
 
