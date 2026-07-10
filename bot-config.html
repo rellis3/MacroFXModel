@@ -7018,8 +7018,13 @@ async function openTradeChartModal(idx) {
 
   const net = (t.profit || 0) + (t.swap || 0);
   const sym = _mt5ToOandaSymbol(t.symbol);
-  const isGold = (t.symbol || '').toUpperCase().includes('XAU') || (t.symbol || '').toUpperCase().includes('GOLD');
-  const priceFmt = v => v != null ? (isGold ? v.toFixed(2) : v.toFixed(5)) : '—';
+  const sym_uc  = (t.symbol || '').toUpperCase();
+  const isGold  = sym_uc.includes('XAU') || sym_uc.includes('GOLD') || sym_uc.includes('XAG');
+  const isIndex = /NAS|SPX|US30|US2000|DE30|UK100/.test(sym_uc);
+  const isJpy   = sym_uc.includes('JPY');
+  const pricePrec = (isGold || isIndex) ? 2 : (isJpy ? 3 : 5);
+  const priceStep = (isGold || isIndex) ? 0.01 : (isJpy ? 0.001 : 0.00001);
+  const priceFmt  = v => v != null ? v.toFixed(pricePrec) : '—';
   const metaItems = [
     ['Direction', t.direction || '—'],
     ['Lots', (t.lots || 0).toFixed(2)],
@@ -7088,7 +7093,10 @@ async function openTradeChartModal(idx) {
       timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
       handleScroll: true, handleScale: true,
     });
-    _tcSeries = _tcChart.addCandlestickSeries({ priceLineVisible: false });
+    _tcSeries = _tcChart.addCandlestickSeries({
+      priceLineVisible: false,
+      priceFormat: { type: 'price', precision: pricePrec, minMove: priceStep },
+    });
     if (!_tcResizeInit) {
       _tcResizeInit = true;
       window.addEventListener('resize', () => {

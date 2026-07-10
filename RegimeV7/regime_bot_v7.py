@@ -624,6 +624,17 @@ def open_position(pair: str, direction: str, sl: float,
     return None
 
 
+def _mt5_reinit() -> None:
+    """Force-reconnect the MT5 Python library when order_send returns None."""
+    try:
+        mt5.shutdown()
+        time.sleep(0.3)
+        mt5.initialize()
+        _ensure_login()
+    except Exception as exc:
+        log.warning(f'MT5 reinit error: {exc}')
+
+
 def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -> bool:
     log.info(f'CLOSE {pair}  ticket={ticket}  reason={reason}' + ('  [PAPER]' if paper_mode else ''))
     if paper_mode or ticket < 0:
@@ -634,8 +645,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
     for attempt in range(3):
         if attempt > 0:
             time.sleep(0.5)
-            if not _ensure_login():
-                continue
+            _mt5_reinit()
         poss = [p for p in (mt5.positions_get(symbol=sym) or []) if p.ticket == ticket]
         if not poss:
             log.info(f'Ticket {ticket} not found — already closed')
@@ -650,7 +660,7 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
             'action':       mt5.TRADE_ACTION_DEAL, 'symbol': sym, 'volume': pos.volume,
             'type':         ct,                    'position': ticket, 'price': cp,
             'deviation':    20,                    'magic': MAGIC,
-            'comment':      (''.join(c for c in f'RgV7 {reason}' if c.isalnum() or c == ' '))[:31],
+            'comment':      'RgV7 C',
             'type_time':    mt5.ORDER_TIME_GTC,
             'type_filling': _filling_mode(sym),
         })
@@ -672,22 +682,29 @@ def modify_sl(ticket: int, pair: str, new_sl: float, paper_mode: bool) -> bool:
     if not HAS_MT5:
         return False
     sym   = _mt5_sym(pair)
-    poss  = [p for p in (mt5.positions_get(symbol=sym) or []) if p.ticket == ticket]
-    if not poss:
-        return False
-    pos = poss[0]
-    res = mt5.order_send({
-        'action':   mt5.TRADE_ACTION_SLTP,
-        'position': ticket,
-        'symbol':   sym,
-        'sl':       round(new_sl, 5),
-        'tp':       pos.tp,
-        'magic':    MAGIC,
-    })
-    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
-        log.info(f'SL modified: ticket={ticket}  {pair}  new_sl={new_sl:.5f}')
-        return True
-    log.warning(f'modify_sl failed: retcode={getattr(res, "retcode", None)}')
+    for attempt in range(2):
+        if attempt > 0:
+            time.sleep(0.3)
+            _mt5_reinit()
+        poss  = [p for p in (mt5.positions_get(symbol=sym) or []) if p.ticket == ticket]
+        if not poss:
+            return False
+        pos = poss[0]
+        res = mt5.order_send({
+            'action':   mt5.TRADE_ACTION_SLTP,
+            'position': ticket,
+            'symbol':   sym,
+            'sl':       round(new_sl, 5),
+            'tp':       pos.tp,
+            'magic':    MAGIC,
+        })
+        if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+            log.info(f'SL modified: ticket={ticket}  {pair}  new_sl={new_sl:.5f}')
+            return True
+        if res is None:
+            log.warning(f'modify_sl attempt {attempt + 1} — order_send returned None  last_error={mt5.last_error()}')
+        else:
+            log.warning(f'modify_sl attempt {attempt + 1} failed: retcode={res.retcode}  comment={res.comment!r}')
     return False
 
 
