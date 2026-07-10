@@ -16,10 +16,11 @@ import { combine } from './ensemble.js';
 import { regimeMultiplier } from './regimeWeights.js';
 import { runSSM, fuseOnce } from './ssm.js';
 import { fitLoadings, factorImpliedReturn, coherenceCheck } from './factorModel.js';
-import { confidenceEngine, agreementScore } from './confidence.js';
+import { confidenceEngine, agreementScore, scaleAgreementByIndependence, baseRateReality } from './confidence.js';
 import { runMVE, valuationText } from './index.js';
 import { augmentSignalScore, mveFactorScore } from './signalAdapter.js';
 import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC } from './liveAdapter.js';
+import { validateInstrument, oosMispricingSeries } from './validateInstrument.js';
 
 let failures = 0, tests = 0;
 const ok = (name, cond, extra = '') => { tests++; console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -202,6 +203,17 @@ console.log('\n── confidence engine ──');
   ok('confidence rises with agreement/fit', hi > lo, `${hi.toFixed(2)} vs ${lo.toFixed(2)}`);
   ok('agreementScore=1 when dispersion 0', near(agreementScore(0, 1), 1));
   ok('agreementScore falls as dispersion grows', agreementScore(2, 1) < agreementScore(0.2, 1));
+  // Honesty fixes: never 100%, skeptical prior, base-rate reality crushes confidence
+  const maxed = confidenceEngine({ agreement: 1, fit: 1, reversion: 1, calibration: 1, regimeStable: 1, corrStable: 1 }).confidence;
+  ok('confidence never reaches 100% (capped ≤0.90)', maxed <= 0.90, `=${maxed.toFixed(3)}`);
+  ok('empty evidence ⇒ skeptical prior (~0.33, not 0.5)', Math.abs(confidenceEngine({}).confidence - 0.33) < 0.05);
+  const withReality = confidenceEngine({ agreement: 0.9, fit: 0.8, reversion: 0.9, baseRateReality: 0.02 }).confidence;
+  const withoutReality = confidenceEngine({ agreement: 0.9, fit: 0.8, reversion: 0.9 }).confidence;
+  ok('base-rate/model disagreement slashes confidence', withReality < withoutReality - 0.2, `${withReality.toFixed(2)} vs ${withoutReality.toFixed(2)}`);
+  ok('scaleAgreementByIndependence pulls to 0.5 at effN→1', Math.abs(scaleAgreementByIndependence(1.0, 1.0) - 0.5) < 1e-9);
+  ok('scaleAgreementByIndependence keeps agreement at effN≥3', near(scaleAgreementByIndependence(0.9, 3), 0.9));
+  ok('baseRateReality low when model 0.96 vs empirical 0', baseRateReality(0.96, { baseRate: 0, events: 10 }) < 0.1);
+  ok('baseRateReality null when too few events', baseRateReality(0.96, { baseRate: 0, events: 3 }) === null);
 }
 
 console.log('\n── end-to-end runMVE ──');
@@ -278,6 +290,44 @@ console.log('\n── live adapter (pure builder, no network) ──');
   ok('runLiveMVE guards missing FRED_KEY', bad.ok === false && /FRED_KEY/.test(bad.error));
   const unsup = await runLiveMVE({ sym: 'ZZZ/USD', deps: fakeDeps });
   ok('runLiveMVE rejects unsupported symbol', unsup.ok === false && /unsupported/.test(unsup.error));
+}
+
+console.log('\n── OOS validation (does mispricing predict returns?) ──');
+{
+  // CASE 1: a genuinely mean-reverting instrument around a factor-driven fair value.
+  // price = fairValue(factors) + reverting deviation. The mispricing SHOULD predict
+  // the subsequent reversion (icPredictive > 0).
+  const r = rng(41);
+  const N = 700, f1 = [], f2 = [], price = [];
+  let dev = 0;
+  for (let i = 0; i < N; i++) {
+    const a = Math.sin(i / 30) + 0.4 * gauss(r) * 0 + 0.01 * i / N, b = Math.cos(i / 22);
+    f1.push(a); f2.push(b);
+    dev = dev * 0.90 + 0.6 * gauss(r);              // reverting deviation (κ≈0.1)
+    price.push(100 + 5 * a + 3 * b + dev);           // fair value + reverting dev
+  }
+  const rep = validateInstrument({ instrument: 'TEST', price, factors: [{ name: 'f1', series: f1 }, { name: 'f2', series: f2 }] }, { horizons: [1, 5, 10, 20] });
+  ok('validation runs on reverting series', rep.ok === true && rep.oosPoints > 100, rep.error || `oos=${rep.oosPoints}`);
+  const bestEdge = Math.max(...Object.values(rep.perHorizon).filter(h => h.icEdge != null).map(h => h.icEdge));
+  ok('factor-reverting series ⇒ positive icEDGE over benchmark', bestEdge > 0.05, `bestEdge=${bestEdge}`);
+  ok('reverting series ⇒ hit rate > 0.5 somewhere', Object.values(rep.perHorizon).some(h => h.hitRate > 0.5));
+  ok('verdict is a string with a call', typeof rep.verdict === 'string' && /SURVIVES|WEAK|NULL/.test(rep.verdict));
+  ok('deflated Sharpe present', rep.strategy.deflatedSharpe != null);
+  ok('report exposes benchmark IC per horizon', Object.values(rep.perHorizon).every(h => h.insufficient || h.icBenchmark != null));
+
+  // CASE 2: a random walk with NO relationship to the factors. The factor fair value
+  // must NOT beat the trailing-mean benchmark — icEDGE ≈ 0 — even though the RAW
+  // icPredictive is spuriously positive (the whole point of the benchmark).
+  const g1 = [], g2 = [], rw = []; let p = 100;
+  for (let i = 0; i < N; i++) { g1.push(gauss(r)); g2.push(gauss(r)); p += gauss(r); rw.push(p); }
+  const repNull = validateInstrument({ instrument: 'NOISE', price: rw, factors: [{ name: 'g1', series: g1 }, { name: 'g2', series: g2 }] }, { horizons: [1, 5, 10, 20, 60] });
+  const bestEdgeNull = Math.max(...Object.values(repNull.perHorizon).filter(h => h.icEdge != null).map(h => Math.abs(h.icEdge)));
+  ok('random walk ⇒ icEDGE small (benchmark strips the spurious IC)', bestEdgeNull < 0.10, `|bestEdge|=${bestEdgeNull}`);
+  ok('random walk verdict is NULL', /NULL/.test(repNull.verdict), repNull.verdict.slice(0, 40));
+
+  // no-lookahead: OOS series length is bounded and starts after the train window
+  const { idx } = oosMispricingSeries(price, [{ name: 'f1', series: f1 }, { name: 'f2', series: f2 }], { window: 150, minTrain: 180 });
+  ok('OOS series starts after warmup', idx[0] >= 180 && idx.length > 100, `start=${idx[0]} n=${idx.length}`);
 }
 
 console.log(`\n${failures === 0 ? '✅' : '❌'} MVE tests: ${tests - failures}/${tests} passed${failures ? `, ${failures} FAILED` : ''}\n`);

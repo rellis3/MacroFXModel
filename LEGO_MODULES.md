@@ -703,7 +703,9 @@ P0 cross-language unification
 | Signal adapter (opt-in) | `js/mve/signalAdapter.js` | blend MVE into `computeSignalScore` — **not wired** | ✅ 📄 |
 | Live data adapter | `js/mve/liveAdapter.js` | real OANDA D1 + FRED → `runMVE` ctx (FX=rate diffs, gold=real yield+DXY); injected fetchers, pure `buildContext` | ✅ |
 | Live endpoint | `server.js` `/api/mve/:sym` | additive read-only route (1h cache); does NOT feed any signal/bot | ✅ |
-| Demo page | `mve.html` | synthetic sandbox + **live** (OANDA+FRED) toggle | ✅ |
+| OOS validation | `js/mve/validateInstrument.js` | walk-forward no-lookahead IC of mispricing vs forward return, **benchmark-relative `icEdge`** (strips spurious detrend reversion), deflated Sharpe, verdict | ✅ |
+| Validation endpoint | `server.js` `/api/mve-validate/:sym` | the honesty gate — does the fair value predict returns OOS? | ✅ |
+| Demo page | `mve.html` | synthetic sandbox + **live** (OANDA+FRED) toggle + **🔬 OOS validation** | ✅ |
 
 **Not yet built (deliberate next steps, per `MVE_RUN_GUIDE.md` §7):** dashboard wiring
 (signal score / entry scanner / AI summary — the opt-in `signalAdapter` shows the blend),

@@ -41,7 +41,8 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
-import { runLiveMVE as _runLiveMVE, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
+import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
+import { validateInstrument as _mveValidate } from './js/mve/validateInstrument.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -5087,6 +5088,31 @@ app.get('/api/mve/:sym', async (req, res) => {
     });
     if (v && v.ok) _mveCache.set(cacheKey, { at: Date.now(), data: v });
     res.status(v && v.ok ? 200 : 502).json(v);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// MVE out-of-sample validation — does the mispricing PREDICT forward returns?
+// Walk-forward, no-lookahead IC per horizon + deflated-Sharpe of a z-fade rule.
+// This is the gate: a NULL verdict here means the fair value is not tradeable and
+// must NOT be wired into any signal. Longer history (count=1500) + 6h cache.
+const _mveValCache = new Map();
+app.get('/api/mve-validate/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _mveValCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchContext({
+      sym, deps: { fetchD1: _btFetchD1, fetchFred: fetchFredSeries, fredKey: process.env.FRED_KEY },
+    });
+    if (!built.ok) return res.status(502).json(built);
+    const report = _mveValidate(built.ctx);
+    report.dataSource = built.dataSource;
+    if (report.ok) _mveValCache.set(sym, { at: Date.now(), data: report });
+    res.status(report.ok ? 200 : 502).json(report);
   } catch (e) {
     res.status(500).json({ ok: false, instrument: sym, error: e.message });
   }

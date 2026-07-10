@@ -12,7 +12,7 @@ import { combine } from './ensemble.js';
 import { fuseOnce } from './ssm.js';
 import { standardizedMispricing } from './mispricing.js';
 import { ouFit, ouConvergence, empiricalSnapback } from './ou.js';
-import { confidenceEngine, agreementScore, calibrationScore } from './confidence.js';
+import { confidenceEngine, agreementScore, calibrationScore, scaleAgreementByIndependence, baseRateReality } from './confidence.js';
 
 // ── Build the standard emitter bag from a prepared context ──────────────────
 // ctx = {
@@ -75,6 +75,11 @@ export function runMVE(ctx) {
     }
   }
 
+  // Actionable-signal gate: below ~1σ there is no meaningful mispricing, so don't
+  // dress a fairly-priced instrument up with a splashy convergence probability.
+  const ACTIONABLE_Z = ctx.actionableZ ?? 1.0;
+  const signal = mis && Math.abs(mis.z) >= ACTIONABLE_Z ? mis.label : 'none';   // 'cheap' | 'rich' | 'none'
+
   // Confidence engine. Average r² only over members that actually report a fit
   // (an emitter with no r², e.g. AR1, shouldn't be counted as 0% fit).
   const r2s = anchors.map(a => a.meta?.r2).filter(Number.isFinite);
@@ -82,7 +87,8 @@ export function runMVE(ctx) {
   const volConf = weights.find(w => w.meta?.kind === 'vol')?.confidence ?? null;
   const posConf = weights.find(w => w.meta?.kind === 'positioning')?.confidence ?? null;
   const conf = confidenceEngine({
-    agreement:    agreementScore(ens.dispersion, sigma),
+    baseRateReality: baseRateReality(convergence?.pRevert, snapback),   // model P vs measured base rate
+    agreement:    scaleAgreementByIndependence(agreementScore(ens.dispersion, sigma), ens.effN ?? anchors.length),
     fit:          meanR2 || null,
     calibration:  ctx.quality?.calibration ? calibrationScore(ctx.quality.calibration) : null,
     regimeStable: ctx.quality?.regimeStable ?? null,
@@ -100,6 +106,7 @@ export function runMVE(ctx) {
     fairValue,
     sigma,
     consensusMethod: useSSM ? 'kalman-ssm' : 'min-variance-ensemble',
+    signal,                          // 'cheap' | 'rich' | 'none' (actionable only if |z|≥ACTIONABLE_Z)
     mispricing: mis,                 // { gap, z, rich, tailProb, label }
     convergence,                     // { pRevert, expectedMagnitude, halfLife, ci68, ci95, ... }
     snapbackBaseRate: snapback,      // empirical benchmark for pRevert
@@ -133,21 +140,33 @@ function deviationFromMean(price, window) {
 // Pure string builders — no DOM. Feed runMVE()'s output.
 export function valuationText(v) {
   if (!v || !v.ok) return 'MVE: insufficient data for a valuation.';
-  const dir = v.mispricing.rich ? 'above' : 'below';
   const zAbs = Math.abs(v.mispricing.z).toFixed(1);
+  const pct = x => (x * 100).toFixed(0) + '%';
+
+  // No actionable mispricing → say so plainly instead of touting a convergence %.
+  if (v.signal === 'none') {
+    return `${v.instrument} is fairly priced — only ${zAbs}σ from consensus fair value `
+         + `(${fmt(v.marketPrice)} vs ${fmt(v.fairValue)}). No actionable mispricing. Confidence ${pct(v.confidence)}.`;
+  }
+
+  const dir = v.mispricing.rich ? 'above' : 'below';
   const nAgree = v.ensemble.members.length;
   const conv = v.convergence;
-  const pct = x => (x * 100).toFixed(0) + '%';
   let s = `${v.instrument} is trading ${zAbs}σ ${dir} consensus fair value `
         + `(${fmt(v.marketPrice)} vs ${fmt(v.fairValue)}). ${nAgree} models combined`;
   if (v.ensemble.effN) s += ` (~${v.ensemble.effN.toFixed(1)} independent)`;
   s += `. `;
   if (conv) {
-    s += `Under similar conditions ~${pct(conv.pRevert)} probability of reverting within `
+    s += `Model implies ~${pct(conv.pRevert)} probability of reverting within `
        + `${conv.horizon} bars (half-life ≈ ${isFinite(conv.halfLife) ? conv.halfLife.toFixed(1) : '∞'} bars), `
        + `expected move ${conv.expectedMagnitude >= 0 ? '+' : ''}${conv.expectedMagnitude.toFixed(2)}σ. `;
-    if (v.snapbackBaseRate?.baseRate != null)
-      s += `Empirical snap-back base rate ${pct(v.snapbackBaseRate.baseRate)} (${v.snapbackBaseRate.events} events). `;
+    const br = v.snapbackBaseRate;
+    if (br?.baseRate != null) {
+      s += `BUT the empirical snap-back base rate is ${pct(br.baseRate)} (${br.events} events)`;
+      if (Math.abs(conv.pRevert - br.baseRate) > 0.4)
+        s += ` — the model and history disagree sharply, so treat the convergence number with suspicion`;
+      s += `. `;
+    }
   }
   s += `Confidence ${pct(v.confidence)}.`;
   return s;
@@ -159,28 +178,33 @@ function fmt(x) { return Number.isFinite(x) ? (Math.abs(x) >= 100 ? x.toFixed(2)
 export function valuationCard(v) {
   if (!v || !v.ok) return `<div class="mve-card">MVE: insufficient data</div>`;
   const m = v.mispricing, c = v.convergence;
-  const cheap = !m.rich;
-  const col = cheap ? '#22c55e' : '#ef4444';
+  const none = v.signal === 'none';
+  const col = none ? '#8891a0' : (!m.rich ? '#22c55e' : '#ef4444');
+  const badge = none ? `FAIRLY PRICED ${Math.abs(m.z).toFixed(1)}σ` : `${m.label.toUpperCase()} ${Math.abs(m.z).toFixed(1)}σ`;
   const pct = x => x == null ? '—' : (x * 100).toFixed(0) + '%';
-  const row = (k, val) => `<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#9aa">${k}</span><span style="font-family:monospace">${val}</span></div>`;
+  const row = (k, val, muted) => `<div style="display:flex;justify-content:space-between;padding:3px 0${muted ? ';opacity:.5' : ''}"><span style="color:#9aa">${k}</span><span style="font-family:monospace">${val}</span></div>`;
+  // Flag when the model's convergence prob and the measured base rate disagree.
+  const br = v.snapbackBaseRate;
+  const disagree = c && br?.baseRate != null && Math.abs(c.pRevert - br.baseRate) > 0.4;
   return `
-  <div class="mve-card" style="background:#12151c;border:1px solid #2a2f3a;border-radius:10px;padding:14px;color:#e6e8ec;max-width:420px;font:13px system-ui">
+  <div class="mve-card" style="background:#12151c;border:1px solid #2a2f3a;border-radius:10px;padding:14px;color:#e6e8ec;max-width:440px;font:13px system-ui">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <strong>${v.instrument} — Valuation</strong>
-      <span style="font-size:11px;padding:2px 8px;border-radius:8px;background:${col}22;color:${col};border:1px solid ${col}55">${m.label.toUpperCase()} ${Math.abs(m.z).toFixed(1)}σ</span>
+      <span style="font-size:11px;padding:2px 8px;border-radius:8px;background:${col}22;color:${col};border:1px solid ${col}55">${badge}</span>
     </div>
     ${row('Market price', fmt(v.marketPrice))}
     ${row('Consensus fair value', fmt(v.fairValue) + ` <span style="color:#667">±${fmt(v.sigma)}</span>`)}
-    ${row('Mispricing', `${m.gap >= 0 ? '+' : ''}${fmt(m.gap)} (${m.rich ? 'rich' : 'cheap'})`)}
-    ${c ? row('P(convergence)', pct(c.pRevert) + ` in ${c.horizon} bars`) : ''}
-    ${c ? row('Expected move', `${c.expectedMagnitude >= 0 ? '+' : ''}${c.expectedMagnitude.toFixed(2)}σ`) : ''}
-    ${c ? row('Expected hold', (isFinite(c.halfLife) ? c.halfLife.toFixed(1) : '∞') + ' bars (½-life)') : ''}
-    ${v.snapbackBaseRate?.baseRate != null ? row('Empirical base rate', pct(v.snapbackBaseRate.baseRate)) : ''}
+    ${row('Mispricing', `${m.gap >= 0 ? '+' : ''}${fmt(m.gap)} (${none ? 'fairly priced' : m.rich ? 'rich' : 'cheap'})`)}
+    ${c ? row('P(convergence) — model', pct(c.pRevert) + ` in ${c.horizon} bars`, none) : ''}
+    ${br?.baseRate != null ? row('Empirical base rate', `${pct(br.baseRate)} (${br.events} events)` + (disagree ? '  ⚠' : ''), none) : ''}
+    ${c ? row('Expected move', `${c.expectedMagnitude >= 0 ? '+' : ''}${c.expectedMagnitude.toFixed(2)}σ`, none) : ''}
+    ${c ? row('Expected hold', (isFinite(c.halfLife) ? c.halfLife.toFixed(1) : '∞') + ' bars (½-life)', none) : ''}
     ${row('Models', `${v.ensemble.members.length} (~${v.ensemble.effN?.toFixed(1) ?? '?'} independent)`)}
     ${row('Confidence', pct(v.confidence))}
+    ${disagree ? `<div style="margin-top:6px;font-size:10.5px;color:#f59e0b;background:#f59e0b18;border:1px solid #f59e0b44;border-radius:6px;padding:6px 8px">⚠ Model P(convergence) and the measured base rate disagree sharply — the convergence number is not trustworthy here (this is the validation gate working).</div>` : ''}
     <div style="margin-top:8px;font-size:11px;color:#8891a0;border-top:1px solid #2a2f3a;padding-top:8px">
       ${valuationText(v)}
     </div>
-    <div style="margin-top:6px;font-size:10px;color:#5b6270">Values right of Mispricing are model, ex-ante — size from OOS-calibrated confidence, ½-Kelly max.</div>
+    <div style="margin-top:6px;font-size:10px;color:#5b6270">Values right of Mispricing are model, ex-ante — size from OOS-calibrated confidence, ½-Kelly max. Run OOS validation before trusting.</div>
   </div>`;
 }
