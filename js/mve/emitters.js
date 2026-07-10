@@ -77,8 +77,10 @@ export function volWeightEmitter({ name = 'vol_weight', returns, window = 60, as
   const volNow = stdev(recent.slice(-half), 1);
   const volPrev = stdev(recent.slice(0, half), 1) || 1e-12;
   const ratio = volNow / volPrev;                    // >1 = expanding vol
-  // Map expansion → confidence in [0.35, 1]. Contracting vol = reversion-friendly.
-  const confidence = Math.max(0.35, Math.min(1, 1.15 - 0.5 * Math.max(0, ratio - 0.85)));
+  // A GENTLE modifier in [0.40, 0.62] — calm vol is a mild plus, expanding vol a mild
+  // minus. It must NOT saturate to 1.0: a Bucket-B weight is a nudge, not a verdict
+  // (a maxed 1.0 here used to blow a +7 logit and cancel the base-rate reality check).
+  const confidence = Math.max(0.40, Math.min(0.62, 0.60 - 0.35 * Math.max(0, ratio - 1.0)));
   return makeEstimate({ name, kind: KIND.WEIGHT, confidence, asOf,
     meta: { volRatio: +ratio.toFixed(2), kind: 'vol' } });
 }
@@ -90,7 +92,7 @@ export function volWeightEmitter({ name = 'vol_weight', returns, window = 60, as
 export function positioningWeightEmitter({ name = 'pos_weight', crowdPct = 50, asOf = null } = {}) {
   if (!Number.isFinite(crowdPct)) return null;
   const extreme = Math.abs(crowdPct - 50) / 50;      // 0 (neutral) → 1 (fully crowded)
-  const confidence = 0.5 + 0.4 * extreme;
+  const confidence = 0.5 + 0.15 * extreme;           // gentle nudge in [0.50, 0.65], never dominant
   return makeEstimate({ name, kind: KIND.WEIGHT, confidence, asOf,
     meta: { crowdPct, kind: 'positioning' } });
 }
