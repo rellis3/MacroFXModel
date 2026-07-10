@@ -302,6 +302,31 @@ function _summCost(rows, minPairs) {
 // Cost survival for the median line + the 75th line + the calm-day (conditional)
 // median — so we can see whether the more-extended 75th, or the tail-filtered fade,
 // survives where the blind median doesn't.
+// Scalp-exit fold — per (stop/target) config, net expectancy per touch (gross − cost)
+// across pairs, for a given level ('dynMed' | 'dyn75' | 'median'). Tests the fade as
+// a tight-stop / modest-target SCALP (not hold-to-close, not revert-to-open).
+function _scalpFold(recs, levelKey, minPairs, costTable) {
+  const labels = [], perConfig = [];
+  for (const r of recs) {
+    const sx = r.in?.daily?.touches?.scalpExit?.[levelKey]; if (!sx?.byConfig) continue;
+    const cost = costTable[r.type] ?? 2.0;
+    sx.byConfig.forEach((c, ci) => {
+      if (!c.n) return;
+      labels[ci] = c.label;
+      (perConfig[ci] ??= []).push({ type: r.type, netPips: +(c.meanPips - cost).toFixed(2), winPct: c.winPct });
+    });
+  }
+  return perConfig.map((rows, ci) => {
+    if (!rows || rows.length < minPairs) return null;
+    const fx = rows.filter(x => x.type !== 'index');
+    return { label: labels[ci], nPairs: rows.length,
+      fxPositive: fx.filter(x => x.netPips > 0).length,
+      allPositive: rows.filter(x => x.netPips > 0).length,
+      medianFxNet: fx.length ? +(_median(fx.map(x => x.netPips)) ?? 0).toFixed(2) : null,
+      medianAllNet: +(_median(rows.map(x => x.netPips)) ?? 0).toFixed(2),
+      meanWinPct: +(rows.reduce((s, x) => s + x.winPct, 0) / rows.length).toFixed(1) };
+  }).filter(Boolean);
+}
 function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
   const median = _summCost(_costRows(recs, 'medianExtension', costTable), minPairs);
   if (!median || median.insufficient) return median;
@@ -326,8 +351,14 @@ function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
       allSurvivingX2: s.survivingX2, medianAllNetX1: s.medianNetX1,   // indices INCLUDED (un-discounted)
     } : null;
   }).filter(Boolean);
+  // Scalp exits — tight stop / modest target on the median + dynamic median + 75th.
+  const scalpExit = {
+    dynMed: _scalpFold(recs, 'dynMed', minPairs, costTable),
+    dyn75:  _scalpFold(recs, 'dyn75', minPairs, costTable),
+    median: _scalpFold(recs, 'median', minPairs, costTable),
+  };
   // `median`/`p75` are the drift-adjusted O-H/O-L lines (level-set #2).
-  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75, dynE94, dynE90 }, costSweep };
+  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75, dynE94, dynE90 }, costSweep, scalpExit };
 }
 
 // ── Public: build the cross-pair report ───────────────────────────────────────

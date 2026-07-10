@@ -210,6 +210,27 @@ test('evaluateIntraday: level-distance sweep emits a block per multiplier (×1.0
   if (near.n && far.n) assert.ok(far.touchRatePct <= near.touchRatePct + 1e-9, 'wider level touched no more than the nearest');
 });
 
+test('dyn level: scalpPnl array present, values are stop-loss / target / close outcomes', () => {
+  const b = (h, l, c) => ({ high: h, low: l, close: c, _t: Date.UTC(2021, 0, 4, 8) });
+  const bars = [b(100, 99.5, 100), b(101, 100, 101), b(102, 101, 101.5), b(101.5, 98.5, 99.2), b(99.5, 99, 99.4)];
+  const o = _dynLevelOutcome(bars, 0.03, -1, 0.01);
+  assert.ok(Array.isArray(o.scalpPnl) && o.scalpPnl.length === 4, 'scalpPnl has one entry per config');
+  for (const v of o.scalpPnl) assert.equal(typeof v, 'number', 'scalp pnl is a number (target / -stop / close)');
+});
+
+test('evaluateIntraday: scalpExit block present with per-config win% + gross expectancy', () => {
+  const t = evaluateIntraday(synthH1(500, 3), { pip: PIP }).touches;
+  assert.ok(t.scalpExit && t.scalpExit.dynMed && t.scalpExit.median, 'scalpExit blocks present');
+  const bc = t.scalpExit.dynMed.byConfig;
+  if (t.scalpExit.dynMed.n) {
+    assert.ok(Array.isArray(bc) && bc.length === 4, 'one row per stop/target config');
+    for (const c of bc) if (c.n) {
+      assert.ok(c.winPct >= 0 && c.winPct <= 100, 'win% valid');
+      assert.equal(typeof c.meanPips, 'number', 'gross expectancy per touch present');
+    }
+  }
+});
+
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
   const r = evaluateIntraday(synthH1(20), { pip: PIP });
   assert.equal(r.insufficient, true);
