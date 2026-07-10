@@ -42,7 +42,7 @@ import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
-import { validateInstrument as _mveValidate } from './js/mve/validateInstrument.js';
+import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -5151,16 +5151,8 @@ app.get('/api/mve-validate-all', async (_req, res) => {
         deflatedSharpe: report.strategy?.deflatedSharpe ?? null,
       });
     }
-    const withEdge = out.filter(o => o.slowIcEdge != null);
-    const positive = withEdge.filter(o => o.slowIcEdge > 0.03).length;
-    const consistency = {
-      instruments: withEdge.length,
-      positiveSlowEdge: positive,
-      meanSlowIcEdge: withEdge.length ? +(withEdge.reduce((s, o) => s + o.slowIcEdge, 0) / withEdge.length).toFixed(4) : null,
-      read: positive >= Math.ceil(withEdge.length * 0.6) && withEdge.length >= 3
-        ? `CONSISTENT: ${positive}/${withEdge.length} instruments show positive slow-horizon icEdge — cross-sectional evidence the macro fair value has real (if small) predictive content. Worth pursuing at portfolio scale.`
-        : `INCONSISTENT: only ${positive}/${withEdge.length} instruments show positive slow-horizon icEdge — no reliable cross-sectional macro edge. Do not wire in.`,
-    };
+    // Honest pooled read — requires magnitude AND >50% hit rate, states chance baseline.
+    const consistency = _mvePoolConsistency(out);
     res.json({ ok: true, instruments: out, consistency });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
