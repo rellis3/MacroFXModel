@@ -97,6 +97,37 @@ export function tradePctReturn(t) {
   return (c - o) / o * 100 * sign;
 }
 
+// Extract price levels from ONE `oi_store` entry (index.html's OI analyser output)
+// → [{price,type}] in this brick's shape, so the forward test reuses the OI the
+// user already computes daily instead of a second manual entry. Pulls max pain,
+// the headline + top-ranked call/put walls, the gamma-flip strike (first netGex
+// sign change in the strike-sorted gexProfile) and the HVL (highest-|gamma|
+// strike). Pure. inst = { maxPain, callWall, putWall, callWalls[], putWalls[],
+// gexProfile[{strike,netGex,gamma}] }.
+export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
+  if (!inst || typeof inst !== 'object') return [];
+  const out = [];
+  const push = (price, type) => { if (Number.isFinite(price) && price > 0) out.push({ price: +price, type }); };
+  push(inst.maxPain, 'max_pain');
+  push(inst.callWall, 'call_wall');
+  push(inst.putWall, 'put_wall');
+  for (const w of (Array.isArray(inst.callWalls) ? inst.callWalls : []).slice(0, topWalls)) push(w?.strike, 'call_wall');
+  for (const w of (Array.isArray(inst.putWalls) ? inst.putWalls : []).slice(0, topWalls)) push(w?.strike, 'put_wall');
+  const gp = Array.isArray(inst.gexProfile) ? inst.gexProfile : [];
+  for (let i = 1; i < gp.length; i++) {
+    if (Math.sign(gp[i]?.netGex ?? 0) !== Math.sign(gp[i - 1]?.netGex ?? 0)) {
+      push(Math.abs(gp[i].netGex) < Math.abs(gp[i - 1].netGex) ? gp[i].strike : gp[i - 1].strike, 'gamma_flip');
+      break;
+    }
+  }
+  let hvl = null, hg = -Infinity;
+  for (const g of gp) { const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
+  push(hvl, 'hvl');
+  const seen = new Set(), dedup = [];
+  for (const l of out) { const k = `${l.type}@${l.price}`; if (!seen.has(k)) { seen.add(k); dedup.push(l); } }
+  return dedup;
+}
+
 const _acc = () => ({ n: 0, wins: 0, sumRet: 0 });
 const _add = (a, ret) => { a.n++; if (ret > 0) a.wins++; a.sumRet += ret; };
 const _fin = a => ({ n: a.n, winRate: a.n ? +(a.wins / a.n).toFixed(4) : 0,
@@ -115,7 +146,7 @@ export function oiAudit(tradeLog, oiByDate, { pipFor = () => 0, tolPips = 10, ro
   for (const t of (Array.isArray(tradeLog) ? tradeLog : [])) {
     const ret = tradePctReturn(t);
     if (ret == null) { unresolved++; continue; }
-    const key = String(t.instrument ?? t.symbol ?? '').toLowerCase().replace('/', '').replace('_', '');
+    const key = t.key || String(t.instrument ?? t.symbol ?? '').toLowerCase().replace('/', '').replace('_', '');
     const oi = oiByDate?.[t.date]?.[key];
     const pip = pipFor(key) || 0;
     // Only trades on a day whose OI was captured can be judged — tagged (an OI

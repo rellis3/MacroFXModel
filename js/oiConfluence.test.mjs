@@ -1,6 +1,6 @@
 // Synthetic test for the OI forward-test tagging brick (no network).
 //   node js/oiConfluence.test.mjs
-import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit } from './oiConfluence.js';
+import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels } from './oiConfluence.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -71,6 +71,31 @@ ok('tagged beats untagged (edge > 0)', a.edge > 0, `edge=${a.edge} tagged=${a.ta
 ok('per-type breakdown present', a.byType.call_wall?.n === 1 && a.byType.max_pain?.n === 1, JSON.stringify(Object.keys(a.byType)));
 ok('round-independence split: 1 at round, 1 not', a.taggedAtRound.n === 1 && a.taggedNotRound.n === 1,
    `atRound=${a.taggedAtRound.n} notRound=${a.taggedNotRound.n}`);
+
+console.log('[oiStoreToLevels — reuse index.html OI analyser output]');
+{
+  const inst = {
+    maxPain: 1.0800,
+    callWall: 1.0850, putWall: 1.0750,
+    callWalls: [{ strike: 1.0850, oi: 9000 }, { strike: 1.0900, oi: 7000 }, { strike: 1.0950, oi: 5000 }],
+    putWalls: [{ strike: 1.0750, oi: 8000 }, { strike: 1.0700, oi: 6000 }],
+    // netGex flips sign between 1.0800 (+) and 1.0820 (−) → flip = the smaller-|netGex| strike (1.0820)
+    gexProfile: [
+      { strike: 1.0780, netGex: 500, gamma: 0.10 },
+      { strike: 1.0800, netGex: 300, gamma: 0.40 },   // highest gamma → HVL
+      { strike: 1.0820, netGex: -200, gamma: 0.20 },
+      { strike: 1.0840, netGex: -600, gamma: 0.15 },
+    ],
+  };
+  const lv = oiStoreToLevels(inst, { topWalls: 2 });
+  const byType = t => lv.filter(x => x.type === t).map(x => x.price).sort((a, b) => a - b);
+  ok('max pain extracted', byType('max_pain').includes(1.08));
+  ok('call walls: headline + top-2 ranked, deduped', JSON.stringify(byType('call_wall')) === JSON.stringify([1.085, 1.09]), JSON.stringify(byType('call_wall')));
+  ok('put walls extracted', JSON.stringify(byType('put_wall')) === JSON.stringify([1.07, 1.075]), JSON.stringify(byType('put_wall')));
+  ok('gamma flip = smaller-|netGex| side of the sign change (1.0820)', byType('gamma_flip')[0] === 1.082, JSON.stringify(byType('gamma_flip')));
+  ok('HVL = highest-|gamma| strike (1.0800)', byType('hvl')[0] === 1.08, JSON.stringify(byType('hvl')));
+  ok('empty / junk → []', oiStoreToLevels(null).length === 0 && oiStoreToLevels({}).length === 0);
+}
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
