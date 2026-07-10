@@ -231,6 +231,22 @@ test('evaluateIntraday: scalpExit block present with per-config win% + gross exp
   }
 });
 
+test('evaluateIntraday: vol-conditioned exhaustion curve present, bucketed by vol × distance', () => {
+  const t = evaluateIntraday(synthH1(600, 3), { pip: PIP, recalibrate: true }).touches;
+  assert.ok(t.exhaustionCurve && t.exhaustionCurve.low && t.exhaustionCurve.high, 'exhaustion curve buckets present');
+  for (const vb of ['low', 'mid', 'high']) {
+    const arr = t.exhaustionCurve[vb];
+    assert.ok(Array.isArray(arr) && arr.length === 5, `${vb} has one entry per sweep distance`);
+    for (const c of arr) {
+      assert.equal(typeof c.mult, 'number', 'multiplier tagged');
+      if (c.n) assert.ok(c.reversePct >= 0 && c.reversePct <= 100, 'reverse% valid');
+    }
+  }
+  // ≈percentile increases with distance (P50 at ×1.0 → higher at ×1.4).
+  const lo = t.exhaustionCurve.low;
+  assert.ok(lo[0].approxPctile <= lo[lo.length - 1].approxPctile, 'percentile label increases with distance');
+});
+
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
   const r = evaluateIntraday(synthH1(20), { pip: PIP });
   assert.equal(r.insufficient, true);

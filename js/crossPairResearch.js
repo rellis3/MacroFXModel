@@ -361,6 +361,34 @@ function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
   return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75, dynE94, dynE90 }, costSweep, scalpExit };
 }
 
+// Vol-conditioned exhaustion curve — folds each pair's reversion-by-(vol×distance)
+// across pairs. Read: does the reversion peak slide to a HIGHER distance/percentile
+// on high-vol days (exhaustion point moves out), and is the revert shallow at P50 /
+// deeper at P75 on live days (the two-stage pattern)?
+function _exhaustionFold(recs) {
+  let template = null;
+  for (const r of recs) { const ec = r.in?.daily?.touches?.exhaustionCurve; if (ec?.low?.length) { template = ec.low.map(x => ({ mult: x.mult, approxPctile: x.approxPctile })); break; } }
+  if (!template) return null;
+  const out = {};
+  for (const vb of ['low', 'mid', 'high']) {
+    out[vb] = template.map((t, ci) => {
+      const fxRev = [], allRev = [], fxPull = [], fxCont = [];
+      for (const r of recs) {
+        const cell = r.in?.daily?.touches?.exhaustionCurve?.[vb]?.[ci];
+        if (!cell || !cell.n || cell.reversePct == null) continue;
+        allRev.push(cell.reversePct);
+        if (r.type !== 'index') { fxRev.push(cell.reversePct); fxPull.push(cell.meanPullbackPips); fxCont.push(cell.meanContPips); }
+      }
+      return { mult: t.mult, approxPctile: t.approxPctile, nFx: fxRev.length,
+        fxReversePct: fxRev.length ? +(_mean(fxRev)).toFixed(1) : null,
+        allReversePct: allRev.length ? +(_mean(allRev)).toFixed(1) : null,
+        fxPullbackPips: fxPull.length ? +(_mean(fxPull)).toFixed(1) : null,
+        fxContPips: fxCont.length ? +(_mean(fxCont)).toFixed(1) : null };
+    });
+  }
+  return out;
+}
+
 // ── Public: build the cross-pair report ───────────────────────────────────────
 // vfr = the vfr_research payload ({ perPair, cross, pairs }); intraday = optional
 // intraday_research payload. opts.fdrQ (default 0.10), opts.minPairsForConsistency.
@@ -560,6 +588,7 @@ export function analyzeCrossPair(vfr, intraday = null, opts = {}) {
     fdrQ, weights,
     forecaster: 'reference (un-recalibrated volForecast.computeForecast) — see recal + calibrated export',
     reliability, trust, byType, consistency, hidden, touchBehaviour, costSurvival,
+    exhaustionCurve: _exhaustionFold(recs),
     portfolio: vfr?.cross?.portfolio ?? null, bandCalc, botQuestions, recal, hypotheses,
     notes: [
       'Trust tiers are RELATIVE terciles of reliability within this universe (+ a sharpness≤0 floor) — not absolute tradeability, which needs the touch-behaviour + cost layer.',
