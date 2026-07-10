@@ -6168,11 +6168,13 @@ app.get('/api/cog-level-poc', async (_req, res) => {
 // open, the "is the 23:00→00:00 hour in the candle?" question) vs NY 17:00 (our default).
 async function _fetchOandaD1Aligned(sym, count, tz, hour) {
   const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  // OANDA daily granularity code is 'D' (NOT 'D1' — that 400s). dailyAlignment +
+  // alignmentTimezone place the daily candle boundary at the chosen wall-clock hour/TZ.
   const url = `${base}/v3/instruments/${encodeURIComponent(sym)}/candles`
-    + `?granularity=D1&price=M&count=${Math.min(count, 5000)}`
+    + `?granularity=D&price=M&count=${Math.min(count, 5000)}`
     + `&alignmentTimezone=${encodeURIComponent(tz)}&dailyAlignment=${hour}`;
   const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
-  if (!r.ok) throw new Error(`OANDA D1 ${sym}: HTTP ${r.status}`);
+  if (!r.ok) { const body = await r.text().catch(() => ''); throw new Error(`OANDA D ${sym}: HTTP ${r.status}${body ? ' ' + body.slice(0, 160) : ''}`); }
   const out = [];
   for (const c of (await r.json()).candles ?? []) {
     if (c.complete === false || !c.mid) continue;
