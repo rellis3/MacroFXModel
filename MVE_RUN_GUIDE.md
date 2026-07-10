@@ -1,0 +1,174 @@
+# Market Valuation Engine — Run & Usage Guide
+
+> **What this is.** A working, tested implementation of the Market Valuation Engine
+> designed in `MARKET_VALUATION_ENGINE.md` (Part 9's phased plan). It lives entirely
+> in **`js/mve/`** plus a standalone demo page **`mve.html`**.
+>
+> **Safety — read first.** This subsystem is **fully isolated**. Nothing in the live
+> system imports it: no change to `server.js`, `_worker.js`, `levels.js`, `signal.js`,
+> `index.html`, `hub.html`, or any bot. It adds **no API route** and is **not linked**
+> from any dashboard. `mve.html` is served as a static file only. So it deploys with
+> the repo but **cannot alter live behaviour** — going live is a deliberate, separate
+> step (§7). It imports two existing *pure* bricks read-only (`statsCore.js`,
+> `backtestStats.js`) and copies nothing.
+>
+> **Honesty (per `CLAUDE.md`).** This is **built and tested**, not **proven to have
+> edge**. Every fair value here is validated only on *synthetic* data so far — the
+> sandbox can't reach OANDA/FRED. The engine is correct; whether it produces edge on
+> real data is exactly what Phase 0's harness exists to find out. Don't size real
+> money off it until it clears out-of-sample validation on real feeds.
+
+---
+
+## 1. Run the tests
+
+```bash
+node js/mve/mve.test.mjs
+```
+
+59 synthetic, deterministic (seeded — no `Math.random`) assertions. Each proves a
+mathematical property (OLS recovers known β, OU recovers known κ, ensemble weights the
+tightest-σ member most, Kalman filters to the true hidden level, Mahalanobis handles
+correlation correctly, the full pipeline flags an injected mispricing, …). Expected:
+
+```
+✅ MVE tests: 59/59 passed
+```
+
+Syntax-check any module the usual way: `node --check js/mve/<file>.js`.
+
+## 2. Open the interactive demo
+
+Serve the repo root and open `mve.html` (e.g. `npm start` then
+`http://localhost:<port>/mve.html`, or any static server). It generates synthetic
+macro-driven price data in the browser, runs the **whole pipeline**, and renders the
+per-trade valuation card + a price-vs-fair-value chart + the raw valuation object.
+Sliders inject a known mispricing and reversion speed; dropdowns switch regime and
+consensus method (ensemble vs Kalman). No network, no server route.
+
+## 3. Module map (`js/mve/`)
+
+| File | Phase | Owns |
+|---|---|---|
+| `linalg.js` | 0 | pure matrix ops (solve, inv, transpose, quad) for OLS/Kalman/Mahalanobis |
+| `ols.js` | 0/1 | multi-factor OLS + **prediction σ** (folds in β-estimation error) |
+| `validation.js` | 0 | purged/embargoed **walk-forward splits**, **band calibration**, pinball/MAE, re-exports `deflatedSharpe` |
+| `contract.js` | 1 | the `estimate()` contract + Bucket A/B/C (`anchor`/`weight`/`alpha`) split |
+| `emitters.js` | 1 | fair-value models: `regressionEmitter` (BEER-lite), `ar1Emitter`, vol/positioning weights |
+| `ou.js` | 2 | **OU fit** (κ, half-life, t-stat) + **convergence** (P/magnitude/CI) + empirical snap-back |
+| `mispricing.js` | 2 | standardized residual, **Mahalanobis**, Bayesian mispricing posterior |
+| `regimeWeights.js` | 3 | the regime-adaptive weight table (generalized from `gold-model.js`) |
+| `ensemble.js` | 3 | precision-weighted / min-variance **consensus** + dispersion + effN |
+| `ssm.js` | 5 | **Kalman** state-space fusion (hidden fair value, emitters = observations) |
+| `factorModel.js` | 6 | shared-factor cross-asset loadings + **coherence check** (safe Relationship Engine) |
+| `confidence.js` | 4 | logistic **confidence engine** over agreement/fit/calibration/regime/reversion |
+| `index.js` | 4 | **`runMVE()`** orchestrator + `valuationCard()` / `valuationText()` |
+| `signalAdapter.js` | 4 | OPT-IN blend of MVE into an existing 0–100 signal score (not wired) |
+| `mve.test.mjs` | — | the synthetic test suite |
+
+## 4. Minimal usage
+
+```js
+import { runMVE, valuationText, valuationCard } from './js/mve/index.js';
+
+const v = runMVE({
+  instrument: 'EUR/USD',
+  price:   [...],                 // number[] newest-last (level or log-level)
+  factors: [                      // aligned to price, newest-last
+    { name: 'rate', series: [...] },   // e.g. 2y real-rate differential
+    { name: 'dxy',  series: [...] },
+  ],
+  returns:  [...],                // for the vol weight (optional)
+  crowdPct: 72,                   // COT spec percentile (optional)
+  window:   150,                  // rolling fit window
+  horizon:  10,                   // convergence horizon in bars
+  regime:   'RANGE',              // from your HMM/macro classifier
+  useSSM:   false,                // false = ensemble, true = Kalman consensus
+});
+
+console.log(valuationText(v));    // the AI-style sentence
+// v.fairValue, v.sigma, v.mispricing.z, v.convergence.pRevert, v.confidence, ...
+```
+
+`runMVE` returns: `fairValue`, `sigma`, `mispricing {gap,z,rich,label,tailProb}`,
+`convergence {pRevert,expectedMagnitude,halfLife,ci68,ci95}`, `snapbackBaseRate`,
+`confidence` (+ `confidenceBreakdown`), `ensemble {weights,dispersion,effN,members}`,
+`ssm` (Kalman cross-check), and the raw `estimates`.
+
+You can also pass your own pre-built anchors (e.g. a yield model or OI-magnet structure
+level) via `ctx.extraEmitters` or bypass the built-ins entirely with `ctx.estimates`.
+
+## 5. Validation (Phase 0) — how to check a model is honest
+
+```js
+import { walkForwardSplits, walkForwardEvaluate, bandCalibration, deflatedSharpe } from './js/mve/validation.js';
+
+const report = walkForwardEvaluate(n, (split) => {
+  // fit on [trainStart,trainEnd), predict [testStart,testEnd) with the embargo gap
+  return { forecasts:[...], actuals:[...], sigmas:[...] };
+}, { trainSize: 500, testSize: 60, embargo: 10 });
+
+report.calibration;   // { 0.68:{coverage,...}, 0.95:{...} } — coverage should ≈ nominal
+report.mae; report.bias; report.rmse;
+```
+
+**The rule:** a fair value's `sigma` must be the **out-of-sample** residual std, and
+its bands must be **calibrated** (coverage ≈ nominal) before its mispricing z is
+believed. `deflatedSharpe(dailyReturns, trialSharpes)` discounts any backtest Sharpe
+for the number of configs tried.
+
+## 6. Wiring it to REAL data (next step, off by default)
+
+Write a thin **adapter** (new file, e.g. `js/mve/liveAdapter.js`) that builds the
+`runMVE` context from existing feeds — nothing in the engine changes:
+
+- **price / returns** → `S.ohlcData[sym]` (already loaded by the dashboard).
+- **factors** → FRED series you already fetch: real-rate differential, DXY, curve,
+  breakevens (see `js/compass.js` `compassCompute` for the exact spread construction —
+  the `regressionEmitter` is the multi-factor generalization of `compassDivergence`).
+- **regime** → your HMM / macro-regime classifier output.
+- **crowdPct** → COT spec percentile from `/api/cot-extremes`.
+- **extraEmitters** → wrap OI walls / max pain (`js/oi.js`) as `structure` anchors and a
+  yield model as `yield_fv` if you want them in the consensus.
+
+The adapter is the only place that touches live state; the engine stays pure and testable.
+
+## 7. Integrating into the dashboard (deliberate, still off)
+
+When (and only when) the engine clears OOS validation on real data:
+
+1. **Signal score** — `js/mve/signalAdapter.js` shows the exact blend:
+   `augmentSignalScore(computeSignalScore(...), valuation, direction, 0.20)` adds MVE as
+   a 6th factor without disturbing the other five. Wire it in `js/signal.js`.
+2. **Entry scanner** — add a mispricing tag/weight in `runEntryScanner`; use `fairValue`
+   as a non-arbitrary TP target.
+3. **AI summary** — fold `valuationText(v)` / the valuation object into
+   `js/ai.js aiCollectSnapshot`.
+4. **Card** — drop `valuationCard(v)` into any page.
+
+Each of these is a small, reversible edit to a live file — do them one at a time, behind
+your normal review, after the numbers justify it.
+
+## 8. Phase status
+
+| Phase | Status |
+|---|---|
+| 0 — validation harness | ✅ built + tested |
+| 1 — emitter contract + multi-factor fair values | ✅ built + tested |
+| 2 — mispricing + OU convergence | ✅ built + tested |
+| 3 — ensemble + regime-adaptive weights | ✅ built + tested |
+| 4 — orchestrator, confidence engine, valuation card, opt-in adapter | ✅ built + tested |
+| 5 — Kalman state-space fusion | ✅ built + tested |
+| 6 — shared-factor cross-asset model (diagnostic) | ✅ built + tested |
+| Live data adapter (§6) | ⛔ not built — your next step |
+| Dashboard wiring (§7) | ⛔ intentionally off |
+| OOS proof on real feeds | ⛔ the gate before real capital |
+
+## 9. What to remember
+
+- The engine is **correct and isolated**; edge is **unproven** until §6 + Phase-0
+  validation run on real OANDA/FRED data.
+- Every number right of "mispricing" on the card is **model, ex-ante** — size from the
+  **OOS-calibrated confidence**, half-Kelly at most.
+- Don't build the causal cross-asset *propagation graph* (`MARKET_VALUATION_ENGINE.md`
+  Part 9.1) — the `factorModel.js` shared-factor form is the safe version and is enough.
