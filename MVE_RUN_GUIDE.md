@@ -185,8 +185,37 @@ your normal review, after the numbers justify it.
 | 5 — Kalman state-space fusion | ✅ built + tested |
 | 6 — shared-factor cross-asset model (diagnostic) | ✅ built + tested |
 | Live data adapter + `/api/mve/:sym` endpoint (§6) | ✅ built + wired (real OANDA/FRED, read-only) |
+| Honest confidence (base-rate reality, capped ≤0.90, fairly-priced state) | ✅ built + tested |
+| OOS validation engine + `/api/mve-validate/:sym` (§10) | ✅ built + tested (benchmark-relative, no-lookahead) |
 | Dashboard wiring — signal score / scanner / AI (§7) | ⛔ intentionally off |
-| OOS proof on real feeds | ⛔ the gate before real capital |
+| OOS proof on real feeds | ▶ run `/api/mve-validate/:sym` on Railway — this is the gate |
+
+## 10. Does it actually predict? — the OOS validation (§b)
+
+The endpoint that answers whether any of this is worth trusting:
+
+```
+GET /api/mve-validate/EURUSD   → walk-forward, no-lookahead validation report
+```
+
+It walk-forwards over ~6y of history, fitting the fair value strictly on past data, and
+measures whether the mispricing z **predicts forward returns**. The key column is
+**`icEdge`** per horizon:
+
+- `icPredictive` = −corr(z, forward return); >0 means cheap→up / rich→down held OOS.
+- **BUT** any trailing anchor shows *spurious* reversion IC on a pure random walk
+  (deviation-from-a-trailing-fit mechanically mean-reverts). So the report also computes
+  `icBenchmark` — the same IC for a **naive trailing-mean anchor** — and the real signal
+  is **`icEdge = icPredictive − icBenchmark`**. Verified: on a random walk `icEdge ≈ 0`
+  across all horizons (60/60 seeds → NULL verdict); it only lights up when the *factor*
+  fair value genuinely beats the trailing baseline.
+- Plus a z-fade strategy's **deflated Sharpe** (P(true Sharpe>0) after adjusting for the
+  thresholds tried), and a one-line **verdict**: `SURVIVES` / `WEAK` / `NULL`.
+
+The demo page (`mve.html`, Live mode) has a **🔬 Run OOS validation** button that renders
+this. **Expect NULL or WEAK at daily horizons** — macro fair value reverts over
+weeks-to-quarters, so look at the 20/60-bar rows. A `NULL` verdict is not a failure of the
+build; it is the harness correctly telling you *do not wire this in*.
 
 ## 9. What to remember
 

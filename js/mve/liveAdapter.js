@@ -112,9 +112,11 @@ export function buildContext(sym, bars, fred, opts = {}) {
   };
 }
 
-// ── Fetch-and-run (network via INJECTED fetchers) ───────────────────────────
+// ── Fetch + build the ctx (network via INJECTED fetchers) ───────────────────
 // deps: { fetchD1(oandaSym,count)->bars, fetchFred(seriesId,fromDate,key)->Map, fredKey }
-export async function runLiveMVE({ sym, deps, count = 800, fromDate = '2018-01-01', ...opts }) {
+// Returns { ok, ctx, dataSource } or { ok:false, error }. Shared by runLiveMVE
+// (valuation) and the OOS validation route.
+export async function fetchContext({ sym, deps, count = 1500, fromDate = '2015-01-01', ...opts }) {
   const key = normalizeSym(sym);
   const oanda = OANDA_SYMBOL[key];
   const spec = FACTOR_SPEC[key];
@@ -136,8 +138,15 @@ export async function runLiveMVE({ sym, deps, count = 800, fromDate = '2018-01-0
   try { ctx = buildContext(sym, bars, fred, opts); }
   catch (e) { return { ok: false, instrument: sym, error: e.message }; }
 
-  const v = runMVE(ctx);
-  v.dataSource = { oanda, fredKeys: spec.fred, bars: bars.length, usableRows: ctx.price.length, asOf: ctx.asOf };
+  return { ok: true, ctx, dataSource: { oanda, fredKeys: spec.fred, bars: bars.length, usableRows: ctx.price.length, asOf: ctx.asOf } };
+}
+
+// Fetch-and-run: real data → valuation.
+export async function runLiveMVE({ sym, deps, count = 800, fromDate = '2018-01-01', ...opts }) {
+  const built = await fetchContext({ sym, deps, count, fromDate, ...opts });
+  if (!built.ok) return built;
+  const v = runMVE(built.ctx);
+  v.dataSource = built.dataSource;
   return v;
 }
 
