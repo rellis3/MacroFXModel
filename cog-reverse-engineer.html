@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COG Reverse-Engineer — what's his vol calc?</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:16px 0 6px } h3 { font-size:13px; margin:10px 0 4px; color:var(--text3) }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:960px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace; margin-bottom:6px }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  .verdict { background:#0d2818; border:1px solid #1f6f3f; border-radius:6px; padding:8px 11px; font:11px/1.5 'DM Mono',monospace; margin:6px 0 }
+  a { color:#58a6ff } .best { background:rgba(63,185,80,.12) }
+</style>
+</head>
+<body>
+  <h1>COG Reverse-Engineer <span class="muted" style="font-size:12px">— infer his vol calc from his own outputs</span></h1>
+  <div class="sub">
+    We have COG's forecast levels stored per day (hl_med / hl_75 / oc_med) for EURUSD, NQ, GOLD — those are <b>labels</b>. On the same history strictly before each date we recompute candidate σ estimators, then ask which one (and which constant) reproduces his numbers. Three reads: <b>(1) Ratio diagnostics</b> — his own hl_75÷hl_med tells his percentile mapping with <i>no fitting</i> (ours = Feller <b>1.303</b>); <b>(2) Estimator fit</b> — the σ whose implied constant C is most <i>stable</i> (lowest CV) and correlates best is likely his, and C reveals his range constant (≈1.57 = raw Feller, &gt;1.57 = a widening); <b>(3) Blend</b> — the best mix of the top-2, which only wins by a wide, consistent margin (small N → a blend of many always overfits). <span class="muted">Identifies/reproduces his line — does NOT create edge (his line already tested null as a fade). Small N: directional, not proof.</span>
+  </div>
+  <button onclick="run()">▶ Run</button>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=3) => v==null?'—':(+v).toFixed(d);
+
+async function run(){
+  el('status').textContent = 'Running… (fetching D1 + fitting per pair)'; el('out').innerHTML='';
+  let s; try { s = await (await fetch('/api/cog-reverse-engineer')).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">failed: '+e.message+'</span>'; return; }
+  if(!s.ok){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; return; }
+  if(!s.cogDates){ el('status').innerHTML='<span class="amber">No COG reference data stored yet.</span>'; return; }
+  el('status').textContent = `${s.cogDates} COG dates`;
+  render(s.results);
+}
+
+function render(results){
+  let h = '';
+  for(const row of results){
+    h += `<div class="card"><h2>${row.pair} <span class="muted">· ${row.matchedDays||0} matched days</span></h2>`;
+    if(row.error){ h += `<div class="neg">${row.error}</div></div>`; continue; }
+    const r = row.result;
+    if(!r || r.insufficient){ h += `<div class="amber">insufficient matched days (${r?.n||0})</div></div>`; continue; }
+    h += `<div class="verdict">${r.verdict||''}</div>`;
+
+    // 1. Ratio diagnostics
+    const rd = r.ratios;
+    h += `<h3>1 · Ratio diagnostics (no fitting — his own numbers)</h3><table><tr>
+      <th>Ratio</th><th>Mean</th><th>Std</th><th>CV</th><th>Feller</th><th>Match?</th></tr>`;
+    const rr = (name, o, feller, match) => `<tr><td>${name}</td><td>${fmt(o.mean,3)}</td><td>${fmt(o.std,4)}</td><td>${fmt(o.cv,3)}</td><td class="muted">${feller??'—'}</td><td>${match==null?'—':(match?'<span class="pos">yes</span>':'<span class="amber">no</span>')}</td></tr>`;
+    h += rr('hl_75 ÷ hl_med', rd.hl75_over_hl50, rd.hl75_over_hl50.feller, rd.hl75_over_hl50.matchesFeller);
+    h += rr('oc_med ÷ hl_med', rd.oc50_over_hl50, rd.oc50_over_hl50.feller, null);
+    h += rr('oc_75 ÷ oc_med', rd.oc75_over_oc50, null, null);
+    h += `</table>`;
+
+    // 2. Estimator fit
+    h += `<h3>2 · Estimator fit (ranked by correlation, then constant-stability)</h3><table><tr>
+      <th>Estimator</th><th>n</th><th>r (σ↔hl)</th><th>Implied C</th><th>C std</th><th>C CV</th><th>× vs Feller 1.57</th></tr>`;
+    for(let i=0;i<r.fits.length;i++){ const f=r.fits[i];
+      h += `<tr class="${i===0?'best':''}"><td>${i===0?'<strong>'+f.name+'</strong>':f.name}</td><td>${f.n}</td>
+        <td class="${f.r>0.7?'pos':f.r<0.3?'neg':''}">${fmt(f.r,3)}</td>
+        <td>${fmt(f.cMean,3)}</td><td class="muted">${fmt(f.cStd,4)}</td>
+        <td class="${f.cCv<0.1?'pos':f.cCv>0.25?'amber':''}">${fmt(f.cCv,3)}</td>
+        <td class="muted">${fmt(f.wideningVsFeller,3)}×</td></tr>`;
+    }
+    h += `</table><div class="muted" style="font-size:10px">Lowest <b>C CV</b> = the constant that barely moves day-to-day = his estimator. <b>Implied C</b> ≈ his range constant; &gt;1.57 ⇒ he runs wider than raw Feller.</div>`;
+
+    // 3. Blend
+    if(r.blend){
+      h += `<h3>3 · Best blend of the top-2</h3><div class="${r.blendWins?'verdict':'muted'}" style="font-size:11px">
+        ${(r.blend.alpha*100).toFixed(0)}% ${r.blend.a} + ${((1-r.blend.alpha)*100).toFixed(0)}% ${r.blend.b} → r=${fmt(r.blend.r,3)}
+        ${r.blendWins?' <span class="pos">— beats the best single materially</span>':' — does not beat the best single (parsimony holds)'}</div>`;
+    }
+    h += `</div>`;
+  }
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>
