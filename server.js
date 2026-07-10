@@ -56,6 +56,7 @@ import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair
 import { pipSize as _pipSize, instrument, oandaSymbol } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
+import { parseOILevels, oiAudit } from './js/oiConfluence.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
@@ -5486,6 +5487,108 @@ app.get('/api/range-line-bot/zones', async (req, res) => {
       boundaryHour: plan?.boundaryHour ?? confluence?.boundaryHour ?? _rlBoundaryHour(),
       asiaHrs: plan?.asiaHrs ?? RL_BOT_ASIA_HRS,
       confluenceGeneratedAt: confluence?.generatedAt ?? null, planGeneratedAt: plan?.generatedAt ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── OI (options-interest) forward test ───────────────────────────────────────
+// No historical options-OI exists for spot FX, so gamma / put-call walls / max-
+// pain as range-entry confluence can't be backtested like touch/naked. Instead we
+// FORWARD-test: capture the day's OI levels each morning (before entries → no
+// lookahead), accumulate resolved trades, and join them by proximity to see if an
+// OI-aligned entry trades better. `oiConfluence` (pure, tested) does the join.
+
+// The London session date (DST-aware boundary) a trade timestamp belongs to — the
+// SAME bucketing the backtest uses, so a trade joins the OI captured for its session.
+function _rlSessionDate(ts, boundaryHour = _rlBoundaryHour()) {
+  const d = ts == null ? new Date() : (typeof ts === 'number' ? new Date(ts < 1e12 ? ts * 1000 : ts) : new Date(ts));
+  if (isNaN(d)) return null;
+  const day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  if (d.getUTCHours() >= boundaryHour) day.setUTCDate(day.getUTCDate() + 1);
+  return day.toISOString().slice(0, 10);
+}
+
+// Store the day's OI levels for an instrument. Accumulates by date (history is
+// built going forward — never wipes prior days). Body: {instrument, text, date?}.
+app.post('/api/range-line-bot/oi', express.json({ limit: '256kb' }), async (req, res) => {
+  try {
+    const { instrument, text, date } = req.body || {};
+    const key = String(instrument || '').toLowerCase().replace('/', '').replace('_', '');
+    if (!key) return res.status(400).json({ ok: false, error: 'instrument required' });
+    const levels = parseOILevels(text || '');
+    const day = date || _rlSessionDate(null);
+    const raw = await kv.get('range_line_oi').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    store[day] = store[day] || {};
+    if (levels.length) store[day][key] = levels;
+    else delete store[day][key];                 // empty paste clears that instrument's OI for the day
+    // Trim to the last ~120 dates so the artifact stays small.
+    const dates = Object.keys(store).sort();
+    for (const d of dates.slice(0, Math.max(0, dates.length - 120))) delete store[d];
+    await kv.put('range_line_oi', JSON.stringify({ data: store, timestamp: Date.now() }));
+    res.json({ ok: true, date: day, instrument: key, levels });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/range-line-bot/oi', async (req, res) => {
+  try {
+    const raw = await kv.get('range_line_oi').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const day = req.query.date || _rlSessionDate(null);
+    res.json({ ok: true, date: day, byInstrument: store[day] || {}, dates: Object.keys(store).sort() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Accumulate the bot's resolved trades into a persistent log (deduped by
+// position_id), stamped with the session date so the OI join has data. The bot's
+// `today_closed_trades` is transient (reset daily) — this rolls it up over time.
+async function _rlAccumulateTradeLog() {
+  try {
+    const raw = await kv.get('range_line_bot_status').catch(() => null);
+    if (!raw) return;
+    const status = JSON.parse(raw).data ?? JSON.parse(raw);
+    const closed = status?.today_closed_trades || [];
+    if (!closed.length) return;
+    const logRaw = await kv.get('range_line_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    let added = 0;
+    for (const c of closed) {
+      const id = c.position_id ?? c.ticket;
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      log.push({
+        position_id: id, symbol: c.symbol, direction: c.direction,
+        open_price: c.open_price, close_price: c.close_price, profit: c.profit,
+        reason: c.reason, time_open: c.time_open, time_close: c.time_close,
+        date: _rlSessionDate(c.time_open),
+      });
+      added++;
+    }
+    if (!added) return;
+    if (log.length > 5000) log.splice(0, log.length - 5000);      // cap
+    await kv.put('range_line_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[range-line-oi] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error('[range-line-oi] trade-log accumulate failed:', e.message); }
+}
+setInterval(_rlAccumulateTradeLog, 10 * 60_000);                  // every 10 min
+setTimeout(_rlAccumulateTradeLog, 30_000);                        // and shortly after boot
+
+// The forward-test audit: join the accumulated trade log against the per-date OI
+// artifact → tagged-vs-untagged expectancy, per OI type, + round-number independence.
+app.get('/api/range-line-bot/oi-audit', async (req, res) => {
+  try {
+    const [logRaw, oiRaw] = await Promise.all([
+      kv.get('range_line_trade_log').catch(() => null),
+      kv.get('range_line_oi').catch(() => null),
+    ]);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const oiByDate = oiRaw ? (JSON.parse(oiRaw).data ?? JSON.parse(oiRaw)) : {};
+    const tolPips = (req.query.tolPips != null && req.query.tolPips !== '') ? parseFloat(req.query.tolPips) : 10;
+    const audit = oiAudit(log, oiByDate, {
+      pipFor: (k) => { try { return _pipSize(k) || 0; } catch { return 0; } },
+      tolPips, roundTolPips: tolPips,
+    });
+    res.json({ ok: true, tolPips, tradesLogged: log.length, oiDates: Object.keys(oiByDate).length, audit });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
