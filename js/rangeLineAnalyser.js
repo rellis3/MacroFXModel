@@ -31,6 +31,7 @@ import { createTouchFeatures } from './touchFeatures.js';
 import { extractTouches, runPerLine, buildPolicy, pnlFor, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { portfolioStats } from './backtestStats.js';
 import { collectLevels, swingFibLevels } from './levelSources.js';
+import { nakedLevels } from './nakedLevels.js';
 
 // ── Structural-confluence condition (the fibs/pivots/HVN-POC-VAH-VAL brick lift) ─
 // Reuses the Tier-2 `levelSources` brick — NEVER re-derives pivots/profile/S&R — to
@@ -61,7 +62,8 @@ export function confluenceBucketAt(level, confLevels, tol) {
 // / the 15m fib). Returns `[{price, source}, …]`.
 export function sessionConfluenceLevels({ dailyBars = [], intraday = [], pip = 0, price = null,
                                           sources = CONFLUENCE_SOURCES, fib15 = true,
-                                          fib15Lookback = 5, fib15ClusterPips = 8 } = {}) {
+                                          fib15Lookback = 5, fib15ClusterPips = 8,
+                                          naked = false, nakedLookback = 30, nakedBufferPips = 0 } = {}) {
   const levels = collectLevels({ dailyBars, intraday, pipSize: pip || undefined, price }, sources);
   // 15-MINUTE fib clusters (the trader's actual tool: fibs pulled on the 15m chart).
   if (fib15 && intraday.length) {
@@ -69,6 +71,19 @@ export function sessionConfluenceLevels({ dailyBars = [], intraday = [], pip = 0
     const f15 = swingFibLevels({ dailyBars: bars15, pipSize: pip || undefined,
       params: { lookbackDays: fib15Lookback + 1, strength: 3, clusterPips: fib15ClusterPips, minConfluence: 2 } });
     for (const lv of f15) levels.push({ ...lv, source: 'fib15' });
+  }
+  // NAKED (untested) prior highs/lows — a prior extreme only acts as a magnet
+  // while price hasn't traded back through it (nakedLevels brick). Collapses to
+  // one distinct source `naked_hilo`, so an untested extreme adds conviction on
+  // top of `prior_hilo`. Uses dailyBars (full history) for the high/low scan;
+  // nPOC needs per-session volume profiles (not in the daily path) → deferred.
+  if (naked && dailyBars.length >= 2) {
+    const sess = dailyBars.map(b => ({
+      date: b.date ?? (Number.isFinite(b.time) ? new Date(b.time * 1000).toISOString().slice(0, 10) : null),
+      high: b.high, low: b.low,
+    }));
+    const nk = nakedLevels(sess, { lookback: nakedLookback, pip, bufferPips: nakedBufferPips, kinds: ['high', 'low'] });
+    for (const lv of nk) levels.push({ price: lv.price, source: 'naked_hilo' });
   }
   return levels;
 }
@@ -338,6 +353,9 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
   const confLookback = conf.lookbackDays ?? 5;
   const confTolFrac = conf.tolFrac ?? 0.1;
   const confFib15 = confMode === 'touch' ? false : (conf.fib15 !== false);
+  const confNaked = !!conf.naked;                        // add untested prior H/L as a distinct source
+  const confNakedLookback = conf.nakedLookback ?? 30;
+  const confNakedBufferPips = conf.nakedBufferPips ?? 0;
 
   const dates = [...sessions.keys()].sort()
     .filter(d => (sessions.get(d)?.length ?? 0) >= minBarsPerSession);
@@ -399,7 +417,8 @@ export function runRangeLineAnalyser(sessions, assetClass = 'fx', opts = {}) {
       }
       confLevels = sessionConfluenceLevels({ dailyBars: d1.slice(0, i), intraday, pip: opts.pip || 0,
         price: open, sources: confSources, fib15: confFib15,
-        fib15Lookback: confLookback, fib15ClusterPips: conf.fib15ClusterPips ?? 8 });
+        fib15Lookback: confLookback, fib15ClusterPips: conf.fib15ClusterPips ?? 8,
+        naked: confNaked, nakedLookback: confNakedLookback, nakedBufferPips: confNakedBufferPips });
     }
 
     const lines = analyseRangeWindow({ open, bars }, ladders, { sigma, tf, pip: opts.pip ?? 0, confLevels, confTolFrac, confMode });
@@ -811,6 +830,7 @@ export function recordsForPair(packed, assetClass = 'fx', opts = {}) {
 export function latestSessionConfluence(packed, {
   boundaryHour = 0, confLookback = 5, pip = 0,
   sources = CONFLUENCE_SOURCES, fib15 = true, fib15ClusterPips = 8,
+  naked = false, nakedLookback = 30, nakedBufferPips = 0,
 } = {}) {
   const sessions = bucketM1IntoSessions(packed, boundaryHour);
   const dates = [...sessions.keys()].sort();
@@ -820,7 +840,8 @@ export function latestSessionConfluence(packed, {
   let intraday = [];
   for (let j = Math.max(0, n - confLookback); j < n; j++) { const pb = sessions.get(dates[j]); if (pb) intraday = intraday.concat(pb); }
   const levels = sessionConfluenceLevels({ dailyBars: d1, intraday, pip, price: d1[n - 1].close,
-    sources, fib15, fib15Lookback: confLookback, fib15ClusterPips });
+    sources, fib15, fib15Lookback: confLookback, fib15ClusterPips,
+    naked, nakedLookback, nakedBufferPips });
   return { date: dates[n - 1], levels };
 }
 

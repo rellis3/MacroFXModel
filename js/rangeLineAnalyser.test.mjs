@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES, runConfluenceFilter, intradayConfluenceAt, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES, runConfluenceFilter, intradayConfluenceAt, DAILY_CONFLUENCE_SOURCES, sessionConfluenceLevels } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches, buildPolicy } from './perLineStrategy.js';
 
@@ -289,6 +289,32 @@ ok('eRatioByCell returns overall + per-cell rows', er && Array.isArray(er.cells)
 ok('E-ratio cells have MFE/MAE/eRatio + decision', er.cells.every(c =>
    Number.isFinite(c.mfe) && Number.isFinite(c.mae) && (c.eRatio == null || Number.isFinite(c.eRatio)) &&
    (c.decision === 'fade' || c.decision === 'follow')));
+
+console.log('\n[naked-levels confluence source — untested prior H/L add a distinct source]');
+{
+  // Daily bars oldest→newest. d0 SPIKE high 1.30 is never revisited (d1/d2 stay
+  // below) → naked. d0 low 1.20 and d1 high 1.25 ARE traded through by a later
+  // session → filled (not naked). Most-recent session's own extremes are naked.
+  const dailyBars = [
+    { date: '2024-01-01', time: Date.UTC(2024, 0, 1) / 1000, open: 1.22, high: 1.30, low: 1.20, close: 1.24 },
+    { date: '2024-01-02', time: Date.UTC(2024, 0, 2) / 1000, open: 1.24, high: 1.25, low: 1.19, close: 1.23 },
+    { date: '2024-01-03', time: Date.UTC(2024, 0, 3) / 1000, open: 1.23, high: 1.26, low: 1.18, close: 1.22 },
+  ];
+  const rank = { '1·none': 0, '2·single': 1, '3·multi': 2 };
+  const src = ['prior_hilo'];
+  const base = sessionConfluenceLevels({ dailyBars, intraday: [], pip: 0.0001, price: 1.22, sources: src, fib15: false });
+  const withNaked = sessionConfluenceLevels({ dailyBars, intraday: [], pip: 0.0001, price: 1.22, sources: src, fib15: false, naked: true, nakedLookback: 30 });
+  const nk = withNaked.filter(l => l.source === 'naked_hilo').map(l => +l.price.toFixed(4)).sort((a, b) => a - b);
+  ok('naked=false emits no naked_hilo', base.every(l => l.source !== 'naked_hilo'));
+  ok('naked=true adds naked_hilo levels', nk.length > 0, `naked=${JSON.stringify(nk)}`);
+  ok('untested spike high 1.30 is naked; filled 1.25/1.20 are NOT',
+     nk.includes(1.30) && !nk.includes(1.25) && !nk.includes(1.20), `naked=${JSON.stringify(nk)}`);
+  // A range level on the untested 1.30 gains the extra distinct source → bucket rank rises.
+  const tol = 0.1 * 0.02;
+  ok('naked lifts the untested-high level by ≥1 bucket',
+     rank[confluenceBucketAt(1.30, withNaked, tol)] > rank[confluenceBucketAt(1.30, base, tol)],
+     `base=${confluenceBucketAt(1.30, base, tol)} naked=${confluenceBucketAt(1.30, withNaked, tol)}`);
+}
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
