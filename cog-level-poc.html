@@ -22,7 +22,7 @@
 <body>
   <h1>COG-level POC <span class="muted" style="font-size:12px">— COG's actual levels vs actual price</span></h1>
   <div class="sub">
-    For every day we have COG reference data, this sets <b>COG's own median / 75th / O-C levels</b> and walks that day's intraday price to answer directly: did price <b>reach</b> the level, did it <b>revert</b> (fade) or blow through, <b>by how much</b>, and <b>how many times</b>. Median &amp; 75th are the dynamic H-L (opposite extreme projected from the running high/low — the "NAS" level); O-C is open ± COG's open-close move. Railway only (reads KV + M1).
+    <b>Paired A/B — COG's forecaster vs ours, on the same days.</b> For every day we have COG reference data, this sets both <b>COG's</b> levels and <b>our forecaster's</b> levels (median / 75th / O-C) and walks that day's intraday price with the SAME measurement: did price reach the level, revert or blow through, by how much. It also reports the <b>width ratio</b> (COG ÷ ours) and whether it's stable — i.e. whether one fixed widening could match COG without weekly tweaking. Median &amp; 75th are the dynamic H-L (projected from the running high/low); O-C is open ± the move. Small N (COG has ~20 days) — directional, not proof. Railway only.
   </div>
   <button onclick="run()">↻ Run</button>
   <span class="muted" id="status" style="margin-left:10px"></span>
@@ -54,27 +54,32 @@ async function run(){
   }
   diag += `</div>`;
 
-  const LV = [['dynMed','COG median (dynamic H-L)'],['dyn75','COG 75th (dynamic H-L)'],['ocMed','COG O-C (open ± move)']];
-  let h = '';
-  for(const r of j.results){
-    h += `<div class="card"><h2>${r.pair} <span class="muted" style="font-size:11px">· ${r.matchedDays ?? 0} of ${r.cogDatesForPair ?? 0} COG days had intraday data · pip ${r.pip ?? '—'}</span></h2>`;
-    if(r.error){ h += `<div class="err">${r.error}</div></div>`; continue; }
-    const res = r.result || {};
-    h += `<table><tr>
-      <th>COG level</th><th>Touches</th><th>Reverted</th><th>Revert %</th><th>Continue %</th>
-      <th>Revert by (pips)</th><th>Revert by (%)</th><th>Ran past (pips)</th><th>≥20p</th><th>≥50p</th>
-      <th>Hold-to-close fade (pips)</th><th>Fade win %</th></tr>`;
-    for(const [k,lbl] of LV){
-      const s = res[k];
-      if(!s || !s.n){ h += `<tr><td>${lbl}</td><td colspan="11" class="muted">no touches in the days we have</td></tr>`; continue; }
-      h += `<tr><td>${lbl}</td>
+  // Each level compared COG (his forecaster) vs OURS (our forecaster), same days + measurement.
+  const LV = [['dynMed','median (dynamic H-L)'],['dyn75','75th (dynamic H-L)'],['ocMed','O-C (open ± move)']];
+  const dataRow = (src,lbl,s) => (!s || !s.n)
+    ? `<tr><td>${src}</td><td>${lbl}</td><td colspan="10" class="muted">no touches</td></tr>`
+    : `<tr><td class="${src==='COG'?'':'muted'}">${src}</td><td>${lbl}</td>
         <td>${s.n}</td><td>${s.revertCount}</td>
         <td class="${s.revertPct>=50?'pos':'amber'}">${fmt(s.revertPct)}</td><td class="muted">${fmt(s.continuePct)}</td>
         <td class="pos">${fmt(s.meanRevertPips)}</td><td class="muted">${fmt(s.meanRevertPct,3)}</td>
-        <td class="neg">${fmt(s.meanAdversePips)}</td><td>${fmt(s.rev20Pct)}</td><td>${fmt(s.rev50Pct)}</td>
+        <td class="neg">${fmt(s.meanAdversePips)}</td><td>${fmt(s.rev20Pct)}</td>
         <td class="${pcls(s.meanCloseFadePips)}">${sgn(s.meanCloseFadePips)}</td><td>${fmt(s.closeFadeWinPct)}</td></tr>`;
+  let h = '';
+  for(const r of j.results){
+    h += `<div class="card"><h2>${r.pair} <span class="muted" style="font-size:11px">· ${r.matchedDays ?? 0} of ${r.cogDatesForPair ?? 0} COG days · pip ${r.pip ?? '—'}</span></h2>`;
+    if(r.error){ h += `<div class="err">${r.error}</div></div>`; continue; }
+    const wc = r.widthCompare;
+    if(wc) h += `<div class="muted" style="font-size:11px;margin-bottom:6px">Width: our median ${fmt(wc.ourMedMeanPct,3)}% vs COG ${fmt(wc.cogMedMeanPct,3)}% — <strong>COG ${fmt(wc.cogOverOurMean,3)}× ours</strong> (±${fmt(wc.cogOverOurStd,3)} over ${wc.nDays}d). ${wc.cogOverOurStd<=0.06?'Stable ratio ⇒ one fixed widening would track COG.':'Ratio varies ⇒ a fixed factor won\\'t match COG day-to-day.'}</div>`;
+    const res = r.result || {}, resO = r.resultOurs || {};
+    h += `<table><tr>
+      <th>Src</th><th>Level</th><th>Touches</th><th>Reverted</th><th>Revert %</th><th>Continue %</th>
+      <th>Revert by (pips)</th><th>Revert by (%)</th><th>Ran past (pips)</th><th>≥20p</th>
+      <th>Hold-to-close fade</th><th>Fade win %</th></tr>`;
+    for(const [k,lbl] of LV){
+      h += dataRow('COG', lbl, res[k]);
+      h += dataRow('ours', lbl, resO[k]);
     }
-    h += `</table><div class="muted" style="font-size:10px">Revert = price pulled back toward the interior after touching (a fade win). "Revert by" = mean pullback. "Ran past" = mean continuation past the level (the risk). Hold-to-close fade = enter at the level, exit at day close; +ve = reverted profitably.</div></div>`;
+    h += `</table><div class="muted" style="font-size:10px">COG = his forecaster's level; ours = our forecaster's level, SAME days &amp; measurement. Revert = pulled back after touching. Hold-to-close fade = enter at level, exit at close (+ve = reverted profitably). Small N — directional, not proof.</div></div>`;
   }
   document.getElementById('out').innerHTML = diag + h;
 }
