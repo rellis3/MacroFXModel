@@ -198,13 +198,20 @@ async function drawChart(p, d) {
       wickUpColor:'#34d399',wickDownColor:'#f87171' });
   }
   // Candles — best-effort; fall back to a flat ghost around price so lines have a scale.
+  // /api/oanda_ohlc5m returns { values:[{datetime, open, high, low, close}] } newest-first,
+  // datetime as a London-local "YYYY-MM-DD HH:MM:SS" string (not candles/bars/epoch — see gold-zones.html).
   let candles = [];
   try {
-    const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(OANDA(p.pair))}`);
-    const j = await r.json();
-    const arr = j.candles || j.bars || j;
-    if (Array.isArray(arr)) candles = arr.map(c => ({ time: Math.floor((c.time||c.t)/ (String(c.time||c.t).length>=13?1000:1)),
-      open:+(c.open??c.o), high:+(c.high??c.h), low:+(c.low??c.l), close:+(c.close??c.c) })).filter(c=>c.time&&isFinite(c.close));
+    const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(OANDA(p.pair))}&granularity=M5`);
+    if (r.ok) {
+      const j = await r.json();
+      if (j.values?.length) {
+        candles = j.values.slice().reverse().map(b => ({
+          time:  Math.floor(new Date(b.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+          open:  parseFloat(b.open), high: parseFloat(b.high), low: parseFloat(b.low), close: parseFloat(b.close),
+        })).filter(c => c.time > 0 && c.high > 0);
+      }
+    }
   } catch (e) {}
   if (!candles.length && p.price) {
     const now = Math.floor(Date.now()/1000), buf = p.price*0.002;
