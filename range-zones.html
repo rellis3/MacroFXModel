@@ -88,14 +88,15 @@
   <div class="card" style="margin-top:20px;padding:14px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <b>🎯 Options-OI forward test</b>
-      <span class="muted" style="font-size:12px">No historical OI for spot FX → this is a live forward test: paste today's OI levels each morning (before entries), and every resolved trade is joined to that day's levels by proximity. Tagged-vs-untagged expectancy tells you if OI-aligned entries trade better — and the "not at a round number" cut checks it isn't just duplicating levels we already count.</span>
+      <span class="muted" style="font-size:12px">No historical OI for spot FX → live forward test. Levels come <b>automatically from the OI analyser</b> you already run on the dashboard (max pain / call &amp; put walls / gamma flip / HVL, snapshot into today's slot). Every resolved trade is joined to that day's levels by proximity — tagged-vs-untagged expectancy shows if OI-aligned entries trade better, and the "not at a round number" cut checks it isn't just duplicating levels we already count.</span>
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;align-items:flex-start">
       <div style="flex:1;min-width:260px">
-        <div class="muted" style="font-size:12px;margin-bottom:4px">Today's OI for <b id="oiPair">—</b> — one per line: <code>price type</code> (e.g. <code>1.0850 call_wall</code>, <code>1.0820 max_pain</code>, <code>1.0805 put_wall</code>, <code>1.1000 gamma_flip</code>, <code>1.0875 hvl</code>). Untyped lines tag as generic <code>oi</code>.</div>
+        <div class="muted" style="font-size:12px;margin-bottom:4px">Today's OI for <b id="oiPair">—</b> — <b>auto from the OI analyser</b> (updates as you refresh it). For a pair the analyser doesn't cover you can enter <code>price type</code> lines manually (e.g. <code>1.0820 max_pain</code>) — those are kept; analyser pairs re-sync each cycle.</div>
         <textarea id="oiText" rows="6" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:8px"></textarea>
-        <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
-          <button id="oiSaveBtn" onclick="saveOI()">Save OI for today</button>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button id="oiSyncBtn" onclick="syncOI()" title="Pull the OI analyser's computed levels into today's forward-test slot now">↻ Sync from OI analyser</button>
+          <button id="oiSaveBtn" onclick="saveOI()" title="Save the box as a manual override for this pair">Save manual</button>
           <span class="muted" id="oiSaveMsg" style="font-size:12px"></span>
         </div>
       </div>
@@ -265,6 +266,15 @@ async function loadOI() {
     $('oiText').value = levels.map(l => `${l.price} ${l.type}`).join('\n');
     $('oiSaveMsg').textContent = levels.length ? `${levels.length} level(s) saved for ${r.date}` : `nothing saved yet for ${r.date}`;
   } catch { /* leave as-is */ }
+}
+async function syncOI() {
+  $('oiSyncBtn').disabled = true; $('oiSaveMsg').textContent = 'syncing from OI analyser…';
+  try {
+    const r = await (await fetch('/api/range-line-bot/oi/sync', { method: 'POST' })).json();
+    $('oiSaveMsg').textContent = r.ok ? `✓ synced ${r.pairsSnapshotted} analyser pair(s) for ${r.date}` : `✗ ${r.error}`;
+    if (r.ok) { await loadOI(); loadOIAudit(); }
+  } catch (e) { $('oiSaveMsg').textContent = '✗ ' + e.message; }
+  finally { $('oiSyncBtn').disabled = false; }
 }
 async function saveOI() {
   const pair = $('pairSel').value; if (!pair) return;

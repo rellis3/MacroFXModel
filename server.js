@@ -53,10 +53,10 @@ import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForP
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter } from './js/rangeLineAnalyser.js';
-import { pipSize as _pipSize, instrument, oandaSymbol } from './js/instrumentRegistry.js';
+import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
-import { parseOILevels, oiAudit } from './js/oiConfluence.js';
+import { parseOILevels, oiAudit, oiStoreToLevels } from './js/oiConfluence.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
@@ -5558,6 +5558,7 @@ async function _rlAccumulateTradeLog() {
       seen.add(id);
       log.push({
         position_id: id, symbol: c.symbol, direction: c.direction,
+        key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
         open_price: c.open_price, close_price: c.close_price, profit: c.profit,
         reason: c.reason, time_open: c.time_open, time_close: c.time_close,
         date: _rlSessionDate(c.time_open),
@@ -5572,6 +5573,46 @@ async function _rlAccumulateTradeLog() {
 }
 setInterval(_rlAccumulateTradeLog, 10 * 60_000);                  // every 10 min
 setTimeout(_rlAccumulateTradeLog, 30_000);                        // and shortly after boot
+
+// Reuse the OI the user ALREADY computes in the index.html OI analyser (KV
+// `oi_store`, per pair: max pain / call+put walls / gamma flip / HVL) instead of
+// a second manual entry. Snapshot those computed levels into TODAY's session slot
+// of `range_line_oi` (frozen + dated → the forward-test join needs dated OI). CME
+// pairs come from the analyser; any pair the analyser doesn't cover can still be
+// entered manually (those slots are preserved — only analyser pairs are refreshed).
+async function _rlSnapshotOIFromStore() {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    if (!raw) return 0;
+    const oiStore = JSON.parse(raw).data ?? JSON.parse(raw);
+    if (!oiStore || typeof oiStore !== 'object') return 0;
+    const day = _rlSessionDate(null);
+    const storeRaw = await kv.get('range_line_oi').catch(() => null);
+    const store = storeRaw ? (JSON.parse(storeRaw).data ?? JSON.parse(storeRaw)) : {};
+    store[day] = store[day] || {};
+    let n = 0;
+    for (const [pair, inst] of Object.entries(oiStore)) {
+      const key = (() => { try { return resolveKey(pair); } catch { return null; } })()
+                  || String(pair).toLowerCase().replace(/[/_]/g, '');
+      const levels = oiStoreToLevels(inst);
+      if (levels.length) { store[day][key] = levels; n++; }        // analyser pair → refresh
+    }
+    if (!n) return 0;
+    const dates = Object.keys(store).sort();
+    for (const d of dates.slice(0, Math.max(0, dates.length - 120))) delete store[d];
+    await kv.put('range_line_oi', JSON.stringify({ data: store, timestamp: Date.now() }));
+    console.log(`[range-line-oi] snapshot ${n} pair(s) from oi_store → ${day}`);
+    return n;
+  } catch (e) { console.error('[range-line-oi] oi_store snapshot failed:', e.message); return 0; }
+}
+setInterval(_rlSnapshotOIFromStore, 10 * 60_000);                 // keep today's snapshot current with the morning paste
+setTimeout(_rlSnapshotOIFromStore, 40_000);
+
+// On-demand: pull the analyser's OI into today's forward-test slot now.
+app.post('/api/range-line-bot/oi/sync', async (_req, res) => {
+  try { const n = await _rlSnapshotOIFromStore(); res.json({ ok: true, pairsSnapshotted: n, date: _rlSessionDate(null) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // The forward-test audit: join the accumulated trade log against the per-date OI
 // artifact → tagged-vs-untagged expectancy, per OI type, + round-number independence.
