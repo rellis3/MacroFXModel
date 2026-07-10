@@ -5755,18 +5755,27 @@ const _COG_ALIASES = { EURUSD: ['EURUSD', 'EUR/USD', 'EUR_USD'], NQ: ['NQ', 'NAS
 async function _fetchOandaM5(sym, fromSec, toSec) {
   const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
   const out = [];
-  const STEP = 13 * 86400;   // ~13 days × 288 M5 bars ≈ 3744 < 5000 cap
-  for (let s = fromSec; s < toSec; s += STEP) {
-    const e = Math.min(s + STEP, toSec);
+  // from + count (NOT from + to) — count-based paging never requests a future `to`
+  // (which OANDA 400s) and stops cleanly when a short page signals end-of-data.
+  let cursor = fromSec;
+  for (let guard = 0; guard < 20 && cursor < toSec; guard++) {
     const url = `${base}/v3/instruments/${encodeURIComponent(sym)}/candles`
-              + `?granularity=M5&price=M&from=${encodeURIComponent(new Date(s * 1000).toISOString())}&to=${encodeURIComponent(new Date(e * 1000).toISOString())}`;
+              + `?granularity=M5&price=M&from=${encodeURIComponent(new Date(cursor * 1000).toISOString())}&count=5000`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
     if (!r.ok) throw new Error(`OANDA M5 ${sym}: HTTP ${r.status}`);
-    for (const c of ((await r.json()).candles ?? [])) {
+    const candles = (await r.json()).candles ?? [];
+    if (!candles.length) break;
+    let lastSec = cursor;
+    for (const c of candles) {
+      const t = Math.floor(new Date(c.time).getTime() / 1000);
+      lastSec = t;
+      if (t > toSec) break;
       if (c.complete === false || !c.mid) continue;
       const cl = parseFloat(c.mid.c); if (!(cl > 0)) continue;
-      out.push({ time: Math.floor(new Date(c.time).getTime() / 1000), open: parseFloat(c.mid.o), high: parseFloat(c.mid.h), low: parseFloat(c.mid.l), close: cl });
+      out.push({ time: t, open: parseFloat(c.mid.o), high: parseFloat(c.mid.h), low: parseFloat(c.mid.l), close: cl });
     }
+    if (lastSec <= cursor || candles.length < 5000) break;   // no progress or reached the end
+    cursor = lastSec + 300;                                   // advance past the last candle (5 min)
   }
   return out;
 }
