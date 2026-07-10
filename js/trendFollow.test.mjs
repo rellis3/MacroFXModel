@@ -2,7 +2,7 @@
 //   node js/trendFollow.test.mjs
 // Deterministic (seeded). Proves properties, not just "it ran".
 
-import { momentumSignal, rollingVol, backtestMarket, backtestBasket, DEFAULTS } from './trendFollowEngine.js';
+import { momentumSignal, rollingVol, backtestMarket, backtestBasket, robustness, DEFAULTS } from './trendFollowEngine.js';
 
 let tests = 0, failures = 0;
 const ok = (n, c, x = '') => { tests++; console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${x ? '  ' + x : ''}`); if (!c) failures++; };
@@ -80,6 +80,26 @@ console.log('\n── costs bite ──');
   const sum = a => a.reduce((s, x) => s + x, 0);
   ok('higher costs reduce net return', sum(costly.dailyRet) < sum(free.dailyRet), `${sum(costly.dailyRet).toFixed(3)} < ${sum(free.dailyRet).toFixed(3)}`);
   ok('long/flat takes no shorts', backtestMarket(c, { longShort: false }).positions.every(p => p >= -1e-9));
+}
+
+console.log('\n── honest-read robustness ──');
+{
+  const markets = [1, 2, 3, 4, 5, 6].map(s => ({ symbol: 'M' + s, closes: trendingMarket(s * 7) }));
+  const rob = robustness(markets);
+  ok('robustness runs', rob.ok === true);
+  ok('sub-periods early/mid/recent present', ['early', 'mid', 'recent'].every(k => typeof rob.subPeriods[k] === 'number'));
+  ok('rolling 1y Sharpe series produced', Array.isArray(rob.rolling) && rob.rolling.length > 3);
+  ok('cost sensitivity spans 0..20bp and is non-increasing', (() => {
+    const s = rob.costSensitivity.map(x => x.sharpe);
+    for (let i = 1; i < s.length; i++) if (s[i] > s[i - 1] + 0.05) return false;   // higher cost never meaningfully helps
+    return rob.costSensitivity[0].costBp === 0 && rob.costSensitivity.at(-1).costBp === 20;
+  })(), rob.costSensitivity.map(x => `${x.costBp}:${x.sharpe}`).join(' '));
+  ok('concentration drop-best computed', rob.concentration.bestMarket && rob.concentration.dropBestSharpe != null);
+  ok('read is a string with a verdict', typeof rob.read === 'string' && /Robust|Caveats/.test(rob.read));
+
+  // Random walk: robustness should NOT say "Robust" (no real edge to be robust).
+  const noise = [11, 12, 13, 14, 15, 16].map(s => ({ symbol: 'N' + s, closes: randomWalk(s * 7) }));
+  ok('random-walk robustness is NOT "Robust"', !/^Robust/.test(robustness(noise).read));
 }
 
 console.log(`\n${failures === 0 ? '✅' : '❌'} trend-follow tests: ${tests - failures}/${tests} passed${failures ? `, ${failures} FAILED` : ''}\n`);

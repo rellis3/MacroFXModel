@@ -90,29 +90,20 @@ export function backtestMarket(closes, cfg = {}) {
   return { dailyRet, grossRet, turnover, positions: pos };
 }
 
-// ── Basket backtest ──────────────────────────────────────────────────────────
-// markets: [{ symbol, closes:number[] }] (each oldest-first; lengths may differ —
-// aligned from the right, i.e. most-recent-aligned). Equal-weight the per-market
-// strategy returns, then scale the basket to the portfolio vol target using a
-// TRAILING (no-lookahead) vol estimate. Returns per-market + portfolio stats.
-export function backtestBasket(markets, cfg = {}) {
-  const c = { ...DEFAULTS, ...cfg };
+// ── Portfolio construction (shared by backtest + robustness) ────────────────
+// Equal-weight the per-market strategy returns (right-aligned to the common tail),
+// then scale to the portfolio vol target with a TRAILING (no-lookahead) vol.
+export function buildPortfolioReturns(markets, c) {
   const per = markets.map(m => ({ symbol: m.symbol, ...backtestMarket(m.closes, c), n: m.closes.length }));
   const L = Math.min(...per.map(p => p.dailyRet.length));
   if (!Number.isFinite(L) || L < 260) return { ok: false, error: `need ≥260 aligned bars, got ${L}` };
-
-  // Right-align every market's daily returns to the common tail length L.
   const aligned = per.map(p => p.dailyRet.slice(p.dailyRet.length - L));
-
-  // Equal-weight average across markets that have a live (finite) return that day.
   const combined = new Array(L).fill(0);
   for (let t = 0; t < L; t++) {
     let s = 0, k = 0;
     for (const a of aligned) { if (Number.isFinite(a[t])) { s += a[t]; k++; } }
     combined[t] = k ? s / k : 0;
   }
-
-  // Scale to portfolio vol target with a TRAILING vol (uses only past returns).
   const scaled = new Array(L).fill(0);
   const volWin = 126;
   for (let t = 0; t < L; t++) {
@@ -120,6 +111,15 @@ export function backtestBasket(markets, cfg = {}) {
     const v = w.length >= 20 ? stdev(w, 1) * Math.sqrt(DAY) : null;
     scaled[t] = v && v > 0 ? combined[t] * (c.volTargetPort / v) : combined[t];
   }
+  return { ok: true, per, L, aligned, combined, scaled };
+}
+
+// ── Basket backtest ──────────────────────────────────────────────────────────
+export function backtestBasket(markets, cfg = {}) {
+  const c = { ...DEFAULTS, ...cfg };
+  const pr = buildPortfolioReturns(markets, c);
+  if (!pr.ok) return pr;
+  const { per, L, aligned, combined, scaled } = pr;
 
   return {
     ok: true,
@@ -183,3 +183,62 @@ function portfolioStats(dailyRet, perMarketDaily = null) {
 }
 
 export { annualize, equityFrom };
+
+// ── Honest-read robustness ───────────────────────────────────────────────────
+// A single full-sample Sharpe flatters — it can hide that all the edge was pre-2015
+// and it's been dead since, that costs kill it, or that one market carries it. These
+// checks make the number trustworthy. All operate on the portfolio scaled returns
+// (no dates needed: sub-periods are early/mid/recent thirds of the sample).
+function sharpeOf(dailyRet) {
+  const r = dailyRet.filter(Number.isFinite);
+  const m = r.reduce((s, x) => s + x, 0) / (r.length || 1);
+  const sd = stdev(r, 1);
+  return sd > 0 ? +((m / sd) * Math.sqrt(DAY)).toFixed(2) : 0;
+}
+
+export function robustness(markets, cfg = {}) {
+  const c = { ...DEFAULTS, ...cfg };
+  const pr = buildPortfolioReturns(markets, c);
+  if (!pr.ok) return pr;
+  const { per, scaled, L } = pr;
+
+  // 1. Sub-period Sharpe — early / mid / recent thirds. "Recent" is the one that matters.
+  const third = Math.floor(L / 3);
+  const subPeriods = {
+    early:  sharpeOf(scaled.slice(0, third)),
+    mid:    sharpeOf(scaled.slice(third, 2 * third)),
+    recent: sharpeOf(scaled.slice(2 * third)),
+  };
+
+  // 2. Rolling 1-year Sharpe, sampled ~quarterly, so we can see it turn on/off.
+  const rolling = [];
+  const win = DAY;
+  for (let t = win; t < L; t += 63) rolling.push({ bar: t, approxYear: +(t / DAY).toFixed(1), sharpe1y: sharpeOf(scaled.slice(t - win, t)) });
+
+  // 3. Cost sensitivity — does a realistic spread kill it?
+  const costSensitivity = [0, 2, 5, 10, 20].map(bp => {
+    const r = buildPortfolioReturns(markets, { ...c, costBp: bp });
+    return { costBp: bp, sharpe: r.ok ? sharpeOf(r.scaled) : null };
+  });
+
+  // 4. Concentration — drop the single best market; does the edge survive?
+  const bySharpe = per.map(p => ({ symbol: p.symbol, sharpe: sharpeOf(p.dailyRet) })).sort((a, b) => b.sharpe - a.sharpe);
+  const best = bySharpe[0];
+  const without = markets.filter(m => m.symbol !== best.symbol);
+  const dropBest = without.length >= 3 ? (() => { const r = buildPortfolioReturns(without, c); return r.ok ? sharpeOf(r.scaled) : null; })() : null;
+  const fullSharpe = sharpeOf(scaled);
+
+  // Honest read of the robustness picture.
+  const recentAlive = subPeriods.recent >= 0.3;
+  const costRobust = (costSensitivity.find(x => x.costBp === 10)?.sharpe ?? 0) >= fullSharpe * 0.5;
+  const notConcentrated = dropBest == null || dropBest >= fullSharpe * 0.6;
+  const flags = [];
+  if (!recentAlive) flags.push(`edge is NOT alive recently (recent-third Sharpe ${subPeriods.recent}) — likely the post-2011 trend drought`);
+  if (!costRobust)  flags.push(`costs bite hard (Sharpe halves by 10bp)`);
+  if (!notConcentrated) flags.push(`concentrated — dropping ${best.symbol} takes Sharpe ${fullSharpe}→${dropBest}`);
+  const read = flags.length === 0
+    ? `Robust: edge is alive recently, survives realistic costs, and isn't carried by one market. This is the honest good case — forward-test next.`
+    : `Caveats: ${flags.join('; ')}. Weigh these before believing the headline Sharpe.`;
+
+  return { ok: true, fullSharpe, subPeriods, rolling, costSensitivity, concentration: { bestMarket: best, dropBestSharpe: dropBest, fullSharpe }, read };
+}

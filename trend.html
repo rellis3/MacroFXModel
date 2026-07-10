@@ -77,12 +77,36 @@ async function run() {
           ${verdict(p)}
         </div>
       </div>
+      ${robustnessPanel(r.robustness)}
       <div class="panel">
         <div style="font-weight:700;margin-bottom:4px">Per market (net of costs)</div>
         <table><thead><tr><th>Market</th><th>Sharpe</th><th>Ann.Ret</th><th>Ann.Vol</th><th>MaxDD</th><th>Turnover/yr</th></tr></thead><tbody>${mrows}</tbody></table>
         <div style="margin-top:8px;font-size:10.5px;color:#5b6270">Diversification is the point: the portfolio Sharpe should beat most single markets. Deflated Sharpe = P(true Sharpe&gt;0) after adjusting for markets explored. Ex-post backtest — forward-test before trusting.</div>
       </div>`;
   } catch(e) { $('out').innerHTML = `<div class="panel">Fetch failed: ${e.message}</div>`; }
+}
+function robustnessPanel(rob) {
+  if (!rob || !rob.ok) return '';
+  const robust = /^Robust/.test(rob.read);
+  const col = robust ? '#22c55e' : '#f59e0b';
+  const sp = rob.subPeriods;
+  const spCell = v => `<span style="color:${v>=0.3?'#22c55e':v<0?'#ef4444':'#8891a0'};font-family:monospace">${v}</span>`;
+  const cost = rob.costSensitivity.map(x => `<td class="mono" style="color:${x.sharpe>=rob.fullSharpe*0.5?'#cdd3dc':'#ef4444'}">${x.sharpe}</td>`).join('');
+  const conc = rob.concentration;
+  return `
+    <div class="panel" style="border-color:${col}55">
+      <div style="font-weight:700;color:${col};margin-bottom:8px">Honest read — is the headline Sharpe trustworthy?</div>
+      <div style="font-size:12.5px;color:#cdd3dc;margin-bottom:12px;line-height:1.5">${rob.read}</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:12px">
+        <div><div style="color:#8891a0;font-size:10px;text-transform:uppercase">Sub-period Sharpe (is it alive recently?)</div>
+          early ${spCell(sp.early)} · mid ${spCell(sp.mid)} · <b>recent ${spCell(sp.recent)}</b></div>
+        <div><div style="color:#8891a0;font-size:10px;text-transform:uppercase">Concentration</div>
+          full ${conc.fullSharpe} → drop best (${conc.bestMarket.symbol}) <span class="mono" style="color:${conc.dropBestSharpe>=conc.fullSharpe*0.6?'#22c55e':'#ef4444'}">${conc.dropBestSharpe}</span></div>
+      </div>
+      <div style="margin-top:12px"><div style="color:#8891a0;font-size:10px;text-transform:uppercase;margin-bottom:2px">Cost sensitivity (Sharpe by bp/turnover)</div>
+        <table style="width:auto"><thead><tr>${rob.costSensitivity.map(x=>`<th>${x.costBp}bp</th>`).join('')}</tr></thead><tbody><tr>${cost}</tr></tbody></table></div>
+      <div style="margin-top:8px;font-size:10.5px;color:#5b6270">Recent-third Sharpe is the one that matters — trend had a rough 2011–2019. If costs halve the edge or one market carries it, the headline number is fragile.</div>
+    </div>`;
 }
 function verdict(p) {
   if (p.sharpe >= 0.7) return `<b style="color:#22c55e">Strong for trend-following</b> — net Sharpe ${p.sharpe}. Still forward-test; backtests flatter. Watch the ${(p.longestDrawdownDays/252).toFixed(1)}y longest drawdown — that is what you'd have to sit through.`;
