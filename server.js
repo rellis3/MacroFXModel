@@ -41,6 +41,7 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
+import { runLiveMVE as _runLiveMVE, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -5053,6 +5054,41 @@ app.get('/api/vol-forecast', (_req, res) => {
 // History — last 5 computed sessions, newest first.
 app.get('/api/vol-forecast/history', (_req, res) => {
   res.json({ ok: true, forecasts: forecastState.history });
+});
+
+// ── Market Valuation Engine (MVE) — live fair value / mispricing ─────────────
+// Additive, isolated read-only endpoint. Sources real OANDA D1 + FRED macro via
+// the SAME fetchers the rest of the server uses, runs js/mve/* (fair-value
+// regression → ensemble → OU convergence → confidence) and returns the valuation.
+// Does NOT feed any live signal/bot — surfacing only, per MVE_RUN_GUIDE.md §6.
+// 1h in-memory cache to avoid hammering OANDA/FRED.
+const _mveCache = new Map();   // sym → { at, data }
+const _MVE_TTL = 60 * 60 * 1000;
+
+app.get('/api/mve', (_req, res) => {
+  res.json({ ok: true, supported: _MVE_SUPPORTED, usage: '/api/mve/:sym  (e.g. /api/mve/EURUSD, /api/mve/XAUUSD)' });
+});
+
+app.get('/api/mve/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  const useSSM = req.query.ssm === '1' || req.query.ssm === 'true';
+  const regime = typeof req.query.regime === 'string' ? req.query.regime : 'NEUTRAL';
+  const cacheKey = `${sym}|${useSSM}|${regime}`;
+  try {
+    const hit = _mveCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < _MVE_TTL && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const v = await _runLiveMVE({
+      sym,
+      deps: { fetchD1: _btFetchD1, fetchFred: fetchFredSeries, fredKey: process.env.FRED_KEY },
+      regime, useSSM,
+    });
+    if (v && v.ok) _mveCache.set(cacheKey, { at: Date.now(), data: v });
+    res.status(v && v.ok ? 200 : 502).json(v);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
 });
 
 // Force re-compute (admin / manual trigger).

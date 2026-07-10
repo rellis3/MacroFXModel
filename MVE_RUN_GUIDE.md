@@ -117,21 +117,45 @@ its bands must be **calibrated** (coverage ≈ nominal) before its mispricing z 
 believed. `deflatedSharpe(dailyReturns, trialSharpes)` discounts any backtest Sharpe
 for the number of configs tried.
 
-## 6. Wiring it to REAL data (next step, off by default)
+## 6. Live data — WIRED (read-only endpoint)
 
-Write a thin **adapter** (new file, e.g. `js/mve/liveAdapter.js`) that builds the
-`runMVE` context from existing feeds — nothing in the engine changes:
+The engine is now hooked to real data via **`js/mve/liveAdapter.js`** + a server
+endpoint. It sources real **OANDA D1** prices and **FRED** macro series through the
+*same* fetchers the rest of the server uses (`fetchD1`, `fetchFredSeries`) and runs the
+full pipeline. It is **surfacing-only** — it does not feed any live signal or bot.
 
-- **price / returns** → `S.ohlcData[sym]` (already loaded by the dashboard).
-- **factors** → FRED series you already fetch: real-rate differential, DXY, curve,
-  breakevens (see `js/compass.js` `compassCompute` for the exact spread construction —
-  the `regressionEmitter` is the multi-factor generalization of `compassDivergence`).
-- **regime** → your HMM / macro-regime classifier output.
-- **crowdPct** → COT spec percentile from `/api/cot-extremes`.
-- **extraEmitters** → wrap OI walls / max pain (`js/oi.js`) as `structure` anchors and a
-  yield model as `yield_fv` if you want them in the consensus.
+**Endpoint (on the deployed server, needs `OANDA_KEY` + `FRED_KEY`):**
 
-The adapter is the only place that touches live state; the engine stays pure and testable.
+```
+GET /api/mve            → { supported:[XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD] }
+GET /api/mve/EURUSD     → full valuation (fairValue, mispricing z, convergence, confidence, dataSource)
+GET /api/mve/XAUUSD?ssm=1&regime=RISK_OFF   → Kalman consensus, regime-tilted
+```
+
+Results are cached 1h in memory (`?fresh=1` to bypass). In the sandbox the endpoint
+returns a clean `{ok:false, error:"FRED_KEY not configured"}` — it only computes real
+values on Railway where the keys are set. The **demo page** (`mve.html`) has a
+"Live — OANDA + FRED" data-source toggle that calls this endpoint.
+
+**Factor design** (`FACTOR_SPEC` in `liveAdapter.js`), per `MARKET_VALUATION_ENGINE.md`
+Part 4:
+- **Gold** → US 10y **real yield** (DFII10) + broad **DXY** (DTWEXBGS) — the proven
+  `system-gold-macro` model; both external daily drivers.
+- **FX** → US-vs-foreign **rate differentials** (10y + 2y/short) + US **breakeven**
+  (T10YIE). **DXY is deliberately excluded for FX** — EUR is ~57% of DXY, so regressing
+  EUR/USD on DXY would be a near-tautological (circular) fair value. OLS learns the sign,
+  so differentials are passed raw (us − foreign).
+
+**Still not wired** (deliberately): the signal-score blend, entry scanner, AI summary
+(§7). The adapter is the only new code that touches live feeds; the engine stays pure.
+Add `crowdPct` (COT percentile) or `extraEmitters` (OI walls / yield model as extra
+anchors) to the `runMVE` ctx later to enrich the consensus.
+
+> **Honest caveat:** foreign long yields on FRED are *monthly* (`IRLTLT01*M156N`),
+> forward-filled onto trading days — so the FX rate-differential factor only steps
+> ~monthly. That's fine for a slow macro fair value (the honest horizon anyway) but
+> means the FX daily signal is coarser than gold's (whose drivers are daily). Noted as a
+> future refinement (daily foreign yields / swap curves).
 
 ## 7. Integrating into the dashboard (deliberate, still off)
 
@@ -160,8 +184,8 @@ your normal review, after the numbers justify it.
 | 4 — orchestrator, confidence engine, valuation card, opt-in adapter | ✅ built + tested |
 | 5 — Kalman state-space fusion | ✅ built + tested |
 | 6 — shared-factor cross-asset model (diagnostic) | ✅ built + tested |
-| Live data adapter (§6) | ⛔ not built — your next step |
-| Dashboard wiring (§7) | ⛔ intentionally off |
+| Live data adapter + `/api/mve/:sym` endpoint (§6) | ✅ built + wired (real OANDA/FRED, read-only) |
+| Dashboard wiring — signal score / scanner / AI (§7) | ⛔ intentionally off |
 | OOS proof on real feeds | ⛔ the gate before real capital |
 
 ## 9. What to remember

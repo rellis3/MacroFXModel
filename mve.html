@@ -43,6 +43,16 @@
   <div class="panel">
     <div class="row">
       <div>
+        <label>Data source</label>
+        <select id="src"><option value="synthetic">Synthetic (offline)</option><option value="live">Live — OANDA + FRED</option></select>
+      </div>
+      <div id="symWrap" style="display:none">
+        <label>Instrument</label>
+        <select id="sym"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>AUDUSD</option><option>XAUUSD</option></select>
+      </div>
+    </div>
+    <div class="row" id="synthControls">
+      <div>
         <label>Injected mispricing (σ): <span id="mLbl" class="val">+2.0</span></label>
         <input id="misp" type="range" min="-3" max="3" step="0.1" value="2">
       </div>
@@ -117,7 +127,26 @@ function draw(price, fv) {
   ctx.fillStyle='#22c55e'; ctx.font='10px monospace'; ctx.fillText('fair value '+fv.toFixed(5), 6, y(fv)-4);
 }
 
-function go() {
+async function go() {
+  const live = $('src').value === 'live';
+  $('symWrap').style.display = live ? '' : 'none';
+  $('synthControls').style.display = live ? 'none' : 'flex';
+  if (live) {
+    $('card').innerHTML = '<div class="panel">⏳ Fetching OANDA + FRED…</div>';
+    try {
+      const sym = $('sym').value;
+      const qs = `regime=${$('regime').value}&ssm=${$('method').value === 'ssm' ? 1 : 0}`;
+      const v = await (await fetch(`/api/mve/${sym}?${qs}`)).json();
+      $('card').innerHTML = valuationCard(v);
+      $('json').textContent = JSON.stringify(v, (k,val)=> k==='estimates'||k==='ou'||k==='ssm' ? undefined : val, 2);
+      const c = $('chart').getContext('2d'); c.clearRect(0,0,600,120);
+      c.fillStyle='#8891a0'; c.font='11px system-ui';
+      c.fillText(v.ok ? `Live: market ${v.marketPrice} vs fair value ${v.fairValue?.toFixed(5)} (${v.dataSource?.usableRows} rows, asOf ${v.dataSource?.asOf})` : `Error: ${v.error}`, 10, 60);
+    } catch(e) {
+      $('card').innerHTML = `<div class="panel">Live fetch failed: ${e.message}. (Only works on the deployed server with OANDA_KEY + FRED_KEY.)</div>`;
+    }
+    return;
+  }
   const { price, factors, returns } = synth();
   const v = runMVE({
     instrument: 'EUR/USD (synthetic)', price, factors, returns,
@@ -134,6 +163,7 @@ $('kappa').oninput = e => $('kLbl').textContent = (+e.target.value).toFixed(2);
 $('run').onclick   = go;
 $('seed').onclick  = () => { seed = Math.floor(Date.now() % 100000); go(); };
 $('regime').onchange = go; $('method').onchange = go; $('misp').onchange = go;
+$('src').onchange = go; $('sym').onchange = go;
 go();
 </script>
 </body>
