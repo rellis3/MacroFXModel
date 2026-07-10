@@ -214,6 +214,12 @@ console.log('\n── confidence engine ──');
   ok('scaleAgreementByIndependence keeps agreement at effN≥3', near(scaleAgreementByIndependence(0.9, 3), 0.9));
   ok('baseRateReality low when model 0.96 vs empirical 0', baseRateReality(0.96, { baseRate: 0, events: 10 }) < 0.1);
   ok('baseRateReality null when too few events', baseRateReality(0.96, { baseRate: 0, events: 3 }) === null);
+  // Regression: a saturated Bucket-B weight must NOT cancel a base-rate reality penalty.
+  // (Live EURUSD read 67% confidence while the card said "not trustworthy" — the bug.)
+  const contradicted = confidenceEngine({ baseRateReality: 0.036, agreement: 0.591, fit: 0.646, reversion: 0.121, volWeight: 1.0 }).confidence;
+  ok('base-rate contradiction ⇒ LOW confidence despite a maxed vol weight', contradicted < 0.20, `=${contradicted.toFixed(3)}`);
+  const cc = confidenceEngine({ baseRateReality: 0.036, volWeight: 1.0 });
+  ok('no single input contributes more than ~3 logit (anti-saturation)', Object.values(cc.contributions).every(c => Math.abs(c.contribution) <= 5.5));
 }
 
 console.log('\n── end-to-end runMVE ──');

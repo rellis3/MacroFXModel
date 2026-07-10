@@ -42,13 +42,19 @@ export function confidenceEngine(inp = {}) {
     posWeight:       0.4,
   };
   const INTERCEPT = -0.7;   // skeptical prior: empty evidence ⇒ σ(-0.7) ≈ 0.33
+  // Global clamp so NO single input can saturate and dominate the logit. Evidence at
+  // 0/1 produces a ±9 log-odds swing; a lone noisy signal (e.g. a maxed "vol is calm")
+  // must not be able to cancel a legitimate reality-check penalty. Cap each input's
+  // pull into a sane band before weighting.
+  const EV_LO = 0.06, EV_HI = 0.94;
   let logOdds = INTERCEPT;
   const contributions = { _prior: { evidence: null, contribution: INTERCEPT } };
   for (const key of Object.keys(W)) {
     if (inp[key] == null) continue;
     let e = clamp01(inp[key]);
     if (key === 'fit') e = Math.min(0.85, e);   // cap: don't over-credit a levels r²
-    const c = W[key] * Math.log(Math.max(1e-4, e) / Math.max(1e-4, 1 - e));
+    e = Math.max(EV_LO, Math.min(EV_HI, e));    // global anti-saturation clamp
+    const c = W[key] * Math.log(e / (1 - e));
     logOdds += c;
     contributions[key] = { evidence: +e.toFixed(3), contribution: +c.toFixed(3) };
   }
