@@ -43,6 +43,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
+import { backtestBasket as _trendBacktestBasket, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -5154,6 +5155,50 @@ app.get('/api/mve-validate-all', async (_req, res) => {
     // Honest pooled read — requires magnitude AND >50% hit rate, states chance baseline.
     const consistency = _mvePoolConsistency(out);
     res.json({ ok: true, instruments: out, consistency });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Diversified trend-following backtest ────────────────────────────────────
+// The one replicated systematic edge (time-series momentum). Additive, read-only.
+// Fetches OANDA D1 for a broad basket, runs js/trendFollowEngine.js, returns honest
+// stats (Sharpe, maxDD, longest drawdown, positive years, deflated Sharpe). Does NOT
+// trade or feed any bot. 6h cache. Diversification across markets IS the edge, so the
+// default universe is deliberately broad (FX majors + gold + indices + energy).
+const _TREND_UNIVERSE = [
+  'EUR_USD', 'GBP_USD', 'USD_JPY', 'AUD_USD', 'USD_CAD', 'USD_CHF', 'NZD_USD',
+  'XAU_USD', 'XAG_USD',
+  'NAS100_USD', 'SPX500_USD', 'US30_USD', 'DE30_USD', 'UK100_GBP', 'JP225_USD',
+  'BCO_USD', 'WTICO_USD', 'NATGAS_USD', 'XPT_USD',
+];
+const _trendBtCache = new Map();
+
+app.get('/api/trend/backtest', async (req, res) => {
+  const costBp = req.query.costBp != null ? Number(req.query.costBp) : _TREND_DEFAULTS.costBp;
+  const longShort = req.query.longShort !== '0';
+  const volTargetPort = req.query.volTargetPort != null ? Number(req.query.volTargetPort) : _TREND_DEFAULTS.volTargetPort;
+  const key = `${costBp}|${longShort}|${volTargetPort}`;
+  try {
+    const hit = _trendBtCache.get(key);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    if (!process.env.OANDA_KEY) return res.status(502).json({ ok: false, error: 'OANDA_KEY not configured' });
+    const markets = [];
+    const skipped = [];
+    for (const sym of _TREND_UNIVERSE) {
+      try {
+        const bars = await _btFetchD1(sym, 5000);
+        if (bars && bars.length >= 300) markets.push({ symbol: sym, closes: bars.map(b => b.close) });
+        else skipped.push(`${sym} (${bars?.length ?? 0} bars)`);
+      } catch (e) { skipped.push(`${sym} (${e.message})`); }
+    }
+    if (markets.length < 3) return res.status(502).json({ ok: false, error: `only ${markets.length} markets fetched`, skipped });
+    const result = _trendBacktestBasket(markets, { costBp, longShort, volTargetPort });
+    result.universe = { requested: _TREND_UNIVERSE.length, used: markets.map(m => m.symbol), skipped };
+    if (result.ok) _trendBtCache.set(key, { at: Date.now(), data: result });
+    res.status(result.ok ? 200 : 502).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

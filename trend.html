@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<!--
+  trend.html — diversified trend-following backtest viewer. Calls /api/trend/backtest
+  (real OANDA D1, deployed server only). Read-only research — trades nothing, feeds
+  no bot. The edge here is the one with real replicated evidence (time-series
+  momentum), but it is modest and slow: expect ~0.4–0.7 Sharpe after costs with long
+  drawdowns, not a money printer.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diversified Trend-Following — Backtest</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0b0d12; color:#e6e8ec; font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#8891a0; font-size:12px; margin-bottom:20px; }
+  .panel { background:#12151c; border:1px solid #2a2f3a; border-radius:10px; padding:16px; margin-bottom:16px; }
+  label { font-size:12px; color:#9aa; margin-right:6px; }
+  select, input { background:#1a1e26; color:#e6e8ec; border:1px solid #2a2f3a; border-radius:6px; padding:6px; }
+  button { background:#1f6feb; color:#fff; border:0; border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin-top:8px; }
+  th { color:#8891a0; text-align:left; font-weight:600; }
+  td, th { padding:4px 8px; border-bottom:1px solid #1c2230; }
+  .kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+  .kpi div { background:#0d1017; border:1px solid #22262f; border-radius:8px; padding:10px 12px; }
+  .kpi .v { font-size:20px; font-weight:700; font-family:monospace; }
+  .kpi .l { font-size:10px; color:#8891a0; text-transform:uppercase; letter-spacing:.05em; }
+  .mono { font-family:monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📈 Diversified Trend-Following — Backtest</h1>
+  <div class="sub">Time-series momentum across a broad basket (FX + gold + indices + energy), inverse-vol sized, vol-targeted. Real OANDA D1, ~20y. <b>Read-only — trades nothing.</b> This is the one edge with replicated evidence, but it is modest &amp; slow: expect ~0.4–0.7 Sharpe after costs with multi-year drawdowns, not a money printer.</div>
+
+  <div class="panel">
+    <label>Cost (bp/turnover)</label><input id="cost" type="number" value="2" min="0" max="50" style="width:70px">
+    <label style="margin-left:12px">Direction</label>
+    <select id="dir"><option value="1">Long/Short</option><option value="0">Long/Flat</option></select>
+    <label style="margin-left:12px">Portfolio vol target</label>
+    <select id="vt"><option value="0.10">10%</option><option value="0.15">15%</option><option value="0.20">20%</option></select>
+    <button id="run" style="margin-left:12px">Run backtest</button>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+async function run() {
+  $('out').innerHTML = '<div class="panel">⏳ Fetching ~20y D1 for the basket &amp; running… (first run can take a minute)</div>';
+  try {
+    const qs = `costBp=${$('cost').value}&longShort=${$('dir').value}&volTargetPort=${$('vt').value}`;
+    const r = await (await fetch(`/api/trend/backtest?${qs}`)).json();
+    if (!r.ok) { $('out').innerHTML = `<div class="panel">Error: ${r.error} (deployed server only)${r.skipped ? '<br><span style="color:#8891a0">skipped: ' + r.skipped.join(', ') + '</span>' : ''}</div>`; return; }
+    const p = r.portfolio;
+    const kpi = (l, v) => `<div><div class="l">${l}</div><div class="v">${v}</div></div>`;
+    const mrows = r.markets.sort((a,b)=>b.sharpe-a.sharpe).map(m =>
+      `<tr><td>${m.symbol}</td><td class="mono" style="color:${m.sharpe>0?'#22c55e':'#ef4444'}">${m.sharpe}</td><td class="mono">${m.annReturn}%</td><td class="mono">${m.annVol}%</td><td class="mono">${m.maxDD}%</td><td class="mono">${m.avgTurnoverPerYear}</td></tr>`).join('');
+    $('out').innerHTML = `
+      <div class="panel">
+        <div style="font-weight:700;margin-bottom:10px">Portfolio (${r.markets.length} markets, ${r.bars} bars, ~${(r.bars/252).toFixed(0)}y)</div>
+        <div class="kpi">
+          ${kpi('Sharpe (net)', p.sharpe)}
+          ${kpi('Ann. return', p.annReturn + '%')}
+          ${kpi('Ann. vol', p.annVol + '%')}
+          ${kpi('Max drawdown', p.maxDD + '%')}
+          ${kpi('Calmar', p.calmar)}
+          ${kpi('Longest DD', (p.longestDrawdownDays/252).toFixed(1) + 'y')}
+          ${kpi('Positive years', `${p.positiveYears.positive}/${p.positiveYears.years}`)}
+          ${kpi('Deflated Sharpe', p.deflatedSharpe ?? '—')}
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#cdd3dc">
+          ${verdict(p)}
+        </div>
+      </div>
+      <div class="panel">
+        <div style="font-weight:700;margin-bottom:4px">Per market (net of costs)</div>
+        <table><thead><tr><th>Market</th><th>Sharpe</th><th>Ann.Ret</th><th>Ann.Vol</th><th>MaxDD</th><th>Turnover/yr</th></tr></thead><tbody>${mrows}</tbody></table>
+        <div style="margin-top:8px;font-size:10.5px;color:#5b6270">Diversification is the point: the portfolio Sharpe should beat most single markets. Deflated Sharpe = P(true Sharpe&gt;0) after adjusting for markets explored. Ex-post backtest — forward-test before trusting.</div>
+      </div>`;
+  } catch(e) { $('out').innerHTML = `<div class="panel">Fetch failed: ${e.message}</div>`; }
+}
+function verdict(p) {
+  if (p.sharpe >= 0.7) return `<b style="color:#22c55e">Strong for trend-following</b> — net Sharpe ${p.sharpe}. Still forward-test; backtests flatter. Watch the ${(p.longestDrawdownDays/252).toFixed(1)}y longest drawdown — that is what you'd have to sit through.`;
+  if (p.sharpe >= 0.4) return `<b style="color:#22c55e">In the expected band</b> (~0.4–0.7) — a real but modest edge, net Sharpe ${p.sharpe}. This is what honest diversified trend-following looks like. Forward-test before sizing.`;
+  if (p.sharpe >= 0.2) return `<b style="color:#f59e0b">Weak</b> — net Sharpe ${p.sharpe}. Below the historical trend-following band; costs or the recent choppy regime may be eating it. Not compelling on its own.`;
+  return `<b style="color:#ef4444">No edge here</b> — net Sharpe ${p.sharpe}. Either costs dominate or this basket/period didn't trend. Honest null.`;
+}
+$('run').onclick = run;
+run();
+</script>
+</body>
+</html>
