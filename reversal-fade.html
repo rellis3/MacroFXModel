@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reversal-Fade Test — does fading at k×median beat the median line?</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:18px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:960px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  input { width:52px; background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:2px 5px; font:11px 'DM Mono',monospace; text-align:right }
+  a { color:#58a6ff } .win { background:rgba(63,185,80,.12) }
+</style>
+</head>
+<body>
+  <h1>Reversal-Fade Test <span class="muted" style="font-size:12px">— does fading at k×median beat the median line, after cost, OOS?</span></h1>
+  <div class="sub">
+    The <a href="reversal-study.html">reversal-point diagnostic</a> showed the median line is mis-placed as a reversal locus (FX turns before it, indices/gold blow through). This is the <b>falsification test</b>: it re-places the dynamic H-L fade line at <b>k × the trailing median range</b> (projected from the running intraday extreme, so it moves intrabar) and A/Bs it against <b>k = 1</b> (the median line). <b>k is per-pair, self-calibrated</b> — estimated from that pair's own <i>dominant</i> reversals on the <b>in-sample half only</b>, then applied unchanged out-of-sample. Two exits: a <b>confirmation-entry fade</b> (enter on the close back through the line, stop beyond the overshoot, +30 target — dodges the blow-through tail) and a <b>blind scalp</b> (stop15/tgt30). Round-trip cost by type is subtracted from every trade. <span class="muted">The verdict is the <b>OOS</b> row; a win = higher OOS net Sharpe than k=1 with ≥30 OOS trades. Expected prior: still null on FX — the overshoot tail is hard to beat.</span>
+  </div>
+  <button onclick="run()">▶ Run</button>
+  <label class="muted" style="margin-left:10px">revFrac <input id="rf" value="0.25"></label>
+  <label class="muted" style="margin-left:8px">isFrac <input id="isf" value="0.5"></label>
+  <label class="muted" style="margin-left:8px">trailWin <input id="tw" value="252"></label>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=3) => v==null?'—':(+v).toFixed(d);
+let _timer = null;
+
+async function run(){
+  clearInterval(_timer);
+  el('status').textContent = 'Starting…'; el('out').innerHTML='';
+  const body = { revFrac:parseFloat(el('rf').value)||0.25, isFrac:parseFloat(el('isf').value)||0.5, trailWin:parseInt(el('tw').value)||252 };
+  let j; try { j = await (await fetch('/api/reversal-fade/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const jobId = j.jobId;
+  _timer = setInterval(async ()=>{
+    let s; try { s = await (await fetch('/api/reversal-fade/status/'+jobId)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent = 'Running… '+(s.elapsed||0)+'s (loading M5 + walking each pair)'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; if(s.log) el('out').innerHTML='<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'; return; }
+    el('status').textContent = `${s.pairs.length} pairs · isFrac ${s.isFrac} · trailWin ${s.trailWin}`;
+    render(s.perPair, s.log);
+  }, 2000);
+}
+
+// One exit's A/B table (OOS is the verdict; IS shown muted for reference).
+function exitTable(pp, exit, title){
+  const rows = Object.entries(pp).sort((a,b)=>(b[1].test[exit].oos.sharpe||-9)-(a[1].test[exit].oos.sharpe||-9));
+  let h = `<h2>${title}</h2><div class="card"><table><tr>
+    <th>Pair</th><th>k</th>
+    <th>Base OOS Sharpe</th><th>Test OOS Sharpe</th><th>Δ Sharpe</th>
+    <th>Test trades</th><th>Test win%</th><th>Test PF</th><th>Test exp (pips)</th>
+    <th class="muted">Base IS Sh</th><th class="muted">Test IS Sh</th></tr>`;
+  for(const [name,r] of rows){
+    const b=r.base[exit], t=r.test[exit];
+    const bo=b.oos, to=t.oos, bi=b.is, ti=t.is;
+    const d = (to.sharpe!=null&&bo.sharpe!=null)? to.sharpe-bo.sharpe : null;
+    const enough = to.trades>=30;
+    const win = enough && d>0 && to.sharpe>0;
+    h += `<tr class="${win?'win':''}"><td><strong>${name}</strong> <span class="muted">${r.type}</span></td>
+      <td class="${r.kIS<0.9?'amber':r.kIS>1.1?'pos':''}">${fmt(r.kIS,2)}</td>
+      <td>${fmt(bo.sharpe,2)}</td><td class="${to.sharpe>0?'pos':'neg'}">${fmt(to.sharpe,2)}</td>
+      <td class="${d>0?'pos':'neg'}">${d==null?'—':(d>0?'+':'')+fmt(d,2)}</td>
+      <td class="${enough?'':'amber'}">${to.trades}</td><td>${fmt(to.winRate,1)}</td><td>${fmt(to.profitFactor,2)}</td>
+      <td class="${to.expectancy>0?'pos':'neg'}">${fmt(to.expectancy,2)}</td>
+      <td class="muted">${fmt(bi.sharpe,2)}</td><td class="muted">${fmt(ti.sharpe,2)}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">Sorted by Test OOS Sharpe. <b>k</b> = the pair's own median dominant-reversal ÷ median range (from IS). <span class="amber">amber trade count</span> = &lt;30 OOS trades (verdict not trustworthy). Green row = test beats base OOS Sharpe with ≥30 trades and a positive Sharpe — the only cell that would count as a survivor. IS columns are in-sample (where k was fit) — reference only.</div></div>`;
+  return h;
+}
+
+function render(pp, log){
+  let h = exitTable(pp, 'confirm', 'Confirmation-entry fade (primary — dodges the blow-through tail)');
+  h += exitTable(pp, 'scalp', 'Blind scalp fade (stop15 / tgt30 — for contrast)');
+  if(log) h += `<div class="card muted" style="font-size:10px">${log.join('<br>')}</div>`;
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>
