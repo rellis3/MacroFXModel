@@ -107,6 +107,28 @@ reversion — otherwise price flies through the more-responsive band and there i
 case to change the engine's estimator.** Folded into `costSurvival.byLine.dynE94 /
 dynE90`; visible in the cost-line picker on `cross-pair-research.html`.
 
+**RESULT (2026-07-09): NULL.** No σ config clears ×2 on the dynamic median;
+EWMA λ0.94 is a hair better than YZ30 (median FX net −0.08 → +0.05, still 0 at ×2),
+λ0.90 is worse (whipsaw). Responsiveness is real but sub-cost. **Keep YZ30.**
+
+### Scalp exits — is the median a tight-stop / modest-target scalp? (NULL)
+
+The median failed hold-to-close and the ±20 symmetric bracket — both wrong exits
+for a scalp. `touches.scalpExit` (+ `costSurvival.scalpExit`) tests it as a **fade
+with a tight stop just beyond the level and a modest target** (configs
+stop10/tgt20, stop15/tgt30, stop20/tgt40, stop15/tgt15), first-passage intrabar,
+on full history. **Pre-registered:** FX net/touch > 0 on ≥3 pairs = a real scalp.
+
+**RESULT (2026-07-10): NULL, and it refuted the exhaustion mechanism.** Every
+config on every level (median / dynamic median / 75th) has a **negative** median
+FX net after cost (best: dynamic-75th stop15/tgt15 at −0.58). The **asymmetric
+tight-stop/big-target configs — the actual exhaustion bet — were the WORST**
+(−1.2 to −1.4), because post-touch **MFE ≈ 38 / MAE ≈ 37 pips**: price runs ~36
+pips PAST the level before reverting, so a tight stop is tagged by the *overshoot*
+right before the turn. A stop wide enough to survive the overshoot re-exposes the
+short-gamma tail. **The median is not a costed edge on any exit tested.** See
+`VOL_LEVEL_LESSONS.md` for the capstone + bot implications.
+
 ## The tail filter (conditional fade)
 
 The short-gamma tail lives on the **7.8% of trend-expansion days** (195%
