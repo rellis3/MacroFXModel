@@ -173,7 +173,7 @@ window.forceRefresh = async function() {
     const k = localStorage.key(i);
     if (!k) continue;
     if (k === 'fred' || k.startsWith('ohlc_') || k.startsWith('ohlc5m_') ||
-        k.startsWith('ohlc30m_') || k.startsWith('quote_') ||
+        k.startsWith('ohlc15m_') || k.startsWith('ohlc30m_') || k.startsWith('quote_') ||
         k.startsWith('ai_') || k.startsWith('compass_')) {
       keysToDrop.push(k);
     }
@@ -184,6 +184,7 @@ window.forceRefresh = async function() {
     'fred',
     `ohlc_${symKey}`,
     `ohlc5m_${symKey}_${sessionDay}`,
+    `ohlc15m_${symKey}_${sessionDay}`,
     `ohlc30m_${symKey}_${sessionDay}`,
     `quote_${symKey}`,
     `ai_${symKey}`,
@@ -194,6 +195,7 @@ window.forceRefresh = async function() {
   S.fredData          = null;
   S.ohlcData          = {};
   S.ohlc5m            = {};
+  S.ohlc15m           = {};
   S.ohlc30m           = {};
   S.asiaRangeData     = {};
   S.mondayRangeData   = {};
@@ -608,13 +610,15 @@ async function loadAll() {
     }
 
     // Pair-critical fetches gate the first render — cached values resolve instantly.
-    const [cfg, ohlcData, ohlc5mData, ohlc30mData, quote] =
+    const [cfg, ohlcData, ohlc5mData, ohlc15mData, ohlc30mData, quote] =
       await Promise.all([
         fetch('/api/config').then(r => r.json()).catch(() => ({})),
         S.ohlcData[sym] ? Promise.resolve(S.ohlcData[sym]) :
           loadCached(`ohlc_${symKey}`, () => fetchAPI(`/api/ohlc?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC),
         S.ohlc5m[sym] ? Promise.resolve(S.ohlc5m[sym]) :
           loadCached(`ohlc5m_${symKey}_${sessionDay}`, () => fetchAPI(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC5M),
+        S.ohlc15m[sym] ? Promise.resolve(S.ohlc15m[sym]) :
+          loadCached(`ohlc15m_${symKey}_${sessionDay}`, () => fetchAPI(`/api/oanda_ohlc15m?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC15M),
         S.ohlc30m[sym] ? Promise.resolve(S.ohlc30m[sym]) :
           loadCached(`ohlc30m_${symKey}_${sessionDay}`, () => fetchAPI(`/api/oanda_ohlc30m?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC30M),
         loadCached(`quote_${symKey}`, () => fetchAPI(`/api/quote?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.QUOTE),
@@ -632,6 +636,7 @@ async function loadAll() {
     // Apply pair OHLC results
     S.ohlcData[sym] = ohlcData;  updatePill('pillOhlc', 'ok');
     S.ohlc5m[sym]   = ohlc5mData; updatePill('pill5m', 'ok');
+    S.ohlc15m[sym]  = ohlc15mData;
     S.ohlc30m[sym]  = ohlc30mData; updatePill('pill30m', 'ok');
     updatePill('pillQuote', 'ok');
 
@@ -800,8 +805,26 @@ async function refreshQuote() {
       console.warn('5m anchor refresh skipped:', e.message);
     }
 
+    // 15m refresh — a new bar closes every 15 min; fetch when latest bar is >20 min old.
+    // Recalculates Monday range once per new bar, not every 5 min tick.
+    try {
+      const bars15 = S.ohlc15m[S.currentPair.symbol]?.values;
+      const latest15Ms = bars15 && bars15.length
+        ? new Date(bars15[0].datetime.replace(' ', 'T') + 'Z').getTime()
+        : 0;
+      if (Date.now() - latest15Ms > 20 * 60 * 1000) {
+        const fresh15 = await fetchAPI(`/api/oanda_ohlc15m?symbol=${encodeURIComponent(S.currentPair.symbol)}`);
+        if (fresh15 && fresh15.values && fresh15.values.length) {
+          S.ohlc15m[S.currentPair.symbol] = fresh15;
+          calculateMondayRanges(S.currentPair.symbol);
+        }
+      }
+    } catch (e) {
+      console.warn('15m refresh skipped:', e.message);
+    }
+
     // 30m refresh — a new bar closes every 30 min; fetch when latest bar is >35 min old.
-    // Recalculates Monday range and structural fibs once per new bar, not every 5 min tick.
+    // Recalculates structural fibs once per new bar, not every 5 min tick.
     try {
       const bars30 = S.ohlc30m[S.currentPair.symbol]?.values;
       const latest30Ms = bars30 && bars30.length
@@ -811,7 +834,6 @@ async function refreshQuote() {
         const fresh30 = await fetchAPI(`/api/oanda_ohlc30m?symbol=${encodeURIComponent(S.currentPair.symbol)}`);
         if (fresh30 && fresh30.values && fresh30.values.length) {
           S.ohlc30m[S.currentPair.symbol] = fresh30;
-          calculateMondayRanges(S.currentPair.symbol);
           calculateStructuralFibs(S.currentPair.symbol);
         }
       }
@@ -1189,6 +1211,13 @@ export async function loadPairDataForAnalysis(sym) {
       S.ohlc5m[sym] = await loadCached(`ohlc5m_${symKey}_${sessionDay}`,
         () => fetchAPI(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`),
         CACHE_DURATION.OHLC5M);
+    } catch(e) {}
+  }
+  if (!S.ohlc15m[sym]) {
+    try {
+      S.ohlc15m[sym] = await loadCached(`ohlc15m_${symKey}_${sessionDay}`,
+        () => fetchAPI(`/api/oanda_ohlc15m?symbol=${encodeURIComponent(sym)}`),
+        CACHE_DURATION.OHLC15M);
     } catch(e) {}
   }
   if (!S.ohlc30m[sym]) {

@@ -76,6 +76,12 @@ async function loadPairData(sym) {
         () => fetchAPI(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC5M);
     } catch (e) {}
   }
+  if (!S.ohlc15m[sym]) {
+    try {
+      S.ohlc15m[sym] = await loadCached(`ohlc15m_${symKeyStr}_${sessionDay}`,
+        () => fetchAPI(`/api/oanda_ohlc15m?symbol=${encodeURIComponent(sym)}`), CACHE_DURATION.OHLC15M);
+    } catch (e) {}
+  }
   if (!S.ohlc30m[sym]) {
     try {
       S.ohlc30m[sym] = await loadCached(`ohlc30m_${symKeyStr}_${sessionDay}`,

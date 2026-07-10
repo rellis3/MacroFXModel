@@ -104,6 +104,7 @@ async function loadData() {
     history,
     ohlcData,
     ohlc5mData,
+    ohlc15mData,
     ohlc30mData,
     liveQuote,
     cotData,
@@ -115,6 +116,7 @@ async function loadData() {
       d => Object.values(d || {}).some(arr => Array.isArray(arr) && arr.length > 0)),
     loadCached('gold_ohlc',       () => fetchAPI('/api/ohlc?symbol=XAU/USD'),           CACHE_DURATION.OHLC),
     loadCached('gold_ohlc5m',     () => fetchAPI('/api/oanda_ohlc5m?symbol=XAU/USD'),  CACHE_DURATION.OHLC5M),
+    loadCached('gold_ohlc15m',    () => fetchAPI('/api/oanda_ohlc15m?symbol=XAU/USD'), CACHE_DURATION.OHLC15M),
     loadCached('gold_ohlc30m',    () => fetchAPI('/api/oanda_ohlc30m?symbol=XAU/USD'), CACHE_DURATION.OHLC30M),
     loadCached('gold_quote',      () => fetchAPI('/api/quote?symbol=XAU/USD'),          CACHE_DURATION.QUOTE),
     // Use same key + TTL as main dashboard so shared localStorage is read first —
@@ -141,6 +143,7 @@ async function loadData() {
     history:    unwrap(history,    'FRED history',  null),
     ohlcData:   unwrap(ohlcData,   'OHLC daily',    null),
     ohlc5mData: unwrap(ohlc5mData, 'OHLC 5m',       null),
+    ohlc15mData:unwrap(ohlc15mData,'OHLC 15m',      null),
     ohlc30mData:unwrap(ohlc30mData,'OHLC 30m',      null),
     liveQuote:  unwrap(liveQuote,  'Live quote',    null),
     cotData:    unwrap(cotData,    'COT data',      null),
@@ -158,6 +161,7 @@ function setupState(data) {
 
   if (data.ohlcData)   S.ohlcData['XAU/USD']  = data.ohlcData;
   if (data.ohlc5mData) S.ohlc5m['XAU/USD']    = data.ohlc5mData;
+  if (data.ohlc15mData)S.ohlc15m['XAU/USD']   = data.ohlc15mData;
   if (data.ohlc30mData)S.ohlc30m['XAU/USD']   = data.ohlc30mData;
 
   // Compute session opens and daily opens before ranges (enhanceConfluences uses them)
@@ -179,7 +183,7 @@ function setupState(data) {
   if (data.ohlc5mData?.values?.length) {
     try { calculateAsiaRanges('XAU/USD');   } catch(e) { console.warn('[gold-app] Asia ranges:', e.message); }
   }
-  if (data.ohlc30mData?.values?.length) {
+  if (data.ohlc15mData?.values?.length) {
     try { calculateMondayRanges('XAU/USD'); } catch(e) { console.warn('[gold-app] Monday ranges:', e.message); }
   }
 }

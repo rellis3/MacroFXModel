@@ -61,7 +61,7 @@ export async function loadCached(key, fetchFn, maxAge, validate) {
 
 export function cleanupStaleSessionCaches() {
   const today = londonSessionDay();
-  const datedPattern = /^(ohlc5m|ohlc30m)_.+_(\d{4}-\d{2}-\d{2})$/;
+  const datedPattern = /^(ohlc5m|ohlc15m|ohlc30m)_.+_(\d{4}-\d{2}-\d{2})$/;
   const toDrop = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);

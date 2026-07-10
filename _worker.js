@@ -427,27 +427,33 @@ export default {
         return json({ values, meta: { symbol, source: 'oanda', interval: '1day' } });
       }
 
-      // -- /api/oanda_ohlc5m  &  /api/oanda_ohlc30m -----------
+      // -- /api/oanda_ohlc5m  &  /api/oanda_ohlc15m  &  /api/oanda_ohlc30m -----------
       // Oanda mid-price bars for Asia session + Monday range detection.
       // Replaces TwelveData 5m/30m — more accurate FX prices from a primary market maker.
+      // ohlc15m exists solely for the Monday-vs-previous-Monday body range (calculateMondayRanges) —
+      // that comparison is defined on 15m body high/low, not 30m. Other 30m consumers (ATR,
+      // structural fibs, range-bias) are unaffected and keep reading ohlc30m.
       // Env vars: OANDA_KEY (required), OANDA_ENV ('practice' | 'live', default 'live')
-      if (path === '/api/oanda_ohlc5m' || path === '/api/oanda_ohlc30m') {
+      const _OHLC_ROUTES = {
+        '/api/oanda_ohlc5m':  { granularity: 'M5',  count: 1500, ttlMs: 4 * 60 * 1000,  cacheTag: 'ohlc5m' },
+        '/api/oanda_ohlc15m': { granularity: 'M15', count: 1000, ttlMs: 12 * 60 * 1000, cacheTag: 'ohlc15m' },
+        '/api/oanda_ohlc30m': { granularity: 'M30', count: 700,  ttlMs: 22 * 60 * 1000, cacheTag: 'ohlc30m' },
+      };
+      if (_OHLC_ROUTES[path]) {
         if (!env.OANDA_KEY) return err('OANDA_KEY not configured — add it in Cloudflare Pages → Settings → Environment Variables', 503);
 
         const symbol = url.searchParams.get('symbol');
         if (!symbol) return err('symbol param required', 400);
 
         const instrument  = oandaInstrument(symbol);  // EUR/USD → EUR_USD; DE30_USD → DE30_EUR
-        const granularity = path === '/api/oanda_ohlc5m' ? 'M5' : 'M30';
-        const count       = path === '/api/oanda_ohlc5m' ? 1500 : 700;
+        const { granularity, count, ttlMs: cacheTtlMs, cacheTag } = _OHLC_ROUTES[path];
         const oandaBase   = env.OANDA_ENV === 'practice'
           ? 'https://api-fxpractice.oanda.com'
           : 'https://api-fxtrade.oanda.com';
 
-        // Server-side KV cache — M5: 4 min, M30: 22 min — prevents hammering OANDA on
-        // every dashboard load and eliminates timeouts for repeat requests.
-        const cacheKey    = `${granularity === 'M5' ? 'ohlc5m' : 'ohlc30m'}_srv_${instrument}`;
-        const cacheTtlMs  = granularity === 'M5' ? 4 * 60 * 1000 : 22 * 60 * 1000;
+        // Server-side KV cache — prevents hammering OANDA on every dashboard load
+        // and eliminates timeouts for repeat requests.
+        const cacheKey    = `${cacheTag}_srv_${instrument}`;
         if (env.FX_SCORES) {
           try {
             const cached = await env.FX_SCORES.get(cacheKey);

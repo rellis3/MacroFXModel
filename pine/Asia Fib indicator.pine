@@ -1,0 +1,1193 @@
+//@version=6
+indicator("Asia Session Fib Retracement", shorttitle="Asia Fib", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// Colors and settings
+simple_mode = input.string("All Levels", "Display Mode", options=["All Levels", "Strongest Levels", "Strong Levels"], 
+     tooltip="All Levels: Show all levels | Strongest Levels: Green lines only (tight confluence outside Asia range) | Strong Levels: Green + Orange lines only (all confluence outside Asia range)", group="General")
+timeframe_selection = input.string("5m", "Timeframe", options=["3m", "5m"], tooltip="Choose timeframe for session and swing calculations", group="General")
+
+// Asia Range Box Settings
+show_asia_range = input.bool(true, "Show Asia Range Box", group="Asia Range Box")
+max_previous_boxes = input.int(10, "Max Previous Boxes", minval=1, maxval=20, group="Asia Range Box")
+asia_fill_color = input.color(color.new(color.gray, 67), "Asia Range Fill Colour", group="Asia Range Box")
+asia_border_color = input.color(color.new(color.gray, 0), "Asia Range Border Colour", group="Asia Range Box")
+asia_border_width = input.int(1, "Asia Border Width", minval=1, maxval=5, group="Asia Range Box")
+
+// Asia High/Low Lines
+asia_high_low_color = input.color(color.new(color.blue, 34), "Current Asia High/Low Lines & Labels", group="Asia High/Low Lines")
+show_prev_asia_lines = input.bool(true, "Show Previous Asia High/Low Lines", group="Asia High/Low Lines")
+prev_asia_color = input.color(color.new(color.blue, 50), "Previous Asia Lines & Labels", group="Asia High/Low Lines")
+
+// Weekly Monday Settings
+show_monday_fibs = input.bool(true, "Show Monday Fibs", group="Monday Settings")
+show_monday_labels = input.bool(true, "Show Monday Fib Labels", group="Monday Settings")
+monday_high_low_color = input.color(color.new(color.purple, 34), "Current Monday High/Low Lines & Labels", group="Monday Settings")
+show_prev_monday_lines = input.bool(true, "Show Previous Monday High/Low Lines", group="Monday Settings")
+prev_monday_color = input.color(color.new(color.purple, 50), "Previous Monday Lines & Labels", group="Monday Settings")
+
+// All-Time High Box
+show_ath_line = input.bool(false, "Show All-Time High Line", group="All-Time High")
+ath_line_color = input.color(color.new(color.red, 50), "ATH Line Colour", group="All-Time High")
+ath_line_width = input.int(2, "ATH Line Width", minval=1, maxval=5, group="All-Time High")
+
+// ATR Settings
+show_atr_line = input.bool(false, "Show ATR Line", group="ATR")
+atr_timeframe = input.string("30m", "ATR Timeframe", options=["5m", "15m", "30m", "1H", "4H", "D", "W"], tooltip="Timeframe to calculate ATR from", group="ATR")
+atr_period = input.int(14, "ATR Period", minval=1, maxval=500, group="ATR")
+atr_multiplier = input.float(1.5, "ATR Multiplier", minval=0.5, maxval=10.0, step=0.5, tooltip="Multiply ATR by this value (1.5 default, 2.0 conservative, 1.0 tight)", group="ATR")
+atr_band_mode = input.string("Asymmetric", "ATR Band Mode", options=["Symmetric", "Asymmetric"], tooltip="Symmetric: Same distance above/below close | Asymmetric: Upper from high, lower from low", group="ATR")
+atr_position = input.string("Current Candle", "ATR Position", options=["Current Candle", "Asia Close", "Midnight"], tooltip="Where to draw ATR lines: Current Candle (real-time), Asia Close (06:00), or Midnight (00:00)", group="ATR")
+atr_draw_bars = input.int(5, "ATR Draw Bars", minval=0, maxval=100, tooltip="Number of bars to draw ATR line backwards from position (0 = labels only)", group="ATR")
+atr_upper_color = input.color(color.new(color.red, 50), "ATR Upper Line & Label Colour", group="ATR")
+atr_lower_color = input.color(color.new(color.teal, 50), "ATR Lower Line & Label Colour", group="ATR")
+atr_line_width = input.int(2, "ATR Line Width", minval=1, maxval=5, group="ATR")
+atr_label_text_color = input.color(color.black, "ATR Label Text Colour", group="ATR")
+
+// Fibonacci Level Settings
+show_key_levels = input.bool(true, "Show Key Fib Levels (No Confluence)", group="Fibonacci Levels")
+show_non_key_levels = input.bool(true, "Show Non-Key Fib Levels (No Confluence)", tooltip="Show lines for fib levels other than 0, 0.25, 0.5, 0.75, 1 that don't have confluence", group="Fibonacci Levels")
+key_level_color = input.color(color.new(color.gray, 67), "Key Level Colour", group="Fibonacci Levels")
+key_level_width = input.int(1, "Key Level Width", minval=1, maxval=5, group="Fibonacci Levels")
+key_level_style_input = input.string("Dashed", "Key Level Style", options=["Solid", "Dashed", "Dotted"], group="Fibonacci Levels")
+use_swing = input.bool(false, "Use Nearest Swing After Asia", tooltip="If enabled, uses the nearest swing high or low after Asia close (whichever comes first and breaks Asia range)", group="Fibonacci Levels")
+show_fib_value_labels = input.bool(true, "Show Fib Value Labels", group="Fibonacci Levels")
+fib_label_bg_color = input.color(color.new(color.white, 50), "Fib Label Background Colour", group="Fibonacci Levels")
+fib_label_text_color = input.color(color.black, "Fib Label Text Colour", group="Fibonacci Levels")
+
+// Confluence Settings
+auto_confluence = input.bool(true, "Auto Calculate Confluence Threshold", tooltip="Automatically adjusts threshold based on instrument (2 pips for forex, 200 for gold, etc)", group="Confluence")
+confluence_threshold = input.float(2.0, "Confluence Threshold (Pips)", minval=0.1, step=0.1, group="Confluence")
+confluence_price_selection = input.string("Lowest", "Confluence Price Selection", options=["Highest", "Lowest", "Midpoint"], tooltip="Which price to draw when confluence is found", group="Confluence")
+show_confluence_lines = input.bool(true, "Show Confluence Lines", group="Confluence")
+confluence_color = input.color(color.new(color.orange, 50), "Confluence Line Colour", group="Confluence")
+confluence_width = input.int(2, "Confluence Line Width", minval=1, maxval=5, group="Confluence")
+confluence_style_input = input.string("Solid", "Confluence Line Style", options=["Solid", "Dashed", "Dotted"], group="Confluence")
+show_tight_confluence_lines = input.bool(true, "Show Tight Confluence Lines", group="Confluence")
+tight_confluence_percentage = input.float(10.0, "Tight Confluence % Threshold", minval=1.0, maxval=100.0, step=1.0, tooltip="Percentage of main threshold for thicker lines", group="Confluence")
+tight_confluence_width = input.int(3, "Tight Confluence Line Width", minval=1, maxval=5, group="Confluence")
+tight_confluence_color = input.color(color.new(color.green, 20), "Tight Confluence Line Colour", group="Confluence")
+tight_confluence_style_input = input.string("Solid", "Tight Confluence Line Style", options=["Solid", "Dashed", "Dotted"], group="Confluence")
+use_separate_monday_colors = input.bool(true, "Use Separate Monday Confluence Colours", tooltip="Colour Monday-vs-previous-Monday confluence lines differently from Asia-vs-previous-Asia confluence lines, so weekly and daily confluence are distinguishable at a glance", group="Confluence")
+monday_confluence_color = input.color(color.new(color.purple, 50), "Monday Confluence Colour", group="Confluence")
+monday_tight_confluence_color = input.color(color.new(color.fuchsia, 20), "Monday Tight Confluence Colour", group="Confluence")
+
+// Auto-calculate confluence threshold based on instrument.
+// Pip/point counts mirror the live dashboard's per-instrument thresholds
+// (js/utils.js getConfluenceThreshold) — keep both in sync if either changes.
+calculated_threshold = confluence_threshold
+if auto_confluence
+    ticker_lower = str.lower(syminfo.ticker)
+    if str.contains(ticker_lower, "xau") or str.contains(ticker_lower, "gold")
+        calculated_threshold := 200.0
+    else if str.contains(ticker_lower, "nas100") or str.contains(ticker_lower, "ustec") or str.contains(ticker_lower, "ndx")
+        calculated_threshold := 100.0
+    else if str.contains(ticker_lower, "spx500") or str.contains(ticker_lower, "us500") or str.contains(ticker_lower, "sp500") or str.contains(ticker_lower, "gspc")
+        calculated_threshold := 25.0
+    else if str.contains(ticker_lower, "de30") or str.contains(ticker_lower, "dax") or str.contains(ticker_lower, "ger40") or str.contains(ticker_lower, "gdaxi")
+        calculated_threshold := 80.0
+    else if str.contains(ticker_lower, "uk100") or str.contains(ticker_lower, "ftse")
+        calculated_threshold := 40.0
+    else if str.contains(ticker_lower, "us30") or str.contains(ticker_lower, "dji") or str.contains(ticker_lower, "wallst") or str.contains(ticker_lower, "dow30")
+        calculated_threshold := 60.0
+    else if str.contains(ticker_lower, "us2000") or str.contains(ticker_lower, "rut") or str.contains(ticker_lower, "russell")
+        calculated_threshold := 15.0
+    else
+        calculated_threshold := 2.0
+
+// Convert style string to line style
+confluence_style = confluence_style_input == "Solid" ? line.style_solid : confluence_style_input == "Dotted" ? line.style_dotted : line.style_dashed
+tight_confluence_style = tight_confluence_style_input == "Solid" ? line.style_solid : tight_confluence_style_input == "Dotted" ? line.style_dotted : line.style_dashed
+key_level_style = key_level_style_input == "Solid" ? line.style_solid : key_level_style_input == "Dotted" ? line.style_dotted : line.style_dashed
+
+// Fib levels - defined via text input (one level per line)
+fib_levels_input = input.text_area("-9.5\n-9\n-8.5\n-8\n-7.5\n-7\n-6.5\n-6\n-5.5\n-5\n-4.5\n-4\n-3.5\n-3\n-2.5\n-2\n-1.5\n-1\n-0.5\n-0.25\n0\n0.25\n0.5\n0.75\n1\n1.25\n1.5\n2\n2.5\n3\n3.5\n4\n4.5\n5\n5.5\n6\n6.5\n7\n7.5\n8\n8.5\n9\n9.5\n10\n10.5", "Fib Levels (one per line)", group="Fib Levels", tooltip="Add, remove, or modify fib levels. One number per line.")
+
+// Parse fib levels from text input
+parse_fib_levels(input_str) =>
+    var array<float> levels = array.new<float>()
+    array.clear(levels)
+    
+    lines = str.split(input_str, "\n")
+    for line in lines
+        trimmed = str.replace_all(line, " ", "")
+        if str.length(trimmed) > 0
+            level_value = str.tonumber(trimmed)
+            if not na(level_value)
+                array.push(levels, level_value)
+    levels
+
+fib_levels = parse_fib_levels(fib_levels_input)
+
+// All levels are enabled (no exclusion list)
+fib_enabled = array.new<bool>()
+for i = 0 to array.size(fib_levels) - 1
+    array.push(fib_enabled, true)
+
+// Calculate minimum gap between fib levels to cap confluence threshold
+var float min_fib_gap = 1000000.0  // Start with large number
+for i = 1 to array.size(fib_levels) - 1
+    gap = math.abs(array.get(fib_levels, i) - array.get(fib_levels, i - 1))
+    min_fib_gap := math.min(min_fib_gap, gap)
+
+max_allowed_threshold_ratio = 0.5
+
+// Function to check if time is in Asia session
+isAsiaSession(t) =>
+    hour_utc1 = hour(t, "Europe/London")
+    hour_utc1 >= 0 and hour_utc1 < 6
+
+// Variables to track sessions
+var float asia_high = na
+var float asia_low = na
+var int asia_start = na
+var int asia_end = na
+var bool in_session = false
+var float swing_price = na
+var int swing_time = na
+var int bars_after_asia = 0
+var array<float> post_asia_highs = array.new<float>()
+var array<float> post_asia_lows = array.new<float>()
+var array<int> post_asia_times = array.new<int>()
+var bool swing_found = false
+var bool session_reset_done = false
+var bool swing_is_high = false
+var float prev_body_high = na
+var float prev_body_low = na
+
+// Swing before Asia variables
+
+var float asia_actual_high = na
+var float asia_actual_low = na
+
+var array<float> historical_highs = array.new<float>()
+var array<float> historical_lows = array.new<float>()
+var array<int> historical_starts = array.new<int>()
+var array<int> historical_ends = array.new<int>()
+
+var float prev_high = na
+var float prev_low = na
+var int prev_start = na
+var int prev_end = na
+
+var float prev_actual_high = na
+var float prev_actual_low = na
+
+// Monday tracking variables
+var float curr_monday_open = na
+var float curr_monday_close = na
+var float curr_monday_high = na
+var float curr_monday_low = na
+var int curr_monday_start = na
+var float prev_monday_open = na
+var float prev_monday_close = na
+var float prev_monday_high = na
+var float prev_monday_low = na
+var int prev_monday_start = na
+
+// ATH tracking - no var needed, draws fresh on last bar
+
+// Get timeframe data
+selected_tf = timeframe_selection == "3m" ? "3" : "5"
+bh_tf = request.security(syminfo.tickerid, selected_tf, math.max(open, close), lookahead=barmerge.lookahead_off)
+bl_tf = request.security(syminfo.tickerid, selected_tf, math.min(open, close), lookahead=barmerge.lookahead_off)
+t_tf = request.security(syminfo.tickerid, selected_tf, time, lookahead=barmerge.lookahead_off)
+high_tf = request.security(syminfo.tickerid, selected_tf, high, lookahead=barmerge.lookahead_off)
+low_tf = request.security(syminfo.tickerid, selected_tf, low, lookahead=barmerge.lookahead_off)
+
+is_asia = isAsiaSession(t_tf)
+
+// Function to get true all-time high
+get_all_time_high() =>
+    var float ath = na
+    var int ath_time = na
+    
+    if na(ath)
+        ath := high
+        ath_time := time
+    else if high > ath
+        ath := high
+        ath_time := time
+    
+    [ath, ath_time]
+
+// Calculate all-time high using daily data with function
+[all_time_high, ath_dt] = request.security(syminfo.tickerid, "D", get_all_time_high(), lookahead=barmerge.lookahead_off)
+
+// Plot ATH with display.none so it doesn't affect chart scale
+plot(all_time_high, title="ATH (No Scale)", color=color.new(color.red, 100), display=display.none)
+
+// Calculate ATR from selected timeframe
+// Convert user-friendly timeframe format to Pine Script format
+atr_tf_converted = atr_timeframe == "5m" ? "5" :
+                   atr_timeframe == "15m" ? "15" :
+                   atr_timeframe == "30m" ? "30" :
+                   atr_timeframe == "1H" ? "60" :
+                   atr_timeframe == "4H" ? "240" :
+                   atr_timeframe == "D" ? "D" :
+                   atr_timeframe == "W" ? "W" : "30"
+
+atr_value = request.security(syminfo.tickerid, atr_tf_converted, ta.atr(atr_period), lookahead=barmerge.lookahead_off)
+
+// Plot ATR with display.none so it doesn't affect chart scale
+plot(atr_value, title="ATR (No Scale)", color=color.new(color.orange, 100), display=display.none)
+
+// Draw ATR bands - continuous historical levels using plot
+// Fetch ATR and OHLC from selected timeframe
+[atr_htf, high_htf, low_htf, close_htf] = request.security(
+    syminfo.tickerid,
+    atr_tf_converted,
+    [ta.atr(atr_period), high, low, close],
+    lookahead=barmerge.lookahead_off,
+    gaps=barmerge.gaps_off)
+
+// Apply multiplier
+atr_dist_htf = atr_htf * atr_multiplier
+
+// Calculate ATR levels based on band mode
+float atr_upper_htf = na
+float atr_lower_htf = na
+
+if atr_band_mode == "Symmetric"
+    // Symmetric: same distance above/below close
+    atr_upper_htf := close_htf + atr_dist_htf
+    atr_lower_htf := close_htf - atr_dist_htf
+else
+    // Asymmetric: upper from high, lower from low
+    atr_upper_htf := high_htf + atr_dist_htf
+    atr_lower_htf := low_htf - atr_dist_htf
+
+// Calculate how many current timeframe bars are in one ATR timeframe bar
+atr_tf_seconds = atr_tf_converted == "5" ? 300 :
+                 atr_tf_converted == "15" ? 900 :
+                 atr_tf_converted == "30" ? 1800 :
+                 atr_tf_converted == "60" ? 3600 :
+                 atr_tf_converted == "240" ? 14400 :
+                 atr_tf_converted == "D" ? 86400 :
+                 atr_tf_converted == "W" ? 604800 : 1800
+
+current_tf_seconds = timeframe.in_seconds()
+bars_per_atr_bar = atr_tf_seconds / current_tf_seconds
+
+// Calculate how many current timeframe bars to look back
+lookback_current_tf_bars = math.round(atr_draw_bars * bars_per_atr_bar)
+
+// Only show ATR bands for last N bars (or hide if draw_bars = 0)
+show_atr_band = atr_draw_bars > 0 and bar_index >= (last_bar_index - lookback_current_tf_bars)
+
+// Plot ATR bands (will show historical levels for last N bars only, or hidden if draw_bars = 0)
+plot(show_atr_line and show_atr_band ? atr_upper_htf : na, title="ATR Upper Band", color=atr_upper_color, linewidth=atr_line_width, style=plot.style_line)
+plot(show_atr_line and show_atr_band ? atr_lower_htf : na, title="ATR Lower Band", color=atr_lower_color, linewidth=atr_line_width, style=plot.style_line)
+
+// Track Asia session
+if is_asia and not in_session
+    prev_high := asia_high
+    prev_low := asia_low
+    prev_start := asia_start
+    prev_end := asia_end
+    prev_actual_high := asia_actual_high
+    prev_actual_low := asia_actual_low
+    
+    asia_high := bh_tf
+    asia_low := bl_tf
+    asia_actual_high := high_tf
+    asia_actual_low := low_tf
+    asia_start := t_tf
+    in_session := true
+    swing_price := na
+    swing_time := na
+    bars_after_asia := 0
+    swing_found := false
+    array.clear(post_asia_highs)
+    array.clear(post_asia_lows)
+    array.clear(post_asia_times)
+
+if is_asia and in_session
+    asia_high := math.max(asia_high, bh_tf)
+    asia_low := math.min(asia_low, bl_tf)
+    asia_actual_high := math.max(asia_actual_high, high_tf)
+    asia_actual_low := math.min(asia_actual_low, low_tf)
+
+if not is_asia and in_session
+    asia_end := t_tf
+    in_session := false
+    session_reset_done := false
+    
+    if not na(asia_actual_high) and not na(asia_actual_low) and not na(asia_start) and not na(asia_end)
+        array.push(historical_highs, asia_actual_high)
+        array.push(historical_lows, asia_actual_low)
+        array.push(historical_starts, asia_start)
+        array.push(historical_ends, asia_end)
+        
+        if array.size(historical_highs) > max_previous_boxes
+            array.shift(historical_highs)
+            array.shift(historical_lows)
+            array.shift(historical_starts)
+            array.shift(historical_ends)
+
+
+// Swing detection - find first swing high or low after Asia close (whichever comes first)
+// Stop looking 2 hours after Asia close
+if not is_asia and not in_session and not na(asia_end) and not swing_found
+    if not session_reset_done
+        swing_price := na
+        swing_time := na
+        swing_is_high := false
+        prev_body_high := na
+        prev_body_low := na
+        swing_found := false
+        session_reset_done := true
+    
+    // Check if we're within 2 hours of Asia close (2 * 60 * 60 * 1000 milliseconds)
+    time_since_asia_close = t_tf - asia_end
+    two_hours_in_ms = 2 * 60 * 60 * 1000
+    
+    if time_since_asia_close <= two_hours_in_ms
+        // Track previous candle's body high/low
+        if not na(prev_body_high) and not na(prev_body_low)
+            // Check for swing high first: previous body high > current body high AND above Asia high
+            if prev_body_high > bh_tf and prev_body_high > asia_high
+                swing_price := prev_body_high
+                swing_is_high := true
+                swing_found := true
+            
+            // Check for swing low only if high not found: previous body low < current body low AND below Asia low
+            if not swing_found and prev_body_low < bl_tf and prev_body_low < asia_low
+                swing_price := prev_body_low
+                swing_is_high := false
+                swing_found := true
+        
+        // Store current candle for next comparison
+        prev_body_high := bh_tf
+        prev_body_low := bl_tf
+
+// Monday tracking
+is_monday = dayofweek(t_tf, "Europe/London") == dayofweek.monday
+new_monday = is_monday and not is_monday[1]
+
+// Get 30m data for Monday tracking
+bh_30m = request.security(syminfo.tickerid, "15", math.max(open, close), lookahead=barmerge.lookahead_off)
+bl_30m = request.security(syminfo.tickerid, "15", math.min(open, close), lookahead=barmerge.lookahead_off)
+t_30m = request.security(syminfo.tickerid, "15", time, lookahead=barmerge.lookahead_off)
+
+is_monday_30m = dayofweek(t_30m, "Europe/London") == dayofweek.monday
+new_monday_30m = is_monday_30m and not is_monday_30m[1]
+
+if new_monday_30m
+    // Store previous Monday when new Monday starts
+    prev_monday_open := curr_monday_open
+    prev_monday_close := curr_monday_close
+    prev_monday_high := curr_monday_high
+    prev_monday_low := curr_monday_low
+    prev_monday_start := curr_monday_start
+    
+    // Start tracking new Monday - use 30m body high/low from first candle
+    curr_monday_open := request.security(syminfo.tickerid, "30", open, lookahead=barmerge.lookahead_off)
+    curr_monday_close := request.security(syminfo.tickerid, "30", close, lookahead=barmerge.lookahead_off)
+    body_high = bh_30m  // 30m body high
+    body_low = bl_30m   // 30m body low
+    curr_monday_high := body_high
+    curr_monday_low := body_low
+    curr_monday_start := t_30m
+else if is_monday_30m
+    // Update Monday close and track highest body high / lowest body low from 30m candles
+    curr_monday_close := request.security(syminfo.tickerid, "30", close, lookahead=barmerge.lookahead_off)
+    body_high = bh_30m  // Current 30m candle's body high
+    body_low = bl_30m   // Current 30m candle's body low
+    curr_monday_high := math.max(curr_monday_high, body_high)
+    curr_monday_low := math.min(curr_monday_low, body_low)
+
+// ==================== BEN'S ASIA RANGE DRAWING (CURRENT SESSION ONLY) ====================
+// Variables for Ben's stepped drawing
+var float ben_plot_high = na
+var float ben_plot_low = na
+var float ben_last_step_high = na
+var float ben_last_step_low = na
+var bool ben_session_ended = false
+
+// Check if we're exactly at the 06:00 bar (first bar after Asia session)
+hour_london = hour(t_tf, "Europe/London")
+minute_london = minute(t_tf, "Europe/London")
+is_six_am_bar = hour_london == 6 and minute_london == 0  // Exactly 06:00
+
+// Only draw Ben's version during current Asia session OR at 06:00 bar
+if show_asia_range and (is_asia and in_session or is_six_am_bar)
+    if na(ben_last_step_high) or (is_asia and high_tf > ben_last_step_high)
+        ben_plot_high := high_tf
+        ben_last_step_high := high_tf
+    else
+        ben_plot_high := ben_last_step_high
+    
+    if na(ben_last_step_low) or (is_asia and low_tf < ben_last_step_low)
+        ben_plot_low := low_tf
+        ben_last_step_low := low_tf
+    else
+        ben_plot_low := ben_last_step_low
+else
+    // Outside Asia session or after 06:00 - reset for next session
+    if not is_asia and not is_six_am_bar
+        ben_last_step_high := na
+        ben_last_step_low := na
+    ben_plot_high := na
+    ben_plot_low := na
+
+// Plot the fill area with borders (Ben's method)
+// Hide borders in Simple Mode 1
+border_color_filtered = simple_mode == "Strongest Levels" ? na : asia_border_color
+
+fill_top = plot(ben_plot_high, 
+     title="Asia High Border", 
+     color=border_color_filtered, 
+     linewidth=asia_border_width,
+     style=plot.style_linebr)
+
+fill_bottom = plot(ben_plot_low, 
+     title="Asia Low Border", 
+     color=border_color_filtered, 
+     linewidth=asia_border_width,
+     style=plot.style_linebr)
+
+fill(fill_top, fill_bottom, color=asia_fill_color, title="Asia Range Fill")
+// ==================== END BEN'S ASIA RANGE DRAWING ====================
+
+// Get values from selected timeframe
+curr_high_tf = request.security(syminfo.tickerid, selected_tf, asia_high, lookahead=barmerge.lookahead_off)
+curr_low_tf = request.security(syminfo.tickerid, selected_tf, asia_low, lookahead=barmerge.lookahead_off)
+curr_actual_high_tf = request.security(syminfo.tickerid, selected_tf, asia_actual_high, lookahead=barmerge.lookahead_off)
+curr_actual_low_tf = request.security(syminfo.tickerid, selected_tf, asia_actual_low, lookahead=barmerge.lookahead_off)
+curr_start_tf = request.security(syminfo.tickerid, selected_tf, asia_start, lookahead=barmerge.lookahead_off)
+curr_end_tf = request.security(syminfo.tickerid, selected_tf, asia_end, lookahead=barmerge.lookahead_off)
+swing_price_tf = request.security(syminfo.tickerid, selected_tf, swing_price, lookahead=barmerge.lookahead_off)
+swing_is_high_tf = request.security(syminfo.tickerid, selected_tf, swing_is_high, lookahead=barmerge.lookahead_off)
+prev_high_tf = request.security(syminfo.tickerid, selected_tf, prev_high, lookahead=barmerge.lookahead_off)
+prev_low_tf = request.security(syminfo.tickerid, selected_tf, prev_low, lookahead=barmerge.lookahead_off)
+prev_start_tf = request.security(syminfo.tickerid, selected_tf, prev_start, lookahead=barmerge.lookahead_off)
+prev_end_tf = request.security(syminfo.tickerid, selected_tf, prev_end, lookahead=barmerge.lookahead_off)
+prev_actual_high_tf = request.security(syminfo.tickerid, selected_tf, prev_actual_high, lookahead=barmerge.lookahead_off)
+prev_actual_low_tf = request.security(syminfo.tickerid, selected_tf, prev_actual_low, lookahead=barmerge.lookahead_off)
+
+hist_highs_tf = request.security(syminfo.tickerid, selected_tf, historical_highs, lookahead=barmerge.lookahead_off)
+hist_lows_tf = request.security(syminfo.tickerid, selected_tf, historical_lows, lookahead=barmerge.lookahead_off)
+hist_starts_tf = request.security(syminfo.tickerid, selected_tf, historical_starts, lookahead=barmerge.lookahead_off)
+hist_ends_tf = request.security(syminfo.tickerid, selected_tf, historical_ends, lookahead=barmerge.lookahead_off)
+
+// Drawing arrays
+var line[] confluence_lines = array.new_line()
+var array<float> drawn_confluence_prices = array.new<float>()
+var box[] asia_boxes = array.new_box()
+var linefill[] asia_fills = array.new_linefill()
+var line[] asia_border_lines = array.new_line()
+var line[] key_level_lines = array.new_line()
+var label[] price_labels = array.new_label()
+
+if barstate.islast
+    // Clear old drawings
+    for l in confluence_lines
+        line.delete(l)
+    array.clear(confluence_lines)
+    array.clear(drawn_confluence_prices)
+    
+    for b in asia_boxes
+        box.delete(b)
+    array.clear(asia_boxes)
+    
+    for f in asia_fills
+        linefill.delete(f)
+    array.clear(asia_fills)
+    
+    for l in asia_border_lines
+        line.delete(l)
+    array.clear(asia_border_lines)
+    
+    for l in key_level_lines
+        line.delete(l)
+    array.clear(key_level_lines)
+    
+    for lbl in price_labels
+        label.delete(lbl)
+    array.clear(price_labels)
+    
+    // Draw only the most recent previous Asia session
+    if not na(hist_starts_tf) and array.size(hist_starts_tf) > 0
+        // Get the most recent historical session (last one in array)
+        last_index = array.size(hist_starts_tf) - 1
+        hist_start = array.get(hist_starts_tf, last_index)
+        hist_end = array.get(hist_ends_tf, last_index)
+        hist_high = array.get(hist_highs_tf, last_index)
+        hist_low = array.get(hist_lows_tf, last_index)
+        
+        is_current = not na(curr_start_tf) and hist_start == curr_start_tf
+        
+        if not na(hist_start) and not na(hist_end) and not na(hist_high) and not na(hist_low) and not is_current
+            // Draw filled box for the most recent previous Asia session
+            hist_box = box.new(hist_start, hist_high, hist_end, hist_low, xloc=xloc.bar_time, border_color=asia_border_color, bgcolor=asia_fill_color, border_width=asia_border_width)
+            array.push(asia_boxes, hist_box)
+    
+    // Draw lines and labels for CURRENT Asia session (NOT using boxes - Ben's method handles the fill)
+    if show_asia_range and not na(curr_start_tf) and not na(curr_end_tf) and not na(curr_actual_high_tf) and not na(curr_actual_low_tf)
+        // Calculate market close time for this session
+        asia_year = year(curr_start_tf, "Europe/London")
+        asia_month = month(curr_start_tf, "Europe/London")
+        asia_day = dayofmonth(curr_start_tf, "Europe/London")
+        asia_dayofweek = dayofweek(curr_start_tf, "Europe/London")
+        
+        // Market close is 22:00 on Friday, 00:00 (midnight) on other days
+        end_time_market_close = asia_dayofweek == dayofweek.friday ? 
+             timestamp("Europe/London", asia_year, asia_month, asia_day, 22, 0, 0) : 
+             timestamp("Europe/London", asia_year, asia_month, asia_day, 23, 59, 59)
+        
+        // Draw dotted black lines at top and bottom during Asia session
+        top_line_asia = line.new(curr_start_tf, curr_actual_high_tf, curr_end_tf, curr_actual_high_tf, xloc=xloc.bar_time, color=color.black, width=1, style=line.style_dotted)
+        array.push(asia_border_lines, top_line_asia)
+        bottom_line_asia = line.new(curr_start_tf, curr_actual_low_tf, curr_end_tf, curr_actual_low_tf, xloc=xloc.bar_time, color=color.black, width=1, style=line.style_dotted)
+        array.push(asia_border_lines, bottom_line_asia)
+        
+        // Draw blue solid lines from Asia end to market close (using asia_high_low_color setting)
+        // Draw current Asia high/low lines (hidden in Simple Mode 1)
+        if simple_mode != "Strongest Levels"
+            top_line_blue = line.new(curr_end_tf, curr_actual_high_tf, end_time_market_close, curr_actual_high_tf, xloc=xloc.bar_time, color=asia_high_low_color, width=2, style=line.style_solid)
+            array.push(asia_border_lines, top_line_blue)
+            bottom_line_blue = line.new(curr_end_tf, curr_actual_low_tf, end_time_market_close, curr_actual_low_tf, xloc=xloc.bar_time, color=asia_high_low_color, width=2, style=line.style_solid)
+            array.push(asia_border_lines, bottom_line_blue)
+            
+            // Add labels for Asia High and Asia Low (centered, using asia_high_low_color setting)
+            label_time = curr_end_tf + (end_time_market_close - curr_end_tf) / 2
+            high_label = label.new(label_time, curr_actual_high_tf, xloc=xloc.bar_time, text="Asia High", color=color.new(color.white, 100), textcolor=asia_high_low_color, style=label.style_label_center, size=size.small)
+            array.push(price_labels, high_label)
+            low_label = label.new(label_time, curr_actual_low_tf, xloc=xloc.bar_time, text="Asia Low", color=color.new(color.white, 100), textcolor=asia_high_low_color, style=label.style_label_center, size=size.small)
+            array.push(price_labels, low_label)
+        
+        // Draw previous Asia high/low lines and labels (using wicks from previous session)
+        if show_prev_asia_lines and not na(prev_actual_high_tf) and not na(prev_actual_low_tf) and simple_mode != "Strongest Levels"
+            // Draw previous Asia high line from current session end (06:00) to market close (22:00)
+            prev_high_line = line.new(curr_end_tf, prev_actual_high_tf, end_time_market_close, prev_actual_high_tf, xloc=xloc.bar_time, color=prev_asia_color, width=2, style=line.style_solid)
+            array.push(asia_border_lines, prev_high_line)
+            
+            // Draw previous Asia low line from current session end (06:00) to market close (22:00)
+            prev_low_line = line.new(curr_end_tf, prev_actual_low_tf, end_time_market_close, prev_actual_low_tf, xloc=xloc.bar_time, color=prev_asia_color, width=2, style=line.style_solid)
+            array.push(asia_border_lines, prev_low_line)
+            
+            // Add labels for Previous Asia High and Low
+            prev_label_time = curr_end_tf + (end_time_market_close - curr_end_tf) / 2
+            prev_high_label = label.new(prev_label_time, prev_actual_high_tf, xloc=xloc.bar_time, text="Previous Asia High", color=color.new(color.white, 100), textcolor=prev_asia_color, style=label.style_label_center, size=size.small)
+            array.push(price_labels, prev_high_label)
+            prev_low_label = label.new(prev_label_time, prev_actual_low_tf, xloc=xloc.bar_time, text="Previous Asia Low", color=color.new(color.white, 100), textcolor=prev_asia_color, style=label.style_label_center, size=size.small)
+            array.push(price_labels, prev_low_label)
+        
+        // Draw ATH line from 06:00 to market close (matching Asia high/low pattern)
+        if show_ath_line and not na(all_time_high)
+            // Draw line from Asia end (06:00) to market close
+            line.new(curr_end_tf, all_time_high, end_time_market_close, all_time_high, 
+                 xloc=xloc.bar_time, color=ath_line_color, width=ath_line_width, style=line.style_solid)
+            
+            // Add label at center position
+            ath_label_time = curr_end_tf + (end_time_market_close - curr_end_tf) / 2
+            label.new(ath_label_time, all_time_high, xloc=xloc.bar_time, text="ATH " + str.tostring(all_time_high, format.mintick), 
+                 color=color.new(color.white, 100), textcolor=color.red, 
+                 style=label.style_label_center, size=size.small)
+        
+        // Add ATR labels at selected position
+        if show_atr_line and barstate.islast and not na(atr_upper_htf) and not na(atr_lower_htf)
+            // Arrays to store labels (cleared on each bar)
+            var array<label> atr_labels = array.new<label>()
+            
+            // Clear old labels
+            if array.size(atr_labels) > 0
+                for i = 0 to array.size(atr_labels) - 1
+                    label.delete(array.get(atr_labels, i))
+                array.clear(atr_labels)
+            
+            if atr_position == "Current Candle"
+                // Label at current bar
+                upper_label = label.new(bar_index, atr_upper_htf, text=str.tostring(atr_upper_htf, format.mintick) + " (+ATR " + str.tostring(atr_dist_htf, format.mintick) + ")",
+                     color=atr_upper_color, textcolor=atr_label_text_color,
+                     style=label.style_label_left, size=size.small)
+                array.push(atr_labels, upper_label)
+                
+                lower_label = label.new(bar_index, atr_lower_htf, text=str.tostring(atr_lower_htf, format.mintick) + " (-ATR " + str.tostring(atr_dist_htf, format.mintick) + ")",
+                     color=atr_lower_color, textcolor=atr_label_text_color,
+                     style=label.style_label_left, size=size.small)
+                array.push(atr_labels, lower_label)
+            else if atr_position == "Asia Close"
+                // Label at Asia close (06:00)
+                if not na(curr_end_tf)
+                    upper_label = label.new(curr_end_tf, atr_upper_htf, xloc=xloc.bar_time, text=str.tostring(atr_upper_htf, format.mintick) + " (+ATR " + str.tostring(atr_dist_htf, format.mintick) + ")",
+                         color=atr_upper_color, textcolor=atr_label_text_color,
+                         style=label.style_label_left, size=size.small)
+                    array.push(atr_labels, upper_label)
+                    
+                    lower_label = label.new(curr_end_tf, atr_lower_htf, xloc=xloc.bar_time, text=str.tostring(atr_lower_htf, format.mintick) + " (-ATR " + str.tostring(atr_dist_htf, format.mintick) + ")",
+                         color=atr_lower_color, textcolor=atr_label_text_color,
+                         style=label.style_label_left, size=size.small)
+                    array.push(atr_labels, lower_label)
+            else // Midnight
+                // Label at midnight (23:59:59 tonight)
+                curr_year = year(time, "Europe/London")
+                curr_month = month(time, "Europe/London")
+                curr_day = dayofmonth(time, "Europe/London")
+                midnight_time = timestamp("Europe/London", curr_year, curr_month, curr_day, 23, 59, 59)
+                
+                upper_label = label.new(midnight_time, atr_upper_htf, xloc=xloc.bar_time, text=str.tostring(atr_upper_htf, format.mintick) + " (+ATR " + str.tostring(atr_dist_htf, format.mintick) + ")",
+                     color=atr_upper_color, textcolor=atr_label_text_color,
+                     style=label.style_label_left, size=size.small)
+                array.push(atr_labels, upper_label)
+                
+                lower_label = label.new(midnight_time, atr_lower_htf, xloc=xloc.bar_time, text=str.tostring(atr_lower_htf, format.mintick) + " (-ATR " + str.tostring(atr_dist_htf, format.mintick) + ")",
+                     color=atr_lower_color, textcolor=atr_label_text_color,
+                     style=label.style_label_left, size=size.small)
+                array.push(atr_labels, lower_label)
+        
+        // Draw previous Asia fib lines in the previous Asia session window (00:00 to 06:00) for debugging
+        if show_prev_asia_lines and not na(prev_high_tf) and not na(prev_low_tf) and not na(prev_start_tf)
+            // Get the date from previous Asia session
+            prev_asia_year = year(prev_start_tf, "Europe/London")
+            prev_asia_month = month(prev_start_tf, "Europe/London")
+            prev_asia_day = dayofmonth(prev_start_tf, "Europe/London")
+            
+            // Time windows for previous Asia (00:00 to 06:00 of that day)
+            prev_fib_start_time = timestamp("Europe/London", prev_asia_year, prev_asia_month, prev_asia_day, 0, 0, 0)
+            prev_fib_end_time = timestamp("Europe/London", prev_asia_year, prev_asia_month, prev_asia_day, 6, 0, 0)
+            
+            // Label time at 05:45
+            prev_fib_label_time = timestamp("Europe/London", prev_asia_year, prev_asia_month, prev_asia_day, 5, 45, 0)
+            
+            // Draw previous Asia body high/low lines
+            line.new(prev_fib_start_time, prev_high_tf, prev_fib_end_time, prev_high_tf, xloc=xloc.bar_time, color=prev_asia_color, width=2, style=line.style_dashed)
+            line.new(prev_fib_start_time, prev_low_tf, prev_fib_end_time, prev_low_tf, xloc=xloc.bar_time, color=prev_asia_color, width=2, style=line.style_dashed)
+            
+            label.new(prev_fib_label_time, prev_high_tf, xloc=xloc.bar_time, text="Prev Body H: " + str.tostring(prev_high_tf, format.mintick), color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_left, size=size.small)
+            label.new(prev_fib_label_time, prev_low_tf, xloc=xloc.bar_time, text="Prev Body L: " + str.tostring(prev_low_tf, format.mintick), color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_left, size=size.small)
+            
+            // Calculate and draw all previous Asia fib levels
+            prev_range = prev_high_tf - prev_low_tf
+            
+            for i = 0 to array.size(fib_levels) - 1
+                if not array.get(fib_enabled, i)
+                    continue
+                level = array.get(fib_levels, i)
+                prev_fib_price = prev_low_tf + (prev_range * level)
+                
+                // Draw fib line
+                line.new(prev_fib_start_time, prev_fib_price, prev_fib_end_time, prev_fib_price, xloc=xloc.bar_time, color=prev_asia_color, width=1, style=line.style_dotted)
+                
+                // Draw fib label
+                display_level = level < 0 ? math.abs(level) + 1.0 : level
+                label_text = "PA-" + str.tostring(display_level, "#.###") + " - " + str.tostring(prev_fib_price, format.mintick)
+                label.new(prev_fib_label_time, prev_fib_price, xloc=xloc.bar_time, text=label_text, color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_left, size=size.small, textalign=text.align_left)
+    
+    // Draw fibs
+    if not na(curr_start_tf) and not na(curr_end_tf) and not na(curr_high_tf) and not na(curr_low_tf)
+        effective_high = curr_high_tf
+        effective_low = curr_low_tf
+        
+        if use_swing and not na(swing_price_tf)
+            if swing_is_high_tf
+                effective_high := swing_price_tf
+            else
+                effective_low := swing_price_tf
+        
+        
+        curr_range = effective_high - effective_low
+        
+        var array<float> current_prices = array.new<float>()
+        array.clear(current_prices)
+        
+        // Populate current prices array with all fib levels
+        for i = 0 to array.size(fib_levels) - 1
+            if array.get(fib_enabled, i)
+                level = array.get(fib_levels, i)
+                price_lth = effective_low + (curr_range * level)
+                array.push(current_prices, price_lth)
+        
+        // Calculate times for labels
+        asia_year = year(curr_start_tf, "Europe/London")
+        asia_month = month(curr_start_tf, "Europe/London")
+        asia_day = dayofmonth(curr_start_tf, "Europe/London")
+        asia_dayofweek = dayofweek(curr_start_tf, "Europe/London")
+        
+        // Market close is 22:00 on Friday, 00:00 (midnight) on other days
+        end_time_market_close = asia_dayofweek == dayofweek.friday ? 
+             timestamp("Europe/London", asia_year, asia_month, asia_day, 22, 0, 0) : 
+             timestamp("Europe/London", asia_year, asia_month, asia_day, 23, 59, 59)
+        
+        // Fib label time is 1 hour 15 minutes after market close
+        // But for Friday, since market closes and doesn't reopen until Sunday,
+        // we place the label at 21:45 (15 minutes before close)
+        fib_label_time = asia_dayofweek == dayofweek.friday ? 
+             timestamp("Europe/London", asia_year, asia_month, asia_day, 21, 45, 0) :
+             end_time_market_close + (75 * 60 * 1000)  // 75 minutes in milliseconds
+        
+        // First pass: calculate confluence and map original prices to selected confluence prices
+        var map<float, float> price_mapping = map.new<float, float>()  // Maps original price to selected confluence price
+        var array<float> drawn_confluence_visible_prices = array.new<float>()  // Track which confluence prices had visible lines
+        
+        if not na(prev_high_tf) and not na(prev_low_tf) and not na(prev_start_tf)
+            prev_range = prev_high_tf - prev_low_tf
+            
+            var array<float> prev_prices = array.new<float>()
+            array.clear(prev_prices)
+            
+            for i = 0 to array.size(fib_levels) - 1
+                if not array.get(fib_enabled, i)
+                    continue
+                
+                level = array.get(fib_levels, i)
+                array.push(prev_prices, prev_low_tf + (prev_range * level))
+                if not array.get(fib_enabled, i)
+                    continue
+            
+            pip_value = syminfo.mintick * 10
+            original_confluence_distance = calculated_threshold * pip_value
+            
+            // Cap confluence distance based on minimum fib gap in actual price terms
+            // Calculate what the minimum gap would be in price terms
+            min_fib_gap_price = curr_range * min_fib_gap
+            max_allowed_confluence_distance = min_fib_gap_price * max_allowed_threshold_ratio
+            
+            // Use the smaller of the two: calculated threshold or the max allowed based on fib gaps
+            confluence_distance = math.min(original_confluence_distance, max_allowed_confluence_distance)
+            
+            // Tight confluence uses the ORIGINAL threshold, not the capped one
+            tight_confluence_distance = original_confluence_distance * (tight_confluence_percentage / 100.0)
+            
+            for curr_price in current_prices
+                for prev_price in prev_prices
+                    if math.abs(curr_price - prev_price) <= confluence_distance
+                        // Confluence detected! Now calculate high/low/midpoint
+                        lowest_price = math.min(curr_price, prev_price)
+                        highest_price = math.max(curr_price, prev_price)
+                        midpoint_price = (curr_price + prev_price) / 2.0
+                        
+                        // Select which price to draw based on user selection
+                        var float selected_price = lowest_price
+                        if confluence_price_selection == "Highest"
+                            selected_price := highest_price
+                        else if confluence_price_selection == "Lowest"
+                            selected_price := lowest_price
+                        else  // Midpoint
+                            selected_price := midpoint_price
+                        
+                        // Map current price to selected price
+                        map.put(price_mapping, curr_price, selected_price)
+                        // Also map the previous price to prevent it from drawing its own line
+                        map.put(price_mapping, prev_price, selected_price)
+                        
+                        price_diff = math.abs(curr_price - prev_price)
+                        is_tight = price_diff <= tight_confluence_distance
+                        line_width_to_use = is_tight ? tight_confluence_width : confluence_width
+                        line_color_to_use = is_tight ? tight_confluence_color : confluence_color
+                        line_style_to_use = is_tight ? tight_confluence_style : confluence_style
+                        
+                        price_already_drawn = false
+                        for drawn_price in drawn_confluence_prices
+                            if math.abs(selected_price - drawn_price) < syminfo.mintick
+                                price_already_drawn := true
+                                break
+                        
+                        if not price_already_drawn
+                            should_draw_line = (is_tight and show_tight_confluence_lines) or (not is_tight and show_confluence_lines)
+                            
+                            // Simple mode filtering
+                            if should_draw_line
+                                is_outside_asia = selected_price > curr_actual_high_tf or selected_price < curr_actual_low_tf
+                                
+                                if simple_mode == "Strongest Levels"
+                                    // Only draw tight (green) lines outside Asia range
+                                    should_draw_line := is_tight and is_outside_asia
+                                else if simple_mode == "Strong Levels"
+                                    // Only draw confluence (green + orange) lines outside Asia range
+                                    should_draw_line := is_outside_asia
+                                // else simple_mode == "All Levels": draw all (should_draw_line unchanged)
+                            
+                            if should_draw_line
+                                hline = line.new(curr_end_tf, selected_price, end_time_market_close, selected_price, xloc=xloc.bar_time, color=line_color_to_use, width=line_width_to_use, style=line_style_to_use)
+                                array.push(confluence_lines, hline)
+                                array.push(drawn_confluence_visible_prices, selected_price)
+                            array.push(drawn_confluence_prices, selected_price)
+        
+        // Second pass: Draw price and fib level labels at the selected confluence price (if applicable)
+        for i = 0 to array.size(fib_levels) - 1
+            if not array.get(fib_enabled, i)
+                continue
+                
+            level = array.get(fib_levels, i)
+            
+            // Original price
+            price_lth = effective_low + (curr_range * level)
+            
+            // Check if this price has confluence and should be adjusted
+            final_price = map.contains(price_mapping, price_lth) ? map.get(price_mapping, price_lth) : price_lth
+            
+            // For negative levels, convert to positive and add 1.0 for display purposes
+            display_level = level < 0 ? math.abs(level) + 1.0 : level
+            
+            // Check if this is a key level
+            key_levels_check = array.from(0.0, 0.25, 0.5, 0.75, 1.0)
+            is_key_level = false
+            for key_lvl in key_levels_check
+                if math.abs(level - key_lvl) < 0.001
+                    is_key_level := true
+                    break
+            
+            // Determine if label should be shown
+            has_confluence = map.contains(price_mapping, price_lth)
+            
+            // Check if this confluence price had a visible line drawn
+            confluence_line_visible = false
+            if has_confluence
+                for visible_price in drawn_confluence_visible_prices
+                    if math.abs(final_price - visible_price) < syminfo.mintick
+                        confluence_line_visible := true
+                        break
+            
+            show_label = show_fib_value_labels and (simple_mode == "All Levels" or confluence_line_visible) and (confluence_line_visible or (is_key_level and show_key_levels) or (not is_key_level and show_non_key_levels))
+            
+            if show_label
+                // Combined label: "fib value - price" (right aligned, on the line, white background with 50% transparency)
+                label_text = str.tostring(display_level, "#.###") + " - " + str.tostring(final_price, format.mintick)
+                combined_lbl = label.new(end_time_market_close, final_price, xloc=xloc.bar_time, text=label_text, color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_right, size=size.small, textalign=text.align_right)
+                array.push(price_labels, combined_lbl)
+        
+        // Key levels
+        if show_key_levels and simple_mode == "All Levels" 
+            key_levels = array.from(0.0, 0.25, 0.5, 0.75, 1.0)
+            
+            for key_level in key_levels
+                price_lth = effective_low + (curr_range * key_level)
+                
+                // Check if this price has confluence (is in the mapping)
+                lth_has_confluence = map.contains(price_mapping, price_lth)
+                
+                if not lth_has_confluence
+                    key_line = line.new(curr_end_tf, price_lth, end_time_market_close, price_lth, xloc=xloc.bar_time, color=key_level_color, width=key_level_width, style=key_level_style)
+                    array.push(key_level_lines, key_line)
+        
+        // Non-key levels 
+        if show_non_key_levels and simple_mode == "All Levels"
+            key_levels_check = array.from(0.0, 0.25, 0.5, 0.75, 1.0)
+            
+            for i = 0 to array.size(fib_levels) - 1
+                if not array.get(fib_enabled, i)
+                    continue
+                
+                level = array.get(fib_levels, i)
+                
+                is_key_level = false
+                for key_lvl in key_levels_check
+                    if math.abs(level - key_lvl) < 0.001
+                        is_key_level := true
+                        break
+                
+                if not is_key_level
+                    price_lth = effective_low + (curr_range * level)
+                    
+                    // Check if this price has confluence (is in the mapping)
+                    lth_has_confluence = map.contains(price_mapping, price_lth)
+                    
+                    if not lth_has_confluence
+                        non_key_line = line.new(curr_end_tf, price_lth, end_time_market_close, price_lth, xloc=xloc.bar_time, color=key_level_color, width=key_level_width, style=key_level_style)
+                        array.push(key_level_lines, non_key_line)
+    
+    // ========================================================================
+    // MONDAY FIBS (All days, during Asia session window)
+    // On Monday: use previous week's Monday levels until new Monday closes
+    // Tuesday onwards: use current week's Monday levels
+    // ========================================================================
+    current_dayofweek = dayofweek(t_tf, "Europe/London")
+    is_current_monday = current_dayofweek == dayofweek.monday
+    
+    // Determine which Monday levels to use for "current" week fibs
+    // On Monday: use prev_monday (last week's completed Monday)
+    // Other days: use curr_monday (this week's Monday)
+    effective_monday_high = is_current_monday ? prev_monday_high : curr_monday_high
+    effective_monday_low = is_current_monday ? prev_monday_low : curr_monday_low
+    
+    // For confluence comparison, we need the Monday before the "effective" one
+    // On Monday: prev_monday is "current", so we don't have a "previous" to compare (na)
+    // Other days: prev_monday is available for comparison
+    effective_prev_monday_high = is_current_monday ? na : prev_monday_high
+    effective_prev_monday_low = is_current_monday ? na : prev_monday_low
+    
+    if show_monday_fibs and not na(effective_monday_high) and not na(effective_monday_low) and not na(asia_start)
+        // Use current Asia session date/time for positioning
+        asia_year = year(asia_start, "Europe/London")
+        asia_month = month(asia_start, "Europe/London")
+        asia_day = dayofmonth(asia_start, "Europe/London")
+        asia_dayofweek = dayofweek(asia_start, "Europe/London")
+        
+        // Monday range is actual high/low (not body) - using effective values
+        effective_monday_range = effective_monday_high - effective_monday_low
+        
+        // Time windows for Monday fibs (00:00 to 06:00 of current day)
+        fib_start_time = timestamp("Europe/London", asia_year, asia_month, asia_day, 0, 0, 0)
+        fib_end_time = timestamp("Europe/London", asia_year, asia_month, asia_day, 6, 0, 0)
+        
+        // Label time is at midnight (23:59:59 of previous day) - just before Asia session starts
+        label_day_before = asia_day - 1
+        label_month = asia_month
+        label_year = asia_year
+        
+        // Handle month/year rollover
+        if label_day_before < 1
+            label_month := label_month - 1
+            if label_month < 1
+                label_month := 12
+                label_year := label_year - 1
+            // Get last day of previous month (simplified - may need adjustment for exact dates)
+            label_day_before := 28  // Safe minimum for any month
+        
+        monday_label_time = timestamp("Europe/London", label_year, label_month, label_day_before, 23, 59, 59)
+        
+        // Draw Current Monday High/Low (00:00 to 06:00 only) - using effective values
+        if simple_mode != "Strongest Levels"
+            line.new(fib_start_time, effective_monday_high, fib_end_time, effective_monday_high, xloc=xloc.bar_time, color=monday_high_low_color, width=2, style=line.style_solid)
+            line.new(fib_start_time, effective_monday_low, fib_end_time, effective_monday_low, xloc=xloc.bar_time, color=monday_high_low_color, width=2, style=line.style_solid)
+            
+            if show_monday_labels
+                label.new(monday_label_time, effective_monday_high, xloc=xloc.bar_time, text="Mon H: " + str.tostring(effective_monday_high, format.mintick), color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_right, size=size.small)
+                label.new(monday_label_time, effective_monday_low, xloc=xloc.bar_time, text="Mon L: " + str.tostring(effective_monday_low, format.mintick), color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_right, size=size.small)
+        
+        // Draw Previous Monday High/Low (in CURRENT Asia session for reference) - only when not on Monday
+        if show_prev_monday_lines and not na(effective_prev_monday_high) and not na(effective_prev_monday_low) and simple_mode != "Strongest Levels"
+            line.new(fib_start_time, effective_prev_monday_high, fib_end_time, effective_prev_monday_high, xloc=xloc.bar_time, color=prev_monday_color, width=2, style=line.style_dashed)
+            line.new(fib_start_time, effective_prev_monday_low, fib_end_time, effective_prev_monday_low, xloc=xloc.bar_time, color=prev_monday_color, width=2, style=line.style_dashed)
+            
+            if show_monday_labels
+                label.new(monday_label_time, effective_prev_monday_high, xloc=xloc.bar_time, text="Prev Mon H: " + str.tostring(effective_prev_monday_high, format.mintick), color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_right, size=size.small)
+                label.new(monday_label_time, effective_prev_monday_low, xloc=xloc.bar_time, text="Prev Mon L: " + str.tostring(effective_prev_monday_low, format.mintick), color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_right, size=size.small)
+        
+        // Calculate Monday fib prices using effective values
+        var array<float> effective_monday_prices = array.new<float>()
+        array.clear(effective_monday_prices)
+        
+        for i = 0 to array.size(fib_levels) - 1
+            if not array.get(fib_enabled, i)
+                continue
+            
+            level = array.get(fib_levels, i)
+            array.push(effective_monday_prices, effective_monday_low + (effective_monday_range * level))
+    
+    // ========================================================================
+    // PREVIOUS MONDAY FIBS (Draw in the actual previous Monday's Asia session)
+    // ========================================================================
+    if show_prev_monday_lines and not na(prev_monday_high) and not na(prev_monday_low) and not na(prev_monday_start) and simple_mode != "Strongest Levels"
+        // Use the previous Monday start time to find which Asia session to draw in
+        // We need to find the Asia session that corresponds to when previous Monday was tracked
+        prev_monday_year = year(prev_monday_start, "Europe/London")
+        prev_monday_month = month(prev_monday_start, "Europe/London")
+        prev_monday_day = dayofmonth(prev_monday_start, "Europe/London")
+        
+        // Time windows for previous Monday fibs (00:00 to 06:00 of that Monday's week)
+        prev_fib_start_time = timestamp("Europe/London", prev_monday_year, prev_monday_month, prev_monday_day, 0, 0, 0)
+        prev_fib_end_time = timestamp("Europe/London", prev_monday_year, prev_monday_month, prev_monday_day, 6, 0, 0)
+        
+        // Label time for previous Monday (midnight before Asia session)
+        prev_label_day_before = prev_monday_day - 1
+        prev_label_month = prev_monday_month
+        prev_label_year = prev_monday_year
+        
+        if prev_label_day_before < 1
+            prev_label_month := prev_label_month - 1
+            if prev_label_month < 1
+                prev_label_month := 12
+                prev_label_year := prev_label_year - 1
+            prev_label_day_before := 28
+        
+        prev_monday_label_time = timestamp("Europe/London", prev_label_year, prev_label_month, prev_label_day_before, 23, 59, 59)
+        
+        // Draw Previous Monday High/Low lines in their actual date
+        line.new(prev_fib_start_time, prev_monday_high, prev_fib_end_time, prev_monday_high, xloc=xloc.bar_time, color=prev_monday_color, width=2, style=line.style_dashed)
+        line.new(prev_fib_start_time, prev_monday_low, prev_fib_end_time, prev_monday_low, xloc=xloc.bar_time, color=prev_monday_color, width=2, style=line.style_dashed)
+        
+        if show_monday_labels
+            label.new(prev_monday_label_time, prev_monday_high, xloc=xloc.bar_time, text="Prev Mon H: " + str.tostring(prev_monday_high, format.mintick), color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_right, size=size.small)
+            label.new(prev_monday_label_time, prev_monday_low, xloc=xloc.bar_time, text="Prev Mon L: " + str.tostring(prev_monday_low, format.mintick), color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_right, size=size.small)
+        
+        // Draw previous Monday fib lines
+        prev_monday_range = prev_monday_high - prev_monday_low
+        
+        for i = 0 to array.size(fib_levels) - 1
+            if not array.get(fib_enabled, i)
+                continue
+            
+            level = array.get(fib_levels, i)
+            price_prev_monday = prev_monday_low + (prev_monday_range * level)
+            line.new(prev_fib_start_time, price_prev_monday, prev_fib_end_time, price_prev_monday, xloc=xloc.bar_time, color=prev_monday_color, width=1, style=line.style_dotted)
+        
+        // Draw previous Asia fib lines in the previous Monday window
+        if not na(prev_high) and not na(prev_low)
+            prev_asia_range = prev_high - prev_low
+            
+            for i = 0 to array.size(fib_levels) - 1
+                if not array.get(fib_enabled, i)
+                    continue
+                
+                level = array.get(fib_levels, i)
+                price_prev_asia = prev_low + (prev_asia_range * level)
+                line.new(prev_fib_start_time, price_prev_asia, prev_fib_end_time, price_prev_asia, xloc=xloc.bar_time, color=prev_asia_color, width=1, style=line.style_dotted)
+    
+    // Back to CURRENT Monday section for confluence and labels
+    if show_monday_fibs and not na(effective_monday_high) and not na(effective_monday_low) and not na(asia_start)
+        // Recalculate effective_monday_range and prices for this section
+        effective_monday_range = effective_monday_high - effective_monday_low
+        
+        // Calculate effective Monday fib prices
+        var array<float> effective_monday_prices = array.new<float>()
+        array.clear(effective_monday_prices)
+        
+        for i = 0 to array.size(fib_levels) - 1
+            if not array.get(fib_enabled, i)
+                continue
+            
+            level = array.get(fib_levels, i)
+            array.push(effective_monday_prices, effective_monday_low + (effective_monday_range * level))
+        
+        // Get timing info for labels and lines
+        asia_year = year(asia_start, "Europe/London")
+        asia_month = month(asia_start, "Europe/London")
+        asia_day = dayofmonth(asia_start, "Europe/London")
+        
+        fib_start_time = timestamp("Europe/London", asia_year, asia_month, asia_day, 0, 0, 0)
+        fib_end_time = timestamp("Europe/London", asia_year, asia_month, asia_day, 6, 0, 0)
+        
+        label_day_before = asia_day - 1
+        label_month = asia_month
+        label_year = asia_year
+        
+        if label_day_before < 1
+            label_month := label_month - 1
+            if label_month < 1
+                label_month := 12
+                label_year := label_year - 1
+            label_day_before := 28
+        
+        monday_label_time = timestamp("Europe/London", label_year, label_month, label_day_before, 23, 59, 59)
+        
+        // Monday Confluence Detection with Previous Monday (only when effective_prev values exist)
+        var map<float, float> monday_price_mapping = map.new<float, float>()
+        var array<float> monday_drawn_confluence = array.new<float>()
+        var array<float> monday_drawn_confluence_visible = array.new<float>()
+        array.clear(monday_drawn_confluence)
+        
+        if not na(effective_prev_monday_high) and not na(effective_prev_monday_low)
+            effective_prev_monday_range = effective_prev_monday_high - effective_prev_monday_low
+            
+            var array<float> effective_prev_monday_prices = array.new<float>()
+            array.clear(effective_prev_monday_prices)
+            
+            for i = 0 to array.size(fib_levels) - 1
+                if not array.get(fib_enabled, i)
+                    continue
+                
+                level = array.get(fib_levels, i)
+                array.push(effective_prev_monday_prices, effective_prev_monday_low + (effective_prev_monday_range * level))
+            
+            pip_value = syminfo.mintick * 10
+            original_confluence_distance = calculated_threshold * pip_value
+            
+            min_fib_gap_price = effective_monday_range * min_fib_gap
+            max_allowed_confluence_distance = min_fib_gap_price * max_allowed_threshold_ratio
+            
+            confluence_distance = math.min(original_confluence_distance, max_allowed_confluence_distance)
+            tight_confluence_distance = original_confluence_distance * (tight_confluence_percentage / 100.0)
+            
+            // Check confluence between effective current and effective previous Monday
+            for eff_monday_price in effective_monday_prices
+                for eff_prev_monday_price in effective_prev_monday_prices
+                    if math.abs(eff_monday_price - eff_prev_monday_price) <= confluence_distance
+                        lowest_price = math.min(eff_monday_price, eff_prev_monday_price)
+                        highest_price = math.max(eff_monday_price, eff_prev_monday_price)
+                        midpoint_price = (eff_monday_price + eff_prev_monday_price) / 2.0
+                        
+                        var float selected_price = lowest_price
+                        if confluence_price_selection == "Highest"
+                            selected_price := highest_price
+                        else if confluence_price_selection == "Lowest"
+                            selected_price := lowest_price
+                        else
+                            selected_price := midpoint_price
+                        
+                        map.put(monday_price_mapping, eff_monday_price, selected_price)
+                        map.put(monday_price_mapping, eff_prev_monday_price, selected_price)
+                        
+                        price_diff = math.abs(eff_monday_price - eff_prev_monday_price)
+                        is_tight = price_diff <= tight_confluence_distance
+                        line_width_to_use = is_tight ? tight_confluence_width : confluence_width
+                        line_color_to_use = is_tight ? tight_confluence_color : confluence_color
+                        line_style_to_use = is_tight ? tight_confluence_style : confluence_style
+                        
+                        price_already_drawn = false
+                        for drawn_price in monday_drawn_confluence
+                            if math.abs(selected_price - drawn_price) < syminfo.mintick
+                                price_already_drawn := true
+                                break
+                        
+                        if not price_already_drawn
+                            should_draw_line = (is_tight and show_tight_confluence_lines) or (not is_tight and show_confluence_lines)
+                            if should_draw_line
+                                line.new(fib_start_time, selected_price, fib_end_time, selected_price, xloc=xloc.bar_time, color=line_color_to_use, width=line_width_to_use, style=line_style_to_use)
+                                array.push(monday_drawn_confluence_visible, selected_price)
+                            array.push(monday_drawn_confluence, selected_price)
+        
+        // Draw Monday fib level labels
+        if show_monday_labels
+            for i = 0 to array.size(fib_levels) - 1
+                if not array.get(fib_enabled, i)
+                    continue
+                
+                level = array.get(fib_levels, i)
+                
+                price_monday = effective_monday_low + (effective_monday_range * level)
+                final_monday_price = map.contains(monday_price_mapping, price_monday) ? map.get(monday_price_mapping, price_monday) : price_monday
+                
+                display_level = level < 0 ? math.abs(level) + 1.0 : level
+                
+                // Check if this is a key level
+                key_levels_check_monday = array.from(0.0, 0.25, 0.5, 0.75, 1.0)
+                is_key_level_monday = false
+                for key_lvl in key_levels_check_monday
+                    if math.abs(level - key_lvl) < 0.001
+                        is_key_level_monday := true
+                        break
+                
+                // Determine if label should be shown
+                has_confluence = map.contains(monday_price_mapping, price_monday)
+                
+                // Check if this confluence price had a visible line drawn
+                confluence_line_visible = false
+                if has_confluence
+                    for visible_price in monday_drawn_confluence_visible
+                        if math.abs(final_monday_price - visible_price) < syminfo.mintick
+                            confluence_line_visible := true
+                            break
+                
+                show_label = show_fib_value_labels and (simple_mode == "All Levels" or confluence_line_visible) and (confluence_line_visible or (is_key_level_monday and show_key_levels) or (not is_key_level_monday and show_non_key_levels))
+                
+                if show_label
+                    label_text = "W-" + str.tostring(display_level, "#.###") + " - " + str.tostring(final_monday_price, format.mintick)
+                    label.new(monday_label_time, final_monday_price, xloc=xloc.bar_time, text=label_text, color=fib_label_bg_color, textcolor=fib_label_text_color, style=label.style_label_right, size=size.small, textalign=text.align_right)
+        
+        // Draw Monday key levels (if no confluence)
+        if show_key_levels and simple_mode == "All Levels"
+            key_levels_monday = array.from(0.0, 0.25, 0.5, 0.75, 1.0)
+            
+            for key_level in key_levels_monday
+                price_monday = effective_monday_low + (effective_monday_range * key_level)
+                monday_has_confluence = map.contains(monday_price_mapping, price_monday)
+                
+                if not monday_has_confluence
+                    line.new(fib_start_time, price_monday, fib_end_time, price_monday, xloc=xloc.bar_time, color=key_level_color, width=key_level_width, style=key_level_style)
+        
+        // Draw Monday non-key levels (if no confluence)
+        if show_non_key_levels and simple_mode == "All Levels"
+            key_levels_check_monday = array.from(0.0, 0.25, 0.5, 0.75, 1.0)
+            
+            for i = 0 to array.size(fib_levels) - 1
+                if not array.get(fib_enabled, i)
+                    continue
+                
+                level = array.get(fib_levels, i)
+                
+                is_key_level_monday = false
+                for key_lvl in key_levels_check_monday
+                    if math.abs(level - key_lvl) < 0.001
+                        is_key_level_monday := t

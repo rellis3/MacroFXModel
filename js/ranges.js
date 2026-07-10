@@ -62,7 +62,11 @@ export function computeBodyRange(bars) {
 }
 
 export function calculateMondayRanges(symbol) {
-  const bars = S.ohlc30m[symbol]?.values;
+  // 15m body high/low of the full Monday session — matches the Pine "Asia Fib"
+  // indicator's weekly-fib definition (pine/Asia Fib indicator.pine). Do not
+  // switch this back to ohlc30m; that was a drift bug (dashboard was computing
+  // a coarser Monday range than the chart indicator it's meant to mirror).
+  const bars = S.ohlc15m[symbol]?.values;
   if (!bars?.length) {
     S.mondayRangeData[symbol] = { current: null, previous: null, currentLevels: [], previousLevels: [], confluences: [] };
     return;
@@ -78,9 +82,9 @@ export function calculateMondayRanges(symbol) {
   });
 
   // A Monday is usable if it has enough bars to produce a meaningful range.
-  // 60 bars = 2 hours of 30m data (full Mon needs ~44 bars). Handles thin holidays.
+  // 40 bars = 10 hours of 15m data (full Mon needs ~88 bars). Handles thin holidays.
   function isCompleteMonday(sessionBars) {
-    return !!(sessionBars && sessionBars.length >= 20);
+    return !!(sessionBars && sessionBars.length >= 40);
   }
 
   const sortedMondays = Object.keys(weekData).sort().reverse()

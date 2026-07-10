@@ -38,6 +38,7 @@ export const CACHE_DURATION = {
   FRED:     12 * 60 * 60 * 1000,
   OHLC:     23 * 60 * 60 * 1000,
   OHLC5M:   30 * 60 * 1000,  // 30 min — refreshQuote() handles within-session bar updates
+  OHLC15M:  23 * 60 * 60 * 1000,  // Monday-range body high/low only — see calculateMondayRanges
   OHLC30M:  23 * 60 * 60 * 1000,
   QUOTE:     5 * 60 * 1000,
   EVENTS:    4 * 60 * 60 * 1000,  // Finnhub economic calendar — refresh every 4h

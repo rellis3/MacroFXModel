@@ -8,6 +8,7 @@ export const S = {
   fredData:        null,
   ohlcData:        {},
   ohlc5m:          {},
+  ohlc15m:         {},   // Monday-vs-previous-Monday body range only — see calculateMondayRanges
   ohlc30m:         {},
   asiaRangeData:      {},
   mondayRangeData:    {},
