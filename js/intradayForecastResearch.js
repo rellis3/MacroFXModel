@@ -43,6 +43,17 @@ function _session(tMs) {
 }
 function _hourOf(tMs) { const p = _londonParts(new Date(tMs)); return p.hour + (new Date(tMs).getUTCMinutes()) / 60; }
 
+// SCALP exits — fade AT the level with a tight stop just beyond it and a modest
+// target (NOT hold-to-close, NOT revert-to-open). An extended level is meant to be
+// exhaustion: if genuine, the tight stop rarely trips and the asymmetric payoff
+// clears even at a modest win rate — the thing a symmetric ±20 bracket can't see.
+export const SCALP_CONFIGS = [
+  { stop: 10, target: 20, label: 'stop10/tgt20' },
+  { stop: 15, target: 30, label: 'stop15/tgt30' },
+  { stop: 20, target: 40, label: 'stop20/tgt40' },
+  { stop: 15, target: 15, label: 'stop15/tgt15' },
+];
+
 // ── One level's outcome within a day (post-first-touch pip excursion) ─────────
 // dir: +1 for an UP level (touched when high ≥ level), −1 for a DOWN level.
 // Returns null if never touched. pip = price units per pip.
@@ -50,13 +61,22 @@ function _hourOf(tMs) { const p = _londonParts(new Date(tMs)); return p.hour + (
 function _postTouch(bars, firstIdx, level, dir, pip) {
   let mfe = 0, mae = 0, contIdx = -1, revIdx = -1;
   const TH = 20;   // pip threshold for the reverse-vs-continue race
+  const scalp = SCALP_CONFIGS.map(() => null);   // per-config resolved PnL (pips), null = open
   for (let k = firstIdx; k < bars.length; k++) {
-    const cont = dir > 0 ? (bars[k].high - level) / pip : (level - bars[k].low) / pip; // further in touch dir
-    const pull = dir > 0 ? (level - bars[k].low) / pip : (bars[k].high - level) / pip;  // back toward the interior
+    const cont = dir > 0 ? (bars[k].high - level) / pip : (level - bars[k].low) / pip; // further in touch dir (adverse to a fade → the STOP side)
+    const pull = dir > 0 ? (level - bars[k].low) / pip : (bars[k].high - level) / pip;  // back toward the interior (favourable → the TARGET side)
     if (cont > mfe) mfe = cont;
     if (pull > mae) mae = pull;
     if (contIdx < 0 && cont >= TH) contIdx = k;
     if (revIdx < 0 && pull >= TH) revIdx = k;
+    // Scalp brackets — first-passage of stop (cont) vs target (pull). Conservative
+    // on same-bar ambiguity: the stop resolves first (stop side checked first).
+    for (let ci = 0; ci < SCALP_CONFIGS.length; ci++) {
+      if (scalp[ci] !== null) continue;
+      const c = SCALP_CONFIGS[ci];
+      if (cont >= c.stop) scalp[ci] = -c.stop;
+      else if (pull >= c.target) scalp[ci] = c.target;
+    }
   }
   const outcome = contIdx < 0 && revIdx < 0 ? 'stall'
     : revIdx < 0 ? 'continue' : contIdx < 0 ? 'reverse'
@@ -64,7 +84,9 @@ function _postTouch(bars, firstIdx, level, dir, pip) {
   // Hold-to-close fade PnL (G2): fade at the level, exit at close. +ve = reverted.
   const lastClose = bars.at(-1).close;
   const closeFadePips = +(((dir > 0 ? (level - lastClose) : (lastClose - level)) / pip)).toFixed(1);
-  return { mfePips: +mfe.toFixed(1), maePips: +mae.toFixed(1), rev10: mae >= 10, rev20: mae >= 20, rev50: mae >= 50, outcome, closeFadePips };
+  // Unresolved scalps exit at the day close (neither stop nor target hit).
+  const scalpPnl = scalp.map(v => v == null ? closeFadePips : v);
+  return { mfePips: +mfe.toFixed(1), maePips: +mae.toFixed(1), rev10: mae >= 10, rev20: mae >= 20, rev50: mae >= 50, outcome, closeFadePips, scalpPnl };
 }
 
 // Post-touch excursion measured SEPARATELY from each of the first N taps of a
@@ -424,8 +446,23 @@ function summarize(expRows, touchRows, dir, lond, H, recalMeta = { applied: fals
   const medRev = _rate(med.map(r => r.outcome === 'reverse'));
   const plRev  = _rate(plMed.map(r => r.outcome === 'reverse'));
   const medCalm = med.filter(r => r.calm);   // conditional-fade subset (calm days)
+  // Scalp-exit aggregation — per (stop/target) config: win rate + GROSS expectancy
+  // per touch (net of cost is applied in the cross-pair fold, which knows per-type cost).
+  const _scalpExit = rows => {
+    if (!rows.length) return { n: 0 };
+    return { n: rows.length, byConfig: SCALP_CONFIGS.map((c, ci) => {
+      const pnls = rows.map(r => r.scalpPnl?.[ci]).filter(v => v != null);
+      if (!pnls.length) return { label: c.label, stop: c.stop, target: c.target, n: 0 };
+      return { label: c.label, stop: c.stop, target: c.target, n: pnls.length,
+        winPct: +(pnls.filter(v => v > 0).length / pnls.length * 100).toFixed(1),
+        meanPips: +(_mean(pnls)).toFixed(2) };
+    }) };
+  };
   const touches = {
     bandsRecalibrated: recalMeta.applied, recalFactor: recalMeta.medianFactor,
+    // SCALP exits (tight stop / modest target, NOT hold-to-close) on the median +
+    // dynamic median + dynamic 75th — the "is it a short scalp" test.
+    scalpExit: { median: _scalpExit(med), dynMed: _scalpExit(touchRows.dynMed || []), dyn75: _scalpExit(touchRows.dynP75 || []) },
     medianExtension: { ...(_touchStats(med, totalWindows)), byRegime: _byRegime(med), fadePayoff: _fadePayoff(med) },
     p75Extension:    { ...(_touchStats(p75, totalWindows)), byRegime: _byRegime(p75), fadePayoff: _fadePayoff(p75) },
     // Level-set #1: Open-Close (distinct from the drift-adjusted O-H/O-L above).
