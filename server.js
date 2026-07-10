@@ -5107,6 +5107,7 @@ app.get('/api/mve-validate/:sym', async (req, res) => {
     }
     const built = await _mveFetchContext({
       sym, deps: { fetchD1: _btFetchD1, fetchFred: fetchFredSeries, fredKey: process.env.FRED_KEY },
+      count: 5000, fromDate: '2004-01-01',   // pull the full OANDA D1 history (~20y) for statistical power
     });
     if (!built.ok) return res.status(502).json(built);
     const report = _mveValidate(built.ctx);
@@ -5115,6 +5116,54 @@ app.get('/api/mve-validate/:sym', async (req, res) => {
     res.status(report.ok ? 200 : 502).json(report);
   } catch (e) {
     res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// MVE cross-instrument validation — the pooled evidence view. A slow macro signal
+// can't be proven on one instrument's Sharpe (too few independent 20–60 bar windows),
+// but if the SAME horizon-rising icEdge shows up across partly-independent instruments,
+// that consistency is the real evidence. Runs each (cached) and summarizes.
+app.get('/api/mve-validate-all', async (_req, res) => {
+  try {
+    const out = [];
+    for (const sym of _MVE_SUPPORTED) {
+      const hit = _mveValCache.get(sym);
+      let report;
+      if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000) report = hit.data;
+      else {
+        const built = await _mveFetchContext({
+          sym, deps: { fetchD1: _btFetchD1, fetchFred: fetchFredSeries, fredKey: process.env.FRED_KEY },
+          count: 5000, fromDate: '2004-01-01',
+        });
+        if (!built.ok) { out.push({ instrument: sym, ok: false, error: built.error }); continue; }
+        report = _mveValidate(built.ctx);
+        report.dataSource = built.dataSource;
+        if (report.ok) _mveValCache.set(sym, { at: Date.now(), data: report });
+      }
+      // Best icEdge at a "slow" horizon (≥20 bars) — where a macro anchor should work.
+      const slow = report.ok ? Object.entries(report.perHorizon)
+        .filter(([h, r]) => +h >= 20 && r.icEdge != null)
+        .sort((a, b) => b[1].icEdge - a[1].icEdge)[0] : null;
+      out.push({
+        instrument: sym, ok: report.ok, verdict: report.verdict,
+        slowHorizon: slow ? +slow[0] : null, slowIcEdge: slow ? slow[1].icEdge : null,
+        slowHitRate: slow ? slow[1].hitRate : null,
+        deflatedSharpe: report.strategy?.deflatedSharpe ?? null,
+      });
+    }
+    const withEdge = out.filter(o => o.slowIcEdge != null);
+    const positive = withEdge.filter(o => o.slowIcEdge > 0.03).length;
+    const consistency = {
+      instruments: withEdge.length,
+      positiveSlowEdge: positive,
+      meanSlowIcEdge: withEdge.length ? +(withEdge.reduce((s, o) => s + o.slowIcEdge, 0) / withEdge.length).toFixed(4) : null,
+      read: positive >= Math.ceil(withEdge.length * 0.6) && withEdge.length >= 3
+        ? `CONSISTENT: ${positive}/${withEdge.length} instruments show positive slow-horizon icEdge — cross-sectional evidence the macro fair value has real (if small) predictive content. Worth pursuing at portfolio scale.`
+        : `INCONSISTENT: only ${positive}/${withEdge.length} instruments show positive slow-horizon icEdge — no reliable cross-sectional macro edge. Do not wire in.`,
+    };
+    res.json({ ok: true, instruments: out, consistency });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
