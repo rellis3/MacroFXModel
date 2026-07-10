@@ -79,6 +79,8 @@ const _CF_EXACT = new Set([
   'ledger_v2',              // Telegram-v2 daily-learning ledger — accumulated live signal outcomes; cannot be rebuilt, must survive redeploys
   'tg_v2_alert_cfg',        // Telegram-v2 alert config (own config, separate from v1 ai_alert_cfg) — user-set, must survive redeploys
   'tg_v2_config',           // Telegram-v2 OWN bot token + chat ID (separate from v1 tg_config) — user-set, must survive redeploys
+  'tg_vollevel_config',     // Vol-forecast level-alert OWN bot token + chat ID (separate dedicated bot) — user-set, must survive redeploys
+  'vol_level_alert_cfg',    // Vol-forecast level-alert settings (threshold/levels/pairs/cooldown) — user-set, must survive redeploys
   'policy_v2_status',       // Telegram-v2 learn-job progress/state — so the page shows it across page refreshes + server restarts (decoupled from the in-memory jobId)
   'dyn_anchor_config',      // DynAnchor bot settings — must survive redeploys
   'dyn_anchor_credentials', // DynAnchor bot MT5 credentials — must survive redeploys
