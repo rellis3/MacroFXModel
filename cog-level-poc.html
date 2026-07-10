@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COG-level POC — did price revert at COG's levels?</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:20px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:860px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace; margin-bottom:6px }
+  th,td { padding:4px 10px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  .err { color:var(--neg) } .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  code { background:#21262d; padding:1px 5px; border-radius:4px }
+</style>
+</head>
+<body>
+  <h1>COG-level POC <span class="muted" style="font-size:12px">— COG's actual levels vs actual price</span></h1>
+  <div class="sub">
+    <b>Paired A/B — COG's forecaster vs ours, on the same days.</b> For every day we have COG reference data, this sets both <b>COG's</b> levels and <b>our forecaster's</b> levels (median / 75th / O-C) and walks that day's intraday price with the SAME measurement: did price reach the level, revert or blow through, by how much. It also reports the <b>width ratio</b> (COG ÷ ours) and whether it's stable — i.e. whether one fixed widening could match COG without weekly tweaking. Median &amp; 75th are the dynamic H-L (projected from the running high/low); O-C is open ± the move. Small N (COG has ~20 days) — directional, not proof. Railway only.
+  </div>
+  <button onclick="run()">↻ Run</button>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const fmt = (v,d=1) => v==null ? '—' : (+v).toFixed(d);
+const sgn = (v,d=1) => v==null ? '—' : (v>=0?'+':'')+(+v).toFixed(d);
+const pcls = v => v==null?'muted':v>0?'pos':v<0?'neg':'';
+
+async function run(){
+  document.getElementById('status').textContent = 'Loading COG days + intraday…';
+  document.getElementById('out').innerHTML = '';
+  let j; try { j = await (await fetch('/api/cog-level-poc')).json(); }
+  catch(e){ document.getElementById('status').innerHTML = '<span class="err">fetch failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ document.getElementById('status').innerHTML='<span class="err">'+(j.error||'error')+'</span>'; return; }
+  document.getElementById('status').textContent = `${j.cogDates} COG days stored · generated ${j.generatedAt}`;
+  if(!j.results?.length || !j.cogDates){ document.getElementById('out').innerHTML = `<div class="card muted">${j.note||'No COG data.'}</div>`; return; }
+
+  // Diagnostics — surfaces WHY matches fail (date-range mismatch vs parse/name).
+  const dbg = j.debug || {};
+  let diag = `<div class="card" style="font-family:'DM Mono',monospace;font-size:11px">
+    <div><strong>Diagnostics</strong></div>
+    <div class="muted">COG date range: ${dbg.cogDateRange||'—'}</div>
+    <div class="muted">Sample COG instruments parsed (${dbg.sampleDate||'—'}): ${(dbg.sampleCogInstruments||[]).join(', ')||'none'}</div>
+    <div class="muted">Sample EURUSD levels: ${dbg.sampleCogEURUSD?JSON.stringify(dbg.sampleCogEURUSD):'none'}</div>`;
+  for(const r of j.results){ const d=r.debug||{};
+    diag += `<div class="muted">${r.pair}: M1 bars ${d.barsLoaded??'—'}, London days ${d.londonDays??'—'} (${d.londonFirst||'—'} … ${d.londonLast||'—'}), matched ${r.matchedDays??0}/${r.cogDatesForPair??0} — skips: ${d.skipReasons?`notInM1 ${d.skipReasons.notInByDate}, noHL ${d.skipReasons.noHlMed}, noBars ${d.skipReasons.noBars}`:'—'}</div>`;
+  }
+  diag += `</div>`;
+
+  // Each level compared COG (his forecaster) vs OURS (our forecaster), same days + measurement.
+  const LV = [['dynMed','median (dynamic H-L)'],['dyn75','75th (dynamic H-L)'],['ocMed','O-C (open ± move)']];
+  const dataRow = (src,lbl,s) => (!s || !s.n)
+    ? `<tr><td>${src}</td><td>${lbl}</td><td colspan="10" class="muted">no touches</td></tr>`
+    : `<tr><td class="${src==='COG'?'':'muted'}">${src}</td><td>${lbl}</td>
+        <td>${s.n}</td><td>${s.revertCount}</td>
+        <td class="${s.revertPct>=50?'pos':'amber'}">${fmt(s.revertPct)}</td><td class="muted">${fmt(s.continuePct)}</td>
+        <td class="pos">${fmt(s.meanRevertPips)}</td><td class="muted">${fmt(s.meanRevertPct,3)}</td>
+        <td class="neg">${fmt(s.meanAdversePips)}</td><td>${fmt(s.rev20Pct)}</td>
+        <td class="${pcls(s.meanCloseFadePips)}">${sgn(s.meanCloseFadePips)}</td><td>${fmt(s.closeFadeWinPct)}</td></tr>`;
+  let h = '';
+  for(const r of j.results){
+    h += `<div class="card"><h2>${r.pair} <span class="muted" style="font-size:11px">· ${r.matchedDays ?? 0} of ${r.cogDatesForPair ?? 0} COG days · pip ${r.pip ?? '—'}</span></h2>`;
+    if(r.error){ h += `<div class="err">${r.error}</div></div>`; continue; }
+    const wc = r.widthCompare;
+    if(wc) h += `<div class="muted" style="font-size:11px;margin-bottom:6px">Width: our median ${fmt(wc.ourMedMeanPct,3)}% vs COG ${fmt(wc.cogMedMeanPct,3)}% — <strong>COG ${fmt(wc.cogOverOurMean,3)}× ours</strong> (±${fmt(wc.cogOverOurStd,3)} over ${wc.nDays}d). ${wc.cogOverOurStd<=0.06?'Stable ratio ⇒ one fixed widening would track COG.':'Ratio varies ⇒ a fixed factor will not match COG day-to-day.'}</div>`;
+    const res = r.result || {}, resO = r.resultOurs || {};
+    h += `<table><tr>
+      <th>Src</th><th>Level</th><th>Touches</th><th>Reverted</th><th>Revert %</th><th>Continue %</th>
+      <th>Revert by (pips)</th><th>Revert by (%)</th><th>Ran past (pips)</th><th>≥20p</th>
+      <th>Hold-to-close fade</th><th>Fade win %</th></tr>`;
+    for(const [k,lbl] of LV){
+      h += dataRow('COG', lbl, res[k]);
+      h += dataRow('ours', lbl, resO[k]);
+    }
+    h += `</table><div class="muted" style="font-size:10px">COG = his forecaster's level; ours = our forecaster's level, SAME days &amp; measurement. Revert = pulled back after touching. Hold-to-close fade = enter at level, exit at close (+ve = reverted profitably). Small N — directional, not proof.</div></div>`;
+  }
+  document.getElementById('out').innerHTML = diag + h;
+}
+</script>
+</body>
+</html>

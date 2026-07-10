@@ -27,7 +27,7 @@ import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
-import { yangZhangVolSeries, hv20Series, ewmaVolSeries } from './js/volForecast.js';
+import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
@@ -41,6 +41,7 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
+import { runLiveMVE as _runLiveMVE, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -55,6 +56,7 @@ import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair
 import { pipSize as _pipSize, instrument, oandaSymbol } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
+import { parseOILevels, oiAudit } from './js/oiConfluence.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
@@ -67,6 +69,7 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
+import { analyzeCogLevels as _analyzeCogLevels } from './js/cogLevelPoc.js';   // COG-level POC
 import { evaluateIntradayAllHorizons } from './js/intradayForecastResearch.js';
 import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.js';
 import { scanFeatures } from './js/forecastFeatureScan.js';
@@ -5054,6 +5057,41 @@ app.get('/api/vol-forecast/history', (_req, res) => {
   res.json({ ok: true, forecasts: forecastState.history });
 });
 
+// ── Market Valuation Engine (MVE) — live fair value / mispricing ─────────────
+// Additive, isolated read-only endpoint. Sources real OANDA D1 + FRED macro via
+// the SAME fetchers the rest of the server uses, runs js/mve/* (fair-value
+// regression → ensemble → OU convergence → confidence) and returns the valuation.
+// Does NOT feed any live signal/bot — surfacing only, per MVE_RUN_GUIDE.md §6.
+// 1h in-memory cache to avoid hammering OANDA/FRED.
+const _mveCache = new Map();   // sym → { at, data }
+const _MVE_TTL = 60 * 60 * 1000;
+
+app.get('/api/mve', (_req, res) => {
+  res.json({ ok: true, supported: _MVE_SUPPORTED, usage: '/api/mve/:sym  (e.g. /api/mve/EURUSD, /api/mve/XAUUSD)' });
+});
+
+app.get('/api/mve/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  const useSSM = req.query.ssm === '1' || req.query.ssm === 'true';
+  const regime = typeof req.query.regime === 'string' ? req.query.regime : 'NEUTRAL';
+  const cacheKey = `${sym}|${useSSM}|${regime}`;
+  try {
+    const hit = _mveCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < _MVE_TTL && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const v = await _runLiveMVE({
+      sym,
+      deps: { fetchD1: _btFetchD1, fetchFred: fetchFredSeries, fredKey: process.env.FRED_KEY },
+      regime, useSSM,
+    });
+    if (v && v.ok) _mveCache.set(cacheKey, { at: Date.now(), data: v });
+    res.status(v && v.ok ? 200 : 502).json(v);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
 // Force re-compute (admin / manual trigger).
 app.post('/api/vol-forecast/refresh', async (_req, res) => {
   res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
@@ -5452,6 +5490,108 @@ app.get('/api/range-line-bot/zones', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── OI (options-interest) forward test ───────────────────────────────────────
+// No historical options-OI exists for spot FX, so gamma / put-call walls / max-
+// pain as range-entry confluence can't be backtested like touch/naked. Instead we
+// FORWARD-test: capture the day's OI levels each morning (before entries → no
+// lookahead), accumulate resolved trades, and join them by proximity to see if an
+// OI-aligned entry trades better. `oiConfluence` (pure, tested) does the join.
+
+// The London session date (DST-aware boundary) a trade timestamp belongs to — the
+// SAME bucketing the backtest uses, so a trade joins the OI captured for its session.
+function _rlSessionDate(ts, boundaryHour = _rlBoundaryHour()) {
+  const d = ts == null ? new Date() : (typeof ts === 'number' ? new Date(ts < 1e12 ? ts * 1000 : ts) : new Date(ts));
+  if (isNaN(d)) return null;
+  const day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  if (d.getUTCHours() >= boundaryHour) day.setUTCDate(day.getUTCDate() + 1);
+  return day.toISOString().slice(0, 10);
+}
+
+// Store the day's OI levels for an instrument. Accumulates by date (history is
+// built going forward — never wipes prior days). Body: {instrument, text, date?}.
+app.post('/api/range-line-bot/oi', express.json({ limit: '256kb' }), async (req, res) => {
+  try {
+    const { instrument, text, date } = req.body || {};
+    const key = String(instrument || '').toLowerCase().replace('/', '').replace('_', '');
+    if (!key) return res.status(400).json({ ok: false, error: 'instrument required' });
+    const levels = parseOILevels(text || '');
+    const day = date || _rlSessionDate(null);
+    const raw = await kv.get('range_line_oi').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    store[day] = store[day] || {};
+    if (levels.length) store[day][key] = levels;
+    else delete store[day][key];                 // empty paste clears that instrument's OI for the day
+    // Trim to the last ~120 dates so the artifact stays small.
+    const dates = Object.keys(store).sort();
+    for (const d of dates.slice(0, Math.max(0, dates.length - 120))) delete store[d];
+    await kv.put('range_line_oi', JSON.stringify({ data: store, timestamp: Date.now() }));
+    res.json({ ok: true, date: day, instrument: key, levels });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/range-line-bot/oi', async (req, res) => {
+  try {
+    const raw = await kv.get('range_line_oi').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const day = req.query.date || _rlSessionDate(null);
+    res.json({ ok: true, date: day, byInstrument: store[day] || {}, dates: Object.keys(store).sort() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Accumulate the bot's resolved trades into a persistent log (deduped by
+// position_id), stamped with the session date so the OI join has data. The bot's
+// `today_closed_trades` is transient (reset daily) — this rolls it up over time.
+async function _rlAccumulateTradeLog() {
+  try {
+    const raw = await kv.get('range_line_bot_status').catch(() => null);
+    if (!raw) return;
+    const status = JSON.parse(raw).data ?? JSON.parse(raw);
+    const closed = status?.today_closed_trades || [];
+    if (!closed.length) return;
+    const logRaw = await kv.get('range_line_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    let added = 0;
+    for (const c of closed) {
+      const id = c.position_id ?? c.ticket;
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      log.push({
+        position_id: id, symbol: c.symbol, direction: c.direction,
+        open_price: c.open_price, close_price: c.close_price, profit: c.profit,
+        reason: c.reason, time_open: c.time_open, time_close: c.time_close,
+        date: _rlSessionDate(c.time_open),
+      });
+      added++;
+    }
+    if (!added) return;
+    if (log.length > 5000) log.splice(0, log.length - 5000);      // cap
+    await kv.put('range_line_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[range-line-oi] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error('[range-line-oi] trade-log accumulate failed:', e.message); }
+}
+setInterval(_rlAccumulateTradeLog, 10 * 60_000);                  // every 10 min
+setTimeout(_rlAccumulateTradeLog, 30_000);                        // and shortly after boot
+
+// The forward-test audit: join the accumulated trade log against the per-date OI
+// artifact → tagged-vs-untagged expectancy, per OI type, + round-number independence.
+app.get('/api/range-line-bot/oi-audit', async (req, res) => {
+  try {
+    const [logRaw, oiRaw] = await Promise.all([
+      kv.get('range_line_trade_log').catch(() => null),
+      kv.get('range_line_oi').catch(() => null),
+    ]);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const oiByDate = oiRaw ? (JSON.parse(oiRaw).data ?? JSON.parse(oiRaw)) : {};
+    const tolPips = (req.query.tolPips != null && req.query.tolPips !== '') ? parseFloat(req.query.tolPips) : 10;
+    const audit = oiAudit(log, oiByDate, {
+      pipFor: (k) => { try { return _pipSize(k) || 0; } catch { return 0; } },
+      tolPips, roundTolPips: tolPips,
+    });
+    res.json({ ok: true, tolPips, tradesLogged: log.length, oiDates: Object.keys(oiByDate).length, audit });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // KV persistence health — does bot config/credentials survive a redeploy? The
 // bot-config page polls this to show a red banner when the backend is the ephemeral
 // file store (the "account details keep being lost" failure) so it's never silent.
@@ -5741,6 +5881,127 @@ app.get('/api/vol-forecast/reference/:date', async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── COG-level POC — COG's ACTUAL forecast levels vs ACTUAL price, on the days we
+// have COG reference data for (EURUSD / NQ / GOLD). GET /api/cog-level-poc.
+// Reads the stored COG exports from KV, parses each day's levels, loads that pair's
+// intraday bars, and measures reversion at COG's median/75th/O-C levels. Railway
+// only (KV + M1). Descriptive on however many COG days exist — not a big-N claim.
+const _COG_ALIASES = { EURUSD: ['EURUSD', 'EUR/USD', 'EUR_USD'], NQ: ['NQ', 'NAS100', 'NAS100_USD', 'US100', 'NAS'], GOLD: ['GOLD', 'XAUUSD', 'XAU/USD', 'XAU_USD'] };
+// Fetch OANDA M5 candles for a date range (chunked under the 5000-bar cap). The R2
+// parquet lags weeks behind, so the recent COG days must come straight from OANDA.
+async function _fetchOandaM5(sym, fromSec, toSec) {
+  const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const out = [];
+  // from + count (NOT from + to) — count-based paging never requests a future `to`
+  // (which OANDA 400s) and stops cleanly when a short page signals end-of-data.
+  let cursor = fromSec;
+  for (let guard = 0; guard < 20 && cursor < toSec; guard++) {
+    const url = `${base}/v3/instruments/${encodeURIComponent(sym)}/candles`
+              + `?granularity=M5&price=M&from=${encodeURIComponent(new Date(cursor * 1000).toISOString())}&count=5000`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`OANDA M5 ${sym}: HTTP ${r.status}`);
+    const candles = (await r.json()).candles ?? [];
+    if (!candles.length) break;
+    let lastSec = cursor;
+    for (const c of candles) {
+      const t = Math.floor(new Date(c.time).getTime() / 1000);
+      lastSec = t;
+      if (t > toSec) break;
+      if (c.complete === false || !c.mid) continue;
+      const cl = parseFloat(c.mid.c); if (!(cl > 0)) continue;
+      out.push({ time: t, open: parseFloat(c.mid.o), high: parseFloat(c.mid.h), low: parseFloat(c.mid.l), close: cl });
+    }
+    if (lastSec <= cursor || candles.length < 5000) break;   // no progress or reached the end
+    cursor = lastSec + 300;                                   // advance past the last candle (5 min)
+  }
+  return out;
+}
+app.get('/api/cog-level-poc', async (_req, res) => {
+  try {
+    // 1. COG reference dates (newest first, from the index).
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean) : [];
+    if (!dates.length) return res.json({ ok: true, cogDates: 0, results: [], note: 'No COG reference data stored yet (paste some on vol-forecast → Ref Data).' });
+    // 2. Parse each stored COG export into per-instrument levels.
+    const cogByDate = {};
+    for (const date of dates) {
+      const raw = await kv.get(`vol_reference_${date}`).catch(() => null);
+      if (!raw) continue;
+      try { cogByDate[date] = _parseExportText(JSON.parse(raw).text); } catch { /* skip malformed */ }
+    }
+    const _cog = (date, name) => { const rec = cogByDate[date]; if (!rec) return null; for (const a of _COG_ALIASES[name]) if (rec[a]) return rec[a]; return null; };
+    // 3. Per pair: fetch OANDA M5 for the COG date range (the parquet lags weeks),
+    //    split into London days, match COG dates, measure.
+    const PAIRS = [{ name: 'EURUSD', sym: 'EUR_USD', cls: 'fx' }, { name: 'NQ', sym: 'NAS100_USD', cls: 'index' }, { name: 'GOLD', sym: 'XAU_USD', cls: 'commodity' }];
+    const cogDatesSorted = Object.keys(cogByDate).sort();
+    const fromSec = Math.floor(new Date(cogDatesSorted[0] + 'T00:00:00Z').getTime() / 1000) - 2 * 86400;   // pad for the London boundary
+    const toSec   = Math.floor(new Date(cogDatesSorted.at(-1) + 'T00:00:00Z').getTime() / 1000) + 2 * 86400;
+    const results = [];
+    for (const p of PAIRS) {
+      const row = { pair: p.name };
+      try {
+        let pip = 0.0001; try { pip = _pipSize(p.name) || pip; } catch { /* keep default */ }
+        const bars5 = await _fetchOandaM5(p.sym, fromSec, toSec);
+        const lond = buildLondonDaily(bars5 || []);
+        const byDate = new Map(lond.map(d => [d.date, d]));
+        // Daily history for OUR forecaster (needs ≥60 prior bars). One cheap D1 call.
+        const dailyD1 = await _btFetchD1(p.sym, 400).catch(() => []);
+        const _ourLevels = (date) => {
+          const slice = dailyD1.filter(d => d.date < date);   // strictly-before → no lookahead
+          if (slice.length < 60) return null;
+          try { const fc = _computeForecast(slice, p.cls); return { hl_med: fc.hl_median, hl_75: fc.hl_75, oc_med: fc.oc_median, oc_75: fc.oc_75 }; } catch { return null; }
+        };
+        const cogRecs = [], oursRecs = [], widthRows = [];
+        const why = { notInByDate: 0, noHlMed: 0, noBars: 0 };   // why a COG date was skipped
+        for (const date of Object.keys(cogByDate)) {
+          const cog = _cog(date, p.name); if (!cog) continue;
+          const day = byDate.get(date);
+          if (!day) { why.notInByDate++; continue; }
+          if (!(cog.hl_med > 0)) { why.noHlMed++; continue; }
+          if (!day.bars?.length || !(day.open > 0)) { why.noBars++; continue; }
+          cogRecs.push({ date, open: day.open, bars: day.bars, pip, cog });
+          const ours = _ourLevels(date);
+          if (ours && ours.hl_med > 0) {
+            oursRecs.push({ date, open: day.open, bars: day.bars, pip, cog: ours });
+            widthRows.push({ our: ours.hl_med, cog: cog.hl_med });
+          }
+        }
+        row.pip = pip; row.cogDatesForPair = Object.keys(cogByDate).filter(d => _cog(d, p.name)).length;
+        row.matchedDays = cogRecs.length;
+        // Width comparison — is COG's median systematically wider than ours, and by a
+        // STABLE factor (⇒ one empirical widening matches him, no weekly tweaking)?
+        if (widthRows.length) {
+          const ratios = widthRows.map(w => w.cog / w.our);
+          const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+          const rMean = mean(ratios), rStd = Math.sqrt(mean(ratios.map(r => (r - rMean) ** 2)));
+          row.widthCompare = { nDays: widthRows.length,
+            ourMedMeanPct: +mean(widthRows.map(w => w.our)).toFixed(3),
+            cogMedMeanPct: +mean(widthRows.map(w => w.cog)).toFixed(3),
+            cogOverOurMean: +rMean.toFixed(3), cogOverOurStd: +rStd.toFixed(3) };
+        }
+        row.debug = {
+          barsLoaded: bars5?.length ?? 0, londonDays: lond.length,
+          londonFirst: lond[0]?.date ?? null, londonLast: lond.at(-1)?.date ?? null,
+          dailyD1Bars: dailyD1.length, ourLevelDays: oursRecs.length, skipReasons: why,
+        };
+        row.result = _analyzeCogLevels(cogRecs);        // COG's levels
+        row.resultOurs = _analyzeCogLevels(oursRecs);   // OUR forecaster's levels, same days + measurement
+      } catch (e) { row.error = e.message; }
+      results.push(row);
+    }
+    // Top-level debug: the COG date range + a sample parsed record, to see if it's a
+    // date-range mismatch (M1 doesn't cover recent COG days) or a parse/name issue.
+    const firstDate = Object.keys(cogByDate)[0];
+    res.json({ ok: true, generatedAt: new Date().toISOString(), cogDates: dates.length,
+      debug: { cogDateRange: dates.length ? `${dates[dates.length - 1]} … ${dates[0]}` : null,
+        cogDatesList: dates, sampleDate: firstDate ?? null,
+        sampleCogInstruments: firstDate ? Object.keys(cogByDate[firstDate] || {}) : [],
+        sampleCogEURUSD: firstDate ? (_cog(firstDate, 'EURUSD') || null) : null },
+      note: 'Paired A/B — COG\'s forecaster levels vs OUR forecaster levels, SAME days + measurement. result = COG, resultOurs = ours. widthCompare = is COG systematically wider than ours, and by a stable factor (⇒ one empirical widening matches him). Small N — directional, not proof.',
+      results });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // Parse plain-text forecast export (our format or reference) into { instrumentName: {vol,hl_med,hl_75,oc_med,oc_75} }
@@ -8752,6 +9013,11 @@ app.post('/api/range-line/run', async (req, res) => {
       sources:      Array.isArray(b.confSources) && b.confSources.length ? b.confSources : undefined,
       fib15:        b.confFib15 !== false,
       fib15ClusterPips: (b.confFib15ClusterPips != null && b.confFib15ClusterPips !== '') ? parseFloat(b.confFib15ClusterPips) : undefined,
+      // Untested prior H/L (virgin levels) as an extra distinct source — off by
+      // default; the A/B toggle answers "do naked levels lift the ≥2 book?".
+      naked:        !!b.confNaked,
+      nakedLookback:   (b.confNakedLookback != null && b.confNakedLookback !== '') ? parseInt(b.confNakedLookback) : 30,
+      nakedBufferPips: (b.confNakedBufferPips != null && b.confNakedBufferPips !== '') ? parseFloat(b.confNakedBufferPips) : 0,
     };
   }
 
@@ -8771,7 +9037,7 @@ app.post('/api/range-line/run', async (req, res) => {
       // `confluence`, whose bucket is baked into the records at build time — so its
       // params (on/tol/lookback/sources) MUST join the key or a toggle would reuse
       // stale (confluence-less) records.
-      const cSig = opts.confluence ? `conf:${opts.confluence.mode}:${opts.confluence.tolFrac}:${opts.confluence.lookbackDays}:${(opts.confluence.sources || []).join(',')}:${opts.confluence.fib15}` : 'noconf';
+      const cSig = opts.confluence ? `conf:${opts.confluence.mode}:${opts.confluence.tolFrac}:${opts.confluence.lookbackDays}:${(opts.confluence.sources || []).join(',')}:${opts.confluence.fib15}:${opts.confluence.naked}:${opts.confluence.nakedLookback}:${opts.confluence.nakedBufferPips}` : 'noconf';
       const recKey = [opts.sources.join(','), opts.minLookback, opts.dateFrom, opts.dateTo, opts.boundaryHour, opts.asiaHrs, cSig].join('|');
       const touchesByPair = {}, costByPair = {};
       let done = 0;

@@ -83,6 +83,30 @@
   </div>
   <div class="chips" id="counts"></div>
   <div class="grid" id="zones"></div>
+
+  <!-- ── OI (options-interest) forward test ─────────────────────────────── -->
+  <div class="card" style="margin-top:20px;padding:14px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <b>🎯 Options-OI forward test</b>
+      <span class="muted" style="font-size:12px">No historical OI for spot FX → this is a live forward test: paste today's OI levels each morning (before entries), and every resolved trade is joined to that day's levels by proximity. Tagged-vs-untagged expectancy tells you if OI-aligned entries trade better — and the "not at a round number" cut checks it isn't just duplicating levels we already count.</span>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;align-items:flex-start">
+      <div style="flex:1;min-width:260px">
+        <div class="muted" style="font-size:12px;margin-bottom:4px">Today's OI for <b id="oiPair">—</b> — one per line: <code>price type</code> (e.g. <code>1.0850 call_wall</code>, <code>1.0820 max_pain</code>, <code>1.0805 put_wall</code>, <code>1.1000 gamma_flip</code>, <code>1.0875 hvl</code>). Untyped lines tag as generic <code>oi</code>.</div>
+        <textarea id="oiText" rows="6" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:8px"></textarea>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+          <button id="oiSaveBtn" onclick="saveOI()">Save OI for today</button>
+          <span class="muted" id="oiSaveMsg" style="font-size:12px"></span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:260px">
+        <div class="muted" style="font-size:12px;margin-bottom:4px">Running tally
+          <label style="margin-left:8px">tol <input id="oiTol" type="number" value="10" min="1" max="100" style="width:52px"> pips</label>
+          <button onclick="loadOIAudit()" style="margin-left:6px">↺</button></div>
+        <div id="oiAudit" class="muted" style="font-size:13px">—</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -224,11 +248,69 @@ function asiaWindow() {
   return { start, end: start + ah * 3600 };
 }
 
-$('pairSel').addEventListener('change', render);
+// ── OI forward test ──────────────────────────────────────────────────────────
+async function loadOI() {
+  const pair = $('pairSel').value; if (!pair) return;
+  $('oiPair').textContent = pair.toUpperCase();
+  try {
+    const r = await (await fetch('/api/range-line-bot/oi')).json();
+    const levels = (r.byInstrument && r.byInstrument[pair]) || [];
+    $('oiText').value = levels.map(l => `${l.price} ${l.type}`).join('\n');
+    $('oiSaveMsg').textContent = levels.length ? `${levels.length} level(s) saved for ${r.date}` : `nothing saved yet for ${r.date}`;
+  } catch { /* leave as-is */ }
+}
+async function saveOI() {
+  const pair = $('pairSel').value; if (!pair) return;
+  $('oiSaveBtn').disabled = true; $('oiSaveMsg').textContent = 'saving…';
+  try {
+    const r = await (await fetch('/api/range-line-bot/oi', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instrument: pair, text: $('oiText').value }),
+    })).json();
+    $('oiSaveMsg').textContent = r.ok ? `✓ ${r.levels.length} level(s) saved for ${r.date}` : `✗ ${r.error}`;
+    if (r.ok) loadOIAudit();
+  } catch (e) { $('oiSaveMsg').textContent = '✗ ' + e.message; }
+  finally { $('oiSaveBtn').disabled = false; }
+}
+function _oiRow(label, s) {
+  if (!s || !s.n) return `<tr><td>${label}</td><td colspan="3" class="muted">no trades yet</td></tr>`;
+  const cls = s.avgRet > 0 ? 'style="color:#3fb950"' : s.avgRet < 0 ? 'style="color:#f85149"' : '';
+  return `<tr><td>${label}</td><td>${s.n}</td><td>${(s.winRate*100).toFixed(0)}%</td><td ${cls}>${s.avgRet>=0?'+':''}${s.avgRet.toFixed(4)}%</td></tr>`;
+}
+async function loadOIAudit() {
+  const el = $('oiAudit');
+  try {
+    const tol = $('oiTol').value || 10;
+    const r = await (await fetch(`/api/range-line-bot/oi-audit?tolPips=${tol}`)).json();
+    if (!r.ok) { el.innerHTML = `<span style="color:#f85149">${r.error}</span>`; return; }
+    const a = r.audit;
+    const enough = a.tagged.n >= 30 && a.untagged.n >= 30;
+    const edgeCls = a.edge > 0 ? 'color:#3fb950' : 'color:#f85149';
+    const types = Object.entries(a.byType || {}).sort((x,y)=>y[1].n-x[1].n);
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="text-align:left;color:#8b949e"><th>bucket</th><th>n</th><th>win%</th><th>avg ret</th></tr></thead>
+        <tbody>
+          ${_oiRow('<b>tagged</b> (OI-aligned)', a.tagged)}
+          ${_oiRow('untagged (OI day, not near)', a.untagged)}
+          ${_oiRow('&nbsp;↳ tagged, <b>not</b> at round #', a.taggedNotRound)}
+          ${_oiRow('&nbsp;↳ tagged, at round #', a.taggedAtRound)}
+          ${types.map(([t,s]) => _oiRow(`&nbsp;&nbsp;· ${t}`, s)).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top:6px">Edge (tagged − untagged): <b style="${edgeCls}">${a.edge>=0?'+':''}${a.edge.toFixed(4)}%</b>
+        · ${r.tradesLogged} trades logged, ${r.oiDates} OI day(s)
+        · ${enough ? '<b style="color:#3fb950">enough to read</b>' : `<span class="muted">need ≥30 tagged &amp; untagged (have ${a.tagged.n}/${a.untagged.n}) — keep logging</span>`}</div>
+      <div class="muted" style="font-size:11px;margin-top:4px">Judge on the <b>not-at-round-#</b> row: if OI only helps where a round number already is, it's redundant (the naked-levels lesson). ${a.coverage.tradesNoOIDay} trade(s) on days with no OI captured are excluded.</div>`;
+  } catch (e) { el.innerHTML = `<span style="color:#f85149">${e.message}</span>`; }
+}
+
+$('pairSel').addEventListener('change', () => { render(); loadOI(); });
 $('strongOnly').addEventListener('change', render);
 $('asiaMarks').addEventListener('change', render);
 $('cmin').addEventListener('change', load);
-load();
+load().then(loadOI);
+loadOIAudit();
 setInterval(load, 30000);   // zones + price refresh as the day moves
 </script>
 </body>
