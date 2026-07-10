@@ -49,6 +49,25 @@ test('reversalStudy: extracts reversals + reports distance from open & running e
   assert.ok(q.p25 <= q.p50 + 1e-9 && q.p50 <= q.p75 + 1e-9 && q.p75 <= q.p90 + 1e-9, 'percentiles monotone');
 });
 
+test('reversalStudy: splits dominant vs minor and they sum to the total', () => {
+  const r = reversalStudy(synthDays(60), { revFrac: 0.25 });
+  assert.ok(r.dominant.n > 0, 'dominant reversals present');
+  assert.equal(r.dominant.n + r.minor.n, r.runFromExtremePct.n, 'dominant + minor = total reversals');
+  // A day has at most 2 dominant reversals (one high, one low) → dominant ≤ 2×nDays.
+  assert.ok(r.dominant.n <= 2 * r.nDays, 'at most 2 dominant per day');
+});
+
+test('reversalStudy: forecast-zone bands cover every reversal and fractions sum to ~1', () => {
+  const r = reversalStudy(synthDays(60), { revFrac: 0.25 });
+  const bd = r.bands;
+  assert.equal(bd.belowMed + bd.medTo75 + bd.above75, bd.n, 'band counts partition the reversals');
+  assert.equal(bd.n, r.runFromExtremePct.n, 'bands cover all reversals');
+  assert.ok(Math.abs(bd.fBelowMed + bd.fMedTo75 + bd.fAbove75 - 1) < 0.01, 'band fractions sum to ~1');
+  // Dominant/minor band partitions are internally consistent too.
+  assert.equal(r.dominantBands.n, r.dominant.n, 'dominant bands cover dominant reversals');
+  assert.equal(r.minorBands.n, r.minor.n, 'minor bands cover minor reversals');
+});
+
 test('reversalStudy: insufficient data flagged, not thrown', () => {
   assert.equal(reversalStudy(synthDays(5)).insufficient, true);
 });

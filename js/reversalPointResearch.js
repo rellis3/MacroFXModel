@@ -9,10 +9,13 @@
  *   • the RUNNING intraday extreme — the dynamic High-Low anchor (how far the move
  *     ran from the day's running low/high before it exhausted).
  *
- * First deliverable (this file): the label extractor + the empirical distribution of
- * where reversals cluster — so we can SEE whether reversals happen at the median
- * (~P50) / 75th, or at some other distance entirely. That is the honest foundation
- * before any model: is the median even where price turns?
+ * This file: the label extractor + the empirical distribution of where reversals
+ * cluster — so we can SEE whether reversals happen at the median (~P50) / 75th, or at
+ * some other distance entirely. It splits DOMINANT reversals (the day's ultimate high+
+ * low swings that held — the tradeable turn) from MINOR intraday pullbacks, and reports
+ * each reversal's forecast-zone occupancy (short of the median / in the median→75th
+ * shelf / past the 75th). That is the honest foundation before any model: is the median
+ * even where price turns, and is that clustering coming from the real turns or the noise?
  *
  * Pure + synthetic-testable. Reuses buildLondonDaily for the London-day boundary;
  * builds a NEW target (the realized reversal price), never the σ range. Copies nothing.
@@ -25,6 +28,23 @@ const _sortNum = a => [...a].sort((x, y) => x - y);
 const _median = a => { if (!a.length) return 0; const s = _sortNum(a); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const _pctile = (a, p) => { if (!a.length) return 0; const s = _sortNum(a); const i = p / 100 * (s.length - 1); const lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
 const r2 = x => Math.round(x * 1000) / 1000;
+
+// The forecast's 75th line sits at BM_P75/BM_P50 = 2.049/1.572 ≈ 1.303× the median
+// line. So a reversal whose run-from-extreme k = run ÷ median-range tells us WHERE it
+// exhausted relative to the two forecast lines: k<1 = short of the median, 1..1.303 =
+// in the median→75th shelf, ≥1.303 = past the 75th (the overshoot tail).
+const P75_OVER_P50 = 2.049 / 1.572;
+
+// Bucket a set of k-ratios (run-from-extreme ÷ median range) into the three forecast
+// zones and report counts + fractions — how much exhaustion clusters AT / before the
+// median vs in the median→75th shelf vs beyond the 75th line.
+function _bands(ks, p75 = P75_OVER_P50) {
+  const o = { n: ks.length, belowMed: 0, medTo75: 0, above75: 0 };
+  for (const k of ks) { if (k < 1) o.belowMed++; else if (k < p75) o.medTo75++; else o.above75++; }
+  const n = o.n || 1;
+  o.fBelowMed = r2(o.belowMed / n); o.fMedTo75 = r2(o.medTo75 / n); o.fAbove75 = r2(o.above75 / n);
+  return o;
+}
 
 function _session(tMs) {
   const h = _londonParts(new Date(tMs)).hour;
@@ -64,8 +84,11 @@ export function reversalStudy(intraday, opts = {}) {
   const dayRanges = lond.map(d => d.high - d.low).filter(x => x > 0);
   const medRange = _median(dayRanges);                 // price units
   const refPx = lond.at(-1).open || lond[0].open || 1;  // for %-of-price scaling
+  const medRangePct = medRange / refPx * 100;           // the calibrated median line, in %
   const thr = revFrac * medRange;
-  const fromOpen = [], runExt = [], perDay = [], mags = [];
+  const fromOpen = [], runExt = [], perDay = [];
+  const domRun = [], minRun = [];                        // run-from-extreme split dominant/minor
+  const allK = [], domK = [], minK = [];                // run ÷ median-range (forecast-zone ratio)
   const bySession = {};
   for (const d of lond) {
     if (!d.bars || d.bars.length < minBarsPerDay || !(d.open > 0) || !(thr > 0)) continue;
@@ -74,25 +97,49 @@ export function reversalStudy(intraday, opts = {}) {
     if (dropFirstPivot && pivots.length) pivots = pivots.slice(1);   // first pivot is seed-dependent
     perDay.push(pivots.length);
     let rl = bars[0].low, rh = bars[0].high, ptr = 0;
+    const dayRevs = [];   // { rePct, kind } — this day's confirmed reversals
     // Running extreme up to each pivot (single pass — pivots are in order).
     for (const p of pivots) {
       while (ptr <= p.idx) { if (bars[ptr].low < rl) rl = bars[ptr].low; if (bars[ptr].high > rh) rh = bars[ptr].high; ptr++; }
       fromOpen.push(Math.abs((p.price - d.open) / d.open * 100));                       // reversal distance from the London open
       const rePct = p.kind === 'high' ? (p.price - rl) / d.open * 100 : (rh - p.price) / d.open * 100;  // run from the running extreme
-      if (rePct > 0) { runExt.push(rePct); mags.push(rePct); }
+      if (rePct > 0) { runExt.push(rePct); dayRevs.push({ rePct, kind: p.kind }); }
       bySession[_session(p._t)] = (bySession[_session(p._t)] || 0) + 1;
+    }
+    // DOMINANT = the day's single largest run-from-extreme high AND largest low (the
+    // ultimate swings that held and turned). Everything else is a MINOR intraday pullback.
+    let domHigh = null, domLow = null;
+    for (const rv of dayRevs) {
+      if (rv.kind === 'high' && (!domHigh || rv.rePct > domHigh.rePct)) domHigh = rv;
+      if (rv.kind === 'low' && (!domLow || rv.rePct > domLow.rePct)) domLow = rv;
+    }
+    const dom = new Set([domHigh, domLow].filter(Boolean));
+    for (const rv of dayRevs) {
+      const k = medRangePct ? rv.rePct / medRangePct : 0;   // where it exhausted vs the median line
+      allK.push(k);
+      if (dom.has(rv)) { domRun.push(rv.rePct); domK.push(k); }
+      else { minRun.push(rv.rePct); minK.push(k); }
     }
   }
   const dist = a => a.length ? { n: a.length, p25: r2(_pctile(a, 25)), p50: r2(_pctile(a, 50)), p75: r2(_pctile(a, 75)), p90: r2(_pctile(a, 90)), mean: r2(_mean(a)) } : { n: 0 };
   return {
     nDays: lond.length, dateFrom: lond[0].date, dateTo: lond.at(-1).date,
-    revFrac, thresholdPct: r2(thr / refPx * 100), medRangePct: r2(medRange / refPx * 100),
+    revFrac, thresholdPct: r2(thr / refPx * 100), medRangePct: r2(medRangePct),
     reversalsPerDay: r2(_mean(perDay)), nReversals: runExt.length,
     // Where reversals sit relative to the OPEN (O-C anchor), |% of price|.
     fromOpenPct: dist(fromOpen),
     // How far the move ran from the RUNNING extreme before reversing (H-L dynamic anchor).
     // THIS is the empirical exhaustion distance — compare its P50 to the forecast median.
     runFromExtremePct: dist(runExt),
+    // Dominant (the day's ultimate high+low swings) vs minor (intraday pullbacks). The
+    // dominant set is the tradeable turn — its P50 is where the day's real reversal sits.
+    dominant: dist(domRun),
+    minor: dist(minRun),
+    // Forecast-zone occupancy: fraction of reversals short of the median (k<1), in the
+    // median→75th shelf (1..1.303), or past the 75th line (≥1.303 — the overshoot tail).
+    bands: _bands(allK),
+    dominantBands: _bands(domK),
+    minorBands: _bands(minK),
     bySession,
   };
 }
