@@ -69,7 +69,7 @@ async function run(){
     h += `<div class="card"><h2>${r.pair} <span class="muted" style="font-size:11px">· ${r.matchedDays ?? 0} of ${r.cogDatesForPair ?? 0} COG days · pip ${r.pip ?? '—'}</span></h2>`;
     if(r.error){ h += `<div class="err">${r.error}</div></div>`; continue; }
     const wc = r.widthCompare;
-    if(wc) h += `<div class="muted" style="font-size:11px;margin-bottom:6px">Width: our median ${fmt(wc.ourMedMeanPct,3)}% vs COG ${fmt(wc.cogMedMeanPct,3)}% — <strong>COG ${fmt(wc.cogOverOurMean,3)}× ours</strong> (±${fmt(wc.cogOverOurStd,3)} over ${wc.nDays}d). ${wc.cogOverOurStd<=0.06?'Stable ratio ⇒ one fixed widening would track COG.':'Ratio varies ⇒ a fixed factor won\\'t match COG day-to-day.'}</div>`;
+    if(wc) h += `<div class="muted" style="font-size:11px;margin-bottom:6px">Width: our median ${fmt(wc.ourMedMeanPct,3)}% vs COG ${fmt(wc.cogMedMeanPct,3)}% — <strong>COG ${fmt(wc.cogOverOurMean,3)}× ours</strong> (±${fmt(wc.cogOverOurStd,3)} over ${wc.nDays}d). ${wc.cogOverOurStd<=0.06?'Stable ratio ⇒ one fixed widening would track COG.':'Ratio varies ⇒ a fixed factor will not match COG day-to-day.'}</div>`;
     const res = r.result || {}, resO = r.resultOurs || {};
     h += `<table><tr>
       <th>Src</th><th>Level</th><th>Touches</th><th>Reverted</th><th>Revert %</th><th>Continue %</th>
