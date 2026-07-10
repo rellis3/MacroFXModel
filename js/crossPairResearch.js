@@ -327,6 +327,28 @@ function _scalpFold(recs, levelKey, minPairs, costTable) {
       meanWinPct: +(rows.reduce((s, x) => s + x.winPct, 0) / rows.length).toFixed(1) };
   }).filter(Boolean);
 }
+// Confirmation-entry fold — enter on the turn (close back through the level), stop
+// beyond the overshoot, no-trade on blow-throughs. Per target: net/touch (gross −
+// cost) across pairs + the FX confirm rate (how often a turn happens = trades taken).
+function _confirmFold(recs, levelKey, minPairs, costTable) {
+  const targets = [], perT = [], fxRates = [];
+  for (const r of recs) {
+    const ce = r.in?.daily?.touches?.confirmEntry?.[levelKey]; if (!ce?.byTarget) continue;
+    const cost = costTable[r.type] ?? 2.0;
+    if (ce.confirmRatePct != null && r.type !== 'index') fxRates.push(ce.confirmRatePct);
+    ce.byTarget.forEach((c, ti) => { if (!c.n) return; targets[ti] = c.target; (perT[ti] ??= []).push({ type: r.type, netPips: +(c.meanPips - cost).toFixed(2), winPct: c.winPct }); });
+  }
+  const byTarget = perT.map((rows, ti) => {
+    if (!rows || rows.length < minPairs) return null;
+    const fx = rows.filter(x => x.type !== 'index');
+    return { target: targets[ti], nPairs: rows.length,
+      fxPositive: fx.filter(x => x.netPips > 0).length, allPositive: rows.filter(x => x.netPips > 0).length,
+      medianFxNet: fx.length ? +(_median(fx.map(x => x.netPips)) ?? 0).toFixed(2) : null,
+      medianAllNet: +(_median(rows.map(x => x.netPips)) ?? 0).toFixed(2),
+      meanWinPct: +(_mean(rows.map(x => x.winPct))).toFixed(1) };
+  }).filter(Boolean);
+  return byTarget.length ? { fxConfirmRatePct: fxRates.length ? +(_mean(fxRates)).toFixed(1) : null, byTarget } : null;
+}
 function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
   const median = _summCost(_costRows(recs, 'medianExtension', costTable), minPairs);
   if (!median || median.insufficient) return median;
@@ -357,8 +379,10 @@ function _costSurvival(recs, minPairs, costTable = COST_PIPS) {
     dyn75:  _scalpFold(recs, 'dyn75', minPairs, costTable),
     median: _scalpFold(recs, 'median', minPairs, costTable),
   };
+  // Confirmation-entry fade — enter on the turn, not the touch (dynamic median + 75th).
+  const confirmEntry = { dynMed: _confirmFold(recs, 'dynMed', minPairs, costTable), dyn75: _confirmFold(recs, 'dyn75', minPairs, costTable) };
   // `median`/`p75` are the drift-adjusted O-H/O-L lines (level-set #2).
-  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75, dynE94, dynE90 }, costSweep, scalpExit };
+  return { ...median, byLine: { oc, median, p75, calm, dyn, dyn75, dynRatio75, dynE94, dynE90 }, costSweep, scalpExit, confirmEntry };
 }
 
 // Vol-conditioned exhaustion curve — folds each pair's reversion-by-(vol×distance)

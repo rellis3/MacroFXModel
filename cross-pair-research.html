@@ -148,6 +148,30 @@ function scalpHtml(sc){
     ${inner}
     <div class="muted" style="font-size:11px;margin-top:3px">FX net &gt; 0 on ≥3 pairs = a real scalp edge. "All" includes indices un-discounted. Full history, real N (unlike the 20-day COG POC).</div></div>`;
 }
+// Confirmation-entry fade — enter on the TURN (close back through the level), not the
+// touch; stop beyond the overshoot; no-trade on blow-throughs (dodges the tail).
+function confirmHtml(ce){
+  if(!ce) return '';
+  const block = (title,f) => {
+    if(!f || !Array.isArray(f.byTarget) || !f.byTarget.length) return '';
+    const tr = f.byTarget.map(c=>`<tr>
+      <td style="padding:2px 10px">tgt ${c.target}</td>
+      <td style="text-align:right;padding:2px 10px" class="${c.medianFxNet>0?'pos':'neg'}">${sgn(c.medianFxNet,2)}</td>
+      <td style="text-align:right;padding:2px 10px" class="${c.fxPositive>=3?'pos':'muted'}">${c.fxPositive}</td>
+      <td style="text-align:right;padding:2px 10px" class="${c.medianAllNet>0?'pos':'neg'}">${sgn(c.medianAllNet,2)}</td>
+      <td style="text-align:right;padding:2px 10px muted">${c.allPositive}</td>
+      <td style="text-align:right;padding:2px 10px" class="muted">${fmt(c.meanWinPct)}%</td></tr>`).join('');
+    return `<div style="margin-top:6px"><strong>${title}</strong> <span class="muted">· turns on ${fmt(f.fxConfirmRatePct)}% of FX touches (trades taken)</span>
+      <table style="border-collapse:collapse;font-size:12px;margin-top:2px"><tr class="muted">
+        <th style="text-align:left;padding:2px 10px">target</th><th style="padding:2px 10px">FX net/trade</th><th style="padding:2px 10px">FX +ve</th><th style="padding:2px 10px">All net/trade</th><th style="padding:2px 10px">All +ve</th><th style="padding:2px 10px">Win%</th></tr>${tr}</table></div>`;
+  };
+  const inner = block('Dynamic median',ce.dynMed) + block('Dynamic 75th',ce.dyn75);
+  if(!inner) return '';
+  return `<div style="margin-top:12px;padding-top:8px;border-top:1px solid var(--border)">
+    <div style="margin-bottom:4px"><strong>Confirmation entry</strong> — enter on the <em>turn</em> (first bar closing back through the level), stop beyond the overshoot, <em>no trade on blow-throughs</em>. Net = pips per CONFIRMED trade after cost. The direct test of "the level is real, the timing was wrong."</div>
+    ${inner}
+    <div class="muted" style="font-size:11px;margin-top:3px">Compare to the Scalp-exit (blind, at-touch) net above. FX net/trade &gt; 0 on ≥3 pairs = the confirmation entry rescues the fade. "Turns on X%" = how often a rejection actually happened (the rest are correctly skipped).</div></div>`;
+}
 function sweepHtml(sweep){
   if(!Array.isArray(sweep) || !sweep.length) return '';
   const peakAll = Math.max(...sweep.map(r=>r.medianAllNetX1 ?? -99));
@@ -264,7 +288,8 @@ function render(cp){
       ${lineRow('Dynamic H-L from running extreme (75th, Feller)', bl.dyn75)}
       ${lineRow('Dynamic H-L from running extreme (75th, empirical ratio_yz)', bl.dynRatio75)}
       ${sweepHtml(cs.costSweep)}
-      ${scalpHtml(cs.scalpExit)}`;
+      ${scalpHtml(cs.scalpExit)}
+      ${confirmHtml(cs.confirmEntry)}`;
     // Per-pair drill-down — pick which level-set line to inspect (default the
     // best FX line so the new dynamic levels are visible, not just the median).
     const LINES = [['oc','Open-Close'],['median','O-H/O-L (drift)'],['p75','O-H/O-L 75th'],['calm','Calm-day O-H/O-L'],['dyn','Dynamic H-L (median, YZ30)'],['dynE94','Dynamic H-L (median, EWMA0.94)'],['dynE90','Dynamic H-L (median, EWMA0.90)'],['dyn75','Dynamic H-L (75th Feller)'],['dynRatio75','Dynamic H-L (75th ratio_yz)']].filter(([k])=>bl[k] && !bl[k].insufficient);

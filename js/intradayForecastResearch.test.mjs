@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateIntraday, evaluateIntradayAllHorizons, _levelOutcome, _dynLevelOutcome } from './intradayForecastResearch.js';
+import { evaluateIntraday, evaluateIntradayAllHorizons, _levelOutcome, _dynLevelOutcome, _confirmFade } from './intradayForecastResearch.js';
 
 const PIP = 0.0001;
 const bar = (t, o, h, l, c) => ({ open: o, high: h, low: l, close: c, _t: Date.UTC(2021, 0, 4, 8) + t * 60000 });
@@ -245,6 +245,30 @@ test('evaluateIntraday: vol-conditioned exhaustion curve present, bucketed by vo
   // ≈percentile increases with distance (P50 at ×1.0 → higher at ×1.4).
   const lo = t.exhaustionCurve.low;
   assert.ok(lo[0].approxPctile <= lo[lo.length - 1].approxPctile, 'percentile label increases with distance');
+});
+
+test('confirm fade: no turn ⇒ no trade (blow-through skipped); turn ⇒ entry beyond overshoot', () => {
+  const b = (h, l, c) => ({ high: h, low: l, close: c, _t: Date.UTC(2021, 0, 4, 8) });
+  // Resistance fade (dir +1) at level 101. Touch at bar1, overshoots to 102, then a
+  // bar CLOSES back below 101 (the turn) → confirmed entry.
+  const turn = [b(100, 99.5, 100), b(101.2, 100.5, 101.1), b(102, 101, 100.8), b(100.9, 100.2, 100.5)];
+  const cf = _confirmFade(turn, 1, 101, +1, 0.01);
+  assert.ok(cf && cf.confirmed, 'a rejection close confirms the entry');
+  assert.ok(Array.isArray(cf.pnl) && cf.pnl.length === 3, 'one PnL per target');
+  // Pure blow-through (never closes back below) → no trade.
+  const blow = [b(100, 99.5, 100), b(101.2, 100.5, 101.2), b(102, 101.3, 101.9), b(103, 102, 102.9)];
+  assert.equal(_confirmFade(blow, 1, 101, +1, 0.01), null, 'blow-through ⇒ no confirmation ⇒ no trade');
+});
+
+test('evaluateIntraday: confirmEntry block present with confirm rate + per-target stats', () => {
+  const t = evaluateIntraday(synthH1(500, 3), { pip: PIP }).touches;
+  assert.ok(t.confirmEntry && t.confirmEntry.dynMed, 'confirmEntry block present');
+  const ce = t.confirmEntry.dynMed;
+  if (ce.nTouches) {
+    assert.ok(ce.confirmRatePct >= 0 && ce.confirmRatePct <= 100, 'confirm rate valid %');
+    assert.ok(ce.nConfirmed <= ce.nTouches, 'confirmed ≤ touches (blow-throughs skipped)');
+    assert.ok(Array.isArray(ce.byTarget) && ce.byTarget.length === 3, 'one row per target');
+  }
 });
 
 test('evaluateIntraday: insufficient data returns a flag, not a throw', () => {
