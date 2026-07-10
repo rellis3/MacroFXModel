@@ -22,7 +22,8 @@
 <body>
   <h1>Reversal-Point Research <span class="muted" style="font-size:12px">— where does price actually reverse?</span></h1>
   <div class="sub">
-    A <b>separate</b> calc from the vol forecast. Instead of "how far does price travel" (a range σ), this extracts the intraday swings that <b>held and reversed</b> (the real exhaustion points) and measures them against the same anchors: the <b>London-midnight open</b> (O-C) and the <b>running intraday extreme</b> (dynamic H-L). The key column is <b>Run P50 vs Median range</b> — if reversals typically run <i>less</i> than the median range before turning, the median line sits <i>further out</i> than where price actually exhausts. <span class="muted">Full M1 history. A reversal = a swing ≥ revFrac × the pair's median daily range.</span>
+    A <b>separate</b> calc from the vol forecast. Instead of "how far does price travel" (a range σ), this extracts the intraday swings that <b>held and reversed</b> (the real exhaustion points) and measures them against the same anchors: the <b>London-midnight open</b> (O-C) and the <b>running intraday extreme</b> (dynamic H-L). The key column is <b>Run P50 vs Median range</b> — if reversals typically run <i>less</i> than the median range before turning, the median line sits <i>further out</i> than where price actually exhausts. <span class="muted">Full M1 history. A reversal = a swing ≥ revFrac × the pair's median daily range.</span><br>
+    Two lenses below the main table: <b>Dominant vs Minor</b> separates the day's <i>ultimate</i> high+low swings (the tradeable turn) from intraday pullbacks — so the "reverses early" signal isn't just noise-swing clutter. <b>Forecast-zone occupancy</b> buckets every reversal by where it exhausted relative to the two forecast lines: short of the <b>median</b> (k&lt;1), in the <b>median→75th shelf</b> (1–1.30×), or <b>past the 75th</b> (≥1.30× — the overshoot tail).
   </div>
   <button onclick="run()">▶ Run</button>
   <label class="muted" style="margin-left:10px">revFrac <input id="rf" value="0.25" style="width:52px;background:#0d1117;border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 5px;font:11px 'DM Mono',monospace;text-align:right"></label>
@@ -66,6 +67,43 @@ function render(pp){
       <td class="muted">${fmt(r.fromOpenPct.p50)}</td><td class="muted">${topS?topS[0]+' ('+topS[1]+')':'—'}</td></tr>`;
   }
   h += `</table><div class="muted" style="font-size:10px;margin-top:4px">Run P50 = median distance the move ran from the running extreme before reversing (% of price). Median range % = the pair's realized median daily H-L (≈ the calibrated median line). <b>Run P50 ÷ median &lt; 1</b> ⇒ reversals happen <i>before</i> the median range completes → the median line is placed further out than where price exhausts. Sorted by that ratio (tightest reversals first).</div></div>`;
+
+  // ── Dominant vs Minor ─────────────────────────────────────────────
+  h += `<h2>Dominant vs Minor reversals</h2><div class="card"><table><tr>
+    <th>Pair</th>
+    <th>Dom n</th><th>Dom P50</th><th>Dom P50 ÷ med</th>
+    <th>Min n</th><th>Min P50</th><th>Min P50 ÷ med</th>
+    <th>Dom vs Min P50</th></tr>`;
+  for(const [name,r] of rows){
+    const dm=r.dominant||{n:0}, mn=r.minor||{n:0}, med=r.medRangePct||1;
+    const dr = dm.p50!=null? dm.p50/med : null, mr = mn.p50!=null? mn.p50/med : null;
+    const spread = (dm.p50!=null&&mn.p50!=null)? dm.p50-mn.p50 : null;
+    h += `<tr><td><strong>${name}</strong></td>
+      <td class="muted">${dm.n||0}</td><td class="pos">${fmt(dm.p50)}</td>
+      <td class="${dr!=null&&dr<0.9?'amber':dr!=null&&dr>1.1?'pos':''}">${fmt(dr,2)}×</td>
+      <td class="muted">${mn.n||0}</td><td>${fmt(mn.p50)}</td>
+      <td class="muted">${fmt(mr,2)}×</td>
+      <td class="${spread!=null&&spread>0?'pos':'muted'}">${spread!=null?'+'+fmt(spread):'—'}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px"><b>Dominant</b> = the day's single largest run-from-extreme high AND largest low (the ultimate swings that held and turned — the real, tradeable reversal). <b>Minor</b> = every other intraday pullback. If <b>Dom P50 ÷ med</b> stays &lt; 1, the median line is mis-placed even for the <i>real</i> turns, not just noise swings. Dom P50 &gt; Min P50 is expected (dominant swings run further).</div></div>`;
+
+  // ── Forecast-zone occupancy ───────────────────────────────────────
+  h += `<h2>Forecast-zone occupancy — where reversals exhaust vs the median &amp; 75th</h2><div class="card"><table><tr>
+    <th>Pair</th>
+    <th colspan="3" style="text-align:center">All reversals</th>
+    <th colspan="3" style="text-align:center">Dominant only</th></tr>
+    <tr><th></th>
+    <th>&lt; median</th><th>med→75th</th><th>&gt; 75th</th>
+    <th>&lt; median</th><th>med→75th</th><th>&gt; 75th</th></tr>`;
+  const pct = f => f==null?'—':(f*100).toFixed(0)+'%';
+  for(const [name,r] of rows){
+    const b=r.bands||{}, db=r.dominantBands||{};
+    h += `<tr><td><strong>${name}</strong></td>
+      <td class="${b.fBelowMed>=0.5?'amber':''}">${pct(b.fBelowMed)}</td><td class="muted">${pct(b.fMedTo75)}</td><td class="${b.fAbove75>=0.4?'pos':'muted'}">${pct(b.fAbove75)}</td>
+      <td class="${db.fBelowMed>=0.5?'amber':''}">${pct(db.fBelowMed)}</td><td class="muted">${pct(db.fMedTo75)}</td><td class="${db.fAbove75>=0.4?'pos':'muted'}">${pct(db.fAbove75)}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">Fraction of reversals whose run-from-extreme exhausted <b>short of the median</b> (k&lt;1), inside the <b>median→75th shelf</b> (1–1.30×), or <b>past the 75th line</b> (≥1.30×). A high <span class="amber">&lt;median</span> share ⇒ price turns before reaching the median (line too far out); a high <span class="pos">&gt;75th</span> share ⇒ price routinely overshoots the 75th (line too tight). The <b>Dominant only</b> columns are the honest cut — the zone where the day's <i>real</i> turn lands.</div></div>`;
+
   el('out').innerHTML = h;
 }
 </script>
