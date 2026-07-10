@@ -71,7 +71,7 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { reversalStudy as _reversalStudy } from './js/reversalPointResearch.js';   // separate reversal-point calc
 import { reversalFade as _reversalFade } from './js/reversalFadeEngine.js';   // fade-at-k×median falsification test
-import { reverseEngineer as _cogReverseEngineer } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
+import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
@@ -6163,10 +6163,29 @@ app.get('/api/cog-level-poc', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// GET /api/cog-reverse-engineer — infer COG's vol ALGORITHM from his stored outputs.
-// For each COG day + instrument, recompute a small set of candidate σ estimators on D1
-// history strictly before the date, then fit which estimator + constant reproduces
-// COG's hl_med, and whether a blend beats the best single one. Railway only (KV + OANDA).
+// Fetch OANDA D1 candles aligned to a chosen daily boundary (timezone + hour). Lets us
+// test WHICH daily anchor COG uses: London 00:00 (midnight) vs London 23:00 (FX session
+// open, the "is the 23:00→00:00 hour in the candle?" question) vs NY 17:00 (our default).
+async function _fetchOandaD1Aligned(sym, count, tz, hour) {
+  const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const url = `${base}/v3/instruments/${encodeURIComponent(sym)}/candles`
+    + `?granularity=D1&price=M&count=${Math.min(count, 5000)}`
+    + `&alignmentTimezone=${encodeURIComponent(tz)}&dailyAlignment=${hour}`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`OANDA D1 ${sym}: HTTP ${r.status}`);
+  const out = [];
+  for (const c of (await r.json()).candles ?? []) {
+    if (c.complete === false || !c.mid) continue;
+    const cl = parseFloat(c.mid.c); if (!(cl > 0)) continue;
+    out.push({ t: Math.floor(new Date(c.time).getTime() / 1000), open: parseFloat(c.mid.o), high: parseFloat(c.mid.h), low: parseFloat(c.mid.l), close: cl });
+  }
+  return out;
+}
+// GET /api/cog-reverse-engineer — infer COG's vol ALGORITHM from his stored outputs, and
+// test which daily ANCHOR he uses. For each COG day + instrument we recompute candidate σ
+// on D1 history strictly before the date, under THREE daily boundaries, then check which
+// (anchor, estimator) reproduces his PUBLISHED annualized vol (ratio ≈ 1), and reconstruct
+// his levels from his own vol × the back-solved COG constants. Railway only (KV + OANDA).
 app.get('/api/cog-reverse-engineer', async (_req, res) => {
   try {
     const idxRaw = await kv.get('vol_reference_index').catch(() => null);
@@ -6180,43 +6199,54 @@ app.get('/api/cog-reverse-engineer', async (_req, res) => {
     }
     const _cog = (date, name) => { const rec = cogByDate[date]; if (!rec) return null; for (const a of _COG_ALIASES[name]) if (rec[a]) return rec[a]; return null; };
     const PAIRS = [{ name: 'EURUSD', sym: 'EUR_USD', cls: 'fx' }, { name: 'NQ', sym: 'NAS100_USD', cls: 'index' }, { name: 'GOLD', sym: 'XAU_USD', cls: 'commodity' }];
-    // Candidate σ series from D1 (all daily-return σ, causal). Returns { name: sigmaAt(idx) }.
+    // The three daily anchors to test (owner confirmed London TZ; open question = 00:00 vs 23:00).
+    const ANCHORS = [
+      { key: 'lon00', tz: 'Europe/London', hour: 0, label: 'London 00:00 (midnight → midnight)' },
+      { key: 'lon23', tz: 'Europe/London', hour: 23, label: 'London 23:00 (FX session open → includes the 23:00-00:00 hour)' },
+      { key: 'ny17', tz: 'America/New_York', hour: 17, label: 'NY 17:00 (OANDA default / our current)' },
+    ];
     const _sigmaSeries = (bars, cls) => {
       const logret = bars.map((b, i) => i ? Math.log(b.close / bars[i - 1].close) : 0);
       const omega = _ASSET_PARAMS[cls]?.garch_omega ?? 4.76e-6;
       const hv20 = _hvVarSeries(logret, 20), hv30 = _hvVarSeries(logret, 30);
       const e94 = _ewmaVarSeries(logret, 0.94), e90 = _ewmaVarSeries(logret, 0.90);
       const yz30 = _yzVolSeries(bars, 30), garch = _garchSigmas(bars, omega);
-      return j => ({
-        hv20: Math.sqrt(hv20[j]), hv30: Math.sqrt(hv30[j]),
-        ewma94: Math.sqrt(e94[j]), ewma90: Math.sqrt(e90[j]),
-        yz30: yz30[j], garch: garch[j],
-      });
+      return j => ({ hv20: Math.sqrt(hv20[j]), hv30: Math.sqrt(hv30[j]), ewma94: Math.sqrt(e94[j]), ewma90: Math.sqrt(e90[j]), yz30: yz30[j], garch: garch[j] });
     };
     const results = [];
     for (const p of PAIRS) {
-      const row = { pair: p.name };
+      const row = { pair: p.name, anchors: [] };
       try {
-        const daily = await _btFetchD1(p.sym, 800).catch(() => []);
-        if (daily.length < 60) { row.error = `only ${daily.length} D1 bars`; results.push(row); continue; }
-        const sigAt = _sigmaSeries(daily, p.cls);
-        const recs = [];
-        for (const date of Object.keys(cogByDate)) {
-          const cog = _cog(date, p.name); if (!cog || !(cog.hl_med > 0)) continue;
-          // Last D1 bar strictly before the COG date → forecast for that day (no lookahead).
-          let j = -1; for (let i = 0; i < daily.length; i++) { if (daily[i].date < date) j = i; else break; }
-          if (j < 30) continue;
-          const sigmas = sigAt(j);
-          if (!(sigmas.yz30 > 0)) continue;
-          recs.push({ date, cog, sigmas });
+        for (const a of ANCHORS) {
+          try {
+            const daily = await _fetchOandaD1Aligned(p.sym, 800, a.tz, a.hour);
+            if (daily.length < 60) { row.anchors.push({ key: a.key, label: a.label, error: `only ${daily.length} D1 bars` }); continue; }
+            const sigAt = _sigmaSeries(daily, p.cls);
+            const recs = [];
+            for (const date of Object.keys(cogByDate)) {
+              const cog = _cog(date, p.name); if (!cog || !(cog.hl_med > 0)) continue;
+              const cutoff = _btLondonMidnightSec(new Date(date + 'T12:00:00Z'));   // London midnight of the COG date
+              let j = -1; for (let i = 0; i < daily.length; i++) { if (daily[i].t < cutoff) j = i; else break; }
+              if (j < 30) continue;
+              const sigmas = sigAt(j);
+              if (!(sigmas.yz30 > 0)) continue;
+              recs.push({ date, cog, sigmas });
+            }
+            const result = _cogReverseEngineer(recs);
+            row.anchors.push({ key: a.key, label: a.label, matchedDays: recs.length, result });
+          } catch (e) { row.anchors.push({ key: a.key, label: a.label, error: e.message }); }
         }
-        row.matchedDays = recs.length;
-        row.result = _cogReverseEngineer(recs);
+        // Best anchor = the one whose best estimator's σ reproduces his PUBLISHED vol
+        // most exactly (ratioMean closest to 1). That is the daily boundary COG uses.
+        const scored = row.anchors.filter(x => x.result?.bestVol).map(x => ({ key: x.key, dev: Math.abs((x.result.bestVol.ratioMean ?? 99) - 1) }));
+        row.bestAnchor = scored.sort((u, v) => u.dev - v.dev)[0]?.key ?? null;
+        row.matchedDays = row.anchors.find(x => x.result)?.matchedDays ?? 0;
       } catch (e) { row.error = e.message; }
       results.push(row);
     }
     res.json({ ok: true, generatedAt: new Date().toISOString(), cogDates: dates.length,
-      note: 'Infers COG\'s σ estimator + range constant from his own outputs. Ratio diagnostics need no fitting; estimator fit ranks by correlation + constant-stability; blend only wins by a wide, cross-instrument margin. Small N — directional, not proof. Identifies/reproduces his line; does NOT create edge.',
+      cogConst: _COG_CONST,
+      note: 'Tests which daily ANCHOR (London 00:00 vs London 23:00 vs NY 17:00) reproduces COG\'s published annualized vol, then infers his σ estimator + reconstructs his levels from his own vol × the back-solved constants. bestAnchor = the boundary whose best estimator matches his vol (ratio≈1). Small N — directional, not proof. Identifies/reproduces his line; does NOT create edge.',
       results });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

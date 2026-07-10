@@ -48,6 +48,15 @@ export const FELLER = { BM_P50: 1.572, BM_P75: 2.049, HN_P50: 0.7979, HN_P75: 1.
 export const FELLER_HL75_OVER_HL50 = FELLER.BM_P75 / FELLER.BM_P50;   // 1.303
 export const FELLER_OC50_OVER_HL50 = FELLER.HN_P50 / FELLER.BM_P50;   // 0.508
 
+// COG's constants, BACK-SOLVED from his published manual (Gold/EURUSD/NQ, 19 May 2026):
+// level ÷ (annualized_vol ÷ √252) is near-identical across all three instruments ⇒ a
+// FIXED formula. His MEDIAN H-L equals raw Feller (~1.57); his 75th and O-C run ~5-7%
+// TIGHTER than Feller. Levels(%) = C × (vol% ÷ √252).
+export const SQRT252 = Math.sqrt(252);
+export const COG_CONST = { BM_P50: 1.56, BM_P75: 1.93, HN_P50: 0.74, HN_P75: 1.24 };
+// vol(%) → daily σ fraction; level(%) = C × dailySigmaPct.
+const _dailySigmaPct = volAnnualPct => volAnnualPct / SQRT252;
+
 function _pearson(x, y) {
   const n = Math.min(x.length, y.length);
   if (n < 3) return null;
@@ -113,11 +122,46 @@ export function fitBlend(records, nameA, nameB, step = 0.1) {
   return best;
 }
 
+// Fit ONE estimator to COG's PUBLISHED annualized vol (a cleaner target than hl_med —
+// it removes the range constant, so the ratio should be ≈1.0 for HIS estimator). ratio =
+// COG_vol ÷ estimator's annualized vol (σdaily × √252 × 100). ratio≈1 + low CV ⇒ his σ.
+export function fitVol(records, name) {
+  const ratios = [], est = [], cog = [];
+  for (const r of records) {
+    const s = r.sigmas?.[name], v = r.cog?.vol;
+    if (!(s > 0) || !(v > 0)) continue;
+    const estAnnual = s * SQRT252 * 100;
+    ratios.push(v / estAnnual); est.push(estAnnual); cog.push(v);
+  }
+  if (ratios.length < 3) return { name, n: ratios.length, insufficient: true };
+  return { name, n: ratios.length, ratioMean: r3(_mean(ratios)), ratioCv: r3(_cv(ratios)), r: r3(_pearson(est, cog)) };
+}
+
+// Reconstruction check — the direct verification the owner asked for: predict COG's OWN
+// levels from his OWN published vol × a constant set, and measure the % error per field.
+// With C = COG_CONST this should be near-zero on days we have his reference for (it's the
+// same formula he used); with FELLER it shows how far raw Feller sits from his numbers.
+export function reconstructionFit(records, C = COG_CONST) {
+  const err = { hl_med: [], hl_75: [], oc_med: [], oc_75: [] };
+  const _e = (pred, act) => (act > 0 ? (pred - act) / act * 100 : null);
+  let n = 0;
+  for (const r of records) {
+    const v = r.cog?.vol; if (!(v > 0)) continue;
+    const d = _dailySigmaPct(v); n++;
+    const pred = { hl_med: C.BM_P50 * d, hl_75: C.BM_P75 * d, oc_med: C.HN_P50 * d, oc_75: C.HN_P75 * d };
+    for (const k of Object.keys(err)) { const e = _e(pred[k], r.cog?.[k]); if (e != null) err[k].push(e); }
+  }
+  const summ = a => a.length ? { n: a.length, meanAbsPct: r3(_mean(a.map(Math.abs))), meanPct: r3(_mean(a)) } : { n: 0 };
+  const all = [...err.hl_med, ...err.hl_75, ...err.oc_med, ...err.oc_75];
+  return { n, hl_med: summ(err.hl_med), hl_75: summ(err.hl_75), oc_med: summ(err.oc_med), oc_75: summ(err.oc_75), overallMeanAbsPct: r3(_mean(all.map(Math.abs))) };
+}
+
 /**
  * reverseEngineer(records, opts) — the full read for one instrument.
- *   records: [{ date, cog:{hl_med,hl_75,oc_med,oc_75}, sigmas:{ name: σdaily } }]
- * Returns the ratio diagnostics, the ranked estimator fits, and the best blend +
- * whether it materially beats the best single estimator (the parsimony guard).
+ *   records: [{ date, cog:{hl_med,hl_75,oc_med,oc_75,vol}, sigmas:{ name: σdaily } }]
+ * Ratio diagnostics + ranked estimator fits (to hl_med AND to published vol) + the best
+ * blend + the reconstruction check (COG_CONST vs FELLER) — the direct "does it match his
+ * reference data" verification.
  */
 export function reverseEngineer(records, opts = {}) {
   const { blendMinGain = 0.03 } = opts;   // a blend must beat the best single r by this to matter
@@ -126,22 +170,32 @@ export function reverseEngineer(records, opts = {}) {
   const fits = names.map(n => fitEstimator(records, n)).filter(f => !f.insufficient)
     .sort((x, y) => (Math.abs(y.r) - Math.abs(x.r)) || (x.cCv - y.cCv));
   const best = fits[0] || null;
+  // Fit to his PUBLISHED vol — the cleaner target. Rank by |ratio−1| then CV.
+  const hasVol = records.some(r => r.cog?.vol > 0);
+  const volFits = hasVol ? names.map(n => fitVol(records, n)).filter(f => !f.insufficient)
+    .sort((x, y) => (Math.abs(x.ratioMean - 1) - Math.abs(y.ratioMean - 1)) || (x.ratioCv - y.ratioCv)) : [];
+  const bestVol = volFits[0] || null;
   let blend = null, blendWins = false;
   if (fits.length >= 2) {
     blend = fitBlend(records, fits[0].name, fits[1].name);
     blendWins = !!(blend && best && Math.abs(blend.r) - Math.abs(best.r) >= blendMinGain && blend.alpha > 0.05 && blend.alpha < 0.95);
   }
+  const rd = ratioDiagnostics(records);
+  const reconCog = hasVol ? reconstructionFit(records, COG_CONST) : null;
+  const reconFeller = hasVol ? reconstructionFit(records, FELLER) : null;
   return {
     n: records.length,
-    ratios: ratioDiagnostics(records),
-    fits,
-    best,
+    ratios: rd,
+    fits, best,
+    volFits, bestVol,          // which estimator reproduces his PUBLISHED annualized vol
     blend, blendWins,
-    // A plain-language verdict the page can show verbatim (honest, hedged on small N).
+    reconstruction: reconCog ? { cog: reconCog, feller: reconFeller } : null,
     verdict: best
-      ? `Best single: ${best.name} (r=${best.r}, C=${best.cMean}, CV=${best.cCv}). `
-        + `75th/median = ${r3(ratioDiagnostics(records).hl75_over_hl50.mean)} vs Feller ${r3(FELLER_HL75_OVER_HL50)}. `
-        + (blendWins ? `A ${blend.a}/${blend.b} blend (α=${blend.alpha}) beats it (r=${blend.r}).` : `No blend beats it materially — parsimony holds.`)
+      ? `Best single: ${best.name} (r=${best.r}, C=${best.cMean}, CV=${best.cCv})`
+        + (bestVol ? ` · vol match: ${bestVol.name} (ratio ${bestVol.ratioMean}, CV ${bestVol.ratioCv})` : '')
+        + `. 75th/median = ${r3(rd.hl75_over_hl50.mean)} vs Feller ${r3(FELLER_HL75_OVER_HL50)}`
+        + (reconCog ? ` · COG-const reconstruction err ${reconCog.overallMeanAbsPct}% (Feller ${reconFeller.overallMeanAbsPct}%)` : '')
+        + (blendWins ? ` · a ${blend.a}/${blend.b} blend (α=${blend.alpha}) beats the best single.` : '.')
       : 'No estimator had enough matched days.',
   };
 }
