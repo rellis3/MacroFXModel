@@ -27,7 +27,7 @@ import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
-import { yangZhangVolSeries, hv20Series, ewmaVolSeries } from './js/volForecast.js';
+import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
@@ -5934,7 +5934,7 @@ app.get('/api/cog-level-poc', async (_req, res) => {
     const _cog = (date, name) => { const rec = cogByDate[date]; if (!rec) return null; for (const a of _COG_ALIASES[name]) if (rec[a]) return rec[a]; return null; };
     // 3. Per pair: fetch OANDA M5 for the COG date range (the parquet lags weeks),
     //    split into London days, match COG dates, measure.
-    const PAIRS = [{ name: 'EURUSD', sym: 'EUR_USD' }, { name: 'NQ', sym: 'NAS100_USD' }, { name: 'GOLD', sym: 'XAU_USD' }];
+    const PAIRS = [{ name: 'EURUSD', sym: 'EUR_USD', cls: 'fx' }, { name: 'NQ', sym: 'NAS100_USD', cls: 'index' }, { name: 'GOLD', sym: 'XAU_USD', cls: 'commodity' }];
     const cogDatesSorted = Object.keys(cogByDate).sort();
     const fromSec = Math.floor(new Date(cogDatesSorted[0] + 'T00:00:00Z').getTime() / 1000) - 2 * 86400;   // pad for the London boundary
     const toSec   = Math.floor(new Date(cogDatesSorted.at(-1) + 'T00:00:00Z').getTime() / 1000) + 2 * 86400;
@@ -5946,7 +5946,14 @@ app.get('/api/cog-level-poc', async (_req, res) => {
         const bars5 = await _fetchOandaM5(p.sym, fromSec, toSec);
         const lond = buildLondonDaily(bars5 || []);
         const byDate = new Map(lond.map(d => [d.date, d]));
-        const recs = [];
+        // Daily history for OUR forecaster (needs ≥60 prior bars). One cheap D1 call.
+        const dailyD1 = await _btFetchD1(p.sym, 400).catch(() => []);
+        const _ourLevels = (date) => {
+          const slice = dailyD1.filter(d => d.date < date);   // strictly-before → no lookahead
+          if (slice.length < 60) return null;
+          try { const fc = _computeForecast(slice, p.cls); return { hl_med: fc.hl_median, hl_75: fc.hl_75, oc_med: fc.oc_median, oc_75: fc.oc_75 }; } catch { return null; }
+        };
+        const cogRecs = [], oursRecs = [], widthRows = [];
         const why = { notInByDate: 0, noHlMed: 0, noBars: 0 };   // why a COG date was skipped
         for (const date of Object.keys(cogByDate)) {
           const cog = _cog(date, p.name); if (!cog) continue;
@@ -5954,16 +5961,33 @@ app.get('/api/cog-level-poc', async (_req, res) => {
           if (!day) { why.notInByDate++; continue; }
           if (!(cog.hl_med > 0)) { why.noHlMed++; continue; }
           if (!day.bars?.length || !(day.open > 0)) { why.noBars++; continue; }
-          recs.push({ date, open: day.open, bars: day.bars, pip, cog });
+          cogRecs.push({ date, open: day.open, bars: day.bars, pip, cog });
+          const ours = _ourLevels(date);
+          if (ours && ours.hl_med > 0) {
+            oursRecs.push({ date, open: day.open, bars: day.bars, pip, cog: ours });
+            widthRows.push({ our: ours.hl_med, cog: cog.hl_med });
+          }
         }
         row.pip = pip; row.cogDatesForPair = Object.keys(cogByDate).filter(d => _cog(d, p.name)).length;
-        row.matchedDays = recs.length;
+        row.matchedDays = cogRecs.length;
+        // Width comparison — is COG's median systematically wider than ours, and by a
+        // STABLE factor (⇒ one empirical widening matches him, no weekly tweaking)?
+        if (widthRows.length) {
+          const ratios = widthRows.map(w => w.cog / w.our);
+          const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+          const rMean = mean(ratios), rStd = Math.sqrt(mean(ratios.map(r => (r - rMean) ** 2)));
+          row.widthCompare = { nDays: widthRows.length,
+            ourMedMeanPct: +mean(widthRows.map(w => w.our)).toFixed(3),
+            cogMedMeanPct: +mean(widthRows.map(w => w.cog)).toFixed(3),
+            cogOverOurMean: +rMean.toFixed(3), cogOverOurStd: +rStd.toFixed(3) };
+        }
         row.debug = {
           barsLoaded: bars5?.length ?? 0, londonDays: lond.length,
           londonFirst: lond[0]?.date ?? null, londonLast: lond.at(-1)?.date ?? null,
-          skipReasons: why,
+          dailyD1Bars: dailyD1.length, ourLevelDays: oursRecs.length, skipReasons: why,
         };
-        row.result = _analyzeCogLevels(recs);
+        row.result = _analyzeCogLevels(cogRecs);        // COG's levels
+        row.resultOurs = _analyzeCogLevels(oursRecs);   // OUR forecaster's levels, same days + measurement
       } catch (e) { row.error = e.message; }
       results.push(row);
     }
@@ -5975,7 +5999,7 @@ app.get('/api/cog-level-poc', async (_req, res) => {
         cogDatesList: dates, sampleDate: firstDate ?? null,
         sampleCogInstruments: firstDate ? Object.keys(cogByDate[firstDate] || {}) : [],
         sampleCogEURUSD: firstDate ? (_cog(firstDate, 'EURUSD') || null) : null },
-      note: 'COG\'s actual median/75th (dynamic H-L from the running extreme) and O-C levels vs actual price, on the COG days we have. revert% = touches that faded back; meanRevertPips/Pct = how far; meanCloseFadePips = enter-at-level, hold-to-close fade PnL.',
+      note: 'Paired A/B — COG\'s forecaster levels vs OUR forecaster levels, SAME days + measurement. result = COG, resultOurs = ours. widthCompare = is COG systematically wider than ours, and by a stable factor (⇒ one empirical widening matches him). Small N — directional, not proof.',
       results });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
