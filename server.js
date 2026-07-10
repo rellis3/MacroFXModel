@@ -71,6 +71,8 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { reversalStudy as _reversalStudy } from './js/reversalPointResearch.js';   // separate reversal-point calc
 import { reversalFade as _reversalFade } from './js/reversalFadeEngine.js';   // fade-at-k×median falsification test
+import { reverseEngineer as _cogReverseEngineer } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
+import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { analyzeCogLevels as _analyzeCogLevels } from './js/cogLevelPoc.js';   // COG-level POC
@@ -6157,6 +6159,64 @@ app.get('/api/cog-level-poc', async (_req, res) => {
         sampleCogInstruments: firstDate ? Object.keys(cogByDate[firstDate] || {}) : [],
         sampleCogEURUSD: firstDate ? (_cog(firstDate, 'EURUSD') || null) : null },
       note: 'Paired A/B — COG\'s forecaster levels vs OUR forecaster levels, SAME days + measurement. result = COG, resultOurs = ours. widthCompare = is COG systematically wider than ours, and by a stable factor (⇒ one empirical widening matches him). Small N — directional, not proof.',
+      results });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// GET /api/cog-reverse-engineer — infer COG's vol ALGORITHM from his stored outputs.
+// For each COG day + instrument, recompute a small set of candidate σ estimators on D1
+// history strictly before the date, then fit which estimator + constant reproduces
+// COG's hl_med, and whether a blend beats the best single one. Railway only (KV + OANDA).
+app.get('/api/cog-reverse-engineer', async (_req, res) => {
+  try {
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean) : [];
+    if (!dates.length) return res.json({ ok: true, cogDates: 0, results: [], note: 'No COG reference data stored yet.' });
+    const cogByDate = {};
+    for (const date of dates) {
+      const raw = await kv.get(`vol_reference_${date}`).catch(() => null);
+      if (!raw) continue;
+      try { cogByDate[date] = _parseExportText(JSON.parse(raw).text); } catch { /* skip malformed */ }
+    }
+    const _cog = (date, name) => { const rec = cogByDate[date]; if (!rec) return null; for (const a of _COG_ALIASES[name]) if (rec[a]) return rec[a]; return null; };
+    const PAIRS = [{ name: 'EURUSD', sym: 'EUR_USD', cls: 'fx' }, { name: 'NQ', sym: 'NAS100_USD', cls: 'index' }, { name: 'GOLD', sym: 'XAU_USD', cls: 'commodity' }];
+    // Candidate σ series from D1 (all daily-return σ, causal). Returns { name: sigmaAt(idx) }.
+    const _sigmaSeries = (bars, cls) => {
+      const logret = bars.map((b, i) => i ? Math.log(b.close / bars[i - 1].close) : 0);
+      const omega = _ASSET_PARAMS[cls]?.garch_omega ?? 4.76e-6;
+      const hv20 = _hvVarSeries(logret, 20), hv30 = _hvVarSeries(logret, 30);
+      const e94 = _ewmaVarSeries(logret, 0.94), e90 = _ewmaVarSeries(logret, 0.90);
+      const yz30 = _yzVolSeries(bars, 30), garch = _garchSigmas(bars, omega);
+      return j => ({
+        hv20: Math.sqrt(hv20[j]), hv30: Math.sqrt(hv30[j]),
+        ewma94: Math.sqrt(e94[j]), ewma90: Math.sqrt(e90[j]),
+        yz30: yz30[j], garch: garch[j],
+      });
+    };
+    const results = [];
+    for (const p of PAIRS) {
+      const row = { pair: p.name };
+      try {
+        const daily = await _btFetchD1(p.sym, 800).catch(() => []);
+        if (daily.length < 60) { row.error = `only ${daily.length} D1 bars`; results.push(row); continue; }
+        const sigAt = _sigmaSeries(daily, p.cls);
+        const recs = [];
+        for (const date of Object.keys(cogByDate)) {
+          const cog = _cog(date, p.name); if (!cog || !(cog.hl_med > 0)) continue;
+          // Last D1 bar strictly before the COG date → forecast for that day (no lookahead).
+          let j = -1; for (let i = 0; i < daily.length; i++) { if (daily[i].date < date) j = i; else break; }
+          if (j < 30) continue;
+          const sigmas = sigAt(j);
+          if (!(sigmas.yz30 > 0)) continue;
+          recs.push({ date, cog, sigmas });
+        }
+        row.matchedDays = recs.length;
+        row.result = _cogReverseEngineer(recs);
+      } catch (e) { row.error = e.message; }
+      results.push(row);
+    }
+    res.json({ ok: true, generatedAt: new Date().toISOString(), cogDates: dates.length,
+      note: 'Infers COG\'s σ estimator + range constant from his own outputs. Ratio diagnostics need no fitting; estimator fit ranks by correlation + constant-stability; blend only wins by a wide, cross-instrument margin. Small N — directional, not proof. Identifies/reproduces his line; does NOT create edge.',
       results });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
