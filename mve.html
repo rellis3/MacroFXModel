@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!--
+  mve.html — standalone demo / sandbox for the Market Valuation Engine (js/mve/*).
+  Self-contained: generates synthetic macro-driven price data in the browser,
+  runs the FULL pipeline (emitters → ensemble/Kalman → mispricing → OU
+  convergence → confidence) and renders the per-trade valuation card.
+
+  This page is NOT linked from index.html or hub.html and adds NO server route —
+  it is served as a static file, so opening it cannot affect the live system.
+  Open it at:  <your server>/mve.html   (or via any static server from repo root).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market Valuation Engine — Demo</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0b0d12; color:#e6e8ec; font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#8891a0; font-size:12px; margin-bottom:20px; }
+  .panel { background:#12151c; border:1px solid #2a2f3a; border-radius:10px; padding:16px; margin-bottom:16px; }
+  label { display:block; font-size:12px; color:#9aa; margin:10px 0 4px; }
+  input[type=range] { width:100%; }
+  .row { display:flex; gap:16px; flex-wrap:wrap; }
+  .row > div { flex:1; min-width:180px; }
+  button { background:#1f6feb; color:#fff; border:0; border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; margin-top:12px; }
+  button.alt { background:#2a2f3a; }
+  select { background:#1a1e26; color:#e6e8ec; border:1px solid #2a2f3a; border-radius:6px; padding:6px; }
+  pre { background:#0d1017; border:1px solid #22262f; border-radius:8px; padding:12px; overflow:auto; font-size:11px; color:#a8b0bd; max-height:320px; }
+  .val { font-family:monospace; color:#e6e8ec; }
+  canvas { width:100%; height:120px; display:block; background:#0d1017; border:1px solid #22262f; border-radius:8px; }
+  .flex { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+  .flex > * { flex:1; min-width:340px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📐 Market Valuation Engine — Demo</h1>
+  <div class="sub">Synthetic sandbox. Everything runs client-side against <code>js/mve/*</code>. No live data, no server route — safe to open anytime.</div>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label>Injected mispricing (σ): <span id="mLbl" class="val">+2.0</span></label>
+        <input id="misp" type="range" min="-3" max="3" step="0.1" value="2">
+      </div>
+      <div>
+        <label>Reversion speed κ (per bar): <span id="kLbl" class="val">0.10</span></label>
+        <input id="kappa" type="range" min="0.02" max="0.35" step="0.01" value="0.10">
+      </div>
+      <div>
+        <label>Regime</label>
+        <select id="regime">
+          <option>NEUTRAL</option><option selected>RANGE</option><option>RISK_ON</option><option>RISK_OFF</option><option>TREND</option>
+        </select>
+      </div>
+      <div>
+        <label>Consensus method</label>
+        <select id="method"><option value="ens">Min-variance ensemble</option><option value="ssm">Kalman SSM</option></select>
+      </div>
+    </div>
+    <button id="run">Regenerate &amp; value</button>
+    <button id="seed" class="alt">New random seed</button>
+  </div>
+
+  <div class="flex">
+    <div id="card"></div>
+    <div class="panel" style="min-width:340px">
+      <label style="margin-top:0">Synthetic price vs consensus fair value</label>
+      <canvas id="chart" width="600" height="120"></canvas>
+      <label>Full valuation object</label>
+      <pre id="json"></pre>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { runMVE, valuationCard } from './js/mve/index.js';
+
+let seed = 42;
+const $ = id => document.getElementById(id);
+
+// mulberry32 — deterministic PRNG so a given seed reproduces exactly.
+function rng(s){ return ()=>{ s|=0; s=s+0x6D2B79F5|0; let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+const gauss = r => { let u=0,v=0; while(!u)u=r(); while(!v)v=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+
+function synth() {
+  const r = rng(seed);
+  const misp = parseFloat($('misp').value);
+  const N = 260, f1 = [], f2 = [], price = [];
+  let noiseSd = 0.0009;
+  for (let i = 0; i < N; i++) {
+    const a = Math.sin(i/25) + 0.03*i/N, b = Math.cos(i/18);
+    f1.push(a); f2.push(b);
+    price.push(1.1000 + 0.02*a + 0.01*b + noiseSd*gauss(r));
+  }
+  // inject mispricing on the last bar, scaled to the local deviation std
+  const devs = price.map((p,i)=> p - (price.slice(Math.max(0,i-120),i+1).reduce((s,x)=>s+x,0)/Math.min(i+1,120)));
+  const sd = Math.sqrt(devs.reduce((s,x)=>s+x*x,0)/devs.length);
+  price[N-1] += misp * sd;
+  const returns = price.slice(1).map((p,i)=>p-price[i]);
+  return { price, factors:[{name:'rate',series:f1},{name:'dxy',series:f2}], returns };
+}
+
+function draw(price, fv) {
+  const c = $('chart'), ctx = c.getContext('2d'), W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+  const p = price.slice(-120);
+  const min = Math.min(...p, fv), max = Math.max(...p, fv), span = (max-min)||1;
+  const x = i => i/(p.length-1)*W, y = v => H-8 - ((v-min)/span)*(H-16);
+  ctx.strokeStyle='#3b82f6'; ctx.lineWidth=1.5; ctx.beginPath();
+  p.forEach((v,i)=>{ i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)); }); ctx.stroke();
+  ctx.strokeStyle='#22c55e'; ctx.setLineDash([4,3]); ctx.beginPath();
+  ctx.moveTo(0,y(fv)); ctx.lineTo(W,y(fv)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#22c55e'; ctx.font='10px monospace'; ctx.fillText('fair value '+fv.toFixed(5), 6, y(fv)-4);
+}
+
+function go() {
+  const { price, factors, returns } = synth();
+  const v = runMVE({
+    instrument: 'EUR/USD (synthetic)', price, factors, returns,
+    crowdPct: 72, window: 150, horizon: 10,
+    regime: $('regime').value, useSSM: $('method').value === 'ssm',
+  });
+  $('card').innerHTML = valuationCard(v);
+  if (v.ok) draw(price, v.fairValue);
+  $('json').textContent = JSON.stringify(v, (k,val)=> k==='estimates'||k==='ou'||k==='ssm' ? undefined : val, 2);
+}
+
+$('misp').oninput  = e => $('mLbl').textContent = (e.target.value>=0?'+':'') + (+e.target.value).toFixed(1);
+$('kappa').oninput = e => $('kLbl').textContent = (+e.target.value).toFixed(2);
+$('run').onclick   = go;
+$('seed').onclick  = () => { seed = Math.floor(Date.now() % 100000); go(); };
+$('regime').onchange = go; $('method').onchange = go; $('misp').onchange = go;
+go();
+</script>
+</body>
+</html>

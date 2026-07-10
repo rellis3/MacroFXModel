@@ -18,7 +18,7 @@
 > (mapped, not yet extracted) · 📄 Documentation-only brick (a contract, not code).
 > Risk = damage if the duplicate copies drift apart.
 
-Last updated: 2026-06-27. Maintained as bricks are built.
+Last updated: 2026-07-10. Maintained as bricks are built.
 
 ---
 
@@ -672,3 +672,36 @@ Tier-2 level sources (`js/levelSources.js`)
 P0 cross-language unification
 - [ ] `ASSET_PARAMS` + GARCH params + BOCPD/regime score — each behind an OOS
       re-run, per `SYSTEM_ASSESSMENT.md` P0.
+
+---
+
+## 5. Market Valuation Engine (MVE) — isolated subsystem (`js/mve/`)
+
+> A self-contained set of bricks implementing the fair-value / mispricing engine
+> designed in `MARKET_VALUATION_ENGINE.md`. **Isolated by design:** nothing live
+> imports it, it adds no route, and it's unit-tested on synthetic data
+> (`node js/mve/mve.test.mjs`, 59 assertions). Reuses `statsCore` + `backtestStats`
+> (`deflatedSharpe`) read-only — copies nothing. Usage: `MVE_RUN_GUIDE.md`.
+> Status ✅ = built & tested (edge **unproven** — needs a live data adapter + OOS run).
+
+| Brick | File | Owns | Status |
+|---|---|---|---|
+| Linear algebra | `js/mve/linalg.js` | solve/inv/transpose/quad for OLS/Kalman/Mahalanobis | ✅ |
+| Multi-factor OLS | `js/mve/ols.js` | fit + **prediction σ** (β-estimation error); generalizes `compassDivergence` | ✅ |
+| Validation harness | `js/mve/validation.js` | purged/embargoed walk-forward, band calibration, `deflatedSharpe` re-export | ✅ |
+| Emitter contract | `js/mve/contract.js` | `estimate()→{fairValue,σ,confidence}`, Bucket A/B/C split | ✅ 📄 |
+| Fair-value emitters | `js/mve/emitters.js` | regression (BEER-lite), AR1, vol/positioning weights | ✅ |
+| OU convergence | `js/mve/ou.js` | half-life, P(revert)/magnitude/CI, empirical snap-back | ✅ |
+| Mispricing | `js/mve/mispricing.js` | standardized residual, **Mahalanobis**, Bayesian posterior | ✅ |
+| Regime weights | `js/mve/regimeWeights.js` | regime-adaptive weight table (generalizes `gold-model.js REGIME_WEIGHTS`) | ✅ |
+| Ensemble | `js/mve/ensemble.js` | precision/min-variance consensus + dispersion + effN | ✅ |
+| Kalman SSM | `js/mve/ssm.js` | hidden-state fair-value fusion (emitters = observations) | ✅ |
+| Factor model | `js/mve/factorModel.js` | shared-factor cross-asset loadings + coherence (safe Relationship Engine) | ✅ |
+| Confidence engine | `js/mve/confidence.js` | logistic over agreement/fit/calibration/regime/reversion | ✅ |
+| Orchestrator + card | `js/mve/index.js` | `runMVE()`, `valuationCard()`, `valuationText()` | ✅ |
+| Signal adapter (opt-in) | `js/mve/signalAdapter.js` | blend MVE into `computeSignalScore` — **not wired** | ✅ 📄 |
+| Demo page | `mve.html` | standalone synthetic sandbox (no route, unlinked) | ✅ |
+
+**Not yet built (deliberate next steps, per `MVE_RUN_GUIDE.md` §6–7):** live data
+adapter (OANDA/FRED → `runMVE` ctx), dashboard wiring (signal score / entry scanner /
+AI summary), and OOS proof on real feeds before any real capital.
