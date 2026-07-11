@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fill-Realism Ladder — is the per-line tearsheet a fill artifact?</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:18px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:1000px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input { width:74px; background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:2px 5px; font:11px 'DM Mono',monospace; text-align:right }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  a { color:#58a6ff } .artifact { background:rgba(248,81,73,.10) } .holds { background:rgba(63,185,80,.10) }
+</style>
+</head>
+<body>
+  <h1>Fill-Realism Ladder <span class="muted" style="font-size:12px">— is the per-line tearsheet's ~3.1 Sharpe a fill artifact?</span></h1>
+  <div class="sub">
+    The Per-Line Volatility tearsheet reports Sharpe ~3.1 for the projected-high/low <b>fade</b>. Its own disclosure flags the crack: <b>~44% of trades are zero-duration</b> — fill and exit collapse onto one coarse bar, so the triple-barrier isn't resolved by real touch order; the walker fills the limit then (TP un-knowable on the fill bar) <b>marks to close</b>, which <b>hides the full outer-line stop losses</b> on continuation days. This runs the <b>exact same report primitive</b> (<code>computeBands + simulateEntry + walkBars</code>) on the <b>same sessions</b> at a ladder of bar resolutions — <b>only</b> the intrabar granularity changes. <b>If OOS Sharpe collapses as bars get finer toward 1-min truth, the edge is a fill artifact.</b> A flat ladder would mean it's real. <span class="muted">Heavy — streams M1 per step. Run one pair first (set Pair), then the whole book. Costs on, IS/OOS split.</span>
+  </div>
+  <button onclick="run()">▶ Run</button>
+  <label class="muted" style="margin-left:10px">Pair <input id="pair" value="" placeholder="(all)"></label>
+  <label class="muted" style="margin-left:8px">isFrac <input id="isf" value="0.5"></label>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=2) => v==null?'—':(+v).toFixed(d);
+let _timer=null;
+
+async function run(){
+  clearInterval(_timer); el('status').textContent='Starting…'; el('out').innerHTML='';
+  const body = { pair:el('pair').value.trim(), isFrac:parseFloat(el('isf').value)||0.5 };
+  let j; try { j = await (await fetch('/api/fill-realism/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/fill-realism/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Running… '+(s.elapsed||0)+'s (streaming M1 per granularity — slow)'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; if(s.log) el('out').innerHTML='<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'; return; }
+    el('status').textContent = `${s.pairs.length} instruments · steps ${s.steps.join('/')}m`;
+    render(s.perPair, s.steps, s.log);
+  }, 3000);
+}
+
+function render(pp, steps, log){
+  // sort by the COARSE (tearsheet-like) Sharpe descending — watch the biggest claims collapse
+  const rows = Object.entries(pp).sort((a,b)=>((b[1].coarseSharpe??-9))-((a[1].coarseSharpe??-9)));
+  const allSteps = steps.slice().sort((a,b)=>a-b);
+
+  let h = `<h2>Per-line fade OOS Sharpe vs bar resolution — the honest test</h2><div class="card"><table><tr>
+    <th>Instrument</th>`;
+  for(const st of allSteps) h += `<th>${st}m Sharpe</th>`;
+  for(const st of allSteps) h += `<th>${st}m zero-dur</th>`;
+  h += `<th>retained</th><th>1-min verdict</th></tr>`;
+
+  for(const [name,r] of rows){
+    h += `<tr class="${r.artifact?'artifact':(r.fracRetained>=0.5?'holds':'')}"><td><strong>${name}</strong> <span class="muted">${r.assetClass}</span></td>`;
+    for(const st of allSteps){ const o=r.perStep[st]?.oos;
+      h += `<td class="${o&&o.sharpe>0?'pos':'neg'}">${o?fmt(o.sharpe,2):'—'}</td>`;
+    }
+    for(const st of allSteps){ const z=r.perStep[st]?.zeroDurPct;
+      h += `<td class="${z>20?'amber':'muted'}">${z==null?'—':fmt(z,0)+'%'}</td>`;
+    }
+    const ret = r.fracRetained;
+    h += `<td class="${ret>=0.7?'pos':ret>=0.4?'amber':'neg'}">${ret==null?'—':fmt(ret*100,0)+'%'}</td>
+      <td class="${r.artifact?'neg':'pos'}">${r.artifact?'✗ ARTIFACT':'holds'}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">Each column is the SAME projected-band fade, same sessions, same costs — only the bar resolution differs. <b>Sharpe columns</b>: watch left-to-right (coarse → 1-min). A real edge stays flat; an artifact <b>falls toward 1-min</b>. <b>zero-dur</b> = % of trades where fill and exit land on one bar (mark-to-close, no real touch order) — the tearsheet's ~44% lives in the coarse column. <b>retained</b> = 1-min Sharpe ÷ coarse Sharpe (how much of the headline survives honest fills). <b class="neg">✗ ARTIFACT</b> = coarse Sharpe &gt;0.5, &lt;50% retained at 1-min, and the coarse book was zero-duration-heavy — the edge was the fill, not the market.</div></div>`;
+
+  if(log) h += `<div class="card muted" style="font-size:10px">${log.join('<br>')}</div>`;
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>

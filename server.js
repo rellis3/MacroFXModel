@@ -76,6 +76,7 @@ import { forecastAccuracy as _forecastAccuracy } from './js/forecastAccuracyEngi
 import { reversionProof as _reversionProof } from './js/reversionProofEngine.js';   // per-day transparent reversion-vs-line proof
 import { sizePortfolio as _sizePortfolio } from './js/positionSizerEngine.js';   // vol-based position sizing off the forecast
 import { exhaustionForecast as _exhaustionForecast } from './js/exhaustionForecastEngine.js';   // fade-back line + range-budget-gated fade
+import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
@@ -9170,6 +9171,7 @@ app.get('/api/reversion-proof/status/:jobId', (req, res) => {
 // ── Exhaustion Forecast — the fade-back line (k_fade×σ) + the range-budget-gated fade.
 //    Per pair over WBT_INSTRUMENTS via _intradayForAB. ──
 const exhJobs = new Map();
+const fillJobs = new Map();
 app.post('/api/exhaustion-forecast/run', express.json({ limit: '16kb' }), (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
   const { pair = '', budgetFrac, isFrac } = req.body || {};
@@ -9202,6 +9204,57 @@ app.post('/api/exhaustion-forecast/run', express.json({ limit: '16kb' }), (req, 
 });
 app.get('/api/exhaustion-forecast/status/:jobId', (req, res) => {
   const job = exhJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Fill-Realism ladder — is the per-line tearsheet's Sharpe a fill artifact? ──
+// Runs the SAME projected-band fade (computeBands+simulateEntry) at a LADDER of
+// bar resolutions (1/15/60-min) per instrument. If OOS Sharpe collapses as bars
+// get finer toward 1-min truth, the ~3.1 tearsheet is a coarse-bar / mark-to-close
+// artifact. Heavy (streams M1 per step); run one pair first, then the book.
+app.post('/api/fill-realism/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '', isFrac, steps } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const stepList = Array.isArray(steps) && steps.length ? steps.map(Number).filter(n => n > 0) : [1, 15, 60];
+  const jobId = `fill_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of fillJobs) if (j.startedAt < Date.now() - 60 * 60_000) fillJobs.delete(id);
+  fillJobs.set(jobId, { status: 'running', startedAt });
+  const opts = { isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5 };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const barsByStep = {};
+          for (const st of stepList) {
+            try {
+              const bars = await _loadM1ForAB(cfg.name.toLowerCase(), st);
+              if (bars && bars.length > 2000) barsByStep[String(st)] = bars;
+            } catch { /* skip this granularity */ }
+          }
+          if (Object.keys(barsByStep).length < 2) { log.push(`${cfg.name}: <2 granularities loaded`); continue; }
+          const r = _fillRealismLadder(barsByStep, { ...opts, pair: cfg.name, assetClass: cfg.assetClass || 'fx' });
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.reason || 'data'})`); continue; }
+          perPair[cfg.name] = r;
+          const perS = r.steps.map(s => `${s}m ${r.perStep[s].oos.sharpe}(zd${r.perStep[s].zeroDurPct}%)`).join(' → ');
+          log.push(`${cfg.name}: ${perS} · retained ${r.fracRetained} → ${r.artifact ? 'ARTIFACT' : 'holds'}`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { fillJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      fillJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, steps: stepList, perPair, pairs: names, log } });
+    } catch (e) { fillJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/fill-realism/status/:jobId', (req, res) => {
+  const job = fillJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
