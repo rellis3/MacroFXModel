@@ -1394,6 +1394,16 @@ const V8_PRESETS = [
   { name:'Slow 4h price-only', tf:240, cfg:{ entry_conf:52, entry_score_min:45, shift_max_age:4, candle_hold:1, sl_atr_mult:3.5, be_at_r:1.5, trail_arm_r:1.5, trail_atr_mult:4.0, flip_exit_bars:0, max_hold_bars:42, window_start:0, window_end:23, post_exit_cooldown:0 } },
 ];
 
+// Pair groups for the V8 multi-pair sweep. Declared HERE (before the init IIFE)
+// because buildV8PairChips() runs at page load — a later declaration would be a
+// temporal-dead-zone ReferenceError that kills the whole script.
+const V8_PAIR_GROUPS = {
+  fx:      ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF', 'NZD/USD'],
+  crosses: ['GBP/JPY', 'EUR/JPY', 'EUR/GBP', 'AUD/JPY', 'EUR/AUD', 'GBP/AUD', 'EUR/CHF', 'GBP/CHF', 'CAD/JPY', 'CHF/JPY', 'NZD/JPY', 'AUD/NZD'],
+  gold:    ['XAU/USD'],
+  indices: ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'DE30_USD', 'UK100_GBP', 'US2000_USD'],
+};
+
 // ─── V1/V2/V3/V4/V5 Metrics ──────────────────────────────────────────────────
 
 const V1_METRICS = [
@@ -4426,12 +4436,11 @@ function applyV8Preset(idx) {
 }
 
 // ── Sweep pair selection ──────────────────────────────────────────────────────
-const V8_PAIR_GROUPS = {
-  fx:      ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF', 'NZD/USD'],
-  crosses: ['GBP/JPY', 'EUR/JPY', 'EUR/GBP', 'AUD/JPY', 'EUR/AUD', 'GBP/AUD', 'EUR/CHF', 'GBP/CHF', 'CAD/JPY', 'CHF/JPY', 'NZD/JPY', 'AUD/NZD'],
-  gold:    ['XAU/USD'],
-  indices: ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'DE30_USD', 'UK100_GBP', 'US2000_USD'],
-};
+// V8_PAIR_GROUPS is declared next to V8_PRESETS near the top of the script: the
+// init() IIFE calls buildV8PairChips() during script evaluation, and a const
+// declared down here would still be in its temporal dead zone at that point —
+// the resulting ReferenceError aborts evaluation, leaving EVERY later const
+// (HMM_V2_CONFIG etc.) permanently uninitialized. Keep load-time deps early.
 
 function buildV8PairChips() {
   const wrap = document.getElementById('v8PairChips');
