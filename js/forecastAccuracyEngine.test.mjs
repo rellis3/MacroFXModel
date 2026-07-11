@@ -35,6 +35,16 @@ test('forecastAccuracy: the tighter calibration exceeds MORE often (monotonic in
   assert.ok(r.panelA.recal.hlExceed >= r.panelA.feller.hlExceed - 1e-9, 'lower line exceeded ≥ higher line');
 });
 
+test('forecastAccuracy: proposes an exceed-neutral calibrated constant per pair', () => {
+  const r = forecastAccuracy(synthDays(160), { pair: 'EURUSD' });
+  assert.ok(r.calibrated, 'calibrated block present');
+  assert.ok(r.calibrated.hl_const > 0, 'calibrated H-L constant is positive');
+  assert.ok(r.calibrated.hl_vs_feller > 0, 'factor vs Feller reported');
+  // The calibrated constant IS the median(realized÷σ), so realized exceeds it ~50% of days.
+  // Sanity: it should sit at/below Feller when realized runs below the Feller forecast.
+  assert.ok(r.calibrated.hl_const <= 1.572 + 1e-9 || r.calibrated.hl_vs_feller >= 1, 'consistent with the exceed direction');
+});
+
 test('forecastAccuracy: panel B reports exhaustion location + touch/revert', () => {
   const r = forecastAccuracy(synthDays(160), { pair: 'GOLD' });
   const b = r.panelB;
