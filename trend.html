@@ -78,6 +78,7 @@ async function run() {
         </div>
       </div>
       ${robustnessPanel(r.robustness)}
+      ${isOosPanel(r.isOos)}
       <div class="panel">
         <div style="font-weight:700;margin-bottom:4px">Per market (net of costs)</div>
         <table><thead><tr><th>Market</th><th>Sharpe</th><th>Ann.Ret</th><th>Ann.Vol</th><th>MaxDD</th><th>Turnover/yr</th></tr></thead><tbody>${mrows}</tbody></table>
@@ -106,6 +107,23 @@ function robustnessPanel(rob) {
       <div style="margin-top:12px"><div style="color:#8891a0;font-size:10px;text-transform:uppercase;margin-bottom:2px">Cost sensitivity (Sharpe by bp/turnover)</div>
         <table style="width:auto"><thead><tr>${rob.costSensitivity.map(x=>`<th>${x.costBp}bp</th>`).join('')}</tr></thead><tbody><tr>${cost}</tr></tbody></table></div>
       <div style="margin-top:8px;font-size:10.5px;color:#5b6270">Recent-third Sharpe is the one that matters — trend had a rough 2011–2019. If costs halve the edge or one market carries it, the headline number is fragile.</div>
+    </div>`;
+}
+function isOosPanel(io) {
+  if (!io || !io.ok) return '';
+  const sel = io.isSelected;
+  const alive = sel.oosSharpe > 0;
+  const col = !alive ? '#ef4444' : io.overfitGap > 0.5 ? '#f59e0b' : '#22c55e';
+  const shc = v => `<span class="mono" style="color:${v>=0.3?'#22c55e':v<0?'#ef4444':'#8891a0'}">${v}</span>`;
+  const rows = io.configs.map(c => `<tr${c.name===sel.name?' style="background:rgba(88,166,255,.12)"':''}>
+    <td>${c.name===sel.name?'✓ ':''}${c.name}</td><td>${shc(c.isSharpe)}</td><td>${shc(c.oosSharpe)}</td></tr>`).join('');
+  return `
+    <div class="panel" style="border-color:${col}55">
+      <div style="font-weight:700;color:${col};margin-bottom:8px">True out-of-sample — does the parameter CHOICE overfit?</div>
+      <div style="font-size:12.5px;color:#cdd3dc;margin-bottom:12px;line-height:1.5">${io.read}</div>
+      <table style="width:auto"><thead><tr><th>Lookback config</th><th>IS Sharpe</th><th>OOS Sharpe</th></tr></thead><tbody>${rows}</tbody></table>
+      <div style="margin-top:8px;font-size:11px;color:#cdd3dc">Config chosen on the <b>in-sample</b> (first) half by Sharpe, then evaluated on the held-out half. IS-selected: <b>${sel.name}</b> · IS ${sel.isSharpe} → OOS ${sel.oosSharpe} · overfit gap <b>${io.overfitGap}</b>.</div>
+      <div style="margin-top:6px;font-size:10.5px;color:#5b6270">This separates two failure modes: a big IS→OOS gap = params fit to noise; OOS simply ≤0 = the recent-half drought (not overfit). Trend lookbacks are famously insensitive, so a healthy result here means the choice isn't the fragile part — the regime is.</div>
     </div>`;
 }
 function verdict(p) {

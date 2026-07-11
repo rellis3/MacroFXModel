@@ -2,7 +2,7 @@
 //   node js/trendFollow.test.mjs
 // Deterministic (seeded). Proves properties, not just "it ran".
 
-import { momentumSignal, rollingVol, backtestMarket, backtestBasket, robustness, DEFAULTS } from './trendFollowEngine.js';
+import { momentumSignal, rollingVol, backtestMarket, backtestBasket, robustness, isOosSplit, DEFAULTS } from './trendFollowEngine.js';
 
 let tests = 0, failures = 0;
 const ok = (n, c, x = '') => { tests++; console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${x ? '  ' + x : ''}`); if (!c) failures++; };
@@ -100,6 +100,17 @@ console.log('\n── honest-read robustness ──');
   // Random walk: robustness should NOT say "Robust" (no real edge to be robust).
   const noise = [11, 12, 13, 14, 15, 16].map(s => ({ symbol: 'N' + s, closes: randomWalk(s * 7) }));
   ok('random-walk robustness is NOT "Robust"', !/^Robust/.test(robustness(noise).read));
+}
+
+console.log('\n── parameter IS/OOS split ──');
+{
+  const markets = [1, 2, 3, 4, 5, 6].map(s => ({ symbol: 'M' + s, closes: trendingMarket(s * 7) }));
+  const io = isOosSplit(markets);
+  ok('isOosSplit runs', io.ok === true);
+  ok('every config has IS + OOS Sharpe', io.configs.length >= 2 && io.configs.every(c => typeof c.isSharpe === 'number' && typeof c.oosSharpe === 'number'));
+  ok('IS-selected config is the IS-Sharpe max', io.configs.every(c => c.isSharpe <= io.isSelected.isSharpe + 1e-9));
+  ok('overfitGap = IS − OOS of the selected config', near(io.overfitGap, +(io.isSelected.isSharpe - io.isSelected.oosSharpe).toFixed(2)));
+  ok('read is a string verdict', typeof io.read === 'string' && io.read.length > 10);
 }
 
 console.log(`\n${failures === 0 ? '✅' : '❌'} trend-follow tests: ${tests - failures}/${tests} passed${failures ? `, ${failures} FAILED` : ''}\n`);
