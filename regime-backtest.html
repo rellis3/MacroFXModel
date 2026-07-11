@@ -589,12 +589,27 @@
       All presets pay round-trip cost + stop slippage.
     </div>
     <div id="v8PresetBtns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    <div style="margin-top:10px;border-top:1px dashed #1c2133;padding-top:8px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">SWEEP PAIRS</span>
+        <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="v8SelectPairs('fx')">FX majors</button>
+        <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="v8SelectPairs('crosses')">FX crosses</button>
+        <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="v8SelectPairs('gold')">Gold</button>
+        <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="v8SelectPairs('indices')">Indices</button>
+        <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="v8SelectPairs('all')">All</button>
+        <button class="dark-btn" style="padding:2px 8px;font-size:10px" onclick="v8SelectPairs('none')">None</button>
+      </div>
+      <div id="v8PairChips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    </div>
     <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
-      <button class="rb-run-btn" id="v8SweepBtn" onclick="runV8Sweep()">▶ Sweep Suite + TFs</button>
+      <button class="rb-run-btn" id="v8SweepBtn" onclick="runV8Sweep()">▶ Sweep Suite + TFs × Pairs</button>
+      <button class="rb-metrics-btn" id="v8SweepStopBtn" onclick="stopV8Sweep()" style="display:none">■ Stop (keeps finished rows)</button>
       <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;max-width:560px">
-        Runs every preset at its own regime TF, plus the CURRENT config at 15m / 30m / 1h / 4h, on the loaded date range.
-        All rows net of costs. The <b>Last 30%</b> columns are a chronological holdout — only honest if you didn't tune on this range.
-        House bar: a config is interesting only if the holdout PF clears ~1.15 with a non-trivial trade count.
+        Runs every preset at its own regime TF, plus the CURRENT config at 15m / 30m / 1h / 4h, across every ticked pair —
+        pairs are processed one at a time, so long baskets just take longer (progress shows in the status line; Stop keeps
+        what's done). All rows net of costs. The <b>Last 30%</b> columns are a chronological holdout — only honest if you
+        didn't tune on this range. Judge configs by the BREADTH summary: passing the holdout bar on many pairs is evidence,
+        one pair is noise.
       </span>
     </div>
     <div id="v8SweepWrap" style="margin-top:10px;overflow-x:auto"></div>
@@ -1485,6 +1500,7 @@ let optResults       = [];  // top-N {score, cfg, anTr, anVa, anTe} from runClie
   buildChart();
   buildCheckboxes();
   buildV8PresetBtns();
+  buildV8PairChips();
   setStatus('ready', 'Select a date range and click Load & Run');
 })();
 
@@ -4409,67 +4425,139 @@ function applyV8Preset(idx) {
   setStatus('ready', `Preset "${p.name}" loaded (${p.tf >= 60 ? p.tf / 60 + 'h' : p.tf + 'm'} regime TF) — click ▶ Load & Run`);
 }
 
-// Sweep: every preset at its own TF + the current config at 15m/30m/1h/4h.
-// One M1 fetch; HMM signals cached per TF; all rows net of costs; last-30%
-// chronological holdout reported per row.
+// ── Sweep pair selection ──────────────────────────────────────────────────────
+const V8_PAIR_GROUPS = {
+  fx:      ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF', 'NZD/USD'],
+  crosses: ['GBP/JPY', 'EUR/JPY', 'EUR/GBP', 'AUD/JPY', 'EUR/AUD', 'GBP/AUD', 'EUR/CHF', 'GBP/CHF', 'CAD/JPY', 'CHF/JPY', 'NZD/JPY', 'AUD/NZD'],
+  gold:    ['XAU/USD'],
+  indices: ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'DE30_USD', 'UK100_GBP', 'US2000_USD'],
+};
+
+function buildV8PairChips() {
+  const wrap = document.getElementById('v8PairChips');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const opts = [...document.getElementById('pairSel').options].map(o => o.value);
+  opts.forEach(p => {
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:3px;font-size:10px;font-family:"DM Mono",monospace;color:var(--text2);border:1px solid #1c2133;border-radius:4px;padding:2px 6px;cursor:pointer;user-select:none';
+    lbl.innerHTML = `<input type="checkbox" class="v8PairCb" value="${p}" style="accent-color:#00c97d">${p}`;
+    wrap.appendChild(lbl);
+  });
+  // sensible default basket: the pairs the owner trades — FX majors + gold
+  v8SelectPairs('none');
+  [...V8_PAIR_GROUPS.fx, ...V8_PAIR_GROUPS.gold].forEach(p => {
+    const cb = [...document.querySelectorAll('.v8PairCb')].find(c => c.value === p);
+    if (cb) cb.checked = true;
+  });
+}
+
+function v8SelectPairs(group) {
+  const cbs = [...document.querySelectorAll('.v8PairCb')];
+  if (group === 'all')  { cbs.forEach(c => c.checked = true);  return; }
+  if (group === 'none') { cbs.forEach(c => c.checked = false); return; }
+  const set = new Set(V8_PAIR_GROUPS[group] || []);
+  cbs.forEach(c => { if (set.has(c.value)) c.checked = true; });
+}
+
+function v8SelectedPairs() {
+  const sel = [...document.querySelectorAll('.v8PairCb')].filter(c => c.checked).map(c => c.value);
+  return sel.length ? sel : [document.getElementById('pairSel').value];
+}
+
+let v8SweepStopFlag = false;
+function stopV8Sweep() { v8SweepStopFlag = true; }
+
+// Sweep: (every preset at its own TF + the current config at 15m/30m/1h/4h)
+// × every ticked pair. Pairs are processed sequentially — one M1 fetch each,
+// HMM signals cached per TF within the pair, memory freed before the next pair.
+// All rows net of costs; last-30% chronological holdout reported per row;
+// cross-pair breadth summarised per config.
 async function runV8Sweep() {
   if (currentBot !== 'v8') selectBot('v8');
-  const pair    = document.getElementById('pairSel').value;
   const fromStr = document.getElementById('fromDate').value;
   const toStr   = document.getElementById('toDate').value;
   if (!fromStr || !toStr) { setStatus('err', 'Select a date range first'); return; }
+  const pairs = v8SelectedPairs();
 
   const runBtn   = document.getElementById('runBtn');
   const sweepBtn = document.getElementById('v8SweepBtn');
+  const stopBtn  = document.getElementById('v8SweepStopBtn');
   runBtn.disabled = true; sweepBtn.disabled = true;
+  stopBtn.style.display = '';
+  v8SweepStopFlag = false;
+
+  const currentCfg = { ...cfg };
+  const rowDefs = [
+    ...V8_PRESETS.map(p => ({ name: p.name, tf: p.tf, cfg: { ...V8_DEFAULTS, ...p.cfg } })),
+    ...[15, 30, 60, 240].map(tf => ({ name: 'Current config', tf, cfg: currentCfg })),
+  ];
+
+  const results = [];
+  let stopped = false;
 
   try {
-    const ps = pairSafe(pair);
-    let rawCandles = await fetchM1CandlesChunked(ps, fromStr, toStr, (idx, total) => {
-      setStatus('spin', `Sweep: loading M1 candles… chunk ${idx}/${total}`);
-    });
-    if (!rawCandles.length) throw new Error('No M1 candle data — check Railway/R2 or try a shorter range');
     const trainedParams = await fetchTrainedParams();
 
-    const currentCfg = { ...cfg };
-    const rows = [
-      ...V8_PRESETS.map(p => ({ name: p.name, tf: p.tf, cfg: { ...V8_DEFAULTS, ...p.cfg } })),
-      ...[15, 30, 60, 240].map(tf => ({ name: 'Current config', tf, cfg: currentCfg })),
-    ];
+    for (let pi = 0; pi < pairs.length; pi++) {
+      if (v8SweepStopFlag) { stopped = true; break; }
+      const pair = pairs[pi];
+      const ps   = pairSafe(pair);
+      const tag  = `[${pi + 1}/${pairs.length}] ${pair}`;
 
-    const t0 = rawCandles[0].time, t1 = rawCandles[rawCandles.length - 1].time;
-    const tSplit = t0 + (t1 - t0) * 0.7;
-
-    const sigCache = {};
-    const results  = [];
-    for (const row of rows) {
-      if (!sigCache[row.tf]) {
-        const tfLbl = row.tf >= 60 ? row.tf / 60 + 'h' : row.tf + 'm';
-        setStatus('spin', `Sweep: computing HMM signals @ ${tfLbl}…`);
-        await uiYield();
-        sigCache[row.tf] = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, row.tf);
+      let rawCandles;
+      try {
+        rawCandles = await fetchM1CandlesChunked(ps, fromStr, toStr, (idx, total) => {
+          setStatus('spin', `Sweep ${tag}: loading M1… chunk ${idx}/${total}`);
+        });
+      } catch (e) {
+        console.warn(`Sweep: ${pair} candle load failed — skipping`, e);
+        continue;
       }
-      const trades = simulateV8(rawCandles, sigCache[row.tf], { ...row.cfg, _mtf: row.tf });
-      const an     = computeAnalytics(trades);
-      const tail   = trades.filter(t => t.entry_ts >= tSplit);
-      const anTail = computeAnalytics(tail);
-      const avgHoldH = trades.length ? trades.reduce((s, t) => s + t.duration_min, 0) / trades.length / 60 : 0;
-      const costDrag = trades.reduce((s, t) => s + (t.cost_pct || 0), 0);
-      results.push({ row, an, anTail, tailN: tail.length, avgHoldH, costDrag });
-      await uiYield();
-    }
-    rawCandles = null;
+      if (!rawCandles || !rawCandles.length) { console.warn(`Sweep: no data for ${pair} — skipping`); continue; }
 
-    renderV8Sweep(results, pair, fromStr, toStr);
-    setStatus('ok', `Sweep complete — ${rows.length} configs × ${pair}. Judge rows by the Last-30% columns, not the full-period ones.`);
+      const t0 = rawCandles[0].time, t1 = rawCandles[rawCandles.length - 1].time;
+      const tSplit = t0 + (t1 - t0) * 0.7;
+
+      const sigCache = {};
+      for (const row of rowDefs) {
+        if (v8SweepStopFlag) { stopped = true; break; }
+        if (!sigCache[row.tf]) {
+          const tfLbl = row.tf >= 60 ? row.tf / 60 + 'h' : row.tf + 'm';
+          setStatus('spin', `Sweep ${tag}: HMM signals @ ${tfLbl}…`);
+          await uiYield();
+          sigCache[row.tf] = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, row.tf);
+        }
+        const trades = simulateV8(rawCandles, sigCache[row.tf], { ...row.cfg, _mtf: row.tf });
+        const an     = computeAnalytics(trades);
+        const tail   = trades.filter(t => t.entry_ts >= tSplit);
+        const anTail = computeAnalytics(tail);
+        const avgHoldH = trades.length ? trades.reduce((s, t) => s + t.duration_min, 0) / trades.length / 60 : 0;
+        const costDrag = trades.reduce((s, t) => s + (t.cost_pct || 0), 0);
+        results.push({ pair, row, an, anTail, tailN: tail.length, avgHoldH, costDrag });
+        await uiYield();
+      }
+      // free this pair's data before the next one — multi-pair sweeps would OOM otherwise
+      rawCandles = null;
+      Object.keys(sigCache).forEach(k => delete sigCache[k]);
+      // live-update the table as each pair completes so long sweeps show progress
+      renderV8Sweep(results, pairs.slice(0, pi + 1).join(', '), fromStr, toStr);
+    }
+
+    renderV8Sweep(results, pairs.join(', '), fromStr, toStr);
+    setStatus(stopped ? 'err' : 'ok',
+      `${stopped ? 'Sweep STOPPED early — showing finished rows. ' : 'Sweep complete. '}` +
+      `${results.length} rows (${rowDefs.length} configs × ${new Set(results.map(r => r.pair)).size} pair(s)). ` +
+      `Judge configs by the breadth summary, not any single pair.`);
   } catch (err) {
     setStatus('err', `Sweep error: ${err.message}`);
     console.error(err);
   }
   runBtn.disabled = false; sweepBtn.disabled = false;
+  stopBtn.style.display = 'none';
 }
 
-function renderV8Sweep(results, pair, fromStr, toStr) {
+function renderV8Sweep(results, pairLabel, fromStr, toStr) {
   const wrap = document.getElementById('v8SweepWrap');
   if (!wrap) return;
   const fmt  = (v, d = 2) => (v == null || !isFinite(v)) ? '—' : Number(v).toFixed(d);
@@ -4482,6 +4570,47 @@ function renderV8Sweep(results, pair, fromStr, toStr) {
 
   const th = 'padding:4px 8px;text-align:right;color:var(--text3);font-weight:600;white-space:nowrap';
   const td = 'padding:4px 8px;text-align:right;white-space:nowrap';
+  const tdL = 'padding:4px 8px;text-align:left;white-space:nowrap';
+
+  // ── Cross-pair BREADTH summary per config — the number that matters. ────────
+  // A config clearing the holdout bar on many pairs is evidence (Grinold breadth);
+  // a single-pair pass is what noise looks like across a 10-config × N-pair grid.
+  const byCfg = new Map();
+  results.forEach(r => {
+    const k = `${r.row.name} @ ${tfL(r.row.tf)}`;
+    if (!byCfg.has(k)) byCfg.set(k, { k, pairs: 0, passed: 0, tailPFs: [], tailPnl: 0, netPnl: 0, trades: 0 });
+    const b = byCfg.get(k);
+    b.pairs++; b.trades += r.an ? r.an.total : 0;
+    b.netPnl += r.an ? r.an.totalPnl : 0;
+    if (r.anTail) { b.tailPFs.push(r.anTail.pf); b.tailPnl += r.anTail.totalPnl; }
+    if (isLive(r)) b.passed++;
+  });
+  const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const summary = [...byCfg.values()].sort((a, b) => b.passed - a.passed || (median(b.tailPFs) || 0) - (median(a.tailPFs) || 0));
+  const nPairs  = new Set(results.map(r => r.pair)).size;
+
+  const summaryHtml = nPairs > 1 ? `
+    <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin:2px 0 4px">
+      BREADTH SUMMARY — pairs clearing the holdout bar per config (this is the honest ranking; ignore single-pair heroes)
+    </div>
+    <table style="border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace;margin-bottom:14px;min-width:640px">
+      <thead><tr>
+        <th style="${th};text-align:left">Config</th><th style="${th}">Pairs ✓ / ran</th>
+        <th style="${th}">Median 30% PF</th><th style="${th}">Σ 30% P&L</th><th style="${th}">Σ Net P&L</th><th style="${th}">Σ Trades</th>
+      </tr></thead>
+      <tbody>${summary.map(s => {
+        const strong = s.passed >= Math.max(2, Math.ceil(s.pairs * 0.4));
+        const st = strong ? 'color:#00c97d;font-weight:700' : '';
+        return `<tr style="border-top:1px solid #1c2133;${strong ? 'background:rgba(0,201,125,.08)' : ''}">
+          <td style="${tdL};${st}">${s.k}${strong ? ' ✓' : ''}</td>
+          <td style="${td};${st}">${s.passed} / ${s.pairs}</td>
+          <td style="${td};${st}">${fmt(median(s.tailPFs))}</td>
+          <td style="${td};${st}">${(s.tailPnl >= 0 ? '+' : '') + fmt(s.tailPnl, 1)}%</td>
+          <td style="${td}">${(s.netPnl >= 0 ? '+' : '') + fmt(s.netPnl, 1)}%</td>
+          <td style="${td}">${s.trades}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>` : '';
 
   const rowsHtml = results.map(r => {
     const a = r.an, t = r.anTail;
@@ -4489,7 +4618,8 @@ function renderV8Sweep(results, pair, fromStr, toStr) {
     const bg   = live ? 'background:rgba(0,201,125,.08)' : '';
     const tailStyle = live ? 'color:#00c97d;font-weight:700' : 'color:var(--text3)';
     return `<tr style="border-top:1px solid #1c2133;${bg}">
-      <td style="padding:4px 8px;text-align:left;white-space:nowrap">${r.row.name}${live ? ' ✓' : ''}</td>
+      <td style="${tdL}">${r.pair}</td>
+      <td style="${tdL}">${r.row.name}${live ? ' ✓' : ''}</td>
       <td style="${td}">${tfL(r.row.tf)}</td>
       <td style="${td}">${a ? a.total : 0}</td>
       <td style="${td}">${a ? fmt(a.total / Math.max(a.years, 1 / 52), 0) : '—'}</td>
@@ -4509,12 +4639,14 @@ function renderV8Sweep(results, pair, fromStr, toStr) {
 
   wrap.innerHTML = `
     <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px">
-      ${pair} · ${fromStr} → ${toStr} · all rows NET of cost+slippage ·
+      ${pairLabel} · ${fromStr} → ${toStr} · all rows NET of cost+slippage ·
       <b style="color:${nLive ? '#00c97d' : 'var(--text3)'}">${nLive}/${results.length} row(s) clear the holdout bar</b>
       (Last-30% PF ≥ ${MIN_TAIL_PF} on ≥ ${MIN_TAIL_N} trades). A row failing that bar is a NULL on this data — not a tweak candidate.
     </div>
-    <table style="border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace;min-width:900px">
+    ${summaryHtml}
+    <table style="border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace;min-width:980px">
       <thead><tr>
+        <th style="${th};text-align:left">Pair</th>
         <th style="${th};text-align:left">Config</th><th style="${th}">TF</th>
         <th style="${th}">Trades</th><th style="${th}">/yr</th><th style="${th}">WR%</th>
         <th style="${th}">PF</th><th style="${th}">R:R</th><th style="${th}">Sharpe</th>
