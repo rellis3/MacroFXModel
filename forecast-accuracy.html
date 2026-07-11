@@ -74,6 +74,20 @@ function render(pp, log){
   }
   h += `</table><div class="muted" style="font-size:10px;margin-top:4px"><b>HL exceed</b> = % of days realized H-L exceeded that calibration's median. <span class="pos">Green</span> = within 8pts of the ideal 50% (well-calibrated); <span class="amber">amber</span> = 8–20 off; <span class="neg">red</span> = ≥20 off (line too wide if &lt;50, too tight if &gt;50). <b>HL hit±</b> = the colleague's ±band accuracy (low in absolute terms by construction — read relative). Rows sorted by how close Feller's exceed is to 50%. O-C columns omitted for width — in the raw JSON per set (ocExceed).</div></div>`;
 
+  // ── Calibration proposal: the exceed-neutral constants (fixes every class incl. indices) ──
+  const byCls = {};
+  for(const [,r] of rows){ const c=r.cls, k=r.calibrated?.hl_const; if(k>0){ (byCls[c]=byCls[c]||[]).push(k); } }
+  const classMean = c => byCls[c] && byCls[c].length ? (byCls[c].reduce((s,x)=>s+x,0)/byCls[c].length) : null;
+  h += `<h2>Calibration proposal — the exceed-neutral constant (fixes every class, incl. indices)</h2><div class="card">
+    <div class="muted" style="font-size:11px;margin-bottom:6px">Per-class average of <b>median(realized H-L ÷ σ)</b> — by construction this constant is exceeded exactly 50% of days, so it's the correctly-calibrated median. Use these (× σ) for the export + sizing instead of raw Feller 1.572 / COG 1.56.</div>
+    <table><tr><th>Class</th><th>Calibrated H-L const</th><th>vs Feller 1.572</th><th>n pairs</th></tr>`;
+  for(const c of ['fx','commodity','index']){ const m=classMean(c); if(m==null) continue;
+    h += `<tr><td><strong>${c}</strong></td><td class="pos">${fmt(m,3)}</td><td class="muted">${fmt(m/1.572,3)}×</td><td class="muted">${byCls[c].length}</td></tr>`; }
+  h += `</table><table style="margin-top:8px"><tr><th>Pair</th><th>Calibrated H-L</th><th>×Feller</th><th>Calibrated O-C</th></tr>`;
+  for(const [name,r] of rows){ const c=r.calibrated||{};
+    h += `<tr><td><strong>${name}</strong> <span class="muted">${r.cls}</span></td><td class="pos">${fmt(c.hl_const,3)}</td><td class="muted">${fmt(c.hl_vs_feller,3)}×</td><td>${fmt(c.oc_const,3)}</td></tr>`; }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">These are data-derived (no guessing, no held classes). Indices land here too — closing the gap Feller/COG/recal left open. This is the calibration to feed the COG export and the sizing layer.</div></div>`;
+
   // ── Panel B ──
   h += `<h2>Panel B — Exhaustion / level-fade (the OTHER question — where price actually reverses)</h2><div class="card"><table><tr>
     <th>Pair</th><th>Dominant reversal ÷ median</th><th>Median line touch rate</th><th>Revert of touch</th><th>Blow-through of touch</th></tr>`;

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Position Sizer — vol-based sizing off the forecast (the risk layer)</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:16px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:980px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input,select { background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:3px 6px; font:11px 'DM Mono',monospace; width:80px; text-align:right }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  .big { font-size:20px; font-weight:700 } .lbl { color:var(--text3); font-size:10px; text-transform:uppercase; letter-spacing:.05em }
+  .grid { display:flex; gap:22px; flex-wrap:wrap } .stat { min-width:130px }
+  label { color:var(--text3); font-size:11px; margin-right:12px } a { color:#58a6ff }
+</style>
+</head>
+<body>
+  <h1>Position Sizer <span class="muted" style="font-size:12px">— vol-based sizing off the forecast (the risk layer)</span></h1>
+  <div class="sub">
+    Where the durable edge actually lives: <b>vol-based sizing + diversification + a stop outside the noise.</b> This turns the (calibrated) forecast range into position sizes that risk the <b>same $ on every trade</b> regardless of the pair's volatility, and caps the book's total heat. It is a <b>risk framework, not an alpha source</b> — it doesn't create edge, it makes whatever entry you use survivable and equal-risk. The core is <b>currency-agnostic</b> (keyed off the forecast range as % of price), so there's no pip/FX-rate conversion bug: <b>notional = riskPct ÷ stop%</b>, a stop-out loses exactly your risk. Wider forecast range ⇒ smaller position, automatically. <span class="muted">Range comes from the live vol forecast, tightened by the calibrated factor (Forecast Accuracy build) so it's the accurate range, not the wide one.</span>
+  </div>
+  <div class="card">
+    <label>Equity <input id="eq" value="100000"></label>
+    <label>Risk % / trade <input id="rk" value="0.5"></label>
+    <label>Stop × range <input id="sm" value="1.0"></label>
+    <label>Max heat % <input id="mh" value="3"></label>
+    <label>Calibrate range <select id="cal" style="width:70px"><option value="1">Yes</option><option value="0">No</option></select></label>
+    <button onclick="run()">▶ Size the book</button>
+    <span class="muted" id="status" style="margin-left:10px"></span>
+  </div>
+  <div id="out"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=2) => v==null?'—':(+v).toFixed(d);
+// Per-class calibration factor (× raw forecast median) from the Forecast-Accuracy exceed-neutral
+// finding: raw Feller/COG run ~15% wide. Approximate; the exact per-pair value is on that page.
+const CAL = { fx:0.86, commodity:0.88, index:0.87 };
+const clsOf = n => { n=n.toUpperCase(); if(/GOLD|XAU|XAG|SILVER|OIL|WTI|BRENT/.test(n)) return 'commodity'; if(/NAS100|NQ|SPX|US30|US500|DE30|DE40|UK100|DAX|FTSE|GER40|DOW/.test(n)) return 'index'; return 'fx'; };
+
+async function run(){
+  el('status').textContent='Loading forecast…'; el('out').innerHTML='';
+  let fc; try { fc = await (await fetch('/api/vol-forecast')).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">forecast fetch failed: '+e.message+'</span>'; return; }
+  const inst = fc?.instruments || fc?.data?.instruments || {};
+  const names = Object.keys(inst);
+  if(!names.length){ el('status').innerHTML='<span class="neg">no forecast instruments returned</span>'; return; }
+  const calibrate = el('cal').value==='1';
+  const positions = names.map(n=>{
+    const f = inst[n]; if(!(f?.hl_median>0)) return null;
+    const factor = calibrate ? (CAL[clsOf(n)]||0.87) : 1;
+    return { pair:n, rangePct: f.hl_median*factor, price: (f.price ?? f.close ?? f.last ?? null) };
+  }).filter(Boolean);
+  const body = { equity:parseFloat(el('eq').value)||100000, riskPct:parseFloat(el('rk').value)||0.5,
+    stopMult:parseFloat(el('sm').value)||1, maxHeatPct:parseFloat(el('mh').value)||null, positions };
+  el('status').textContent='Sizing…';
+  let s; try { s = await (await fetch('/api/position-size',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">'+e.message+'</span>'; return; }
+  if(!s.ok){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; return; }
+  el('status').textContent = `${s.nPositions} pairs · calibrated ${calibrate?'on':'off'}`;
+  render(s);
+}
+
+function render(s){
+  const stat=(l,v,c='')=>`<div class="stat"><div class="lbl">${l}</div><div class="big ${c}">${v}</div></div>`;
+  let h = `<div class="card"><h2>Portfolio</h2><div class="grid">
+    ${stat('Positions', s.nPositions)}
+    ${stat('Risk / trade', fmt(s.riskPctPerTrade,3)+'%', s.scaledDown?'amber':'')}
+    ${stat('Nominal heat', fmt(s.grossHeatPct,2)+'%')}
+    ${stat('Effective heat', fmt(s.effectiveHeatPct,2)+'%', s.effectiveHeatPct<=(s.maxHeatPct||99)?'pos':'neg')}
+    ${stat('Total leverage', fmt(s.totalNotionalFraction,2)+'×')}
+  </div><div class="muted" style="font-size:10px;margin-top:6px">${s.scaledDown?`⚠ ${s.nPositions} × your per-trade risk exceeded the ${s.maxHeatPct}% heat cap — each position scaled down to <b>${fmt(s.riskPctPerTrade,3)}%</b> so the book's worst case stays ≤ ${s.maxHeatPct}%.`:'Within the heat cap — no scaling.'} <b>Total leverage</b> = sum of notional ÷ equity (correlation NOT modelled — correlated pairs carry more joint risk than the nominal heat implies; keep the book diversified).</div></div>`;
+
+  h += `<div class="card"><h2>Per-pair sizing</h2><table><tr>
+    <th>Pair</th><th>Fcast range %</th><th>Stop %</th><th>Stop pips</th><th>Notional (leverage)</th><th>$ risk</th><th>Lots ≈</th></tr>`;
+  for(const p of s.positions.sort((a,b)=>(b.notionalFraction||0)-(a.notionalFraction||0))){
+    h += `<tr><td><strong>${p.pair}</strong></td>
+      <td>${fmt(p.rangePct,3)}%</td><td>${fmt(p.stopPct,3)}%</td>
+      <td class="muted">${p.stopPips==null?'—':fmt(p.stopPips,1)}</td>
+      <td class="pos">${fmt(p.notionalFraction,2)}×</td>
+      <td>$${fmt(p.riskDollar,0)}</td>
+      <td class="muted">${p.lotsApprox==null?'—':fmt(p.lotsApprox,2)}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px"><b>Notional (leverage)</b> = position size as ×equity such that a stop-out loses exactly your $ risk — this is the currency-agnostic, bug-proof core. <b>Stop pips</b> / <b>Lots</b> appear when the forecast supplies a price (lots are a USD-quote approximation — confirm pip value on your platform for JPY-quote / crosses). Sorted by size; smallest positions = highest-vol pairs (correctly).</div></div>`;
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>

@@ -43,7 +43,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
-import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
+import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -74,6 +74,7 @@ import { reversalFade as _reversalFade } from './js/reversalFadeEngine.js';   //
 import { cogFade as _cogFade } from './js/cogFadeEngine.js';   // fade at COG's reproduced median/75th line
 import { forecastAccuracy as _forecastAccuracy } from './js/forecastAccuracyEngine.js';   // range-accuracy + exhaustion, per calibration
 import { reversionProof as _reversionProof } from './js/reversionProofEngine.js';   // per-day transparent reversion-vs-line proof
+import { sizePortfolio as _sizePortfolio } from './js/positionSizerEngine.js';   // vol-based position sizing off the forecast
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
@@ -5391,6 +5392,8 @@ app.get('/api/trend/backtest', async (req, res) => {
     result.universe = { requested: _TREND_UNIVERSE.length, used: markets.map(m => m.symbol), skipped };
     // Honest-read robustness: sub-period Sharpe, rolling 1y, cost sensitivity, concentration.
     if (result.ok) { try { result.robustness = _trendRobustness(markets, { longShort, volTargetPort }); } catch (e) { result.robustness = { ok: false, error: e.message }; } }
+    // True OOS: select lookback config on the IS half, evaluate on the held-out half.
+    if (result.ok) { try { result.isOos = _trendIsOos(markets, { longShort, volTargetPort }); } catch (e) { result.isOos = { ok: false, error: e.message }; } }
     if (result.ok) _trendBtCache.set(key, { at: Date.now(), data: result });
     res.status(result.ok ? 200 : 502).json(result);
   } catch (e) {
@@ -9161,6 +9164,21 @@ app.get('/api/reversion-proof/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+// Position sizer — vol-based sizing off the forecast range. Pure engine passthrough,
+// enriched with each pair's pip. POST { equity, riskPct, stopMult, maxHeatPct,
+// positions:[{pair, rangePct, price?}] }. No forecast coupling — the range is supplied.
+app.post('/api/position-size', express.json({ limit: '64kb' }), (req, res) => {
+  try {
+    const { equity, riskPct, stopMult, maxHeatPct, positions = [] } = req.body || {};
+    if (!(+equity > 0) || !(+riskPct > 0)) return res.status(400).json({ ok: false, error: 'equity and riskPct (>0) required' });
+    const enriched = positions.map(p => {
+      let pip = p.pip; if (pip == null) { try { pip = _pipSize(p.pair); } catch { pip = null; } }
+      return { pair: p.pair, rangePct: +p.rangePct, price: p.price != null ? +p.price : null, pip };
+    });
+    const out = _sizePortfolio({ equity: +equity, riskPct: +riskPct, stopMult: +stopMult || 1, maxHeatPct: maxHeatPct != null ? +maxHeatPct : null, positions: enriched });
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // One London day's M1 candles for the proof chart. ?pair=EURUSD&date=YYYY-MM-DD
 app.get('/api/reversion-proof/day', async (req, res) => {

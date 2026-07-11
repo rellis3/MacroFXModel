@@ -58,6 +58,7 @@ export function forecastAccuracy(intraday, opts = {}) {
   const acc = {}; for (const s of [...setNames, 'naive']) acc[s] = { hlHit: 0, hlExc: 0, ocHit: 0, ocExc: 0 };
   let nA = 0;
   const realizedHL = [];                                     // for the naive trailing-median benchmark
+  const hlOverSig = [], ocOverSig = [];                      // realized ÷ σ → the exceed-neutral constant
 
   // Panel B state
   const domRuns = [];
@@ -84,6 +85,10 @@ export function forecastAccuracy(intraday, opts = {}) {
       }
       const nf = _median(realizedHL.slice(Math.max(0, i - naiveWin), i));   // persistence forecast
       if (nf > 0) { if (Math.abs(rHL - nf) / nf <= band) acc.naive.hlHit++; if (rHL > nf) acc.naive.hlExc++; }
+      // Exceed-neutral constant: median(realized ÷ σ). By construction, realized exceeds
+      // (this const × σ) exactly 50% of days — i.e. the correctly-calibrated median.
+      hlOverSig.push(rHL / sp);
+      if (rOC > 0) ocOverSig.push(rOC / sp);
     }
 
     // ── Panel B: exhaustion / fade at the Feller median line ──
@@ -118,6 +123,17 @@ export function forecastAccuracy(intraday, opts = {}) {
   };
   panelA.naive = { hlHit5: rate(acc.naive.hlHit, nA), hlExceed: rate(acc.naive.hlExc, nA) };
 
+  // ── Calibration proposal: the exceed-neutral constants (50% exceed by construction).
+  // These are the data-derived median constants to feed the export / sizing — they fix
+  // ANY class (incl. indices, which raw Feller/COG leave too wide) without guessing.
+  const calHl = hlOverSig.length ? _median(hlOverSig) : null;
+  const calOc = ocOverSig.length ? _median(ocOverSig) : null;
+  const calibrated = {
+    hl_const: r3(calHl), oc_const: r3(calOc),
+    hl_vs_feller: calHl != null ? r3(calHl / 1.572) : null,   // factor vs raw Feller (×<1 ⇒ Feller too wide)
+    oc_vs_feller: calOc != null ? r3(calOc / 0.6745) : null,
+  };
+
   const domP50 = domRuns.length ? _pct(domRuns, 50) : null;
   const panelB = {
     nDays: nB,
@@ -129,5 +145,5 @@ export function forecastAccuracy(intraday, opts = {}) {
     continueOfTouch: (revert + cont) ? r3(cont / (revert + cont) * 100) : null,
   };
 
-  return { pair, cls, nDays: lond.length, dateFrom: lond[0].date, dateTo: lond.at(-1).date, band, nA, panelA, panelB };
+  return { pair, cls, nDays: lond.length, dateFrom: lond[0].date, dateTo: lond.at(-1).date, band, nA, panelA, panelB, calibrated };
 }
