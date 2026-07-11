@@ -715,6 +715,8 @@
         <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z</button>
         <button class="vf-exp-item" id="vfWeeklyExportBtn"  onclick="closeExpDropdown();exportWeekly()"            disabled>⬇ Weekly</button>
         <button class="vf-exp-item" id="vfCalWkBtn"         onclick="closeExpDropdown();exportCalibratedWeekly()"  disabled>⬇ Weekly (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
+        <button class="vf-exp-item" id="vfCogBtn"           onclick="closeExpDropdown();exportCog()"               disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
+        <button class="vf-exp-item" id="vfCogWkBtn"         onclick="closeExpDropdown();exportCogWeekly()"         disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 / √20</span></button>
       </div>
     </div>
     <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
@@ -1409,7 +1411,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfExportBtn','vfCalibratedBtn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfExportBtn','vfCalibratedBtn','vfCogBtn','vfCogWkBtn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -2038,6 +2040,57 @@ async function exportCalibratedWeekly() {
   const factors = await loadRecalFactors();
   const text = _calNote(factors) + '\n' + _buildWeeklyText(_calibrateForecast(currentWeekly, factors));
   _emitCalibrated('vfCalWkBtn', text, `vol-weekly-calibrated-${(currentWeekly.week_label ?? 'latest').replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`);
+}
+
+// ── COG-calibrated export ─────────────────────────────────────────────────────
+// Reproduces COG's OWN published line (reverse-engineered from his manual + 20 days
+// of stored forecasts): level% = C × (annualised vol ÷ √252), his back-solved
+// constants. His MEDIAN H-L equals raw Feller (~1.57); his 75th & O-C run ~5–7%
+// TIGHTER. Derived purely from vol_annual, so daily and weekly share one path:
+// weekly = daily × √5 (5-day) and × √20 (20-day). Live forecaster NOT modified — an
+// alternative export view. NOTE: our backtest recalibration wants the fx median even
+// tighter (~1.34σ) than COG's 1.56σ — this matches COG, not realized-best.
+const COG_C = { hl50: 1.56, hl75: 1.93, oc50: 0.74, oc75: 1.24 };
+const COG_SQRT252 = Math.sqrt(252);
+function _cogBands(volAnnual, mult) {
+  const s = volAnnual / COG_SQRT252 * mult;
+  return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
+}
+function buildCogExportText(data, { weekly = false } = {}) {
+  const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
+  const note = weekly
+    ? '[COG-CALIBRATED WEEKLY — bands = C×σ√5 (5-day) / C×σ√20 (20-day); C: H-L 1.56/1.93, O-C 0.74/1.24; σ=annualised vol÷√252 (COG method, reverse-engineered)]'
+    : '[COG-CALIBRATED — bands = C×(annualised vol÷√252); C: H-L 1.56/1.93, O-C 0.74/1.24 (COG method, reverse-engineered — median≈Feller, tighter 75th/O-C)]';
+  const lines = [note, weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    if (!(f?.vol_annual > 0)) continue;
+    lines.push(div(name));
+    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
+    if (weekly) {
+      const w5 = _cogBands(f.vol_annual, Math.sqrt(5)), w20 = _cogBands(f.vol_annual, Math.sqrt(20));
+      lines.push('── 5-Day (Weekly)');
+      lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
+      lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
+      lines.push('── 20-Day (Monthly)');
+      lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
+      lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
+    } else {
+      const d = _cogBands(f.vol_annual, 1);
+      lines.push(row('High to Low range', d.hl_median, d.hl_75));
+      lines.push(row('Open to Close move', d.oc_median, d.oc_75));
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+function exportCog() {
+  if (!currentForecast) return;
+  _emitCalibrated('vfCogBtn', buildCogExportText(currentForecast, { weekly: false }), `vol-forecast-cog-${currentForecast.session_date}.txt`);
+}
+function exportCogWeekly() {
+  if (!currentForecast) return;
+  _emitCalibrated('vfCogWkBtn', buildCogExportText(currentForecast, { weekly: true }), `vol-forecast-cog-weekly-${currentForecast.session_date}.txt`);
 }
 
 // ── Export HAR-RV shadow: challenger σ (HAR-RV), incumbent band math ──────────
