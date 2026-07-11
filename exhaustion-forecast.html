@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exhaustion Forecast — the fade-back line + the range-budget fade</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:18px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:980px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input { width:52px; background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:2px 5px; font:11px 'DM Mono',monospace; text-align:right }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  a { color:#58a6ff } .win { background:rgba(63,185,80,.12) }
+</style>
+</head>
+<body>
+  <h1>Exhaustion Forecast <span class="muted" style="font-size:12px">— the fade-back line + the range-budget fade</span></h1>
+  <div class="sub">
+    Your goal, built honestly: a midnight-anchored forecast of <b>where price fades back from</b> — separate from the range. The fade-back distance = <b>k_fade × σ</b>, where <b>k_fade = median(dominant-reversal-run ÷ σ)</b> estimated on the in-sample half (the realized turn distance). It's projected from the running extreme, causal. <b>Panel 1</b> asks: is that line an accurate <i>forecast</i> of the day's turn (does the actual reversal land within tolerance)? — and shows <b>k_fade ÷ calibrated-median</b> so you see the fade-back sits <i>inside</i> the median for FX. <b>Panel 2</b> is the walkthrough's <b>range-budget</b> trade: fade the extended extreme back to the open only once the day consumes ≥ budgetFrac of the calibrated range — costed, OOS, vs an ungated baseline. <span class="muted">Honest split: forecasting the turn (Panel 1) is achievable; trading it (Panel 2) — prior is still null after cost. The number decides.</span>
+  </div>
+  <button onclick="run()">▶ Run</button>
+  <label class="muted" style="margin-left:10px">budgetFrac <input id="bf" value="0.8"></label>
+  <label class="muted" style="margin-left:8px">isFrac <input id="isf" value="0.5"></label>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=2) => v==null?'—':(+v).toFixed(d);
+let _timer=null;
+
+async function run(){
+  clearInterval(_timer); el('status').textContent='Starting…'; el('out').innerHTML='';
+  const body = { budgetFrac:parseFloat(el('bf').value)||0.8, isFrac:parseFloat(el('isf').value)||0.5 };
+  let j; try { j = await (await fetch('/api/exhaustion-forecast/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/exhaustion-forecast/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Running… '+(s.elapsed||0)+'s'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; if(s.log) el('out').innerHTML='<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'; return; }
+    el('status').textContent = `${s.pairs.length} pairs · budgetFrac ${s.budgetFrac}`;
+    render(s.perPair, s.log);
+  }, 2000);
+}
+
+function render(pp, log){
+  const rows = Object.entries(pp).sort((a,b)=>(a[1].fadeVsMedian||9)-(b[1].fadeVsMedian||9));
+
+  // Panel 1 — the fade-back LINE forecast
+  let h = `<h2>Panel 1 — the fade-back line (k_fade×σ): forecast of where price turns</h2><div class="card"><table><tr>
+    <th>Pair</th><th>k_fade</th><th>calib median</th><th>fade ÷ median</th>
+    <th>Predicted turn %</th><th>Actual turn %</th><th>Actual ÷ pred</th><th>Hit rate (±tol)</th></tr>`;
+  for(const [name,r] of rows){ const f=r.forecast;
+    h += `<tr><td><strong>${name}</strong> <span class="muted">${r.type}</span></td>
+      <td class="pos">${fmt(r.kFade,2)}</td><td class="muted">${fmt(r.cCal,2)}</td>
+      <td class="${r.fadeVsMedian<0.9?'amber':r.fadeVsMedian>1.1?'pos':''}">${fmt(r.fadeVsMedian,2)}×</td>
+      <td>${fmt(f.predictedPct,3)}%</td><td>${fmt(f.actualPct,3)}%</td>
+      <td class="${f.actualOverPredicted>=0.9&&f.actualOverPredicted<=1.1?'pos':'muted'}">${fmt(f.actualOverPredicted,2)}×</td>
+      <td>${fmt(f.hitRatePct,1)}%</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px"><b>k_fade</b> = dominant reversal ÷ σ (the fade-back constant). <b>fade ÷ median &lt;1</b> ⇒ price turns BEFORE the median line (FX); &gt;1 ⇒ overshoots (indices/gold). <b>Actual ÷ pred ≈ 1</b> ⇒ the forecast line lands on the turn OOS (it's built to, being the IS median — the honest check is that it holds OOS). <b>Hit rate</b> = % of OOS days the actual turn fell within ±tol of the predicted line (low in absolute terms — the turn distance is noisy day to day).</div></div>`;
+
+  // Panel 2 — the range-budget gated fade
+  h += `<h2>Panel 2 — range-budget fade (fade the &gt;budget extreme back to open), OOS + costed</h2><div class="card"><table><tr>
+    <th>Pair</th>
+    <th colspan="3" style="text-align:center">Gated (≥budgetFrac range)</th>
+    <th colspan="3" style="text-align:center">Ungated baseline</th></tr>
+    <tr><th></th><th>OOS Sharpe</th><th>trades</th><th>exp</th><th>OOS Sharpe</th><th>trades</th><th>exp</th></tr>`;
+  for(const [name,r] of rows){ const g=r.gatedFade.oos, u=r.ungatedFade.oos;
+    const win = g.trades>=30 && g.sharpe>0;
+    h += `<tr class="${win?'win':''}"><td><strong>${name}</strong> <span class="muted">${r.type}</span></td>
+      <td class="${g.sharpe>0?'pos':'neg'}">${fmt(g.sharpe,2)}</td><td class="${g.trades<30?'amber':''}">${g.trades}</td><td class="${g.expectancy>0?'pos':'neg'}">${fmt(g.expectancy,2)}</td>
+      <td class="${u.sharpe>0?'pos':'neg'}">${fmt(u.sharpe,2)}</td><td class="muted">${u.trades}</td><td class="${u.expectancy>0?'pos':'neg'}">${fmt(u.expectancy,2)}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">Fade the extended extreme back to the OPEN once the day's range consumes ≥ budgetFrac of the calibrated median range; stop beyond the extreme; round-trip cost applied. <b>Gated</b> = the walkthrough's ">80% budget → fade" filter; <b>ungated</b> fades the first extreme regardless. Green = positive OOS Sharpe with ≥30 trades (a survivor). <span class="amber">amber trades</span> = &lt;30 (the gate fires on few days — that low count is itself informative).</div></div>`;
+
+  if(log) h += `<div class="card muted" style="font-size:10px">${log.join('<br>')}</div>`;
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>

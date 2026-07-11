@@ -75,6 +75,7 @@ import { cogFade as _cogFade } from './js/cogFadeEngine.js';   // fade at COG's 
 import { forecastAccuracy as _forecastAccuracy } from './js/forecastAccuracyEngine.js';   // range-accuracy + exhaustion, per calibration
 import { reversionProof as _reversionProof } from './js/reversionProofEngine.js';   // per-day transparent reversion-vs-line proof
 import { sizePortfolio as _sizePortfolio } from './js/positionSizerEngine.js';   // vol-based position sizing off the forecast
+import { exhaustionForecast as _exhaustionForecast } from './js/exhaustionForecastEngine.js';   // fade-back line + range-budget-gated fade
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
@@ -9164,6 +9165,47 @@ app.get('/api/reversion-proof/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Exhaustion Forecast — the fade-back line (k_fade×σ) + the range-budget-gated fade.
+//    Per pair over WBT_INSTRUMENTS via _intradayForAB. ──
+const exhJobs = new Map();
+app.post('/api/exhaustion-forecast/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '', budgetFrac, isFrac } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `exh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of exhJobs) if (j.startedAt < Date.now() - 60 * 60_000) exhJobs.delete(id);
+  exhJobs.set(jobId, { status: 'running', startedAt });
+  const opts = { budgetFrac: Number.isFinite(+budgetFrac) ? +budgetFrac : 0.8, isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5 };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const e = _exhaustionForecast(bars, { ...opts, pair: cfg.name });
+          if (e.insufficient) { log.push(`${cfg.name}: insufficient (${e.reason || e.nDays + 'd'})`); continue; }
+          e.src = src; perPair[cfg.name] = e;
+          const f = e.forecast, gf = e.gatedFade.oos;
+          log.push(`${cfg.name}: kFade ${e.kFade} (${e.fadeVsMedian}× median) · fcast hit ${f.hitRatePct}% · gated fade OOS Sharpe ${gf.sharpe}(${gf.trades}) (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { exhJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      exhJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, perPair, pairs: names, log } });
+    } catch (e) { exhJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/exhaustion-forecast/status/:jobId', (req, res) => {
+  const job = exhJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 // Position sizer — vol-based sizing off the forecast range. Pure engine passthrough,
 // enriched with each pair's pip. POST { equity, riskPct, stopMult, maxHeatPct,
