@@ -256,12 +256,16 @@ pattern.
 The courses stop where these systems' actual problems begin. Highest-value
 next study, in order:
 
-1. **López de Prado, *Advances in Financial Machine Learning*** — directly
-   answers open problems we hit: purged/embargoed walk-forward CV (the fix
-   for Gold's K-fold), triple-barrier labeling and meta-labeling (the
-   principled version of what the per-line book and ML gate grope toward),
-   the Deflated Sharpe Ratio and PBO (the formal chance-baseline §3.4 needs),
-   sample-weighting for overlapping trades.
+1. **López de Prado, *Advances in Financial Machine Learning* — the parts we
+   haven't used.** History note: we already ran the meta-labeling arc (Trade
+   Decision Engine, 2026-07, `Trade_Decision_Engine/ARCHITECTURE.md` §8b) and
+   the fitted model landed at the base-rate Brier — the method worked, the
+   primary signal under it was null. That's settled; do NOT re-run
+   meta-labeling on another folklore signal hoping for edge. What remains
+   unused and directly fixes problems found in this review: purged/embargoed
+   walk-forward CV (the fix for Gold's K-fold), the Deflated Sharpe Ratio and
+   PBO (the formal chance-baseline §3.4 needs), and sample-weighting for
+   overlapping trades. Validation machinery, not strategy.
 2. **QLIKE / Patton (2011) + HAR-RV (Corsi 2009)** — the forecaster notes
    already name them. `vol-forecast-bench.html` exists; running the
    "outperforms GARCH/Parkinson/Harvey" claim through OOS QLIKE in-house is
