@@ -73,6 +73,7 @@ import { reversalStudy as _reversalStudy } from './js/reversalPointResearch.js';
 import { reversalFade as _reversalFade } from './js/reversalFadeEngine.js';   // fade-at-k×median falsification test
 import { cogFade as _cogFade } from './js/cogFadeEngine.js';   // fade at COG's reproduced median/75th line
 import { forecastAccuracy as _forecastAccuracy } from './js/forecastAccuracyEngine.js';   // range-accuracy + exhaustion, per calibration
+import { reversionProof as _reversionProof } from './js/reversionProofEngine.js';   // per-day transparent reversion-vs-line proof
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
@@ -9127,6 +9128,63 @@ app.get('/api/forecast-accuracy/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Reversion Proof — transparent per-day reversion-vs-line for ONE pair. Emits every
+//    day's raw numbers (line, actual high/low, gap, win); the /day route returns that
+//    London day's M1 candles so the page can draw the line on the candles. ──
+const revProofJobs = new Map();
+app.post('/api/reversion-proof/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = 'EURUSD', tolPips } = req.body || {};
+  const cfg = WBT_INSTRUMENTS.find(i => i.name === pair.toUpperCase());
+  if (!cfg) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `revp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of revProofJobs) if (j.startedAt < Date.now() - 60 * 60_000) revProofJobs.delete(id);
+  revProofJobs.set(jobId, { status: 'running', startedAt });
+  const opts = { pair: cfg.name, tolPips: Number.isFinite(+tolPips) ? +tolPips : 5 };
+  (async () => {
+    try {
+      const { bars, src } = await _intradayForAB(cfg);
+      const out = _reversionProof(bars, opts);
+      if (out.insufficient) { revProofJobs.set(jobId, { status: 'error', error: `insufficient data (${out.nDays}d)`, startedAt }); return; }
+      out.src = src;
+      revProofJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...out } });
+    } catch (e) { revProofJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/reversion-proof/status/:jobId', (req, res) => {
+  const job = revProofJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+// One London day's M1 candles for the proof chart. ?pair=EURUSD&date=YYYY-MM-DD
+app.get('/api/reversion-proof/day', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const pair = String(req.query.pair || '').toUpperCase();
+  const date = String(req.query.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+  const cfg = WBT_INSTRUMENTS.find(i => i.name === pair);
+  if (!cfg) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  try {
+    const startSec = _btLondonMidnightSec(new Date(date + 'T12:00:00Z'));   // London midnight of the date
+    const fromIso = new Date(startSec * 1000).toISOString();
+    const toIso = new Date((startSec + 24 * 3600) * 1000).toISOString();
+    const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const url = `${base}/v3/instruments/${encodeURIComponent(cfg.oanda)}/candles`
+      + `?granularity=M1&price=M&from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) { const t = await r.text().catch(() => ''); return res.status(502).json({ ok: false, error: `OANDA M1 ${r.status}: ${t.slice(0, 160)}` }); }
+    const bars = ((await r.json()).candles ?? [])
+      .filter(c => c.complete !== false && c.mid)
+      .map(c => ({ t: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }))
+      .filter(b => b.open > 0);
+    res.json({ ok: true, pair, date, bars });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Intraday forecast research — expansion curves + level-touch/pip-excursion ──
