@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reversion Proof — the median line vs where price actually reverts, every day</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:16px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:980px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  select,input { background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:3px 6px; font:11px 'DM Mono',monospace }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  .big { font-size:22px; font-weight:700 } .lbl { color:var(--text3); font-size:10px; text-transform:uppercase; letter-spacing:.05em }
+  .tblwrap { max-height:420px; overflow-y:auto } tr.sel { background:rgba(88,166,255,.15) } tbody tr { cursor:pointer } tbody tr:hover { background:rgba(255,255,255,.04) }
+  .grid3 { display:flex; gap:24px; flex-wrap:wrap } .stat { min-width:150px }
+  a { color:#58a6ff }
+</style>
+</head>
+<body>
+  <h1>Reversion Proof <span class="muted" style="font-size:12px">— the median line vs where price actually reverts, every day</span></h1>
+  <div class="sub">
+    Your exact test, made transparent — <b>no aggregate to trust blind.</b> From the <b>London-midnight open</b>, the median line sits a distance <b>R</b> above and below (R = the forecast median H-L range, Feller 1.572×σ, causal). The day's <b>high</b> is where price reverted on the upside, the <b>low</b> on the downside. A <b>win</b> = that reversion landed within your tolerance of the line. Every day is a row you can read and click to see the <b>M1 candles with the line drawn on them</b>. The aggregate is just the average of those rows.<br>
+    <span class="muted"><b>Read this first:</b> R is the full HIGH-TO-LOW range. The open→high distance is only PART of it (the rest is open→low), so a line a full R above the open is <i>expected</i> to sit above where the high lands on a two-sided day. The <b>reach ÷ line</b> stat shows exactly how far short (or past) price reverts — that's the honest answer to "does it revert at the line?"</span>
+  </div>
+  <label class="muted">Pair
+    <select id="pair">
+      <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option><option>USDCHF</option><option>EURJPY</option><option>GBPJPY</option><option>EURGBP</option><option>GOLD</option><option>NQ</option><option>US30</option><option>SPX500</option><option>DE30</option><option>UK100</option>
+    </select>
+  </label>
+  <label class="muted" style="margin-left:8px">Tolerance (pips) <input id="tol" value="5" style="width:48px;text-align:right"></label>
+  <button onclick="run()" style="margin-left:8px">▶ Run</button>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+  <div id="chartCard" class="card" style="display:none">
+    <div id="chartTitle" class="muted" style="font-size:12px;margin-bottom:6px"></div>
+    <div id="dayChart" style="height:420px"></div>
+  </div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=3) => v==null?'—':(+v).toFixed(d);
+let _timer=null, _rows=[], _pair='', _lwc=null;
+
+async function run(){
+  clearInterval(_timer);
+  _pair = el('pair').value; el('status').textContent='Starting…'; el('out').innerHTML=''; el('chartCard').style.display='none';
+  const body = { pair:_pair, tolPips:parseFloat(el('tol').value)||5 };
+  let j; try { j=await (await fetch('/api/reversion-proof/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/reversion-proof/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Running… '+(s.elapsed||0)+'s'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; return; }
+    el('status').textContent = `${s.pair} · ${s.aggregate.nDays} days · ±${s.aggregate.tolPips} pips`;
+    render(s);
+  },1500);
+}
+
+function render(s){
+  _rows = s.rows;
+  const a = s.aggregate;
+  const stat = (lbl,val,cls='') => `<div class="stat"><div class="lbl">${lbl}</div><div class="big ${cls}">${val}</div></div>`;
+  let h = `<div class="card"><h2>Average over ${a.nDays} days — the median line vs where price reverts</h2><div class="grid3">
+    ${stat('Median line (avg)', fmt(a.avgR,2)+'%')}
+    ${stat('Upside reverts at', fmt(a.avgHighPct,2)+'%', a.reachOverLineUp>=0.95&&a.reachOverLineUp<=1.05?'pos':'amber')}
+    ${stat('↑ reach ÷ line', fmt(a.reachOverLineUp,2)+'×', a.reachOverLineUp>=0.95&&a.reachOverLineUp<=1.05?'pos':'amber')}
+    ${stat('↑ within tol', fmt(a.upHitRate,1)+'%')}
+    ${stat('Downside reverts at', fmt(a.avgLowPct,2)+'%')}
+    ${stat('↓ reach ÷ line', fmt(a.reachOverLineDn,2)+'×')}
+    ${stat('↓ within tol', fmt(a.dnHitRate,1)+'%')}
+  </div><div class="muted" style="font-size:10px;margin-top:6px">In plain English: "the median line sits at <b>${fmt(a.avgR,2)}%</b> from the open; on average price's high reverts at <b>${fmt(a.avgHighPct,2)}%</b> (${fmt(a.reachOverLineUp,2)}× the line) and the low at <b>${fmt(a.avgLowPct,2)}%</b> (${fmt(a.reachOverLineDn,2)}× the line)." Reach ÷ line <b>&lt;1</b> = price reverts SHORT of the line; ≈1 = reverts AT it. Showing the most recent ${s.rowsReturned} of ${s.rowsTotal} days.</div></div>`;
+
+  h += `<div class="card"><h2>Every day — click a row to see the M1 candles with the line drawn</h2><div class="tblwrap"><table><thead><tr>
+    <th>Date</th><th>Line R%</th><th>High %</th><th>↑ gap (pips)</th><th>↑ win</th><th>Low %</th><th>↓ gap (pips)</th><th>↓ win</th></tr></thead><tbody>`;
+  for(let i=_rows.length-1;i>=0;i--){ const r=_rows[i];
+    h += `<tr onclick="showDay(${i})" id="row${i}">
+      <td><strong>${r.date}</strong></td><td>${fmt(r.R,3)}</td>
+      <td>${fmt(r.highPct,3)}</td><td class="${r.upWin?'pos':'muted'}">${fmt(r.upGapPips,1)}</td><td>${r.upWin?'<span class="pos">✓</span>':'·'}</td>
+      <td>${fmt(r.lowPct,3)}</td><td class="${r.dnWin?'pos':'muted'}">${fmt(r.dnGapPips,1)}</td><td>${r.dnWin?'<span class="pos">✓</span>':'·'}</td></tr>`;
+  }
+  h += `</tbody></table></div></div>`;
+  el('out').innerHTML = h;
+}
+
+async function showDay(i){
+  const r = _rows[i]; if(!r) return;
+  document.querySelectorAll('tr.sel').forEach(t=>t.classList.remove('sel'));
+  el('row'+i)?.classList.add('sel');
+  el('chartCard').style.display='block';
+  el('chartTitle').innerHTML = `<b>${_pair}</b> · ${r.date} — open ${r.open} · median line ↑ ${r.lineUp} / ↓ ${r.lineDn} · high ${r.high} (${fmt(r.highPct,2)}%) · low ${r.low} (${fmt(r.lowPct,2)}%)`;
+  el('dayChart').innerHTML = '<div class="muted" style="padding:20px">loading M1…</div>';
+  let d; try { d = await (await fetch(`/api/reversion-proof/day?pair=${encodeURIComponent(_pair)}&date=${r.date}`)).json(); }
+  catch(e){ el('dayChart').innerHTML='<span class="neg">'+e.message+'</span>'; return; }
+  if(!d.ok || !d.bars?.length){ el('dayChart').innerHTML='<span class="neg">'+(d.error||'no M1 bars')+'</span>'; return; }
+  el('dayChart').innerHTML='';
+  if(_lwc){ try{_lwc.remove();}catch(_){} _lwc=null; }
+  const LS = LightweightCharts.LineStyle;
+  const chart = LightweightCharts.createChart(el('dayChart'), {
+    width: el('dayChart').clientWidth, height: 420,
+    layout:{ background:{type:'solid',color:'transparent'}, textColor:'#9ca3af', fontSize:10, fontFamily:"'DM Mono',monospace" },
+    grid:{ vertLines:{color:'rgba(255,255,255,.04)'}, horzLines:{color:'rgba(255,255,255,.06)'} },
+    timeScale:{ timeVisible:true, secondsVisible:false, rightOffset:6, borderColor:'rgba(255,255,255,.1)' },
+    rightPriceScale:{ borderColor:'rgba(255,255,255,.1)', scaleMargins:{top:.08,bottom:.08} },
+    crosshair:{ mode: LightweightCharts.CrosshairMode.Normal },
+  });
+  const levels = [r.lineUp, r.lineDn, r.high, r.low, r.open];
+  const series = chart.addCandlestickSeries({ upColor:'#10b981',downColor:'#f97316',borderUpColor:'#10b981',borderDownColor:'#f97316',wickUpColor:'#10b981',wickDownColor:'#f97316',
+    autoscaleInfoProvider: orig=>{ const x=orig(); if(!x) return x; return { priceRange:{ minValue:Math.min(x.priceRange.minValue,...levels), maxValue:Math.max(x.priceRange.maxValue,...levels) }, margins:x.margins }; } });
+  series.setData(d.bars.map(b=>({time:b.t,open:b.open,high:b.high,low:b.low,close:b.close})));
+  series.createPriceLine({ price:r.open,   color:'#9ca3af', lineWidth:1, lineStyle:LS.Dotted, title:'Open',        axisLabelVisible:true });
+  series.createPriceLine({ price:r.lineUp, color:'#06b6d4', lineWidth:2, lineStyle:LS.Dashed, title:'Median ↑ '+r.R+'%', axisLabelVisible:true });
+  series.createPriceLine({ price:r.lineDn, color:'#06b6d4', lineWidth:2, lineStyle:LS.Dashed, title:'Median ↓',    axisLabelVisible:true });
+  series.createPriceLine({ price:r.high,   color:r.upWin?'#3fb950':'#f85149', lineWidth:1, lineStyle:LS.Solid, title:'High (reverted)', axisLabelVisible:true });
+  series.createPriceLine({ price:r.low,    color:r.dnWin?'#3fb950':'#f85149', lineWidth:1, lineStyle:LS.Solid, title:'Low (reverted)',  axisLabelVisible:true });
+  chart.timeScale().fitContent();
+  _lwc = chart;
+}
+</script>
+</body>
+</html>
