@@ -71,6 +71,7 @@ import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
 import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './js/weeklyVolBacktestEngine.js';
 import { reversalStudy as _reversalStudy } from './js/reversalPointResearch.js';   // separate reversal-point calc
 import { reversalFade as _reversalFade } from './js/reversalFadeEngine.js';   // fade-at-k×median falsification test
+import { cogFade as _cogFade } from './js/cogFadeEngine.js';   // fade at COG's reproduced median/75th line
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
@@ -8843,6 +8844,49 @@ app.post('/api/reversal-fade/run', express.json({ limit: '16kb' }), (req, res) =
 });
 app.get('/api/reversal-fade/status/:jobId', (req, res) => {
   const job = revFadeJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── COG-Fade — the confirmatory check: fade at COG's OWN (reproduced) median/75th σ
+//    line, costed, IS/OOS. His median = raw Feller ≈ our median, so the prior is null;
+//    this runs it cleanly at his exact calibrated placement, per pair. ──
+const cogFadeJobs = new Map();
+app.post('/api/cog-fade/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '', isFrac } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `cogf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of cogFadeJobs) if (j.startedAt < Date.now() - 60 * 60_000) cogFadeJobs.delete(id);
+  cogFadeJobs.set(jobId, { status: 'running', startedAt });
+  const opts = { isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5 };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const cf = _cogFade(bars, { ...opts, pair: cfg.name });
+          if (cf.insufficient) { log.push(`${cfg.name}: insufficient (${cf.nDays}d)`); continue; }
+          cf.src = src;
+          perPair[cfg.name] = cf;
+          const mo = cf.median.confirm.oos, po = cf.p75.confirm.oos;
+          log.push(`${cfg.name}: median confirm OOS Sharpe ${mo.sharpe}(${mo.trades}) · 75th ${po.sharpe}(${po.trades}) (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { cogFadeJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      cogFadeJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, perPair, pairs: names, log } });
+    } catch (e) { cogFadeJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/cog-fade/status/:jobId', (req, res) => {
+  const job = cogFadeJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
