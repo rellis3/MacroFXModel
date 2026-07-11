@@ -1,382 +1,391 @@
-# Forecasting Tool · Walkthroughs — Study Notes
+# Forecasting Tool · Walkthroughs — Lesson Notes
 
 > **Lesson:** Reading and applying the daily vol & range forecaster — the
 > High-to-Low and Open-to-Close chart walkthroughs, benchmarked against
 > standard volatility-forecasting models such as GARCH.
-> **Source material:** Colez Trades "Volatility & Range Forecast" video
-> walkthrough series (EUR/USD, Gold, NQ examples). Distilled mechanics live in
-> `MD files/FORECAST_MARKUP_TRADING_GUIDE.md`; these are my *study* notes on
-> top of that — written for future me: revision, exam-style self-testing, and
-> a map of where every concept already lives in this codebase.
+> **Source:** Colez Trades "Volatility & Range Forecast" video walkthrough
+> series. Instruments demonstrated: EUR/USD, Gold (plus an NQ-vol example).
+> Full mechanical write-up: `MD files/FORECAST_MARKUP_TRADING_GUIDE.md`.
 >
-> **How to use this file.** Skim the exam-cram card at the bottom before a
-> live session. Read the critique section before building anything on top of
-> the lesson. The research-ideas section is pre-registered per house rules —
-> each idea states what "worked" and "didn't work" look like *before* any test
-> is run.
->
-> **House-rules lens** (per `CLAUDE.md`): every claim is tagged
-> **[REPLICATED]** (documented in the literature), **[FOLKLORE]**
-> (practitioner heuristic, weak after-cost evidence), **[INFRA]**
-> (measurement/plumbing, not an edge claim), or **[UNVERIFIED]** (a claim made
-> in the course that we have not independently confirmed).
->
-> Companion file: `education/VOLATILITY_INTELLIGENCE_NOTES.md` covers the
-> theory lessons (why vol is forecastable, regimes, sizing). This file covers
-> the *applied* walkthroughs — how to actually read and use the two published
-> numbers on a chart.
+> **Purpose of this file:** my study notes on the lesson — what it teaches,
+> the key facts to remember, the mechanics to be able to reproduce cold on a
+> chart, and the open threads to investigate in future study. Revision
+> before a live session; self-testing before "exams" (real implementation).
 
 ---
 
 ## The lesson in one paragraph
 
-The forecaster publishes two numbers before the session: an expected
-**High-to-Low range** (full candle amplitude, % of open) and an expected
-**Open-to-Close move** (net drift, % of open), each with a median and a 75th
-percentile. The walkthroughs teach the mechanical discipline of turning those
-two numbers into chart levels: anchor to the 00:00 session open, wait for the
-first extreme, project the H-L % to the *opposite* side, re-anchor every time
-a new extreme prints, and overlay a symmetric ±O-C envelope around the open.
-The trade is never directional prediction — it is **fading exhaustion at the
-projected extreme**, filtered by how much of the day's "range budget" is
-already spent. The course claims the underlying forecast beats GARCH,
-realised vol, Parkinson and Harvey benchmarks **[UNVERIFIED — see critique]**.
+Direction is extremely noisy and professional models struggle to beat a coin
+flip day-to-day; volatility is persistent and mean-reverting, so today's
+*range* is meaningfully predicted by recent history. The forecaster
+therefore publishes, before the session, how far price is likely to travel
+(High-to-Low %) and how far it is likely to settle from the open
+(Open-to-Close %), each with a median and 75th percentile. The walkthroughs
+teach how to turn those numbers into chart levels — anchor at 00:00, project
+from extremes, re-anchor as new extremes print, overlay the close envelope —
+and how to trade **price exhaustion at the forecasted range extremes**. It is
+a range-exhaustion model, not a directional model.
 
 ---
 
-## Walkthrough 1 — High-to-Low (the range projection)
+## Part 1 — The core idea
 
-### Lecture summary
+- Short-term direction ≈ unforecastable; range/volatility ≈ forecastable.
+  The strategy **bypasses the hardest problem (direction)** and asks the
+  answerable question: *"How far is price likely to travel today?"*
+- Once the expected journey distance is known, watch **both ends** of the
+  journey. When price arrives at one end and shows exhaustion — that is the
+  trade.
+- Framing to memorise: **not a directional model, a range-exhaustion model.**
 
-The H-L number is a *distance*, not a level. It only becomes a level once the
-day gives you an anchor:
+---
 
-1. **Bound the session** with verticals at 00:00 → next 00:00. The forecast
-   is calibrated on the full calendar-day candle; anchoring from any other
-   open (e.g. NY 14:30) makes every level drift. Non-negotiable.
-2. **Mark the 00:00 open** — the denominator for all % maths.
-3. **Wait** for the first significant (unbroken) high or low to print. Do not
-   pre-place levels.
-4. **Project the opposite extreme**: first extreme is a high → drag the H-L %
-   *down* from it = Expected Low. First extreme is a low → project *up* =
-   Expected High.
-5. **Re-anchor dynamically** — the core discipline. Every new session extreme
-   invalidates the old anchor: new low prints → re-project the Expected High
-   from the *new* low. You never know which low is *the* low of the day; by
-   always projecting from the most recent extreme, the projected level stays
-   valid no matter what comes next.
-6. **Maintain both sides simultaneously** (two-sided distribution rule):
-   Expected Low from the current high AND Expected High from the current low.
-   No directional bias before the market shows its hand.
+## Part 2 — The three numbers needed before the session
 
-### The trade at the level
+| Number | What it is | Example from the videos |
+|---|---|---|
+| **High–Low range %** | expected full candle amplitude (high→low), % of open | 2.65% (NQ), 0.53% (EUR/USD) |
+| **Open–Close move %** | expected net drift from open to close | 1.22% (gold) |
+| **Percentile context** | where today's forecast sits vs the historical distribution | 75th = stretch day |
 
-Touching the level is a *watch zone*, not a signal. Confirmation requires:
-touch → rejection (wick/stall) → close back on the correct side with no
-recovery. Stop goes beyond the level; the 75th-percentile band is the hard
-"the-forecast-is-wrong-today" override. Target is back toward the session
-anchor/open — the range is already priced in, so the residual expectation is
-mean reversion. **[FOLKLORE]** on the entry trigger itself (rejection wicks,
-close confirmation are practitioner heuristics); **[REPLICATED]** on the
-underlying premise that range is forecastable.
+- The **median** is the working number. The **75th percentile** is the
+  stretch reference — exceeded only ~1 day in 4.
+- The forecast comes from the volatility model, which in the series is
+  benchmarked as outperforming **GARCH, realised vol, Parkinson, and
+  Harvey** (thread to verify later — see investigation list).
+- **Rule:** get the numbers the evening before or early morning. Do not
+  enter the session without them.
 
-### The range-budget filter (the actual lesson gold)
+---
+
+## Part 3 — Chart markup, step by step (the H-L walkthrough)
+
+Tools: TradingView (or equivalent), Price Range tool, horizontal ray,
+vertical line.
+
+1. **Bound the session.** Verticals at `00:00` → next `00:00`. Everything
+   lives inside these lines.
+   - *Why 00:00?* The forecast anchors to the full 24-hour calendar-day
+     candle. Reading the open from any other candle (e.g. NY open 14:30 UTC)
+     makes **all** levels drift. Non-negotiable.
+2. **Mark the session open.** Horizontal ray at the 00:00 candle's open,
+   labelled `Open`. This is the denominator for every % calculation.
+3. **Wait for the first extreme to print.** Do NOT project levels
+   immediately. Let price establish the first *significant* high or low —
+   "significant" = not yet broken when you check.
+4. **Project the opposite extreme** with the Price Range tool:
+   - First extreme is a HIGH → drag the H-L % **down** from it → bottom of
+     the range = **Expected Low**.
+   - First extreme is a LOW → drag the H-L % **up** from it → top of the
+     range = **Expected High**.
+   - Extend a horizontal ray at the projected level, labelled.
+5. **Apply the O-C envelope** (see Part 7) symmetrically around the open.
+6. **Re-anchor dynamically all session** — "the most important mechanical
+   discipline in the whole strategy":
+   - New low below the anchor low → move anchor to the new low, re-project
+     Expected High from there.
+   - New high above the anchor high → move anchor, re-project Expected Low.
+   - *Why?* You don't know which low will be THE low of the day. Projecting
+     from the most recent extreme keeps the Expected level valid regardless
+     of what comes next.
+
+Worked re-anchoring sequence from the videos (EUR/USD downtrend day, 0.53%):
 
 ```
-budget consumed  = (session high − session low) / open
+09:00  low 1.0850 → project Expected High from 1.0850
+10:30  new low 1.0832 → re-anchor, re-project
+11:45  new low 1.0818 → re-anchor, re-project
+13:00  price hits 1.0818 + 0.53% → WATCH FOR REJECTION
+```
+
+---
+
+## Part 4 — Reading price exhaustion (the trade signal)
+
+At the Expected High / Expected Low, watch for evidence the day has **used
+its range budget**:
+
+- touch → immediate reversal (strong rejection wick);
+- approach → stall, multiple small candles failing to close through;
+- volume drops into the level (if available);
+- the move *into* the level is climactic — accelerating into the touch.
+
+**Confirmation (all three):** price reaches the level → reverses → **closes**
+back on the correct side (below the Expected High / above the Expected Low)
+and does not recover. Until confirmed, the level is a **watch zone, not a
+signal.**
+
+The setup (both directions symmetric):
+
+```
+SHORT the Expected High:  low established early → Expected High projected →
+                          price climbs to it → entry on touch + rejection
+                          (e.g. rejection wick on 3m/5m at the level)
+Stop:    above the Expected High (75th-percentile breach ⇒ forecast wrong today — exit)
+Target:  back toward session low / open (range priced in ⇒ expect mean reversion)
+
+LONG the Expected Low:    mirror image.
+```
+
+---
+
+## Part 5 — The range budget (called "the most powerful intraday filter")
+
+```
+budget consumed  = (current high − current low) / daily open
 budget remaining = forecast H-L %  −  budget consumed
 ```
 
-When most of the forecast range has printed, breakout/continuation
-probability collapses and fading extensions becomes the statistically
-favoured trade. Worked example: median 0.53%, price has covered 0.50% by
-14:00 → remaining 0.03% is noise → any "breakout" is dubious. This reasoning
-is **unavailable without a range forecast** — it is the genuine edge over
-vanilla TA. **[INFRA + REPLICATED premise]** — the filter is measurement; its
-after-cost tradability is what our conditional-fade research is testing.
+As the budget is consumed:
 
-### Key points to remember
+- **breakout / continuation probability collapses;**
+- **mean-reversion probability rises.**
 
-- H-L % is a *distance budget*, not a support/resistance level.
-- Anchor from **extremes**, not the open. The ±H-L around the open is the
-  wrong picture; the range hangs off the day's high/low.
-- Re-anchoring is not optional — a stale anchor gives a false Expected level.
-- Median = working number (exceeded ~1 day in 2 by design); 75th = stretch
-  reference (exceeded ~1 day in 4). Calibration targets, not magic.
-- One day proves nothing. Grade forecast accuracy over ≥20 sessions.
+Lesson example: median 0.53%; by 14:00 price has covered 0.50%; remaining
+0.03% = noise; any "breakout" from here is statistically dubious — the
+correct trade is fading extensions, not following them.
+
+Key line from the lesson: this reasoning is **unavailable without a range
+forecast** — it is the edge this approach has over vanilla technical
+analysis. Rule of thumb from the checklist: **>80% consumed → fade-extension
+bias kicks in.**
 
 ---
 
-## Walkthrough 2 — Open-to-Close (the close envelope)
+## Part 6 — The two-sided distribution rule
 
-### Lecture summary
-
-Separately from the H-L projection, draw a symmetric envelope around the open:
+Always maintain both sides simultaneously:
 
 ```
-upper = open × (1 + O-C%)      lower = open × (1 − O-C%)
+HIGH side:  Expected Low projected from the current day's high
+LOW side:   Expected High projected from the current day's low
 ```
 
-The close is expected to land **inside** this band on a median day.
+- You never need to know which side is hit first.
+- Covered regardless of the morning's direction; avoids the directional-bias
+  trap.
+- When one side is hit and confirmed, the other side tells you the remaining
+  range.
+- If the low→high distance already ≥ the forecast H-L, the probability of a
+  *new* low is now very low — a natural stop to adding shorts.
 
-| Close lands… | Read |
+---
+
+## Part 7 — The Open-to-Close overlay
+
+Project **±O-C%** symmetrically around the open (two rays or a box). The
+close is expected to land inside on a median day.
+
+| Close location | Meaning |
 |---|---|
-| Inside envelope | normal session, no strong directional signal |
-| At the edge | median trend day — directional bias confirmed |
-| Outside envelope | 75th-pct stretch day — rare; do not chase it |
+| inside the envelope | normal session, no strong directional bias |
+| at the edge | median **trend day** — directional bias confirmed |
+| outside the envelope | 75th-percentile stretch day — rare, do not chase |
 
-### The H-L × O-C interaction (the clever bit)
-
-Once the H-L budget has been consumed **in one direction**, the O-C envelope
-stops being symmetric in practice. Example: the full range printed high→low
-(the low is in). A close back above the open would require *exceeding* the
-range budget — so the model now points to a bearish close. The two forecasts
-combine into a **close-location probability filter** without ever predicting
-direction ex ante. Gold worked example: H-L 2.56%, O-C 1.22%, high printed
-early → bearish close bias → session closed almost exactly on the projected
-O-C level. **[INFRA]** — elegant conditional reasoning; a probability tilt,
-not a guarantee, and its standalone after-cost edge is unproven.
-
-### Key points to remember
-
-- O-C is about **where the day settles**, H-L about **how far it travels**.
-  Drift vs diffusion — the same split `dayTypeScore` T = drift÷diffusion
-  measures in our engine.
-- The envelope is drawn **both sides at once** and only becomes directional
-  *after* the range budget resolves one way.
-- O-C edge-touch = trend-day confirmation is the walkthrough's day-type
-  classifier — a chart-reading version of what `dayTypeCore.js` computes.
+**Combining H-L with O-C** — the key conditional read: if the forecast H-L
+move has already been met **to the downside** (the low is in), the upside
+close scenario becomes very unlikely, because a bullish close above the open
+would require *exceeding* the range budget. The model then points to a
+**bearish close**. A probability filter, not a guarantee — but it removes
+the need to predict direction: **the range tells you which close scenario is
+more likely.**
 
 ---
 
-## The GARCH benchmark framing
+## Part 8 — Common mistakes (memorise this table)
 
-### What the course claims
-
-The forecaster "outperforms GARCH, realised vol, Parkinson, and Harvey
-benchmarks." Repeated across the videos; workflow checklist even says to
-compare the annualised vol figure to GARCH output daily. **[UNVERIFIED]** —
-we do not have the presenter's test, loss function, sample or costs, so per
-house rules ("name the benchmark before claiming improvement") this stays an
-unverified marketing claim until reproduced.
-
-### What I actually need to know about the benchmark models (exam material)
-
-| Model | One-liner | Uses | Weakness |
-|---|---|---|---|
-| **GARCH(1,1)** | σ²ₜ = ω + α·r²ₜ₋₁ + β·σ²ₜ₋₁ — vol clusters and mean-reverts | closes only | slow after shocks; needs fitting; close-to-close ignores intrabar info |
-| **Realised / rolling HV** | stdev of last N close-to-close log returns | closes only | equal-weights old days; laggy |
-| **Parkinson** | range-based σ from high-low: more efficient than close-close | H, L | assumes no drift, no gaps |
-| **Harvey** (course's 4th) | likely Harvey-family realised-vol / stochastic-vol estimator | — | course never specifies — flag as vague **[UNVERIFIED]** |
-| **Yang-Zhang** | combines overnight + open-close + Rogers-Satchell terms; drift-independent, handles gaps | O, H, L, C | window choice; still a lag-based estimator |
-
-The honest ranking question is never "which model is fanciest" but **which σ
-minimises out-of-sample forecast loss (QLIKE) against a realised-vol proxy**.
-Range-based estimators (Parkinson/GK/YZ) extract more information per bar
-than close-close; GARCH adds persistence structure; HAR-RV adds multi-horizon
-memory. **[REPLICATED]**: range estimators are ~5-8× more efficient than
-close-close in theory (Parkinson 1980); QLIKE is the robust loss for variance
-forecasts (Patton 2011).
-
-### How OUR stack already answers this — no need to trust the video
-
-This is the part future-me must not forget: **we built the falsification
-harness for exactly this claim.**
-
-- `vol-forecast-bench.html` + `/api/vol-forecast-bench/*` scores every
-  incumbent σ estimator per instrument on **OOS QLIKE** (and MSE) against a
-  choice of realised proxies (Garman-Klass / squared return / Parkinson),
-  with a true IS/OOS split, plus HAR-RV as challenger.
-- Current incumbents (from that measurement, encoded in
-  `js/volBacktestEngine.js`): **fx → Yang-Zhang(30)**, **commodity → HV20**,
-  **index → GARCH(1,1) α=0.06, β=0.91**. So GARCH is not "the thing we
-  beat" — it *is* our estimator where it wins (indices), and it lost OOS
-  where something else was better. That is the correct relationship to a
-  benchmark: horse-race it, keep the winner per class.
-- The lesson's daily "compare to GARCH" ritual is, in our stack, just reading
-  the bench scorecard occasionally to confirm the incumbent still wins.
-
----
-
-## Where this all lives in MacroFXModel (the mapping table)
-
-| Walkthrough concept | Our implementation | File |
+| Mistake | Why it hurts | Correction |
 |---|---|---|
-| Published H-L / O-C numbers | `HL = BM_const × corr × σ`, `OC = HN_const × corr × σ` — Feller driftless-Brownian range constants `BM_P50=1.572`, `BM_P75=2.049`, `HN_P50=0.6745`, `HN_P75=1.1503` | `js/volBacktestEngine.js`, `js/forecastCore.js` (`computeBands`) |
-| σ input per asset class | fx YZ(30) / commodity HV20 / index GARCH(1,1) | `js/volBacktestEngine.js` (`yzVolSeries`, `hvVarSeries`, `garchSigmas`) |
-| Median/75th calibration | per-class correction factors, recalibrated 2026-07-07 to hit 50%/25% OOS exceedance (fx median 34%→50.2%; index recal overshot and was HELD) | `ASSET_PARAMS` + comment block in `volBacktestEngine.js` |
-| 00:00 session anchor | London-midnight M1 open (`fetchSessionOpenLondon`, `londonMidnightSec`) — the OANDA 22:00-UTC D1 open drift is a *known solved bug* | `js/volBacktestEngine.js` |
-| The forecast page | vol-forecast dashboard + Pine export of the levels | `vol-forecast.html`, `vol-forecast-v2.html` |
-| GARCH-et-al. benchmarking | OOS QLIKE scorecard, HAR-RV challenger | `vol-forecast-bench.html`, `server.js` job |
-| Range budget / exhaustion fade | fade-vs-follow engine: `dayTypeScore` (T = drift÷diffusion) → `selectStrategy`; per-line entry zone/confidence | `js/dayTypeCore.js`, `js/forecastCore.js`, `ENTRY_ZONE_CONFIDENCE.md` |
-| Re-anchoring & level trading rules | markup mechanics, worked examples, mistakes table | `MD files/FORECAST_MARKUP_TRADING_GUIDE.md` |
-| Forecast accuracy logging | calibration tracker + research book | `MD files/VOL_CALIBRATION_TRACKER.md`, `vol-research-book.html`, `forecast-book-report.html` |
-| Known estimator drift | flagged divergence between live forecast constants and backtest | `VOL_ESTIMATOR_DRIFT.md`, `FUTURE_FIX_VOL_ESTIMATOR.md` |
-
-**Lego reminder to self:** anything I build from this lesson *imports*
-`computeBands` / `volSigmaSeries` / `simulateEntry` — never re-derives the
-band maths. The plan producer deliberately does NOT read `/api/vol-forecast`
-(its correction constants are flagged drift); it recomputes σ via
-`volSigmaSeries`. Don't "simplify" that.
+| anchoring from the wrong candle | every level drifts | always the 00:00 open |
+| not re-anchoring on a new extreme | stale level, wrong target | every new extreme → re-project |
+| entering at the level without rejection | catching a knife | wait for rejection + close confirmation |
+| trading against a level when budget = 0 | fighting exhausted momentum | check remaining budget first |
+| ignoring the 75th percentile | stopped too tight on stretch days | 75th = override level if the median breaks |
+| predicting which side gets hit first | directional bias before the market shows its hand | maintain both sides, let price decide |
 
 ---
 
-## Critique / honest read (before building anything)
+## Part 9 — Worked examples (the four video case studies)
 
-- **"Built" ≠ "works" ≠ "has edge."** The walkthroughs teach *reading* an
-  existing forecast — infrastructure and discipline. They do not demonstrate
-  after-cost edge. The worked examples are hand-picked winning days; that is
-  pedagogy, not evidence (survivorship in example selection).
-- **The forecast itself is the replicated part.** Vol persistence and
-  range forecastability: **[REPLICATED]**. Our own recalibration shows the
-  median band can be made to hit its 50% exceedance target OOS — that's
-  *calibration*, which is a property of a good forecast, still not a P&L.
-- **The entry trigger is the folklore part.** Rejection wicks, stall candles,
-  "climactic approach", close-confirmation — none of these have durable
-  documented after-cost evidence. Blunt prior on "fade the touched band with
-  wick confirmation" becoming a standalone tradeable edge: **~15-20%**. The
-  fuller falsification already ran here: v1's fade legs and the day-type
-  conditional work (`REVERSION_CONTINUATION_EVIDENCE.md`) show the effect is
-  regime-conditional at best, not unconditional.
-- **"Beats GARCH" needs a loss function to mean anything.** Beating GARCH on
-  what — QLIKE? MSE? Band exceedance? Over what sample? Our bench answers
-  this properly per instrument; the video asserts it. Also note the base-rate
-  trap: a range-based estimator beating close-close GARCH on daily FX ranges
-  is *expected* (more information per bar), not a discovery.
-- **The 75th-percentile "hard stop" is a calibration statement, not a wall.**
-  1 day in 4 exceeds it *by construction*. Using it as an invalidation level
-  is sensible risk discipline; expecting price to respect it is a category
-  error.
-- **Anchor pedantry matters more than it looks.** The 22:00-UTC vs
-  London-midnight open discrepancy produced real level drift here (gold
-  3997.53 vs ~4013). The lesson's "non-negotiable 00:00 rule" is one of its
-  most transferable points — and we learned it independently, the hard way.
-- **Daily-bar walkthroughs quietly assume intrabar path knowledge.** "Price
-  hit the Expected Low then rejected" is only verifiable on intraday data.
-  Our anti-pattern list already bans assuming intrabar TP on D1 bars — M1
-  fills or mark-to-close only.
+1. **EUR/USD, 0.53%.** Forecast posted the evening of the 28th for the 29th.
+   High printed early → Expected Low projected 0.53% below. The high held
+   most of the session; once price had priced in the low→high distance and
+   closed below the forecast high with no recovery → **high of day
+   confirmed**.
+2. **EUR/USD, 0.52%.** Low broke → re-anchor; broke again → re-anchor again.
+   Price then drove up to the Expected High projected from the *final*
+   anchor low → **immediate rejection**, no candle closed above it again.
+   Entry at the rejection, target back to the session lows.
+3. **EUR/USD-style example at 2.65% (NQ-type vol).** 1:00 AM first
+   significant high → Expected Low projected. 14:30 (NY open) price hit the
+   Expected Low → strong rejection + close back above it → **low of day
+   confirmed** since 1 AM. Entry at the NY-open rejection, target back
+   toward the session high.
+4. **Gold, the O-C overlay.** H-L 2.56%, O-C 1.22%. High printed early →
+   Expected Low projected; no trade above the marked high all day; the
+   session close tracked almost exactly to the forecast O-C level. H-L + O-C
+   together gave a **bearish close bias** once the high was in.
+
+Take-away pattern across all four: *anchor → project → re-anchor → wait for
+the touch → demand rejection + close confirmation → target the other end.*
+
+---
+
+## Part 10 — Daily workflow checklist (condensed)
+
+```
+PRE-SESSION   read H-L% and O-C% (median + 75th) · note annualised vol,
+              compare to GARCH output and recent history · verticals
+              00:00→00:00 · ray at the 00:00 open · ±O-C% envelope
+EARLY (1-3h)  wait for first significant extreme · project H-L% opposite ·
+              label Expected High/Low · maintain BOTH sides
+MID SESSION   re-anchor on every new extreme · track budget consumed ·
+              >80% consumed → fade-extension bias · watch approaches
+AT THE LEVEL  is this the Expected High/Low? · exhaustion on approach? ·
+              rejection wick / stall? · wait for close confirmation ·
+              stop beyond level (75th = hard stop) · target anchor/open
+END OF DAY    was H-L met? was the close in the envelope? ·
+              log: date | forecast % | actual % | level hit? | result ·
+              grade accuracy over the SAMPLE, not this single day
+```
+
+---
+
+## Part 11 — Key principles to internalise (the lesson's own six)
+
+1. **Volatility is easier to forecast than direction.** Trade the thing
+   that's forecastable.
+2. **The forecast is a distribution, not a point prediction.** Median =
+   working hypothesis; single days miss; calibration is over 20+ sessions.
+3. **Range budget is the most powerful intraday filter.** Budget spent →
+   stop trading breakouts; the edge has flipped to mean reversion.
+4. **You never need to predict direction.** Two-sided distribution covers
+   both scenarios; be ready at both ends.
+5. **Confirmation before entry.** Touch ≠ signal. Touch + rejection + close
+   on the correct side = signal. Be patient.
+6. **Grade over the sample.** Days hit, miss, and overshoot; the edge is
+   statistical and only visible over many sessions. Don't abandon the
+   approach on one odd day.
+
+---
+
+## Background — the benchmark models named in the lesson
+
+The series states the forecaster outperforms these four. Facts worth knowing
+about each (study material, and the basis for future verification):
+
+| Model | Key facts |
+|---|---|
+| **GARCH(1,1)** | σ²ₜ = ω + α·r²ₜ₋₁ + β·σ²ₜ₋₁. Captures vol clustering + mean reversion to ω/(1−α−β). Uses closes only. The lesson's daily checklist says to compare the forecast's annualised vol to GARCH output each morning. |
+| **Realised / rolling HV** | stdev of the last N close-to-close log returns. Simple, laggy, equal-weights old days. |
+| **Parkinson (1980)** | range-based σ from high-low; substantially more efficient per bar than close-to-close; assumes no drift, ignores gaps. |
+| **Harvey** | named as the fourth benchmark; the videos don't specify the exact formulation — identify which Harvey model is meant (investigation thread). |
+
+Related estimators to know for context: **Garman-Klass** (OHLC), **Yang-
+Zhang** (adds overnight + open-close terms, drift-independent), **HAR-RV**
+(heterogeneous multi-horizon realised vol). Standard forecast-comparison
+loss: **QLIKE** (Patton 2011), robust to noisy realised-vol proxies.
+
+---
+
+## Where the tool lives in this codebase (pointers for applying the lesson)
+
+| Lesson element | Implementation |
+|---|---|
+| the published H-L / O-C bands | `js/forecastCore.js` (`computeBands`); constants `BM_P50=1.572`, `BM_P75=2.049`, `HN_P50=0.6745`, `HN_P75=1.1503` in `js/volBacktestEngine.js` (Feller driftless-Brownian range distribution) |
+| σ estimator per asset class | fx → Yang-Zhang(30), commodity → HV20, index → GARCH(1,1) α=0.06 β=0.91 (`volBacktestEngine.js`) |
+| median / 75th calibration factors | `ASSET_PARAMS` per-class corrections (recalibrated 2026-07-07 toward 50% / 25% exceedance targets) |
+| the 00:00 anchor | London-midnight M1 open — `fetchSessionOpenLondon` / `londonMidnightSec` |
+| the forecast page | `vol-forecast.html` / `vol-forecast-v2.html` (+ Pine export of the levels) |
+| estimator benchmarking (GARCH et al.) | `vol-forecast-bench.html` — OOS QLIKE scorecard per instrument |
+| accuracy logging (Part 10's log line) | `MD files/VOL_CALIBRATION_TRACKER.md`, `vol-research-book.html` |
+| markup mechanics source doc | `MD files/FORECAST_MARKUP_TRADING_GUIDE.md` |
+
+(House rule when building from these notes: import the band math from the
+core modules — never re-derive or copy it.)
 
 ---
 
 ## Self-test (exam questions)
 
-1. The forecast H-L is 0.53%. Price opened at 1.0850, fell to a first low of
-   1.0832, then made a new low at 1.0818. Where is the Expected High now, and
-   why did it move? *(1.0818 × 1.0053 ≈ 1.0875; re-anchor to the most recent
-   extreme — the old projection from 1.0832 is stale.)*
-2. Why project the range from the extreme rather than draw ±H-L around the
-   open? *(H-L is high-to-low amplitude, not open-centred; the open is rarely
-   the extreme, so an open-centred band mislocates both ends.)*
-3. Range budget: median 2.56% (gold), day has covered 2.4% by NY lunch. What
-   does the model say about a fresh breakout, and what trade class is now
-   favoured? *(Continuation probability collapsed; fade extensions.)*
-4. The low is in and the full H-L has printed. What does the O-C envelope now
-   imply and why? *(Bearish-close bias: closing above open would need the day
-   to exceed its range budget.)*
-5. Close lands outside the ±O-C envelope. What kind of day was it and what
-   should you NOT do? *(≈75th-pct stretch day; don't chase, don't tighten
-   stops to the median next day on the strength of one day.)*
-6. Which loss function does our bench rank estimators by and why that one?
-   *(OOS QLIKE — robust to noise in the realised-vol proxy, minimised by the
-   true variance; IS fit is not evidence.)*
-7. Which σ estimator does our stack use for FX, and where does GARCH actually
-   win? *(Yang-Zhang(30) for fx; GARCH(1,1) is the incumbent for indices.)*
-8. Why does the bot plan producer recompute σ instead of reading
-   `/api/vol-forecast`? *(The live forecast's correction constants are
-   flagged drift; plan lines must be bit-identical to the per-line book, so
-   both source `volSigmaSeries`.)*
-9. What are the two Feller constants for the median and 75th-pct H-L band,
-   and what distribution do they come from? *(1.572 and 2.049 — driftless
-   Brownian range distribution.)*
-10. A touched band + rejection wick: replicated edge or folklore? What would
-    upgrade it? *(Folklore entry on a replicated forecast; upgrade = OOS
-    Sharpe > incumbent with ≥30 OOS trades, costs on, through the honest
-    harness.)*
+1. What three numbers do you need before the session, and what do median vs
+   75th percentile each mean in frequency terms?
+2. Why must the session be anchored at the 00:00 candle, and what goes wrong
+   otherwise?
+3. Price opens 1.0850, first low 1.0832, new low 1.0818, forecast 0.53%.
+   Where is the Expected High now and why did it move?
+4. Why project the range from the day's extremes rather than drawing ±H-L
+   around the open?
+5. State the range-budget formula. Budget 2.56%, consumed 2.4% — what does
+   the lesson say about a fresh breakout, and which trade class is favoured?
+6. The full H-L has printed to the downside. What does the O-C envelope now
+   imply for the close, and what is the mechanical reason?
+7. List the three components of entry confirmation. What is a touched level
+   before confirmation?
+8. Where does the stop go, and what does a 75th-percentile breach mean?
+9. What are the six common mistakes and their corrections?
+10. Name the four benchmark models the forecaster is compared against, and
+    one defining fact about each.
+11. Reproduce the two-sided distribution rule and the reason you never
+    predict which side gets hit first.
+12. Over what sample size does the lesson say to grade the approach, and why
+    not per-day?
 
 ---
 
-## Future research ideas (pre-registered, per house rules)
+## Future investigation threads (things to research off these notes)
 
-Each idea states the success and failure criteria up front so a null cannot
-be re-narrated. Default expected outcome for all of these: **null** — that is
-the base rate, and finding it cheaply is a win.
+Open questions to chase down later — not conclusions:
 
-1. **Range-budget gate as a pure filter on the existing per-line fades.**
-   Condition existing fade entries on budget-consumed ≥ X% (X pre-set at 60/80,
-   two cells only). *Worked:* OOS Sharpe of gated set > ungated incumbent with
-   ≥30 OOS trades. *Didn't:* no improvement or trade count collapses. Odds:
-   ~25% — it's a restatement of information the bands already carry, but the
-   conditioning is principled (a selector, not a knob).
-2. **Reproduce the course's benchmark claim in-house, properly.** Add
-   Parkinson and close-close GARCH-variant rows for *all* classes to the
-   bench (mostly already there) and publish one scorecard: our per-class
-   incumbent vs GARCH vs Parkinson on OOS QLIKE. *Worked:* incumbents hold or
-   we switch and re-run band calibration. *Didn't:* n/a — this is
-   measurement, it cannot fail, only surprise. **[INFRA]** — cheap, do first.
-3. **Close-location bias as a day-type label.** Test whether "range consumed
-   one-sided by hour H" predicts close-vs-open sign better than base rate.
-   *Worked:* hit-rate beats the unconditional close-direction base rate with
-   flat-across-years consistency, both IS halves agree. *Didn't:* ≤ base
-   rate + noise. Odds: ~30% for statistical signal, far lower for after-cost
-   tradability — say both numbers out loud if pitched.
-4. **Re-anchoring frequency as a trend-day detector.** Count of intraday
-   re-anchors ≈ number of new extremes ≈ trendiness; compare to
-   `dayTypeScore` T. If they're near-duplicates (likely), fold it in as
-   nothing new. *Worked:* adds OOS classification accuracy over T alone.
-   *Didn't:* correlated ≥0.8 with T → discard, note in the book. Odds of
-   incremental value: ~10-15%.
-5. **75th-pct breach follow-through (the stretch-day tail).** On days that
-   close outside the O-C 75th envelope, is there next-day continuation
-   (vol-clustering says maybe) or reversion? Disaggregate by class; count the
-   cells; state the multiple-testing baseline before looking. *Worked:*
-   effect survives cells × chance-baseline and both IS halves. *Didn't:*
-   scattered "winners" consistent with noise. Odds: ~15%.
-
-**The bar stays forward-validation, not more building** — idea 2 (measurement)
-and grading the live calibration tracker over more sessions rank above any
-new engine.
-
----
-
-## Areas of interest / reading list
-
-- **Patton (2011)** — "Volatility forecast comparison using imperfect
-  volatility proxies": why QLIKE/MSE are the only robust losses. The
-  theoretical spine of our bench page.
-- **Parkinson (1980), Garman-Klass (1980), Rogers-Satchell (1991),
-  Yang-Zhang (2000)** — the range-estimator lineage; know why YZ handles
-  overnight gaps and drift (it's our FX incumbent for a reason).
-- **Feller (1951)** — range distribution of driftless Brownian motion; where
-  1.572 / 2.049 / 0.6745 / 1.1503 come from. Worth deriving once by hand.
-- **Corsi (2009)** — HAR-RV: the simple heterogeneous-horizon realised-vol
-  model that is the bench's challenger entrant.
-- **Engle (1982) / Bollerslev (1986)** — ARCH/GARCH originals; understand
-  ω/(1−α−β) as unconditional variance (our GARCH seeds there).
-- **Andersen & Bollerslev (1998)** — why realised vol from intraday data is
-  the right "truth" proxy; connects to our GK-proxy choice.
-- Open personal question: does the O-C/H-L ratio (drift share of total
-  travel) have documented forecastability of its own? That underpins both the
-  close-bias overlay and `dayTypeScore` — worth a proper literature pass
-  before testing idea 3.
+1. **Verify the benchmark claim in-house.** Which loss function / sample did
+   the series use for "outperforms GARCH, realised vol, Parkinson, Harvey"?
+   Reproduce the comparison on our data via `vol-forecast-bench.html` (OOS
+   QLIKE) and record the result either way.
+2. **Which "Harvey" model?** Identify the exact formulation (Harvey
+   realised-vol? Harvey-Shephard stochastic vol?) and how it differs from
+   GARCH-family models.
+3. **Range budget as a measurable filter.** How does hit-rate on fades vary
+   with budget-consumed at entry (e.g. <60% / 60-80% / >80%)? Does the
+   lesson's >80% rule show up in our per-line book data?
+4. **Close-bias overlay accuracy.** On days where the H-L printed one-sided,
+   how often did the close actually land on that side vs the base rate?
+5. **Re-anchoring frequency.** Does the number of intraday re-anchors relate
+   to trend-day-ness (compare with `dayTypeScore` T = drift÷diffusion)?
+6. **75th-percentile stretch days.** What happens the day after a stretch
+   day — continuation (vol clustering) or reversion? Per asset class?
+7. **Exhaustion signatures.** Which of the lesson's rejection signals
+   (wick, stall, climactic approach) is definable precisely enough to test
+   on M1 data, and what's the literature on each?
+8. **Anchor sensitivity.** How much do the levels actually drift if anchored
+   at 22:00 UTC vs London midnight vs NY open? Quantify on a sample.
+9. **Feller constants.** Derive 1.572 / 2.049 / 0.6745 / 1.1503 from the
+   driftless-Brownian range distribution by hand once, so the band formula
+   isn't a black box.
+10. **Reading list:** Parkinson (1980), Garman-Klass (1980), Rogers-Satchell
+    (1991), Yang-Zhang (2000), Engle (1982) / Bollerslev (1986), Corsi
+    (2009, HAR-RV), Patton (2011, QLIKE), Andersen & Bollerslev (1998,
+    realised vol as the truth proxy), Feller (1951).
 
 ---
 
 ## Exam-cram card (one screen, pre-session)
 
 ```
-NUMBERS   H-L% = travel budget (median ~1-in-2, 75th ~1-in-4 exceeded)
-          O-C% = settle distance; envelope = open ± O-C%
-MARKUP    00:00→00:00 verticals · ray at 00:00 open (London midnight!)
+NUMBERS   H-L% = travel budget · O-C% = settle distance
+          median ≈ exceeded 1-in-2 · 75th ≈ exceeded 1-in-4 (stretch)
+MARKUP    verticals 00:00→00:00 · ray at 00:00 open (never another candle)
           wait for first unbroken extreme → project H-L% to OPPOSITE side
-          new extreme → RE-ANCHOR, always · keep BOTH sides projected
-BUDGET    consumed = (hi−lo)/open · spent budget ⇒ fade > follow
-CLOSE     one-sided range consumed ⇒ close-bias to that side
-          close outside O-C envelope = stretch day, don't chase
-TRADE     touch ≠ signal · touch + rejection + close on right side = signal
-          stop past level · 75th band = forecast-wrong override
-          target = back to anchor/open · grade over ≥20 sessions, never 1
-STACK     σ: fx=YZ30 · gold=HV20 · index=GARCH(1,1) — winners by OOS QLIKE
-          bands = Feller const × class corr × σ  (import, never copy)
-HONESTY   forecast = replicated · exhaustion entry = folklore (~15-20%)
-          "beats GARCH" = unverified until it's a QLIKE row on our bench
+          every new extreme → RE-ANCHOR · keep BOTH sides projected
+ENVELOPE  open ± O-C% · close inside = normal · edge = trend day ·
+          outside = stretch day, don't chase
+BUDGET    consumed = (hi−lo)/open · >80% spent ⇒ fade extensions,
+          breakout probability has collapsed
+COMBINE   H-L met one-sided ⇒ close-bias to that side (needs budget excess
+          to close the other way)
+TRADE     touch ≠ signal · touch + rejection + close right side = signal
+          stop beyond level · 75th breach = forecast wrong today, exit
+          target = back toward anchor/open
+DISCIPLINE grade over ≥20 sessions · log forecast vs actual daily ·
+          never predict which side is hit first
 ```
