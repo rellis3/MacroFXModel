@@ -23,7 +23,7 @@
 <body>
   <h1>Exhaustion Forecast <span class="muted" style="font-size:12px">— the fade-back line + the range-budget fade</span></h1>
   <div class="sub">
-    Your goal, built honestly: a midnight-anchored forecast of <b>where price fades back from</b> — separate from the range. The fade-back distance = <b>k_fade × σ</b>, where <b>k_fade = median(dominant-reversal-run ÷ σ)</b> estimated on the in-sample half (the realized turn distance). It's projected from the running extreme, causal. <b>Panel 1</b> asks: is that line an accurate <i>forecast</i> of the day's turn (does the actual reversal land within tolerance)? — and shows <b>k_fade ÷ calibrated-median</b> so you see the fade-back sits <i>inside</i> the median for FX. <b>Panel 2</b> is the walkthrough's <b>range-budget</b> trade: fade the extended extreme back to the open only once the day consumes ≥ budgetFrac of the calibrated range — costed, OOS, vs an ungated baseline. <span class="muted">Honest split: forecasting the turn (Panel 1) is achievable; trading it (Panel 2) — prior is still null after cost. The number decides.</span>
+    Your goal, built honestly: a midnight-anchored forecast of <b>where price fades back from</b> — separate from the range. The fade-back distance = <b>k_fade × σ</b>, where <b>k_fade = median(dominant-reversal-run ÷ σ)</b> estimated on the in-sample half (the realized turn distance). It's projected from the running extreme, causal. <b>Panel 1</b> asks: is that line an accurate <i>forecast</i> of the day's turn (does the actual reversal land within tolerance)? — and shows <b>k_fade ÷ calibrated-median</b> so you see the fade-back sits <i>inside</i> the median for FX. <b>Panel 2</b> is the walkthrough's <b>range-budget</b> trade: fade the extended extreme back to the open only once the day consumes ≥ budgetFrac of the calibrated range — costed, OOS, vs an ungated baseline. <b>Panel 3</b> is the falsification of Panel 2: the same fade but <b>strict</b> — unresolved days booked flat (win only by reaching the open), stop slippage, a block-bootstrap Sharpe floor (kills the fake independent-bet count) and a per-year split. <span class="muted">Honest split: forecasting the turn (Panel 1) is achievable; Panel 2's headline Sharpe is inflated by favorable marking — Panel 3's <b>boot p5</b> and <b>survives?</b> column are the numbers that decide. Prior: it collapses.</span>
   </div>
   <button onclick="run()">▶ Run</button>
   <label class="muted" style="margin-left:10px">budgetFrac <input id="bf" value="0.8"></label>
@@ -83,6 +83,24 @@ function render(pp, log){
       <td class="${u.sharpe>0?'pos':'neg'}">${fmt(u.sharpe,2)}</td><td class="muted">${u.trades}</td><td class="${u.expectancy>0?'pos':'neg'}">${fmt(u.expectancy,2)}</td></tr>`;
   }
   h += `</table><div class="muted" style="font-size:10px;margin-top:4px">Fade the extended extreme back to the OPEN once the day's range consumes ≥ budgetFrac of the calibrated median range; stop beyond the extreme; round-trip cost applied. <b>Gated</b> = the walkthrough's ">80% budget → fade" filter; <b>ungated</b> fades the first extreme regardless. Green = positive OOS Sharpe with ≥30 trades (a survivor). <span class="amber">amber trades</span> = &lt;30 (the gate fires on few days — that low count is itself informative).</div></div>`;
+
+  // Panel 3 — the HARD harness (strict marking + slippage + robustness)
+  const hrows = Object.entries(pp).sort((a,b)=>((b[1].hard?.bootP5??-9))-((a[1].hard?.bootP5??-9)));
+  h += `<h2>Panel 3 — hard harness: strict marking + slippage + robustness (the falsification)</h2><div class="card"><table><tr>
+    <th>Pair</th><th>win %</th><th>exp (net)</th><th>OOS Sharpe</th><th>boot p50</th><th>boot p5</th><th>+years</th><th>Sharpe ×2 cost</th><th>survives?</th></tr>`;
+  for(const [name,r] of hrows){ const d=r.hard; if(!d) continue;
+    const c2=(d.costSens||[]).find(c=>c.mult===2); const c2s=c2?c2.sharpe:null;
+    h += `<tr class="${d.survives?'win':''}"><td><strong>${name}</strong> <span class="muted">${r.type}</span></td>
+      <td>${fmt(d.winRate,1)}%</td>
+      <td class="${d.expectancy>0?'pos':'neg'}">${fmt(d.expectancy,2)}</td>
+      <td class="${d.sharpe>0?'pos':'neg'}">${fmt(d.sharpe,2)}</td>
+      <td class="${d.bootP50>0?'pos':'neg'}">${fmt(d.bootP50,2)}</td>
+      <td class="${d.bootP5>0.5?'pos':d.bootP5>0?'amber':'neg'}"><strong>${fmt(d.bootP5,2)}</strong></td>
+      <td class="${d.posYears/Math.max(d.totYears,1)>=0.6?'pos':'muted'}">${d.posYears}/${d.totYears}</td>
+      <td class="${c2s>0?'pos':'neg'}">${fmt(c2s,2)}</td>
+      <td class="${d.survives?'pos':'neg'}">${d.survives?'✓ SURVIVES':'✗ null'}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">Same gated fade, but <b>strict</b>: unresolved days are booked <b>flat (−cost)</b> — you only win by price actually reaching the open, no credit for drifting off the extreme (that generous mark-to-close was Panel 2's inflator). Stop losses carry <b>slippage</b> (${fmt((Object.values(pp)[0]||{}).hard?.slipPips,1)}p+ by class). <b>boot p5</b> = 5th-percentile Sharpe from a moving-block bootstrap (blocks of 20 consecutive trades) — the honest floor once you stop pretending ${'~200'} bets/yr are independent; the annualised OOS Sharpe column is the optimistic number for contrast. <b>+years</b> = OOS calendar years with positive Sharpe. <b class="pos">✓ SURVIVES</b> only if boot p5 &gt; 0.5 <i>and</i> ≥60% of years positive <i>and</i> Sharpe still &gt;0 at ×2 spread. Anything else is <b class="neg">null</b> — the Panel-2 headline was an artifact.</div></div>`;
 
   if(log) h += `<div class="card muted" style="font-size:10px">${log.join('<br>')}</div>`;
   el('out').innerHTML = h;

@@ -9189,8 +9189,8 @@ app.post('/api/exhaustion-forecast/run', express.json({ limit: '16kb' }), (req, 
           const e = _exhaustionForecast(bars, { ...opts, pair: cfg.name });
           if (e.insufficient) { log.push(`${cfg.name}: insufficient (${e.reason || e.nDays + 'd'})`); continue; }
           e.src = src; perPair[cfg.name] = e;
-          const f = e.forecast, gf = e.gatedFade.oos;
-          log.push(`${cfg.name}: kFade ${e.kFade} (${e.fadeVsMedian}× median) · fcast hit ${f.hitRatePct}% · gated fade OOS Sharpe ${gf.sharpe}(${gf.trades}) (src ${src})`);
+          const f = e.forecast, gf = e.gatedFade.oos, hd = e.hard;
+          log.push(`${cfg.name}: kFade ${e.kFade} (${e.fadeVsMedian}× median) · fcast hit ${f.hitRatePct}% · gated OOS Sharpe ${gf.sharpe}(${gf.trades}) · HARD bootP5 ${hd?.bootP5} +yrs ${hd?.posYears}/${hd?.totYears} ×2 ${hd?.costSens?.find(c=>c.mult===2)?.sharpe} → ${hd?.survives?'SURVIVES':'null'} (src ${src})`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);
