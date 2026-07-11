@@ -72,6 +72,7 @@ import { runFullWeeklyBacktest, WEEKLY_INSTRUMENTS as WBT_INSTRUMENTS } from './
 import { reversalStudy as _reversalStudy } from './js/reversalPointResearch.js';   // separate reversal-point calc
 import { reversalFade as _reversalFade } from './js/reversalFadeEngine.js';   // fade-at-k×median falsification test
 import { cogFade as _cogFade } from './js/cogFadeEngine.js';   // fade at COG's reproduced median/75th line
+import { forecastAccuracy as _forecastAccuracy } from './js/forecastAccuracyEngine.js';   // range-accuracy + exhaustion, per calibration
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
@@ -8887,6 +8888,48 @@ app.post('/api/cog-fade/run', express.json({ limit: '16kb' }), (req, res) => {
 });
 app.get('/api/cog-fade/status/:jobId', (req, res) => {
   const job = cogFadeJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Forecast Accuracy — range-magnitude accuracy (±5% hit + exceed rate) per
+//    calibration (Feller / COG / recal) vs naive, AND the exhaustion/fade panel. ──
+const facJobs = new Map();
+app.post('/api/forecast-accuracy/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '', band } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `fac_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of facJobs) if (j.startedAt < Date.now() - 60 * 60_000) facJobs.delete(id);
+  facJobs.set(jobId, { status: 'running', startedAt });
+  const opts = { band: Number.isFinite(+band) ? +band : 0.05 };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const fa = _forecastAccuracy(bars, { ...opts, pair: cfg.name });
+          if (fa.insufficient) { log.push(`${cfg.name}: insufficient (${fa.nDays}d)`); continue; }
+          fa.src = src;
+          perPair[cfg.name] = fa;
+          const A = fa.panelA, B = fa.panelB;
+          log.push(`${cfg.name}: HL exceed feller ${A.feller.hlExceed}% / cog ${A.cog.hlExceed}% / recal ${A.recal.hlExceed}% · reversal ${B.reversalOverMedian}× median (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { facJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      facJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, perPair, pairs: names, log } });
+    } catch (e) { facJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/forecast-accuracy/status/:jobId', (req, res) => {
+  const job = facJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
