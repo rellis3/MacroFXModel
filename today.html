@@ -342,6 +342,21 @@
             border-radius:6px;padding:4px 12px;font-size:13px}
   .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
   .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+
+  /* ── Volatility cone graphic (drawer) ───────────────────── */
+  .cone-row{display:flex;align-items:center;gap:9px;margin:6px 0;font-size:11.5px}
+  .cone-lbl{width:118px;color:var(--text3);text-align:right;flex-shrink:0}
+  .cone-track{position:relative;flex:1;height:10px;border-radius:5px;overflow:visible;
+    background:linear-gradient(90deg, rgba(110,168,254,.18) 0%, rgba(110,168,254,.18) 20%,
+      rgba(148,158,168,.13) 20%, rgba(148,158,168,.13) 80%,
+      rgba(210,153,34,.26) 80%, rgba(210,153,34,.26) 100%)}
+  .cone-dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:13px;height:13px;border-radius:50%;
+    background:#aeb7c2;border:2px solid var(--card);box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+  .cone-dot.hot{background:var(--amber,#d29922)}
+  .cone-dot.cold{background:#6ea8fe}
+  .cone-val{width:40px;font-variant-numeric:tabular-nums;color:var(--text2);flex-shrink:0;font-weight:600}
+  .cone-axis{display:flex;justify-content:space-between;margin:2px 0 0 127px;font-size:9.5px;color:var(--text3)}
+  .cone-verdict{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:9px}
   #drChart{height:300px;transition:height .18s ease}
   .hits-tgl{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:2px 9px;font-size:11px;cursor:pointer}
   .hits-tgl.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
@@ -450,6 +465,11 @@
   <div class="dr-sec">
     <h3>The story</h3>
     <div class="story" id="drStory"><span class="muted">loading…</span></div>
+  </div>
+
+  <div class="dr-sec" id="drConeSec" style="display:none">
+    <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal.">Volatility cone — is vol building or cooling?</h3>
+    <div id="drCone"></div>
   </div>
 
   <div class="dr-sec" id="drAnalysisSec" style="display:none">
@@ -1871,6 +1891,7 @@ async function openDrawer(name) {
     $('drChart').innerHTML = `<div class="err" style="padding:20px">${e.message}${hint}</div>`;
   });
   loadDrawerStory(r, barsP).catch(e => { $('drStory').innerHTML = `<span class="muted">story unavailable: ${e.message}</span>`; });
+  try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
   loadDrawerLevels(name, d.sym).catch(() => {});
   loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
@@ -1880,6 +1901,51 @@ async function openDrawer(name) {
   loadDrawerAnalysis(r).catch(() => { $('drAnalysisSec').style.display = 'none'; });
   loadDrawerThesis(r).catch(() => { $('drThesisSec').style.display = 'none'; });
   loadDrawerHits(name, d).catch(() => { $('drHitsSec').style.display = 'none'; });
+}
+
+// ── Volatility cone graphic — percentile of current σ per lookback window ─────
+// Data comes free with /api/vol-forecast (cone_5d/21d/63d + vol_pct, computed in
+// volForecast.js _buildOutput). Dots sliding right as the window shortens = vol
+// building; sliding left = cooling. EUR/USD and Gold get an extra row for the
+// real CBOE 1M implied-vol index (EVZ/GVZ) so implied can be eyeballed against
+// realized on the same 0–100 scale. Context for sizing — not a direction signal.
+function renderDrawerCone(r) {
+  const sec = $('drConeSec'), el = $('drCone');
+  const fc = r.fc;
+  if (!fc || fc.vol_pct == null) { sec.style.display = 'none'; return; }
+
+  const row = (lbl, pct, title) => {
+    if (pct == null) return '';
+    const cls = pct >= 80 ? 'hot' : pct <= 20 ? 'cold' : '';
+    return `<div class="cone-row" title="${title}">
+      <span class="cone-lbl">${lbl}</span>
+      <span class="cone-track"><span class="cone-dot ${cls}" style="left:${Math.min(100, Math.max(0, pct))}%"></span></span>
+      <span class="cone-val">P${Math.round(pct)}</span></div>`;
+  };
+
+  const gap = fc.cone_5d != null ? fc.cone_5d - fc.vol_pct : null;
+  const verdict = gap == null ? ['NO READ', 'neu', 'Not enough short-window history for a cone read.']
+    : gap >= 15 ? ['σ EXPANDING', 'warn', 'The last week ranks well above the yearly rank — moves may get bigger from here. Respect it with wider stops and smaller size.']
+    : gap <= -15 ? ['σ CONTRACTING', 'dim', 'The last week ranks well below the yearly rank — a compression stretch; ranges may run smaller than the year suggests.']
+    : ['σ STEADY', 'neu', 'Short and long windows rank about the same — no expansion or contraction signal.'];
+
+  const IV_ROW = { EURUSD: ['EVZCLS', 'EUR 1M implied (5y)'], GOLD: ['GVZCLS', 'Gold 1M implied (5y)'] };
+  const iv = IV_ROW[r.name];
+  const ivPct = iv ? cvol?.pct?.[iv[0]] : null;
+  const ivLevel = iv ? cvol?.levels?.[iv[0]] : null;
+
+  el.innerHTML =
+    `<div class="cone-verdict">
+       <span class="chip ${verdict[1]}" title="${verdict[2]}">${verdict[0]}</span>
+       <span class="muted">σ ${fc.vol_annual != null ? fc.vol_annual.toFixed(1) + '% annualised' : ''}${fc.vol_vov_label ? ` · swings themselves: ${fc.vol_vov_label.toLowerCase()}` : ''}</span>
+     </div>` +
+    row('last week (5d)',     fc.cone_5d,  'Where the current σ ranks against the last 5 trading days.') +
+    row('last month (21d)',   fc.cone_21d, 'Where the current σ ranks against the last month.') +
+    row('last quarter (63d)', fc.cone_63d, 'Where the current σ ranks against the last quarter.') +
+    row('last year (252d)',   fc.vol_pct,  'Where the current σ ranks against the last year — the long-run anchor.') +
+    (ivPct != null ? row(iv[1], ivPct, `What the OPTIONS market charges for 1-month protection (CBOE index at ${ivLevel}), ranked against its own last 5 years. Options paying above the realized rows = the market expects more movement than it's getting.`) : '') +
+    `<div class="cone-axis"><span>quiet ←</span><span>its own normal</span><span>→ wild</span></div>`;
+  sec.style.display = '';
 }
 
 // ── Line fade by hit (1st / 2nd / 3rd+ tap) — from the intraday research book ──
