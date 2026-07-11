@@ -1614,6 +1614,59 @@ async function monitorTick() {
 // ── Analysis prompt builder ───────────────────────────────────────────────────
 // Mirrors the prompt in _worker.js so both Cloudflare and Railway produce identical briefs.
 
+// Map an incoming display pair ("EUR/USD", "XAU/USD", "Gold", "NAS100") to the
+// forecast/HR instrument key ('EURUSD', 'GOLD', 'NQ', …); null if not covered.
+function _forecastKeyForPair(pair) {
+  const k = String(pair || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const alias = { XAUUSD: 'GOLD', GOLDUSD: 'GOLD', NAS100: 'NQ', NAS100USD: 'NQ', NDX: 'NQ',
+                  US500: 'SPX500', SPX500USD: 'SPX500', DAX: 'DE30', DE30EUR: 'DE30',
+                  FTSE100: 'UK100', UK100GBP: 'UK100', DOW30: 'US30', US30USD: 'US30',
+                  RUS2000: 'US2000', US2000USD: 'US2000' };
+  const key = alias[k] ?? k;
+  return forecastState.latest?.instruments?.[key] ? key : null;
+}
+
+// Enrich a client snapshot with server-known context before prompting: the vol
+// cone (already computed per instrument by the forecast producer), EVZ/GVZ
+// implied vol for the two instruments that have a real CBOE index, and the
+// cross-asset risk-flag composite. Client-supplied fields are never overwritten.
+async function _injectServerContext(pair, s) {
+  const key = _forecastKeyForPair(pair);
+  const fc  = key ? forecastState.latest.instruments[key] : null;
+
+  if (fc && !s.volCone) {
+    s.volCone = {
+      vol_annual: fc.vol_annual ?? null, vol_pct: fc.vol_pct ?? null,
+      cone_5d: fc.cone_5d ?? null, cone_21d: fc.cone_21d ?? null, cone_63d: fc.cone_63d ?? null,
+      vol_vov_label: fc.vol_vov_label ?? null,
+    };
+  }
+
+  if (!s.impliedVol && (key === 'EURUSD' || key === 'GOLD')) {
+    try {
+      const cv  = await _getCvol();
+      const sid = key === 'EURUSD' ? 'EVZCLS' : 'GVZCLS';
+      if (cv.levels[sid] != null) {
+        s.impliedVol = {
+          index: sid === 'EVZCLS' ? 'EVZ (EUR/USD 1M implied vol)' : 'GVZ (Gold 1M implied vol)',
+          level: cv.levels[sid], pct: cv.pct[sid],
+          realized: fc?.vol_annual ?? null,
+        };
+      }
+    } catch { /* left absent — prompt tolerates it */ }
+  }
+
+  if (!s.riskFlags) {
+    try {
+      const rf = await computeRiskFlags();
+      s.riskFlags = {
+        active: rf.active, available: rf.available, level: rf.level, note: rf.note,
+        flags: rf.flags.filter(f => f.on != null).map(f => `${f.on ? '⚠ ON ' : '· off '} ${f.label}: ${f.detail}`),
+      };
+    } catch { /* left absent — prompt tolerates it */ }
+  }
+}
+
 function buildAnalysisPrompt(pair, s) {
   return `You are a professional FX/futures desk analyst. Analyse the following real-time dashboard snapshot for ${pair} and produce a structured trading intelligence brief. Be direct, specific, and actionable. Think like a prop trader who needs to make a decision in the next 30 minutes.
 
@@ -1746,6 +1799,24 @@ ${s.surpriseIndex && Object.keys(s.surpriseIndex).length > 0
     (s.pairSurprise != null ? `\nPair net surprise: ${s.pairSurprise >= 0 ? '+' : ''}${s.pairSurprise.toFixed(2)} (positive = bullish base ccy)` : '')
   : '  Surprise index unavailable (Finnhub not configured or no data with estimates)'}
 
+VOLATILITY CONE (forecast σ vs its own history — context, not a signal)
+${s.volCone ? `Annualised σ: ${s.volCone.vol_annual ?? 'N/A'}%  |  252d percentile: ${s.volCone.vol_pct ?? 'N/A'}th
+Shorter-window percentiles — 5d: ${s.volCone.cone_5d ?? 'N/A'}th  |  21d: ${s.volCone.cone_21d ?? 'N/A'}th  |  63d: ${s.volCone.cone_63d ?? 'N/A'}th
+${s.volCone.cone_5d != null && s.volCone.vol_pct != null
+    ? (s.volCone.cone_5d - s.volCone.vol_pct >= 15 ? '→ Vol EXPANDING — recent σ running above its long-run rank; moves may get bigger, widen stops'
+      : s.volCone.vol_pct - s.volCone.cone_5d >= 15 ? '→ Vol CONTRACTING — recent σ cooling vs its long-run rank; compression regime'
+      : '→ Vol steady across windows — no expansion/contraction signal') : ''}
+Vol-of-vol: ${s.volCone.vol_vov_label ?? 'N/A'}${s.volCone.vol_vov_label === 'Unstable' ? ' — σ itself is jumping around, treat the range forecast with wider error bars' : ''}` : '  Not available'}
+
+IMPLIED VOL — OPTIONS MARKET (CBOE 1M index vs our realized σ; a price, not a forecast)
+${s.impliedVol ? `${s.impliedVol.index} ${s.impliedVol.level}  |  ${s.impliedVol.pct}th percentile of 5 years
+${s.impliedVol.realized != null ? `Our realized/forecast σ (annualised): ${s.impliedVol.realized}%  →  implied ${s.impliedVol.level >= s.impliedVol.realized ? 'ABOVE realized — options market paying up for protection/movement' : 'BELOW realized — options cheap vs what the market is actually doing'}` : ''}` : '  Not available'}
+
+CROSS-ASSET RISK FLAGS (daily risk dashboard — condition of the whole tape)
+${s.riskFlags ? `${s.riskFlags.active}/${s.riskFlags.available} flags active  →  ${s.riskFlags.level}
+${(s.riskFlags.flags || []).join('\n')}
+${s.riskFlags.note ?? ''}` : '  Not available'}
+
 === END SNAPSHOT ===
 
 You are a professional FX/futures prop desk analyst. Your job is to give a SPECIFIC, CALIBRATED trading brief - not generic observations.
@@ -1769,7 +1840,7 @@ convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderat
 tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newlines with \\n):
 "[PAIR] [BIAS] [SCORE]/10 | [REGIME]\\n[1-2 sentence market read]\\nWatch: [up to 3 key levels with price and type]\\nDo: [specific action]. Avoid: [what to avoid]. Risk: [main risk or event]"
 
-{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":""}`;
+{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":""}`;
 }
 
 // ── Express app ───────────────────────────────────────────────────────────────
@@ -1874,6 +1945,10 @@ app.post('/api/analysis', async (req, res) => {
   try {
     const { pair, snapshot: s } = req.body ?? {};
     if (!pair || !s) return res.status(400).json({ error: 'Missing pair or snapshot' });
+
+    // Server-known context (vol cone, implied vol, risk flags) — enriches every
+    // caller (index.html + today.html) without duplicating client assembly.
+    try { await _injectServerContext(pair, s); } catch { /* prompt tolerates absence */ }
 
     const prompt = buildAnalysisPrompt(pair, s);
 
@@ -2032,19 +2107,39 @@ async function _buildMorningBrief() {
   const key = process.env.ANT_KEY;
   if (!key) throw new Error('ANT_KEY not configured');
   const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
-  const fred = fredRaw ? JSON.parse(fredRaw) : {};
+  // Stored shape is { d: series, t: epoch } — read .d, tolerate a legacy flat blob.
+  const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
   const headlines = await _fetchYahooHeadlines();
   const fc = forecastState.latest;
   const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
   const s2s10 = (g('us10y') != null && g('us2y') != null) ? ((g('us10y') - g('us2y')) * 100).toFixed(0) + 'bp' : '?';
+  // Cross-asset risk flags + FX/gold implied vol — condition readings for the
+  // column, fed as data so the model grounds the "risk mood" in them.
+  let riskLine = '', ivLine = '';
+  try {
+    const rf = await computeRiskFlags();
+    riskLine = `Risk flags: ${rf.active}/${rf.available} active (${rf.level}) — ` +
+      rf.flags.filter(f => f.on != null).map(f => `${f.on ? '⚠' : '·'} ${f.detail}`).join(' | ');
+  } catch { /* omitted from prompt when unavailable */ }
+  try {
+    const cv = await _getCvol();
+    const rlz = k => fc?.instruments?.[k]?.vol_annual;
+    const cmp = (iv, r) => (iv != null && r != null) ? ` vs our realized σ ${r.toFixed(1)}% (${iv >= r ? 'options paying up' : 'options cheap vs realized'})` : '';
+    ivLine = [
+      cv.levels.EVZCLS != null ? `EUR/USD 1M implied vol (EVZ) ${cv.levels.EVZCLS} — ${cv.pct.EVZCLS}th pctile of 5y${cmp(cv.levels.EVZCLS, rlz('EURUSD'))}` : null,
+      cv.levels.GVZCLS != null ? `Gold 1M implied vol (GVZ) ${cv.levels.GVZCLS} — ${cv.pct.GVZCLS}th pctile of 5y${cmp(cv.levels.GVZCLS, rlz('GOLD'))}` : null,
+    ].filter(Boolean).join('\n');
+  } catch { /* omitted from prompt when unavailable */ }
   const macro = [
-    `VIX ${g('vix')} (prev ${gp('vix')})`,
+    `VIX ${g('vix')} (prev ${gp('vix')})${g('vix3m') != null ? ` · VIX3M ${g('vix3m')} (${g('vix') > g('vix3m') ? 'BACKWARDATED — near-term fear' : 'contango — normal'})` : ''}`,
     `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
     `DXY ${g('dxy')} (prev ${gp('dxy')})`,
     `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}`,
     `DE10Y ${g('de10y')} · JP10Y ${g('jp10y')} · GB10Y ${g('gb10y')}`,
     `Real 10Y (TIPS) ${g('tips')} · WTI ${g('wti')}`,
-  ].join('\n');
+    riskLine || null,
+    ivLine || null,
+  ].filter(Boolean).join('\n');
   const heads = headlines.map(h => `• [${h.ticker}] ${h.title}`).join('\n') || '(no headlines fetched — read the macro data instead)';
   // Today's scheduled economic calendar (central-bank decisions, CPI/NFP, etc.).
   // Without this the brief cannot mention FOMC/ECB/BoE days — the prompt forbids
@@ -2135,7 +2230,9 @@ const _aiKvKey = (name, sym) => 'ai_' + _aiPairName(name, sym).replace('/', '');
 // Assemble a per-pair snapshot server-side (partial — buildAnalysisPrompt is N/A-tolerant).
 async function _serverSnapshotFor(name, sym) {
   const fc = forecastState.latest?.instruments?.[name];
-  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null); const fred = fredRaw ? JSON.parse(fredRaw) : {};
+  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
+  // Stored shape is { d: series, t: epoch } — read .d, tolerate a legacy flat blob.
+  const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
   const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
   let session = null; try { const st = await getSessionStatus(); session = st?.instruments?.[name] ?? null; } catch {}
   let price = null;
@@ -4376,41 +4473,129 @@ const CVOL_CACHE    = { data: null, fetchedAt: 0 };
 const CVOL_TTL_MS   = 6 * 60 * 60 * 1000;  // 6h — matches CBOEVolFetcher._REFRESH_SECS
 const CVOL_SERIES   = ['EVZCLS', 'GVZCLS'];
 
-app.get('/api/cvol', async (_req, res) => {
+// Fetch/serve EVZ (EUR/USD 1M implied vol) + GVZ (gold 1M implied vol) levels
+// with 5-year percentile ranks. Shared by the /api/cvol route, the risk-flag
+// composite and the AI prompt injection — one fetch path, one cache.
+async function _getCvol() {
   const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
-  if (!fredKey) return res.status(503).json({ ok: false, error: 'FRED_KEY not set' });
+  if (!fredKey) throw new Error('FRED_KEY not set');
 
   const age = Date.now() - CVOL_CACHE.fetchedAt;
-  if (CVOL_CACHE.data && age < CVOL_TTL_MS) {
-    return res.json({ ok: true, cached: true, ...CVOL_CACHE.data });
-  }
+  if (CVOL_CACHE.data && age < CVOL_TTL_MS) return CVOL_CACHE.data;
 
+  const fromDate = new Date(Date.now() - 1825 * 86_400_000).toISOString().slice(0, 10); // 5y
+  const results  = await Promise.allSettled(CVOL_SERIES.map(sid => fetchFredSeries(sid, fromDate, fredKey)));
+
+  const levels = {}, pct = {};
+  results.forEach((r, i) => {
+    const sid = CVOL_SERIES[i];
+    if (r.status !== 'fulfilled' || r.value.size < 20) return;
+    const values  = [...r.value.values()];
+    const current = values[values.length - 1];
+    const below   = values.filter(v => v < current).length;
+    levels[sid] = Math.round(current * 100) / 100;
+    pct[sid]    = Math.round((below / values.length) * 1000) / 10;
+  });
+
+  if (Object.keys(levels).length === 0) throw new Error('all FRED series fetches failed');
+
+  const data = { levels, pct, coherence: (pct.EVZCLS ?? 0) >= 50 };
+  CVOL_CACHE.data      = data;
+  CVOL_CACHE.fetchedAt = Date.now();
+  return data;
+}
+
+app.get('/api/cvol', async (_req, res) => {
   try {
-    const fromDate = new Date(Date.now() - 1825 * 86_400_000).toISOString().slice(0, 10); // 5y
-    const results  = await Promise.allSettled(CVOL_SERIES.map(sid => fetchFredSeries(sid, fromDate, fredKey)));
-
-    const levels = {}, pct = {};
-    results.forEach((r, i) => {
-      const sid = CVOL_SERIES[i];
-      if (r.status !== 'fulfilled' || r.value.size < 20) return;
-      const values  = [...r.value.values()];
-      const current = values[values.length - 1];
-      const below   = values.filter(v => v < current).length;
-      levels[sid] = Math.round(current * 100) / 100;
-      pct[sid]    = Math.round((below / values.length) * 1000) / 10;
-    });
-
-    if (Object.keys(levels).length === 0) throw new Error('all FRED series fetches failed');
-
-    const data = { levels, pct, coherence: (pct.EVZCLS ?? 0) >= 50 };
-    CVOL_CACHE.data      = data;
-    CVOL_CACHE.fetchedAt = Date.now();
-    res.json({ ok: true, cached: false, ...data });
+    const wasCached = CVOL_CACHE.data && (Date.now() - CVOL_CACHE.fetchedAt) < CVOL_TTL_MS;
+    const data = await _getCvol();
+    res.json({ ok: true, cached: wasCached, ...data });
   } catch (e) {
     console.warn('[cvol] fetch error:', e.message);
+    if (/FRED_KEY/.test(e.message)) return res.status(503).json({ ok: false, error: e.message });
     if (CVOL_CACHE.data) return res.json({ ok: true, cached: true, stale: true, ...CVOL_CACHE.data });
     res.status(502).json({ ok: false, error: e.message });
   }
+});
+
+// ── Cross-asset risk-flag composite ───────────────────────────────────────────
+// The "3+ flags → cut gross" daily risk dashboard from the quant-macro lessons
+// (education/QUANT_MACRO_LESSONS_1-6.md, Lesson 2). Each flag is a CONDITION
+// reading, not a signal: it describes the kind of day, it does not predict.
+// Stock-bond correlation (the fifth lesson flag) is deliberately absent — no
+// daily SPX series is wired server-side; add it when one is, don't proxy it.
+const _RISK_FLAGS_CACHE = { data: null, fetchedAt: 0 };
+const _RISK_FLAGS_TTL   = 30 * 60 * 1000;
+
+async function computeRiskFlags() {
+  const age = Date.now() - _RISK_FLAGS_CACHE.fetchedAt;
+  if (_RISK_FLAGS_CACHE.data && age < _RISK_FLAGS_TTL) return _RISK_FLAGS_CACHE.data;
+
+  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
+  const fred    = fredRaw ? (JSON.parse(fredRaw).d ?? {}) : {};
+  const hist    = async k => {
+    const raw = await kv.get(`fredhistory_series_${k}`).catch(() => null);
+    return raw ? JSON.parse(raw) : null;          // [{date, value}] ascending
+  };
+  // % / absolute change over the last n observations of a fredhistory series
+  const lastChange = (pts, n, pctChange) => {
+    if (!Array.isArray(pts) || pts.length < n + 1) return null;
+    const a = pts[pts.length - 1 - n].value, b = pts[pts.length - 1].value;
+    return pctChange ? (b - a) / a * 100 : b - a;
+  };
+
+  const [hyHist, jpyHist] = await Promise.all([hist('hy'), hist('usd_jpy')]);
+  let cvol = null;
+  try { cvol = await _getCvol(); } catch { /* flag reports unavailable */ }
+
+  const vix    = fred.vix?.value ?? null;
+  const vix3m  = fred.vix3m?.value ?? null;
+  const hyChg  = lastChange(hyHist, 5, false);            // OAS is in % points
+  const jpyChg = lastChange(jpyHist, 5, true);            // DEXJPUS: falling = JPY strengthening
+  const evzPct = cvol?.pct?.EVZCLS ?? null;
+
+  const flags = [
+    { key: 'vix_level', label: 'VIX elevated',
+      on: vix != null ? vix >= 25 : null, value: vix,
+      detail: vix != null ? `VIX ${vix.toFixed(1)} (flag ≥25)` : 'VIX unavailable' },
+    { key: 'vix_term', label: 'VIX curve backwardated',
+      on: (vix != null && vix3m != null) ? vix / vix3m >= 1.0 : null,
+      value: (vix != null && vix3m != null) ? +(vix / vix3m).toFixed(3) : null,
+      detail: (vix != null && vix3m != null)
+        ? `VIX/VIX3M ${(vix / vix3m).toFixed(2)} (flag ≥1.00 — near-term fear above 3-month)`
+        : 'VIX3M (VXVCLS) unavailable' },
+    { key: 'hy_speed', label: 'Credit widening fast',
+      on: hyChg != null ? hyChg >= 0.25 : null,
+      value: hyChg != null ? +(hyChg * 100).toFixed(0) : null,
+      detail: hyChg != null ? `HY OAS ${hyChg >= 0 ? '+' : ''}${(hyChg * 100).toFixed(0)}bp / 5 obs (flag ≥+25bp)` : 'HY OAS history unavailable' },
+    { key: 'jpy_bid', label: 'JPY safe-haven bid',
+      on: jpyChg != null ? jpyChg <= -1.5 : null,
+      value: jpyChg != null ? +jpyChg.toFixed(2) : null,
+      detail: jpyChg != null ? `USD/JPY ${jpyChg >= 0 ? '+' : ''}${jpyChg.toFixed(1)}% / 5 obs (flag ≤−1.5%)` : 'USD/JPY history unavailable' },
+    { key: 'evz_stress', label: 'FX implied vol stressed',
+      on: evzPct != null ? evzPct >= 80 : null, value: evzPct,
+      detail: evzPct != null ? `EVZ at ${evzPct}th percentile of 5y (flag ≥80th)` : 'EVZ unavailable' },
+  ];
+
+  const known  = flags.filter(f => f.on != null);
+  const active = known.filter(f => f.on).length;
+  const level  = active >= 3 ? 'RISK_OFF' : active === 2 ? 'CAUTION' : 'CALM';
+
+  const data = {
+    computed_at: new Date().toISOString(),
+    flags, active, available: known.length, total: flags.length, level,
+    note: active >= 3 ? 'Three or more risk flags active — the lesson rule says cut gross exposure, expect correlated moves.'
+        : active === 2 ? 'Two risk flags active — risk appetite is fragile, correlations may tighten.'
+        : 'Cross-asset risk backdrop calm — pair-specific drivers dominate.',
+  };
+  _RISK_FLAGS_CACHE.data      = data;
+  _RISK_FLAGS_CACHE.fetchedAt = Date.now();
+  return data;
+}
+
+app.get('/api/risk-flags', async (_req, res) => {
+  try { res.json({ ok: true, ...(await computeRiskFlags()) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Diversification backtest data cache ───────────────────────────────────────
@@ -7107,6 +7292,14 @@ async function computeDailyBrief() {
       news_flag:     (fc.news_mult ?? 1) > 1 ? (forecast.meta?.news_flag ?? 'Event') : null,
       vol_annual:    fc.vol_annual,
       vol_pct:       fc.vol_pct,
+      // Vol cone (percentile of current σ in shorter windows) + vol-of-vol —
+      // computed in volForecast.js _buildOutput; passed through so the brief
+      // can say whether vol is building or cooling, not just where it sits.
+      cone_5d:       fc.cone_5d  ?? null,
+      cone_21d:      fc.cone_21d ?? null,
+      cone_63d:      fc.cone_63d ?? null,
+      vol_vov:       fc.vol_vov  ?? null,
+      vol_vov_label: fc.vol_vov_label ?? null,
       regime: regRaw ? {
         label:        regRaw.regime,
         trend_dir:    regRaw.trendDir ?? null,
@@ -12953,7 +13146,7 @@ async function refreshMacroContext() {
 // in fred_data_v3 KV. Runs at startup and every 6h so the /api/fred endpoint
 // always serves from KV — no client-triggered concurrent FRED batches.
 const _FRED_DASH_SERIES = {
-  vix: 'VIXCLS', us2y: 'GS2', us5y: 'GS5', us10y: 'GS10',
+  vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'GS2', us5y: 'GS5', us10y: 'GS10',
   dxy: 'DTWEXBGS', hy: 'BAMLH0A0HYM2', nfci: 'NFCI',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE',
   aud_usd: 'DEXUSAL', usd_jpy: 'DEXJPUS',
@@ -12976,7 +13169,7 @@ let   _fredDashRunning  = false;
 const _FREDHISTORY_SERIES = {
   us2y: 'GS2', us5y: 'GS5', us10y: 'GS10', dxy: 'DTWEXBGS',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS',
-  hy: 'BAMLH0A0HYM2',
+  hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',

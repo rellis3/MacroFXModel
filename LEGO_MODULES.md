@@ -524,6 +524,7 @@ drift directly desyncs trading from its backtest (the worst case).
 
 | # | Candidate brick | What it owns | Duplicated in | Risk |
 |---|---|---|---|---|
+| 15c | **Cross-asset risk-flag composite** | the "3+ flags → cut gross" daily risk dashboard (VIX level, VIX/VIX3M term structure, HY-OAS 5-obs speed, USD/JPY 5-obs JPY bid, EVZ 5y percentile) — `computeRiskFlags()` in `server.js` (2026-07-11, education review), served at `/api/risk-flags`, rendered on `today.html`, injected into `/api/analysis` + morning-brief prompts. Currently server glue with one copy; **extract to a brick if a bot wants it** (RegimeV2/V4's E-gates already compute VIX-backwardation separately — that's the known second copy to unify). Stock-bond correlation flag deliberately absent (no daily SPX series server-side — add the feed first, don't proxy). | `server.js computeRiskFlags` vs `RegimeV4` VIX-term gate (partial) | 🟡 LOW-MED |
 | 16 | **OANDA D1 fetcher** | daily OHLC + 22:00 session-day shift + retry | `volBacktestEngine.js:51-84` (no retry) vs `cogHistoricalDataLoader.js:72-110` (retry/backoff) | 🟡 MEDIUM |
 | 17 | **FRED fetcher + publication lag** | series fetch, lag shift, forward-fill | `nasdaqDataSources`, `cogDataSources`, `nasdaqTransforms:172-189`, `server.js:3882-3958` (local re-impl), `GlobalLiquidity/backtestCore.mjs` (3 different FRED_ID maps) | 🟡 MEDIUM |
 | 18 | **COT/CFTC parser** | TFF + disaggregated parse, symbol map | `_worker.js:67-175` (parse) vs `js/cot.js:7-52` (client transform); two symbol maps drift | 🟡 LOW-MED |
