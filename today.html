@@ -404,6 +404,8 @@
 
   <div class="gate" id="gate" style="display:none"></div>
 
+  <div class="gate" id="riskflags" style="display:none"></div>
+
   <div class="qstrip" id="whenWatch" style="display:none"></div>
 
   <div class="news" id="newsPlay" style="display:none"></div>
@@ -612,6 +614,8 @@ let cot = null;          // /api/cot-extremes — spec positioning per instrumen
 let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
 let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
+let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
+let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
@@ -644,7 +648,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk, ha] = await Promise.all([
+  const [ev, fr, ss, ct, oi, wk, ha, rf, cv] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -652,6 +656,8 @@ async function loadGate() {
     jget('/api/kv/get?key=oi_store').catch(() => null),
     jget('/api/vol-forecast/weekly').catch(() => null),
     jget('/api/hedge-alerts').catch(() => null),
+    jget('/api/risk-flags').catch(() => null),
+    jget('/api/cvol').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -660,8 +666,37 @@ async function loadGate() {
   if (oi && !oi.miss) oiStore = oi.data ?? oi;
   if (wk?.ok && wk.instruments) weekly = wk;
   if (ha?.last_corr || ha?.last_betas) hedgeAlerts = ha;
+  if (rf?.ok) riskFlags = rf;
+  if (cv?.ok) cvol = cv;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
-  renderGate(); renderNewsPlay(); renderSummary(); render();
+  renderGate(); renderRiskFlags(); renderNewsPlay(); renderSummary(); render();
+}
+
+// ── Cross-asset risk flags + implied vol strip ───────────────────────────────
+// Condition readings, not signals: how hostile is the whole tape today, and
+// what the options market (EVZ/GVZ) is paying vs our realized σ.
+function renderRiskFlags() {
+  const el = $('riskflags');
+  if (!riskFlags?.flags) { el.style.display = 'none'; return; }
+  const lvl = riskFlags.level;
+  const lvlChip = lvl === 'RISK_OFF'
+    ? `<span class="gev hi" style="border-color:rgba(220,80,80,.7)"><b style="color:var(--red,#e06c75)">RISK-OFF</b> ${riskFlags.active}/${riskFlags.available} flags</span>`
+    : lvl === 'CAUTION'
+    ? `<span class="gev hi"><b style="color:var(--amber)">CAUTION</b> ${riskFlags.active}/${riskFlags.available} flags</span>`
+    : `<span class="gev"><b style="color:var(--green,#7ec699)">CALM</b> ${riskFlags.active}/${riskFlags.available} flags</span>`;
+  const flagChips = riskFlags.flags.filter(f => f.on != null).map(f =>
+    `<span class="gev ${f.on ? 'hi' : ''}" style="${f.on ? '' : 'opacity:.45'}" title="${f.detail}${f.on ? '' : ' — not flagging'}">${f.on ? '⚠' : '·'} ${f.label}</span>`).join('');
+  // Implied vol chips — only the two instruments with a real CBOE index.
+  const ivChip = (sid, label, fcName) => {
+    const iv = cvol?.levels?.[sid], pc = cvol?.pct?.[sid];
+    if (iv == null) return '';
+    const rlz = forecast?.instruments?.[fcName]?.vol_annual;
+    const cmp = rlz != null ? (iv >= rlz ? ` · IV>${rlz.toFixed(1)}% rlzd (options paying up)` : ` · IV<${rlz.toFixed(1)}% rlzd (options cheap)`) : '';
+    return `<span class="gev" title="${label} 1-month implied volatility from CBOE — what the options market charges, at the ${pc}th percentile of the last 5 years.${rlz != null ? ` Our realized/forecast σ is ${rlz.toFixed(1)}% annualised.` : ''} A price, not a forecast.">${label} IV <b>${iv}</b> P${pc != null ? Math.round(pc) : '?'}${cmp}</span>`;
+  };
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="glbl" title="${riskFlags.note ?? ''}">Risk state</span>` +
+    lvlChip + flagChips + ivChip('EVZCLS', 'EUR', 'EURUSD') + ivChip('GVZCLS', 'Gold', 'GOLD');
 }
 
 // ── Credit gate — corporate-spread risk appetite, the market's early warning ──
@@ -1711,6 +1746,13 @@ function cardHtml(r) {
   const volPct = d.vol_pct;
   const volCls = volPct >= 80 ? 'warn' : volPct <= 20 ? 'dim' : 'neu';
   const rangePts = d.levels?.hl_med?.range_pts;
+  // Cone trend: recent (5d) σ percentile vs its long-run (252d) rank — a gap of
+  // 15+ points either way marks vol as building or cooling.
+  const coneGap = (d.cone_5d != null && volPct != null) ? d.cone_5d - volPct : null;
+  const coneChip = coneGap == null ? ''
+    : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th in its 5-day window vs ${volPct}th over the last year. Moves may get bigger from here; size and stops should respect that.">σ↑ building</span>`
+    : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. A compression stretch; ranges may run smaller than the year suggests.">σ↓ cooling</span>`
+    : '';
   return `<div class="pcard ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
       <span class="pc-name">${dispName(r.name)}</span>
@@ -1721,7 +1763,7 @@ function cardHtml(r) {
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
     <div class="pc-foot">
-      <span class="chip ${volCls}" title="How big this market's swings tend to be. 'P${volPct ?? '?'}' compares today to its own history: ${volPct != null ? (volPct >= 80 ? `calmer than only ${volPct}% of days — unusually jumpy right now, use wider stops` : volPct <= 20 ? `calmer than ${100 - volPct}% of days — an unusually quiet stretch` : `middle of its normal range`) : 'unknown'}.">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>
+      <span class="chip ${volCls}" title="How big this market's swings tend to be. 'P${volPct ?? '?'}' compares today to its own history: ${volPct != null ? (volPct >= 80 ? `calmer than only ${volPct}% of days — unusually jumpy right now, use wider stops` : volPct <= 20 ? `calmer than ${100 - volPct}% of days — an unusually quiet stretch` : `middle of its normal range`) : 'unknown'}.">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>${coneChip}
       ${rangePts != null ? `<span class="vol help" title="On an average day this market travels about ${rangePts} ${d.ac === 'fx' ? 'pips' : 'points'} from its high to its low. Use it to size stops and targets.">expected day range <b>${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}</b> (med)</span>` : ''}
       ${d.news_flag ? `<span class="chip warn" title="A major scheduled news event today (${d.news_flag}). Big news moves markets fast — expected ranges are scaled up ×${d.news_mult}. Consider waiting until it's out.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : ''}
       ${(() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 22 ? e.event.slice(0, 20) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.${hi ? ' High impact — the range can blow past the forecast; many wait until it clears.' : ''}">⏰ ${nm} ${evtTime(e)}</span>`; })()}
@@ -2379,7 +2421,8 @@ const AI_READS = [
   ['sentimentPositioning', '🎭', 'Retail sentiment'], ['oiRead', '🎯', 'Options'],
   ['garchRead', '🌊', 'Volatility'], ['sessionRead', '🕐', 'Session'],
   ['eventRiskRead', '⚠️', 'Event risk'], ['surpriseRead', '⚡', 'Data surprises'],
-  ['reflexivity', '🔁', 'Reflexivity'],
+  ['volConeRead', '🌀', 'Vol cone'], ['impliedVolRead', '🎚', 'Implied vol'],
+  ['riskFlagsRead', '🚦', 'Risk flags'], ['reflexivity', '🔁', 'Reflexivity'],
 ];
 async function loadDrawerAnalysis(r) {
   const sec = $('drAnalysisSec'), box = $('drAnalysis'), tgl = $('drAnalysisToggle');
@@ -2522,10 +2565,15 @@ async function loadDrawerStory(r, barsP) {
       const p = r.d.vol_pct;
       const size = p == null ? 'about average' : p >= 80 ? '<b>unusually big</b>' : p >= 60 ? 'a bit bigger than usual' : p <= 20 ? '<b>unusually quiet</b>' : p <= 40 ? 'a bit calmer than usual' : 'about average';
       const cmp  = p == null ? '' : p >= 50 ? ` — jumpier than ${p}% of its recent days` : ` — calmer than ${100 - p}% of its recent days`;
-      const cone = (r.fc.cone_5d != null && r.fc.vol_annual != null)
-        ? (r.fc.cone_5d > r.fc.vol_annual ? ' Pressure is <b>building</b> — moves may get bigger over the next few days.' : ' Looks to be <b>cooling off</b> from here.')
+      // Compare like with like: cone_5d and vol_pct are both PERCENTILES (0–100).
+      // The old check compared cone_5d against vol_annual (a σ% like 8.5), which
+      // made "pressure is building" fire on almost every pair, every day.
+      const coneGap = (r.fc.cone_5d != null && r.fc.vol_pct != null) ? r.fc.cone_5d - r.fc.vol_pct : null;
+      const cone = coneGap == null ? ''
+        : coneGap >= 15 ? ' Pressure is <b>building</b> — moves may get bigger over the next few days.'
+        : coneGap <= -15 ? ' Looks to be <b>cooling off</b> from here.'
         : '';
-      const vov = (r.fc.vol_vov_label && r.fc.vol_vov_label !== 'normal') ? ` (swings themselves are ${r.fc.vol_vov_label}).` : '';
+      const vov = (r.fc.vol_vov_label && r.fc.vol_vov_label !== 'Stable') ? ` (swings themselves are ${r.fc.vol_vov_label.toLowerCase()}).` : '';
       return `Swings are ${size} today${cmp}.${cone}${vov}`;
     })() : null],
     ['asia', '<span class="muted">…</span>'],

@@ -598,6 +598,18 @@ export async function aiRenderCard(state, payload, generatedAt) {
           <div class="ai-section-label">📊 Macro Surprise</div>
           <div class="ai-section-text">${a.surpriseRead}</div>
         </div>` : ''}
+        ${a.volConeRead ? `<div class="ai-section">
+          <div class="ai-section-label">🌀 Vol Cone</div>
+          <div class="ai-section-text">${a.volConeRead}</div>
+        </div>` : ''}
+        ${a.impliedVolRead ? `<div class="ai-section">
+          <div class="ai-section-label">🎚 Implied Vol</div>
+          <div class="ai-section-text">${a.impliedVolRead}</div>
+        </div>` : ''}
+        ${a.riskFlagsRead ? `<div class="ai-section">
+          <div class="ai-section-label">🚦 Risk Flags</div>
+          <div class="ai-section-text">${a.riskFlagsRead}</div>
+        </div>` : ''}
       </div>
 
       <div class="ai-section full" style="margin-bottom:8px">
@@ -736,6 +748,9 @@ export async function copyAIAnalysis() {
     a.dollarRegimeRead ? section('Dollar Regime', a.dollarRegimeRead) : '',
     a.eventRiskRead    ? section('Event Risk', a.eventRiskRead)       : '',
     a.surpriseRead     ? section('Macro Surprise', a.surpriseRead)    : '',
+    a.volConeRead      ? section('Vol Cone', a.volConeRead)           : '',
+    a.impliedVolRead   ? section('Implied Vol', a.impliedVolRead)     : '',
+    a.riskFlagsRead    ? section('Risk Flags', a.riskFlagsRead)       : '',
     section('Trading Framework', a.tradingFramework),
     a.keyLevels?.length ? '\nKEY LEVELS\n' + a.keyLevels.map(l =>
       `  ${l.price}  [${l.type}]  ${l.significance}`).join('\n') + '\n' : '',
@@ -779,6 +794,9 @@ export async function copyAIAnalysis() {
     ${a.dollarRegimeRead ? row('Dollar Regime',  a.dollarRegimeRead) : ''}
     ${a.eventRiskRead    ? row('Event Risk',     a.eventRiskRead)    : ''}
     ${a.surpriseRead     ? row('Macro Surprise', a.surpriseRead)     : ''}
+    ${a.volConeRead      ? row('Vol Cone',       a.volConeRead)      : ''}
+    ${a.impliedVolRead   ? row('Implied Vol',    a.impliedVolRead)   : ''}
+    ${a.riskFlagsRead    ? row('Risk Flags',     a.riskFlagsRead)    : ''}
     ${row('Framework',      a.tradingFramework)}
   </table>
   ${levelRows ? `<div style="font-weight:600;margin-bottom:4px;color:#6b7280">KEY LEVELS</div><table style="border-collapse:collapse;margin-bottom:12px">${levelRows}</table>` : ''}
