@@ -476,7 +476,7 @@
   </div>
   <div class="title-block">
     <div class="title" style="font-size:15px;font-weight:700;">Regime Bot Backtester</div>
-    <div class="sub">Replay V1 · V2 · V2.1 (cost-aware) · V3 · V4 · V5 (30m regime) bot logic · regime-colored candles · full analytics</div>
+    <div class="sub">Replay V1 · V2 · V2.1 (cost-aware) · V3 · V4 · V5 (30m regime) · V7 · V8 (regime-shift swing, cost-aware) bot logic · regime-colored candles · full analytics</div>
   </div>
   <div style="flex:1"></div>
   <a href="regime-viewer.html" style="text-decoration:none"><button class="dark-btn">Regime Viewer →</button></a>
@@ -502,6 +502,7 @@
     <button class="rb-toggle-btn" id="btnV5" onclick="selectBot('v5')">V5</button>
     <button class="rb-toggle-btn" id="btnV6" onclick="selectBot('v6')">V6</button>
     <button class="rb-toggle-btn" id="btnV7" onclick="selectBot('v7')">V7</button>
+    <button class="rb-toggle-btn" id="btnV8" onclick="selectBot('v8')">V8</button>
   </div>
   <span class="rb-lbl2" id="v5TfLabel" style="display:none">Regime TF</span>
   <div class="rb-toggle" id="v5TfToggle" style="display:none">
@@ -580,6 +581,24 @@
   </div>
   <div id="cfgGrid" class="rb-cfg-grid"></div>
   <div id="cfgBools" style="display:flex;gap:20px;margin-top:10px;flex-wrap:wrap"></div>
+
+  <!-- ── V8 preset suite + TF sweep (visible only when V8 selected) ─────────── -->
+  <div id="v8PresetRow" style="display:none;margin-top:14px;border-top:1px solid #1c2133;padding-top:10px">
+    <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px">
+      V8 PRESET SUITE — hand-set priors (not optimizer output). Click one to load it (also sets the Regime TF), then ▶ Load &amp; Run.
+      All presets pay round-trip cost + stop slippage.
+    </div>
+    <div id="v8PresetBtns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <button class="rb-run-btn" id="v8SweepBtn" onclick="runV8Sweep()">▶ Sweep Suite + TFs</button>
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;max-width:560px">
+        Runs every preset at its own regime TF, plus the CURRENT config at 15m / 30m / 1h / 4h, on the loaded date range.
+        All rows net of costs. The <b>Last 30%</b> columns are a chronological holdout — only honest if you didn't tune on this range.
+        House bar: a config is interesting only if the holdout PF clears ~1.15 with a non-trivial trade count.
+      </span>
+    </div>
+    <div id="v8SweepWrap" style="margin-top:10px;overflow-x:auto"></div>
+  </div>
 </div>
 
 <!-- ── Optimizer panel ───────────────────────────────────────────────────────── -->
@@ -1312,6 +1331,54 @@ const V7_BOOLS = [
 ];
 const V7_DEFAULTS = Object.fromEntries([...V7_PARAMS.map(p => [p.key, p.def]), ...V7_BOOLS.map(b => [b.key, b.def])]);
 
+// ─── V8 config — regime-SHIFT swing: enter on a fresh regime transition, hold
+// until PRICE reverts. Built from the V7 live post-mortem:
+//   · No conf-floor exit, no immediate-flip exit, no range exit — regime chatter
+//     never ejects the trade. RANGE bars are simply held through.
+//   · One monotonic stop line does all the exiting: initial ATR stop → breakeven
+//     at be_at_r → chandelier ATR trail from the peak once trail_arm_r is reached.
+//     "Price reverts by trail_atr_mult × ATR from its best level" = exit.
+//   · Optional debounced opposite-flip exit (flip_exit_bars consecutive OPPOSITE
+//     MTF bars; 0 disables it entirely for pure price exits).
+//   · Entry only on a FRESH shift: the regime must have flipped into BULL/BEAR at
+//     most shift_max_age MTF bars ago. Mid-regime entries (V7's habit) are banned.
+//   · Costs on and PINNED: every trade pays cost_bp round-trip (basis points, so
+//     one default works across FX/gold/indices: EURUSD 1 pip ≈ 0.9bp, gold $0.40
+//     ≈ 1bp, NAS100 2pts ≈ 1bp) + slip_bp extra on stop-type exits. fixed:true
+//     keeps the optimizer from "improving" the strategy by lowering its costs.
+const V8_PARAMS = [
+  { key:'entry_conf',        label:'Entry Conf (%)',        min:45,  max:90,  step:1,    def:58,  help:'Minimum effective HMM confidence (conf × session multiplier) at entry. Entry-time gate only — V8 has NO confidence-based exit.' },
+  { key:'entry_score_min',   label:'Entry Score Min',       min:30,  max:90,  step:1,    def:55,  help:'Minimum V5 composite score at entry. Entry-time gate only.' },
+  { key:'shift_max_age',     label:'Shift Max Age (MTF)',   min:1,   max:12,  step:1,    def:4,   help:'THE V8 entry idea: only enter within this many MTF bars of the regime flipping into BULL/BEAR. Stale mid-regime signals are skipped. Must be ≥ Entry Hold or entries can never fire.' },
+  { key:'candle_hold',       label:'Entry Hold (MTF bars)', min:1,   max:8,   step:1,    def:2,   help:'Consecutive MTF bars all entry gates must hold before entry fires (confirmation debounce).' },
+  { key:'sl_atr_mult',       label:'SL ATR Multiplier',     min:1.0, max:6.0, step:0.1,  def:2.5, help:'Initial stop = MTF ATR(70) × this. Defines R.' },
+  { key:'be_at_r',           label:'Breakeven at (R)',      min:0,   max:3.0, step:0.1,  def:1.0, help:'Move stop to entry once MFE reaches this R. 0 = never (pure trail).' },
+  { key:'trail_arm_r',       label:'Trail Arm (R)',         min:0.2, max:3.0, step:0.1,  def:1.0, help:'Chandelier trail activates once MFE reaches this R. Lower = trail sooner; higher = give the trade room first.' },
+  { key:'trail_atr_mult',    label:'Trail ATR Multiplier',  min:1.0, max:6.0, step:0.1,  def:3.0, help:'Once armed, stop trails the peak by entry-ATR × this. This IS the "hold until price reverts" exit — wider = longer holds.' },
+  { key:'flip_exit_bars',    label:'Opp-Flip Exit (MTF)',   min:0,   max:10,  step:1,    def:3,   help:'Exit only after this many CONSECUTIVE opposite-regime MTF bars (any BULL/BEAR-with-you or RANGE bar resets the counter). 0 = disabled — price exits only. Unlike V7 this is never instant.' },
+  { key:'max_hold_bars',     label:'Max Hold (MTF bars)',   min:6,   max:120, step:1,    def:72,  help:'Backstop timeout in MTF bars (72 = 3 days on 1h, 12 days on 4h).' },
+  { key:'window_start',      label:'Window Start (UTC h)',  min:0,   max:12,  step:1,    def:7,   help:'Earliest UTC hour for new entries. Open trades continue regardless.' },
+  { key:'window_end',        label:'Window End (UTC h)',    min:12,  max:23,  step:1,    def:19,  help:'Latest UTC hour for new entries.' },
+  { key:'post_exit_cooldown',label:'Cooldown (MTF bars)',   min:0,   max:24,  step:1,    def:2,   help:'Block re-entry for this many MTF bars after any close.' },
+  { key:'cost_bp',           label:'Cost (bp, round-trip)', min:0,   max:10,  step:0.1,  def:1.2, fixed:true, help:'Round-trip transaction cost in basis points of price, charged to EVERY trade. ~1.2bp ≈ EURUSD 1.3 pips ≈ gold $0.50 ≈ NAS100 2.5pts. PINNED — the optimizer never mutates it.' },
+  { key:'slip_bp',           label:'Stop Slippage (bp)',    min:0,   max:5,   step:0.1,  def:0.4, fixed:true, help:'Extra cost on stop-type exits (SL / breakeven / trail are stop orders and slip in reality). PINNED.' },
+];
+const V8_BOOLS = [];
+const V8_DEFAULTS = Object.fromEntries([...V8_PARAMS.map(p => [p.key, p.def])]);
+
+// The V8 preset suite — hand-set PRIORS (from trend-following convention: slower
+// TFs and wider trails are where documented trend edge lives; fast TFs mostly pay
+// spread). Each preset carries its regime TF. These are hypotheses to falsify via
+// the sweep, not tuned configs — expect most to be null after costs.
+const V8_PRESETS = [
+  { name:'FX 1h swing',        tf:60,  cfg:{ entry_conf:58, entry_score_min:55, shift_max_age:4, candle_hold:2, sl_atr_mult:2.5, be_at_r:1.0, trail_arm_r:1.0, trail_atr_mult:3.0, flip_exit_bars:3, max_hold_bars:72, window_start:7, window_end:19, post_exit_cooldown:2 } },
+  { name:'FX 4h position',     tf:240, cfg:{ entry_conf:55, entry_score_min:50, shift_max_age:3, candle_hold:1, sl_atr_mult:3.0, be_at_r:1.2, trail_arm_r:1.2, trail_atr_mult:3.5, flip_exit_bars:2, max_hold_bars:30, window_start:0, window_end:23, post_exit_cooldown:1 } },
+  { name:'Gold 30m momentum',  tf:30,  cfg:{ entry_conf:60, entry_score_min:55, shift_max_age:5, candle_hold:2, sl_atr_mult:2.5, be_at_r:1.0, trail_arm_r:0.8, trail_atr_mult:2.8, flip_exit_bars:3, max_hold_bars:60, window_start:6, window_end:20, post_exit_cooldown:3 } },
+  { name:'Gold 1h swing',      tf:60,  cfg:{ entry_conf:58, entry_score_min:52, shift_max_age:4, candle_hold:2, sl_atr_mult:2.8, be_at_r:1.0, trail_arm_r:1.0, trail_atr_mult:3.2, flip_exit_bars:2, max_hold_bars:60, window_start:6, window_end:20, post_exit_cooldown:2 } },
+  { name:'Indices 1h US',      tf:60,  cfg:{ entry_conf:58, entry_score_min:55, shift_max_age:4, candle_hold:2, sl_atr_mult:2.5, be_at_r:1.0, trail_arm_r:1.0, trail_atr_mult:3.0, flip_exit_bars:3, max_hold_bars:48, window_start:12, window_end:21, post_exit_cooldown:2 } },
+  { name:'Slow 4h price-only', tf:240, cfg:{ entry_conf:52, entry_score_min:45, shift_max_age:4, candle_hold:1, sl_atr_mult:3.5, be_at_r:1.5, trail_arm_r:1.5, trail_atr_mult:4.0, flip_exit_bars:0, max_hold_bars:42, window_start:0, window_end:23, post_exit_cooldown:0 } },
+];
+
 // ─── V1/V2/V3/V4/V5 Metrics ──────────────────────────────────────────────────
 
 const V1_METRICS = [
@@ -1376,6 +1443,13 @@ const V7_METRICS = [
   { key:'bocpd',       label:'m30bcp',  color:'#ff5722' },
   { key:'decay',       label:'decay',   color:'#f44336' },
 ];
+const V8_METRICS = [
+  { key:'conf',        label:'mtfconf', color:'#2196f3' },
+  { key:'v4_score',    label:'v8scr',   color:'#4caf50' },
+  { key:'slope',       label:'mtfslp',  color:'#00bcd4' },
+  { key:'bocpd',       label:'mtfbcp',  color:'#ff5722' },
+  { key:'decay',       label:'decay',   color:'#f44336' },
+];
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -1410,6 +1484,7 @@ let optResults       = [];  // top-N {score, cfg, anTr, anVa, anTe} from runClie
   buildConfigPanel();
   buildChart();
   buildCheckboxes();
+  buildV8PresetBtns();
   setStatus('ready', 'Select a date range and click Load & Run');
 })();
 
@@ -1423,6 +1498,9 @@ function setV5TF(minutes) {
     const lbl = minutes >= 60 ? (minutes / 60) + 'h' : minutes + 'm';
     const ver = currentBot === 'v6' ? 'V6' : 'V5';
     document.getElementById('cfgTitle').textContent = `${ver} Configuration (${lbl} Regime on M1 bars)`;
+  } else if (currentBot === 'v8') {
+    const lbl = minutes >= 60 ? (minutes / 60) + 'h' : minutes + 'm';
+    document.getElementById('cfgTitle').textContent = `V8 Configuration (${lbl} Regime-Shift Swing · price exits · cost-aware)`;
   } else if (currentBot === 'v22') {
     const lbl = minutes >= 60 ? (minutes / 60) + 'h' : minutes + 'm';
     document.getElementById('cfgTitle').textContent = `V2.2 Configuration (${lbl} regime · V2.1 quant logic · bar-count gates in ${lbl} units)`;
@@ -1431,9 +1509,9 @@ function setV5TF(minutes) {
 
 function selectBot(bot) {
   currentBot = bot;
-  ['v1','v2','v21','v22','v3','v4','v5','v6','v7'].forEach(v =>
+  ['v1','v2','v21','v22','v3','v4','v5','v6','v7','v8'].forEach(v =>
     document.getElementById('btn' + v.toUpperCase()).classList.toggle('active', bot === v));
-  const isMTF = bot === 'v5' || bot === 'v6' || bot === 'v7' || bot === 'v22';
+  const isMTF = bot === 'v5' || bot === 'v6' || bot === 'v7' || bot === 'v22' || bot === 'v8';
   const tfMin = V5_MTF;
   const tfLbl = tfMin >= 60 ? (tfMin / 60) + 'h' : tfMin + 'm';
   const titles = {
@@ -1445,16 +1523,18 @@ function selectBot(bot) {
     v5: `V5 Configuration (${tfLbl} Regime on M1 bars)`,
     v6: `V6 Configuration (${tfLbl} Regime on M1 bars)`,
     v7: `V7 Configuration (${tfLbl} Regime + Exit Debounce on M1 bars)`,
+    v8: `V8 Configuration (${tfLbl} Regime-Shift Swing · price exits · cost-aware)`,
   };
   document.getElementById('cfgTitle').textContent = titles[bot] || 'Configuration';
+  document.getElementById('v8PresetRow').style.display = (bot === 'v8') ? '' : 'none';
   document.getElementById('hbScoreRow').style.display  = (bot === 'v1') ? 'none' : '';
   document.getElementById('v5TfLabel').style.display   = isMTF ? '' : 'none';
   document.getElementById('v5TfToggle').style.display  = isMTF ? '' : 'none';
   document.getElementById('hmmTrainWrap').style.display  = (bot === 'v2' || bot === 'v21' || bot === 'v3') ? 'flex' : 'none';
   document.getElementById('hmmTrainBadge').style.display = 'none';
-  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v21:V2_1_METRICS, v22:V2_2_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS, v7:V7_METRICS };
+  const metricsMap = { v1:V1_METRICS, v2:V2_METRICS, v21:V2_1_METRICS, v22:V2_2_METRICS, v3:V3_METRICS, v4:V4_METRICS, v5:V5_METRICS, v6:V6_METRICS, v7:V7_METRICS, v8:V8_METRICS };
   activeMetrics = metricsMap[bot] || V2_METRICS;
-  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+  const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS, v8:V8_DEFAULTS };
   const savedDefault = localStorage.getItem(`opt_default_${bot}`);
   cfg = savedDefault ? JSON.parse(savedDefault) : { ...(defaultsMap[bot] || V2_DEFAULTS) };
   buildConfigPanel();
@@ -1469,8 +1549,8 @@ function selectBot(bot) {
 // ─── Config panel ─────────────────────────────────────────────────────────────
 
 function buildConfigPanel() {
-  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
-  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v22:V2_2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
+  const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS, v8:V8_PARAMS };
+  const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v22:V2_2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS,  v8:V8_BOOLS  };
   const params = paramsMap[currentBot] || V2_PARAMS;
   const bools  = boolsMap[currentBot]  || V2_BOOLS;
 
@@ -1512,7 +1592,7 @@ function buildConfigPanel() {
 function onSlider(key, val, step) {
   let num = step % 1 === 0 ? parseInt(val) : parseFloat(val);
   if (isNaN(num)) return;
-  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
+  const paramsMap2 = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS, v8:V8_PARAMS };
   const params = paramsMap2[currentBot] || V2_PARAMS;
   const p = params.find(pp => pp.key === key);
   if (p) num = Math.max(p.min, Math.min(p.max, num));
@@ -1526,7 +1606,7 @@ function resetParam(key, def) {
 }
 
 function resetAllParams() {
-  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+  const resetMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS, v8:V8_DEFAULTS };
   localStorage.removeItem(`opt_default_${currentBot}`);
   cfg = { ...(resetMap[currentBot] || V2_DEFAULTS) };
   buildConfigPanel();
@@ -2569,7 +2649,7 @@ async function loadAndRun() {
         rawHtfSignals = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, V5_MTF * 4);
       } else if (currentBot === 'v4') {
         rawSignals = computeHMMSignalsV4(rawCandles, pair, trainedParams);
-      } else if (currentBot === 'v22') {
+      } else if (currentBot === 'v22' || currentBot === 'v8') {
         rawSignals = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, V5_MTF);
       } else {
         const trainDays    = parseInt(document.getElementById('hmmTrainDays')?.value  ?? '0');
@@ -2593,7 +2673,7 @@ async function loadAndRun() {
     // ── 3. Simulate on full M1 ───────────────────────────────────────────────
     setStatus('spin', 'Running simulation…');
     await uiYield();
-    const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v22:simulateV22, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+    const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v22:simulateV22, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6, v8:simulateV8 };
     allTrades = currentBot === 'v7'
       ? simulateV7(rawCandles, rawSignals, rawHtfSignals, cfg)
       : (simMap[currentBot] || simulateV2)(rawCandles, rawSignals, cfg);
@@ -2766,7 +2846,7 @@ function scoreOptTrial(anTr, anVa, limits) {
   if (trSo > 0 && vaSo < OPT_OVERFIT_GUARD * trSo) return { score: -500, reason: 'overfit_guard' };
   if (anVa.tpy > limits.maxTpy) return { score: -200, reason: 'val_tpy_too_high' };
   if (anVa.avgDurMin < limits.minDur) return { score: -200, reason: 'val_avgdur_too_short' };
-  if (anVa.winRate < 48 || anTr.winRate < 45) return { score: -300, reason: 'winrate_floor' };
+  if (anVa.winRate < (limits.minWinVa ?? 48) || anTr.winRate < (limits.minWinTr ?? 45)) return { score: -300, reason: 'winrate_floor' };
   if (anVa.rrRatio < (limits.minRR ?? 1.1)) return { score: -150, reason: 'rr_floor' };
 
   return { score: 0.7 * vaSo + 0.3 * trSo, reason: 'pass' };
@@ -2828,7 +2908,7 @@ async function runClientOptimizer() {
       rawHtfSignals = computeHMMSignalsAtMTF(rawCandles, pair, null, V5_MTF * 4);
     } else if (currentBot === 'v4') {
       rawSignals = computeHMMSignalsV4(rawCandles, pair, null);
-    } else if (currentBot === 'v22') {
+    } else if (currentBot === 'v22' || currentBot === 'v8') {
       rawSignals = computeHMMSignalsAtMTF(rawCandles, pair, null, V5_MTF);
     } else {
       rawSignals = computeHMMSignalsV2(rawCandles, pair, null, null, null); // v2 + v3
@@ -2842,8 +2922,8 @@ async function runClientOptimizer() {
     const cVa = rawCandles.slice(ti, vi), sVa = rawSignals.slice(ti, vi);
     const cTe = rawCandles.slice(vi),     sTe = rawSignals.slice(vi);
 
-    const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS };
-    const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v22:V2_2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS  };
+    const paramsMap = { v1:V1_PARAMS, v2:V2_PARAMS, v21:V2_1_PARAMS, v22:V2_2_PARAMS, v3:V3_PARAMS, v4:V4_PARAMS, v5:V5_PARAMS, v6:V6_PARAMS, v7:V7_PARAMS, v8:V8_PARAMS };
+    const boolsMap  = { v1:V1_BOOLS,  v2:V2_BOOLS,  v21:V2_1_BOOLS,  v22:V2_2_BOOLS,  v3:V3_BOOLS,  v4:V4_BOOLS,  v5:V5_BOOLS,  v6:V6_BOOLS,  v7:V7_BOOLS,  v8:V8_BOOLS  };
     const params = paramsMap[currentBot] || V2_PARAMS;
     const bools  = boolsMap[currentBot]  || V2_BOOLS;
     // V7 simulate needs htfSignals — use closures so runOptSplit sees same 3-arg signature.
@@ -2857,14 +2937,19 @@ async function runClientOptimizer() {
       simFnVa = (c, s, cfg) => simulateV7(c, s, htfVa, cfg);
       simFnTe = (c, s, cfg) => simulateV7(c, s, htfTe, cfg);
     } else {
-      const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v22:simulateV22, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6 };
+      const simMap = { v1:simulateV1, v2:simulateV2, v21:simulateV21, v22:simulateV22, v3:simulateV3, v4:simulateV4, v5:simulateV5, v6:simulateV6, v8:simulateV8 };
       const fn = simMap[currentBot] || simulateV2;
       simFnTr = simFnVa = simFnTe = fn;
     }
-    const mtf    = (currentBot === 'v5' || currentBot === 'v6' || currentBot === 'v7' || currentBot === 'v22') ? V5_MTF : 1;
-    const limits = optMtfLimits(mtf);
+    const mtf    = (currentBot === 'v5' || currentBot === 'v6' || currentBot === 'v7' || currentBot === 'v22' || currentBot === 'v8') ? V5_MTF : 1;
+    // V8 is a trend/trail system: legitimate configs run 35-45% win rate with high
+    // R:R, which the default 48/45% win-rate floor would wrongly reject. Relax the
+    // win-rate floor and demand payoff asymmetry instead.
+    const limits = currentBot === 'v8'
+      ? { ...optMtfLimits(mtf), minWinVa: 33, minWinTr: 30, minRR: 1.4 }
+      : optMtfLimits(mtf);
 
-    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS };
+    const defaultsMap = { v1:V1_DEFAULTS, v2:V2_DEFAULTS, v21:V2_1_DEFAULTS, v22:V2_2_DEFAULTS, v3:V3_DEFAULTS, v4:V4_DEFAULTS, v5:V5_DEFAULTS, v6:V6_DEFAULTS, v7:V7_DEFAULTS, v8:V8_DEFAULTS };
     let incumbent    = { ...(defaultsMap[currentBot] || V2_DEFAULTS) };
     let incumbentScore = -Infinity;
 
@@ -4131,6 +4216,313 @@ function mkTrade(pos, exitTs, exitPrice, reason) {
     duration_min:  Math.round((exitTs - pos.entry_ts) / 60),
     win:           pnlPct > 0,
   };
+}
+
+// ─── Simulation: V8 — regime-shift swing, price-based exits, cost-aware ───────
+// Enter on a FRESH regime shift (≤ shift_max_age MTF bars old), debounced.
+// Hold until PRICE reverts: one monotonic stop line (initial ATR stop → breakeven
+// → chandelier ATR trail off the peak). Regime chatter never exits the trade;
+// only an optional DEBOUNCED opposite-flip (flip_exit_bars consecutive opposite
+// MTF bars) and the max-hold backstop use the signal on the way out.
+// Honesty rules baked in:
+//   · Every trade pays cost_bp round-trip; stop-type exits pay slip_bp extra.
+//   · The stop is checked against the CURRENT bar BEFORE the bar's own extreme is
+//     allowed to ratchet it — no same-bar peak→trail→stop-out lookahead.
+//   · c._mtf overrides V5_MTF so the TF sweep can run any timeframe re-entrantly.
+function simulateV8(candles, signals, c) {
+  const S     = Math.max(1, Math.round(c._mtf || V5_MTF));
+  const ch    = Math.max(1, Math.round((c.candle_hold        || 2)  * S));
+  const coolN = Math.max(0, Math.round((c.post_exit_cooldown || 0)  * S));
+  const maxHN = Math.max(1, Math.round((c.max_hold_bars      || 72) * S));
+  const ageN  = Math.max(ch, Math.round((c.shift_max_age     || 4)  * S));
+  const flipN = Math.max(0, Math.round((c.flip_exit_bars     || 0)  * S));
+
+  const ec     = c.entry_conf      || 58;
+  const esm    = c.entry_score_min || 55;
+  const slM    = c.sl_atr_mult     || 2.5;
+  const beR    = c.be_at_r ?? 1.0;          // 0 = breakeven disabled
+  const armR   = c.trail_arm_r     || 1.0;
+  const trailM = c.trail_atr_mult  || 3.0;
+  const ws     = c.window_start    ?? 7;
+  const we     = c.window_end      ?? 19;
+  const costBp = c.cost_bp ?? 1.2;
+  const slipBp = c.slip_bp ?? 0.4;
+
+  // Cost-aware trade builder: 1bp = 0.01% of price. Stop-type exits slip extra.
+  const mkT8 = (p, exitTs, exitPx, reason, isStop) => {
+    const t = mkTrade(p, exitTs, exitPx, reason);
+    const costPct = (costBp + (isStop ? slipBp : 0)) / 100;
+    t.pnl_pct -= costPct;
+    t.pnl_r    = t.risk_pct > 0 ? t.pnl_pct / t.risk_pct : 0;
+    t.win      = t.pnl_pct > 0;
+    t.cost_pct = costPct;
+    return t;
+  };
+
+  const trades = [];
+  let pos = null, debounce = 0, cooldown = 0, flipCount = 0;
+  let lastRegime = null, shiftAge = Infinity;   // M1 bars since regime last changed value
+
+  for (let i = WARMUP; i < candles.length; i++) {
+    const sig = signals[i];
+    if (!sig) continue;
+    const bar = candles[i];
+
+    // Regime-shift age tracker (signals only change value at MTF boundaries)
+    if (sig.regime !== lastRegime) { lastRegime = sig.regime; shiftAge = 0; }
+    else shiftAge++;
+
+    const effConf = sig.conf * getSessionMult(sig.ts);
+    const score   = sig.v4_score ?? sig.score ?? 0;
+    const utcH    = Math.floor(sig.ts % 86400 / 3600);
+    const inWin   = utcH >= ws && utcH < we;
+
+    if (cooldown > 0) { cooldown--; continue; }
+
+    if (pos) {
+      // ── 1. Stop check FIRST, against the stop as it stood at this bar's open ─
+      const slHit = (pos.direction === 'LONG'  && bar.low  <= pos.sl) ||
+                    (pos.direction === 'SHORT' && bar.high >= pos.sl);
+      if (slHit) {
+        trades.push(mkT8(pos, bar.time, pos.sl, pos.sl_kind, true));
+        pos = null; debounce = 0; flipCount = 0; cooldown = coolN;
+        continue;
+      }
+
+      // ── 2. Ratchet the stop from this bar's extreme (affects NEXT bars) ─────
+      const fav = pos.direction === 'LONG'
+        ? bar.high - pos.entry_price
+        : pos.entry_price - bar.low;
+      if (fav > pos.mfe_price) pos.mfe_price = fav;
+      const mfe_r = pos.orig_sl_dist > 0 ? pos.mfe_price / pos.orig_sl_dist : 0;
+
+      if (beR > 0 && mfe_r >= beR) {
+        if (pos.direction === 'LONG'  && pos.sl < pos.entry_price) { pos.sl = pos.entry_price; pos.sl_kind = 'BE_STOP'; }
+        if (pos.direction === 'SHORT' && pos.sl > pos.entry_price) { pos.sl = pos.entry_price; pos.sl_kind = 'BE_STOP'; }
+      }
+      if (mfe_r >= armR && pos.atr_entry > 0) {
+        const peak = pos.direction === 'LONG'
+          ? pos.entry_price + pos.mfe_price
+          : pos.entry_price - pos.mfe_price;
+        const tsl = pos.direction === 'LONG'
+          ? peak - trailM * pos.atr_entry
+          : peak + trailM * pos.atr_entry;
+        if (pos.direction === 'LONG'  && tsl > pos.sl) { pos.sl = tsl; pos.sl_kind = 'TRAIL'; }
+        if (pos.direction === 'SHORT' && tsl < pos.sl) { pos.sl = tsl; pos.sl_kind = 'TRAIL'; }
+      }
+
+      // ── 3. Debounced opposite-flip exit (0 = disabled). RANGE bars reset. ───
+      let exited = false;
+      if (flipN > 0) {
+        const opposite = (pos.direction === 'LONG'  && sig.regime === 'BEAR') ||
+                         (pos.direction === 'SHORT' && sig.regime === 'BULL');
+        flipCount = opposite ? flipCount + 1 : 0;
+        if (flipCount >= flipN) {
+          trades.push(mkT8(pos, bar.time, bar.close, 'OPP_FLIP', false));
+          exited = true;
+        }
+      }
+
+      // ── 4. Max-hold backstop ────────────────────────────────────────────────
+      if (!exited) {
+        pos.bars_held++;
+        if (pos.bars_held >= maxHN) {
+          trades.push(mkT8(pos, bar.time, bar.close, 'MAX_HOLD', false));
+          exited = true;
+        }
+      }
+
+      if (exited) { pos = null; debounce = 0; flipCount = 0; cooldown = coolN; }
+      continue;   // no same-bar re-entry
+    }
+
+    // ── Entry: fresh shift into BULL/BEAR, confirmed, in window ───────────────
+    if (inWin) {
+      const isDir   = sig.regime === 'BULL' || sig.regime === 'BEAR';
+      const isFresh = shiftAge < ageN;
+      const okConf  = effConf >= ec;
+      const okScore = score   >= esm;
+      const okSlope = (sig.regime === 'BULL' && sig.slope > 0) ||
+                      (sig.regime === 'BEAR' && sig.slope < 0);
+
+      if (isDir && isFresh && okConf && okScore && okSlope) {
+        debounce++;
+        if (debounce >= ch && sig.atrSL > 0) {
+          const dir = sig.regime === 'BULL' ? 'LONG' : 'SHORT';
+          const ep  = bar.close;
+          const osd = sig.atrSL * slM;
+          pos = {
+            direction:      dir,
+            entry_price:    ep,
+            entry_ts:       bar.time,
+            sl:             dir === 'LONG' ? ep - osd : ep + osd,
+            sl_kind:        'SL',
+            orig_sl_dist:   osd,
+            atr_entry:      sig.atrSL,
+            mfe_price:      0,
+            bars_held:      0,
+            regime:         sig.regime,
+            conf_at_entry:  sig.conf,
+            decay_at_entry: sig.decay || 0,
+            entry_score:    score,
+          };
+          debounce = 0; flipCount = 0;
+        }
+      } else {
+        debounce = 0;
+      }
+    } else {
+      debounce = 0;
+    }
+  }
+
+  if (pos) {
+    const last = candles[candles.length - 1];
+    trades.push(mkT8(pos, last.time, last.close, 'END', false));
+  }
+  return trades;
+}
+
+// ─── V8 preset suite + TF sweep ───────────────────────────────────────────────
+
+function buildV8PresetBtns() {
+  const wrap = document.getElementById('v8PresetBtns');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  V8_PRESETS.forEach((p, idx) => {
+    const tfLbl = p.tf >= 60 ? (p.tf / 60) + 'h' : p.tf + 'm';
+    const btn = document.createElement('button');
+    btn.className = 'dark-btn';
+    btn.style.cssText = 'padding:4px 12px;font-size:11px';
+    btn.textContent = `${p.name} · ${tfLbl}`;
+    btn.onclick = () => applyV8Preset(idx);
+    wrap.appendChild(btn);
+  });
+}
+
+function applyV8Preset(idx) {
+  const p = V8_PRESETS[idx];
+  if (!p) return;
+  cfg = { ...V8_DEFAULTS, ...p.cfg };
+  setV5TF(p.tf);
+  buildConfigPanel();
+  setStatus('ready', `Preset "${p.name}" loaded (${p.tf >= 60 ? p.tf / 60 + 'h' : p.tf + 'm'} regime TF) — click ▶ Load & Run`);
+}
+
+// Sweep: every preset at its own TF + the current config at 15m/30m/1h/4h.
+// One M1 fetch; HMM signals cached per TF; all rows net of costs; last-30%
+// chronological holdout reported per row.
+async function runV8Sweep() {
+  if (currentBot !== 'v8') selectBot('v8');
+  const pair    = document.getElementById('pairSel').value;
+  const fromStr = document.getElementById('fromDate').value;
+  const toStr   = document.getElementById('toDate').value;
+  if (!fromStr || !toStr) { setStatus('err', 'Select a date range first'); return; }
+
+  const runBtn   = document.getElementById('runBtn');
+  const sweepBtn = document.getElementById('v8SweepBtn');
+  runBtn.disabled = true; sweepBtn.disabled = true;
+
+  try {
+    const ps = pairSafe(pair);
+    let rawCandles = await fetchM1CandlesChunked(ps, fromStr, toStr, (idx, total) => {
+      setStatus('spin', `Sweep: loading M1 candles… chunk ${idx}/${total}`);
+    });
+    if (!rawCandles.length) throw new Error('No M1 candle data — check Railway/R2 or try a shorter range');
+    const trainedParams = await fetchTrainedParams();
+
+    const currentCfg = { ...cfg };
+    const rows = [
+      ...V8_PRESETS.map(p => ({ name: p.name, tf: p.tf, cfg: { ...V8_DEFAULTS, ...p.cfg } })),
+      ...[15, 30, 60, 240].map(tf => ({ name: 'Current config', tf, cfg: currentCfg })),
+    ];
+
+    const t0 = rawCandles[0].time, t1 = rawCandles[rawCandles.length - 1].time;
+    const tSplit = t0 + (t1 - t0) * 0.7;
+
+    const sigCache = {};
+    const results  = [];
+    for (const row of rows) {
+      if (!sigCache[row.tf]) {
+        const tfLbl = row.tf >= 60 ? row.tf / 60 + 'h' : row.tf + 'm';
+        setStatus('spin', `Sweep: computing HMM signals @ ${tfLbl}…`);
+        await uiYield();
+        sigCache[row.tf] = computeHMMSignalsAtMTF(rawCandles, pair, trainedParams, row.tf);
+      }
+      const trades = simulateV8(rawCandles, sigCache[row.tf], { ...row.cfg, _mtf: row.tf });
+      const an     = computeAnalytics(trades);
+      const tail   = trades.filter(t => t.entry_ts >= tSplit);
+      const anTail = computeAnalytics(tail);
+      const avgHoldH = trades.length ? trades.reduce((s, t) => s + t.duration_min, 0) / trades.length / 60 : 0;
+      const costDrag = trades.reduce((s, t) => s + (t.cost_pct || 0), 0);
+      results.push({ row, an, anTail, tailN: tail.length, avgHoldH, costDrag });
+      await uiYield();
+    }
+    rawCandles = null;
+
+    renderV8Sweep(results, pair, fromStr, toStr);
+    setStatus('ok', `Sweep complete — ${rows.length} configs × ${pair}. Judge rows by the Last-30% columns, not the full-period ones.`);
+  } catch (err) {
+    setStatus('err', `Sweep error: ${err.message}`);
+    console.error(err);
+  }
+  runBtn.disabled = false; sweepBtn.disabled = false;
+}
+
+function renderV8Sweep(results, pair, fromStr, toStr) {
+  const wrap = document.getElementById('v8SweepWrap');
+  if (!wrap) return;
+  const fmt  = (v, d = 2) => (v == null || !isFinite(v)) ? '—' : Number(v).toFixed(d);
+  const tfL  = tf => tf >= 60 ? tf / 60 + 'h' : tf + 'm';
+
+  // "Interesting" bar: holdout PF ≥ 1.15 on ≥ 15 holdout trades. Everything else is noise/null.
+  const MIN_TAIL_N = 15, MIN_TAIL_PF = 1.15;
+  const isLive = r => r.anTail && r.tailN >= MIN_TAIL_N && r.anTail.pf >= MIN_TAIL_PF;
+  const nLive  = results.filter(isLive).length;
+
+  const th = 'padding:4px 8px;text-align:right;color:var(--text3);font-weight:600;white-space:nowrap';
+  const td = 'padding:4px 8px;text-align:right;white-space:nowrap';
+
+  const rowsHtml = results.map(r => {
+    const a = r.an, t = r.anTail;
+    const live = isLive(r);
+    const bg   = live ? 'background:rgba(0,201,125,.08)' : '';
+    const tailStyle = live ? 'color:#00c97d;font-weight:700' : 'color:var(--text3)';
+    return `<tr style="border-top:1px solid #1c2133;${bg}">
+      <td style="padding:4px 8px;text-align:left;white-space:nowrap">${r.row.name}${live ? ' ✓' : ''}</td>
+      <td style="${td}">${tfL(r.row.tf)}</td>
+      <td style="${td}">${a ? a.total : 0}</td>
+      <td style="${td}">${a ? fmt(a.total / Math.max(a.years, 1 / 52), 0) : '—'}</td>
+      <td style="${td}">${a ? fmt(a.winRate, 1) : '—'}</td>
+      <td style="${td}">${a ? fmt(a.pf) : '—'}</td>
+      <td style="${td}">${a ? fmt(a.rrRatio) : '—'}</td>
+      <td style="${td}">${a ? fmt(a.sharpe) : '—'}</td>
+      <td style="${td}">${a ? '-' + fmt(a.maxDD, 1) + '%' : '—'}</td>
+      <td style="${td}">${fmt(r.avgHoldH, 1)}h</td>
+      <td style="${td}">-${fmt(Math.abs(r.costDrag), 1)}%</td>
+      <td style="${td}">${a ? (a.totalPnl >= 0 ? '+' : '') + fmt(a.totalPnl, 1) + '%' : '—'}</td>
+      <td style="${td};border-left:1px solid #2a3149;${tailStyle}">${r.tailN}</td>
+      <td style="${td};${tailStyle}">${t ? fmt(t.pf) : '—'}</td>
+      <td style="${td};${tailStyle}">${t ? (t.totalPnl >= 0 ? '+' : '') + fmt(t.totalPnl, 1) + '%' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px">
+      ${pair} · ${fromStr} → ${toStr} · all rows NET of cost+slippage ·
+      <b style="color:${nLive ? '#00c97d' : 'var(--text3)'}">${nLive}/${results.length} row(s) clear the holdout bar</b>
+      (Last-30% PF ≥ ${MIN_TAIL_PF} on ≥ ${MIN_TAIL_N} trades). A row failing that bar is a NULL on this data — not a tweak candidate.
+    </div>
+    <table style="border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace;min-width:900px">
+      <thead><tr>
+        <th style="${th};text-align:left">Config</th><th style="${th}">TF</th>
+        <th style="${th}">Trades</th><th style="${th}">/yr</th><th style="${th}">WR%</th>
+        <th style="${th}">PF</th><th style="${th}">R:R</th><th style="${th}">Sharpe</th>
+        <th style="${th}">MaxDD</th><th style="${th}">Hold</th><th style="${th}">Cost</th><th style="${th}">Net P&L</th>
+        <th style="${th};border-left:1px solid #2a3149">30% N</th><th style="${th}">30% PF</th><th style="${th}">30% P&L</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
