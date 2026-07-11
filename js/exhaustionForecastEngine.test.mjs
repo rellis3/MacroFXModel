@@ -43,3 +43,14 @@ test('exhaustionForecast: gated + ungated fade both produce IS/OOS summaries', (
 test('exhaustionForecast: insufficient data flagged, not thrown', () => {
   assert.equal(exhaustionForecast(synthDays(30)).insufficient, true);
 });
+
+test('exhaustionForecast: hard harness reports strict-marked robustness fields', () => {
+  const r = exhaustionForecast(synthDays(200), { budgetFrac: 0.8 });
+  const h = r.hard;
+  assert.ok(h, 'hard block present');
+  assert.ok(typeof h.winRate === 'number' && typeof h.expectancy === 'number', 'win rate + expectancy surfaced');
+  assert.ok(Array.isArray(h.costSens) && h.costSens.length === 3, 'cost-sensitivity ×1/×2/×3');
+  assert.ok(h.costSens[2].sharpe <= h.costSens[0].sharpe, '×3 cost is no better than ×1');
+  assert.ok(typeof h.posYears === 'number' && h.posYears <= h.totYears, 'per-year split consistent');
+  assert.equal(typeof h.survives, 'boolean', 'survivor verdict is a boolean');
+});
