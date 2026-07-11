@@ -1,474 +1,608 @@
-# Macro Deep Dives — Study Notes
+# Macro Deep Dives — Lesson Notes
 
 > **Course:** Colez Trades — Quantitative & Macro Insights
 > **Module:** Macro Deep Dives — standalone frameworks and live applications:
-> regime detection, the rates–FX lead-lag, business-sentiment signals, reading the options complex.
-> **Lessons covered so far:** 1 (Macro Drivers, Regime Detection & Validation),
-> 2 (The Transatlantic Yield Spread), 3 (Live Case Study: The Spread Moved First).
-> **Purpose of this file:** my own learning notes — summaries, key points to memorise,
-> exam-style self-test questions, research ideas, and how each concept maps onto this
-> repo (MacroFXModel) for real-time implementation.
-> **Note-taking discipline:** every claim from the lessons is tagged where possible as
-> **[replicated]** (documented in academic/practitioner literature), **[plausible mechanism]**
-> (sound economic logic, needs my own validation), or **[folklore/anecdote]** (one example
-> or practitioner heuristic — treat as hypothesis only). This mirrors the house rules in
-> `CLAUDE.md` — a lesson slide is not evidence.
+> regime detection, the rates–FX lead-lag, business-sentiment signals, and reading
+> the options complex.
+> **Lessons covered:** 1 — Macro Drivers, Regime Detection & Validation ·
+> 2 — The Transatlantic Yield Spread · 3 — Live Case Study: The Spread Moved First.
+> **Purpose:** raw learning notes on the lesson material — key facts, frameworks,
+> formulas, and questions to investigate later. For revision, exams, and real-time use.
 
 ---
 
 ## Lesson 1 — Macro Drivers, Regime Detection & Validation
 
-### 1.1 The six macro driver families
+### 1.1 The drivers of asset prices (six macro factor families)
 
-Macroeconomic variables are the "currents" that move all asset prices. The lesson's taxonomy:
+Macroeconomic variables create the fundamental currents that move markets.
+Understanding these drivers is the foundation of systematic macro trading.
 
-| Driver | What it captures | Key series |
+| Driver | What it shapes | Key series to watch |
 |---|---|---|
-| **Growth expectations** | Risk appetite, earnings expectations | GDP, employment, industrial production, leading indicators |
-| **Inflation dynamics** | Real returns, CB policy, nominal-vs-real asset preference | CPI, PCE, wage growth, breakevens |
-| **Monetary policy** | Liquidity conditions, discount rates | Fed funds, QE/QT, forward guidance, global CB coordination |
-| **Liquidity conditions** | Availability of capital | M2 growth, bank reserves, credit spreads, funding markets |
-| **Risk sentiment** | Aggregate risk appetite / mean-reversion potential | VIX, credit spreads, safe-haven flows, positioning |
-| **Global flows** | Cross-border dynamics, relative valuations | Capital flows, FX, trade balances, reserve accumulation |
+| **Growth expectations** | Risk appetite and corporate earnings expectations across all asset classes | GDP growth, employment trends, industrial production, leading indicators |
+| **Inflation dynamics** | Real returns, central bank policy, nominal-vs-real asset attractiveness | CPI, PCE, wage growth, inflation expectations |
+| **Monetary policy** | Liquidity conditions and discount rates for all assets | Fed funds rate, QE/QT, forward guidance, global CB coordination |
+| **Liquidity conditions** | Availability of capital flowing through the financial system | M2 growth, bank reserves, credit spreads, funding markets |
+| **Risk sentiment** | Aggregate risk appetite and potential for mean reversion | VIX, credit spreads, safe-haven flows, positioning data |
+| **Global flows** | Cross-border dynamics and relative valuations | Capital flows, currency movements, trade balances, reserve accumulation |
 
-**Memorise:** Growth, Inflation, Policy, Liquidity, Sentiment, Flows — *"GIPLSF"*.
-Growth and inflation are the two that define the regime quadrant (§1.3); the other four
-modulate how the regime expresses itself.
+**Memory aid:** Growth, Inflation, Policy, Liquidity, Sentiment, Flows.
+Growth and inflation define the regime quadrant (§1.3); the other four modulate
+how a regime expresses itself.
 
 ### 1.2 The yield curve as economic barometer
 
-- **Term spread** = `Yield(10Y) − Yield(2Y)`.
-- Curve shape encodes market expectations of growth, inflation and policy:
+The yield curve encodes market expectations about future growth, inflation, and
+monetary policy. Its shape is one of the most powerful predictive signals in macro
+finance.
 
-| Shape | Implication | Lead time | Favoured assets |
+**Term spread** = `Yield(10Y) − Yield(2Y)`
+
+| Curve shape | Economic implication | Historical lead time | Asset implications |
 |---|---|---|---|
-| Steep (normal) | Expansion, positive carry | — | Cyclicals, banks, duration |
-| Flat | Transition/uncertainty | 6–12 months pre-slowdown | Quality, cash |
-| **Inverted** | Recession signal, cuts expected | **12–24 months pre-recession** | Duration, defensives; avoid cyclicals |
-| Bear steepening | Rising long rates, inflation fear | — | Commodities, TIPS; avoid growth |
-| Bull steepening | Cuts arriving, early recovery | — | Risk assets, small cap |
+| Steep (normal) | Expansion expected, positive carry | — | Cyclicals, banks, duration |
+| Flat | Transition period, uncertainty | 6–12 months pre-slowdown | Quality, cash |
+| **Inverted** | Recession signal, rate cuts expected | **12–24 months pre-recession** | Duration, defensives; avoid cyclicals |
+| Bear steepening | Rising long rates, inflation fears | — | Commodities, TIPS; avoid growth |
+| Bull steepening | Rate cuts, early recovery | — | Risk assets, small cap |
 
-- **[replicated]** Curve inversion as a recession lead is one of the better-documented macro
-  signals (Estrella & Mishkin etc.), though the lead time is long and variable — it's a
-  *regime* input, not a trade timer.
-- **Exam trap:** distinguish bear steepening (long end rises — inflation fear) from bull
-  steepening (short end falls — cuts). Same shape change, opposite cause and asset map.
+**Revision point:** bear steepening = long end rises (inflation fear); bull
+steepening = short end falls (cuts arriving). Same shape change, opposite cause,
+opposite asset map.
 
-### 1.3 The growth–inflation quadrant (the core regime model)
+### 1.3 The growth–inflation quadrant (regime classification)
 
-Two dimensions — growth **trajectory** and inflation **trajectory** (rate of change, NOT
-levels) — give four regimes:
+Every macro environment can be classified into one of four regimes along two
+dimensions: **growth trajectory** and **inflation trajectory**. Each regime has
+distinct asset-class implications.
 
 ```
-                 Inflation ↓            Inflation ↑
- Growth ↑ │   GOLDILOCKS            REFLATION
-          │   long equities/credit/  long commodities/value/
-          │   growth/EM;             TIPS/energy;
-          │   short cmdty/gold/cash  short duration/growth
- ─────────┼───────────────────────────────────────────────
- Growth ↓ │   DEFLATION (risk-off)  STAGFLATION
-          │   long duration/quality/ long gold/energy/cash/
-          │   USD/defensives;        TIPS;
-          │   short cyclicals/EM/HY  short equities/bonds/credit
+                 Inflation falling        Inflation rising
+ Growth  │   GOLDILOCKS               REFLATION
+ rising  │   OW: equities, credit,     OW: commodities, value,
+         │       growth stocks, EM         TIPS, energy
+         │   UW: commodities, gold,    UW: duration, growth
+         │       cash                      stocks, bonds
+ ────────┼──────────────────────────────────────────────────
+ Growth  │   DEFLATION / RISK-OFF     STAGFLATION
+ falling │   OW: duration, quality,    OW: gold, energy, cash,
+         │       USD, defensives           TIPS
+         │   UW: cyclicals, EM,        UW: equities, bonds,
+         │       high yield                credit
 ```
 
-**Key points to remember:**
+- **Goldilocks** — the ideal environment: strong growth without inflationary
+  pressure lets central banks stay accommodative; risk assets thrive.
+- **Reflation** — expansion with building price pressures; central banks begin
+  tightening; real assets and value outperform.
+- **Deflation / risk-off** — contraction with falling prices; flight to safety
+  dominates; central banks cut aggressively.
+- **Stagflation** — the worst environment: weak growth with persistent inflation
+  leaves central banks trapped; real assets and cash are the only refuge.
 
-1. **Rate of change, not level.** A 55 ISM falling from 60 is a *deteriorating* growth
-   signal even though the level is expansionary. This is the single most repeated idea
-   in the lesson.
-2. **Goldilocks** = ideal (growth without inflation → CBs stay easy → risk assets thrive).
-3. **Stagflation** = worst (CBs trapped; only gold/energy/cash/TIPS work).
-4. **USD** tends to strengthen in deflation/risk-off (safe haven) and stagflation (mildly),
-   weaken in goldilocks — directly relevant to FX work in this repo.
+### 1.4 Regime detection framework
 
-### 1.4 Regime detection implementation
+**Core principle: use rate of change, not levels** — we care about trajectory,
+not absolute values. (A 55 ISM falling from 60 is deteriorating growth even though
+the level is expansionary.)
 
-- **Growth score:** composite of ISM Manufacturing + ISM Services (0.4/0.4) + claims z-score
-  (0.2); signal = 3-month momentum vs 12-month trend.
-- **Inflation score:** composite of core CPI + core PCE (0.4/0.4) + 5Y breakevens (0.2);
-  signal = 3-month change (momentum), YoY basis.
-- **Classification:** simple sign thresholds at zero (or percentiles) on the two scores →
-  one of the four quadrants.
-- Data source: **FRED** (free; `fredapi` in Python). We already have `FRED_KEY` in Railway.
+| Dimension | Primary indicators | Secondary indicators | Signal construction |
+|---|---|---|---|
+| **Growth** | ISM Manufacturing PMI, ISM Services PMI | Initial claims, LEI, industrial production | 3-month rate of change vs 12-month trend |
+| **Inflation** | Core CPI, Core PCE, 5Y breakevens | PPI, wage growth, commodity indices | YoY change in 3-month momentum |
+
+Implementation sketch from the lesson:
 
 ```python
+def calculate_growth_score(ism_mfg, ism_svc, claims, lei):
+    # Normalize each indicator to z-score
+    # Calculate 3-month momentum vs 12-month trend
+    ism_composite = 0.4 * ism_mfg + 0.4 * ism_svc + 0.2 * (50 - claims_zscore)
+    momentum = ism_composite.rolling(3).mean() - ism_composite.rolling(12).mean()
+    return momentum
+
+def calculate_inflation_score(core_cpi, core_pce, breakevens):
+    inflation_composite = 0.4 * core_cpi + 0.4 * core_pce + 0.2 * breakevens
+    momentum = inflation_composite.diff(3)   # 3-month change
+    return momentum
+
 def classify_regime(growth_score, inflation_score):
+    # Threshold at zero for simplicity (or use percentiles)
     if growth_score > 0 and inflation_score <= 0: return "GOLDILOCKS"
     if growth_score > 0 and inflation_score > 0:  return "REFLATION"
     if growth_score <= 0 and inflation_score > 0: return "STAGFLATION"
     return "DEFLATION"
 ```
 
-**My critique (important for implementation):** the lesson's pseudo-code mixes units
-(raw ISM levels + z-scores) — a real implementation must z-score *every* input first,
-respect **publication lags** (ISM ~1st business day for prior month; CPI mid-month;
-point-in-time discipline or the backtest lies), and pick thresholds without peeking.
+**Data note (from the lesson):** the FRED API provides free access to these
+indicators — fred.stlouisfed.org or the `fredapi` Python package.
 
-### 1.5 Regime *transitions* (higher value than the regime itself)
+### 1.5 Regime transition signals
 
-| Transition | Early warnings | Typical duration | Positioning shift |
+**Regime transitions are often more important than the regime itself.** Early
+detection of transitions provides the highest-value trading signals.
+
+| Transition | Early warning signs | Typical duration | Positioning shift |
 |---|---|---|---|
-| Goldilocks → Reflation | Wages accelerating, commodities rising, breakevens widening | 3–6 mo | Growth→Value, add commodities, cut duration |
-| Reflation → Stagflation | PMIs roll over while inflation sticky; curve flattens | 2–4 mo | Cut equity beta, add gold, raise cash |
-| Stagflation → Deflation | Credit spreads widen, breakevens fall, PMIs contract | **1–3 mo, often rapid** | Add duration aggressively, quality over junk |
-| Deflation → Goldilocks | PMIs trough, spreads narrow, CB easing | 3–6 mo | Add risk, cut duration, cyclicals |
+| Goldilocks → Reflation | Wage growth accelerating, commodity prices rising, breakevens widening | 3–6 months | Rotate Growth→Value, add commodities, reduce duration |
+| Reflation → Stagflation | PMIs rolling over while inflation sticky, yield curve flattening | 2–4 months | Reduce equity beta, add gold, increase cash |
+| Stagflation → Deflation | Credit spreads widening, inflation expectations falling, PMIs contracting | **1–3 months (often rapid)** | Add duration aggressively, quality over junk, reduce commodities |
+| Deflation → Goldilocks | PMIs troughing, credit spreads narrowing, central bank easing | 3–6 months | Add risk, reduce duration, favour cyclicals |
 
-**Memorise:** the stagflation→deflation transition is the *fastest* (credit-driven), so it
-is the one a monthly-frequency classifier is most likely to miss. Argues for including a
-higher-frequency input (credit spreads, breakevens) in the transition detector.
+**Revision point:** stagflation→deflation is the fastest transition and is
+credit-driven — the early warnings are market prices (credit spreads, breakevens),
+not survey data.
 
 ### 1.6 Historical asset performance by regime (1970–2024, annualised)
 
-| Asset | Goldilocks | Reflation | Stagflation | Deflation |
+| Asset class | Goldilocks | Reflation | Stagflation | Deflation |
 |---|---|---|---|---|
 | US equities | **+15.2%** | +8.4% | −4.2% | −12.1% |
-| US 10Y Treasuries | +4.1% | −2.3% | −1.8% | **+11.4%** |
+| US Treasuries (10Y) | +4.1% | −2.3% | −1.8% | **+11.4%** |
 | Commodities (GSCI) | +1.2% | **+18.7%** | +12.3% | −15.8% |
 | Gold | −2.1% | +8.9% | **+21.4%** | +6.2% |
-| **USD index** | −3.2% | +0.8% | +2.4% | **+7.1%** |
+| USD index | −3.2% | +0.8% | +2.4% | **+7.1%** |
 
-- **[plausible mechanism / needs verification]** These are the lesson's numbers, classified
-  with ISM+CPI momentum; I have not reproduced them. In-sample regime labels + in-sample
-  returns = the classic look-ahead trap; reproduce before trusting.
-- **FX takeaway to keep:** USD's best regime is deflation/risk-off (+7.1%) — consistent
-  with the safe-haven override in Lesson 2 §2.5. USD is a *risk-off asset* first and a
-  *carry asset* second.
+*Regimes classified using ISM and CPI momentum. Past performance is not indicative
+of future results (per the lesson).*
 
-### 1.7 The four entry-model families
+**Key facts to remember:** each asset has one standout regime — equities in
+goldilocks, duration in deflation, commodities in reflation, gold in stagflation,
+USD in deflation/risk-off. **FX relevance:** the USD's best regime is
+deflation/risk-off (+7.1%) and its worst is goldilocks (−3.2%).
 
-| Model | Core idea | Signal examples | Best conditions |
-|---|---|---|---|
-| **Mean reversion** | Extremes revert to central tendency | Z-score \|Z\|>2 from MA; RSI <30/>70; Bollinger + volume; pairs spread | Range-bound, low vol, no strong catalyst |
-| **Momentum / trend** | Winners keep winning (behavioural bias + slow info diffusion) | 12-1 momentum (skip last month); 50/200 MA cross; Donchian/ATR breakouts; cross-sectional rank | Trending markets, regime change, high dispersion |
-| **Stat arb** | Related securities keep stable relationships | Pairs; ETF vs components; factor residuals; cross-asset (credit vs equity) | Requires **cointegration** (not just correlation) + economic linkage + liquidity |
-| **Lead–lag** | Information propagates with delay | Copper→equities; credit→equity; large→small cap; futures→cash | Requires Granger causality, OOS stability, economic rationale |
+### 1.7 Entry models — the four systematic strategy families
 
-- **[replicated]** Time-series momentum (12-1) is one of the genuinely replicated anomalies
-  (see `CLAUDE.md` folklore-vs-replicated map). RSI/Bollinger-style mean reversion is
-  **[folklore]** — infrastructure only, never sold as edge.
-- **Lead–lag is the family Lessons 2–3 build on** — and the lesson itself states the
-  validation bar: Granger causality, OOS stability, economic rationale. Hold it to that.
+Different market inefficiencies require different exploitation methods.
 
-### 1.8 The validation gauntlet (maps 1:1 onto this repo's harness discipline)
+**⟲ Mean reversion** — prices oscillate around a central tendency; extreme
+deviations tend to revert.
+- Signals: z-score from MA (`Z = (Price − MA) / σ`, entry when |Z| > 2); RSI
+  extremes (<30 oversold, >70 overbought); Bollinger penetration with volume
+  confirmation; pairs spread deviation from cointegrated equilibrium.
+- Best conditions: range-bound, low-volatility regimes; high mean-reversion
+  coefficient assets; absence of strong fundamental catalysts.
 
-Pipeline: **In-sample dev → Walk-forward → OOS holdout (never touched) → Monte Carlo →
-Sensitivity → Paper trade.**
+**↗ Momentum / trend following** — winners keep winning; trends persist due to
+behavioural biases and slow information diffusion.
+- Signals: time-series 12-1 momentum (`Signal = Return(t−252 → t−21)`, skip the
+  most recent month); 50/200-day golden cross; Donchian/ATR breakout systems;
+  cross-sectional rank (long top decile, short bottom).
+- Best conditions: trending markets, macro regime changes, high dispersion across
+  assets, strong macro catalysts driving flows.
 
-- **Walk-forward efficiency:** `WFE = OOS performance / IS performance`.
-  Target **WFE > 0.5**; below **0.3** = severe overfitting. New metric to me — worth
-  adding to `summarizeSplit` reporting (it's just OOS/IS Sharpe as a ratio).
-- **Metric reference table** (thresholds per lesson):
+**⇌ Statistical arbitrage** — related securities should maintain stable
+relationships; temporary deviations create market-neutral opportunities.
+- Types: pairs trading (long underperformer / short outperformer); basket vs
+  component (ETF vs underlying); factor residuals (alpha after removing factor
+  exposures); cross-asset (credit vs equity, commodity vs producer).
+- Spread model: `Spread = β₀ + β₁·Asset₁ − Asset₂ + ε`.
+- Key requirements: **cointegration (not just correlation)**, an economic linkage
+  explaining the relationship, sufficient liquidity in both legs.
 
-| Metric | Formula | Good | Excellent |
-|---|---|---|---|
-| Sharpe | (R−Rf)/σ | >1.0 | >2.0 |
-| Sortino | (R−Rf)/σ_down | >1.5 | >2.5 |
-| Calmar | CAGR/MaxDD | >0.5 | >1.0 |
-| Information ratio | α/TE | >0.5 | >1.0 |
-| Profit factor | GrossProfit/GrossLoss | >1.5 | >2.0 |
+**⏱ Lead–lag relationships** — information doesn't propagate instantly; some
+assets/sectors/markets lead others.
+- Common pairs: copper → equities (industrial demand); credit → equity (credit
+  often leads turning points); large cap → small cap (information flows to less
+  liquid); futures → cash (informed traders use leveraged markets first).
+- Measure: cross-correlation `ρ(lag) = Corr(Xₜ, Yₜ₊ₗₐ𝓰)`.
+- **Validation required:** Granger causality testing, out-of-sample stability,
+  and an economic rationale for the lead.
 
-  All five already exist in `js/metricsCore.js` — one definition each; never re-implement.
-- **Checklists** (before backtest / before live): economic rationale documented,
-  point-in-time data, survivorship bias, cost model, reserved OOS, walk-forward passed,
-  statistical significance, Monte Carlo, 3+ months paper, risk limits + kill switches.
-  This is essentially `CLAUDE.md`'s "Validate the same way every time" rule expanded.
+### 1.8 Validation framework — rigorous strategy testing
+
+"The quantitative structure that separates robust strategies from data-mined
+illusions. Every edge must survive this gauntlet."
+
+Pipeline (in order):
+1. **In-sample dev** — build and optimise on training data
+2. **Walk-forward** — rolling optimisation + test windows
+3. **Out-of-sample** — final holdout test (never touched)
+4. **Monte Carlo** — assess robustness via simulation
+5. **Sensitivity** — parameter stability testing
+6. **Paper trade** — live market, no capital at risk
+
+**Walk-forward optimisation** — the gold standard. Repeatedly optimise on past
+data, test on the next window; final performance is the concatenation of all OOS
+test periods (mimics real trading — you never have future information).
+
+**Walk-forward efficiency:** `WFE = OOS performance / IS performance`.
+Target **WFE > 0.5**; below **0.3** suggests severe overfitting.
+
+**Performance metrics reference:**
+
+| Metric | Formula | Good | Excellent | Measures |
+|---|---|---|---|---|
+| Sharpe ratio | (R − Rf) / σ | > 1.0 | > 2.0 | Risk-adjusted return (total vol) |
+| Sortino ratio | (R − Rf) / σ_down | > 1.5 | > 2.5 | Risk-adjusted (downside vol only) |
+| Calmar ratio | CAGR / MaxDD | > 0.5 | > 1.0 | Return per unit drawdown risk |
+| Information ratio | α / tracking error | > 0.5 | > 1.0 | Active return per unit active risk |
+| Profit factor | gross profit / gross loss | > 1.5 | > 2.0 | Magnitude of wins vs losses |
+
+**System development checklist:**
+
+*Before backtesting:* economic rationale documented · point-in-time data
+confirmed · survivorship bias addressed · transaction cost model built · OOS
+holdout data reserved.
+
+*Before live trading:* walk-forward analysis passed · statistical significance
+confirmed · Monte Carlo stress tested · paper trading completed (3+ months) ·
+risk limits and kill switches set.
 
 ---
 
-## Lesson 2 — The Transatlantic Yield Spread (US 10Y − German Bund)
+## Lesson 2 — The Transatlantic Yield Spread (US 10Y vs German Bund)
 
-### 2.1 The headline facts (data through 02 Sep 2025)
+"The most important spread in global macro, and why it leads EUR/USD."
 
-- US 10Y **4.27%**, German 10Y **2.79%** → spread **+149 bps** (21st percentile of 5Y history).
-- 5-year range: **min 101 bps (2023-04-24)**, **max 227 bps (2024-12-24)**, mean **169 bps**.
-- 2025 regime: *narrowing* — off 78 bps from the Dec-2024 peak (markets pricing slower ECB
-  cuts while the Fed holds).
+### 2.1 Snapshot (data through 02 Sep 2025)
 
-### 2.2 The core principle (why the spread LEADS EUR/USD)
+- US 10Y yield: **4.27%** (▲ 7 bps) · German 10Y: **2.79%** (▲ 16 bps)
+- Spread: **+149 bps** (▼ 9 bps) — **21st percentile** vs 5-year history
+- 5-year range: **min 101 bps (2023-04-24)** · **max 227 bps (2024-12-24)** ·
+  **mean 169 bps**
+- 2025 regime: **narrowing** — down 78 bps from the Dec-2024 peak. Markets pricing
+  ECB cuts slower than previously expected while the Fed stays on hold.
 
-> Capital flows to the highest risk-adjusted return. When US yields rise relative to German,
-> holding USD beats holding EUR, and global institutions reallocate. **Because those flows
-> take weeks-to-months to execute, the FX adjustment lags the yield move.**
+### 2.2 The core principle — why the spread leads EUR/USD
 
-The lead exists because **institutions are slow**: they announce, committee-approve, and
-execute over weeks/months. The yield reprices in minutes; the flow arrives later.
+> Capital flows to where it earns the highest risk-adjusted return. When US yields
+> rise relative to German yields, holding dollars becomes more attractive than
+> holding euros. Global investors — pension funds, sovereign wealth funds, reserve
+> managers, hedge funds — shift portfolios accordingly, creating structural USD
+> demand that persists until the differential changes.
 
-### 2.3 The five transmission channels — MEMORISE with timescales
+**The key insight: portfolio flows take time to execute.** Large institutions
+don't move billions overnight — they announce strategic changes, execute over
+weeks or months, and their flows show up in the currency market *after* the yield
+move that triggered them. **This is why the spread leads.**
 
-| # | Channel | Speed | Actor |
+### 2.3 The five transmission channels (memorise, with timescales)
+
+| # | Channel | Timescale | Mechanism |
 |---|---|---|---|
-| 1 | **Carry trade** | Hours–days | Hedge funds/prop: borrow EUR, buy USD assets |
-| 2 | **Fixed-income reallocation** | 1–4 weeks | Bond fund managers chasing relative value |
-| 3 | **Pension & insurance (LDI)** | 2–6 months | Liability matching; investment-committee speed |
-| 4 | **Reserve managers** | Quarters | Central banks (~60% of reserves in USD); huge notional |
-| 5 | **Corporate treasury** | Variable (months) | Repatriation, funding-currency choice |
+| 1 | **Carry trade** | Hours to days | Speculative capital borrows the low-yield currency (EUR) to buy USD assets; hedge funds/prop desks execute within hours |
+| 2 | **Fixed-income reallocation** | 1–4 weeks | Bond fund managers shift allocations toward the higher yield as they rebalance and handle redemptions |
+| 3 | **Pension & insurance flows** | 2–6 months | Liability-driven investors: higher US yields mean fewer dollars needed to fund future USD liabilities; investment-committee speed |
+| 4 | **Reserve manager behaviour** | Quarters | Central banks hold ~60% of reserves in USD; higher US yields justify higher allocations; slow but enormous notional |
+| 5 | **Corporate treasury** | Variable (months) | Multinationals repatriate offshore earnings, choose funding currency; depends on corporate cash cycles |
 
-Mnemonic: **C-F-P-R-C** — *"Carry, Funds, Pensions, Reserves, Corporates"* — ordered
-fast→slow. Exam question I'd set myself: *which channel explains why a spread move keeps
-pushing EUR/USD for weeks after the news is old?* → channels 3–4.
+Ordered fast → slow: **Carry, Funds, Pensions, Reserves, Corporates.**
 
-### 2.4 The trading edge, distilled
+**The lead-lag chain:** Fed hawkish signal → US yields rise → spread widens →
+carry trades (days) → fund flows (weeks) → real money (months) → EUR/USD falls →
+trend persists → until the spread reverses.
 
-1. **Spread MOMENTUM matters as much as level.** A widening spread that keeps widening
-   predicts more USD strength as slow capital catches up.
-2. **Observable in real time** — unlike GDP/CA balances, the spread ticks continuously.
-3. **Lead time varies by condition:**
+**The trading edge:** because institutional flows take time, a sustained spread
+move predicts *continued* EUR/USD movement even after the initial FX reaction.
+**Spread momentum — not just level — is the powerful signal**: a widening spread
+that keeps widening implies more USD strength ahead as slower capital catches up.
 
-| Market condition | Typical lead |
+### 2.4 Practical applications — why the relationship is useful
+
+1. **Observable in real time.** Unlike GDP, inflation expectations, or current
+   account data, the spread updates tick-by-tick. A spread gap on a Fed statement
+   tells you — immediately — that USD-supportive flows are coming.
+2. **It provides lead time.** The lag between spread and FX creates a window to
+   position ahead of slower institutional flows. Lead time by condition:
+
+   | Market condition | Typical lead | Why |
+   |---|---|---|
+   | High volatility / news-driven | Hours to 1–2 days | Fast money dominates, quick repricing |
+   | Trending market | 1–2 weeks | Institutional flows build gradually |
+   | Range-bound / low vol | 2–4 weeks | Flows sluggish, need accumulation |
+   | Regime change | 1–3 months | Strategic reallocations take time |
+
+   Pattern: **more volatility ⇒ shorter lead.**
+3. **It validates or rejects FX moves.** EUR/USD moves sharply *without* spread
+   confirmation → likely positioning/technicals/noise → tends to reverse
+   (mean-reversion opportunity). Move *with* spread confirmation → fundamental
+   backing, more likely to persist.
+4. **It warns of regime changes.** Prolonged divergence (spread widening for
+   months but EUR/USD no longer falling) suggests the move is fully priced, other
+   factors are offsetting, or a reversal is coming. Non-confirmation = "the easy
+   money in the trend is over."
+5. **It works in both directions.** Symmetric: spread narrowing → capital flows
+   out of USD into EUR-denominated assets → EUR strengthens.
+
+### 2.5 Deep mechanics — from yield to FX, step by step
+
+Scenario: Fed signals fewer rate cuts than expected.
+
+- **T+0** — Powell suggests inflation is stickier; markets reprice; US 2Y jumps
+  15 bps within minutes.
+- **T+0 → 1hr** — term structure adjusts: US 10Y +8–10 bps; Bunds unchanged
+  (no catalyst); spread widens 8–10 bps.
+- **T+1hr → 1 day** — fast money moves: macro funds and CTAs short EUR/USD for
+  carry and momentum; −50–80 pips. The "obvious" quick move.
+- **T+1 day → 1 week** — asset managers rebalance Bunds → Treasuries; each
+  purchase buys USD / sells EUR; EUR/USD drifts lower.
+- **T+1 week → 1 month** — real money (pensions, insurers) executes strategic
+  rebalancing; large flows spread over weeks; **EUR/USD grinds lower even as news
+  flow quiets.**
+- **T+1 month+** — new equilibrium; the spread move is fully reflected; the trade
+  is "done" until the next catalyst.
+
+**Key insight:** EUR/USD keeps falling long after the initial reaction. Traders
+who understand this can hold through the "boring" period — the flows are still
+coming.
+
+### 2.6 Why the 10-year specifically?
+
+- **Duration sweet spot** — long enough to reflect policy expectations, short
+  enough to be liquid; the benchmark for institutional fixed income.
+- **Real-money benchmark** — pensions and insurers benchmark to 10Y; their
+  rebalancing moves 10Y-duration assets; this is where the big flows are.
+- **Global comparability** — every major country has a liquid 10Y; the German
+  Bund is the European risk-free rate.
+- **Refinement:** the **2Y spread** is more sensitive to near-term policy and
+  often leads the 10Y. Advanced practitioners watch both:
+  **2Y for direction, 10Y for magnitude.**
+
+### 2.7 When the relationship breaks down (limitations)
+
+| Breakdown | What happens |
 |---|---|
-| High vol / news-driven | Hours – 1-2 days |
-| Trending | 1–2 weeks |
-| Range-bound / low vol | 2–4 weeks |
-| Regime change | 1–3 months |
+| **Risk-off events** (Lehman, COVID) | USD rallies as safe haven regardless of yields; the spread can narrow (Treasuries rally) while USD still strengthens. Liquidity preference dominates yield preference; the relationship resumes once panic subsides. |
+| **Central bank intervention** (e.g. Japan's JPY interventions 2022–24) | Policy flows overwhelm fundamental flows; the relationship temporarily breaks. |
+| **Extreme positioning** | If everyone is already short EUR, further spread widening may not push EUR lower — no one left to sell. The positioning overhang absorbs the signal. **Monitor CFTC data.** |
+| **Geopolitical shocks** (e.g. Ukraine invasion) | FX moves for non-yield reasons (energy security, trade, growth); the FX move may *lead* the spread — **causality temporarily reverses.** |
 
-   Pattern: **more volatility ⇒ shorter lead** (fast money dominates and closes the gap).
-4. **Validation/rejection of FX moves:** EUR/USD moves *without* spread confirmation →
-   likely positioning/noise → mean-reversion candidate. Move *with* confirmation → has legs.
-5. **Non-confirmation warns of regime change:** spread widening for months while EUR/USD
-   stops falling ⇒ fully priced / offsetting factors / reversal risk. "The easy money in
-   the trend is over."
-6. **Symmetric** — works identically in both directions.
+> **Critical rule:** never treat the spread–FX relationship as mechanical. It's a
+> **tendency, not a law**. When correlation breaks down, ask why — the answer
+> often reveals important information about market regime and sentiment.
 
-### 2.5 When the relationship BREAKS (as important as when it works)
+### 2.8 What moves the spread itself (upstream drivers)
 
-| Breakdown | Mechanism | Example |
-|---|---|---|
-| **Risk-off events** | USD rallies as safe haven regardless of yields; spread can narrow (Treasuries rally) while USD strengthens. Liquidity preference > yield preference. | Lehman, COVID |
-| **CB intervention** | Policy flows overwhelm fundamental flows | JPY interventions 2022–24 |
-| **Extreme positioning** | Everyone already short EUR ⇒ no one left to sell; positioning overhang absorbs the signal. Watch CFTC data. | — |
-| **Geopolitical shocks** | FX moves for non-yield reasons (energy, trade, growth); **causality can temporarily reverse** (FX leads spread) | Ukraine 2022 |
+- **Monetary policy** — Fed vs ECB rate paths; divergence = widening; the primary
+  medium-term driver.
+- **Growth differential** — stronger US growth pushes US yields higher; watch
+  relative PMIs.
+- **Inflation gap** — higher US breakevens vs Europe widen nominal spreads;
+  inflation surprise = spread move.
+- **Safe-haven flows** — risk-off → Bund outperformance (European safe haven) →
+  spread narrows temporarily.
+- **Supply dynamics** — heavy Treasury issuance vs Bund scarcity affects relative
+  pricing; fiscal policy matters.
+- **Hedging costs** — wide differentials make FX hedging expensive, reducing
+  cross-border demand for higher-yielding bonds (a dampening feedback).
 
-> **Critical rule (verbatim spirit):** the spread–FX relationship is a **tendency, not a
-> law**. When correlation breaks, ask *why* — the answer reveals the regime.
+### 2.9 Bottom line + key takeaways (as given)
 
-### 2.6 What moves the spread itself (the upstream drivers)
+The yield spread is the fundamental anchor for EUR/USD — it tells you where
+capital wants to go, and because institutional flows take time, it provides early
+warning of currency moves. Use it to validate trades, time entries, and identify
+regime changes. Not right 100% of the time, but over the medium term it's the
+closest thing to a fundamental "compass" for the world's most traded pair.
 
-Monetary policy divergence (Fed vs ECB paths — the primary medium-term driver) · growth
-differential (relative PMIs) · inflation gap (relative breakevens) · safe-haven flows
-(risk-off → Bund outperformance → spread narrows) · supply dynamics (Treasury issuance vs
-Bund scarcity) · **hedging costs** (wide differentials make FX-hedged foreign bonds
-unattractive, which *dampens* the flow — a self-limiting feedback worth remembering).
-
-### 2.7 Why the 10-year tenor?
-
-- Duration sweet spot: reflects policy expectations, still liquid.
-- It's the **real-money benchmark** (pensions/insurers) — where the big flows live.
-- Globally comparable — every major sovereign has a liquid 10Y.
-- **Refinement:** the **2Y spread** is more sensitive to near-term policy and often leads
-  the 10Y. Practitioner heuristic: **2Y for direction, 10Y for magnitude.** → research idea R3.
-
-### 2.8 Mechanics walkthrough (the T+0 → T+1month cascade)
-
-Fed hawkish surprise → US 2Y +15bps in minutes → 10Y +8–10bps within the hour (Bunds
-unchanged, spread widens) → fast money shorts EUR/USD within a day (−50–80 pips) →
-asset managers rotate Bunds→Treasuries over 1–4 weeks (each purchase = buy USD/sell EUR)
-→ real money executes over weeks–months → new equilibrium; trade "done" until next catalyst.
-
-**The behavioural point:** the FX grind continues through the "boring" period after the
-news — holding through that period is where the lead-lag edge actually pays.
+- The spread leads EUR/USD because institutional flows take weeks–months; the
+  yield move happens first, the FX adjustment follows.
+- Five transmission channels: carry (days), fund flows (weeks), pensions
+  (months), reserve managers (quarters), corporates (variable).
+- **Spread momentum matters as much as level.**
+- Use the spread to validate FX moves: no confirmation = often noise;
+  confirmation = the move has legs.
+- Watch for breakdowns: risk-off, intervention, extreme positioning.
+- As of 02 Sep 2025: 149 bps (21st percentile) — relatively narrow, suggesting
+  limited EUR downside unless the spread widens again.
 
 ---
 
-## Lesson 3 — Live Case Study: "The Spread Moved First" (17–18 Feb 2026)
+## Lesson 3 — Live Case Study: The Spread Moved First (17–18 Feb 2026)
 
-### 3.1 What happened
+A real-time example of the yield spread leading EUR/USD by ~24 hours.
 
-- **Tue 17 Feb:** DE–US spread declines all session (US yield advantage widening —
-  bearish EUR/USD input). EUR/USD ignores it: ranges, mean-reverts, no signal. Divergence
-  builds through the day and overnight (~12–18h).
-- **Wed 18 Feb:** EUR/USD capitulates — hard selloff, accelerating into the close.
-  Spread keeps falling (confirming Tuesday was structural, not noise). Full alignment.
-- **Lead time: ~24 hours** — one full session to position before spot repriced.
+### 3.1 The setup — two days, one signal
 
-### 3.2 The state table (good exam material)
+- **Tuesday 17 Feb:** the DE–US yield spread declines early and falls steadily all
+  session — the US yield advantage widening, a fundamentally bearish input for
+  EUR/USD. **But EUR/USD didn't reprice**: it ranged and mean-reverted; spot
+  traders saw noise. The rates market was already telling a different story.
+- **Tuesday night:** spread continues lower overnight; EUR/USD still hasn't
+  responded; the lead extends to ~12–18 hours.
+- **Wednesday 18 Feb:** EUR/USD capitulates — hard selloff throughout the day,
+  accelerating into the close. The spread keeps falling, confirming Tuesday's move
+  was structural, not noise. What was a *leading* indicator Tuesday became a
+  *confirming* indicator Wednesday.
 
-| Time | Spread | EUR/USD | Read |
+### 3.2 Side-by-side state table
+
+| Timeframe | Yield spread | EUR/USD | Signal |
 |---|---|---|---|
-| Tue AM | ↘ | flat/choppy | Divergence forming |
-| Tue PM | ↘ | mean-reverting up | Divergence widening |
-| Tue close | ↘ | recovered | **Max divergence** |
-| Wed AM | ↘ | starting to fall | Convergence begins |
-| Wed PM | ↘ accelerating | hard selloff | Full alignment |
+| Tue morning | ↘ declining | — flat/choppy | Divergence forming |
+| Tue afternoon | ↘ still falling | ↗ mean-reverting | Divergence widening |
+| Tue close | ↘ lower | — recovered | **Max divergence** |
+| Wed morning | ↘ continued | ↘ starting to fall | Convergence begins |
+| Wed afternoon | ↘ accelerating | ↘ hard selloff | Full alignment |
 
-**The lesson in one line:** spot showed nothing actionable on Tuesday; the spread showed a
-clean directional move not yet priced. *The gap between what rates say and what FX does is
-the edge.* When rates move and spot doesn't, the question is "when", not "if".
+**Lead time: ~24 hours** — a full trading session to position before the currency
+caught up to what rates were already pricing.
 
-### 3.3 The application rules (my checklist for live use)
+### 3.3 The lesson (as stated)
 
-1. **Watch for divergence** — bigger divergence ⇒ more likely snapback.
-2. **Don't fight the spread** — long EUR/USD into a falling spread = fighting institutional
-   flow; you can be right short-term and still be run over.
-3. **Use for confirmation** — check the spread before any EUR/USD entry; aligned = backed,
-   diverging = caution.
-4. **Estimate lead time from regime** — orderly market ≈ hours–2 days; high-vol/risk-off
-   compresses toward coincident **or inverts**.
+Watching EUR/USD alone on Tuesday showed nothing actionable — rangebound, no
+momentum, no trend. Watching the spread showed a clear directional move not yet
+priced into spot. **That gap between what rates are saying and what FX is doing —
+that's the edge.** When the spread moves and spot doesn't follow, the question
+isn't "if" — it's "when."
 
-### 3.4 Honest-assessment margin note
+⚠️ *The warning was there:* the divergence itself is the signal.
+✓ *Spread confirmed:* once both aligned, the lag had closed.
 
-**[folklore/anecdote]** — this is *one* case study, selected after the fact because it
-worked. It illustrates the mechanism beautifully but proves nothing statistically
-(survivorship of examples). The lesson itself concedes this by ending with "next steps:
-quantitative lag modelling." Before treating divergence as a signal in this repo, it must
-survive the Lesson-1 gauntlet: rolling-lag estimation, Granger tests, OOS split, costs.
-Also note the case study quotes the **DE–US** spread (falling = US advantage widening)
-while Lesson 2 uses **US–DE** (rising = same thing) — sign conventions are the #1 way to
-silently break this implementation. **Pick one convention (US−DE) and enforce it.**
+### 3.4 Application rules — how to use this
 
-### 3.5 The prescribed quant roadmap (from the lesson's "Next Steps")
+1. **Watch for divergence.** When the spread moves but EUR/USD doesn't respond,
+   pay attention. The bigger the divergence, the more likely a snapback.
+2. **Don't fight the spread.** Long EUR/USD into a falling spread = fighting
+   institutional capital flows. You might be right on short-term price action,
+   but the fundamental current is against you.
+3. **Use it for confirmation.** Before entering a EUR/USD position, check the
+   spread. Aligned = fundamental backing. Diverging = proceed with caution.
+4. **Estimate your lead time.** Normal conditions: hours to a couple of days
+   (here ~24h). The more orderly the move, the cleaner the lead. In
+   high-volatility regimes — risk-off, CB surprises, geopolitical shocks — the
+   lag compresses toward coincident or can temporarily invert.
 
-1. **Rolling lag correlation** — optimal lag between Δspread and ΔEURUSD over a rolling
-   (~60-day) window. The lag is *not static*: expands in quiet markets, compresses in
-   volatile ones. Track the rolling optimal lag to know current expected lead time.
-2. **Granger causality on rolling windows** — does the spread improve EUR/USD forecasts
-   beyond EUR/USD's own history? Detect **causality reversals** (risk-off: FX can lead).
-3. **Dynamic lag models** — state-space / regime-switching lag structure conditioned on
-   volatility, liquidity, macro regime. A static lag assumption underperforms.
-4. **Regime conditioning is mandatory** — carry-dominant regime: clean long lead;
-   risk-off: coincident or FX-leads; policy-divergence: relationship strengthens;
-   liquidity crisis: breaks entirely.
+### 3.5 Next steps — quantitative lag modelling (the lesson's roadmap)
 
----
+The case study demonstrates the lead-lag qualitatively; the next stage is to
+model it quantitatively — from observation to systematic measurement.
 
-## Cross-lesson synthesis (the part I'd be examined on)
+1. **Rolling lag correlation.** Compute the optimal lag between spread changes
+   and EUR/USD changes over a rolling window (e.g. 60-day). **The lag isn't
+   static** — it expands in quiet markets and compresses in volatile ones.
+   Tracking the rolling optimal lag tells you how much lead time to expect now.
+2. **Granger causality testing.** Formally test whether spread changes improve
+   EUR/USD forecasts beyond EUR/USD's own history. Run on rolling windows to
+   detect regime shifts. **Causality can reverse** — in risk-off episodes or when
+   FX drives the narrative, EUR/USD may lead the spread. Detecting reversals is
+   critical.
+3. **Dynamic lag models.** State-space or regime-switching frameworks that let
+   the lag structure vary with volatility, liquidity, and macro regime. A static
+   lag assumption will underperform.
+4. **Regime conditioning is mandatory.** Carry-dominant regimes: cleaner, longer
+   lead. Risk-off: instruments move together or FX leads. Policy-divergence
+   regimes: relationship strengthens. Liquidity crises: it can break entirely.
+   Any quantitative model needs regime conditioning to avoid false signals.
 
-1. **The three lessons are one pipeline:** Lesson 1 gives the *regime context* and the
-   *validation gauntlet*; Lesson 2 gives a specific *lead-lag mechanism with economic
-   rationale* (the hardest of Lesson 1's lead-lag requirements to satisfy); Lesson 3 shows
-   a single live instance and prescribes the quantification. Nothing is validated yet —
-   the OOS work is the actual next step, not more reading.
-2. **Regime conditions everything.** The spread→FX lead is regime-dependent (§2.4, §3.5);
-   USD itself flips character by regime (carry asset in reflation, safe haven in
-   deflation). A spread signal without a regime filter will blow up precisely in risk-off,
-   when it inverts.
-3. **Rate-of-change beats level, everywhere.** Regime scores use momentum, not levels;
-   spread *momentum* predicts continued FX adjustment, not spread level. Same principle,
-   two contexts.
-4. **Divergence/non-confirmation is a signal class of its own:** spread-vs-FX divergence
-   (trade entry), months-long non-confirmation (trend exhaustion), PMI-vs-inflation
-   divergence (regime transition). "Two related series disagree" is the recurring template.
-5. **Every claimed edge inherits the same bar:** economic rationale → point-in-time data →
-   costs → walk-forward → true OOS (≥30 trades per house rules) → paper. WFE > 0.5.
+**Closing line:** "Rates moved Tuesday. FX followed Wednesday. The spread gave
+you a full session to position before the currency caught up. That's not luck —
+that's the lead-lag working exactly as it should."
 
 ---
 
-## Honest priors before building anything (per the CLAUDE.md contract)
+## Key facts — quick revision sheet
 
-- **Regime classification (L1):** the quadrant framework is standard practitioner macro
-  (All-Weather / Investment-Clock lineage). As *context/filter* for existing strategies:
-  reasonable and cheap to build off FRED. As a *standalone timing edge* for FX at daily
-  horizon: low odds (~10–15%) it survives costs OOS. Default expectation: null as a
-  primary signal, potentially useful as a conditioning variable.
-- **Rates–FX lead-lag (L2/L3):** the *mechanism* (flow inertia) is real economics, and
-  rate differentials driving FX is standard. But a *daily-horizon exploitable lag* in
-  EUR/USD — the most liquid FX pair on earth — is exactly what fast money arbitrages.
-  Published evidence on exploitable daily lead-lag here is thin; the honest prior is
-  **most of the lag is inside the first hours**, with the multi-day tail small after
-  costs. Odds it becomes a tradeable after-cost standalone entry signal: ~10%. Odds it
-  works as a **confirmation/veto filter** on existing EUR/USD strategies (its weaker,
-  more defensible use): meaningfully better — that's the version to test first.
-- The base-rate outcome for both is **null, found cheaply — which is a win.**
-
----
-
-## Future research ideas (ranked queue)
-
-- **R1 — Spread confirmation filter (highest value/cost ratio).** Build US−DE 10Y spread
-  series (FRED: `DGS10`, `IRLTLT01DEM156N` monthly / better: daily Bund yield source),
-  compute Δspread over 1–5 days, and use *sign agreement with position direction* as a
-  veto/confidence input on existing EUR/USD strategies (e.g. the per-line fade/follow
-  book). Pre-register: "works" = OOS Sharpe improvement with ≥30 OOS trades on the
-  filtered subset; "fails" = no improvement or trade count collapse.
-- **R2 — Rolling lag correlation study (measurement, not strategy).** Cross-correlation
-  `ρ(lag)` of Δspread vs ΔEURUSD, rolling 60d, lags −5…+5 days. Deliverable: is the
-  optimal lag ≥1 day often enough to matter, and does it vary with vol as claimed
-  (high vol ⇒ shorter lag)? This directly tests Lesson 3's central claim.
-- **R3 — 2Y vs 10Y spread ("2Y for direction, 10Y for magnitude").** Repeat R2 with the
-  2Y differential; test whether 2Y-spread changes lead 10Y-spread changes and EUR/USD.
-- **R4 — Granger causality with regime conditioning.** Rolling Granger tests both
-  directions; flag causality-reversal periods; overlay VIX/risk-off marker to test the
-  "inverts in risk-off" claim.
-- **R5 — Growth/inflation regime classifier as a conditioning brick.** FRED-based
-  (ISM is no longer on FRED — need ISM report or a proxy like regional Fed surveys /
-  S&P Global PMI; core CPI/PCE/breakevens are on FRED). Output: regime label per month,
-  point-in-time. Use as a *filter* on existing engines (does fade vs follow behave
-  differently by macro regime?), not as a standalone signal.
-- **R6 — Reproduce the L1 regime/asset-returns table** before trusting it (USD rows
-  especially). If USD +7.1% in deflation regimes replicates point-in-time, that alone is
-  a useful risk overlay for the whole FX book.
-- **R7 — Non-confirmation / divergence exhaustion detector.** Months-scale: spread trend
-  vs EUR/USD trend disagreement as a trend-exhaustion warning (Lesson 2 §2.4 point 5).
-  Harder to test (few events); park behind R1–R4.
-- **R8 — Positioning overhang.** CFTC COT EUR net speculative positioning as the
-  "no one left to sell" override on the spread signal. Data is free (CFTC), weekly,
-  lagged 3 days — point-in-time discipline required.
-- **Deferred (data-honesty per CLAUDE.md):** anything needing intraday Bund yields —
-  the sandbox has OANDA FX M1 but no intraday rates feed. The *daily* versions of R1–R4
-  are feasible with FRED/ECB data; the *intraday* lag structure (hours) is not testable
-  here yet. Say so; don't fake it with a lookalike.
-
-## Areas of interest (things that hooked me, to read more on)
-
-- Walk-forward efficiency (WFE) as a single overfitting number — trivially computable
-  from `summarizeSplit` output; consider surfacing it on every OOS card.
-- The **hedging-cost feedback** (§2.6): wide differentials make FX-hedged Treasuries
-  unattractive to European real money, throttling the very flow that drives the lead.
-  Self-limiting dynamics like this are why "tendency, not law."
-- Causality *reversal* detection (FX leading rates in risk-off) — a regime indicator in
-  its own right, possibly more valuable than the base signal.
-- The taxonomy of divergence signals (synthesis point 4) — one abstract template
-  ("related series disagree → information") across regime, spread, and exhaustion
-  detection. Feels brick-shaped.
-- Module topics still to come in this course: business-sentiment signals and reading the
-  options complex — leave space in this file.
-
-## Real-time implementation notes (mapping to this repo)
-
-- **Where a spread brick would live:** a Tier-2 style source, e.g. `js/rateSpreadCore.js`
-  — pure function over passed-in yield series → `{spread, dSpread, zScore, percentile,
-  rollingLagCorr}`. FRED fetch stays in the server layer (like `fetchD1`), math stays
-  pure and unit-testable on synthetic data. Register in `LEGO_MODULES.md` if/when built.
-- **Consumption point:** the per-line entry-confidence engine (`ENTRY_ZONE_CONFIDENCE.md`)
-  is the natural consumer — spread agreement/disagreement as one more confidence input on
-  EUR/USD lines, exactly like the existing range-bias features. NOT a new bespoke engine
-  (Lego rule: selector/feature, not new legs).
-- **Validation path:** the existing honest harness (`summarizeSplit`, IS/OOS, costs on,
-  ≥30 OOS trades) is exactly Lesson 1's gauntlet — no new framework needed. Add WFE to
-  the report.
-- **Regime classifier (R5):** monthly cadence, so a tiny server cron + KV-cached label is
-  enough; if any user-entered config is stored, remember the `_CF_EXACT` KV rule.
-- **Sign convention (repeating because it will bite):** define spread as **US 10Y − DE
-  10Y**. Spread ↑ = USD-supportive = EUR/USD ↓. Lesson 3 quotes DE−US; flip on ingest.
-- **Data availability:** US 10Y (`DGS10`) daily on FRED ✓; German 10Y daily needs
-  Bundesbank/ECB SDW (FRED's is monthly) — resolve before R1; EUR/USD daily via existing
-  OANDA `fetchD1` ✓ (Railway only, 403 in sandbox is environment, not a bug).
-
-## Self-test questions (closed-book, before next lesson)
-
-1. Name the six macro driver families and the two that define the regime quadrant.
-2. Draw the growth–inflation quadrant with overweights/underweights per regime. Which
-   regime is best for USD? Which for gold?
-3. Why rate-of-change instead of levels for regime scores?
-4. Which regime transition is fastest and what drives it? What does that imply for
-   classifier input frequency?
-5. List the five spread→FX transmission channels in speed order, with timescales and actors.
-6. Why does the spread *lead* EUR/USD rather than just correlate? (One sentence:
-   institutional flow inertia.)
-7. Give the four breakdown conditions of the spread–FX relationship and what dominates in each.
-8. What does spread/FX *non-confirmation* after a long trend tell you?
-9. Why the 10Y tenor — and what's the 2Y refinement?
-10. Define walk-forward efficiency, its target, and the severe-overfitting threshold.
-11. In the Feb 2026 case study: what was the maximum-divergence moment, what was the lead
-    time, and what would the risk have been if a risk-off shock hit Tuesday night?
-12. What are the four items in the lesson's quantitative lag-modelling roadmap, and why
-    does a static lag assumption fail?
-13. (House) What tags apply to: the quadrant framework, the lead-lag mechanism, the Feb
-    case study? What's the pre-registered success criterion for R1?
+- Term spread = 10Y − 2Y; inversion leads recession by 12–24 months.
+- Four regimes = growth trajectory × inflation trajectory; **rate of change, not
+  levels**; threshold at zero (or percentiles).
+- Best asset per regime: goldilocks→equities (+15.2%), reflation→commodities
+  (+18.7%), stagflation→gold (+21.4%), deflation→duration (+11.4%) and USD (+7.1%).
+- Fastest regime transition: stagflation→deflation (1–3 months, credit-led).
+- Four entry-model families: mean reversion, momentum/trend, stat arb, lead-lag.
+  Stat arb needs cointegration, not correlation. Lead-lag needs Granger causality,
+  OOS stability, economic rationale.
+- WFE = OOS/IS; target > 0.5; < 0.3 = severe overfitting.
+- US–DE 10Y spread (Sep 2025): 149 bps, 21st percentile; 5Y range 101–227,
+  mean 169.
+- Five FX transmission channels, fast→slow: carry (hours–days), fund reallocation
+  (weeks), pensions/insurance (2–6 months), reserve managers (quarters),
+  corporate treasury (variable). ~60% of global reserves are USD.
+- Lead time compresses as volatility rises: hours–2 days (news-driven) up to
+  1–3 months (regime change).
+- 2Y for direction, 10Y for magnitude.
+- Four breakdown modes: risk-off (safe-haven USD), CB intervention, extreme
+  positioning (watch CFTC), geopolitical shocks (causality can reverse).
+- Feb 2026 case study: spread led EUR/USD by ~24 hours; max divergence at Tuesday
+  close; Wednesday selloff closed the gap.
+- The relationship is a tendency, not a law.
 
 ---
 
-*Notes by/for the assistant working on MacroFXModel. Lessons are educational content from
-Colez Trades; all performance figures are the lesson's, unverified. Next lessons in this
-module (business-sentiment signals, options complex) get appended here or as sibling files
-in `education/`.*
+## Future research ideas (to investigate off these notes)
+
+From the lessons' own next-steps plus questions the material raises:
+
+1. **Rolling lag correlation study** — optimal lag between Δspread and ΔEUR/USD
+   on a rolling 60-day window; how does the lag vary with volatility regime?
+   (Lesson 3's explicit next step.)
+2. **Granger causality on rolling windows** — does the spread improve EUR/USD
+   forecasts beyond price history alone? Map the periods where causality
+   reverses (FX leading rates) and what regimes they coincide with.
+3. **Dynamic / regime-switching lag models** — state-space frameworks where lag
+   structure depends on volatility, liquidity, macro regime.
+4. **2Y vs 10Y spread comparison** — test "2Y for direction, 10Y for magnitude";
+   does the 2Y spread lead the 10Y spread?
+5. **Build the growth/inflation regime classifier** — FRED data, composite
+   ISM/claims growth score + CPI/PCE/breakevens inflation score, momentum-based;
+   reproduce the historical regime labels and asset-performance table.
+6. **Regime-conditioned strategy behaviour** — do existing strategies (fade vs
+   follow, trend) perform differently across the four macro regimes?
+7. **Transition detectors** — can the early-warning combinations in §1.5 (e.g.
+   PMIs rolling over + sticky inflation + flattening curve) be scored
+   systematically? Special attention to the fast stagflation→deflation case.
+8. **Divergence/non-confirmation signals** — quantify "EUR/USD moved without
+   spread confirmation → mean reversion" and the months-scale non-confirmation
+   trend-exhaustion warning.
+9. **Positioning overlay** — CFTC EUR net speculative positioning as the
+   "extreme positioning" breakdown filter on spread signals.
+10. **Other lead-lag pairs from Lesson 1** — copper→equities, credit→equity,
+    futures→cash: same measurement toolkit (cross-correlation, Granger).
+11. **Apply the validation gauntlet** — any of the above that shows promise goes
+    through walk-forward, WFE, Monte Carlo, sensitivity, paper trading, in that
+    order, per the Lesson 1 checklist.
+
+## Areas of interest (to read deeper on)
+
+- Walk-forward efficiency as a single overfitting statistic — where does the
+  0.5/0.3 threshold come from?
+- The hedging-cost feedback (§2.8): wide differentials make FX-hedged foreign
+  bonds unattractive, throttling the very flow that drives the lead — a
+  self-limiting dynamic.
+- Causality *reversal* as a regime indicator in its own right (risk-off
+  detection via FX leading rates).
+- Cointegration vs correlation — the formal tests (Engle-Granger, Johansen) that
+  stat arb requires.
+- How reserve managers actually reallocate (the quarters-long channel) — COFER
+  data on USD reserve share.
+- Bund scarcity and supply dynamics as a spread driver — European fiscal rules
+  vs Treasury issuance.
+- Upcoming module topics to leave space for: **business-sentiment signals** and
+  **reading the options complex**.
+
+## Real-time implementation notes (using the lessons live)
+
+- **Daily routine:** know the current regime quadrant (monthly data), the current
+  spread level/percentile and its recent momentum (daily), and current volatility
+  conditions (to estimate expected lead time from the §2.4 table).
+- **Before any EUR/USD entry:** check the spread. Direction aligned → fundamental
+  backing. Diverging → caution, or treat as a §2.4-point-3 mean-reversion setup.
+- **Divergence watchlist:** spread moving while spot ranges = the Lesson 3 setup;
+  the bigger and longer the divergence, the closer the snapback.
+- **Regime overrides:** in risk-off conditions, suspend the normal spread logic —
+  safe-haven flows dominate and causality may invert. Check positioning extremes
+  (CFTC) before assuming spread moves will transmit.
+- **Data sources named in the lessons:** FRED (`fredapi`) for growth/inflation
+  indicators; CFTC for positioning; the 10Y yields for US and Germany for the
+  spread.
+- **Sign convention care:** Lesson 2 quotes US−DE (149 bps positive; widening =
+  USD-supportive); Lesson 3's charts quote DE−US (falling = same thing). Fix one
+  convention when building anything.
+
+## Self-test questions (closed-book revision)
+
+1. Name the six macro driver families and the representative series for each.
+2. Draw the growth–inflation quadrant with overweights and underweights per
+   regime. Which regime is best for USD? For gold? For duration?
+3. Why does the framework use rate of change rather than levels?
+4. What are the five yield-curve shapes and their asset implications? What lead
+   time does inversion give before recession?
+5. Which regime transition is fastest, what are its early warnings, and what's
+   the prescribed positioning shift?
+6. Write the growth-score and inflation-score constructions (weights and
+   momentum windows).
+7. List the four entry-model families, one signal construction for each, and the
+   conditions each works best in.
+8. What three validations does a lead-lag relationship require before use?
+9. Define walk-forward efficiency, the target, and the overfitting threshold.
+   List the six stages of the validation pipeline in order.
+10. State the five spread→FX transmission channels in speed order with actors
+    and timescales.
+11. Why the 10Y tenor specifically (three reasons)? What is the 2Y refinement?
+12. Give the four conditions under which the spread–FX relationship breaks down
+    and what dominates in each.
+13. What are the six upstream drivers of the spread itself?
+14. In the Feb 2026 case study: what did each instrument do on Tuesday, when was
+    maximum divergence, and what was the total lead time?
+15. What are the four application rules from Lesson 3?
+16. What are the four items in the quantitative lag-modelling roadmap, and why
+    does a static lag assumption underperform?
+17. Numbers check: spread level/percentile/range/mean as of Sep 2025; USD reserve
+    share; typical lead times by market condition.
+
+---
+
+*Lesson notes from Colez Trades "Macro Deep Dives" module (educational content,
+not financial advice). Next lessons — business-sentiment signals and the options
+complex — to be appended here or as sibling files in `education/`.*
