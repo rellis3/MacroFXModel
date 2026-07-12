@@ -69,7 +69,8 @@ def _count_touches(pivots: list[tuple[int, float]],
 
 def _build_lines(bars: list[dict], tf: str,
                  pivots: list[tuple[int, float]],
-                 kind: str) -> list[Trendline]:
+                 kind: str,
+                 pip: float = 1.0, digits: int = 2) -> list[Trendline]:
     """
     For 'descending': each successive pivot high is LOWER than the previous.
     For 'ascending':  each successive pivot low is HIGHER than the previous.
@@ -99,8 +100,8 @@ def _build_lines(bars: list[dict], tf: str,
 
             lines.append(Trendline(
                 tf=tf, kind=kind, touches=touches,
-                projected=round(projected, 2),
-                slope=round(slope, 4),
+                projected=round(projected, digits),
+                slope=round(slope, digits + 2),
                 age_bars=current_idx - i2,
             ))
             break   # best line anchored at j found; move to next j
@@ -108,23 +109,28 @@ def _build_lines(bars: list[dict], tf: str,
         if len(lines) >= _MAX_LINES_PER_KIND:
             break
 
-    # Deduplicate: drop lines whose projected prices are within $4 of each other
+    # Deduplicate: drop lines whose projected prices are within 4 pips ($4 on
+    # gold) of each other
     unique: list[Trendline] = []
     for tl in sorted(lines, key=lambda x: -x.touches):
-        if not any(abs(tl.projected - u.projected) < 4.0 for u in unique):
+        if not any(abs(tl.projected - u.projected) < 4.0 * pip for u in unique):
             unique.append(tl)
 
     return unique[:_MAX_LINES_PER_KIND]
 
 
-def detect_trendlines(bars: list[dict], tf: str) -> list[Trendline]:
+def detect_trendlines(bars: list[dict], tf: str,
+                      pip: float = 1.0, digits: int = 2) -> list[Trendline]:
     """
     bars: chronological OHLCV dicts, oldest first. At least 30 bars.
     Returns all valid ascending and descending trendlines for this TF.
+    pip / digits: instrument scale for the dedup distance and projection
+    rounding — gold defaults (pip=1.0, digits=2) match GoldV2 exactly.
     """
     if len(bars) < _MIN_BARS:
         return []
     n = _PIVOT_N.get(tf, 3)
     ph = _pivot_highs(bars, n)
     pl = _pivot_lows(bars, n)
-    return _build_lines(bars, tf, ph, 'descending') + _build_lines(bars, tf, pl, 'ascending')
+    return (_build_lines(bars, tf, ph, 'descending', pip, digits) +
+            _build_lines(bars, tf, pl, 'ascending', pip, digits))

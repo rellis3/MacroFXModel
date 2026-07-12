@@ -21,7 +21,9 @@ from modules.level_matrix import (build_legs, emit_levels, build_zones,
                                   score_zones)
 from modules.htf_bias import compute_htf_bias
 from modules.vumanchu import compute_vumanchu
-from modules.exits import plan_exits
+from modules.exits import plan_exits, collect_obstacles
+from modules.session_engine import compute_session_levels
+from modules.trendline_engine import detect_trendlines
 from modules.trade_manager import TradeManager, ManagedTrade
 
 PASS = 0
@@ -320,6 +322,165 @@ check('paper PnL uses pip×point×lots', abs(pp[0]['profit'] - 10.0) < 1e-6, str
 check('default pairs span fx+commodity+index',
       any('/' in p for p in DEFAULT_CFG['pairs']) and 'GOLD' in DEFAULT_CFG['pairs']
       and 'NQ' in DEFAULT_CFG['pairs'])
+
+
+print('\n── FX-scale arithmetic (EUR/USD, pip 0.0001) ────────────────')
+# Detector for gold-native price-unit constants surviving in the modules: on
+# FX-scale prices the fib grid must keep pip resolution, zone ids must stay
+# unique, entry pads must be pip-scale, and obstacle merging / pivots must not
+# collapse the whole board. Falls back to the legacy signature so a pre-fix
+# module shows the degenerate OUTPUT, not a TypeError.
+def _compat(fn, *args, **kw):
+    try:
+        return fn(*args, **kw)
+    except TypeError:
+        for k in ('pip', 'digits'):
+            kw.pop(k, None)
+        return fn(*args, **kw)
+
+EPIP, EDIG = 0.0001, 5
+
+
+def synth_eur_two_legs() -> list[dict]:
+    """1.0700 base → rally 1.0800 → pull back 1.0760 → extend to 1.0830.
+    Two valid long legs (base low → top, pullback low → top), distinct origins."""
+    out, t, px = [], 1_700_000_000, 1.0700
+
+    def b(o, h, l, c):
+        nonlocal t
+        out.append(bar(t, round(o, EDIG), round(h, EDIG), round(l, EDIG), round(c, EDIG)))
+        t += 1800
+    for _ in range(10):
+        b(px, px + 2 * EPIP, px - 2 * EPIP, px)
+    for _ in range(30):
+        px += 100 * EPIP / 30
+        b(px - EPIP, px + 2.5 * EPIP, px - 2.5 * EPIP, px)
+    for _ in range(10):
+        px -= 40 * EPIP / 10
+        b(px + EPIP, px + 2.5 * EPIP, px - 2.5 * EPIP, px)
+    for _ in range(20):
+        px += 70 * EPIP / 20
+        b(px - EPIP, px + 2.5 * EPIP, px - 2.5 * EPIP, px)
+    for _ in range(6):     # drift just under the top so the top pivot confirms
+        b(px, px + EPIP, px - 2 * EPIP, px - EPIP)
+        px -= EPIP
+    return out
+
+
+eur_bars  = synth_eur_two_legs()
+eur_price = eur_bars[-1]['close']
+
+eur_legs = _compat(build_legs, eur_bars, 'M30', pip=EPIP, digits=EDIG)
+eur_long = [l for l in eur_legs if l.direction == 'long']
+check('FX: ≥2 long legs detected', len(eur_long) >= 2, f'{len(eur_long)} legs')
+check('FX: distinct legs keep distinct leg ids',
+      len({l.leg_id for l in eur_long}) >= 2,
+      str(sorted({l.leg_id for l in eur_long})))
+check('FX: leg size keeps pip resolution (70p leg ≠ 0.01)',
+      any(abs(l.size - round(l.size, 2)) > 1e-9 for l in eur_long),
+      str([l.size for l in eur_long]))
+
+eur_lines, eur_bands = _compat(emit_levels, eur_legs, eur_price, digits=EDIG)
+check('FX: fib levels not all on the 100-pip (0.01) grid',
+      any(abs(ln.price - round(ln.price, 2)) > 1e-9 for ln in eur_lines),
+      str(sorted({ln.price for ln in eur_lines})[:8]))
+
+eur_zones, eur_dbg = _compat(build_level_matrix, {'M30': eur_bars}, eur_price,
+                             cluster_tolerance=3.0 * EPIP, pip=EPIP, digits=EDIG)
+check('FX: zones built', len(eur_zones) >= 2, str(eur_dbg))
+_zids = [z.zone_id for z in eur_zones]
+check('FX: zone ids unique across zones', len(set(_zids)) == len(_zids), str(_zids))
+check('FX: zone entry pad is pip-scale (window < 50 pips)',
+      all(z.gp_high - z.gp_low < 50 * EPIP for z in eur_zones),
+      str([(z.gp_low, z.gp_high) for z in eur_zones[:3]]))
+
+# exits: obstacles 7 pips apart are separate shelves on EUR/USD
+class _SZ:
+    def __init__(self, c):
+        self.direction = 'short'; self.active = True; self.centre = c; self.score = 5.0
+eur_obs = _compat(collect_obstacles, 'LONG', 1.0800, [_SZ(1.0810), _SZ(1.0817)],
+                  pip=EPIP)
+check('FX: obstacles 7 pips apart not merged', len(eur_obs) == 2, str(eur_obs))
+
+# session engine: floor pivot keeps pip resolution (1.08277, not 1.08)
+eur_sess = _compat(compute_session_levels, [],
+                   {'high': 1.0850, 'low': 1.0790, 'close': 1.0843},
+                   1.0824, digits=EDIG)
+check('FX: floor pivot keeps pip resolution', abs(eur_sess.pivot - 1.08277) < 1e-9,
+      str(eur_sess.pivot))
+
+# trendlines: projected price keeps pip resolution, pip-scale dedup
+def zigzag_up(cycles=6, base=1.0700, amp=20 * EPIP, rise=10 * EPIP):
+    """Ascending zigzag — swing lows step up 10 pips per cycle."""
+    out, t, px = [], 1_700_000_000, base
+    for _ in range(cycles):
+        for _ in range(10):
+            px -= amp / 10
+            out.append(bar(t, px + EPIP, px + 2 * EPIP, px - EPIP, px)); t += 3600
+        for _ in range(15):
+            px += (amp + rise) / 15
+            out.append(bar(t, px - EPIP, px + 2 * EPIP, px - EPIP, px)); t += 3600
+    return out
+
+eur_tls = _compat(detect_trendlines, zigzag_up(), 'H1', pip=EPIP, digits=EDIG)
+check('FX: ascending trendline detected', any(t.kind == 'ascending' for t in eur_tls),
+      str(eur_tls))
+check('FX: trendline projection keeps pip resolution',
+      any(abs(t.projected - round(t.projected, 2)) > 1e-9 for t in eur_tls),
+      str([t.projected for t in eur_tls]))
+
+
+print('\n── gold regression (pip=1.0 / digits=2 bit-identical) ───────')
+# The pip/digits parameters at gold defaults must reproduce the pre-refactor
+# numbers exactly (values captured from the pre-fix module on the same
+# synthetic bars at the top of this file).
+g_legs = _compat(build_legs, bars, 'M30', pip=1.0, digits=2)
+check('gold: leg id / origin / end / size unchanged',
+      [(l.leg_id, l.origin, l.end, l.size) for l in g_legs] ==
+      [('M30_long_3998_4102', 3998.0, 4102.5, 104.5)],
+      str([(l.leg_id, l.origin, l.end, l.size) for l in g_legs]))
+
+g_zones, _ = _compat(build_level_matrix, {'M30': bars}, price, pip=1.0, digits=2)
+g_summary = sorted((z.zone_id, z.centre, z.gp_low, z.gp_high,
+                    z.swing_origin, z.swing_end) for z in g_zones)
+check('gold: zone matrix unchanged (ids, centres, pads, anchors)',
+      g_summary == [('v2_long_4010',    4009.91, 4009.16, 4010.66, 3998.0, 4102.5),
+                    ('v2_long_4020',    4020.36, 4019.61, 4021.11, 3998.0, 4102.5),
+                    ('v2_long_4036_gp', 4036.24, 4033.82, 4038.67, 3998.0, 4102.5)],
+      str(g_summary))
+
+g_obs = _compat(collect_obstacles, 'LONG', 4040.0, [_SZ(4051.0), _SZ(4052.0)],
+                pip=1.0)
+check('gold: $1-apart obstacles still merge (same shelf)', len(g_obs) == 1, str(g_obs))
+
+
+print('\n── paper→live guard ─────────────────────────────────────────')
+# A KV paper_mode:false must never flip a locally-started paper bot live on a
+# config refresh — LIVE requires BOTH the --live flag AND KV paper_mode:false.
+import argparse
+from main import ConfluenceBot
+
+_ns = lambda live: argparse.Namespace(live=live, pairs=None, log_dir='.')
+
+cb = ConfluenceBot(_ns(False))
+cb.cfg['paper_mode'] = False          # simulate a KV flip to live
+cb._enforce_live_guard()
+check('KV live flip without --live stays PAPER', cb.cfg.get('paper_mode') is True)
+check('block warning latched (fires once per state change)',
+      cb._live_blocked_warned is True)
+cb.cfg['paper_mode'] = True
+cb._enforce_live_guard()
+check('warning latch resets when KV returns to paper',
+      cb._live_blocked_warned is False)
+
+cb2 = ConfluenceBot(_ns(True))
+cb2.cfg['paper_mode'] = False
+cb2._enforce_live_guard()
+check('--live + KV paper_mode:false goes LIVE', cb2.cfg.get('paper_mode') is False)
+cb3 = ConfluenceBot(_ns(True))
+cb3.cfg['paper_mode'] = True
+cb3._enforce_live_guard()
+check('--live alone without KV opt-in stays PAPER', cb3.cfg.get('paper_mode') is True)
 
 
 print(f'\n{"="*60}\n{PASS} passed, {FAIL} failed\n')

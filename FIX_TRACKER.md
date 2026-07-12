@@ -25,12 +25,12 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 
 ## Batch 2 — ConfluenceBot FX-scale repair
 
-- [ ] FX-scale smoke test (synthetic EUR/USD bars; assert pip-scale zones, unique zone IDs) — detector first
-- [ ] Thread pip/digits through `level_matrix.py` (leg rounding, pad floor, zone/leg ID collisions)
-- [ ] Fix `exits.py` obstacle-merge tolerance (1.5 price units → pip-scaled)
-- [ ] Fix `session_engine.py` pivot/VWAP 2-dp rounding
-- [ ] Fix `trendline_engine.py` dedup tolerance
-- [ ] Guard the paper→live flip (require `--live` AND KV `paper_mode:false`)
+- [x] FX-scale smoke test (synthetic EUR/USD bars; assert pip-scale zones, unique zone IDs) — detector first
+- [x] Thread pip/digits through `level_matrix.py` (leg rounding, pad floor, zone/leg ID collisions)
+- [x] Fix `exits.py` obstacle-merge tolerance (1.5 price units → pip-scaled)
+- [x] Fix `session_engine.py` pivot/VWAP 2-dp rounding
+- [x] Fix `trendline_engine.py` dedup tolerance
+- [x] Guard the paper→live flip (require `--live` AND KV `paper_mode:false`)
 
 ## Batch 3 — QMR live/backtest alignment
 

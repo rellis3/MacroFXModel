@@ -57,10 +57,13 @@ class ExitPlan:
 
 def collect_obstacles(direction: str, price: float,
                       zones: list, vol=None, session=None,
-                      primary_swing_end: float = 0.0) -> list[tuple[float, str]]:
+                      primary_swing_end: float = 0.0,
+                      pip: float = 1.0) -> list[tuple[float, str]]:
     """
     Prices in the profit direction that price is likely to react at.
     zones: scored ZoneV2 list (both directions) from the level matrix.
+    pip: instrument pip size — the same-shelf merge distance is 1.5 pips
+    ($1.5 on gold, unchanged).
     """
     cands: list[tuple[float, str]] = []
 
@@ -102,10 +105,10 @@ def collect_obstacles(direction: str, price: float,
     # Sort nearest-first in the profit direction
     cands.sort(key=lambda t: t[0], reverse=(direction == 'SHORT'))
 
-    # Merge obstacles within $1.5 of each other (same shelf)
+    # Merge obstacles within 1.5 pips of each other (same shelf)
     merged: list[tuple[float, str]] = []
     for p, lbl in cands:
-        if merged and abs(p - merged[-1][0]) <= 1.5:
+        if merged and abs(p - merged[-1][0]) <= 1.5 * pip:
             continue
         merged.append((p, lbl))
     return merged
@@ -206,7 +209,8 @@ def plan_exits(zone, direction: str, price: float,
 
     # ── TP candidates ─────────────────────────────────────────────────────────
     obstacles = collect_obstacles(direction, price, zones, vol, session,
-                                  primary_swing_end=getattr(zone, 'swing_end', 0.0))
+                                  primary_swing_end=getattr(zone, 'swing_end', 0.0),
+                                  pip=pip)
 
     room = remaining_range(direction, price, daily_atr, today_high, today_low,
                            range_mult, vol_fc=vol_fc)
@@ -247,7 +251,7 @@ def plan_exits(zone, direction: str, price: float,
     tp2 = tp2_basis = None
     for p, lbl in obstacles:
         r = _r(p)
-        if sign * (p - tp1) > 0.5 and r >= tp2_r_min:
+        if sign * (p - tp1) > 0.5 * pip and r >= tp2_r_min:
             tp2, tp2_basis = p, lbl
             break
     if tp2 is None:

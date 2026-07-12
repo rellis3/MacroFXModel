@@ -30,7 +30,7 @@ class VwapAnchor:
     session: str         # 'LONDON' | 'NY'
     direction: str       # 'UP' | 'DOWN' — direction of the drive away from this level
     age_days: int
-    drive_size: float    # price range of the opening drive (in gold pips/$)
+    drive_size: float    # price range of the opening drive (price units)
 
 
 @dataclass
@@ -63,7 +63,7 @@ class SessionLevels:
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-def _vwap(bars: list[dict]) -> tuple[float, float, float]:
+def _vwap(bars: list[dict], digits: int = 2) -> tuple[float, float, float]:
     if not bars:
         return 0.0, 0.0, 0.0
     tpv = vol = 0.0
@@ -85,17 +85,17 @@ def _vwap(bars: list[dict]) -> tuple[float, float, float]:
         h = max(1, len(tps) // 4)
         slope = sum(tps[-h:]) / h - sum(tps[:h]) / h
 
-    return round(vwap, 2), round(slope, 3), round(std, 2)
+    return round(vwap, digits), round(slope, digits + 1), round(std, digits)
 
 
-def _pivots(ph: float, pl: float, pc: float) -> dict[str, float]:
+def _pivots(ph: float, pl: float, pc: float, digits: int = 2) -> dict[str, float]:
     p = (ph + pl + pc) / 3
     return {
-        'pivot': round(p, 2),
-        'r1': round(2 * p - pl, 2),  'r2': round(p + ph - pl, 2),
-        'r3': round(ph + 2 * (p - pl), 2),
-        's1': round(2 * p - ph, 2),  's2': round(p - (ph - pl), 2),
-        's3': round(pl - 2 * (ph - p), 2),
+        'pivot': round(p, digits),
+        'r1': round(2 * p - pl, digits),  'r2': round(p + ph - pl, digits),
+        'r3': round(ph + 2 * (p - pl), digits),
+        's1': round(2 * p - ph, digits),  's2': round(p - (ph - pl), digits),
+        's3': round(pl - 2 * (ph - p), digits),
     }
 
 
@@ -123,7 +123,8 @@ def compute_vwap_anchors(m1_bars: list[dict],
                          today_low: float,
                          today_high: float,
                          min_drive_atr_mult: float = 1.2,
-                         max_sessions: int = 14) -> list[VwapAnchor]:
+                         max_sessions: int = 14,
+                         digits: int = 2) -> list[VwapAnchor]:
     """
     For each London and NY session open in the past N sessions, detect whether
     the market made a strong directional drive in the first _DRIVE_BARS minutes.
@@ -187,12 +188,12 @@ def compute_vwap_anchors(m1_bars: list[dict],
             if not (today_low <= open_price <= today_high):
                 age = (today - date).days
                 anchors.append(VwapAnchor(
-                    price=round(open_price, 2),
+                    price=round(open_price, digits),
                     date=str(date),
                     session=session_name,
                     direction=direction,
                     age_days=age,
-                    drive_size=round(drive_size, 1),
+                    drive_size=round(drive_size, max(digits - 1, 1)),
                 ))
 
             sessions_found += 1
@@ -206,11 +207,14 @@ def compute_vwap_anchors(m1_bars: list[dict],
 def compute_session_levels(h1_bars: list[dict],
                            prev_daily_bar: Optional[dict],
                            current_price: float,
-                           m1_bars_multiday: Optional[list[dict]] = None) -> SessionLevels:
+                           m1_bars_multiday: Optional[list[dict]] = None,
+                           digits: int = 2) -> SessionLevels:
     """
     h1_bars:           at least 48H of 1H bars, chronological.
     prev_daily_bar:    previous D1 bar (for floor pivots).
     m1_bars_multiday:  if provided, used to detect historical VWAP anchor levels.
+    digits:            instrument price precision for level rounding — the
+                       gold default (2) reproduces GoldV2 exactly.
     """
     now   = datetime.now(tz=timezone.utc)
     hour  = now.hour
@@ -261,8 +265,8 @@ def compute_session_levels(h1_bars: list[dict],
     lh, ll, lo = _range(h1_bars, 7, 13)
     nh, nl, no = _range(h1_bars, 13, 20)
 
-    pvts                      = _pivots(pdh, pdl, pdc)
-    vwap, vslope, vstd        = _vwap(today_bars) if today_bars else (current_price, 0.0, 1.0)
+    pvts                      = _pivots(pdh, pdl, pdc, digits)
+    vwap, vslope, vstd        = _vwap(today_bars, digits) if today_bars else (current_price, 0.0, 1.0)
 
     # Today's session range (for checking if VWAP anchor levels have been visited)
     today_high = max((b['high'] for b in today_bars), default=current_price)
@@ -270,23 +274,24 @@ def compute_session_levels(h1_bars: list[dict],
 
     vwap_anchors: list[VwapAnchor] = []
     if m1_bars_multiday:
-        vwap_anchors = compute_vwap_anchors(m1_bars_multiday, today_low, today_high)
+        vwap_anchors = compute_vwap_anchors(m1_bars_multiday, today_low, today_high,
+                                            digits=digits)
 
     return SessionLevels(
         current_price=current_price,
-        daily_open=round(daily_open, 2),
-        prev_daily_high=round(pdh, 2), prev_daily_low=round(pdl, 2),
-        prev_daily_close=round(pdc, 2),
-        asia_high=round(ah, 2), asia_low=round(al, 2),
-        asia_mid=round((ah + al) / 2, 2),
-        london_open=round(lo, 2), london_high=round(lh, 2), london_low=round(ll, 2),
-        ny_open=round(no, 2), ny_high=round(nh, 2), ny_low=round(nl, 2),
+        daily_open=round(daily_open, digits),
+        prev_daily_high=round(pdh, digits), prev_daily_low=round(pdl, digits),
+        prev_daily_close=round(pdc, digits),
+        asia_high=round(ah, digits), asia_low=round(al, digits),
+        asia_mid=round((ah + al) / 2, digits),
+        london_open=round(lo, digits), london_high=round(lh, digits), london_low=round(ll, digits),
+        ny_open=round(no, digits), ny_high=round(nh, digits), ny_low=round(nl, digits),
         current_session=session,
         pivot=pvts['pivot'],
         r1=pvts['r1'], r2=pvts['r2'], r3=pvts['r3'],
         s1=pvts['s1'], s2=pvts['s2'], s3=pvts['s3'],
         vwap=vwap, vwap_slope=vslope, vwap_std=vstd,
         vwap_anchors=vwap_anchors,
-        today_high=round(today_high, 2),
-        today_low=round(today_low, 2),
+        today_high=round(today_high, digits),
+        today_low=round(today_low, digits),
     )

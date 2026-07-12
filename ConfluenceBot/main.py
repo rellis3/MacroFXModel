@@ -780,12 +780,15 @@ class SymbolEngine:
         if h1_bars:
             prev_d1 = daily_bars[-2] if len(daily_bars) >= 2 else None
             self.sess_lvls = compute_session_levels(h1_bars, prev_d1, price_now,
-                                                    m1_bars_multiday=m1_multiday)
+                                                    m1_bars_multiday=m1_multiday,
+                                                    digits=instr.digits)
 
         self.trendlines = []
         for tf, bars in [('H4', h4_bars), ('H1', h1_bars)]:
             if bars:
-                self.trendlines.extend(detect_trendlines(bars, tf))
+                self.trendlines.extend(detect_trendlines(bars, tf,
+                                                         pip=instr.pip,
+                                                         digits=instr.digits))
 
         self._refresh_vol_forecast()
 
@@ -802,6 +805,7 @@ class SymbolEngine:
                 bars_by_tf, price_now,
                 cluster_tolerance=cluster_tol,
                 include_retests=bool(self.cfg.get('include_retests', True)),
+                pip=instr.pip, digits=instr.digits,
             )
         except Exception as exc:
             log.error(f'[{instr.symbol}] matrix build failed: {exc}', exc_info=True)
@@ -1422,6 +1426,24 @@ class ConfluenceBot:
         self.engines: dict[str, SymbolEngine] = {}
         self._mt5_ok  = False
         self.last_state_refresh = 0.0
+        # Latch for the live-guard warning — warn once per KV state change,
+        # not on every 120s refresh.
+        self._live_blocked_warned = False
+
+    def _enforce_live_guard(self) -> None:
+        """LIVE requires BOTH the --live flag AND KV paper_mode:false. Without
+        --live, a paper_mode:false arriving via the KV config refresh must
+        never silently flip a locally-started paper bot live."""
+        kv_wants_live = not self.cfg.get('paper_mode', True)
+        if kv_wants_live and not self.args.live:
+            self.cfg['paper_mode'] = True
+            if not self._live_blocked_warned:
+                log.warning('[SAFETY] KV config requests LIVE (paper_mode: false) but the '
+                            'bot was started WITHOUT --live — staying in PAPER mode. '
+                            'Restart with --live to allow live orders.')
+                self._live_blocked_warned = True
+        elif not kv_wants_live:
+            self._live_blocked_warned = False   # re-warn on the next KV live flip
 
     # ── engine wiring ───────────────────────────────────────────────────────────
 
@@ -1488,7 +1510,7 @@ class ConfluenceBot:
             log.info('MT5 not installed — paper mode only')
 
         self.cfg = _load_config(self.base_url)
-        self.cfg['paper_mode'] = self.cfg.get('paper_mode', not self.args.live)
+        self._enforce_live_guard()
         if self.args.pairs:
             self.cfg['pairs'] = [p.strip() for p in self.args.pairs.split(',') if p.strip()]
         self._rebuild_engines()
@@ -1521,6 +1543,7 @@ class ConfluenceBot:
 
     def _state_refresh_all(self) -> None:
         self.cfg = _load_config(self.base_url)
+        self._enforce_live_guard()
         if self.args.pairs:
             self.cfg['pairs'] = [p.strip() for p in self.args.pairs.split(',') if p.strip()]
         if not self.cfg.get('enabled', True):
