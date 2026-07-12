@@ -50,7 +50,7 @@ import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
-import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES } from './js/macroCore.js';
+import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
@@ -121,7 +121,7 @@ import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
-import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
+import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, resetBackfillStore as tdeResetBackfillStore, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -13128,18 +13128,38 @@ function tdeStartBackfillJob(pairs, { incremental, gapFill = true, macro = true 
     try {
       // riskSens is PAIR-specific, so the §7c contextByDate socket is fed per
       // pair: one runBackfill call per pair with that pair's own macro map.
-      // (Each call re-reads the full event log and rewrites the report, so the
-      // LAST call's report covers everything — same net result as one call.)
       let fredHist = null;
       if (macro) {
         try { fredHist = await _loadMacroFredHistoryFull(onLog); }
         catch (e) { onLog(`macro: FRED history load FAILED (${e.message ?? e}) — running macro-neutral`); }
       } else onLog('macro: disabled for this run (baseline/incumbent mode)');
+
+      // For the MACRO test, drop pairs with no riskSens driver (gold + the index
+      // CFDs). Their macro_align is always 0, so they add nothing to the bucket /
+      // ablation — they only dilute the neutral control, and the index M1
+      // parquets (dax/dow) are the ones that fail to load. Baseline runs keep the
+      // full list (the incumbent report is over everything).
+      let runPairs = pairs;
+      if (macro && fredHist) {
+        runPairs = pairs.filter(p => _riskSensFor(p) != null);
+        const skipped = pairs.filter(p => _riskSensFor(p) == null);
+        if (skipped.length) onLog(`macro: skipping ${skipped.length} driverless pair(s) — ${skipped.join(', ')} (macro_align≡0, nothing to test)`);
+      }
+
+      // CRITICAL: a full rebuild (!incremental) must wipe the event log + state
+      // exactly ONCE, up front — NOT per pair. runBackfill's own `!incremental`
+      // unlink fires on every call, so looping it per pair would leave only the
+      // LAST pair's events (the bug that killed the macro rebuild: dax is last,
+      // has no data, and wiped everything before it). Reset once, then run each
+      // pair incrementally so events ACCUMULATE. Nightly incremental top-ups are
+      // untouched (they never reset).
+      if (!incremental) { tdeResetBackfillStore(); onLog('full rebuild — event log + state reset once (pairs accumulate)'); }
+
       let report = null;
-      for (const pair of pairs) {
+      for (const pair of runPairs) {
         const contextByDate = fredHist ? _macroContextByDate(pair, fredHist) : null;
         if (fredHist) onLog(`${pair}: macro context ${contextByDate && Object.keys(contextByDate).length ? `${Object.keys(contextByDate).length} days` : 'none (no riskSens driver) — macro-neutral'}`);
-        report = await tdeRunBackfill([pair], { incremental, gapFill, contextByDate, onLog });
+        report = await tdeRunBackfill([pair], { incremental: true, gapFill, contextByDate, onLog });
       }
       job.status = 'done'; job.report = report;
     } catch (e) {

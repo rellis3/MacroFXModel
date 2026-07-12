@@ -433,6 +433,17 @@ export function readEvents() {
   } catch { return []; }
 }
 
+// Wipe the event log + per-pair state ONCE, up front. A full rebuild that loops
+// runBackfill([pair]) per pair (the §7c macro path) must NOT let each call's own
+// `!incremental` unlink fire — that wipes every prior pair's events, leaving only
+// the last pair. The orchestrator calls this once, then runs each pair with
+// incremental:true so events ACCUMULATE across pairs. (REPORT_FILE is rewritten
+// by the final call, so it is left as-is.)
+export function resetBackfillStore() {
+  try { fs.unlinkSync(EVENTS_FILE); } catch {}
+  try { fs.unlinkSync(STATE_FILE); } catch {}
+}
+
 // Full or incremental run over `pairs` (sequential — one packed series in
 // memory at a time). Appends events, advances per-pair state, refits, writes
 // the report. onLog(msg) streams progress to the async-job log.
