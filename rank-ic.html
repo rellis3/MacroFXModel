@@ -124,6 +124,72 @@
       consistent IS and OOS.
     </div>
   </div>
+
+  <div style="border-top:1px solid var(--line);margin:26px 0 20px"></div>
+  <h1 style="font-size:17px;margin:0 0 4px">Live entry scores <span class="mut" style="font-size:13px">· Asia-range, M1 gap-filled</span></h1>
+  <div class="sub" style="margin-bottom:14px">
+    Grades the <b>actual live scores the bot fires</b> — star rating, signalScore,
+    day-type T, vol position, approach velocity — against <b>realized trade pnl</b>.
+    It drives <code>asiaRangeEngine</code> over <b>M1</b> history (frozen R2/parquet
+    snapshot <b>gap-filled to now from OANDA live</b>) through the <i>same</i>
+    <code>entryGradeCore</code>/<code>rangeBiasCore</code>/<code>hmm.js</code> bricks
+    the live <code>levels.js</code> uses — so the score being graded is the one the
+    bot actually computes, not a D1 reconstruction. Each row is rank-IC of a score
+    vs <code>pnl_pct</code> on a true IS/OOS split; <b>+IC ⇒ higher score ranked the
+    winners above the losers</b>.
+  </div>
+
+  <div class="note">
+    <b>Scope (honest).</b> This grades signalScore <b>as the Asia-range strategy
+    fires it</b> (that bot's entry candidates, the <b>no-macro</b> blend) — not every
+    possible level touch. <b>Sample size is the real limit:</b> Asia-range candidates
+    per pair can be thin, so OOS <b>n</b> may fall short of the ≥30 bar — the card
+    shows n so a thin cell can't pass as a result. First run is slow (M1 load +
+    gap-fill from OANDA per pair).
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Instrument</label>
+        <select id="lpair">
+          <option value="">All pairs</option>
+          <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+          <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+          <option>USDCHF</option><option>GBPJPY</option><option>EURJPY</option>
+          <option>EURGBP</option><option>GOLD</option>
+        </select>
+      </div>
+      <div><label>OOS fraction</label><input id="loosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6">
+           <div class="hint">last fraction held out</div></div>
+      <div>
+        <label>M1 gap-fill</label>
+        <select id="lgap">
+          <option value="true">On — top up to now (OANDA live)</option>
+          <option value="false">Off — frozen parquet snapshot</option>
+        </select>
+        <div class="hint">off ⇒ recent edge may be stale</div>
+      </div>
+    </div>
+    <div style="margin-top:14px"><button id="lrun">Run live-score diagnostic</button></div>
+    <div id="lstatus"></div>
+  </div>
+
+  <div id="lsummary"></div>
+  <div id="lresults"></div>
+
+  <div class="card" id="llegendCard" style="display:none">
+    <div class="legend">
+      Same rank-IC / t-stat / IC=0 benchmark as above, but the <b>target is realized
+      trade pnl</b> (<code>pnl_pct</code>), not a forward window — these scores claim
+      "higher score → better <i>trade</i>", so <b>+OOS IC</b> means the score sorts
+      winners above losers out-of-sample. <b>n</b> is the number of graded Asia-range
+      entries; a small n makes any IC noisy, so read n before the IC. Rows highlight
+      when OOS <code>|t|≥2</code>. The pooled summary counts significant pairs next
+      to the cell count — multiple testing across scores × pairs means a lone
+      survivor is likely chance unless it holds IS and OOS.
+    </div>
+  </div>
 </main>
 
 <script>
@@ -203,6 +269,71 @@ $('run').onclick = async () => {
     $('legendCard').style.display='';
   }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
   finally{ $('run').disabled=false; }
+};
+
+// ── Live entry scores (Asia-range, M1) ───────────────────────────────────────
+function renderLivePair(r){
+  let best=null; for(const s of r.scores){ if(s.oos && s.oos.n && (!best || Math.abs(s.oos.ic)>Math.abs(best.oos.ic))) best=s; }
+  let html = `<div class="card"><div class="inst-title">${r.pair} <span class="mut">· ${r.nTrades} graded trades · split ${(r.scores[0]&&r.scores[0].splitDate)||'—'}</span> &nbsp; ${best?icBadge(best.oos):''}</div>`;
+  html += `<table><thead><tr><th>score</th><th>OOS IC</th><th>OOS t</th><th>n</th><th>IS IC</th><th>full IC</th></tr></thead><tbody>`;
+  for(const s of r.scores){
+    const sig = s.oos && Math.abs(s.oos.tStat)>=2;
+    html += `<tr class="${sig?'sig':''}">
+      <td class="mode">${s.label}<div class="kind" style="text-transform:none">${s.note}</div></td>
+      <td class="${icClass(s.oos.ic)}"><b>${fmt(s.oos.ic)}</b></td>
+      <td class="mut">${fmt(s.oos.tStat,1)}</td>
+      <td class="mut">${s.oos.n}</td>
+      <td class="mut ${icClass(s.is.ic)}">${fmt(s.is.ic)}</td>
+      <td class="mut ${icClass(s.full.ic)}">${fmt(s.full.ic)}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderLiveSummary(summary, nPairAll){
+  const rows = summary.map(s=>{
+    const strong = Math.abs(s.meanOosIC)>=0.02 && s.nSig>0;
+    return `<tr class="${strong?'sig':''}">
+      <td>${s.label}</td>
+      <td class="mut" style="text-transform:none;font-size:11px">${s.note}</td>
+      <td class="${icClass(s.meanOosIC)}"><b>${fmt(s.meanOosIC)}</b></td>
+      <td class="${icClass(s.medianOosIC)}">${fmt(s.medianOosIC)}</td>
+      <td class="mut">${s.nSig} / ${s.nPair}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="card"><div class="inst-title">Pooled OOS summary across ${nPairAll} pair(s)</div>
+    <table class="summary"><thead><tr><th>score</th><th>what it is</th><th>mean OOS IC</th><th>median OOS IC</th><th>signif. (|t|≥2) / cells</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="legend">Mean/median of the per-pair OOS ICs (vs realized trade pnl). <b>signif. / cells</b> = how many pairs individually clear |t|≥2 out of how many tested — read against multiple testing, not as a tally of wins.</div>
+  </div>`;
+}
+
+async function pollLive(jobId){
+  for(let i=0;i<300;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/rank-ic-live/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('lstatus').textContent = `Running… ${res.elapsed||0}s (M1 load + gap-fill per pair)`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('lrun').onclick = async () => {
+  const body = { pair:$('lpair').value, oosFrac:$('loosFrac').value, gapFill:$('lgap').value };
+  $('lrun').disabled=true; $('lresults').innerHTML=''; $('lsummary').innerHTML=''; $('llegendCard').style.display='none';
+  $('lstatus').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/rank-ic-live/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await pollLive(start.jobId);
+    $('lstatus').textContent = `Done — ${out.results.length} pair(s), OOS ${out.opts.oosFrac}, gap-fill ${out.opts.gapFill?'on':'off'}.`;
+    if(out.results.length>1 && out.summary) $('lsummary').innerHTML = renderLiveSummary(out.summary, out.results.length);
+    $('lresults').innerHTML = out.results.map(renderLivePair).join('');
+    $('llegendCard').style.display='';
+  }catch(e){ $('lstatus').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('lrun').disabled=false; }
 };
 </script>
 </body>
