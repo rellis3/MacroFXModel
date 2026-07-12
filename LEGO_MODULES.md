@@ -499,6 +499,16 @@ The alert loop reads its levels from `computeDailyBrief()` (the `/api/daily-brie
 
 ---
 
+### 1p. QMR shared exit walk + cost netting (2026-07-12)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **QMR trade walk** | `server.js` (`_qmrWalkTrade`, `_qmrNetReturn`, `QMR_COSTS` — inline next to `QMR_TIMING`, not yet a `js/` module) | the ONE per-trade exit rule for the QMR session-momentum system: stop-before-TP within a bar (conservative), then EOD close on the first bar labeled ≥ `QMR_TIMING.eodHour`, last-close fallback for truncated days; plus the one cost-netting formula (raw move − costPct − stop-slip, × leverage) and the shared cost constants (0.008% / 0.005%) | `_computeNqQmr` (all four systems: S1, S2 counterfactual, S3/S4 fades) AND `_qmrResolveForward` — the live forward-validation resolver that writes actual after-cost outcomes of sent alerts into the four `*_qmr_audit` KV logs (NQ/SPX/DOW/DAX), so the forward record is apples-to-apples with the backtest by construction. Tested on synthetic bars incl. a 5000-case fuzz vs the pre-refactor inline walk (scratchpad harness, 2026-07-12). | ✅ built (inline) |
+
+If a third consumer appears (or the QMR engine gets versioned out of `server.js`), extract `_qmrWalkTrade`/`_qmrNetReturn`/`QMR_TIMING`/`QMR_COSTS` into a proper `js/qmrCore.js` brick with a checked-in unit test.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a

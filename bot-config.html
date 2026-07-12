@@ -4024,6 +4024,20 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div id="nqAuditLog" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">Loading…</div>
     </div>
 
+    <!-- ── Forward Record (live-tracked, after-cost) ──────────────────────────── -->
+    <div class="card" style="margin-top:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:var(--text2)">Forward Record <span style="color:#f59e0b">(live-tracked, after-cost)</span></span>
+        <span id="nqFwdCount" style="font-size:11px;font-weight:700;color:var(--text2);background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:1px 8px;font-family:'DM Mono',monospace">n = 0</span>
+        <span style="flex:1"></span>
+        <button onclick="nqLoadForward()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text3);font-size:11px;padding:3px 10px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">
+        This is the forward-validation record of the entry alerts actually sent — each outcome resolved with the backtest engine's exact exit walk, costs and leverage formula. <b style="color:var(--text2)">Small n means no conclusion yet.</b> Signal-only; no orders are placed.
+      </div>
+      <div id="nqForwardRecord" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">Loading…</div>
+    </div>
+
     <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;padding:8px 0">
       Gate state in <code>nq_qmr_status</code> · audit history in <code>nq_qmr_audit</code>. Both written automatically by Railway server on each gate check.
     </div>
@@ -5038,6 +5052,7 @@ function iqrSwitch(id) {
   nqLoadStatus();
   nqLoadConfig();
   nqLoadAudit();
+  nqLoadForward();
 }
 window.iqrSwitch = iqrSwitch;
 
@@ -5585,6 +5600,79 @@ async function nqLoadAudit() {
   </div>`;
 }
 
+// ── QMR Forward Record (live-tracked outcomes of alerts actually sent) ──────
+// Reads the same audit KV as the Gate Audit Log; renders only the `forward`
+// snapshots the server's resolver has written. After-cost, engine-identical
+// exit rule. Small n = no conclusion — the n badge is deliberately prominent.
+async function nqLoadForward() {
+  const el  = document.getElementById('nqForwardRecord');
+  const nEl = document.getElementById('nqFwdCount');
+  if (!el) return;
+  el.textContent = 'Loading…';
+  const log = (await _kvGet(_iqrCfg().kvAudit)) || [];
+  const fwd = log.filter(e => e && e.forward).map(e => ({ date: e.date, ...e.forward }));
+  const closed = fwd.filter(f => f.status === 'closed').sort((a, b) => a.date.localeCompare(b.date));
+  const open   = fwd.filter(f => f.status === 'open');
+  if (nEl) nEl.textContent = `n = ${closed.length}`;
+  if (!fwd.length) {
+    el.textContent = 'No forward-tracked signals yet. A row appears the first time an entry alert fires; the outcome is written automatically after the close.';
+    return;
+  }
+
+  const s  = v => `${(v ?? 0) >= 0 ? '+' : ''}${(v ?? 0).toFixed(2)}%`;
+  const px = v => (typeof v === 'number' ? v.toFixed(1) : (v ?? '—'));
+  let cum = 1;
+  const closedRows = closed.map(f => {
+    cum *= (1 + (f.levered_return_pct ?? 0) / 100);
+    const col  = (f.net_move_pct ?? 0) >= 0 ? '#10b981' : '#ef4444';
+    const rCol = f.exit_reason === 'TP' ? '#10b981' : f.exit_reason === 'STOP' ? '#ef4444' : 'var(--text3)';
+    return `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:4px 8px;font-size:11px;white-space:nowrap">${f.date}</td>
+      <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${f.dir === 'LONG' ? '#10b981' : '#60a5fa'}">${f.dir === 'LONG' ? '▲ LONG' : '▼ SHORT'}</td>
+      <td style="padding:4px 8px;font-size:11px">${px(f.entry_px)}</td>
+      <td style="padding:4px 8px;font-size:11px">${px(f.exit_px)}</td>
+      <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${rCol}">${f.exit_reason || '—'}</td>
+      <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${col}">${s(f.net_move_pct)}</td>
+      <td style="padding:4px 8px;font-size:11px;color:${col}">${s(f.levered_return_pct)}</td>
+    </tr>`;
+  }).reverse().join(''); // newest first in the table
+
+  const openRows = open.map(f => `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:4px 8px;font-size:11px;white-space:nowrap">${f.date}</td>
+      <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${f.dir === 'LONG' ? '#10b981' : '#60a5fa'}">${f.dir === 'LONG' ? '▲ LONG' : '▼ SHORT'}</td>
+      <td style="padding:4px 8px;font-size:11px">${px(f.entry_px)}</td>
+      <td colspan="4" style="padding:4px 8px;font-size:11px;color:#f59e0b">open — resolves after the close</td>
+    </tr>`).join('');
+
+  let summaryRow = '';
+  if (closed.length) {
+    const wins   = closed.filter(f => (f.net_move_pct ?? 0) > 0).length;
+    const avgNet = closed.reduce((a, f) => a + (f.net_move_pct ?? 0), 0) / closed.length;
+    const cumCol = cum >= 1 ? '#10b981' : '#ef4444';
+    summaryRow = `<tr style="border-top:2px solid var(--border);font-weight:700;color:var(--text2)">
+      <td style="padding:6px 8px;font-size:11px;white-space:nowrap">n = ${closed.length}</td>
+      <td colspan="3" style="padding:6px 8px;font-size:11px">win rate ${(wins / closed.length * 100).toFixed(0)}% (${wins}/${closed.length})</td>
+      <td style="padding:6px 8px;font-size:11px;white-space:nowrap">avg net ${s(avgNet)}</td>
+      <td colspan="2" style="padding:6px 8px;font-size:11px;color:${cumCol}">cum levered ${s((cum - 1) * 100)}</td>
+    </tr>`;
+  }
+
+  el.innerHTML = `<div style="overflow-x:auto">
+    <table style="border-collapse:collapse;width:100%;min-width:560px">
+      <thead><tr style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">
+        <th style="text-align:left;padding:4px 8px 8px">Date</th>
+        <th style="text-align:left;padding:4px 8px 8px">Dir</th>
+        <th style="text-align:left;padding:4px 8px 8px">Entry</th>
+        <th style="text-align:left;padding:4px 8px 8px">Exit</th>
+        <th style="text-align:left;padding:4px 8px 8px">Reason</th>
+        <th style="text-align:left;padding:4px 8px 8px">Net %</th>
+        <th style="text-align:left;padding:4px 8px 8px">Levered %</th>
+      </tr></thead>
+      <tbody>${openRows}${closedRows}${summaryRow}</tbody>
+    </table>
+  </div>`;
+}
+
 // Full nqLoadStatus — loads from active instrument's KV key and renders all panels
 async function nqLoadStatus() {
   const data = await _kvGet(_iqrCfg().kvStatus);
@@ -5613,6 +5701,7 @@ document.querySelector('.tab-btn[data-tab="nqqmr"]')?.addEventListener('click', 
   nqLoadStatus();
   nqLoadConfig();
   nqLoadAudit();
+  nqLoadForward();
 });
 
 // ── Liquidity Gate tab ───────────────────────────────────────────────────────────

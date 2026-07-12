@@ -2711,6 +2711,49 @@ const QMR_TIMING = {
 };
 const _qmrHH = h => String(h).padStart(2, '0'); // hour → 2-digit bar label
 
+// Shared cost constants — engine defaults AND the live forward-validation
+// resolver read these, so the backtest and the forward record net identically.
+const QMR_COSTS = { costPct: 0.008, stopSlipPct: 0.005 };
+
+// Shared per-trade exit walk — used by the backtest engine (_computeNqQmr, all
+// four systems) AND the live forward-validation resolver (_qmrResolveForward),
+// so the two exit rules can never drift (the Lego rule). `bars` are the H1
+// bars STRICTLY AFTER the entry bar, sorted ascending by time. Rule, in order,
+// per bar: stop first (conservative — worst case within the bar), then TP,
+// then EOD close on the first bar labeled >= QMR_TIMING.eodHour. If no bar
+// triggers, exits at the last bar's close as EOD (truncated day). Returns
+// { stop, tp, exit, exitReason, movePct } or null when `bars` is empty.
+function _qmrWalkTrade(bars, dir, entry, stopPctEff, tpPct) {
+  const stop = dir === 'LONG' ? entry * (1 - stopPctEff / 100) : entry * (1 + stopPctEff / 100);
+  const tp   = tpPct > 0
+    ? (dir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
+    : null;
+  let exit = null, exitReason = 'EOD';
+  for (const bar of bars) {
+    if (dir === 'LONG'  && bar.l <= stop) { exit = stop; exitReason = 'STOP'; break; }
+    if (dir === 'SHORT' && bar.h >= stop) { exit = stop; exitReason = 'STOP'; break; }
+    if (tp !== null && dir === 'LONG'  && bar.h >= tp) { exit = tp; exitReason = 'TP'; break; }
+    if (tp !== null && dir === 'SHORT' && bar.l <= tp) { exit = tp; exitReason = 'TP'; break; }
+    if (parseInt(bar.t.substring(11, 13)) >= QMR_TIMING.eodHour) { exit = bar.c; exitReason = 'EOD'; break; }
+  }
+  if (exit === null) {
+    const last = bars[bars.length - 1];
+    if (!last) return null;
+    exit = last.c; exitReason = 'EOD';
+  }
+  const movePct = dir === 'LONG'
+    ? (exit - entry) / entry * 100
+    : (entry - exit) / entry * 100;
+  return { stop, tp, exit, exitReason, movePct };
+}
+
+// Shared cost netting: raw move − round-trip cost − stop slippage (stop exits
+// only), THEN scaled by leverage. One formula for the engine and the resolver.
+function _qmrNetReturn(movePct, exitReason, leverage,
+                       costPct = QMR_COSTS.costPct, stopSlipPct = QMR_COSTS.stopSlipPct) {
+  return (movePct - costPct - (exitReason === 'STOP' ? stopSlipPct : 0)) * leverage;
+}
+
 function _qmrStats(trades, curve, equity) {
   const n    = trades.length;
   const wins = trades.filter(t => t.tradeReturn > 0).length;
@@ -2751,14 +2794,15 @@ function _computeNqQmr(bars, cfg = {}) {
     extPctThreshold = 75,    // percentile (vs trailing history) of move-used-by-entry/ADR above which a confirmed day counts as "extended"
     showSystem4     = false, // also compute chop-fade trades (G1+G2 confirm, but the session's path was inefficient/choppy, not a clean trend)
     effPctThreshold = 25,    // percentile (vs trailing history) of trend efficiency BELOW which a confirmed day counts as "choppy"
-    costPct         = 0.008, // round-trip transaction cost (spread + commission), % of notional
-    stopSlipPct     = 0.005, // extra slippage % of notional, charged only on stop exits (market order through a moving market)
+    costPct         = QMR_COSTS.costPct,     // round-trip transaction cost (spread + commission), % of notional
+    stopSlipPct     = QMR_COSTS.stopSlipPct, // extra slippage % of notional, charged only on stop exits (market order through a moving market)
   } = cfg;
 
   // Net every trade of costs BEFORE leverage: raw move − costPct − stop slip,
   // then the position leverage scales the netted move. Free fills are not honest.
-  const _netReturn = (mvPct, exitReason, lev) =>
-    (mvPct - costPct - (exitReason === 'STOP' ? stopSlipPct : 0)) * lev;
+  // Delegates to the shared _qmrNetReturn so the live forward-validation
+  // resolver nets outcomes with the identical formula.
+  const _netReturn = (mvPct, exitReason, lev) => _qmrNetReturn(mvPct, exitReason, lev, costPct, stopSlipPct);
 
   // Group H1 bars by UTC date
   const byDate = {};
@@ -2852,32 +2896,17 @@ function _computeNqQmr(bars, cfg = {}) {
     const effStopPct  = stopMultiplier > 0
       ? Math.max(+(rangePct * stopMultiplier).toFixed(4), 0.10)
       : stopPct;
-    const stop  = gate2 === 'LONG'
-      ? entry * (1 - effStopPct / 100)
-      : entry * (1 + effStopPct / 100);
-    const tp = tpPct > 0
-      ? (gate2 === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
-      : null;
 
-    // Scan bars after entry for TP, stop-out, or EOD exit.
-    // Stop is checked before TP within the same bar (conservative — assumes worst case).
+    // Bars after the entry bar, in time order — input to the shared exit walk.
     const afterEntry = (byDate[today] || [])
       .filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
       .sort((a, bk) => a.t.localeCompare(bk.t));
 
-    let exit = null, exitReason = 'EOD';
-    for (const bar of afterEntry) {
-      if (gate2 === 'LONG'  && bar.l <= stop) { exit = stop; exitReason = 'STOP'; break; }
-      if (gate2 === 'SHORT' && bar.h >= stop) { exit = stop; exitReason = 'STOP'; break; }
-      if (tp !== null && gate2 === 'LONG'  && bar.h >= tp) { exit = tp; exitReason = 'TP'; break; }
-      if (tp !== null && gate2 === 'SHORT' && bar.l <= tp) { exit = tp; exitReason = 'TP'; break; }
-      if (parseInt(bar.t.substring(11, 13)) >= QMR_TIMING.eodHour) { exit = bar.c; exitReason = 'EOD'; break; }
-    }
-    if (exit === null) {
-      const last = afterEntry[afterEntry.length - 1];
-      if (!last) continue;
-      exit = last.c; exitReason = 'EOD';
-    }
+    // Exit walk via the shared _qmrWalkTrade (stop before TP within a bar,
+    // then EOD) — the exact function the live forward-validation resolver uses.
+    const walk = _qmrWalkTrade(afterEntry, gate2, entry, effStopPct, tpPct);
+    if (!walk) continue;
+    const { stop, exit, exitReason, movePct } = walk;
 
     // MFE/MAE: scan entry bar + all afterEntry bars for peak favorable/adverse move.
     // Uses full day H1 resolution — MFE answers "how far did it go in our favour?"
@@ -2893,9 +2922,6 @@ function _computeNqQmr(bars, cfg = {}) {
       if (adv < maePct) maePct = adv;
     }
 
-    const movePct     = gate2 === 'LONG'
-      ? (exit - entry) / entry * 100
-      : (entry - exit) / entry * 100;
     const leverage    = riskPct / effStopPct;
     const tradeReturn = _netReturn(movePct, exitReason, leverage);
 
@@ -2959,29 +2985,12 @@ function _computeNqQmr(bars, cfg = {}) {
       // instead of fading it — the natural baseline for "is fading the rejection
       // actually better than ignoring it," same pattern as System 3's fade check.
       const cfDir  = gate1;
-      const cfStop = cfDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
-      const cfTp   = tpPct > 0
-        ? (cfDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
-        : null;
-
-      let cfExit = null, cfReason = 'EOD';
-      for (const bar of afterEntry) {
-        if (cfDir === 'LONG'  && bar.l <= cfStop) { cfExit = cfStop; cfReason = 'STOP'; break; }
-        if (cfDir === 'SHORT' && bar.h >= cfStop) { cfExit = cfStop; cfReason = 'STOP'; break; }
-        if (cfTp !== null && cfDir === 'LONG'  && bar.h >= cfTp) { cfExit = cfTp; cfReason = 'TP'; break; }
-        if (cfTp !== null && cfDir === 'SHORT' && bar.l <= cfTp) { cfExit = cfTp; cfReason = 'TP'; break; }
-        if (parseInt(bar.t.substring(11, 13)) >= QMR_TIMING.eodHour) { cfExit = bar.c; cfReason = 'EOD'; break; }
-      }
-      if (cfExit === null) {
-        const last = afterEntry[afterEntry.length - 1];
-        if (last) { cfExit = last.c; cfReason = 'EOD'; }
-      }
-      if (cfExit !== null) {
-        const cfMovePct = cfDir === 'LONG' ? (cfExit - entry) / entry * 100 : (entry - cfExit) / entry * 100;
-        const cfReturn   = _netReturn(cfMovePct, cfReason, leverage);
-        trades2cf.push({ date: today, gate1, gate2, direction: cfDir, entry, stop: cfStop, exit: cfExit,
-                          exitReason: cfReason, stopPct: +effStopPct.toFixed(3),
-                          movePct: +cfMovePct.toFixed(3), tradeReturn: +cfReturn.toFixed(3), system: 'S2cf' });
+      const cfWalk = _qmrWalkTrade(afterEntry, cfDir, entry, effStopPct, tpPct);
+      if (cfWalk) {
+        const cfReturn = _netReturn(cfWalk.movePct, cfWalk.exitReason, leverage);
+        trades2cf.push({ date: today, gate1, gate2, direction: cfDir, entry, stop: cfWalk.stop, exit: cfWalk.exit,
+                          exitReason: cfWalk.exitReason, stopPct: +effStopPct.toFixed(3),
+                          movePct: +cfWalk.movePct.toFixed(3), tradeReturn: +cfReturn.toFixed(3), system: 'S2cf' });
       }
     } else {
       equity1 *= (1 + tradeReturn / 100);
@@ -2992,25 +3001,9 @@ function _computeNqQmr(bars, cfg = {}) {
       // is already at an extreme vs the trailing ADR baseline.
       if (isExtended) {
         const fadeDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
-        const fadeStop = fadeDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
-        const fadeTp   = tpPct > 0
-          ? (fadeDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
-          : null;
+        const fadeWalk = _qmrWalkTrade(afterEntry, fadeDir, entry, effStopPct, tpPct);
 
-        let fadeExit = null, fadeReason = 'EOD';
-        for (const bar of afterEntry) {
-          if (fadeDir === 'LONG'  && bar.l <= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
-          if (fadeDir === 'SHORT' && bar.h >= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
-          if (fadeTp !== null && fadeDir === 'LONG'  && bar.h >= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
-          if (fadeTp !== null && fadeDir === 'SHORT' && bar.l <= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
-          if (parseInt(bar.t.substring(11, 13)) >= QMR_TIMING.eodHour) { fadeExit = bar.c; fadeReason = 'EOD'; break; }
-        }
-        if (fadeExit === null) {
-          const last = afterEntry[afterEntry.length - 1];
-          if (last) { fadeExit = last.c; fadeReason = 'EOD'; }
-        }
-
-        if (fadeExit !== null) {
+        if (fadeWalk) {
           let fadeMfe = 0, fadeMae = 0;
           for (const bar of [entryBar, ...afterEntry]) {
             const fav = fadeDir === 'LONG' ? (bar.h - entry) / entry * 100 : (entry - bar.l) / entry * 100;
@@ -3018,12 +3011,11 @@ function _computeNqQmr(bars, cfg = {}) {
             if (fav > fadeMfe) fadeMfe = fav;
             if (adv < fadeMae) fadeMae = adv;
           }
-          const fadeMovePct = fadeDir === 'LONG' ? (fadeExit - entry) / entry * 100 : (entry - fadeExit) / entry * 100;
-          const fadeReturn  = _netReturn(fadeMovePct, fadeReason, leverage);
+          const fadeReturn = _netReturn(fadeWalk.movePct, fadeWalk.exitReason, leverage);
           equity3 *= (1 + fadeReturn / 100);
-          trades3.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeStop, exit: fadeExit,
-                         exitReason: fadeReason, stopPct: +effStopPct.toFixed(3),
-                         movePct: +fadeMovePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
+          trades3.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeWalk.stop, exit: fadeWalk.exit,
+                         exitReason: fadeWalk.exitReason, stopPct: +effStopPct.toFixed(3),
+                         movePct: +fadeWalk.movePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
                          mfePct: +fadeMfe.toFixed(3), maePct: +fadeMae.toFixed(3),
                          equity: +equity3.toFixed(6), system: 'S3' });
           curve3.push({ date: today, equity: +equity3.toFixed(6) });
@@ -3036,25 +3028,9 @@ function _computeNqQmr(bars, cfg = {}) {
       // a day flagged by both when S3 and S4 are both enabled.
       if (isChoppy) {
         const fadeDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
-        const fadeStop = fadeDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
-        const fadeTp   = tpPct > 0
-          ? (fadeDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
-          : null;
+        const fadeWalk = _qmrWalkTrade(afterEntry, fadeDir, entry, effStopPct, tpPct);
 
-        let fadeExit = null, fadeReason = 'EOD';
-        for (const bar of afterEntry) {
-          if (fadeDir === 'LONG'  && bar.l <= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
-          if (fadeDir === 'SHORT' && bar.h >= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
-          if (fadeTp !== null && fadeDir === 'LONG'  && bar.h >= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
-          if (fadeTp !== null && fadeDir === 'SHORT' && bar.l <= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
-          if (parseInt(bar.t.substring(11, 13)) >= QMR_TIMING.eodHour) { fadeExit = bar.c; fadeReason = 'EOD'; break; }
-        }
-        if (fadeExit === null) {
-          const last = afterEntry[afterEntry.length - 1];
-          if (last) { fadeExit = last.c; fadeReason = 'EOD'; }
-        }
-
-        if (fadeExit !== null) {
+        if (fadeWalk) {
           let fadeMfe = 0, fadeMae = 0;
           for (const bar of [entryBar, ...afterEntry]) {
             const fav = fadeDir === 'LONG' ? (bar.h - entry) / entry * 100 : (entry - bar.l) / entry * 100;
@@ -3062,12 +3038,11 @@ function _computeNqQmr(bars, cfg = {}) {
             if (fav > fadeMfe) fadeMfe = fav;
             if (adv < fadeMae) fadeMae = adv;
           }
-          const fadeMovePct = fadeDir === 'LONG' ? (fadeExit - entry) / entry * 100 : (entry - fadeExit) / entry * 100;
-          const fadeReturn  = _netReturn(fadeMovePct, fadeReason, leverage);
+          const fadeReturn = _netReturn(fadeWalk.movePct, fadeWalk.exitReason, leverage);
           equity4 *= (1 + fadeReturn / 100);
-          trades4.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeStop, exit: fadeExit,
-                         exitReason: fadeReason, stopPct: +effStopPct.toFixed(3),
-                         movePct: +fadeMovePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
+          trades4.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeWalk.stop, exit: fadeWalk.exit,
+                         exitReason: fadeWalk.exitReason, stopPct: +effStopPct.toFixed(3),
+                         movePct: +fadeWalk.movePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
                          mfePct: +fadeMfe.toFixed(3), maePct: +fadeMae.toFixed(3),
                          equity: +equity4.toFixed(6), system: 'S4', sourceExtended: isExtended });
           curve4.push({ date: today, equity: +equity4.toFixed(6) });
@@ -13999,6 +13974,132 @@ async function nqAuditUpdate(fields) {
   } catch (e) { console.error('[nq-audit] write error:', e.message); }
 }
 
+// ── QMR forward-validation resolver (signal-only paper record) ───────────────
+// When an entry alert fires, the monitor stamps `forward:{status:'open'}` on
+// the day's audit entry. This resolver replays the day's COMPLETED H1 bars
+// through _qmrWalkTrade — the very function the backtest engine uses — and
+// nets the outcome with the same costPct/stopSlipPct and leverage formula
+// (riskPct / stop_pct), so the forward record is apples-to-apples with the
+// backtest by construction. No orders are ever placed; this is the
+// forward-validation ledger for a system whose defaults are in-sample.
+//
+// Called from the EOD-summary cron (stop/TP outcomes are final then) and
+// defensively from the day-open cron: an EOD-close exit only becomes final
+// once the bar labeled eodHour completes (eodHour+1 UTC — after the 20:30
+// summary), and server restarts can leave days open.
+const _NQ_FWD_SPEC = { id: 'nq', label: 'NQ-QMR', instrument: 'NAS100_USD',
+                       kvAudit: NQ_AUDIT_KV, kvConfig: 'nq_qmr_config' };
+
+async function _qmrResolveForward(spec) {
+  const out = { resolved: [], open: [], unresolved: [] };
+  if (!process.env.OANDA_KEY) return out;
+
+  const raw = await kv.get(spec.kvAudit).catch(() => null);
+  let log = [];
+  try {
+    const parsed = raw ? JSON.parse(raw) : [];
+    log = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
+  } catch { log = []; }
+  const openEntries = log.filter(e => e?.forward?.status === 'open');
+  if (!openEntries.length) return out;
+
+  let cfg = {};
+  try {
+    const rawCfg = await kv.get(spec.kvConfig);
+    const parsed = rawCfg ? JSON.parse(rawCfg) : {};
+    cfg = parsed?.data ?? parsed ?? {};
+  } catch {}
+  const costPct     = cfg.costPct     ?? QMR_COSTS.costPct;
+  const stopSlipPct = cfg.stopSlipPct ?? QMR_COSTS.stopSlipPct;
+  const riskPct     = cfg.riskPct     ?? 1.00;
+
+  // 96 H1 bars ≈ 4 trading days back — covers same-evening EOD resolution plus
+  // the defensive next-day / post-weekend / post-restart pass.
+  let bars;
+  try { bars = await fetchOandaRecentH1(spec.instrument, 96); }
+  catch (e) { console.error(`[${spec.id}-fwd] bar fetch failed:`, e.message); return out; }
+  const oldestDate = bars[0]?.t?.substring(0, 10) ?? '9999-12-31';
+  const today      = new Date().toISOString().substring(0, 10);
+  let changed = false;
+
+  for (const e of openEntries) {
+    const f = e.forward;
+    if (!(f.entry_px > 0) || !(f.stop_pct > 0) || (f.dir !== 'LONG' && f.dir !== 'SHORT')) {
+      f.status = 'unresolved'; f.note = 'bad entry snapshot'; changed = true;
+      out.unresolved.push({ date: e.date, ...f });
+      continue;
+    }
+
+    // Bars strictly after the entry bar, same date — the engine's afterEntry.
+    const entryHH = (f.entry_bar_t || '').substring(11, 13) || _qmrHH(QMR_TIMING.entryHour);
+    const dayBars = bars.filter(b => b.complete
+      && b.t.substring(0, 10) === e.date
+      && b.t.substring(11, 13) > entryHH);
+    const walk = _qmrWalkTrade(dayBars, f.dir, f.entry_px, f.stop_pct, f.tp_pct ?? 0);
+
+    if (!walk) {
+      if (e.date < oldestDate) {
+        // Day predates the fetch window (long downtime) — can never resolve
+        // honestly; mark it so it stops queueing instead of pretending.
+        f.status = 'unresolved'; f.note = 'no bars in fetch window'; changed = true;
+        out.unresolved.push({ date: e.date, ...f });
+      } else {
+        out.open.push({ date: e.date, ...f });
+      }
+      continue;
+    }
+
+    // A same-day EOD "exit" is only definitive once a completed bar at/after
+    // eodHour exists (the engine exits on that bar's close). Before that the
+    // walk's last-close fallback is provisional — keep the day open. For a
+    // PAST day the last available close IS final (the engine's own
+    // truncated-day rule, e.g. early closes / DAX ending before eodHour).
+    const hasEodBar  = dayBars.some(b => parseInt(b.t.substring(11, 13)) >= QMR_TIMING.eodHour);
+    const definitive = walk.exitReason === 'STOP' || walk.exitReason === 'TP'
+                    || hasEodBar || e.date < today;
+    if (!definitive) { out.open.push({ date: e.date, ...f }); continue; }
+
+    const leverage = riskPct / f.stop_pct;   // engine: riskPct / effStopPct
+    const netMove  = walk.movePct - costPct - (walk.exitReason === 'STOP' ? stopSlipPct : 0);
+    const levered  = _qmrNetReturn(walk.movePct, walk.exitReason, leverage, costPct, stopSlipPct);
+    Object.assign(f, {
+      exit_px:            +walk.exit.toFixed(2),
+      exit_reason:        walk.exitReason,
+      raw_move_pct:       +walk.movePct.toFixed(4),
+      net_move_pct:       +netMove.toFixed(4),
+      levered_return_pct: +levered.toFixed(4),
+      leverage:           +leverage.toFixed(3),
+      status:             'closed',
+      resolved_ts:        Date.now(),
+    });
+    changed = true;
+    out.resolved.push({ date: e.date, ...f });
+    console.log(`[${spec.id}-fwd] ${e.date} ${f.dir} ${f.entry_px} → ${f.exit_px} (${f.exit_reason}) net ${f.net_move_pct}% levered ${f.levered_return_pct}%`);
+  }
+
+  if (changed) {
+    await kv.put(spec.kvAudit, JSON.stringify({ data: log, timestamp: Date.now() }))
+      .catch(err => console.error(`[${spec.id}-fwd] KV write error:`, err.message));
+  }
+  return out;
+}
+
+const _qmrFwdSign = v => `${v >= 0 ? '+' : ''}${(+v).toFixed(2)}%`;
+function _qmrFwdLine(r) {
+  const px = v => (typeof v === 'number' ? +v.toFixed(1) : v);
+  return `${r.dir} from ${px(r.entry_px)} → exit ${px(r.exit_px)} (${r.exit_reason}), `
+       + `net ${_qmrFwdSign(r.net_move_pct)} (levered ${_qmrFwdSign(r.levered_return_pct)})`;
+}
+// Appends forward-record lines to a Telegram summary/open message.
+function _qmrFwdMsgLines(fwd, todayStr) {
+  let msg = '';
+  for (const r of fwd.resolved)
+    msg += `\n${r.date === todayStr ? 'Today' : r.date}: ${_qmrFwdLine(r)}`;
+  for (const o of fwd.open)
+    msg += `\n${o.date === todayStr ? 'Today' : o.date}: ${o.dir} from ${typeof o.entry_px === 'number' ? +o.entry_px.toFixed(1) : o.entry_px} — still open; EOD close resolves after ${_qmrHH(QMR_TIMING.eodHour + 1)}:00 UTC (reported at next day-open)`;
+  return msg;
+}
+
 async function nqSendTg(msg) {
   // Check NQ-specific TG config first, fall back to shared state.tg
   try {
@@ -14036,6 +14137,13 @@ async function nqDailyOpen() {
     gate1Data: null, gate2Data: null,
   });
 
+  // Defensive forward resolution: finalize any signal still 'open' — EOD-close
+  // exits become final after 21:00 UTC (post-summary), and server restarts can
+  // leave days open. Outcome lines are appended to the day-open message below.
+  let fwd = { resolved: [], open: [], unresolved: [] };
+  try { fwd = await _qmrResolveForward(_NQ_FWD_SPEC); }
+  catch (e) { console.error('[nq-fwd]', e.message); }
+
   const news = await nqFetchNewsRisk(today);
   nqMon.newsBlocked = news.blocked;
   nqMon.newsEvents  = news.events;
@@ -14054,6 +14162,11 @@ async function nqDailyOpen() {
     if (process.env.FINNHUB_KEY) {} else {
       msg += `\n<i>(set FINNHUB_KEY to enable news filter)</i>`;
     }
+  }
+
+  if (fwd.resolved.length) {
+    msg += `\n\n<b>Forward record updated:</b>`;
+    for (const r of fwd.resolved) msg += `\n${r.date}: ${_qmrFwdLine(r)}`;
   }
 
   await nqSendTg(msg);
@@ -14268,15 +14381,28 @@ async function nqEntrySignal() {
     await nqSendTg(msg);
     nqMon.sentEntry = true;
     await nqPushKv();
-    await nqAuditUpdate({ signal: {
-      fired:     true,
-      ts:        Date.now(),
-      direction: dir,
-      entry:     price,
-      stop:      +stop.toFixed(2),
-      tp:        +tp.toFixed(2),
-    }});
-    console.log(`[nq-mon] Entry signal → ${dir} @ ${price.toFixed(1)}`);
+    await nqAuditUpdate({
+      signal: {
+        fired:     true,
+        ts:        Date.now(),
+        direction: dir,
+        entry:     price,
+        stop:      +stop.toFixed(2),
+        tp:        +tp.toFixed(2),
+      },
+      // Forward-validation snapshot — resolved after the close by
+      // _qmrResolveForward with the engine's exact exit walk. Signal-only.
+      forward: {
+        status:      'open',
+        dir,
+        entry_px:    price,
+        entry_ts:    Date.now(),
+        entry_bar_t: current.t,   // H1 bar whose open is the tracked entry
+        stop_pct:    stopPct,     // dynamic: gate-1 overnight-range × mult, 0.10 floor
+        tp_pct:      tpPct,
+      },
+    });
+    console.log(`[nq-mon] Entry signal → ${dir} @ ${price.toFixed(1)} (forward tracking armed)`);
   } catch (e) { console.error('[nq-mon] Entry error:', e.message); }
 }
 
@@ -14285,10 +14411,18 @@ async function nqEodSummary() {
   const dow = new Date().getUTCDay();
   if (dow === 0 || dow === 6) return;
 
+  // Resolve the forward-tracked signal (if any) BEFORE composing the summary —
+  // stop/TP outcomes are final now; an EOD-close exit finalizes only after the
+  // eodHour bar completes (eodHour+1 UTC) and is reported at next day-open.
+  let fwd = { resolved: [], open: [], unresolved: [] };
+  try { fwd = await _qmrResolveForward(_NQ_FWD_SPEC); }
+  catch (e) { console.error('[nq-fwd]', e.message); }
+
   let msg = `📊 <b>NQ-QMR | EOD ${nqMon.date ?? ''}</b>\n\n`;
   msg += `Gate 1:   ${nqMon.gate1  ?? '—'}\n`;
   msg += `Gate 2:   ${nqMon.gate2  ?? '—'}\n`;
   msg += `Entry:    ${nqMon.sentEntry ? (nqMon.direction ?? 'fired') : 'no trade'}\n`;
+  msg += _qmrFwdMsgLines(fwd, nqMon.date);
   if (nqMon.newsBlocked) msg += `\n⚠️ Suppressed by high-impact news`;
 
   await nqSendTg(msg);
@@ -14453,6 +14587,12 @@ async function _iqrDailyOpen(mon) {
     sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
     gate1Data: null, gate2Data: null,
   });
+  // Defensive forward resolution — finalize any signal still 'open' (EOD-close
+  // exits become final after 21:00 UTC; restarts can also leave days open).
+  let fwd = { resolved: [], open: [], unresolved: [] };
+  try { fwd = await _qmrResolveForward(mon); }
+  catch (e) { console.error(`[${mon.id}-fwd]`, e.message); }
+
   const news = await nqFetchNewsRisk(today);
   mon.newsBlocked = news.blocked;
   mon.newsEvents  = news.events;
@@ -14466,6 +14606,10 @@ async function _iqrDailyOpen(mon) {
     msg += news.events.map(e => `  • ${e.event} @ ${(e.time ?? '').split(' ')[1] ?? '?'} ET`).join('\n');
   } else {
     msg += `✓ No high-impact US data — monitor active`;
+  }
+  if (fwd.resolved.length) {
+    msg += `\n\n<b>Forward record updated:</b>`;
+    for (const r of fwd.resolved) msg += `\n${r.date}: ${_qmrFwdLine(r)}`;
   }
   await _iqrSendTg(mon, msg);
   mon.sentOpen = true;
@@ -14603,11 +14747,24 @@ async function _iqrEntrySignal(mon) {
     await _iqrSendTg(mon, msg);
     mon.sentEntry = true;
     await _iqrPushKv(mon);
-    await _iqrAuditUpdate(mon, { signal: {
-      fired: true, ts: Date.now(), direction: dir,
-      entry: price, stop: +stop.toFixed(2), tp: +tp.toFixed(2),
-    }});
-    console.log(`[${mon.id}-mon] Entry → ${dir} @ ${price.toFixed(1)}`);
+    await _iqrAuditUpdate(mon, {
+      signal: {
+        fired: true, ts: Date.now(), direction: dir,
+        entry: price, stop: +stop.toFixed(2), tp: +tp.toFixed(2),
+      },
+      // Forward-validation snapshot — resolved after the close by
+      // _qmrResolveForward with the engine's exact exit walk. Signal-only.
+      forward: {
+        status:      'open',
+        dir,
+        entry_px:    price,
+        entry_ts:    Date.now(),
+        entry_bar_t: current.t,
+        stop_pct:    stopPct,
+        tp_pct:      tpPct,
+      },
+    });
+    console.log(`[${mon.id}-mon] Entry → ${dir} @ ${price.toFixed(1)} (forward tracking armed)`);
   } catch (e) { console.error(`[${mon.id}-mon] Entry error:`, e.message); }
 }
 
@@ -14615,10 +14772,18 @@ async function _iqrEodSummary(mon) {
   if (!mon.sentGate1 && !mon.sentOpen) return;
   const dow = new Date().getUTCDay();
   if (dow === 0 || dow === 6) return;
+
+  // Resolve the forward-tracked signal (if any) — same treatment as NQ; the
+  // clones are stamped UNVALIDATED and are judged by exactly this record.
+  let fwd = { resolved: [], open: [], unresolved: [] };
+  try { fwd = await _qmrResolveForward(mon); }
+  catch (e) { console.error(`[${mon.id}-fwd]`, e.message); }
+
   let msg = `📊 <b>${mon.label} | EOD ${mon.date ?? ''}</b>\n\n`;
   msg += `Gate 1: ${mon.gate1  ?? '—'}\n`;
   msg += `Gate 2: ${mon.gate2  ?? '—'}\n`;
   msg += `Entry:  ${mon.sentEntry ? (mon.direction ?? 'fired') : 'no trade'}\n`;
+  msg += _qmrFwdMsgLines(fwd, mon.date);
   if (mon.newsBlocked) msg += `\n⚠️ Suppressed by high-impact news`;
   await _iqrSendTg(mon, msg);
   await _iqrAuditUpdate(mon, { eod_ts: Date.now() });
