@@ -393,7 +393,7 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     # ── Position sizing ───────────────────────────────────────────────────
     balance  = get_balance()
     risk_pct = cfg.get('riskPct', 1.0)
-    lots     = position_size(balance, risk_pct, sl_dist, pip, pair)
+    lots     = position_size(balance, risk_pct, sl_dist, pip, pair, price=price)
 
     # ── Place order (only within trade window) ───────────────────────────────
     if not can_trade:

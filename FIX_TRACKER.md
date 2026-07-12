@@ -57,15 +57,15 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 
 ## Batch 5 — sizing & risk integrity
 
-- [ ] macrofx1: live pip values (MT5 tick value) replacing `_PIP_VALUES` in `sl_tp_engine.py` + `hedge_bot.py`
-- [ ] backtestSystem: live tick-value sizing in `risk.py`
-- [ ] Vol + range-line bots: wire `pylego.risk_guard.RiskGuard`
-- [ ] Vol + range-line bots: size off broker fill, not modeled spec; seed chandelier from fill
-- [ ] Range-line bot: per-class spread caps (extract vol bot's `_max_spread` to pylego, import both sides)
-- [ ] macrofx1: force-unlock keeps `day_start_bal` (no DD-baseline reset)
-- [ ] macrofx1: cap `vol_low_mult` at 1.0 default (low vol must not auto-increase size)
-- [ ] macrofx1: portfolio-level USD-exposure cap
-- [ ] ConfluenceBot: currency-exposure netting in `global_can_open`
+- [x] macrofx1: live pip values (MT5 tick value → quote-computed → static+warn) — ONE helper `bot/utils/pip_values.py`, imported by `sl_tp_engine.py` + `hedge_bot.py` (their `_PIP_VALUES` dicts deleted)
+- [x] backtestSystem: live tick-value sizing in `risk.py` (same shared helper; `main.py` passes the live price)
+- [x] Vol + range-line bots: wire `pylego.risk_guard.RiskGuard` (ddlimit 3% / monthlydd 5% defaults in both configs; blocks NEW entries only; balance fed per tick; block logged once per state change via `risk_guard.log_block_transition`)
+- [x] Vol + range-line bots: size off the spread-adjusted EXPECTED fill (`pylego.costs.expected_fill` — a market order can't be sized after it fills); ride/chandelier `entry`/`peak` seeded from the REALIZED fill
+- [x] Range-line bot: per-class spread caps — `_max_spread` extracted to `pylego.costs.max_spread`, imported by both bots; range default `max_spread_pips` 1e9 → per-class caps
+- [x] macrofx1: force-unlock keeps `day_start_bal` (no DD-baseline reset; same fix in `pylego.risk_guard.force_unlock`)
+- [x] macrofx1: cap `vol_low_mult` at 1.0 default (explicit >1.0 config honoured with an owner-opt-in warning)
+- [x] macrofx1: portfolio-level USD-exposure cap (`max_usd_exposure_pct`, default 2.0%; `bot/utils/exposure.py` netting — long EURUSD + short USDJPY are additive short-USD; never blocks a reducer)
+- [x] ConfluenceBot: currency-exposure netting in `global_can_open` (`max_currency_risk_pct`, default 1.5%; label caps kept)
 
 ## Batch 6 — signal hygiene & guards
 

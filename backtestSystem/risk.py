@@ -1,9 +1,21 @@
 """
 Kill switches — daily / weekly / monthly R-loss limits.
 Tracks closed trade R values and blocks new entries when limits are breached.
+Also owns position_size(), which now uses the SHARED live pip-value helper
+(bot/utils/pip_values.py: MT5 tick value → quote-computed → static fallback)
+instead of the old "JPY ≈ 1000×pip, rough" approximations.
 """
 import logging
+import os
+import sys
 from datetime import datetime, timezone
+
+# The shared pip-value helper lives in bot/utils (ONE copy, no drift) — put the
+# repo root on the path so we can import it from this sibling package.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+from bot.utils.pip_values import pip_value_per_lot  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -84,29 +96,23 @@ def within_trade_window(cfg: dict) -> bool:
 
 
 def position_size(balance: float, risk_pct: float, sl_dist: float,
-                  pip: float, symbol: str) -> float:
+                  pip: float, symbol: str, price: float | None = None) -> float:
     """
     Calculate lot size such that SL hit = risk_pct % of balance.
     Returns lot size rounded to 2 decimal places.
+
+    $/pip/lot comes from the shared helper: MT5 tick value when the terminal
+    is up → computed from `price` (the pair's current rate — pass the live
+    price, needed for USD-base pairs like USD/JPY) → static table (warns).
     """
     if sl_dist <= 0 or pip <= 0:
         return 0.01
 
-    # Pip value in account currency (approximate for USD-quoted pairs)
-    # For simplicity: 1 lot = 100,000 units; pip_value = pip × lot_size × quote_factor
-    # Here we assume USD-denominated account and treat pip_value ≈ $10/pip/lot for FX,
-    # $1/pt/lot for gold/indices (adjusted by pip size).
+    from mt5_utils import resolve_symbol
     risk_amount = balance * risk_pct / 100.0
-
-    if 'JPY' in symbol.upper():
-        pip_value_per_lot = 1000.0 * pip  # ~$9.something; rough
-    elif 'XAU' in symbol.upper() or 'GOLD' in symbol.upper():
-        pip_value_per_lot = 100.0         # $1/pt × 100 oz
-    elif 'NAS' in symbol.upper() or 'US100' in symbol.upper():
-        pip_value_per_lot = 1.0           # $1/pt; broker-specific
-    else:
-        pip_value_per_lot = 10.0          # standard FX: $10/pip/lot
+    pip_value = pip_value_per_lot(symbol, pip, price=price,
+                                  mt5_symbol=resolve_symbol(symbol))
 
     sl_pips  = sl_dist / pip
-    lot_size = risk_amount / (sl_pips * pip_value_per_lot)
+    lot_size = risk_amount / (sl_pips * pip_value)
     return max(0.01, round(lot_size, 2))

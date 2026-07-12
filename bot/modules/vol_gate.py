@@ -1,10 +1,17 @@
+import logging
 import time
 
 from .base import BaseModule, ModuleResult
 
+log = logging.getLogger(__name__)
+
 # A VIX reading older than this is treated as unavailable (fail-open for a
 # size gate, but LOUDLY — a silent stale block/no-block is the worst mode).
 MAX_FRED_AGE_MS = 24 * 3600 * 1000
+
+# Warn only once per process when an owner explicitly opts into >1.0 low-vol
+# sizing — the warning matters, the repetition doesn't.
+_warned_low_mult = False
 
 
 class VolGateModule(BaseModule):
@@ -18,7 +25,9 @@ class VolGateModule(BaseModule):
 
     VIX > 20       → reduce size (vol_high_mult)
     VIX 15-20      → normal size (1.0)
-    VIX < 15       → increase size (vol_low_mult)
+    VIX < 15       → normal size (vol_low_mult, default capped at 1.0 — low vol
+                     must not auto-increase size; explicit >1.0 config is an
+                     owner opt-in and logs a warning)
     """
 
     name = 'vol_gate'
@@ -63,7 +72,24 @@ class VolGateModule(BaseModule):
             score     = 0.45
         elif vix < 15:
             regime    = 'LOW'
-            size_mult = pos_cfg.get('vol_low_mult', 1.2)
+            # Default capped at 1.0 — low vol must NOT auto-increase size (the
+            # vol lesson: calm regimes end, oversized positions meet the ending).
+            # An explicit config value >1.0 is honoured as an owner opt-in, with
+            # a warning (once per process).
+            size_mult = pos_cfg.get('vol_low_mult')
+            if size_mult is None:
+                size_mult = 1.0
+            else:
+                size_mult = float(size_mult)
+                if size_mult > 1.0:
+                    global _warned_low_mult
+                    if not _warned_low_mult:
+                        _warned_low_mult = True
+                        log.warning(
+                            f'vol_gate: config vol_low_mult={size_mult} > 1.0 — low-VIX '
+                            f'size INCREASE is an owner opt-in against the vol-lesson '
+                            f'guidance (low vol is not a reason to size up)'
+                        )
             score     = 0.80
         else:
             regime    = 'NORMAL'

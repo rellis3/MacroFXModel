@@ -1,18 +1,16 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+# Live pip VALUES come from the shared helper (MT5 tick value → quote-computed
+# → static fallback with a warning) — the old inline `_PIP_VALUES` dict went
+# stale as rates moved (USD/JPY pinned at $9.0 ⇒ ~40% oversized at 155).
+from .pip_values import pip_value_per_lot
+
 _PIP_SIZES = {
     'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
     'AUD/USD': 0.0001, 'XAU/USD': 1.0,   'EUR/GBP': 0.0001,
     'USD/CAD': 0.0001, 'USD/CHF': 0.0001, 'GBP/JPY': 0.01,
     'NAS100_USD': 1.0,
-}
-
-# Approximate pip values per 1 standard lot, in USD
-_PIP_VALUES = {
-    'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'EUR/GBP': 10.0,
-    'USD/JPY': 9.0,  'USD/CAD': 7.5,  'USD/CHF': 10.5, 'GBP/JPY': 9.0,
-    'XAU/USD': 100.0, 'NAS100_USD': 1.0,
 }
 
 
@@ -43,8 +41,10 @@ class SLTPEngine:
     def pip_size(self, pair: str) -> float:
         return _PIP_SIZES.get(pair, 0.0001)
 
-    def pip_value(self, pair: str) -> float:
-        return _PIP_VALUES.get(pair, 10.0)
+    def pip_value(self, pair: str, price: float = None) -> float:
+        """$/pip/lot: MT5 tick value → computed from `price` (the pair's current
+        rate, for USD-base pairs like USD/JPY) → static fallback (warns)."""
+        return pip_value_per_lot(pair, self.pip_size(pair), price=price)
 
     def calculate(self, entry: dict, pair: str, pair_data: dict,
                   direction: str, price: float) -> SLTPResult:
@@ -167,9 +167,12 @@ class SLTPEngine:
         return tp, 'fixed_rr'
 
     def position_size(self, balance: float, risk_pct: float,
-                      sl_dist_price: float, pair: str, size_mult: float = 1.0) -> float:
+                      sl_dist_price: float, pair: str, size_mult: float = 1.0,
+                      price: float = None) -> float:
+        """`price` (the pair's live rate) lets pip_value compute the TRUE
+        $/pip/lot for USD-base pairs when MT5 isn't available — pass it."""
         pip         = self.pip_size(pair)
-        pv          = self.pip_value(pair)
+        pv          = self.pip_value(pair, price=price)
         sl_pips     = sl_dist_price / pip
         risk_amount = balance * (risk_pct / 100)
         if sl_pips <= 0 or pv <= 0:

@@ -45,6 +45,7 @@ from pylego.instruments import pip_sizes_for  # shared pip table (single source 
 
 from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, trigger_refresh, StaleDataError
 from utils.sl_tp_engine import SLTPEngine
+from utils.exposure import usd_exposure_block_reason
 from utils.indicators import compute_atr, compute_wt1, atr_to_tol_pips
 from utils.config_helpers import resolve_grade_thresholds, _GRADE_ORDER, session_threshold_mult
 from utils.persistence import load_bot_state, save_bot_state
@@ -932,11 +933,52 @@ def execute_trade(pair: str, direction: str, entry: dict,
     return res.order  # return ticket int (truthy) so caller can store position meta
 
 
+# ── Portfolio USD-exposure guard (item: max_usd_exposure_pct) ─────────────────
+
+def _open_position_specs(position_meta: dict | None) -> list:
+    """Open positions as [{'pair','direction','risk_pct'}] for the USD-exposure
+    guard: live MT5 positions (this bot's magic), each matched to the risk_pct
+    recorded in position_meta at entry (older positions without it fall back to
+    the configured default inside the guard). Without MT5, position_meta alone."""
+    out = []
+    if HAS_MT5:
+        try:
+            for pos in (mt5.positions_get() or []):
+                if getattr(pos, 'magic', 0) != MAGIC:
+                    continue
+                meta = (position_meta or {}).get(pos.ticket) or {}
+                out.append({'pair': pos.symbol,
+                            'direction': 'LONG' if pos.type == mt5.POSITION_TYPE_BUY else 'SHORT',
+                            'risk_pct': meta.get('risk_pct')})
+            return out
+        except Exception:
+            pass
+    for meta in (position_meta or {}).values():
+        if meta.get('pair') and meta.get('direction'):
+            out.append({'pair': meta['pair'], 'direction': meta['direction'],
+                        'risk_pct': meta.get('risk_pct')})
+    return out
+
+
+def _usd_exposure_block(pair: str, direction: str, risk_pct: float,
+                        config: dict, position_meta: dict | None) -> str | None:
+    """Reason string if this entry would push |net same-direction USD risk|
+    over `max_usd_exposure_pct` (execution config, default 2.0%; ≤0 disables).
+    Long EURUSD and short USDJPY are BOTH short-USD — additive, not offsetting
+    (see utils/exposure.py). A guard, not a portfolio optimizer."""
+    cap = float((config.get('execution') or {}).get('max_usd_exposure_pct', 2.0))
+    default_risk = (config.get('position') or {}).get('risk_pct', 1.0)
+    return usd_exposure_block_reason(pair, direction, risk_pct,
+                                     _open_position_specs(position_meta), cap,
+                                     default_risk_pct=default_risk)
+
+
 # ── Pair evaluation (full pipeline, only called when price is near a level) ───
 
 def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
                   sl_tp_engine: SLTPEngine, paper_mode: bool,
-                  sizing_mult: float = 1.0) -> dict:
+                  sizing_mult: float = 1.0,
+                  position_meta: dict | None = None) -> dict:
     """
     Runs all modules and executes if the composite score clears the threshold.
     Returns a pair_status dict for the status report.
@@ -1000,7 +1042,15 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
         balance = float(acct.balance) if acct else 10_000.0
 
     sl_dist = abs(live_price - sl_tp.sl)
-    size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult)
+    size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult,
+                                         price=live_price)
+
+    # Portfolio USD-exposure cap — block before placing the order.
+    exp_block = _usd_exposure_block(pair, direction, risk_pct, config, position_meta)
+    if exp_block:
+        log.warning(f'  [{pair}] USD-EXPOSURE BLOCK: {exp_block}')
+        pair_status['reason'] = exp_block
+        return pair_status
 
     log.info(
         f'  [{pair}] ENTRY {direction} [{entry.get("grade","?")}] {entry.get("totalStars", 0)}★  '
@@ -1018,6 +1068,7 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
         'tp1':      sl_tp.tp1,    'tp1_close_pct': sl_tp.tp1_close_pct,
         'trailoffset_dist': sl_tp.trailoffset_dist,
         'rr':       sl_tp.rr_ratio, 'lot': size, 'executed': bool(ticket),
+        'risk_pct': round(risk_pct, 3),
         'ticket':   ticket if isinstance(ticket, int) and not isinstance(ticket, bool) else None,
     })
     return pair_status
@@ -1028,7 +1079,8 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
 def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: float,
                             sl_tp_engine: SLTPEngine, paper_mode: bool,
                             sizing_mult: float = 1.0,
-                            level_cooldowns: dict | None = None) -> dict:
+                            level_cooldowns: dict | None = None,
+                            position_meta: dict | None = None) -> dict:
     """
     Enter when a KV entry matches the same criteria as the dashboard Telegram alert:
     grade ≥ min_grade, totalStars ≥ min_stars, direction set, signalScore ≥ threshold,
@@ -1095,7 +1147,8 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
         balance = float(acct.balance) if acct else 10_000.0
 
     sl_dist = abs(live_price - sl_tp.sl) if sl_tp.sl else 0
-    size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult) if sl_dist else 0
+    size    = (sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult,
+                                          price=live_price) if sl_dist else 0)
 
     log.info(
         f'  [{pair}] TG-MODE {direction} [{entry.get("grade", "?")}] {entry.get("totalStars", 0)}★  '
@@ -1115,6 +1168,13 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
         pair_status['reason'] = f'RR_BLOCK R:R={sl_tp.rr_ratio} < min_rr={min_rr}'
         return pair_status
 
+    # Portfolio USD-exposure cap — block before placing the order.
+    exp_block = _usd_exposure_block(pair, direction, risk_pct, config, position_meta)
+    if exp_block:
+        log.warning(f'  [{pair}] USD-EXPOSURE BLOCK: {exp_block}')
+        pair_status['reason'] = exp_block
+        return pair_status
+
     ticket = execute_trade(pair, direction, entry, sl_tp, size, live_price, paper_mode, config=config)
 
     # Record attempt so the cooldown gate blocks re-entry until window expires
@@ -1132,6 +1192,7 @@ def evaluate_pair_telegram(state: dict, pair: str, config: dict, live_price: flo
         'trailoffset_dist': sl_tp.trailoffset_dist,
         'rr':               sl_tp.rr_ratio, 'lot':            size,
         'executed':         bool(ticket),
+        'risk_pct':         round(risk_pct, 3),
         'ticket':           ticket if isinstance(ticket, int) and not isinstance(ticket, bool) else None,
         'mode':             'telegram',
     })
@@ -1364,10 +1425,15 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                 if not _ov.get('miss') and _ov.get('data', {}).get('force_unlock'):
                     _ts = _ov['data'].get('timestamp', 0) / 1000
                     if time.time() - _ts < 300:   # only honour if < 5 min old
+                        # Clear the lockout + cooldowns but PRESERVE day_start_bal:
+                        # resetting the baseline to the drawn-down balance let the
+                        # daily-DD limit ratchet down (each unlock granting a fresh
+                        # −ddlimit% from the new, lower start). If DD is still
+                        # breached, block_reason re-locks — that's intended.
                         risk_guard._locked_until        = 0.0
-                        risk_guard._day_start_bal       = None  # reset DD baseline so block_reason doesn't immediately re-lock
-                        risk_guard._last_trade_by_pair  = {}    # also clear per-pair cooldowns
-                        log.info('RiskGuard lockout + cooldowns cleared by dashboard override — DD baseline reset')
+                        risk_guard._last_trade_by_pair  = {}    # clear per-pair cooldowns
+                        log.info('RiskGuard lockout + cooldowns cleared by dashboard override — '
+                                 'DD baseline preserved (re-locks if still breached)')
                         # Acknowledge by writing force_unlock: false
                         _ack = json.dumps({'key': 'bot_override', 'data': {'force_unlock': False},
                                            'timestamp': int(time.time() * 1000)}).encode()
@@ -1544,11 +1610,13 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                         cached_state, pair, config, live_price, sl_tp_engine, paper_mode,
                         sizing_mult=risk_guard.sizing_mult,
                         level_cooldowns=level_cooldowns,
+                        position_meta=position_meta,
                     )
                 else:
                     pair_status = evaluate_pair(
                         cached_state, pair, config, live_price, sl_tp_engine, paper_mode,
                         sizing_mult=risk_guard.sizing_mult,
+                        position_meta=position_meta,
                     )
             except Exception as exc:
                 log.error(f'evaluate_pair [{pair}]: {exc}', exc_info=True)
@@ -1568,6 +1636,10 @@ def main_loop(paper_mode: bool, state_interval: int, price_interval: int,
                         'tp1_hit':          False,
                         'trail_active':     False,
                         'trail_sl':         None,
+                        # For the USD-exposure guard (utils/exposure.py):
+                        'pair':             pair,
+                        'direction':        pair_status.get('direction'),
+                        'risk_pct':         pair_status.get('risk_pct'),
                     }
                     log.info(f'Position meta registered: ticket={ticket}  '
                              f'tp1={pair_status.get("tp1")}  trailoffset={pair_status.get("trailoffset_dist")}')

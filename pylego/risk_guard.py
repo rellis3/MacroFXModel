@@ -65,8 +65,11 @@ class RiskGuard:
         self._last_trade[pair] = time.time()
 
     def force_unlock(self) -> None:
+        """Clear the lockout flag but PRESERVE the day-start baseline: resetting
+        it to the drawn-down balance would let the daily-DD limit ratchet down
+        (each unlock granting a fresh −ddlimit% from the new, lower start). If
+        the DD is still breached, block_reason re-locks — that's intended."""
         self._locked_until = 0.0
-        self._day_start    = None
 
     def block_reason(self, bal: float, pair: str = '') -> str | None:
         now = time.time()
@@ -92,3 +95,20 @@ class RiskGuard:
                 return f'Monthly DD {mdd:.1f}% ≥ {self.monthly_dd_pct}% — locked'
 
         return None
+
+
+def log_block_transition(log: logging.Logger, state: dict, key: str,
+                         reason: str | None) -> None:
+    """Log a guard block/unblock once per STATE CHANGE, never per tick.
+
+    `state` is a caller-owned dict ({key: last reason}); call this every tick
+    with the current block_reason() result — it logs only when the reason
+    appears, changes, or clears."""
+    prev = state.get(key)
+    if reason == prev:
+        return
+    state[key] = reason
+    if reason:
+        log.warning(f'RiskGuard [{key}]: NEW entries blocked — {reason}')
+    elif prev:
+        log.info(f'RiskGuard [{key}]: clear — entries resumed')

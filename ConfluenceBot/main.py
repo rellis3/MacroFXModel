@@ -176,6 +176,9 @@ DEFAULT_CFG: dict = {
     'max_total_open_trades':       6,
     'max_total_open_risk_pct':     3.0,
     'max_total_per_direction':     5,
+    'max_currency_risk_pct':       1.5,     # |net signed risk| cap per single CURRENCY
+                                            # (long EUR/USD = +EUR/−USD risk; catches the
+                                            # stacked-USD-bet the LONG/SHORT label caps miss)
 
     # Exits (SL caps in pips)
     'max_sl_pips':                 40,
@@ -283,6 +286,17 @@ def build_instr(input_symbol: str, broker_overrides: dict) -> Optional[InstrCtx]
         asset_class=rec.get('assetClass', 'fx'),
         vol_name=_VOL_FORECAST_NAME.get(key, key.upper()),
     )
+
+
+def _ccy_legs(display: str) -> tuple[str, str] | None:
+    """(base, quote) currency legs of a display pair ('EUR/USD' → ('EUR','USD'),
+    'XAU/USD' → ('XAU','USD')), or None for non-pair instruments (indices) —
+    those carry no FX-currency legs for the netting guard."""
+    if '/' in (display or ''):
+        base, quote = display.split('/', 1)
+        if len(base) == 3 and len(quote) == 3:
+            return base.upper(), quote.upper()
+    return None
 
 
 # ── KV helpers ────────────────────────────────────────────────────────────────
@@ -1328,7 +1342,7 @@ class SymbolEngine:
         if not ok:
             self.journal.log_skip(zone.zone_id, 'portfolio', reason)
             return
-        ok, reason = self.bot.global_can_open(direction, risk_pct)
+        ok, reason = self.bot.global_can_open(direction, risk_pct, self.instr)
         if not ok:
             self.journal.log_skip(zone.zone_id, 'global', reason)
             return
@@ -1575,7 +1589,28 @@ class ConfluenceBot:
 
     # ── global portfolio gate ────────────────────────────────────────────────────
 
-    def global_can_open(self, direction: str, risk_pct: float) -> tuple[bool, str]:
+    def _currency_risk_map(self) -> dict:
+        """Signed net risk-% per CURRENCY across all open trades: a LONG on
+        base/quote adds +risk to the base currency and −risk to the quote
+        (short reversed). BE-moved trades carry no remaining risk, matching
+        the max_total_open_risk_pct accounting. Non-pair instruments (indices)
+        contribute only the legs _ccy_legs can name."""
+        net: dict[str, float] = {}
+        for e in self.engines.values():
+            legs = _ccy_legs(e.instr.display)
+            if not legs:
+                continue
+            base, quote = legs
+            for t in e.tm.open_trades:
+                if t.be_moved:
+                    continue
+                sign = 1.0 if t.direction == 'LONG' else -1.0
+                net[base]  = net.get(base, 0.0)  + sign * t.risk_pct
+                net[quote] = net.get(quote, 0.0) - sign * t.risk_pct
+        return net
+
+    def global_can_open(self, direction: str, risk_pct: float,
+                        instr: InstrCtx | None = None) -> tuple[bool, str]:
         cfg = self.cfg
         total_open = sum(len(e.tm.open_trades) for e in self.engines.values())
         if total_open >= int(cfg.get('max_total_open_trades', 6)):
@@ -1589,6 +1624,22 @@ class ConfluenceBot:
                    for t in e.tm.open_trades if t.direction == direction)
         if same >= int(cfg.get('max_total_per_direction', 5)):
             return False, f'global max {direction} positions ({same})'
+        # Per-currency netting — the LONG/SHORT label caps above can't see that
+        # long EUR/USD + long GBP/USD + short USD/JPY are ONE stacked short-USD
+        # bet. Each trade contributes signed risk to its base and quote
+        # currencies; block if this entry pushes any single currency's |net|
+        # over the cap (never blocks an entry that REDUCES that |net|).
+        ccy_cap = float(cfg.get('max_currency_risk_pct', 1.5))
+        legs = _ccy_legs(instr.display) if instr else None
+        if legs and ccy_cap > 0:
+            net = self._currency_risk_map()
+            sign = 1.0 if direction == 'LONG' else -1.0
+            for ccy, delta in ((legs[0], sign * risk_pct), (legs[1], -sign * risk_pct)):
+                before = net.get(ccy, 0.0)
+                after = before + delta
+                if abs(after) > ccy_cap + 1e-9 and abs(after) > abs(before):
+                    return False, (f'currency risk cap: net {ccy} {before:+.2f}% '
+                                   f'→ {after:+.2f}% exceeds ±{ccy_cap:.2f}%')
         return True, ''
 
     # ── lifecycle ─────────────────────────────────────────────────────────────────

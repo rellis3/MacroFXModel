@@ -165,6 +165,33 @@ now2 = int(datetime(2026, 6, 30, 23, 30, 0, tzinfo=timezone.utc).timestamp())
 ok("anchor = today's boundary when already past it",
    datetime.fromtimestamp(session_anchor_epoch(now2, 23), tz=timezone.utc) == datetime(2026, 6, 30, 23, 0, 0, tzinfo=timezone.utc))
 
+# ── Batch 5: RiskGuard wiring + per-class spread caps ─────────────────────────
+from pylego.costs import max_spread
+from pylego.risk_guard import RiskGuard, log_block_transition
+from range_line_bot.range_line_bot import DEFAULT_CFG
+
+g = RiskGuard()
+g.sync_cfg(DEFAULT_CFG)
+ok("RiskGuard reads bot config defaults (ddlimit 3 / monthlydd 5)",
+   g.dd_limit_pct == 3.0 and g.monthly_dd_pct == 5.0)
+g.update_balance(10_000)
+_why = g.block_reason(9_600, "eurusd")                     # synthetic 4% daily DD
+ok("synthetic daily DD blocks new entries", bool(_why) and "Daily DD" in _why)
+ok("stays locked on the next tick", (g.block_reason(10_000, "eurusd") or "").startswith("Locked"))
+
+_msgs = []
+import logging as _logging
+_h = _logging.Handler(); _h.emit = lambda r: _msgs.append(r.getMessage())
+_lg = _logging.getLogger("rl_guard_test"); _lg.addHandler(_h); _lg.setLevel(_logging.INFO)
+_st = {}
+log_block_transition(_lg, _st, "eurusd", _why)
+log_block_transition(_lg, _st, "eurusd", _why)
+ok("block logged once per state change, not per tick", len(_msgs) == 1)
+
+ok("default max_spread_pips is per-class caps, not 1e9",
+   DEFAULT_CFG["max_spread_pips"] is None and max_spread("eurusd", DEFAULT_CFG) == 2.0
+   and max_spread("uk100", DEFAULT_CFG) == 12.0 and max_spread("uk100", DEFAULT_CFG) < 1e9)
+
 print(f"\n{'✗' if _f else '✓'} {_p} passed, {_f} failed")
 import sys
 sys.exit(1 if _f else 0)
