@@ -85,6 +85,15 @@ drift (the failure mode `TRADABILITY_REVIEW.md` warns about).
 
 ## Findings already banked (don't re-litigate these)
 
+- **Inverse-σ vol-sizing adds nothing to the held-chandelier book (2026-07).**
+  The one honest sizing test (same trades, unit vs `median(prior-60d σ)/σ_today`
+  clamped 0.25–4×, constants fixed, no tuning — `runVolSizing`, Vol-sizing A/B
+  card on `range-line-strategy.html`): 5/14 strong pairs improved @2× (the
+  pre-registered bar was a majority), every delta within ±0.3 Sharpe, pooled
+  flat-to-worse (13.64→13.54 @2×). Reason: the chandelier's rung/stop already
+  scales with the session range (≈ σ), so per-trade % risk is pre-normalized —
+  inverse-σ weighting is redundant on this book. Keep unit sizing in the live
+  bot; the overlay stays available for re-testing other books/exits.
 - **No spatial gate rescues the Asia fade.** grade / vol-stretch / day-type /
   approachVel were compared on the OOS card; none reliably lifts it.
   vol-stretch (HL75) ≥0.75 was OOS-positive on one window but regime-sensitive.

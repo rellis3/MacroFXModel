@@ -55,7 +55,7 @@ import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
-import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter } from './js/rangeLineAnalyser.js';
+import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter, runVolSizing } from './js/rangeLineAnalyser.js';
 import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
@@ -9972,6 +9972,9 @@ app.post('/api/range-line/run', async (req, res) => {
       // Per-(pair × level) quality scan + IS-learned veto: which pairs/levels carry
       // the edge, which reliably lose (the pooled gate hides pair-specific losers).
       const badLevels = runBadLevelScan(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair, minN: 30 });
+      // Vol-sizing A/B: the SAME held-chandelier trades, unit size vs inverse-σ size
+      // (fixed constants, no tuning) — tests the risk overlay without touching entries.
+      const volSizing = runVolSizing(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair });
       // Zone-walk: the fade/follow policy used as the live exit oracle at every zone
       // (full ladder, fade can flip to a runner, re-entry after flat).
       const zoneWalk = runZoneWalk(touchesByPair, { policy: book.policy, splitDate: book.splitDate, costByPair });
@@ -9983,7 +9986,7 @@ app.post('/api/range-line/run', async (req, res) => {
             minN: opts.minN, marginPct: opts.marginPct,
             rigorMinConf: (b.confRigorMinConf != null && b.confRigorMinConf !== '') ? parseInt(b.confRigorMinConf) : 2 })
         : null;
-      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated, eRatio, exitAB, heldPosition, badLevels, zoneWalk, confluenceFilter } });
+      rlJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...book, rigor, sensitivity, deflated, eRatio, exitAB, heldPosition, badLevels, zoneWalk, confluenceFilter, volSizing } });
     } catch (e) {
       console.error('[range-line/run]', e?.message, e?.stack ?? '');
       rlJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });

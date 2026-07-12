@@ -296,6 +296,10 @@ export function analyseRangeWindow({ open, bars }, ladders, ctx = {}) {
       out.push({
         name: ln.label, side, level: +L.toFixed(6),
         innerLvl: +inner.toFixed(6), outerLvl: +outer.toFixed(6), rung: +rung.toFixed(6),
+        // Ex-ante daily σ for THIS session (% of price, volSigmaSeries → data < today
+        // only). Carried per line so a sizing overlay can weight the trade without
+        // re-deriving the D1 series. null when the σ series hadn't warmed up.
+        sigmaPct: sigma > 0 ? +(sigma * 100).toFixed(4) : null,
         decidedBy, firstTouchTime: ftt, outcome,
         approachVel: feats?.approachVel ?? null, approachER: feats?.approachER ?? null,
         wtState: feats?.wtState ?? null, volClimax: feats?.volClimax ?? null,
@@ -544,9 +548,29 @@ function _bookFromTrades(trades, byMult, costMults) {
 // Collapsing the overlap is what finally makes trades/day — and the Sharpe —
 // honest. (Conservative: one entry per direction/day; a re-entry after an early
 // stop is not modelled — that only lowers the count further.)
+// Held-trade selection shared by runHeldPosition and runVolSizing: ONE touch per
+// (date, side, source=Asia|Monday) — the earliest non-skip touch; its policy
+// decision sets direction + exit. Mode-independent, so it's computed once.
+function _heldTouchesByPair(touchesByPair, policy, splitDate) {
+  const srcOf = t => (t.name && t.name[0] === 'A') ? 'A' : 'M';
+  const out = {};
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const held = new Map();
+    for (const t of touches) {
+      if (t.date < splitDate) continue;
+      const p = policy[t.cell]; if (!p || p.decision === 'skip') continue;
+      const key = `${t.date}|${t.side}|${srcOf(t)}`;
+      const cur = held.get(key);
+      if (!cur || (t.fillTime ?? Infinity) < (cur.fillTime ?? Infinity)) held.set(key, t);
+    }
+    out[pair] = [...held.values()];
+  }
+  return out;
+}
+
 export function runHeldPosition(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, costMults = [1, 2, 3] } = {}) {
   if (!policy || !splitDate) return null;
-  const srcOf = t => (t.name && t.name[0] === 'A') ? 'A' : 'M';
+  const heldByPair = _heldTouchesByPair(touchesByPair, policy, splitDate);
   const out = {};
   for (const mode of ['fixedHeld', 'struct', 'chand']) {
     const trades = [], byMult = Object.fromEntries(costMults.map(m => [m, []]));
@@ -560,19 +584,9 @@ export function runHeldPosition(touchesByPair, { policy, splitDate, costByPair =
                                : (mode === 'struct' ? t.fStruct     : t.fChand);
       return g != null ? +(g - (c + s)).toFixed(5) : pnlFor(t, dec, { costPct: c, slipPct: s });
     };
-    for (const [pair, touches] of Object.entries(touchesByPair)) {
+    for (const [pair, held] of Object.entries(heldByPair)) {
       const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
-      // One held trade per (date, side, source) — the earliest non-skip touch
-      // (fade OR follow); its decision sets direction + exit.
-      const held = new Map();
-      for (const t of touches) {
-        if (t.date < splitDate) continue;
-        const p = policy[t.cell]; if (!p || p.decision === 'skip') continue;
-        const key = `${t.date}|${t.side}|${srcOf(t)}`;
-        const cur = held.get(key);
-        if (!cur || (t.fillTime ?? Infinity) < (cur.fillTime ?? Infinity)) held.set(key, t);
-      }
-      for (const t of held.values()) {
+      for (const t of held) {
         const dec = policy[t.cell].decision;
         trades.push({ date: t.date, pnl: price(t, dec, cost, slip) });
         for (const mult of costMults) byMult[mult].push({ date: t.date, pnl: price(t, dec, cost * mult, slip * mult) });
@@ -581,6 +595,97 @@ export function runHeldPosition(touchesByPair, { policy, splitDate, costByPair =
     out[mode] = _bookFromTrades(trades, byMult, costMults);
   }
   return out;
+}
+
+// ── Vol-sizing A/B: same trades, unit size vs inverse-σ size ──────────────────
+// Tests the RISK overlay, never the entry: the held-chandelier book (the §13 live
+// exit) is priced twice — (a) unit size (the incumbent), (b) each trade weighted
+// w = clamp(refσ ÷ σ_today, capMin..capMax) where refσ is the TRAILING MEDIAN of
+// the pair's ex-ante σ over the prior `span` sessions (strictly before the trade
+// date — no lookahead; σ itself is volSigmaSeries, data < today). Constants are
+// FIXED (no tuning, one config, pre-registered): sizing must not become a new
+// knob to optimise. Sharpe is size-scale-invariant and maxDD is read off the
+// vol-targeted curve, so unit vs sized books compare like-for-like; a win = the
+// sized book's OOS Sharpe @2-3× cost rises on most ≥minTrades pairs. Weight 1
+// when σ is missing (old cached records) or the ref window hasn't warmed up.
+// Inverse-σ size weight per (pair, session date), one chronological pass per
+// pair: at each session the ref is the MEDIAN σ of the prior `span` sessions
+// (strictly before it — no lookahead; earlier sessions may seed the window, which
+// is fine because σ itself is ex-ante). Weight 1 until minObs sessions have σ,
+// then w = clamp(ref ÷ σ_today, capMin..capMax). Pure; exported for unit tests
+// and any future live-sizing consumer (the live bot must use THIS function, not a
+// re-derivation). Returns { pair: Map(date → w) }.
+export function volSizeWeights(touchesByPair, { span = 60, minObs = 20, capMin = 0.25, capMax = 4 } = {}) {
+  const median = a => { const s = [...a].sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
+  const weightMap = {};
+  for (const [pair, touches] of Object.entries(touchesByPair)) {
+    const byDate = new Map();
+    for (const t of touches) if (t.sigmaPct != null && t.sigmaPct > 0) byDate.set(t.date, t.sigmaPct);
+    const hist = [...byDate.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    const wm = new Map(), win = [];
+    for (const [date, sig] of hist) {
+      const ref = win.length >= minObs ? median(win) : null;
+      wm.set(date, ref > 0 ? +Math.min(capMax, Math.max(capMin, ref / sig)).toFixed(4) : 1);
+      win.push(sig); if (win.length > span) win.shift();
+    }
+    weightMap[pair] = wm;
+  }
+  return weightMap;
+}
+
+export function runVolSizing(touchesByPair, { policy, splitDate, costByPair = {}, slipByPair = {}, costMults = [1, 2, 3],
+                                              span = 60, minObs = 20, capMin = 0.25, capMax = 4, minTrades = 30 } = {}) {
+  if (!policy || !splitDate) return null;
+  const weightMap = volSizeWeights(touchesByPair, { span, minObs, capMin, capMax });
+  // Held-chandelier pricer (identical to runHeldPosition mode 'chand').
+  const price = (t, dec, c, s) => {
+    const g = dec === 'fade' ? t.fChandFade : t.fChand;
+    return g != null ? +(g - (c + s)).toFixed(5) : pnlFor(t, dec, { costPct: c, slipPct: s });
+  };
+  const heldByPair = _heldTouchesByPair(touchesByPair, policy, splitDate);
+  const stat = trades => { const p = portfolioStats(_toDaily(trades)); return { sharpe: p.sharpe ?? null, maxDD: p.volTarget?.maxDD ?? null }; };
+  const pooled = { unit: {}, sized: {} };                     // variant → mult → pooled trades[]
+  for (const v of ['unit', 'sized']) for (const m of costMults) pooled[v][m] = [];
+  const perPair = [];
+  let nHeld = 0, sigmaMissing = 0, wSum = 0, wMin = Infinity, wMax = -Infinity;
+  for (const pair of Object.keys(heldByPair).sort()) {
+    const held = heldByPair[pair];
+    if (!held.length) continue;
+    const cost = costByPair[pair] ?? DEFAULT_COST_PCT.fx, slip = slipByPair[pair] ?? DEFAULT_SLIP_PCT.fx;
+    const mine = { unit: {}, sized: {} };
+    for (const v of ['unit', 'sized']) for (const m of costMults) mine[v][m] = [];
+    for (const t of held) {
+      const dec = policy[t.cell].decision;
+      const w = weightMap[pair]?.get(t.date) ?? 1;
+      if (t.sigmaPct == null) sigmaMissing++;
+      nHeld++; wSum += w; if (w < wMin) wMin = w; if (w > wMax) wMax = w;
+      for (const mult of costMults) {
+        const pnl = price(t, dec, cost * mult, slip * mult);
+        mine.unit[mult].push({ date: t.date, pnl });
+        mine.sized[mult].push({ date: t.date, pnl: +(pnl * w).toFixed(5) });
+      }
+    }
+    for (const v of ['unit', 'sized']) for (const m of costMults) pooled[v][m].push(...mine[v][m]);
+    // Per-pair row: the honest single-pair unit (pooling stays secondary, §1.4).
+    const row = { pair, trades: held.length };
+    for (const mult of costMults) {
+      row[`unit${mult}x`] = stat(mine.unit[mult]).sharpe;
+      row[`sized${mult}x`] = stat(mine.sized[mult]).sharpe;
+    }
+    row.unitDD2x = stat(mine.unit[2] ?? mine.unit[costMults[0]]).maxDD;
+    row.sizedDD2x = stat(mine.sized[2] ?? mine.sized[costMults[0]]).maxDD;
+    perPair.push(row);
+  }
+  if (!nHeld) return { trades: 0 };
+  const eligible = perPair.filter(r => r.trades >= minTrades);
+  const improved2x = eligible.filter(r => r.sized2x != null && r.unit2x != null && r.sized2x > r.unit2x).length;
+  return {
+    config: { span, minObs, capMin, capMax, minTrades, exit: 'chand' },
+    trades: nHeld, sigmaMissing,
+    weights: { mean: +(wSum / nHeld).toFixed(3), min: wMin === Infinity ? null : +wMin.toFixed(3), max: wMax === -Infinity ? null : +wMax.toFixed(3) },
+    perPair, eligiblePairs: eligible.length, improved2x,
+    pooled: Object.fromEntries(['unit', 'sized'].map(v => [v, costMults.map(m => ({ mult: m, ...stat(pooled[v][m]) }))])),
+  };
 }
 
 // ── Confluence QUALITY FILTER — does trading only STRONGER levels help? ────────
