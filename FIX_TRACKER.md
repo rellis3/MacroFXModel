@@ -34,11 +34,12 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 
 ## Batch 3 — QMR live/backtest alignment
 
-- [ ] Align overnight window (21:00 vs 20:00) and min-bars (4 vs 3) between engine and live monitor
-- [ ] Align gate-bar selection (backtest reads one hour later data than live at both gates)
-- [ ] DST-aware gate times + correct ET labels
-- [ ] Default round-trip cost + stop slippage inside `_computeNqQmr` (headline stats after-cost)
-- [ ] Validation status stamped on entry alerts ("OOS … after-cost over N trades" / "UNVALIDATED")
+- [x] Align overnight window (21:00 vs 20:00) and min-bars (4 vs 3) between engine and live monitor
+- [x] Align gate-bar selection (backtest reads one hour later data than live at both gates)
+- [x] DST-aware gate times + correct ET labels
+- [x] Default round-trip cost + stop slippage inside `_computeNqQmr` (headline stats after-cost)
+- [x] Validation status stamped on entry alerts ("OOS … after-cost over N trades" / "UNVALIDATED")
+- [ ] System-4 chop filter: `sessionBars` includes the entry bar (`h <= entryHour`) — one hour of lookahead in the S4 filter path (found during Batch 3; same class as the gate-bar fix)
 - [ ] (owner) SPX/DOW/DAX clones: pause, or per-instrument sessions + local news calendars — which?
 - [ ] (owner) Re-derive live defaults from walk-forward retrain instead of full-sample grid
 

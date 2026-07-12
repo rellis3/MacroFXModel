@@ -317,6 +317,10 @@
     <div class="sec"><span class="sec-lbl">Gate Fire Rate</span><span class="sec-val" id="sFireRate">—</span></div>
     <div class="sec"><span class="sec-lbl">Calmar Ratio</span><span class="sec-val" id="sCalmar">—</span></div>
   </div>
+
+  <div class="info-box" style="margin-top:8px;">
+    <strong>Engine update (2026-07):</strong> every trade is now netted for default costs (0.008% round-trip + 0.005% extra on stop exits, applied before leverage), and both gate reads use the last <em>completed</em> H1 close at the gate time — the previous engine peeked one hour ahead of what the live alerts could know. Numbers are therefore lower than pre-2026-07 runs; the new figures are the honest ones.
+  </div>
 </div>
 
 <!-- Equity curve chart -->
@@ -434,11 +438,11 @@
 
     <!-- Transaction cost adjustment -->
     <div class="tc-row">
-      <span style="color:var(--text3)">Transaction cost (spread) per trade:</span>
-      <input type="number" id="tcSpreadPct" value="0.003" min="0" max="0.1" step="0.001"
+      <span style="color:var(--text3)">Extra transaction cost stress per trade:</span>
+      <input type="number" id="tcSpreadPct" value="0" min="0" max="0.1" step="0.001"
         style="width:80px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:4px 7px;"
         oninput="renderValidation()">
-      <span style="color:var(--text3)">% of entry (NAS100 ≈ 0.003% = 0.5pt @ 18,000)</span>
+      <span style="color:var(--text3)">% of entry — engine already nets 0.008% round-trip + 0.005% stop slip; add extra stress here (default 0 to avoid double-counting)</span>
       <span id="tcAdjLabel" class="tc-adj" style="display:none;"></span>
     </div>
 
