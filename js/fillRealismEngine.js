@@ -27,6 +27,7 @@ import { costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 
 // Group epoch-second bars into broker-day sessions split at `boundaryHour` UTC
 // (the tearsheet's 22:00 boundary). Returns [{date, open, high, low, close, bars}].
+export function sessionsAt(bars, boundaryHour = 22) { return _sessions(bars, boundaryHour); }
 function _sessions(bars, boundaryHour = 22) {
   const map = new Map();
   for (const b of bars) {
