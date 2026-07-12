@@ -31,6 +31,19 @@ from typing import Optional
 log = logging.getLogger(__name__)
 
 
+def paper_close_exec(direction: str, mid: float, spread: float) -> float:
+    """Exit-side executable price for a PAPER position marked at mid.
+
+    A LONG closes by selling at the bid = mid − spread/2; a SHORT closes by
+    buying at the ask = mid + spread/2. Together with entries filled at the
+    opposite side (BUY at ask, SELL at bid) a paper round trip pays exactly
+    one full spread — matching what live MT5 fills already pay for free-fill
+    honesty (CLAUDE.md: "costs on by default; free fills are not honest").
+    """
+    half = max(0.0, spread) / 2.0
+    return mid - half if direction == 'LONG' else mid + half
+
+
 @dataclass
 class ManagedTrade:
     trade_id: str
@@ -68,12 +81,20 @@ class ManagedTrade:
         if -run > self.mae_pips:
             self.mae_pips = round(-run, 1)
 
-    def check_outcome(self, price: float, be_after_tp1: bool = True) -> Optional[str]:
+    def check_outcome(self, price: float, be_after_tp1: bool = True,
+                      spread: float = 0.0) -> Optional[str]:
         """
         Paper-mode outcome check. Simulates the live management: after TP1 the
         stop moves to breakeven (so paper labels match live behaviour — V1
         didn't, which skewed the journal).
+
+        `spread` (full bid/ask width, price units) costs the touch checks: all
+        comparisons use the EXIT-side executable price, so a LONG's TP/SL is
+        touched by the bid = mid − spread/2 and a SHORT's stop is hit by the
+        ask = mid + spread/2. spread=0 keeps the legacy mid-cross behaviour
+        (the live-mode fallback path passes no spread).
         """
+        price = paper_close_exec(self.direction, price, spread)
         if self.direction == 'LONG':
             if not self.tp1_hit and price >= self.tp1:
                 self.tp1_hit = True

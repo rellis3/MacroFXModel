@@ -229,8 +229,9 @@ flattering ≈1× DD as if it were the correction).
 > returns the ten {fade,follow}×{fixed,chandelier,walk,**ride**,**ridehold**} gross
 > %-of-price PnLs + an exit-reason (`*Why` ∈ trail/stop/tp/close) for the two rides
 > (conservative intrabar ordering: stop-first, then TP, then trail/BE update; no
-> intrabar lookahead). **`ride`** = chandelier trail with **no TP cap** (the
-> range-line bot's winning exit — `rangeline.chandelier_stop`): a reversion runs
+> intrabar lookahead). **`ride`** = chandelier trail with **no TP cap** (same
+> family as the range-line bot's winning exit but **NOT the same rule** — see the
+> drift warning below): a reversion runs
 > past the inner line instead of capping there, with a **session-close** fallback.
 > **`ridehold`** = the same but walks into `forwardBars` (next day[s]) instead of
 > closing at session end — "leave it running past 22:00". `analyseWindow` calls it
@@ -238,6 +239,15 @@ flattering ≈1× DD as if it were the correction).
 > `rideHoldDays` default 1); `perLineStrategy.extractTouches` carries them through and
 > `runExitStudy` prices the OOS A/B/C/D/E off them. Fixed variants match `pnlFor`'s
 > pre-cost gross for the same touch. Tested in `js/exitStudy.test.mjs`.
+>
+> ⚠️ **Known near-duplicate (deliberate — do NOT "unify"): two chandelier rules.**
+> `volatility_bot/engine.py ride_trail_stop` mirrors `simulateExitVariants`'s
+> `ride` (trails from entry immediately), while `pylego/strategy/rangeline.py
+> chandelier_stop` mirrors `rangeLineAnalyser._trailExits`' c-path (holds at the
+> protect stop until price makes a new extreme BEYOND entry). Each live bot
+> matches its OWN validated book's exit; merging them either way silently changes
+> one bot's strategy. Any unification must re-run the affected book's exit study
+> first (2026-07 education-review finding).
 >
 > Consumes the analyser's already-computed adverse excursion (`extPct` = the
 > continuation extreme for a fade) plus newly-captured `extTime`/`exitTime` timing
@@ -487,6 +497,16 @@ The **anti-overfit layer** over the per-pair book: not "was one pair's forecast 
 | **Vol-level alert core** | `js/volLevelAlertCore.js` | the pure decision + message logic for the vol-forecast-v2 level-proximity Telegram alerts — a **selector/formatter** brick that owns NO math, only composes existing bricks: `approachSpeed` (net-displacement-over-ATR "blasting vs drifting" via `indicatorCore.atrWilder`), `momentumZ` (WaveTrend WT1 latest z-score via `vumanchuCore.waveTrendSeries` + `statsCore.rollingZAt`), `divergenceLabel` (regular/hidden divergence via the `vumanchu.detectDivergence` brick), `scanNearLevels` (live price → forecast levels within a per-pair pip threshold; O-H/O-L med+75th direct, H-L med+75th projected into upper/lower price extremes from the session open), `formatAlert`/`evaluatePair` (pretty informational Telegram text — `pairIcon` country-flags/🥇/index glyphs, `LEVEL_NARRATIVE` plain-English level meaning, explicit current + level price). `LEVEL_LABELS`/`ALERT_LEVEL_KEYS` registry. All pure (bars/levels/price in → object/string out) — tested `js/volLevelAlertCore.test.mjs` (10 asserts, synthetic bars, no network). | `server.js` `checkVolLevelAlertsNow` loop (90s) + `/api/vol-forecast/level-alerts/*` config/creds/test/scan endpoints, reading levels from the extracted `computeDailyBrief()` (one source of truth with the dashboard); config UI on `vol-forecast-v2.html` (🔔 Level Alerts panel, dedicated Telegram bot) | ✅ built |
 
 The alert loop reads its levels from `computeDailyBrief()` (the `/api/daily-brief` builder extracted into a reusable function in this pass) so the alerts fire on the *exact* prices the dashboard shows — no second copy of the level math. Uses its OWN dedicated Telegram bot (`tg_vollevel_config` KV) separate from v1 + levels-v2; config in `vol_level_alert_cfg`. Enrichment candles come from the shared OANDA candle path (M5). All alerts are explicitly informational — no trade signal.
+
+---
+
+### 1p. QMR shared exit walk + cost netting (2026-07-12)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **QMR trade walk** | `server.js` (`_qmrWalkTrade`, `_qmrNetReturn`, `QMR_COSTS` — inline next to `QMR_TIMING`, not yet a `js/` module) | the ONE per-trade exit rule for the QMR session-momentum system: stop-before-TP within a bar (conservative), then EOD close on the first bar labeled ≥ `QMR_TIMING.eodHour`, last-close fallback for truncated days; plus the one cost-netting formula (raw move − costPct − stop-slip, × leverage) and the shared cost constants (0.008% / 0.005%) | `_computeNqQmr` (all four systems: S1, S2 counterfactual, S3/S4 fades) AND `_qmrResolveForward` — the live forward-validation resolver that writes actual after-cost outcomes of sent alerts into the four `*_qmr_audit` KV logs (NQ/SPX/DOW/DAX), so the forward record is apples-to-apples with the backtest by construction. Tested on synthetic bars incl. a 5000-case fuzz vs the pre-refactor inline walk (scratchpad harness, 2026-07-12). | ✅ built (inline) |
+
+If a third consumer appears (or the QMR engine gets versioned out of `server.js`), extract `_qmrWalkTrade`/`_qmrNetReturn`/`QMR_TIMING`/`QMR_COSTS` into a proper `js/qmrCore.js` brick with a checked-in unit test.
 
 ---
 

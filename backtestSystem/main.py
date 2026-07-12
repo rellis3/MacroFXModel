@@ -533,7 +533,10 @@ def main() -> None:
                             log.info(f'{pair}  position #{ticket} closed — {cooldown_secs//60:.0f}m cooldown started')
                             exit_price = fetch_close_price(ticket)
                             if exit_price:
-                                journal.record_close(ticket, exit_price)
+                                pnl_r = journal.record_close(ticket, exit_price)
+                                if pnl_r is not None:
+                                    kill.record(pnl_r)
+                                    log.info(f'{pair}  kill-switch fed {pnl_r:+.2f}R — {kill.summary()}')
             prev_tickets = current_tickets
 
             # ── SL → Breakeven management ─────────────────────────────────

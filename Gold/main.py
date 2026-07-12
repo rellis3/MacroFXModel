@@ -57,7 +57,7 @@ from modules.volume_profile import compute_volume_profile
 from modules.session_engine import compute_session_levels
 from modules.confluence_scorer import score_zones, deduplicate_zones
 from modules.vumanchu import compute_vumanchu
-from modules.trade_state import BotState, State, ActiveTrade
+from modules.trade_state import BotState, State, ActiveTrade, paper_close_exec
 from modules.trendline_engine import detect_trendlines, Trendline
 
 from journal import GoldJournal
@@ -81,6 +81,13 @@ PIP     = 1.0       # XAU/USD: 1 pip = $1
 DEFAULT_CFG: dict = {
     'enabled':              True,
     'paper_mode':           True,
+    # Paper fills — costs on by default (live MT5 already pays the real
+    # bid/ask; paper must too or thin edges get flattered). Full round-trip
+    # bid/ask spread in $: a paper BUY fills at mid + spread/2, a SELL at
+    # mid − spread/2, at entry AND at close — i.e. one full spread charged
+    # per round trip — and TP/SL touches are checked on the exit-side price.
+    # Kept IDENTICAL to GoldV2's paper_spread so the V1-vs-V2 A/B is fair.
+    'paper_spread':         0.30,   # $ — XAUUSD typical raw spread
     'min_zone_score':       3.0,    # minimum confluence score to arm
     'proximity_pips':       5.0,    # price must be within this many pips of GP
     'vu_min_components':    2,      # VuManChu components required (2 or 3)
@@ -519,11 +526,14 @@ class GoldBot:
                 and self.bot_state.active_trade
                 and self.bot_state.active_trade.entry_time.date()
                     < datetime.now(timezone.utc).date()):
-            price = self._get_price() or self.bot_state.active_trade.entry_price
+            trade = self.bot_state.active_trade
+            price = self._get_price() or trade.entry_price
+            if not trade.ticket:
+                # Paper EOD close pays the exit half-spread like any close.
+                price = round(paper_close_exec(trade.direction, price,
+                                               self._paper_spread()), 2)
             log.info('[EXPIRE]  Paper trade from previous day — closing as EXPIRED')
-            self.journal.log_trade_closed(
-                self.bot_state.active_trade.zone_id, price, 'EXPIRED'
-            )
+            self.journal.log_trade_closed(trade.zone_id, price, 'EXPIRED')
             self._enter_cooldown()
 
         log.info('[REFRESH] Fetching bars and recomputing zones...')
@@ -868,12 +878,22 @@ class GoldBot:
                 )
                 return
 
+        # Paper entries pay the entry half-spread: a BUY fills at the ask =
+        # mid + spread/2, a SELL at the bid = mid − spread/2. Live orders
+        # already fill at the broker's real bid/ask (_place_live_order), so
+        # the recorded live entry stays the mid exactly as before.
+        entry_exec = price
+        if not ticket:
+            half = self._paper_spread() / 2.0
+            entry_exec = round(price + half, 2) if direction == 'LONG' \
+                else round(price - half, 2)
+
         mode = 'LIVE' if ticket else 'PAPER'
-        self.journal.log_entry(zone, direction, price, sl, tp1, tp2, vu, mode=mode)
+        self.journal.log_entry(zone, direction, entry_exec, sl, tp1, tp2, vu, mode=mode)
 
         trade = ActiveTrade(
             zone_id=zone.zone_id, direction=direction,
-            entry_price=price, sl=sl, tp1=tp1, tp2=tp2,
+            entry_price=entry_exec, sl=sl, tp1=tp1, tp2=tp2,
             lot_size=lot_size,
             entry_time=datetime.now(timezone.utc),
             ticket=ticket,
@@ -892,14 +912,18 @@ class GoldBot:
             self._check_live_outcome(trade, price)
             return
 
-        # Paper mode: track by price
-        event = trade.check_outcome(price)
+        # Paper mode: track by price. Outcomes + closes use the exit-side
+        # executable price (LONG closes at bid, SHORT at ask) so the recorded
+        # PnL pays the exit half-spread; entry already paid the other half.
+        spread  = self._paper_spread()
+        event   = trade.check_outcome(price, spread=spread)
+        exec_px = round(paper_close_exec(trade.direction, price, spread), 2)
         if event == 'TP1_HIT':
-            self.journal.log_tp1_hit(trade.zone_id, price)
+            self.journal.log_tp1_hit(trade.zone_id, exec_px)
             return  # continue managing for TP2
 
         if event in ('TP2_HIT', 'SL_HIT'):
-            self.journal.log_trade_closed(trade.zone_id, price, event)
+            self.journal.log_trade_closed(trade.zone_id, exec_px, event)
             self._enter_cooldown()
 
     def _check_live_outcome(self, trade: 'ActiveTrade', price: float) -> None:
@@ -970,6 +994,11 @@ class GoldBot:
         log.info(f'[COOL]   {mins}min cooldown started')
 
     # ── Utilities ─────────────────────────────────────────────────────────────
+
+    def _paper_spread(self) -> float:
+        """Full paper round-trip bid/ask spread ($), config-overridable.
+        Identical default to GoldV2 so the V1-vs-V2 A/B pays the same costs."""
+        return max(0.0, float(self.cfg.get('paper_spread', 0.30)))
 
     def _get_price(self) -> float | None:
         return _live_price(self.base_url)

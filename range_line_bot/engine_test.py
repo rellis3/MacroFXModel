@@ -66,6 +66,8 @@ ok("cell_key = label_side| (empty condition bucket)", cell_key("A_1", "up") == "
 
 print("[engine — RangeSession]")
 sess = RangeSession("nq", FIBS, chand_frac=0.5)
+ok("session_open starts unset (the loop stamps it from the Asia window's first bar)",
+   sess.session_open is None)
 ok("set_range builds the Asia ladder", sess.set_range("A", BARS) is True)
 
 # policy: follow the A_1 up-line; A_1.5 is also up but should be suppressed by the
@@ -142,6 +144,16 @@ ok("single-source level passes ≥1 but fails ≥2",
 sg5 = RangeSession("eurusd", FIBS); sg5.set_range("A", BARS)
 sg5.set_confluence([{"price": 110.0, "source": "pivots"}], tol_frac=0.1)
 ok("single-source level gated out at ≥2", sg5.decide(110, polg, confluence_min=2) == [])
+
+print("[entry-slip audit — sign convention (pylego.costs)]")
+from pylego.costs import entry_slip_pct
+# Favourable is NEGATIVE: a BUY filled ABOVE the modeled level pays up (+); a
+# SELL filled ABOVE the modeled level collects more (−). % of session open.
+ok("BUY filled above the modeled level → adverse (+)", entry_slip_pct(True, 111.0, 110.0, 100.0) == 1.0)
+ok("BUY filled below the modeled level → favourable (−)", entry_slip_pct(True, 109.0, 110.0, 100.0) == -1.0)
+ok("SELL filled above the modeled level → favourable (−)", entry_slip_pct(False, 111.0, 110.0, 100.0) == -1.0)
+ok("missing fill → None (never fabricate the measurement)", entry_slip_pct(True, None, 110.0, 100.0) is None)
+ok("no denominator → None", entry_slip_pct(True, 111.0, 110.0, None) is None)
 
 print("[engine — session anchor]")
 # 2026-06-30 10:00:00 UTC; boundary 23 → most recent 23:00 UTC = 2026-06-29 23:00.

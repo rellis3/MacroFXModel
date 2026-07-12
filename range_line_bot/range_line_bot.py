@@ -30,6 +30,8 @@ from pylego import instruments as I                          # noqa: E402
 from pylego import point_values as PV                        # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
+from pylego.quotes import QuoteFeed                          # noqa: E402
+from pylego.costs import entry_slip_pct, realized_fill       # noqa: E402
 from pylego.strategy.rangeline import chandelier_stop        # noqa: E402
 from range_line_bot.engine import RangeSession, session_anchor_epoch, SRC_MINUTES  # noqa: E402
 
@@ -57,6 +59,9 @@ DEFAULT_CFG = {
     "status_secs": 30,             # read config + push status
     "tick_secs": 3,                # local price watch + touch detection + chandelier trail
     "enabled_pairs": [],           # [] = the plan's universe
+    "paper_spread_pips": {},       # paper-fill spread OVERRIDES, {pair: pips/points in the
+                                   # pair's OWN pip units}. Blank → per-asset-class
+                                   # defaults (pylego.costs.DEFAULT_SPREAD_PIPS)
     "confluence_min": 0,           # structural-confluence entry gate (OOS-validated "trade
                                     # only stronger levels"). 0 = OFF (no behaviour change,
                                     # today's default); 1 = confluent (>=1 source); 2 =
@@ -114,12 +119,37 @@ def make_broker(cfg: dict):
     return broker, False
 
 
+def _apply_paper_spreads(broker, cfg: dict) -> None:
+    """Push the config's paper-fill spread overrides ({pair: pips in the pair's
+    own pip units}) onto the PaperBroker (no-op live). Called at startup and on
+    every config refresh so an edit applies without a restart."""
+    if not hasattr(broker, "set_spread"):
+        return
+    for pair, pips in (cfg.get("paper_spread_pips") or {}).items():
+        try:
+            broker.set_spread(pair, float(pips) * I.pip_size(pair))
+        except Exception as e:
+            log.warning(f"paper_spread_pips: ignoring {pair!r}: {e}")
+
+
 def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot: float) -> float:
     try:
         pip = I.pip_size(pair); pv = PV.point_value(pair)
     except Exception:
         pip, pv = 0.0001, 10.0
     return position_size(balance, risk_pct, abs(sl_dist), pip=pip, pip_value=pv, max_lot=max_lot)
+
+
+def _fill_and_slip(broker, tid, spec, session_open):
+    """Entry-slip audit for a just-filled order: (realized fill, slip_pct).
+    slip_pct = realized fill vs the modeled ladder level (``spec['entry']``) as
+    a signed % of the session open (fallback: the level itself if a Monday-only
+    session never saw the Asia window). SIGN CONVENTION: favourable is NEGATIVE,
+    adverse POSITIVE (pylego.costs.entry_slip_pct) — the falsifier for the
+    book's flat 0.012% round-trip + 0.006% follow-slip cost model."""
+    fill = realized_fill(broker, tid)
+    slip = entry_slip_pct(spec["dir_up"], fill, spec["entry"], session_open or spec["entry"])
+    return fill, slip
 
 
 def monday_anchor_epoch(now_epoch: float, boundary_hour: int) -> int:
@@ -161,6 +191,10 @@ def _build_ladders(sess: RangeSession, broker, plan, now_epoch):
                 wb = _window_bars(broker.session_bars(sess.instrument, anchor), anchor, ah * 3600)
                 if sess.set_range("A", wb):
                     built = True
+                    # Session open for the entry-slip audit denominator — the
+                    # window's first bar opens AT the session anchor, the same
+                    # basis as the book's per-touch t.open.
+                    sess.session_open = (wb[0] or {}).get("open") if wb else None
             except Exception as e:
                 log.warning(f"{sess.instrument}: Asia range build failed: {e}")
     # Monday: the most-recent completed Monday session (24h).
@@ -255,6 +289,11 @@ def run(base_url: str, force_live: bool) -> None:
     if force_live:
         cfg["paper_mode"] = False
     broker, paper = make_broker(cfg)
+    _apply_paper_spreads(broker, cfg)
+    # Paper has no market feed of its own: pull live quotes off the dashboard
+    # (/api/quote — the same MT5-less path the regime bots use) and feed the
+    # broker each tick. QuoteFeed caches per pair so the 3s loop stays cheap.
+    quotes = QuoteFeed(base_url, log=log) if paper else None
 
     if not paper:
         try:
@@ -342,6 +381,7 @@ def run(base_url: str, force_live: bool) -> None:
             try:
                 cfg = _deep_merge(DEFAULT_CFG, kv.get_json("range_line_bot_config") or cfg)
                 _apply_broker_symbols(cfg)            # pick up broker-symbol edits live
+                _apply_paper_spreads(broker, cfg)     # paper spread edits apply live
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:
@@ -353,10 +393,20 @@ def run(base_url: str, force_live: bool) -> None:
 
         # (c) Tight loop: build ladders when ready, trail open positions, take entries.
         if plan and not cfg.get("kill_switch"):
+            instruments = cfg.get("enabled_pairs") or plan.get("universe", [])
+            if quotes is not None:
+                # Paper: feed the broker fresh dashboard quotes BEFORE trailing/
+                # barriers so the trailed SL and its execution read live prices
+                # (QuoteFeed caches per pair — the 3s loop stays cheap). A stale
+                # pair keeps its last broker price for trailing (ratchet-only,
+                # harmless) but is skipped for NEW entries below.
+                for instr in instruments:
+                    q = quotes.price(instr)
+                    if q is not None:
+                        broker.set_price(instr, q)
             _trail_stops(positions, broker, plan, cfg)     # ratchet the native SL (broker-enforced exit)
             if hasattr(broker, "check_barriers"):
                 broker.check_barriers()                    # paper: execute the trailed SL
-            instruments = cfg.get("enabled_pairs") or plan.get("universe", [])
             bal = broker.account_balance() or 0.0
             # No new entries while the Asia range is forming (00:00–06:00 London).
             # dry_run still primes levels crossed overnight, so at 06:00 only
@@ -375,7 +425,9 @@ def run(base_url: str, force_live: bool) -> None:
                             sess.decide(px0, ip["policy"], dry_run=True)
                     except Exception:
                         pass
-                px = broker.price(instr)
+                # Paper: only act on a FRESH quote (cached — no extra HTTP after the
+                # pre-feed above); a stale/missing pair is skipped this tick.
+                px = quotes.price(instr) if quotes is not None else broker.price(instr)
                 if px is None:
                     continue
                 # Skip a closed index market cleanly (MT5 retcode 10017) instead of
@@ -407,12 +459,16 @@ def run(base_url: str, force_live: bool) -> None:
                                        dedupe_tag=dedupe_tag)
                     filled = tid is not None and tid != -1
                     if filled:
+                        # Entry-slip audit (see _fill_and_slip: favourable = NEGATIVE).
+                        fill, slip = _fill_and_slip(broker, tid, spec, sess.session_open)
                         positions[tid] = {"instr": instr, "ticket": tid, "dir_up": spec["dir_up"],
                                           "entry": spec["entry"], "peak": spec["entry"],
-                                          "rung": spec["rung"], "protect": sl, "sl": sl}
+                                          "rung": spec["rung"], "protect": sl, "sl": sl,
+                                          "fill": fill, "slip_pct": slip}
                         sess.mark_entered(spec["src"], spec["side"])   # burn the slot ONLY on a fill
                         log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['decision'].upper()} "
-                                 f"{spec['label']} {spec['side']} → ticket {tid} lots {lots}")
+                                 f"{spec['label']} {spec['side']} → ticket {tid} lots {lots}"
+                                 f" slip {slip if slip is not None else 'n/a'}%")
                         # One position per pair per tick when single_position_per_pair:
                         # two coincident ladder slots (e.g. Asia + Monday, same side)
                         # could otherwise both fill this tick before the broker's

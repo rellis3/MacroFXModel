@@ -60,7 +60,7 @@ from modules.volume_profile import compute_volume_profile
 from modules.session_engine import compute_session_levels
 from modules.vumanchu import compute_vumanchu
 from modules.trendline_engine import detect_trendlines, Trendline
-from modules.trade_manager import TradeManager, ManagedTrade
+from modules.trade_manager import TradeManager, ManagedTrade, paper_close_exec
 from modules.exits import plan_exits
 
 from journal import GoldV2Journal
@@ -103,6 +103,13 @@ DEFAULT_CFG: dict = {
     'vu_min_components':           2,
     'vu_require_wt':               True,
     'mf_fuel_veto':                True,
+
+    # Paper fills — costs on by default (live MT5 already pays the real
+    # bid/ask; paper must too or thin edges get flattered). Full round-trip
+    # bid/ask spread in $: a paper BUY fills at mid + spread/2, a SELL at
+    # mid − spread/2, at entry AND at close — i.e. one full spread charged
+    # per round trip — and TP/SL touches are checked on the exit-side price.
+    'paper_spread':                0.30,   # $ — XAUUSD typical raw spread
 
     # Risk / portfolio
     'risk_pct':                    0.5,    # % balance per trade
@@ -167,6 +174,22 @@ def _kv_get(key: str, base_url: str) -> dict | None:
     except Exception:
         pass
     return None
+
+
+def _kv_get_ts(key: str, base_url: str) -> tuple[Optional[dict], Optional[float]]:
+    """Like _kv_get but also returns the KV write timestamp (epoch SECONDS —
+    /api/kv/get stores Date.now() ms), so gates can refuse stale data instead
+    of silently trading on it."""
+    try:
+        r = requests.get(f'{base_url}/api/kv/get?key={key}', timeout=10)
+        if r.status_code == 200:
+            j = r.json()
+            if not j.get('miss') and j.get('data'):
+                ts = j.get('timestamp')
+                return j['data'], (float(ts) / 1000.0 if ts else None)
+    except Exception:
+        pass
+    return None, None
 
 
 def _kv_put(key: str, data: dict, base_url: str) -> None:
@@ -273,10 +296,17 @@ def _mt5_account_login() -> Optional[int]:
 
 # ── Gates ─────────────────────────────────────────────────────────────────────
 
+MACRO_MAX_AGE_SECS = 12 * 3600   # ai_goldmodel is refreshed by the dashboard page;
+                                 # older than this = nobody has looked in half a day
+
+
 def _macro_allows(direction: str, base_url: str) -> tuple[bool, str]:
-    model = _kv_get('ai_goldmodel', base_url)
+    model, ts = _kv_get_ts('ai_goldmodel', base_url)
     if not model:
         return True, 'Gold macro model not in KV — skipping gate'
+    if ts is not None and (time.time() - ts) > MACRO_MAX_AGE_SECS:
+        # Stale macro data must not gate (or bless) trades — fail OPEN, loudly.
+        return True, f'Gold macro model STALE ({(time.time() - ts) / 3600.0:.0f}h old) — gate skipped'
 
     signal   = model.get('signal', 'NEUTRAL')
     strength = model.get('strength', 'WEAK')
@@ -523,10 +553,14 @@ def _serialize_closed_trades(magic: int) -> list:
         return []
 
 
-def _serialize_paper_trades(trades: list[ManagedTrade], price: float) -> list:
+def _serialize_paper_trades(trades: list[ManagedTrade], price: float,
+                            spread: float = 0.0) -> list:
     out = []
     for t in trades:
         sign = 1 if t.direction == 'LONG' else -1
+        # Floating PnL marked at the exit-side executable price (bid for a
+        # LONG, ask for a SHORT), not at mid — same spread the close will pay.
+        exec_px = paper_close_exec(t.direction, price, spread)
         out.append({
             'ticket':     0,
             'symbol':     SYMBOL,
@@ -534,7 +568,7 @@ def _serialize_paper_trades(trades: list[ManagedTrade], price: float) -> list:
             'lots':       t.lot_size,
             'open_price': round(t.entry_price, 2),
             'price':      round(price, 2),
-            'profit':     round(sign * (price - t.entry_price) * t.lot_size * 100, 2),
+            'profit':     round(sign * (exec_px - t.entry_price) * t.lot_size * 100, 2),
             'swap':       0.0,
             'time_open':  int(t.entry_dt().timestamp()),
             'comment':    f'paper {t.trade_id} {t.zone_id}',
@@ -568,6 +602,9 @@ class GoldBotV2:
         self.vol_levels: list[tuple[float, str]] = []
         self.last_state_refresh = 0.0
         self._mt5_ok = False
+        # London-midnight session-open anchor for GOLD (from /api/daily-brief) —
+        # cached so we hit the endpoint at most every 30 min.
+        self._anchor_cache: dict = {'ts': 0.0, 'open': None}
         # Live "why hasn't this armed zone entered" snapshots, keyed by zone_id.
         # Updated every confirmation tick, logged on state change, pushed with
         # status so the zones page can show the verdict next to the armed card.
@@ -754,6 +791,27 @@ class GoldBotV2:
         self._push_status(price_now)
         self._push_zones_kv()
 
+    def _session_anchor(self) -> Optional[float]:
+        """GOLD's London-midnight session open from /api/daily-brief — the SAME
+        anchor the forecaster's levels are relative to. Using the UTC daily open
+        (sess_lvls.daily_open) instead drifts every range-budget level by the
+        00:00→23:00-UTC gap during BST (forecaster walkthrough Part 8, mistake #1:
+        'anchoring from the wrong candle — every level drifts'). Cached 30 min;
+        returns None on failure so the caller can fall back."""
+        now = time.time()
+        if self._anchor_cache['open'] is not None and now - self._anchor_cache['ts'] < 1800:
+            return self._anchor_cache['open']
+        try:
+            r = requests.get(f'{self.base_url}/api/daily-brief', timeout=15)
+            if r.status_code == 200:
+                so = ((r.json().get('instruments') or {}).get('GOLD') or {}).get('session_open')
+                if so:
+                    self._anchor_cache = {'ts': now, 'open': float(so)}
+                    return self._anchor_cache['open']
+        except Exception:
+            pass
+        return None
+
     def _refresh_vol_forecast(self) -> None:
         """GET /api/vol-forecast → GOLD hl/oc percentiles → price levels."""
         self.vol_fc = None
@@ -767,7 +825,9 @@ class GoldBotV2:
             f = (r.json().get('instruments') or {}).get('GOLD')
             if not f:
                 return
-            anchor = self.sess_lvls.daily_open if self.sess_lvls else None
+            # London-midnight anchor (the forecaster's own); UTC daily open only
+            # as a last-resort fallback — it is 1h off the forecast levels in BST.
+            anchor = self._session_anchor() or (self.sess_lvls.daily_open if self.sess_lvls else None)
             if not anchor:
                 return
             hl_med = float(f.get('hl_median') or 0)
@@ -829,19 +889,29 @@ class GoldBotV2:
 
     # ── trade management ──────────────────────────────────────────────────────
 
+    def _paper_spread(self) -> float:
+        """Full paper round-trip bid/ask spread ($), config-overridable."""
+        return max(0.0, float(self.cfg.get('paper_spread', 0.30)))
+
     def _manage_trades(self, price: float) -> None:
+        spread = self._paper_spread()
         for trade in list(self.tm.open_trades):
             trade.update_excursion(price)
 
             if trade.mode == 'LIVE' and trade.ticket and self._mt5_ok:
                 self._manage_live_trade(trade, price)
             else:
-                event = trade.check_outcome(price, self.cfg.get('be_after_tp1', True))
+                # Paper outcomes + closes use the exit-side executable price
+                # (LONG closes at bid, SHORT at ask) so the recorded PnL pays
+                # the exit half-spread; entry already paid the other half.
+                event = trade.check_outcome(price, self.cfg.get('be_after_tp1', True),
+                                            spread=spread)
+                exec_px = round(paper_close_exec(trade.direction, price, spread), 2)
                 if event == 'TP1_HIT':
-                    self.journal.log_tp1_hit(trade, price)
+                    self.journal.log_tp1_hit(trade, exec_px)
                 elif event in ('TP2_HIT', 'SL_HIT', 'BE_STOP'):
-                    self.journal.log_trade_closed(trade, price, event)
-                    self._on_trade_closed(trade, price, event)
+                    self.journal.log_trade_closed(trade, exec_px, event)
+                    self._on_trade_closed(trade, exec_px, event)
 
     def _manage_live_trade(self, trade: ManagedTrade, price: float) -> None:
         ticket = trade.ticket
@@ -905,12 +975,17 @@ class GoldBotV2:
                                  and trade.htf_aligned)
             if allowed_overnight:
                 continue
+            close_px = price
             if trade.mode == 'LIVE' and trade.ticket and self._mt5_ok:
                 if not _close_live_position(trade.ticket):
                     log.warning(f'[EXPIRE] Live close failed for {trade.ticket} — will retry')
                     continue
-            self.journal.log_trade_closed(trade, price, 'EXPIRED')
-            self._on_trade_closed(trade, price, 'EXPIRED')
+            else:
+                # Paper EOD close pays the exit half-spread like any other close.
+                close_px = round(paper_close_exec(trade.direction, price,
+                                                  self._paper_spread()), 2)
+            self.journal.log_trade_closed(trade, close_px, 'EXPIRED')
+            self._on_trade_closed(trade, close_px, 'EXPIRED')
 
     def _on_trade_closed(self, trade: ManagedTrade, close_price: float,
                          reason: str) -> None:
@@ -1160,11 +1235,21 @@ class GoldBotV2:
                 self.tm.start_zone_cooldown(zone.zone_id, 5)
                 return
 
+        # Paper entries pay the entry half-spread: a BUY fills at the ask =
+        # mid + spread/2, a SELL at the bid = mid − spread/2. Live orders
+        # already fill at the broker's real bid/ask (_place_live_order), so
+        # the recorded live entry stays the mid exactly as before.
+        entry_exec = price
+        if not ticket:
+            half = self._paper_spread() / 2.0
+            entry_exec = round(price + half, 2) if direction == 'LONG' \
+                else round(price - half, 2)
+
         trade = ManagedTrade(
             trade_id=self.tm.next_trade_id(),
             zone_id=zone.zone_id,
             direction=direction,
-            entry_price=price,
+            entry_price=entry_exec,
             sl=plan.sl, tp1=plan.tp1, tp2=plan.tp2,
             lot_size=lot_size, risk_pct=risk_pct,
             entry_time=datetime.now(timezone.utc).isoformat(),
@@ -1190,7 +1275,8 @@ class GoldBotV2:
         positions = _serialize_open_positions(MAGIC)
         if not positions and price is not None:
             positions = _serialize_paper_trades(
-                [t for t in self.tm.open_trades if t.mode == 'PAPER'], price)
+                [t for t in self.tm.open_trades if t.mode == 'PAPER'], price,
+                spread=self._paper_spread())
 
         status = {
             'bot': 'gold_v2',

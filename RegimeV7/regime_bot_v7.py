@@ -192,7 +192,8 @@ DEFAULT_CFG: dict = {
     'interval_secs': 30,
 
     # ── V7 strategy params (MTF = M30 bars unless noted) ─────────────────────
-    'entry_conf':         54.0,
+    'entry_conf':         56.0,   # must stay > conf_floor: entries in [conf_floor, entry_conf)
+                                  # would be closed by CONF_FLOOR on the next poll (spread churn)
     'entry_score_min':    58.0,
     'sl_atr_mult':        2.3,
     'candle_hold':        3,      # MTF bars regime+gates must persist before entry
@@ -214,6 +215,16 @@ DEFAULT_CFG: dict = {
     'risk_pct':        1.0,
     'max_lot':         5.0,
     'max_spread_pips': 3.0,
+
+    # ── Paper-mode transaction costs (backtest parity) ────────────────────────
+    # Mirrors the cost model regime-backtest.html PINS (cost_bp/slip_bp,
+    # fixed:true — def 1.2 / 0.4): every PAPER close pays cost_bp round-trip
+    # (basis points of price) plus slip_bp extra on stop-type exits (SL_HIT —
+    # BE/trail stops also surface as SL_HIT here). Live mode pays the real
+    # broker spread, so these apply to paper audits only. Costs on by default;
+    # config-overridable.
+    'paper_cost_bp': 1.2,
+    'paper_slip_bp': 0.4,
 
     # ── RiskGuard ─────────────────────────────────────────────────────────────
     'ddlimit':   3.0,
@@ -419,12 +430,41 @@ def get_price(pair: str, url: str) -> Optional[float]:
         return None
 
 
+# ── Paper equity ───────────────────────────────────────────────────────────────
+# Starts at 10,000 and moves with every closed paper trade's money PnL (after
+# paper costs) so RiskGuardV7's daily/monthly drawdown lockouts rehearse on a
+# moving balance instead of a constant. IN-MEMORY ONLY: this bot has no state
+# file, so a restart resets paper equity to 10,000 (documented limitation).
+PAPER_START_BALANCE: float = 10_000.0
+_paper_equity: float = PAPER_START_BALANCE
+
+
+def apply_paper_pnl(money: float) -> float:
+    """Apply a closed paper trade's money PnL to the paper equity float."""
+    global _paper_equity
+    _paper_equity += money
+    return _paper_equity
+
+
+def paper_cost_price(entry_price: float, exit_code: str,
+                     cost_bp: float, slip_bp: float) -> float:
+    """Round-trip paper transaction cost in PRICE units.
+
+    Mirrors the pinned backtest cost model (regime-backtest.html cost_bp /
+    slip_bp): every trade pays cost_bp (basis points of entry price)
+    round-trip; stop-type exits (SL_HIT — breakeven and trail stops also exit
+    via SL_HIT in this bot) pay slip_bp extra.
+    """
+    bp = cost_bp + (slip_bp if exit_code == 'SL_HIT' else 0.0)
+    return entry_price * bp / 10_000.0
+
+
 def get_balance(paper_mode: bool) -> float:
     if HAS_MT5 and not paper_mode:
         info = mt5.account_info()
         if info:
             return info.balance
-    return 10_000.0
+    return _paper_equity
 
 
 # ── M30 feature computation (slope + ATR-for-SL) ──────────────────────────────
@@ -482,7 +522,7 @@ def compute_m30_features(pair: str) -> Optional[dict]:
     closes = [b['close'] for b in bars]
     n      = len(closes)
     atr_sl = _build_atr(bars, 70)[-1]
-    slope  = _ols_slope(closes[n - 8:n])  # short window — confirms recent direction only
+    slope  = _ols_slope(closes[n - ln:n])  # same linregN window as the backtest's slope feature
     return {'atrSL': atr_sl, 'slope': slope}
 
 
@@ -713,7 +753,7 @@ def modify_sl(ticket: int, pair: str, new_sl: float, paper_mode: bool) -> bool:
 def within_window_v7(cfg: dict) -> bool:
     h  = datetime.now(timezone.utc).hour
     ws = int(cfg.get('window_start', 7))
-    we = int(cfg.get('window_end', 20))
+    we = int(cfg.get('window_end', 19))
     return ws <= h < we
 
 
@@ -971,9 +1011,30 @@ def run(url: str, paper_mode: bool) -> None:
         sign      = 1 if direction == 'LONG' else -1
         pip       = _PIP_SIZES.get(pair, 0.0001)
         sl_dist   = pos.get('orig_sl_dist') or 0.0
-        pnl_pips  = round((exit_price - pos['entry_price']) * sign / pip, 1)
-        pnl_r     = round((exit_price - pos['entry_price']) * sign / sl_dist, 3) if sl_dist > 0 else 0.0
+        pnl_price = (exit_price - pos['entry_price']) * sign
+        # Paper closes pay the backtest's pinned cost model (cost_bp round-trip
+        # + slip_bp on stop exits) so paper pnl_pips/pnl_r are net-of-cost.
+        # Live fills already pay the real spread at the broker — no double
+        # charge there.
+        cost_price = 0.0
+        if paper_mode:
+            cost_price = paper_cost_price(
+                pos['entry_price'], code,
+                float(cfg.get('paper_cost_bp', 1.2)),
+                float(cfg.get('paper_slip_bp', 0.4)))
+            pnl_price -= cost_price
+        pnl_pips  = round(pnl_price / pip, 1)
+        pnl_r     = round(pnl_price / sl_dist, 3) if sl_dist > 0 else 0.0
         dur_secs  = time.time() - pos.get('opened_at', time.time())
+
+        # Move the paper equity float so RiskGuardV7 sees real drawdowns in
+        # paper mode (pips → money via the bot's pip-value table × lots).
+        if paper_mode:
+            lots  = float(pos.get('lots') or 0.0)
+            money = (pnl_price / pip) * _PIP_VALUES.get(pair, 10.0) * lots
+            new_bal = apply_paper_pnl(money)
+            log.info(f'[{pair}] paper equity {new_bal:.2f} ({money:+.2f} on close, '
+                     f'cost={cost_price / pip:.1f}p)')
 
         _cycle_events.append({'pair': pair, 'type': 'close', 'reason': reason, 'direction': direction})
 
@@ -990,6 +1051,8 @@ def run(url: str, paper_mode: bool) -> None:
             'orig_sl_dist':  round(sl_dist, 5),
             'pnl_pips':      pnl_pips,
             'pnl_r':         pnl_r,
+            'lots':          pos.get('lots'),
+            'paper_cost_pips': round(cost_price / pip, 2) if paper_mode else None,
             'duration_secs': round(dur_secs, 0),
             'entry_regime':  pos.get('entry_regime'),
             'exit_regime':   regime,
@@ -1089,6 +1152,7 @@ def run(url: str, paper_mode: bool) -> None:
                         'entry_price':  float(mt5p.price_open),
                         'sl':           float(mt5p.sl),
                         'orig_sl_dist': sl_dist,
+                        'lots':         float(mt5p.volume),
                         'opened_at':    float(mt5p.time),
                         'entry_regime': all_regimes.get(pk, {}).get('regime', '').upper() or direction[:4],
                         'entry_conf':   float(all_regimes.get(pk, {}).get('confidence', 0)),
@@ -1248,14 +1312,14 @@ def run(url: str, paper_mode: bool) -> None:
                     exit_code, close_reason = 'REGIME_FLIP', f'Regime flipped to {regime}'
 
                 # 2. CONF_FLOOR
-                if not close_reason and confidence < cfg.get('conf_floor', 45.0):
+                if not close_reason and confidence < cfg.get('conf_floor', 55.0):
                     exit_code, close_reason = 'CONF_FLOOR', f'Confidence {confidence:.1f}% < {cfg["conf_floor"]:.0f}%'
 
                 # 3. MFE_RETRACE
-                if not close_reason and mfe_r >= cfg.get('mfe_min_r', 1.5) and mfe_dist > 0:
+                if not close_reason and mfe_r >= cfg.get('mfe_min_r', 0.7) and mfe_dist > 0:
                     peak_price   = pos['entry_price'] + mfe_dist if direction == 'LONG' else pos['entry_price'] - mfe_dist
                     retrace_dist = (peak_price - price_now) if direction == 'LONG' else (price_now - peak_price)
-                    if retrace_dist / mfe_dist >= cfg.get('mfe_retrace_pct', 0.25):
+                    if retrace_dist / mfe_dist >= cfg.get('mfe_retrace_pct', 0.15):
                         exit_code, close_reason = (
                             'MFE_RETRACE',
                             f'Retraced {retrace_dist / mfe_dist * 100:.0f}% of {mfe_r:.2f}R peak',
@@ -1269,13 +1333,13 @@ def run(url: str, paper_mode: bool) -> None:
                         range_count[pair] = 0
                     else:
                         range_count[pair] = range_count.get(pair, 0) + 1
-                        if range_count[pair] >= cfg.get('exit_regime_bars', 3):
+                        if range_count[pair] >= cfg.get('exit_regime_bars', 4):
                             exit_code, close_reason = (
                                 'REGIME_RANGE', f'{range_count[pair]} non-trend M30 bars',
                             )
                     if not close_reason:
                         bars_held[pair] = bars_held.get(pair, 0) + 1
-                        if bars_held[pair] >= cfg.get('max_hold_bars', 24):
+                        if bars_held[pair] >= cfg.get('max_hold_bars', 49):
                             exit_code, close_reason = ('MAX_HOLD', f'{bars_held[pair]} M30 bars held')
 
                 if close_reason:
@@ -1377,7 +1441,7 @@ def run(url: str, paper_mode: bool) -> None:
                 continue
 
             is_dir   = regime in TRADEABLE
-            ok_conf  = eff_conf >= cfg.get('entry_conf', 70.0)
+            ok_conf  = eff_conf >= cfg.get('entry_conf', 56.0)
             ok_score = reg_score.entry_allowed
 
             feats  = compute_m30_features(pair)
@@ -1433,6 +1497,7 @@ def run(url: str, paper_mode: bool) -> None:
                     'entry_price':  price,
                     'sl':           sl,
                     'orig_sl_dist': sl_dist,
+                    'lots':         size,   # needed for the paper-equity money PnL
                     'opened_at':    time.time(),
                     'entry_regime': regime,
                     'entry_conf':   confidence,

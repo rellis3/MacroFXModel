@@ -150,12 +150,14 @@ def record_be_move(ticket: int, be_price: float) -> None:
     _push_to_kv()
 
 
-def record_close(ticket: int, exit_price: float) -> None:
+def record_close(ticket: int, exit_price: float) -> float | None:
+    """Close out a tracked trade. Returns the trade's pnl_r so the caller
+    can feed the kill switch, or None if the ticket wasn't tracked."""
     rec = _find_record(ticket)
     if not rec:
         _pending_bars.pop(ticket, None)
         _entry_meta.pop(ticket, None)
-        return
+        return None
 
     pip         = rec.get('pip', 0.0001)
     entry_price = rec['entry_price']
@@ -195,6 +197,7 @@ def record_close(ticket: int, exit_price: float) -> None:
     })
     log.info(f'[Journal] Closed #{ticket} → {exit_type}  P&L={pnl_r:+.2f}R  {pnl_pips:+.1f}p')
     _push_to_kv()
+    return pnl_r
 
 
 def get_entry_ts_ms(ticket: int) -> int | None:

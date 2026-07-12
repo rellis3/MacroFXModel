@@ -13,6 +13,16 @@ Usage:
     python backtest.py --oos-days 90            # last 90 days = OOS, rest = IS
     python backtest.py --split-date 2025-01-01  # explicit IS/OOS boundary
     python backtest.py --mfe                    # enable MFE/holding-time via MT5 bars (slow)
+    python backtest.py --spread 0.6             # override round-trip spread (all pairs)
+    python backtest.py --spread EUR/USD=0.6,USD/JPY=0.9   # per-pair override
+    python backtest.py --slip-pips 0.5          # extra slippage pips (default 0.2)
+
+Costs are ON by default (CLAUDE.md: free fills are not honest): every replayed
+trade's R outcome is debited a per-pair round-trip spread plus --slip-pips of
+slippage, converted to R via the trade's own SL distance. The journal records
+carry no entry-type field, so slippage is charged on ALL trades (stop entries
+cannot be isolated). Headline numbers are after-cost; anything without an
+--oos-days/--split-date split is labelled in-sample.
 
 Requires MT5 to be installed and connected for historical bar data.
 """
@@ -50,8 +60,93 @@ _PIP_SIZES = {
     'NAS100_USD': 1.0,
 }
 
+# Full round-trip spread per pair, in pips: majors 0.8, JPY-quoted 1.0,
+# gold 0.3 (= $0.30 at pip=$1), indices 2 points. Unknown pairs fall back to
+# _DEFAULT_SPREAD_PIPS. Override with --spread.
+_SPREAD_PIPS = {
+    'EUR/USD': 0.8, 'GBP/USD': 0.8, 'AUD/USD': 0.8, 'NZD/USD': 0.8,
+    'USD/CAD': 0.8, 'USD/CHF': 0.8, 'EUR/GBP': 0.8,
+    'USD/JPY': 1.0, 'GBP/JPY': 1.0, 'EUR/JPY': 1.0,
+    'XAU/USD': 0.3,
+    'NAS100_USD': 2.0,
+}
+_DEFAULT_SPREAD_PIPS = 1.0
+
 # Maximum 5m bars to scan forward per trade for MFE (48h = 576 bars)
 _MFE_SCAN_BARS = 576
+
+
+# ── Transaction costs ─────────────────────────────────────────────────────────
+
+def parse_spread_override(arg: Optional[str]) -> dict:
+    """Parses --spread: a bare number applies to all pairs ('0.6'), or a
+    comma list of PAIR=pips overrides ('EUR/USD=0.6,USD/JPY=0.9')."""
+    if not arg:
+        return {}
+    arg = arg.strip()
+    if '=' not in arg:
+        return {'*': float(arg)}
+    out: dict = {}
+    for part in arg.split(','):
+        pair, _, val = part.strip().partition('=')
+        if pair and val:
+            out[pair.strip()] = float(val)
+    return out
+
+
+def spread_pips_for(pair: str, override: dict) -> float:
+    if pair in override:
+        return float(override[pair])
+    if '*' in override:
+        return float(override['*'])
+    return _SPREAD_PIPS.get(pair, _DEFAULT_SPREAD_PIPS)
+
+
+def apply_costs(records: list[dict], spread_override: dict,
+                slip_pips: float) -> dict:
+    """Debit each replayed trade's R outcome with round-trip spread + slippage,
+    IN PLACE. Returns a summary dict for logging / the results JSON.
+
+    The journal replay records carry no entry-type field (limit vs stop entry
+    is NOT distinguishable), so `slip_pips` is charged on EVERY trade rather
+    than stop/breakout entries only — conservative, and stated in the output.
+
+    Conversion: cost_R = (spread_pips + slip_pips) / risk_pips with
+    risk_pips = |price − sl| / pip. Records without a numeric pnl_r or a
+    usable price/SL are left GROSS and counted in `skipped` (their win flags
+    stay journal-derived). Costed records get pnl_r (net), pnl_r_gross,
+    cost_r, and `win` recomputed from the net R.
+    """
+    applied = skipped = 0
+    spreads_used: dict[str, float] = {}
+    for rec in records:
+        pnl_r = rec.get('pnl_r')
+        if pnl_r is None:
+            skipped += 1
+            continue
+        pip   = _PIP_SIZES.get(rec['pair'], 0.0001)
+        price = rec.get('price') or 0
+        sl    = rec.get('sl') or 0
+        risk_pips = abs(price - sl) / pip if (price and sl) else 0.0
+        if risk_pips < 0.001:
+            skipped += 1
+            continue
+        spread = spread_pips_for(rec['pair'], spread_override)
+        spreads_used.setdefault(rec['pair'], spread)
+        cost_r = (spread + slip_pips) / risk_pips
+        rec['pnl_r_gross'] = pnl_r
+        rec['cost_r']      = round(cost_r, 4)
+        rec['pnl_r']       = round(pnl_r - cost_r, 4)
+        rec['win']         = rec['pnl_r'] > 0
+        applied += 1
+    return {
+        'applied':      applied,
+        'skipped':      skipped,
+        'slip_pips':    slip_pips,
+        'slip_note':    'charged on ALL trades — entry type (limit vs stop) is '
+                        'not recorded in the journal replay store',
+        'spread_pips':  spreads_used,
+    }
 
 
 # ── Data fetching ─────────────────────────────────────────────────────────────
@@ -551,6 +646,8 @@ def run_backtest(
     oos_days: Optional[int] = None,
     split_date: Optional[datetime] = None,
     scan_mfe: bool = False,
+    spread_override: Optional[dict] = None,
+    slip_pips: float = 0.2,
 ) -> Optional[dict]:
     logging.basicConfig(
         level=logging.INFO,
@@ -571,6 +668,16 @@ def run_backtest(
     if not all_records:
         log.warning('No records match filters — nothing to backtest')
         return None
+
+    # ── Transaction costs (ON by default — free fills are not honest) ────────
+    cost_info = apply_costs(all_records, spread_override or {}, slip_pips)
+    log.info(f'Costs: round-trip spread per pair + {slip_pips}p slippage on ALL trades '
+             f'(entry type not recorded in the journal — stop entries cannot be isolated); '
+             f'{cost_info["applied"]} records costed, {cost_info["skipped"]} left gross '
+             f'(no pnl_r or no usable SL)')
+    if cost_info['spread_pips']:
+        log.info('  Spreads (pips): ' + '  '.join(
+            f'{p}={s}' for p, s in sorted(cost_info['spread_pips'].items())))
 
     if HAS_MT5:
         log.info('Connecting to MT5 for historical bar data…')
@@ -639,16 +746,39 @@ def run_backtest(
     # ── Summary ───────────────────────────────────────────────────────────────
     log.info('')
     log.info('=' * 70)
-    log.info('BACKTEST RESULTS')
+    log.info('BACKTEST RESULTS  (all numbers AFTER COST: spread + slippage)')
     log.info('=' * 70)
 
     all_stats   = compute_stats(all_records)
     trade_stats = compute_stats(would_trade)
     skip_stats  = compute_stats(would_skip)
 
-    print_stats('ALL signals (unfiltered)',   all_stats,   len(all_records))
-    print_stats('PRE_SCREEN PASS (score=2)',  trade_stats, len(would_trade))
-    print_stats('PRE_SCREEN SKIP (score<2)',  skip_stats,  len(would_skip))
+    # ── After-cost headline — the numbers that count ─────────────────────────
+    hl_is  = [r for r in would_trade if r.get('is_oos') != 'OOS']
+    hl_oos = [r for r in would_trade if r.get('is_oos') == 'OOS']
+    headline: dict = {}
+    log.info('\nAFTER-COST HEADLINE  (pre_screen PASS, net of spread + slippage)')
+    if oos_cutoff and hl_oos:
+        hl_is_stats  = compute_stats(hl_is)
+        hl_oos_stats = compute_stats(hl_oos)
+        log.info(f'  IS  (before {oos_cutoff.date()}):  n={hl_is_stats["total"]:4d}  '
+                 f'WR={hl_is_stats["win_rate"]:5.1f}%  avgR={_fmt(hl_is_stats["avg_r"])}  '
+                 f'totalR={_fmt(hl_is_stats["total_r"], 2)}')
+        log.info(f'  OOS (from   {oos_cutoff.date()}):  n={hl_oos_stats["total"]:4d}  '
+                 f'WR={hl_oos_stats["win_rate"]:5.1f}%  avgR={_fmt(hl_oos_stats["avg_r"])}  '
+                 f'totalR={_fmt(hl_oos_stats["total_r"], 2)}')
+        log.info('  OOS is the row that counts — IS numbers are in-sample.')
+        headline = {'is': hl_is_stats, 'oos': hl_oos_stats}
+    else:
+        log.info(f'  FULL SAMPLE — IN-SAMPLE ONLY:  n={trade_stats["total"]:4d}  '
+                 f'WR={trade_stats["win_rate"]:5.1f}%  avgR={_fmt(trade_stats["avg_r"])}  '
+                 f'totalR={_fmt(trade_stats["total_r"], 2)}')
+        log.info('  (no OOS split — pass --oos-days or --split-date; treat this as in-sample)')
+        headline = {'is': trade_stats, 'oos': None}
+
+    print_stats('ALL signals (unfiltered, after-cost)',   all_stats,   len(all_records))
+    print_stats('PRE_SCREEN PASS (score=2, after-cost)',  trade_stats, len(would_trade))
+    print_stats('PRE_SCREEN SKIP (score<2, after-cost)',  skip_stats,  len(would_skip))
 
     pass_rate = len(would_trade) / len(all_records) * 100 if all_records else 0
     log.info(f'\nPre-screen pass rate: {pass_rate:.1f}% ({len(would_trade)}/{len(all_records)})')
@@ -695,7 +825,7 @@ def run_backtest(
     else:
         is_records  = would_trade
         oos_records = []
-        is_ed       = print_exit_analysis('All traded signals', would_trade)
+        is_ed       = print_exit_analysis('All traded signals (full sample = IN-SAMPLE)', would_trade)
         oos_ed      = {}
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -784,6 +914,8 @@ def run_backtest(
         'days':          days,
         'oos_cutoff':    oos_cutoff.isoformat() if oos_cutoff else None,
         'scan_mfe':      scan_mfe,
+        'costs':         cost_info,
+        'after_cost_headline': headline,
         'totals': {
             'all':            all_stats,
             'pass_filter':    trade_stats,
@@ -822,6 +954,14 @@ if __name__ == '__main__':
     ap.add_argument('--oos-days',   type=int, help='Last N days = OOS; rest = IS (e.g. 90)')
     ap.add_argument('--split-date', help='Explicit IS/OOS boundary (YYYY-MM-DD)')
     ap.add_argument('--mfe',        action='store_true', help='Enable MFE/holding-time scan via MT5 (slow)')
+    ap.add_argument('--spread',     help='Round-trip spread override: bare pips for all pairs '
+                                         '("0.6") or per-pair list ("EUR/USD=0.6,USD/JPY=0.9"). '
+                                         'Default: built-in per-pair table (majors 0.8, JPY 1.0, '
+                                         'gold 0.3, indices 2.0)')
+    ap.add_argument('--slip-pips',  type=float, default=0.2,
+                    help='Extra slippage pips charged on every trade (entry type is not '
+                         'recorded in the journal, so stop entries cannot be isolated; '
+                         'default 0.2, set 0 to disable)')
     args = ap.parse_args()
 
     exec_cfg = {
@@ -847,4 +987,6 @@ if __name__ == '__main__':
         oos_days    = args.oos_days,
         split_date  = split_dt,
         scan_mfe    = args.mfe,
+        spread_override = parse_spread_override(args.spread),
+        slip_pips   = max(0.0, args.slip_pips),
     )

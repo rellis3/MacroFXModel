@@ -22,7 +22,9 @@ POST_CLOSE = MID + SESSION_LEN_SEC + 60  # just after the 22:00 close
 
 
 def _enter_short_ride(b):
-    """Fade an up-line: SELL @1.10, disaster stop (outer) 1.12, NO take-profit."""
+    """Fade an up-line: SELL @1.10, disaster stop (outer) 1.12, NO take-profit.
+    Spread zeroed so the money-unit P&L asserts below are exact."""
+    b.set_spread("eurusd", 0.0)
     b.set_price("eurusd", 1.10)
     tid = b.enter("eurusd", "SHORT", 1.12, 0, 0.5, BIG, True, comment="Vol HL75_up f")
     st = {tid: {"pair": "eurusd", "entry": 1.10, "sl0": 1.12, "is_long": False,
@@ -45,9 +47,23 @@ def test_ride_trails_and_exits_on_trailed_stop_with_profit():
     assert not b.serialize_open_positions(), "should have exited on the trailed stop"
     c = b.serialize_closed_trades()[-1]
     assert c["reason"] == "sl" and c["profit"] > 0, c        # sold 1.10, bought ~1.095
+    # MONEY units: 50 pips × $10/pip/lot × 0.5 lots = $250 — and the paper
+    # balance MOVES by exactly that, so sizing compounds like live.
+    assert abs(c["profit"] - 250.0) < 1e-6, c
+    assert abs(b.account_balance() - 10_250.0) < 1e-6
     # next tick's manage prunes the now-closed ticket (loop order: manage → barriers).
     _manage_ride(b, ride_state, "eurusd", 1.095, IN_SESSION, 0.5, True)
     assert tid not in ride_state
+
+
+def test_paper_fill_crosses_half_the_default_spread():
+    # No override → the pylego.costs class default (majors 0.8 pips): a SELL
+    # fills 0.4 pips UNDER the fed mid (the exit will cross the other half).
+    b = PaperBroker()
+    b.set_price("eurusd", 1.10)
+    b.enter("eurusd", "SHORT", 1.12, 0, 0.5, BIG, True)
+    pos = b.serialize_open_positions()[0]
+    assert abs(pos["open_price"] - (1.10 - 0.00004)) < 1e-9, pos
 
 
 def test_ride_eod_force_close():

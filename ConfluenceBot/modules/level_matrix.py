@@ -214,12 +214,17 @@ def find_valid_extremes(bars: list[dict], tf: str
 
 # ── Step 2: legs + level emission ─────────────────────────────────────────────
 
-def build_legs(bars: list[dict], tf: str) -> list[FibLeg]:
+def build_legs(bars: list[dict], tf: str,
+               pip: float = 1.0, digits: int = 2) -> list[FibLeg]:
     """
     Long legs: every valid low → every LATER valid high.
     Short legs: every valid high → every LATER valid low.
     Both endpoints being unbroken is what enforces "invalidated when a new
     high/low forms" — superseded extremes never enter the matrix.
+
+    pip / digits: instrument scale — leg ids quantise endpoints to whole pips
+    and prices round to `digits`. Gold (pip=1.0, digits=2) reproduces the
+    GoldV2 ids and numbers exactly.
     """
     if len(bars) < 20:
         return []
@@ -246,12 +251,12 @@ def build_legs(bars: list[dict], tf: str) -> list[FibLeg]:
             if min(lows[li:hi + 1]) < lp - coh_tol:
                 continue    # price reversed through the origin mid-leg
             legs.append(FibLeg(
-                leg_id=f'{tf}_long_{round(lp)}_{round(hp)}',
+                leg_id=f'{tf}_long_{round(lp / pip)}_{round(hp / pip)}',
                 tf=tf, direction='long',
-                origin=round(lp, 2), end=round(hp, 2),
+                origin=round(lp, digits), end=round(hp, digits),
                 origin_time=bars[li].get('time', 0),
                 end_time=bars[hi].get('time', 0),
-                size=round(hp - lp, 2),
+                size=round(hp - lp, digits),
                 age_bars=length - 1 - hi,
             ))
 
@@ -266,12 +271,12 @@ def build_legs(bars: list[dict], tf: str) -> list[FibLeg]:
             if max(highs[hi:li + 1]) > hp + coh_tol:
                 continue
             legs.append(FibLeg(
-                leg_id=f'{tf}_short_{round(lp)}_{round(hp)}',
+                leg_id=f'{tf}_short_{round(lp / pip)}_{round(hp / pip)}',
                 tf=tf, direction='short',
-                origin=round(hp, 2), end=round(lp, 2),
+                origin=round(hp, digits), end=round(lp, digits),
                 origin_time=bars[hi].get('time', 0),
                 end_time=bars[li].get('time', 0),
-                size=round(hp - lp, 2),
+                size=round(hp - lp, digits),
                 age_bars=length - 1 - li,
             ))
 
@@ -282,8 +287,8 @@ _FIB_RATIOS = (('fib_382', 0.382), ('fib_500', 0.500),
                ('fib_786', 0.786), ('fib_886', 0.886))
 
 
-def emit_levels(legs: list[FibLeg], current_price: float
-                ) -> tuple[list[LevelLine], list[GPBand]]:
+def emit_levels(legs: list[FibLeg], current_price: float,
+                digits: int = 2) -> tuple[list[LevelLine], list[GPBand]]:
     """
     Emit fib LINES (.382/.5/.786/.886) and the GOLDEN-POCKET BAND (.618–.650)
     per leg. Only levels on the retracement side of price are kept (a buy
@@ -302,7 +307,7 @@ def emit_levels(legs: list[FibLeg], current_price: float
             level = lambda f: lo + f * r
 
         gp_a, gp_b = level(0.618), level(0.650)
-        band = GPBand(low=round(min(gp_a, gp_b), 2), high=round(max(gp_a, gp_b), 2),
+        band = GPBand(low=round(min(gp_a, gp_b), digits), high=round(max(gp_a, gp_b), digits),
                       tf=leg.tf, direction=leg.direction, leg_id=leg.leg_id)
         # Retracement-side check for the band (allow price already inside it)
         if leg.direction == 'long' and band.low <= current_price + 1e-9 or \
@@ -313,7 +318,7 @@ def emit_levels(legs: list[FibLeg], current_price: float
                 bands.append(band)
 
         for kind, f in _FIB_RATIOS:
-            p = round(level(f), 2)
+            p = round(level(f), digits)
             if leg.direction == 'long' and p > current_price:
                 continue
             if leg.direction == 'short' and p < current_price:
@@ -325,7 +330,8 @@ def emit_levels(legs: list[FibLeg], current_price: float
 
 
 def emit_retest_lines(bars: list[dict], tf: str, current_price: float,
-                      max_break_age_bars: int = 30) -> list[LevelLine]:
+                      max_break_age_bars: int = 30,
+                      pip: float = 1.0, digits: int = 2) -> list[LevelLine]:
     """
     A recently broken high with price now holding above it becomes a long
     retest level (old resistance → support); mirror for lows. Only breaks
@@ -347,8 +353,8 @@ def emit_retest_lines(bars: list[dict], tf: str, current_price: float,
         break_idx = next((j for j in range(i + 1, n) if highs[j] > lvl), None)
         if break_idx is None or n - 1 - break_idx > max_break_age_bars:
             continue
-        out.append(LevelLine(price=round(lvl, 2), kind='retest', tf=tf,
-                             direction='long', leg_id=f'{tf}_retestH_{round(lvl)}'))
+        out.append(LevelLine(price=round(lvl, digits), kind='retest', tf=tf,
+                             direction='long', leg_id=f'{tf}_retestH_{round(lvl / pip)}'))
 
     for i in broken_l:
         lvl = lows[i]
@@ -357,8 +363,8 @@ def emit_retest_lines(bars: list[dict], tf: str, current_price: float,
         break_idx = next((j for j in range(i + 1, n) if lows[j] < lvl), None)
         if break_idx is None or n - 1 - break_idx > max_break_age_bars:
             continue
-        out.append(LevelLine(price=round(lvl, 2), kind='retest', tf=tf,
-                             direction='short', leg_id=f'{tf}_retestL_{round(lvl)}'))
+        out.append(LevelLine(price=round(lvl, digits), kind='retest', tf=tf,
+                             direction='short', leg_id=f'{tf}_retestL_{round(lvl / pip)}'))
 
     return out
 
@@ -389,10 +395,15 @@ def _merge_bands(bands: list[GPBand]) -> list[dict]:
 
 def build_zones(legs_by_tf: dict[str, list[FibLeg]],
                 lines: list[LevelLine], bands: list[GPBand],
-                cluster_tolerance: float = 3.0) -> list[ZoneV2]:
+                cluster_tolerance: float = 3.0,
+                pip: float = 1.0, digits: int = 2) -> list[ZoneV2]:
     """
     GP bands seed zones (merged where overlapping); lines join a band's zone
     when within tolerance of it, otherwise they cluster among themselves.
+
+    cluster_tolerance is in PRICE UNITS (caller passes config pips × pip).
+    pip / digits scale the entry pad, the zone-id bucket and the price
+    rounding; gold defaults (pip=1.0, digits=2) match GoldV2 exactly.
     """
     leg_index: dict[str, FibLeg] = {}
     for legs in legs_by_tf.values():
@@ -440,9 +451,9 @@ def build_zones(legs_by_tf: dict[str, list[FibLeg]],
         if not legs and not retest_only:
             continue
 
-        centre = round((cl['low'] + cl['high']) / 2, 2)
-        pad    = max(0.5, cluster_tolerance * 0.25)
-        lo, hi = round(cl['low'] - pad, 2), round(cl['high'] + pad, 2)
+        centre = round((cl['low'] + cl['high']) / 2, digits)
+        pad    = max(0.5 * pip, cluster_tolerance * 0.25)   # floor = half a pip
+        lo, hi = round(cl['low'] - pad, digits), round(cl['high'] + pad, digits)
 
         if legs:
             primary = max(legs, key=lambda lg: TF_WEIGHT.get(lg.tf, 1.0) * lg.size)
@@ -459,16 +470,18 @@ def build_zones(legs_by_tf: dict[str, list[FibLeg]],
             tf_label  = 'RT'
 
         zones.append(ZoneV2(
-            zone_id=f"v2_{cl['direction']}_{int(round(centre / 2) * 2)}"
+            # 2-pip id bucket (2 price units on gold — unchanged) so a zone
+            # keeps its id across small refresh-to-refresh centre drift.
+            zone_id=f"v2_{cl['direction']}_{int(round(centre / (2 * pip)) * 2)}"
                     + ('_gp' if cl.get('is_gp') else ''),
             direction=cl['direction'],
             gp_low=lo, gp_high=hi, centre=centre,
             in_gp=bool(cl.get('is_gp')),
             legs=legs,
             line_kinds=sorted(cl['kinds']),
-            swing_origin=round(origin, 2),
-            invalidation=round(origin, 2),
-            swing_end=round(swing_end, 2),
+            swing_origin=round(origin, digits),
+            invalidation=round(origin, digits),
+            swing_end=round(swing_end, digits),
             primary=primary,
             tf=tf_label,
         ))
@@ -630,10 +643,15 @@ def update_zone_activity(zones: list[ZoneV2], recent_closes: list[float]) -> Non
 
 def build_level_matrix(bars_by_tf: dict[str, list[dict]], current_price: float,
                        cluster_tolerance: float = 3.0,
-                       include_retests: bool = True) -> tuple[list[ZoneV2], dict]:
+                       include_retests: bool = True,
+                       pip: float = 1.0, digits: int = 2) -> tuple[list[ZoneV2], dict]:
     """
     bars_by_tf: {'H4': [...], 'M30': [...]} chronological bars per entry TF.
     Returns (zones, debug_info). Zones are unscored — call score_zones next.
+
+    cluster_tolerance is in PRICE UNITS. pip / digits are the instrument's
+    scale, threaded through leg ids, level rounding, zone pads and zone ids;
+    the gold defaults (pip=1.0, digits=2) reproduce GoldV2 bit-for-bit.
     """
     legs_by_tf: dict[str, list[FibLeg]] = {}
     all_lines: list[LevelLine] = []
@@ -642,15 +660,17 @@ def build_level_matrix(bars_by_tf: dict[str, list[dict]], current_price: float,
     for tf, bars in bars_by_tf.items():
         if not bars:
             continue
-        legs = build_legs(bars, tf)
+        legs = build_legs(bars, tf, pip=pip, digits=digits)
         legs_by_tf[tf] = legs
-        lines, bands = emit_levels(legs, current_price)
+        lines, bands = emit_levels(legs, current_price, digits=digits)
         all_lines.extend(lines)
         all_bands.extend(bands)
         if include_retests:
-            all_lines.extend(emit_retest_lines(bars, tf, current_price))
+            all_lines.extend(emit_retest_lines(bars, tf, current_price,
+                                               pip=pip, digits=digits))
 
-    zones = build_zones(legs_by_tf, all_lines, all_bands, cluster_tolerance)
+    zones = build_zones(legs_by_tf, all_lines, all_bands, cluster_tolerance,
+                        pip=pip, digits=digits)
 
     debug = {
         'legs':  {tf: len(legs) for tf, legs in legs_by_tf.items()},

@@ -2693,6 +2693,68 @@ async function fetchOandaH1Range(instrument, fromDate) {
 //   Gate 1 (~09:00 UTC): overnight range position (Asia directional bias)
 //   Gate 2 (~12:00 UTC): London continuation (3h into London session)
 //   Entry  (~13:00 UTC): 09:25 ET pre-open entry, 0.5% stop, 1.8% max risk
+
+// Shared QMR timing anchors — the backtest engine AND every live monitor
+// (NQ + SPX/DOW/DAX) must read these, never inline their own hours. The
+// 2026-07 review found the live monitors had drifted to a 20:00-UTC/3-bar
+// overnight window while the engine used 21:00/4 — same rule name, different
+// rule. All times are fixed UTC year-round: the schedule is deliberately
+// UTC-anchored (ET labels in alert copy are display-only, computed live).
+const QMR_TIMING = {
+  overnightStartHour: 21, // overnight window: prev-day UTC hour ≥ this…
+  overnightEndHour:   8,  // …through today UTC hour ≤ this
+  minOvernightBars:   4,  // skip the day with fewer overnight H1 bars
+  londonOpenHour:     7,  // London-open H1 bar label (UTC)
+  gate1Hour:          9,  // Gate 1 decision time (UTC)
+  gate2Hour:         12,  // Gate 2 decision time (UTC)
+  entryHour:         13,  // entry H1 bar label (UTC; 14 fallback in winter)
+  eodHour:           20,  // exit-by hour (UTC)
+};
+const _qmrHH = h => String(h).padStart(2, '0'); // hour → 2-digit bar label
+
+// Shared cost constants — engine defaults AND the live forward-validation
+// resolver read these, so the backtest and the forward record net identically.
+const QMR_COSTS = { costPct: 0.008, stopSlipPct: 0.005 };
+
+// Shared per-trade exit walk — used by the backtest engine (_computeNqQmr, all
+// four systems) AND the live forward-validation resolver (_qmrResolveForward),
+// so the two exit rules can never drift (the Lego rule). `bars` are the H1
+// bars STRICTLY AFTER the entry bar, sorted ascending by time. Rule, in order,
+// per bar: stop first (conservative — worst case within the bar), then TP,
+// then EOD close on the first bar labeled >= QMR_TIMING.eodHour. If no bar
+// triggers, exits at the last bar's close as EOD (truncated day). Returns
+// { stop, tp, exit, exitReason, movePct } or null when `bars` is empty.
+function _qmrWalkTrade(bars, dir, entry, stopPctEff, tpPct) {
+  const stop = dir === 'LONG' ? entry * (1 - stopPctEff / 100) : entry * (1 + stopPctEff / 100);
+  const tp   = tpPct > 0
+    ? (dir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
+    : null;
+  let exit = null, exitReason = 'EOD';
+  for (const bar of bars) {
+    if (dir === 'LONG'  && bar.l <= stop) { exit = stop; exitReason = 'STOP'; break; }
+    if (dir === 'SHORT' && bar.h >= stop) { exit = stop; exitReason = 'STOP'; break; }
+    if (tp !== null && dir === 'LONG'  && bar.h >= tp) { exit = tp; exitReason = 'TP'; break; }
+    if (tp !== null && dir === 'SHORT' && bar.l <= tp) { exit = tp; exitReason = 'TP'; break; }
+    if (parseInt(bar.t.substring(11, 13)) >= QMR_TIMING.eodHour) { exit = bar.c; exitReason = 'EOD'; break; }
+  }
+  if (exit === null) {
+    const last = bars[bars.length - 1];
+    if (!last) return null;
+    exit = last.c; exitReason = 'EOD';
+  }
+  const movePct = dir === 'LONG'
+    ? (exit - entry) / entry * 100
+    : (entry - exit) / entry * 100;
+  return { stop, tp, exit, exitReason, movePct };
+}
+
+// Shared cost netting: raw move − round-trip cost − stop slippage (stop exits
+// only), THEN scaled by leverage. One formula for the engine and the resolver.
+function _qmrNetReturn(movePct, exitReason, leverage,
+                       costPct = QMR_COSTS.costPct, stopSlipPct = QMR_COSTS.stopSlipPct) {
+  return (movePct - costPct - (exitReason === 'STOP' ? stopSlipPct : 0)) * leverage;
+}
+
 function _qmrStats(trades, curve, equity) {
   const n    = trades.length;
   const wins = trades.filter(t => t.tradeReturn > 0).length;
@@ -2733,7 +2795,15 @@ function _computeNqQmr(bars, cfg = {}) {
     extPctThreshold = 75,    // percentile (vs trailing history) of move-used-by-entry/ADR above which a confirmed day counts as "extended"
     showSystem4     = false, // also compute chop-fade trades (G1+G2 confirm, but the session's path was inefficient/choppy, not a clean trend)
     effPctThreshold = 25,    // percentile (vs trailing history) of trend efficiency BELOW which a confirmed day counts as "choppy"
+    costPct         = QMR_COSTS.costPct,     // round-trip transaction cost (spread + commission), % of notional
+    stopSlipPct     = QMR_COSTS.stopSlipPct, // extra slippage % of notional, charged only on stop exits (market order through a moving market)
   } = cfg;
+
+  // Net every trade of costs BEFORE leverage: raw move − costPct − stop slip,
+  // then the position leverage scales the netted move. Free fills are not honest.
+  // Delegates to the shared _qmrNetReturn so the live forward-validation
+  // resolver nets outcomes with the identical formula.
+  const _netReturn = (mvPct, exitReason, lev) => _qmrNetReturn(mvPct, exitReason, lev, costPct, stopSlipPct);
 
   // Group H1 bars by UTC date
   const byDate = {};
@@ -2770,12 +2840,12 @@ function _computeNqQmr(bars, cfg = {}) {
     const dow = new Date(today + 'T12:00:00Z').getUTCDay();
     if (dow === 0 || dow === 6) continue;
 
-    // Overnight bars: prev day UTC hour ≥ 21 AND today UTC hour ≤ 8
+    // Overnight bars: prev day UTC hour ≥ overnightStartHour AND today UTC hour ≤ overnightEndHour
     const overnightBars = [
-      ...(byDate[prev]  || []).filter(b => parseInt(b.t.substring(11, 13)) >= 21),
-      ...(byDate[today] || []).filter(b => parseInt(b.t.substring(11, 13)) <= 8),
+      ...(byDate[prev]  || []).filter(b => parseInt(b.t.substring(11, 13)) >= QMR_TIMING.overnightStartHour),
+      ...(byDate[today] || []).filter(b => parseInt(b.t.substring(11, 13)) <= QMR_TIMING.overnightEndHour),
     ];
-    if (overnightBars.length < 4) continue;
+    if (overnightBars.length < QMR_TIMING.minOvernightBars) continue;
 
     const asiaH    = Math.max(...overnightBars.map(b => b.h));
     const asiaL    = Math.min(...overnightBars.map(b => b.l));
@@ -2784,8 +2854,11 @@ function _computeNqQmr(bars, cfg = {}) {
     const rangePct = mid > 0 ? (range / mid) * 100 : 0;
     if (!mid || rangePct < minRangePct) continue;
 
-    // Gate 1: price at ~09:00 UTC relative to overnight range
-    const g1bar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '09');
+    // Gate 1: last COMPLETED H1 close as of gate1Hour — the bar labeled
+    // gate1Hour−1 closes exactly at gate1Hour. Pre-2026-07 this read the bar
+    // labeled gate1Hour, whose close is gate1Hour+1 data: a one-hour lookahead
+    // the live monitor never had. Corrected — historical stats dropped.
+    const g1bar = (byDate[today] || []).find(b => b.t.substring(11, 13) === _qmrHH(QMR_TIMING.gate1Hour - 1));
     if (!g1bar) continue;
 
     const posInRange = (g1bar.c - asiaL) / range;
@@ -2794,9 +2867,10 @@ function _computeNqQmr(bars, cfg = {}) {
     else if (posInRange <= 1 - gate1Threshold) gate1 = 'SHORT';
     else continue;
 
-    // Gate 2: London open (~07:00 UTC) vs check at ~12:00 UTC
-    const ldnBar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '07');
-    const g2bar  = (byDate[today] || []).find(b => b.t.substring(11, 13) === '12');
+    // Gate 2: London open vs the last COMPLETED close as of gate2Hour — bar
+    // labeled gate2Hour−1 (same no-lookahead correction as Gate 1 above).
+    const ldnBar = (byDate[today] || []).find(b => b.t.substring(11, 13) === _qmrHH(QMR_TIMING.londonOpenHour));
+    const g2bar  = (byDate[today] || []).find(b => b.t.substring(11, 13) === _qmrHH(QMR_TIMING.gate2Hour - 1));
     if (!ldnBar || !g2bar) continue;
 
     const ldnMove = (g2bar.c - ldnBar.o) / ldnBar.o * 100;
@@ -2814,41 +2888,26 @@ function _computeNqQmr(bars, cfg = {}) {
     if (!isS2 && direction === 'long'  && gate2 !== 'LONG')  continue;
     if (!isS2 && direction === 'short' && gate2 !== 'SHORT') continue;
 
-    // Entry: ~09:25 ET ≈ 13:00 UTC EDT / 14:00 UTC EST — try 13 first
-    const entryBar = (byDate[today] || []).find(b => b.t.substring(11, 13) === '13')
-                  || (byDate[today] || []).find(b => b.t.substring(11, 13) === '14');
+    // Entry: ~09:25 ET ≈ 13:00 UTC EDT / 14:00 UTC EST — try entryHour first
+    const entryBar = (byDate[today] || []).find(b => b.t.substring(11, 13) === _qmrHH(QMR_TIMING.entryHour))
+                  || (byDate[today] || []).find(b => b.t.substring(11, 13) === _qmrHH(QMR_TIMING.entryHour + 1));
     if (!entryBar) continue;
 
     const entry       = entryBar.o;
     const effStopPct  = stopMultiplier > 0
       ? Math.max(+(rangePct * stopMultiplier).toFixed(4), 0.10)
       : stopPct;
-    const stop  = gate2 === 'LONG'
-      ? entry * (1 - effStopPct / 100)
-      : entry * (1 + effStopPct / 100);
-    const tp = tpPct > 0
-      ? (gate2 === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
-      : null;
 
-    // Scan bars after entry for TP, stop-out, or EOD exit.
-    // Stop is checked before TP within the same bar (conservative — assumes worst case).
+    // Bars after the entry bar, in time order — input to the shared exit walk.
     const afterEntry = (byDate[today] || [])
-      .filter(b => b.t.substring(11, 13) > '13')
+      .filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
       .sort((a, bk) => a.t.localeCompare(bk.t));
 
-    let exit = null, exitReason = 'EOD';
-    for (const bar of afterEntry) {
-      if (gate2 === 'LONG'  && bar.l <= stop) { exit = stop; exitReason = 'STOP'; break; }
-      if (gate2 === 'SHORT' && bar.h >= stop) { exit = stop; exitReason = 'STOP'; break; }
-      if (tp !== null && gate2 === 'LONG'  && bar.h >= tp) { exit = tp; exitReason = 'TP'; break; }
-      if (tp !== null && gate2 === 'SHORT' && bar.l <= tp) { exit = tp; exitReason = 'TP'; break; }
-      if (parseInt(bar.t.substring(11, 13)) >= 20) { exit = bar.c; exitReason = 'EOD'; break; }
-    }
-    if (exit === null) {
-      const last = afterEntry[afterEntry.length - 1];
-      if (!last) continue;
-      exit = last.c; exitReason = 'EOD';
-    }
+    // Exit walk via the shared _qmrWalkTrade (stop before TP within a bar,
+    // then EOD) — the exact function the live forward-validation resolver uses.
+    const walk = _qmrWalkTrade(afterEntry, gate2, entry, effStopPct, tpPct);
+    if (!walk) continue;
+    const { stop, exit, exitReason, movePct } = walk;
 
     // MFE/MAE: scan entry bar + all afterEntry bars for peak favorable/adverse move.
     // Uses full day H1 resolution — MFE answers "how far did it go in our favour?"
@@ -2864,11 +2923,8 @@ function _computeNqQmr(bars, cfg = {}) {
       if (adv < maePct) maePct = adv;
     }
 
-    const movePct     = gate2 === 'LONG'
-      ? (exit - entry) / entry * 100
-      : (entry - exit) / entry * 100;
     const leverage    = riskPct / effStopPct;
-    const tradeReturn = movePct * leverage;
+    const tradeReturn = _netReturn(movePct, exitReason, leverage);
 
     // Extension check — only meaningful for continuation (non-S2) days. Tracked
     // regardless of showSystem3 so the percentile history is stable across toggle state.
@@ -2900,7 +2956,7 @@ function _computeNqQmr(bars, cfg = {}) {
         ...overnightBars,
         ...(byDate[today] || []).filter(b => {
           const h = b.t.substring(11, 13);
-          return h > '08' && h <= entryHour;
+          return h > _qmrHH(QMR_TIMING.overnightEndHour) && h <= entryHour;
         }),
       ].sort((a, b) => a.t.localeCompare(b.t));
       const netMove = Math.abs(entry - sessionBars[0].o);
@@ -2930,29 +2986,12 @@ function _computeNqQmr(bars, cfg = {}) {
       // instead of fading it — the natural baseline for "is fading the rejection
       // actually better than ignoring it," same pattern as System 3's fade check.
       const cfDir  = gate1;
-      const cfStop = cfDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
-      const cfTp   = tpPct > 0
-        ? (cfDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
-        : null;
-
-      let cfExit = null, cfReason = 'EOD';
-      for (const bar of afterEntry) {
-        if (cfDir === 'LONG'  && bar.l <= cfStop) { cfExit = cfStop; cfReason = 'STOP'; break; }
-        if (cfDir === 'SHORT' && bar.h >= cfStop) { cfExit = cfStop; cfReason = 'STOP'; break; }
-        if (cfTp !== null && cfDir === 'LONG'  && bar.h >= cfTp) { cfExit = cfTp; cfReason = 'TP'; break; }
-        if (cfTp !== null && cfDir === 'SHORT' && bar.l <= cfTp) { cfExit = cfTp; cfReason = 'TP'; break; }
-        if (parseInt(bar.t.substring(11, 13)) >= 20) { cfExit = bar.c; cfReason = 'EOD'; break; }
-      }
-      if (cfExit === null) {
-        const last = afterEntry[afterEntry.length - 1];
-        if (last) { cfExit = last.c; cfReason = 'EOD'; }
-      }
-      if (cfExit !== null) {
-        const cfMovePct = cfDir === 'LONG' ? (cfExit - entry) / entry * 100 : (entry - cfExit) / entry * 100;
-        const cfReturn   = cfMovePct * leverage;
-        trades2cf.push({ date: today, gate1, gate2, direction: cfDir, entry, stop: cfStop, exit: cfExit,
-                          exitReason: cfReason, stopPct: +effStopPct.toFixed(3),
-                          movePct: +cfMovePct.toFixed(3), tradeReturn: +cfReturn.toFixed(3), system: 'S2cf' });
+      const cfWalk = _qmrWalkTrade(afterEntry, cfDir, entry, effStopPct, tpPct);
+      if (cfWalk) {
+        const cfReturn = _netReturn(cfWalk.movePct, cfWalk.exitReason, leverage);
+        trades2cf.push({ date: today, gate1, gate2, direction: cfDir, entry, stop: cfWalk.stop, exit: cfWalk.exit,
+                          exitReason: cfWalk.exitReason, stopPct: +effStopPct.toFixed(3),
+                          movePct: +cfWalk.movePct.toFixed(3), tradeReturn: +cfReturn.toFixed(3), system: 'S2cf' });
       }
     } else {
       equity1 *= (1 + tradeReturn / 100);
@@ -2963,25 +3002,9 @@ function _computeNqQmr(bars, cfg = {}) {
       // is already at an extreme vs the trailing ADR baseline.
       if (isExtended) {
         const fadeDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
-        const fadeStop = fadeDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
-        const fadeTp   = tpPct > 0
-          ? (fadeDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
-          : null;
+        const fadeWalk = _qmrWalkTrade(afterEntry, fadeDir, entry, effStopPct, tpPct);
 
-        let fadeExit = null, fadeReason = 'EOD';
-        for (const bar of afterEntry) {
-          if (fadeDir === 'LONG'  && bar.l <= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
-          if (fadeDir === 'SHORT' && bar.h >= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
-          if (fadeTp !== null && fadeDir === 'LONG'  && bar.h >= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
-          if (fadeTp !== null && fadeDir === 'SHORT' && bar.l <= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
-          if (parseInt(bar.t.substring(11, 13)) >= 20) { fadeExit = bar.c; fadeReason = 'EOD'; break; }
-        }
-        if (fadeExit === null) {
-          const last = afterEntry[afterEntry.length - 1];
-          if (last) { fadeExit = last.c; fadeReason = 'EOD'; }
-        }
-
-        if (fadeExit !== null) {
+        if (fadeWalk) {
           let fadeMfe = 0, fadeMae = 0;
           for (const bar of [entryBar, ...afterEntry]) {
             const fav = fadeDir === 'LONG' ? (bar.h - entry) / entry * 100 : (entry - bar.l) / entry * 100;
@@ -2989,12 +3012,11 @@ function _computeNqQmr(bars, cfg = {}) {
             if (fav > fadeMfe) fadeMfe = fav;
             if (adv < fadeMae) fadeMae = adv;
           }
-          const fadeMovePct = fadeDir === 'LONG' ? (fadeExit - entry) / entry * 100 : (entry - fadeExit) / entry * 100;
-          const fadeReturn  = fadeMovePct * leverage;
+          const fadeReturn = _netReturn(fadeWalk.movePct, fadeWalk.exitReason, leverage);
           equity3 *= (1 + fadeReturn / 100);
-          trades3.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeStop, exit: fadeExit,
-                         exitReason: fadeReason, stopPct: +effStopPct.toFixed(3),
-                         movePct: +fadeMovePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
+          trades3.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeWalk.stop, exit: fadeWalk.exit,
+                         exitReason: fadeWalk.exitReason, stopPct: +effStopPct.toFixed(3),
+                         movePct: +fadeWalk.movePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
                          mfePct: +fadeMfe.toFixed(3), maePct: +fadeMae.toFixed(3),
                          equity: +equity3.toFixed(6), system: 'S3' });
           curve3.push({ date: today, equity: +equity3.toFixed(6) });
@@ -3007,25 +3029,9 @@ function _computeNqQmr(bars, cfg = {}) {
       // a day flagged by both when S3 and S4 are both enabled.
       if (isChoppy) {
         const fadeDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
-        const fadeStop = fadeDir === 'LONG' ? entry * (1 - effStopPct / 100) : entry * (1 + effStopPct / 100);
-        const fadeTp   = tpPct > 0
-          ? (fadeDir === 'LONG' ? entry * (1 + tpPct / 100) : entry * (1 - tpPct / 100))
-          : null;
+        const fadeWalk = _qmrWalkTrade(afterEntry, fadeDir, entry, effStopPct, tpPct);
 
-        let fadeExit = null, fadeReason = 'EOD';
-        for (const bar of afterEntry) {
-          if (fadeDir === 'LONG'  && bar.l <= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
-          if (fadeDir === 'SHORT' && bar.h >= fadeStop) { fadeExit = fadeStop; fadeReason = 'STOP'; break; }
-          if (fadeTp !== null && fadeDir === 'LONG'  && bar.h >= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
-          if (fadeTp !== null && fadeDir === 'SHORT' && bar.l <= fadeTp) { fadeExit = fadeTp; fadeReason = 'TP'; break; }
-          if (parseInt(bar.t.substring(11, 13)) >= 20) { fadeExit = bar.c; fadeReason = 'EOD'; break; }
-        }
-        if (fadeExit === null) {
-          const last = afterEntry[afterEntry.length - 1];
-          if (last) { fadeExit = last.c; fadeReason = 'EOD'; }
-        }
-
-        if (fadeExit !== null) {
+        if (fadeWalk) {
           let fadeMfe = 0, fadeMae = 0;
           for (const bar of [entryBar, ...afterEntry]) {
             const fav = fadeDir === 'LONG' ? (bar.h - entry) / entry * 100 : (entry - bar.l) / entry * 100;
@@ -3033,12 +3039,11 @@ function _computeNqQmr(bars, cfg = {}) {
             if (fav > fadeMfe) fadeMfe = fav;
             if (adv < fadeMae) fadeMae = adv;
           }
-          const fadeMovePct = fadeDir === 'LONG' ? (fadeExit - entry) / entry * 100 : (entry - fadeExit) / entry * 100;
-          const fadeReturn  = fadeMovePct * leverage;
+          const fadeReturn = _netReturn(fadeWalk.movePct, fadeWalk.exitReason, leverage);
           equity4 *= (1 + fadeReturn / 100);
-          trades4.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeStop, exit: fadeExit,
-                         exitReason: fadeReason, stopPct: +effStopPct.toFixed(3),
-                         movePct: +fadeMovePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
+          trades4.push({ date: today, gate1, gate2, direction: fadeDir, entry, stop: fadeWalk.stop, exit: fadeWalk.exit,
+                         exitReason: fadeWalk.exitReason, stopPct: +effStopPct.toFixed(3),
+                         movePct: +fadeWalk.movePct.toFixed(3), tradeReturn: +fadeReturn.toFixed(3),
                          mfePct: +fadeMfe.toFixed(3), maePct: +fadeMae.toFixed(3),
                          equity: +equity4.toFixed(6), system: 'S4', sourceExtended: isExtended });
           curve4.push({ date: today, equity: +equity4.toFixed(6) });
@@ -3727,7 +3732,7 @@ const nqQmrBarCache    = new Map(); // instrument → { bars, fetchedAt }
 const nqQmrResultCache = { result: null, fetchedAt: null }; // NAS100_USD default only
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both', extPctThreshold: 75, effPctThreshold: 25 };
+const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both', extPctThreshold: 75, effPctThreshold: 25, costPct: 0.008, stopSlipPct: 0.005 };
 
 async function _getNqQmrBars(instrument = 'NAS100_USD') {
   const cached = nqQmrBarCache.get(instrument);
@@ -13967,13 +13972,45 @@ setInterval(async () => {
 
 // ── NQ-QMR Live Signal Monitor ────────────────────────────────────────────────
 // Runs on Railway alongside the main server. No separate process needed.
-// Gate 1 ~ 09:05 UTC  (04:48 ET / 09:48 LDN — Asia session validated)
-// Gate 2 ~ 12:05 UTC  (07:40 ET / 12:40 LDN — London confirmation)
-// Entry  ~ 13:05 UTC  (09:25 ET — pre-open signal, signal-only for now)
-// EOD    ~ 20:30 UTC  (end-of-day summary)
+// Schedule is UTC-anchored, read from QMR_TIMING (shared with the backtest
+// engine) — gates fire at gateHour:05 so the H1 bar closing at gateHour is
+// complete, matching the engine's gateHour−1 bar reads exactly:
+// Gate 1 ~ 09:05 UTC · Gate 2 ~ 12:05 UTC · Entry ~ 13:05 UTC · EOD ~ 20:30 UTC
+// ET labels in alert copy are display-only, computed from the live UTC→ET offset.
 
 const NQ_MON_KV   = 'nq_qmr_status';
 const NQ_AUDIT_KV = 'nq_qmr_audit';
+
+// Display-only ET label for a fixed UTC time — the schedule itself stays
+// UTC-anchored year-round; only the label follows DST (EDT/EST via Intl).
+function _qmrEtLabel(utcHour, utcMin = 0) {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), utcHour, utcMin));
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(d);
+}
+function _qmrSchedLine(utcHour, utcMin = 0) {
+  return `${_qmrEtLabel(utcHour, utcMin)} ET  (${_qmrHH(utcHour)}:${_qmrHH(utcMin)} UTC)`;
+}
+
+// One-line validation stamp for gate-clear / entry alerts. Reads the
+// per-instrument walk-forward result from KV (e.g. nq_qmr_validation =
+// { oos_sharpe, trades, as_of }) — written by an actual OOS run, never
+// invented here. Missing key ⇒ the honest default: UNVALIDATED.
+async function _qmrValidationLine(kvKey) {
+  try {
+    const raw = await kv.get(kvKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const v = parsed?.data ?? parsed ?? {};
+      if (v.oos_sharpe != null && v.trades != null) {
+        return `Walk-forward OOS: Sharpe ${v.oos_sharpe} over ${v.trades} trades (as of ${v.as_of ?? '?'}), after-cost`;
+      }
+    }
+  } catch {}
+  return `⚠ UNVALIDATED — defaults are in-sample; see nq-qmr-backtest walk-forward`;
+}
 
 const nqMon = {
   date: null, gate1: null, gate2: null, direction: null,
@@ -14070,6 +14107,132 @@ async function nqAuditUpdate(fields) {
   } catch (e) { console.error('[nq-audit] write error:', e.message); }
 }
 
+// ── QMR forward-validation resolver (signal-only paper record) ───────────────
+// When an entry alert fires, the monitor stamps `forward:{status:'open'}` on
+// the day's audit entry. This resolver replays the day's COMPLETED H1 bars
+// through _qmrWalkTrade — the very function the backtest engine uses — and
+// nets the outcome with the same costPct/stopSlipPct and leverage formula
+// (riskPct / stop_pct), so the forward record is apples-to-apples with the
+// backtest by construction. No orders are ever placed; this is the
+// forward-validation ledger for a system whose defaults are in-sample.
+//
+// Called from the EOD-summary cron (stop/TP outcomes are final then) and
+// defensively from the day-open cron: an EOD-close exit only becomes final
+// once the bar labeled eodHour completes (eodHour+1 UTC — after the 20:30
+// summary), and server restarts can leave days open.
+const _NQ_FWD_SPEC = { id: 'nq', label: 'NQ-QMR', instrument: 'NAS100_USD',
+                       kvAudit: NQ_AUDIT_KV, kvConfig: 'nq_qmr_config' };
+
+async function _qmrResolveForward(spec) {
+  const out = { resolved: [], open: [], unresolved: [] };
+  if (!process.env.OANDA_KEY) return out;
+
+  const raw = await kv.get(spec.kvAudit).catch(() => null);
+  let log = [];
+  try {
+    const parsed = raw ? JSON.parse(raw) : [];
+    log = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
+  } catch { log = []; }
+  const openEntries = log.filter(e => e?.forward?.status === 'open');
+  if (!openEntries.length) return out;
+
+  let cfg = {};
+  try {
+    const rawCfg = await kv.get(spec.kvConfig);
+    const parsed = rawCfg ? JSON.parse(rawCfg) : {};
+    cfg = parsed?.data ?? parsed ?? {};
+  } catch {}
+  const costPct     = cfg.costPct     ?? QMR_COSTS.costPct;
+  const stopSlipPct = cfg.stopSlipPct ?? QMR_COSTS.stopSlipPct;
+  const riskPct     = cfg.riskPct     ?? 1.00;
+
+  // 96 H1 bars ≈ 4 trading days back — covers same-evening EOD resolution plus
+  // the defensive next-day / post-weekend / post-restart pass.
+  let bars;
+  try { bars = await fetchOandaRecentH1(spec.instrument, 96); }
+  catch (e) { console.error(`[${spec.id}-fwd] bar fetch failed:`, e.message); return out; }
+  const oldestDate = bars[0]?.t?.substring(0, 10) ?? '9999-12-31';
+  const today      = new Date().toISOString().substring(0, 10);
+  let changed = false;
+
+  for (const e of openEntries) {
+    const f = e.forward;
+    if (!(f.entry_px > 0) || !(f.stop_pct > 0) || (f.dir !== 'LONG' && f.dir !== 'SHORT')) {
+      f.status = 'unresolved'; f.note = 'bad entry snapshot'; changed = true;
+      out.unresolved.push({ date: e.date, ...f });
+      continue;
+    }
+
+    // Bars strictly after the entry bar, same date — the engine's afterEntry.
+    const entryHH = (f.entry_bar_t || '').substring(11, 13) || _qmrHH(QMR_TIMING.entryHour);
+    const dayBars = bars.filter(b => b.complete
+      && b.t.substring(0, 10) === e.date
+      && b.t.substring(11, 13) > entryHH);
+    const walk = _qmrWalkTrade(dayBars, f.dir, f.entry_px, f.stop_pct, f.tp_pct ?? 0);
+
+    if (!walk) {
+      if (e.date < oldestDate) {
+        // Day predates the fetch window (long downtime) — can never resolve
+        // honestly; mark it so it stops queueing instead of pretending.
+        f.status = 'unresolved'; f.note = 'no bars in fetch window'; changed = true;
+        out.unresolved.push({ date: e.date, ...f });
+      } else {
+        out.open.push({ date: e.date, ...f });
+      }
+      continue;
+    }
+
+    // A same-day EOD "exit" is only definitive once a completed bar at/after
+    // eodHour exists (the engine exits on that bar's close). Before that the
+    // walk's last-close fallback is provisional — keep the day open. For a
+    // PAST day the last available close IS final (the engine's own
+    // truncated-day rule, e.g. early closes / DAX ending before eodHour).
+    const hasEodBar  = dayBars.some(b => parseInt(b.t.substring(11, 13)) >= QMR_TIMING.eodHour);
+    const definitive = walk.exitReason === 'STOP' || walk.exitReason === 'TP'
+                    || hasEodBar || e.date < today;
+    if (!definitive) { out.open.push({ date: e.date, ...f }); continue; }
+
+    const leverage = riskPct / f.stop_pct;   // engine: riskPct / effStopPct
+    const netMove  = walk.movePct - costPct - (walk.exitReason === 'STOP' ? stopSlipPct : 0);
+    const levered  = _qmrNetReturn(walk.movePct, walk.exitReason, leverage, costPct, stopSlipPct);
+    Object.assign(f, {
+      exit_px:            +walk.exit.toFixed(2),
+      exit_reason:        walk.exitReason,
+      raw_move_pct:       +walk.movePct.toFixed(4),
+      net_move_pct:       +netMove.toFixed(4),
+      levered_return_pct: +levered.toFixed(4),
+      leverage:           +leverage.toFixed(3),
+      status:             'closed',
+      resolved_ts:        Date.now(),
+    });
+    changed = true;
+    out.resolved.push({ date: e.date, ...f });
+    console.log(`[${spec.id}-fwd] ${e.date} ${f.dir} ${f.entry_px} → ${f.exit_px} (${f.exit_reason}) net ${f.net_move_pct}% levered ${f.levered_return_pct}%`);
+  }
+
+  if (changed) {
+    await kv.put(spec.kvAudit, JSON.stringify({ data: log, timestamp: Date.now() }))
+      .catch(err => console.error(`[${spec.id}-fwd] KV write error:`, err.message));
+  }
+  return out;
+}
+
+const _qmrFwdSign = v => `${v >= 0 ? '+' : ''}${(+v).toFixed(2)}%`;
+function _qmrFwdLine(r) {
+  const px = v => (typeof v === 'number' ? +v.toFixed(1) : v);
+  return `${r.dir} from ${px(r.entry_px)} → exit ${px(r.exit_px)} (${r.exit_reason}), `
+       + `net ${_qmrFwdSign(r.net_move_pct)} (levered ${_qmrFwdSign(r.levered_return_pct)})`;
+}
+// Appends forward-record lines to a Telegram summary/open message.
+function _qmrFwdMsgLines(fwd, todayStr) {
+  let msg = '';
+  for (const r of fwd.resolved)
+    msg += `\n${r.date === todayStr ? 'Today' : r.date}: ${_qmrFwdLine(r)}`;
+  for (const o of fwd.open)
+    msg += `\n${o.date === todayStr ? 'Today' : o.date}: ${o.dir} from ${typeof o.entry_px === 'number' ? +o.entry_px.toFixed(1) : o.entry_px} — still open; EOD close resolves after ${_qmrHH(QMR_TIMING.eodHour + 1)}:00 UTC (reported at next day-open)`;
+  return msg;
+}
+
 async function nqSendTg(msg) {
   // Check NQ-specific TG config first, fall back to shared state.tg
   try {
@@ -14107,14 +14270,22 @@ async function nqDailyOpen() {
     gate1Data: null, gate2Data: null,
   });
 
+  // Defensive forward resolution: finalize any signal still 'open' — EOD-close
+  // exits become final after 21:00 UTC (post-summary), and server restarts can
+  // leave days open. Outcome lines are appended to the day-open message below.
+  let fwd = { resolved: [], open: [], unresolved: [] };
+  try { fwd = await _qmrResolveForward(_NQ_FWD_SPEC); }
+  catch (e) { console.error('[nq-fwd]', e.message); }
+
   const news = await nqFetchNewsRisk(today);
   nqMon.newsBlocked = news.blocked;
   nqMon.newsEvents  = news.events;
 
   let msg = `📅 <b>NQ-QMR | ${today}</b>\n\n`;
-  msg += `Gate 1 signal:  04:48 ET  (09:05 UTC)\n`;
-  msg += `Gate 2 signal:  07:40 ET  (12:05 UTC)\n`;
-  msg += `Entry signal:   09:25 ET  (13:05 UTC)\n\n`;
+  msg += `Gate 1 signal:  ${_qmrSchedLine(QMR_TIMING.gate1Hour, 5)}\n`;
+  msg += `Gate 2 signal:  ${_qmrSchedLine(QMR_TIMING.gate2Hour, 5)}\n`;
+  msg += `Entry signal:   ${_qmrSchedLine(QMR_TIMING.entryHour, 5)}\n`;
+  msg += `<i>Schedule is UTC-anchored; ET shown for reference</i>\n\n`;
 
   if (news.blocked) {
     msg += `⚠️ <b>HIGH-IMPACT US NEWS — trade suppressed</b>\n`;
@@ -14124,6 +14295,11 @@ async function nqDailyOpen() {
     if (process.env.FINNHUB_KEY) {} else {
       msg += `\n<i>(set FINNHUB_KEY to enable news filter)</i>`;
     }
+  }
+
+  if (fwd.resolved.length) {
+    msg += `\n\n<b>Forward record updated:</b>`;
+    for (const r of fwd.resolved) msg += `\n${r.date}: ${_qmrFwdLine(r)}`;
   }
 
   await nqSendTg(msg);
@@ -14162,14 +14338,15 @@ async function nqGate1Check() {
       fetchOandaRecentH1('EUR_USD',    15).catch(() => []),
     ]);
 
-    // Overnight bars = completed bars covering Asia session
+    // Overnight bars = completed bars covering Asia session — window and
+    // min-bar count come from QMR_TIMING so they can't drift from the engine
     const today = new Date().toISOString().substring(0, 10);
     const overnight = nas.filter(b => {
       const h = parseInt(b.t.substring(11, 13));
       const d = b.t.substring(0, 10);
-      return b.complete && ((d < today && h >= 20) || (d === today && h <= 8));
+      return b.complete && ((d < today && h >= QMR_TIMING.overnightStartHour) || (d === today && h <= QMR_TIMING.overnightEndHour));
     });
-    if (overnight.length < 3) { console.log('[nq-mon] Gate 1: too few overnight bars'); return; }
+    if (overnight.length < QMR_TIMING.minOvernightBars) { console.log('[nq-mon] Gate 1: too few overnight bars'); return; }
 
     const asiaH   = Math.max(...overnight.map(b => b.h));
     const asiaL   = Math.min(...overnight.map(b => b.l));
@@ -14215,14 +14392,14 @@ async function nqGate1Check() {
     msg += `Time: ${g1bar.t.substring(11, 16)} UTC\n\n`;
     msg += `NAS100:  ${g1bar.c.toFixed(1)}\n`;
     msg += `Asia range: ${asiaL.toFixed(1)} — ${asiaH.toFixed(1)}  (${rangePct.toFixed(2)}%)\n`;
-    msg += `Position in range: ${(pos * 100).toFixed(0)}%  (threshold: 60%)\n\n`;
+    msg += `Position in range: ${(pos * 100).toFixed(0)}%  (threshold: ${(THRESH * 100).toFixed(0)}%)\n\n`;
     msg += `Gold overnight: ${goldDir}\n`;
     msg += `EUR/USD (DXY proxy): ${eurDir}\n`;
 
     if (gate1 === 'FLAT') {
       msg += `\nRange too ambiguous — <b>no trade today</b>`;
     } else {
-      msg += `\nAwaiting Gate 2 @ 12:40 LDN (12:05 UTC)`;
+      msg += `\nAwaiting Gate 2 @ ${_qmrSchedLine(QMR_TIMING.gate2Hour, 5)}`;
     }
 
     await nqSendTg(msg);
@@ -14253,9 +14430,9 @@ async function nqGate2Check() {
   try {
     const nas = await fetchOandaRecentH1('NAS100_USD', 7);
 
-    // London open = bar at 07:00 UTC; check = most recent completed bar around 12:00 UTC
-    const ldnOpen = nas.find(b => b.t.substring(11, 13) === '07' && b.complete);
-    const check   = nas.filter(b => b.complete && parseInt(b.t.substring(11, 13)) <= 12).slice(-1)[0];
+    // London open = bar at londonOpenHour; check = most recent completed bar as of gate2Hour
+    const ldnOpen = nas.find(b => b.t.substring(11, 13) === _qmrHH(QMR_TIMING.londonOpenHour) && b.complete);
+    const check   = nas.filter(b => b.complete && parseInt(b.t.substring(11, 13)) <= QMR_TIMING.gate2Hour).slice(-1)[0];
     if (!ldnOpen || !check) { console.log('[nq-mon] Gate 2: missing bars'); return; }
 
     const ldnMove = (check.c - ldnOpen.o) / ldnOpen.o * 100;
@@ -14280,9 +14457,10 @@ async function nqGate2Check() {
       msg += `London move: ${moveChar} ${Math.abs(ldnMove).toFixed(2)}%  (min: ${G2_MIN}%)\n`;
       msg += `London open: ${ldnOpen.o.toFixed(1)}  →  Now: ${check.c.toFixed(1)}\n\n`;
       msg += `⚡ <b>BOTH GATES CLEAR</b>\n`;
-      msg += `Entry signal at 09:25 ET (13:05 UTC)\n`;
+      msg += `Entry signal at ${_qmrSchedLine(QMR_TIMING.entryHour, 5)}\n`;
       const g2StopPct = nqMon.gate1Data?.stopPct ?? 0.50;
-      msg += `Stop distance: ~${g2StopPct.toFixed(2)}%  •  Max risk: 1.0% account`;
+      msg += `Stop distance: ~${g2StopPct.toFixed(2)}%  •  Max risk: 1.0% account\n`;
+      msg += await _qmrValidationLine('nq_qmr_validation');
     } else {
       msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
       msg += `London move: ${moveChar} ${Math.abs(ldnMove).toFixed(2)}%\n`;
@@ -14324,26 +14502,40 @@ async function nqEntrySignal() {
 
     let msg = `🎯 <b>NQ-QMR | ENTRY SIGNAL</b>\n`;
     msg += `${dir === 'LONG' ? '▲' : '▼'} Direction: <b>${dir}</b>\n`;
-    msg += `Time: ≈09:25 ET  (${current.t.substring(11, 16)} UTC)\n\n`;
+    msg += `Time: ≈${_qmrEtLabel(QMR_TIMING.entryHour, 5)} ET  (${current.t.substring(11, 16)} UTC)\n\n`;
     msg += `NAS100 price:  <b>${price.toFixed(1)}</b>\n`;
     msg += `Stop:          ${stop.toFixed(1)}  (${stopPts.toFixed(0)} pts / ${stopPct}%)\n`;
     msg += `TP target:     ${tp.toFixed(1)}  (${tpPct}%)\n`;
     msg += `Max risk:      1.0% of account\n\n`;
     msg += `Use <b>Bot Config → NQ-QMR → Position Sizer</b> for contract count\n`;
-    msg += `<i>Signal only — no live orders placed</i>`;
+    msg += `<i>Signal only — no live orders placed</i>\n`;
+    msg += await _qmrValidationLine('nq_qmr_validation');
 
     await nqSendTg(msg);
     nqMon.sentEntry = true;
     await nqPushKv();
-    await nqAuditUpdate({ signal: {
-      fired:     true,
-      ts:        Date.now(),
-      direction: dir,
-      entry:     price,
-      stop:      +stop.toFixed(2),
-      tp:        +tp.toFixed(2),
-    }});
-    console.log(`[nq-mon] Entry signal → ${dir} @ ${price.toFixed(1)}`);
+    await nqAuditUpdate({
+      signal: {
+        fired:     true,
+        ts:        Date.now(),
+        direction: dir,
+        entry:     price,
+        stop:      +stop.toFixed(2),
+        tp:        +tp.toFixed(2),
+      },
+      // Forward-validation snapshot — resolved after the close by
+      // _qmrResolveForward with the engine's exact exit walk. Signal-only.
+      forward: {
+        status:      'open',
+        dir,
+        entry_px:    price,
+        entry_ts:    Date.now(),
+        entry_bar_t: current.t,   // H1 bar whose open is the tracked entry
+        stop_pct:    stopPct,     // dynamic: gate-1 overnight-range × mult, 0.10 floor
+        tp_pct:      tpPct,
+      },
+    });
+    console.log(`[nq-mon] Entry signal → ${dir} @ ${price.toFixed(1)} (forward tracking armed)`);
   } catch (e) { console.error('[nq-mon] Entry error:', e.message); }
 }
 
@@ -14352,10 +14544,18 @@ async function nqEodSummary() {
   const dow = new Date().getUTCDay();
   if (dow === 0 || dow === 6) return;
 
+  // Resolve the forward-tracked signal (if any) BEFORE composing the summary —
+  // stop/TP outcomes are final now; an EOD-close exit finalizes only after the
+  // eodHour bar completes (eodHour+1 UTC) and is reported at next day-open.
+  let fwd = { resolved: [], open: [], unresolved: [] };
+  try { fwd = await _qmrResolveForward(_NQ_FWD_SPEC); }
+  catch (e) { console.error('[nq-fwd]', e.message); }
+
   let msg = `📊 <b>NQ-QMR | EOD ${nqMon.date ?? ''}</b>\n\n`;
   msg += `Gate 1:   ${nqMon.gate1  ?? '—'}\n`;
   msg += `Gate 2:   ${nqMon.gate2  ?? '—'}\n`;
   msg += `Entry:    ${nqMon.sentEntry ? (nqMon.direction ?? 'fired') : 'no trade'}\n`;
+  msg += _qmrFwdMsgLines(fwd, nqMon.date);
   if (nqMon.newsBlocked) msg += `\n⚠️ Suppressed by high-impact news`;
 
   await nqSendTg(msg);
@@ -14429,11 +14629,11 @@ async function nqRestoreFromKv() {
     const H = now.getUTCHours();
     const M = now.getUTCMinutes();
 
-    if (H === 7  && M === 0  && !nqMon.sentOpen)  nqDailyOpen().catch(e   => console.error('[nq-mon]', e.message));
-    if (H === 9  && M === 5  && !nqMon.sentGate1) nqGate1Check().catch(e  => console.error('[nq-mon]', e.message));
-    if (H === 12 && M === 5  && !nqMon.sentGate2) nqGate2Check().catch(e  => console.error('[nq-mon]', e.message));
-    if (H === 13 && M === 5  && !nqMon.sentEntry) nqEntrySignal().catch(e => console.error('[nq-mon]', e.message));
-    if (H === 20 && M === 30)                      nqEodSummary().catch(e  => console.error('[nq-mon]', e.message));
+    if (H === 7                     && M === 0  && !nqMon.sentOpen)  nqDailyOpen().catch(e   => console.error('[nq-mon]', e.message));
+    if (H === QMR_TIMING.gate1Hour  && M === 5  && !nqMon.sentGate1) nqGate1Check().catch(e  => console.error('[nq-mon]', e.message));
+    if (H === QMR_TIMING.gate2Hour  && M === 5  && !nqMon.sentGate2) nqGate2Check().catch(e  => console.error('[nq-mon]', e.message));
+    if (H === QMR_TIMING.entryHour  && M === 5  && !nqMon.sentEntry) nqEntrySignal().catch(e => console.error('[nq-mon]', e.message));
+    if (H === QMR_TIMING.eodHour    && M === 30)                      nqEodSummary().catch(e  => console.error('[nq-mon]', e.message));
   }, 60_000);
 
   console.log('[nq-mon] NQ-QMR signal monitor scheduled (Gates at 09:05 / 12:05 / 13:05 UTC)');
@@ -14520,18 +14720,29 @@ async function _iqrDailyOpen(mon) {
     sentOpen: false, sentGate1: false, sentGate2: false, sentEntry: false,
     gate1Data: null, gate2Data: null,
   });
+  // Defensive forward resolution — finalize any signal still 'open' (EOD-close
+  // exits become final after 21:00 UTC; restarts can also leave days open).
+  let fwd = { resolved: [], open: [], unresolved: [] };
+  try { fwd = await _qmrResolveForward(mon); }
+  catch (e) { console.error(`[${mon.id}-fwd]`, e.message); }
+
   const news = await nqFetchNewsRisk(today);
   mon.newsBlocked = news.blocked;
   mon.newsEvents  = news.events;
   let msg = `📅 <b>${mon.label} | ${today}</b>\n\n`;
-  msg += `Gate 1:  04:48 ET  (09:05 UTC)\n`;
-  msg += `Gate 2:  07:40 ET  (12:05 UTC)\n`;
-  msg += `Entry:   09:25 ET  (13:05 UTC)\n\n`;
+  msg += `Gate 1:  ${_qmrSchedLine(QMR_TIMING.gate1Hour, 5)}\n`;
+  msg += `Gate 2:  ${_qmrSchedLine(QMR_TIMING.gate2Hour, 5)}\n`;
+  msg += `Entry:   ${_qmrSchedLine(QMR_TIMING.entryHour, 5)}\n`;
+  msg += `<i>Schedule is UTC-anchored; ET shown for reference</i>\n\n`;
   if (news.blocked) {
     msg += `⚠️ <b>HIGH-IMPACT US NEWS — trade suppressed</b>\n`;
     msg += news.events.map(e => `  • ${e.event} @ ${(e.time ?? '').split(' ')[1] ?? '?'} ET`).join('\n');
   } else {
     msg += `✓ No high-impact US data — monitor active`;
+  }
+  if (fwd.resolved.length) {
+    msg += `\n\n<b>Forward record updated:</b>`;
+    for (const r of fwd.resolved) msg += `\n${r.date}: ${_qmrFwdLine(r)}`;
   }
   await _iqrSendTg(mon, msg);
   mon.sentOpen = true;
@@ -14552,12 +14763,13 @@ async function _iqrGate1Check(mon) {
   try {
     const nas      = await fetchOandaRecentH1(mon.instrument, 15);
     const today    = new Date().toISOString().substring(0, 10);
+    // Window and min-bar count come from QMR_TIMING so they can't drift from the engine
     const overnight = nas.filter(b => {
       const h = parseInt(b.t.substring(11, 13));
       const d = b.t.substring(0, 10);
-      return b.complete && ((d < today && h >= 20) || (d === today && h <= 8));
+      return b.complete && ((d < today && h >= QMR_TIMING.overnightStartHour) || (d === today && h <= QMR_TIMING.overnightEndHour));
     });
-    if (overnight.length < 3) { console.log(`[${mon.id}-mon] Gate 1: too few overnight bars`); return; }
+    if (overnight.length < QMR_TIMING.minOvernightBars) { console.log(`[${mon.id}-mon] Gate 1: too few overnight bars`); return; }
     const asiaH    = Math.max(...overnight.map(b => b.h));
     const asiaL    = Math.min(...overnight.map(b => b.l));
     const range    = asiaH - asiaL;
@@ -14585,7 +14797,7 @@ async function _iqrGate1Check(mon) {
     msg += `Asia range: ${asiaL.toFixed(1)} — ${asiaH.toFixed(1)}  (${rangePct.toFixed(2)}%)\n`;
     msg += `Position in range: ${(pos * 100).toFixed(0)}%\n`;
     if (gate1 === 'FLAT') msg += `\nRange ambiguous — <b>no trade today</b>`;
-    else                  msg += `\nAwaiting Gate 2 @ 12:05 UTC`;
+    else                  msg += `\nAwaiting Gate 2 @ ${_qmrSchedLine(QMR_TIMING.gate2Hour, 5)}`;
     await _iqrSendTg(mon, msg);
     mon.sentGate1 = true;
     await _iqrPushKv(mon);
@@ -14606,8 +14818,8 @@ async function _iqrGate2Check(mon) {
   if (!process.env.OANDA_KEY) return;
   try {
     const nas     = await fetchOandaRecentH1(mon.instrument, 7);
-    const ldnOpen = nas.find(b => b.t.substring(11, 13) === '07' && b.complete);
-    const check   = nas.filter(b => b.complete && parseInt(b.t.substring(11, 13)) <= 12).slice(-1)[0];
+    const ldnOpen = nas.find(b => b.t.substring(11, 13) === _qmrHH(QMR_TIMING.londonOpenHour) && b.complete);
+    const check   = nas.filter(b => b.complete && parseInt(b.t.substring(11, 13)) <= QMR_TIMING.gate2Hour).slice(-1)[0];
     if (!ldnOpen || !check) { console.log(`[${mon.id}-mon] Gate 2: missing bars`); return; }
     const ldnMove = (check.c - ldnOpen.o) / ldnOpen.o * 100;
     const G2_MIN  = cfg.gate2MinMovePct ?? 0.10;
@@ -14625,7 +14837,8 @@ async function _iqrGate2Check(mon) {
       msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
       msg += `London move: ${mc} ${Math.abs(ldnMove).toFixed(2)}%  (min: ${G2_MIN}%)\n`;
       msg += `London open: ${ldnOpen.o.toFixed(1)}  →  Now: ${check.c.toFixed(1)}\n\n`;
-      msg += `⚡ <b>BOTH GATES CLEAR</b> — Entry at 09:25 ET (13:05 UTC)`;
+      msg += `⚡ <b>BOTH GATES CLEAR</b> — Entry at ${_qmrSchedLine(QMR_TIMING.entryHour, 5)}\n`;
+      msg += await _qmrValidationLine(`${mon.id}_qmr_validation`);
     } else {
       msg += `Time: ${check.t.substring(11, 16)} UTC\n\n`;
       msg += `London move: ${mc} ${Math.abs(ldnMove).toFixed(2)}% — gates disagree — <b>no trade today</b>`;
@@ -14658,19 +14871,33 @@ async function _iqrEntrySignal(mon) {
     const tp      = dir === 'LONG' ? price * (1 + tpPct   / 100) : price * (1 - tpPct   / 100);
     let msg = `🎯 <b>${mon.label} | ENTRY SIGNAL</b>\n`;
     msg += `${dir === 'LONG' ? '▲' : '▼'} Direction: <b>${dir}</b>\n`;
-    msg += `Time: ≈09:25 ET  (${current.t.substring(11, 16)} UTC)\n\n`;
+    msg += `Time: ≈${_qmrEtLabel(QMR_TIMING.entryHour, 5)} ET  (${current.t.substring(11, 16)} UTC)\n\n`;
     msg += `${mon.id.toUpperCase()} price: <b>${price.toFixed(1)}</b>\n`;
     msg += `Stop:  ${stop.toFixed(1)}  (${Math.abs(price - stop).toFixed(0)} pts / ${stopPct}%)\n`;
     msg += `TP:    ${tp.toFixed(1)}  (${tpPct}%)\n`;
-    msg += `<i>Signal only — no live orders placed</i>`;
+    msg += `<i>Signal only — no live orders placed</i>\n`;
+    msg += await _qmrValidationLine(`${mon.id}_qmr_validation`);
     await _iqrSendTg(mon, msg);
     mon.sentEntry = true;
     await _iqrPushKv(mon);
-    await _iqrAuditUpdate(mon, { signal: {
-      fired: true, ts: Date.now(), direction: dir,
-      entry: price, stop: +stop.toFixed(2), tp: +tp.toFixed(2),
-    }});
-    console.log(`[${mon.id}-mon] Entry → ${dir} @ ${price.toFixed(1)}`);
+    await _iqrAuditUpdate(mon, {
+      signal: {
+        fired: true, ts: Date.now(), direction: dir,
+        entry: price, stop: +stop.toFixed(2), tp: +tp.toFixed(2),
+      },
+      // Forward-validation snapshot — resolved after the close by
+      // _qmrResolveForward with the engine's exact exit walk. Signal-only.
+      forward: {
+        status:      'open',
+        dir,
+        entry_px:    price,
+        entry_ts:    Date.now(),
+        entry_bar_t: current.t,
+        stop_pct:    stopPct,
+        tp_pct:      tpPct,
+      },
+    });
+    console.log(`[${mon.id}-mon] Entry → ${dir} @ ${price.toFixed(1)} (forward tracking armed)`);
   } catch (e) { console.error(`[${mon.id}-mon] Entry error:`, e.message); }
 }
 
@@ -14678,10 +14905,18 @@ async function _iqrEodSummary(mon) {
   if (!mon.sentGate1 && !mon.sentOpen) return;
   const dow = new Date().getUTCDay();
   if (dow === 0 || dow === 6) return;
+
+  // Resolve the forward-tracked signal (if any) — same treatment as NQ; the
+  // clones are stamped UNVALIDATED and are judged by exactly this record.
+  let fwd = { resolved: [], open: [], unresolved: [] };
+  try { fwd = await _qmrResolveForward(mon); }
+  catch (e) { console.error(`[${mon.id}-fwd]`, e.message); }
+
   let msg = `📊 <b>${mon.label} | EOD ${mon.date ?? ''}</b>\n\n`;
   msg += `Gate 1: ${mon.gate1  ?? '—'}\n`;
   msg += `Gate 2: ${mon.gate2  ?? '—'}\n`;
   msg += `Entry:  ${mon.sentEntry ? (mon.direction ?? 'fired') : 'no trade'}\n`;
+  msg += _qmrFwdMsgLines(fwd, mon.date);
   if (mon.newsBlocked) msg += `\n⚠️ Suppressed by high-impact news`;
   await _iqrSendTg(mon, msg);
   await _iqrAuditUpdate(mon, { eod_ts: Date.now() });
@@ -14744,11 +14979,11 @@ async function _iqrRestoreFromKv(mon) {
     const H = now.getUTCHours();
     const M = now.getUTCMinutes();
     for (const m of mons) {
-      if (H === 7  && M === 0  && !m.sentOpen)  _iqrDailyOpen(m).catch(e   => console.error(`[${m.id}-mon]`, e.message));
-      if (H === 9  && M === 5  && !m.sentGate1) _iqrGate1Check(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
-      if (H === 12 && M === 5  && !m.sentGate2) _iqrGate2Check(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
-      if (H === 13 && M === 5  && !m.sentEntry) _iqrEntrySignal(m).catch(e => console.error(`[${m.id}-mon]`, e.message));
-      if (H === 20 && M === 30)                  _iqrEodSummary(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+      if (H === 7                     && M === 0  && !m.sentOpen)  _iqrDailyOpen(m).catch(e   => console.error(`[${m.id}-mon]`, e.message));
+      if (H === QMR_TIMING.gate1Hour  && M === 5  && !m.sentGate1) _iqrGate1Check(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+      if (H === QMR_TIMING.gate2Hour  && M === 5  && !m.sentGate2) _iqrGate2Check(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
+      if (H === QMR_TIMING.entryHour  && M === 5  && !m.sentEntry) _iqrEntrySignal(m).catch(e => console.error(`[${m.id}-mon]`, e.message));
+      if (H === QMR_TIMING.eodHour    && M === 30)                  _iqrEodSummary(m).catch(e  => console.error(`[${m.id}-mon]`, e.message));
     }
   }, 60_000);
   console.log('[iqr-mon] SPX / DOW / DAX QMR monitors scheduled (Gates at 09:05 / 12:05 / 13:05 UTC)');

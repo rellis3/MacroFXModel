@@ -266,5 +266,38 @@ with tempfile.TemporaryDirectory() as td:
     check('day rollover resets trades_today', tm2.trades_today == 0)
 
 
+print('\n── paper costs (spread on fills) ────────────────────────────')
+from modules.trade_manager import paper_close_exec
+
+SPREAD = 0.30      # DEFAULT_CFG['paper_spread'] — one full spread per round trip
+MID    = 4040.0
+
+buy_entry  = round(MID + SPREAD / 2, 2)   # mirrors main._try_enter's paper fill
+sell_entry = round(MID - SPREAD / 2, 2)
+check('paper BUY entered at mid + spread/2', buy_entry == 4040.15, str(buy_entry))
+check('paper SELL entered at mid − spread/2', sell_entry == 4039.85, str(sell_entry))
+check('LONG closes at bid = mid − spread/2',
+      abs(paper_close_exec('LONG', MID, SPREAD) - 4039.85) < 1e-9)
+check('SHORT closes at ask = mid + spread/2',
+      abs(paper_close_exec('SHORT', MID, SPREAD) - 4040.15) < 1e-9)
+
+# A SHORT's stop is hit by the ASK, not the mid
+ts = ManagedTrade('TS1', 'z', 'SHORT', sell_entry, 4050.0, 4030.0, 4020.0,
+                  0.1, 0.5, '2026-07-02T10:00:00+00:00')
+check('SHORT stop hit by ask (mid still below SL)',
+      ts.check_outcome(4049.90, spread=SPREAD) == 'SL_HIT')
+ts2 = ManagedTrade('TS2', 'z', 'SHORT', 4040.0, 4050.0, 4030.0, 4020.0,
+                   0.1, 0.5, '2026-07-02T10:00:00+00:00')
+check('same mid with spread=0 (live fallback) → no exit',
+      ts2.check_outcome(4049.90) is None)
+
+# Entry at ask + close at bid = exactly one full spread vs the old mid-mid PnL
+exit_mid  = 4060.0
+pnl_cost  = paper_close_exec('LONG', exit_mid, SPREAD) - buy_entry
+pnl_free  = exit_mid - MID
+check('round trip pays exactly one full spread',
+      abs((pnl_free - pnl_cost) - SPREAD) < 1e-9, f'{pnl_free - pnl_cost}')
+
+
 print(f'\n{"="*60}\n{PASS} passed, {FAIL} failed\n')
 sys.exit(1 if FAIL else 0)
