@@ -274,6 +274,29 @@ def _manage_ride(broker, ride_state: dict, pair: str, px: float, nowt: float,
                 log.warning(f"{pair}: trail modify {tid} failed: {e}")
 
 
+def _manage_book_eod(broker, book_state: dict, pair: str, nowt: float, paper: bool) -> None:
+    """Book-variant EOD sweep for ONE pair. The book prices unresolved touches at
+    the SESSION CLOSE (perLineStrategy: decidedBy 'close' → marked at closePx), so
+    live must go flat at 22:00 London too — an overnight hold on GTC TP/SL is an
+    exit path the book never priced. Tickets whose barrier already fired are just
+    dropped. (Limitation shared with the ride: positions opened before a bot
+    restart aren't in book_state and keep only their native TP/SL.)"""
+    if nowt < session_open_epoch(nowt) + SESSION_LEN_SEC:
+        return
+    open_tickets = {p["ticket"] for p in broker.serialize_open_positions()}
+    for tid in list(book_state.keys()):
+        if book_state[tid] != pair:
+            continue
+        if tid not in open_tickets:
+            book_state.pop(tid, None)                 # TP/SL already fired → forget it
+            continue
+        try:
+            broker.stop(tid, pair, paper, reason="eod")
+            book_state.pop(tid, None)
+        except Exception as e:
+            log.warning(f"{pair}: book EOD close {tid} failed: {e}")
+
+
 def build_status(cfg: dict, broker, plan, paper: bool, trackers: dict | None = None) -> dict:
     bal = broker.account_balance()
     return {
@@ -332,6 +355,9 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
     plan = None
     # ride variant only: per-open-position trail state {ticket: {pair, entry, sl0, is_long, peak, cur_sl}}
     ride_state: dict = {}
+    # book variant only: ticket → pair, so the 22:00 EOD sweep can close what the
+    # book would have marked at the session close (see _manage_book_eod).
+    book_state: dict = {}
     last_plan = last_status = last_minute = 0.0
     event_windows = None                    # KV event_windows_v1 payload (or None)
     event_ccys: dict[str, list[str]] = {}   # pair → event currencies (cached)
@@ -438,13 +464,17 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
                 # barrier check, so the freshly-trailed SL is what the exit reads.
                 if ride_mode and ride_state:
                     _manage_ride(broker, ride_state, pair, px, nowt, trail_frac, paper)
+                # book variant: force-close at 22:00 — the book prices unresolved
+                # touches at the session close, never overnight.
+                if not ride_mode and book_state:
+                    _manage_book_eod(broker, book_state, pair, nowt, paper)
                 if hasattr(broker, "check_barriers"):
                     broker.check_barriers()           # paper triple-barrier (MT5 does it natively)
                 if not plan_current:
                     continue                          # tracking only — no entries off a stale plan
-                # ride variant: no NEW entries after the 22:00 session close (they'd be
-                # force-closed immediately) — matches the backtest's session window.
-                if ride_mode and nowt >= session_open_epoch(nowt) + SESSION_LEN_SEC:
+                # BOTH variants: no NEW entries after the 22:00 session close — the
+                # book's session ends there (ride force-closes; book marks at close).
+                if nowt >= session_open_epoch(nowt) + SESSION_LEN_SEC:
                     continue
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
@@ -470,6 +500,8 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
                         ride_state[tid] = {"pair": pair, "entry": spec["entry"], "sl0": spec["sl"],
                                            "is_long": direction == "LONG", "peak": spec["entry"],
                                            "cur_sl": spec["sl"]}
+                    elif tid:
+                        book_state[tid] = pair        # for the 22:00 book EOD sweep
                     log.info(f"{'[PAPER] ' if paper else ''}{pair} {spec['decision'].upper()} "
                              f"{spec['line']} {spec['bucket']} → ticket {tid} lots {lots}")
             if sample_minute:

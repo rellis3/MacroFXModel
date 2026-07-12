@@ -108,6 +108,20 @@ def test_decide_needs_velocity_window():
     tr = SessionTracker(1.10)                       # only the init close → bucket None
     specs = decide(PP, {"HL50_up|3·spike": {"decision": "fade"}}, tr, 1.111)
     assert specs == []
+    # The touched line is BURNED (audited no_velocity), never deferred — the book
+    # excludes touches without a velocity reading, so it must not fire late with
+    # a stale velocity once the buffer fills.
+    assert "HL50_up" in tr.acted
+    assert tr.audit["HL50_up"] == {"status": "no_velocity", "bucket": None}
+    for c in [1.10] * 14 + [1.107]:                 # fill the velocity buffer
+        tr.on_minute(c)
+    assert decide(PP, {"HL50_up|3·spike": {"decision": "fade"}}, tr, 1.111) == []
+
+
+def test_bucket_none_burn_is_primed_on_dry_run():
+    tr = SessionTracker(1.10)
+    decide(PP, {"HL50_up|3·spike": {"decision": "fade"}}, tr, 1.111, dry_run=True)
+    assert tr.audit["HL50_up"] == {"status": "primed", "bucket": None}
 
 
 def test_catch_up_rebuilds_extremes_and_velocity():

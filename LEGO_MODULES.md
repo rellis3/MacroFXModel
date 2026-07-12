@@ -228,8 +228,9 @@ flattering ≈1× DD as if it were the correction).
 > returns the ten {fade,follow}×{fixed,chandelier,walk,**ride**,**ridehold**} gross
 > %-of-price PnLs + an exit-reason (`*Why` ∈ trail/stop/tp/close) for the two rides
 > (conservative intrabar ordering: stop-first, then TP, then trail/BE update; no
-> intrabar lookahead). **`ride`** = chandelier trail with **no TP cap** (the
-> range-line bot's winning exit — `rangeline.chandelier_stop`): a reversion runs
+> intrabar lookahead). **`ride`** = chandelier trail with **no TP cap** (same
+> family as the range-line bot's winning exit but **NOT the same rule** — see the
+> drift warning below): a reversion runs
 > past the inner line instead of capping there, with a **session-close** fallback.
 > **`ridehold`** = the same but walks into `forwardBars` (next day[s]) instead of
 > closing at session end — "leave it running past 22:00". `analyseWindow` calls it
@@ -237,6 +238,15 @@ flattering ≈1× DD as if it were the correction).
 > `rideHoldDays` default 1); `perLineStrategy.extractTouches` carries them through and
 > `runExitStudy` prices the OOS A/B/C/D/E off them. Fixed variants match `pnlFor`'s
 > pre-cost gross for the same touch. Tested in `js/exitStudy.test.mjs`.
+>
+> ⚠️ **Known near-duplicate (deliberate — do NOT "unify"): two chandelier rules.**
+> `volatility_bot/engine.py ride_trail_stop` mirrors `simulateExitVariants`'s
+> `ride` (trails from entry immediately), while `pylego/strategy/rangeline.py
+> chandelier_stop` mirrors `rangeLineAnalyser._trailExits`' c-path (holds at the
+> protect stop until price makes a new extreme BEYOND entry). Each live bot
+> matches its OWN validated book's exit; merging them either way silently changes
+> one bot's strategy. Any unification must re-run the affected book's exit study
+> first (2026-07 education-review finding).
 >
 > Consumes the analyser's already-computed adverse excursion (`extPct` = the
 > continuation extreme for a fade) plus newly-captured `extTime`/`exitTime` timing

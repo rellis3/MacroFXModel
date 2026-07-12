@@ -192,7 +192,8 @@ DEFAULT_CFG: dict = {
     'interval_secs': 30,
 
     # ── V7 strategy params (MTF = M30 bars unless noted) ─────────────────────
-    'entry_conf':         54.0,
+    'entry_conf':         56.0,   # must stay > conf_floor: entries in [conf_floor, entry_conf)
+                                  # would be closed by CONF_FLOOR on the next poll (spread churn)
     'entry_score_min':    58.0,
     'sl_atr_mult':        2.3,
     'candle_hold':        3,      # MTF bars regime+gates must persist before entry
@@ -482,7 +483,7 @@ def compute_m30_features(pair: str) -> Optional[dict]:
     closes = [b['close'] for b in bars]
     n      = len(closes)
     atr_sl = _build_atr(bars, 70)[-1]
-    slope  = _ols_slope(closes[n - 8:n])  # short window — confirms recent direction only
+    slope  = _ols_slope(closes[n - ln:n])  # same linregN window as the backtest's slope feature
     return {'atrSL': atr_sl, 'slope': slope}
 
 
@@ -713,7 +714,7 @@ def modify_sl(ticket: int, pair: str, new_sl: float, paper_mode: bool) -> bool:
 def within_window_v7(cfg: dict) -> bool:
     h  = datetime.now(timezone.utc).hour
     ws = int(cfg.get('window_start', 7))
-    we = int(cfg.get('window_end', 20))
+    we = int(cfg.get('window_end', 19))
     return ws <= h < we
 
 
@@ -1248,14 +1249,14 @@ def run(url: str, paper_mode: bool) -> None:
                     exit_code, close_reason = 'REGIME_FLIP', f'Regime flipped to {regime}'
 
                 # 2. CONF_FLOOR
-                if not close_reason and confidence < cfg.get('conf_floor', 45.0):
+                if not close_reason and confidence < cfg.get('conf_floor', 55.0):
                     exit_code, close_reason = 'CONF_FLOOR', f'Confidence {confidence:.1f}% < {cfg["conf_floor"]:.0f}%'
 
                 # 3. MFE_RETRACE
-                if not close_reason and mfe_r >= cfg.get('mfe_min_r', 1.5) and mfe_dist > 0:
+                if not close_reason and mfe_r >= cfg.get('mfe_min_r', 0.7) and mfe_dist > 0:
                     peak_price   = pos['entry_price'] + mfe_dist if direction == 'LONG' else pos['entry_price'] - mfe_dist
                     retrace_dist = (peak_price - price_now) if direction == 'LONG' else (price_now - peak_price)
-                    if retrace_dist / mfe_dist >= cfg.get('mfe_retrace_pct', 0.25):
+                    if retrace_dist / mfe_dist >= cfg.get('mfe_retrace_pct', 0.15):
                         exit_code, close_reason = (
                             'MFE_RETRACE',
                             f'Retraced {retrace_dist / mfe_dist * 100:.0f}% of {mfe_r:.2f}R peak',
@@ -1269,13 +1270,13 @@ def run(url: str, paper_mode: bool) -> None:
                         range_count[pair] = 0
                     else:
                         range_count[pair] = range_count.get(pair, 0) + 1
-                        if range_count[pair] >= cfg.get('exit_regime_bars', 3):
+                        if range_count[pair] >= cfg.get('exit_regime_bars', 4):
                             exit_code, close_reason = (
                                 'REGIME_RANGE', f'{range_count[pair]} non-trend M30 bars',
                             )
                     if not close_reason:
                         bars_held[pair] = bars_held.get(pair, 0) + 1
-                        if bars_held[pair] >= cfg.get('max_hold_bars', 24):
+                        if bars_held[pair] >= cfg.get('max_hold_bars', 49):
                             exit_code, close_reason = ('MAX_HOLD', f'{bars_held[pair]} M30 bars held')
 
                 if close_reason:
@@ -1377,7 +1378,7 @@ def run(url: str, paper_mode: bool) -> None:
                 continue
 
             is_dir   = regime in TRADEABLE
-            ok_conf  = eff_conf >= cfg.get('entry_conf', 70.0)
+            ok_conf  = eff_conf >= cfg.get('entry_conf', 56.0)
             ok_score = reg_score.entry_allowed
 
             feats  = compute_m30_features(pair)

@@ -107,7 +107,22 @@ def decide(plan_pair, policy, tracker, px, *, sigma=None, dry_run=False, blackou
     val, bucket = approach_velocity(closes, len(closes) - 1, tracker.open, sig)
     out = []
     if bucket is None:
-        return out                         # not enough minutely closes yet
+        # Not enough minutely closes to bucket velocity yet. The book EXCLUDES
+        # touches without a velocity reading — so BURN them (the line's one shot
+        # is spent), never trade them minutes later with a late velocity: that
+        # would be a trade the book never modeled.
+        for name in LINE_NAMES:
+            for side in SIDES:
+                line_id = f"{name}_{side}"
+                if line_id in tracker.acted:
+                    continue
+                lvl = levels[line_id]
+                touched = (px >= lvl) if side == "up" else (px <= lvl)
+                if touched:
+                    tracker.acted.add(line_id)
+                    tracker.audit[line_id] = {"status": "primed" if dry_run else "no_velocity",
+                                              "bucket": None}
+        return out
     for name in LINE_NAMES:
         for side in SIDES:
             line_id = f"{name}_{side}"
@@ -175,8 +190,11 @@ def ride_trail_stop(is_long, entry, sl0, extreme, cur_sl, trail_frac=0.5):
     The ride has NO take-profit; the trailing stop is the only profit exit. It
     trails the favourable extreme by ``trail_frac·R`` (R = |entry − sl0|, the
     entry→disaster-stop distance — same basis the exit study priced), RATCHET-ONLY:
-    it never loosens. Mirrors ``simulateExitVariants``'s 'ride' rule and
-    ``rangeline.chandelier_stop``.
+    it never loosens. Mirrors ``simulateExitVariants``'s 'ride' rule (trails from
+    entry immediately). NOTE: this is NOT ``rangeline.chandelier_stop``, which
+    holds at the protect stop until price makes a new extreme BEYOND ENTRY —
+    each bot matches its OWN validated book's exit. Do not "unify" the two
+    bricks without re-validating whichever book would change.
 
     is_long  — True for a BUY (favourable extreme = session high), else SELL.
     sl0      — the initial disaster stop (the outer band line).

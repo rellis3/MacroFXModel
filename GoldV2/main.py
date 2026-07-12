@@ -169,6 +169,22 @@ def _kv_get(key: str, base_url: str) -> dict | None:
     return None
 
 
+def _kv_get_ts(key: str, base_url: str) -> tuple[Optional[dict], Optional[float]]:
+    """Like _kv_get but also returns the KV write timestamp (epoch SECONDS —
+    /api/kv/get stores Date.now() ms), so gates can refuse stale data instead
+    of silently trading on it."""
+    try:
+        r = requests.get(f'{base_url}/api/kv/get?key={key}', timeout=10)
+        if r.status_code == 200:
+            j = r.json()
+            if not j.get('miss') and j.get('data'):
+                ts = j.get('timestamp')
+                return j['data'], (float(ts) / 1000.0 if ts else None)
+    except Exception:
+        pass
+    return None, None
+
+
 def _kv_put(key: str, data: dict, base_url: str) -> None:
     try:
         requests.post(
@@ -273,10 +289,17 @@ def _mt5_account_login() -> Optional[int]:
 
 # ── Gates ─────────────────────────────────────────────────────────────────────
 
+MACRO_MAX_AGE_SECS = 12 * 3600   # ai_goldmodel is refreshed by the dashboard page;
+                                 # older than this = nobody has looked in half a day
+
+
 def _macro_allows(direction: str, base_url: str) -> tuple[bool, str]:
-    model = _kv_get('ai_goldmodel', base_url)
+    model, ts = _kv_get_ts('ai_goldmodel', base_url)
     if not model:
         return True, 'Gold macro model not in KV — skipping gate'
+    if ts is not None and (time.time() - ts) > MACRO_MAX_AGE_SECS:
+        # Stale macro data must not gate (or bless) trades — fail OPEN, loudly.
+        return True, f'Gold macro model STALE ({(time.time() - ts) / 3600.0:.0f}h old) — gate skipped'
 
     signal   = model.get('signal', 'NEUTRAL')
     strength = model.get('strength', 'WEAK')
@@ -568,6 +591,9 @@ class GoldBotV2:
         self.vol_levels: list[tuple[float, str]] = []
         self.last_state_refresh = 0.0
         self._mt5_ok = False
+        # London-midnight session-open anchor for GOLD (from /api/daily-brief) —
+        # cached so we hit the endpoint at most every 30 min.
+        self._anchor_cache: dict = {'ts': 0.0, 'open': None}
         # Live "why hasn't this armed zone entered" snapshots, keyed by zone_id.
         # Updated every confirmation tick, logged on state change, pushed with
         # status so the zones page can show the verdict next to the armed card.
@@ -754,6 +780,27 @@ class GoldBotV2:
         self._push_status(price_now)
         self._push_zones_kv()
 
+    def _session_anchor(self) -> Optional[float]:
+        """GOLD's London-midnight session open from /api/daily-brief — the SAME
+        anchor the forecaster's levels are relative to. Using the UTC daily open
+        (sess_lvls.daily_open) instead drifts every range-budget level by the
+        00:00→23:00-UTC gap during BST (forecaster walkthrough Part 8, mistake #1:
+        'anchoring from the wrong candle — every level drifts'). Cached 30 min;
+        returns None on failure so the caller can fall back."""
+        now = time.time()
+        if self._anchor_cache['open'] is not None and now - self._anchor_cache['ts'] < 1800:
+            return self._anchor_cache['open']
+        try:
+            r = requests.get(f'{self.base_url}/api/daily-brief', timeout=15)
+            if r.status_code == 200:
+                so = ((r.json().get('instruments') or {}).get('GOLD') or {}).get('session_open')
+                if so:
+                    self._anchor_cache = {'ts': now, 'open': float(so)}
+                    return self._anchor_cache['open']
+        except Exception:
+            pass
+        return None
+
     def _refresh_vol_forecast(self) -> None:
         """GET /api/vol-forecast → GOLD hl/oc percentiles → price levels."""
         self.vol_fc = None
@@ -767,7 +814,9 @@ class GoldBotV2:
             f = (r.json().get('instruments') or {}).get('GOLD')
             if not f:
                 return
-            anchor = self.sess_lvls.daily_open if self.sess_lvls else None
+            # London-midnight anchor (the forecaster's own); UTC daily open only
+            # as a last-resort fallback — it is 1h off the forecast levels in BST.
+            anchor = self._session_anchor() or (self.sess_lvls.daily_open if self.sess_lvls else None)
             if not anchor:
                 return
             hl_med = float(f.get('hl_median') or 0)
