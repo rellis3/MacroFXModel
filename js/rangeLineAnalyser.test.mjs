@@ -3,7 +3,7 @@
 // perLineStrategy-shaped records and runs through the proven policy engine.
 //   node js/rangeLineAnalyser.test.mjs
 
-import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES, runConfluenceFilter, intradayConfluenceAt, DAILY_CONFLUENCE_SOURCES, sessionConfluenceLevels } from './rangeLineAnalyser.js';
+import { analyseRangeWindow, runRangeLineAnalyser, runRangeLineBook, eRatioByCell, touchesForPair, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, confluenceBucketAt, CONFLUENCE_SOURCES, runConfluenceFilter, intradayConfluenceAt, DAILY_CONFLUENCE_SOURCES, sessionConfluenceLevels, volSizeWeights, runVolSizing } from './rangeLineAnalyser.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { extractTouches, buildPolicy } from './perLineStrategy.js';
 
@@ -314,6 +314,62 @@ console.log('\n[naked-levels confluence source — untested prior H/L add a dist
   ok('naked lifts the untested-high level by ≥1 bucket',
      rank[confluenceBucketAt(1.30, withNaked, tol)] > rank[confluenceBucketAt(1.30, base, tol)],
      `base=${confluenceBucketAt(1.30, base, tol)} naked=${confluenceBucketAt(1.30, withNaked, tol)}`);
+}
+
+console.log('\n[vol-sizing overlay — inverse-σ weights, same trades, honest A/B]');
+{
+  // ── volSizeWeights: warmup, no-lookahead, inverse-σ, clamps ──────────────────
+  // One touch per date is enough — every touch of a session carries the same σ.
+  const sigT = (date, sigmaPct) => ({ date, open: 1.10, side: 'up', name: 'M_1', cell: 'M_1_up|',
+    level: 1.10, innerLvl: 1.097, outerLvl: 1.103, reverted: false, decidedBy: 'barrier', closePx: 1.104,
+    fillTime: 10, fChand: 0.40, fChandFade: 0.30, sigmaPct });
+  const dates = ['2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05', '2023-01-06', '2023-01-09'];
+  const sigs  = [1, 1, 1, 2, 1, 0.1];
+  const wTouches = { p: dates.map((d, i) => sigT(d, sigs[i])) };
+  const wm = volSizeWeights(wTouches, { span: 3, minObs: 2, capMin: 0.5, capMax: 4 }).p;
+  ok('warmup: first minObs sessions get weight 1', wm.get(dates[0]) === 1 && wm.get(dates[1]) === 1,
+     `w0=${wm.get(dates[0])} w1=${wm.get(dates[1])}`);
+  ok('median of prior σ ÷ today σ (σ=2 → w=0.5)', wm.get(dates[3]) === 0.5, `w3=${wm.get(dates[3])}`);
+  ok('window is STRICTLY prior (spike day not in its own ref)', wm.get(dates[4]) === 1, `w4=${wm.get(dates[4])}`);
+  ok('capMax clamps a σ crash (ref/0.1 = 10 → 4)', wm.get(dates[5]) === 4, `w5=${wm.get(dates[5])}`);
+  // No lookahead: weights up to a date are unchanged when FUTURE σ changes.
+  const wTouches2 = { p: dates.map((d, i) => sigT(d, i === 5 ? 9 : sigs[i])) };
+  const wm2 = volSizeWeights(wTouches2, { span: 3, minObs: 2, capMin: 0.5, capMax: 4 }).p;
+  ok('no lookahead: changing a future σ leaves earlier weights identical',
+     dates.slice(0, 5).every(d => wm.get(d) === wm2.get(d)));
+
+  // ── runVolSizing: unit book == runHeldPosition chand; sized reweights it ─────
+  const pol = { 'M_1_up|': { decision: 'follow' } };
+  const vs = runVolSizing(wTouches, { policy: pol, splitDate: '2023-01-01', costByPair: { p: 0 }, slipByPair: { p: 0 },
+                                      span: 3, minObs: 2, capMin: 0.5, capMax: 4, minTrades: 1 });
+  const hp = runHeldPosition(wTouches, { policy: pol, splitDate: '2023-01-01', costByPair: { p: 0 }, slipByPair: { p: 0 } });
+  const atMult = (arr, m) => arr.find(z => z.mult === m)?.sharpe ?? null;
+  ok('unit book Sharpe == runHeldPosition chand (same trades, same pricer)',
+     vs.pooled.unit.every(r => Math.abs(r.sharpe - (r.mult === 1 ? hp.chand.sharpe : atMult(hp.chand.costStress, r.mult))) < 1e-9),
+     `unit=${JSON.stringify(vs.pooled.unit.map(r => r.sharpe))} chand=${hp.chand.sharpe}`);
+  ok('per-pair rows carry unit vs sized Sharpe at every cost mult',
+     vs.perPair.length === 1 && ['unit1x', 'sized1x', 'unit2x', 'sized2x', 'unit3x', 'sized3x'].every(k => k in vs.perPair[0]));
+  ok('weights summary reflects the clamp range', vs.weights.max <= 4 && vs.weights.min >= 0.5,
+     `w=${JSON.stringify(vs.weights)}`);
+  ok('trade count matches the held model (sizing never adds/drops trades)',
+     vs.trades === hp.chand.trades, `vs=${vs.trades} hp=${hp.chand.trades}`);
+
+  // ── known answer: downweighting the high-σ loser lifts the sized book ────────
+  // Flat +0.10% every day except a −2% loss on the σ=2 day (w=0.5): the sized
+  // book halves exactly that loss → higher Sharpe, same trade count.
+  const mix = { p: dates.map((d, i) => ({ ...sigT(d, sigs[i]), fChand: i === 3 ? -2.0 : 0.10 })) };
+  const vsMix = runVolSizing(mix, { policy: pol, splitDate: '2023-01-01', costByPair: { p: 0 }, slipByPair: { p: 0 },
+                                    span: 3, minObs: 2, capMin: 0.5, capMax: 4, minTrades: 1 });
+  ok('sized book beats unit when the tail loss lands on the high-σ day',
+     vsMix.perPair[0].sized1x > vsMix.perPair[0].unit1x,
+     `sized=${vsMix.perPair[0].sized1x} unit=${vsMix.perPair[0].unit1x}`);
+
+  // ── missing σ → weight 1 (old cached records degrade gracefully) ─────────────
+  const noSig = { p: dates.map((d, i) => ({ ...sigT(d, sigs[i]), sigmaPct: null })) };
+  const vsNo = runVolSizing(noSig, { policy: pol, splitDate: '2023-01-01', costByPair: { p: 0 }, slipByPair: { p: 0 }, minTrades: 1 });
+  ok('missing σ → sized == unit (all weights 1) + sigmaMissing counted',
+     vsNo.sigmaMissing === dates.length && Math.abs(vsNo.perPair[0].sized1x - vsNo.perPair[0].unit1x) < 1e-9,
+     `missing=${vsNo.sigmaMissing}`);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

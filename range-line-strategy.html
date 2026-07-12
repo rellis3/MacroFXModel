@@ -108,6 +108,13 @@
     <div id="heldVerdict" class="muted" style="margin-top:6px"></div>
   </div>
 
+  <div class="card" id="volSizingCard" style="display:none">
+    <h2>Vol-sizing A/B — same trades, unit size vs inverse-σ size (risk overlay)</h2>
+    <div class="muted" style="margin-bottom:8px">Tests <b>position sizing</b>, never the entry: the held-chandelier book is priced twice — <b>unit</b> (every trade the same size, the incumbent) vs <b>vol-sized</b> (each trade weighted <code>median(prior-60-session σ) ÷ today's σ</code>, clamped 0.25–4×, constants <b>fixed</b> — no tuning). σ is the ex-ante <code>volSigmaSeries</code> value (data &lt; today, no lookahead). Sharpe is size-scale-invariant and MaxDD is read at 10% target vol, so the books compare like-for-like. A win = the sized book's OOS Sharpe <b>@2–3× cost</b> rises on most ≥30-trade pairs. This is the replicated risk-management effect (vol targeting), <b>not</b> a new entry edge.</div>
+    <table id="volSizing"><thead><tr><th>Pair</th><th>Trades</th><th>Unit @1×</th><th>Sized @1×</th><th>Unit @2×</th><th>Sized @2×</th><th>Unit @3×</th><th>Sized @3×</th><th>Unit DD@2×</th><th>Sized DD@2×</th></tr></thead><tbody></tbody></table>
+    <div id="volSizingVerdict" class="muted" style="margin-top:6px"></div>
+  </div>
+
   <div class="card" id="zoneWalkCard" style="display:none">
     <h2>Zone-walk — policy as the exit oracle (fade + follow, full ladder, re-entry)</h2>
     <div class="muted" style="margin-bottom:8px">The honest use of the engine's <b>fade AND follow</b> decisions: open at the first non-skip zone, then at <b>every</b> zone the trade reaches consult its learned decision — <b>continuation → hold, reversal → close</b> — and re-enter after flat. A <b>fade can turn into a runner</b>: enter fading toward the mid, break through, and the far-side zones flip to continue in the same price direction → one trade rides many zones to the day's extreme. Run with <b>Max level = all</b> to use the extremes. Judge on Sharpe @2–3× cost vs the Held-position card.</div>
@@ -350,6 +357,22 @@ function render(d) {
     $('heldVerdict').innerHTML = winner
       ? `Trades/day collapse from <b>${abFixedTPD ?? '?'}</b> (per-touch) to <b>${w.tradesPerDay}</b> here — the fake breadth is gone, so <b>${HLBL[winner]}</b>'s Sharpe @2× ${fmt(best,2)} (@3× ${fmt(ss(w,3),2)}) is the first <b>tradeable</b> number. Read it against the forecast engine's "believable &lt; 2" bar.`
       : `No held trades.`;
+  }
+
+  // Vol-sizing A/B — unit vs inverse-σ sized held-chandelier book.
+  const vsz = d.volSizing;
+  if (vsz && vsz.trades && Array.isArray(vsz.perPair) && vsz.perPair.length) {
+    $('volSizingCard').style.display = '';
+    const sc = (u, s) => `<td class="${(u??0)>0?'pos':'neg'}">${fmt(u,2)}</td><td class="${(s??0)>0?'pos':'neg'}${(s!=null&&u!=null&&s>u)?' ':''}" ${(s!=null&&u!=null&&s>u)?'style="font-weight:700"':''}>${fmt(s,2)}</td>`;
+    document.querySelector('#volSizing tbody').innerHTML = vsz.perPair.map(r =>
+      `<tr${r.trades < (vsz.config?.minTrades ?? 30) ? ' style="opacity:.45"' : ''}><td>${r.pair}</td><td class="mut">${r.trades}</td>
+        ${sc(r.unit1x, r.sized1x)}${sc(r.unit2x, r.sized2x)}${sc(r.unit3x, r.sized3x)}
+        <td class="neg">${fmt(r.unitDD2x,1)}%</td><td class="neg">${fmt(r.sizedDD2x,1)}%</td></tr>`).join('');
+    const worse = vsz.eligiblePairs - vsz.improved2x;
+    $('volSizingVerdict').innerHTML =
+      `Weights: mean ${vsz.weights?.mean} (range ${vsz.weights?.min}–${vsz.weights?.max})${vsz.sigmaMissing ? `; <b>${vsz.sigmaMissing}</b> trades had no σ (old cached records → weight 1)` : ''}. `
+      + `Pre-registered read: vol-sizing <b>works</b> if the sized Sharpe @2× beats unit on the majority of ≥${vsz.config?.minTrades ?? 30}-trade pairs — here <b>${vsz.improved2x} of ${vsz.eligiblePairs}</b> improved${vsz.eligiblePairs ? ` (${worse} flat/worse)` : ''}. `
+      + `Faded rows are below the trade floor — ignore them.`;
   }
 
   // Zone-walk — policy as the exit oracle.

@@ -97,6 +97,10 @@ export function extractTouches(records, { conditions = ['approachVel'], dtThresh
         // only confluent levels, direction unchanged) can read it without fragmenting
         // the policy into per-bucket cells. Undefined unless the analyser computed it.
         confluence: ln.confluence ?? null,
+        // Ex-ante daily σ for the touch's session (% of price, volSigmaSeries — no
+        // lookahead). The vol-sizing overlay's input; null on records built before
+        // it shipped (the overlay treats missing σ as weight 1).
+        sigmaPct: ln.sigmaPct ?? null,
         // Optional trail PnLs (gross %): follow-direction (away) + fade-direction
         // (toward mid), so the chandelier/structural trail can price either entry.
         fStruct: ln.fStruct, fChand: ln.fChand,
