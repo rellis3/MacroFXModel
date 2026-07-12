@@ -1,0 +1,90 @@
+[
+  {
+    "ticket": 1007, "pair": "EURUSD", "direction": "long", "date": "2026-07-06",
+    "entry_time": "2026-07-06T08:05:00Z", "entry_ts_ms": 1783065900000,
+    "entry_price": 1.0850, "sl": 1.0830, "tp": 1.0890,
+    "sl_dist_pips": 20.0, "tp_dist_pips": 40.0, "lots": 0.10, "pip": 0.0001,
+    "level_price": 1.0848, "level_fib": 0.5, "conviction": 0.25, "confirms": 2,
+    "features": ["macdSignal", "orderBlock"],
+    "be_moved_at": null, "be_price": null,
+    "exit_time": "2026-07-06T11:40:00Z", "exit_price": 1.0890, "exit_type": "tp",
+    "pnl_r": 1.0, "pnl_pips": 40.0, "bars": [], "status": "closed"
+  },
+  {
+    "ticket": 1008, "pair": "EURUSD", "direction": "short", "date": "2026-07-06",
+    "entry_time": "2026-07-06T13:05:00Z", "entry_ts_ms": 1783083900000,
+    "entry_price": 1.0900, "sl": 1.0920, "tp": 1.0860,
+    "sl_dist_pips": 20.0, "tp_dist_pips": 40.0, "lots": 0.10, "pip": 0.0001,
+    "level_price": 1.0902, "level_fib": 1.0, "conviction": 0.35, "confirms": 1,
+    "features": ["htfEma"],
+    "be_moved_at": null, "be_price": null,
+    "exit_time": "2026-07-06T15:10:00Z", "exit_price": 1.0920, "exit_type": "sl",
+    "pnl_r": -1.0, "pnl_pips": -20.0, "bars": [], "status": "closed"
+  },
+  {
+    "ticket": 1009, "pair": "XAUUSD", "direction": "long", "date": "2026-07-07",
+    "entry_time": "2026-07-07T09:00:00Z", "entry_ts_ms": 1783155600000,
+    "entry_price": 3350.0, "sl": 3320.0, "tp": 3410.0,
+    "sl_dist_pips": 30.0, "tp_dist_pips": 60.0, "lots": 0.05, "pip": 1.0,
+    "level_price": 3351.0, "level_fib": 0.0, "conviction": 0.60, "confirms": 3,
+    "features": ["rsiDivergence"],
+    "be_moved_at": "2026-07-07T10:00:00Z", "be_price": 3350.0,
+    "exit_time": "2026-07-07T14:30:00Z", "exit_price": 3410.0, "exit_type": "tp",
+    "pnl_r": 2.0, "pnl_pips": 60.0, "bars": [], "status": "closed"
+  },
+  {
+    "ticket": 1010, "pair": "USDJPY", "direction": "long", "date": "2026-07-08",
+    "entry_time": "2026-07-08T07:30:00Z", "entry_ts_ms": 1783236600000,
+    "entry_price": 146.50, "sl": 146.25, "tp": 147.00,
+    "sl_dist_pips": 25.0, "tp_dist_pips": 50.0, "lots": 0.10, "pip": 0.01,
+    "level_price": 146.48, "level_fib": 0.25, "conviction": 0.45, "confirms": 2,
+    "features": ["chochBos", "vwapSlope"],
+    "be_moved_at": "2026-07-08T09:00:00Z", "be_price": 146.50,
+    "exit_time": "2026-07-08T10:15:00Z", "exit_price": 146.50, "exit_type": "be",
+    "pnl_r": 0.0, "pnl_pips": 0.0, "bars": [], "status": "closed"
+  },
+  {
+    "ticket": 1011, "pair": "USTECH100M", "direction": "short", "date": "2026-07-09",
+    "entry_time": "2026-07-09T14:00:00Z", "entry_ts_ms": 1783346400000,
+    "entry_price": 23100.0, "sl": 23140.0, "tp": 23020.0,
+    "sl_dist_pips": 40.0, "tp_dist_pips": 80.0, "lots": 0.20, "pip": 1.0,
+    "level_price": 23102.0, "level_fib": 1.5, "conviction": 0.55, "confirms": 1,
+    "features": ["hurstRegime"],
+    "be_moved_at": null, "be_price": null,
+    "exit_time": "2026-07-09T15:20:00Z", "exit_price": 23140.0, "exit_type": "sl",
+    "pnl_r": -1.0, "pnl_pips": -40.0, "bars": [], "status": "closed"
+  },
+  {
+    "ticket": 1012, "pair": "EURUSD", "direction": "long", "date": "2026-07-10",
+    "entry_time": "2026-07-10T08:10:00Z", "entry_ts_ms": 1783411800000,
+    "entry_price": 1.0870, "sl": 1.0850, "tp": 1.0910,
+    "sl_dist_pips": 20.0, "tp_dist_pips": 40.0, "lots": 0.10, "pip": 0.0001,
+    "level_price": 1.0868, "level_fib": 0.75, "conviction": 0.31, "confirms": 2,
+    "features": [],
+    "be_moved_at": null, "be_price": null,
+    "exit_time": "2026-07-10T16:00:00Z", "exit_price": 1.0880, "exit_type": "manual",
+    "pnl_r": 0.5, "pnl_pips": 10.0, "bars": [], "status": "closed"
+  },
+  {
+    "ticket": 1013, "pair": "GBPUSD", "direction": "long", "date": "2026-07-10",
+    "entry_time": "2026-07-10T13:00:00Z", "entry_ts_ms": 1783429200000,
+    "entry_price": 1.3550, "sl": 1.3530, "tp": 1.3590,
+    "sl_dist_pips": 20.0, "tp_dist_pips": 40.0, "lots": 0.10, "pip": 0.0001,
+    "level_price": 1.3548, "level_fib": 0.5, "conviction": 0.40, "confirms": 2,
+    "features": ["macdSignal"],
+    "be_moved_at": null, "be_price": null,
+    "exit_time": null, "exit_price": null, "exit_type": null,
+    "pnl_r": null, "pnl_pips": null, "bars": [], "status": "open"
+  },
+  {
+    "ticket": 1014, "pair": "EURUSD", "direction": "short", "date": "2026-07-11",
+    "entry_time": "2026-07-11T09:00:00Z", "entry_ts_ms": 1783501200000,
+    "entry_price": 1.0910, "sl": 1.0930, "tp": 1.0870,
+    "sl_dist_pips": 20.0, "tp_dist_pips": 40.0, "lots": 0.10, "pip": 0.0001,
+    "level_price": 1.0912, "level_fib": 1.0, "conviction": 0.50, "confirms": 1,
+    "features": ["wickRejection"],
+    "be_moved_at": null, "be_price": null,
+    "exit_time": "2026-07-11T12:00:00Z", "exit_price": 1.0895, "exit_type": "manual",
+    "pnl_r": null, "pnl_pips": 15.0, "bars": [], "status": "closed"
+  }
+]

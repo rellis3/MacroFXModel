@@ -96,7 +96,11 @@ class VolGateModule(BaseModule):
             size_mult = 1.0
             score     = 0.65
 
-        # Inherit direction from macro_regime so vol_gate contributes to min_agree count
+        # Inherit direction from macro_regime so the composite scorer sees an
+        # aligned signal. NOTE (Batch 6): because this direction is INHERITED,
+        # not an independent opinion, main.evaluate_pair EXCLUDES vol_gate from
+        # the min_agree directional count — it still contributes score and the
+        # size multiplier.
         inherited_dir = 'NEUTRAL'
         if ctx and 'macro_regime' in ctx and ctx['macro_regime']:
             macro_sig = ctx['macro_regime'].signal

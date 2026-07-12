@@ -52,7 +52,11 @@ DEFAULTS = {
 
     # Trade management
     "reEnterTp":         True,
-    "flipOnSL":          True,
+    # flipOnSL: reversing on a stop-out has no evidence basis and doubles cost
+    # drag at failed levels — default OFF (Batch 6). An explicit `true` in
+    # active.json / KV config is still honoured (owner opt-in; main.py logs a
+    # warning at startup).
+    "flipOnSL":          False,
     "tradeCooldownMins": 10,             # minutes to block new entries after a trade closes
 
     # SL → Breakeven

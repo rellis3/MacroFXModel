@@ -114,7 +114,11 @@ class RegimeConfidenceModule(BaseModule):
             + (' ⚠ DEFENSIVE' if defensive else '')
         )
 
-        # Inherit direction from upstream context — this module only affects sizing
+        # Inherit direction from upstream context — this module only affects
+        # sizing. NOTE (Batch 6): because the direction is INHERITED, not an
+        # independent opinion, main.evaluate_pair EXCLUDES regime_confidence
+        # from the min_agree directional count — it still contributes its
+        # confidence score and the size multiplier.
         inherited = 'NEUTRAL'
         if ctx:
             for module_name in ('macro_regime', 'vol_gate', 'gold_macro'):

@@ -112,8 +112,13 @@ export function decide(touch, policy, opts = {}) {
 
   if (!p) return { action: 'skip', cell, grade: 'SKIP', verdict: 'SKIP', reason: 'unseen-in-IS' };
   if (p.decision === 'skip') {
+    // 'notSignificant' = buildPolicy's t-gate: mean edge positive but within
+    // sampling noise at this n (mean/SE ≤ tStat) — treated exactly like any
+    // other policy skip, just with an honest label.
     return { action: 'skip', cell, grade: 'SKIP', verdict: 'SKIP',
-             reason: p.reason === 'lowN' ? 'low-N in IS' : 'edge below cost',
+             reason: p.reason === 'lowN' ? 'low-N in IS'
+                   : p.reason === 'notSignificant' ? 'edge within noise (t-gate)'
+                   : 'edge below cost',
              n: p.n, expectancy: p.expectancy ?? null };
   }
 

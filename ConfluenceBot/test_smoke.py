@@ -452,6 +452,88 @@ check('gold: zone matrix unchanged (ids, centres, pads, anchors)',
 g_obs = _compat(collect_obstacles, 'LONG', 4040.0, [_SZ(4051.0), _SZ(4052.0)],
                 pip=1.0)
 check('gold: $1-apart obstacles still merge (same shelf)', len(g_obs) == 1, str(g_obs))
+# NOTE (Batch 6 scoring dedup): the capture above pins STRUCTURAL fields only
+# (ids, centres, pads, anchors) — score_zones was changed to collapse correlated
+# credits into per-family max-once credits, which touches zone.score/composition
+# only, so this capture did not move. The scoring change itself is pinned below.
+
+
+print('\n── zone scoring dedup (Batch 6: one credit per correlated family) ──')
+# Pivots are deterministic functions of prev-day H/L/C, and POC/VAH/VAL/HVN all
+# read the same day's volume distribution — each family must score ONCE (max of
+# its matching members), while independent sources still stack.
+from modules.level_matrix import ZoneV2, NONFIB_WEIGHTS
+from modules.volume_profile import VolumeProfile, NakedPOC
+from modules.session_engine import SessionLevels
+
+
+def _mk_zone(c=4040.0):
+    return ZoneV2(zone_id='sz', direction='long', gp_low=c - 1.0, gp_high=c + 1.0,
+                  centre=c, in_gp=False)
+
+
+def _mk_vol(**kw):
+    d = dict(poc=0.0, vah=0.0, val=0.0, hvn_levels=[], lvn_levels=[],
+             prev_poc=None, prev_vah=None, prev_val=None, npoc=None,
+             npoc_stack=[], session_high=0.0, session_low=0.0,
+             total_volume=0.0, computed_from_bars=0)
+    d.update(kw)
+    return VolumeProfile(**d)
+
+
+def _mk_sess(**kw):
+    d = dict(current_price=4040.0, daily_open=0.0, prev_daily_high=0.0,
+             prev_daily_low=0.0, prev_daily_close=0.0, asia_high=0.0,
+             asia_low=0.0, asia_mid=0.0, london_open=0.0, london_high=0.0,
+             london_low=0.0, ny_open=0.0, ny_high=0.0, ny_low=0.0,
+             current_session='', pivot=0.0, r1=0.0, r2=0.0, r3=0.0,
+             s1=0.0, s2=0.0, s3=0.0, vwap=0.0, vwap_slope=0.0, vwap_std=0.0)
+    d.update(kw)
+    return SessionLevels(**d)
+
+
+class _NeutralHTF:
+    bias = 'NEUTRAL'
+    confidence = 0.0
+
+
+_C = 4040.0
+
+# Whole prior-session family stacked at one price → ONE credit at the strongest
+# member's weight (daily_open 1.5), not 1.5+1.2+1.0+0.8 = 4.5 as before.
+_z1 = _mk_zone(_C)
+score_zones([_z1], _mk_vol(),
+            _mk_sess(daily_open=_C, prev_daily_high=_C, asia_high=_C, pivot=_C),
+            _NeutralHTF())
+check('prior-session family scores ONCE at max member weight',
+      abs(_z1.score - NONFIB_WEIGHTS['daily_open']) < 1e-9, str(_z1.score))
+check('composition still names every matched member',
+      any('Daily open' in s and 'Pivot' in s for s in _z1.composition),
+      str(_z1.composition))
+
+# Whole volume-profile family at one price → ONE credit (POC 1.5), while the
+# age-weighted nPOC stays a separate credit (2.0 + 0.1×2d = 2.2).
+_z2 = _mk_zone(_C)
+score_zones([_z2], _mk_vol(poc=_C, hvn_levels=[_C], vah=_C,
+                           npoc_stack=[NakedPOC(price=_C, date='', age_days=2)]),
+            _mk_sess(), _NeutralHTF())
+check('volume-profile family scores ONCE at max member weight (+ separate nPOC)',
+      abs(_z2.score - (NONFIB_WEIGHTS['poc'] + 2.2)) < 1e-9, str(_z2.score))
+
+# Independent families still stack: daily open (prior-session) + POC (vol
+# profile) are different evidence and both count.
+_z3 = _mk_zone(_C)
+score_zones([_z3], _mk_vol(poc=_C), _mk_sess(daily_open=_C), _NeutralHTF())
+check('independent families still stack',
+      abs(_z3.score - (NONFIB_WEIGHTS['poc'] + NONFIB_WEIGHTS['daily_open'])) < 1e-9,
+      str(_z3.score))
+
+# A single member of a family scores exactly its own weight (no behaviour
+# change for the common single-hit case, so min_zone_score 4.0 keeps meaning).
+_z4 = _mk_zone(_C)
+score_zones([_z4], _mk_vol(), _mk_sess(pivot=_C), _NeutralHTF())
+check('single family member unchanged (pivot alone = 0.8)',
+      abs(_z4.score - NONFIB_WEIGHTS['pivot']) < 1e-9, str(_z4.score))
 
 
 print('\n── paper→live guard ─────────────────────────────────────────')

@@ -417,6 +417,36 @@ FEATURE_ORDER = [
     'hurstRegime', 'fvgBias', 'weeklyPivot', 'ichimokuCloud', 'macdSignal',
 ]
 
+# ── Feature families (Batch 6) ────────────────────────────────────────────────
+# The min-confirms gate used to treat the 13 detectors as independent votes,
+# but many of them measure the same underlying thing on the same closes:
+#   trend      — MACD, HTF EMA 21/50, ADX(+DI/−DI), TWAP slope and the Ichimoku
+#                cloud are all trend-direction reads of the same price series;
+#                if the market is trending up they all say "long" together.
+#   divergence — RSI divergence (WT/MF divergence would land here too) is an
+#                oscillator read of the same closes.
+#   structure  — order blocks, FVGs, wick rejection and CHoCH/BOS all describe
+#                price structure around the level.
+#   other      — range position, weekly pivot and Hurst are level/regime context.
+# For the INDEPENDENCE count (min-confirms gate) a family contributes at most
+# ONE confirm no matter how many of its members fire. The weighted conviction
+# sum and the per-feature journal record are unchanged.
+FEATURE_FAMILY = {
+    'macdSignal':    'trend',
+    'htfEma':        'trend',
+    'adxFilter':     'trend',
+    'vwapSlope':     'trend',       # TWAP slope — trend of the same closes
+    'ichimokuCloud': 'trend',
+    'rsiDivergence': 'divergence',
+    'orderBlock':    'structure',
+    'fvgBias':       'structure',
+    'wickRejection': 'structure',
+    'chochBos':      'structure',
+    'rangePosition': 'other',
+    'weeklyPivot':   'other',
+    'hurstRegime':   'other',
+}
+
 
 def compute_direction(bars_5m_rev: list, bars_30m: list, daily_bars: list,
                       asia: dict | None, monday: dict | None,
@@ -498,16 +528,20 @@ def compute_direction(bars_5m_rev: list, bars_30m: list, daily_bars: list,
 
     if not entry_dir:
         return {'entry_dir': None, 'conviction': 0.0, 'confirm_count': 0,
+                'family_confirm_count': 0, 'confirm_families': [],
                 'conflict_count': 0, 'results': raw_results, 'atr': atr}
 
     # Score conviction for winning direction
     confirm_count = conflict_count = total_pts = 0
+    confirm_families = set()
     scored = []
     for r in raw_results:
         confirms  = r['signal'] == entry_dir
         conflicts = r['signal'] is not None and r['signal'] != entry_dir
         pts = r['weight'] if confirms else (-r['weight'] if conflicts else 0)
-        if confirms:  confirm_count  += 1
+        if confirms:
+            confirm_count += 1
+            confirm_families.add(FEATURE_FAMILY.get(r['key'], 'other'))
         if conflicts: conflict_count += 1
         total_pts += pts
         scored.append({**r, 'pts': pts, 'icon': '✓' if confirms else ('✗' if conflicts else '·')})
@@ -517,7 +551,11 @@ def compute_direction(bars_5m_rev: list, bars_30m: list, daily_bars: list,
     return {
         'entry_dir':     entry_dir,
         'conviction':    conviction,
-        'confirm_count': confirm_count,
+        'confirm_count': confirm_count,          # raw per-feature count (journal/logs)
+        # At most one confirm per family (see FEATURE_FAMILY) — this is the
+        # independence count the minConfirms gate must use (Batch 6).
+        'family_confirm_count': len(confirm_families),
+        'confirm_families': sorted(confirm_families),
         'conflict_count': conflict_count,
         'total_pts':     total_pts,
         'max_pts':       max_pts,

@@ -15,11 +15,19 @@ What is NOT optimised here (needs tick data to re-simulate):
 The optimiser also writes a `gold_perf_snapshot` key with 30-day P&L stats
 that the performance dashboard reads for the live WR vs historical comparison.
 
+Safety (Batch 6): DRY-RUN IS THE DEFAULT. Nothing is written to KV unless
+`--apply` is passed, and even then the config push must clear the evidence
+gate: ≥30 closed trades in the window, a chronological 60/40 IS/OOS split in
+which the chosen combo is best on IS AND non-negative on OOS, and a combo that
+LOOSENS min_zone_score / vu_min_components below the bot defaults needs ≥30
+OOS trades of its own. A full-sample grid pick is a curve fit until it
+survives data it wasn't chosen on.
+
 Usage (run from project root):
-  python Gold/optimiser.py
+  python Gold/optimiser.py                     # dry-run (default): report only
   python Gold/optimiser.py --journal Gold/logs/gold_journal.jsonl
   python Gold/optimiser.py --days 60 --min-trades 8
-  python Gold/optimiser.py --dry-run
+  python Gold/optimiser.py --apply             # push to KV IF the gate passes
 """
 
 from __future__ import annotations
@@ -47,6 +55,16 @@ PARAM_GRID = {
 }
 
 MIN_TRADES = 5   # minimum closed trades required to evaluate a combination
+
+# ── Push-gate constants (Batch 6) ─────────────────────────────────────────────
+PUSH_MIN_TRADES   = 30     # closed trades required in the window before ANY push
+IS_FRACTION       = 0.60   # chronological split: first 60% IS, rest OOS
+OOS_LOOSEN_MIN_N  = 30     # a LOOSER-than-default combo needs this many OOS trades
+
+# The bot's shipped defaults (Gold/main.py DEFAULT_CFG). Pushing anything
+# looser than these (lower score bar / fewer VuManChu components) without
+# specific OOS evidence widens the trade intake on an in-sample fit.
+BOT_DEFAULTS = {'min_zone_score': 3.0, 'vu_min_components': 2}
 
 
 # ── Journal reader ────────────────────────────────────────────────────────────
@@ -185,9 +203,100 @@ def grid_search(trades: list[dict], min_trades: int = MIN_TRADES) -> tuple[dict,
             'sharpe':   round(sh, 3),
         })
 
-    results.sort(key=lambda x: -x['sharpe'])
+    # Tie-break TIGHTER (Batch 6): when combos score identically (common when
+    # every trade passes every filter), the old insertion order silently
+    # favoured the LOOSEST combo. Equal evidence must never widen the intake.
+    results.sort(key=lambda x: (-x['sharpe'],
+                                -x['params']['min_zone_score'],
+                                -x['params']['vu_min_components']))
     best = results[0]['params'] if results else {}
     return best, results
+
+
+# ── IS/OOS push gate (Batch 6) ────────────────────────────────────────────────
+
+def split_is_oos(trades: list[dict], is_fraction: float = IS_FRACTION
+                 ) -> tuple[list[dict], list[dict]]:
+    """Chronological split: first `is_fraction` of trades by timestamp are
+    in-sample, the rest out-of-sample. Never shuffled — the OOS block must be
+    strictly later data than the block the combo was chosen on."""
+    ordered = sorted(trades, key=lambda t: t.get('timestamp', ''))
+    cut = int(len(ordered) * is_fraction)
+    return ordered[:cut], ordered[cut:]
+
+
+def _combo_subset(trades: list[dict], params: dict) -> list[dict]:
+    return [t for t in trades
+            if t['score'] >= params['min_zone_score']
+            and t['vu_components'] >= params['vu_min_components']]
+
+
+def _loosens_defaults(params: dict, baseline: dict | None = None) -> bool:
+    base = baseline or BOT_DEFAULTS
+    return (params.get('min_zone_score', 99) < base['min_zone_score']
+            or params.get('vu_min_components', 99) < base['vu_min_components'])
+
+
+def validate_push(trades: list[dict], min_trades: int = MIN_TRADES,
+                  baseline: dict | None = None) -> tuple[dict | None, list[str]]:
+    """The evidence gate every KV config push must clear.
+
+    Returns (combo_to_push | None, messages). The pushed combo is chosen on
+    the IS block ONLY (first 60% by time) and must then:
+      1. have ≥ PUSH_MIN_TRADES closed trades in the full window,
+      2. be the best combo on IS (by construction — it is chosen there),
+      3. show ≥ 0 mean R on the untouched OOS block (with ≥1 OOS trade),
+      4. if it LOOSENS min_zone_score / vu_min_components below the bot
+         defaults: have ≥ OOS_LOOSEN_MIN_N OOS trades of its own.
+    Every check failure is reported; None means refuse the push.
+    """
+    msgs: list[str] = []
+
+    if len(trades) < PUSH_MIN_TRADES:
+        msgs.append(f'REFUSE: only {len(trades)} closed trades in window — '
+                    f'need ≥{PUSH_MIN_TRADES} before any config push.')
+        return None, msgs
+
+    is_trades, oos_trades = split_is_oos(trades)
+    msgs.append(f'Chronological split: IS n={len(is_trades)}  OOS n={len(oos_trades)} '
+                f'(first {IS_FRACTION:.0%} by time)')
+
+    is_best, is_results = grid_search(is_trades, min_trades=min_trades)
+    if not is_best:
+        msgs.append('REFUSE: no combo reaches the per-combo minimum trade count '
+                    'on the IS block alone.')
+        return None, msgs
+    msgs.append(f'IS-best combo: {is_best} '
+                f'(sharpe {is_results[0]["sharpe"]:+.3f}, ev {is_results[0]["ev"]:+.3f}R '
+                f'on n={is_results[0]["trades"]})')
+
+    oos_subset = _combo_subset(oos_trades, is_best)
+    if not oos_subset:
+        msgs.append('REFUSE: the IS-best combo takes ZERO trades on the OOS block — '
+                    'no out-of-sample evidence at all.')
+        return None, msgs
+    oos_mean = mean(t['pnl_r'] for t in oos_subset)
+    msgs.append(f'OOS check: n={len(oos_subset)}  mean R={oos_mean:+.3f}')
+    if oos_mean < 0:
+        msgs.append('REFUSE: IS-best combo is NEGATIVE on the out-of-sample block — '
+                    'the in-sample pick did not survive later data.')
+        return None, msgs
+
+    if _loosens_defaults(is_best, baseline):
+        base = baseline or BOT_DEFAULTS
+        if len(oos_subset) < OOS_LOOSEN_MIN_N:
+            msgs.append(f'REFUSE: combo LOOSENS the bot defaults '
+                        f'(min_zone_score {base["min_zone_score"]} / '
+                        f'vu_min_components {base["vu_min_components"]}) and has only '
+                        f'{len(oos_subset)} OOS trades — need ≥{OOS_LOOSEN_MIN_N} '
+                        f'to justify widening the intake.')
+            return None, msgs
+        msgs.append(f'Combo loosens the defaults but clears the specific-OOS bar '
+                    f'(n={len(oos_subset)} ≥ {OOS_LOOSEN_MIN_N}).')
+
+    msgs.append(f'PUSH GATE PASSED: {is_best} — best on IS, {oos_mean:+.3f}R mean '
+                f'over {len(oos_subset)} OOS trades.')
+    return is_best, msgs
 
 
 # ── Performance snapshot ──────────────────────────────────────────────────────
@@ -315,7 +424,11 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument('--min-trades',    type=int, default=MIN_TRADES,
                    help='Minimum trades per combo to include (default: 5)')
     p.add_argument('--dry-run',       action='store_true',
-                   help='Print results but do not write to KV')
+                   help='(default behaviour — kept for compatibility) report only, '
+                        'no KV writes')
+    p.add_argument('--apply',         action='store_true',
+                   help='Actually write to KV. The config push still requires the '
+                        'evidence gate (≥30 trades + IS/OOS split) to pass.')
     p.add_argument('--dashboard-url', default=DASHBOARD_URL,
                    help='Dashboard base URL for KV access')
     return p.parse_args()
@@ -337,25 +450,44 @@ if __name__ == '__main__':
         print(f'Too few trades to optimise (need {args.min_trades}+). Exiting.')
         sys.exit(0)
 
+    # Full-sample grid — INFORMATIONAL ONLY (in-sample fit, never pushed as-is).
     best, results = grid_search(trades, min_trades=args.min_trades)
     _print_report(trades, best, results, args.days)
 
-    snapshot = build_perf_snapshot(trades, best, args.days)
+    # Evidence gate (Batch 6): the pushable combo is chosen on the IS block and
+    # must survive OOS — run it in BOTH modes so a dry run shows exactly what
+    # an --apply would have done.
+    push_combo, gate_msgs = validate_push(trades, min_trades=args.min_trades)
+    print('  Push gate (≥30 trades + chronological 60/40 IS/OOS):')
+    for m in gate_msgs:
+        print(f'    {m}')
 
-    if args.dry_run:
-        print('Dry run — not writing to KV.')
-        print(f'  Would push gold_bot_config:    {best}')
+    snapshot = build_perf_snapshot(trades, push_combo or best, args.days)
+
+    if not args.apply:
+        print('\nDRY RUN (default — pass --apply to write to KV).')
+        if push_combo:
+            print(f'  Would push gold_bot_config:    {push_combo}')
+        else:
+            print('  Would REFUSE the gold_bot_config push (gate failed — see above).')
+        print(f'  Would push gold_optimiser_last / gold_perf_snapshot: '
+              f'{json.dumps(snapshot)[:200]}…')
         sys.exit(0)
 
-    # Merge best filtering params with existing config (preserve paper_mode, enabled, etc.)
-    existing_cfg = _kv_get('gold_bot_config', args.dashboard_url) or {}
-    new_cfg = {**existing_cfg, **best}
-
-    ok1 = _kv_put('gold_bot_config',      new_cfg,   args.dashboard_url)
-    ok2 = _kv_put('gold_optimiser_last',  snapshot,  args.dashboard_url)
-    ok3 = _kv_put('gold_perf_snapshot',   snapshot,  args.dashboard_url)
-
-    print(f'  gold_bot_config     → {"OK" if ok1 else "FAIL"}')
+    # ── --apply: snapshots always; config only if the gate passed ─────────────
+    ok2 = _kv_put('gold_optimiser_last', snapshot, args.dashboard_url)
+    ok3 = _kv_put('gold_perf_snapshot',  snapshot, args.dashboard_url)
     print(f'  gold_optimiser_last → {"OK" if ok2 else "FAIL"}')
     print(f'  gold_perf_snapshot  → {"OK" if ok3 else "FAIL"}')
+
+    if push_combo is None:
+        print('  gold_bot_config     → REFUSED (evidence gate failed — see above). '
+              'No config change was written.')
+        sys.exit(2)
+
+    # Merge validated params with existing config (preserve paper_mode, enabled, etc.)
+    existing_cfg = _kv_get('gold_bot_config', args.dashboard_url) or {}
+    new_cfg = {**existing_cfg, **push_combo}
+    ok1 = _kv_put('gold_bot_config', new_cfg, args.dashboard_url)
+    print(f'  gold_bot_config     → {"OK" if ok1 else "FAIL"}  {push_combo}')
     print()

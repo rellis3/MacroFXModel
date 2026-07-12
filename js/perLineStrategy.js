@@ -170,7 +170,19 @@ export function pnlHeld(t, decision, { costPct = 0.012, slipPct = 0.006 } = {}) 
 // used (unlike `revRate`, which is direction-only and NOT decision-aware — a
 // 'follow' cell's revRate is its miss rate, not its win rate; kept for
 // backward-compat display, prefer `winRate` for a "how often does this pay" read).
-export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012, slipPct = 0.006, pricer = pnlFor } = {}) {
+//
+// `tStat` (default 0 = OFF — the no-op escape hatch, exact prior behaviour) adds
+// a t-like SIGNIFICANCE gate on top of the margin gate: the chosen side's mean
+// after-cost PnL must also clear `tStat` standard errors of zero (SE = per-touch
+// std / √n of that side's PnLs). A +0.02% mean on a ±1% per-touch spread is
+// noise the margin gate can't see. The production default (1.5, set ONLY in
+// levelsV2Learn.learnAndFreeze) is DELIBERATELY MILD — a noise filter, not
+// discovery-grade evidence: Harvey–Liu–Zhu's |t| > 3 rule is the right bar for
+// MINED effects tested in isolation, but per-cell 3.0 here would nuke the whole
+// book (cells are small-n slices of one already-specified strategy, and they
+// additionally face the n ≥ minN gate and OOS reporting downstream). It's a
+// parameter precisely so the analyser can sweep it and see where the book thins.
+export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012, slipPct = 0.006, pricer = pnlFor, tStat = 0 } = {}) {
   const cells = {};
   for (const t of touches) (cells[t.cell] ??= []).push(t);
   const mean = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
@@ -189,12 +201,26 @@ export function buildPolicy(touches, { minN = 50, marginPct = 0, costPct = 0.012
     const bestExp = Math.max(fadeExp, followExp);
     const bestPnl = best === 'fade' ? fadePnl : followPnl;
     const winRate = bestPnl.length ? bestPnl.filter(x => x > 0).length / bestPnl.length : 0;
-    const decision = bestExp > marginPct ? best : 'skip';   // must PAY after costs, not just be directional
+    // t-like statistic of the chosen side's mean vs zero (sample sd, ddof=1).
+    // sd == 0 (constant PnLs, e.g. synthetic fixtures) ⇒ a positive mean passes
+    // any gate (t = +∞); a non-positive one fails.
+    const sd = bestPnl.length > 1
+      ? Math.sqrt(bestPnl.reduce((s, x) => s + (x - bestExp) ** 2, 0) / (bestPnl.length - 1))
+      : 0;
+    const se   = sd / Math.sqrt(bestPnl.length || 1);
+    const tVal = se > 0 ? bestExp / se : (bestExp > 0 ? Infinity : 0);
+    const significant = tStat <= 0 || tVal > tStat;
+    // Must PAY after costs (margin) AND stand clear of its own sampling noise
+    // (t-gate) — a positive average indistinguishable from zero is not an edge.
+    const decision = bestExp > marginPct ? (significant ? best : 'skip') : 'skip';
     policy[cell] = {
       decision, n, revRate: +(revRate * 100).toFixed(1), winRate: +(winRate * 100).toFixed(1),
       z: +((revRate - 0.5) / Math.sqrt(0.25 / n)).toFixed(2),
+      t: Number.isFinite(tVal) ? +tVal.toFixed(2) : null, se: +se.toFixed(5),
       fadeExp: +fadeExp.toFixed(4), followExp: +followExp.toFixed(4), expectancy: +bestExp.toFixed(4),
-      ...(decision === 'skip' ? { reason: 'belowMargin' } : {}),   // edge < cost (vs 'lowN' above)
+      // skip reason: 'lowN' (above) vs edge < cost ('belowMargin') vs edge
+      // positive but within noise at this n ('notSignificant').
+      ...(decision === 'skip' ? { reason: bestExp > marginPct ? 'notSignificant' : 'belowMargin' } : {}),
     };
   }
   return policy;
@@ -210,7 +236,7 @@ export function tradePnl(t, policy, opts = {}) {
 // ── 4) Full run: pooled IS policy → per-pair OOS trades → book equity ─────────
 // touchesByPair: { pair: touches[] }.  costByPair/slipByPair optional per-pair.
 // Returns { splitDate, policy, book, perPair, equity, nTrades, coverage }.
-export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
+export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0, tStat = 0,
                                             costByPair = {}, slipByPair = {}, mcRuns = 1000, bootRuns = 1000,
                                             survivorMargin = 0.5, minSurvivorTrades = 30 } = {}) {
   // Stamp each touch with its pair's costs so the pooled policy prices trades
@@ -224,7 +250,7 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
   if (!all.length) return null;
   const splitDate = all[Math.floor(all.length * splitFrac)]?.date ?? null;
   // Policy learned on IS, gated on after-cost expectancy (not just direction).
-  const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
+  const policy = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct, tStat });
 
   const bookTrades = [], perPair = {}, tradesByPair = {}, pnlByPair = {};
   // Missed/skipped OOS touches + WHY the engine said no (the Phase-C "missed
@@ -245,7 +271,7 @@ export function runPerLine(touchesByPair, { splitFrac = 0.6, minN = 50, marginPc
       if (t.date < splitDate) continue;                     // OOS only
       const p = policy[t.cell];
       if (!p)                       { noteMissed(t, 'unseen-in-IS'); continue; }
-      if (p.decision === 'skip')    { noteMissed(t, p.reason === 'lowN' ? 'low-N in IS' : 'edge below cost', p); continue; }
+      if (p.decision === 'skip')    { noteMissed(t, p.reason === 'lowN' ? 'low-N in IS' : p.reason === 'notSignificant' ? 'not significant in IS' : 'edge below cost', p); continue; }
       const pnl = pnlFor(t, p.decision, { costPct: t.cost, slipPct: t.slip });
       // Adverse excursion (intratrade MAE, % of price) for the chosen decision:
       // a fade is hurt by CONTINUATION (extPct toward its stop); a follow by REVERSION.
@@ -491,7 +517,7 @@ function priceTrades(touches, policy, mult = 1) {
 //     (degradation ratio = OOS Sharpe ÷ IS Sharpe).
 //   • costSensitivity — re-price the OOS book at cost ×{1,2,3} (edge survival).
 //   • perYear     — OOS book stats per calendar year (sub-period stability).
-export function runRigor(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0,
+export function runRigor(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0, tStat = 0,
                                           folds = 5, initialFrac = 0.4, costMults = [1, 2, 3],
                                           costByPair = {}, slipByPair = {} } = {}) {
   for (const [pair, touches] of Object.entries(touchesByPair)) {
@@ -505,7 +531,7 @@ export function runRigor(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct 
 
   // IS vs OOS on the single split.
   const splitDate = dates[Math.floor(dates.length * splitFrac)];
-  const isPol  = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct });
+  const isPol  = buildPolicy(all.filter(t => t.date < splitDate), { minN, marginPct, tStat });
   const isStats  = ps(priceTrades(all.filter(t => t.date < splitDate), isPol));
   const oosTrades = priceTrades(all.filter(t => t.date >= splitDate), isPol);
   const oosStats = ps(oosTrades);
@@ -521,7 +547,7 @@ export function runRigor(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct 
     const b = tailDates[Math.floor((f + 1) * tailDates.length / folds)] ?? null;   // null = to the end
     const train = all.filter(t => t.date < a);
     if (train.length < minN) continue;
-    const pol = buildPolicy(train, { minN, marginPct });
+    const pol = buildPolicy(train, { minN, marginPct, tStat });
     const test = all.filter(t => t.date >= a && (b == null || t.date < b));
     const tr = priceTrades(test, pol);
     wfTrades.push(...tr);
@@ -559,11 +585,12 @@ export function runSensitivity(touchesByPair, { base = {}, grids = {}, costByPai
   if (allFlat.length < 100) return null;
   const dates = allFlat.map(t => t.date);
   const B = { splitFrac: base.splitFrac ?? 0.6, minN: base.minN ?? 50,
-              marginPct: base.marginPct ?? 0, survivorMargin: base.survivorMargin ?? 0.5 };
+              marginPct: base.marginPct ?? 0, survivorMargin: base.survivorMargin ?? 0.5,
+              tStat: base.tStat ?? 0 };
 
-  const evalCombo = ({ splitFrac, minN, marginPct, survivorMargin }) => {
+  const evalCombo = ({ splitFrac, minN, marginPct, survivorMargin, tStat }) => {
     const splitDate = dates[Math.floor(dates.length * splitFrac)];
-    const pol = buildPolicy(allFlat.filter(t => t.date < splitDate), { minN, marginPct });
+    const pol = buildPolicy(allFlat.filter(t => t.date < splitDate), { minN, marginPct, tStat });
     const pnlByPair = {}, perPair = {}, pooled = [];
     for (const [pair, touches] of pairs) {
       const tr = priceTrades(touches.filter(t => t.date >= splitDate), pol);
@@ -577,7 +604,7 @@ export function runSensitivity(touchesByPair, { base = {}, grids = {}, costByPai
     const sd = daily.length > 1 ? Math.sqrt(daily.reduce((s, x) => s + (x - m) ** 2, 0) / daily.length) : 0;
     const port = portfolioStats(daily);
     const surv = buildSurvivors(perPair, pnlByPair, costByPair, { survivorMargin, minSurvivorTrades });
-    return { splitFrac, minN, marginPct, survivorMargin, days: daily.length, nTrades: pooled.length,
+    return { splitFrac, minN, marginPct, survivorMargin, tStat, days: daily.length, nTrades: pooled.length,
       sharpe: port.sharpe, sharpeRaw: sd > 1e-9 ? +(m / sd).toFixed(4) : 0,
       survCount: surv.count, survSharpe: surv.portfolio?.sharpe ?? 0 };
   };
@@ -587,9 +614,12 @@ export function runSensitivity(touchesByPair, { base = {}, grids = {}, costByPai
     minN:           grids.minN           ?? [30, 50, 75, 100],
     marginPct:      grids.marginPct      ?? [0, 0.005, 0.01, 0.02],
     survivorMargin: grids.survivorMargin ?? [0.25, 0.5, 0.75, 1.0],
+    // Significance-gate sweep (buildPolicy tStat) — OPT-IN only (pass grids.tStat,
+    // e.g. [0, 1, 1.5, 2, 3]) so the default sweep card keeps its exact shape.
+    ...(grids.tStat ? { tStat: grids.tStat } : {}),
   };
   const seen = new Set(), trials = [], sweeps = {};
-  const remember = r => { const k = `${r.splitFrac}|${r.minN}|${r.marginPct}|${r.survivorMargin}`;
+  const remember = r => { const k = `${r.splitFrac}|${r.minN}|${r.marginPct}|${r.survivorMargin}|${r.tStat}`;
     if (!seen.has(k)) { seen.add(k); trials.push(r); } };
   for (const [param, vals] of Object.entries(G))
     sweeps[param] = vals.map(v => { const r = evalCombo({ ...B, [param]: v }); remember(r); return r; });

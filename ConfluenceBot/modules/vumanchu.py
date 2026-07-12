@@ -89,6 +89,50 @@ def _wt_series(bars: list[dict], n1: int = 10, n2: int = 21
     return wt1, wt2
 
 
+# ── Oscillator normalisation (Batch 6) ───────────────────────────────────────
+
+_OSC_SCALE = 30.0        # 1 robust unit → 30 oscillator units (see _osc_normalise)
+_OSC_MIN_PERIODS = 20    # robust scale needs this much history; else legacy peak
+
+
+def _osc_normalise(raw: list[float], min_periods: int = _OSC_MIN_PERIODS) -> list[float]:
+    """Scale a zero-centred oscillator so fixed thresholds keep constant meaning.
+
+    OLD: divide by the window max-abs (peak → 100). The scale then hangs off
+    the single most extreme bar in view, so the fixed ±20/±30/fuel-25
+    thresholds meant something different on every refresh — one huge news bar
+    quietly compressed everything else below threshold.
+
+    NEW (Batch 6): divide by a robust scale over the FULL window — the median
+    absolute value (MAD about zero). These oscillators are zero-centred by
+    construction, so the deviation from zero IS the signal: a de-meaned std or
+    classic MAD degenerates to 0 on a constant one-sided window (relentless
+    selling — exactly the case the fuel veto exists for), while median|v|
+    stays finite there AND ignores a single outlier bar. One robust unit maps
+    to _OSC_SCALE oscillator units.
+
+    _OSC_SCALE = 30 rescales the thresholds to approximately preserve current
+    behaviour: on typical (near-Gaussian) data the old window peak sits around
+    3.3–3.7 × median|v|, so 3.5 robust units × 30 ≈ 100 ≈ the old peak. The
+    smoke-test signal fixtures (selloff / heavy-sell / divergence) classify
+    identically under both mappings — the tests define the contract.
+
+    Min-periods guard: with fewer than `min_periods` values the robust scale
+    estimate is too noisy — fall back to the legacy peak→100 mapping.
+    """
+    if not raw:
+        return list(raw)
+    if len(raw) < min_periods:
+        peak = max(abs(v) for v in raw)
+        return [v / peak * 100 for v in raw] if peak > 0 else list(raw)
+    med = sorted(abs(v) for v in raw)[len(raw) // 2]
+    if med <= 0:
+        # Degenerate half-zero window — last resort: legacy peak mapping.
+        peak = max(abs(v) for v in raw)
+        return [v / peak * 100 for v in raw] if peak > 0 else list(raw)
+    return [v / med * _OSC_SCALE for v in raw]
+
+
 # ── Money flow ───────────────────────────────────────────────────────────────
 
 def _money_flow(bars: list[dict], period: int = 14) -> list[float]:
@@ -97,10 +141,7 @@ def _money_flow(bars: list[dict], period: int = 14) -> list[float]:
         rng = b['high'] - b['low'] + 0.001
         raw.append((b['close'] - b['open']) / rng * b.get('tick_volume', 1))
 
-    peak = max(abs(v) for v in raw) if raw else 1.0
-    if peak > 0:
-        raw = [v / peak * 100 for v in raw]
-    return _ema(raw, period)
+    return _ema(_osc_normalise(raw), period)
 
 
 # ── VWAP slope exhaustion ────────────────────────────────────────────────────
@@ -151,10 +192,7 @@ def _vwap_osc_series(bars: list[dict]) -> list[float]:
         vwap = cum_tpv / cum_vol if cum_vol else tp
         raw.append(float(b['close']) - vwap)
 
-    peak = max(abs(v) for v in raw) if raw else 1.0
-    if peak > 0:
-        raw = [v / peak * 100 for v in raw]
-    return raw
+    return _osc_normalise(raw)
 
 
 # ── Swing detection ──────────────────────────────────────────────────────────

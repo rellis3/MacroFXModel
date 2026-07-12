@@ -81,8 +81,10 @@ from dotenv import load_dotenv
 
 # ── path so relative imports work from repo root or RegimeV7/ ─────────────────
 _HERE   = os.path.dirname(os.path.abspath(__file__))
+_ROOT   = os.path.join(_HERE, '..')
 _V2_DIR = os.path.join(_HERE, '..', 'RegimeV2')
 _V4_DIR = os.path.join(_HERE, '..', 'RegimeV4')
+sys.path.insert(0, _ROOT)     # pylego (events brick)
 sys.path.insert(0, _HERE)
 sys.path.insert(0, _V2_DIR)   # bocpd, macro_overlay, formatter live in RegimeV2
 sys.path.insert(0, _V4_DIR)   # regime_score_v4 lives in RegimeV4
@@ -99,6 +101,7 @@ from formatter     import (                       # noqa: E402
     entry_alert, exit_alert, lockout_alert,
 )
 from regime_score_v4 import compute_regime_score_v4  # noqa: E402
+from pylego import events as EV                       # noqa: E402  (event-blackout brick)
 
 try:
     import MetaTrader5 as mt5
@@ -757,6 +760,40 @@ def within_window_v7(cfg: dict) -> bool:
     return ws <= h < we
 
 
+# ── Event blackout (Batch 6) ──────────────────────────────────────────────────
+# fomc_window_hours was loaded since day one but gated NOTHING. New entries are
+# now blocked around scheduled high-impact events:
+#   · primary  — the platform's per-currency blackout windows (KV
+#     ``event_windows_v1``, produced hourly by js/eventGateCore.js; consumed via
+#     the pylego.events brick exactly like the volatility bot);
+#   · fallback — when that payload is missing/stale, the RegimeV2 MacroOverlay
+#     FOMC calendar: block USD pairs within ``fomc_window_hours`` of the next
+#     FOMC announcement (fail OPEN for non-USD pairs — no calendar for them).
+# Blocks NEW entries only; open-position management and exits never gate.
+
+def event_blackout_reason(pair: str, cfg: dict, event_windows: Optional[dict],
+                          macro=None, now_ms: Optional[float] = None) -> Optional[str]:
+    """Reason string when NEW entries on `pair` should be suppressed, else None."""
+    if now_ms is None:
+        now_ms = time.time() * 1000
+    ccys = EV.pair_ccys(pair)
+    sr = EV.stale_reason(event_windows, now_ms)
+    if sr is None:
+        hit, why = EV.blackout(ccys, now_ms, (event_windows or {}).get('windows'))
+        return f'event blackout: {why}' if hit else None
+    # Events feed unusable → FOMC-hours fallback for USD pairs only.
+    if 'USD' in ccys and macro is not None:
+        win_h = float(cfg.get('fomc_window_hours', 48.0))
+        try:
+            if macro.fomc.is_window(win_h):
+                h = macro.fomc.hours_to_next()
+                return (f'FOMC in {h:.0f}h (≤{win_h:.0f}h window; '
+                        f'events feed unavailable: {sr})')
+        except Exception:
+            pass
+    return None
+
+
 # ── RiskGuard V7 (simplified — no per-pair cooldown, post_exit_cooldown's own
 #    bar counter replaces it; keeps only daily/monthly drawdown lockout) ──────
 
@@ -990,6 +1027,9 @@ def run(url: str, paper_mode: bool) -> None:
 
     last_heartbeat:  dict[str, float] = {p: 0.0 for p in cfg['pairs']}
     last_cfg_reload  = time.time()
+    event_windows:   Optional[dict] = None   # KV event_windows_v1 payload (Batch 6 gate)
+    last_ev_fetch    = 0.0
+    warned_events    = False                 # stale-feed warning, once per state change
     last_mtf_bucket: Optional[int]    = None
     cycle            = 0
     pairs_status:    dict[str, dict]  = {}
@@ -1115,6 +1155,23 @@ def run(url: str, paper_mode: bool) -> None:
 
         check_force_unlock(url, risk_guard)
         macro.refresh()
+
+        # Event-blackout windows (server publishes hourly). Fail-open policy:
+        # if missing/stale we log LOUDLY once and fall back to the FOMC-hours
+        # calendar for USD pairs inside event_blackout_reason().
+        if time.time() - last_ev_fetch > 300:
+            fetched = _kv_get('event_windows_v1', url)
+            if fetched is not None:
+                event_windows = fetched
+            last_ev_fetch = time.time()
+            sr = EV.stale_reason(event_windows, time.time() * 1000)
+            if sr and not warned_events:
+                log.warning(f'!!! {sr} — falling back to the FOMC calendar window '
+                            f'for USD pairs; other high-impact events NOT gated')
+                warned_events = True
+            elif not sr and warned_events:
+                log.info('event gate active again — blackout windows fresh')
+                warned_events = False
 
         now_t      = time.time()
         cur_bucket = int(now_t // MTF_SECS)
@@ -1423,6 +1480,17 @@ def run(url: str, paper_mode: bool) -> None:
                 if cycle % 10 == 0:
                     log.info(f'[{pair}] RiskGuard: {block}')
                 pairs_status[pair] = {'status': 'blocked', 'reason': block, 'regime': regime}
+                continue
+
+            # Event blackout (Batch 6) — NEW entries only; exits/trailing above
+            # already ran. Uses KV event windows, FOMC-hours fallback for USD.
+            ev_reason = event_blackout_reason(pair, cfg, event_windows, macro)
+            if ev_reason:
+                debounce_ctr[pair] = 0
+                if new_bar:
+                    log.info(f'[{pair}] entry suppressed — {ev_reason}')
+                pairs_status[pair] = {'status': 'event_blackout', 'reason': ev_reason,
+                                      'regime': regime}
                 continue
 
             fail_cd = cfg.get('entry_fail_cooldown_secs', 300)

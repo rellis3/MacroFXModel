@@ -16,7 +16,8 @@ import { formatV2Entry } from './alertFormatterV2.js';
 import { freezePolicy, isUsablePolicy, deriveBands, flattenPolicy, learnAndFreeze } from './levelsV2Learn.js';
 import { extractTouches, buildPolicy, pnlFor, pnlHeld } from './perLineStrategy.js';
 import { buildRangeLadder } from './rangeLineAnalyser.js';
-import { recordEntries, resolvePair, ledgerStats, refitFromLedger } from './entryLedgerV2.js';
+import { recordEntries, resolvePair, ledgerStats, refitFromLedger, MIN_CONCLUSION_N } from './entryLedgerV2.js';
+import { chanceBaseline } from './levelsV2Learn.js';
 import { selectAlerts, alertKey, pruneCooldowns, GRADE_RANK } from './alertV2Core.js';
 import { countWithin, confluenceBucket } from './confluenceCount.js';
 import { mergeConfluence } from './confluenceTest.js';
@@ -243,6 +244,9 @@ console.log('[held-chandelier pricer + per-instrument learn]');
   ok('only the instrument with tradeable touches survives', Object.keys(perInstrument).length === 1 && !!perInstrument.eurusd);
   ok('frozen is per-instrument (not pooled)', frozen.perInstrument.eurusd.policy['A_1_dn|'].decision === 'fade' && frozen.perInstrument.gbpusd === undefined);
   ok('frozen version bumped to 3', frozen.version === 3 && frozen.conditions.length === 0);
+  // Batch 7: learnAndFreeze (and ONLY it) defaults the per-cell t-gate to 1.5 and
+  // stamps the chance baseline; the constant-PnL fixture (sd=0 → t=∞) still trades.
+  ok('learnAndFreeze defaults tStat 1.5 + attaches chanceBaseline', frozen.tStat === 1.5 && frozen.chanceBaseline?.cellsTested >= 1);
 }
 
 // ── 5. entryLedgerV2 (daily-learning loop) ───────────────────────────────────
@@ -307,10 +311,12 @@ console.log('[entryLedgerV2]');
 console.log('[alertV2Core]');
 {
   const sym = 'EUR/USD', pip = 0.0001, cur = 1.1000, now = 1_000_000_000_000;
+  // Entries carry expectancy (graded entries always do) — the absolute floor
+  // (minExpectancyCostMult × pair cost; eurusd cost 0.008) fails closed without it.
   const entries = [
-    { price: 1.1003, direction: 'short', grade: 'A',  cell: 'c1' },  // 3p away, A
-    { price: 1.0997, direction: 'long',  grade: 'B',  cell: 'c2' },  // 3p away, B
-    { price: 1.1050, direction: 'short', grade: 'A+', cell: 'c3' },  // 50p away, far
+    { price: 1.1003, direction: 'short', grade: 'A',  cell: 'c1', expectancy: 0.05 },  // 3p away, A
+    { price: 1.0997, direction: 'long',  grade: 'B',  cell: 'c2', expectancy: 0.04 },  // 3p away, B
+    { price: 1.1050, direction: 'short', grade: 'A+', cell: 'c3', expectancy: 0.20 },  // 50p away, far
   ];
   const cfg = { enabled: true, minGrade: 'A', cooldownMin: 120, proxPips: { default: 10 }, pairs: [] };
   const r1 = selectAlerts({ sym, entries, currentPrice: cur, pip, cfg, cooldowns: {}, now });
@@ -330,6 +336,90 @@ console.log('[alertV2Core]');
   // GRADE_RANK exported + ordered (the alert-diag readout ranks zones by it)
   ok('GRADE_RANK ordered A+ > A > B > C > SKIP',
     GRADE_RANK['A+'] > GRADE_RANK.A && GRADE_RANK.A > GRADE_RANK.B && GRADE_RANK.B > GRADE_RANK.C && GRADE_RANK.C > GRADE_RANK.SKIP);
+}
+
+// ── 6b. alert absolute-expectancy floor (Batch 7 — alerting honesty) ─────────
+console.log('[alert expectancy floor]');
+{
+  const sym = 'EUR/USD', pip = 0.0001, cur = 1.1000, now = 1_000_000_000_000;
+  const cfgA = { enabled: true, minGrade: 'A', cooldownMin: 120, proxPips: { default: 10 }, pairs: [] };
+  // A thin-expectancy A-grade: passes minGrade but 0.005% < 1.0 × 0.008% (eurusd
+  // round-trip cost) → the floor blocks the alert even though the GRADE is fine
+  // (grades are relative to the book; an alert must clear cost in absolute terms).
+  const thinA = [{ price: 1.1002, direction: 'short', grade: 'A', cell: 'thin', expectancy: 0.005 }];
+  ok('floor blocks a thin-expectancy A-grade', selectAlerts({ sym, entries: thinA, currentPrice: cur, pip, cfg: cfgA, cooldowns: {}, now }).alerts.length === 0);
+  ok('mult 0 disables the floor (escape hatch)', selectAlerts({ sym, entries: thinA, currentPrice: cur, pip, cfg: { ...cfgA, minExpectancyCostMult: 0 }, cooldowns: {}, now }).alerts.length === 1);
+  ok('explicit pairCost overrides the table', selectAlerts({ sym, entries: thinA, currentPrice: cur, pip, cfg: cfgA, cooldowns: {}, now, pairCost: 0.004 }).alerts.length === 1);
+  const fatA = [{ price: 1.1002, direction: 'short', grade: 'A', cell: 'fat', expectancy: 0.05 }];
+  ok('fat expectancy clears the default floor', selectAlerts({ sym, entries: fatA, currentPrice: cur, pip, cfg: cfgA, cooldowns: {}, now }).alerts.length === 1);
+  const noExp = [{ price: 1.1002, direction: 'short', grade: 'A', cell: 'noexp' }];
+  ok('missing expectancy fails closed', selectAlerts({ sym, entries: noExp, currentPrice: cur, pip, cfg: cfgA, cooldowns: {}, now }).alerts.length === 0);
+  ok('mult 2 raises the bar', selectAlerts({ sym, entries: [{ ...fatA[0], expectancy: 0.012 }], currentPrice: cur, pip, cfg: { ...cfgA, minExpectancyCostMult: 2 }, cooldowns: {}, now }).alerts.length === 0);
+}
+
+// ── 6c. ledger n<30 insufficient-sample flag (Batch 7) ───────────────────────
+console.log('[ledger insufficient-sample flag]');
+{
+  ok('MIN_CONCLUSION_N is the standing 30 floor', MIN_CONCLUSION_N === 30);
+  const mkRec = (grade, i, win) => ({ sym: 'EUR/USD', cell: `c${i}`, grade, outcome: win ? 'win' : 'loss',
+    realizedPct: win ? 0.1 : -0.1, policyExpectancy: 0.05 });
+  // 5 resolved A trades → flagged insufficient (raw numbers still present).
+  const thin = ledgerStats(Array.from({ length: 5 }, (_, i) => mkRec('A', i, i % 2 === 0)));
+  ok('n<30 grade flagged insufficient', thin.byGrade['A']?.insufficient === true);
+  ok('raw numbers still returned (suppress at display only)', thin.byGrade['A'].winRate != null && thin.byGrade['A'].realizedExpectancy != null);
+  ok('stats expose minConclusionN', thin.minConclusionN === 30);
+  // 35 resolved B trades → not flagged.
+  const fat = ledgerStats(Array.from({ length: 35 }, (_, i) => mkRec('B', i, i % 3 !== 0)));
+  ok('n≥30 grade not flagged', fat.byGrade['B']?.insufficient === false);
+}
+
+// ── 6d. buildPolicy t-gate (Batch 7 — per-cell significance) ─────────────────
+console.log('[buildPolicy t-gate]');
+{
+  // High-variance cell that passes on MEAN alone: fade PnL alternates +1.0/−0.9
+  // gross (mean +0.05, net of 0.01 cost → +0.04) but sd ≈ 0.96 → t ≈ 0.3 at n=60.
+  // Margin gate alone trades it; the t-gate correctly calls it noise.
+  const mkT = (i, fade) => ({ date: `2024-01-${String((i % 28) + 1).padStart(2, '0')}`, cell: 'HV_1_dn|',
+    reverted: i % 2 === 0, level: 100, innerLvl: 102, outerLvl: 98, decidedBy: 'barrier', closePx: 100, open: 100,
+    fChand: -0.5, fChandFade: fade, cost: 0.01, slip: 0.005 });
+  const noisy = Array.from({ length: 60 }, (_, i) => mkT(i, i % 2 === 0 ? 1.0 : -0.9));
+  const noGate = buildPolicy(noisy, { minN: 50, pricer: pnlHeld });               // tStat default 0 = no-op
+  const gated  = buildPolicy(noisy, { minN: 50, pricer: pnlHeld, tStat: 1.5 });
+  ok('tStat 0 (default) trades the noisy cell — prior behaviour', noGate['HV_1_dn|'].decision === 'fade' && noGate['HV_1_dn|'].expectancy > 0);
+  ok('tStat 1.5 rejects the high-variance cell', gated['HV_1_dn|'].decision === 'skip', `t=${gated['HV_1_dn|'].t}`);
+  ok('skip reason is notSignificant (not belowMargin)', gated['HV_1_dn|'].reason === 'notSignificant');
+  ok('cell carries its t (mean/SE)', noGate['HV_1_dn|'].t != null && Math.abs(noGate['HV_1_dn|'].t) < 1.5, `t=${noGate['HV_1_dn|'].t}`);
+  // A consistent cell (constant positive PnL → sd 0 → t = ∞) passes any gate.
+  const steady = Array.from({ length: 60 }, (_, i) => mkT(i, 0.2));
+  const steadyPol = buildPolicy(steady, { minN: 50, pricer: pnlHeld, tStat: 1.5 });
+  ok('consistent cell passes the t-gate', steadyPol['HV_1_dn|'].decision === 'fade');
+  // decide() labels the t-gate skip honestly.
+  const d = decide({ name: 'HV_1', side: 'dn', condKey: '', level: 100, inner: 98, outer: 102 },
+    { 'HV_1_dn|': { decision: 'skip', n: 60, reason: 'notSignificant', expectancy: 0.04 } });
+  ok('decide maps notSignificant to a noise-labelled skip', d.action === 'skip' && /noise|t-gate/.test(d.reason), d.reason);
+}
+
+// ── 6e. chance baseline (Batch 7 — multiple-testing honesty on the OOS card) ─
+console.log('[chance baseline]');
+{
+  // 4 cells: 1 traded, 1 belowMargin, 1 notSignificant (all reached the gate),
+  // 1 lowN (never tested) → C = 3 tested, 1 passed.
+  const perInstrument = { eurusd: { policy: {
+    a: { decision: 'fade', n: 60, expectancy: 0.10 },
+    b: { decision: 'skip', n: 60, reason: 'belowMargin' },
+    c: { decision: 'skip', n: 60, reason: 'notSignificant' },
+    d: { decision: 'skip', n: 10, reason: 'lowN' },
+  } } };
+  const cb = chanceBaseline(perInstrument, { tStat: 1.5, marginPct: 0, minN: 50 });
+  ok('counts tested cells (lowN excluded)', cb.cellsTested === 3 && cb.passed === 1);
+  ok('P(t>1.5) ≈ 6.7% one-sided', approx(cb.pNull, 0.0668, 0.002), `pNull=${cb.pNull}`);
+  ok('expectedByChance = pNull × C', approx(cb.expectedByChance, 3 * cb.pNull, 0.06), `exp=${cb.expectedByChance}`);
+  ok('note states tested/chance/passed', /3 cells tested/.test(cb.note) && /1 passed/.test(cb.note) && /OOS-positive/.test(cb.note));
+  const cb0 = chanceBaseline(perInstrument, { tStat: 0, marginPct: 0, minN: 50 });
+  ok('tStat 0 → null passes half the time', cb0.pNull === 0.5 && approx(cb0.expectedByChance, 1.5, 1e-9));
+  // freezePolicy attaches it + records the gate params.
+  const f = freezePolicy(perInstrument, { conditions: [], minN: 50, marginPct: 0, tStat: 1.5 }, '2024-01-01T00:00:00Z');
+  ok('freeze carries tStat + chanceBaseline', f.tStat === 1.5 && f.chanceBaseline?.cellsTested === 3 && f.chanceBaseline.passed === 1);
 }
 
 // ── 7. confluence helpers ────────────────────────────────────────────────────

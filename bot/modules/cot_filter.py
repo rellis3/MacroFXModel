@@ -1,15 +1,74 @@
+from datetime import datetime, timezone
+
 from .base import BaseModule, ModuleResult
+
+# Report older than this many days → the module stands down (COT is weekly;
+# a fresh report is already 3–10 days old when it lands, so >10 days means a
+# missed report cycle and the positioning read is no longer current).
+STALE_DAYS = 10
+
+# Percentile extremes (DF-01): beyond these, spec positioning is CROWDED and
+# is a contrarian caution, not a confirmation.
+EXTREME_HI = 90.0
+EXTREME_LO = 10.0
+
+# Fallback when the snapshot has no percentile: |z| of spec net vs history
+# beyond this counts as an extreme.
+EXTREME_Z = 2.0
+
+
+def _parse_report_date(raw) -> datetime | None:
+    """COT report date arrives as 'YYYY-MM-DD' (cot-extremes path), an ISO
+    timestamp, or 'Month D, YYYY' (legacy parseCFTCFile changeDate)."""
+    if not raw:
+        return None
+    s = str(raw).strip().split('T')[0]
+    for fmt in ('%Y-%m-%d', '%B %d, %Y', '%b %d, %Y'):
+        try:
+            return datetime.strptime(s.replace(',', ', ').replace('  ', ' '), fmt) \
+                .replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
 
 
 class COTFilterModule(BaseModule):
     """
-    CFTC Commitment of Traders confirmation.
-    Uses leveraged-fund net positioning (levNet) and its week-on-week change
-    (levNetChg) to determine whether spec money is aligned with the entry direction.
+    CFTC positioning filter — DF-01 recipe (Batch 6 rewrite).
 
-    Confirms: COT direction matches entry → pass.
-    Conflicts: COT direction opposes entry → block.
-    Flat / ambiguous → pass with neutral score (no extra edge, no veto).
+    The old module treated the raw sign of leveraged-fund net positioning
+    (levNet) plus its weekly change as directional CONFIRMATION. The lesson
+    recipe (DF-01) is the opposite framing: positioning only carries signal at
+    EXTREMES, where the crowd is one-sided and the trade is crowded —
+    net position → normalise by open interest → rolling z-score → percentile
+    vs history → treat >90th / <10th percentile as contrarian caution.
+
+    What the KV snapshot (regime_snapshot.pairs[pair].cot, built by the
+    dashboard from cot_extremes_v2) actually provides:
+      · specPct — percentile of the CURRENT spec net vs the full fetched
+        history (~3y). NOTE: the worker ranks the RAW net, not the
+        OI-normalised net — the snapshot carries only the current week's
+        openInterest, not an OI history, so the OI-normalisation step of
+        DF-01 cannot be computed bot-side. Documented gap, not faked.
+      · specZ — z-score of the raw spec net vs the same history (fallback
+        extreme detector when specPct is missing).
+      · levPct — current net as % of current OI (single point; reported in
+        metadata only, no history to rank it against).
+      · reportDate / changeDate — CFTC report date, used for the staleness
+        gate below.
+
+    Behaviour:
+      · report date missing or > STALE_DAYS old  → NEUTRAL pass with warning.
+      · no extreme                               → NEUTRAL pass, score 0.5
+        (positioning is NOT confirmation — no directional vote either way).
+      · extreme AND entry direction rides the crowd (entry LONG into >90th
+        pct crowded-long, or SHORT into <10th crowded-short) → module FAILS
+        (passed=False) so the entry loses this module from the composite and
+        the reason is journalled. Not a hard BLOCK signal — other modules may
+        still legitimately kill or carry the entry.
+      · extreme AND entry fades the crowd → pass with a modest contrarian
+        score bump (0.60) — still no directional vote (signal stays NEUTRAL,
+        so it never counts toward min_agree).
     """
 
     name = 'cot_filter'
@@ -25,43 +84,82 @@ class COTFilterModule(BaseModule):
                 reason='No COT data — filter skipped',
             )
 
-        lev_net     = cot.get('levNet', 0) or 0
-        lev_net_chg = cot.get('levNetChg', 0) or 0
-        gross_ratio = cot.get('grossRatio', 1.0) or 1.0
+        lev_net  = cot.get('levNet', 0) or 0
+        spec_pct = cot.get('specPct')          # percentile vs ~3y history (worker)
+        spec_z   = cot.get('specZ')            # z vs same history
+        lev_pct  = cot.get('levPct')           # current net % of OI (single point)
+        raw_date = cot.get('reportDate') or cot.get('changeDate')
 
-        # Determine COT directional signal
-        if lev_net > 0 and lev_net_chg >= 0:
-            cot_signal = 'LONG'
-            score = min(0.55 + abs(lev_net_chg) / max(abs(lev_net), 1) * 0.25, 0.90)
-        elif lev_net < 0 and lev_net_chg <= 0:
-            cot_signal = 'SHORT'
-            score = min(0.55 + abs(lev_net_chg) / max(abs(lev_net), 1) * 0.25, 0.90)
-        elif lev_net > 0:
-            cot_signal = 'LONG'   # net long but reducing — weakening momentum
-            score = 0.40
-        elif lev_net < 0:
-            cot_signal = 'SHORT'  # net short but covering
-            score = 0.40
+        meta = {'lev_net': lev_net, 'spec_pct': spec_pct, 'spec_z': spec_z,
+                'lev_pct_of_oi': lev_pct, 'report_date': str(raw_date or '')}
+
+        # ── Staleness gate ────────────────────────────────────────────────────
+        report_dt = _parse_report_date(raw_date)
+        if report_dt is None:
+            return ModuleResult(
+                passed=True, signal='NEUTRAL', score=0.5, confidence='LOW',
+                reason=f'COT report date missing/unparseable ({raw_date!r}) — '
+                       f'standing down (no staleness guarantee)',
+                metadata=meta,
+            )
+        age_days = (datetime.now(timezone.utc) - report_dt).days
+        meta['report_age_days'] = age_days
+        if age_days > STALE_DAYS:
+            return ModuleResult(
+                passed=True, signal='NEUTRAL', score=0.5, confidence='LOW',
+                reason=f'⚠ COT report {age_days}d old (> {STALE_DAYS}d) — stale, '
+                       f'positioning read ignored',
+                metadata=meta,
+            )
+
+        # ── Extreme detection (percentile preferred, z-score fallback) ────────
+        crowded = None    # 'LONG' = crowd is stretched long, 'SHORT' = stretched short
+        basis = ''
+        if spec_pct is not None:
+            if spec_pct >= EXTREME_HI:
+                crowded, basis = 'LONG', f'{spec_pct:.0f}th pct'
+            elif spec_pct <= EXTREME_LO:
+                crowded, basis = 'SHORT', f'{spec_pct:.0f}th pct'
+        elif spec_z is not None:
+            # No percentile in this snapshot shape — use the raw-net z-score.
+            if spec_z >= EXTREME_Z:
+                crowded, basis = 'LONG', f'z={spec_z:+.1f}'
+            elif spec_z <= -EXTREME_Z:
+                crowded, basis = 'SHORT', f'z={spec_z:+.1f}'
         else:
-            cot_signal = 'NEUTRAL'
-            score = 0.50
+            return ModuleResult(
+                passed=True, signal='NEUTRAL', score=0.5, confidence='LOW',
+                reason='COT snapshot has no percentile/z history fields — '
+                       'extremes recipe not computable, standing down',
+                metadata=meta,
+            )
 
-        # Check against entry direction from confluence
         entry_direction = None
         if ctx and 'confluence' in ctx and ctx['confluence']:
-            entry_direction = ctx['confluence'].signal  # LONG | SHORT
+            sig = ctx['confluence'].signal
+            if sig in ('LONG', 'SHORT'):
+                entry_direction = sig
 
-        reason = f'COT {cot_signal} · levNet:{lev_net:+d} chg:{lev_net_chg:+d} ratio:{gross_ratio:.2f}'
+        if crowded is None:
+            return ModuleResult(
+                passed=True, signal='NEUTRAL', score=0.5, confidence='MEDIUM',
+                reason=f'COT not extreme (pct={spec_pct} z={spec_z}) — '
+                       f'positioning is not confirmation, no vote',
+                metadata=meta,
+            )
 
-        if entry_direction in ('LONG', 'SHORT') and cot_signal not in ('NEUTRAL',):
-            if cot_signal != entry_direction:
-                return ModuleResult(
-                    passed=False, signal=cot_signal, score=score, confidence='MEDIUM',
-                    reason=f'COT CONFLICT — {cot_signal} vs entry {entry_direction} · {reason}',
-                )
+        # ── Extreme: contrarian caution, never confirmation ──────────────────
+        if entry_direction == crowded:
+            return ModuleResult(
+                passed=False, signal='NEUTRAL', score=0.25, confidence='MEDIUM',
+                reason=f'COT EXTREME — spec crowd stretched {crowded} ({basis}); '
+                       f'{entry_direction} entry rides a crowded trade — caution veto',
+                metadata=meta,
+            )
 
         return ModuleResult(
-            passed=True, signal=cot_signal, score=score, confidence='MEDIUM',
-            reason=reason,
-            metadata={'lev_net': lev_net, 'lev_net_chg': lev_net_chg, 'gross_ratio': gross_ratio},
+            passed=True, signal='NEUTRAL', score=0.60, confidence='MEDIUM',
+            reason=f'COT EXTREME {crowded} ({basis}) — entry fades the crowd '
+                   f'(contrarian support)',
+            metadata=meta,
         )
