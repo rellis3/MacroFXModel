@@ -47,6 +47,7 @@ from typing import Optional
 # GoldV2/modules must take priority over bot/modules (both use 'modules.*').
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'bot'))
+sys.path.insert(2, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))  # pylego
 
 import requests
 from dotenv import load_dotenv
@@ -64,6 +65,7 @@ from modules.trade_manager import TradeManager, ManagedTrade, paper_close_exec
 from modules.exits import plan_exits
 
 from journal import GoldV2Journal
+from pylego import events as EV      # event-blackout brick (KV event_windows_v1)
 
 load_dotenv()
 
@@ -142,6 +144,9 @@ DEFAULT_CFG: dict = {
     'htf_block':                   True,
     'htf_block_confidence':        0.5,
     'use_vol_forecast':            True,   # /api/vol-forecast for range cap + confluence
+    'event_blackout_min':          30,     # block new arms/entries within ±N min of a
+                                           # high-impact USD event (KV event_windows_v1;
+                                           # fail OPEN if feed unavailable; ≤0 disables)
 
     'log_dir':                     '.',
 }
@@ -320,6 +325,43 @@ def _macro_allows(direction: str, base_url: str) -> tuple[bool, str]:
     if direction == 'SHORT' and not short_ok and strength == 'STRONG':
         return False, f'Gold macro BLOCK: {signal} {strength} ({regime}) vs SHORT'
     return True, f'Macro OK: {signal} {strength} ({regime})'
+
+
+def event_blackout_reason(cfg: dict, event_windows: Optional[dict],
+                          now_ms: Optional[float] = None) -> Optional[str]:
+    """Batch 6 — reason string when NEW arms/entries should be suppressed
+    because a high-impact USD event is within ±event_blackout_min minutes.
+
+    Uses the platform's per-currency event windows (KV ``event_windows_v1``,
+    same source as the volatility bot via the pylego.events brick) but applies
+    THIS bot's own ±N-minute band around each event time (config
+    ``event_blackout_min``, default 30; ≤0 disables). Gold is a USD-quoted
+    macro asset — only USD events gate. FAIL OPEN when the feed is missing or
+    stale (the loop logs that once per state change): a silent stale gate is
+    worse than none.
+    """
+    mins = float(cfg.get('event_blackout_min', 30))
+    if mins <= 0:
+        return None
+    if now_ms is None:
+        now_ms = time.time() * 1000
+    if EV.stale_reason(event_windows, now_ms) is not None:
+        return None                                   # fail OPEN
+    half_ms = mins * 60_000
+    for w in (event_windows or {}).get('windows') or []:
+        if w.get('ccy') != 'USD':
+            continue
+        if str(w.get('impact') or 'high').lower() != 'high':
+            continue
+        ev_ms = w.get('eventTimeMs') or w.get('startMs')
+        if ev_ms is None:
+            continue
+        if abs(now_ms - ev_ms) <= half_ms:
+            away = round((ev_ms - now_ms) / 60_000)
+            when = f'in {away}m' if away >= 0 else f'{-away}m ago'
+            return (f"{w.get('title') or 'high-impact USD event'} {when} "
+                    f"(±{mins:.0f}m blackout)")
+    return None
 
 
 def _ml_allows(zone_id: str, base_url: str) -> tuple[bool, str]:
@@ -611,6 +653,11 @@ class GoldBotV2:
         self._watch: dict[str, dict] = {}
         self._watch_dirty = False
         self._last_watch_push = 0.0
+        # Event blackout (Batch 6): KV event_windows_v1 payload + once-per-state
+        # warning latch for a missing/stale feed (fail OPEN, warn LOUDLY once).
+        self.event_windows: Optional[dict] = None
+        self._ev_warned = False
+        self._ev_skip_logged: set = set()   # zone_ids journalled this blackout
 
     # ── lifecycle ─────────────────────────────────────────────────────────────
 
@@ -672,6 +719,20 @@ class GoldBotV2:
             log.info('[REFRESH] Bot disabled via config — skipping')
             self._push_status(None)
             return
+
+        # Event-blackout windows (server publishes hourly). Fail-open with a
+        # once-per-state warning — see event_blackout_reason().
+        fetched_ev = _kv_get('event_windows_v1', self.base_url)
+        if fetched_ev is not None:
+            self.event_windows = fetched_ev
+        _ev_sr = EV.stale_reason(self.event_windows, time.time() * 1000)
+        if _ev_sr and not self._ev_warned:
+            log.warning(f'[EVENTS] !!! {_ev_sr} — event blackout gate INACTIVE '
+                        f'(fail open) until the feed recovers')
+            self._ev_warned = True
+        elif not _ev_sr and self._ev_warned:
+            log.info('[EVENTS] event windows fresh again — blackout gate active')
+            self._ev_warned = False
 
         log.info('[REFRESH] Fetching bars and recomputing level matrix...')
 
@@ -1057,6 +1118,10 @@ class GoldBotV2:
     def _scan_zones(self, price: float) -> None:
         if len(self.tm.armed) >= int(self.cfg.get('max_armed_zones', 3)):
             return
+        # Event blackout (Batch 6): no NEW arms near a high-impact USD event.
+        # Open trades / already-armed zones keep managing normally.
+        if event_blackout_reason(self.cfg, self.event_windows):
+            return
         min_score = self._min_score()
         prox = float(self.cfg.get('proximity_pips', 5.0)) * PIP
         htf  = self.htf_bias
@@ -1182,6 +1247,18 @@ class GoldBotV2:
         direction = vu.direction
 
         # ── Gates ─────────────────────────────────────────────────────────────
+        # Event blackout (Batch 6): NEW entries only. Zone stays armed — the
+        # blackout clears with the clock and the setup may still be valid.
+        # Journalled once per zone per blackout (this path runs every tick).
+        ev_reason = event_blackout_reason(self.cfg, self.event_windows)
+        if ev_reason:
+            if zone.zone_id not in self._ev_skip_logged:
+                self._ev_skip_logged.add(zone.zone_id)
+                self.journal.log_skip(zone.zone_id, 'event', ev_reason)
+                log.info(f'[EVENTS] entry suppressed — {ev_reason}')
+            return
+        self._ev_skip_logged.discard(zone.zone_id)
+
         if self.cfg.get('gold_macro_gate', True):
             ok, reason = _macro_allows(direction, self.base_url)
             if not ok:

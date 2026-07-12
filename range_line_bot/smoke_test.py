@@ -100,5 +100,20 @@ ok("no entry while forming (dry_run gate suppresses the touch)", s_form.decide(1
 s_open = RangeSession("nq", FIBS); s_open.set_range("A", BARS)
 ok("entry fires when the window is open (dry_run False)", len(s_open.decide(110.0, POLICY, dry_run=False)) == 1)
 
+print("[plan boundaryHour DST sanity check (Batch 6)]")
+from range_line_bot.range_line_bot import check_plan_boundary_dst
+t_jul = int(datetime(2026, 7, 15, 12, 0, 0, tzinfo=timezone.utc).timestamp())   # BST → midnight = 23 UTC
+t_jan = int(datetime(2026, 1, 15, 12, 0, 0, tzinfo=timezone.utc).timestamp())   # GMT → midnight = 0 UTC
+ok("July: boundaryHour 23 matches BST London midnight",
+   check_plan_boundary_dst({"boundaryHour": 23}, t_jul) is True)
+ok("July: boundaryHour 0 flags a DST mismatch (warning only)",
+   check_plan_boundary_dst({"boundaryHour": 0}, t_jul) is False)
+ok("January: boundaryHour 0 matches GMT London midnight",
+   check_plan_boundary_dst({"boundaryHour": 0}, t_jan) is True)
+ok("January: boundaryHour 23 flags a DST mismatch",
+   check_plan_boundary_dst({"boundaryHour": 23}, t_jan) is False)
+ok("no plan / no boundaryHour → None (nothing to check)",
+   check_plan_boundary_dst(None) is None and check_plan_boundary_dst({}) is None)
+
 print(f"\n{'✗' if _f else '✓'} {_p} passed, {_f} failed")
 sys.exit(1 if _f else 0)

@@ -83,5 +83,55 @@ check('RiskGuardV7 trips on a paper drawdown', reason is not None, str(reason))
 # restore module state for any later importers in this process
 bot._paper_equity = bot.PAPER_START_BALANCE
 
+
+print('\n── event blackout gate (Batch 6 — fomc_window_hours finally gates) ──')
+_NOW_MS = 1_750_000_000_000.0
+
+
+def _windows(ccy='USD', start_off=-10, end_off=+10):
+    return {'generatedAt': _NOW_MS - 60_000, 'preMin': 45, 'postMin': 15,
+            'windows': [{'ccy': ccy, 'startMs': _NOW_MS + start_off * 60_000,
+                         'endMs': _NOW_MS + end_off * 60_000,
+                         'eventTimeMs': _NOW_MS + (start_off + 45) * 60_000,
+                         'impact': 'high', 'title': 'FOMC Rate Decision'}]}
+
+
+class _FomcStub:
+    def __init__(self, hours): self._h = hours
+    def is_window(self, win_h): return self._h is not None and self._h <= win_h
+    def hours_to_next(self): return self._h
+
+
+class _MacroStub:
+    def __init__(self, hours): self.fomc = _FomcStub(hours)
+
+
+check('inside a USD window → USD pair blocked',
+      bot.event_blackout_reason('EUR/USD', {}, _windows(), None, _NOW_MS) is not None)
+check('inside a USD window → gold (XAU/USD) blocked',
+      bot.event_blackout_reason('XAU/USD', {}, _windows(), None, _NOW_MS) is not None)
+check('USD window does not block a non-USD pair',
+      bot.event_blackout_reason('EUR/GBP', {}, _windows(), None, _NOW_MS) is None)
+check('outside the window → no block',
+      bot.event_blackout_reason('EUR/USD', {}, _windows(start_off=-120, end_off=-60),
+                                None, _NOW_MS) is None)
+check('fresh feed present → FOMC fallback NOT consulted (narrow windows win)',
+      bot.event_blackout_reason('EUR/USD', {'fomc_window_hours': 48.0},
+                                _windows(start_off=-120, end_off=-60),
+                                _MacroStub(hours=24.0), _NOW_MS) is None)
+
+_stale = {'generatedAt': _NOW_MS - 48 * 3600 * 1000, 'windows': []}
+check('stale feed + FOMC within window → USD pair blocked (fallback)',
+      'FOMC' in (bot.event_blackout_reason('EUR/USD', {'fomc_window_hours': 48.0},
+                                           _stale, _MacroStub(hours=24.0), _NOW_MS) or ''))
+check('stale feed + FOMC far away → no block',
+      bot.event_blackout_reason('EUR/USD', {'fomc_window_hours': 48.0},
+                                _stale, _MacroStub(hours=100.0), _NOW_MS) is None)
+check('stale feed → non-USD pair fails OPEN (no FOMC calendar for it)',
+      bot.event_blackout_reason('EUR/GBP', {'fomc_window_hours': 48.0},
+                                _stale, _MacroStub(hours=1.0), _NOW_MS) is None)
+check('missing feed + no macro → fails OPEN',
+      bot.event_blackout_reason('EUR/USD', {}, None, None, _NOW_MS) is None)
+
 print(f'\n{"=" * 60}\n{PASS} passed, {FAIL} failed\n')
 sys.exit(1 if FAIL else 0)

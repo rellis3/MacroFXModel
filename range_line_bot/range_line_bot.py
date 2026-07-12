@@ -35,6 +35,7 @@ from pylego.costs import entry_slip_pct, realized_fill, expected_fill, max_sprea
 from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
 from pylego.strategy.rangeline import chandelier_stop        # noqa: E402
 from range_line_bot.engine import RangeSession, session_anchor_epoch, SRC_MINUTES  # noqa: E402
+from volatility_bot.engine import _london_offset_hours       # noqa: E402  (shared DST rule)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("range_line_bot")
@@ -161,6 +162,39 @@ def _fill_and_slip(broker, tid, spec, session_open):
     fill = realized_fill(broker, tid)
     slip = entry_slip_pct(spec["dir_up"], fill, spec["entry"], session_open or spec["entry"])
     return fill, slip
+
+
+def check_plan_boundary_dst(plan, now_epoch: float | None = None) -> bool | None:
+    """Startup / plan-refresh DST sanity check (Batch 6).
+
+    The plan ships a FIXED-UTC ``boundaryHour`` frozen when the policy was
+    learned (see engine.session_anchor_epoch), but the strategy's session day
+    is a LONDON day — after a clock change the frozen hour anchors the ladders
+    one hour off the true London midnight until the plan is re-frozen. Compare
+    the plan's hour to the currently-correct London-midnight UTC hour (0 in
+    GMT, 23 in BST — reuses volatility_bot.engine._london_offset_hours) and
+    log LOUDLY on mismatch. WARNING ONLY — the learned policy was frozen on
+    those hours, so we never auto-shift.
+
+    Returns True (match) / False (mismatch) / None (no plan or no boundaryHour).
+    """
+    if not plan or plan.get("boundaryHour") is None:
+        return None
+    now_utc = datetime.fromtimestamp(now_epoch if now_epoch is not None else time.time(),
+                                     tz=timezone.utc)
+    offset = _london_offset_hours(now_utc)
+    correct = (24 - offset) % 24            # London midnight expressed in UTC
+    bh = int(plan["boundaryHour"]) % 24
+    if bh == correct:
+        return True
+    log.warning("=" * 72)
+    log.warning(
+        f"!!! DST MISMATCH: plan boundaryHour {bh} but London midnight is "
+        f"{correct} UTC right now — the frozen ladders anchor off the current "
+        f"London day. RE-FREEZE THE PLAN. (Warning only: the learned policy "
+        f"was frozen on these hours — NOT auto-shifting.)")
+    log.warning("=" * 72)
+    return False
 
 
 def monday_anchor_epoch(now_epoch: float, boundary_hour: int) -> int:
@@ -360,6 +394,7 @@ def run(base_url: str, force_live: bool) -> None:
             if new_plan and new_plan.get("generatedAt") != (plan or {}).get("generatedAt"):
                 plan = new_plan
                 log.info(f"new plan loaded · {plan.get('generatedAt')} · {len(plan.get('universe', []))} instruments")
+                check_plan_boundary_dst(plan, nowt)   # startup + every refresh (Batch 6)
             # Confluence levels (for the optional entry gate). Best-effort: a missing
             # artifact just leaves sessions ungated (with confluence_min>0 that means
             # no trades until it appears — logged once so it's visible).

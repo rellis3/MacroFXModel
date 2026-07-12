@@ -329,6 +329,11 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     entry_dir  = result.get('entry_dir')
     conviction = result.get('conviction', 0.0)
     confirms   = result.get('confirm_count', 0)
+    # Independence count: at most one confirm per feature family (trend /
+    # divergence / structure / other — see engine.FEATURE_FAMILY). The raw
+    # `confirms` treats correlated detectors (MACD + HTF-EMA + ADX + TWAP all
+    # reading the same trend) as independent votes; the gate must not.
+    fam_confirms = result.get('family_confirm_count', confirms)
     conflicts  = result.get('conflict_count', 0)
     atr        = result.get('atr', pip * 20)
 
@@ -339,7 +344,7 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     scored   = result.get('results', [])
     feat_str = '  '.join(f'{r["key"][:8]}{r.get("icon","·")}' for r in scored) or 'no features'
     log.info(f'  {pair}  dir={entry_dir or "none":5s}  conv={conviction:.2f}  '
-             f'confirms={confirms} conflicts={conflicts}  [{feat_str}]')
+             f'confirms={confirms} (families={fam_confirms}) conflicts={conflicts}  [{feat_str}]')
 
     if not entry_dir:
         return st
@@ -348,8 +353,9 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     if conviction < cfg.get('minConviction', 0.20):
         log.info(f'  {pair}  skip — conviction {conviction:.2f} < {cfg["minConviction"]}')
         return st
-    if confirms < cfg.get('minConfirms', 3):
-        log.info(f'  {pair}  skip — confirms {confirms} < {cfg["minConfirms"]}')
+    if fam_confirms < cfg.get('minConfirms', 3):
+        log.info(f'  {pair}  skip — family confirms {fam_confirms} '
+                 f'(raw {confirms}) < {cfg["minConfirms"]}')
         return st
 
     # ── Server regime veto (1m HMM from Railway) ──────────────────────────
@@ -479,6 +485,13 @@ def main() -> None:
         else:
             log.warning('No backtestsystem_live_config in KV — running on built-in defaults. '
                         'Save config from the dashboard bot-config page to populate it.')
+
+    # flipOnSL defaults to False (Batch 6): reversing on a stop-out has no
+    # validation evidence and doubles cost drag at failed levels. If the owner
+    # explicitly turned it on in active.json / KV, honour it — but say so loudly.
+    if cfg.get('flipOnSL'):
+        log.warning('flipOnSL is ENABLED (owner opt-in, no validation evidence) — '
+                    'stop-outs will reverse position and pay a second round of costs.')
 
     if not connect(mt5_account, mt5_password, mt5_server, mt5_path):
         log.error('MT5 connection failed — check .env and MT5 terminal')

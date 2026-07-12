@@ -550,16 +550,32 @@ def score_zones(zones: list[ZoneV2], vol, session, htf,
                 comp.append(f'nPOC {npoc.price:.1f} ({npoc.age_days}d)')
                 break
 
-        # ── Today's POC / HVN / VAH / VAL ────────────────────────────────────
+        # ── Today's POC / HVN / VAH / VAL — ONE volume-profile family credit ─
+        # POC, HVNs and the value-area edges are all reads of the same day's
+        # volume distribution; a zone at the POC is almost always inside the
+        # value area too, so stacking their credits double-counts one fact.
+        # Award the family ONCE at the strongest matching member's weight
+        # (Batch 6 scoring dedup). nPOC above stays separate — it is
+        # age-weighted and describes a PRIOR day's distribution.
+        vp_credit = 0.0
+        vp_hits: list[str] = []
         if near(c, vol.poc):
-            score += NONFIB_WEIGHTS['poc']; comp.append(f'POC {vol.poc:.1f}')
+            vp_credit = max(vp_credit, NONFIB_WEIGHTS['poc'])
+            vp_hits.append(f'POC {vol.poc:.1f}')
         for hvn in vol.hvn_levels:
             if near(c, hvn):
-                score += NONFIB_WEIGHTS['hvn']; comp.append(f'HVN {hvn:.1f}'); break
+                vp_credit = max(vp_credit, NONFIB_WEIGHTS['hvn'])
+                vp_hits.append(f'HVN {hvn:.1f}')
+                break
         if near(c, vol.vah):
-            score += NONFIB_WEIGHTS['vah_val']; comp.append('VAH')
+            vp_credit = max(vp_credit, NONFIB_WEIGHTS['vah_val'])
+            vp_hits.append('VAH')
         elif near(c, vol.val):
-            score += NONFIB_WEIGHTS['vah_val']; comp.append('VAL')
+            vp_credit = max(vp_credit, NONFIB_WEIGHTS['vah_val'])
+            vp_hits.append('VAL')
+        if vp_credit > 0.0:
+            score += vp_credit
+            comp.append(' + '.join(vp_hits))
 
         # ── VWAP anchors (age-weighted, one credit) ──────────────────────────
         for anchor in session.vwap_anchors:
@@ -590,18 +606,36 @@ def score_zones(zones: list[ZoneV2], vol, session, htf,
                     comp.append(f'σ {lbl} {p:.1f}')
                     break
 
-        # ── Session / daily levels ────────────────────────────────────────────
+        # ── Session / daily levels — ONE prior-session-structure credit ──────
+        # Floor pivots are deterministic functions of prev-day H/L/C, and the
+        # daily open / prev-day H/L / session H/L all describe the same prior
+        # session's structure — when one sits at a zone the others usually do
+        # too, so separate credits quadruple-count one piece of evidence.
+        # Award the family ONCE at the strongest matching member's weight
+        # (Batch 6 scoring dedup). σ-forecast lines, VWAP anchors, trendlines
+        # and HTF alignment are independent sources and keep their own credits.
+        ps_credit = 0.0
+        ps_hits: list[str] = []
         if session.daily_open and near(c, session.daily_open, 1.5):
-            score += NONFIB_WEIGHTS['daily_open']; comp.append('Daily open')
+            ps_credit = max(ps_credit, NONFIB_WEIGHTS['daily_open'])
+            ps_hits.append('Daily open')
         if near(c, session.prev_daily_high, 1.5) or near(c, session.prev_daily_low, 1.5):
-            score += NONFIB_WEIGHTS['prev_day_hl']; comp.append('Prev day H/L')
+            ps_credit = max(ps_credit, NONFIB_WEIGHTS['prev_day_hl'])
+            ps_hits.append('Prev day H/L')
         for lvl in (session.asia_high, session.asia_low, session.london_high,
                     session.london_low, session.ny_high, session.ny_low):
             if lvl and near(c, lvl, 1.5):
-                score += NONFIB_WEIGHTS['session_hl']; comp.append('Session H/L'); break
+                ps_credit = max(ps_credit, NONFIB_WEIGHTS['session_hl'])
+                ps_hits.append('Session H/L')
+                break
         for pvt in (session.pivot, session.r1, session.r2, session.s1, session.s2):
             if near(c, pvt, 1.5):
-                score += NONFIB_WEIGHTS['pivot']; comp.append('Pivot'); break
+                ps_credit = max(ps_credit, NONFIB_WEIGHTS['pivot'])
+                ps_hits.append('Pivot')
+                break
+        if ps_credit > 0.0:
+            score += ps_credit
+            comp.append(' + '.join(ps_hits))
 
         # ── HTF alignment ─────────────────────────────────────────────────────
         bullish = zone.direction == 'long'

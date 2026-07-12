@@ -1004,9 +1004,17 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
         pair_status['reason'] = comp_reason
         return pair_status
 
-    passing_dir = sum(1 for v in results.values() if v and v.passed and v.signal == direction)
+    # min_agree counts INDEPENDENT directional opinions. vol_gate and
+    # regime_confidence do not form their own direction — they inherit it from
+    # macro_regime / upstream ctx (see their evaluate()), so counting them here
+    # double-counts one opinion (Batch 6). They still contribute their score to
+    # the composite and their size multipliers below; they just don't vote.
+    _DIRECTION_INHERITING = {'vol_gate', 'regime_confidence'}
+    passing_dir = sum(1 for k, v in results.items()
+                      if k not in _DIRECTION_INHERITING
+                      and v and v.passed and v.signal == direction)
     if passing_dir < min_agree:
-        pair_status['reason'] = f'Only {passing_dir}/{min_agree} modules agree on {direction}'
+        pair_status['reason'] = f'Only {passing_dir}/{min_agree} independent modules agree on {direction}'
         log.info(f'  [{pair}] {pair_status["reason"]}')
         return pair_status
 

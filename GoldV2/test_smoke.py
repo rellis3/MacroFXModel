@@ -299,5 +299,66 @@ check('round trip pays exactly one full spread',
       abs((pnl_free - pnl_cost) - SPREAD) < 1e-9, f'{pnl_free - pnl_cost}')
 
 
+print('\n── oscillator normalisation (Batch 6: robust scale, not window max) ──')
+# NOTE: the vumanchu fixtures above (selloff → WT OVERSOLD, heavy-sell → fuel
+# veto, short-on-selloff → NEUTRAL) all classify IDENTICALLY under the old
+# peak→100 and the new median|v|→30 mapping — that was the pre-registered
+# contract for the rescale (_OSC_SCALE=30 ≈ old peak/3.5). These checks pin
+# the property the change was FOR: one outlier bar must not silently
+# compress every other bar below the fixed thresholds.
+from modules.vumanchu import _osc_normalise
+
+_base = [10.0 if i % 2 == 0 else -10.0 for i in range(59)]
+_clean   = _osc_normalise(list(_base) + [10.0])
+_spiked  = _osc_normalise(list(_base) + [1000.0])          # one huge news bar
+check('typical bar keeps its scale despite one huge outlier (was peak-crushed to ~1)',
+      abs(_spiked[0]) >= 0.5 * abs(_clean[0]),
+      f'clean={_clean[0]:.1f} spiked={_spiked[0]:.1f}')
+check('outlier bar itself reads far beyond the thresholds', abs(_spiked[-1]) > 100)
+check('constant one-sided window stays finite and beyond fuel threshold',
+      abs(_osc_normalise([-400.0] * 60)[0] - (-30.0)) < 1e-9)
+check('short window falls back to legacy peak→100 (min-periods guard)',
+      _osc_normalise([5.0, -10.0])[1] == -100.0)
+check('all-zero window returns zeros unchanged',
+      _osc_normalise([0.0] * 60) == [0.0] * 60)
+
+
+print('\n── event blackout (Batch 6: ±event_blackout_min around USD events) ──')
+from main import event_blackout_reason, DEFAULT_CFG as _V2_CFG
+
+check('event_blackout_min default is 30', _V2_CFG.get('event_blackout_min') == 30)
+
+_NOW_MS = 1_750_000_000_000.0
+
+
+def _ev_payload(ccy='USD', mins_away=10, impact='high'):
+    ev = _NOW_MS + mins_away * 60_000
+    return {'generatedAt': _NOW_MS - 60_000, 'preMin': 45, 'postMin': 15,
+            'windows': [{'ccy': ccy, 'startMs': ev - 45 * 60_000,
+                         'endMs': ev + 15 * 60_000, 'eventTimeMs': ev,
+                         'impact': impact, 'title': 'CPI'}]}
+
+
+_cfg30 = {'event_blackout_min': 30}
+check('USD event 10m away blocks (inside ±30m)',
+      event_blackout_reason(_cfg30, _ev_payload(mins_away=10), _NOW_MS) is not None)
+check('USD event 10m AGO blocks (band is symmetric)',
+      event_blackout_reason(_cfg30, _ev_payload(mins_away=-10), _NOW_MS) is not None)
+check('USD event 45m away does NOT block (outside ±30m)',
+      event_blackout_reason(_cfg30, _ev_payload(mins_away=45), _NOW_MS) is None)
+check('non-USD event never gates gold',
+      event_blackout_reason(_cfg30, _ev_payload(ccy='EUR', mins_away=5), _NOW_MS) is None)
+check('medium-impact event does not gate',
+      event_blackout_reason(_cfg30, _ev_payload(mins_away=5, impact='medium'), _NOW_MS) is None)
+check('event_blackout_min 0 disables the gate',
+      event_blackout_reason({'event_blackout_min': 0},
+                            _ev_payload(mins_away=5), _NOW_MS) is None)
+check('missing feed fails OPEN',
+      event_blackout_reason(_cfg30, None, _NOW_MS) is None)
+_stale = _ev_payload(mins_away=5)
+_stale['generatedAt'] = _NOW_MS - 48 * 3600 * 1000
+check('stale feed fails OPEN',
+      event_blackout_reason(_cfg30, _stale, _NOW_MS) is None)
+
 print(f'\n{"="*60}\n{PASS} passed, {FAIL} failed\n')
 sys.exit(1 if FAIL else 0)
