@@ -2952,11 +2952,15 @@ function _computeNqQmr(bars, cfg = {}) {
     let isChoppy = false;
     if (!isS2) {
       const entryHour   = entryBar.t.substring(11, 13);
+      // Strictly BEFORE the entry bar: we enter at entryBar.o, so the entry
+      // bar's close is future data — same no-lookahead convention as the
+      // Gate 1/2 reads above. (Pre-2026-07 this was `<=`, one hour of
+      // lookahead in the chop filter; S4 historical stats shift slightly.)
       const sessionBars = [
         ...overnightBars,
         ...(byDate[today] || []).filter(b => {
           const h = b.t.substring(11, 13);
-          return h > _qmrHH(QMR_TIMING.overnightEndHour) && h <= entryHour;
+          return h > _qmrHH(QMR_TIMING.overnightEndHour) && h < entryHour;
         }),
       ].sort((a, b) => a.t.localeCompare(b.t));
       const netMove = Math.abs(entry - sessionBars[0].o);

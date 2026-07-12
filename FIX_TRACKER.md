@@ -39,7 +39,7 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 - [x] DST-aware gate times + correct ET labels
 - [x] Default round-trip cost + stop slippage inside `_computeNqQmr` (headline stats after-cost)
 - [x] Validation status stamped on entry alerts ("OOS … after-cost over N trades" / "UNVALIDATED")
-- [ ] System-4 chop filter: `sessionBars` includes the entry bar (`h <= entryHour`) — one hour of lookahead in the S4 filter path (found during Batch 3; same class as the gate-bar fix)
+- [x] System-4 chop filter: `sessionBars` includes the entry bar (`h <= entryHour`) — one hour of lookahead in the S4 filter path (found during Batch 3; same class as the gate-bar fix)
 - [x] (owner DECIDED 2026-07-12) SPX/DOW/DAX clones: KEEP alerting, stamped UNVALIDATED, judged by the live forward record (below). Localized sessions/news calendars deferred unless the forward record earns them
 - [x] QMR forward-validation tracker (owner request): entry alert snapshots entry price; EOD resolves the day with the engine's exact walk (shared function, after-cost) into the audit log; page renders the per-instrument forward record — ALL FOUR indices
 - [ ] (owner) Re-derive live defaults from walk-forward retrain instead of full-sample grid
@@ -53,7 +53,7 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 - [x] Vol + range-line bots: per-trade realized entry-slip logging (fill − modeled level, book units)
 - [x] macrofx1 `bot/backtest.py`: per-pair spread + slippage; OOS-only reporting
 
-- [ ] Range-line bot paper mode: ladders need a session BAR feed (quote feed fixes prices/trailing only — found during Batch 4)
+- [x] Range-line bot paper mode: ladders need a session BAR feed (quote feed fixes prices/trailing only — found during Batch 4)
 
 ## Batch 5 — sizing & risk integrity
 
@@ -92,10 +92,10 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 
 ## Evidence & evaluation (docs/scripts, not bot code)
 
-- [ ] Grade backtestSystem's existing ~200-trade KV journal (QM L1.7 metrics table, by conviction/feature family)
-- [ ] V7 paper-record scoreboard per cfg_hash (expectancy after costs, PF, max consecutive losses, DD; ≥30-OOS bar)
-- [ ] Pre-register fleet evaluations (ConfluenceBot 17 instruments, GoldV2-vs-V1, vol/range A/Bs): pass bar + chance baseline written before the record accrues
-- [ ] MT5 `catch_up` bar-window check vs OANDA extremes for a UTC+3 broker day (vol bot)
+- [x] Grade backtestSystem's existing ~200-trade KV journal (QM L1.7 metrics table, by conviction/feature family)
+- [x] V7 paper-record scoreboard per cfg_hash (expectancy after costs, PF, max consecutive losses, DD; ≥30-OOS bar)
+- [x] Pre-register fleet evaluations (ConfluenceBot 17 instruments, GoldV2-vs-V1, vol/range A/Bs): pass bar + chance baseline written before the record accrues
+- [x] MT5 `catch_up` bar-window check vs OANDA extremes for a UTC+3 broker day (vol bot)
 
 ## Research candidates (harness first, never live-first — all pre-registered)
 

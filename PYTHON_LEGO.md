@@ -179,6 +179,20 @@ order (by drift risk × reuse, from `LEGO_MODULES.md §2` Python table):
    gate (`stale_after` → returns None so the loop skips the pair) and once-per-
    state-change logging. Injected http + clock, offline-testable
    (`quotes_test.py`). Consumers: volatility_bot, range_line_bot paper loops.
+8. **`ohlc_feed.py`** — `KvOhlcFeed`, the paper-mode SESSION-BAR feed. ✅ built.
+   QuoteFeed covers live prices/trailing only; a paper bot still had no bar
+   history, so it could never build fresh Asia/Monday ladders. This brick reads
+   the dashboard's KV OHLC cache (`ohlc5m_{SYMKEY}_{sessionDay}` via
+   `/api/kv/get` — OANDA M5, ~1500 candles ≈ 5 trading days; SYMKEY = registry
+   display symbol without the slash, matching js/config.js PAIRS) and converts
+   it to the `Mt5Broker.session_bars` bar shape. `window_bars(pair, start,
+   secs)` returns a range window ONLY when the payload fully covers it — a
+   partial window would build a wrong ladder, so it returns None and logs
+   what's missing once per state change (never fakes bars). Known limits
+   (documented in the module): the key only exists for pairs the dashboard
+   tracks AND has loaded that session day; history reach is ~5 days. Injected
+   http + clock, offline-testable (`ohlc_feed_test.py`). Consumers:
+   range_line_bot paper ladder builds (`_session_window_bars`).
 
 Note (paper-measurement fix): `broker/paper.py` now honours the measurement
 contract — P&L in account currency ((Δprice/pip) × pip_value × lots via the

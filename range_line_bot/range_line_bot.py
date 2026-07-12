@@ -31,6 +31,7 @@ from pylego import point_values as PV                        # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
 from pylego.quotes import QuoteFeed                          # noqa: E402
+from pylego.ohlc_feed import KvOhlcFeed                      # noqa: E402
 from pylego.costs import entry_slip_pct, realized_fill, expected_fill, max_spread  # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
 from pylego.strategy.rangeline import chandelier_stop        # noqa: E402
@@ -222,9 +223,21 @@ def _in_formation(plan, now_epoch):
     return now_epoch < wc
 
 
-def _build_ladders(sess: RangeSession, broker, plan, now_epoch):
+def _session_window_bars(broker, feed, instr, anchor, secs):
+    """Window bars for a ladder build. Live → the broker's own history
+    (Mt5Broker.session_bars). Paper → the dashboard KV OHLC feed (PaperBroker
+    has no feed of its own): KvOhlcFeed.window_bars returns the window ONLY
+    when the payload fully covers it (else None + a once-per-state log naming
+    what's missing — never partial/faked bars)."""
+    if feed is not None:
+        return feed.window_bars(instr, int(anchor), int(secs)) or []
+    return _window_bars(broker.session_bars(instr, anchor), anchor, secs)
+
+
+def _build_ladders(sess: RangeSession, broker, plan, now_epoch, feed=None):
     """Lazily build the Asia (London-window) + Monday ladders once their ranges are
-    known. Returns True if anything new was built (→ prime)."""
+    known. Returns True if anything new was built (→ prime). ``feed`` (paper only)
+    is the KvOhlcFeed supplying session bars the PaperBroker cannot."""
     built = False
     bh, ah = plan["boundaryHour"], plan["asiaHrs"]
     sources = plan.get("sources", ["asia", "monday"])
@@ -233,7 +246,7 @@ def _build_ladders(sess: RangeSession, broker, plan, now_epoch):
         anchor = session_anchor_epoch(now_epoch, bh)
         if now_epoch >= anchor + ah * 3600:
             try:
-                wb = _window_bars(broker.session_bars(sess.instrument, anchor), anchor, ah * 3600)
+                wb = _session_window_bars(broker, feed, sess.instrument, anchor, ah * 3600)
                 if sess.set_range("A", wb):
                     built = True
                     # Session open for the entry-slip audit denominator — the
@@ -246,7 +259,7 @@ def _build_ladders(sess: RangeSession, broker, plan, now_epoch):
     if "monday" in sources and not sess.has_range("M"):
         manchor = monday_anchor_epoch(now_epoch, bh)
         try:
-            mb = _window_bars(broker.session_bars(sess.instrument, manchor), manchor, 24 * 3600)
+            mb = _session_window_bars(broker, feed, sess.instrument, manchor, 24 * 3600)
             if mb and sess.set_range("M", mb):
                 built = True
         except Exception as e:
@@ -339,6 +352,11 @@ def run(base_url: str, force_live: bool) -> None:
     # (/api/quote — the same MT5-less path the regime bots use) and feed the
     # broker each tick. QuoteFeed caches per pair so the 3s loop stays cheap.
     quotes = QuoteFeed(base_url, log=log) if paper else None
+    # Paper also has no BAR history: fresh Asia/Monday ladders come from the
+    # dashboard's KV OHLC cache (ohlc5m_{SYM}_{sessionDay} — OANDA M5 via
+    # /api/kv/get). Same discipline as QuoteFeed: cached, coverage-gated,
+    # fail-loud-once; a window the payload can't fully cover builds NO ladder.
+    bar_feed = KvOhlcFeed(base_url, log=log) if paper else None
 
     if not paper:
         try:
@@ -478,7 +496,7 @@ def run(base_url: str, force_live: bool) -> None:
                 ip = (plan.get("instruments") or {}).get(instr)
                 if sess is None or ip is None:
                     continue
-                if _build_ladders(sess, broker, plan, nowt):
+                if _build_ladders(sess, broker, plan, nowt, feed=bar_feed):
                     # prime: mark levels price already crossed so we don't retro-enter
                     try:
                         px0 = broker.price(instr)
