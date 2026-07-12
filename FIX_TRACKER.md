@@ -40,7 +40,8 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 - [x] Default round-trip cost + stop slippage inside `_computeNqQmr` (headline stats after-cost)
 - [x] Validation status stamped on entry alerts ("OOS … after-cost over N trades" / "UNVALIDATED")
 - [ ] System-4 chop filter: `sessionBars` includes the entry bar (`h <= entryHour`) — one hour of lookahead in the S4 filter path (found during Batch 3; same class as the gate-bar fix)
-- [ ] (owner) SPX/DOW/DAX clones: pause, or per-instrument sessions + local news calendars — which?
+- [x] (owner DECIDED 2026-07-12) SPX/DOW/DAX clones: KEEP alerting, stamped UNVALIDATED, judged by the live forward record (below). Localized sessions/news calendars deferred unless the forward record earns them
+- [ ] QMR forward-validation tracker (owner request): entry alert snapshots entry price; EOD resolves the day with the engine's exact walk (shared function, after-cost) into the audit log; page renders the per-instrument forward record — ALL FOUR indices
 - [ ] (owner) Re-derive live defaults from walk-forward retrain instead of full-sample grid
 
 ## Batch 4 — costs in every paper path (the big one)
