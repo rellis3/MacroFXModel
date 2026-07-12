@@ -9405,7 +9405,7 @@ app.get('/api/fill-realism/status/:jobId', (req, res) => {
 const honestJobs = new Map();
 app.post('/api/honest-policy/run', express.json({ limit: '16kb' }), (req, res) => {
   if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
-  const { pair = '', isFrac, marginPct, minCellTrades } = req.body || {};
+  const { pair = '', isFrac, marginPct, minCellTrades, conditionOnVel } = req.body || {};
   const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
   if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
   const jobId = `hon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -9416,6 +9416,7 @@ app.post('/api/honest-policy/run', express.json({ limit: '16kb' }), (req, res) =
     isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5,
     marginPct: Number.isFinite(+marginPct) ? +marginPct : 0,
     minCellTrades: Number.isFinite(+minCellTrades) ? +minCellTrades : 30,
+    conditionOnVel: conditionOnVel !== false,   // COG's line×approach-velocity cells (default on)
   };
   (async () => {
     const perPair = {}, selStreams = {}, log = [];
@@ -9426,10 +9427,9 @@ app.post('/api/honest-policy/run', express.json({ limit: '16kb' }), (req, res) =
           if (!bars || bars.length < 20000) { log.push(`${cfg.name}: too few M1 bars`); continue; }
           const r = _honestPolicy(bars, { ...opts, pair: cfg.name, assetClass: cfg.assetClass || 'fx' });
           if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nSessions}d)`); continue; }
-          perPair[cfg.name] = { assetClass: r.assetClass, nKept: r.nKept, keptCells: r.keptCells, selected: { sharpe: r.selected.sharpe, days: r.selected.days, expectancy: r.selected.expectancy }, all: r.all };
+          perPair[cfg.name] = { assetClass: r.assetClass, nKept: r.nKept, nCells: r.nCells, keptCells: r.keptCells, selected: { sharpe: r.selected.sharpe, days: r.selected.days, expectancy: r.selected.expectancy }, all: r.all };
           selStreams[cfg.name] = r.selected.byDate;
-          allStreams[cfg.name] = r.all && r.selected.byDate ? r.selected.byDate : [];   // 'all' curve uses selected fallback if no per-day-all exported
-          log.push(`${cfg.name}: kept ${r.nKept}/4 [${r.keptCells.map(c => c.key).join(',')}] · sel OOS Sharpe ${r.selected.sharpe}(${r.selected.days}d) · trade-all ${r.all.sharpe}`);
+          log.push(`${cfg.name}: kept ${r.nKept}/${r.nCells} [${r.keptCells.map(c => c.key).join(',')}] · sel OOS Sharpe ${r.selected.sharpe}(${r.selected.days}d) · trade-all ${r.all.sharpe}`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);

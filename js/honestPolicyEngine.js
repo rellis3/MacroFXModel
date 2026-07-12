@@ -39,10 +39,23 @@ const CELLS = [
   { key: 'follow_dn', action: 'follow', dir: 'down' },
 ];
 
+// Approach-velocity bucket at the fill — COG's `line × approach-velocity` cell
+// dimension (the Crabel "stretch"). Speed of the move INTO the level over the
+// last `velWin` bars, in daily-σ units → fast-spike / medium / slow-grind.
+// Reuses the same defaults as the live analyser (velWin 15, velFast 0.60σ).
+function _velBucket(bars, idxByTime, fillTime, open, sigma, velWin, velFast, velSlow) {
+  const idx = idxByTime.get(fillTime);
+  if (idx == null || !(sigma > 0) || !(open > 0)) return 'na';
+  const start = Math.max(0, idx - velWin);
+  const vel = Math.abs(bars[idx].close - bars[start].close) / (open * sigma);   // σ-units
+  return vel >= velFast ? 'fast' : vel <= velSlow ? 'slow' : 'med';
+}
+
 export function honestPolicy(bars, opts = {}) {
   const {
     pair = 'EURUSD', assetClass = 'fx', isFrac = 0.5, band = 'hl75', slMult = 1.5,
     boundaryHour = 22, warmup = 40, minCellTrades = 30, marginPct = 0,
+    conditionOnVel = true, velWin = 15, velFast = 0.60, velSlow = 0.25,
   } = opts;
   const costPct = opts.costPct ?? costForPair(pair, assetClass);
   const slipPct = opts.slipPct ?? (DEFAULT_SLIP_PCT[assetClass] ?? 0.006);
@@ -53,38 +66,47 @@ export function honestPolicy(bars, opts = {}) {
   const sig = volSigmaSeries(d1, assetClass);
   const split = Math.floor(sess.length * isFrac);
 
-  // Per-session PnL for each cell (null when it didn't fill that day).
-  const perCell = Object.fromEntries(CELLS.map(c => [c.key, []]));   // [{i, date, pnl}]
+  // Per-cell trade streams. With conditionOnVel the cell is (action × dir × vel-bucket)
+  // — COG's line×approach-velocity design; otherwise the coarse (action × dir) cell.
+  const perCell = new Map();   // cellKey → { action, dir, velBucket, trades:[{i,date,pnl}] }
+  const push = (action, dir, velBucket, rec) => {
+    const key = conditionOnVel ? `${action}_${dir}_${velBucket}` : `${action}_${dir}`;
+    if (!perCell.has(key)) perCell.set(key, { key, action, dir, velBucket: conditionOnVel ? velBucket : 'all', trades: [] });
+    perCell.get(key).trades.push(rec);
+  };
   for (let i = warmup; i < sess.length; i++) {
     const sigma = sig[i];
     if (!(sigma > 0)) continue;
     const s = sess[i];
     if (!s.bars || s.bars.length < 3 || !(s.open > 0)) continue;
     const bands = computeBands(s.open, sigma, assetClass);
+    const idxByTime = conditionOnVel ? new Map(s.bars.map((b, k) => [b.time, k])) : null;
     for (const c of CELLS) {
       const r = simulateEntry({ open: s.open, bars: s.bars }, bands,
         { band, action: c.action, dir: c.dir, slMult, costPct, slipPct, dynamicHL: true });
-      if (r.filled) perCell[c.key].push({ i, date: s.date, pnl: r.pnlPct });
+      if (!r.filled) continue;
+      const vb = conditionOnVel ? _velBucket(s.bars, idxByTime, r.fillTime, s.open, sigma, velWin, velFast, velSlow) : 'all';
+      push(c.action, c.dir, vb, { i, date: s.date, pnl: r.pnlPct });
     }
   }
 
   // Learn the policy on IS: keep a cell only if its IS after-cost expectancy > margin
   // with enough IS trades. (COG's "trade only in-sample-profitable cells" rule.)
   const kept = [];
-  for (const c of CELLS) {
-    const isT = perCell[c.key].filter(t => t.i < split);
+  for (const c of perCell.values()) {
+    const isT = c.trades.filter(t => t.i < split);
     if (isT.length < minCellTrades) continue;
     const exp = _mean(isT.map(t => t.pnl));
-    if (exp > marginPct) kept.push({ ...c, isExp: r3(exp, 4), isTrades: isT.length });
+    if (exp > marginPct) kept.push({ key: c.key, action: c.action, dir: c.dir, velBucket: c.velBucket, isExp: r3(exp, 4), isTrades: isT.length });
   }
 
   // Apply OOS: per session, sum the kept cells that fired that day (a portfolio of
-  // cells within the instrument). Also keep the unselected "trade-all-4" stream for
+  // cells within the instrument). Also keep the unselected "trade-all" stream for
   // contrast (the naive no-selection book).
   const oosByDate = new Map(), allByDate = new Map();
   const keptKeys = new Set(kept.map(c => c.key));
-  for (const c of CELLS) {
-    for (const t of perCell[c.key]) {
+  for (const c of perCell.values()) {
+    for (const t of c.trades) {
       if (t.i < split) continue;
       allByDate.set(t.date, (allByDate.get(t.date) || 0) + t.pnl);
       if (keptKeys.has(c.key)) oosByDate.set(t.date, (oosByDate.get(t.date) || 0) + t.pnl);
@@ -96,8 +118,8 @@ export function honestPolicy(bars, opts = {}) {
   const allSum = summarizeTrades(all.pnls, all.dates);
 
   return {
-    pair, assetClass, costPct, slipPct, isFrac, band, slMult,
-    nSessions: sess.length, splitDate: sess[split]?.date,
+    pair, assetClass, costPct, slipPct, isFrac, band, slMult, conditionOnVel,
+    nSessions: sess.length, splitDate: sess[split]?.date, nCells: perCell.size,
     keptCells: kept, nKept: kept.length,
     // OOS daily streams (net %), for the portfolio aggregation + equity curve.
     selected: { sharpe: selSum.sharpe, days: sel.pnls.length, expectancy: r3(selSum.expectancy, 4), byDate: sel.dates.map((d, k) => ({ date: d, pnl: r3(sel.pnls[k], 5) })) },

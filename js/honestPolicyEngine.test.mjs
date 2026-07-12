@@ -40,10 +40,19 @@ test('honestPolicy: only IS-positive cells are kept (selection is real)', () => 
   for (const c of r.keptCells) assert.ok(c.isExp > 0, `kept cell ${c.key} has IS exp>0`);
 });
 
+test('honestPolicy: conditionOnVel splits cells by approach-velocity bucket', () => {
+  const r = honestPolicy(synthM1(300), { pair: 'EURUSD', conditionOnVel: true, marginPct: -5, minCellTrades: 3 });
+  assert.ok(r.nCells >= 4, 'velocity conditioning can fragment into >4 cells');
+  for (const c of r.keptCells) assert.ok(['fast', 'med', 'slow', 'na'].includes(c.velBucket), `cell ${c.key} carries a velocity bucket`);
+  // coarse mode collapses to the 4 base action×dir cells
+  const coarse = honestPolicy(synthM1(300), { pair: 'EURUSD', conditionOnVel: false, marginPct: -5, minCellTrades: 3 });
+  assert.ok(coarse.nCells <= 4, 'coarse mode has ≤4 cells');
+});
+
 test('netPortfolio: nets instrument streams into an equity curve with a Sharpe', () => {
   // permissive margin + low min-trades so cells are kept and the plumbing is exercised
-  const a = honestPolicy(synthM1(300), { pair: 'EURUSD', marginPct: -5, minCellTrades: 5 });
-  const b = honestPolicy(synthM1(300), { pair: 'GBPUSD', marginPct: -5, minCellTrades: 5 });
+  const a = honestPolicy(synthM1(300), { pair: 'EURUSD', marginPct: -5, minCellTrades: 5, conditionOnVel: false });
+  const b = honestPolicy(synthM1(300), { pair: 'GBPUSD', marginPct: -5, minCellTrades: 5, conditionOnVel: false });
   assert.ok(a.nKept > 0 && b.nKept > 0, 'cells kept under permissive margin');
   const port = netPortfolio({ EURUSD: a.selected.byDate, GBPUSD: b.selected.byDate });
   assert.ok(typeof port.sharpe === 'number', 'portfolio sharpe');
