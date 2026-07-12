@@ -35,6 +35,7 @@ import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
+import { runRankICLiveSuite, RANKIC_LIVE_INSTRUMENTS }             from './js/rankICLiveEngine.js';
 import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, computeConvexity, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runTrendBasket } from './js/trendBasketEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
@@ -8013,6 +8014,68 @@ app.post('/api/rank-ic/run', express.json({ limit: '256kb' }), (req, res) => {
 
 app.get('/api/rank-ic/status/:jobId', (req, res) => {
   const job = ricJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Rank-IC Diagnostic — LIVE entry scores (Asia-range, M1 gap-filled) ───────
+// Grades the actual live star / signalScore / day-type-T / vol-pos / approach-vel
+// against realized trade pnl, by driving asiaRangeEngine over M1 (parquet snapshot
+// gap-filled to now from OANDA live) through the SAME entryGradeCore/rangeBiasCore
+// bricks the live bot uses. Pure grading lives in rankICLiveEngine.js. Async-job.
+const riclJobs = new Map();
+function _purgeStaleRiclJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of riclJobs) if (job.startedAt < cutoff) riclJobs.delete(id);
+}
+
+app.post('/api/rank-ic-live/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — needed for M1 gap-fill / OANDA data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    oosFrac:  Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    dateFrom: b.dateFrom || '',
+    dateTo:   b.dateTo   || '',
+    gapFill:  b.gapFill !== false && b.gapFill !== 'false',   // default on
+    nowSec:   Math.floor(Date.now() / 1000),
+  };
+
+  const pairFilter = b.pair
+    ? RANKIC_LIVE_INSTRUMENTS.filter(p => p.toUpperCase() === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId     = `ricl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleRiclJobs();
+  riclJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, summary, log } = await runRankICLiveSuite(opts, pairFilter ?? RANKIC_LIVE_INSTRUMENTS);
+      if (!results.length) {
+        riclJobs.set(jobId, { status: 'error', error: 'No results generated (no M1 data?)', log, startedAt });
+        return;
+      }
+      riclJobs.set(jobId, { status: 'done', result: { results, summary, log, opts }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[rank-ic-live/run]', msg, e?.stack ?? '');
+      riclJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/rank-ic-live/status/:jobId', (req, res) => {
+  const job = riclJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });

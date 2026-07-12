@@ -51,6 +51,10 @@ import { dayTypeScore } from './dayTypeCore.js';   // reversion(low T)↔continu
 // fade) and the triple-barrier exit (TP = next level toward mid, SL = next away).
 import { createTouchFeatures } from './touchFeatures.js';
 const _touchFeat = createTouchFeatures();   // default cfg (velWin 15, velFast 0.60σ)
+// Opt-in: top the frozen R2/parquet M1 snapshot up to "now" from OANDA live so a
+// backtest isn't stale at the recent edge (m1GapFill brick; oanda symbol resolver).
+import { gapFillPacked } from './m1GapFill.js';
+import { oandaSymbol } from './instrumentRegistry.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -821,13 +825,29 @@ function simulateDay(packed, dateStr, opts) {
 const _pairDataCache = new Map(); // pairKey → { packed, asiaSessions, mondayRanges, ts }
 const _PAIR_CACHE_TTL = 6 * 3600 * 1000; // 6 hours in ms
 
-async function _getOrBuildPairData(pairKey, m1Dir) {
-  const now    = Date.now();
-  const cached = _pairDataCache.get(pairKey);
-  if (cached && now - cached.ts < _PAIR_CACHE_TTL) return cached;
+async function _getOrBuildPairData(pairKey, m1Dir, gap = null) {
+  const now      = Date.now();
+  const doGapFill = !!(gap?.gapFill && typeof gap.fetchCandles === 'function');
+  // Gap-filled runs bypass the shared cache entirely (both read and write): the
+  // topped-up series differs from the frozen-parquet series other pages cache, so
+  // mixing them would silently serve one where the other was asked for.
+  if (!doGapFill) {
+    const cached = _pairDataCache.get(pairKey);
+    if (cached && now - cached.ts < _PAIR_CACHE_TTL) return cached;
+  }
 
-  const packed = await loadM1ForPair(pairKey, m1Dir);
+  let packed = await loadM1ForPair(pairKey, m1Dir);
   if (!packed) return null;
+
+  if (doGapFill) {
+    const oanda = oandaSymbol(pairKey);
+    if (oanda) {
+      try {
+        packed = await gapFillPacked(packed, oanda, gap.fetchCandles,
+          { nowSec: gap.nowSec ?? Math.floor(now / 1000), onLog: gap.onLog ?? (() => {}) });
+      } catch (e) { (gap.onLog ?? (() => {}))(`${pairKey}: gap-fill failed (${e.message}) — using frozen snapshot`); }
+    }
+  }
 
   const entry = {
     packed,
@@ -836,7 +856,7 @@ async function _getOrBuildPairData(pairKey, m1Dir) {
     dailyBars:    _buildDailyBars(packed),
     ts: now,
   };
-  _pairDataCache.set(pairKey, entry);
+  if (!doGapFill) _pairDataCache.set(pairKey, entry);
   return entry;
 }
 
@@ -851,7 +871,12 @@ export function clearPairDataCache(pairKey) {
 export async function runAsiaRangeBacktest(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
   const { dateFrom = '', dateTo = '', progressCb = null } = opts;
 
-  const pairData = await _getOrBuildPairData(pairKey, m1Dir);
+  // Opt-in gap-fill: pass { gapFill, fetchCandles, nowSec, onLog } through opts to
+  // top the M1 snapshot up to now from OANDA live (default off ⇒ frozen parquet).
+  const gap = opts.gapFill
+    ? { gapFill: true, fetchCandles: opts.fetchCandles, nowSec: opts.nowSec, onLog: opts.onLog }
+    : null;
+  const pairData = await _getOrBuildPairData(pairKey, m1Dir, gap);
   if (!pairData) throw new Error(`No M1 data for ${pairKey}`);
   const { packed, asiaSessions: _asiaSessions, mondayRanges: _mondayRanges, dailyBars: _dailyBars } = pairData;
 
