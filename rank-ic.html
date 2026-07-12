@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rank-IC Diagnostic — do my scores sort the outcome?</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#a06bff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:1000px}
+  main{padding:22px 24px;max-width:1240px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .inst-title{font-size:13px;font-weight:600;margin:6px 0 8px}
+  .mode{color:var(--text2);font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--text3)}
+  .sig{background:rgba(63,178,127,.12)}
+  .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .b-meh{background:rgba(224,169,59,.18);color:var(--amber)}
+  .kind{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .summary td:first-child{font-weight:600}
+  .note{background:rgba(224,169,59,.08);border:1px solid rgba(224,169,59,.3);border-radius:8px;padding:11px 13px;color:var(--text2);font-size:12px;line-height:1.6;margin-bottom:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Rank-IC Diagnostic <span class="mut" style="font-size:13px">· do my scores actually sort the outcome?</span></h1>
+  <div class="sub">
+    Every score the stack produces implicitly bets <b>higher score → better forward
+    outcome</b>. This measures whether that's true, honestly. It takes each score —
+    the day-type <b>trend-day-ness T</b>, its component estimators, and the
+    <b>regime / momentum direction call</b> — computes it with <b>no lookahead</b>,
+    and reports its <b>Spearman rank information coefficient (rank-IC)</b> against the
+    realized forward window, on a true in-sample / out-of-sample split. Rank-IC is
+    the quant first-pass because it's robust to FX fat tails (a ranking can't be
+    hijacked by one crisis print) and to the curved shape signal→return takes.
+    It is a <b>falsification tool, not an edge finder</b>: the benchmark to beat is
+    <b>IC = 0</b>, and only <b>out-of-sample</b>.
+  </div>
+</header>
+<main>
+  <div class="note">
+    <b>Scope (honest).</b> This grades only the scores reproducible from pure daily
+    bars with no lookahead. The live <b>star rating / signalScore</b> depend on
+    intraday level context (density, cross-session match, EMA-RSI, HMM) that can't
+    be rebuilt from D1 — grading those needs the logged live-trade book (score +
+    realized pnl), which the underlying <code>rankIC</code> brick can ingest once
+    it's wired, but which this page deliberately does not fake from D1.
+    Reading: <b>|IC| ≈ 0</b> → the score is decoration; <b>~0.02–0.05</b> OOS with
+    <b>|t| ≳ 2</b> → a real-but-weak signal. Sign follows the target: for
+    <i>directional</i> scores +IC = predicts direction; for <i>magnitude</i> scores
+    +IC = predicts a more trending window.
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Instrument</label>
+        <select id="pair">
+          <option value="">All instruments</option>
+          <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+          <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+          <option>USDCHF</option><option>GBPJPY</option><option>GOLD</option>
+        </select>
+      </div>
+      <div>
+        <label>Horizon</label>
+        <select id="horizon">
+          <option value="daily">Daily (1-bar window)</option>
+          <option value="weekly">Weekly (5-bar, non-overlap)</option>
+          <option value="monthly">20-day (20-bar, non-overlap)</option>
+        </select>
+        <div class="hint">forward window the score is graded against</div>
+      </div>
+      <div><label>Lookback window</label><input id="win" type="number" value="14" step="1" min="5" max="60">
+           <div class="hint">bars each score reads (data &lt; i)</div></div>
+      <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6">
+           <div class="hint">last fraction held out</div></div>
+    </div>
+    <div style="margin-top:14px"><button id="run">Run diagnostic</button></div>
+    <div id="status"></div>
+  </div>
+
+  <div id="summary"></div>
+  <div id="results"></div>
+
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>rank-IC</b> = Spearman ρ between a score and the realized forward outcome
+      (ranks only, so fat tails and curvature don't distort it). <b>t</b> = t-stat
+      of ρ vs the null <code>ρ=0</code> (<code>ρ·√((n−2)/(1−ρ²))</code>); <b>|t| ≳ 2</b>
+      ≈ 5% two-sided. The column that matters is <b>OOS IC</b> — in-sample IC is not
+      evidence. A row is highlighted when its OOS result clears <code>|t|≥2</code>.
+      <b>Targets:</b> <i>magnitude</i> scores are graded against realized trend
+      efficiency <code>|close−open|/(high−low)</code>; <i>directional</i> scores
+      against the signed forward return <code>(close−open)/open</code>. The
+      <code>·</code>-prefixed rows are the day-type composite's component estimators,
+      disaggregated so you can see which brick (if any) carries the ranking.
+      <b>Multiple testing:</b> the summary shows how many instruments are individually
+      significant next to the cell count — a few survivors among many cells is what
+      chance produces, so treat a lone significant pair as noise unless it's
+      consistent IS and OOS.
+    </div>
+  </div>
+</main>
+
+<script>
+const $   = id => document.getElementById(id);
+const fmt = (v,d=3)=> (v===undefined||v===null||isNaN(v)) ? '—' : (+v).toFixed(d);
+const icClass = ic => ic>0 ? 'pos' : ic<0 ? 'neg' : 'mut';
+
+function icBadge(cell){
+  if(!cell || !cell.n) return `<span class="badge b-bad">no data</span>`;
+  const sig = Math.abs(cell.tStat)>=2;
+  if(!sig) return `<span class="badge b-meh">OOS IC ${fmt(cell.ic)} · not significant (t=${fmt(cell.tStat,1)})</span>`;
+  const cls = cell.ic>0 ? 'b-good':'b-bad';
+  return `<span class="badge ${cls}">OOS IC ${fmt(cell.ic)} · significant (t=${fmt(cell.tStat,1)}, n=${cell.n})</span>`;
+}
+
+function renderInstrument(r){
+  // best OOS |IC| among the scores → header badge
+  let best=null; for(const s of r.scores){ if(s.oos && (!best || Math.abs(s.oos.ic)>Math.abs(best.oos.ic))) best=s; }
+  let html = `<div class="card"><div class="inst-title">${r.instrument} <span class="mut">· ${r.assetClass} · ${r.horizon} · ${r.nWindows} windows · split ${r.splitDate||'—'}</span> &nbsp; ${best?icBadge(best.oos):''}</div>`;
+  html += `<table><thead><tr><th>score</th><th>target</th><th>OOS IC</th><th>OOS t</th><th>OOS n</th><th>IS IC</th><th>full IC</th></tr></thead><tbody>`;
+  for(const s of r.scores){
+    const sig = s.oos && Math.abs(s.oos.tStat)>=2;
+    html += `<tr class="${sig?'sig':''}">
+      <td class="mode">${s.label} <span class="kind">${s.kind}</span></td>
+      <td class="mut">${s.target}</td>
+      <td class="${icClass(s.oos.ic)}"><b>${fmt(s.oos.ic)}</b></td>
+      <td class="mut">${fmt(s.oos.tStat,1)}</td>
+      <td class="mut">${s.oos.n}</td>
+      <td class="mut ${icClass(s.is.ic)}">${fmt(s.is.ic)}</td>
+      <td class="mut ${icClass(s.full.ic)}">${fmt(s.full.ic)}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderSummary(summary, nInstAll){
+  const rows = summary.map(s=>{
+    const strong = Math.abs(s.meanOosIC)>=0.02 && s.nSig>0;
+    return `<tr class="${strong?'sig':''}">
+      <td>${s.label} <span class="kind">${s.kind}</span></td>
+      <td class="mut">${s.target}</td>
+      <td class="${icClass(s.meanOosIC)}"><b>${fmt(s.meanOosIC)}</b></td>
+      <td class="${icClass(s.medianOosIC)}">${fmt(s.medianOosIC)}</td>
+      <td class="mut">${s.nSig} / ${s.nInst}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="card"><div class="inst-title">Pooled OOS summary across ${nInstAll} instrument(s)</div>
+    <table class="summary"><thead><tr><th>score</th><th>target</th><th>mean OOS IC</th><th>median OOS IC</th><th>signif. (|t|≥2) / cells</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="legend">Mean/median of the per-instrument OOS ICs (rank-IC pools badly across pairs, so we average the per-pair ICs rather than pool the raw pairs). <b>signif. / cells</b> = how many instruments individually clear |t|≥2 out of how many tested — read it against multiple testing, not as a tally of wins.</div>
+  </div>`;
+}
+
+async function poll(jobId){
+  for(let i=0;i<180;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/rank-ic/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('status').textContent = `Running… ${res.elapsed||0}s`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = { pair:$('pair').value, horizon:$('horizon').value, win:$('win').value, oosFrac:$('oosFrac').value };
+  $('run').disabled=true; $('results').innerHTML=''; $('summary').innerHTML=''; $('legendCard').style.display='none';
+  $('status').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/rank-ic/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await poll(start.jobId);
+    $('status').textContent = `Done — ${out.results.length} instrument(s), ${out.opts.horizon}, win ${out.opts.win}, OOS ${out.opts.oosFrac}.`;
+    if(out.results.length>1 && out.summary) $('summary').innerHTML = renderSummary(out.summary, out.results.length);
+    $('results').innerHTML = out.results.map(renderInstrument).join('');
+    $('legendCard').style.display='';
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>

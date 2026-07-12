@@ -107,3 +107,54 @@ export function ewma(values, lambda = 0.94) {
   for (let i = 1; i < values.length; i++) out[i] = lambda * out[i - 1] + (1 - lambda) * values[i];
   return out;
 }
+
+// ── Ranks & Spearman rank correlation ────────────────────────────────────────
+// Fractional ranks (1-based) with average-rank tie handling — the standard tie
+// rule that makes Spearman on tied data reduce to Pearson-on-ranks. Pure.
+export function rankData(arr) {
+  const n = arr.length;
+  const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => arr[a] - arr[b]);
+  const ranks = new Array(n);
+  let i = 0;
+  while (i < n) {
+    let j = i;
+    while (j + 1 < n && arr[idx[j + 1]] === arr[idx[i]]) j++;   // tie group [i..j]
+    const avg = (i + j) / 2 + 1;                                // mean of 1-based ranks
+    for (let k = i; k <= j; k++) ranks[idx[k]] = avg;
+    i = j + 1;
+  }
+  return ranks;
+}
+
+// Spearman's rank correlation ρ ∈ [−1,1] between two equal-length series — the
+// monotonic-association measure (Pearson on the average ranks). Only points
+// finite in BOTH series are used. Returns 0 for <3 usable pairs or zero
+// rank-variance (a constant score). Tie-robust. Measures monotonic co-movement;
+// it does not forecast — an IC is the START of a test, not evidence of edge.
+export function spearman(x, y) {
+  const xs = [], ys = [];
+  const n0 = Math.min(x.length, y.length);
+  for (let i = 0; i < n0; i++) if (Number.isFinite(x[i]) && Number.isFinite(y[i])) { xs.push(x[i]); ys.push(y[i]); }
+  const n = xs.length;
+  if (n < 3) return 0;
+  const rx = rankData(xs), ry = rankData(ys);
+  const mx = mean(rx), my = mean(ry);
+  let num = 0, dx = 0, dy = 0;
+  for (let i = 0; i < n; i++) { const a = rx[i] - mx, b = ry[i] - my; num += a * b; dx += a * a; dy += b * b; }
+  return (dx > 1e-12 && dy > 1e-12) ? num / Math.sqrt(dx * dy) : 0;
+}
+
+// Rank information coefficient: Spearman ρ of a score vs a forward outcome, plus
+// the usable sample size and the t-stat of ρ against the null ρ=0
+// (t = ρ·√((n−2)/(1−ρ²)) ~ t_{n−2}; |t| ≳ 2 ≈ 5% two-sided). The benchmark to
+// beat is ρ=0 — no monotonic relationship. An IC only "means something" once it
+// clears that AND holds out-of-sample; a high in-sample IC is not edge.
+export function rankIC(scores, forwards) {
+  const xs = [], ys = [];
+  const n0 = Math.min(scores.length, forwards.length);
+  for (let i = 0; i < n0; i++) if (Number.isFinite(scores[i]) && Number.isFinite(forwards[i])) { xs.push(scores[i]); ys.push(forwards[i]); }
+  const n  = xs.length;
+  const ic = spearman(xs, ys);
+  const tStat = (n > 2 && Math.abs(ic) < 1) ? ic * Math.sqrt((n - 2) / (1 - ic * ic)) : 0;
+  return { ic: +ic.toFixed(4), n, tStat: +tStat.toFixed(2) };
+}
