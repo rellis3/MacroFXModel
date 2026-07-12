@@ -6,22 +6,49 @@ serialize_closed_trades) so a bot swaps live↔paper with no code change. Adds
 ``set_price`` (the loop feeds it) and ``check_barriers`` which closes a position
 when price hits its TP/SL — mirroring MT5's native SL/TP execution of the triple
 barrier. Pure + offline-testable; used whenever paper_mode is on (the default).
+
+Measurement contract (this broker is a paper-trading INSTRUMENT, so its numbers
+must be money, not price deltas):
+
+* **P&L is in account currency** — profit = (Δprice / pip) × pip_value × lots,
+  signed by direction, using the canonical pip table (pylego.instruments) and
+  the sizing point-value table (pylego.point_values) — the SAME resolution
+  ``position_size`` sizes with. Unknown symbols fall back to the FX default
+  (pip 0.0001, $10/pip/lot), mirroring the bots' ``size_for`` fallback.
+* **The balance MOVES** — every ``stop()`` adds the realized profit to the
+  balance ``account_balance()`` returns, so sizing compounds and drawdown logic
+  can rehearse, exactly as live.
+* **Fills pay the spread** — entries fill at mid ± spread/2 (BUY above, SELL
+  below) and exits cross the other half, so a round trip costs exactly ONE full
+  spread. Barrier TRIGGERS still evaluate on the fed mid (slightly conservative
+  vs MT5's bid/ask trigger: an SL exit fills half a spread beyond the stop).
+  Per-pair defaults come from ``pylego.costs.DEFAULT_SPREAD_PIPS`` (single
+  source, per asset class); override per pair with ``set_spread(pair,
+  spread_price_units)`` or the ``spreads`` ctor dict.
 """
 from __future__ import annotations
 
 import time
 
+from pylego.costs import default_spread
+from pylego.instruments import pip_size
+from pylego.point_values import point_value
+
 
 class PaperBroker:
     available = True
 
-    def __init__(self, balance: float = 10_000.0):
+    def __init__(self, balance: float = 10_000.0, spreads: dict | None = None):
         self._bal = float(balance)
         self._next = 1
         self._pos: dict[int, dict] = {}
         self._closed: list[dict] = []
         self._price: dict[str, float] = {}
         self._session: dict[str, list] = {}
+        self._spread: dict[str, float] = {}     # pair -> spread override, PRICE units
+        self._pipcache: dict[str, tuple] = {}   # pair -> (pip, pip_value)
+        for pair, s in (spreads or {}).items():
+            self.set_spread(pair, s)
 
     # ── connection (no-op for paper) ──────────────────────────────────────────
     def connect(self, account=None, password=None, server=None, path=None) -> bool:
@@ -37,6 +64,17 @@ class PaperBroker:
     def price(self, pair: str):
         return self._price.get(pair)
 
+    def set_spread(self, pair: str, spread: float) -> None:
+        """Override the spread for ``pair``, in PRICE units (e.g. 0.00008 for a
+        0.8-pip EUR/USD spread, 0.30 for gold). Defaults come from
+        pylego.costs.default_spread when no override is set."""
+        self._spread[pair] = max(0.0, float(spread))
+
+    def spread(self, pair: str) -> float:
+        """Effective spread for ``pair`` in PRICE units (override → class default)."""
+        s = self._spread.get(pair)
+        return s if s is not None else default_spread(pair)
+
     def set_session_bars(self, pair: str, bars: list) -> None:
         """Test/sim hook: supply the session's OHLC bars the bot replays on
         catch_up (paper has no real feed)."""
@@ -47,7 +85,28 @@ class PaperBroker:
         return list(self._session.get(pair, []))
 
     def account_balance(self):
+        """The MOVING paper balance: starting balance + every realized profit
+        booked by stop(). Sizing off this compounds, exactly as live."""
         return self._bal
+
+    # ── money conversion (the same resolution position_size sizes with) ───────
+    def _pip_and_value(self, pair: str) -> tuple:
+        pv = self._pipcache.get(pair)
+        if pv is None:
+            try:
+                pv = (pip_size(pair), point_value(pair, default=10.0))
+            except Exception:
+                pv = (0.0001, 10.0)             # mirrors the bots' size_for fallback
+            self._pipcache[pair] = pv
+        return pv
+
+    def _profit(self, pair: str, open_price: float, close_price: float,
+                direction: str, lots: float) -> float:
+        """Account-currency P&L: (Δprice / pip) × pip_value × lots, signed by
+        direction — gold points and FX fractions land in the same money units."""
+        pip, pip_value = self._pip_and_value(pair)
+        sign = 1 if direction == "LONG" else -1
+        return (close_price - open_price) * sign / pip * pip_value * lots
 
     # ── orders (mirror Mt5Broker.enter/stop signatures) ───────────────────────
     def enter(self, pair, direction, sl, tp, lots, max_spread_pips, paper_mode, comment=None,
@@ -56,16 +115,21 @@ class PaperBroker:
         Returns a positive paper ticket (the bot only uses PaperBroker in paper
         mode, where we want real position tracking + barrier exits).
 
+        The fill CROSSES half the spread: BUY at mid + spread/2, SELL at
+        mid − spread/2 (the exit crosses the other half — see stop()).
+
         ``dedupe_tag`` mirrors ``Mt5Broker.enter``: when given, blocks the fill if
         a position already open on ``pair`` has ``[{dedupe_tag}]`` in its comment
         (unset by default — paper stacks freely, same as before)."""
-        px = self._price.get(pair)
-        if px is None:
+        mid = self._price.get(pair)
+        if mid is None:
             return None
         if dedupe_tag is not None:
             tag = f'[{dedupe_tag}]'
             if any(p['pair'] == pair and tag in (p.get('comment') or '') for p in self._pos.values()):
                 return None
+        half = self.spread(pair) / 2.0
+        px = mid + half if direction == "LONG" else mid - half
         t = self._next
         self._next += 1
         self._pos[t] = {"ticket": t, "pair": pair, "direction": direction,
@@ -73,13 +137,28 @@ class PaperBroker:
                         "comment": comment or "", "time_open": int(time.time())}
         return t
 
+    def _exit_price(self, pair: str, direction: str):
+        """Exit-side mark for an open position: mid ∓ spread/2 (a LONG sells the
+        bid, a SHORT buys the ask) — the price stop() would realize right now.
+        None when no price has been fed."""
+        mid = self._price.get(pair)
+        if mid is None:
+            return None
+        half = self.spread(pair) / 2.0
+        return mid - half if direction == "LONG" else mid + half
+
     def stop(self, ticket, pair=None, paper_mode=True, reason="", comment_prefix="Close") -> bool:
         p = self._pos.pop(ticket, None)
         if not p:
             return True                       # already gone
-        close = self._price.get(p["pair"], p["open_price"])
-        sign  = 1 if p["direction"] == "LONG" else -1
-        profit = (close - p["open_price"]) * sign * p["lots"]
+        # Exit crosses the other half of the spread (entry paid the first half →
+        # the round trip costs exactly one full spread). No price ever fed →
+        # close at the fill (profit 0), never a fabricated spread charge.
+        close = self._exit_price(p["pair"], p["direction"])
+        if close is None:
+            close = p["open_price"]
+        profit = self._profit(p["pair"], p["open_price"], close, p["direction"], p["lots"])
+        self._bal += profit                   # realized P&L moves the paper balance
         self._closed.append({**p, "reason": reason, "close_price": close,
                              "profit": profit, "time_close": int(time.time())})
         return True
@@ -103,9 +182,12 @@ class PaperBroker:
     def serialize_open_positions(self) -> list:
         out = []
         for t, p in self._pos.items():
-            cur = self._price.get(p["pair"], p["open_price"])
-            sign = 1 if p["direction"] == "LONG" else -1
-            profit = (cur - p["open_price"]) * sign * p["lots"]
+            # Mark at the exit-side price (like MT5's price_current: bid for a
+            # long) so the unrealized profit matches what stop() would realize.
+            cur = self._exit_price(p["pair"], p["direction"])
+            if cur is None:
+                cur = p["open_price"]
+            profit = self._profit(p["pair"], p["open_price"], cur, p["direction"], p["lots"])
             out.append({
                 "ticket": t, "symbol": p["pair"],
                 "direction": "BUY" if p["direction"] == "LONG" else "SELL",
@@ -122,6 +204,7 @@ class PaperBroker:
     def serialize_closed_trades(self) -> list:
         # position_id is REQUIRED: the server's mergeTradeHistory dedups on it, so a
         # closed trade without it is dropped and never reaches the Trade History tab.
+        # profit is in ACCOUNT CURRENCY (same units as Mt5Broker) — not a price delta.
         return [{
             "position_id": c["ticket"], "ticket": c["ticket"],
             "symbol": c["pair"], "direction": "BUY" if c["direction"] == "LONG" else "SELL",

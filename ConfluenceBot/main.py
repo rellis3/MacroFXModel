@@ -71,7 +71,7 @@ from modules.volume_profile import compute_volume_profile
 from modules.session_engine import compute_session_levels
 from modules.vumanchu import compute_vumanchu
 from modules.trendline_engine import detect_trendlines, Trendline
-from modules.trade_manager import TradeManager, ManagedTrade
+from modules.trade_manager import TradeManager, ManagedTrade, paper_close_exec
 from modules.exits import plan_exits
 
 # Shared multi-instrument bricks — never re-inline a pip table or a sizing formula.
@@ -141,6 +141,25 @@ DEFAULT_CFG: dict = {
     'vu_min_components':           2,
     'vu_require_wt':               True,
     'mf_fuel_veto':                True,
+
+    # Paper fills — costs on by default (live MT5 already pays the real
+    # bid/ask; paper must too or thin edges get flattered). Full round-trip
+    # bid/ask spread in PIPS by asset class, scaled by each instrument's
+    # registry pip size: a paper BUY fills at mid + spread/2, a SELL at
+    # mid − spread/2, at entry AND at close — one full spread per round trip —
+    # and TP/SL touches are checked on the exit-side price. Override per
+    # class here or per instrument via paper_spread_overrides (canonical key
+    # → pips, e.g. {'gold': 0.4, 'eurusd': 0.6}).
+    'paper_spread_fx':             0.8,    # pips — FX majors/crosses
+    'paper_spread_fx_jpy':         1.0,    # pips — JPY-quoted crosses (pip=0.01)
+    'paper_spread_commodity':      0.3,    # pips — gold: 0.3 × $1 pip = $0.30
+    'paper_spread_index':          2.0,    # pips — indices: 2 points
+    'paper_spread_overrides':      {},
+    # Overnight financing PLACEHOLDER for paper holds (pending real per-pair
+    # swap rates): this % of notional charged per UTC midnight crossed while
+    # a paper position is open, regardless of direction. Appears as 'swap' in
+    # the audit/KV trade records. Set 0 to disable.
+    'paper_swap_pct':              0.001,  # % of notional per night
 
     # Risk / portfolio — PER INSTRUMENT caps
     'risk_pct':                    0.5,
@@ -476,6 +495,49 @@ def _calc_lot_size(balance: float, risk_pct: float, sl_dist: float,
                          pip=instr.pip, pip_value=instr.point_val, max_lot=max_lot)
 
 
+# ── Paper transaction costs ───────────────────────────────────────────────────
+
+def paper_spread_price(instr: InstrCtx, cfg: dict) -> float:
+    """Full paper round-trip bid/ask spread in PRICE units for an instrument.
+
+    Class defaults (config-overridable, plus per-instrument overrides keyed by
+    canonical registry key): FX majors/crosses 0.8 pips, JPY-quoted crosses
+    1.0 pips, gold 0.3 pips (= $0.30 at pip $1), indices 2.0 points. Pips
+    scale by the instrument's registry pip size — the same pip/digits
+    threading the rest of the bot uses, so a wrong pip can't sneak in here.
+    """
+    overrides = cfg.get('paper_spread_overrides') or {}
+    pips = overrides.get(instr.key)
+    if pips is None:
+        if instr.asset_class == 'fx':
+            key = 'paper_spread_fx_jpy' if instr.pip >= 0.01 else 'paper_spread_fx'
+        elif instr.asset_class == 'index':
+            key = 'paper_spread_index'
+        else:
+            key = 'paper_spread_commodity'
+        pips = cfg.get(key, DEFAULT_CFG.get(key, 1.0))
+    return max(0.0, float(pips)) * instr.pip
+
+
+def paper_swap_pips(trade: ManagedTrade, instr: InstrCtx, cfg: dict) -> float:
+    """Overnight financing PLACEHOLDER for paper holds, in PIPS (≥ 0).
+
+    Simplest honest version pending real per-pair swap rates: paper_swap_pct %
+    of notional per UTC midnight crossed while the position was open, charged
+    regardless of direction. Since notional = entry × point_val / pip × lots
+    and pip value = point_val × lots per pip, the per-lot terms cancel and the
+    charge reduces to entry_price × pct% × nights ÷ pip — lot-independent in
+    pips. Convert to money with instr.point_val × lots where needed.
+    """
+    pct = float(cfg.get('paper_swap_pct', 0.001))
+    if pct <= 0:
+        return 0.0
+    nights = (datetime.now(timezone.utc).date() - trade.entry_dt().date()).days
+    if nights <= 0:
+        return 0.0
+    return trade.entry_price * (pct / 100.0) * nights / instr.pip
+
+
 # ── ATR helpers ───────────────────────────────────────────────────────────────
 
 def _atr_from_list(bars: list[dict], alpha: float = 0.15) -> float:
@@ -647,11 +709,14 @@ def _serialize_closed_trades(magic: int) -> list:
 
 
 def _serialize_paper_trades(trades: list[ManagedTrade], price: float,
-                            instr: InstrCtx) -> list:
+                            instr: InstrCtx, spread: float = 0.0) -> list:
     out = []
     for t in trades:
         sign = 1 if t.direction == 'LONG' else -1
-        pnl  = sign * (price - t.entry_price) / instr.pip * instr.point_val * t.lot_size
+        # Floating PnL marked at the exit-side executable price (bid for a
+        # LONG, ask for a SHORT), not at mid — same spread the close will pay.
+        exec_px = paper_close_exec(t.direction, price, spread)
+        pnl  = sign * (exec_px - t.entry_price) / instr.pip * instr.point_val * t.lot_size
         out.append({
             'ticket':     0,
             'symbol':     instr.symbol,
@@ -912,18 +977,29 @@ class SymbolEngine:
 
     # ── trade management ───────────────────────────────────────────────────────
 
+    def _paper_spread(self) -> float:
+        """Full paper round-trip spread in PRICE units for this instrument."""
+        return paper_spread_price(self.instr, self.cfg)
+
     def _manage_trades(self, price: float) -> None:
+        spread = self._paper_spread()
         for trade in list(self.tm.open_trades):
             trade.update_excursion(price)
             if trade.mode == 'LIVE' and trade.ticket and self.bot._mt5_ok:
                 self._manage_live_trade(trade, price)
             else:
-                event = trade.check_outcome(price, self.cfg.get('be_after_tp1', True))
+                # Paper outcomes + closes use the exit-side executable price
+                # (LONG closes at bid, SHORT at ask) so the recorded PnL pays
+                # the exit half-spread; entry already paid the other half.
+                event = trade.check_outcome(price, self.cfg.get('be_after_tp1', True),
+                                            spread=spread)
+                exec_px = round(paper_close_exec(trade.direction, price, spread),
+                                self.instr.digits)
                 if event == 'TP1_HIT':
-                    self.journal.log_tp1_hit(trade, price)
+                    self.journal.log_tp1_hit(trade, exec_px)
                 elif event in ('TP2_HIT', 'SL_HIT', 'BE_STOP'):
-                    self.journal.log_trade_closed(trade, price, event)
-                    self._on_trade_closed(trade, price, event)
+                    self.journal.log_trade_closed(trade, exec_px, event)
+                    self._on_trade_closed(trade, exec_px, event)
 
     def _manage_live_trade(self, trade: ManagedTrade, price: float) -> None:
         instr  = self.instr
@@ -984,12 +1060,18 @@ class SymbolEngine:
                                  and trade.htf_aligned)
             if allowed_overnight:
                 continue
+            close_px = price
             if trade.mode == 'LIVE' and trade.ticket and self.bot._mt5_ok:
                 if not _close_live_position(self.instr, trade.ticket):
                     log.warning(f'[EXPIRE] {self.instr.symbol} live close failed {trade.ticket}')
                     continue
-            self.journal.log_trade_closed(trade, price, 'EXPIRED')
-            self._on_trade_closed(trade, price, 'EXPIRED')
+            else:
+                # Paper EOD close pays the exit half-spread like any other close.
+                close_px = round(paper_close_exec(trade.direction, price,
+                                                  self._paper_spread()),
+                                 self.instr.digits)
+            self.journal.log_trade_closed(trade, close_px, 'EXPIRED')
+            self._on_trade_closed(trade, close_px, 'EXPIRED')
 
     def _on_trade_closed(self, trade: ManagedTrade, close_price: float, reason: str) -> None:
         self.tm.close_trade(trade)
@@ -1007,7 +1089,12 @@ class SymbolEngine:
             return
         instr = self.instr
         sign  = 1 if trade.direction == 'LONG' else -1
-        profit = sign * (close_price - trade.entry_price) / instr.pip * instr.point_val * trade.lot_size
+        # close_price is already the exit-side exec (spread paid both sides);
+        # the overnight swap placeholder is charged here as an explicit
+        # 'swap' line, exactly like MT5 reports it for live positions.
+        swap_money = paper_swap_pips(trade, instr, self.cfg) * instr.point_val * trade.lot_size
+        profit = (sign * (close_price - trade.entry_price) / instr.pip
+                  * instr.point_val * trade.lot_size) - swap_money
         entry_dt = trade.entry_dt()
         self.closed_today.append({
             # position_id is unique+stable per trade so repeated status pushes
@@ -1019,8 +1106,8 @@ class SymbolEngine:
             'open_price':  round(trade.entry_price, instr.digits),
             'close_price': round(close_price, instr.digits),
             'profit':      round(profit, 2),
-            'swap':        0.0,
-            'commission':  0.0,
+            'swap':        round(-swap_money, 2),
+            'commission':  0.0,   # spread already paid via bid/ask exec prices
             'time_open':   int(entry_dt.timestamp()),
             'time_close':  int(datetime.now(timezone.utc).timestamp()),
             'comment':     f'paper {trade.trade_id} {reason} [{instr.display}]',
@@ -1031,7 +1118,12 @@ class SymbolEngine:
         try:
             instr = self.instr
             sign = 1 if trade.direction == 'LONG' else -1
-            pnl  = round(sign * (close_price - trade.entry_price) / instr.pip, 1)
+            pnl  = sign * (close_price - trade.entry_price) / instr.pip
+            # Paper trades: subtract the overnight swap placeholder (close_price
+            # already carries the spread via exit-side exec). Live pnl stays as
+            # recorded — MT5 reports live swap/commission separately.
+            swap_pips = paper_swap_pips(trade, instr, self.cfg) if trade.mode == 'PAPER' else 0.0
+            pnl = round(pnl - swap_pips, 1)
             if reason == 'BE_STOP':
                 result = 'BREAKEVEN'
             elif reason == 'EXPIRED':
@@ -1053,6 +1145,7 @@ class SymbolEngine:
                 'close_reason': reason,
                 'close_price':  round(close_price, instr.digits),
                 'pnl_pips':     pnl,
+                'swap_pips':    round(-swap_pips, 2),
                 'mfe_pips':     trade.mfe_pips,
                 'mae_pips':     trade.mae_pips,
                 'result':       result,
@@ -1254,11 +1347,21 @@ class SymbolEngine:
                 self.tm.start_zone_cooldown(zone.zone_id, 5)
                 return
 
+        # Paper entries pay the entry half-spread: a BUY fills at the ask =
+        # mid + spread/2, a SELL at the bid = mid − spread/2. Live orders
+        # already fill at the broker's real bid/ask (_place_live_order), so
+        # the recorded live entry stays the mid exactly as before.
+        entry_exec = price
+        if not ticket:
+            half = self._paper_spread() / 2.0
+            entry_exec = round(price + half if direction == 'LONG' else price - half,
+                               instr.digits)
+
         trade = ManagedTrade(
             trade_id=self.tm.next_trade_id(),
             zone_id=zone.zone_id,
             direction=direction,
-            entry_price=price,
+            entry_price=entry_exec,
             sl=plan.sl, tp1=plan.tp1, tp2=plan.tp2,
             lot_size=lot_size, risk_pct=risk_pct,
             entry_time=datetime.now(timezone.utc).isoformat(),
@@ -1409,7 +1512,7 @@ class SymbolEngine:
             return []
         return _serialize_paper_trades(
             [t for t in self.tm.open_trades if t.mode == 'PAPER'],
-            self.last_price, self.instr)
+            self.last_price, self.instr, spread=self._paper_spread())
 
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────

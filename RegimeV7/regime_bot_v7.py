@@ -216,6 +216,16 @@ DEFAULT_CFG: dict = {
     'max_lot':         5.0,
     'max_spread_pips': 3.0,
 
+    # ── Paper-mode transaction costs (backtest parity) ────────────────────────
+    # Mirrors the cost model regime-backtest.html PINS (cost_bp/slip_bp,
+    # fixed:true — def 1.2 / 0.4): every PAPER close pays cost_bp round-trip
+    # (basis points of price) plus slip_bp extra on stop-type exits (SL_HIT —
+    # BE/trail stops also surface as SL_HIT here). Live mode pays the real
+    # broker spread, so these apply to paper audits only. Costs on by default;
+    # config-overridable.
+    'paper_cost_bp': 1.2,
+    'paper_slip_bp': 0.4,
+
     # ── RiskGuard ─────────────────────────────────────────────────────────────
     'ddlimit':   3.0,
     'monthlydd': 5.0,
@@ -420,12 +430,41 @@ def get_price(pair: str, url: str) -> Optional[float]:
         return None
 
 
+# ── Paper equity ───────────────────────────────────────────────────────────────
+# Starts at 10,000 and moves with every closed paper trade's money PnL (after
+# paper costs) so RiskGuardV7's daily/monthly drawdown lockouts rehearse on a
+# moving balance instead of a constant. IN-MEMORY ONLY: this bot has no state
+# file, so a restart resets paper equity to 10,000 (documented limitation).
+PAPER_START_BALANCE: float = 10_000.0
+_paper_equity: float = PAPER_START_BALANCE
+
+
+def apply_paper_pnl(money: float) -> float:
+    """Apply a closed paper trade's money PnL to the paper equity float."""
+    global _paper_equity
+    _paper_equity += money
+    return _paper_equity
+
+
+def paper_cost_price(entry_price: float, exit_code: str,
+                     cost_bp: float, slip_bp: float) -> float:
+    """Round-trip paper transaction cost in PRICE units.
+
+    Mirrors the pinned backtest cost model (regime-backtest.html cost_bp /
+    slip_bp): every trade pays cost_bp (basis points of entry price)
+    round-trip; stop-type exits (SL_HIT — breakeven and trail stops also exit
+    via SL_HIT in this bot) pay slip_bp extra.
+    """
+    bp = cost_bp + (slip_bp if exit_code == 'SL_HIT' else 0.0)
+    return entry_price * bp / 10_000.0
+
+
 def get_balance(paper_mode: bool) -> float:
     if HAS_MT5 and not paper_mode:
         info = mt5.account_info()
         if info:
             return info.balance
-    return 10_000.0
+    return _paper_equity
 
 
 # ── M30 feature computation (slope + ATR-for-SL) ──────────────────────────────
@@ -972,9 +1011,30 @@ def run(url: str, paper_mode: bool) -> None:
         sign      = 1 if direction == 'LONG' else -1
         pip       = _PIP_SIZES.get(pair, 0.0001)
         sl_dist   = pos.get('orig_sl_dist') or 0.0
-        pnl_pips  = round((exit_price - pos['entry_price']) * sign / pip, 1)
-        pnl_r     = round((exit_price - pos['entry_price']) * sign / sl_dist, 3) if sl_dist > 0 else 0.0
+        pnl_price = (exit_price - pos['entry_price']) * sign
+        # Paper closes pay the backtest's pinned cost model (cost_bp round-trip
+        # + slip_bp on stop exits) so paper pnl_pips/pnl_r are net-of-cost.
+        # Live fills already pay the real spread at the broker — no double
+        # charge there.
+        cost_price = 0.0
+        if paper_mode:
+            cost_price = paper_cost_price(
+                pos['entry_price'], code,
+                float(cfg.get('paper_cost_bp', 1.2)),
+                float(cfg.get('paper_slip_bp', 0.4)))
+            pnl_price -= cost_price
+        pnl_pips  = round(pnl_price / pip, 1)
+        pnl_r     = round(pnl_price / sl_dist, 3) if sl_dist > 0 else 0.0
         dur_secs  = time.time() - pos.get('opened_at', time.time())
+
+        # Move the paper equity float so RiskGuardV7 sees real drawdowns in
+        # paper mode (pips → money via the bot's pip-value table × lots).
+        if paper_mode:
+            lots  = float(pos.get('lots') or 0.0)
+            money = (pnl_price / pip) * _PIP_VALUES.get(pair, 10.0) * lots
+            new_bal = apply_paper_pnl(money)
+            log.info(f'[{pair}] paper equity {new_bal:.2f} ({money:+.2f} on close, '
+                     f'cost={cost_price / pip:.1f}p)')
 
         _cycle_events.append({'pair': pair, 'type': 'close', 'reason': reason, 'direction': direction})
 
@@ -991,6 +1051,8 @@ def run(url: str, paper_mode: bool) -> None:
             'orig_sl_dist':  round(sl_dist, 5),
             'pnl_pips':      pnl_pips,
             'pnl_r':         pnl_r,
+            'lots':          pos.get('lots'),
+            'paper_cost_pips': round(cost_price / pip, 2) if paper_mode else None,
             'duration_secs': round(dur_secs, 0),
             'entry_regime':  pos.get('entry_regime'),
             'exit_regime':   regime,
@@ -1090,6 +1152,7 @@ def run(url: str, paper_mode: bool) -> None:
                         'entry_price':  float(mt5p.price_open),
                         'sl':           float(mt5p.sl),
                         'orig_sl_dist': sl_dist,
+                        'lots':         float(mt5p.volume),
                         'opened_at':    float(mt5p.time),
                         'entry_regime': all_regimes.get(pk, {}).get('regime', '').upper() or direction[:4],
                         'entry_conf':   float(all_regimes.get(pk, {}).get('confidence', 0)),
@@ -1434,6 +1497,7 @@ def run(url: str, paper_mode: bool) -> None:
                     'entry_price':  price,
                     'sl':           sl,
                     'orig_sl_dist': sl_dist,
+                    'lots':         size,   # needed for the paper-equity money PnL
                     'opened_at':    time.time(),
                     'entry_regime': regime,
                     'entry_conf':   confidence,

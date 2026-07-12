@@ -45,12 +45,14 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 
 ## Batch 4 — costs in every paper path (the big one)
 
-- [ ] Fix PaperBroker (`pylego/broker/paper.py`): price feed wiring, money-unit P&L via pip value, balance updates
-- [ ] GoldV2 + Gold V1: paper fills at bid/ask, round-trip spread in journal PnL
-- [ ] Regime V7: charge 1.2bp round-trip in paper audit; paper balance moves so RiskGuard rehearses
-- [ ] ConfluenceBot: spread + stop slippage + swap on overnight holds in paper P&L
-- [ ] Vol + range-line bots: per-trade realized entry-slip logging (fill − modeled level, book units)
-- [ ] macrofx1 `bot/backtest.py`: per-pair spread + slippage; OOS-only reporting
+- [x] Fix PaperBroker (`pylego/broker/paper.py`): price feed wiring, money-unit P&L via pip value, balance updates
+- [x] GoldV2 + Gold V1: paper fills at bid/ask, round-trip spread in journal PnL
+- [x] Regime V7: charge 1.2bp round-trip in paper audit; paper balance moves so RiskGuard rehearses
+- [x] ConfluenceBot: spread + stop slippage + swap on overnight holds in paper P&L
+- [x] Vol + range-line bots: per-trade realized entry-slip logging (fill − modeled level, book units)
+- [x] macrofx1 `bot/backtest.py`: per-pair spread + slippage; OOS-only reporting
+
+- [ ] Range-line bot paper mode: ladders need a session BAR feed (quote feed fixes prices/trailing only — found during Batch 4)
 
 ## Batch 5 — sizing & risk integrity
 

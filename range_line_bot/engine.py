@@ -51,6 +51,9 @@ class RangeSession:
         self.entered = set()       # (src_tag, side) with a position taken (held-position suppression)
         self.conf_levels = []      # today's structural-confluence level prices [{price,source}]
         self.conf_tol_frac = 0.1   # "on the line" tolerance as a fraction of the ladder range
+        self.session_open = None   # trading-session open (set by the loop from the Asia
+                                   # window's first bar) — the entry-slip audit's %
+                                   # denominator, matching the book's per-touch t.open
 
     # ── confluence entry-gate inputs (optional; set from the shipped artifact) ──
     def set_confluence(self, levels, tol_frac=0.1):

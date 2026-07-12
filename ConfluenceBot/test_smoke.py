@@ -483,5 +483,58 @@ cb3._enforce_live_guard()
 check('--live alone without KV opt-in stays PAPER', cb3.cfg.get('paper_mode') is True)
 
 
+print('\n── paper costs (per-instrument spread + swap placeholder) ───')
+from datetime import datetime, timedelta, timezone
+from main import (DEFAULT_CFG, build_instr, paper_spread_price, paper_swap_pips)
+from modules.trade_manager import paper_close_exec
+
+_eur  = build_instr('EUR/USD', {})
+_jpy  = build_instr('USD/JPY', {})
+_gold = build_instr('GOLD', {})
+_nq   = build_instr('NQ', {})
+
+check('FX major spread = 0.8 pips in price units',
+      abs(paper_spread_price(_eur, DEFAULT_CFG) - 0.8 * 0.0001) < 1e-12)
+check('JPY cross spread = 1.0 pip (pip=0.01)',
+      abs(paper_spread_price(_jpy, DEFAULT_CFG) - 0.01) < 1e-12)
+check('gold spread = $0.30',
+      abs(paper_spread_price(_gold, DEFAULT_CFG) - 0.30) < 1e-12)
+check('index spread = 2 points',
+      abs(paper_spread_price(_nq, DEFAULT_CFG) - 2.0) < 1e-12)
+_ov_cfg = {**DEFAULT_CFG, 'paper_spread_overrides': {'eurusd': 0.5}}
+check('per-instrument override wins',
+      abs(paper_spread_price(_eur, _ov_cfg) - 0.5 * 0.0001) < 1e-12)
+
+# paper BUY fills at mid + spread/2; a SHORT's stop is hit by the ask
+_spr = paper_spread_price(_eur, DEFAULT_CFG)
+_mid = 1.10000
+check('paper BUY entered at mid + spread/2',
+      abs(round(_mid + _spr / 2, _eur.digits) - 1.10004) < 1e-12)
+_now_iso = datetime.now(timezone.utc).isoformat()
+_short = ManagedTrade('CS1', 'z', 'SHORT', _mid - _spr / 2, 1.10100, 1.09900,
+                      1.09800, 0.1, 0.5, _now_iso)
+check('SHORT stop hit by ask (mid still below SL)',
+      _short.check_outcome(1.10097, spread=_spr) == 'SL_HIT')
+check('spread=0 (live fallback) unchanged',
+      ManagedTrade('CS2', 'z', 'SHORT', _mid, 1.10100, 1.09900, 1.09800,
+                   0.1, 0.5, _now_iso).check_outcome(1.10097) is None)
+check('LONG closes at bid',
+      abs(paper_close_exec('LONG', _mid, _spr) - (_mid - _spr / 2)) < 1e-12)
+
+# Overnight swap placeholder: paper_swap_pct% of notional per UTC midnight
+_t2 = ManagedTrade('CS3', 'z', 'LONG', 1.10000, 1.09000, 1.11000, 1.12000,
+                   0.1, 0.5,
+                   (datetime.now(timezone.utc) - timedelta(days=2)).isoformat())
+_expected = 1.10000 * (0.001 / 100.0) * 2 / _eur.pip   # 2 nights → 0.22 pips
+check('swap = swap_pct of notional per night, in pips (2 nights)',
+      abs(paper_swap_pips(_t2, _eur, DEFAULT_CFG) - _expected) < 1e-9,
+      f'{paper_swap_pips(_t2, _eur, DEFAULT_CFG)} vs {_expected}')
+_t3 = ManagedTrade('CS4', 'z', 'LONG', 1.10000, 1.09000, 1.11000, 1.12000,
+                   0.1, 0.5, _now_iso)
+check('no swap on an intraday hold', paper_swap_pips(_t3, _eur, DEFAULT_CFG) == 0.0)
+check('swap disabled at 0 pct',
+      paper_swap_pips(_t2, _eur, {**DEFAULT_CFG, 'paper_swap_pct': 0}) == 0.0)
+
+
 print(f'\n{"="*60}\n{PASS} passed, {FAIL} failed\n')
 sys.exit(1 if FAIL else 0)

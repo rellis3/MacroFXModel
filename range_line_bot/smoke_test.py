@@ -6,7 +6,8 @@ import sys
 
 from pylego.broker.paper import PaperBroker
 from range_line_bot.engine import RangeSession
-from range_line_bot.range_line_bot import _trail_stops, size_for, _apply_broker_symbols, _broker_sym, _in_formation
+from range_line_bot.range_line_bot import (_trail_stops, size_for, _apply_broker_symbols,
+                                           _broker_sym, _in_formation, _fill_and_slip)
 
 _p = _f = 0
 def ok(name, cond):
@@ -27,6 +28,7 @@ POLICY = {"A_1_up|": {"decision": "follow"}}
 br = PaperBroker(balance=10_000.0)
 sess = RangeSession("nq", FIBS, chand_frac=0.5)
 sess.set_range("A", BARS)
+sess.session_open = BARS[0]["open"]           # the loop stamps this from the Asia window
 
 # price touches 110 → one follow buy.
 br.set_price("nq", 110.0)
@@ -38,10 +40,18 @@ positions = {}
 lots = size_for("nq", 10_000.0, 0.5, spec["entry"] - spec["protect_stop"], 2.0)
 # Enter with NO take-profit (tp=0); the chandelier-trailed native SL is the exit.
 tid = br.enter("nq", "LONG", spec["protect_stop"], 0.0, lots, 1e9, True, comment="RL A_1 f")
+fill, slip = _fill_and_slip(br, tid, spec, sess.session_open)
 positions[tid] = {"instr": "nq", "ticket": tid, "dir_up": True, "entry": spec["entry"],
                   "peak": spec["entry"], "rung": spec["rung"], "protect": spec["protect_stop"],
-                  "sl": spec["protect_stop"]}
+                  "sl": spec["protect_stop"], "fill": fill, "slip_pct": slip}
 ok("position opened on PaperBroker (no TP)", len(br.serialize_open_positions()) == 1)
+# Spread-adjusted fill: nq default spread = 2 points (pylego.costs index class),
+# so the BUY fills 1 point over the fed mid.
+ok("BUY fill crosses half the default index spread (110 → 111)", abs(fill - 111.0) < 1e-9)
+# Entry-slip audit: favourable is NEGATIVE — this fill paid up (adverse, +):
+# (111 − 110) / session_open 105 × 100 ≈ +0.952381% of open.
+ok("slip_pct recorded, adverse (+) and equals (fill−level)/open×100",
+   slip is not None and slip > 0 and abs(slip - (111.0 - 110.0) / 105.0 * 100) < 1e-6)
 
 # Price runs up to 120: chandelier = max(105, 120-2.5)=117.5 → the native SL trails
 # up to 117.5 (through break-even 110), broker-side. No exit yet (price above SL).
@@ -54,6 +64,13 @@ ok("SL is above entry — profit locked (break-even and beyond)", positions[tid]
 br.set_price("nq", 116.0); _trail_stops(positions, br, PLAN, CFG); br.check_barriers()
 ok("broker closes at the trailed SL when price retraces", len(br.serialize_open_positions()) == 0)
 ok("closed trade recorded for the journal/positions table", len(br.serialize_closed_trades()) == 1)
+# MONEY-unit P&L + moving balance: the exit crosses the other half-spread
+# (close = 116 − 1 = 115); profit = Δ4 points / pip 1 × $1/point/lot × lots.
+closed = br.serialize_closed_trades()[-1]
+ok("closed P&L is in money units ((115−111) × $1 × lots)",
+   abs(closed["profit"] - 4.0 * lots) < 1e-6)
+ok("paper balance moved by the realized profit (sizing can compound)",
+   abs(br.account_balance() - (10_000.0 + 4.0 * lots)) < 1e-6)
 _trail_stops(positions, br, PLAN, CFG)                # drops the now-closed ticket
 ok("local position state cleared after close", not positions)
 ok("PaperBroker.tradable is always open", br.tradable("nq") is True)

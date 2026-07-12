@@ -29,6 +29,8 @@ from pylego import point_values as PV                        # noqa: E402
 from pylego import events as EV                              # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
+from pylego.quotes import QuoteFeed                          # noqa: E402
+from pylego.costs import entry_slip_pct, realized_fill       # noqa: E402
 from volatility_bot.engine import SessionTracker, decide, session_open_epoch, ride_trail_stop  # noqa: E402
 from pylego.strategy.volatility import line_levels                             # noqa: E402
 
@@ -71,6 +73,9 @@ DEFAULT_CFG = {
     "status_secs": 30,            # read config (kill/paper toggle) + push status
     "tick_secs": 3,               # local price watch + touch detection
     "enabled_pairs": [],           # [] = use the plan's survivor universe
+    "paper_spread_pips": {},       # paper-fill spread OVERRIDES, {pair: pips/points in the
+                                   # pair's OWN pip units} (e.g. {"eurusd": 0.9, "gold": 0.4}).
+                                   # Blank → per-asset-class defaults (pylego.costs).
     "broker_symbols": {},          # broker-specific MT5 names for index CFDs
                                    # e.g. {"nq": "USTECH100", "spx": "SP500", "de30": "GER40"}
                                    # blank keys fall back to the built-in defaults below
@@ -124,6 +129,20 @@ def make_broker(cfg: dict, magic: int = MAGIC):
         log.warning("live requested but MetaTrader5 missing — falling back to PAPER")
         return PaperBroker(balance=10_000.0), True
     return broker, False
+
+
+def _apply_paper_spreads(broker, cfg: dict) -> None:
+    """Push the config's paper-fill spread overrides ({pair: pips in the pair's
+    own pip units}) onto the PaperBroker (no-op live). Called at startup and on
+    every config refresh so an edit applies without a restart; pairs it can't
+    resolve are logged and skipped, never guessed."""
+    if not hasattr(broker, "set_spread"):
+        return
+    for pair, pips in (cfg.get("paper_spread_pips") or {}).items():
+        try:
+            broker.set_spread(pair, float(pips) * I.pip_size(pair))
+        except Exception as e:
+            log.warning(f"paper_spread_pips: ignoring {pair!r}: {e}")
 
 
 # Spread guard caps in the instrument's OWN pip/point units. A single scalar is
@@ -185,6 +204,22 @@ def size_params(pair: str, cfg: dict):
     ml = _override(cfg.get("max_lot_by_class"))
     return (rp if rp is not None else float(cfg.get("risk_pct", 0.5)),
             ml if ml is not None else float(cfg.get("max_lot", 2.0)))
+
+
+def _record_slip(broker, tid, spec, tracker, is_long: bool) -> None:
+    """Entry-slip audit for a just-filled order: realized fill vs the modeled
+    line level (``spec['entry']``), as a signed % of the session open. SIGN
+    CONVENTION: favourable is NEGATIVE, adverse POSITIVE (pylego.costs.
+    entry_slip_pct) — the falsifier for the book's flat 0.012% round-trip +
+    0.006% follow-slip cost model. Stamped onto the traded line's audit entry,
+    which the config card already renders; silently skipped if the fill isn't
+    readable yet (never fake a measurement)."""
+    fill = realized_fill(broker, tid)
+    slip = entry_slip_pct(is_long, fill, spec["entry"], tracker.open)
+    if slip is not None:
+        a = tracker.audit.setdefault(spec["line"], {})
+        a["fill"] = round(fill, 6)
+        a["slip_pct"] = slip
 
 
 def _pair_event_ccys(pair: str) -> list[str]:
@@ -329,6 +364,11 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
     if force_live:
         cfg["paper_mode"] = False
     broker, paper = make_broker(cfg, V["magic"])
+    _apply_paper_spreads(broker, cfg)
+    # Paper has no market feed of its own: pull live quotes off the dashboard
+    # (/api/quote — the same MT5-less path the regime bots use) and feed the
+    # broker each tick. QuoteFeed caches per pair so the 3s loop stays cheap.
+    quotes = QuoteFeed(base_url, log=log) if paper else None
 
     if not paper:
         try:
@@ -388,6 +428,10 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
                     # then dry-run prime so lines already crossed aren't retro-traded.
                     try:
                         tr.catch_up(broker.session_bars(p, since))
+                        if quotes is not None:
+                            q0 = quotes.price(p)
+                            if q0 is not None:
+                                broker.set_price(p, q0)
                         px0 = broker.price(p)
                         if px0 is not None:
                             tr.on_price(px0)
@@ -407,6 +451,7 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
         if nowt - last_status >= cfg.get("status_secs", 30):
             try:
                 cfg = _deep_merge(DEFAULT_CFG, kv.get_json(V["cfg"]) or cfg)
+                _apply_paper_spreads(broker, cfg)     # paper spread edits apply live
             except Exception as e:
                 log.warning(f"config fetch failed: {e} — keeping current config")
             # Event-blackout windows (server publishes hourly; scheduled events are
@@ -454,6 +499,14 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
                 tr, pp = trackers.get(pair), plan["pairs"].get(pair)
                 if tr is None or pp is None:
                     continue
+                if quotes is not None:
+                    # Paper: feed the broker the live dashboard quote. A stale/
+                    # missing quote skips the pair this tick (QuoteFeed logs the
+                    # state change once) — never trade off a frozen price.
+                    q = quotes.price(pair)
+                    if q is None:
+                        continue
+                    broker.set_price(pair, q)
                 px = broker.price(pair)
                 if px is None:
                     continue
@@ -496,6 +549,8 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
                     tid = broker.enter(pair, direction, spec["sl"], tp, lots,
                                        _max_spread(pair, cfg), paper,
                                        comment=f"Vol {spec['line']} {spec['decision'][0]}")
+                    if tid:
+                        _record_slip(broker, tid, spec, tr, direction == "LONG")
                     if tid and ride_mode:
                         ride_state[tid] = {"pair": pair, "entry": spec["entry"], "sl0": spec["sl"],
                                            "is_long": direction == "LONG", "peak": spec["entry"],

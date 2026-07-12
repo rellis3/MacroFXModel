@@ -227,6 +227,34 @@ def test_decide_dry_run_priming_ignores_blackout():
     assert tr.audit["HL50_up"]["status"] == "primed"
 
 
+def test_entry_slip_audit_field_and_sign():
+    # SIGN CONVENTION (pylego.costs.entry_slip_pct): favourable is NEGATIVE.
+    # BUY filled above the modeled level = adverse (+); SELL filled above = favourable (−).
+    from pylego.costs import entry_slip_pct
+    from pylego.broker.paper import PaperBroker
+    from volatility_bot.volatility_bot import _record_slip
+    assert entry_slip_pct(True, 101.0, 100.0, 100.0) == 1.0    # BUY 1% above modeled → +1
+    assert entry_slip_pct(False, 101.0, 100.0, 100.0) == -1.0  # SELL 1% above modeled → −1
+    assert entry_slip_pct(True, None, 100.0, 100.0) is None    # missing fill → no field, never faked
+    # End-to-end on a paper fill: fade the HL50_up touch (SELL). Touch px 1.1110 is
+    # past the modeled line level (≈1.11034); the paper SELL fills at mid − spread/2.
+    tr = _spike_tracker()
+    specs = decide(PP, {"HL50_up|3·spike": {"decision": "fade"}}, tr, 1.1110)
+    s = specs[0]
+    b = PaperBroker()
+    b.set_spread("eurusd", 0.0002)
+    b.set_price("eurusd", 1.1110)
+    tid = b.enter("eurusd", "SHORT", s["sl"], s["tp"], 0.5, 1e9, True)
+    _record_slip(b, tid, s, tr, is_long=False)
+    a = tr.audit["HL50_up"]
+    assert a["status"] == "traded" and "slip_pct" in a and "fill" in a, a
+    assert abs(a["fill"] - 1.1109) < 1e-9                      # mid − spread/2
+    # SELL filled ABOVE the modeled level (touch overshoot beat the half-spread)
+    # → favourable → negative, and equal to (fill − level)/open × 100 sign-flipped.
+    expect = -(1.1109 - s["entry"]) / tr.open * 100
+    assert abs(a["slip_pct"] - expect) < 1e-6 and a["slip_pct"] < 0, a
+
+
 def test_plan_staleness_gate():
     from datetime import datetime, timezone
     from volatility_bot.volatility_bot import _plan_is_current

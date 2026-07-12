@@ -140,6 +140,29 @@ order (by drift risk × reuse, from `LEGO_MODULES.md §2` Python table):
    depends on its key names and payload shape. (The positions payload itself is
    already emitted by `Mt5Broker.serialize_*`.)
 5. **`telegram.py`** — alert transport (formatters stay in the strategy). ⬜
+6. **`costs.py`** — the paper execution-cost model + entry-slip audit. ✅ built
+   (paper-measurement fix). One table of per-asset-class default paper spreads
+   (`DEFAULT_SPREAD_PIPS`: majors 0.8p / JPY 1.0p / gold $0.30 / indices 2pt,
+   consistent with volatility_bot's per-class spread caps) declared in pip units
+   and converted via the canonical pip table; plus `entry_slip_pct` /
+   `realized_fill` — the signed realized-fill-vs-modeled-level audit (favourable
+   = negative, % of session open) both bots stamp per fill, the falsifier for
+   the books' flat 0.012%/0.006% modeled costs. Consumers: `broker/paper.py`,
+   volatility_bot, range_line_bot.
+7. **`quotes.py`** — `QuoteFeed`, the paper-mode market feed. ✅ built (paper-
+   measurement fix). Pulls `GET /api/quote` off the dashboard (the same MT5-less
+   path the regime bots use), cached per pair (`min_interval`) with a staleness
+   gate (`stale_after` → returns None so the loop skips the pair) and once-per-
+   state-change logging. Injected http + clock, offline-testable
+   (`quotes_test.py`). Consumers: volatility_bot, range_line_bot paper loops.
+
+Note (paper-measurement fix): `broker/paper.py` now honours the measurement
+contract — P&L in account currency ((Δprice/pip) × pip_value × lots via the
+same pip/point-value resolution `position_size` uses), a balance that MOVES on
+every close (sizing compounds, drawdown logic can rehearse), and fills that
+cross half the spread each way (round trip = one full spread, defaults from
+`costs.py`, per-pair override via `set_spread` / each bot's
+`paper_spread_pips` config). Serializer field names are unchanged (§7).
 
 ## 5. Adoption plan — one bot at a time
 

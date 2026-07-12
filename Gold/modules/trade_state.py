@@ -10,6 +10,21 @@ from enum import Enum
 from typing import Optional
 
 
+def paper_close_exec(direction: str, mid: float, spread: float) -> float:
+    """Exit-side executable price for a PAPER position marked at mid.
+
+    A LONG closes by selling at the bid = mid − spread/2; a SHORT closes by
+    buying at the ask = mid + spread/2. Together with entries filled at the
+    opposite side (BUY at ask, SELL at bid) a paper round trip pays exactly
+    one full spread — matching what live MT5 fills already pay for free-fill
+    honesty (CLAUDE.md: "costs on by default; free fills are not honest").
+    Kept IDENTICAL to GoldV2's implementation so the planned V1-vs-V2 A/B
+    charges both sides the same costs.
+    """
+    half = max(0.0, spread) / 2.0
+    return mid - half if direction == 'LONG' else mid + half
+
+
 class State(str, Enum):
     WAITING   = 'WAITING'
     ARMED     = 'ARMED'
@@ -35,7 +50,13 @@ class ActiveTrade:
     pnl_pips: float = 0.0
     ticket: Optional[int] = None    # MT5 position ticket (live mode only)
 
-    def check_outcome(self, price: float) -> Optional[str]:
+    def check_outcome(self, price: float, spread: float = 0.0) -> Optional[str]:
+        # `spread` (full bid/ask width, price units) costs the touch checks:
+        # all comparisons use the EXIT-side executable price, so a LONG's
+        # TP/SL is touched by the bid = mid − spread/2 and a SHORT's stop is
+        # hit by the ask = mid + spread/2. spread=0 keeps the legacy
+        # mid-cross behaviour (the live-mode fallback path passes no spread).
+        price = paper_close_exec(self.direction, price, spread)
         if self.direction == 'LONG':
             if not self.tp1_hit and price >= self.tp1:
                 self.tp1_hit = True
