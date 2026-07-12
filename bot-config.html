@@ -4105,6 +4105,7 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
             <tr>
               <th>Pair</th>
               <th>Bot</th>
+              <th title="Trade Decision Engine — advisory only. Would the model take/keep this trade? go/skip · probability · size dial. v0 is an uncalibrated prior (a live read, not entry-time truth) — shadow mode, never affects the bots.">TDE</th>
               <th>Suggested Hedge</th>
               <th>Dir</th>
               <th>Lots</th>
@@ -4118,7 +4119,7 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
             </tr>
           </thead>
           <tbody id="posTableBody">
-            <tr><td colspan="12" class="pos-empty">Loading positions…</td></tr>
+            <tr><td colspan="13" class="pos-empty">Loading positions…</td></tr>
           </tbody>
           <tfoot id="posTableFoot"></tfoot>
         </table>
@@ -5915,6 +5916,31 @@ async function _checkHedgeClosures(openTickets, closedTodayMap, priceMap) {
   try { localStorage.setItem('hedge_audit_closed', JSON.stringify([...closed])); } catch(e) {}
 }
 
+// Render the Trade Decision Engine suggestion for one position as a table cell.
+// Advisory only — the badge shows the model's read (go/skip · prob · size dial),
+// NOT an instruction. v0 is an uncalibrated prior, surfaced honestly on hover.
+function _tdeSuggestCell(sugg) {
+  if (!sugg) return `<td style="color:var(--text3);font-size:10px">—</td>`;
+  const d = sugg.decision;
+  if (d === 'go' || d === 'skip') {
+    const isGo = d === 'go';
+    const color = isGo ? 'var(--green)' : 'var(--red)';
+    const bg    = isGo ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)';
+    const pct   = sugg.probability != null ? `${Math.round(sugg.probability * 100)}%` : '—';
+    const size  = isGo && sugg.size_multiplier != null ? ` ·${sugg.size_multiplier.toFixed(1)}×` : '';
+    const cal   = sugg.calibrated ? '' : ' (prior)';
+    const tip   = (isGo ? (sugg.top_factor || '') : (sugg.reason || 'below go threshold')) +
+                  ` — ${sugg.model_version || 'v0'}${cal}, advisory only`;
+    return `<td><span title="${String(tip).replace(/"/g, '&quot;')}" ` +
+      `style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;` +
+      `color:${color};background:${bg};border:1px solid ${color}">` +
+      `${isGo ? 'GO' : 'SKIP'} ${pct}${size}</span></td>`;
+  }
+  // n/a, error — muted, reason on hover
+  return `<td><span title="${String(sugg.reason || d).replace(/"/g, '&quot;')}" ` +
+    `style="color:var(--text3);font-size:10px">${d === 'error' ? '⚠' : '—'}</span></td>`;
+}
+
 async function loadPositionsTab() {
   const tbody = document.getElementById('posTableBody');
   const tfoot = document.getElementById('posTableFoot');
@@ -5981,10 +6007,26 @@ async function loadPositionsTab() {
   }
 
   if (!allPositions.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="pos-empty">No open positions across all bots</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="pos-empty">No open positions across all bots</td></tr>';
     tfoot.innerHTML = '';
     return;
   }
+
+  // Shadow-score every open position against the Trade Decision Engine (advisory,
+  // read-only — never affects the bots). One batch call; suggestions keyed by ticket.
+  let tdeSuggestions = {};
+  try {
+    const scoreRes = await fetch('/api/trade-decision/score-positions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        positions: allPositions.map(p => ({
+          symbol: p.symbol, direction: p.direction, open_price: p.open_price,
+          ticket: p.ticket, bot: p._bot?.key || null,
+        })),
+      }),
+    }).then(r => r.ok ? r.json() : null).catch(() => null);
+    if (scoreRes?.suggestions) tdeSuggestions = scoreRes.suggestions;
+  } catch { /* advisory only — never block the positions table on it */ }
 
   const rows = [];
   const symbols = Object.keys(bySymbol).sort();
@@ -6036,6 +6078,7 @@ async function loadPositionsTab() {
         `<tr class="${firstClass}">` +
         `<td><strong>${idx === 0 ? sym : ''}</strong>${idx === 0 ? conflictHtml : ''}</td>` +
         `<td><span class="${badgeClass}" style="${badgeStyle}" title="${botTitle}">${bot.label}</span></td>` +
+        _tdeSuggestCell(tdeSuggestions[p.ticket]) +
         hedgeCell +
         `<td class="${dClass}">${p.direction}</td>` +
         `<td>${(p.lots || 0).toFixed(2)}</td>` +
@@ -6058,10 +6101,10 @@ async function loadPositionsTab() {
   const totalSwap   = allPositions.reduce((s, p) => s + (p.swap   || 0), 0);
   const totalNet    = totalProfit + totalSwap;
   const totalLots   = allPositions.reduce((s, p) => s + (p.lots   || 0), 0);
-  // Column order: Pair | Bot | Hedge | Dir | Lots | Entry | Current | P&L | Swap | Net | Opened | Ticket
+  // Column order: Pair | Bot | TDE | Hedge | Dir | Lots | Entry | Current | P&L | Swap | Net | Opened | Ticket
   tfoot.innerHTML =
     `<tr class="pos-totals">` +
-    `<td colspan="3">Totals (${allPositions.length} positions)</td>` +
+    `<td colspan="4">Totals (${allPositions.length} positions)</td>` +
     `<td></td>` +
     `<td>${totalLots.toFixed(2)}</td>` +
     `<td colspan="2"></td>` +
