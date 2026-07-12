@@ -5,7 +5,7 @@
 //   node js/legoBricks.test.mjs
 
 import { bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
-import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev } from './statsCore.js';
+import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC } from './statsCore.js';
 import { atrWilder, adxWilder, ema, rsiWilder } from './indicatorCore.js';
 import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate } from './metricsCore.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
@@ -67,6 +67,22 @@ ok('rollingZAt matches hmm5m ref', [10, 100, 250].every(i => near(rollingZAt(arr
 ok('linregSlope sign (rising)', linregSlope([1, 2, 3, 4, 5]) > 0 && near(linregSlope([1, 2, 3, 4, 5]), 1, 1e-9));
 ok('ewma seeded + bounded', ewma([1, 1, 1, 1]).every(v => near(v, 1, 1e-12)));
 ok('stdev pop vs sample differ', stdev([1, 2, 3], 0) !== stdev([1, 2, 3], 1));
+
+// ── Spearman / rank-IC (rank-IC diagnostic brick) ────────────────────────────
+// Reference Spearman via a naive dense-rank-with-ties implementation.
+function refRank(a){ const n=a.length; const idx=[...Array(n).keys()].sort((i,j)=>a[i]-a[j]); const r=new Array(n); let i=0; while(i<n){ let j=i; while(j+1<n && a[idx[j+1]]===a[idx[i]]) j++; const avg=(i+j)/2+1; for(let k=i;k<=j;k++) r[idx[k]]=avg; i=j+1; } return r; }
+function refSpear(x,y){ const rx=refRank(x), ry=refRank(y); const m=a=>a.reduce((s,v)=>s+v,0)/a.length; const mx=m(rx),my=m(ry); let n=0,dx=0,dy=0; for(let i=0;i<x.length;i++){const a=rx[i]-mx,b=ry[i]-my; n+=a*b; dx+=a*a; dy+=b*b;} return n/Math.sqrt(dx*dy); }
+ok('rankData average-rank ties', JSON.stringify(rankData([10, 20, 20, 40])) === JSON.stringify([1, 2.5, 2.5, 4]));
+ok('spearman perfect monotonic (nonlinear) = 1', near(spearman([1, 2, 3, 4, 5], [1, 4, 9, 16, 25]), 1, 1e-12));
+ok('spearman perfect inverse = -1', near(spearman([1, 2, 3, 4], [4, 3, 2, 1]), -1, 1e-12));
+const sx = Array.from({ length: 120 }, (_, i) => Math.sin(i / 5) + i * 0.01);
+const sy = Array.from({ length: 120 }, (_, i) => Math.cos(i / 4) - i * 0.008);
+ok('spearman matches naive ref', near(spearman(sx, sy), refSpear(sx, sy), 1e-12));
+ok('spearman ignores non-finite pairs', near(spearman([1, 2, NaN, 4, 5], [5, 4, 100, 2, 1]), spearman([1, 2, 4, 5], [5, 4, 2, 1]), 1e-12));
+ok('spearman constant score → 0', spearman([3, 3, 3, 3], [1, 2, 3, 4]) === 0);
+const ric = rankIC([1, 2, 3, 4, 5, 6, 7, 8], [2, 1, 4, 3, 6, 5, 8, 7]);
+ok('rankIC reports n + positive t on rising pair', ric.n === 8 && ric.ic > 0 && ric.tStat > 0);
+ok('rankIC null pair ≈ 0', Math.abs(rankIC(Array.from({length:200},(_,i)=>i%7), Array.from({length:200},(_,i)=>(i*13)%5)).ic) < 0.2);
 
 console.log('[indicatorCore]');
 const bars = resampleTo(extractBars(packed, t0, t0 + 3 * 3600), 5);

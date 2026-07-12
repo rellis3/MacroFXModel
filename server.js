@@ -34,6 +34,7 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
+import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
 import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, computeConvexity, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runTrendBasket } from './js/trendBasketEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
@@ -7945,6 +7946,68 @@ app.post('/api/honest-forecast/run', express.json({ limit: '256kb' }), (req, res
 
 app.get('/api/honest-forecast/status/:jobId', (req, res) => {
   const job = hfJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Rank-IC Diagnostic (does a score sort the forward outcome?) ──────────────
+// Spearman rank-IC of the day-type classifier scores (composite T + its
+// component estimators + the regime/momentum directional call) vs the realized
+// forward window, on a true IS/OOS split. Pure math lives in rankICEngine.js
+// (importing dayTypeCore + volBacktestEngine — no copies); this route fetches D1
+// and loops. Same async-job pattern as /api/honest-forecast/run.
+const ricJobs = new Map();
+function _purgeStaleRicJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of ricJobs) if (job.startedAt < cutoff) ricJobs.delete(id);
+}
+
+app.post('/api/rank-ic/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    horizon: ['daily', 'weekly', 'monthly'].includes(b.horizon) ? b.horizon : 'daily',
+    win:     Math.min(Math.max(Math.round(num(b.win, 14)), 5), 60),
+    oosFrac: Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    slopeThresh: num(b.slopeThresh, 0.002),
+  };
+
+  const instFilter = b.pair
+    ? RANKIC_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId     = `ric_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleRicJobs();
+  ricJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, summary, log } = await runRankICSuite(opts, instFilter ?? RANKIC_INSTRUMENTS);
+      if (!results.length) {
+        ricJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
+        return;
+      }
+      ricJobs.set(jobId, { status: 'done', result: { results, summary, log, opts }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[rank-ic/run]', msg, e?.stack ?? '');
+      ricJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/rank-ic/status/:jobId', (req, res) => {
+  const job = ricJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
