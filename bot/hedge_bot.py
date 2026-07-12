@@ -72,17 +72,11 @@ _PIP_SIZES: dict[str, float] = {
     'XAU/USD': 1.0,
 }
 
-_PIP_VALUES: dict[str, float] = {
-    'EUR/USD': 10.0,  'GBP/USD': 10.0,  'AUD/USD': 10.0,  'NZD/USD': 10.0,
-    'USD/JPY': 9.0,   'USD/CAD': 7.5,   'USD/CHF': 10.5,
-    'GBP/JPY': 9.0,   'EUR/JPY': 6.5,   'AUD/JPY': 6.5,
-    'EUR/GBP': 12.5,  'EUR/CHF': 11.0,  'EUR/AUD': 6.5,
-    'EUR/NZD': 5.8,   'EUR/CAD': 7.5,
-    'GBP/CHF': 11.0,  'GBP/AUD': 6.5,   'GBP/NZD': 5.8,   'GBP/CAD': 7.5,
-    'AUD/NZD': 6.5,   'AUD/CAD': 7.5,   'AUD/CHF': 11.0,
-    'NZD/JPY': 6.5,   'CAD/JPY': 6.5,   'CHF/JPY': 6.5,
-    'XAU/USD': 100.0,
-}
+# Pip VALUES ($/pip/lot) come from the shared helper in utils/pip_values.py
+# (MT5 tick value → quote-computed → static fallback with a warning) — the old
+# inline `_PIP_VALUES` dict here was a stale second copy (USD/JPY pinned at
+# $9.0 ⇒ ~40% oversized at 155). One source, imported — never copied.
+from utils.pip_values import pip_value_per_lot
 
 DEFAULT_CFG: dict = {
     'enabled':          True,
@@ -126,8 +120,11 @@ def _pip_size(pair_slash: str) -> float:
     return _PIP_SIZES.get(pair_slash, 0.0001)
 
 
-def _pip_value(pair_slash: str) -> float:
-    return _PIP_VALUES.get(pair_slash, 10.0)
+def _pip_value(pair_slash: str, price: float | None = None) -> float:
+    """$/pip/lot via the shared helper: MT5 tick value → computed from `price`
+    (the pair's current rate) → static table fallback (warns once per pair)."""
+    return pip_value_per_lot(pair_slash, _pip_size(pair_slash), price=price,
+                             mt5_symbol=_mt5_sym(pair_slash))
 
 # ── KV / API helpers ───────────────────────────────────────────────────────────
 
@@ -310,15 +307,17 @@ def _push_status(open_pos: dict, base_url: str, balance: float, cfg: dict) -> No
 # ── Position sizing ────────────────────────────────────────────────────────────
 
 def _calc_lots_a(balance: float, risk_pct: float, sl_pips: int,
-                  pair_slash: str, max_lot: float) -> float:
+                  pair_slash: str, max_lot: float,
+                  price: float | None = None) -> float:
     risk_amount = balance * risk_pct / 100
-    lots = risk_amount / (sl_pips * _pip_value(pair_slash))
+    lots = risk_amount / (sl_pips * _pip_value(pair_slash, price))
     return round(min(max(lots, 0.01), max_lot), 2)
 
 
 def _calc_lots_b(lots_a: float, pair_a_slash: str, pair_b_slash: str,
-                  corr: float, max_lot: float) -> float:
-    ratio = _pip_value(pair_a_slash) / max(_pip_value(pair_b_slash), 0.01)
+                  corr: float, max_lot: float,
+                  price_a: float | None = None, price_b: float | None = None) -> float:
+    ratio = _pip_value(pair_a_slash, price_a) / max(_pip_value(pair_b_slash, price_b), 0.01)
     lots = lots_a * ratio * abs(corr)
     return round(min(max(lots, 0.01), max_lot), 2)
 
@@ -553,11 +552,19 @@ def run(base_url: str, live: bool) -> None:
                 sl_pips_a = cfg['sl_pips_gold'] if 'XAU' in pa else cfg['sl_pips']
                 sl_pips_b = cfg['sl_pips_gold'] if 'XAU' in pb else cfg['sl_pips']
 
-                lots_a = _calc_lots_a(balance, cfg['risk_pct'], sl_pips_a, pa_slash, cfg['max_lot'])
-                lots_b = _calc_lots_b(lots_a, pa_slash, pb_slash, corr, cfg['max_lot'])
-
+                # Ticks BEFORE sizing: the current rate feeds the live pip-value
+                # computation (USD-base pairs). quote_* may be None (no MT5 tick
+                # and no signal entry price) → pip_value falls back with a warning.
                 tick_a = _get_tick(pa_slash)
                 tick_b = _get_tick(pb_slash)
+                quote_a = ((tick_a[0] + tick_a[1]) / 2) if tick_a else sig.get('entry_price_a')
+                quote_b = ((tick_b[0] + tick_b[1]) / 2) if tick_b else sig.get('entry_price_b')
+
+                lots_a = _calc_lots_a(balance, cfg['risk_pct'], sl_pips_a, pa_slash, cfg['max_lot'],
+                                      price=quote_a)
+                lots_b = _calc_lots_b(lots_a, pa_slash, pb_slash, corr, cfg['max_lot'],
+                                      price_a=quote_a, price_b=quote_b)
+
                 price_a = (tick_a[0] if dir_a == 'LONG' else tick_a[1]) if tick_a else (sig.get('entry_price_a') or 1.0)
                 price_b = (tick_b[0] if dir_b == 'LONG' else tick_b[1]) if tick_b else (sig.get('entry_price_b') or 1.0)
 

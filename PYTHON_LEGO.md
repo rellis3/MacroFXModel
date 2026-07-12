@@ -130,7 +130,15 @@ order (by drift risk × reuse, from `LEGO_MODULES.md §2` Python table):
    "one entry primitive, parameterised" rule. Magic / symbol-resolver /
    pip-resolver / MT5 module are all injected, so it's reusable and offline-testable.
 2. **`risk_guard.py`** — daily/monthly DD lockout (4 copies + an unwired
-   `safety/risk_gate.py`). ✅ built (#546).
+   `safety/risk_gate.py`). ✅ built (#546). Batch 5 (sizing & risk integrity):
+   now also wired into the **volatility_bot + range_line_bot** loops (ddlimit
+   3% / monthlydd 5% defaults in both bot configs; gates NEW entries only —
+   trailing/EOD/barrier exits always run; balance fed per tick, so the moving
+   PaperBroker balance rehearses the lockout in paper). Adds
+   `log_block_transition` (once-per-state-change block logging, never per
+   tick), and `force_unlock` now PRESERVES the day-start baseline — resetting
+   it to the drawn-down balance let the daily-DD limit ratchet down (same fix
+   applied to bot/main.py's dashboard force-unlock).
 3. **`sizing.py`** — conviction → risk% → lots (the `×0.5` decay variants).
    ✅ built (#546).
 4. **`kv.py`** — dashboard KV client + the **config-in / status-out** plumbing
@@ -148,7 +156,23 @@ order (by drift risk × reuse, from `LEGO_MODULES.md §2` Python table):
    `realized_fill` — the signed realized-fill-vs-modeled-level audit (favourable
    = negative, % of session open) both bots stamp per fill, the falsifier for
    the books' flat 0.012%/0.006% modeled costs. Consumers: `broker/paper.py`,
-   volatility_bot, range_line_bot.
+   volatility_bot, range_line_bot. Batch 5 additions: `max_spread(pair, cfg)`
+   (the per-asset-class entry spread CAPS, lifted from volatility_bot's
+   private `_max_spread` — both bots now import it; range_line_bot's 1e9
+   "no cap" default replaced), `spread_for(pair, broker)` (broker's live/paper
+   spread → class default) and `expected_fill(entry, is_buy, pair, broker)` —
+   the spread-adjusted expected fill both bots now SIZE off (a market order
+   cannot be sized after it fills, so lots are computed from entry ±
+   half-spread; the realized fill is still audited separately).
+   Related but bot-local (macrofx1 hasn't adopted pylego sizing):
+   `bot/utils/pip_values.py` — live $/pip/lot (MT5 `trade_tick_value` scaled
+   by `pip/tick_size` → quote-computed for USD-base/USD-quote pairs → static
+   table with a warning). ONE copy imported by `bot/utils/sl_tp_engine.py`,
+   `bot/hedge_bot.py` and `backtestSystem/risk.py`; candidate for promotion
+   into pylego alongside `point_values.py` when the regime bots adopt it
+   (their `_PIP_VALUES` copies remain — RegimeV2/V4/V7, DynAnchorBot,
+   position_hedge_bot). Also `bot/utils/exposure.py` — signed per-currency
+   USD-risk netting behind bot/main.py's `max_usd_exposure_pct` guard.
 7. **`quotes.py`** — `QuoteFeed`, the paper-mode market feed. ✅ built (paper-
    measurement fix). Pulls `GET /api/quote` off the dashboard (the same MT5-less
    path the regime bots use), cached per pair (`min_interval`) with a staleness

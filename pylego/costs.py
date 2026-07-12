@@ -3,12 +3,16 @@
 ONE table of default per-asset-class spreads for paper fills, shared by the
 PaperBroker and both bot loops — never re-inline a spread table in a bot (the
 same rule as pip sizes: two copies WILL drift). The classes and magnitudes are
-consistent with the per-class spread CAPS in volatility_bot._max_spread: FX
-majors ~0.8 pips, JPY crosses ~1.0 pip, gold ~$0.30, indices ~2 points.
+consistent with the per-class spread CAPS in ``max_spread`` below: FX majors
+~0.8 pips, JPY crosses ~1.0 pip, gold ~$0.30, indices ~2 points.
 
 Spreads are declared in the instrument's OWN pip/point units and converted to
 PRICE units via the canonical pip table (pylego.instruments), so a "pip" here
 can never silently mean the wrong decimal.
+
+Also owns the per-asset-class entry spread CAPS (``max_spread`` — formerly
+volatility_bot's private ``_max_spread``; now shared with range_line_bot) and
+the spread-adjusted expected fill used for sizing (``expected_fill``).
 
 Also owns the entry-slip audit math (``entry_slip_pct`` + ``realized_fill``):
 the realized fill − modeled line level, as a signed % of the session open —
@@ -49,6 +53,59 @@ def default_spread(pair: str) -> float:
         return DEFAULT_SPREAD_PIPS.get(spread_class(pair), DEFAULT_SPREAD_PIPS["fx"]) * pip_size(pair)
     except Exception:
         return 0.0
+
+
+# ── Per-class spread CAPS (the entry guard, not the paper fill) ───────────────
+# Lifted from volatility_bot._max_spread so BOTH bots (vol + range-line) import
+# ONE copy. A single scalar cap is meaningless across instruments — 1 "pip" is
+# fine for EUR/USD but an index or gold quotes a 1-point ($1) spread that
+# naturally exceeds it, so a flat 1.0 cap blocks every index/commodity trade
+# (the live "SPREAD BLOCK uk100: 1.1p > max 1p"). Caps are per ASSET CLASS;
+# config `max_spread_pips` may be a dict (per-class override) or a scalar
+# (treated as the FX cap, scaled up for wider-spread classes).
+MAX_SPREAD_MULT = {"fx": 1.0, "index": 6.0, "commodity": 6.0}
+DEFAULT_FX_SPREAD_CAP = 2.0
+
+
+def max_spread(pair: str, cfg: dict) -> float:
+    """Entry spread cap for `pair` in its OWN pip/point units, honouring the
+    bot config's `max_spread_pips` (dict per-class override, or scalar FX cap
+    scaled per class; absent → DEFAULT_FX_SPREAD_CAP scaled per class)."""
+    try:
+        ac = asset_class(pair)
+    except Exception:
+        ac = "fx"
+    mx = (cfg or {}).get("max_spread_pips")
+    if isinstance(mx, dict):                                  # explicit per-class override
+        return float(mx.get(ac, mx.get("fx", DEFAULT_FX_SPREAD_CAP) * MAX_SPREAD_MULT.get(ac, 3.0)))
+    fx_cap = float(mx) if isinstance(mx, (int, float)) else DEFAULT_FX_SPREAD_CAP
+    return fx_cap * MAX_SPREAD_MULT.get(ac, 3.0)              # scale the FX cap for index/commodity
+
+
+def spread_for(pair: str, broker=None) -> float:
+    """Current spread in PRICE units: the broker's live/paper per-pair spread
+    when it exposes one (PaperBroker.spread), else the class default."""
+    if broker is not None and hasattr(broker, "spread"):
+        try:
+            s = broker.spread(pair)
+            if s is not None and s > 0:
+                return float(s)
+        except Exception:
+            pass
+    return default_spread(pair)
+
+
+def expected_fill(entry: float, is_buy: bool, pair: str, broker=None) -> float:
+    """Spread-adjusted EXPECTED fill for a market order at modeled level
+    `entry`: mid ± half the pair's current spread (BUY above, SELL below).
+
+    Sizing rationale: a market order cannot be sized AFTER it fills, so lots
+    are computed from this expected fill instead of the raw level — the stop
+    distance then includes the half-spread the fill will really pay, and risk
+    is right on average (the realized fill is still audited separately via
+    realized_fill/entry_slip_pct)."""
+    half = spread_for(pair, broker) / 2.0
+    return float(entry) + half if is_buy else float(entry) - half
 
 
 def realized_fill(broker, ticket):

@@ -30,7 +30,8 @@ from pylego import events as EV                              # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
 from pylego.quotes import QuoteFeed                          # noqa: E402
-from pylego.costs import entry_slip_pct, realized_fill       # noqa: E402
+from pylego.costs import entry_slip_pct, realized_fill, expected_fill, max_spread  # noqa: E402
+from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
 from volatility_bot.engine import SessionTracker, decide, session_open_epoch, ride_trail_stop  # noqa: E402
 from pylego.strategy.volatility import line_levels                             # noqa: E402
 
@@ -59,6 +60,13 @@ DEFAULT_CFG = {
     "paper_mode": True,            # flip to live from the config page
     "risk_pct": 0.5,               # % of balance risked per trade (global default)
     "max_lot": 2.0,                # lot cap (global default)
+    # RiskGuard (pylego.risk_guard) — daily/monthly DD lockout + per-pair entry
+    # cooldown, matching the other bots' conventions. Blocks NEW entries only;
+    # exits/trailing/EOD sweeps always run.
+    "ddlimit": 3.0,                # max daily drawdown % before lockout
+    "monthlydd": 5.0,              # max monthly drawdown % before lockout
+    "lockout": 3,                  # hours locked out after a DD breach
+    "cooldown": 240,               # seconds between entries on the SAME pair
     # Per-asset-class OVERRIDES ({fx,index,commodity}) so a high-$/point instrument
     # (e.g. gold) can be sized down independently of FX without touching the globals.
     # Blank / 0 / missing class → falls back to the global scalar above. Editable on the
@@ -145,26 +153,8 @@ def _apply_paper_spreads(broker, cfg: dict) -> None:
             log.warning(f"paper_spread_pips: ignoring {pair!r}: {e}")
 
 
-# Spread guard caps in the instrument's OWN pip/point units. A single scalar is
-# meaningless across instruments — 1 "pip" is fine for EUR/USD but an index or gold
-# quotes a 1-point ($1) spread that naturally exceeds it, so a flat 1.0 cap blocks
-# every index/commodity trade (the live "SPREAD BLOCK uk100: 1.1p > max 1p"). Caps
-# are per ASSET CLASS; config `max_spread_pips` may be a dict (per-class override)
-# or a scalar (treated as the FX cap, scaled up for wider-spread classes).
-_SPREAD_MULT = {"fx": 1.0, "index": 6.0, "commodity": 6.0}
-_DEFAULT_FX_SPREAD = 2.0
-
-
-def _max_spread(pair: str, cfg: dict) -> float:
-    try:
-        ac = I.asset_class(pair)
-    except Exception:
-        ac = "fx"
-    mx = cfg.get("max_spread_pips")
-    if isinstance(mx, dict):                                  # explicit per-class override
-        return float(mx.get(ac, mx.get("fx", _DEFAULT_FX_SPREAD) * _SPREAD_MULT.get(ac, 3.0)))
-    fx_cap = float(mx) if isinstance(mx, (int, float)) else _DEFAULT_FX_SPREAD
-    return fx_cap * _SPREAD_MULT.get(ac, 3.0)                 # scale the FX cap for index/commodity
+# Per-class spread caps moved to the shared brick: pylego.costs.max_spread
+# (same math, one copy — range_line_bot imports it too).
 
 
 def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot: float) -> float:
@@ -206,20 +196,24 @@ def size_params(pair: str, cfg: dict):
             ml if ml is not None else float(cfg.get("max_lot", 2.0)))
 
 
-def _record_slip(broker, tid, spec, tracker, is_long: bool) -> None:
+def _record_slip(broker, tid, spec, tracker, is_long: bool):
     """Entry-slip audit for a just-filled order: realized fill vs the modeled
     line level (``spec['entry']``), as a signed % of the session open. SIGN
     CONVENTION: favourable is NEGATIVE, adverse POSITIVE (pylego.costs.
     entry_slip_pct) — the falsifier for the book's flat 0.012% round-trip +
     0.006% follow-slip cost model. Stamped onto the traded line's audit entry,
     which the config card already renders; silently skipped if the fill isn't
-    readable yet (never fake a measurement)."""
+    readable yet (never fake a measurement).
+
+    Returns the realized fill (or None) so the caller can seed trail state
+    (ride entry/peak) from what was REALLY paid, not the modeled level."""
     fill = realized_fill(broker, tid)
     slip = entry_slip_pct(is_long, fill, spec["entry"], tracker.open)
     if slip is not None:
         a = tracker.audit.setdefault(spec["line"], {})
         a["fill"] = round(fill, 6)
         a["slip_pct"] = slip
+    return fill
 
 
 def _pair_event_ccys(pair: str) -> list[str]:
@@ -391,6 +385,14 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
             log.error("broker connect failed — exiting")
             return
 
+    # RiskGuard (shared brick): daily/monthly DD lockout + per-pair cooldown.
+    # Fed the broker balance each tick (PaperBroker's balance MOVES on closed
+    # trades since the paper-measurement fix, so paper rehearses the lockout);
+    # gates NEW entries only — trailing/EOD/barrier exits always run.
+    guard = RiskGuard(log=log)
+    guard.sync_cfg(cfg)
+    guard_blocks: dict[str, str | None] = {}   # once-per-state-change block logging
+
     trackers: dict[str, SessionTracker] = {}
     plan = None
     # ride variant only: per-open-position trail state {ticket: {pair, entry, sl0, is_long, peak, cur_sl}}
@@ -452,6 +454,7 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
             try:
                 cfg = _deep_merge(DEFAULT_CFG, kv.get_json(V["cfg"]) or cfg)
                 _apply_paper_spreads(broker, cfg)     # paper spread edits apply live
+                guard.sync_cfg(cfg)                   # ddlimit/monthlydd edits apply live
             except Exception as e:
                 log.warning(f"config fetch failed: {e} — keeping current config")
             # Event-blackout windows (server publishes hourly; scheduled events are
@@ -495,6 +498,13 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
             ev_payload = None if EV.stale_reason(event_windows, nowt * 1000) else event_windows
             pairs = cfg.get("enabled_pairs") or plan.get("universe", [])
             sample_minute = (nowt - last_minute) >= 60
+            # Balance once per tick: feeds the RiskGuard DD tracking and sizing.
+            # No readable balance (MT5 blip) → skip the DD update and use a large
+            # placeholder so a bogus 0 can't fire a false lockout (mirrors bot/main.py).
+            bal = broker.account_balance()
+            if bal:
+                guard.update_balance(bal)
+            guard_bal = bal if bal else 1_000_000.0
             for pair in pairs:
                 tr, pp = trackers.get(pair), plan["pairs"].get(pair)
                 if tr is None or pp is None:
@@ -531,6 +541,13 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
                     continue
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
+                # RiskGuard: gate NEW entries only (deferred like a blackout —
+                # the line isn't burned; exits/trailing above already ran).
+                # Logged once per state change, never per tick.
+                guard_why = guard.block_reason(guard_bal, pair)
+                log_block_transition(log, guard_blocks, pair, guard_why)
+                if guard_why:
+                    continue
                 bl_reason = None
                 if ev_payload:
                     ccys = event_ccys.get(pair)
@@ -538,22 +555,33 @@ def run(base_url: str, force_live: bool, variant: str = "book") -> None:
                         ccys = event_ccys[pair] = _pair_event_ccys(pair)
                     hit, bl_reason = EV.blackout(ccys, nowt * 1000, ev_payload.get("windows"))
                     bl_reason = bl_reason if hit else None
-                bal = broker.account_balance() or 0.0
                 for spec in decide(pp, plan.get("policy", {}), tr, px, blackout=bl_reason,
                                    min_expectancy=ride_gate):
                     rp, ml = size_params(pair, cfg)          # per-asset-class risk/lot override
-                    lots = size_for(pair, bal, rp, spec["entry"] - spec["sl"], ml)
+                    # Size off the spread-adjusted EXPECTED fill, not the raw
+                    # level: a market order can't be sized after it fills, and
+                    # the fill pays half the spread — pricing that into the
+                    # stop distance makes the risked % right on average
+                    # (pylego.costs.expected_fill).
+                    exp_px = expected_fill(spec["entry"], spec["side"] == "buy", pair, broker)
+                    lots = size_for(pair, bal or 0.0, rp, exp_px - spec["sl"], ml)
                     direction = "LONG" if spec["side"] == "buy" else "SHORT"
                     # ride: NO take-profit — the trailing stop is the only profit exit.
                     tp = 0 if ride_mode else spec["tp"]
                     tid = broker.enter(pair, direction, spec["sl"], tp, lots,
-                                       _max_spread(pair, cfg), paper,
+                                       max_spread(pair, cfg), paper,
                                        comment=f"Vol {spec['line']} {spec['decision'][0]}")
+                    fill = None
                     if tid:
-                        _record_slip(broker, tid, spec, tr, direction == "LONG")
+                        fill = _record_slip(broker, tid, spec, tr, direction == "LONG")
+                        guard.record_trade(pair)      # arms the per-pair cooldown
                     if tid and ride_mode:
-                        ride_state[tid] = {"pair": pair, "entry": spec["entry"], "sl0": spec["sl"],
-                                           "is_long": direction == "LONG", "peak": spec["entry"],
+                        # Seed the chandelier state from the REALIZED fill (what
+                        # was actually paid), falling back to the modeled level
+                        # only if the broker can't show the fill yet.
+                        seed = fill if fill is not None else spec["entry"]
+                        ride_state[tid] = {"pair": pair, "entry": seed, "sl0": spec["sl"],
+                                           "is_long": direction == "LONG", "peak": seed,
                                            "cur_sl": spec["sl"]}
                     elif tid:
                         book_state[tid] = pair        # for the 22:00 book EOD sweep

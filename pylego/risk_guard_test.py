@@ -54,6 +54,35 @@ def test_force_unlock_clears():
     assert g.block_reason(10_000, "EUR/USD") is None
 
 
+def test_force_unlock_preserves_dd_baseline():
+    # Unlock clears the lockout flag but must NOT reset day_start: resetting it
+    # to the drawn-down balance would let the daily limit ratchet down (a fresh
+    # −ddlimit% from each new, lower start). Still breached ⇒ re-locks.
+    g = _guard(ddlimit=3.0, monthlydd=99.0)
+    g.update_balance(10_000)
+    g.block_reason(9_600, "EUR/USD")          # trip the lockout at −4%
+    g.force_unlock()
+    assert g._day_start == 10_000, "baseline must survive force_unlock"
+    why = g.block_reason(9_600, "EUR/USD")    # still −4% vs the ORIGINAL start
+    assert why and "Daily DD" in why, why
+
+
+def test_log_block_transition_once_per_state_change():
+    import logging
+    from pylego.risk_guard import log_block_transition
+    msgs = []
+    h = logging.Handler(); h.emit = lambda r: msgs.append(r.getMessage())
+    lg = logging.getLogger("rg_transition_test"); lg.addHandler(h); lg.setLevel(logging.INFO)
+    st = {}
+    log_block_transition(lg, st, "eurusd", None)       # never blocked → silent
+    assert msgs == []
+    log_block_transition(lg, st, "eurusd", "Daily DD")
+    log_block_transition(lg, st, "eurusd", "Daily DD")  # same reason → no repeat
+    assert len(msgs) == 1 and "blocked" in msgs[0]
+    log_block_transition(lg, st, "eurusd", None)        # cleared → one info line
+    assert len(msgs) == 2 and "resumed" in msgs[1]
+
+
 def test_sync_cfg_reads_values():
     g = RiskGuard()
     g.sync_cfg({"ddlimit": 2.5, "monthlydd": 4.0, "lockout": 6, "cooldown": 120})

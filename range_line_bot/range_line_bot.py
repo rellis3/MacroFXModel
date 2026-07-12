@@ -31,7 +31,8 @@ from pylego import point_values as PV                        # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
 from pylego.quotes import QuoteFeed                          # noqa: E402
-from pylego.costs import entry_slip_pct, realized_fill       # noqa: E402
+from pylego.costs import entry_slip_pct, realized_fill, expected_fill, max_spread  # noqa: E402
+from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
 from pylego.strategy.rangeline import chandelier_stop        # noqa: E402
 from range_line_bot.engine import RangeSession, session_anchor_epoch, SRC_MINUTES  # noqa: E402
 
@@ -47,7 +48,17 @@ DEFAULT_CFG = {
     "risk_pct": 0.5,
     "max_lot": 2.0,
     "max_open": 12,
-    "max_spread_pips": 1e9,        # indices: set a real cap on the config page
+    # RiskGuard (pylego.risk_guard) — daily/monthly DD lockout + per-pair entry
+    # cooldown, matching the other bots' conventions. Blocks NEW entries only;
+    # chandelier trailing / barrier exits always run.
+    "ddlimit": 3.0,                # max daily drawdown % before lockout
+    "monthlydd": 5.0,              # max monthly drawdown % before lockout
+    "lockout": 3,                  # hours locked out after a DD breach
+    "cooldown": 240,               # seconds between entries on the SAME pair
+    "max_spread_pips": None,       # None → per-ASSET-CLASS caps (pylego.costs.max_spread:
+                                   # fx 2.0 pips, index/commodity 6×). Set a scalar (FX cap,
+                                   # scaled per class) or a {fx,index,commodity} dict to override
+                                   # on the config page. (Was 1e9 — no cap at all.)
     "single_position_per_pair": True,  # True = at most one open position per pair
                                         # (today's default). False = one per
                                         # (source, side) ladder slot instead, matching
@@ -310,6 +321,14 @@ def run(base_url: str, force_live: bool) -> None:
             log.error("broker connect failed — exiting")
             return
 
+    # RiskGuard (shared brick): daily/monthly DD lockout + per-pair cooldown.
+    # Fed the broker balance each tick (PaperBroker's balance MOVES on closed
+    # trades since the paper-measurement fix, so paper rehearses the lockout);
+    # gates NEW entries only — chandelier trailing / barrier exits always run.
+    guard = RiskGuard(log=log)
+    guard.sync_cfg(cfg)
+    guard_blocks: dict[str, str | None] = {}   # once-per-state-change block logging
+
     sessions: dict[str, RangeSession] = {}
     positions: dict = {}                                   # ticket -> chandelier state
     plan = None
@@ -382,6 +401,7 @@ def run(base_url: str, force_live: bool) -> None:
                 cfg = _deep_merge(DEFAULT_CFG, kv.get_json("range_line_bot_config") or cfg)
                 _apply_broker_symbols(cfg)            # pick up broker-symbol edits live
                 _apply_paper_spreads(broker, cfg)     # paper spread edits apply live
+                guard.sync_cfg(cfg)                   # ddlimit/monthlydd edits apply live
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:
@@ -407,7 +427,13 @@ def run(base_url: str, force_live: bool) -> None:
             _trail_stops(positions, broker, plan, cfg)     # ratchet the native SL (broker-enforced exit)
             if hasattr(broker, "check_barriers"):
                 broker.check_barriers()                    # paper: execute the trailed SL
+            # Balance once per tick: feeds RiskGuard DD tracking and sizing. No
+            # readable balance (MT5 blip) → skip the DD update and use a large
+            # placeholder so a bogus 0 can't fire a false lockout (mirrors bot/main.py).
             bal = broker.account_balance() or 0.0
+            if bal:
+                guard.update_balance(bal)
+            guard_bal = bal if bal else 1_000_000.0
             # No new entries while the Asia range is forming (00:00–06:00 London).
             # dry_run still primes levels crossed overnight, so at 06:00 only
             # genuinely-new post-pull crossings fire (no chasing a stale breakout).
@@ -437,11 +463,25 @@ def run(base_url: str, force_live: bool) -> None:
                     continue
                 if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
                     continue
+                # RiskGuard: gate NEW entries only (skip the pair's entry decide —
+                # the level isn't burned, like a blackout defer). Never gates the
+                # forming-window dry_run (that only primes) or trailing/exits above.
+                # Logged once per state change, never per tick.
+                if not forming:
+                    guard_why = guard.block_reason(guard_bal, instr)
+                    log_block_transition(log, guard_blocks, instr, guard_why)
+                    if guard_why:
+                        continue
                 single = cfg.get("single_position_per_pair", True)
                 conf_min = int(cfg.get("confluence_min", 0) or 0)
                 for spec in sess.decide(px, ip["policy"], dry_run=forming, confluence_min=conf_min):
                     sl = spec["protect_stop"]
-                    lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), spec["entry"] - sl, cfg.get("max_lot", 2.0))
+                    # Size off the spread-adjusted EXPECTED fill, not the raw ladder
+                    # level: a market order can't be sized after it fills, and the
+                    # fill pays half the spread — pricing that into the stop distance
+                    # makes the risked % right on average (pylego.costs.expected_fill).
+                    exp_px = expected_fill(spec["entry"], spec["dir_up"], instr, broker)
+                    lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), exp_px - sl, cfg.get("max_lot", 2.0))
                     direction = "LONG" if spec["dir_up"] else "SHORT"
                     slot_tag = f"{spec['src']}{spec['side']}"
                     # single_position_per_pair=True (default): dedupe_tag=None → the
@@ -454,17 +494,23 @@ def run(base_url: str, force_live: bool) -> None:
                     # No take-profit — the chandelier-trailed native SL is the exit
                     # (see _trail_stops). tp=0 → MT5 sets no TP.
                     tid = broker.enter(instr, direction, sl, 0.0, lots,
-                                       cfg.get("max_spread_pips", 1e9), paper,
+                                       max_spread(instr, cfg), paper,
                                        comment=f"RL [{slot_tag}] {spec['label']} {spec['decision'][0]}",
                                        dedupe_tag=dedupe_tag)
                     filled = tid is not None and tid != -1
                     if filled:
                         # Entry-slip audit (see _fill_and_slip: favourable = NEGATIVE).
                         fill, slip = _fill_and_slip(broker, tid, spec, sess.session_open)
+                        # Chandelier state seeded from the REALIZED fill (what was
+                        # actually paid), falling back to the modeled ladder level
+                        # only if the broker can't show the fill yet — the trail
+                        # anchors to the true entry, not the theoretical touch.
+                        seed = fill if fill is not None else spec["entry"]
                         positions[tid] = {"instr": instr, "ticket": tid, "dir_up": spec["dir_up"],
-                                          "entry": spec["entry"], "peak": spec["entry"],
+                                          "entry": seed, "peak": seed,
                                           "rung": spec["rung"], "protect": sl, "sl": sl,
                                           "fill": fill, "slip_pct": slip}
+                        guard.record_trade(instr)                      # arms the per-pair cooldown
                         sess.mark_entered(spec["src"], spec["side"])   # burn the slot ONLY on a fill
                         log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['decision'].upper()} "
                                  f"{spec['label']} {spec['side']} → ticket {tid} lots {lots}"

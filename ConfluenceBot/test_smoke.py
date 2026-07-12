@@ -536,5 +536,54 @@ check('swap disabled at 0 pct',
       paper_swap_pips(_t2, _eur, {**DEFAULT_CFG, 'paper_swap_pct': 0}) == 0.0)
 
 
+# ── Batch 5: per-currency netting in the global portfolio gate ────────────────
+print('\n— global_can_open per-currency netting —')
+import main as cbmain
+from types import SimpleNamespace as NS
+
+
+def _eng(display, trades):
+    return NS(instr=NS(display=display),
+              tm=NS(open_trades=[NS(direction=d, risk_pct=r, be_moved=be)
+                                 for d, r, be in trades]))
+
+
+_bot = cbmain.ConfluenceBot.__new__(cbmain.ConfluenceBot)
+_bot.cfg = {**cbmain.DEFAULT_CFG, 'max_total_open_trades': 99,
+            'max_total_open_risk_pct': 99.0, 'max_total_per_direction': 99}
+_bot.engines = {
+    'eurusd': _eng('EUR/USD', [('LONG', 1.0, False)]),
+    'usdjpy': _eng('USD/JPY', [('SHORT', 1.0, False)]),
+}
+
+check('_ccy_legs splits pairs, skips indices',
+      cbmain._ccy_legs('EUR/USD') == ('EUR', 'USD') and cbmain._ccy_legs('NQ') is None)
+
+_net = _bot._currency_risk_map()
+check('long EURUSD + short USDJPY = ADDITIVE −2% USD (not offsetting labels)',
+      abs(_net['USD'] + 2.0) < 1e-9 and abs(_net['EUR'] - 1.0) < 1e-9
+      and abs(_net['JPY'] - 1.0) < 1e-9, str(_net))
+
+_ok, _why = _bot.global_can_open('LONG', 0.5, NS(display='GBP/USD'))  # USD → −2.5, cap 1.5
+check('entry pushing |net USD| over max_currency_risk_pct blocked',
+      not _ok and 'currency risk cap' in _why, _why)
+
+_ok2, _ = _bot.global_can_open('LONG', 0.5, NS(display='USD/CHF'))   # long USD reduces |net|
+check('risk-REDUCING entry not blocked by the currency cap', _ok2)
+
+_ok3, _ = _bot.global_can_open('LONG', 0.5, NS(display='NQ'))        # no FX legs
+check('non-pair instrument skips currency netting', _ok3)
+
+_bot.engines['eurusd'].tm.open_trades[0].be_moved = True
+_net2 = _bot._currency_risk_map()
+check('BE-moved trades carry no risk in the netting',
+      abs(_net2['USD'] + 1.0) < 1e-9, str(_net2))
+
+_bot.cfg['max_total_per_direction'] = 1                              # label caps still live
+_ok4, _why4 = _bot.global_can_open('SHORT', 0.1, NS(display='GBP/USD'))
+check('existing per-direction label cap still enforced',
+      not _ok4 and 'global max SHORT' in _why4, _why4)
+
+
 print(f'\n{"="*60}\n{PASS} passed, {FAIL} failed\n')
 sys.exit(1 if FAIL else 0)

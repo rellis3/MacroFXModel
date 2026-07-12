@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from volatility_bot.engine import SessionTracker, decide, session_open_epoch, ride_trail_stop  # noqa: E402
-from volatility_bot.volatility_bot import _max_spread                          # noqa: E402
+from pylego.costs import max_spread as _max_spread   # moved to the shared brick (Batch 5)  # noqa: E402
 
 PP = {"open": 1.10, "sigma": 0.006, "hl50": 0.0094, "hl75": 0.0123, "ocMed": 0.0040, "oc75": 0.0069}
 
@@ -264,6 +264,43 @@ def test_plan_staleness_gate():
     assert _plan_is_current({"generatedAt": None}, now) is False                        # fail closed
     assert _plan_is_current({}, now) is False
     assert _plan_is_current({"generatedAt": "not a date"}, now) is False
+
+
+def test_risk_guard_blocks_entries_after_synthetic_dd():
+    # Batch 5: the bot wires pylego.risk_guard off its DEFAULT_CFG — a synthetic
+    # daily DD past ddlimit must yield a block reason for NEW entries.
+    import logging
+    from pylego.risk_guard import RiskGuard, log_block_transition
+    from volatility_bot.volatility_bot import DEFAULT_CFG
+    g = RiskGuard()
+    g.sync_cfg(DEFAULT_CFG)
+    assert g.dd_limit_pct == 3.0 and g.monthly_dd_pct == 5.0    # bot config defaults
+    g.update_balance(10_000)
+    why = g.block_reason(9_600, "eurusd")                       # 4% down → blocked
+    assert why and "Daily DD" in why, why
+    # Once-per-state-change logging: same reason twice logs ONCE; clearing logs once.
+    msgs = []
+    h = logging.Handler(); h.emit = lambda r: msgs.append(r.getMessage())
+    lg = logging.getLogger("vol_guard_test"); lg.addHandler(h); lg.setLevel(logging.INFO)
+    st = {}
+    log_block_transition(lg, st, "eurusd", why)
+    log_block_transition(lg, st, "eurusd", why)
+    assert len(msgs) == 1 and "blocked" in msgs[0], msgs
+    log_block_transition(lg, st, "eurusd", None)
+    assert len(msgs) == 2 and "resumed" in msgs[1], msgs
+
+
+def test_expected_fill_adjusts_for_half_spread():
+    # Sizing uses the spread-adjusted expected fill (a market order can't be
+    # sized after it fills): BUY entry + half spread, SELL entry − half.
+    from pylego.costs import expected_fill, default_spread
+    half = default_spread("eurusd") / 2.0
+    assert abs(expected_fill(1.10, True, "eurusd") - (1.10 + half)) < 1e-12
+    assert abs(expected_fill(1.10, False, "eurusd") - (1.10 - half)) < 1e-12
+
+    class _B:                                   # broker override wins (PaperBroker.spread)
+        def spread(self, pair): return 0.0002
+    assert abs(expected_fill(1.10, True, "eurusd", _B()) - 1.1001) < 1e-12
 
 
 if __name__ == "__main__":
