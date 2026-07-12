@@ -12737,6 +12737,76 @@ app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
   }
 });
 
+// Shadow scoring — run every open bot position through the model, read-only.
+// The Positions tab (all bots aggregated) POSTs its live positions; the engine
+// scores each at its OPEN price + direction and returns a suggestion keyed by
+// ticket. This NEVER touches the bots — it is advisory ("would the model take /
+// keep this?"), the shadow layer the honest-teammate plan calls for. One call
+// per tab refresh: each pair's snapshot is warmed once, then reused.
+//
+// own_level:true — the trade IS the caller's own level, so a touch with no
+// mapped zone scores as a standalone external level (confluence 1) instead of a
+// no_level_nearby skip (ARCHITECTURE.md §3 gate 4). Every position gets a score.
+//
+// Honesty: v0 is a hand-weighted PRIOR (calibrated:false), and the snapshot is
+// built NOW, not at the trade's entry — so this is a "live read", not entry-time
+// truth. It becomes evidence only once a fit trained on these shadow rows beats
+// the prior on OOS calibration. Each ticket is shadow-logged ONCE (in-memory
+// dedupe; resets on redeploy — acceptable for a shadow log) so the real bot
+// trades start accumulating the labeled set a fit needs.
+const _tdePosShadowSeen = new Set(); // ticket → already shadow-logged this process
+app.post('/api/trade-decision/score-positions', express.json({ limit: '2mb' }), async (req, res) => {
+  try {
+    const positions = Array.isArray(req.body?.positions) ? req.body.positions : [];
+    if (!positions.length) return res.json({ ok: true, suggestions: {}, model_version: TDE_MODEL.version, calibrated: TDE_MODEL.calibrated });
+
+    // Resolve symbols → canonical keys, warm each distinct snapshot once.
+    const wantPairs = new Set();
+    for (const p of positions) { const k = resolveKey(p.symbol); if (k) wantPairs.add(k); }
+    const warmed = {};
+    await Promise.all([...wantPairs].map(async k => {
+      try { warmed[k] = (await tdeWarmSnapshot(k)).snap; }
+      catch { warmed[k] = tdeGetState(k); }
+    }));
+
+    const suggestions = {};
+    for (const p of positions) {
+      const ticket = p.ticket;
+      if (ticket == null) continue;
+      const key = resolveKey(p.symbol);
+      if (!key) { suggestions[ticket] = { decision: 'n/a', reason: 'unmapped symbol' }; continue; }
+      const snap = warmed[key];
+      if (!snap) { suggestions[ticket] = { decision: 'n/a', reason: 'no snapshot (OANDA unreachable?)' }; continue; }
+      const direction = p.direction === 'BUY' ? 'long' : p.direction === 'SELL' ? 'short' : undefined;
+      try {
+        const r = tdeDecide(snap, {
+          pair: key,
+          price: p.open_price != null ? Number(p.open_price) : undefined,
+          direction, own_level: true,
+        });
+        suggestions[ticket] = {
+          decision: r.decision, probability: r.probability, size_multiplier: r.size_multiplier,
+          top_factor: (r.top_factors && r.top_factors[0]) || null,
+          reason: (r.reasons && r.reasons[0]) || null,
+          calibrated: r.calibrated, model_version: r.model_version,
+        };
+        if (!_tdePosShadowSeen.has(ticket)) {
+          _tdePosShadowSeen.add(ticket);
+          tdeAppendDecision({
+            source: 'position-shadow', bot: p.bot || null, ticket, symbol: p.symbol,
+            request: { pair: key, price: p.open_price, direction, own_level: true }, result: r,
+          });
+        }
+      } catch (e) {
+        suggestions[ticket] = { decision: 'error', reason: e.message ?? String(e) };
+      }
+    }
+    res.json({ ok: true, suggestions, model_version: TDE_MODEL.version, calibrated: TDE_MODEL.calibrated });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message ?? String(e) });
+  }
+});
+
 // Snapshot inspection (staleness, regime, zones) — ?mode=synthetic for the demo path
 app.get('/api/trade-decision/state/:pair', (req, res) => {
   try {

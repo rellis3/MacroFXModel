@@ -387,7 +387,16 @@ hand-weight them.
 2. **Shadow labeling of live decisions:** join live `decisions.jsonl` rows with
    realized outcomes the same way (they carry the same feature vector), so the
    live stream extends the training set with the exact distribution the engine
-   sees in production.
+   sees in production. **Partially built:** the Positions tab (`bot-config.html`,
+   all bots aggregated) POSTs every open position to
+   `POST /api/trade-decision/score-positions`, which scores each at its OPEN
+   price + direction (`own_level:true`) and renders an advisory GO/SKIP · prob ·
+   size badge — read-only, the bots never consult it. Each ticket is
+   shadow-logged ONCE (`source:'position-shadow'`) so the *real bot trades*
+   accumulate the labeled set. A "live read" (snapshot is NOW, not entry-time)
+   and v0 is still a prior — this builds evidence, it is not yet evidence.
+   Remaining: durable log store (decisions.jsonl is ephemeral on Railway) +
+   outcome-join keyed by ticket before a fit on the shadow rows.
 3. **v1 promotion:** when the calibration report earns it, publish the
    candidate weights as `modelV1.js` with the evidence attached; the feature
    builder is shared so nothing else changes.
