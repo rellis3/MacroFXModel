@@ -37,8 +37,15 @@ const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
  * `rangeLineBotProducer`/`buildRangeLineBotPlan` use for the live bot's plan.
  */
 export async function learnAndFreeze(universe, getTouches, opts = {}, stampISO = null) {
+  // tStat defaults to 1.5 HERE ONLY (buildPolicy's own default stays 0, so
+  // backtest/analyser callers are unchanged unless they opt in). It is a mild
+  // per-cell significance gate — mean/SE must clear 1.5, a noise filter on top
+  // of n≥minN + the margin gate, NOT HLZ discovery-grade (|t|>3 per cell would
+  // nuke the book; see buildPolicy's comment). tStat: 0 is the no-op escape
+  // hatch. NOTE: this changes the learned book — the FROZEN LIVE policy only
+  // changes on the next refit (a fresh /api/levels-v2/learn run), never in place.
   const { assetClassFor = () => 'fx', pipFor = () => null,
-          minN = 50, marginPct = 0, splitFrac = 0.6,
+          minN = 50, marginPct = 0, splitFrac = 0.6, tStat = 1.5,
           sources = ['asia', 'monday'], conditions = [] } = opts;
   const perInstrument = {};
   for (const instr of universe) {
@@ -50,11 +57,11 @@ export async function learnAndFreeze(universe, getTouches, opts = {}, stampISO =
     const sorted = touches.slice().sort(byDate);
     for (const t of sorted) { t.cost = cost; t.slip = slip; }
     const splitDate = sorted[Math.floor(sorted.length * splitFrac)]?.date ?? null;
-    const policy = buildPolicy(sorted.filter(t => t.date < splitDate), { minN, marginPct, pricer: pnlHeld });
+    const policy = buildPolicy(sorted.filter(t => t.date < splitDate), { minN, marginPct, pricer: pnlHeld, tStat });
     if (!Object.values(policy).some(p => p.decision !== 'skip')) continue;   // no tradeable cell
     perInstrument[key] = { assetClass: ac, pip: pipFor(key), cost, slip, splitDate, policy };
   }
-  const frozen = freezePolicy(perInstrument, { ...opts, sources, conditions, minN, marginPct, splitFrac }, stampISO);
+  const frozen = freezePolicy(perInstrument, { ...opts, sources, conditions, minN, marginPct, splitFrac, tStat }, stampISO);
   return { frozen, perInstrument };
 }
 
@@ -108,6 +115,50 @@ export function flattenPolicy(perInstrument) {
   return out;
 }
 
+// Standard normal upper-tail probability P(Z > x), via the Abramowitz–Stegun
+// erf approximation (|err| < 1.5e-7) — plenty for a chance-baseline readout.
+function normTail(x) {
+  const z = Math.abs(x) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * z);
+  const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+  const tail = 0.5 * (1 - erf);                    // P(Z > |x|)
+  return x >= 0 ? tail : 1 - tail;
+}
+
+// Chance baseline for the learned book (multiple-testing honesty): C cells were
+// each tested against the gate, so even under a PURE NULL (every cell's true
+// mean = 0, same per-cell n and SE) some pass by luck. Under that null the
+// cell's t ≈ N(0,1) (normal approximation to the t distribution — fine at the
+// n ≥ 50 the cells already cleared), so:
+//   • t-gate at tStat:  P(pass) ≈ P(Z > tStat) one-sided (≈ 6.7% at 1.5)
+//   • tStat = 0:        the gate is just mean > marginPct; at marginPct 0 a
+//                       null cell passes half the time → P = 0.5.
+// APPROXIMATION stated honestly: buildPolicy picks the BETTER of fade/follow
+// before gating, so the true null pass-rate can run up to ~2× this one-sided
+// figure (max of two dependent tries ≤ the two-sided P(|Z| > tStat)); the
+// number reported is therefore a LOWER bound on the expected false positives.
+// Survivors must also be IS-consistent and OOS-positive — passing the gate is
+// necessary, not sufficient.
+export function chanceBaseline(perInstrument, { tStat = 0, marginPct = 0, minN = 50 } = {}) {
+  let tested = 0, passed = 0;
+  for (const rec of Object.values(perInstrument || {})) {
+    for (const p of Object.values(rec?.policy || {})) {
+      if (!p || p.reason === 'lowN') continue;     // never reached the gate (n < minN)
+      tested++;
+      if (p.decision === 'fade' || p.decision === 'follow') passed++;
+    }
+  }
+  const pNull = tStat > 0 ? normTail(tStat) : 0.5;
+  const expectedByChance = +(tested * pNull).toFixed(1);
+  return {
+    cellsTested: tested, passed, tStat, marginPct, minN,
+    gate: tStat > 0 ? `mean/SE > ${tStat} and mean > ${marginPct}%` : `mean > ${marginPct}%`,
+    pNull: +pNull.toFixed(4), expectedByChance,
+    note: `${tested} cells tested; ~${expectedByChance} expected to pass the gate by chance; ` +
+          `${passed} passed — survivors must also be IS-consistent and OOS-positive.`,
+  };
+}
+
 // Snapshot what the live grader needs, per instrument, + a globally-fit band.
 export function freezePolicy(perInstrument, opts = {}, stampISO = null) {
   if (!perInstrument || typeof perInstrument !== 'object') throw new Error('freezePolicy: perInstrument required');
@@ -126,9 +177,13 @@ export function freezePolicy(perInstrument, opts = {}, stampISO = null) {
     sources:    opts.sources ?? ['asia', 'monday'],
     minN:       opts.minN ?? 50,
     marginPct:  opts.marginPct ?? 0,
+    tStat:      opts.tStat ?? 0,                  // per-cell significance gate the book was built with
     chandFrac:  opts.chandFrac ?? 0.5,            // §13 chandelier give-back, shared with rangeLineBotPlan
     coverage,                                      // fade/follow/skip cell counts, summed over all instruments
     nCells,                                        // total cells learned, summed over all instruments
+    // Multiple-testing honesty for the OOS card: how many cells a pure null
+    // would have pushed through this gate (see chanceBaseline above).
+    chanceBaseline: chanceBaseline(perInstrument, { tStat: opts.tStat ?? 0, marginPct: opts.marginPct ?? 0, minN: opts.minN ?? 50 }),
     bands:      deriveBands(flattenPolicy(perInstrument), opts.bands ?? {}),  // null → grader uses DEFAULT_GRADE_BANDS
     perInstrument,                                 // { instr: { assetClass, pip, cost, slip, splitDate, policy } }
   };

@@ -106,6 +106,13 @@ export function resolvePair(ledger, sym, bars, nowTs, opts = {}) {
 
 const mean = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
 
+// Below this per-grade sample size a realized-vs-claimed comparison is noise, not
+// a conclusion (the project's standing ≥30 OOS floor). The stats are still
+// RETURNED (flagged `insufficient: true`) — suppression happens at the DISPLAY
+// layer (telegram-v2.html renders "insufficient sample (n=X)"), never by hiding
+// the raw numbers.
+export const MIN_CONCLUSION_N = 30;
+
 // ── 3) Realized vs policy expectancy, per grade ──────────────────────────────
 export function ledgerStats(ledger) {
   const decided = ledger.filter(r => r.outcome === 'win' || r.outcome === 'loss' || r.outcome === 'timeout');
@@ -120,6 +127,7 @@ export function ledgerStats(ledger) {
       winRate: +(rs.filter(r => r.outcome === 'win').length / rs.length * 100).toFixed(1),
       realizedExpectancy: +mean(realized).toFixed(4),
       policyExpectancy:   +mean(rs.map(r => r.policyExpectancy ?? 0)).toFixed(4),
+      insufficient: rs.length < MIN_CONCLUSION_N,   // display layer: no win-rate/expectancy verdict below this
     };
   }
   return {
@@ -127,6 +135,7 @@ export function ledgerStats(ledger) {
     open:    ledger.filter(r => r.outcome == null).length,
     expired: ledger.filter(r => r.outcome === 'expired').length,
     overallRealized: +mean(decided.map(r => r.realizedPct ?? 0)).toFixed(4),
+    minConclusionN: MIN_CONCLUSION_N,
     byGrade,
   };
 }

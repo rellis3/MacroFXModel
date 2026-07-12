@@ -230,6 +230,14 @@ function gradeLegend(bands) {
       <div class="muted" style="margin-top:6px;">Alerts fire at <b>Min grade</b> and above (⚙ Alerts). Edge is expectancy after spread+slippage, priced on a HELD position with a chandelier trail (risk to the initial SL, then the stop ratchets in from the peak) — not a fixed target — so a small per-trade % compounds over many touches.</div>
     </div>`;
 }
+// Chance-baseline line (multiple-testing honesty): with C cells each tested
+// against the gate, a pure null (mean 0, same n/SE) still pushes ~pNull×C
+// through. Computed at learn time (levelsV2Learn.chanceBaseline, stored on the
+// frozen artifact); shown whenever the policy summary carries it.
+function chanceLine(cb) {
+  if (!cb || cb.cellsTested == null) return '';
+  return `<div class="muted" style="margin-top:6px;">⚖ ${cb.cellsTested} cells tested (gate: <span class="mono">${cb.gate}</span>); ~${cb.expectedByChance} expected to pass by chance; <b>${cb.passed}</b> passed — survivors must also be IS-consistent and OOS-positive.</div>`;
+}
 function renderPolicy(p) {
   if (!p) { $('policyPanel').innerHTML = '<div class="muted">No frozen policy in KV yet — click Learn policy.</div>'; return; }
   const cov = p.coverage || {};
@@ -241,6 +249,7 @@ function renderPolicy(p) {
       <span class="kpi"><b style="color:var(--text2)">${cov.skipCells ?? '—'}</b><span>skip</span></span>
     </div>
     <div class="muted mono" style="margin-top:8px;">${p.instruments != null ? `${p.instruments} instruments (each its own split)` : `split ${p.splitDate || '?'}`} · built ${p.builtAt || '?'}</div>
+    ${chanceLine(p.chanceBaseline)}
     ${gradeLegend(p.bands)}`;
 }
 
@@ -436,19 +445,30 @@ async function loadTrades() {
 }
 
 // ── Ledger stats ─────────────────────────────────────────────────────────────
+// Per-grade realized-vs-claimed rows are SUPPRESSED below n=30 (the standing
+// ≥30-sample floor): a 4-trade "✗ underperforming" is noise quoted as a verdict.
+// The raw numbers stay in the API payload (flagged `insufficient`) — this is
+// display-layer honesty only. The aggregate row shows, labelled with its n.
 function renderLedger(s) {
   if (!s || !s.total) { $('ledger').innerHTML = '<div class="muted">— no ledger yet —</div>'; return; }
+  const minN = s.minConclusionN ?? 30;
   const rows = Object.keys(s.byGrade || {}).map(g => {
-    const b = s.byGrade[g]; const holds = b.realizedExpectancy >= 0;
+    const b = s.byGrade[g];
+    if (b.insufficient ?? (b.n < minN)) {
+      return `<tr><td class="${gradeCls(g)}">${g}</td><td class="mono">${b.n}</td>
+        <td class="muted" colspan="4">insufficient sample (n=${b.n}) — no conclusion below n=${minN}</td></tr>`;
+    }
+    const holds = b.realizedExpectancy >= 0;
     return `<tr><td class="${gradeCls(g)}">${g}</td><td class="mono">${b.n}</td><td class="mono">${b.winRate}%</td>
       <td class="mono" style="color:${holds ? 'var(--grn)' : 'var(--red)'}">${b.realizedExpectancy >= 0 ? '+' : ''}${b.realizedExpectancy.toFixed(3)}%</td>
       <td class="mono">+${b.policyExpectancy.toFixed(3)}%</td><td>${holds ? '✓ holding' : '✗ underperforming'}</td></tr>`;
   }).join('');
+  const aggThin = s.decided < minN ? ` <span class="muted">(n=${s.decided} — below the n=${minN} conclusion floor)</span>` : ` (n=${s.decided})`;
   $('ledger').innerHTML = `
     <div class="cbadges" style="margin-bottom:8px;">
       <span class="badge">${s.total} recorded</span><span class="badge">${s.decided} resolved</span>
       <span class="badge">${s.open} open</span><span class="badge">${s.expired} expired</span>
-      <span class="badge">overall ${s.overallRealized >= 0 ? '+' : ''}${s.overallRealized.toFixed(3)}%</span>
+      <span class="badge">overall ${s.overallRealized >= 0 ? '+' : ''}${s.overallRealized.toFixed(3)}%${aggThin}</span>
     </div>
     ${rows ? `<table><thead><tr><th>Grade</th><th>n</th><th>Win%</th><th>Realized</th><th>Policy</th><th>Verdict</th></tr></thead><tbody>${rows}</tbody></table>`
            : '<div class="muted">— recorded, awaiting resolution —</div>'}`;
