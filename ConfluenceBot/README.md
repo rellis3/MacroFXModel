@@ -135,14 +135,21 @@ zone across the fleet automatically every `state_interval` (default 120 s), so a
 fresh 8am paste flows into the scores on the next cycle — the only button you
 press is the one you already use to compute the OI analyser.
 
-> **Honest caveat.** OI / gamma / max-pain as support-resistance is real on
-> **index / equity** options (exchange-traded, consolidated OI, genuine dealer
-> gamma). On **spot FX** it is weak-to-unproven: FX options are OTC and
-> fragmented, there is *no* consolidated OI, and it **cannot be backtested**
-> (that's why the platform forward-tests it). Treat the FX side as a measurable
-> experiment, not a known edge — keep those instruments paper until their own
-> journal (≥30 closed trades, costs on) says otherwise. Turn it off per-run with
-> `use_oi: false`.
+> **Honest caveat (the FX vs index asymmetry).** The analyser pulls **CME**
+> options OI, so for the USD FX pairs (6E/6B/6J/6A/6C/6S) and gold (GC) the OI is
+> *real exchange data*, not a guess — the "no OI exists for FX" framing is too
+> strong for these specific pairs. The catch is **coverage**: CME-listed FX
+> futures options are a small slice of an FX options market that is overwhelmingly
+> **OTC**, so the visible walls are a *partial, possibly unrepresentative* view of
+> the dealer gamma that actually hedges into spot — the pin/magnet effect is
+> correspondingly weak, and it still **can't be backtested** (that's why the
+> platform forward-tests it). On the **equity indices** (NQ/ES/DAX) the effect is
+> *stronger*, not "the same": there the listed options book is essentially the
+> whole market, OI is fully consolidated, and dealer-gamma hedging genuinely moves
+> spot near big strikes / OpEx. Net: real-but-partial on the CME FX pairs (weak),
+> real-and-near-complete on the indices (genuine). Keep the FX side paper until
+> its own journal (≥30 closed trades, costs on) says otherwise; `use_oi: false`
+> turns it off per run.
 
 ## A/B discipline
 

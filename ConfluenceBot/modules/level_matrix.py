@@ -541,9 +541,13 @@ def score_zones(zones: list[ZoneV2], vol, session, htf,
                 by /api/oi-levels). A wall/max-pain/HVL sitting at a zone is a
                 dealer-hedging magnet that strengthens a reversal there; the
                 gamma-flip strike is a regime boundary and earns a smaller,
-                separately-tagged credit. NOTE: on spot FX this is weak-to-
-                unproven (OTC, no consolidated OI); it is real on indices. Kept
-                behind the bot's `use_oi` flag and forward-measurable.
+                separately-tagged credit. NOTE (FX vs index asymmetry): the
+                source is CME OI — real exchange data even for the FX pairs, but
+                CME-listed FX options are a small slice of an OTC-dominated
+                market, so the visible walls are partial and the effect is weak;
+                on the equity indices the listed book is ~the whole market and
+                the dealer-gamma effect is genuine. Behind `use_oi`, forward-
+                measurable, paper-first on FX.
     pip:        instrument pip size — only used for the round-number diagnostic
                 on OI hits. Gold default (1.0) is a no-op for callers that omit
                 oi_levels.
