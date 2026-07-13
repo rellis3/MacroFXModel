@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from pylego.strategy.rangeline import (
     body_range, build_ladder, ladder_side, neighbours, trade_spec, chandelier_stop, cell_key,
-    confluence_bucket, confluence_rank,
+    confluence_bucket, confluence_rank, oi_bias, oi_distinct_sources,
 )
 from range_line_bot.engine import RangeSession, session_anchor_epoch
 
@@ -154,6 +154,38 @@ ok("BUY filled below the modeled level → favourable (−)", entry_slip_pct(Tru
 ok("SELL filled above the modeled level → favourable (−)", entry_slip_pct(False, 111.0, 110.0, 100.0) == -1.0)
 ok("missing fill → None (never fabricate the measurement)", entry_slip_pct(True, None, 110.0, 100.0) is None)
 ok("no denominator → None", entry_slip_pct(True, 111.0, 110.0, None) is None)
+
+print("[OI bias — parity with oiConfluence.js oiBias]")
+ok("call wall → sell", oi_bias(110.0, [{"price": 110.0, "source": "call_wall"}], 0.5) == "sell")
+ok("put wall → buy", oi_bias(110.0, [{"price": 110.0, "source": "put_wall"}], 0.5) == "buy")
+ok("above max pain → sell", oi_bias(110.0, [{"price": 100.0, "source": "max_pain"}], 0.5) == "sell")
+ok("below max pain → buy", oi_bias(100.0, [{"price": 110.0, "source": "max_pain"}], 0.5) == "buy")
+ok("nothing near, no max pain → None", oi_bias(110.0, [{"price": 130.0, "source": "call_wall"}], 0.5) is None)
+ok("distinct OI sources within tol", oi_distinct_sources(110.0, [{"price": 110.0, "source": "call_wall"}, {"price": 110.2, "source": "max_pain"}], 0.5) == {"call_wall", "max_pain"})
+
+print("[OI strengthen gate — oi_confluence adds OI as distinct sources]")
+# 1 structural source at 110 → single (fails ≥2); an OI call wall at 110 adds a 2nd.
+so = RangeSession("eurusd", FIBS); so.set_range("A", BARS)
+so.set_confluence([{"price": 110.0, "source": "pivots"}], tol_frac=0.1)
+so.set_oi([{"price": 110.0, "source": "call_wall"}], tol_pips=1, pip=1.0)   # oi_tol = 1.0
+ok("single structural fails ≥2 without OI", so.decide(110, polg, confluence_min=2, oi_confluence=False) == [])
+so2 = RangeSession("eurusd", FIBS); so2.set_range("A", BARS)
+so2.set_confluence([{"price": 110.0, "source": "pivots"}], tol_frac=0.1)
+so2.set_oi([{"price": 110.0, "source": "call_wall"}], tol_pips=1, pip=1.0)
+ok("OI adds a distinct source → passes ≥2 with oi_confluence",
+   len(so2.decide(110, polg, confluence_min=2, oi_confluence=True)) == 1)
+
+print("[OI override — flips the traded side to the OI read]")
+sv = RangeSession("eurusd", FIBS); sv.set_range("A", BARS)
+sv.set_oi([{"price": 110.0, "source": "call_wall"}], tol_pips=1, pip=1.0)   # call wall → sell
+base = sv.decide(110, polg, oi_override=False)
+sv2 = RangeSession("eurusd", FIBS); sv2.set_range("A", BARS)
+sv2.set_oi([{"price": 110.0, "source": "call_wall"}], tol_pips=1, pip=1.0)
+over = sv2.decide(110, polg, oi_override=True)
+ok("without override: learned follow → buy (dir_up)",
+   len(base) == 1 and base[0]["dir_up"] is True and base[0]["decision"] == "follow")
+ok("with override: OI call wall → sell → fade → dir_up False",
+   len(over) == 1 and over[0]["dir_up"] is False and over[0]["decision"] == "fade")
 
 print("[engine — session anchor]")
 # 2026-06-30 10:00:00 UTC; boundary 23 → most recent 23:00 UTC = 2026-06-29 23:00.

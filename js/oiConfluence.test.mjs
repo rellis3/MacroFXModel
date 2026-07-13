@@ -1,6 +1,6 @@
 // Synthetic test for the OI forward-test tagging brick (no network).
 //   node js/oiConfluence.test.mjs
-import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels } from './oiConfluence.js';
+import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias } from './oiConfluence.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -71,6 +71,11 @@ ok('tagged beats untagged (edge > 0)', a.edge > 0, `edge=${a.edge} tagged=${a.ta
 ok('per-type breakdown present', a.byType.call_wall?.n === 1 && a.byType.max_pain?.n === 1, JSON.stringify(Object.keys(a.byType)));
 ok('round-independence split: 1 at round, 1 not', a.taggedAtRound.n === 1 && a.taggedNotRound.n === 1,
    `atRound=${a.taggedAtRound.n} notRound=${a.taggedNotRound.n}`);
+// OI-direction scoring: trade 1 is a SELL at a call_wall (OI says sell) → agree, won.
+// Trade 3 sits exactly AT max pain → the pin has no directional bias → not scored.
+ok('OI-direction agreement scored (call-wall sell agrees; at-pin not scored)',
+   a.oiDirAgree.n === 1 && a.oiDirDisagree.n === 0 && a.oiDirAgree.avgRet > 0,
+   `agree=${a.oiDirAgree.n}@${a.oiDirAgree.avgRet} disagree=${a.oiDirDisagree.n}`);
 
 console.log('[oiStoreToLevels — reuse index.html OI analyser output]');
 {
@@ -95,6 +100,28 @@ console.log('[oiStoreToLevels — reuse index.html OI analyser output]');
   ok('gamma flip = smaller-|netGex| side of the sign change (1.0820)', byType('gamma_flip')[0] === 1.082, JSON.stringify(byType('gamma_flip')));
   ok('HVL = highest-|gamma| strike (1.0800)', byType('hvl')[0] === 1.08, JSON.stringify(byType('hvl')));
   ok('empty / junk → []', oiStoreToLevels(null).length === 0 && oiStoreToLevels({}).length === 0);
+}
+
+console.log('[oiBias — OI-implied buy/sell at the level]');
+{
+  const pip = 0.0001;
+  // At a call wall → resistance → sell.
+  const b1 = oiBias(1.0850, [{ price: 1.0850, type: 'call_wall' }], { pip, tolPips: 10 });
+  ok('call wall → sell', b1.dir === 'sell' && b1.reasons.some(r => r.includes('call_wall')), JSON.stringify(b1));
+  // At a put wall → support → buy.
+  const b2 = oiBias(1.0800, [{ price: 1.0800, type: 'put_wall' }], { pip, tolPips: 10 });
+  ok('put wall → buy', b2.dir === 'buy', JSON.stringify(b2));
+  // Level above max pain → pulled down → sell; below → buy.
+  ok('above max pain → sell', oiBias(1.0900, [{ price: 1.0800, type: 'max_pain' }], { pip, tolPips: 10 }).dir === 'sell');
+  ok('below max pain → buy', oiBias(1.0700, [{ price: 1.0800, type: 'max_pain' }], { pip, tolPips: 10 }).dir === 'buy');
+  // Gamma flip sets regime, not direction.
+  const b3 = oiBias(1.0850, [{ price: 1.0820, type: 'gamma_flip' }, { price: 1.0850, type: 'call_wall' }], { pip, tolPips: 10 });
+  ok('above gamma flip → meanrevert regime', b3.regime === 'meanrevert' && b3.dir === 'sell', JSON.stringify(b3));
+  ok('below gamma flip → trend regime', oiBias(1.0800, [{ price: 1.0820, type: 'gamma_flip' }], { pip, tolPips: 10 }).regime === 'trend');
+  // Conflict: call wall (sell) at the level but far below max pain (buy) → flagged.
+  const b4 = oiBias(1.0850, [{ price: 1.0850, type: 'call_wall' }, { price: 1.0950, type: 'max_pain' }], { pip, tolPips: 10 });
+  ok('opposing reads flagged as conflict', b4.conflict === true, JSON.stringify(b4));
+  ok('empty / far → no direction', oiBias(1.05, [{ price: 1.09, type: 'call_wall' }], { pip, tolPips: 10 }).dir === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);

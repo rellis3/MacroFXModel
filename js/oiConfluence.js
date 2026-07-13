@@ -128,6 +128,42 @@ export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   return dedup;
 }
 
+// OI-implied directional bias at a level the price is touching — the standard
+// dealer-hedging reads, encoded so the bot can "trade sell/buy off the level":
+//   • call_wall  = resistance (heavy call OI above; dealers sell into it) → SELL
+//   • put_wall   = support    (heavy put OI below; dealers buy into it)   → BUY
+//   • max_pain   = pin toward the strike: if the touched level is ABOVE max pain
+//                  the pull is DOWN → SELL; BELOW → BUY (at the pin itself → none)
+//   • gamma_flip = regime, not direction: above it = long-gamma (mean-revert /
+//                  fade favoured), below = short-gamma (trend / follow favoured)
+//   • hvl        = defended level, no inherent side → contributes to `regime` only
+// Returns { dir:'buy'|'sell'|null, strength (# agreeing OI reasons), reasons:[],
+// regime:'meanrevert'|'trend'|null, conflict:bool }. Pure. `maxPain` optional
+// (else inferred from an OI level of type max_pain).
+export function oiBias(price, oiLevels, { pip, tolPips = 10, maxPain = null } = {}) {
+  const none = { dir: null, strength: 0, reasons: [], regime: null, conflict: false };
+  if (!(price > 0) || !(pip > 0) || !Array.isArray(oiLevels) || !oiLevels.length) return none;
+  const tol = tolPips * pip;
+  let buy = 0, sell = 0; const reasons = []; let regime = null;
+  const mp = Number.isFinite(maxPain) ? maxPain
+           : (oiLevels.find(l => l.type === 'max_pain' && Number.isFinite(l.price))?.price ?? null);
+  const flip = oiLevels.find(l => l.type === 'gamma_flip' && Number.isFinite(l.price))?.price ?? null;
+  if (Number.isFinite(flip)) regime = price > flip ? 'meanrevert' : 'trend';
+  for (const lv of oiLevels) {
+    if (!Number.isFinite(lv?.price) || Math.abs(lv.price - price) > tol) continue;
+    if (lv.type === 'call_wall') { sell++; reasons.push('call_wall→resistance→sell'); }
+    else if (lv.type === 'put_wall') { buy++; reasons.push('put_wall→support→buy'); }
+    else if (lv.type === 'max_pain') { reasons.push('at max_pain→pin (no side)'); }
+  }
+  // Max-pain gravity: a touched level away from max pain is pulled back toward it.
+  if (Number.isFinite(mp) && Math.abs(price - mp) > tol) {
+    if (price > mp) { sell++; reasons.push('above max_pain→pull down→sell'); }
+    else { buy++; reasons.push('below max_pain→pull up→buy'); }
+  }
+  const dir = buy > sell ? 'buy' : sell > buy ? 'sell' : null;
+  return { dir, strength: Math.max(buy, sell), reasons, regime, conflict: buy > 0 && sell > 0 };
+}
+
 const _acc = () => ({ n: 0, wins: 0, sumRet: 0 });
 const _add = (a, ret) => { a.n++; if (ret > 0) a.wins++; a.sumRet += ret; };
 const _fin = a => ({ n: a.n, winRate: a.n ? +(a.wins / a.n).toFixed(4) : 0,
@@ -141,6 +177,7 @@ const _fin = a => ({ n: a.n, winRate: a.n ? +(a.wins / a.n).toFixed(4) : 0,
 //   pipFor(instrKey) → pip size; tolPips proximity; roundTolPips for the round grid.
 export function oiAudit(tradeLog, oiByDate, { pipFor = () => 0, tolPips = 10, roundTolPips = 10 } = {}) {
   const tagged = _acc(), untagged = _acc(), taggedNotRound = _acc(), taggedAtRound = _acc();
+  const dirAgree = _acc(), dirDisagree = _acc();
   const byType = {};
   let joined = 0, noOI = 0, unresolved = 0;
   for (const t of (Array.isArray(tradeLog) ? tradeLog : [])) {
@@ -159,6 +196,12 @@ export function oiAudit(tradeLog, oiByDate, { pipFor = () => 0, tolPips = 10, ro
       _add(tagged, ret);
       for (const ty of tag.types) { (byType[ty] ??= _acc()); _add(byType[ty], ret); }
       _add(nearRoundNumber(t.open_price, pip, roundTolPips) ? taggedAtRound : taggedNotRound, ret);
+      // OI-DIRECTION scoring: did the trade's actual side match the OI read, and
+      // did agreeing help? This is what validates the `oi_override` idea before it's
+      // trusted live — split tagged trades by whether direction agreed with oiBias.
+      const bias = oiBias(t.open_price, oi, { pip, tolPips });
+      const tdir = /buy|long/i.test(String(t.direction)) ? 'buy' : /sell|short/i.test(String(t.direction)) ? 'sell' : null;
+      if (bias.dir && tdir) _add(bias.dir === tdir ? dirAgree : dirDisagree, ret);
     } else {
       _add(untagged, ret);
     }
@@ -167,8 +210,10 @@ export function oiAudit(tradeLog, oiByDate, { pipFor = () => 0, tolPips = 10, ro
   return {
     tagged: _fin(tagged), untagged: _fin(untagged),
     taggedNotRound: _fin(taggedNotRound), taggedAtRound: _fin(taggedAtRound),
+    oiDirAgree: _fin(dirAgree), oiDirDisagree: _fin(dirDisagree),
     byType: finByType,
     coverage: { tradesWithOIDay: joined, tradesNoOIDay: noOI, unresolved },
     edge: +(_fin(tagged).avgRet - _fin(untagged).avgRet).toFixed(5),   // tagged − untagged expectancy
+    oiDirEdge: +(_fin(dirAgree).avgRet - _fin(dirDisagree).avgRet).toFixed(5),   // agree − disagree (validates oi_override)
   };
 }

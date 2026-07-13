@@ -167,3 +167,47 @@ def confluence_bucket(level, conf_levels, tol):
 def confluence_rank(bucket):
     """Ordinal for gating: none=0, single=1, multi=2; unknown/None=-1."""
     return _CONF_RANK.get(bucket, -1)
+
+
+def oi_distinct_sources(level, oi_levels, tol):
+    """Distinct OI types (source) within ``tol`` of ``level`` — the OI contribution
+    to level strength. ``oi_levels`` = ``[{"price":.., "source":..}]`` (source is the
+    OI type: call_wall / put_wall / max_pain / gamma_flip / hvl)."""
+    if not oi_levels or tol <= 0:
+        return set()
+    return {lv.get("source") for lv in oi_levels if abs(lv["price"] - level) <= tol}
+
+
+def oi_bias(level, oi_levels, tol, max_pain=None):
+    """OI-implied trade direction at ``level`` — parity with ``oiConfluence.js``
+    ``oiBias().dir``. call_wall = resistance → 'sell'; put_wall = support → 'buy';
+    max-pain gravity (level above max pain → pulled down → 'sell'; below → 'buy').
+    Returns 'buy' / 'sell' / None (None on a tie / no OI near). Used by the opt-in
+    ``oi_override`` gate to flip the traded side to the OI read."""
+    if not (level > 0) or tol <= 0 or not oi_levels:
+        return None
+    buy = sell = 0
+    mp = max_pain
+    if mp is None:
+        for lv in oi_levels:
+            if lv.get("source") == "max_pain":
+                mp = lv["price"]
+                break
+    for lv in oi_levels:
+        if abs(lv["price"] - level) > tol:
+            continue
+        t = lv.get("source")
+        if t == "call_wall":
+            sell += 1
+        elif t == "put_wall":
+            buy += 1
+    if mp is not None and abs(level - mp) > tol:
+        if level > mp:
+            sell += 1
+        else:
+            buy += 1
+    if buy > sell:
+        return "buy"
+    if sell > buy:
+        return "sell"
+    return None
