@@ -564,6 +564,17 @@ score_zones([_zo3], _mk_vol(), _mk_sess(), _NeutralHTF(),
 check('gamma_flip alone scores the smaller boundary credit',
       abs(_zo3.score - NONFIB_WEIGHTS['oi_gamma_flip']) < 1e-9, str(_zo3.score))
 
+# 3× wall strength scales the credit — a STRONG wall scores more than a WEAK one
+# (the same wall, different tier). Non-wall types keep the flat credit.
+_zoS = _mk_zone(_C); _zoW = _mk_zone(_C)
+score_zones([_zoS], _mk_vol(), _mk_sess(), _NeutralHTF(), oi_levels=[(_C, 'call_wall', 'strong')], pip=1.0)
+score_zones([_zoW], _mk_vol(), _mk_sess(), _NeutralHTF(), oi_levels=[(_C, 'call_wall', 'weak')], pip=1.0)
+check('strong wall scores 1.5× the magnet base',
+      abs(_zoS.score - NONFIB_WEIGHTS['oi_magnet'] * 1.5) < 1e-9, str(_zoS.score))
+check('weak wall scores less than strong', _zoW.score < _zoS.score, f'{_zoW.score} < {_zoS.score}')
+check('untiered (2-tuple) wall still scores the flat magnet (back-compat)',
+      abs(_zo1.score - NONFIB_WEIGHTS['oi_magnet']) < 1e-9, str(_zo1.score))
+
 # An OI level outside proximity earns nothing (default gold proximity = $3).
 _zo4 = _mk_zone(_C)
 score_zones([_zo4], _mk_vol(), _mk_sess(), _NeutralHTF(),

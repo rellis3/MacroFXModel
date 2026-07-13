@@ -100,6 +100,10 @@ console.log('[oiStoreToLevels — reuse index.html OI analyser output]');
   ok('gamma flip = smaller-|netGex| side of the sign change (1.0820)', byType('gamma_flip')[0] === 1.082, JSON.stringify(byType('gamma_flip')));
   ok('HVL = highest-|gamma| strike (1.0800)', byType('hvl')[0] === 1.08, JSON.stringify(byType('hvl')));
   ok('empty / junk → []', oiStoreToLevels(null).length === 0 && oiStoreToLevels({}).length === 0);
+  // Wall strength tier ships with the level so the bots can weight/gate by it.
+  const tiered = oiStoreToLevels({ callWall: 1.0850, callWalls: [{ strike: 1.0850, oi: 9000, tier: 'strong' }], putWall: 1.0800, putWalls: [{ strike: 1.0800, oi: 3000, tier: 'weak' }] });
+  ok('call wall ships tier=strong', tiered.find(l => l.type === 'call_wall' && l.price === 1.0850)?.tier === 'strong', JSON.stringify(tiered));
+  ok('put wall ships tier=weak', tiered.find(l => l.type === 'put_wall' && l.price === 1.0800)?.tier === 'weak');
   // Volume magnets emit as oi_volume (so the forward test scores them too).
   const withVol = oiStoreToLevels({ maxPain: 1.08, volumeMagnets: [{ strike: 1.0912, volume: 1242 }, { strike: 1.0888, volume: 900 }] }, { topWalls: 2 });
   ok('volume magnets → oi_volume levels', withVol.filter(l => l.type === 'oi_volume').map(l => l.price).sort().join() === '1.0888,1.0912', JSON.stringify(withVol.filter(l => l.type === 'oi_volume')));

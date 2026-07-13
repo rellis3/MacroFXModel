@@ -97,6 +97,10 @@ DEFAULT_CFG = {
                                     # than oi_break_pips flips from fade barrier to squeeze
                                     # (follow). Only affects oi_override.
     "oi_break_pips": 20,           # break distance beyond a wall that counts as decisive.
+    "oi_min_tier": "",             # '' = count any wall; 'weak'/'moderate'/'strong' = only walls
+                                    # at/above that 3×-rule strength count/override (a strong wall
+                                    # trades differently from a weak one). Applies to oi_confluence
+                                    # + oi_override.
 }
 
 # Broker symbol routing (instrument identity stays shared; routing is local).
@@ -575,9 +579,10 @@ def run(base_url: str, force_live: bool) -> None:
                 oi_over = bool(cfg.get("oi_override", False))
                 oi_reg  = bool(cfg.get("oi_gamma_regime", False))
                 oi_hb   = bool(cfg.get("oi_hold_break", False))
+                oi_mt   = cfg.get("oi_min_tier") or None
                 for spec in sess.decide(px, ip["policy"], dry_run=forming, confluence_min=conf_min,
                                         oi_confluence=oi_conf, oi_override=oi_over,
-                                        oi_gamma_regime=oi_reg, oi_hold_break=oi_hb):
+                                        oi_gamma_regime=oi_reg, oi_hold_break=oi_hb, oi_min_tier=oi_mt):
                     sl = spec["protect_stop"]
                     # Size off the spread-adjusted EXPECTED fill, not the raw ladder
                     # level: a market order can't be sized after it fills, and the

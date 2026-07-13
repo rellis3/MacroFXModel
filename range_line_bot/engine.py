@@ -105,7 +105,8 @@ class RangeSession:
 
     # ── decision (call each tick with the current price + frozen policy) ───────
     def decide(self, px, policy, *, dry_run=False, confluence_min=0,
-               oi_confluence=False, oi_override=False, oi_gamma_regime=False, oi_hold_break=False):
+               oi_confluence=False, oi_override=False, oi_gamma_regime=False, oi_hold_break=False,
+               oi_min_tier=None):
         """Ladder levels newly touched this tick that map to a tradeable cell and
         whose (source, side) slot is still open. Marks them acted/entered so a
         level fires once and only ONE position opens per (source, side).
@@ -149,7 +150,7 @@ class RangeSession:
                     srcs = {c.get("source") or c.get("kind") for c in self.conf_levels
                             if abs(c["price"] - lv["level"]) <= tol}
                     if oi_confluence:
-                        srcs |= oi_distinct_sources(lv["level"], self.oi_levels, self.oi_tol)
+                        srcs |= oi_distinct_sources(lv["level"], self.oi_levels, self.oi_tol, oi_min_tier)
                     srcs.discard(None)
                     rank = 2 if len(srcs) >= 2 else (1 if len(srcs) == 1 else 0)
                     if rank < confluence_min:
@@ -168,7 +169,8 @@ class RangeSession:
                 if oi_override:
                     od = oi_bias(lv["level"], self.oi_levels, self.oi_tol,
                                  px=(px if oi_hold_break else None),
-                                 break_dist=(self.oi_break if oi_hold_break else 0))
+                                 break_dist=(self.oi_break if oi_hold_break else 0),
+                                 min_tier=oi_min_tier)
                     if od:
                         decision = "follow" if (od == "buy") == (lv["side"] == "up") else "fade"
                 spec = trade_spec(lv["level"], lv["side"], decision, lv["inner"], lv["outer"])

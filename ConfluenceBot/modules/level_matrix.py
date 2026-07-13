@@ -657,18 +657,26 @@ def score_zones(zones: list[ZoneV2], vol, session, htf,
         # _near_round): this scorer has no round_number source, so the credit
         # applies either way, but the tag lets the forward-test slice it out.
         if oi_levels:
-            oi_w, oi_ty, oi_p = 0.0, None, None
-            for p, ty in oi_levels:
+            # 3× rule reaching the score: a wall's credit scales with its strength
+            # tier (strong ×1.5 / moderate ×1.0 / weak ×0.6) so a strong wall counts
+            # for more than a weak one. Non-wall types (max-pain/gamma-flip/HVL) have
+            # no tier → ×1.0. Levels may be (price,type) or (price,type,tier).
+            oi_w, oi_ty, oi_p, oi_tier = 0.0, None, None, None
+            for lv in oi_levels:
+                p, ty = lv[0], lv[1]
+                tier = lv[2] if len(lv) > 2 else None
                 if not near(c, p):
                     continue
-                w = (NONFIB_WEIGHTS['oi_gamma_flip'] if ty == 'gamma_flip'
-                     else NONFIB_WEIGHTS['oi_magnet'])
+                base = (NONFIB_WEIGHTS['oi_gamma_flip'] if ty == 'gamma_flip'
+                        else NONFIB_WEIGHTS['oi_magnet'])
+                mult = {'strong': 1.5, 'moderate': 1.0, 'weak': 0.6}.get(tier, 1.0)
+                w = base * mult
                 if w > oi_w:
-                    oi_w, oi_ty, oi_p = w, ty, p
+                    oi_w, oi_ty, oi_p, oi_tier = w, ty, p, tier
             if oi_w > 0.0:
                 score += oi_w
                 rn = ' @rn' if _near_round(oi_p, pip) else ''
-                comp.append(f'OI {oi_ty} {oi_p:.5g}{rn}')
+                comp.append(f'OI {oi_ty}{f" {oi_tier}" if oi_tier else ""} {oi_p:.5g}{rn}')
 
         # ── Session / daily levels — ONE prior-session-structure credit ──────
         # Floor pivots are deterministic functions of prev-day H/L/C, and the

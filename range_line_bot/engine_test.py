@@ -175,6 +175,22 @@ so2.set_oi([{"price": 110.0, "source": "call_wall"}], tol_pips=1, pip=1.0)
 ok("OI adds a distinct source → passes ≥2 with oi_confluence",
    len(so2.decide(110, polg, confluence_min=2, oi_confluence=True)) == 1)
 
+print("[OI min-tier — the 3× rule reaches the gate/override]")
+# A WEAK call wall near the level. With min_tier='strong' it must NOT count / override.
+weak_oi = [{"price": 110.0, "source": "call_wall", "tier": "weak"}]
+strong_oi = [{"price": 110.0, "source": "call_wall", "tier": "strong"}]
+ok("weak wall counts with no min_tier", oi_distinct_sources(110.0, weak_oi, 1.0) == {"call_wall"})
+ok("weak wall dropped at min_tier=strong", oi_distinct_sources(110.0, weak_oi, 1.0, "strong") == set())
+ok("strong wall kept at min_tier=strong", oi_distinct_sources(110.0, strong_oi, 1.0, "strong") == {"call_wall"})
+ok("oi_bias: weak wall gives no direction at min_tier=strong", oi_bias(110.0, weak_oi, 1.0, min_tier="strong") is None)
+ok("oi_bias: strong wall → sell at min_tier=strong", oi_bias(110.0, strong_oi, 1.0, min_tier="strong") == "sell")
+# End-to-end: strong-only gate lets a strong-wall level through, drops a weak one.
+stg = RangeSession("eurusd", FIBS); stg.set_range("A", BARS)
+stg.set_confluence([{"price": 110.0, "source": "pivots"}], tol_frac=0.1)
+stg.set_oi([{"price": 110.0, "source": "call_wall", "tier": "weak"}], tol_pips=1, pip=1.0)
+ok("weak OI wall fails ≥2 gate under min_tier=strong",
+   stg.decide(110, polg, confluence_min=2, oi_confluence=True, oi_min_tier="strong") == [])
+
 print("[OI override — flips the traded side to the OI read]")
 sv = RangeSession("eurusd", FIBS); sv.set_range("A", BARS)
 sv.set_oi([{"price": 110.0, "source": "call_wall"}], tol_pips=1, pip=1.0)   # call wall → sell

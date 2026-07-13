@@ -5952,7 +5952,7 @@ async function _rlSnapshotOIFromStore() {
       const levels = oiStoreToLevels(inst);
       if (levels.length) {
         store[day][key] = levels;                                 // dated forward-test artifact ({price,type})
-        live[key] = levels.map(l => ({ price: l.price, source: l.type }));   // bot reads `source`
+        live[key] = levels.map(l => ({ price: l.price, source: l.type, tier: l.tier ?? null }));   // bot reads `source` + `tier`
         // Gamma regime (Lesson 5): +GEX = dealers long gamma → dampen (PIN / fade);
         // −GEX = short gamma → amplify (BREAKOUT / follow). The fade/follow selector.
         const gex = inst.exposures?.gex ?? 0;

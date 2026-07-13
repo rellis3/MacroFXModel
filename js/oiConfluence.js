@@ -180,12 +180,17 @@ export function oiDeltas(cur, prev) {
 export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   if (!inst || typeof inst !== 'object') return [];
   const out = [];
-  const push = (price, type) => { if (Number.isFinite(price) && price > 0) out.push({ price: +price, type }); };
+  // Walls carry their 3× strength `tier` so the bots can weight/gate by it — the
+  // fix for "a strong wall should trade differently from a weak one". Non-wall
+  // types (max_pain/gamma_flip/hvl/oi_volume) have no tier.
+  const push = (price, type, tier = null) => { if (Number.isFinite(price) && price > 0) out.push(tier ? { price: +price, type, tier } : { price: +price, type }); };
+  const cw = Array.isArray(inst.callWalls) ? inst.callWalls : [];
+  const pw = Array.isArray(inst.putWalls) ? inst.putWalls : [];
   push(inst.maxPain, 'max_pain');
-  push(inst.callWall, 'call_wall');
-  push(inst.putWall, 'put_wall');
-  for (const w of (Array.isArray(inst.callWalls) ? inst.callWalls : []).slice(0, topWalls)) push(w?.strike, 'call_wall');
-  for (const w of (Array.isArray(inst.putWalls) ? inst.putWalls : []).slice(0, topWalls)) push(w?.strike, 'put_wall');
+  push(inst.callWall, 'call_wall', cw.find(w => w.strike === inst.callWall)?.tier ?? null);
+  push(inst.putWall, 'put_wall', pw.find(w => w.strike === inst.putWall)?.tier ?? null);
+  for (const w of cw.slice(0, topWalls)) push(w?.strike, 'call_wall', w?.tier ?? null);
+  for (const w of pw.slice(0, topWalls)) push(w?.strike, 'put_wall', w?.tier ?? null);
   const gp = Array.isArray(inst.gexProfile) ? inst.gexProfile : [];
   for (let i = 1; i < gp.length; i++) {
     if (Math.sign(gp[i]?.netGex ?? 0) !== Math.sign(gp[i - 1]?.netGex ?? 0)) {

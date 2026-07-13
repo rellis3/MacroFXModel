@@ -1000,7 +1000,7 @@ class SymbolEngine:
                 raw = by_instr.get(alt)
             if not raw:
                 return
-            self.oi_levels = [(float(l['price']), str(l.get('type') or 'oi'))
+            self.oi_levels = [(float(l['price']), str(l.get('type') or 'oi'), l.get('tier'))
                               for l in raw
                               if isinstance(l, dict) and l.get('price') is not None]
         except Exception as exc:

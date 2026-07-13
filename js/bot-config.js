@@ -3667,6 +3667,7 @@ const RL_DEFAULTS = {
   oi_gamma_regime: false,          // UNVALIDATED opt-in: gamma sign → fade (PIN) / follow (BREAKOUT)
   oi_hold_break: false,            // UNVALIDATED opt-in: broken wall → squeeze (follow) not fade
   oi_break_pips: 20,               // break distance beyond a wall that counts as decisive
+  oi_min_tier: '',                 // ''=any wall; weak/moderate/strong = only walls that strong count
   max_spread_pips: 2.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
   broker_symbols: {},          // { nq:'USTECH100', de30:'GER40', ... } — blank = built-in default
 };
@@ -3685,6 +3686,7 @@ function renderRlForm() {
   chk('rl_oi_gamma_regime', _rlCfg.oi_gamma_regime);
   chk('rl_oi_hold_break',   _rlCfg.oi_hold_break);
   set('rl_oi_break_pips',   _rlCfg.oi_break_pips ?? RL_DEFAULTS.oi_break_pips);
+  set('rl_oi_min_tier',     _rlCfg.oi_min_tier ?? '');
   set('rl_risk_pct',        _rlCfg.risk_pct        ?? RL_DEFAULTS.risk_pct);
   set('rl_max_lot',         _rlCfg.max_lot         ?? RL_DEFAULTS.max_lot);
   set('rl_max_open',        _rlCfg.max_open        ?? RL_DEFAULTS.max_open);
@@ -3707,6 +3709,7 @@ function readRlForm() {
   _rlCfg.oi_gamma_regime = !!document.getElementById('rl_oi_gamma_regime')?.checked;
   _rlCfg.oi_hold_break   = !!document.getElementById('rl_oi_hold_break')?.checked;
   _rlCfg.oi_break_pips   = Math.round(num('rl_oi_break_pips', RL_DEFAULTS.oi_break_pips));
+  _rlCfg.oi_min_tier     = document.getElementById('rl_oi_min_tier')?.value || '';
   _rlCfg.risk_pct        = num('rl_risk_pct', RL_DEFAULTS.risk_pct);
   _rlCfg.max_lot         = num('rl_max_lot', RL_DEFAULTS.max_lot);
   _rlCfg.max_open        = Math.round(num('rl_max_open', RL_DEFAULTS.max_open));
