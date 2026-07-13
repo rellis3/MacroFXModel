@@ -12,11 +12,13 @@ __pycache__/
 *.pyc
 *.pyo
 .claude/worktrees/
+backtestSystem.log
 backtestSystem/backtestSystem.log
 Gold/logs/gold_bot.log
-Gold/logs/gold_bot.log
+Gold/logs/gold_journal.jsonl
 bot/regime_bot.log
-backtestSystem/backtestSystem.log
+bot/.bot_state.json
+bot/data/beta_history.jsonl
 portfolioBacktest/cache/audjpy_m1.parquet
 portfolioBacktest/cache/eurcad_m1.parquet
 portfolioBacktest/cache/eurchf_m1.parquet
@@ -29,22 +31,13 @@ portfolioBacktest/cache/gold_m1.parquet
 portfolioBacktest/cache/us30_m1.parquet
 portfolioBacktest/cache/usdjpy_m1.parquet
 portfolioBacktest/cache/us2000_m1.parquet
-backtestSystem/backtestSystem.log
-bot/.bot_state.json
-bot/regime_bot.log
-bot/data/beta_history.jsonl
-Gold/logs/gold_bot.log
-Gold/logs/gold_journal.jsonl
 logs/regime_bot_v2.log
-logs/regime_bot_v2.log
-Gold/logs/gold_journal.jsonl
-Gold/logs/gold_bot.log
-bot/data/beta_history.jsonl
-bot/regime_bot.log
-backtestSystem/backtestSystem.log
 logs/dyn_anchor_bot.log
 logs/regime_bot_v7.log
 logs/macro_equity_bot.log
+logs/gold_bot.log
+logs/gold_journal.jsonl
+logs/gold_trades.csv
 
 # Trading safety layer runtime state (kill switch / risk gate baselines)
 safety/state/
@@ -57,9 +50,9 @@ GoldV2/__pycache__/
 GoldV2/modules/__pycache__/
 Trade_Decision_Engine/data/
 logs/gold_v2_bot.log
+logs/confluence_bot.log
 logs/confluence_audjpy_trades.csv
 logs/confluence_audusd_trades.csv
-logs/confluence_bot.log
 logs/confluence_euraud_trades.csv
 logs/confluence_eurgbp_trades.csv
 logs/confluence_eurjpy_trades.csv
@@ -75,6 +68,8 @@ logs/confluence_usdchf_trades.csv
 logs/confluence_usdjpy_trades.csv
 logs/confluence_ustech100m_trades.csv
 logs/confluence_xauusd_trades.csv
+logs/confluence_dax_trades.csv
+logs/confluence_spx_trades.csv
 logs/confluence_audjpy_journal.jsonl
 logs/confluence_audjpy_state.json
 logs/confluence_audusd_journal.jsonl
@@ -105,3 +100,11 @@ logs/confluence_usdjpy_journal.jsonl
 logs/confluence_usdjpy_state.json
 logs/confluence_ustech100m_journal.jsonl
 logs/confluence_xauusd_journal.jsonl
+logs/confluence_ger40_journal.jsonl
+logs/confluence_ger40_state.json
+logs/confluence_sp500_journal.jsonl
+logs/confluence_sp500_state.json
+logs/confluence_dax_journal.jsonl
+logs/confluence_dax_state.json
+logs/confluence_spx_journal.jsonl
+logs/confluence_spx_state.json

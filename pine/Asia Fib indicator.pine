@@ -55,6 +55,8 @@ fib_label_bg_color = input.color(color.new(color.white, 50), "Fib Label Backgrou
 fib_label_text_color = input.color(color.black, "Fib Label Text Colour", group="Fibonacci Levels")
 
 // Confluence Settings
+enable_asia_confluence = input.bool(true, "Enable Asia Confluence", tooltip="Turn off to fully disable Asia-vs-previous-Asia confluence detection — every Asia fib level draws as a plain (non-confluence) line instead. Independent of Monday confluence below.", group="Confluence")
+enable_monday_confluence = input.bool(true, "Enable Monday Confluence", tooltip="Turn off to fully disable Monday-vs-previous-Monday confluence detection — every Monday fib level draws as a plain (non-confluence) line instead. Independent of Asia confluence above.", group="Confluence")
 auto_confluence = input.bool(true, "Auto Calculate Confluence Threshold", tooltip="Automatically adjusts threshold based on instrument (2 pips for forex, 200 for gold, etc)", group="Confluence")
 confluence_threshold = input.float(2.0, "Confluence Threshold (Pips)", minval=0.1, step=0.1, group="Confluence")
 confluence_price_selection = input.string("Lowest", "Confluence Price Selection", options=["Highest", "Lowest", "Midpoint"], tooltip="Which price to draw when confluence is found", group="Confluence")
@@ -720,9 +722,9 @@ if barstate.islast
         var map<float, float> price_mapping = map.new<float, float>()  // Maps original price to selected confluence price
         var array<float> drawn_confluence_visible_prices = array.new<float>()  // Track which confluence prices had visible lines
         
-        if not na(prev_high_tf) and not na(prev_low_tf) and not na(prev_start_tf)
+        if enable_asia_confluence and not na(prev_high_tf) and not na(prev_low_tf) and not na(prev_start_tf)
             prev_range = prev_high_tf - prev_low_tf
-            
+
             var array<float> prev_prices = array.new<float>()
             array.clear(prev_prices)
             
@@ -1068,7 +1070,7 @@ if barstate.islast
         var array<float> monday_drawn_confluence_visible = array.new<float>()
         array.clear(monday_drawn_confluence)
         
-        if not na(effective_prev_monday_high) and not na(effective_prev_monday_low)
+        if enable_monday_confluence and not na(effective_prev_monday_high) and not na(effective_prev_monday_low)
             effective_prev_monday_range = effective_prev_monday_high - effective_prev_monday_low
             
             var array<float> effective_prev_monday_prices = array.new<float>()
@@ -1112,7 +1114,7 @@ if barstate.islast
                         price_diff = math.abs(eff_monday_price - eff_prev_monday_price)
                         is_tight = price_diff <= tight_confluence_distance
                         line_width_to_use = is_tight ? tight_confluence_width : confluence_width
-                        line_color_to_use = is_tight ? tight_confluence_color : confluence_color
+                        line_color_to_use = use_separate_monday_colors ? (is_tight ? monday_tight_confluence_color : monday_confluence_color) : (is_tight ? tight_confluence_color : confluence_color)
                         line_style_to_use = is_tight ? tight_confluence_style : confluence_style
                         
                         price_already_drawn = false
@@ -1190,4 +1192,12 @@ if barstate.islast
                 is_key_level_monday = false
                 for key_lvl in key_levels_check_monday
                     if math.abs(level - key_lvl) < 0.001
-                        is_key_level_monday := t
+                        is_key_level_monday := true
+                        break
+                
+                if not is_key_level_monday
+                    price_monday = effective_monday_low + (effective_monday_range * level)
+                    monday_has_confluence = map.contains(monday_price_mapping, price_monday)
+                    
+                    if not monday_has_confluence
+                        line.new(fib_start_time, price_monday, fib_end_time, price_monday, xloc=xloc.bar_time, color=key_level_color, width=key_level_width, style=key_level_style)
