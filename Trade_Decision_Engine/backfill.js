@@ -426,11 +426,31 @@ export function readBackfillState() {
 export function readBackfillReport() {
   try { return JSON.parse(fs.readFileSync(REPORT_FILE, 'utf8')); } catch { return null; }
 }
+// Read the whole event log. Read as a BUFFER and split on newline bytes rather
+// than fs.readFileSync(…, 'utf8') — V8 caps a single string at ~512 MB
+// (2^29 chars), and the log crosses that past ~450k events (25 FX pairs × ~18k).
+// Reading utf8 there throws ERR_STRING_TOO_LONG, which the old catch swallowed to
+// [] — the "fit on 0 events / verdict: no events" bug after a full rebuild. Each
+// per-line slice is small, so no oversized string is ever created. Errors are
+// logged now, not silently hidden.
 export function readEvents() {
   try {
-    return fs.readFileSync(EVENTS_FILE, 'utf8').trim().split('\n')
-      .map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
-  } catch { return []; }
+    if (!fs.existsSync(EVENTS_FILE)) return [];
+    const buf = fs.readFileSync(EVENTS_FILE);   // Buffer (no encoding) — no string cap
+    const events = [];
+    let start = 0;
+    for (let i = 0; i < buf.length; i++) {
+      if (buf[i] === 0x0A) {                     // '\n'
+        if (i > start) { try { events.push(JSON.parse(buf.toString('utf8', start, i))); } catch {} }
+        start = i + 1;
+      }
+    }
+    if (start < buf.length) { try { events.push(JSON.parse(buf.toString('utf8', start, buf.length))); } catch {} }
+    return events;
+  } catch (e) {
+    console.error('[trade-decision] readEvents failed:', e.message ?? e);
+    return [];
+  }
 }
 
 // Wipe the event log + per-pair state ONCE, up front. A full rebuild that loops
