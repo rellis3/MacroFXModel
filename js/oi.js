@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
-import { wallStrengthTier, oiSkew } from './oiConfluence.js';
+import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes } from './oiConfluence.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -566,6 +566,16 @@ export function processOIData() {
   for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p')); w.mult = t.multiple; w.tier = t.tier; }
   const skew = oiSkew(parsed.strikes, parsed.calls, parsed.puts, spot);
 
+  // Concentration — top strikes as a % of total OI (concentrated → sharper
+  // reactions). Clusters — merge nearby high-OI strikes into institutional zones
+  // (walls are zones, not lines). Cluster width ≈ 20 bps of spot.
+  const strikeTotals = parsed.strikes.map((s, i) => (parsed.calls[i] || 0) + (parsed.puts[i] || 0));
+  const concentration = oiConcentration(strikeTotals);   // sums strikeTotals internally
+  const clusterTol = spot ? spot * 0.002 : 0;
+  const clusters = clusterStrikes(
+    [...callWalls.map(w => ({ ...w, kind: 'call' })), ...putWalls.map(w => ({ ...w, kind: 'put' }))],
+    clusterTol).slice(0, 6);
+
   // Volume magnets — top strikes by TODAY's volume (Lesson 1: activity vs OI's
   // commitment). Basis-shifted to spot-equivalent like the OI strikes.
   const volShift = (st) => basis !== 0 ? (futuresIsInverted(pair) ? 1 / st - basis : st - basis) : st;
@@ -598,7 +608,7 @@ export function processOIData() {
     maxPain, exposures, topLevels, gexProfile,
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
-    callWalls, putWalls, skew, volumeMagnets,
+    callWalls, putWalls, skew, volumeMagnets, concentration, clusters,
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
     callChgAbove, callChgBelow, putChgAbove, putChgBelow,
     numRows: parsed.strikes.length, numLevels, minOI,

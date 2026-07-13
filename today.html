@@ -1541,7 +1541,7 @@ function oiFor(name, sym) {
   let change = null;
   if (oiHistory) {
     const hk = Object.keys(oiHistory).find(k => normK(k) === normK(lvlKey(name, sym)) || normK(k) === normK(sym) || normK(k) === normK(sym.replace('_', '/')));
-    if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate };
+    if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate, classify: oiHistory[hk].classify, stability: oiHistory[hk].stability };
   }
   return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change,
     maxPain: inst.maxPain, callWall: inst.callWall, putWall: inst.putWall,
@@ -2477,6 +2477,11 @@ function storyOptions(r) {
   // Near-dated expiry (Lesson 5 — strongest gamma/pin) if a per-expiry view exists.
   const exps = Object.values(o.inst?.expiries || {}).filter(e => Number.isFinite(e.dte)).sort((a, b) => a.dte - b.dte);
   if (exps.length && exps[0].maxPain) bits.push(`<b>${exps[0].dte}DTE</b> max pain ${fmtN(exps[0].maxPain, dp)} (near-dated pin)`);
+  // Concentration + institutional cluster zones.
+  const con = o.inst?.concentration;
+  if (con && con.read !== 'moderate') bits.push(`<span class="muted">${con.read} (top5 ${con.top5Pct}%)</span>`);
+  const cz = (o.inst?.clusters || []).filter(c => c.count >= 2).slice(0, 2);
+  if (cz.length) bits.push(`zones ${cz.map(c => `${fmtN(c.low, dp)}-${fmtN(c.high, dp)}`).join(', ')}`);
   const reg = o.regime ? ` · <b>${o.regime}</b> ${o.regime === 'PIN' ? '(positive GEX — mean-revert)' : '(negative GEX — breakout)'}` : '';
   const age = o.stale ? ` <span class="chip warn" style="font-size:9px">stale ${Math.round(o.ageH)}h</span>` : ` <span class="muted">${o.ageH < 1 ? 'fresh' : Math.round(o.ageH) + 'h old'}</span>`;
   return `${bits.join(' · ')}${reg}.${age}${oiChangeLine(o, dp)}`;
@@ -2498,8 +2503,12 @@ function oiChangeLine(o, dp) {
   const fade = [...(c.callWalls?.weakening || []), ...(c.callWalls?.faded || []), ...(c.putWalls?.weakening || []), ...(c.putWalls?.faded || [])];
   if (firm.length) bits.push(`<span style="color:var(--green)">firming</span> ${firm.slice(0, 2).map(w => fmtN(w.strike, dp)).join(', ')}`);
   if (fade.length) bits.push(`<span style="color:var(--amber)" title="a wall defended then fading = next test more likely to break">fading</span> ${fade.slice(0, 2).map(w => fmtN(w.strike, dp)).join(', ')}`);
-  if (!bits.length) return '';
-  return `<div class="muted" style="margin-top:3px;font-size:11px">Δ vs ${c.fromDate || 'prior'}: ${bits.join(' · ')}</div>`;
+  // Established (multi-day) walls — more reliable than overnight ones.
+  const est = (c.stability || []).filter(w => w.established).slice(0, 2);
+  if (est.length) bits.push(`<span title="wall persisted ≥5 days — established, more reliable">established</span> ${est.map(w => `${fmtN(w.strike, dp)} (${w.daysPresent}d)`).join(', ')}`);
+  if (!bits.length && !c.classify) return '';
+  const head = c.classify ? `<b>${c.classify}</b>${bits.length ? ' · ' : ''}` : '';
+  return `<div class="muted" style="margin-top:3px;font-size:11px">Δ vs ${c.fromDate || 'prior'}: ${head}${bits.join(' · ')}</div>`;
 }
 
 async function storyAI(r) {
@@ -2603,6 +2612,8 @@ function assembleSnapshot(r) {
     callWalls: (oi.inst?.callWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
     putWalls: (oi.inst?.putWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
     volumeMagnets: (oi.inst?.volumeMagnets || []).slice(0, 5),
+    concentration: oi.inst?.concentration ?? null,
+    clusters: (oi.inst?.clusters || []).slice(0, 4),
     expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
   // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
   const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];

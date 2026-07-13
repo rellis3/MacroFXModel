@@ -60,7 +60,7 @@ import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair
 import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
-import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas } from './js/oiConfluence.js';
+import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability } from './js/oiConfluence.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
@@ -1687,7 +1687,20 @@ async function _injectServerContext(pair, s) {
         const dates = Object.keys(perPair).sort();
         const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
         const dl = (cur && prev) ? oiDeltas(cur, prev) : null;
-        if (dl) s.oiChange = { fromDate: dates[dates.length - 2], toDate: dates[dates.length - 1], ...dl };
+        if (dl) {
+          const cls = classifyOIChange(dl);
+          s.oiChange = { fromDate: dates[dates.length - 2], toDate: dates[dates.length - 1], ...dl,
+            classify: cls?.summary ?? null, events: cls?.events ?? [] };
+        }
+        // Wall STABILITY: how many days each current wall has persisted (needs the
+        // multi-day series). Tolerance ≈ 20 bps of the latest spot.
+        const series = dates.slice(-20).map(dt => perPair[dt]);
+        const spot = cur?.spot || cur?.maxPain || 0;
+        if (spot > 0 && series.length >= 2) {
+          const stab = oiWallStability(series, spot * 0.002)
+            .filter(w => w.daysPresent >= 1).sort((a, b) => b.daysPresent - a.daysPresent).slice(0, 6);
+          if (stab.length) s.oiStability = stab;
+        }
       }
     } catch { /* left absent — prompt tolerates it */ }
   }
@@ -1731,7 +1744,9 @@ Wall strength (3× rule): ${[...(s.oi.callWalls || []).filter(w => w.tier).map(w
 Total Call OI: ${s.oi.totalCallOI}  |  Total Put OI: ${s.oi.totalPutOI}
 OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}
 Aggregate GEX: ${s.oi.gex ?? 'N/A'}  |  DEX: ${s.oi.dex ?? 'N/A'}  ->  ${s.oi.gexRead ?? 'N/A'}
-Gamma flip level: ${s.oi.gammaFlip ?? 'N/A'}${(s.oi.volumeMagnets || []).length ? `
+Gamma flip level: ${s.oi.gammaFlip ?? 'N/A'}${s.oi.concentration ? `
+Concentration: top-5 strikes = ${s.oi.concentration.top5Pct}% of OI (${s.oi.concentration.read}) — ${s.oi.concentration.read === 'concentrated' ? 'expect sharper reactions at the walls' : 'positioning dispersed, weaker wall influence'}` : ''}${(s.oi.clusters || []).length ? `
+Institutional cluster zones: ${s.oi.clusters.map(c => `${c.low}-${c.high} (${Math.round(c.totalOI / 1000)}k)`).join(', ')}` : ''}${(s.oi.volumeMagnets || []).length ? `
 Volume magnets (today's activity, distinct from OI): ${s.oi.volumeMagnets.map(v => v.strike).join(', ')}` : ''}${(s.oi.expiries || []).length ? `
 Per-expiry (near-dated = strongest gamma/pin): ${s.oi.expiries.map(e => `${e.dte}DTE max pain ${e.maxPain}${e.callWall ? ` CW ${e.callWall}` : ''}${e.putWall ? ` PW ${e.putWall}` : ''}`).join(' | ')}` : ''}
 Top strikes (strike | callOI/putOI | type):
@@ -1741,7 +1756,9 @@ Positioning: ${s.oiChange.flow.toUpperCase()} (total OI ${s.oiChange.totalOIChan
 Max pain shift: ${s.oiChange.maxPainShift ?? 0}  |  P/C ratio change: ${s.oiChange.pcRatioChange ?? 0}
 Call walls firming: ${s.oiChange.callWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.callWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.callWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
 Put walls firming: ${s.oiChange.putWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.putWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.putWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
-New walls appeared: ${[...s.oiChange.callWalls.appeared.map(w => `C${w.strike}`), ...s.oiChange.putWalls.appeared.map(w => `P${w.strike}`)].join(', ') || 'none'}
+New walls appeared: ${[...s.oiChange.callWalls.appeared.map(w => `C${w.strike}`), ...s.oiChange.putWalls.appeared.map(w => `P${w.strike}`)].join(', ') || 'none'}${s.oiChange.classify ? `
+Change read: ${s.oiChange.classify}${(s.oiChange.events || []).filter(e => e.type === 'fresh_wall' || e.type === 'fresh_positioning').length ? ` · fresh: ${s.oiChange.events.filter(e => e.type === 'fresh_wall' || e.type === 'fresh_positioning').map(e => `${e.kind[0].toUpperCase()}${e.strike}${e.pct != null ? `(+${e.pct}%)` : ''}`).join(', ')}` : ''}` : ''}${(s.oiStability || []).length ? `
+Wall stability: ${s.oiStability.map(w => `${w.kind[0].toUpperCase()}${w.strike} ${w.established ? `${w.daysPresent}d established` : w.fresh ? 'fresh' : `${w.daysPresent}d`}`).join(', ')} (established walls more reliable than overnight ones)` : ''}
 (A wall that firmed = support/resistance more reliable; a wall defended then fading = next test may break — weight accordingly.)` : ''}`
   : '  No OI data loaded for this pair  -  paste via OI button'}
 
@@ -6043,8 +6060,16 @@ app.get('/api/oi-history', async (req, res) => {
     const latestDelta = (perPair) => {
       const dates = Object.keys(perPair).sort();
       const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
+      const dl = (cur && prev) ? oiDeltas(cur, prev) : null;
+      const spot = cur?.spot || cur?.maxPain || 0;
+      const stab = (spot > 0 && dates.length >= 2)
+        ? oiWallStability(dates.slice(-20).map(dt => perPair[dt]), spot * 0.002)
+            .filter(w => w.daysPresent >= 1).sort((a, b) => b.daysPresent - a.daysPresent).slice(0, 6)
+        : [];
       return { curDate: dates[dates.length - 1] ?? null, prevDate: dates[dates.length - 2] ?? null,
-               days: dates.length, deltas: (cur && prev) ? oiDeltas(cur, prev) : null };
+               days: dates.length, deltas: dl,
+               classify: dl ? classifyOIChange(dl)?.summary ?? null : null,
+               stability: stab };
     };
     const key = String(req.query.pair || '').trim();
     if (!key) {
