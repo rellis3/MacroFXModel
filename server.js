@@ -6098,7 +6098,7 @@ app.post('/api/oi-history/snapshot', async (_req, res) => {
 // renders `oi_bot_zones` and the Python executor trades the SAME artifact (no
 // drift). Universe = gold + indices by default; FX only when fx_enabled (weak
 // asset). Config lives in `oi_bot_config` (bot-config OI tab, stage 2).
-const OI_BOT_INDEX = ['nq', 'spx500', 'de30', 'us30', 'us2000'];
+const OI_BOT_INDEX = ['nq', 'spx', 'dax', 'dow', 'rut'];   // canonical registry keys (resolveKey output)
 const OI_BOT_UNIVERSE = ['gold', ...OI_BOT_INDEX];
 const OI_BOT_CFG_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
