@@ -1,5 +1,6 @@
 import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
+import { wallStrengthTier, oiSkew } from './oiConfluence.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -284,6 +285,20 @@ export function oiParseChangeTable(raw, expectedLen) {
   return cc.length === expectedLen ? { callChg: cc, putChg: pc } : null;
 }
 
+// Parse a "strike  volume" table → [{strike, volume}] sorted by volume desc.
+// Volume = TODAY's traded activity (distinct from resting OI — Lesson 1).
+export function oiParseVolume(raw) {
+  if (!raw || !raw.trim()) return [];
+  const out = [];
+  for (const line of raw.split('\n').slice(0, 200)) {
+    const row = line.trim().replace(/\t/g, ' ').replace(/ {2,}/g, ' ');
+    if (!row || (/[A-Za-z]/.test(row) && !/^\d/.test(row))) continue;
+    const nums = row.split(' ').map(c => parseFloat(c.replace(/,/g, ''))).filter(n => !isNaN(n));
+    if (nums.length >= 2 && nums[1] > 0) out.push({ strike: nums[0], volume: nums[1] });
+  }
+  return out.sort((a, b) => b.volume - a.volume);
+}
+
 // ── Calculations ─────────────────────────────────────────────────────────────
 
 export function oiCalcMaxPain(strikes, calls, puts) {
@@ -442,6 +457,9 @@ export function processOIData() {
   const pair = S.currentPair ? S.currentPair.symbol : document.getElementById('oiPairSelect').value;
   const rawOI = document.getElementById('oiRawData').value;
   const rawChg = document.getElementById('oiChangeData').value;
+  const rawVol = document.getElementById('oiVolumeData')?.value || '';
+  const expiryLabel = (document.getElementById('oiExpiryLabel')?.value || '').trim();
+  const dteRaw = parseFloat(document.getElementById('oiDTE')?.value);
   const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
   const futuresRaw = parseFloat(document.getElementById('oiFuturesPrice')?.value);
   const numLevels = parseInt(document.getElementById('oiNumLevels').value) || 8;
@@ -536,6 +554,23 @@ export function processOIData() {
     .sort((a, b) => b.oi - a.oi)
     .slice(0, numLevels);
 
+  // 3× rule (Lesson 4): tag each wall's strength as its OI vs the surrounding
+  // strikes (2 either side), not its raw size — weak/moderate/strong.
+  const byStrike = parsed.strikes.map((s, i) => ({ s, c: parsed.calls[i], p: parsed.puts[i] })).sort((a, b) => a.s - b.s);
+  const sIdx = new Map(byStrike.map((o, i) => [o.s, i]));
+  const neigh = (strike, key) => {
+    const i = sIdx.get(strike); if (i == null) return [];
+    return [i - 2, i - 1, i + 1, i + 2].filter(j => byStrike[j]).map(j => byStrike[j][key]);
+  };
+  for (const w of callWalls) { const t = wallStrengthTier(w.oi, neigh(w.strike, 'c')); w.mult = t.multiple; w.tier = t.tier; }
+  for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p')); w.mult = t.multiple; w.tier = t.tier; }
+  const skew = oiSkew(parsed.strikes, parsed.calls, parsed.puts, spot);
+
+  // Volume magnets — top strikes by TODAY's volume (Lesson 1: activity vs OI's
+  // commitment). Basis-shifted to spot-equivalent like the OI strikes.
+  const volShift = (st) => basis !== 0 ? (futuresIsInverted(pair) ? 1 / st - basis : st - basis) : st;
+  const volumeMagnets = oiParseVolume(rawVol).slice(0, 8).map(v => ({ strike: +volShift(v.strike).toFixed(6), volume: v.volume }));
+
   const totalCallOI = parsed.calls.reduce((a,b)=>a+b,0);
   const totalPutOI  = parsed.puts.reduce((a,b)=>a+b,0);
   const pcRatio = totalPutOI / Math.max(totalCallOI, 0.01);
@@ -563,7 +598,7 @@ export function processOIData() {
     maxPain, exposures, topLevels, gexProfile,
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
-    callWalls, putWalls,
+    callWalls, putWalls, skew, volumeMagnets,
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
     callChgAbove, callChgBelow, putChgAbove, putChgBelow,
     numRows: parsed.strikes.length, numLevels, minOI,
@@ -574,12 +609,23 @@ export function processOIData() {
   };
 
   const store = oiLoadStore();
+  // Per-expiry: preserve prior expiry entries and record THIS paste under its label
+  // (near-dated = strongest gamma/pin — Lesson 5). The top-level inst stays the
+  // primary/combined view; `expiries` builds up a DTE-keyed sub-view over saves.
+  const priorExpiries = store[pair]?.expiries || {};
+  if (expiryLabel && Number.isFinite(dteRaw)) {
+    priorExpiries[expiryLabel] = { dte: dteRaw, savedAtMs: Date.now(),
+      maxPain, callWall: inst.callWall, putWall: inst.putWall,
+      callWalls: callWalls.slice(0, 8), putWalls: putWalls.slice(0, 8), pcRatio };
+  }
+  if (Object.keys(priorExpiries).length) inst.expiries = priorExpiries;
   store[pair] = inst;
   oiSaveStore(store);
 
   document.getElementById('oiRawData').value='';
   document.getElementById('oiChangeData').value='';
   document.getElementById('oiSpotPrice').value='';
+  ['oiVolumeData', 'oiExpiryLabel', 'oiDTE'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const futEl = document.getElementById('oiFuturesPrice');
   if (futEl) futEl.value='';
   const basisEl = document.getElementById('oiBasisDisplay');

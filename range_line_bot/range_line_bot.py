@@ -90,6 +90,17 @@ DEFAULT_CFG = {
                                     # buy, max-pain gravity), overriding the learned fade/
                                     # follow direction. Only redirects levels already traded;
                                     # never resurrects a skip. Off = learned direction stands.
+    "oi_gamma_regime": False,      # UNVALIDATED, opt-in: the day's dealer-gamma sign sets the
+                                    # fade/follow style — PIN (long gamma) → fade, BREAKOUT
+                                    # (short gamma) → follow. Needs range_line_oi_live.regimes.
+    "oi_hold_break": False,        # UNVALIDATED, opt-in: hold-vs-break — a wall broken by more
+                                    # than oi_break_pips flips from fade barrier to squeeze
+                                    # (follow). Only affects oi_override.
+    "oi_break_pips": 20,           # break distance beyond a wall that counts as decisive.
+    "oi_min_tier": "",             # '' = count any wall; 'weak'/'moderate'/'strong' = only walls
+                                    # at/above that 3×-rule strength count/override (a strong wall
+                                    # trades differently from a weak one). Applies to oi_confluence
+                                    # + oi_override.
 }
 
 # Broker symbol routing (instrument identity stays shared; routing is local).
@@ -415,7 +426,9 @@ def run(base_url: str, force_live: bool) -> None:
                 pip = I.pip_size(sess.instrument)
             except Exception:
                 pip = 0.0
-            sess.set_oi(levels, (oi_art or {}).get("tolPips", 10), pip)
+            regime = ((oi_art or {}).get("regimes") or {}).get(sess.instrument)
+            sess.set_oi(levels, (oi_art or {}).get("tolPips", 10), pip, regime=regime,
+                        break_pips=cfg.get("oi_break_pips", 20))
 
     while True:
         nowt = time.time()
@@ -564,8 +577,12 @@ def run(base_url: str, force_live: bool) -> None:
                 conf_min = int(cfg.get("confluence_min", 0) or 0)
                 oi_conf = bool(cfg.get("oi_confluence", False))
                 oi_over = bool(cfg.get("oi_override", False))
+                oi_reg  = bool(cfg.get("oi_gamma_regime", False))
+                oi_hb   = bool(cfg.get("oi_hold_break", False))
+                oi_mt   = cfg.get("oi_min_tier") or None
                 for spec in sess.decide(px, ip["policy"], dry_run=forming, confluence_min=conf_min,
-                                        oi_confluence=oi_conf, oi_override=oi_over):
+                                        oi_confluence=oi_conf, oi_override=oi_over,
+                                        oi_gamma_regime=oi_reg, oi_hold_break=oi_hb, oi_min_tier=oi_mt):
                     sl = spec["protect_stop"]
                     # Size off the spread-adjusted EXPECTED fill, not the raw ladder
                     # level: a market order can't be sized after it fills, and the

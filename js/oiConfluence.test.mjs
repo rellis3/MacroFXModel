@@ -1,6 +1,6 @@
 // Synthetic test for the OI forward-test tagging brick (no network).
 //   node js/oiConfluence.test.mjs
-import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias } from './oiConfluence.js';
+import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas, wallStrengthTier, oiSkew } from './oiConfluence.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -100,6 +100,13 @@ console.log('[oiStoreToLevels — reuse index.html OI analyser output]');
   ok('gamma flip = smaller-|netGex| side of the sign change (1.0820)', byType('gamma_flip')[0] === 1.082, JSON.stringify(byType('gamma_flip')));
   ok('HVL = highest-|gamma| strike (1.0800)', byType('hvl')[0] === 1.08, JSON.stringify(byType('hvl')));
   ok('empty / junk → []', oiStoreToLevels(null).length === 0 && oiStoreToLevels({}).length === 0);
+  // Wall strength tier ships with the level so the bots can weight/gate by it.
+  const tiered = oiStoreToLevels({ callWall: 1.0850, callWalls: [{ strike: 1.0850, oi: 9000, tier: 'strong' }], putWall: 1.0800, putWalls: [{ strike: 1.0800, oi: 3000, tier: 'weak' }] });
+  ok('call wall ships tier=strong', tiered.find(l => l.type === 'call_wall' && l.price === 1.0850)?.tier === 'strong', JSON.stringify(tiered));
+  ok('put wall ships tier=weak', tiered.find(l => l.type === 'put_wall' && l.price === 1.0800)?.tier === 'weak');
+  // Volume magnets emit as oi_volume (so the forward test scores them too).
+  const withVol = oiStoreToLevels({ maxPain: 1.08, volumeMagnets: [{ strike: 1.0912, volume: 1242 }, { strike: 1.0888, volume: 900 }] }, { topWalls: 2 });
+  ok('volume magnets → oi_volume levels', withVol.filter(l => l.type === 'oi_volume').map(l => l.price).sort().join() === '1.0888,1.0912', JSON.stringify(withVol.filter(l => l.type === 'oi_volume')));
 }
 
 console.log('[oiBias — OI-implied buy/sell at the level]');
@@ -122,6 +129,51 @@ console.log('[oiBias — OI-implied buy/sell at the level]');
   const b4 = oiBias(1.0850, [{ price: 1.0850, type: 'call_wall' }, { price: 1.0950, type: 'max_pain' }], { pip, tolPips: 10 });
   ok('opposing reads flagged as conflict', b4.conflict === true, JSON.stringify(b4));
   ok('empty / far → no direction', oiBias(1.05, [{ price: 1.09, type: 'call_wall' }], { pip, tolPips: 10 }).dir === null);
+  // Hold-vs-break: call wall at 1.0837; a level at 1.0840 within tol. px broke above
+  // by >20 pips → squeeze → buy (vs the hold read of sell). Parity with Python.
+  const hold = oiBias(1.0840, [{ price: 1.0837, type: 'call_wall' }], { pip, tolPips: 10 });
+  const brk = oiBias(1.0840, [{ price: 1.0837, type: 'call_wall' }], { pip, tolPips: 10, px: 1.0870, breakPips: 20 });
+  ok('hold read = sell (fade the wall)', hold.dir === 'sell');
+  ok('broken wall (px far above) → buy (squeeze)', brk.dir === 'buy' && brk.regime === 'trend', JSON.stringify(brk));
+}
+
+console.log('[oiDeltas — day-over-day OI dynamics]');
+{
+  const prev = { maxPain: 4200, callWall: 4300, putWall: 4100, pcRatio: 1.00,
+    totalCallOI: 40000, totalPutOI: 40000,
+    callWalls: [{ strike: 4300, oi: 8000 }, { strike: 4250, oi: 5000 }],
+    putWalls: [{ strike: 4100, oi: 5000 }, { strike: 4050, oi: 3000 }] };
+  const cur = { maxPain: 4100, callWall: 4300, putWall: 4100, pcRatio: 1.05,
+    totalCallOI: 42000, totalPutOI: 45000,
+    callWalls: [{ strike: 4300, oi: 9000 }, { strike: 4200, oi: 6000 }],   // 4300 firming, 4250 faded, 4200 new
+    putWalls: [{ strike: 4100, oi: 4500 }, { strike: 4050, oi: 3500 }] };  // 4100 weakening
+  const dl = oiDeltas(cur, prev);
+  ok('max pain shifted down 100', dl.maxPainShift === -100, `${dl.maxPainShift}`);
+  ok('P/C ratio +0.05', dl.pcRatioChange === 0.05, `${dl.pcRatioChange}`);
+  ok('total OI building (+7000, new money)', dl.totalOIChange === 7000 && dl.flow === 'building', `${dl.totalOIChange}/${dl.flow}`);
+  ok('call wall 4300 strengthening (+1000)', dl.callWalls.strengthening.some(w => w.strike === 4300 && w.delta === 1000));
+  ok('call wall 4200 appeared / 4250 faded', dl.callWalls.appeared.some(w => w.strike === 4200) && dl.callWalls.faded.some(w => w.strike === 4250));
+  ok('put wall 4100 weakening (−500)', dl.putWalls.weakening.some(w => w.strike === 4100 && w.delta === -500));
+  ok('null on missing prior (first day)', oiDeltas(cur, null) === null);
+}
+
+console.log('[wallStrengthTier — the 3× rule]');
+ok('3×+ neighbours → strong', wallStrengthTier(9000, [3000, 2500, 2800]).tier === 'strong');
+ok('2× → moderate', wallStrengthTier(5600, [2800, 2800]).tier === 'moderate');
+ok('1.5× → weak', wallStrengthTier(4200, [2800, 2800]).tier === 'weak');
+ok('~1× → null tier (no edge)', wallStrengthTier(2900, [2800, 2800]).tier === null);
+ok('multiple reported', wallStrengthTier(9000, [3000]).multiple === 3);
+ok('isolated wall (no neighbours>0) → strong', wallStrengthTier(5000, [0, 0]).tier === 'strong');
+
+console.log('[oiSkew — where the positioning sits]');
+{
+  // Heavy puts below spot 1.10, light calls above → downside-hedged (negative).
+  const sk = oiSkew([1.08, 1.09, 1.11, 1.12], [100, 100, 200, 150], [4000, 3000, 100, 100], 1.10);
+  ok('downside-hedged → negative score', sk.score < -0.2 && sk.read === 'downside-hedged', JSON.stringify(sk));
+  // Heavy calls above → upside-tilted.
+  const sk2 = oiSkew([1.08, 1.09, 1.11, 1.12], [100, 100, 4000, 3000], [150, 100, 100, 100], 1.10);
+  ok('upside-tilted → positive score', sk2.score > 0.2 && sk2.read === 'upside-tilted', JSON.stringify(sk2));
+  ok('null without spot', oiSkew([1, 2], [1, 1], [1, 1], 0) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);

@@ -175,6 +175,22 @@ so2.set_oi([{"price": 110.0, "source": "call_wall"}], tol_pips=1, pip=1.0)
 ok("OI adds a distinct source → passes ≥2 with oi_confluence",
    len(so2.decide(110, polg, confluence_min=2, oi_confluence=True)) == 1)
 
+print("[OI min-tier — the 3× rule reaches the gate/override]")
+# A WEAK call wall near the level. With min_tier='strong' it must NOT count / override.
+weak_oi = [{"price": 110.0, "source": "call_wall", "tier": "weak"}]
+strong_oi = [{"price": 110.0, "source": "call_wall", "tier": "strong"}]
+ok("weak wall counts with no min_tier", oi_distinct_sources(110.0, weak_oi, 1.0) == {"call_wall"})
+ok("weak wall dropped at min_tier=strong", oi_distinct_sources(110.0, weak_oi, 1.0, "strong") == set())
+ok("strong wall kept at min_tier=strong", oi_distinct_sources(110.0, strong_oi, 1.0, "strong") == {"call_wall"})
+ok("oi_bias: weak wall gives no direction at min_tier=strong", oi_bias(110.0, weak_oi, 1.0, min_tier="strong") is None)
+ok("oi_bias: strong wall → sell at min_tier=strong", oi_bias(110.0, strong_oi, 1.0, min_tier="strong") == "sell")
+# End-to-end: strong-only gate lets a strong-wall level through, drops a weak one.
+stg = RangeSession("eurusd", FIBS); stg.set_range("A", BARS)
+stg.set_confluence([{"price": 110.0, "source": "pivots"}], tol_frac=0.1)
+stg.set_oi([{"price": 110.0, "source": "call_wall", "tier": "weak"}], tol_pips=1, pip=1.0)
+ok("weak OI wall fails ≥2 gate under min_tier=strong",
+   stg.decide(110, polg, confluence_min=2, oi_confluence=True, oi_min_tier="strong") == [])
+
 print("[OI override — flips the traded side to the OI read]")
 sv = RangeSession("eurusd", FIBS); sv.set_range("A", BARS)
 sv.set_oi([{"price": 110.0, "source": "call_wall"}], tol_pips=1, pip=1.0)   # call wall → sell
@@ -186,6 +202,33 @@ ok("without override: learned follow → buy (dir_up)",
    len(base) == 1 and base[0]["dir_up"] is True and base[0]["decision"] == "follow")
 ok("with override: OI call wall → sell → fade → dir_up False",
    len(over) == 1 and over[0]["dir_up"] is False and over[0]["decision"] == "fade")
+
+print("[OI gamma regime — sets fade/follow from dealer gamma sign]")
+# Level A_1 up = 110; learned decision follow. PIN → force fade; BREAKOUT → force follow.
+sp = RangeSession("eurusd", FIBS); sp.set_range("A", BARS)
+sp.set_oi([], tol_pips=1, pip=1.0, regime="PIN")
+rp = sp.decide(110, polg, oi_gamma_regime=True)
+ok("PIN regime → fade (long gamma / mean-revert)", len(rp) == 1 and rp[0]["decision"] == "fade")
+sb = RangeSession("eurusd", FIBS); sb.set_range("A", BARS)
+sb.set_oi([], tol_pips=1, pip=1.0, regime="BREAKOUT")
+rb = sb.decide(110, polg, oi_gamma_regime=True)
+ok("BREAKOUT regime → follow (short gamma / trend)", len(rb) == 1 and rb[0]["decision"] == "follow")
+so_off = RangeSession("eurusd", FIBS); so_off.set_range("A", BARS)
+so_off.set_oi([], tol_pips=1, pip=1.0, regime="PIN")
+roff = so_off.decide(110, polg, oi_gamma_regime=False)   # flag off → learned follow stands
+ok("regime flag off → learned decision stands", len(roff) == 1 and roff[0]["decision"] == "follow")
+
+print("[OI hold-vs-break — broken wall flips fade → follow (squeeze)]")
+# Call wall at 108; price 110 has broken it by 2 (> break 1). Approaching = fade sell;
+# broken = follow the squeeze up (buy → follow on an up level).
+sh = RangeSession("eurusd", FIBS); sh.set_range("A", BARS)
+sh.set_oi([{"price": 108.0, "source": "call_wall"}], tol_pips=3, pip=1.0, break_pips=1)   # oi_tol=3, break=1
+held = sh.decide(110, polg, oi_override=True, oi_hold_break=False)   # hold: call wall within tol → sell → fade
+sh2 = RangeSession("eurusd", FIBS); sh2.set_range("A", BARS)
+sh2.set_oi([{"price": 108.0, "source": "call_wall"}], tol_pips=3, pip=1.0, break_pips=1)
+brk = sh2.decide(110, polg, oi_override=True, oi_hold_break=True)    # break: 110 > 108+1 → squeeze → buy → follow
+ok("hold (no break flag): wall within tol → fade", len(held) == 1 and held[0]["decision"] == "fade")
+ok("hold-vs-break ON: broken call wall → follow the squeeze", len(brk) == 1 and brk[0]["decision"] == "follow" and brk[0]["dir_up"] is True)
 
 print("[engine — session anchor]")
 # 2026-06-30 10:00:00 UTC; boundary 23 → most recent 23:00 UTC = 2026-06-29 23:00.

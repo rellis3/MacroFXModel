@@ -60,7 +60,7 @@ import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair
 import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
-import { parseOILevels, oiAudit, oiStoreToLevels } from './js/oiConfluence.js';
+import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas } from './js/oiConfluence.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
@@ -1672,6 +1672,25 @@ async function _injectServerContext(pair, s) {
       };
     } catch { /* left absent — prompt tolerates it */ }
   }
+
+  // Day-over-day OI dynamics (from the self-collected oi_history archive) — so the
+  // AI's oiRead can speak to walls firming/fading and positioning building/unwinding,
+  // not just today's static levels. Absent on the first day (no prior) — prompt tolerates it.
+  if (s.oi && !s.oiChange) {
+    try {
+      const raw = await kv.get('oi_history').catch(() => null);
+      const hist = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+      const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
+      const pk = Object.keys(hist).find(k => norm(k) === norm(pair) || norm(k) === norm(_forecastKeyForPair(pair) || pair));
+      const perPair = pk ? hist[pk] : null;
+      if (perPair) {
+        const dates = Object.keys(perPair).sort();
+        const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
+        const dl = (cur && prev) ? oiDeltas(cur, prev) : null;
+        if (dl) s.oiChange = { fromDate: dates[dates.length - 2], toDate: dates[dates.length - 1], ...dl };
+      }
+    } catch { /* left absent — prompt tolerates it */ }
+  }
 }
 
 function buildAnalysisPrompt(pair, s) {
@@ -1706,13 +1725,24 @@ ${s.confluences && s.confluences.length > 0
 
 CME OI / OPTIONS POSITIONING
 ${s.oi ? `Max Pain: ${s.oi.maxPain}  |  Call Wall: ${s.oi.callWall} (${s.oi.callWallOI} OI)  |  Put Wall: ${s.oi.putWall} (${s.oi.putWallOI} OI)
-P/C Ratio: ${s.oi.pcRatio}  ->  ${s.oi.pcBias}
+P/C Ratio: ${s.oi.pcRatio}  ->  ${s.oi.pcBias}${s.oi.skew ? `
+OI skew: ${s.oi.skew.read} (${s.oi.skew.score >= 0 ? '+' : ''}${s.oi.skew.score}) — where positioning sits vs spot` : ''}${(s.oi.callWalls || []).some(w => w.tier) || (s.oi.putWalls || []).some(w => w.tier) ? `
+Wall strength (3× rule): ${[...(s.oi.callWalls || []).filter(w => w.tier).map(w => `C${w.strike} ${w.tier}(${w.mult}×)`), ...(s.oi.putWalls || []).filter(w => w.tier).map(w => `P${w.strike} ${w.tier}(${w.mult}×)`)].join(', ') || 'none strong'}` : ''}
 Total Call OI: ${s.oi.totalCallOI}  |  Total Put OI: ${s.oi.totalPutOI}
 OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}
 Aggregate GEX: ${s.oi.gex ?? 'N/A'}  |  DEX: ${s.oi.dex ?? 'N/A'}  ->  ${s.oi.gexRead ?? 'N/A'}
-Gamma flip level: ${s.oi.gammaFlip ?? 'N/A'}
+Gamma flip level: ${s.oi.gammaFlip ?? 'N/A'}${(s.oi.volumeMagnets || []).length ? `
+Volume magnets (today's activity, distinct from OI): ${s.oi.volumeMagnets.map(v => v.strike).join(', ')}` : ''}${(s.oi.expiries || []).length ? `
+Per-expiry (near-dated = strongest gamma/pin): ${s.oi.expiries.map(e => `${e.dte}DTE max pain ${e.maxPain}${e.callWall ? ` CW ${e.callWall}` : ''}${e.putWall ? ` PW ${e.putWall}` : ''}`).join(' | ')}` : ''}
 Top strikes (strike | callOI/putOI | type):
-${s.oi.topLevels ? s.oi.topLevels.slice(0, 6).map(l => `  ${l.strike}  C:${l.callOI} / P:${l.putOI}  ${l.strike > s.price ? 'RESISTANCE' : 'SUPPORT'}`).join('\n') : '  N/A'}`
+${s.oi.topLevels ? s.oi.topLevels.slice(0, 6).map(l => `  ${l.strike}  C:${l.callOI} / P:${l.putOI}  ${l.strike > s.price ? 'RESISTANCE' : 'SUPPORT'}`).join('\n') : '  N/A'}${s.oiChange ? `
+OI CHANGE vs ${s.oiChange.fromDate} (day-over-day positioning dynamics):
+Positioning: ${s.oiChange.flow.toUpperCase()} (total OI ${s.oiChange.totalOIChange >= 0 ? '+' : ''}${s.oiChange.totalOIChange}${s.oiChange.totalOIChangePct != null ? `, ${s.oiChange.totalOIChangePct >= 0 ? '+' : ''}${s.oiChange.totalOIChangePct}%` : ''}) ${s.oiChange.flow === 'building' ? '- new money entering' : s.oiChange.flow === 'unwinding' ? '- positions liquidating' : ''}
+Max pain shift: ${s.oiChange.maxPainShift ?? 0}  |  P/C ratio change: ${s.oiChange.pcRatioChange ?? 0}
+Call walls firming: ${s.oiChange.callWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.callWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.callWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
+Put walls firming: ${s.oiChange.putWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.putWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.putWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
+New walls appeared: ${[...s.oiChange.callWalls.appeared.map(w => `C${w.strike}`), ...s.oiChange.putWalls.appeared.map(w => `P${w.strike}`)].join(', ') || 'none'}
+(A wall that firmed = support/resistance more reliable; a wall defended then fading = next test may break — weight accordingly.)` : ''}`
   : '  No OI data loaded for this pair  -  paste via OI button'}
 
 YIELD CURVE & MACRO SNAPSHOT
@@ -5914,6 +5944,7 @@ async function _rlSnapshotOIFromStore() {
     const store = storeRaw ? (JSON.parse(storeRaw).data ?? JSON.parse(storeRaw)) : {};
     store[day] = store[day] || {};
     const live = {};                                              // bot-consumable: key → [{price,source}]
+    const regimes = {};                                           // key → 'PIN'|'BREAKOUT' (gamma regime)
     let n = 0;
     for (const [pair, inst] of Object.entries(oiStore)) {
       const key = (() => { try { return resolveKey(pair); } catch { return null; } })()
@@ -5921,7 +5952,11 @@ async function _rlSnapshotOIFromStore() {
       const levels = oiStoreToLevels(inst);
       if (levels.length) {
         store[day][key] = levels;                                 // dated forward-test artifact ({price,type})
-        live[key] = levels.map(l => ({ price: l.price, source: l.type }));   // bot reads `source`
+        live[key] = levels.map(l => ({ price: l.price, source: l.type, tier: l.tier ?? null }));   // bot reads `source` + `tier`
+        // Gamma regime (Lesson 5): +GEX = dealers long gamma → dampen (PIN / fade);
+        // −GEX = short gamma → amplify (BREAKOUT / follow). The fade/follow selector.
+        const gex = inst.exposures?.gex ?? 0;
+        if (gex > 0) regimes[key] = 'PIN'; else if (gex < 0) regimes[key] = 'BREAKOUT';
         n++;
       }
     }
@@ -5932,7 +5967,7 @@ async function _rlSnapshotOIFromStore() {
     // Ship the bot-consumable artifact (today's OI levels, source=type, pip-based
     // tolerance) — the live OI strengthen/override gate reads this, like it reads
     // range_line_confluence. Rebuilt each cycle from the morning's analyser paste.
-    await kv.put('range_line_oi_live', JSON.stringify({ data: { strategy: 'range-line-oi', generatedAt: new Date().toISOString(), date: day, tolPips: 10, instruments: live }, timestamp: Date.now() }));
+    await kv.put('range_line_oi_live', JSON.stringify({ data: { strategy: 'range-line-oi', generatedAt: new Date().toISOString(), date: day, tolPips: 10, instruments: live, regimes }, timestamp: Date.now() }));
     console.log(`[range-line-oi] snapshot ${n} pair(s) from oi_store → ${day} (+ range_line_oi_live)`);
     return n;
   } catch (e) { console.error('[range-line-oi] oi_store snapshot failed:', e.message); return 0; }
@@ -5943,6 +5978,91 @@ setTimeout(_rlSnapshotOIFromStore, 40_000);
 // On-demand: pull the analyser's OI into today's forward-test slot now.
 app.post('/api/range-line-bot/oi/sync', async (_req, res) => {
   try { const n = await _rlSnapshotOIFromStore(); res.json({ ok: true, pairsSnapshotted: n, date: _rlSessionDate(null) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── OI history archive (day-over-day dynamics) ───────────────────────────────
+// CME serves NO OI history, so it must be self-collected (course research idea #3
+// — "start capturing early", it can't be back-filled). Each day this archives a
+// COMPACT summary of every pair's `oi_store` entry into `oi_history` keyed by
+// pair→date, so `oiDeltas` can compute what moved (walls firming/fading, max-pain
+// shift, positioning building/unwinding) for the brief + card. The live raw paste
+// (rawOI/rawChg) stays in `oi_store`; history keeps the derived summary (small).
+function _oiHistorySummary(inst) {
+  if (!inst || typeof inst !== 'object') return null;
+  const topN = (arr) => (Array.isArray(arr) ? arr.slice(0, 8).map(w => ({ strike: w.strike, oi: w.oi, chg: w.chg ?? null, tier: w.tier ?? null })) : []);
+  return {
+    spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
+    callWall: inst.callWall ?? null, putWall: inst.putWall ?? null,
+    callWallOI: inst.callWallOI ?? null, putWallOI: inst.putWallOI ?? null,
+    callWalls: topN(inst.callWalls), putWalls: topN(inst.putWalls),
+    pcRatio: inst.pcRatio ?? null, totalCallOI: inst.totalCallOI ?? null, totalPutOI: inst.totalPutOI ?? null,
+    totalCallChg: inst.totalCallChg ?? null, totalPutChg: inst.totalPutChg ?? null,
+    gex: inst.exposures?.gex ?? null, dex: inst.exposures?.dex ?? null,
+    hadChangeData: !!(inst.rawChg && String(inst.rawChg).trim()),
+    savedAtMs: inst.savedAtMs ?? null,
+  };
+}
+async function _snapshotOIHistory() {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    if (!raw) return 0;
+    const store = JSON.parse(raw).data ?? JSON.parse(raw);
+    if (!store || typeof store !== 'object') return 0;
+    const day = _rlSessionDate(null);
+    const histRaw = await kv.get('oi_history').catch(() => null);
+    const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
+    let n = 0;
+    for (const [pair, inst] of Object.entries(store)) {
+      const summary = _oiHistorySummary(inst);
+      if (!summary) continue;
+      hist[pair] = hist[pair] || {};
+      hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
+      const dates = Object.keys(hist[pair]).sort();
+      for (const d of dates.slice(0, Math.max(0, dates.length - 60))) delete hist[pair][d];   // keep ~60 days
+      n++;
+    }
+    if (!n) return 0;
+    await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() }));
+    console.log(`[oi-history] archived ${n} pair(s) → ${day}`);
+    return n;
+  } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return 0; }
+}
+setInterval(_snapshotOIHistory, 30 * 60_000);                    // archive the day's paste periodically
+setTimeout(_snapshotOIHistory, 50_000);
+
+// History + day-over-day deltas. With ?pair= → one pair's full history + deltas
+// (the card detail + AI feed). Without → EVERY pair's latest delta in one call
+// (the brief page renders all cards at once). Deltas computed server-side by the
+// single `oiDeltas` brick — no client re-implementation.
+app.get('/api/oi-history', async (req, res) => {
+  try {
+    const raw = await kv.get('oi_history').catch(() => null);
+    const hist = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const norm = s => String(s).toLowerCase().replace(/[/_]/g, '');
+    const latestDelta = (perPair) => {
+      const dates = Object.keys(perPair).sort();
+      const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
+      return { curDate: dates[dates.length - 1] ?? null, prevDate: dates[dates.length - 2] ?? null,
+               days: dates.length, deltas: (cur && prev) ? oiDeltas(cur, prev) : null };
+    };
+    const key = String(req.query.pair || '').trim();
+    if (!key) {
+      const pairs = {};
+      for (const [k, perPair] of Object.entries(hist)) pairs[k] = latestDelta(perPair);
+      return res.json({ ok: true, pairs });
+    }
+    const pk = Object.keys(hist).find(k => k === key || norm(k) === norm(key));
+    const perPair = pk ? hist[pk] : {};
+    const dates = Object.keys(perPair).sort();
+    const limit = Math.min(60, parseInt(req.query.limit) || 30);
+    const recent = dates.slice(-limit).map(d => ({ date: d, ...perPair[d] }));
+    const { curDate, prevDate, deltas } = latestDelta(perPair);
+    res.json({ ok: true, pair: pk || key, dates, history: recent, deltas, curDate, prevDate });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/oi-history/snapshot', async (_req, res) => {
+  try { const n = await _snapshotOIHistory(); res.json({ ok: true, pairsArchived: n, date: _rlSessionDate(null) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

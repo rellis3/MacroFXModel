@@ -67,6 +67,37 @@ export function nearRoundNumber(price, pip, tolPips = 10) {
   return false;
 }
 
+// The 3× rule (Lesson 4): a wall's strength is its OI as a MULTIPLE of the
+// surrounding strikes, not its absolute size. 1.5× weak · 2× moderate · 3×+ strong.
+// `neighbourOIs` = the OIs at the nearest strikes either side of the wall (the
+// analyser supplies them). Returns { multiple, tier }.
+export function wallStrengthTier(oi, neighbourOIs) {
+  const ns = (Array.isArray(neighbourOIs) ? neighbourOIs : []).filter(n => Number.isFinite(n) && n >= 0);
+  if (!(oi > 0) || !ns.length) return { multiple: null, tier: null };
+  const avg = ns.reduce((a, b) => a + b, 0) / ns.length;
+  if (!(avg > 0)) return { multiple: null, tier: 'strong' };    // isolated wall — nothing around it
+  const mult = +(oi / avg).toFixed(2);
+  const tier = mult >= 3 ? 'strong' : mult >= 2 ? 'moderate' : mult >= 1.5 ? 'weak' : null;
+  return { multiple: mult, tier };
+}
+
+// OI skew (Lesson 4): WHERE the positioning sits, not just the P/C ratio. Put OI
+// concentrated below spot = downside hedging; call OI above = upside positioning.
+// score in [-1,1]: + upside-tilted, − downside-hedged. Returns null without a spot.
+export function oiSkew(strikes, callOIs, putOIs, spot) {
+  if (!Array.isArray(strikes) || !strikes.length || !(spot > 0)) return null;
+  let putBelow = 0, callAbove = 0;
+  for (let i = 0; i < strikes.length; i++) {
+    if (strikes[i] < spot) putBelow += (putOIs?.[i] || 0);
+    else if (strikes[i] > spot) callAbove += (callOIs?.[i] || 0);
+  }
+  const tot = putBelow + callAbove;
+  if (!(tot > 0)) return null;
+  const score = +((callAbove - putBelow) / tot).toFixed(3);
+  return { score, callAbove: Math.round(callAbove), putBelow: Math.round(putBelow),
+    read: score > 0.2 ? 'upside-tilted' : score < -0.2 ? 'downside-hedged' : 'balanced' };
+}
+
 // Tag one entry price by whether an OI level sits within tol of it.
 //   → { hit, types:[…distinct…], nearest, distPips }
 export function tagTradeOI(entryPrice, oiLevels, { pip, tolPips = 10 } = {}) {
@@ -104,15 +135,62 @@ export function tradePctReturn(t) {
 // sign change in the strike-sorted gexProfile) and the HVL (highest-|gamma|
 // strike). Pure. inst = { maxPain, callWall, putWall, callWalls[], putWalls[],
 // gexProfile[{strike,netGex,gamma}] }.
+// Day-over-day OI dynamics (Lesson 4 §dynamic): compare today's `oi_store` entry
+// against a prior day's archived one → what MOVED. Powers the brief's "wall firming
+// / fading, positioning building / unwinding" narrative and the delta rows on the
+// card. Pure — takes two inst snapshots ({maxPain, callWall, putWall, pcRatio,
+// totalCallOI, totalPutOI, callWalls[], putWalls[]}). Returns null if either side
+// is missing so callers degrade gracefully on the first day (no prior).
+export function oiDeltas(cur, prev) {
+  if (!cur || !prev || typeof cur !== 'object' || typeof prev !== 'object') return null;
+  const d = (a, b) => (Number.isFinite(a) && Number.isFinite(b)) ? +(a - b).toFixed(6) : null;
+  const totCur = (cur.totalCallOI || 0) + (cur.totalPutOI || 0);
+  const totPrev = (prev.totalCallOI || 0) + (prev.totalPutOI || 0);
+  const totalOIChange = Math.round(totCur - totPrev);
+  // Per-strike wall dynamics: match walls by strike across the two days.
+  const wallDyn = (curW, prevW, kind) => {
+    const cw = Array.isArray(curW) ? curW : [], pw = Array.isArray(prevW) ? prevW : [];
+    const pmap = new Map(pw.map(w => [w.strike, w.oi]));
+    const strengthening = [], weakening = [], appeared = [];
+    for (const w of cw) {
+      const pv = pmap.get(w.strike);
+      if (pv == null) appeared.push({ strike: w.strike, oi: w.oi, kind });
+      else { const dd = Math.round(w.oi - pv); if (dd > 0) strengthening.push({ strike: w.strike, delta: dd, kind }); else if (dd < 0) weakening.push({ strike: w.strike, delta: dd, kind }); }
+    }
+    const seen = new Set(cw.map(w => w.strike));
+    const faded = pw.filter(w => !seen.has(w.strike)).map(w => ({ strike: w.strike, oi: w.oi, kind }));
+    return { strengthening, weakening, appeared, faded };
+  };
+  return {
+    maxPainShift: d(cur.maxPain, prev.maxPain),
+    callWallShift: d(cur.callWall, prev.callWall),
+    putWallShift: d(cur.putWall, prev.putWall),
+    pcRatioChange: d(cur.pcRatio, prev.pcRatio),
+    totalCallOIChange: Math.round((cur.totalCallOI || 0) - (prev.totalCallOI || 0)),
+    totalPutOIChange: Math.round((cur.totalPutOI || 0) - (prev.totalPutOI || 0)),
+    totalOIChange,
+    totalOIChangePct: totPrev > 0 ? +((totCur - totPrev) / totPrev * 100).toFixed(1) : null,
+    // L1: rising total OI = new money entering; falling = positions liquidating.
+    flow: totalOIChange > 0 ? 'building' : totalOIChange < 0 ? 'unwinding' : 'flat',
+    callWalls: wallDyn(cur.callWalls, prev.callWalls, 'call'),
+    putWalls: wallDyn(cur.putWalls, prev.putWalls, 'put'),
+  };
+}
+
 export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   if (!inst || typeof inst !== 'object') return [];
   const out = [];
-  const push = (price, type) => { if (Number.isFinite(price) && price > 0) out.push({ price: +price, type }); };
+  // Walls carry their 3× strength `tier` so the bots can weight/gate by it — the
+  // fix for "a strong wall should trade differently from a weak one". Non-wall
+  // types (max_pain/gamma_flip/hvl/oi_volume) have no tier.
+  const push = (price, type, tier = null) => { if (Number.isFinite(price) && price > 0) out.push(tier ? { price: +price, type, tier } : { price: +price, type }); };
+  const cw = Array.isArray(inst.callWalls) ? inst.callWalls : [];
+  const pw = Array.isArray(inst.putWalls) ? inst.putWalls : [];
   push(inst.maxPain, 'max_pain');
-  push(inst.callWall, 'call_wall');
-  push(inst.putWall, 'put_wall');
-  for (const w of (Array.isArray(inst.callWalls) ? inst.callWalls : []).slice(0, topWalls)) push(w?.strike, 'call_wall');
-  for (const w of (Array.isArray(inst.putWalls) ? inst.putWalls : []).slice(0, topWalls)) push(w?.strike, 'put_wall');
+  push(inst.callWall, 'call_wall', cw.find(w => w.strike === inst.callWall)?.tier ?? null);
+  push(inst.putWall, 'put_wall', pw.find(w => w.strike === inst.putWall)?.tier ?? null);
+  for (const w of cw.slice(0, topWalls)) push(w?.strike, 'call_wall', w?.tier ?? null);
+  for (const w of pw.slice(0, topWalls)) push(w?.strike, 'put_wall', w?.tier ?? null);
   const gp = Array.isArray(inst.gexProfile) ? inst.gexProfile : [];
   for (let i = 1; i < gp.length; i++) {
     if (Math.sign(gp[i]?.netGex ?? 0) !== Math.sign(gp[i - 1]?.netGex ?? 0)) {
@@ -123,6 +201,7 @@ export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   let hvl = null, hg = -Infinity;
   for (const g of gp) { const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
   push(hvl, 'hvl');
+  for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).slice(0, topWalls)) push(v?.strike, 'oi_volume');
   const seen = new Set(), dedup = [];
   for (const l of out) { const k = `${l.type}@${l.price}`; if (!seen.has(k)) { seen.add(k); dedup.push(l); } }
   return dedup;
@@ -137,13 +216,25 @@ export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
 //   • gamma_flip = regime, not direction: above it = long-gamma (mean-revert /
 //                  fade favoured), below = short-gamma (trend / follow favoured)
 //   • hvl        = defended level, no inherent side → contributes to `regime` only
+// Hold-vs-break (Lesson 5, `breakPips`>0 + `px`): a wall broken by more than
+// breakPips flips from fade barrier to squeeze — call wall broken UP → buy, put
+// wall broken DOWN → sell (parity with rangeline.py oi_bias).
 // Returns { dir:'buy'|'sell'|null, strength (# agreeing OI reasons), reasons:[],
 // regime:'meanrevert'|'trend'|null, conflict:bool }. Pure. `maxPain` optional
 // (else inferred from an OI level of type max_pain).
-export function oiBias(price, oiLevels, { pip, tolPips = 10, maxPain = null } = {}) {
+export function oiBias(price, oiLevels, { pip, tolPips = 10, maxPain = null, px = null, breakPips = 0 } = {}) {
   const none = { dir: null, strength: 0, reasons: [], regime: null, conflict: false };
   if (!(price > 0) || !(pip > 0) || !Array.isArray(oiLevels) || !oiLevels.length) return none;
   const tol = tolPips * pip;
+  // Break check first: a broken wall is a squeeze, not a barrier.
+  if (Number.isFinite(px) && breakPips > 0) {
+    const bd = breakPips * pip;
+    for (const lv of oiLevels) {
+      if (!Number.isFinite(lv?.price) || Math.abs(lv.price - price) > tol) continue;
+      if (lv.type === 'call_wall' && px > lv.price + bd) return { dir: 'buy', strength: 1, reasons: ['call_wall broken up→squeeze→buy'], regime: 'trend', conflict: false };
+      if (lv.type === 'put_wall' && px < lv.price - bd) return { dir: 'sell', strength: 1, reasons: ['put_wall broken down→squeeze→sell'], regime: 'trend', conflict: false };
+    }
+  }
   let buy = 0, sell = 0; const reasons = []; let regime = null;
   const mp = Number.isFinite(maxPain) ? maxPain
            : (oiLevels.find(l => l.type === 'max_pain' && Number.isFinite(l.price))?.price ?? null);

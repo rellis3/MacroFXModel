@@ -56,6 +56,8 @@ class RangeSession:
                                    # denominator, matching the book's per-touch t.open
         self.oi_levels = []        # today's OI level prices [{price,source=type}] (walls/max_pain/gamma/hvl)
         self.oi_tol = 0.0          # OI proximity tolerance in PRICE units (tol_pips × pip)
+        self.oi_regime = None      # 'PIN' (long gamma / fade) | 'BREAKOUT' (short gamma / follow) | None
+        self.oi_break = 0.0        # break distance beyond a wall = squeeze (hold-vs-break), price units
 
     # ── confluence entry-gate inputs (optional; set from the shipped artifact) ──
     def set_confluence(self, levels, tol_frac=0.1):
@@ -66,13 +68,17 @@ class RangeSession:
         self.conf_tol_frac = tol_frac if tol_frac and tol_frac > 0 else 0.1
 
     # ── OI entry inputs (optional; from range_line_oi_live) ────────────────────
-    def set_oi(self, levels, tol_pips=10, pip=0):
+    def set_oi(self, levels, tol_pips=10, pip=0, regime=None, break_pips=20):
         """Attach today's OI level prices (call/put walls, max pain, gamma flip,
         HVL — source = the OI type) + a PIP-based proximity tolerance (matching the
-        OI forward test, not the range-fraction one). No-op unless decide() is
-        called with oi_confluence / oi_override enabled (both opt-in, default off)."""
+        OI forward test, not the range-fraction one), the day's gamma `regime`
+        ('PIN' = long gamma / mean-revert, 'BREAKOUT' = short gamma / trend), and the
+        `break_pips` distance beyond a wall that counts as a decisive break (hold-vs-
+        break). No-op unless decide() is called with an OI flag enabled (all opt-in)."""
         self.oi_levels = levels or []
         self.oi_tol = (tol_pips or 0) * (pip or 0)
+        self.oi_regime = regime if regime in ("PIN", "BREAKOUT") else None
+        self.oi_break = (break_pips or 0) * (pip or 0)
 
     # ── ladder construction (call once the range is known) ────────────────────
     def set_range(self, src_tag, bars):
@@ -99,7 +105,8 @@ class RangeSession:
 
     # ── decision (call each tick with the current price + frozen policy) ───────
     def decide(self, px, policy, *, dry_run=False, confluence_min=0,
-               oi_confluence=False, oi_override=False):
+               oi_confluence=False, oi_override=False, oi_gamma_regime=False, oi_hold_break=False,
+               oi_min_tier=None):
         """Ladder levels newly touched this tick that map to a tradeable cell and
         whose (source, side) slot is still open. Marks them acted/entered so a
         level fires once and only ONE position opens per (source, side).
@@ -143,17 +150,27 @@ class RangeSession:
                     srcs = {c.get("source") or c.get("kind") for c in self.conf_levels
                             if abs(c["price"] - lv["level"]) <= tol}
                     if oi_confluence:
-                        srcs |= oi_distinct_sources(lv["level"], self.oi_levels, self.oi_tol)
+                        srcs |= oi_distinct_sources(lv["level"], self.oi_levels, self.oi_tol, oi_min_tier)
                     srcs.discard(None)
                     rank = 2 if len(srcs) >= 2 else (1 if len(srcs) == 1 else 0)
                     if rank < confluence_min:
                         continue                         # too weak a level → skip
+                # OI gamma REGIME selector (opt-in, Lesson 5): the day's dealer-gamma
+                # sign sets the fade/follow style — PIN (long gamma → dampening) favours
+                # FADE; BREAKOUT (short gamma → amplifying) favours FOLLOW. Overrides the
+                # learned style; a nearby wall (below) can still refine the exact side.
+                if oi_gamma_regime and self.oi_regime:
+                    decision = "fade" if self.oi_regime == "PIN" else "follow"
                 # OI direction override (opt-in): at an OI-backed level, flip the
                 # traded side to the OI read (call wall → sell, put wall → buy, max-
-                # pain gravity). Never resurrects a skip — only redirects a level we'd
-                # already trade. Picks fade/follow so the resulting side matches OI.
+                # pain gravity). With oi_hold_break, a wall price has BROKEN through
+                # follows the squeeze instead of fading it (Lesson 5). Never resurrects
+                # a skip — only redirects a level we'd already trade.
                 if oi_override:
-                    od = oi_bias(lv["level"], self.oi_levels, self.oi_tol)
+                    od = oi_bias(lv["level"], self.oi_levels, self.oi_tol,
+                                 px=(px if oi_hold_break else None),
+                                 break_dist=(self.oi_break if oi_hold_break else 0),
+                                 min_tier=oi_min_tier)
                     if od:
                         decision = "follow" if (od == "buy") == (lv["side"] == "up") else "fade"
                 spec = trade_spec(lv["level"], lv["side"], decision, lv["inner"], lv["outer"])

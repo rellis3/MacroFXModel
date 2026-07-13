@@ -401,6 +401,29 @@ Example:
       <div class="oi-hint">Saved change data shown above if available. If row count matches main table it overrides embedded change columns.</div>
     </div>
 
+    <div style="margin-bottom:14px">
+      <label class="oi-lbl">Volume Magnets <span style="color:var(--text3);font-weight:400">(optional — top strikes by volume today)</span></label>
+      <textarea class="oi-textarea" id="oiVolumeData" placeholder="Paste 'strike  volume' rows (optional — volume is TODAY's activity, distinct from resting OI).
+
+Example:
+  4200   1242
+  4100   1131
+  4300    920" style="min-height:90px"></textarea>
+      <div class="oi-hint">Emits the top volume strikes as magnets (basis-adjusted like OI strikes).</div>
+    </div>
+
+    <div class="oi-form-row" style="margin-bottom:14px">
+      <div>
+        <label class="oi-lbl">Expiry label <span style="color:var(--text3);font-weight:400">(optional — e.g. OG3N6)</span></label>
+        <input class="oi-input" type="text" id="oiExpiryLabel" placeholder="all / OG3N6" style="width:130px">
+      </div>
+      <div>
+        <label class="oi-lbl">DTE <span style="color:var(--text3);font-weight:400">(days to expiry)</span></label>
+        <input class="oi-input" type="number" id="oiDTE" placeholder="4" min="0" max="365" style="width:80px">
+        <div class="oi-hint">Tag this paste's expiry — near-dated (low DTE) drives the strongest gamma/pin. Builds a per-expiry view.</div>
+      </div>
+    </div>
+
     <div class="oi-form-row">
       <div>
         <label class="oi-lbl">Levels to Display</label>

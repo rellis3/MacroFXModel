@@ -169,23 +169,57 @@ def confluence_rank(bucket):
     return _CONF_RANK.get(bucket, -1)
 
 
-def oi_distinct_sources(level, oi_levels, tol):
+_TIER_RANK = {"weak": 1, "moderate": 2, "strong": 3}
+
+
+def _tier_ok(lv, min_rank):
+    """A level passes the strength gate if it isn't a wall (max-pain/gamma-flip/HVL/
+    volume have no 3× strength) OR its wall `tier` rank meets min_rank."""
+    if min_rank <= 0:
+        return True
+    if lv.get("source") not in ("call_wall", "put_wall"):
+        return True
+    return _TIER_RANK.get(lv.get("tier"), 0) >= min_rank
+
+
+def oi_distinct_sources(level, oi_levels, tol, min_tier=None):
     """Distinct OI types (source) within ``tol`` of ``level`` — the OI contribution
-    to level strength. ``oi_levels`` = ``[{"price":.., "source":..}]`` (source is the
-    OI type: call_wall / put_wall / max_pain / gamma_flip / hvl)."""
+    to level strength. ``oi_levels`` = ``[{"price":.., "source":.., "tier":..}]``.
+    ``min_tier`` ('weak'/'moderate'/'strong') drops walls WEAKER than it (the 3×
+    rule reaching the gate) — a weak wall no longer counts like a strong one."""
     if not oi_levels or tol <= 0:
         return set()
-    return {lv.get("source") for lv in oi_levels if abs(lv["price"] - level) <= tol}
+    min_rank = _TIER_RANK.get(min_tier, 0)
+    return {lv.get("source") for lv in oi_levels
+            if abs(lv["price"] - level) <= tol and _tier_ok(lv, min_rank)}
 
 
-def oi_bias(level, oi_levels, tol, max_pain=None):
+def oi_bias(level, oi_levels, tol, max_pain=None, px=None, break_dist=0, min_tier=None):
     """OI-implied trade direction at ``level`` — parity with ``oiConfluence.js``
     ``oiBias().dir``. call_wall = resistance → 'sell'; put_wall = support → 'buy';
     max-pain gravity (level above max pain → pulled down → 'sell'; below → 'buy').
-    Returns 'buy' / 'sell' / None (None on a tie / no OI near). Used by the opt-in
-    ``oi_override`` gate to flip the traded side to the OI read."""
+
+    HOLD-vs-BREAK (Lesson 5): a wall is resistance/support ON APPROACH, but a
+    decisive break flips dealer hedging into a gamma squeeze — so if ``px`` has
+    broken a nearby wall by more than ``break_dist`` the direction FOLLOWS the
+    break instead of fading it (call wall broken UP → 'buy'; put wall broken DOWN
+    → 'sell'). Pass px + break_dist>0 to enable; omit for the pure hold read.
+
+    Returns 'buy' / 'sell' / None (None on a tie / no OI near)."""
     if not (level > 0) or tol <= 0 or not oi_levels:
         return None
+    min_rank = _TIER_RANK.get(min_tier, 0)
+    # Break check first: a broken wall is a squeeze, not a barrier. Only walls
+    # meeting min_tier can trigger a break/direction (the 3× rule).
+    if px is not None and break_dist > 0:
+        for lv in oi_levels:
+            if abs(lv["price"] - level) > tol or not _tier_ok(lv, min_rank):
+                continue
+            t, wp = lv.get("source"), lv["price"]
+            if t == "call_wall" and px > wp + break_dist:
+                return "buy"
+            if t == "put_wall" and px < wp - break_dist:
+                return "sell"
     buy = sell = 0
     mp = max_pain
     if mp is None:
@@ -194,7 +228,7 @@ def oi_bias(level, oi_levels, tol, max_pain=None):
                 mp = lv["price"]
                 break
     for lv in oi_levels:
-        if abs(lv["price"] - level) > tol:
+        if abs(lv["price"] - level) > tol or not _tier_ok(lv, min_rank):
             continue
         t = lv.get("source")
         if t == "call_wall":

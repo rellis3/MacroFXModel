@@ -633,6 +633,7 @@ let livePrices = null;   // /api/hedge-signals/prices — proximity watch (zoom 
 let cot = null;          // /api/cot-extremes — spec positioning per instrument (story + chip)
 let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
+let oiHistory = null;    // /api/oi-history — per-pair day-over-day deltas (walls firming/fading, flow)
 let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
@@ -668,7 +669,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk, ha, rf, cv] = await Promise.all([
+  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -678,12 +679,14 @@ async function loadGate() {
     jget('/api/hedge-alerts').catch(() => null),
     jget('/api/risk-flags').catch(() => null),
     jget('/api/cvol').catch(() => null),
+    jget('/api/oi-history').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
   if (ss?.instruments) sessionStats = ss;
   if (ct?.instruments) cot = Object.fromEntries(ct.instruments.map(i => [i.sym, i]));
   if (oi && !oi.miss) oiStore = oi.data ?? oi;
+  if (oh?.ok && oh.pairs) oiHistory = oh.pairs;
   if (wk?.ok && wk.instruments) weekly = wk;
   if (ha?.last_corr || ha?.last_betas) hedgeAlerts = ha;
   if (rf?.ok) riskFlags = rf;
@@ -1532,7 +1535,15 @@ function oiFor(name, sym) {
   const gex = inst.exposures?.gex ?? 0;
   // Positive GEX → dealers long gamma → dampen moves (PIN); negative → amplify (BREAKOUT)
   const regime = gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : null;
-  return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime,
+  // Day-over-day dynamics from the self-collected history (walls firming/fading,
+  // positioning building/unwinding). Keyed the same way oi_store is.
+  const normK = s => String(s).toLowerCase().replace(/[/_]/g, '');
+  let change = null;
+  if (oiHistory) {
+    const hk = Object.keys(oiHistory).find(k => normK(k) === normK(lvlKey(name, sym)) || normK(k) === normK(sym) || normK(k) === normK(sym.replace('_', '/')));
+    if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate };
+  }
+  return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change,
     maxPain: inst.maxPain, callWall: inst.callWall, putWall: inst.putWall,
     callWallOI: inst.callWallOI, putWallOI: inst.putWallOI, pcRatio: inst.pcRatio };
 }
@@ -2453,12 +2464,42 @@ function storyOptions(r) {
   if (!o) return null;
   const dp = r.d.dp;
   const bits = [];
+  // Wall strength (3× rule) badge — strong walls are the high-probability ones.
+  const cwTier = (o.inst?.callWalls || []).find(w => w.strike === o.callWall)?.tier;
+  const pwTier = (o.inst?.putWalls || []).find(w => w.strike === o.putWall)?.tier;
+  const tierTag = t => t === 'strong' ? ' <span class="chip" style="font-size:9px;color:var(--green)">3×+ strong</span>' : t === 'moderate' ? ' <span class="chip" style="font-size:9px">2× mod</span>' : '';
   if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)`);
-  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})`);
-  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})`);
+  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}`);
+  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}`);
+  if (o.inst?.skew?.read && o.inst.skew.read !== 'balanced') bits.push(`<span class="muted">${o.inst.skew.read}</span>`);
+  const vm = (o.inst?.volumeMagnets || []).slice(0, 3);
+  if (vm.length) bits.push(`vol magnets ${vm.map(v => fmtN(v.strike, dp)).join('/')}`);
+  // Near-dated expiry (Lesson 5 — strongest gamma/pin) if a per-expiry view exists.
+  const exps = Object.values(o.inst?.expiries || {}).filter(e => Number.isFinite(e.dte)).sort((a, b) => a.dte - b.dte);
+  if (exps.length && exps[0].maxPain) bits.push(`<b>${exps[0].dte}DTE</b> max pain ${fmtN(exps[0].maxPain, dp)} (near-dated pin)`);
   const reg = o.regime ? ` · <b>${o.regime}</b> ${o.regime === 'PIN' ? '(positive GEX — mean-revert)' : '(negative GEX — breakout)'}` : '';
   const age = o.stale ? ` <span class="chip warn" style="font-size:9px">stale ${Math.round(o.ageH)}h</span>` : ` <span class="muted">${o.ageH < 1 ? 'fresh' : Math.round(o.ageH) + 'h old'}</span>`;
-  return `${bits.join(' · ')}${reg}.${age}`;
+  return `${bits.join(' · ')}${reg}.${age}${oiChangeLine(o, dp)}`;
+}
+
+// Day-over-day OI dynamics line — what MOVED vs the prior paste (walls firming /
+// fading, positioning building / unwinding, max-pain drift). Empty on day 1.
+function oiChangeLine(o, dp) {
+  const c = o.change; if (!c) return '';
+  const bits = [];
+  if (c.flow && c.flow !== 'flat') {
+    const pct = c.totalOIChangePct != null ? ` ${c.totalOIChangePct >= 0 ? '+' : ''}${c.totalOIChangePct}%` : '';
+    bits.push(c.flow === 'building'
+      ? `<span style="color:var(--green)">positioning building${pct}</span> (new money)`
+      : `<span style="color:var(--amber)">positioning unwinding${pct}</span> (liquidation)`);
+  }
+  if (c.maxPainShift) bits.push(`max pain ${c.maxPainShift > 0 ? '↑' : '↓'} ${fmtN(Math.abs(c.maxPainShift), dp)}`);
+  const firm = [...(c.callWalls?.strengthening || []), ...(c.putWalls?.strengthening || [])];
+  const fade = [...(c.callWalls?.weakening || []), ...(c.callWalls?.faded || []), ...(c.putWalls?.weakening || []), ...(c.putWalls?.faded || [])];
+  if (firm.length) bits.push(`<span style="color:var(--green)">firming</span> ${firm.slice(0, 2).map(w => fmtN(w.strike, dp)).join(', ')}`);
+  if (fade.length) bits.push(`<span style="color:var(--amber)" title="a wall defended then fading = next test more likely to break">fading</span> ${fade.slice(0, 2).map(w => fmtN(w.strike, dp)).join(', ')}`);
+  if (!bits.length) return '';
+  return `<div class="muted" style="margin-top:3px;font-size:11px">Δ vs ${c.fromDate || 'prior'}: ${bits.join(' · ')}</div>`;
 }
 
 async function storyAI(r) {
@@ -2552,7 +2593,17 @@ function assembleSnapshot(r) {
   };
   const oi = r.oi;
   if (oi && !oi.stale) s.oi = { maxPain: oi.maxPain, callWall: oi.callWall, putWall: oi.putWall,
-    callWallOI: oi.callWallOI, putWallOI: oi.putWallOI, pcRatio: oi.pcRatio, gex: oi.exposures?.gex ?? oi.gex, gexRead: oi.regime };
+    callWallOI: oi.callWallOI, putWallOI: oi.putWallOI, pcRatio: oi.pcRatio, gex: oi.exposures?.gex ?? oi.gex, gexRead: oi.regime,
+    // Lesson-4/5 detail so the AI can weight by wall strength + read the skew,
+    // not just cite raw levels. (topLevels/dex/change come from the same inst.)
+    skew: oi.inst?.skew ?? null, dex: oi.inst?.exposures?.dex ?? null,
+    totalCallOI: oi.inst?.totalCallOI, totalPutOI: oi.inst?.totalPutOI,
+    totalCallChg: oi.inst?.totalCallChg, totalPutChg: oi.inst?.totalPutChg,
+    topLevels: (oi.inst?.topLevels || []).slice(0, 6),
+    callWalls: (oi.inst?.callWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
+    putWalls: (oi.inst?.putWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
+    volumeMagnets: (oi.inst?.volumeMagnets || []).slice(0, 5),
+    expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
   // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
   const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];
   if (ct && rawCot) {
