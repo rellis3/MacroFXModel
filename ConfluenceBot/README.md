@@ -82,7 +82,7 @@ All editable on the Confluence tab. Names match `DEFAULT_CFG` in `main.py`.
 | Exits (pips) | `max_sl_pips`, `min_sl_pips`, `sl_buffer_atr`, `tp1_r_min`, `tp2_r_min`, `tp2_r_max`, `range_cap_mult`, `be_after_tp1`, `allow_overnight_htf_aligned` |
 | Risk — per instrument | `risk_pct`, `max_lot`, `max_trades_per_day`, `max_concurrent_trades`, `max_open_risk_pct`, `max_per_direction`, `min_entry_separation_pips`, `cooldown_minutes`, `global_cooldown_minutes` |
 | Risk — global (all instruments) | `max_total_open_trades`, `max_total_open_risk_pct`, `max_total_per_direction` |
-| Gates | `gold_macro_gate`, `ml_gate` (gold only), `htf_block`, `htf_block_confidence`, `use_vol_forecast` |
+| Gates | `gold_macro_gate`, `ml_gate` (gold only), `htf_block`, `htf_block_confidence`, `use_vol_forecast`, `use_oi` |
 | Data | `m1_lookback_bars` (per instrument, for the nPOC stack) |
 
 > **Cost note.** State refresh fetches D1/H4/H1/M30/M15 + ~18.5k M1 bars **per
@@ -114,6 +114,35 @@ ConfluenceBot/
 │   └── trendline_engine.py(copy of V1) H4/H1 structural trendlines
 └── logs/                  confluence_<key>_journal.jsonl / _trades.csv / _state.json
 ```
+
+## Options-OI confluence (`use_oi`, default on)
+
+The bot can fold your **morning OI paste** into the zone scoring. You already
+update Open Interest per pair in the OI analyser (which writes KV `oi_store`:
+max pain, put/call walls, gamma flip, HVL). With `use_oi` on, each state refresh
+the bot pulls those levels from `GET /api/oi-levels` (the shared JS
+`oiConfluence.oiStoreToLevels` brick — one source of truth, no Python re-port)
+and `score_zones` **adds a credit to any zone sitting on one**: a wall / max
+pain / HVL is a dealer-hedging *magnet* (`oi_magnet`, weight 1.5, in-family with
+POC / daily-open); the gamma-flip strike is a regime *boundary*, not a magnet,
+so it earns a smaller, separately-tagged credit (`oi_gamma_flip`, 0.8). Multiple
+OI strikes near one zone score **once** at the strongest type. An OI hit that
+lands on a round number is tagged `@rn` in the zone composition so it can be
+sliced out later (OI strikes cluster on round numbers).
+
+**No "refresh zones" button is needed.** The bot rebuilds and re-scores every
+zone across the fleet automatically every `state_interval` (default 120 s), so a
+fresh 8am paste flows into the scores on the next cycle — the only button you
+press is the one you already use to compute the OI analyser.
+
+> **Honest caveat.** OI / gamma / max-pain as support-resistance is real on
+> **index / equity** options (exchange-traded, consolidated OI, genuine dealer
+> gamma). On **spot FX** it is weak-to-unproven: FX options are OTC and
+> fragmented, there is *no* consolidated OI, and it **cannot be backtested**
+> (that's why the platform forward-tests it). Treat the FX side as a measurable
+> experiment, not a known edge — keep those instruments paper until their own
+> journal (≥30 closed trades, costs on) says otherwise. Turn it off per-run with
+> `use_oi: false`.
 
 ## A/B discipline
 

@@ -70,6 +70,11 @@ NONFIB_WEIGHTS = {
     'trendline_2t': 1.2,
     'trendline_3t': 1.8,
     'vol_forecast': 1.2,    # σ-forecast exhaustion line (oc median/75 from open)
+    'oi_magnet':    1.5,    # options wall / max-pain / HVL at the zone — a dealer-hedging
+                            # magnet that strengthens a reversal here (put/call wall,
+                            # max pain, high-vol/high-gamma line)
+    'oi_gamma_flip': 0.8,   # gamma-flip strike — a regime BOUNDARY, not a magnet, so it
+                            # earns a smaller credit and is tagged apart (per oiConfluence)
 }
 
 GP_BONUS       = 1.5    # entry window sits inside a golden pocket
@@ -495,10 +500,31 @@ def _near(a: float, b: float, tol: float = PROXIMITY_PIPS) -> bool:
     return b != 0.0 and abs(a - b) <= tol
 
 
+def _near_round(price: float, pip: float, tol_pips: float = 10.0) -> bool:
+    """Diagnostic mirror of oiConfluence.nearRoundNumber (JS). Big OI strikes
+    cluster on round numbers (big-figure / half / quarter of the pip decade);
+    a hit that only lands where a round number already sits is not independent
+    evidence. This scorer has no `round_number` source to double-count, so the
+    OI credit still applies — the flag is surfaced in the composition only, so
+    the forward-test can slice OI-at-round-number apart. Kept tiny + pure."""
+    if not (price > 0) or not (pip > 0):
+        return False
+    tol = tol_pips * pip
+    step = pip * 100                       # one "big figure" = 100 pips
+    for frac in (1.0, 0.5, 0.25):
+        grid = step * frac
+        nearest = round(price / grid) * grid
+        if abs(price - nearest) <= tol:
+            return True
+    return False
+
+
 def score_zones(zones: list[ZoneV2], vol, session, htf,
                 trendlines: Optional[list] = None,
                 fib_cap: float = FIB_SCORE_CAP,
                 vol_levels: Optional[list[tuple[float, str]]] = None,
+                oi_levels: Optional[list[tuple[float, str]]] = None,
+                pip: float = 1.0,
                 proximity: float = PROXIMITY_PIPS) -> list[ZoneV2]:
     """
     vol:        VolumeProfile (volume_profile.py)
@@ -509,6 +535,18 @@ def score_zones(zones: list[ZoneV2], vol, session, htf,
                 /api/vol-forecast (midnight-anchored oc median/75 levels) —
                 a zone sitting where the day statistically exhausts is a
                 stronger fade location.
+    oi_levels:  optional [(price, type)] options-OI levels — the user's
+                manually-updated put/call walls, max pain, HVL and gamma flip
+                (KV oi_store → the JS oiConfluence.oiStoreToLevels brick, served
+                by /api/oi-levels). A wall/max-pain/HVL sitting at a zone is a
+                dealer-hedging magnet that strengthens a reversal there; the
+                gamma-flip strike is a regime boundary and earns a smaller,
+                separately-tagged credit. NOTE: on spot FX this is weak-to-
+                unproven (OTC, no consolidated OI); it is real on indices. Kept
+                behind the bot's `use_oi` flag and forward-measurable.
+    pip:        instrument pip size — only used for the round-number diagnostic
+                on OI hits. Gold default (1.0) is a no-op for callers that omit
+                oi_levels.
     proximity:  price-unit tolerance for testing a non-fib level against a
                 zone centre. Defaults to the gold-tuned PROXIMITY_PIPS ($3);
                 multi-instrument callers pass config_pips × pip_size so the
@@ -605,6 +643,28 @@ def score_zones(zones: list[ZoneV2], vol, session, htf,
                     score += NONFIB_WEIGHTS['vol_forecast']
                     comp.append(f'σ {lbl} {p:.1f}')
                     break
+
+        # ── Options OI levels — ONE credit at the strongest matching type ─────
+        # The user's manually-updated OI (put/call walls, max pain, HVL, gamma
+        # flip). Multiple OI strikes near one zone are one piece of positioning
+        # evidence, so award once at the strongest weight (magnet > gamma flip),
+        # never stacked. gamma_flip is a boundary not a magnet → smaller credit.
+        # Round-number independence is flagged (diagnostic only — see
+        # _near_round): this scorer has no round_number source, so the credit
+        # applies either way, but the tag lets the forward-test slice it out.
+        if oi_levels:
+            oi_w, oi_ty, oi_p = 0.0, None, None
+            for p, ty in oi_levels:
+                if not near(c, p):
+                    continue
+                w = (NONFIB_WEIGHTS['oi_gamma_flip'] if ty == 'gamma_flip'
+                     else NONFIB_WEIGHTS['oi_magnet'])
+                if w > oi_w:
+                    oi_w, oi_ty, oi_p = w, ty, p
+            if oi_w > 0.0:
+                score += oi_w
+                rn = ' @rn' if _near_round(oi_p, pip) else ''
+                comp.append(f'OI {oi_ty} {oi_p:.5g}{rn}')
 
         # ── Session / daily levels — ONE prior-session-structure credit ──────
         # Floor pivots are deterministic functions of prev-day H/L/C, and the
