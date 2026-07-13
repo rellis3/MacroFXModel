@@ -61,6 +61,7 @@ import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/i
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability } from './js/oiConfluence.js';
+import { buildOIZones } from './js/oiZones.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
@@ -6088,6 +6089,76 @@ app.get('/api/oi-history', async (req, res) => {
 });
 app.post('/api/oi-history/snapshot', async (_req, res) => {
   try { const n = await _snapshotOIHistory(); res.json({ ok: true, pairsArchived: n, date: _rlSessionDate(null) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── OI bot PLAN producer (gamma-regime strategy → tradeable zones) ────────────
+// The single planner (`buildOIZones`) run per instrument from the shared oi_store,
+// injecting wall-stability + change-classification from oi_history. The zones page
+// renders `oi_bot_zones` and the Python executor trades the SAME artifact (no
+// drift). Universe = gold + indices by default; FX only when fx_enabled (weak
+// asset). Config lives in `oi_bot_config` (bot-config OI tab, stage 2).
+const OI_BOT_INDEX = ['nq', 'spx500', 'de30', 'us30', 'us2000'];
+const OI_BOT_UNIVERSE = ['gold', ...OI_BOT_INDEX];
+const OI_BOT_CFG_DEFAULTS = {
+  minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
+  fadeInPin: true, followBreaks: true, maxPainReversion: true,
+  requireEstablished: false, avoidLiquidating: true,
+  fx_enabled: false, enabled_pairs: [],
+};
+function _oiBotStabilityChange(hist, key) {
+  const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
+  const pk = Object.keys(hist || {}).find(k => norm(k) === norm(key));
+  if (!pk) return { stability: null, change: null };
+  const perPair = hist[pk], dates = Object.keys(perPair).sort();
+  const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
+  const dl = (cur && prev) ? oiDeltas(cur, prev) : null;
+  const spot = cur?.spot || cur?.maxPain || 0;
+  const stability = (spot > 0 && dates.length >= 2)
+    ? oiWallStability(dates.slice(-20).map(dt => perPair[dt]), spot * 0.002) : null;
+  return { stability, change: dl ? classifyOIChange(dl) : null };
+}
+async function _refreshOIBotZones() {
+  try {
+    const [oiRaw, cfgRaw, histRaw] = await Promise.all([
+      kv.get('oi_store').catch(() => null), kv.get('oi_bot_config').catch(() => null), kv.get('oi_history').catch(() => null),
+    ]);
+    if (!oiRaw) return 0;
+    const store = JSON.parse(oiRaw).data ?? JSON.parse(oiRaw);
+    const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
+    const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
+    const universe = new Set([...OI_BOT_UNIVERSE, ...(cfg.fx_enabled ? (cfg.enabled_pairs || []) : [])]);
+    const instruments = {};
+    for (const [pair, inst] of Object.entries(store)) {
+      const key = (() => { try { return resolveKey(pair); } catch { return null; } })() || String(pair).toLowerCase().replace(/[/_]/g, '');
+      if (!universe.has(key)) continue;                          // gold+indices (+ opted-in FX) only
+      const pip = (() => { try { return _pipSize(key) || 0; } catch { return 0; } })() || 0.0001;
+      const { stability, change } = _oiBotStabilityChange(hist, key);
+      const zones = buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change });
+      const gex = inst.exposures?.gex ?? 0;
+      instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
+        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length };
+    }
+    await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments }, timestamp: Date.now() }));
+    const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
+    console.log(`[oi-bot] zones refreshed · ${Object.keys(instruments).length} instruments · ${total} zones`);
+    return Object.keys(instruments).length;
+  } catch (e) { console.error('[oi-bot] zones refresh failed:', e.message); return 0; }
+}
+setInterval(_refreshOIBotZones, 10 * 60_000);
+setTimeout(_refreshOIBotZones, 60_000);
+
+app.get('/api/oi-bot/zones', async (req, res) => {
+  try {
+    const raw = await kv.get('oi_bot_zones').catch(() => null);
+    const vm = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : { instruments: {} };
+    const pair = (req.query.pair || '').toLowerCase();
+    if (pair) { const k = (() => { try { return resolveKey(pair); } catch { return pair; } })() || pair; return res.json({ ok: true, ...vm, instruments: { [k]: vm.instruments?.[k] || null } }); }
+    res.json({ ok: true, ...vm });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/oi-bot/zones/refresh', async (_req, res) => {
+  try { const n = await _refreshOIBotZones(); res.json({ ok: true, instruments: n }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -13171,7 +13242,7 @@ function _tdeShadowRecord(records) {
 // Background accumulator — score every OPEN position across the bots and book the
 // reading once, independent of anyone viewing the Positions tab. Mirrors
 // _rlAccumulateTradeLog's cadence. Railway only (snapshots need OANDA).
-const _TDE_SHADOW_STATUS_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status'];
+const _TDE_SHADOW_STATUS_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status'];
 async function _tdeAccumulateShadowBook() {
   try {
     const open = [];
