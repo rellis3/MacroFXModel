@@ -358,6 +358,35 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .tc-status { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:#9ba3bf; text-align:center; padding:0 20px; }
 .hist-chart-btn { background:var(--s2); border:1px solid var(--border); border-radius:6px; width:26px; height:26px; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; justify-content:center; transition:background .15s,border-color .15s; }
 .hist-chart-btn:hover { background:var(--blue-bg); border-color:var(--blue-bd); }
+/* ── Backtest Bot Trade Journal (backtestsystem_journal KV) ── */
+.jday-header { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin:16px 0 8px; padding-top:10px; border-top:1px solid var(--border); }
+.jday-header:first-child { border-top:none; margin-top:0; padding-top:0; }
+.jcard { background:var(--s2); border:1px solid var(--border); border-left:3px solid var(--border2); border-radius:var(--rl); padding:12px 14px; margin-bottom:10px; }
+.jcard.open     { border-left-color:var(--amber); }
+.jcard.c-tp     { border-left-color:var(--green); }
+.jcard.c-sl     { border-left-color:var(--red); }
+.jcard.c-be     { border-left-color:var(--blue); }
+.jcard.c-manual { border-left-color:var(--text3); }
+.jcard-head { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:7px; }
+.jcard-pair { font-size:13px; font-weight:600; font-family:'DM Mono',monospace; }
+.jcard-dir  { font-size:10px; padding:2px 7px; border-radius:4px; font-family:'DM Mono',monospace; font-weight:600; }
+.jcard-dir.long  { background:var(--green-bg); color:var(--green); border:1px solid var(--green-bd); }
+.jcard-dir.short { background:var(--red-bg);   color:var(--red);   border:1px solid var(--red-bd); }
+.jcard-time { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; }
+.jcard-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; white-space:nowrap; margin-left:auto; }
+.jcard-badge.open   { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-bd); }
+.jcard-badge.tp     { background:var(--green-bg); color:var(--green); border:1px solid var(--green-bd); }
+.jcard-badge.sl     { background:var(--red-bg);   color:var(--red);   border:1px solid var(--red-bd); }
+.jcard-badge.be     { background:var(--blue-bg);  color:var(--blue);  border:1px solid var(--blue-bd); }
+.jcard-badge.manual { background:var(--s3);       color:var(--text3); border:1px solid var(--border); }
+.jcard-pnl { font-size:12px; font-weight:600; font-family:'DM Mono',monospace; }
+.jcard-pnl.pos { color:var(--green); }
+.jcard-pnl.neg { color:var(--red); }
+.jcard-meta { display:flex; gap:10px; flex-wrap:wrap; font-size:10.5px; color:var(--text3); font-family:'DM Mono',monospace; margin-bottom:6px; }
+.jcard-chips { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:7px; }
+.jchip { font-size:10px; padding:2px 6px; border-radius:10px; background:var(--s3); color:var(--text2); border:1px solid var(--border); }
+.jsvg-wrap { border-radius:6px; overflow:hidden; background:var(--s1); }
+.jsvg { width:100%; display:block; }
 </style>
 </head>
 <body>
@@ -1118,6 +1147,18 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <button class="btn-save green" onclick="saveBtConfig()">Save Backtest Bot Config</button>
       <button class="btn-reset" onclick="resetBtDefaults()">Reset Defaults</button>
       <span id="btSaveStatus" class="inline-status" style="align-self:center"></span>
+    </div>
+
+    <!-- Trade Journal — per-trade entry/exit detail from backtestsystem_journal KV -->
+    <div class="card">
+      <div class="pos-header">
+        <div>
+          <div class="card-title">Trade Journal</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Every entry/exit this bot has taken, with SL/TP, conviction, features and a mini chart · <span id="btJournalCount">Loading…</span></div>
+        </div>
+        <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="_loadBtJournal()">↺ Refresh</button>
+      </div>
+      <div id="btJournalList" style="margin-top:8px">Loading…</div>
     </div>
 
   </div><!-- /tab-backtest -->
