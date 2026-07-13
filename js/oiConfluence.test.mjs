@@ -1,6 +1,6 @@
 // Synthetic test for the OI forward-test tagging brick (no network).
 //   node js/oiConfluence.test.mjs
-import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas } from './oiConfluence.js';
+import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas, wallStrengthTier, oiSkew } from './oiConfluence.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -142,6 +142,25 @@ console.log('[oiDeltas — day-over-day OI dynamics]');
   ok('call wall 4200 appeared / 4250 faded', dl.callWalls.appeared.some(w => w.strike === 4200) && dl.callWalls.faded.some(w => w.strike === 4250));
   ok('put wall 4100 weakening (−500)', dl.putWalls.weakening.some(w => w.strike === 4100 && w.delta === -500));
   ok('null on missing prior (first day)', oiDeltas(cur, null) === null);
+}
+
+console.log('[wallStrengthTier — the 3× rule]');
+ok('3×+ neighbours → strong', wallStrengthTier(9000, [3000, 2500, 2800]).tier === 'strong');
+ok('2× → moderate', wallStrengthTier(5600, [2800, 2800]).tier === 'moderate');
+ok('1.5× → weak', wallStrengthTier(4200, [2800, 2800]).tier === 'weak');
+ok('~1× → null tier (no edge)', wallStrengthTier(2900, [2800, 2800]).tier === null);
+ok('multiple reported', wallStrengthTier(9000, [3000]).multiple === 3);
+ok('isolated wall (no neighbours>0) → strong', wallStrengthTier(5000, [0, 0]).tier === 'strong');
+
+console.log('[oiSkew — where the positioning sits]');
+{
+  // Heavy puts below spot 1.10, light calls above → downside-hedged (negative).
+  const sk = oiSkew([1.08, 1.09, 1.11, 1.12], [100, 100, 200, 150], [4000, 3000, 100, 100], 1.10);
+  ok('downside-hedged → negative score', sk.score < -0.2 && sk.read === 'downside-hedged', JSON.stringify(sk));
+  // Heavy calls above → upside-tilted.
+  const sk2 = oiSkew([1.08, 1.09, 1.11, 1.12], [100, 100, 4000, 3000], [150, 100, 100, 100], 1.10);
+  ok('upside-tilted → positive score', sk2.score > 0.2 && sk2.read === 'upside-tilted', JSON.stringify(sk2));
+  ok('null without spot', oiSkew([1, 2], [1, 1], [1, 1], 0) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);

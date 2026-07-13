@@ -1,5 +1,6 @@
 import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
+import { wallStrengthTier, oiSkew } from './oiConfluence.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -536,6 +537,18 @@ export function processOIData() {
     .sort((a, b) => b.oi - a.oi)
     .slice(0, numLevels);
 
+  // 3× rule (Lesson 4): tag each wall's strength as its OI vs the surrounding
+  // strikes (2 either side), not its raw size — weak/moderate/strong.
+  const byStrike = parsed.strikes.map((s, i) => ({ s, c: parsed.calls[i], p: parsed.puts[i] })).sort((a, b) => a.s - b.s);
+  const sIdx = new Map(byStrike.map((o, i) => [o.s, i]));
+  const neigh = (strike, key) => {
+    const i = sIdx.get(strike); if (i == null) return [];
+    return [i - 2, i - 1, i + 1, i + 2].filter(j => byStrike[j]).map(j => byStrike[j][key]);
+  };
+  for (const w of callWalls) { const t = wallStrengthTier(w.oi, neigh(w.strike, 'c')); w.mult = t.multiple; w.tier = t.tier; }
+  for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p')); w.mult = t.multiple; w.tier = t.tier; }
+  const skew = oiSkew(parsed.strikes, parsed.calls, parsed.puts, spot);
+
   const totalCallOI = parsed.calls.reduce((a,b)=>a+b,0);
   const totalPutOI  = parsed.puts.reduce((a,b)=>a+b,0);
   const pcRatio = totalPutOI / Math.max(totalCallOI, 0.01);
@@ -563,7 +576,7 @@ export function processOIData() {
     maxPain, exposures, topLevels, gexProfile,
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
-    callWalls, putWalls,
+    callWalls, putWalls, skew,
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
     callChgAbove, callChgBelow, putChgAbove, putChgBelow,
     numRows: parsed.strikes.length, numLevels, minOI,

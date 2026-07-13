@@ -1725,7 +1725,9 @@ ${s.confluences && s.confluences.length > 0
 
 CME OI / OPTIONS POSITIONING
 ${s.oi ? `Max Pain: ${s.oi.maxPain}  |  Call Wall: ${s.oi.callWall} (${s.oi.callWallOI} OI)  |  Put Wall: ${s.oi.putWall} (${s.oi.putWallOI} OI)
-P/C Ratio: ${s.oi.pcRatio}  ->  ${s.oi.pcBias}
+P/C Ratio: ${s.oi.pcRatio}  ->  ${s.oi.pcBias}${s.oi.skew ? `
+OI skew: ${s.oi.skew.read} (${s.oi.skew.score >= 0 ? '+' : ''}${s.oi.skew.score}) — where positioning sits vs spot` : ''}${(s.oi.callWalls || []).some(w => w.tier) || (s.oi.putWalls || []).some(w => w.tier) ? `
+Wall strength (3× rule): ${[...(s.oi.callWalls || []).filter(w => w.tier).map(w => `C${w.strike} ${w.tier}(${w.mult}×)`), ...(s.oi.putWalls || []).filter(w => w.tier).map(w => `P${w.strike} ${w.tier}(${w.mult}×)`)].join(', ') || 'none strong'}` : ''}
 Total Call OI: ${s.oi.totalCallOI}  |  Total Put OI: ${s.oi.totalPutOI}
 OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}
 Aggregate GEX: ${s.oi.gex ?? 'N/A'}  |  DEX: ${s.oi.dex ?? 'N/A'}  ->  ${s.oi.gexRead ?? 'N/A'}
@@ -5981,7 +5983,7 @@ app.post('/api/range-line-bot/oi/sync', async (_req, res) => {
 // (rawOI/rawChg) stays in `oi_store`; history keeps the derived summary (small).
 function _oiHistorySummary(inst) {
   if (!inst || typeof inst !== 'object') return null;
-  const topN = (arr) => (Array.isArray(arr) ? arr.slice(0, 8).map(w => ({ strike: w.strike, oi: w.oi, chg: w.chg ?? null })) : []);
+  const topN = (arr) => (Array.isArray(arr) ? arr.slice(0, 8).map(w => ({ strike: w.strike, oi: w.oi, chg: w.chg ?? null, tier: w.tier ?? null })) : []);
   return {
     spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
     callWall: inst.callWall ?? null, putWall: inst.putWall ?? null,

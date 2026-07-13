@@ -67,6 +67,37 @@ export function nearRoundNumber(price, pip, tolPips = 10) {
   return false;
 }
 
+// The 3× rule (Lesson 4): a wall's strength is its OI as a MULTIPLE of the
+// surrounding strikes, not its absolute size. 1.5× weak · 2× moderate · 3×+ strong.
+// `neighbourOIs` = the OIs at the nearest strikes either side of the wall (the
+// analyser supplies them). Returns { multiple, tier }.
+export function wallStrengthTier(oi, neighbourOIs) {
+  const ns = (Array.isArray(neighbourOIs) ? neighbourOIs : []).filter(n => Number.isFinite(n) && n >= 0);
+  if (!(oi > 0) || !ns.length) return { multiple: null, tier: null };
+  const avg = ns.reduce((a, b) => a + b, 0) / ns.length;
+  if (!(avg > 0)) return { multiple: null, tier: 'strong' };    // isolated wall — nothing around it
+  const mult = +(oi / avg).toFixed(2);
+  const tier = mult >= 3 ? 'strong' : mult >= 2 ? 'moderate' : mult >= 1.5 ? 'weak' : null;
+  return { multiple: mult, tier };
+}
+
+// OI skew (Lesson 4): WHERE the positioning sits, not just the P/C ratio. Put OI
+// concentrated below spot = downside hedging; call OI above = upside positioning.
+// score in [-1,1]: + upside-tilted, − downside-hedged. Returns null without a spot.
+export function oiSkew(strikes, callOIs, putOIs, spot) {
+  if (!Array.isArray(strikes) || !strikes.length || !(spot > 0)) return null;
+  let putBelow = 0, callAbove = 0;
+  for (let i = 0; i < strikes.length; i++) {
+    if (strikes[i] < spot) putBelow += (putOIs?.[i] || 0);
+    else if (strikes[i] > spot) callAbove += (callOIs?.[i] || 0);
+  }
+  const tot = putBelow + callAbove;
+  if (!(tot > 0)) return null;
+  const score = +((callAbove - putBelow) / tot).toFixed(3);
+  return { score, callAbove: Math.round(callAbove), putBelow: Math.round(putBelow),
+    read: score > 0.2 ? 'upside-tilted' : score < -0.2 ? 'downside-hedged' : 'balanced' };
+}
+
 // Tag one entry price by whether an OI level sits within tol of it.
 //   → { hit, types:[…distinct…], nearest, distPips }
 export function tagTradeOI(entryPrice, oiLevels, { pip, tolPips = 10 } = {}) {

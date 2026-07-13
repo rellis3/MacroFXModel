@@ -2464,9 +2464,14 @@ function storyOptions(r) {
   if (!o) return null;
   const dp = r.d.dp;
   const bits = [];
+  // Wall strength (3× rule) badge — strong walls are the high-probability ones.
+  const cwTier = (o.inst?.callWalls || []).find(w => w.strike === o.callWall)?.tier;
+  const pwTier = (o.inst?.putWalls || []).find(w => w.strike === o.putWall)?.tier;
+  const tierTag = t => t === 'strong' ? ' <span class="chip" style="font-size:9px;color:var(--green)">3×+ strong</span>' : t === 'moderate' ? ' <span class="chip" style="font-size:9px">2× mod</span>' : '';
   if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)`);
-  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})`);
-  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})`);
+  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}`);
+  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}`);
+  if (o.inst?.skew?.read && o.inst.skew.read !== 'balanced') bits.push(`<span class="muted">${o.inst.skew.read}</span>`);
   const reg = o.regime ? ` · <b>${o.regime}</b> ${o.regime === 'PIN' ? '(positive GEX — mean-revert)' : '(negative GEX — breakout)'}` : '';
   const age = o.stale ? ` <span class="chip warn" style="font-size:9px">stale ${Math.round(o.ageH)}h</span>` : ` <span class="muted">${o.ageH < 1 ? 'fresh' : Math.round(o.ageH) + 'h old'}</span>`;
   return `${bits.join(' · ')}${reg}.${age}${oiChangeLine(o, dp)}`;
@@ -2583,7 +2588,15 @@ function assembleSnapshot(r) {
   };
   const oi = r.oi;
   if (oi && !oi.stale) s.oi = { maxPain: oi.maxPain, callWall: oi.callWall, putWall: oi.putWall,
-    callWallOI: oi.callWallOI, putWallOI: oi.putWallOI, pcRatio: oi.pcRatio, gex: oi.exposures?.gex ?? oi.gex, gexRead: oi.regime };
+    callWallOI: oi.callWallOI, putWallOI: oi.putWallOI, pcRatio: oi.pcRatio, gex: oi.exposures?.gex ?? oi.gex, gexRead: oi.regime,
+    // Lesson-4/5 detail so the AI can weight by wall strength + read the skew,
+    // not just cite raw levels. (topLevels/dex/change come from the same inst.)
+    skew: oi.inst?.skew ?? null, dex: oi.inst?.exposures?.dex ?? null,
+    totalCallOI: oi.inst?.totalCallOI, totalPutOI: oi.inst?.totalPutOI,
+    totalCallChg: oi.inst?.totalCallChg, totalPutChg: oi.inst?.totalPutChg,
+    topLevels: (oi.inst?.topLevels || []).slice(0, 6),
+    callWalls: (oi.inst?.callWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
+    putWalls: (oi.inst?.putWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })) };
   // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
   const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];
   if (ct && rawCot) {
