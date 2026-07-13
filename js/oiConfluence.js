@@ -154,8 +154,13 @@ export function oiDeltas(cur, prev) {
     const strengthening = [], weakening = [], appeared = [];
     for (const w of cw) {
       const pv = pmap.get(w.strike);
-      if (pv == null) appeared.push({ strike: w.strike, oi: w.oi, kind });
-      else { const dd = Math.round(w.oi - pv); if (dd > 0) strengthening.push({ strike: w.strike, delta: dd, kind }); else if (dd < 0) weakening.push({ strike: w.strike, delta: dd, kind }); }
+      if (pv == null) appeared.push({ strike: w.strike, oi: w.oi, kind });   // strike unimportant yesterday → fresh wall
+      else {
+        const dd = Math.round(w.oi - pv);
+        const pct = pv > 0 ? +((w.oi - pv) / pv * 100).toFixed(0) : null;    // OI change % (fresh-positioning vs liquidation)
+        if (dd > 0) strengthening.push({ strike: w.strike, delta: dd, pct, oi: w.oi, kind });
+        else if (dd < 0) weakening.push({ strike: w.strike, delta: dd, pct, oi: w.oi, kind });
+      }
     }
     const seen = new Set(cw.map(w => w.strike));
     const faded = pw.filter(w => !seen.has(w.strike)).map(w => ({ strike: w.strike, oi: w.oi, kind }));
@@ -175,6 +180,91 @@ export function oiDeltas(cur, prev) {
     callWalls: wallDyn(cur.callWalls, prev.callWalls, 'call'),
     putWalls: wallDyn(cur.putWalls, prev.putWalls, 'put'),
   };
+}
+
+// Daily-change CLASSIFICATION (ChatGPT layer 2 / course L4 §dynamic): turn the raw
+// deltas into human labels the brief + bots can act on — fresh_wall (appeared),
+// fresh_positioning (big % build on an existing wall), liquidation (a wall fading /
+// dropping), stable (little change). Roll (near-expiry fall + next-expiry rise)
+// needs per-expiry change data → deferred; flagged when we can't tell. `freshPct` =
+// the OI-change % that counts as a decisive build/liquidation.
+export function classifyOIChange(deltas, { freshPct = 40 } = {}) {
+  if (!deltas) return null;
+  const out = { events: [] };
+  const add = (kind, e, label) => out.events.push({ type: label, kind, strike: e.strike, oi: e.oi ?? null, pct: e.pct ?? null, delta: e.delta ?? null });
+  for (const w of deltas.callWalls?.appeared || []) add('call', w, 'fresh_wall');
+  for (const w of deltas.putWalls?.appeared || []) add('put', w, 'fresh_wall');
+  for (const w of [...(deltas.callWalls?.strengthening || []), ...(deltas.putWalls?.strengthening || [])])
+    if ((w.pct ?? 0) >= freshPct) add(w.kind, w, 'fresh_positioning');
+  for (const w of [...(deltas.callWalls?.weakening || []), ...(deltas.putWalls?.weakening || [])])
+    if ((w.pct ?? 0) <= -freshPct) add(w.kind, w, 'liquidation');
+  for (const w of [...(deltas.callWalls?.faded || []), ...(deltas.putWalls?.faded || [])]) add(w.kind, w, 'liquidation');
+  // Headline read: dominant activity + the whole-book flow.
+  const n = t => out.events.filter(e => e.type === t).length;
+  out.summary = n('fresh_wall') || n('fresh_positioning')
+    ? (deltas.flow === 'building' ? 'fresh positioning building' : 'repositioning')
+    : n('liquidation') ? 'positions liquidating (levels weakening)'
+    : (deltas.flow === 'flat' ? 'stable' : deltas.flow === 'building' ? 'building' : 'unwinding');
+  return out;
+}
+
+// Concentration (ChatGPT layer 5): top-N strikes as a % of total OI. Concentrated
+// positioning → sharper reactions at those strikes; dispersed → weaker influence.
+// `strikeOIs` = per-strike total OI (call+put). Pure.
+export function oiConcentration(strikeOIs, totalOI = null) {
+  const arr = (Array.isArray(strikeOIs) ? strikeOIs : []).filter(n => Number.isFinite(n) && n >= 0).sort((a, b) => b - a);
+  const tot = totalOI > 0 ? totalOI : arr.reduce((a, b) => a + b, 0);
+  if (!(tot > 0) || !arr.length) return null;
+  const sum = k => arr.slice(0, k).reduce((a, b) => a + b, 0);
+  const top5 = +(sum(5) / tot * 100).toFixed(1), top10 = +(sum(10) / tot * 100).toFixed(1);
+  return { top5Pct: top5, top10Pct: top10, read: top5 >= 50 ? 'concentrated' : top5 >= 30 ? 'moderate' : 'dispersed' };
+}
+
+// Strike CLUSTERING (ChatGPT layer 7 / course "walls are zones not lines"): merge
+// nearby high-OI strikes within `tolPrice` into one institutional zone (OI-weighted
+// centre + total). Feeds the brief, the confluence scorers and the OI bot — a
+// clustered zone is higher-conviction than a lone strike. `walls` = [{strike|price,
+// oi, kind?}]. Pure.
+export function clusterStrikes(walls, tolPrice) {
+  const items = (Array.isArray(walls) ? walls : [])
+    .map(w => ({ strike: w?.strike ?? w?.price, oi: w?.oi ?? 0, kind: w?.kind ?? w?.type ?? null }))
+    .filter(w => Number.isFinite(w.strike) && w.oi >= 0)
+    .sort((a, b) => a.strike - b.strike);
+  if (!items.length || !(tolPrice > 0)) return [];
+  const clusters = [];
+  let cur = null;
+  for (const it of items) {
+    if (cur && it.strike - cur.hi <= tolPrice) { cur.members.push(it); cur.hi = it.strike; cur.totalOI += it.oi; }
+    else { if (cur) clusters.push(cur); cur = { lo: it.strike, hi: it.strike, totalOI: it.oi, members: [it] }; }
+  }
+  if (cur) clusters.push(cur);
+  return clusters.map(c => ({
+    low: +c.lo.toFixed(6), high: +c.hi.toFixed(6),
+    center: +(c.members.reduce((s, m) => s + m.strike * m.oi, 0) / Math.max(c.totalOI, 1)).toFixed(6),
+    totalOI: Math.round(c.totalOI), count: c.members.length,
+    kinds: [...new Set(c.members.map(m => m.kind).filter(Boolean))],
+  })).sort((a, b) => b.totalOI - a.totalOI);
+}
+
+// Wall STABILITY (ChatGPT layer 4): how many consecutive days each of the CURRENT
+// walls has persisted (within `tolPrice`) across the archived `oi_history` series —
+// an established wall (many days) is more reliable than one that appeared overnight.
+// `historyDays` = [{date, callWalls:[{strike,oi}], putWalls:[...]}] oldest→newest. Pure.
+export function oiWallStability(historyDays, tolPrice) {
+  const days = Array.isArray(historyDays) ? historyDays : [];
+  if (!days.length || !(tolPrice > 0)) return [];
+  const cur = days[days.length - 1];
+  const curWalls = [
+    ...(cur.callWalls || []).map(w => ({ ...w, kind: 'call' })),
+    ...(cur.putWalls || []).map(w => ({ ...w, kind: 'put' })),
+  ];
+  const present = (day, strike, kind) =>
+    ((kind === 'call' ? day.callWalls : day.putWalls) || []).some(w => Math.abs(w.strike - strike) <= tolPrice);
+  return curWalls.map(w => {
+    let d = 0;
+    for (let i = days.length - 1; i >= 0; i--) { if (present(days[i], w.strike, w.kind)) d++; else break; }
+    return { strike: w.strike, kind: w.kind, oi: w.oi, daysPresent: d, fresh: d <= 1, established: d >= 5 };
+  });
 }
 
 export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
@@ -202,6 +292,9 @@ export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   for (const g of gp) { const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
   push(hvl, 'hvl');
   for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).slice(0, topWalls)) push(v?.strike, 'oi_volume');
+  // Institutional CLUSTER zones (≥2 merged strikes) — a higher-conviction level the
+  // bots/OI-bot can trade off. Emit the zone centre as `oi_cluster`.
+  for (const c of (Array.isArray(inst.clusters) ? inst.clusters : [])) if ((c?.count ?? 0) >= 2) push(c.center, 'oi_cluster');
   const seen = new Set(), dedup = [];
   for (const l of out) { const k = `${l.type}@${l.price}`; if (!seen.has(k)) { seen.add(k); dedup.push(l); } }
   return dedup;

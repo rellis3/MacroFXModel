@@ -1,6 +1,6 @@
 // Synthetic test for the OI forward-test tagging brick (no network).
 //   node js/oiConfluence.test.mjs
-import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas, wallStrengthTier, oiSkew } from './oiConfluence.js';
+import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas, wallStrengthTier, oiSkew, classifyOIChange, oiConcentration, clusterStrikes, oiWallStability } from './oiConfluence.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -174,6 +174,55 @@ console.log('[oiSkew — where the positioning sits]');
   const sk2 = oiSkew([1.08, 1.09, 1.11, 1.12], [100, 100, 4000, 3000], [150, 100, 100, 100], 1.10);
   ok('upside-tilted → positive score', sk2.score > 0.2 && sk2.read === 'upside-tilted', JSON.stringify(sk2));
   ok('null without spot', oiSkew([1, 2], [1, 1], [1, 1], 0) === null);
+}
+
+console.log('[classifyOIChange — fresh wall / fresh positioning / liquidation]');
+{
+  const prev = { totalCallOI: 40000, totalPutOI: 40000,
+    callWalls: [{ strike: 4300, oi: 8000 }, { strike: 4250, oi: 5000 }],
+    putWalls: [{ strike: 4100, oi: 5000 }] };
+  const cur = { totalCallOI: 48000, totalPutOI: 40000,
+    callWalls: [{ strike: 4300, oi: 12000 }, { strike: 4200, oi: 6000 }],   // 4300 +50% build, 4200 fresh, 4250 faded
+    putWalls: [{ strike: 4100, oi: 2500 }] };                                // 4100 -50% liquidation
+  const cl = classifyOIChange(oiDeltas(cur, prev), { freshPct: 40 });
+  const has = (t, s) => cl.events.some(e => e.type === t && e.strike === s);
+  ok('4200 tagged fresh_wall', has('fresh_wall', 4200));
+  ok('4300 tagged fresh_positioning (+50%)', has('fresh_positioning', 4300));
+  ok('4100 + 4250 tagged liquidation', has('liquidation', 4100) && has('liquidation', 4250));
+  ok('summary reads fresh positioning', /fresh/.test(cl.summary), cl.summary);
+}
+
+console.log('[oiConcentration — top-N % of total OI]');
+{
+  const c = oiConcentration([5000, 4000, 3000, 2000, 1000, 500, 500], null);   // top5=15000/16000
+  ok('concentrated when top5 ≥ 50%', c.top5Pct >= 50 && c.read === 'concentrated', JSON.stringify(c));
+  const c2 = oiConcentration([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]);
+  ok('dispersed when spread out', c2.read === 'dispersed', JSON.stringify(c2));
+  ok('null on empty', oiConcentration([]) === null);
+}
+
+console.log('[clusterStrikes — nearby strikes → one institutional zone]');
+{
+  // 4290/4300/4310 cluster (gap ≤ 15) → one zone; 4400 separate.
+  const cz = clusterStrikes([{ strike: 4300, oi: 8000, kind: 'call' }, { strike: 4310, oi: 3000, kind: 'call' }, { strike: 4290, oi: 2000, kind: 'call' }, { strike: 4400, oi: 9000, kind: 'call' }], 15);
+  ok('two clusters formed', cz.length === 2, `${cz.length}`);
+  const big = cz.find(z => z.count === 3);
+  ok('the 3-strike cluster totals 13000', big && big.totalOI === 13000, JSON.stringify(big));
+  ok('cluster spans 4290–4310, OI-weighted centre inside', big.low === 4290 && big.high === 4310 && big.center >= 4290 && big.center <= 4310);
+  ok('sorted by totalOI (biggest first)', cz[0].totalOI >= cz[1].totalOI);
+}
+
+console.log('[oiWallStability — days a current wall has persisted]');
+{
+  const days = [
+    { date: 'd1', callWalls: [{ strike: 4300, oi: 8000 }], putWalls: [] },
+    { date: 'd2', callWalls: [{ strike: 4302, oi: 8500 }], putWalls: [] },   // within tol of 4300 → persists
+    { date: 'd3', callWalls: [{ strike: 4300, oi: 9000 }, { strike: 4500, oi: 12000 }], putWalls: [] },  // 4500 fresh today
+  ];
+  const st = oiWallStability(days, 5);
+  const w300 = st.find(w => w.strike === 4300), w500 = st.find(w => w.strike === 4500);
+  ok('4300 established 3 days', w300.daysPresent === 3 && w300.established === false, JSON.stringify(w300));
+  ok('4500 is fresh (1 day)', w500.daysPresent === 1 && w500.fresh === true);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);
