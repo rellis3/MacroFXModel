@@ -1,6 +1,6 @@
 // Synthetic test for the OI forward-test tagging brick (no network).
 //   node js/oiConfluence.test.mjs
-import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias } from './oiConfluence.js';
+import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas } from './oiConfluence.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -122,6 +122,26 @@ console.log('[oiBias — OI-implied buy/sell at the level]');
   const b4 = oiBias(1.0850, [{ price: 1.0850, type: 'call_wall' }, { price: 1.0950, type: 'max_pain' }], { pip, tolPips: 10 });
   ok('opposing reads flagged as conflict', b4.conflict === true, JSON.stringify(b4));
   ok('empty / far → no direction', oiBias(1.05, [{ price: 1.09, type: 'call_wall' }], { pip, tolPips: 10 }).dir === null);
+}
+
+console.log('[oiDeltas — day-over-day OI dynamics]');
+{
+  const prev = { maxPain: 4200, callWall: 4300, putWall: 4100, pcRatio: 1.00,
+    totalCallOI: 40000, totalPutOI: 40000,
+    callWalls: [{ strike: 4300, oi: 8000 }, { strike: 4250, oi: 5000 }],
+    putWalls: [{ strike: 4100, oi: 5000 }, { strike: 4050, oi: 3000 }] };
+  const cur = { maxPain: 4100, callWall: 4300, putWall: 4100, pcRatio: 1.05,
+    totalCallOI: 42000, totalPutOI: 45000,
+    callWalls: [{ strike: 4300, oi: 9000 }, { strike: 4200, oi: 6000 }],   // 4300 firming, 4250 faded, 4200 new
+    putWalls: [{ strike: 4100, oi: 4500 }, { strike: 4050, oi: 3500 }] };  // 4100 weakening
+  const dl = oiDeltas(cur, prev);
+  ok('max pain shifted down 100', dl.maxPainShift === -100, `${dl.maxPainShift}`);
+  ok('P/C ratio +0.05', dl.pcRatioChange === 0.05, `${dl.pcRatioChange}`);
+  ok('total OI building (+7000, new money)', dl.totalOIChange === 7000 && dl.flow === 'building', `${dl.totalOIChange}/${dl.flow}`);
+  ok('call wall 4300 strengthening (+1000)', dl.callWalls.strengthening.some(w => w.strike === 4300 && w.delta === 1000));
+  ok('call wall 4200 appeared / 4250 faded', dl.callWalls.appeared.some(w => w.strike === 4200) && dl.callWalls.faded.some(w => w.strike === 4250));
+  ok('put wall 4100 weakening (−500)', dl.putWalls.weakening.some(w => w.strike === 4100 && w.delta === -500));
+  ok('null on missing prior (first day)', oiDeltas(cur, null) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);

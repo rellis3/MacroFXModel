@@ -104,6 +104,48 @@ export function tradePctReturn(t) {
 // sign change in the strike-sorted gexProfile) and the HVL (highest-|gamma|
 // strike). Pure. inst = { maxPain, callWall, putWall, callWalls[], putWalls[],
 // gexProfile[{strike,netGex,gamma}] }.
+// Day-over-day OI dynamics (Lesson 4 §dynamic): compare today's `oi_store` entry
+// against a prior day's archived one → what MOVED. Powers the brief's "wall firming
+// / fading, positioning building / unwinding" narrative and the delta rows on the
+// card. Pure — takes two inst snapshots ({maxPain, callWall, putWall, pcRatio,
+// totalCallOI, totalPutOI, callWalls[], putWalls[]}). Returns null if either side
+// is missing so callers degrade gracefully on the first day (no prior).
+export function oiDeltas(cur, prev) {
+  if (!cur || !prev || typeof cur !== 'object' || typeof prev !== 'object') return null;
+  const d = (a, b) => (Number.isFinite(a) && Number.isFinite(b)) ? +(a - b).toFixed(6) : null;
+  const totCur = (cur.totalCallOI || 0) + (cur.totalPutOI || 0);
+  const totPrev = (prev.totalCallOI || 0) + (prev.totalPutOI || 0);
+  const totalOIChange = Math.round(totCur - totPrev);
+  // Per-strike wall dynamics: match walls by strike across the two days.
+  const wallDyn = (curW, prevW, kind) => {
+    const cw = Array.isArray(curW) ? curW : [], pw = Array.isArray(prevW) ? prevW : [];
+    const pmap = new Map(pw.map(w => [w.strike, w.oi]));
+    const strengthening = [], weakening = [], appeared = [];
+    for (const w of cw) {
+      const pv = pmap.get(w.strike);
+      if (pv == null) appeared.push({ strike: w.strike, oi: w.oi, kind });
+      else { const dd = Math.round(w.oi - pv); if (dd > 0) strengthening.push({ strike: w.strike, delta: dd, kind }); else if (dd < 0) weakening.push({ strike: w.strike, delta: dd, kind }); }
+    }
+    const seen = new Set(cw.map(w => w.strike));
+    const faded = pw.filter(w => !seen.has(w.strike)).map(w => ({ strike: w.strike, oi: w.oi, kind }));
+    return { strengthening, weakening, appeared, faded };
+  };
+  return {
+    maxPainShift: d(cur.maxPain, prev.maxPain),
+    callWallShift: d(cur.callWall, prev.callWall),
+    putWallShift: d(cur.putWall, prev.putWall),
+    pcRatioChange: d(cur.pcRatio, prev.pcRatio),
+    totalCallOIChange: Math.round((cur.totalCallOI || 0) - (prev.totalCallOI || 0)),
+    totalPutOIChange: Math.round((cur.totalPutOI || 0) - (prev.totalPutOI || 0)),
+    totalOIChange,
+    totalOIChangePct: totPrev > 0 ? +((totCur - totPrev) / totPrev * 100).toFixed(1) : null,
+    // L1: rising total OI = new money entering; falling = positions liquidating.
+    flow: totalOIChange > 0 ? 'building' : totalOIChange < 0 ? 'unwinding' : 'flat',
+    callWalls: wallDyn(cur.callWalls, prev.callWalls, 'call'),
+    putWalls: wallDyn(cur.putWalls, prev.putWalls, 'put'),
+  };
+}
+
 export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   if (!inst || typeof inst !== 'object') return [];
   const out = [];
