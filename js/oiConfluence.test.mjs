@@ -122,6 +122,12 @@ console.log('[oiBias — OI-implied buy/sell at the level]');
   const b4 = oiBias(1.0850, [{ price: 1.0850, type: 'call_wall' }, { price: 1.0950, type: 'max_pain' }], { pip, tolPips: 10 });
   ok('opposing reads flagged as conflict', b4.conflict === true, JSON.stringify(b4));
   ok('empty / far → no direction', oiBias(1.05, [{ price: 1.09, type: 'call_wall' }], { pip, tolPips: 10 }).dir === null);
+  // Hold-vs-break: call wall at 1.0837; a level at 1.0840 within tol. px broke above
+  // by >20 pips → squeeze → buy (vs the hold read of sell). Parity with Python.
+  const hold = oiBias(1.0840, [{ price: 1.0837, type: 'call_wall' }], { pip, tolPips: 10 });
+  const brk = oiBias(1.0840, [{ price: 1.0837, type: 'call_wall' }], { pip, tolPips: 10, px: 1.0870, breakPips: 20 });
+  ok('hold read = sell (fade the wall)', hold.dir === 'sell');
+  ok('broken wall (px far above) → buy (squeeze)', brk.dir === 'buy' && brk.regime === 'trend', JSON.stringify(brk));
 }
 
 console.log('[oiDeltas — day-over-day OI dynamics]');

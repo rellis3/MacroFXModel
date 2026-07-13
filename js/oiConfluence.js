@@ -210,13 +210,25 @@ export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
 //   • gamma_flip = regime, not direction: above it = long-gamma (mean-revert /
 //                  fade favoured), below = short-gamma (trend / follow favoured)
 //   • hvl        = defended level, no inherent side → contributes to `regime` only
+// Hold-vs-break (Lesson 5, `breakPips`>0 + `px`): a wall broken by more than
+// breakPips flips from fade barrier to squeeze — call wall broken UP → buy, put
+// wall broken DOWN → sell (parity with rangeline.py oi_bias).
 // Returns { dir:'buy'|'sell'|null, strength (# agreeing OI reasons), reasons:[],
 // regime:'meanrevert'|'trend'|null, conflict:bool }. Pure. `maxPain` optional
 // (else inferred from an OI level of type max_pain).
-export function oiBias(price, oiLevels, { pip, tolPips = 10, maxPain = null } = {}) {
+export function oiBias(price, oiLevels, { pip, tolPips = 10, maxPain = null, px = null, breakPips = 0 } = {}) {
   const none = { dir: null, strength: 0, reasons: [], regime: null, conflict: false };
   if (!(price > 0) || !(pip > 0) || !Array.isArray(oiLevels) || !oiLevels.length) return none;
   const tol = tolPips * pip;
+  // Break check first: a broken wall is a squeeze, not a barrier.
+  if (Number.isFinite(px) && breakPips > 0) {
+    const bd = breakPips * pip;
+    for (const lv of oiLevels) {
+      if (!Number.isFinite(lv?.price) || Math.abs(lv.price - price) > tol) continue;
+      if (lv.type === 'call_wall' && px > lv.price + bd) return { dir: 'buy', strength: 1, reasons: ['call_wall broken up→squeeze→buy'], regime: 'trend', conflict: false };
+      if (lv.type === 'put_wall' && px < lv.price - bd) return { dir: 'sell', strength: 1, reasons: ['put_wall broken down→squeeze→sell'], regime: 'trend', conflict: false };
+    }
+  }
   let buy = 0, sell = 0; const reasons = []; let regime = null;
   const mp = Number.isFinite(maxPain) ? maxPain
            : (oiLevels.find(l => l.type === 'max_pain' && Number.isFinite(l.price))?.price ?? null);

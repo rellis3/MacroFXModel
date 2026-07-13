@@ -3749,6 +3749,11 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rl_oi_confluence"> on</label></div>
         <div class="form-row"><span class="form-lbl">OI overrides direction <small style="color:#f59e0b">UNVALIDATED</small> <small>at an OI-backed level, trade the OI read (call wall → sell, put wall → buy, max-pain gravity), overriding the learned fade/follow side. Only redirects levels already traded; never resurrects a skip.</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rl_oi_override"> on</label></div>
+        <div class="form-row"><span class="form-lbl">OI gamma regime → fade/follow <small style="color:#f59e0b">UNVALIDATED</small> <small>the day's dealer-gamma sign sets the style: PIN (long gamma) → fade, BREAKOUT (short gamma) → follow. A wall override (above) still refines the exact side at walls.</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rl_oi_gamma_regime"> on</label></div>
+        <div class="form-row"><span class="form-lbl">OI hold-vs-break <small style="color:#f59e0b">UNVALIDATED</small> <small>refines OI-overrides-direction: a wall broken by more than the break distance flips from a fade barrier to a squeeze (follow). Only affects OI overrides.</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rl_oi_hold_break"> on</label>
+          <span style="margin-left:8px">break <input type="number" id="rl_oi_break_pips" min="1" max="200" step="1" style="width:64px"> pips</span></div>
         <div class="form-row"><span class="form-lbl">Max spread (pips) <small>live entry guard</small></span><input type="number" id="rl_max_spread_pips" min="0.1" max="100" step="0.1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Instruments override <small>blank = full universe</small></span><input type="text" id="rl_enabled_pairs" placeholder="nq, us30, eurusd" style="width:200px;text-align:left"></div>
         <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>

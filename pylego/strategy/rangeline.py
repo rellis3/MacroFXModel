@@ -178,14 +178,30 @@ def oi_distinct_sources(level, oi_levels, tol):
     return {lv.get("source") for lv in oi_levels if abs(lv["price"] - level) <= tol}
 
 
-def oi_bias(level, oi_levels, tol, max_pain=None):
+def oi_bias(level, oi_levels, tol, max_pain=None, px=None, break_dist=0):
     """OI-implied trade direction at ``level`` — parity with ``oiConfluence.js``
     ``oiBias().dir``. call_wall = resistance → 'sell'; put_wall = support → 'buy';
     max-pain gravity (level above max pain → pulled down → 'sell'; below → 'buy').
-    Returns 'buy' / 'sell' / None (None on a tie / no OI near). Used by the opt-in
-    ``oi_override`` gate to flip the traded side to the OI read."""
+
+    HOLD-vs-BREAK (Lesson 5): a wall is resistance/support ON APPROACH, but a
+    decisive break flips dealer hedging into a gamma squeeze — so if ``px`` has
+    broken a nearby wall by more than ``break_dist`` the direction FOLLOWS the
+    break instead of fading it (call wall broken UP → 'buy'; put wall broken DOWN
+    → 'sell'). Pass px + break_dist>0 to enable; omit for the pure hold read.
+
+    Returns 'buy' / 'sell' / None (None on a tie / no OI near)."""
     if not (level > 0) or tol <= 0 or not oi_levels:
         return None
+    # Break check first: a broken wall is a squeeze, not a barrier.
+    if px is not None and break_dist > 0:
+        for lv in oi_levels:
+            if abs(lv["price"] - level) > tol:
+                continue
+            t, wp = lv.get("source"), lv["price"]
+            if t == "call_wall" and px > wp + break_dist:
+                return "buy"
+            if t == "put_wall" and px < wp - break_dist:
+                return "sell"
     buy = sell = 0
     mp = max_pain
     if mp is None:

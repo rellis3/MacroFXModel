@@ -5942,6 +5942,7 @@ async function _rlSnapshotOIFromStore() {
     const store = storeRaw ? (JSON.parse(storeRaw).data ?? JSON.parse(storeRaw)) : {};
     store[day] = store[day] || {};
     const live = {};                                              // bot-consumable: key → [{price,source}]
+    const regimes = {};                                           // key → 'PIN'|'BREAKOUT' (gamma regime)
     let n = 0;
     for (const [pair, inst] of Object.entries(oiStore)) {
       const key = (() => { try { return resolveKey(pair); } catch { return null; } })()
@@ -5950,6 +5951,10 @@ async function _rlSnapshotOIFromStore() {
       if (levels.length) {
         store[day][key] = levels;                                 // dated forward-test artifact ({price,type})
         live[key] = levels.map(l => ({ price: l.price, source: l.type }));   // bot reads `source`
+        // Gamma regime (Lesson 5): +GEX = dealers long gamma → dampen (PIN / fade);
+        // −GEX = short gamma → amplify (BREAKOUT / follow). The fade/follow selector.
+        const gex = inst.exposures?.gex ?? 0;
+        if (gex > 0) regimes[key] = 'PIN'; else if (gex < 0) regimes[key] = 'BREAKOUT';
         n++;
       }
     }
@@ -5960,7 +5965,7 @@ async function _rlSnapshotOIFromStore() {
     // Ship the bot-consumable artifact (today's OI levels, source=type, pip-based
     // tolerance) — the live OI strengthen/override gate reads this, like it reads
     // range_line_confluence. Rebuilt each cycle from the morning's analyser paste.
-    await kv.put('range_line_oi_live', JSON.stringify({ data: { strategy: 'range-line-oi', generatedAt: new Date().toISOString(), date: day, tolPips: 10, instruments: live }, timestamp: Date.now() }));
+    await kv.put('range_line_oi_live', JSON.stringify({ data: { strategy: 'range-line-oi', generatedAt: new Date().toISOString(), date: day, tolPips: 10, instruments: live, regimes }, timestamp: Date.now() }));
     console.log(`[range-line-oi] snapshot ${n} pair(s) from oi_store → ${day} (+ range_line_oi_live)`);
     return n;
   } catch (e) { console.error('[range-line-oi] oi_store snapshot failed:', e.message); return 0; }
