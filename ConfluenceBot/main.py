@@ -201,6 +201,13 @@ DEFAULT_CFG: dict = {
     'htf_block':                   True,
     'htf_block_confidence':        0.5,
     'use_vol_forecast':            True,
+    # Options-OI confluence: strengthen a zone that lines up with the day's
+    # put/call walls / max pain / HVL / gamma flip (the OI you paste into the
+    # analyser each morning → KV oi_store → /api/oi-levels). Re-scored every
+    # state refresh, so a fresh morning paste flows through automatically on the
+    # next cycle — no manual "refresh zones" step. NOTE: real on indices, weak-
+    # to-unproven on spot FX (OTC, no consolidated OI) — paper-first, measurable.
+    'use_oi':                      True,
 
     # Data
     'm1_lookback_bars':            18_500,  # per instrument, for the nPOC stack (~13 days)
@@ -774,6 +781,7 @@ class SymbolEngine:
         self.squeeze_ratio = 1.0
         self.vol_fc: Optional[dict] = None
         self.vol_levels: list[tuple[float, str]] = []
+        self.oi_levels: list[tuple[float, str]] = []
         self.last_price: Optional[float] = None
         self._watch: dict[str, dict] = {}
         self._watch_dirty = False
@@ -870,6 +878,7 @@ class SymbolEngine:
                                                          digits=instr.digits))
 
         self._refresh_vol_forecast()
+        self._refresh_oi()
 
         # ── Level matrix ────────────────────────────────────────────────────────
         zone_tfs   = self.cfg.get('zone_tfs', ['H4', 'M30'])
@@ -897,6 +906,8 @@ class SymbolEngine:
             zones = score_zones(zones, self.vol_prof, self.sess_lvls, self.htf_bias,
                                 trendlines=self.trendlines,
                                 vol_levels=self.vol_levels,
+                                oi_levels=self.oi_levels,
+                                pip=instr.pip,
                                 proximity=proximity)
             min_legs = int(self.cfg.get('min_distinct_legs', 1))
             zones = [z for z in zones
@@ -963,6 +974,37 @@ class SymbolEngine:
             ]
         except Exception as exc:
             log.debug(f'[{instr.symbol}] vol-forecast fetch failed: {exc}')
+
+    def _refresh_oi(self) -> None:
+        """Pull today's options-OI levels for this instrument from the dashboard
+        (KV oi_store → the JS oiConfluence.oiStoreToLevels brick, served by
+        /api/oi-levels — the ONE source of truth, no Python re-port). The user
+        pastes OI into the analyser each morning; this reads whatever is current
+        each state refresh, so a fresh paste flows through on the next cycle.
+        Levels are [(price, type)] where type ∈ put_wall/call_wall/max_pain/
+        gamma_flip/hvl; score_zones credits a zone sitting on one."""
+        instr = self.instr
+        self.oi_levels = []
+        if not self.cfg.get('use_oi', True):
+            return
+        try:
+            r = requests.get(f'{self.bot.base_url}/api/oi-levels', timeout=10)
+            if r.status_code != 200:
+                return
+            by_instr = r.json().get('byInstrument') or {}
+            raw = by_instr.get(instr.key)
+            if not raw:
+                # Fall back to a slash/underscore-stripped display match
+                # (e.g. 'EUR/USD' → 'eurusd') if the store keyed it differently.
+                alt = instr.display.lower().replace('/', '').replace('_', '')
+                raw = by_instr.get(alt)
+            if not raw:
+                return
+            self.oi_levels = [(float(l['price']), str(l.get('type') or 'oi'))
+                              for l in raw
+                              if isinstance(l, dict) and l.get('price') is not None]
+        except Exception as exc:
+            log.debug(f'[{instr.symbol}] oi-levels fetch failed: {exc}')
 
     # ── Price tick (fast path) ─────────────────────────────────────────────────
 

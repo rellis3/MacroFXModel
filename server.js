@@ -5956,6 +5956,29 @@ app.get('/api/range-line-bot/oi-audit', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// Current options-OI levels per instrument, converted from the OI analyser
+// output the user updates each morning (KV `oi_store`) via the shared
+// `oiStoreToLevels` brick — the ONE source of truth, so the Python bots never
+// re-port the conversion. Keyed by canonical instrument key so a bot joins by
+// `instr.key`. LIVE (not date-bucketed): always reflects the latest paste. The
+// ConfluenceBot reads this each state refresh to add OI as a scored confluence
+// source (put/call walls, max pain, HVL, gamma flip). No date needed — the bot
+// scores against "today's OI as it stands now".
+app.get('/api/oi-levels', async (_req, res) => {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const byInstrument = {};
+    for (const [pair, inst] of Object.entries(store || {})) {
+      const key = (() => { try { return resolveKey(pair); } catch { return null; } })()
+                  || String(pair).toLowerCase().replace(/[/_]/g, '');
+      const levels = oiStoreToLevels(inst);
+      if (levels.length) byInstrument[key] = levels;
+    }
+    res.json({ ok: true, byInstrument, instruments: Object.keys(byInstrument) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // KV persistence health — does bot config/credentials survive a redeploy? The
 // bot-config page polls this to show a red banner when the backend is the ephemeral
 // file store (the "account details keep being lost" failure) so it's never silent.

@@ -2335,6 +2335,7 @@ const CONFLUENCE_DEFAULTS = {
   htf_block:                   true,
   htf_block_confidence:        0.5,
   use_vol_forecast:            true,
+  use_oi:                      true,
   // data
   m1_lookback_bars:            18500,
 };
@@ -2353,6 +2354,7 @@ function readConfluenceForm() {
   _cfCfg.ml_gate                     = chk('confluence_ml_gate');
   _cfCfg.htf_block                   = chk('confluence_htf_block');
   _cfCfg.use_vol_forecast            = chk('confluence_use_vol_forecast');
+  _cfCfg.use_oi                      = chk('confluence_use_oi');
   _cfCfg.htf_block_confidence        = num('confluence_htf_block_confidence', 0.5);
   _cfCfg.trade_window_start          = str('confluence_window_start', '07:00');
   _cfCfg.trade_window_end            = str('confluence_window_end',   '20:00');
@@ -2400,6 +2402,7 @@ function renderConfluenceForm() {
   setChk('confluence_ml_gate',              _cfCfg.ml_gate                     ?? false);
   setChk('confluence_htf_block',            _cfCfg.htf_block                   ?? true);
   setChk('confluence_use_vol_forecast',     _cfCfg.use_vol_forecast            ?? true);
+  setChk('confluence_use_oi',               _cfCfg.use_oi                      ?? true);
   setVal('confluence_htf_block_confidence', _cfCfg.htf_block_confidence        ?? 0.5);
   setVal('confluence_window_start',         _cfCfg.trade_window_start          ?? '07:00');
   setVal('confluence_window_end',           _cfCfg.trade_window_end            ?? '20:00');

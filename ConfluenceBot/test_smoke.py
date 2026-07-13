@@ -536,6 +536,57 @@ check('single family member unchanged (pivot alone = 0.8)',
       abs(_z4.score - NONFIB_WEIGHTS['pivot']) < 1e-9, str(_z4.score))
 
 
+print('\n── options-OI confluence (put/call walls, max pain, HVL, gamma flip) ──')
+# The morning OI paste (KV oi_store → /api/oi-levels) strengthens a zone that
+# sits on a wall / max pain / HVL, one credit at the strongest matching type.
+
+# A gold zone at 4040 with a put wall exactly there → one oi_magnet credit.
+_zo1 = _mk_zone(_C)
+score_zones([_zo1], _mk_vol(), _mk_sess(), _NeutralHTF(),
+            oi_levels=[(_C, 'put_wall')], pip=1.0)
+check('OI wall at the zone → oi_magnet credit',
+      abs(_zo1.score - NONFIB_WEIGHTS['oi_magnet']) < 1e-9, str(_zo1.score))
+check('OI composition names the type + price',
+      any(s.startswith('OI put_wall') for s in _zo1.composition), str(_zo1.composition))
+
+# Several OI strikes near one zone are ONE piece of positioning evidence — the
+# credit is awarded once at the strongest type (magnet > gamma flip), not stacked.
+_zo2 = _mk_zone(_C)
+score_zones([_zo2], _mk_vol(), _mk_sess(), _NeutralHTF(),
+            oi_levels=[(_C, 'gamma_flip'), (_C, 'call_wall'), (_C, 'max_pain')], pip=1.0)
+check('multiple OI strikes score ONCE at the strongest (magnet, not stacked)',
+      abs(_zo2.score - NONFIB_WEIGHTS['oi_magnet']) < 1e-9, str(_zo2.score))
+
+# gamma_flip alone is a boundary, not a magnet → the smaller credit.
+_zo3 = _mk_zone(_C)
+score_zones([_zo3], _mk_vol(), _mk_sess(), _NeutralHTF(),
+            oi_levels=[(_C, 'gamma_flip')], pip=1.0)
+check('gamma_flip alone scores the smaller boundary credit',
+      abs(_zo3.score - NONFIB_WEIGHTS['oi_gamma_flip']) < 1e-9, str(_zo3.score))
+
+# An OI level outside proximity earns nothing (default gold proximity = $3).
+_zo4 = _mk_zone(_C)
+score_zones([_zo4], _mk_vol(), _mk_sess(), _NeutralHTF(),
+            oi_levels=[(_C + 20, 'call_wall')], pip=1.0)
+check('OI level beyond proximity adds no credit', abs(_zo4.score) < 1e-9, str(_zo4.score))
+
+# No oi_levels passed (or use_oi off) → scoring is untouched (back-compat).
+_zo5 = _mk_zone(_C)
+score_zones([_zo5], _mk_vol(), _mk_sess(pivot=_C), _NeutralHTF())
+check('omitting oi_levels leaves scoring unchanged',
+      abs(_zo5.score - NONFIB_WEIGHTS['pivot']) < 1e-9, str(_zo5.score))
+
+# Round-number independence flag: a wall on a big figure is tagged '@rn' so the
+# forward-test can slice it out; the credit still applies (no round_number
+# source in this scorer to double-count).
+_zo6 = _mk_zone(2000.0)
+score_zones([_zo6], _mk_vol(), _mk_sess(), _NeutralHTF(),
+            oi_levels=[(2000.0, 'call_wall')], pip=1.0)
+check('OI at a round number tagged @rn (credit still applies)',
+      abs(_zo6.score - NONFIB_WEIGHTS['oi_magnet']) < 1e-9
+      and any('@rn' in s for s in _zo6.composition), str(_zo6.composition))
+
+
 print('\n── paper→live guard ─────────────────────────────────────────')
 # A KV paper_mode:false must never flip a locally-started paper bot live on a
 # config refresh — LIVE requires BOTH the --live flag AND KV paper_mode:false.
