@@ -1731,7 +1731,9 @@ Wall strength (3× rule): ${[...(s.oi.callWalls || []).filter(w => w.tier).map(w
 Total Call OI: ${s.oi.totalCallOI}  |  Total Put OI: ${s.oi.totalPutOI}
 OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}
 Aggregate GEX: ${s.oi.gex ?? 'N/A'}  |  DEX: ${s.oi.dex ?? 'N/A'}  ->  ${s.oi.gexRead ?? 'N/A'}
-Gamma flip level: ${s.oi.gammaFlip ?? 'N/A'}
+Gamma flip level: ${s.oi.gammaFlip ?? 'N/A'}${(s.oi.volumeMagnets || []).length ? `
+Volume magnets (today's activity, distinct from OI): ${s.oi.volumeMagnets.map(v => v.strike).join(', ')}` : ''}${(s.oi.expiries || []).length ? `
+Per-expiry (near-dated = strongest gamma/pin): ${s.oi.expiries.map(e => `${e.dte}DTE max pain ${e.maxPain}${e.callWall ? ` CW ${e.callWall}` : ''}${e.putWall ? ` PW ${e.putWall}` : ''}`).join(' | ')}` : ''}
 Top strikes (strike | callOI/putOI | type):
 ${s.oi.topLevels ? s.oi.topLevels.slice(0, 6).map(l => `  ${l.strike}  C:${l.callOI} / P:${l.putOI}  ${l.strike > s.price ? 'RESISTANCE' : 'SUPPORT'}`).join('\n') : '  N/A'}${s.oiChange ? `
 OI CHANGE vs ${s.oiChange.fromDate} (day-over-day positioning dynamics):

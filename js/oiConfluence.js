@@ -196,6 +196,7 @@ export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   let hvl = null, hg = -Infinity;
   for (const g of gp) { const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
   push(hvl, 'hvl');
+  for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).slice(0, topWalls)) push(v?.strike, 'oi_volume');
   const seen = new Set(), dedup = [];
   for (const l of out) { const k = `${l.type}@${l.price}`; if (!seen.has(k)) { seen.add(k); dedup.push(l); } }
   return dedup;

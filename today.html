@@ -2472,6 +2472,11 @@ function storyOptions(r) {
   if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}`);
   if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}`);
   if (o.inst?.skew?.read && o.inst.skew.read !== 'balanced') bits.push(`<span class="muted">${o.inst.skew.read}</span>`);
+  const vm = (o.inst?.volumeMagnets || []).slice(0, 3);
+  if (vm.length) bits.push(`vol magnets ${vm.map(v => fmtN(v.strike, dp)).join('/')}`);
+  // Near-dated expiry (Lesson 5 — strongest gamma/pin) if a per-expiry view exists.
+  const exps = Object.values(o.inst?.expiries || {}).filter(e => Number.isFinite(e.dte)).sort((a, b) => a.dte - b.dte);
+  if (exps.length && exps[0].maxPain) bits.push(`<b>${exps[0].dte}DTE</b> max pain ${fmtN(exps[0].maxPain, dp)} (near-dated pin)`);
   const reg = o.regime ? ` · <b>${o.regime}</b> ${o.regime === 'PIN' ? '(positive GEX — mean-revert)' : '(negative GEX — breakout)'}` : '';
   const age = o.stale ? ` <span class="chip warn" style="font-size:9px">stale ${Math.round(o.ageH)}h</span>` : ` <span class="muted">${o.ageH < 1 ? 'fresh' : Math.round(o.ageH) + 'h old'}</span>`;
   return `${bits.join(' · ')}${reg}.${age}${oiChangeLine(o, dp)}`;
@@ -2596,7 +2601,9 @@ function assembleSnapshot(r) {
     totalCallChg: oi.inst?.totalCallChg, totalPutChg: oi.inst?.totalPutChg,
     topLevels: (oi.inst?.topLevels || []).slice(0, 6),
     callWalls: (oi.inst?.callWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
-    putWalls: (oi.inst?.putWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })) };
+    putWalls: (oi.inst?.putWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
+    volumeMagnets: (oi.inst?.volumeMagnets || []).slice(0, 5),
+    expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
   // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
   const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];
   if (ct && rawCot) {
