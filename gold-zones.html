@@ -166,6 +166,7 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
     <button class="on" data-bot="v1" style="color:#f4c430">Gold V1</button>
     <button data-bot="v2" style="color:#ff9f43">Gold V2</button>
     <button data-bot="cf" style="color:#c084fc">Confluence</button>
+    <button data-bot="oi" style="color:#4dd0e1">OI Gamma</button>
   </div>
   <select id="gzPairSel" title="Confluence bot — pick the instrument to view"
           style="display:none;margin-left:8px;background:var(--s2);color:var(--text1);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;cursor:pointer"></select>
@@ -317,13 +318,34 @@ const BOT_KV = {
   v1: { zones: 'gold_bot_zones',       status: 'gold_bot_status'       },
   v2: { zones: 'gold_v2_zones',        status: 'gold_v2_status'        },
   cf: { zones: 'confluence_bot_zones', status: 'confluence_bot_status', trades: 'confluence_bot_trades' },
+  oi: { zones: 'oi_bot_zones',         status: 'oi_bot_status',         trades: 'oi_bot_trades' },
 };
+
+// OI bot universe → chart metadata (the page is static HTML, so a compact map;
+// canonical keys match the producer's resolveKey output). FX pairs fall back to
+// a computed OANDA symbol + JPY-aware pip.
+const _OI_INST = {
+  gold: { display: 'XAU/USD', oanda: 'XAU_USD',    digits: 2, pip: 1.0 },
+  nq:   { display: 'NAS100',  oanda: 'NAS100_USD', digits: 1, pip: 1.0 },
+  spx:  { display: 'SPX500',  oanda: 'SPX500_USD', digits: 1, pip: 1.0 },
+  dax:  { display: 'DE30',    oanda: 'DE30_EUR',   digits: 1, pip: 1.0 },
+  dow:  { display: 'US30',    oanda: 'US30_USD',   digits: 1, pip: 1.0 },
+  rut:  { display: 'US2000',  oanda: 'US2000_USD', digits: 1, pip: 1.0 },
+};
+function _oiInstMeta(key) {
+  if (_OI_INST[key]) return _OI_INST[key];
+  const isJpy = key.endsWith('jpy');                   // FX fallback
+  return { display: `${key.slice(0,3).toUpperCase()}/${key.slice(3).toUpperCase()}`,
+           oanda: `${key.slice(0,3).toUpperCase()}_${key.slice(3).toUpperCase()}`,
+           digits: isJpy ? 3 : 5, pip: isJpy ? 0.01 : 0.0001 };
+}
 // Score scales differ: V1 scores ran 3–50+ (pre-dedup inflation); V2 and the
 // Confluence bot (same engine) count distinct evidence and typically land 3–12.
 const SCORE_SCALE = {
   v1: { high: 40, mid: 15, bands: [[0,10],[10,20],[20,35],[35,Infinity]] },
   v2: { high: 8,  mid: 5,  bands: [[0,4],[4,6],[6,9],[9,Infinity]] },
   cf: { high: 8,  mid: 5,  bands: [[0,4],[4,6],[6,9],[9,Infinity]] },
+  oi: { high: 1.5, mid: 1.0, bands: [[0,0.8],[0.8,1.0],[1.0,1.4],[1.4,Infinity]] },   // sizeFactor scale
 };
 
 // Confluence bot: the KV payload is nested per instrument ({symbols:{key:{...}}}).
@@ -331,6 +353,8 @@ const SCORE_SCALE = {
 // per-pair slice is what gets assigned to _zonesData/_statusData (V2 shape).
 let _cfRaw     = null;   // { zones:{symbols:{}}, status:{symbols:[],mt5_positions}, trades:[] }
 let _cfPair    = localStorage.getItem('gzCfPair') || null;
+let _oiRaw     = null;   // { zones:{instruments:{}}, status:{...}, trades:[] }
+let _oiPair    = localStorage.getItem('gzOiPair') || null;
 let _digits    = 2;      // price precision of the active instrument (gold=2, FX=5, index=1)
 let _pip       = 1.0;    // pip size of the active instrument (for distance-in-pips labels)
 let _activeOanda = 'XAU_USD';   // OANDA symbol for candle/quote fetch
@@ -386,17 +410,19 @@ function _armedWatch(zoneId) {
 function _applyBotBranding() {
   const sub = document.getElementById('gzSubTitle');
   if (sub) sub.textContent =
-      _bot === 'cf' ? `Confluence · ${_activeDisplay} · level-matrix zones · per-pair · bot state`
+      _bot === 'oi' ? `OI Gamma · ${_activeDisplay} · dealer-gamma regime switch · walls / max-pain · per-pair`
+    : _bot === 'cf' ? `Confluence · ${_activeDisplay} · level-matrix zones · per-pair · bot state`
     : _bot === 'v2' ? 'Gold V2 · level-matrix zones · contributing legs · σ forecast · bot state'
     :                 'Gold V1 · live fib zones · swing origins · session levels · bot state';
   const th = document.getElementById('gzTradesHeader');
   if (th) th.textContent =
-      _bot === 'cf' ? `Confluence trade history — ${_activeDisplay}`
+      _bot === 'oi' ? `OI Gamma trade history — ${_activeDisplay}`
+    : _bot === 'cf' ? `Confluence trade history — ${_activeDisplay}`
     : _bot === 'v2' ? 'Gold V2 trade history' : 'Paper trade history';
   document.querySelectorAll('#gzBotSeg button').forEach(b =>
     b.classList.toggle('on', b.dataset.bot === _bot));
   const pairSel = document.getElementById('gzPairSel');
-  if (pairSel) pairSel.style.display = _bot === 'cf' ? '' : 'none';
+  if (pairSel) pairSel.style.display = (_bot === 'cf' || _bot === 'oi') ? '' : 'none';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
@@ -439,13 +465,13 @@ function _bindControls() {
     _applyBotBranding();
     document.getElementById('gzZonesGrid').innerHTML = '<div class="gz-msg">Loading zones…</div>';
     _load();
-    _loadTradeHistory();   // cf reloads again at the end of _load once _cfRaw is fresh
+    _loadTradeHistory();   // cf/oi reloads again at the end of _load once the raw payload is fresh
   });
 
-  // Confluence pair selector — reload the selected instrument's zones/candles
+  // Per-pair selector (Confluence + OI) — reload the selected instrument
   document.getElementById('gzPairSel').addEventListener('change', e => {
-    _cfPair = e.target.value || null;
-    try { localStorage.setItem('gzCfPair', _cfPair); } catch {}
+    if (_bot === 'oi') { _oiPair = e.target.value || null; try { localStorage.setItem('gzOiPair', _oiPair); } catch {} }
+    else { _cfPair = e.target.value || null; try { localStorage.setItem('gzCfPair', _cfPair); } catch {} }
     _selectedZoneId = null;
     document.getElementById('gzZonesGrid').innerHTML = '<div class="gz-msg">Loading zones…</div>';
     _load();   // re-slices to the new pair and reloads its candles + trade history
@@ -510,14 +536,19 @@ async function _load() {
   try {
     const kv = BOT_KV[_bot];
     const reqs = [fetch(`/api/kv/get?key=${kv.zones}`), fetch(`/api/kv/get?key=${kv.status}`)];
-    if (_bot === 'cf') reqs.push(fetch(`/api/kv/get?key=${kv.trades}`));
+    if (_bot === 'cf' || _bot === 'oi') reqs.push(fetch(`/api/kv/get?key=${kv.trades}`));
     const res = await Promise.all(reqs);
     const zonesJ  = await res[0].json();
     const statusJ = await res[1].json();
     const zData = (!zonesJ.miss  && zonesJ.data)  ? zonesJ.data  : null;
     const sData = (!statusJ.miss && statusJ.data) ? statusJ.data : null;
 
-    if (_bot === 'cf') {
+    if (_bot === 'oi') {
+      let tData = null;
+      try { const tj = res[2] ? await res[2].json() : null; tData = (tj && !tj.miss) ? tj.data : null; } catch {}
+      _oiRaw = { zones: zData, status: sData, trades: tData };
+      _oiApplyPairSlice();          // sets _zonesData/_statusData/_digits/_activeOanda/_activeDisplay + dropdown
+    } else if (_bot === 'cf') {
       let tData = null;
       try { const tj = res[2] ? await res[2].json() : null; tData = (tj && !tj.miss) ? tj.data : null; } catch {}
       _cfRaw = { zones: zData, status: sData, trades: tData };
@@ -529,15 +560,17 @@ async function _load() {
     _applyBotBranding();
 
     // Seed _currentPrice (per active instrument) before the chart is built.
+    // OI: fall back to the payload spot (indices may have no /api/quote route).
     try {
       const qj = await (await fetch(`/api/quote?symbol=${encodeURIComponent(_activeDisplay)}`)).json();
-      const px = qj.price ?? qj.close ?? qj.ask;
+      let px = qj.price ?? qj.close ?? qj.ask;
+      if (px == null && _bot === 'oi') px = _zonesData?.spot ?? null;
       if (px) {
         _currentPrice = parseFloat(px);
         document.getElementById('gzLivePrice').textContent = `${_activeDisplay} ${_fmt(_currentPrice)}`;
         document.getElementById('gsPrice').textContent = _fmt(_currentPrice);
       }
-    } catch {}
+    } catch { if (_bot === 'oi' && _zonesData?.spot) _currentPrice = _zonesData.spot; }
 
     _updateStatusBar();
     _updateStats();
@@ -545,7 +578,7 @@ async function _load() {
     await _fetchCandles();
     _rebuildChart();
     _renderZoneCards();
-    if (_bot === 'cf') _loadTradeHistory();   // now that _cfRaw is fresh for this pair
+    if (_bot === 'cf' || _bot === 'oi') _loadTradeHistory();   // now that the raw payload is fresh for this pair
 
   } catch(e) {
     console.error('Load error', e);
@@ -582,6 +615,44 @@ function _cfApplyPairSlice() {
   const symEntry = statusSyms.find(s => s.key === _cfPair) || {};
   const posits   = (st?.mt5_positions || []).filter(p => slice && p.symbol === slice.symbol);
   _statusData = { ...symEntry, paper_mode: st?.paper_mode, mt5_positions: posits };
+}
+
+// OI Gamma: pick the selected instrument's slice out of oi_bot_zones
+// ({instruments:{key:{spot,maxPain,regime,zones}}}) and normalise each zone to
+// the fields the renderer/filter share (direction, zone_id). One plan artifact —
+// this is exactly what the Python executor trades. Also (re)populates the dropdown.
+function _oiApplyPairSlice() {
+  const instruments = _oiRaw?.zones?.instruments || {};
+  const allKeys = Object.keys(instruments);
+  const dispOf = k => _oiInstMeta(k).display;
+
+  if (!_oiPair || !allKeys.includes(_oiPair)) _oiPair = allKeys[0] || null;
+
+  const sel = document.getElementById('gzPairSel');
+  if (sel) {
+    sel.innerHTML = allKeys.length
+      ? allKeys.map(k => `<option value="${k}"${k === _oiPair ? ' selected' : ''}>${dispOf(k)}</option>`).join('')
+      : '<option value="">— no OI instruments —</option>';
+  }
+
+  const slice = _oiPair ? instruments[_oiPair] : null;
+  const meta  = _oiPair ? _oiInstMeta(_oiPair) : { display: 'XAU/USD', oanda: 'XAU_USD', digits: 2, pip: 1.0 };
+  // Normalise zones: side→direction, synthetic zone_id (mode+side+level).
+  const zones = (slice?.zones || []).map((z, i) => ({
+    ...z, direction: z.side === 'buy' ? 'long' : 'short',
+    zone_id: `${z.mode}_${z.side}_${z.level}_${i}`,
+  }));
+  _zonesData     = slice ? { ...slice, zones } : null;
+  _digits        = meta.digits;
+  _pip           = meta.pip;
+  _activeOanda   = meta.oanda;
+  _activeDisplay = meta.display;
+
+  // OI status: the whole-account status; filter positions to this instrument if tagged.
+  const st     = _oiRaw?.status;
+  const posits = (st?.mt5_positions || []).filter(p => !slice || !p.symbol ||
+    String(p.symbol).toLowerCase().replace(/[^a-z0-9]/g, '').includes(_oiPair || ''));
+  _statusData = { ...(st || {}), mt5_positions: posits };
 }
 
 // ── Candle fetch + aggregation ────────────────────────────────────────
@@ -748,6 +819,8 @@ function _rebuildChart() {
   _priceLines = [];
   _cs.setMarkers([]);
 
+  if (_bot === 'oi') { _drawOIZones(); return; }
+
   const armedId   = _armedIds()[0];
   const allZones  = _filteredZones();
   const focusId   = _selectedZoneId || armedId;
@@ -913,6 +986,43 @@ function _drawTrade(z, markers = []) {
   }
 }
 
+// ── OI Gamma chart: draw the trade level + entry/SL/TP for the focused zone ──
+// (or, when nothing is selected, a light overview of every zone's entry level).
+function _drawOIZones() {
+  const zones = _filteredZones();
+  const hint = document.getElementById('gzChartHint');
+  if (!zones.length) { if (hint) hint.classList.remove('hidden'); _chart.timeScale().fitContent(); return; }
+  if (hint) hint.classList.add('hidden');
+
+  const add = (price, color, title, width = 2, style = 0) => {
+    if (price == null || price <= 0) return;
+    try { _priceLines.push(_cs.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title })); } catch {}
+  };
+
+  const focus = _selectedZoneId ? zones.find(z => z.zone_id === _selectedZoneId) : null;
+
+  if (focus) {
+    // Full trade picture for the selected zone.
+    const isLong = focus.direction === 'long';
+    const arrow  = isLong ? '▲' : '▼';
+    add(focus.entry, '#f4c430', `${arrow} ${focus.mode.toUpperCase()} ENTRY ${_fmt(focus.entry)}`, 2, 0);
+    if (focus.level !== focus.entry) add(focus.level, 'rgba(77,208,225,0.7)', `WALL ${_fmt(focus.level)}`, 1, 2);
+    add(focus.sl,  '#ef5350', `SL ${_fmt(focus.sl)}`, 2, 0);
+    add(focus.tp1, 'rgba(38,166,154,0.85)', `TP1 ${_fmt(focus.tp1)}`, 1, 2);
+    add(focus.tp2, '#26a69a', `TP2 ${_fmt(focus.tp2)}`, 2, 0);
+    if (Number.isFinite(_zonesData?.maxPain)) add(_zonesData.maxPain, 'rgba(192,132,252,0.7)', `MAX PAIN ${_fmt(_zonesData.maxPain)}`, 1, 1);
+  } else {
+    // Overview: every zone's entry level, coloured by side; plus max pain.
+    for (const z of zones) {
+      const isLong = z.direction === 'long';
+      add(z.entry, isLong ? 'rgba(38,166,154,0.8)' : 'rgba(239,83,80,0.8)',
+        `${isLong ? '▲' : '▼'} ${z.mode.toUpperCase()} ${_fmt(z.entry)}`, 2, 0);
+    }
+    if (Number.isFinite(_zonesData?.maxPain)) add(_zonesData.maxPain, 'rgba(192,132,252,0.7)', `MAX PAIN ${_fmt(_zonesData.maxPain)}`, 1, 1);
+  }
+  _chart.timeScale().fitContent();
+}
+
 // ── Optional overlays: fib levels + swing origins ───────────────────────
 function _drawZoneOverlays(z, markers) {
   if (!_showFibs && !_showSwings) return;
@@ -1069,6 +1179,14 @@ function _filteredZones() {
   let z = [..._zonesData.zones];
   if (_dirFilter !== 'all') z = z.filter(x => x.direction === _dirFilter);
 
+  if (_bot === 'oi') {
+    // Sort by distance from entry to live price (nearest trades first).
+    const px = _currentPrice || _zonesData?.spot || 0;
+    z.sort((a, b) => Math.abs(a.entry - px) - Math.abs(b.entry - px));
+    if (typeof _countFilter === 'number') z = z.slice(0, _countFilter);
+    return z;
+  }
+
   if (_sortMode === 'price' && _currentPrice) {
     // Sort by distance from live price to nearest GP edge (0 if inside GP)
     const dist = zone => {
@@ -1091,6 +1209,19 @@ function _updateStatusBar() {
   const st = _statusData;
 
   if (!d && !st) return;
+
+  if (_bot === 'oi') {
+    const reg = d?.regime || 'NEUTRAL';
+    const bEl = document.getElementById('gzBiasBadge');
+    bEl.textContent = `Regime ${reg}`;
+    bEl.className   = `gz-badge ${reg === 'PIN' ? 'bull' : reg === 'BREAKOUT' ? 'bear' : 'neutral'}`;
+    document.getElementById('gzSessionBadge').textContent = d?.maxPain != null ? `Max pain ${_fmt(d.maxPain)}` : 'Max pain —';
+    document.getElementById('gzBotStateBadge').textContent = `Bot: ${st?.state || (st?.paper_mode === false ? 'LIVE' : 'paper')}`;
+    document.getElementById('gzArmedBadge').style.display = 'none';
+    const ts = _oiRaw?.zones?.generatedAt || d?.timestamp;
+    if (ts) document.getElementById('gzTs').textContent = `Plan: ${new Date(ts).toUTCString()}`;
+    return;
+  }
 
   const bias = d?.htf_bias || st?.htf_bias || '—';
   const bEl  = document.getElementById('gzBiasBadge');
@@ -1123,6 +1254,26 @@ function _updateStatusBar() {
 function _updateStats() {
   const d  = _zonesData;
   const st = _statusData;
+
+  if (_bot === 'oi') {
+    const reg = d?.regime || 'NEUTRAL';
+    document.getElementById('gsBias').textContent = reg;
+    document.getElementById('gsBias').style.color = reg === 'PIN' ? 'var(--green)' : reg === 'BREAKOUT' ? 'var(--red)' : 'var(--text)';
+    document.getElementById('gsBiasConf').textContent = reg === 'PIN' ? 'long gamma · fade walls'
+      : reg === 'BREAKOUT' ? 'short gamma · follow breaks' : 'flat gamma';
+    const px = _currentPrice || d?.spot;
+    document.getElementById('gsVwap').textContent = d?.maxPain != null ? _fmt(d.maxPain) : '—';
+    document.getElementById('gsPoc').textContent  = (d?.maxPain != null && px) ? `${px > d.maxPain ? '▲ +' : '▼ '}${_pips(px - d.maxPain).toFixed(0)}p vs pin` : 'max pain';
+    document.getElementById('gsVah').textContent  = px != null ? _fmt(px) : '—';
+    document.getElementById('gsVal').textContent  = 'spot';
+    document.getElementById('gsPriceVwap').textContent = '';
+    document.getElementById('gsZones').textContent = (d?.zones ?? []).length;
+    document.getElementById('gsArmed').textContent = `${(d?.zones ?? []).length} planned trade${(d?.zones ?? []).length === 1 ? '' : 's'}`;
+    document.getElementById('gsBotState').textContent = st?.state || '—';
+    document.getElementById('gsBotMode').textContent  = st?.paper_mode === false ? 'LIVE mode' : 'Paper mode';
+    return;
+  }
+
   const pl = d?.pivot_levels;
   const price = _currentPrice || st?.mt5_positions?.[0]?.price || null;
 
@@ -1165,9 +1316,13 @@ function _renderZoneCards() {
   if (countEl) countEl.textContent = zones.length;
 
   if (!zones.length) {
-    grid.innerHTML = '<div class="gz-msg">No zones match the current filter</div>';
+    grid.innerHTML = _bot === 'oi'
+      ? '<div class="gz-msg">No OI zones — needs a pasted OI heatmap for this instrument (gamma regime + walls). Try another pair.</div>'
+      : '<div class="gz-msg">No zones match the current filter</div>';
     return;
   }
+
+  if (_bot === 'oi') { _renderOIZoneCards(grid, zones); return; }
 
   const fmtTs = ts => {
     if (!ts || ts <= 0) return '—';
@@ -1300,6 +1455,70 @@ function _renderZoneCards() {
   }).join('');
 }
 
+// OI Gamma cards — regime-switch trades: mode, direction, entry, structural SL,
+// scale-out TPs, size factor and the plain-English rationale (why the trade is set).
+function _renderOIZoneCards(grid, zones) {
+  const px = _currentPrice || _zonesData?.spot || null;
+  const MODE = {
+    fade:    { tag: 'FADE',       col: '#4dd0e1', note: 'mean-revert to pin' },
+    break:   { tag: 'BREAK',      col: '#ff9f43', note: 'gamma squeeze' },
+    maxpain: { tag: 'MAX-PAIN',   col: '#c084fc', note: 'expiry reversion' },
+  };
+  grid.innerHTML = zones.map(z => {
+    const isLong = z.direction === 'long';
+    const m = MODE[z.mode] || { tag: z.mode?.toUpperCase() || '—', col: 'var(--text3)', note: '' };
+    const sf = (z.sizeFactor ?? 1).toFixed(2);
+    const sfClass = z.sizeFactor >= 1.4 ? 'high' : z.sizeFactor >= 1.0 ? 'mid' : 'low';
+
+    // Distance from live price to the trade level/entry
+    let distHtml = '';
+    if (px && z.entry) {
+      const distP = _pips(Math.abs(px - z.entry));
+      const dir = px > z.entry ? '↓' : '↑';
+      const col = distP < 15 ? 'var(--amber)' : distP < 60 ? 'var(--text2)' : 'var(--text3)';
+      distHtml = `<span style="color:${col};font-size:10px">${dir} ${distP.toFixed(0)}p to entry</span>`;
+    }
+
+    const slDist  = (z.sl  != null && z.entry != null) ? _pips(Math.abs(z.entry - z.sl)).toFixed(0) : '—';
+    const tp1Dist = (z.tp1 != null && z.entry != null) ? _pips(Math.abs(z.tp1 - z.entry)).toFixed(0) : null;
+    const rr      = (z.tp1 != null && z.sl != null && z.entry != null && Math.abs(z.entry - z.sl) > 0)
+      ? (Math.abs(z.tp1 - z.entry) / Math.abs(z.entry - z.sl)).toFixed(2) : null;
+
+    const lvl = (label, v, col, extra = '') => v == null ? '' :
+      `<span class="gz-fib-pill" style="border-color:${col}55;color:${col}">${label} ${_fmt(v)}${extra}</span>`;
+
+    return `
+    <div class="gz-zone-card ${isLong ? 'long' : 'short'} ${z.zone_id === _selectedZoneId ? 'selected' : ''}"
+         onclick="_selectZone('${z.zone_id}')">
+      <div class="gz-zone-top">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;color:${m.col};border:1px solid ${m.col}66;padding:1px 6px;border-radius:3px">${m.tag}</span>
+          <span style="font-size:11px;font-weight:700;color:${isLong ? 'var(--green)' : 'var(--red)'}">${isLong ? '▲ BUY' : '▼ SELL'}</span>
+          ${distHtml}
+          ${z.zone_id === _selectedZoneId ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(244,196,48,.4);padding:1px 6px;border-radius:3px;background:rgba(244,196,48,.08)">▲ on chart</span>' : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          <div class="gz-zone-score ${sfClass}">${sf}×</div>
+          <div style="font-size:9px;color:var(--text3);white-space:nowrap">${z.regime || ''}</div>
+        </div>
+      </div>
+      <div class="gz-zone-window ${isLong ? 'long' : 'short'}">
+        ${m.tag} @ ${_fmt(z.level)} · entry ${_fmt(z.entry)}
+      </div>
+      <div class="gz-zone-fibs" style="margin-top:6px">
+        ${lvl('ENTRY', z.entry, '#f4c430')}
+        ${lvl('SL', z.sl, '#ef5350', ` (${slDist}p)`)}
+        ${lvl('TP1', z.tp1, '#26a69a', tp1Dist ? ` (${tp1Dist}p)` : '')}
+        ${lvl('TP2', z.tp2, '#26a69a')}
+        ${rr ? `<span class="gz-fib-pill" style="border-color:#26a69a55;color:#26a69a">${rr}R</span>` : ''}
+      </div>
+      <div style="font-size:10.5px;color:var(--text2);margin-top:7px;padding:6px 8px;background:var(--bg3);border-left:2px solid ${m.col};border-radius:4px;line-height:1.55">
+        ${z.rationale || `${z.regime} · ${m.note}`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function _selectZone(zoneId) {
   _selectedZoneId = _selectedZoneId === zoneId ? null : zoneId;
   _renderZoneCards();
@@ -1329,6 +1548,9 @@ _tickPrice();
 async function _loadTradeHistory() {
   const wrap = document.getElementById('gzTradesWrap');
   const bot  = _bot;   // capture — a switch mid-fetch must not render stale data
+
+  if (bot === 'oi') { _renderOITradeHistory(wrap); return; }
+
   try {
     let trades;
     if (bot === 'v2') {
@@ -1450,6 +1672,57 @@ async function _loadTradeHistory() {
   } catch (e) {
     wrap.innerHTML = `<div class="gz-msg">Could not load trade history: ${e.message}</div>`;
   }
+}
+
+// OI Gamma trade history — the live/paper executor (Stage 2) logs to oi_bot_trades
+// + today_closed_trades. No fitted score bands (OI has no score); a plain P&L list.
+function _renderOITradeHistory(wrap) {
+  const all = _oiRaw?.trades?.trades ?? _oiRaw?.status?.today_closed_trades ?? [];
+  const slice = _oiPair ? _oiRaw?.zones?.instruments?.[_oiPair] : null;
+  const trades = all.filter(t => !slice || !t.symbol ||
+    String(t.symbol).toLowerCase().replace(/[^a-z0-9]/g, '').includes(_oiPair || ''));
+
+  if (!trades.length) {
+    wrap.innerHTML = `<div class="gz-msg">No OI Gamma trades logged yet — the plan above is what the executor will trade (Stage 2). Trades appear here and in the Positions / Trade Audit tabs once the bot is live.</div>`;
+    return;
+  }
+
+  const sorted = [...trades].sort((a, b) => String((b.date||'') + (b.time||'')).localeCompare(String((a.date||'') + (a.time||''))));
+  const wins   = trades.filter(t => t.result === 'WIN').length;
+  const losses = trades.filter(t => t.result === 'LOSS').length;
+  const closed = trades.filter(t => t.result && t.result !== 'OPEN').length;
+  const net    = trades.reduce((s, t) => s + (t.pnl_pips || 0), 0);
+  const wr     = closed ? Math.round(wins / closed * 100) : 0;
+  const netCol = net >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const rows = sorted.map(t => {
+    const isLong = String(t.direction || t.side || '').toUpperCase().startsWith('B') || String(t.direction).toUpperCase() === 'LONG';
+    const result = t.result ?? 'OPEN';
+    const rCls   = result === 'WIN' ? 'win' : result === 'LOSS' ? 'loss' : '';
+    const pnl    = t.pnl_pips;
+    const pnlStr = pnl != null ? `${pnl >= 0 ? '+' : ''}${Number(pnl).toFixed(1)}p` : '—';
+    return `<tr>
+      <td style="color:var(--text3);white-space:nowrap">${t.date || ''} ${(t.time||'').slice(0,5)}</td>
+      <td style="color:${isLong?'var(--green)':'var(--red)'}">${t.direction || t.side || '—'}</td>
+      <td style="color:var(--cyan)">${t.mode || '—'}</td>
+      <td>${t.entry != null ? _fmt(Number(t.entry)) : '—'}</td>
+      <td class="gz-result ${rCls}">${result}</td>
+      <td style="color:${pnl>=0?'var(--green)':'var(--red)'};font-weight:700">${pnlStr}</td>
+      <td style="font-size:9.5px;color:var(--text3);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.rationale || t.zone_id || ''}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+  <div style="margin-bottom:16px;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);display:flex;gap:28px;flex-wrap:wrap;align-items:center">
+    <div><span style="color:var(--text3);font-size:10px">CLOSED</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace">${closed}</span></div>
+    <div><span style="color:var(--text3);font-size:10px">WIN RATE</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:${wr>=50?'var(--green)':wr>=33?'var(--amber)':'var(--red)'}">${wr}%</span></div>
+    <div><span style="color:var(--text3);font-size:10px">W/L</span><span style="margin-left:8px;font-family:'DM Mono',monospace"><span style="color:var(--green)">${wins}</span><span style="color:var(--text3)"> / </span><span style="color:var(--red)">${losses}</span></span></div>
+    <div><span style="color:var(--text3);font-size:10px">NET PIPS</span><span style="margin-left:8px;font-weight:700;font-family:'DM Mono',monospace;color:${netCol}">${net>=0?'+':''}${net.toFixed(1)}p</span></div>
+  </div>
+  <table class="gz-trades-table">
+    <thead><tr><th>Date / Time</th><th>Dir</th><th>Mode</th><th>Entry</th><th>Result</th><th>P&L</th><th>Why</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
 _loadTradeHistory();
 </script>
