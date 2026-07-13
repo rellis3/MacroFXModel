@@ -312,13 +312,16 @@ async function loadOIAudit() {
           ${_oiRow('untagged (OI day, not near)', a.untagged)}
           ${_oiRow('&nbsp;↳ tagged, <b>not</b> at round #', a.taggedNotRound)}
           ${_oiRow('&nbsp;↳ tagged, at round #', a.taggedAtRound)}
+          ${_oiRow('&nbsp;↳ dir <b>agreed</b> with OI', a.oiDirAgree)}
+          ${_oiRow('&nbsp;↳ dir <b>against</b> OI', a.oiDirDisagree)}
           ${types.map(([t,s]) => _oiRow(`&nbsp;&nbsp;· ${t}`, s)).join('')}
         </tbody>
       </table>
       <div style="margin-top:6px">Edge (tagged − untagged): <b style="${edgeCls}">${a.edge>=0?'+':''}${a.edge.toFixed(4)}%</b>
+        · Dir edge (agree − against): <b style="${a.oiDirEdge>0?'color:#3fb950':'color:#f85149'}">${a.oiDirEdge>=0?'+':''}${(a.oiDirEdge??0).toFixed(4)}%</b>
         · ${r.tradesLogged} trades logged, ${r.oiDates} OI day(s)
         · ${enough ? '<b style="color:#3fb950">enough to read</b>' : `<span class="muted">need ≥30 tagged &amp; untagged (have ${a.tagged.n}/${a.untagged.n}) — keep logging</span>`}</div>
-      <div class="muted" style="font-size:11px;margin-top:4px">Judge on the <b>not-at-round-#</b> row: if OI only helps where a round number already is, it's redundant (the naked-levels lesson). ${a.coverage.tradesNoOIDay} trade(s) on days with no OI captured are excluded.</div>`;
+      <div class="muted" style="font-size:11px;margin-top:4px">Judge OI-<b>strength</b> on the <b>not-at-round-#</b> row (else it just duplicates round numbers — the naked-levels lesson). Judge OI-<b>direction</b> (the override) on <b>dir agreed vs against</b>: only flip the live direction on OI if agreeing trades clearly beat disagreeing ones. ${a.coverage.tradesNoOIDay} trade(s) on days with no OI captured are excluded.</div>`;
   } catch (e) { el.innerHTML = `<span style="color:#f85149">${e.message}</span>`; }
 }
 

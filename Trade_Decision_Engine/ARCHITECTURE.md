@@ -395,8 +395,16 @@ hand-weight them.
    shadow-logged ONCE (`source:'position-shadow'`) so the *real bot trades*
    accumulate the labeled set. A "live read" (snapshot is NOW, not entry-time)
    and v0 is still a prior — this builds evidence, it is not yet evidence.
-   Remaining: durable log store (decisions.jsonl is ephemeral on Railway) +
-   outcome-join keyed by ticket before a fit on the shadow rows.
+   **Durable book + outcome join — built:** a background loop
+   (`_tdeAccumulateShadowBook`, 7-min cadence, mirrors `_rlAccumulateTradeLog`)
+   scores every open bot position and persists the reading to KV
+   (`tde_shadow_book`, keyed by `position_id`; `tde_shadow_*` is in the `kv.js`
+   persistent set so it survives redeploys) — independent of anyone viewing the
+   tab. The Trade History audit (`GET /api/trade-decision/shadow-book?ids=…`)
+   joins it to the realized outcome, showing a GO/SKIP · prob · ✓/✗ column and a
+   GO-win / SKIP-loss summary tile. Join key is sound: MT5 position `ticket` ==
+   `position_id` (paper sets them equal). Remaining: a fit on the accumulated
+   shadow rows once enough real-trade outcomes are joined.
 3. **v1 promotion:** when the calibration report earns it, publish the
    candidate weights as `modelV1.js` with the evidence attached; the feature
    builder is shared so nothing else changes.

@@ -5913,18 +5913,27 @@ async function _rlSnapshotOIFromStore() {
     const storeRaw = await kv.get('range_line_oi').catch(() => null);
     const store = storeRaw ? (JSON.parse(storeRaw).data ?? JSON.parse(storeRaw)) : {};
     store[day] = store[day] || {};
+    const live = {};                                              // bot-consumable: key → [{price,source}]
     let n = 0;
     for (const [pair, inst] of Object.entries(oiStore)) {
       const key = (() => { try { return resolveKey(pair); } catch { return null; } })()
                   || String(pair).toLowerCase().replace(/[/_]/g, '');
       const levels = oiStoreToLevels(inst);
-      if (levels.length) { store[day][key] = levels; n++; }        // analyser pair → refresh
+      if (levels.length) {
+        store[day][key] = levels;                                 // dated forward-test artifact ({price,type})
+        live[key] = levels.map(l => ({ price: l.price, source: l.type }));   // bot reads `source`
+        n++;
+      }
     }
     if (!n) return 0;
     const dates = Object.keys(store).sort();
     for (const d of dates.slice(0, Math.max(0, dates.length - 120))) delete store[d];
     await kv.put('range_line_oi', JSON.stringify({ data: store, timestamp: Date.now() }));
-    console.log(`[range-line-oi] snapshot ${n} pair(s) from oi_store → ${day}`);
+    // Ship the bot-consumable artifact (today's OI levels, source=type, pip-based
+    // tolerance) — the live OI strengthen/override gate reads this, like it reads
+    // range_line_confluence. Rebuilt each cycle from the morning's analyser paste.
+    await kv.put('range_line_oi_live', JSON.stringify({ data: { strategy: 'range-line-oi', generatedAt: new Date().toISOString(), date: day, tolPips: 10, instruments: live }, timestamp: Date.now() }));
+    console.log(`[range-line-oi] snapshot ${n} pair(s) from oi_store → ${day} (+ range_line_oi_live)`);
     return n;
   } catch (e) { console.error('[range-line-oi] oi_store snapshot failed:', e.message); return 0; }
 }
@@ -12920,6 +12929,7 @@ app.post('/api/trade-decision/score-positions', express.json({ limit: '2mb' }), 
     }));
 
     const suggestions = {};
+    const shadowRecords = [];
     for (const p of positions) {
       const ticket = p.ticket;
       if (ticket == null) continue;
@@ -12940,6 +12950,8 @@ app.post('/api/trade-decision/score-positions', express.json({ limit: '2mb' }), 
           reason: (r.reasons && r.reasons[0]) || null,
           calibrated: r.calibrated, model_version: r.model_version,
         };
+        // Durable book, keyed by position_id, for the Trade History outcome join.
+        shadowRecords.push({ id: ticket, entry: _tdeShadowEntry(r, p, p.bot, key) });
         if (!_tdePosShadowSeen.has(ticket)) {
           _tdePosShadowSeen.add(ticket);
           tdeAppendDecision({
@@ -12951,10 +12963,113 @@ app.post('/api/trade-decision/score-positions', express.json({ limit: '2mb' }), 
         suggestions[ticket] = { decision: 'error', reason: e.message ?? String(e) };
       }
     }
+    _tdeShadowRecord(shadowRecords);   // fire-and-forget durable capture (≈entry reading kept)
     res.json({ ok: true, suggestions, model_version: TDE_MODEL.version, calibrated: TDE_MODEL.calibrated });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message ?? String(e) });
   }
+});
+
+// ── Durable TDE shadow book ──────────────────────────────────────────────────
+// What the model said about each OPEN trade, keyed by position_id, persisted to
+// KV (tde_shadow_*) so the Trade History audit can join it to the realized
+// outcome. decisions.jsonl is ephemeral (redeploy-wiped) and never joined; this
+// is the durable, outcome-joinable record. Single writer via a promise-chain
+// mutex so the UI endpoint and the background loop never clobber each other.
+// Honesty: v0 is an uncalibrated prior over a signal shown to be null — do NOT
+// expect GO-tagged trades to beat SKIP-tagged ones on it. The point is to build
+// the labeled set on the bots' REAL entries, the one thing not yet tested.
+const _TDE_SHADOW_KV = 'tde_shadow_book';
+const _TDE_SHADOW_MAX = 6000;
+const _tdeShadowSeen = new Set();      // position_id already booked (fast path)
+let _tdeShadowWrite = Promise.resolve();
+
+async function _tdeShadowBookGet() {
+  try { const raw = await kv.get(_TDE_SHADOW_KV); return raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {}; }
+  catch { return {}; }
+}
+// Map a decide() result + position into a compact shadow entry.
+function _tdeShadowEntry(r, pos, botKey, key) {
+  return {
+    decision: r.decision, probability: r.probability, size_multiplier: r.size_multiplier,
+    direction: r.direction ?? (pos.direction === 'BUY' ? 'long' : pos.direction === 'SELL' ? 'short' : null),
+    top_factor: (r.top_factors && r.top_factors[0]) || null,
+    model_version: r.model_version, calibrated: r.calibrated,
+    bot: botKey || null, symbol: pos.symbol, pair: key, trade_dir: pos.direction, at: Date.now(),
+  };
+}
+// records: [{ id, entry }]; only ids not already booked are added (earliest kept ≈ entry). Serialized.
+function _tdeShadowRecord(records) {
+  const fresh = (records || []).filter(r => r && r.id != null && !_tdeShadowSeen.has(String(r.id)));
+  if (!fresh.length) return _tdeShadowWrite;
+  _tdeShadowWrite = _tdeShadowWrite.then(async () => {
+    const book = await _tdeShadowBookGet();
+    let added = 0;
+    for (const { id, entry } of fresh) {
+      const k = String(id);
+      _tdeShadowSeen.add(k);
+      if (book[k]) continue;                    // keep the EARLIEST reading (≈ entry)
+      book[k] = entry; added++;
+    }
+    if (!added) return;
+    const ids = Object.keys(book);
+    if (ids.length > _TDE_SHADOW_MAX) {
+      ids.sort((a, b) => (book[a].at ?? 0) - (book[b].at ?? 0));
+      for (const id of ids.slice(0, ids.length - _TDE_SHADOW_MAX)) delete book[id];
+    }
+    try { await kv.put(_TDE_SHADOW_KV, JSON.stringify({ data: book, timestamp: Date.now() })); }
+    catch (e) { console.warn('[tde-shadow] put failed:', e.message); }
+  }).catch(e => console.error('[tde-shadow] record failed:', e.message));
+  return _tdeShadowWrite;
+}
+
+// Background accumulator — score every OPEN position across the bots and book the
+// reading once, independent of anyone viewing the Positions tab. Mirrors
+// _rlAccumulateTradeLog's cadence. Railway only (snapshots need OANDA).
+const _TDE_SHADOW_STATUS_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status'];
+async function _tdeAccumulateShadowBook() {
+  try {
+    const open = [];
+    for (const sk of _TDE_SHADOW_STATUS_KEYS) {
+      const raw = await kv.get(sk).catch(() => null);
+      if (!raw) continue;
+      let status; try { status = JSON.parse(raw).data ?? JSON.parse(raw); } catch { continue; }
+      for (const p of (status?.mt5_positions || [])) {
+        const id = p.ticket ?? p.position_id;
+        if (id == null || _tdeShadowSeen.has(String(id))) continue;
+        open.push({ id, pos: p, bot: sk });
+      }
+    }
+    if (!open.length) return;
+    const wanted = new Set(open.map(o => resolveKey(o.pos.symbol)).filter(Boolean));
+    const snaps = {};
+    for (const k of wanted) { try { snaps[k] = (await tdeWarmSnapshot(k)).snap; } catch { snaps[k] = tdeGetState(k); } }
+    const records = [];
+    for (const { id, pos, bot } of open) {
+      const key = resolveKey(pos.symbol); const snap = key && snaps[key];
+      if (!snap) continue;
+      try {
+        const direction = pos.direction === 'BUY' ? 'long' : pos.direction === 'SELL' ? 'short' : undefined;
+        const r = tdeDecide(snap, { pair: key, price: pos.open_price != null ? Number(pos.open_price) : undefined, direction, own_level: true });
+        records.push({ id, entry: _tdeShadowEntry(r, pos, bot, key) });
+      } catch {}
+    }
+    if (records.length) { await _tdeShadowRecord(records); console.log(`[tde-shadow] booked ${records.length} open position(s)`); }
+  } catch (e) { console.error('[tde-shadow] accumulate failed:', e.message); }
+}
+if (process.env.OANDA_KEY) {
+  setInterval(_tdeAccumulateShadowBook, 7 * 60_000);
+  setTimeout(_tdeAccumulateShadowBook, 45_000);
+}
+
+// Read the shadow book (optionally a subset by ?ids=a,b,c) — the audit joins it.
+app.get('/api/trade-decision/shadow-book', async (req, res) => {
+  try {
+    const book = await _tdeShadowBookGet();
+    const ids = req.query.ids ? String(req.query.ids).split(',').map(s => s.trim()).filter(Boolean) : null;
+    const out = ids ? Object.fromEntries(ids.filter(id => book[id]).map(id => [id, book[id]])) : book;
+    res.json({ ok: true, book: out, total: Object.keys(book).length });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
 });
 
 // Snapshot inspection (staleness, regime, zones) — ?mode=synthetic for the demo path

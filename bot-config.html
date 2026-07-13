@@ -3704,6 +3704,10 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
             <option value="1">confluent (≥1 source)</option>
             <option value="2">strong (≥2 sources) — best OOS book</option>
           </select></div>
+        <div class="form-row"><span class="form-lbl">OI strengthens levels <small style="color:#f59e0b">UNVALIDATED</small> <small>count options-OI (call/put walls, max pain, gamma flip) as extra confluence sources in the gate above, so an OI-backed level ranks stronger. Needs the OI analyser + range_line_oi_live. The forward test scores it.</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rl_oi_confluence"> on</label></div>
+        <div class="form-row"><span class="form-lbl">OI overrides direction <small style="color:#f59e0b">UNVALIDATED</small> <small>at an OI-backed level, trade the OI read (call wall → sell, put wall → buy, max-pain gravity), overriding the learned fade/follow side. Only redirects levels already traded; never resurrects a skip.</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rl_oi_override"> on</label></div>
         <div class="form-row"><span class="form-lbl">Max spread (pips) <small>live entry guard</small></span><input type="number" id="rl_max_spread_pips" min="0.1" max="100" step="0.1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Instruments override <small>blank = full universe</small></span><input type="text" id="rl_enabled_pairs" placeholder="nq, us30, eurusd" style="width:200px;text-align:left"></div>
         <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
@@ -4212,6 +4216,7 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
               <th>Date</th>
               <th>Pair</th>
               <th>Bot</th>
+              <th title="What the Trade Decision Engine said about this trade at entry (GO/SKIP · probability), captured live. ✓/✗ = whether that call matched the outcome. v0 is an uncalibrated prior — advisory, tracked to build the labeled set.">TDE</th>
               <th>Dir</th>
               <th>Lots</th>
               <th>Entry</th>
@@ -4225,7 +4230,7 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
             </tr>
           </thead>
           <tbody id="histTableBody">
-            <tr><td colspan="14" class="pos-empty">Loading…</td></tr>
+            <tr><td colspan="15" class="pos-empty">Loading…</td></tr>
           </tbody>
           <tfoot id="histTableFoot"></tfoot>
         </table>
@@ -6927,6 +6932,45 @@ function renderHistAnalytics(trades) {
   grid.innerHTML = parts.join('');
 }
 
+// One Trade History cell: what the TDE said about this trade at entry (GO/SKIP ·
+// prob) + whether that call agreed with the outcome (✓ GO on a winner / SKIP on a
+// loser; ✗ otherwise). Advisory — v0 is an uncalibrated prior, said so on hover.
+function _tdeHistCell(sugg, net) {
+  if (!sugg || (sugg.decision !== 'go' && sugg.decision !== 'skip')) return `<td style="color:var(--text3);font-size:10px">—</td>`;
+  const isGo = sugg.decision === 'go';
+  const pct  = sugg.probability != null ? `${Math.round(sugg.probability * 100)}%` : '';
+  const win  = net > 0;
+  const hit  = isGo ? win : !win;               // model call agreed with outcome?
+  const decColor  = isGo ? '#10b981' : '#ef4444';
+  const markColor = hit ? 'var(--green)' : 'var(--red)';
+  const cal = sugg.calibrated ? '' : ' · prior';
+  const tip = `${sugg.top_factor || ''} — ${sugg.model_version || 'v0'}${cal}. Model said ${isGo ? 'GO' : 'SKIP'} vs a ${win ? 'winner' : 'loser'} → ${hit ? 'agreed' : 'disagreed'}`;
+  return `<td title="${String(tip).replace(/"/g, '&quot;')}" style="white-space:nowrap;font-size:10px">` +
+    `<span style="color:${decColor};font-weight:700">${isGo ? 'GO' : 'SKIP'}</span> ${pct} ` +
+    `<span style="color:${markColor};font-weight:700">${hit ? '✓' : '✗'}</span></td>`;
+}
+
+// Summary tile: how the TDE's GO/SKIP calls line up with realized outcomes across
+// the joined trades. Pure eyeball calibration — NOT a claim of edge (v0 is a prior).
+function _tdeHistStatTile(trades, tdeBook) {
+  let go = 0, goWin = 0, skip = 0, skipLoss = 0;
+  for (const t of trades) {
+    const s = tdeBook[String(t.position_id ?? t.ticket)];
+    if (!s || (s.decision !== 'go' && s.decision !== 'skip')) continue;
+    const win = ((t.profit || 0) + (t.swap || 0)) > 0;
+    if (s.decision === 'go') { go++; if (win) goWin++; }
+    else { skip++; if (!win) skipLoss++; }
+  }
+  const tagged = go + skip;
+  if (!tagged) return '';
+  const goPct   = go   ? Math.round(goWin / go * 100)     : null;   // GO trades that won
+  const skipPct = skip ? Math.round(skipLoss / skip * 100) : null;  // SKIP trades that lost
+  const val = `${go ? `GO ${goPct}%w` : ''}${go && skip ? ' · ' : ''}${skip ? `SKIP ${skipPct}%L` : ''}`;
+  return `<div class="pos-hist-stat" title="Of TDE-tagged trades: GO win-rate and SKIP loss-rate. v0 is an uncalibrated prior — advisory, not edge.">` +
+    `<span class="pos-hist-stat-val" style="font-size:13px">${val}</span>` +
+    `<span class="pos-hist-stat-lbl">TDE call vs outcome (${tagged})</span></div>`;
+}
+
 async function loadHistoryTab() {
   const tbody = document.getElementById('histTableBody');
   const tfoot = document.getElementById('histTableFoot');
@@ -6934,7 +6978,7 @@ async function loadHistoryTab() {
   if (!tbody) return;
 
   const { from, to } = _getHistDateRange();
-  tbody.innerHTML = `<tr><td colspan="14" class="pos-empty">Loading…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="15" class="pos-empty">Loading…</td></tr>`;
   if (stats) stats.innerHTML = '';
   if (tfoot) tfoot.innerHTML = '';
 
@@ -6944,10 +6988,23 @@ async function loadHistoryTab() {
     const j = await r.json();
     trades = (j.trades || []).filter(t => _histActiveBots.has(t.bot_key));
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="14" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="15" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
     return;
   }
   _lastHistTrades = trades;
+
+  // Join the TDE shadow book (what the model said at entry, keyed by position_id).
+  // Advisory only — v0 is an uncalibrated prior; this tracks call-vs-outcome so we
+  // can eventually fit on the bots' real trades. Never blocks the table.
+  let tdeBook = {};
+  try {
+    const ids = [...new Set(trades.map(t => t.position_id ?? t.ticket).filter(v => v != null))];
+    if (ids.length) {
+      const br = await fetch(`/api/trade-decision/shadow-book?ids=${encodeURIComponent(ids.join(','))}`)
+        .then(r => r.ok ? r.json() : null).catch(() => null);
+      if (br?.book) tdeBook = br.book;
+    }
+  } catch { /* advisory — ignore */ }
 
   // Build trade map for calendar
   _calTradeMap = {};
@@ -6958,7 +7015,7 @@ async function loadHistoryTab() {
   renderCal();
 
   if (!trades.length) {
-    tbody.innerHTML = `<tr><td colspan="14" class="pos-empty">No closed trades found for this date range.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="15" class="pos-empty">No closed trades found for this date range.</td></tr>`;
     if (stats) stats.innerHTML = `<div class="pos-hist-stat"><span class="pos-hist-stat-val">0</span><span class="pos-hist-stat-lbl">Trades</span></div>`;
     renderHistAnalytics([]);
     return;
@@ -6979,6 +7036,7 @@ async function loadHistoryTab() {
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${totalLots.toFixed(2)}</span><span class="pos-hist-stat-lbl">Total Lots</span></div>`,
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val" style="color:${totalPnl>=0?'var(--green)':'var(--red)'}">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span><span class="pos-hist-stat-lbl">Gross P&L</span></div>`,
     `<div class="pos-hist-stat"><span class="pos-hist-stat-val">${winners} / ${trades.length - winners}</span><span class="pos-hist-stat-lbl">W / L</span></div>`,
+    _tdeHistStatTile(trades, tdeBook),
   ].join('');
 
   // Analytics breakdown (always computed, shown if panel is open)
@@ -7001,6 +7059,7 @@ async function loadHistoryTab() {
       `<td style="color:var(--text3);font-size:11px">${dateStr}</td>` +
       `<td><strong>${t.symbol || '—'}</strong></td>` +
       `<td><span class="${badgeClass}" style="${badgeStyle}">${bot.label}</span></td>` +
+      _tdeHistCell(tdeBook[String(t.position_id ?? t.ticket)], net) +
       `<td class="${dClass}">${t.direction}</td>` +
       `<td>${(t.lots || 0).toFixed(2)}</td>` +
       `<td>${openPriceStr}</td>` +
@@ -7018,7 +7077,7 @@ async function loadHistoryTab() {
   // Totals row
   if (tfoot) tfoot.innerHTML =
     `<tr class="pos-totals">` +
-    `<td colspan="4">Totals (${trades.length} trades)</td>` +
+    `<td colspan="6">Totals (${trades.length} trades)</td>` +
     `<td>${totalLots.toFixed(2)}</td>` +
     `<td colspan="2"></td>` +
     `<td class="${totalPnl >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</td>` +

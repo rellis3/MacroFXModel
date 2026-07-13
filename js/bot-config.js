@@ -3662,6 +3662,8 @@ const RL_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   single_position_per_pair: true,  // false = one position per Asia/Monday ladder slot instead
   confluence_min: 0,               // structural-confluence entry gate: 0=off, 1=confluent, 2=strong
+  oi_confluence: false,            // UNVALIDATED opt-in: OI levels add to the confluence gate
+  oi_override: false,              // UNVALIDATED opt-in: OI read overrides the learned direction
   max_spread_pips: 2.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
   broker_symbols: {},          // { nq:'USTECH100', de30:'GER40', ... } — blank = built-in default
 };
@@ -3675,6 +3677,8 @@ function renderRlForm() {
   chk('rl_kill_switch', _rlCfg.kill_switch);
   chk('rl_single_position_per_pair', _rlCfg.single_position_per_pair ?? true);
   set('rl_confluence_min',  String(_rlCfg.confluence_min ?? 0));
+  chk('rl_oi_confluence', _rlCfg.oi_confluence);
+  chk('rl_oi_override',   _rlCfg.oi_override);
   set('rl_risk_pct',        _rlCfg.risk_pct        ?? RL_DEFAULTS.risk_pct);
   set('rl_max_lot',         _rlCfg.max_lot         ?? RL_DEFAULTS.max_lot);
   set('rl_max_open',        _rlCfg.max_open        ?? RL_DEFAULTS.max_open);
@@ -3692,6 +3696,8 @@ function readRlForm() {
   _rlCfg.kill_switch     = !!document.getElementById('rl_kill_switch')?.checked;
   _rlCfg.single_position_per_pair = !!document.getElementById('rl_single_position_per_pair')?.checked;
   _rlCfg.confluence_min = parseInt(document.getElementById('rl_confluence_min')?.value ?? '0', 10) || 0;
+  _rlCfg.oi_confluence = !!document.getElementById('rl_oi_confluence')?.checked;
+  _rlCfg.oi_override   = !!document.getElementById('rl_oi_override')?.checked;
   _rlCfg.risk_pct        = num('rl_risk_pct', RL_DEFAULTS.risk_pct);
   _rlCfg.max_lot         = num('rl_max_lot', RL_DEFAULTS.max_lot);
   _rlCfg.max_open        = Math.round(num('rl_max_open', RL_DEFAULTS.max_open));

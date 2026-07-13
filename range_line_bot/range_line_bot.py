@@ -81,6 +81,15 @@ DEFAULT_CFG = {
                                     # strong (>=2, the best OOS book). Needs the dashboard's
                                     # range_line_confluence artifact; falls back to OFF if
                                     # it's missing so a stale artifact can't silently halt trading.
+    "oi_confluence": False,        # UNVALIDATED, opt-in: count OI levels (walls/max-pain/
+                                    # gamma) as extra distinct sources in the confluence_min
+                                    # gate, so an OI-backed level ranks stronger. Needs
+                                    # range_line_oi_live. The OI forward test scores it.
+    "oi_override": False,          # UNVALIDATED, opt-in: at an OI-backed level, flip the
+                                    # traded side to the OI read (call wall→sell, put wall→
+                                    # buy, max-pain gravity), overriding the learned fade/
+                                    # follow direction. Only redirects levels already traded;
+                                    # never resurrects a skip. Off = learned direction stands.
 }
 
 # Broker symbol routing (instrument identity stays shared; routing is local).
@@ -385,6 +394,7 @@ def run(base_url: str, force_live: bool) -> None:
     positions: dict = {}                                   # ticket -> chandelier state
     plan = None
     conf_art: dict | None = None                           # range_line_confluence artifact
+    oi_art: dict | None = None                             # range_line_oi_live artifact (OI levels/day)
     last_anchor = None
     last_plan = last_status = 0.0
 
@@ -394,6 +404,18 @@ def run(base_url: str, force_live: bool) -> None:
         inst = ((conf_art or {}).get("instruments") or {}).get(sess.instrument)
         if inst:
             sess.set_confluence(inst.get("levels") or [], (conf_art or {}).get("tolFrac", 0.1))
+
+    def _attach_oi(sess: RangeSession) -> None:
+        """Set today's OI levels (walls/max-pain/gamma) on a session (no-op unless
+        the artifact has this instrument). Only USED when oi_confluence/oi_override
+        are enabled in config — both opt-in, default off."""
+        levels = ((oi_art or {}).get("instruments") or {}).get(sess.instrument)
+        if levels:
+            try:
+                pip = I.pip_size(sess.instrument)
+            except Exception:
+                pip = 0.0
+            sess.set_oi(levels, (oi_art or {}).get("tolPips", 10), pip)
 
     while True:
         nowt = time.time()
@@ -425,6 +447,17 @@ def run(base_url: str, force_live: bool) -> None:
                     log.info(f"confluence levels loaded · {conf_art.get('generatedAt')} · {len(conf_art.get('instruments', {}))} instruments")
             except Exception as e:
                 log.warning(f"confluence fetch failed: {e} — gate ungated this cycle")
+            # OI levels (for the opt-in OI strengthen/override). Best-effort; a
+            # missing artifact just leaves OI unset (no-op unless the flags are on).
+            try:
+                new_oi = kv.get_json("range_line_oi_live")
+                if new_oi and new_oi.get("generatedAt") != (oi_art or {}).get("generatedAt"):
+                    oi_art = new_oi
+                    for instr in sessions:
+                        _attach_oi(sessions[instr])
+                    log.info(f"OI levels loaded · {oi_art.get('generatedAt')} · {len(oi_art.get('instruments', {}))} instruments")
+            except Exception as e:
+                log.warning(f"OI fetch failed: {e} — OI unset this cycle")
             last_plan = nowt
 
         if plan:
@@ -434,6 +467,7 @@ def run(base_url: str, force_live: bool) -> None:
                             for instr in plan.get("universe", [])}
                 for s in sessions.values():
                     _attach_conf(s)
+                    _attach_oi(s)
                 last_anchor = anchor
             else:
                 # Same session, refreshed plan: add sessions for any NEW universe
@@ -444,6 +478,7 @@ def run(base_url: str, force_live: bool) -> None:
                     if instr not in sessions:
                         sessions[instr] = RangeSession(instr, plan["ladderFibs"], chand_frac=plan.get("chandFrac", 0.5))
                         _attach_conf(sessions[instr])
+                        _attach_oi(sessions[instr])
                 for instr in list(sessions):
                     if instr not in universe:
                         del sessions[instr]
@@ -527,7 +562,10 @@ def run(base_url: str, force_live: bool) -> None:
                         continue
                 single = cfg.get("single_position_per_pair", True)
                 conf_min = int(cfg.get("confluence_min", 0) or 0)
-                for spec in sess.decide(px, ip["policy"], dry_run=forming, confluence_min=conf_min):
+                oi_conf = bool(cfg.get("oi_confluence", False))
+                oi_over = bool(cfg.get("oi_override", False))
+                for spec in sess.decide(px, ip["policy"], dry_run=forming, confluence_min=conf_min,
+                                        oi_confluence=oi_conf, oi_override=oi_over):
                     sl = spec["protect_stop"]
                     # Size off the spread-adjusted EXPECTED fill, not the raw ladder
                     # level: a market order can't be sized after it fills, and the
