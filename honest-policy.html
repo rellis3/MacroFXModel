@@ -32,6 +32,7 @@
   <label class="muted" style="margin-left:10px">Pair <input id="pair" value="" placeholder="(all)"></label>
   <label class="muted" style="margin-left:8px">isFrac <input id="isf" value="0.5"></label>
   <label class="muted" style="margin-left:8px">margin% <input id="mrg" value="0"></label>
+  <label class="muted" style="margin-left:8px"><input type="checkbox" id="vel" checked style="width:auto"> line×approach-velocity cells</label>
   <span class="muted" id="status" style="margin-left:10px"></span>
   <div id="out" style="margin-top:14px"></div>
 
@@ -42,7 +43,7 @@ let _timer=null;
 
 async function run(){
   clearInterval(_timer); el('status').textContent='Starting…'; el('out').innerHTML='';
-  const body = { pair:el('pair').value.trim(), isFrac:parseFloat(el('isf').value)||0.5, marginPct:parseFloat(el('mrg').value)||0 };
+  const body = { pair:el('pair').value.trim(), isFrac:parseFloat(el('isf').value)||0.5, marginPct:parseFloat(el('mrg').value)||0, conditionOnVel:el('vel').checked };
   let j; try { j = await (await fetch('/api/honest-policy/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
   catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
   if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
@@ -99,7 +100,7 @@ function render(port, pp, log){
   for(const [name,r] of rows){ const s=r.selected;
     h += `<tr><td><strong>${name}</strong> <span class="muted">${r.assetClass}</span></td>
       <td style="text-align:left">${r.keptCells.map(c=>c.key).join(', ')||'<span class="muted">none</span>'}</td>
-      <td>${r.nKept}/4</td>
+      <td>${r.nKept}/${r.nCells??4}</td>
       <td class="${s.sharpe>0?'pos':'neg'}">${fmt(s.sharpe,2)}</td>
       <td class="muted">${s.days}</td>
       <td class="${s.expectancy>0?'pos':'neg'}">${fmt(s.expectancy,3)}</td>
