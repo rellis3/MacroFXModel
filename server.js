@@ -5913,18 +5913,27 @@ async function _rlSnapshotOIFromStore() {
     const storeRaw = await kv.get('range_line_oi').catch(() => null);
     const store = storeRaw ? (JSON.parse(storeRaw).data ?? JSON.parse(storeRaw)) : {};
     store[day] = store[day] || {};
+    const live = {};                                              // bot-consumable: key → [{price,source}]
     let n = 0;
     for (const [pair, inst] of Object.entries(oiStore)) {
       const key = (() => { try { return resolveKey(pair); } catch { return null; } })()
                   || String(pair).toLowerCase().replace(/[/_]/g, '');
       const levels = oiStoreToLevels(inst);
-      if (levels.length) { store[day][key] = levels; n++; }        // analyser pair → refresh
+      if (levels.length) {
+        store[day][key] = levels;                                 // dated forward-test artifact ({price,type})
+        live[key] = levels.map(l => ({ price: l.price, source: l.type }));   // bot reads `source`
+        n++;
+      }
     }
     if (!n) return 0;
     const dates = Object.keys(store).sort();
     for (const d of dates.slice(0, Math.max(0, dates.length - 120))) delete store[d];
     await kv.put('range_line_oi', JSON.stringify({ data: store, timestamp: Date.now() }));
-    console.log(`[range-line-oi] snapshot ${n} pair(s) from oi_store → ${day}`);
+    // Ship the bot-consumable artifact (today's OI levels, source=type, pip-based
+    // tolerance) — the live OI strengthen/override gate reads this, like it reads
+    // range_line_confluence. Rebuilt each cycle from the morning's analyser paste.
+    await kv.put('range_line_oi_live', JSON.stringify({ data: { strategy: 'range-line-oi', generatedAt: new Date().toISOString(), date: day, tolPips: 10, instruments: live }, timestamp: Date.now() }));
+    console.log(`[range-line-oi] snapshot ${n} pair(s) from oi_store → ${day} (+ range_line_oi_live)`);
     return n;
   } catch (e) { console.error('[range-line-oi] oi_store snapshot failed:', e.message); return 0; }
 }

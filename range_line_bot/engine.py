@@ -18,7 +18,7 @@ from datetime import datetime, timezone, timedelta
 
 from pylego.strategy.rangeline import (
     build_ladder, ladder_side, neighbours, trade_spec, cell_key, body_range,
-    confluence_bucket, confluence_rank,
+    confluence_bucket, confluence_rank, oi_distinct_sources, oi_bias,
 )
 
 # Resample minutes per source (matches the backtest: Asia=5m bodies, Monday=15m).
@@ -54,6 +54,8 @@ class RangeSession:
         self.session_open = None   # trading-session open (set by the loop from the Asia
                                    # window's first bar) — the entry-slip audit's %
                                    # denominator, matching the book's per-touch t.open
+        self.oi_levels = []        # today's OI level prices [{price,source=type}] (walls/max_pain/gamma/hvl)
+        self.oi_tol = 0.0          # OI proximity tolerance in PRICE units (tol_pips × pip)
 
     # ── confluence entry-gate inputs (optional; set from the shipped artifact) ──
     def set_confluence(self, levels, tol_frac=0.1):
@@ -62,6 +64,15 @@ class RangeSession:
         with confluence_min > 0, so this is a no-op for a bot that hasn't opted in."""
         self.conf_levels = levels or []
         self.conf_tol_frac = tol_frac if tol_frac and tol_frac > 0 else 0.1
+
+    # ── OI entry inputs (optional; from range_line_oi_live) ────────────────────
+    def set_oi(self, levels, tol_pips=10, pip=0):
+        """Attach today's OI level prices (call/put walls, max pain, gamma flip,
+        HVL — source = the OI type) + a PIP-based proximity tolerance (matching the
+        OI forward test, not the range-fraction one). No-op unless decide() is
+        called with oi_confluence / oi_override enabled (both opt-in, default off)."""
+        self.oi_levels = levels or []
+        self.oi_tol = (tol_pips or 0) * (pip or 0)
 
     # ── ladder construction (call once the range is known) ────────────────────
     def set_range(self, src_tag, bars):
@@ -87,7 +98,8 @@ class RangeSession:
         return src_tag in self.ladders
 
     # ── decision (call each tick with the current price + frozen policy) ───────
-    def decide(self, px, policy, *, dry_run=False, confluence_min=0):
+    def decide(self, px, policy, *, dry_run=False, confluence_min=0,
+               oi_confluence=False, oi_override=False):
         """Ladder levels newly touched this tick that map to a tradeable cell and
         whose (source, side) slot is still open. Marks them acted/entered so a
         level fires once and only ONE position opens per (source, side).
@@ -122,13 +134,28 @@ class RangeSession:
                 if decision not in ("fade", "follow"):
                     continue                             # skip / unseen → no trade
                 # Confluence gate (opt-in): only trade levels backed by >= confluence_min
-                # DISTINCT structural sources. tol scales with THIS ladder's range so
-                # "on the line" matches the backtest's per-range tolerance exactly.
+                # DISTINCT sources. tol scales with THIS ladder's range so "on the line"
+                # matches the backtest's per-range tolerance exactly. When oi_confluence
+                # is on, OI types (walls/max-pain/…) count as extra distinct sources
+                # (their own pip-based tol) — so an OI-backed level ranks stronger.
                 if confluence_min > 0:
                     tol = self.conf_tol_frac * (lad["high"] - lad["low"])
-                    bucket = confluence_bucket(lv["level"], self.conf_levels, tol)
-                    if confluence_rank(bucket) < confluence_min:
+                    srcs = {c.get("source") or c.get("kind") for c in self.conf_levels
+                            if abs(c["price"] - lv["level"]) <= tol}
+                    if oi_confluence:
+                        srcs |= oi_distinct_sources(lv["level"], self.oi_levels, self.oi_tol)
+                    srcs.discard(None)
+                    rank = 2 if len(srcs) >= 2 else (1 if len(srcs) == 1 else 0)
+                    if rank < confluence_min:
                         continue                         # too weak a level → skip
+                # OI direction override (opt-in): at an OI-backed level, flip the
+                # traded side to the OI read (call wall → sell, put wall → buy, max-
+                # pain gravity). Never resurrects a skip — only redirects a level we'd
+                # already trade. Picks fade/follow so the resulting side matches OI.
+                if oi_override:
+                    od = oi_bias(lv["level"], self.oi_levels, self.oi_tol)
+                    if od:
+                        decision = "follow" if (od == "buy") == (lv["side"] == "up") else "fade"
                 spec = trade_spec(lv["level"], lv["side"], decision, lv["inner"], lv["outer"])
                 if not spec:
                     continue
