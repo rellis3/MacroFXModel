@@ -129,7 +129,7 @@ def _push(dashboard_url: str, trades: list) -> None:
         f'{dashboard_url.rstrip("/")}/api/trade-history/backfill',
         data=payload, headers={'Content-Type': 'application/json'}, method='POST',
     )
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with urllib.request.urlopen(req, timeout=60) as resp:
         result = json.loads(resp.read())
     log.info(f'Pushed: {result}')
 

@@ -2128,8 +2128,11 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const d = new Date(t.time_close * 1000).toISOString().slice(0, 10);
             (byDate[d] = byDate[d] || []).push(t);
           }
-          let added = 0;
-          for (const [date, dayTrades] of Object.entries(byDate)) {
+          // Each date's get+put is a real network round-trip to Cloudflare KV
+          // (trade_hist_* is a persistent-CF prefix, not the local file store) —
+          // run all dates concurrently instead of one-by-one, or a multi-month
+          // backfill (dozens of dates) blows past any reasonable client timeout.
+          const results = await Promise.all(Object.entries(byDate).map(async ([date, dayTrades]) => {
             const histKey = `trade_hist_${botKey}_${date}`;
             let existing = [];
             try {
@@ -2140,9 +2143,10 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const toAdd = dayTrades.filter(t => !seen.has(t.position_id));
             if (toAdd.length) {
               await env.FX_SCORES.put(histKey, JSON.stringify([...existing, ...toAdd]));
-              added += toAdd.length;
             }
-          }
+            return toAdd.length;
+          }));
+          const added = results.reduce((s, n) => s + n, 0);
           return json({ ok: true, added, dates: Object.keys(byDate).length });
         } catch(e) {
           return json({ ok: false, reason: e.message });
