@@ -3967,10 +3967,12 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_tg_enabled"> on</label></div>
         <div class="form-row"><span class="form-lbl">Bot token <small>blank = use the shared Telegram config</small></span><input type="text" id="oi_tg_token" placeholder="(shared tg_config)" style="width:200px;text-align:left"></div>
         <div class="form-row"><span class="form-lbl">Chat ID <small>blank = use the shared Telegram config</small></span><input type="text" id="oi_tg_chat_id" placeholder="(shared tg_config)" style="width:200px;text-align:left"></div>
-        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <button class="btn-save" style="background:#4dd0e1;color:#06302b" onclick="saveOiConfig()">Save Alerts</button>
-          <span class="bot-banner-sub" style="margin:0">saved with the config · applies on the bot's next refresh</span>
+          <button class="btn-save" style="background:transparent;border:1px solid #4dd0e1;color:#4dd0e1" onclick="pushOiLevels()">📤 Push levels to Telegram</button>
+          <span id="oiPushStatus" style="font-size:12px;color:var(--text3)"></span>
         </div>
+        <div class="bot-banner-sub" style="margin-top:8px">Sends the current plan — one pretty message per chart: levels, direction, SL/TP and the reason each level exists. Needs a saved plan (paste OI + refresh) and Telegram config above (or the shared one).</div>
       </div>
     </div>
 
