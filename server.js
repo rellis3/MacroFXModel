@@ -6104,7 +6104,7 @@ const OI_BOT_CFG_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
   requireEstablished: false, avoidLiquidating: true,
-  fx_enabled: false, enabled_pairs: [],
+  fx_enabled: false, fx_pairs: [],   // opt-in FX universe (weak asset); [] + fx_enabled = none added
 };
 function _oiBotStabilityChange(hist, key) {
   const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
@@ -6127,7 +6127,7 @@ async function _refreshOIBotZones() {
     const store = JSON.parse(oiRaw).data ?? JSON.parse(oiRaw);
     const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
-    const universe = new Set([...OI_BOT_UNIVERSE, ...(cfg.fx_enabled ? (cfg.enabled_pairs || []) : [])]);
+    const universe = new Set([...OI_BOT_UNIVERSE, ...(cfg.fx_enabled ? (cfg.fx_pairs || []) : [])]);
     const instruments = {};
     for (const [pair, inst] of Object.entries(store)) {
       const key = (() => { try { return resolveKey(pair); } catch { return null; } })() || String(pair).toLowerCase().replace(/[/_]/g, '');

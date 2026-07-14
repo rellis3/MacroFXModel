@@ -3789,6 +3789,150 @@ loadRlConfig();
 loadRlCreds();
 loadRlLiveStatus();
 
+// ── OI Gamma Bot config ───────────────────────────────────────────────────────
+// ONE config object (oi_bot_config) with TWO disjoint readers: the camelCase
+// STRATEGY keys are read by the server plan producer (js/oiZones.js), the snake
+// EXECUTION keys by the Python bot (oi_bot/oi_bot.py). No key overlap.
+const OI_DEFAULTS = {
+  // strategy (server plan producer)
+  minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
+  fadeInPin: true, followBreaks: true, maxPainReversion: true,
+  requireEstablished: false, avoidLiquidating: true,
+  fx_enabled: false, fx_pairs: [],
+  // execution (the bot)
+  paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
+  touch_tol_pips: 2, max_spread_pips: null, tick_secs: 3, status_secs: 30, plan_secs: 600,
+  enabled_pairs: [], broker_symbols: {},
+};
+const OI_INDEX_KEYS = ['nq', 'spx', 'dax', 'dow', 'rut'];
+let _oiCfg = { ...OI_DEFAULTS };
+
+function renderOiForm() {
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  chk('oi_fx_enabled', _oiCfg.fx_enabled);
+  set('oi_fx_pairs', (_oiCfg.fx_pairs ?? []).join(', '));
+  set('oi_min_tier', _oiCfg.minTier ?? 'strong');
+  chk('oi_fade_in_pin', _oiCfg.fadeInPin ?? true);
+  chk('oi_follow_breaks', _oiCfg.followBreaks ?? true);
+  chk('oi_maxpain_reversion', _oiCfg.maxPainReversion ?? true);
+  chk('oi_avoid_liquidating', _oiCfg.avoidLiquidating ?? true);
+  chk('oi_require_established', _oiCfg.requireEstablished);
+  set('oi_sl_buffer_pips', _oiCfg.slBufferPips ?? OI_DEFAULTS.slBufferPips);
+  set('oi_break_pips', _oiCfg.breakPips ?? OI_DEFAULTS.breakPips);
+  set('oi_near_expiry_dte', _oiCfg.nearExpiryDTE ?? OI_DEFAULTS.nearExpiryDTE);
+  set('oi_extended_pips', _oiCfg.extendedPips ?? OI_DEFAULTS.extendedPips);
+  chk('oi_paper_mode', _oiCfg.paper_mode ?? true);
+  chk('oi_kill_switch', _oiCfg.kill_switch);
+  set('oi_risk_pct', _oiCfg.risk_pct ?? OI_DEFAULTS.risk_pct);
+  set('oi_max_lot', _oiCfg.max_lot ?? OI_DEFAULTS.max_lot);
+  set('oi_max_open', _oiCfg.max_open ?? OI_DEFAULTS.max_open);
+  set('oi_touch_tol_pips', _oiCfg.touch_tol_pips ?? OI_DEFAULTS.touch_tol_pips);
+  set('oi_max_spread_pips', _oiCfg.max_spread_pips ?? '');
+  set('oi_enabled_pairs', (_oiCfg.enabled_pairs ?? []).join(', '));
+  set('oi_tick_secs', _oiCfg.tick_secs ?? OI_DEFAULTS.tick_secs);
+  set('oi_status_secs', _oiCfg.status_secs ?? OI_DEFAULTS.status_secs);
+  set('oi_plan_secs', _oiCfg.plan_secs ?? OI_DEFAULTS.plan_secs);
+  const syms = _oiCfg.broker_symbols || {};
+  OI_INDEX_KEYS.forEach(k => { const el = document.getElementById(`oi_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
+}
+function readOiForm() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  const list = id => (document.getElementById(id)?.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  _oiCfg.fx_enabled = !!document.getElementById('oi_fx_enabled')?.checked;
+  _oiCfg.fx_pairs = list('oi_fx_pairs');
+  _oiCfg.minTier = document.getElementById('oi_min_tier')?.value || 'strong';
+  _oiCfg.fadeInPin = !!document.getElementById('oi_fade_in_pin')?.checked;
+  _oiCfg.followBreaks = !!document.getElementById('oi_follow_breaks')?.checked;
+  _oiCfg.maxPainReversion = !!document.getElementById('oi_maxpain_reversion')?.checked;
+  _oiCfg.avoidLiquidating = !!document.getElementById('oi_avoid_liquidating')?.checked;
+  _oiCfg.requireEstablished = !!document.getElementById('oi_require_established')?.checked;
+  _oiCfg.slBufferPips = num('oi_sl_buffer_pips', OI_DEFAULTS.slBufferPips);
+  _oiCfg.breakPips = num('oi_break_pips', OI_DEFAULTS.breakPips);
+  _oiCfg.nearExpiryDTE = Math.round(num('oi_near_expiry_dte', OI_DEFAULTS.nearExpiryDTE));
+  _oiCfg.extendedPips = num('oi_extended_pips', OI_DEFAULTS.extendedPips);
+  _oiCfg.paper_mode = !!document.getElementById('oi_paper_mode')?.checked;
+  _oiCfg.kill_switch = !!document.getElementById('oi_kill_switch')?.checked;
+  _oiCfg.risk_pct = num('oi_risk_pct', OI_DEFAULTS.risk_pct);
+  _oiCfg.max_lot = num('oi_max_lot', OI_DEFAULTS.max_lot);
+  _oiCfg.max_open = Math.round(num('oi_max_open', OI_DEFAULTS.max_open));
+  _oiCfg.touch_tol_pips = num('oi_touch_tol_pips', OI_DEFAULTS.touch_tol_pips);
+  const ms = document.getElementById('oi_max_spread_pips')?.value;
+  _oiCfg.max_spread_pips = (ms === '' || ms == null) ? null : (parseFloat(ms) || null);
+  _oiCfg.enabled_pairs = list('oi_enabled_pairs');
+  _oiCfg.tick_secs = Math.round(num('oi_tick_secs', OI_DEFAULTS.tick_secs));
+  _oiCfg.status_secs = Math.round(num('oi_status_secs', OI_DEFAULTS.status_secs));
+  _oiCfg.plan_secs = Math.round(num('oi_plan_secs', OI_DEFAULTS.plan_secs));
+  const syms = {};
+  OI_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`oi_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
+  _oiCfg.broker_symbols = syms;
+}
+async function loadOiConfig() {
+  try { const stored = await kvGet('oi_bot_config'); if (stored) _oiCfg = { ...OI_DEFAULTS, ...stored }; renderOiForm(); } catch (e) {}
+}
+async function saveOiConfig() {
+  readOiForm();
+  const el = document.getElementById('oiSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('oi_bot_config', _oiCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#4dd0e1'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetOiDefaults() {
+  _oiCfg = { ...OI_DEFAULTS }; renderOiForm();
+  const el = document.getElementById('oiSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadOiCreds() { try { _applyCredsToForm(await kvGet('oi_bot_credentials'), 'oi_', 'oi_mt5_password'); } catch (e) {} }
+async function saveOiCreds() { await _saveCreds('oi_bot_credentials', 'oi_', 'oi_mt5_password', 'oiCredsStatus'); }
+
+async function loadOiLiveStatus() {
+  const ageEl = document.getElementById('oiLiveAge'), modeEl = document.getElementById('oiLiveMode');
+  const balEl = document.getElementById('oiLiveBal'), openEl = document.getElementById('oiOpenN');
+  const uniEl = document.getElementById('oiUniN'), paEl = document.getElementById('oiPlanAge');
+  try {
+    const [st, planWrap] = await Promise.all([kvGet('oi_bot_status'), kvGet('oi_bot_zones')]);
+    if (paEl) paEl.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+    const body = document.getElementById('oiLinesBody');
+    // Prefer the bot's live lines; fall back to the plan itself so the table shows
+    // the planned zones even before the bot is running.
+    const rows = st?.lines || Object.entries(planWrap?.instruments || {}).map(([k, v]) =>
+      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, entered: [] }));
+    if (!st) { if (ageEl) ageEl.textContent = planWrap ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
+    else {
+      if (ageEl)  { ageEl.textContent = st.running ? 'Running' : 'Idle'; ageEl.style.color = 'var(--text3)'; }
+      if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+      if (balEl)  balEl.textContent = st.balance != null ? `Balance ${st.balance}` : '';
+    }
+    if (openEl) openEl.textContent = (st?.mt5_positions || []).length;
+    if (uniEl)  uniEl.textContent  = rows.length;
+    if (body) {
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
+      } else {
+        const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : (/^(nq|spx|dax|dow|rut|de30|us30|us2000|ftse|uk100)$/i.test(sym) ? 1 : (/gold|xau/i.test(sym) ? 2 : 5)));
+        const regCol = r => r === 'PIN' ? 'var(--green)' : r === 'BREAKOUT' ? 'var(--red)' : 'var(--text3)';
+        body.innerHTML = rows.map(r => `<tr style="border-top:1px solid var(--border)">
+          <td style="padding:6px 10px;font-weight:600">${r.instrument}</td>
+          <td style="padding:6px 10px;color:${regCol(r.regime)}">${r.regime || '—'}</td>
+          <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.spot)}</td>
+          <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.maxPain)}</td>
+          <td style="padding:6px 10px;text-align:right">${r.zoneCount ?? 0}</td>
+          <td style="padding:6px 10px;color:var(--text3)">${(r.entered || []).length}</td>
+        </tr>`).join('');
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+}
+
+window.saveOiConfig = saveOiConfig; window.resetOiDefaults = resetOiDefaults;
+window.saveOiCreds = saveOiCreds; window.loadOiLiveStatus = loadOiLiveStatus;
+
+document.querySelector('.tab-btn[data-tab="oibot"]')?.addEventListener('click', loadOiLiveStatus);
+loadOiConfig();
+loadOiCreds();
+loadOiLiveStatus();
+
 loadDaStatus();
 loadGoldStatus();
 loadGoldV2Status();

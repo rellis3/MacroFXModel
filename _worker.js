@@ -933,6 +933,7 @@ export default {
             'gold_bot_config', 'gold_ml_params', 'gold_optimiser_last', 'gold_perf_snapshot',
             'gold_v2_config', 'gold_v2_credentials', 'gold_v2_trades',
             'confluence_bot_config', 'confluence_bot_credentials', 'confluence_bot_trades',
+            'oi_bot_config', 'oi_bot_credentials', 'oi_bot_zones', 'oi_bot_trades',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
           ]);

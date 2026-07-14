@@ -426,6 +426,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
     <button class="tab-btn" data-tab="volatility" onclick="switchTab('volatility')" style="color:#e0a93b" id="vbTabBtn">📐 Volatility</button>
     <button class="tab-btn" data-tab="rangeline" onclick="switchTab('rangeline')" style="color:#4fd1c5" id="rlTabBtn">📊 Range-Line</button>
+    <button class="tab-btn" data-tab="oibot" onclick="switchTab('oibot')" style="color:#4dd0e1" id="oiTabBtn">🧲 OI Gamma</button>
     <button class="tab-btn" data-tab="nqqmr" onclick="switchTab('nqqmr')" style="color:#f59e0b" id="nqTabBtn">🎯 QMR Indices</button>
     <button class="tab-btn" data-tab="liquiditygate" onclick="switchTab('liquiditygate')" style="color:#22d3ee" id="lgTabBtn">💧 Liquidity Gate</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
@@ -3808,6 +3809,176 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
 
   </div><!-- /tab-rangeline -->
 
+  <!-- ══════════════════════════════════════════════════════ OI GAMMA TAB -->
+  <div class="tab-pane" id="tab-oibot">
+
+    <div class="bot-banner" style="background:rgba(77,208,225,0.08);border:1px solid rgba(77,208,225,0.28)">
+      <div class="bot-banner-icon">🧲</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#4dd0e1">OI Gamma Bot — dealer-gamma regime switch</div>
+        <div class="bot-banner-sub">Trades the options-OI plan (<code>js/oiZones.js</code> → <code>oi_bot_zones</code>): PIN → fade strong walls to max pain · BREAKOUT → follow wall breaks · near-expiry → max-pain reversion. Gold + indices by default; FX opt-in (weak asset). Forward-test only — no historical OI. <code>oi_bot/oi_bot.py</code></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <a href="gold-zones.html" target="_blank" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #4dd0e1;border-radius:7px;color:#4dd0e1;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Zones</button>
+        </a>
+        <button style="background:#4dd0e1;border:none;border-radius:7px;color:#06302b;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveOiConfig();saveOiCreds()">Save All</button>
+      </div>
+    </div>
+
+    <!-- honest framing -->
+    <div class="card" style="border-left:3px solid #f59e0b">
+      <div class="bot-banner-sub" style="margin:0"><b style="color:#f59e0b">Forward-test, not proven edge.</b> Dealer-gamma is real for gold + indices, weak for spot FX (CME OI partial, OTC dominates) — hence FX is off by default. We hold no historical OI, so this can only be paper/forward-tested. Run paper, judge it on the OI forward-test before risking a cent.</div>
+    </div>
+
+    <!-- Live status -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:#4dd0e1">Live Status</span>
+        <span id="oiLiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
+        <span id="oiLiveMode" style="font-size:11px;font-weight:600"></span>
+        <span style="flex:1"></span>
+        <span id="oiLiveBal" style="font-size:11px;color:var(--text3)"></span>
+        <button onclick="loadOiLiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="display:flex;gap:20px;padding:4px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;flex-wrap:wrap">
+        <span>Open positions: <b id="oiOpenN">—</b></span>
+        <span>Plan instruments: <b id="oiUniN">—</b></span>
+        <span style="margin-left:auto">Plan: <b id="oiPlanAge">—</b></span>
+      </div>
+    </div>
+
+    <!-- Today's planned zones per instrument -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#4dd0e1">Planned Zones per Instrument</span>
+        <span class="bot-banner-sub" style="margin:0">the gamma-regime trades the bot will take — see them on the chart on the Zones page</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Instrument</th>
+              <th style="padding:6px 10px;text-align:left">Regime</th>
+              <th style="padding:6px 10px;text-align:right">Spot</th>
+              <th style="padding:6px 10px;text-align:right">Max pain</th>
+              <th style="padding:6px 10px;text-align:right">Zones</th>
+              <th style="padding:6px 10px;text-align:left">Taken</th>
+            </tr>
+          </thead>
+          <tbody id="oiLinesBody">
+            <tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's zones</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- How to run -->
+    <div class="card">
+      <div class="card-title">How to run</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials below.</div>
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) The server publishes today's plan from the OI store (paste the OI heatmap on index.html first).
+#    Force a refresh now:
+curl -X POST &lt;dashboard-url&gt;/api/oi-bot/zones/refresh
+#    check it landed:
+curl &lt;dashboard-url&gt;/api/oi-bot/zones
+
+# 2) Paper trade (default):
+python oi_bot/oi_bot.py --url &lt;dashboard-url&gt;
+
+# 3) Go live on MT5 (after saving credentials below + a clean paper run):
+python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
+      <div class="bot-banner-sub" style="margin-top:8px"><b>Universe:</b> gold + indices always; tick <b>Trade FX</b> below and list the FX pairs to add them (weak-asset opt-in). <b>Instruments override</b> restricts which of the plan's instruments actually trade (blank = all). <b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>).</div>
+    </div>
+
+    <div class="grid">
+      <!-- ── Strategy (server plan producer) ──────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Strategy — plan producer</div>
+        <div class="bot-banner-sub" style="margin-bottom:8px">These shape the <code>oi_bot_zones</code> plan the server builds (and the Zones page shows). Applied on the next plan refresh.</div>
+        <div class="form-row"><span class="form-lbl">Trade FX <small style="color:#f59e0b">weak asset</small> <small>add FX pairs to the gold+indices universe</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_fx_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl">FX pairs <small>only when Trade FX is on</small></span><input type="text" id="oi_fx_pairs" placeholder="eurusd, usdjpy, gbpusd" style="width:200px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Min wall strength <small>the 3× rule — only walls this strong are traded</small></span>
+          <select id="oi_min_tier" style="width:180px;text-align:left">
+            <option value="strong">strong only (≥3×) — default</option>
+            <option value="moderate">moderate+ (≥2×)</option>
+            <option value="weak">weak+ (≥1.5×)</option>
+          </select></div>
+        <div class="form-row"><span class="form-lbl">Fade in PIN <small>+GEX → sell call walls / buy put walls to max pain</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_fade_in_pin"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Follow breaks in BREAKOUT <small>−GEX → follow a decisive wall break (squeeze)</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_follow_breaks"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Max-pain reversion <small>near expiry + extended from pin → fade toward it</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_maxpain_reversion"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Avoid liquidating walls <small>skip a wall that's defended-then-fading (likely to break)</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_avoid_liquidating"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Require established walls <small>only fade walls that persisted across days (needs OI history)</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_require_established"> on</label></div>
+        <div class="form-row"><span class="form-lbl">SL buffer (pips) <small>structural stop beyond the wall</small></span><input type="number" id="oi_sl_buffer_pips" min="1" max="500" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Break distance (pips) <small>decisive move past a wall (BREAKOUT entry)</small></span><input type="number" id="oi_break_pips" min="1" max="500" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Near-expiry DTE <small>max-pain reversion window</small></span><input type="number" id="oi_near_expiry_dte" min="0" max="10" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Extended (pips) <small>distance from pin that counts as "extended"</small></span><input type="number" id="oi_extended_pips" min="1" max="1000" step="1" style="width:80px"></div>
+      </div>
+
+      <!-- ── Execution (the bot) ──────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Execution — the bot</div>
+        <div class="form-row"><span class="form-lbl">Mode</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="oi_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE)</small></label></div>
+        <div class="form-row"><span class="form-lbl">Kill switch <small>no new entries</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_kill_switch"> stop</label></div>
+        <div class="form-row"><span class="form-lbl">Risk % / trade <small>scaled by the zone's size factor</small></span><input type="number" id="oi_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max lot</span><input type="number" id="oi_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max open positions</span><input type="number" id="oi_max_open" min="1" max="40" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Touch tolerance (pips) <small>slack around an entry level</small></span><input type="number" id="oi_touch_tol_pips" min="0" max="100" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max spread (pips) <small>live entry guard</small></span><input type="number" id="oi_max_spread_pips" min="0.1" max="100" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Instruments override <small>blank = every plan instrument</small></span><input type="text" id="oi_enabled_pairs" placeholder="gold, nq, us30" style="width:200px;text-align:left"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
+        <div class="form-row"><span class="form-lbl">Price tick <small>local watch + touch</small></span><input type="number" id="oi_tick_secs" min="1" max="60" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Status push</span><input type="number" id="oi_status_secs" min="10" max="300" step="5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Plan re-pull</span><input type="number" id="oi_plan_secs" min="60" max="86400" step="60" style="width:80px"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#4dd0e1;color:#06302b" onclick="saveOiConfig()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetOiDefaults()">Reset Defaults</button>
+          <span id="oiSaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <!-- ── MT5 Credentials ──────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">MT5 Account</div>
+        <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="oi_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="oi_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
+        <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="oi_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="oi_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#4dd0e1;color:#06302b" onclick="saveOiCreds()">Save Credentials</button>
+          <span id="oiCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">oi_bot_credentials</code>). The bot reads them on connect when paper trade is OFF.</div>
+      </div>
+    </div>
+
+    <!-- ── Broker index symbols (override per broker) ────────────────────────── -->
+    <div class="card">
+      <div class="card-title">Broker Symbols — indices</div>
+      <div class="bot-banner-sub" style="margin-bottom:10px">Set what YOUR MT5 broker calls each index (blank = built-in default in brackets). FX pairs and gold resolve automatically.</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+        <div class="form-row"><span class="form-lbl">NASDAQ 100 <small>nq</small></span><input type="text" id="oi_sym_nq" placeholder="USTECH100" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">S&amp;P 500 <small>spx</small></span><input type="text" id="oi_sym_spx" placeholder="SP500" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">DAX 40 <small>dax</small></span><input type="text" id="oi_sym_dax" placeholder="GER40" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Dow 30 <small>dow</small></span><input type="text" id="oi_sym_dow" placeholder="US30" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Russell 2000 <small>rut</small></span><input type="text" id="oi_sym_rut" placeholder="US2000" style="width:140px;text-align:left"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+        <button class="btn-save" style="background:#4dd0e1;color:#06302b" onclick="saveOiConfig()">Save Symbols</button>
+        <span class="bot-banner-sub" style="margin:0">saved with the config — applies on the bot's next config refresh</span>
+      </div>
+    </div>
+
+  </div><!-- /tab-oibot -->
+
   <!-- ══════════════════════════════════════════════════════ NQ-QMR TAB -->
   <div class="tab-pane" id="tab-nqqmr">
 
@@ -4743,6 +4914,7 @@ const TAB_BOT_KEY_MAP = {
   macroequity: 'macro_equity_bot_status',
   volatility:  ['volatility_bot_status', 'volatility_ride_status'],
   rangeline:   'range_line_bot_status',
+  oibot:       'oi_bot_status',
   nqqmr:       ['nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status'],
 };
 
@@ -5871,6 +6043,7 @@ const _POS_BOTS = [
   { key: 'volatility_bot_status',     label: 'Volatility',  color: '#e0a93b', bg: '#292100', bd: '#78610a', paper: true },
   { key: 'volatility_ride_status',    label: 'Vol-Ride',    color: '#f0b64b', bg: '#2c2400', bd: '#8a6d0c', paper: true },
   { key: 'range_line_bot_status',     label: 'Range-Line',  color: '#4fd1c5', bg: '#06302b', bd: '#0f766e', paper: true },
+  { key: 'oi_bot_status',             label: 'OI Gamma',    color: '#4dd0e1', bg: '#06282e', bd: '#0e7490', paper: true },
 ];
 
 let _posRefreshTimer = null;
