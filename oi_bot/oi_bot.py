@@ -26,6 +26,8 @@ import sys
 import time
 from pathlib import Path
 
+import requests
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pylego.kv import KvClient                              # noqa: E402
@@ -63,6 +65,11 @@ DEFAULT_CFG = {
     "enabled_pairs": [],          # [] = every instrument in the plan (already gated by the producer)
     "touch_tol_pips": 2,          # slack (in the pair's pips) around an entry level for the touch test
     "paper_spread_pips": {},      # paper-fill spread OVERRIDES, {pair: pips in the pair's own units}
+    # Telegram entry alerts (optional). tg_token/tg_chat_id fall back to the shared
+    # tg_config (Level bot) if left blank — one alert per fill with the full trade.
+    "tg_enabled": False,
+    "tg_token": "",
+    "tg_chat_id": "",
     # NOTE: the STRATEGY toggles (minTier, breakPips, fade/follow modes,
     # fx_enabled, enabled index/FX universe) live in oi_bot_config and are read by
     # the SERVER plan producer, not here — this bot only executes the resulting
@@ -102,6 +109,97 @@ def _deep_merge(base: dict, over: dict) -> dict:
     for k, v in (over or {}).items():
         out[k] = _deep_merge(base[k], v) if isinstance(v, dict) and isinstance(base.get(k), dict) else v
     return out
+
+
+# ── Telegram entry alerts ─────────────────────────────────────────────────────
+def _load_tg(cfg: dict, kv: KvClient) -> tuple[str, str]:
+    """OI-specific TG creds if set, else fall back to the shared tg_config (Level
+    bot) — same convention as the regime bots."""
+    tok = str(cfg.get("tg_token", "") or "").strip()
+    cid = str(cfg.get("tg_chat_id", "") or "").strip()
+    if tok and cid:
+        return tok, cid
+    try:
+        shared = kv.get_json("tg_config") or {}
+    except Exception:
+        shared = {}
+    return str(shared.get("token", "") or "").strip(), str(shared.get("chatId", "") or "").strip()
+
+
+def send_telegram(token: str, chat_id: str, text: str) -> bool:
+    if not token or not chat_id:
+        return False
+    try:
+        r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
+                          json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"}, timeout=10)
+        return r.status_code == 200
+    except Exception as e:
+        log.warning(f"Telegram send failed: {e}")
+        return False
+
+
+# Per-instrument icon + a TradingView chart the name links to.
+_OI_ICON = {"gold": "🥇", "nq": "💻", "spx": "🇺🇸", "dow": "🏭", "rut": "🐘", "dax": "🇩🇪", "ftse": "🇬🇧"}
+_OI_TV = {"gold": "OANDA:XAUUSD", "nq": "OANDA:NAS100USD", "spx": "OANDA:SPX500USD",
+          "dow": "OANDA:US30USD", "rut": "OANDA:US2000USD", "dax": "OANDA:DE30EUR", "ftse": "OANDA:UK100GBP"}
+
+
+def _fmt_price(instr: str, p) -> str:
+    if p is None:
+        return "—"
+    try:
+        d = I.price_digits(instr)
+    except Exception:
+        d = 5
+    return f"{p:.{d}f}"
+
+
+def _pips(instr: str, a, b) -> str:
+    """Distance a→b in the pair's pips (blank if either side is missing)."""
+    if a is None or b is None:
+        return ""
+    try:
+        n = abs(a - b) / I.pip_size(instr)
+    except Exception:
+        return ""
+    return f"{n:.0f} pips"
+
+
+def entry_alert_text(instr: str, spec: dict, lots: float, tid, paper: bool) -> str:
+    """A tidy one-message summary of the trade about to open: instrument (icon +
+    chart link), direction (with arrow), entry, SL, TP (+ distance / R:R), size,
+    and WHY (the plan's rationale). Pure — unit-testable."""
+    key = instr.lower()
+    name = instr.upper()
+    icon = _OI_ICON.get(key, "💱")
+    tv = _OI_TV.get(key, f"OANDA:{name.replace('/', '')}")
+    link = f'<a href="https://www.tradingview.com/chart/?symbol={tv}">{name}</a>'
+    mode = (spec.get("mode") or "").upper()
+    regime = spec.get("regime") or ""
+    up = spec.get("dir_up")
+    side = ("🟢 ▲ <b>BUY</b>" if up else "🔴 ▼ <b>SELL</b>")
+
+    entry, sl, tp = spec.get("entry"), spec.get("sl"), spec.get("tp")
+    sl_d = _pips(instr, entry, sl)
+    sl_tail = f"  <i>({sl_d})</i>" if sl_d else ""
+    rr = ""
+    if tp and sl is not None and entry is not None and abs(entry - sl) > 0:
+        rr = f"  <i>({abs(tp - entry) / abs(entry - sl):.2f}R)</i>"
+    tag = "📄 Paper" if paper else "🔴 LIVE"
+    tail = f"  ·  🎟 {tid}" if tid not in (None, -1) else ""
+
+    return (
+        f"🧲 <b>OI Gamma</b>  ·  {tag}{tail}\n"
+        f"{icon} <b>{link}</b>{('  ·  ' + regime) if regime else ''}\n"
+        f"{side}  ·  {mode}\n"
+        f"➖➖➖➖➖\n"
+        f"📍 Entry  <code>{_fmt_price(instr, entry)}</code>\n"
+        f"🛑 SL     <code>{_fmt_price(instr, sl)}</code>{sl_tail}\n"
+        f"🎯 TP     <code>{_fmt_price(instr, tp) if tp else '—'}</code>{rr}\n"
+        f"📊 Size   {spec.get('size_factor', 1)}× · {lots} lots\n"
+        f"➖➖➖➖➖\n"
+        f"💡 <i>{spec.get('rationale') or regime}</i>"
+    )
 
 
 def make_broker(cfg: dict):
@@ -207,6 +305,7 @@ def run(base_url: str, force_live: bool) -> None:
     guard = RiskGuard(log=log)
     guard.sync_cfg(cfg)
     guard_blocks: dict[str, str | None] = {}
+    tg_creds = _load_tg(cfg, kv)                 # refreshed each config cycle
 
     sessions: dict[str, OISession] = {}
     plan = None
@@ -261,6 +360,7 @@ def run(base_url: str, force_live: bool) -> None:
                 _apply_broker_symbols(cfg)
                 _apply_paper_spreads(broker, cfg)
                 guard.sync_cfg(cfg)
+                tg_creds = _load_tg(cfg, kv)       # pick up TG edits live
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:
@@ -318,6 +418,10 @@ def run(base_url: str, force_live: bool) -> None:
                         log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['mode'].upper()} "
                                  f"{direction} @~{spec['entry']} SL {spec['sl']} TP {spec['tp']} "
                                  f"→ ticket {tid} lots {lots} ({spec['size_factor']}×)")
+                        # Telegram entry alert — what/direction/SL/TP/why, on fill.
+                        if cfg.get("tg_enabled"):
+                            send_telegram(tg_creds[0], tg_creds[1],
+                                          entry_alert_text(instr, spec, lots, tid, paper))
                     else:
                         log.warning(f"{instr} {spec['mode']} {spec['zone_id']} entry REJECTED — "
                                     f"zone kept open for a later touch")
