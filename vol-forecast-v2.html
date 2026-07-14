@@ -177,11 +177,20 @@
 .v2-lvl-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 16px;
   margin: 8px 2px 6px; }
 .v2-lvl-row { display: flex; align-items: center; gap: 8px;
-  font-family: 'DM Mono', monospace; font-size: 10.5px; padding: 1px 0; }
+  font-family: 'DM Mono', monospace; font-size: 10.5px; padding: 2px 5px;
+  border-radius: 4px; cursor: pointer; border: 1px solid transparent;
+  transition: background .12s, border-color .12s; }
+.v2-lvl-row:hover { background: rgba(255,255,255,.05); }
+.v2-lvl-row:focus-visible { outline: none; border-color: var(--border2); }
+.v2-lvl-row.on { background: rgba(79,125,240,.13); border-color: rgba(79,125,240,.4); }
 .v2-lvl-swatch { width: 20px; flex: none; border-top-width: 2px; border-top-style: solid; }
 .v2-lvl-name { color: var(--text2); flex: none; min-width: 64px; }
+.v2-lvl-row.on .v2-lvl-name { color: var(--text); }
 .v2-lvl-dots { flex: 1; border-bottom: 1px dotted var(--border2); transform: translateY(-3px); }
 .v2-lvl-price { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.v2-lvl-pin { flex: none; font-size: 9px; opacity: 0; transition: opacity .12s; }
+.v2-lvl-row:hover .v2-lvl-pin { opacity: .5; }
+.v2-lvl-row.on .v2-lvl-pin { opacity: 1; }
 .v2-m5-empty { height: 40px; display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text2); background: var(--s2);
   border-radius: 4px; margin: 4px 0 2px; border: 1px solid var(--border); }
@@ -3294,6 +3303,24 @@ else document.addEventListener('DOMContentLoaded', _syncChartLevelBtn);
 
 const _lwCharts  = {};
 const _chartMeta = {}; // per-chart state for live rescanning
+const _levelLineRefs = {}; // name -> { title: priceLine } so legend clicks can toggle axis labels
+const _lvlLabelState = {}; // name -> Set of level titles whose on-chart axis label is pinned
+function _lvlPinned(name, title) { return !!_lvlLabelState[name]?.has(title); }
+
+// Toggle a forecast level's label ON the chart (for screenshots) by clicking its
+// legend row. The line is always drawn; this pins/unpins its right-axis price label
+// and thickens the line so it stands out. State is remembered per pair across live
+// refreshes and grid rebuilds.
+function toggleLevelLabel(name, title, ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  const set = _lvlLabelState[name] || (_lvlLabelState[name] = new Set());
+  const on = !set.has(title);
+  if (on) set.add(title); else set.delete(title);
+  const pl = _levelLineRefs[name]?.[title];
+  if (pl) pl.applyOptions({ axisLabelVisible: on, lineWidth: on ? 2 : 1 });
+  const m = _chartMeta[name];
+  if (m) _renderLevelLegend(name, m.dayOpen, m.lineDefs);   // re-render to reflect pinned state
+}
 function _destroyAllLWCharts() {
   for (const k in _lwCharts) {
     try { _lwCharts[k].remove(); } catch (_) {}
@@ -3332,11 +3359,17 @@ function _renderLevelLegend(name, dayOpen, lineDefs) {
   const rows = lineDefs.filter(d => d.pct).map(({ pct, side, color, style, title }) => {
     const price = (dayOpen * (1 + side * pct / 100)).toFixed(dp);
     const dash  = (style === Dot) ? 'dotted' : 'dashed';
-    return `<div class="v2-lvl-row">
+    const on    = _lvlPinned(name, title);
+    const jt    = title.replace(/'/g, "\\'");
+    return `<div class="v2-lvl-row${on ? ' on' : ''}" role="button" tabindex="0"
+      title="Click to ${on ? 'hide' : 'show'} this level's label on the chart"
+      onclick="toggleLevelLabel('${name}','${jt}',event)"
+      onkeydown="if(event.key==='Enter'||event.key===' ')toggleLevelLabel('${name}','${jt}',event)">
       <span class="v2-lvl-swatch" style="border-top-style:${dash};border-top-color:${color}"></span>
       <span class="v2-lvl-name">${title}</span>
       <span class="v2-lvl-dots"></span>
       <span class="v2-lvl-price">${price}</span>
+      <span class="v2-lvl-pin">📌</span>
     </div>`;
   });
   el.innerHTML = rows.join('');
@@ -3532,17 +3565,21 @@ async function loadM5Chart(name, f) {
       series.setData(chartData);
 
       // Add price lines (guaranteed in-range by autoscaleInfoProvider above).
-      // Draw the level lines across the chart but WITHOUT axis labels — the 8
-      // forecast prices are listed in the legend strip below, so the axis stays
-      // scannable (only Day H / live price / Day L keep labels).
+      // Draw the level lines across the chart but WITHOUT axis labels by default —
+      // the 8 forecast prices are listed in the legend strip below, so the axis
+      // stays scannable (only Day H / live price / Day L keep labels). Clicking a
+      // legend row pins that level's label back onto the chart (see toggleLevelLabel).
+      const _lineRefs = {};
       for (const { pct, side, color, style, title } of lineDefs) {
         if (!pct || !dayOpen) continue;
-        series.createPriceLine({
+        const pinned = _lvlPinned(name, title);
+        _lineRefs[title] = series.createPriceLine({
           price: dayOpen * (1 + side * pct / 100),
-          color, lineWidth: 1, lineStyle: style,
-          title, axisLabelVisible: false,
+          color, lineWidth: pinned ? 2 : 1, lineStyle: style,
+          title, axisLabelVisible: pinned,
         });
       }
+      _levelLineRefs[name] = _lineRefs;
 
       // Day high / low lines — running extremes of today's session, updated each redraw
       const todayBars = todayBarsRaw ? hitsData : null;
