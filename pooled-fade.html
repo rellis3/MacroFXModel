@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pooled VuManChu Fade — the full method, one equity curve</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:18px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:1000px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input { width:52px; background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:2px 5px; font:11px 'DM Mono',monospace; text-align:right }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  a { color:#58a6ff } .win { background:rgba(63,185,80,.12) }
+  .kpi { display:inline-block; min-width:120px; margin:0 12px 8px 0; vertical-align:top }
+  .kpi .v { font-size:20px; font-weight:700 } .kpi .l { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em }
+</style>
+</head>
+<body>
+  <h1>Pooled VuManChu Fade <span class="muted" style="font-size:12px">— the full method, one equity curve</span></h1>
+  <div class="sub">
+    The proper validation of the confluence read that showed cross-sectional lift. <b>VuManChu on the 1-minute chart</b> (WaveTrend + VWAP-osc turn, causal); fade the median/75th only when confirmed; <b>your real exit</b> — ~5-pip vol-scaled stop, once <b>+trailR·R</b> start trailing toward the day-open target, close before EOD; honest 1-min walk, SL-first. Every confirmed trade across <b>all instruments pooled into ONE equity curve</b> — a real trade count and a real Sharpe, not 31 thin reads — <b>confirmed vs blind</b>, OOS, with <b>×1/×2/×3 cost sensitivity</b>.
+    <span class="muted">Honest bar: a positive pooled Sharpe that beats blind AND survives ×2 cost = your method has a real, tradeable edge. Thin/× -cost-fragile = real pattern, not yet a system. Heavy — streams 1-min M1 per pair; run one pair first.</span>
+  </div>
+  <button onclick="run()">▶ Run</button>
+  <label class="muted" style="margin-left:10px">Pair <input id="pair" value="" placeholder="(all)" style="width:74px"></label>
+  <label class="muted" style="margin-left:8px">isFrac <input id="isf" value="0.5"></label>
+  <label class="muted" style="margin-left:8px">stopPips <input id="sp" value="5"></label>
+  <label class="muted" style="margin-left:8px">trailR <input id="tr" value="2"></label>
+  <label class="muted" style="margin-left:8px"><input type="checkbox" id="vw" checked style="width:auto"> require VWAP</label>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=2) => v==null?'—':(+v).toFixed(d);
+const pct = (v,d=1) => v==null?'—':(+v).toFixed(d)+'%';
+let _timer=null;
+
+async function run(){
+  clearInterval(_timer); el('status').textContent='Starting…'; el('out').innerHTML='';
+  const body = { pair:el('pair').value.trim(), isFrac:parseFloat(el('isf').value)||0.5, stopPips:parseFloat(el('sp').value)||5, trailR:parseFloat(el('tr').value)||2, requireVwap:el('vw').checked };
+  let j; try { j = await (await fetch('/api/pooled-fade/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/pooled-fade/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Running… '+(s.elapsed||0)+'s (streaming 1-min M1 per pair — slow)'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; if(s.log) el('out').innerHTML='<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'; return; }
+    el('status').textContent = `${s.pairs.length} instruments pooled · stopPips ${s.stopPips} · trailR ${s.trailR}${s.requireVwap?' · +VWAP':''}`;
+    render(s);
+  }, 3000);
+}
+
+function curveSVG(curve){
+  if(!curve || curve.length<2) return '<div class="muted">no curve</div>';
+  const W=940,H=220,pad=30;
+  const ys=curve.map(p=>p.cum), ymin=Math.min(0,...ys), ymax=Math.max(0,...ys);
+  const sx=k=>pad+(W-2*pad)*k/(curve.length-1), sy=v=>H-pad-(H-2*pad)*(v-ymin)/((ymax-ymin)||1);
+  const d=curve.map((p,k)=>`${k?'L':'M'}${sx(k).toFixed(1)},${sy(p.cum).toFixed(1)}`).join(' ');
+  const up = ys[ys.length-1]>=0;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto">
+    <line x1="${pad}" y1="${sy(0)}" x2="${W-pad}" y2="${sy(0)}" stroke="#30363d"/>
+    <path d="${d}" fill="none" stroke="${up?'#3fb950':'#f85149'}" stroke-width="1.6"/>
+    <text x="${pad}" y="14" fill="#8b949e" font-size="10">${fmt(ymax,0)}% cum</text>
+    <text x="${pad}" y="${H-pad+14}" fill="#8b949e" font-size="10">${curve[0].date} → ${curve[curve.length-1].date}</text></svg>`;
+}
+
+function render(s){
+  const c1 = s.confirmed.x1, b1 = s.blind.x1;
+  const beatsBlind = c1.sharpe > b1.sharpe, survivesX2 = s.confirmed.x2.sharpe > 0;
+  const real = c1.sharpe > 0 && beatsBlind && survivesX2 && c1.n >= 100;
+  let h = `<div class="card">
+    <div style="margin-bottom:8px">
+      <span class="kpi"><span class="v ${c1.sharpe>0?'pos':'neg'}">${fmt(c1.sharpe,2)}</span><span class="l">Pooled Sharpe (conf, OOS)</span></span>
+      <span class="kpi"><span class="v ${c1.totalReturn>0?'pos':'neg'}">${pct(c1.totalReturn,0)}</span><span class="l">Total (no comp)</span></span>
+      <span class="kpi"><span class="v neg">${pct(c1.maxDD,1)}</span><span class="l">Max DD</span></span>
+      <span class="kpi"><span class="v">${fmt(c1.win,0)}%</span><span class="l">Win rate</span></span>
+      <span class="kpi"><span class="v">${c1.n}</span><span class="l">Pooled trades</span></span>
+      <span class="kpi"><span class="v">${c1.posYears}/${c1.totYears}</span><span class="l">+years</span></span>
+    </div>
+    ${curveSVG(c1.curve)}
+    <div class="muted" style="font-size:11px;margin-top:6px">${real
+      ? '<b class="pos">Real, tradeable edge.</b> The confluence fade beats blind, has a positive pooled Sharpe, and survives ×2 cost. This is the first thing in the whole investigation to clear the bar — validate it forward, size it small.'
+      : (c1.sharpe>0 && beatsBlind
+        ? '<b class="amber">Real pattern, fragile.</b> Confirmed beats blind and is positive, but check ×2 cost + trade count below before trusting it as a system.'
+        : '<b class="neg">Does not clear the bar.</b> The confluence read doesn\'t produce a positive pooled edge that beats blind after cost — the mechanizable core is flat (your discretionary exits may still carry it).')}</div></div>`;
+
+  // confirmed vs blind, cost sensitivity
+  h += `<h2>Confirmed vs blind — pooled, cost ×1/×2/×3</h2><div class="card"><table><tr>
+    <th></th><th>Sharpe ×1</th><th>Sharpe ×2</th><th>Sharpe ×3</th><th>total ×1</th><th>win</th><th>trades</th><th>+years</th></tr>
+    <tr class="${real?'win':''}"><td><strong>Confirmed (WT+VWAP)</strong></td>
+      <td class="${s.confirmed.x1.sharpe>0?'pos':'neg'}">${fmt(s.confirmed.x1.sharpe,2)}</td>
+      <td class="${s.confirmed.x2.sharpe>0?'pos':'neg'}">${fmt(s.confirmed.x2.sharpe,2)}</td>
+      <td class="${s.confirmed.x3.sharpe>0?'pos':'neg'}">${fmt(s.confirmed.x3.sharpe,2)}</td>
+      <td class="${c1.totalReturn>0?'pos':'neg'}">${pct(c1.totalReturn,0)}</td><td class="muted">${fmt(c1.win,0)}%</td><td class="muted">${c1.n}</td><td class="muted">${c1.posYears}/${c1.totYears}</td></tr>
+    <tr><td class="muted">Blind (every touch)</td>
+      <td class="${b1.sharpe>0?'pos':'neg'}">${fmt(b1.sharpe,2)}</td>
+      <td class="${s.blind.x2.sharpe>0?'pos':'neg'}">${fmt(s.blind.x2.sharpe,2)}</td>
+      <td class="${s.blind.x3.sharpe>0?'pos':'neg'}">${fmt(s.blind.x3.sharpe,2)}</td>
+      <td class="${b1.totalReturn>0?'pos':'neg'}">${pct(b1.totalReturn,0)}</td><td class="muted">${fmt(b1.win,0)}%</td><td class="muted">${b1.n}</td><td class="muted">${b1.posYears}/${b1.totYears}</td></tr>
+  </table><div class="muted" style="font-size:10px;margin-top:4px">Pooled across all instruments, OOS, simple returns. <b>Confirmed</b> = fade only when WaveTrend+VWAP confirm exhaustion on the 1-min chart; <b>Blind</b> = every touch. The bar: confirmed <b>beats blind</b>, positive Sharpe, and <b>still &gt;0 at ×2 cost</b>.</div></div>`;
+
+  // per-year
+  const yrs = Object.keys(c1.perYear||{}).sort();
+  h += `<h2>Confirmed — per year (OOS)</h2><div class="card"><table><tr><th>Year</th>${yrs.map(y=>`<th>${y}</th>`).join('')}</tr>
+    <tr><td>return</td>${yrs.map(y=>`<td class="${c1.perYear[y].ret>0?'pos':'neg'}">${pct(c1.perYear[y].ret,0)}</td>`).join('')}</tr>
+    <tr><td>trades</td>${yrs.map(y=>`<td class="muted">${c1.perYear[y].n}</td>`).join('')}</tr></table></div>`;
+
+  if(s.log) h += `<div class="card muted" style="font-size:10px">${s.log.join('<br>')}</div>`;
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>

@@ -82,6 +82,7 @@ import { sizePortfolio as _sizePortfolio } from './js/positionSizerEngine.js';  
 import { exhaustionForecast as _exhaustionForecast } from './js/exhaustionForecastEngine.js';   // fade-back line + range-budget-gated fade
 import { newsExhaustion as _newsExhaustion } from './js/newsExhaustionEngine.js';   // does news predict fade@median vs blow-through@75th
 import { vumanchuFade as _vumanchuFade } from './js/vumanchuFadeEngine.js';   // WaveTrend-confirmed fade at median/75th vs blind
+import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio } from './js/pooledFadeEngine.js';   // pooled VuManChu fade w/ trader's real exit + cost sensitivity
 import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
@@ -9809,6 +9810,58 @@ app.post('/api/vumanchu-fade/run', express.json({ limit: '8kb' }), (req, res) =>
 });
 app.get('/api/vumanchu-fade/status/:jobId', (req, res) => {
   const job = vmcJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Pooled VuManChu Fade — the trader's full method, validated on 1-min ────────
+// VuManChu (WT+VWAP) on the 1-min chart; the trader's real exit (5-pip vol stop →
+// trail from trailR·R → open target, close EOD); every confirmed trade across all
+// instruments pooled into ONE equity curve, confirmed vs blind, cost ×1/×2/×3.
+const poolJobs = new Map();
+app.post('/api/pooled-fade/run', express.json({ limit: '8kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '', isFrac, stopPips, trailR, requireVwap } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `pool_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of poolJobs) if (j.startedAt < Date.now() - 60 * 60_000) poolJobs.delete(id);
+  poolJobs.set(jobId, { status: 'running', startedAt });
+  const opts = {
+    isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5,
+    stopPips: Number.isFinite(+stopPips) ? +stopPips : 5,
+    trailR: Number.isFinite(+trailR) ? +trailR : 2.0,
+    requireVwap: requireVwap !== false,
+  };
+  (async () => {
+    const perInst = {}, confByInst = {}, blindByInst = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const bars = await _loadM1ForAB(cfg.name.toLowerCase(), 1);   // TRUE 1-min M1
+          if (!bars || bars.length < 20000) { log.push(`${cfg.name}: too few M1 bars`); continue; }
+          const r = _pooledFade(bars, { ...opts, pair: cfg.name, assetClass: cfg.assetClass || 'fx' });
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nSessions}d)`); continue; }
+          perInst[cfg.name] = { assetClass: r.assetClass, confirmed: r.perInst.confirmed, blind: r.perInst.blind };
+          confByInst[cfg.name] = { cost: r.cost, trades: r.confirmedOOS };
+          blindByInst[cfg.name] = { cost: r.cost, trades: r.blindOOS };
+          log.push(`${cfg.name}: conf ${r.perInst.confirmed.n}t exp ${r.perInst.confirmed.exp} sh ${r.perInst.confirmed.sharpe} · blind exp ${r.perInst.blind.exp}`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perInst);
+      if (!names.length) { poolJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const confirmed = { x1: _poolPortfolio(confByInst, 1), x2: _poolPortfolio(confByInst, 2), x3: _poolPortfolio(confByInst, 3) };
+      const blind = { x1: _poolPortfolio(blindByInst, 1), x2: _poolPortfolio(blindByInst, 2), x3: _poolPortfolio(blindByInst, 3) };
+      poolJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, pairs: names, perInst, confirmed, blind, log } });
+    } catch (e) { poolJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/pooled-fade/status/:jobId', (req, res) => {
+  const job = poolJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
