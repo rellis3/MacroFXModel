@@ -3933,8 +3933,26 @@ async function loadOiLiveStatus() {
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
 }
 
+// Push the current OI plan to Telegram — one pretty message per chart (levels +
+// direction + SL/TP + why). Saves config first so a just-typed token/chat applies.
+async function pushOiLevels() {
+  const el = document.getElementById('oiPushStatus');
+  const set = (t, c) => { if (el) { el.textContent = t; el.style.color = c || 'var(--text3)'; } };
+  try {
+    await saveOiConfig();
+    set('Sending…');
+    const r = await fetch('/api/oi-bot/broadcast', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) { set(`Error: ${j.error || 'failed'}`, 'var(--red)'); return; }
+    if (!j.sent) { set('No charts with planned levels yet — paste OI + refresh the plan first', 'var(--amber)'); return; }
+    set(`Sent ${j.sent} chart${j.sent === 1 ? '' : 's'} ✓`, '#4dd0e1');
+    setTimeout(() => set(''), 4000);
+  } catch (e) { set(`Error: ${e.message}`, 'var(--red)'); }
+}
+
 window.saveOiConfig = saveOiConfig; window.resetOiDefaults = resetOiDefaults;
 window.saveOiCreds = saveOiCreds; window.loadOiLiveStatus = loadOiLiveStatus;
+window.pushOiLevels = pushOiLevels;
 
 document.querySelector('.tab-btn[data-tab="oibot"]')?.addEventListener('click', loadOiLiveStatus);
 loadOiConfig();

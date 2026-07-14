@@ -6190,6 +6190,59 @@ app.post('/api/oi-bot/zones/refresh', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── OI bot: push the planned levels + WHY to Telegram, one pretty message per
+// instrument ("per chart we're trading against"). On-demand from the config page.
+const _OI_ICON = { gold: '🥇', nq: '💻', spx: '🇺🇸', dow: '🏭', rut: '🐘', dax: '🇩🇪', ftse: '🇬🇧' };
+const _OI_TV = { gold: 'OANDA:XAUUSD', nq: 'OANDA:NAS100USD', spx: 'OANDA:SPX500USD',
+  dow: 'OANDA:US30USD', rut: 'OANDA:US2000USD', dax: 'OANDA:DE30EUR', ftse: 'OANDA:UK100GBP' };
+function _oiDigits(key) { try { return instrument(key).digits; } catch { return 2; } }
+function _oiFmt(key, p) { return (p == null || !Number.isFinite(+p)) ? '—' : (+p).toFixed(_oiDigits(key)); }
+function _oiPlanMessage(key, inst) {
+  const name = key.toUpperCase();
+  const icon = _OI_ICON[key] || '💱';
+  const tv = _OI_TV[key] || `OANDA:${name.replace('/', '')}`;
+  const link = `<a href="https://www.tradingview.com/chart/?symbol=${tv}">${name}</a>`;
+  const head = `${icon} <b>${link}</b>  ·  ${inst.regime || '—'}\n`
+    + `spot <code>${_oiFmt(key, inst.spot)}</code> · max pain <code>${_oiFmt(key, inst.maxPain)}</code>`;
+  const zones = Array.isArray(inst.zones) ? inst.zones : [];
+  if (!zones.length) return `${head}\n<i>no planned levels</i>`;
+  const body = zones.map(z => {
+    const dir = z.side === 'buy' ? '🟢 ▲ <b>BUY</b>' : '🔴 ▼ <b>SELL</b>';
+    const tp = z.tp1 ?? z.tp2;
+    const rr = (tp != null && z.sl != null && z.entry != null && Math.abs(z.entry - z.sl) > 0)
+      ? `  (${(Math.abs(tp - z.entry) / Math.abs(z.entry - z.sl)).toFixed(1)}R)` : '';
+    return `${dir} · ${(z.mode || '').toUpperCase()}  @ <code>${_oiFmt(key, z.entry)}</code>\n`
+      + `   SL <code>${_oiFmt(key, z.sl)}</code> · TP <code>${tp != null ? _oiFmt(key, tp) : '—'}</code>${rr}\n`
+      + `   <i>${z.rationale || ''}</i>`;
+  }).join('\n\n');
+  return `${head}\n━━━━━━━━━━\n${body}`;
+}
+app.post('/api/oi-bot/broadcast', async (req, res) => {
+  try {
+    const [zRaw, cfgRaw, tgRaw] = await Promise.all([
+      kv.get('oi_bot_zones').catch(() => null), kv.get('oi_bot_config').catch(() => null), kv.get('tg_config').catch(() => null),
+    ]);
+    const vm = zRaw ? (JSON.parse(zRaw).data ?? JSON.parse(zRaw)) : null;
+    const instruments = vm?.instruments || {};
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const tg = tgRaw ? (JSON.parse(tgRaw).data ?? JSON.parse(tgRaw)) : {};
+    const token = (cfg.tg_token || '').trim() || tg.token;
+    const chatId = (cfg.tg_chat_id || '').trim() || tg.chatId;
+    if (!token || !chatId) return res.status(400).json({ ok: false, error: 'No Telegram token/chat configured (OI tab or shared tg_config)' });
+    const pairQ = (req.query.pair || '').toLowerCase();
+    const wantKey = pairQ ? ((() => { try { return resolveKey(pairQ); } catch { return null; } })() || pairQ) : null;
+    // Only instruments with planned zones (unless ?all=1), optionally one pair.
+    const targets = Object.keys(instruments).filter(k =>
+      (wantKey ? k === wantKey : true) && ((instruments[k]?.zones || []).length || req.query.all));
+    if (!targets.length) return res.json({ ok: true, sent: 0, note: 'no instruments with planned levels' });
+    await sendTelegram(token, chatId,
+      `🧲 <b>OI Gamma — levels &amp; why</b>${vm?.generatedAt ? `\n<i>${new Date(vm.generatedAt).toUTCString()}</i>` : ''}`);
+    let sent = 0;
+    for (const k of targets) { if (await sendTelegram(token, chatId, _oiPlanMessage(k, instruments[k]))) sent++; }
+    res.json({ ok: true, sent, instruments: targets });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // The forward-test audit: join the accumulated trade log against the per-date OI
 // artifact → tagged-vs-untagged expectancy, per OI type, + round-number independence.
 app.get('/api/range-line-bot/oi-audit', async (req, res) => {
