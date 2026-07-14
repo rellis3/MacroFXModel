@@ -43,26 +43,42 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   return out;
 }
 
-export function oiSaveStore(store) {
-  // KV is the source of truth for the bots/pages and is roomy — write it FIRST so
-  // a local quota problem can never lose the data (that left the modal stuck open).
-  try { kvSet('oi_store', store); } catch (e) { console.warn('[OI] KV save failed:', e?.message); }
-  // localStorage is a ~5MB local cache; a full CME strike table can blow it. Save
-  // best-effort, shedding heavy convenience fields before giving up — NEVER throw.
+// Write the localStorage CACHE best-effort, shedding heavy fields to fit the ~5MB
+// cap. NEVER throws (a throw left the modal stuck open). KV holds the full copy
+// and the modal backfills any dropped raw from KV.
+function _saveLocalCache(store) {
   const builds = [
     () => store,
-    () => _trimStoreForLocal(store, { rawText: true }),                 // drop raw pastes (KV keeps them)
-    () => _trimStoreForLocal(store, { rawText: true, profile: true }),  // + drop GEX profiles
+    () => _trimStoreForLocal(store, { profile: true }),                 // drop GEX profiles first (rebuildable, not user-facing)
+    () => _trimStoreForLocal(store, { profile: true, rawText: true }),  // last resort: also drop raw pastes (KV keeps them; modal backfills from KV)
   ];
   for (const build of builds) {
     try { localStorage.setItem('oi_store', JSON.stringify(build())); return; }
     catch (e) {
       if (e?.name !== 'QuotaExceededError' && !/quota/i.test(e?.message || '')) {
-        console.warn('[OI] localStorage save failed:', e?.message); return;
+        console.warn('[OI] localStorage cache write failed:', e?.message); return;
       }
     }
   }
   console.warn('[OI] localStorage full even after trimming — data kept in KV only');
+}
+
+export async function oiSaveStore(store) {
+  // KV is the source of truth. The incoming `store` is rebuilt from the localStorage
+  // CACHE, which may have been quota-trimmed (raw pastes / GEX profile dropped for
+  // OTHER pairs). Writing it verbatim would leak that trim into KV and lose those
+  // pairs' raw for good. So UNION-MERGE onto the current KV store: the just-saved
+  // pair wins, but any field an incoming (trimmed) pair is missing falls back to KV,
+  // and pairs only in KV (e.g. saved on another device) are preserved. Deletion goes
+  // through removeOIInstrument, never by omission here.
+  try {
+    let kvStore = {};
+    try { const o = await kvGet('oi_store'); kvStore = o?.data || {}; } catch {}
+    const merged = { ...kvStore };
+    for (const [k, v] of Object.entries(store)) merged[k] = { ...(kvStore[k] || {}), ...v };
+    await kvSet('oi_store', merged);
+  } catch (e) { console.warn('[OI] KV save failed:', e?.message); }
+  _saveLocalCache(store);
 }
 
 // ── Modal ────────────────────────────────────────────────────────────────────
@@ -83,6 +99,26 @@ const OI_CME_PAIRS = new Set([
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'USD/CAD', 'USD/CHF',
   'NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP', 'US30_USD', 'US2000_USD',
 ]);
+
+// Recover the raw pastes for one pair from KV when localStorage lost them to a
+// quota trim. KV is the source of truth (oiSaveStore writes the FULL store there
+// first); this pulls just the open pair's raw fields — always small enough to fit.
+async function _backfillRawFromKV(sym) {
+  const blank = id => { const el = document.getElementById(id); return el && !el.value; };
+  if (!blank('oiRawData') && !blank('oiChangeData') && !blank('oiVolumeData')) return;
+  try {
+    const kvObj = await kvGet('oi_store');
+    const e = kvObj?.data?.[sym];
+    if (!e || S.currentPair?.symbol !== sym) return;   // pair switched while fetching → bail
+    const fill = (id, v) => { const el = document.getElementById(id); if (el && !el.value && v) el.value = v; };
+    fill('oiRawData', e.rawOI);
+    fill('oiChangeData', e.rawChg);
+    fill('oiVolumeData', e.rawVol);
+    const fe = document.getElementById('oiFuturesPrice');
+    if (fe && !fe.value && e.futures) fe.value = e.futures;
+    updateOIBasis();
+  } catch { /* offline / KV blip — boxes stay as-is */ }
+}
 
 export function openOIModal() {
   const sym = S.currentPair ? S.currentPair.symbol : 'EUR/USD';
@@ -125,6 +161,11 @@ export function openOIModal() {
   const volEl = document.getElementById('oiVolumeData');
   if (volEl) volEl.value = existing ? (existing.rawVol || '') : '';
   updateOIBasis();
+  // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
+  // locally to survive a big multi-pair store) — in that case the boxes above are
+  // blank even though KV still holds the full paste. Backfill from KV so the modal
+  // never looks empty after a big save. Async; fills only still-blank boxes.
+  _backfillRawFromKV(sym);
   document.getElementById('oiModalOverlay').classList.add('open');
 }
 
@@ -227,6 +268,17 @@ export function calcOISpot() {
   // spot-equivalent the Spot field expects (e.g. 0.0068 → 147.x for USD/JPY).
   if (futuresIsInverted(pair)) est = 1 / est;
   const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+  // The put/call-balance estimate drifts far from ATM on a FULL strike table
+  // (S&P landed ~6164 vs a real ~7524). If a live/auto-filled spot is present and
+  // the estimate diverges wildly from it, the estimate is the unreliable one —
+  // keep the real price rather than clobbering it. (The estimate is only meant as
+  // a last resort when there's no live spot at all.)
+  const cur = parseFloat(document.getElementById('oiSpotPrice')?.value)
+    || window._latestQuote?.price || window._latestQuote?.mid;
+  if (Number.isFinite(cur) && cur > 0 && basisImplausible(est - cur, cur)) {
+    oiToast(`OI estimate ${est.toFixed(digits)} is far from the live spot ${(+cur).toFixed(digits)} — full-table estimates are unreliable. Keeping the live price.`, true);
+    return;
+  }
   document.getElementById('oiSpotPrice').value = est.toFixed(digits);
   oiToast(`Spot estimated from OI balance: ${est.toFixed(digits)}`);
 }
@@ -739,7 +791,7 @@ export function processOIData() {
   }
   if (Object.keys(priorExpiries).length) inst.expiries = priorExpiries;
   store[pair] = inst;
-  oiSaveStore(store);
+  const _saved = oiSaveStore(store);   // async KV union-merge + local cache
 
   document.getElementById('oiRawData').value='';
   document.getElementById('oiChangeData').value='';
@@ -757,14 +809,22 @@ export function processOIData() {
   const pairLabel = OI_FRIENDLY[pair] || pair;
   oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`, basisClamped);
 
-  // Push updated entry data to Railway bot immediately so OI levels are reflected
-  window._forceKVSync?.().catch(() => {});
+  // Push updated entry data to Railway bot AFTER the KV merge lands so the sync
+  // reads the freshly-merged store (not a half-written one).
+  Promise.resolve(_saved).then(() => window._forceKVSync?.()).catch(() => {});
 }
 
-export function removeOIInstrument(pair) {
+export async function removeOIInstrument(pair) {
   const store = oiLoadStore();
   delete store[pair];
-  oiSaveStore(store);
+  // Explicit KV removal — oiSaveStore union-merges and would NOT drop the pair.
+  try {
+    let kvStore = {};
+    try { const o = await kvGet('oi_store'); kvStore = o?.data || {}; } catch {}
+    delete kvStore[pair];
+    await kvSet('oi_store', kvStore);
+  } catch (e) { console.warn('[OI] KV delete failed:', e?.message); }
+  _saveLocalCache(store);
   window.renderAll();
 }
 
