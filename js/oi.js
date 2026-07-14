@@ -29,12 +29,12 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   const out = {};
   for (const [k, v] of Object.entries(store)) {
     const c = { ...v };
-    if (rawText) { delete c.rawOI; delete c.rawChg; }
+    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; }
     if (profile) delete c.gexProfile;
     if (c.expiries) {
       const ex = {};
       for (const [el, ev] of Object.entries(c.expiries)) {
-        const e2 = { ...ev }; if (rawText) { delete e2.rawOI; delete e2.rawChg; } ex[el] = e2;
+        const e2 = { ...ev }; if (rawText) { delete e2.rawOI; delete e2.rawChg; delete e2.rawVol; } ex[el] = e2;
       }
       c.expiries = ex;
     }
@@ -122,6 +122,8 @@ export function openOIModal() {
   document.getElementById('oiMinOI').value      = existing ? (existing.minOI     || 20) : 20;
   document.getElementById('oiRawData').value    = existing ? (existing.rawOI  || '') : '';
   document.getElementById('oiChangeData').value = existing ? (existing.rawChg || '') : '';
+  const volEl = document.getElementById('oiVolumeData');
+  if (volEl) volEl.value = existing ? (existing.rawVol || '') : '';
   updateOIBasis();
   document.getElementById('oiModalOverlay').classList.add('open');
 }
@@ -680,7 +682,12 @@ export function processOIData() {
   // Volume magnets — top strikes by TODAY's volume (Lesson 1: activity vs OI's
   // commitment). Basis-shifted to spot-equivalent like the OI strikes.
   const volShift = (st) => basis !== 0 ? (futuresIsInverted(pair) ? 1 / st - basis : st - basis) : st;
-  const volumeMagnets = oiParseVolume(rawVol).slice(0, 8).map(v => ({ strike: +volShift(v.strike).toFixed(6), volume: v.volume }));
+  const _volParsed = oiParseVolume(rawVol);   // ORIGINAL strikes (pre-shift)
+  // Compact, re-parseable copy so the volume box survives save + repopulates on
+  // reopen (same reason as rawOI/rawChg — the raw text was never stored, so volume
+  // vanished and had to be re-pasted).
+  const _compactVol = _volParsed.map(v => `${v.strike}\t${v.volume}`).join('\n');
+  const volumeMagnets = _volParsed.slice(0, 8).map(v => ({ strike: +volShift(v.strike).toFixed(6), volume: v.volume }));
 
   const totalCallOI = parsed.calls.reduce((a,b)=>a+b,0);
   const totalPutOI  = parsed.puts.reduce((a,b)=>a+b,0);
@@ -716,7 +723,8 @@ export function processOIData() {
     savedAt: new Date().toLocaleString(),
     savedAtMs: Date.now(),
     rawOI: _compactOI,
-    rawChg: _compactChg
+    rawChg: _compactChg,
+    rawVol: _compactVol
   };
 
   const store = oiLoadStore();
