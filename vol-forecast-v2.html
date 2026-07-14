@@ -3231,6 +3231,19 @@ const OANDA_SYM = {
   us2000:'US2000_USD', uk100:'UK100_GBP', de30:'DE30_EUR',
 };
 
+// Per-instrument price precision for the chart y-axis + price-line labels.
+// Without this, Lightweight Charts auto-detects precision from the data and
+// picks 2 decimals — so every GBPUSD level shows "1.34" and every AUDUSD level
+// "0.70", making the forecast lines indistinguishable. Match OANDA's quoting:
+// JPY crosses = 3 dp, metals = 2 dp, indices = 1 dp, all other FX = 5 dp.
+function _priceFmt(name) {
+  const n = (name || '').toLowerCase();
+  if (n === 'gold' || n.startsWith('xau')) return { type: 'price', precision: 2, minMove: 0.01 };
+  if (['nq','spx500','us30','us2000','uk100','de30'].includes(n)) return { type: 'price', precision: 1, minMove: 0.1 };
+  if (n.endsWith('jpy')) return { type: 'price', precision: 3, minMove: 0.001 };
+  return { type: 'price', precision: 5, minMove: 0.00001 };
+}
+
 // Cache M5 data in-session (key = pair name)
 const _m5Cache = {};
 
@@ -3469,6 +3482,7 @@ async function loadM5Chart(name, f) {
         upColor:       '#10b981', downColor:       '#f97316',
         borderUpColor: '#10b981', borderDownColor: '#f97316',
         wickUpColor:   '#10b981', wickDownColor:   '#f97316',
+        priceFormat:   _priceFmt(name),   // full FX precision so levels aren't all "1.34"
         // Force the y-axis to include all forecast level prices so lines are always visible
         autoscaleInfoProvider: orig => {
           const r = orig();
@@ -3743,6 +3757,7 @@ function _buildModalChart(name) {
     upColor: '#10b981', downColor: '#f97316',
     borderUpColor: '#10b981', borderDownColor: '#f97316',
     wickUpColor: '#10b981', wickDownColor: '#f97316',
+    priceFormat: _priceFmt(name),   // full FX precision so levels aren't all "1.34"
     autoscaleInfoProvider: orig => {
       const r = orig();
       if (!r || !levelPrices.length) return r;
