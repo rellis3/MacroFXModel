@@ -84,6 +84,7 @@ import { newsExhaustion as _newsExhaustion } from './js/newsExhaustionEngine.js'
 import { vumanchuFade as _vumanchuFade } from './js/vumanchuFadeEngine.js';   // WaveTrend-confirmed fade at median/75th vs blind
 import { forecastStyleFade as _forecastStyleFade } from './js/forecastStyleFadeEngine.js';   // which forecaster's lines fade best (basis × line × fade/follow)
 import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio } from './js/pooledFadeEngine.js';   // pooled VuManChu fade w/ trader's real exit + cost sensitivity
+import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
@@ -9913,6 +9914,54 @@ app.post('/api/pooled-fade/run', express.json({ limit: '8kb' }), (req, res) => {
 });
 app.get('/api/pooled-fade/status/:jobId', (req, res) => {
   const job = poolJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Vol Horse Race — the gold workbook's estimator race, generalised to every ──
+// instrument. Does HAR-RV's win on gold hold for FX/indices, or does the ranking
+// flip? 8 σ-forecasters scored against next-day realised vol (QLIKE/MZ), OOS.
+const hrJobs = new Map();
+app.post('/api/vol-horse-race/run', express.json({ limit: '8kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '' } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `hr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of hrJobs) if (j.startedAt < Date.now() - 60 * 60_000) hrJobs.delete(id);
+  hrJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    const perInst = {}, log = [];
+    // tally of which model wins (by QLIKE) and how often HAR beats the platform σ
+    const winTally = {}; for (const m of _HR_MODELS) winTally[m] = 0;
+    let harBeatsPlat = 0, evaluated = 0;
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          if (!bars || bars.length < 8000) { log.push(`${cfg.name}: too few bars (${bars?.length || 0})`); continue; }
+          const ac = cfg.assetClass || 'fx';
+          const r = _volHorseRace(bars, ac, {});
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nDays}d / ${r.nScored || 0} scored)`); continue; }
+          perInst[cfg.name] = { assetClass: ac, winner: r.winner, ranked: r.ranked, scores: r.scores, platform: r.platform, harRank: r.harRank, platformRank: r.platformRank, harBeatsPlatform: r.harBeatsPlatform, harVsPlatformQlike: r.harVsPlatformQlike, nScored: r.nScored };
+          winTally[r.winner] = (winTally[r.winner] || 0) + 1;
+          if (r.harBeatsPlatform) harBeatsPlat++;
+          evaluated++;
+          log.push(`${cfg.name} (${ac}, ${src}): winner ${r.winner} · HAR #${r.harRank} vs platform ${r.platform} #${r.platformRank} (ΔQLIKE ${r.harVsPlatformQlike}) · ${r.nScored}d`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perInst);
+      if (!names.length) { hrJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      hrJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, models: _HR_MODELS, pairs: names, perInst, winTally, harBeatsPlatform: harBeatsPlat, evaluated, log } });
+    } catch (e) { hrJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/vol-horse-race/status/:jobId', (req, res) => {
+  const job = hrJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });

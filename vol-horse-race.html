@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vol Horse Race — which σ forecaster wins, per instrument?</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:20px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:1040px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 8px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input { width:74px; background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:2px 5px; font:11px 'DM Mono',monospace; text-align:right }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  a { color:#58a6ff } .win { background:rgba(63,185,80,.20); outline:1px solid var(--pos); font-weight:700 }
+  .plat { outline:1px dashed var(--amber) }
+  .big { font-size:26px; font-weight:700 } .lbl { color:var(--text3); font-size:10px; text-transform:uppercase; letter-spacing:.04em }
+  .row { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-end }
+</style>
+</head>
+<body>
+  <h1>Vol Horse Race <span class="muted" style="font-size:12px">— which σ forecaster wins, per instrument?</span></h1>
+  <div class="sub">
+    The gold workbook's estimator race (HAR-RV won for gold) generalised to <b>every instrument</b>. 8 σ-forecasters — <b>RW</b> (yesterday's realised vol, the floor), <b>EWMA</b> (RiskMetrics λ=0.94), <b>HV</b> (close-to-close, the platform's commodity σ), <b>Yang-Zhang</b> (the platform's FX σ), <b>GARCH</b> (the platform's index σ), <b>HAR-RV</b> (the workhorse), <b>Combo-5050</b> & <b>Combo-optimal</b> (HAR+GARCH blends) — each scored causally against next-day <b>realised</b> vol, pooled OOS. <b>Ranked on QLIKE</b> (lower = better; punishes under-forecasting vol). This is <b>forecast accuracy, not trading edge</b> — a better σ places the median/75th lines better, it does not itself make the fade profitable.
+    <span class="muted">Read: the <b class="pos">green</b> cell is the winner for that instrument; the <b class="amber">amber-dashed</b> cell is the platform's current σ for that class. If green ≠ amber, the platform is using a beatable estimator there.</span>
+  </div>
+  <button onclick="run()">▶ Run</button>
+  <label class="muted" style="margin-left:10px">Pair <input id="pair" value="" placeholder="(all)"></label>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=3) => v==null?'—':(+v).toFixed(d);
+const METRICS = [['qlike','QLIKE',1],['mzR2','MZ R²',0],['mzSlope','MZ slope',0],['corr','corr',0],['rmseVol','RMSE vol',0],['meanForecast','mean fc',0],['meanRealised','mean real',0]];
+let _timer=null;
+
+async function run(){
+  clearInterval(_timer); el('status').textContent='Starting…'; el('out').innerHTML='';
+  const body = { pair:el('pair').value.trim() };
+  let j; try { j = await (await fetch('/api/vol-horse-race/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/vol-horse-race/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Running… '+(s.elapsed||0)+'s (streaming 5-min bars per pair)'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; if(s.log) el('out').innerHTML='<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'; return; }
+    el('status').textContent = `${s.pairs.length} instruments scored`;
+    render(s);
+  }, 3000);
+}
+
+// which model won across all instruments + how often HAR beat the platform σ
+function summaryCard(s){
+  const total = s.evaluated || s.pairs.length;
+  const tally = Object.entries(s.winTally).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const harWins = s.harBeatsPlatform, pct = total?Math.round(harWins/total*100):0;
+  let h = `<div class="card"><div class="row">`;
+  h += `<div><div class="lbl">Instruments scored</div><div class="big">${total}</div></div>`;
+  h += `<div><div class="lbl">HAR-RV beats platform σ</div><div class="big ${pct>=60?'pos':pct<=40?'neg':'amber'}">${harWins}/${total}</div><div class="muted" style="font-size:10px">${pct}% of instruments</div></div>`;
+  h += `<div><div class="lbl">QLIKE winner tally</div><div style="font-size:12px;margin-top:4px">${tally.map(([m,v])=>`<b>${m}</b> ×${v}`).join(' · ')}</div></div>`;
+  h += `</div><div class="muted" style="font-size:11px;margin-top:10px">${
+    pct>=60 ? `HAR-RV's gold win <b class="pos">generalises</b> — it's the better σ on most instruments. Candidate: propose HAR as the platform's forecaster (a live-line improvement, separate from any trading edge).`
+    : pct<=40 ? `HAR-RV's gold win does <b class="neg">NOT</b> generalise — the platform's per-class σ (YZ/GARCH/HV) holds up on most instruments. No swap justified.`
+    : `Mixed — HAR wins on some classes, not others. Read the per-class rows before proposing any swap.`}</div></div>`;
+  return h;
+}
+
+function instTable(name, d){
+  let h = `<h2>${name} <span class="muted" style="font-size:11px">— ${d.assetClass} · ${d.nScored} OOS days · winner <b class="pos">${d.winner}</b> · platform ${d.platform} (#${d.platformRank}) · HAR #${d.harRank}</span></h2><div class="card"><table><tr><th>Model</th>`;
+  for(const [,lbl] of METRICS) h += `<th>${lbl}</th>`;
+  h += `</tr>`;
+  for(const m of d.ranked){ const sc=d.scores[m]; const isWin=m===d.winner, isPlat=m===d.platform;
+    h += `<tr><td class="${isWin?'win':''} ${isPlat?'plat':''}"><strong>${m}</strong>${isPlat?' <span class="muted" style="font-size:9px">(platform)</span>':''}</td>`;
+    for(const [k,,rank] of METRICS){ const v=sc[k];
+      h += `<td class="${isWin?'win':''}">${fmt(v, k==='qlike'||k==='mzR2'||k==='mzSlope'||k==='corr'?3:4)}</td>`;
+    }
+    h += `</tr>`;
+  }
+  h += `</table></div>`;
+  return h;
+}
+
+function render(s){
+  let h = summaryCard(s);
+  // group by asset class so the per-class verdict is readable
+  const byClass = {}; for(const nm of s.pairs){ const c=s.perInst[nm].assetClass; (byClass[c]=byClass[c]||[]).push(nm); }
+  for(const c of Object.keys(byClass)){ h += `<h2 style="border-bottom:1px solid var(--border);padding-bottom:3px">${c.toUpperCase()}</h2>`;
+    for(const nm of byClass[c]) h += instTable(nm, s.perInst[nm]); }
+  if(s.log) h += `<div class="card muted" style="font-size:10px">${s.log.join('<br>')}</div>`;
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>
