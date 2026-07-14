@@ -43,12 +43,10 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   return out;
 }
 
-export function oiSaveStore(store) {
-  // KV is the source of truth for the bots/pages and is roomy — write it FIRST so
-  // a local quota problem can never lose the data (that left the modal stuck open).
-  try { kvSet('oi_store', store); } catch (e) { console.warn('[OI] KV save failed:', e?.message); }
-  // localStorage is a ~5MB local cache; a full CME strike table can blow it. Save
-  // best-effort, shedding heavy convenience fields before giving up — NEVER throw.
+// Write the localStorage CACHE best-effort, shedding heavy fields to fit the ~5MB
+// cap. NEVER throws (a throw left the modal stuck open). KV holds the full copy
+// and the modal backfills any dropped raw from KV.
+function _saveLocalCache(store) {
   const builds = [
     () => store,
     () => _trimStoreForLocal(store, { profile: true }),                 // drop GEX profiles first (rebuildable, not user-facing)
@@ -58,11 +56,29 @@ export function oiSaveStore(store) {
     try { localStorage.setItem('oi_store', JSON.stringify(build())); return; }
     catch (e) {
       if (e?.name !== 'QuotaExceededError' && !/quota/i.test(e?.message || '')) {
-        console.warn('[OI] localStorage save failed:', e?.message); return;
+        console.warn('[OI] localStorage cache write failed:', e?.message); return;
       }
     }
   }
   console.warn('[OI] localStorage full even after trimming — data kept in KV only');
+}
+
+export async function oiSaveStore(store) {
+  // KV is the source of truth. The incoming `store` is rebuilt from the localStorage
+  // CACHE, which may have been quota-trimmed (raw pastes / GEX profile dropped for
+  // OTHER pairs). Writing it verbatim would leak that trim into KV and lose those
+  // pairs' raw for good. So UNION-MERGE onto the current KV store: the just-saved
+  // pair wins, but any field an incoming (trimmed) pair is missing falls back to KV,
+  // and pairs only in KV (e.g. saved on another device) are preserved. Deletion goes
+  // through removeOIInstrument, never by omission here.
+  try {
+    let kvStore = {};
+    try { const o = await kvGet('oi_store'); kvStore = o?.data || {}; } catch {}
+    const merged = { ...kvStore };
+    for (const [k, v] of Object.entries(store)) merged[k] = { ...(kvStore[k] || {}), ...v };
+    await kvSet('oi_store', merged);
+  } catch (e) { console.warn('[OI] KV save failed:', e?.message); }
+  _saveLocalCache(store);
 }
 
 // ── Modal ────────────────────────────────────────────────────────────────────
@@ -775,7 +791,7 @@ export function processOIData() {
   }
   if (Object.keys(priorExpiries).length) inst.expiries = priorExpiries;
   store[pair] = inst;
-  oiSaveStore(store);
+  const _saved = oiSaveStore(store);   // async KV union-merge + local cache
 
   document.getElementById('oiRawData').value='';
   document.getElementById('oiChangeData').value='';
@@ -793,14 +809,22 @@ export function processOIData() {
   const pairLabel = OI_FRIENDLY[pair] || pair;
   oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`, basisClamped);
 
-  // Push updated entry data to Railway bot immediately so OI levels are reflected
-  window._forceKVSync?.().catch(() => {});
+  // Push updated entry data to Railway bot AFTER the KV merge lands so the sync
+  // reads the freshly-merged store (not a half-written one).
+  Promise.resolve(_saved).then(() => window._forceKVSync?.()).catch(() => {});
 }
 
-export function removeOIInstrument(pair) {
+export async function removeOIInstrument(pair) {
   const store = oiLoadStore();
   delete store[pair];
-  oiSaveStore(store);
+  // Explicit KV removal — oiSaveStore union-merges and would NOT drop the pair.
+  try {
+    let kvStore = {};
+    try { const o = await kvGet('oi_store'); kvStore = o?.data || {}; } catch {}
+    delete kvStore[pair];
+    await kvSet('oi_store', kvStore);
+  } catch (e) { console.warn('[OI] KV delete failed:', e?.message); }
+  _saveLocalCache(store);
   window.renderAll();
 }
 
