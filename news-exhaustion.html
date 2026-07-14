@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>News-Exhaustion — does the calendar predict fade vs follow?</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:18px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:1000px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input { width:52px; background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:2px 5px; font:11px 'DM Mono',monospace; text-align:right }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  a { color:#58a6ff } .win { background:rgba(63,185,80,.12) }
+</style>
+</head>
+<body>
+  <h1>News-Exhaustion <span class="muted" style="font-size:12px">— does the economic calendar predict fade vs follow?</span></h1>
+  <div class="sub">
+    The one <b>ex-ante, exogenous, non-circular</b> conditioning signal — the calendar is known before the session opens. Thesis (near-replicated): high-impact <b>Major</b> news (NFP/CPI/FOMC/central-bank) drives volatility <b>expansion + continuation</b> — the trend day that blows through the 75th (you <b>follow</b>); quiet <b>none</b> sessions are the range days that revert (you <b>fade</b>). Each session is bucketed by its in-session news for the pair's currencies, then measured per bucket, <b>IS/OOS</b>. <span class="muted">Honest split: the <b>classifier</b> (news → more continuation) is likely to show; whether the after-cost fade/follow edge beats the unconditional baseline is harder — news is exactly when spreads are widest. The numbers separate them.</span>
+  </div>
+  <button onclick="run()">▶ Run</button>
+  <label class="muted" style="margin-left:10px">Pair <input id="pair" value="" placeholder="(all)" style="width:74px"></label>
+  <label class="muted" style="margin-left:8px">isFrac <input id="isf" value="0.5"></label>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=2) => v==null?'—':(+v).toFixed(d);
+let _timer=null;
+
+async function run(){
+  clearInterval(_timer); el('status').textContent='Starting…'; el('out').innerHTML='';
+  const body = { pair:el('pair').value.trim(), isFrac:parseFloat(el('isf').value)||0.5 };
+  let j; try { j = await (await fetch('/api/news-exhaustion/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/news-exhaustion/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Running… '+(s.elapsed||0)+'s'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; if(s.log) el('out').innerHTML='<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'; return; }
+    el('status').textContent = `${s.pairs.length} instruments`;
+    render(s.perPair, s.log);
+  }, 2500);
+}
+
+function bucketCells(bk){
+  if(!bk || bk.n===0) return `<td class="muted">—</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td>`;
+  return `<td class="muted">${bk.n}</td>
+    <td>${fmt(bk.reached75Pct,0)}%</td>
+    <td class="${bk.fade.exp>0?'pos':'neg'}">${fmt(bk.fade.exp,3)}</td>
+    <td class="${bk.follow.exp>0?'pos':'neg'}">${fmt(bk.follow.exp,3)}</td>`;
+}
+
+function render(pp, log){
+  // sort by the classifier signal strength (reached75 major−none) so the clearest cases surface
+  const rows = Object.entries(pp).sort((a,b)=>((b[1].classifier?.reached75_majorMinusNone??-99))-((a[1].classifier?.reached75_majorMinusNone??-99)));
+
+  let h = `<h2>Per-instrument — OOS news buckets (reached-75%, fade exp, follow exp)</h2><div class="card"><table><tr>
+    <th rowspan="2">Instrument</th>
+    <th colspan="4" style="text-align:center">Major news</th>
+    <th colspan="4" style="text-align:center">Minor news</th>
+    <th colspan="4" style="text-align:center">No news</th>
+    <th rowspan="2">news→cont?</th></tr>
+    <tr>${'<th>n</th><th>r75</th><th>fade</th><th>foll</th>'.repeat(3)}</tr>`;
+  for(const [name,r] of rows){ const o=r.oos, c=r.classifier;
+    const sig = c.signalPresent;
+    h += `<tr class="${sig?'win':''}"><td><strong>${name}</strong> <span class="muted">${r.assetClass}</span></td>
+      ${bucketCells(o.major)}${bucketCells(o.minor)}${bucketCells(o.none)}
+      <td class="${c.reached75_majorMinusNone>3?'pos':c.reached75_majorMinusNone<-3?'neg':'muted'}">${fmt(c.reached75_majorMinusNone,0)}pp ${sig?'✓':''}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">
+    <b>r75</b> = % of sessions whose dominant excursion reached the 75th band (expansion / trend-day proxy). <b>fade / foll</b> = after-cost expectancy (% of price) of fading vs following the 75th band, that bucket. <b>news→cont?</b> = Major reached75 − None reached75 (percentage points); <b class="pos">✓</b> = news days measurably more continuation-prone OOS.
+    <br><b>Read it in two steps:</b> (1) <i>Classifier</i> — is <b>r75 higher</b> and <b>foll less-negative / fade more-negative</b> on Major vs None? If yes, news genuinely predicts continuation (the likely-true part). (2) <i>Edge</i> — is any bucket's <b>fade or follow expectancy actually positive</b> after cost? That's the harder bar; a real classifier can still fail it because news = widest spreads.</div></div>`;
+
+  if(log) h += `<div class="card muted" style="font-size:10px">${log.join('<br>')}</div>`;
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>

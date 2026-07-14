@@ -80,6 +80,8 @@ import { forecastAccuracy as _forecastAccuracy } from './js/forecastAccuracyEngi
 import { reversionProof as _reversionProof } from './js/reversionProofEngine.js';   // per-day transparent reversion-vs-line proof
 import { sizePortfolio as _sizePortfolio } from './js/positionSizerEngine.js';   // vol-based position sizing off the forecast
 import { exhaustionForecast as _exhaustionForecast } from './js/exhaustionForecastEngine.js';   // fade-back line + range-budget-gated fade
+import { newsExhaustion as _newsExhaustion } from './js/newsExhaustionEngine.js';   // does news predict fade@median vs blow-through@75th
+import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
@@ -9707,6 +9709,59 @@ app.post('/api/exhaustion-forecast/run', express.json({ limit: '16kb' }), (req, 
 });
 app.get('/api/exhaustion-forecast/status/:jobId', (req, res) => {
   const job = exhJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── News-Exhaustion — does the economic calendar predict fade vs follow? ───────
+// Buckets each session by in-session news (Major/minor/none) for the pair's
+// currencies, then measures reached-75% + fade/follow expectancy per bucket,
+// IS/OOS. The calendar (calendar_events.csv, on disk) is parsed once + cached.
+const newsJobs = new Map();
+const _NEWS_CAL = { events: null };
+function _loadNewsCalendar() {
+  if (_NEWS_CAL.events) return _NEWS_CAL.events;
+  const p = path.join(__dirname, 'calendar_events.csv');
+  if (!fs.existsSync(p)) throw new Error('calendar_events.csv not found on disk');
+  _NEWS_CAL.events = _parseCalendarCsv(fs.readFileSync(p, 'utf8'));
+  return _NEWS_CAL.events;
+}
+app.post('/api/news-exhaustion/run', express.json({ limit: '8kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '', isFrac } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `news_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of newsJobs) if (j.startedAt < Date.now() - 60 * 60_000) newsJobs.delete(id);
+  newsJobs.set(jobId, { status: 'running', startedAt });
+  const opts = { isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5 };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      const events = _loadNewsCalendar();
+      log.push(`calendar: ${events.length} events (${events.filter(e => e.rank === 3).length} Major)`);
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const r = _newsExhaustion(bars, events, { ...opts, pair: cfg.name, assetClass: cfg.assetClass || 'fx' });
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nSessions}d)`); continue; }
+          r.src = src; perPair[cfg.name] = r;
+          const c = r.classifier, mj = r.oos.major, nn = r.oos.none;
+          log.push(`${cfg.name}: OOS reached75 major ${mj.reached75Pct}% vs none ${nn.reached75Pct}% · followExp maj ${mj.follow.exp} vs none ${nn.follow.exp} · signal ${c.signalPresent ? 'PRESENT' : 'none'} (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { newsJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      newsJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, perPair, pairs: names, log } });
+    } catch (e) { newsJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/news-exhaustion/status/:jobId', (req, res) => {
+  const job = newsJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
