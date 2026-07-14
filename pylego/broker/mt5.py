@@ -266,6 +266,15 @@ class Mt5Broker:
         return filling
 
     @staticmethod
+    def _safe_comment(comment, fallback: str) -> str:
+        """MT5 order-comment guard: strip to ASCII and cap at 31 chars (the
+        MqlTradeRequest.comment limit). A non-ASCII or over-long comment is rejected
+        with "Invalid comment argument". Any short ``[dedupe_tag]`` a caller embeds
+        survives the cap."""
+        raw = comment if comment is not None else fallback
+        return raw.encode('ascii', 'ignore').decode('ascii').strip()[:31] or fallback
+
+    @staticmethod
     def _norm_volume(info, lots: float) -> float:
         """Round a requested lot to the symbol's volume_step and clamp to
         [volume_min, volume_max] — MT5 rejects anything off that grid with
@@ -374,6 +383,10 @@ class Mt5Broker:
             self.log.info(f'{pair}: volume {lots} → {vol} (min {getattr(info, "volume_min", None)} '
                           f'max {getattr(info, "volume_max", None)} step {getattr(info, "volume_step", None)})')
 
+        # MT5 order comments must be short ASCII — a non-ASCII char (·, ×, →) or an
+        # over-long string is rejected with "Invalid comment argument".
+        safe_comment = self._safe_comment(comment, f'Bot {direction[0]}')
+
         order = {
             'action':       mt5.TRADE_ACTION_DEAL,
             'symbol':       mt5_sym,
@@ -383,7 +396,7 @@ class Mt5Broker:
             'sl':           round(sl, 5),
             'deviation':    self.deviation,
             'magic':        self.magic,
-            'comment':      comment if comment is not None else f'Bot {direction[0]}',
+            'comment':      safe_comment,
             'type_time':    mt5.ORDER_TIME_GTC,
             'type_filling': self.filling_mode(mt5_sym),
         }

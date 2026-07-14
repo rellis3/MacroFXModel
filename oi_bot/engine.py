@@ -28,8 +28,12 @@ from __future__ import annotations
 
 def zone_id(z: dict) -> str:
     """Stable one-shot key — same across intraday plan re-publishes so a restamped
-    plan can't double-enter a zone already taken."""
-    return f"{z.get('mode')}_{z.get('side')}_{z.get('level')}"
+    plan can't double-enter a zone already taken. The level is formatted compactly
+    (``:g`` drops float noise like 2976.9500000000003 → 2976.95) so the id doubles
+    as a short MT5 order comment / dedup tag."""
+    lvl = z.get("level")
+    lvl_s = f"{lvl:g}" if isinstance(lvl, (int, float)) else str(lvl)
+    return f"{z.get('mode')}_{z.get('side')}_{lvl_s}"
 
 
 def _tp(z: dict):

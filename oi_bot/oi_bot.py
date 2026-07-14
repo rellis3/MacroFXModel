@@ -411,11 +411,13 @@ def run(base_url: str, force_live: bool) -> None:
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), exp_px - spec["sl"],
                                     cfg.get("max_lot", 2.0), spec["size_factor"])
                     direction = "LONG" if spec["dir_up"] else "SHORT"
+                    # Short ASCII comment carrying the dedup tag ([zone_id]); the full
+                    # rationale rides the Telegram alert + positions tab, not the MT5
+                    # comment (which is capped at 31 ASCII chars).
                     tid = broker.enter(instr, direction, spec["sl"], spec["tp"], lots,
                                        max_spread(instr, cfg), paper,
-                                       comment=f"OI [{spec['mode']}] {spec['regime']} "
-                                               f"{spec['rationale']}"[:120],
-                                       dedupe_tag=spec["zone_id"])
+                                       comment=f"OI [{zid}]",
+                                       dedupe_tag=zid)
                     filled = tid is not None and tid != -1
                     if filled:
                         guard.record_trade(instr)
