@@ -40,5 +40,14 @@ ok("2.0 within [0.1, 5] step 0.1 unchanged", norm(Info(0.1, 5.0, 0.1), 2.0) == 2
 ok("no info → raw lot (old behaviour)", norm(None, 2.0) == 2.0)
 ok("zero/blank fields don't crash", norm(Info(0, 0, 0), 2.0) == 2.0)
 
+print("[comment sanitiser — the RUT 'Invalid comment' case]")
+safe = Mt5Broker._safe_comment
+ok("strips non-ASCII (· × →) from the rationale", safe("OI [fade] PIN · call wall 2976 × → fade", "x").isascii())
+ok("caps at 31 chars", len(safe("OI [maxpain_sell_2976.95] toward max pain 2937 concentrated", "x")) <= 31)
+ok("short ASCII comment passes through", safe("OI [fade_sell_2976.95]", "x") == "OI [fade_sell_2976.95]")
+ok("keeps the [dedup tag] intact (fits under 31)", "[fade_sell_2976.95]" in safe("OI [fade_sell_2976.95]", "x"))
+ok("empty after stripping → fallback", safe("· × →", "Bot S") == "Bot S")
+ok("None → fallback", safe(None, "Bot S") == "Bot S")
+
 print(f"\n{'ALL PASSED ✓' if fails == 0 else str(fails) + ' FAILED ✗'}")
 sys.exit(0 if fails == 0 else 1)
