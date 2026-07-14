@@ -45,6 +45,7 @@ log = logging.getLogger("oi_bot")
 
 MAGIC = 20260714                                            # unique to this bot
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
+REJECT_COOLDOWN_SECS = 60                                    # back-off after a rejected entry (anti-spam)
 
 DEFAULT_CFG = {
     "kill_switch": False,
@@ -308,6 +309,7 @@ def run(base_url: str, force_live: bool) -> None:
     tg_creds = _load_tg(cfg, kv)                 # refreshed each config cycle
 
     sessions: dict[str, OISession] = {}
+    reject_until: dict[str, float] = {}          # zone_id → epoch to retry after (anti-spam)
     plan = None
     last_plan = last_status = 0.0
 
@@ -402,6 +404,9 @@ def run(base_url: str, force_live: bool) -> None:
                 for spec in sess.decide(px, tol=_tol(cfg, instr)):
                     if spec["sl"] is None:
                         continue
+                    zid = spec["zone_id"]
+                    if reject_until.get(zid, 0) > nowt:
+                        continue                       # in reject cooldown — don't hammer the broker
                     exp_px = expected_fill(spec["entry"], spec["dir_up"], instr, broker)
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), exp_px - spec["sl"],
                                     cfg.get("max_lot", 2.0), spec["size_factor"])
@@ -414,7 +419,8 @@ def run(base_url: str, force_live: bool) -> None:
                     filled = tid is not None and tid != -1
                     if filled:
                         guard.record_trade(instr)
-                        sess.mark_entered(spec["zone_id"])
+                        sess.mark_entered(zid)
+                        reject_until.pop(zid, None)
                         log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['mode'].upper()} "
                                  f"{direction} @~{spec['entry']} SL {spec['sl']} TP {spec['tp']} "
                                  f"→ ticket {tid} lots {lots} ({spec['size_factor']}×)")
@@ -423,8 +429,13 @@ def run(base_url: str, force_live: bool) -> None:
                             send_telegram(tg_creds[0], tg_creds[1],
                                           entry_alert_text(instr, spec, lots, tid, paper))
                     else:
-                        log.warning(f"{instr} {spec['mode']} {spec['zone_id']} entry REJECTED — "
-                                    f"zone kept open for a later touch")
+                        # Back off so a hard rejection (invalid volume, market closed,
+                        # duplicate) doesn't re-fire every tick. Log once per cooldown.
+                        first = reject_until.get(zid, 0) <= nowt
+                        reject_until[zid] = nowt + REJECT_COOLDOWN_SECS
+                        if first:
+                            log.warning(f"{instr} {spec['mode']} {zid} entry REJECTED — "
+                                        f"backing off {REJECT_COOLDOWN_SECS}s (zone kept open)")
 
         time.sleep(max(cfg.get("tick_secs", 3), 1))
 
