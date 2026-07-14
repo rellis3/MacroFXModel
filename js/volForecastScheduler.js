@@ -21,6 +21,7 @@
 
 import * as kv from '../kv.js';
 import { computeForecast, computeForecastFromRV, detectNewsMultiplier } from './volForecast.js';
+import { fetchWeekEvents as _fetchWeekEvents } from './econCalendar.js';
 import { harShadowFields } from './forecastExport.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 
@@ -290,31 +291,25 @@ async function getDailyRV(cfg) {
   return rvSeries;
 }
 
-// ── Finnhub event fetch ───────────────────────────────────────────────────────
+// ── Scheduled-event fetch (news multiplier source) ────────────────────────────
+// Sources the FREE ForexFactory feed via the econCalendar brick (Finnhub's
+// /calendar/economic is premium and 403s on a free key — the reason the news
+// multiplier was silently stuck at 1×, i.e. no event-day range widening). The
+// brick returns the whole week in the app's normalized shape ({country (Finnhub
+// code), event, impact, time, ms, …}); we filter to the target session's UTC
+// date. `detectNewsMultiplier` reads country==='US' + impact + event, all present.
 async function fetchNewsEvents(targetDate) {
-  const key = process.env.FINNHUB_KEY;
-  if (!key) return [];
   const d = targetDate.toISOString().split('T')[0];
-  try {
-    const url = `https://finnhub.io/api/v1/calendar/economic?from=${d}&to=${d}&token=${key}`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'MacroFXDashboard/1.0' },
-      signal:  AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) {
-      console.error(`[NEWS-EVENTS] Finnhub ${d} HTTP ${res.status}`);
-      return [];
-    }
-    const data   = await res.json();
-    const events = data.economicCalendar ?? [];
-    const usEvents = events.filter(e => e.country === 'US');
-    console.log(`[NEWS-EVENTS] ${d}: ${events.length} total, ${usEvents.length} US — ${
-      usEvents.map(e => `"${e.event}" (${e.impact ?? '?'})`).join(', ') || 'none'}`);
-    return events;
-  } catch (err) {
-    console.error(`[NEWS-EVENTS] Finnhub ${d} fetch failed: ${err.message}`);
+  const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+  if (!res.ok) {
+    console.error(`[NEWS-EVENTS] ${d}: calendar feed unavailable — ${res.error}`);
     return [];
   }
+  const events  = res.events.filter(e => (e.time || '').startsWith(d));
+  const usEvents = events.filter(e => e.country === 'US');
+  console.log(`[NEWS-EVENTS] ${d} (${res.source}): ${events.length} total, ${usEvents.length} US — ${
+    usEvents.map(e => `"${e.event}" (${e.impact ?? '?'})`).join(', ') || 'none'}`);
+  return events;
 }
 
 // ── Core computation ──────────────────────────────────────────────────────────
