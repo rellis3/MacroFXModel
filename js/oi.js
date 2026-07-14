@@ -368,8 +368,53 @@ export function updateOIBasis() {
 
 // ── Parser ───────────────────────────────────────────────────────────────────
 
+// ── CME multi-expiry heatmap matrix ──────────────────────────────────────────
+// Some feeds export a STRIKE × EXPIRY grid: `Strike | C P (exp1) | C P (exp2) | …`,
+// tab-separated with empty cells. Pasting it whole broke the simple parser (it
+// collapsed the empty cells and grabbed mismatched columns → garbled OI, max pain
+// nowhere near price). We read the NEAR-DATED expiry (the first C/P pair after the
+// strike): it matches the course (near-dated = strongest gamma/pin) AND the huge
+// deep-OTM tail-hedge OI lives in later-dated columns, so those strikes are empty
+// here and don't drag max pain down. The header block also carries the futures
+// price (auto-fills the basis anchor).
+function _matrixHeaderIdx(lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const c = lines[i].split('\t').map(s => s.trim()).filter(Boolean);
+    if (c.length >= 4 && c.every(x => x === 'C' || x === 'P')) return i;
+  }
+  return -1;
+}
+export function parseOIMatrix(raw, { signed = false } = {}) {
+  if (!raw) return null;
+  const lines = raw.split('\n');
+  const hdr = _matrixHeaderIdx(lines);
+  if (hdr < 0) return null;                       // not the matrix format
+  let futures = null;                             // repeated price in the header block
+  for (let i = 0; i < hdr && futures == null; i++)
+    for (const tok of lines[i].split('\t')) {
+      const n = parseFloat(tok.replace(/,/g, ''));
+      if (Number.isFinite(n) && n > 50 && n < 1e7) { futures = n; break; }
+    }
+  const strikes = [], calls = [], puts = [];
+  for (let i = hdr + 1; i < lines.length && strikes.length < 500; i++) {
+    const cells = lines[i].split('\t');           // split on TAB — keep empty cells for alignment
+    const strike = parseFloat((cells[0] || '').replace(/,/g, ''));
+    if (!Number.isFinite(strike) || strike <= 0 || strike > 1e7) continue;
+    const rc = parseFloat((cells[1] || '').replace(/,/g, '')) || 0;   // near-dated call
+    const rp = parseFloat((cells[2] || '').replace(/,/g, '')) || 0;   // near-dated put
+    if (!signed && rc === 0 && rp === 0) continue;                    // no near-dated OI here (tail-hedge strikes)
+    strikes.push(strike);
+    calls.push(signed ? rc : Math.abs(rc));
+    puts.push(signed ? rp : Math.abs(rp));
+  }
+  return strikes.length >= 2 ? { strikes, calls, puts, futures } : null;
+}
+
 export function oiParseTable(raw) {
   if (!raw || !raw.trim()) return null;
+  const m = parseOIMatrix(raw);
+  if (m) return { strikes: m.strikes, calls: m.calls, puts: m.puts,
+    callChg: m.strikes.map(() => 0), putChg: m.strikes.map(() => 0), futures: m.futures };
   const strikes=[], calls=[], puts=[], callChg=[], putChg=[];
   const rows = raw.split('\n');
   for (let i = 0; i < Math.min(700, rows.length); i++) {
@@ -398,8 +443,17 @@ export function oiParseTable(raw) {
   return strikes.length >= 2 ? { strikes, calls, puts, callChg, putChg } : null;
 }
 
-export function oiParseChangeTable(raw, expectedLen) {
+export function oiParseChangeTable(raw, expectedLen, strikes = null) {
   if (!raw || !raw.trim()) return null;
+  const m = parseOIMatrix(raw, { signed: true });   // near-dated change (signed)
+  if (m) {
+    if (strikes) {   // align to the OI strikes by strike value (matrix rows may differ)
+      const map = new Map(m.strikes.map((s, i) => [s, [m.calls[i], m.puts[i]]]));
+      return { callChg: strikes.map(s => map.get(s)?.[0] ?? 0),
+               putChg: strikes.map(s => map.get(s)?.[1] ?? 0) };
+    }
+    return { callChg: m.calls, putChg: m.puts };
+  }
   const cc=[], pc=[];
   const rows = raw.split('\n');
   for (let i = 0; i < Math.min(700, rows.length); i++) {
@@ -419,6 +473,9 @@ export function oiParseChangeTable(raw, expectedLen) {
 // Volume = TODAY's traded activity (distinct from resting OI — Lesson 1).
 export function oiParseVolume(raw) {
   if (!raw || !raw.trim()) return [];
+  const m = parseOIMatrix(raw);   // near-dated total (call+put) volume per strike
+  if (m) return m.strikes.map((s, i) => ({ strike: s, volume: m.calls[i] + m.puts[i] }))
+    .filter(v => v.volume > 0).sort((a, b) => b.volume - a.volume);
   const out = [];
   for (const line of raw.split('\n').slice(0, 200)) {
     const row = line.trim().replace(/\t/g, ' ').replace(/ {2,}/g, ' ');
@@ -600,8 +657,17 @@ export function processOIData() {
   const parsed = oiParseTable(rawOI);
   if (!parsed || parsed.strikes.length < 2) { oiToast('Could not parse — check data format', true); return; }
 
+  // The CME matrix header carries the futures price — auto-fill the basis anchor
+  // if the field is blank (so the basis is measured, not estimated).
+  let futuresEff = futuresRaw;
+  if (!Number.isFinite(futuresEff) && Number.isFinite(parsed.futures)) {
+    futuresEff = parsed.futures;   // measured price from the paste header (not an estimate)
+    const fe = document.getElementById('oiFuturesPrice');
+    if (fe && !fe.value) fe.value = String(parsed.futures);
+  }
+
   if (rawChg.trim()) {
-    const chg = oiParseChangeTable(rawChg, parsed.strikes.length);
+    const chg = oiParseChangeTable(rawChg, parsed.strikes.length, parsed.strikes);
     if (chg) { parsed.callChg = chg.callChg; parsed.putChg = chg.putChg; }
   }
 
@@ -619,11 +685,11 @@ export function processOIData() {
   let futuresUsed = null;
   const isJpy = pair === 'USD/JPY' || (pair.includes('JPY') && !pair.startsWith('JPY'));
 
-  if (!isNaN(futuresRaw) && spot) {
-    // Manual or auto-fetched: CME raw price → convert to spot-equivalent for basis calc
-    const futuresSpot = futuresIsInverted(pair) ? 1 / futuresRaw : futuresRaw;
+  if (Number.isFinite(futuresEff) && spot) {
+    // Manual / auto-fetched / matrix-header: CME raw price → spot-equivalent for basis
+    const futuresSpot = futuresIsInverted(pair) ? 1 / futuresEff : futuresEff;
     basis = futuresSpot - spot;
-    futuresUsed = futuresRaw;
+    futuresUsed = futuresEff;
   } else if (spot && parsed.strikes.length >= 3) {
     // Auto: estimate ATM from OI put/call balance, derive basis from that
     const oiAtm = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
