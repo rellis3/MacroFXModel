@@ -51,8 +51,8 @@ export function oiSaveStore(store) {
   // best-effort, shedding heavy convenience fields before giving up — NEVER throw.
   const builds = [
     () => store,
-    () => _trimStoreForLocal(store, { rawText: true }),                 // drop raw pastes (KV keeps them)
-    () => _trimStoreForLocal(store, { rawText: true, profile: true }),  // + drop GEX profiles
+    () => _trimStoreForLocal(store, { profile: true }),                 // drop GEX profiles first (rebuildable, not user-facing)
+    () => _trimStoreForLocal(store, { profile: true, rawText: true }),  // last resort: also drop raw pastes (KV keeps them; modal backfills from KV)
   ];
   for (const build of builds) {
     try { localStorage.setItem('oi_store', JSON.stringify(build())); return; }
@@ -83,6 +83,26 @@ const OI_CME_PAIRS = new Set([
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'USD/CAD', 'USD/CHF',
   'NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP', 'US30_USD', 'US2000_USD',
 ]);
+
+// Recover the raw pastes for one pair from KV when localStorage lost them to a
+// quota trim. KV is the source of truth (oiSaveStore writes the FULL store there
+// first); this pulls just the open pair's raw fields — always small enough to fit.
+async function _backfillRawFromKV(sym) {
+  const blank = id => { const el = document.getElementById(id); return el && !el.value; };
+  if (!blank('oiRawData') && !blank('oiChangeData') && !blank('oiVolumeData')) return;
+  try {
+    const kvObj = await kvGet('oi_store');
+    const e = kvObj?.data?.[sym];
+    if (!e || S.currentPair?.symbol !== sym) return;   // pair switched while fetching → bail
+    const fill = (id, v) => { const el = document.getElementById(id); if (el && !el.value && v) el.value = v; };
+    fill('oiRawData', e.rawOI);
+    fill('oiChangeData', e.rawChg);
+    fill('oiVolumeData', e.rawVol);
+    const fe = document.getElementById('oiFuturesPrice');
+    if (fe && !fe.value && e.futures) fe.value = e.futures;
+    updateOIBasis();
+  } catch { /* offline / KV blip — boxes stay as-is */ }
+}
 
 export function openOIModal() {
   const sym = S.currentPair ? S.currentPair.symbol : 'EUR/USD';
@@ -125,6 +145,11 @@ export function openOIModal() {
   const volEl = document.getElementById('oiVolumeData');
   if (volEl) volEl.value = existing ? (existing.rawVol || '') : '';
   updateOIBasis();
+  // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
+  // locally to survive a big multi-pair store) — in that case the boxes above are
+  // blank even though KV still holds the full paste. Backfill from KV so the modal
+  // never looks empty after a big save. Async; fills only still-blank boxes.
+  _backfillRawFromKV(sym);
   document.getElementById('oiModalOverlay').classList.add('open');
 }
 
