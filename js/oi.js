@@ -109,18 +109,32 @@ async function autoFetchFuturesPrice(pair, futEl) {
   } catch { /* silently ignore — field stays blank or at saved value */ }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const overlay = document.getElementById('oiModalOverlay');
-  if (overlay) overlay.addEventListener('click', function(e) {
-    if (e.target === this) closeOIModal();
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('oiModalOverlay');
+    if (overlay) overlay.addEventListener('click', function(e) {
+      if (e.target === this) closeOIModal();
+    });
   });
-});
+}
 
 // CME FX futures quotes the foreign currency in USD for EUR/USD, GBP/USD, AUD/USD
 // but quotes the USD in foreign-currency terms for USD/JPY (6J), USD/CAD (6C), USD/CHF (6S).
 // For those three, the raw CME price must be inverted (1/price) to get the spot-equivalent.
 function futuresIsInverted(pair) {
   return pair === 'USD/JPY' || pair === 'USD/CAD' || pair === 'USD/CHF' || pair.includes('JPY');
+}
+
+// A genuine futures→spot basis is small: FX carry is a fraction of a %, gold
+// carry ~<1%, index fair-value ~1-2%. A basis larger than this is NOT a real
+// basis — it's a bad ATM estimate (e.g. estimateSpotFromOI's put/call centroid
+// drifts far from ATM when the WHOLE strike ladder is pasted rather than ~25
+// strikes around price). When that happens we must NOT shift the strikes: for
+// gold/indices futures≈spot so the correct fallback is no shift at all.
+export const MAX_BASIS_FRAC = 0.05;   // 5% of spot — clips garbage (gold saw ~46%), keeps every real basis
+export function basisImplausible(basis, spot) {
+  return Number.isFinite(basis) && Number.isFinite(spot) && spot > 0 &&
+    Math.abs(basis) > spot * MAX_BASIS_FRAC;
 }
 
 // ── Spot / futures price estimation from OI data ─────────────────────────────
@@ -193,6 +207,15 @@ export function autoEstimateBasis() {
     const pair = S.currentPair?.symbol ?? 'EUR/USD';
     const inverted = futuresIsInverted(pair);
     const digits = inverted ? 6 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+    // Don't inject an OI-centroid estimate that implies an implausible basis vs
+    // live spot — that's the full-strike-table skew. Leave the field blank so the
+    // save falls back to no shift (futures≈spot) instead of showing a wrong price.
+    const spotRaw = parseFloat(document.getElementById('oiSpotPrice')?.value);
+    const estSpot = inverted ? 1 / est : est;
+    if (Number.isFinite(spotRaw) && basisImplausible(estSpot - spotRaw, spotRaw)) {
+      updateOIBasis();   // shows the ⚠ explanation
+      return;
+    }
     futEl.value = est.toFixed(digits);
     futEl.dataset.estimated = '1';
     futEl.dataset.liveSymbol = '';
@@ -232,6 +255,17 @@ export function updateOIBasis() {
   const _liveSym  = futEl?.dataset.liveSymbol;
   const _srcLabel = futEl?.dataset.liveKind === 'index' ? 'index' : 'CME';
   const src = _liveSym ? ` (${_srcLabel} ${_liveSym})` : futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
+  // Implausible basis (usually an OI-centroid estimate off a full strike table) —
+  // refuse to shift, and say why. Saving in this state applies NO shift.
+  if (basisImplausible(basis, spotRaw)) {
+    const pct = (Math.abs(basis) / spotRaw * 100).toFixed(0);
+    el.textContent = `⚠ Basis ${basisSign}${basis.toFixed(digits)} is ${pct}% of price — not a real futures basis, so strikes will NOT be shifted. `
+      + (futEl?.dataset.estimated === '1'
+          ? 'The futures price was auto-estimated from OI and is off (pasting the full strike table skews it). Enter the CME futures price, or leave it blank — for gold/indices futures ≈ spot.'
+          : 'Check the CME futures price you entered.');
+    el.style.color = 'var(--amber, #f59e0b)';
+    return;
+  }
   el.textContent = `Basis: ${basisSign}${basis.toFixed(digits)}${src} · strikes shifted by ${(basis >= 0 ? '−' : '+') + Math.abs(basis).toFixed(digits)} → spot-equivalent levels`;
   el.style.color = 'var(--blue)';
 }
@@ -503,6 +537,19 @@ export function processOIData() {
     }
   }
 
+  // Guardrail: a basis larger than a few % of spot is not a real futures basis —
+  // it's a bad estimate (the OI put/call centroid drifts off ATM when the WHOLE
+  // strike ladder is pasted). Applying it would shift every strike by that bogus
+  // amount and wreck the levels (gold saw ~$1863 / ~46%). For gold/indices
+  // futures≈spot, so the safe fallback is NO shift.
+  let basisClamped = false;
+  if (basisImplausible(basis, spot)) {
+    console.warn(`[OI ${pair}] implausible basis ${basis.toFixed(2)} (${(Math.abs(basis) / spot * 100).toFixed(0)}% of spot ${spot}) — not shifting strikes`);
+    basis = 0;
+    futuresUsed = null;
+    basisClamped = true;
+  }
+
   // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices).
   // Inverted pairs (6J/6C/6S): CME strikes are in foreign-currency-per-USD space, so invert first.
   if (basis !== 0) {
@@ -643,9 +690,10 @@ export function processOIData() {
 
   closeOIModal();
   window.renderAll();
-  const basisNote = basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
+  const basisNote = basisClamped ? ' · basis ignored (implausible — no shift applied)'
+    : basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
   const pairLabel = OI_FRIENDLY[pair] || pair;
-  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`);
+  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`, basisClamped);
 
   // Push updated entry data to Railway bot immediately so OI levels are reflected
   window._forceKVSync?.().catch(() => {});
