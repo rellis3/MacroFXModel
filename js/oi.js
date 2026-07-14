@@ -227,6 +227,17 @@ export function calcOISpot() {
   // spot-equivalent the Spot field expects (e.g. 0.0068 → 147.x for USD/JPY).
   if (futuresIsInverted(pair)) est = 1 / est;
   const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+  // The put/call-balance estimate drifts far from ATM on a FULL strike table
+  // (S&P landed ~6164 vs a real ~7524). If a live/auto-filled spot is present and
+  // the estimate diverges wildly from it, the estimate is the unreliable one —
+  // keep the real price rather than clobbering it. (The estimate is only meant as
+  // a last resort when there's no live spot at all.)
+  const cur = parseFloat(document.getElementById('oiSpotPrice')?.value)
+    || window._latestQuote?.price || window._latestQuote?.mid;
+  if (Number.isFinite(cur) && cur > 0 && basisImplausible(est - cur, cur)) {
+    oiToast(`OI estimate ${est.toFixed(digits)} is far from the live spot ${(+cur).toFixed(digits)} — full-table estimates are unreliable. Keeping the live price.`, true);
+    return;
+  }
   document.getElementById('oiSpotPrice').value = est.toFixed(digits);
   oiToast(`Spot estimated from OI balance: ${est.toFixed(digits)}`);
 }
