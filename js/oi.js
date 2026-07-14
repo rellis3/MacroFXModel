@@ -22,9 +22,47 @@ export async function oiLoadStoreFromKV() {
   } catch(e) {}
 }
 
+// Drop the heavy/optional fields so a big store still fits localStorage's ~5MB
+// cap. Raw pastes and the full per-strike GEX profile are the bulk; both are
+// rebuildable/optional and the full copy always lives in KV.
+function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
+  const out = {};
+  for (const [k, v] of Object.entries(store)) {
+    const c = { ...v };
+    if (rawText) { delete c.rawOI; delete c.rawChg; }
+    if (profile) delete c.gexProfile;
+    if (c.expiries) {
+      const ex = {};
+      for (const [el, ev] of Object.entries(c.expiries)) {
+        const e2 = { ...ev }; if (rawText) { delete e2.rawOI; delete e2.rawChg; } ex[el] = e2;
+      }
+      c.expiries = ex;
+    }
+    out[k] = c;
+  }
+  return out;
+}
+
 export function oiSaveStore(store) {
-  localStorage.setItem('oi_store', JSON.stringify(store));
-  kvSet('oi_store', store);
+  // KV is the source of truth for the bots/pages and is roomy — write it FIRST so
+  // a local quota problem can never lose the data (that left the modal stuck open).
+  try { kvSet('oi_store', store); } catch (e) { console.warn('[OI] KV save failed:', e?.message); }
+  // localStorage is a ~5MB local cache; a full CME strike table can blow it. Save
+  // best-effort, shedding heavy convenience fields before giving up — NEVER throw.
+  const builds = [
+    () => store,
+    () => _trimStoreForLocal(store, { rawText: true }),                 // drop raw pastes (KV keeps them)
+    () => _trimStoreForLocal(store, { rawText: true, profile: true }),  // + drop GEX profiles
+  ];
+  for (const build of builds) {
+    try { localStorage.setItem('oi_store', JSON.stringify(build())); return; }
+    catch (e) {
+      if (e?.name !== 'QuotaExceededError' && !/quota/i.test(e?.message || '')) {
+        console.warn('[OI] localStorage save failed:', e?.message); return;
+      }
+    }
+  }
+  console.warn('[OI] localStorage full even after trimming — data kept in KV only');
 }
 
 // ── Modal ────────────────────────────────────────────────────────────────────
@@ -109,18 +147,32 @@ async function autoFetchFuturesPrice(pair, futEl) {
   } catch { /* silently ignore — field stays blank or at saved value */ }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const overlay = document.getElementById('oiModalOverlay');
-  if (overlay) overlay.addEventListener('click', function(e) {
-    if (e.target === this) closeOIModal();
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('oiModalOverlay');
+    if (overlay) overlay.addEventListener('click', function(e) {
+      if (e.target === this) closeOIModal();
+    });
   });
-});
+}
 
 // CME FX futures quotes the foreign currency in USD for EUR/USD, GBP/USD, AUD/USD
 // but quotes the USD in foreign-currency terms for USD/JPY (6J), USD/CAD (6C), USD/CHF (6S).
 // For those three, the raw CME price must be inverted (1/price) to get the spot-equivalent.
 function futuresIsInverted(pair) {
   return pair === 'USD/JPY' || pair === 'USD/CAD' || pair === 'USD/CHF' || pair.includes('JPY');
+}
+
+// A genuine futures→spot basis is small: FX carry is a fraction of a %, gold
+// carry ~<1%, index fair-value ~1-2%. A basis larger than this is NOT a real
+// basis — it's a bad ATM estimate (e.g. estimateSpotFromOI's put/call centroid
+// drifts far from ATM when the WHOLE strike ladder is pasted rather than ~25
+// strikes around price). When that happens we must NOT shift the strikes: for
+// gold/indices futures≈spot so the correct fallback is no shift at all.
+export const MAX_BASIS_FRAC = 0.05;   // 5% of spot — clips garbage (gold saw ~46%), keeps every real basis
+export function basisImplausible(basis, spot) {
+  return Number.isFinite(basis) && Number.isFinite(spot) && spot > 0 &&
+    Math.abs(basis) > spot * MAX_BASIS_FRAC;
 }
 
 // ── Spot / futures price estimation from OI data ─────────────────────────────
@@ -189,10 +241,22 @@ export function autoEstimateBasis() {
     const est = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
     if (est == null) return;
     const futEl = document.getElementById('oiFuturesPrice');
-    if (!futEl || futEl.dataset.manual === '1') return; // don't overwrite user's entry
+    // Never overwrite the user's entry OR a live-fetched futures price. The live
+    // quote (Yahoo future / OANDA CFD) is the real anchor per the course — the OI
+    // put/call centroid is only a last resort and must not clobber a real price.
+    if (!futEl || futEl.dataset.manual === '1' || futEl.dataset.liveSymbol) return;
     const pair = S.currentPair?.symbol ?? 'EUR/USD';
     const inverted = futuresIsInverted(pair);
     const digits = inverted ? 6 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+    // Don't inject an OI-centroid estimate that implies an implausible basis vs
+    // live spot — that's the full-strike-table skew. Leave the field blank so the
+    // save falls back to no shift (futures≈spot) instead of showing a wrong price.
+    const spotRaw = parseFloat(document.getElementById('oiSpotPrice')?.value);
+    const estSpot = inverted ? 1 / est : est;
+    if (Number.isFinite(spotRaw) && basisImplausible(estSpot - spotRaw, spotRaw)) {
+      updateOIBasis();   // shows the ⚠ explanation
+      return;
+    }
     futEl.value = est.toFixed(digits);
     futEl.dataset.estimated = '1';
     futEl.dataset.liveSymbol = '';
@@ -230,8 +294,20 @@ export function updateOIBasis() {
   const digits = isJpy ? 2 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
   const basisSign = basis >= 0 ? '+' : '';
   const _liveSym  = futEl?.dataset.liveSymbol;
-  const _srcLabel = futEl?.dataset.liveKind === 'index' ? 'index' : 'CME';
+  const _lk = futEl?.dataset.liveKind;
+  const _srcLabel = _lk === 'index' ? 'index' : _lk === 'cfd' ? 'CFD' : 'CME';
   const src = _liveSym ? ` (${_srcLabel} ${_liveSym})` : futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
+  // Implausible basis (usually an OI-centroid estimate off a full strike table) —
+  // refuse to shift, and say why. Saving in this state applies NO shift.
+  if (basisImplausible(basis, spotRaw)) {
+    const pct = (Math.abs(basis) / spotRaw * 100).toFixed(0);
+    el.textContent = `⚠ Basis ${basisSign}${basis.toFixed(digits)} is ${pct}% of price — not a real futures basis, so strikes will NOT be shifted. `
+      + (futEl?.dataset.estimated === '1'
+          ? 'The futures price was auto-estimated from OI and is off (pasting the full strike table skews it). Enter the CME futures price, or leave it blank — for gold/indices futures ≈ spot.'
+          : 'Check the CME futures price you entered.');
+    el.style.color = 'var(--amber, #f59e0b)';
+    return;
+  }
   el.textContent = `Basis: ${basisSign}${basis.toFixed(digits)}${src} · strikes shifted by ${(basis >= 0 ? '−' : '+') + Math.abs(basis).toFixed(digits)} → spot-equivalent levels`;
   el.style.color = 'var(--blue)';
 }
@@ -242,8 +318,8 @@ export function oiParseTable(raw) {
   if (!raw || !raw.trim()) return null;
   const strikes=[], calls=[], puts=[], callChg=[], putChg=[];
   const rows = raw.split('\n');
-  for (let i = 0; i < Math.min(200, rows.length); i++) {
-    if (strikes.length >= 100) break;
+  for (let i = 0; i < Math.min(700, rows.length); i++) {
+    if (strikes.length >= 500) break;   // full CME chains run a few hundred strikes; was 100 (truncated big pastes)
     let row = rows[i].trim();
     if (!row || row.length < 3) continue;
     if (/^\d/.test(row) === false && /[A-Za-z]/.test(row)) continue;
@@ -272,8 +348,8 @@ export function oiParseChangeTable(raw, expectedLen) {
   if (!raw || !raw.trim()) return null;
   const cc=[], pc=[];
   const rows = raw.split('\n');
-  for (let i = 0; i < Math.min(200, rows.length); i++) {
-    if (cc.length >= 100) break;
+  for (let i = 0; i < Math.min(700, rows.length); i++) {
+    if (cc.length >= 500) break;   // match oiParseTable's raised cap (change table must equal strike count)
     let row = rows[i].trim();
     if (!row || /[A-Za-z]/.test(row) && !/^\d/.test(row)) continue;
     row = row.replace(/\t/g,' ').replace(/ {2,}/g,' ').trim();
@@ -503,6 +579,31 @@ export function processOIData() {
     }
   }
 
+  // Guardrail: a basis larger than a few % of spot is not a real futures basis —
+  // it's a bad estimate (the OI put/call centroid drifts off ATM when the WHOLE
+  // strike ladder is pasted). Applying it would shift every strike by that bogus
+  // amount and wreck the levels (gold saw ~$1863 / ~46%). For gold/indices
+  // futures≈spot, so the safe fallback is NO shift.
+  let basisClamped = false;
+  if (basisImplausible(basis, spot)) {
+    console.warn(`[OI ${pair}] implausible basis ${basis.toFixed(2)} (${(Math.abs(basis) / spot * 100).toFixed(0)}% of spot ${spot}) — not shifting strikes`);
+    basis = 0;
+    futuresUsed = null;
+    basisClamped = true;
+  }
+
+  // Compact, re-parseable copy of the paste for the "reopen → re-analyse" flow,
+  // built from the ORIGINAL (pre-shift) strikes + OI. The full pasted text (all its
+  // extra columns, hundreds of rows) is ~100× larger and blew the localStorage
+  // ~5MB quota; only strike/call/put/change are ever used. oiParseTable /
+  // oiParseChangeTable re-read this identically.
+  const _compactOI = parsed.strikes
+    .map((s, i) => `${s}\t${parsed.calls[i]}\t${parsed.puts[i]}`).join('\n');
+  const _hasChg = (parsed.callChg || []).some(v => v) || (parsed.putChg || []).some(v => v);
+  const _compactChg = _hasChg
+    ? parsed.strikes.map((s, i) => `${s}\t${parsed.callChg[i] || 0}\t${parsed.putChg[i] || 0}`).join('\n')
+    : '';
+
   // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices).
   // Inverted pairs (6J/6C/6S): CME strikes are in foreign-currency-per-USD space, so invert first.
   if (basis !== 0) {
@@ -614,8 +715,8 @@ export function processOIData() {
     numRows: parsed.strikes.length, numLevels, minOI,
     savedAt: new Date().toLocaleString(),
     savedAtMs: Date.now(),
-    rawOI: rawOI.trim(),
-    rawChg: rawChg.trim()
+    rawOI: _compactOI,
+    rawChg: _compactChg
   };
 
   const store = oiLoadStore();
@@ -643,9 +744,10 @@ export function processOIData() {
 
   closeOIModal();
   window.renderAll();
-  const basisNote = basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
+  const basisNote = basisClamped ? ' · basis ignored (implausible — no shift applied)'
+    : basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
   const pairLabel = OI_FRIENDLY[pair] || pair;
-  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`);
+  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`, basisClamped);
 
   // Push updated entry data to Railway bot immediately so OI levels are reflected
   window._forceKVSync?.().catch(() => {});
