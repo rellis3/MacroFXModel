@@ -37,7 +37,11 @@ test('newsExhaustion: buckets sessions by news and reports per-bucket stats', ()
   assert.ok(!r.insufficient, 'enough data');
   assert.ok(r.oos.major.n > 0 && r.oos.none.n > 0, 'both major and none buckets populated OOS');
   assert.ok(typeof r.oos.major.reached75Pct === 'number', 'reached75 pct present');
-  assert.ok(r.oos.major.fade && r.oos.major.follow, 'fade + follow stats present');
+  assert.ok(typeof r.oos.major.reached50Pct === 'number', 'reached50 (median) pct present');
+  assert.ok(r.oos.major.fade && r.oos.major.follow, '75th fade + follow stats present');
+  assert.ok(r.oos.major.fade50 && r.oos.major.follow50, 'median fade + follow stats present');
+  // the median is reached at least as often as the 75th (it's the inner band)
+  assert.ok((r.is.major.reached50Pct ?? 0) >= (r.is.major.reached75Pct ?? 0), 'reached50 ≥ reached75');
 });
 
 test('newsExhaustion: Major-news sessions reach the 75th band more than quiet ones', () => {
