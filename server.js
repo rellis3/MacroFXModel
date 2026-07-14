@@ -6182,10 +6182,25 @@ async function _refreshOIBotZones() {
       if (!universe.has(key)) continue;                          // gold+indices (+ opted-in FX) only
       const pip = (() => { try { return _pipSize(key) || 0; } catch { return 0; } })() || 0.0001;
       const { stability, change } = _oiBotStabilityChange(hist, key);
-      const zones = buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change });
+      // Stale-data guard: if the live spot sits OUTSIDE the option chain's own
+      // strike range, the paste is at the wrong price level (stale / mis-scaled —
+      // e.g. SPX strikes ~6300 while the index is ~7540). Don't build/trade zones
+      // off it — flag it so the config table shows "⚠ re-paste".
+      const strikes = [...(Array.isArray(inst.callWalls) ? inst.callWalls : []),
+                       ...(Array.isArray(inst.putWalls) ? inst.putWalls : [])]
+        .map(w => w?.strike).filter(Number.isFinite);
+      let stale = null;
+      if (strikes.length >= 2 && Number.isFinite(inst.spot)) {
+        const lo = Math.min(...strikes), hi = Math.max(...strikes);
+        if (inst.spot < lo * 0.95 || inst.spot > hi * 1.05) {
+          stale = `spot ${inst.spot} outside strike range ${lo}–${hi} — stale/mis-scaled OI, re-paste`;
+        }
+      }
+      const zones = stale ? [] : buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change });
       const gex = inst.exposures?.gex ?? 0;
       instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
-        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length };
+        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale };
+      if (stale) console.warn(`[oi-bot] ${key}: ${stale} — skipping (no zones)`);
     }
     await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments }, timestamp: Date.now() }));
     const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
