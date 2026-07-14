@@ -82,6 +82,7 @@ import { sizePortfolio as _sizePortfolio } from './js/positionSizerEngine.js';  
 import { exhaustionForecast as _exhaustionForecast } from './js/exhaustionForecastEngine.js';   // fade-back line + range-budget-gated fade
 import { newsExhaustion as _newsExhaustion } from './js/newsExhaustionEngine.js';   // does news predict fade@median vs blow-through@75th
 import { vumanchuFade as _vumanchuFade } from './js/vumanchuFadeEngine.js';   // WaveTrend-confirmed fade at median/75th vs blind
+import { forecastStyleFade as _forecastStyleFade } from './js/forecastStyleFadeEngine.js';   // which forecaster's lines fade best (basis × line × fade/follow)
 import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio } from './js/pooledFadeEngine.js';   // pooled VuManChu fade w/ trader's real exit + cost sensitivity
 import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
@@ -9810,6 +9811,56 @@ app.post('/api/vumanchu-fade/run', express.json({ limit: '8kb' }), (req, res) =>
 });
 app.get('/api/vumanchu-fade/status/:jobId', (req, res) => {
   const job = vmcJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Forecast-Style Fade — which forecaster's lines fade best? ─────────────────
+// Runs the WT+VWAP-confirmed fade/follow against bands from 6 forecasters ×
+// 4 line types, pools the matrix (trade-weighted) across all instruments.
+const styleJobs = new Map();
+app.post('/api/forecast-style-fade/run', express.json({ limit: '8kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '', isFrac, stopPips, trailR } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `style_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of styleJobs) if (j.startedAt < Date.now() - 60 * 60_000) styleJobs.delete(id);
+  styleJobs.set(jobId, { status: 'running', startedAt });
+  const opts = { isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5, stopPips: Number.isFinite(+stopPips) ? +stopPips : 5, trailR: Number.isFinite(+trailR) ? +trailR : 2.0 };
+  (async () => {
+    const perInst = {}, log = [];
+    let BASES = null, LINES = null;
+    // trade-weighted accumulators: pooled[basis][line][action] = { sumExpN, n, sumWinN }
+    const pooled = {};
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const r = _forecastStyleFade(bars, { ...opts, pair: cfg.name, assetClass: cfg.assetClass || 'fx' });
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nSessions}d)`); continue; }
+          BASES = r.bases; LINES = r.lines;
+          perInst[cfg.name] = { assetClass: r.assetClass, best: r.best };
+          for (const b of r.bases) { pooled[b] ||= {}; for (const L of r.lines) { pooled[b][L] ||= { fade: { sumExpN: 0, n: 0, sumWinN: 0 }, follow: { sumExpN: 0, n: 0, sumWinN: 0 } };
+            for (const act of ['fade', 'follow']) { const c = r.matrix[b][L][act]; if (c.n > 0 && c.exp != null) { const p = pooled[b][L][act]; p.sumExpN += c.exp * c.n; p.n += c.n; p.sumWinN += (c.win ?? 0) * c.n; } } } }
+          log.push(`${cfg.name}: best ${r.best ? r.best.basis + '/' + r.best.line + '/' + r.best.action + ' exp ' + r.best.exp : '—'} (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perInst);
+      if (!names.length) { styleJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const matrix = {}; let best = null;
+      for (const b of BASES) { matrix[b] = {}; for (const L of LINES) { matrix[b][L] = {};
+        for (const act of ['fade', 'follow']) { const p = pooled[b][L][act]; const exp = p.n ? +(p.sumExpN / p.n).toFixed(4) : null; const win = p.n ? +(p.sumWinN / p.n).toFixed(1) : null; matrix[b][L][act] = { n: p.n, exp, win }; if (p.n >= 100 && exp != null && (best == null || exp > best.exp)) best = { basis: b, line: L, action: act, n: p.n, exp, win }; } } }
+      styleJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, bases: BASES, lines: LINES, matrix, best, perInst, pairs: names, log } });
+    } catch (e) { styleJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/forecast-style-fade/status/:jobId', (req, res) => {
+  const job = styleJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
