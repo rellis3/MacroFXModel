@@ -50,6 +50,7 @@ import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
+import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
@@ -2205,7 +2206,10 @@ async function _buildMorningBrief() {
     .sort((a, b) => a.ms - b.ms)
     .slice(0, 12)
     .map(e => `• ${new Date(e.ms).toISOString().slice(11, 16)} UTC — [${e.country}] ${e.event} (${(e.impact ?? '').toLowerCase()} impact)`)
-    .join('\n') || '(no tier-1/2 scheduled events on the calendar today)';
+    .join('\n')
+    || (_calFeedOk
+      ? '(no tier-1/2 scheduled events on the calendar today)'
+      : '(ECONOMIC CALENDAR FEED UNAVAILABLE — the scheduled-events feed could not be loaded. Do NOT describe today as quiet, data-light or event-free; state plainly that the economic calendar is unavailable and treat scheduled-event risk as unknown.)');
   const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data, headlines and scheduled events below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
 
 If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it, say what's expected/at stake, and frame the day as a wait-for-it around that event. Do not bury it.
@@ -2250,6 +2254,21 @@ app.post('/api/morning-brief', async (_req, res) => {
   finally { _morningBriefRunning = false; }
 });
 
+// This week's economic calendar for today.html's "Watch" strip + per-pair event
+// chips. Previously this route existed ONLY in the (now-unused) Cloudflare
+// worker, so on Railway it fell through to the SPA catch-all (returned
+// index.html) and the strip was permanently blank. Serves the free ForexFactory
+// feed (econCalendar brick); the client re-derives ms/ts from `time` and filters
+// to today itself. On feed failure returns { ok:false, error } so the client can
+// tell a dead feed from a quiet week (a bare [] still degrades gracefully).
+app.get('/api/events', async (_req, res) => {
+  try {
+    const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+    if (!r.ok) return res.json({ ok: false, reason: r.error || 'calendar feed unavailable', events: [] });
+    res.json(r.events);
+  } catch (e) { res.json({ ok: false, reason: e.message, events: [] }); }
+});
+
 // ── Auto-generation config + scheduler (Morning Brief + selected per-pair AI) ──
 // User-controlled from brief-config.html: turn the Morning Brief auto-refresh on/
 // off, and tick which pairs get an auto per-pair analysis each morning (the ones
@@ -2265,20 +2284,21 @@ const _AI_LK = { GOLD: 'XAU/USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', DE30: 
 // brief name → [COT symbol, flip] and → relevant news countries (ported from today.html)
 const _COT_MAP = { EURUSD:['EUR',false], GBPUSD:['GBP',false], USDJPY:['JPY',true], AUDUSD:['AUD',false], NZDUSD:['NZD',false], USDCAD:['CAD',true], USDCHF:['CHF',true], GOLD:['GOLD',false], NQ:['NQ',false], SPX500:['ES',false], US30:['YM',false], US2000:['RTY',false] };
 const _PAIR_NEWS_CC = { EURUSD:['US','EU','DE'], GBPUSD:['US','GB'], USDJPY:['US','JP'], AUDUSD:['US','AU'], NZDUSD:['US','NZ'], USDCAD:['US','CA'], USDCHF:['US','CH'], GBPJPY:['GB','JP'], EURJPY:['EU','DE','JP'], AUDJPY:['AU','JP'], CADJPY:['CA','JP'], GOLD:['US'], NQ:['US'], SPX500:['US'], US30:['US'], US2000:['US'], DE30:['DE','EU'], UK100:['GB'] };
-// Today's economic calendar — fetched once, cached 30 min (one Finnhub call feeds every pair).
-let _todayEventsCache = { data: null, at: 0 };
+// Today's economic calendar — the econCalendar brick caches internally (30 min),
+// so one fetch feeds every pair + the morning brief + /api/events.
+// Calendar now sources from the free ForexFactory feed (econCalendar brick),
+// with Finnhub as a best-effort fallback — Finnhub's /calendar/economic is a
+// PREMIUM endpoint that 403s on a free key, which is why every calendar
+// consumer silently showed "no events". `_calFeedOk` records whether the feed
+// itself succeeded so the morning brief can distinguish a genuinely-quiet day
+// from a dead feed instead of confidently declaring the day data-light.
+let _calFeedOk = true;
 async function _fetchTodayEvents() {
-  if (!process.env.FINNHUB_KEY) return [];
-  if (_todayEventsCache.data && Date.now() - _todayEventsCache.at < 30 * 60_000) return _todayEventsCache.data;
-  try {
-    const d = new Date().toISOString().slice(0, 10);
-    const r = await fetch(`https://finnhub.io/api/v1/calendar/economic?from=${d}&to=${d}&token=${process.env.FINNHUB_KEY}`, { signal: AbortSignal.timeout(10_000) });
-    if (!r.ok) return _todayEventsCache.data ?? [];
-    const j = await r.json();
-    const evs = (j.economicCalendar ?? []).map(e => ({ country: e.country, impact: e.impact, event: e.event, ms: new Date(e.time).getTime() })).filter(e => !isNaN(e.ms));
-    _todayEventsCache = { data: evs, at: Date.now() };
-    return evs;
-  } catch { return _todayEventsCache.data ?? []; }
+  const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+  _calFeedOk = res.ok;
+  const todayUTC = new Date().toISOString().slice(0, 10);
+  // Same shape as before ({country, impact, event, ms}) plus time/estimate/prev.
+  return res.events.filter(e => (e.time || '').startsWith(todayUTC));
 }
 const _aiPairName = (name, sym) => _AI_LK[name] ?? sym.replace('_', '/');
 const _aiKvKey = (name, sym) => 'ai_' + _aiPairName(name, sym).replace('/', '');
