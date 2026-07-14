@@ -511,6 +511,12 @@ The alert loop reads its levels from `computeDailyBrief()` (the `/api/daily-brie
 
 If a third consumer appears (or the QMR engine gets versioned out of `server.js`), extract `_qmrWalkTrade`/`_qmrNetReturn`/`QMR_TIMING`/`QMR_COSTS` into a proper `js/qmrCore.js` brick with a checked-in unit test.
 
+### 1q. Econ-calendar feed brick (2026-07-14) — free source + fail-visible
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Econ calendar core** | `js/econCalendar.js` | the scheduled-events FEED (not the gate — that's `eventGateCore`): `fetchWeekEvents({finnhubKey})` → `{ok, source, error, events}` — ForexFactory `ff_calendar_thisweek.json` (FREE, no key) primary, Finnhub `/calendar/economic` (PREMIUM, 403s on a free key — the silent-empty root cause) best-effort fallback, 30-min module cache, `ok:false` on a dead feed so callers distinguish a quiet day from a down feed. Pure normalizers: `normalizeForexFactory` (FF currency→Finnhub country via `CCY_TO_COUNTRY`, `title`→event, `forecast`/`previous`→estimate/prev, ISO+offset date→`ms`+UTC `"YYYY-MM-DD HH:MM:SS"` `time` the client re-parses) and `normalizeFinnhub` (reuses `eventGateCore.parseFinnhubTimeUTC`). Tested `js/econCalendar.test.mjs` (23 asserts, synthetic rows + mocked-fetch flow). | `server.js` `_fetchTodayEvents` (morning brief + per-pair snapshots; sets `_calFeedOk` → the brief's "feed UNAVAILABLE" sentinel vs "no events") + new `GET /api/events` (today.html "Watch" strip + per-pair chips — the route previously existed ONLY in the retired `_worker.js`, so on Railway it 404'd to the SPA fallback and the strip was permanently blank) + `volForecastScheduler.fetchNewsEvents` (the forecast news-multiplier → today.html "Event risk" tile; filters the week to the session's UTC date, feeds `detectNewsMultiplier`). Wiring the scheduler **restores event-day forecast range-widening** — the multiplier was silently stuck at 1× on the Finnhub-403 path (verified end-to-end: a CPI+Fed-testimony day now yields 1.18×). | ✅ built |
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
