@@ -245,7 +245,7 @@ parquet/TypedArray caches, walk-forward & Monte-Carlo helpers in
 | **QMR** | `nq-qmr-backtest.html` | NQ overnight→London two-gate continuation |
 | **Single-instrument** | `gold-backtest.html` | XAU multi-gate Fib/pivot/VWAP/VMU |
 | **Gated / hedge** | `liquidity-gate-backtest.html`, `hedge-backtest.html`, `claude-backtest.html` | Net-liquidity windows, equity+VIX hedge |
-| **Viewers / monitors** | `backtest-viewer.html`, `backtest-monitor.html` | Trade replay & live bot status |
+| **Viewers / monitors** | `backtest-viewer.html`, `bot-config.html#tab-backtest` | Trade replay & live bot status (`backtest-monitor.html` is now a redirect — folded in) |
 
 Most engines are walk-forward and no-lookahead (limit orders, chronological,
 ATR-validated, slippage/commission configurable). Standalone Python validators

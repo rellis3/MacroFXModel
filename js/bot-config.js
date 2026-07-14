@@ -590,7 +590,7 @@ async function loadBotStatus() {
 async function loadBtBotStatus() {
   try {
     const data = await kvGet('backtestsystem_status');
-    if (!data) { setText('btBsAge', 'No status — bot may not have run'); return; }
+    if (!data) { setText('btBsAge', 'No status — bot may not have run'); _renderBtPairGrid(null); return; }
     const age = Math.round((Date.now() - (data.timestamp ?? 0)) / 60000);
     setText('btBsAge',    `Last update ${age}m ago`);
     setText('btBsWindow', data.in_window ? '· IN WINDOW' : '· outside window');
@@ -614,7 +614,165 @@ async function loadBtBotStatus() {
           `<span class="bs-green">${p.direction?.toUpperCase()} @${p.open_price} SL:${p.sl} TP:${p.tp} P&L:${p.profit > 0 ? '+' : ''}${p.profit}</span>`
         ).join('  ')}`
       : '<span class="bs-dim">No open positions</span>';
+
+    _renderBtPairGrid(data);
   } catch (e) { /* non-critical */ }
+}
+window._loadBtBotStatus = loadBtBotStatus;
+
+// ── Backtest bot live pair monitor (ported from backtest-monitor.html so the
+// standalone page can be retired — same backtestsystem_status KV shape) ────────
+
+function _btDistClass(pips) {
+  if (pips <= 5)  return 'close';
+  if (pips <= 15) return 'medium';
+  return 'far';
+}
+
+function _btPriceTickPct(price, low, high) {
+  if (high <= low) return 50;
+  return Math.max(0, Math.min(100, ((price - low) / (high - low)) * 100));
+}
+
+function _renderBtPairCard(pair, d) {
+  const inZone  = d.in_zone;
+  const hasDir  = d.direction && inZone;
+  const dir     = d.direction || '';
+  const cardCls = hasDir ? 'bt-pair-card trading' : (inZone ? 'bt-pair-card in-zone' : 'bt-pair-card');
+
+  let badges = '';
+  if (inZone) badges += '<span class="bt-zone-badge in">IN ZONE</span>';
+  if (dir === 'long')  badges += '<span class="bt-zone-badge dir-long">LONG</span>';
+  if (dir === 'short') badges += '<span class="bt-zone-badge dir-short">SHORT</span>';
+
+  let asiaHtml = '<div class="bt-asia-bar"><div class="bt-asia-label">Asia Range</div>';
+  if (d.asia) {
+    const { low, high, range_pips } = d.asia;
+    const tickPct = d.price ? _btPriceTickPct(d.price, low, high) : null;
+    asiaHtml += `
+      <div class="bt-asia-range-row">
+        <span class="bt-asia-val">${low.toFixed(5)}</span>
+        <div class="bt-asia-track">
+          <div class="bt-asia-fill" style="width:100%"></div>
+          ${tickPct !== null ? `<div class="bt-price-tick" style="left:${tickPct}%"></div>` : ''}
+        </div>
+        <span class="bt-asia-val">${high.toFixed(5)}</span>
+        <span class="bt-asia-val" style="color:var(--text3)">${range_pips}p</span>
+      </div>`;
+  } else {
+    asiaHtml += '<div style="font-size:11px;color:var(--text3)">Range not yet formed</div>';
+  }
+  asiaHtml += '</div>';
+
+  let levelsHtml = '<div class="bt-levels-section"><div class="bt-levels-label">Confluence Levels</div>';
+  if (d.confluences && d.confluences.length) {
+    d.confluences.forEach((c, i) => {
+      const isNearest = i === 0;
+      const arrow     = c.above ? '↑' : '↓';
+      const fibStr    = c.fib != null ? c.fib.toFixed(2) : '—';
+      const tight     = c.isTight ? '<span class="bt-tight-dot" title="Tight confluence"></span>' : '';
+      const distCls   = _btDistClass(c.dist_pips);
+      const rowCls    = isNearest ? 'bt-level-row nearest' : 'bt-level-row';
+      levelsHtml += `
+        <div class="${rowCls}">
+          <span class="bt-level-arrow">${arrow}</span>
+          <span class="bt-level-price">${c.price.toFixed(5)}${tight}</span>
+          <span class="bt-level-fib">${fibStr}</span>
+          <span class="bt-level-dist ${distCls}">${c.dist_pips.toFixed(1)}p</span>
+        </div>`;
+    });
+  } else {
+    levelsHtml += '<div style="font-size:11px;color:var(--text3);padding:4px 0">No confluences — may still be forming</div>';
+  }
+  levelsHtml += '</div>';
+
+  let featHtml = '';
+  if (inZone && d.conviction !== null) {
+    const convPct = Math.round((d.conviction ?? 0) * 100);
+    const dirCls  = dir === 'long' ? 'long' : (dir === 'short' ? 'short' : '');
+    featHtml = `
+      <div class="bt-feat-section">
+        <div class="bt-feat-label">Feature Score</div>
+        <div class="bt-feat-conv">
+          <span>Direction: <span class="bt-feat-val ${dirCls}">${dir || 'none'}</span></span>
+          <span>Conviction: <span class="bt-feat-val">${convPct}%</span></span>
+          <span>Confirms: <span class="bt-feat-val">${d.confirms ?? '—'}</span></span>
+        </div>
+      </div>`;
+  }
+
+  let posHtml = '';
+  if (d.positions && d.positions.length) {
+    posHtml = '<div class="bt-pos-section"><div class="bt-pos-label">Open Position</div>';
+    d.positions.forEach(p => {
+      const dCls   = p.direction === 'long' ? 'dir-long' : 'dir-short';
+      const pnlCls = p.profit >= 0 ? 'bt-pnl-pos' : 'bt-pnl-neg';
+      const pnlStr = (p.profit >= 0 ? '+' : '') + p.profit.toFixed(2);
+      const levStr = p.level != null
+        ? `@ ${p.level.toFixed(5)}${p.level_fib != null ? ' ('+p.level_fib.toFixed(2)+')' : ''}`
+        : '';
+      posHtml += `
+        <div class="bt-pos-row">
+          <span class="bt-zone-badge ${dCls}">${p.direction.toUpperCase()}</span>
+          <span class="bt-pos-entry">${p.open_price.toFixed(5)}</span>
+          <span class="bt-pos-level">${levStr}</span>
+          <span class="${pnlCls}">${pnlStr}</span>
+        </div>
+        <div class="bt-pos-detail">SL ${p.sl.toFixed(5)} · TP ${p.tp.toFixed(5)} · ${p.lots} lots · #${p.ticket}</div>`;
+    });
+    posHtml += '</div>';
+  }
+
+  const priceStr = d.price != null ? d.price.toFixed(5) : '—';
+
+  return `
+    <div class="${cardCls}">
+      <div class="bt-card-head">
+        <span class="bt-pair-name">${pair}</span>
+        <span class="bt-pair-price">${priceStr}</span>
+        <div class="bt-pair-badges">${badges}</div>
+      </div>
+      ${asiaHtml}
+      ${levelsHtml}
+      ${featHtml}
+      ${posHtml}
+    </div>`;
+}
+
+function _renderBtPairGrid(data) {
+  const gridEl = document.getElementById('btPairGrid');
+  if (!gridEl) return;
+  if (!data) { gridEl.innerHTML = '<div class="bt-no-data">No status — bot may not have run</div>'; return; }
+
+  const pairs  = Object.entries(data.pairs || {});
+  const inZone = pairs.filter(([, d]) => d.in_zone).length;
+  const ageSec = Math.round((Date.now() - (data.timestamp || 0)) / 1000);
+  const ageStr = ageSec < 60 ? `${ageSec}s ago` : `${Math.round(ageSec / 60)}m ago`;
+  const inWin  = data.in_window;
+
+  setText('btDateBadge', data.date || '—');
+  const dateBadgeEl = document.getElementById('btDateBadge');
+  if (dateBadgeEl) dateBadgeEl.className = 'bt-badge ok';
+
+  setText('btPairsBadge', `${pairs.length} pairs`);
+  const pairsBadgeEl = document.getElementById('btPairsBadge');
+  if (pairsBadgeEl) pairsBadgeEl.className = pairs.length ? 'bt-badge ok' : 'bt-badge dim';
+
+  setText('btZoneBadge', inWin === false ? 'outside window' : `${inZone} in zone`);
+  const zoneBadgeEl = document.getElementById('btZoneBadge');
+  if (zoneBadgeEl) zoneBadgeEl.className = inWin === false ? 'bt-badge dim' : (inZone ? 'bt-badge warn' : 'bt-badge dim');
+
+  setText('btLastUpdate', `Updated ${ageStr}`);
+
+  if (!pairs.length) {
+    const msg = inWin === false
+      ? 'Outside trade window — monitoring paused. Levels will appear after entryWindow time.'
+      : 'Bot running but no price data yet — Asia session may still be forming (opens at 06:00 London).';
+    gridEl.innerHTML = `<div class="bt-no-data">${msg}</div>`;
+    return;
+  }
+
+  gridEl.innerHTML = pairs.map(([pair, d]) => _renderBtPairCard(pair, d)).join('');
 }
 
 // ── MT5 Credentials ───────────────────────────────────────────────────────────
@@ -676,7 +834,6 @@ function setStatus(type, msg) {
 }
 
 // ── Trade Journal (rendering) ─────────────────────────────────────────────────
-// Full implementation lives in backtest-monitor.html
 
 function _buildJournalSvg(rec) {
   const bars = rec.bars || [];

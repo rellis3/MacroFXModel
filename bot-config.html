@@ -387,6 +387,68 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
 .jchip { font-size:10px; padding:2px 6px; border-radius:10px; background:var(--s3); color:var(--text2); border:1px solid var(--border); }
 .jsvg-wrap { border-radius:6px; overflow:hidden; background:var(--s1); }
 .jsvg { width:100%; display:block; }
+/* ── Backtest Bot live pair monitor (ported from backtest-monitor.html) ── */
+.bt-meta-bar { display:flex; align-items:center; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
+.bt-badge { font-size:11px; font-family:'DM Mono',monospace; padding:4px 10px; border-radius:20px; }
+.bt-badge.ok  { background:var(--green-bg); border:1px solid var(--green-bd); color:var(--green); }
+.bt-badge.dim { background:var(--s2); border:1px solid var(--border); color:var(--text3); }
+.bt-badge.warn{ background:var(--amber-bg); border:1px solid var(--amber-bd); color:var(--amber); }
+#btLastUpdate { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; margin-left:auto; }
+
+.bt-pair-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:14px; }
+
+.bt-pair-card { background:var(--s1); border:1px solid var(--border); border-radius:var(--rl); overflow:hidden; transition:border-color .2s; }
+.bt-pair-card.in-zone { border-color:var(--amber-bd); box-shadow:0 0 0 2px var(--amber-bg); }
+.bt-pair-card.trading { border-color:var(--green-bd); box-shadow:0 0 0 2px var(--green-bg); }
+
+.bt-card-head { padding:11px 14px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+.bt-pair-name { font-size:13px; font-weight:600; font-family:'DM Mono',monospace; }
+.bt-pair-price { font-size:12px; font-family:'DM Mono',monospace; color:var(--text2); }
+.bt-pair-badges { margin-left:auto; display:flex; gap:5px; }
+.bt-zone-badge { font-size:10px; font-weight:600; padding:2px 7px; border-radius:10px; }
+.bt-zone-badge.in  { background:var(--amber-bg); border:1px solid var(--amber-bd); color:var(--amber); }
+.bt-zone-badge.dir-long  { background:var(--green-bg); border:1px solid var(--green-bd); color:var(--green); }
+.bt-zone-badge.dir-short { background:var(--red-bg); border:1px solid var(--red-bd); color:var(--red); }
+
+.bt-asia-bar { padding:8px 14px; border-bottom:1px solid var(--border); }
+.bt-asia-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text3); font-weight:600; margin-bottom:5px; }
+.bt-asia-range-row { display:flex; align-items:center; gap:8px; }
+.bt-asia-val { font-size:11px; font-family:'DM Mono',monospace; color:var(--text2); white-space:nowrap; }
+.bt-asia-track { flex:1; height:6px; background:var(--s3); border-radius:3px; position:relative; overflow:visible; }
+.bt-asia-fill  { height:100%; background:var(--blue-bd); border-radius:3px; }
+.bt-price-tick { position:absolute; top:-3px; width:2px; height:12px; background:var(--amber); border-radius:1px; transform:translateX(-50%); }
+
+.bt-levels-section { padding:8px 14px 12px; }
+.bt-levels-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text3); font-weight:600; margin-bottom:6px; }
+.bt-level-row { display:flex; align-items:center; gap:6px; padding:3px 0; border-bottom:1px solid var(--border); font-size:11px; font-family:'DM Mono',monospace; }
+.bt-level-row:last-child { border-bottom:none; }
+.bt-level-row.nearest  { background:var(--amber-bg); margin:0 -14px; padding:3px 14px; }
+.bt-level-arrow { width:14px; text-align:center; color:var(--text3); }
+.bt-level-price { flex:1; color:var(--text); }
+.bt-level-fib   { color:var(--text3); min-width:36px; text-align:right; }
+.bt-level-dist  { min-width:48px; text-align:right; }
+.bt-level-dist.close  { color:var(--amber); font-weight:600; }
+.bt-level-dist.medium { color:var(--text2); }
+.bt-level-dist.far    { color:var(--text3); }
+.bt-tight-dot { width:5px; height:5px; border-radius:50%; background:var(--green); display:inline-block; margin-left:3px; }
+
+.bt-feat-section { padding:6px 14px 10px; border-top:1px solid var(--border); font-size:11px; font-family:'DM Mono',monospace; color:var(--text2); }
+.bt-feat-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text3); font-weight:600; margin-bottom:4px; }
+.bt-feat-conv { display:flex; gap:12px; flex-wrap:wrap; }
+.bt-feat-val { color:var(--text); }
+.bt-feat-val.long  { color:var(--green); }
+.bt-feat-val.short { color:var(--red); }
+
+.bt-no-data { text-align:center; padding:60px 20px; color:var(--text3); font-family:'DM Mono',monospace; font-size:12px; }
+
+.bt-pos-section { padding:8px 14px 10px; border-top:2px solid var(--green-bd); background:var(--green-bg); }
+.bt-pos-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--green); font-weight:600; margin-bottom:6px; }
+.bt-pos-row { display:flex; align-items:center; gap:8px; font-size:11px; font-family:'DM Mono',monospace; margin-bottom:2px; flex-wrap:wrap; }
+.bt-pos-detail { font-size:10px; font-family:'DM Mono',monospace; color:var(--text3); margin-bottom:2px; }
+.bt-pos-entry { color:var(--text); }
+.bt-pos-level { color:var(--text3); flex:1; }
+.bt-pnl-pos { color:var(--green); font-weight:600; }
+.bt-pnl-neg { color:var(--red);   font-weight:600; }
 </style>
 </head>
 <body>
@@ -796,6 +858,20 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <div class="bs-rows">
         <div id="btBsPairs"></div>
         <div id="btBsPositions"></div>
+      </div>
+    </div>
+
+    <!-- Live Pair Monitor — Asia range, confluence levels, feature conviction (ported from backtest-monitor.html) -->
+    <div class="card">
+      <div class="card-title">Live Pair Monitor</div>
+      <div class="bt-meta-bar">
+        <span id="btDateBadge" class="bt-badge dim">—</span>
+        <span id="btPairsBadge" class="bt-badge dim">— pairs</span>
+        <span id="btZoneBadge" class="bt-badge dim">— in zone</span>
+        <span id="btLastUpdate">Never updated</span>
+      </div>
+      <div id="btPairGrid" class="bt-pair-grid">
+        <div class="bt-no-data">Waiting for backtestSystem data…<br>Make sure main.py is running and DASHBOARD_URL is set in .env</div>
       </div>
     </div>
 
@@ -5069,7 +5145,13 @@ function _renderTabArchiveState() {
   } catch (e) { /* Positions view not initialized yet this page load */ }
 }
 
-try { switchTab(localStorage.getItem('botConfigTab') || 'original'); } catch(e) { switchTab('original'); }
+// A URL hash (e.g. bot-config.html#tab-backtest) deep-links straight to that
+// tab, overriding the last-active tab remembered in localStorage.
+try {
+  const hashTab = (location.hash || '').replace(/^#tab-/, '');
+  const hasHashTarget = hashTab && document.getElementById('tab-' + hashTab);
+  switchTab(hasHashTarget ? hashTab : (localStorage.getItem('botConfigTab') || 'original'));
+} catch(e) { switchTab('original'); }
 _initTabArchive();
 
 // ── Beta Targets ──────────────────────────────────────────────────────────────

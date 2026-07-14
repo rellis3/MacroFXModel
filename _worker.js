@@ -2103,6 +2103,52 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         return json({ ok: true, trades, from, to });
       }
 
+      // -- /api/trade-history/backfill --------------------------
+      // One-off historical backfill: merges externally-supplied closed trades
+      // (e.g. pulled from MT5 deal history by a local script) into
+      // trade_hist_<bot_key>_<date>, bucketed by each trade's OWN time_close
+      // date. Unlike mergeTradeHistory() (used by the live status-push path,
+      // which always buckets under "today"), this lets a backfill land trades
+      // under the date they actually closed. Never touches the bot's live
+      // status key — only appends to the trade_hist_* history buckets.
+      // Body: { bot_key, trades: [{ position_id, symbol, direction, lots,
+      //         open_price, close_price, profit, swap, time_open, time_close }] }
+      if (path === '/api/trade-history/backfill' && request.method === 'POST') {
+        if (!env.FX_SCORES) return json({ ok: false, reason: 'KV not bound' });
+        try {
+          const body = await request.json();
+          const botKey = body.bot_key;
+          const trades = body.trades;
+          if (!botKey || !Array.isArray(trades) || !trades.length) {
+            return err('bot_key and a non-empty trades[] are required', 400);
+          }
+          const byDate = {};
+          for (const t of trades) {
+            if (t.position_id == null || !t.time_close) continue;
+            const d = new Date(t.time_close * 1000).toISOString().slice(0, 10);
+            (byDate[d] = byDate[d] || []).push(t);
+          }
+          let added = 0;
+          for (const [date, dayTrades] of Object.entries(byDate)) {
+            const histKey = `trade_hist_${botKey}_${date}`;
+            let existing = [];
+            try {
+              const raw = await env.FX_SCORES.get(histKey);
+              if (raw) existing = JSON.parse(raw);
+            } catch(e) {}
+            const seen  = new Set(existing.map(t => t.position_id));
+            const toAdd = dayTrades.filter(t => !seen.has(t.position_id));
+            if (toAdd.length) {
+              await env.FX_SCORES.put(histKey, JSON.stringify([...existing, ...toAdd]));
+              added += toAdd.length;
+            }
+          }
+          return json({ ok: true, added, dates: Object.keys(byDate).length });
+        } catch(e) {
+          return json({ ok: false, reason: e.message });
+        }
+      }
+
       // -- /api/sentiment ---------------------------------------
       // Myfxbook community outlook - retail long/short positioning.
       // Returns all 5 main pairs in one call. Cached in KV for 30 min.

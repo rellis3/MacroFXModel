@@ -35,7 +35,8 @@ Research ▾ · Equity ▾ · Gold ▾ · Systems ▾ · WIP ▾**.
 | `regime-backtest.html` | FX BT ▾ → ⚡ Regime BT | regime bot replay (V1–V5) | Replays the live regime bots' logic with regime-colored candles | 🔧 Contaminated by the ADX one-bar-future shift in `indicatorCore.js`/`hmm5m.js` (`PLATFORM_REVIEW_2026-07.md` §1.4 — still unfixed). Fix, then re-run, before reading any regime card. |
 | `backtest.html` | FX BT ▾ → 📈 Backtest Engine | `js/backtest.js` / `backtest-engine.js` | Browser CSV confluence backtester (the original) | 📚 Legacy exploratory; no IS/OOS, no cost bricks. |
 | `claude-backtest.html` | FX BT ▾ → 🔬 Claude BT | (AI-generated strategy sandbox) | Ad-hoc AI strategy experiments | 📚 Sandbox, not evidence. |
-| `backtest-viewer.html` / `backtest-monitor.html` | FX BT ▾ → ▶ / 🖥 | viewers | Trade replay / job monitor | 📚 Infrastructure. |
+| `backtest-viewer.html` | FX BT ▾ → ▶ | viewer | Trade replay | 📚 Infrastructure. |
+| `bot-config.html#tab-backtest` | FX BT ▾ → 🖥 | Live Pair Monitor + Trade Journal | Live bot status (`backtest-monitor.html` is now a redirect — folded in) | 📚 Infrastructure. |
 
 ## 2. Vol ▾ — the σ-forecast family
 
