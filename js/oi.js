@@ -22,9 +22,47 @@ export async function oiLoadStoreFromKV() {
   } catch(e) {}
 }
 
+// Drop the heavy/optional fields so a big store still fits localStorage's ~5MB
+// cap. Raw pastes and the full per-strike GEX profile are the bulk; both are
+// rebuildable/optional and the full copy always lives in KV.
+function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
+  const out = {};
+  for (const [k, v] of Object.entries(store)) {
+    const c = { ...v };
+    if (rawText) { delete c.rawOI; delete c.rawChg; }
+    if (profile) delete c.gexProfile;
+    if (c.expiries) {
+      const ex = {};
+      for (const [el, ev] of Object.entries(c.expiries)) {
+        const e2 = { ...ev }; if (rawText) { delete e2.rawOI; delete e2.rawChg; } ex[el] = e2;
+      }
+      c.expiries = ex;
+    }
+    out[k] = c;
+  }
+  return out;
+}
+
 export function oiSaveStore(store) {
-  localStorage.setItem('oi_store', JSON.stringify(store));
-  kvSet('oi_store', store);
+  // KV is the source of truth for the bots/pages and is roomy — write it FIRST so
+  // a local quota problem can never lose the data (that left the modal stuck open).
+  try { kvSet('oi_store', store); } catch (e) { console.warn('[OI] KV save failed:', e?.message); }
+  // localStorage is a ~5MB local cache; a full CME strike table can blow it. Save
+  // best-effort, shedding heavy convenience fields before giving up — NEVER throw.
+  const builds = [
+    () => store,
+    () => _trimStoreForLocal(store, { rawText: true }),                 // drop raw pastes (KV keeps them)
+    () => _trimStoreForLocal(store, { rawText: true, profile: true }),  // + drop GEX profiles
+  ];
+  for (const build of builds) {
+    try { localStorage.setItem('oi_store', JSON.stringify(build())); return; }
+    catch (e) {
+      if (e?.name !== 'QuotaExceededError' && !/quota/i.test(e?.message || '')) {
+        console.warn('[OI] localStorage save failed:', e?.message); return;
+      }
+    }
+  }
+  console.warn('[OI] localStorage full even after trimming — data kept in KV only');
 }
 
 // ── Modal ────────────────────────────────────────────────────────────────────
@@ -280,8 +318,8 @@ export function oiParseTable(raw) {
   if (!raw || !raw.trim()) return null;
   const strikes=[], calls=[], puts=[], callChg=[], putChg=[];
   const rows = raw.split('\n');
-  for (let i = 0; i < Math.min(200, rows.length); i++) {
-    if (strikes.length >= 100) break;
+  for (let i = 0; i < Math.min(700, rows.length); i++) {
+    if (strikes.length >= 500) break;   // full CME chains run a few hundred strikes; was 100 (truncated big pastes)
     let row = rows[i].trim();
     if (!row || row.length < 3) continue;
     if (/^\d/.test(row) === false && /[A-Za-z]/.test(row)) continue;
@@ -310,8 +348,8 @@ export function oiParseChangeTable(raw, expectedLen) {
   if (!raw || !raw.trim()) return null;
   const cc=[], pc=[];
   const rows = raw.split('\n');
-  for (let i = 0; i < Math.min(200, rows.length); i++) {
-    if (cc.length >= 100) break;
+  for (let i = 0; i < Math.min(700, rows.length); i++) {
+    if (cc.length >= 500) break;   // match oiParseTable's raised cap (change table must equal strike count)
     let row = rows[i].trim();
     if (!row || /[A-Za-z]/.test(row) && !/^\d/.test(row)) continue;
     row = row.replace(/\t/g,' ').replace(/ {2,}/g,' ').trim();
@@ -554,6 +592,18 @@ export function processOIData() {
     basisClamped = true;
   }
 
+  // Compact, re-parseable copy of the paste for the "reopen → re-analyse" flow,
+  // built from the ORIGINAL (pre-shift) strikes + OI. The full pasted text (all its
+  // extra columns, hundreds of rows) is ~100× larger and blew the localStorage
+  // ~5MB quota; only strike/call/put/change are ever used. oiParseTable /
+  // oiParseChangeTable re-read this identically.
+  const _compactOI = parsed.strikes
+    .map((s, i) => `${s}\t${parsed.calls[i]}\t${parsed.puts[i]}`).join('\n');
+  const _hasChg = (parsed.callChg || []).some(v => v) || (parsed.putChg || []).some(v => v);
+  const _compactChg = _hasChg
+    ? parsed.strikes.map((s, i) => `${s}\t${parsed.callChg[i] || 0}\t${parsed.putChg[i] || 0}`).join('\n')
+    : '';
+
   // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices).
   // Inverted pairs (6J/6C/6S): CME strikes are in foreign-currency-per-USD space, so invert first.
   if (basis !== 0) {
@@ -665,8 +715,8 @@ export function processOIData() {
     numRows: parsed.strikes.length, numLevels, minOI,
     savedAt: new Date().toLocaleString(),
     savedAtMs: Date.now(),
-    rawOI: rawOI.trim(),
-    rawChg: rawChg.trim()
+    rawOI: _compactOI,
+    rawChg: _compactChg
   };
 
   const store = oiLoadStore();
