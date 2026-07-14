@@ -170,8 +170,18 @@
 .v2-rm-lbl.center .val { color: var(--text); font-weight: 700; }
 
 /* ── v2 M5 mini-chart (Lightweight Charts) ───────────────────────────────────── */
-.v2-m5-wrap { position: relative; height: 220px; margin: 4px 0 2px;
+.v2-m5-wrap { position: relative; height: 300px; margin: 4px 0 2px;
   border-radius: 6px; overflow: hidden; background: var(--s2); }
+/* Forecast-level legend strip — the 8 levels live here instead of crammed onto the
+   chart's price axis, which now shows only Day H / live price / Day L. */
+.v2-lvl-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 16px;
+  margin: 8px 2px 6px; }
+.v2-lvl-row { display: flex; align-items: center; gap: 8px;
+  font-family: 'DM Mono', monospace; font-size: 10.5px; padding: 1px 0; }
+.v2-lvl-swatch { width: 20px; flex: none; border-top-width: 2px; border-top-style: solid; }
+.v2-lvl-name { color: var(--text2); flex: none; min-width: 64px; }
+.v2-lvl-dots { flex: 1; border-bottom: 1px dotted var(--border2); transform: translateY(-3px); }
+.v2-lvl-price { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .v2-m5-empty { height: 40px; display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text2); background: var(--s2);
   border-radius: 4px; margin: 4px 0 2px; border: 1px solid var(--border); }
@@ -1732,6 +1742,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
       <div class="v2-m5-wrap" id="m5wrap-${name}" onclick="openChartModal('${name}')" title="Click to expand chart"></div>
       <button class="v2-m5-expand" onclick="openChartModal('${name}')" title="Expand chart">⤢</button>
     </div>
+    <div class="v2-lvl-legend" id="m5legend-${name}"></div>
     <div class="v2-m5-status" id="m5status-${name}"></div>
     ${buildRangeMap(name, f)}
     <button class="v2-bars-toggle" type="button" onclick="(function(btn){var b=btn.closest('.v2-card').querySelector('.v2-metric-bars');var open=b.style.display!=='none';b.style.display=open?'none':'flex';btn.querySelector('.v2-bars-arrow').textContent=open?'▸':'▾';})(this)">
@@ -3309,6 +3320,28 @@ function _renderHitChips(name, dayOpen, lineDefs, chartData) {
   hitsEl.innerHTML = hits.join('');
 }
 
+// Render the forecast-level legend strip below the chart. The 8 levels used to
+// crowd the chart's price axis (all overlapping); they now live here as a
+// two-column strip — up-levels left, down-levels right — with the exact price.
+function _renderLevelLegend(name, dayOpen, lineDefs) {
+  const el = document.getElementById(`m5legend-${name}`);
+  if (!el) return;
+  if (!dayOpen) { el.innerHTML = ''; return; }
+  const dp  = _priceFmt(name).precision;
+  const Dot = LightweightCharts?.LineStyle?.Dotted;
+  const rows = lineDefs.filter(d => d.pct).map(({ pct, side, color, style, title }) => {
+    const price = (dayOpen * (1 + side * pct / 100)).toFixed(dp);
+    const dash  = (style === Dot) ? 'dotted' : 'dashed';
+    return `<div class="v2-lvl-row">
+      <span class="v2-lvl-swatch" style="border-top-style:${dash};border-top-color:${color}"></span>
+      <span class="v2-lvl-name">${title}</span>
+      <span class="v2-lvl-dots"></span>
+      <span class="v2-lvl-price">${price}</span>
+    </div>`;
+  });
+  el.innerHTML = rows.join('');
+}
+
 // Live rescan — fetch fresh M5 bars, update latest candle + hit chips (no chart rebuild)
 async function _rescanHits(name) {
   const meta = _chartMeta[name];
@@ -3447,7 +3480,7 @@ async function loadM5Chart(name, f) {
 
       const chart = LightweightCharts.createChart(w, {
         width:  w.clientWidth  || 280,
-        height: 220,
+        height: 300,
         layout: {
           background: { type: 'solid', color: 'transparent' },
           textColor:  '#9ca3af',
@@ -3498,13 +3531,16 @@ async function loadM5Chart(name, f) {
       });
       series.setData(chartData);
 
-      // Add price lines (guaranteed in-range by autoscaleInfoProvider above)
-      for (const { pct, side, color, style, title, axis } of lineDefs) {
+      // Add price lines (guaranteed in-range by autoscaleInfoProvider above).
+      // Draw the level lines across the chart but WITHOUT axis labels — the 8
+      // forecast prices are listed in the legend strip below, so the axis stays
+      // scannable (only Day H / live price / Day L keep labels).
+      for (const { pct, side, color, style, title } of lineDefs) {
         if (!pct || !dayOpen) continue;
         series.createPriceLine({
           price: dayOpen * (1 + side * pct / 100),
           color, lineWidth: 1, lineStyle: style,
-          title, axisLabelVisible: axis,
+          title, axisLabelVisible: false,
         });
       }
 
@@ -3556,6 +3592,9 @@ async function loadM5Chart(name, f) {
 
       // Level hit times — scan today-only bars to find when each level was first touched
       _renderHitChips(name, dayOpen, lineDefs, hitsData);
+
+      // Forecast-level legend strip below the chart (replaces crammed axis labels)
+      _renderLevelLegend(name, dayOpen, lineDefs);
 
       // Store today-only bars in chartMeta so _rescanHits works correctly
       _chartMeta[name] = { series, dayOpen, lineDefs, chartData: hitsData, f };
