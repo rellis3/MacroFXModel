@@ -203,7 +203,10 @@ export function autoEstimateBasis() {
     const est = estimateSpotFromOI(parsed.strikes, parsed.calls, parsed.puts);
     if (est == null) return;
     const futEl = document.getElementById('oiFuturesPrice');
-    if (!futEl || futEl.dataset.manual === '1') return; // don't overwrite user's entry
+    // Never overwrite the user's entry OR a live-fetched futures price. The live
+    // quote (Yahoo future / OANDA CFD) is the real anchor per the course — the OI
+    // put/call centroid is only a last resort and must not clobber a real price.
+    if (!futEl || futEl.dataset.manual === '1' || futEl.dataset.liveSymbol) return;
     const pair = S.currentPair?.symbol ?? 'EUR/USD';
     const inverted = futuresIsInverted(pair);
     const digits = inverted ? 6 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
@@ -253,7 +256,8 @@ export function updateOIBasis() {
   const digits = isJpy ? 2 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
   const basisSign = basis >= 0 ? '+' : '';
   const _liveSym  = futEl?.dataset.liveSymbol;
-  const _srcLabel = futEl?.dataset.liveKind === 'index' ? 'index' : 'CME';
+  const _lk = futEl?.dataset.liveKind;
+  const _srcLabel = _lk === 'index' ? 'index' : _lk === 'cfd' ? 'CFD' : 'CME';
   const src = _liveSym ? ` (${_srcLabel} ${_liveSym})` : futEl?.dataset.estimated === '1' ? ' (OI estimate)' : '';
   // Implausible basis (usually an OI-centroid estimate off a full strike table) —
   // refuse to shift, and say why. Saving in this state applies NO shift.

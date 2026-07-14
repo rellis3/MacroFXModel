@@ -2469,42 +2469,70 @@ Reply in this exact format (use ** for bold headers):
 // CME futures live price — proxies Yahoo Finance so the browser avoids CORS issues.
 // Returns { ok, price, symbol } where price is the raw CME futures price.
 // Inverted pairs (6J, 6C, 6S) return the raw CME quote; client converts to spot-equivalent.
+// The futures-price anchor for the OI basis conversion (Basis = Futures − Spot;
+// spot-level = strike − basis). It MUST be a measured price, never an OI estimate
+// (the course, education/open-interest-course-notes.md §Lesson 03). Two sources,
+// tried in order so a Yahoo outage/rate-limit doesn't silently drop the bot back
+// to the bad OI-centroid estimate:
+//   1) Yahoo futures (GC=F, ES=F, 6E=F …) — the real CME future (query1 → query2).
+//   2) OANDA fallback — the instrument's own CFD/spot price. For gold + indices the
+//      retail CFD tracks the future closely (course §Lesson 03: "index CFDs track
+//      the futures, basis small"), so it's a sound anchor; for FX it's spot, giving
+//      basis≈0 (a few pips off) — still far better than a garbage estimate.
 app.get('/api/futures-quote', async (req, res) => {
   const FUTURES_MAP = {
-    'EUR/USD':    '6E=F',
-    'GBP/USD':    '6B=F',
-    'USD/JPY':    '6J=F',
-    'AUD/USD':    '6A=F',
-    'XAU/USD':    'GC=F',
-    'USD/CAD':    '6C=F',
-    'USD/CHF':    '6S=F',
-    'NAS100_USD': 'NQ=F',
-    'SPX500_USD': 'ES=F',
-    'US30_USD':   'YM=F',
-    'US2000_USD': 'RTY=F',
-    // DAX/FTSE futures are not reliably carried by Yahoo (Eurex/ICE listed, not CME).
-    // Fall back to the cash index as a price reference — basis to the index is small and
-    // the client labels these as "index" rather than "CME". (^ symbols, best-effort.)
-    'DE30_USD':   '^GDAXI',
-    'UK100_GBP':  '^FTSE',
+    'EUR/USD': '6E=F', 'GBP/USD': '6B=F', 'USD/JPY': '6J=F', 'AUD/USD': '6A=F',
+    'XAU/USD': 'GC=F', 'USD/CAD': '6C=F', 'USD/CHF': '6S=F',
+    'NAS100_USD': 'NQ=F', 'SPX500_USD': 'ES=F', 'US30_USD': 'YM=F', 'US2000_USD': 'RTY=F',
+    // DAX/FTSE futures aren't reliably on Yahoo (Eurex/ICE, not CME) → cash index ref.
+    'DE30_USD': '^GDAXI', 'UK100_GBP': '^FTSE',
   };
-  const pair   = req.query.pair;
+  // OANDA instrument for the fallback (CFD ≈ future for gold/indices; spot for FX).
+  const OANDA_MAP = {
+    'EUR/USD': 'EUR_USD', 'GBP/USD': 'GBP_USD', 'USD/JPY': 'USD_JPY', 'AUD/USD': 'AUD_USD',
+    'XAU/USD': 'XAU_USD', 'USD/CAD': 'USD_CAD', 'USD/CHF': 'USD_CHF',
+    'NAS100_USD': 'NAS100_USD', 'SPX500_USD': 'SPX500_USD', 'US30_USD': 'US30_USD',
+    'US2000_USD': 'US2000_USD', 'DE30_USD': 'DE30_EUR', 'UK100_GBP': 'UK100_GBP',
+  };
+  const pair = req.query.pair;
   const symbol = FUTURES_MAP[pair];
-  if (!symbol) return res.json({ ok: false, error: 'No CME futures contract for this pair' });
-  const kind = symbol.startsWith('^') ? 'index' : 'future';
-  try {
-    const r = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`,
-      { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8_000) },
-    );
-    if (!r.ok) return res.json({ ok: false, error: `Yahoo Finance returned ${r.status}` });
-    const data  = await r.json();
-    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    if (!price) return res.json({ ok: false, error: 'No price in Yahoo Finance response' });
-    res.json({ ok: true, price, symbol, kind });
-  } catch (e) {
-    res.json({ ok: false, error: e.message });
+  if (!symbol && !OANDA_MAP[pair]) return res.json({ ok: false, error: 'No futures/CFD mapping for this pair' });
+  const kind = symbol && symbol.startsWith('^') ? 'index' : 'future';
+
+  // 1) Yahoo (real future), query1 then query2.
+  if (symbol) {
+    for (const host of ['query1', 'query2']) {
+      try {
+        const r = await fetch(
+          `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`,
+          { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(6_000) },
+        );
+        if (!r.ok) continue;
+        const data = await r.json();
+        const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+        if (price) return res.json({ ok: true, price, symbol, kind, source: 'yahoo' });
+      } catch { /* try next host / fall through to OANDA */ }
+    }
   }
+
+  // 2) OANDA fallback — the CFD/spot the user actually trades.
+  const oSym = OANDA_MAP[pair];
+  if (oSym && process.env.OANDA_KEY && process.env.OANDA_ACCOUNT_ID) {
+    try {
+      const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+      const r = await fetch(`${oB}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(oSym)}`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(6_000) });
+      if (r.ok) {
+        const d = await r.json(); const p = d.prices?.[0];
+        if (p?.asks?.[0] && p?.bids?.[0]) {
+          const price = (+p.asks[0].price + +p.bids[0].price) / 2;
+          // Label it a CFD proxy so the client shows the source honestly.
+          return res.json({ ok: true, price, symbol: oSym, kind: 'cfd', source: 'oanda' });
+        }
+      }
+    } catch { /* fall through to error */ }
+  }
+  res.json({ ok: false, error: 'No futures/CFD price available (Yahoo + OANDA both unavailable)' });
 });
 
 // Live 5m HMM regime data for all pairs
