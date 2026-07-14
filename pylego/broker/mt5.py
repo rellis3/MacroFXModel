@@ -265,6 +265,26 @@ class Mt5Broker:
             elif am & 4: filling = mt5.ORDER_FILLING_RETURN
         return filling
 
+    @staticmethod
+    def _norm_volume(info, lots: float) -> float:
+        """Round a requested lot to the symbol's volume_step and clamp to
+        [volume_min, volume_max] — MT5 rejects anything off that grid with
+        "Invalid volume argument". Falls back to the raw lot if no symbol info."""
+        if info is None:
+            return float(lots)
+        vmin = float(getattr(info, 'volume_min', 0.0) or 0.0)
+        vmax = float(getattr(info, 'volume_max', 0.0) or 0.0)
+        step = float(getattr(info, 'volume_step', 0.0) or 0.0)
+        vol = float(lots)
+        if step > 0:
+            vol = round(round(vol / step) * step, 8)
+        if vmin > 0 and vol < vmin:
+            vol = vmin
+        if vmax > 0 and vol > vmax:
+            # largest step multiple ≤ vmax (so the clamp itself stays on the grid)
+            vol = round((int(vmax / step) * step) if step > 0 else vmax, 8)
+        return vol
+
     def enter(
         self,
         pair: str,
@@ -342,10 +362,22 @@ class Mt5Broker:
         order_type = mt5.ORDER_TYPE_BUY if direction == 'LONG' else mt5.ORDER_TYPE_SELL
         exec_price = tick.ask if direction == 'LONG' else tick.bid
 
+        # Normalise the risk-sized lot to the symbol's own volume constraints
+        # (min / max / step). A raw lot that violates them is rejected outright with
+        # "Invalid volume argument" (retcode -2) — e.g. an index CFD like US2000
+        # whose volume_max is below the sized lot, which then re-fires every tick.
+        vol = self._norm_volume(info, lots)
+        if not vol or vol <= 0:
+            self.log.error(f'{pair}: volume {lots} normalises to {vol} for {mt5_sym} — skipping')
+            return None
+        if abs(vol - lots) > 1e-9:
+            self.log.info(f'{pair}: volume {lots} → {vol} (min {getattr(info, "volume_min", None)} '
+                          f'max {getattr(info, "volume_max", None)} step {getattr(info, "volume_step", None)})')
+
         order = {
             'action':       mt5.TRADE_ACTION_DEAL,
             'symbol':       mt5_sym,
-            'volume':       lots,
+            'volume':       vol,
             'type':         order_type,
             'price':        exec_price,
             'sl':           round(sl, 5),
