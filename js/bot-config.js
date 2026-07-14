@@ -4062,7 +4062,9 @@ async function loadOiLiveStatus() {
     // Prefer the bot's live lines; fall back to the plan itself so the table shows
     // the planned zones even before the bot is running.
     const rows = st?.lines || Object.entries(planWrap?.instruments || {}).map(([k, v]) =>
-      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, entered: [] }));
+      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, stale: v.stale, entered: [] }));
+    // Carry the plan's stale flag onto the bot's own lines too (status may omit it).
+    const _staleBy = Object.fromEntries(Object.entries(planWrap?.instruments || {}).map(([k, v]) => [k, v.stale]));
     if (!st) { if (ageEl) ageEl.textContent = planWrap ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
     else {
       if (ageEl)  { ageEl.textContent = st.running ? 'Running' : 'Idle'; ageEl.style.color = 'var(--text3)'; }
@@ -4077,14 +4079,16 @@ async function loadOiLiveStatus() {
       } else {
         const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : (/^(nq|spx|dax|dow|rut|de30|us30|us2000|ftse|uk100)$/i.test(sym) ? 1 : (/gold|xau/i.test(sym) ? 2 : 5)));
         const regCol = r => r === 'PIN' ? 'var(--green)' : r === 'BREAKOUT' ? 'var(--red)' : 'var(--text3)';
-        body.innerHTML = rows.map(r => `<tr style="border-top:1px solid var(--border)">
-          <td style="padding:6px 10px;font-weight:600">${r.instrument}</td>
-          <td style="padding:6px 10px;color:${regCol(r.regime)}">${r.regime || '—'}</td>
+        body.innerHTML = rows.map(r => {
+          const stale = r.stale || _staleBy[r.instrument];
+          return `<tr style="border-top:1px solid var(--border)"${stale ? ' title="' + String(stale).replace(/"/g, '') + '"' : ''}>
+          <td style="padding:6px 10px;font-weight:600">${r.instrument}${stale ? ' <span style="color:var(--amber);font-weight:400">⚠</span>' : ''}</td>
+          <td style="padding:6px 10px;color:${stale ? 'var(--amber)' : regCol(r.regime)}">${stale ? 'stale — re-paste' : (r.regime || '—')}</td>
           <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.spot)}</td>
           <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.maxPain)}</td>
-          <td style="padding:6px 10px;text-align:right">${r.zoneCount ?? 0}</td>
+          <td style="padding:6px 10px;text-align:right">${stale ? '—' : (r.zoneCount ?? 0)}</td>
           <td style="padding:6px 10px;color:var(--text3)">${(r.entered || []).length}</td>
-        </tr>`).join('');
+        </tr>`; }).join('');
       }
     }
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
