@@ -3803,6 +3803,8 @@ const OI_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   touch_tol_pips: 2, max_spread_pips: null, tick_secs: 3, status_secs: 30, plan_secs: 600,
   enabled_pairs: [], broker_symbols: {},
+  // telegram entry alerts (blank token/chat → shared tg_config)
+  tg_enabled: false, tg_token: '', tg_chat_id: '',
 };
 const OI_INDEX_KEYS = ['nq', 'spx', 'dax', 'dow', 'rut'];
 let _oiCfg = { ...OI_DEFAULTS };
@@ -3835,6 +3837,9 @@ function renderOiForm() {
   set('oi_plan_secs', _oiCfg.plan_secs ?? OI_DEFAULTS.plan_secs);
   const syms = _oiCfg.broker_symbols || {};
   OI_INDEX_KEYS.forEach(k => { const el = document.getElementById(`oi_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
+  chk('oi_tg_enabled', _oiCfg.tg_enabled);
+  set('oi_tg_token', _oiCfg.tg_token ?? '');
+  set('oi_tg_chat_id', _oiCfg.tg_chat_id ?? '');
 }
 function readOiForm() {
   const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
@@ -3866,6 +3871,9 @@ function readOiForm() {
   const syms = {};
   OI_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`oi_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
   _oiCfg.broker_symbols = syms;
+  _oiCfg.tg_enabled = !!document.getElementById('oi_tg_enabled')?.checked;
+  _oiCfg.tg_token = (document.getElementById('oi_tg_token')?.value || '').trim();
+  _oiCfg.tg_chat_id = (document.getElementById('oi_tg_chat_id')?.value || '').trim();
 }
 async function loadOiConfig() {
   try { const stored = await kvGet('oi_bot_config'); if (stored) _oiCfg = { ...OI_DEFAULTS, ...stored }; renderOiForm(); } catch (e) {}

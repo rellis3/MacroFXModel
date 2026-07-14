@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pylego.broker.paper import PaperBroker            # noqa: E402
 from oi_bot.engine import OISession                    # noqa: E402
-from oi_bot.oi_bot import size_for, build_status, DEFAULT_CFG  # noqa: E402
+from oi_bot.oi_bot import size_for, build_status, DEFAULT_CFG, entry_alert_text  # noqa: E402
 
 fails = 0
 def ok(name, cond, extra=""):
@@ -70,6 +70,13 @@ ok("status has today_closed_trades", len(st["today_closed_trades"]) == 1)
 ok("status lines carry regime + entered zones", st["lines"][0]["regime"] == "PIN"
    and "fade_sell_4300" in st["lines"][0]["entered"])
 ok("universe reflects the plan", st["universe"] == ["gold"])
+
+print("[Telegram entry alert — what/direction/SL/TP/why]")
+alert = entry_alert_text("gold", spec, 0.18, 12345, True)
+ok("names instrument + mode + direction", "GOLD" in alert and "FADE" in alert and "SELL" in alert)
+ok("carries entry / SL / TP", "4300.00" in alert and "4305.00" in alert and "4200.00" in alert)
+ok("includes the rationale (the reason)", "call wall 4300" in alert and "fade" in alert)
+ok("PAPER/LIVE tag + size", "PAPER" in alert and "1.8×" in alert)
 
 print(f"\n{'ALL PASSED ✓' if fails == 0 else str(fails) + ' FAILED ✗'}")
 sys.exit(0 if fails == 0 else 1)

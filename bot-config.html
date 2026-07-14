@@ -3958,6 +3958,20 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
         </div>
         <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">oi_bot_credentials</code>). The bot reads them on connect when paper trade is OFF.</div>
       </div>
+
+      <!-- ── Telegram alerts ──────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Telegram Alerts</div>
+        <div class="bot-banner-sub" style="margin-bottom:8px">One message per trade as the bot enters — instrument, direction, entry, SL/TP and the reason (the plan's rationale).</div>
+        <div class="form-row"><span class="form-lbl">Send entry alerts</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_tg_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Bot token <small>blank = use the shared Telegram config</small></span><input type="text" id="oi_tg_token" placeholder="(shared tg_config)" style="width:200px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Chat ID <small>blank = use the shared Telegram config</small></span><input type="text" id="oi_tg_chat_id" placeholder="(shared tg_config)" style="width:200px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#4dd0e1;color:#06302b" onclick="saveOiConfig()">Save Alerts</button>
+          <span class="bot-banner-sub" style="margin:0">saved with the config · applies on the bot's next refresh</span>
+        </div>
+      </div>
     </div>
 
     <!-- ── Broker index symbols (override per broker) ────────────────────────── -->
