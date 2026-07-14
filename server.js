@@ -81,6 +81,7 @@ import { reversionProof as _reversionProof } from './js/reversionProofEngine.js'
 import { sizePortfolio as _sizePortfolio } from './js/positionSizerEngine.js';   // vol-based position sizing off the forecast
 import { exhaustionForecast as _exhaustionForecast } from './js/exhaustionForecastEngine.js';   // fade-back line + range-budget-gated fade
 import { newsExhaustion as _newsExhaustion } from './js/newsExhaustionEngine.js';   // does news predict fade@median vs blow-through@75th
+import { vumanchuFade as _vumanchuFade } from './js/vumanchuFadeEngine.js';   // WaveTrend-confirmed fade at median/75th vs blind
 import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
@@ -9762,6 +9763,52 @@ app.post('/api/news-exhaustion/run', express.json({ limit: '8kb' }), (req, res) 
 });
 app.get('/api/news-exhaustion/status/:jobId', (req, res) => {
   const job = newsJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── VuManChu-Confirmed Fade — the trader's ACTUAL read at the line, tested ─────
+// Fade the median/75th ONLY when WaveTrend confirms exhaustion (momentum turning)
+// vs the blind fade baseline. Honest 1-min-ish fills, IS/OOS, + volatility split.
+const vmcJobs = new Map();
+app.post('/api/vumanchu-fade/run', express.json({ limit: '8kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '', isFrac, stopMult, requireVwap } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `vmc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of vmcJobs) if (j.startedAt < Date.now() - 60 * 60_000) vmcJobs.delete(id);
+  vmcJobs.set(jobId, { status: 'running', startedAt });
+  const opts = {
+    isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5,
+    stopMult: Number.isFinite(+stopMult) ? +stopMult : 1.0,
+    requireVwap: requireVwap === true,
+  };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const r = _vumanchuFade(bars, { ...opts, pair: cfg.name, assetClass: cfg.assetClass || 'fx' });
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nSessions}d)`); continue; }
+          r.src = src; perPair[cfg.name] = r;
+          const m = r.median.oos, p = r.p75.oos;
+          log.push(`${cfg.name}: MED conf exp ${m.confirmed.exp}(${m.confirmed.n}) vs blind ${m.blind.exp} (lift ${r.lift.median}) · 75 conf ${p.confirmed.exp}(${p.confirmed.n}) vs blind ${p.blind.exp} · edge ${r.edge.median || r.edge.p75 ? 'YES' : 'no'} (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { vmcJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      vmcJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, perPair, pairs: names, log } });
+    } catch (e) { vmcJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/vumanchu-fade/status/:jobId', (req, res) => {
+  const job = vmcJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });

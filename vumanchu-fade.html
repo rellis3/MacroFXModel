@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VuManChu-Confirmed Fade — the trader's actual read at the line</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:18px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:1000px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input { width:52px; background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:2px 5px; font:11px 'DM Mono',monospace; text-align:right }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  a { color:#58a6ff } .win { background:rgba(63,185,80,.12) }
+</style>
+</head>
+<body>
+  <h1>VuManChu-Confirmed Fade <span class="muted" style="font-size:12px">— the trader's actual read at the line, tested honestly</span></h1>
+  <div class="sub">
+    The blind mechanical fade (fade <b>every</b> touch of the median/75th) is null. But you don't fade every touch — you fade only when momentum is <b>slowing/turning</b> at the line (VuManChu WaveTrend rolling over / crossing). This wires that in: at each band touch, read WaveTrend <b>causally</b> (bars up to the touch); a <b>confirmed</b> fade = WT overbought/turning-down at an upper band (oversold/turning-up at a lower) — your exhaustion read. <b>Confirmed vs blind</b>, both bands, IS/OOS, honest fills, costed, plus a volatility-of-day split.
+    <span class="muted">Honest limits: the exit is a fixed target(open)+stop — it does NOT model your discretionary exit management, so it <b>understates</b> you. A positive confirmed edge that beats blind = the WT read adds real information. A null means the mechanizable core has no edge — not that you don't.</span>
+  </div>
+  <button onclick="run()">▶ Run</button>
+  <label class="muted" style="margin-left:10px">Pair <input id="pair" value="" placeholder="(all)" style="width:74px"></label>
+  <label class="muted" style="margin-left:8px">isFrac <input id="isf" value="0.5"></label>
+  <label class="muted" style="margin-left:8px">stopMult <input id="sm" value="1.0"></label>
+  <label class="muted" style="margin-left:8px"><input type="checkbox" id="vw" style="width:auto"> also require VWAP-osc turn</label>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=2) => v==null?'—':(+v).toFixed(d);
+let _timer=null;
+
+async function run(){
+  clearInterval(_timer); el('status').textContent='Starting…'; el('out').innerHTML='';
+  const body = { pair:el('pair').value.trim(), isFrac:parseFloat(el('isf').value)||0.5, stopMult:parseFloat(el('sm').value)||1.0, requireVwap:el('vw').checked };
+  let j; try { j = await (await fetch('/api/vumanchu-fade/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/vumanchu-fade/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Running… '+(s.elapsed||0)+'s'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; if(s.log) el('out').innerHTML='<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'; return; }
+    el('status').textContent = `${s.pairs.length} instruments · stopMult ${s.stopMult}${s.requireVwap?' · +VWAP':''}`;
+    render(s.perPair, s.log);
+  }, 2500);
+}
+
+function bandTable(rows, key, label){
+  let h = `<h2>${label} band — confirmed (WT-turning) vs blind fade, OOS</h2><div class="card"><table><tr>
+    <th rowspan="2">Instrument</th>
+    <th colspan="3" style="text-align:center">Confirmed fade</th>
+    <th colspan="3" style="text-align:center">Blind fade</th>
+    <th rowspan="2">lift (exp)</th><th rowspan="2">hi-vol conf exp</th><th rowspan="2">edge?</th></tr>
+    <tr><th>exp</th><th>win</th><th>n</th><th>exp</th><th>win</th><th>n</th></tr>`;
+  for(const [name,r] of rows){ const b=r[key], o=b.oos, e=r.edge[key], lf=r.lift[key];
+    const c=o.confirmed, bl=o.blind;
+    h += `<tr class="${e?'win':''}"><td><strong>${name}</strong> <span class="muted">${r.assetClass}</span></td>
+      <td class="${c.exp>0?'pos':'neg'}">${fmt(c.exp,3)}</td><td class="muted">${fmt(c.win,0)}%</td><td class="${c.n<30?'amber':'muted'}">${c.n}</td>
+      <td class="${bl.exp>0?'pos':'neg'}">${fmt(bl.exp,3)}</td><td class="muted">${fmt(bl.win,0)}%</td><td class="muted">${bl.n}</td>
+      <td class="${lf>0?'pos':'neg'}">${fmt(lf,3)}</td>
+      <td class="${b.oosVol.hiVol.exp>0?'pos':'neg'}">${fmt(b.oosVol.hiVol.exp,3)}</td>
+      <td class="${e?'pos':'neg'}">${e?'✓ EDGE':'—'}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px"><b>exp</b> = after-cost expectancy (% of price) per touch. <b>Confirmed</b> = fade taken only when WaveTrend confirms exhaustion at the line; <b>Blind</b> = every touch. <b>lift</b> = confirmed exp − blind exp (does the WT read add?). <b>hi-vol conf exp</b> = confirmed fade on high-σ days only. <b class="pos">✓ EDGE</b> = confirmed OOS exp is positive AND beats blind AND ≥30 trades. amber n = &lt;30 (thin).</div></div>`;
+  return h;
+}
+
+function render(pp, log){
+  // sort by best confirmed lift so the clearest cases surface
+  const rows = Object.entries(pp).sort((a,b)=>Math.max(b[1].lift.median??-9,b[1].lift.p75??-9)-Math.max(a[1].lift.median??-9,a[1].lift.p75??-9));
+  let h = `<div class="card muted" style="font-size:11px"><b>The test:</b> does gating the fade on your WaveTrend exhaustion read turn the null blind fade into a positive after-cost edge? Look for <b class="pos">✓ EDGE</b> (green rows) and a positive <b>lift</b>. Remember the exit is a crude fixed target(open)+stop — a null here doesn't falsify your discretionary management, but a <b>positive</b> strongly validates that the mechanizable core of your read carries information.</div>`;
+  h += bandTable(rows, 'median', 'Median (50th)');
+  h += bandTable(rows, 'p75', '75th');
+  if(log) h += `<div class="card muted" style="font-size:10px">${log.join('<br>')}</div>`;
+  el('out').innerHTML = h;
+}
+</script>
+</body>
+</html>
