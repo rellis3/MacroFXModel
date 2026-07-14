@@ -53,34 +53,45 @@ async function run(){
   }, 2500);
 }
 
-function bucketCells(bk){
+function bucketCells(bk, band){
+  const rk = band===50 ? 'reached50Pct' : 'reached75Pct';
+  const fk = band===50 ? 'fade50' : 'fade', ck = band===50 ? 'follow50' : 'follow';
   if(!bk || bk.n===0) return `<td class="muted">—</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td>`;
   return `<td class="muted">${bk.n}</td>
-    <td>${fmt(bk.reached75Pct,0)}%</td>
-    <td class="${bk.fade.exp>0?'pos':'neg'}">${fmt(bk.fade.exp,3)}</td>
-    <td class="${bk.follow.exp>0?'pos':'neg'}">${fmt(bk.follow.exp,3)}</td>`;
+    <td>${fmt(bk[rk],0)}%</td>
+    <td class="${bk[fk].exp>0?'pos':'neg'}">${fmt(bk[fk].exp,3)}</td>
+    <td class="${bk[ck].exp>0?'pos':'neg'}">${fmt(bk[ck].exp,3)}</td>`;
+}
+
+function bandTable(rows, band){
+  const rlab = band===50 ? 'r50' : 'r75';
+  const ck = band===50 ? 'reached50_majorMinusNone' : 'reached75_majorMinusNone';
+  let h = `<h2>${band===50?'Median (50th)':'75th'} band — OOS news buckets (reached-${band}%, fade exp, follow exp)</h2><div class="card"><table><tr>
+    <th rowspan="2">Instrument</th>
+    <th colspan="4" style="text-align:center">Major news</th>
+    <th colspan="4" style="text-align:center">Minor news</th>
+    <th colspan="4" style="text-align:center">No news</th>
+    <th rowspan="2">news→reach?</th></tr>
+    <tr>${('<th>n</th><th>'+rlab+'</th><th>fade</th><th>foll</th>').repeat(3)}</tr>`;
+  for(const [name,r] of rows){ const o=r.oos, c=r.classifier; const d=c[ck];
+    const sig = c.signalPresent;
+    h += `<tr class="${sig?'win':''}"><td><strong>${name}</strong> <span class="muted">${r.assetClass}</span></td>
+      ${bucketCells(o.major,band)}${bucketCells(o.minor,band)}${bucketCells(o.none,band)}
+      <td class="${d>3?'pos':d<-3?'neg':'muted'}">${fmt(d,0)}pp ${band===75&&sig?'✓':''}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">
+    <b>${rlab}</b> = % of sessions whose dominant excursion reached the ${band===50?'median (50th)':'75th'} band. <b>fade / foll</b> = after-cost expectancy (% of price) of fading vs following the ${band===50?'median':'75th'} band. <b>news→reach?</b> = Major − None reached-${band} (pp).</div></div>`;
+  return h;
 }
 
 function render(pp, log){
   // sort by the classifier signal strength (reached75 major−none) so the clearest cases surface
   const rows = Object.entries(pp).sort((a,b)=>((b[1].classifier?.reached75_majorMinusNone??-99))-((a[1].classifier?.reached75_majorMinusNone??-99)));
 
-  let h = `<h2>Per-instrument — OOS news buckets (reached-75%, fade exp, follow exp)</h2><div class="card"><table><tr>
-    <th rowspan="2">Instrument</th>
-    <th colspan="4" style="text-align:center">Major news</th>
-    <th colspan="4" style="text-align:center">Minor news</th>
-    <th colspan="4" style="text-align:center">No news</th>
-    <th rowspan="2">news→cont?</th></tr>
-    <tr>${'<th>n</th><th>r75</th><th>fade</th><th>foll</th>'.repeat(3)}</tr>`;
-  for(const [name,r] of rows){ const o=r.oos, c=r.classifier;
-    const sig = c.signalPresent;
-    h += `<tr class="${sig?'win':''}"><td><strong>${name}</strong> <span class="muted">${r.assetClass}</span></td>
-      ${bucketCells(o.major)}${bucketCells(o.minor)}${bucketCells(o.none)}
-      <td class="${c.reached75_majorMinusNone>3?'pos':c.reached75_majorMinusNone<-3?'neg':'muted'}">${fmt(c.reached75_majorMinusNone,0)}pp ${sig?'✓':''}</td></tr>`;
-  }
-  h += `</table><div class="muted" style="font-size:10px;margin-top:4px">
-    <b>r75</b> = % of sessions whose dominant excursion reached the 75th band (expansion / trend-day proxy). <b>fade / foll</b> = after-cost expectancy (% of price) of fading vs following the 75th band, that bucket. <b>news→cont?</b> = Major reached75 − None reached75 (percentage points); <b class="pos">✓</b> = news days measurably more continuation-prone OOS.
-    <br><b>Read it in two steps:</b> (1) <i>Classifier</i> — is <b>r75 higher</b> and <b>foll less-negative / fade more-negative</b> on Major vs None? If yes, news genuinely predicts continuation (the likely-true part). (2) <i>Edge</i> — is any bucket's <b>fade or follow expectancy actually positive</b> after cost? That's the harder bar; a real classifier can still fail it because news = widest spreads.</div></div>`;
+  let h = `<div class="card muted" style="font-size:11px">
+    <b>Read it in two steps.</b> (1) <i>Classifier</i> — across BOTH bands below, is <b>reach-% higher</b> and <b>foll less-negative / fade more-negative</b> on Major vs None? If yes, news genuinely predicts continuation (the likely-true part). The <b>median (50th)</b> table shows the near end of the expansion ladder; the <b>75th</b> the far end. (2) <i>Edge</i> — is any bucket's <b>fade or follow expectancy actually positive</b> after cost, at either band? That's the harder bar; a real classifier can still fail it because news = widest spreads.</div>`;
+  h += bandTable(rows, 50);
+  h += bandTable(rows, 75);
 
   if(log) h += `<div class="card muted" style="font-size:10px">${log.join('<br>')}</div>`;
   el('out').innerHTML = h;
