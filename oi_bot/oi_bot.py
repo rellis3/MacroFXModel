@@ -138,6 +138,12 @@ def send_telegram(token: str, chat_id: str, text: str) -> bool:
         return False
 
 
+# Per-instrument icon + a TradingView chart the name links to.
+_OI_ICON = {"gold": "🥇", "nq": "💻", "spx": "🇺🇸", "dow": "🏭", "rut": "🐘", "dax": "🇩🇪", "ftse": "🇬🇧"}
+_OI_TV = {"gold": "OANDA:XAUUSD", "nq": "OANDA:NAS100USD", "spx": "OANDA:SPX500USD",
+          "dow": "OANDA:US30USD", "rut": "OANDA:US2000USD", "dax": "OANDA:DE30EUR", "ftse": "OANDA:UK100GBP"}
+
+
 def _fmt_price(instr: str, p) -> str:
     if p is None:
         return "—"
@@ -148,24 +154,51 @@ def _fmt_price(instr: str, p) -> str:
     return f"{p:.{d}f}"
 
 
+def _pips(instr: str, a, b) -> str:
+    """Distance a→b in the pair's pips (blank if either side is missing)."""
+    if a is None or b is None:
+        return ""
+    try:
+        n = abs(a - b) / I.pip_size(instr)
+    except Exception:
+        return ""
+    return f"{n:.0f} pips"
+
+
 def entry_alert_text(instr: str, spec: dict, lots: float, tid, paper: bool) -> str:
-    """One-message summary of the trade about to open: what, direction, entry, SL,
-    TP (+ R:R), size, and WHY (the plan's rationale). Pure — unit-testable."""
+    """A tidy one-message summary of the trade about to open: instrument (icon +
+    chart link), direction (with arrow), entry, SL, TP (+ distance / R:R), size,
+    and WHY (the plan's rationale). Pure — unit-testable."""
+    key = instr.lower()
+    name = instr.upper()
+    icon = _OI_ICON.get(key, "💱")
+    tv = _OI_TV.get(key, f"OANDA:{name.replace('/', '')}")
+    link = f'<a href="https://www.tradingview.com/chart/?symbol={tv}">{name}</a>'
     mode = (spec.get("mode") or "").upper()
-    side = "BUY" if spec.get("dir_up") else "SELL"
-    emoji = "🟢" if spec.get("dir_up") else "🔴"
-    rr = ""
+    regime = spec.get("regime") or ""
+    up = spec.get("dir_up")
+    side = ("🟢 ▲ <b>BUY</b>" if up else "🔴 ▼ <b>SELL</b>")
+
     entry, sl, tp = spec.get("entry"), spec.get("sl"), spec.get("tp")
+    sl_d = _pips(instr, entry, sl)
+    sl_tail = f"  <i>({sl_d})</i>" if sl_d else ""
+    rr = ""
     if tp and sl is not None and entry is not None and abs(entry - sl) > 0:
-        rr = f" · {abs(tp - entry) / abs(entry - sl):.2f}R"
+        rr = f"  <i>({abs(tp - entry) / abs(entry - sl):.2f}R)</i>"
+    tag = "📄 Paper" if paper else "🔴 LIVE"
+    tail = f"  ·  🎟 {tid}" if tid not in (None, -1) else ""
+
     return (
-        f"🧲 <b>OI Gamma</b> · {'PAPER' if paper else 'LIVE'}\n"
-        f"{emoji} <b>{instr.upper()} · {mode} · {side}</b>\n"
-        f"Entry <code>{_fmt_price(instr, entry)}</code>\n"
-        f"SL <code>{_fmt_price(instr, sl)}</code> · TP <code>{_fmt_price(instr, tp) if tp else '—'}</code>{rr}\n"
-        f"Size {spec.get('size_factor', 1)}× · {lots} lots"
-        + (f" · #{tid}" if tid not in (None, -1) else "") + "\n"
-        f"<i>{spec.get('rationale') or (spec.get('regime') or '')}</i>"
+        f"🧲 <b>OI Gamma</b>  ·  {tag}{tail}\n"
+        f"{icon} <b>{link}</b>{('  ·  ' + regime) if regime else ''}\n"
+        f"{side}  ·  {mode}\n"
+        f"➖➖➖➖➖\n"
+        f"📍 Entry  <code>{_fmt_price(instr, entry)}</code>\n"
+        f"🛑 SL     <code>{_fmt_price(instr, sl)}</code>{sl_tail}\n"
+        f"🎯 TP     <code>{_fmt_price(instr, tp) if tp else '—'}</code>{rr}\n"
+        f"📊 Size   {spec.get('size_factor', 1)}× · {lots} lots\n"
+        f"➖➖➖➖➖\n"
+        f"💡 <i>{spec.get('rationale') or regime}</i>"
     )
 
 
