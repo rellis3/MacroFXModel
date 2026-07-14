@@ -62,6 +62,42 @@ function _manageExit(bars, fromIdx, entry, isUpper, openPx, stopDist, trailR, tr
   return (isUpper ? entry - last : last - entry) / openPx * 100;
 }
 
+// Per-session signal detection — the SINGLE source of truth for the confirmed
+// fade, shared by the backtest (pooledFade) and the live forward tracker
+// (forwardTrackEngine) so the two can NEVER silently drift. Given one session and
+// its σ, returns a record per level touched: { line, up, entry, ti, gross,
+// confirmed }. `gross` is the trader's-exit % (no cost); `confirmed` = WT (+VWAP)
+// agreed with the fade at the touch bar. Pure — no split/OOS opinion here.
+export function detectSessionSignals(s, sigma, opts = {}) {
+  const {
+    pair = 'EURUSD', assetClass = 'fx', minBars = 35, stopPips = 5, volK = 0.09,
+    trailR = 2.0, requireVwap = true,
+  } = opts;
+  if (!(sigma > 0) || !s.bars || s.bars.length < minBars + 10 || !(s.open > 0)) return [];
+  const pip = pipSize(pair);
+  const bands = computeBands(s.open, sigma, assetClass);
+  const { wt1, wt2 } = computeWaveTrend(s.bars);              // 1-min WaveTrend, causal at each idx
+  const osc = requireVwap ? computeVWAP(s.bars).osc : null;
+  const stopDist = Math.max(stopPips * pip, volK * sigma * s.open);
+  const levels = [
+    { level: bands.up50, up: true, name: 'up50' }, { level: bands.dn50, up: false, name: 'dn50' },
+    { level: bands.up75, up: true, name: 'up75' }, { level: bands.dn75, up: false, name: 'dn75' },
+  ];
+  const out = [];
+  for (const L of levels) {
+    let ti = -1;
+    for (let k = minBars; k < s.bars.length - 1; k++) {
+      if (L.up ? s.bars[k].high >= L.level : s.bars[k].low <= L.level) { ti = k; break; }
+    }
+    if (ti < 0) continue;
+    const gross = _manageExit(s.bars, ti, L.level, L.up, s.open, stopDist, trailR, stopDist);
+    const confirmed = _wtAgree(wt1[ti] ?? 0, wt2[ti] ?? 0, L.up)
+      && (!requireVwap || (L.up ? (osc[ti] ?? 0) < (osc[ti - 1] ?? 0) : (osc[ti] ?? 0) > (osc[ti - 1] ?? 0)));
+    out.push({ line: L.name, up: L.up, entry: L.level, ti, gross: r3(gross, 5), confirmed });
+  }
+  return out;
+}
+
 export function pooledFade(bars1, opts = {}) {
   const {
     pair = 'EURUSD', assetClass = 'fx', isFrac = 0.5, boundaryHour = 22, warmup = 40,
@@ -74,6 +110,7 @@ export function pooledFade(bars1, opts = {}) {
   const d1 = sess.map(s => ({ open: s.open, high: s.high, low: s.low, close: s.close }));
   const sig = volSigmaSeries(d1, assetClass);
   const split = Math.floor(sess.length * isFrac);
+  const sigOpts = { pair, assetClass, minBars, stopPips, volK, trailR, requireVwap };
 
   const confirmedOOS = [], blindOOS = [];
   const isConf = [], isBlind = [];   // (unused beyond counts, kept for parity)
@@ -81,28 +118,11 @@ export function pooledFade(bars1, opts = {}) {
     const sigma = sig[i];
     if (!(sigma > 0)) continue;
     const s = sess[i];
-    if (!s.bars || s.bars.length < minBars + 10 || !(s.open > 0)) continue;
-    const bands = computeBands(s.open, sigma, assetClass);
-    const { wt1, wt2 } = computeWaveTrend(s.bars);            // 1-min WaveTrend, causal at each idx
-    const osc = requireVwap ? computeVWAP(s.bars).osc : null;
     const seg = i < split ? 'is' : 'oos';
-    const stopDist = Math.max(stopPips * pip, volK * sigma * s.open);
-    const levels = [
-      { level: bands.up50, up: true }, { level: bands.dn50, up: false },
-      { level: bands.up75, up: true }, { level: bands.dn75, up: false },
-    ];
-    for (const L of levels) {
-      let ti = -1;
-      for (let k = minBars; k < s.bars.length - 1; k++) {
-        if (L.up ? s.bars[k].high >= L.level : s.bars[k].low <= L.level) { ti = k; break; }
-      }
-      if (ti < 0) continue;
-      const gross = _manageExit(s.bars, ti, L.level, L.up, s.open, stopDist, trailR, stopDist);
-      const confirmed = _wtAgree(wt1[ti] ?? 0, wt2[ti] ?? 0, L.up)
-        && (!requireVwap || (L.up ? (osc[ti] ?? 0) < (osc[ti - 1] ?? 0) : (osc[ti] ?? 0) > (osc[ti - 1] ?? 0)));
-      const rec = { date: s.date, gross: r3(gross, 5) };
-      if (seg === 'oos') { blindOOS.push(rec); if (confirmed) confirmedOOS.push(rec); }
-      else { isBlind.push(1); if (confirmed) isConf.push(1); }
+    for (const sg of detectSessionSignals(s, sigma, sigOpts)) {
+      const rec = { date: s.date, gross: sg.gross };
+      if (seg === 'oos') { blindOOS.push(rec); if (sg.confirmed) confirmedOOS.push(rec); }
+      else { isBlind.push(1); if (sg.confirmed) isConf.push(1); }
     }
   }
 

@@ -85,6 +85,7 @@ import { vumanchuFade as _vumanchuFade } from './js/vumanchuFadeEngine.js';   //
 import { forecastStyleFade as _forecastStyleFade } from './js/forecastStyleFadeEngine.js';   // which forecaster's lines fade best (basis × line × fade/follow)
 import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio } from './js/pooledFadeEngine.js';   // pooled VuManChu fade w/ trader's real exit + cost sensitivity
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
+import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
@@ -9966,6 +9967,71 @@ app.get('/api/vol-horse-race/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Forward-Track — a live, post-research record of the confirmed VuManChu fade ──
+// The Pooled fade cleared the OOS bar; this proves it FORWARD. `refresh` re-scans
+// each instrument's just-completed sessions, appends any NEW confirmed signals
+// (with realised outcome, same detectSessionSignals brick as the backtest) to the
+// KV log (persists in CF KV). `read` returns pooled forward stats split at the
+// tracking-start date vs the pre-tracking backtest baseline — the overfit tell.
+const ftJobs = new Map();
+const _ftLoad = async (key, dflt) => { try { const raw = await kv.get(key); return raw ? JSON.parse(raw) : dflt; } catch { return dflt; } };
+app.post('/api/forward-track/refresh', express.json({ limit: '8kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '' } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `ft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of ftJobs) if (j.startedAt < Date.now() - 60 * 60_000) ftJobs.delete(id);
+  ftJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    const log = [];
+    try {
+      let merged = await _ftLoad('fwd_fade_log', []);
+      const meta = await _ftLoad('fwd_fade_meta', {});
+      const todayISO = new Date().toISOString().slice(0, 10);
+      if (!meta.trackingStart) meta.trackingStart = todayISO;    // first refresh fixes the forward cutoff
+      const lastByInst = {};
+      for (const t of merged) if (!lastByInst[t.pair] || t.date > lastByInst[t.pair]) lastByInst[t.pair] = t.date;
+      let added = 0;
+      for (const cfg of insts) {
+        try {
+          const bars = await _loadM1ForAB(cfg.name.toLowerCase(), 1);   // TRUE 1-min (same as the pooled backtest)
+          if (!bars || bars.length < 20000) { log.push(`${cfg.name}: too few M1 bars`); continue; }
+          const since = lastByInst[cfg.name] || null;
+          const r = _scanConfirmedSignals(bars, { pair: cfg.name, assetClass: cfg.assetClass || 'fx', sinceDate: since });
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nSessions}d)`); continue; }
+          const before = merged.length;
+          merged = _mergeLog(merged, r.signals);
+          added += merged.length - before;
+          log.push(`${cfg.name}: +${merged.length - before} new confirmed through ${r.lastDate}`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      meta.lastRefresh = todayISO; meta.lastScanAt = new Date().toISOString();
+      await kv.put('fwd_fade_log', JSON.stringify(merged));
+      await kv.put('fwd_fade_meta', JSON.stringify(meta));
+      const stats = _forwardStats(merged, { trackingStart: meta.trackingStart });
+      ftJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, added, total: merged.length, meta, stats, log } });
+    } catch (e) { ftJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/forward-track/refresh/status/:jobId', (req, res) => {
+  const job = ftJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+app.get('/api/forward-track', async (req, res) => {
+  try {
+    const log = await _ftLoad('fwd_fade_log', []);
+    const meta = await _ftLoad('fwd_fade_meta', {});
+    const stats = _forwardStats(log, { trackingStart: meta.trackingStart || null });
+    res.json({ ok: true, meta, total: log.length, stats });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 // ── Fill-Realism ladder — is the per-line tearsheet's Sharpe a fill artifact? ──

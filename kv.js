@@ -44,6 +44,8 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    surprise_index, events_*  re-fetched from Finnhub on next page load
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
+  'fwd_fade_log',            // forward-track confirmed-fade signal log — accumulates a live post-research record, cannot be rebuilt
+  'fwd_fade_meta',           // forward-track tracking-start date + last-scan bookkeeping
   'journal_store', 'journal_replay_store',
   'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
   'cot_data',               // parsed CFTC COT — requires user-set URL to rebuild
