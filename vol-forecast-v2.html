@@ -3451,7 +3451,6 @@ async function loadM5Chart(name, f) {
           secondsVisible:  false,
           fixLeftEdge:     true,
           fixRightEdge:    false,
-          rightOffset:     28,
         },
         rightPriceScale: {
           borderColor:  'rgba(255,255,255,0.1)',
@@ -3521,7 +3520,15 @@ async function loadM5Chart(name, f) {
         });
       }
 
-      chart.timeScale().fitContent();
+      // Position the candles so the last bar sits at ~3/4 of the panel width —
+      // the left ¾ holds the 24h of candles, the right ¼ is empty margin so the
+      // latest candle + forecast-line axis labels aren't jammed against the edge.
+      const _barCount = chartData.length;
+      if (_barCount > 1) {
+        chart.timeScale().setVisibleLogicalRange({ from: 0, to: _barCount / 0.75 });
+      } else {
+        chart.timeScale().fitContent();
+      }
       _lwCharts[name] = chart;
 
       // Resize when card width changes
@@ -3567,16 +3574,21 @@ async function loadM5Chart(name, f) {
     // All non-today bars for context — API returns ~1500 M5 bars ≈ 1 full trading week
     const prevBars = values.filter(c => !c.datetime?.startsWith(londonDate));
 
+    // Show only the last 24h of M5 candles in the panel (288 bars) so each
+    // candle is wider / more legible — we fetch ~5 days for context but don't
+    // squeeze it all into the small grid chart. (The expand modal still shows more.)
+    const DISPLAY_BARS = 288; // 24h × 12 M5 bars/hour
+
     let srcBars, overrideDayOpen, todayBarsRaw;
     if (todayM5.length >= 1) {
       const todayAsc  = [...todayM5].reverse();   // ascending today bars
       const prevAsc   = [...prevBars].reverse();  // ascending prior-week bars
-      srcBars         = [...prevAsc, ...todayAsc];
+      srcBars         = [...prevAsc, ...todayAsc].slice(-DISPLAY_BARS);
       overrideDayOpen = parseFloat(todayAsc[0].open);
       todayBarsRaw    = todayAsc;
     } else {
-      // Before today's first bar — show all available history
-      srcBars         = [...values].reverse();
+      // Before today's first bar — show the last 24h of available history
+      srcBars         = [...values].reverse().slice(-DISPLAY_BARS);
       overrideDayOpen = null;
       todayBarsRaw    = null;
     }
