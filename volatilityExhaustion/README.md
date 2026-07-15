@@ -94,9 +94,38 @@ near-identical hold-rates (`measure_extremes.py compare`). The effect is not a v
 3. Extend the fresh-extreme measurement to the other FX majors — is the reversion sign an
    FX property or a EUR/USD fluke? (guards against multiple-testing on one series).
 
+## Phase 1 — forecast line vs actual fade point (`forecast_vs_fade.py`)
+
+Question: is the forecast's dynamic H-L exhaustion line **near** where price actually
+fades, and can pre-session σ **predict** that fade point out-of-sample? For each day we
+build the Expected-High/Low projection (`running_extreme ± C·σ`, fx median C=1.289 /
+75th C=1.674) and find the day's **dominant reversal** (largest-retrace pivot), then
+compare its realized H-L excursion to the forecast.
+
+**Findings (7 instruments, IS/OOS):**
+1. **They are NOT near — the forecast lines sit far outside the fade.** The actual
+   dominant fade excursion has median **~0.65σ** (fx) — well *inside* the forecast H-L
+   median (1.29σ) and 75th (1.67σ). The forecast lines mark the day's **range extreme**,
+   not the reversal point; most days the biggest turn happens at roughly *half* the
+   forecast-median distance. (This explains prior at-line-fade nulls: tagging the 75th
+   means arriving ~1σ *after* the typical turn — in the overshoot tail.)
+2. **σ predicts the fade only weakly.** OOS corr(σ, realized fade) ≈ **0.23–0.33** across
+   all 7 instruments — real, consistent, but σ explains only ~5–11% of the variance. The
+   scatter is a diffuse cloud, not a 45° line.
+3. **σ-scaling beats a naive fixed-% line 7/7 OOS — but barely** (e.g. EURUSD MAE 0.159 vs
+   0.164, ~3%). The vol forecast carries genuine information about the fade distance; it is
+   just a *soft zone*, not a precise point.
+
+**Verdict:** you can forecast the exhaustion *zone* a little from σ (better than a fixed
+%), but not a sharp point — and the shipped H-L 75th line is calibrated to the range
+extreme, ~2.5× farther out than the typical dominant fade. The better-calibrated
+"expected fade" is the empirical constant **~0.65σ from the opposite extreme**, though
+even that is a wide distribution.
+
 ## Files
 - `vol_exhaustion_lib.py` — σ/day/anchor baseplate (matches the JS forecaster).
 - `compare_sigma.py` / `crosscheck_sigma.mjs` — the σ-drift guard (JS vs Python).
 - `measure.py` — distance-from-open lens + conditioners → `charts/*_1.._6.png`.
-- `measure_extremes.py` — fresh-extreme exhaustion test → `charts/*_7.png`.
+- `measure_extremes.py` — fresh-extreme exhaustion test → `charts/*_7.png`; `combined` (overlay) / `compare` (YZ vs HV20) modes.
+- `forecast_vs_fade.py` — Phase-1 forecast-line-vs-actual-fade accuracy → `charts/*_8,_9.png`, `forecast_vs_fade_summary.json`.
 - `summary.json` — headline stats.
