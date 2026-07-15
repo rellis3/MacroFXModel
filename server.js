@@ -77,6 +77,7 @@ import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zsc
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
 import { runFullRangeLevelEdge, RANGE_LEVEL_DEFAULTS } from './js/rangeLevelEdgeEngine.js';
+import { runFullBennettZ, BENNETT_DEFAULTS } from './js/bennettZEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -9203,6 +9204,63 @@ app.post('/api/range-level-edge/run', (req, res) => {
 
 app.get('/api/range-level-edge/status/:jobId', (req, res) => {
   const job = rangeLvlJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Bennett z-mean-reversion (the clean replication of Bennett's ACTUAL bot) ───
+// Enter on |spread-z| ≥ threshold in the z-direction, exit on z-reversion to ±zExit
+// or max-hold. No levels. Engine: js/bennettZEngine.js + js/bennettZCore.js
+const bennettJobs = new Map();
+function _purgeStaleBennettJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of bennettJobs) if (job.startedAt < cutoff) bennettJobs.delete(id);
+}
+
+app.get('/api/bennett-z/defaults', (_req, res) => {
+  res.json({ ok: true, defaults: BENNETT_DEFAULTS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) => [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/bennett-z/run', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch yield-spread data' });
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined,
+    dateTo:   b.dateTo   || undefined,
+    zWindow:        parseInt(b.zWindow) || 252,
+    entryThreshold: num(b.entryThreshold, BENNETT_DEFAULTS.entryThreshold),
+    zExit:          num(b.zExit,          BENNETT_DEFAULTS.zExit),
+    maxHoldDays:    parseInt(b.maxHoldDays) || BENNETT_DEFAULTS.maxHoldDays,
+    costPct:        num(b.costPct,         BENNETT_DEFAULTS.costPct),
+    splitFrac:      num(b.splitFrac,       BENNETT_DEFAULTS.splitFrac),
+    invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k => [k, b.invert?.[k] === true || b.invert?.[k] === 'true'])),
+  };
+  const pairsToRun = b.pair ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p]) : Object.keys(ZSCORE_PAIRS);
+  if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+
+  const jobId = `bz_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleBennettJobs();
+  bennettJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const { perPair, combined, log } = await runFullBennettZ(opts, pairsToRun);
+      bennettJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, perPair, combined, log, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[bennett-z/run]', msg, e?.stack ?? '');
+      bennettJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/bennett-z/status/:jobId', (req, res) => {
+  const job = bennettJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
