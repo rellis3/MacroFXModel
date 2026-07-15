@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from vol_exhaustion_lib import load_m1, build_london_daily, causal_sigma
+from vol_exhaustion_lib import load_m1, build_london_daily, causal_sigma_kind
 from measure import INSTRUMENTS, HERE, CH, DIST_EDGES, binned, _london_date_str
 
 THETA = 0.25
@@ -32,11 +32,11 @@ MIN_BARS = 60
 plt.rcParams.update({'figure.dpi': 110, 'font.size': 10, 'axes.grid': True, 'grid.alpha': .25})
 
 
-def measure_extremes(path, pair):
-    print(f'\n=== {pair} (fresh-extreme test) ===')
+def measure_extremes(path, pair, sig_kind='yz'):
+    print(f'\n=== {pair} (fresh-extreme test, sigma={sig_kind}) ===')
     m1 = load_m1(path)
     daily = build_london_daily(m1)
-    sig = causal_sigma(daily)
+    sig = causal_sigma_kind(daily, sig_kind)
     nd = daily['open'].size
     split = nd // 2
     dist, hold, seg = [], [], []
@@ -131,9 +131,33 @@ def combined_chart(results, fname='FXMAJORS_freshextreme_overlay'):
     fig.savefig(p); plt.close(fig); print('\n->', os.path.basename(p)); return p
 
 
+def _far_oos(r):
+    m = (r['dist'] >= 1.5) & (r['seg'] == 1)
+    return (r['hold'][m].mean() if m.sum() >= 40 else float('nan')), int(m.sum())
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
-    if args and args[0] == 'combined':
+    if args and args[0] == 'compare':
+        # robustness: does the 6/6 FX result survive a DIFFERENT vol estimator?
+        pairs = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF']
+        rows = []
+        for pair in pairs:
+            rel, _ = INSTRUMENTS[pair]
+            p = os.path.join(HERE, '..', rel)
+            ry = measure_extremes(p, pair, 'yz')
+            rh = measure_extremes(p, pair, 'hv')
+            (yz, ny), (hv, nh) = _far_oos(ry), _far_oos(rh)
+            rows.append((pair, yz, hv))
+        print('\n=== estimator robustness: OOS fresh-extreme hold (far >=1.5s) ===')
+        print(f'  {"pair":8} {"YZ30":>7} {"HV20":>7}   both>0.5?')
+        n_both = 0
+        for pair, yz, hv in rows:
+            ok = yz > 0.5 and hv > 0.5
+            n_both += ok
+            print(f'  {pair:8} {yz:7.3f} {hv:7.3f}   {"YES" if ok else "no"}')
+        print(f'  -> {n_both}/6 majors exhaust under BOTH estimators')
+    elif args and args[0] == 'combined':
         pairs = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF']
         results = []
         print('pair      mean_hold  far>=1.5(IS/OOS)')

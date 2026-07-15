@@ -123,6 +123,25 @@ def causal_sigma(daily, window=30):
     return pred
 
 
+def hv_sigma(daily, window=20):
+    """Close-to-close historical vol (HV20): a genuinely DIFFERENT estimator from YZ
+    (ignores the OHLC range decomposition). Causal: pred[i] = stdev of daily log
+    returns strictly BEFORE day i. Used only as a robustness swap for the sigma scale."""
+    c = daily['close']; n = c.size
+    ret = np.empty(n); ret[:] = np.nan
+    ret[1:] = np.log(c[1:] / c[:-1])
+    pred = np.empty(n); pred[:] = np.nan
+    for i in range(window + 1, n):
+        w = ret[i - window:i]                     # days i-window .. i-1  (all < i)
+        pred[i] = w.std(ddof=1)
+    return pred
+
+
+def causal_sigma_kind(daily, kind='yz'):
+    """Select the causal sigma series by estimator name: 'yz' (forecast default) or 'hv'."""
+    return hv_sigma(daily) if kind == 'hv' else causal_sigma(daily)
+
+
 # ── tiny self-test on synthetic bars (also used by the JS cross-check) ─────────
 def _synthetic_daily(n=80, seed=7):
     rng = np.random.default_rng(seed)

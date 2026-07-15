@@ -67,6 +67,15 @@ multiple-testing fluke. BUT the effect is *small* (≈53% vs 50% null) and its
 after-cost tradeability is **not** established — a 3pp edge on a 0.25σ target is
 exactly the scale that spread + the overshoot tail tend to eat.
 
+**3. Estimator robustness.** The σ scale is Yang-Zhang(30) — the actual FX forecast
+estimator (`VOL_ESTIMATOR_DRIFT.md`: for FX the bot/book and live forecaster use the
+identical estimator), verified bit-identical to the JS. The forecast *band* lines are
+`σ × Feller-constant × per-asset-correction`, i.e. a fixed multiplier — using them
+instead of raw σ is a pure x-axis relabel and cannot change any conclusion. Swapping to
+a genuinely different estimator (close-to-close **HV20**) that re-normalizes each day
+non-linearly leaves the result intact: **6/6 majors exhaust under BOTH YZ30 and HV20**,
+near-identical hold-rates (`measure_extremes.py compare`). The effect is not a vol-calc artifact.
+
 ## Honest verdict
 - The naïve "vol-distance predicts the reversal point" idea is **null** off the open.
 - The **fresh-extreme** framing yields a genuine effect that is **out-of-sample-stable,
