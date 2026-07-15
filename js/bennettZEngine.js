@@ -186,3 +186,34 @@ export async function runFullBennettZ(opts = {}, pairKeys = Object.keys(ZSCORE_P
     log,
   };
 }
+
+// Robustness sweep: run the full backtest across a grid of (entry threshold × z-window)
+// and report each cell's OOS summary + honest portfolio Sharpe + how many OOS years were
+// positive. The point is NOT to pick the best cell (that's p-hacking) — it's to see
+// whether a chosen cell sits on a BROAD profitable plateau (graceful degradation) or is
+// a lucky spike surrounded by losers.
+export async function runBennettZSweep(opts = {}, grid = {}) {
+  const thresholds = grid.thresholds ?? [2.0, 2.25, 2.5, 2.75];
+  const windows = grid.windows ?? [90, 126, 252];
+  const pairKeys = Object.keys(ZSCORE_PAIRS);
+  const cells = [];
+  for (const zWindow of windows) {
+    for (const entryThreshold of thresholds) {
+      try {
+        const { combined } = await runFullBennettZ({ ...opts, zWindow, entryThreshold }, pairKeys);
+        const o = combined.oos;
+        const years = Object.values(combined.perYearOos || {});
+        cells.push({
+          zWindow, entryThreshold,
+          n: o.n, winRate: o.winRate, profitFactor: o.profitFactor, totalRetPct: o.totalRetPct,
+          portfolioSharpeOos: combined.portfolioSharpe?.oos ?? 0,
+          yearsPositive: years.filter(y => y.totalRetPct > 0).length,
+          yearsTotal: years.length,
+        });
+      } catch (e) {
+        cells.push({ zWindow, entryThreshold, error: e?.message || String(e) });
+      }
+    }
+  }
+  return { cells, thresholds, windows };
+}
