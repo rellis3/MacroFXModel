@@ -85,6 +85,7 @@ import { vumanchuFade as _vumanchuFade } from './js/vumanchuFadeEngine.js';   //
 import { forecastStyleFade as _forecastStyleFade } from './js/forecastStyleFadeEngine.js';   // which forecaster's lines fade best (basis × line × fade/follow)
 import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio, inspectSession as _inspectSession, sigmaSeriesForSessions as _sigmaSeriesForSessions } from './js/pooledFadeEngine.js';   // pooled VuManChu fade w/ trader's real exit + cost sensitivity; single-session inspector for the viewer
 import { sessionsAt as _sessionsAt } from './js/fillRealismEngine.js';   // 22:00-UTC broker-day session grouping (for the fade viewer)
+import { fetchM1Gap as _fetchM1Gap } from './js/m1GapFill.js';   // OANDA M1 gap-fill so the viewer can show days past the parquet snapshot
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
@@ -10014,23 +10015,37 @@ app.post('/api/fade-inspect/run', express.json({ limit: '8kb' }), (req, res) => 
   for (const [id, j] of inspectJobs) if (j.startedAt < Date.now() - 60 * 60_000) inspectJobs.delete(id);
   inspectJobs.set(jobId, { status: 'running', startedAt });
   (async () => {
+    const log = [];
     try {
-      const bars = await _loadM1ForAB(cfg.name.toLowerCase(), 1);   // TRUE 1-min
-      if (!bars || bars.length < 20000) { inspectJobs.set(jobId, { status: 'error', error: 'Too few M1 bars', startedAt }); return; }
+      let bars = await _loadM1ForAB(cfg.name.toLowerCase(), 1);   // TRUE 1-min (parquet snapshot)
+      if (!bars || bars.length < 20000) { inspectJobs.set(jobId, { status: 'error', error: 'Too few M1 bars', startedAt, log }); return; }
       const ac = cfg.assetClass || 'fx';
-      const sess = _sessionsAt(bars, 22);
+      let sess = _sessionsAt(bars, 22);
+      // The parquet snapshot is frozen (ends whenever it was last uploaded). If the
+      // requested day is past its end, gap-fill the window from OANDA live M1 so the
+      // viewer can show recent/yesterday's session (same source the plan producer uses).
+      const parquetLast = sess.at(-1)?.date;
+      if (!sess.some(s => s.date === date) && date > (parquetLast || '') && process.env.OANDA_KEY) {
+        const lastSec = bars.at(-1).time;
+        const nowSec = Math.floor(Date.now() / 1000);
+        const toSec = Math.min(nowSec, Math.floor(Date.parse(`${date}T23:00:00Z`) / 1000));
+        log.push(`Parquet ends ${parquetLast}; gap-filling ${cfg.oanda} M1 from OANDA → ${date}…`);
+        const gap = await _fetchM1Gap(cfg.oanda, lastSec + 60, toSec, _btFetchM1Range, { onLog: m => log.push(m) });
+        if (gap.length) { bars = bars.concat(gap); sess = _sessionsAt(bars, 22); log.push(`Appended ${gap.length} live M1 bars (now ends ${sess.at(-1)?.date}).`); }
+      }
       const idx = sess.findIndex(s => s.date === date);
-      if (idx < 0) { inspectJobs.set(jobId, { status: 'error', error: `No session on ${date} (range ${sess[0]?.date}…${sess.at(-1)?.date})`, startedAt }); return; }
-      if (idx < 40) { inspectJobs.set(jobId, { status: 'error', error: 'Date too early — need ≥40 prior sessions for σ warmup', startedAt }); return; }
+      if (idx < 0) { inspectJobs.set(jobId, { status: 'error', error: `No session on ${date} — data covers ${sess[0]?.date}…${sess.at(-1)?.date}${process.env.OANDA_KEY ? ' (weekend/holiday, or future?)' : '. OANDA_KEY not set, so live days past the parquet snapshot cannot be fetched.'}`, startedAt, log }); return; }
+      if (idx < 40) { inspectJobs.set(jobId, { status: 'error', error: 'Date too early — need ≥40 prior sessions for σ warmup', startedAt, log }); return; }
       const d1 = sess.map(s => ({ open: s.open, high: s.high, low: s.low, close: s.close }));
       const vs = volSource === 'har' ? 'har' : 'platform';
       const sig = _sigmaSeriesForSessions(sess, d1, ac, vs);
       const insp = _inspectSession(sess[idx], sig[idx], { pair: cfg.name, assetClass: ac });
-      if (insp.insufficient) { inspectJobs.set(jobId, { status: 'error', error: 'Session had too few bars to inspect', startedAt }); return; }
+      if (insp.insufficient) { inspectJobs.set(jobId, { status: 'error', error: 'Session had too few bars to inspect', startedAt, log }); return; }
       // candles for the chart — the session's own 1-min bars
       const candles = sess[idx].bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }));
-      inspectJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, volSource: vs, ...insp, candles, prevClose: sess[idx - 1]?.close ?? null } });
-    } catch (e) { inspectJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt }); }
+      const live = date > (parquetLast || '');
+      inspectJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, volSource: vs, live, dataThrough: sess.at(-1)?.date, ...insp, candles, prevClose: sess[idx - 1]?.close ?? null, log } });
+    } catch (e) { inspectJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt, log }); }
   })();
   res.json({ ok: true, jobId });
 });
@@ -10039,7 +10054,7 @@ app.get('/api/fade-inspect/status/:jobId', (req, res) => {
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
-  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 
 // ── Vol Horse Race — the gold workbook's estimator race, generalised to every ──
