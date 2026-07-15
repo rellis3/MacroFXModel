@@ -82,6 +82,11 @@
       <div class="scroll"><div id="tiers"></div></div>
     </div>
     <div class="panel">
+      <h2>Per-year (OOS) — broad edge or one-regime artifact?</h2>
+      <div class="muted" style="margin-bottom:8px">If the return is concentrated in 2022–24 (the rate-divergence regime), it may not repeat. Broad across years = more robust.</div>
+      <div class="scroll"><div id="peryear"></div></div>
+    </div>
+    <div class="panel">
       <h2>Per-pair OOS</h2>
       <div class="scroll"><div id="perpair"></div></div>
     </div>
@@ -107,9 +112,10 @@ function combinedTable(c){
     <tr><td>Total return (flat)</td><td class="${cls(o.totalRetPct)}">${fmt(o.totalRetPct,2)}%</td></tr>
     <tr><td>Total return (z-sized)</td><td class="${cls(o.sizedTotalRetPct)}">${fmt(o.sizedTotalRetPct,2)}%</td></tr>
     <tr><td>Expectancy/trade</td><td class="${cls(o.expectancyPct)}">${fmt(o.expectancyPct,4)}%</td></tr>
-    <tr><td>Sharpe (flat)</td><td class="${cls(o.sharpe)}">${fmt(o.sharpe,2)}</td></tr>
+    <tr><td>Sharpe (per-trade, optimistic)</td><td class="${cls(o.sharpe)}">${fmt(o.sharpe,2)}</td></tr>
+    <tr><td><b>Portfolio Sharpe (honest, daily)</b></td><td class="${cls(o.portfolioSharpe)}"><b>${fmt(o.portfolioSharpe,2)}</b></td></tr>
     <tr><td>Sharpe (z-sized)</td><td class="${cls(o.sizedSharpe)}">${fmt(o.sizedSharpe,2)}</td></tr>
-  </tbody></table>`;
+  </tbody></table><div class="muted" style="margin-top:6px">Read the <b>Portfolio Sharpe</b> — daily returns incl. flat days, the real risk-adjusted number. The per-trade Sharpe overstates for a rare-signal strategy.</div>`;
 }
 
 function verdict(c){
@@ -146,6 +152,16 @@ function perPairTable(perPair){
   return `<table><thead><tr><th>Pair</th><th>OOS trades</th><th>Win%</th><th>PF</th><th>Total ret</th><th>Sharpe</th></tr></thead><tbody>${out}</tbody></table>`;
 }
 
+function perYearTable(py){
+  if(!py) return '<div class="muted">no data</div>';
+  const years=Object.keys(py).sort();
+  if(!years.length) return '<div class="muted">no data</div>';
+  let rows='';
+  for(const y of years){ const r=py[y];
+    rows+=`<tr><td>${y}</td><td>${r.n}</td><td>${fmt(r.winRate)}%</td><td class="${cls(r.totalRetPct)}">${fmt(r.totalRetPct,2)}%</td></tr>`; }
+  return `<table><thead><tr><th>Year</th><th>Trades</th><th>Win%</th><th>Total ret</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 async function run(){
   $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
   const body={ pair:$('pair').value, dateFrom:$('dateFrom').value, dateTo:$('dateTo').value,
@@ -168,6 +184,7 @@ async function poll(jobId){
       $('combined').innerHTML=combinedTable(j.combined);
       $('verdict').innerHTML=verdict(j.combined);
       $('tiers').innerHTML=tierTable(j.combined.oos.byTier);
+      $('peryear').innerHTML=perYearTable(j.combined.perYearOos);
       $('perpair').innerHTML=perPairTable(j.perPair);
       $('results').style.display='block'; $('runBtn').disabled=false; return;
     }

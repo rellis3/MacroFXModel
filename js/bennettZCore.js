@@ -75,6 +75,54 @@ export function tradeReturn(dir, entryClose, exitClose) {
   return dir === 'LONG' ? raw : -raw;
 }
 
+const isWeekday = dt => { const g = dt.getUTCDay(); return g !== 0 && g !== 6; };
+
+// HONEST portfolio Sharpe: distribute each trade's cost-inclusive return evenly across
+// the WEEKDAYS it was held, sum concurrent positions per day, then Sharpe on the daily
+// series INCLUDING flat (no-position) days, ×√252. This is the real risk-adjusted number
+// for a rare-signal strategy — unlike per-trade-Sharpe×√(trades/yr), which ignores that
+// capital sits idle between trades and overstates (the ENTRY_ZONE_CONFIDENCE.md trap).
+export function portfolioDailySharpe(trades, { costPct = 0.02, periodsPerYear = 252 } = {}) {
+  if (!trades.length) return 0;
+  const cost = costPct / 100;
+  const daily = new Map();   // epochMs → summed daily return
+  let gMin = Infinity, gMax = -Infinity;
+  for (const t of trades) {
+    if (!t.exitDate) continue;
+    const ret = (tradeReturn(t.dir, t.entryClose, t.exitClose) - cost) * (t.size ?? 1);
+    const days = [];
+    for (let d = new Date(t.date + 'T00:00:00Z'), end = new Date(t.exitDate + 'T00:00:00Z'); d < end; d = new Date(d.getTime() + 86_400_000)) {
+      if (isWeekday(d)) days.push(d.getTime());
+    }
+    if (!days.length) continue;
+    const per = ret / days.length;
+    for (const ms of days) { daily.set(ms, (daily.get(ms) || 0) + per); if (ms < gMin) gMin = ms; if (ms > gMax) gMax = ms; }
+  }
+  if (!isFinite(gMin)) return 0;
+  const rets = [];
+  for (let ms = gMin; ms <= gMax; ms += 86_400_000) { if (isWeekday(new Date(ms))) rets.push(daily.get(ms) || 0); }
+  const n = rets.length;
+  if (n < 2) return 0;
+  const mean = rets.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(rets.reduce((a, b) => a + (b - mean) ** 2, 0) / n);
+  return sd > 0 ? +(mean / sd * Math.sqrt(periodsPerYear)).toFixed(2) : 0;
+}
+
+// Per-calendar-year breakdown (flat-sized, cost-inclusive) — is the edge broad across
+// years or concentrated in one regime (e.g. the 2022-24 rate-divergence)?
+export function perYearBreakdown(trades, { costPct = 0.02 } = {}) {
+  const cost = costPct / 100;
+  const out = {};
+  for (const t of trades) {
+    const y = String(t.date).slice(0, 4);
+    const ret = tradeReturn(t.dir, t.entryClose, t.exitClose) - cost;
+    (out[y] ??= { n: 0, wins: 0, totalRetPct: 0 });
+    out[y].n++; if (ret > 0) out[y].wins++; out[y].totalRetPct += ret * 100;
+  }
+  for (const y in out) { out[y].winRate = +(out[y].wins / out[y].n * 100).toFixed(1); out[y].totalRetPct = +out[y].totalRetPct.toFixed(2); }
+  return out;
+}
+
 // Summary over trades. Reports FLAT-sized and z-TIER-sized results side by side (the
 // A/B on Bennett's sizing rule), the by-tier breakdown (the falsification of "extreme
 // z = better"), and cost-inclusive risk stats. periodsPerYear scales the per-trade
@@ -120,6 +168,7 @@ export function summarizeBennett(trades, { costPct = 0.02, periodsPerYear = 26 }
     winRate: +(wins / n * 100).toFixed(1),
     totalRetPct: +(f.total * 100).toFixed(2),
     sharpe: +f.sharpe.toFixed(2),
+    portfolioSharpe: portfolioDailySharpe(trades, { costPct, periodsPerYear: 252 }),
     profitFactor: gL > 0 ? +(gW / gL).toFixed(2) : (gW > 0 ? 999 : 0),
     expectancyPct: +(f.mean * 100).toFixed(4),
     sizedTotalRetPct: +(s.total * 100).toFixed(2),

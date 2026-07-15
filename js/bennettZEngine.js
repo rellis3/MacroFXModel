@@ -8,7 +8,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { ZSCORE_PAIRS, fetchFredObservations, _shiftDate, buildRollingZSeries, buildDayIndex } from './zscoreSpreadEngine.js';
 import {
-  BENNETT_DEFAULTS, directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, summarizeBennett, splitByDate,
+  BENNETT_DEFAULTS, directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, summarizeBennett, splitByDate, perYearBreakdown,
 } from './bennettZCore.js';
 import { usdRole } from './macroDirectionCore.js';
 
@@ -149,7 +149,11 @@ export async function runFullBennettZ(opts = {}, pairKeys = Object.keys(ZSCORE_P
   const summ = recs => summarizeBennett(recs, { costPct, periodsPerYear: ppy });
   return {
     perPair,
-    combined: { all: summ(allTrades), is: summ(is), oos: summ(oos), splitDate, nTrades: allTrades.length },
+    combined: {
+      all: summ(allTrades), is: summ(is), oos: summ(oos), splitDate, nTrades: allTrades.length,
+      perYear: perYearBreakdown(allTrades, { costPct }),
+      perYearOos: perYearBreakdown(oos, { costPct }),
+    },
     log,
   };
 }
