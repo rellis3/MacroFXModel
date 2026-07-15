@@ -3412,6 +3412,10 @@ loadMeLiveStatus();
 const VB_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 600, enabled_pairs: [],
+  // σ engine for the plan's lines. 'platform' = volSigmaSeries (book-matching, default).
+  // 'har-nonfx' = HAR-RV σ for indices + gold (fx unchanged) — matches the calibrated
+  // export; applies on the NEXT plan refresh. Reversible: switch back any time.
+  sigma_source: 'platform',
   broker_symbols: {},  // { nq:'USTECH100', spx:'SP500', de30:'GER40', … } — blank = built-in default
   // Per-asset-class sizing OVERRIDES (blank = use the global risk_pct/max_lot). Lets gold
   // (commodity) be dialled down independently so one instrument can't carry a week.
@@ -3445,6 +3449,7 @@ function renderVbForm() {
   });
   const syms = _vbCfg.broker_symbols || {};
   VB_INDEX_KEYS.forEach(k => { const el = document.getElementById(`vb_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
+  set('vb_sigma_source', _vbCfg.sigma_source ?? VB_DEFAULTS.sigma_source);
 }
 
 function readVbForm() {
@@ -3474,6 +3479,7 @@ function readVbForm() {
   const syms = {};
   VB_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`vb_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
   _vbCfg.broker_symbols = syms;
+  _vbCfg.sigma_source = document.getElementById('vb_sigma_source')?.value === 'har-nonfx' ? 'har-nonfx' : 'platform';
 }
 
 async function loadVbConfig() {
