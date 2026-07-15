@@ -3960,7 +3960,7 @@ const OI_DEFAULTS = {
   // strategy (server plan producer)
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
-  requireEstablished: false, avoidLiquidating: true,
+  requireEstablished: false, avoidLiquidating: true, maxZonesPerSide: 4,
   fx_enabled: false, fx_pairs: [],
   // execution (the bot)
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
@@ -3978,6 +3978,7 @@ function renderOiForm() {
   chk('oi_fx_enabled', _oiCfg.fx_enabled);
   set('oi_fx_pairs', (_oiCfg.fx_pairs ?? []).join(', '));
   set('oi_min_tier', _oiCfg.minTier ?? 'strong');
+  set('oi_max_zones_per_side', _oiCfg.maxZonesPerSide ?? OI_DEFAULTS.maxZonesPerSide);
   chk('oi_fade_in_pin', _oiCfg.fadeInPin ?? true);
   chk('oi_follow_breaks', _oiCfg.followBreaks ?? true);
   chk('oi_maxpain_reversion', _oiCfg.maxPainReversion ?? true);
@@ -4010,6 +4011,7 @@ function readOiForm() {
   _oiCfg.fx_enabled = !!document.getElementById('oi_fx_enabled')?.checked;
   _oiCfg.fx_pairs = list('oi_fx_pairs');
   _oiCfg.minTier = document.getElementById('oi_min_tier')?.value || 'strong';
+  _oiCfg.maxZonesPerSide = Math.round(num('oi_max_zones_per_side', OI_DEFAULTS.maxZonesPerSide));
   _oiCfg.fadeInPin = !!document.getElementById('oi_fade_in_pin')?.checked;
   _oiCfg.followBreaks = !!document.getElementById('oi_follow_breaks')?.checked;
   _oiCfg.maxPainReversion = !!document.getElementById('oi_maxpain_reversion')?.checked;

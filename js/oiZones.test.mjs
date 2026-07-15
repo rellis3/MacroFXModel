@@ -64,6 +64,21 @@ console.log('[Filters — liquidating veto + established requirement]');
   ok('established call wall qualifies', z3.some(x => x.side === 'sell' && x.level === 4300));
 }
 
+console.log('[Trade the K strongest walls per side — decoupled from display count]');
+{
+  // 10 strong call walls above + 10 strong put walls below, sorted by OI (strongest first).
+  const mk = (base, step, up) => Array.from({ length: 10 }, (_, i) =>
+    ({ strike: base + (up ? 1 : -1) * step * (i + 1), oi: 9000 - i * 500, tier: 'strong', mult: 3 + i * 0.1 }));
+  const many = { ...base, exposures: { gex: 5000 },
+    callWalls: mk(4200, 25, true), putWalls: mk(4200, 25, false) };
+  const capped = buildOIZones(many, 4200, { ...cfg, maxZonesPerSide: 3 }).filter(z => z.mode === 'fade');
+  ok('caps to 3 fades per side (6 total), not all 20', capped.length === 6, `${capped.length}`);
+  ok('keeps the STRONGEST (highest-OI) walls', capped.some(z => z.level === 4225) && !capped.some(z => z.level === 4450),
+    capped.map(z => z.level).join(','));
+  const uncapped = buildOIZones(many, 4200, { ...cfg, maxZonesPerSide: 0 }).filter(z => z.mode === 'fade');
+  ok('maxZonesPerSide 0 → no cap (all 20 fade)', uncapped.length === 20, `${uncapped.length}`);
+}
+
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));
