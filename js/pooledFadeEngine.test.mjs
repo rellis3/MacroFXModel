@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pooledFade, poolPortfolio } from './pooledFadeEngine.js';
+import { pooledFade, poolPortfolio, inspectSession, detectSessionSignals } from './pooledFadeEngine.js';
+import { sessionsAt } from './fillRealismEngine.js';
+import { volSigmaSeries } from './forecastCore.js';
 
 function synthM1(nDays) {
   const bars = []; const startSec = Math.floor(Date.UTC(2020, 0, 1, 22, 0, 0) / 1000);
@@ -54,6 +56,29 @@ test('poolPortfolio: higher cost multiple lowers the pooled return (monotone)', 
 
 test('pooledFade: insufficient data flagged, not thrown', () => {
   assert.ok(pooledFade(synthM1(30), { pair: 'EURUSD' }).insufficient);
+});
+
+test('inspectSession: confirmed/gross match detectSessionSignals (no viewer drift)', () => {
+  const bars = synthM1(200);
+  const sess = sessionsAt(bars, 22);
+  const d1 = sess.map(s => ({ open: s.open, high: s.high, low: s.low, close: s.close }));
+  const sig = volSigmaSeries(d1, 'fx');
+  let checked = 0;
+  for (let i = 60; i < sess.length && checked < 20; i++) {
+    const insp = inspectSession(sess[i], sig[i], { pair: 'EURUSD' });
+    const det = detectSessionSignals(sess[i], sig[i], { pair: 'EURUSD' });
+    if (insp.insufficient) continue;
+    const byLine = Object.fromEntries(det.map(d => [d.line, d]));
+    for (const row of insp.rows) {
+      if (!row.touched) { assert.ok(!byLine[row.line], `${row.line} untouched → not a signal`); continue; }
+      const d = byLine[row.line];
+      assert.ok(d, `${row.line} touched → detect has it`);
+      assert.equal(row.confirmed, d.confirmed, `${row.line} confirmed matches`);
+      assert.ok(Math.abs(row.gross - d.gross) < 1e-3, `${row.line} gross matches (${row.gross} vs ${d.gross})`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 0, 'exercised at least one touched level');
 });
 
 test('pooledFade: volSource "har" runs, reports its source, and differs from platform', () => {

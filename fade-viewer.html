@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fade Viewer — one day, the forecast, and what the engine did</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; --up:#f85149; --dn:#3fb950; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:20px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:14px; margin:16px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:12px; max-width:1000px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace; width:100% }
+  th,td { padding:4px 8px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  input,select { background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:3px 6px; font:12px 'DM Mono',monospace }
+  input#date { width:120px } input#pair { width:88px; text-transform:uppercase }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:14px; overflow-x:auto }
+  a { color:#58a6ff }
+  .chip { display:inline-block; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600 }
+  .chip.fade { background:rgba(63,185,80,.18); color:var(--pos); outline:1px solid var(--pos) }
+  .chip.skip { background:#21262d; color:var(--text3) }
+  .chip.miss { color:var(--text3) }
+  .k { color:var(--text3); font-size:10px; text-transform:uppercase; letter-spacing:.03em }
+  .row { display:flex; gap:22px; flex-wrap:wrap; align-items:flex-end }
+  #chart { height:440px; width:100% }
+</style>
+</head>
+<body>
+  <h1>Fade Viewer <span class="muted" style="font-size:12px">— one day, the forecast, and exactly what the engine did</span></h1>
+  <div class="sub">
+    Pick a pair + date and see the session's forecast bands (median/75th), the 1-min candle path, and the engine's read of <b>every level</b>: was it touched, what did WaveTrend + VWAP say at the touch, did it <b>confirm a fade</b>, and where did the managed exit land. This is the trust tool — check by eye that the engine finds the fades the way you do. Same <code>inspectSession</code> brick as the validated backtest (byte-identical to <code>detectSessionSignals</code>).
+  </div>
+  <div class="card"><div class="row">
+    <div><div class="k">Pair</div><input id="pair" value="GOLD"></div>
+    <div><div class="k">Date (session)</div><input id="date" type="date" value=""></div>
+    <div><div class="k">σ source</div><select id="vs"><option value="platform">platform (live)</option><option value="har">HAR-RV</option></select></div>
+    <div><button onclick="run()">▶ Load</button></div>
+    <div class="muted" id="status"></div>
+  </div></div>
+
+  <div id="head"></div>
+  <div class="card"><div id="chart"></div>
+    <div class="muted" style="font-size:10px;margin-top:6px">
+      <span style="color:var(--up)">■</span> upper bands (up75 dashed / up50) &nbsp;
+      <span style="color:var(--dn)">■</span> lower bands (dn75 dashed / dn50) &nbsp;
+      <span style="color:#8b949e">■</span> day open (fade target) &nbsp; ▲/▼ touch &nbsp; ✕ exit
+    </div>
+  </div>
+  <div id="tbl"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=5) => v==null?'—':(+v).toFixed(d);
+let _chart=null, _cs=null, _lines=[], _timer=null;
+
+function ensureChart(){
+  if(_chart) return;
+  _chart = LightweightCharts.createChart(el('chart'), {
+    layout:{ background:{color:'#0d1117'}, textColor:'#8b949e' },
+    grid:{ vertLines:{color:'#161b22'}, horzLines:{color:'#161b22'} },
+    timeScale:{ timeVisible:true, secondsVisible:false, borderColor:'#30363d' },
+    rightPriceScale:{ borderColor:'#30363d' }, crosshair:{ mode:0 },
+    autoSize:true,
+  });
+  _cs = _chart.addCandlestickSeries({ upColor:'#3fb950', downColor:'#f85149', borderVisible:false, wickUpColor:'#3fb950', wickDownColor:'#f85149' });
+}
+function clearLines(){ for(const l of _lines){ try{_cs.removePriceLine(l);}catch{} } _lines=[]; }
+function priceLine(price, color, title, dashed){ _lines.push(_cs.createPriceLine({ price, color, lineWidth:1, lineStyle: dashed?2:0, axisLabelVisible:true, title })); }
+
+async function run(){
+  clearInterval(_timer); el('status').textContent='Loading…'; el('head').innerHTML=''; el('tbl').innerHTML='';
+  const body = { pair:el('pair').value.trim(), date:el('date').value, volSource:el('vs').value };
+  let j; try { j = await (await fetch('/api/fade-inspect/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">'+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/fade-inspect/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Streaming M1… '+(s.elapsed||0)+'s'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; return; }
+    el('status').textContent=''; render(s);
+  }, 2500);
+}
+
+function render(s){
+  // header
+  const nConf = s.rows.filter(r=>r.confirmed).length, nTouch = s.rows.filter(r=>r.touched).length;
+  el('head').innerHTML = `<div class="card"><div class="row">
+    <div><div class="k">Session</div><b>${s.pair}</b> · ${s.date} <span class="muted">(${s.assetClass}, σ src ${s.volSource})</span></div>
+    <div><div class="k">σ (daily)</div><b>${fmt(s.sigma,6)}</b></div>
+    <div><div class="k">Day open (target)</div><b>${fmt(s.bands.open)}</b></div>
+    <div><div class="k">Levels touched</div><b>${nTouch}/4</b></div>
+    <div><div class="k">Fades confirmed</div><b class="${nConf?'pos':'muted'}">${nConf}</b></div>
+  </div></div>`;
+
+  // chart
+  ensureChart(); clearLines(); _cs.setMarkers([]);
+  _cs.setData(s.candles.map(c=>({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close })));
+  const B=s.bands;
+  priceLine(B.up75,'#f85149','up75',true); priceLine(B.up50,'#f85149','up50',false);
+  priceLine(B.open,'#8b949e','open',false);
+  priceLine(B.dn50,'#3fb950','dn50',false); priceLine(B.dn75,'#3fb950','dn75',true);
+  const markers=[];
+  for(const r of s.rows){ if(!r.touched) continue;
+    markers.push({ time:r.touchTime, position:r.up?'aboveBar':'belowBar', color:r.confirmed?(r.up?'#f85149':'#3fb950'):'#8b949e', shape:r.up?'arrowDown':'arrowUp', text:(r.confirmed?'FADE ':'')+r.line });
+    markers.push({ time:r.exitTime, position:'inBar', color:'#d29922', shape:'circle', text:'exit '+r.exitReason });
+  }
+  _cs.setMarkers(markers.sort((a,b)=>a.time-b.time));
+  _chart.timeScale().fitContent();
+
+  // table
+  const t2 = t => t? new Date(t*1000).toISOString().slice(11,16) : '—';
+  let h = `<div class="card"><h2 style="margin-top:0">Every level — what the engine saw</h2><table>
+    <tr><th>Line</th><th>dir</th><th>level</th><th>touched</th><th>at</th><th>WT1</th><th>WT2</th><th>WT agree</th><th>VWAP turn</th><th>action</th><th>exit</th><th>gross%</th><th>net%</th></tr>`;
+  for(const r of s.rows){
+    if(!r.touched){ h += `<tr><td>${r.line}</td><td class="muted">${r.up?'sell':'buy'}</td><td>${fmt(r.level)}</td><td class="muted">no</td><td colspan="9" class="muted">— not reached this session —</td></tr>`; continue; }
+    const chip = r.confirmed?'<span class="chip fade">FADE</span>':'<span class="chip skip">skip</span>';
+    h += `<tr>
+      <td><b>${r.line}</b></td><td class="muted">${r.dir}</td><td>${fmt(r.level)}</td>
+      <td class="pos">yes</td><td>${t2(r.touchTime)}</td>
+      <td class="${r.wt1>0?'neg':'pos'}">${fmt(r.wt1,1)}</td><td>${fmt(r.wt2,1)}</td>
+      <td class="${r.wtAgree?'pos':'muted'}">${r.wtAgree?'✓':'✗'}</td>
+      <td class="${r.vwapTurn?'pos':'muted'}">${r.vwapTurn?'✓':'✗'}</td>
+      <td>${chip}</td>
+      <td class="muted">${t2(r.exitTime)} ${r.exitReason}</td>
+      <td class="${r.gross>0?'pos':'neg'}">${fmt(r.gross,3)}</td>
+      <td class="${r.net>0?'pos':'neg'}">${fmt(r.net,3)}</td>
+    </tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:6px">FADE = WaveTrend agreed with the fade AND the VWAP oscillator turned at the touch bar (the confirmation). gross = the trader's managed exit (5-pip vol stop → trail from 2R → day-open target → EOD), net after cost. This is the exact logic the pooled backtest scores.</div></div>`;
+  el('tbl').innerHTML = h;
+}
+</script>
+</body>
+</html>

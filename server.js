@@ -83,7 +83,8 @@ import { exhaustionForecast as _exhaustionForecast } from './js/exhaustionForeca
 import { newsExhaustion as _newsExhaustion } from './js/newsExhaustionEngine.js';   // does news predict fade@median vs blow-through@75th
 import { vumanchuFade as _vumanchuFade } from './js/vumanchuFadeEngine.js';   // WaveTrend-confirmed fade at median/75th vs blind
 import { forecastStyleFade as _forecastStyleFade } from './js/forecastStyleFadeEngine.js';   // which forecaster's lines fade best (basis × line × fade/follow)
-import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio } from './js/pooledFadeEngine.js';   // pooled VuManChu fade w/ trader's real exit + cost sensitivity
+import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio, inspectSession as _inspectSession, sigmaSeriesForSessions as _sigmaSeriesForSessions } from './js/pooledFadeEngine.js';   // pooled VuManChu fade w/ trader's real exit + cost sensitivity; single-session inspector for the viewer
+import { sessionsAt as _sessionsAt } from './js/fillRealismEngine.js';   // 22:00-UTC broker-day session grouping (for the fade viewer)
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
@@ -9976,6 +9977,49 @@ app.get('/api/pooled-fade/volcompare/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Fade Viewer — inspect ONE session: forecast bands, the candle path, and the ──
+// engine's read of every level (touched? confirmed? entry/exit/outcome). A trust
+// tool: see whether the engine finds the fades correctly, chart + table.
+const inspectJobs = new Map();
+app.post('/api/fade-inspect/run', express.json({ limit: '8kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '', date = '', volSource = 'platform' } = req.body || {};
+  const cfg = WBT_INSTRUMENTS.find(i => i.name === (pair || '').toUpperCase());
+  if (!cfg) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+  const jobId = `insp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of inspectJobs) if (j.startedAt < Date.now() - 60 * 60_000) inspectJobs.delete(id);
+  inspectJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const bars = await _loadM1ForAB(cfg.name.toLowerCase(), 1);   // TRUE 1-min
+      if (!bars || bars.length < 20000) { inspectJobs.set(jobId, { status: 'error', error: 'Too few M1 bars', startedAt }); return; }
+      const ac = cfg.assetClass || 'fx';
+      const sess = _sessionsAt(bars, 22);
+      const idx = sess.findIndex(s => s.date === date);
+      if (idx < 0) { inspectJobs.set(jobId, { status: 'error', error: `No session on ${date} (range ${sess[0]?.date}…${sess.at(-1)?.date})`, startedAt }); return; }
+      if (idx < 40) { inspectJobs.set(jobId, { status: 'error', error: 'Date too early — need ≥40 prior sessions for σ warmup', startedAt }); return; }
+      const d1 = sess.map(s => ({ open: s.open, high: s.high, low: s.low, close: s.close }));
+      const vs = volSource === 'har' ? 'har' : 'platform';
+      const sig = _sigmaSeriesForSessions(sess, d1, ac, vs);
+      const insp = _inspectSession(sess[idx], sig[idx], { pair: cfg.name, assetClass: ac });
+      if (insp.insufficient) { inspectJobs.set(jobId, { status: 'error', error: 'Session had too few bars to inspect', startedAt }); return; }
+      // candles for the chart — the session's own 1-min bars
+      const candles = sess[idx].bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }));
+      inspectJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, volSource: vs, ...insp, candles, prevClose: sess[idx - 1]?.close ?? null } });
+    } catch (e) { inspectJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/fade-inspect/status/:jobId', (req, res) => {
+  const job = inspectJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
 // ── Vol Horse Race — the gold workbook's estimator race, generalised to every ──

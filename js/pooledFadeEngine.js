@@ -28,6 +28,7 @@ import { harSigmaSeries } from './volEstimatorAB.js';
 // horse race found HAR is far better-calibrated than GARCH/HV for indices & gold,
 // so this tests whether better-placed bands lift the fade there. Both are causal:
 // value for session i uses data < i. Same length as sess.
+export function sigmaSeriesForSessions(sess, d1, assetClass, volSource = 'platform') { return _sigmaSeries(sess, d1, assetClass, volSource); }
 function _sigmaSeries(sess, d1, assetClass, volSource) {
   if (volSource !== 'har') return volSigmaSeries(d1, assetClass);
   const sigRV = sess.map(s => {
@@ -56,16 +57,20 @@ function _wtAgree(v1, v2, isUpper, ob = 53, os = -53) {
 // beyond entry; once profit ≥ trailR·R, trail the stop `trailDist` behind the best
 // favorable price (aimed at the open target); TP at the open; else close at EOD.
 // Conservative: stop checked before it's loosened (trail lags one bar), SL-first.
-function _manageExit(bars, fromIdx, entry, isUpper, openPx, stopDist, trailR, trailDist) {
+// Detailed walk — returns { gross, exitIdx, exitPrice, reason }. `_manageExit`
+// projects .gross so the backtest is byte-for-byte unchanged; the viewer uses the
+// full detail. ONE walk, so the two can never disagree.
+function _manageExitDetail(bars, fromIdx, entry, isUpper, openPx, stopDist, trailR, trailDist) {
   let stopPx = isUpper ? entry + stopDist : entry - stopDist;
   const R = stopDist;
   let trailing = false, best = entry;
+  const pct = px => (isUpper ? entry - px : px - entry) / openPx * 100;
   for (let k = fromIdx + 1; k < bars.length; k++) {
     const b = bars[k];
     const hitStop = isUpper ? b.high >= stopPx : b.low <= stopPx;
     const hitTgt = isUpper ? b.low <= openPx : b.high >= openPx;
-    if (hitStop) return (isUpper ? entry - stopPx : stopPx - entry) / openPx * 100;      // SL first
-    if (hitTgt) return (isUpper ? entry - openPx : openPx - entry) / openPx * 100;
+    if (hitStop) return { gross: pct(stopPx), exitIdx: k, exitPrice: stopPx, reason: trailing ? 'trail-stop' : 'stop' };  // SL first
+    if (hitTgt) return { gross: pct(openPx), exitIdx: k, exitPrice: openPx, reason: 'target' };
     // update favorable extreme + trail state for the NEXT bar
     if (isUpper ? b.low < best : b.high > best) best = isUpper ? b.low : b.high;
     const profit = isUpper ? entry - best : best - entry;
@@ -75,8 +80,11 @@ function _manageExit(bars, fromIdx, entry, isUpper, openPx, stopDist, trailR, tr
       stopPx = isUpper ? Math.min(entry, trailed) : Math.max(entry, trailed);            // ratchet, never worse than BE
     }
   }
-  const last = bars.at(-1).close;                                                         // close before EOD
-  return (isUpper ? entry - last : last - entry) / openPx * 100;
+  const lastIdx = bars.length - 1, last = bars[lastIdx].close;                            // close before EOD
+  return { gross: pct(last), exitIdx: lastIdx, exitPrice: last, reason: 'eod' };
+}
+function _manageExit(bars, fromIdx, entry, isUpper, openPx, stopDist, trailR, trailDist) {
+  return _manageExitDetail(bars, fromIdx, entry, isUpper, openPx, stopDist, trailR, trailDist).gross;
 }
 
 // Per-session signal detection — the SINGLE source of truth for the confirmed
@@ -113,6 +121,55 @@ export function detectSessionSignals(s, sigma, opts = {}) {
     out.push({ line: L.name, up: L.up, entry: L.level, ti, gross: r3(gross, 5), confirmed });
   }
   return out;
+}
+
+// Full per-session inspection for the viewer — the SAME bands, WT/VWAP read and
+// managed exit as detectSessionSignals/pooledFade, but returning every detail so a
+// human can see whether the engine found the fades correctly. Returns the bands,
+// the day-open target, and one row per level: touched?, when, at what price, the
+// WT & VWAP reading there, whether it CONFIRMED (fade) or would FOLLOW, the entry,
+// the exit (idx/price/reason) and the gross %. Never the last bar for a touch
+// (matches the backtest's k < len-1). Pure — pass sigma in.
+export function inspectSession(s, sigma, opts = {}) {
+  const {
+    pair = 'EURUSD', assetClass = 'fx', minBars = 35, stopPips = 5, volK = 0.09,
+    trailR = 2.0, requireVwap = true,
+  } = opts;
+  if (!(sigma > 0) || !s.bars || s.bars.length < minBars + 10 || !(s.open > 0)) return { insufficient: true };
+  const pip = pipSize(pair);
+  const b = computeBands(s.open, sigma, assetClass);
+  const { wt1, wt2 } = computeWaveTrend(s.bars);
+  const osc = computeVWAP(s.bars).osc;
+  const stopDist = Math.max(stopPips * pip, volK * sigma * s.open);
+  const bands = {
+    up75: b.up75, up50: b.up50, dn50: b.dn50, dn75: b.dn75,
+    ocUp: b.ocUp, ocDn: b.ocDn, open: s.open,
+  };
+  const levels = [
+    { name: 'up75', up: true, level: b.up75 }, { name: 'up50', up: true, level: b.up50 },
+    { name: 'dn50', up: false, level: b.dn50 }, { name: 'dn75', up: false, level: b.dn75 },
+  ];
+  const rows = levels.map(L => {
+    let ti = -1;
+    for (let k = minBars; k < s.bars.length - 1; k++) {
+      if (L.up ? s.bars[k].high >= L.level : s.bars[k].low <= L.level) { ti = k; break; }
+    }
+    if (ti < 0) return { line: L.name, up: L.up, level: r3(L.level, 6), touched: false };
+    const v1 = wt1[ti] ?? 0, v2 = wt2[ti] ?? 0, oL = osc[ti] ?? 0, oP = osc[ti - 1] ?? oL;
+    const vwapTurn = L.up ? oL < oP : oL > oP;
+    const confirmed = _wtAgree(v1, v2, L.up) && (!requireVwap || vwapTurn);
+    const ex = _manageExitDetail(s.bars, ti, L.level, L.up, s.open, stopDist, trailR, stopDist);
+    return {
+      line: L.name, up: L.up, level: r3(L.level, 6), touched: true,
+      touchIdx: ti, touchTime: s.bars[ti].time, touchPrice: r3(s.bars[ti][L.up ? 'high' : 'low'], 6),
+      wt1: r3(v1, 2), wt2: r3(v2, 2), wtAgree: _wtAgree(v1, v2, L.up), vwapOsc: r3(oL, 4), vwapTurn,
+      confirmed, action: confirmed ? 'FADE' : 'skip',
+      entry: r3(L.level, 6), dir: L.up ? 'sell' : 'buy',
+      exitIdx: ex.exitIdx, exitTime: s.bars[ex.exitIdx].time, exitPrice: r3(ex.exitPrice, 6), exitReason: ex.reason,
+      gross: r3(ex.gross, 4), net: r3(ex.gross - (opts.costPct ?? (DEFAULT_COST_PCT[assetClass] ?? 0.012)), 4),
+    };
+  });
+  return { pair, assetClass, date: s.date, sigma: r3(sigma, 6), stopDist: r3(stopDist, 6), bands, rows };
 }
 
 export function pooledFade(bars1, opts = {}) {
