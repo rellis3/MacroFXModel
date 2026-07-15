@@ -281,6 +281,11 @@ def chart_markups(res):
 
 INSTRUMENTS = {
     'EURUSD': ('portfolioBacktest/cache/eurusd_m1.parquet', {'USD', 'EUR'}),
+    'GBPUSD': ('portfolioBacktest/cache/gbpusd_m1.parquet', {'USD', 'GBP'}),
+    'AUDUSD': ('portfolioBacktest/cache/audusd_m1.parquet', {'USD'}),
+    'NZDUSD': ('portfolioBacktest/cache/nzdusd_m1.parquet', {'USD'}),
+    'USDCAD': ('portfolioBacktest/cache/usdcad_m1.parquet', {'USD'}),
+    'USDCHF': ('portfolioBacktest/cache/usdchf_m1.parquet', {'USD'}),
     'NQ':     ('portfolioBacktest/cache/nq_m1.parquet', {'USD'}),
 }
 

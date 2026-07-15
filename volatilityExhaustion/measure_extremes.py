@@ -114,7 +114,42 @@ def chart(res):
     fig.savefig(p); plt.close(fig); print('  ->', os.path.basename(p)); return p
 
 
+def combined_chart(results, fname='FXMAJORS_freshextreme_overlay'):
+    """Overlay OOS fresh-extreme hold-rate vs distance for several instruments."""
+    fig, ax = plt.subplots(figsize=(9.2, 5.6))
+    cmap = plt.get_cmap('tab10')
+    for k, res in enumerate(results):
+        m = res['seg'] == 1                       # OOS half only (the honest test)
+        x, y, e, n = binned(res['dist'][m], res['hold'][m])
+        ax.plot(x, y, marker='o', color=cmap(k), label=res['pair'], lw=1.5)
+    ax.axhline(.5, ls='--', color='#555', lw=1, label='null = 0.50')
+    ax.set_xlabel('distance of the fresh extreme from open ($\\sigma$)')
+    ax.set_ylabel('P(extreme holds) — OOS half')
+    ax.set_title('Fresh-extreme hold-rate across instruments (OOS)  —  above 0.5 = exhausts, below = trends')
+    ax.set_ylim(.38, .70); ax.legend(fontsize=8.5, ncol=2)
+    fig.tight_layout(); p = os.path.join(CH, f'{fname}.png')
+    fig.savefig(p); plt.close(fig); print('\n->', os.path.basename(p)); return p
+
+
 if __name__ == '__main__':
-    for pair in (sys.argv[1:] or ['EURUSD']):
-        rel, _ = INSTRUMENTS[pair]
-        chart(measure_extremes(os.path.join(HERE, '..', rel), pair))
+    args = sys.argv[1:]
+    if args and args[0] == 'combined':
+        pairs = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF']
+        results = []
+        print('pair      mean_hold  far>=1.5(IS/OOS)')
+        for pair in pairs:
+            rel, _ = INSTRUMENTS[pair]
+            r = measure_extremes(os.path.join(HERE, '..', rel), pair)
+            chart(r); results.append(r)
+        combined_chart(results)
+        # compact summary table
+        print('\n=== FX majors fresh-extreme summary (OOS far >=1.5s) ===')
+        for r in results:
+            m = (r['dist'] >= 1.5) & (r['seg'] == 1)
+            rr = r['hold'][m].mean() if m.sum() >= 40 else float('nan')
+            tag = 'EXHAUSTS' if rr > 0.5 else 'trends'
+            print(f'  {r["pair"]}: hold={rr:.3f} (n={int(m.sum())})  -> {tag}')
+    else:
+        for pair in (args or ['EURUSD']):
+            rel, _ = INSTRUMENTS[pair]
+            chart(measure_extremes(os.path.join(HERE, '..', rel), pair))
