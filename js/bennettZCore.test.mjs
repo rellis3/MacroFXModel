@@ -3,6 +3,7 @@
 import assert from 'node:assert';
 import {
   directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, tradeReturn, summarizeBennett,
+  portfolioDailySharpe, perYearBreakdown,
 } from './bennettZCore.js';
 
 let passed = 0;
@@ -81,5 +82,34 @@ t('summarizeBennett: win rate + tier breakdown + sizing A/B', () => {
   assert.equal(s.byTier['4.5+'].winRate, 0);   // the extreme-z trade lost
 });
 t('summarizeBennett empty → zeros', () => assert.equal(summarizeBennett([], {}).n, 0));
+
+// ── honest portfolio Sharpe + per-year ──────────────────────────────────────────────
+t('portfolioDailySharpe: consistent winners → positive; empty → 0', () => {
+  const trades = [
+    { dir: 'LONG', entryClose: 100, exitClose: 101, size: 1, date: '2020-01-06', exitDate: '2020-01-13' },
+    { dir: 'LONG', entryClose: 100, exitClose: 101, size: 1, date: '2020-02-03', exitDate: '2020-02-10' },
+  ];
+  assert(portfolioDailySharpe(trades, { costPct: 0 }) > 0);
+  assert.equal(portfolioDailySharpe([], {}), 0);
+});
+t('portfolioDailySharpe < per-trade-annualised Sharpe (flat days drag it down)', () => {
+  const trades = Array.from({ length: 6 }, (_, i) => ({
+    dir: 'LONG', entryClose: 100, exitClose: 100.8 + (i % 2) * 0.4, size: 1,
+    date: `2020-0${i + 1}-06`, exitDate: `2020-0${i + 1}-13`,
+  }));
+  const honest = portfolioDailySharpe(trades, { costPct: 0 });
+  const fantasy = summarizeBennett(trades, { costPct: 0, periodsPerYear: 6 }).sharpe;
+  assert(honest < fantasy, `honest ${honest} should be < fantasy ${fantasy}`);
+});
+t('perYearBreakdown groups by entry year', () => {
+  const trades = [
+    { dir: 'LONG', entryClose: 100, exitClose: 102, date: '2021-05-01', exitDate: '2021-05-10' },
+    { dir: 'LONG', entryClose: 100, exitClose: 98,  date: '2022-05-01', exitDate: '2022-05-10' },
+    { dir: 'LONG', entryClose: 100, exitClose: 101, date: '2022-08-01', exitDate: '2022-08-10' },
+  ];
+  const y = perYearBreakdown(trades, { costPct: 0 });
+  assert.equal(y['2021'].n, 1); assert.equal(y['2021'].winRate, 100);
+  assert.equal(y['2022'].n, 2); assert.equal(y['2022'].winRate, 50);
+});
 
 console.log(`\n${passed} passed`);
