@@ -9238,6 +9238,8 @@ app.post('/api/bennett-z/run', (req, res) => {
     costPct:        num(b.costPct,         BENNETT_DEFAULTS.costPct),
     splitFrac:      num(b.splitFrac,       BENNETT_DEFAULTS.splitFrac),
     autoOrient:     b.autoOrient == null ? true : (b.autoOrient === true || b.autoOrient === 'true'),
+    pubLagUsDays:      b.pubLagUsDays === '' || b.pubLagUsDays == null ? 2 : (parseInt(b.pubLagUsDays) || 0),
+    pubLagForeignDays: b.pubLagForeignDays === '' || b.pubLagForeignDays == null ? 45 : (parseInt(b.pubLagForeignDays) || 0),
     invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k => [k, b.invert?.[k] === true || b.invert?.[k] === 'true'])),
   };
   const pairsToRun = b.pair ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p]) : Object.keys(ZSCORE_PAIRS);

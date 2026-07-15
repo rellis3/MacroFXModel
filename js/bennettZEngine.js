@@ -14,6 +14,16 @@ import { usdRole } from './macroDirectionCore.js';
 
 export { ZSCORE_PAIRS, BENNETT_DEFAULTS };
 
+// Shift a FRED observation Map's dates FORWARD by `days` to model publication lag —
+// a value nominally dated D is not KNOWN until D+lag. Monthly foreign rates are
+// released ~a month after their reference month; using them earlier is lookahead.
+function shiftObsForward(obs, days) {
+  if (!days) return obs;
+  const out = new Map();
+  for (const [d, v] of obs) out.set(_shiftDate(d, days), v);
+  return out;
+}
+
 function dailyClosesFrom(packed) {
   const out = [];
   for (const [date, { end }] of buildDayIndex(packed.times)) {
@@ -50,10 +60,17 @@ export async function runBennettZ(pairKey, opts = {}) {
   if (daily.length < 60) throw new Error(`Too few daily closes for ${pairKey}`);
 
   const fredFrom = _shiftDate(dateFrom, -(zWindow + 21));
-  const [usObs, forObs] = await Promise.all([
+  // Publication lags (default ON — the honest setting). Set to 0 to reproduce the
+  // no-lag (lookahead) run for an A/B. US 2Y is daily (~next-day release); the foreign
+  // short rates are MONTHLY (released ~a month after their reference month).
+  const pubLagUsDays = opts.pubLagUsDays ?? 2;
+  const pubLagForeignDays = opts.pubLagForeignDays ?? 45;
+  const [usObsRaw, forObsRaw] = await Promise.all([
     fetchFredObservations(cfg.baseSeries, fredFrom, fredKey),
     fetchFredObservations(cfg.quoteSeries, fredFrom, fredKey),
   ]);
+  const usObs = shiftObsForward(usObsRaw, pubLagUsDays);
+  const forObs = shiftObsForward(forObsRaw, pubLagForeignDays);
   const zByDate = buildRollingZSeries(usObs, forObs, zWindow, dateFrom, dateTo);
 
   // State machine over daily closes.
