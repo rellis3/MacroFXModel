@@ -8,7 +8,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { ZSCORE_PAIRS, fetchFredObservations, _shiftDate, buildRollingZSeries, buildDayIndex } from './zscoreSpreadEngine.js';
 import {
-  BENNETT_DEFAULTS, directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, summarizeBennett, splitByDate, perYearBreakdown,
+  BENNETT_DEFAULTS, directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, summarizeBennett, splitByDate, perYearBreakdown, sharpeFromDaily,
 } from './bennettZCore.js';
 import { usdRole } from './macroDirectionCore.js';
 
@@ -73,11 +73,23 @@ export async function runBennettZ(pairKey, opts = {}) {
   const forObs = shiftObsForward(forObsRaw, pubLagForeignDays);
   const zByDate = buildRollingZSeries(usObs, forObs, zWindow, dateFrom, dateTo);
 
-  // State machine over daily closes.
+  // State machine over daily closes, with a REAL day-over-day mark-to-market return
+  // series (dailyRet: date→return) so the portfolio Sharpe is honest.
   const trades = [];
+  const dailyRet = {};
+  const costFrac = costPct / 100;
   let pos = null;   // { dir, size, tierLabel, entryClose, entryDate, entryIdx, entryZ }
   for (let i = 0; i < daily.length; i++) {
     const { date, close } = daily[i];
+    // MTM for a position carried from the prior day — accrues EVERY trading day, even
+    // ones with no fresh z reading.
+    if (pos && i > 0) {
+      const prev = daily[i - 1].close;
+      if (prev > 0) {
+        const r = (pos.dir === 'LONG' ? (close - prev) / prev : (prev - close) / prev) * pos.size;
+        dailyRet[date] = (dailyRet[date] || 0) + r;
+      }
+    }
     const zInfo = zByDate.get(date);
     if (zInfo == null) continue;
     const z = zInfo.z, absZ = Math.abs(z);
@@ -86,6 +98,7 @@ export async function runBennettZ(pairKey, opts = {}) {
       const holdDays = i - pos.entryIdx;
       const ex = shouldExit(absZ, holdDays, { zExit, maxHoldDays });
       if (ex.exit) {
+        dailyRet[date] = (dailyRet[date] || 0) - costFrac * pos.size;   // round-trip cost at exit
         trades.push({
           pair: cfg.label, date: pos.entryDate, exitDate: date, dir: pos.dir,
           size: pos.size, tierLabel: pos.tierLabel,
@@ -107,6 +120,7 @@ export async function runBennettZ(pairKey, opts = {}) {
   // close any open position at the last close (mark-out)
   if (pos) {
     const last = daily[daily.length - 1];
+    dailyRet[last.date] = (dailyRet[last.date] || 0) - costFrac * pos.size;
     trades.push({
       pair: cfg.label, date: pos.entryDate, exitDate: last.date, dir: pos.dir,
       size: pos.size, tierLabel: pos.tierLabel, entryClose: pos.entryClose, exitClose: last.close,
@@ -118,10 +132,15 @@ export async function runBennettZ(pairKey, opts = {}) {
   const ppy = Math.max(1, trades.length / yrs);
   const { splitDate, is, oos } = splitByDate(trades, splitFrac);
   const summ = recs => summarizeBennett(recs, { costPct, periodsPerYear: ppy });
+  // Honest portfolio Sharpe from the real daily MTM series (incl. flat days).
+  const dates = daily.map(d => d.date);
+  const retAll = dates.map(d => dailyRet[d] || 0);
+  const retOos = dates.filter(d => splitDate && d >= splitDate).map(d => dailyRet[d] || 0);
+  const portfolioSharpe = { all: sharpeFromDaily(retAll), oos: sharpeFromDaily(retOos) };
   return {
     pair: cfg.label, pairDisplay: cfg.pairDisplay,
     all: summ(trades), is: summ(is), oos: summ(oos),
-    splitDate, trades,
+    splitDate, trades, dates, dailyByDate: dailyRet, portfolioSharpe,
   };
 }
 
@@ -129,11 +148,15 @@ export async function runFullBennettZ(opts = {}, pairKeys = Object.keys(ZSCORE_P
   const perPair = {};
   const allTrades = [];
   const log = [];
+  const combinedDaily = {};   // date → summed real MTM return across the equal-weight book
+  const dateSet = new Set();
   for (const pairKey of pairKeys) {
     try {
       const r = await runBennettZ(pairKey, opts);
-      perPair[pairKey] = { pair: r.pair, pairDisplay: r.pairDisplay, all: r.all, is: r.is, oos: r.oos, splitDate: r.splitDate };
+      perPair[pairKey] = { pair: r.pair, pairDisplay: r.pairDisplay, all: r.all, is: r.is, oos: r.oos, splitDate: r.splitDate, portfolioSharpe: r.portfolioSharpe };
       allTrades.push(...r.trades);
+      for (const d of r.dates) dateSet.add(d);
+      for (const dt in r.dailyByDate) combinedDaily[dt] = (combinedDaily[dt] || 0) + r.dailyByDate[dt];
       log.push({ pair: r.pair, ok: true, trades: r.trades.length });
     } catch (e) {
       log.push({ pair: pairKey, error: e?.message || String(e) });
@@ -147,13 +170,50 @@ export async function runFullBennettZ(opts = {}, pairKeys = Object.keys(ZSCORE_P
   const ppy = Math.max(1, allTrades.length / yrs);
   const { splitDate, is, oos } = splitByDate(allTrades, splitFrac);
   const summ = recs => summarizeBennett(recs, { costPct, periodsPerYear: ppy });
+  // Honest combined portfolio Sharpe from the real daily MTM of the equal-weight book.
+  const sortedDates = [...dateSet].sort();
+  const cRetAll = sortedDates.map(d => combinedDaily[d] || 0);
+  const cRetOos = sortedDates.filter(d => splitDate && d >= splitDate).map(d => combinedDaily[d] || 0);
+  const portfolioSharpe = { all: sharpeFromDaily(cRetAll), oos: sharpeFromDaily(cRetOos) };
   return {
     perPair,
     combined: {
       all: summ(allTrades), is: summ(is), oos: summ(oos), splitDate, nTrades: allTrades.length,
+      portfolioSharpe,
       perYear: perYearBreakdown(allTrades, { costPct }),
       perYearOos: perYearBreakdown(oos, { costPct }),
     },
     log,
   };
+}
+
+// Robustness sweep: run the full backtest across a grid of (entry threshold × z-window)
+// and report each cell's OOS summary + honest portfolio Sharpe + how many OOS years were
+// positive. The point is NOT to pick the best cell (that's p-hacking) — it's to see
+// whether a chosen cell sits on a BROAD profitable plateau (graceful degradation) or is
+// a lucky spike surrounded by losers.
+export async function runBennettZSweep(opts = {}, grid = {}) {
+  const thresholds = grid.thresholds ?? [2.0, 2.25, 2.5, 2.75];
+  const windows = grid.windows ?? [90, 126, 252];
+  const pairKeys = Object.keys(ZSCORE_PAIRS);
+  const cells = [];
+  for (const zWindow of windows) {
+    for (const entryThreshold of thresholds) {
+      try {
+        const { combined } = await runFullBennettZ({ ...opts, zWindow, entryThreshold }, pairKeys);
+        const o = combined.oos;
+        const years = Object.values(combined.perYearOos || {});
+        cells.push({
+          zWindow, entryThreshold,
+          n: o.n, winRate: o.winRate, profitFactor: o.profitFactor, totalRetPct: o.totalRetPct,
+          portfolioSharpeOos: combined.portfolioSharpe?.oos ?? 0,
+          yearsPositive: years.filter(y => y.totalRetPct > 0).length,
+          yearsTotal: years.length,
+        });
+      } catch (e) {
+        cells.push({ zWindow, entryThreshold, error: e?.message || String(e) });
+      }
+    }
+  }
+  return { cells, thresholds, windows };
 }

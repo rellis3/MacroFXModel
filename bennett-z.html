@@ -67,7 +67,17 @@
     </div>
     <div class="muted" style="margin-top:6px">USD-quote pairs (EURUSD/GBPUSD/AUDUSD) move opposite to USD, so the raw z&gt;0→LONG rule trades them backwards. "on" flips them to the economically-correct sign (anchored on the validated USDJPY). Toggle off to reproduce the raw-sign A/B.</div>
     <button id="runBtn">Run test</button>
+    <button id="sweepBtn" style="background:#6b4fd9;margin-left:8px">Run robustness sweep</button>
     <div class="status" id="status"></div>
+    <div class="muted" style="margin-top:6px">Sweep runs a grid of entry |z| (2.0–2.75) × z-window (90/126/252) — checks whether a good cell is a <b>broad plateau</b> or a lucky spike. Uses the current cost/lag/orient settings. Heavy — takes a couple of minutes.</div>
+  </div>
+
+  <div id="sweepResults" style="display:none">
+    <div class="panel">
+      <h2>Robustness sweep — plateau or lucky spike?</h2>
+      <div class="muted" style="margin-bottom:8px">Each cell = a full OOS run. Look for a <b>contiguous block</b> of positive, multi-year-broad cells (robust) vs a single good cell among losers (overfit). Years+ = how many OOS years were positive.</div>
+      <div class="scroll"><div id="sweepGrid"></div></div>
+    </div>
   </div>
 
   <div id="results" style="display:none">
@@ -104,7 +114,7 @@ fetch('/api/bennett-z/defaults').then(r=>r.json()).then(j=>{
 
 function combinedTable(c){
   if(!c || !c.oos) return '<div class="muted">no data</div>';
-  const o=c.oos;
+  const o=c.oos, ps=c.portfolioSharpe?.oos;
   return `<table><tbody>
     <tr><td>OOS trades</td><td>${o.n}</td></tr>
     <tr><td>Win rate</td><td>${fmt(o.winRate)}%</td></tr>
@@ -113,9 +123,9 @@ function combinedTable(c){
     <tr><td>Total return (z-sized)</td><td class="${cls(o.sizedTotalRetPct)}">${fmt(o.sizedTotalRetPct,2)}%</td></tr>
     <tr><td>Expectancy/trade</td><td class="${cls(o.expectancyPct)}">${fmt(o.expectancyPct,4)}%</td></tr>
     <tr><td>Sharpe (per-trade, optimistic)</td><td class="${cls(o.sharpe)}">${fmt(o.sharpe,2)}</td></tr>
-    <tr><td><b>Portfolio Sharpe (honest, daily)</b></td><td class="${cls(o.portfolioSharpe)}"><b>${fmt(o.portfolioSharpe,2)}</b></td></tr>
-    <tr><td>Sharpe (z-sized)</td><td class="${cls(o.sizedSharpe)}">${fmt(o.sizedSharpe,2)}</td></tr>
-  </tbody></table><div class="muted" style="margin-top:6px">Read the <b>Portfolio Sharpe</b> — daily returns incl. flat days, the real risk-adjusted number. The per-trade Sharpe overstates for a rare-signal strategy.</div>`;
+    <tr><td><b>Portfolio Sharpe (honest daily MTM)</b></td><td class="${cls(ps)}"><b>${fmt(ps,2)}</b></td></tr>
+    <tr><td>Sharpe (z-sized, per-trade)</td><td class="${cls(o.sizedSharpe)}">${fmt(o.sizedSharpe,2)}</td></tr>
+  </tbody></table><div class="muted" style="margin-top:6px">Read the <b>Portfolio Sharpe (honest daily MTM)</b> — real day-over-day mark-to-market incl. flat days, ×√252. The per-trade Sharpe overstates for a rare-signal strategy.</div>`;
 }
 
 function verdict(c){
@@ -192,6 +202,48 @@ async function poll(jobId){
   }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
 }
 $('runBtn').addEventListener('click', run);
+
+function sweepTable(cells){
+  if(!cells || !cells.length) return '<div class="muted">no data</div>';
+  let rows='';
+  for(const c of cells){
+    if(c.error){ rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td colspan="6" class="neg">${c.error}</td></tr>`; continue; }
+    const good = c.profitFactor>1 && c.totalRetPct>0;
+    const broad = c.yearsTotal>0 && c.yearsPositive/c.yearsTotal >= 0.6;
+    rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td>${c.n}</td><td>${fmt(c.winRate)}%</td>
+      <td class="${c.profitFactor>=1?'pos':'neg'}">${fmt(c.profitFactor,2)}</td>
+      <td class="${cls(c.totalRetPct)}">${fmt(c.totalRetPct,1)}%</td>
+      <td class="${cls(c.portfolioSharpeOos)}">${fmt(c.portfolioSharpeOos,2)}</td>
+      <td class="${broad?'pos':(good?'':'neg')}">${c.yearsPositive}/${c.yearsTotal}</td></tr>`;
+  }
+  return `<table><thead><tr><th>Entry |z|</th><th>z-window</th><th>OOS trades</th><th>Win%</th><th>PF</th><th>Total ret</th><th>Portfolio Sharpe</th><th>Years+</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function sweep(){
+  $('sweepBtn').disabled=true; $('runBtn').disabled=true; $('status').textContent='Starting sweep…'; $('sweepResults').style.display='none';
+  const body={ dateFrom:$('dateFrom').value, dateTo:$('dateTo').value, zExit:$('zExit').value,
+    maxHoldDays:$('maxHoldDays').value, costPct:$('costPct').value, autoOrient:$('autoOrient').value,
+    pubLagUsDays:$('pubLagUsDays').value, pubLagForeignDays:$('pubLagForeignDays').value };
+  try{
+    const r=await fetch('/api/bennett-z/sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok){ $('status').textContent='Error: '+j.error; $('sweepBtn').disabled=false; $('runBtn').disabled=false; return; }
+    pollSweep(j.jobId);
+  }catch(e){ $('status').textContent='Error: '+e.message; $('sweepBtn').disabled=false; $('runBtn').disabled=false; }
+}
+async function pollSweep(jobId){
+  try{
+    const r=await fetch('/api/bennett-z/status/'+jobId); const j=await r.json();
+    if(j.status==='running'){ $('status').textContent=`Sweeping… ${j.elapsed||0}s (12 full runs — be patient)`; setTimeout(()=>pollSweep(jobId),3000); return; }
+    if(j.status==='done'){
+      $('status').textContent='Sweep done';
+      $('sweepGrid').innerHTML=sweepTable(j.cells);
+      $('sweepResults').style.display='block'; $('sweepBtn').disabled=false; $('runBtn').disabled=false; return;
+    }
+    $('status').textContent='Error: '+(j.error||'unknown'); $('sweepBtn').disabled=false; $('runBtn').disabled=false;
+  }catch(e){ $('status').textContent='Error: '+e.message; $('sweepBtn').disabled=false; $('runBtn').disabled=false; }
+}
+$('sweepBtn').addEventListener('click', sweep);
 </script>
 </body>
 </html>

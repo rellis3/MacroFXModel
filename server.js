@@ -112,7 +112,7 @@ import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zsc
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
 import { runFullRangeLevelEdge, RANGE_LEVEL_DEFAULTS } from './js/rangeLevelEdgeEngine.js';
-import { runFullBennettZ, BENNETT_DEFAULTS } from './js/bennettZEngine.js';
+import { runFullBennettZ, runBennettZSweep, BENNETT_DEFAULTS } from './js/bennettZEngine.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -11894,6 +11894,39 @@ app.get('/api/bennett-z/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// Robustness sweep across (entry threshold × z-window) — is a good cell a broad plateau
+// or a lucky spike? Same job map/pattern as /run.
+app.post('/api/bennett-z/sweep', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch yield-spread data' });
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined, dateTo: b.dateTo || undefined,
+    zExit: num(b.zExit, BENNETT_DEFAULTS.zExit),
+    maxHoldDays: parseInt(b.maxHoldDays) || BENNETT_DEFAULTS.maxHoldDays,
+    costPct: num(b.costPct, BENNETT_DEFAULTS.costPct),
+    splitFrac: num(b.splitFrac, BENNETT_DEFAULTS.splitFrac),
+    autoOrient: b.autoOrient == null ? true : (b.autoOrient === true || b.autoOrient === 'true'),
+    pubLagUsDays: b.pubLagUsDays === '' || b.pubLagUsDays == null ? 2 : (parseInt(b.pubLagUsDays) || 0),
+    pubLagForeignDays: b.pubLagForeignDays === '' || b.pubLagForeignDays == null ? 45 : (parseInt(b.pubLagForeignDays) || 0),
+  };
+  const jobId = `bzs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleBennettJobs();
+  bennettJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const result = await runBennettZSweep(opts, {});
+      bennettJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...result, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[bennett-z/sweep]', msg, e?.stack ?? '');
+      bennettJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
 });
 
 // ── NASDAQ Liquidity Continuation Framework ───────────────────────────────────
