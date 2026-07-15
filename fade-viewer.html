@@ -32,6 +32,7 @@
   <h1>Fade Viewer <span class="muted" style="font-size:12px">— one day, the forecast, and exactly what the engine did</span></h1>
   <div class="sub">
     Pick a pair + date and see the session's forecast bands (median/75th), the 1-min candle path, and the engine's read of <b>every level</b>: was it touched, what did WaveTrend + VWAP say at the touch, did it <b>confirm a fade</b>, and where did the managed exit land. This is the trust tool — check by eye that the engine finds the fades the way you do. Same <code>inspectSession</code> brick as the validated backtest (byte-identical to <code>detectSessionSignals</code>).
+    <span class="muted">Data comes from the M1 parquet snapshot; days past its end (incl. yesterday) are gap-filled live from OANDA on demand — a <b class="amber">LIVE</b> tag shows when that happened.</span>
   </div>
   <div class="card"><div class="row">
     <div><div class="k">Pair</div><input id="pair" value="GOLD"></div>
@@ -82,7 +83,7 @@ async function run(){
     let s; try { s=await (await fetch('/api/fade-inspect/status/'+id)).json(); } catch { return; }
     if(s.status==='running'){ el('status').textContent='Streaming M1… '+(s.elapsed||0)+'s'; return; }
     clearInterval(_timer);
-    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; return; }
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; el('tbl').innerHTML = s.log&&s.log.length?('<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'):''; return; }
     el('status').textContent=''; render(s);
   }, 2500);
 }
@@ -91,11 +92,12 @@ function render(s){
   // header
   const nConf = s.rows.filter(r=>r.confirmed).length, nTouch = s.rows.filter(r=>r.touched).length;
   el('head').innerHTML = `<div class="card"><div class="row">
-    <div><div class="k">Session</div><b>${s.pair}</b> · ${s.date} <span class="muted">(${s.assetClass}, σ src ${s.volSource})</span></div>
+    <div><div class="k">Session</div><b>${s.pair}</b> · ${s.date} <span class="muted">(${s.assetClass}, σ src ${s.volSource})</span>${s.live?' <span class="chip" style="background:rgba(210,153,34,.18);color:var(--amber);outline:1px solid var(--amber)">LIVE (OANDA)</span>':''}</div>
     <div><div class="k">σ (daily)</div><b>${fmt(s.sigma,6)}</b></div>
     <div><div class="k">Day open (target)</div><b>${fmt(s.bands.open)}</b></div>
     <div><div class="k">Levels touched</div><b>${nTouch}/4</b></div>
     <div><div class="k">Fades confirmed</div><b class="${nConf?'pos':'muted'}">${nConf}</b></div>
+    <div><div class="k">Data through</div><b class="muted">${s.dataThrough||'—'}</b></div>
   </div></div>`;
 
   // chart
@@ -133,6 +135,7 @@ function render(s){
     </tr>`;
   }
   h += `</table><div class="muted" style="font-size:10px;margin-top:6px">FADE = WaveTrend agreed with the fade AND the VWAP oscillator turned at the touch bar (the confirmation). gross = the trader's managed exit (5-pip vol stop → trail from 2R → day-open target → EOD), net after cost. This is the exact logic the pooled backtest scores.</div></div>`;
+  if(s.log && s.log.length) h += `<div class="card muted" style="font-size:10px">${s.log.join('<br>')}</div>`;
   el('tbl').innerHTML = h;
 }
 </script>
