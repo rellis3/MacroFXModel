@@ -6338,6 +6338,26 @@ app.get('/api/kv-health', (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// index.html command-hub layout — which dropdown category each shortcut lives in
+// and its order within that category, as dragged/reordered in "Edit Nav" mode.
+// Synced via KV so the layout follows the user across browsers/devices, not just
+// localStorage on one machine. `layout` is { [categoryId]: [href, ...] }; missing
+// or unknown keys fall back to the page's hardcoded default grouping client-side.
+app.get('/api/nav-layout', async (_req, res) => {
+  try {
+    const raw = await kv.get('nav_layout');
+    res.json({ ok: true, layout: raw ? JSON.parse(raw) : null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/nav-layout', async (req, res) => {
+  try {
+    const layout = req.body?.layout;
+    if (!layout || typeof layout !== 'object') return res.status(400).json({ ok: false, error: 'missing layout' });
+    await kv.put('nav_layout', JSON.stringify(layout));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Text-format export helpers ────────────────────────────────────────────────
 // Mirrors the client-side buildExportText() / buildSessionText() in vol-forecast.html
 

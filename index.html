@@ -22,6 +22,26 @@
 .chub-star:hover{opacity:1!important;color:#f59e0b!important}
 .chub-star.starred{color:#f59e0b!important;opacity:1!important}
 #chubFavDD{display:none}
+#navEditBtn{background:none;border:1px solid var(--border,#1e2a3a);border-radius:6px;color:var(--text3,#4b5563);font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;font-family:'DM Sans',sans-serif;margin-left:auto;white-space:nowrap}
+#navEditBtn:hover{background:var(--s2,#161b27);color:var(--text2,#94a3b8)}
+#navEditOverlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:24px}
+#navEditOverlay.open{display:flex}
+#navEditModal{background:var(--s1,#111827);border:1px solid var(--border,#1e2a3a);border-radius:10px;width:100%;max-width:1240px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+#navEditHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border,#1e2a3a)}
+#navEditHead h3{margin:0;font-size:14px;color:var(--text,#e2e8f0);font-family:'DM Sans',sans-serif}
+#navEditHint{font-size:11px;color:var(--text3,#4b5563);font-family:'DM Sans',sans-serif;text-align:right}
+#navEditBody{display:flex;gap:10px;padding:14px 18px;overflow-x:auto;overflow-y:hidden;flex:1;min-height:0}
+.ne-col{flex:0 0 195px;display:flex;flex-direction:column;background:var(--s2,#161b27);border:1px solid var(--border,#1e2a3a);border-radius:8px;min-height:0}
+.ne-col-hd{font-size:11px;font-weight:700;padding:8px 10px;border-bottom:1px solid var(--border,#1e2a3a);font-family:'DM Sans',sans-serif}
+.ne-col-list{flex:1;overflow-y:auto;padding:6px;min-height:80px}
+.ne-item{background:var(--s1,#111827);border:1px solid var(--border,#1e2a3a);border-radius:5px;padding:6px 8px;font-size:11px;color:var(--text2,#94a3b8);margin-bottom:4px;cursor:grab;font-family:'DM Sans',sans-serif;line-height:1.3;user-select:none}
+.ne-item.dragging{opacity:.35}
+#navEditFoot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border,#1e2a3a)}
+.ne-btn{background:none;border:1px solid var(--border,#1e2a3a);border-radius:6px;color:var(--text2,#94a3b8);font-size:12px;font-weight:600;cursor:pointer;padding:6px 14px;font-family:'DM Sans',sans-serif}
+.ne-btn:hover{background:var(--s2,#161b27)}
+.ne-btn.primary{background:#4f7df0;border-color:#4f7df0;color:#fff}
+.ne-btn.primary:hover{background:#3d68d8}
+.ne-btn.danger{color:#ef4444;border-color:rgba(239,68,68,.35);margin-right:auto}
 </style>
 </head>
 <body>
@@ -186,11 +206,29 @@
     </div>
   </div>
 
+  <button id="navEditBtn" onclick="navEditOpen()" title="Drag shortcuts between categories">✏️ Edit Nav</button>
+
+</div>
+
+<div id="navEditOverlay" onclick="if(event.target===this)navEditClose()">
+  <div id="navEditModal">
+    <div id="navEditHead">
+      <h3>Edit Nav</h3>
+      <span id="navEditHint">Drag shortcuts to reorder or move to another category · saves to your account, same layout on every device</span>
+    </div>
+    <div id="navEditBody"></div>
+    <div id="navEditFoot">
+      <button class="ne-btn danger" onclick="navEditReset()">Reset to Default</button>
+      <button class="ne-btn" onclick="navEditClose()">Cancel</button>
+      <button class="ne-btn primary" id="navEditSaveBtn" onclick="navEditSave()">Save</button>
+    </div>
+  </div>
 </div>
 
 <script>
 (function(){
   var FAV_KEY='macrofx_favs';
+  var LAYOUT_CACHE_KEY='macrofx_nav_layout_cache';
   function cGet(){try{return JSON.parse(localStorage.getItem(FAV_KEY)||'[]')}catch(e){return[]}}
   function cSet(f){try{localStorage.setItem(FAV_KEY,JSON.stringify(f))}catch(e){}}
 
@@ -235,7 +273,164 @@
     }).filter(Boolean).join('');
   }
 
-  document.addEventListener('DOMContentLoaded',function(){cStars();cFavs();});
+  // ── Reorganizable nav layout ────────────────────────────────────────────
+  // The HTML above is the DEFAULT grouping. A user can drag shortcuts between
+  // categories via "Edit Nav"; the resulting {category -> [href,...]} map is
+  // saved to KV (server.js /api/nav-layout) so it follows the user across
+  // browsers/devices, with a localStorage copy for instant paint + offline use.
+  var CATS=['chubDDlive','chubDDvol','chubDDfxbt','chubDDresearch','chubDDequity','chubDDgold','chubDDsystems','chubDDwip'];
+  var CAT_META={
+    chubDDlive:{label:'Live',color:'#10b981'},
+    chubDDvol:{label:'Vol',color:'#4f7df0'},
+    chubDDfxbt:{label:'FX BT',color:'#8b5cf6'},
+    chubDDresearch:{label:'Research',color:'#f59e0b'},
+    chubDDequity:{label:'Equity',color:'#06b6d4'},
+    chubDDgold:{label:'Gold',color:'#eab308'},
+    chubDDsystems:{label:'Systems',color:'#14b8a6'},
+    chubDDwip:{label:'WIP',color:'#64748b'}
+  };
+  var registry={};       // href -> {text}
+  var defaultLayout={};  // catId -> [href,...] as hardcoded above
+  var curLayout=null;    // catId -> [href,...] currently rendered
+
+  function scrapeDefaults(){
+    CATS.forEach(function(catId){
+      var menu=document.querySelector('#'+catId+' .chub-menu');
+      defaultLayout[catId]=[];
+      if(!menu)return;
+      menu.querySelectorAll('.chub-item[data-href]').forEach(function(a){
+        var href=a.dataset.href;
+        var t=a.querySelector('.ci-txt');
+        registry[href]={text:t?t.textContent:href};
+        defaultLayout[catId].push(href);
+      });
+    });
+  }
+
+  // Saved layout wins for hrefs it still knows about; any href that's new
+  // (added to the page since the layout was last saved) or unrecognised in
+  // the saved map falls back to its hardcoded default category.
+  function resolveLayout(saved){
+    var placed={},result={};
+    CATS.forEach(function(catId){
+      result[catId]=((saved&&saved[catId])||[]).filter(function(h){return registry[h]&&!placed[h];});
+      result[catId].forEach(function(h){placed[h]=true;});
+    });
+    CATS.forEach(function(catId){
+      defaultLayout[catId].forEach(function(h){
+        if(!placed[h]){result[catId].push(h);placed[h]=true;}
+      });
+    });
+    return result;
+  }
+
+  function itemHtml(href){
+    var d=registry[href];if(!d)return'';
+    return '<a class="chub-item" href="'+href+'" target="_blank" data-href="'+href+'"><span class="ci-txt">'+d.text+'</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav(\''+href.replace(/'/g,"\\'")+'\')" data-href="'+href+'">☆</button></a>';
+  }
+
+  function renderMenus(layout){
+    curLayout=layout;
+    CATS.forEach(function(catId){
+      var menu=document.querySelector('#'+catId+' .chub-menu');
+      if(!menu)return;
+      menu.innerHTML=(layout[catId]||[]).map(itemHtml).join('');
+    });
+    cStars();cFavs();
+  }
+
+  function cacheLayout(l){try{localStorage.setItem(LAYOUT_CACHE_KEY,JSON.stringify(l))}catch(e){}}
+  function cachedLayout(){try{return JSON.parse(localStorage.getItem(LAYOUT_CACHE_KEY)||'null')}catch(e){return null}}
+
+  async function loadAndRender(){
+    scrapeDefaults();
+    renderMenus(resolveLayout(cachedLayout()));
+    try{
+      var r=await fetch('/api/nav-layout');
+      var j=await r.json();
+      if(j&&j.ok){
+        renderMenus(resolveLayout(j.layout));
+        cacheLayout(j.layout||null);
+      }
+    }catch(e){/* offline — keep cached/default rendering above */}
+  }
+
+  // ── Edit-mode modal (drag shortcuts between category columns) ───────────
+  var dragEl=null;
+
+  function buildEditBody(layout){
+    var body=document.getElementById('navEditBody');
+    body.innerHTML='';
+    CATS.forEach(function(catId){
+      var meta=CAT_META[catId];
+      var col=document.createElement('div');
+      col.className='ne-col';
+      col.dataset.cat=catId;
+      col.innerHTML='<div class="ne-col-hd" style="color:'+meta.color+'">'+meta.label+'</div><div class="ne-col-list"></div>';
+      var list=col.querySelector('.ne-col-list');
+      (layout[catId]||[]).forEach(function(href){
+        var d=registry[href];if(!d)return;
+        var it=document.createElement('div');
+        it.className='ne-item';
+        it.draggable=true;
+        it.dataset.href=href;
+        it.textContent=d.text;
+        it.addEventListener('dragstart',function(e){
+          dragEl=it;
+          e.dataTransfer.effectAllowed='move';
+          e.dataTransfer.setData('text/plain',href);
+          setTimeout(function(){it.classList.add('dragging');},0);
+        });
+        it.addEventListener('dragend',function(){it.classList.remove('dragging');dragEl=null;});
+        list.appendChild(it);
+      });
+      list.addEventListener('dragover',function(e){
+        e.preventDefault();
+        if(!dragEl)return;
+        var after=Array.from(list.querySelectorAll('.ne-item:not(.dragging)')).find(function(el){
+          var r=el.getBoundingClientRect();
+          return e.clientY<r.top+r.height/2;
+        });
+        if(after)list.insertBefore(dragEl,after);
+        else list.appendChild(dragEl);
+      });
+      body.appendChild(col);
+    });
+  }
+
+  window.navEditOpen=function(){
+    buildEditBody(curLayout||resolveLayout(null));
+    document.getElementById('navEditOverlay').classList.add('open');
+  };
+  window.navEditClose=function(){
+    document.getElementById('navEditOverlay').classList.remove('open');
+  };
+  window.navEditReset=function(){
+    buildEditBody(defaultLayout);
+  };
+  window.navEditSave=async function(){
+    var layout={};
+    document.querySelectorAll('#navEditBody .ne-col').forEach(function(col){
+      layout[col.dataset.cat]=Array.from(col.querySelectorAll('.ne-item')).map(function(it){return it.dataset.href;});
+    });
+    renderMenus(layout);
+    cacheLayout(layout);
+    navEditClose();
+    var btn=document.getElementById('navEditBtn');
+    try{
+      var r=await fetch('/api/nav-layout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({layout:layout})});
+      var j=await r.json();
+      if(!j||!j.ok)throw new Error(j&&j.error||'save failed');
+    }catch(e){
+      console.error('[nav-layout] sync to server failed, saved locally only:',e);
+      var orig=btn.textContent;
+      btn.textContent='⚠️ synced locally only';
+      btn.style.color='#ef4444';
+      setTimeout(function(){btn.textContent=orig;btn.style.color='';},4000);
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded',loadAndRender);
 })();
 </script>
 
