@@ -3,7 +3,7 @@
 import assert from 'node:assert';
 import {
   directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, tradeReturn, summarizeBennett,
-  portfolioDailySharpe, perYearBreakdown,
+  sharpeFromDaily, perYearBreakdown,
 } from './bennettZCore.js';
 
 let passed = 0;
@@ -83,24 +83,16 @@ t('summarizeBennett: win rate + tier breakdown + sizing A/B', () => {
 });
 t('summarizeBennett empty → zeros', () => assert.equal(summarizeBennett([], {}).n, 0));
 
-// ── honest portfolio Sharpe + per-year ──────────────────────────────────────────────
-t('portfolioDailySharpe: consistent winners → positive; empty → 0', () => {
-  const trades = [
-    { dir: 'LONG', entryClose: 100, exitClose: 101, size: 1, date: '2020-01-06', exitDate: '2020-01-13' },
-    { dir: 'LONG', entryClose: 100, exitClose: 101, size: 1, date: '2020-02-03', exitDate: '2020-02-10' },
-  ];
-  assert(portfolioDailySharpe(trades, { costPct: 0 }) > 0);
-  assert.equal(portfolioDailySharpe([], {}), 0);
+// ── honest Sharpe from a real daily-return series + per-year ─────────────────────────
+t('sharpeFromDaily: positive mean with variance → positive; <2 pts → 0', () => {
+  assert(sharpeFromDaily([0.001, 0, 0.002, 0, 0.001, 0]) > 0);
+  assert.equal(sharpeFromDaily([0.01]), 0);
+  assert.equal(sharpeFromDaily([]), 0);
 });
-t('portfolioDailySharpe < per-trade-annualised Sharpe (flat days drag it down)', () => {
-  const trades = Array.from({ length: 6 }, (_, i) => ({
-    dir: 'LONG', entryClose: 100, exitClose: 100.8 + (i % 2) * 0.4, size: 1,
-    date: `2020-0${i + 1}-06`, exitDate: `2020-0${i + 1}-13`,
-  }));
-  const honest = portfolioDailySharpe(trades, { costPct: 0 });
-  const fantasy = summarizeBennett(trades, { costPct: 0, periodsPerYear: 6 }).sharpe;
-  assert(honest < fantasy, `honest ${honest} should be < fantasy ${fantasy}`);
-});
+t('sharpeFromDaily: flat (all-zero) series → 0 (no variance)', () =>
+  assert.equal(sharpeFromDaily([0, 0, 0, 0]), 0));
+t('sharpeFromDaily: negative-mean series → negative', () =>
+  assert(sharpeFromDaily([-0.002, 0, -0.001, 0]) < 0));
 t('perYearBreakdown groups by entry year', () => {
   const trades = [
     { dir: 'LONG', entryClose: 100, exitClose: 102, date: '2021-05-01', exitDate: '2021-05-10' },

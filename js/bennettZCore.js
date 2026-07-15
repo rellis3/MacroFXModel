@@ -75,32 +75,12 @@ export function tradeReturn(dir, entryClose, exitClose) {
   return dir === 'LONG' ? raw : -raw;
 }
 
-const isWeekday = dt => { const g = dt.getUTCDay(); return g !== 0 && g !== 6; };
-
-// HONEST portfolio Sharpe: distribute each trade's cost-inclusive return evenly across
-// the WEEKDAYS it was held, sum concurrent positions per day, then Sharpe on the daily
-// series INCLUDING flat (no-position) days, ×√252. This is the real risk-adjusted number
-// for a rare-signal strategy — unlike per-trade-Sharpe×√(trades/yr), which ignores that
-// capital sits idle between trades and overstates (the ENTRY_ZONE_CONFIDENCE.md trap).
-export function portfolioDailySharpe(trades, { costPct = 0.02, periodsPerYear = 252 } = {}) {
-  if (!trades.length) return 0;
-  const cost = costPct / 100;
-  const daily = new Map();   // epochMs → summed daily return
-  let gMin = Infinity, gMax = -Infinity;
-  for (const t of trades) {
-    if (!t.exitDate) continue;
-    const ret = (tradeReturn(t.dir, t.entryClose, t.exitClose) - cost) * (t.size ?? 1);
-    const days = [];
-    for (let d = new Date(t.date + 'T00:00:00Z'), end = new Date(t.exitDate + 'T00:00:00Z'); d < end; d = new Date(d.getTime() + 86_400_000)) {
-      if (isWeekday(d)) days.push(d.getTime());
-    }
-    if (!days.length) continue;
-    const per = ret / days.length;
-    for (const ms of days) { daily.set(ms, (daily.get(ms) || 0) + per); if (ms < gMin) gMin = ms; if (ms > gMax) gMax = ms; }
-  }
-  if (!isFinite(gMin)) return 0;
-  const rets = [];
-  for (let ms = gMin; ms <= gMax; ms += 86_400_000) { if (isWeekday(new Date(ms))) rets.push(daily.get(ms) || 0); }
+// Sharpe from a REAL daily-return series — day-over-day mark-to-market including flat
+// (no-position) days — ×√periodsPerYear. The engine builds `rets` from the ACTUAL daily
+// FX closes during each hold; this is the honest risk-adjusted number. (An earlier version
+// smeared each trade's total return evenly across its days, which suppressed daily variance
+// and INFLATED the Sharpe — do not do that.)
+export function sharpeFromDaily(rets, periodsPerYear = 252) {
   const n = rets.length;
   if (n < 2) return 0;
   const mean = rets.reduce((a, b) => a + b, 0) / n;
@@ -168,7 +148,6 @@ export function summarizeBennett(trades, { costPct = 0.02, periodsPerYear = 26 }
     winRate: +(wins / n * 100).toFixed(1),
     totalRetPct: +(f.total * 100).toFixed(2),
     sharpe: +f.sharpe.toFixed(2),
-    portfolioSharpe: portfolioDailySharpe(trades, { costPct, periodsPerYear: 252 }),
     profitFactor: gL > 0 ? +(gW / gL).toFixed(2) : (gW > 0 ? 999 : 0),
     expectancyPct: +(f.mean * 100).toFixed(4),
     sizedTotalRetPct: +(s.total * 100).toFixed(2),
