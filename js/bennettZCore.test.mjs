@@ -2,7 +2,7 @@
 // CORRECTNESS, not edge (real run needs FRED + M1). Run: node js/bennettZCore.test.mjs
 import assert from 'node:assert';
 import {
-  directionFromZ, zTierSize, zTierLabel, shouldExit, tradeReturn, summarizeBennett,
+  directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, tradeReturn, summarizeBennett,
 } from './bennettZCore.js';
 
 let passed = 0;
@@ -17,6 +17,18 @@ t('z>0 → LONG, z<0 → SHORT (matches dashboard EURUSD z=-5.5 → SHORT)', () 
   assert.equal(directionFromZ(-5.534), 'SHORT');
 });
 t('inverted flips direction', () => assert.equal(directionFromZ(-5.534, true), 'LONG'));
+t('resolveInverted: USD-base not flipped, USD-quote flipped (auto-orient)', () => {
+  assert.equal(resolveInverted(1), false);    // USD base (USDJPY) — raw rule correct
+  assert.equal(resolveInverted(-1), true);    // USD quote (EURUSD) — must flip
+  assert.equal(resolveInverted(0), false);    // neither
+});
+t('resolveInverted: autoOrient off reverts to manual only', () => {
+  assert.equal(resolveInverted(-1, { autoOrient: false }), false);
+  assert.equal(resolveInverted(-1, { autoOrient: false, manualInvert: true }), true);
+});
+t('resolveInverted: manual flips further (XOR)', () => {
+  assert.equal(resolveInverted(-1, { autoOrient: true, manualInvert: true }), false);  // quote + manual → cancels
+});
 
 // ── tier sizing ───────────────────────────────────────────────────────────────────
 t('zTierSize: 0 below entry, ladders at extremes', () => {

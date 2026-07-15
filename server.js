@@ -11863,6 +11863,7 @@ app.post('/api/bennett-z/run', (req, res) => {
     maxHoldDays:    parseInt(b.maxHoldDays) || BENNETT_DEFAULTS.maxHoldDays,
     costPct:        num(b.costPct,         BENNETT_DEFAULTS.costPct),
     splitFrac:      num(b.splitFrac,       BENNETT_DEFAULTS.splitFrac),
+    autoOrient:     b.autoOrient == null ? true : (b.autoOrient === true || b.autoOrient === 'true'),
     invert: Object.fromEntries(Object.keys(ZSCORE_PAIRS).map(k => [k, b.invert?.[k] === true || b.invert?.[k] === 'true'])),
   };
   const pairsToRun = b.pair ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p]) : Object.keys(ZSCORE_PAIRS);

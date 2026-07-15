@@ -58,7 +58,9 @@
       <div><label>z-exit |z|</label><input id="zExit" value="1.5"></div>
       <div><label>max hold (days)</label><input id="maxHoldDays" value="20"></div>
       <div><label>cost % round-trip</label><input id="costPct" value="0.02"></div>
+      <div><label>orient sign by USD role</label><select id="autoOrient"><option value="true" selected>on (correct sign)</option><option value="false">off (raw z&gt;0→LONG)</option></select></div>
     </div>
+    <div class="muted" style="margin-top:6px">USD-quote pairs (EURUSD/GBPUSD/AUDUSD) move opposite to USD, so the raw z&gt;0→LONG rule trades them backwards. "on" flips them to the economically-correct sign (anchored on the validated USDJPY). Toggle off to reproduce the raw-sign A/B.</div>
     <button id="runBtn">Run test</button>
     <div class="status" id="status"></div>
   </div>
@@ -143,7 +145,7 @@ async function run(){
   $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
   const body={ pair:$('pair').value, dateFrom:$('dateFrom').value, dateTo:$('dateTo').value,
     zWindow:$('zWindow').value, entryThreshold:$('entryThreshold').value, zExit:$('zExit').value,
-    maxHoldDays:$('maxHoldDays').value, costPct:$('costPct').value };
+    maxHoldDays:$('maxHoldDays').value, costPct:$('costPct').value, autoOrient:$('autoOrient').value };
   try{
     const r=await fetch('/api/bennett-z/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();

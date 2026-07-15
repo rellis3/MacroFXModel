@@ -8,8 +8,9 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { ZSCORE_PAIRS, fetchFredObservations, _shiftDate, buildRollingZSeries, buildDayIndex } from './zscoreSpreadEngine.js';
 import {
-  BENNETT_DEFAULTS, directionFromZ, zTierSize, zTierLabel, shouldExit, summarizeBennett, splitByDate,
+  BENNETT_DEFAULTS, directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, summarizeBennett, splitByDate,
 } from './bennettZCore.js';
+import { usdRole } from './macroDirectionCore.js';
 
 export { ZSCORE_PAIRS, BENNETT_DEFAULTS };
 
@@ -36,7 +37,11 @@ export async function runBennettZ(pairKey, opts = {}) {
   const maxHoldDays = opts.maxHoldDays ?? BENNETT_DEFAULTS.maxHoldDays;
   const costPct  = opts.costPct ?? BENNETT_DEFAULTS.costPct;
   const splitFrac = opts.splitFrac ?? BENNETT_DEFAULTS.splitFrac;
-  const inverted = !!(opts.invert && opts.invert[pairKey]);
+  // Direction sign: orient by USD role by default (USD-quote pairs move opposite to USD,
+  // so the raw z>0→LONG rule must flip). Anchored on the validated USDJPY sign.
+  const autoOrient = opts.autoOrient !== false;
+  const manualInvert = !!(opts.invert && opts.invert[pairKey]);
+  const inverted = resolveInverted(usdRole(pairKey), { autoOrient, manualInvert });
   const tiers = opts.tiers ?? BENNETT_DEFAULTS.tiers;
 
   const packed = await loadM1ForPair(pairKey);
