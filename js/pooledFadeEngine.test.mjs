@@ -55,3 +55,15 @@ test('poolPortfolio: higher cost multiple lowers the pooled return (monotone)', 
 test('pooledFade: insufficient data flagged, not thrown', () => {
   assert.ok(pooledFade(synthM1(30), { pair: 'EURUSD' }).insufficient);
 });
+
+test('pooledFade: volSource "har" runs, reports its source, and differs from platform', () => {
+  const bars = synthM1(320);
+  const plat = pooledFade(bars, { pair: 'SPX500', assetClass: 'index' });
+  const har = pooledFade(bars, { pair: 'SPX500', assetClass: 'index', volSource: 'har' });
+  assert.equal(plat.volSource, 'platform', 'default is platform');
+  assert.equal(har.volSource, 'har', 'har reported');
+  assert.ok(!har.insufficient, 'har produced a result');
+  // HAR σ places the bands differently → the OOS trade set should not be identical
+  const sig = a => a.map(t => `${t.date}:${t.gross}`).join('|');
+  assert.notEqual(sig(har.blindOOS), sig(plat.blindOOS), 'HAR bands change the touches');
+});

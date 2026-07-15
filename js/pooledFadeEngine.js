@@ -21,6 +21,23 @@ import { summarizeTrades } from './metricsCore.js';
 import { sessionsAt } from './fillRealismEngine.js';
 import { pipSize } from './instrumentRegistry.js';
 import { DEFAULT_COST_PCT } from './perLineStrategy.js';
+import { harSigmaSeries } from './volEstimatorAB.js';
+
+// Build the σ series that places the bands. 'platform' = the live forecaster
+// (YZ/GARCH/HV per class). 'har' = HAR-RV on each session's realised vol — the
+// horse race found HAR is far better-calibrated than GARCH/HV for indices & gold,
+// so this tests whether better-placed bands lift the fade there. Both are causal:
+// value for session i uses data < i. Same length as sess.
+function _sigmaSeries(sess, d1, assetClass, volSource) {
+  if (volSource !== 'har') return volSigmaSeries(d1, assetClass);
+  const sigRV = sess.map(s => {
+    let v = 0; for (let k = 1; k < (s.bars?.length || 0); k++) {
+      const x = Math.log(s.bars[k].close / s.bars[k - 1].close); if (isFinite(x)) v += x * x;
+    }
+    return Math.sqrt(v);
+  });
+  return harSigmaSeries(sigRV, { minTrain: 60 });
+}
 
 const _mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
 const _median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -104,11 +121,12 @@ export function pooledFade(bars1, opts = {}) {
     minBars = 35, stopPips = 5, volK = 0.09, trailR = 2.0, requireVwap = true,
   } = opts;
   const cost = opts.costPct ?? (DEFAULT_COST_PCT[assetClass] ?? 0.012);
+  const volSource = opts.volSource || 'platform';       // 'platform' (default, unchanged) | 'har'
   const pip = pipSize(pair);
   const sess = sessionsAt(bars1, boundaryHour);
   if (sess.length < 160) return { insufficient: true, nSessions: sess.length };
   const d1 = sess.map(s => ({ open: s.open, high: s.high, low: s.low, close: s.close }));
-  const sig = volSigmaSeries(d1, assetClass);
+  const sig = _sigmaSeries(sess, d1, assetClass, volSource);
   const split = Math.floor(sess.length * isFrac);
   const sigOpts = { pair, assetClass, minBars, stopPips, volK, trailR, requireVwap };
 
@@ -129,7 +147,7 @@ export function pooledFade(bars1, opts = {}) {
   const net = (arr, mult) => arr.map(t => t.gross - cost * mult);
   const summ = arr => { const p = net(arr, 1); const s = summarizeTrades(p, arr.map(t => t.date)); return { n: arr.length, win: arr.length ? r3(p.filter(x => x > 0).length / p.length * 100, 1) : null, exp: r3(_mean(p), 4), sharpe: s.sharpe }; };
   return {
-    pair, assetClass, cost, pip, stopPips, trailR, requireVwap,
+    pair, assetClass, cost, pip, stopPips, trailR, requireVwap, volSource,
     nSessions: sess.length, splitDate: sess[split]?.date,
     confirmedOOS, blindOOS,
     perInst: { confirmed: summ(confirmedOOS), blind: summ(blindOOS) },

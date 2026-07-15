@@ -9921,6 +9921,63 @@ app.get('/api/pooled-fade/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 
+// ── σ A/B — does a better-calibrated σ lift the fade on indices+gold? ──────────
+// The horse race found HAR-RV far better than the platform's GARCH/HV for indices
+// & gold — and those were the fade's WEAKEST instruments. This runs the SAME
+// confirmed pooled fade under platform σ vs HAR σ, side by side, to test whether
+// better-placed bands actually lift the edge (accuracy → edge, or not).
+const volAbJobs = new Map();
+app.post('/api/pooled-fade/volcompare', express.json({ limit: '8kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  const { pair = '', isFrac, stopPips, trailR } = req.body || {};
+  // default universe = the instruments the horse race flagged (indices + gold)
+  const NONFX = WBT_INSTRUMENTS.filter(i => (i.assetClass === 'index' || i.assetClass === 'commodity'));
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : NONFX;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `volab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of volAbJobs) if (j.startedAt < Date.now() - 60 * 60_000) volAbJobs.delete(id);
+  volAbJobs.set(jobId, { status: 'running', startedAt });
+  const opts = {
+    isFrac: Number.isFinite(+isFrac) ? +isFrac : 0.5,
+    stopPips: Number.isFinite(+stopPips) ? +stopPips : 5,
+    trailR: Number.isFinite(+trailR) ? +trailR : 2.0,
+    requireVwap: true,
+  };
+  (async () => {
+    const perInst = {}, platByInst = {}, harByInst = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const bars = await _loadM1ForAB(cfg.name.toLowerCase(), 1);   // TRUE 1-min
+          if (!bars || bars.length < 20000) { log.push(`${cfg.name}: too few M1 bars`); continue; }
+          const ac = cfg.assetClass || 'fx';
+          const plat = _pooledFade(bars, { ...opts, pair: cfg.name, assetClass: ac, volSource: 'platform' });
+          const har = _pooledFade(bars, { ...opts, pair: cfg.name, assetClass: ac, volSource: 'har' });
+          if (plat.insufficient || har.insufficient) { log.push(`${cfg.name}: insufficient`); continue; }
+          perInst[cfg.name] = { assetClass: ac, platform: plat.perInst.confirmed, har: har.perInst.confirmed };
+          platByInst[cfg.name] = { cost: plat.cost, trades: plat.confirmedOOS };
+          harByInst[cfg.name] = { cost: har.cost, trades: har.confirmedOOS };
+          log.push(`${cfg.name}: platform sh ${plat.perInst.confirmed.sharpe} (n${plat.perInst.confirmed.n}) → HAR sh ${har.perInst.confirmed.sharpe} (n${har.perInst.confirmed.n})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perInst);
+      if (!names.length) { volAbJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const platform = { x1: _poolPortfolio(platByInst, 1), x2: _poolPortfolio(platByInst, 2), x3: _poolPortfolio(platByInst, 3) };
+      const har = { x1: _poolPortfolio(harByInst, 1), x2: _poolPortfolio(harByInst, 2), x3: _poolPortfolio(harByInst, 3) };
+      volAbJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, pairs: names, perInst, platform, har, log } });
+    } catch (e) { volAbJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/pooled-fade/volcompare/status/:jobId', (req, res) => {
+  const job = volAbJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
 // ── Vol Horse Race — the gold workbook's estimator race, generalised to every ──
 // instrument. Does HAR-RV's win on gold hold for FX/indices, or does the ranking
 // flip? 8 σ-forecasters scored against next-day realised vol (QLIKE/MZ), OOS.
