@@ -3682,6 +3682,13 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <div class="form-row"><span class="form-lbl">Price tick <small>local watch</small></span><input type="number" id="vb_tick_secs" min="1" max="60" step="1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Status push</span><input type="number" id="vb_status_secs" min="10" max="300" step="5" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Plan re-pull</span><input type="number" id="vb_plan_secs" min="60" max="86400" step="60" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">σ engine <small>lines for indices + gold</small></span>
+          <select id="vb_sigma_source" style="width:210px;text-align:left">
+            <option value="platform">Platform (GARCH/HV) — book default</option>
+            <option value="har-nonfx">HAR-RV (indices + gold) — matches calibrated export</option>
+          </select>
+        </div>
+        <div class="form-row" style="align-items:flex-start"><span class="form-lbl"></span><small style="color:var(--text3);max-width:360px;line-height:1.4">HAR-RV redraws indices+gold lines off the better-calibrated σ (fx unchanged). Applies on the next plan re-pull; fully reversible. Policy is line-keyed so it carries over — but it was learned on platform σ, so treat the switch as live and watch the first sessions.</small></div>
         <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
           <button class="btn-save" style="background:#e0a93b;color:#1a1400" onclick="saveVbConfig()">Save Config</button>
           <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetVbDefaults()">Reset Defaults</button>

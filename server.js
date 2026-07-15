@@ -31,7 +31,7 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _comp
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runBench as runVolBench, sigmaSeriesForExport, benchCtx }   from './js/volForecastBench.js';
+import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries }   from './js/volForecastBench.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -5607,11 +5607,21 @@ async function _refreshVolatilityPlan() {
   const refreshLog = [];
   const onLog = m => { console.log('[volatility-bot]', m); refreshLog.push(m); };
   try {
+    // Opt-in σ source (default 'platform' = book-matching, unchanged). If the vol-bot
+    // config sets sigma_source:'har-nonfx', indices+gold use the SAME GK-HAR σ the
+    // calibrated export shows, so the bot's lines match it. fx always stays platform.
+    let sigmaSource = 'platform';
+    try { const raw = await kv.get('volatility_bot_config'); const c = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; if (c?.sigma_source === 'har-nonfx') sigmaSource = 'har-nonfx'; } catch { /* keep platform */ }
+    const harSigma = (bars, _ac) => {
+      try { const { sigmaFwd } = sigmaSeriesForExport(bars, 'harRV', { rv: _realizedVarSeries(bars, 'gk') }); return Number.isFinite(sigmaFwd) && sigmaFwd > 0 ? sigmaFwd : null; }
+      catch { return null; }
+    };
     const plan = await refreshVolatilityPlan({
       getBook: getPerLineBook,
       fetchD1: (sym, n) => _btFetchD1(sym, n),
       fetchSessionOpen: (sym) => _btFetchSessionOpenLondon(sym),   // London-midnight open anchor
       sigmaSeries: _volSigmaSeries,
+      volSource: sigmaSource, harSigma,
       kvPut: (k, v) => kv.put(k, v),
       onLog,
     });

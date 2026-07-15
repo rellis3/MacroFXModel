@@ -31,11 +31,19 @@ export async function refreshVolatilityPlan({
   getBook, fetchD1, sigmaSeries, kvPut, fetchSessionOpen = null,
   resolveInstrument = defaultResolve, buildPlan = buildVolatilityPlan,
   horizon = 'daily', count = 400,
+  // σ source for the lines. 'platform' (default) = volSigmaSeries for every class,
+  // exactly as the book was learned — UNCHANGED behaviour. 'har-nonfx' = use the
+  // injected HAR-RV σ for indices + gold ONLY (fx stays platform), so those lines
+  // match the calibrated export (same GK-HAR shadow). The horse race showed the
+  // platform's GARCH/HV are the worst σ for indices/gold; HAR is far better-placed.
+  // The policy is cell-keyed (up75:fade …), so it rides along when the bands move.
+  volSource = 'platform', harSigma = null,
   now = () => new Date().toISOString(), stamp = () => Date.now(),
   onLog = () => {},
 } = {}) {
   if ([getBook, fetchD1, sigmaSeries, kvPut].some(f => typeof f !== 'function'))
     throw new Error('refreshVolatilityPlan: getBook/fetchD1/sigmaSeries/kvPut are required functions');
+  const harOn = volSource === 'har-nonfx' && typeof harSigma === 'function';
 
   const book = await getBook(horizon);
   if (!book || !Array.isArray(book.survivors?.pairs) || !book.survivors.pairs.length)
@@ -63,7 +71,19 @@ export async function refreshVolatilityPlan({
       // (out[n], data ≤ n−1) — exactly the σ the backtest would use for today.
       // It handles typed arrays/scalars internally and keeps the DI seam: the
       // injected sigmaSeries is passed through, so offline fakes still work.
-      const sigma = nextSigma(bars, inst.assetClass, sigmaSeries);      // today's daily σ (frac)
+      // today's daily σ (frac). Default: volSigmaSeries (book-matching). Opt-in:
+      // HAR-RV σ for indices + gold only — same GK-HAR the calibrated export shows,
+      // so the bot's lines match it. Falls back to platform σ if HAR returns bad.
+      const ac = inst.assetClass || 'fx';
+      const nonFx = ac === 'index' || ac === 'commodity';
+      let sigma, sigmaSrc = 'platform';
+      if (harOn && nonFx) {
+        const h = harSigma(bars, ac);
+        if (h > 0) { sigma = h; sigmaSrc = 'har'; }
+        else { sigma = nextSigma(bars, ac, sigmaSeries); onLog(`${pair}: HAR σ unavailable → platform σ`); }
+      } else {
+        sigma = nextSigma(bars, ac, sigmaSeries);
+      }
       // OPEN must be the MIDNIGHT-EUROPE/LONDON session open (the bands hang off it,
       // and the book's sessions are London days). `fetchD1`'s last bar opens at
       // 22:00 UTC and drops the forming candle, so it's a prior session's open —
@@ -86,14 +106,14 @@ export async function refreshVolatilityPlan({
       // list before looking up volByPair, so a survivor name that isn't already
       // lowercase (e.g. an upper-case R2 parquet name) would otherwise miss the
       // lookup and silently drop EVERY pair → an empty universe.
-      volByPair[String(pair).toLowerCase()] = { open, sigma, assetClass: inst.assetClass || 'fx', pip: inst.pip ?? null };
+      volByPair[String(pair).toLowerCase()] = { open, sigma, assetClass: ac, pip: inst.pip ?? null };
       seenOanda.add(inst.oanda);          // first priced wins; later aliases of it are skipped
-      onLog(`${pair}: open ${open} [${openSrc}]`);   // surface which anchor was used
+      onLog(`${pair}: open ${open} [${openSrc}] · σ ${sigmaSrc}`);   // surface anchor + σ source used
       ok++;
     } catch (e) { onLog(`${pair}: ${e.message}`); fail++; }
   }
 
-  const plan = { generatedAt: now(), source: 'per-line book', horizonScale: horizon, ...buildPlan(book, volByPair) };
+  const plan = { generatedAt: now(), source: 'per-line book', horizonScale: horizon, sigmaSource: harOn ? 'har-nonfx' : 'platform', ...buildPlan(book, volByPair) };
   // Refuse to publish an empty universe. A 0-pair plan is never tradeable and
   // always means pricing failed (OANDA unreachable at the moment, or survivor
   // names that didn't resolve) — writing it would silently strand the bot

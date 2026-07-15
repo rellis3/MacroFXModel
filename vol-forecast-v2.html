@@ -724,7 +724,7 @@
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
         <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export</button>
-        <button class="vf-exp-item" id="vfCalibratedBtn"    onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">backtest %</span></button>
+        <button class="vf-exp-item" id="vfCalibratedBtn"    onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">fx% · idx/gold HAR σ</span></button>
         <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
         <button class="vf-exp-item" id="vfExportHarBtn"     onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">shadow σ</span></button>
         <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
@@ -1227,6 +1227,8 @@
         <tr><td>⬇ V+S</td><td>Combined: vol forecast + session stats in one paste. For the v3 Pine Script indicator.</td></tr>
         <tr><td>⬇ Extended</td><td>Full export: includes vol percentile, O-H/O-L legs, 5-day and 20-day ranges, vol cone, vol-of-vol.</td></tr>
         <tr><td>⬇ Weekly</td><td>WTD range consumption, directional bias, 5-day and 20-day forecasts per instrument.</td></tr>
+        <tr><td>⬇ Calibrated <span style="opacity:.6">fx% · idx/gold HAR σ</span></td><td>Best-per-class view for trading off. <b>FX</b>: H-L bands scaled by the research-book recalibration factors (raw runs ~15% wide), O-C unchanged. <b>Indices + gold</b>: bands rebuilt on <b>HAR-RV σ</b> (the <code>f.har</code> shadow) instead of GARCH/HV — the horse race found GARCH/HV are the worst estimators for these and HAR the best, and the σ-A/B confirmed HAR σ lifts the fade there. A scalar can't fix indices (it overshoots), so this swaps the estimator, not a multiplier. <b>Export only — the live forecaster/bot is not modified.</b></td></tr>
+        <tr><td>⬇ Export HAR</td><td>All instruments on the HAR-RV shadow σ (for comparison against the primary forecast).</td></tr>
       </table>
     </div>
 
@@ -2030,6 +2032,50 @@ function buildCalibratedExportText(data, factors) {
   return _calNote(factors) + '\n' + buildExportText(_calibrateForecast(data, factors));
 }
 
+// ── Best-per-class calibration (daily) ────────────────────────────────────────
+// The scalar recalibration above fixes fx + commodity but can't fix INDICES (a
+// single multiplier overshoots, so index is held at 1). The horse race + σ A/B
+// showed the real fix for indices AND gold is a better σ ESTIMATOR, not a scalar:
+// HAR-RV. Its bands are already computed live per instrument as the `f.har` shadow.
+// So this composer swaps in the HAR bands for index/commodity and keeps the scalar
+// H-L recalibration for fx (where HAR did NOT clearly win — its FX horse-race wins
+// were QLIKE artifacts). O-C for fx is carried through unchanged, as before.
+// Falls back to the scalar path for any index/gold whose `f.har` is missing.
+// EXPORT ONLY — the live forecaster's own fields are never modified.
+const _HAR_FIELDS = ['hl_median', 'hl_75', 'oc_median', 'oc_75'];
+function _composeHarCalibrated(data, factors) {
+  if (!data || !data.instruments) return data;
+  const clone = JSON.parse(JSON.stringify(data));
+  const harUsed = [], harMissing = [];
+  for (const [name, f] of Object.entries(clone.instruments)) {
+    if (!f || typeof f !== 'object') continue;
+    const cls = _assetClassOf(name);
+    if (cls === 'index' || cls === 'commodity') {
+      if (f.har && _HAR_FIELDS.every(k => typeof f.har[k] === 'number')) {
+        for (const k of _HAR_FIELDS) f[k] = f.har[k];               // swap in HAR σ bands (H-L + O-C)
+        if (typeof f.har.vol_annual === 'number') f.vol_annual = f.har.vol_annual;
+        harUsed.push(name);
+        continue;
+      }
+      harMissing.push(name);                                        // HAR shadow off/failed → scalar fallback
+    }
+    const fct = factors[cls] || factors.fx;                        // fx + any HAR-missing index/gold: scalar H-L
+    for (const k of Object.keys(f)) if (/^hl_/.test(k) && typeof f[k] === 'number') f[k] *= /75/.test(k) ? fct.hl75 : fct.hl50;
+  }
+  clone._harUsed = harUsed; clone._harMissing = harMissing;
+  return clone;
+}
+function _composedNote(factors, composed) {
+  const live = Object.values(factors).some(x => x.live);
+  const har = (composed?._harUsed || []).join(', ') || 'none';
+  const miss = composed?._harMissing?.length ? ` · HAR unavailable (scalar fallback): ${composed._harMissing.join(', ')}` : '';
+  return `[CALIBRATED — fx H-L ×${factors.fx.hl50}/${factors.fx.hl75} (research-book${live ? ' live' : ''}), fx O-C unchanged; indices+gold use HAR-RV σ bands (${har})${miss}. Horse-race + σ-A/B validated. Export view only — the live forecaster is unchanged.]`;
+}
+function buildCalibratedHarExportText(data, factors) {
+  const composed = _composeHarCalibrated(data, factors);
+  return _composedNote(factors, composed) + '\n' + buildExportText(composed);
+}
+
 // Shared copy-or-download for a calibrated text export.
 function _emitCalibrated(btnId, text, fname) {
   const btn = document.getElementById(btnId), orig = btn.dataset.orig || btn.textContent;
@@ -2048,7 +2094,8 @@ async function exportCalibrated() {
   if (!currentForecast) return;
   const btn = document.getElementById('vfCalibratedBtn'); btn.dataset.orig = btn.textContent; btn.textContent = '… factors';
   const factors = await loadRecalFactors();
-  _emitCalibrated('vfCalibratedBtn', buildCalibratedExportText(currentForecast, factors), `vol-forecast-calibrated-${currentForecast.session_date}.txt`);
+  // Best-per-class: fx scalar recalibration + indices/gold on HAR-RV σ (the σ-A/B-validated swap).
+  _emitCalibrated('vfCalibratedBtn', buildCalibratedHarExportText(currentForecast, factors), `vol-forecast-calibrated-${currentForecast.session_date}.txt`);
 }
 async function exportCalibratedExtended() {
   if (!currentForecast) return;
