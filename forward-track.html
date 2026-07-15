@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forward-Track — the confirmed fade, proven forward</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:20px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:1040px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 8px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  button.sec { background:#21262d; border:1px solid var(--border) }
+  input { width:74px; background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:2px 5px; font:11px 'DM Mono',monospace; text-align:right }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  a { color:#58a6ff }
+  .big { font-size:26px; font-weight:700 } .lbl { color:var(--text3); font-size:10px; text-transform:uppercase; letter-spacing:.04em }
+  .row { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-end }
+  svg { max-width:100% }
+</style>
+</head>
+<body>
+  <h1>Forward-Track <span class="muted" style="font-size:12px">— the confirmed fade, proven forward</span></h1>
+  <div class="sub">
+    The Pooled VuManChu Fade cleared the honest bar <b>out-of-sample</b> — but a backtest is still in-sample to the researcher. This is the only test a backtest can't fake: a <b>live, post-research record</b>. Each refresh re-scans every instrument's just-completed sessions and appends the <b>confirmed</b> fade signals (WT+VWAP, the <i>same</i> <code>detectSessionSignals</code> the validated backtest uses — never a copy) with their realised outcome. The <b class="pos">FORWARD</b> block accumulates from the tracking-start date; the <span class="muted">baseline</span> block is the pre-tracking backtest on the same instruments. <b>The tell:</b> if forward expectancy tracks the baseline, the edge is real; if it decays toward zero, it was overfit.
+    <span class="muted">Refresh is safe to run any time — it backfills from the last logged date, so weekly clicks capture everything. The log persists across redeploys (CF KV).</span>
+  </div>
+  <button onclick="refresh()">▶ Refresh (scan new sessions)</button>
+  <button class="sec" onclick="load()">↻ Reload log</button>
+  <label class="muted" style="margin-left:10px">Pair <input id="pair" value="" placeholder="(all)"></label>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=3) => v==null?'—':(+v).toFixed(d);
+let _timer=null;
+
+async function refresh(){
+  clearInterval(_timer); el('status').textContent='Starting scan…';
+  const body = { pair:el('pair').value.trim() };
+  let j; try { j = await (await fetch('/api/forward-track/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json(); }
+  catch(e){ el('status').innerHTML='<span class="neg">start failed: '+e.message+'</span>'; return; }
+  if(!j.ok){ el('status').innerHTML='<span class="neg">'+(j.error||'error')+'</span>'; return; }
+  const id=j.jobId;
+  _timer=setInterval(async ()=>{
+    let s; try { s=await (await fetch('/api/forward-track/refresh/status/'+id)).json(); } catch { return; }
+    if(s.status==='running'){ el('status').textContent='Scanning… '+(s.elapsed||0)+'s (streaming 1-min M1 per pair)'; return; }
+    clearInterval(_timer);
+    if(s.status!=='done'){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; if(s.log) el('out').innerHTML='<div class="card muted" style="font-size:10px">'+s.log.join('<br>')+'</div>'; return; }
+    el('status').innerHTML = `<span class="pos">+${s.added} new signals</span> · ${s.total} logged`;
+    render(s);
+  }, 3000);
+}
+
+async function load(){
+  el('status').textContent='Loading…';
+  let s; try { s=await (await fetch('/api/forward-track')).json(); } catch(e){ el('status').innerHTML='<span class="neg">'+e.message+'</span>'; return; }
+  if(!s.ok){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; return; }
+  el('status').textContent = `${s.total} signals logged`;
+  render(s);
+}
+
+function curveSVG(curve){
+  if(!curve || curve.length<2) return '<div class="muted" style="font-size:11px">No forward trades yet — the curve appears once sessions accrue after tracking-start.</div>';
+  const W=760,H=180,pad=6; const ys=curve.map(p=>p.cum); const mn=Math.min(0,...ys), mx=Math.max(0,...ys); const rng=(mx-mn)||1;
+  const x=i=>pad+i/(curve.length-1)*(W-2*pad), y=v=>H-pad-(v-mn)/rng*(H-2*pad);
+  let d=''; curve.forEach((p,i)=>{ d+=(i?'L':'M')+x(i).toFixed(1)+' '+y(p.cum).toFixed(1)+' '; });
+  const zero=y(0);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}"><line x1="${pad}" y1="${zero}" x2="${W-pad}" y2="${zero}" stroke="#30363d" stroke-dasharray="3 3"/><path d="${d}" fill="none" stroke="${ys.at(-1)>=0?'#3fb950':'#f85149'}" stroke-width="1.5"/></svg>`;
+}
+
+function statTiles(f, meta){
+  const g = (v,inv=false)=> v==null?'muted':((inv? v<0: v>0)?'pos':'neg');
+  return `<div class="card"><div class="row">
+    <div><div class="lbl">Forward Sharpe (×1)</div><div class="big ${g(f.sharpe)}">${fmt(f.sharpe,2)}</div></div>
+    <div><div class="lbl">×2 cost</div><div class="big ${g(f.x2?.sharpe)}">${fmt(f.x2?.sharpe,2)}</div></div>
+    <div><div class="lbl">×3 cost</div><div class="big ${g(f.x3?.sharpe)}">${fmt(f.x3?.sharpe,2)}</div></div>
+    <div><div class="lbl">Forward trades</div><div class="big">${f.n||0}</div></div>
+    <div><div class="lbl">Win %</div><div class="big">${fmt(f.win,0)}</div></div>
+    <div><div class="lbl">Total (no comp)</div><div class="big ${g(f.totalReturn)}">${fmt(f.totalReturn,1)}%</div></div>
+    <div><div class="lbl">Max DD</div><div class="big neg">${fmt(f.maxDD,1)}%</div></div>
+  </div><div class="muted" style="font-size:11px;margin-top:8px">Tracking since <b>${meta.trackingStart||'—'}</b> · last scan ${meta.lastScanAt? meta.lastScanAt.slice(0,10):'—'}. ${
+    (f.n||0) < 30 ? '<span class="amber">Too few forward trades yet to judge — needs ~30+. Keep refreshing as days pass.</span>'
+    : (f.sharpe>0 && f.x2?.sharpe>0) ? '<span class="pos">Forward is positive and survives ×2 cost — consistent with a real edge so far.</span>'
+    : '<span class="neg">Forward is weak/negative — watch for decay vs the backtest baseline below.</span>'}</div></div>`;
+}
+
+function instTable(byInst){
+  const rows = Object.entries(byInst).filter(([,d])=>d.fwdN||d.baseN).sort((a,b)=>(b[1].fwdExp??-9)-(a[1].fwdExp??-9));
+  if(!rows.length) return '';
+  let h = `<h2>Forward vs backtest expectancy — per instrument <span class="muted" style="font-size:11px">(net %/trade; the overfit tell)</span></h2><div class="card"><table><tr><th>Instrument</th><th>fwd n</th><th>fwd exp</th><th>backtest n</th><th>backtest exp</th><th>Δ (fwd−bt)</th></tr>`;
+  for(const [p,d] of rows){ const delta = (d.fwdExp!=null && d.baseExp!=null)? d.fwdExp-d.baseExp : null;
+    h += `<tr><td>${p}</td><td>${d.fwdN}</td><td class="${d.fwdExp>0?'pos':d.fwdExp<0?'neg':'muted'}">${fmt(d.fwdExp,4)}</td><td>${d.baseN}</td><td class="muted">${fmt(d.baseExp,4)}</td><td class="${delta>0?'pos':delta<0?'neg':'muted'}">${delta==null?'—':(delta>0?'+':'')+fmt(delta,4)}</td></tr>`;
+  }
+  h += `</table><div class="muted" style="font-size:10px;margin-top:6px">Δ near 0 = forward matches the backtest (edge holding). Persistently negative Δ across instruments = decay = overfit. Small fwd n = wait for more sessions.</div></div>`;
+  return h;
+}
+
+function render(s){
+  const st = s.stats||{}; const f = st.forward||{n:0}; const meta = s.meta||{};
+  let h = statTiles(f, meta);
+  h += `<div class="card"><h2 style="margin-top:0">Forward equity curve <span class="muted" style="font-size:11px">(pooled net, ×1 cost, since ${meta.trackingStart||'—'})</span></h2>${curveSVG(f.curve)}</div>`;
+  h += instTable(st.byInst||{});
+  if(st.baseline && st.baseline.n) h += `<div class="card muted" style="font-size:11px">Pre-tracking backtest baseline on the same instruments: <b>${st.baseline.n}</b> trades, expectancy <b>${fmt(st.baseline.exp,4)}%</b>, Sharpe ${fmt(st.baseline.sharpe,2)}. Forward should converge here if the edge is real.</div>`;
+  if(s.log) h += `<div class="card muted" style="font-size:10px">${s.log.join('<br>')}</div>`;
+  el('out').innerHTML = h;
+}
+load();
+</script>
+</body>
+</html>
