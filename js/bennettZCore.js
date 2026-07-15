@@ -38,6 +38,17 @@ export function directionFromZ(z, inverted = false) {
   return inverted ? (d === 'LONG' ? 'SHORT' : 'LONG') : d;
 }
 
+// Resolve the direction inversion for a pair. The spread = US − foreign, and the raw
+// rule z>0→LONG is only correct when the PAIR moves WITH the USD — i.e. USD is the base
+// (USDJPY). For USD-QUOTE pairs (EURUSD, GBPUSD, AUDUSD) "pair up" = "USD down", so the
+// sign must flip. `usdRoleVal` = +1 (USD base) / −1 (USD quote) / 0. `autoOrient` applies
+// this economic convention (default on; validated against USDJPY being the confirmed
+// correct sign); `manualInvert` flips further for an explicit A/B. Returns a boolean.
+export function resolveInverted(usdRoleVal, { autoOrient = true, manualInvert = false } = {}) {
+  const quoteUsd = usdRoleVal < 0;
+  return (autoOrient && quoteUsd) !== !!manualInvert;   // XOR
+}
+
 // Size multiplier for a given |z| (0 if below entry threshold).
 export function zTierSize(absZ, tiers = BENNETT_DEFAULTS.tiers) {
   let size = 0;
