@@ -44,8 +44,11 @@
   our earlier work found performance DECAYED as |z| grew, the opposite of what his sizing assumes.</div>
 </header>
 <div class="wrap">
-  <div class="banner">⚠️ <b>Built, not proven.</b> Needs live <code>FRED_KEY</code> + M1 (Railway). Read the OOS card, the
-  <b>by-z-tier</b> table (does it rise or decay with extremity?), and the <b>flat vs sized</b> comparison.</div>
+  <div class="banner">⚠️ <b>Built, not proven — audit for lookahead first.</b> Needs live <code>FRED_KEY</code> + M1 (Railway). The
+  foreign short rates are MONTHLY and released ~a month late, so the <b>publication lags</b> (default US 2d / foreign 45d)
+  are ON to avoid trading on unreleased data. Set both to 0 to reproduce the no-lag (lookahead) run for an A/B — a big
+  gap between lagged and no-lag results means the edge was future data, not signal. A Sharpe &gt; ~1.5 here should be
+  treated as suspect until it survives the lag.</div>
 
   <div class="panel">
     <h2>Run parameters</h2>
@@ -59,6 +62,8 @@
       <div><label>max hold (days)</label><input id="maxHoldDays" value="20"></div>
       <div><label>cost % round-trip</label><input id="costPct" value="0.02"></div>
       <div><label>orient sign by USD role</label><select id="autoOrient"><option value="true" selected>on (correct sign)</option><option value="false">off (raw z&gt;0→LONG)</option></select></div>
+      <div><label>US pub lag (days)</label><input id="pubLagUsDays" value="2"></div>
+      <div><label>foreign pub lag (days)</label><input id="pubLagForeignDays" value="45"></div>
     </div>
     <div class="muted" style="margin-top:6px">USD-quote pairs (EURUSD/GBPUSD/AUDUSD) move opposite to USD, so the raw z&gt;0→LONG rule trades them backwards. "on" flips them to the economically-correct sign (anchored on the validated USDJPY). Toggle off to reproduce the raw-sign A/B.</div>
     <button id="runBtn">Run test</button>
@@ -145,7 +150,8 @@ async function run(){
   $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
   const body={ pair:$('pair').value, dateFrom:$('dateFrom').value, dateTo:$('dateTo').value,
     zWindow:$('zWindow').value, entryThreshold:$('entryThreshold').value, zExit:$('zExit').value,
-    maxHoldDays:$('maxHoldDays').value, costPct:$('costPct').value, autoOrient:$('autoOrient').value };
+    maxHoldDays:$('maxHoldDays').value, costPct:$('costPct').value, autoOrient:$('autoOrient').value,
+    pubLagUsDays:$('pubLagUsDays').value, pubLagForeignDays:$('pubLagForeignDays').value };
   try{
     const r=await fetch('/api/bennett-z/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
