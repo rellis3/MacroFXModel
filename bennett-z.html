@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bennett Z — does the actual spread-reversion bot work?</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#141924; --panel2:#1b2230; --fg:#dfe6f2; --dim:#8b97ad;
+          --grn:#22c55e; --red:#ef4444; --amb:#f59e0b; --blu:#4a90d9; --border:#26314a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--border); background:var(--panel); }
+  h1 { margin:0 0 4px; font-size:19px; }
+  .sub { color:var(--dim); font-size:13px; max-width:940px; }
+  .wrap { padding:22px; max-width:1120px; margin:0 auto; }
+  .banner { background:#3a2a12; border:1px solid #7a5316; color:#f4c77b; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+  .panel h2 { margin:0 0 12px; font-size:15px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  input, select { width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--blu); color:#fff; border:0; border-radius:7px; padding:10px 20px; font-size:14px; font-weight:600; cursor:pointer; margin-top:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { margin-top:10px; color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:right; padding:6px 10px; border-bottom:1px solid var(--border); }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .pos { color:var(--grn); } .neg { color:var(--red); } .muted { color:var(--dim); font-size:12px; }
+  .verdict { font-size:13px; padding:10px 14px; border-radius:8px; margin-top:12px; }
+  .verdict.good { background:#0f2a18; border:1px solid #1f6b3a; color:#8fe6ab; }
+  .verdict.bad  { background:#2a1212; border:1px solid #6b1f1f; color:#e69a9a; }
+  .verdict.warn { background:#2a2312; border:1px solid #6b551f; color:#e6cf9a; }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bennett Z — does the actual spread-reversion bot work?</h1>
+  <div class="sub">The clean replication of Bennett's <b>actual</b> mechanism (from his dashboard): the signal is the
+  US-vs-foreign <b>2Y yield-spread z-score</b>. Enter when |z| ≥ threshold (his ±2.75) in the z-direction, betting the
+  spread mean-reverts; exit on z-reversion to ±zExit (his ±1.5) or a max-hold. <b>No price levels.</b> Daily-close
+  resolution. It also A/Bs his <b>size-up-at-extremes</b> rule against flat sizing, and breaks results down by z-tier —
+  our earlier work found performance DECAYED as |z| grew, the opposite of what his sizing assumes.</div>
+</header>
+<div class="wrap">
+  <div class="banner">⚠️ <b>Built, not proven.</b> Needs live <code>FRED_KEY</code> + M1 (Railway). Read the OOS card, the
+  <b>by-z-tier</b> table (does it rise or decay with extremity?), and the <b>flat vs sized</b> comparison.</div>
+
+  <div class="panel">
+    <h2>Run parameters</h2>
+    <div class="grid">
+      <div><label>Pair</label><select id="pair"><option value="">All pairs</option></select></div>
+      <div><label>Date from</label><input id="dateFrom" placeholder="2015-01-01"></div>
+      <div><label>Date to</label><input id="dateTo" placeholder="today"></div>
+      <div><label>z window (days)</label><input id="zWindow" value="252"></div>
+      <div><label>entry |z|</label><input id="entryThreshold" value="2.75"></div>
+      <div><label>z-exit |z|</label><input id="zExit" value="1.5"></div>
+      <div><label>max hold (days)</label><input id="maxHoldDays" value="20"></div>
+      <div><label>cost % round-trip</label><input id="costPct" value="0.02"></div>
+    </div>
+    <button id="runBtn">Run test</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="results" style="display:none">
+    <div class="panel">
+      <h2>Combined OOS — the whole strategy</h2>
+      <div class="scroll"><div id="combined"></div></div>
+      <div id="verdict"></div>
+    </div>
+    <div class="panel">
+      <h2>By z-tier (OOS) — does performance rise or DECAY with extremity?</h2>
+      <div class="muted" style="margin-bottom:8px">Bennett sizes UP at deeper z. If profit factor <b>falls</b> as the tier deepens, his sizing rule is backwards.</div>
+      <div class="scroll"><div id="tiers"></div></div>
+    </div>
+    <div class="panel">
+      <h2>Per-pair OOS</h2>
+      <div class="scroll"><div id="perpair"></div></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d=1) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : '';
+
+fetch('/api/bennett-z/defaults').then(r=>r.json()).then(j=>{
+  if(!j.ok) return;
+  for(const [k,v] of Object.entries(j.pairs||{})){ const o=document.createElement('option'); o.value=k; o.textContent=v.pairDisplay; $('pair').appendChild(o); }
+}).catch(()=>{});
+
+function combinedTable(c){
+  if(!c || !c.oos) return '<div class="muted">no data</div>';
+  const o=c.oos;
+  return `<table><tbody>
+    <tr><td>OOS trades</td><td>${o.n}</td></tr>
+    <tr><td>Win rate</td><td>${fmt(o.winRate)}%</td></tr>
+    <tr><td>Profit factor</td><td class="${o.profitFactor>=1?'pos':'neg'}">${fmt(o.profitFactor,2)}</td></tr>
+    <tr><td>Total return (flat)</td><td class="${cls(o.totalRetPct)}">${fmt(o.totalRetPct,2)}%</td></tr>
+    <tr><td>Total return (z-sized)</td><td class="${cls(o.sizedTotalRetPct)}">${fmt(o.sizedTotalRetPct,2)}%</td></tr>
+    <tr><td>Expectancy/trade</td><td class="${cls(o.expectancyPct)}">${fmt(o.expectancyPct,4)}%</td></tr>
+    <tr><td>Sharpe (flat)</td><td class="${cls(o.sharpe)}">${fmt(o.sharpe,2)}</td></tr>
+    <tr><td>Sharpe (z-sized)</td><td class="${cls(o.sizedSharpe)}">${fmt(o.sizedSharpe,2)}</td></tr>
+  </tbody></table>`;
+}
+
+function verdict(c){
+  if(!c || !c.oos) return '';
+  const o=c.oos;
+  const works = o.profitFactor > 1.1 && o.totalRetPct > 0 && o.n >= 30;
+  const sizingHelps = o.sizedSharpe > o.sharpe;
+  const t = c.oos.byTier || {};
+  const pfs = ['2.75+','3.75+','4.5+'].map(k=>t[k]?.profitFactor ?? 0);
+  const decays = pfs[0] > pfs[2] && pfs[2] > 0;
+  let v = works
+    ? `<div class="verdict good">✓ Bennett's actual signal shows edge OOS (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades). `
+    : `<div class="verdict bad">✗ Bennett's actual signal does NOT show edge OOS (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades). `;
+  v += `Sizing up at extremes ${sizingHelps ? 'HELPED' : 'HURT'} (sized Sharpe ${fmt(o.sizedSharpe,2)} vs flat ${fmt(o.sharpe,2)}). `;
+  v += decays ? `Profit factor DECAYS with z-tier — his size-up rule is backwards.` : `Profit factor does not clearly decay with z-tier.`;
+  v += `</div>`;
+  return v;
+}
+
+function tierTable(byTier){
+  if(!byTier) return '<div class="muted">no data</div>';
+  let rows='';
+  for(const k of ['2.75+','3.75+','4.5+']){ const t=byTier[k]||{};
+    rows+=`<tr><td>${k} (size ${k==='2.75+'?'1×':k==='3.75+'?'1.5×':'2×'})</td><td>${t.n??0}</td><td>${fmt(t.winRate)}%</td><td class="${(t.profitFactor??0)>=1?'pos':'neg'}">${fmt(t.profitFactor,2)}</td><td class="${cls(t.totalRetPct)}">${fmt(t.totalRetPct,2)}%</td></tr>`; }
+  return `<table><thead><tr><th>z-tier</th><th>Trades</th><th>Win%</th><th>PF</th><th>Total ret</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function perPairTable(perPair){
+  const rows=Object.values(perPair||{});
+  if(!rows.length) return '<div class="muted">no data</div>';
+  let out='';
+  for(const r of rows){ const o=r.oos;
+    out+=`<tr><td>${r.pairDisplay}</td><td>${o.n}</td><td>${fmt(o.winRate)}%</td><td class="${o.profitFactor>=1?'pos':'neg'}">${fmt(o.profitFactor,2)}</td><td class="${cls(o.totalRetPct)}">${fmt(o.totalRetPct,2)}%</td><td class="${cls(o.sharpe)}">${fmt(o.sharpe,2)}</td></tr>`; }
+  return `<table><thead><tr><th>Pair</th><th>OOS trades</th><th>Win%</th><th>PF</th><th>Total ret</th><th>Sharpe</th></tr></thead><tbody>${out}</tbody></table>`;
+}
+
+async function run(){
+  $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
+  const body={ pair:$('pair').value, dateFrom:$('dateFrom').value, dateTo:$('dateTo').value,
+    zWindow:$('zWindow').value, entryThreshold:$('entryThreshold').value, zExit:$('zExit').value,
+    maxHoldDays:$('maxHoldDays').value, costPct:$('costPct').value };
+  try{
+    const r=await fetch('/api/bennett-z/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok){ $('status').textContent='Error: '+j.error; $('runBtn').disabled=false; return; }
+    poll(j.jobId);
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+async function poll(jobId){
+  try{
+    const r=await fetch('/api/bennett-z/status/'+jobId); const j=await r.json();
+    if(j.status==='running'){ $('status').textContent=`Running… ${j.elapsed||0}s (fetching FRED + M1, walking signals)`; setTimeout(()=>poll(jobId),2000); return; }
+    if(j.status==='done'){
+      $('status').textContent=`Done — ${j.combined.nTrades} trades`;
+      $('combined').innerHTML=combinedTable(j.combined);
+      $('verdict').innerHTML=verdict(j.combined);
+      $('tiers').innerHTML=tierTable(j.combined.oos.byTier);
+      $('perpair').innerHTML=perPairTable(j.perPair);
+      $('results').style.display='block'; $('runBtn').disabled=false; return;
+    }
+    $('status').textContent='Error: '+(j.error||'unknown'); $('runBtn').disabled=false;
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+$('runBtn').addEventListener('click', run);
+</script>
+</body>
+</html>

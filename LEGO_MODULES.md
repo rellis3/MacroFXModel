@@ -519,6 +519,16 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 
 ---
 
+### 1n. Bennett z-mean-reversion replication (2026-07-07) — test the ACTUAL bot
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Bennett-z core** | `js/bennettZCore.js` | pure replication of Bennett's confirmed dashboard mechanic (yield-SPREAD z mean-reversion, NO levels): `directionFromZ` (z>0→LONG / z<0→SHORT, matches the dashboard), `zTierSize`/`zTierLabel` (his 1×/1.5×/2× size ladder at ±2.75/±3.75/±4.5), `shouldExit` (z-revert to ±zExit or max-hold), `tradeReturn`, `summarizeBennett` (win/PF/expectancy/Sharpe + **flat-vs-z-sized A/B** + **by-z-tier breakdown** — the falsification of "extreme z = better"). Tested `js/bennettZCore.test.mjs` (10 asserts). | `js/bennettZEngine.js` (I/O: reuses z-engine FRED fetch + rolling-z + M1→daily closes; daily state machine, per-pair + pooled OOS); `server.js` `/api/bennett-z/*`; `bennett-z.html` | 🟡 built, **not yet run** (needs FRED + M1 on Railway) |
+
+A screenshot of Bennett's live dashboard confirmed his bot is **pure yield-spread-z mean-reversion** (entry |z|≥2.75, exit on z-revert to ±1.5, size by z-tier) with **NO price levels** — so the earlier v1 (z + Asia-range fib) and the levels/macro-direction nulls tested configs he isn't running. This is the clean test of his *actual* mechanism. Prior is skeptical (our z-tier work found performance DECAYED as |z| grew, yet he sizes UP at extremes — the `byTier` + `sized` A/B measure exactly that). Daily-close resolution avoids intrabar TP/SL path assumptions.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
