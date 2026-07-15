@@ -44,6 +44,9 @@ export function buildOIZones(inst, price, cfg = {}) {
     extendedPips = 30,             // "price extended from max pain" threshold
     fadeInPin = true, followBreaks = true, maxPainReversion = true,
     requireEstablished = false, avoidLiquidating = true,
+    maxZonesPerSide = 4,           // TRADE only the K strongest walls per side (by OI) —
+                                   // decouples what the bot trades from how many the
+                                   // analyser stores/shows (numLevels). 0 = no cap.
     stability = null,              // oiWallStability(...) output (server-injected from oi_history)
     change = null,                 // classifyOIChange(...) output (server-injected)
   } = cfg;
@@ -57,8 +60,12 @@ export function buildOIZones(inst, price, cfg = {}) {
   const tol = Math.max(buf, pip);
   const tierOK = w => _rank(w?.tier) >= _rank(minTier);
 
-  const calls = (Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(tierOK);
-  const puts = (Array.isArray(inst.putWalls) ? inst.putWalls : []).filter(tierOK);
+  // callWalls/putWalls arrive sorted by OI (strongest first, from the analyser).
+  // Keep only walls ≥ minTier, then cap to the K strongest per side so the bot
+  // trades the dominant walls even when the analyser stores many for display.
+  const _cap = a => (maxZonesPerSide > 0 ? a.slice(0, maxZonesPerSide) : a);
+  const calls = _cap((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(tierOK));
+  const puts = _cap((Array.isArray(inst.putWalls) ? inst.putWalls : []).filter(tierOK));
 
   const isLiquidating = (strike, kind) => avoidLiquidating &&
     (change?.events || []).some(e => e.type === 'liquidation' && e.kind === kind && Math.abs(e.strike - strike) <= tol);

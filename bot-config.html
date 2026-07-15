@@ -3988,6 +3988,7 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
             <option value="moderate">moderate+ (≥2×)</option>
             <option value="weak">weak+ (≥1.5×)</option>
           </select></div>
+        <div class="form-row"><span class="form-lbl">Trade zones per side <small>the bot trades only the K STRONGEST walls each side (by OI) — separate from how many the analyser shows. 0 = no cap.</small></span><input type="number" id="oi_max_zones_per_side" min="0" max="20" step="1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Fade in PIN <small>+GEX → sell call walls / buy put walls to max pain</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_fade_in_pin"> on</label></div>
         <div class="form-row"><span class="form-lbl">Follow breaks in BREAKOUT <small>−GEX → follow a decisive wall break (squeeze)</small></span>

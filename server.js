@@ -6175,6 +6175,7 @@ const OI_BOT_CFG_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
   requireEstablished: false, avoidLiquidating: true,
+  maxZonesPerSide: 4,                // bot trades the K strongest walls per side (display count is separate)
   fx_enabled: false, fx_pairs: [],   // opt-in FX universe (weak asset); [] + fx_enabled = none added
 };
 function _oiBotStabilityChange(hist, key) {
