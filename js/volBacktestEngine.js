@@ -96,6 +96,23 @@ async function fetchD1(instrument, count = 5000) {
     .filter(c => c.close > 0);
 }
 
+// D1 with an EXPLICIT daily boundary (OANDA dailyAlignment + alignmentTimezone).
+// Default matches fetchD1 (17:00 New York). Pass { dailyAlignment: 0,
+// alignmentTimezone: 'Europe/London' } for London-midnight-anchored daily bars —
+// the anchor the forecasting models use. Returns {date,open,high,low,close};
+// `date` = the bar's own day (no broker-advance — callers here use closes only).
+async function fetchD1Aligned(instrument, count = 130, { dailyAlignment = 17, alignmentTimezone = 'America/New_York' } = {}) {
+  const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+            + `?granularity=D&count=${count}&price=M&dailyAlignment=${dailyAlignment}&alignmentTimezone=${encodeURIComponent(alignmentTimezone)}`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`Oanda D1(${alignmentTimezone}@${dailyAlignment}) ${instrument}: HTTP ${r.status}`);
+  const data = await r.json();
+  return (data.candles ?? [])
+    .filter(c => c.complete !== false && c.mid)
+    .map(c => ({ date: new Date(c.time).toISOString().slice(0, 10), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }))
+    .filter(c => c.close > 0);
+}
+
 // UTC epoch (seconds) of the most recent 00:00 Europe/London — DST-safe via Intl,
 // no hard-coded offset. Reads `now`'s London wall-clock parts AS IF UTC to recover
 // London's current offset, then shifts that day's local-midnight back to a UTC epoch.
@@ -368,7 +385,7 @@ function runBacktest(bars, assetClass, opts = {}) {
 // ── Public: run all instruments and return structured result ──────────────────
 
 export { ewmaVarSeries, hvVarSeries, yzVolSeries, garchSigmas, classifyRegime, runBacktest, ASSET_PARAMS, LAMBDA, BM_P50, BM_P75, HN_P50, HN_P75, G_ALPHA, G_BETA };
-export { fetchD1, fetchM1Range, fetchSessionOpenLondon, londonMidnightSec };
+export { fetchD1, fetchD1Aligned, fetchM1Range, fetchSessionOpenLondon, londonMidnightSec };
 
 export async function runFullBacktest(opts = {}, instruments = INSTRUMENTS) {
   if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set — cannot fetch D1 data');
