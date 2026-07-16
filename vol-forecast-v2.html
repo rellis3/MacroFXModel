@@ -608,7 +608,7 @@
 .v2-hist-date:focus { border-color: var(--blue-bd); }
 
 /* ── v2 Chart Expand button (sibling of m5-wrap) ────────────────────────────── */
-.v2-m5-wrap { cursor: pointer; }
+.v2-m5-wrap { cursor: default; }
 .v2-m5-expand {
   position: absolute; top: 6px; right: 6px; z-index: 10;
   background: rgba(0,0,0,.30); border: 1px solid rgba(255,255,255,0.15);
@@ -1752,7 +1752,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
     </div>
     ${coneHtml}
     <div style="position:relative">
-      <div class="v2-m5-wrap" id="m5wrap-${name}" onclick="openChartModal('${name}')" title="Click to expand chart"></div>
+      <div class="v2-m5-wrap" id="m5wrap-${name}" title="Drag to pan · drag the price axis (right) up/down to zoom price · ⤢ to expand"></div>
       <button class="v2-m5-expand" onclick="openChartModal('${name}')" title="Expand chart">⤢</button>
     </div>
     <div class="v2-lvl-legend" id="m5legend-${name}"></div>
