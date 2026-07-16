@@ -99,6 +99,10 @@ one did, in order:
 5. **Parameter robustness** — a 12-cell sweep (entry |z| 2.0–2.75 × window 90/126/252)
    came back **12/12 profitable** (PF 1.73–5.04, Sharpe 0.70–1.21). Graceful degradation,
    not a lucky spike. This is the strongest evidence it isn't overfit.
+6. **Cost stress-test** — doubling round-trip cost to 0.04% (~4 pips, pessimistic for
+   majors) barely moved 2.25/90: PF **4.46 → 4.31**, Sharpe **1.11 → 1.09**, return
+   +107% → +105%. Per-trade expectancy (~0.90%) dwarfs the cost (~22:1 margin); breakeven
+   cost is ~0.9% (≈90 pips). Costs are not a threat.
 
 Sizing note: Bennett **sizes up at extreme z** (1×/1.5×/2× at ±2.75/±3.75/±4.5). Our data
 says that's **backwards or noise** — the deepest tiers are tiny samples and don't reliably
@@ -126,7 +130,8 @@ beat flat sizing. Trade it **flat-sized**.
 
 ## 6. Next steps (in order)
 
-1. **Cost stress-test** — re-run 2.25/90 at cost 0.04%; confirm PF stays > ~1.5.
+1. ~~**Cost stress-test**~~ — **done**: 2.25/90 at 0.04% held (PF 4.31, Sharpe 1.09).
+   Every in-sample audit is now passed.
 2. **Paper-trade** the validated region (2.0–2.5 / 90–126, flat-sized, orient-on,
    lags-on) live and track it against this backtest for 3–6 months. This is *the* test.
 3. **Do not add parameters or "improve" it** before forward data arrives — that overfits
