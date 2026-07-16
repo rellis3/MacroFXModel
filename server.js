@@ -15048,13 +15048,49 @@ if (process.env.OANDA_KEY) {
 
 // Yield-Spread bot plan — recompute the daily spread-z per pair from FRED. Daily cadence
 // (the signal only changes when FRED updates); pub lags make the exact time non-critical.
-// Default 13:05 UTC; override with YIELD_SPREAD_PLAN_UTC_HOUR/MIN.
+//
+// CONFIG-DRIVEN (no restart needed): the target UTC time lives in the bot config
+// (yield_spread_config.plan_utc_hour / plan_utc_min), editable on the config page,
+// falling back to the YIELD_SPREAD_PLAN_UTC_HOUR/MIN env vars, then 13:05. A light
+// 5-min checker reads the config each tick and refreshes once per UTC day at/after
+// the target — so changing the time on the config page takes effect the SAME day
+// without a redeploy. The plan's own generatedAt (UTC date) is the "ran today" marker.
 if (process.env.FRED_KEY) {
   const _runYsPlan = () => _refreshYieldSpreadPlan().catch(e => console.error('[yield-spread] plan refresh failed:', e.message));
-  const hour = Number(process.env.YIELD_SPREAD_PLAN_UTC_HOUR ?? 13);
-  const min  = Number(process.env.YIELD_SPREAD_PLAN_UTC_MIN ?? 5);
-  const next = _scheduleDailyUtc(hour, min, _runYsPlan);
-  console.log(`[yield-spread] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
+  const _ysTarget = (cfg) => {
+    const h = Number(cfg?.plan_utc_hour ?? process.env.YIELD_SPREAD_PLAN_UTC_HOUR ?? 13);
+    const m = Number(cfg?.plan_utc_min  ?? process.env.YIELD_SPREAD_PLAN_UTC_MIN  ?? 5);
+    return { h: Number.isFinite(h) ? ((h % 24) + 24) % 24 : 13,
+             m: Number.isFinite(m) ? ((m % 60) + 60) % 60 : 5 };
+  };
+  const _ysPlanDateUTC = async () => {
+    try {
+      const raw = await kv.get('yield_spread_plan');
+      if (!raw) return null;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const gen = (parsed?.data ?? parsed)?.generatedAt;
+      return gen ? new Date(gen).toISOString().slice(0, 10) : null;
+    } catch { return null; }
+  };
+  const _ysCheck = async () => {
+    try {
+      let cfg = null;
+      try { const c = await kv.get('yield_spread_config'); cfg = c ? (typeof c === 'string' ? JSON.parse(c) : c) : null; } catch {}
+      const { h, m } = _ysTarget(cfg);
+      const now = new Date();
+      const passed = now.getUTCHours() > h || (now.getUTCHours() === h && now.getUTCMinutes() >= m);
+      if (!passed) return;                       // target time not reached yet today
+      const todayUTC = now.toISOString().slice(0, 10);
+      const planDate = await _ysPlanDateUTC();
+      if (planDate !== todayUTC) {               // haven't produced today's plan yet
+        console.log(`[yield-spread] daily refresh (target ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} UTC · last plan ${planDate ?? 'none'})`);
+        await _runYsPlan();
+      }
+    } catch (e) { console.error('[yield-spread] schedule check failed:', e.message); }
+  };
+  setInterval(_ysCheck, 5 * 60_000);
+  console.log('[yield-spread] plan refresh is config-driven (yield_spread_config.plan_utc_hour/min, default 13:05 UTC) — checked every 5 min');
+  // Bootstrap: build a first plan shortly after boot if none exists (don't wait for the target).
   setTimeout(async () => {
     try { if (!(await kv.get('yield_spread_plan'))) { console.log('[yield-spread] no plan in KV — bootstrap refresh'); await _runYsPlan(); } }
     catch (e) { console.error('[yield-spread] bootstrap check failed:', e.message); }
