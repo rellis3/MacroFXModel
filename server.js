@@ -86,6 +86,8 @@ import { forecastStyleFade as _forecastStyleFade } from './js/forecastStyleFadeE
 import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio, inspectSession as _inspectSession, sigmaSeriesForSessions as _sigmaSeriesForSessions } from './js/pooledFadeEngine.js';   // pooled VuManChu fade w/ trader's real exit + cost sensitivity; single-session inspector for the viewer
 import { sessionsAt as _sessionsAt } from './js/fillRealismEngine.js';   // 22:00-UTC broker-day session grouping (for the fade viewer)
 import { fetchM1Gap as _fetchM1Gap } from './js/m1GapFill.js';   // OANDA M1 gap-fill so the viewer can show days past the parquet snapshot
+import { rvHarSigma as _rvHarSigma } from './js/indexRvHar.js';   // validated 5-min realized-vol HAR σ for index COG lines (not the GK shadow)
+import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
@@ -5611,21 +5613,19 @@ async function _refreshVolatilityPlan() {
   const refreshLog = [];
   const onLog = m => { console.log('[volatility-bot]', m); refreshLog.push(m); };
   try {
-    // Opt-in σ source (default 'platform' = book-matching, unchanged). If the vol-bot
-    // config sets sigma_source:'har-nonfx', indices+gold use the SAME GK-HAR σ the
-    // calibrated export shows, so the bot's lines match it. fx always stays platform.
-    let sigmaSource = 'platform';
-    try { const raw = await kv.get('volatility_bot_config'); const c = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; if (c?.sigma_source === 'har-nonfx') sigmaSource = 'har-nonfx'; } catch { /* keep platform */ }
-    const harSigma = (bars, _ac) => {
-      try { const { sigmaFwd } = sigmaSeriesForExport(bars, 'harRV', { rv: _realizedVarSeries(bars, 'gk') }); return Number.isFinite(sigmaFwd) && sigmaFwd > 0 ? sigmaFwd : null; }
-      catch { return null; }
-    };
+    // Opt-in σ source. DISABLED: the only live HAR σ available here is the GK-daily
+    // shadow (sigmaSeriesForExport 'harRV' on Garman-Klass daily-range RV), which
+    // MISSES equity-index overnight gaps and understates index σ by ~half (SPX ~9.5%
+    // vs a true ~19%). Doing HAR right for indices needs the M1-realized-vol estimator
+    // (the one the σ A/B actually validated) wired into the live σ path — a separate
+    // build. Until then the bot stays on platform σ regardless of the config toggle,
+    // so a stray flip can't ship understated index lines.
     const plan = await refreshVolatilityPlan({
       getBook: getPerLineBook,
       fetchD1: (sym, n) => _btFetchD1(sym, n),
       fetchSessionOpen: (sym) => _btFetchSessionOpenLondon(sym),   // London-midnight open anchor
       sigmaSeries: _volSigmaSeries,
-      volSource: sigmaSource, harSigma,
+      volSource: 'platform',                                        // HAR path disabled (see note above)
       kvPut: (k, v) => kv.put(k, v),
       onLog,
     });
@@ -10114,6 +10114,50 @@ app.get('/api/fade-inspect/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Index RV-HAR σ — the VALIDATED realized-vol HAR (5-min path), for the COG ──
+// export + COG chart index lines. Loads the 5-min parquet + gap-fills from OANDA to
+// now (so σ is current, not the stale snapshot), builds realised variance from the
+// intraday PATH, runs the forward-HAR machinery. Returns annualised σ per index +
+// nDays + dataThrough; the client applies a plausibility guard vs GARCH. Cached in
+// memory by London date so repeat page loads are instant. Index instruments only.
+const _rvHarCache = { date: null, data: null };
+const _indexInsts = () => WBT_INSTRUMENTS.filter(i => (i.assetClass === 'index'));
+let _rvHarJob = null;
+app.get('/api/vol-forecast/rv-har', async (req, res) => {
+  const todayISO = new Date().toISOString().slice(0, 10);
+  if (_rvHarCache.date === todayISO && _rvHarCache.data && !req.query.force) return res.json({ ok: true, cached: true, ...(_rvHarCache.data) });
+  if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
+  if (_rvHarJob) { try { const d = await _rvHarJob; return res.json({ ok: true, ...d }); } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); } }
+  _rvHarJob = (async () => {
+    const indices = {}, log = [];
+    const nowSec = Math.floor(Date.now() / 1000);
+    for (const cfg of _indexInsts()) {
+      try {
+        let bars = await _loadM1ForAB(cfg.name.toLowerCase(), 5);   // 5-min parquet (snapshot)
+        if (!bars || bars.length < 2000) { log.push(`${cfg.name}: too few 5m bars (${bars?.length || 0})`); continue; }
+        // gap-fill to now from OANDA (1-min → resampled to 5-min) so σ is current
+        if (process.env.OANDA_KEY) {
+          const lastSec = bars.at(-1).time;
+          if (nowSec - lastSec > 3600) {
+            const gap1m = await _fetchM1Gap(cfg.oanda, lastSec + 60, nowSec, _btFetchM1Range, { onLog: m => log.push(`${cfg.name}: ${m}`) });
+            if (gap1m.length) { const gap5 = _resampleTo(gap1m, 5).filter(b => b.time > lastSec); bars = bars.concat(gap5); log.push(`${cfg.name}: +${gap5.length} live 5m bars`); }
+          }
+        }
+        const r = _rvHarSigma(bars);
+        if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nDays}d)`); continue; }
+        indices[cfg.name] = { volAnnual: r.volAnnual, nDays: r.nDays, dataThrough: r.lastDate };
+        log.push(`${cfg.name}: RV-HAR σ ${r.volAnnual}% (through ${r.lastDate}, ${r.nDays}d)`);
+      } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+    }
+    const data = { indices, computedAt: new Date().toISOString(), dateISO: todayISO, log };
+    _rvHarCache.date = todayISO; _rvHarCache.data = data;
+    return data;
+  })();
+  try { const d = await _rvHarJob; res.json({ ok: true, ...d }); }
+  catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+  finally { _rvHarJob = null; }
 });
 
 // ── Vol Horse Race — the gold workbook's estimator race, generalised to every ──
