@@ -186,6 +186,47 @@ export async function runBennettZ(pairKey, opts = {}) {
   return simulatePair(pd, cfFromOpts(opts));
 }
 
+// LIVE SIGNAL: today's spread-z per pair, computed with the SAME rolling-z + pub-lag math
+// as the backtest (single source of truth — the live bot never re-implements it). Returns
+// `{ pair: { z, spread, asOf, inverted, label, pip } }`. No M1 needed — FRED only. The
+// bot decides enter/exit from these z values + its config thresholds.
+export async function computeBennettZSignals(opts = {}, pairKeys = Object.keys(ZSCORE_PAIRS)) {
+  const fredKey = opts.fredKey ?? process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not set — cannot fetch yield-spread data');
+  const zWindow = opts.zWindow ?? 90;
+  const dateTo = opts.dateTo || new Date().toISOString().substring(0, 10);
+  const dateFrom = opts.dateFrom || _shiftDate(dateTo, -(zWindow + 400));
+  const pubLagUsDays = opts.pubLagUsDays ?? 2;
+  const pubLagForeignDays = opts.pubLagForeignDays ?? 45;
+  const autoOrient = opts.autoOrient !== false;
+
+  const out = {};
+  for (const pairKey of pairKeys) {
+    const cfg = ZSCORE_PAIRS[pairKey];
+    if (!cfg) continue;
+    try {
+      const fredFrom = _shiftDate(dateFrom, -60);
+      const [usRaw, forRaw] = await Promise.all([
+        fetchFredObservations(cfg.baseSeries, fredFrom, fredKey),
+        fetchFredObservations(cfg.quoteSeries, fredFrom, fredKey),
+      ]);
+      const usObs = shiftObsForward(usRaw, pubLagUsDays);
+      const forObs = shiftObsForward(forRaw, pubLagForeignDays);
+      const zByDate = buildRollingZSeries(usObs, forObs, zWindow, dateFrom, dateTo);
+      const dates = [...zByDate.keys()].sort();
+      const lastDate = dates[dates.length - 1] || null;
+      const zInfo = lastDate ? zByDate.get(lastDate) : null;
+      const inverted = resolveInverted(usdRole(pairKey), { autoOrient, manualInvert: !!(opts.invert && opts.invert[pairKey]) });
+      out[pairKey] = zInfo
+        ? { z: +zInfo.z.toFixed(3), spread: +zInfo.spread.toFixed(4), asOf: lastDate, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip }
+        : { z: null, spread: null, asOf: null, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip };
+    } catch (e) {
+      out[pairKey] = { z: null, error: e?.message || String(e), label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip };
+    }
+  }
+  return out;
+}
+
 export async function runFullBennettZ(opts = {}, pairKeys = Object.keys(ZSCORE_PAIRS)) {
   const pairDataList = [];
   const log = [];

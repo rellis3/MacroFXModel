@@ -112,7 +112,8 @@ import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zsc
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
 import { runFullRangeLevelEdge, RANGE_LEVEL_DEFAULTS } from './js/rangeLevelEdgeEngine.js';
-import { runFullBennettZ, runBennettZSweep, BENNETT_DEFAULTS } from './js/bennettZEngine.js';
+import { runFullBennettZ, runBennettZSweep, computeBennettZSignals, BENNETT_DEFAULTS } from './js/bennettZEngine.js';
+import { refreshBennettZPlan, BENNETT_Z_DEFAULTS } from './js/bennettZProducer.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -5642,6 +5643,33 @@ app.get('/api/volatility-bot/plan', async (_req, res) => {
   try {
     const raw = await kv.get('volatility_bot_plan');
     if (!raw) return res.status(404).json({ ok: false, error: 'No plan yet — POST /api/volatility-bot/refresh-plan (needs OANDA + a built book)' });
+    const parsed = JSON.parse(raw);
+    res.json({ ok: true, plan: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Bennett-Z bot plan producer ────────────────────────────────────────────────
+// Computes today's spread-z per pair via the VALIDATED engine (single source of
+// truth) and writes bennett_z_plan to KV. The Python bot reads it + bennett_z_config.
+async function _refreshBennettZPlan() {
+  return refreshBennettZPlan({
+    getConfig: async () => {
+      try { const raw = await kv.get('bennett_z_config'); return raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; }
+      catch { return null; }
+    },
+    computeSignals: (opts, pairs) => computeBennettZSignals(opts, pairs),
+    kvPut: (k, v) => kv.put(k, v),
+  });
+}
+app.post('/api/bennett-z/refresh-plan', async (_req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set' });
+  try { const plan = await _refreshBennettZPlan(); res.json({ ok: true, plan }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/bennett-z/plan', async (_req, res) => {
+  try {
+    const raw = await kv.get('bennett_z_plan');
+    if (!raw) return res.status(404).json({ ok: false, error: 'No plan yet — POST /api/bennett-z/refresh-plan' });
     const parsed = JSON.parse(raw);
     res.json({ ok: true, plan: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -15016,6 +15044,21 @@ if (process.env.OANDA_KEY) {
     try { if (!(await kv.get('volatility_bot_plan'))) { console.log('[volatility-bot] no plan in KV — bootstrap refresh'); await _runVolPlan(); } }
     catch (e) { console.error('[volatility-bot] bootstrap check failed:', e.message); }
   }, 90_000);
+}
+
+// Bennett-Z bot plan — recompute the daily spread-z per pair from FRED. Daily cadence
+// (the signal only changes when FRED updates); pub lags make the exact time non-critical.
+// Default 13:05 UTC; override with BENNETT_Z_PLAN_UTC_HOUR/MIN.
+if (process.env.FRED_KEY) {
+  const _runBzPlan = () => _refreshBennettZPlan().catch(e => console.error('[bennett-z] plan refresh failed:', e.message));
+  const hour = Number(process.env.BENNETT_Z_PLAN_UTC_HOUR ?? 13);
+  const min  = Number(process.env.BENNETT_Z_PLAN_UTC_MIN ?? 5);
+  const next = _scheduleDailyUtc(hour, min, _runBzPlan);
+  console.log(`[bennett-z] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
+  setTimeout(async () => {
+    try { if (!(await kv.get('bennett_z_plan'))) { console.log('[bennett-z] no plan in KV — bootstrap refresh'); await _runBzPlan(); } }
+    catch (e) { console.error('[bennett-z] bootstrap check failed:', e.message); }
+  }, 95_000);
 }
 
 // Range-line bot plan — freeze the per-instrument policy daily AFTER the London

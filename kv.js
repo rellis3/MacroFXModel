@@ -94,6 +94,11 @@ const _CF_EXACT = new Set([
   'volatility_bot_audit_log',   // Volatility bot entry/exit audit log — cannot be auto-rebuilt
   // NOTE: volatility_bot_status is deliberately NOT here — the bot rewrites it every
   // ~30s, so it stays local/ephemeral to avoid blowing the CF KV write quota.
+  'bennett_z_config',           // Bennett-Z bot settings — must survive redeploys
+  'bennett_z_credentials',      // Bennett-Z bot MT5 credentials — must survive redeploys
+  'bennett_z_plan',             // Bennett-Z daily z-signal plan — keep last good plan across a redeploy
+  'bennett_z_audit',            // Bennett-Z entry/exit audit log — cannot be auto-rebuilt
+  // NOTE: bennett_z_status omitted like volatility_bot_status — rewritten every cycle, ephemeral.
   'range_line_bot_config',      // Range-Line bot settings — must survive redeploys
   'range_line_bot_credentials', // Range-Line bot MT5 credentials — must survive redeploys
   'range_line_bot_plan',        // Range-Line bot daily plan (per-instrument policy) — keep last good plan across a redeploy

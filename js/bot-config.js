@@ -4128,6 +4128,130 @@ loadOiConfig();
 loadOiCreds();
 loadOiLiveStatus();
 
+// ═══════════════════════════ BENNETT-Z BOT ═══════════════════════════════════
+// Yield-spread z-score mean-reversion. Config → bennett_z_config; the server
+// producer computes the daily z into bennett_z_plan; the bot pushes bennett_z_status.
+const BZ_DEFAULTS = {
+  enabled: true, kill_switch: false, paper_mode: true,
+  risk_pct: 0.5, sl_pct: 2.5, max_lot: 5.0, max_open: 6,
+  entry_threshold: 2.0, z_window: 90, z_exit: 1.5, max_hold_days: 20,
+  pairs: ['usdjpy', 'eurusd', 'gbpusd', 'audusd', 'usdcad', 'usdchf'],
+  enabled_pairs: [], tick_secs: 10, status_secs: 60, plan_secs: 600,
+};
+let _bzCfg = { ...BZ_DEFAULTS };
+
+function renderBzForm() {
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  chk('bz_paper_mode', _bzCfg.paper_mode ?? true);
+  chk('bz_enabled', _bzCfg.enabled ?? true);
+  chk('bz_kill_switch', _bzCfg.kill_switch);
+  set('bz_entry_threshold', _bzCfg.entry_threshold ?? BZ_DEFAULTS.entry_threshold);
+  set('bz_z_window', _bzCfg.z_window ?? BZ_DEFAULTS.z_window);
+  set('bz_z_exit', _bzCfg.z_exit ?? BZ_DEFAULTS.z_exit);
+  set('bz_max_hold_days', _bzCfg.max_hold_days ?? BZ_DEFAULTS.max_hold_days);
+  set('bz_pairs', (_bzCfg.pairs ?? BZ_DEFAULTS.pairs).join(', '));
+  set('bz_risk_pct', _bzCfg.risk_pct ?? BZ_DEFAULTS.risk_pct);
+  set('bz_sl_pct', _bzCfg.sl_pct ?? BZ_DEFAULTS.sl_pct);
+  set('bz_max_lot', _bzCfg.max_lot ?? BZ_DEFAULTS.max_lot);
+  set('bz_max_open', _bzCfg.max_open ?? BZ_DEFAULTS.max_open);
+  set('bz_tick_secs', _bzCfg.tick_secs ?? BZ_DEFAULTS.tick_secs);
+  set('bz_status_secs', _bzCfg.status_secs ?? BZ_DEFAULTS.status_secs);
+  set('bz_plan_secs', _bzCfg.plan_secs ?? BZ_DEFAULTS.plan_secs);
+}
+function readBzForm() {
+  const numf = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  const list = id => (document.getElementById(id)?.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  _bzCfg.paper_mode = !!document.getElementById('bz_paper_mode')?.checked;
+  _bzCfg.enabled = !!document.getElementById('bz_enabled')?.checked;
+  _bzCfg.kill_switch = !!document.getElementById('bz_kill_switch')?.checked;
+  _bzCfg.entry_threshold = numf('bz_entry_threshold', BZ_DEFAULTS.entry_threshold);
+  _bzCfg.z_window = Math.round(numf('bz_z_window', BZ_DEFAULTS.z_window));
+  _bzCfg.z_exit = numf('bz_z_exit', BZ_DEFAULTS.z_exit);
+  _bzCfg.max_hold_days = Math.round(numf('bz_max_hold_days', BZ_DEFAULTS.max_hold_days));
+  const pairs = list('bz_pairs');
+  _bzCfg.pairs = pairs.length ? pairs : [...BZ_DEFAULTS.pairs];
+  _bzCfg.risk_pct = numf('bz_risk_pct', BZ_DEFAULTS.risk_pct);
+  _bzCfg.sl_pct = numf('bz_sl_pct', BZ_DEFAULTS.sl_pct);
+  _bzCfg.max_lot = numf('bz_max_lot', BZ_DEFAULTS.max_lot);
+  _bzCfg.max_open = Math.round(numf('bz_max_open', BZ_DEFAULTS.max_open));
+  _bzCfg.tick_secs = Math.round(numf('bz_tick_secs', BZ_DEFAULTS.tick_secs));
+  _bzCfg.status_secs = Math.round(numf('bz_status_secs', BZ_DEFAULTS.status_secs));
+  _bzCfg.plan_secs = Math.round(numf('bz_plan_secs', BZ_DEFAULTS.plan_secs));
+}
+async function loadBzConfig() {
+  try { const stored = await kvGet('bennett_z_config'); if (stored) _bzCfg = { ...BZ_DEFAULTS, ...stored }; renderBzForm(); } catch (e) {}
+}
+async function saveBzConfig() {
+  readBzForm();
+  const el = document.getElementById('bzSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('bennett_z_config', _bzCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#f472b6'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetBzDefaults() {
+  _bzCfg = { ...BZ_DEFAULTS }; renderBzForm();
+  const el = document.getElementById('bzSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadBzCreds() { try { _applyCredsToForm(await kvGet('bennett_z_credentials'), 'bz_', 'bz_mt5_password'); } catch (e) {} }
+async function saveBzCreds() { await _saveCreds('bennett_z_credentials', 'bz_', 'bz_mt5_password', 'bzCredsStatus'); }
+
+async function loadBzLiveStatus() {
+  const ageEl = document.getElementById('bzLiveAge'), modeEl = document.getElementById('bzLiveMode');
+  const balEl = document.getElementById('bzLiveBal'), openEl = document.getElementById('bzOpenN');
+  const uniEl = document.getElementById('bzUniN'), paEl = document.getElementById('bzPlanAge');
+  try {
+    const [st, plan] = await Promise.all([kvGet('bennett_z_status'), kvGet('bennett_z_plan')]);
+    if (paEl) paEl.textContent = plan?.generatedAt ? new Date(plan.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+    // Prefer the bot's per-pair view; fall back to the plan's signals so the table
+    // populates even before the bot is running.
+    const rows = st?.pairs || Object.entries(plan?.signals || {}).map(([pair, s]) => {
+      const z = s.z;
+      const dir = (typeof z === 'number') ? ((z > 0) !== !!s.inverted ? 'LONG' : 'SHORT') : null;
+      const thr = plan?.entryThreshold ?? BZ_DEFAULTS.entry_threshold;
+      return { pair, z, inverted: s.inverted, direction: dir,
+               signal: (typeof z === 'number' && Math.abs(z) >= thr) ? 'enter' : 'flat',
+               in_position: false, hold_days: null, asOf: s.asOf };
+    });
+    if (!st) { if (ageEl) ageEl.textContent = plan ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
+    else {
+      if (ageEl)  { ageEl.textContent = st.running ? (st.plan_stale ? 'Running — plan STALE (entries halted)' : 'Running') : 'Idle'; ageEl.style.color = st.plan_stale ? 'var(--amber)' : 'var(--text3)'; }
+      if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+      if (balEl)  balEl.textContent = st.balance != null ? `Balance ${st.balance}` : '';
+    }
+    if (openEl) openEl.textContent = (st?.mt5_positions || []).length;
+    if (uniEl)  uniEl.textContent  = rows.length;
+    const body = document.getElementById('bzLinesBody');
+    if (body) {
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No plan yet — run <code>POST /api/bennett-z/refresh-plan</code> (needs FRED_KEY on the server)</td></tr>';
+      } else {
+        const dirCol = d => d === 'LONG' ? 'var(--green)' : d === 'SHORT' ? 'var(--red)' : 'var(--text3)';
+        const sigCol = s => s === 'enter' ? 'var(--amber)' : 'var(--text3)';
+        body.innerHTML = rows.map(r => `<tr style="border-top:1px solid var(--border)">
+          <td style="padding:6px 10px;font-weight:600">${(r.pair || '').toUpperCase()}</td>
+          <td style="padding:6px 10px;text-align:right">${typeof r.z === 'number' ? (r.z > 0 ? '+' : '') + r.z.toFixed(2) : '—'}</td>
+          <td style="padding:6px 10px;color:${sigCol(r.signal)}">${r.signal || '—'}</td>
+          <td style="padding:6px 10px;color:${dirCol(r.direction)}">${r.direction || '—'}</td>
+          <td style="padding:6px 10px;color:${r.in_position ? 'var(--green)' : 'var(--text3)'}">${r.in_position ? 'yes' : '—'}</td>
+          <td style="padding:6px 10px;text-align:right;color:var(--text3)">${r.hold_days != null ? r.hold_days : '—'}</td>
+          <td style="padding:6px 10px;color:var(--text3)">${r.asOf || '—'}</td>
+        </tr>`).join('');
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+}
+
+window.saveBzConfig = saveBzConfig; window.resetBzDefaults = resetBzDefaults;
+window.saveBzCreds = saveBzCreds; window.loadBzLiveStatus = loadBzLiveStatus;
+
+document.querySelector('.tab-btn[data-tab="bennettz"]')?.addEventListener('click', loadBzLiveStatus);
+loadBzConfig();
+loadBzCreds();
+loadBzLiveStatus();
+
 loadDaStatus();
 loadGoldStatus();
 loadGoldV2Status();
