@@ -137,9 +137,30 @@ def hv_sigma(daily, window=20):
     return pred
 
 
+def robust_sigma(daily, window=30, trim=0.05):
+    """Winsorized close-to-close vol — the owner's "trim the >95% outliers each day and
+    recompute" idea, done causally. For day i, take the prior `window` daily log returns,
+    clip each to the [trim, 1-trim] quantile of that window (so a few crisis days can't
+    inflate the scale), then take the std. pred[i] uses only returns strictly BEFORE i."""
+    c = daily['close']; n = c.size
+    ret = np.empty(n); ret[:] = np.nan
+    ret[1:] = np.log(c[1:] / c[:-1])
+    pred = np.empty(n); pred[:] = np.nan
+    for i in range(window + 1, n):
+        w = ret[i - window:i].copy()                  # returns for days < i
+        lo_q, hi_q = np.quantile(w, [trim, 1 - trim])
+        np.clip(w, lo_q, hi_q, out=w)                 # winsorize the outlier tails
+        pred[i] = w.std(ddof=1)
+    return pred
+
+
 def causal_sigma_kind(daily, kind='yz'):
-    """Select the causal sigma series by estimator name: 'yz' (forecast default) or 'hv'."""
-    return hv_sigma(daily) if kind == 'hv' else causal_sigma(daily)
+    """Select the causal sigma series by estimator: 'yz' (forecast default), 'hv', 'robust'."""
+    if kind == 'hv':
+        return hv_sigma(daily)
+    if kind == 'robust':
+        return robust_sigma(daily)
+    return causal_sigma(daily)
 
 
 # ── tiny self-test on synthetic bars (also used by the JS cross-check) ─────────
