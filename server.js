@@ -112,8 +112,8 @@ import { runFullZScoreV2Backtest, V2_DEFAULTS as ZS_V2_DEFAULTS } from './js/zsc
 import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceCore.js';
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
 import { runFullRangeLevelEdge, RANGE_LEVEL_DEFAULTS } from './js/rangeLevelEdgeEngine.js';
-import { runFullBennettZ, runBennettZSweep, computeBennettZSignals, BENNETT_DEFAULTS } from './js/bennettZEngine.js';
-import { refreshBennettZPlan, BENNETT_Z_DEFAULTS } from './js/bennettZProducer.js';
+import { runFullYieldSpread, runYieldSpreadSweep, computeYieldSpreadSignals, YIELD_SPREAD_DEFAULTS } from './js/yieldSpreadEngine.js';
+import { refreshYieldSpreadPlan, YIELD_SPREAD_BOT_DEFAULTS } from './js/yieldSpreadProducer.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
 import { computePerformanceReport as computeNasdaqPerformanceReport, monteCarloBootstrap as nasdaqMonteCarloBootstrap, walkForwardStability as nasdaqWalkForwardStability, outOfSampleSplit as nasdaqOutOfSampleSplit } from './js/nasdaqPerformance.js';
@@ -5648,28 +5648,28 @@ app.get('/api/volatility-bot/plan', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// ── Bennett-Z bot plan producer ────────────────────────────────────────────────
+// ── Yield-Spread bot plan producer ────────────────────────────────────────────────
 // Computes today's spread-z per pair via the VALIDATED engine (single source of
-// truth) and writes bennett_z_plan to KV. The Python bot reads it + bennett_z_config.
-async function _refreshBennettZPlan() {
-  return refreshBennettZPlan({
+// truth) and writes yield_spread_plan to KV. The Python bot reads it + yield_spread_config.
+async function _refreshYieldSpreadPlan() {
+  return refreshYieldSpreadPlan({
     getConfig: async () => {
-      try { const raw = await kv.get('bennett_z_config'); return raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; }
+      try { const raw = await kv.get('yield_spread_config'); return raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; }
       catch { return null; }
     },
-    computeSignals: (opts, pairs) => computeBennettZSignals(opts, pairs),
+    computeSignals: (opts, pairs) => computeYieldSpreadSignals(opts, pairs),
     kvPut: (k, v) => kv.put(k, v),
   });
 }
-app.post('/api/bennett-z/refresh-plan', async (_req, res) => {
+app.post('/api/yield-spread/refresh-plan', async (_req, res) => {
   if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set' });
-  try { const plan = await _refreshBennettZPlan(); res.json({ ok: true, plan }); }
+  try { const plan = await _refreshYieldSpreadPlan(); res.json({ ok: true, plan }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.get('/api/bennett-z/plan', async (_req, res) => {
+app.get('/api/yield-spread/plan', async (_req, res) => {
   try {
-    const raw = await kv.get('bennett_z_plan');
-    if (!raw) return res.status(404).json({ ok: false, error: 'No plan yet — POST /api/bennett-z/refresh-plan' });
+    const raw = await kv.get('yield_spread_plan');
+    if (!raw) return res.status(404).json({ ok: false, error: 'No plan yet — POST /api/yield-spread/refresh-plan' });
     const parsed = JSON.parse(raw);
     res.json({ ok: true, plan: parsed?.data ?? parsed, timestamp: parsed?.timestamp ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -11883,21 +11883,21 @@ app.get('/api/range-level-edge/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
-// ── Bennett z-mean-reversion (the clean replication of Bennett's ACTUAL bot) ───
+// ── yield-spread mean-reversion (the clean replication of the colleague's ACTUAL bot) ───
 // Enter on |spread-z| ≥ threshold in the z-direction, exit on z-reversion to ±zExit
-// or max-hold. No levels. Engine: js/bennettZEngine.js + js/bennettZCore.js
-const bennettJobs = new Map();
-function _purgeStaleBennettJobs() {
+// or max-hold. No levels. Engine: js/yieldSpreadEngine.js + js/yieldSpreadCore.js
+const yieldSpreadJobs = new Map();
+function _purgeStaleYieldSpreadJobs() {
   const cutoff = Date.now() - 60 * 60_000;
-  for (const [id, job] of bennettJobs) if (job.startedAt < cutoff) bennettJobs.delete(id);
+  for (const [id, job] of yieldSpreadJobs) if (job.startedAt < cutoff) yieldSpreadJobs.delete(id);
 }
 
-app.get('/api/bennett-z/defaults', (_req, res) => {
-  res.json({ ok: true, defaults: BENNETT_DEFAULTS,
+app.get('/api/yield-spread/defaults', (_req, res) => {
+  res.json({ ok: true, defaults: YIELD_SPREAD_DEFAULTS,
     pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) => [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
 });
 
-app.post('/api/bennett-z/run', (req, res) => {
+app.post('/api/yield-spread/run', (req, res) => {
   if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch yield-spread data' });
   const b = req.body || {};
   const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
@@ -11905,11 +11905,11 @@ app.post('/api/bennett-z/run', (req, res) => {
     dateFrom: b.dateFrom || undefined,
     dateTo:   b.dateTo   || undefined,
     zWindow:        parseInt(b.zWindow) || 252,
-    entryThreshold: num(b.entryThreshold, BENNETT_DEFAULTS.entryThreshold),
-    zExit:          num(b.zExit,          BENNETT_DEFAULTS.zExit),
-    maxHoldDays:    parseInt(b.maxHoldDays) || BENNETT_DEFAULTS.maxHoldDays,
-    costPct:        num(b.costPct,         BENNETT_DEFAULTS.costPct),
-    splitFrac:      num(b.splitFrac,       BENNETT_DEFAULTS.splitFrac),
+    entryThreshold: num(b.entryThreshold, YIELD_SPREAD_DEFAULTS.entryThreshold),
+    zExit:          num(b.zExit,          YIELD_SPREAD_DEFAULTS.zExit),
+    maxHoldDays:    parseInt(b.maxHoldDays) || YIELD_SPREAD_DEFAULTS.maxHoldDays,
+    costPct:        num(b.costPct,         YIELD_SPREAD_DEFAULTS.costPct),
+    splitFrac:      num(b.splitFrac,       YIELD_SPREAD_DEFAULTS.splitFrac),
     autoOrient:     b.autoOrient == null ? true : (b.autoOrient === true || b.autoOrient === 'true'),
     pubLagUsDays:      b.pubLagUsDays === '' || b.pubLagUsDays == null ? 2 : (parseInt(b.pubLagUsDays) || 0),
     pubLagForeignDays: b.pubLagForeignDays === '' || b.pubLagForeignDays == null ? 45 : (parseInt(b.pubLagForeignDays) || 0),
@@ -11918,25 +11918,25 @@ app.post('/api/bennett-z/run', (req, res) => {
   const pairsToRun = b.pair ? [String(b.pair).toLowerCase()].filter(p => ZSCORE_PAIRS[p]) : Object.keys(ZSCORE_PAIRS);
   if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
 
-  const jobId = `bz_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const jobId = `ys_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
-  _purgeStaleBennettJobs();
-  bennettJobs.set(jobId, { status: 'running', startedAt });
+  _purgeStaleYieldSpreadJobs();
+  yieldSpreadJobs.set(jobId, { status: 'running', startedAt });
   (async () => {
     try {
-      const { perPair, combined, log } = await runFullBennettZ(opts, pairsToRun);
-      bennettJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, perPair, combined, log, opts } });
+      const { perPair, combined, log } = await runFullYieldSpread(opts, pairsToRun);
+      yieldSpreadJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, perPair, combined, log, opts } });
     } catch (e) {
       const msg = e?.message || String(e) || 'Unknown engine error';
-      console.error('[bennett-z/run]', msg, e?.stack ?? '');
-      bennettJobs.set(jobId, { status: 'error', error: msg, startedAt });
+      console.error('[yield-spread/run]', msg, e?.stack ?? '');
+      yieldSpreadJobs.set(jobId, { status: 'error', error: msg, startedAt });
     }
   })();
   res.json({ ok: true, jobId });
 });
 
-app.get('/api/bennett-z/status/:jobId', (req, res) => {
-  const job = bennettJobs.get(req.params.jobId);
+app.get('/api/yield-spread/status/:jobId', (req, res) => {
+  const job = yieldSpreadJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
@@ -11945,32 +11945,32 @@ app.get('/api/bennett-z/status/:jobId', (req, res) => {
 
 // Robustness sweep across (entry threshold × z-window) — is a good cell a broad plateau
 // or a lucky spike? Same job map/pattern as /run.
-app.post('/api/bennett-z/sweep', (req, res) => {
+app.post('/api/yield-spread/sweep', (req, res) => {
   if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch yield-spread data' });
   const b = req.body || {};
   const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
   const opts = {
     dateFrom: b.dateFrom || undefined, dateTo: b.dateTo || undefined,
-    zExit: num(b.zExit, BENNETT_DEFAULTS.zExit),
-    maxHoldDays: parseInt(b.maxHoldDays) || BENNETT_DEFAULTS.maxHoldDays,
-    costPct: num(b.costPct, BENNETT_DEFAULTS.costPct),
-    splitFrac: num(b.splitFrac, BENNETT_DEFAULTS.splitFrac),
+    zExit: num(b.zExit, YIELD_SPREAD_DEFAULTS.zExit),
+    maxHoldDays: parseInt(b.maxHoldDays) || YIELD_SPREAD_DEFAULTS.maxHoldDays,
+    costPct: num(b.costPct, YIELD_SPREAD_DEFAULTS.costPct),
+    splitFrac: num(b.splitFrac, YIELD_SPREAD_DEFAULTS.splitFrac),
     autoOrient: b.autoOrient == null ? true : (b.autoOrient === true || b.autoOrient === 'true'),
     pubLagUsDays: b.pubLagUsDays === '' || b.pubLagUsDays == null ? 2 : (parseInt(b.pubLagUsDays) || 0),
     pubLagForeignDays: b.pubLagForeignDays === '' || b.pubLagForeignDays == null ? 45 : (parseInt(b.pubLagForeignDays) || 0),
   };
-  const jobId = `bzs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const jobId = `yss_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
-  _purgeStaleBennettJobs();
-  bennettJobs.set(jobId, { status: 'running', startedAt });
+  _purgeStaleYieldSpreadJobs();
+  yieldSpreadJobs.set(jobId, { status: 'running', startedAt });
   (async () => {
     try {
-      const result = await runBennettZSweep(opts, {});
-      bennettJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...result, opts } });
+      const result = await runYieldSpreadSweep(opts, {});
+      yieldSpreadJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...result, opts } });
     } catch (e) {
       const msg = e?.message || String(e) || 'Unknown engine error';
-      console.error('[bennett-z/sweep]', msg, e?.stack ?? '');
-      bennettJobs.set(jobId, { status: 'error', error: msg, startedAt });
+      console.error('[yield-spread/sweep]', msg, e?.stack ?? '');
+      yieldSpreadJobs.set(jobId, { status: 'error', error: msg, startedAt });
     }
   })();
   res.json({ ok: true, jobId });
@@ -15046,18 +15046,18 @@ if (process.env.OANDA_KEY) {
   }, 90_000);
 }
 
-// Bennett-Z bot plan — recompute the daily spread-z per pair from FRED. Daily cadence
+// Yield-Spread bot plan — recompute the daily spread-z per pair from FRED. Daily cadence
 // (the signal only changes when FRED updates); pub lags make the exact time non-critical.
-// Default 13:05 UTC; override with BENNETT_Z_PLAN_UTC_HOUR/MIN.
+// Default 13:05 UTC; override with YIELD_SPREAD_PLAN_UTC_HOUR/MIN.
 if (process.env.FRED_KEY) {
-  const _runBzPlan = () => _refreshBennettZPlan().catch(e => console.error('[bennett-z] plan refresh failed:', e.message));
-  const hour = Number(process.env.BENNETT_Z_PLAN_UTC_HOUR ?? 13);
-  const min  = Number(process.env.BENNETT_Z_PLAN_UTC_MIN ?? 5);
-  const next = _scheduleDailyUtc(hour, min, _runBzPlan);
-  console.log(`[bennett-z] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
+  const _runYsPlan = () => _refreshYieldSpreadPlan().catch(e => console.error('[yield-spread] plan refresh failed:', e.message));
+  const hour = Number(process.env.YIELD_SPREAD_PLAN_UTC_HOUR ?? 13);
+  const min  = Number(process.env.YIELD_SPREAD_PLAN_UTC_MIN ?? 5);
+  const next = _scheduleDailyUtc(hour, min, _runYsPlan);
+  console.log(`[yield-spread] plan scheduled daily at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (next ${next.toISOString()})`);
   setTimeout(async () => {
-    try { if (!(await kv.get('bennett_z_plan'))) { console.log('[bennett-z] no plan in KV — bootstrap refresh'); await _runBzPlan(); } }
-    catch (e) { console.error('[bennett-z] bootstrap check failed:', e.message); }
+    try { if (!(await kv.get('yield_spread_plan'))) { console.log('[yield-spread] no plan in KV — bootstrap refresh'); await _runYsPlan(); } }
+    catch (e) { console.error('[yield-spread] bootstrap check failed:', e.message); }
   }, 95_000);
 }
 

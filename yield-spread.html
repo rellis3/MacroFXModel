@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bennett Z — does the actual spread-reversion bot work?</title>
+<title>Yield-Spread — does the actual spread-reversion bot work?</title>
 <style>
   :root { --bg:#0b0e14; --panel:#141924; --panel2:#1b2230; --fg:#dfe6f2; --dim:#8b97ad;
           --grn:#22c55e; --red:#ef4444; --amb:#f59e0b; --blu:#4a90d9; --border:#26314a; }
@@ -36,12 +36,12 @@
 </head>
 <body>
 <header>
-  <h1>Bennett Z — does the actual spread-reversion bot work?</h1>
-  <div class="sub">The clean replication of Bennett's <b>actual</b> mechanism (from his dashboard): the signal is the
-  US-vs-foreign <b>2Y yield-spread z-score</b>. Enter when |z| ≥ threshold (his ±2.75) in the z-direction, betting the
-  spread mean-reverts; exit on z-reversion to ±zExit (his ±1.5) or a max-hold. <b>No price levels.</b> Daily-close
-  resolution. It also A/Bs his <b>size-up-at-extremes</b> rule against flat sizing, and breaks results down by z-tier —
-  our earlier work found performance DECAYED as |z| grew, the opposite of what his sizing assumes.</div>
+  <h1>Yield-Spread — does the actual spread-reversion bot work?</h1>
+  <div class="sub">The clean replication of the colleague's <b>actual</b> mechanism (from their dashboard): the signal is the
+  US-vs-foreign <b>2Y yield-spread z-score</b>. Enter when |z| ≥ threshold (their ±2.75) in the z-direction, betting the
+  spread mean-reverts; exit on z-reversion to ±zExit (their ±1.5) or a max-hold. <b>No price levels.</b> Daily-close
+  resolution. It also A/Bs their <b>size-up-at-extremes</b> rule against flat sizing, and breaks results down by z-tier —
+  our earlier work found performance DECAYED as |z| grew, the opposite of what their sizing assumes.</div>
 </header>
 <div class="wrap">
   <div class="banner">⚠️ <b>Built, not proven — audit for lookahead first.</b> Needs live <code>FRED_KEY</code> + M1 (Railway). The
@@ -88,7 +88,7 @@
     </div>
     <div class="panel">
       <h2>By z-tier (OOS) — does performance rise or DECAY with extremity?</h2>
-      <div class="muted" style="margin-bottom:8px">Bennett sizes UP at deeper z. If profit factor <b>falls</b> as the tier deepens, his sizing rule is backwards.</div>
+      <div class="muted" style="margin-bottom:8px">the colleague sizes UP at deeper z. If profit factor <b>falls</b> as the tier deepens, their sizing rule is backwards.</div>
       <div class="scroll"><div id="tiers"></div></div>
     </div>
     <div class="panel">
@@ -107,7 +107,7 @@ const $ = id => document.getElementById(id);
 const fmt = (v, d=1) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
 const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : '';
 
-fetch('/api/bennett-z/defaults').then(r=>r.json()).then(j=>{
+fetch('/api/yield-spread/defaults').then(r=>r.json()).then(j=>{
   if(!j.ok) return;
   for(const [k,v] of Object.entries(j.pairs||{})){ const o=document.createElement('option'); o.value=k; o.textContent=v.pairDisplay; $('pair').appendChild(o); }
 }).catch(()=>{});
@@ -137,10 +137,10 @@ function verdict(c){
   const pfs = ['2.75+','3.75+','4.5+'].map(k=>t[k]?.profitFactor ?? 0);
   const decays = pfs[0] > pfs[2] && pfs[2] > 0;
   let v = works
-    ? `<div class="verdict good">✓ Bennett's actual signal shows edge OOS (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades). `
-    : `<div class="verdict bad">✗ Bennett's actual signal does NOT show edge OOS (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades). `;
+    ? `<div class="verdict good">✓ the colleague's actual signal shows edge OOS (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades). `
+    : `<div class="verdict bad">✗ the colleague's actual signal does NOT show edge OOS (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades). `;
   v += `Sizing up at extremes ${sizingHelps ? 'HELPED' : 'HURT'} (sized Sharpe ${fmt(o.sizedSharpe,2)} vs flat ${fmt(o.sharpe,2)}). `;
-  v += decays ? `Profit factor DECAYS with z-tier — his size-up rule is backwards.` : `Profit factor does not clearly decay with z-tier.`;
+  v += decays ? `Profit factor DECAYS with z-tier — their size-up rule is backwards.` : `Profit factor does not clearly decay with z-tier.`;
   v += `</div>`;
   return v;
 }
@@ -179,7 +179,7 @@ async function run(){
     maxHoldDays:$('maxHoldDays').value, costPct:$('costPct').value, autoOrient:$('autoOrient').value,
     pubLagUsDays:$('pubLagUsDays').value, pubLagForeignDays:$('pubLagForeignDays').value };
   try{
-    const r=await fetch('/api/bennett-z/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const r=await fetch('/api/yield-spread/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
     if(!j.ok){ $('status').textContent='Error: '+j.error; $('runBtn').disabled=false; return; }
     poll(j.jobId);
@@ -187,7 +187,7 @@ async function run(){
 }
 async function poll(jobId){
   try{
-    const r=await fetch('/api/bennett-z/status/'+jobId); const j=await r.json();
+    const r=await fetch('/api/yield-spread/status/'+jobId); const j=await r.json();
     if(j.status==='running'){ $('status').textContent=`Running… ${j.elapsed||0}s (fetching FRED + M1, walking signals)`; setTimeout(()=>poll(jobId),2000); return; }
     if(j.status==='done'){
       $('status').textContent=`Done — ${j.combined.nTrades} trades`;
@@ -225,7 +225,7 @@ async function sweep(){
     maxHoldDays:$('maxHoldDays').value, costPct:$('costPct').value, autoOrient:$('autoOrient').value,
     pubLagUsDays:$('pubLagUsDays').value, pubLagForeignDays:$('pubLagForeignDays').value };
   try{
-    const r=await fetch('/api/bennett-z/sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const r=await fetch('/api/yield-spread/sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
     if(!j.ok){ $('status').textContent='Error: '+j.error; $('sweepBtn').disabled=false; $('runBtn').disabled=false; return; }
     pollSweep(j.jobId);
@@ -233,7 +233,7 @@ async function sweep(){
 }
 async function pollSweep(jobId){
   try{
-    const r=await fetch('/api/bennett-z/status/'+jobId); const j=await r.json();
+    const r=await fetch('/api/yield-spread/status/'+jobId); const j=await r.json();
     if(j.status==='running'){ $('status').textContent=`Sweeping… ${j.elapsed||0}s (12 full runs — be patient)`; setTimeout(()=>pollSweep(jobId),3000); return; }
     if(j.status==='done'){
       $('status').textContent='Sweep done';

@@ -1,4 +1,4 @@
-# Yield-Spread Z Strategy (the "Bennett Z" bot) — validated macro sleeve
+# Yield-Spread Strategy — validated macro sleeve
 
 > **Status: the survivor.** After a long falsification cycle that nulled the level-based
 > and macro-direction ideas, one strategy cleared every audit — a US-vs-foreign 2Y
@@ -8,15 +8,15 @@
 > remaining test is paper-trading it live. Read this before touching the engine so the
 > conclusion isn't re-litigated.
 
-Code: `js/bennettZCore.js` (pure) · `js/bennettZEngine.js` (I/O) · `bennett-z.html`
-(viewer) · `/api/bennett-z/*` (run + sweep). Companion to `CLAUDE.md` (the rules) and
+Code: `js/yieldSpreadCore.js` (pure) · `js/yieldSpreadEngine.js` (I/O) · `yield-spread.html`
+(viewer) · `/api/yield-spread/*` (run + sweep). Companion to `CLAUDE.md` (the rules) and
 `ENTRY_ZONE_CONFIDENCE.md` (the honest-Sharpe lesson this reuses).
 
 ---
 
 ## 1. What the strategy is
 
-The signal — confirmed from a screenshot of the live "Bennett" dashboard, not inferred —
+The signal — confirmed from a screenshot of a colleague's live dashboard, not inferred —
 is a **single macro factor**: the US-vs-foreign **2Y yield-spread, z-scored**.
 
 - **Spread** = `US 2Y (FRED GS2) − foreign short rate` (per pair; e.g. EURUSD uses the
@@ -27,7 +27,7 @@ is a **single macro factor**: the US-vs-foreign **2Y yield-spread, z-scored**.
   (below).
 - **Exit**: when the spread reverts to `|z| ≤ zExit`, **or** a max-hold cap. This is
   the **z-exit** — the trade closes because the macro dislocation that justified it is
-  gone (Bennett's `Z-EXIT`).
+  gone (the colleague's `Z-EXIT`).
 - **No price levels.** The z-threshold *is* the trigger — there is no fib / Asia-range /
   support-resistance component. (This is why the earlier level-based tests were the
   wrong tests — see §3.)
@@ -47,7 +47,7 @@ The robust region — **not a single cherry-picked cell** — is:
 
 | Parameter | Value | Note |
 |---|---|---|
-| entry `|z|` | **2.0 – 2.5** | Bennett's own 2.75 is *weaker*; lower & broader is better |
+| entry `|z|` | **2.0 – 2.5** | the colleague's own 2.75 is *weaker*; lower & broader is better |
 | z-window | **90 – 126 days** | 252 is the weakest, most regime-concentrated window |
 | z-exit | 1.5 | close when the dislocation has largely corrected |
 | max hold | 20 days | time stop |
@@ -72,7 +72,7 @@ as much in what was *killed cheaply* as in what survived.
 | **Macro as a confidence factor** on Asia-range fib entries (`zscore-v2`) | **Null** | The *entry* (fib level) had no edge; scoring a zero-edge entry can't create one |
 | **Macro direction** predicts forward FX drift (`macro-direction`) | **Weak/null** | Macro can't set a *sharp intraday* direction; it's a slow weeks-months bias. Only *carry* weakly led |
 | **5m range levels** beat a placebo (`range-level-edge`) | **Null (folklore)** | Real levels bounced no more than the same level shifted to a random price — S/R has no standalone edge here |
-| **Bennett's *actual* mechanism** (spread-z reversion, no levels) | **Survives** | We had been testing configs Bennett doesn't run; his real bot is pure spread-z |
+| **the colleague's *actual* mechanism** (spread-z reversion, no levels) | **Survives** | We had been testing configs the colleague doesn't run; their real bot is pure spread-z |
 
 The through-line: the levels and macro-direction premises underneath the *intraday* bot
 were folklore on this data. The thing that worked is a **slow, rare, macro
@@ -104,7 +104,7 @@ one did, in order:
    +107% → +105%. Per-trade expectancy (~0.90%) dwarfs the cost (~22:1 margin); breakeven
    cost is ~0.9% (≈90 pips). Costs are not a threat.
 
-Sizing note: Bennett **sizes up at extreme z** (1×/1.5×/2× at ±2.75/±3.75/±4.5). Our data
+Sizing note: the colleague **sizes up at extreme z** (1×/1.5×/2× at ±2.75/±3.75/±4.5). Our data
 says that's **backwards or noise** — the deepest tiers are tiny samples and don't reliably
 beat flat sizing. Trade it **flat-sized**.
 
@@ -141,6 +141,6 @@ beat flat sizing. Trade it **flat-sized**.
 
 ---
 
-*Provenance: this document is the capstone of the "Bennett z-exit" investigation
-(2026-07). Config, audits, and results are reproducible via `bennett-z.html` → Run test /
+*Provenance: this document is the capstone of the yield-spread z-exit investigation
+(2026-07). Config, audits, and results are reproducible via `yield-spread.html` → Run test /
 Run robustness sweep, with a live `FRED_KEY` + M1 on Railway.*

@@ -1,6 +1,6 @@
-// Bennett-style yield-spread mean-reversion — pure core (no I/O, no network).
+// the colleague's yield-spread mean-reversion — pure core (no I/O, no network).
 //
-// Replicates the ACTUAL mechanism on Bennett's dashboard (confirmed from a screenshot):
+// Replicates the ACTUAL mechanism on the colleague's dashboard (confirmed from a screenshot):
 // the signal is the US-vs-foreign 2Y yield-SPREAD z-score. Enter when |z| is extreme
 // (≥ entryThreshold, his 2.75), in the z-direction; the trade bets the spread MEAN-
 // REVERTS and the FX follows. Exit when z reverts toward the mean (|z| ≤ zExit, his
@@ -13,21 +13,21 @@
 //
 // Daily-close resolution: the z-signal is daily, trades hold days, so we enter/exit on
 // daily closes and mark the FX return over the hold — no intrabar TP/SL path assumed
-// (CLAUDE.md anti-pattern). The z-tier SIZING is A/B'd (flat vs sized) to test Bennett's
+// (CLAUDE.md anti-pattern). The z-tier SIZING is A/B'd (flat vs sized) to test the colleague's
 // "size up at extremes" rule directly against our z-tier-decay finding.
 //
-// Pure + unit-tested (js/bennettZCore.test.mjs); the real run needs FRED + M1 on Railway.
+// Pure + unit-tested (js/yieldSpreadCore.test.mjs); the real run needs FRED + M1 on Railway.
 
 import { splitByDate } from './macroDirectionCore.js';
 export { splitByDate };
 
-export const BENNETT_DEFAULTS = {
-  entryThreshold: 2.75,   // |z| to enter (Bennett's ±2.75)
-  zExit:          1.5,    // |z| to exit on reversion (Bennett's ±1.5)
+export const YIELD_SPREAD_DEFAULTS = {
+  entryThreshold: 2.75,   // |z| to enter (the colleague's ±2.75)
+  zExit:          1.5,    // |z| to exit on reversion (the colleague's ±1.5)
   maxHoldDays:    20,     // hard time stop if z never reverts
   costPct:        0.02,   // round-trip cost, % of notional
   splitFrac:      0.6,
-  // size multiplier by |z| tier (largest tier whose z ≤ |z|); Bennett's ladder
+  // size multiplier by |z| tier (largest tier whose z ≤ |z|); the colleague's ladder
   tiers: [{ z: 2.75, size: 1 }, { z: 3.75, size: 1.5 }, { z: 4.5, size: 2 }],
 };
 
@@ -50,12 +50,12 @@ export function resolveInverted(usdRoleVal, { autoOrient = true, manualInvert = 
 }
 
 // Size multiplier for a given |z| (0 if below entry threshold).
-export function zTierSize(absZ, tiers = BENNETT_DEFAULTS.tiers) {
+export function zTierSize(absZ, tiers = YIELD_SPREAD_DEFAULTS.tiers) {
   let size = 0;
   for (const t of tiers) if (absZ >= t.z) size = t.size;
   return size;
 }
-export function zTierLabel(absZ, tiers = BENNETT_DEFAULTS.tiers) {
+export function zTierLabel(absZ, tiers = YIELD_SPREAD_DEFAULTS.tiers) {
   let lbl = '<entry';
   for (const t of tiers) if (absZ >= t.z) lbl = `${t.z}+`;
   return lbl;
@@ -104,10 +104,10 @@ export function perYearBreakdown(trades, { costPct = 0.02 } = {}) {
 }
 
 // Summary over trades. Reports FLAT-sized and z-TIER-sized results side by side (the
-// A/B on Bennett's sizing rule), the by-tier breakdown (the falsification of "extreme
+// A/B on the colleague's sizing rule), the by-tier breakdown (the falsification of "extreme
 // z = better"), and cost-inclusive risk stats. periodsPerYear scales the per-trade
 // Sharpe by trade frequency (annualised on the actual trade rate).
-export function summarizeBennett(trades, { costPct = 0.02, periodsPerYear = 26 } = {}) {
+export function summarizeYieldSpread(trades, { costPct = 0.02, periodsPerYear = 26 } = {}) {
   const n = trades.length;
   if (!n) return { n: 0, winRate: 0, totalRetPct: 0, sharpe: 0, profitFactor: 0, expectancyPct: 0,
     sizedTotalRetPct: 0, sizedSharpe: 0, byTier: {} };

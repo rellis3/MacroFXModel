@@ -1,6 +1,6 @@
-"""Bennett-Z Bot — the yield-spread z-score mean-reversion sleeve, live.
+"""Yield-Spread Bot — the yield-spread z-score mean-reversion sleeve, live.
 
-Assembled from pylego bricks. It consumes the frozen ``bennett_z_plan`` (per-pair
+Assembled from pylego bricks. It consumes the frozen ``yield_spread_plan`` (per-pair
 US-vs-foreign 2Y yield-spread z-score + the strategy thresholds, computed
 server-side by the VALIDATED engine math — single source of truth, never re-run
 here) and runs a per-pair daily-swing state machine:
@@ -15,13 +15,13 @@ the z-reversion / time exit is the primary path (this is a multi-day swing, not 
 intraday fade). Sizing is flat risk-% off that stop distance (the backtest showed
 z-tier "size up at extremes" is backwards, so we do NOT tier the size).
 
-  python BennettZBot/bennett_z_bot.py                 # paper mode (default)
-  python BennettZBot/bennett_z_bot.py --live          # live MT5 (needs creds in config)
-  python BennettZBot/bennett_z_bot.py --dashboard-url https://your-app.up.railway.app
+  python YieldSpreadBot/yield_spread_bot.py                 # paper mode (default)
+  python YieldSpreadBot/yield_spread_bot.py --live          # live MT5 (needs creds in config)
+  python YieldSpreadBot/yield_spread_bot.py --dashboard-url https://your-app.up.railway.app
 
 Config/credentials/status flow through the dashboard KV exactly like the other
-bots (bennett_z_config / bennett_z_credentials / bennett_z_status); the plan is
-bennett_z_plan. VALIDATED, NOT forward-proven — defaults to paper.
+bots (yield_spread_config / yield_spread_credentials / yield_spread_status); the plan is
+yield_spread_plan. VALIDATED, NOT forward-proven — defaults to paper.
 """
 from __future__ import annotations
 
@@ -32,6 +32,8 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -44,17 +46,17 @@ from pylego.quotes import QuoteFeed                             # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition   # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-log = logging.getLogger("bennett_z_bot")
+log = logging.getLogger("yield_spread_bot")
 
 # Registered in pylego/magics.py (checked by pylego/magics_test.py).
 MAGIC = 20260012
 
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
 
-KV_CONFIG = "bennett_z_config"
-KV_CREDS  = "bennett_z_credentials"
-KV_STATUS = "bennett_z_status"
-KV_PLAN   = "bennett_z_plan"
+KV_CONFIG = "yield_spread_config"
+KV_CREDS  = "yield_spread_credentials"
+KV_STATUS = "yield_spread_status"
+KV_PLAN   = "yield_spread_plan"
 
 # Operational config the bot reads (edited on the bot-config page, re-read every
 # ``status_secs``). The z-math thresholds ALSO live in the plan (single source of
@@ -79,6 +81,12 @@ DEFAULT_CFG: dict = {
     "plan_secs":       600,
     "status_secs":     60,
     "tick_secs":       10,
+    # Telegram entry/exit alerts (optional). tg_token/tg_chat_id fall back to the
+    # shared tg_config (Level bot) if left blank — one message on entry, one on close
+    # (with entry/exit, pip move, % and money P&L).
+    "tg_enabled":      False,
+    "tg_token":        "",
+    "tg_chat_id":      "",
 }
 
 # A plan older than this many days means the nightly producer has been failing —
@@ -91,6 +99,84 @@ def _broker_sym(pair: str) -> str:
         return mt5_symbol(pair) or pair.upper()
     except Exception:
         return pair.upper()
+
+
+# ── Telegram alerts (mirror oi_bot / DynAnchor) ───────────────────────────────
+def _load_tg(cfg: dict, kv: KvClient) -> tuple[str, str]:
+    """Bot-specific TG creds if set, else fall back to the shared ``tg_config``
+    (the Level bot's) — same convention as the other bots."""
+    tok = str(cfg.get("tg_token", "") or "").strip()
+    cid = str(cfg.get("tg_chat_id", "") or "").strip()
+    if tok and cid:
+        return tok, cid
+    try:
+        shared = kv.get_json("tg_config") or {}
+    except Exception:
+        shared = {}
+    return str(shared.get("token", "") or "").strip(), str(shared.get("chatId", "") or "").strip()
+
+
+def send_telegram(token: str, chat_id: str, text: str) -> bool:
+    if not token or not chat_id:
+        return False
+    try:
+        r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
+                          json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"}, timeout=10)
+        return r.status_code == 200
+    except Exception as e:
+        log.warning(f"Telegram send failed: {e}")
+        return False
+
+
+def _digits(pair: str) -> int:
+    try:
+        return 3 if pip_size(pair) >= 0.01 else 5
+    except Exception:
+        return 5
+
+
+def _tg_entry(pair: str, direction: str, entry: float, sl: float, lots: float,
+              z: float, paper: bool) -> str:
+    icon = "📈" if direction == "LONG" else "📉"
+    mode = " [PAPER]" if paper else ""
+    d = _digits(pair)
+    try:
+        sl_p = abs(entry - sl) / pip_size(pair)
+    except Exception:
+        sl_p = 0.0
+    return (
+        f"{icon} <b>Yield-Spread {direction} — {pair.upper()}</b>{mode}\n"
+        f"Signal: spread-z <b>{z:+.2f}</b> (mean-reversion)\n"
+        f"Entry: <code>{entry:.{d}f}</code>  Lots: <code>{lots}</code>\n"
+        f"Protective SL: <code>{sl:.{d}f}</code> ({sl_p:.0f}p)  ·  exit on z-revert / time stop"
+    )
+
+
+def _tg_exit(pair: str, direction: str, entry: float, exit_p: float, reason: str,
+             pnl_pips, pnl_pct, pnl_money, held_days, paper: bool) -> str:
+    won = (pnl_money if pnl_money is not None else (pnl_pips or 0)) > 0
+    icon = "✅" if won else "❌"
+    mode = " [PAPER]" if paper else ""
+    d = _digits(pair)
+    money = f"  P&L: <code>{pnl_money:+.2f}</code>" if pnl_money is not None else ""
+    pips = f"{pnl_pips:+.0f}p" if pnl_pips is not None else "—"
+    pct = f"{pnl_pct:+.2f}%" if pnl_pct is not None else "—"
+    held = f"{held_days:.1f}d" if held_days is not None else "—"
+    return (
+        f"{icon} <b>Yield-Spread CLOSE — {pair.upper()}</b>{mode}\n"
+        f"Direction: {direction}  ·  Reason: {reason}  ·  Held: {held}\n"
+        f"Entry: <code>{entry:.{d}f}</code>  Exit: <code>{exit_p:.{d}f}</code>\n"
+        f"Result: <code>{pips}  ({pct})</code>{money}"
+    )
+
+
+def _closed_by_ticket(broker, ticket):
+    """The just-closed trade for ``ticket`` from the broker's closed-trade list
+    (both PaperBroker and Mt5Broker expose ticket + position_id + profit)."""
+    for c in broker.serialize_closed_trades():
+        if c.get("ticket") == ticket or c.get("position_id") == ticket:
+            return c
+    return None
 
 
 def make_broker(cfg: dict):
@@ -108,7 +194,7 @@ def make_broker(cfg: dict):
 
 
 def direction_from_z(z: float, inverted: bool = False) -> str:
-    """Port of js/bennettZCore.directionFromZ — z>0 → LONG, flipped by ``inverted``
+    """Port of js/yieldSpreadCore.directionFromZ — z>0 → LONG, flipped by ``inverted``
     (USD-quote pairs). The plan already resolves ``inverted`` per pair server-side."""
     d = "LONG" if z > 0 else "SHORT"
     if inverted:
@@ -244,7 +330,9 @@ def run(base_url: str, force_live: bool) -> None:
     plan = None
     last_plan = last_status = 0.0
     warned_stale = False
-    log.info(f"BennettZ bot starting  magic={MAGIC}  mode={'paper' if paper else 'live'}  url={base_url}")
+    tg_tok, tg_cid = _load_tg(cfg, kv)          # re-resolved on each config refresh
+    log.info(f"YieldSpread bot starting  magic={MAGIC}  mode={'paper' if paper else 'live'}  url={base_url}"
+             + (f"  telegram={'on' if cfg.get('tg_enabled') else 'off'}"))
 
     while True:
         nowt = time.time()
@@ -259,7 +347,7 @@ def run(base_url: str, force_live: bool) -> None:
                         log.info(f"plan: {len(plan.get('universe', []))} pairs · {plan.get('generatedAt')}")
                 elif plan is None:
                     log.warning(f"no {KV_PLAN} yet — waiting for the server producer "
-                                "(POST /api/bennett-z/refresh-plan) to publish one")
+                                "(POST /api/yield-spread/refresh-plan) to publish one")
             except Exception as e:
                 log.warning(f"plan fetch failed: {e} — keeping current plan")
             last_plan = nowt
@@ -269,6 +357,7 @@ def run(base_url: str, force_live: bool) -> None:
             try:
                 cfg = {**DEFAULT_CFG, **(kv.get_json(KV_CONFIG) or cfg)}
                 guard.sync_cfg(cfg)
+                tg_tok, tg_cid = _load_tg(cfg, kv)   # a just-typed token/chat applies live
             except Exception as e:
                 log.warning(f"config fetch failed: {e} — keeping current config")
             try:
@@ -326,10 +415,32 @@ def run(base_url: str, force_live: bool) -> None:
                         reason = "max-hold"
                     if reason:
                         try:
+                            entry_px = float(pos.get("open_price") or 0.0)
+                            pos_dir = pos.get("direction")            # BUY / SELL
                             broker.stop(pos["ticket"], pair, paper, reason=reason)
                             log.info(f"{'[PAPER] ' if paper else ''}{pair} EXIT ({reason}) "
                                      f"z={z:+.2f} held {hold_days:.1f}d ticket {pos['ticket']}")
                             open_count = max(0, open_count - 1)
+                            # Telegram close alert — entry/exit, pip move, % and money P&L
+                            # (money read from the broker's realized closed-trade record).
+                            if cfg.get("tg_enabled") and tg_tok and tg_cid:
+                                closed = _closed_by_ticket(broker, pos["ticket"])
+                                exit_px = (closed.get("close_price") if closed else None)
+                                if exit_px is None:
+                                    exit_px = broker.price(pair)
+                                pnl_money = closed.get("profit") if closed else None
+                                pnl_pips = pnl_pct = None
+                                if exit_px and entry_px:
+                                    sign = 1 if pos_dir == "BUY" else -1
+                                    try:
+                                        pnl_pips = (exit_px - entry_px) * sign / pip_size(pair)
+                                    except Exception:
+                                        pnl_pips = None
+                                    pnl_pct = (exit_px - entry_px) / entry_px * sign * 100
+                                send_telegram(tg_tok, tg_cid, _tg_exit(
+                                    pair, "LONG" if pos_dir == "BUY" else "SHORT", entry_px,
+                                    exit_px or entry_px, reason, pnl_pips, pnl_pct, pnl_money,
+                                    hold_days, paper))
                         except Exception as e:
                             log.warning(f"{pair}: exit failed: {e}")
                     else:
@@ -363,18 +474,23 @@ def run(base_url: str, force_live: bool) -> None:
                 # pair+magic (one position per pair, which is what we want), and the
                 # FLAT/HELD branch above already guarantees we never enter while holding.
                 tid = broker.enter(pair, direction, sl, 0, lots, 50.0, paper,
-                                   comment=f"BZ z{z:+.1f} {direction[0]}")
+                                   comment=f"YS z{z:+.1f} {direction[0]}")
                 if tid:
                     guard.record_trade(pair)
                     open_count += 1
                     log.info(f"{'[PAPER] ' if paper else ''}{pair} ENTER {direction} "
                              f"z={z:+.2f} (|z|≥{entry_thr}) SL={sl:.5f} lots {lots} → ticket {tid}")
+                    # Telegram entry alert — direction, signal z, fill, lots, protective SL.
+                    if cfg.get("tg_enabled") and tg_tok and tg_cid:
+                        op = _open_for_pair(broker, pair)
+                        fill = float(op["open_price"]) if op and op.get("open_price") else px
+                        send_telegram(tg_tok, tg_cid, _tg_entry(pair, direction, fill, sl, lots, z, paper))
 
         time.sleep(max(cfg.get("tick_secs", 10), 1))
 
 
 def main():
-    ap = argparse.ArgumentParser(description="MacroFX Bennett-Z Bot (yield-spread z mean-reversion)")
+    ap = argparse.ArgumentParser(description="MacroFX Yield-Spread Bot (yield-spread z mean-reversion)")
     ap.add_argument("--live", action="store_true", help="trade live on MT5 (default: paper)")
     ap.add_argument("--url", "--dashboard-url", dest="url", default=DASHBOARD_URL,
                     help="dashboard base URL")

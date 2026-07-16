@@ -519,23 +519,23 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 
 ---
 
-### 1n. Bennett z-mean-reversion replication (2026-07-07) — test the ACTUAL bot
+### 1n. yield-spread mean-reversion replication (2026-07-07) — test the ACTUAL bot
 
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
-| **Bennett-z core** | `js/bennettZCore.js` | pure replication of Bennett's confirmed dashboard mechanic (yield-SPREAD z mean-reversion, NO levels): `directionFromZ` + `resolveInverted` (orient sign by USD role — USD-quote pairs flip), `zTierSize`/`zTierLabel` (his 1×/1.5×/2× ladder), `shouldExit` (z-revert to ±zExit or max-hold), `tradeReturn`, `sharpeFromDaily` (honest daily-MTM Sharpe), `perYearBreakdown`, `summarizeBennett` (win/PF/expectancy + **flat-vs-z-sized A/B** + **by-z-tier breakdown**). Tested `js/bennettZCore.test.mjs` (17 asserts). | `js/bennettZEngine.js` (I/O: `loadPairData` once + `simulatePair`/`simulateBook`; real daily MTM; per-pair + pooled OOS + **`runBennettZSweep`** robustness grid); `server.js` `/api/bennett-z/*` (+`/sweep`); `bennett-z.html`; **strategy doc `BENNETT_Z_STRATEGY.md`** | ✅ **validated OOS** (lookahead-audited, sign-corrected, honest Sharpe ~1.0–1.2, 12/12 sweep cells profitable) — **not forward-proven** |
-| **Bennett-z live plan + bot** | `js/bennettZEngine.computeBennettZSignals` → `js/bennettZProducer.js` → `BennettZBot/bennett_z_bot.py` | live sleeve off the SAME validated math (generate-don't-port): `computeBennettZSignals` emits today's per-pair z (pub-lag-shifted, orient-resolved `inverted`); the producer freezes it + the thresholds into `bennett_z_plan`; the Python bot (pylego bricks: `KvClient`/`PaperBroker`+`Mt5Broker`/`QuoteFeed`/`position_size`/`RiskGuard`, magic `20260012`) runs the per-pair swing state machine (enter \|z\|≥entry in the z-direction, exit on z-revert/max-hold, wide %-of-price protective stop, flat risk-% size). Config/creds/status via `bennett_z_config`/`_credentials`/`_status`. | `server.js` `/api/bennett-z/refresh-plan` + daily 13:05-UTC schedule; `bot-config.html` (Bennett-Z tab + Positions row) / `js/bot-config.js` (`loadBzConfig`/`saveBzConfig`/`loadBzLiveStatus`/`saveBzCreds`); KV 3-gate (`kv.js` `_CF_EXACT`, `_worker.js` `isAllowedKVKey`+`PERMANENT_KEYS`) | 🟡 **paper only** — validated ≠ forward-proven; defaults to paper, live is opt-in |
+| **Yield-Spread core** | `js/yieldSpreadCore.js` | pure replication of the colleague's confirmed dashboard mechanic (yield-SPREAD z mean-reversion, NO levels): `directionFromZ` + `resolveInverted` (orient sign by USD role — USD-quote pairs flip), `zTierSize`/`zTierLabel` (their 1×/1.5×/2× ladder), `shouldExit` (z-revert to ±zExit or max-hold), `tradeReturn`, `sharpeFromDaily` (honest daily-MTM Sharpe), `perYearBreakdown`, `summarizeYieldSpread` (win/PF/expectancy + **flat-vs-z-sized A/B** + **by-z-tier breakdown**). Tested `js/yieldSpreadCore.test.mjs` (17 asserts). | `js/yieldSpreadEngine.js` (I/O: `loadPairData` once + `simulatePair`/`simulateBook`; real daily MTM; per-pair + pooled OOS + **`runYieldSpreadSweep`** robustness grid); `server.js` `/api/yield-spread/*` (+`/sweep`); `yield-spread.html`; **strategy doc `YIELD_SPREAD_STRATEGY.md`** | ✅ **validated OOS** (lookahead-audited, sign-corrected, honest Sharpe ~1.0–1.2, 12/12 sweep cells profitable) — **not forward-proven** |
+| **Yield-Spread live plan + bot** | `js/yieldSpreadEngine.computeYieldSpreadSignals` → `js/yieldSpreadProducer.js` → `YieldSpreadBot/yield_spread_bot.py` | live sleeve off the SAME validated math (generate-don't-port): `computeYieldSpreadSignals` emits today's per-pair z (pub-lag-shifted, orient-resolved `inverted`); the producer freezes it + the thresholds into `yield_spread_plan`; the Python bot (pylego bricks: `KvClient`/`PaperBroker`+`Mt5Broker`/`QuoteFeed`/`position_size`/`RiskGuard`, magic `20260012`) runs the per-pair swing state machine (enter \|z\|≥entry in the z-direction, exit on z-revert/max-hold, wide %-of-price protective stop, flat risk-% size). Config/creds/status via `yield_spread_config`/`_credentials`/`_status`. | `server.js` `/api/yield-spread/refresh-plan` + daily 13:05-UTC schedule; `bot-config.html` (Yield-Spread tab + Positions row) / `js/bot-config.js` (`loadYsConfig`/`saveYsConfig`/`loadYsLiveStatus`/`saveYsCreds`); KV 3-gate (`kv.js` `_CF_EXACT`, `_worker.js` `isAllowedKVKey`+`PERMANENT_KEYS`) | 🟡 **paper only** — validated ≠ forward-proven; defaults to paper, live is opt-in |
 
-**The survivor of the whole investigation.** A screenshot confirmed Bennett's bot is pure
+**The survivor of the whole investigation.** A screenshot confirmed the colleague's bot is pure
 yield-spread-z mean-reversion (no levels), so the earlier v1/levels/macro-direction nulls
-had tested configs he isn't running. Testing his *actual* mechanism — after correcting a
+had tested configs they aren't running. Testing their *actual* mechanism — after correcting a
 USD-quote **direction-sign bug**, adding **publication lags** (the monthly foreign rates
 were lookahead), and fixing an **inflated Sharpe** (smeared daily returns → real daily
 MTM) — it clears every audit: 6/6 pairs, 5/5 OOS years, **12/12 parameter-sweep cells
 profitable** (graceful degradation, not a lucky spike). Validated region: entry |z| 2.0–2.5,
-window 90–126 (Bennett's own 2.75/252 is a *weaker* cell; his size-up-at-extremes rule is
+window 90–126 (the colleague's own 2.75/252 is a *weaker* cell; their size-up-at-extremes rule is
 backwards — trade flat). Full write-up, caveats, and paper-trade plan in
-`BENNETT_Z_STRATEGY.md`. **Still one historical period — forward paper-trading is the only
+`YIELD_SPREAD_STRATEGY.md`. **Still one historical period — forward paper-trading is the only
 remaining proof.**
 
 ---

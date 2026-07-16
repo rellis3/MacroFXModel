@@ -4128,89 +4128,96 @@ loadOiConfig();
 loadOiCreds();
 loadOiLiveStatus();
 
-// ═══════════════════════════ BENNETT-Z BOT ═══════════════════════════════════
-// Yield-spread z-score mean-reversion. Config → bennett_z_config; the server
-// producer computes the daily z into bennett_z_plan; the bot pushes bennett_z_status.
-const BZ_DEFAULTS = {
+// ═══════════════════════════ YIELD-SPREAD BOT ═══════════════════════════════════
+// Yield-spread z-score mean-reversion. Config → yield_spread_config; the server
+// producer computes the daily z into yield_spread_plan; the bot pushes yield_spread_status.
+const YS_DEFAULTS = {
   enabled: true, kill_switch: false, paper_mode: true,
   risk_pct: 0.5, sl_pct: 2.5, max_lot: 5.0, max_open: 6,
   entry_threshold: 2.0, z_window: 90, z_exit: 1.5, max_hold_days: 20,
   pairs: ['usdjpy', 'eurusd', 'gbpusd', 'audusd', 'usdcad', 'usdchf'],
   enabled_pairs: [], tick_secs: 10, status_secs: 60, plan_secs: 600,
+  tg_enabled: false, tg_token: '', tg_chat_id: '',
 };
-let _bzCfg = { ...BZ_DEFAULTS };
+let _ysCfg = { ...YS_DEFAULTS };
 
-function renderBzForm() {
+function renderYsForm() {
   const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
   const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
-  chk('bz_paper_mode', _bzCfg.paper_mode ?? true);
-  chk('bz_enabled', _bzCfg.enabled ?? true);
-  chk('bz_kill_switch', _bzCfg.kill_switch);
-  set('bz_entry_threshold', _bzCfg.entry_threshold ?? BZ_DEFAULTS.entry_threshold);
-  set('bz_z_window', _bzCfg.z_window ?? BZ_DEFAULTS.z_window);
-  set('bz_z_exit', _bzCfg.z_exit ?? BZ_DEFAULTS.z_exit);
-  set('bz_max_hold_days', _bzCfg.max_hold_days ?? BZ_DEFAULTS.max_hold_days);
-  set('bz_pairs', (_bzCfg.pairs ?? BZ_DEFAULTS.pairs).join(', '));
-  set('bz_risk_pct', _bzCfg.risk_pct ?? BZ_DEFAULTS.risk_pct);
-  set('bz_sl_pct', _bzCfg.sl_pct ?? BZ_DEFAULTS.sl_pct);
-  set('bz_max_lot', _bzCfg.max_lot ?? BZ_DEFAULTS.max_lot);
-  set('bz_max_open', _bzCfg.max_open ?? BZ_DEFAULTS.max_open);
-  set('bz_tick_secs', _bzCfg.tick_secs ?? BZ_DEFAULTS.tick_secs);
-  set('bz_status_secs', _bzCfg.status_secs ?? BZ_DEFAULTS.status_secs);
-  set('bz_plan_secs', _bzCfg.plan_secs ?? BZ_DEFAULTS.plan_secs);
+  chk('ys_paper_mode', _ysCfg.paper_mode ?? true);
+  chk('ys_enabled', _ysCfg.enabled ?? true);
+  chk('ys_kill_switch', _ysCfg.kill_switch);
+  set('ys_entry_threshold', _ysCfg.entry_threshold ?? YS_DEFAULTS.entry_threshold);
+  set('ys_z_window', _ysCfg.z_window ?? YS_DEFAULTS.z_window);
+  set('ys_z_exit', _ysCfg.z_exit ?? YS_DEFAULTS.z_exit);
+  set('ys_max_hold_days', _ysCfg.max_hold_days ?? YS_DEFAULTS.max_hold_days);
+  set('ys_pairs', (_ysCfg.pairs ?? YS_DEFAULTS.pairs).join(', '));
+  set('ys_risk_pct', _ysCfg.risk_pct ?? YS_DEFAULTS.risk_pct);
+  set('ys_sl_pct', _ysCfg.sl_pct ?? YS_DEFAULTS.sl_pct);
+  set('ys_max_lot', _ysCfg.max_lot ?? YS_DEFAULTS.max_lot);
+  set('ys_max_open', _ysCfg.max_open ?? YS_DEFAULTS.max_open);
+  set('ys_tick_secs', _ysCfg.tick_secs ?? YS_DEFAULTS.tick_secs);
+  set('ys_status_secs', _ysCfg.status_secs ?? YS_DEFAULTS.status_secs);
+  set('ys_plan_secs', _ysCfg.plan_secs ?? YS_DEFAULTS.plan_secs);
+  chk('ys_tg_enabled', _ysCfg.tg_enabled);
+  set('ys_tg_token', _ysCfg.tg_token ?? '');
+  set('ys_tg_chat_id', _ysCfg.tg_chat_id ?? '');
 }
-function readBzForm() {
+function readYsForm() {
   const numf = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
   const list = id => (document.getElementById(id)?.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  _bzCfg.paper_mode = !!document.getElementById('bz_paper_mode')?.checked;
-  _bzCfg.enabled = !!document.getElementById('bz_enabled')?.checked;
-  _bzCfg.kill_switch = !!document.getElementById('bz_kill_switch')?.checked;
-  _bzCfg.entry_threshold = numf('bz_entry_threshold', BZ_DEFAULTS.entry_threshold);
-  _bzCfg.z_window = Math.round(numf('bz_z_window', BZ_DEFAULTS.z_window));
-  _bzCfg.z_exit = numf('bz_z_exit', BZ_DEFAULTS.z_exit);
-  _bzCfg.max_hold_days = Math.round(numf('bz_max_hold_days', BZ_DEFAULTS.max_hold_days));
-  const pairs = list('bz_pairs');
-  _bzCfg.pairs = pairs.length ? pairs : [...BZ_DEFAULTS.pairs];
-  _bzCfg.risk_pct = numf('bz_risk_pct', BZ_DEFAULTS.risk_pct);
-  _bzCfg.sl_pct = numf('bz_sl_pct', BZ_DEFAULTS.sl_pct);
-  _bzCfg.max_lot = numf('bz_max_lot', BZ_DEFAULTS.max_lot);
-  _bzCfg.max_open = Math.round(numf('bz_max_open', BZ_DEFAULTS.max_open));
-  _bzCfg.tick_secs = Math.round(numf('bz_tick_secs', BZ_DEFAULTS.tick_secs));
-  _bzCfg.status_secs = Math.round(numf('bz_status_secs', BZ_DEFAULTS.status_secs));
-  _bzCfg.plan_secs = Math.round(numf('bz_plan_secs', BZ_DEFAULTS.plan_secs));
+  _ysCfg.paper_mode = !!document.getElementById('ys_paper_mode')?.checked;
+  _ysCfg.enabled = !!document.getElementById('ys_enabled')?.checked;
+  _ysCfg.kill_switch = !!document.getElementById('ys_kill_switch')?.checked;
+  _ysCfg.entry_threshold = numf('ys_entry_threshold', YS_DEFAULTS.entry_threshold);
+  _ysCfg.z_window = Math.round(numf('ys_z_window', YS_DEFAULTS.z_window));
+  _ysCfg.z_exit = numf('ys_z_exit', YS_DEFAULTS.z_exit);
+  _ysCfg.max_hold_days = Math.round(numf('ys_max_hold_days', YS_DEFAULTS.max_hold_days));
+  const pairs = list('ys_pairs');
+  _ysCfg.pairs = pairs.length ? pairs : [...YS_DEFAULTS.pairs];
+  _ysCfg.risk_pct = numf('ys_risk_pct', YS_DEFAULTS.risk_pct);
+  _ysCfg.sl_pct = numf('ys_sl_pct', YS_DEFAULTS.sl_pct);
+  _ysCfg.max_lot = numf('ys_max_lot', YS_DEFAULTS.max_lot);
+  _ysCfg.max_open = Math.round(numf('ys_max_open', YS_DEFAULTS.max_open));
+  _ysCfg.tick_secs = Math.round(numf('ys_tick_secs', YS_DEFAULTS.tick_secs));
+  _ysCfg.status_secs = Math.round(numf('ys_status_secs', YS_DEFAULTS.status_secs));
+  _ysCfg.plan_secs = Math.round(numf('ys_plan_secs', YS_DEFAULTS.plan_secs));
+  _ysCfg.tg_enabled = !!document.getElementById('ys_tg_enabled')?.checked;
+  _ysCfg.tg_token = (document.getElementById('ys_tg_token')?.value || '').trim();
+  _ysCfg.tg_chat_id = (document.getElementById('ys_tg_chat_id')?.value || '').trim();
 }
-async function loadBzConfig() {
-  try { const stored = await kvGet('bennett_z_config'); if (stored) _bzCfg = { ...BZ_DEFAULTS, ...stored }; renderBzForm(); } catch (e) {}
+async function loadYsConfig() {
+  try { const stored = await kvGet('yield_spread_config'); if (stored) _ysCfg = { ...YS_DEFAULTS, ...stored }; renderYsForm(); } catch (e) {}
 }
-async function saveBzConfig() {
-  readBzForm();
-  const el = document.getElementById('bzSaveStatus');
+async function saveYsConfig() {
+  readYsForm();
+  const el = document.getElementById('ysSaveStatus');
   if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
-  try { await kvSet('bennett_z_config', _bzCfg);
+  try { await kvSet('yield_spread_config', _ysCfg);
     if (el) { el.textContent = 'Saved ✓'; el.style.color = '#f472b6'; setTimeout(() => { el.textContent = ''; }, 3000); }
   } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
 }
-function resetBzDefaults() {
-  _bzCfg = { ...BZ_DEFAULTS }; renderBzForm();
-  const el = document.getElementById('bzSaveStatus');
+function resetYsDefaults() {
+  _ysCfg = { ...YS_DEFAULTS }; renderYsForm();
+  const el = document.getElementById('ysSaveStatus');
   if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
 }
-async function loadBzCreds() { try { _applyCredsToForm(await kvGet('bennett_z_credentials'), 'bz_', 'bz_mt5_password'); } catch (e) {} }
-async function saveBzCreds() { await _saveCreds('bennett_z_credentials', 'bz_', 'bz_mt5_password', 'bzCredsStatus'); }
+async function loadYsCreds() { try { _applyCredsToForm(await kvGet('yield_spread_credentials'), 'ys_', 'ys_mt5_password'); } catch (e) {} }
+async function saveYsCreds() { await _saveCreds('yield_spread_credentials', 'ys_', 'ys_mt5_password', 'ysCredsStatus'); }
 
-async function loadBzLiveStatus() {
-  const ageEl = document.getElementById('bzLiveAge'), modeEl = document.getElementById('bzLiveMode');
-  const balEl = document.getElementById('bzLiveBal'), openEl = document.getElementById('bzOpenN');
-  const uniEl = document.getElementById('bzUniN'), paEl = document.getElementById('bzPlanAge');
+async function loadYsLiveStatus() {
+  const ageEl = document.getElementById('ysLiveAge'), modeEl = document.getElementById('ysLiveMode');
+  const balEl = document.getElementById('ysLiveBal'), openEl = document.getElementById('ysOpenN');
+  const uniEl = document.getElementById('ysUniN'), paEl = document.getElementById('ysPlanAge');
   try {
-    const [st, plan] = await Promise.all([kvGet('bennett_z_status'), kvGet('bennett_z_plan')]);
+    const [st, plan] = await Promise.all([kvGet('yield_spread_status'), kvGet('yield_spread_plan')]);
     if (paEl) paEl.textContent = plan?.generatedAt ? new Date(plan.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
     // Prefer the bot's per-pair view; fall back to the plan's signals so the table
     // populates even before the bot is running.
     const rows = st?.pairs || Object.entries(plan?.signals || {}).map(([pair, s]) => {
       const z = s.z;
       const dir = (typeof z === 'number') ? ((z > 0) !== !!s.inverted ? 'LONG' : 'SHORT') : null;
-      const thr = plan?.entryThreshold ?? BZ_DEFAULTS.entry_threshold;
+      const thr = plan?.entryThreshold ?? YS_DEFAULTS.entry_threshold;
       return { pair, z, inverted: s.inverted, direction: dir,
                signal: (typeof z === 'number' && Math.abs(z) >= thr) ? 'enter' : 'flat',
                in_position: false, hold_days: null, asOf: s.asOf };
@@ -4223,10 +4230,10 @@ async function loadBzLiveStatus() {
     }
     if (openEl) openEl.textContent = (st?.mt5_positions || []).length;
     if (uniEl)  uniEl.textContent  = rows.length;
-    const body = document.getElementById('bzLinesBody');
+    const body = document.getElementById('ysLinesBody');
     if (body) {
       if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No plan yet — run <code>POST /api/bennett-z/refresh-plan</code> (needs FRED_KEY on the server)</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No plan yet — run <code>POST /api/yield-spread/refresh-plan</code> (needs FRED_KEY on the server)</td></tr>';
       } else {
         const dirCol = d => d === 'LONG' ? 'var(--green)' : d === 'SHORT' ? 'var(--red)' : 'var(--text3)';
         const sigCol = s => s === 'enter' ? 'var(--amber)' : 'var(--text3)';
@@ -4244,13 +4251,13 @@ async function loadBzLiveStatus() {
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
 }
 
-window.saveBzConfig = saveBzConfig; window.resetBzDefaults = resetBzDefaults;
-window.saveBzCreds = saveBzCreds; window.loadBzLiveStatus = loadBzLiveStatus;
+window.saveYsConfig = saveYsConfig; window.resetYsDefaults = resetYsDefaults;
+window.saveYsCreds = saveYsCreds; window.loadYsLiveStatus = loadYsLiveStatus;
 
-document.querySelector('.tab-btn[data-tab="bennettz"]')?.addEventListener('click', loadBzLiveStatus);
-loadBzConfig();
-loadBzCreds();
-loadBzLiveStatus();
+document.querySelector('.tab-btn[data-tab="yieldspread"]')?.addEventListener('click', loadYsLiveStatus);
+loadYsConfig();
+loadYsCreds();
+loadYsLiveStatus();
 
 loadDaStatus();
 loadGoldStatus();

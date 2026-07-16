@@ -489,7 +489,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="volatility" onclick="switchTab('volatility')" style="color:#e0a93b" id="vbTabBtn">📐 Volatility</button>
     <button class="tab-btn" data-tab="rangeline" onclick="switchTab('rangeline')" style="color:#4fd1c5" id="rlTabBtn">📊 Range-Line</button>
     <button class="tab-btn" data-tab="oibot" onclick="switchTab('oibot')" style="color:#4dd0e1" id="oiTabBtn">🧲 OI Gamma</button>
-    <button class="tab-btn" data-tab="bennettz" onclick="switchTab('bennettz')" style="color:#f472b6" id="bzTabBtn">🧮 Bennett-Z</button>
+    <button class="tab-btn" data-tab="yieldspread" onclick="switchTab('yieldspread')" style="color:#f472b6" id="ysTabBtn">🧮 Yield-Spread</button>
     <button class="tab-btn" data-tab="nqqmr" onclick="switchTab('nqqmr')" style="color:#f59e0b" id="nqTabBtn">🎯 QMR Indices</button>
     <button class="tab-btn" data-tab="liquiditygate" onclick="switchTab('liquiditygate')" style="color:#22d3ee" id="lgTabBtn">💧 Liquidity Gate</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
@@ -4080,20 +4080,20 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
 
   </div><!-- /tab-oibot -->
 
-  <!-- ══════════════════════════════════════════════════════ BENNETT-Z TAB -->
-  <div class="tab-pane" id="tab-bennettz">
+  <!-- ══════════════════════════════════════════════════════ YIELD-SPREAD TAB -->
+  <div class="tab-pane" id="tab-yieldspread">
 
     <div class="bot-banner" style="background:rgba(244,114,182,0.08);border:1px solid rgba(244,114,182,0.28)">
       <div class="bot-banner-icon">🧮</div>
       <div style="flex:1">
-        <div class="bot-banner-title" style="color:#f472b6">Bennett-Z Bot — yield-spread z-score mean-reversion</div>
-        <div class="bot-banner-sub">Enters when the US-vs-foreign 2Y yield-spread z-score is extreme (|z|≥ entry), in the z-direction; exits when z reverts (|z|≤ exit) or a max-hold time stop. No price levels — the z-threshold IS the trigger. Server computes the daily z (<code>bennett_z_plan</code>); the bot executes MT5. <code>BennettZBot/bennett_z_bot.py</code></div>
+        <div class="bot-banner-title" style="color:#f472b6">Yield-Spread Bot — yield-spread z-score mean-reversion</div>
+        <div class="bot-banner-sub">Enters when the US-vs-foreign 2Y yield-spread z-score is extreme (|z|≥ entry), in the z-direction; exits when z reverts (|z|≤ exit) or a max-hold time stop. No price levels — the z-threshold IS the trigger. Server computes the daily z (<code>yield_spread_plan</code>); the bot executes MT5. <code>YieldSpreadBot/yield_spread_bot.py</code></div>
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0">
-        <a href="bennett-z.html" target="_blank" style="text-decoration:none">
+        <a href="yield-spread.html" target="_blank" style="text-decoration:none">
           <button style="background:transparent;border:1px solid #f472b6;border-radius:7px;color:#f472b6;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtest</button>
         </a>
-        <button style="background:#f472b6;border:none;border-radius:7px;color:#2a0a1c;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveBzConfig();saveBzCreds()">Save All</button>
+        <button style="background:#f472b6;border:none;border-radius:7px;color:#2a0a1c;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveYsConfig();saveYsCreds()">Save All</button>
       </div>
     </div>
 
@@ -4106,16 +4106,16 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
         <span style="font-size:12px;font-weight:600;color:#f472b6">Live Status</span>
-        <span id="bzLiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
-        <span id="bzLiveMode" style="font-size:11px;font-weight:600"></span>
+        <span id="ysLiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
+        <span id="ysLiveMode" style="font-size:11px;font-weight:600"></span>
         <span style="flex:1"></span>
-        <span id="bzLiveBal" style="font-size:11px;color:var(--text3)"></span>
-        <button onclick="loadBzLiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+        <span id="ysLiveBal" style="font-size:11px;color:var(--text3)"></span>
+        <button onclick="loadYsLiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
       </div>
       <div style="display:flex;gap:20px;padding:4px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;flex-wrap:wrap">
-        <span>Open positions: <b id="bzOpenN">—</b></span>
-        <span>Universe: <b id="bzUniN">—</b></span>
-        <span style="margin-left:auto">Plan: <b id="bzPlanAge">—</b></span>
+        <span>Open positions: <b id="ysOpenN">—</b></span>
+        <span>Universe: <b id="ysUniN">—</b></span>
+        <span style="margin-left:auto">Plan: <b id="ysPlanAge">—</b></span>
       </div>
     </div>
 
@@ -4138,7 +4138,7 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
               <th style="padding:6px 10px;text-align:left">As of</th>
             </tr>
           </thead>
-          <tbody id="bzLinesBody">
+          <tbody id="ysLinesBody">
             <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's z per pair</td></tr>
           </tbody>
         </table>
@@ -4150,15 +4150,15 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div class="card-title">How to run</div>
       <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials below.</div>
       <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) The server computes today's z per pair from FRED yield spreads. Force a refresh now:
-curl -X POST &lt;dashboard-url&gt;/api/bennett-z/refresh-plan
+curl -X POST &lt;dashboard-url&gt;/api/yield-spread/refresh-plan
 #    check it landed:
-curl &lt;dashboard-url&gt;/api/bennett-z/plan
+curl &lt;dashboard-url&gt;/api/yield-spread/plan
 
 # 2) Paper trade (default):
-python BennettZBot/bennett_z_bot.py --url &lt;dashboard-url&gt;
+python YieldSpreadBot/yield_spread_bot.py --url &lt;dashboard-url&gt;
 
 # 3) Go live on MT5 (after saving credentials below + a clean paper run):
-python BennettZBot/bennett_z_bot.py --live --url &lt;dashboard-url&gt;</pre>
+python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div class="bot-banner-sub" style="margin-top:8px"><b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>). The server needs <code>FRED_KEY</code> to build the plan.</div>
     </div>
 
@@ -4166,54 +4166,68 @@ python BennettZBot/bennett_z_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <!-- ── Strategy (drives both the server plan + the bot) ─────────────────── -->
       <div class="card">
         <div class="card-title">Strategy</div>
-        <div class="bot-banner-sub" style="margin-bottom:8px">The entry/exit thresholds. The z-window and entry/exit also shape the <code>bennett_z_plan</code> the server computes; applied on the next plan refresh. Defaults are the sweep's highest honest-Sharpe cell.</div>
-        <div class="form-row"><span class="form-lbl">Entry |z| <small>|z| that opens a trade — sweep best = 2.0</small></span><input type="number" id="bz_entry_threshold" min="0.5" max="6" step="0.05" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">z-window (days) <small>rolling-z lookback — sweep best = 90</small></span><input type="number" id="bz_z_window" min="20" max="504" step="1" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">Exit |z| <small>|z| that closes on reversion</small></span><input type="number" id="bz_z_exit" min="0" max="4" step="0.05" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">Max hold (days) <small>time stop if z never reverts</small></span><input type="number" id="bz_max_hold_days" min="1" max="120" step="1" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">Pairs <small>blank = the full validated universe</small></span><input type="text" id="bz_pairs" placeholder="usdjpy, eurusd, gbpusd, audusd, usdcad, usdchf" style="width:260px;text-align:left"></div>
+        <div class="bot-banner-sub" style="margin-bottom:8px">The entry/exit thresholds. The z-window and entry/exit also shape the <code>yield_spread_plan</code> the server computes; applied on the next plan refresh. Defaults are the sweep's highest honest-Sharpe cell.</div>
+        <div class="form-row"><span class="form-lbl">Entry |z| <small>|z| that opens a trade — sweep best = 2.0</small></span><input type="number" id="ys_entry_threshold" min="0.5" max="6" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">z-window (days) <small>rolling-z lookback — sweep best = 90</small></span><input type="number" id="ys_z_window" min="20" max="504" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Exit |z| <small>|z| that closes on reversion</small></span><input type="number" id="ys_z_exit" min="0" max="4" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max hold (days) <small>time stop if z never reverts</small></span><input type="number" id="ys_max_hold_days" min="1" max="120" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Pairs <small>blank = the full validated universe</small></span><input type="text" id="ys_pairs" placeholder="usdjpy, eurusd, gbpusd, audusd, usdcad, usdchf" style="width:260px;text-align:left"></div>
       </div>
 
       <!-- ── Execution (the bot) ──────────────────────────────────────────────── -->
       <div class="card">
         <div class="card-title">Execution — the bot</div>
         <div class="form-row"><span class="form-lbl">Mode</span>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="bz_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE)</small></label></div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="ys_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE)</small></label></div>
         <div class="form-row"><span class="form-lbl">Enabled <small>master on/off</small></span>
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="bz_enabled"> on</label></div>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="ys_enabled"> on</label></div>
         <div class="form-row"><span class="form-lbl">Kill switch <small>no new entries (exits still run)</small></span>
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="bz_kill_switch"> stop</label></div>
-        <div class="form-row"><span class="form-lbl">Risk % / trade <small>flat — no z-tier sizing</small></span><input type="number" id="bz_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">Protective stop (% of price) <small>WIDE gap insurance; z-exit is primary</small></span><input type="number" id="bz_sl_pct" min="0.2" max="10" step="0.1" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">Max lot</span><input type="number" id="bz_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">Max open positions</span><input type="number" id="bz_max_open" min="1" max="20" step="1" style="width:80px"></div>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="ys_kill_switch"> stop</label></div>
+        <div class="form-row"><span class="form-lbl">Risk % / trade <small>flat — no z-tier sizing</small></span><input type="number" id="ys_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Protective stop (% of price) <small>WIDE gap insurance; z-exit is primary</small></span><input type="number" id="ys_sl_pct" min="0.2" max="10" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max lot</span><input type="number" id="ys_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max open positions</span><input type="number" id="ys_max_open" min="1" max="20" step="1" style="width:80px"></div>
         <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
-        <div class="form-row"><span class="form-lbl">Price tick <small>local watch + stop</small></span><input type="number" id="bz_tick_secs" min="1" max="120" step="1" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">Status push</span><input type="number" id="bz_status_secs" min="10" max="600" step="5" style="width:80px"></div>
-        <div class="form-row"><span class="form-lbl">Plan re-pull</span><input type="number" id="bz_plan_secs" min="60" max="86400" step="60" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Price tick <small>local watch + stop</small></span><input type="number" id="ys_tick_secs" min="1" max="120" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Status push</span><input type="number" id="ys_status_secs" min="10" max="600" step="5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Plan re-pull</span><input type="number" id="ys_plan_secs" min="60" max="86400" step="60" style="width:80px"></div>
         <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
-          <button class="btn-save" style="background:#f472b6;color:#2a0a1c" onclick="saveBzConfig()">Save Config</button>
-          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetBzDefaults()">Reset Defaults</button>
-          <span id="bzSaveStatus" style="font-size:12px;color:var(--text3)"></span>
+          <button class="btn-save" style="background:#f472b6;color:#2a0a1c" onclick="saveYsConfig()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetYsDefaults()">Reset Defaults</button>
+          <span id="ysSaveStatus" style="font-size:12px;color:var(--text3)"></span>
         </div>
       </div>
 
       <!-- ── MT5 Credentials ──────────────────────────────────────────────── -->
       <div class="card">
         <div class="card-title">MT5 Account</div>
-        <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="bz_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
-        <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="bz_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
-        <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="bz_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
-        <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="bz_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="ys_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="ys_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
+        <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="ys_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="ys_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
         <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
-          <button class="btn-save" style="background:#f472b6;color:#2a0a1c" onclick="saveBzCreds()">Save Credentials</button>
-          <span id="bzCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+          <button class="btn-save" style="background:#f472b6;color:#2a0a1c" onclick="saveYsCreds()">Save Credentials</button>
+          <span id="ysCredsStatus" style="font-size:12px;color:var(--text3)"></span>
         </div>
-        <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">bennett_z_credentials</code>). The bot reads them on connect when paper trade is OFF.</div>
+        <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">yield_spread_credentials</code>). The bot reads them on connect when paper trade is OFF.</div>
+      </div>
+
+      <!-- ── Telegram alerts ──────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Telegram Alerts</div>
+        <div class="bot-banner-sub" style="margin-bottom:8px">One message when the bot <b>enters</b> a trade (direction, signal z, entry, lots, protective SL) and one when it <b>closes</b> (entry/exit, pip move, % and money P&amp;L). Works in paper and live.</div>
+        <div class="form-row"><span class="form-lbl">Send trade alerts</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="ys_tg_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Bot token <small>blank = use the shared Telegram config</small></span><input type="text" id="ys_tg_token" placeholder="(shared tg_config)" style="width:200px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Chat ID <small>blank = use the shared Telegram config</small></span><input type="text" id="ys_tg_chat_id" placeholder="(shared tg_config)" style="width:200px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#f472b6;color:#2a0a1c" onclick="saveYsConfig()">Save Alerts</button>
+          <span class="bot-banner-sub" style="margin:0">saved with the config — applies on the bot's next config refresh</span>
+        </div>
       </div>
     </div>
 
-  </div><!-- /tab-bennettz -->
+  </div><!-- /tab-yieldspread -->
 
   <!-- ══════════════════════════════════════════════════════ NQ-QMR TAB -->
   <div class="tab-pane" id="tab-nqqmr">
@@ -5151,7 +5165,7 @@ const TAB_BOT_KEY_MAP = {
   volatility:  ['volatility_bot_status', 'volatility_ride_status'],
   rangeline:   'range_line_bot_status',
   oibot:       'oi_bot_status',
-  bennettz:    'bennett_z_status',
+  yieldspread:    'yield_spread_status',
   nqqmr:       ['nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status'],
 };
 
@@ -6287,7 +6301,7 @@ const _POS_BOTS = [
   { key: 'volatility_ride_status',    label: 'Vol-Ride',    color: '#f0b64b', bg: '#2c2400', bd: '#8a6d0c', paper: true },
   { key: 'range_line_bot_status',     label: 'Range-Line',  color: '#4fd1c5', bg: '#06302b', bd: '#0f766e', paper: true },
   { key: 'oi_bot_status',             label: 'OI Gamma',    color: '#4dd0e1', bg: '#06282e', bd: '#0e7490', paper: true },
-  { key: 'bennett_z_status',          label: 'BennettZ',    color: '#f472b6', bg: '#2a0a1c', bd: '#9d1f5f', paper: true },
+  { key: 'yield_spread_status',          label: 'YieldSpread',    color: '#f472b6', bg: '#2a0a1c', bd: '#9d1f5f', paper: true },
 ];
 
 let _posRefreshTimer = null;
