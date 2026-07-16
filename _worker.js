@@ -936,6 +936,20 @@ export default {
             'oi_bot_config', 'oi_bot_credentials', 'oi_bot_zones', 'oi_bot_trades',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
+            // These were allowed through isAllowedKVKey and marked persistent in
+            // kv.js's _CF_EXACT, but missing here — so every write still got the
+            // 48h market-data TTL and silently expired out of CF KV a couple of
+            // days after the last Save, surfacing as "config forgotten on release".
+            'volatility_bot_config', 'volatility_bot_credentials',
+            'volatility_bot_plan', 'volatility_bot_audit_log',
+            'range_line_bot_config', 'range_line_bot_credentials',
+            'range_line_bot_plan', 'range_line_confluence', 'range_line_bot_audit_log',
+            'dyn_anchor_config', 'dyn_anchor_credentials',
+            'macro_equity_config', 'macro_equity_credentials',
+            'nq_qmr_config', 'nq_qmr_audit', 'nq_qmr_status',
+            'spx_qmr_config', 'spx_qmr_audit', 'spx_qmr_status',
+            'dow_qmr_config', 'dow_qmr_audit', 'dow_qmr_status',
+            'dax_qmr_config', 'dax_qmr_audit', 'dax_qmr_status',
           ]);
           const isPermanent = PERMANENT_KEYS.has(key);
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h

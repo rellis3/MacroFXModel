@@ -200,6 +200,24 @@ unless that is explicitly the task.
   the CF KV free-plan write quota — persist only what a user typed or what's
   expensive/impossible to rebuild. Check with `/api/kv-health`
   (`persistent: true/false`).
+  **A second, separate gate exists for the generic `/api/kv/get` and
+  `/api/kv/set` routes** (in `_worker.js` — this is the path both `pylego/kv.py`
+  bots and the dashboard's generic KV helper use, and it runs on Railway too via
+  `server.js`'s `FX_SCORES` shim, not just on Cloudflare Pages). A key must be in
+  `isAllowedKVKey()`'s `EXACT` set/prefixes to be read/written **at all**, and —
+  independently — in the `PERMANENT_KEYS` set inside the `/api/kv/set` handler
+  to skip the 48h `expirationTtl` applied to everything else. Being in `_CF_EXACT`
+  does not exempt a key from this second TTL gate. Missing it doesn't 403 or
+  error — the write silently succeeds with a 48h TTL, so the key looks fine for
+  two days then vanishes from CF KV on its own, which reads exactly like "wiped
+  on release" even though no deploy happened. This exact bug hit
+  `volatility_bot_config/credentials/plan/audit_log`,
+  `range_line_bot_config/credentials/plan/confluence/audit_log`,
+  `dyn_anchor_config/credentials`, `macro_equity_config/credentials`, and all
+  four QMR bots' `config/audit/status` keys (fixed 2026-07-16) — when adding a
+  new persistent bot config/credentials/plan/audit key, add it to **all three**:
+  `_CF_EXACT` (`kv.js`), `isAllowedKVKey`'s `EXACT` set, and `PERMANENT_KEYS`
+  (both in `_worker.js`).
 
 ### Environment variables (set in Railway — values live there, never in git)
 
