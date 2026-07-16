@@ -87,7 +87,7 @@ import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio, inspectSess
 import { sessionsAt as _sessionsAt } from './js/fillRealismEngine.js';   // 22:00-UTC broker-day session grouping (for the fade viewer)
 import { fetchM1Gap as _fetchM1Gap } from './js/m1GapFill.js';   // OANDA M1 gap-fill so the viewer can show days past the parquet snapshot
 import { rvHarSigma as _rvHarSigma } from './js/indexRvHar.js';   // validated 5-min realized-vol HAR σ for index COG lines (not the GK shadow)
-import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti } from './js/ccHvSigma.js';   // COG's own σ method (close-to-close HV) for reproducing his index lines
+import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti, ccHvIntraday as _ccHvIntraday } from './js/ccHvSigma.js';   // COG's own σ method (close-to-close HV) for reproducing his index lines
 import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
@@ -10186,22 +10186,37 @@ app.get('/api/vol-forecast/cog-hv', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cog-hv needs current D1' });
   try {
     const indices = {}, log = [];
+    const nowSec = Math.floor(Date.now() / 1000);
     for (const cfg of WBT_INSTRUMENTS.filter(i => i.assetClass === 'index')) {
       try {
-        // London-midnight anchor (matches the forecasting models) is primary; the
-        // 17:00-NY anchor is computed alongside so the anchor effect is visible.
+        // PRIMARY = CC-HV on London-daily closes built from the INTRADAY 5-min path
+        // (buildLondonDaily) — same calc for EVERY index, immune to the OANDA-D1
+        // aggregation that halved SPX500/US30. Gap-filled from OANDA to now.
+        let bars = await _loadM1ForAB(cfg.name.toLowerCase(), 5);
+        if (bars?.length && process.env.OANDA_KEY) {
+          const lastSec = bars.at(-1).time;
+          if (nowSec - lastSec > 3600) {
+            const gap1m = await _fetchM1Gap(cfg.oanda, lastSec + 60, nowSec, _btFetchM1Range, { onLog: () => {} });
+            if (gap1m.length) { const gap5 = _resampleTo(gap1m, 5).filter(b => b.time > lastSec); bars = bars.concat(gap5); }
+          }
+        }
+        const intra = (bars?.length > 2000) ? _ccHvIntraday(bars, { window: win }) : { insufficient: true };
+        // D1 (London anchor) kept as a comparison / fallback if intraday is unavailable.
         const lonBars = await _btFetchD1Aligned(cfg.oanda, 120, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' });
-        const nyBars = await _btFetchD1(cfg.oanda, 120);
-        if (!lonBars?.length) { log.push(`${cfg.name}: no D1`); continue; }
-        const r = _ccHvSigma(lonBars, { window: win });
-        if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.n}d)`); continue; }
-        const byWindow = _ccHvMulti(lonBars);
-        const byWindowNy = nyBars?.length ? _ccHvMulti(nyBars) : null;
-        indices[cfg.name] = { volAnnual: r.volAnnual, window: win, n: r.n, anchor: 'london-midnight', byWindow, byWindowNy, lastDate: lonBars.at(-1)?.date || null };
-        log.push(`${cfg.name}: CC-HV${win} σ ${r.volAnnual}% [Ldn] · Ldn ${JSON.stringify(byWindow)} · NY ${JSON.stringify(byWindowNy)} (through ${lonBars.at(-1)?.date})`);
+        const d1 = lonBars?.length ? _ccHvSigma(lonBars, { window: win }) : { insufficient: true };
+        const byWindowD1 = lonBars?.length ? _ccHvMulti(lonBars) : null;
+        const primary = !intra.insufficient ? intra : d1;
+        const src = !intra.insufficient ? 'intraday-london' : 'd1-london';
+        if (primary.insufficient) { log.push(`${cfg.name}: insufficient (intraday+D1)`); continue; }
+        indices[cfg.name] = {
+          volAnnual: primary.volAnnual, window: win, source: src, anchor: 'london-midnight',
+          byWindow: !intra.insufficient ? intra.byWindow : byWindowD1,
+          byWindowD1, nDaily: intra.nDaily ?? null, lastDate: primary.lastDate || null,
+        };
+        log.push(`${cfg.name}: CC-HV${win} σ ${primary.volAnnual}% [${src}] · intraday ${JSON.stringify(intra.byWindow || null)} · D1 ${JSON.stringify(byWindowD1)} (through ${primary.lastDate})`);
       } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
     }
-    const data = { indices, window: win, anchor: 'london-midnight', computedAt: new Date().toISOString(), dateISO: todayISO, log };
+    const data = { indices, window: win, anchor: 'london-midnight', source: 'intraday-london', computedAt: new Date().toISOString(), dateISO: todayISO, log };
     _cogHvCache.date = cacheKey; _cogHvCache.data = data;
     res.json({ ok: true, ...data });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
