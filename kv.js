@@ -119,6 +119,7 @@ const _CF_EXACT = new Set([
   'dow_qmr_status', 'dow_qmr_audit', 'dow_qmr_config',  // DOW-QMR — same persistence needs as NQ-QMR
   'dax_qmr_status', 'dax_qmr_audit', 'dax_qmr_config',  // DAX-QMR — same persistence needs as NQ-QMR
   'nav_layout',             // index.html command-hub custom category/order — user drag-drop, must survive redeploys and sync across devices
+  'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
 ]);
 function isCfKey(key) {
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart

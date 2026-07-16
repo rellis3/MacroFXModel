@@ -387,13 +387,14 @@ class Mt5Broker:
         # over-long string is rejected with "Invalid comment argument".
         safe_comment = self._safe_comment(comment, f'Bot {direction[0]}')
 
+        digits = getattr(info, 'digits', None) or 5
         order = {
             'action':       mt5.TRADE_ACTION_DEAL,
             'symbol':       mt5_sym,
             'volume':       vol,
             'type':         order_type,
             'price':        exec_price,
-            'sl':           round(sl, 5),
+            'sl':           round(sl, digits),
             'deviation':    self.deviation,
             'magic':        self.magic,
             'comment':      safe_comment,
@@ -401,7 +402,7 @@ class Mt5Broker:
             'type_filling': self.filling_mode(mt5_sym),
         }
         if tp and tp > 0:
-            order['tp'] = round(tp, 5)
+            order['tp'] = round(tp, digits)
 
         res = mt5.order_send(order)
 
@@ -510,10 +511,18 @@ class Mt5Broker:
                      if p.ticket == ticket and p.magic == self.magic]
         if not positions:
             return True                       # already closed by SL — nothing to trail
+        # Round to the SYMBOL's own price digits (e.g. 3 for JPY pairs), not a
+        # hardcoded 5 — otherwise a sub-tick chandelier nudge looks like a real
+        # improvement locally but collapses to the SAME value once MT5 rounds it,
+        # and every attempt comes back retcode 10025 "No changes" forever.
+        info = mt5.symbol_info(mt5_sym)
+        digits = getattr(info, 'digits', None) or 5
+        if round(float(sl), digits) == round(float(positions[0].sl), digits):
+            return True                       # broker already holds this SL — no-op, not a failure
         req = {'action': mt5.TRADE_ACTION_SLTP, 'symbol': mt5_sym,
-               'position': ticket, 'sl': round(float(sl), 5), 'magic': self.magic}
+               'position': ticket, 'sl': round(float(sl), digits), 'magic': self.magic}
         if tp is not None:
-            req['tp'] = round(float(tp), 5)
+            req['tp'] = round(float(tp), digits)
         res = mt5.order_send(req)
         if res is None:
             self.log.error(f'Modify failed: order_send None  last_error={mt5.last_error()}')

@@ -6372,6 +6372,23 @@ app.post('/api/nav-layout', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// index.html scratchpad modal — free-text personal notes, synced via KV so they
+// follow the user across browsers/devices (same pattern as /api/nav-layout).
+app.get('/api/scratchpad', async (_req, res) => {
+  try {
+    const raw = await kv.get('scratchpad_notes');
+    res.json({ ok: true, text: raw ? JSON.parse(raw) : '' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/scratchpad', async (req, res) => {
+  try {
+    const text = req.body?.text;
+    if (typeof text !== 'string') return res.status(400).json({ ok: false, error: 'missing text' });
+    await kv.put('scratchpad_notes', JSON.stringify(text));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Text-format export helpers ────────────────────────────────────────────────
 // Mirrors the client-side buildExportText() / buildSessionText() in vol-forecast.html
 

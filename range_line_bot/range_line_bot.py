@@ -344,8 +344,17 @@ def _trail_stops(positions, broker, plan, cfg):
             continue
         pos["peak"] = max(pos["peak"], px) if pos["dir_up"] else min(pos["peak"], px)
         stop = chandelier_stop(pos["dir_up"], pos["entry"], pos["peak"], pos["rung"], pos["protect"], chand)
-        sl_new = round(stop, 5)
-        sl_cur = round(pos["sl"], 5)
+        # Round to the INSTRUMENT's own price digits (3 for JPY, 5 for most FX, …),
+        # not a hardcoded 5 — a hardcoded 5 sees a sub-tick chandelier nudge as a
+        # real tighten, but MT5 rounds a JPY SL to 3 decimals and rejects the modify
+        # as a no-op (retcode 10025), spamming a warning every tick until the trail
+        # finally moves a full tick.
+        try:
+            digits = I.price_digits(pos["instr"])
+        except Exception:
+            digits = 5
+        sl_new = round(stop, digits)
+        sl_cur = round(pos["sl"], digits)
         tighten = (sl_new > sl_cur) if pos["dir_up"] else (sl_new < sl_cur)
         if tighten:
             try:
