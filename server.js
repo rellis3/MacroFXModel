@@ -42,7 +42,7 @@ import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './j
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { fetchD1 as _btFetchD1, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
+import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
@@ -10188,16 +10188,20 @@ app.get('/api/vol-forecast/cog-hv', async (req, res) => {
     const indices = {}, log = [];
     for (const cfg of WBT_INSTRUMENTS.filter(i => i.assetClass === 'index')) {
       try {
-        const bars = await _btFetchD1(cfg.oanda, 120);
-        if (!bars?.length) { log.push(`${cfg.name}: no D1`); continue; }
-        const r = _ccHvSigma(bars, { window: win });
+        // London-midnight anchor (matches the forecasting models) is primary; the
+        // 17:00-NY anchor is computed alongside so the anchor effect is visible.
+        const lonBars = await _btFetchD1Aligned(cfg.oanda, 120, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' });
+        const nyBars = await _btFetchD1(cfg.oanda, 120);
+        if (!lonBars?.length) { log.push(`${cfg.name}: no D1`); continue; }
+        const r = _ccHvSigma(lonBars, { window: win });
         if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.n}d)`); continue; }
-        const byWindow = _ccHvMulti(bars);
-        indices[cfg.name] = { volAnnual: r.volAnnual, window: win, n: r.n, byWindow, lastDate: bars.at(-1)?.date || null };
-        log.push(`${cfg.name}: CC-HV${win} σ ${r.volAnnual}% · windows ${JSON.stringify(byWindow)} (through ${bars.at(-1)?.date})`);
+        const byWindow = _ccHvMulti(lonBars);
+        const byWindowNy = nyBars?.length ? _ccHvMulti(nyBars) : null;
+        indices[cfg.name] = { volAnnual: r.volAnnual, window: win, n: r.n, anchor: 'london-midnight', byWindow, byWindowNy, lastDate: lonBars.at(-1)?.date || null };
+        log.push(`${cfg.name}: CC-HV${win} σ ${r.volAnnual}% [Ldn] · Ldn ${JSON.stringify(byWindow)} · NY ${JSON.stringify(byWindowNy)} (through ${lonBars.at(-1)?.date})`);
       } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
     }
-    const data = { indices, window: win, computedAt: new Date().toISOString(), dateISO: todayISO, log };
+    const data = { indices, window: win, anchor: 'london-midnight', computedAt: new Date().toISOString(), dateISO: todayISO, log };
     _cogHvCache.date = cacheKey; _cogHvCache.data = data;
     res.json({ ok: true, ...data });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
