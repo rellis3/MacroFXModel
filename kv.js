@@ -127,6 +127,10 @@ const _CF_EXACT = new Set([
   'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
 ]);
 function isCfKey(key) {
+  // kv_probe_* are throwaway keys the /api/kv-health round-trip writes to TEST the
+  // durable CF path (write→read→delete). Route them to CF so the probe actually
+  // exercises the same backend real config uses; they are deleted immediately.
+  if (key.startsWith('kv_probe_')) return true;
   // ai_entries_* and ai_cron_* are ephemeral — rebuilt automatically on restart
   if (key.startsWith('ai_entries_') || key.startsWith('ai_cron_')) return false;
   // v2_touch_* are per-pair extracted touches cached for the Telegram-v2 learn —
@@ -300,6 +304,38 @@ export function health() {
     warning: USE_CF ? null
       : 'Ephemeral file backend: bot config + MT5 credentials are WIPED on every redeploy. Set CF_ACCOUNT_ID + CF_API_TOKEN in Railway (or mount a volume at DATA_DIR).',
   };
+}
+
+// LIVE persistence probe — turns "did my config actually persist?" into a fact
+// instead of trusting a green "Saved ✓". Does a real write→read→delete round-trip
+// through the SAME durable path config uses (see isCfKey's kv_probe_ rule), and
+// reports which of `keys` are present in the store RIGHT NOW. Surfaced at
+// /api/kv-health so a config that silently landed in the ephemeral store (CF
+// inactive / write failing) is visible before a redeploy eats it.
+export async function probe(keys = []) {
+  const out = { roundTrip: null, keysPresent: {} };
+  if (USE_CF) {
+    const pk = `kv_probe_${Date.now()}`;
+    const val = JSON.stringify({ t: Date.now() });
+    try {
+      await put(pk, val);
+      const back = await get(pk);
+      out.roundTrip = back === val
+        ? 'ok — durable backend writes + reads back'
+        : 'FAILED: value did not read back from CF KV (writes are silently not persisting)';
+    } catch (e) {
+      out.roundTrip = `FAILED: ${e.message}`;
+    } finally {
+      try { await del(pk); } catch { /* best-effort cleanup */ }
+    }
+  } else {
+    out.roundTrip = 'skipped — file backend is NOT durable across redeploys (set CF_ACCOUNT_ID + CF_API_TOKEN)';
+  }
+  for (const k of keys) {
+    try { out.keysPresent[k] = (await get(k)) != null; }
+    catch (e) { out.keysPresent[k] = `error: ${e.message}`; }
+  }
+  return out;
 }
 
 export async function get(key) {

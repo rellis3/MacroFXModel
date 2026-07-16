@@ -2688,11 +2688,21 @@ async function checkKvHealth() {
     const r = await fetch('/api/kv-health');
     const h = await r.json();
     const el = document.getElementById('kvHealthBanner');
-    if (el && h && h.ok && !h.persistent) {
-      el.textContent = '⚠ Config & MT5 credentials are NOT persistent — they will be wiped on the next redeploy. '
+    if (!el || !h || !h.ok) return;
+    let msg = null;
+    if (!h.persistent) {
+      // Durable backend entirely off — everything is ephemeral.
+      msg = '⚠ Config & MT5 credentials are NOT persistent — they will be wiped on the next redeploy. '
         + 'Set CF_ACCOUNT_ID + CF_API_TOKEN in the Railway env (or mount a volume at DATA_DIR) to fix.';
-      el.style.display = 'block';
+    } else if (typeof h.roundTrip === 'string' && /^FAILED/i.test(h.roundTrip)) {
+      // Durable backend is configured but a LIVE write test failed — saves are
+      // silently falling back to the ephemeral store (this is the "config looked
+      // saved but vanished on redeploy" case the plain on/off check misses).
+      msg = '⚠ The durable store (Cloudflare KV) is configured but a LIVE write test FAILED — saves are '
+        + 'silently falling back to the ephemeral store and will be wiped on redeploy. '
+        + 'Check the CF_API_TOKEN scope / namespace. Details: ' + h.roundTrip;
     }
+    if (msg) { el.textContent = msg; el.style.display = 'block'; }
   } catch (e) {}
 }
 checkKvHealth();
