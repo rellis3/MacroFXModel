@@ -384,30 +384,97 @@ function _matrixHeaderIdx(lines) {
   }
   return -1;
 }
-export function parseOIMatrix(raw, { signed = false } = {}) {
+// Read the whole matrix ONCE into per-strike × per-expiry cells, so every view
+// (near-dated for the bot, all-expiry aggregate for volume, per-expiry term
+// structure for the brief) derives from the same parse instead of throwing 21/22
+// of the columns away. `rows[i] = { strike, cp: [[call,put] per expiry] }`; `dtes`
+// is the ordered DTE per expiry column (from the header's "N DTE" labels).
+function _matrixRows(raw) {
   if (!raw) return null;
   const lines = raw.split('\n');
   const hdr = _matrixHeaderIdx(lines);
-  if (hdr < 0) return null;                       // not the matrix format
-  let futures = null;                             // repeated price in the header block
-  for (let i = 0; i < hdr && futures == null; i++)
-    for (const tok of lines[i].split('\t')) {
-      const n = parseFloat(tok.replace(/,/g, ''));
-      if (Number.isFinite(n) && n > 50 && n < 1e7) { futures = n; break; }
-    }
-  const strikes = [], calls = [], puts = [];
-  for (let i = hdr + 1; i < lines.length && strikes.length < 500; i++) {
-    const cells = lines[i].split('\t');           // split on TAB — keep empty cells for alignment
+  if (hdr < 0) return null;
+  let futures = null;
+  const dtes = [];
+  for (let i = 0; i < hdr; i++) {
+    if (futures == null)
+      for (const tok of lines[i].split('\t')) {
+        const n = parseFloat(tok.replace(/,/g, ''));
+        if (Number.isFinite(n) && n > 50 && n < 1e7) { futures = n; break; }
+      }
+    const m = lines[i].match(/(-?\d+)\s*DTE/g);   // "0 DTE", "1 DTE", … in column order
+    if (m) for (const t of m) dtes.push(parseInt(t, 10));
+  }
+  const rows = [];
+  for (let i = hdr + 1; i < lines.length && rows.length < 500; i++) {
+    const cells = lines[i].split('\t');            // split on TAB — keep empty cells for alignment
     const strike = parseFloat((cells[0] || '').replace(/,/g, ''));
     if (!Number.isFinite(strike) || strike <= 0 || strike > 1e7) continue;
-    const rc = parseFloat((cells[1] || '').replace(/,/g, '')) || 0;   // near-dated call
-    const rp = parseFloat((cells[2] || '').replace(/,/g, '')) || 0;   // near-dated put
-    if (!signed && rc === 0 && rp === 0) continue;                    // no near-dated OI here (tail-hedge strikes)
-    strikes.push(strike);
-    calls.push(signed ? rc : Math.abs(rc));
-    puts.push(signed ? rp : Math.abs(rp));
+    const cp = [];
+    for (let j = 1; j < cells.length; j += 2) {     // (call,put) pair per expiry column
+      const c = parseFloat((cells[j] || '').replace(/,/g, ''));
+      const p = parseFloat((cells[j + 1] || '').replace(/,/g, ''));
+      cp.push([Number.isFinite(c) ? c : 0, Number.isFinite(p) ? p : 0]);
+    }
+    rows.push({ strike, cp });
   }
-  return strikes.length >= 2 ? { strikes, calls, puts, futures } : null;
+  return rows.length ? { futures, dtes, rows } : null;
+}
+
+// Derive a strike/call/put list from the matrix. mode 'near' (default) = the
+// near-dated expiry (first column — strongest gamma, avoids tail hedges); mode
+// 'aggregate' = summed across ALL expiries (used for volume, where today's
+// activity is spread across expiries and there's no tail-hedge distortion).
+export function parseOIMatrix(raw, { signed = false, mode = 'near' } = {}) {
+  const parsed = _matrixRows(raw);
+  if (!parsed) return null;
+  const strikes = [], calls = [], puts = [];
+  for (const r of parsed.rows) {
+    let c, p;
+    if (mode === 'aggregate') { c = r.cp.reduce((a, x) => a + x[0], 0); p = r.cp.reduce((a, x) => a + x[1], 0); }
+    else { c = r.cp[0]?.[0] ?? 0; p = r.cp[0]?.[1] ?? 0; }
+    if (!signed && c === 0 && p === 0) continue;
+    strikes.push(r.strike);
+    calls.push(signed ? c : Math.abs(c));
+    puts.push(signed ? p : Math.abs(p));
+  }
+  return strikes.length >= 2 ? { strikes, calls, puts, futures: parsed.futures } : null;
+}
+
+// Wall persistence: how many expiries carry a real position (call+put ≥ minOI) at
+// each strike. A wall present across MANY expiries is a durable structural level,
+// not a one-day pin — a cheap strength signal on top of the 3× rule. Map strike→count.
+export function oiMatrixPersistence(raw, minOI = 1) {
+  const parsed = _matrixRows(raw);
+  if (!parsed) return null;
+  const out = new Map();
+  for (const r of parsed.rows)
+    out.set(r.strike, r.cp.reduce((n, [c, p]) => n + (Math.abs(c) + Math.abs(p) >= minOI ? 1 : 0), 0));
+  return out;
+}
+
+// Per-expiry TERM STRUCTURE for the daily brief / analysis (not the bot): each
+// expiry's DTE, max pain, dominant call/put wall and total OI — so you can see
+// where each horizon pins, not just the near-dated one.
+export function oiMatrixTermStructure(raw, minOI = 1) {
+  const parsed = _matrixRows(raw);
+  if (!parsed) return null;
+  const nExp = Math.max(...parsed.rows.map(r => r.cp.length), 0);
+  const out = [];
+  for (let e = 0; e < nExp; e++) {
+    const strikes = [], calls = [], puts = [];
+    for (const r of parsed.rows) {
+      const c = Math.abs(r.cp[e]?.[0] ?? 0), p = Math.abs(r.cp[e]?.[1] ?? 0);
+      strikes.push(r.strike); calls.push(c); puts.push(p);
+    }
+    const total = calls.reduce((a, x) => a + x, 0) + puts.reduce((a, x) => a + x, 0);
+    if (total <= 0) continue;                       // empty expiry column
+    const cw = strikes.map((s, i) => ({ s, oi: calls[i] })).filter(x => x.oi >= minOI).sort((a, b) => b.oi - a.oi)[0];
+    const pw = strikes.map((s, i) => ({ s, oi: puts[i] })).filter(x => x.oi >= minOI).sort((a, b) => b.oi - a.oi)[0];
+    out.push({ dte: parsed.dtes[e] ?? null, maxPain: oiCalcMaxPain(strikes, calls, puts),
+      callWall: cw?.s ?? null, putWall: pw?.s ?? null, totalOI: total });
+  }
+  return out;
 }
 
 export function oiParseTable(raw) {
@@ -473,7 +540,9 @@ export function oiParseChangeTable(raw, expectedLen, strikes = null) {
 // Volume = TODAY's traded activity (distinct from resting OI — Lesson 1).
 export function oiParseVolume(raw) {
   if (!raw || !raw.trim()) return [];
-  const m = parseOIMatrix(raw);   // near-dated total (call+put) volume per strike
+  // Volume magnets = today's activity, which is spread ACROSS expiries (and, unlike
+  // OI, has no deep-OTM tail-hedge distortion) — so aggregate all expiry columns.
+  const m = parseOIMatrix(raw, { mode: 'aggregate' });
   if (m) return m.strikes.map((s, i) => ({ strike: s, volume: m.calls[i] + m.puts[i] }))
     .filter(v => v.volume > 0).sort((a, b) => b.volume - a.volume);
   const out = [];
@@ -724,6 +793,13 @@ export function processOIData() {
     ? parsed.strikes.map((s, i) => `${s}\t${parsed.callChg[i] || 0}\t${parsed.putChg[i] || 0}`).join('\n')
     : '';
 
+  // Wall persistence (across-expiry durability) + per-expiry term structure — from
+  // the FULL matrix, keyed by ORIGINAL (pre-shift) strikes. persArr aligns to the
+  // parsed (near-dated) strikes so it can be attached to each wall by index.
+  const _persMap = oiMatrixPersistence(rawOI, minOI);
+  const _persArr = parsed.strikes.map(s => _persMap?.get(s) ?? 0);
+  const termStructure = oiMatrixTermStructure(rawOI, minOI);   // null for the simple format
+
   // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices).
   // Inverted pairs (6J/6C/6S): CME strikes are in foreign-currency-per-USD space, so invert first.
   if (basis !== 0) {
@@ -765,12 +841,12 @@ export function processOIData() {
 
   // Ranked call walls (highest call OI first) and put walls (highest put OI first)
   const callWalls = parsed.strikes
-    .map((s, i) => ({ strike: s, oi: parsed.calls[i], chg: parsed.callChg[i] || 0 }))
+    .map((s, i) => ({ strike: s, oi: parsed.calls[i], chg: parsed.callChg[i] || 0, persistence: _persArr[i] || 0 }))
     .filter(x => x.oi >= minOI)
     .sort((a, b) => b.oi - a.oi)
     .slice(0, numLevels);
   const putWalls = parsed.strikes
-    .map((s, i) => ({ strike: s, oi: parsed.puts[i], chg: parsed.putChg[i] || 0 }))
+    .map((s, i) => ({ strike: s, oi: parsed.puts[i], chg: parsed.putChg[i] || 0, persistence: _persArr[i] || 0 }))
     .filter(x => x.oi >= minOI)
     .sort((a, b) => b.oi - a.oi)
     .slice(0, numLevels);
@@ -835,6 +911,7 @@ export function processOIData() {
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls, skew, volumeMagnets, concentration, clusters,
+    termStructure,   // per-expiry max pain / walls / DTE — for the daily brief & analysis (not the bot)
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
     callChgAbove, callChgBelow, putChgAbove, putChgBelow,
     numRows: parsed.strikes.length, numLevels, minOI,
