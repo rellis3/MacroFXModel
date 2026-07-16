@@ -724,7 +724,7 @@
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
         <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export</button>
-        <button class="vf-exp-item" id="vfCalibratedBtn"    onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">fx% · idx/gold HAR σ</span></button>
+        <button class="vf-exp-item" id="vfCalibratedBtn"    onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">backtest %</span></button>
         <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
         <button class="vf-exp-item" id="vfExportHarBtn"     onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">shadow σ</span></button>
         <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
@@ -1227,7 +1227,7 @@
         <tr><td>⬇ V+S</td><td>Combined: vol forecast + session stats in one paste. For the v3 Pine Script indicator.</td></tr>
         <tr><td>⬇ Extended</td><td>Full export: includes vol percentile, O-H/O-L legs, 5-day and 20-day ranges, vol cone, vol-of-vol.</td></tr>
         <tr><td>⬇ Weekly</td><td>WTD range consumption, directional bias, 5-day and 20-day forecasts per instrument.</td></tr>
-        <tr><td>⬇ Calibrated <span style="opacity:.6">fx% · idx/gold HAR σ</span></td><td>Best-per-class view for trading off. <b>FX</b>: H-L bands scaled by the research-book recalibration factors (raw runs ~15% wide), O-C unchanged. <b>Indices + gold</b>: bands rebuilt on <b>HAR-RV σ</b> (the <code>f.har</code> shadow) instead of GARCH/HV — the horse race found GARCH/HV are the worst estimators for these and HAR the best, and the σ-A/B confirmed HAR σ lifts the fade there. A scalar can't fix indices (it overshoots), so this swaps the estimator, not a multiplier. <b>Export only — the live forecaster/bot is not modified.</b></td></tr>
+        <tr><td>⬇ Calibrated <span style="opacity:.6">backtest %</span></td><td>H-L bands scaled by the research-book recalibration factors (raw forecast runs ~15% wide) for fx + commodity; index held; O-C unchanged. Export view only — the live forecaster is not modified.</td></tr>
         <tr><td>⬇ Export HAR</td><td>All instruments on the HAR-RV shadow σ (for comparison against the primary forecast).</td></tr>
       </table>
     </div>
@@ -2032,50 +2032,6 @@ function buildCalibratedExportText(data, factors) {
   return _calNote(factors) + '\n' + buildExportText(_calibrateForecast(data, factors));
 }
 
-// ── Best-per-class calibration (daily) ────────────────────────────────────────
-// The scalar recalibration above fixes fx + commodity but can't fix INDICES (a
-// single multiplier overshoots, so index is held at 1). The horse race + σ A/B
-// showed the real fix for indices AND gold is a better σ ESTIMATOR, not a scalar:
-// HAR-RV. Its bands are already computed live per instrument as the `f.har` shadow.
-// So this composer swaps in the HAR bands for index/commodity and keeps the scalar
-// H-L recalibration for fx (where HAR did NOT clearly win — its FX horse-race wins
-// were QLIKE artifacts). O-C for fx is carried through unchanged, as before.
-// Falls back to the scalar path for any index/gold whose `f.har` is missing.
-// EXPORT ONLY — the live forecaster's own fields are never modified.
-const _HAR_FIELDS = ['hl_median', 'hl_75', 'oc_median', 'oc_75'];
-function _composeHarCalibrated(data, factors) {
-  if (!data || !data.instruments) return data;
-  const clone = JSON.parse(JSON.stringify(data));
-  const harUsed = [], harMissing = [];
-  for (const [name, f] of Object.entries(clone.instruments)) {
-    if (!f || typeof f !== 'object') continue;
-    const cls = _assetClassOf(name);
-    if (cls === 'index' || cls === 'commodity') {
-      if (f.har && _HAR_FIELDS.every(k => typeof f.har[k] === 'number')) {
-        for (const k of _HAR_FIELDS) f[k] = f.har[k];               // swap in HAR σ bands (H-L + O-C)
-        if (typeof f.har.vol_annual === 'number') f.vol_annual = f.har.vol_annual;
-        harUsed.push(name);
-        continue;
-      }
-      harMissing.push(name);                                        // HAR shadow off/failed → scalar fallback
-    }
-    const fct = factors[cls] || factors.fx;                        // fx + any HAR-missing index/gold: scalar H-L
-    for (const k of Object.keys(f)) if (/^hl_/.test(k) && typeof f[k] === 'number') f[k] *= /75/.test(k) ? fct.hl75 : fct.hl50;
-  }
-  clone._harUsed = harUsed; clone._harMissing = harMissing;
-  return clone;
-}
-function _composedNote(factors, composed) {
-  const live = Object.values(factors).some(x => x.live);
-  const har = (composed?._harUsed || []).join(', ') || 'none';
-  const miss = composed?._harMissing?.length ? ` · HAR unavailable (scalar fallback): ${composed._harMissing.join(', ')}` : '';
-  return `[CALIBRATED — fx H-L ×${factors.fx.hl50}/${factors.fx.hl75} (research-book${live ? ' live' : ''}), fx O-C unchanged; indices+gold use HAR-RV σ bands (${har})${miss}. Horse-race + σ-A/B validated. Export view only — the live forecaster is unchanged.]`;
-}
-function buildCalibratedHarExportText(data, factors) {
-  const composed = _composeHarCalibrated(data, factors);
-  return _composedNote(factors, composed) + '\n' + buildExportText(composed);
-}
-
 // Shared copy-or-download for a calibrated text export.
 function _emitCalibrated(btnId, text, fname) {
   const btn = document.getElementById(btnId), orig = btn.dataset.orig || btn.textContent;
@@ -2094,8 +2050,10 @@ async function exportCalibrated() {
   if (!currentForecast) return;
   const btn = document.getElementById('vfCalibratedBtn'); btn.dataset.orig = btn.textContent; btn.textContent = '… factors';
   const factors = await loadRecalFactors();
-  // Best-per-class: fx scalar recalibration + indices/gold on HAR-RV σ (the σ-A/B-validated swap).
-  _emitCalibrated('vfCalibratedBtn', buildCalibratedHarExportText(currentForecast, factors), `vol-forecast-calibrated-${currentForecast.session_date}.txt`);
+  // Scalar research-book recalibration (fx + commodity; index held). HAR-σ path was
+  // reverted — the f.har shadow uses Garman-Klass daily-range RV, which misses index
+  // overnight gaps and understated equity-index σ (~half). See revert note.
+  _emitCalibrated('vfCalibratedBtn', buildCalibratedExportText(currentForecast, factors), `vol-forecast-calibrated-${currentForecast.session_date}.txt`);
 }
 async function exportCalibratedExtended() {
   if (!currentForecast) return;
@@ -2124,29 +2082,18 @@ function _cogBands(volAnnual, mult) {
   const s = volAnnual / COG_SQRT252 * mult;
   return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
 }
-// Which annualised σ drives the COG bands for this instrument. INDICES use the
-// HAR-RV shadow σ (f.har.vol_annual) — the horse race found the platform's GARCH is
-// the worst index estimator and HAR the best, and it closes the NQ-vs-COG gap. fx +
-// gold keep the primary σ. Applies to the COG export AND the COG chart levels.
-function _cogVolAnnual(name, f) {
-  if (_assetClassOf(name) === 'index' && f?.har && typeof f.har.vol_annual === 'number' && f.har.vol_annual > 0)
-    return f.har.vol_annual;
-  return f?.vol_annual;
-}
 function buildCogExportText(data, { weekly = false } = {}) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
   const note = weekly
-    ? '[COG-CALIBRATED WEEKLY — bands = C×σ√5 (5-day) / C×σ√20 (20-day); C: H-L 1.56/1.93, O-C 0.74/1.24; σ=annualised vol÷√252 (COG method, reverse-engineered). INDICES use HAR-RV σ [HAR], fx+gold primary σ.]'
-    : '[COG-CALIBRATED — bands = C×(annualised vol÷√252); C: H-L 1.56/1.93, O-C 0.74/1.24 (COG method, reverse-engineered — median≈Feller, tighter 75th/O-C). INDICES use HAR-RV σ [HAR], fx+gold primary σ.]';
+    ? '[COG-CALIBRATED WEEKLY — bands = C×σ√5 (5-day) / C×σ√20 (20-day); C: H-L 1.56/1.93, O-C 0.74/1.24; σ=annualised vol÷√252 (COG method, reverse-engineered)]'
+    : '[COG-CALIBRATED — bands = C×(annualised vol÷√252); C: H-L 1.56/1.93, O-C 0.74/1.24 (COG method, reverse-engineered — median≈Feller, tighter 75th/O-C)]';
   const lines = [note, weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**', `**For session: ${data.session_label}**`, ''];
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     if (!(f?.vol_annual > 0)) continue;
-    const va = _cogVolAnnual(name, f);                 // indices → HAR σ, fx+gold → primary
-    if (!(va > 0)) continue;
-    const harTag = va !== f.vol_annual ? ' [HAR]' : '';
+    const va = f.vol_annual;
     lines.push(div(name));
-    lines.push(`Volatility (annualized) : ${va.toFixed(2)}%${harTag}`);
+    lines.push(`Volatility (annualized) : ${va.toFixed(2)}%`);
     if (weekly) {
       const w5 = _cogBands(va, Math.sqrt(5)), w20 = _cogBands(va, Math.sqrt(20));
       lines.push('── 5-Day (Weekly)');
@@ -3337,8 +3284,8 @@ try { if (localStorage.getItem('vf_chart_level_mode') === 'cog') _levelMode = 'c
 // uses the forecast's own hl/oc fields.
 function _chartLevels(name, f) {
   if (_levelMode === 'cog' && f?.vol_annual > 0) {
-    const va = _cogVolAnnual(name, f);          // indices → HAR-RV σ; fx+gold → primary σ
-    if (va > 0) { const s = va / Math.sqrt(252); return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s }; }
+    const s = f.vol_annual / Math.sqrt(252);   // daily σ, % of price
+    return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
   }
   return { hl_median: f?.hl_median, hl_75: f?.hl_75, oc_median: f?.oc_median, oc_75: f?.oc_75 };
 }

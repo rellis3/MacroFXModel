@@ -5611,21 +5611,19 @@ async function _refreshVolatilityPlan() {
   const refreshLog = [];
   const onLog = m => { console.log('[volatility-bot]', m); refreshLog.push(m); };
   try {
-    // Opt-in σ source (default 'platform' = book-matching, unchanged). If the vol-bot
-    // config sets sigma_source:'har-nonfx', indices+gold use the SAME GK-HAR σ the
-    // calibrated export shows, so the bot's lines match it. fx always stays platform.
-    let sigmaSource = 'platform';
-    try { const raw = await kv.get('volatility_bot_config'); const c = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; if (c?.sigma_source === 'har-nonfx') sigmaSource = 'har-nonfx'; } catch { /* keep platform */ }
-    const harSigma = (bars, _ac) => {
-      try { const { sigmaFwd } = sigmaSeriesForExport(bars, 'harRV', { rv: _realizedVarSeries(bars, 'gk') }); return Number.isFinite(sigmaFwd) && sigmaFwd > 0 ? sigmaFwd : null; }
-      catch { return null; }
-    };
+    // Opt-in σ source. DISABLED: the only live HAR σ available here is the GK-daily
+    // shadow (sigmaSeriesForExport 'harRV' on Garman-Klass daily-range RV), which
+    // MISSES equity-index overnight gaps and understates index σ by ~half (SPX ~9.5%
+    // vs a true ~19%). Doing HAR right for indices needs the M1-realized-vol estimator
+    // (the one the σ A/B actually validated) wired into the live σ path — a separate
+    // build. Until then the bot stays on platform σ regardless of the config toggle,
+    // so a stray flip can't ship understated index lines.
     const plan = await refreshVolatilityPlan({
       getBook: getPerLineBook,
       fetchD1: (sym, n) => _btFetchD1(sym, n),
       fetchSessionOpen: (sym) => _btFetchSessionOpenLondon(sym),   // London-midnight open anchor
       sigmaSeries: _volSigmaSeries,
-      volSource: sigmaSource, harSigma,
+      volSource: 'platform',                                        // HAR path disabled (see note above)
       kvPut: (k, v) => kv.put(k, v),
       onLog,
     });
