@@ -2108,7 +2108,13 @@ function _cogVol(name, f) {
   const g = f?.vol_annual;
   if (_assetClassOf(name) === 'index') {
     const hv = _cogHvByInst && _cogHvByInst[name]?.volAnnual;
-    if (hv > 5 && g > 0 && hv >= 0.5 * g && hv <= 2.0 * g) return { va: hv, src: 'HV' };
+    // Adopt CC-HV only when plausible, else fall back to GARCH. OANDA's D1 for
+    // SPX500_USD/US30_USD understates their closes → CC-HV comes out ~half (SPX
+    // 0.56× GARCH, US30 0.47×), physically impossible when NQ (which shares SPX's
+    // mega-caps) is ~1.0× — so the 0.6× floor rejects those two → GARCH (~16%,
+    // NQ/SPX ≈ 1.3×, sane), while NQ/DE30/UK100 keep CC-HV. Upper bound guards
+    // a runaway high read.
+    if (hv > 5 && g > 0 && hv >= 0.6 * g && hv <= 2.0 * g) return { va: hv, src: 'HV' };
     if (_cogHvByInst && _cogHvByInst[name]) return { va: g, src: 'hvback' };   // computed but implausible → fall back, flag
   }
   return { va: g, src: 'primary' };
