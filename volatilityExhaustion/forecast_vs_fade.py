@@ -27,7 +27,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from vol_exhaustion_lib import load_m1, build_london_daily, causal_sigma
+from vol_exhaustion_lib import load_m1, build_london_daily, causal_sigma, causal_sigma_kind
 from measure import INSTRUMENTS, HERE, CH, _london_date_str, _zigzag
 
 # fx forecast constants (js/volBacktestEngine.js): Feller * hl_corr
@@ -67,11 +67,11 @@ def _dominant_fade(c, hi, lo, thr, O):
     return best[1], best[2]      # realized excursion (frac), kind
 
 
-def run(pair):
+def run(pair, sig_kind='yz', charts=True):
     rel, _ = INSTRUMENTS[pair]
     m1 = load_m1(os.path.join(HERE, '..', rel))
     daily = build_london_daily(m1)
-    sig = causal_sigma(daily)
+    sig = causal_sigma_kind(daily, sig_kind)
     nd = daily['open'].size
     split = nd // 2
     dayRange = (daily['high'] - daily['low'])
@@ -128,9 +128,9 @@ def run(pair):
         out[f'sigma_beats_naive_{lab}'] = bool(e_sig < e_naive)
         out[f'corr_sigma_fade_{lab}'] = round(float(corr), 3)
         out[f'n_{lab}'] = nn
-    # charts
-    _chart_hist(pair, real_sig, seg, out)
-    _chart_scatter(pair, sg, real_px, fc75_px, seg, out)
+    if charts:
+        _chart_hist(pair, real_sig, seg, out)
+        _chart_scatter(pair, sg, real_px, fc75_px, seg, out)
     return out
 
 
@@ -164,8 +164,27 @@ def _chart_scatter(pair, sg, real_px, fc75_px, seg, out):
     p = os.path.join(CH, f'{pair}_9_fade_scatter.png'); fig.savefig(p); plt.close(fig)
 
 
+ALL = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'NQ']
+
+if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'robust':
+    # the owner's hypothesis: does a winsorized (outlier-trimmed) sigma predict the
+    # fade zone BETTER than the RMS Yang-Zhang sigma? Compare OOS corr + MAE.
+    print(f'{"pair":7}  {"corr YZ / robust (OOS)":>24}   {"MAE YZ / robust (OOS)":>22}   winner')
+    wins = 0
+    for p in ALL:
+        ry = run(p, 'yz', charts=False)
+        rr = run(p, 'robust', charts=False)
+        cy, cr = ry['corr_sigma_fade_OOS'], rr['corr_sigma_fade_OOS']
+        my, mr = ry['mae_sigma_OOS'], rr['mae_sigma_OOS']
+        better = mr < my                       # lower error = better fade prediction
+        wins += better
+        print(f'{p:7}  {cy:>10.3f} / {cr:<10.3f}   {my:>9.3f} / {mr:<9.3f}   '
+              f'{"robust" if better else "YZ"}')
+    print(f'\n-> robust sigma predicts the fade better on {wins}/7 (OOS MAE).')
+    sys.exit(0)
+
 if __name__ == '__main__':
-    pairs = sys.argv[1:] or ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'NQ']
+    pairs = sys.argv[1:] or ALL
     res = {}
     print(f'{"pair":7} {"n":>5} {"fadeMed(σ)IS/OOS":>16} {"corr(σ,fade)OOS":>15} '
           f'{"MAEσ/naive OOS":>16} {"σ wins?":>8}')

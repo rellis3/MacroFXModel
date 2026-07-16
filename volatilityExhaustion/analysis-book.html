@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volatility-Exhaustion — Analysis Book</title>
+<style>
+  :root { --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --ink:#e6edf3; --mut:#9aa7b4;
+          --line:#2a323c; --grn:#3fb950; --red:#f85149; --amb:#e3a008; --blu:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.65 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:1040px; margin:0 auto; padding:32px 22px 96px; }
+  h1 { font-size:30px; margin:0 0 6px; letter-spacing:-.4px; }
+  h2 { font-size:22px; margin:44px 0 4px; padding-top:20px; border-top:1px solid var(--line); }
+  h3 { font-size:17px; margin:26px 0 6px; color:var(--blu); }
+  .sub { color:var(--mut); font-size:15px; margin:0 0 8px; }
+  p { margin:10px 0; }
+  code { background:var(--panel2); padding:1px 6px; border-radius:5px; font-size:13px;
+         color:#c9d5e1; }
+  .tag { display:inline-block; font-size:11.5px; font-weight:600; padding:2px 9px; border-radius:20px;
+         vertical-align:middle; margin-left:8px; }
+  .t-null { background:rgba(248,81,73,.15); color:var(--red); border:1px solid rgba(248,81,73,.4); }
+  .t-weak { background:rgba(227,160,8,.15); color:var(--amb); border:1px solid rgba(227,160,8,.4); }
+  .t-ok   { background:rgba(63,185,80,.15); color:var(--grn); border:1px solid rgba(63,185,80,.4); }
+  figure { margin:18px 0 6px; background:var(--panel); border:1px solid var(--line);
+           border-radius:10px; padding:12px; }
+  figure img { width:100%; display:block; border-radius:6px; background:#fff; }
+  figcaption { color:var(--mut); font-size:13px; margin-top:8px; }
+  .box { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--blu);
+         border-radius:8px; padding:12px 16px; margin:14px 0; }
+  .box.means { border-left-color:var(--amb); }
+  .box b { color:var(--ink); }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:13.5px; }
+  th,td { border:1px solid var(--line); padding:7px 10px; text-align:left; }
+  th { background:var(--panel2); }
+  .lede { font-size:16.5px; color:#cdd8e3; }
+  .foot { color:var(--mut); font-size:12.5px; margin-top:40px; border-top:1px solid var(--line);
+          padding-top:14px; }
+  .verdict { font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Volatility-Exhaustion — Analysis Book</h1>
+<p class="sub">A measurement-first study: does expected volatility tell us where price exhausts and reverts intraday? Built on ~10.4y of M1 (2016→2026), 7 instruments. Every chart below is reproduced by the Python in this folder.</p>
+
+<p class="lede">The honest one-line answer: <b>exhaustion in FX is real but weak, dispersed, and — critically — has a symmetric payoff, so it is not tradeable as a mechanical fade.</b> This book shows, step by step, how we know that.</p>
+
+<div class="box">
+<b>How to read this book.</b> Each section states the <em>question</em>, shows the <em>chart</em>, then gives <b>What it shows</b> and <b>What it means</b> in plain terms. The discipline throughout: the null (a driftless random walk) is pinned at <b>P=0.50</b> by construction, costs are on, and nothing counts unless it holds on <b>both halves</b> of the data (in-sample and out-of-sample).
+</div>
+
+<h2>0 · The σ contract</h2>
+<p>Everything is scaled by <b>Yang-Zhang(30)</b> — the exact FX forecast estimator (<code>js/volBacktestEngine.js</code>), computed pre-session with no lookahead. <code>compare_sigma.py</code> runs the real JS and this Python on identical bars and asserts they agree to 1e-10 — it passes at <b>1.7e-18</b>. So the exhaustion lens sits on the same σ as your live forecaster; it cannot drift.</p>
+
+<h2>1 · Distance from the open <span class="tag t-null">NULL</span></h2>
+<p class="sub"><b>Question:</b> when price is X units of expected σ from the open, is it more likely to revert?</p>
+<figure>
+  <img src="charts/EURUSD_1_hazard_vs_distance.png" alt="hazard vs distance">
+  <figcaption>Probability that price reverts toward the open (before continuing) vs distance from the open, in σ-units. Blue = in-sample, red = out-of-sample.</figcaption>
+</figure>
+<div class="box"><b>What it shows.</b> The curve hugs the 0.50 null at every distance. The far-distance wiggles (&gt;2.5σ) are noise — in-sample and out-of-sample <em>disagree</em> there, which was our pre-registered kill condition.</div>
+<div class="box means"><b>What it means.</b> Being far from the open, by itself, tells you nothing about whether price will turn. The intuitive "it's stretched, it'll snap back" idea is a null for FX.</div>
+
+<figure>
+  <img src="charts/EURUSD_2_hazard_heatmap.png" alt="hazard heatmap">
+  <figcaption>Reversal probability across distance × London hour-of-day. Green would mark a genuine exhaustion pocket.</figcaption>
+</figure>
+<div class="box"><b>What it shows.</b> No coherent green region anywhere — everything sits 0.42–0.57 with the mass near 0.50. Time-of-day, arrival speed and news splits (charts 3–4) are all flat too.</div>
+<div class="box means"><b>What it means.</b> There is no hour, no speed, no news condition where distance-from-open becomes a reliable reversal signal. The null is thorough.</div>
+
+<figure>
+  <img src="charts/EURUSD_5_extension_distribution.png" alt="extension distribution">
+  <figcaption>Distribution of each day's maximum travel from the open (σ-units).</figcaption>
+</figure>
+<div class="box"><b>What it shows.</b> Median daily travel 1.01σ, 75th 1.49σ — sitting right against the theoretical Feller high-low median of 1.572σ.</div>
+<div class="box means"><b>What it means.</b> A validation check: the σ-scaling is correct and matches theory, so the flat null above is a real finding, not a plumbing bug.</div>
+
+<h2>2 · Fresh extremes — "is this THE high?" <span class="tag t-weak">WEAK, REAL</span></h2>
+<p class="sub"><b>Question:</b> the fairer test — when price prints a <em>fresh</em> session extreme, does it hold (revert) more often when it's further out?</p>
+<figure>
+  <img src="charts/FXMAJORS_freshextreme_overlay.png" alt="fresh extreme overlay">
+  <figcaption>Probability a fresh extreme holds (reverts before extending), vs its distance from open, OOS, all 6 FX majors. Above 0.50 = exhausts; below = trends.</figcaption>
+</figure>
+<div class="box"><b>What it shows.</b> All 6 FX majors sit <em>above</em> the 0.50 null, strengthening past ~1.75–2σ (to 0.55–0.59). The index (NQ, chart 7) sits <em>below</em> 0.50 — it trends instead. The split repeats across both halves on ~44k events each.</div>
+<div class="box means"><b>What it means.</b> This is the first real thing: FX extremes weakly mean-revert; index extremes weakly continue — the economically-sensible signs. But it's small (≈53/47), and a robustness swap to a completely different estimator (HV20) leaves it intact, so it's not a vol-calc artifact.</div>
+
+<h2>3 · Forecast line vs the actual fade point <span class="tag t-null">NOT NEAR</span></h2>
+<p class="sub"><b>Question:</b> is the forecast's dynamic H-L exhaustion line near where price actually fades — and can σ predict that point?</p>
+<figure>
+  <img src="charts/EURUSD_8_fade_vs_forecast_hist.png" alt="fade vs forecast hist">
+  <figcaption>Where price actually makes its dominant fade (blue histogram), vs the forecast H-L median (1.29σ) and 75th (1.67σ) lines.</figcaption>
+</figure>
+<div class="box"><b>What it shows.</b> The actual dominant fade happens at a median of <b>~0.65σ</b> — well <em>inside</em> the forecast lines at 1.29σ and 1.67σ. The forecast lines are ~2.5× farther out than the typical turn.</div>
+<div class="box means"><b>What it means.</b> The forecast H-L lines mark the day's <em>range extreme</em>, not the reversal point. Fading <em>at</em> the 75th means arriving ~1σ <em>after</em> the turn already happened — in the overshoot tail. This is exactly why blind at-line fades failed in earlier work.</div>
+
+<figure>
+  <img src="charts/EURUSD_9_fade_scatter.png" alt="fade scatter">
+  <figcaption>Per-day: forecast distance (x) vs the actual fade distance (y). The 45° line is a perfect forecast.</figcaption>
+</figure>
+<div class="box"><b>What it shows.</b> A diffuse cloud below the 45° line. OOS correlation between σ and the realized fade is ~0.31 (0.23–0.33 across all 7). σ-scaling beats a naive fixed-% line 7/7 — but by only ~3%.</div>
+<div class="box means"><b>What it means.</b> σ gives you a soft <em>zone</em>, not a sharp point: pre-session vol carries a little real information about how far the fade will be, but most of the day-to-day variation it does not explain.</div>
+
+<h2>4 · Does trimming the outliers help? <span class="tag t-null">NO — 0/7</span></h2>
+<p class="sub"><b>Question (the owner's):</b> do the rare &gt;95% monster days pull the σ line too wide — would a trimmed/winsorized σ predict the fade zone better?</p>
+<div class="box"><b>What it shows.</b> A causal winsorized σ (outliers clipped, recomputed each day — <code>forecast_vs_fade.py robust</code>) predicts the fade <em>worse</em> on 7/7 instruments (correlation falls, MAE rises slightly).</div>
+<div class="box means"><b>What it means.</b> The tail is <em>signal, not noise</em>. Volatility clusters — a big day is followed by elevated vol — so the RMS σ that "remembers" recent large days predicts better precisely because it keeps them. (Note: the median/75th are percentiles, which are already outlier-robust; the only place outliers enter is the σ scale, and even there, keeping them wins.)</div>
+
+<h2>5 · The payoff geometry — the tradeability test <span class="tag t-null">NOT TRADEABLE</span></h2>
+<p class="sub"><b>Question:</b> if you actually faded a fresh 0.65σ extreme, how far does it revert in your favour (MFE) vs how far it runs against you first (MAE)?</p>
+<figure>
+  <img src="charts/EURUSD_10_payoff_geometry.png" alt="payoff geometry">
+  <figcaption>Left: reward (MFE, green) vs risk (MAE, red) after a fade entry. Right: out-of-sample expectancy per trade for every stop/target, after approximate cost.</figcaption>
+</figure>
+<div class="box"><b>What it shows.</b> The reward and risk distributions are almost perfectly on top of each other (median MFE 0.49σ vs MAE 0.51σ; reward/risk ≈1.0 on all 7 instruments). Every stop/target cell is negative out-of-sample after cost; the in-sample-best cell loses OOS on 6/7 (the lone USD/CAD positive is what noise produces across 7 tests).</div>
+<div class="box means verdict"><b>What it means.</b> This is the verdict. The exhaustion <em>tendency</em> is real, but the <em>payoff</em> is symmetric — when a fresh extreme reverts, it reverts about exactly as far as it first ran against you. Symmetric payoff minus costs = a loser at every stop/target. <b>A mechanical fresh-extreme fade is not a tradeable edge.</b></div>
+
+<h2>Scoreboard</h2>
+<table>
+<tr><th>Question</th><th>Answer</th></tr>
+<tr><td>Does distance-from-open predict reversal?</td><td><b style="color:var(--red)">Null</b> — flat 0.50, FX &amp; index</td></tr>
+<tr><td>Do fresh extremes exhaust?</td><td><b style="color:var(--amb)">Weakly yes</b> — ~53/47, 6/6 FX majors, OOS, estimator-robust; index trends</td></tr>
+<tr><td>Is the forecast line near the actual fade?</td><td><b style="color:var(--red)">No</b> — lines at 1.3–1.7σ, fade at ~0.65σ (range extreme, not the turn)</td></tr>
+<tr><td>Can σ forecast the fade point?</td><td><b style="color:var(--amb)">A zone, not a point</b> — corr ~0.3 OOS, beats fixed-% by ~3%</td></tr>
+<tr><td>Does trimming outliers help?</td><td><b style="color:var(--red)">No</b> — 0/7; the tail is signal (vol clustering)</td></tr>
+<tr><td>Is a fresh-extreme fade tradeable?</td><td><b style="color:var(--red)">No</b> — reward/risk ≈1.0, negative expectancy at every stop/target</td></tr>
+</table>
+
+<div class="box means">
+<b>The honest conclusion.</b> FX exhaustion is a real but weak, dispersed tendency with a symmetric payoff — a soft zone you could <em>describe</em>, not a precise line you can <em>fade</em> for money. The value here is a clean, cheap map of <em>why</em> every mechanical exhaustion fade fails: the turn is early and shallow, the overshoot that follows is as big as the reversion, and the forecast lines mark the range extreme rather than the turn. That is exactly the kind of null this harness exists to find.
+</div>
+
+<p class="foot">Reproduce: <code>cd volatilityExhaustion &amp;&amp; pip install pyarrow numpy matplotlib</code> then <code>python3 measure.py</code>, <code>measure_extremes.py combined</code>, <code>forecast_vs_fade.py</code>, <code>payoff_geometry.py</code>. Charts land in <code>charts/</code>. σ proven identical to the JS forecaster by <code>compare_sigma.py</code>. All results in-sample/out-of-sample split, costs on. EUR/USD shown as the worked example; the other six instruments are in <code>charts/</code>.</p>
+
+</div>
+</body>
+</html>

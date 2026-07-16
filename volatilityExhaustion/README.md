@@ -122,10 +122,39 @@ extreme, ~2.5× farther out than the typical dominant fade. The better-calibrate
 "expected fade" is the empirical constant **~0.65σ from the opposite extreme**, though
 even that is a wide distribution.
 
+## Phase 2 — payoff geometry (the tradeability test) (`payoff_geometry.py`)
+
+Question: if you actually faded a fresh 0.65σ extreme, is the reward bigger than the risk?
+Causal, one hypothetical trade/day: entry = first fresh extreme ≥0.65σ from open, fade toward
+open; measure forward **MFE** (favourable reversion) vs **MAE** (adverse overshoot) in σ, plus a
+stop/target expectancy grid (first-passage, after approximate cost), IS/OOS.
+
+**Finding — NOT tradeable.** Reward/risk ≈ **1.0** on all 7 instruments (median MFE ≈ MAE ≈ 0.5σ);
+the MFE and MAE distributions sit almost on top of each other. Every stop/target cell is negative
+OOS after cost, and the IS-best cell loses OOS on 6/7 (the lone USD/CAD positive is what noise
+produces across 7 tests). **The exhaustion tendency is real but the payoff is symmetric** — when a
+fresh extreme reverts it reverts about as far as it first ran against you, so after costs it loses
+at every stop/target. Same overshoot wall that beat every prior version, now confirmed with proper
+geometry.
+
+## Robust-σ test — does trimming the outliers help? (`forecast_vs_fade.py robust`)
+
+The owner's hypothesis: do the rare >95% days pull σ too wide? A causal winsorized σ predicts the
+fade **worse on 7/7** (corr falls, MAE rises). The tail is **signal, not noise** — vol clusters, so
+the RMS σ that keeps recent big days predicts better. (The median/75th are percentiles, already
+outlier-robust; outliers only enter the σ scale, and even there keeping them wins.)
+
+## Analysis book
+`analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
+what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
+alongside.
+
 ## Files
 - `vol_exhaustion_lib.py` — σ/day/anchor baseplate (matches the JS forecaster).
 - `compare_sigma.py` / `crosscheck_sigma.mjs` — the σ-drift guard (JS vs Python).
 - `measure.py` — distance-from-open lens + conditioners → `charts/*_1.._6.png`.
 - `measure_extremes.py` — fresh-extreme exhaustion test → `charts/*_7.png`; `combined` (overlay) / `compare` (YZ vs HV20) modes.
-- `forecast_vs_fade.py` — Phase-1 forecast-line-vs-actual-fade accuracy → `charts/*_8,_9.png`, `forecast_vs_fade_summary.json`.
-- `summary.json` — headline stats.
+- `forecast_vs_fade.py` — Phase-1 forecast-line-vs-actual-fade accuracy → `charts/*_8,_9.png`; `robust` mode = the outlier-trim test.
+- `payoff_geometry.py` — Phase-2 MFE/MAE reward-vs-risk + expectancy grid → `charts/*_10.png`, `payoff_geometry_summary.json`.
+- `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
+- `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
