@@ -6377,9 +6377,20 @@ app.get('/api/oi-levels', async (_req, res) => {
 // KV persistence health — does bot config/credentials survive a redeploy? The
 // bot-config page polls this to show a red banner when the backend is the ephemeral
 // file store (the "account details keep being lost" failure) so it's never silent.
-app.get('/api/kv-health', (_req, res) => {
-  try { res.json({ ok: true, ...kv.health() }); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+app.get('/api/kv-health', async (_req, res) => {
+  // Live persistence check: reports whether the durable backend is active AND does a
+  // real write→read→delete round-trip, plus whether the important bot config/creds
+  // keys are actually in the store right now. Lets the user confirm a Save persisted
+  // (vs. silently landing in the ephemeral file store that a redeploy wipes).
+  try {
+    const CHECK = [
+      'yield_spread_config', 'yield_spread_credentials', 'yield_spread_plan',
+      'volatility_bot_config', 'oi_bot_config', 'range_line_bot_config',
+      'macro_equity_config', 'regime_bot_config',
+    ];
+    const probe = await kv.probe(CHECK);
+    res.json({ ok: true, ...kv.health(), ...probe });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // index.html command-hub layout — which dropdown category each shortcut lives in
