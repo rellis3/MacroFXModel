@@ -1,16 +1,16 @@
-// Unit tests for the Bennett z-mean-reversion core. Pure math, no network — validates
-// CORRECTNESS, not edge (real run needs FRED + M1). Run: node js/bennettZCore.test.mjs
+// Unit tests for the yield-spread mean-reversion core. Pure math, no network — validates
+// CORRECTNESS, not edge (real run needs FRED + M1). Run: node js/yieldSpreadCore.test.mjs
 import assert from 'node:assert';
 import {
-  directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, tradeReturn, summarizeBennett,
+  directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, tradeReturn, summarizeYieldSpread,
   sharpeFromDaily, perYearBreakdown,
-} from './bennettZCore.js';
+} from './yieldSpreadCore.js';
 
 let passed = 0;
 function t(name, fn) { fn(); passed++; console.log(`  ✓ ${name}`); }
 const approx = (a, b, e = 1e-9) => Math.abs(a - b) <= e;
 
-console.log('bennettZCore — z-mean-reversion bricks');
+console.log('yieldSpreadCore — z-mean-reversion bricks');
 
 // ── direction ─────────────────────────────────────────────────────────────────────
 t('z>0 → LONG, z<0 → SHORT (matches dashboard EURUSD z=-5.5 → SHORT)', () => {
@@ -66,13 +66,13 @@ t('tradeReturn: LONG profits when price rises, SHORT when it falls', () => {
 });
 
 // ── summary + tier breakdown ────────────────────────────────────────────────────────
-t('summarizeBennett: win rate + tier breakdown + sizing A/B', () => {
+t('summarizeYieldSpread: win rate + tier breakdown + sizing A/B', () => {
   const trades = [
     { dir: 'LONG', entryClose: 100, exitClose: 102, size: 1,   tierLabel: '2.75+' }, // +2%
     { dir: 'LONG', entryClose: 100, exitClose: 98,  size: 2,   tierLabel: '4.5+'  }, // -2%, sized 2×
     { dir: 'SHORT', entryClose: 100, exitClose: 99, size: 1,   tierLabel: '2.75+' }, // +1%
   ];
-  const s = summarizeBennett(trades, { costPct: 0, periodsPerYear: 26 });
+  const s = summarizeYieldSpread(trades, { costPct: 0, periodsPerYear: 26 });
   assert.equal(s.n, 3);
   assert.equal(s.winRate, 66.7);
   // flat total = +2 -2 +1 = +1%; sized = +2 + 2*(-2) + 1 = -1%
@@ -81,7 +81,7 @@ t('summarizeBennett: win rate + tier breakdown + sizing A/B', () => {
   assert.equal(s.byTier['4.5+'].n, 1);
   assert.equal(s.byTier['4.5+'].winRate, 0);   // the extreme-z trade lost
 });
-t('summarizeBennett empty → zeros', () => assert.equal(summarizeBennett([], {}).n, 0));
+t('summarizeYieldSpread empty → zeros', () => assert.equal(summarizeYieldSpread([], {}).n, 0));
 
 // ── honest Sharpe from a real daily-return series + per-year ─────────────────────────
 t('sharpeFromDaily: positive mean with variance → positive; <2 pts → 0', () => {

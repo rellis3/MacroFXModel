@@ -34,6 +34,7 @@ MAGICS = {
     "bot/hedge_bot.py":                       20260011,  # was 20260007 (== RegimeV7!) — carries legacy read-set; close pre-change legs ASAP
     "volatility_bot/volatility_bot.py":       20260099,
     "range_line_bot/range_line_bot.py":       20260131,
+    "YieldSpreadBot/yield_spread_bot.py":           20260012,  # yield-spread z mean-reversion (validated macro sleeve)
 }
 
 # Magics that were re-assigned in the 2026-07 de-collision. Positions opened

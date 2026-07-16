@@ -94,6 +94,11 @@ const _CF_EXACT = new Set([
   'volatility_bot_audit_log',   // Volatility bot entry/exit audit log — cannot be auto-rebuilt
   // NOTE: volatility_bot_status is deliberately NOT here — the bot rewrites it every
   // ~30s, so it stays local/ephemeral to avoid blowing the CF KV write quota.
+  'yield_spread_config',           // Yield-Spread bot settings — must survive redeploys
+  'yield_spread_credentials',      // Yield-Spread bot MT5 credentials — must survive redeploys
+  'yield_spread_plan',             // Yield-Spread daily z-signal plan — keep last good plan across a redeploy
+  'yield_spread_audit',            // Yield-Spread entry/exit audit log — cannot be auto-rebuilt
+  // NOTE: yield_spread_status omitted like volatility_bot_status — rewritten every cycle, ephemeral.
   'range_line_bot_config',      // Range-Line bot settings — must survive redeploys
   'range_line_bot_credentials', // Range-Line bot MT5 credentials — must survive redeploys
   'range_line_bot_plan',        // Range-Line bot daily plan (per-instrument policy) — keep last good plan across a redeploy

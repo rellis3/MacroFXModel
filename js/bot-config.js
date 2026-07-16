@@ -4128,6 +4128,137 @@ loadOiConfig();
 loadOiCreds();
 loadOiLiveStatus();
 
+// ═══════════════════════════ YIELD-SPREAD BOT ═══════════════════════════════════
+// Yield-spread z-score mean-reversion. Config → yield_spread_config; the server
+// producer computes the daily z into yield_spread_plan; the bot pushes yield_spread_status.
+const YS_DEFAULTS = {
+  enabled: true, kill_switch: false, paper_mode: true,
+  risk_pct: 0.5, sl_pct: 2.5, max_lot: 5.0, max_open: 6,
+  entry_threshold: 2.0, z_window: 90, z_exit: 1.5, max_hold_days: 20,
+  pairs: ['usdjpy', 'eurusd', 'gbpusd', 'audusd', 'usdcad', 'usdchf'],
+  enabled_pairs: [], tick_secs: 10, status_secs: 60, plan_secs: 600,
+  tg_enabled: false, tg_token: '', tg_chat_id: '',
+};
+let _ysCfg = { ...YS_DEFAULTS };
+
+function renderYsForm() {
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  chk('ys_paper_mode', _ysCfg.paper_mode ?? true);
+  chk('ys_enabled', _ysCfg.enabled ?? true);
+  chk('ys_kill_switch', _ysCfg.kill_switch);
+  set('ys_entry_threshold', _ysCfg.entry_threshold ?? YS_DEFAULTS.entry_threshold);
+  set('ys_z_window', _ysCfg.z_window ?? YS_DEFAULTS.z_window);
+  set('ys_z_exit', _ysCfg.z_exit ?? YS_DEFAULTS.z_exit);
+  set('ys_max_hold_days', _ysCfg.max_hold_days ?? YS_DEFAULTS.max_hold_days);
+  set('ys_pairs', (_ysCfg.pairs ?? YS_DEFAULTS.pairs).join(', '));
+  set('ys_risk_pct', _ysCfg.risk_pct ?? YS_DEFAULTS.risk_pct);
+  set('ys_sl_pct', _ysCfg.sl_pct ?? YS_DEFAULTS.sl_pct);
+  set('ys_max_lot', _ysCfg.max_lot ?? YS_DEFAULTS.max_lot);
+  set('ys_max_open', _ysCfg.max_open ?? YS_DEFAULTS.max_open);
+  set('ys_tick_secs', _ysCfg.tick_secs ?? YS_DEFAULTS.tick_secs);
+  set('ys_status_secs', _ysCfg.status_secs ?? YS_DEFAULTS.status_secs);
+  set('ys_plan_secs', _ysCfg.plan_secs ?? YS_DEFAULTS.plan_secs);
+  chk('ys_tg_enabled', _ysCfg.tg_enabled);
+  set('ys_tg_token', _ysCfg.tg_token ?? '');
+  set('ys_tg_chat_id', _ysCfg.tg_chat_id ?? '');
+}
+function readYsForm() {
+  const numf = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  const list = id => (document.getElementById(id)?.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  _ysCfg.paper_mode = !!document.getElementById('ys_paper_mode')?.checked;
+  _ysCfg.enabled = !!document.getElementById('ys_enabled')?.checked;
+  _ysCfg.kill_switch = !!document.getElementById('ys_kill_switch')?.checked;
+  _ysCfg.entry_threshold = numf('ys_entry_threshold', YS_DEFAULTS.entry_threshold);
+  _ysCfg.z_window = Math.round(numf('ys_z_window', YS_DEFAULTS.z_window));
+  _ysCfg.z_exit = numf('ys_z_exit', YS_DEFAULTS.z_exit);
+  _ysCfg.max_hold_days = Math.round(numf('ys_max_hold_days', YS_DEFAULTS.max_hold_days));
+  const pairs = list('ys_pairs');
+  _ysCfg.pairs = pairs.length ? pairs : [...YS_DEFAULTS.pairs];
+  _ysCfg.risk_pct = numf('ys_risk_pct', YS_DEFAULTS.risk_pct);
+  _ysCfg.sl_pct = numf('ys_sl_pct', YS_DEFAULTS.sl_pct);
+  _ysCfg.max_lot = numf('ys_max_lot', YS_DEFAULTS.max_lot);
+  _ysCfg.max_open = Math.round(numf('ys_max_open', YS_DEFAULTS.max_open));
+  _ysCfg.tick_secs = Math.round(numf('ys_tick_secs', YS_DEFAULTS.tick_secs));
+  _ysCfg.status_secs = Math.round(numf('ys_status_secs', YS_DEFAULTS.status_secs));
+  _ysCfg.plan_secs = Math.round(numf('ys_plan_secs', YS_DEFAULTS.plan_secs));
+  _ysCfg.tg_enabled = !!document.getElementById('ys_tg_enabled')?.checked;
+  _ysCfg.tg_token = (document.getElementById('ys_tg_token')?.value || '').trim();
+  _ysCfg.tg_chat_id = (document.getElementById('ys_tg_chat_id')?.value || '').trim();
+}
+async function loadYsConfig() {
+  try { const stored = await kvGet('yield_spread_config'); if (stored) _ysCfg = { ...YS_DEFAULTS, ...stored }; renderYsForm(); } catch (e) {}
+}
+async function saveYsConfig() {
+  readYsForm();
+  const el = document.getElementById('ysSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('yield_spread_config', _ysCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#f472b6'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetYsDefaults() {
+  _ysCfg = { ...YS_DEFAULTS }; renderYsForm();
+  const el = document.getElementById('ysSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadYsCreds() { try { _applyCredsToForm(await kvGet('yield_spread_credentials'), 'ys_', 'ys_mt5_password'); } catch (e) {} }
+async function saveYsCreds() { await _saveCreds('yield_spread_credentials', 'ys_', 'ys_mt5_password', 'ysCredsStatus'); }
+
+async function loadYsLiveStatus() {
+  const ageEl = document.getElementById('ysLiveAge'), modeEl = document.getElementById('ysLiveMode');
+  const balEl = document.getElementById('ysLiveBal'), openEl = document.getElementById('ysOpenN');
+  const uniEl = document.getElementById('ysUniN'), paEl = document.getElementById('ysPlanAge');
+  try {
+    const [st, plan] = await Promise.all([kvGet('yield_spread_status'), kvGet('yield_spread_plan')]);
+    if (paEl) paEl.textContent = plan?.generatedAt ? new Date(plan.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+    // Prefer the bot's per-pair view; fall back to the plan's signals so the table
+    // populates even before the bot is running.
+    const rows = st?.pairs || Object.entries(plan?.signals || {}).map(([pair, s]) => {
+      const z = s.z;
+      const dir = (typeof z === 'number') ? ((z > 0) !== !!s.inverted ? 'LONG' : 'SHORT') : null;
+      const thr = plan?.entryThreshold ?? YS_DEFAULTS.entry_threshold;
+      return { pair, z, inverted: s.inverted, direction: dir,
+               signal: (typeof z === 'number' && Math.abs(z) >= thr) ? 'enter' : 'flat',
+               in_position: false, hold_days: null, asOf: s.asOf };
+    });
+    if (!st) { if (ageEl) ageEl.textContent = plan ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
+    else {
+      if (ageEl)  { ageEl.textContent = st.running ? (st.plan_stale ? 'Running — plan STALE (entries halted)' : 'Running') : 'Idle'; ageEl.style.color = st.plan_stale ? 'var(--amber)' : 'var(--text3)'; }
+      if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+      if (balEl)  balEl.textContent = st.balance != null ? `Balance ${st.balance}` : '';
+    }
+    if (openEl) openEl.textContent = (st?.mt5_positions || []).length;
+    if (uniEl)  uniEl.textContent  = rows.length;
+    const body = document.getElementById('ysLinesBody');
+    if (body) {
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No plan yet — run <code>POST /api/yield-spread/refresh-plan</code> (needs FRED_KEY on the server)</td></tr>';
+      } else {
+        const dirCol = d => d === 'LONG' ? 'var(--green)' : d === 'SHORT' ? 'var(--red)' : 'var(--text3)';
+        const sigCol = s => s === 'enter' ? 'var(--amber)' : 'var(--text3)';
+        body.innerHTML = rows.map(r => `<tr style="border-top:1px solid var(--border)">
+          <td style="padding:6px 10px;font-weight:600">${(r.pair || '').toUpperCase()}</td>
+          <td style="padding:6px 10px;text-align:right">${typeof r.z === 'number' ? (r.z > 0 ? '+' : '') + r.z.toFixed(2) : '—'}</td>
+          <td style="padding:6px 10px;color:${sigCol(r.signal)}">${r.signal || '—'}</td>
+          <td style="padding:6px 10px;color:${dirCol(r.direction)}">${r.direction || '—'}</td>
+          <td style="padding:6px 10px;color:${r.in_position ? 'var(--green)' : 'var(--text3)'}">${r.in_position ? 'yes' : '—'}</td>
+          <td style="padding:6px 10px;text-align:right;color:var(--text3)">${r.hold_days != null ? r.hold_days : '—'}</td>
+          <td style="padding:6px 10px;color:var(--text3)">${r.asOf || '—'}</td>
+        </tr>`).join('');
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+}
+
+window.saveYsConfig = saveYsConfig; window.resetYsDefaults = resetYsDefaults;
+window.saveYsCreds = saveYsCreds; window.loadYsLiveStatus = loadYsLiveStatus;
+
+document.querySelector('.tab-btn[data-tab="yieldspread"]')?.addEventListener('click', loadYsLiveStatus);
+loadYsConfig();
+loadYsCreds();
+loadYsLiveStatus();
+
 loadDaStatus();
 loadGoldStatus();
 loadGoldV2Status();

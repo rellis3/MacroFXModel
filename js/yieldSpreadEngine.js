@@ -1,6 +1,6 @@
-// Bennett z-mean-reversion — I/O engine.
+// yield-spread mean-reversion — I/O engine.
 //
-// The clean replication of Bennett's ACTUAL bot: enter on |spread-z| ≥ threshold in the
+// The clean replication of the colleague's ACTUAL bot: enter on |spread-z| ≥ threshold in the
 // z-direction, exit on z-reversion to ±zExit (or a max-hold), NO price levels. Reuses the
 // z-engine's FRED fetch + rolling-z + M1→daily-close (no copies) and the pure core.
 //
@@ -11,11 +11,11 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { ZSCORE_PAIRS, fetchFredObservations, _shiftDate, buildRollingZSeries, buildDayIndex } from './zscoreSpreadEngine.js';
 import {
-  BENNETT_DEFAULTS, directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, summarizeBennett, splitByDate, perYearBreakdown, sharpeFromDaily,
-} from './bennettZCore.js';
+  YIELD_SPREAD_DEFAULTS, directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit, summarizeYieldSpread, splitByDate, perYearBreakdown, sharpeFromDaily,
+} from './yieldSpreadCore.js';
 import { usdRole } from './macroDirectionCore.js';
 
-export { ZSCORE_PAIRS, BENNETT_DEFAULTS };
+export { ZSCORE_PAIRS, YIELD_SPREAD_DEFAULTS };
 
 // Shift a FRED observation Map's dates FORWARD by `days` to model publication lag —
 // a value nominally dated D is not KNOWN until D+lag.
@@ -39,12 +39,12 @@ function dailyClosesFrom(packed) {
 function cfFromOpts(opts) {
   return {
     zWindow: opts.zWindow ?? 252,
-    entryThreshold: opts.entryThreshold ?? BENNETT_DEFAULTS.entryThreshold,
-    zExit: opts.zExit ?? BENNETT_DEFAULTS.zExit,
-    maxHoldDays: opts.maxHoldDays ?? BENNETT_DEFAULTS.maxHoldDays,
-    costPct: opts.costPct ?? BENNETT_DEFAULTS.costPct,
-    splitFrac: opts.splitFrac ?? BENNETT_DEFAULTS.splitFrac,
-    tiers: opts.tiers ?? BENNETT_DEFAULTS.tiers,
+    entryThreshold: opts.entryThreshold ?? YIELD_SPREAD_DEFAULTS.entryThreshold,
+    zExit: opts.zExit ?? YIELD_SPREAD_DEFAULTS.zExit,
+    maxHoldDays: opts.maxHoldDays ?? YIELD_SPREAD_DEFAULTS.maxHoldDays,
+    costPct: opts.costPct ?? YIELD_SPREAD_DEFAULTS.costPct,
+    splitFrac: opts.splitFrac ?? YIELD_SPREAD_DEFAULTS.splitFrac,
+    tiers: opts.tiers ?? YIELD_SPREAD_DEFAULTS.tiers,
     autoOrient: opts.autoOrient !== false,
     invert: opts.invert || {},
   };
@@ -137,7 +137,7 @@ function simulatePair(pd, cf) {
   const yrs = Math.max(0.25, (new Date(dateTo) - new Date(dateFrom)) / (365.25 * 86_400_000));
   const ppy = Math.max(1, trades.length / yrs);
   const { splitDate, is, oos } = splitByDate(trades, cf.splitFrac);
-  const summ = recs => summarizeBennett(recs, { costPct: cf.costPct, periodsPerYear: ppy });
+  const summ = recs => summarizeYieldSpread(recs, { costPct: cf.costPct, periodsPerYear: ppy });
   const dates = daily.map(d => d.date);
   const retAll = dates.map(d => dailyRet[d] || 0);
   const retOos = dates.filter(d => splitDate && d >= splitDate).map(d => dailyRet[d] || 0);
@@ -166,7 +166,7 @@ function simulateBook(pairDataList, cf) {
   const pd0 = pairDataList[0];
   const yrs = pd0 ? Math.max(0.25, (new Date(pd0.dateTo) - new Date(pd0.dateFrom)) / (365.25 * 86_400_000)) : 8;
   const ppy = Math.max(1, allTrades.length / yrs);
-  const summ = recs => summarizeBennett(recs, { costPct: cf.costPct, periodsPerYear: ppy });
+  const summ = recs => summarizeYieldSpread(recs, { costPct: cf.costPct, periodsPerYear: ppy });
   const sortedDates = [...dateSet].sort();
   const cRetAll = sortedDates.map(d => combinedDaily[d] || 0);
   const cRetOos = sortedDates.filter(d => splitDate && d >= splitDate).map(d => combinedDaily[d] || 0);
@@ -181,12 +181,53 @@ function simulateBook(pairDataList, cf) {
   };
 }
 
-export async function runBennettZ(pairKey, opts = {}) {
+export async function runYieldSpread(pairKey, opts = {}) {
   const pd = await loadPairData(pairKey, opts);
   return simulatePair(pd, cfFromOpts(opts));
 }
 
-export async function runFullBennettZ(opts = {}, pairKeys = Object.keys(ZSCORE_PAIRS)) {
+// LIVE SIGNAL: today's spread-z per pair, computed with the SAME rolling-z + pub-lag math
+// as the backtest (single source of truth — the live bot never re-implements it). Returns
+// `{ pair: { z, spread, asOf, inverted, label, pip } }`. No M1 needed — FRED only. The
+// bot decides enter/exit from these z values + its config thresholds.
+export async function computeYieldSpreadSignals(opts = {}, pairKeys = Object.keys(ZSCORE_PAIRS)) {
+  const fredKey = opts.fredKey ?? process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not set — cannot fetch yield-spread data');
+  const zWindow = opts.zWindow ?? 90;
+  const dateTo = opts.dateTo || new Date().toISOString().substring(0, 10);
+  const dateFrom = opts.dateFrom || _shiftDate(dateTo, -(zWindow + 400));
+  const pubLagUsDays = opts.pubLagUsDays ?? 2;
+  const pubLagForeignDays = opts.pubLagForeignDays ?? 45;
+  const autoOrient = opts.autoOrient !== false;
+
+  const out = {};
+  for (const pairKey of pairKeys) {
+    const cfg = ZSCORE_PAIRS[pairKey];
+    if (!cfg) continue;
+    try {
+      const fredFrom = _shiftDate(dateFrom, -60);
+      const [usRaw, forRaw] = await Promise.all([
+        fetchFredObservations(cfg.baseSeries, fredFrom, fredKey),
+        fetchFredObservations(cfg.quoteSeries, fredFrom, fredKey),
+      ]);
+      const usObs = shiftObsForward(usRaw, pubLagUsDays);
+      const forObs = shiftObsForward(forRaw, pubLagForeignDays);
+      const zByDate = buildRollingZSeries(usObs, forObs, zWindow, dateFrom, dateTo);
+      const dates = [...zByDate.keys()].sort();
+      const lastDate = dates[dates.length - 1] || null;
+      const zInfo = lastDate ? zByDate.get(lastDate) : null;
+      const inverted = resolveInverted(usdRole(pairKey), { autoOrient, manualInvert: !!(opts.invert && opts.invert[pairKey]) });
+      out[pairKey] = zInfo
+        ? { z: +zInfo.z.toFixed(3), spread: +zInfo.spread.toFixed(4), asOf: lastDate, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip }
+        : { z: null, spread: null, asOf: null, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip };
+    } catch (e) {
+      out[pairKey] = { z: null, error: e?.message || String(e), label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip };
+    }
+  }
+  return out;
+}
+
+export async function runFullYieldSpread(opts = {}, pairKeys = Object.keys(ZSCORE_PAIRS)) {
   const pairDataList = [];
   const log = [];
   for (const pairKey of pairKeys) {
@@ -200,7 +241,7 @@ export async function runFullBennettZ(opts = {}, pairKeys = Object.keys(ZSCORE_P
 // Robustness sweep: load each pair's data ONCE, then re-simulate the book across a grid
 // of (entry threshold × z-window). The point is NOT to pick the best cell (p-hacking) —
 // it's to see whether a chosen cell sits on a BROAD profitable plateau vs a lucky spike.
-export async function runBennettZSweep(opts = {}, grid = {}) {
+export async function runYieldSpreadSweep(opts = {}, grid = {}) {
   const thresholds = grid.thresholds ?? [2.0, 2.25, 2.5, 2.75];
   const windows = grid.windows ?? [90, 126, 252];
   const pairKeys = Object.keys(ZSCORE_PAIRS);
