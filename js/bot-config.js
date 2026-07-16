@@ -4137,6 +4137,7 @@ const YS_DEFAULTS = {
   entry_threshold: 2.0, z_window: 90, z_exit: 1.5, max_hold_days: 20,
   pairs: ['usdjpy', 'eurusd', 'gbpusd', 'audusd', 'usdcad', 'usdchf'],
   enabled_pairs: [], tick_secs: 10, status_secs: 60, plan_secs: 600,
+  plan_utc_hour: 13, plan_utc_min: 5,
   tg_enabled: false, tg_token: '', tg_chat_id: '',
 };
 let _ysCfg = { ...YS_DEFAULTS };
@@ -4159,6 +4160,8 @@ function renderYsForm() {
   set('ys_tick_secs', _ysCfg.tick_secs ?? YS_DEFAULTS.tick_secs);
   set('ys_status_secs', _ysCfg.status_secs ?? YS_DEFAULTS.status_secs);
   set('ys_plan_secs', _ysCfg.plan_secs ?? YS_DEFAULTS.plan_secs);
+  set('ys_plan_utc_hour', _ysCfg.plan_utc_hour ?? YS_DEFAULTS.plan_utc_hour);
+  set('ys_plan_utc_min', _ysCfg.plan_utc_min ?? YS_DEFAULTS.plan_utc_min);
   chk('ys_tg_enabled', _ysCfg.tg_enabled);
   set('ys_tg_token', _ysCfg.tg_token ?? '');
   set('ys_tg_chat_id', _ysCfg.tg_chat_id ?? '');
@@ -4182,6 +4185,8 @@ function readYsForm() {
   _ysCfg.tick_secs = Math.round(numf('ys_tick_secs', YS_DEFAULTS.tick_secs));
   _ysCfg.status_secs = Math.round(numf('ys_status_secs', YS_DEFAULTS.status_secs));
   _ysCfg.plan_secs = Math.round(numf('ys_plan_secs', YS_DEFAULTS.plan_secs));
+  _ysCfg.plan_utc_hour = Math.min(23, Math.max(0, Math.round(numf('ys_plan_utc_hour', YS_DEFAULTS.plan_utc_hour))));
+  _ysCfg.plan_utc_min = Math.min(59, Math.max(0, Math.round(numf('ys_plan_utc_min', YS_DEFAULTS.plan_utc_min))));
   _ysCfg.tg_enabled = !!document.getElementById('ys_tg_enabled')?.checked;
   _ysCfg.tg_token = (document.getElementById('ys_tg_token')?.value || '').trim();
   _ysCfg.tg_chat_id = (document.getElementById('ys_tg_chat_id')?.value || '').trim();

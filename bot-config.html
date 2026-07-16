@@ -4187,7 +4187,10 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
         <div class="form-row"><span class="form-lbl">Protective stop (% of price) <small>WIDE gap insurance; z-exit is primary</small></span><input type="number" id="ys_sl_pct" min="0.2" max="10" step="0.1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Max lot</span><input type="number" id="ys_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Max open positions</span><input type="number" id="ys_max_open" min="1" max="20" step="1" style="width:80px"></div>
-        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Server plan refresh (UTC)</div>
+        <div class="form-row"><span class="form-lbl">Daily refresh time <small>when the server recomputes the z-plan from FRED — no restart needed (checked every 5 min)</small></span>
+          <span style="display:flex;align-items:center;gap:4px"><input type="number" id="ys_plan_utc_hour" min="0" max="23" step="1" style="width:60px"><b>:</b><input type="number" id="ys_plan_utc_min" min="0" max="59" step="1" style="width:60px"></span></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Bot cadences (seconds)</div>
         <div class="form-row"><span class="form-lbl">Price tick <small>local watch + stop</small></span><input type="number" id="ys_tick_secs" min="1" max="120" step="1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Status push</span><input type="number" id="ys_status_secs" min="10" max="600" step="5" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Plan re-pull</span><input type="number" id="ys_plan_secs" min="60" max="86400" step="60" style="width:80px"></div>
