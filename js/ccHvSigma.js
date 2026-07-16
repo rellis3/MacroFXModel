@@ -10,6 +10,8 @@
  *
  * Pure: daily bars in, annualised σ out. Needs only closes (D1) — no intraday.
  */
+import { buildLondonDaily } from './volEstimatorAB.js';
+
 const SQRT252 = Math.sqrt(252);
 
 /**
@@ -35,4 +37,17 @@ export function ccHvMulti(dailyBars, windows = [10, 14, 20, 30]) {
   const out = {};
   for (const win of windows) { const r = ccHvSigma(dailyBars, { window: win }); out[`w${win}`] = r.insufficient ? null : r.volAnnual; }
   return out;
+}
+
+// Same close-to-close HV, but the daily closes are built from the INTRADAY path
+// (buildLondonDaily → London-midnight days) instead of OANDA's D1 aggregation.
+// OANDA's D1 for some index CFDs (SPX500_USD/US30_USD) understates the close, so
+// their D1 CC-HV came out ~half; deriving the close from the real 5-min path fixes
+// that while keeping every index on the SAME calc (COG's method, London anchor).
+export function ccHvIntraday(intraday, { window = 20, windows = [10, 14, 20, 30] } = {}) {
+  const daily = buildLondonDaily(intraday);
+  if (daily.length < window + 2) return { insufficient: true, nDaily: daily.length };
+  const s = ccHvSigma(daily, { window });
+  if (s.insufficient) return { insufficient: true, nDaily: daily.length };
+  return { volAnnual: s.volAnnual, window, nDaily: daily.length, byWindow: ccHvMulti(daily, windows), lastDate: daily[daily.length - 1]?.date || null };
 }
