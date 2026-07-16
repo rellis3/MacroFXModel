@@ -523,9 +523,19 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
-| **Bennett-z core** | `js/bennettZCore.js` | pure replication of Bennett's confirmed dashboard mechanic (yield-SPREAD z mean-reversion, NO levels): `directionFromZ` (z>0→LONG / z<0→SHORT, matches the dashboard), `zTierSize`/`zTierLabel` (his 1×/1.5×/2× size ladder at ±2.75/±3.75/±4.5), `shouldExit` (z-revert to ±zExit or max-hold), `tradeReturn`, `summarizeBennett` (win/PF/expectancy/Sharpe + **flat-vs-z-sized A/B** + **by-z-tier breakdown** — the falsification of "extreme z = better"). Tested `js/bennettZCore.test.mjs` (10 asserts). | `js/bennettZEngine.js` (I/O: reuses z-engine FRED fetch + rolling-z + M1→daily closes; daily state machine, per-pair + pooled OOS); `server.js` `/api/bennett-z/*`; `bennett-z.html` | 🟡 built, **not yet run** (needs FRED + M1 on Railway) |
+| **Bennett-z core** | `js/bennettZCore.js` | pure replication of Bennett's confirmed dashboard mechanic (yield-SPREAD z mean-reversion, NO levels): `directionFromZ` + `resolveInverted` (orient sign by USD role — USD-quote pairs flip), `zTierSize`/`zTierLabel` (his 1×/1.5×/2× ladder), `shouldExit` (z-revert to ±zExit or max-hold), `tradeReturn`, `sharpeFromDaily` (honest daily-MTM Sharpe), `perYearBreakdown`, `summarizeBennett` (win/PF/expectancy + **flat-vs-z-sized A/B** + **by-z-tier breakdown**). Tested `js/bennettZCore.test.mjs` (17 asserts). | `js/bennettZEngine.js` (I/O: `loadPairData` once + `simulatePair`/`simulateBook`; real daily MTM; per-pair + pooled OOS + **`runBennettZSweep`** robustness grid); `server.js` `/api/bennett-z/*` (+`/sweep`); `bennett-z.html`; **strategy doc `BENNETT_Z_STRATEGY.md`** | ✅ **validated OOS** (lookahead-audited, sign-corrected, honest Sharpe ~1.0–1.2, 12/12 sweep cells profitable) — **not forward-proven** |
 
-A screenshot of Bennett's live dashboard confirmed his bot is **pure yield-spread-z mean-reversion** (entry |z|≥2.75, exit on z-revert to ±1.5, size by z-tier) with **NO price levels** — so the earlier v1 (z + Asia-range fib) and the levels/macro-direction nulls tested configs he isn't running. This is the clean test of his *actual* mechanism. Prior is skeptical (our z-tier work found performance DECAYED as |z| grew, yet he sizes UP at extremes — the `byTier` + `sized` A/B measure exactly that). Daily-close resolution avoids intrabar TP/SL path assumptions.
+**The survivor of the whole investigation.** A screenshot confirmed Bennett's bot is pure
+yield-spread-z mean-reversion (no levels), so the earlier v1/levels/macro-direction nulls
+had tested configs he isn't running. Testing his *actual* mechanism — after correcting a
+USD-quote **direction-sign bug**, adding **publication lags** (the monthly foreign rates
+were lookahead), and fixing an **inflated Sharpe** (smeared daily returns → real daily
+MTM) — it clears every audit: 6/6 pairs, 5/5 OOS years, **12/12 parameter-sweep cells
+profitable** (graceful degradation, not a lucky spike). Validated region: entry |z| 2.0–2.5,
+window 90–126 (Bennett's own 2.75/252 is a *weaker* cell; his size-up-at-extremes rule is
+backwards — trade flat). Full write-up, caveats, and paper-trade plan in
+`BENNETT_Z_STRATEGY.md`. **Still one historical period — forward paper-trading is the only
+remaining proof.**
 
 ---
 
