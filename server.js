@@ -87,6 +87,7 @@ import { pooledFade as _pooledFade, poolPortfolio as _poolPortfolio, inspectSess
 import { sessionsAt as _sessionsAt } from './js/fillRealismEngine.js';   // 22:00-UTC broker-day session grouping (for the fade viewer)
 import { fetchM1Gap as _fetchM1Gap } from './js/m1GapFill.js';   // OANDA M1 gap-fill so the viewer can show days past the parquet snapshot
 import { rvHarSigma as _rvHarSigma } from './js/indexRvHar.js';   // validated 5-min realized-vol HAR σ for index COG lines (not the GK shadow)
+import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti } from './js/ccHvSigma.js';   // COG's own σ method (close-to-close HV) for reproducing his index lines
 import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
@@ -10169,6 +10170,37 @@ app.get('/api/vol-forecast/rv-har', async (req, res) => {
   try { const d = await _rvHarJob; res.json({ ok: true, ...d }); }
   catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
   finally { _rvHarJob = null; }
+});
+
+// ── Index COG-HV σ — COG's OWN method (close-to-close HV) for the COG index lines ──
+// The RV-HAR σ read ~15% under COG (HAR smooths + partial gap capture). COG uses
+// plain annualised close-to-close HV, which is gap-inclusive + current — so this
+// reproduces his numbers. Needs only current D1 (fetchD1) — no intraday, light.
+// Returns σ at several windows so the window can be tuned to match his output.
+const _cogHvCache = { date: null, data: null };
+app.get('/api/vol-forecast/cog-hv', async (req, res) => {
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const win = Math.max(5, Math.min(60, parseInt(req.query.window, 10) || 20));
+  const cacheKey = `${todayISO}:${win}`;
+  if (_cogHvCache.date === cacheKey && _cogHvCache.data && !req.query.force) return res.json({ ok: true, cached: true, ...(_cogHvCache.data) });
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cog-hv needs current D1' });
+  try {
+    const indices = {}, log = [];
+    for (const cfg of WBT_INSTRUMENTS.filter(i => i.assetClass === 'index')) {
+      try {
+        const bars = await _btFetchD1(cfg.oanda, 120);
+        if (!bars?.length) { log.push(`${cfg.name}: no D1`); continue; }
+        const r = _ccHvSigma(bars, { window: win });
+        if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.n}d)`); continue; }
+        const byWindow = _ccHvMulti(bars);
+        indices[cfg.name] = { volAnnual: r.volAnnual, window: win, n: r.n, byWindow, lastDate: bars.at(-1)?.date || null };
+        log.push(`${cfg.name}: CC-HV${win} σ ${r.volAnnual}% · windows ${JSON.stringify(byWindow)} (through ${bars.at(-1)?.date})`);
+      } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+    }
+    const data = { indices, window: win, computedAt: new Date().toISOString(), dateISO: todayISO, log };
+    _cogHvCache.date = cacheKey; _cogHvCache.data = data;
+    res.json({ ok: true, ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 // ── Vol Horse Race — the gold workbook's estimator race, generalised to every ──
