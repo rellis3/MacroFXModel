@@ -1381,6 +1381,7 @@ function loadForecast(date) {
     .then(data => {
       currentForecast = data;
       if (!date) liveForecast = data;
+      if (_levelMode === 'cog') loadRvHar().then(_redrawCogCharts);   // prime index RV-HAR σ for COG charts
 
       if (sdot) sdot.className = 'v2-status-dot ok';
       if (stxt) stxt.textContent = 'OK';
@@ -1539,6 +1540,7 @@ function triggerRefresh() {
   .then(([forecast, session]) => {
     currentForecast = forecast;
     if (!date) liveForecast = forecast;
+    if (_levelMode === 'cog') loadRvHar().then(_redrawCogCharts);   // prime index RV-HAR σ for COG charts
     currentSession  = session;
     renderV2Grid(forecast);
     if (session && session.instruments) {
@@ -2082,18 +2084,53 @@ function _cogBands(volAnnual, mult) {
   const s = volAnnual / COG_SQRT252 * mult;
   return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
 }
+
+// ── Index σ = validated 5-min realized-vol HAR (the COG views only) ───────────
+// Fetched from /api/vol-forecast/rv-har (5-min realized variance → forward HAR —
+// the estimator the σ A/B validated, NOT the Garman-Klass daily-range shadow that
+// understated indices). Guarded: an index only adopts RV-HAR when it's plausible
+// (>5% AND within 0.6–1.7× the GARCH σ) — so a bad compute can never ship a halved
+// line; it falls back to primary σ and is flagged. fx + gold always primary.
+let _rvHarByInst = null, _rvHarPromise = null, _rvHarMeta = null;
+async function loadRvHar() {
+  if (_rvHarByInst) return _rvHarByInst;
+  if (!_rvHarPromise) _rvHarPromise = fetch('/api/vol-forecast/rv-har')
+    .then(r => r.json())
+    .then(j => { _rvHarMeta = { computedAt: j.computedAt, log: j.log }; return (_rvHarByInst = (j.ok && j.indices) ? j.indices : {}); })
+    .catch(() => (_rvHarByInst = {}));
+  return _rvHarPromise;
+}
+// { va, src }: indices → guarded RV-HAR σ (src 'RV') or primary fallback ('gfback');
+// fx + gold → primary ('primary').
+function _cogVol(name, f) {
+  const g = f?.vol_annual;
+  if (_assetClassOf(name) === 'index') {
+    const rv = _rvHarByInst && _rvHarByInst[name]?.volAnnual;
+    // Guard: adopt RV-HAR only if plausible. The broken GK shadow read ~0.62× GARCH
+    // (SPX 9.5% vs ~15%), so the 0.7× floor rejects that halved signature while still
+    // allowing a legitimately-tighter RV (GARCH over-forecasts indices ~30%).
+    if (rv > 8 && g > 0 && rv >= 0.7 * g && rv <= 1.6 * g) return { va: rv, src: 'RV' };
+    if (_rvHarByInst && _rvHarByInst[name]) return { va: g, src: 'gfback' };   // computed but implausible → fall back, flag
+  }
+  return { va: g, src: 'primary' };
+}
+
 function buildCogExportText(data, { weekly = false } = {}) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
   const note = weekly
-    ? '[COG-CALIBRATED WEEKLY — bands = C×σ√5 (5-day) / C×σ√20 (20-day); C: H-L 1.56/1.93, O-C 0.74/1.24; σ=annualised vol÷√252 (COG method, reverse-engineered)]'
-    : '[COG-CALIBRATED — bands = C×(annualised vol÷√252); C: H-L 1.56/1.93, O-C 0.74/1.24 (COG method, reverse-engineered — median≈Feller, tighter 75th/O-C)]';
+    ? '[COG-CALIBRATED WEEKLY — bands = C×σ√5 (5-day) / C×σ√20 (20-day); C: H-L 1.56/1.93, O-C 0.74/1.24; σ=annualised vol÷√252 (COG method, reverse-engineered). Indices: 5-min realized-vol HAR σ [RV]; fx+gold primary σ.]'
+    : '[COG-CALIBRATED — bands = C×(annualised vol÷√252); C: H-L 1.56/1.93, O-C 0.74/1.24 (COG method, reverse-engineered — median≈Feller, tighter 75th/O-C). Indices: 5-min realized-vol HAR σ [RV]; fx+gold primary σ.]';
   const lines = [note, weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**', `**For session: ${data.session_label}**`, ''];
+  const fellBack = [];
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     if (!(f?.vol_annual > 0)) continue;
-    const va = f.vol_annual;
+    const { va, src } = _cogVol(name, f);
+    if (!(va > 0)) continue;
+    const tag = src === 'RV' ? ' [RV]' : (src === 'gfback' ? ' [GARCH — RV rejected]' : '');
+    if (src === 'gfback') fellBack.push(name);
     lines.push(div(name));
-    lines.push(`Volatility (annualized) : ${va.toFixed(2)}%`);
+    lines.push(`Volatility (annualized) : ${va.toFixed(2)}%${tag}`);
     if (weekly) {
       const w5 = _cogBands(va, Math.sqrt(5)), w20 = _cogBands(va, Math.sqrt(20));
       lines.push('── 5-Day (Weekly)');
@@ -2109,14 +2146,18 @@ function buildCogExportText(data, { weekly = false } = {}) {
     }
     lines.push('');
   }
+  if (fellBack.length) lines.push(`[note: RV-HAR σ rejected as implausible for ${fellBack.join(', ')} — using primary σ there]`, '');
+  else if (!_rvHarByInst) lines.push('[note: RV-HAR σ not yet loaded — indices on primary σ; re-open COG once it loads]', '');
   return lines.join('\n');
 }
-function exportCog() {
+async function exportCog() {
   if (!currentForecast) return;
+  await loadRvHar();
   _emitCalibrated('vfCogBtn', buildCogExportText(currentForecast, { weekly: false }), `vol-forecast-cog-${currentForecast.session_date}.txt`);
 }
-function exportCogWeekly() {
+async function exportCogWeekly() {
   if (!currentForecast) return;
+  await loadRvHar();
   _emitCalibrated('vfCogWkBtn', buildCogExportText(currentForecast, { weekly: true }), `vol-forecast-cog-weekly-${currentForecast.session_date}.txt`);
 }
 
@@ -3284,7 +3325,8 @@ try { if (localStorage.getItem('vf_chart_level_mode') === 'cog') _levelMode = 'c
 // uses the forecast's own hl/oc fields.
 function _chartLevels(name, f) {
   if (_levelMode === 'cog' && f?.vol_annual > 0) {
-    const s = f.vol_annual / Math.sqrt(252);   // daily σ, % of price
+    const { va } = _cogVol(name, f);           // indices → guarded 5-min RV-HAR σ; fx+gold → primary
+    const s = va / Math.sqrt(252);             // daily σ, % of price
     return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
   }
   return { hl_median: f?.hl_median, hl_75: f?.hl_75, oc_median: f?.oc_median, oc_75: f?.oc_75 };
@@ -3296,13 +3338,19 @@ function _syncChartLevelBtn() {
   b.textContent = '📐 Chart: ' + (cog ? 'COG' : 'Original');
   b.classList.toggle('active', cog);
 }
+function _redrawCogCharts() {
+  if (currentForecast?.instruments) loadAllM5Charts(currentForecast.instruments);   // redraw grid (cached M5, no refetch)
+  const openName = document.getElementById('v2ChartModalName')?.textContent;
+  if (_modalChart && openName && openName !== '—') _buildModalChart(openName);       // redraw open modal too
+}
 function toggleChartLevelMode() {
   _levelMode = _levelMode === 'cog' ? 'original' : 'cog';
   try { localStorage.setItem('vf_chart_level_mode', _levelMode); } catch (_) {}
   _syncChartLevelBtn();
-  if (currentForecast?.instruments) loadAllM5Charts(currentForecast.instruments);   // redraw grid (cached M5, no refetch)
-  const openName = document.getElementById('v2ChartModalName')?.textContent;
-  if (_modalChart && openName && openName !== '—') _buildModalChart(openName);       // redraw open modal too
+  _redrawCogCharts();
+  // COG index lines use the 5-min RV-HAR σ — fetch it (once), then redraw so index
+  // levels snap to the validated σ when it arrives.
+  if (_levelMode === 'cog' && !_rvHarByInst) loadRvHar().then(_redrawCogCharts);
 }
 if (document.readyState !== 'loading') _syncChartLevelBtn();
 else document.addEventListener('DOMContentLoaded', _syncChartLevelBtn);
