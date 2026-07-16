@@ -2124,19 +2124,31 @@ function _cogBands(volAnnual, mult) {
   const s = volAnnual / COG_SQRT252 * mult;
   return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
 }
+// Which annualised σ drives the COG bands for this instrument. INDICES use the
+// HAR-RV shadow σ (f.har.vol_annual) — the horse race found the platform's GARCH is
+// the worst index estimator and HAR the best, and it closes the NQ-vs-COG gap. fx +
+// gold keep the primary σ. Applies to the COG export AND the COG chart levels.
+function _cogVolAnnual(name, f) {
+  if (_assetClassOf(name) === 'index' && f?.har && typeof f.har.vol_annual === 'number' && f.har.vol_annual > 0)
+    return f.har.vol_annual;
+  return f?.vol_annual;
+}
 function buildCogExportText(data, { weekly = false } = {}) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
   const note = weekly
-    ? '[COG-CALIBRATED WEEKLY — bands = C×σ√5 (5-day) / C×σ√20 (20-day); C: H-L 1.56/1.93, O-C 0.74/1.24; σ=annualised vol÷√252 (COG method, reverse-engineered)]'
-    : '[COG-CALIBRATED — bands = C×(annualised vol÷√252); C: H-L 1.56/1.93, O-C 0.74/1.24 (COG method, reverse-engineered — median≈Feller, tighter 75th/O-C)]';
+    ? '[COG-CALIBRATED WEEKLY — bands = C×σ√5 (5-day) / C×σ√20 (20-day); C: H-L 1.56/1.93, O-C 0.74/1.24; σ=annualised vol÷√252 (COG method, reverse-engineered). INDICES use HAR-RV σ [HAR], fx+gold primary σ.]'
+    : '[COG-CALIBRATED — bands = C×(annualised vol÷√252); C: H-L 1.56/1.93, O-C 0.74/1.24 (COG method, reverse-engineered — median≈Feller, tighter 75th/O-C). INDICES use HAR-RV σ [HAR], fx+gold primary σ.]';
   const lines = [note, weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**', `**For session: ${data.session_label}**`, ''];
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     if (!(f?.vol_annual > 0)) continue;
+    const va = _cogVolAnnual(name, f);                 // indices → HAR σ, fx+gold → primary
+    if (!(va > 0)) continue;
+    const harTag = va !== f.vol_annual ? ' [HAR]' : '';
     lines.push(div(name));
-    lines.push(`Volatility (annualized) : ${f.vol_annual.toFixed(2)}%`);
+    lines.push(`Volatility (annualized) : ${va.toFixed(2)}%${harTag}`);
     if (weekly) {
-      const w5 = _cogBands(f.vol_annual, Math.sqrt(5)), w20 = _cogBands(f.vol_annual, Math.sqrt(20));
+      const w5 = _cogBands(va, Math.sqrt(5)), w20 = _cogBands(va, Math.sqrt(20));
       lines.push('── 5-Day (Weekly)');
       lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
       lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
@@ -2144,7 +2156,7 @@ function buildCogExportText(data, { weekly = false } = {}) {
       lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
       lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
     } else {
-      const d = _cogBands(f.vol_annual, 1);
+      const d = _cogBands(va, 1);
       lines.push(row('High to Low range', d.hl_median, d.hl_75));
       lines.push(row('Open to Close move', d.oc_median, d.oc_75));
     }
@@ -3323,10 +3335,10 @@ try { if (localStorage.getItem('vf_chart_level_mode') === 'cog') _levelMode = 'c
 // The forecast levels a chart should draw, given the current mode. COG mode recomputes
 // from vol_annual × COG constants (COG_C, defined in the export section); original mode
 // uses the forecast's own hl/oc fields.
-function _chartLevels(f) {
+function _chartLevels(name, f) {
   if (_levelMode === 'cog' && f?.vol_annual > 0) {
-    const s = f.vol_annual / Math.sqrt(252);   // daily σ, % of price
-    return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
+    const va = _cogVolAnnual(name, f);          // indices → HAR-RV σ; fx+gold → primary σ
+    if (va > 0) { const s = va / Math.sqrt(252); return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s }; }
   }
   return { hl_median: f?.hl_median, hl_75: f?.hl_75, oc_median: f?.oc_median, oc_75: f?.oc_75 };
 }
@@ -3543,7 +3555,7 @@ async function loadM5Chart(name, f) {
     try {
       // Pre-compute forecast level prices so autoscaleInfoProvider can include them
       const LS = LightweightCharts.LineStyle;
-      const L = _chartLevels(f);   // original or COG levels per the top-bar toggle
+      const L = _chartLevels(name, f);   // original or COG levels per the top-bar toggle
       const lineDefs = [
         { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
         { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
@@ -3835,7 +3847,7 @@ function _buildModalChart(name) {
   }
 
   const LS = LightweightCharts.LineStyle;
-  const L = _chartLevels(f);   // original or COG levels per the top-bar toggle
+  const L = _chartLevels(name, f);   // original or COG levels per the top-bar toggle
   const lineDefs = [
     { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
     { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
