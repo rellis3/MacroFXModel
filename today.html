@@ -2477,6 +2477,11 @@ function storyOptions(r) {
   // Near-dated expiry (Lesson 5 — strongest gamma/pin) if a per-expiry view exists.
   const exps = Object.values(o.inst?.expiries || {}).filter(e => Number.isFinite(e.dte)).sort((a, b) => a.dte - b.dte);
   if (exps.length && exps[0].maxPain) bits.push(`<b>${exps[0].dte}DTE</b> max pain ${fmtN(exps[0].maxPain, dp)} (near-dated pin)`);
+  // Auto-derived term structure (from the pasted multi-expiry matrix) — where each
+  // horizon pins. Shown only when it adds a second horizon beyond the near-dated pin.
+  const ts = (o.inst?.termStructure || []).filter(e => Number.isFinite(e.maxPain));
+  if (!exps.length && ts.length >= 2)
+    bits.push(`<span class="muted">term: ${ts.slice(0, 3).map(e => `${e.dte != null ? e.dte + 'D' : '?'}→${fmtN(e.maxPain, dp)}`).join(' ')}</span>`);
   // Concentration + institutional cluster zones.
   const con = o.inst?.concentration;
   if (con && con.read !== 'moderate') bits.push(`<span class="muted">${con.read} (top5 ${con.top5Pct}%)</span>`);
@@ -2609,11 +2614,14 @@ function assembleSnapshot(r) {
     totalCallOI: oi.inst?.totalCallOI, totalPutOI: oi.inst?.totalPutOI,
     totalCallChg: oi.inst?.totalCallChg, totalPutChg: oi.inst?.totalPutChg,
     topLevels: (oi.inst?.topLevels || []).slice(0, 6),
-    callWalls: (oi.inst?.callWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
-    putWalls: (oi.inst?.putWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult })),
+    callWalls: (oi.inst?.callWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult, persistence: w.persistence })),
+    putWalls: (oi.inst?.putWalls || []).slice(0, 4).map(w => ({ strike: w.strike, oi: w.oi, tier: w.tier, mult: w.mult, persistence: w.persistence })),
     volumeMagnets: (oi.inst?.volumeMagnets || []).slice(0, 5),
     concentration: oi.inst?.concentration ?? null,
     clusters: (oi.inst?.clusters || []).slice(0, 4),
+    // Auto-derived per-expiry term structure (from the pasted multi-expiry matrix) —
+    // where each horizon pins, for the analytical brief. Supersedes manual `expiries`.
+    termStructure: (oi.inst?.termStructure || []).slice(0, 8),
     expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
   // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
   const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];

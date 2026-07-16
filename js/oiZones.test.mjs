@@ -79,6 +79,29 @@ console.log('[Trade the K strongest walls per side — decoupled from display co
   ok('maxZonesPerSide 0 → no cap (all 20 fade)', uncapped.length === 20, `${uncapped.length}`);
 }
 
+console.log('[Persistence — across-expiry durability boosts rank + size]');
+{
+  // Two strong call walls above price. The FARTHER one has slightly less OI but lives
+  // across many expiries; persistenceWeight should lift it above the nearer transient.
+  const inst = { ...base, exposures: { gex: 5000 },
+    callWalls: [
+      { strike: 4250, oi: 9000, tier: 'strong', mult: 3.1, persistence: 1 },   // transient near wall
+      { strike: 4300, oi: 8500, tier: 'strong', mult: 3.0, persistence: 8 },   // durable far wall
+    ],
+    putWalls: [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3.0, persistence: 6 }] };
+  const z = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1, persistenceWeight: 0.1, persistentDTE: 5 });
+  const sell = z.find(x => x.side === 'sell');
+  ok('durable far wall outranks the transient near wall', sell && sell.level === 4300, `${sell?.level}`);
+  ok('durable wall gets the size bump (×1.15 on the strong 1.5×conc 1.2)', sell.sizeFactor > 1.5, `${sell.sizeFactor}`);
+  ok('rationale flags durability', /durable 8exp/.test(sell.rationale), sell.rationale);
+  const buy = z.find(x => x.side === 'buy');
+  ok('durable put wall also flagged', buy && /durable 6exp/.test(buy.rationale), buy?.rationale);
+  // With persistenceWeight 0, the higher-OI near wall wins instead.
+  const z0 = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1, persistenceWeight: 0 });
+  ok('persistenceWeight 0 → pure-OI ranking (near wall wins)',
+    z0.find(x => x.side === 'sell')?.level === 4250, `${z0.find(x => x.side === 'sell')?.level}`);
+}
+
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));

@@ -1760,7 +1760,9 @@ Gamma flip level: ${s.oi.gammaFlip ?? 'N/A'}${s.oi.concentration ? `
 Concentration: top-5 strikes = ${s.oi.concentration.top5Pct}% of OI (${s.oi.concentration.read}) — ${s.oi.concentration.read === 'concentrated' ? 'expect sharper reactions at the walls' : 'positioning dispersed, weaker wall influence'}` : ''}${(s.oi.clusters || []).length ? `
 Institutional cluster zones: ${s.oi.clusters.map(c => `${c.low}-${c.high} (${Math.round(c.totalOI / 1000)}k)`).join(', ')}` : ''}${(s.oi.volumeMagnets || []).length ? `
 Volume magnets (today's activity, distinct from OI): ${s.oi.volumeMagnets.map(v => v.strike).join(', ')}` : ''}${(s.oi.expiries || []).length ? `
-Per-expiry (near-dated = strongest gamma/pin): ${s.oi.expiries.map(e => `${e.dte}DTE max pain ${e.maxPain}${e.callWall ? ` CW ${e.callWall}` : ''}${e.putWall ? ` PW ${e.putWall}` : ''}`).join(' | ')}` : ''}
+Per-expiry (near-dated = strongest gamma/pin): ${s.oi.expiries.map(e => `${e.dte}DTE max pain ${e.maxPain}${e.callWall ? ` CW ${e.callWall}` : ''}${e.putWall ? ` PW ${e.putWall}` : ''}`).join(' | ')}` : ''}${(s.oi.termStructure || []).length ? `
+Term structure (per-expiry pin — near-dated pins hardest, far-dated show where the tail hedges sit): ${s.oi.termStructure.map(e => `${e.dte != null ? `${e.dte}DTE` : '?'} MP ${e.maxPain}${e.callWall ? ` CW${e.callWall}` : ''}${e.putWall ? ` PW${e.putWall}` : ''}`).join(' | ')}` : ''}${[...(s.oi.callWalls || []), ...(s.oi.putWalls || [])].some(w => (w.persistence || 0) >= 3) ? `
+Durable walls (present across many expiries = structural, not one-day pins): ${[...(s.oi.callWalls || []).filter(w => (w.persistence || 0) >= 3).map(w => `C${w.strike}(${w.persistence}exp)`), ...(s.oi.putWalls || []).filter(w => (w.persistence || 0) >= 3).map(w => `P${w.strike}(${w.persistence}exp)`)].join(', ')}` : ''}
 Top strikes (strike | callOI/putOI | type):
 ${s.oi.topLevels ? s.oi.topLevels.slice(0, 6).map(l => `  ${l.strike}  C:${l.callOI} / P:${l.putOI}  ${l.strike > s.price ? 'RESISTANCE' : 'SUPPORT'}`).join('\n') : '  N/A'}${s.oiChange ? `
 OI CHANGE vs ${s.oiChange.fromDate} (day-over-day positioning dynamics):

@@ -47,6 +47,9 @@ export function buildOIZones(inst, price, cfg = {}) {
     maxZonesPerSide = 4,           // TRADE only the K strongest walls per side (by OI) —
                                    // decouples what the bot trades from how many the
                                    // analyser stores/shows (numLevels). 0 = no cap.
+    persistenceWeight = 0.1,       // how much across-expiry durability boosts a wall's
+                                   // rank/size (0 = ignore; each extra expiry ≈ +10%).
+    persistentDTE = 5,             // "durable" = present in ≥ this many expiries (size bump + rationale)
     stability = null,              // oiWallStability(...) output (server-injected from oi_history)
     change = null,                 // classifyOIChange(...) output (server-injected)
   } = cfg;
@@ -60,22 +63,30 @@ export function buildOIZones(inst, price, cfg = {}) {
   const tol = Math.max(buf, pip);
   const tierOK = w => _rank(w?.tier) >= _rank(minTier);
 
-  // callWalls/putWalls arrive sorted by OI (strongest first, from the analyser).
-  // Keep only walls ≥ minTier, then cap to the K strongest per side so the bot
-  // trades the dominant walls even when the analyser stores many for display.
+  // Keep walls ≥ minTier, then rank by STRENGTH = OI × durability, where durability
+  // rewards a wall present across many expiries (persistence — a wall living in one
+  // 0-DTE expiry is a transient pin; one across 15 expiries is a structural level).
+  // Take the K strongest per side so the bot trades the dominant, most-durable walls.
+  const strength = w => (w?.oi || 0) * (1 + persistenceWeight * Math.max(0, (w?.persistence || 0) - 1));
+  const _rank2 = a => a.slice().sort((x, y) => strength(y) - strength(x));
   const _cap = a => (maxZonesPerSide > 0 ? a.slice(0, maxZonesPerSide) : a);
-  const calls = _cap((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(tierOK));
-  const puts = _cap((Array.isArray(inst.putWalls) ? inst.putWalls : []).filter(tierOK));
+  const calls = _cap(_rank2((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(tierOK)));
+  const puts = _cap(_rank2((Array.isArray(inst.putWalls) ? inst.putWalls : []).filter(tierOK)));
 
   const isLiquidating = (strike, kind) => avoidLiquidating &&
     (change?.events || []).some(e => e.type === 'liquidation' && e.kind === kind && Math.abs(e.strike - strike) <= tol);
   const isEstablished = (strike, kind) => !requireEstablished ||
     (stability || []).some(w => w.kind === kind && Math.abs(w.strike - strike) <= tol && w.established);
+  // A wall present across many expiries is a durable structural level, not a one-day
+  // pin — nudge size up (capped) so the bot leans harder on the persistent walls.
+  const isDurable = w => (w?.persistence || 0) >= persistentDTE;
   const sizeFactor = w => {
     let s = _rank(w?.tier) >= 3 ? 1.5 : _rank(w?.tier) >= 2 ? 1.0 : 0.6;
     if (conc === 'concentrated') s *= 1.2; else if (conc === 'dispersed') s *= 0.8;
-    return +s.toFixed(2);
+    if (isDurable(w)) s *= 1.15;
+    return +Math.min(s, 2.0).toFixed(2);
   };
+  const persNote = w => (w?.persistence > 1 ? ` · durable ${w.persistence}exp` : '');
 
   const zones = [];
   const add = z => zones.push({ ...z, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
@@ -90,7 +101,7 @@ export function buildOIZones(inst, price, cfg = {}) {
       const oppo = puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null;
       add({ mode: 'fade', side: 'sell', level: w.strike, entry: w.strike, sl: w.strike + buf,
         tp1, tp2: oppo, sizeFactor: sizeFactor(w),
-        rationale: `${regime} · call wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (resistance)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}` });
+        rationale: `${regime} · call wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (resistance)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)}` });
     }
     for (const w of puts) {
       if (!(w.strike < price)) continue;                          // support sits below
@@ -99,7 +110,7 @@ export function buildOIZones(inst, price, cfg = {}) {
       const oppo = calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null;
       add({ mode: 'fade', side: 'buy', level: w.strike, entry: w.strike, sl: w.strike - buf,
         tp1, tp2: oppo, sizeFactor: sizeFactor(w),
-        rationale: `${regime} · put wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (support)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}` });
+        rationale: `${regime} · put wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (support)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)}` });
     }
   }
 
@@ -109,13 +120,13 @@ export function buildOIZones(inst, price, cfg = {}) {
       add({ mode: 'break', side: 'buy', level: w.strike, entry: w.strike + brk, sl: w.strike - buf,
         tp1: calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null, tp2: null,
         sizeFactor: sizeFactor(w),
-        rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}` });
+        rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${persNote(w)}` });
     }
     for (const w of puts) {
       add({ mode: 'break', side: 'sell', level: w.strike, entry: w.strike - brk, sl: w.strike + buf,
         tp1: puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null, tp2: null,
         sizeFactor: sizeFactor(w),
-        rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}` });
+        rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${persNote(w)}` });
     }
   }
 
