@@ -2171,12 +2171,18 @@ async function loadDrawerArima(name, sym) {
   chip.style.display = 'inline-block';
 }
 
-// News for THIS pair — the calendar filtered to its own two economies, soonest first.
+// News for THIS pair — TODAY's calendar filtered to its own two economies, soonest
+// first. Must filter to today: /api/events returns the whole week (ForexFactory
+// thisweek), so without the date filter this listed the week's earliest events
+// (e.g. Tuesday's CPI still showing on Friday). The "Next:" line below is
+// deliberately week-wide so it can point at tomorrow when today is quiet.
 function loadDrawerNews(name) {
   const sec = $('drNewsSec'), box = $('drNews');
-  const evs = pairEvents(name);
-  if (!evs.length) { sec.style.display = 'none'; return; }
   const now = Date.now();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const evs = pairEvents(name).filter(e => (e.time || '').startsWith(todayStr));
+  const next = nextPairEvent(name);
+  if (!evs.length && !(next && next.ms >= now)) { sec.style.display = 'none'; return; }
   const rows = evs.slice(0, 6).map(e => {
     const past = e.ms < now - 20 * 60000;
     const hi = (e.impact ?? '').toLowerCase() === 'high';
@@ -2192,7 +2198,6 @@ function loadDrawerNews(name) {
       <span class="nval">${e.actual != null ? `${e.actual}${e.estimate != null ? ` vs ${e.estimate}e` : ''} ${surprise}` : (e.estimate != null ? `${e.estimate}e` : '')}</span>
     </div>${impact ? `<div class="nimpact">${impact}</div>` : ''}`;
   }).join('');
-  const next = nextPairEvent(name);
   box.innerHTML = (next && next.ms >= now ? `<div class="muted" style="margin-bottom:6px">Next: <b>${next.event}</b> at <b>${evtTime(next)}</b> (UK) — expect the range to widen around it.</div>` : '') + rows;
   sec.style.display = 'block';
 }
