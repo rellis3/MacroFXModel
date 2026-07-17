@@ -1037,6 +1037,7 @@
     <span class="vf-event-sub" id="vfRefSub">Paste today's reference export — stored in KV for comparison.</span>
     <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)" id="vfRefAge"></span>
     <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="compareRefData()" id="vfRefCmpBtn">⇄ Compare</button>
+    <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="reviewCogWindows()" id="vfWinRevBtn" title="Across all stored COG dates: which cc-HV window (10/14/20/30) tracks COG's published vol best?">🪟 NQ Window Review</button>
     <button class="dark-btn" style="padding:3px 10px;font-size:10px" onclick="saveRefData()" id="vfRefSaveBtn">💾 Save</button>
   </div>
   <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
@@ -1047,6 +1048,7 @@
     </div>
     <textarea id="vfRefText" placeholder="Paste reference export here..." style="background:var(--s1);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:8px;border-radius:4px;resize:vertical;height:160px;width:100%;box-sizing:border-box"></textarea>
     <div id="vfRefStatus" style="font-size:10px;color:var(--text3);min-height:14px"></div>
+    <div id="vfWinRevWrap" style="display:none;font-size:10px;font-family:'DM Mono',monospace"></div>
     <div id="vfRefCmpWrap" style="display:none">
       <div style="font-size:10px;color:var(--text3);margin-bottom:6px">
         Δ = (ref÷val − 1)×100. <span style="color:var(--green)">Green ≤ 3%</span> · <span style="color:var(--amber)">Amber 3–8%</span> · <span style="color:var(--red)">Red &gt; 8%</span>
@@ -3178,6 +3180,42 @@ function toggleRefPanel() {
   const shown=panel.style.display!=='none';
   panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
   if (!shown) { const dateEl=document.getElementById('vfRefDate'); if (!dateEl.value) { dateEl.value=new Date().toISOString().slice(0,10); } loadRefData(); }
+}
+
+// Which cc-HV window tracks COG best across every stored COG reference date? Renders
+// per-window bias/MAE (our − COG, vol points) + the per-date grid. Evidence-based
+// window choice — the honest alternative to tuning the window to a single day.
+async function reviewCogWindows() {
+  const wrap=document.getElementById('vfWinRevWrap'), btn=document.getElementById('vfWinRevBtn');
+  btn.disabled=true; btn.textContent='Reviewing…'; wrap.style.display='block'; wrap.innerHTML='<span style="color:var(--text3)">Computing across stored COG dates… (fetches OANDA M5, ~10–30s)</span>';
+  try {
+    const j=await fetch('/api/vol-forecast/cog-window-review?inst=NQ').then(r=>r.json());
+    if (!j.ok) { wrap.innerHTML=`<span style="color:var(--red)">Error: ${j.error||'failed'}</span>`; return; }
+    if (!j.cogDates) { wrap.innerHTML='<span style="color:var(--amber)">No COG reference dates stored yet — paste some above and Save first.</span>'; return; }
+    const nq=j.instruments?.NQ;
+    if (!nq || !nq.summary) { wrap.innerHTML='<span style="color:var(--amber)">No NQ data in the stored references.</span>'; return; }
+    const cellcol=b=>b==null?'var(--text3)':(Math.abs(b)<=0.5?'var(--green)':Math.abs(b)<=1.5?'var(--amber)':'var(--red)');
+    const best=nq.bestWindow;
+    let h=`<div style="margin:6px 0;color:var(--text2)">NQ vs COG across <b>${nq.nDays}</b> stored day(s) · ${j.dateRange?.[0]||''}→${j.dateRange?.[1]||''} · current window <b>30</b></div>`;
+    h+='<table style="border-collapse:collapse;font-size:10px;font-family:DM Mono,monospace"><thead><tr style="color:var(--text2)">'+
+       '<th style="text-align:left;padding:2px 8px">Window</th><th style="padding:2px 8px">n</th><th style="padding:2px 8px" title="mean(our − COG); negative = we read low">Bias (pts)</th><th style="padding:2px 8px" title="mean |our − COG|; lower = tracks COG better">MAE (pts)</th></tr></thead><tbody>';
+    for (const s of nq.summary) {
+      const isbest=s.window===best;
+      h+=`<tr style="${isbest?'background:rgba(16,185,129,.12)':''}"><td style="padding:2px 8px;text-align:left">${s.window}${isbest?' ★':''}${s.window===30?' (live)':''}</td>`+
+         `<td style="padding:2px 8px;text-align:center">${s.n}</td>`+
+         `<td style="padding:2px 8px;text-align:center;color:${cellcol(s.biasPts)}">${s.biasPts==null?'—':(s.biasPts>0?'+':'')+s.biasPts}</td>`+
+         `<td style="padding:2px 8px;text-align:center">${s.maePts==null?'—':s.maePts}</td></tr>`;
+    }
+    h+='</tbody></table>';
+    h+=`<div style="margin:8px 0 4px;color:var(--text2)">★ lowest MAE = <b>window ${best??'—'}</b> tracks COG best across these days. ${best&&best!==30?`<span style="color:var(--amber)">Consider switching NQ to ${best}.</span>`:'<span style="color:var(--green)">Current window 30 is the best fit.</span>'} <span style="color:var(--text3)">Small N ⇒ directional; more days = firmer.</span></div>`;
+    if (nq.rows?.length) {
+      h+='<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--text3)">Per-date grid</summary><table style="border-collapse:collapse;font-size:10px;font-family:DM Mono,monospace;margin-top:4px"><thead><tr style="color:var(--text2)"><th style="text-align:left;padding:2px 8px">Date</th><th style="padding:2px 8px">COG</th><th style="padding:2px 8px">w10</th><th style="padding:2px 8px">w14</th><th style="padding:2px 8px">w20</th><th style="padding:2px 8px">w30</th></tr></thead><tbody>';
+      for (const r of nq.rows) h+=`<tr><td style="padding:2px 8px;text-align:left">${r.date}</td><td style="padding:2px 8px;text-align:center;color:var(--amber)">${r.cog}</td><td style="padding:2px 8px;text-align:center">${r.w10??'—'}</td><td style="padding:2px 8px;text-align:center">${r.w14??'—'}</td><td style="padding:2px 8px;text-align:center">${r.w20??'—'}</td><td style="padding:2px 8px;text-align:center">${r.w30??'—'}</td></tr>`;
+      h+='</tbody></table></details>';
+    }
+    wrap.innerHTML=h;
+  } catch(e) { wrap.innerHTML=`<span style="color:var(--red)">Error: ${e.message}</span>`; }
+  finally { btn.disabled=false; btn.textContent='🪟 NQ Window Review'; }
 }
 
 async function saveRefData() {

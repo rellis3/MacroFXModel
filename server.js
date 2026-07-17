@@ -10242,6 +10242,60 @@ app.get('/api/vol-forecast/cog-hv', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
+// ── COG window review — which cc-HV lookback tracks COG's published vol best? ──
+// The window (currently 30) is the one lever on how close our σ sits to COG. Rather
+// than tune it to a single day (which whipsaws), this reads EVERY stored COG
+// reference (vol_reference_index → the daily pastes on the v2 Ref-Data panel),
+// extracts COG's published annualised vol per instrument, and compares it to OUR
+// cc-HV at windows 10/14/20/30 computed the SAME way production does (intraday
+// 5-min → London-daily closes), as-of each COG date (closes strictly BEFORE the
+// session — no lookahead). Per-window bias/abs-error across all the days ⇒ pick the
+// window from evidence, not one snapshot. Read-only diagnostic; changes nothing.
+const _COG_WIN_SYM = { NQ: 'NAS100_USD', GOLD: 'XAU_USD', EURUSD: 'EUR_USD' };
+app.get('/api/vol-forecast/cog-window-review', async (req, res) => {
+  try {
+    const WINDOWS = [10, 14, 20, 30];
+    const names = req.query.inst ? String(req.query.inst).split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : ['NQ'];
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? [...new Set(JSON.parse(idxRaw).map(e => e.date).filter(Boolean))].sort() : [];
+    if (!dates.length) return res.json({ ok: true, cogDates: 0, note: 'No COG reference data stored yet (paste some on vol-forecast → Ref Data).' });
+    if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — window review needs OANDA M5' });
+    // COG's published vol per date (from the parsed export).
+    const cogByDate = {};
+    for (const d of dates) { const raw = await kv.get(`vol_reference_${d}`).catch(() => null); if (raw) { try { cogByDate[d] = _parseExportText(JSON.parse(raw).text); } catch { /* skip malformed */ } } }
+    const cogVol = (date, name) => { const rec = cogByDate[date]; if (!rec) return null; for (const a of (_COG_ALIASES[name] || [name])) if (rec[a]?.vol > 0) return rec[a].vol; return null; };
+    const fromSec = Math.floor(new Date(dates[0] + 'T00:00:00Z').getTime() / 1000) - 75 * 86400;   // ≥30 trading days of history before the first COG date
+    const toSec   = Math.floor(new Date(dates.at(-1) + 'T00:00:00Z').getTime() / 1000) + 2 * 86400;
+    const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
+    const instruments = {};
+    for (const name of names) {
+      const sym = _COG_WIN_SYM[name];
+      if (!sym) { instruments[name] = { error: `no OANDA symbol mapped (have ${Object.keys(_COG_WIN_SYM).join('/')})` }; continue; }
+      const bars5 = await _fetchOandaM5(sym, fromSec, toSec).catch(() => []);
+      const lond = buildLondonDaily(bars5 || []);
+      const rows = [];
+      const errs = Object.fromEntries(WINDOWS.map(w => [w, []]));
+      for (const date of dates) {
+        const cv = cogVol(date, name); if (!(cv > 0)) continue;
+        const prior = lond.filter(d => d.date < date);                 // strictly before ⇒ no lookahead
+        if (prior.length < Math.max(...WINDOWS) + 2) continue;
+        const our = _ccHvMulti(prior, WINDOWS);                         // { w10, w14, w20, w30 }
+        const row = { date, cog: +cv.toFixed(2) };
+        for (const w of WINDOWS) { const ov = our[`w${w}`]; row[`w${w}`] = ov; if (ov > 0) errs[w].push(ov - cv); }
+        rows.push(row);
+      }
+      const summary = WINDOWS.map(w => {
+        const e = errs[w]; const bias = mean(e), mae = mean(e.map(Math.abs));
+        return { window: w, n: e.length, biasPts: bias == null ? null : +bias.toFixed(3), maePts: mae == null ? null : +mae.toFixed(3) };
+      });
+      const ranked = summary.filter(s => s.n > 0).slice().sort((a, b) => a.maePts - b.maePts);
+      instruments[name] = { nDays: rows.length, londonDays: lond.length, currentWindow: 30, bestWindow: ranked[0]?.window ?? null, summary, rows };
+    }
+    res.json({ ok: true, cogDates: dates.length, dateRange: [dates[0], dates.at(-1)], instruments,
+      note: 'biasPts = mean(our − COG) vol points (negative ⇒ we read low). maePts = mean |our − COG|. bestWindow = lowest MAE across the stored COG days. Chosen from evidence, not one day. Small N ⇒ directional.' });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
 // ── Vol Horse Race — the gold workbook's estimator race, generalised to every ──
 // instrument. Does HAR-RV's win on gold hold for FX/indices, or does the ranking
 // flip? 8 σ-forecasters scored against next-day realised vol (QLIKE/MZ), OOS.
