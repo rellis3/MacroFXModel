@@ -38,6 +38,7 @@ import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/r
 import { runRankICLiveSuite, RANKIC_LIVE_INSTRUMENTS }             from './js/rankICLiveEngine.js';
 import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, computeConvexity, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runTrendBasket } from './js/trendBasketEngine.js';
+import { runCarryBasket, financingHaircut } from './js/carryEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -4382,6 +4383,118 @@ app.get('/api/trend-basket', async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[trend-basket]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/fx-carry — the HONEST FX carry factor ───────────────────────────────
+// Long high-rate currencies, short low-rate ones vs USD, inverse-vol sized,
+// rebalanced, net of cost, IS/OOS — with the carry ACCRUAL priced in from FRED
+// short rates (NOT the spot-only proxy in system-fx-carry.html). Also reconciles
+// the interbank differential against OANDA's live financing to show the retail
+// swap haircut. Runs on Railway (needs OANDA_KEY + FRED_KEY).
+//
+// FRED short-rate series: OECD "3-month or 90-day rates and yields: interbank
+// rates" (IR3TIB01…M156N), monthly, percent. If a series is discontinued/empty
+// on the key, that currency is dropped with an availability note (graceful).
+const CARRY_UNIVERSE = [
+  { ccy: 'EUR', inst: 'EUR_USD', pair: 'EUR_USD', invert: false, fred: 'IR3TIB01EZM156N' },
+  { ccy: 'GBP', inst: 'GBP_USD', pair: 'GBP_USD', invert: false, fred: 'IR3TIB01GBM156N' },
+  { ccy: 'AUD', inst: 'AUD_USD', pair: 'AUD_USD', invert: false, fred: 'IR3TIB01AUM156N' },
+  { ccy: 'NZD', inst: 'NZD_USD', pair: 'NZD_USD', invert: false, fred: 'IR3TIB01NZM156N' },
+  { ccy: 'JPY', inst: 'USD_JPY', pair: 'JPY_USD', invert: true,  fred: 'IR3TIB01JPM156N' },
+  { ccy: 'CAD', inst: 'USD_CAD', pair: 'CAD_USD', invert: true,  fred: 'IR3TIB01CAM156N' },
+  { ccy: 'CHF', inst: 'USD_CHF', pair: 'CHF_USD', invert: true,  fred: 'IR3TIB01CHM156N' },
+];
+const CARRY_FUNDING_FRED = 'IR3TIB01USM156N';   // USD 3-month interbank
+const _carryCache = new Map();
+
+// Fetch OANDA live financing (annual long/short rates) for the carry pairs.
+async function fetchOandaFinancing() {
+  const accountId = process.env.OANDA_ACCOUNT_ID;
+  if (!accountId) return {};
+  const base = _oandaBaseMe();
+  const r = await fetch(`${base}/v3/accounts/${accountId}/instruments`, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!r.ok) throw new Error(`OANDA instruments HTTP ${r.status}`);
+  const data = await r.json();
+  const out = {};
+  for (const i of (data.instruments || [])) {
+    const f = i.financing || {};
+    out[i.name] = { longRate: parseFloat(f.longRate), shortRate: parseFloat(f.shortRate) };
+  }
+  return out;
+}
+
+app.get('/api/fx-carry', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY)  return res.status(503).json({ error: 'FRED_KEY not configured (needed for interbank rates)' });
+  const clamp = (x, lo, hi, dflt) => Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : dflt;
+  const rebalDays = clamp(parseInt(req.query.rebal), 1, 63, 21);
+  const targetVol = clamp(parseFloat(req.query.targetVol), 0.02, 0.40, 0.10);
+  const costBps   = clamp(parseFloat(req.query.cost), 0, 50, 2);
+  const signalMode = req.query.signal === 'diff' ? 'diff' : 'sign';
+  const cacheKey = `carry_${rebalDays}_${targetVol}_${costBps}_${signalMode}`;
+  const cached = _carryCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 3600_000) return res.json(cached.data);
+  try {
+    const from = '2005-01-01';
+    const priceByCcy = {}, rateByCcy = {}, availability = [];
+
+    // USD funding rate.
+    try { rateByCcy.USD = await fetchFredSeries(CARRY_FUNDING_FRED, from, process.env.FRED_KEY); }
+    catch (e) { return res.status(502).json({ error: `USD funding rate (${CARRY_FUNDING_FRED}) unavailable: ${e.message}` }); }
+
+    await Promise.all(CARRY_UNIVERSE.map(async u => {
+      const row = { ccy: u.ccy, inst: u.inst, fred: u.fred };
+      try {
+        const bars = await fetchOandaD1Range(u.inst, from);
+        const s = bars.map(b => ({ t: b.date, v: u.invert ? 1 / b.close : b.close })).filter(x => Number.isFinite(x.v) && x.v > 0);
+        priceByCcy[u.ccy] = s;
+        row.priceBars = s.length; row.priceFirst = s[0]?.t ?? null; row.priceLast = s[s.length - 1]?.t ?? null;
+      } catch (e) { row.priceError = e.message; }
+      try {
+        const rm = await fetchFredSeries(u.fred, from, process.env.FRED_KEY);
+        if (rm.size) { rateByCcy[u.ccy] = rm; row.rateObs = rm.size; }
+        else row.rateError = 'no observations (series may be discontinued)';
+      } catch (e) { row.rateError = e.message; }
+      availability.push(row);
+    }));
+
+    const result = runCarryBasket(priceByCcy, rateByCcy, { rebalDays, targetVol, costBps, signalMode });
+
+    // Live retail-swap reconciliation (best-effort; never blocks the backtest).
+    let financing = null, haircut = null;
+    if (!result.error) {
+      try {
+        const fin = await fetchOandaFinancing();
+        const synthetic = (result.current || []).map(c => {
+          const u = CARRY_UNIVERSE.find(x => x.ccy === c.ccy);
+          return { pair: u?.pair || `${c.ccy}_USD`, ccy: c.ccy, interbankDiffPct: c.diffVsUSD };
+        });
+        // financingHaircut keys on the tradeable pair name; map ccy→OANDA inst.
+        const finByPair = {};
+        for (const s of synthetic) {
+          const u = CARRY_UNIVERSE.find(x => x.ccy === s.ccy);
+          if (u && fin[u.inst]) {
+            // If the OANDA pair is USD_XXX (inverted), a long-ccy position = short the OANDA pair.
+            finByPair[s.pair] = u.invert
+              ? { longRate: fin[u.inst].shortRate, shortRate: fin[u.inst].longRate }
+              : fin[u.inst];
+          }
+        }
+        haircut = financingHaircut(synthetic, finByPair);
+        financing = { asOf: new Date().toISOString().slice(0, 10) };
+      } catch (e) { financing = { error: e.message }; }
+    }
+
+    const data = { ...result, availability, universe: CARRY_UNIVERSE.map(u => u.ccy), financing, haircut };
+    _carryCache.set(cacheKey, { data, ts: Date.now() });
+    res.json(data);
+  } catch (err) {
+    console.error('[fx-carry]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
