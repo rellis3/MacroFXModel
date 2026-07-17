@@ -2093,10 +2093,11 @@ function _cogBands(volAnnual, mult) {
 // (>5% AND within 0.5–2.0× the GARCH σ) so garbage can't ship; else fall back to
 // primary σ, flagged. Window tunable via VF_COGHV_WINDOW. fx + gold always primary.
 const VF_COGHV_WINDOW = 30;                          // 30-day tracks COG's smoothing best (10/14/20/30 in the endpoint log)
-// OANDA's close-to-close data for these two index CFDs is unreliable (understates
-// their daily closes at every granularity), so CC-HV can't work for them — they use
-// the platform σ. Not a per-run guess: a fixed data limitation for these symbols.
-const _CCHV_BADDATA = new Set(['SPX500', 'US30', 'US500', 'DOW']);
+// NQ is the ONLY index we draw from COG's close-to-close HV — it's the one COG
+// actually publishes, and OANDA's NAS100 close-to-close data tracks him. Every
+// other index reads too low from OANDA's cc data (SPX500/US30/DE30/UK100/US2000),
+// so they stay on the platform σ (GARCH). fx + gold always use the platform σ too.
+const _CCHV_USE = new Set(['NQ']);
 let _cogHvByInst = null, _cogHvPromise = null, _cogHvMeta = null;
 async function loadCogHv() {
   if (_cogHvByInst) return _cogHvByInst;
@@ -2106,12 +2107,12 @@ async function loadCogHv() {
     .catch(() => (_cogHvByInst = {}));
   return _cogHvPromise;
 }
-// The σ to draw an instrument's COG bands from. Indices with good data use COG's
-// close-to-close HV; SPX500/US30 (bad OANDA data) + fx + gold use the platform σ.
-// A light finite/sane check only — no per-run "rejection", just a value out.
+// The σ to draw an instrument's COG bands from. Only NQ uses COG's close-to-close
+// HV (the one index COG publishes and OANDA tracks him on); every other index + fx
+// + gold use the platform σ. A light finite/sane check only — no "rejection".
 function _cogVol(name, f) {
   const g = f?.vol_annual;
-  if (_assetClassOf(name) === 'index' && !_CCHV_BADDATA.has(name)) {
+  if (_CCHV_USE.has(name)) {
     const hv = _cogHvByInst && _cogHvByInst[name]?.volAnnual;
     if (hv > 4 && hv < 200) return hv;
   }
@@ -3320,7 +3321,7 @@ try { if (localStorage.getItem('vf_chart_level_mode') === 'cog') _levelMode = 'c
 // uses the forecast's own hl/oc fields.
 function _chartLevels(name, f) {
   if (_levelMode === 'cog' && f?.vol_annual > 0) {
-    const va = _cogVol(name, f);               // indices (good data) → COG CC-HV; SPX500/US30 + fx + gold → platform σ
+    const va = _cogVol(name, f);               // NQ → COG CC-HV; all other indices + fx + gold → platform σ
     const s = va / Math.sqrt(252);             // daily σ, % of price
     return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
   }
