@@ -538,6 +538,18 @@ backwards — trade flat). Full write-up, caveats, and paper-trade plan in
 `YIELD_SPREAD_STRATEGY.md`. **Still one historical period — forward paper-trading is the only
 remaining proof.**
 
+### 1r. Economic-trend cross-sectional test (2026-07-17) — pre-registered, fundamentals-only
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Econ-Trend core** | `js/econTrendCore.js` | pure cross-sectional ECONOMIC-trend scoring (trend on FUNDAMENTALS, not prices — the replicated AQR family, in the monthly cross-sectional form; NOT the per-pair 1–20d form that nulled in `macroDirectionCore`): `asOfValue` (binary-search no-lookahead gate), `factorChange`, `econScoresAt` (per (factor,window) relative-to-USD change, cross-sectionally z-scored, frozen signs rate +/y10 +/unemp −, windows 90/180/365d), `econDirections` (rank → long top-K / short bottom-K), `runEconTrend` (drives `runTrendBasket` via `directionAt` — zero portfolio-code copies), `runEconTrendPlacebo` (seeded-LCG random-ranking chance floor), `evaluateEconTrend` (the FROZEN pass/fail from `ECON_TREND_TEST.md`). Tested `js/econTrendCore.test.mjs` (29 asserts incl. constructed-world pass, shuffled-fundamentals fail, hook-equivalence regression). | `server.js` `/api/econ-trend`; `econ-trend.html` | 🧪 built, **pre-registered, not yet run** (needs FRED+OANDA on Railway; one shot, criteria frozen) |
+| **Econ-Trend I/O** | `js/econTrendEngine.js` | `ECON_UNIVERSE` (8-ccy FRED registry: GS2/GS10/UNRATE + OECD IRSTCI·IR3TIB/IRLTLT01/LRHUTTTT per ccy), `toLaggedSeries` + publication-lag shift (**US +35d / foreign +75d** from obs date — monthly obs are dated at month START), `buildFundamentals` (fail-soft per series, availability table). Reuses `fetchFredObservations`/`_shiftDate` from `zscoreSpreadEngine` — no FRED-fetch copies. | `server.js` `/api/econ-trend` | 🧪 built |
+
+> `trendBasketEngine.runTrendBasket` gained an optional **`directionAt` hook**
+> (per-rebalance `{ccy: −1|0|+1}` source) + `splitDate` in the result — the default
+> path is bit-identical (regression-tested), and the hook is what lets a
+> fundamentals signal reuse the sizing/cost/metrics machinery instead of copying it.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

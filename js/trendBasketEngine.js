@@ -67,8 +67,12 @@ function stats(r) {
 }
 
 // seriesByCcy: { EUR:[{t,v}], JPY:[{t,v}], … } — daily close of each currency vs USD.
+// directionAt (optional): (iDecision, {dates, cols, ccys, rets}) => { ccy: -1|0|+1 } —
+// swaps the per-ccy direction source (e.g. a fundamentals score) while keeping the
+// sizing/cost/metrics machinery identical. null ⇒ the default 12-mo price trend.
 export function runTrendBasket(seriesByCcy, {
   lookback = 252, volWindow = 60, targetVol = 0.10, rebalDays = 5, costBps = 2, isFrac = 0.7,
+  directionAt = null,
 } = {}) {
   const { dates, cols, ccys } = alignSeries(seriesByCcy);
   const n = dates.length;
@@ -85,10 +89,11 @@ export function runTrendBasket(seriesByCcy, {
 
   for (let i = 1; i < n; i++) {
     if ((i - 1) % rebalDays === 0 && i - 1 >= lookback) {     // rebalance using data ≤ i-1 (no lookahead)
+      const dirs = directionAt ? (directionAt(i - 1, { dates, cols, ccys, rets }) || {}) : null;
       const newW = {}; let turnover = 0;
       for (const c of ccys) {
         const p = cols[c];
-        const trend = Math.sign(p[i - 1] / p[i - 1 - lookback] - 1);       // 12-mo trend
+        const trend = dirs ? (dirs[c] || 0) : Math.sign(p[i - 1] / p[i - 1 - lookback] - 1);       // 12-mo trend
         const win = rets[c].slice(i - 1 - volWindow, i - 1).filter(Number.isFinite);
         const vol = stdev(win, 0) * Math.sqrt(252);
         const w = vol > 1e-6 ? trend * perCcyRisk / vol : 0;
@@ -104,13 +109,16 @@ export function runTrendBasket(seriesByCcy, {
 
   const eq = []; { let c = 0; for (let i = 0; i < n; i++) { c += portRet[i]; eq.push(Math.exp(c)); } }
   const split = Math.floor(n * isFrac);
+  const curDirs = directionAt ? (directionAt(n - 1, { dates, cols, ccys, rets }) || {}) : null;
   const current = ccys.map(c => {
     const p = cols[c];
-    return { ccy: c, trend: p.length > lookback ? Math.sign(p[n - 1] / p[n - 1 - lookback] - 1) : 0 };
+    const trend = curDirs ? (curDirs[c] || 0)
+      : (p.length > lookback ? Math.sign(p[n - 1] / p[n - 1 - lookback] - 1) : 0);
+    return { ccy: c, trend };
   });
   return {
     params: { lookback, volWindow, targetVol, rebalDays, costBps, isFrac },
-    ccys, nDays: n, first: dates[0], last: dates[n - 1],
+    ccys, nDays: n, first: dates[0], last: dates[n - 1], splitDate: dates[split] ?? null,
     all: stats(portRet), is: stats(portRet.slice(0, split)), oos: stats(portRet.slice(split)),
     benchmark: stats(bmRet),                               // equal-weight long-currency basket (short USD)
     equity: sampleEquity(dates, eq, 400),

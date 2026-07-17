@@ -52,6 +52,7 @@ Research ▾ · Equity ▾ · Gold ▾ · Systems ▾ · WIP ▾**.
 | `credit-leadlag.html` | Vol ▾ → 🚨 Credit Lead-Lag | `js/creditLeadLagEngine.js` | Does HY-OAS credit Δ lead NQ forward realized vol *beyond* vol's own persistence? (IC study, not PnL) | 🧪 Honest framing (IS/OOS IC vs the vol-predicts-vol benchmark). Verdict is computed at runtime and **not recorded anywhere** — Q4. A method, not a strategy: at best it gates/sizes something else. |
 | `yield-coupling.html` / `yield-coupling-real.html` | Vol ▾ → 🧲 / 🏦 | yield-coupling studies | Rates-context lens feeding the daily brief | 📚 Context features, logged-but-inert by design (TDE candidates). |
 | `trend-basket.html` | Vol ▾ → 📈 Trend Basket | `js/trendBasketEngine.js` | Diversified G10-vs-USD 12-mo trend basket, inverse-vol sized, weekly rebalance, costs on, IS/OOS | 🧪 New (2026-07-05). The first strategy here with replicated academic evidence *before* testing. Deliberately modest — a diversifier sleeve, not a wealth engine. Record the first IS/OOS run + its correlation to the range-line book — Q5. |
+| `econ-trend.html` | Dashboard → 🌍 Econ Trend | `js/econTrendCore.js` + `js/econTrendEngine.js` | Cross-sectional ECONOMIC trend: fundamentals momentum vs USD (rate/10Y/unemp, pub-lagged) ranks ccys, long top-2 short bottom-2, monthly, vs a seeded random-ranking placebo | 🧪 New (2026-07-17). **Pre-registered one-shot** (`ECON_TREND_TEST.md`, criteria frozen before running; blunt odds ~20–30%, default outcome null). The replicated economic-trend family in its supported (monthly, cross-sectional) form — not the per-pair short-horizon form that nulled. Run once on Railway, record the verdict — Q11. |
 
 ## 3. Equity ▾ — macro / NASDAQ backtests
 
@@ -102,6 +103,7 @@ Ordered by expected payoff per hour. Each is pre-registered: what "worked" and
 | **Q8** | Does the NASDAQ 4-gate / COG family produce a single honest, costed OOS number? | One committed run through its own MC/WF/OOS layer, verdict written down | OOS-positive after costs on the daily 2014– test | Not → archive the family (it's the biggest maintenance surface with the least evidence) |
 | **Q9** | Is the VIX vol-carry harness honest (costs, OOS), and what does it show? | Review engine + one recorded run | Honest harness + OOS-positive → a second evidence-backed premium | Either fails → note and shelve |
 | **Q10** | After a calendar-date IS/OOS split, do any cointegration pairs pass? | Fix `hedgeSignalV2Engine` split, re-run | ≥1 pair OOS-positive after 4bp/leg with ≥30 OOS trades | None → banked null beside hedge v1 |
+| **Q11** | Does cross-sectional fundamentals momentum (econ-trend) beat the random-ranking placebo OOS? | Run `econ-trend.html` once on Railway, fill in `ECON_TREND_TEST.md` §Result | All four frozen criteria pass → earns paper-trading as a third sleeve candidate | Any criterion fails → banked null, no factor/window/K iteration |
 
 **Not questions (already answered — do not reopen):** spatial gates on the Asia
 fade, approachVel on range fibs, all six approach-read cell keys, the zone-walk

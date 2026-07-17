@@ -38,6 +38,8 @@ import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/r
 import { runRankICLiveSuite, RANKIC_LIVE_INSTRUMENTS }             from './js/rankICLiveEngine.js';
 import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, computeConvexity, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runTrendBasket } from './js/trendBasketEngine.js';
+import { runEconTrend, runEconTrendPlacebo, evaluateEconTrend, ECON_TREND_DEFAULTS } from './js/econTrendCore.js';
+import { buildFundamentals as buildEconFundamentals, ECON_UNIVERSE } from './js/econTrendEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -4382,6 +4384,54 @@ app.get('/api/trend-basket', async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[trend-basket]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/econ-trend — cross-sectional ECONOMIC trend (fundamentals-only signal) ─
+// The pre-registered test in ECON_TREND_TEST.md: trend of FUNDAMENTALS relative to
+// USD (short rate / 10Y yield / unemployment, publication-lagged) ranks currencies;
+// long top-2, short bottom-2, monthly rebalance — runTrendBasket machinery via the
+// directionAt hook, judged against a seeded random-ranking placebo. Price is never
+// a signal input. Frozen pass/fail is computed server-side (evaluateEconTrend).
+const _econTrendCache = new Map();
+app.get('/api/econ-trend', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY) return res.status(503).json({ error: 'FRED_KEY not configured (runs on Railway)' });
+  const clamp = (x, lo, hi, dflt) => Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : dflt;
+  const rebalDays = clamp(parseInt(req.query.rebal), 5, 63, ECON_TREND_DEFAULTS.rebalDays);
+  const targetVol = clamp(parseFloat(req.query.targetVol), 0.02, 0.40, ECON_TREND_DEFAULTS.targetVol);
+  const costBps   = clamp(parseFloat(req.query.cost), 0, 50, ECON_TREND_DEFAULTS.costBps);
+  const placebos  = clamp(parseInt(req.query.placebos), 0, 500, ECON_TREND_DEFAULTS.placeboRuns);
+  const cacheKey = `et_${rebalDays}_${targetVol}_${costBps}_${placebos}`;
+  const cached = _econTrendCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 3600_000) return res.json(cached.data);
+  try {
+    const from = '2005-01-01';
+    const seriesByCcy = {}, priceAvailability = [];
+    await Promise.all(TREND_UNIVERSE.map(async u => {
+      try {
+        const bars = await fetchOandaD1Range(u.inst, from);
+        const s = bars.map(b => ({ t: b.date, v: u.invert ? 1 / b.close : b.close })).filter(x => Number.isFinite(x.v) && x.v > 0);
+        seriesByCcy[u.ccy] = s;
+        priceAvailability.push({ ccy: u.ccy, inst: u.inst, bars: s.length, first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null });
+      } catch (e) { priceAvailability.push({ ccy: u.ccy, inst: u.inst, error: e.message }); }
+    }));
+    const { fundamentals, availability: fredAvailability } = await buildEconFundamentals(process.env.FRED_KEY, '2004-01-01');
+    const opts = { rebalDays, targetVol, costBps, placeboRuns: placebos };
+    const result = runEconTrend(seriesByCcy, fundamentals, opts);
+    if (result.error) return res.status(500).json({ error: result.error, priceAvailability, fredAvailability });
+    const placebo = placebos > 0 ? runEconTrendPlacebo(seriesByCcy, opts) : { sharpes: [], summary: null };
+    const evaluation = evaluateEconTrend(result, placebo.sharpes, opts);
+    const data = {
+      ...result, placebo: placebo.summary, evaluation,
+      priceAvailability, fredAvailability,
+      universe: Object.keys(ECON_UNIVERSE),
+    };
+    _econTrendCache.set(cacheKey, { data, ts: Date.now() });
+    res.json(data);
+  } catch (err) {
+    console.error('[econ-trend]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
