@@ -1381,7 +1381,7 @@ function loadForecast(date) {
     .then(data => {
       currentForecast = data;
       if (!date) liveForecast = data;
-      if (_levelMode === 'cog') loadCogHv().then(_redrawCogCharts);   // prime index CC-HV σ for COG charts
+      loadCogHv().then(() => { if (_levelMode === 'cog') _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
 
       if (sdot) sdot.className = 'v2-status-dot ok';
       if (stxt) stxt.textContent = 'OK';
@@ -1540,7 +1540,7 @@ function triggerRefresh() {
   .then(([forecast, session]) => {
     currentForecast = forecast;
     if (!date) liveForecast = forecast;
-    if (_levelMode === 'cog') loadCogHv().then(_redrawCogCharts);   // prime index CC-HV σ for COG charts
+    loadCogHv().then(() => { if (_levelMode === 'cog') _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
     currentSession  = session;
     renderV2Grid(forecast);
     if (session && session.instruments) {
@@ -2101,7 +2101,10 @@ const _CCHV_USE = new Set(['NQ']);
 let _cogHvByInst = null, _cogHvPromise = null, _cogHvMeta = null;
 async function loadCogHv() {
   if (_cogHvByInst) return _cogHvByInst;
-  if (!_cogHvPromise) _cogHvPromise = fetch(`/api/vol-forecast/cog-hv?window=${VF_COGHV_WINDOW}`)
+  // Ask only for the indices we actually draw from cc-HV (NQ) — the server then
+  // computes just those, not all ~8 indices, so the cold path (and the warm) is fast.
+  const _inst = encodeURIComponent([..._CCHV_USE].join(','));
+  if (!_cogHvPromise) _cogHvPromise = fetch(`/api/vol-forecast/cog-hv?window=${VF_COGHV_WINDOW}&inst=${_inst}`)
     .then(r => r.json())
     .then(j => { _cogHvMeta = { computedAt: j.computedAt, window: j.window, log: j.log }; return (_cogHvByInst = (j.ok && j.indices) ? j.indices : {}); })
     .catch(() => (_cogHvByInst = {}));
