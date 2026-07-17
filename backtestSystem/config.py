@@ -63,6 +63,16 @@ DEFAULTS = {
     "slToBePct":         0.0,           # 0=disabled; e.g. 0.5 moves SL to BE when 50% to TP
     "slBeBuffer":        1.0,           # pips above/below entry for the new SL
 
+    # Chandelier trailing stop (ratcheting exit that locks profit) — OFF by
+    # default. Sits ON TOP of SL→BE via the same TRADE_ACTION_SLTP path, and the
+    # fixed TP stays as a ceiling. The trail only ever ratchets the stop in the
+    # favourable direction (never loosens it) so it can only lock MORE profit —
+    # this is the "ran +Nk, never hit the far TP, round-tripped back" fix. Not an
+    # edge source; pure exit management (let winners run, don't give it all back).
+    "chandelierEnabled":     False,     # master toggle
+    "chandelierAtrMult":     3.0,       # trail width behind the peak, in 30m-ATR units
+    "chandelierActivateAtr": 1.0,       # start trailing once profit ≥ this × ATR (~0.7R at slMult 1.5)
+
     # Server regime veto (1m HMM from Railway /api/hmm5m)
     "useServerRegime":       False,     # enable 1m HMM quality gate
     "regimeVetoConfidence":  70,        # min confidence % to trigger veto
@@ -175,3 +185,38 @@ def tp_distance(cfg: dict, sl_dist: float, pip: float, asia_range: float,
         dist = sl_dist * rr  # fallback
 
     return min(dist, sl_dist * max_rr)
+
+
+def chandelier_stop(is_long: bool, entry: float, peak: float, atr: float,
+                    current_sl: float, atr_mult: float,
+                    activate_atr: float) -> float | None:
+    """ATR chandelier trailing stop for a live position.
+
+    Returns a NEW stop-loss price that ratchets behind the best price reached
+    since entry (``peak`` = highest high for a long, lowest low for a short), or
+    ``None`` when the trail should not move the stop on this poll.
+
+        trail = peak ∓ atr_mult · atr        (below peak for a long, above for a short)
+
+    Two guards keep it honest:
+      * the trail engages only once the trade is ``activate_atr · atr`` in profit
+        (so noise near entry can't trip it), and
+      * the returned stop is ALWAYS floored at ``current_sl`` — it can only tighten
+        in the favourable direction, never loosen.
+    Mirrors the ratchet semantics of ``pylego.strategy.rangeline.chandelier_stop``
+    (peak ∓ trail-width, clamped to the protect stop) but widths the trail off ATR
+    rather than a ladder rung, matching this bot's ATR-based SL math.
+    """
+    if atr <= 0 or atr_mult <= 0:
+        return None
+    if is_long:
+        if peak - entry < activate_atr * atr:
+            return None                        # not enough favourable move yet
+        trail = peak - atr_mult * atr
+        return trail if trail > current_sl else None
+    # short
+    if entry - peak < activate_atr * atr:
+        return None
+    trail = peak + atr_mult * atr
+    # A short's SL sits ABOVE price; tighter = lower. current_sl<=0 means unset.
+    return trail if (current_sl <= 0 or trail < current_sl) else None
