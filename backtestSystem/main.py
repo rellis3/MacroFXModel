@@ -14,10 +14,10 @@ from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 
-from config    import load_config, sl_distance, tp_distance, _deep_merge
+from config    import load_config, sl_distance, tp_distance, chandelier_stop, _deep_merge
 from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        fetch_price, get_balance, get_open_positions, place_order,
-                       pip_size, london_now, move_sl_to_be, fetch_close_price)
+                       pip_size, london_now, move_sl_to_be, modify_sl, fetch_close_price)
 import journal
 from levels    import (compute_asia_range, compute_monday_range, project_fib_levels,
                        detect_confluences, get_yesterday_range_bars)
@@ -41,6 +41,7 @@ log = logging.getLogger(__name__)
 _DEFAULT_POLL    = 2   # fallback if not in config
 _STATUS_INTERVAL = 30  # seconds between heartbeat logs per pair
 _last_status: dict[str, float] = {}  # pair → last status log timestamp
+_trail_peaks: dict[int, float] = {}  # ticket → best price since entry (chandelier trail)
 
 # ── Server regime cache ───────────────────────────────────────────────────────
 # Fetched from /api/hmm5m on the Railway server; refreshed every 5 min.
@@ -509,6 +510,9 @@ def main() -> None:
     log.info(f'Method: {cfg.get("method")}  SL: {cfg.get("slMode")}  TP: {cfg.get("tpMode")}  RR: {cfg.get("rrRatio")}')
     log.info(f'Kill: D={cfg.get("killDaily")}R  W={cfg.get("killWeekly")}R  M={cfg.get("killMonthly")}R')
     log.info(f'Cooldown: {cfg.get("tradeCooldownMins")}m  slToBePct={cfg.get("slToBePct")}  regime={cfg.get("useServerRegime")}  poll={cfg.get("pollInterval")}s')
+    if cfg.get('chandelierEnabled'):
+        log.info(f'Chandelier trail: ON  width={cfg.get("chandelierAtrMult")}×ATR  '
+                 f'activate={cfg.get("chandelierActivateAtr")}×ATR')
     enabled_features = [k for k, v in cfg.get('features', {}).items() if v.get('enabled')]
     log.info(f'Features ({len(enabled_features)}): {", ".join(enabled_features)}')
 
@@ -540,6 +544,7 @@ def main() -> None:
             current_tickets = {p.ticket: p.symbol for p in open_pos}
             for ticket, symbol in prev_tickets.items():
                 if ticket not in current_tickets:
+                    _trail_peaks.pop(ticket, None)  # drop chandelier peak for closed trade
                     for pair in pairs:
                         if symbol == pair or symbol.startswith(pair):
                             pair_close_times[pair] = time.monotonic()
@@ -574,6 +579,55 @@ def main() -> None:
                             _buf = cfg.get('slBeBuffer', 1.0) * _p
                             _be  = pos.price_open + _buf if pos.type == 0 else pos.price_open - _buf
                             journal.record_be_move(pos.ticket, round(_be, 6))
+
+            # ── Chandelier trailing stop ───────────────────────────────────
+            # Ratchet each open position's SL behind the best price reached, so a
+            # runner that never touches the far fixed TP still locks in profit
+            # instead of round-tripping. Runs every poll, regardless of the trade
+            # window; the fixed TP stays as a ceiling. Favourable-ratchet-only, so
+            # it composes safely with SL→BE (whichever is tighter wins).
+            if cfg.get('chandelierEnabled', False):
+                atr_mult   = cfg.get('chandelierAtrMult', 3.0)
+                act_atr    = cfg.get('chandelierActivateAtr', 1.0)
+                atr_period = int(cfg.get('atrPeriod', 14))
+                live_tickets = {p.ticket for p in open_pos}
+                for pos in open_pos:
+                    if pos.sl == 0:
+                        continue  # no protective stop set — leave the trail off
+                    is_long   = pos.type == 0
+                    entry     = pos.price_open
+                    price_now = fetch_price(pos.symbol) or pos.price_current or entry
+                    peak      = _trail_peaks.get(pos.ticket)
+                    if peak is None:
+                        peak = max(entry, price_now) if is_long else min(entry, price_now)
+                    else:
+                        peak = max(peak, price_now) if is_long else min(peak, price_now)
+                    _trail_peaks[pos.ticket] = peak
+
+                    # 30m ATR — the same estimator that set the SL at entry.
+                    bars_30m = fetch_bars_30m(pos.symbol, count=atr_period * 4 + 10)
+                    atr = compute_atr(bars_30m[-(atr_period * 3):], atr_period) if bars_30m else 0.0
+                    if not atr:
+                        continue
+
+                    new_sl = chandelier_stop(is_long, entry, peak, atr, pos.sl,
+                                             atr_mult, act_atr)
+                    if new_sl is None:
+                        continue
+                    set_sl = modify_sl(pos, new_sl)
+                    if set_sl is not None:
+                        _p   = pip_size(pos.symbol)
+                        lock = (set_sl - entry) / _p if is_long else (entry - set_sl) / _p
+                        log.info(f'Chandelier  ticket={pos.ticket} {pos.symbol}  '
+                                 f'SL→{set_sl}  peak={peak:.5f}  atr={atr/_p:.1f}p  '
+                                 f'locked={lock:+.1f}p')
+                        journal.record_trail_move(pos.ticket, set_sl)
+
+                # Belt & braces: drop peaks for any ticket no longer open (the
+                # close detector above is the primary cleanup).
+                for t in list(_trail_peaks):
+                    if t not in live_tickets:
+                        _trail_peaks.pop(t, None)
 
             pair_statuses: dict = {}
             for pair in pairs:

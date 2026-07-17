@@ -1083,6 +1083,23 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
         </div>
       </div>
 
+      <!-- Chandelier Trailing Stop -->
+      <div class="card">
+        <div class="card-title">Chandelier Trailing Stop</div>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="bt_chandelierEnabled">
+          <label for="bt_chandelierEnabled">Enable chandelier trail <small>ratchets the stop behind the peak to lock profit; fixed TP stays as a ceiling, and it never loosens the stop</small></label>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Trail width (× ATR) <small>stop trails this many 30m-ATRs behind the best price — wider = gives back more, tighter = exits sooner</small></span>
+          <input type="number" id="bt_chandelierAtrMult" min="0.5" max="10" step="0.5">
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">Activate at (× ATR profit) <small>only start trailing once the trade is this many ATRs in profit (~0.7R at SL mult 1.5)</small></span>
+          <input type="number" id="bt_chandelierActivateAtr" min="0" max="10" step="0.25">
+        </div>
+      </div>
+
       <!-- Take Profit -->
       <div class="card">
         <div class="card-title">Take Profit</div>

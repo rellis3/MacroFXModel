@@ -95,6 +95,8 @@ def record_open(ticket: int, pair: str, direction: str,
         'features':     features_fired,
         'be_moved_at':  None,
         'be_price':     None,
+        'trail_moved_at': None,
+        'trail_sl':       None,
         'exit_time':    None,
         'exit_price':   None,
         'exit_type':    None,
@@ -150,6 +152,20 @@ def record_be_move(ticket: int, be_price: float) -> None:
     _push_to_kv()
 
 
+def record_trail_move(ticket: int, trail_sl: float) -> None:
+    """Record a chandelier trailing-stop ratchet (latest trailed SL price)."""
+    rec = _find_record(ticket)
+    if not rec:
+        return
+    now_iso = datetime.fromtimestamp(time.time(), tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    rec['trail_sl']       = trail_sl
+    rec['trail_moved_at'] = now_iso
+    if ticket in _entry_meta:
+        _entry_meta[ticket]['trail_sl'] = trail_sl
+    log.info(f'[Journal] Trail move #{ticket} → {trail_sl}')
+    _push_to_kv()
+
+
 def record_close(ticket: int, exit_price: float) -> float | None:
     """Close out a tracked trade. Returns the trade's pnl_r so the caller
     can feed the kill switch, or None if the ticket wasn't tracked."""
@@ -164,13 +180,18 @@ def record_close(ticket: int, exit_price: float) -> float | None:
     sl          = rec['sl']
     tp          = rec['tp']
     be_price    = rec.get('be_price')
+    trail_sl    = rec.get('trail_sl')
     direction   = rec['direction']
     sl_dist     = abs(entry_price - sl)
 
-    # Infer exit type — 10% of SL distance as tolerance (min 2 pips)
+    # Infer exit type — 10% of SL distance as tolerance (min 2 pips). Order
+    # matters: TP (ceiling) → trail (locked profit) → SL (original disaster
+    # stop) → BE → manual.
     tol = max(sl_dist * 0.10, pip * 2)
     if   abs(exit_price - tp) <= tol:
         exit_type = 'tp'
+    elif trail_sl is not None and abs(exit_price - trail_sl) <= tol:
+        exit_type = 'trail'
     elif abs(exit_price - sl) <= tol:
         exit_type = 'sl'
     elif be_price is not None and abs(exit_price - be_price) <= tol:

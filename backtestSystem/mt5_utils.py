@@ -231,35 +231,62 @@ def fetch_close_price(ticket: int) -> float | None:
     return None
 
 
-def move_sl_to_be(position, pip: float, be_buffer_pips: float = 1.0) -> bool:
+def modify_sl(position, new_sl: float) -> float | None:
     """
-    Move the SL of an open position to breakeven (entry price + small buffer).
-    Returns True if the modification was sent successfully.
+    Ratchet an open position's SL to ``new_sl``, keeping its TP unchanged. The
+    stop is rounded to the INSTRUMENT's own price digits (3 for JPY, 5 for most
+    FX, …) — a hardcoded rounding makes MT5 reject a sub-tick modify as a no-op
+    (retcode 10025) and spam a warning every poll. Only sends the request when the
+    new stop is STRICTLY more favourable than the current one (higher for a long,
+    lower for a short) so it can never loosen a stop.
+
+    Returns the rounded SL price that was set, or None if nothing was sent.
     """
     if not HAS_MT5:
-        return False
+        return None
 
-    entry    = position.price_open
-    is_long  = position.type == 0  # 0 = BUY
-    buf      = be_buffer_pips * pip
-    new_sl   = round(entry + buf if is_long else entry - buf, 6)
+    info    = mt5.symbol_info(position.symbol)
+    digits  = info.digits if info else 5
+    nsl     = round(new_sl, digits)
+    is_long = position.type == 0  # 0 = BUY
 
-    # Already at or beyond BE — don't send a redundant request
-    if is_long  and position.sl >= new_sl:
-        return False
-    if not is_long and position.sl <= new_sl:
-        return False
+    # Favourable-only ratchet (a short's SL sits above price → tighter = lower).
+    if is_long and nsl <= position.sl:
+        return None
+    if not is_long and position.sl != 0 and nsl >= position.sl:
+        return None
 
     res = mt5.order_send({
         'action':   mt5.TRADE_ACTION_SLTP,
         'position': position.ticket,
-        'sl':       new_sl,
+        'sl':       nsl,
         'tp':       position.tp,
     })
     if res is None or res.retcode != mt5.TRADE_RETCODE_DONE:
         err = res.retcode if res else mt5.last_error()
-        log.warning(f'BE move failed ticket={position.ticket}: {err}')
+        log.warning(f'SL modify failed ticket={position.ticket}: {err}')
+        return None
+    return nsl
+
+
+def move_sl_to_be(position, pip: float, be_buffer_pips: float = 1.0) -> bool:
+    """
+    Move the SL of an open position to breakeven (entry price + small buffer).
+    Returns True if the modification was sent successfully. Delegates the actual
+    ratchet + rounding to ``modify_sl`` so BE and the chandelier trail share one
+    stop-modify path.
+    """
+    if not HAS_MT5:
         return False
 
-    log.info(f'SL → BE  ticket={position.ticket}  new_sl={new_sl}  (entry={entry})')
+    entry   = position.price_open
+    is_long = position.type == 0  # 0 = BUY
+    buf     = be_buffer_pips * pip
+    new_sl  = entry + buf if is_long else entry - buf
+
+    set_sl = modify_sl(position, new_sl)
+    if set_sl is None:
+        return False
+
+    log.info(f'SL → BE  ticket={position.ticket}  new_sl={set_sl}  (entry={entry})')
     return True

@@ -111,6 +111,10 @@ const BT_DEFAULTS = {
   // SL → Breakeven
   slToBePct:         0.0,
   slBeBuffer:        1.0,
+  // Chandelier trailing stop
+  chandelierEnabled:     false,
+  chandelierAtrMult:     3.0,
+  chandelierActivateAtr: 1.0,
   // Take profit
   tpMode:            'fixedR',
   rrRatio:           2.2,
@@ -450,6 +454,10 @@ function readBtForm() {
   _btCfg.atrPeriod          = num('bt_atrPeriod',     14);
   _btCfg.slToBePct          = num('bt_slToBePct',     0.0);
   _btCfg.slBeBuffer         = num('bt_slBeBuffer',    1.0);
+  // Chandelier trailing stop
+  _btCfg.chandelierEnabled     = chk('bt_chandelierEnabled');
+  _btCfg.chandelierAtrMult     = num('bt_chandelierAtrMult',     3.0);
+  _btCfg.chandelierActivateAtr = num('bt_chandelierActivateAtr', 1.0);
   // TP
   _btCfg.tpMode             = radio('bt_tpMode',      'fixedR');
   _btCfg.rrRatio            = num('bt_rrRatio',       2.2);
@@ -523,6 +531,10 @@ function renderBtForm() {
   setVal('bt_atrPeriod',     _btCfg.atrPeriod         ?? 14);
   setVal('bt_slToBePct',     _btCfg.slToBePct         ?? 0.0);
   setVal('bt_slBeBuffer',    _btCfg.slBeBuffer        ?? 1.0);
+
+  setChk('bt_chandelierEnabled',     _btCfg.chandelierEnabled     ?? false);
+  setVal('bt_chandelierAtrMult',     _btCfg.chandelierAtrMult     ?? 3.0);
+  setVal('bt_chandelierActivateAtr', _btCfg.chandelierActivateAtr ?? 1.0);
 
   setRadio('bt_tpMode',      _btCfg.tpMode            ?? 'fixedR');
   setVal('bt_rrRatio',       _btCfg.rrRatio           ?? 2.2);
