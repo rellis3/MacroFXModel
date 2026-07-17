@@ -2092,7 +2092,12 @@ function _cogBands(volAnnual, mult) {
 // returns σ at several windows for tuning). Guarded: adopt only when plausible
 // (>5% AND within 0.5–2.0× the GARCH σ) so garbage can't ship; else fall back to
 // primary σ, flagged. Window tunable via VF_COGHV_WINDOW. fx + gold always primary.
-const VF_COGHV_WINDOW = 20;                          // tune to match COG (endpoint logs 10/14/20/30)
+const VF_COGHV_WINDOW = 30;                          // 30-day tracks COG's smoothing best (10/14/20/30 in the endpoint log)
+// NQ is the ONLY index we draw from COG's close-to-close HV — it's the one COG
+// actually publishes, and OANDA's NAS100 close-to-close data tracks him. Every
+// other index reads too low from OANDA's cc data (SPX500/US30/DE30/UK100/US2000),
+// so they stay on the platform σ (GARCH). fx + gold always use the platform σ too.
+const _CCHV_USE = new Set(['NQ']);
 let _cogHvByInst = null, _cogHvPromise = null, _cogHvMeta = null;
 async function loadCogHv() {
   if (_cogHvByInst) return _cogHvByInst;
@@ -2102,40 +2107,28 @@ async function loadCogHv() {
     .catch(() => (_cogHvByInst = {}));
   return _cogHvPromise;
 }
-// { va, src }: indices → guarded CC-HV σ (src 'HV') or primary fallback ('hvback');
-// fx + gold → primary ('primary').
+// The σ to draw an instrument's COG bands from. Only NQ uses COG's close-to-close
+// HV (the one index COG publishes and OANDA tracks him on); every other index + fx
+// + gold use the platform σ. A light finite/sane check only — no "rejection".
 function _cogVol(name, f) {
   const g = f?.vol_annual;
-  if (_assetClassOf(name) === 'index') {
+  if (_CCHV_USE.has(name)) {
     const hv = _cogHvByInst && _cogHvByInst[name]?.volAnnual;
-    // Adopt CC-HV only when plausible, else fall back to GARCH. OANDA's D1 for
-    // SPX500_USD/US30_USD understates their closes → CC-HV comes out ~half (SPX
-    // 0.56× GARCH, US30 0.47×), physically impossible when NQ (which shares SPX's
-    // mega-caps) is ~1.0× — so the 0.6× floor rejects those two → GARCH (~16%,
-    // NQ/SPX ≈ 1.3×, sane), while NQ/DE30/UK100 keep CC-HV. Upper bound guards
-    // a runaway high read.
-    if (hv > 5 && g > 0 && hv >= 0.6 * g && hv <= 2.0 * g) return { va: hv, src: 'HV' };
-    if (_cogHvByInst && _cogHvByInst[name]) return { va: g, src: 'hvback' };   // computed but implausible → fall back, flag
+    if (hv > 4 && hv < 200) return hv;
   }
-  return { va: g, src: 'primary' };
+  return g;
 }
 
 function buildCogExportText(data, { weekly = false } = {}) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
-  const note = weekly
-    ? '[COG-CALIBRATED WEEKLY — bands = C×σ√5 (5-day) / C×σ√20 (20-day); C: H-L 1.56/1.93, O-C 0.74/1.24; σ=annualised vol÷√252 (COG method, reverse-engineered). Indices: COG close-to-close HV σ [HV], London-midnight anchor; fx+gold primary σ.]'
-    : '[COG-CALIBRATED — bands = C×(annualised vol÷√252); C: H-L 1.56/1.93, O-C 0.74/1.24 (COG method, reverse-engineered — median≈Feller, tighter 75th/O-C). Indices: COG close-to-close HV σ [HV], London-midnight anchor; fx+gold primary σ.]';
-  const lines = [note, weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**', `**For session: ${data.session_label}**`, ''];
-  const fellBack = [];
+  const lines = [weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**', `**For session: ${data.session_label}**`, ''];
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     if (!(f?.vol_annual > 0)) continue;
-    const { va, src } = _cogVol(name, f);
+    const va = _cogVol(name, f);
     if (!(va > 0)) continue;
-    const tag = src === 'HV' ? ' [HV]' : (src === 'hvback' ? ' [GARCH — HV rejected]' : '');
-    if (src === 'hvback') fellBack.push(name);
     lines.push(div(name));
-    lines.push(`Volatility (annualized) : ${va.toFixed(2)}%${tag}`);
+    lines.push(`Volatility (annualized) : ${va.toFixed(2)}%`);
     if (weekly) {
       const w5 = _cogBands(va, Math.sqrt(5)), w20 = _cogBands(va, Math.sqrt(20));
       lines.push('── 5-Day (Weekly)');
@@ -2151,8 +2144,6 @@ function buildCogExportText(data, { weekly = false } = {}) {
     }
     lines.push('');
   }
-  if (fellBack.length) lines.push(`[note: CC-HV σ rejected as implausible for ${fellBack.join(', ')} — using primary σ there]`, '');
-  else if (!_cogHvByInst) lines.push('[note: CC-HV σ not yet loaded — indices on primary σ; re-open COG once it loads]', '');
   return lines.join('\n');
 }
 async function exportCog() {
@@ -3330,7 +3321,7 @@ try { if (localStorage.getItem('vf_chart_level_mode') === 'cog') _levelMode = 'c
 // uses the forecast's own hl/oc fields.
 function _chartLevels(name, f) {
   if (_levelMode === 'cog' && f?.vol_annual > 0) {
-    const { va } = _cogVol(name, f);           // indices → guarded COG close-to-close HV σ; fx+gold → primary
+    const va = _cogVol(name, f);               // NQ → COG CC-HV; all other indices + fx + gold → platform σ
     const s = va / Math.sqrt(252);             // daily σ, % of price
     return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
   }
