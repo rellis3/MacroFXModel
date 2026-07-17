@@ -79,7 +79,7 @@ All editable on the Confluence tab. Names match `DEFAULT_CFG` in `main.py`.
 | Universe | `pairs` (default: 12 FX + GOLD + 4 indices), `broker_overrides` (`{key: brokerSymbol}` for brokers whose symbol differs, e.g. DAX→GER40) |
 | Matrix (pips) | `zone_tfs`, `cluster_tolerance`, `min_zone_score`, `min_distinct_legs`, `proximity_pips`, `max_armed_zones`, `include_retests`, `bucket_pips` |
 | Confirmation | `vu_min_components`, `vu_require_wt`, `mf_fuel_veto` |
-| Exits (pips) | `max_sl_pips`, `min_sl_pips`, `sl_buffer_atr`, `tp1_r_min`, `tp2_r_min`, `tp2_r_max`, `range_cap_mult`, `be_after_tp1`, `allow_overnight_htf_aligned` |
+| Exits (pips) | `max_sl_pips`, `max_sl_atr_mult` (0 = off; widens, never tightens, `max_sl_pips` to `atr_15m × mult` when bigger — keeps the cap from drifting too tight as an instrument's price/vol rises), `min_sl_pips`, `sl_buffer_atr`, `tp1_r_min`, `tp2_r_min`, `tp2_r_max`, `range_cap_mult`, `be_after_tp1`, `allow_overnight_htf_aligned` |
 | Risk — per instrument | `risk_pct`, `max_lot`, `max_trades_per_day`, `max_concurrent_trades`, `max_open_risk_pct`, `max_per_direction`, `min_entry_separation_pips`, `cooldown_minutes`, `global_cooldown_minutes` |
 | Risk — global (all instruments) | `max_total_open_trades`, `max_total_open_risk_pct`, `max_total_per_direction` |
 | Gates | `gold_macro_gate`, `ml_gate` (gold only), `htf_block`, `htf_block_confidence`, `use_vol_forecast`, `use_oi` |

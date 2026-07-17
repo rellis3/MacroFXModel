@@ -95,7 +95,36 @@ DEFAULT_CFG: dict = {
     'tp1_r':                1.0,    # TP1 as multiple of SL distance
     'tp2_r':                2.0,    # TP2 as multiple of SL distance
     'sl_atr_mult':          1.5,    # SL = ATR(14) × this if no structural SL
-    'max_sl_pips':          40,
+    # Raised from the legacy 40 (2026-07-16): that value was carried over from
+    # when gold traded far lower and had gone stale — at ~$4,000+ it was
+    # rejecting/truncating most real structural stops (ConfluenceBot's gold
+    # logic, same constant, logs explicit rejections like "structural SL
+    # 54-74p exceeds cap 40p"; Gold v1's own journal shows two pre-cap-fix
+    # outliers at 79.2p and 130.5p). M15/H1/H4 ATR(14) medians as of 2026-07 are
+    # ~9 / ~19 / ~38 — a real multi-bar swing on the H1-H4 zones this bot
+    # trades routinely spans several ATRs, so 90 covers the typical 54-74p
+    # rejection band while still skipping/truncating genuine outliers (130p+).
+    # Re-derive this periodically as gold's price/vol regime moves — it is a
+    # dollar cap on a dollar-denominated instrument, not a stable ratio.
+    'max_sl_pips':          90,
+    # When the zone's real structural SL (swing_origin) needs MORE room than
+    # max_sl_pips, this decides what happens:
+    #   False (default) — TRUNCATE: place the stop at max_sl_pips anyway, short
+    #                      of the real invalidation level. This is what the bot
+    #                      has always done. Replay of the 2026-05→07 journal
+    #                      showed the trades this truncation hits are net
+    #                      losers on average (-0.35R over 21 trades) while
+    #                      trades whose structural SL already fit under the
+    #                      cap were net winners (+0.87R over 8 trades) — the
+    #                      truncated stop sits inside normal noise, not at the
+    #                      level that actually invalidates the setup.
+    #   True             — SKIP: don't take the trade at all when structural
+    #                      SL > max_sl_pips (mirrors GoldV2's exits.py rule:
+    #                      "a setup that doesn't fit the risk box is not a
+    #                      setup — never truncate the stop into no-man's-land").
+    #                      Fewer trades, but each one's stop is where the setup
+    #                      actually says it's wrong.
+    'sl_skip_if_capped':    False,
     'max_trades_per_day':   2,
     'trade_window_start':   '07:00',
     'trade_window_end':     '20:00',
@@ -390,14 +419,17 @@ def _in_trade_window(cfg: dict) -> bool:
 # ── SL / TP calculation ───────────────────────────────────────────────────────
 
 def _calc_sl_tp(zone: FibZone, direction: str, price: float,
-                atr: float, cfg: dict, htf_aligned: bool = False) -> tuple[float, float, float]:
+                atr: float, cfg: dict, htf_aligned: bool = False
+                ) -> Optional[tuple[float, float, float]]:
     """
     SL: just beyond the zone's far edge (swing origin + small buffer).
     TP1 / TP2: R-multiples from SL distance. TP2 scales with HTF alignment:
       aligned (continuation) → htf_aligned_tp2_r (default 3.0)
       counter-trend          → htf_opposed_tp2_r  (default 1.5)
       neutral / unknown      → tp2_r config value (default 2.0)
-    Returns (sl, tp1, tp2).
+    Returns (sl, tp1, tp2), or None if the structural SL exceeds max_sl_pips
+    AND cfg['sl_skip_if_capped'] is True (see DEFAULT_CFG comment) — the
+    caller must treat None as "skip this trade", not fall back to a default.
     """
     max_sl = cfg.get('max_sl_pips', 40) * PIP
     atr_sl = atr * cfg.get('sl_atr_mult', 1.5)
@@ -411,14 +443,24 @@ def _calc_sl_tp(zone: FibZone, direction: str, price: float,
     #   Previously this used level_886 as the anchor, which placed the structural
     #   SL at the zone centre (entry ± 3pts), always forcing the ATR fallback and
     #   giving an arbitrary 15-pip SL with no structural basis.
+    skip_if_capped = cfg.get('sl_skip_if_capped', False)
+
     is_retest = getattr(zone, 'zone_variant', '') == 'retest'
     if direction == 'LONG':
-        sl_anchor  = zone.gp_low if is_retest else zone.swing_origin
-        structural_sl = sl_anchor - atr * 0.3
+        sl_anchor       = zone.gp_low if is_retest else zone.swing_origin
+        structural_sl   = sl_anchor - atr * 0.3
+        structural_dist = price - structural_sl
+    else:
+        sl_anchor       = zone.gp_high if is_retest else zone.swing_origin
+        structural_sl   = sl_anchor + atr * 0.3
+        structural_dist = structural_sl - price
+
+    if structural_dist > max_sl and skip_if_capped:
+        return None   # real invalidation point doesn't fit the risk box — skip, don't truncate
+
+    if direction == 'LONG':
         sl = max(structural_sl, price - max_sl)
     else:
-        sl_anchor  = zone.gp_high if is_retest else zone.swing_origin
-        structural_sl = sl_anchor + atr * 0.3
         sl = min(structural_sl, price + max_sl)
 
     sl_dist = abs(price - sl)
@@ -428,6 +470,8 @@ def _calc_sl_tp(zone: FibZone, direction: str, price: float,
 
     # Hard cap: ATR fallback must not exceed max_sl_pips either
     if sl_dist > max_sl:
+        if skip_if_capped:
+            return None
         sl = (price - max_sl) if direction == 'LONG' else (price + max_sl)
         sl_dist = max_sl
 
@@ -861,7 +905,14 @@ class GoldBot:
 
         # Calculate SL / TP + lot size (TP2 scales with HTF alignment)
         htf_aligned = getattr(zone, 'htf_aligned', False)
-        sl, tp1, tp2 = _calc_sl_tp(zone, direction, price, self.atr_15m, self.cfg, htf_aligned)
+        sl_tp = _calc_sl_tp(zone, direction, price, self.atr_15m, self.cfg, htf_aligned)
+        if sl_tp is None:
+            log.info(f'[SKIP]   {zone.zone_id} structural SL exceeds '
+                     f'{self.cfg.get("max_sl_pips", 40):.0f}p cap — sl_skip_if_capped is on, no trade')
+            self.bot_state.transition(State.WAITING)
+            self.bot_state.armed_zone_id = None
+            return
+        sl, tp1, tp2 = sl_tp
         balance  = _mt5_balance()
         sl_pips  = abs(price - sl)
         lot_size = _calc_lot_size(balance, self.cfg.get('risk_pct', 0.5), sl_pips)

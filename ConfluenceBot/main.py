@@ -182,6 +182,10 @@ DEFAULT_CFG: dict = {
 
     # Exits (SL caps in pips)
     'max_sl_pips':                 40,
+    'max_sl_atr_mult':             0,       # 0 = disabled; if > 0, widens (never tightens)
+                                             # max_sl to atr_15m * mult when that's bigger —
+                                             # keeps the cap from silently drifting too tight
+                                             # as an instrument's price/vol rises (see exits.py)
     'min_sl_pips':                 4,
     'sl_buffer_atr':               0.3,
     'tp1_r_min':                   1.0,
@@ -1380,7 +1384,7 @@ class SymbolEngine:
         risk_pct = float(self.cfg.get('risk_pct', 0.5))
 
         # Per-instrument portfolio gate, then the global cross-instrument gate.
-        ok, reason = self.tm.can_open(direction, risk_pct, price, self.cfg)
+        ok, reason = self.tm.can_open(direction, risk_pct, price, self.cfg, pip=instr.pip)
         if not ok:
             self.journal.log_skip(zone.zone_id, 'portfolio', reason)
             return

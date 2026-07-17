@@ -11,9 +11,18 @@ V2 rules:
   SL — anchored to the CONFIRMATION SWING: the M5 swing low (long) / swing
        high (short) that formed the VuManChu signal at the zone, minus an
        ATR buffer. Fallback: the zone's far edge minus buffer. If the
-       resulting stop exceeds `max_sl_pips`, the trade is SKIPPED — a setup
+       resulting stop exceeds the cap, the trade is SKIPPED — a setup
        that doesn't fit the risk box is not a setup (never truncate the stop
        into no-man's-land).
+
+       The cap itself is `max_sl_pips` (a flat, instrument-agnostic pip count)
+       widened — never tightened — by `max_sl_atr_mult × atr_15m` when that
+       product is larger. A flat pip cap silently drifts too tight as an
+       instrument's price/volatility rises after the cap was tuned (this hit
+       gold and several FX/index pairs the same way once their raw-point ATR
+       outgrew 40 pips); the ATR term re-floats the cap with current
+       conditions instead of needing a per-instrument constant.
+       `max_sl_atr_mult` defaults to 0 (disabled — flat cap only).
 
   TP — level-to-level: the bot already computes a map of obstacles (opposing
        zones, nPOCs, VWAP anchors, pivots, prev-day H/L, POC/VAH/VAL, the
@@ -167,6 +176,9 @@ def plan_exits(zone, direction: str, price: float,
     cfg = cfg or {}
     rnd         = lambda x: round(x, digits)
     max_sl      = float(cfg.get('max_sl_pips', 40)) * pip
+    max_sl_atr_mult = float(cfg.get('max_sl_atr_mult', 0) or 0)
+    if max_sl_atr_mult > 0:
+        max_sl = max(max_sl, atr_15m * max_sl_atr_mult)
     min_sl      = float(cfg.get('min_sl_pips', 4)) * pip
     buf         = atr_15m * float(cfg.get('sl_buffer_atr', 0.3))
     tp1_r_min   = float(cfg.get('tp1_r_min', 1.0))

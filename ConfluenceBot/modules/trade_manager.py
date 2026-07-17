@@ -211,7 +211,7 @@ class TradeManager:
     # ── portfolio gate ────────────────────────────────────────────────────────
 
     def can_open(self, direction: str, risk_pct: float, entry_price: float,
-                 cfg: dict) -> tuple[bool, str]:
+                 cfg: dict, pip: float = 1.0) -> tuple[bool, str]:
         self.roll_day_if_needed()
 
         if self.trades_today >= int(cfg.get('max_trades_per_day', 4)):
@@ -231,10 +231,11 @@ class TradeManager:
         if len(same_dir) >= int(cfg.get('max_per_direction', 2)):
             return False, f'max {direction} positions'
 
-        sep = float(cfg.get('min_entry_separation_pips', 15))
+        sep_pips = float(cfg.get('min_entry_separation_pips', 15))
+        sep = sep_pips * pip
         for t in self.open_trades:
             if t.direction == direction and abs(t.entry_price - entry_price) < sep:
-                return False, (f'entry {entry_price:.1f} within {sep:.0f}p of open '
+                return False, (f'entry {entry_price:.1f} within {sep_pips:.0f}p of open '
                                f'{t.direction} @ {t.entry_price:.1f} — same shelf')
 
         if self.in_global_cooldown():

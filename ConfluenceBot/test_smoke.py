@@ -218,6 +218,24 @@ plan3, skip3 = plan_exits(
 )
 check('σ range cap blocks a no-room trade', plan3 is None, f'{plan3} {skip3}')
 
+# max_sl_atr_mult widens (never tightens) the flat pip cap when ATR outgrows it
+plan4, skip4 = plan_exits(
+    zone_stub, 'LONG', 4040.0, confirm_swing=3990.0, atr_15m=30.0,
+    daily_atr=200.0, today_high=4200.0, today_low=3900.0,
+    zones=[], vol=None, session=None,
+    cfg={'max_sl_pips': 40, 'max_sl_atr_mult': 3.0},
+)
+check('max_sl_atr_mult widens cap so a wide-but-real SL is no longer skipped',
+      plan4 is not None, skip4)
+plan5, skip5 = plan_exits(
+    zone_stub, 'LONG', 4040.0, confirm_swing=3990.0, atr_15m=30.0,
+    daily_atr=200.0, today_high=4200.0, today_low=3900.0,
+    zones=[], vol=None, session=None,
+    cfg={'max_sl_pips': 40},   # max_sl_atr_mult unset (0) → flat cap only
+)
+check('max_sl_atr_mult defaults to disabled (unchanged flat-cap behaviour)',
+      plan5 is None, str(plan5))
+
 
 print('\n── trade_manager ────────────────────────────────────────────')
 with tempfile.TemporaryDirectory() as td:
@@ -247,6 +265,23 @@ with tempfile.TemporaryDirectory() as td:
     tm.open_trade(t2)
     ok, why = tm.can_open('SHORT', 0.5, 4100.0, cfg)
     check('max concurrent enforced', not ok, why)
+
+    # min_entry_separation_pips must scale by pip — a raw-price compare (the
+    # bug) would treat 20 FX pips (0.0020) as "within 15" of ANY open trade,
+    # since 0.0020 < 15 is trivially true at FX price scale.
+    with tempfile.TemporaryDirectory() as td2:
+        tm_fx = TradeManager(os.path.join(td2, 'state_fx.json'))
+        cfg_fx = {'max_trades_per_day': 4, 'max_concurrent_trades': 2,
+                  'max_open_risk_pct': 1.0, 'max_per_direction': 2,
+                  'min_entry_separation_pips': 15}
+        t_fx = ManagedTrade('TFX', 'v2_long_eur', 'LONG', 1.14000, 1.13800,
+                            1.14200, 1.14400, 0.1, 0.5,
+                            '2026-07-02T10:00:00+00:00')
+        tm_fx.open_trade(t_fx)
+        ok, why = tm_fx.can_open('LONG', 0.5, 1.14020, cfg_fx, pip=0.0001)
+        check('FX same-shelf (3p away) blocked once scaled by pip', not ok, why)
+        ok, why = tm_fx.can_open('LONG', 0.5, 1.14200, cfg_fx, pip=0.0001)
+        check('FX separated entry (20p away) allowed once scaled by pip', ok, why)
 
     # BE simulation matches live management
     ev = t1.check_outcome(4050.0)          # TP1
