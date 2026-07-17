@@ -10177,48 +10177,122 @@ app.get('/api/vol-forecast/rv-har', async (req, res) => {
 // plain annualised close-to-close HV, which is gap-inclusive + current — so this
 // reproduces his numbers. Needs only current D1 (fetchD1) — no intraday, light.
 // Returns σ at several windows so the window can be tuned to match his output.
-const _cogHvCache = { date: null, data: null };
-app.get('/api/vol-forecast/cog-hv', async (req, res) => {
+// Cache keyed by date:window:instSet — one cold compute per param-set per day, then
+// served from memory. The daily warm below (post-session-close) primes the exact
+// key the page requests (window 30, inst NQ) so the export button is a memory hit,
+// never a cold recompute. Map (not a single slot) so a filtered client request and
+// a full diagnostic request don't evict each other. Pruned to today's keys.
+const _cogHvCache = new Map();
+async function _computeCogHv({ win, insts = null, force = false }) {
   const todayISO = new Date().toISOString().slice(0, 10);
-  const win = Math.max(5, Math.min(60, parseInt(req.query.window, 10) || 20));
-  const cacheKey = `${todayISO}:${win}`;
-  if (_cogHvCache.date === cacheKey && _cogHvCache.data && !req.query.force) return res.json({ ok: true, cached: true, ...(_cogHvCache.data) });
-  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cog-hv needs current D1' });
-  try {
-    const indices = {}, log = [];
-    const nowSec = Math.floor(Date.now() / 1000);
-    for (const cfg of WBT_INSTRUMENTS.filter(i => i.assetClass === 'index')) {
-      try {
-        // PRIMARY = CC-HV on London-daily closes built from the INTRADAY 5-min path
-        // (buildLondonDaily) — same calc for EVERY index, immune to the OANDA-D1
-        // aggregation that halved SPX500/US30. Gap-filled from OANDA to now.
-        let bars = await _loadM1ForAB(cfg.name.toLowerCase(), 5);
-        if (bars?.length && process.env.OANDA_KEY) {
-          const lastSec = bars.at(-1).time;
-          if (nowSec - lastSec > 3600) {
-            const gap1m = await _fetchM1Gap(cfg.oanda, lastSec + 60, nowSec, _btFetchM1Range, { onLog: () => {} });
-            if (gap1m.length) { const gap5 = _resampleTo(gap1m, 5).filter(b => b.time > lastSec); bars = bars.concat(gap5); }
-          }
+  const wanted = (insts && insts.length) ? new Set(insts.map(s => String(s).toUpperCase())) : null;
+  const cacheKey = `${todayISO}:${win}:${wanted ? [...wanted].sort().join(',') : 'ALL'}`;
+  if (!force) { const hit = _cogHvCache.get(cacheKey); if (hit) return { ...hit, cached: true }; }
+  if (!process.env.OANDA_KEY) return { ok: false, error: 'OANDA_KEY not set — cog-hv needs current D1' };
+  for (const k of _cogHvCache.keys()) if (!k.startsWith(`${todayISO}:`)) _cogHvCache.delete(k);  // drop stale days
+  const indices = {}, log = [];
+  const nowSec = Math.floor(Date.now() / 1000);
+  // Only the instruments the caller actually consumes (the page passes inst=NQ, the
+  // one index we draw from COG's cc-HV). No filter ⇒ every index (full diagnostic).
+  const list = WBT_INSTRUMENTS.filter(i => i.assetClass === 'index' && (!wanted || wanted.has(i.name.toUpperCase())));
+  for (const cfg of list) {
+    try {
+      // PRIMARY = CC-HV on London-daily closes built from the INTRADAY 5-min path
+      // (buildLondonDaily) — same calc for EVERY index, immune to the OANDA-D1
+      // aggregation that halved SPX500/US30. Gap-filled from OANDA to now.
+      let bars = await _loadM1ForAB(cfg.name.toLowerCase(), 5);
+      if (bars?.length && process.env.OANDA_KEY) {
+        const lastSec = bars.at(-1).time;
+        if (nowSec - lastSec > 3600) {
+          const gap1m = await _fetchM1Gap(cfg.oanda, lastSec + 60, nowSec, _btFetchM1Range, { onLog: () => {} });
+          if (gap1m.length) { const gap5 = _resampleTo(gap1m, 5).filter(b => b.time > lastSec); bars = bars.concat(gap5); }
         }
-        const intra = (bars?.length > 2000) ? _ccHvIntraday(bars, { window: win }) : { insufficient: true };
-        // D1 (London anchor) kept as a comparison / fallback if intraday is unavailable.
+      }
+      const intra = (bars?.length > 2000) ? _ccHvIntraday(bars, { window: win }) : { insufficient: true };
+      // D1 (London anchor) is now a FALLBACK ONLY — fetched just when intraday is
+      // unavailable, not on every request. It was an always-on OANDA round-trip per
+      // index for a comparison number (byWindowD1) nothing consumes since SPX/US30
+      // settled; dropping it from the hot path ~halves the per-index network.
+      let primary = intra, src = 'intraday-london', byWindowD1 = null;
+      if (intra.insufficient) {
         const lonBars = await _btFetchD1Aligned(cfg.oanda, 120, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' });
         const d1 = lonBars?.length ? _ccHvSigma(lonBars, { window: win }) : { insufficient: true };
-        const byWindowD1 = lonBars?.length ? _ccHvMulti(lonBars) : null;
-        const primary = !intra.insufficient ? intra : d1;
-        const src = !intra.insufficient ? 'intraday-london' : 'd1-london';
-        if (primary.insufficient) { log.push(`${cfg.name}: insufficient (intraday+D1)`); continue; }
-        indices[cfg.name] = {
-          volAnnual: primary.volAnnual, window: win, source: src, anchor: 'london-midnight',
-          byWindow: !intra.insufficient ? intra.byWindow : byWindowD1,
-          byWindowD1, nDaily: intra.nDaily ?? null, lastDate: primary.lastDate || null,
-        };
-        log.push(`${cfg.name}: CC-HV${win} σ ${primary.volAnnual}% [${src}] · intraday ${JSON.stringify(intra.byWindow || null)} · D1 ${JSON.stringify(byWindowD1)} (through ${primary.lastDate})`);
-      } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+        byWindowD1 = lonBars?.length ? _ccHvMulti(lonBars) : null;
+        primary = d1; src = 'd1-london';
+      }
+      if (primary.insufficient) { log.push(`${cfg.name}: insufficient (intraday+D1)`); continue; }
+      indices[cfg.name] = {
+        volAnnual: primary.volAnnual, window: win, source: src, anchor: 'london-midnight',
+        byWindow: !intra.insufficient ? intra.byWindow : byWindowD1,
+        byWindowD1, nDaily: intra.nDaily ?? null, lastDate: primary.lastDate || null,
+      };
+      log.push(`${cfg.name}: CC-HV${win} σ ${primary.volAnnual}% [${src}] (through ${primary.lastDate})`);
+    } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+  }
+  const data = { ok: true, indices, window: win, anchor: 'london-midnight', source: 'intraday-london', computedAt: new Date().toISOString(), dateISO: todayISO, log };
+  _cogHvCache.set(cacheKey, data);
+  return { ...data, cached: false };
+}
+app.get('/api/vol-forecast/cog-hv', async (req, res) => {
+  const win = Math.max(5, Math.min(60, parseInt(req.query.window, 10) || 20));
+  const insts = req.query.inst ? String(req.query.inst).split(',').map(s => s.trim()).filter(Boolean) : null;
+  try {
+    const out = await _computeCogHv({ win, insts, force: !!req.query.force });
+    res.status(out.ok === false ? 500 : 200).json(out);
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// ── COG window review — which cc-HV lookback tracks COG's published vol best? ──
+// The window (currently 30) is the one lever on how close our σ sits to COG. Rather
+// than tune it to a single day (which whipsaws), this reads EVERY stored COG
+// reference (vol_reference_index → the daily pastes on the v2 Ref-Data panel),
+// extracts COG's published annualised vol per instrument, and compares it to OUR
+// cc-HV at windows 10/14/20/30 computed the SAME way production does (intraday
+// 5-min → London-daily closes), as-of each COG date (closes strictly BEFORE the
+// session — no lookahead). Per-window bias/abs-error across all the days ⇒ pick the
+// window from evidence, not one snapshot. Read-only diagnostic; changes nothing.
+const _COG_WIN_SYM = { NQ: 'NAS100_USD', GOLD: 'XAU_USD', EURUSD: 'EUR_USD' };
+app.get('/api/vol-forecast/cog-window-review', async (req, res) => {
+  try {
+    const WINDOWS = [10, 14, 20, 30];
+    const names = req.query.inst ? String(req.query.inst).split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : ['NQ'];
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? [...new Set(JSON.parse(idxRaw).map(e => e.date).filter(Boolean))].sort() : [];
+    if (!dates.length) return res.json({ ok: true, cogDates: 0, note: 'No COG reference data stored yet (paste some on vol-forecast → Ref Data).' });
+    if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — window review needs OANDA M5' });
+    // COG's published vol per date (from the parsed export).
+    const cogByDate = {};
+    for (const d of dates) { const raw = await kv.get(`vol_reference_${d}`).catch(() => null); if (raw) { try { cogByDate[d] = _parseExportText(JSON.parse(raw).text); } catch { /* skip malformed */ } } }
+    const cogVol = (date, name) => { const rec = cogByDate[date]; if (!rec) return null; for (const a of (_COG_ALIASES[name] || [name])) if (rec[a]?.vol > 0) return rec[a].vol; return null; };
+    const fromSec = Math.floor(new Date(dates[0] + 'T00:00:00Z').getTime() / 1000) - 75 * 86400;   // ≥30 trading days of history before the first COG date
+    const toSec   = Math.floor(new Date(dates.at(-1) + 'T00:00:00Z').getTime() / 1000) + 2 * 86400;
+    const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
+    const instruments = {};
+    for (const name of names) {
+      const sym = _COG_WIN_SYM[name];
+      if (!sym) { instruments[name] = { error: `no OANDA symbol mapped (have ${Object.keys(_COG_WIN_SYM).join('/')})` }; continue; }
+      const bars5 = await _fetchOandaM5(sym, fromSec, toSec).catch(() => []);
+      const lond = buildLondonDaily(bars5 || []);
+      const rows = [];
+      const errs = Object.fromEntries(WINDOWS.map(w => [w, []]));
+      for (const date of dates) {
+        const cv = cogVol(date, name); if (!(cv > 0)) continue;
+        const prior = lond.filter(d => d.date < date);                 // strictly before ⇒ no lookahead
+        if (prior.length < Math.max(...WINDOWS) + 2) continue;
+        const our = _ccHvMulti(prior, WINDOWS);                         // { w10, w14, w20, w30 }
+        const row = { date, cog: +cv.toFixed(2) };
+        for (const w of WINDOWS) { const ov = our[`w${w}`]; row[`w${w}`] = ov; if (ov > 0) errs[w].push(ov - cv); }
+        rows.push(row);
+      }
+      const summary = WINDOWS.map(w => {
+        const e = errs[w]; const bias = mean(e), mae = mean(e.map(Math.abs));
+        return { window: w, n: e.length, biasPts: bias == null ? null : +bias.toFixed(3), maePts: mae == null ? null : +mae.toFixed(3) };
+      });
+      const ranked = summary.filter(s => s.n > 0).slice().sort((a, b) => a.maePts - b.maePts);
+      instruments[name] = { nDays: rows.length, londonDays: lond.length, currentWindow: 30, bestWindow: ranked[0]?.window ?? null, summary, rows };
     }
-    const data = { indices, window: win, anchor: 'london-midnight', source: 'intraday-london', computedAt: new Date().toISOString(), dateISO: todayISO, log };
-    _cogHvCache.date = cacheKey; _cogHvCache.data = data;
-    res.json({ ok: true, ...data });
+    res.json({ ok: true, cogDates: dates.length, dateRange: [dates[0], dates.at(-1)], instruments,
+      note: 'biasPts = mean(our − COG) vol points (negative ⇒ we read low). maePts = mean |our − COG|. bestWindow = lowest MAE across the stored COG days. Chosen from evidence, not one day. Small N ⇒ directional.' });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
@@ -15150,6 +15224,16 @@ if (process.env.OANDA_KEY) {
     try { if (!(await kv.get('volatility_bot_plan'))) { console.log('[volatility-bot] no plan in KV — bootstrap refresh'); await _runVolPlan(); } }
     catch (e) { console.error('[volatility-bot] bootstrap check failed:', e.message); }
   }, 90_000);
+
+  // Warm the COG cc-HV cache just after the session-close anchor, so the Vol
+  // Forecast v2 COG export button is a memory hit instead of a cold recompute.
+  // Primes the exact key the page requests (window 30, inst NQ — the one index we
+  // draw from COG's method). Also a boot warm so a mid-day restart is covered.
+  const _warmCogHv = () => _computeCogHv({ win: 30, insts: ['NQ'], force: true })
+    .then(r => console.log(`[cog-hv] warmed window 30 · NQ (${r.indices?.NQ?.volAnnual ?? 'n/a'}%)`))
+    .catch(e => console.error('[cog-hv] warm failed:', e.message));
+  _scheduleDailyLondon(0, 8, _warmCogHv);           // 3 min after the 00:05 vol plan
+  setTimeout(_warmCogHv, 100_000);                  // boot warm (after other startup fetches)
 }
 
 // Yield-Spread bot plan — recompute the daily spread-z per pair from FRED. Daily cadence
