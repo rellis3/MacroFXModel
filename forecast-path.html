@@ -165,7 +165,9 @@ const ENGINES = {
     sigmaOf: c => c.sigma,
   },
   M15: intradayEngine(15, 45, [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']], '16'),
-  M5:  intradayEngine(5, 18, [['12', '1 hour'], ['24', '2 hours'], ['48', '4 hours']], '24'),
+  // NB: OANDA computes the request's candle count from the CALENDAR span
+  // (weekends included) — M5 × 18 days = 5184 slots, over the 5000 cap → 400.
+  M5:  intradayEngine(5, 16, [['12', '1 hour'], ['24', '2 hours'], ['48', '4 hours']], '24'),
 };
 
 const $ = id => document.getElementById(id);
@@ -213,18 +215,27 @@ function line(color, width = 1, style = 2) {
 // News markers: past events snap to the first shown bar at-or-after the event
 // time (on the candle series); events inside the FUTURE cone window snap to the
 // nearest cone step (on the centre line, so "the line jumps here because…").
+// Releases come in bundles (one calendar row per metric, shared timestamp), so
+// markers are CLUSTERED one-per-candle: the highest-impact event names the
+// marker, "+N" counts the rest. Amber arrow = a Major in the bundle; grey
+// circle = moderates only.
 function eventMarkers(times, evs) {
-  const out = [];
+  const byBar = new Map();
   for (const ev of evs) {
-    const t = ev.ms / 1000;
-    const k = bisect(times, t);
+    const k = bisect(times, ev.ms / 1000);
     if (k >= times.length) continue;
-    out.push({ time: times[k], position: 'aboveBar',
-               color: ev.rank >= 3 ? '#f59e0b' : '#64748b',
-               shape: ev.rank >= 3 ? 'arrowDown' : 'circle', size: ev.rank >= 3 ? 1 : 0.6,
-               text: ev.rank >= 3 ? `${ev.ccy} ${ev.event}`.slice(0, 16) : '' });
+    const g = byBar.get(times[k]) ?? { major: null, count: 0 };
+    g.count++;
+    if (ev.rank >= 3 && !g.major) g.major = ev;
+    byBar.set(times[k], g);
   }
-  return out;
+  return [...byBar.entries()]
+    .sort((a, b) => (a[0] > b[0] ? 1 : -1))
+    .map(([bt, g]) => g.major
+      ? { time: bt, position: 'aboveBar', color: '#f59e0b', shape: 'arrowDown', size: 1,
+          text: `${g.major.ccy} ${g.major.event}`.slice(0, 14) + (g.count > 1 ? ` +${g.count - 1}` : '') }
+      : { time: bt, position: 'aboveBar', color: '#64748b', shape: 'circle', size: 0.6,
+          text: g.count > 1 ? `×${g.count}` : '' });
 }
 
 function render() {
