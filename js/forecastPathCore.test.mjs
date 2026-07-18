@@ -243,4 +243,20 @@ const m15 = syntheticM15(55);   // ~5280 bars
   ok(Math.abs(normCdf(0)) - 0.5 < 1e-6 && normCdf(3) > 0.998 && normCdf(-3) < 0.002, 'normCdf sane');
 }
 
+// 13) bandsFn calibration swap: envelopes change, the drift line does not.
+{
+  const cogBands = (open, sigma) => ({
+    ocUp: open * (1 + 0.74 * sigma), ocDn: open * (1 - 0.74 * sigma), oc75: 1.24 * sigma,
+  });
+  const a = forecastCone(bars, 800, { horizonDays: 5 });
+  const b = forecastCone(bars, 800, { horizonDays: 5, bandsFn: cogBands });
+  for (let k = 0; k < 5; k++) {
+    ok(a.steps[k].center === b.steps[k].center, `drift line calibration-independent at h=${k + 1}`);
+    ok(a.steps[k].p50Up !== b.steps[k].p50Up, `envelope differs under swapped calibration at h=${k + 1}`);
+    ok(b.steps[k].p75Up > b.steps[k].p50Up && b.steps[k].p50Dn > b.steps[k].p75Dn, `swapped envelopes ordered at h=${k + 1}`);
+  }
+  const t = calibrationTally(bars, { horizonDays: 5, bandsFn: cogBands });
+  ok(t.full.n >= 30 && t.full.perStep.every(s => s.c50 != null && s.c75 != null), 'tally grades the swapped calibration');
+}
+
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);

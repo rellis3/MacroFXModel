@@ -53,6 +53,10 @@
       </select>
       <select id="pair"></select>
       <select id="horizon"></select>
+      <select id="calc" title="Band calibration — envelopes only; the drift line is calc-independent">
+        <option value="cog" selected>COG calc</option>
+        <option value="platform">Platform (Feller)</option>
+      </select>
       <label class="mono" id="fromWrap">from <input type="date" id="from" value="2019-01-01"></label>
       <button id="load">Load</button>
       <span id="status"></span>
@@ -104,7 +108,15 @@
       amber = H-L 75th (the lines the volatility bot trades), green dotted =
       O-C median — off each replay day's open, σ from real D1 history strictly
       before that day. <b>Levels</b> are prior-day H/L, pivots, daily opens and
-      round numbers (axis-labelled; zoom out if only one is in view). If containment sits near its claim and
+      round numbers (axis-labelled; zoom out if only one is in view). The
+      <b>calc switch</b> (COG default / Platform-Feller) swaps the band
+      constants behind the D1 cone envelopes + its calibration card and the
+      Day-forecast lines — the drift ("most-agreed") line never moves with the
+      calc, and the intraday cone keeps its own per-bar Gaussian claim (both
+      calibrations are daily-session constants that don't apply per 5/15-min
+      step). On D1 the calibration card grades whichever calc is selected —
+      COG's tighter medians claim the same 50/75%, so the card shows honestly
+      whether his lines or the platform's hold their claim better. If containment sits near its claim and
       direction sits at ~50%, that IS the honest result: the model knows range well
       and direction barely — don't let the picture say otherwise.
     </div>
@@ -122,6 +134,21 @@ import {
   intradayRealizedZ,
 } from './js/forecastPathCore.js';
 import { computeBands, nextSigma } from './js/forecastCore.js';
+import { COG_CONST } from './js/cogReverseEngineer.js';
+
+// COG's band calibration (reverse-engineered, verified against his exports):
+// raw constants × σ, NO per-asset correction — computeBands-shaped so it can
+// swap in anywhere the platform bands go. Matches the daily COG export exactly
+// (e.g. EURUSD 5.56% ann → 0.55/0.68 HL, 0.26/0.43 OC).
+function cogBands(open, sigma) {
+  const hl50 = COG_CONST.BM_P50 * sigma, hl75 = COG_CONST.BM_P75 * sigma;
+  const ocMed = COG_CONST.HN_P50 * sigma, oc75 = COG_CONST.HN_P75 * sigma;
+  return { hl50, hl75, ocMed, oc75,
+           up50: open * (1 + hl50), dn50: open * (1 - hl50),
+           up75: open * (1 + hl75), dn75: open * (1 - hl75),
+           ocUp: open * (1 + ocMed), ocDn: open * (1 - ocMed) };
+}
+const activeBandsFn = () => $('calc').value === 'cog' ? cogBands : computeBands;
 
 const PAIRS = [
   'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY',
@@ -159,10 +186,10 @@ const ENGINES = {
     horizons: [['5', '5 days'], ['10', '10 days'], ['20', '20 days']],
     defaultH: '10',
     warmup: PATH_DEFAULTS.warmup,
-    build: (bars, ac) => buildForecastContext(bars, { assetClass: ac }),
+    build: (bars, ac) => buildForecastContext(bars, { assetClass: ac, bandsFn: activeBandsFn() }),
     cone: coneFromContext,
     paths: samplePaths,
-    tally: (bars, H, ac) => calibrationTally(bars, { horizonDays: H, assetClass: ac }),
+    tally: (bars, H, ac) => calibrationTally(bars, { horizonDays: H, assetClass: ac, bandsFn: activeBandsFn() }),
     anchorT: c => c.anchorDate,
     stepT: s => s.date,
     fmtBar: b => b.time,
@@ -353,7 +380,7 @@ function render() {
     const prior = d1History.filter(b => b.time < dayDate);
     if (prior.length > 35) {
       const sig = nextSigma(prior, ASSET_CLASS(pairSel.value));
-      const b = computeBands(bars[ds].open, sig, ASSET_CLASS(pairSel.value));
+      const b = activeBandsFn()(bars[ds].open, sig, ASSET_CLASS(pairSel.value));
       const tA = bars[ds].time, tB = tA + 86400;
       const seg = (v, color, style) => line(color, 1, style).setData([{ time: tA, value: v }, { time: tB, value: v }]);
       seg(b.up50, '#8ab4ff', 2); seg(b.dn50, '#8ab4ff', 2);          // HL median (dashed)
@@ -392,7 +419,10 @@ function render() {
   const dirWord = cone.mu > 0 ? '<span class="good">up</span>' : cone.mu < 0 ? '<span class="bad">down</span>' : 'flat';
   const lastS = cone.steps[cone.steps.length - 1];
   const dg = priceDigits(pairSel.value);
+  const calcLabel = $('calc').value === 'cog' ? 'COG' : 'Platform (Feller)';
+  const calcScope = isIntraday() ? 'Day-forecast lines' : 'cone envelopes + tally';
   $('coneInfo').innerHTML =
+    `<div class="kv"><span>bands calc</span><b>${calcLabel} <span class="muted">(${calcScope})</span></b></div>` +
     `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(dg)}</b></div>` +
     `<div class="kv"><span>${e.sigmaLabel}</span><b>${(e.sigmaOf(cone) * 100).toFixed(3)}%</b></div>` +
     `<div class="kv"><span>drift / bar</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
@@ -511,6 +541,10 @@ $('prev').onclick = () => { i = Math.max(+$('replay').min, i - 1); $('replay').v
 $('next').onclick = () => { i = Math.min(bars.length, i + 1); $('replay').value = i; render(); };
 $('liveBtn').onclick = () => { i = bars.length; $('replay').value = i; render(); };
 $('horizon').onchange = () => { render(); renderCalib(); };
+$('calc').onchange = () => {   // bandsFn is captured in the D1 context — rebuild it
+  if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
+  render(); renderCalib();
+};
 for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail']])
   $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
 
