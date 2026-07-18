@@ -41,7 +41,71 @@
 <header>
   <h1>📐 Forecast Path — Cone &amp; Replay</h1>
   <div class="sub">What the model actually claims about the next N days (D1) or next few hours (M5/M15, session-shaped σ) — drawn, then graded against history. Not a strategy; a calibration viewer.</div>
+  <button id="helpBtn" style="margin-left:auto">? Help — what am I looking at</button>
 </header>
+
+<div id="helpOverlay" style="display:none;position:fixed;inset:0;background:rgba(4,6,10,.75);z-index:50" onclick="if(event.target===this)this.style.display='none'">
+  <div style="max-width:680px;margin:5vh auto;max-height:88vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 24px">
+    <div style="display:flex;align-items:baseline">
+      <h2 style="margin:0;font-size:15px">What this page is</h2>
+      <button style="margin-left:auto" onclick="document.getElementById('helpOverlay').style.display='none'">✕ close</button>
+    </div>
+
+    <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">The prediction line, in one sentence</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      The predicted line is the market's recent average daily drift projected forward —
+      around it, the model runs many dice-rolls (Monte-Carlo simulations) using the
+      pair's current volatility and the typical rhythm of each trading session, and the
+      line is simply the middle of where all those simulated futures agree the price is
+      most likely to be.
+    </p>
+
+    <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">How the cone works</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      The <b>cone</b> is the expected price envelope. Its width comes from the pair's
+      live volatility, shaped by the clock — quiet through Asia, widest into the London
+      and New York opens — so it breathes with the trading day rather than growing at a
+      constant rate. The inner (green) band claims to contain price <b>half</b> the
+      time; the outer (amber) band <b>75%</b> of the time. Toggling <b>Sample paths</b>
+      shows the individual simulated futures the claim is built from; their median is
+      the "most-agreed path". The <b>calc</b> switch chooses whose band constants build
+      the daily envelopes (COG's export calibration by default, or the platform's
+      Feller bands).
+    </p>
+
+    <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">News, and why candles blow through the cone</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      Amber arrows are scheduled <b>economic releases</b> for the pair's two currencies
+      (one marker per candle — "+N" counts a bundle of simultaneous releases). Price
+      violence usually has an arrow next to it, and releases falling inside the future
+      cone window are listed in the forecast card — so when the picture jumps, the
+      "why" is printed beside it.
+    </p>
+
+    <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">It grades itself</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      Nothing here asks to be trusted. The <b>hindcast trail</b> draws every past
+      prediction over the candles it was predicting — ending in a green dot where the
+      claim held and a red square where reality busted it — and the <b>calibration
+      card</b> counts, over hundreds of past windows, how often the 50% and 75% claims
+      actually held, split by the hour the forecast was made. The <b>replay slider</b>
+      rewinds to any past moment and shows the forecast exactly as it would have looked
+      then, built only from data available at the time.
+    </p>
+
+    <h3 style="font-size:13px;color:#f87171;margin:16px 0 6px">What this is NOT</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      <b>It does not predict direction.</b> The calibration card shows the up/down call
+      is roughly a coin flip — that is the honest, expected result for a liquid market,
+      not a defect. What the model genuinely knows is the <b>size</b> of the plausible
+      move and <b>when</b> the market moves most, far better than which way it goes.
+      Read it as a rangefinder and a risk map — where price can plausibly reach by
+      when, and which levels sit inside today's reachable range — not as a buy/sell
+      signal. It is a calibration viewer, not a strategy, and any candle-shaped detail
+      in the sample paths is illustrative, not forecast.
+    </p>
+  </div>
+</div>
 
 <div class="wrap">
   <div class="main">
@@ -535,6 +599,7 @@ async function load() {
 }
 
 $('load').onclick = load;
+$('helpBtn').onclick = () => { $('helpOverlay').style.display = 'block'; };
 $('gran').onchange = () => { fillHorizons(); load(); };
 $('replay').oninput = ev => { i = +ev.target.value; render(); };
 $('prev').onclick = () => { i = Math.max(+$('replay').min, i - 1); $('replay').value = i; render(); };
