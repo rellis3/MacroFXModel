@@ -560,6 +560,38 @@ backwards — trade flat). Full write-up, caveats, and paper-trade plan in
 `YIELD_SPREAD_STRATEGY.md`. **Still one historical period — forward paper-trading is the only
 remaining proof.**
 
+### 1r. Economic-trend cross-sectional test (2026-07-17) — pre-registered, fundamentals-only
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Econ-Trend core** | `js/econTrendCore.js` | pure cross-sectional ECONOMIC-trend scoring (trend on FUNDAMENTALS, not prices — the replicated AQR family, in the monthly cross-sectional form; NOT the per-pair 1–20d form that nulled in `macroDirectionCore`): `asOfValue` (binary-search no-lookahead gate), `factorChange`, `econScoresAt` (per (factor,window) relative-to-USD change, cross-sectionally z-scored, frozen signs rate +/y10 +/unemp −, windows 90/180/365d), `econDirections` (rank → long top-K / short bottom-K), `runEconTrend` (drives `runTrendBasket` via `directionAt` — zero portfolio-code copies), `runEconTrendPlacebo` (seeded-LCG random-ranking chance floor), `evaluateEconTrend` (the FROZEN pass/fail from `ECON_TREND_TEST.md`). Tested `js/econTrendCore.test.mjs` (29 asserts incl. constructed-world pass, shuffled-fundamentals fail, hook-equivalence regression). | `server.js` `/api/econ-trend`; `econ-trend.html` | 🧪 built, **pre-registered, not yet run** (needs FRED+OANDA on Railway; one shot, criteria frozen) |
+| **Econ-Trend I/O** | `js/econTrendEngine.js` | `ECON_UNIVERSE` (8-ccy FRED registry: GS2/GS10/UNRATE + OECD IRSTCI·IR3TIB/IRLTLT01/LRHUTTTT per ccy), `toLaggedSeries` + publication-lag shift (**US +35d / foreign +75d** from obs date — monthly obs are dated at month START), `buildFundamentals` (fail-soft per series, availability table). Reuses `fetchFredObservations`/`_shiftDate` from `zscoreSpreadEngine` — no FRED-fetch copies. | `server.js` `/api/econ-trend` | 🧪 built |
+
+> `trendBasketEngine.runTrendBasket` gained an optional **`directionAt` hook**
+> (per-rebalance `{ccy: −1|0|+1}` source) + `splitDate` in the result — the default
+> path is bit-identical (regression-tested), and the hook is what lets a
+> fundamentals signal reuse the sizing/cost/metrics machinery instead of copying it.
+
+### 1s. Credit-stress (CSI) overlay brick (2026-07-18) — risk gate, not alpha
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Credit-Stress core** | `js/creditStressCore.js` | the CSI risk-overlay (pre-registered `CREDIT_STRESS_TEST.md`): `buildCsi` (equal-weight mean of per-component 252d rolling z's — weights FROZEN equal, reuses `statsCore.rollingZScore`), `gateExposure`/`buildGateSeries` (frozen tiers ×1 / ×0.5 at z≥1 / ×0 at z≥2), `applyGate` (as-of **≤ t−1** application via `econTrendCore.asOfValue` — yesterday's published index sizes today; \|Δexposure\| costed), `runCsiOverlay` (ungated vs VIX-only-gated vs CSI-gated, IS/OOS via `metricsCore`), `evaluateCsi` (frozen 3-way verdict: `csi` / `vix-enough` / `no-gate` — **the named benchmark is VIX alone**). Tested `js/creditStressCore.test.mjs` (20 asserts incl. leading-CSI world passes, identical-info world → vix-enough, harmful gate → no-gate). | `server.js` `/api/credit-stress`; `credit-stress.html` | 🧪 built, **pre-registered, not yet run** (needs FRED+OANDA on Railway; one shot) |
+| **Credit-Stress I/O** | `js/creditStressEngine.js` | `CSI_SERIES` (FRED: `BAMLC0A1CAAA`/`BAMLC0A4CBBB` → quality spread BBB−AAA, `BAMLH0A0HYM2`, `VIXCLS`) + publication lags (OAS +2d, VIX +1d), `buildCsiInputs` (fail-soft availability; throws only if a composite component is entirely missing). CDS index deliberately **omitted** — Markit data isn't retail-accessible and CDX≈HY OAS. Reuses `fetchFredObservations` + `econTrendEngine.toLaggedSeries` — no fetch/lag copies. | `server.js` `/api/credit-stress` | 🧪 built |
+
+> The core also carries **`creditVega`** (+`vegaLabel`, `VEGA_DEFAULTS`) — the
+> DIAGNOSTIC rolling 63d beta of Δ(HY OAS bps) on Δ(VIX pts), percentile-labelled
+> High/Elevated/Normal/Low (display panel on `credit-stress.html`). Explicitly NOT
+> an input to the frozen gate/verdict. Rolling-beta math stays local for now —
+> `yieldCouplingCore.pearson/rollingCorr` remain the flagged candidates for a shared
+> `statsCore` correlation/beta promotion once consolidated (§2).
+>
+> `runTrendBasket` also gained `returnDaily` (opt-in `{dates, dailyReturns, benchReturns}`
+> in the result) so overlays can re-weight the daily series — additive, default unchanged.
+> Note the overlap with `macroCore.macroRegime` (VIX + HY OAS classifier, live in TDE):
+> CSI is the *sizing-gate* test of the same data family; if the verdict is `vix-enough`
+> or `no-gate`, `macroCore` stays the only credit/VIX consumer and CSI is retired.
+
 ---
 
 ### 1r. Strategy Lab — spec-driven gauntlet backtester (2026-07-17)

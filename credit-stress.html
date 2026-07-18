@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credit Stress — CSI risk-overlay test</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#233042; --txt:#e6edf3;
+          --dim:#8b98a9; --green:#10b981; --blue:#4f7df0; --red:#f97316; --amber:#eab308; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); background:var(--panel); }
+  h1 { margin:0 0 2px; font-size:19px; } .sub { color:var(--dim); font-size:12.5px; }
+  .wrap { max-width:1000px; margin:0 auto; padding:18px 20px 60px; }
+  .controls { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px; }
+  .ctl { display:flex; flex-direction:column; gap:3px; }
+  .ctl label { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; }
+  input, button { background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:7px; padding:7px 10px; font-size:13px; }
+  input { width:80px; }
+  button.go { background:var(--blue); border-color:var(--blue); color:#fff; cursor:pointer; font-weight:600; }
+  button.go:disabled { opacity:.5; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:15px 16px; margin-bottom:16px; }
+  h2 { margin:0 0 10px; font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td { text-align:left; padding:6px 9px; border-bottom:1px solid var(--line); }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; }
+  td.mono, .mono { font-variant-numeric:tabular-nums; font-family:ui-monospace,Menlo,monospace; }
+  canvas { width:100%; display:block; border-radius:7px; background:var(--panel2); }
+  .cap { color:var(--dim); font-size:11.5px; margin-top:8px; }
+  .status { color:var(--dim); } .err { color:#fca5a5; }
+  .chip { display:inline-block; font-size:11.5px; padding:2px 9px; border-radius:999px; border:1px solid var(--line); }
+  .note { color:var(--dim); font-size:12.5px; line-height:1.6; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:11px 13px; margin-bottom:16px; }
+  .verdict { font-size:15px; font-weight:700; padding:10px 14px; border-radius:8px; margin-bottom:10px; }
+  .verdict.pass { background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.45); color:#6ee7b7; }
+  .verdict.fail { background:rgba(249,115,22,.12); border:1px solid rgba(249,115,22,.45); color:#fdba74; }
+  .crit { display:flex; gap:8px; flex-wrap:wrap; }
+  .crit .chip.ok { background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.4); color:#6ee7b7; }
+  .crit .chip.no { background:rgba(249,115,22,.14); border-color:rgba(249,115,22,.4); color:#fdba74; }
+  .expo1 { background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.4); color:#6ee7b7; }
+  .expo05 { background:rgba(234,179,8,.14); border-color:rgba(234,179,8,.4); color:#fde68a; }
+  .expo0 { background:rgba(249,115,22,.14); border-color:rgba(249,115,22,.4); color:#fdba74; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚦 Credit Stress <span class="sub">— CSI risk-overlay test (pre-registered)</span></h1>
+  <div class="sub">CSI = equal-weight 252d rolling z of (BBB−AAA quality spread, HY OAS, VIX), publication-lagged. Frozen gate: ×1 below 1σ, ×0.5 at 1–2σ, ×0 above 2σ, applied as-of yesterday. A <b>risk overlay, not alpha</b> — the named benchmark is the same gate on VIX alone (<b>CREDIT_STRESS_TEST.md</b>).</div>
+</header>
+<div class="wrap">
+  <div class="note">
+    <b>Read this first.</b> This tests whether the credit composite is a better <b>sizing</b> gate than
+    its simplest ingredient. Blunt odds stated before running: <b>~30–40%</b> that CSI beats the
+    VIX-only gate OOS — "VIX was enough" is a very live outcome and would itself be the (cheap, useful)
+    answer. Directional use of credit stress is not claimed and not tested. One shot; criteria frozen. Not financial advice.
+  </div>
+  <div class="controls">
+    <div class="ctl"><label>z window (days)</label><input id="zWindow" type="number" value="252" min="60" max="504"></div>
+    <div class="ctl"><label>&nbsp;</label><button class="go" id="run">Run test ▸</button></div>
+    <div class="ctl" style="flex:1"><label>&nbsp;</label><div class="status" id="status">Ready.</div></div>
+  </div>
+  <div id="out"></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (x,d=2) => (x==null||Number.isNaN(x))?'–':Number(x).toFixed(d);
+
+function plotZ(canvas, s, height=220) {
+  const dpr=window.devicePixelRatio||1, W=canvas.clientWidth, H=height;
+  canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
+  const padL=36,padR=10,padT=10,padB=20, pw=W-padL-padR, ph=H-padT-padB;
+  const vals=s.map(p=>p.v); let lo=Math.min(...vals,-1), hi=Math.max(...vals,3);
+  const n=s.length, X=i=>padL+(n<=1?0:i/(n-1)*pw), Y=v=>padT+ph-((v-lo)/(hi-lo))*ph;
+  // tier bands
+  ctx.fillStyle='rgba(234,179,8,.07)'; ctx.fillRect(padL, Y(2), pw, Y(1)-Y(2));
+  ctx.fillStyle='rgba(249,115,22,.09)'; ctx.fillRect(padL, padT, pw, Y(2)-padT);
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.fillStyle='#6b7a8d'; ctx.font='10px monospace';
+  for(const t of [-1,0,1,2,3]){ const y=Y(t); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); ctx.fillText(t+'σ',4,y+3); }
+  ctx.fillStyle='#6b7a8d'; let lastY='';
+  for(let i=0;i<n;i++){ const yr=s[i].d.slice(0,4); if(yr!==lastY && i%Math.ceil(n/8)<1){ ctx.fillText(yr, X(i)-12, H-6); lastY=yr; } }
+  ctx.strokeStyle='#4f7df0'; ctx.lineWidth=1.6; ctx.beginPath();
+  s.forEach((p,i)=>{ const x=X(i),y=Y(p.v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
+}
+
+function plotVega(canvas, s, height=180) {
+  const dpr=window.devicePixelRatio||1, W=canvas.clientWidth, H=height;
+  canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
+  const padL=40,padR=10,padT=10,padB=20, pw=W-padL-padR, ph=H-padT-padB;
+  const vals=s.map(p=>p.beta); let lo=Math.min(...vals,0), hi=Math.max(...vals,1);
+  const pad=(hi-lo)*0.08||0.5; lo-=pad; hi+=pad;
+  const n=s.length, X=i=>padL+(n<=1?0:i/(n-1)*pw), Y=v=>padT+ph-((v-lo)/(hi-lo))*ph;
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.fillStyle='#6b7a8d'; ctx.font='10px monospace';
+  for(let t=0;t<=4;t++){ const v=lo+(hi-lo)*t/4, y=Y(v); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); ctx.fillText(v.toFixed(1),4,y+3); }
+  ctx.fillStyle='#6b7a8d'; let lastY='';
+  for(let i=0;i<n;i++){ const yr=s[i].d.slice(0,4); if(yr!==lastY && i%Math.ceil(n/8)<1){ ctx.fillText(yr, X(i)-12, H-6); lastY=yr; } }
+  // colour segments by percentile label
+  for(let i=1;i<n;i++){
+    const p=s[i].pctl;
+    ctx.strokeStyle = p==null?'#4f7df0': p>=80?'#f97316': p>=60?'#eab308':'#4f7df0';
+    ctx.lineWidth=1.6; ctx.beginPath();
+    ctx.moveTo(X(i-1),Y(s[i-1].beta)); ctx.lineTo(X(i),Y(s[i].beta)); ctx.stroke();
+  }
+}
+
+function cmpTable(o){
+  const row=(label,v,hl)=>`<tr${hl?' style="font-weight:700;background:rgba(79,125,240,.08)"':''}><td>${label}</td>
+    <td class="mono">${fmt(v.is.sharpe)}</td><td class="mono">${fmt(v.is.maxDD,1)}%</td>
+    <td class="mono" style="color:${v.oos.sharpe>0?'#6ee7b7':'#fdba74'}">${fmt(v.oos.sharpe)}</td>
+    <td class="mono">${fmt(v.oos.cagr,1)}%</td><td class="mono" style="color:#fdba74">${fmt(v.oos.maxDD,1)}%</td></tr>`;
+  return `<table><thead><tr><th></th><th>IS Sharpe</th><th>IS maxDD</th><th>OOS Sharpe ◄</th><th>OOS CAGR</th><th>OOS maxDD</th></tr></thead><tbody>
+    ${row('Ungated', o.ungated)}
+    ${row('VIX-only gate (the benchmark)', o.vixGated)}
+    ${row('CSI gate', o.csiGated, true)}
+  </tbody></table>`;
+}
+
+async function run(){
+  $('run').disabled=true; $('status').textContent='Fetching FRED credit series + ~20yr D1, gating…'; $('status').className='status'; $('out').innerHTML='';
+  try{
+    const r=await fetch(`/api/credit-stress?zWindow=${$('zWindow').value}`); const j=await r.json();
+    if(!r.ok) throw new Error(j.error||('HTTP '+r.status));
+    if(j.error) throw new Error(j.error);
+    render(j); $('status').textContent=`Done — ${j.nDays} days, ${j.first}→${j.last}.`;
+  }catch(e){ $('status').innerHTML='<span class="err">'+e.message+'</span>'; }
+  finally{ $('run').disabled=false; }
+}
+
+function render(j){
+  const ev=j.evaluation||{}, c=ev.criteria||{};
+  const critChip=(okv,txt)=>`<span class="chip ${okv?'ok':'no'}">${okv?'✓':'✗'} ${txt}</span>`;
+  const verdictTxt = { csi: '✓ CSI PASSES — beats no-gate AND the VIX-only gate. Earns promotion as a sizing-input candidate (behind a flag; still not alpha). Record in CREDIT_STRESS_TEST.md.',
+    'vix-enough': '✗ Gate real, composite unnecessary — a VIX-only gate does the job. Use VIX; record the verdict and stop.',
+    'no-gate': '✗ NULL — gating does not improve the book OOS. Record and stop; no tier/weight/component iteration.' };
+  const verdict = `<div class="verdict ${ev.pass?'pass':'fail'}">${verdictTxt[ev.verdict]||'–'}</div>`;
+  const crits = `<div class="crit">
+    ${critChip(c.beatsUngatedOos,'CSI > ungated OOS')}
+    ${critChip(c.beatsVixOos,'CSI > VIX-gate OOS')}
+    ${critChip(c.isConsistent,'IS ranking consistent (ties ok)')}
+  </div>`;
+  const cur = j.current ? `<span class="chip ${j.current.exposure===1?'expo1':j.current.exposure===0.5?'expo05':'expo0'}">CSI ${fmt(j.current.csi)}σ → exposure ×${j.current.exposure}</span>
+    ${Object.entries(j.current.componentZ).map(([k,v])=>`<span class="chip">${k} ${fmt(v)}σ</span>`).join(' ')}
+    <span class="chip">as of ${j.current.date}</span>` : '–';
+  const fred=(j.fredAvailability||[]).map(a=>`<tr><td>${a.component}</td><td class="mono">${a.series}</td><td class="mono">${a.n||0}</td><td class="mono">${a.first||a.error||'–'}</td><td class="mono">${a.last||''}</td></tr>`).join('');
+  $('out').innerHTML=`
+    <div class="panel"><h2>Verdict — frozen criteria (CREDIT_STRESS_TEST.md, primary target)</h2>${verdict}${crits}</div>
+    <div class="panel"><h2>Current reading</h2><div style="display:flex;gap:7px;flex-wrap:wrap">${cur}</div>
+      <div class="cap">Tiers frozen: ×1 &lt; 1σ · ×0.5 at 1–2σ · ×0 ≥ 2σ. Publication lags OAS +2d / VIX +1d, applied as-of ≤ t−1.</div></div>
+    <div class="panel"><h2>CSI history</h2><canvas id="csic"></canvas>
+      <div class="cap">Amber band = half exposure, orange = flat. Sanity check: 2008 / 2011 / 2020 should light up; if they don't, distrust the index, not history.</div></div>
+    ${j.vega && j.vega.current ? `<div class="panel"><h2>Credit Vega <span class="sub" style="font-weight:400">— spread sensitivity to volatility (diagnostic only)</span></h2>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
+        <span class="chip ${j.vega.current.label==='High'?'expo0':j.vega.current.label==='Elevated'?'expo05':'expo1'}">${j.vega.current.label} — ${fmt(j.vega.current.beta,1)} bps per VIX pt</span>
+        <span class="chip">${j.vega.current.pctl==null?'–':j.vega.current.pctl+'th pctl (3y)'}</span>
+        <span class="chip">as of ${j.vega.current.date}</span>
+      </div>
+      <canvas id="vegac"></canvas>
+      <div class="cap">Rolling 63d beta of Δ(HY OAS, bps) on Δ(VIX, pts) — strictly a beta, "vega" is shorthand. <b>Low</b> = credit absorbing vol spikes (calm plumbing); <b>High</b> (orange) = stress transmitting into credit. <b>Not part of the frozen CSI gate or verdict</b> — adding inputs to a pre-registered test would void it; a vega-conditioned gate is a possible pre-registered follow-up if CSI survives.</div></div>` : ''}
+    <div class="panel"><h2>PRIMARY — equal-weight long-currency basket (decides the verdict)</h2>${cmpTable(j.primary)}
+      <div class="cap">The purest always-on risk book — what a stress gate exists to protect. Split ${Math.round(j.params.isFrac*100)}/${Math.round((1-j.params.isFrac)*100)}; gate switches cost ${j.params.gateCostBps}bps.</div></div>
+    <div class="panel"><h2>SECONDARY — trend basket (reported, not decisive)</h2>${cmpTable(j.secondary)}
+      <div class="cap">Already partially defensive (goes short in downtrends), so the gate has less to add here by construction.</div></div>
+    <div class="panel"><h2>Data — FRED components (publication-lag-shifted)</h2>
+      <table><thead><tr><th>Component</th><th>Series</th><th>obs</th><th>from</th><th>to</th></tr></thead><tbody>${fred}</tbody></table></div>`;
+  plotZ($('csic'), j.csiSeries);
+  if (j.vega && j.vega.series && j.vega.series.length) plotVega($('vegac'), j.vega.series);
+}
+$('run').addEventListener('click', run);
+run();
+</script>
+</body>
+</html>
