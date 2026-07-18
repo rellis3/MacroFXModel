@@ -103,6 +103,7 @@ import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
+import { sharpeStdError as _sharpeStdError, minTrackRecordLength as _minTrackRecordLength } from './js/metricsCore.js';   // Sharpe honesty pair (error bar + min track record)
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { analyzeCogLevels as _analyzeCogLevels } from './js/cogLevelPoc.js';   // COG-level POC
@@ -2879,18 +2880,47 @@ function _qmrNetReturn(movePct, exitReason, leverage,
   return (movePct - costPct - (exitReason === 'STOP' ? stopSlipPct : 0)) * leverage;
 }
 
+// ONE Sharpe methodology (2026-07 fix): DAILY calendar returns × √252, flat
+// weekdays counted as 0% — the per-trade √(trades-per-year) annualisation this
+// replaces scaled the SAME per-trade edge up or down with trade count, so the
+// optimizer's score (and every stats card fed from here) rewarded trade
+// frequency instead of edge, and its Sharpe was incomparable to the daily-based
+// numbers everywhere else (portfolioStats). Flat-day zeros are computed in
+// closed form from the traded-day moments, so this stays O(n).
+// Also emits the Sharpe-honesty pair (metricsCore): `sharpeSE` (Lo 2002 error
+// bar on the annualised Sharpe) and `minTrackYears` (Bailey–López de Prado
+// minimum track record to trust Sharpe > 0 at 95%).
 function _qmrStats(trades, curve, equity) {
   const n    = trades.length;
   const wins = trades.filter(t => t.tradeReturn > 0).length;
   const rets = trades.map(t => t.tradeReturn / 100);
-  const mu   = rets.reduce((s, r) => s + r, 0) / (rets.length || 1);
-  const sig  = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / (rets.length || 1));
+  // Trading-day span of the curve (weekdays between first and last trade date,
+  // inclusive) — the denominator of the calendar-daily series. QMR-family
+  // systems take at most one trade per day, so traded-day returns ARE daily
+  // returns; the remaining weekdays are flat zeros.
+  let tradingDays = n;
+  if (curve.length >= 2) {
+    let cnt = 0;
+    const d0 = new Date(curve[0].date + 'T00:00:00Z');
+    const d1 = new Date(curve[curve.length - 1].date + 'T00:00:00Z');
+    for (let t = d0.getTime(); t <= d1.getTime(); t += 864e5) {
+      const dow = new Date(t).getUTCDay();
+      if (dow !== 0 && dow !== 6) cnt++;
+    }
+    tradingDays = Math.max(cnt, n);
+  }
+  const N     = Math.max(tradingDays, 1);
+  const sum   = rets.reduce((s, r) => s + r, 0);
+  const sumsq = rets.reduce((s, r) => s + r * r, 0);
+  const muD   = sum / N;                                       // mean over ALL weekdays (flat = 0)
+  const varD  = Math.max(sumsq / N - muD * muD, 0);
+  const sigD  = Math.sqrt(varD);
+  const sharpe = sigD > 0 ? (muD / sigD) * Math.sqrt(252) : 0;
+  // Sortino on the same calendar basis (downside deviation over all weekdays).
+  const downDev = Math.sqrt(rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / N);
+  const sortino = downDev > 0 ? (muD / downDev) * Math.sqrt(252) : 0;
   const years = curve.length >= 2
     ? (new Date(curve[curve.length-1].date) - new Date(curve[0].date)) / (365.25*864e5) : 1;
-  const tpy     = n / Math.max(years, 1);
-  const sharpe  = sig > 0 ? (mu / sig) * Math.sqrt(tpy) : 0;
-  const downDev = Math.sqrt(rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / (n || 1));
-  const sortino = downDev > 0 ? (mu / downDev) * Math.sqrt(tpy) : 0;
   const cagr    = (Math.pow(equity, 1 / Math.max(years, 0.01)) - 1) * 100;
   let peak = 1, maxDD = 0;
   for (const { equity: eq } of curve) {
@@ -2898,8 +2928,12 @@ function _qmrStats(trades, curve, equity) {
     const dd = (peak - eq) / peak;
     if (dd > maxDD) maxDD = dd;
   }
+  const se  = _sharpeStdError(sharpe, N);
+  const mtrYears = _minTrackRecordLength(sharpe);              // years (Infinity if no edge)
   return { n, wins, winRate: n ? wins / n : 0, cagr: +cagr.toFixed(2),
            sharpe: +sharpe.toFixed(2), sortino: +sortino.toFixed(2),
+           sharpeSE: Number.isFinite(se) ? +se.toFixed(2) : null,
+           minTrackYears: Number.isFinite(mtrYears) ? +mtrYears.toFixed(1) : null,
            maxDD: +(maxDD * 100).toFixed(2),
            totalReturn: +((equity - 1) * 100).toFixed(2) };
 }
@@ -5443,30 +5477,9 @@ function computeCoherenceZ(fredRaw, dates) {
   return { curveZ, creditZ };
 }
 
-function _liqGateStats(trades, curve, equity) {
-  const n    = trades.length;
-  const wins = trades.filter(t => t.tradeReturn > 0).length;
-  const rets = trades.map(t => t.tradeReturn / 100);
-  const mu   = rets.reduce((s, r) => s + r, 0) / (rets.length || 1);
-  const sig  = Math.sqrt(rets.reduce((s, r) => s + (r - mu) ** 2, 0) / (rets.length || 1));
-  const years = curve.length >= 2
-    ? (new Date(curve[curve.length - 1].date) - new Date(curve[0].date)) / (365.25 * 864e5) : 1;
-  const tpy     = n / Math.max(years, 1);
-  const sharpe  = sig > 0 ? (mu / sig) * Math.sqrt(tpy) : 0;
-  const downDev = Math.sqrt(rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / (n || 1));
-  const sortino = downDev > 0 ? (mu / downDev) * Math.sqrt(tpy) : 0;
-  const cagr    = (Math.pow(equity, 1 / Math.max(years, 0.01)) - 1) * 100;
-  let peak = 1, maxDD = 0;
-  for (const { equity: eq } of curve) {
-    if (eq > peak) peak = eq;
-    const dd = (peak - eq) / peak;
-    if (dd > maxDD) maxDD = dd;
-  }
-  return { n, wins, winRate: n ? wins / n : 0, cagr: +cagr.toFixed(2),
-           sharpe: +sharpe.toFixed(2), sortino: +sortino.toFixed(2),
-           maxDD: +(maxDD * 100).toFixed(2),
-           totalReturn: +((equity - 1) * 100).toFixed(2) };
-}
+// Was a verbatim copy of the old per-trade-annualised _qmrStats — now an alias
+// of the fixed calendar-daily version (one Sharpe methodology, one code path).
+const _liqGateStats = _qmrStats;
 
 // Walks daily bars aligned to the FRED date axis. Gate status for day i is
 // decided from day i-1's z-scores (the lag math above already encodes FRED
