@@ -3918,13 +3918,15 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
 });
 
 // ── /api/oanda_ohlc5m  — OHLC candles for any FX/gold pair ──────────────────
-// ?symbol=EUR/USD[&granularity=H1]  granularity defaults to M5
+// ?symbol=EUR/USD[&granularity=H1|D]  granularity defaults to M5
 // Returns { values:[{datetime, open, high, low, close}] } newest-first,
 // datetime in London local time.
 const _m5SrvCache = new Map();
 // M5 count covers a full trading week (~1440 bars Mon→Fri) plus margin so the
 // vol-forecast weekly charts can reliably anchor off this week's Monday open.
-const _OHLC_GRAN = { M5: { count: 2000, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 } };
+// D (daily) covers ~3 months, London-midnight aligned to match the forecaster's
+// anchor — the vol-forecast MONTHLY charts anchor off the month's first-day open.
+const _OHLC_GRAN = { M5: { count: 2000, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 }, D: { count: 66, ttl: 15 * 60_000 } };
 app.get('/api/oanda_ohlc5m', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
   const symbol = req.query.symbol;
@@ -3940,7 +3942,10 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
   if (cached && Date.now() - cached.ts < ttl) return res.json(cached.data);
   try {
     const base = _oandaBaseMe();
-    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M`;
+    // Daily candles are aligned to London midnight so each bar spans one London day
+    // (matches the forecaster's London-midnight anchor and clean YYYY-MM-DD dates).
+    const align = gran === 'D' ? '&alignmentTimezone=Europe%2FLondon&dailyAlignment=0' : '';
+    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M${align}`;
     const r = await fetch(url, {
       headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
       signal:  AbortSignal.timeout(20_000),
@@ -3948,8 +3953,11 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
     if (!r.ok) { const t = await r.text().catch(() => 'err'); return res.status(502).json({ error: `OANDA ${r.status}: ${t.slice(0,200)}` }); }
     const data = await r.json();
     if (!data.candles) return res.status(502).json({ error: 'No candles returned' });
+    // For D, keep today's still-forming bar (incomplete) so the monthly view reaches
+    // "now"; for intraday granularities only completed bars are used (the live latest
+    // M5 bar is streamed in separately by the chart's rescan loop).
     const values = data.candles
-      .filter(c => c.complete && c.mid)
+      .filter(c => c.mid && (gran === 'D' || c.complete))
       .map(c => ({
         datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
         open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
