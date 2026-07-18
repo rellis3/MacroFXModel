@@ -4082,6 +4082,11 @@ app.get('/api/vol-forecast/archive/range', async (req, res) => {
 // (newsMult is left at 1 — the archive included per-day US-event scaling, this does
 // not — so on event days the two sources can differ slightly.)
 const _REPLAY_INDEX = new Set(['nq', 'spx500', 'us30', 'us2000', 'uk100', 'de30']);
+// NQ is the one index whose COG lines are drawn from close-to-close HV σ (mirrors
+// _cogVol / _CCHV_USE in vol-forecast-v2.html), so its Backtest COG bands need that
+// σ too — everything else uses the platform vol_annual.
+const _REPLAY_CCHV_USE = new Set(['nq']);
+const _REPLAY_CCHV_WINDOW = 30;
 function _replayAssetClass(pair) {
   const p = (pair || '').toLowerCase();
   if (p === 'gold' || p.startsWith('xau')) return 'commodity';
@@ -4116,6 +4121,24 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
         hl_median: fc.hl_median, hl_75: fc.hl_75,
         oc_median: fc.oc_median, oc_75: fc.oc_75, vol_annual: fc.vol_annual,
       };
+    }
+    // For NQ, add the per-day close-to-close HV σ (London-aligned D1, window 30) that
+    // the COG export draws its NQ bands from — walk-forward, strictly before each date.
+    // (Live uses an intraday CC-HV; this D1 version is the documented fallback / close
+    // approximation, so NQ's Backtest COG lines track the export instead of the ~4%-
+    // wider platform-vol bands.)
+    if (_REPLAY_CCHV_USE.has((pair || '').toLowerCase())) {
+      try {
+        const lon = (await _btFetchD1Aligned(instrument, 2600, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' }))
+          .sort((a, b) => (a.date < b.date ? -1 : 1));
+        for (let i = _REPLAY_CCHV_WINDOW + 2; i < lon.length; i++) {
+          const dt = lon[i].date;
+          if (!days[dt]) continue;                                   // only annotate forecast days
+          const slice = lon.slice(Math.max(0, i - (_REPLAY_CCHV_WINDOW + 10)), i);  // strictly before dt
+          const cc = _ccHvSigma(slice, { window: _REPLAY_CCHV_WINDOW });
+          if (cc && cc.volAnnual > 4 && cc.volAnnual < 200) days[dt].cchv_annual = cc.volAnnual;
+        }
+      } catch (_) { /* CC-HV is optional enrichment — platform vol_annual remains the fallback */ }
     }
     const result = { ok: true, pair: pair || symbol, cls, from, to, days, generated: true };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
