@@ -4452,8 +4452,10 @@ app.get('/api/econ-trend', async (req, res) => {
 });
 
 // ── /api/credit-stress — CSI risk-overlay test (pre-registered) ───────────────
-// CREDIT_STRESS_TEST.md: CSI = equal-weight 252d rolling z of (BBB−AAA quality
-// spread, HY OAS, VIX), frozen gate tiers ×1/×0.5/×0 at z 1/2, applied as-of
+// CREDIT_STRESS_TEST.md: CSI = equal-weight 252d rolling z of (Baa−Aaa quality
+// slope, Baa−10Y credit spread, VIX — Moody's series since the 2026-07-18 data
+// amendment; ICE OAS history is FRED-restricted), frozen gate tiers ×1/×0.5/×0
+// at z 1/2, applied as-of
 // ≤ t−1. Question: does the CSI gate beat (a) no gate and (b) a VIX-only gate,
 // OOS, on the PRIMARY target (equal-weight long-ccy basket)? Trend basket is the
 // reported SECONDARY. A risk overlay, not alpha — verdict computed server-side.
@@ -4496,8 +4498,8 @@ app.get('/api/credit-stress', async (req, res) => {
     const latest = csi.series[csi.series.length - 1] ?? null;
 
     // "Credit Vega" — diagnostic only (NOT part of the frozen gate/verdict):
-    // rolling beta of Δ(HY OAS bps) on Δ(VIX pts), labelled by trailing percentile.
-    const vega = creditVega(components.hyOas, components.vix);
+    // rolling beta of Δ(Baa credit spread, bps) on Δ(VIX pts), pctl-labelled.
+    const vega = creditVega(components.credit, components.vix);
     const vStep = Math.max(1, Math.floor(vega.series.length / 400));
     const vegaSampled = vega.series.filter((_, i) => i % vStep === 0 || i === vega.series.length - 1);
 

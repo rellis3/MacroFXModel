@@ -66,8 +66,19 @@ Then it earns: paper-trading as a third sleeve candidate. Nothing more.
 stop, and do **not** iterate factors/windows/K to rescue it — that's the overfitting
 path. One shot.
 
-## Result (fill in after the Railway run — one run, then this section is final)
+## Result (final — the one Railway run, 2026-07-18)
 
-- Date run: _
-- OOS Sharpe: _ · placebo percentile: _ · OOS years +: _/_ · IS Sharpe: _
-- Verdict: _
+- Date run: **2026-07-18** (2005-01-02 → 2026-07-17, 6141 days, split 2017-01-30)
+- OOS Sharpe: **0.09** · placebo percentile: **78%** (needed ≥90%; placebo p90 = 0.32,
+  median −0.12, n=200) · OOS years +: **4/9** (needed majority) · IS Sharpe: **0.07**
+- Verdict: **NULL — banked.** Two of four frozen criteria failed. The signal is a
+  coin-flip dressed in machinery; per pre-registration there is no factor/window/K
+  iteration. The base rate won, as stated up front, and finding out cost one day.
+- Data notes (for the record, none change the verdict): CHF/NZD unemployment
+  (LRHUTTTT..M156S) don't exist monthly on FRED (HTTP 400) — both currencies scored
+  on rate+y10 via the designed ≥2-factor fail-soft; CHF short rate
+  (IRSTCI01CHM156N) stops 2024-05 (series discontinued), so CHF's recent rate
+  momentum decays to stale-zero. The 2005–2024 bulk of the test had full data.
+- Disposition: engine/page stay as a **read-only viewer** (dashboard context — the
+  per-currency fundamentals ranking), wired into nothing. `BACKTEST_INDEX.md` Q11
+  answered ⛔.
