@@ -562,6 +562,26 @@ remaining proof.**
 
 ---
 
+### 1r. Strategy Lab — spec-driven gauntlet backtester (2026-07-17)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Strategy Lab engine** | `js/strategyLabEngine.js` | the spec-driven gauntlet: `SIGNALS` registry (13 close-only daily signals — the 12 famous retail strategies: EMA cross 9/21, golden cross, MACD, RSI mean-rev, RSI-2 dip buy, Bollinger reversion, Turtle 20/10, 52-wk-high momentum, Supertrend, stochastic+trend, Ichimoku — plus `buy_hold` benchmark and `tsmom` **imported from `trendFollowEngine.momentumSignal`**, never copied), each `compute(bars, params, direction) → pos[]` with per-signal `sweep` neighbour grids; `positionBacktest` (the strategy-agnostic core of `trendFollowEngine.backtestMarket` — pos decided at t−1 earns ret t, cost bp on \|Δpos\|); `splitDateFor` (ONE shared chronological split **date** across the universe — avoids the hedge-v2 per-pair bar-index defect); `evaluateSpec` (per-market + equal-weight-portfolio IS/OOS cards via `backtestStats.portfolioStats`); `runGauntlet` (leaderboard, **every variant tried counted as a DSR trial** via `backtestStats.deflatedSharpe`, magic-value neighbour flag, honest gate: OOS>b&h + ≥30 OOS trades + DSR≥0.5 + neighbours alive). Pure, no network. Tested `js/strategyLabEngine.test.mjs` (105 asserts incl. per-signal no-lookahead future-shock checks). | `server.js` `/api/strategy-lab/run` + `/status/:jobId` (async-job; OANDA D1 via `fetchD1`) + `/specs`; `strategy-lab.html` (leaderboard page, benchmark pinned, per-instrument + sweep drill-down) | ✅ built — **infrastructure, not edge**; no honest run recorded yet |
+
+The gatekeeper, not the goldmine: makes every "test this famous strategy" idea a
+10-line spec through one honest code path instead of a new bespoke engine.
+Pre-registered expectation for the first Railway run: **mostly nulls after
+costs** (the base rate for famous indicator strategies on liquid FX); anything
+green must survive the DSR + neighbour + OOS-trade-count gate and then goes to
+forward validation, not money. Signals are close-evaluated state machines — **no
+intrabar stop/TP modeling** by design (daily path unknown, house anti-pattern).
+Known copy note: `positionBacktest` generalises the loop inside
+`trendFollowEngine.backtestMarket`; trendFollow is validated/live-adjacent so it
+was NOT refactored onto the new brick — listed in §2 P2 as a consolidation
+candidate.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
@@ -604,7 +624,8 @@ drift directly desyncs trading from its backtest (the worst case).
 | 19 | **Session/timezone bucketing** | London-session day, Asia/London/NY classify, BST | `utils.js:103-150`, `volBacktestM1Engine:217-224`, `cogHistoricalDataLoader:40-64`, `nasdaqSessions:25-80` (DST-aware), `cogTradingDay:18-54` (DST-blind) | 🟡 MEDIUM |
 | 20 | **COG/Nasdaq exit engine** | direction-aligned continuation score → exit | `cogExitEngine.js:32-100` vs `nasdaqExitEngine.js:29-100` (share `compositeRampScore`) | 🟠 HIGH |
 | 21 | **COG/Nasdaq liquidity gate** | balance-sheet+credit → [-5,+5] | `cogLiquidityGate.js:18-76` ≈ `cogThreshold1Gate.js:69-97` (self-admitted copy) vs `nasdaqLiquidityEngine.js:56-80` (simpler voting) | 🟠 HIGH |
-| 22 | **Async job-queue helper** | `POST /run`→jobId, `GET /status/:id` boilerplate | repeated ~5× in `server.js` (`:2976`, `:3199`, `:3256`) + `analyserRoutes.js:54-99` | 🟢 LOW |
+| 22 | **Async job-queue helper** | `POST /run`→jobId, `GET /status/:id` boilerplate | repeated ~5× in `server.js` (`:2976`, `:3199`, `:3256`) + `analyserRoutes.js:54-99` + `/api/strategy-lab/*` | 🟢 LOW |
+| 23 | **Position-series backtest loop** | pos[t−1]×ret[t] + cost-on-\|Δpos\| daily loop | `strategyLabEngine.positionBacktest` (the generic brick) vs the identical loop fused inside `trendFollowEngine.backtestMarket:81-90` — trendFollow is validated, so consolidate onto the brick only with a bit-identical A/B, not a drive-by refactor | 🟢 LOW |
 
 ### Python-bot shared utilities (live-bot territory — **document only, do not edit live bots yet**)
 

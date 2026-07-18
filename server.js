@@ -47,6 +47,7 @@ import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Rang
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
+import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -8860,6 +8861,102 @@ app.get('/api/vol-backtest-v2/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Strategy Lab — the spec-driven gauntlet backtester ───────────────────────
+// Runs the 12 famous retail strategies (+ buy&hold benchmark + tsmom incumbent)
+// as SPECS through one honest code path: close-only signals, costs on turnover,
+// one shared chronological split date, deflated Sharpe across every variant
+// tried. Pure engine js/strategyLabEngine.js; data fetched here via OANDA D1.
+// Same async-job pattern as vol-backtest-v2.
+const LAB_DEFAULT_UNIVERSE = [
+  'EUR_USD', 'GBP_USD', 'USD_JPY', 'AUD_USD', 'USD_CAD', 'USD_CHF', 'NZD_USD',
+  'XAU_USD', 'NAS100_USD', 'SPX500_USD',
+];
+const LAB_ALLOWED_INSTRUMENTS = new Set([
+  ...LAB_DEFAULT_UNIVERSE,
+  'EUR_GBP', 'EUR_JPY', 'GBP_JPY', 'AUD_JPY', 'EUR_AUD', 'EUR_CHF', 'AUD_NZD',
+  'XAG_USD', 'US30_USD', 'DE30_EUR', 'UK100_GBP', 'JP225_USD', 'BCO_USD', 'WTICO_USD',
+]);
+const _labJobs = new Map();
+function _purgeStaleLabJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of _labJobs) if (job.startedAt < cutoff) _labJobs.delete(id);
+}
+
+app.post('/api/strategy-lab/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data (runs on Railway)' });
+  }
+  const b = req.body ?? {};
+  const universe = (Array.isArray(b.universe) && b.universe.length ? b.universe : LAB_DEFAULT_UNIVERSE)
+    .map(s => String(s).toUpperCase().trim())
+    .filter(s => LAB_ALLOWED_INSTRUMENTS.has(s))
+    .slice(0, 20);
+  if (!universe.length) return res.status(400).json({ ok: false, error: 'no valid instruments in universe' });
+  const opts = {
+    direction: b.direction === 'longshort' ? 'longshort' : 'longflat',
+    costBp: Math.min(Math.max(Number(b.costBp) || 2, 0), 50),
+    oosFrac: Math.min(Math.max(Number(b.oosFrac) || 0.3, 0.1), 0.6),
+    sweep: b.sweep !== false,
+  };
+  const specs = Array.isArray(b.signals) && b.signals.length
+    ? _GAUNTLET_SPECS.filter(s => s.benchmark || b.signals.includes(s.signal))
+    : _GAUNTLET_SPECS;
+
+  const jobId = `lab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleLabJobs();
+  _labJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const markets = [], skipped = [];
+      for (const sym of universe) {
+        try {
+          const bars = await _btFetchD1(sym, 5000);
+          if (bars && bars.length >= 400) markets.push({ symbol: sym, bars });
+          else skipped.push(`${sym} (${bars?.length ?? 0} bars)`);
+        } catch (e) { skipped.push(`${sym} (${e.message})`); }
+      }
+      if (markets.length < 2) {
+        _labJobs.set(jobId, { status: 'error', error: `only ${markets.length} markets fetched`, log: skipped, startedAt });
+        return;
+      }
+      const result = _runStrategyGauntlet(markets, specs, opts);
+      result.skipped = skipped;
+      _labJobs.set(jobId, { status: 'done', result, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[strategy-lab/run]', msg, e?.stack ?? '');
+      _labJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/strategy-lab/status/:jobId', (req, res) => {
+  const job = _labJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', result: job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// The spec catalogue (for the page's strategy picker — no data fetch needed).
+app.get('/api/strategy-lab/specs', (_req, res) => {
+  res.json({
+    ok: true,
+    universeDefault: LAB_DEFAULT_UNIVERSE,
+    universeAllowed: [...LAB_ALLOWED_INSTRUMENTS],
+    specs: _GAUNTLET_SPECS.map(s => ({
+      name: s.name, signal: s.signal, benchmark: !!s.benchmark,
+      defaults: _LAB_SIGNALS[s.signal].defaults, sweep: _LAB_SIGNALS[s.signal].sweep,
+    })),
+  });
 });
 
 // ── Forecast Level Analyser — routes mounted from shared module ─────────────
