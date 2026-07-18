@@ -11088,39 +11088,44 @@ app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   }
 });
 
-// Weekly backtest M15 candle viewer — same as D1 but at M15 granularity.
-app.get('/api/weekly-vol-backtest/m15/:pair', async (req, res) => {
-  const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
-  const oanda = _wbtInstrMap[name];
-  if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
-  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+// Weekly backtest intraday candle viewer — same as D1 but at a finer
+// granularity, epoch-second times. One handler, mounted per granularity.
+function _wbtIntradayRoute(gran, defCount) {
+  return async (req, res) => {
+    const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
+    const oanda = _wbtInstrMap[name];
+    if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
+    if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
 
-  const { from, to } = req.query;
-  const base = _oandaBaseW();
-  let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=M15&price=M`;
-  if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
-  if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
-  if (!from && !to) url += '&count=200';
+    const { from, to } = req.query;
+    const base = _oandaBaseW();
+    let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
+    if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
+    if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
+    if (!from && !to) url += `&count=${defCount}`;
 
-  try {
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
-    if (!r.ok) {
-      let msg = `OANDA HTTP ${r.status}`;
-      try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
-      return res.status(502).json({ ok: false, error: msg });
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) {
+        let msg = `OANDA HTTP ${r.status}`;
+        try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
+        return res.status(502).json({ ok: false, error: msg });
+      }
+      const data = await r.json();
+      const candles = (data.candles ?? [])
+        .filter(c => c.complete !== false && c.mid)
+        .map(c => {
+          const ts = Math.floor(new Date(c.time).getTime() / 1000);
+          return { time: ts, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
+        });
+      res.json({ ok: true, pair: name, n: candles.length, candles });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
     }
-    const data = await r.json();
-    const candles = (data.candles ?? [])
-      .filter(c => c.complete !== false && c.mid)
-      .map(c => {
-        const ts = Math.floor(new Date(c.time).getTime() / 1000);
-        return { time: ts, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
-      });
-    res.json({ ok: true, pair: name, n: candles.length, candles });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
+  };
+}
+app.get('/api/weekly-vol-backtest/m15/:pair', _wbtIntradayRoute('M15', 200));
+app.get('/api/weekly-vol-backtest/m5/:pair',  _wbtIntradayRoute('M5',  500));
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
 const laJobs = new Map();

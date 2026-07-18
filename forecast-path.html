@@ -40,7 +40,7 @@
 <body>
 <header>
   <h1>📐 Forecast Path — Cone &amp; Replay</h1>
-  <div class="sub">What the model actually claims about the next N days (D1) or next few hours (M15, session-shaped σ) — drawn, then graded against history. Not a strategy; a calibration viewer.</div>
+  <div class="sub">What the model actually claims about the next N days (D1) or next few hours (M5/M15, session-shaped σ) — drawn, then graded against history. Not a strategy; a calibration viewer.</div>
 </header>
 
 <div class="wrap">
@@ -48,6 +48,7 @@
     <div class="ctl">
       <select id="gran">
         <option value="M15" selected>M15 · intraday</option>
+        <option value="M5">M5 · intraday</option>
         <option value="D1">D1 · daily</option>
       </select>
       <select id="pair"></select>
@@ -100,6 +101,7 @@
 
 <script type="module">
 import { createLevelChart } from './js/levelChart.js';
+import { priceDigits } from './js/instrumentRegistry.js';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
@@ -113,9 +115,29 @@ const PAIRS = [
   'CADJPY','CHFJPY','NZDJPY','GOLD',
 ];
 const ASSET_CLASS = p => p === 'GOLD' ? 'commodity' : 'fx';
-const M15_LOOKBACK_DAYS = 45;   // ~3100 bars, safely under OANDA's 5000/request cap
 
-// Granularity adapters — same page flow, two engines from the same brick.
+// Intraday engine factory — one brick, any bar size. lookbackDays keeps the
+// fetch under OANDA's 5000-candle/request cap.
+function intradayEngine(barMin, lookbackDays, horizons, defaultH) {
+  return {
+    horizons, defaultH,
+    lookbackDays,
+    warmup: INTRADAY_DEFAULTS.warmupBars,
+    build: bars => buildIntradayContext(bars),
+    cone: intradayCone,
+    paths: intradaySamplePaths,
+    tally: (bars, H) => intradayTally(bars, { horizonBars: H }),
+    anchorT: c => c.anchorTime,
+    stepT: s => s.time,
+    fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
+    fmtStep: h => `${(h * barMin) % 60 === 0 ? (h * barMin / 60) + 'h' : (h * barMin) + 'm'}`,
+    calibStep: 60 / barMin,   // show hourly rows
+    sigmaLabel: 'per-bar σ',
+    sigmaOf: c => c.sigmaBar,
+  };
+}
+
+// Granularity adapters — same page flow, engines from the same brick.
 const ENGINES = {
   D1: {
     horizons: [['5', '5 days'], ['10', '10 days'], ['20', '20 days']],
@@ -133,22 +155,8 @@ const ENGINES = {
     sigmaLabel: 'daily σ',
     sigmaOf: c => c.sigma,
   },
-  M15: {
-    horizons: [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']],
-    defaultH: '16',
-    warmup: INTRADAY_DEFAULTS.warmupBars,
-    build: bars => buildIntradayContext(bars),
-    cone: intradayCone,
-    paths: intradaySamplePaths,
-    tally: (bars, H) => intradayTally(bars, { horizonBars: H }),
-    anchorT: c => c.anchorTime,
-    stepT: s => s.time,
-    fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
-    fmtStep: h => `${(h * 15) % 60 === 0 ? (h * 15 / 60) + 'h' : (h * 15) + 'm'}`,
-    calibStep: 4,          // show hourly rows (every 4th M15 step)
-    sigmaLabel: 'per-bar σ',
-    sigmaOf: c => c.sigmaBar,
-  },
+  M15: intradayEngine(15, 45, [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']], '16'),
+  M5:  intradayEngine(5, 18, [['12', '1 hour'], ['24', '2 hours'], ['48', '4 hours']], '24'),
 };
 
 const $ = id => document.getElementById(id);
@@ -178,8 +186,15 @@ function clearExtra() {
   if (actualSeries) { try { chart.removeSeries(actualSeries); } catch {} actualSeries = null; }
 }
 
+// Pip-precision axis (registry digits: 5 FX, 3 JPY, 2 gold) — Lightweight-Charts
+// defaults to 2dp, which renders EURUSD as "1.15".
+function priceFmt() {
+  const d = priceDigits(pairSel.value);
+  return { type: 'price', precision: d, minMove: Math.pow(10, -d) };
+}
+
 function line(color, width = 1, style = 2) {
-  const s = chart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const s = chart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: priceFmt() });
   extraSeries.push(s);
   return s;
 }
@@ -221,7 +236,7 @@ function render() {
       actualSeries = chart.addCandlestickSeries({
         upColor: 'rgba(38,166,154,.45)', downColor: 'rgba(239,83,80,.45)', borderVisible: false,
         wickUpColor: 'rgba(38,166,154,.45)', wickDownColor: 'rgba(239,83,80,.45)',
-        priceLineVisible: false, lastValueVisible: false,
+        priceLineVisible: false, lastValueVisible: false, priceFormat: priceFmt(),
       });
       actualSeries.setData(actual.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
     }
@@ -231,12 +246,13 @@ function render() {
 
   const dirWord = cone.mu > 0 ? '<span class="good">up</span>' : cone.mu < 0 ? '<span class="bad">down</span>' : 'flat';
   const lastS = cone.steps[cone.steps.length - 1];
+  const dg = priceDigits(pairSel.value);
   $('coneInfo').innerHTML =
-    `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(5)}</b></div>` +
+    `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(dg)}</b></div>` +
     `<div class="kv"><span>${e.sigmaLabel}</span><b>${(e.sigmaOf(cone) * 100).toFixed(3)}%</b></div>` +
     `<div class="kv"><span>drift / bar</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
     (cone.trendScore != null ? `<div class="kv"><span>trend score</span><b>${cone.trendScore.toFixed(2)} ∈ [-1,1]</b></div>` : '') +
-    `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(5)} – ${lastS.p75Up.toFixed(5)}</b></div>` +
+    `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(dg)} – ${lastS.p75Up.toFixed(dg)}</b></div>` +
     `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
 }
 
@@ -270,19 +286,20 @@ async function load() {
   $('status').textContent = `loading ${gran}…`; $('status').className = '';
   try {
     const today = new Date().toISOString().substring(0, 10);
+    const e = eng();
     let url;
     if (gran === 'D1') {
       url = `/api/weekly-vol-backtest/d1/${pair.toLowerCase()}?from=${$('from').value}&to=${today}`;
     } else {
-      const fromD = new Date(Date.now() - M15_LOOKBACK_DAYS * 86400e3).toISOString().substring(0, 10);
-      url = `/api/weekly-vol-backtest/m15/${pair.toLowerCase()}?from=${fromD}&to=${today}`;
+      const fromD = new Date(Date.now() - e.lookbackDays * 86400e3).toISOString().substring(0, 10);
+      url = `/api/weekly-vol-backtest/${gran.toLowerCase()}/${pair.toLowerCase()}?from=${fromD}&to=${today}`;
     }
     const r = await fetch(url);
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || `HTTP ${r.status}`);
     bars = j.candles;
-    const e = eng();
     if (bars.length < e.warmup + 40) throw new Error(`only ${bars.length} bars — not enough history for warmup (${e.warmup})`);
+    view.series.applyOptions({ priceFormat: priceFmt() });
     ctx = e.build(bars, ASSET_CLASS(pair));
     const slider = $('replay');
     slider.min = e.warmup; slider.max = bars.length; slider.value = bars.length;
