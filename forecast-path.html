@@ -73,6 +73,28 @@
       Feller bands).
     </p>
 
+    <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">The Day-forecast lines (the daily export, drawn)</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      The <b>Day forecast</b> toggle draws the daily vol &amp; range forecast — the
+      same numbers as the daily export — as eight horizontal lines <b>anchored at the
+      day's opening price</b> (the first bar of the UTC day you're viewing; scrub the
+      replay and they re-anchor day by day, always computed only from D1 history
+      before that day). Four families, each with an upper and lower line:
+    </p>
+    <ul style="margin:6px 0 0;font-size:13px;line-height:1.7;padding-left:20px">
+      <li><b style="color:#8ab4ff">HL med</b> (blue, dashed) — the median expected <b>High-to-Low range</b>: half of days stretch further than this from the open, half don't.</li>
+      <li><b style="color:#fbbf24">HL 75%</b> (amber) — the 75th-percentile range: only 1 day in 4 stretches beyond it. These are the lines the volatility bot trades.</li>
+      <li><b style="color:#34d399">OC med</b> (green, dotted) — the median <b>Open-to-Close move</b>: where the day's close typically lands relative to the open.</li>
+      <li><b style="color:#14b8a6">OC 75%</b> (teal) — the 75th-percentile close displacement.</li>
+    </ul>
+    <p style="margin:6px 0 0;font-size:13px;line-height:1.6">
+      Each line is labelled on the price axis with its family, side and the active
+      <b>calc</b> (COG or Feller — the switch changes these constants). Note the live
+      bot plan anchors at London midnight, which differs from UTC midnight by one hour
+      in summer — same maths, so lines can sit fractionally off the bot's exact levels
+      then.
+    </p>
+
     <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">News, and why candles blow through the cone</h3>
     <p style="margin:0;font-size:13px;line-height:1.6">
       Amber arrows are scheduled <b>economic releases</b> for the pair's two currencies
@@ -167,11 +189,11 @@
       median is the "most-agreed path". The <b>hindcast trail</b> draws the very
       windows the calibration card grades — each faint segment is the path the
       model claimed at that moment (causally), ending green (final close inside
-      the P75 claim) or red (busted). <b>Day forecast</b> draws the vol-forecast
-      v2 daily lines over the intraday candles — blue dashed = H-L median,
-      amber = H-L 75th (the lines the volatility bot trades), green dotted =
-      O-C median — off each replay day's open, σ from real D1 history strictly
-      before that day. <b>Levels</b> are prior-day H/L, pivots, daily opens and
+      the P75 claim) or red (busted). <b>Day forecast</b> draws the daily export's
+      lines over the intraday candles, anchored at the day's opening price —
+      blue dashed = H-L median, amber = H-L 75th (the lines the volatility bot
+      trades), green dotted = O-C median, teal = O-C 75th — each axis-labelled
+      with family/side/calc; σ from real D1 history strictly before that day. <b>Levels</b> are prior-day H/L, pivots, daily opens and
       round numbers (axis-labelled; zoom out if only one is in view). The
       <b>calc switch</b> (COG default / Platform-Feller) swaps the band
       constants behind the D1 cone envelopes + its calibration card and the
@@ -451,12 +473,24 @@ function render() {
     const prior = d1History.filter(b => b.time < dayDate);
     if (prior.length > 35) {
       const sig = nextSigma(prior, ASSET_CLASS(pairSel.value));
-      const b = activeBandsFn()(bars[ds].open, sig, ASSET_CLASS(pairSel.value));
+      const open = bars[ds].open;
+      const b = activeBandsFn()(open, sig, ASSET_CLASS(pairSel.value));
       const tA = bars[ds].time, tB = tA + 86400;
-      const seg = (v, color, style) => line(color, 1, style).setData([{ time: tA, value: v }, { time: tB, value: v }]);
-      seg(b.up50, '#8ab4ff', 2); seg(b.dn50, '#8ab4ff', 2);          // HL median (dashed)
-      seg(b.up75, '#fbbf24', 3); seg(b.dn75, '#fbbf24', 3);          // HL 75th (large-dashed)
-      seg(b.ocUp, '#34d399', 1); seg(b.ocDn, '#34d399', 1);          // OC median (dotted)
+      const calcTag = $('calc').value === 'cog' ? 'COG' : 'Feller';
+      // Each line is axis-labelled so the chart explains itself: which family
+      // (H-L range vs O-C move), which percentile, which side, which calc.
+      const seg = (v, color, style, title) => {
+        const s = chart.addLineSeries({ color, lineWidth: 1, lineStyle: style, priceLineVisible: false,
+                                        lastValueVisible: true, crosshairMarkerVisible: false,
+                                        priceFormat: priceFmt(), title });
+        extraSeries.push(s);
+        s.setData([{ time: tA, value: v }, { time: tB, value: v }]);
+      };
+      seg(b.up50, '#8ab4ff', 2, `HL med↑ ${calcTag}`);  seg(b.dn50, '#8ab4ff', 2, `HL med↓ ${calcTag}`);
+      seg(b.up75, '#fbbf24', 3, `HL 75%↑ ${calcTag}`);  seg(b.dn75, '#fbbf24', 3, `HL 75%↓ ${calcTag}`);
+      seg(b.ocUp, '#34d399', 1, `OC med↑ ${calcTag}`);  seg(b.ocDn, '#34d399', 1, `OC med↓ ${calcTag}`);
+      seg(open * (1 + b.oc75), '#14b8a6', 3, `OC 75%↑ ${calcTag}`);
+      seg(open * (1 - b.oc75), '#14b8a6', 3, `OC 75%↓ ${calcTag}`);
     }
   }
 
