@@ -15,7 +15,7 @@ import {
   buildForecastContext, coneFromContext, forecastCone, samplePaths,
   calibrationTally, nextWeekday, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally,
-  profileMult, INTRADAY_DEFAULTS,
+  profileMult, INTRADAY_DEFAULTS, intradayRealizedZ, normCdf,
 } from './forecastPathCore.js';
 
 // ── Synthetic GBM daily bars (seeded) ────────────────────────────────────────
@@ -212,6 +212,35 @@ const m15 = syntheticM15(55);   // ~5280 bars
   const cone = intradayCone(ctx, 3000, 16);
   const last = a.consensus[15], center = cone.steps[15].center;
   ok(Math.abs(last.close - center) / center < 0.005, `intraday consensus ≈ drift path`);
+}
+
+// 11) By-hour + range-budget diagnostics in the tally.
+{
+  const t = intradayTally(m15, { horizonBars: 16 });
+  const hourN = t.byHour.reduce((s, r) => s + r.n, 0);
+  ok(hourN === t.full.n, `byHour cells partition all windows (${hourN}/${t.full.n})`);
+  for (const r of t.byHour) ok(r.hour >= 0 && r.hour < 24 && r.n > 0, 'byHour rows sane');
+  const b = t.budget;
+  ok(b.cold.n + b.normal.n + b.hot.n + b.skipped === t.full.n, 'budget buckets + skipped partition all windows');
+  // Well-specified synthetic → overall median |z| near the claimed 0.674.
+  ok(b.overall.medAbsZ > 0.45 && b.overall.medAbsZ < 0.95, `overall med|z| near claim (${b.overall.medAbsZ})`);
+  // Synthetic GBM has NO true budget effect → hot vs cold must not fabricate one.
+  if (b.hot.n >= 20 && b.cold.n >= 20)
+    ok(Math.abs(b.hot.medAbsZ - b.cold.medAbsZ) < 0.35, `no fabricated budget signal (hot ${b.hot.medAbsZ} vs cold ${b.cold.medAbsZ})`);
+  ok(t.claimed.medAbsZ === 0.674, 'medAbsZ claim stated');
+}
+
+// 12) Surprise meter: price AT the P75 upper bound → pct ≈ Φ(1.1503) ≈ 0.875.
+{
+  const ctx = buildIntradayContext(m15);
+  const i = 3000, h = 8;
+  const cone = intradayCone(ctx, i, h);
+  const r = intradayRealizedZ(ctx, i, h, cone.steps[h - 1].p75Up);
+  ok(Math.abs(r.z - 1.1503494) < 1e-6, `z at p75Up is Z75 (${r.z.toFixed(7)})`);
+  ok(Math.abs(r.pct - 0.875) < 0.002, `pct at p75Up ≈ 87.5% (${(r.pct * 100).toFixed(1)}%)`);
+  const mid = intradayRealizedZ(ctx, i, h, cone.steps[h - 1].center);
+  ok(Math.abs(mid.z) < 1e-9 && Math.abs(mid.pct - 0.5) < 1e-6, 'pct at center is 50%');
+  ok(Math.abs(normCdf(0)) - 0.5 < 1e-6 && normCdf(3) > 0.998 && normCdf(-3) < 0.002, 'normCdf sane');
 }
 
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);

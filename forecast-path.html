@@ -40,7 +40,7 @@
 <body>
 <header>
   <h1>📐 Forecast Path — Cone &amp; Replay</h1>
-  <div class="sub">What the model actually claims about the next N days (D1) or next few hours (M15, session-shaped σ) — drawn, then graded against history. Not a strategy; a calibration viewer.</div>
+  <div class="sub">What the model actually claims about the next N days (D1) or next few hours (M5/M15, session-shaped σ) — drawn, then graded against history. Not a strategy; a calibration viewer.</div>
 </header>
 
 <div class="wrap">
@@ -48,6 +48,7 @@
     <div class="ctl">
       <select id="gran">
         <option value="M15" selected>M15 · intraday</option>
+        <option value="M5">M5 · intraday</option>
         <option value="D1">D1 · daily</option>
       </select>
       <select id="pair"></select>
@@ -69,6 +70,8 @@
       <button id="tPaths">Sample paths</button>
       <button id="tConsensus">Most-agreed path</button>
       <button id="tActual" class="on">Reveal actual</button>
+      <button id="tNews" class="on">News</button>
+      <button id="tLevels">Levels</button>
     </div>
   </div>
 
@@ -100,9 +103,13 @@
 
 <script type="module">
 import { createLevelChart } from './js/levelChart.js';
+import { priceDigits } from './js/instrumentRegistry.js';
+import { bisect, resampleTo } from './js/barUtils.js';
+import { collectLevels } from './js/levelSources.js';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
+  intradayRealizedZ,
 } from './js/forecastPathCore.js';
 
 const PAIRS = [
@@ -113,9 +120,29 @@ const PAIRS = [
   'CADJPY','CHFJPY','NZDJPY','GOLD',
 ];
 const ASSET_CLASS = p => p === 'GOLD' ? 'commodity' : 'fx';
-const M15_LOOKBACK_DAYS = 45;   // ~3100 bars, safely under OANDA's 5000/request cap
 
-// Granularity adapters — same page flow, two engines from the same brick.
+// Intraday engine factory — one brick, any bar size. lookbackDays keeps the
+// fetch under OANDA's 5000-candle/request cap.
+function intradayEngine(barMin, lookbackDays, horizons, defaultH) {
+  return {
+    horizons, defaultH,
+    lookbackDays,
+    warmup: INTRADAY_DEFAULTS.warmupBars,
+    build: bars => buildIntradayContext(bars),
+    cone: intradayCone,
+    paths: intradaySamplePaths,
+    tally: (bars, H) => intradayTally(bars, { horizonBars: H }),
+    anchorT: c => c.anchorTime,
+    stepT: s => s.time,
+    fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
+    fmtStep: h => `${(h * barMin) % 60 === 0 ? (h * barMin / 60) + 'h' : (h * barMin) + 'm'}`,
+    calibStep: 60 / barMin,   // show hourly rows
+    sigmaLabel: 'per-bar σ',
+    sigmaOf: c => c.sigmaBar,
+  };
+}
+
+// Granularity adapters — same page flow, engines from the same brick.
 const ENGINES = {
   D1: {
     horizons: [['5', '5 days'], ['10', '10 days'], ['20', '20 days']],
@@ -133,22 +160,8 @@ const ENGINES = {
     sigmaLabel: 'daily σ',
     sigmaOf: c => c.sigma,
   },
-  M15: {
-    horizons: [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']],
-    defaultH: '16',
-    warmup: INTRADAY_DEFAULTS.warmupBars,
-    build: bars => buildIntradayContext(bars),
-    cone: intradayCone,
-    paths: intradaySamplePaths,
-    tally: (bars, H) => intradayTally(bars, { horizonBars: H }),
-    anchorT: c => c.anchorTime,
-    stepT: s => s.time,
-    fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
-    fmtStep: h => `${(h * 15) % 60 === 0 ? (h * 15 / 60) + 'h' : (h * 15) + 'm'}`,
-    calibStep: 4,          // show hourly rows (every 4th M15 step)
-    sigmaLabel: 'per-bar σ',
-    sigmaOf: c => c.sigmaBar,
-  },
+  M15: intradayEngine(15, 45, [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']], '16'),
+  M5:  intradayEngine(5, 18, [['12', '1 hour'], ['24', '2 hours'], ['48', '4 hours']], '24'),
 };
 
 const $ = id => document.getElementById(id);
@@ -162,15 +175,17 @@ function fillHorizons() {
   for (const [v, label] of e.horizons) sel.add(new Option(label, v));
   sel.value = e.defaultH;
   $('fromWrap').style.display = $('gran').value === 'D1' ? '' : 'none';
+  $('tNews').style.display = $('gran').value === 'D1' ? 'none' : '';
 }
 fillHorizons();
 
 const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
-let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null;
-const toggles = { cone: true, paths: false, consensus: false, actual: true };
+let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [];
+const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false };
 const eng = () => ENGINES[$('gran').value];
+const isIntraday = () => $('gran').value !== 'D1';
 
 function clearExtra() {
   for (const s of extraSeries) { try { chart.removeSeries(s); } catch {} }
@@ -178,10 +193,34 @@ function clearExtra() {
   if (actualSeries) { try { chart.removeSeries(actualSeries); } catch {} actualSeries = null; }
 }
 
+// Pip-precision axis (registry digits: 5 FX, 3 JPY, 2 gold) — Lightweight-Charts
+// defaults to 2dp, which renders EURUSD as "1.15".
+function priceFmt() {
+  const d = priceDigits(pairSel.value);
+  return { type: 'price', precision: d, minMove: Math.pow(10, -d) };
+}
+
 function line(color, width = 1, style = 2) {
-  const s = chart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const s = chart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: priceFmt() });
   extraSeries.push(s);
   return s;
+}
+
+// News markers: past events snap to the first shown bar at-or-after the event
+// time (on the candle series); events inside the FUTURE cone window snap to the
+// nearest cone step (on the centre line, so "the line jumps here because…").
+function eventMarkers(times, evs) {
+  const out = [];
+  for (const ev of evs) {
+    const t = ev.ms / 1000;
+    const k = bisect(times, t);
+    if (k >= times.length) continue;
+    out.push({ time: times[k], position: 'aboveBar',
+               color: ev.rank >= 3 ? '#f59e0b' : '#64748b',
+               shape: ev.rank >= 3 ? 'arrowDown' : 'circle', size: ev.rank >= 3 ? 1 : 0.6,
+               text: ev.rank >= 3 ? `${ev.ccy} ${ev.event}`.slice(0, 16) : '' });
+  }
+  return out;
 }
 
 function render() {
@@ -198,9 +237,11 @@ function render() {
   if (!cone) { $('coneInfo').innerHTML = '<span class="muted">not enough history at this date</span>'; return; }
 
   const t0 = { time: e.anchorT(cone), value: cone.anchor };
+  let centerLine = null;
   if (toggles.cone) {
     const mk = k => [t0, ...cone.steps.map(s => ({ time: e.stepT(s), value: s[k] }))];
-    line('#5b9dff', 2, 0).setData(mk('center'));
+    centerLine = line('#5b9dff', 2, 0);
+    centerLine.setData(mk('center'));
     line('rgba(52,211,153,.9)', 1, 2).setData(mk('p50Up'));
     line('rgba(52,211,153,.9)', 1, 2).setData(mk('p50Dn'));
     line('rgba(251,191,36,.8)', 1, 3).setData(mk('p75Up'));
@@ -221,22 +262,68 @@ function render() {
       actualSeries = chart.addCandlestickSeries({
         upColor: 'rgba(38,166,154,.45)', downColor: 'rgba(239,83,80,.45)', borderVisible: false,
         wickUpColor: 'rgba(38,166,154,.45)', wickDownColor: 'rgba(239,83,80,.45)',
-        priceLineVisible: false, lastValueVisible: false,
+        priceLineVisible: false, lastValueVisible: false, priceFormat: priceFmt(),
       });
       actualSeries.setData(actual.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
     }
   }
 
+  // News markers (intraday only — daily bars would smear event times).
+  if (toggles.news && isIntraday() && events.length && shown.length) {
+    const barTimes = shown.map(b => b.time);
+    const lastShownT = barTimes[barTimes.length - 1];
+    view.series.setMarkers(eventMarkers(barTimes, events.filter(ev => ev.ms / 1000 >= barTimes[0] && ev.ms / 1000 <= lastShownT)));
+    if (centerLine) {
+      const stepTimes = cone.steps.map(s => s.time);
+      centerLine.setMarkers(eventMarkers(stepTimes, events.filter(ev => ev.ms / 1000 > lastShownT && ev.ms / 1000 <= stepTimes[stepTimes.length - 1])));
+    }
+  } else view.series.setMarkers([]);
+
+  // Level overlay — computed only from bars BEFORE the replay point (no lookahead).
+  if (toggles.levels && shown.length > 50) {
+    const dailyBars = isIntraday() ? resampleTo(shown, 1440) : shown.map(b => ({ ...b, time: Date.parse(b.time) / 1000 }));
+    view.setLevels(collectLevels(
+      { dailyBars, instrument: pairSel.value, price: shown[shown.length - 1].close },
+      ['daily_open', 'prior_hilo', 'pivots', 'round_number']), { showTitle: false });
+  } else view.clearLevels();
+
   chart.timeScale().setVisibleLogicalRange({ from: shown.length - Math.max(90, H * 4), to: shown.length + H + 4 });
+
+  // Surprise meter: today's move vs the cone drawn at the day's first bar.
+  let surpriseHtml = '';
+  if (isIntraday() && !live) {
+    let dayStart = i - 1;
+    const dk = Math.floor(bars[i - 1].time / 86400);
+    while (dayStart > 0 && Math.floor(bars[dayStart - 1].time / 86400) === dk) dayStart--;
+    const iAnchor = dayStart + 1, h = i - iAnchor;
+    if (h >= 1 && iAnchor > 100) {
+      const r = intradayRealizedZ(ctx, iAnchor, h, bars[i - 1].close);
+      if (r) {
+        const cls = Math.abs(r.z) > 1.15 ? 'bad' : Math.abs(r.z) > 0.67 ? 'warn' : 'good';
+        surpriseHtml = `<div class="kv"><span>today vs day-open cone</span><b class="${cls}">${(r.pct * 100).toFixed(0)}th pctile (z ${r.z >= 0 ? '+' : ''}${r.z.toFixed(2)})</b></div>`;
+      }
+    }
+  }
+
+  // Upcoming events inside the cone window — the "why the line may jump" list.
+  let evHtml = '';
+  if (isIntraday() && events.length) {
+    const fromT = cone.anchorTime, toT = cone.steps[cone.steps.length - 1].time;
+    const up = events.filter(ev => ev.ms / 1000 > fromT && ev.ms / 1000 <= toT && ev.rank >= 2).slice(0, 5);
+    if (up.length) evHtml = `<div class="muted" style="margin-top:6px"><b>News inside this window:</b><br>` +
+      up.map(ev => `${new Date(ev.ms).toISOString().substring(11, 16)}Z ${ev.rank >= 3 ? '★' : '·'} ${ev.ccy} ${ev.event}`.slice(0, 60)).join('<br>') + '</div>';
+  }
 
   const dirWord = cone.mu > 0 ? '<span class="good">up</span>' : cone.mu < 0 ? '<span class="bad">down</span>' : 'flat';
   const lastS = cone.steps[cone.steps.length - 1];
+  const dg = priceDigits(pairSel.value);
   $('coneInfo').innerHTML =
-    `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(5)}</b></div>` +
+    `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(dg)}</b></div>` +
     `<div class="kv"><span>${e.sigmaLabel}</span><b>${(e.sigmaOf(cone) * 100).toFixed(3)}%</b></div>` +
     `<div class="kv"><span>drift / bar</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
     (cone.trendScore != null ? `<div class="kv"><span>trend score</span><b>${cone.trendScore.toFixed(2)} ∈ [-1,1]</b></div>` : '') +
-    `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(5)} – ${lastS.p75Up.toFixed(5)}</b></div>` +
+    `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(dg)} – ${lastS.p75Up.toFixed(dg)}</b></div>` +
+    surpriseHtml + evHtml +
     `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
 }
 
@@ -257,12 +344,43 @@ function renderCalib() {
   }
   const d = t.full.direction, dr = t.recent.direction;
   const dirCls = d.hitRate == null ? '' : d.hitRate > 0.55 ? 'good' : d.hitRate < 0.45 ? 'bad' : 'warn';
+
+  // Intraday extras: final-step containment by ENTRY HOUR + the range-budget
+  // (exhaustion vs persistence) diagnostic. Measured, never applied to the cone.
+  let extra = '';
+  if (t.byHour) {
+    const hrRows = t.byHour.filter(r => r.n >= 5).map(r =>
+      `<tr><td>${String(r.hour).padStart(2, '0')}:00</td><td>${r.n}</td>` +
+      `<td class="${grade(r.c50, .5)}">${pc(r.c50)}</td><td class="${grade(r.c75, .75)}">${pc(r.c75)}</td>` +
+      `<td>${r.medAbsZ ?? '—'}</td></tr>`).join('');
+    extra += `<div style="margin-top:12px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">By entry hour (UTC, final step)</b>` +
+      `<table style="margin-top:4px"><tr><th>hour</th><th>n</th><th>P50</th><th>P75</th><th>med|z|</th></tr>${hrRows}</table></div>`;
+
+    const b = t.budget;
+    const bRow = (label, c) => `<tr><td>${label}</td><td>${c.n}</td>` +
+      `<td class="${grade(c.c75, .75)}">${pc(c.c75)}</td><td>${c.medAbsZ ?? '—'}</td></tr>`;
+    let verdict;
+    if (b.hot.n >= 30 && b.cold.n >= 30 && b.hot.medAbsZ != null && b.cold.medAbsZ != null) {
+      const gap = b.hot.medAbsZ - b.cold.medAbsZ;
+      verdict = Math.abs(gap) < 0.15
+        ? 'No usable budget signal — hot and cold days grade the same, so conditioning the cone on range-spent would not help (the null is the base rate).'
+        : gap > 0
+          ? `Hot days keep running hot (med|z| ${b.hot.medAbsZ} vs ${b.cold.medAbsZ} cold) — a persistence signature: the cone runs TIGHT after a big morning. Worth a proper conditioner test.`
+          : `Exhaustion signature (med|z| ${b.hot.medAbsZ} hot vs ${b.cold.medAbsZ} cold) — the cone runs WIDE after a big morning. Worth a proper conditioner test.`;
+    } else verdict = 'Not enough windows in the hot/cold buckets yet for a verdict (need ≥30 each).';
+    extra += `<div style="margin-top:12px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Range-budget spent at entry (measured, not applied)</b>` +
+      `<table style="margin-top:4px"><tr><th>bucket</th><th>n</th><th>P75</th><th>med|z| (claim 0.674)</th></tr>` +
+      bRow('cold &lt;0.8×', b.cold) + bRow('normal', b.normal) + bRow('hot &gt;1.25×', b.hot) + `</table>` +
+      `<div class="muted" style="margin-top:4px">Today's high–low so far ÷ the causal same-hour median of prior days. ${verdict}</div></div>`;
+  }
+
   $('calib').innerHTML =
     `<table><tr><th></th><th colspan="2">full (n=${t.full.n})</th><th colspan="2">recent (n=${t.recent.n})</th></tr>` +
     `<tr><th></th><th>P50→50%</th><th>P75→75%</th><th>P50</th><th>P75</th></tr>${rows}</table>` +
     `<div class="kv" style="margin-top:8px"><span>direction vs coin flip</span>` +
     `<b class="${dirCls}">${pc(d.hitRate)} full · ${pc(dr.hitRate)} recent</b></div>` +
-    `<div class="muted">Non-overlapping windows, every input strictly pre-window. Green = within 7pts of the claim.</div>`;
+    `<div class="muted">Non-overlapping windows, every input strictly pre-window. Green = within 7pts of the claim.</div>` +
+    extra;
 }
 
 async function load() {
@@ -270,19 +388,27 @@ async function load() {
   $('status').textContent = `loading ${gran}…`; $('status').className = '';
   try {
     const today = new Date().toISOString().substring(0, 10);
+    const e = eng();
     let url;
     if (gran === 'D1') {
       url = `/api/weekly-vol-backtest/d1/${pair.toLowerCase()}?from=${$('from').value}&to=${today}`;
     } else {
-      const fromD = new Date(Date.now() - M15_LOOKBACK_DAYS * 86400e3).toISOString().substring(0, 10);
-      url = `/api/weekly-vol-backtest/m15/${pair.toLowerCase()}?from=${fromD}&to=${today}`;
+      const fromD = new Date(Date.now() - e.lookbackDays * 86400e3).toISOString().substring(0, 10);
+      url = `/api/weekly-vol-backtest/${gran.toLowerCase()}/${pair.toLowerCase()}?from=${fromD}&to=${today}`;
     }
-    const r = await fetch(url);
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    // Candles + (intraday) calendar events, in parallel. A dead calendar just
+    // means no markers — never block the chart on it.
+    const evUrl = gran === 'D1' ? null
+      : `/api/calendar-events?pair=${pair}&minRank=2&from=${new Date(Date.now() - e.lookbackDays * 86400e3).toISOString().substring(0, 10)}&to=${new Date(Date.now() + 7 * 86400e3).toISOString().substring(0, 10)}`;
+    const [j, evJ] = await Promise.all([
+      fetch(url).then(r => r.json()),
+      evUrl ? fetch(evUrl).then(r => r.json()).catch(() => null) : Promise.resolve(null),
+    ]);
+    events = evJ?.ok ? evJ.events : [];
+    if (!j.ok) throw new Error(j.error || 'candle fetch failed');
     bars = j.candles;
-    const e = eng();
     if (bars.length < e.warmup + 40) throw new Error(`only ${bars.length} bars — not enough history for warmup (${e.warmup})`);
+    view.series.applyOptions({ priceFormat: priceFmt() });
     ctx = e.build(bars, ASSET_CLASS(pair));
     const slider = $('replay');
     slider.min = e.warmup; slider.max = bars.length; slider.value = bars.length;
@@ -304,7 +430,7 @@ $('prev').onclick = () => { i = Math.max(+$('replay').min, i - 1); $('replay').v
 $('next').onclick = () => { i = Math.min(bars.length, i + 1); $('replay').value = i; render(); };
 $('liveBtn').onclick = () => { i = bars.length; $('replay').value = i; render(); };
 $('horizon').onchange = () => { render(); renderCalib(); };
-for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual']])
+for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual'],['tNews','news'],['tLevels','levels']])
   $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
 
 load();

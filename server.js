@@ -98,7 +98,7 @@ import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti, ccHvIntraday as _ccHv
 import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
-import { parseCalendarCsv as _parseCalendarCsv } from './js/newsCalendar.js';   // economic-calendar parser
+import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
@@ -10311,6 +10311,43 @@ function _loadNewsCalendar() {
   _NEWS_CAL.events = _parseCalendarCsv(fs.readFileSync(p, 'utf8'));
   return _NEWS_CAL.events;
 }
+// Historical calendar events for chart overlays (forecast-path.html news
+// markers): the on-disk CSV (2014→its refresh date), topped up past the CSV's
+// tail with the LIVE week feed (econCalendar brick, 30-min cached) so the
+// live-edge cone still shows upcoming releases. Filtered by date range / pair
+// currencies / minimum impact rank (3 = Major).
+const _CAL_COUNTRY_TO_CCY = { US: 'USD', EU: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF', CN: 'CNY' };
+const _CAL_IMPACT_RANK = { high: 3, medium: 2, low: 1 };
+app.get('/api/calendar-events', async (req, res) => {
+  try {
+    const events = _loadNewsCalendar();
+    const { from, to, pair = '', minRank = '2' } = req.query;
+    const ccys = pair ? _calPairCurrencies(pair) : null;
+    const fromMs = from ? Date.parse(from + 'T00:00:00Z') : -Infinity;
+    const toMs = to ? Date.parse(to + 'T23:59:59Z') : Infinity;
+    const mr = Number(minRank) || 0;
+    const out = events.filter(e => e.ms >= fromMs && e.ms <= toMs && e.rank >= mr && (!ccys || ccys.has(e.ccy)))
+      .map(e => ({ ms: e.ms, ccy: e.ccy, rank: e.rank, event: e.event }));
+
+    const csvLastMs = events.length ? events[events.length - 1].ms : 0;
+    if (toMs > csvLastMs) {
+      try {
+        const wk = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY || process.env.FINHUB_KEY });
+        for (const e of (wk?.events ?? [])) {
+          if (!(e.ms > csvLastMs && e.ms >= fromMs && e.ms <= toMs)) continue;
+          const ccy = _CAL_COUNTRY_TO_CCY[e.country] ?? e.country;
+          const rank = _CAL_IMPACT_RANK[e.impact] ?? 0;
+          if (rank >= mr && (!ccys || ccys.has(ccy))) out.push({ ms: e.ms, ccy, rank, event: e.event });
+        }
+        out.sort((a, b) => a.ms - b.ms);
+      } catch { /* dead live feed ⇒ CSV-only markers, never an error */ }
+    }
+    res.json({ ok: true, n: out.length, csvLastMs, events: out });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
 app.post('/api/news-exhaustion/run', express.json({ limit: '8kb' }), (req, res) => {
   if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
   const { pair = '', isFrac } = req.body || {};
@@ -11189,39 +11226,44 @@ app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   }
 });
 
-// Weekly backtest M15 candle viewer — same as D1 but at M15 granularity.
-app.get('/api/weekly-vol-backtest/m15/:pair', async (req, res) => {
-  const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
-  const oanda = _wbtInstrMap[name];
-  if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
-  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+// Weekly backtest intraday candle viewer — same as D1 but at a finer
+// granularity, epoch-second times. One handler, mounted per granularity.
+function _wbtIntradayRoute(gran, defCount) {
+  return async (req, res) => {
+    const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
+    const oanda = _wbtInstrMap[name];
+    if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
+    if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
 
-  const { from, to } = req.query;
-  const base = _oandaBaseW();
-  let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=M15&price=M`;
-  if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
-  if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
-  if (!from && !to) url += '&count=200';
+    const { from, to } = req.query;
+    const base = _oandaBaseW();
+    let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
+    if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
+    if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
+    if (!from && !to) url += `&count=${defCount}`;
 
-  try {
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
-    if (!r.ok) {
-      let msg = `OANDA HTTP ${r.status}`;
-      try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
-      return res.status(502).json({ ok: false, error: msg });
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) {
+        let msg = `OANDA HTTP ${r.status}`;
+        try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
+        return res.status(502).json({ ok: false, error: msg });
+      }
+      const data = await r.json();
+      const candles = (data.candles ?? [])
+        .filter(c => c.complete !== false && c.mid)
+        .map(c => {
+          const ts = Math.floor(new Date(c.time).getTime() / 1000);
+          return { time: ts, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
+        });
+      res.json({ ok: true, pair: name, n: candles.length, candles });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
     }
-    const data = await r.json();
-    const candles = (data.candles ?? [])
-      .filter(c => c.complete !== false && c.mid)
-      .map(c => {
-        const ts = Math.floor(new Date(c.time).getTime() / 1000);
-        return { time: ts, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
-      });
-    res.json({ ok: true, pair: name, n: candles.length, candles });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
+  };
+}
+app.get('/api/weekly-vol-backtest/m15/:pair', _wbtIntradayRoute('M15', 200));
+app.get('/api/weekly-vol-backtest/m5/:pair',  _wbtIntradayRoute('M5',  500));
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
 const laJobs = new Map();
