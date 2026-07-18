@@ -411,13 +411,64 @@ export function intradaySamplePaths(ctx, i, horizonBars, opts = {}) {
   return { paths, consensus };
 }
 
+// Standard normal CDF (Abramowitz-Stegun 7.1.26 via erf approximation).
+export function normCdf(z) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989423 * Math.exp(-z * z / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return z >= 0 ? 1 - p : p;
+}
+
+// ── "Surprise meter" — where does a price sit inside the cone drawn at i? ────
+// z of the realized log-move vs the cone's claim h steps after anchor i; pct is
+// the claimed percentile (0.5 = dead centre, >0.875 = beyond the P75 band).
+export function intradayRealizedZ(ctx, i, h, price) {
+  const ladder = _stepSigmas(ctx, i, h);
+  if (!ladder || !(price > 0) || h < 1) return null;
+  let cumVar = 0;
+  for (let k = 0; k < h; k++) cumVar += ladder.sigs[k] ** 2;
+  const sd = Math.sqrt(cumVar);
+  if (!(sd > 0)) return null;
+  const anchor = ctx.bars[i - 1].close;
+  const z = (Math.log(price / anchor) - ladder.mu * h) / sd;
+  return { z, pct: normCdf(z), absPct: normCdf(Math.abs(z)) * 2 - 1 };
+}
+
 // ── Intraday calibration tally — same discipline, same output shape ──────────
+// Beyond the overall per-step containment this also splits the FINAL-step claim
+//   • by ENTRY HOUR (when is the cone trustworthy?), and
+//   • by RANGE-BUDGET spent at entry (`budget`): today's high-low so far vs the
+//     causal median at the same hour over prior days → cold (<0.8×) / normal /
+//     hot (>1.25×). This MEASURES the exhaustion-vs-persistence question — it
+//     does NOT rescale the cone. medAbsZ is the median realized |z| at the
+//     final step (≈0.674 if the width claim is honest): hot-bucket medAbsZ
+//     above overall ⇒ expansion persists (cone too tight on hot days); below ⇒
+//     exhaustion (too wide). Only if a stable gap shows up does a conditioner
+//     earn its way into the cone.
 export function intradayTally(bars, opts = {}) {
   const o = { ...INTRADAY_DEFAULTS, ...opts };
   const ctx = buildIntradayContext(bars, o);
   const H = o.horizonBars;
   const n = bars.length;
   const recentFrac = o.recentFrac ?? 0.3;
+
+  // Per-bar range-so-far within its UTC day, + per-(day, hour) last value for
+  // the causal same-hour climatology.
+  const dayKeyOf = j => Math.floor(bars[j].time / 86400);
+  const rangeFrac = new Float64Array(n);
+  const dayHourVal = new Map();               // dayKey → Array(24) of rangeFrac
+  { let dk = null, hi = -Infinity, lo = Infinity, open = 0;
+    for (let j = 0; j < n; j++) {
+      const k = dayKeyOf(j);
+      if (k !== dk) { dk = k; hi = -Infinity; lo = Infinity; open = bars[j].open; dayHourVal.set(k, new Array(24).fill(null)); }
+      if (bars[j].high > hi) hi = bars[j].high;
+      if (bars[j].low < lo) lo = bars[j].low;
+      rangeFrac[j] = open > 0 ? (hi - lo) / open : 0;
+      dayHourVal.get(k)[new Date(bars[j].time * 1000).getUTCHours()] = rangeFrac[j];
+    } }
+  const hourHistory = Array.from({ length: 24 }, () => []);   // values from days strictly before the current window's day
+  const dayKeysSorted = [...dayHourVal.keys()].sort((a, b) => a - b);
+  let flushedUpTo = 0;                                        // index into dayKeysSorted
 
   const windows = [];
   for (let i = Math.max(o.warmupBars, 2); i + H <= n; i += H) {
@@ -431,6 +482,27 @@ export function intradayTally(bars, opts = {}) {
     }
     const move = bars[i + H - 1].close - cone.anchor;
     if (cone.mu !== 0 && move !== 0) w.dirHit = Math.sign(move) === Math.sign(cone.mu);
+
+    // Final-step realized |z| from the cone's own envelope (sd = ln(p75Up/center)/Z75).
+    const last = cone.steps[H - 1];
+    const sd = Math.log(last.p75Up / last.center) / Z75;
+    w.absZ = sd > 0 ? Math.abs(Math.log(bars[i + H - 1].close / cone.anchor) - Math.log(last.center / cone.anchor)) / sd : null;
+
+    // Entry hour + causal range-budget ratio.
+    const entryDay = dayKeyOf(i - 1);
+    w.hour = new Date(bars[i - 1].time * 1000).getUTCHours();
+    while (flushedUpTo < dayKeysSorted.length && dayKeysSorted[flushedUpTo] < entryDay) {
+      const vals = dayHourVal.get(dayKeysSorted[flushedUpTo]);
+      for (let hr = 0; hr < 24; hr++) if (vals[hr] != null) hourHistory[hr].push(vals[hr]);
+      flushedUpTo++;
+    }
+    const hist = hourHistory[w.hour];
+    if (hist.length >= 5 && rangeFrac[i - 1] > 0) {
+      const s = [...hist].sort((a, b) => a - b);
+      const med = s.length % 2 ? s[s.length >> 1] : (s[(s.length >> 1) - 1] + s[s.length >> 1]) / 2;
+      w.spentRatio = med > 0 ? rangeFrac[i - 1] / med : null;
+    } else w.spentRatio = null;
+
     windows.push(w);
   }
 
@@ -446,9 +518,34 @@ export function intradayTally(bars, opts = {}) {
              direction: { n: dir.length, hitRate: dir.length ? dir.filter(w => w.dirHit).length / dir.length : null } };
   };
 
+  // Final-step summary for a subset (the by-hour / budget cells).
+  const cell = ws => {
+    const zs = ws.map(w => w.absZ).filter(z => z != null).sort((a, b) => a - b);
+    return { n: ws.length,
+             c50: ws.length ? ws.filter(w => w.in50[H - 1]).length / ws.length : null,
+             c75: ws.length ? ws.filter(w => w.in75[H - 1]).length / ws.length : null,
+             medAbsZ: zs.length ? +(zs.length % 2 ? zs[zs.length >> 1] : (zs[(zs.length >> 1) - 1] + zs[zs.length >> 1]) / 2).toFixed(3) : null };
+  };
+
+  const byHour = [];
+  for (let hr = 0; hr < 24; hr++) {
+    const ws = windows.filter(w => w.hour === hr);
+    if (ws.length) byHour.push({ hour: hr, ...cell(ws) });
+  }
+
+  const withRatio = windows.filter(w => w.spentRatio != null);
+  const budget = {
+    skipped: windows.length - withRatio.length,
+    cold:   cell(withRatio.filter(w => w.spentRatio < 0.8)),
+    normal: cell(withRatio.filter(w => w.spentRatio >= 0.8 && w.spentRatio <= 1.25)),
+    hot:    cell(withRatio.filter(w => w.spentRatio > 1.25)),
+    overall: cell(windows),
+  };
+
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
-  return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5 },
-           full: tally(windows), recent: tally(windows.slice(-recentN)) };
+  return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },
+           full: tally(windows), recent: tally(windows.slice(-recentN)),
+           byHour, budget };
 }
 
 export { HORIZONS };
