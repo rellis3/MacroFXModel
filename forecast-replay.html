@@ -298,7 +298,7 @@ function drawOverlay() {
   const ts = chart.timeScale();
   octx.setTransform(dpr, 0, 0, dpr, 0, 0);
   octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-  octx.font = "10px 'DM Mono', monospace";
+  octx.font = "13px 'DM Mono', monospace";
   octx.textBaseline = 'middle';
   const pf = priceFmt($('pair').value);
 
@@ -309,7 +309,7 @@ function drawOverlay() {
     const xa = x1 == null ? 0 : x1;
     const xb = x2 == null ? overlayCanvas.width / dpr : x2;
     if (xb < 0 || xa > overlayCanvas.width / dpr) continue;
-    const wide = (xb - xa) > 46;           // only label segments wide enough to read
+    const wide = (xb - xa) > 54;           // only label segments wide enough to read
     const labelX = Math.min(xb, overlayCanvas.width / dpr - 4);
 
     const draw = (price, color, dash, text, solid) => {
@@ -326,7 +326,7 @@ function drawOverlay() {
         octx.globalAlpha = 1;
         octx.fillStyle = color;
         octx.textAlign = 'right';
-        octx.fillText(text, labelX, y - 6);
+        octx.fillText(text, labelX, y - 8);
       }
       octx.restore();
     };
