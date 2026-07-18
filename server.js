@@ -3972,6 +3972,107 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
   }
 });
 
+// Paginated OANDA candle fetch over an explicit [fromISO, toISO] window at any
+// granularity (OANDA caps 5000 candles/request → forward-paginate). Returns
+// ascending values in the same London-datetime shape as /api/oanda_ohlc5m.
+async function fetchOandaCandleRange(instrument, gran, fromISO, toISO) {
+  const key = process.env.OANDA_KEY, base = _oandaBaseMe();
+  const toMs = Date.parse(toISO);
+  // Daily candles align to London midnight (matches the forecaster's anchor).
+  const align = gran === 'D' ? '&alignmentTimezone=Europe%2FLondon&dailyAlignment=0' : '';
+  let from = fromISO;
+  const out = [];
+  for (let page = 0; page < 40; page++) {
+    const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+              + `?granularity=${gran}&from=${encodeURIComponent(from)}&count=5000&price=M${align}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`OANDA ${instrument} ${gran} HTTP ${r.status}`);
+    const candles = (await r.json()).candles ?? [];
+    let lastTime = null, stop = false;
+    for (const c of candles) {
+      if (!c.mid) continue;
+      const tMs = Date.parse(c.time);
+      if (tMs > toMs) { stop = true; break; }               // reached the window end
+      if (c.complete === false && gran !== 'D') continue;   // skip a forming intraday bar
+      out.push({
+        _ms: tMs,
+        datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
+        open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
+      });
+      lastTime = c.time;
+    }
+    if (stop || candles.length < 5000 || !lastTime) break;
+    from = lastTime;                                         // advance past last (edge dupe removed below)
+  }
+  const seen = new Set();
+  return out.filter(v => (seen.has(v._ms) ? false : (seen.add(v._ms), true))).map(({ _ms, ...v }) => v);
+}
+
+// ── /api/ohlc-range — OHLC candles over an explicit date window (paginated) ──
+// ?symbol=EUR/USD&from=YYYY-MM-DD&to=YYYY-MM-DD[&granularity=M15]
+// Powers the forecast-replay chart. Defaults to M15.
+const _RANGE_GRAN = new Set(['M5', 'M15', 'M30', 'H1', 'D']);
+app.get('/api/ohlc-range', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const gran = (req.query.granularity || 'M15').toUpperCase();
+  if (!_RANGE_GRAN.has(gran)) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
+  const from = String(req.query.from ?? ''), to = String(req.query.to ?? '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ error: 'from & to required as YYYY-MM-DD' });
+  }
+  const fromISO = `${from}T00:00:00Z`, toISO = `${to}T23:59:59Z`;
+  if (Date.parse(toISO) < Date.parse(fromISO)) return res.status(400).json({ error: 'to must be ≥ from' });
+  const instrument = _liqGateOandaSym(String(symbol).replace('/', '_'));
+  const cacheKey = `range_${gran}_${instrument}_${from}_${to}`;
+  const cached = _m5SrvCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 10 * 60_000) return res.json(cached.data);
+  try {
+    const values = await fetchOandaCandleRange(instrument, gran, fromISO, toISO);
+    const result = { values, meta: { symbol, granularity: gran, from, to, count: values.length } };
+    _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    res.json(result);
+  } catch (err) {
+    console.error('[ohlc-range]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/vol-forecast/archive/range — per-day archived band %s for one pair ──
+// ?from=YYYY-MM-DD&to=YYYY-MM-DD&pair=eurusd
+// Returns { ok, pair, days: { 'YYYY-MM-DD': { hl_median, hl_75, oc_median, oc_75, vol_annual } } }
+// so the forecast-replay overlay can anchor each session's forecast on that day.
+app.get('/api/vol-forecast/archive/range', async (req, res) => {
+  const from = String(req.query.from ?? ''), to = String(req.query.to ?? '');
+  const pair = String(req.query.pair ?? '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ ok: false, error: 'from & to required as YYYY-MM-DD' });
+  }
+  try {
+    const raw = await kv.get('vol_forecast_index');
+    const entries = raw ? JSON.parse(raw) : [];
+    const dates = entries.map(e => e.date).filter(d => d && d >= from && d <= to).sort();
+    const days = {};
+    for (const d of dates) {
+      const fcRaw = await kv.get(`vol_forecast_${d}`);
+      if (!fcRaw) continue;
+      let fc; try { fc = JSON.parse(fcRaw); } catch { continue; }
+      const instKey = Object.keys(fc.instruments ?? {}).find(k => k.toLowerCase() === pair.toLowerCase());
+      const inst = instKey ? fc.instruments[instKey] : null;
+      if (!inst) continue;
+      days[d] = {
+        hl_median: inst.hl_median, hl_75: inst.hl_75,
+        oc_median: inst.oc_median, oc_75: inst.oc_75,
+        vol_annual: inst.vol_annual,
+      };
+    }
+    res.json({ ok: true, pair, from, to, days });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── /api/yield-coupling — measure-first price↔yield-spread overlay ───────────
 // ?symbol=EUR/USD[&granularity=M5][&count=1500][&corrWindow=60][&maxLag=24]
 // Fetches the FX price + the configured bond-CFD legs, standardizes, and returns
