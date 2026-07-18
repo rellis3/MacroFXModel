@@ -44,7 +44,7 @@
 <body>
 <header>
   <h1>🚦 Credit Stress <span class="sub">— CSI risk-overlay test (pre-registered)</span></h1>
-  <div class="sub">CSI = equal-weight 252d rolling z of (BBB−AAA quality spread, HY OAS, VIX), publication-lagged. Frozen gate: ×1 below 1σ, ×0.5 at 1–2σ, ×0 above 2σ, applied as-of yesterday. A <b>risk overlay, not alpha</b> — the named benchmark is the same gate on VIX alone (<b>CREDIT_STRESS_TEST.md</b>).</div>
+  <div class="sub">CSI = equal-weight 252d rolling z of (Baa−Aaa quality slope, Baa−10Y credit spread, VIX — Moody's/FRED, daily since 1986), publication-lagged. Frozen gate: ×1 below 1σ, ×0.5 at 1–2σ, ×0 above 2σ, applied as-of yesterday. A <b>risk overlay, not alpha</b> — the named benchmark is the same gate on VIX alone (<b>CREDIT_STRESS_TEST.md</b>).</div>
 </header>
 <div class="wrap">
   <div class="note">
@@ -155,7 +155,7 @@ function render(j){
         <span class="chip">as of ${j.vega.current.date}</span>
       </div>
       <canvas id="vegac"></canvas>
-      <div class="cap">Rolling 63d beta of Δ(HY OAS, bps) on Δ(VIX, pts) — strictly a beta, "vega" is shorthand. <b>Low</b> = credit absorbing vol spikes (calm plumbing); <b>High</b> (orange) = stress transmitting into credit. <b>Not part of the frozen CSI gate or verdict</b> — adding inputs to a pre-registered test would void it; a vega-conditioned gate is a possible pre-registered follow-up if CSI survives.</div></div>` : ''}
+      <div class="cap">Rolling 63d beta of Δ(Baa credit spread, bps) on Δ(VIX, pts) — strictly a beta, "vega" is shorthand. <b>Low</b> = credit absorbing vol spikes (calm plumbing); <b>High</b> (orange) = stress transmitting into credit. <b>Not part of the frozen CSI gate or verdict</b> — adding inputs to a pre-registered test would void it; a vega-conditioned gate is a possible pre-registered follow-up if CSI survives.</div></div>` : ''}
     <div class="panel"><h2>PRIMARY — equal-weight long-currency basket (decides the verdict)</h2>${cmpTable(j.primary)}
       <div class="cap">The purest always-on risk book — what a stress gate exists to protect. Split ${Math.round(j.params.isFrac*100)}/${Math.round((1-j.params.isFrac)*100)}; gate switches cost ${j.params.gateCostBps}bps.</div></div>
     <div class="panel"><h2>SECONDARY — trend basket (reported, not decisive)</h2>${cmpTable(j.secondary)}

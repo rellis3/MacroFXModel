@@ -75,7 +75,30 @@ gate, or the verdict — adding inputs to a pre-registered test voids it. If CSI
 passes, a vega-conditioned gate may be proposed as a **new** pre-registered
 follow-up; it must never be retrofitted into this one.
 
-## Result (fill in after the one Railway run — then this section is final)
+## Amendment 2026-07-18 — run 1 INVALID (data), components substituted, criteria untouched
+
+The 2026-07-18 run is **not a verdict**: FRED now serves the ICE BofA OAS series
+(`BAMLC0A1CAAA`/`BAMLC0A4CBBB`/`BAMLH0A0HYM2`) with only a **trailing ~3-year
+window** (observed: 787 obs from 2023-07-20 despite requesting 2004). After the
+252d z warmup the CSI did not exist before ~mid-2024, and the gate fails OPEN with
+no reading — so "CSI-gated" was bit-identical to "Ungated" through 2008/2011/2020
+(the IS rows matched exactly). Banking "no-gate" from a run where the gate was
+asleep for ~94% of the period would record noise as a verdict. Per the working
+agreement ("data limits beat fake productivity"), the run is recorded as
+**invalid — data unavailable**.
+
+**Substitution (declared before any valid full-history run):** the credit legs
+move to Moody's series, daily and unrestricted on FRED since 1986:
+- quality spread = `BAA10Y − AAA10Y` (Baa−Aaa quality slope)
+- credit spread = `BAA10Y` (Baa over 10Y Treasury)
+- `VIXCLS` unchanged.
+
+Everything else — z window, equal weights, gate tiers, lags, targets, the frozen
+pass/fail and the VIX-only benchmark — is **unchanged**. This is a data
+substitution forced by availability, not component iteration. The one live shot
+remains pending.
+
+## Result (fill in after the one VALID Railway run — then this section is final)
 
 - Date run: _
 - PRIMARY (risk basket): ungated OOS Sharpe _ · VIX-gated _ · CSI-gated _
