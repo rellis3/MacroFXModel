@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>P4 — FX Carry</title>
+  <title>JPY-Cross Spot Proxy (NOT carry) — P4</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/index.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -112,12 +112,18 @@
   <!-- Top bar -->
   <div style="padding:16px 0 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">
     <div>
-      <h1 style="font-size:20px;font-weight:700;margin:0;color:#3b82f6">P4 — FX Carry</h1>
-      <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Long GBP/JPY · AUD/JPY · NZD/JPY carry pairs, risk-off gate via HY credit z-score</div>
+      <h1 style="font-size:20px;font-weight:700;margin:0;color:#eab308">JPY-Cross Spot Proxy <span style="font-size:12px;font-weight:400;color:var(--text3)">(NOT carry)</span></h1>
+      <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Long GBP/JPY · AUD/JPY · NZD/JPY spot, risk-off gate via HY credit z-score — spot P&amp;L only, no interest accrual</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
       <a href="diversification.html" style="text-decoration:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">← Book Explorer</a>
     </div>
+  </div>
+
+  <!-- Honesty banner: this is NOT the carry factor -->
+  <div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.4);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;line-height:1.6;color:#d9c43a;">
+    <b>⚠ This is a spot-return proxy, not the carry factor.</b> It goes long fixed JPY-cross <i>pairs</i> and measures <b>price change only</b> — it contains <b>no interest-rate signal</b> (it gates on a credit z-score, not the rate differential) and <b>no carry accrual</b> (the interest you actually earn holding the trade is missing entirely). It captures the <i>spot</i> of historically-high-yield crosses, which is folklore, not the replicated carry premium.
+    <br>➤ For carry done honestly — rate-differential signal + accrual priced in from FRED short rates, IS/OOS, with a live retail-swap haircut — see <a href="system-fx-carry-factor.html" style="color:#7fa8ff;font-weight:600;">FX Carry Factor</a>.
   </div>
 
   <!-- Run bar -->

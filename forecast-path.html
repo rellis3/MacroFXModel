@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forecast Path — Cone &amp; Replay</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; --good:#34d399; --bad:#f87171; --warn:#fbbf24; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; }
+  .wrap { display:flex; gap:16px; padding:16px 20px; flex-wrap:wrap; }
+  .main { flex:1 1 680px; min-width:340px; }
+  #chart { height:480px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .side { flex:0 0 300px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .card h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  select, input[type=date] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-size:12px; }
+  button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  button.on { border-color:var(--accent); color:var(--accent); }
+  button:disabled { opacity:.4; cursor:default; }
+  .ctl { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:10px 0; }
+  input[type=range] { flex:1 1 200px; accent-color:var(--accent); }
+  .mono { font-family:'DM Mono',monospace; font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  th, td { text-align:right; padding:3px 6px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; }
+  td:first-child, th:first-child { text-align:left; }
+  .good { color:var(--good); } .bad { color:var(--bad); } .warn { color:var(--warn); }
+  .muted { color:var(--muted); font-size:11px; }
+  .kv { display:flex; justify-content:space-between; font-family:'DM Mono',monospace; font-size:12px; padding:2px 0; }
+  .kv b { font-weight:500; }
+  #status { font-size:12px; color:var(--muted); }
+  .err { color:var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📐 Forecast Path — Cone &amp; Replay</h1>
+  <div class="sub">What the model actually claims about the next N days (drift + P50/P75 envelopes), drawn — then graded against history. Not a strategy; a calibration viewer.</div>
+</header>
+
+<div class="wrap">
+  <div class="main">
+    <div class="ctl">
+      <select id="pair"></select>
+      <select id="horizon">
+        <option value="5">5 days</option>
+        <option value="10" selected>10 days</option>
+        <option value="20">20 days</option>
+      </select>
+      <label class="mono">from <input type="date" id="from" value="2019-01-01"></label>
+      <button id="load">Load</button>
+      <span id="status"></span>
+    </div>
+    <div id="chart"></div>
+    <div class="ctl">
+      <button id="prev">◀</button>
+      <input type="range" id="replay" min="0" max="0" value="0">
+      <button id="next">▶</button>
+      <button id="liveBtn">Live edge</button>
+      <span class="mono" id="replayLabel"></span>
+    </div>
+    <div class="ctl">
+      <button id="tCone" class="on">P50/P75 cone</button>
+      <button id="tPaths">Sample paths</button>
+      <button id="tConsensus">Most-agreed path</button>
+      <button id="tActual" class="on">Reveal actual</button>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <h2>This forecast</h2>
+      <div id="coneInfo"><span class="muted">load a pair</span></div>
+    </div>
+    <div class="card">
+      <h2>Calibration — full history</h2>
+      <div id="calib"><span class="muted">computed on load (non-overlapping windows, no lookahead)</span></div>
+    </div>
+    <div class="card muted">
+      <b>How to read this honestly.</b> The cone is the model's real claim: an EWMA
+      drift (capped at ±0.5σ/day) plus Feller close-displacement envelopes from the
+      SAME σ math as the live forecaster (<code>volSigmaSeries → computeBands</code>,
+      imported — never copied). The P50 band claims 50% containment, P75 claims 75%,
+      and drift direction claims to beat a 50% coin flip — the calibration card
+      grades every claim on non-overlapping historical windows. Sample paths are
+      draws from that same claim (wicks are cosmetic); their per-step median is the
+      "most-agreed path". If containment sits near its claim and direction sits at
+      ~50%, that IS the honest result: the model knows range well and direction
+      barely — don't let the picture say otherwise.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+import { buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS } from './js/forecastPathCore.js';
+
+const PAIRS = [
+  'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY',
+  'EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD',
+  'AUDJPY','AUDNZD','AUDCAD','AUDCHF',
+  'GBPAUD','GBPCAD','GBPCHF','GBPNZD',
+  'CADJPY','CHFJPY','NZDJPY','GOLD',
+];
+const ASSET_CLASS = p => p === 'GOLD' ? 'commodity' : 'fx';
+
+const $ = id => document.getElementById(id);
+const pairSel = $('pair');
+for (const p of PAIRS) pairSel.add(new Option(p, p));
+
+const view = createLevelChart($('chart'), { height: 480 });
+const chart = view.chart;
+
+let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null;
+const toggles = { cone: true, paths: false, consensus: false, actual: true };
+
+function clearExtra() {
+  for (const s of extraSeries) { try { chart.removeSeries(s); } catch {} }
+  extraSeries = [];
+  if (actualSeries) { try { chart.removeSeries(actualSeries); } catch {} actualSeries = null; }
+}
+
+function line(color, width = 1, style = 2) {
+  const s = chart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  extraSeries.push(s);
+  return s;
+}
+
+function render() {
+  if (!ctx) return;
+  clearExtra();
+  const H = +$('horizon').value;
+  const live = i >= bars.length;
+  const shown = bars.slice(0, live ? bars.length : i);
+  view.setCandles(shown);
+
+  const cone = coneFromContext(ctx, live ? bars.length : i, H);
+  $('replayLabel').textContent = live ? 'LIVE (past the last bar)' : `${bars[i - 1].time}  (${i}/${bars.length})`;
+  if (!cone) { $('coneInfo').innerHTML = '<span class="muted">not enough history at this date</span>'; return; }
+
+  const t0 = { time: cone.anchorDate, value: cone.anchor };
+  if (toggles.cone) {
+    const mk = k => [t0, ...cone.steps.map(s => ({ time: s.date, value: s[k] }))];
+    line('#5b9dff', 2, 0).setData(mk('center'));
+    line('rgba(52,211,153,.9)', 1, 2).setData(mk('p50Up'));
+    line('rgba(52,211,153,.9)', 1, 2).setData(mk('p50Dn'));
+    line('rgba(251,191,36,.8)', 1, 3).setData(mk('p75Up'));
+    line('rgba(251,191,36,.8)', 1, 3).setData(mk('p75Dn'));
+  }
+
+  if (toggles.paths || toggles.consensus) {
+    const { paths, consensus } = samplePaths(ctx, live ? bars.length : i, H, { nPaths: 24 });
+    if (toggles.paths) for (const p of paths)
+      line('rgba(148,163,184,.22)', 1, 0).setData([t0, ...p.map(c => ({ time: c.date, value: c.close }))]);
+    if (toggles.consensus)
+      line('#c084fc', 2, 0).setData([t0, ...consensus.map(c => ({ time: c.date, value: c.close }))]);
+  }
+
+  if (toggles.actual && !live) {
+    const actual = bars.slice(i, Math.min(i + H, bars.length));
+    if (actual.length) {
+      actualSeries = chart.addCandlestickSeries({
+        upColor: 'rgba(38,166,154,.45)', downColor: 'rgba(239,83,80,.45)', borderVisible: false,
+        wickUpColor: 'rgba(38,166,154,.45)', wickDownColor: 'rgba(239,83,80,.45)',
+        priceLineVisible: false, lastValueVisible: false,
+      });
+      actualSeries.setData(actual.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+    }
+  }
+
+  chart.timeScale().setVisibleLogicalRange({ from: shown.length - 90, to: shown.length + H + 4 });
+
+  const dirWord = cone.mu > 0 ? '<span class="good">up</span>' : cone.mu < 0 ? '<span class="bad">down</span>' : 'flat';
+  $('coneInfo').innerHTML =
+    `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(5)} @ ${cone.anchorDate}</b></div>` +
+    `<div class="kv"><span>daily σ</span><b>${(cone.sigma * 100).toFixed(3)}%</b></div>` +
+    `<div class="kv"><span>drift / day</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
+    `<div class="kv"><span>trend score</span><b>${cone.trendScore.toFixed(2)} ∈ [-1,1]</b></div>` +
+    `<div class="kv"><span>P75 range @ H</span><b>${cone.steps[cone.steps.length - 1].p75Dn.toFixed(5)} – ${cone.steps[cone.steps.length - 1].p75Up.toFixed(5)}</b></div>` +
+    `<div class="muted" style="margin-top:6px">Direction is the weak claim (FX ≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
+}
+
+function renderCalib() {
+  if (!bars.length) return;
+  const H = +$('horizon').value;
+  const t = calibrationTally(bars, { horizonDays: H, assetClass: ASSET_CLASS(pairSel.value) });
+  const pc = v => v == null ? '—' : (v * 100).toFixed(0) + '%';
+  const grade = (v, claim) => v == null ? '' : Math.abs(v - claim) <= 0.07 ? 'good' : Math.abs(v - claim) <= 0.15 ? 'warn' : 'bad';
+  let rows = '';
+  for (const s of t.full.perStep) {
+    const r = t.recent.perStep[s.h - 1];
+    rows += `<tr><td>h=${s.h}</td>` +
+      `<td class="${grade(s.c50, .5)}">${pc(s.c50)}</td><td class="${grade(s.c75, .75)}">${pc(s.c75)}</td>` +
+      `<td class="${grade(r.c50, .5)}">${pc(r.c50)}</td><td class="${grade(r.c75, .75)}">${pc(r.c75)}</td></tr>`;
+  }
+  const d = t.full.direction, dr = t.recent.direction;
+  const dirCls = d.hitRate == null ? '' : d.hitRate > 0.55 ? 'good' : d.hitRate < 0.45 ? 'bad' : 'warn';
+  $('calib').innerHTML =
+    `<table><tr><th></th><th colspan="2">full (n=${t.full.n})</th><th colspan="2">recent (n=${t.recent.n})</th></tr>` +
+    `<tr><th></th><th>P50→50%</th><th>P75→75%</th><th>P50</th><th>P75</th></tr>${rows}</table>` +
+    `<div class="kv" style="margin-top:8px"><span>direction vs coin flip</span>` +
+    `<b class="${dirCls}">${pc(d.hitRate)} full · ${pc(dr.hitRate)} recent</b></div>` +
+    `<div class="muted">Non-overlapping ${H}-day windows, every input strictly pre-window. Green = within 7pts of the claim.</div>`;
+}
+
+async function load() {
+  const pair = pairSel.value, from = $('from').value;
+  $('status').textContent = 'loading D1…'; $('status').className = '';
+  try {
+    const today = new Date().toISOString().substring(0, 10);
+    const r = await fetch(`/api/weekly-vol-backtest/d1/${pair.toLowerCase()}?from=${from}&to=${today}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    bars = j.candles;
+    if (bars.length < PATH_DEFAULTS.warmup + 40) throw new Error(`only ${bars.length} bars — pick an earlier start date`);
+    ctx = buildForecastContext(bars, { assetClass: ASSET_CLASS(pair) });
+    const slider = $('replay');
+    slider.min = PATH_DEFAULTS.warmup; slider.max = bars.length; slider.value = bars.length;
+    i = bars.length;
+    $('status').textContent = `${bars.length} bars`;
+    render(); renderCalib();
+  } catch (e) {
+    $('status').textContent = e.message + ' (OANDA is unreachable outside Railway — expected locally)';
+    $('status').className = 'err';
+  }
+}
+
+$('load').onclick = load;
+$('replay').oninput = e => { i = +e.target.value; render(); };
+$('prev').onclick = () => { i = Math.max(+$('replay').min, i - 1); $('replay').value = i; render(); };
+$('next').onclick = () => { i = Math.min(bars.length, i + 1); $('replay').value = i; render(); };
+$('liveBtn').onclick = () => { i = bars.length; $('replay').value = i; render(); };
+$('horizon').onchange = () => { render(); renderCalib(); };
+for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual']])
+  $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
+
+load();
+</script>
+</body>
+</html>
