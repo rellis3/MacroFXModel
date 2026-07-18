@@ -6299,6 +6299,231 @@ document.querySelector('.tab-btn[data-tab="liquiditygate"]')?.addEventListener('
   lgLoadLive();
 });
 
+// ── Yield-Spread bot: config + live per-pair status ──────────────────────────
+// The tab HTML (ysLiveAge/ysLiveMode/ysLiveBal/ysOpenN/ysUniN/ysPlanAge/ysLinesBody,
+// ys_* form fields) previously had no JS behind it at all — fields never loaded from
+// KV, Save/Reset called undefined functions, and the per-pair z table never rendered.
+// That's why the page showed no stats: it wasn't wired, not that the bot was idle.
+const YS_DEFAULTS = {
+  entryThreshold: 2.0, zWindow: 90, zExit: 1.5, maxHoldDays: 20, pairs: [],
+  enabled: true, kill_switch: false, paper_mode: true,
+  risk_pct: 0.5, sl_pct: 2.5, max_lot: 5, max_open: 6,
+  plan_utc_hour: 13, plan_utc_min: 5,
+  tick_secs: 10, status_secs: 60, plan_secs: 600,
+  tg_enabled: false, tg_token: '', tg_chat_id: '',
+};
+function _ysSet(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+function _ysSetChecked(id, v) { const el = document.getElementById(id); if (el) el.checked = !!v; }
+function _ysVal(id) { return document.getElementById(id)?.value; }
+function _ysChecked(id) { return !!document.getElementById(id)?.checked; }
+
+async function loadYsConfig() {
+  const cfg = (await _kvGet('yield_spread_config')) || {};
+  _ysSet('ys_entry_threshold', cfg.entryThreshold ?? cfg.entry_threshold ?? YS_DEFAULTS.entryThreshold);
+  _ysSet('ys_z_window', cfg.zWindow ?? cfg.z_window ?? YS_DEFAULTS.zWindow);
+  _ysSet('ys_z_exit', cfg.zExit ?? cfg.z_exit ?? YS_DEFAULTS.zExit);
+  _ysSet('ys_max_hold_days', cfg.maxHoldDays ?? cfg.max_hold_days ?? YS_DEFAULTS.maxHoldDays);
+  _ysSet('ys_pairs', (Array.isArray(cfg.pairs) ? cfg.pairs : YS_DEFAULTS.pairs).join(', '));
+  _ysSetChecked('ys_paper_mode', cfg.paper_mode ?? cfg.paper ?? YS_DEFAULTS.paper_mode);
+  _ysSetChecked('ys_enabled', cfg.enabled ?? YS_DEFAULTS.enabled);
+  _ysSetChecked('ys_kill_switch', cfg.kill_switch ?? YS_DEFAULTS.kill_switch);
+  _ysSet('ys_risk_pct', cfg.risk_pct ?? YS_DEFAULTS.risk_pct);
+  _ysSet('ys_sl_pct', cfg.sl_pct ?? YS_DEFAULTS.sl_pct);
+  _ysSet('ys_max_lot', cfg.max_lot ?? YS_DEFAULTS.max_lot);
+  _ysSet('ys_max_open', cfg.max_open ?? YS_DEFAULTS.max_open);
+  _ysSet('ys_plan_utc_hour', cfg.plan_utc_hour ?? YS_DEFAULTS.plan_utc_hour);
+  _ysSet('ys_plan_utc_min', cfg.plan_utc_min ?? YS_DEFAULTS.plan_utc_min);
+  _ysSet('ys_tick_secs', cfg.tick_secs ?? YS_DEFAULTS.tick_secs);
+  _ysSet('ys_status_secs', cfg.status_secs ?? YS_DEFAULTS.status_secs);
+  _ysSet('ys_plan_secs', cfg.plan_secs ?? YS_DEFAULTS.plan_secs);
+  _ysSetChecked('ys_tg_enabled', cfg.tg_enabled ?? YS_DEFAULTS.tg_enabled);
+  _ysSet('ys_tg_token', cfg.tg_token ?? '');
+  _ysSet('ys_tg_chat_id', cfg.tg_chat_id ?? '');
+}
+window.loadYsConfig = loadYsConfig;
+
+async function loadYsCreds() {
+  const creds = (await _kvGet('yield_spread_credentials')) || {};
+  _ysSet('ys_mt5_account', creds.mt5_account ?? '');
+  _ysSet('ys_mt5_server', creds.mt5_server ?? '');
+  _ysSet('ys_mt5_path', creds.mt5_path ?? '');
+  // password intentionally left blank — placeholder says "leave blank to keep"
+}
+window.loadYsCreds = loadYsCreds;
+
+async function saveYsConfig() {
+  const st = document.getElementById('ysSaveStatus');
+  try {
+    const existing = (await _kvGet('yield_spread_config')) || {};
+    const entryThr = parseFloat(_ysVal('ys_entry_threshold'));
+    const zWin     = parseInt(_ysVal('ys_z_window'), 10);
+    const zExit    = parseFloat(_ysVal('ys_z_exit'));
+    const maxHold  = parseInt(_ysVal('ys_max_hold_days'), 10);
+    const maxLot   = parseFloat(_ysVal('ys_max_lot'));
+    const pairs    = (_ysVal('ys_pairs') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    const merged = {
+      ...existing,
+      // camelCase — read by the server's plan producer (js/yieldSpreadProducer.js),
+      // which is what actually shapes yield_spread_plan's entryThreshold/universe.
+      entryThreshold: entryThr, zWindow: zWin, zExit: zExit, maxHoldDays: maxHold,
+      pairs, paper: _ysChecked('ys_paper_mode'), maxLot,
+      // snake_case — read by the Python bot (YieldSpreadBot/yield_spread_bot.py).
+      entry_threshold: entryThr, z_window: zWin, z_exit: zExit, max_hold_days: maxHold,
+      enabled: _ysChecked('ys_enabled'),
+      kill_switch: _ysChecked('ys_kill_switch'),
+      paper_mode: _ysChecked('ys_paper_mode'),
+      risk_pct: parseFloat(_ysVal('ys_risk_pct')),
+      sl_pct: parseFloat(_ysVal('ys_sl_pct')),
+      max_lot: maxLot,
+      max_open: parseInt(_ysVal('ys_max_open'), 10),
+      plan_utc_hour: parseInt(_ysVal('ys_plan_utc_hour'), 10),
+      plan_utc_min: parseInt(_ysVal('ys_plan_utc_min'), 10),
+      tick_secs: parseInt(_ysVal('ys_tick_secs'), 10),
+      status_secs: parseInt(_ysVal('ys_status_secs'), 10),
+      plan_secs: parseInt(_ysVal('ys_plan_secs'), 10),
+      tg_enabled: _ysChecked('ys_tg_enabled'),
+      tg_token: _ysVal('ys_tg_token') || '',
+      tg_chat_id: _ysVal('ys_tg_chat_id') || '',
+    };
+    const ok = await _kvSet('yield_spread_config', merged);
+    if (st) { st.textContent = ok ? '✓ Saved' : 'Save failed'; st.style.color = ok ? '#10b981' : '#ef4444'; }
+  } catch (e) {
+    if (st) { st.textContent = 'Save failed: ' + e.message; st.style.color = '#ef4444'; }
+  }
+  setTimeout(() => { if (st) st.textContent = ''; }, 3000);
+}
+window.saveYsConfig = saveYsConfig;
+
+async function saveYsCreds() {
+  const st = document.getElementById('ysCredsStatus');
+  try {
+    const existing = (await _kvGet('yield_spread_credentials')) || {};
+    const pw = _ysVal('ys_mt5_password');
+    const merged = {
+      ...existing,
+      mt5_account: _ysVal('ys_mt5_account') || '',
+      mt5_server: _ysVal('ys_mt5_server') || '',
+      mt5_path: _ysVal('ys_mt5_path') || '',
+      ...(pw ? { mt5_password: pw } : {}),
+    };
+    const ok = await _kvSet('yield_spread_credentials', merged);
+    if (st) { st.textContent = ok ? '✓ Saved' : 'Save failed'; st.style.color = ok ? '#10b981' : '#ef4444'; }
+    _ysSet('ys_mt5_password', '');
+  } catch (e) {
+    if (st) { st.textContent = 'Save failed: ' + e.message; st.style.color = '#ef4444'; }
+  }
+  setTimeout(() => { if (st) st.textContent = ''; }, 3000);
+}
+window.saveYsCreds = saveYsCreds;
+
+function resetYsDefaults() {
+  _ysSet('ys_entry_threshold', YS_DEFAULTS.entryThreshold);
+  _ysSet('ys_z_window', YS_DEFAULTS.zWindow);
+  _ysSet('ys_z_exit', YS_DEFAULTS.zExit);
+  _ysSet('ys_max_hold_days', YS_DEFAULTS.maxHoldDays);
+  _ysSet('ys_pairs', '');
+  _ysSetChecked('ys_paper_mode', YS_DEFAULTS.paper_mode);
+  _ysSetChecked('ys_enabled', YS_DEFAULTS.enabled);
+  _ysSetChecked('ys_kill_switch', YS_DEFAULTS.kill_switch);
+  _ysSet('ys_risk_pct', YS_DEFAULTS.risk_pct);
+  _ysSet('ys_sl_pct', YS_DEFAULTS.sl_pct);
+  _ysSet('ys_max_lot', YS_DEFAULTS.max_lot);
+  _ysSet('ys_max_open', YS_DEFAULTS.max_open);
+  _ysSet('ys_plan_utc_hour', YS_DEFAULTS.plan_utc_hour);
+  _ysSet('ys_plan_utc_min', YS_DEFAULTS.plan_utc_min);
+  _ysSet('ys_tick_secs', YS_DEFAULTS.tick_secs);
+  _ysSet('ys_status_secs', YS_DEFAULTS.status_secs);
+  _ysSet('ys_plan_secs', YS_DEFAULTS.plan_secs);
+  _ysSetChecked('ys_tg_enabled', YS_DEFAULTS.tg_enabled);
+  _ysSet('ys_tg_token', '');
+  _ysSet('ys_tg_chat_id', '');
+  const st = document.getElementById('ysSaveStatus');
+  if (st) { st.textContent = 'Fields reset — click Save Config to apply'; st.style.color = 'var(--text3)'; }
+}
+window.resetYsDefaults = resetYsDefaults;
+
+function _ysFmtAge(pushedAtSecs) {
+  if (!pushedAtSecs) return 'Waiting for bot…';
+  const ageS = Date.now() / 1000 - pushedAtSecs;
+  if (ageS < 120) return `updated ${Math.round(ageS)}s ago`;
+  if (ageS < 3600) return `updated ${Math.round(ageS / 60)}m ago`;
+  return `STALE — no update in ${Math.round(ageS / 3600)}h (is the bot process running?)`;
+}
+
+// One row = one pair's today-z vs the entry threshold, so "how close/how far" is
+// readable at a glance instead of needing to inspect KV directly.
+function _ysRowHtml(p) {
+  const z = typeof p.z === 'number' ? p.z : null;
+  const thr = typeof p.entry_threshold === 'number' ? p.entry_threshold : null;
+  const armed = z != null && thr != null && Math.abs(z) >= thr;
+  const dist = (z != null && thr != null) ? Math.max(0, thr - Math.abs(z)) : null;
+  const zColor = z == null ? 'var(--text3)' : armed ? '#10b981' : (thr && Math.abs(z) >= thr * 0.6 ? '#f59e0b' : 'var(--text3)');
+  const sigHtml = z == null ? '—'
+    : armed ? '<span style="color:#10b981;font-weight:700">🟢 ENTER</span>'
+    : `<span style="color:var(--text3)">flat · ${dist.toFixed(2)} to go</span>`;
+  const dirColor = p.direction === 'LONG' ? '#10b981' : p.direction === 'SHORT' ? '#ef4444' : 'var(--text3)';
+  return `<tr>
+    <td style="padding:6px 10px;text-align:left;font-weight:600">${(p.pair || '').toUpperCase()}</td>
+    <td style="padding:6px 10px;text-align:right;color:${zColor};font-weight:700">${z != null ? z.toFixed(2) : '—'}</td>
+    <td style="padding:6px 10px;text-align:left">${sigHtml}</td>
+    <td style="padding:6px 10px;text-align:left;color:${dirColor}">${p.direction || '—'}</td>
+    <td style="padding:6px 10px;text-align:left">${p.in_position ? '● holding' : '—'}</td>
+    <td style="padding:6px 10px;text-align:right">${p.hold_days != null ? Number(p.hold_days).toFixed(1) : '—'}</td>
+    <td style="padding:6px 10px;text-align:left;color:var(--text3)">${p.asOf || '—'}</td>
+  </tr>`;
+}
+
+async function loadYsLiveStatus() {
+  const ageEl = document.getElementById('ysLiveAge');
+  const modeEl = document.getElementById('ysLiveMode');
+  const balEl = document.getElementById('ysLiveBal');
+  const openEl = document.getElementById('ysOpenN');
+  const uniEl = document.getElementById('ysUniN');
+  const planEl = document.getElementById('ysPlanAge');
+  const body = document.getElementById('ysLinesBody');
+  try {
+    const status = await _kvGet('yield_spread_status');
+    if (!status) {
+      if (ageEl) ageEl.textContent = 'No status yet — start YieldSpreadBot/yield_spread_bot.py';
+      if (modeEl) modeEl.textContent = '';
+      if (balEl) balEl.textContent = '';
+      if (body) body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No status yet — run the bot to populate today’s z per pair</td></tr>';
+      return;
+    }
+    if (ageEl) ageEl.textContent = _ysFmtAge(status.pushed_at);
+    if (modeEl) {
+      const bits = [status.mode === 'live' ? 'LIVE' : 'paper'];
+      if (status.enabled === false) bits.push('DISABLED');
+      if (status.kill_switch) bits.push('KILL-SWITCH');
+      modeEl.textContent = bits.join(' · ');
+      modeEl.style.color = status.mode === 'live' ? '#ef4444' : (status.kill_switch || status.enabled === false ? '#f59e0b' : '#10b981');
+    }
+    if (balEl) balEl.textContent = status.balance != null ? `Balance: $${Number(status.balance).toFixed(2)}` : '';
+    if (openEl) openEl.textContent = (status.mt5_positions || []).length;
+    if (uniEl) uniEl.textContent = (status.universe || []).length;
+    if (planEl) {
+      const age = status.plan_age_days;
+      planEl.textContent = age != null ? `${Number(age).toFixed(2)}d old${status.plan_stale ? ' — STALE, entries halted' : ''}` : 'no plan';
+      planEl.style.color = status.plan_stale ? '#ef4444' : 'var(--text3)';
+    }
+    const pairs = status.pairs || [];
+    if (body) {
+      body.innerHTML = pairs.length
+        ? pairs.map(_ysRowHtml).join('')
+        : '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No pairs in the plan yet</td></tr>';
+    }
+  } catch (e) {
+    if (ageEl) ageEl.textContent = 'Error loading status: ' + e.message;
+  }
+}
+window.loadYsLiveStatus = loadYsLiveStatus;
+
+// Load config/creds/live-status when the tab is first opened (same convention as
+// the Liquidity Gate tab above).
+document.querySelector('.tab-btn[data-tab="yieldspread"]')?.addEventListener('click', () => {
+  loadYsConfig(); loadYsCreds(); loadYsLiveStatus();
+});
+
 // ── Positions tab ─────────────────────────────────────────────────────────────
 const _POS_BOTS = [
   { key: 'bot_status',            label: 'MacroFX V1', color: '#60a5fa', bg: '#172554', bd: '#1e40af', paper: false },

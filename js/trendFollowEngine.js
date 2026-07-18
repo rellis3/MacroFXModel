@@ -60,14 +60,18 @@ export function rollingVol(rets, window = DEFAULTS.volWindow) {
 // Returns { dailyRet[], grossRet[], turnover } aligned to closes (index 0 = 0).
 // position decided at close[i-1] (signal[i-1], vol[i-1]) earns ret[i]. Costs charged
 // on |Δposition|. This is strictly out-of-sample bar to bar.
-export function backtestMarket(closes, cfg = {}) {
+// `volSeries` (optional): injected annualized vol, aligned to closes, where
+// volSeries[i] uses data ≤ i only (same information set as the default trailing
+// rollingVol). This is the sizing parameterisation — v2 injects the forecaster's
+// σ here; omitted ⇒ behaviour is bit-identical to the original engine.
+export function backtestMarket(closes, cfg = {}, volSeries = null) {
   const c = { ...DEFAULTS, ...cfg };
   const n = closes.length;
   const rets = new Array(n).fill(0);
   for (let i = 1; i < n; i++) rets[i] = closes[i - 1] > 0 ? (closes[i] - closes[i - 1]) / closes[i - 1] : 0;
   let sig = momentumSignal(closes, c.lookbacks);
   if (!c.longShort) sig = sig.map(s => Math.max(0, s));   // long/flat
-  const vol = rollingVol(rets, c.volWindow);
+  const vol = volSeries ?? rollingVol(rets, c.volWindow);
 
   const pos = new Array(n).fill(0);
   for (let i = 0; i < n; i++) {
@@ -94,7 +98,7 @@ export function backtestMarket(closes, cfg = {}) {
 // Equal-weight the per-market strategy returns (right-aligned to the common tail),
 // then scale to the portfolio vol target with a TRAILING (no-lookahead) vol.
 export function buildPortfolioReturns(markets, c) {
-  const per = markets.map(m => ({ symbol: m.symbol, ...backtestMarket(m.closes, c), n: m.closes.length }));
+  const per = markets.map(m => ({ symbol: m.symbol, ...backtestMarket(m.closes, c, m.volSeries ?? null), n: m.closes.length }));
   const L = Math.min(...per.map(p => p.dailyRet.length));
   if (!Number.isFinite(L) || L < 260) return { ok: false, error: `need ≥260 aligned bars, got ${L}` };
   const aligned = per.map(p => p.dailyRet.slice(p.dailyRet.length - L));
