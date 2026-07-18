@@ -42,6 +42,9 @@ from dataclasses import dataclass
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')   # Windows console default (cp1252) can't print the policy's '·'/'≈'
+sys.stdout.reconfigure(line_buffering=True)    # a redirected/backgrounded run defaults to block-buffered —
+                                                # a multi-pair sweep can run for hours with NOTHING written to
+                                                # the log file until it exits otherwise (bit us once already)
 
 import numpy as np
 import pandas as pd
@@ -285,20 +288,37 @@ def main():
     sl_mult_grid = [float(x) for x in args.sl_mult_grid.split(',')]
     tp_r_grid = [float(x) for x in args.tp_r_grid.split(',')]
 
+    import time
+    t_start = time.time()
     per_pair = []
     csv_rows = []
-    for pair in pairs:
+    for i, pair in enumerate(pairs, 1):
+        t0 = time.time()
         try:
             result = process_pair(pair, plan, sl_mult_grid, tp_r_grid, args.max_hours)
         except FileNotFoundError as e:
             print(f"\n=== {pair}: skipped ({e}) ===")
             continue
+        elapsed = time.time() - t0
         if result is None:
-            print(f"  {pair}: no entries fired — skipping")
+            print(f"  {pair}: no entries fired — skipping ({elapsed:.0f}s)")
             continue
         per_pair.append(result)
         for row in result['grid']:
             csv_rows.append({'pair': pair, 'asset_class': result['asset_class'], **row})
+        total_elapsed = time.time() - t_start
+        print(f"  [{i}/{len(pairs)}] {pair} done in {elapsed:.0f}s "
+              f"(total {total_elapsed/60:.1f}min, ~{total_elapsed/i*(len(pairs)-i)/60:.1f}min remaining)")
+
+        # Checkpoint after EVERY pair — a killed/crashed run still leaves usable
+        # partial results, and progress is visible on disk while it runs (never
+        # again: a multi-hour job with nothing to show until it exits).
+        if args.csv_out:
+            pd.DataFrame(csv_rows).to_csv(args.csv_out, index=False)
+        if args.json_out:
+            with open(args.json_out, 'w') as f:
+                json.dump({'generated_from_plan': plan.get('generatedAt'), 'per_pair': per_pair,
+                          'partial': i < len(pairs)}, f)
 
     if not per_pair:
         print("No results.")
@@ -314,12 +334,11 @@ def main():
         tp_r_str = str(best['tp_r']) if best else ''
         print(f"{r['pair']:<8}{r['n_entries']:>6}{own_str:>12}{best_avg_str:>12}{sl_mult_str:>9}{tp_r_str:>7}")
 
+    # Final checkpoint write already happened at the end of the loop (with
+    # partial=False) — this just confirms the paths for the log.
     if args.csv_out:
-        pd.DataFrame(csv_rows).to_csv(args.csv_out, index=False)
         print(f"\nGrid CSV written -> {args.csv_out}")
     if args.json_out:
-        with open(args.json_out, 'w') as f:
-            json.dump({'generated_from_plan': plan.get('generatedAt'), 'per_pair': per_pair}, f)
         print(f"Dashboard JSON written -> {args.json_out}")
 
 
