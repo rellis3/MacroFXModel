@@ -41,6 +41,12 @@ export const PATH_DEFAULTS = {
   nPaths: 40,          // Monte-Carlo sample paths
   seed: 42,            // deterministic path RNG
   warmup: 300,         // first index eligible for a cone (σ + momentum history)
+  bandsFn: null,       // optional calibration swap: (open, σ, assetClass) → at
+                       // least { ocUp, ocDn, oc75 } (computeBands shape). Lets a
+                       // caller grade a DIFFERENT band calibration (e.g. COG's
+                       // constants) through the same cone/tally path — the drift
+                       // (most-agreed) line is calibration-independent, only the
+                       // envelope widths change. Default: the platform computeBands.
 };
 
 // ── Context: one pass over the bars, reusable for every i ────────────────────
@@ -99,10 +105,11 @@ export function coneFromContext(ctx, i, horizonDays) {
   const mu = Math.max(-opts.driftCapSigma * sig, Math.min(opts.driftCapSigma * sig, i === n ? _liveDrift(ctx) : muRaw));
 
   const steps = [];
+  const bandsFn = opts.bandsFn ?? computeBands;
   let lastDate = _dateOf(bars[i - 1]);
   for (let h = 1; h <= H; h++) {
     const center = anchor * Math.exp(mu * h);
-    const b = computeBands(center, sig * Math.sqrt(h), opts.assetClass);
+    const b = bandsFn(center, sig * Math.sqrt(h), opts.assetClass);
     const date = i + h - 1 < n ? _dateOf(bars[i + h - 1]) : (lastDate = nextWeekday(lastDate));
     if (i + h - 1 < n) lastDate = date;
     steps.push({ h, date, center, p50Up: b.ocUp, p50Dn: b.ocDn,

@@ -53,6 +53,10 @@
       </select>
       <select id="pair"></select>
       <select id="horizon"></select>
+      <select id="calc" title="Band calibration — envelopes only; the drift line is calc-independent">
+        <option value="cog" selected>COG calc</option>
+        <option value="platform">Platform (Feller)</option>
+      </select>
       <label class="mono" id="fromWrap">from <input type="date" id="from" value="2019-01-01"></label>
       <button id="load">Load</button>
       <span id="status"></span>
@@ -72,6 +76,7 @@
       <button id="tActual" class="on">Reveal actual</button>
       <button id="tNews" class="on">News</button>
       <button id="tLevels">Levels</button>
+      <button id="tBands">Day forecast</button>
       <button id="tTrail" class="on">Hindcast trail</button>
     </div>
   </div>
@@ -98,7 +103,20 @@
       median is the "most-agreed path". The <b>hindcast trail</b> draws the very
       windows the calibration card grades — each faint segment is the path the
       model claimed at that moment (causally), ending green (final close inside
-      the P75 claim) or red (busted). If containment sits near its claim and
+      the P75 claim) or red (busted). <b>Day forecast</b> draws the vol-forecast
+      v2 daily lines over the intraday candles — blue dashed = H-L median,
+      amber = H-L 75th (the lines the volatility bot trades), green dotted =
+      O-C median — off each replay day's open, σ from real D1 history strictly
+      before that day. <b>Levels</b> are prior-day H/L, pivots, daily opens and
+      round numbers (axis-labelled; zoom out if only one is in view). The
+      <b>calc switch</b> (COG default / Platform-Feller) swaps the band
+      constants behind the D1 cone envelopes + its calibration card and the
+      Day-forecast lines — the drift ("most-agreed") line never moves with the
+      calc, and the intraday cone keeps its own per-bar Gaussian claim (both
+      calibrations are daily-session constants that don't apply per 5/15-min
+      step). On D1 the calibration card grades whichever calc is selected —
+      COG's tighter medians claim the same 50/75%, so the card shows honestly
+      whether his lines or the platform's hold their claim better. If containment sits near its claim and
       direction sits at ~50%, that IS the honest result: the model knows range well
       and direction barely — don't let the picture say otherwise.
     </div>
@@ -115,6 +133,22 @@ import {
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ,
 } from './js/forecastPathCore.js';
+import { computeBands, nextSigma } from './js/forecastCore.js';
+import { COG_CONST } from './js/cogReverseEngineer.js';
+
+// COG's band calibration (reverse-engineered, verified against his exports):
+// raw constants × σ, NO per-asset correction — computeBands-shaped so it can
+// swap in anywhere the platform bands go. Matches the daily COG export exactly
+// (e.g. EURUSD 5.56% ann → 0.55/0.68 HL, 0.26/0.43 OC).
+function cogBands(open, sigma) {
+  const hl50 = COG_CONST.BM_P50 * sigma, hl75 = COG_CONST.BM_P75 * sigma;
+  const ocMed = COG_CONST.HN_P50 * sigma, oc75 = COG_CONST.HN_P75 * sigma;
+  return { hl50, hl75, ocMed, oc75,
+           up50: open * (1 + hl50), dn50: open * (1 - hl50),
+           up75: open * (1 + hl75), dn75: open * (1 - hl75),
+           ocUp: open * (1 + ocMed), ocDn: open * (1 - ocMed) };
+}
+const activeBandsFn = () => $('calc').value === 'cog' ? cogBands : computeBands;
 
 const PAIRS = [
   'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY',
@@ -152,10 +186,10 @@ const ENGINES = {
     horizons: [['5', '5 days'], ['10', '10 days'], ['20', '20 days']],
     defaultH: '10',
     warmup: PATH_DEFAULTS.warmup,
-    build: (bars, ac) => buildForecastContext(bars, { assetClass: ac }),
+    build: (bars, ac) => buildForecastContext(bars, { assetClass: ac, bandsFn: activeBandsFn() }),
     cone: coneFromContext,
     paths: samplePaths,
-    tally: (bars, H, ac) => calibrationTally(bars, { horizonDays: H, assetClass: ac }),
+    tally: (bars, H, ac) => calibrationTally(bars, { horizonDays: H, assetClass: ac, bandsFn: activeBandsFn() }),
     anchorT: c => c.anchorDate,
     stepT: s => s.date,
     fmtBar: b => b.time,
@@ -188,8 +222,8 @@ fillHorizons();
 const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
-let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [];
-const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, trail: true };
+let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [];
+const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true };
 const eng = () => ENGINES[$('gran').value];
 const isIntraday = () => $('gran').value !== 'D1';
 
@@ -320,13 +354,40 @@ function render() {
     }
   } else view.series.setMarkers([]);
 
-  // Level overlay — computed only from bars BEFORE the replay point (no lookahead).
+  // Level overlay — computed only from bars BEFORE the replay point (no
+  // lookahead). Axis labels ON so each line names itself (PDH, PP, round…) —
+  // most levels sit outside a tight zoom, so the label is how you find them.
   if (toggles.levels && shown.length > 50) {
     const dailyBars = isIntraday() ? resampleTo(shown, 1440) : shown.map(b => ({ ...b, time: Date.parse(b.time) / 1000 }));
     view.setLevels(collectLevels(
       { dailyBars, instrument: pairSel.value, price: shown[shown.length - 1].close },
-      ['daily_open', 'prior_hilo', 'pivots', 'round_number']), { showTitle: false });
+      ['daily_open', 'prior_hilo', 'pivots', 'round_number']));
   } else view.clearLevels();
+
+  // Day-forecast lines — the vol-forecast v2 daily claim drawn on the intraday
+  // chart: HL median/75th (the range lines the volatility bot trades) + OC
+  // median, off the replay day's open. σ comes from REAL D1 history strictly
+  // BEFORE that day (nextSigma — the forecaster's exact math, imported), so the
+  // replay shows the lines as they would have stood that morning. Anchored at
+  // the UTC day-open bar (the live book anchors at London midnight — up to 1h
+  // off in summer).
+  if (toggles.bands && isIntraday() && d1History.length > 35) {
+    const iEff = (live ? bars.length : i) - 1;
+    const dk = Math.floor(bars[iEff].time / 86400);
+    let ds = iEff;
+    while (ds > 0 && Math.floor(bars[ds - 1].time / 86400) === dk) ds--;
+    const dayDate = new Date(bars[ds].time * 1000).toISOString().substring(0, 10);
+    const prior = d1History.filter(b => b.time < dayDate);
+    if (prior.length > 35) {
+      const sig = nextSigma(prior, ASSET_CLASS(pairSel.value));
+      const b = activeBandsFn()(bars[ds].open, sig, ASSET_CLASS(pairSel.value));
+      const tA = bars[ds].time, tB = tA + 86400;
+      const seg = (v, color, style) => line(color, 1, style).setData([{ time: tA, value: v }, { time: tB, value: v }]);
+      seg(b.up50, '#8ab4ff', 2); seg(b.dn50, '#8ab4ff', 2);          // HL median (dashed)
+      seg(b.up75, '#fbbf24', 3); seg(b.dn75, '#fbbf24', 3);          // HL 75th (large-dashed)
+      seg(b.ocUp, '#34d399', 1); seg(b.ocDn, '#34d399', 1);          // OC median (dotted)
+    }
+  }
 
   chart.timeScale().setVisibleLogicalRange({ from: shown.length - Math.max(90, H * 4), to: shown.length + H + 4 });
 
@@ -358,7 +419,10 @@ function render() {
   const dirWord = cone.mu > 0 ? '<span class="good">up</span>' : cone.mu < 0 ? '<span class="bad">down</span>' : 'flat';
   const lastS = cone.steps[cone.steps.length - 1];
   const dg = priceDigits(pairSel.value);
+  const calcLabel = $('calc').value === 'cog' ? 'COG' : 'Platform (Feller)';
+  const calcScope = isIntraday() ? 'Day-forecast lines' : 'cone envelopes + tally';
   $('coneInfo').innerHTML =
+    `<div class="kv"><span>bands calc</span><b>${calcLabel} <span class="muted">(${calcScope})</span></b></div>` +
     `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(dg)}</b></div>` +
     `<div class="kv"><span>${e.sigmaLabel}</span><b>${(e.sigmaOf(cone) * 100).toFixed(3)}%</b></div>` +
     `<div class="kv"><span>drift / bar</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
@@ -441,11 +505,17 @@ async function load() {
     // means no markers — never block the chart on it.
     const evUrl = gran === 'D1' ? null
       : `/api/calendar-events?pair=${pair}&minRank=2&from=${new Date(Date.now() - e.lookbackDays * 86400e3).toISOString().substring(0, 10)}&to=${new Date(Date.now() + 7 * 86400e3).toISOString().substring(0, 10)}`;
-    const [j, evJ] = await Promise.all([
+    // Intraday also loads ~200 days of D1 so the Day-forecast lines can compute
+    // the daily σ causally per replay day (nextSigma needs ≥30 real daily bars).
+    const d1Url = gran === 'D1' ? null
+      : `/api/weekly-vol-backtest/d1/${pair.toLowerCase()}?from=${new Date(Date.now() - 200 * 86400e3).toISOString().substring(0, 10)}&to=${today}`;
+    const [j, evJ, d1J] = await Promise.all([
       fetch(url).then(r => r.json()),
       evUrl ? fetch(evUrl).then(r => r.json()).catch(() => null) : Promise.resolve(null),
+      d1Url ? fetch(d1Url).then(r => r.json()).catch(() => null) : Promise.resolve(null),
     ]);
     events = evJ?.ok ? evJ.events : [];
+    d1History = d1J?.ok ? d1J.candles : [];
     if (!j.ok) throw new Error(j.error || 'candle fetch failed');
     bars = j.candles;
     if (bars.length < e.warmup + 40) throw new Error(`only ${bars.length} bars — not enough history for warmup (${e.warmup})`);
@@ -471,7 +541,11 @@ $('prev').onclick = () => { i = Math.max(+$('replay').min, i - 1); $('replay').v
 $('next').onclick = () => { i = Math.min(bars.length, i + 1); $('replay').value = i; render(); };
 $('liveBtn').onclick = () => { i = bars.length; $('replay').value = i; render(); };
 $('horizon').onchange = () => { render(); renderCalib(); };
-for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tTrail','trail']])
+$('calc').onchange = () => {   // bandsFn is captured in the D1 context — rebuild it
+  if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
+  render(); renderCalib();
+};
+for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail']])
   $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
 
 load();
