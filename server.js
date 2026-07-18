@@ -3916,7 +3916,9 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
 // Returns { values:[{datetime, open, high, low, close}] } newest-first,
 // datetime in London local time.
 const _m5SrvCache = new Map();
-const _OHLC_GRAN = { M5: { count: 1500, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 } };
+// M5 count covers a full trading week (~1440 bars Mon→Fri) plus margin so the
+// vol-forecast weekly charts can reliably anchor off this week's Monday open.
+const _OHLC_GRAN = { M5: { count: 2000, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 } };
 app.get('/api/oanda_ohlc5m', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
   const symbol = req.query.symbol;
