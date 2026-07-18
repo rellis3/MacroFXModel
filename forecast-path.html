@@ -72,6 +72,7 @@
       <button id="tActual" class="on">Reveal actual</button>
       <button id="tNews" class="on">News</button>
       <button id="tLevels">Levels</button>
+      <button id="tTrail" class="on">Hindcast trail</button>
     </div>
   </div>
 
@@ -94,7 +95,10 @@
       claims 50% containment, P75 claims 75%, drift direction claims to beat a coin
       flip — the calibration card grades every claim on non-overlapping windows.
       Sample paths are draws from that same claim (wicks cosmetic); their per-step
-      median is the "most-agreed path". If containment sits near its claim and
+      median is the "most-agreed path". The <b>hindcast trail</b> draws the very
+      windows the calibration card grades — each faint segment is the path the
+      model claimed at that moment (causally), ending green (final close inside
+      the P75 claim) or red (busted). If containment sits near its claim and
       direction sits at ~50%, that IS the honest result: the model knows range well
       and direction barely — don't let the picture say otherwise.
     </div>
@@ -183,7 +187,7 @@ const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
 let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [];
-const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false };
+const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, trail: true };
 const eng = () => ENGINES[$('gran').value];
 const isIntraday = () => $('gran').value !== 'D1';
 
@@ -265,6 +269,32 @@ function render() {
         priceLineVisible: false, lastValueVisible: false, priceFormat: priceFmt(),
       });
       actualSeries.setData(actual.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+    }
+  }
+
+  // Hindcast trail — the SAME windows the calibration tally grades, drawn:
+  // each segment is the centre ("most-agreed") path the model claimed at that
+  // time, computed causally; the end marker shows whether the final close
+  // landed inside the P75 claim (green dot) or busted it (red square). Each
+  // segment's first step is dropped to break the line between predictions.
+  if (toggles.trail) {
+    const trailData = [], hitMarks = [];
+    const endI = (live ? bars.length : i) - H;         // fully resolved windows only
+    for (let a = Math.max(e.warmup, 2); a <= endI; a += H) {
+      const c = e.cone(ctx, a, H);
+      if (!c) continue;
+      trailData.push({ time: e.stepT(c.steps[0]) });   // whitespace → line break
+      for (let k = 1; k < c.steps.length; k++) trailData.push({ time: e.stepT(c.steps[k]), value: c.steps[k].center });
+      const lastStep = c.steps[H - 1], finalClose = bars[a + H - 1].close;
+      const hit = finalClose >= lastStep.p75Dn && finalClose <= lastStep.p75Up;
+      hitMarks.push({ time: e.stepT(lastStep), position: 'inBar',
+                      color: hit ? 'rgba(52,211,153,.85)' : 'rgba(248,113,113,.95)',
+                      shape: hit ? 'circle' : 'square', size: 0.5 });
+    }
+    if (trailData.length) {
+      const t = line('rgba(91,157,255,.5)', 1, 0);
+      t.setData(trailData);
+      t.setMarkers(hitMarks);
     }
   }
 
@@ -430,7 +460,7 @@ $('prev').onclick = () => { i = Math.max(+$('replay').min, i - 1); $('replay').v
 $('next').onclick = () => { i = Math.min(bars.length, i + 1); $('replay').value = i; render(); };
 $('liveBtn').onclick = () => { i = bars.length; $('replay').value = i; render(); };
 $('horizon').onchange = () => { render(); renderCalib(); };
-for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual'],['tNews','news'],['tLevels','levels']])
+for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tTrail','trail']])
   $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
 
 load();
