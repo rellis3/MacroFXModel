@@ -62,6 +62,35 @@ export function calmar(annualReturn, maxDD) {
   return m > 1e-12 ? annualReturn / m : 0;
 }
 
+// ── Sharpe honesty: error bars + minimum track record ────────────────────────
+// Standard error of an ANNUALISED Sharpe estimate (Lo 2002, iid-normal case).
+// `sharpeAnnual` is the annualised Sharpe, `nPeriods` the number of return
+// observations it was estimated from, `periodsPerYear` their frequency.
+// Derivation: per-period SE = √((1+SR_p²/2)/T), annualised by √k →
+// SE_ann = √((k + SR_ann²/2)/T). Report every Sharpe as `SR ± SE` — a card
+// showing 0.6 ± 0.5 is telling you the sample can't distinguish it from zero.
+export function sharpeStdError(sharpeAnnual, nPeriods, periodsPerYear = 252) {
+  if (!(nPeriods > 1) || !(periodsPerYear > 0)) return Infinity;
+  return Math.sqrt((periodsPerYear + (sharpeAnnual * sharpeAnnual) / 2) / nPeriods);
+}
+
+// Minimum Track Record Length (Bailey & López de Prado 2012): how many YEARS of
+// live returns are needed before `sharpeAnnual` is statistically distinguishable
+// from `benchmark` (default 0) at the confidence implied by `z` (default 1.645 =
+// 95% one-sided). `skew`/`kurt` of the per-period returns sharpen the estimate;
+// the defaults (0/3) give the Gaussian case. Returns Infinity when the Sharpe
+// doesn't exceed the benchmark — no amount of data can confirm a non-edge.
+export function minTrackRecordLength(sharpeAnnual, {
+  benchmark = 0, z = 1.645, periodsPerYear = 252, skew = 0, kurt = 3,
+} = {}) {
+  const k = periodsPerYear;
+  const sr = sharpeAnnual / Math.sqrt(k), srB = benchmark / Math.sqrt(k);
+  if (!(sr > srB)) return Infinity;
+  const adj = Math.max(1e-12, 1 - skew * sr + ((kurt - 1) / 4) * sr * sr);
+  const periods = 1 + adj * Math.pow(z / (sr - srB), 2);
+  return periods / k;   // years
+}
+
 // ── Trade-distribution metrics ───────────────────────────────────────────────
 export function winRate(pnls) {
   if (!pnls.length) return 0;

@@ -47,6 +47,7 @@ import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Rang
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
+import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
@@ -5639,6 +5640,48 @@ app.get('/api/trend/backtest', async (req, res) => {
     // True OOS: select lookback config on the IS half, evaluate on the held-out half.
     if (result.ok) { try { result.isOos = _trendIsOos(markets, { longShort, volTargetPort }); } catch (e) { result.isOos = { ok: false, error: e.message }; } }
     if (result.ok) _trendBtCache.set(key, { at: Date.now(), data: result });
+    res.status(result.ok ? 200 : 502).json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Trend-following v2: forecast-σ sizing A/B ────────────────────────────────
+// Same universe/data as /api/trend/backtest, but runs BOTH sizing variants —
+// v1 trailing 63d stdev vs the forecaster's σ (fx→Yang-Zhang, index→GARCH,
+// commodity→HV20, the live forecaster's exact math via volSigmaSeries) — and
+// judges them on the pre-registered criteria in js/trendFollowV2Engine.js.
+// Read-only research; trades nothing, feeds no bot.
+function _trendAssetClass(sym) {
+  if (/^(XAU|XAG|XPT|XPD|BCO|WTICO|NATGAS|SOYBN|WHEAT|CORN|SUGAR)/.test(sym)) return 'commodity';
+  if (/(100|30|40|225|500)_/.test(sym)) return 'index';
+  return 'fx';
+}
+const _trendV2Cache = new Map();
+app.get('/api/trend-v2/backtest', async (req, res) => {
+  const costBp = req.query.costBp != null ? Number(req.query.costBp) : _TREND_DEFAULTS.costBp;
+  const longShort = req.query.longShort !== '0';
+  const volTargetPort = req.query.volTargetPort != null ? Number(req.query.volTargetPort) : _TREND_DEFAULTS.volTargetPort;
+  const key = `${costBp}|${longShort}|${volTargetPort}`;
+  try {
+    const hit = _trendV2Cache.get(key);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    if (!process.env.OANDA_KEY) return res.status(502).json({ ok: false, error: 'OANDA_KEY not configured' });
+    const markets = [];
+    const skipped = [];
+    for (const sym of _TREND_UNIVERSE) {
+      try {
+        const bars = await _btFetchD1(sym, 5000);
+        if (bars && bars.length >= 300) markets.push({ symbol: sym, bars, assetClass: _trendAssetClass(sym) });
+        else skipped.push(`${sym} (${bars?.length ?? 0} bars)`);
+      } catch (e) { skipped.push(`${sym} (${e.message})`); }
+    }
+    if (markets.length < 3) return res.status(502).json({ ok: false, error: `only ${markets.length} markets fetched`, skipped });
+    const result = _runTrendAB(markets, { costBp, longShort, volTargetPort });
+    result.universe = { requested: _TREND_UNIVERSE.length, used: markets.map(m => `${m.symbol}:${m.assetClass}`), skipped };
+    if (result.ok) _trendV2Cache.set(key, { at: Date.now(), data: result });
     res.status(result.ok ? 200 : 502).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });

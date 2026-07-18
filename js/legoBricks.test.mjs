@@ -7,7 +7,7 @@
 import { bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
 import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC } from './statsCore.js';
 import { atrWilder, adxWilder, ema, rsiWilder } from './indicatorCore.js';
-import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate } from './metricsCore.js';
+import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
 import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRegistry.js';
 import { summarize } from './honestForecastEngine.js';
@@ -530,6 +530,31 @@ console.log('[volBacktestEngine — londonMidnightSec]');
   // Winter (GMT, 0): 2026-01-15 13:00Z → midnight = 01-15 00:00Z.
   ok('GMT: London midnight is 00:00 UTC same day',
      londonMidnightSec(new Date('2026-01-15T13:00:00Z')) === s(2026, 0, 15, 0));
+}
+
+// sharpeStdError / minTrackRecordLength — the Sharpe-honesty brick. Hand-checked
+// against the Lo (2002) / Bailey-López de Prado (2012) formulas.
+console.log('[metricsCore — Sharpe honesty]');
+{
+  // SR_ann 0.5 over 1y of daily data: SE = √((252 + 0.125)/252) ≈ 1.0002.
+  ok('sharpeStdError matches hand calc (SR 0.5, 1y daily)',
+     near(sharpeStdError(0.5, 252, 252), Math.sqrt(252.125 / 252), 1e-12));
+  // 16y of daily data quarters the 1y error (√16): the "SR 0.5 needs ~16y" fact.
+  ok('SE shrinks with √T', near(sharpeStdError(0.5, 16 * 252, 252), sharpeStdError(0.5, 252, 252) / 4, 1e-12));
+  ok('SE is Infinity on degenerate inputs', sharpeStdError(1, 1) === Infinity && sharpeStdError(1, 100, 0) === Infinity);
+
+  // MinTRL hand calc, Gaussian: sr_p = 0.5/√252; periods = 1 + (1 + sr_p²/2)(1.645/sr_p)²
+  const srp = 0.5 / Math.sqrt(252);
+  const handYears = (1 + (1 + srp * srp / 2) * Math.pow(1.645 / srp, 2)) / 252;
+  ok('minTrackRecordLength matches hand calc (SR 0.5 vs 0, 95%)',
+     near(minTrackRecordLength(0.5), handYears, 1e-9), `≈${handYears.toFixed(1)}y`);
+  ok('MinTRL ≈ 10.8y for SR 0.5 (the sobering headline number)',
+     Math.abs(minTrackRecordLength(0.5) - 10.8) < 0.2, `=${minTrackRecordLength(0.5).toFixed(1)}y`);
+  ok('higher Sharpe needs less data', minTrackRecordLength(1.0) < minTrackRecordLength(0.5));
+  ok('SR ≤ benchmark → Infinity (no data can confirm a non-edge)',
+     minTrackRecordLength(0.3, { benchmark: 0.3 }) === Infinity && minTrackRecordLength(-0.2) === Infinity);
+  ok('negative skew / fat tails lengthen the required track record',
+     minTrackRecordLength(0.5, { skew: -1, kurt: 6 }) > minTrackRecordLength(0.5));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
