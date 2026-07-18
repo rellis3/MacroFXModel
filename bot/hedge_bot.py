@@ -29,11 +29,15 @@ import argparse
 import json
 import logging
 import os
+import sys
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # repo root → pylego
+from pylego.instruments import pip_sizes_for  # noqa: E402  (shared pip table — single source of truth)
 
 try:
     import MetaTrader5 as mt5
@@ -60,17 +64,19 @@ STATE_FILE = Path('hedge_bot_state.json')
 
 # ── Pip tables ─────────────────────────────────────────────────────────────────
 
-_PIP_SIZES: dict[str, float] = {
-    'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'AUD/USD': 0.0001, 'NZD/USD': 0.0001,
-    'USD/JPY': 0.01,   'USD/CAD': 0.0001, 'USD/CHF': 0.0001,
-    'GBP/JPY': 0.01,   'EUR/JPY': 0.01,   'AUD/JPY': 0.01,
-    'EUR/GBP': 0.0001, 'EUR/CHF': 0.0001, 'EUR/AUD': 0.0001,
-    'EUR/NZD': 0.0001, 'EUR/CAD': 0.0001,
-    'GBP/CHF': 0.0001, 'GBP/AUD': 0.0001, 'GBP/NZD': 0.0001, 'GBP/CAD': 0.0001,
-    'AUD/NZD': 0.0001, 'AUD/CAD': 0.0001, 'AUD/CHF': 0.0001,
-    'NZD/JPY': 0.01,   'CAD/JPY': 0.01,   'CHF/JPY': 0.01,
-    'XAU/USD': 1.0,
-}
+# Shared pip table (pylego.instruments) — keys unchanged, values identical to
+# the former inline literal (golden-tested in pylego/instruments_test.py).
+_PIP_SIZES: dict[str, float] = pip_sizes_for([
+    'EUR/USD', 'GBP/USD', 'AUD/USD', 'NZD/USD',
+    'USD/JPY', 'USD/CAD', 'USD/CHF',
+    'GBP/JPY', 'EUR/JPY', 'AUD/JPY',
+    'EUR/GBP', 'EUR/CHF', 'EUR/AUD',
+    'EUR/NZD', 'EUR/CAD',
+    'GBP/CHF', 'GBP/AUD', 'GBP/NZD', 'GBP/CAD',
+    'AUD/NZD', 'AUD/CAD', 'AUD/CHF',
+    'NZD/JPY', 'CAD/JPY', 'CHF/JPY',
+    'XAU/USD',
+])
 
 # Pip VALUES ($/pip/lot) come from the shared helper in utils/pip_values.py
 # (MT5 tick value → quote-computed → static fallback with a warning) — the old

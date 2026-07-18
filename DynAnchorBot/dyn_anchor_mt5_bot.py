@@ -33,6 +33,9 @@ from typing import Optional
 
 import requests
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root → pylego
+from pylego.instruments import pip_sizes_for  # noqa: E402  (shared pip table — single source of truth)
+
 try:
     import MetaTrader5 as mt5
     HAS_MT5 = True
@@ -91,17 +94,19 @@ def _mt5_symbol(pair: str) -> str:
 
 
 # ── Pip / pip-value tables ─────────────────────────────────────────────────────
-_PIP_SIZES = {
-    'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
-    'AUD/USD': 0.0001, 'NZD/USD': 0.0001, 'USD/CAD': 0.0001,
-    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,  'EUR/JPY': 0.01,
-    'EUR/GBP': 0.0001, 'EUR/CHF': 0.0001, 'AUD/JPY': 0.01,
-    'EUR/CAD': 0.0001, 'GBP/AUD': 0.0001, 'AUD/CHF': 0.0001,
-    'GBP/CHF': 0.0001, 'GBP/CAD': 0.0001, 'CAD/JPY': 0.01,
-    'CHF/JPY': 0.01,   'NZD/JPY': 0.01,   'AUD/NZD': 0.0001,
-    'GBP/NZD': 0.0001, 'EUR/NZD': 0.0001, 'EUR/AUD': 0.0001,
-    'XAU/USD': 1.0,    'NAS100_USD': 1.0,
-}
+# Shared pip table (pylego.instruments) — keys unchanged, values identical to
+# the former inline literal (golden-tested in pylego/instruments_test.py).
+_PIP_SIZES = pip_sizes_for([
+    'EUR/USD', 'GBP/USD', 'USD/JPY',
+    'AUD/USD', 'NZD/USD', 'USD/CAD',
+    'USD/CHF', 'GBP/JPY', 'EUR/JPY',
+    'EUR/GBP', 'EUR/CHF', 'AUD/JPY',
+    'EUR/CAD', 'GBP/AUD', 'AUD/CHF',
+    'GBP/CHF', 'GBP/CAD', 'CAD/JPY',
+    'CHF/JPY', 'NZD/JPY', 'AUD/NZD',
+    'GBP/NZD', 'EUR/NZD', 'EUR/AUD',
+    'XAU/USD', 'NAS100_USD',
+])
 _PIP_VALUES = {
     'EUR/USD': 10.0,  'GBP/USD': 10.0,  'AUD/USD': 10.0,  'NZD/USD': 10.0,
     'USD/JPY': 9.0,   'USD/CAD': 7.5,   'USD/CHF': 10.5,

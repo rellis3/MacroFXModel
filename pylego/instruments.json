@@ -432,6 +432,7 @@
     "us500": "spx",
     "de30": "dax",
     "nas100": "nq",
-    "ndx": "nq"
+    "ndx": "nq",
+    "us100": "nq"
   }
 }

@@ -6,12 +6,23 @@ from typing import Optional
 # stale as rates moved (USD/JPY pinned at $9.0 ⇒ ~40% oversized at 155).
 from .pip_values import pip_value_per_lot
 
-_PIP_SIZES = {
-    'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
-    'AUD/USD': 0.0001, 'XAU/USD': 1.0,   'EUR/GBP': 0.0001,
-    'USD/CAD': 0.0001, 'USD/CHF': 0.0001, 'GBP/JPY': 0.01,
-    'NAS100_USD': 1.0,
-}
+# Shared pip table (bot/main.py puts the repo root on sys.path before importing
+# this module; the shim below covers standalone/pytest imports).
+import sys as _sys
+from pathlib import Path as _Path
+_root = str(_Path(__file__).resolve().parents[2])
+if _root not in _sys.path:
+    _sys.path.insert(0, _root)
+from pylego.instruments import pip_sizes_for  # noqa: E402
+
+# Keys unchanged; values identical to the former inline literal (golden-tested
+# in pylego/instruments_test.py).
+_PIP_SIZES = pip_sizes_for([
+    'EUR/USD', 'GBP/USD', 'USD/JPY',
+    'AUD/USD', 'XAU/USD', 'EUR/GBP',
+    'USD/CAD', 'USD/CHF', 'GBP/JPY',
+    'NAS100_USD',
+])
 
 
 @dataclass
