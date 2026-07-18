@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pylego.kv import KvClient                              # noqa: E402
 from pylego import instruments as I                          # noqa: E402
 from pylego import point_values as PV                        # noqa: E402
+from pylego import events as EV                              # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
 from pylego.quotes import QuoteFeed                          # noqa: E402
@@ -139,6 +140,18 @@ def _deep_merge(base: dict, over: dict) -> dict:
     for k, v in (over or {}).items():
         out[k] = _deep_merge(base[k], v) if isinstance(v, dict) and isinstance(base.get(k), dict) else v
     return out
+
+
+def _pair_event_ccys(pair: str) -> list[str]:
+    """Event currencies for a pair. Indices/metals ride their denomination
+    currency via the instrument registry (OANDA symbol carries the legs, e.g.
+    'us30' → US30_USD → USD) and fall back to parsing the name itself
+    (mirrors volatility_bot)."""
+    try:
+        sym = I.instrument(pair).get("oanda") or pair
+    except Exception:
+        sym = pair
+    return EV.pair_ccys(sym)
 
 
 def make_broker(cfg: dict):
@@ -417,6 +430,10 @@ def run(base_url: str, force_live: bool) -> None:
     oi_art: dict | None = None                             # range_line_oi_live artifact (OI levels/day)
     last_anchor = None
     last_plan = last_status = 0.0
+    event_windows = None                    # KV event_windows_v1 payload (or None)
+    event_ccys: dict[str, list[str]] = {}   # instrument → event currencies (cached)
+    ev_blocks: dict[str, str | None] = {}   # once-per-state-change blackout logging
+    warned_events = False                   # log loud, but once per outage
 
     def _attach_conf(sess: RangeSession) -> None:
         """Set today's confluence levels on a freshly-built session (no-op unless
@@ -514,6 +531,22 @@ def run(base_url: str, force_live: bool) -> None:
                 guard.sync_cfg(cfg)                   # ddlimit/monthlydd edits apply live
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
+            # Event-blackout windows (server publishes hourly; scheduled events are
+            # known in advance so this cadence is generous). FAIL-OPEN on missing/
+            # stale — it's a suppression gate — but say so loudly, once per outage
+            # (mirrors volatility_bot).
+            try:
+                event_windows = kv.get_json("event_windows_v1")
+            except Exception as e:
+                log.warning(f"event windows fetch failed: {e} — keeping current windows")
+            sr = EV.stale_reason(event_windows, nowt * 1000)
+            if sr and not warned_events:
+                log.warning(f"EVENT GATE INACTIVE (fail-open): {sr} — entries will NOT be "
+                            "suppressed around high-impact events until this recovers")
+                warned_events = True
+            elif not sr and warned_events:
+                log.info("event gate active again — blackout windows fresh")
+                warned_events = False
             try:
                 forming = _in_formation(plan, nowt) if plan else False
                 kv.put_status("range_line_bot_status", build_status(cfg, broker, plan, paper, sessions, forming))
@@ -548,6 +581,8 @@ def run(base_url: str, force_live: bool) -> None:
             # dry_run still primes levels crossed overnight, so at 06:00 only
             # genuinely-new post-pull crossings fire (no chasing a stale breakout).
             forming = _in_formation(plan, nowt)
+            # Usable blackout payload this tick (None when missing/stale → fail open).
+            ev_payload = None if EV.stale_reason(event_windows, nowt * 1000) else event_windows
             for instr in instruments:
                 sess = sessions.get(instr)
                 ip = (plan.get("instruments") or {}).get(instr)
@@ -582,6 +617,25 @@ def run(base_url: str, force_live: bool) -> None:
                     log_block_transition(log, guard_blocks, instr, guard_why)
                     if guard_why:
                         continue
+                    # Event blackout: DEFER new entries (skip the pair's decide —
+                    # the level isn't burned, same semantics as the RiskGuard skip
+                    # above), so a level still beyond price re-fires on the first
+                    # clear tick after the window. Never gates the forming-window
+                    # dry_run (that only primes) or trailing/exits above.
+                    if ev_payload:
+                        ccys = event_ccys.get(instr)
+                        if ccys is None:
+                            ccys = event_ccys[instr] = _pair_event_ccys(instr)
+                        hit, ev_why = EV.blackout(ccys, nowt * 1000, ev_payload.get("windows"))
+                        ev_why = f"event blackout: {ev_why}" if hit else None
+                        if ev_why != ev_blocks.get(instr):
+                            ev_blocks[instr] = ev_why
+                            if ev_why:
+                                log.warning(f"EVENT GATE [{instr}]: NEW entries deferred — {ev_why}")
+                            else:
+                                log.info(f"EVENT GATE [{instr}]: clear — entries resumed")
+                        if ev_why:
+                            continue
                 single = cfg.get("single_position_per_pair", True)
                 conf_min = int(cfg.get("confluence_min", 0) or 0)
                 oi_conf = bool(cfg.get("oi_confluence", False))
