@@ -720,7 +720,7 @@
     <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
     <button class="v2-tool-btn" id="vfLevelAlertsBtn"     onclick="toggleLevelAlerts()">🔔 Level Alerts</button>
     <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
-    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Original → COG → Original Weekly → COG Weekly. Weekly modes scale the bands by √5 and anchor them off this week's Monday open. Remembered across page loads (stored in your browser).">📐 Chart: Original</button>
+    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Original → COG → Original Weekly → COG Weekly. Weekly modes are a point-in-time forecast — the Monday forecast scaled ×√5, anchored on this week's Monday open and held all week. Remembered across page loads (stored in your browser).">📐 Chart: Original</button>
     <div class="v2-tool-sep"></div>
     <div class="vf-exp-dd" id="vfExpDropdown">
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
@@ -1386,6 +1386,7 @@ function loadForecast(date) {
       currentForecast = data;
       if (!date) liveForecast = data;
       loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
+      if (_modeCtx().weekly) loadFrozenWeekly().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the frozen Monday forecast for weekly modes
 
       if (sdot) sdot.className = 'v2-status-dot ok';
       if (stxt) stxt.textContent = 'OK';
@@ -1545,6 +1546,7 @@ function triggerRefresh() {
     currentForecast = forecast;
     if (!date) liveForecast = forecast;
     loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
+    if (_modeCtx().weekly) loadFrozenWeekly().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });       // prime the frozen Monday forecast for weekly modes
     currentSession  = session;
     renderV2Grid(forecast);
     if (session && session.instruments) {
@@ -3360,9 +3362,13 @@ const _m5Cache = {};
 // Chart forecast-line mode. Four modes, cycled by the toolbar button:
 //   original         — our Feller daily levels, anchored on today's open
 //   cog              — COG's reverse-engineered daily levels, today's open
-//   original_weekly  — Feller levels ×√5, anchored on this week's Monday open
-//   cog_weekly       — COG levels ×√5, this week's Monday open
-// Weekly = same horizon-agnostic vol math, σ scaled ×√5 (see CLAUDE.md).
+//   original_weekly  — Feller levels ×√5, FROZEN at this week's Monday forecast,
+//                      anchored on this week's Monday open (held all week)
+//   cog_weekly       — COG levels ×√5, frozen at Monday, this week's Monday open
+// Weekly = same horizon-agnostic vol math, σ scaled ×√5 (see CLAUDE.md). Unlike
+// the live daily bands, the weekly bands are a point-in-time forecast: the σ is
+// taken from the forecast in effect as the week opened and held constant, so the
+// weekly envelope is issued once (Monday) and you watch price travel through it.
 const _LEVEL_MODES = ['original', 'cog', 'original_weekly', 'cog_weekly'];
 const _MODE_LABEL  = { original: 'Original', cog: 'COG', original_weekly: 'Original Weekly', cog_weekly: 'COG Weekly' };
 const _SQRT5 = Math.sqrt(5);
@@ -3403,20 +3409,64 @@ function _aggToHour(bars) {
   if (cur) out.push(cur);
   return out;
 }
+// ── Frozen weekly forecast ─────────────────────────────────────────────────────
+// Weekly modes hold a point-in-time forecast: the daily forecast in effect as THIS
+// week opened (Monday), scaled ×√5 and kept constant all week, rather than tracking
+// the live daily σ. One cached archive fetch serves all pairs. If no archived
+// week-start forecast exists it falls back to the live forecast (not truly frozen).
+let _frozenWeekly = null, _frozenWeeklyKey = null, _frozenWeeklyPromise = null, _frozenWeeklyLive = false;
+function _thisMondayLondon() {
+  const d = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
+  return _mondayOf(d);
+}
+function loadFrozenWeekly() {
+  const monday = _thisMondayLondon();
+  if (_frozenWeeklyKey === monday && _frozenWeeklyPromise) return _frozenWeeklyPromise;
+  _frozenWeeklyKey = monday;
+  _frozenWeeklyLive = false;
+  _frozenWeeklyPromise = (async () => {
+    try {
+      // The forecast in effect as the week opened = latest archived session on/before Monday.
+      const idx = await fetch('/api/vol-forecast/archive').then(r => r.json()).catch(() => null);
+      let useDate = null;
+      if (idx?.ok && Array.isArray(idx.entries)) {
+        const dates = idx.entries.map(e => e.date).filter(Boolean).sort();
+        const le = dates.filter(d => d <= monday);
+        useDate = le.length ? le[le.length - 1] : (dates.length ? dates[0] : null);
+      }
+      if (useDate) {
+        const fc = await fetch(`/api/vol-forecast/archive/${useDate}`).then(r => r.json()).catch(() => null);
+        if (fc?.instruments) { _frozenWeekly = fc; return fc; }
+      }
+    } catch (_) { /* fall through to live */ }
+    _frozenWeeklyLive = true;                 // no archived week-start forecast → live fallback
+    _frozenWeekly = currentForecast ?? null;
+    return _frozenWeekly;
+  })();
+  return _frozenWeeklyPromise;
+}
+// The forecast instrument whose bands a chart uses in the current mode: the frozen
+// (Monday) forecast for weekly modes, else the live per-pair forecast.
+function _bandInst(name, liveF) {
+  return _modeCtx().weekly ? (_frozenWeekly?.instruments?.[name] ?? liveF) : liveF;
+}
+
 // The forecast levels a chart should draw, given the current mode. COG mode recomputes
 // from vol_annual × COG constants (COG_C, defined in the export section); original mode
-// uses the forecast's own hl/oc fields.
+// uses the forecast's own hl/oc fields. Weekly modes source the bands from the frozen
+// (Monday) forecast and scale ×√5.
 function _chartLevels(name, f) {
   const { cog, mult } = _modeCtx();
+  const src = _bandInst(name, f);              // frozen Monday forecast for weekly, live for daily
   let base;
-  if (cog && f?.vol_annual > 0) {
-    const va = _cogVol(name, f);               // NQ → COG CC-HV; all other indices + fx + gold → platform σ
+  if (cog && src?.vol_annual > 0) {
+    const va = _cogVol(name, src);             // NQ → COG CC-HV; all other indices + fx + gold → platform σ
     const s = va / Math.sqrt(252);             // daily σ, % of price
     base = { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
   } else {
-    base = { hl_median: f?.hl_median, hl_75: f?.hl_75, oc_median: f?.oc_median, oc_75: f?.oc_75 };
+    base = { hl_median: src?.hl_median, hl_75: src?.hl_75, oc_median: src?.oc_median, oc_75: src?.oc_75 };
   }
-  // Weekly modes scale the daily bands by √5 (horizon-agnostic σ scaling).
+  // Weekly modes scale the (frozen) daily bands by √5 (horizon-agnostic σ scaling).
   const sc = v => (v != null ? v * mult : v);
   return { hl_median: sc(base.hl_median), hl_75: sc(base.hl_75), oc_median: sc(base.oc_median), oc_75: sc(base.oc_75) };
 }
@@ -3424,7 +3474,10 @@ function _syncChartLevelBtn() {
   const b = document.getElementById('vfChartLevelBtn');
   if (!b) return;
   const { weekly } = _modeCtx();
-  b.textContent = '📐 Chart: ' + _MODE_LABEL[_levelMode];
+  // Flag when a weekly mode couldn't find an archived Monday forecast and fell back
+  // to the live forecast (so the bands aren't truly frozen this week).
+  const live = weekly && _frozenWeekly && _frozenWeeklyLive;
+  b.textContent = '📐 Chart: ' + _MODE_LABEL[_levelMode] + (live ? ' (live)' : '');
   b.classList.toggle('active', _levelMode !== 'original');
   b.classList.toggle('weekly', weekly);
 }
@@ -3442,6 +3495,9 @@ function toggleChartLevelMode() {
   // COG variants' index lines use COG close-to-close HV σ — fetch it (once), then
   // redraw so index levels snap to the validated σ when it arrives.
   if (_modeCtx().cog && !_cogHvByInst) loadCogHv().then(_redrawCogCharts);
+  // Weekly variants hold the Monday forecast — fetch it (once/week), then redraw so
+  // the frozen bands replace the live-forecast placeholder when they arrive.
+  if (_modeCtx().weekly) loadFrozenWeekly().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
 }
 if (document.readyState !== 'loading') _syncChartLevelBtn();
 else document.addEventListener('DOMContentLoaded', _syncChartLevelBtn);
@@ -3796,7 +3852,7 @@ async function loadM5Chart(name, f) {
       ro.observe(w);
 
       // Action status chips + direction indicator (period bars, weekly-scaled)
-      _m5ActionStatus(name, anchorOpen, hitsData.length ? hitsData[hitsData.length - 1].close : lastClose, f, mult);
+      _m5ActionStatus(name, anchorOpen, hitsData.length ? hitsData[hitsData.length - 1].close : lastClose, _bandInst(name, f), mult);
 
       // Level hit times — scan period bars to find when each level was first touched
       _renderHitChips(name, anchorOpen, lineDefs, hitsData);
@@ -3806,7 +3862,7 @@ async function loadM5Chart(name, f) {
 
       // Store period bars + mode in chartMeta so _rescanHits stays correct live.
       // dayOpen keeps its name for toggleLevelLabel compatibility (== anchor open).
-      _chartMeta[name] = { series, dayOpen: anchorOpen, lineDefs, chartData: hitsData, f, weekly, mult, periodStartDate };
+      _chartMeta[name] = { series, dayOpen: anchorOpen, lineDefs, chartData: hitsData, f: _bandInst(name, f), weekly, mult, periodStartDate };
 
     } catch (err) {
       console.error('[lwchart]', name, err);
