@@ -98,9 +98,28 @@ pass/fail and the VIX-only benchmark — is **unchanged**. This is a data
 substitution forced by availability, not component iteration. The one live shot
 remains pending.
 
-## Result (fill in after the one VALID Railway run — then this section is final)
+## Result (final — the one VALID run, 2026-07-18, post-amendment, full 2004+ history)
 
-- Date run: _
-- PRIMARY (risk basket): ungated OOS Sharpe _ · VIX-gated _ · CSI-gated _
-- SECONDARY (trend basket): ungated _ · VIX-gated _ · CSI-gated _
-- Verdict: _
+- Date run: **2026-07-18** (2005-01-02 → 2026-07-17, 6141 days; Moody's legs 5,633
+  obs from 2004-01-04 — data complete, 2008/2011/2020 all in-window)
+- PRIMARY (risk basket): ungated OOS Sharpe **−0.08** · VIX-gated **−0.15** ·
+  CSI-gated **−0.15** (CSI OOS maxDD −17.6% vs ungated −19.9% — reported, not
+  decisive)
+- SECONDARY (trend basket): ungated **−0.08** · VIX-gated **−0.06** · CSI-gated
+  **−0.22**
+- Verdict: **NULL — `no-gate`, banked.** Gating made the book WORSE out-of-sample,
+  and the composite added nothing over VIX (OOS identical at −0.15). Criteria
+  1 and 2 both failed; per pre-registration there is no tier/weight/component
+  iteration.
+- The instructive detail: **in-sample the CSI gate genuinely helped** (IS Sharpe
+  +0.01 vs −0.10 ungated, maxDD −24.4% vs −28.3% — it sidestepped the GFC-era
+  drawdowns), then **hurt OOS** (2017–2026). The OOS era's stress events (above
+  all March 2020) were fast V-shapes: a daily z-tier gate de-risks *after* the
+  hit lands and is still flat through the snapback. Slow-burn crises rewarded
+  stress-gating; modern fast crashes punish it. That regime change is the
+  finding.
+- Disposition: `credit-stress.html` stays as a **read-only stress dashboard**
+  (CSI level + Credit Vega diagnostic — both working correctly post-amendment);
+  wired into no sizing path. The durable risk lever on these books remains
+  inverse-vol sizing, which they already have. `BACKTEST_INDEX.md` Q12
+  answered ⛔.
