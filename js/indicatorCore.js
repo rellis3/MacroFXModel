@@ -106,11 +106,18 @@ export function adxWilder(bars, n = 14) {
   let adx = dx.slice(0, n).reduce((s, v) => s + v, 0) / n;
   const off = n * 2;
   if (off < L) out[off] = adx;
+  // ALIGNMENT (2026-07 fix): dx[i] incorporates directional-movement data
+  // through bar i+n+1, so the smoothed value belongs at out[i+n+1] — writing it
+  // to out[i+n] displaced the whole series one bar into the future (a backtest
+  // at bar k read an ADX that needed bar k+1). The old final-bar patch
+  // (out[L-1] = out[L-2]) existed only to paper over that shift and made the
+  // LIVE latest-bar read coincidentally correct — with the honest alignment the
+  // last bar gets its genuine value (identical to what live read before), the
+  // patch is gone, and backtest === live at every index.
   for (let i = n; i < dx.length; i++) {
     adx = (adx * (n - 1) + dx[i]) / n;
-    if (i + n < L) out[i + n] = adx;
+    if (i + n + 1 < L) out[i + n + 1] = adx;
   }
-  if (out[L - 1] === 0 && L > 1) out[L - 1] = out[L - 2];
   return out;
 }
 

@@ -1999,11 +1999,13 @@ function buildADX_hmm(bars, n) {
   let adxVal = dx.slice(0, n).reduce((s, v) => s + v, 0) / n;
   const off = n * 2;
   if (off < L) out[off] = adxVal;
+  // ALIGNMENT (2026-07 fix, matches js/indicatorCore.adxWilder / hmm5m.js):
+  // dx[i] uses DM data through bar i+n+1 → write out[i+n+1] (out[i+n] was a
+  // one-bar future shift; the old out[L-1]=out[L-2] patch only covered it).
   for (let i = n; i < dx.length; i++) {
     adxVal = (adxVal * (n - 1) + dx[i]) / n;
-    if (i + n < L) out[i + n] = adxVal;
+    if (i + n + 1 < L) out[i + n + 1] = adxVal;
   }
-  if (out[L - 1] === 0 && L > 1) out[L - 1] = out[L - 2];
   return out;
 }
 

@@ -113,12 +113,13 @@ def _wilder_adx(high: np.ndarray, low: np.ndarray, close: np.ndarray, n: int) ->
     off = n * 2
     if off < N:
         out[off] = adx_val
+    # ALIGNMENT (2026-07 fix, matches js/indicatorCore.adxWilder / hmm5m.js):
+    # dx[i] uses DM data through bar i+n+1 -> write out[i+n+1] (out[i+n] was a
+    # one-bar future shift; the old out[-1]=out[-2] patch only covered it).
     for i in range(n, len(dx)):
         adx_val = (adx_val * (n - 1) + dx[i]) / n
-        if i + n < N:
-            out[i + n] = adx_val
-    if out[-1] == 0.0 and N > 1:
-        out[-1] = out[-2]
+        if i + n + 1 < N:
+            out[i + n + 1] = adx_val
     return out
 
 

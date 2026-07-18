@@ -116,12 +116,14 @@ function buildADX(bars, n = 14) {
   let adx   = dx.slice(0, n).reduce((s, v) => s + v, 0) / n;
   const off = n * 2;
   if (off < L) out[off] = adx;
+  // ALIGNMENT (2026-07 fix, kept bit-identical to js/indicatorCore.adxWilder):
+  // dx[i] incorporates DM data through bar i+n+1 → write out[i+n+1], not
+  // out[i+n] (one-bar future shift). The old out[L-1]=out[L-2] patch existed
+  // only to cover the shift — the last bar now gets its genuine value.
   for (let i = n; i < dx.length; i++) {
     adx = (adx * (n - 1) + dx[i]) / n;
-    if (i + n < L) out[i + n] = adx;
+    if (i + n + 1 < L) out[i + n + 1] = adx;
   }
-  // Propagate to last bar so rollingZ at index L-1 never sees 0
-  if (out[L - 1] === 0 && L > 1) out[L - 1] = out[L - 2];
   return out;
 }
 
