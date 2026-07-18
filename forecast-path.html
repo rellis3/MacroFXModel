@@ -40,19 +40,19 @@
 <body>
 <header>
   <h1>📐 Forecast Path — Cone &amp; Replay</h1>
-  <div class="sub">What the model actually claims about the next N days (drift + P50/P75 envelopes), drawn — then graded against history. Not a strategy; a calibration viewer.</div>
+  <div class="sub">What the model actually claims about the next N days (D1) or next few hours (M15, session-shaped σ) — drawn, then graded against history. Not a strategy; a calibration viewer.</div>
 </header>
 
 <div class="wrap">
   <div class="main">
     <div class="ctl">
-      <select id="pair"></select>
-      <select id="horizon">
-        <option value="5">5 days</option>
-        <option value="10" selected>10 days</option>
-        <option value="20">20 days</option>
+      <select id="gran">
+        <option value="M15" selected>M15 · intraday</option>
+        <option value="D1">D1 · daily</option>
       </select>
-      <label class="mono">from <input type="date" id="from" value="2019-01-01"></label>
+      <select id="pair"></select>
+      <select id="horizon"></select>
+      <label class="mono" id="fromWrap">from <input type="date" id="from" value="2019-01-01"></label>
       <button id="load">Load</button>
       <span id="status"></span>
     </div>
@@ -82,23 +82,28 @@
       <div id="calib"><span class="muted">computed on load (non-overlapping windows, no lookahead)</span></div>
     </div>
     <div class="card muted">
-      <b>How to read this honestly.</b> The cone is the model's real claim: an EWMA
-      drift (capped at ±0.5σ/day) plus Feller close-displacement envelopes from the
-      SAME σ math as the live forecaster (<code>volSigmaSeries → computeBands</code>,
-      imported — never copied). The P50 band claims 50% containment, P75 claims 75%,
-      and drift direction claims to beat a 50% coin flip — the calibration card
-      grades every claim on non-overlapping historical windows. Sample paths are
-      draws from that same claim (wicks are cosmetic); their per-step median is the
-      "most-agreed path". If containment sits near its claim and direction sits at
-      ~50%, that IS the honest result: the model knows range well and direction
-      barely — don't let the picture say otherwise.
+      <b>How to read this honestly.</b> The cone is the model's real claim: a capped
+      EWMA drift plus uncertainty envelopes. On <b>D1</b> the envelopes are the Feller
+      close-displacement bands from the SAME σ math as the live forecaster
+      (<code>volSigmaSeries → computeBands</code>, imported — never copied). On <b>M15</b>
+      σ is per-bar EWMA shaped by a causal hour-of-day profile (Asia quiet, London/NY
+      loud — learned from strictly-prior data), with Gaussian envelopes. The P50 band
+      claims 50% containment, P75 claims 75%, drift direction claims to beat a coin
+      flip — the calibration card grades every claim on non-overlapping windows.
+      Sample paths are draws from that same claim (wicks cosmetic); their per-step
+      median is the "most-agreed path". If containment sits near its claim and
+      direction sits at ~50%, that IS the honest result: the model knows range well
+      and direction barely — don't let the picture say otherwise.
     </div>
   </div>
 </div>
 
 <script type="module">
 import { createLevelChart } from './js/levelChart.js';
-import { buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS } from './js/forecastPathCore.js';
+import {
+  buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
+  buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
+} from './js/forecastPathCore.js';
 
 const PAIRS = [
   'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY',
@@ -108,16 +113,64 @@ const PAIRS = [
   'CADJPY','CHFJPY','NZDJPY','GOLD',
 ];
 const ASSET_CLASS = p => p === 'GOLD' ? 'commodity' : 'fx';
+const M15_LOOKBACK_DAYS = 45;   // ~3100 bars, safely under OANDA's 5000/request cap
+
+// Granularity adapters — same page flow, two engines from the same brick.
+const ENGINES = {
+  D1: {
+    horizons: [['5', '5 days'], ['10', '10 days'], ['20', '20 days']],
+    defaultH: '10',
+    warmup: PATH_DEFAULTS.warmup,
+    build: (bars, ac) => buildForecastContext(bars, { assetClass: ac }),
+    cone: coneFromContext,
+    paths: samplePaths,
+    tally: (bars, H, ac) => calibrationTally(bars, { horizonDays: H, assetClass: ac }),
+    anchorT: c => c.anchorDate,
+    stepT: s => s.date,
+    fmtBar: b => b.time,
+    fmtStep: h => `${h}d`,
+    calibStep: 1,          // show every step row
+    sigmaLabel: 'daily σ',
+    sigmaOf: c => c.sigma,
+  },
+  M15: {
+    horizons: [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']],
+    defaultH: '16',
+    warmup: INTRADAY_DEFAULTS.warmupBars,
+    build: bars => buildIntradayContext(bars),
+    cone: intradayCone,
+    paths: intradaySamplePaths,
+    tally: (bars, H) => intradayTally(bars, { horizonBars: H }),
+    anchorT: c => c.anchorTime,
+    stepT: s => s.time,
+    fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
+    fmtStep: h => `${(h * 15) % 60 === 0 ? (h * 15 / 60) + 'h' : (h * 15) + 'm'}`,
+    calibStep: 4,          // show hourly rows (every 4th M15 step)
+    sigmaLabel: 'per-bar σ',
+    sigmaOf: c => c.sigmaBar,
+  },
+};
 
 const $ = id => document.getElementById(id);
 const pairSel = $('pair');
 for (const p of PAIRS) pairSel.add(new Option(p, p));
+
+function fillHorizons() {
+  const e = ENGINES[$('gran').value];
+  const sel = $('horizon');
+  sel.innerHTML = '';
+  for (const [v, label] of e.horizons) sel.add(new Option(label, v));
+  sel.value = e.defaultH;
+  $('fromWrap').style.display = $('gran').value === 'D1' ? '' : 'none';
+}
+fillHorizons();
 
 const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
 let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null;
 const toggles = { cone: true, paths: false, consensus: false, actual: true };
+const eng = () => ENGINES[$('gran').value];
 
 function clearExtra() {
   for (const s of extraSeries) { try { chart.removeSeries(s); } catch {} }
@@ -134,18 +187,19 @@ function line(color, width = 1, style = 2) {
 function render() {
   if (!ctx) return;
   clearExtra();
+  const e = eng();
   const H = +$('horizon').value;
   const live = i >= bars.length;
   const shown = bars.slice(0, live ? bars.length : i);
   view.setCandles(shown);
 
-  const cone = coneFromContext(ctx, live ? bars.length : i, H);
-  $('replayLabel').textContent = live ? 'LIVE (past the last bar)' : `${bars[i - 1].time}  (${i}/${bars.length})`;
+  const cone = e.cone(ctx, live ? bars.length : i, H);
+  $('replayLabel').textContent = live ? 'LIVE (past the last bar)' : `${e.fmtBar(bars[i - 1])}  (${i}/${bars.length})`;
   if (!cone) { $('coneInfo').innerHTML = '<span class="muted">not enough history at this date</span>'; return; }
 
-  const t0 = { time: cone.anchorDate, value: cone.anchor };
+  const t0 = { time: e.anchorT(cone), value: cone.anchor };
   if (toggles.cone) {
-    const mk = k => [t0, ...cone.steps.map(s => ({ time: s.date, value: s[k] }))];
+    const mk = k => [t0, ...cone.steps.map(s => ({ time: e.stepT(s), value: s[k] }))];
     line('#5b9dff', 2, 0).setData(mk('center'));
     line('rgba(52,211,153,.9)', 1, 2).setData(mk('p50Up'));
     line('rgba(52,211,153,.9)', 1, 2).setData(mk('p50Dn'));
@@ -154,11 +208,11 @@ function render() {
   }
 
   if (toggles.paths || toggles.consensus) {
-    const { paths, consensus } = samplePaths(ctx, live ? bars.length : i, H, { nPaths: 24 });
+    const { paths, consensus } = e.paths(ctx, live ? bars.length : i, H, { nPaths: 24 });
     if (toggles.paths) for (const p of paths)
-      line('rgba(148,163,184,.22)', 1, 0).setData([t0, ...p.map(c => ({ time: c.date, value: c.close }))]);
+      line('rgba(148,163,184,.22)', 1, 0).setData([t0, ...p.map(c => ({ time: e.stepT(c), value: c.close }))]);
     if (toggles.consensus)
-      line('#c084fc', 2, 0).setData([t0, ...consensus.map(c => ({ time: c.date, value: c.close }))]);
+      line('#c084fc', 2, 0).setData([t0, ...consensus.map(c => ({ time: e.stepT(c), value: c.close }))]);
   }
 
   if (toggles.actual && !live) {
@@ -173,28 +227,31 @@ function render() {
     }
   }
 
-  chart.timeScale().setVisibleLogicalRange({ from: shown.length - 90, to: shown.length + H + 4 });
+  chart.timeScale().setVisibleLogicalRange({ from: shown.length - Math.max(90, H * 4), to: shown.length + H + 4 });
 
   const dirWord = cone.mu > 0 ? '<span class="good">up</span>' : cone.mu < 0 ? '<span class="bad">down</span>' : 'flat';
+  const lastS = cone.steps[cone.steps.length - 1];
   $('coneInfo').innerHTML =
-    `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(5)} @ ${cone.anchorDate}</b></div>` +
-    `<div class="kv"><span>daily σ</span><b>${(cone.sigma * 100).toFixed(3)}%</b></div>` +
-    `<div class="kv"><span>drift / day</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
-    `<div class="kv"><span>trend score</span><b>${cone.trendScore.toFixed(2)} ∈ [-1,1]</b></div>` +
-    `<div class="kv"><span>P75 range @ H</span><b>${cone.steps[cone.steps.length - 1].p75Dn.toFixed(5)} – ${cone.steps[cone.steps.length - 1].p75Up.toFixed(5)}</b></div>` +
-    `<div class="muted" style="margin-top:6px">Direction is the weak claim (FX ≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
+    `<div class="kv"><span>anchor</span><b>${cone.anchor.toFixed(5)}</b></div>` +
+    `<div class="kv"><span>${e.sigmaLabel}</span><b>${(e.sigmaOf(cone) * 100).toFixed(3)}%</b></div>` +
+    `<div class="kv"><span>drift / bar</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
+    (cone.trendScore != null ? `<div class="kv"><span>trend score</span><b>${cone.trendScore.toFixed(2)} ∈ [-1,1]</b></div>` : '') +
+    `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(5)} – ${lastS.p75Up.toFixed(5)}</b></div>` +
+    `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
 }
 
 function renderCalib() {
   if (!bars.length) return;
+  const e = eng();
   const H = +$('horizon').value;
-  const t = calibrationTally(bars, { horizonDays: H, assetClass: ASSET_CLASS(pairSel.value) });
+  const t = e.tally(bars, H, ASSET_CLASS(pairSel.value));
   const pc = v => v == null ? '—' : (v * 100).toFixed(0) + '%';
   const grade = (v, claim) => v == null ? '' : Math.abs(v - claim) <= 0.07 ? 'good' : Math.abs(v - claim) <= 0.15 ? 'warn' : 'bad';
   let rows = '';
   for (const s of t.full.perStep) {
+    if (s.h % e.calibStep !== 0) continue;
     const r = t.recent.perStep[s.h - 1];
-    rows += `<tr><td>h=${s.h}</td>` +
+    rows += `<tr><td>${e.fmtStep(s.h)}</td>` +
       `<td class="${grade(s.c50, .5)}">${pc(s.c50)}</td><td class="${grade(s.c75, .75)}">${pc(s.c75)}</td>` +
       `<td class="${grade(r.c50, .5)}">${pc(r.c50)}</td><td class="${grade(r.c75, .75)}">${pc(r.c75)}</td></tr>`;
   }
@@ -205,27 +262,35 @@ function renderCalib() {
     `<tr><th></th><th>P50→50%</th><th>P75→75%</th><th>P50</th><th>P75</th></tr>${rows}</table>` +
     `<div class="kv" style="margin-top:8px"><span>direction vs coin flip</span>` +
     `<b class="${dirCls}">${pc(d.hitRate)} full · ${pc(dr.hitRate)} recent</b></div>` +
-    `<div class="muted">Non-overlapping ${H}-day windows, every input strictly pre-window. Green = within 7pts of the claim.</div>`;
+    `<div class="muted">Non-overlapping windows, every input strictly pre-window. Green = within 7pts of the claim.</div>`;
 }
 
 async function load() {
-  const pair = pairSel.value, from = $('from').value;
-  $('status').textContent = 'loading D1…'; $('status').className = '';
+  const gran = $('gran').value, pair = pairSel.value;
+  $('status').textContent = `loading ${gran}…`; $('status').className = '';
   try {
     const today = new Date().toISOString().substring(0, 10);
-    const r = await fetch(`/api/weekly-vol-backtest/d1/${pair.toLowerCase()}?from=${from}&to=${today}`);
+    let url;
+    if (gran === 'D1') {
+      url = `/api/weekly-vol-backtest/d1/${pair.toLowerCase()}?from=${$('from').value}&to=${today}`;
+    } else {
+      const fromD = new Date(Date.now() - M15_LOOKBACK_DAYS * 86400e3).toISOString().substring(0, 10);
+      url = `/api/weekly-vol-backtest/m15/${pair.toLowerCase()}?from=${fromD}&to=${today}`;
+    }
+    const r = await fetch(url);
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || `HTTP ${r.status}`);
     bars = j.candles;
-    if (bars.length < PATH_DEFAULTS.warmup + 40) throw new Error(`only ${bars.length} bars — pick an earlier start date`);
-    ctx = buildForecastContext(bars, { assetClass: ASSET_CLASS(pair) });
+    const e = eng();
+    if (bars.length < e.warmup + 40) throw new Error(`only ${bars.length} bars — not enough history for warmup (${e.warmup})`);
+    ctx = e.build(bars, ASSET_CLASS(pair));
     const slider = $('replay');
-    slider.min = PATH_DEFAULTS.warmup; slider.max = bars.length; slider.value = bars.length;
+    slider.min = e.warmup; slider.max = bars.length; slider.value = bars.length;
     i = bars.length;
     $('status').textContent = `${bars.length} bars`;
     render(); renderCalib();
-  } catch (e) {
-    $('status').textContent = e.message + (/HTTP 4\d\d/.test(e.message)
+  } catch (err) {
+    $('status').textContent = err.message + (/HTTP 4\d\d/.test(err.message)
       ? ' — if the range is very long, try a later "from" date (OANDA caps one request at 5000 candles)'
       : ' — on a local sandbox OANDA is unreachable (Railway only)');
     $('status').className = 'err';
@@ -233,7 +298,8 @@ async function load() {
 }
 
 $('load').onclick = load;
-$('replay').oninput = e => { i = +e.target.value; render(); };
+$('gran').onchange = () => { fillHorizons(); load(); };
+$('replay').oninput = ev => { i = +ev.target.value; render(); };
 $('prev').onclick = () => { i = Math.max(+$('replay').min, i - 1); $('replay').value = i; render(); };
 $('next').onclick = () => { i = Math.min(bars.length, i + 1); $('replay').value = i; render(); };
 $('liveBtn').onclick = () => { i = bars.length; $('replay').value = i; render(); };

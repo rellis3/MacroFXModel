@@ -14,6 +14,8 @@ import assert from 'node:assert/strict';
 import {
   buildForecastContext, coneFromContext, forecastCone, samplePaths,
   calibrationTally, nextWeekday, PATH_DEFAULTS,
+  buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally,
+  profileMult, INTRADAY_DEFAULTS,
 } from './forecastPathCore.js';
 
 // ── Synthetic GBM daily bars (seeded) ────────────────────────────────────────
@@ -118,6 +120,98 @@ const bars = syntheticBars(1200);
 {
   assert.equal(nextWeekday('2026-07-17'), '2026-07-20'); passed++;   // Fri → Mon
   assert.equal(nextWeekday('2026-07-14'), '2026-07-15'); passed++;   // Tue → Wed
+}
+
+// ── Intraday: synthetic M15 bars with a KNOWN hour-of-day vol regime ─────────
+// Weekday-only 15-min grid; σ doubles during 07–15 UTC ("London"), halves off.
+function syntheticM15(nDays, { sigmaQuiet = 0.0004, loudMult = 2, seed = 11 } = {}) {
+  const rng = mulberry32(seed);
+  const bars = [];
+  let c = 1.1000;
+  const d = new Date('2026-03-02T00:00:00Z');   // a Monday
+  for (let day = 0; day < nDays; day++) {
+    while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1);
+    for (let k = 0; k < 96; k++) {
+      const t = d.getTime() / 1000 + k * 900;
+      const hr = new Date(t * 1000).getUTCHours();
+      const sig = sigmaQuiet * (hr >= 7 && hr < 15 ? loudMult : 1);
+      const open = c;
+      const close = open * Math.exp(sig * gauss(rng));
+      const hi = Math.max(open, close) * (1 + 0.3 * sig * Math.abs(gauss(rng)));
+      const lo = Math.min(open, close) * (1 - 0.3 * sig * Math.abs(gauss(rng)));
+      bars.push({ time: t, open, high: hi, low: lo, close });
+      c = close;
+    }
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return bars;
+}
+const m15 = syntheticM15(55);   // ~5280 bars
+
+// 6) Intraday no-lookahead: mutate everything from i onward → cone identical.
+{
+  const i = 3000, H = 16;
+  const ctxA = buildIntradayContext(m15);
+  const mutated = m15.map((b, k) => k >= i ? { ...b, open: 9, high: 9.9, low: 8, close: 9.5 } : b);
+  const ctxB = buildIntradayContext(mutated);
+  const a = intradayCone(ctxA, i, H), b = intradayCone(ctxB, i, H);
+  assert.deepEqual(
+    { anchor: a.anchor, s: a.sigmaBar, mu: a.mu, steps: a.steps.map(s => [s.center, s.p50Up, s.p75Dn]) },
+    { anchor: b.anchor, s: b.sigmaBar, mu: b.mu, steps: b.steps.map(s => [s.center, s.p50Up, s.p75Dn]) },
+    'intraday no lookahead'); passed++;
+}
+
+// 7) Hour-of-day profile recovers the 2× loud/quiet regime (causally).
+{
+  const ctx = buildIntradayContext(m15);
+  const i = 4000;
+  const loud = profileMult(ctx, i, 10), quiet = profileMult(ctx, i, 20);
+  const ratio = loud / quiet;
+  ok(ratio > 1.6 && ratio < 2.4, `profile recovers ~2× loud/quiet (got ${ratio.toFixed(2)})`);
+  ok(profileMult(ctx, 50, 10) === 1, 'profile is 1 before enough observations');
+}
+
+// 8) Intraday cone shape + widening, and the loud-hours steps widen FASTER.
+{
+  const ctx = buildIntradayContext(m15);
+  const cone = intradayCone(ctx, 3000, 16);
+  let prevW = 0;
+  for (const s of cone.steps) {
+    const w = s.p75Up - s.p75Dn;
+    ok(w > prevW, `intraday cone widens at h=${s.h}`);
+    ok(s.p50Dn < s.center && s.center < s.p50Up, `center inside at h=${s.h}`);
+    prevW = w;
+  }
+  const live = intradayCone(ctx, m15.length, 8);
+  ok(live && live.anchor === m15[m15.length - 1].close, 'live intraday cone anchors on last close');
+  for (const s of live.steps) {
+    const day = new Date(s.time * 1000).getUTCDay();
+    ok(day !== 6, 'live cone step never lands on Saturday');
+  }
+}
+
+// 9) Intraday calibration near claims on well-specified synthetic data.
+{
+  const t = intradayTally(m15, { horizonBars: 16 });
+  ok(t.full.n >= 100, `enough intraday windows (${t.full.n})`);
+  for (const s of t.full.perStep) {
+    ok(s.c50 > 0.35 && s.c50 < 0.65, `intraday P50 sane at h=${s.h} (${s.c50.toFixed(2)})`);
+    ok(s.c75 > 0.60 && s.c75 < 0.90, `intraday P75 sane at h=${s.h} (${s.c75.toFixed(2)})`);
+  }
+  ok(t.claimed.p50 === 0.5 && t.claimed.p75 === 0.75, 'intraday claims stated');
+}
+
+// 10) Intraday sample paths: deterministic, valid OHLC, consensus ≈ drift path.
+{
+  const ctx = buildIntradayContext(m15);
+  const a = intradaySamplePaths(ctx, 3000, 16);
+  const b = intradaySamplePaths(ctx, 3000, 16);
+  assert.deepEqual(a, b, 'intraday same seed ⇒ identical'); passed++;
+  ok(a.paths.length === INTRADAY_DEFAULTS.nPaths && a.paths[0].length === 16, 'nPaths × H intraday candles');
+  for (const p of a.paths) for (const c of p) ok(c.high >= Math.max(c.open, c.close) && c.low <= Math.min(c.open, c.close), 'valid intraday OHLC');
+  const cone = intradayCone(ctx, 3000, 16);
+  const last = a.consensus[15], center = cone.steps[15].center;
+  ok(Math.abs(last.close - center) / center < 0.005, `intraday consensus ≈ drift path`);
 }
 
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);
