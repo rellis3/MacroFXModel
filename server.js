@@ -38,6 +38,10 @@ import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/r
 import { runRankICLiveSuite, RANKIC_LIVE_INSTRUMENTS }             from './js/rankICLiveEngine.js';
 import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, computeConvexity, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runTrendBasket } from './js/trendBasketEngine.js';
+import { runEconTrend, runEconTrendPlacebo, evaluateEconTrend, ECON_TREND_DEFAULTS } from './js/econTrendCore.js';
+import { buildFundamentals as buildEconFundamentals, ECON_UNIVERSE } from './js/econTrendEngine.js';
+import { buildCsi, runCsiOverlay, evaluateCsi, creditVega, CSI_DEFAULTS } from './js/creditStressCore.js';
+import { buildCsiInputs } from './js/creditStressEngine.js';
 import { runCarryBasket, financingHaircut } from './js/carryEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
@@ -3914,13 +3918,15 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
 });
 
 // ── /api/oanda_ohlc5m  — OHLC candles for any FX/gold pair ──────────────────
-// ?symbol=EUR/USD[&granularity=H1]  granularity defaults to M5
+// ?symbol=EUR/USD[&granularity=H1|D]  granularity defaults to M5
 // Returns { values:[{datetime, open, high, low, close}] } newest-first,
 // datetime in London local time.
 const _m5SrvCache = new Map();
 // M5 count covers a full trading week (~1440 bars Mon→Fri) plus margin so the
 // vol-forecast weekly charts can reliably anchor off this week's Monday open.
-const _OHLC_GRAN = { M5: { count: 2000, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 } };
+// D (daily) covers ~3 months, London-midnight aligned to match the forecaster's
+// anchor — the vol-forecast MONTHLY charts anchor off the month's first-day open.
+const _OHLC_GRAN = { M5: { count: 2000, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 }, D: { count: 66, ttl: 15 * 60_000 } };
 app.get('/api/oanda_ohlc5m', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
   const symbol = req.query.symbol;
@@ -3936,7 +3942,10 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
   if (cached && Date.now() - cached.ts < ttl) return res.json(cached.data);
   try {
     const base = _oandaBaseMe();
-    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M`;
+    // Daily candles are aligned to London midnight so each bar spans one London day
+    // (matches the forecaster's London-midnight anchor and clean YYYY-MM-DD dates).
+    const align = gran === 'D' ? '&alignmentTimezone=Europe%2FLondon&dailyAlignment=0' : '';
+    const url  = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=${gran}&count=${count}&price=M${align}`;
     const r = await fetch(url, {
       headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
       signal:  AbortSignal.timeout(20_000),
@@ -3944,8 +3953,11 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
     if (!r.ok) { const t = await r.text().catch(() => 'err'); return res.status(502).json({ error: `OANDA ${r.status}: ${t.slice(0,200)}` }); }
     const data = await r.json();
     if (!data.candles) return res.status(502).json({ error: 'No candles returned' });
+    // For D, keep today's still-forming bar (incomplete) so the monthly view reaches
+    // "now"; for intraday granularities only completed bars are used (the live latest
+    // M5 bar is streamed in separately by the chart's rescan loop).
     const values = data.candles
-      .filter(c => c.complete && c.mid)
+      .filter(c => c.mid && (gran === 'D' || c.complete))
       .map(c => ({
         datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
         open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
@@ -4387,6 +4399,121 @@ app.get('/api/trend-basket', async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[trend-basket]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/econ-trend — cross-sectional ECONOMIC trend (fundamentals-only signal) ─
+// The pre-registered test in ECON_TREND_TEST.md: trend of FUNDAMENTALS relative to
+// USD (short rate / 10Y yield / unemployment, publication-lagged) ranks currencies;
+// long top-2, short bottom-2, monthly rebalance — runTrendBasket machinery via the
+// directionAt hook, judged against a seeded random-ranking placebo. Price is never
+// a signal input. Frozen pass/fail is computed server-side (evaluateEconTrend).
+const _econTrendCache = new Map();
+app.get('/api/econ-trend', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY) return res.status(503).json({ error: 'FRED_KEY not configured (runs on Railway)' });
+  const clamp = (x, lo, hi, dflt) => Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : dflt;
+  const rebalDays = clamp(parseInt(req.query.rebal), 5, 63, ECON_TREND_DEFAULTS.rebalDays);
+  const targetVol = clamp(parseFloat(req.query.targetVol), 0.02, 0.40, ECON_TREND_DEFAULTS.targetVol);
+  const costBps   = clamp(parseFloat(req.query.cost), 0, 50, ECON_TREND_DEFAULTS.costBps);
+  const placebos  = clamp(parseInt(req.query.placebos), 0, 500, ECON_TREND_DEFAULTS.placeboRuns);
+  const cacheKey = `et_${rebalDays}_${targetVol}_${costBps}_${placebos}`;
+  const cached = _econTrendCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 3600_000) return res.json(cached.data);
+  try {
+    const from = '2005-01-01';
+    const seriesByCcy = {}, priceAvailability = [];
+    await Promise.all(TREND_UNIVERSE.map(async u => {
+      try {
+        const bars = await fetchOandaD1Range(u.inst, from);
+        const s = bars.map(b => ({ t: b.date, v: u.invert ? 1 / b.close : b.close })).filter(x => Number.isFinite(x.v) && x.v > 0);
+        seriesByCcy[u.ccy] = s;
+        priceAvailability.push({ ccy: u.ccy, inst: u.inst, bars: s.length, first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null });
+      } catch (e) { priceAvailability.push({ ccy: u.ccy, inst: u.inst, error: e.message }); }
+    }));
+    const { fundamentals, availability: fredAvailability } = await buildEconFundamentals(process.env.FRED_KEY, '2004-01-01');
+    const opts = { rebalDays, targetVol, costBps, placeboRuns: placebos };
+    const result = runEconTrend(seriesByCcy, fundamentals, opts);
+    if (result.error) return res.status(500).json({ error: result.error, priceAvailability, fredAvailability });
+    const placebo = placebos > 0 ? runEconTrendPlacebo(seriesByCcy, opts) : { sharpes: [], summary: null };
+    const evaluation = evaluateEconTrend(result, placebo.sharpes, opts);
+    const data = {
+      ...result, placebo: placebo.summary, evaluation,
+      priceAvailability, fredAvailability,
+      universe: Object.keys(ECON_UNIVERSE),
+    };
+    _econTrendCache.set(cacheKey, { data, ts: Date.now() });
+    res.json(data);
+  } catch (err) {
+    console.error('[econ-trend]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/credit-stress — CSI risk-overlay test (pre-registered) ───────────────
+// CREDIT_STRESS_TEST.md: CSI = equal-weight 252d rolling z of (BBB−AAA quality
+// spread, HY OAS, VIX), frozen gate tiers ×1/×0.5/×0 at z 1/2, applied as-of
+// ≤ t−1. Question: does the CSI gate beat (a) no gate and (b) a VIX-only gate,
+// OOS, on the PRIMARY target (equal-weight long-ccy basket)? Trend basket is the
+// reported SECONDARY. A risk overlay, not alpha — verdict computed server-side.
+const _csiCache = new Map();
+app.get('/api/credit-stress', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY) return res.status(503).json({ error: 'FRED_KEY not configured (runs on Railway)' });
+  const clamp = (x, lo, hi, dflt) => Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : dflt;
+  const zWindow = clamp(parseInt(req.query.zWindow), 60, 504, CSI_DEFAULTS.zWindow);
+  const cacheKey = `csi_${zWindow}`;
+  const cached = _csiCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 3600_000) return res.json(cached.data);
+  try {
+    const from = '2005-01-01';
+    const seriesByCcy = {}, priceAvailability = [];
+    await Promise.all(TREND_UNIVERSE.map(async u => {
+      try {
+        const bars = await fetchOandaD1Range(u.inst, from);
+        const s = bars.map(b => ({ t: b.date, v: u.invert ? 1 / b.close : b.close })).filter(x => Number.isFinite(x.v) && x.v > 0);
+        seriesByCcy[u.ccy] = s;
+        priceAvailability.push({ ccy: u.ccy, inst: u.inst, bars: s.length, first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null });
+      } catch (e) { priceAvailability.push({ ccy: u.ccy, inst: u.inst, error: e.message }); }
+    }));
+    const basket = runTrendBasket(seriesByCcy, { returnDaily: true });
+    if (basket.error) return res.status(500).json({ error: basket.error, priceAvailability });
+
+    const { components, vixSeries, availability: fredAvailability } = await buildCsiInputs(process.env.FRED_KEY, '2004-01-01');
+    const opts = { zWindow };
+    const csi = buildCsi(components, opts);
+    const vixZ = buildCsi({ vix: vixSeries }, opts);   // same machinery, single component
+
+    const primary = runCsiOverlay({ dates: basket.dates, returns: basket.benchReturns }, csi.series, vixZ.series, opts);
+    const secondary = runCsiOverlay({ dates: basket.dates, returns: basket.dailyReturns }, csi.series, vixZ.series, opts);
+    const evaluation = evaluateCsi(primary);
+
+    // downsample the CSI for the chart (~500 points)
+    const step = Math.max(1, Math.floor(csi.series.length / 500));
+    const csiSampled = csi.series.filter((_, i) => i % step === 0 || i === csi.series.length - 1)
+      .map(p => ({ d: p.d, v: +p.v.toFixed(3) }));
+    const latest = csi.series[csi.series.length - 1] ?? null;
+
+    // "Credit Vega" — diagnostic only (NOT part of the frozen gate/verdict):
+    // rolling beta of Δ(HY OAS bps) on Δ(VIX pts), labelled by trailing percentile.
+    const vega = creditVega(components.hyOas, components.vix);
+    const vStep = Math.max(1, Math.floor(vega.series.length / 400));
+    const vegaSampled = vega.series.filter((_, i) => i % vStep === 0 || i === vega.series.length - 1);
+
+    const data = {
+      params: { zWindow, tiers: CSI_DEFAULTS.tiers, isFrac: CSI_DEFAULTS.isFrac, gateCostBps: CSI_DEFAULTS.gateCostBps },
+      first: basket.first, last: basket.last, nDays: basket.nDays,
+      current: latest ? { date: latest.d, csi: +latest.v.toFixed(2), exposure: latest.v >= 2 ? 0 : latest.v >= 1 ? 0.5 : 1, componentZ: csi.componentZ } : null,
+      primary, secondary, evaluation,
+      csiSeries: csiSampled,
+      vega: { current: vega.current, series: vegaSampled },
+      priceAvailability, fredAvailability,
+    };
+    _csiCache.set(cacheKey, { data, ts: Date.now() });
+    res.json(data);
+  } catch (err) {
+    console.error('[credit-stress]', err.message);
     res.status(500).json({ error: err.message });
   }
 });

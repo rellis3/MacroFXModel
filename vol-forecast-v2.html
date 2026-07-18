@@ -720,7 +720,7 @@
     <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
     <button class="v2-tool-btn" id="vfLevelAlertsBtn"     onclick="toggleLevelAlerts()">🔔 Level Alerts</button>
     <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
-    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Original → COG → Original Weekly → COG Weekly. Weekly modes are a point-in-time forecast — the Monday forecast scaled ×√5, anchored on this week's Monday open and held all week. Remembered across page loads (stored in your browser).">📐 Chart: Original</button>
+    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Original → COG → Original/COG Weekly → Original/COG Monthly. Weekly and monthly are point-in-time forecasts — the Monday (×√5) / month-start (×√20) forecast, anchored on that period's opening price and held for the whole period. Monthly uses daily candles. Remembered across page loads (stored in your browser).">📐 Chart: Original</button>
     <div class="v2-tool-sep"></div>
     <div class="vf-exp-dd" id="vfExpDropdown">
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
@@ -1386,7 +1386,7 @@ function loadForecast(date) {
       currentForecast = data;
       if (!date) liveForecast = data;
       loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
-      if (_modeCtx().weekly) loadFrozenWeekly().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the frozen Monday forecast for weekly modes
+      { const _k = _modeCtx().kind; if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); }); }   // prime the frozen period-start forecast for weekly/monthly modes
 
       if (sdot) sdot.className = 'v2-status-dot ok';
       if (stxt) stxt.textContent = 'OK';
@@ -1546,7 +1546,7 @@ function triggerRefresh() {
     currentForecast = forecast;
     if (!date) liveForecast = forecast;
     loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
-    if (_modeCtx().weekly) loadFrozenWeekly().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });       // prime the frozen Monday forecast for weekly modes
+    { const _k = _modeCtx().kind; if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); }); }   // prime the frozen period-start forecast for weekly/monthly modes
     currentSession  = session;
     renderV2Grid(forecast);
     if (session && session.instruments) {
@@ -3352,35 +3352,51 @@ function _priceFmt(name) {
   return { type: 'price', precision: 5, minMove: 0.00001 };
 }
 
-// Cache M5 data in-session (key = pair name)
+// Cache M5 data in-session (key = pair name); D1 cached separately for monthly modes.
 const _m5Cache = {};
+const _d1Cache = {};
 
 // Lightweight Charts instances — must be destroyed before grid rebuild
 // ── Chart forecast-level mode: 'original' (our forecast) or 'cog' (reverse-engineered).
 // Remembered in localStorage → survives page reloads AND redeploys (it's stored in the
 // browser, not on the server, so a new deployment can't wipe it — no KV needed).
-// Chart forecast-line mode. Four modes, cycled by the toolbar button:
+// Chart forecast-line mode — cycled by the toolbar button:
 //   original         — our Feller daily levels, anchored on today's open
 //   cog              — COG's reverse-engineered daily levels, today's open
 //   original_weekly  — Feller levels ×√5, FROZEN at this week's Monday forecast,
 //                      anchored on this week's Monday open (held all week)
 //   cog_weekly       — COG levels ×√5, frozen at Monday, this week's Monday open
-// Weekly = same horizon-agnostic vol math, σ scaled ×√5 (see CLAUDE.md). Unlike
-// the live daily bands, the weekly bands are a point-in-time forecast: the σ is
-// taken from the forecast in effect as the week opened and held constant, so the
-// weekly envelope is issued once (Monday) and you watch price travel through it.
-const _LEVEL_MODES = ['original', 'cog', 'original_weekly', 'cog_weekly'];
-const _MODE_LABEL  = { original: 'Original', cog: 'COG', original_weekly: 'Original Weekly', cog_weekly: 'COG Weekly' };
-const _SQRT5 = Math.sqrt(5);
+//   original_monthly — Feller levels ×√20, FROZEN at this month's start forecast,
+//                      anchored on the month's first-day open (held all month; D1 candles)
+//   cog_monthly      — COG levels ×√20, frozen at month start, month's first-day open
+// Weekly/monthly = same horizon-agnostic vol math, σ scaled ×√5 / ×√20 (CLAUDE.md).
+// Unlike the live daily bands, they are point-in-time forecasts: σ is taken from the
+// forecast in effect as the period opened and held constant, so the envelope is issued
+// once (Monday / month start) and you watch price travel through it.
+const _LEVEL_MODES = ['original', 'cog', 'original_weekly', 'cog_weekly', 'original_monthly', 'cog_monthly'];
+const _MODE_LABEL  = {
+  original: 'Original', cog: 'COG',
+  original_weekly: 'Original Weekly', cog_weekly: 'COG Weekly',
+  original_monthly: 'Original Monthly', cog_monthly: 'COG Monthly',
+};
+const _SQRT5 = Math.sqrt(5), _SQRT20 = Math.sqrt(20);
 let _levelMode = 'original';
 try { const _m = localStorage.getItem('vf_chart_level_mode'); if (_LEVEL_MODES.includes(_m)) _levelMode = _m; } catch (_) {}
 
-// Current-mode context: is it a COG variant, a weekly variant, the σ multiplier
-// (×√5 for weekly, ×1 daily) and the display label.
+// Current-mode context: COG variant? weekly/monthly variant? the σ multiplier
+// (×√5 weekly, ×√20 monthly, ×1 daily), the candle granularity, the frozen-forecast
+// kind, and the display label.
 function _modeCtx() {
-  const weekly = _levelMode === 'original_weekly' || _levelMode === 'cog_weekly';
-  const cog    = _levelMode === 'cog' || _levelMode === 'cog_weekly';
-  return { weekly, cog, mult: weekly ? _SQRT5 : 1, label: _MODE_LABEL[_levelMode] };
+  const weekly  = _levelMode === 'original_weekly'  || _levelMode === 'cog_weekly';
+  const monthly = _levelMode === 'original_monthly' || _levelMode === 'cog_monthly';
+  const cog     = _levelMode.startsWith('cog');
+  return {
+    weekly, monthly, cog,
+    mult:  monthly ? _SQRT20 : weekly ? _SQRT5 : 1,
+    gran:  monthly ? 'D' : 'M5',
+    kind:  monthly ? 'monthly' : weekly ? 'weekly' : null,
+    label: _MODE_LABEL[_levelMode],
+  };
 }
 // London 'YYYY-MM-DD' -> Monday of that ISO week (weekday of a calendar date is
 // timezone-independent, so treat the date as UTC midnight for the day-of-week).
@@ -3409,46 +3425,51 @@ function _aggToHour(bars) {
   if (cur) out.push(cur);
   return out;
 }
-// ── Frozen weekly forecast ─────────────────────────────────────────────────────
-// Weekly modes hold a point-in-time forecast: the daily forecast in effect as THIS
-// week opened (Monday), scaled ×√5 and kept constant all week, rather than tracking
-// the live daily σ. One cached archive fetch serves all pairs. If no archived
-// week-start forecast exists it falls back to the live forecast (not truly frozen).
-let _frozenWeekly = null, _frozenWeeklyKey = null, _frozenWeeklyPromise = null, _frozenWeeklyLive = false;
-function _thisMondayLondon() {
+// ── Frozen point-in-time forecasts (weekly = Monday, monthly = month start) ─────
+// Weekly/monthly modes hold the daily forecast in effect as the period opened,
+// scaled ×√5 / ×√20 and kept constant for the period, rather than tracking the live
+// daily σ. One cached archive fetch per period serves all pairs. If no archived
+// period-start forecast exists it falls back to the live forecast (not truly frozen).
+const _frozen = {
+  weekly:  { forecast: null, key: null, promise: null, live: false },
+  monthly: { forecast: null, key: null, promise: null, live: false },
+};
+// London period-start date: this week's Monday, or the 1st of this month.
+function _periodStart(kind) {
   const d = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
-  return _mondayOf(d);
+  return kind === 'monthly' ? d.slice(0, 8) + '01' : _mondayOf(d);
 }
-function loadFrozenWeekly() {
-  const monday = _thisMondayLondon();
-  if (_frozenWeeklyKey === monday && _frozenWeeklyPromise) return _frozenWeeklyPromise;
-  _frozenWeeklyKey = monday;
-  _frozenWeeklyLive = false;
-  _frozenWeeklyPromise = (async () => {
+function loadFrozen(kind) {
+  const st = _frozen[kind]; if (!st) return Promise.resolve(null);
+  const start = _periodStart(kind);
+  if (st.key === start && st.promise) return st.promise;
+  st.key = start; st.live = false;
+  st.promise = (async () => {
     try {
-      // The forecast in effect as the week opened = latest archived session on/before Monday.
+      // Forecast in effect as the period opened = latest archived session on/before start.
       const idx = await fetch('/api/vol-forecast/archive').then(r => r.json()).catch(() => null);
       let useDate = null;
       if (idx?.ok && Array.isArray(idx.entries)) {
         const dates = idx.entries.map(e => e.date).filter(Boolean).sort();
-        const le = dates.filter(d => d <= monday);
+        const le = dates.filter(d => d <= start);
         useDate = le.length ? le[le.length - 1] : (dates.length ? dates[0] : null);
       }
       if (useDate) {
         const fc = await fetch(`/api/vol-forecast/archive/${useDate}`).then(r => r.json()).catch(() => null);
-        if (fc?.instruments) { _frozenWeekly = fc; return fc; }
+        if (fc?.instruments) { st.forecast = fc; return fc; }
       }
     } catch (_) { /* fall through to live */ }
-    _frozenWeeklyLive = true;                 // no archived week-start forecast → live fallback
-    _frozenWeekly = currentForecast ?? null;
-    return _frozenWeekly;
+    st.live = true;                          // no archived period-start forecast → live fallback
+    st.forecast = currentForecast ?? null;
+    return st.forecast;
   })();
-  return _frozenWeeklyPromise;
+  return st.promise;
 }
 // The forecast instrument whose bands a chart uses in the current mode: the frozen
-// (Monday) forecast for weekly modes, else the live per-pair forecast.
+// (period-start) forecast for weekly/monthly modes, else the live per-pair forecast.
 function _bandInst(name, liveF) {
-  return _modeCtx().weekly ? (_frozenWeekly?.instruments?.[name] ?? liveF) : liveF;
+  const { kind } = _modeCtx();
+  return kind ? (_frozen[kind].forecast?.instruments?.[name] ?? liveF) : liveF;
 }
 
 // The forecast levels a chart should draw, given the current mode. COG mode recomputes
@@ -3473,13 +3494,13 @@ function _chartLevels(name, f) {
 function _syncChartLevelBtn() {
   const b = document.getElementById('vfChartLevelBtn');
   if (!b) return;
-  const { weekly } = _modeCtx();
-  // Flag when a weekly mode couldn't find an archived Monday forecast and fell back
-  // to the live forecast (so the bands aren't truly frozen this week).
-  const live = weekly && _frozenWeekly && _frozenWeeklyLive;
+  const { weekly, monthly, kind } = _modeCtx();
+  // Flag when a frozen mode couldn't find an archived period-start forecast and fell
+  // back to the live forecast (so the bands aren't truly frozen this period).
+  const live = kind && _frozen[kind].forecast && _frozen[kind].live;
   b.textContent = '📐 Chart: ' + _MODE_LABEL[_levelMode] + (live ? ' (live)' : '');
   b.classList.toggle('active', _levelMode !== 'original');
-  b.classList.toggle('weekly', weekly);
+  b.classList.toggle('weekly', weekly || monthly);   // amber accent marks any frozen period mode
 }
 function _redrawCogCharts() {
   if (currentForecast?.instruments) loadAllM5Charts(currentForecast.instruments);   // redraw grid (cached M5, no refetch)
@@ -3495,9 +3516,10 @@ function toggleChartLevelMode() {
   // COG variants' index lines use COG close-to-close HV σ — fetch it (once), then
   // redraw so index levels snap to the validated σ when it arrives.
   if (_modeCtx().cog && !_cogHvByInst) loadCogHv().then(_redrawCogCharts);
-  // Weekly variants hold the Monday forecast — fetch it (once/week), then redraw so
-  // the frozen bands replace the live-forecast placeholder when they arrive.
-  if (_modeCtx().weekly) loadFrozenWeekly().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
+  // Weekly/monthly variants hold the period-start forecast — fetch it (once/period),
+  // then redraw so the frozen bands replace the live-forecast placeholder.
+  const _k = _modeCtx().kind;
+  if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
 }
 if (document.readyState !== 'loading') _syncChartLevelBtn();
 else document.addEventListener('DOMContentLoaded', _syncChartLevelBtn);
@@ -3531,7 +3553,7 @@ function _destroyAllLWCharts() {
 }
 
 // Render level-hit time chips (green when hit)
-function _renderHitChips(name, dayOpen, lineDefs, chartData) {
+function _renderHitChips(name, dayOpen, lineDefs, chartData, coarse = false) {
   const hitsEl = document.getElementById(`v2-level-hits-${name}`);
   if (!hitsEl || !dayOpen) return;
   const hits = [];
@@ -3541,8 +3563,11 @@ function _renderHitChips(name, dayOpen, lineDefs, chartData) {
     const bar = chartData.find(b => side > 0 ? b.high >= target : b.low <= target);
     if (bar) {
       const t = new Date(bar.time * 1000);
-      const hhmm = t.getUTCHours().toString().padStart(2,'0') + ':' + t.getUTCMinutes().toString().padStart(2,'0');
-      hits.push(`<span class="v2-hit-chip hit">${title} <b>${hhmm}</b></span>`);
+      // Monthly (D1) hits span days → label by date; intraday hits label by time.
+      const stamp = coarse
+        ? (t.getUTCMonth() + 1).toString().padStart(2,'0') + '-' + t.getUTCDate().toString().padStart(2,'0')
+        : t.getUTCHours().toString().padStart(2,'0') + ':' + t.getUTCMinutes().toString().padStart(2,'0');
+      hits.push(`<span class="v2-hit-chip hit">${title} <b>${stamp}</b></span>`);
     }
   }
   hitsEl.innerHTML = hits.join('');
@@ -3580,6 +3605,7 @@ function _renderLevelLegend(name, dayOpen, lineDefs) {
 async function _rescanHits(name) {
   const meta = _chartMeta[name];
   if (!meta || !_lwCharts[name]) return;
+  if (meta.monthly) return;   // monthly uses D1 bars — refreshed on the full 5-min rebuild, not this M5 loop
   const sym = OANDA_SYM[name.toLowerCase()];
   if (!sym) return;
   try {
@@ -3692,12 +3718,23 @@ async function loadM5Chart(name, f) {
       open: parseFloat(c.open), high: parseFloat(c.high),
       low:  parseFloat(c.low),  close: parseFloat(c.close),
     });
-    const { weekly, mult } = _modeCtx();
+    const { weekly, monthly, mult } = _modeCtx();
     const DISPLAY_BARS = 288;   // daily: last 24h of M5
 
     // Pick the display window, the anchor open and the period bars for this mode.
     let displayRaw, periodRaw, anchorOpen, periodLabel, periodStartDate = null;
-    if (weekly) {
+    if (monthly) {
+      // `bars` are D1 candles here — anchor on the first trading day of the current
+      // (latest) calendar month and show that month; D1 (~20 bars/mo) is legible as-is.
+      const monthKey = bars[bars.length - 1]?.datetime?.slice(0, 7);   // 'YYYY-MM'
+      periodStartDate = monthKey ? monthKey + '-01' : null;
+      const monRaw = monthKey ? bars.filter(c => c.datetime.slice(0, 7) === monthKey) : bars;
+      const src    = monRaw.length ? monRaw : bars;
+      displayRaw  = src;
+      periodRaw   = src;
+      anchorOpen  = src.length ? parseFloat(src[0].open) : null;
+      periodLabel = 'Month';
+    } else if (weekly) {
       const lastDate = bars[bars.length - 1]?.datetime?.slice(0, 10);
       periodStartDate = lastDate ? _mondayOf(lastDate) : null;
       const weekRaw  = periodStartDate ? bars.filter(c => c.datetime.slice(0, 10) >= periodStartDate) : bars;
@@ -3855,14 +3892,15 @@ async function loadM5Chart(name, f) {
       _m5ActionStatus(name, anchorOpen, hitsData.length ? hitsData[hitsData.length - 1].close : lastClose, _bandInst(name, f), mult);
 
       // Level hit times — scan period bars to find when each level was first touched
-      _renderHitChips(name, anchorOpen, lineDefs, hitsData);
+      // (monthly uses D1 bars, so hit chips label by date rather than intraday time).
+      _renderHitChips(name, anchorOpen, lineDefs, hitsData, monthly);
 
       // Forecast-level legend strip below the chart (replaces crammed axis labels)
       _renderLevelLegend(name, anchorOpen, lineDefs);
 
       // Store period bars + mode in chartMeta so _rescanHits stays correct live.
       // dayOpen keeps its name for toggleLevelLabel compatibility (== anchor open).
-      _chartMeta[name] = { series, dayOpen: anchorOpen, lineDefs, chartData: hitsData, f: _bandInst(name, f), weekly, mult, periodStartDate };
+      _chartMeta[name] = { series, dayOpen: anchorOpen, lineDefs, chartData: hitsData, f: _bandInst(name, f), weekly, monthly, mult, periodStartDate };
 
     } catch (err) {
       console.error('[lwchart]', name, err);
@@ -3871,19 +3909,30 @@ async function loadM5Chart(name, f) {
   };
 
   try {
+    const { gran } = _modeCtx();               // 'M5' for daily/weekly, 'D' for monthly
+    const cache = gran === 'D' ? _d1Cache : _m5Cache;
     let values;
-    const CACHE_TTL = 40_000; // keep in sync with server-side TTL (45s)
-    if (_m5Cache[name] && Date.now() - _m5Cache[name].ts < CACHE_TTL) {
-      values = _m5Cache[name].values;
+    const CACHE_TTL = gran === 'D' ? 14 * 60_000 : 40_000; // keep in sync with server-side TTL
+    if (cache[name] && Date.now() - cache[name].ts < CACHE_TTL) {
+      values = cache[name].values;
     } else {
-      const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
+      const res  = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}${gran === 'D' ? '&granularity=D' : ''}`);
       const data = await res.json();
       if (!res.ok || !data?.values?.length) {
         _err(data?.error || (res.ok ? 'no bars' : `HTTP ${res.status}`));
         return;
       }
-      _m5Cache[name] = { values: data.values, ts: Date.now() };
+      cache[name] = { values: data.values, ts: Date.now() };
       values = data.values;
+    }
+
+    // Monthly (D1): hand _draw the full ascending D1 set — it slices to the current
+    // month and anchors on the month's first-day open. No today/prev split needed.
+    if (gran === 'D') {
+      const ascD1 = [...values].reverse();
+      if (!ascD1.length) { _err('no data'); return; }
+      _draw(ascD1, null, null);
+      return;
     }
 
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
@@ -3970,18 +4019,19 @@ function _buildModalChart(name) {
 
   const meta = _chartMeta[name];
   const f    = currentForecast?.instruments?.[name];
-  const cache = _m5Cache[name];
+  const { weekly, monthly } = _modeCtx();
+  const cache = monthly ? _d1Cache[name] : _m5Cache[name];
 
   if (!meta?.dayOpen && !cache?.values?.length) {
     body.innerHTML = '<div style="padding:20px;font-family:\'DM Mono\',monospace;color:var(--text3)">No chart data yet — wait for cards to load.</div>';
     return;
   }
 
-  // Rebuild chart data from cache for the modal view. Daily modes anchor on
-  // today's open (full-week candle context); weekly modes anchor on this week's
-  // Monday open and show Mon→now. Bands come from _chartLevels (√5 in weekly).
-  const { weekly } = _modeCtx();
-  const periodLabel = weekly ? 'Week' : 'Day';
+  // Rebuild chart data from cache for the modal view. Daily anchors on today's open
+  // (full-week candle context); weekly anchors on this week's Monday open (Mon→now);
+  // monthly anchors on the month's first-day open (this month, D1). Bands come from
+  // _chartLevels (frozen ×√5 weekly / ×√20 monthly).
+  const periodLabel = monthly ? 'Month' : weekly ? 'Week' : 'Day';
   let srcData;
   let periodHigh = null, periodLow = null;   // period running extremes
   let anchorOpen = meta?.dayOpen;
@@ -3991,7 +4041,11 @@ function _buildModalChart(name) {
     const asc = [...values].reverse();
     const londonDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
     let periodBars;
-    if (weekly) {
+    if (monthly) {
+      const monthKey = asc.length ? asc[asc.length - 1].datetime.slice(0, 7) : null;   // 'YYYY-MM'
+      periodBars = monthKey ? asc.filter(c => c.datetime.slice(0, 7) === monthKey) : asc;
+      if (periodBars.length) anchorOpen = parseFloat(periodBars[0].open);
+    } else if (weekly) {
       const lastDate = asc.length ? asc[asc.length - 1].datetime.slice(0, 10) : null;
       const monday   = lastDate ? _mondayOf(lastDate) : null;
       periodBars = monday ? asc.filter(c => c.datetime.slice(0, 10) >= monday) : asc;
@@ -4003,8 +4057,8 @@ function _buildModalChart(name) {
       periodHigh = Math.max(...periodBars.map(c => parseFloat(c.high)));
       periodLow  = Math.min(...periodBars.map(c => parseFloat(c.low)));
     }
-    // Weekly shows Mon→now; daily keeps the full available context (prev + today).
-    const displayBars = weekly ? (periodBars.length ? periodBars : asc) : asc;
+    // Weekly shows Mon→now, monthly shows this month; daily keeps full context (prev + today).
+    const displayBars = (weekly || monthly) ? (periodBars.length ? periodBars : asc) : asc;
     srcData = displayBars.map(c => ({
       time:  Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
       open:  parseFloat(c.open),  high: parseFloat(c.high),

@@ -1,0 +1,83 @@
+# Credit-Stress Index (CSI) Overlay — pre-registration
+
+> **Status: PRE-REGISTERED, NOT YET RUN.** Design and pass/fail frozen **before** the
+> first live-data run (needs FRED + OANDA on Railway via `credit-stress.html`).
+> Editing criteria after seeing results voids the test. One shot.
+
+## What this is — and is NOT
+
+A **risk-overlay brick**, not a strategy. The CSI composites credit-stress gauges
+into one z-scored index and the test asks only one question: **does scaling a book's
+exposure by CSI improve its OOS Sharpe versus (a) no gate and (b) the same gate built
+on VIX alone?** Credit stress as a *directional alpha* signal is explicitly not
+claimed and not tested — stress gauges are coincident-to-lagging for direction.
+
+**The benchmark is named up front: VIX alone.** All CSI components (quality spread,
+HY OAS, VIX; CDS omitted — Markit data isn't retail-accessible, and CDX≈HY OAS
+anyway) load on the same risk-off factor. If the composite can't beat its simplest
+ingredient as a gate, the extra components are decoration. **Blunt odds ~30–40%**
+the composite beats VIX-alone OOS — better than most ideas here because
+risk-scaling is the replicated use of this data, but "VIX was enough" is a very
+live outcome and would itself be a useful (cheap) answer.
+
+## Design (frozen)
+
+**Components** (FRED, daily): quality spread = `BAMLC0A4CBBB − BAMLC0A1CAAA`;
+HY OAS = `BAMLH0A0HYM2`; VIX = `VIXCLS`.
+
+**Index:** each component rolling-z-scored over **252 trading days** (`statsCore.
+rollingZScore`, no fitted parameters), **equal-weighted mean** on common dates.
+Weights are frozen at equal — fitting weights to history is the overfitting path.
+
+**Publication lags:** OAS series shift **+2 calendar days**, VIX **+1** (FRED posts
+BAML OAS next business day). The gate at day *t* uses the latest CSI value dated
+**≤ t−1** (as-of lookup — decisions use yesterday's published index).
+
+**Gate rule (frozen tiers):** exposure ×1.0 while CSI z < 1 · ×0.5 while 1 ≤ z < 2
+· ×0.0 while z ≥ 2. Same rule for the VIX-only baseline (on VIX's own 252d z).
+
+**Targets** (both reported; the primary decides):
+- **PRIMARY — the equal-weight long-currency basket** (the trend basket's benchmark:
+  long EUR GBP AUD NZD JPY CAD CHF vs USD): the purest always-on risk book — exactly
+  what a stress gate is supposed to protect.
+- **SECONDARY — the trend basket itself** (evidence-backed sleeve; already partially
+  defensive, so the gate has less to add — reported, not decisive).
+
+**Split:** 60/40 IS/OOS by date, same daily-MTM stats as the basket engines. Costs:
+the underlying books already charge their own; the gate itself trades rarely (tier
+changes) and its turnover cost is charged at the same bps on exposure change.
+
+## Pass / fail (frozen — both outcomes written first)
+
+**"It worked" =** on the PRIMARY target, ALL of:
+1. CSI-gated **OOS Sharpe > ungated** OOS Sharpe;
+2. CSI-gated **OOS Sharpe > VIX-only-gated** OOS Sharpe;
+3. Same ranking holds in-sample, ties allowed (IS consistency — an OOS-only fluke
+   doesn't count, but a stretch where the gates never fire must not fail it).
+
+Then the CSI earns: promotion as a sizing input candidate for the live sleeves
+(wired behind a flag, still not alpha). Max drawdown change is **reported** as
+secondary evidence but does not decide.
+
+**"It didn't" =** anything less. Specifically: if CSI beats ungated but not
+VIX-only, the recorded verdict is **"gate real, composite unnecessary — use VIX"**;
+if neither beats ungated, the verdict is **"no gate"**. Either null is recorded
+here and in `BACKTEST_INDEX.md`; no weight-fitting, tier-tuning or component
+swapping to rescue it.
+
+## Diagnostics displayed alongside (NOT part of the test)
+
+**"Credit Vega"** — rolling 63d beta of Δ(HY OAS, bps) on Δ(VIX, points), labelled
+High/Elevated/Normal/Low by its trailing 3y percentile. Reading: low = credit
+absorbing vol spikes; high = stress transmitting into credit. Strictly a rolling
+beta ("vega" is display shorthand). It contributes **nothing** to the CSI, the
+gate, or the verdict — adding inputs to a pre-registered test voids it. If CSI
+passes, a vega-conditioned gate may be proposed as a **new** pre-registered
+follow-up; it must never be retrofitted into this one.
+
+## Result (fill in after the one Railway run — then this section is final)
+
+- Date run: _
+- PRIMARY (risk basket): ungated OOS Sharpe _ · VIX-gated _ · CSI-gated _
+- SECONDARY (trend basket): ungated _ · VIX-gated _ · CSI-gated _
+- Verdict: _
