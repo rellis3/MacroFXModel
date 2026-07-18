@@ -11046,6 +11046,13 @@ app.get('/api/cross-pair-research', async (req, res) => {
 // Used by the chart modal in weekly-vol-backtest.html (M1 parquets may not cover 2025+).
 const _wbtInstrMap = Object.fromEntries(WBT_INSTRUMENTS.map(i => [i.name.toLowerCase(), i.oanda]));
 
+// OANDA rejects a `to` timestamp in the future with HTTP 400 — so `to=<today>`
+// (today 23:59:59Z hasn't happened yet) breaks the request. Clamp to now.
+function _wbtClampTo(toDate) {
+  const iso = toDate + 'T23:59:59Z';
+  return new Date(iso).getTime() > Date.now() ? new Date().toISOString().replace(/\.\d+Z$/, 'Z') : iso;
+}
+
 app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
   const oanda = _wbtInstrMap[name];
@@ -11056,12 +11063,16 @@ app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   const base = _oandaBaseW();
   let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=D&price=M`;
   if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
-  if (to)   url += `&to=${encodeURIComponent(to + 'T23:59:59Z')}`;
+  if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
   if (!from && !to) url += '&count=20';
 
   try {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
-    if (!r.ok) return res.status(502).json({ ok: false, error: `OANDA HTTP ${r.status}` });
+    if (!r.ok) {
+      let msg = `OANDA HTTP ${r.status}`;
+      try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
+      return res.status(502).json({ ok: false, error: msg });
+    }
     const data = await r.json();
     const candles = (data.candles ?? [])
       .filter(c => c.complete !== false && c.mid)
@@ -11088,12 +11099,16 @@ app.get('/api/weekly-vol-backtest/m15/:pair', async (req, res) => {
   const base = _oandaBaseW();
   let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=M15&price=M`;
   if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
-  if (to)   url += `&to=${encodeURIComponent(to   + 'T23:59:59Z')}`;
+  if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
   if (!from && !to) url += '&count=200';
 
   try {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
-    if (!r.ok) return res.status(502).json({ ok: false, error: `OANDA HTTP ${r.status}` });
+    if (!r.ok) {
+      let msg = `OANDA HTTP ${r.status}`;
+      try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
+      return res.status(502).json({ ok: false, error: msg });
+    }
     const data = await r.json();
     const candles = (data.candles ?? [])
       .filter(c => c.complete !== false && c.mid)

@@ -225,7 +225,9 @@ async function load() {
     $('status').textContent = `${bars.length} bars`;
     render(); renderCalib();
   } catch (e) {
-    $('status').textContent = e.message + ' (OANDA is unreachable outside Railway — expected locally)';
+    $('status').textContent = e.message + (/HTTP 4\d\d/.test(e.message)
+      ? ' — if the range is very long, try a later "from" date (OANDA caps one request at 5000 candles)'
+      : ' — on a local sandbox OANDA is unreachable (Railway only)');
     $('status').className = 'err';
   }
 }
