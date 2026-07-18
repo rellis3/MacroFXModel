@@ -88,13 +88,16 @@ function buildADX(bars, n = 14) {
   let adx   = dx.slice(0, n).reduce((s, v) => s + v, 0) / n;
   const off = n * 2;
   if (off < L) out[off] = adx;
+  // ALIGNMENT (2026-07 fix, kept bit-identical to js/indicatorCore.adxWilder):
+  // dx[i] incorporates DM data through bar i+n+1, so the smoothed value belongs
+  // at out[i+n+1] — out[i+n] displaced the series one bar into the future. The
+  // old out[L-1]=out[L-2] patch papered over the shift (and made the live
+  // latest-bar read coincidentally right); with honest alignment the last bar
+  // gets its genuine value and no patch is needed.
   for (let i = n; i < dx.length; i++) {
     adx = (adx * (n - 1) + dx[i]) / n;
-    if (i + n < L) out[i + n] = adx;
+    if (i + n + 1 < L) out[i + n + 1] = adx;
   }
-  // The loop writes up to out[L-2] — propagate to the last bar so rollingZ
-  // at index L-1 never sees 0 instead of the current ADX value.
-  if (out[L - 1] === 0 && L > 1) out[L - 1] = out[L - 2];
   return out;
 }
 

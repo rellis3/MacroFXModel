@@ -35,6 +35,7 @@ MAGICS = {
     "volatility_bot/volatility_bot.py":       20260099,
     "range_line_bot/range_line_bot.py":       20260131,
     "YieldSpreadBot/yield_spread_bot.py":           20260012,  # yield-spread z mean-reversion (validated macro sleeve)
+    "oi_bot/oi_bot.py":                       20260714,  # OI gamma zones (forward-testing/paper); was unregistered — value kept, positions already carry it
 }
 
 # Magics that were re-assigned in the 2026-07 de-collision. Positions opened

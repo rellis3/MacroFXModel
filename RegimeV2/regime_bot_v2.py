@@ -52,8 +52,10 @@ from typing import Optional
 import requests
 
 # ── path so imports work when run from repo root or RegimeV2/ ─────────────────
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root → pylego
 sys.path.insert(0, os.path.dirname(__file__))
 
+from pylego.instruments import pip_sizes_for  # noqa: E402  (shared pip table — single source of truth)
 from bocpd        import BOCPRegistry
 from macro_overlay import MacroOverlay
 from regime_score  import compute_regime_score
@@ -72,16 +74,18 @@ except ImportError:
 MAGIC = 20260005
 
 # ── Pip / pip-value tables ─────────────────────────────────────────────────────
-_PIP_SIZES = {
-    'EUR/USD': 0.0001, 'GBP/USD': 0.0001, 'USD/JPY': 0.01,
-    'AUD/USD': 0.0001, 'NZD/USD': 0.0001, 'USD/CAD': 0.0001,
-    'USD/CHF': 0.0001, 'GBP/JPY': 0.01,   'EUR/GBP': 0.0001,
-    'EUR/JPY': 0.01,   'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
-    'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
-    'XAU/USD': 1.0,    'NAS100_USD': 1.0,  'USTECH100M': 1.0,
-    'SPX500_USD': 1.0, 'DE30_USD': 1.0,    'UK100_GBP': 1.0,
-    'US30_USD': 1.0, 'US2000_USD': 1.0,
-}
+# Shared pip table (pylego.instruments) — keys unchanged, values identical to
+# the former inline literal (golden-tested in pylego/instruments_test.py).
+_PIP_SIZES = pip_sizes_for([
+    'EUR/USD', 'GBP/USD', 'USD/JPY',
+    'AUD/USD', 'NZD/USD', 'USD/CAD',
+    'USD/CHF', 'GBP/JPY', 'EUR/GBP',
+    'EUR/JPY', 'EUR/CHF', 'GBP/CHF',
+    'AUD/JPY', 'CAD/JPY',
+    'XAU/USD', 'NAS100_USD', 'USTECH100M',
+    'SPX500_USD', 'DE30_USD', 'UK100_GBP',
+    'US30_USD', 'US2000_USD',
+])
 _PIP_VALUES = {
     'EUR/USD': 10.0, 'GBP/USD': 10.0, 'AUD/USD': 10.0, 'NZD/USD': 10.0,
     'USD/JPY': 9.0,  'USD/CAD': 7.5,  'USD/CHF': 10.5, 'GBP/JPY': 9.0,

@@ -44,8 +44,10 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # ── Path so bocpd.py is importable whether run from repo root or RegimeV2/ ─────
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root → pylego
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from pylego.instruments import pip_sizes_for  # noqa: E402  (shared pip table — single source of truth)
 from bocpd import BOCPDetector  # noqa: E402  (after sys.path patch)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -87,17 +89,19 @@ PAIR_FILES: Dict[str, str] = {
     "XAU/USD": "gold_m1",
 }
 
-PIP_SIZES: Dict[str, float] = {
-    "EUR/USD": 0.0001, "GBP/USD": 0.0001, "USD/JPY": 0.01,
-    "AUD/USD": 0.0001, "NZD/USD": 0.0001, "USD/CAD": 0.0001,
-    "USD/CHF": 0.0001, "GBP/JPY": 0.01,  "EUR/GBP": 0.0001,
-    "EUR/JPY": 0.01,   "EUR/CHF": 0.0001, "GBP/CHF": 0.0001,
-    "AUD/JPY": 0.01,   "CAD/JPY": 0.01,  "NZD/JPY": 0.01,
-    "AUD/CHF": 0.0001, "AUD/CAD": 0.0001, "AUD/NZD": 0.0001,
-    "GBP/AUD": 0.0001, "GBP/CAD": 0.0001, "GBP/NZD": 0.0001,
-    "EUR/AUD": 0.0001, "EUR/CAD": 0.0001, "EUR/NZD": 0.0001,
-    "CHF/JPY": 0.01,   "XAU/USD": 1.0,
-}
+# Shared pip table (pylego.instruments) — keys unchanged, values identical to
+# the former inline literal (golden-tested in pylego/instruments_test.py).
+PIP_SIZES: Dict[str, float] = pip_sizes_for([
+    "EUR/USD", "GBP/USD", "USD/JPY",
+    "AUD/USD", "NZD/USD", "USD/CAD",
+    "USD/CHF", "GBP/JPY", "EUR/GBP",
+    "EUR/JPY", "EUR/CHF", "GBP/CHF",
+    "AUD/JPY", "CAD/JPY", "NZD/JPY",
+    "AUD/CHF", "AUD/CAD", "AUD/NZD",
+    "GBP/AUD", "GBP/CAD", "GBP/NZD",
+    "EUR/AUD", "EUR/CAD", "EUR/NZD",
+    "CHF/JPY", "XAU/USD",
+])
 
 DEFAULT_SPREADS: Dict[str, float] = {
     "GBP/JPY": 2.5, "XAU/USD": 30.0,

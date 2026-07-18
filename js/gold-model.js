@@ -20,6 +20,7 @@
 //   2Y yield momentum   → Fed pricing / policy credibility proxy
 
 import { S } from './state.js';
+import { mean as _scMean, stdev as _scStdev } from './statsCore.js';   // shared moments (calcZScore)
 
 // ── Regime Adaptive Weight Tables ─────────────────────────────────────────────
 // Weights sum to 1.0 in each regime. The regime determines which factor gets
@@ -422,16 +423,18 @@ function calcMomAccel(arr) {
   return { mom, accel: mom - prevMom };
 }
 
-// Rolling z-score: (current - mean of last `window` points) / stddev
-// Returns null if fewer than `window` points.
+// Rolling z-score: (current - mean of last `window` points) / stddev.
+// Returns null if fewer than `window` points. Moments delegate to the shared
+// statsCore brick; the guards stay local and bit-identical (null on a short
+// window, 0 on a near-frozen series — a forward-filled FRED stall must read
+// as "no signal", not a huge z).
 function calcZScore(arr, window = 60) {
   if (!arr || arr.length < window) return null;
   const slice = arr.slice(-window).map(p => p.value);
-  const mean = slice.reduce((a, b) => a + b, 0) / window;
-  const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / window;
-  const std = Math.sqrt(variance);
+  const m = _scMean(slice);
+  const std = _scStdev(slice, 0);              // population (÷n), as before
   if (std < 0.0001) return 0;
-  return (slice[slice.length - 1] - mean) / std;
+  return (slice[slice.length - 1] - m) / std;
 }
 
 // ── Main Gold Model ────────────────────────────────────────────────────────────

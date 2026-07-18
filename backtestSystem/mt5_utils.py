@@ -2,9 +2,16 @@
 MT5 helpers: bar fetching and London time conversion with DST.
 """
 import logging
+import sys
 from datetime import datetime, timezone, timedelta, date as date_type
+from pathlib import Path
 
 log = logging.getLogger(__name__)
+
+_root = str(Path(__file__).resolve().parents[1])
+if _root not in sys.path:
+    sys.path.insert(0, _root)                    # repo root → pylego
+from pylego.instruments import pip_sizes_for     # noqa: E402  (shared pip table — single source of truth)
 
 try:
     import MetaTrader5 as mt5
@@ -12,12 +19,15 @@ try:
 except ImportError:
     HAS_MT5 = False
 
-PIP_SIZES = {
-    'EURUSD': 0.0001, 'GBPUSD': 0.0001, 'USDJPY': 0.01,
-    'AUDUSD': 0.0001, 'XAUUSD': 1.0,    'EURGBP': 0.0001,
-    'USDCAD': 0.0001, 'USDCHF': 0.0001, 'GBPJPY': 0.01,
-    'NAS100': 1.0,    'US100':  1.0,
-}
+# Keys unchanged; values identical to the former inline literal (golden-tested
+# in pylego/instruments_test.py). 'US100' resolves via the registry's broker
+# aliases (EXTRA_ALIASES in js/instrumentRegistry.js → instruments.json).
+PIP_SIZES = pip_sizes_for([
+    'EURUSD', 'GBPUSD', 'USDJPY',
+    'AUDUSD', 'XAUUSD', 'EURGBP',
+    'USDCAD', 'USDCHF', 'GBPJPY',
+    'NAS100', 'US100',
+])
 
 SYMBOL_ALIASES = {
     'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD', 'USD/JPY': 'USDJPY',

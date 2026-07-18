@@ -38,11 +38,13 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pylego.kv import KvClient                                  # noqa: E402
-from pylego.instruments import pip_size, mt5_symbol             # noqa: E402
+from pylego.instruments import pip_size, mt5_symbol, instrument  # noqa: E402
 from pylego.point_values import point_value                     # noqa: E402
+from pylego import events as EV                                 # noqa: E402
 from pylego.sizing import position_size                         # noqa: E402
 from pylego.broker.paper import PaperBroker                     # noqa: E402
 from pylego.quotes import QuoteFeed                             # noqa: E402
+from pylego.costs import expected_fill, max_spread              # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition   # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -75,6 +77,10 @@ DEFAULT_CFG: dict = {
     "max_open":        6,             # cap concurrent positions
     "enabled_pairs":   [],            # [] = use the plan's universe
     "cooldown":        3600,          # seconds between entries on the SAME pair
+    "max_spread_pips": None,          # None → per-asset-class caps (pylego.costs.max_spread:
+                                      # fx 2.0 pips, index/commodity 6×). Scalar = FX cap
+                                      # scaled per class, or a {fx,index,commodity} dict.
+                                      # (Was a hard-coded 50.0 — effectively no cap.)
     # Cadences: the z only changes once a day (plan refreshed nightly), so the
     # plan is pulled slowly; config/status on a medium timer; price watch (for the
     # protective-stop barrier + paper marking) on a light loop.
@@ -99,6 +105,16 @@ def _broker_sym(pair: str) -> str:
         return mt5_symbol(pair) or pair.upper()
     except Exception:
         return pair.upper()
+
+
+def _pair_event_ccys(pair: str) -> list[str]:
+    """Event currencies for a pair, resolved via the instrument registry with a
+    fall back to parsing the name itself (mirrors volatility_bot)."""
+    try:
+        sym = instrument(pair).get("oanda") or pair
+    except Exception:
+        sym = pair
+    return EV.pair_ccys(sym)
 
 
 # ── Telegram alerts (mirror oi_bot / DynAnchor) ───────────────────────────────
@@ -330,6 +346,10 @@ def run(base_url: str, force_live: bool) -> None:
     plan = None
     last_plan = last_status = 0.0
     warned_stale = False
+    event_windows = None                    # KV event_windows_v1 payload (or None)
+    event_ccys: dict[str, list[str]] = {}   # pair → event currencies (cached)
+    ev_blocks: dict[str, str | None] = {}   # once-per-state-change blackout logging
+    warned_events = False                   # log loud, but once per outage
     tg_tok, tg_cid = _load_tg(cfg, kv)          # re-resolved on each config refresh
     log.info(f"YieldSpread bot starting  magic={MAGIC}  mode={'paper' if paper else 'live'}  url={base_url}"
              + (f"  telegram={'on' if cfg.get('tg_enabled') else 'off'}"))
@@ -360,6 +380,21 @@ def run(base_url: str, force_live: bool) -> None:
                 tg_tok, tg_cid = _load_tg(cfg, kv)   # a just-typed token/chat applies live
             except Exception as e:
                 log.warning(f"config fetch failed: {e} — keeping current config")
+            # Event-blackout windows (server publishes hourly). FAIL-OPEN on
+            # missing/stale — it's a suppression gate — but say so loudly, once
+            # per outage (mirrors volatility_bot).
+            try:
+                event_windows = kv.get_json("event_windows_v1")
+            except Exception as e:
+                log.warning(f"event windows fetch failed: {e} — keeping current windows")
+            sr = EV.stale_reason(event_windows, nowt * 1000)
+            if sr and not warned_events:
+                log.warning(f"EVENT GATE INACTIVE (fail-open): {sr} — entries will NOT be "
+                            "suppressed around high-impact events until this recovers")
+                warned_events = True
+            elif not sr and warned_events:
+                log.info("event gate active again — blackout windows fresh")
+                warned_events = False
             try:
                 kv.put_status(KV_STATUS, build_status(cfg, broker, plan, paper))
             except Exception as e:
@@ -385,6 +420,8 @@ def run(base_url: str, force_live: bool) -> None:
 
             bal = broker.account_balance()
             open_count = len(broker.serialize_open_positions())
+            # Usable blackout payload this tick (None when missing/stale → fail open).
+            ev_payload = None if EV.stale_reason(event_windows, nowt * 1000) else event_windows
 
             for pair in pairs:
                 sig = signals.get(pair) or {}
@@ -460,6 +497,24 @@ def run(base_url: str, force_live: bool) -> None:
                 log_block_transition(log, guard_blocks, pair, guard_why)
                 if guard_why:
                     continue
+                # Event blackout: DEFER the entry — the z persists (it only moves
+                # on the nightly plan refresh), so a still-extreme pair simply
+                # enters on the first clear tick after the window. Exits above
+                # (z-revert / time stop / protective SL) always run.
+                if ev_payload:
+                    ccys = event_ccys.get(pair)
+                    if ccys is None:
+                        ccys = event_ccys[pair] = _pair_event_ccys(pair)
+                    hit, ev_why = EV.blackout(ccys, nowt * 1000, ev_payload.get("windows"))
+                    ev_why = f"event blackout: {ev_why}" if hit else None
+                    if ev_why != ev_blocks.get(pair):
+                        ev_blocks[pair] = ev_why
+                        if ev_why:
+                            log.warning(f"EVENT GATE [{pair}]: NEW entries deferred — {ev_why}")
+                        else:
+                            log.info(f"EVENT GATE [{pair}]: clear — entries resumed")
+                    if ev_why:
+                        continue
                 if px is None or not (px > 0):
                     continue
 
@@ -467,13 +522,21 @@ def run(base_url: str, force_live: bool) -> None:
                 sl_pct = float(cfg.get("sl_pct", 2.5))
                 sl_dist = px * sl_pct / 100.0
                 sl = px - sl_dist if direction == "LONG" else px + sl_dist
+                # Size off the spread-adjusted EXPECTED fill, not the raw mid: a
+                # market order can't be sized after it fills, and the fill pays
+                # half the spread — pricing that into the stop distance makes the
+                # risked % right on average (pylego.costs.expected_fill; mirrors
+                # range_line_bot / volatility_bot).
+                exp_px = expected_fill(px, direction == "LONG", pair, broker)
                 lots = size_for(pair, bal or 0.0, float(cfg.get("risk_pct", 0.5)),
-                                sl_dist, float(cfg.get("max_lot", 5.0)))
+                                exp_px - sl, float(cfg.get("max_lot", 5.0)))
                 # tp=0 — NO take-profit; the z-reversion / time exit is the only profit path.
                 # No dedupe_tag: Mt5Broker's default blocks on ANY open position for the
                 # pair+magic (one position per pair, which is what we want), and the
                 # FLAT/HELD branch above already guarantees we never enter while holding.
-                tid = broker.enter(pair, direction, sl, 0, lots, 50.0, paper,
+                # Spread cap via the shared per-asset-class brick (was a flat 50.0 —
+                # effectively no cap at all).
+                tid = broker.enter(pair, direction, sl, 0, lots, max_spread(pair, cfg), paper,
                                    comment=f"YS z{z:+.1f} {direction[0]}")
                 if tid:
                     guard.record_trade(pair)

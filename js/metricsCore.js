@@ -113,7 +113,7 @@ export const expectancy = pnls => (pnls.length ? mean(pnls) : 0);
 // actual trade frequency, clamped to ≥0.25yr so tiny samples don't blow up.
 export function summarizeTrades(pnls, dates) {
   const n = pnls.length;
-  if (!n) return { trades: 0, winRate: 0, profitFactor: 0, expectancy: 0, sharpe: 0, maxDD: 0, totalPnl: 0 };
+  if (!n) return { trades: 0, winRate: 0, profitFactor: 0, expectancy: 0, sharpe: 0, sharpeSE: null, minTrackYears: null, maxDD: 0, totalPnl: 0 };
   const m = mean(pnls);
   const sd = stdev(pnls, 0);            // population std, as in the original
   const sorted = dates.slice().sort();
@@ -122,13 +122,23 @@ export function summarizeTrades(pnls, dates) {
     0.25);
   const tradesPerYr = n / yrs;
   const perTradeSharpe = sd > 1e-9 ? m / sd : 0;
+  const annSharpe = perTradeSharpe * Math.sqrt(tradesPerYr);
+  // Sharpe honesty pair (2026-07): every card that renders this summary now
+  // carries the error bar (`SR ± sharpeSE`) and the minimum track record needed
+  // to trust SR > 0 at 95% — a Sharpe inside its own error bar of zero has
+  // shown nothing. Same trade-frequency basis as the Sharpe itself. Additive
+  // fields only; the frozen golden test compares the original keys.
+  const se = sharpeStdError(annSharpe, n, tradesPerYr);
+  const mtrYears = minTrackRecordLength(annSharpe, { periodsPerYear: tradesPerYr });
   return {
     trades: n,
     tradesPerYr: +tradesPerYr.toFixed(1),
     winRate: +(winRate(pnls) * 100).toFixed(1),
     profitFactor: +profitFactor(pnls).toFixed(3),
     expectancy: +m.toFixed(4),
-    sharpe: +(perTradeSharpe * Math.sqrt(tradesPerYr)).toFixed(3),
+    sharpe: +annSharpe.toFixed(3),
+    sharpeSE: Number.isFinite(se) ? +se.toFixed(3) : null,
+    minTrackYears: Number.isFinite(mtrYears) ? +mtrYears.toFixed(1) : null,
     maxDD: +maxDrawdownFromPnls(pnls).toFixed(3),
     totalPnl: +pnls.reduce((s, x) => s + x, 0).toFixed(3),
   };

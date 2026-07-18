@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pylego.kv import KvClient                              # noqa: E402
 from pylego import instruments as I                          # noqa: E402
 from pylego import point_values as PV                        # noqa: E402
+from pylego import events as EV                              # noqa: E402
 from pylego.sizing import position_size                      # noqa: E402
 from pylego.broker.paper import PaperBroker                  # noqa: E402
 from pylego.quotes import QuoteFeed                          # noqa: E402
@@ -110,6 +111,18 @@ def _deep_merge(base: dict, over: dict) -> dict:
     for k, v in (over or {}).items():
         out[k] = _deep_merge(base[k], v) if isinstance(v, dict) and isinstance(base.get(k), dict) else v
     return out
+
+
+def _pair_event_ccys(pair: str) -> list[str]:
+    """Event currencies for an instrument. Indices/metals ride their denomination
+    currency via the instrument registry (OANDA symbol carries the legs, e.g.
+    'nq' → NAS100_USD → USD) and fall back to parsing the name itself
+    (mirrors volatility_bot)."""
+    try:
+        sym = I.instrument(pair).get("oanda") or pair
+    except Exception:
+        sym = pair
+    return EV.pair_ccys(sym)
 
 
 # ── Telegram entry alerts ─────────────────────────────────────────────────────
@@ -312,6 +325,10 @@ def run(base_url: str, force_live: bool) -> None:
     reject_until: dict[str, float] = {}          # zone_id → epoch to retry after (anti-spam)
     plan = None
     last_plan = last_status = 0.0
+    event_windows = None                    # KV event_windows_v1 payload (or None)
+    event_ccys: dict[str, list[str]] = {}   # instrument → event currencies (cached)
+    ev_blocks: dict[str, str | None] = {}   # once-per-state-change blackout logging
+    warned_events = False                   # log loud, but once per outage
 
     def _sync_sessions(new_plan) -> None:
         """Adopt a plan: build a session per instrument (preserving one-shot state
@@ -365,6 +382,21 @@ def run(base_url: str, force_live: bool) -> None:
                 tg_creds = _load_tg(cfg, kv)       # pick up TG edits live
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
+            # Event-blackout windows (server publishes hourly). FAIL-OPEN on
+            # missing/stale — it's a suppression gate — but say so loudly, once
+            # per outage (mirrors volatility_bot).
+            try:
+                event_windows = kv.get_json("event_windows_v1")
+            except Exception as e:
+                log.warning(f"event windows fetch failed: {e} — keeping current windows")
+            sr = EV.stale_reason(event_windows, nowt * 1000)
+            if sr and not warned_events:
+                log.warning(f"EVENT GATE INACTIVE (fail-open): {sr} — entries will NOT be "
+                            "suppressed around high-impact events until this recovers")
+                warned_events = True
+            elif not sr and warned_events:
+                log.info("event gate active again — blackout windows fresh")
+                warned_events = False
             try:
                 kv.put_status("oi_bot_status", build_status(cfg, broker, plan, paper, sessions))
             except Exception as e:
@@ -385,6 +417,8 @@ def run(base_url: str, force_live: bool) -> None:
             if bal:
                 guard.update_balance(bal)
             guard_bal = bal if bal else 1_000_000.0
+            # Usable blackout payload this tick (None when missing/stale → fail open).
+            ev_payload = None if EV.stale_reason(event_windows, nowt * 1000) else event_windows
 
             for instr in instruments:
                 sess = sessions.get(instr)
@@ -401,6 +435,23 @@ def run(base_url: str, force_live: bool) -> None:
                 log_block_transition(log, guard_blocks, instr, guard_why)
                 if guard_why:
                     continue
+                # Event blackout: DEFER new entries (skip decide — zones aren't
+                # burned; a zone still triggered re-fires on the first clear tick
+                # after the window). The broker-enforced SL/TP above always run.
+                if ev_payload:
+                    ccys = event_ccys.get(instr)
+                    if ccys is None:
+                        ccys = event_ccys[instr] = _pair_event_ccys(instr)
+                    hit, ev_why = EV.blackout(ccys, nowt * 1000, ev_payload.get("windows"))
+                    ev_why = f"event blackout: {ev_why}" if hit else None
+                    if ev_why != ev_blocks.get(instr):
+                        ev_blocks[instr] = ev_why
+                        if ev_why:
+                            log.warning(f"EVENT GATE [{instr}]: NEW entries deferred — {ev_why}")
+                        else:
+                            log.info(f"EVENT GATE [{instr}]: clear — entries resumed")
+                    if ev_why:
+                        continue
                 for spec in sess.decide(px, tol=_tol(cfg, instr)):
                     if spec["sl"] is None:
                         continue

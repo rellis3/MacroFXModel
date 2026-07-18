@@ -1,6 +1,7 @@
 // gold-backtest-worker.js — Gold strategy backtester Web Worker (type: module)
 import { tsToLondon, computeATR, computeDirection } from './backtest-engine.js';
 import { assessEntry } from './vumanchu.js';
+import { summarizeTrades } from './metricsCore.js';   // ONE definition of Sharpe/winRate/PF (+ error bars)
 
 const PIP    = 0.1;
 const SYMBOL = 'XAU/USD';
@@ -338,18 +339,19 @@ function computeStats(trades, riskPct = 1.0) {
   const variance = rVals.reduce((s, r) => s + (r - mean) ** 2, 0) / n;
   const stdR = Math.sqrt(variance);
 
+  // Sharpe/winRate/PF via the shared metrics brick (same per-trade × √(trades/yr)
+  // convention this worker used inline, ONE definition + the honesty pair:
+  // sharpeSE error bar and minTrackYears). Equity/DD curves, CAGR, MFE and the
+  // monthly table stay local — they depend on riskPct compounding.
+  const brick = summarizeTrades(rVals,
+    trades.map(t => new Date(t.entryTs).toISOString().slice(0, 10)));
+
   const firstTs = trades[0].entryTs, lastTs = trades[n - 1].entryTs;
   const years = Math.max(0.01, (lastTs - firstTs) / (365.25 * 86400000));
-  const tpy   = n / years;
-  const sharpe = stdR > 0 ? (mean / stdR) * Math.sqrt(tpy) : 0;
 
   const finalEq = 1 + cumR * (riskPct / 100);
   const cagr = (Math.pow(Math.max(finalEq, 0.001), 1 / years) - 1) * 100;
   const calmar = maxDD > 0 ? cagr / (maxDD * 100) : 0;
-
-  const gp = rVals.filter(r => r > 0).reduce((a, b) => a + b, 0);
-  const gl = Math.abs(rVals.filter(r => r < 0).reduce((a, b) => a + b, 0));
-  const pf = gl > 0 ? gp / gl : gp > 0 ? 99 : 0;
 
   const mfes  = trades.map(t => t.mfe ?? 0);
   const maes  = trades.map(t => t.mae ?? 0);
@@ -377,12 +379,13 @@ function computeStats(trades, riskPct = 1.0) {
 
   return {
     n, wins, losses: n - wins,
-    winRate: +(wins / n * 100).toFixed(1),
+    winRate: brick.winRate,
     meanR: +mean.toFixed(3), stdR: +stdR.toFixed(3),
-    sharpe: +sharpe.toFixed(2), cagr: +cagr.toFixed(2),
+    sharpe: brick.sharpe, sharpeSE: brick.sharpeSE, minTrackYears: brick.minTrackYears,
+    cagr: +cagr.toFixed(2),
     calmar: +calmar.toFixed(2),
     maxDD: +(maxDD * 100).toFixed(2),
-    profitFactor: +pf.toFixed(2),
+    profitFactor: brick.profitFactor,
     avgMfe: +avgMfe.toFixed(2), avgMae: +avgMae.toFixed(2),
     mfeCaptureRatio: +mfeCap.toFixed(3),
     equityCurve: eqSmall, drawdownCurve: ddSmall, monthly,
