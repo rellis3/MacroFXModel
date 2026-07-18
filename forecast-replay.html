@@ -104,11 +104,17 @@ function calcMode() { return document.getElementById('calc').querySelector('butt
 function srcMode()  { return document.getElementById('src').querySelector('button.on')?.dataset.s || 'backtest'; }
 // The band %s a day should draw: the archived forecast's own fields (Original) or
 // COG's constants applied to that day's vol_annual (COG). null if unavailable.
+const _REPLAY_CCHV = new Set(['nq']);   // COG draws NQ's bands from close-to-close HV σ (matches the COG export)
 function bandsFor(f) {
   if (!f) return null;
   if (calcMode() === 'cog') {
-    if (!(f.vol_annual > 0)) return null;
-    const s = f.vol_annual / COG_SQRT252;
+    // NQ's COG bands use the close-to-close HV σ (cchv_annual, Backtest source only) —
+    // like _cogVol in the export; every other pair uses the platform vol_annual.
+    const name = ($('pair').value || '').toLowerCase();
+    let va = f.vol_annual;
+    if (_REPLAY_CCHV.has(name) && f.cchv_annual > 4 && f.cchv_annual < 200) va = f.cchv_annual;
+    if (!(va > 0)) return null;
+    const s = va / COG_SQRT252;
     return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
   }
   return { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 };
