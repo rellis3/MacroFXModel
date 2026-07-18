@@ -30,11 +30,11 @@ import os
 import sys
 from dataclasses import dataclass
 
-import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from pylego.instruments import pip_size, asset_class, instrument_keys  # noqa: E402
+from pylego.barrier_race import Entry, race_grid  # noqa: E402
 
 _M1_DIR = os.path.join(os.path.dirname(__file__), 'data', 'm1')
 
@@ -122,77 +122,33 @@ def run_window(bars: pd.DataFrame, w_start: pd.Timestamp, w_end: pd.Timestamp,
         return []
 
     entry_times = window.resample(entry_freq).first().dropna().index
-    max_sl = max(sl_grid)
-    max_bars_ahead = int(max_hours * 60)   # M1 bars
-
-    high = bars['high'].to_numpy()
-    low = bars['low'].to_numpy()
-    close = bars['close'].to_numpy()
     idx = bars.index
-
-    # Precompute, per entry, the forward cummax(high)/cummin(low) path once —
-    # every SL/TP combo then reads off this same path (no re-walking per combo).
-    paths = []   # (entry_price, cummax_high, cummin_low, last_close)
+    entries: list[Entry] = []
     for t in entry_times:
         pos = idx.searchsorted(t)
         if pos >= len(idx):
             continue
-        end_pos = min(pos + max_bars_ahead, len(idx))
-        if end_pos - pos < 10:   # not enough runway left in the data
-            continue
-        h = high[pos:end_pos]
-        l = low[pos:end_pos]
-        paths.append((
-            float(bars['open'].iloc[pos]),
-            np.maximum.accumulate(h),
-            np.minimum.accumulate(l),
-            float(close[end_pos - 1]),
-        ))
-
-    if not paths:
+        entries.append(Entry(idx=pos, direction=1))
+        entries.append(Entry(idx=pos, direction=-1))
+    if not entries:
         return []
 
+    max_bars_ahead = int(max_hours * 60)   # M1 bars
+    sl_grid_price = [s * pip for s in sl_grid]
+    price_to_pip = dict(zip(sl_grid_price, sl_grid))   # exact float roundtrip, no re-derivation
+
+    barrier_results = race_grid(bars, entries, sl_grid_price, tp_r_grid, max_bars_ahead)
+
     results: list[GridResult] = []
-    for sl_pips in sl_grid:
-        sl_delta = sl_pips * pip   # convert grid units (pips) -> actual price distance
-        for tp_r in tp_r_grid:
-            tp_delta = sl_delta * tp_r
-            outcomes_r = []
-            sl_hits = tp_hits = timeouts = 0
-            for entry, cmax, cmin, last_close in paths:
-                for sign in (1.0, -1.0):   # LONG then SHORT from the same entry/path
-                    if sign > 0:
-                        tp_price, sl_price = entry + tp_delta, entry - sl_delta
-                        tp_idx_arr = np.flatnonzero(cmax >= tp_price)
-                        sl_idx_arr = np.flatnonzero(cmin <= sl_price)
-                    else:
-                        tp_price, sl_price = entry - tp_delta, entry + sl_delta
-                        tp_idx_arr = np.flatnonzero(cmin <= tp_price)
-                        sl_idx_arr = np.flatnonzero(cmax >= sl_price)
-                    tp_i = tp_idx_arr[0] if tp_idx_arr.size else None
-                    sl_i = sl_idx_arr[0] if sl_idx_arr.size else None
-
-                    if tp_i is not None and (sl_i is None or tp_i <= sl_i):
-                        outcomes_r.append(tp_r)
-                        tp_hits += 1
-                    elif sl_i is not None:
-                        outcomes_r.append(-1.0)
-                        sl_hits += 1
-                    else:
-                        outcomes_r.append(sign * (last_close - entry) / sl_delta)
-                        timeouts += 1
-
-            n = len(outcomes_r)
-            if n == 0:
-                continue
-            avg_r = float(np.mean(outcomes_r))
-            results.append(GridResult(
-                window_start=str(w_start.date()), window_end=str(w_end.date()),
-                sl_pips=sl_pips, tp_r=tp_r, n=n,
-                win_rate=round(tp_hits / n, 3), sl_rate=round(sl_hits / n, 3),
-                timeout_rate=round(timeouts / n, 3),
-                avg_r=round(avg_r, 3), expectancy_pips=round(avg_r * sl_pips, 2),
-            ))
+    for r in barrier_results:
+        sl_pips = price_to_pip[r.sl]
+        results.append(GridResult(
+            window_start=str(w_start.date()), window_end=str(w_end.date()),
+            sl_pips=sl_pips, tp_r=r.tp_r, n=r.n,
+            win_rate=round(r.win_rate, 3), sl_rate=round(r.sl_rate, 3),
+            timeout_rate=round(r.timeout_rate, 3),
+            avg_r=round(r.avg_r, 3), expectancy_pips=round(r.avg_r * sl_pips, 2),
+        ))
     return results
 
 

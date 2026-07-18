@@ -51,6 +51,12 @@
   .bar-track { flex:1; height:5px; background:var(--border); border-radius:3px; overflow:hidden }
   .bar-fill { height:100%; border-radius:3px; background:var(--blue) }
   .ac-pill { font-size:9.5px; padding:1px 6px; border-radius:20px; border:1px solid var(--border); color:var(--text3); font-family:-apple-system,sans-serif }
+
+  .div-bar { display:inline-flex; align-items:center; gap:6px; font:11px 'DM Mono',monospace }
+  .div-bar-track { position:relative; height:12px; width:110px; background:#0d1117; border:1px solid var(--border); border-radius:3px; flex:0 0 auto }
+  .div-bar-mid { position:absolute; left:50%; top:-1px; bottom:-1px; width:1px; background:var(--text3) }
+  .div-bar-fill { position:absolute; top:1px; bottom:1px; border-radius:2px }
+  .div-bar-val { width:52px; text-align:right }
 </style>
 </head>
 <body>
@@ -99,15 +105,125 @@
   <div class="card muted" style="font-size:11.5px;line-height:1.6">
     <b class="amber">Read this as Layer 1, not a strategy.</b> No spread/slippage, no bot entry logic — mechanical
     H4 sampling only. This characterizes the raw terrain (how much room each asset needs, and how unstable a
-    fixed threshold is over time); it does not tell you what to set live. That's Layer 2: rerun the same grid
-    conditioned on a strategy's actual entries via the fill walker, and compare against this baseline.
+    fixed threshold is over time); it does not tell you what to set live. That's Layer 2 below: rerun the same
+    grid conditioned on a strategy's actual entries via the shared <code>pylego.barrier_race</code> walker, and
+    compare against this baseline.
     Snapshot generated <span id="gen-date"></span> from <code>VolRangeForecaster/data/sltp_all_assets_6m.csv</code>
     (19,390 rows). Static snapshot — M1 parquet cache is local/dev-only (gitignored), not present on Railway,
     so this page reads a precomputed JSON rather than recomputing live. Regenerate with:
     <code id="regen-cmd"></code>
   </div>
 
+  <h1 style="margin-top:32px">Signal-Conditioned SL/TP <span class="muted" style="font-size:12px">— Layer 2 (volatility_bot)</span></h1>
+  <div class="sub">
+    Layer 1 asks the question mechanically; Layer 2 asks it only at a bot's REAL entries. This replays
+    <code>volatility_bot/engine.py</code>'s actual, unmodified <code>decide()</code> tick-by-tick through years of
+    real M1 — no mechanical sampling, single direction per entry (the bot's real call) — then feeds those real
+    entries into the SAME shared barrier-race grid Layer 1 uses, plus real spread cost.
+  </div>
+
+  <div class="card" style="border-color:#d29922">
+    <h2 class="amber">Two caveats, stated loudly</h2>
+    <div class="desc">
+      <b>(1) "Today's policy, historical prices" ≠ "what the bot actually decided historically."</b> The learned
+      fade/follow policy is periodically relearned; this uses one live snapshot applied across all of history, not
+      a day-by-day historical policy (which isn't stored anywhere).<br>
+      <b>(2) The daily σ used to size the bands is a local proxy</b> (20-session causal rolling realized vol), not
+      the platform's exact YZ-30/GARCH/HV20 — an approximation, not a bit-identical replay. See
+      <code>volatility_bot/layer2_sltp_replay.py</code> and <code>PYTHON_LEGO.md §8</code>.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Headline</h2>
+    <div class="desc">Per pair: how the bot's OWN actual exit (its real fade inner/outer levels, cost-adjusted)
+      performed on its own real entries, vs. the best cell in a swept uniform SL/TP grid applied to those SAME
+      entries. The swept grid is a genuinely different exit mechanism (fixed, not adaptive) — this asks whether a
+      simpler fixed exit would have done better, not whether the entries themselves have edge.</div>
+    <div class="row" id="l2-stat-tiles"></div>
+  </div>
+
+  <div class="card">
+    <h2>Per-pair: real entries, own exit vs. best swept grid</h2>
+    <div class="desc">Click a column to sort. "Own exit" n is the number of real <code>decide()</code>-fired
+      entries for that pair (the OOS floor is 30). Bars run &minus;0.5R to +0.5R, centered on zero.</div>
+    <div class="table-scroll"><table class="data" id="l2-table"></table></div>
+  </div>
+
 <script>
+const L2_DOMAIN = 0.5;
+function divBar(v) {
+  if (v === null || v === undefined) return '<span class="muted">n/a</span>';
+  const pct = Math.max(0, Math.min(100, 50 + (v / L2_DOMAIN) * 50));
+  const isPos = v >= 0;
+  const left = isPos ? 50 : pct;
+  const width = Math.abs(pct - 50);
+  const color = isPos ? 'var(--pos)' : 'var(--neg)';
+  const valStr = (v >= 0 ? '+' : '') + v.toFixed(3);
+  return `<span class="div-bar"><span class="div-bar-val ${isPos ? 'pos' : 'neg'}">${valStr}</span>` +
+    `<span class="div-bar-track"><span class="div-bar-mid"></span>` +
+    `<span class="div-bar-fill" style="left:${left}%;width:${width}%;background:${color}"></span></span></span>`;
+}
+
+async function loadLayer2() {
+  let L2;
+  try {
+    L2 = await (await fetch('./VolRangeForecaster/data/vol_bot_layer2_dashboard_data.json')).json();
+  } catch (e) {
+    el('l2-stat-tiles').innerHTML = `<div class="tile"><div class="lbl">Layer 2</div><div class="big neg">not available</div>` +
+      `<div class="note">vol_bot_layer2_dashboard_data.json not found — run volatility_bot/layer2_sltp_replay.py --pair all --json-out ...</div></div>`;
+    return;
+  }
+  const rows = L2.per_pair;
+
+  (function () {
+    const totalEntries = rows.reduce((a, r) => a + r.n_entries, 0);
+    const ownVals = rows.map(r => r.own_exit.avg_r).filter(v => v !== null);
+    const nPos = ownVals.filter(v => v > 0).length;
+    const medianOwn = (() => { const s = [...ownVals].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; })();
+    const tiles = [
+      { label: 'Pairs replayed', value: rows.length, note: `Real decide() entries generated per pair from ${L2.generated_from_plan ? new Date(L2.generated_from_plan).toISOString().slice(0,10) : 'the plan snapshot'}.` },
+      { label: 'Total real entries', value: totalEntries.toLocaleString(), note: 'Sum across all replayed pairs — the sample this whole section rests on.' },
+      { label: 'Median own-exit avg R', value: (medianOwn >= 0 ? '+' : '') + medianOwn.toFixed(3) + 'R', cls: medianOwn >= 0 ? 'pos' : 'neg', note: "The bot's real adaptive exit, median across pairs." },
+      { label: 'Pairs with own-exit > 0', value: `${nPos} / ${ownVals.length}`, cls: nPos > ownVals.length / 2 ? 'pos' : 'neg', note: 'How many pairs the current live policy is actually ahead on, historically.' },
+    ];
+    el('l2-stat-tiles').innerHTML = tiles.map(t => `
+      <div class="tile"><div class="lbl">${t.label}</div><div class="big ${t.cls || ''}">${t.value}</div><div class="note">${t.note}</div></div>`).join('');
+  })();
+
+  (function () {
+    const cols = [
+      { key: 'pair', label: 'Pair', fmt: (v, r) => `${v} <span class="ac-pill">${r.asset_class}</span>` },
+      { key: 'n_entries', label: 'N', fmt: v => v },
+      { key: 'decisions', label: 'Decisions', fmt: (v, r) => Object.entries(r.by_decision).map(([k, n]) => `${k}×${n}`).join(' ') },
+      { key: 'own_r', label: 'Own exit avg R', fmt: (v, r) => divBar(r.own_exit.avg_r) },
+      { key: 'own_win', label: 'Own win/SL %', fmt: (v, r) => r.own_exit.win_rate != null ? `${(r.own_exit.win_rate*100).toFixed(0)}% / ${(r.own_exit.sl_rate*100).toFixed(0)}%` : 'n/a' },
+      { key: 'best_r', label: 'Best swept avg R', fmt: (v, r) => divBar(r.best_grid ? r.best_grid.avg_r : null) },
+      { key: 'best_combo', label: 'Best combo', fmt: (v, r) => r.best_grid ? `${r.best_grid.sl_mult}×SL, ${r.best_grid.tp_r}R` : 'n/a' },
+    ];
+    let sortKey = 'own_r', sortDir = 1;
+    const sortVal = (r, key) => {
+      if (key === 'own_r') return r.own_exit.avg_r ?? -999;
+      if (key === 'best_r') return r.best_grid ? r.best_grid.avg_r : -999;
+      if (key === 'own_win') return r.own_exit.win_rate ?? -1;
+      return r[key];
+    };
+    function render() {
+      const sorted = rows.slice().sort((a, b) => (sortVal(a, sortKey) > sortVal(b, sortKey) ? 1 : sortVal(a, sortKey) < sortVal(b, sortKey) ? -1 : 0) * sortDir);
+      const thead = `<thead><tr>${cols.map(c => `<th data-key="${c.key}">${c.label}${sortKey === c.key ? (sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
+      const tbody = `<tbody>${sorted.map(r => `<tr>${cols.map(c => `<td>${c.fmt(r[c.key], r)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+      const table = el('l2-table');
+      table.innerHTML = thead + tbody;
+      table.querySelectorAll('th').forEach(th => th.addEventListener('click', () => {
+        const key = th.getAttribute('data-key');
+        if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
+        render();
+      }));
+    }
+    render();
+  })();
+}
+
 const el = id => document.getElementById(id);
 
 function lerp(a, b, t) { return a + (b - a) * t; }
@@ -234,6 +350,7 @@ async function main() {
   })();
 }
 main();
+loadLayer2();
 </script>
 </body>
 </html>

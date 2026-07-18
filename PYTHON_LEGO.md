@@ -347,3 +347,49 @@ name.
 Until a bot does all three, it is **not** "done" — an unconfigurable bot whose
 trades don't reach the positions tab fails this contract regardless of how clean
 its internal bricks are.
+
+## 8. SL/TP Distribution — Layer 2 (signal-conditioned barrier race)
+
+Companion to `VolRangeForecaster/sltp_distribution.py` ("Layer 1" — mechanical,
+signal-agnostic entries, every 4h, both directions, no costs; see its own
+docstring). Layer 2 asks the same question — for a fixed SL/TP grid, which
+barrier gets touched first on the real M1 path — but conditioned on each bot's
+**actual entry signal**, single direction, with real costs. The point: none of
+the 6 live bots below have enough *live* trade history to clear the ≥30-OOS-trade
+floor (Gold 15, GoldV2 1, Confluence ~59 fragmented across 17 symbols, the rest
+0 logged) — replaying the real signal over years of M1 gets past that for free.
+
+**✅ Built — `pylego/barrier_race.py`** (+ `barrier_race_test.py`, 7 synthetic
+cases, offline). The ONE shared barrier walker: given `bars` + a list of
+`Entry(idx, direction, entry_price=None)` + an SL/TP grid, walks the real
+forward path and returns win/SL/timeout rate + avg R, full precision (rounding
+is a caller/display concern, not the core's — round once, at the edge). Pulled
+out of Layer 1's `run_window()` so a bot's signal replay shares the exact same
+walker instead of copying it (the bit-identical-port drift bug this whole doc
+exists to prevent). `cost_price` param takes a round-trip spread in price units,
+dragging every outcome by `cost_price / sl` R.
+
+**✅ Adopted — Layer 1** (`VolRangeForecaster/sltp_distribution.py`). Refactored
+to build `Entry` objects (both directions, same bar) and call `race_grid`
+instead of its own inline walker. Regression-verified **bit-identical** to the
+pre-refactor `sltp_gold_6m.csv` (300/300 rows, `df.equals()` true) before this
+was trusted.
+
+**Per-bot Layer 2 status — each has a genuinely different blocker, not just "no
+adapter yet":**
+
+| Bot | Blocker | What it'd take |
+|---|---|---|
+| **Gold** (`Gold/main.py`) | Entry logic (`_scan_zones`/`_check_vumanchu`, line 806-955) calls **live HTTP gates** — `_macro_allows` and `_ml_allows` hit the dashboard at runtime. A historical replay either needs those gates' historical answers (may not exist) or must run gate-free, which tests a *looser* signal than the live bot actually trades — a real methodology change, not just data plumbing. | Decide explicitly: replay gate-free (label the caveat loudly) or reconstruct historical macro/ML answers if logged anywhere. |
+| **GoldV2** | Same zone architecture/gate issue as Gold, plus only 1 live trade to sanity-check a replay against. | Same decision as Gold, lower priority until it accrues live data to cross-check. |
+| **Confluence** | Same architecture family as Gold (shares the gate dependency), across 17 symbols. | Same gate decision, then pool by asset class (not raw-pool 17 instruments). |
+| **volatility_bot** | ✅ **Adopted** — `VolRangeForecaster/data/volatility_bot_plan_snapshot.json` (pulled live from `GET /api/volatility-bot/plan` on Railway, since `getPerLineBook()` reads R2 and isn't reachable from this sandbox) + `volatility_bot/layer2_sltp_replay.py`. Replays the REAL `engine.decide()` tick-by-tick through a `SessionTracker` over years of M1, using a locally-computed **causal rolling realized-vol proxy** (`_sigma_proxy`, 20-session close-to-close log-return std) scaled by the snapshot's own `frac/sigma` ratio — NOT the platform's exact YZ-30/GARCH σ, a documented approximation. Two caveats stated loudly in the script's own docstring: (1) "today's learned policy, replayed on historical prices" ≠ "what the bot actually decided historically" (policy is periodically relearned); (2) the σ proxy is an approximation. Exit is deliberately NOT replayed — real entries feed the shared `pylego.barrier_race` grid, a genuinely different question ("what UNIFORM SL/TP would work best") from the bot's own adaptive fade/follow inner/outer exit. | **First result (gold, 2021-07→2026-07, 1,051 real entries, all `fade`)**: the bot's OWN actual exits average **‑0.40R** (49.1% win / 50.8% SL, cost-adjusted) — well past the ≥30-trade floor, so this is a real signal, not noise. The swept grid's best cell (SL/TP both ~2× the bot's own average distance) only reaches ‑0.03R — better, not positive. Read as a first honest pass, not a verdict: could be current-policy-drift, could be the σ-proxy shifting which cells fire vs the platform's real σ. Next: same replay on more pairs, then chase which of the two caveats explains the gap. |
+| **oi_bot** | SL/TP1/TP2 are genuinely fixed (good fit for the grid) but pre-computed by **JS** (`js/oiZones.js`) — a Python replay needs that zone math ported or called cross-language. | Same "generate, don't port" tension as Category A — needs a decision on which language owns the replay. |
+| **range_line_bot** | No take-profit at all — chandelier-trailed stop only; entry-firing is inlined in the live `run()` loop (`range_line_bot.py:368-620`), not a pure function. | (a) Extract `should_enter()`-style pure logic from `run()`; (b) this bot needs a **fixed-SL × trail-multiplier** grid, not fixed-SL/TP — a different `race_grid` isn't the right tool unmodified. |
+| **YieldSpreadBot** | Pure `direction_from_z(z, inverted)` (`yield_spread_bot.py:196`) — closest to a clean signal — but **no cost model exists at all** for this bot, and no TP in code (z-revert/time exit, not barrier). | Build the cost model first (this bot has nothing to extend), then the same trail-vs-grid question as range_line_bot for its exit. |
+
+**Bottom line:** every bot needs a real decision (gate-replay policy, plan-
+reconstruction vs. current-policy-on-history, cross-language zone replay, or an
+extraction/cost-model prerequisite) before its Layer 2 adapter is honest to
+build — none is a "just wire it up" afternoon task. Pick one blocker to resolve
+next rather than building a fragile approximation across all six at once.
