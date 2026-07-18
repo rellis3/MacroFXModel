@@ -65,6 +65,16 @@ if neither beats ungated, the verdict is **"no gate"**. Either null is recorded
 here and in `BACKTEST_INDEX.md`; no weight-fitting, tier-tuning or component
 swapping to rescue it.
 
+## Diagnostics displayed alongside (NOT part of the test)
+
+**"Credit Vega"** — rolling 63d beta of Δ(HY OAS, bps) on Δ(VIX, points), labelled
+High/Elevated/Normal/Low by its trailing 3y percentile. Reading: low = credit
+absorbing vol spikes; high = stress transmitting into credit. Strictly a rolling
+beta ("vega" is display shorthand). It contributes **nothing** to the CSI, the
+gate, or the verdict — adding inputs to a pre-registered test voids it. If CSI
+passes, a vega-conditioned gate may be proposed as a **new** pre-registered
+follow-up; it must never be retrofitted into this one.
+
 ## Result (fill in after the one Railway run — then this section is final)
 
 - Date run: _

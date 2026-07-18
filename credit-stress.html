@@ -82,6 +82,27 @@ function plotZ(canvas, s, height=220) {
   s.forEach((p,i)=>{ const x=X(i),y=Y(p.v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
 }
 
+function plotVega(canvas, s, height=180) {
+  const dpr=window.devicePixelRatio||1, W=canvas.clientWidth, H=height;
+  canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
+  const padL=40,padR=10,padT=10,padB=20, pw=W-padL-padR, ph=H-padT-padB;
+  const vals=s.map(p=>p.beta); let lo=Math.min(...vals,0), hi=Math.max(...vals,1);
+  const pad=(hi-lo)*0.08||0.5; lo-=pad; hi+=pad;
+  const n=s.length, X=i=>padL+(n<=1?0:i/(n-1)*pw), Y=v=>padT+ph-((v-lo)/(hi-lo))*ph;
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.fillStyle='#6b7a8d'; ctx.font='10px monospace';
+  for(let t=0;t<=4;t++){ const v=lo+(hi-lo)*t/4, y=Y(v); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); ctx.fillText(v.toFixed(1),4,y+3); }
+  ctx.fillStyle='#6b7a8d'; let lastY='';
+  for(let i=0;i<n;i++){ const yr=s[i].d.slice(0,4); if(yr!==lastY && i%Math.ceil(n/8)<1){ ctx.fillText(yr, X(i)-12, H-6); lastY=yr; } }
+  // colour segments by percentile label
+  for(let i=1;i<n;i++){
+    const p=s[i].pctl;
+    ctx.strokeStyle = p==null?'#4f7df0': p>=80?'#f97316': p>=60?'#eab308':'#4f7df0';
+    ctx.lineWidth=1.6; ctx.beginPath();
+    ctx.moveTo(X(i-1),Y(s[i-1].beta)); ctx.lineTo(X(i),Y(s[i].beta)); ctx.stroke();
+  }
+}
+
 function cmpTable(o){
   const row=(label,v,hl)=>`<tr${hl?' style="font-weight:700;background:rgba(79,125,240,.08)"':''}><td>${label}</td>
     <td class="mono">${fmt(v.is.sharpe)}</td><td class="mono">${fmt(v.is.maxDD,1)}%</td>
@@ -127,6 +148,14 @@ function render(j){
       <div class="cap">Tiers frozen: ×1 &lt; 1σ · ×0.5 at 1–2σ · ×0 ≥ 2σ. Publication lags OAS +2d / VIX +1d, applied as-of ≤ t−1.</div></div>
     <div class="panel"><h2>CSI history</h2><canvas id="csic"></canvas>
       <div class="cap">Amber band = half exposure, orange = flat. Sanity check: 2008 / 2011 / 2020 should light up; if they don't, distrust the index, not history.</div></div>
+    ${j.vega && j.vega.current ? `<div class="panel"><h2>Credit Vega <span class="sub" style="font-weight:400">— spread sensitivity to volatility (diagnostic only)</span></h2>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
+        <span class="chip ${j.vega.current.label==='High'?'expo0':j.vega.current.label==='Elevated'?'expo05':'expo1'}">${j.vega.current.label} — ${fmt(j.vega.current.beta,1)} bps per VIX pt</span>
+        <span class="chip">${j.vega.current.pctl==null?'–':j.vega.current.pctl+'th pctl (3y)'}</span>
+        <span class="chip">as of ${j.vega.current.date}</span>
+      </div>
+      <canvas id="vegac"></canvas>
+      <div class="cap">Rolling 63d beta of Δ(HY OAS, bps) on Δ(VIX, pts) — strictly a beta, "vega" is shorthand. <b>Low</b> = credit absorbing vol spikes (calm plumbing); <b>High</b> (orange) = stress transmitting into credit. <b>Not part of the frozen CSI gate or verdict</b> — adding inputs to a pre-registered test would void it; a vega-conditioned gate is a possible pre-registered follow-up if CSI survives.</div></div>` : ''}
     <div class="panel"><h2>PRIMARY — equal-weight long-currency basket (decides the verdict)</h2>${cmpTable(j.primary)}
       <div class="cap">The purest always-on risk book — what a stress gate exists to protect. Split ${Math.round(j.params.isFrac*100)}/${Math.round((1-j.params.isFrac)*100)}; gate switches cost ${j.params.gateCostBps}bps.</div></div>
     <div class="panel"><h2>SECONDARY — trend basket (reported, not decisive)</h2>${cmpTable(j.secondary)}
@@ -134,6 +163,7 @@ function render(j){
     <div class="panel"><h2>Data — FRED components (publication-lag-shifted)</h2>
       <table><thead><tr><th>Component</th><th>Series</th><th>obs</th><th>from</th><th>to</th></tr></thead><tbody>${fred}</tbody></table></div>`;
   plotZ($('csic'), j.csiSeries);
+  if (j.vega && j.vega.series && j.vega.series.length) plotVega($('vegac'), j.vega.series);
 }
 $('run').addEventListener('click', run);
 run();

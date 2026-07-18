@@ -6,7 +6,7 @@
  */
 import {
   CSI_DEFAULTS, buildCsi, gateExposure, buildGateSeries, applyGate,
-  dailyStats, runCsiOverlay, evaluateCsi,
+  dailyStats, runCsiOverlay, evaluateCsi, creditVega, vegaLabel,
 } from './creditStressCore.js';
 
 let pass = 0, failCount = 0;
@@ -102,6 +102,36 @@ console.log('runCsiOverlay / evaluateCsi');
   const overlay3 = runCsiOverlay({ dates, returns: rets }, badCsi, badCsi, { isFrac: 0.5 });
   const ev3 = evaluateCsi(overlay3);
   ok('harmful gate → verdict no-gate', ev3.pass === false && ev3.verdict === 'no-gate');
+}
+
+// ── creditVega (diagnostic) ──────────────────────────────────────────────────
+console.log('creditVega');
+{
+  const N = 400, dates = tradingDates(N);
+  // VIX: deterministic zig-zag walk; spread reacts at k bps/VIX-pt, with a
+  // regime shift k=2 → k=8 at i=200. Spread is in % points (bps = ×100).
+  let s = 7; const rand = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+  const vix = [15]; for (let i = 1; i < N; i++) vix.push(Math.max(9, vix[i - 1] + (rand() - 0.5) * 4));
+  const spread = [4];
+  for (let i = 1; i < N; i++) {
+    const k = i < 200 ? 2 : 8;                       // bps per VIX point
+    spread.push(spread[i - 1] + (k * (vix[i] - vix[i - 1])) / 100);
+  }
+  const v = creditVega(toSeries(dates, spread), toSeries(dates, vix), { window: 40, pctlWindow: 150 });
+  const early = v.series.find(p => p.d === dates[150]);
+  const late = v.series[v.series.length - 1];
+  // percentile is RELATIVE to the trailing window: it flags High while the window
+  // still spans both regimes (dates[280]), then adapts once fully in the new one.
+  const shift = v.series.find(p => p.d === dates[240]);
+  ok('recovers the early beta (≈2 bps/pt)', Math.abs(early.beta - 2) < 0.3);
+  ok('detects the regime shift (late beta ≈8)', Math.abs(late.beta - 8) < 0.5);
+  ok('percentile flags High across the regime shift', shift.pctl >= 80 && vegaLabel(shift.pctl) === 'High');
+  ok('current reading has beta/pctl/label', v.current && Number.isFinite(v.current.beta)
+     && ['High', 'Elevated', 'Normal', 'Low'].includes(v.current.label));
+  ok('labels: cuts respected', vegaLabel(85) === 'High' && vegaLabel(65) === 'Elevated'
+     && vegaLabel(50) === 'Normal' && vegaLabel(10) === 'Low' && vegaLabel(NaN) === null);
+  ok('too-short input → empty, null current',
+     creditVega(toSeries(dates.slice(0, 10), spread.slice(0, 10)), toSeries(dates.slice(0, 10), vix.slice(0, 10)), { window: 40 }).current === null);
 }
 
 // ── dailyStats sanity ────────────────────────────────────────────────────────

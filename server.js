@@ -40,7 +40,7 @@ import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, co
 import { runTrendBasket } from './js/trendBasketEngine.js';
 import { runEconTrend, runEconTrendPlacebo, evaluateEconTrend, ECON_TREND_DEFAULTS } from './js/econTrendCore.js';
 import { buildFundamentals as buildEconFundamentals, ECON_UNIVERSE } from './js/econTrendEngine.js';
-import { buildCsi, runCsiOverlay, evaluateCsi, CSI_DEFAULTS } from './js/creditStressCore.js';
+import { buildCsi, runCsiOverlay, evaluateCsi, creditVega, CSI_DEFAULTS } from './js/creditStressCore.js';
 import { buildCsiInputs } from './js/creditStressEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
@@ -4482,12 +4482,19 @@ app.get('/api/credit-stress', async (req, res) => {
       .map(p => ({ d: p.d, v: +p.v.toFixed(3) }));
     const latest = csi.series[csi.series.length - 1] ?? null;
 
+    // "Credit Vega" — diagnostic only (NOT part of the frozen gate/verdict):
+    // rolling beta of Δ(HY OAS bps) on Δ(VIX pts), labelled by trailing percentile.
+    const vega = creditVega(components.hyOas, components.vix);
+    const vStep = Math.max(1, Math.floor(vega.series.length / 400));
+    const vegaSampled = vega.series.filter((_, i) => i % vStep === 0 || i === vega.series.length - 1);
+
     const data = {
       params: { zWindow, tiers: CSI_DEFAULTS.tiers, isFrac: CSI_DEFAULTS.isFrac, gateCostBps: CSI_DEFAULTS.gateCostBps },
       first: basket.first, last: basket.last, nDays: basket.nDays,
       current: latest ? { date: latest.d, csi: +latest.v.toFixed(2), exposure: latest.v >= 2 ? 0 : latest.v >= 1 ? 0.5 : 1, componentZ: csi.componentZ } : null,
       primary, secondary, evaluation,
       csiSeries: csiSampled,
+      vega: { current: vega.current, series: vegaSampled },
       priceAvailability, fredAvailability,
     };
     _csiCache.set(cacheKey, { data, ts: Date.now() });
