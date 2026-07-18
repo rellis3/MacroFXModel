@@ -54,6 +54,16 @@
       <button data-g="M30">30m</button>
       <button data-g="H1">1h</button>
     </div>
+    <label>Calc</label>
+    <div class="seg" id="calc">
+      <button data-c="original" class="on">Original</button>
+      <button data-c="cog">COG</button>
+    </div>
+    <label>Source</label>
+    <div class="seg" id="src">
+      <button data-s="backtest" class="on">Backtest</button>
+      <button data-s="archive">Archive</button>
+    </div>
     <button class="go" id="go">Generate</button>
     <span class="status" id="status"></span>
   </div>
@@ -82,6 +92,26 @@ function priceFmt(name) {
   if (['nq','spx500','us30','us2000','uk100','de30'].includes(n)) return { precision: 1, minMove: 0.1 };
   if (n.endsWith('jpy')) return { precision: 3, minMove: 0.001 };
   return { precision: 5, minMove: 0.00001 };
+}
+
+// COG's reverse-engineered constants — same as vol-forecast-v2. COG bands are
+// vol_annual/√252 × these, so they're computable from the archived vol_annual with
+// no extra fetch (indices' live CC-HV σ isn't stored historically, so COG here uses
+// the platform vol_annual for every instrument).
+const COG_C = { hl50: 1.56, hl75: 1.93, oc50: 0.74, oc75: 1.24 };
+const COG_SQRT252 = Math.sqrt(252);
+function calcMode() { return document.getElementById('calc').querySelector('button.on')?.dataset.c || 'original'; }
+function srcMode()  { return document.getElementById('src').querySelector('button.on')?.dataset.s || 'backtest'; }
+// The band %s a day should draw: the archived forecast's own fields (Original) or
+// COG's constants applied to that day's vol_annual (COG). null if unavailable.
+function bandsFor(f) {
+  if (!f) return null;
+  if (calcMode() === 'cog') {
+    if (!(f.vol_annual > 0)) return null;
+    const s = f.vol_annual / COG_SQRT252;
+    return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
+  }
+  return { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 };
 }
 
 // Forecast level definitions. side +1 = above open, -1 = below. med = dashed, p75 = dotted.
@@ -120,11 +150,33 @@ const $ = id => document.getElementById(id);
     const b = e.target.closest('button'); if (!b) return;
     $('tf').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   });
+  // Calc toggle (Original / COG) only re-draws the overlay — no candle/forecast refetch
+  // (COG is derived from the vol_annual already loaded per day).
+  $('calc').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('calc').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    scheduleDraw();
+    if (days.length) updateStatus();
+  });
+  // Source toggle (Backtest / Archive) changes the underlying forecast data, so it
+  // refetches if a chart is already loaded.
+  $('src').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
+    $('src').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (_meta) loadReplay();
+  });
   $('go').addEventListener('click', loadReplay);
 })();
 
 function tfGran() { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
 function setStatus(t) { $('status').textContent = t; }
+let _meta = null;
+function updateStatus() {
+  if (!_meta) return;
+  const calc = calcMode() === 'cog' ? 'COG' : 'Original';
+  const srcLbl = (_meta.src === 'backtest' ? 'Backtest' : 'Archive');
+  setStatus(`${_meta.name.toUpperCase()} · ${_meta.gran} · ${calc} · ${srcLbl} · ${_meta.candles} candles · ${_meta.sessions} sessions (${_meta.withFc} with forecast)`);
+}
 
 // ── Chart + overlay state ────────────────────────────────────────────────────
 let chart = null, series = null, overlayCanvas = null, octx = null;
@@ -191,11 +243,15 @@ async function loadReplay() {
   const from = $('from').value, to = $('to').value;
   const gran = tfGran();
   if (!sym || !from || !to) { setStatus('pick pair + dates'); return; }
-  $('go').disabled = true; setStatus('loading candles…'); $('hint').style.display = 'none';
+  const src = srcMode();
+  const fcUrl = src === 'backtest'
+    ? `/api/vol-forecast/backtest-range?symbol=${encodeURIComponent(sym)}&pair=${encodeURIComponent(name)}&from=${from}&to=${to}`
+    : `/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`;
+  $('go').disabled = true; setStatus(src === 'backtest' ? 'generating forecasts…' : 'loading…'); $('hint').style.display = 'none';
   try {
     const [candlesRes, fcRes] = await Promise.all([
       fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&granularity=${gran}`).then(r => r.json()),
-      fetch(`/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`).then(r => r.json()),
+      fetch(fcUrl).then(r => r.json()),
     ]);
     if (candlesRes.error || !candlesRes.values?.length) { setStatus(candlesRes.error || 'no candles for that range'); $('go').disabled = false; return; }
     const fcDays = fcRes?.ok ? (fcRes.days || {}) : {};
@@ -209,8 +265,8 @@ async function loadReplay() {
     series.setData(cdata);
     chart.timeScale().fitContent();
     sizeOverlay();
-    const nFc = days.filter(d => d.f).length;
-    setStatus(`${name.toUpperCase()} · ${gran} · ${cdata.length} candles · ${days.length} sessions (${nFc} with forecast)`);
+    _meta = { name, gran, src, candles: cdata.length, sessions: days.length, withFc: days.filter(d => d.f).length };
+    updateStatus();
     scheduleDraw();
   } catch (e) {
     setStatus('error: ' + e.message);
@@ -278,10 +334,11 @@ function drawOverlay() {
     // Open (grey)
     draw(d.open, '#8b93a1', [4,4], wide ? 'Open ' + d.open.toFixed(pf.precision) : '', false);
 
-    // Forecast bands (only if that day has an archived forecast)
-    if (d.f) {
+    // Forecast bands — Original (archived fields) or COG (from that day's vol_annual)
+    const bands = bandsFor(d.f);
+    if (bands) {
       for (const L of LEVELS) {
-        const pct = d.f[L.key];
+        const pct = bands[L.key];
         if (pct == null) continue;
         const price = d.open * (1 + L.side * pct / 100);
         const text = `${L.label} ${fmtPct(L.side * pct)} ${price.toFixed(pf.precision)}`;
