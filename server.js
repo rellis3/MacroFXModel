@@ -4073,6 +4073,59 @@ app.get('/api/vol-forecast/archive/range', async (req, res) => {
   }
 });
 
+// ── /api/vol-forecast/backtest-range — GENERATE each day's forecast from history ──
+// ?symbol=EUR/USD&pair=eurusd&from=YYYY-MM-DD&to=YYYY-MM-DD
+// Walk-forward: for each session date in [from,to], run the SAME computeForecast()
+// the live forecaster uses on the D1 bars strictly BEFORE that date (no lookahead),
+// using the scheduler's 800-bar window. Same response shape as /archive/range, so
+// the replay can toggle Archive↔Backtest and extend beyond archive coverage.
+// (newsMult is left at 1 — the archive included per-day US-event scaling, this does
+// not — so on event days the two sources can differ slightly.)
+const _REPLAY_INDEX = new Set(['nq', 'spx500', 'us30', 'us2000', 'uk100', 'de30']);
+function _replayAssetClass(pair) {
+  const p = (pair || '').toLowerCase();
+  if (p === 'gold' || p.startsWith('xau')) return 'commodity';
+  if (_REPLAY_INDEX.has(p)) return 'index';
+  return 'fx';
+}
+app.get('/api/vol-forecast/backtest-range', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured' });
+  const symbol = String(req.query.symbol ?? '');
+  const pair   = String(req.query.pair ?? '');
+  const from = String(req.query.from ?? ''), to = String(req.query.to ?? '');
+  if (!symbol) return res.status(400).json({ ok: false, error: 'symbol required' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ ok: false, error: 'from & to required as YYYY-MM-DD' });
+  }
+  const cls = _replayAssetClass(pair || symbol);
+  const instrument = _liqGateOandaSym(symbol.replace('/', '_'));
+  const cacheKey = `btrange_${instrument}_${cls}_${from}_${to}`;
+  const cached = _m5SrvCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 10 * 60_000) return res.json(cached.data);
+  try {
+    // ~10y of trading days: covers most ranges plus the 800-bar warmup before `from`.
+    const dailyD1 = (await _btFetchD1(instrument, 2600)).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const days = {};
+    for (let i = 60; i < dailyD1.length; i++) {
+      const d = dailyD1[i];
+      if (d.date < from || d.date > to) continue;              // only compute dates in range
+      const slice = dailyD1.slice(Math.max(0, i - 800), i);    // strictly before d, scheduler window
+      if (slice.length < 60) continue;
+      let fc; try { fc = _computeForecast(slice, cls); } catch { continue; }
+      days[d.date] = {
+        hl_median: fc.hl_median, hl_75: fc.hl_75,
+        oc_median: fc.oc_median, oc_75: fc.oc_75, vol_annual: fc.vol_annual,
+      };
+    }
+    const result = { ok: true, pair: pair || symbol, cls, from, to, days, generated: true };
+    _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    res.json(result);
+  } catch (e) {
+    console.error('[backtest-range]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── /api/yield-coupling — measure-first price↔yield-spread overlay ───────────
 // ?symbol=EUR/USD[&granularity=M5][&count=1500][&corrWindow=60][&maxLag=24]
 // Fetches the FX price + the configured bond-CFD legs, standardizes, and returns

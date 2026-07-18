@@ -59,6 +59,11 @@
       <button data-c="original" class="on">Original</button>
       <button data-c="cog">COG</button>
     </div>
+    <label>Source</label>
+    <div class="seg" id="src">
+      <button data-s="backtest" class="on">Backtest</button>
+      <button data-s="archive">Archive</button>
+    </div>
     <button class="go" id="go">Generate</button>
     <span class="status" id="status"></span>
   </div>
@@ -96,6 +101,7 @@ function priceFmt(name) {
 const COG_C = { hl50: 1.56, hl75: 1.93, oc50: 0.74, oc75: 1.24 };
 const COG_SQRT252 = Math.sqrt(252);
 function calcMode() { return document.getElementById('calc').querySelector('button.on')?.dataset.c || 'original'; }
+function srcMode()  { return document.getElementById('src').querySelector('button.on')?.dataset.s || 'backtest'; }
 // The band %s a day should draw: the archived forecast's own fields (Original) or
 // COG's constants applied to that day's vol_annual (COG). null if unavailable.
 function bandsFor(f) {
@@ -152,6 +158,13 @@ const $ = id => document.getElementById(id);
     scheduleDraw();
     if (days.length) updateStatus();
   });
+  // Source toggle (Backtest / Archive) changes the underlying forecast data, so it
+  // refetches if a chart is already loaded.
+  $('src').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
+    $('src').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (_meta) loadReplay();
+  });
   $('go').addEventListener('click', loadReplay);
 })();
 
@@ -161,7 +174,8 @@ let _meta = null;
 function updateStatus() {
   if (!_meta) return;
   const calc = calcMode() === 'cog' ? 'COG' : 'Original';
-  setStatus(`${_meta.name.toUpperCase()} · ${_meta.gran} · ${calc} · ${_meta.candles} candles · ${_meta.sessions} sessions (${_meta.withFc} with forecast)`);
+  const srcLbl = (_meta.src === 'backtest' ? 'Backtest' : 'Archive');
+  setStatus(`${_meta.name.toUpperCase()} · ${_meta.gran} · ${calc} · ${srcLbl} · ${_meta.candles} candles · ${_meta.sessions} sessions (${_meta.withFc} with forecast)`);
 }
 
 // ── Chart + overlay state ────────────────────────────────────────────────────
@@ -229,11 +243,15 @@ async function loadReplay() {
   const from = $('from').value, to = $('to').value;
   const gran = tfGran();
   if (!sym || !from || !to) { setStatus('pick pair + dates'); return; }
-  $('go').disabled = true; setStatus('loading candles…'); $('hint').style.display = 'none';
+  const src = srcMode();
+  const fcUrl = src === 'backtest'
+    ? `/api/vol-forecast/backtest-range?symbol=${encodeURIComponent(sym)}&pair=${encodeURIComponent(name)}&from=${from}&to=${to}`
+    : `/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`;
+  $('go').disabled = true; setStatus(src === 'backtest' ? 'generating forecasts…' : 'loading…'); $('hint').style.display = 'none';
   try {
     const [candlesRes, fcRes] = await Promise.all([
       fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&granularity=${gran}`).then(r => r.json()),
-      fetch(`/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`).then(r => r.json()),
+      fetch(fcUrl).then(r => r.json()),
     ]);
     if (candlesRes.error || !candlesRes.values?.length) { setStatus(candlesRes.error || 'no candles for that range'); $('go').disabled = false; return; }
     const fcDays = fcRes?.ok ? (fcRes.days || {}) : {};
@@ -247,7 +265,7 @@ async function loadReplay() {
     series.setData(cdata);
     chart.timeScale().fitContent();
     sizeOverlay();
-    _meta = { name, gran, candles: cdata.length, sessions: days.length, withFc: days.filter(d => d.f).length };
+    _meta = { name, gran, src, candles: cdata.length, sessions: days.length, withFc: days.filter(d => d.f).length };
     updateStatus();
     scheduleDraw();
   } catch (e) {
