@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecast Replay — Vol Forecast v2</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #0b0d14; --panel: #12141d; --border: #23262f;
+    --text: #e5e7eb; --text2: #9ca3af; --text3: #6b7280;
+    --blue: #3b82f6; --blue-bg: rgba(59,130,246,.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .bar h1 { font-size: 14px; font-weight: 600; margin: 0 8px 0 0; letter-spacing: .3px; }
+  .bar label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-right: 3px; }
+  select, input[type="date"] {
+    background: #0c0e15; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: 'DM Mono', monospace;
+  }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .seg button { background: none; border: none; color: var(--text2); padding: 4px 10px;
+    font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; }
+  .seg button.on { background: var(--blue-bg); color: var(--blue); }
+  .go { background: var(--blue); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .go:disabled { opacity: .5; cursor: not-allowed; }
+  .status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 5px 14px; font-size: 10px;
+    color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 16px; height: 0; border-top-width: 2px; border-top-style: dashed; display: inline-block; }
+  #chartWrap { position: relative; flex: 1; min-height: 0; }
+  #chart { position: absolute; inset: 0; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; }
+  #hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color: var(--text3); font-size: 13px; font-family: 'DM Mono', monospace; text-align:center; padding: 20px; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h1>📊 Forecast Replay</h1>
+    <label>Pair</label><select id="pair"></select>
+    <label>From</label><input type="date" id="from">
+    <label>To</label><input type="date" id="to">
+    <label>TF</label>
+    <div class="seg" id="tf">
+      <button data-g="M15" class="on">15m</button>
+      <button data-g="M30">30m</button>
+      <button data-g="H1">1h</button>
+    </div>
+    <button class="go" id="go">Generate</button>
+    <span class="status" id="status"></span>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div id="chartWrap">
+    <div id="chart"></div>
+    <canvas id="overlay"></canvas>
+    <div id="hint">Pick a pair and date range, then Generate.<br>Each session draws its forecast lines anchored on that day's open, with the realized High/Low so you can see where median &amp; 75th landed.</div>
+  </div>
+
+<script>
+const OANDA_SYM = {
+  eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
+  gbpjpy:'GBP/JPY', audusd:'AUD/USD', usdcad:'USD/CAD', usdchf:'USD/CHF',
+  nzdusd:'NZD/USD', eurgbp:'EUR/GBP', euraud:'EUR/AUD', eurchf:'EUR/CHF',
+  eurcad:'EUR/CAD', eurnzd:'EUR/NZD', gbpaud:'GBP/AUD', gbpchf:'GBP/CHF',
+  gbpcad:'GBP/CAD', gbpnzd:'GBP/NZD', audjpy:'AUD/JPY', audnzd:'AUD/NZD',
+  audcad:'AUD/CAD', audchf:'AUD/CHF', nzdjpy:'NZD/JPY', cadjpy:'CAD/JPY',
+  chfjpy:'CHF/JPY', gold:'XAU/USD',
+  nq:'NAS100_USD', spx500:'SPX500_USD', us30:'US30_USD',
+  us2000:'US2000_USD', uk100:'UK100_GBP', de30:'DE30_EUR',
+};
+function priceFmt(name) {
+  const n = (name || '').toLowerCase();
+  if (n === 'gold' || n.startsWith('xau')) return { precision: 2, minMove: 0.01 };
+  if (['nq','spx500','us30','us2000','uk100','de30'].includes(n)) return { precision: 1, minMove: 0.1 };
+  if (n.endsWith('jpy')) return { precision: 3, minMove: 0.001 };
+  return { precision: 5, minMove: 0.00001 };
+}
+
+// Forecast level definitions. side +1 = above open, -1 = below. med = dashed, p75 = dotted.
+const LEVELS = [
+  { key: 'hl_median', side:  1, label: 'H med',  color: '#34d399', dash: [7,4] },
+  { key: 'hl_75',     side:  1, label: 'H p75',  color: '#10b981', dash: [2,4] },
+  { key: 'oc_median', side:  1, label: 'C+ med', color: '#60a5fa', dash: [7,4] },
+  { key: 'oc_75',     side:  1, label: 'C+ p75', color: '#3b82f6', dash: [2,4] },
+  { key: 'oc_median', side: -1, label: 'C- med', color: '#fbbf24', dash: [7,4] },
+  { key: 'oc_75',     side: -1, label: 'C- p75', color: '#f59e0b', dash: [2,4] },
+  { key: 'hl_median', side: -1, label: 'L med',  color: '#f87171', dash: [7,4] },
+  { key: 'hl_75',     side: -1, label: 'L p75',  color: '#ef4444', dash: [2,4] },
+];
+
+// ── UI setup ───────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+(function initUI() {
+  const sel = $('pair');
+  for (const k of Object.keys(OANDA_SYM)) {
+    const o = document.createElement('option'); o.value = k; o.textContent = k.toUpperCase(); sel.appendChild(o);
+  }
+  // Default range: last ~14 calendar days.
+  const now = new Date();
+  const iso = d => d.toISOString().slice(0, 10);
+  $('to').value   = iso(now);
+  $('from').value = iso(new Date(now.getTime() - 14 * 864e5));
+  // Legend
+  const leg = $('legend');
+  leg.innerHTML = LEVELS.map(l =>
+    `<span><i style="border-top-color:${l.color};border-top-style:${l.dash[0] > 3 ? 'dashed' : 'dotted'}"></i>${l.label}</span>`
+  ).join('') +
+    `<span><i style="border-top-color:#e5e7eb;border-top-style:solid"></i>Realized High/Low</span>` +
+    `<span><i style="border-top-color:#6b7280;border-top-style:dashed"></i>Open</span>`;
+  // TF toggle
+  $('tf').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('tf').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+  $('go').addEventListener('click', loadReplay);
+})();
+
+function tfGran() { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
+function setStatus(t) { $('status').textContent = t; }
+
+// ── Chart + overlay state ────────────────────────────────────────────────────
+let chart = null, series = null, overlayCanvas = null, octx = null;
+let days = [];        // [{ date, open, high, low, close, tStart, tEnd, f }]
+let dpr = window.devicePixelRatio || 1;
+
+function ensureChart(name) {
+  if (chart) { try { chart.remove(); } catch (_) {} chart = null; }
+  const el = $('chart');
+  el.innerHTML = '';
+  chart = LightweightCharts.createChart(el, {
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9ca3af', fontSize: 11, fontFamily: "'DM Mono', monospace" },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    timeScale: { borderColor: 'rgba(255,255,255,0.12)', timeVisible: true, secondsVisible: false, rightOffset: 6 },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.12)', scaleMargins: { top: 0.12, bottom: 0.12 } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale:  { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
+  });
+  const pf = priceFmt(name);
+  series = chart.addCandlestickSeries({
+    upColor: '#26a69a', downColor: '#ef5350', borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+    wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    priceFormat: { type: 'price', precision: pf.precision, minMove: pf.minMove },
+  });
+  chart.timeScale().subscribeVisibleTimeRangeChange(scheduleDraw);
+}
+
+// Overlay canvas sized to the chart pane; redrawn whenever the view changes.
+function setupOverlay() {
+  overlayCanvas = $('overlay');
+  octx = overlayCanvas.getContext('2d');
+  const ro = new ResizeObserver(() => { sizeOverlay(); scheduleDraw(); });
+  ro.observe($('chartWrap'));
+  sizeOverlay();
+  requestAnimationFrame(syncLoop);
+}
+function sizeOverlay() {
+  const w = $('chartWrap').clientWidth, h = $('chartWrap').clientHeight;
+  dpr = window.devicePixelRatio || 1;
+  overlayCanvas.width = w * dpr; overlayCanvas.height = h * dpr;
+  overlayCanvas.style.width = w + 'px'; overlayCanvas.style.height = h + 'px';
+}
+
+// Keep the overlay glued during any interaction (incl. vertical price-scale drag,
+// which doesn't emit a time-range event) via a cheap signature check each frame.
+let _lastSig = '';
+function syncLoop() {
+  if (chart && series && days.length) {
+    const r = chart.timeScale().getVisibleLogicalRange();
+    const refY = days[0] ? series.priceToCoordinate(days[0].open) : null;
+    const sig = r ? `${r.from.toFixed(2)}_${r.to.toFixed(2)}_${refY}` : 'x';
+    if (sig !== _lastSig) { _lastSig = sig; drawOverlay(); }
+  }
+  requestAnimationFrame(syncLoop);
+}
+let _drawPending = false;
+function scheduleDraw() { if (!_drawPending) { _drawPending = true; requestAnimationFrame(() => { _drawPending = false; _lastSig = ''; drawOverlay(); }); } }
+
+// ── Data load ────────────────────────────────────────────────────────────────
+async function loadReplay() {
+  const name = $('pair').value;
+  const sym  = OANDA_SYM[name];
+  const from = $('from').value, to = $('to').value;
+  const gran = tfGran();
+  if (!sym || !from || !to) { setStatus('pick pair + dates'); return; }
+  $('go').disabled = true; setStatus('loading candles…'); $('hint').style.display = 'none';
+  try {
+    const [candlesRes, fcRes] = await Promise.all([
+      fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&granularity=${gran}`).then(r => r.json()),
+      fetch(`/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`).then(r => r.json()),
+    ]);
+    if (candlesRes.error || !candlesRes.values?.length) { setStatus(candlesRes.error || 'no candles for that range'); $('go').disabled = false; return; }
+    const fcDays = fcRes?.ok ? (fcRes.days || {}) : {};
+    buildDays(candlesRes.values, fcDays);
+    ensureChart(name);
+    if (!overlayCanvas) setupOverlay();
+    const cdata = candlesRes.values.map(c => ({
+      time: Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open: +c.open, high: +c.high, low: +c.low, close: +c.close,
+    })).filter(b => b.open && !isNaN(b.time));
+    series.setData(cdata);
+    chart.timeScale().fitContent();
+    sizeOverlay();
+    const nFc = days.filter(d => d.f).length;
+    setStatus(`${name.toUpperCase()} · ${gran} · ${cdata.length} candles · ${days.length} sessions (${nFc} with forecast)`);
+    scheduleDraw();
+  } catch (e) {
+    setStatus('error: ' + e.message);
+  } finally {
+    $('go').disabled = false;
+  }
+}
+
+// Group candles by London day; attach that day's archived forecast bands.
+function buildDays(values, fcDays) {
+  const byDate = new Map();
+  for (const c of values) {
+    const date = c.datetime.slice(0, 10);
+    const t = Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000);
+    let d = byDate.get(date);
+    if (!d) { d = { date, open: +c.open, high: -Infinity, low: Infinity, close: +c.close, tStart: t, tEnd: t }; byDate.set(date, d); }
+    d.high = Math.max(d.high, +c.high);
+    d.low  = Math.min(d.low, +c.low);
+    d.close = +c.close;
+    d.tEnd = t;
+  }
+  days = [...byDate.values()].sort((a, b) => a.tStart - b.tStart).map(d => ({ ...d, f: fcDays[d.date] || null }));
+}
+
+// ── Overlay draw ─────────────────────────────────────────────────────────────
+function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+function drawOverlay() {
+  if (!octx || !chart || !series) return;
+  const ts = chart.timeScale();
+  octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  octx.font = "10px 'DM Mono', monospace";
+  octx.textBaseline = 'middle';
+  const pf = priceFmt($('pair').value);
+
+  for (const d of days) {
+    const x1 = ts.timeToCoordinate(d.tStart);
+    const x2 = ts.timeToCoordinate(d.tEnd);
+    if (x1 == null && x2 == null) continue;
+    const xa = x1 == null ? 0 : x1;
+    const xb = x2 == null ? overlayCanvas.width / dpr : x2;
+    if (xb < 0 || xa > overlayCanvas.width / dpr) continue;
+    const wide = (xb - xa) > 46;           // only label segments wide enough to read
+    const labelX = Math.min(xb, overlayCanvas.width / dpr - 4);
+
+    const draw = (price, color, dash, text, solid) => {
+      const y = series.priceToCoordinate(price);
+      if (y == null) return;
+      octx.save();
+      octx.strokeStyle = color;
+      octx.lineWidth = solid ? 1.4 : 1;
+      octx.setLineDash(solid ? [] : dash);
+      octx.globalAlpha = solid ? 0.95 : 0.8;
+      octx.beginPath(); octx.moveTo(xa, y); octx.lineTo(xb, y); octx.stroke();
+      if (wide && text) {
+        octx.setLineDash([]);
+        octx.globalAlpha = 1;
+        octx.fillStyle = color;
+        octx.textAlign = 'right';
+        octx.fillText(text, labelX, y - 6);
+      }
+      octx.restore();
+    };
+
+    // Open (grey)
+    draw(d.open, '#8b93a1', [4,4], wide ? 'Open ' + d.open.toFixed(pf.precision) : '', false);
+
+    // Forecast bands (only if that day has an archived forecast)
+    if (d.f) {
+      for (const L of LEVELS) {
+        const pct = d.f[L.key];
+        if (pct == null) continue;
+        const price = d.open * (1 + L.side * pct / 100);
+        const text = `${L.label} ${fmtPct(L.side * pct)} ${price.toFixed(pf.precision)}`;
+        draw(price, L.color, L.dash, text, false);
+      }
+    }
+
+    // Realized High / Low (white, solid) with the ACTUAL % move from open — this is
+    // what you compare against the H/L median & 75th lines.
+    const hiPct = (d.high - d.open) / d.open * 100;
+    const loPct = (d.low - d.open) / d.open * 100;
+    draw(d.high, '#e5e7eb', [], wide ? `High ${fmtPct(hiPct)} ${d.high.toFixed(pf.precision)}` : '', true);
+    draw(d.low,  '#e5e7eb', [], wide ? `Low ${fmtPct(loPct)} ${d.low.toFixed(pf.precision)}` : '', true);
+  }
+}
+
+window.addEventListener('resize', () => { sizeOverlay(); scheduleDraw(); });
+</script>
+</body>
+</html>
