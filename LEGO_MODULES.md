@@ -550,6 +550,19 @@ remaining proof.**
 > path is bit-identical (regression-tested), and the hook is what lets a
 > fundamentals signal reuse the sizing/cost/metrics machinery instead of copying it.
 
+### 1s. Credit-stress (CSI) overlay brick (2026-07-18) — risk gate, not alpha
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Credit-Stress core** | `js/creditStressCore.js` | the CSI risk-overlay (pre-registered `CREDIT_STRESS_TEST.md`): `buildCsi` (equal-weight mean of per-component 252d rolling z's — weights FROZEN equal, reuses `statsCore.rollingZScore`), `gateExposure`/`buildGateSeries` (frozen tiers ×1 / ×0.5 at z≥1 / ×0 at z≥2), `applyGate` (as-of **≤ t−1** application via `econTrendCore.asOfValue` — yesterday's published index sizes today; \|Δexposure\| costed), `runCsiOverlay` (ungated vs VIX-only-gated vs CSI-gated, IS/OOS via `metricsCore`), `evaluateCsi` (frozen 3-way verdict: `csi` / `vix-enough` / `no-gate` — **the named benchmark is VIX alone**). Tested `js/creditStressCore.test.mjs` (20 asserts incl. leading-CSI world passes, identical-info world → vix-enough, harmful gate → no-gate). | `server.js` `/api/credit-stress`; `credit-stress.html` | 🧪 built, **pre-registered, not yet run** (needs FRED+OANDA on Railway; one shot) |
+| **Credit-Stress I/O** | `js/creditStressEngine.js` | `CSI_SERIES` (FRED: `BAMLC0A1CAAA`/`BAMLC0A4CBBB` → quality spread BBB−AAA, `BAMLH0A0HYM2`, `VIXCLS`) + publication lags (OAS +2d, VIX +1d), `buildCsiInputs` (fail-soft availability; throws only if a composite component is entirely missing). CDS index deliberately **omitted** — Markit data isn't retail-accessible and CDX≈HY OAS. Reuses `fetchFredObservations` + `econTrendEngine.toLaggedSeries` — no fetch/lag copies. | `server.js` `/api/credit-stress` | 🧪 built |
+
+> `runTrendBasket` also gained `returnDaily` (opt-in `{dates, dailyReturns, benchReturns}`
+> in the result) so overlays can re-weight the daily series — additive, default unchanged.
+> Note the overlap with `macroCore.macroRegime` (VIX + HY OAS classifier, live in TDE):
+> CSI is the *sizing-gate* test of the same data family; if the verdict is `vix-enough`
+> or `no-gate`, `macroCore` stays the only credit/VIX consumer and CSI is retired.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

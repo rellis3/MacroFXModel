@@ -40,6 +40,8 @@ import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, co
 import { runTrendBasket } from './js/trendBasketEngine.js';
 import { runEconTrend, runEconTrendPlacebo, evaluateEconTrend, ECON_TREND_DEFAULTS } from './js/econTrendCore.js';
 import { buildFundamentals as buildEconFundamentals, ECON_UNIVERSE } from './js/econTrendEngine.js';
+import { buildCsi, runCsiOverlay, evaluateCsi, CSI_DEFAULTS } from './js/creditStressCore.js';
+import { buildCsiInputs } from './js/creditStressEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -4432,6 +4434,66 @@ app.get('/api/econ-trend', async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[econ-trend]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /api/credit-stress — CSI risk-overlay test (pre-registered) ───────────────
+// CREDIT_STRESS_TEST.md: CSI = equal-weight 252d rolling z of (BBB−AAA quality
+// spread, HY OAS, VIX), frozen gate tiers ×1/×0.5/×0 at z 1/2, applied as-of
+// ≤ t−1. Question: does the CSI gate beat (a) no gate and (b) a VIX-only gate,
+// OOS, on the PRIMARY target (equal-weight long-ccy basket)? Trend basket is the
+// reported SECONDARY. A risk overlay, not alpha — verdict computed server-side.
+const _csiCache = new Map();
+app.get('/api/credit-stress', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY) return res.status(503).json({ error: 'FRED_KEY not configured (runs on Railway)' });
+  const clamp = (x, lo, hi, dflt) => Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : dflt;
+  const zWindow = clamp(parseInt(req.query.zWindow), 60, 504, CSI_DEFAULTS.zWindow);
+  const cacheKey = `csi_${zWindow}`;
+  const cached = _csiCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 3600_000) return res.json(cached.data);
+  try {
+    const from = '2005-01-01';
+    const seriesByCcy = {}, priceAvailability = [];
+    await Promise.all(TREND_UNIVERSE.map(async u => {
+      try {
+        const bars = await fetchOandaD1Range(u.inst, from);
+        const s = bars.map(b => ({ t: b.date, v: u.invert ? 1 / b.close : b.close })).filter(x => Number.isFinite(x.v) && x.v > 0);
+        seriesByCcy[u.ccy] = s;
+        priceAvailability.push({ ccy: u.ccy, inst: u.inst, bars: s.length, first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null });
+      } catch (e) { priceAvailability.push({ ccy: u.ccy, inst: u.inst, error: e.message }); }
+    }));
+    const basket = runTrendBasket(seriesByCcy, { returnDaily: true });
+    if (basket.error) return res.status(500).json({ error: basket.error, priceAvailability });
+
+    const { components, vixSeries, availability: fredAvailability } = await buildCsiInputs(process.env.FRED_KEY, '2004-01-01');
+    const opts = { zWindow };
+    const csi = buildCsi(components, opts);
+    const vixZ = buildCsi({ vix: vixSeries }, opts);   // same machinery, single component
+
+    const primary = runCsiOverlay({ dates: basket.dates, returns: basket.benchReturns }, csi.series, vixZ.series, opts);
+    const secondary = runCsiOverlay({ dates: basket.dates, returns: basket.dailyReturns }, csi.series, vixZ.series, opts);
+    const evaluation = evaluateCsi(primary);
+
+    // downsample the CSI for the chart (~500 points)
+    const step = Math.max(1, Math.floor(csi.series.length / 500));
+    const csiSampled = csi.series.filter((_, i) => i % step === 0 || i === csi.series.length - 1)
+      .map(p => ({ d: p.d, v: +p.v.toFixed(3) }));
+    const latest = csi.series[csi.series.length - 1] ?? null;
+
+    const data = {
+      params: { zWindow, tiers: CSI_DEFAULTS.tiers, isFrac: CSI_DEFAULTS.isFrac, gateCostBps: CSI_DEFAULTS.gateCostBps },
+      first: basket.first, last: basket.last, nDays: basket.nDays,
+      current: latest ? { date: latest.d, csi: +latest.v.toFixed(2), exposure: latest.v >= 2 ? 0 : latest.v >= 1 ? 0.5 : 1, componentZ: csi.componentZ } : null,
+      primary, secondary, evaluation,
+      csiSeries: csiSampled,
+      priceAvailability, fredAvailability,
+    };
+    _csiCache.set(cacheKey, { data, ts: Date.now() });
+    res.json(data);
+  } catch (err) {
+    console.error('[credit-stress]', err.message);
     res.status(500).json({ error: err.message });
   }
 });

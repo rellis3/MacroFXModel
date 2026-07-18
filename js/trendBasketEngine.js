@@ -70,9 +70,11 @@ function stats(r) {
 // directionAt (optional): (iDecision, {dates, cols, ccys, rets}) => { ccy: -1|0|+1 } —
 // swaps the per-ccy direction source (e.g. a fundamentals score) while keeping the
 // sizing/cost/metrics machinery identical. null ⇒ the default 12-mo price trend.
+// returnDaily: include { dates, dailyReturns, benchReturns } in the result so an
+// overlay (e.g. the credit-stress gate) can re-weight the daily series.
 export function runTrendBasket(seriesByCcy, {
   lookback = 252, volWindow = 60, targetVol = 0.10, rebalDays = 5, costBps = 2, isFrac = 0.7,
-  directionAt = null,
+  directionAt = null, returnDaily = false,
 } = {}) {
   const { dates, cols, ccys } = alignSeries(seriesByCcy);
   const n = dates.length;
@@ -124,5 +126,6 @@ export function runTrendBasket(seriesByCcy, {
     equity: sampleEquity(dates, eq, 400),
     perYear: perYearReturns(dates, portRet),
     current,
+    ...(returnDaily ? { dates, dailyReturns: portRet, benchReturns: bmRet } : {}),
   };
 }
