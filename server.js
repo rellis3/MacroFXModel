@@ -4160,17 +4160,32 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
     // the COG export draws its NQ bands from — walk-forward, strictly before each date.
     // (Live uses an intraday CC-HV; this D1 version is the documented fallback / close
     // approximation, so NQ's Backtest COG lines track the export instead of the ~4%-
-    // wider platform-vol bands.)
+    // wider platform-vol bands.) The London bars are session-dated with the SAME +1
+    // evening rule as _btFetchD1 so the keys line up with `days` (otherwise, in BST,
+    // the London-midnight bar lands on the prior UTC date and never matches).
     if (_REPLAY_CCHV_USE.has((pair || '').toLowerCase())) {
       try {
-        const lon = (await _btFetchD1Aligned(instrument, 2600, { dailyAlignment: 0, alignmentTimezone: 'Europe/London' }))
-          .sort((a, b) => (a.date < b.date ? -1 : 1));
-        for (let i = _REPLAY_CCHV_WINDOW + 2; i < lon.length; i++) {
-          const dt = lon[i].date;
-          if (!days[dt]) continue;                                   // only annotate forecast days
-          const slice = lon.slice(Math.max(0, i - (_REPLAY_CCHV_WINDOW + 10)), i);  // strictly before dt
-          const cc = _ccHvSigma(slice, { window: _REPLAY_CCHV_WINDOW });
-          if (cc && cc.volAnnual > 4 && cc.volAnnual < 200) days[dt].cchv_annual = cc.volAnnual;
+        const base = _oandaBaseMe();
+        const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+                  + `?granularity=D&count=2600&price=M&dailyAlignment=0&alignmentTimezone=Europe%2FLondon`;
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+        if (r.ok) {
+          const lon = ((await r.json()).candles ?? [])
+            .filter(c => c.complete !== false && c.mid)
+            .map(c => {
+              const t = new Date(c.time);
+              if (t.getUTCHours() >= 20) t.setUTCDate(t.getUTCDate() + 1);   // session date, matching _btFetchD1
+              return { date: t.toISOString().slice(0, 10), close: +c.mid.c };
+            })
+            .filter(c => c.close > 0)
+            .sort((a, b) => (a.date < b.date ? -1 : 1));
+          for (let i = _REPLAY_CCHV_WINDOW + 2; i < lon.length; i++) {
+            const dt = lon[i].date;
+            if (!days[dt]) continue;                                   // only annotate forecast days
+            const slice = lon.slice(Math.max(0, i - (_REPLAY_CCHV_WINDOW + 10)), i);  // strictly before dt
+            const cc = _ccHvSigma(slice, { window: _REPLAY_CCHV_WINDOW });
+            if (cc && cc.volAnnual > 4 && cc.volAnnual < 200) days[dt].cchv_annual = cc.volAnnual;
+          }
         }
       } catch (_) { /* CC-HV is optional enrichment — platform vol_annual remains the fallback */ }
     }
