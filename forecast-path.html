@@ -188,17 +188,21 @@
 </div>
 
 <script type="module">
-import { createLevelChart } from './js/levelChart.js';
-import { priceDigits } from './js/instrumentRegistry.js';
-import { bisect, resampleTo } from './js/barUtils.js';
-import { collectLevels } from './js/levelSources.js';
+// ?v= stamps defeat stale-cached modules after a deploy: new HTML + an old
+// cached forecastPathCore.js (missing a newly-imported export) kills the whole
+// module script silently — dead buttons, nothing loads. Bump when this page
+// starts importing something new from a brick.
+import { createLevelChart } from './js/levelChart.js?v=3';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=3';
+import { bisect, resampleTo } from './js/barUtils.js?v=3';
+import { collectLevels } from './js/levelSources.js?v=3';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ,
-} from './js/forecastPathCore.js';
-import { computeBands, nextSigma } from './js/forecastCore.js';
-import { COG_CONST } from './js/cogReverseEngineer.js';
+} from './js/forecastPathCore.js?v=3';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=3';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=3';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -214,14 +218,17 @@ function cogBands(open, sigma) {
 }
 const activeBandsFn = () => $('calc').value === 'cog' ? cogBands : computeBands;
 
+// The vol-forecast trade list: FX + gold + the index CFDs from the daily export.
 const PAIRS = [
   'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY',
   'EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD',
   'AUDJPY','AUDNZD','AUDCAD','AUDCHF',
   'GBPAUD','GBPCAD','GBPCHF','GBPNZD',
   'CADJPY','CHFJPY','NZDJPY','GOLD',
+  'NQ','SPX500','US30','DE30','UK100','US2000',
 ];
-const ASSET_CLASS = p => p === 'GOLD' ? 'commodity' : 'fx';
+// Asset class from the canonical registry (index → GARCH σ, commodity → HV20).
+const ASSET_CLASS = p => instrAssetClass(p);
 
 // Intraday engine factory — one brick, any bar size. lookbackDays keeps the
 // fetch under OANDA's 5000-candle/request cap.
@@ -573,10 +580,12 @@ async function load() {
     // the daily σ causally per replay day (nextSigma needs ≥30 real daily bars).
     const d1Url = gran === 'D1' ? null
       : `/api/weekly-vol-backtest/d1/${pair.toLowerCase()}?from=${new Date(Date.now() - 200 * 86400e3).toISOString().substring(0, 10)}&to=${today}`;
+    // Timeouts on every request — a stalled fetch must surface as an error,
+    // never leave the page stuck on "loading…".
     const [j, evJ, d1J] = await Promise.all([
-      fetch(url).then(r => r.json()),
-      evUrl ? fetch(evUrl).then(r => r.json()).catch(() => null) : Promise.resolve(null),
-      d1Url ? fetch(d1Url).then(r => r.json()).catch(() => null) : Promise.resolve(null),
+      fetch(url, { signal: AbortSignal.timeout(30_000) }).then(r => r.json()),
+      evUrl ? fetch(evUrl, { signal: AbortSignal.timeout(15_000) }).then(r => r.json()).catch(() => null) : Promise.resolve(null),
+      d1Url ? fetch(d1Url, { signal: AbortSignal.timeout(15_000) }).then(r => r.json()).catch(() => null) : Promise.resolve(null),
     ]);
     events = evJ?.ok ? evJ.events : [];
     d1History = d1J?.ok ? d1J.candles : [];
@@ -599,6 +608,7 @@ async function load() {
 }
 
 $('load').onclick = load;
+pairSel.onchange = load;
 $('helpBtn').onclick = () => { $('helpOverlay').style.display = 'block'; };
 $('gran').onchange = () => { fillHorizons(); load(); };
 $('replay').oninput = ev => { i = +ev.target.value; render(); };

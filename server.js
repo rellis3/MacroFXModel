@@ -11235,7 +11235,10 @@ app.get('/api/cross-pair-research', async (req, res) => {
 
 // Weekly backtest D1 candle viewer — fetches D1 bars from OANDA for a date range.
 // Used by the chart modal in weekly-vol-backtest.html (M1 parquets may not cover 2025+).
-const _wbtInstrMap = Object.fromEntries(WBT_INSTRUMENTS.map(i => [i.name.toLowerCase(), i.oanda]));
+// Route-only map for the d1/m15/m5 candle viewers. US2000 is served here for
+// forecast-path.html (it's in the vol-forecast trade list) WITHOUT adding it to
+// WEEKLY_INSTRUMENTS — that would silently widen the weekly backtest universe.
+const _wbtInstrMap = { ...Object.fromEntries(WBT_INSTRUMENTS.map(i => [i.name.toLowerCase(), i.oanda])), us2000: 'US2000_USD' };
 
 // OANDA rejects a `to` timestamp in the future with HTTP 400 — so `to=<today>`
 // (today 23:59:59Z hasn't happened yet) breaks the request. Clamp to now.
