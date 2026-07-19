@@ -123,11 +123,15 @@
       hundreds of past windows, how often the 50% and 75% claims actually held, split
       by the hour the forecast was made, and reports <b>path adherence</b> — of every
       predicted bar, how often price stayed inside the median / 75th band around the
-      path (a range fit, not a direction call). The <b>replay slider</b> rewinds to any
-      past moment and shows the forecast exactly as it would have looked then, built
-      only from data available at the time. (The wiggle you see in a single most-agreed
-      path is Monte-Carlo sampling noise around the smooth drift — the model claims the
-      envelope, not the exact wiggles.)
+      path (a range fit, not a direction call). It also reports <b>close vs touch</b>:
+      how often price <i>closed</i> inside the band versus how often the intrabar path
+      ever <i>touched</i> beyond it — the path always breaches more, and that gap is the
+      reflection effect. It's why a stop sitting on the P75 line gets hit far more than
+      the endpoint stats suggest: place stops beyond the touch line, not the close line.
+      The <b>replay slider</b> rewinds to any past moment and shows the forecast exactly
+      as it would have looked then, built only from data available at the time. (The
+      wiggle you see in a single most-agreed path is Monte-Carlo sampling noise around
+      the smooth drift — the model claims the envelope, not the exact wiggles.)
     </p>
 
     <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">Target reachability (the "price" tool)</h3>
@@ -252,17 +256,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=8';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=8';
-import { bisect, resampleTo } from './js/barUtils.js?v=8';
-import { collectLevels } from './js/levelSources.js?v=8';
+import { createLevelChart } from './js/levelChart.js?v=9';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=9';
+import { bisect, resampleTo } from './js/barUtils.js?v=9';
+import { collectLevels } from './js/levelSources.js?v=9';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration,
-} from './js/forecastPathCore.js?v=8';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=8';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=8';
+} from './js/forecastPathCore.js?v=9';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=9';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=9';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -730,6 +734,15 @@ function renderCalib() {
     (t.adherence ? `<div class="kv"><span>price hugged the path</span>` +
       `<b>${pc(t.adherence.p50)} in P50 · ${pc(t.adherence.p75)} in P75</b></div>` +
       `<div class="muted">Path adherence: of every predicted bar, how often price stayed inside the median / 75th band around the most-agreed path (recent ${pc(t.adherenceRecent?.p75)} P75). A range fit, not a direction call.</div>` : '') +
+    (t.excursion ? (() => {
+      const ex = t.excursion;
+      const gap = (ex.closeHeld75 != null && ex.pathHeld75 != null) ? ex.closeHeld75 - ex.pathHeld75 : null;
+      return `<div style="margin-top:10px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Close vs touch (stop reality)</b>` +
+        `<table style="margin-top:4px"><tr><th>band</th><th>close stayed in</th><th>path never touched out</th><th>touched beyond</th></tr>` +
+        `<tr><td>P50</td><td>${pc(ex.closeHeld50)}</td><td>${pc(ex.pathHeld50)}</td><td class="warn">${pc(ex.touch50)}</td></tr>` +
+        `<tr><td>P75</td><td>${pc(ex.closeHeld75)}</td><td>${pc(ex.pathHeld75)}</td><td class="bad">${pc(ex.touch75)}</td></tr></table>` +
+        `<div class="muted" style="margin-top:4px">A stop on the P75 line gets <b>touched intraday in ${pc(ex.touch75)}</b> of windows — even though price <b>closes</b> back inside far more often. That gap${gap != null ? ` (${(gap*100).toFixed(0)} pts)` : ''} is the intrabar (reflection) effect: place stops beyond the touch line, not the close line.</div></div>`;
+    })() : '') +
     `<div class="muted">Non-overlapping windows, every input strictly pre-window. Green = within 7pts of the claim.</div>` +
     extra;
 }

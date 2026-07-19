@@ -720,11 +720,19 @@ export function intradayTally(bars, opts = {}) {
     const ek = bisect(ctx.events, tStart - o.eventPost);
     const isEvent = ek < ctx.events.length && ctx.events[ek] <= tEnd + o.eventPre;
     const w = { in50: new Array(H), in75: new Array(H), dirHit: null, isEvent, iStart: i - 1 };
+    // Endpoint (close) containment per step AND excursion (intrabar high/low)
+    // containment over the whole path. The excursion is the reflection-principle
+    // reality a stop actually faces: price TOUCHES beyond the band far more than
+    // it CLOSES beyond it. pathIn* = the path never traded outside the band.
+    let pathIn50 = true, pathIn75 = true;
     for (let h = 1; h <= H; h++) {
-      const c = bars[i + h - 1].close, s = cone.steps[h - 1];
-      w.in50[h - 1] = c >= s.p50Dn && c <= s.p50Up;
-      w.in75[h - 1] = c >= s.p75Dn && c <= s.p75Up;
+      const b = bars[i + h - 1], s = cone.steps[h - 1];
+      w.in50[h - 1] = b.close >= s.p50Dn && b.close <= s.p50Up;
+      w.in75[h - 1] = b.close >= s.p75Dn && b.close <= s.p75Up;
+      if (b.high > s.p50Up || b.low < s.p50Dn) pathIn50 = false;
+      if (b.high > s.p75Up || b.low < s.p75Dn) pathIn75 = false;
     }
+    w.pathIn50 = pathIn50; w.pathIn75 = pathIn75;
     const move = bars[i + H - 1].close - cone.anchor;
     if (cone.mu !== 0 && move !== 0) w.dirHit = Math.sign(move) === Math.sign(cone.mu);
 
@@ -843,10 +851,28 @@ export function intradayTally(bars, opts = {}) {
     return { n: tot, p50: tot ? a / tot : null, p75: tot ? b / tot : null };
   };
 
+  // Excursion vs endpoint — the reflection-principle metric (the mentor's LIL
+  // nudge, done at finite horizon). "closeHeld" = the CLOSE finished inside the
+  // band; "pathHeld" = the intrabar path NEVER traded beyond it. pathHeld is
+  // always ≤ closeHeld — the gap is how much MORE a stop on the band gets
+  // touched than the endpoint stats imply. touchRate = share of windows whose
+  // path traded beyond the band at some point (= 1 − pathHeld); this is the
+  // number that matters for stop placement.
+  const fracOf = (ws, pred) => ws.length ? ws.filter(pred).length / ws.length : null;
+  const allTrue = arr => arr.every(Boolean);
+  const excursion = {
+    n: windows.length,
+    // Both "never breached over the whole window" — apples-to-apples, so the
+    // gap is the pure intrabar (reflection) effect, not a horizon mismatch.
+    closeHeld50: fracOf(windows, w => allTrue(w.in50)), closeHeld75: fracOf(windows, w => allTrue(w.in75)),
+    pathHeld50: fracOf(windows, w => w.pathIn50),       pathHeld75: fracOf(windows, w => w.pathIn75),
+    touch50: fracOf(windows, w => !w.pathIn50),         touch75: fracOf(windows, w => !w.pathIn75),
+  };
+
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
   return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },
            full: tally(windows), recent: tally(windows.slice(-recentN)),
-           byHour, budget, trendSplit, eventSplit, ivStat, overall: cell(windows),
+           byHour, budget, trendSplit, eventSplit, ivStat, overall: cell(windows), excursion,
            adherence: adhere(windows), adherenceRecent: adhere(windows.slice(-recentN)) };
 }
 

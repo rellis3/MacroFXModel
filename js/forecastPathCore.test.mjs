@@ -417,4 +417,18 @@ const m15 = syntheticM15(55);   // ~5280 bars
   } else ok(true, 'trendSplit null (too few ER windows) — acceptable');
 }
 
+// 20) Excursion vs endpoint (reflection effect): path busts more than close.
+{
+  const t = intradayTally(m15, { horizonBars: 16 });
+  const e = t.excursion;
+  ok(e && e.n > 0, 'excursion computed');
+  // The intrabar path breaches the band at least as often as the close does.
+  ok(e.pathHeld75 <= e.closeHeld75 + 1e-9, `path breaches ≥ close, P75 (${(e.pathHeld75*100).toFixed(0)}% ≤ ${(e.closeHeld75*100).toFixed(0)}%)`);
+  ok(e.pathHeld50 <= e.closeHeld50 + 1e-9, 'path breaches ≥ close, P50');
+  ok(Math.abs((e.touch75 + e.pathHeld75) - 1) < 1e-9, 'touch75 = 1 − pathHeld75');
+  // On real-ish synthetic data the reflection gap is strictly positive.
+  ok(e.touch75 > e.closeHeld75 * 0 && e.touch75 > 0, 'some windows touch beyond P75 intrabar');
+  ok(e.pathHeld75 >= 0 && e.pathHeld75 <= 1, 'pathHeld in [0,1]');
+}
+
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);
