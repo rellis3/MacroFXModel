@@ -684,34 +684,54 @@ export function dayRangeStatus(bars) {
 
   // Current (partial) day.
   const curIdx = byDay.get(keys[keys.length - 1]);
+  const curFirst = new Date(bars[curIdx[0]].time * 1000);
   const curHour = new Date(bars[curIdx[curIdx.length - 1]].time * 1000).getUTCHours();
   const rangeSoFar = rangeSoFarThrough(curIdx, null);
   if (rangeSoFar == null) return null;
 
-  // Prior-day climatology (all completed days = causal).
+  // Prior-day climatology (all completed days = causal). PAIR full & by-hour on
+  // the SAME days so median(by-hour) ≤ median(full) always holds (pointwise
+  // domination ⇒ quantile domination) — an unpaired version can print the
+  // impossible "range-by-hour > full-day range".
   const fulls = [], soFarAtHour = [], completion = [];
   for (let d = 0; d < keys.length - 1; d++) {
     const idx = byDay.get(keys[d]);
+    if (idx.length < 24) continue;                 // skip thin/holiday partial days
     const full = rangeSoFarThrough(idx, null);
     const sf = rangeSoFarThrough(idx, curHour);
-    if (full > 0) fulls.push(full);
-    if (full > 0 && sf != null) { soFarAtHour.push(sf); completion.push(sf / full); }
+    if (full > 0 && sf != null) { fulls.push(full); soFarAtHour.push(sf); completion.push(sf / full); }
   }
-  if (fulls.length < 8 || soFarAtHour.length < 8) return null;
+  if (fulls.length < 8) return null;
   const med = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
   const pctile = (a, v) => a.length ? a.filter(x => x < v).length / a.length : null;
 
   const medFull = med(fulls), medSoFar = med(soFarAtHour), medComp = med(completion);
   const consumedPct = pctile(soFarAtHour, rangeSoFar);
   const remainingTypical = Math.max(0, medFull - rangeSoFar);   // a typical day's range beyond what's printed
+
+  // Reliability: this UTC-calendar-day climatology does NOT fit a 24h index
+  // future's overnight/weekend session. Flag (don't hide) the cases where the
+  // reading would mislead so the UI can caveat instead of printing confident
+  // nonsense. `reliable=false` reasons: weekend/session-open day, a thin
+  // current partial (few bars), or the day already ~complete by UTC measure.
+  const isWeekendOpen = curFirst.getUTCDay() === 0 || curFirst.getUTCDay() === 6;
+  const thin = curIdx.length < 8;
+  const dayEssentiallyDone = medComp >= 0.9;
+  const reliable = !isWeekendOpen && !thin && !dayEssentiallyDone;
+  const reason = isWeekendOpen ? 'weekend / session-open — the UTC-day climatology does not fit a 24h market\'s overnight session here'
+    : thin ? 'thin session so far (few bars) — too little of the day to judge'
+    : dayEssentiallyDone ? 'the trading day is normally complete by this hour (overnight futures run past the UTC day)'
+    : null;
+
   return {
-    hour: curHour, nDays: fulls.length,
+    hour: curHour, nDays: fulls.length, barsToday: curIdx.length,
     rangeSoFarPct: +(rangeSoFar * 100).toFixed(3),
     typicalSoFarPct: +(medSoFar * 100).toFixed(3),       // typical range traced by this hour
     typicalFullPct: +(medFull * 100).toFixed(3),         // typical full-day range
     completionPct: Math.round(medComp * 100),            // typically this % of the day's range is done by now
     consumedPercentile: consumedPct == null ? null : Math.round(consumedPct * 100),
     remainingTypicalPct: +(remainingTypical * 100).toFixed(3),
+    reliable, reason,
   };
 }
 
