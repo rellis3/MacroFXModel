@@ -1902,12 +1902,15 @@ async function openDrawer(name) {
   $('drStory').innerHTML = '<span class="muted">loading…</span>';
   // One M5 fetch shared by the chart and the Asia story line
   const barsP = jget(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(d.sym)}`).catch(e => ({ error: e.message }));
-  loadDrawerChart(r, barsP).catch(e => {
-    const hint = /OANDA|HTTP|candles/.test(e.message) ? ' — OANDA feed is Railway-only (expected locally).' : '';
-    $('drChart').innerHTML = `<div class="err" style="padding:20px">${e.message}${hint}</div>`;
-  });
+  loadDrawerChart(r, barsP)
+    .then(() => overlayDrawerCone(name).catch(() => {}))
+    .catch(e => {
+      const hint = /OANDA|HTTP|candles/.test(e.message) ? ' — OANDA feed is Railway-only (expected locally).' : '';
+      $('drChart').innerHTML = `<div class="err" style="padding:20px">${e.message}${hint}</div>`;
+    });
   loadDrawerStory(r, barsP).catch(e => { $('drStory').innerHTML = `<span class="muted">story unavailable: ${e.message}</span>`; });
   try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
+  _drPathP = jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`).catch(() => null);
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
   loadDrawerLevels(name, d.sym).catch(() => {});
@@ -1923,12 +1926,36 @@ async function openDrawer(name) {
 // ── Forecast Path drawer section — the cone engine's calibrated 4h claims ─────
 // Served by /api/forecast-path/summary (15-min server cache; same bricks as
 // forecast-path.html). Shows the RANGE claims + when to trust them; direction
-// is deliberately absent (its own calibration shows a coin flip).
+// is deliberately absent (its own calibration shows a coin flip). One summary
+// fetch per drawer open (_drPathP) feeds this section AND the chart overlay.
+let _drPathP = null;
+
+// Draw the live 4h cone on the drawer chart: prediction (drift) line + P50/P75
+// envelopes, from the summary's cone coordinates (M15 grid, 15-min cached — the
+// anchor can trail the freshest M5 candle by up to ~30 min; the cone still
+// starts where the claim was actually made).
+async function overlayDrawerCone(name) {
+  const j = await _drPathP;
+  const cone = j?.pairs?.[name.toLowerCase()]?.cone;
+  if (!cone?.steps?.length || !drChart) return;
+  const LSt = LightweightCharts.LineStyle;
+  const mk = (color, width, style) => drChart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const t0 = { time: cone.anchorTime, value: cone.anchor };
+  const data = k => [t0, ...cone.steps.map(p => ({ time: p.t, value: p[k] }))];
+  mk('#5b9dff', 2, LSt.Solid).setData(data('c'));
+  mk('rgba(52,211,153,.9)', 1, LSt.Dashed).setData(data('p50u'));
+  mk('rgba(52,211,153,.9)', 1, LSt.Dashed).setData(data('p50d'));
+  mk('rgba(251,191,36,.85)', 1, LSt.LargeDashed).setData(data('p75u'));
+  mk('rgba(251,191,36,.85)', 1, LSt.LargeDashed).setData(data('p75d'));
+  try { drChart.timeScale().fitContent(); } catch {}
+  $('drChartNote').textContent += ' · 📐 cone = event-aware 4h claim (blue = predicted path; green/amber = P50/P75 envelopes)';
+}
+
 async function loadDrawerPath(name) {
   const sec = $('drPathSec'), el = $('drPath');
   el.innerHTML = '<span class="muted">loading…</span>';
   sec.style.display = '';
-  const j = await jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`);
+  const j = await _drPathP;
   const s = j?.pairs?.[name.toLowerCase()];
   if (!s) { sec.style.display = 'none'; return; }
   const hrs = a => a?.length ? a.map(h => String(h).padStart(2, '0')).join(' ') + 'h' : '—';

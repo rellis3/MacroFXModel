@@ -11420,6 +11420,9 @@ async function _fpSummarizePair(name) {
     eventSteps: live.eventSteps ?? 0,
     surprise, trustHours, shakyHours, upcomingEvents,
     calib: { n: t.full.n, c75Final: t.full.perStep[_FP_H - 1]?.c75 ?? null },
+    // Full cone coordinates so a consumer can DRAW the claim (brief drawer chart).
+    cone: { anchorTime: live.anchorTime, anchor: live.anchor,
+            steps: live.steps.map(s => ({ t: s.time, c: s.center, p50u: s.p50Up, p50d: s.p50Dn, p75u: s.p75Up, p75d: s.p75Dn })) },
   };
 }
 
