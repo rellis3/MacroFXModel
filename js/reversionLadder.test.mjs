@@ -125,6 +125,34 @@ const outer = reversionTrades(OPEN, mkBars([
 ]), PCTS, { armed: new Set(['H_p75']), style: 'fade_all' });
 ok('fade_all: outermost p75 still trades (as fade)', outer.length === 1 && outer[0].action === 'fade');
 
+// ── Fixed SL/TP mode: fixed SL distance + TP multiplier ──────────────────────
+console.log('[fixed SL/TP]');
+// H_med fade (SELL) at 101.0; slDist 0.5 → stop 101.5; tpMult 2 → tpDist 1.0 → tp 100.0.
+const fixedWin = reversionTrades(OPEN, mkBars([
+  [100.0, 100.2, 99.9, 100.1],
+  [100.1, 101.05, 100.0, 101.0],   // fill (high<stop 101.5; TP not booked on limit fill bar)
+  [101.0, 101.0, 100.0, 100.0],    // low 100.0 <= tp → win
+]), PCTS, { armed: armH, sltp: { mode: 'fixed', slDist: 0.5, tpMult: 2 } })[0];
+ok('fixed: win outcome', fixedWin && fixedWin.outcome === 'win');
+ok('fixed: stop = entry + 0.5 (101.5)', fixedWin && near(fixedWin.stop, 101.5));
+ok('fixed: tp = entry - 1.0 (100.0)', fixedWin && near(fixedWin.target, 100.0));
+ok('fixed: gross ≈ +1.0% (tpDist/open)', fixedWin && near(fixedWin.grossPct, 1.0, 1e-6));
+// Same entry, tight stop hit first → loss at fixed SL.
+const fixedLoss = reversionTrades(OPEN, mkBars([
+  [100.0, 100.2, 99.9, 100.1],
+  [100.1, 101.05, 100.0, 101.0],   // fill
+  [101.0, 101.6, 101.0, 101.5],    // high 101.6 >= stop 101.5 → loss
+]), PCTS, { armed: armH, sltp: { mode: 'fixed', slDist: 0.5, tpMult: 2 } })[0];
+ok('fixed: stop hit → loss', fixedLoss && fixedLoss.outcome === 'loss');
+ok('fixed: loss ≈ -0.5% (slDist/open)', fixedLoss && near(fixedLoss.grossPct, -0.5, 1e-6));
+// mode:'level' (or absent) is unchanged — same as the default fade.
+const lvl = reversionTrades(OPEN, mkBars([
+  [100.0, 100.2, 99.9, 100.1],
+  [100.1, 101.05, 100.0, 101.0],
+  [101.0, 101.0, 100.6, 100.7],
+]), PCTS, { armed: armH, sltp: { mode: 'level' } })[0];
+ok('level mode == default (stop 101.3)', lvl && near(lvl.stop, 101.3) && lvl.outcome === 'win');
+
 // ── costs netting + tally ────────────────────────────────────────────────────
 console.log('[costs + tally]');
 const costed = reversionTrades(OPEN, mkBars([

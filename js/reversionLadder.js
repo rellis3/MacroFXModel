@@ -103,41 +103,57 @@ export function ladderLevels(open, pcts) {
 // The stop is SYMMETRIC either way (equal distance the other side of entry).
 // Returns an array of resolved trades.
 export function reversionTrades(open, bars, pcts, opts = {}) {
-  const { armed = null, costPct = 0, style = 'fade_all' } = opts;
+  const { armed = null, costPct = 0, style = 'fade_all', sltp = null } = opts;
   const lad = ladderLevels(open, pcts);
   if (!lad || !bars || !bars.length) return [];
   const styleDef = STYLES[style] || STYLES.fade_all;
+  // SL/TP mode:
+  //   • 'level' (default) — TP = the adjacent band (inner for fade / outer for
+  //     follow), SL = symmetric (1:1 on distance). The original behaviour.
+  //   • 'fixed' — SL = a fixed PRICE distance `slDist` (the caller converts
+  //     pips/points → price), TP = slDist × `tpMult`, both off the entry in the
+  //     trade's direction. Lets you A/B "tight defined-risk stop, 2R target" vs
+  //     the band geometry. Entry line + fade/follow direction are unchanged.
+  const fixed = sltp && sltp.mode === 'fixed' && sltp.slDist > 0;
   const lastClose = bars[bars.length - 1].close;
   const trades = [];
   for (const L of lad.lines) {
     if (armed && !armed.has(L.key)) continue;
     const action = styleDef.action(L);
-    let isBuy, target, entryType;
+    let isBuy, bandTarget, entryType;
     if (action === 'follow') {
       if (L.outerTarget == null) continue;    // outermost: nothing further out to target
       isBuy = L.side > 0;                      // continue the move: up-line BUY, down-line SELL
-      target = L.outerTarget; entryType = 'stop';
+      bandTarget = L.outerTarget; entryType = 'stop';
     } else {
       isBuy = L.side < 0;                      // fade: up-line SELL, down-line BUY
-      target = L.target; entryType = 'limit';
+      bandTarget = L.target; entryType = 'limit';
     }
     const entry = L.price;
-    const dist = Math.abs(entry - target);
-    const stop = isBuy ? entry - dist : entry + dist;   // symmetric
-    const r = walkBars(bars, entry, target, stop, isBuy, entryType, open);
+    let tp, stop;
+    if (fixed) {
+      const slDist = sltp.slDist, tpDist = slDist * (sltp.tpMult > 0 ? sltp.tpMult : 1);
+      tp   = entry + (isBuy ? tpDist : -tpDist);
+      stop = entry + (isBuy ? -slDist : slDist);
+    } else {
+      tp = bandTarget;
+      const dist = Math.abs(entry - bandTarget);
+      stop = isBuy ? entry - dist : entry + dist;   // symmetric
+    }
+    const r = walkBars(bars, entry, tp, stop, isBuy, entryType, open);
     if (!r) continue;                          // line never touched this session
     // walkBars labels a POSITIVE mark-to-close as 'win' (and a non-positive one
     // as 'open'), which conflates "reached the target" with "expired in profit".
-    // Separate them: a true target-hit books exactly the entry→target distance;
+    // Separate them: a true target-hit books exactly the entry→TP distance;
     // anything else that isn't a stop is an expiry (marked to the session close).
-    const winPct = dist / open * 100;
+    const winPct = Math.abs(entry - tp) / open * 100;
     const outcome = r.outcome === 'loss' ? 'loss'
                   : (r.outcome === 'win' && Math.abs(r.pnlPct - winPct) <= 1e-9) ? 'win'
                   : 'expired';
-    const exitPrice = outcome === 'win' ? target : outcome === 'loss' ? stop : lastClose;
+    const exitPrice = outcome === 'win' ? tp : outcome === 'loss' ? stop : lastClose;
     trades.push({
       key: L.key, label: L.label, color: L.color, side: isBuy ? 'BUY' : 'SELL', action,
-      entry, target, stop, exitPrice, pct: L.pct,
+      entry, target: tp, stop, exitPrice, pct: L.pct,
       outcome, grossPct: r.pnlPct, netPct: r.pnlPct - costPct,
       entryTime: r.fillTime, exitTime: r.exitTime,
     });
