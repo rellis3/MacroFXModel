@@ -100,6 +100,7 @@ import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/vol
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
 import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
+import { makeClaim as _cfMakeClaim, shouldRecord as _cfShouldRecord, resolveClaims as _cfResolve, pruneStale as _cfPrune, summarizeForward as _cfSummarize } from './js/coneForwardTrack.js';   // cone forward-track (live claims vs outcomes)
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
@@ -11792,6 +11793,82 @@ app.get('/api/forecast-path/iv', async (req, res) => {
     res.json({ ok: true, supported: true, pair: name.toUpperCase(), series: sid, byDate });
   } catch (e) { res.status(500).json({ ok: false, supported: true, error: e.message }); }
 });
+
+// ── Cone forward-track — a LIVE record of cone claims vs realized outcomes ────
+// Records each pair's live 4h cone claim (~hourly, deduped) and resolves the
+// outcome once the window matures. The only test a backtest can't fake: does
+// the forward P75 containment track the calibrated 75% claim, or decay? Server-
+// side kv (single _CF_EXACT gate). Pure math in js/coneForwardTrack.js.
+let _coneFwdRunning = false;
+async function _coneForwardRefresh({ pairs } = {}) {
+  if (_coneFwdRunning) return { skipped: 'already running' };
+  _coneFwdRunning = true;
+  const out = { added: 0, resolved: 0, log: [] };
+  try {
+    const nowSec = Math.floor(Date.now() / 1000);
+    let log = await _ftLoad('cone_fwd_log', []);
+    const meta = await _ftLoad('cone_fwd_meta', {});
+    if (!meta.trackingStart) meta.trackingStart = new Date().toISOString().slice(0, 10);
+    const names = (pairs && pairs.length ? pairs : Object.keys(_wbtInstrMap))
+      .map(p => p.toLowerCase().replace(/[^a-z0-9]/g, '')).filter(n => _wbtInstrMap[n]);
+
+    // 1) Record fresh claims (deduped ~hourly) from the live summary.
+    for (const name of names) {
+      try {
+        if (!_cfShouldRecord(log, name.toUpperCase(), nowSec)) continue;
+        const hit = _fpSummaryCache.get(name);
+        const sum = (hit && Date.now() - hit.at < _FP_SUMMARY_TTL)
+          ? hit.data
+          : await _fpSummarizePair(name).then(d => { _fpSummaryCache.set(name, { at: Date.now(), data: d }); return d; });
+        const claim = _cfMakeClaim(name.toUpperCase(), sum, nowSec);
+        if (claim) { log.push(claim); out.added++; }
+      } catch (e) { out.log.push(`${name}: record ${e.message}`); }
+    }
+
+    // 2) Resolve matured claims — fetch M15 only for pairs that need it.
+    const needResolve = [...new Set(log.filter(c => !c.resolved && c.horizonEndSec <= nowSec).map(c => c.pair.toLowerCase()))];
+    const barsByPair = {};
+    for (const name of needResolve) {
+      try {
+        const bars = await _fpReachBarsFor(name);
+        barsByPair[name.toUpperCase()] = bars;
+      } catch (e) { out.log.push(`${name}: bars ${e.message}`); }
+    }
+    const r = _cfResolve(log, barsByPair, nowSec);
+    out.resolved = r.resolved;
+    log = _cfPrune(r.log, nowSec);
+
+    meta.lastScanAt = new Date().toISOString();
+    await kv.put('cone_fwd_log', JSON.stringify(log));
+    await kv.put('cone_fwd_meta', JSON.stringify(meta));
+    out.total = log.length;
+    out.stats = _cfSummarize(log, { trackingStart: meta.trackingStart });
+    return out;
+  } finally { _coneFwdRunning = false; }
+}
+
+app.post('/api/forecast-path/forward/refresh', express.json({ limit: '8kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const pairs = req.body?.pair ? [req.body.pair] : null;
+    const out = await _coneForwardRefresh({ pairs });
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.get('/api/forecast-path/forward', async (_req, res) => {
+  try {
+    const log = await _ftLoad('cone_fwd_log', []);
+    const meta = await _ftLoad('cone_fwd_meta', {});
+    res.json({ ok: true, meta, stats: _cfSummarize(log, { trackingStart: meta.trackingStart || null }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// Auto-tick: record + resolve every 30 min so the forward record accumulates
+// without a manual poke (OANDA-gated; opt out with CONE_FWD_AUTO=0).
+if (process.env.OANDA_KEY && process.env.CONE_FWD_AUTO !== '0') {
+  setInterval(() => { _coneForwardRefresh().catch(() => {}); }, 30 * 60_000);
+}
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
 const laJobs = new Map();
