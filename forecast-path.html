@@ -234,6 +234,10 @@
       <h2>Calibration — full history</h2>
       <div id="calib"><span class="muted">computed on load (non-overlapping windows, no lookahead)</span></div>
     </div>
+    <div class="card">
+      <h2>Forward track (live record)</h2>
+      <div id="forward"><span class="muted">loading…</span></div>
+    </div>
     <div class="card muted">
       <b>How to read this honestly.</b> The cone is the model's real claim: a capped
       EWMA drift plus uncertainty envelopes. On <b>D1</b> the envelopes are the Feller
@@ -272,17 +276,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=14';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=14';
-import { bisect, resampleTo } from './js/barUtils.js?v=14';
-import { collectLevels } from './js/levelSources.js?v=14';
+import { createLevelChart } from './js/levelChart.js?v=15';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=15';
+import { bisect, resampleTo } from './js/barUtils.js?v=15';
+import { collectLevels } from './js/levelSources.js?v=15';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration, dayRangeStatus,
-} from './js/forecastPathCore.js?v=14';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=14';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=14';
+} from './js/forecastPathCore.js?v=15';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=15';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=15';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -902,8 +906,29 @@ async function load() {
   }
 }
 
+// Forward track — the live post-research record (accumulates over weeks; the
+// only thing a backtest can't fake). Fetched once; shows aggregate + this pair.
+async function loadForward() {
+  const el = $('forward'); if (!el) return;
+  try {
+    const j = await fetch('/api/forecast-path/forward').then(r => r.json());
+    const s = j?.stats;
+    if (!s || !s.resolved) { el.innerHTML = `<span class="muted">No resolved forward claims yet${s?.trackingStart ? ` (tracking since ${s.trackingStart})` : ''} — the engine logs each pair's live cone hourly and grades it after 4h; check back as it accumulates.</span>`; return; }
+    const pc = v => v == null ? '—' : (v * 100).toFixed(0) + '%';
+    const g = (v, claim) => v == null ? '' : Math.abs(v - claim) <= 0.07 ? 'good' : Math.abs(v - claim) <= 0.15 ? 'warn' : 'bad';
+    const pp = s.perPair?.[pairSel.value];
+    el.innerHTML =
+      `<div class="kv"><span>resolved claims</span><b>${s.resolved} (of ${s.total}, ${s.pending} pending)</b></div>` +
+      `<div class="kv"><span>P75 close-containment</span><b class="${g(s.closeIn75,.75)}">${pc(s.closeIn75)} <span class="muted">(claim 75%)</span></b></div>` +
+      `<div class="kv"><span>P75 touched intraday</span><b>${pc(s.touch75)}</b></div>` +
+      `<div class="kv"><span>direction vs coin flip</span><b class="${s.dirHit==null?'':Math.abs(s.dirHit-0.5)<0.05?'':s.dirHit>0.55?'good':s.dirHit<0.45?'bad':'warn'}">${pc(s.dirHit)}</b></div>` +
+      (pp ? `<div class="kv" style="margin-top:6px"><span>${pairSel.value} (n=${pp.n})</span><b class="${g(pp.closeIn75,.75)}">P75 ${pc(pp.closeIn75)} · dir ${pc(pp.dirHit)}</b></div>` : '') +
+      `<div class="muted" style="margin-top:4px">Live since ${s.trackingStart ?? '—'}. Forward P75 near 75% = calibration is holding out-of-sample; decay = it was in-sample. Direction stays ~coin flip by design.</div>`;
+  } catch { el.innerHTML = '<span class="muted">Forward record unavailable.</span>'; }
+}
+
 $('load').onclick = load;
-pairSel.onchange = load;
+pairSel.onchange = () => { load(); loadForward(); };
 $('helpBtn').onclick = () => { $('helpOverlay').style.display = 'block'; };
 $('gran').onchange = () => { fillHorizons(); load(); };
 $('replay').oninput = ev => { i = +ev.target.value; render(); };
@@ -940,6 +965,7 @@ $('tBudgetCone').onclick = () => {   // budgetConditioner lives in the context �
 };
 
 load();
+loadForward();
 </script>
 </body>
 </html>
