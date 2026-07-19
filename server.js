@@ -9021,6 +9021,88 @@ app.get('/api/vwap-reversion/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
+// ── EMA-crossover A/B vs momentum (is buy/sell-on-cross any good?) ────────────
+// Injects an EMA-15/50/100 crossover as the SIGNAL into the SAME trend primitive
+// and A/Bs it against the momentum signal — basket + single-pair + buy&hold
+// floor, costed, with IS/OOS validation. Daily closes built from M1 here; the
+// engine is pure. Same async-job pattern.
+const emaAbJobs = new Map();
+function _purgeStaleEmaAbJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, j] of emaAbJobs) if (j.startedAt < cutoff) emaAbJobs.delete(id);
+}
+const EMA_AB_DEFAULT_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'usdcad', 'usdchf', 'nzdusd', 'gold'];
+function _dailyClosesFromPacked(packed) {
+  const out = []; let curDay = null, lastClose = null;
+  for (let i = 0; i < packed.n; i++) {
+    const d = Math.floor(packed.times[i] / 86400);
+    if (curDay === null) curDay = d;
+    if (d !== curDay) { out.push(lastClose); curDay = d; }
+    lastClose = packed.closes[i];
+  }
+  if (lastClose != null) out.push(lastClose);
+  return out;
+}
+
+app.post('/api/trend-ema-ab/run', express.json({ limit: '256kb' }), (req, res) => {
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const spans = Array.isArray(b.spans) && b.spans.length === 3 ? b.spans.map(Number) : [15, 50, 100];
+  const costBp = num(b.costBp, 2);
+  const pairs = Array.isArray(b.pairs) && b.pairs.length
+    ? b.pairs.map(p => String(p).toLowerCase().replace('/', '')) : EMA_AB_DEFAULT_PAIRS;
+
+  const jobId = `ema_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleEmaAbJobs();
+  emaAbJobs.set(jobId, { status: 'running', startedAt, pairsTotal: pairs.length, pairsDone: 0 });
+
+  (async () => {
+    try {
+      const { compareTrendSignals, emaIsOosSplit, withEmaSignal } = await import('./js/trendFollowEmaEngine.js');
+      const { isOosSplit, robustness } = await import('./js/trendFollowEngine.js');
+      const markets = [];
+      for (const p of pairs) {
+        let packed; try { packed = await loadM1ForPair(p, BT_M1_DIR); } catch { packed = null; }
+        if (packed && packed.n) markets.push({ symbol: p.toUpperCase(), closes: _dailyClosesFromPacked(packed) });
+        const j = emaAbJobs.get(jobId); if (j) { j.pairsDone++; emaAbJobs.set(jobId, j); }
+      }
+      if (markets.length < 3) { emaAbJobs.set(jobId, { status: 'error', error: `need ≥3 markets with M1, got ${markets.length}`, startedAt }); return; }
+      const ab = compareTrendSignals(markets, { costBp }, spans);
+      const oosMom = isOosSplit(markets, { costBp });
+      const oosEma = emaIsOosSplit(markets, { costBp });
+      const robMom = robustness(markets, { costBp });
+      const robEma = robustness(withEmaSignal(markets, spans), { costBp });
+      emaAbJobs.set(jobId, { status: 'done', startedAt, result: {
+        spans, costBp, pairs: markets.map(m => m.symbol),
+        basket: { momentum: ab.momentum.portfolio, emaCross: ab.emaCross.portfolio },
+        perPair: ab.momentum.markets.map((mm, i) => ({ symbol: mm.symbol, momentum: mm.sharpe,
+          emaCross: ab.emaCross.markets[i].sharpe, buyHold: ab.buyHold[i]?.buyHoldSharpe,
+          emaTurnover: ab.emaCross.markets[i].avgTurnoverPerYear })),
+        costSensitivity: { momentum: robMom.costSensitivity, emaCross: robEma.costSensitivity },
+        oos: { momentum: oosMom, emaCross: oosEma }, momentumRead: robMom.read, subPeriods: robMom.subPeriods,
+      } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[trend-ema-ab/run]', msg, e?.stack ?? '');
+      emaAbJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/trend-ema-ab/status/:jobId', (req, res) => {
+  const job = emaAbJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+                      pairsDone: job.pairsDone, pairsTotal: job.pairsTotal });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
 // ── Rank-IC Diagnostic (does a score sort the forward outcome?) ──────────────
 // Spearman rank-IC of the day-type classifier scores (composite T + its
 // component estimators + the regime/momentum directional call) vs the realized
