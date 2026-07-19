@@ -393,4 +393,14 @@ const m15 = syntheticM15(55);   // ~5280 bars
   ok(tOff.ivStat === null || tOff.ivStat.on === false, 'ivStat off-run flagged off');
 }
 
+// 18) Path adherence: pooled containment across horizon, sane on synthetic.
+{
+  const t = intradayTally(m15, { horizonBars: 16 });
+  ok(t.adherence && t.adherence.n > 0, 'adherence computed');
+  ok(t.adherence.p50 > 0.35 && t.adherence.p50 < 0.65, `adherence P50 near 50% (${(t.adherence.p50*100).toFixed(0)}%)`);
+  ok(t.adherence.p75 > 0.6 && t.adherence.p75 < 0.9, `adherence P75 near 75% (${(t.adherence.p75*100).toFixed(0)}%)`);
+  ok(t.adherence.p75 > t.adherence.p50, 'P75 band contains more than P50 (nested)');
+  ok(t.adherenceRecent && t.adherenceRecent.n > 0, 'recent adherence computed');
+}
+
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);
