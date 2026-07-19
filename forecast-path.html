@@ -115,13 +115,19 @@
 
     <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">It grades itself</h3>
     <p style="margin:0;font-size:13px;line-height:1.6">
-      Nothing here asks to be trusted. The <b>hindcast trail</b> draws every past
-      prediction over the candles it was predicting — ending in a green dot where the
-      claim held and a red square where reality busted it — and the <b>calibration
-      card</b> counts, over hundreds of past windows, how often the 50% and 75% claims
-      actually held, split by the hour the forecast was made. The <b>replay slider</b>
-      rewinds to any past moment and shows the forecast exactly as it would have looked
-      then, built only from data available at the time.
+      Nothing here asks to be trusted. The <b>hindcast trail</b> walks each recent
+      most-agreed path forward over the candles it was predicting (purple) so you can
+      watch the predicted trajectory diverge from reality, and marks every window with
+      a green dot (final close inside the P75 claim) or a red square (busted) — the
+      calibration table, made spatial. The <b>calibration card</b> counts, over
+      hundreds of past windows, how often the 50% and 75% claims actually held, split
+      by the hour the forecast was made, and reports <b>path adherence</b> — of every
+      predicted bar, how often price stayed inside the median / 75th band around the
+      path (a range fit, not a direction call). The <b>replay slider</b> rewinds to any
+      past moment and shows the forecast exactly as it would have looked then, built
+      only from data available at the time. (The wiggle you see in a single most-agreed
+      path is Monte-Carlo sampling noise around the smooth drift — the model claims the
+      envelope, not the exact wiggles.)
     </p>
 
     <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">Target reachability (the "price" tool)</h3>
@@ -246,17 +252,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=6';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=6';
-import { bisect, resampleTo } from './js/barUtils.js?v=6';
-import { collectLevels } from './js/levelSources.js?v=6';
+import { createLevelChart } from './js/levelChart.js?v=7';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=7';
+import { bisect, resampleTo } from './js/barUtils.js?v=7';
+import { collectLevels } from './js/levelSources.js?v=7';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration,
-} from './js/forecastPathCore.js?v=6';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=6';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=6';
+} from './js/forecastPathCore.js?v=7';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=7';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=7';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -458,29 +464,41 @@ function render() {
     }
   }
 
-  // Hindcast trail — the SAME windows the calibration tally grades, drawn:
-  // each segment is the centre ("most-agreed") path the model claimed at that
-  // time, computed causally; the end marker shows whether the final close
-  // landed inside the P75 claim (green dot) or busted it (red square). Each
-  // segment's first step is dropped to break the line between predictions.
+  // Hindcast trail — the SAME windows the calibration tally grades, drawn.
+  // For the most recent windows the MOST-AGREED (Monte-Carlo consensus) path is
+  // walked forward over the candles it predicted (purple), so you can watch the
+  // predicted trajectory diverge from reality. The end marker grades the window:
+  // green dot = final close inside the P75 claim, red square = busted. Older
+  // windows keep just the dot (drawing every wave would be unreadable).
   if (toggles.trail) {
-    const trailData = [], hitMarks = [];
+    const hitMarks = [], carrier = [];
     const endI = (live ? bars.length : i) - H;         // fully resolved windows only
-    for (let a = Math.max(e.warmup, 2); a <= endI; a += H) {
+    const wins = [];
+    for (let a = Math.max(e.warmup, 2); a <= endI; a += H) wins.push(a);
+    const WAVE_RECENT = 60;                             // draw the wave for the last N windows
+    const waveFrom = Math.max(0, wins.length - WAVE_RECENT);
+    wins.forEach((a, wi) => {
       const c = e.cone(ctx, a, H);
-      if (!c) continue;
-      trailData.push({ time: e.stepT(c.steps[0]) });   // whitespace → line break
-      for (let k = 1; k < c.steps.length; k++) trailData.push({ time: e.stepT(c.steps[k]), value: c.steps[k].center });
+      if (!c) return;
       const lastStep = c.steps[H - 1], finalClose = bars[a + H - 1].close;
       const hit = finalClose >= lastStep.p75Dn && finalClose <= lastStep.p75Up;
+      carrier.push({ time: e.stepT(lastStep), value: lastStep.center });
       hitMarks.push({ time: e.stepT(lastStep), position: 'inBar',
                       color: hit ? 'rgba(52,211,153,.85)' : 'rgba(248,113,113,.95)',
                       shape: hit ? 'circle' : 'square', size: 0.5 });
-    }
-    if (trailData.length) {
-      const t = line('rgba(91,157,255,.5)', 1, 0);
-      t.setData(trailData);
-      t.setMarkers(hitMarks);
+      if (wi >= waveFrom) {
+        const cons = (e.paths(ctx, a, H, { nPaths: 20 }).consensus) ?? [];
+        if (cons.length) {
+          const seg = [{ time: e.stepT(c.steps[0]), value: c.anchor ?? c.steps[0].center }];
+          for (const p of cons) seg.push({ time: e.stepT(p), value: p.close });
+          line('rgba(192,132,252,.55)', 1, 0).setData(seg);
+        }
+      }
+    });
+    if (carrier.length) {
+      const dots = line('rgba(0,0,0,0)', 1, 0);        // invisible carrier just for the dots
+      dots.setData(carrier.sort((a, b) => (a.time > b.time ? 1 : -1)));
+      dots.setMarkers(hitMarks.sort((a, b) => (a.time > b.time ? 1 : -1)));
     }
   }
 
@@ -689,6 +707,9 @@ function renderCalib() {
     `<tr><th></th><th>P50→50%</th><th>P75→75%</th><th>P50</th><th>P75</th></tr>${rows}</table>` +
     `<div class="kv" style="margin-top:8px"><span>direction vs coin flip</span>` +
     `<b class="${dirCls}">${pc(d.hitRate)} full · ${pc(dr.hitRate)} recent</b></div>` +
+    (t.adherence ? `<div class="kv"><span>price hugged the path</span>` +
+      `<b>${pc(t.adherence.p50)} in P50 · ${pc(t.adherence.p75)} in P75</b></div>` +
+      `<div class="muted">Path adherence: of every predicted bar, how often price stayed inside the median / 75th band around the most-agreed path (recent ${pc(t.adherenceRecent?.p75)} P75). A range fit, not a direction call.</div>` : '') +
     `<div class="muted">Non-overlapping windows, every input strictly pre-window. Green = within 7pts of the claim.</div>` +
     extra;
 }

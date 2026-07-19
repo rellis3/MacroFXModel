@@ -809,10 +809,21 @@ export function intradayTally(bars, opts = {}) {
     }
   }
 
+  // Path adherence — how tightly did price hug the most-agreed path? Pooled
+  // across EVERY window × step: the fraction of predicted bars where price
+  // stayed within the P50 / P75 band around the path. A RANGE statement, not a
+  // directional one (direction is graded separately, and it's a coin flip).
+  const adhere = ws => {
+    let a = 0, b = 0, tot = 0;
+    for (const w of ws) for (let k = 0; k < H; k++) { tot++; if (w.in50[k]) a++; if (w.in75[k]) b++; }
+    return { n: tot, p50: tot ? a / tot : null, p75: tot ? b / tot : null };
+  };
+
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
   return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },
            full: tally(windows), recent: tally(windows.slice(-recentN)),
-           byHour, budget, eventSplit, ivStat, overall: cell(windows) };
+           byHour, budget, eventSplit, ivStat, overall: cell(windows),
+           adherence: adhere(windows), adherenceRecent: adhere(windows.slice(-recentN)) };
 }
 
 export { HORIZONS };
