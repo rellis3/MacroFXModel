@@ -99,7 +99,7 @@ import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the 
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
-import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
+import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
@@ -11337,11 +11337,11 @@ app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
 // Fetch intraday candles (epoch-second times) for one OANDA instrument —
 // shared by the candle-viewer routes and the forecast-path summary. Throws on
 // a non-OK response with OANDA's errorMessage included.
-async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
+async function _wbtFetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
   const base = _oandaBaseW();
   let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
-  if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
-  if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
+  if (from) url += `&from=${encodeURIComponent(from)}`;
+  if (to)   url += `&to=${encodeURIComponent(to)}`;
   if (!from && !to) url += `&count=${count ?? 200}`;
   const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
   if (!r.ok) {
@@ -11353,6 +11353,33 @@ async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
   return (data.candles ?? [])
     .filter(c => c.complete !== false && c.mid)
     .map(c => ({ time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+}
+
+// Fetch intraday candles (epoch-second times), PAGINATED past OANDA's 5000-
+// candle/request cap: walks the [from, to] window forward in time chunks so a
+// multi-month M15/M5 history stitches into one ascending, de-duplicated series.
+// The event-σ A/B needs ≥20 event windows → months of M15, not the ~50 days a
+// single request allows.
+async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
+  const toIso = to ? _wbtClampTo(to) : new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  if (!from) return _wbtFetchIntradayOnce(oanda, gran, { count });   // count-only (no range)
+  const toMs = new Date(toIso).getTime();
+  let cursorMs = new Date(from + 'T00:00:00Z').getTime();
+  const out = [];
+  let seen = 0;
+  for (let page = 0; page < 24 && cursorMs < toMs; page++) {   // hard cap 24 pages
+    const chunk = await _wbtFetchIntradayOnce(oanda, gran, {
+      from: new Date(cursorMs).toISOString().replace(/\.\d+Z$/, 'Z'),
+      to: toIso,
+    });
+    if (!chunk.length) break;
+    for (const c of chunk) if (!out.length || c.time > out[out.length - 1].time) out.push(c);
+    if (out.length === seen) break;   // no progress → done
+    seen = out.length;
+    if (chunk.length < 4900) break;   // last (partial) page reached `to`
+    cursorMs = (chunk[chunk.length - 1].time + 1) * 1000;
+  }
+  return out;
 }
 
 // Weekly backtest intraday candle viewer — same as D1 but at a finer
@@ -11456,9 +11483,11 @@ async function _fpSummarizePair(name) {
     eventSteps: live.eventSteps ?? 0,
     surprise, trustHours, shakyHours, upcomingEvents,
     calib: { n: t.full.n, c75Final: t.full.perStep[_FP_H - 1]?.c75 ?? null },
-    // Full cone coordinates so a consumer can DRAW the claim (brief drawer chart).
+    // Full cone coordinates so a consumer can DRAW the claim (brief drawer
+    // chart), plus the Monte-Carlo consensus (the "most-agreed path").
     cone: { anchorTime: live.anchorTime, anchor: live.anchor,
-            steps: live.steps.map(s => ({ t: s.time, c: s.center, p50u: s.p50Up, p50d: s.p50Dn, p75u: s.p75Up, p75d: s.p75Dn })) },
+            steps: live.steps.map(s => ({ t: s.time, c: s.center, p50u: s.p50Up, p50d: s.p50Dn, p75u: s.p75Up, p75d: s.p75Dn })),
+            consensus: (_fpPaths(ctx, n, _FP_H, { nPaths: 60 }).consensus ?? []).map(p => ({ t: p.time, c: p.close })) },
   };
 }
 
