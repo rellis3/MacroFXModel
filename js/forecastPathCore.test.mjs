@@ -16,7 +16,7 @@ import {
   calibrationTally, nextWeekday, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally,
   profileMult, INTRADAY_DEFAULTS, intradayRealizedZ, normCdf, eventMult,
-  intradayReachability, reachabilityCalibration,
+  intradayReachability, reachabilityCalibration, dayRangeStatus,
 } from './forecastPathCore.js';
 
 // ── Synthetic GBM daily bars (seeded) ────────────────────────────────────────
@@ -436,6 +436,25 @@ const m15 = syntheticM15(55);   // ~5280 bars
   // Sanity vs endpoint: two-sided close-beyond (2×one-sided) ≈ 1 − final c75.
   const c75 = t.full.perStep[15].c75;
   ok(Math.abs(e.p75.closeBeyond * 2 - (1 - c75)) < 0.12, `2×closeBeyond75 ≈ 1 − c75 (${(e.p75.closeBeyond*2).toFixed(2)} vs ${(1-c75).toFixed(2)})`);
+}
+
+// 21) Day range budget — climatology sane; consumed percentile reflects a spike.
+{
+  const s = dayRangeStatus(m15);
+  ok(s && s.nDays >= 8, 'day range status computed');
+  ok(s.rangeSoFarPct >= 0 && s.typicalFullPct > 0, 'ranges non-negative, full > 0');
+  ok(s.completionPct >= 0 && s.completionPct <= 100, 'completion % in [0,100]');
+  ok(s.consumedPercentile >= 0 && s.consumedPercentile <= 100, 'consumed percentile in [0,100]');
+  ok(s.typicalSoFarPct <= s.typicalFullPct + 1e-9, 'range-by-now ≤ full-day range');
+  ok(s.remainingTypicalPct >= 0, 'remaining ≥ 0');
+  // A day with a giant early range should rank as busy (high percentile).
+  const spiked = m15.map((b, k) => {
+    const lastDay = Math.floor(m15[m15.length - 1].time / 86400);
+    return Math.floor(b.time / 86400) === lastDay ? { ...b, high: b.high * 1.02, low: b.low * 0.98 } : b;
+  });
+  const sb = dayRangeStatus(spiked);
+  ok(sb.consumedPercentile >= s.consumedPercentile, `busy day ranks higher (${sb.consumedPercentile} ≥ ${s.consumedPercentile})`);
+  ok(dayRangeStatus(m15.slice(0, 100)) === null, 'too little history → null');
 }
 
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);

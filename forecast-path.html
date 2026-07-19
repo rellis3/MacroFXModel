@@ -73,6 +73,16 @@
       Feller bands).
     </p>
 
+    <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">Volatility left in the day</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      Pure climatology — no prediction, just this pair's own range history. It shows how
+      much high-low <b>range you've used so far today</b>, whether that's <b>busy or
+      quiet</b> for this hour (a percentile vs prior same-hour days), the <b>typical
+      full-day range</b>, and how much range a typical day <b>still has left</b> from
+      here. Use it to gauge whether the day's move is mostly spent or there's room to run
+      — a quiet morning (low percentile) tends to have more still to come.
+    </p>
+
     <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">The Day-forecast lines (the daily export, drawn)</h3>
     <p style="margin:0;font-size:13px;line-height:1.6">
       The <b>Day forecast</b> toggle draws the daily vol &amp; range forecast — the
@@ -208,6 +218,10 @@
       <div id="coneInfo"><span class="muted">load a pair</span></div>
     </div>
     <div class="card">
+      <h2>Volatility left in the day</h2>
+      <div id="dayBudget"><span class="muted">how much of the day's typical range is spent vs still to come (intraday only)</span></div>
+    </div>
+    <div class="card">
       <h2>Target reachability</h2>
       <div class="ctl" style="margin:0 0 6px">
         <input id="reachTarget" class="mono" placeholder="target price" style="flex:1 1 120px;background:#1e293b;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px">
@@ -257,17 +271,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=10';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=10';
-import { bisect, resampleTo } from './js/barUtils.js?v=10';
-import { collectLevels } from './js/levelSources.js?v=10';
+import { createLevelChart } from './js/levelChart.js?v=11';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=11';
+import { bisect, resampleTo } from './js/barUtils.js?v=11';
+import { collectLevels } from './js/levelSources.js?v=11';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
-  intradayRealizedZ, intradayReachability, reachabilityCalibration,
-} from './js/forecastPathCore.js?v=10';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=10';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=10';
+  intradayRealizedZ, intradayReachability, reachabilityCalibration, dayRangeStatus,
+} from './js/forecastPathCore.js?v=11';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=11';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=11';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -607,6 +621,30 @@ function render() {
     `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(dg)} – ${lastS.p75Up.toFixed(dg)}</b></div>` +
     surpriseHtml + evHtml +
     `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
+
+  renderDayBudget();
+}
+
+// Volatility left in the day — pure range climatology (intraday only).
+function renderDayBudget() {
+  const el = $('dayBudget');
+  if (!el) return;
+  if (!isIntraday() || !bars.length) { el.innerHTML = '<span class="muted">Intraday (M5/M15) only — how much of the day\'s range is spent vs left.</span>'; return; }
+  const s = dayRangeStatus(bars);
+  if (!s) { el.innerHTML = '<span class="muted">Not enough history yet.</span>'; return; }
+  const cp = s.consumedPercentile;
+  const cls = cp == null ? '' : cp >= 75 ? 'bad' : cp <= 25 ? 'good' : 'warn';
+  const verdict = cp == null ? ''
+    : cp >= 75 ? `Busy session — already used more range than a typical ${String(s.hour).padStart(2,'0')}:00 day. Much of the day's move may be behind us; expect less room left than usual.`
+    : cp <= 25 ? `Quiet session — well below the typical range for this hour. More room to move than usual (and this pair's calibration shows quiet mornings tend to expand).`
+    : `On pace — range used is about typical for this hour.`;
+  el.innerHTML =
+    `<div class="kv"><span>range so far today</span><b>${s.rangeSoFarPct}%</b></div>` +
+    `<div class="kv"><span>typical by ${String(s.hour).padStart(2,'0')}:00</span><b>${s.typicalSoFarPct}% (${s.completionPct}% of the day)</b></div>` +
+    `<div class="kv"><span>busy/quiet vs history</span><b class="${cls}">${cp == null ? '—' : cp + 'th pctile'}</b></div>` +
+    `<div class="kv"><span>typical full-day range</span><b>${s.typicalFullPct}%</b></div>` +
+    `<div class="kv"><span>typical range still to come</span><b>${s.remainingTypicalPct}%</b></div>` +
+    `<div class="muted" style="margin-top:4px">Climatology over ${s.nDays} prior days — descriptive, not a prediction. ${verdict}</div>`;
 }
 
 function renderCalib() {

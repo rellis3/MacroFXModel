@@ -651,6 +651,70 @@ export function reachabilityCalibration(bars, opts = {}) {
            note: 'Predicted vs realized touch frequency, binned. Well-calibrated ⇒ predicted ≈ realized per bin (gap→0).' };
 }
 
+// ── Day range budget — how much of the day's volatility is spent vs left ─────
+// Pure climatology: no edge claim, just describing this pair's own intraday
+// range distribution. For the CURRENT (last, partial) UTC day it reports how
+// much high-low range has been traced so far, whether that's busy or quiet for
+// the hour (percentile vs prior same-hour days), a typical full-day range, and
+// how much range a typical day still has left from here. The "quiet mornings
+// tend to expand" effect the gold calibration surfaced is stated in the verdict
+// but NOT predicted — this stays descriptive.
+//   bars: intraday [{time(sec),open,high,low,close}] spanning ≥ ~12 days.
+export function dayRangeStatus(bars) {
+  if (!bars || bars.length < 96 * 8) return null;
+  const dayKey = t => Math.floor(t / 86400);
+  const byDay = new Map();
+  for (let i = 0; i < bars.length; i++) {
+    const k = dayKey(bars[i].time);
+    (byDay.get(k) ?? byDay.set(k, []).get(k)).push(i);
+  }
+  const keys = [...byDay.keys()].sort((a, b) => a - b);
+  if (keys.length < 10) return null;
+
+  const rangeSoFarThrough = (idx, hourCap) => {   // (max-min)/open using bars with hour ≤ cap; full day if cap=null
+    const o = bars[idx[0]].open;
+    if (!(o > 0)) return null;
+    let hi = -Infinity, lo = Infinity, any = false;
+    for (const i of idx) {
+      if (hourCap != null && new Date(bars[i].time * 1000).getUTCHours() > hourCap) continue;
+      if (bars[i].high > hi) hi = bars[i].high; if (bars[i].low < lo) lo = bars[i].low; any = true;
+    }
+    return any ? (hi - lo) / o : null;
+  };
+
+  // Current (partial) day.
+  const curIdx = byDay.get(keys[keys.length - 1]);
+  const curHour = new Date(bars[curIdx[curIdx.length - 1]].time * 1000).getUTCHours();
+  const rangeSoFar = rangeSoFarThrough(curIdx, null);
+  if (rangeSoFar == null) return null;
+
+  // Prior-day climatology (all completed days = causal).
+  const fulls = [], soFarAtHour = [], completion = [];
+  for (let d = 0; d < keys.length - 1; d++) {
+    const idx = byDay.get(keys[d]);
+    const full = rangeSoFarThrough(idx, null);
+    const sf = rangeSoFarThrough(idx, curHour);
+    if (full > 0) fulls.push(full);
+    if (full > 0 && sf != null) { soFarAtHour.push(sf); completion.push(sf / full); }
+  }
+  if (fulls.length < 8 || soFarAtHour.length < 8) return null;
+  const med = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
+  const pctile = (a, v) => a.length ? a.filter(x => x < v).length / a.length : null;
+
+  const medFull = med(fulls), medSoFar = med(soFarAtHour), medComp = med(completion);
+  const consumedPct = pctile(soFarAtHour, rangeSoFar);
+  const remainingTypical = Math.max(0, medFull - rangeSoFar);   // a typical day's range beyond what's printed
+  return {
+    hour: curHour, nDays: fulls.length,
+    rangeSoFarPct: +(rangeSoFar * 100).toFixed(3),
+    typicalSoFarPct: +(medSoFar * 100).toFixed(3),       // typical range traced by this hour
+    typicalFullPct: +(medFull * 100).toFixed(3),         // typical full-day range
+    completionPct: Math.round(medComp * 100),            // typically this % of the day's range is done by now
+    consumedPercentile: consumedPct == null ? null : Math.round(consumedPct * 100),
+    remainingTypicalPct: +(remainingTypical * 100).toFixed(3),
+  };
+}
+
 // Standard normal CDF (Abramowitz-Stegun 7.1.26 via erf approximation).
 export function normCdf(z) {
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
