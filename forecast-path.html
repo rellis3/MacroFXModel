@@ -323,7 +323,9 @@ const ENGINES = {
     sigmaLabel: 'daily σ',
     sigmaOf: c => c.sigma,
   },
-  M15: intradayEngine(15, 45, [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']], '16'),
+  // 120 days (paginated server-side past OANDA's 5000-candle cap) so the
+  // event-σ A/B clears its ≥20-window bar; the main chart still zooms to recent.
+  M15: intradayEngine(15, 120, [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']], '16'),
   // NB: OANDA computes the request's candle count from the CALENDAR span
   // (weekends included) — M5 × 18 days = 5184 slots, over the 5000 cap → 400.
   M5:  intradayEngine(5, 16, [['12', '1 hour'], ['24', '2 hours'], ['48', '4 hours']], '24'),

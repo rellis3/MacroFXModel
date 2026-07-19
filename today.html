@@ -1942,13 +1942,23 @@ async function overlayDrawerCone(name) {
   const mk = (color, width, style) => drChart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
   const t0 = { time: cone.anchorTime, value: cone.anchor };
   const data = k => [t0, ...cone.steps.map(p => ({ time: p.t, value: p[k] }))];
-  mk('#5b9dff', 2, LSt.Solid).setData(data('c'));
   mk('rgba(52,211,153,.9)', 1, LSt.Dashed).setData(data('p50u'));
   mk('rgba(52,211,153,.9)', 1, LSt.Dashed).setData(data('p50d'));
   mk('rgba(251,191,36,.85)', 1, LSt.LargeDashed).setData(data('p75u'));
   mk('rgba(251,191,36,.85)', 1, LSt.LargeDashed).setData(data('p75d'));
-  try { drChart.timeScale().fitContent(); } catch {}
-  $('drChartNote').textContent += ' · 📐 cone = event-aware 4h claim (blue = predicted path; green/amber = P50/P75 envelopes)';
+  mk('#5b9dff', 2, LSt.Solid).setData(data('c'));                          // drift / predicted path
+  // Most-agreed path — the Monte-Carlo consensus (purple), same as the
+  // Forecast Path page. Tracks the drift line closely; that overlap IS the
+  // point (the paths agree where the drift points).
+  if (cone.consensus?.length)
+    mk('#c084fc', 2, LSt.Solid).setData([t0, ...cone.consensus.map(p => ({ time: p.t, value: p.c }))]);
+  // Time-based range: the cone (4h) fills the right ~quarter, its anchor near
+  // 3/4 across — so it never runs off behind the price scale again.
+  // Anchor at 3/4: left = anchor − 3·span, right = last cone point (real data,
+  // so no clamp) → cone fills the right quarter exactly.
+  const lastT = cone.steps[cone.steps.length - 1].t, span = Math.max(1, lastT - cone.anchorTime);
+  try { drChart.timeScale().setVisibleRange({ from: cone.anchorTime - span * 3, to: lastT }); } catch { padDrawerRange(); }
+  $('drChartNote').textContent += ' · 📐 4h claim: blue = predicted · purple = most-agreed path · green/amber = P50/P75 envelopes';
 }
 
 async function loadDrawerPath(name) {
@@ -2388,11 +2398,21 @@ async function loadDrawerChart(r, barsP) {
     },
   });
   drSeries.setData(bars);
+  _drBarCount = bars.length;
   const upDay = last.close >= dayOpen;
   lines.push({ price: last.close, color: upDay ? '#10b981' : '#f97316', style: LS.Solid, title: upDay ? '▲' : '▼' });
   lines.forEach(l => drSeries.createPriceLine({ price: l.price, color: l.color, lineStyle: l.style, lineWidth: 1, title: l.title, axisLabelVisible: true }));
-  drChart.timeScale().fitContent();
+  // Leave the last candle ~3/4 across so the 4h cone (drawn next) has room on
+  // the right instead of running off the page behind the price scale.
+  padDrawerRange();
   $('drChartNote').textContent = `· open ${fmtN(dayOpen, r.d.dp)} · ${todayBars.length} bars today`;
+}
+let _drBarCount = 0;
+// Put the last candle at ~75% of the width, ~1/4 empty on the right for the cone.
+function padDrawerRange() {
+  if (!drChart || !_drBarCount) return;
+  const N = _drBarCount, shown = Math.min(N, 80), pad = Math.round(shown / 3);
+  try { drChart.timeScale().setVisibleLogicalRange({ from: N - shown, to: N + pad }); } catch { try { drChart.timeScale().fitContent(); } catch {} }
 }
 // Taller / shorter chart toggle (persists across drawer opens, like vol-forecast-v2).
 let _drChartTall = false;
