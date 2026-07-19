@@ -411,8 +411,8 @@ function drawOverlay() {
     // Open (grey)
     line(d.open, '#8b93a1', [4,4], wide ? 'Open ' + d.open.toFixed(pf.precision) : '', false, 0.6);
 
-    // Forecast lines — dimmer here than in Replay so the trades read on top. Only
-    // draw a line for a currently-armed level (the ones that can produce a trade).
+    // Forecast lines — only the currently-armed levels (the ones that can produce
+    // a trade). Labelled like Replay: name + signed % from the open + the price.
     const bands = bandsFor(d.f);
     if (bands) {
       for (const L of LADDER_LINES) {
@@ -420,7 +420,8 @@ function drawOverlay() {
         const pct = bands[L.band];
         if (pct == null || !(pct > 0)) continue;
         const price = d.open * (1 + L.side * pct / 100);
-        line(price, L.color, L.dash, '', false, 0.34);
+        const text = wide ? `${L.label} ${fmtPct(L.side * pct)} ${price.toFixed(pf.precision)}` : '';
+        line(price, L.color, L.dash, text, false, 0.55);
       }
     }
 
