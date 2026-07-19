@@ -1688,6 +1688,37 @@ async function _injectServerContext(pair, s) {
     } catch { /* left absent — prompt tolerates it */ }
   }
 
+  // Forecast Path — the calibrated 4h cone's claims (RANGE / TIMING / RISK,
+  // never direction — its own calibration proves direction is a coin flip).
+  // Best-effort: uses the 15-min summary cache, else computes (OANDA fetch).
+  if (!s.forecastPath) {
+    const fk = _forecastKeyForPair(pair);
+    const wname = fk ? fk.toLowerCase() : null;
+    if (wname && _wbtInstrMap[wname]) {
+      try {
+        const hit = _fpSummaryCache.get(wname);
+        // On a cache miss, cap the wait so a slow OANDA fetch can't hang the
+        // brief — the section is best-effort and warms the cache for next time.
+        const sum = (hit && Date.now() - hit.at < _FP_SUMMARY_TTL)
+          ? hit.data
+          : await Promise.race([
+              _fpSummarizePair(wname).then(d => { _fpSummaryCache.set(wname, { at: Date.now(), data: d }); return d; }),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('fp summary timeout')), 10_000)),
+            ]);
+        const db = sum.dayBudget;
+        s.forecastPath = {
+          p75RangePct: sum.p75HalfPct, p75Lo: sum.p75Lo, p75Hi: sum.p75Hi,
+          surprisePct: sum.surprise?.pct ?? null, surpriseZ: sum.surprise?.z ?? null,
+          trustHours: sum.trustHours ?? [], shakyHours: sum.shakyHours ?? [],
+          p75Containment: sum.calib?.c75Final != null ? Math.round(sum.calib.c75Final * 100) : null,
+          containN: sum.calib?.n ?? null,
+          upcomingEvents: sum.upcomingEvents ?? [],
+          dayBudget: (db && db.reliable) ? { rangeSoFarPct: db.rangeSoFarPct, consumedPct: db.consumedPercentile, remainingPct: db.remainingTypicalPct } : null,
+        };
+      } catch { /* left absent — prompt tolerates it */ }
+    }
+  }
+
   if (!s.riskFlags) {
     try {
       const rf = await computeRiskFlags();
@@ -1809,6 +1840,15 @@ RETAIL CROWD POSITIONING (Myfxbook community)
 Retail long: ${s.retailLongPct ?? 'N/A'}%  |  Short: ${s.retailShortPct ?? 'N/A'}%  |  Crowding: ${s.retailCrowding ?? 'N/A'}
 Avg price of retail longs: ${s.avgLongPrice ?? 'N/A'}  |  Avg price of retail shorts: ${s.avgShortPrice ?? 'N/A'}
 Contrarian signal vs macro bias: ${s.retailContrarian ? 'YES - retail crowd opposes macro direction (supportive for trade)' : s.retailSentiment === 'BALANCED' ? 'Crowd is balanced - neutral' : 'NO - retail crowd agrees with macro direction (crowding risk)'}
+
+CALIBRATED INTRADAY FORECAST (Forecast Path engine — RANGE / TIMING / RISK ONLY, NOT DIRECTION)
+${s.forecastPath ? `4h P75 range: ±${s.forecastPath.p75RangePct}%  (${s.forecastPath.p75Lo ?? '?'} – ${s.forecastPath.p75Hi ?? '?'})  — where price can plausibly reach over the next ~4h
+Today vs day-open cone: ${s.forecastPath.surprisePct != null ? `${s.forecastPath.surprisePct}th percentile (z ${s.forecastPath.surpriseZ})` : 'n/a'}  — how unusual today's move already is
+Cone reliability (this pair's own history): P75 band actually held ${s.forecastPath.p75Containment ?? '?'}% of the time (claim 75%, n=${s.forecastPath.containN ?? '?'}) — WEIGHT the range read by this
+Trustworthy hours (UTC): ${s.forecastPath.trustHours?.length ? s.forecastPath.trustHours.map(h => String(h).padStart(2, '0')).join(' ') : 'n/a'}${s.forecastPath.shakyHours?.length ? `  |  shaky: ${s.forecastPath.shakyHours.map(h => String(h).padStart(2, '0')).join(' ')}` : ''}
+${s.forecastPath.dayBudget ? `Volatility left in the day: ${s.forecastPath.dayBudget.rangeSoFarPct}% range used so far (${s.forecastPath.dayBudget.consumedPct}th pctile for this hour) — ~${s.forecastPath.dayBudget.remainingPct}% of a typical day's range still to come` : ''}${s.forecastPath.upcomingEvents?.length ? `
+Scheduled releases inside the cone window: ${s.forecastPath.upcomingEvents.join(', ')}` : ''}
+CRITICAL — how to use this: the engine's DIRECTION call is a proven coin flip (~50% on this pair's own out-of-sample history). Its value is RANGE, TIMING and RISK ONLY. Do NOT infer or state any directional bias from it. Use it to: size expectations (how far / where price can realistically reach), judge whether today is already stretched (high surprise percentile = little room left), place realistic stops/targets (a stop inside the P75 range gets hit by ordinary noise far more than its % implies), and prefer the trustworthy hours. NEVER present it as a buy/sell signal.` : '  Not available for this instrument'}
 
 GARCH VOLATILITY FORECAST
 ${s.garch ? `GARCH(1,1) daily range forecast: ${s.garch.forecast}  |  68% CI: ${s.garch.ci68}  |  95% CI: ${s.garch.ci95}
