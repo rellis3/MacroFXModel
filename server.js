@@ -11384,6 +11384,27 @@ const _fpSummaryCache = new Map();
 const _FP_SUMMARY_TTL = 15 * 60_000;
 const _FP_H = 16;   // 16 × M15 = 4 hours
 
+// Implied-vol series per instrument (FRED daily): EUR/USD→EVZ, GOLD→GVZ, the
+// US indices→VIX (an imperfect equity-vol proxy; honest limit). No clean
+// implied series for FX crosses → they get none (conditioner stays inert).
+const _FP_IV_SERIES = { eurusd: 'EVZCLS', gold: 'GVZCLS', nq: 'VIXCLS', spx500: 'VIXCLS', us30: 'VIXCLS', us2000: 'VIXCLS' };
+const _fpIvCache = new Map();   // series → { at, byDate }
+async function _fpIvByDate(name) {
+  const sid = _FP_IV_SERIES[name];
+  if (!sid) return null;
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!fredKey) return null;
+  const hit = _fpIvCache.get(sid);
+  if (hit && Date.now() - hit.at < 6 * 60 * 60_000) return hit.byDate;
+  try {
+    const from = new Date(Date.now() - 400 * 86400e3).toISOString().slice(0, 10);
+    const map = await fetchFredSeries(sid, from, fredKey);
+    const byDate = Object.fromEntries(map);
+    _fpIvCache.set(sid, { at: Date.now(), byDate });
+    return byDate;
+  } catch { return null; }
+}
+
 function _fpMajorEventEpochs(pair, fromMs, toMs) {
   try {
     const ccys = _calPairCurrencies(pair);
@@ -11497,6 +11518,21 @@ app.get('/api/forecast-path/reach', async (req, res) => {
   } catch (e) {
     res.status(/OANDA HTTP/.test(e.message) ? 502 : 500).json({ ok: false, error: e.message });
   }
+});
+
+// Implied-vol daily history for the width-conditioner A/B on forecast-path.html.
+// Only the instruments with a clean implied series (EUR/USD, GOLD, US indices);
+// others return supported:false so the page hides the toggle.
+app.get('/api/forecast-path/iv', async (req, res) => {
+  const name = String(req.query.pair || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const sid = _FP_IV_SERIES[name];
+  if (!sid) return res.json({ ok: true, supported: false, pair: name.toUpperCase() });
+  if (!(process.env.FRED_KEY || process.env.FRED_API_KEY)) return res.json({ ok: false, supported: true, error: 'FRED_KEY not set' });
+  try {
+    const byDate = await _fpIvByDate(name);
+    if (!byDate || Object.keys(byDate).length < 20) return res.json({ ok: false, supported: true, error: 'implied-vol series unavailable' });
+    res.json({ ok: true, supported: true, pair: name.toUpperCase(), series: sid, byDate });
+  } catch (e) { res.status(500).json({ ok: false, supported: true, error: e.message }); }
 });
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
