@@ -11519,7 +11519,10 @@ async function _wbtFetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
   let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
   if (from) url += `&from=${encodeURIComponent(from)}`;
   if (to)   url += `&to=${encodeURIComponent(to)}`;
-  if (!from && !to) url += `&count=${count ?? 200}`;
+  // count is valid with a `from` (OANDA returns `count` candles forward) or
+  // alone; it must NOT be combined with `to` (from+to defines the span).
+  if (count && !to) url += `&count=${count}`;
+  else if (!from && !to) url += `&count=200`;
   const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
   if (!r.ok) {
     let msg = `OANDA HTTP ${r.status}`;
@@ -11538,23 +11541,27 @@ async function _wbtFetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
 // The event-σ A/B needs ≥20 event windows → months of M15, not the ~50 days a
 // single request allows.
 async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
-  const toIso = to ? _wbtClampTo(to) : new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const toMs = to ? new Date(_wbtClampTo(to)).getTime() : Date.now();
   if (!from) return _wbtFetchIntradayOnce(oanda, gran, { count });   // count-only (no range)
-  const toMs = new Date(toIso).getTime();
+  // OANDA rejects a from+to request spanning >5000 candles ("Maximum value for
+  // 'count' exceeded") — it does NOT return the first 5000. So page with
+  // from+count (5000 forward from the cursor), advancing until we pass `to`.
   let cursorMs = new Date(from + 'T00:00:00Z').getTime();
   const out = [];
-  let seen = 0;
   for (let page = 0; page < 24 && cursorMs < toMs; page++) {   // hard cap 24 pages
     const chunk = await _wbtFetchIntradayOnce(oanda, gran, {
       from: new Date(cursorMs).toISOString().replace(/\.\d+Z$/, 'Z'),
-      to: toIso,
+      count: 5000,
     });
     if (!chunk.length) break;
-    for (const c of chunk) if (!out.length || c.time > out[out.length - 1].time) out.push(c);
-    if (out.length === seen) break;   // no progress → done
-    seen = out.length;
-    if (chunk.length < 4900) break;   // last (partial) page reached `to`
-    cursorMs = (chunk[chunk.length - 1].time + 1) * 1000;
+    let added = 0;
+    for (const c of chunk) {
+      if (c.time * 1000 > toMs) break;                                // past the window
+      if (!out.length || c.time > out[out.length - 1].time) { out.push(c); added++; }
+    }
+    const lastMs = chunk[chunk.length - 1].time * 1000;
+    if (lastMs >= toMs || chunk.length < 5000 || added === 0) break;  // reached `to` / caught up
+    cursorMs = lastMs + 1000;
   }
   return out;
 }
