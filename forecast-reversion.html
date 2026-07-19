@@ -101,6 +101,11 @@
       <button data-s="backtest" class="on">Backtest</button>
       <button data-s="archive">Archive</button>
     </div>
+    <label title="Fade all: revert every touched line one band inward. Cont med · fade 75th: ride the median (break through → target the band out) and fade the 75th back inward.">Style</label>
+    <div class="seg" id="style">
+      <button data-y="fade_all" class="on">Fade all</button>
+      <button data-y="follow_med_fade_75">Cont med · fade 75th</button>
+    </div>
     <label>Cost %</label><input type="number" id="cost" value="0.010" step="0.001" min="0" title="Round-trip friction (spread+commission) as % of price, netted off every trade.">
     <button class="go" id="go">Generate</button>
     <button class="ghost" id="statsBtn" title="Show / hide the reversion tally">Stats</button>
@@ -132,7 +137,7 @@
 <script type="module">
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
-import { LADDER_LINES, reversionTrades, tallyTrades } from './js/reversionLadder.js?v=1';
+import { LADDER_LINES, reversionTrades, tallyTrades, STYLES } from './js/reversionLadder.js?v=2';
 
 const OANDA_SYM = {
   eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
@@ -179,7 +184,8 @@ function bandsFor(f) {
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
-const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false };
+const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all' };
+function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
 let _meta = null;
 let chart = null, series = null, overlayCanvas = null, octx = null;
 let days = [];        // [{ date, open, high, low, close, tStart, tEnd, bars:[], f, trades:[] }]
@@ -233,6 +239,13 @@ let dpr = window.devicePixelRatio || 1;
     const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
     $('src').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     if (_meta) loadData();
+  });
+  // Style toggle changes fade/follow per line → recompute trades + redraw (no refetch).
+  $('style').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
+    $('style').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    state.style = styleMode();
+    recomputeAndDraw();
   });
   $('cost').addEventListener('change', recomputeAndDraw);
   $('go').addEventListener('click', loadData);
@@ -359,7 +372,7 @@ function buildDays(values, fcDays) {
 function computeTrades() {
   const costPct = Math.max(0, +$('cost').value || 0);
   for (const d of days) {
-    d.trades = (d.f && d.bars.length) ? reversionTrades(d.open, d.bars, bandsFor(d.f), { armed: state.armed, costPct }) : [];
+    d.trades = (d.f && d.bars.length) ? reversionTrades(d.open, d.bars, bandsFor(d.f), { armed: state.armed, costPct, style: state.style }) : [];
   }
 }
 function recomputeAndDraw() {
@@ -482,7 +495,8 @@ function renderStats() {
       + `<td>${wr}%</td><td class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td></tr>`;
   }).join('');
   const twr = (total.winRate * 100).toFixed(0);
-  el.innerHTML = `<h3>Reversion tally <span class="calcTag">${calc}</span></h3>`
+  const styleLbl = STYLES[state.style]?.label || 'Fade all';
+  el.innerHTML = `<h3>Reversion tally <span class="calcTag">${styleLbl} · ${calc}</span></h3>`
     + `<table class="st"><thead><tr><th>Line</th><th>N</th><th>W</th><th>L</th><th>Exp</th><th>Win%</th><th>ΣNet%</th></tr></thead>`
     + `<tbody>${rows}`
     + `<tr class="tot"><td>TOTAL</td><td>${total.n}</td><td>${total.wins}</td><td>${total.losses}</td><td>${total.expired}</td>`
