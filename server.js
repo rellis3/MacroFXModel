@@ -101,6 +101,7 @@ import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, f
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
 import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
 import { makeClaim as _cfMakeClaim, shouldRecord as _cfShouldRecord, resolveClaims as _cfResolve, pruneStale as _cfPrune, summarizeForward as _cfSummarize } from './js/coneForwardTrack.js';   // cone forward-track (live claims vs outcomes)
+import { detectSurprise as _saDetect, shouldFire as _saShouldFire, recordFired as _saRecordFired, SURPRISE_DEFAULTS as _SA_DEFAULTS } from './js/surpriseAlertCore.js';   // cone surprise-alert (context ping, not a signal)
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
@@ -11868,6 +11869,117 @@ app.get('/api/forecast-path/forward', async (_req, res) => {
 // without a manual poke (OANDA-gated; opt out with CONE_FWD_AUTO=0).
 if (process.env.OANDA_KEY && process.env.CONE_FWD_AUTO !== '0') {
   setInterval(() => { _coneForwardRefresh().catch(() => {}); }, 30 * 60_000);
+}
+
+// ── Surprise alert — Telegram ping when a cone reading is unusually stretched
+// or quiet ───────────────────────────────────────────────────────────────────
+// A CONTEXT ping, never a trade signal. Reuses the /summary cone + calibrated
+// percentile; fires a deduped Telegram message (stretched → fade context;
+// quiet → expect expansion) with a practical "what next" line, and says out
+// loud it is not a buy/sell call (intraday direction is a proven coin flip).
+// Config + creds in _CF_EXACT KV (surprise_alert_config); dedupe state in the
+// ephemeral store (a stray dupe after a redeploy is cheaper than a KV write on
+// every scan). Pure logic in js/surpriseAlertCore.js.
+const _clampNum = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt; };
+const _saDefaultConfig = () => ({
+  enabled: false, token: '', chatId: '', pairs: ['gold'],
+  pctHigh: _SA_DEFAULTS.pctHigh, pctLow: _SA_DEFAULTS.pctLow,
+  zMin: _SA_DEFAULTS.zMin, minGapMin: _SA_DEFAULTS.minGapMin,
+});
+async function _saLoadConfig() {
+  const raw = await kv.get('surprise_alert_config').catch(() => null);
+  return raw ? { ..._saDefaultConfig(), ...JSON.parse(raw) } : _saDefaultConfig();
+}
+
+let _saRunning = false;
+async function _surpriseAlertScan({ force = false, dryRun = false } = {}) {
+  if (_saRunning) return { skipped: 'already running' };
+  _saRunning = true;
+  const out = { checked: 0, fired: 0, alerts: [], errors: {} };
+  try {
+    const cfg = await _saLoadConfig();
+    if (!force && !cfg.enabled) return { skipped: 'disabled' };
+    if (!dryRun && (!cfg.token || !cfg.chatId)) return { skipped: 'no Telegram creds' };
+    const names = (cfg.pairs && cfg.pairs.length ? cfg.pairs : ['gold'])
+      .map(p => String(p).toLowerCase().replace(/[^a-z0-9]/g, '')).filter(n => _wbtInstrMap[n]);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const minGapSec = (cfg.minGapMin ?? _SA_DEFAULTS.minGapMin) * 60;
+    const detOpts = { pctHigh: cfg.pctHigh, pctLow: cfg.pctLow, zMin: cfg.zMin };
+
+    let state = await _ftLoad('surprise_alert_state', {});
+    for (const name of names) {
+      out.checked++;
+      try {
+        const hit = _fpSummaryCache.get(name);
+        const sum = (hit && Date.now() - hit.at < _FP_SUMMARY_TTL)
+          ? hit.data
+          : await _fpSummarizePair(name).then(d => { _fpSummaryCache.set(name, { at: Date.now(), data: d }); return d; });
+        const det = _saDetect(sum, detOpts);
+        if (!det) continue;
+        const pairKey = det.pair;
+        if (!force && !_saShouldFire(state, pairKey, det.category, nowSec, minGapSec)) continue;
+        out.alerts.push({ pair: pairKey, category: det.category, pct: det.pct, z: det.z, severity: det.severity, text: det.text });
+        if (dryRun) continue;
+        const sent = await sendTelegram(cfg.token, cfg.chatId, det.text);
+        if (sent) { out.fired++; state = _saRecordFired(state, pairKey, det.category, nowSec); }
+      } catch (e) { out.errors[name] = e?.message || String(e); }
+    }
+    if (!dryRun) await kv.put('surprise_alert_state', JSON.stringify(state)).catch(() => {});
+    return out;
+  } finally { _saRunning = false; }
+}
+
+// GET config (creds masked). POST persists config (creds + thresholds + pairs).
+app.get('/api/forecast-path/alert/config', async (_req, res) => {
+  try {
+    const cfg = await _saLoadConfig();
+    res.json({ ok: true, config: { ...cfg, token: cfg.token ? '••••set••••' : '', hasToken: !!cfg.token, hasChat: !!cfg.chatId } });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+app.post('/api/forecast-path/alert/config', express.json({ limit: '8kb' }), async (req, res) => {
+  try {
+    const cur = await _saLoadConfig();
+    const b = req.body || {};
+    const next = {
+      enabled:   b.enabled != null ? !!b.enabled : cur.enabled,
+      // keep existing token/chat when the field is blank or the masked sentinel
+      token:     (b.token && !/^•+set•+$/.test(b.token)) ? String(b.token).trim() : cur.token,
+      chatId:    b.chatId != null && b.chatId !== '' ? String(b.chatId).trim() : cur.chatId,
+      pairs:     Array.isArray(b.pairs) && b.pairs.length ? b.pairs.map(String) : cur.pairs,
+      pctHigh:   b.pctHigh != null ? _clampNum(b.pctHigh, 80, 99, cur.pctHigh) : cur.pctHigh,
+      pctLow:    b.pctLow  != null ? _clampNum(b.pctLow, 1, 20, cur.pctLow)   : cur.pctLow,
+      zMin:      b.zMin    != null ? _clampNum(b.zMin, 0.5, 4, cur.zMin)       : cur.zMin,
+      minGapMin: b.minGapMin != null ? _clampNum(b.minGapMin, 15, 720, cur.minGapMin) : cur.minGapMin,
+    };
+    await kv.put('surprise_alert_config', JSON.stringify(next));
+    res.json({ ok: true, config: { ...next, token: next.token ? '••••set••••' : '', hasToken: !!next.token, hasChat: !!next.chatId } });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// Test ping — verifies creds by sending a sample stretched+quiet message.
+app.post('/api/forecast-path/alert/test', async (_req, res) => {
+  try {
+    const cfg = await _saLoadConfig();
+    if (!cfg.token || !cfg.chatId) return res.json({ ok: false, error: 'Telegram token/chat not configured' });
+    const msg = '✅ <b>Forecast-Path surprise alerts — connected</b>\n<i>You will get a context ping when a pair is unusually stretched or quiet vs its calibrated intraday cone. These are risk/timing context, never buy/sell calls.</i>';
+    const sent = await sendTelegram(cfg.token, cfg.chatId, msg);
+    res.json({ ok: sent, error: sent ? null : 'Telegram API returned error' });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// Manual scan poke — ?dry=1 previews the alert text without sending or deduping.
+app.post('/api/forecast-path/alert/scan', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const dryRun = req.query.dry === '1' || req.query.dry === 'true';
+    const out = await _surpriseAlertScan({ force: dryRun, dryRun });
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// Auto-scan every 20 min (OANDA-gated; opt out with SURPRISE_ALERT_AUTO=0).
+if (process.env.OANDA_KEY && process.env.SURPRISE_ALERT_AUTO !== '0') {
+  setInterval(() => { _surpriseAlertScan().catch(() => {}); }, 20 * 60_000);
 }
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
