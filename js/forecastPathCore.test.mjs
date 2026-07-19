@@ -354,4 +354,43 @@ const m15 = syntheticM15(55);   // ~5280 bars
   if (lo && hi) ok(hi.realized > lo.realized, `reliability monotone (${lo.realized?.toFixed(2)} → ${hi.realized?.toFixed(2)})`);
 }
 
+// 17) Implied-vol width conditioner: scales the day's σ, causal, off by default.
+{
+  // ivByDate = 10 baseline, the LAST 5 calendar days spike to 20 → recent
+  // implied deviates above its own trailing median (the causal signal).
+  const days = new Set(m15.map(b => new Date(b.time * 1000).toISOString().substring(0, 10)));
+  const dayArr = [...days].sort();
+  const ivByDate = {};
+  dayArr.forEach((d, k) => { ivByDate[d] = k >= dayArr.length - 5 ? 20 : 10; });
+
+  // Off by default → identical to no iv.
+  const c0 = intradayCone(buildIntradayContext(m15), 3000, 16);
+  const cOff = intradayCone(buildIntradayContext(m15, { ivByDate, ivConditioner: false }), 3000, 16);
+  ok(c0.steps[0].p75Up === cOff.steps[0].p75Up, 'iv conditioner OFF ⇒ no change');
+  ok((cOff.ivMult ?? 1) === 1, 'ivMult 1 when off');
+
+  // On, a window anchored in the last (spiked) day → mult elevated, cone wider.
+  const ctxIv = buildIntradayContext(m15, { ivByDate, ivConditioner: true, ivBaselineDays: 20 });
+  const lateI = m15.length - 10;   // within the final day
+  const cOn = intradayCone(ctxIv, lateI, 16);
+  const cBase = intradayCone(buildIntradayContext(m15), lateI, 16);
+  ok(cOn.ivMult > 1.3, `recent iv spike → mult elevated (${cOn.ivMult?.toFixed(2)})`);
+  ok(cOn.steps[5].p75Up - cOn.anchor > cBase.steps[5].p75Up - cBase.anchor, 'iv-on cone wider on high-iv day');
+
+  // Causal / no lookahead: mutating future bars leaves the cone put.
+  const cA = intradayCone(buildIntradayContext(m15, { ivByDate, ivConditioner: true, ivBaselineDays: 20 }), lateI, 16);
+  const mutBars = m15.map((b, k) => k >= lateI ? { ...b, close: 9 } : b);
+  const cB = intradayCone(buildIntradayContext(mutBars, { ivByDate, ivConditioner: true, ivBaselineDays: 20 }), lateI, 16);
+  ok(Math.abs(cA.ivMult - cB.ivMult) < 1e-9, 'iv mult causal (future bars irrelevant)');
+
+  // Tally carries an ivStat; with a mid-sample spike the multiplier varies.
+  const ivMid = {};
+  dayArr.forEach((d, k) => { ivMid[d] = (k > 25 && k < 32) ? 22 : 10; });   // a spike, then back
+  const tIv = intradayTally(m15, { horizonBars: 16, ivByDate: ivMid, ivConditioner: true, ivBaselineDays: 20 });
+  ok(tIv.ivStat && tIv.ivStat.on === true && tIv.ivStat.varied === true, 'ivStat shows the multiplier varied');
+  ok(tIv.overall && tIv.overall.c75 != null, 'tally overall cell present for the A/B');
+  const tOff = intradayTally(m15, { horizonBars: 16, ivByDate, ivConditioner: false, ivBaselineDays: 20 });
+  ok(tOff.ivStat === null || tOff.ivStat.on === false, 'ivStat off-run flagged off');
+}
+
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);

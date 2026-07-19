@@ -278,7 +278,54 @@ export const INTRADAY_DEFAULTS = {
   eventPre: 900,        // 15 min before the release
   eventPost: 3600,      // 60 min after
   minEventObs: 20,
+  // Implied-vol width conditioner (measured-first, default OFF). `ivByDate` =
+  // { 'YYYY-MM-DD': impliedVolLevel } (e.g. EVZ/GVZ/VIX from FRED — the brick
+  // stays pure, the server passes it in). When `ivConditioner` is on, the whole
+  // day's base σ is scaled by the day's implied-vol level ÷ its own trailing
+  // median — CAUSAL (uses implied as of the prior trading day, strictly before
+  // the day). Clamped so a noisy print can't blow the cone up. This tests
+  // whether forward-looking implied vol adds anything BEYOND the backward-
+  // looking realized σ already in the cone — the A/B decides; the honest prior
+  // is a coin flip. Baseline needs ≥ minIvObs prior observations or the mult
+  // stays 1.
+  ivByDate: null,
+  ivConditioner: false,
+  ivBaselineDays: 60,
+  ivClampLo: 0.5,
+  ivClampHi: 2.0,
+  minIvObs: 20,
 };
+
+// Day key (UTC midnight index) shared by the context and the iv conditioner.
+const _dayKeyOfSec = t => Math.floor(t / 86400);
+const _dayKeyOfDate = ds => Math.floor(Date.parse(ds + 'T00:00:00Z') / 1000 / 86400);
+
+// Per-day implied-vol σ multiplier (causal): iv as of the latest date strictly
+// before day D ÷ median iv over the prior `baselineDays`. 1 without enough data.
+function _buildIvMult(ivByDate, opts) {
+  const out = new Map();
+  if (!ivByDate) return out;
+  const entries = Object.entries(ivByDate)
+    .map(([d, v]) => [_dayKeyOfDate(d), +v])
+    .filter(([k, v]) => Number.isFinite(k) && Number.isFinite(v) && v > 0)
+    .sort((a, b) => a[0] - b[0]);
+  if (entries.length < opts.minIvObs) return out;
+  const keys = entries.map(e => e[0]);
+  // For any query day D: use entries with key < D.
+  return { entries, keys, opts, get(D) {
+    if (out.has(D)) return out.get(D);
+    let hi = bisectNum(keys, D);      // first index with key ≥ D
+    const prior = entries.slice(0, hi);
+    if (prior.length < opts.minIvObs) { out.set(D, 1); return 1; }
+    const ivToday = prior[prior.length - 1][1];
+    const win = prior.filter(([k]) => k >= D - opts.ivBaselineDays).map(e => e[1]).sort((a, b) => a - b);
+    const base = win.length ? win[win.length >> 1] : ivToday;
+    const m = base > 0 ? Math.min(opts.ivClampHi, Math.max(opts.ivClampLo, ivToday / base)) : 1;
+    out.set(D, m); return m;
+  } };
+}
+// Local numeric bisect (barUtils.bisect is imported later in the file for bar times).
+function bisectNum(arr, x) { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
 
 const Z50 = 0.6744898, Z75 = 1.1503494;   // |z| median and 75th percentile
 
@@ -338,8 +385,10 @@ export function buildIntradayContext(bars, opts = {}) {
     }
   }
 
+  const ivMult = o.ivConditioner ? _buildIvMult(o.ivByDate, o) : null;
+
   return { bars, closes, sigma, drift, sigmaLive, driftLive, buckets, gCum, barSec,
-           events, evIdx, evR2Cum, evHour, opts: o };
+           events, evIdx, evR2Cum, evHour, ivMult, opts: o };
 }
 
 // Is `t` inside any event's [ev - pre, ev + post] window? (events sorted asc)
@@ -418,16 +467,18 @@ function _stepSigmas(ctx, i, H) {
   const mu = Math.max(-opts.driftCapSigma * sigBase, Math.min(opts.driftCapSigma * sigBase, rawMu));
   const useEvents = opts.eventAware && events.length > 0;
   const evM = useEvents ? eventMult(ctx, i) : 1;
+  // Implied-vol width multiplier for the anchor's UTC day (causal, whole-day).
+  const ivM = ctx.ivMult ? ctx.ivMult.get(_dayKeyOfSec(bars[i - 1].time)) : 1;
   const times = [], sigs = [];
   let eventSteps = 0;
   for (let h = 1; h <= H; h++) {
     const t = _futureTime(ctx, i, h);
     times.push(t);
-    let s = sigBase * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
+    let s = sigBase * ivM * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
     if (useEvents && _nearEvent(events, t, opts.eventPre, opts.eventPost)) { s *= evM; eventSteps++; }
     sigs.push(s);
   }
-  return { sigBase, mu, times, sigs, eventMult: evM, eventSteps };
+  return { sigBase, mu, times, sigs, eventMult: evM, ivMult: ivM, eventSteps };
 }
 
 // ── The intraday cone (2 ≤ i ≤ bars.length; i === n is the live edge) ────────
@@ -451,7 +502,7 @@ export function intradayCone(ctx, i, horizonBars) {
                  p75Up: center * Math.exp(Z75 * sd), p75Dn: center * Math.exp(-Z75 * sd) });
   }
   return { i, anchorTime: bars[i - 1].time, anchor, sigmaBar: ladder.sigBase, mu: ladder.mu,
-           eventMult: ladder.eventMult, eventSteps: ladder.eventSteps, steps };
+           eventMult: ladder.eventMult, ivMult: ladder.ivMult, eventSteps: ladder.eventSteps, steps };
 }
 
 // ── Intraday Monte-Carlo paths (seeded; wicks cosmetic, padded to the median
@@ -668,7 +719,7 @@ export function intradayTally(bars, opts = {}) {
     const tStart = bars[i - 1].time, tEnd = bars[i + H - 1].time;
     const ek = bisect(ctx.events, tStart - o.eventPost);
     const isEvent = ek < ctx.events.length && ctx.events[ek] <= tEnd + o.eventPre;
-    const w = { in50: new Array(H), in75: new Array(H), dirHit: null, isEvent };
+    const w = { in50: new Array(H), in75: new Array(H), dirHit: null, isEvent, iStart: i - 1 };
     for (let h = 1; h <= H; h++) {
       const c = bars[i + h - 1].close, s = cone.steps[h - 1];
       w.in50[h - 1] = c >= s.p50Dn && c <= s.p50Up;
@@ -743,10 +794,25 @@ export function intradayTally(bars, opts = {}) {
         eventAware: !!o.eventAware }
     : null;
 
+  // Implied-vol conditioner stat: how much the day multiplier actually varied
+  // (so a null A/B can be read as "no signal" vs "conditioner inert"). overall
+  // = the full-sample containment cell the page compares on/off.
+  let ivStat = null;
+  if (ctx.ivMult) {
+    const ms = windows.map(w => ctx.ivMult.get(_dayKeyOfSec(bars[w.iStart].time))).filter(Number.isFinite);
+    if (ms.length) {
+      const sorted = [...ms].sort((a, b) => a - b);
+      ivStat = { on: !!o.ivConditioner, n: ms.length,
+                 lo: +sorted[0].toFixed(2), hi: +sorted[sorted.length - 1].toFixed(2),
+                 med: +sorted[sorted.length >> 1].toFixed(2),
+                 varied: sorted[sorted.length - 1] - sorted[0] > 0.1 };
+    }
+  }
+
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
   return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },
            full: tally(windows), recent: tally(windows.slice(-recentN)),
-           byHour, budget, eventSplit };
+           byHour, budget, eventSplit, ivStat, overall: cell(windows) };
 }
 
 export { HORIZONS };

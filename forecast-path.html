@@ -105,7 +105,12 @@
       release windows</b>: the widening multiplier is learned from this pair's own
       history around past releases (never asserted), and the calibration card carries
       an A/B — event windows graded with the widening off and on — so the conditioner
-      only deserves to stay on where that A/B says it helps.
+      only deserves to stay on where that A/B says it helps. <b>Implied σ</b> (EUR/USD,
+      GOLD, indices only) is a second, measured-first conditioner: it scales the whole
+      day's cone by implied vol (EVZ/GVZ/VIX) versus its own recent baseline, testing
+      whether forward-looking implied vol adds anything beyond the realized σ already
+      in the cone. Default OFF — its own A/B in the calibration card decides, and the
+      honest prior is a coin flip.
     </p>
 
     <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">It grades itself</h3>
@@ -179,6 +184,7 @@
       <button id="tActual" class="on">Reveal actual</button>
       <button id="tNews" class="on">News</button>
       <button id="tEventCone" class="on" title="Widen the cone into scheduled-release windows (multiplier learned causally from this pair's history; A/B-graded in the calibration card)">Event σ</button>
+      <button id="tImpliedCone" title="Scale the day's cone by implied vol (EVZ/GVZ/VIX) vs its own trailing baseline. Measured-first, default OFF — the A/B card shows whether it beats the realized σ already in the cone. EUR/USD, GOLD, indices only." style="display:none">Implied σ</button>
       <button id="tLevels">Levels</button>
       <button id="tBands">Day forecast</button>
       <button id="tTrail" class="on">Hindcast trail</button>
@@ -240,17 +246,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=5';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=5';
-import { bisect, resampleTo } from './js/barUtils.js?v=5';
-import { collectLevels } from './js/levelSources.js?v=5';
+import { createLevelChart } from './js/levelChart.js?v=6';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=6';
+import { bisect, resampleTo } from './js/barUtils.js?v=6';
+import { collectLevels } from './js/levelSources.js?v=6';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration,
-} from './js/forecastPathCore.js?v=5';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=5';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=5';
+} from './js/forecastPathCore.js?v=6';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=6';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=6';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -285,10 +291,10 @@ function intradayEngine(barMin, lookbackDays, horizons, defaultH) {
     horizons, defaultH,
     lookbackDays,
     warmup: INTRADAY_DEFAULTS.warmupBars,
-    build: bars => buildIntradayContext(bars, { events: rank3Events(), eventAware: toggles.eventCone }),
+    build: bars => buildIntradayContext(bars, { events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts() }),
     cone: intradayCone,
     paths: intradaySamplePaths,
-    tally: (bars, H) => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone }),
+    tally: (bars, H) => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts() }),
     anchorT: c => c.anchorTime,
     stepT: s => s.time,
     fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
@@ -351,12 +357,14 @@ fillHorizons();
 const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
-let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [];
-const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true };
+let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [], ivByDate = null;
+const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false };
 const eng = () => ENGINES[$('gran').value];
 const isIntraday = () => $('gran').value !== 'D1';
 // Major releases as epoch seconds — the event-aware cone's input.
 const rank3Events = () => events.filter(e => e.rank >= 3).map(e => e.ms / 1000);
+// Implied-vol conditioner opts (only when a series is loaded + toggle on).
+const ivOpts = () => (ivByDate && toggles.impliedCone) ? { ivByDate, ivConditioner: true } : {};
 
 function clearExtra() {
   for (const s of extraSeries) { try { chart.removeSeries(s); } catch {} }
@@ -653,6 +661,27 @@ function renderCalib() {
       `<div class="muted" style="margin-top:4px">Widening multiplier learned causally from this pair's own release history. ${evVerdict}</div></div>`;
   }
 
+  // Implied-vol σ A/B — overall containment/med|z| with the conditioner off vs
+  // on. Pre-registered win: P75 nearer 75% AND med|z| nearer 0.674 with the
+  // multiplier genuinely varying. Honest prior: coin flip vs the realized σ.
+  if (isIntraday() && ivByDate) {
+    const mkT = flag => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone, ivByDate, ivConditioner: flag });
+    const off = mkT(false), on = mkT(true);
+    const oc = off.overall, nc = on.overall, iv = on.ivStat;
+    const dOff = Math.abs((oc.c75 ?? 0) - 0.75), dOn = Math.abs((nc.c75 ?? 0) - 0.75);
+    const zOff = Math.abs((oc.medAbsZ ?? 0) - 0.674), zOn = Math.abs((nc.medAbsZ ?? 0) - 0.674);
+    let ivVerdict;
+    if (!iv || !iv.varied) ivVerdict = 'Implied vol barely moved over this window — nothing for the conditioner to act on here.';
+    else if (dOn <= dOff - 0.02 && zOn <= zOff + 0.02) ivVerdict = 'Implied σ improves containment beyond the realized σ already in the cone — worth keeping on for this pair.';
+    else if (dOn >= dOff + 0.03 || zOn >= zOff + 0.05) ivVerdict = 'Implied σ makes the cone WORSE here — the realized σ already had it right. Leave it off.';
+    else ivVerdict = 'No measurable improvement over the realized σ — a null (the honest prior). Leave it off.';
+    extra += `<div style="margin-top:12px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Implied-σ A/B (EVZ/GVZ/VIX width conditioner)</b>` +
+      `<table style="margin-top:4px"><tr><th></th><th>P75→75%</th><th>med|z|→0.674</th></tr>` +
+      `<tr><td>off</td><td class="${grade(oc.c75,.75)}">${pc(oc.c75)}</td><td>${oc.medAbsZ ?? '—'}</td></tr>` +
+      `<tr><td>on</td><td class="${grade(nc.c75,.75)}">${pc(nc.c75)}</td><td>${nc.medAbsZ ?? '—'}</td></tr></table>` +
+      `<div class="muted" style="margin-top:4px">Day σ scaled by implied vol ÷ its trailing median (mult ${iv ? iv.lo + '–' + iv.hi : '—'}, causal). ${ivVerdict}</div></div>`;
+  }
+
   $('calib').innerHTML =
     `<table><tr><th></th><th colspan="2">full (n=${t.full.n})</th><th colspan="2">recent (n=${t.recent.n})</th></tr>` +
     `<tr><th></th><th>P50→50%</th><th>P75→75%</th><th>P50</th><th>P75</th></tr>${rows}</table>` +
@@ -711,13 +740,19 @@ async function load() {
       : `/api/weekly-vol-backtest/d1/${pair.toLowerCase()}?from=${new Date(Date.now() - 200 * 86400e3).toISOString().substring(0, 10)}&to=${today}`;
     // Timeouts on every request — a stalled fetch must surface as an error,
     // never leave the page stuck on "loading…".
-    const [j, evJ, d1J] = await Promise.all([
+    // Implied-vol series (only supported instruments; a dead FRED just hides the toggle).
+    const ivUrl = gran === 'D1' ? null : `/api/forecast-path/iv?pair=${pair}`;
+    const [j, evJ, d1J, ivJ] = await Promise.all([
       fetch(url, { signal: AbortSignal.timeout(30_000) }).then(r => r.json()),
       evUrl ? fetch(evUrl, { signal: AbortSignal.timeout(15_000) }).then(r => r.json()).catch(() => null) : Promise.resolve(null),
       d1Url ? fetch(d1Url, { signal: AbortSignal.timeout(15_000) }).then(r => r.json()).catch(() => null) : Promise.resolve(null),
+      ivUrl ? fetch(ivUrl, { signal: AbortSignal.timeout(15_000) }).then(r => r.json()).catch(() => null) : Promise.resolve(null),
     ]);
     events = evJ?.ok ? evJ.events : [];
     d1History = d1J?.ok ? d1J.candles : [];
+    ivByDate = (ivJ?.ok && ivJ.supported) ? ivJ.byDate : null;
+    $('tImpliedCone').style.display = (ivJ?.supported) ? '' : 'none';
+    if (!ivByDate) { toggles.impliedCone = false; $('tImpliedCone').classList.remove('on'); }
     if (!j.ok) throw new Error(j.error || 'candle fetch failed');
     bars = j.candles;
     if (bars.length < e.warmup + 40) throw new Error(`only ${bars.length} bars — not enough history for warmup (${e.warmup})`);
@@ -762,6 +797,13 @@ for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','cons
 $('tEventCone').onclick = () => {   // eventAware lives in the context — rebuild it
   toggles.eventCone = !toggles.eventCone;
   $('tEventCone').classList.toggle('on', toggles.eventCone);
+  if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
+  render(); renderCalib();
+};
+$('tImpliedCone').onclick = () => {   // ivConditioner lives in the context — rebuild it
+  if (!ivByDate) return;
+  toggles.impliedCone = !toggles.impliedCone;
+  $('tImpliedCone').classList.toggle('on', toggles.impliedCone);
   if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
   render(); renderCalib();
 };
