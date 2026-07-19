@@ -8926,6 +8926,101 @@ app.get('/api/honest-forecast/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 
+// ── VWAP Reversion backtest (is VWAP a tradeable intraday fair-value level?) ──
+// Runs the three modes (band_fade / vwap_bounce / band_follow) across pairs on
+// real M1, true IS/OOS split, costs ON. Pooled per-trade t-stat (annualisation-
+// free) + per-pair OOS Sharpe distribution. Engine is pure; M1 loaded here.
+// Same async-job pattern as /api/honest-forecast/run.
+const vwapJobs = new Map();
+function _purgeStaleVwapJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, j] of vwapJobs) if (j.startedAt < cutoff) vwapJobs.delete(id);
+}
+const VWAP_DEFAULT_PAIRS = ['eurusd', 'usdjpy', 'gbpusd', 'audusd', 'usdcad', 'usdchf', 'nzdusd', 'eurjpy', 'gbpjpy', 'gold'];
+const _vwMean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
+const _vwStd  = a => { if (a.length < 2) return 0; const m = _vwMean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+function _vwPooled(arr) {
+  const n = arr.length, m = _vwMean(arr), s = _vwStd(arr);
+  return { n, mean: +m.toFixed(5), t: +(s > 0 ? m / (s / Math.sqrt(n)) : 0).toFixed(2),
+           win: +(100 * arr.filter(x => x > 0).length / (n || 1)).toFixed(1), total: +arr.reduce((a, b) => a + b, 0).toFixed(2) };
+}
+
+app.post('/api/vwap-reversion/run', express.json({ limit: '256kb' }), (req, res) => {
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    sessionAnchor: ['day', 'week', 'month'].includes(b.sessionAnchor) ? b.sessionAnchor : 'day',
+    entryK:  num(b.entryK, 2.0),
+    slK:     num(b.slK, 1.5),
+    oosFrac: Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    costPct: b.costPct !== undefined && b.costPct !== '' ? num(b.costPct, 0.012) : 0.012,
+    dateFrom: b.dateFrom || null, dateTo: b.dateTo || null,
+  };
+  const pairs = Array.isArray(b.pairs) && b.pairs.length
+    ? b.pairs.map(p => String(p).toLowerCase().replace('/', ''))
+    : (b.pair ? [String(b.pair).toLowerCase().replace('/', '')] : VWAP_DEFAULT_PAIRS);
+
+  const jobId = `vw_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleVwapJobs();
+  vwapJobs.set(jobId, { status: 'running', startedAt, pairsTotal: pairs.length, pairsDone: 0 });
+
+  (async () => {
+    try {
+      const { runVwapReversion, VWAP_MODES } = await import('./js/vwapReversionEngine.js');
+      const pool = {}; for (const m of VWAP_MODES) pool[m] = { is: [], oos: [], perPairOosSharpe: [], pairsPos: 0, nPairs: 0 };
+      const perPair = [];
+      for (const pair of pairs) {
+        let packed; try { packed = await loadM1ForPair(pair, BT_M1_DIR); } catch { packed = null; }
+        if (!packed || !packed.n) { perPair.push({ pair, error: 'no M1 data' }); continue; }
+        const row = { pair };
+        for (const mode of VWAP_MODES) {
+          const recs = runVwapReversion(packed, { ...opts, mode });
+          const filled = recs.filter(r => r.filled).sort((a, z) => (a.date < z.date ? -1 : 1));
+          if (!filled.length) { row[mode] = null; continue; }
+          const cut = Math.floor(filled.length * (1 - opts.oosFrac));
+          const splitDate = filled[cut]?.date;
+          const isR = filled.filter(r => r.date < splitDate).map(r => r.pnl_pct);
+          const oosR = filled.filter(r => r.date >= splitDate).map(r => r.pnl_pct);
+          const oosStat = _vwPooled(oosR);
+          const oosSharpe = _vwStd(oosR) > 0 ? _vwMean(oosR) / _vwStd(oosR) : 0;
+          row[mode] = { is: _vwPooled(isR), oos: oosStat, oosSharpe: +oosSharpe.toFixed(3) };
+          pool[mode].is.push(...isR); pool[mode].oos.push(...oosR);
+          pool[mode].perPairOosSharpe.push(oosSharpe); pool[mode].nPairs++;
+          if (oosSharpe > 0) pool[mode].pairsPos++;
+        }
+        perPair.push(row);
+        const j = vwapJobs.get(jobId); if (j) { j.pairsDone++; vwapJobs.set(jobId, j); }
+      }
+      const summary = {};
+      for (const m of VWAP_MODES) {
+        const ps = [...pool[m].perPairOosSharpe].sort((a, z) => a - z);
+        const med = ps.length ? (ps.length % 2 ? ps[ps.length >> 1] : (ps[(ps.length >> 1) - 1] + ps[ps.length >> 1]) / 2) : 0;
+        summary[m] = { is: _vwPooled(pool[m].is), oos: _vwPooled(pool[m].oos),
+                       oosMedianPairSharpe: +med.toFixed(3), pairsPos: pool[m].pairsPos, nPairs: pool[m].nPairs };
+      }
+      vwapJobs.set(jobId, { status: 'done', startedAt, result: { summary, perPair, opts, pairs } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[vwap-reversion/run]', msg, e?.stack ?? '');
+      vwapJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/vwap-reversion/status/:jobId', (req, res) => {
+  const job = vwapJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+                      pairsDone: job.pairsDone, pairsTotal: job.pairsTotal });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
 // ── Rank-IC Diagnostic (does a score sort the forward outcome?) ──────────────
 // Spearman rank-IC of the day-type classifier scores (composite T + its
 // component estimators + the regime/momentum directional call) vs the realized
