@@ -252,17 +252,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=7';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=7';
-import { bisect, resampleTo } from './js/barUtils.js?v=7';
-import { collectLevels } from './js/levelSources.js?v=7';
+import { createLevelChart } from './js/levelChart.js?v=8';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=8';
+import { bisect, resampleTo } from './js/barUtils.js?v=8';
+import { collectLevels } from './js/levelSources.js?v=8';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration,
-} from './js/forecastPathCore.js?v=7';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=7';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=7';
+} from './js/forecastPathCore.js?v=8';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=8';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=8';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -658,6 +658,26 @@ function renderCalib() {
       `<table style="margin-top:4px"><tr><th>bucket</th><th>n</th><th>P75</th><th>med|z| (claim 0.674)</th></tr>` +
       bRow('cold &lt;0.8×', b.cold) + bRow('normal', b.normal) + bRow('hot &gt;1.25×', b.hot) + `</table>` +
       `<div class="muted" style="margin-top:4px">Today's high–low so far ÷ the causal same-hour median of prior days. ${verdict}</div></div>`;
+
+    // Approach-trend attribution — do busts cluster when price was trending in?
+    const ts = t.trendSplit;
+    if (ts) {
+      const tRow = (label, c) => `<tr><td>${label}</td><td>${c.n}</td>` +
+        `<td class="${grade(c.c75, .75)}">${pc(c.c75)}</td><td>${c.medAbsZ ?? '—'}</td></tr>`;
+      let tv;
+      if (ts.trend.n >= 20 && ts.chop.n >= 20 && ts.trend.medAbsZ != null && ts.chop.medAbsZ != null) {
+        const gap = ts.trend.medAbsZ - ts.chop.medAbsZ;
+        tv = Math.abs(gap) < 0.15
+          ? 'Busts do NOT cluster by approach-trend — the cone handles trending and choppy approaches the same (null; regime-conditioning the width would not help).'
+          : gap > 0
+            ? `Busts cluster on TRENDING approaches (med|z| ${ts.trend.medAbsZ} vs ${ts.chop.medAbsZ} chop) — trend persistence runs the cone tight. A width-conditioner candidate worth a proper gated A/B.`
+            : `Cone runs WIDE on trending approaches (med|z| ${ts.trend.medAbsZ} trend vs ${ts.chop.medAbsZ} chop) — mean-reversion after a run. Unusual; worth a look.`;
+      } else tv = 'Not enough windows in the trend/chop buckets yet for a verdict (need ≥20 each).';
+      extra += `<div style="margin-top:12px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Approach trend at entry (why did it bust?)</b>` +
+        `<table style="margin-top:4px"><tr><th>approach</th><th>n</th><th>P75</th><th>med|z| (claim 0.674)</th></tr>` +
+        tRow('chop &lt;0.25', ts.chop) + tRow('mid', ts.mid) + tRow('trend &gt;0.5', ts.trend) + `</table>` +
+        `<div class="muted" style="margin-top:4px">Efficiency ratio of the prior ${e.fmtStep(H)} (|net move| ÷ path length, causal). ${tv}</div></div>`;
+    }
   }
 
   if (ab && ab.base && ab.aware) {

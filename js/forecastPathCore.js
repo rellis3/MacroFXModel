@@ -748,6 +748,18 @@ export function intradayTally(bars, opts = {}) {
       w.spentRatio = med > 0 ? rangeFrac[i - 1] / med : null;
     } else w.spentRatio = null;
 
+    // Approach-trend efficiency (CAUSAL — prior H bars only): |net displacement|
+    // ÷ path length (Kaufman efficiency ratio). ~1 = clean trend into the
+    // window, ~0 = chop. The attribution axis for "do busts cluster when the
+    // market was already trending?" — a real, testable width-conditioner
+    // candidate (trend persistence), never a direction signal.
+    if (i - H >= 0) {
+      let path = 0;
+      for (let k = i - H + 1; k <= i - 1; k++) path += Math.abs(bars[k].close - bars[k - 1].close);
+      const net = Math.abs(bars[i - 1].close - bars[i - H].close);
+      w.approachER = path > 0 ? net / path : null;
+    } else w.approachER = null;
+
     windows.push(w);
   }
 
@@ -787,6 +799,18 @@ export function intradayTally(bars, opts = {}) {
     overall: cell(windows),
   };
 
+  // Approach-trend attribution — do busts cluster when the market was already
+  // trending into the window? Terciles of the causal efficiency ratio. If the
+  // TREND bucket's med|z| sits well above the others, the cone runs tight on
+  // trend approaches → a width-conditioner candidate for the gate.
+  const withER = windows.filter(w => w.approachER != null);
+  const trendSplit = withER.length >= 30 ? {
+    n: withER.length,
+    chop:  cell(withER.filter(w => w.approachER < 0.25)),
+    mid:   cell(withER.filter(w => w.approachER >= 0.25 && w.approachER <= 0.5)),
+    trend: cell(withER.filter(w => w.approachER > 0.5)),
+  } : null;
+
   // Event vs quiet split (final-step cells) — the A/B substrate: run the tally
   // twice (eventAware on/off) and compare the event bucket between runs.
   const eventSplit = ctx.events.length
@@ -822,7 +846,7 @@ export function intradayTally(bars, opts = {}) {
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
   return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },
            full: tally(windows), recent: tally(windows.slice(-recentN)),
-           byHour, budget, eventSplit, ivStat, overall: cell(windows),
+           byHour, budget, trendSplit, eventSplit, ivStat, overall: cell(windows),
            adherence: adhere(windows), adherenceRecent: adhere(windows.slice(-recentN)) };
 }
 

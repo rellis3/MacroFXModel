@@ -403,4 +403,18 @@ const m15 = syntheticM15(55);   // ~5280 bars
   ok(t.adherenceRecent && t.adherenceRecent.n > 0, 'recent adherence computed');
 }
 
+// 19) Approach-trend attribution split: buckets partition, causal ER.
+{
+  const t = intradayTally(m15, { horizonBars: 16 });
+  if (t.trendSplit) {
+    const s = t.trendSplit;
+    ok(s.chop.n + s.mid.n + s.trend.n === s.n, 'trend buckets partition the ER windows');
+    for (const b of [s.chop, s.mid, s.trend]) if (b.n) ok(b.c75 != null && b.medAbsZ != null, 'trend bucket cells populated');
+    // On driftless GBM there is no true trend-persistence effect → buckets
+    // must not fabricate a large med|z| gap.
+    if (s.chop.n >= 15 && s.trend.n >= 15)
+      ok(Math.abs(s.trend.medAbsZ - s.chop.medAbsZ) < 0.4, `no fabricated trend-bust signal on GBM (${s.trend.medAbsZ} vs ${s.chop.medAbsZ})`);
+  } else ok(true, 'trendSplit null (too few ER windows) — acceptable');
+}
+
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);
