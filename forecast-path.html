@@ -306,6 +306,16 @@ const $ = id => document.getElementById(id);
 const pairSel = $('pair');
 for (const p of PAIRS) pairSel.add(new Option(p, p));
 
+// Deep links (daily brief drawer → here): ?pair=EURUSD&gran=M15&calc=cog
+{ const q = new URLSearchParams(location.search);
+  const qp = (q.get('pair') || '').toUpperCase();
+  if (PAIRS.includes(qp)) pairSel.value = qp;
+  const qg = (q.get('gran') || '').toUpperCase();
+  if (qg === 'D1' || qg === 'M15' || qg === 'M5') $('gran').value = qg;
+  const qc = (q.get('calc') || '').toLowerCase();
+  if (qc === 'cog' || qc === 'platform') $('calc').value = qc;
+}
+
 function fillHorizons() {
   const e = ENGINES[$('gran').value];
   const sel = $('horizon');

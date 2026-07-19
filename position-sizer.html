@@ -67,6 +67,32 @@ async function run(){
   if(!s.ok){ el('status').innerHTML='<span class="neg">'+(s.error||'error')+'</span>'; return; }
   el('status').textContent = `${s.nPositions} pairs · calibrated ${calibrate?'on':'off'}`;
   render(s);
+  checkNoiseFloor(s).catch(()=>{});
+}
+
+// Intraday noise floor — the Forecast Path engine's CALIBRATED 4h P75 envelope
+// per pair (event-aware, session-shaped σ; graded against history on the
+// forecast-path page). A stop inside that envelope gets hit by ordinary
+// intraday noise ~1 day in 4 even when the trade idea is right — fine for a
+// scalp, too tight for the daily-horizon hold this sizer assumes.
+async function checkNoiseFloor(s){
+  const names = s.positions.map(p=>String(p.pair).toLowerCase()).join(',');
+  if(!names) return;
+  let j; try{ j = await (await fetch('/api/forecast-path/summary?pairs='+encodeURIComponent(names))).json(); }catch(e){ return; }
+  const bad=[]; let checked=0;
+  for(const p of s.positions){
+    const sm=j?.pairs?.[String(p.pair).toLowerCase()];
+    if(sm?.p75HalfPct==null||p.stopPct==null) continue;
+    checked++;
+    if(p.stopPct < sm.p75HalfPct) bad.push(`<b>${p.pair}</b> (stop ${fmt(p.stopPct,2)}% &lt; 4h ±${fmt(sm.p75HalfPct,2)}%)`);
+  }
+  if(!checked) return;
+  const div=document.createElement('div');
+  div.className='card';
+  div.innerHTML = `<h2>Intraday noise floor (Forecast Path, calibrated)</h2><div class="muted" style="font-size:11px">`+(bad.length
+    ? `⚠ These stops sit <b>inside</b> the pair's calibrated 4h P75 envelope — ordinary intraday noise reaches them ~1 day in 4 even when the idea is right: ${bad.join(' · ')}.`
+    : `✓ All ${checked} stops sit outside each pair's calibrated 4h P75 noise envelope.`)+`</div>`;
+  el('out').appendChild(div);
 }
 
 function render(s){
