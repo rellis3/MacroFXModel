@@ -99,7 +99,7 @@ import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the 
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
-import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
+import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
@@ -11666,6 +11666,7 @@ async function _fpSummarizePair(name) {
     driftBp: +(live.mu * 1e4).toFixed(2),
     eventSteps: live.eventSteps ?? 0,
     surprise, trustHours, shakyHours, upcomingEvents,
+    dayBudget: _fpDayRange(bars),   // volatility-left-in-the-day climatology
     calib: { n: t.full.n, c75Final: t.full.perStep[_FP_H - 1]?.c75 ?? null },
     // Full cone coordinates so a consumer can DRAW the claim (brief drawer
     // chart), plus the Monte-Carlo consensus (the "most-agreed path").

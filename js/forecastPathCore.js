@@ -651,6 +651,70 @@ export function reachabilityCalibration(bars, opts = {}) {
            note: 'Predicted vs realized touch frequency, binned. Well-calibrated ⇒ predicted ≈ realized per bin (gap→0).' };
 }
 
+// ── Day range budget — how much of the day's volatility is spent vs left ─────
+// Pure climatology: no edge claim, just describing this pair's own intraday
+// range distribution. For the CURRENT (last, partial) UTC day it reports how
+// much high-low range has been traced so far, whether that's busy or quiet for
+// the hour (percentile vs prior same-hour days), a typical full-day range, and
+// how much range a typical day still has left from here. The "quiet mornings
+// tend to expand" effect the gold calibration surfaced is stated in the verdict
+// but NOT predicted — this stays descriptive.
+//   bars: intraday [{time(sec),open,high,low,close}] spanning ≥ ~12 days.
+export function dayRangeStatus(bars) {
+  if (!bars || bars.length < 96 * 8) return null;
+  const dayKey = t => Math.floor(t / 86400);
+  const byDay = new Map();
+  for (let i = 0; i < bars.length; i++) {
+    const k = dayKey(bars[i].time);
+    (byDay.get(k) ?? byDay.set(k, []).get(k)).push(i);
+  }
+  const keys = [...byDay.keys()].sort((a, b) => a - b);
+  if (keys.length < 10) return null;
+
+  const rangeSoFarThrough = (idx, hourCap) => {   // (max-min)/open using bars with hour ≤ cap; full day if cap=null
+    const o = bars[idx[0]].open;
+    if (!(o > 0)) return null;
+    let hi = -Infinity, lo = Infinity, any = false;
+    for (const i of idx) {
+      if (hourCap != null && new Date(bars[i].time * 1000).getUTCHours() > hourCap) continue;
+      if (bars[i].high > hi) hi = bars[i].high; if (bars[i].low < lo) lo = bars[i].low; any = true;
+    }
+    return any ? (hi - lo) / o : null;
+  };
+
+  // Current (partial) day.
+  const curIdx = byDay.get(keys[keys.length - 1]);
+  const curHour = new Date(bars[curIdx[curIdx.length - 1]].time * 1000).getUTCHours();
+  const rangeSoFar = rangeSoFarThrough(curIdx, null);
+  if (rangeSoFar == null) return null;
+
+  // Prior-day climatology (all completed days = causal).
+  const fulls = [], soFarAtHour = [], completion = [];
+  for (let d = 0; d < keys.length - 1; d++) {
+    const idx = byDay.get(keys[d]);
+    const full = rangeSoFarThrough(idx, null);
+    const sf = rangeSoFarThrough(idx, curHour);
+    if (full > 0) fulls.push(full);
+    if (full > 0 && sf != null) { soFarAtHour.push(sf); completion.push(sf / full); }
+  }
+  if (fulls.length < 8 || soFarAtHour.length < 8) return null;
+  const med = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
+  const pctile = (a, v) => a.length ? a.filter(x => x < v).length / a.length : null;
+
+  const medFull = med(fulls), medSoFar = med(soFarAtHour), medComp = med(completion);
+  const consumedPct = pctile(soFarAtHour, rangeSoFar);
+  const remainingTypical = Math.max(0, medFull - rangeSoFar);   // a typical day's range beyond what's printed
+  return {
+    hour: curHour, nDays: fulls.length,
+    rangeSoFarPct: +(rangeSoFar * 100).toFixed(3),
+    typicalSoFarPct: +(medSoFar * 100).toFixed(3),       // typical range traced by this hour
+    typicalFullPct: +(medFull * 100).toFixed(3),         // typical full-day range
+    completionPct: Math.round(medComp * 100),            // typically this % of the day's range is done by now
+    consumedPercentile: consumedPct == null ? null : Math.round(consumedPct * 100),
+    remainingTypicalPct: +(remainingTypical * 100).toFixed(3),
+  };
+}
+
 // Standard normal CDF (Abramowitz-Stegun 7.1.26 via erf approximation).
 export function normCdf(z) {
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -720,19 +784,22 @@ export function intradayTally(bars, opts = {}) {
     const ek = bisect(ctx.events, tStart - o.eventPost);
     const isEvent = ek < ctx.events.length && ctx.events[ek] <= tEnd + o.eventPre;
     const w = { in50: new Array(H), in75: new Array(H), dirHit: null, isEvent, iStart: i - 1 };
-    // Endpoint (close) containment per step AND excursion (intrabar high/low)
-    // containment over the whole path. The excursion is the reflection-principle
-    // reality a stop actually faces: price TOUCHES beyond the band far more than
-    // it CLOSES beyond it. pathIn* = the path never traded outside the band.
-    let pathIn50 = true, pathIn75 = true;
+    // Close containment per step, AND the FIXED-line stop reality: a trader
+    // places a stop at a fixed distance (the FINAL-step band level), not on the
+    // widening cone. So track the window's running high/low vs the final P50/P75
+    // levels — how often the intrabar path TOUCHES that fixed line vs how often
+    // the close finishes beyond it (the honest reflection gap for stops).
+    let whi = -Infinity, wlo = Infinity;
     for (let h = 1; h <= H; h++) {
       const b = bars[i + h - 1], s = cone.steps[h - 1];
       w.in50[h - 1] = b.close >= s.p50Dn && b.close <= s.p50Up;
       w.in75[h - 1] = b.close >= s.p75Dn && b.close <= s.p75Up;
-      if (b.high > s.p50Up || b.low < s.p50Dn) pathIn50 = false;
-      if (b.high > s.p75Up || b.low < s.p75Dn) pathIn75 = false;
+      if (b.high > whi) whi = b.high;
+      if (b.low < wlo) wlo = b.low;
     }
-    w.pathIn50 = pathIn50; w.pathIn75 = pathIn75;
+    const fs = cone.steps[H - 1];
+    w.whi = whi; w.wlo = wlo; w.fClose = bars[i + H - 1].close;
+    w.fp50u = fs.p50Up; w.fp50d = fs.p50Dn; w.fp75u = fs.p75Up; w.fp75d = fs.p75Dn;
     const move = bars[i + H - 1].close - cone.anchor;
     if (cone.mu !== 0 && move !== 0) w.dirHit = Math.sign(move) === Math.sign(cone.mu);
 
@@ -851,23 +918,28 @@ export function intradayTally(bars, opts = {}) {
     return { n: tot, p50: tot ? a / tot : null, p75: tot ? b / tot : null };
   };
 
-  // Excursion vs endpoint — the reflection-principle metric (the mentor's LIL
-  // nudge, done at finite horizon). "closeHeld" = the CLOSE finished inside the
-  // band; "pathHeld" = the intrabar path NEVER traded beyond it. pathHeld is
-  // always ≤ closeHeld — the gap is how much MORE a stop on the band gets
-  // touched than the endpoint stats imply. touchRate = share of windows whose
-  // path traded beyond the band at some point (= 1 − pathHeld); this is the
-  // number that matters for stop placement.
-  const fracOf = (ws, pred) => ws.length ? ws.filter(pred).length / ws.length : null;
-  const allTrue = arr => arr.every(Boolean);
-  const excursion = {
-    n: windows.length,
-    // Both "never breached over the whole window" — apples-to-apples, so the
-    // gap is the pure intrabar (reflection) effect, not a horizon mismatch.
-    closeHeld50: fracOf(windows, w => allTrue(w.in50)), closeHeld75: fracOf(windows, w => allTrue(w.in75)),
-    pathHeld50: fracOf(windows, w => w.pathIn50),       pathHeld75: fracOf(windows, w => w.pathIn75),
-    touch50: fracOf(windows, w => !w.pathIn50),         touch75: fracOf(windows, w => !w.pathIn75),
+  // Stop reality — the honest reflection metric at the FIXED line a stop sits
+  // on (the final-step band level), NOT the widening cone. For a P75-distance
+  // stop: `touch` = one-sided hit rate (avg of upper/lower touches — what a
+  // random-direction trade with that stop faces), `closeBeyond` = how often the
+  // CLOSE finished past that line. touch ≫ closeBeyond is the reflection effect
+  // that matters for placement: the intrabar high/low reaches the line far more
+  // than the close settles beyond it. (`touchEither` = share of windows that
+  // reached the level on either side — the two-sided range-touch rate.)
+  const stopBand = (uKey, dKey) => {
+    const n = windows.length;
+    if (!n) return { touch: null, touchEither: null, closeBeyond: null };
+    let tu = 0, td = 0, cu = 0, cd = 0, touchEither = 0;
+    for (const w of windows) {
+      const up = w.whi >= w[uKey], dn = w.wlo <= w[dKey];
+      if (up) tu++; if (dn) td++; if (up || dn) touchEither++;
+      if (w.fClose > w[uKey]) cu++; if (w.fClose < w[dKey]) cd++;
+    }
+    // One-sided (per-side average = what a single stop faces) for touch AND
+    // closeBeyond, so they compare apples-to-apples; touchEither is two-sided.
+    return { touch: (tu + td) / (2 * n), touchEither: touchEither / n, closeBeyond: (cu + cd) / (2 * n) };
   };
+  const excursion = { n: windows.length, p50: stopBand('fp50u', 'fp50d'), p75: stopBand('fp75u', 'fp75d') };
 
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
   return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },
