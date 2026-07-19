@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from barrier_race import Entry, race_grid
+from barrier_race import Entry, race_grid, race_trades
 
 
 def _bars(opens, highs, lows, closes):
@@ -118,6 +118,41 @@ def test_explicit_entry_price_overrides_bar_open():
 def test_empty_entries_returns_empty():
     bars = _bars(opens=[100], highs=[100], lows=[100], closes=[100])
     assert race_grid(bars, [], sl_grid=[5.0], tp_r_grid=[1.0], max_bars_ahead=10, min_bars_ahead=1) == []
+
+
+def test_race_trades_matches_grid_and_keeps_exit():
+    # A win, a loss and a timeout — race_trades must return per-trade exits whose
+    # outcomes + mean R exactly match what race_grid aggregates over the same set.
+    bars = _bars(
+        opens=[100, 101, 104, 108, 106],
+        highs=[100, 102, 105, 110, 107],
+        lows=[100, 100, 103, 106, 104],
+        closes=[100, 101, 104, 108, 106],
+    )
+    win = Entry(idx=0, direction=1)              # TP=5 at bar2 (high 105)
+    loss = Entry(idx=0, direction=-1)            # short, SL=5 at bar2 (high 105)
+    trades = race_trades(bars, [win, loss], sl=5.0, tp_r=1.0, max_bars_ahead=10, min_bars_ahead=1)
+    assert len(trades) == 2
+    assert trades[0]['outcome'] == 'tp' and trades[0]['exit_idx'] == 2 and abs(trades[0]['r'] - 1.0) < 1e-9
+    assert trades[0]['exit_price'] == 105.0    # entry 100 + tp_dist 5
+    assert trades[1]['outcome'] == 'sl' and trades[1]['r'] == -1.0
+    # Aggregate parity: mean R of race_trades == race_grid.avg_r on the same cell.
+    grid = race_grid(bars, [win, loss], sl_grid=[5.0], tp_r_grid=[1.0], max_bars_ahead=10, min_bars_ahead=1)[0]
+    assert abs(np.mean([t['r'] for t in trades]) - grid.avg_r) < 1e-12
+
+
+def test_race_trades_timeout_exit_is_last_bar():
+    bars = _bars(
+        opens=[100, 100.5, 101, 101.5],
+        highs=[100, 100.6, 101.1, 101.6],
+        lows=[100, 100.4, 100.9, 101.4],
+        closes=[100, 100.5, 101, 101.5],
+    )
+    t = race_trades(bars, [Entry(idx=0, direction=1)], sl=10.0, tp_r=2.0,
+                    max_bars_ahead=4, min_bars_ahead=1)[0]
+    assert t['outcome'] == 'timeout'
+    assert t['exit_idx'] == 3 and t['exit_price'] == 101.5   # marks to last close
+    assert abs(t['r'] - 0.15) < 1e-9
 
 
 if __name__ == '__main__':

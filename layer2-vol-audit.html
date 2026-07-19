@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layer 2 — Vol System SL/TP Audit</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg:#0b0d14; --panel:#12141d; --border:#23262f; --text:#e5e7eb; --text2:#9ca3af; --text3:#6b7280;
+    --blue:#3b82f6; --blue-bg:rgba(59,130,246,.12); --green:#22c55e; --red:#ef4444; --grey:#9ca3af; --amber:#d29922;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:'DM Sans',system-ui,sans-serif; }
+  body { display:flex; flex-direction:column; }
+  .bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 14px; border-bottom:1px solid var(--border); background:var(--panel); }
+  .bar h1 { font-size:14px; font-weight:600; margin:0 8px 0 0; }
+  .bar label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-right:3px; }
+  select { background:#0c0e15; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; font-family:'DM Mono',monospace; }
+  .status { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; margin-left:auto; }
+  .note { font-size:10.5px; color:var(--amber); background:rgba(210,153,34,.08); border-bottom:1px solid var(--border); padding:5px 14px; font-family:'DM Mono',monospace; }
+  .main { flex:1; min-height:0; display:flex; }
+  #chartWrap { position:relative; flex:1; min-width:0; }
+  #chart { position:absolute; inset:0; }
+  #overlay { position:absolute; inset:0; pointer-events:none; }
+  #hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text3); font-size:13px; font-family:'DM Mono',monospace; text-align:center; padding:20px; }
+  /* side panel */
+  .side { width:390px; flex:none; border-left:1px solid var(--border); background:var(--panel); overflow:auto; padding:10px 12px; }
+  .side h3 { font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--text2); margin:14px 0 6px; }
+  .side h3:first-child { margin-top:2px; }
+  .tally { display:flex; gap:8px; flex-wrap:wrap; font-family:'DM Mono',monospace; font-size:11px; }
+  .tal { background:#0c0e15; border:1px solid var(--border); border-radius:6px; padding:6px 9px; flex:1 1 auto; text-align:center; }
+  .tal .v { font-size:16px; font-weight:700; } .tal .l { font-size:9px; color:var(--text3); text-transform:uppercase; }
+  .pos { color:var(--green); } .neg { color:var(--red); } .mut { color:var(--text3); }
+  table.heat { border-collapse:collapse; font-family:'DM Mono',monospace; font-size:10px; }
+  table.heat td, table.heat th { border:1px solid var(--panel); padding:3px 5px; text-align:center; }
+  table.heat th { color:var(--text3); font-weight:500; }
+  table.heat td.cell { cursor:pointer; color:#0b0d14; font-weight:600; }
+  table.heat td.cell.sel { outline:2px solid var(--text); outline-offset:-2px; }
+  table.period { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:10.5px; }
+  table.period th { color:var(--text3); font-weight:500; text-align:right; padding:3px 6px; border-bottom:1px solid var(--border); font-size:9.5px; text-transform:uppercase; }
+  table.period th:first-child { text-align:left; }
+  table.period td { text-align:right; padding:3px 6px; border-bottom:1px solid rgba(255,255,255,.04); }
+  table.period td:first-child { text-align:left; color:var(--text2); }
+  .legend { display:flex; gap:12px; flex-wrap:wrap; font-size:10px; color:var(--text2); font-family:'DM Mono',monospace; align-items:center; }
+  .legend svg { vertical-align:middle; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h1>🔬 Layer 2 — Vol System SL/TP Audit</h1>
+    <label>Pair</label><select id="pair"></select>
+    <label>SL ×</label><select id="slmult"></select>
+    <label>TP (R)</label><select id="tpr"></select>
+    <span class="status" id="status">loading…</span>
+  </div>
+  <div class="note" id="note">
+    The vol system's REAL entries, resolved with a fixed SL/TP on the real M1 path, drawn so you can see them. Honest scope: TODAY's learned policy replayed on history (not what the bot decided each day), σ-proxy approximation, uniform fixed exit (not the bot's adaptive one), cost-netted. <b>In-sample terrain, not a forward edge claim.</b>
+  </div>
+  <div class="main">
+    <div id="chartWrap">
+      <div id="chart"></div>
+      <canvas id="overlay"></canvas>
+      <div id="hint">Loading audit data…</div>
+    </div>
+    <div class="side">
+      <h3>This window · selected SL/TP</h3>
+      <div class="legend" style="margin-bottom:6px">
+        <span><svg width="13" height="12"><polygon points="2,3 11,3 6.5,10" fill="#22c55e"/></svg> TP hit</span>
+        <span><svg width="13" height="12"><polygon points="2,3 11,3 6.5,10" fill="#ef4444"/></svg> SL hit</span>
+        <span><svg width="13" height="12"><polygon points="2,3 11,3 6.5,10" fill="#9ca3af"/></svg> timeout</span>
+        <span>▲ buy ▼ sell</span>
+      </div>
+      <div class="tally" id="tally"></div>
+      <div id="pooledLine" style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--text3);margin-top:8px"></div>
+
+      <h3>Pooled grid — avg R after cost (click a cell)</h3>
+      <div id="heat"></div>
+
+      <h3>Over time — avg R per 6-month period</h3>
+      <div style="font-size:9.5px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:5px">
+        <b>@cell</b> = the selected SL/TP that period · <b>best</b> = that period's best-of-grid cell (in-sample cherry-pick — the fact it wanders is the point).
+      </div>
+      <table class="period" id="periods"></table>
+    </div>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+const OUTCOME_COLOR = { tp:'#22c55e', sl:'#ef4444', timeout:'#9ca3af' };
+let DATA = null, chart=null, series=null, octx=null, overlayCanvas=null, dpr=window.devicePixelRatio||1;
+
+function fmtR(v){ return (v>=0?'+':'') + v.toFixed(3); }
+function cellKey(m,r){ return `${(+m)}|${(+r)}`; }
+// avg_r → colour (red neg, grey ~0, green pos), clamped ±0.3R.
+function heatColor(v){
+  const t = Math.max(-1, Math.min(1, (v||0)/0.3));
+  if (t>=0){ const g=Math.round(180*t)+50; return `rgb(${40},${g+40},${60})`; }
+  const r = Math.round(180*(-t))+50; return `rgb(${r+40},${40},${55})`;
+}
+
+async function init(){
+  let idx;
+  try { idx = await fetch('./VolRangeForecaster/data/vol_bot_layer2_audit_index.json').then(r=>r.json()); }
+  catch(e){ $('status').textContent='no audit index found'; $('hint').textContent='Run: python volatility_bot/layer2_audit_export.py --pair gold'; return; }
+  const pairs = idx.pairs||[];
+  if (!pairs.length){ $('status').textContent='index empty'; return; }
+  const sel=$('pair');
+  for (const p of pairs){ const o=document.createElement('option'); o.value=p.pair; o.textContent=`${p.pair.toUpperCase()} (${p.n_entries} entries, pooled best ${p.pooled_best_avg_r!=null?fmtR(p.pooled_best_avg_r):'n/a'}R)`; sel.appendChild(o); }
+  sel.addEventListener('change', ()=>loadPair(sel.value));
+  $('slmult').addEventListener('change', render);
+  $('tpr').addEventListener('change', render);
+  await loadPair(pairs[0].pair);
+}
+
+async function loadPair(pair){
+  $('status').textContent='loading '+pair+'…'; $('hint').style.display='flex'; $('hint').textContent='Loading '+pair+'…';
+  DATA = await fetch(`./VolRangeForecaster/data/vol_bot_layer2_audit_${pair}.json`).then(r=>r.json());
+  // Populate cell selectors
+  const sm=$('slmult'), tr=$('tpr');
+  sm.innerHTML=''; tr.innerHTML='';
+  for (const m of DATA.sl_mult_grid){ const o=document.createElement('option'); o.value=m; o.textContent=m+'×'; sm.appendChild(o); }
+  for (const r of DATA.tp_r_grid){ const o=document.createElement('option'); o.value=r; o.textContent=r+'R'; tr.appendChild(o); }
+  const pb = DATA.overtime.pooled_best || { sl_mult:DATA.sl_mult_grid[0], tp_r:DATA.tp_r_grid[0] };
+  sm.value = pb.sl_mult; tr.value = pb.tp_r;
+  buildChart(pair);
+  render();
+  $('hint').style.display='none';
+}
+
+function buildChart(pair){
+  if (chart){ try{chart.remove();}catch(_){} }
+  const el=$('chart'); el.innerHTML='';
+  chart = LightweightCharts.createChart(el, {
+    layout:{ background:{type:'solid',color:'transparent'}, textColor:'#9ca3af', fontSize:11, fontFamily:"'DM Mono',monospace" },
+    grid:{ vertLines:{color:'rgba(255,255,255,0.04)'}, horzLines:{color:'rgba(255,255,255,0.05)'} },
+    timeScale:{ borderColor:'rgba(255,255,255,0.12)', timeVisible:true, secondsVisible:false, rightOffset:4 },
+    rightPriceScale:{ borderColor:'rgba(255,255,255,0.12)', scaleMargins:{top:0.1,bottom:0.1} },
+    crosshair:{ mode:LightweightCharts.CrosshairMode.Normal },
+  });
+  const digits = (DATA.pip && DATA.pip < 0.01) ? 5 : (DATA.pip===0.01?3: (DATA.asset_class==='commodity'?2:(DATA.asset_class==='index'?1:5)));
+  const minMove = Math.pow(10,-digits);
+  series = chart.addCandlestickSeries({ upColor:'#26a69a', downColor:'#ef5350', borderUpColor:'#26a69a', borderDownColor:'#ef5350', wickUpColor:'#26a69a', wickDownColor:'#ef5350', priceFormat:{type:'price',precision:digits,minMove} });
+  series.setData(DATA.detail.candles.map(c=>({ time:c.t, open:c.o, high:c.h, low:c.l, close:c.c })));
+  chart.timeScale().fitContent();
+  if (!overlayCanvas){ setupOverlay(); } else { sizeOverlay(); }
+  chart.timeScale().subscribeVisibleTimeRangeChange(scheduleDraw);
+}
+function setupOverlay(){
+  overlayCanvas=$('overlay'); octx=overlayCanvas.getContext('2d');
+  new ResizeObserver(()=>{ sizeOverlay(); scheduleDraw(); }).observe($('chartWrap'));
+  sizeOverlay(); requestAnimationFrame(syncLoop);
+}
+function sizeOverlay(){
+  const w=$('chartWrap').clientWidth, h=$('chartWrap').clientHeight; dpr=window.devicePixelRatio||1;
+  overlayCanvas.width=w*dpr; overlayCanvas.height=h*dpr; overlayCanvas.style.width=w+'px'; overlayCanvas.style.height=h+'px';
+}
+let _sig='';
+function syncLoop(){
+  if (chart&&series&&DATA){ const r=chart.timeScale().getVisibleLogicalRange(); const y0=series.priceToCoordinate(DATA.detail.candles[0]?.c||0);
+    const s=r?`${r.from.toFixed(1)}_${r.to.toFixed(1)}_${y0}`:'x'; if(s!==_sig){ _sig=s; drawTrades(); } }
+  requestAnimationFrame(syncLoop);
+}
+let _pend=false;
+function scheduleDraw(){ if(!_pend){ _pend=true; requestAnimationFrame(()=>{ _pend=false; _sig=''; drawTrades(); }); } }
+
+function selectedCell(){ return cellKey($('slmult').value, $('tpr').value); }
+
+function drawTrades(){
+  if (!octx||!chart||!series||!DATA) return;
+  const ts=chart.timeScale();
+  octx.setTransform(dpr,0,0,dpr,0,0);
+  octx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);
+  const ck=selectedCell();
+  for (const t of DATA.detail.trades){
+    const cell=t.by_cell[ck]; if(!cell) continue;
+    const color=OUTCOME_COLOR[cell.outcome]||'#9ca3af';
+    const xE=ts.timeToCoordinate(t.t_entry), yE=series.priceToCoordinate(t.entry);
+    if (xE==null||yE==null) continue;
+    const xX=cell.t_exit!=null?ts.timeToCoordinate(cell.t_exit):null;
+    const yX=series.priceToCoordinate(cell.exit);
+    octx.save();
+    if (xX!=null&&yX!=null){ octx.strokeStyle=color; octx.globalAlpha=0.8; octx.lineWidth=1.3; octx.beginPath(); octx.moveTo(xE,yE); octx.lineTo(xX,yX); octx.stroke();
+      octx.globalAlpha=0.9; octx.fillStyle=color; octx.beginPath(); octx.arc(xX,yX,2.3,0,Math.PI*2); octx.fill(); }
+    // entry triangle points the trade direction (buy ▲ up, sell ▼ down)
+    const s=5, up=t.dir>0; octx.globalAlpha=0.98; octx.fillStyle=color; octx.beginPath();
+    if (up){ octx.moveTo(xE-s,yE+s); octx.lineTo(xE+s,yE+s); octx.lineTo(xE,yE-s); } else { octx.moveTo(xE-s,yE-s); octx.lineTo(xE+s,yE-s); octx.lineTo(xE,yE+s); }
+    octx.closePath(); octx.fill(); octx.restore();
+  }
+}
+
+function render(){
+  if (!DATA) return;
+  const ck=selectedCell();
+  // Tally over the detail window at the selected cell
+  let tp=0,sl=0,to=0,sumR=0,n=0;
+  for (const t of DATA.detail.trades){ const c=t.by_cell[ck]; if(!c) continue; n++; sumR+=c.r; if(c.outcome==='tp')tp++; else if(c.outcome==='sl')sl++; else to++; }
+  const avg = n? sumR/n : 0;
+  $('tally').innerHTML =
+     tile('N', n) + tile('TP', tp, 'pos') + tile('SL', sl, 'neg') + tile('Timeout', to, 'mut')
+   + tile('Win%', n?Math.round(tp/n*100)+'%':'—') + tile('avg R', fmtR(avg), avg>=0?'pos':'neg') + tile('Σ R', fmtR(sumR), sumR>=0?'pos':'neg');
+  // Pooled context line
+  const pr = DATA.overtime.pooled.find(r=>cellKey(r.sl_mult,r.tp_r)===ck);
+  const pb = DATA.overtime.pooled_best;
+  $('pooledLine').innerHTML = pr
+    ? `Pooled (all ${DATA.summary.n_entries_total} entries) @ this cell: <b class="${pr.avg_r>=0?'pos':'neg'}">${fmtR(pr.avg_r)}R</b> · pooled BEST cell ${pb.sl_mult}×/${pb.tp_r}R = <b class="${pb.avg_r>=0?'pos':'neg'}">${fmtR(pb.avg_r)}R</b> (window shown is the last ${Math.round((DATA.detail.to-DATA.detail.from)/2592000)} months only).`
+    : '';
+  drawHeat(ck); drawPeriods(ck);
+  drawTrades();
+  $('status').textContent = `${DATA.pair.toUpperCase()} · ${DATA.summary.n_entries_total} entries · ${DATA.overtime.periods.length} periods · window ${DATA.detail.trades.length} trades · cell ${ck.replace('|','× / ')}R`;
+}
+function tile(l,v,cls){ return `<div class="tal"><div class="v ${cls||''}">${v}</div><div class="l">${l}</div></div>`; }
+
+function drawHeat(ck){
+  const g=DATA.overtime.pooled; const sm=DATA.sl_mult_grid, tr=DATA.tp_r_grid;
+  const at=(m,r)=> g.find(x=>x.sl_mult===m&&x.tp_r===r);
+  let html='<table class="heat"><tr><th></th>'+tr.map(r=>`<th>${r}R</th>`).join('')+'</tr>';
+  for (const m of sm){
+    html+=`<tr><th>${m}×</th>`;
+    for (const r of tr){ const c=at(m,r); const key=cellKey(m,r); const v=c?c.avg_r:0;
+      html+=`<td class="cell ${key===ck?'sel':''}" data-m="${m}" data-r="${r}" style="background:${heatColor(v)}" title="n=${c?c.n:0} win=${c?Math.round(c.win_rate*100):0}%">${c?v.toFixed(2):'–'}</td>`; }
+    html+='</tr>';
+  }
+  html+='</table>';
+  $('heat').innerHTML=html;
+  $('heat').querySelectorAll('td.cell').forEach(td=>td.addEventListener('click',()=>{ $('slmult').value=td.dataset.m; $('tpr').value=td.dataset.r; render(); }));
+}
+
+function drawPeriods(ck){
+  const ot=DATA.overtime;
+  let html='<tr><th>Period</th><th>N</th><th>@cell R</th><th>best R</th><th>best cell</th></tr>';
+  let posAt=0, tot=0;
+  for (const per of ot.periods){
+    const rows=ot.grid[per]||[]; const at=rows.find(r=>cellKey(r.sl_mult,r.tp_r)===ck); const best=ot.best_by_period[per];
+    const atv = at?at.avg_r:null; if(atv!=null){ tot++; posAt+=atv>0; }
+    html+=`<tr><td>${per}</td><td class="mut">${best?best.n:0}</td>`
+      + `<td class="${atv==null?'mut':(atv>=0?'pos':'neg')}">${atv==null?'–':fmtR(atv)}</td>`
+      + `<td class="${best&&best.avg_r>=0?'pos':'neg'}">${best?fmtR(best.avg_r):'–'}</td>`
+      + `<td class="mut">${best?best.sl_mult+'×/'+best.tp_r+'R':'–'}</td></tr>`;
+  }
+  html+=`<tr><td colspan="5" class="mut" style="padding-top:6px">@cell positive in ${posAt}/${tot} periods · best-cell positive in ${ot.periods.filter(p=>ot.best_by_period[p]&&ot.best_by_period[p].avg_r>0).length}/${ot.periods.length} (but the winning cell moves every period — in-sample noise, not a stable edge)</td></tr>`;
+  $('periods').innerHTML=html;
+}
+
+window.addEventListener('resize', ()=>{ if(overlayCanvas){ sizeOverlay(); scheduleDraw(); } });
+init();
+</script>
+</body>
+</html>
