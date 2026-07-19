@@ -92,6 +92,47 @@ itself provides.
 
 ---
 
+---
+
+## Addendum — Breadth ladder: diversification IS the edge (demonstrated, not monetized)
+
+Follow-up to the "needs multi-asset breadth" caveat above. The **full** multi-asset
+test (equities + bonds + broad commodities + FX) **can't be sourced in-sandbox** —
+stooq, FRED and OANDA hosts are all blocked by egress policy (403) and no data keys
+are set. With **local data only** (FX majors + gold + NQ/Nasdaq) I ran the momentum
+basket at increasing breadth, date-aligned (inner-join on common dates), costed 2bp:
+
+| Basket | markets | Sharpe | ann.ret | maxDD | OOS (IS→held-out) | recent-3rd |
+|---|---|---|---|---|---|---|
+| FX-only | 7 | −0.41 | −4.4% | −47.7% | 0.40 → **−0.45** | −0.73 |
+| FX + gold | 8 | −0.16 | −1.8% | −37.9% | 0.28 → −0.11 | −0.19 |
+| **FX + gold + NQ** | 9 (3 asset types) | **0.01** | 0.1% | **−26.7%** | 0.40 → **+0.12** | −0.02 |
+
+Adding two uncorrelated trenders (gold, Nasdaq) to a dead FX-only book
+**monotonically raised Sharpe (−0.41 → 0.01), nearly halved max drawdown
+(−47.7% → −26.7%), and flipped the held-out OOS from −0.45 to +0.12.** That is the
+trend-following mechanism working exactly as advertised: **the edge is
+diversification and risk, not the entry signal.**
+
+**Do NOT read this as a tradeable edge — it isn't.** Honest caveats:
+- **Still only ≈breakeven after costs** (Sharpe 0.01; +0.19 at zero cost → gone by
+  5bp). Deflated Sharpe ≈0.01 — not significant.
+- **Carried by 2 markets.** Every FX pair is individually negative (−0.04 to −0.50);
+  GOLD (0.72) and NQ (0.56) do all the work. Dropping gold: 0.01 → −0.25. Two
+  trenders rescuing a bag of losers is not breadth.
+- **No bonds** (the classic managed-futures diversifier), no broad commodities, no
+  international equity. Real breadth needs many uncorrelated markets.
+- **Drought**: the recent third is ~0/negative across all baskets; the life was
+  mid-sample (+0.4 to +0.6).
+
+**Conclusion:** the *principle* (diversification is the edge) is visibly real and
+points the right way; the *implementation reachable in this sandbox* is
+breakeven-to-negative after realistic costs, concentrated in 2 markets, and
+insignificant. The trend engine is data-source-agnostic (`backtestBasket` takes any
+`{symbol, closes[]}`), so the real multi-asset test is a **data-access job**
+(Railway/OANDA CFDs across asset classes incl. bonds, or a `FRED_KEY` for daily
+Treasury/oil/equity series) — not a code job.
+
 ## Status
 
 - `js/trendFollowEmaEngine.js` — `emaCrossSignal`, `compareTrendSignals`,
