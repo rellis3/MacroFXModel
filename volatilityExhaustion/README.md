@@ -144,6 +144,23 @@ fade **worse on 7/7** (corr falls, MAE rises). The tail is **signal, not noise**
 the RMS σ that keeps recent big days predicts better. (The median/75th are percentiles, already
 outlier-robust; outliers only enter the σ scale, and even there keeping them wins.)
 
+## Extreme-value law behind the levels (`evt_envelope.py`)
+
+Does the day's extreme excursion follow the reflection-principle / EVT law the forecast
+levels are built on — and where does it break (the LIL/tail regime)? Pool the one-sided
+O→H, O→L excursions in σ-units and test vs the half-normal (median 0.6745 = the O-C
+constant; full-range median = Feller 1.572σ).
+
+**Finding — theory confirmed in the bulk, breaks in the tail.** Real excursions track the
+driftless-BM half-normal **almost exactly out to ~1.5–1.8σ** (through the Feller H-L
+median) — so the forecast levels sit on the correct extreme-value physics, which is *why
+they look accurate on normal days*. Beyond ~2σ the tail is **1.2–1.3× fatter** than
+Gaussian (EURUSD ×1.21 … **NQ ×1.34**, index jumps) — the LIL regime where no finite σ can
+pin the level; this is why crisis-day 75th numbers are unreliable. The bulk is slightly
+*tighter* than half-normal (median 0.52σ vs 0.67σ) — leptokurtosis — which vindicates the
+"lines look wide on calm days" intuition for the right reason, but can't be trimmed away
+(the tail is clustered signal, Section 4). Charts `*_11_evt_envelope.png` (survival + QQ).
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -156,5 +173,6 @@ alongside.
 - `measure_extremes.py` — fresh-extreme exhaustion test → `charts/*_7.png`; `combined` (overlay) / `compare` (YZ vs HV20) modes.
 - `forecast_vs_fade.py` — Phase-1 forecast-line-vs-actual-fade accuracy → `charts/*_8,_9.png`; `robust` mode = the outlier-trim test.
 - `payoff_geometry.py` — Phase-2 MFE/MAE reward-vs-risk + expectancy grid → `charts/*_10.png`, `payoff_geometry_summary.json`.
+- `evt_envelope.py` — reflection-principle / LIL tail test: excursions vs half-normal → `charts/*_11.png`, `evt_envelope_summary.json`.
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
