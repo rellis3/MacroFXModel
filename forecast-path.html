@@ -271,17 +271,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=11';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=11';
-import { bisect, resampleTo } from './js/barUtils.js?v=11';
-import { collectLevels } from './js/levelSources.js?v=11';
+import { createLevelChart } from './js/levelChart.js?v=12';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=12';
+import { bisect, resampleTo } from './js/barUtils.js?v=12';
+import { collectLevels } from './js/levelSources.js?v=12';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration, dayRangeStatus,
-} from './js/forecastPathCore.js?v=11';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=11';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=11';
+} from './js/forecastPathCore.js?v=12';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=12';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=12';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -632,6 +632,11 @@ function renderDayBudget() {
   if (!isIntraday() || !bars.length) { el.innerHTML = '<span class="muted">Intraday (M5/M15) only — how much of the day\'s range is spent vs left.</span>'; return; }
   const s = dayRangeStatus(bars);
   if (!s) { el.innerHTML = '<span class="muted">Not enough history yet.</span>'; return; }
+  if (!s.reliable) {
+    el.innerHTML = `<div class="kv"><span>range so far today</span><b>${s.rangeSoFarPct}%</b></div>` +
+      `<div class="muted" style="margin-top:4px">⚠ Day-budget not reliable right now: ${s.reason}. (This is a UTC-calendar-day measure — for 24h index futures the "day" should be session-anchored; a follow-up.)</div>`;
+    return;
+  }
   const cp = s.consumedPercentile;
   const cls = cp == null ? '' : cp >= 75 ? 'bad' : cp <= 25 ? 'good' : 'warn';
   const verdict = cp == null ? ''

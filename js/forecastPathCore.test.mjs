@@ -445,8 +445,9 @@ const m15 = syntheticM15(55);   // ~5280 bars
   ok(s.rangeSoFarPct >= 0 && s.typicalFullPct > 0, 'ranges non-negative, full > 0');
   ok(s.completionPct >= 0 && s.completionPct <= 100, 'completion % in [0,100]');
   ok(s.consumedPercentile >= 0 && s.consumedPercentile <= 100, 'consumed percentile in [0,100]');
-  ok(s.typicalSoFarPct <= s.typicalFullPct + 1e-9, 'range-by-now ≤ full-day range');
+  ok(s.typicalSoFarPct <= s.typicalFullPct + 1e-9, 'range-by-now ≤ full-day range (paired ⇒ never inverts)');
   ok(s.remainingTypicalPct >= 0, 'remaining ≥ 0');
+  ok(typeof s.reliable === 'boolean', 'reliability flag present');
   // A day with a giant early range should rank as busy (high percentile).
   const spiked = m15.map((b, k) => {
     const lastDay = Math.floor(m15[m15.length - 1].time / 86400);

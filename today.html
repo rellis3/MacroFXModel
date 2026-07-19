@@ -1975,8 +1975,8 @@ async function loadDrawerPath(name) {
   const rows = [
     ['4h P75 envelope', `±${s.p75HalfPct}%  (${s.p75Lo?.toFixed?.(5) ?? '—'} – ${s.p75Hi?.toFixed?.(5) ?? '—'})`],
     ['today vs day-open cone', s.surprise == null ? '—' : `<span class="${spCls}">${s.surprise.pct}th pctile (z ${s.surprise.z >= 0 ? '+' : ''}${s.surprise.z})</span>`],
-    ['vol used today', db == null ? '—' : `<span class="${dbCls}">${db.rangeSoFarPct}% range · ${db.consumedPercentile}th pctile for ${String(db.hour).padStart(2,'0')}:00</span>`],
-    ['typical range still to come', db == null ? '—' : `${db.remainingTypicalPct}% (typical full ${db.typicalFullPct}%)`],
+    ['vol used today', db == null ? '—' : db.reliable === false ? `${db.rangeSoFarPct}% range <span class="muted">(budget n/a: ${db.reason?.split(' — ')[0]})</span>` : `<span class="${dbCls}">${db.rangeSoFarPct}% range · ${db.consumedPercentile}th pctile for ${String(db.hour).padStart(2,'0')}:00</span>`],
+    ['typical range still to come', db == null || db.reliable === false ? '—' : `${db.remainingTypicalPct}% (typical full ${db.typicalFullPct}%)`],
     ['cone trustworthy at', hrs(s.trustHours)],
     ['shaky at', hrs(s.shakyHours)],
     ['release windows ahead', s.upcomingEvents?.length ? s.upcomingEvents.join(' · ') + (s.eventSteps ? ' (σ widened now)' : '') : 'none in next 12h'],
