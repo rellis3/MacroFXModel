@@ -720,19 +720,22 @@ export function intradayTally(bars, opts = {}) {
     const ek = bisect(ctx.events, tStart - o.eventPost);
     const isEvent = ek < ctx.events.length && ctx.events[ek] <= tEnd + o.eventPre;
     const w = { in50: new Array(H), in75: new Array(H), dirHit: null, isEvent, iStart: i - 1 };
-    // Endpoint (close) containment per step AND excursion (intrabar high/low)
-    // containment over the whole path. The excursion is the reflection-principle
-    // reality a stop actually faces: price TOUCHES beyond the band far more than
-    // it CLOSES beyond it. pathIn* = the path never traded outside the band.
-    let pathIn50 = true, pathIn75 = true;
+    // Close containment per step, AND the FIXED-line stop reality: a trader
+    // places a stop at a fixed distance (the FINAL-step band level), not on the
+    // widening cone. So track the window's running high/low vs the final P50/P75
+    // levels — how often the intrabar path TOUCHES that fixed line vs how often
+    // the close finishes beyond it (the honest reflection gap for stops).
+    let whi = -Infinity, wlo = Infinity;
     for (let h = 1; h <= H; h++) {
       const b = bars[i + h - 1], s = cone.steps[h - 1];
       w.in50[h - 1] = b.close >= s.p50Dn && b.close <= s.p50Up;
       w.in75[h - 1] = b.close >= s.p75Dn && b.close <= s.p75Up;
-      if (b.high > s.p50Up || b.low < s.p50Dn) pathIn50 = false;
-      if (b.high > s.p75Up || b.low < s.p75Dn) pathIn75 = false;
+      if (b.high > whi) whi = b.high;
+      if (b.low < wlo) wlo = b.low;
     }
-    w.pathIn50 = pathIn50; w.pathIn75 = pathIn75;
+    const fs = cone.steps[H - 1];
+    w.whi = whi; w.wlo = wlo; w.fClose = bars[i + H - 1].close;
+    w.fp50u = fs.p50Up; w.fp50d = fs.p50Dn; w.fp75u = fs.p75Up; w.fp75d = fs.p75Dn;
     const move = bars[i + H - 1].close - cone.anchor;
     if (cone.mu !== 0 && move !== 0) w.dirHit = Math.sign(move) === Math.sign(cone.mu);
 
@@ -851,23 +854,28 @@ export function intradayTally(bars, opts = {}) {
     return { n: tot, p50: tot ? a / tot : null, p75: tot ? b / tot : null };
   };
 
-  // Excursion vs endpoint — the reflection-principle metric (the mentor's LIL
-  // nudge, done at finite horizon). "closeHeld" = the CLOSE finished inside the
-  // band; "pathHeld" = the intrabar path NEVER traded beyond it. pathHeld is
-  // always ≤ closeHeld — the gap is how much MORE a stop on the band gets
-  // touched than the endpoint stats imply. touchRate = share of windows whose
-  // path traded beyond the band at some point (= 1 − pathHeld); this is the
-  // number that matters for stop placement.
-  const fracOf = (ws, pred) => ws.length ? ws.filter(pred).length / ws.length : null;
-  const allTrue = arr => arr.every(Boolean);
-  const excursion = {
-    n: windows.length,
-    // Both "never breached over the whole window" — apples-to-apples, so the
-    // gap is the pure intrabar (reflection) effect, not a horizon mismatch.
-    closeHeld50: fracOf(windows, w => allTrue(w.in50)), closeHeld75: fracOf(windows, w => allTrue(w.in75)),
-    pathHeld50: fracOf(windows, w => w.pathIn50),       pathHeld75: fracOf(windows, w => w.pathIn75),
-    touch50: fracOf(windows, w => !w.pathIn50),         touch75: fracOf(windows, w => !w.pathIn75),
+  // Stop reality — the honest reflection metric at the FIXED line a stop sits
+  // on (the final-step band level), NOT the widening cone. For a P75-distance
+  // stop: `touch` = one-sided hit rate (avg of upper/lower touches — what a
+  // random-direction trade with that stop faces), `closeBeyond` = how often the
+  // CLOSE finished past that line. touch ≫ closeBeyond is the reflection effect
+  // that matters for placement: the intrabar high/low reaches the line far more
+  // than the close settles beyond it. (`touchEither` = share of windows that
+  // reached the level on either side — the two-sided range-touch rate.)
+  const stopBand = (uKey, dKey) => {
+    const n = windows.length;
+    if (!n) return { touch: null, touchEither: null, closeBeyond: null };
+    let tu = 0, td = 0, cu = 0, cd = 0, touchEither = 0;
+    for (const w of windows) {
+      const up = w.whi >= w[uKey], dn = w.wlo <= w[dKey];
+      if (up) tu++; if (dn) td++; if (up || dn) touchEither++;
+      if (w.fClose > w[uKey]) cu++; if (w.fClose < w[dKey]) cd++;
+    }
+    // One-sided (per-side average = what a single stop faces) for touch AND
+    // closeBeyond, so they compare apples-to-apples; touchEither is two-sided.
+    return { touch: (tu + td) / (2 * n), touchEither: touchEither / n, closeBeyond: (cu + cd) / (2 * n) };
   };
+  const excursion = { n: windows.length, p50: stopBand('fp50u', 'fp50d'), p75: stopBand('fp75u', 'fp75d') };
 
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
   return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },
