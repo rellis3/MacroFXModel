@@ -1952,12 +1952,13 @@ async function overlayDrawerCone(name) {
   // point (the paths agree where the drift points).
   if (cone.consensus?.length)
     mk('#c084fc', 2, LSt.Solid).setData([t0, ...cone.consensus.map(p => ({ time: p.t, value: p.c }))]);
-  // Time-based range: the cone (4h) fills the right ~quarter, its anchor near
-  // 3/4 across — so it never runs off behind the price scale again.
-  // Anchor at 3/4: left = anchor − 3·span, right = last cone point (real data,
-  // so no clamp) → cone fills the right quarter exactly.
-  const lastT = cone.steps[cone.steps.length - 1].t, span = Math.max(1, lastT - cone.anchorTime);
-  try { drChart.timeScale().setVisibleRange({ from: cone.anchorTime - span * 3, to: lastT }); } catch { padDrawerRange(); }
+  // Pad by LOGICAL range (not time): the cone's future points sit on the M15
+  // grid, not the M5 candle grid, so setVisibleRange-by-time clamps back to the
+  // last candle and undoes the padding. Logical indices are grid-agnostic — the
+  // cone adds ~16 future indices past the N candles, so [N−70, N+22] puts the
+  // last candle ~3/4 across with the cone filling the right quarter.
+  const N = _drBarCount;
+  if (N) { try { drChart.timeScale().setVisibleLogicalRange({ from: N - 70, to: N + 22 }); } catch { padDrawerRange(); } }
   $('drChartNote').textContent += ' · 📐 4h claim: blue = predicted · purple = most-agreed path · green/amber = P50/P75 envelopes';
 }
 
