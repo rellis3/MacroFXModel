@@ -1,0 +1,250 @@
+/**
+ * VWAP Reversion Engine — is VWAP a tradeable intraday fair-value level, or folklore?
+ * ===================================================================================
+ *
+ * WHAT THIS TESTS (two opposite hypotheses about the SAME event — a price touch
+ * relative to session VWAP):
+ *
+ *   A) band_fade   — "stretch → revert TO VWAP". Price reaches the ±k·σ VWAP band,
+ *                    fade it back toward fair value (VWAP). Mean-reversion.
+ *   B) vwap_bounce — "bounce OFF VWAP". Price stretches to a band, pulls back to
+ *                    VWAP, then you enter in the prior-stretch direction betting
+ *                    VWAP holds as fair-value support/resistance. This is the
+ *                    "reclaim/bounce is the trigger" idea — and it is squarely the
+ *                    support/resistance folklore family (CLAUDE.md), so its prior
+ *                    is low. We test it anyway, honestly, next to its opposite.
+ *   control) band_follow — break THROUGH the band, target the next band out. The
+ *                    "trend day" continuation control. If fade wins, this should
+ *                    lose; running it keeps us honest about which side pays.
+ *
+ * All three are ONE entry primitive parameterised by {location, action} — not three
+ * bespoke legs (Lego Principle 2). The fill walker (`walkBars`) and the IS/OOS
+ * reporter (`summarizeSplit`) are IMPORTED from the baseplate, never re-implemented.
+ *
+ * HONESTY NOTES baked in:
+ *   • FX "volume" is OANDA *tick count*, not real traded volume. This VWAP is a
+ *     tick-weighted average — the standard FX proxy, and the reason FX VWAP is
+ *     weaker than an equity VWAP. Stated, not hidden.
+ *   • Costs ON by default (round-trip spread/commission; slippage added on the
+ *     stop-entry `band_follow` control). A no-cost number is not a result.
+ *   • No lookahead: the level a bar is tested against is the band as it stood at
+ *     the PRIOR bar's close (lag-one), mirroring `walkDynamicHL` in forecastCore.
+ *   • Horizon-agnostic: a "session" is a bucket of bars — day / week / month via
+ *     `sessionAnchor`. Daily VWAP, weekly VWAP, monthly VWAP through one code path.
+ *
+ * Pure over packed M1 (`{n,times,opens,highs,lows,closes,volumes}`) — no network.
+ */
+
+import { walkBars } from './forecastCore.js';
+import { summarizeSplit } from './honestForecastEngine.js';
+
+// ── Default frictions (% of price), matching forecastCore's fx defaults ──────
+const DEFAULT_COST_PCT = 0.012;   // round-trip spread+commission
+const DEFAULT_SLIP_PCT = 0.006;   // per-side slippage on stop/breakout entries
+
+const DAY = 86400;
+
+// ── Session bucketing (horizon anchor) ───────────────────────────────────────
+// Returns an integer bucket id from an epoch-seconds timestamp.
+function sessionBucket(epochSec, anchor) {
+  if (anchor === 'week') {
+    // ISO-ish week: epoch day 0 (1970-01-01) was a Thursday; shift so weeks start
+    // Monday. (day+3)%7 == 0 on Mondays. Bucket by Monday index.
+    const day = Math.floor(epochSec / DAY);
+    return Math.floor((day + 3) / 7);        // Monday-anchored week index
+  }
+  if (anchor === 'month') {
+    const d = new Date(epochSec * 1000);
+    return d.getUTCFullYear() * 12 + d.getUTCMonth();
+  }
+  return Math.floor(epochSec / DAY);          // default: UTC calendar day
+}
+
+// Date string for a session (its first bar's UTC date) — summarizeSplit sorts on
+// this, and 'YYYY-MM-DD' string order == chronological order.
+function isoDate(epochSec) {
+  return new Date(epochSec * 1000).toISOString().slice(0, 10);
+}
+
+// ── VWAP + volume-weighted σ bands (session-anchored, cumulative) ─────────────
+// tp = hlc3, weighted by tick volume (proxy). σ is the running volume-weighted
+// standard deviation of tp around VWAP: Var = E[tp²·w]/Σw − VWAP². This is the
+// classic "VWAP band" construct — self-contained intraday, no external vol model.
+// Pure + unit-testable. Exported so tests and other callers can reuse it.
+export function computeSessionVwap(bars) {
+  const n = bars.length;
+  const vwap = new Float64Array(n);
+  const sd = new Float64Array(n);
+  let cumV = 0, cumTPV = 0, cumTP2V = 0;
+  for (let k = 0; k < n; k++) {
+    const b = bars[k];
+    const tp = (b.high + b.low + b.close) / 3;
+    const w = (b.volume ?? b.tick_volume ?? 1) || 1;   // guard 0/NaN → 1
+    cumV += w; cumTPV += tp * w; cumTP2V += tp * tp * w;
+    const mean = cumTPV / cumV;
+    vwap[k] = mean;
+    const varr = cumTP2V / cumV - mean * mean;
+    sd[k] = varr > 0 ? Math.sqrt(varr) : 0;
+  }
+  return { vwap, sd };
+}
+
+// ── The ONE VWAP entry primitive ─────────────────────────────────────────────
+// Detects the trigger bar for a mode using LAGGED levels (band as of bar k−1),
+// freezes entry/tp/sl at that level, then hands a static order to the shared
+// `walkBars`. One trade per session (first valid setup). Returns a trade record
+// or a no-fill record.
+//
+// spec = {
+//   mode: 'band_fade' | 'vwap_bounce' | 'band_follow',
+//   entryK: k for the entry band (σ multiples, default 2.0),
+//   slK:    stop distance in σ multiples (default 1.5),
+//   followStep: extra σ for the band_follow target (default 1.0),
+//   dir: 'both' | 'long' | 'short',
+//   warmupBars: min bars before a trigger is allowed (default 30),
+//   costPct, slipPct,
+// }
+export function simulateVwapSession(bars, spec) {
+  const n = bars.length;
+  const noFill = { filled: false, side: '', outcome: 'no_fill', pnl_pct: 0, mode: spec.mode };
+  if (n < (spec.warmupBars ?? 30) + 2) return noFill;
+
+  const { mode = 'band_fade', entryK = 2.0, slK = 1.5, followStep = 1.0,
+          dir = 'both', warmupBars = 30,
+          costPct = DEFAULT_COST_PCT, slipPct = DEFAULT_SLIP_PCT } = spec;
+
+  const { vwap, sd } = computeSessionVwap(bars);
+  const open = bars[0].open || bars[0].close;
+  const wantLong = dir === 'both' || dir === 'long';
+  const wantShort = dir === 'both' || dir === 'short';
+
+  // Lagged level accessors: the level bar k is TESTED against is as of k−1.
+  const upB = (k) => vwap[k - 1] + entryK * sd[k - 1];
+  const dnB = (k) => vwap[k - 1] - entryK * sd[k - 1];
+
+  let order = null;   // { fromIdx, entry, tp, sl, isBuy, type, side }
+
+  if (mode === 'band_fade') {
+    // First touch of a σ-band → fade back to VWAP.
+    for (let k = warmupBars; k < n; k++) {
+      if (sd[k - 1] <= 0) continue;
+      const up = upB(k), dn = dnB(k);
+      if (wantShort && bars[k].high >= up) {
+        order = { fromIdx: k, entry: up, tp: vwap[k - 1], sl: up + slK * sd[k - 1], isBuy: false, type: 'limit', side: 'SELL' };
+        break;
+      }
+      if (wantLong && bars[k].low <= dn) {
+        order = { fromIdx: k, entry: dn, tp: vwap[k - 1], sl: dn - slK * sd[k - 1], isBuy: true, type: 'limit', side: 'BUY' };
+        break;
+      }
+    }
+  } else if (mode === 'band_follow') {
+    // First break THROUGH a σ-band → continuation to the next band out (stop entry, slipped).
+    const slip = open * slipPct / 100;
+    for (let k = warmupBars; k < n; k++) {
+      if (sd[k - 1] <= 0) continue;
+      const up = upB(k), dn = dnB(k), s = sd[k - 1], v = vwap[k - 1];
+      if (wantLong && bars[k].high >= up) {
+        order = { fromIdx: k, entry: up + slip, tp: v + (entryK + followStep) * s, sl: up - slK * s, isBuy: true, type: 'stop', side: 'BUY' };
+        break;
+      }
+      if (wantShort && bars[k].low <= dn) {
+        order = { fromIdx: k, entry: dn - slip, tp: v - (entryK + followStep) * s, sl: dn + slK * s, isBuy: false, type: 'stop', side: 'SELL' };
+        break;
+      }
+    }
+  } else if (mode === 'vwap_bounce') {
+    // Two-phase: (1) wait for a stretch to ±entryK·σ → record side; (2) wait for
+    // price to return to VWAP → enter in the stretch direction (bet VWAP holds),
+    // target the band it came from, stop through fair value.
+    let stretch = null;   // 'up' | 'down'
+    for (let k = warmupBars; k < n; k++) {
+      if (sd[k - 1] <= 0) continue;
+      const up = upB(k), dn = dnB(k), v = vwap[k - 1], s = sd[k - 1];
+      if (!stretch) {
+        if (bars[k].high >= up) stretch = 'up';
+        else if (bars[k].low <= dn) stretch = 'down';
+        continue;
+      }
+      if (stretch === 'up' && wantLong && bars[k].low <= v) {
+        // pulled back to VWAP from above → buy the bounce, target the upper band
+        order = { fromIdx: k, entry: v, tp: v + entryK * s, sl: v - slK * s, isBuy: true, type: 'limit', side: 'BUY' };
+        break;
+      }
+      if (stretch === 'down' && wantShort && bars[k].high >= v) {
+        order = { fromIdx: k, entry: v, tp: v - entryK * s, sl: v + slK * s, isBuy: false, type: 'limit', side: 'SELL' };
+        break;
+      }
+    }
+  }
+
+  if (!order) return noFill;
+
+  // Hand the frozen order to the shared fill walker over the remaining bars.
+  const r = walkBars(bars.slice(order.fromIdx), order.entry, order.tp, order.sl,
+                     order.isBuy, order.type, open);
+  if (!r || !r.filled) return noFill;
+  const net = r.pnlPct - costPct;   // round-trip friction (slippage already in entry for follow)
+  return {
+    filled: true, side: order.side, outcome: r.outcome, mode,
+    pnl_pct: +net.toFixed(5),
+    entry: +order.entry.toFixed(6), tp: +order.tp.toFixed(6), sl: +order.sl.toFixed(6),
+    fill_time: r.fillTime ?? null, exit_time: r.exitTime ?? null,
+  };
+}
+
+// ── Iterate sessions over packed M1 → trade records ──────────────────────────
+// Returns records[] shaped for summarizeSplit: { date, filled, pnl_pct, ... }.
+export function runVwapReversion(packed, opts = {}) {
+  const { sessionAnchor = 'day', dateFrom = null, dateTo = null, ...spec } = opts;
+  const records = [];
+  if (!packed || !packed.n) return records;
+
+  let curBucket = null, sess = [];
+  const flush = () => {
+    if (sess.length) {
+      const d = isoDate(sess[0].time);
+      const passFrom = !dateFrom || d >= dateFrom;
+      const passTo = !dateTo || d <= dateTo;
+      if (passFrom && passTo) {
+        const t = simulateVwapSession(sess, spec);
+        records.push({ date: d, filled: t.filled, pnl_pct: t.pnl_pct,
+                       side: t.side, outcome: t.outcome, mode: t.mode });
+      }
+    }
+    sess = [];
+  };
+
+  for (let i = 0; i < packed.n; i++) {
+    const time = packed.times[i];
+    const b = { time, open: packed.opens[i], high: packed.highs[i],
+                low: packed.lows[i], close: packed.closes[i], volume: packed.volumes[i] };
+    const bucket = sessionBucket(time, sessionAnchor);
+    if (curBucket === null) curBucket = bucket;
+    if (bucket !== curBucket) { flush(); curBucket = bucket; }
+    sess.push(b);
+  }
+  flush();
+  return records;
+}
+
+// ── A/B/control comparison on ONE pair's packed M1, with IS/OOS split ─────────
+// Runs the three modes (+ a no-cost band_fade for cost-sensitivity) and returns
+// { [mode]: summarizeSplit } so the OOS card can be built directly.
+export function compareVwapModes(packed, opts = {}) {
+  const { oosFrac = 0.4, ...base } = opts;
+  const modes = {
+    band_fade:   { mode: 'band_fade' },
+    vwap_bounce: { mode: 'vwap_bounce' },
+    band_follow: { mode: 'band_follow' },
+    band_fade_nocost: { mode: 'band_fade', costPct: 0, slipPct: 0 },  // cost floor
+  };
+  const out = {};
+  for (const [name, m] of Object.entries(modes)) {
+    const recs = runVwapReversion(packed, { ...base, ...m });
+    out[name] = summarizeSplit(recs, oosFrac);
+  }
+  return out;
+}
+
+export const VWAP_MODES = ['band_fade', 'vwap_bounce', 'band_follow'];

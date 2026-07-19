@@ -64,12 +64,16 @@ export function rollingVol(rets, window = DEFAULTS.volWindow) {
 // volSeries[i] uses data ≤ i only (same information set as the default trailing
 // rollingVol). This is the sizing parameterisation — v2 injects the forecaster's
 // σ here; omitted ⇒ behaviour is bit-identical to the original engine.
-export function backtestMarket(closes, cfg = {}, volSeries = null) {
+// `signalSeries` (optional): injected trend signal in [-1,1], aligned to closes,
+// signalSeries[i] using data ≤ i only. This is the SIGNAL parameterisation — the
+// EMA-cross A/B (trendFollowEmaEngine.js) injects an EMA-crossover score here;
+// omitted ⇒ the default momentum signal, bit-identical to the original engine.
+export function backtestMarket(closes, cfg = {}, volSeries = null, signalSeries = null) {
   const c = { ...DEFAULTS, ...cfg };
   const n = closes.length;
   const rets = new Array(n).fill(0);
   for (let i = 1; i < n; i++) rets[i] = closes[i - 1] > 0 ? (closes[i] - closes[i - 1]) / closes[i - 1] : 0;
-  let sig = momentumSignal(closes, c.lookbacks);
+  let sig = signalSeries ?? momentumSignal(closes, c.lookbacks);
   if (!c.longShort) sig = sig.map(s => Math.max(0, s));   // long/flat
   const vol = volSeries ?? rollingVol(rets, c.volWindow);
 
@@ -98,7 +102,7 @@ export function backtestMarket(closes, cfg = {}, volSeries = null) {
 // Equal-weight the per-market strategy returns (right-aligned to the common tail),
 // then scale to the portfolio vol target with a TRAILING (no-lookahead) vol.
 export function buildPortfolioReturns(markets, c) {
-  const per = markets.map(m => ({ symbol: m.symbol, ...backtestMarket(m.closes, c, m.volSeries ?? null), n: m.closes.length }));
+  const per = markets.map(m => ({ symbol: m.symbol, ...backtestMarket(m.closes, c, m.volSeries ?? null, m.signalSeries ?? null), n: m.closes.length }));
   const L = Math.min(...per.map(p => p.dailyRet.length));
   if (!Number.isFinite(L) || L < 260) return { ok: false, error: `need ≥260 aligned bars, got ${L}` };
   const aligned = per.map(p => p.dailyRet.slice(p.dailyRet.length - L));

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VWAP Reversion Backtester — is VWAP tradeable, or folklore?</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#5b9dff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:960px}
+  main{padding:22px 24px;max-width:1240px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .inst-title{font-size:13px;font-weight:600;margin:6px 0 8px}
+  .mode{color:var(--text2);font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--text3)}
+  .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .b-meh{background:rgba(224,169,59,.18);color:var(--amber)}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .prior{border-left:3px solid var(--amber);padding:10px 14px;background:rgba(224,169,59,.06);border-radius:0 8px 8px 0;color:var(--text2);font-size:12.5px;margin-top:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>VWAP Reversion Backtester <span class="mut" style="font-size:13px">· fade-to-VWAP vs bounce-off-VWAP vs break</span></h1>
+  <div class="sub">
+    Tests whether session VWAP is a <b>tradeable intraday fair-value level</b> — or
+    practitioner folklore. Three modes, one entry primitive
+    (<code>vwapReversionEngine.js</code>), one shared fill walker and one IS/OOS
+    reporter (baseplate, imported). VWAP σ-bands are built from tick-weighted
+    <code>hlc3</code> — and FX "volume" is <b>tick count, not real traded volume</b>,
+    so this VWAP is weaker than an equity VWAP by construction. Costs are ON.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Session anchor</label>
+        <select id="sessionAnchor">
+          <option value="day">Daily VWAP</option>
+          <option value="week">Weekly VWAP</option>
+          <option value="month">Monthly VWAP</option>
+        </select>
+      </div>
+      <div><label>Entry band (σ)</label><input id="entryK" type="number" value="2.0" step="0.25"></div>
+      <div><label>Stop (σ)</label><input id="slK" type="number" value="1.5" step="0.25"></div>
+      <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
+      <div><label>Cost %/trade (round-trip)</label><input id="costPct" type="number" value="0.012" step="0.001"></div>
+      <div>
+        <label>Pair</label>
+        <select id="pair">
+          <option value="">Default basket (10)</option>
+          <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+          <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+          <option>USDCHF</option><option>EURJPY</option><option>GBPJPY</option><option>GOLD</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:14px"><button id="run">Run VWAP backtest</button></div>
+    <div id="status"></div>
+    <div class="prior">
+      <b>Pre-registered prior:</b> band-fade ~15–20%, vwap-bounce ~10% chance of a
+      real after-cost OOS edge. Default expectation is <b>null</b>. "Worked" =
+      pooled OOS <b>t&nbsp;&gt;&nbsp;2</b> with positive mean and a majority of pairs
+      OOS-positive. A number that's positive only gross, or only in-sample, is not a result.
+    </div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>band_fade</b> = fade the ±σ band back to VWAP (mean-reversion). <b>vwap_bounce</b>
+      = after a stretch, buy/sell the pull-back to VWAP betting it holds (support/resistance).
+      <b>band_follow</b> = break through the band, target the next band out (continuation control).
+      The honest number is the <b>pooled OOS per-trade t-stat</b> (annualisation-free) —
+      a t near 0 is a null; strongly negative means the mode loses the cost every trade.
+      Per-pair OOS Sharpe median and the <code>pairs&gt;0</code> count guard against one
+      instrument carrying a pooled result.
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v,d=2)=> (v===undefined||v===null||isNaN(v)) ? '—' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : 'mut';
+const MODES = ['band_fade','vwap_bounce','band_follow'];
+const LABEL = {band_fade:'band_fade (A · fade→VWAP)', vwap_bounce:'vwap_bounce (B · bounce off VWAP)', band_follow:'band_follow (control · break)'};
+
+function verdict(s){
+  const o = s.oos;
+  if(!o || o.n<30) return `<span class="badge b-bad">&lt;30 OOS trades — inconclusive</span>`;
+  const worked = o.t>2 && o.mean>0 && s.pairsPos > s.nPairs/2;
+  if(worked) return `<span class="badge b-good">OOS edge: t=${fmt(o.t)} mean=${fmt(o.mean,4)}%</span>`;
+  if(o.t<-2) return `<span class="badge b-bad">NULL (loses cost): OOS t=${fmt(o.t)} mean=${fmt(o.mean,4)}%</span>`;
+  return `<span class="badge b-meh">NULL: OOS t=${fmt(o.t)} mean=${fmt(o.mean,4)}%</span>`;
+}
+
+function summaryRow(mode, s){
+  const io = p => `<td>${s[p].n}</td><td class="${cls(s[p].mean)}">${fmt(s[p].mean,4)}%</td><td class="${cls(s[p].t)}"><b>${fmt(s[p].t)}</b></td><td>${fmt(s[p].win,1)}%</td>`;
+  return `<tr><td class="mode">${LABEL[mode]}</td>${io('is')}${io('oos')}
+    <td class="${cls(s.oosMedianPairSharpe)}">${fmt(s.oosMedianPairSharpe,3)}</td>
+    <td>${s.pairsPos}/${s.nPairs}</td></tr>`;
+}
+
+function render(out){
+  const S = out.summary;
+  let html = `<div class="card"><div class="inst-title">Pooled across ${out.pairs.length} pair(s) · ${out.opts.sessionAnchor} anchor · OOS=last ${(+out.opts.oosFrac*100).toFixed(0)}% · cost ${out.opts.costPct}%</div>`;
+  html += `<table><thead><tr><th>mode</th>
+    <th>IS n</th><th>IS mean</th><th>IS t</th><th>IS win</th>
+    <th>OOS n</th><th>OOS mean</th><th>OOS t</th><th>OOS win</th>
+    <th>OOS Sharpe (med)</th><th>pairs&gt;0</th></tr></thead><tbody>`;
+  for(const m of MODES) html += summaryRow(m, S[m]);
+  html += `</tbody></table><div style="margin-top:10px">`;
+  for(const m of MODES) html += `<div style="margin:4px 0">${LABEL[m]}: ${verdict(S[m])}</div>`;
+  html += `</div></div>`;
+
+  // per-pair OOS t-stat table
+  html += `<div class="card"><div class="inst-title">Per-pair OOS per-trade t-stat</div>`;
+  html += `<table><thead><tr><th>pair</th>${MODES.map(m=>`<th>${m}</th>`).join('')}</tr></thead><tbody>`;
+  for(const r of out.perPair){
+    if(r.error){ html += `<tr><td>${r.pair}</td><td colspan="3" class="mut">${r.error}</td></tr>`; continue; }
+    html += `<tr><td>${r.pair}</td>${MODES.map(m=> r[m]?`<td class="${cls(r[m].oos.t)}">${fmt(r[m].oos.t)}</td>`:'<td class="mut">—</td>').join('')}</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+async function poll(jobId){
+  for(let i=0;i<300;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/vwap-reversion/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('status').textContent = `Running… ${res.elapsed||0}s · ${res.pairsDone||0}/${res.pairsTotal||'?'} pairs`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = {
+    sessionAnchor:$('sessionAnchor').value, entryK:$('entryK').value, slK:$('slK').value,
+    oosFrac:$('oosFrac').value, costPct:$('costPct').value, pair:$('pair').value,
+  };
+  $('run').disabled=true; $('results').innerHTML=''; $('legendCard').style.display='none';
+  $('status').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/vwap-reversion/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await poll(start.jobId);
+    $('status').textContent = `Done — ${out.pairs.length} pair(s), ${out.opts.sessionAnchor} anchor.`;
+    $('results').innerHTML = render(out);
+    $('legendCard').style.display='';
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>

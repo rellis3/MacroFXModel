@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EMA Crossover vs Momentum — A/B</title>
+<style>
+  :root{--bg:#0e1016;--panel:#161a24;--panel2:#1d222e;--line:#2a3140;--text:#e6e9ef;--text2:#aab2c0;--text3:#6f7889;--accent:#5b9dff;--green:#3fb27f;--red:#e5604d;--amber:#e0a93b;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:960px}
+  main{padding:22px 24px;max-width:1180px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .inst-title{font-size:13px;font-weight:600;margin:6px 0 8px}
+  .pos{color:var(--green)}.neg{color:var(--red)}.mut{color:var(--text3)}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .prior{border-left:3px solid var(--amber);padding:10px 14px;background:rgba(224,169,59,.06);border-radius:0 8px 8px 0;color:var(--text2);font-size:12.5px;margin-top:12px}
+  .read{color:var(--text2);font-size:12.5px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <h1>EMA Crossover vs Momentum <span class="mut" style="font-size:13px">· is buy/sell-on-cross any good?</span></h1>
+  <div class="sub">
+    A/Bs a literal EMA-15/50/100 crossover against the slow sign-of-return
+    momentum signal — injected as the <b>signal</b> into the SAME trend primitive
+    (<code>trendFollowEngine.js</code>: inverse-vol sizing, portfolio vol-target,
+    costs, no-lookahead), so the test isolates the signal. Buy-and-hold is the
+    naive floor. Daily closes from OANDA M1.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <div class="grid">
+      <div><label>EMA fast</label><input id="fast" type="number" value="15"></div>
+      <div><label>EMA mid</label><input id="mid" type="number" value="50"></div>
+      <div><label>EMA slow</label><input id="slow" type="number" value="100"></div>
+      <div><label>Cost (bp/turnover)</label><input id="costBp" type="number" value="2" step="1"></div>
+    </div>
+    <div style="margin-top:14px"><button id="run">Run A/B</button></div>
+    <div id="status"></div>
+    <div class="prior">
+      <b>Pre-registered prior:</b> the cross loses to momentum (more whipsaw → turnover → cost),
+      loses to buy-and-hold single-pair after costs, and the basket may scrape modestly positive
+      because the edge is diversification+sizing, not the cross. <b>FX-only + a post-2011 trend
+      drought is not a clean test of whether trend-following works — read the null with that caveat.</b>
+    </div>
+  </div>
+  <div id="results"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v,d=2)=> (v===undefined||v===null||isNaN(v)) ? '—' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : 'mut';
+
+function render(o){
+  let h = `<div class="card"><div class="inst-title">Basket (vol-sized, ${o.pairs.length} markets, ${o.costBp}bp cost)</div>`;
+  h += `<table><thead><tr><th>signal</th><th>Sharpe</th><th>annRet%</th><th>maxDD%</th><th>Calmar</th><th>DSR</th></tr></thead><tbody>`;
+  for(const [k,s] of [['momentum (incumbent)',o.basket.momentum],['ema-cross',o.basket.emaCross]])
+    h += `<tr><td>${k}</td><td class="${cls(s.sharpe)}"><b>${fmt(s.sharpe)}</b></td><td class="${cls(s.annReturn)}">${fmt(s.annReturn,1)}</td><td class="neg">${fmt(s.maxDD,1)}</td><td>${fmt(s.calmar)}</td><td>${s.deflatedSharpe??'—'}</td></tr>`;
+  h += `</tbody></table></div>`;
+
+  h += `<div class="card"><div class="inst-title">Single-pair Sharpe — momentum | ema-cross | buy&hold (the floor)</div>`;
+  h += `<table><thead><tr><th>pair</th><th>momentum</th><th>ema-cross</th><th>buy&hold</th><th>ema turnover/yr</th></tr></thead><tbody>`;
+  for(const r of o.perPair)
+    h += `<tr><td>${r.symbol}</td><td class="${cls(r.momentum)}">${fmt(r.momentum)}</td><td class="${cls(r.emaCross)}">${fmt(r.emaCross)}</td><td class="${cls(r.buyHold)}"><b>${fmt(r.buyHold)}</b></td><td>${fmt(r.emaTurnover,1)}</td></tr>`;
+  h += `</tbody></table></div>`;
+
+  h += `<div class="card"><div class="inst-title">Cost sensitivity (basket Sharpe by spread bp)</div><table><tbody>`;
+  for(const [k,cs] of [['momentum',o.costSensitivity.momentum],['ema-cross',o.costSensitivity.emaCross]])
+    h += `<tr><td>${k}</td>${cs.map(x=>`<td class="${cls(x.sharpe)}">${x.costBp}bp: ${fmt(x.sharpe)}</td>`).join('')}</tr>`;
+  h += `</tbody></table></div>`;
+
+  const io = (t,s)=>`<div class="inst-title">${t}</div><table><thead><tr><th>config</th><th>IS Sharpe</th><th>OOS Sharpe</th></tr></thead><tbody>${s.configs.map(c=>`<tr><td>${c.name}</td><td class="${cls(c.isSharpe)}">${fmt(c.isSharpe)}</td><td class="${cls(c.oosSharpe)}">${fmt(c.oosSharpe)}</td></tr>`).join('')}</tbody></table><div class="read" style="margin-top:6px">IS-selected <b>${s.isSelected.name}</b>: IS ${fmt(s.isSelected.isSharpe)} → OOS <span class="${cls(s.isSelected.oosSharpe)}">${fmt(s.isSelected.oosSharpe)}</span> (gap ${fmt(s.overfitGap)})</div>`;
+  h += `<div class="card">${io('OOS — momentum lookbacks',o.oos.momentum)}<div style="height:14px"></div>${io('OOS — EMA spans',o.oos.emaCross)}</div>`;
+  h += `<div class="card"><div class="read"><b>Momentum robustness:</b> ${o.momentumRead}<br>sub-periods (early/mid/recent): ${JSON.stringify(o.subPeriods)}</div></div>`;
+  return h;
+}
+
+async function poll(jobId){
+  for(let i=0;i<300;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/trend-ema-ab/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('status').textContent = `Running… ${res.elapsed||0}s · ${res.pairsDone||0}/${res.pairsTotal||'?'} pairs loaded`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const spans=[+$('fast').value,+$('mid').value,+$('slow').value];
+  $('run').disabled=true; $('results').innerHTML=''; $('status').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/trend-ema-ab/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({spans,costBp:$('costBp').value})}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await poll(start.jobId);
+    $('status').textContent = `Done — ${out.pairs.length} markets, EMA ${out.spans.join('/')}.`;
+    $('results').innerHTML = render(out);
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>
