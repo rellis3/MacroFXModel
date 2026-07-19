@@ -238,6 +238,17 @@
       <h2>Forward track (live record)</h2>
       <div id="forward"><span class="muted">loading…</span></div>
     </div>
+    <div class="card">
+      <h2>Surprise alert — Telegram ping</h2>
+      <div class="muted" style="margin-bottom:8px">
+        Pings you when a pair is unusually <b>stretched</b> (high pct of its calibrated
+        4h cone — continuation is statistically stretched, fade context) or unusually
+        <b>quiet</b> (low pct — quiet stretches tend to expand). Each message ends with a
+        practical next-step line. It is a <b>context ping, never a buy/sell call</b> —
+        intraday direction here is a proven coin flip.
+      </div>
+      <div id="alertCfg"><span class="muted">loading…</span></div>
+    </div>
     <div class="card muted">
       <b>How to read this honestly.</b> The cone is the model's real claim: a capped
       EWMA drift plus uncertainty envelopes. On <b>D1</b> the envelopes are the Feller
@@ -964,8 +975,63 @@ $('tBudgetCone').onclick = () => {   // budgetConditioner lives in the context �
   render(); renderCalib();
 };
 
+// Surprise-alert config — enable, Telegram creds, pairs, thresholds. Creds are
+// masked on read; leave the token field blank to keep the stored one.
+async function loadAlertCfg() {
+  const el = $('alertCfg'); if (!el) return;
+  try {
+    const j = await fetch('/api/forecast-path/alert/config').then(r => r.json());
+    const c = j?.config || {};
+    const pairsStr = (c.pairs || []).join(', ');
+    el.innerHTML =
+      `<div class="kv"><span>enabled</span><b><label class="mono"><input type="checkbox" id="alEn" ${c.enabled ? 'checked' : ''}> auto-scan every 20 min</label></b></div>` +
+      `<div class="kv"><span>bot token</span><b><input id="alTok" placeholder="${c.hasToken ? '•••• stored — leave blank to keep' : 'paste bot token'}" style="width:220px"></b></div>` +
+      `<div class="kv"><span>chat id</span><b><input id="alChat" value="${c.hasChat ? (c.chatId || '') : ''}" placeholder="chat / channel id" style="width:220px"></b></div>` +
+      `<div class="kv"><span>pairs</span><b><input id="alPairs" value="${pairsStr}" placeholder="gold, eurusd, nq" style="width:220px"></b></div>` +
+      `<div class="kv"><span>stretched ≥ pct</span><b><input id="alHi" type="number" min="80" max="99" value="${c.pctHigh}" style="width:64px"></b></div>` +
+      `<div class="kv"><span>quiet ≤ pct</span><b><input id="alLo" type="number" min="1" max="20" value="${c.pctLow}" style="width:64px"></b></div>` +
+      `<div class="kv"><span>min |z|</span><b><input id="alZ" type="number" step="0.1" min="0.5" max="4" value="${c.zMin}" style="width:64px"></b></div>` +
+      `<div class="kv"><span>min gap (min)</span><b><input id="alGap" type="number" min="15" max="720" value="${c.minGapMin}" style="width:64px"></b></div>` +
+      `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">` +
+        `<button id="alSave">Save</button>` +
+        `<button id="alTest">Send test ping</button>` +
+        `<button id="alPreview">Preview alerts (no send)</button>` +
+      `</div>` +
+      `<div id="alMsg" class="muted" style="margin-top:6px"></div>`;
+    $('alSave').onclick = async () => {
+      const msg = $('alMsg'); msg.textContent = 'saving…';
+      const body = {
+        enabled: $('alEn').checked,
+        token: $('alTok').value.trim(),
+        chatId: $('alChat').value.trim(),
+        pairs: $('alPairs').value.split(',').map(s => s.trim()).filter(Boolean),
+        pctHigh: +$('alHi').value, pctLow: +$('alLo').value,
+        zMin: +$('alZ').value, minGapMin: +$('alGap').value,
+      };
+      try { const r = await fetch('/api/forecast-path/alert/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+        msg.textContent = r.ok ? 'saved ✓' : ('save failed: ' + (r.error || '?')); if (r.ok) loadAlertCfg();
+      } catch (e) { msg.textContent = 'save failed: ' + e.message; }
+    };
+    $('alTest').onclick = async () => {
+      const msg = $('alMsg'); msg.textContent = 'sending…';
+      try { const r = await fetch('/api/forecast-path/alert/test', { method: 'POST' }).then(r => r.json());
+        msg.textContent = r.ok ? 'test ping sent ✓ (check Telegram)' : ('failed: ' + (r.error || '?'));
+      } catch (e) { msg.textContent = 'failed: ' + e.message; }
+    };
+    $('alPreview').onclick = async () => {
+      const msg = $('alMsg'); msg.textContent = 'scanning…';
+      try { const r = await fetch('/api/forecast-path/alert/scan?dry=1', { method: 'POST' }).then(r => r.json());
+        if (!r.ok) { msg.textContent = 'failed: ' + (r.error || '?'); return; }
+        if (!r.alerts?.length) { msg.innerHTML = `checked ${r.checked} pair(s) — nothing surprising right now.`; return; }
+        msg.innerHTML = r.alerts.map(a => `<div style="margin-top:6px;padding:6px;border:1px solid #333;border-radius:6px;white-space:pre-wrap">${a.text}</div>`).join('');
+      } catch (e) { msg.textContent = 'failed: ' + e.message; }
+    };
+  } catch { el.innerHTML = '<span class="muted">Alert config unavailable.</span>'; }
+}
+
 load();
 loadForward();
+loadAlertCfg();
 </script>
 </body>
 </html>
