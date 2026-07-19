@@ -15,7 +15,7 @@ import {
   buildForecastContext, coneFromContext, forecastCone, samplePaths,
   calibrationTally, nextWeekday, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally,
-  profileMult, INTRADAY_DEFAULTS, intradayRealizedZ, normCdf,
+  profileMult, INTRADAY_DEFAULTS, intradayRealizedZ, normCdf, eventMult,
 } from './forecastPathCore.js';
 
 // ── Synthetic GBM daily bars (seeded) ────────────────────────────────────────
@@ -257,6 +257,63 @@ const m15 = syntheticM15(55);   // ~5280 bars
   }
   const t = calibrationTally(bars, { horizonDays: 5, bandsFn: cogBands });
   ok(t.full.n >= 30 && t.full.perStep.every(s => s.c50 != null && s.c75 != null), 'tally grades the swapped calibration');
+}
+
+// 14) Event-aware cone: multiplier LEARNED from planted events, honest A/B.
+{
+  // Every 3rd weekday: an "event" at 20:00 UTC (a quiet hour — decoupled from
+  // any session pattern), σ × 2.5 for the 4 bars after it.
+  function syntheticWithEvents(nDays, seed = 21) {
+    const rng = mulberry32(seed);
+    const bars = [], events = [];
+    let c = 1.2; const d = new Date('2026-03-02T00:00:00Z'); let dayNum = 0;
+    for (let day = 0; day < nDays; day++) {
+      while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1);
+      const evT = d.getTime() / 1000 + 20 * 3600;
+      const hasEvent = dayNum % 3 === 0;
+      if (hasEvent) events.push(evT);
+      for (let k = 0; k < 96; k++) {
+        const t = d.getTime() / 1000 + k * 900;
+        let sig = 0.0004;
+        if (hasEvent && t >= evT && t < evT + 4 * 900) sig *= 2.5;
+        const open = c, close = open * Math.exp(sig * gauss(rng));
+        bars.push({ time: t, open, high: Math.max(open, close), low: Math.min(open, close), close });
+        c = close;
+      }
+      d.setUTCDate(d.getUTCDate() + 1); dayNum++;
+    }
+    return { bars, events };
+  }
+  const evOpts = { eventPre: 0, eventPost: 4 * 900 - 1 };
+  const { bars: eb, events } = syntheticWithEvents(60);
+  const ctxAware = buildIntradayContext(eb, { events, eventAware: true, ...evOpts });
+  const i0 = eb.length - 100;
+  const m = eventMult(ctxAware, i0);
+  ok(m > 1.2 && m < 3.3, `event factor learned (${m.toFixed(2)})`);
+  // The hour-20 bucket contains the event bars, so the APPLIED multiplier is
+  // the product profileMult × eventMult — the contamination cancels and the
+  // product must recover the planted ×2.5.
+  const applied = m * profileMult(ctxAware, i0, 20);
+  ok(applied > 1.9 && applied < 3.1, `applied event-step widening ≈2.5 (got ${applied.toFixed(2)})`);
+
+  const base  = intradayTally(eb, { horizonBars: 8, events, eventAware: false, ...evOpts });
+  const aware = intradayTally(eb, { horizonBars: 8, events, eventAware: true,  ...evOpts });
+  ok(base.eventSplit && aware.eventSplit && base.eventSplit.eventAware === false && aware.eventSplit.eventAware === true, 'event split present, mode recorded');
+  ok(base.eventSplit.event.n >= 10, `enough event windows (${base.eventSplit.event.n})`);
+  const dBase = Math.abs(base.eventSplit.event.c75 - 0.75);
+  const dAware = Math.abs(aware.eventSplit.event.c75 - 0.75);
+  ok(dAware <= dBase + 0.02, `conditioned event-bucket c75 no further from claim (base off ${dBase.toFixed(2)}, aware ${dAware.toFixed(2)})`);
+  ok(Math.abs((aware.eventSplit.quiet.c75 ?? 0) - (base.eventSplit.quiet.c75 ?? 0)) < 0.05, 'quiet windows unchanged by the conditioner');
+
+  // No events passed → no split, behavior identical to the pre-event brick.
+  const t0 = intradayTally(m15, { horizonBars: 16 });
+  ok(t0.eventSplit === null, 'no events → eventSplit null');
+  // Mutation no-lookahead still holds with events wired.
+  const iMut = 3000;
+  const mutated = eb.map((b, k) => k >= iMut ? { ...b, open: 9, high: 9.9, low: 8, close: 9.5 } : b);
+  const cA = intradayCone(buildIntradayContext(eb, { events, eventAware: true, ...evOpts }), iMut, 8);
+  const cB = intradayCone(buildIntradayContext(mutated, { events, eventAware: true, ...evOpts }), iMut, 8);
+  assert.deepEqual(cA.steps.map(s => [s.center, s.p75Up]), cB.steps.map(s => [s.center, s.p75Up]), 'event-aware cone: no lookahead'); passed++;
 }
 
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);
