@@ -11634,6 +11634,10 @@ app.get('/api/weekly-vol-backtest/m5/:pair',  _wbtIntradayRoute('M5',  500));
 const _fpSummaryCache = new Map();
 const _FP_SUMMARY_TTL = 15 * 60_000;
 const _FP_H = 16;   // 16 × M15 = 4 hours
+// Session anchor for the "vol left in the day" climatology: index/gold futures
+// trade an overnight session with a ~22:00 UTC break, so anchor their "day"
+// there instead of UTC midnight. FX trades ~continuously → 0 is fine.
+const _FP_DAY_ANCHOR = { nq: 22, spx500: 22, us30: 22, us2000: 22, de30: 22, uk100: 22, gold: 22 };
 
 // Implied-vol series per instrument (FRED daily): EUR/USD→EVZ, GOLD→GVZ, the
 // US indices→VIX (an imperfect equity-vol proxy; honest limit). No clean
@@ -11706,7 +11710,7 @@ async function _fpSummarizePair(name) {
     driftBp: +(live.mu * 1e4).toFixed(2),
     eventSteps: live.eventSteps ?? 0,
     surprise, trustHours, shakyHours, upcomingEvents,
-    dayBudget: _fpDayRange(bars),   // volatility-left-in-the-day climatology
+    dayBudget: _fpDayRange(bars, { anchorHour: _FP_DAY_ANCHOR[name] ?? 0 }),   // vol-left-in-the-day (session-anchored for futures)
     calib: { n: t.full.n, c75Final: t.full.perStep[_FP_H - 1]?.c75 ?? null },
     // Full cone coordinates so a consumer can DRAW the claim (brief drawer
     // chart), plus the Monte-Carlo consensus (the "most-agreed path").

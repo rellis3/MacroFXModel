@@ -456,6 +456,11 @@ const m15 = syntheticM15(55);   // ~5280 bars
   const sb = dayRangeStatus(spiked);
   ok(sb.consumedPercentile >= s.consumedPercentile, `busy day ranks higher (${sb.consumedPercentile} ≥ ${s.consumedPercentile})`);
   ok(dayRangeStatus(m15.slice(0, 100)) === null, 'too little history → null');
+  // Session-anchored (futures): runs and stays consistent past the boundary.
+  const sa = dayRangeStatus(m15, { anchorHour: 22 });
+  ok(sa && sa.anchorHour === 22, 'anchored session status computed');
+  ok(sa.typicalSoFarPct <= sa.typicalFullPct + 1e-9, 'anchored: range-so-far ≤ full (paired)');
+  ok(sa.elapsedHours >= 0, 'anchored: elapsed hours reported');
 }
 
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);

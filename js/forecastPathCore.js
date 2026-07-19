@@ -660,9 +660,17 @@ export function reachabilityCalibration(bars, opts = {}) {
 // tend to expand" effect the gold calibration surfaced is stated in the verdict
 // but NOT predicted — this stays descriptive.
 //   bars: intraday [{time(sec),open,high,low,close}] spanning ≥ ~12 days.
-export function dayRangeStatus(bars) {
+//   opts.anchorHour: UTC hour the trading "day" starts (default 0 = UTC
+//     midnight, right for FX). Index/gold FUTURES trade an overnight session
+//     with a ~22:00 UTC break, so pass anchorHour:22 — the "day" then runs the
+//     real session (Sun-eve open through the daily break), completion is
+//     measured by ELAPSED time into the session (not UTC clock hour, which
+//     wraps past midnight), and the Sunday-open reading stops being nonsense.
+export function dayRangeStatus(bars, opts = {}) {
   if (!bars || bars.length < 96 * 8) return null;
-  const dayKey = t => Math.floor(t / 86400);
+  const anchorSec = ((opts.anchorHour ?? 0) % 24) * 3600;
+  const dayKey = t => Math.floor((t - anchorSec) / 86400);
+  const boundary = k => k * 86400 + anchorSec;         // session start (epoch sec)
   const byDay = new Map();
   for (let i = 0; i < bars.length; i++) {
     const k = dayKey(bars[i].time);
@@ -671,64 +679,67 @@ export function dayRangeStatus(bars) {
   const keys = [...byDay.keys()].sort((a, b) => a - b);
   if (keys.length < 10) return null;
 
-  const rangeSoFarThrough = (idx, hourCap) => {   // (max-min)/open using bars with hour ≤ cap; full day if cap=null
+  // Range (max-min)/open over a session's bars up to `capElapsed` seconds since
+  // the session boundary (null = whole session). Elapsed-based so it works past
+  // midnight for anchored futures sessions.
+  const rangeThrough = (idx, dk, capElapsed) => {
     const o = bars[idx[0]].open;
     if (!(o > 0)) return null;
+    const b0 = boundary(dk);
     let hi = -Infinity, lo = Infinity, any = false;
     for (const i of idx) {
-      if (hourCap != null && new Date(bars[i].time * 1000).getUTCHours() > hourCap) continue;
+      if (capElapsed != null && (bars[i].time - b0) > capElapsed) continue;
       if (bars[i].high > hi) hi = bars[i].high; if (bars[i].low < lo) lo = bars[i].low; any = true;
     }
     return any ? (hi - lo) / o : null;
   };
 
-  // Current (partial) day.
-  const curIdx = byDay.get(keys[keys.length - 1]);
-  const curFirst = new Date(bars[curIdx[0]].time * 1000);
-  const curHour = new Date(bars[curIdx[curIdx.length - 1]].time * 1000).getUTCHours();
-  const rangeSoFar = rangeSoFarThrough(curIdx, null);
+  // Current (partial) session.
+  const curKey = keys[keys.length - 1];
+  const curIdx = byDay.get(curKey);
+  const curElapsed = bars[curIdx[curIdx.length - 1]].time - boundary(curKey);
+  const displayHour = new Date(bars[curIdx[curIdx.length - 1]].time * 1000).getUTCHours();
+  const rangeSoFar = rangeThrough(curIdx, curKey, null);
   if (rangeSoFar == null) return null;
 
-  // Prior-day climatology (all completed days = causal). PAIR full & by-hour on
-  // the SAME days so median(by-hour) ≤ median(full) always holds (pointwise
-  // domination ⇒ quantile domination) — an unpaired version can print the
-  // impossible "range-by-hour > full-day range".
-  const fulls = [], soFarAtHour = [], completion = [];
+  // Prior-session climatology (completed sessions = causal). PAIR full & by-
+  // elapsed on the SAME sessions so median(by-elapsed) ≤ median(full) always
+  // holds (pointwise domination ⇒ quantile domination) — an unpaired version
+  // can print the impossible "range-so-far > full-session range".
+  const fulls = [], soFarAt = [], completion = [];
   for (let d = 0; d < keys.length - 1; d++) {
     const idx = byDay.get(keys[d]);
-    if (idx.length < 24) continue;                 // skip thin/holiday partial days
-    const full = rangeSoFarThrough(idx, null);
-    const sf = rangeSoFarThrough(idx, curHour);
-    if (full > 0 && sf != null) { fulls.push(full); soFarAtHour.push(sf); completion.push(sf / full); }
+    if (idx.length < 24) continue;                 // skip thin/holiday partial sessions
+    const full = rangeThrough(idx, keys[d], null);
+    const sf = rangeThrough(idx, keys[d], curElapsed);
+    if (full > 0 && sf != null) { fulls.push(full); soFarAt.push(sf); completion.push(sf / full); }
   }
   if (fulls.length < 8) return null;
   const med = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
   const pctile = (a, v) => a.length ? a.filter(x => x < v).length / a.length : null;
 
-  const medFull = med(fulls), medSoFar = med(soFarAtHour), medComp = med(completion);
-  const consumedPct = pctile(soFarAtHour, rangeSoFar);
-  const remainingTypical = Math.max(0, medFull - rangeSoFar);   // a typical day's range beyond what's printed
+  const medFull = med(fulls), medSoFar = med(soFarAt), medComp = med(completion);
+  const consumedPct = pctile(soFarAt, rangeSoFar);
+  const remainingTypical = Math.max(0, medFull - rangeSoFar);
 
-  // Reliability: this UTC-calendar-day climatology does NOT fit a 24h index
-  // future's overnight/weekend session. Flag (don't hide) the cases where the
-  // reading would mislead so the UI can caveat instead of printing confident
-  // nonsense. `reliable=false` reasons: weekend/session-open day, a thin
-  // current partial (few bars), or the day already ~complete by UTC measure.
-  const isWeekendOpen = curFirst.getUTCDay() === 0 || curFirst.getUTCDay() === 6;
+  // Reliability guard — flag (don't hide) readings that would mislead: a thin
+  // current partial (too early to judge), or a session already ~complete. With
+  // proper anchoring the weekend-open session is legitimate, so it's only
+  // flagged when it's genuinely thin.
   const thin = curIdx.length < 8;
   const dayEssentiallyDone = medComp >= 0.9;
-  const reliable = !isWeekendOpen && !thin && !dayEssentiallyDone;
-  const reason = isWeekendOpen ? 'weekend / session-open — the UTC-day climatology does not fit a 24h market\'s overnight session here'
-    : thin ? 'thin session so far (few bars) — too little of the day to judge'
-    : dayEssentiallyDone ? 'the trading day is normally complete by this hour (overnight futures run past the UTC day)'
+  const reliable = !thin && !dayEssentiallyDone;
+  const reason = thin ? 'thin session so far (few bars) — too little of the session to judge'
+    : dayEssentiallyDone ? 'the session is normally near-complete by this point'
     : null;
 
   return {
-    hour: curHour, nDays: fulls.length, barsToday: curIdx.length,
+    hour: displayHour, elapsedHours: +(curElapsed / 3600).toFixed(1), anchorHour: opts.anchorHour ?? 0,
+    nDays: fulls.length, barsToday: curIdx.length,
     rangeSoFarPct: +(rangeSoFar * 100).toFixed(3),
-    typicalSoFarPct: +(medSoFar * 100).toFixed(3),       // typical range traced by this hour
-    typicalFullPct: +(medFull * 100).toFixed(3),         // typical full-day range
-    completionPct: Math.round(medComp * 100),            // typically this % of the day's range is done by now
+    typicalSoFarPct: +(medSoFar * 100).toFixed(3),       // typical range traced by this point in the session
+    typicalFullPct: +(medFull * 100).toFixed(3),         // typical full-session range
+    completionPct: Math.round(medComp * 100),            // typically this % of the session's range is done by now
     consumedPercentile: consumedPct == null ? null : Math.round(consumedPct * 100),
     remainingTypicalPct: +(remainingTypical * 100).toFixed(3),
     reliable, reason,
