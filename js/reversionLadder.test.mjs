@@ -5,7 +5,7 @@
 //
 //   node js/reversionLadder.test.mjs
 
-import { ladderLevels, reversionTrades, tallyTrades, LADDER_LINES } from './reversionLadder.js';
+import { ladderLevels, reversionTrades, tallyTrades, LADDER_LINES, STYLES } from './reversionLadder.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -93,6 +93,37 @@ const buyWin = reversionTrades(OPEN, mkBars([
 ok('buy win: outcome', buyWin && buyWin.outcome === 'win');
 ok('buy win: side BUY', buyWin && buyWin.side === 'BUY');
 ok('buy win: symmetric stop 98.7', buyWin && near(buyWin.stop, 98.7));
+
+// ── Style: follow the median (BUY through H_med, target H_p75 101.5) ─────────
+console.log('[follow_med_fade_75]');
+ok('STYLE med → follow', STYLES.follow_med_fade_75.action({ tier: 'med' }) === 'follow');
+ok('STYLE p75 → fade',   STYLES.follow_med_fade_75.action({ tier: 'p75' }) === 'fade');
+ok('STYLE fade_all → fade', STYLES.fade_all.action({ tier: 'med' }) === 'fade');
+
+const followWin = reversionTrades(OPEN, mkBars([
+  [100.0, 100.2, 99.9, 100.1],
+  [100.6, 101.05, 100.6, 101.0],   // BUY-stop fill at 101.0 (low 100.6 > 100.5 stop; TP 101.5 not yet)
+  [101.0, 101.5, 101.0, 101.4],    // high 101.5 >= target H_p75 → win
+]), PCTS, { armed: armH, style: 'follow_med_fade_75' })[0];
+ok('follow: action', followWin && followWin.action === 'follow');
+ok('follow: side BUY (continue up)', followWin && followWin.side === 'BUY');
+ok('follow: target = H_p75 (101.5)', followWin && near(followWin.target, 101.5));
+ok('follow: symmetric stop 100.5', followWin && near(followWin.stop, 100.5));
+ok('follow: gross ≈ +0.5%', followWin && near(followWin.grossPct, 0.5, 1e-6));
+
+// Under the same style, a 75th line still FADES (H_p75 → target inner H_med 101.0).
+const p75Fade = reversionTrades(OPEN, mkBars([
+  [100.0, 100.2, 99.9, 100.1],
+  [100.1, 101.55, 100.0, 101.5],   // touches H_p75 (101.5)
+  [101.5, 101.5, 101.0, 101.0],    // low 101.0 <= target H_med → win
+]), PCTS, { armed: new Set(['H_p75']), style: 'follow_med_fade_75' })[0];
+ok('follow style: p75 still fades', p75Fade && p75Fade.action === 'fade' && p75Fade.side === 'SELL');
+
+// Outermost band cannot follow → skipped when a style would make it a follow.
+const outer = reversionTrades(OPEN, mkBars([
+  [100.0, 102.0, 98.0, 100.0],
+]), PCTS, { armed: new Set(['H_p75']), style: 'fade_all' });
+ok('fade_all: outermost p75 still trades (as fade)', outer.length === 1 && outer[0].action === 'fade');
 
 // ── costs netting + tally ────────────────────────────────────────────────────
 console.log('[costs + tally]');

@@ -9,13 +9,16 @@
  * honest test is still the OOS harness). Fading statistical extremes is
  * folklore-adjacent; the default prior is null.
  *
- * The trade mechanic (fixed spec, no tunables to fit):
- *   • Entry  — fade the touched line: SELL an up-line, BUY a down-line, on first
- *              touch within the session (a limit fill at the line).
- *   • Target — the ADJACENT INNER band (the next forecast line closer to the
- *              open on the same side); the innermost band reverts to the open.
- *   • Stop   — SYMMETRIC: the same distance beyond entry as the target is inside
- *              it (1:1 on distance), i.e. further from the open.
+ * Two trading STYLES (see STYLES), both with a fixed spec and no tunables:
+ *   • fade_all           — every touched line is a FADE: enter (limit) at the
+ *                          line, target the ADJACENT INNER band (innermost →
+ *                          the open), SELL an up-line / BUY a down-line.
+ *   • follow_med_fade_75 — MEDIAN lines FOLLOW (enter on a break THROUGH the
+ *                          line, target the adjacent OUTER band, continue the
+ *                          move) and 75th lines FADE. "Ride the median, fade the
+ *                          extreme."
+ * The stop is SYMMETRIC either way (equal distance the other side of entry —
+ * 1:1 on distance).
  *   • Resolve — the SHARED fill walker `walkBars` (imported from forecastCore.js,
  *              never copied): SL checked first (conservative), TP not booked on
  *              the limit fill bar (no lookahead), a candle that straddles both
@@ -36,15 +39,28 @@ import { walkBars } from './forecastCore.js';
 // the ladder agree on a single definition. `band` names the percentage field on
 // the bands object; side +1 = above the open, -1 = below.
 export const LADDER_LINES = [
-  { key: 'H_med',  band: 'hl_median', side:  1, label: 'H med',  color: '#34d399', dash: [7, 4] },
-  { key: 'H_p75',  band: 'hl_75',     side:  1, label: 'H p75',  color: '#10b981', dash: [2, 4] },
-  { key: 'Cp_med', band: 'oc_median', side:  1, label: 'C+ med', color: '#60a5fa', dash: [7, 4] },
-  { key: 'Cp_p75', band: 'oc_75',     side:  1, label: 'C+ p75', color: '#3b82f6', dash: [2, 4] },
-  { key: 'Cm_med', band: 'oc_median', side: -1, label: 'C- med', color: '#fbbf24', dash: [7, 4] },
-  { key: 'Cm_p75', band: 'oc_75',     side: -1, label: 'C- p75', color: '#f59e0b', dash: [2, 4] },
-  { key: 'L_med',  band: 'hl_median', side: -1, label: 'L med',  color: '#f87171', dash: [7, 4] },
-  { key: 'L_p75',  band: 'hl_75',     side: -1, label: 'L p75',  color: '#ef4444', dash: [2, 4] },
+  { key: 'H_med',  band: 'hl_median', side:  1, tier: 'med', label: 'H med',  color: '#34d399', dash: [7, 4] },
+  { key: 'H_p75',  band: 'hl_75',     side:  1, tier: 'p75', label: 'H p75',  color: '#10b981', dash: [2, 4] },
+  { key: 'Cp_med', band: 'oc_median', side:  1, tier: 'med', label: 'C+ med', color: '#60a5fa', dash: [7, 4] },
+  { key: 'Cp_p75', band: 'oc_75',     side:  1, tier: 'p75', label: 'C+ p75', color: '#3b82f6', dash: [2, 4] },
+  { key: 'Cm_med', band: 'oc_median', side: -1, tier: 'med', label: 'C- med', color: '#fbbf24', dash: [7, 4] },
+  { key: 'Cm_p75', band: 'oc_75',     side: -1, tier: 'p75', label: 'C- p75', color: '#f59e0b', dash: [2, 4] },
+  { key: 'L_med',  band: 'hl_median', side: -1, tier: 'med', label: 'L med',  color: '#f87171', dash: [7, 4] },
+  { key: 'L_p75',  band: 'hl_75',     side: -1, tier: 'p75', label: 'L p75',  color: '#ef4444', dash: [2, 4] },
 ];
+
+// Trading-style selector — how each armed line is traded on a touch:
+//   • fade_all           — every line is a FADE (revert one band inward). The
+//                          original behaviour.
+//   • follow_med_fade_75 — MEDIAN lines are a FOLLOW (continue the move: enter on
+//                          a break THROUGH the band, target the next band OUT);
+//                          75th lines are a FADE (revert inward). "Ride the
+//                          median, fade the extreme."
+// A `follow` on the outermost band (no band further out) is skipped.
+export const STYLES = {
+  fade_all:           { label: 'Fade all',            action: () => 'fade' },
+  follow_med_fade_75: { label: 'Cont med · fade 75th', action: L => (L.tier === 'med' ? 'follow' : 'fade') },
+};
 
 // Build the 8 line prices off `open` from a bands-pct object and assign each its
 // reversion target = the adjacent line closer to the open on the same side (or
@@ -63,8 +79,10 @@ export function ladderLevels(open, pcts) {
   for (const side of [1, -1]) {
     const sideLines = lines.filter(l => l.side === side).sort((a, b) => a.pct - b.pct);
     for (let i = 0; i < sideLines.length; i++) {
-      // Target is the next line inward; the innermost reverts to the open.
+      // `target` = the next line inward (fade); the innermost reverts to the open.
+      // `outerTarget` = the next line outward (follow); null for the outermost.
       sideLines[i].target = i === 0 ? open : sideLines[i - 1].price;
+      sideLines[i].outerTarget = i === sideLines.length - 1 ? null : sideLines[i + 1].price;
     }
   }
   const byKey = {};
@@ -72,36 +90,53 @@ export function ladderLevels(open, pcts) {
   return { open, lines, byKey };
 }
 
-// Run the fade-and-revert race for every armed line over one session's intraday
-// candles. `bars` are {time,open,high,low,close} in ascending time order.
-// opts: { armed:Set<key>|null (null = all), costPct:number (round-trip %, netted
-// off the gross move) }. Returns an array of resolved trades.
+// Run the touch-and-resolve race for every armed line over one session's
+// intraday candles. `bars` are {time,open,high,low,close} in ascending time
+// order. opts: { armed:Set<key>|null (null = all), costPct:number (round-trip %,
+// netted off the gross move), style:'fade_all'|'follow_med_fade_75' (default
+// 'fade_all') }. Each line becomes a FADE or a FOLLOW per the style:
+//   • fade   — limit at the line, target the adjacent INNER band, SELL up-line /
+//              BUY down-line (revert toward the open).
+//   • follow — stop through the line, target the adjacent OUTER band, BUY up-line
+//              / SELL down-line (continue the move). Skipped on the outermost
+//              band (nothing further out to target).
+// The stop is SYMMETRIC either way (equal distance the other side of entry).
+// Returns an array of resolved trades.
 export function reversionTrades(open, bars, pcts, opts = {}) {
-  const { armed = null, costPct = 0 } = opts;
+  const { armed = null, costPct = 0, style = 'fade_all' } = opts;
   const lad = ladderLevels(open, pcts);
   if (!lad || !bars || !bars.length) return [];
+  const styleDef = STYLES[style] || STYLES.fade_all;
   const lastClose = bars[bars.length - 1].close;
   const trades = [];
   for (const L of lad.lines) {
     if (armed && !armed.has(L.key)) continue;
-    const isBuy = L.side < 0;                 // fade: buy a down-line, sell an up-line
+    const action = styleDef.action(L);
+    let isBuy, target, entryType;
+    if (action === 'follow') {
+      if (L.outerTarget == null) continue;    // outermost: nothing further out to target
+      isBuy = L.side > 0;                      // continue the move: up-line BUY, down-line SELL
+      target = L.outerTarget; entryType = 'stop';
+    } else {
+      isBuy = L.side < 0;                      // fade: up-line SELL, down-line BUY
+      target = L.target; entryType = 'limit';
+    }
     const entry = L.price;
-    const target = L.target;
     const dist = Math.abs(entry - target);
-    const stop = isBuy ? entry - dist : entry + dist;   // symmetric, further from open
-    const r = walkBars(bars, entry, target, stop, isBuy, 'limit', open);
+    const stop = isBuy ? entry - dist : entry + dist;   // symmetric
+    const r = walkBars(bars, entry, target, stop, isBuy, entryType, open);
     if (!r) continue;                          // line never touched this session
     // walkBars labels a POSITIVE mark-to-close as 'win' (and a non-positive one
     // as 'open'), which conflates "reached the target" with "expired in profit".
     // Separate them: a true target-hit books exactly the entry→target distance;
     // anything else that isn't a stop is an expiry (marked to the session close).
-    const winPct = Math.abs(entry - target) / open * 100;
+    const winPct = dist / open * 100;
     const outcome = r.outcome === 'loss' ? 'loss'
                   : (r.outcome === 'win' && Math.abs(r.pnlPct - winPct) <= 1e-9) ? 'win'
                   : 'expired';
     const exitPrice = outcome === 'win' ? target : outcome === 'loss' ? stop : lastClose;
     trades.push({
-      key: L.key, label: L.label, color: L.color, side: isBuy ? 'BUY' : 'SELL',
+      key: L.key, label: L.label, color: L.color, side: isBuy ? 'BUY' : 'SELL', action,
       entry, target, stop, exitPrice, pct: L.pct,
       outcome, grossPct: r.pnlPct, netPct: r.pnlPct - costPct,
       entryTime: r.fillTime, exitTime: r.exitTime,
