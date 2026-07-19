@@ -99,6 +99,7 @@ import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the 
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
+import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
@@ -11333,6 +11334,27 @@ app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   }
 });
 
+// Fetch intraday candles (epoch-second times) for one OANDA instrument —
+// shared by the candle-viewer routes and the forecast-path summary. Throws on
+// a non-OK response with OANDA's errorMessage included.
+async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
+  const base = _oandaBaseW();
+  let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
+  if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
+  if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
+  if (!from && !to) url += `&count=${count ?? 200}`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) {
+    let msg = `OANDA HTTP ${r.status}`;
+    try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
+    throw new Error(msg);
+  }
+  const data = await r.json();
+  return (data.candles ?? [])
+    .filter(c => c.complete !== false && c.mid)
+    .map(c => ({ time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+}
+
 // Weekly backtest intraday candle viewer — same as D1 but at a finer
 // granularity, epoch-second times. One handler, mounted per granularity.
 function _wbtIntradayRoute(gran, defCount) {
@@ -11341,36 +11363,141 @@ function _wbtIntradayRoute(gran, defCount) {
     const oanda = _wbtInstrMap[name];
     if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
     if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
-
-    const { from, to } = req.query;
-    const base = _oandaBaseW();
-    let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
-    if (from) url += `&from=${encodeURIComponent(from + 'T00:00:00Z')}`;
-    if (to)   url += `&to=${encodeURIComponent(_wbtClampTo(to))}`;
-    if (!from && !to) url += `&count=${defCount}`;
-
     try {
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
-      if (!r.ok) {
-        let msg = `OANDA HTTP ${r.status}`;
-        try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
-        return res.status(502).json({ ok: false, error: msg });
-      }
-      const data = await r.json();
-      const candles = (data.candles ?? [])
-        .filter(c => c.complete !== false && c.mid)
-        .map(c => {
-          const ts = Math.floor(new Date(c.time).getTime() / 1000);
-          return { time: ts, open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c };
-        });
+      const candles = await _wbtFetchIntraday(oanda, gran, { from: req.query.from, to: req.query.to, count: defCount });
       res.json({ ok: true, pair: name, n: candles.length, candles });
     } catch (e) {
-      res.status(500).json({ ok: false, error: e.message });
+      res.status(/OANDA HTTP/.test(e.message) ? 502 : 500).json({ ok: false, error: e.message });
     }
   };
 }
 app.get('/api/weekly-vol-backtest/m15/:pair', _wbtIntradayRoute('M15', 200));
 app.get('/api/weekly-vol-backtest/m5/:pair',  _wbtIntradayRoute('M5',  500));
+
+// ── Forecast-path summary — the cone's calibrated claims as a compact API ─────
+// Per pair: the LIVE 4h event-aware cone (P75 envelope + drift), the surprise
+// percentile vs the day-open cone, which UTC hours the cone is trustworthy at
+// (by-hour calibration), and the release windows ahead. Cached 15 min per pair
+// — the daily brief's drawer and the position sizer consume this instead of
+// re-deriving cone math. Same bricks as forecast-path.html, never a copy.
+const _fpSummaryCache = new Map();
+const _FP_SUMMARY_TTL = 15 * 60_000;
+const _FP_H = 16;   // 16 × M15 = 4 hours
+
+function _fpMajorEventEpochs(pair, fromMs, toMs) {
+  try {
+    const ccys = _calPairCurrencies(pair);
+    return _loadNewsCalendar()
+      .filter(e => e.ms >= fromMs && e.ms <= toMs && e.rank >= 3 && ccys.has(e.ccy))
+      .map(e => e.ms / 1000);
+  } catch { return []; }
+}
+
+async function _fpSummarizePair(name) {
+  const oanda = _wbtInstrMap[name];
+  if (!oanda) throw new Error(`Unknown pair: ${name}`);
+  const to = new Date().toISOString().substring(0, 10);
+  const from = new Date(Date.now() - 45 * 86400e3).toISOString().substring(0, 10);
+  const bars = await _wbtFetchIntraday(oanda, 'M15', { from, to });
+  if (bars.length < 520) throw new Error(`only ${bars.length} M15 bars`);
+  const events = _fpMajorEventEpochs(name, Date.now() - 45 * 86400e3, Date.now() + 7 * 86400e3);
+  const opts = { events, eventAware: true, horizonBars: _FP_H };
+  const ctx = _fpBuildCtx(bars, opts);
+  const n = bars.length;
+  const live = _fpCone(ctx, n, _FP_H);
+  if (!live) throw new Error('cone unavailable');
+
+  let surprise = null;
+  { const dk = Math.floor(bars[n - 1].time / 86400);
+    let ds = n - 1;
+    while (ds > 0 && Math.floor(bars[ds - 1].time / 86400) === dk) ds--;
+    const h = n - (ds + 1);
+    if (h >= 1 && ds + 1 > 100) {
+      const r = _fpRealZ(ctx, ds + 1, h, bars[n - 1].close);
+      if (r) surprise = { z: +r.z.toFixed(2), pct: Math.round(r.pct * 100) };
+    } }
+
+  const t = _fpTally(bars, opts);
+  const hourCell = r => r.n >= 5 && r.c75 != null;
+  const trustHours = t.byHour.filter(r => hourCell(r) && Math.abs(r.c75 - 0.75) <= 0.07).map(r => r.hour);
+  const shakyHours = t.byHour.filter(r => hourCell(r) && Math.abs(r.c75 - 0.75) > 0.15).map(r => r.hour);
+  const nowSec = Date.now() / 1000;
+  const upcomingEvents = events.filter(ev => ev > nowSec - 1800 && ev < nowSec + 12 * 3600)
+    .slice(0, 6).map(ev => new Date(ev * 1000).toISOString().substring(11, 16) + 'Z');
+  const last = live.steps[_FP_H - 1];
+
+  return {
+    pair: name.toUpperCase(), at: Date.now(), horizon: '4h (16×M15)',
+    anchor: live.anchor,
+    p75Lo: last.p75Dn, p75Hi: last.p75Up,
+    p75HalfPct: +(((last.p75Up - last.p75Dn) / 2 / live.anchor) * 100).toFixed(3),
+    driftBp: +(live.mu * 1e4).toFixed(2),
+    eventSteps: live.eventSteps ?? 0,
+    surprise, trustHours, shakyHours, upcomingEvents,
+    calib: { n: t.full.n, c75Final: t.full.perStep[_FP_H - 1]?.c75 ?? null },
+    // Full cone coordinates so a consumer can DRAW the claim (brief drawer chart).
+    cone: { anchorTime: live.anchorTime, anchor: live.anchor,
+            steps: live.steps.map(s => ({ t: s.time, c: s.center, p50u: s.p50Up, p50d: s.p50Dn, p75u: s.p75Up, p75d: s.p75Dn })) },
+  };
+}
+
+app.get('/api/forecast-path/summary', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const want = String(req.query.pairs || '').split(',').map(s => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean);
+  const pairs = want.length ? want : Object.keys(_wbtInstrMap);
+  const out = {}, errors = {};
+  for (const p of pairs) {
+    const hit = _fpSummaryCache.get(p);
+    if (hit && Date.now() - hit.at < _FP_SUMMARY_TTL) { out[p] = hit.data; continue; }
+    try {
+      const data = await _fpSummarizePair(p);
+      _fpSummaryCache.set(p, { at: Date.now(), data });
+      out[p] = data;
+    } catch (e) { errors[p] = e?.message || String(e); }
+  }
+  res.json({ ok: true, n: Object.keys(out).length, pairs: out, errors });
+});
+
+// Target reachability — the "price" primitive for programmatic consumers (the
+// per-line book, OI zones, alert thresholds). GET ?pair=EURUSD&target=1.0850
+// &hours=4 → the calibrated probability price TOUCHES the target within the
+// window + typical time, from the live event-aware cone. Bars cached 5 min per
+// pair (separate from the summary cache — reachability wants finer M15).
+const _fpReachBars = new Map();
+async function _fpReachBarsFor(name) {
+  const oanda = _wbtInstrMap[name];
+  if (!oanda) throw new Error(`Unknown pair: ${name}`);
+  const hit = _fpReachBars.get(name);
+  if (hit && Date.now() - hit.at < 5 * 60_000) return hit.bars;
+  const to = new Date().toISOString().substring(0, 10);
+  const from = new Date(Date.now() - 45 * 86400e3).toISOString().substring(0, 10);
+  const bars = await _wbtFetchIntraday(oanda, 'M15', { from, to });
+  _fpReachBars.set(name, { at: Date.now(), bars });
+  return bars;
+}
+app.get('/api/forecast-path/reach', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const name = String(req.query.pair || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const target = +req.query.target;
+  const hours = Math.max(0.5, Math.min(12, +req.query.hours || 4));
+  const H = Math.max(2, Math.round(hours * 4));   // M15 bars
+  if (!name) return res.status(400).json({ ok: false, error: 'pair required' });
+  if (!(target > 0)) return res.status(400).json({ ok: false, error: 'target (>0) required' });
+  try {
+    const bars = await _fpReachBarsFor(name);
+    if (bars.length < 520) return res.status(422).json({ ok: false, error: `only ${bars.length} M15 bars` });
+    const events = _fpMajorEventEpochs(name, Date.now() - 45 * 86400e3, Date.now() + 7 * 86400e3);
+    const opts = { events, eventAware: true, horizonBars: H };
+    const ctx = _fpBuildCtx(bars, opts);
+    const r = _fpReach(ctx, bars.length, target, H, { nPaths: 600 });
+    if (!r) return res.status(422).json({ ok: false, error: 'reachability unavailable' });
+    const gap = _fpReachCalib(bars, { ...opts, calibPaths: 120 }).gap;
+    res.json({ ok: true, pair: name.toUpperCase(), target, hours, horizonBars: H,
+               anchor: bars[bars.length - 1].close, ...r, reliabilityGap: gap });
+  } catch (e) {
+    res.status(/OANDA HTTP/.test(e.message) ? 502 : 500).json({ ok: false, error: e.message });
+  }
+});
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
 const laJobs = new Map();

@@ -264,6 +264,20 @@ export const INTRADAY_DEFAULTS = {
   seed: 42,
   warmupBars: 480,      // ~5 trading days of M15 before the first cone
   minBucketObs: 20,     // bucket multiplier stays 1 until this many obs
+  // Event-aware widening (economic releases). `events` = epoch SECONDS of the
+  // releases that matter for this instrument (caller filters by currency +
+  // impact rank — the brick stays pure). A bar is "near an event" inside
+  // [ev - eventPre, ev + eventPost]. The widening multiplier is LEARNED, not
+  // asserted: RMS of near-event returns ÷ their same-hour causal baseline
+  // (so the session profile isn't double-counted — releases cluster at loud
+  // hours). Stays 1 until minEventObs near-event returns exist; floored at 1
+  // (an event never narrows the claim) and capped at 4. Applied only when
+  // eventAware is true, and only to steps whose time falls inside a window.
+  events: [],
+  eventAware: false,
+  eventPre: 900,        // 15 min before the release
+  eventPost: 3600,      // 60 min after
+  minEventObs: 20,
 };
 
 const Z50 = 0.6744898, Z75 = 1.1503494;   // |z| median and 75th percentile
@@ -310,7 +324,61 @@ export function buildIntradayContext(bars, opts = {}) {
   }
   if (!isFinite(barSec)) barSec = 900;
 
-  return { bars, closes, sigma, drift, sigmaLive, driftLive, buckets, gCum, barSec, opts: o };
+  // Near-event return index: which returns fall inside an event window, with
+  // prefix sums of r² and each one's hour (for the causal baseline query).
+  const events = [...(o.events ?? [])].sort((a, b) => a - b);
+  const evIdx = [], evR2Cum = [0], evHour = [];
+  if (events.length) {
+    for (let j = 1; j < n; j++) {
+      if (!_nearEvent(events, bars[j].time, o.eventPre, o.eventPost)) continue;
+      const r = Math.log(closes[j] / closes[j - 1]);
+      evIdx.push(j);
+      evR2Cum.push(evR2Cum[evR2Cum.length - 1] + r * r);
+      evHour.push(new Date(bars[j].time * 1000).getUTCHours());
+    }
+  }
+
+  return { bars, closes, sigma, drift, sigmaLive, driftLive, buckets, gCum, barSec,
+           events, evIdx, evR2Cum, evHour, opts: o };
+}
+
+// Is `t` inside any event's [ev - pre, ev + post] window? (events sorted asc)
+function _nearEvent(events, t, pre, post) {
+  const k = bisect(events, t - post);          // first event with ev ≥ t - post
+  return k < events.length && events[k] - pre <= t;
+}
+
+// Causal mean r² for an hour bucket using returns strictly before i.
+function _bucketMeanAt(ctx, i, hour) {
+  const b = ctx.buckets[hour];
+  const cnt = bisect(b.idx, i);
+  if (cnt >= ctx.opts.minBucketObs) return b.cum[cnt] / cnt;
+  const g = Math.max(0, Math.min(i - 1, ctx.gCum.length - 1));
+  return g > 0 ? ctx.gCum[g] / g : 0;
+}
+
+// Learned near-event σ multiplier from returns strictly before i: RMS of
+// near-event returns over their same-hour baseline. 1 until enough data;
+// floored at 1, capped at 4.
+//
+// NB the same-hour baseline buckets CONTAIN the event bars (releases recur at
+// fixed clock hours), so this factor in isolation under-reads the true event
+// widening — deliberately. The applied event-step σ is
+//   sigBase × profileMult(hour) × eventMult
+// and the bucket contamination cancels in that product:
+//   √(bucketMean/global) × √(evVar/bucketMean) = √(evVar/global),
+// i.e. event steps get exactly the event-bar RMS over the global baseline.
+// Verified on planted synthetic events in the test (product ≈ true multiplier).
+export function eventMult(ctx, i) {
+  const { evIdx, evR2Cum, evHour, opts } = ctx;
+  const k = bisect(evIdx, i);
+  if (k < opts.minEventObs) return 1;
+  const evVar = evR2Cum[k] / k;
+  let base = 0;
+  for (let m = 0; m < k; m++) base += _bucketMeanAt(ctx, i, evHour[m]);
+  base /= k;
+  if (!(base > 0)) return 1;
+  return Math.min(4, Math.max(1, Math.sqrt(evVar / base)));
 }
 
 // σ multiplier for `hour`, using only returns with index < i.
@@ -340,20 +408,26 @@ function _futureTime(ctx, i, h) {
 
 // Per-step σ ladder shared by cone and sample paths. i === n (live edge) reads
 // the through-the-last-return EWMA; times and the profile query always use i.
+// With eventAware on, steps inside an event window get the learned eventMult.
 function _stepSigmas(ctx, i, H) {
-  const { sigma, drift, sigmaLive, driftLive, bars, opts } = ctx;
+  const { sigma, drift, sigmaLive, driftLive, bars, events, opts } = ctx;
   const n = bars.length;
   const sigBase = i === n ? sigmaLive : sigma[i];
   if (!(sigBase > 0)) return null;
   const rawMu = i === n ? driftLive : (drift[i] || 0);
   const mu = Math.max(-opts.driftCapSigma * sigBase, Math.min(opts.driftCapSigma * sigBase, rawMu));
+  const useEvents = opts.eventAware && events.length > 0;
+  const evM = useEvents ? eventMult(ctx, i) : 1;
   const times = [], sigs = [];
+  let eventSteps = 0;
   for (let h = 1; h <= H; h++) {
     const t = _futureTime(ctx, i, h);
     times.push(t);
-    sigs.push(sigBase * profileMult(ctx, i, new Date(t * 1000).getUTCHours()));
+    let s = sigBase * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
+    if (useEvents && _nearEvent(events, t, opts.eventPre, opts.eventPost)) { s *= evM; eventSteps++; }
+    sigs.push(s);
   }
-  return { sigBase, mu, times, sigs };
+  return { sigBase, mu, times, sigs, eventMult: evM, eventSteps };
 }
 
 // ── The intraday cone (2 ≤ i ≤ bars.length; i === n is the live edge) ────────
@@ -376,7 +450,8 @@ export function intradayCone(ctx, i, horizonBars) {
                  p50Up: center * Math.exp(Z50 * sd), p50Dn: center * Math.exp(-Z50 * sd),
                  p75Up: center * Math.exp(Z75 * sd), p75Dn: center * Math.exp(-Z75 * sd) });
   }
-  return { i, anchorTime: bars[i - 1].time, anchor, sigmaBar: ladder.sigBase, mu: ladder.mu, steps };
+  return { i, anchorTime: bars[i - 1].time, anchor, sigmaBar: ladder.sigBase, mu: ladder.mu,
+           eventMult: ladder.eventMult, eventSteps: ladder.eventSteps, steps };
 }
 
 // ── Intraday Monte-Carlo paths (seeded; wicks cosmetic, padded to the median
@@ -416,6 +491,113 @@ export function intradaySamplePaths(ctx, i, horizonBars, opts = {}) {
     return { h: s.h, time: s.time, close: cs.length % 2 ? cs[m] : (cs[m - 1] + cs[m]) / 2 };
   });
   return { paths, consensus };
+}
+
+// ── Target reachability — will price TOUCH this level within H bars? ─────────
+// The "price" primitive: hand it a target level + a hold window, get the
+// calibrated probability price trades through it and the typical time to do so.
+// Monte-Carlo first-passage from the cone's OWN claim (same per-step drift + σ
+// ladder as intradayCone/samplePaths), using each simulated bar's intrabar
+// high/low (padded to the causal median prior-bar range — a wick touch counts,
+// which is the honest "did price reach my TP/SL" test). Deterministic (seeded).
+//
+// nPaths defaults higher than the cosmetic path viewer (a probability wants
+// resolution). Returns:
+//   pTouch          fraction of paths whose high/low crossed the target ≤ H
+//   medBarsToTouch  median first-touch step among touching paths (null if <½)
+//   side            'up' | 'down' (target above/below the anchor)
+//   z               the target's cone-z at H (context; from intradayRealizedZ)
+// It inherits the cone's calibration: trustworthy to exactly the degree the
+// tally shows the envelopes hold (reachabilityCalibration grades it directly).
+export function intradayReachability(ctx, i, target, horizonBars, opts = {}) {
+  const o = { ...ctx.opts, nPaths: 400, ...opts };
+  const H = horizonBars ?? ctx.opts.horizonBars;
+  const ladder = _stepSigmas(ctx, i, H);
+  if (!ladder || !(target > 0)) return null;
+  const anchor = ctx.bars[i - 1].close;
+  if (target === anchor) return { pTouch: 1, medBarsToTouch: 0, side: 'flat', z: 0 };
+  const up = target > anchor;
+
+  // Causal median prior-bar range → intrabar wick budget (same as samplePaths).
+  const ranges = [];
+  for (let k = Math.max(0, i - 97); k < i - 1; k++) ranges.push(ctx.bars[k].high - ctx.bars[k].low);
+  ranges.sort((a, b) => a - b);
+  const medRange = ranges.length ? ranges[ranges.length >> 1] : 0;
+
+  const rng = mulberry32(o.seed);
+  let touched = 0;
+  const touchBar = [];
+  for (let p = 0; p < o.nPaths; p++) {
+    let prev = anchor, hit = 0;
+    for (let k = 0; k < H; k++) {
+      const close = prev * Math.exp(ladder.mu + ladder.sigs[k] * gauss(rng));
+      const bodyHi = Math.max(prev, close), bodyLo = Math.min(prev, close);
+      const pad = Math.max(0, medRange - (bodyHi - bodyLo));
+      const u = rng();
+      const hi = bodyHi + pad * u, lo = bodyLo - pad * (1 - u);
+      if ((up && hi >= target) || (!up && lo <= target)) { hit = k + 1; break; }
+      prev = close;
+    }
+    if (hit) { touched++; touchBar.push(hit); }
+  }
+  const pTouch = touched / o.nPaths;
+  let medBarsToTouch = null;
+  if (touchBar.length >= o.nPaths / 2) {
+    touchBar.sort((a, b) => a - b);
+    const m = touchBar.length >> 1;
+    medBarsToTouch = touchBar.length % 2 ? touchBar[m] : (touchBar[m - 1] + touchBar[m]) / 2;
+  }
+  const zr = intradayRealizedZ(ctx, i, H, target);
+  return { pTouch, medBarsToTouch, side: up ? 'up' : 'down', z: zr ? zr.z : null };
+}
+
+// ── Reachability calibration — does a "70% reach" actually reach 70%? ────────
+// The falsification the primitive needs before it's believed. Over
+// non-overlapping windows, at a ladder of σ-scaled targets (both sides),
+// predict pTouch and record whether price ACTUALLY touched within H — then bin
+// by predicted decile and compare mean-predicted vs realized frequency (a
+// reliability curve). Well-calibrated ⇒ points sit on the diagonal. `gap` is
+// the mean |predicted − realized| across populated bins (lower = better).
+export function reachabilityCalibration(bars, opts = {}) {
+  const o = { ...INTRADAY_DEFAULTS, ...opts };
+  const ctx = buildIntradayContext(bars, o);
+  const H = o.horizonBars;
+  const n = bars.length;
+  const mults = o.targetMults ?? [0.5, 1.0, 1.5, 2.0];
+  const nPaths = o.calibPaths ?? 200;
+
+  const bins = Array.from({ length: 10 }, () => ({ sumP: 0, hit: 0, n: 0 }));
+  let total = 0;
+  for (let i = Math.max(o.warmupBars, 2); i + H <= n; i += H) {
+    const cone = intradayCone(ctx, i, H);
+    if (!cone) continue;
+    const anchor = cone.anchor;
+    // Per-window σ over the full horizon (from the cone's own P75 envelope).
+    const last = cone.steps[H - 1];
+    const sdH = Math.log(last.p75Up / last.center) / Z75;
+    if (!(sdH > 0)) continue;
+
+    // Realized intrabar extremes over the window (for the actual-touch test).
+    let hi = -Infinity, lo = Infinity;
+    for (let h = 1; h <= H; h++) { const b = bars[i + h - 1]; if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
+
+    for (const mu of mults) for (const sgn of [1, -1]) {
+      const target = anchor * Math.exp(sgn * mu * sdH);
+      const r = intradayReachability(ctx, i, target, H, { nPaths });
+      if (!r) continue;
+      const actual = sgn > 0 ? hi >= target : lo <= target;
+      const b = Math.min(9, Math.floor(r.pTouch * 10));
+      bins[b].sumP += r.pTouch; bins[b].hit += actual ? 1 : 0; bins[b].n++;
+      total++;
+    }
+  }
+  const curve = bins.map((b, k) => ({ bin: k / 10, n: b.n,
+    predicted: b.n ? b.sumP / b.n : null, realized: b.n ? b.hit / b.n : null }));
+  const populated = curve.filter(c => c.n >= 10);
+  const gap = populated.length
+    ? populated.reduce((s, c) => s + Math.abs(c.predicted - c.realized), 0) / populated.length : null;
+  return { horizonBars: H, nPredictions: total, curve, gap,
+           note: 'Predicted vs realized touch frequency, binned. Well-calibrated ⇒ predicted ≈ realized per bin (gap→0).' };
 }
 
 // Standard normal CDF (Abramowitz-Stegun 7.1.26 via erf approximation).
@@ -481,7 +663,12 @@ export function intradayTally(bars, opts = {}) {
   for (let i = Math.max(o.warmupBars, 2); i + H <= n; i += H) {
     const cone = intradayCone(ctx, i, H);
     if (!cone) continue;
-    const w = { in50: new Array(H), in75: new Array(H), dirHit: null };
+    // Event classification is independent of eventAware (same buckets for the
+    // base and conditioned runs): does any event's window overlap this window?
+    const tStart = bars[i - 1].time, tEnd = bars[i + H - 1].time;
+    const ek = bisect(ctx.events, tStart - o.eventPost);
+    const isEvent = ek < ctx.events.length && ctx.events[ek] <= tEnd + o.eventPre;
+    const w = { in50: new Array(H), in75: new Array(H), dirHit: null, isEvent };
     for (let h = 1; h <= H; h++) {
       const c = bars[i + h - 1].close, s = cone.steps[h - 1];
       w.in50[h - 1] = c >= s.p50Dn && c <= s.p50Up;
@@ -549,10 +736,17 @@ export function intradayTally(bars, opts = {}) {
     overall: cell(windows),
   };
 
+  // Event vs quiet split (final-step cells) — the A/B substrate: run the tally
+  // twice (eventAware on/off) and compare the event bucket between runs.
+  const eventSplit = ctx.events.length
+    ? { event: cell(windows.filter(w => w.isEvent)), quiet: cell(windows.filter(w => !w.isEvent)),
+        eventAware: !!o.eventAware }
+    : null;
+
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
   return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },
            full: tally(windows), recent: tally(windows.slice(-recentN)),
-           byHour, budget };
+           byHour, budget, eventSplit };
 }
 
 export { HORIZONS };

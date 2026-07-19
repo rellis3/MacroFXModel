@@ -101,7 +101,11 @@
       (one marker per candle — "+N" counts a bundle of simultaneous releases). Price
       violence usually has an arrow next to it, and releases falling inside the future
       cone window are listed in the forecast card — so when the picture jumps, the
-      "why" is printed beside it.
+      "why" is printed beside it. With <b>Event σ</b> on, the cone also <b>widens into
+      release windows</b>: the widening multiplier is learned from this pair's own
+      history around past releases (never asserted), and the calibration card carries
+      an A/B — event windows graded with the widening off and on — so the conditioner
+      only deserves to stay on where that A/B says it helps.
     </p>
 
     <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">It grades itself</h3>
@@ -113,6 +117,19 @@
       actually held, split by the hour the forecast was made. The <b>replay slider</b>
       rewinds to any past moment and shows the forecast exactly as it would have looked
       then, built only from data available at the time.
+    </p>
+
+    <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">Target reachability (the "price" tool)</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      Enter any level — a take-profit, a stop, a key line — and the
+      <b>reachability</b> box returns the calibrated probability price <b>touches</b>
+      it within the horizon (a wick counts), plus the typical time to get there. It's
+      a Monte-Carlo first-passage on the live cone, so it inherits the cone's
+      calibration; the box also shows this pair's own <b>reliability gap</b> — how far
+      predicted touch-rates sat from realized ones across history — so you trust the
+      number only as far as the pair earns. This turns "is my TP realistic?" from a
+      guess into a priced claim. Still not direction: it prices <i>whether</i> a level
+      is reachable, not which way to bet.
     </p>
 
     <h3 style="font-size:13px;color:#f87171;margin:16px 0 6px">What this is NOT</h3>
@@ -161,6 +178,7 @@
       <button id="tConsensus">Most-agreed path</button>
       <button id="tActual" class="on">Reveal actual</button>
       <button id="tNews" class="on">News</button>
+      <button id="tEventCone" class="on" title="Widen the cone into scheduled-release windows (multiplier learned causally from this pair's history; A/B-graded in the calibration card)">Event σ</button>
       <button id="tLevels">Levels</button>
       <button id="tBands">Day forecast</button>
       <button id="tTrail" class="on">Hindcast trail</button>
@@ -171,6 +189,14 @@
     <div class="card">
       <h2>This forecast</h2>
       <div id="coneInfo"><span class="muted">load a pair</span></div>
+    </div>
+    <div class="card">
+      <h2>Target reachability</h2>
+      <div class="ctl" style="margin:0 0 6px">
+        <input id="reachTarget" class="mono" placeholder="target price" style="flex:1 1 120px;background:#1e293b;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px">
+        <button id="reachGo">Reach?</button>
+      </div>
+      <div id="reachOut"><span class="muted">enter a level (TP/SL) — get the calibrated probability price touches it within the horizon, and the typical time. Intraday only.</span></div>
     </div>
     <div class="card">
       <h2>Calibration — full history</h2>
@@ -214,17 +240,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=3';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=3';
-import { bisect, resampleTo } from './js/barUtils.js?v=3';
-import { collectLevels } from './js/levelSources.js?v=3';
+import { createLevelChart } from './js/levelChart.js?v=5';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=5';
+import { bisect, resampleTo } from './js/barUtils.js?v=5';
+import { collectLevels } from './js/levelSources.js?v=5';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
-  intradayRealizedZ,
-} from './js/forecastPathCore.js?v=3';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=3';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=3';
+  intradayRealizedZ, intradayReachability, reachabilityCalibration,
+} from './js/forecastPathCore.js?v=5';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=5';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=5';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -259,10 +285,10 @@ function intradayEngine(barMin, lookbackDays, horizons, defaultH) {
     horizons, defaultH,
     lookbackDays,
     warmup: INTRADAY_DEFAULTS.warmupBars,
-    build: bars => buildIntradayContext(bars),
+    build: bars => buildIntradayContext(bars, { events: rank3Events(), eventAware: toggles.eventCone }),
     cone: intradayCone,
     paths: intradaySamplePaths,
-    tally: (bars, H) => intradayTally(bars, { horizonBars: H }),
+    tally: (bars, H) => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone }),
     anchorT: c => c.anchorTime,
     stepT: s => s.time,
     fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
@@ -301,6 +327,16 @@ const $ = id => document.getElementById(id);
 const pairSel = $('pair');
 for (const p of PAIRS) pairSel.add(new Option(p, p));
 
+// Deep links (daily brief drawer → here): ?pair=EURUSD&gran=M15&calc=cog
+{ const q = new URLSearchParams(location.search);
+  const qp = (q.get('pair') || '').toUpperCase();
+  if (PAIRS.includes(qp)) pairSel.value = qp;
+  const qg = (q.get('gran') || '').toUpperCase();
+  if (qg === 'D1' || qg === 'M15' || qg === 'M5') $('gran').value = qg;
+  const qc = (q.get('calc') || '').toLowerCase();
+  if (qc === 'cog' || qc === 'platform') $('calc').value = qc;
+}
+
 function fillHorizons() {
   const e = ENGINES[$('gran').value];
   const sel = $('horizon');
@@ -316,9 +352,11 @@ const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
 let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [];
-const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true };
+const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true };
 const eng = () => ENGINES[$('gran').value];
 const isIntraday = () => $('gran').value !== 'D1';
+// Major releases as epoch seconds — the event-aware cone's input.
+const rank3Events = () => events.filter(e => e.rank >= 3).map(e => e.ms / 1000);
 
 function clearExtra() {
   for (const s of extraSeries) { try { chart.removeSeries(s); } catch {} }
@@ -532,6 +570,7 @@ function render() {
     `<div class="kv"><span>${e.sigmaLabel}</span><b>${(e.sigmaOf(cone) * 100).toFixed(3)}%</b></div>` +
     `<div class="kv"><span>drift / bar</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
     (cone.trendScore != null ? `<div class="kv"><span>trend score</span><b>${cone.trendScore.toFixed(2)} ∈ [-1,1]</b></div>` : '') +
+    (cone.eventSteps > 0 ? `<div class="kv"><span>news σ widening</span><b class="warn">${cone.eventSteps} of ${H} steps in a release window</b></div>` : '') +
     `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(dg)} – ${lastS.p75Up.toFixed(dg)}</b></div>` +
     surpriseHtml + evHtml +
     `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
@@ -542,6 +581,15 @@ function renderCalib() {
   const e = eng();
   const H = +$('horizon').value;
   const t = e.tally(bars, H, ASSET_CLASS(pairSel.value));
+
+  // Event-conditioner A/B: the SAME windows tallied with the widening off and
+  // on. Pre-registered success: event-bucket P75 moves toward 75% while quiet
+  // windows stay put. Anything else = the conditioner hasn't earned its place.
+  let ab = null;
+  if (isIntraday() && rank3Events().length) {
+    const mk = flag => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: flag }).eventSplit;
+    ab = { base: mk(false), aware: mk(true) };
+  }
   const pc = v => v == null ? '—' : (v * 100).toFixed(0) + '%';
   const grade = (v, claim) => v == null ? '' : Math.abs(v - claim) <= 0.07 ? 'good' : Math.abs(v - claim) <= 0.15 ? 'warn' : 'bad';
   let rows = '';
@@ -584,6 +632,27 @@ function renderCalib() {
       `<div class="muted" style="margin-top:4px">Today's high–low so far ÷ the causal same-hour median of prior days. ${verdict}</div></div>`;
   }
 
+  if (ab && ab.base && ab.aware) {
+    const evRow = (label, base, aware) =>
+      `<tr><td>${label}</td><td>${base.n}</td>` +
+      `<td class="${grade(base.c75, .75)}">${pc(base.c75)}</td><td class="${grade(aware.c75, .75)}">${pc(aware.c75)}</td>` +
+      `<td>${base.medAbsZ ?? '—'}</td><td>${aware.medAbsZ ?? '—'}</td></tr>`;
+    let evVerdict;
+    const bn = ab.base.event.n;
+    if (bn >= 20 && ab.base.event.c75 != null && ab.aware.event.c75 != null) {
+      const dBase = Math.abs(ab.base.event.c75 - 0.75), dAware = Math.abs(ab.aware.event.c75 - 0.75);
+      const quietMoved = Math.abs((ab.aware.quiet.c75 ?? 0) - (ab.base.quiet.c75 ?? 0)) > 0.03;
+      evVerdict = quietMoved ? 'Quiet windows moved too — the conditioner is leaking outside release windows; treat with suspicion.'
+        : dBase - dAware >= 0.05 ? `Event-window P75 moved ${pc(dBase)}-off → ${pc(dAware)}-off with quiet unchanged — the widening earns its place on this pair.`
+        : dAware - dBase >= 0.05 ? 'The widening made event windows WORSE here — leave Event σ off for this pair.'
+        : 'No measurable difference — event windows grade the same either way (a null, the base rate).';
+    } else evVerdict = `Not enough event windows for a verdict yet (n=${bn}, need ≥20).`;
+    extra += `<div style="margin-top:12px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Event-σ A/B (release windows vs quiet, final step)</b>` +
+      `<table style="margin-top:4px"><tr><th></th><th>n</th><th>P75 off</th><th>P75 on</th><th>med|z| off</th><th>on</th></tr>` +
+      evRow('event', ab.base.event, ab.aware.event) + evRow('quiet', ab.base.quiet, ab.aware.quiet) + `</table>` +
+      `<div class="muted" style="margin-top:4px">Widening multiplier learned causally from this pair's own release history. ${evVerdict}</div></div>`;
+  }
+
   $('calib').innerHTML =
     `<table><tr><th></th><th colspan="2">full (n=${t.full.n})</th><th colspan="2">recent (n=${t.recent.n})</th></tr>` +
     `<tr><th></th><th>P50→50%</th><th>P75→75%</th><th>P50</th><th>P75</th></tr>${rows}</table>` +
@@ -591,6 +660,32 @@ function renderCalib() {
     `<b class="${dirCls}">${pc(d.hitRate)} full · ${pc(dr.hitRate)} recent</b></div>` +
     `<div class="muted">Non-overlapping windows, every input strictly pre-window. Green = within 7pts of the claim.</div>` +
     extra;
+}
+
+// Target reachability — the "price" primitive, run client-side on the loaded
+// context. Probability price touches the entered level within the horizon +
+// typical time, from the LIVE cone; plus the pair's own reliability gap so the
+// number is trusted only as far as history says it should be. Intraday only.
+let _reachCalibGap = null;
+function renderReach() {
+  const el = $('reachOut');
+  if (!ctx || !isIntraday()) { el.innerHTML = '<span class="muted">Load an intraday (M5/M15) pair to use reachability.</span>'; return; }
+  const target = parseFloat($('reachTarget').value);
+  if (!(target > 0)) { el.innerHTML = '<span class="muted">Enter a target price (e.g. a TP or SL level).</span>'; return; }
+  const H = +$('horizon').value, e = eng();
+  const r = intradayReachability(ctx, bars.length, target, H, { nPaths: 500 });
+  if (!r) { el.innerHTML = '<span class="err">Unavailable at the live edge.</span>'; return; }
+  const anchor = bars[bars.length - 1].close, dg = priceDigits(pairSel.value);
+  const pcls = r.pTouch >= 0.66 ? 'good' : r.pTouch >= 0.4 ? 'warn' : 'bad';
+  const barMin = e.fmtStep ? (H === +$('horizon').value ? (e.calibStep ? 60 / e.calibStep : 15) : 15) : 15;
+  const tTouch = r.medBarsToTouch == null ? 'more than half the paths never reach it'
+    : `~${e.fmtStep(Math.round(r.medBarsToTouch))} typical (median)`;
+  el.innerHTML =
+    `<div class="kv"><span>from ${anchor.toFixed(dg)} → ${target.toFixed(dg)}</span><b>${r.side} · ${(Math.abs(target / anchor - 1) * 100).toFixed(2)}%</b></div>` +
+    `<div class="kv"><span>P(touch within ${e.fmtStep(H)})</span><b class="${pcls}">${(r.pTouch * 100).toFixed(0)}%</b></div>` +
+    `<div class="kv"><span>time to touch</span><b>${tTouch}</b></div>` +
+    `<div class="kv"><span>cone-z of target</span><b>${r.z == null ? '—' : (r.z >= 0 ? '+' : '') + r.z.toFixed(2)}σ</b></div>` +
+    `<div class="muted" style="margin-top:4px">Monte-Carlo first-passage from the live cone. ${_reachCalibGap == null ? 'Reliability: computing…' : `Reliability gap on this pair's history: <b class="${_reachCalibGap < 0.06 ? 'good' : _reachCalibGap < 0.12 ? 'warn' : 'bad'}">${(_reachCalibGap * 100).toFixed(1)}pts</b> (predicted vs realized touch rate; lower = more trustworthy).`}</div>`;
 }
 
 async function load() {
@@ -633,6 +728,12 @@ async function load() {
     i = bars.length;
     $('status').textContent = `${bars.length} bars`;
     render(); renderCalib();
+    // Reachability reliability for THIS pair (async so it never blocks the chart).
+    _reachCalibGap = null; renderReach();
+    if (isIntraday()) setTimeout(() => {
+      try { _reachCalibGap = reachabilityCalibration(bars, { horizonBars: +$('horizon').value, events: rank3Events(), eventAware: toggles.eventCone, calibPaths: 150 }).gap; } catch { _reachCalibGap = null; }
+      renderReach();
+    }, 30);
   } catch (err) {
     $('status').textContent = err.message + (/HTTP 4\d\d/.test(err.message)
       ? ' — if the range is very long, try a later "from" date (OANDA caps one request at 5000 candles)'
@@ -649,13 +750,21 @@ $('replay').oninput = ev => { i = +ev.target.value; render(); };
 $('prev').onclick = () => { i = Math.max(+$('replay').min, i - 1); $('replay').value = i; render(); };
 $('next').onclick = () => { i = Math.min(bars.length, i + 1); $('replay').value = i; render(); };
 $('liveBtn').onclick = () => { i = bars.length; $('replay').value = i; render(); };
-$('horizon').onchange = () => { render(); renderCalib(); };
+$('horizon').onchange = () => { render(); renderCalib(); renderReach(); };
+$('reachGo').onclick = renderReach;
+$('reachTarget').onkeydown = ev => { if (ev.key === 'Enter') renderReach(); };
 $('calc').onchange = () => {   // bandsFn is captured in the D1 context — rebuild it
   if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
   render(); renderCalib();
 };
 for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail']])
   $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
+$('tEventCone').onclick = () => {   // eventAware lives in the context — rebuild it
+  toggles.eventCone = !toggles.eventCone;
+  $('tEventCone').classList.toggle('on', toggles.eventCone);
+  if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
+  render(); renderCalib();
+};
 
 load();
 </script>
