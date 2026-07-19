@@ -294,6 +294,17 @@ export const INTRADAY_DEFAULTS = {
   ivClampLo: 0.5,
   ivClampHi: 2.0,
   minIvObs: 20,
+  // Range-budget width conditioner (measured-first, default OFF). The gold
+  // calibration showed the cone runs TIGHT on quiet mornings (cold budget →
+  // med|z| high) and about right on busy ones — a vol-mean-reversion signature.
+  // When on, the whole day's σ is scaled by a PRE-REGISTERED factor from the
+  // causal budget bucket (session range-so-far ÷ its same-hour median): cold
+  // widens, hot slightly narrows. FIXED constants (not fitted) so this is a
+  // clean pre-registered hypothesis the A/B judges — NOT an in-sample fit. One
+  // pair's signal; must replicate cross-pair + OOS before it's believed.
+  budgetConditioner: false,
+  budgetColdMult: 1.15,   // range-so-far < 0.8× same-hour median → widen
+  budgetHotMult: 0.95,    // range-so-far > 1.25× → slightly narrow
 };
 
 // Day key (UTC midnight index) shared by the context and the iv conditioner.
@@ -386,9 +397,54 @@ export function buildIntradayContext(bars, opts = {}) {
   }
 
   const ivMult = o.ivConditioner ? _buildIvMult(o.ivByDate, o) : null;
+  const budgetMult = o.budgetConditioner ? _buildBudgetMult(bars, o) : null;
 
   return { bars, closes, sigma, drift, sigmaLive, driftLive, buckets, gCum, barSec,
-           events, evIdx, evR2Cum, evHour, ivMult, opts: o };
+           events, evIdx, evR2Cum, evHour, ivMult, budgetMult, opts: o };
+}
+
+// Causal range-budget σ multiplier per bar: for each bar, the session's range-
+// so-far (UTC day) ÷ the causal same-hour median of prior days' range-by-this-
+// hour → cold/normal/hot → a FIXED pre-registered multiplier. Float64Array of
+// length n, default 1 until enough same-hour history. Same expanding same-hour
+// climatology the tally's budget split uses.
+function _buildBudgetMult(bars, o) {
+  const n = bars.length;
+  const mult = new Float64Array(n).fill(1);
+  const dayKeyOf = j => Math.floor(bars[j].time / 86400);
+  const rangeFrac = new Float64Array(n);
+  const dayHourVal = new Map();                 // dayKey → Array(24) last rangeFrac at each hour
+  { let dk = null, hi = -Infinity, lo = Infinity, open = 0;
+    for (let j = 0; j < n; j++) {
+      const k = dayKeyOf(j);
+      if (k !== dk) { dk = k; hi = -Infinity; lo = Infinity; open = bars[j].open; dayHourVal.set(k, new Array(24).fill(null)); }
+      if (bars[j].high > hi) hi = bars[j].high;
+      if (bars[j].low < lo) lo = bars[j].low;
+      rangeFrac[j] = open > 0 ? (hi - lo) / open : 0;
+      dayHourVal.get(k)[new Date(bars[j].time * 1000).getUTCHours()] = rangeFrac[j];
+    } }
+  const hourHistory = Array.from({ length: 24 }, () => []);
+  const dayKeysSorted = [...dayHourVal.keys()].sort((a, b) => a - b);
+  let flushed = 0, curDay = null;
+  for (let j = 0; j < n; j++) {
+    const day = dayKeyOf(j), hr = new Date(bars[j].time * 1000).getUTCHours();
+    if (day !== curDay) {                        // flush completed prior days into the history
+      curDay = day;
+      while (flushed < dayKeysSorted.length && dayKeysSorted[flushed] < day) {
+        const vals = dayHourVal.get(dayKeysSorted[flushed]);
+        for (let h = 0; h < 24; h++) if (vals[h] != null) hourHistory[h].push(vals[h]);
+        flushed++;
+      }
+    }
+    const hist = hourHistory[hr];
+    if (hist.length >= 5 && rangeFrac[j] > 0) {
+      const s = [...hist].sort((a, b) => a - b);
+      const medv = s.length % 2 ? s[s.length >> 1] : (s[(s.length >> 1) - 1] + s[s.length >> 1]) / 2;
+      const ratio = medv > 0 ? rangeFrac[j] / medv : 1;
+      mult[j] = ratio < 0.8 ? o.budgetColdMult : ratio > 1.25 ? o.budgetHotMult : 1;
+    }
+  }
+  return mult;
 }
 
 // Is `t` inside any event's [ev - pre, ev + post] window? (events sorted asc)
@@ -469,16 +525,18 @@ function _stepSigmas(ctx, i, H) {
   const evM = useEvents ? eventMult(ctx, i) : 1;
   // Implied-vol width multiplier for the anchor's UTC day (causal, whole-day).
   const ivM = ctx.ivMult ? ctx.ivMult.get(_dayKeyOfSec(bars[i - 1].time)) : 1;
+  // Range-budget multiplier at the anchor bar (causal, whole-day).
+  const bgM = ctx.budgetMult ? (ctx.budgetMult[Math.min(i - 1, n - 1)] || 1) : 1;
   const times = [], sigs = [];
   let eventSteps = 0;
   for (let h = 1; h <= H; h++) {
     const t = _futureTime(ctx, i, h);
     times.push(t);
-    let s = sigBase * ivM * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
+    let s = sigBase * ivM * bgM * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
     if (useEvents && _nearEvent(events, t, opts.eventPre, opts.eventPost)) { s *= evM; eventSteps++; }
     sigs.push(s);
   }
-  return { sigBase, mu, times, sigs, eventMult: evM, ivMult: ivM, eventSteps };
+  return { sigBase, mu, times, sigs, eventMult: evM, ivMult: ivM, budgetMult: bgM, eventSteps };
 }
 
 // ── The intraday cone (2 ≤ i ≤ bars.length; i === n is the live edge) ────────
@@ -502,7 +560,7 @@ export function intradayCone(ctx, i, horizonBars) {
                  p75Up: center * Math.exp(Z75 * sd), p75Dn: center * Math.exp(-Z75 * sd) });
   }
   return { i, anchorTime: bars[i - 1].time, anchor, sigmaBar: ladder.sigBase, mu: ladder.mu,
-           eventMult: ladder.eventMult, ivMult: ladder.ivMult, eventSteps: ladder.eventSteps, steps };
+           eventMult: ladder.eventMult, ivMult: ladder.ivMult, budgetMult: ladder.budgetMult, eventSteps: ladder.eventSteps, steps };
 }
 
 // ── Intraday Monte-Carlo paths (seeded; wicks cosmetic, padded to the median

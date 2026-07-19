@@ -463,4 +463,33 @@ const m15 = syntheticM15(55);   // ~5280 bars
   ok(sa.elapsedHours >= 0, 'anchored: elapsed hours reported');
 }
 
+// 22) Budget conditioner: OFF = identity; ON scales σ by the causal bucket.
+{
+  const c0 = intradayCone(buildIntradayContext(m15), 3000, 16);
+  const cOff = intradayCone(buildIntradayContext(m15, { budgetConditioner: false }), 3000, 16);
+  ok(c0.steps[0].p75Up === cOff.steps[0].p75Up, 'budget conditioner OFF ⇒ no change');
+  ok((cOff.budgetMult ?? 1) === 1, 'budgetMult 1 when off');
+  const ctxB = buildIntradayContext(m15, { budgetConditioner: true, budgetColdMult: 1.3, budgetHotMult: 0.8 });
+  // Find an anchor whose budget bucket is non-neutral (mult != 1) and check the
+  // cone width scales by exactly that mult vs the unconditioned cone.
+  let found = false;
+  for (let i = 1500; i < m15.length && !found; i += 7) {
+    const cb = intradayCone(ctxB, i, 8);
+    if (cb && Math.abs((cb.budgetMult ?? 1) - 1) > 1e-9) {
+      const base = intradayCone(buildIntradayContext(m15), i, 8);
+      const wOn = Math.log(cb.steps[7].p75Up / cb.steps[7].center);
+      const wOff = Math.log(base.steps[7].p75Up / base.steps[7].center);
+      ok(Math.abs(wOn / wOff - cb.budgetMult) < 1e-6, `cone width scales by budgetMult (${cb.budgetMult.toFixed(2)})`);
+      found = true;
+    }
+  }
+  ok(found, 'a non-neutral budget bucket exists in the sample');
+  // No lookahead: future bars don't change the anchor's budget mult.
+  const iM = 3000;
+  const a = intradayCone(buildIntradayContext(m15, { budgetConditioner: true }), iM, 8);
+  const mut = m15.map((b, k) => k >= iM ? { ...b, high: b.high * 1.05, low: b.low * 0.95 } : b);
+  const bmut = intradayCone(buildIntradayContext(mut, { budgetConditioner: true }), iM, 8);
+  ok(Math.abs((a.budgetMult ?? 1) - (bmut.budgetMult ?? 1)) < 1e-9, 'budget conditioner: no lookahead');
+}
+
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);
