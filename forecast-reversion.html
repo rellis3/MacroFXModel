@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecast Reversion — Vol Forecast v2</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #0b0d14; --panel: #12141d; --border: #23262f;
+    --text: #e5e7eb; --text2: #9ca3af; --text3: #6b7280;
+    --blue: #3b82f6; --blue-bg: rgba(59,130,246,.12);
+    --green: #22c55e; --red: #ef4444; --grey: #9ca3af;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .bar h1 { font-size: 14px; font-weight: 600; margin: 0 8px 0 0; letter-spacing: .3px; }
+  .bar label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-right: 3px; }
+  select, input[type="date"], input[type="number"] {
+    background: #0c0e15; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: 'DM Mono', monospace;
+  }
+  input[type="number"] { width: 64px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .seg button { background: none; border: none; color: var(--text2); padding: 4px 10px;
+    font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; }
+  .seg button.on { background: var(--blue-bg); color: var(--blue); }
+  .go { background: var(--blue); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .go:disabled { opacity: .5; cursor: not-allowed; }
+  .ghost { background: none; color: var(--text2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; }
+  .ghost:hover { color: var(--text); border-color: var(--text3); }
+  .status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+  .a2 { text-decoration: none; }
+  /* Honest framing banner */
+  .note { font-size: 10.5px; color: #d1a35a; background: rgba(209,163,90,.08);
+    border-bottom: 1px solid var(--border); padding: 5px 14px; font-family: 'DM Mono', monospace; }
+  /* Arm chips (per-line on/off) + legend */
+  .arm { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 14px;
+    border-bottom: 1px solid var(--border); background: var(--panel); }
+  .arm .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-right: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;
+    font-size: 10.5px; font-family: 'DM Mono', monospace; color: var(--text3);
+    border: 1px solid var(--border); border-radius: 20px; padding: 2px 9px; background: #0c0e15;
+    opacity: .45; transition: opacity .12s, border-color .12s; }
+  .chip.on { opacity: 1; color: var(--text); border-color: var(--text3); }
+  .chip i { width: 15px; height: 0; border-top-width: 2px; display: inline-block; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-left: auto; font-size: 10px;
+    color: var(--text2); font-family: 'DM Mono', monospace; align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 14px; height: 12px; display: inline-block; }
+  #chartWrap { position: relative; flex: 1; min-height: 0; }
+  #chart { position: absolute; inset: 0; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; }
+  #hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color: var(--text3); font-size: 13px; font-family: 'DM Mono', monospace; text-align:center; padding: 20px; }
+  /* Stats panel */
+  #stats { position: absolute; top: 8px; right: 8px; z-index: 5; width: 320px; max-height: calc(100% - 16px);
+    overflow: auto; background: rgba(12,14,21,.94); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-family: 'DM Mono', monospace; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+  #stats.hidden { display: none; }
+  #stats h3 { font-size: 10px; margin: 0 0 6px; color: var(--text2); text-transform: uppercase; letter-spacing: .6px;
+    display: flex; align-items: center; gap: 6px; }
+  #stats h3 .calcTag { margin-left: auto; color: var(--blue); }
+  table.st { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.st th { color: var(--text3); font-weight: 500; text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--border); }
+  table.st th:first-child { text-align: left; }
+  table.st td { text-align: right; padding: 3px 4px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text2); }
+  table.st td:first-child { text-align: left; }
+  table.st tr.tot td { border-top: 1px solid var(--border); color: var(--text); font-weight: 600; padding-top: 5px; }
+  table.st tr.off td { opacity: .32; }
+  .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  .st-empty { font-size: 10px; color: var(--text3); padding: 6px 2px; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h1>📈 Forecast Reversion</h1>
+    <label>Pair</label><select id="pair"></select>
+    <label>From</label><input type="date" id="from">
+    <label>To</label><input type="date" id="to">
+    <label>TF</label>
+    <div class="seg" id="tf">
+      <button data-g="M15" class="on">15m</button>
+      <button data-g="M30">30m</button>
+      <button data-g="H1">1h</button>
+    </div>
+    <label>Calc</label>
+    <div class="seg" id="calc">
+      <button data-c="original" class="on">Original</button>
+      <button data-c="cog">COG</button>
+    </div>
+    <label>Source</label>
+    <div class="seg" id="src">
+      <button data-s="backtest" class="on">Backtest</button>
+      <button data-s="archive">Archive</button>
+    </div>
+    <label>Cost %</label><input type="number" id="cost" value="0.010" step="0.001" min="0" title="Round-trip friction (spread+commission) as % of price, netted off every trade.">
+    <button class="go" id="go">Generate</button>
+    <button class="ghost" id="statsBtn" title="Show / hide the reversion tally">Stats</button>
+    <a class="a2" href="forecast-replay.html"><button class="ghost" title="Open the plain Replay view (forecast lines vs realized H/L, no trades)">↩ Replay</button></a>
+    <span class="status" id="status"></span>
+  </div>
+  <div class="note">
+    Visual reversion tally: every time price touches an <b>armed</b> line we fade it, target the adjacent inner band (innermost → the open), stop symmetric. The win/loss count is an <b>in-sample</b> result, <b>not evidence of edge</b> — the real test is the OOS harness. Fading extremes is folklore; the default prior is null.
+  </div>
+  <div class="arm" id="arm">
+    <span class="lbl">Lines</span>
+    <span id="chips" style="display:inline-flex;gap:6px;flex-wrap:wrap"></span>
+    <button class="ghost" id="armAll" style="padding:2px 8px">all</button>
+    <button class="ghost" id="armNone" style="padding:2px 8px">none</button>
+    <div class="legend">
+      <span><i style="background:linear-gradient(90deg,transparent 40%,#e5e7eb 40%,#e5e7eb 60%,transparent 60%)"></i>Realized H/L</span>
+      <span><i style="position:relative"><svg width="14" height="12"><polygon points="2,3 12,3 7,10" fill="#22c55e"/></svg></i>win</span>
+      <span><i><svg width="14" height="12"><polygon points="2,3 12,3 7,10" fill="#ef4444"/></svg></i>loss</span>
+      <span><i><svg width="14" height="12"><polygon points="2,3 12,3 7,10" fill="#9ca3af"/></svg></i>expired</span>
+    </div>
+  </div>
+  <div id="chartWrap">
+    <div id="chart"></div>
+    <canvas id="overlay"></canvas>
+    <div id="stats" class="hidden"></div>
+    <div id="hint">Pick a pair and date range, then Generate.<br>Arm the lines you want to fade; each touch draws the reversion trade (entry ▸ exit) and tallies win / loss / expired.</div>
+  </div>
+
+<script type="module">
+// Cache-bust the brick import so a stale cached module (missing a new export)
+// can't silently break the page after a deploy.
+import { LADDER_LINES, reversionTrades, tallyTrades } from './js/reversionLadder.js?v=1';
+
+const OANDA_SYM = {
+  eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
+  gbpjpy:'GBP/JPY', audusd:'AUD/USD', usdcad:'USD/CAD', usdchf:'USD/CHF',
+  nzdusd:'NZD/USD', eurgbp:'EUR/GBP', euraud:'EUR/AUD', eurchf:'EUR/CHF',
+  eurcad:'EUR/CAD', eurnzd:'EUR/NZD', gbpaud:'GBP/AUD', gbpchf:'GBP/CHF',
+  gbpcad:'GBP/CAD', gbpnzd:'GBP/NZD', audjpy:'AUD/JPY', audnzd:'AUD/NZD',
+  audcad:'AUD/CAD', audchf:'AUD/CHF', nzdjpy:'NZD/JPY', cadjpy:'CAD/JPY',
+  chfjpy:'CHF/JPY', gold:'XAU/USD',
+  nq:'NAS100_USD', spx500:'SPX500_USD', us30:'US30_USD',
+  us2000:'US2000_USD', uk100:'UK100_GBP', de30:'DE30_EUR',
+};
+function priceFmt(name) {
+  const n = (name || '').toLowerCase();
+  if (n === 'gold' || n.startsWith('xau')) return { precision: 2, minMove: 0.01 };
+  if (['nq','spx500','us30','us2000','uk100','de30'].includes(n)) return { precision: 1, minMove: 0.1 };
+  if (n.endsWith('jpy')) return { precision: 3, minMove: 0.001 };
+  return { precision: 5, minMove: 0.00001 };
+}
+
+// COG's reverse-engineered constants — identical to forecast-replay / vol-forecast-v2.
+const COG_C = { hl50: 1.56, hl75: 1.93, oc50: 0.74, oc75: 1.24 };
+const COG_SQRT252 = Math.sqrt(252);
+const _REPLAY_CCHV = new Set(['nq']);
+const $ = id => document.getElementById(id);
+function calcMode() { return $('calc').querySelector('button.on')?.dataset.c || 'original'; }
+function srcMode()  { return $('src').querySelector('button.on')?.dataset.s || 'backtest'; }
+function tfGran()   { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
+function setStatus(t) { $('status').textContent = t; }
+
+// Band %s a day should use: archived fields (Original) or COG constants × that
+// day's vol_annual (COG). Returns {hl_median,hl_75,oc_median,oc_75} or null.
+function bandsFor(f) {
+  if (!f) return null;
+  if (calcMode() === 'cog') {
+    const name = ($('pair').value || '').toLowerCase();
+    let va = f.vol_annual;
+    if (_REPLAY_CCHV.has(name) && f.cchv_annual > 4 && f.cchv_annual < 200) va = f.cchv_annual;
+    if (!(va > 0)) return null;
+    const s = va / COG_SQRT252;
+    return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
+  }
+  return { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 };
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false };
+let _meta = null;
+let chart = null, series = null, overlayCanvas = null, octx = null;
+let days = [];        // [{ date, open, high, low, close, tStart, tEnd, bars:[], f, trades:[] }]
+let dpr = window.devicePixelRatio || 1;
+
+// ── UI setup ─────────────────────────────────────────────────────────────────
+(function initUI() {
+  const sel = $('pair');
+  for (const k of Object.keys(OANDA_SYM)) {
+    const o = document.createElement('option'); o.value = k; o.textContent = k.toUpperCase(); sel.appendChild(o);
+  }
+  const now = new Date();
+  const iso = d => d.toISOString().slice(0, 10);
+  $('to').value   = iso(now);
+  $('from').value = iso(new Date(now.getTime() - 14 * 864e5));
+
+  // Per-line arm chips
+  const wrap = $('chips');
+  for (const L of LADDER_LINES) {
+    const c = document.createElement('span');
+    c.className = 'chip on'; c.dataset.key = L.key;
+    c.innerHTML = `<i style="border-top-style:${L.dash[0] > 3 ? 'dashed' : 'dotted'};border-top-color:${L.color}"></i>${L.label}`;
+    c.addEventListener('click', () => {
+      if (state.armed.has(L.key)) state.armed.delete(L.key); else state.armed.add(L.key);
+      c.classList.toggle('on', state.armed.has(L.key));
+      recomputeAndDraw();
+    });
+    wrap.appendChild(c);
+  }
+  const setAll = on => {
+    state.armed = new Set(on ? LADDER_LINES.map(l => l.key) : []);
+    wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', state.armed.has(c.dataset.key)));
+    recomputeAndDraw();
+  };
+  $('armAll').addEventListener('click', () => setAll(true));
+  $('armNone').addEventListener('click', () => setAll(false));
+
+  $('tf').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('tf').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+  // Calc toggle changes the bands → recompute trades + redraw (no candle refetch).
+  $('calc').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('calc').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    recomputeAndDraw();
+    if (days.length) updateStatus();
+  });
+  // Source toggle changes the underlying forecast → refetch if already loaded.
+  $('src').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
+    $('src').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (_meta) loadData();
+  });
+  $('cost').addEventListener('change', recomputeAndDraw);
+  $('go').addEventListener('click', loadData);
+  $('statsBtn').addEventListener('click', () => {
+    state.showStats = !state.showStats;
+    $('stats').classList.toggle('hidden', !state.showStats);
+  });
+})();
+
+function updateStatus() {
+  if (!_meta) return;
+  const calc = calcMode() === 'cog' ? 'COG' : 'Original';
+  const srcLbl = _meta.src === 'backtest' ? 'Backtest' : 'Archive';
+  setStatus(`${_meta.name.toUpperCase()} · ${_meta.gran} · ${calc} · ${srcLbl} · ${_meta.candles} candles · ${_meta.sessions} sessions (${_meta.withFc} with forecast)`);
+}
+
+function ensureChart(name) {
+  if (chart) { try { chart.remove(); } catch (_) {} chart = null; }
+  const el = $('chart'); el.innerHTML = '';
+  chart = LightweightCharts.createChart(el, {
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9ca3af', fontSize: 11, fontFamily: "'DM Mono', monospace" },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    timeScale: { borderColor: 'rgba(255,255,255,0.12)', timeVisible: true, secondsVisible: false, rightOffset: 6 },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.12)', scaleMargins: { top: 0.12, bottom: 0.12 } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale:  { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
+  });
+  const pf = priceFmt(name);
+  series = chart.addCandlestickSeries({
+    upColor: '#26a69a', downColor: '#ef5350', borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+    wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    priceFormat: { type: 'price', precision: pf.precision, minMove: pf.minMove },
+  });
+  chart.timeScale().subscribeVisibleTimeRangeChange(scheduleDraw);
+}
+
+function setupOverlay() {
+  overlayCanvas = $('overlay');
+  octx = overlayCanvas.getContext('2d');
+  const ro = new ResizeObserver(() => { sizeOverlay(); scheduleDraw(); });
+  ro.observe($('chartWrap'));
+  sizeOverlay();
+  requestAnimationFrame(syncLoop);
+}
+function sizeOverlay() {
+  const w = $('chartWrap').clientWidth, h = $('chartWrap').clientHeight;
+  dpr = window.devicePixelRatio || 1;
+  overlayCanvas.width = w * dpr; overlayCanvas.height = h * dpr;
+  overlayCanvas.style.width = w + 'px'; overlayCanvas.style.height = h + 'px';
+}
+let _lastSig = '';
+function syncLoop() {
+  if (chart && series && days.length) {
+    const r = chart.timeScale().getVisibleLogicalRange();
+    const refY = days[0] ? series.priceToCoordinate(days[0].open) : null;
+    const sig = r ? `${r.from.toFixed(2)}_${r.to.toFixed(2)}_${refY}` : 'x';
+    if (sig !== _lastSig) { _lastSig = sig; drawOverlay(); }
+  }
+  requestAnimationFrame(syncLoop);
+}
+let _drawPending = false;
+function scheduleDraw() { if (!_drawPending) { _drawPending = true; requestAnimationFrame(() => { _drawPending = false; _lastSig = ''; drawOverlay(); }); } }
+
+// ── Data load ────────────────────────────────────────────────────────────────
+async function loadData() {
+  const name = $('pair').value;
+  const sym  = OANDA_SYM[name];
+  const from = $('from').value, to = $('to').value;
+  const gran = tfGran();
+  if (!sym || !from || !to) { setStatus('pick pair + dates'); return; }
+  const src = srcMode();
+  const fcUrl = src === 'backtest'
+    ? `/api/vol-forecast/backtest-range?symbol=${encodeURIComponent(sym)}&pair=${encodeURIComponent(name)}&from=${from}&to=${to}`
+    : `/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`;
+  $('go').disabled = true; setStatus(src === 'backtest' ? 'generating forecasts…' : 'loading…'); $('hint').style.display = 'none';
+  try {
+    const [candlesRes, fcRes] = await Promise.all([
+      fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&granularity=${gran}`).then(r => r.json()),
+      fetch(fcUrl).then(r => r.json()),
+    ]);
+    if (candlesRes.error || !candlesRes.values?.length) { setStatus(candlesRes.error || 'no candles for that range'); $('go').disabled = false; return; }
+    const fcDays = fcRes?.ok ? (fcRes.days || {}) : {};
+    buildDays(candlesRes.values, fcDays);
+    ensureChart(name);
+    if (!overlayCanvas) setupOverlay();
+    const cdata = candlesRes.values.map(c => ({
+      time: Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open: +c.open, high: +c.high, low: +c.low, close: +c.close,
+    })).filter(b => b.open && !isNaN(b.time));
+    series.setData(cdata);
+    chart.timeScale().fitContent();
+    sizeOverlay();
+    _meta = { name, gran, src, candles: cdata.length, sessions: days.length, withFc: days.filter(d => d.f).length };
+    updateStatus();
+    computeTrades();
+    scheduleDraw();
+    renderStats();
+  } catch (e) {
+    setStatus('error: ' + e.message);
+  } finally {
+    $('go').disabled = false;
+  }
+}
+
+// Group candles by day; keep that day's intraday bars + attach its forecast.
+function buildDays(values, fcDays) {
+  const byDate = new Map();
+  for (const c of values) {
+    const date = c.datetime.slice(0, 10);
+    const t = Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000);
+    let d = byDate.get(date);
+    if (!d) { d = { date, open: +c.open, high: -Infinity, low: Infinity, close: +c.close, tStart: t, tEnd: t, bars: [] }; byDate.set(date, d); }
+    d.high = Math.max(d.high, +c.high);
+    d.low  = Math.min(d.low, +c.low);
+    d.close = +c.close;
+    d.tEnd = t;
+    d.bars.push({ time: t, open: +c.open, high: +c.high, low: +c.low, close: +c.close });
+  }
+  days = [...byDate.values()].sort((a, b) => a.tStart - b.tStart).map(d => ({ ...d, f: fcDays[d.date] || null, trades: [] }));
+}
+
+// Run the reversion brick per day for the currently-armed lines + cost.
+function computeTrades() {
+  const costPct = Math.max(0, +$('cost').value || 0);
+  for (const d of days) {
+    d.trades = (d.f && d.bars.length) ? reversionTrades(d.open, d.bars, bandsFor(d.f), { armed: state.armed, costPct }) : [];
+  }
+}
+function recomputeAndDraw() {
+  if (!days.length) return;
+  computeTrades();
+  scheduleDraw();
+  renderStats();
+}
+
+// ── Overlay draw ─────────────────────────────────────────────────────────────
+function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+const OUTCOME_COLOR = { win: '#22c55e', loss: '#ef4444', expired: '#9ca3af' };
+
+function drawOverlay() {
+  if (!octx || !chart || !series) return;
+  const ts = chart.timeScale();
+  octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  octx.font = "13px 'DM Mono', monospace";
+  octx.textBaseline = 'middle';
+  const pf = priceFmt($('pair').value);
+
+  for (const d of days) {
+    const x1 = ts.timeToCoordinate(d.tStart);
+    const x2 = ts.timeToCoordinate(d.tEnd);
+    if (x1 == null && x2 == null) continue;
+    const xa = x1 == null ? 0 : x1;
+    const xb = x2 == null ? overlayCanvas.width / dpr : x2;
+    if (xb < 0 || xa > overlayCanvas.width / dpr) continue;
+    const wide = (xb - xa) > 54;
+    const labelX = Math.min(xb, overlayCanvas.width / dpr - 4);
+
+    const line = (price, color, dash, text, solid, alpha) => {
+      const y = series.priceToCoordinate(price);
+      if (y == null) return;
+      octx.save();
+      octx.strokeStyle = color;
+      octx.lineWidth = solid ? 1.4 : 1;
+      octx.setLineDash(solid ? [] : dash);
+      octx.globalAlpha = alpha != null ? alpha : (solid ? 0.95 : 0.7);
+      octx.beginPath(); octx.moveTo(xa, y); octx.lineTo(xb, y); octx.stroke();
+      if (wide && text) {
+        octx.setLineDash([]); octx.globalAlpha = 1; octx.fillStyle = color;
+        octx.textAlign = 'right'; octx.fillText(text, labelX, y - 8);
+      }
+      octx.restore();
+    };
+
+    // Open (grey)
+    line(d.open, '#8b93a1', [4,4], wide ? 'Open ' + d.open.toFixed(pf.precision) : '', false, 0.6);
+
+    // Forecast lines — dimmer here than in Replay so the trades read on top. Only
+    // draw a line for a currently-armed level (the ones that can produce a trade).
+    const bands = bandsFor(d.f);
+    if (bands) {
+      for (const L of LADDER_LINES) {
+        if (!state.armed.has(L.key)) continue;
+        const pct = bands[L.band];
+        if (pct == null || !(pct > 0)) continue;
+        const price = d.open * (1 + L.side * pct / 100);
+        line(price, L.color, L.dash, '', false, 0.34);
+      }
+    }
+
+    // Realized High / Low (white, solid)
+    const hiPct = (d.high - d.open) / d.open * 100;
+    const loPct = (d.low - d.open) / d.open * 100;
+    line(d.high, '#e5e7eb', [], wide ? `High ${fmtPct(hiPct)}` : '', true);
+    line(d.low,  '#e5e7eb', [], wide ? `Low ${fmtPct(loPct)}` : '', true);
+
+    // Reversion trades: entry ▸ exit segment + a direction triangle at entry.
+    for (const tr of d.trades) drawTrade(ts, tr, pf);
+  }
+}
+
+function drawTrade(ts, tr, pf) {
+  const color = OUTCOME_COLOR[tr.outcome] || '#9ca3af';
+  const xE = ts.timeToCoordinate(tr.entryTime);
+  const yE = series.priceToCoordinate(tr.entry);
+  if (xE == null || yE == null) return;
+  const xX = tr.exitTime != null ? ts.timeToCoordinate(tr.exitTime) : null;
+  const yX = series.priceToCoordinate(tr.exitPrice);
+  octx.save();
+  // entry ▸ exit result segment
+  if (xX != null && yX != null) {
+    octx.strokeStyle = color; octx.globalAlpha = 0.8; octx.lineWidth = 1.4;
+    octx.setLineDash([]); octx.beginPath(); octx.moveTo(xE, yE); octx.lineTo(xX, yX); octx.stroke();
+    // small exit dot
+    octx.globalAlpha = 0.9; octx.fillStyle = color;
+    octx.beginPath(); octx.arc(xX, yX, 2.4, 0, Math.PI * 2); octx.fill();
+  }
+  // entry triangle — points the way the fade expects price to go (SELL ▼, BUY ▲)
+  const s = 5, down = tr.side === 'SELL';
+  octx.globalAlpha = 0.98; octx.fillStyle = color; octx.beginPath();
+  if (down) { octx.moveTo(xE - s, yE - s); octx.lineTo(xE + s, yE - s); octx.lineTo(xE, yE + s); }
+  else      { octx.moveTo(xE - s, yE + s); octx.lineTo(xE + s, yE + s); octx.lineTo(xE, yE - s); }
+  octx.closePath(); octx.fill();
+  octx.restore();
+}
+
+// ── Stats panel ──────────────────────────────────────────────────────────────
+function renderStats() {
+  const el = $('stats');
+  if (!state.showStats) return;
+  if (!days.length) { el.innerHTML = '<div class="st-empty">Generate a range to see the tally.</div>'; return; }
+  const all = days.flatMap(d => d.trades);
+  const { byKey, total } = tallyTrades(all);
+  const calc = calcMode() === 'cog' ? 'COG' : 'Original';
+  const rows = LADDER_LINES.map(L => {
+    const s = byKey[L.key];
+    const armed = state.armed.has(L.key);
+    if (!s) {
+      return `<tr class="${armed ? '' : 'off'}"><td><span class="sw" style="background:${L.color}"></span>${L.label}</td><td>0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;
+    }
+    const wr = (s.winRate * 100).toFixed(0);
+    const net = s.netPct;
+    return `<tr class="${armed ? '' : 'off'}"><td><span class="sw" style="background:${L.color}"></span>${L.label}</td>`
+      + `<td>${s.n}</td><td>${s.wins}</td><td>${s.losses}</td><td>${s.expired}</td>`
+      + `<td>${wr}%</td><td class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td></tr>`;
+  }).join('');
+  const twr = (total.winRate * 100).toFixed(0);
+  el.innerHTML = `<h3>Reversion tally <span class="calcTag">${calc}</span></h3>`
+    + `<table class="st"><thead><tr><th>Line</th><th>N</th><th>W</th><th>L</th><th>Exp</th><th>Win%</th><th>ΣNet%</th></tr></thead>`
+    + `<tbody>${rows}`
+    + `<tr class="tot"><td>TOTAL</td><td>${total.n}</td><td>${total.wins}</td><td>${total.losses}</td><td>${total.expired}</td>`
+    + `<td>${total.n ? twr + '%' : '—'}</td><td class="${total.netPct >= 0 ? 'pos' : 'neg'}">${total.netPct >= 0 ? '+' : ''}${total.netPct.toFixed(2)}</td></tr>`
+    + `</tbody></table>`
+    + `<div class="st-empty">N = touches (1 per line per session). ΣNet% sums per-trade % after cost — a rough cumulative for eyeballing, not compounded equity. In-sample.</div>`;
+}
+
+window.addEventListener('resize', () => { sizeOverlay(); scheduleDraw(); });
+</script>
+</body>
+</html>

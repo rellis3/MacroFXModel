@@ -528,6 +528,14 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 
 ---
 
+### 1t. Reversion-ladder brick (2026-07-19) — visual fade-the-band tally
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Reversion ladder** | `js/reversionLadder.js` | the "fade a vol-forecast line, target the level below it" spec + resolver, as a VISUAL/DIAGNOSTIC brick (not an edge claim — the tally it makes is in-sample; fading extremes is folklore, default prior null). `LADDER_LINES` (the 8 forecast lines — H/C±/L × med/p75 — single definition shared with the overlay), `ladderLevels(open, pcts)` (the 8 line prices off the open from a `{hl_median,hl_75,oc_median,oc_75}` PERCENT object — calc-agnostic, fed by the page's Original/COG toggle — with each line's reversion **target = the adjacent inner band on the same side, innermost → the open**), `reversionTrades(open, bars, pcts, {armed,costPct})` (fade the touched line: SELL an up-line / BUY a down-line on first touch, target the inner band, **stop symmetric** (1:1 on distance, further from open), resolved by the **shared `walkBars` fill walker imported from `forecastCore.js` — never copied**: SL-first, TP not booked on the limit fill bar, a candle straddling both = LOSS, unresolved marks to session close; walkBars labels a positive mark-to-close as `'win'`, so the brick re-classifies by the exact entry→target distance to split a true target-hit from an `'expired'` drift), `tallyTrades` (per-line + total: touches/wins/losses/expired/win%/ΣNet%). Pure, no DOM/network. Tested `js/reversionLadder.test.mjs` (21 asserts: target ladder + innermost→open, symmetric stop, win/loss/straddle=loss/expired/no-touch both directions, cost netting, tally, armed=null fires all 8). | `forecast-reversion.html` (client-side copy of the Replay page as a `<script type="module">`: per-line arm chips, on-chart entry ▸ exit trade markers coloured win/loss/expired, a live per-line tally split by calc, costs-on by default; reuses `/api/ohlc-range` + `/api/vol-forecast/{backtest-range,archive/range}` — **no server change**); linked from `vol-forecast-v2.html` (next to 📊 Replay) + `index.html` (quick-hub + sitemap) | ✅ built — visual instrument, **not** validated for edge (in-sample by construction; OOS harness is the real test) |
+
+---
+
 ### 1r. Trend-following v2 — forecast-σ sizing A/B + Sharpe honesty (2026-07-17)
 
 | Brick | File | Owns | Consumers | Status |
