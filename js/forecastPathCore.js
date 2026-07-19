@@ -493,6 +493,113 @@ export function intradaySamplePaths(ctx, i, horizonBars, opts = {}) {
   return { paths, consensus };
 }
 
+// ── Target reachability — will price TOUCH this level within H bars? ─────────
+// The "price" primitive: hand it a target level + a hold window, get the
+// calibrated probability price trades through it and the typical time to do so.
+// Monte-Carlo first-passage from the cone's OWN claim (same per-step drift + σ
+// ladder as intradayCone/samplePaths), using each simulated bar's intrabar
+// high/low (padded to the causal median prior-bar range — a wick touch counts,
+// which is the honest "did price reach my TP/SL" test). Deterministic (seeded).
+//
+// nPaths defaults higher than the cosmetic path viewer (a probability wants
+// resolution). Returns:
+//   pTouch          fraction of paths whose high/low crossed the target ≤ H
+//   medBarsToTouch  median first-touch step among touching paths (null if <½)
+//   side            'up' | 'down' (target above/below the anchor)
+//   z               the target's cone-z at H (context; from intradayRealizedZ)
+// It inherits the cone's calibration: trustworthy to exactly the degree the
+// tally shows the envelopes hold (reachabilityCalibration grades it directly).
+export function intradayReachability(ctx, i, target, horizonBars, opts = {}) {
+  const o = { ...ctx.opts, nPaths: 400, ...opts };
+  const H = horizonBars ?? ctx.opts.horizonBars;
+  const ladder = _stepSigmas(ctx, i, H);
+  if (!ladder || !(target > 0)) return null;
+  const anchor = ctx.bars[i - 1].close;
+  if (target === anchor) return { pTouch: 1, medBarsToTouch: 0, side: 'flat', z: 0 };
+  const up = target > anchor;
+
+  // Causal median prior-bar range → intrabar wick budget (same as samplePaths).
+  const ranges = [];
+  for (let k = Math.max(0, i - 97); k < i - 1; k++) ranges.push(ctx.bars[k].high - ctx.bars[k].low);
+  ranges.sort((a, b) => a - b);
+  const medRange = ranges.length ? ranges[ranges.length >> 1] : 0;
+
+  const rng = mulberry32(o.seed);
+  let touched = 0;
+  const touchBar = [];
+  for (let p = 0; p < o.nPaths; p++) {
+    let prev = anchor, hit = 0;
+    for (let k = 0; k < H; k++) {
+      const close = prev * Math.exp(ladder.mu + ladder.sigs[k] * gauss(rng));
+      const bodyHi = Math.max(prev, close), bodyLo = Math.min(prev, close);
+      const pad = Math.max(0, medRange - (bodyHi - bodyLo));
+      const u = rng();
+      const hi = bodyHi + pad * u, lo = bodyLo - pad * (1 - u);
+      if ((up && hi >= target) || (!up && lo <= target)) { hit = k + 1; break; }
+      prev = close;
+    }
+    if (hit) { touched++; touchBar.push(hit); }
+  }
+  const pTouch = touched / o.nPaths;
+  let medBarsToTouch = null;
+  if (touchBar.length >= o.nPaths / 2) {
+    touchBar.sort((a, b) => a - b);
+    const m = touchBar.length >> 1;
+    medBarsToTouch = touchBar.length % 2 ? touchBar[m] : (touchBar[m - 1] + touchBar[m]) / 2;
+  }
+  const zr = intradayRealizedZ(ctx, i, H, target);
+  return { pTouch, medBarsToTouch, side: up ? 'up' : 'down', z: zr ? zr.z : null };
+}
+
+// ── Reachability calibration — does a "70% reach" actually reach 70%? ────────
+// The falsification the primitive needs before it's believed. Over
+// non-overlapping windows, at a ladder of σ-scaled targets (both sides),
+// predict pTouch and record whether price ACTUALLY touched within H — then bin
+// by predicted decile and compare mean-predicted vs realized frequency (a
+// reliability curve). Well-calibrated ⇒ points sit on the diagonal. `gap` is
+// the mean |predicted − realized| across populated bins (lower = better).
+export function reachabilityCalibration(bars, opts = {}) {
+  const o = { ...INTRADAY_DEFAULTS, ...opts };
+  const ctx = buildIntradayContext(bars, o);
+  const H = o.horizonBars;
+  const n = bars.length;
+  const mults = o.targetMults ?? [0.5, 1.0, 1.5, 2.0];
+  const nPaths = o.calibPaths ?? 200;
+
+  const bins = Array.from({ length: 10 }, () => ({ sumP: 0, hit: 0, n: 0 }));
+  let total = 0;
+  for (let i = Math.max(o.warmupBars, 2); i + H <= n; i += H) {
+    const cone = intradayCone(ctx, i, H);
+    if (!cone) continue;
+    const anchor = cone.anchor;
+    // Per-window σ over the full horizon (from the cone's own P75 envelope).
+    const last = cone.steps[H - 1];
+    const sdH = Math.log(last.p75Up / last.center) / Z75;
+    if (!(sdH > 0)) continue;
+
+    // Realized intrabar extremes over the window (for the actual-touch test).
+    let hi = -Infinity, lo = Infinity;
+    for (let h = 1; h <= H; h++) { const b = bars[i + h - 1]; if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
+
+    for (const mu of mults) for (const sgn of [1, -1]) {
+      const target = anchor * Math.exp(sgn * mu * sdH);
+      const r = intradayReachability(ctx, i, target, H, { nPaths });
+      if (!r) continue;
+      const actual = sgn > 0 ? hi >= target : lo <= target;
+      const b = Math.min(9, Math.floor(r.pTouch * 10));
+      bins[b].sumP += r.pTouch; bins[b].hit += actual ? 1 : 0; bins[b].n++;
+      total++;
+    }
+  }
+  const curve = bins.map((b, k) => ({ bin: k / 10, n: b.n,
+    predicted: b.n ? b.sumP / b.n : null, realized: b.n ? b.hit / b.n : null }));
+  const populated = curve.filter(c => c.n >= 10);
+  const gap = populated.length
+    ? populated.reduce((s, c) => s + Math.abs(c.predicted - c.realized), 0) / populated.length : null;
+  return { horizonBars: H, nPredictions: total, curve, gap,
+           note: 'Predicted vs realized touch frequency, binned. Well-calibrated ⇒ predicted ≈ realized per bin (gap→0).' };
+}
+
 // Standard normal CDF (Abramowitz-Stegun 7.1.26 via erf approximation).
 export function normCdf(z) {
   const t = 1 / (1 + 0.2316419 * Math.abs(z));

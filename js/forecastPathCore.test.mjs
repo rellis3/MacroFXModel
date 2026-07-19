@@ -16,6 +16,7 @@ import {
   calibrationTally, nextWeekday, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally,
   profileMult, INTRADAY_DEFAULTS, intradayRealizedZ, normCdf, eventMult,
+  intradayReachability, reachabilityCalibration,
 } from './forecastPathCore.js';
 
 // ── Synthetic GBM daily bars (seeded) ────────────────────────────────────────
@@ -314,6 +315,43 @@ const m15 = syntheticM15(55);   // ~5280 bars
   const cA = intradayCone(buildIntradayContext(eb, { events, eventAware: true, ...evOpts }), iMut, 8);
   const cB = intradayCone(buildIntradayContext(mutated, { events, eventAware: true, ...evOpts }), iMut, 8);
   assert.deepEqual(cA.steps.map(s => [s.center, s.p75Up]), cB.steps.map(s => [s.center, s.p75Up]), 'event-aware cone: no lookahead'); passed++;
+}
+
+// 15) Target reachability: monotone in distance, deterministic, no lookahead.
+{
+  const ctx = buildIntradayContext(m15);
+  const i = 3000, H = 16;
+  const anchor = m15[i - 1].close;
+  const cone = intradayCone(ctx, i, H);
+  const sdH = Math.log(cone.steps[H - 1].p75Up / cone.steps[H - 1].center) / 1.1503494;
+
+  const near = intradayReachability(ctx, i, anchor * Math.exp(0.5 * sdH), H);
+  const far  = intradayReachability(ctx, i, anchor * Math.exp(2.5 * sdH), H);
+  ok(near.pTouch > far.pTouch, `nearer target more reachable (${near.pTouch.toFixed(2)} > ${far.pTouch.toFixed(2)})`);
+  ok(near.pTouch >= 0 && far.pTouch >= 0 && near.pTouch <= 1, 'pTouch in [0,1]');
+  ok(near.side === 'up' && intradayReachability(ctx, i, anchor * Math.exp(-sdH), H).side === 'down', 'side tag correct');
+  // A very close target (0.1σ) should touch most of the time (reflection ≈ 92%).
+  const close = intradayReachability(ctx, i, anchor * Math.exp(0.1 * sdH), H);
+  ok(close.pTouch > 0.6, `0.1σ target reached often (${close.pTouch.toFixed(2)})`);
+  // Deterministic (seeded).
+  const a = intradayReachability(ctx, i, anchor * 1.001, H);
+  const b = intradayReachability(ctx, i, anchor * 1.001, H);
+  ok(a.pTouch === b.pTouch && a.medBarsToTouch === b.medBarsToTouch, 'reachability deterministic');
+  // No lookahead: future bars can't change the estimate.
+  const mutated = m15.map((bb, k) => k >= i ? { ...bb, open: 9, high: 9.9, low: 8, close: 9.5 } : bb);
+  const cMut = intradayReachability(buildIntradayContext(mutated), i, anchor * 1.001, H);
+  ok(cMut.pTouch === a.pTouch, 'reachability no lookahead');
+}
+
+// 16) Reachability calibration: on well-specified GBM, predicted ≈ realized.
+{
+  const rc = reachabilityCalibration(m15, { horizonBars: 16, calibPaths: 120 });
+  ok(rc.nPredictions >= 200, `enough reachability predictions (${rc.nPredictions})`);
+  ok(rc.gap != null && rc.gap < 0.15, `reliability gap small on synthetic (${rc.gap?.toFixed(3)})`);
+  // The high-prob bins should realize high, low bins low (monotone reliability).
+  const lo = rc.curve.find(c => c.bin === 0 && c.n >= 10);
+  const hi = rc.curve.find(c => c.bin === 0.9 && c.n >= 10);
+  if (lo && hi) ok(hi.realized > lo.realized, `reliability monotone (${lo.realized?.toFixed(2)} → ${hi.realized?.toFixed(2)})`);
 }
 
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);
