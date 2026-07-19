@@ -359,7 +359,7 @@ the 6 live bots below have enough *live* trade history to clear the ≥30-OOS-tr
 floor (Gold 15, GoldV2 1, Confluence ~59 fragmented across 17 symbols, the rest
 0 logged) — replaying the real signal over years of M1 gets past that for free.
 
-**✅ Built — `pylego/barrier_race.py`** (+ `barrier_race_test.py`, 7 synthetic
+**✅ Built — `pylego/barrier_race.py`** (+ `barrier_race_test.py`, 9 synthetic
 cases, offline). The ONE shared barrier walker: given `bars` + a list of
 `Entry(idx, direction, entry_price=None)` + an SL/TP grid, walks the real
 forward path and returns win/SL/timeout rate + avg R, full precision (rounding
@@ -367,7 +367,14 @@ is a caller/display concern, not the core's — round once, at the edge). Pulled
 out of Layer 1's `run_window()` so a bot's signal replay shares the exact same
 walker instead of copying it (the bit-identical-port drift bug this whole doc
 exists to prevent). `cost_price` param takes a round-trip spread in price units,
-dragging every outcome by `cost_price / sl` R.
+dragging every outcome by `cost_price / sl` R. **Per-trade sibling (2026-07-19):**
+`race_trades(bars, entries, sl, tp_r, …)` returns one record per entry with its
+resolved exit (bar offset, price, outcome, R) for a SINGLE cell — the "draw each
+trade on the candles" view. The first-touch logic is now a shared `_first_touch`
+helper used by BOTH `race_grid` (tallies) and `race_trades` (keeps the exit), so
+the aggregate table and the visual audit can never disagree; `race_grid` was
+regression-checked bit-identical after the extraction (7/7 unchanged) and a test
+asserts `mean(race_trades.r) == race_grid.avg_r` on the same cell.
 
 **✅ Adopted — Layer 1** (`VolRangeForecaster/sltp_distribution.py`). Refactored
 to build `Entry` objects (both directions, same bar) and call `race_grid`
@@ -393,3 +400,26 @@ reconstruction vs. current-policy-on-history, cross-language zone replay, or an
 extraction/cost-model prerequisite) before its Layer 2 adapter is honest to
 build — none is a "just wire it up" afternoon task. Pick one blocker to resolve
 next rather than building a fragile approximation across all six at once.
+
+**✅ Audit viewer + over-time cut (2026-07-19) — `volatility_bot/layer2_audit_export.py`
++ `layer2-vol-audit.html`.** The pooled negative was disbelieved ("show me the
+trades on the candles"), so this exports, per pair: (1) a DETAIL window of
+resampled candles + every real entry inside it, each resolved by `race_trades`
+for EVERY grid cell (the viewer flips SL/TP and redraws the trades instantly,
+client-side); (2) the OVER-TIME cut the distribution brief asked for — full-
+history entries bucketed into 6-month periods, each scored by `race_grid`. The
+viewer (`layer2-vol-audit.html`, self-contained: loads the exported JSON, draws
+entry ▸ exit per trade coloured TP/SL/timeout on Lightweight-Charts, a pooled
+avg-R heatmap you click to pick a cell, and a per-period table) is linked from
+`sltp-distribution.html` + `index.html`. Ran gold + eurusd here (M1 + plan
+snapshot are in the sandbox; ~3 min/pair full replay). **Finding reinforces the
+null and explains it:** pooled best cell is negative on both (gold ‑0.03R,
+eurusd ‑0.07R); ~12/21 six-month periods show a positive *best* cell, but the
+winning cell **wanders all over the grid** every period (e.g. gold 2016H2 at
+0.75×/4R, 2022H1 at 1.25×/4R, 2026H1 at 0.5×/2R) — the textbook signature of
+in-sample noise, not a stable edge you could have traded. Trending regimes favour
+far TPs (tp_r 4), chop favours tight — i.e. no single fixed SL/TP fits, and the
+reversion framing (tight TP) is the wrong half in trends. Same current-policy-on-
+history + σ-proxy caveats as the replay apply; this is terrain, not a forward
+claim. Remaining pairs can be exported the same way (`--pair <name>`); only gold
++ eurusd shipped with the viewer.
