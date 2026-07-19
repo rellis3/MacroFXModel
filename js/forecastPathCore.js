@@ -294,6 +294,17 @@ export const INTRADAY_DEFAULTS = {
   ivClampLo: 0.5,
   ivClampHi: 2.0,
   minIvObs: 20,
+  // Range-budget width conditioner (measured-first, default OFF). The gold
+  // calibration showed the cone runs TIGHT on quiet mornings (cold budget →
+  // med|z| high) and about right on busy ones — a vol-mean-reversion signature.
+  // When on, the whole day's σ is scaled by a PRE-REGISTERED factor from the
+  // causal budget bucket (session range-so-far ÷ its same-hour median): cold
+  // widens, hot slightly narrows. FIXED constants (not fitted) so this is a
+  // clean pre-registered hypothesis the A/B judges — NOT an in-sample fit. One
+  // pair's signal; must replicate cross-pair + OOS before it's believed.
+  budgetConditioner: false,
+  budgetColdMult: 1.15,   // range-so-far < 0.8× same-hour median → widen
+  budgetHotMult: 0.95,    // range-so-far > 1.25× → slightly narrow
 };
 
 // Day key (UTC midnight index) shared by the context and the iv conditioner.
@@ -386,9 +397,54 @@ export function buildIntradayContext(bars, opts = {}) {
   }
 
   const ivMult = o.ivConditioner ? _buildIvMult(o.ivByDate, o) : null;
+  const budgetMult = o.budgetConditioner ? _buildBudgetMult(bars, o) : null;
 
   return { bars, closes, sigma, drift, sigmaLive, driftLive, buckets, gCum, barSec,
-           events, evIdx, evR2Cum, evHour, ivMult, opts: o };
+           events, evIdx, evR2Cum, evHour, ivMult, budgetMult, opts: o };
+}
+
+// Causal range-budget σ multiplier per bar: for each bar, the session's range-
+// so-far (UTC day) ÷ the causal same-hour median of prior days' range-by-this-
+// hour → cold/normal/hot → a FIXED pre-registered multiplier. Float64Array of
+// length n, default 1 until enough same-hour history. Same expanding same-hour
+// climatology the tally's budget split uses.
+function _buildBudgetMult(bars, o) {
+  const n = bars.length;
+  const mult = new Float64Array(n).fill(1);
+  const dayKeyOf = j => Math.floor(bars[j].time / 86400);
+  const rangeFrac = new Float64Array(n);
+  const dayHourVal = new Map();                 // dayKey → Array(24) last rangeFrac at each hour
+  { let dk = null, hi = -Infinity, lo = Infinity, open = 0;
+    for (let j = 0; j < n; j++) {
+      const k = dayKeyOf(j);
+      if (k !== dk) { dk = k; hi = -Infinity; lo = Infinity; open = bars[j].open; dayHourVal.set(k, new Array(24).fill(null)); }
+      if (bars[j].high > hi) hi = bars[j].high;
+      if (bars[j].low < lo) lo = bars[j].low;
+      rangeFrac[j] = open > 0 ? (hi - lo) / open : 0;
+      dayHourVal.get(k)[new Date(bars[j].time * 1000).getUTCHours()] = rangeFrac[j];
+    } }
+  const hourHistory = Array.from({ length: 24 }, () => []);
+  const dayKeysSorted = [...dayHourVal.keys()].sort((a, b) => a - b);
+  let flushed = 0, curDay = null;
+  for (let j = 0; j < n; j++) {
+    const day = dayKeyOf(j), hr = new Date(bars[j].time * 1000).getUTCHours();
+    if (day !== curDay) {                        // flush completed prior days into the history
+      curDay = day;
+      while (flushed < dayKeysSorted.length && dayKeysSorted[flushed] < day) {
+        const vals = dayHourVal.get(dayKeysSorted[flushed]);
+        for (let h = 0; h < 24; h++) if (vals[h] != null) hourHistory[h].push(vals[h]);
+        flushed++;
+      }
+    }
+    const hist = hourHistory[hr];
+    if (hist.length >= 5 && rangeFrac[j] > 0) {
+      const s = [...hist].sort((a, b) => a - b);
+      const medv = s.length % 2 ? s[s.length >> 1] : (s[(s.length >> 1) - 1] + s[s.length >> 1]) / 2;
+      const ratio = medv > 0 ? rangeFrac[j] / medv : 1;
+      mult[j] = ratio < 0.8 ? o.budgetColdMult : ratio > 1.25 ? o.budgetHotMult : 1;
+    }
+  }
+  return mult;
 }
 
 // Is `t` inside any event's [ev - pre, ev + post] window? (events sorted asc)
@@ -469,16 +525,18 @@ function _stepSigmas(ctx, i, H) {
   const evM = useEvents ? eventMult(ctx, i) : 1;
   // Implied-vol width multiplier for the anchor's UTC day (causal, whole-day).
   const ivM = ctx.ivMult ? ctx.ivMult.get(_dayKeyOfSec(bars[i - 1].time)) : 1;
+  // Range-budget multiplier at the anchor bar (causal, whole-day).
+  const bgM = ctx.budgetMult ? (ctx.budgetMult[Math.min(i - 1, n - 1)] || 1) : 1;
   const times = [], sigs = [];
   let eventSteps = 0;
   for (let h = 1; h <= H; h++) {
     const t = _futureTime(ctx, i, h);
     times.push(t);
-    let s = sigBase * ivM * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
+    let s = sigBase * ivM * bgM * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
     if (useEvents && _nearEvent(events, t, opts.eventPre, opts.eventPost)) { s *= evM; eventSteps++; }
     sigs.push(s);
   }
-  return { sigBase, mu, times, sigs, eventMult: evM, ivMult: ivM, eventSteps };
+  return { sigBase, mu, times, sigs, eventMult: evM, ivMult: ivM, budgetMult: bgM, eventSteps };
 }
 
 // ── The intraday cone (2 ≤ i ≤ bars.length; i === n is the live edge) ────────
@@ -502,7 +560,7 @@ export function intradayCone(ctx, i, horizonBars) {
                  p75Up: center * Math.exp(Z75 * sd), p75Dn: center * Math.exp(-Z75 * sd) });
   }
   return { i, anchorTime: bars[i - 1].time, anchor, sigmaBar: ladder.sigBase, mu: ladder.mu,
-           eventMult: ladder.eventMult, ivMult: ladder.ivMult, eventSteps: ladder.eventSteps, steps };
+           eventMult: ladder.eventMult, ivMult: ladder.ivMult, budgetMult: ladder.budgetMult, eventSteps: ladder.eventSteps, steps };
 }
 
 // ── Intraday Monte-Carlo paths (seeded; wicks cosmetic, padded to the median
@@ -660,9 +718,17 @@ export function reachabilityCalibration(bars, opts = {}) {
 // tend to expand" effect the gold calibration surfaced is stated in the verdict
 // but NOT predicted — this stays descriptive.
 //   bars: intraday [{time(sec),open,high,low,close}] spanning ≥ ~12 days.
-export function dayRangeStatus(bars) {
+//   opts.anchorHour: UTC hour the trading "day" starts (default 0 = UTC
+//     midnight, right for FX). Index/gold FUTURES trade an overnight session
+//     with a ~22:00 UTC break, so pass anchorHour:22 — the "day" then runs the
+//     real session (Sun-eve open through the daily break), completion is
+//     measured by ELAPSED time into the session (not UTC clock hour, which
+//     wraps past midnight), and the Sunday-open reading stops being nonsense.
+export function dayRangeStatus(bars, opts = {}) {
   if (!bars || bars.length < 96 * 8) return null;
-  const dayKey = t => Math.floor(t / 86400);
+  const anchorSec = ((opts.anchorHour ?? 0) % 24) * 3600;
+  const dayKey = t => Math.floor((t - anchorSec) / 86400);
+  const boundary = k => k * 86400 + anchorSec;         // session start (epoch sec)
   const byDay = new Map();
   for (let i = 0; i < bars.length; i++) {
     const k = dayKey(bars[i].time);
@@ -671,64 +737,67 @@ export function dayRangeStatus(bars) {
   const keys = [...byDay.keys()].sort((a, b) => a - b);
   if (keys.length < 10) return null;
 
-  const rangeSoFarThrough = (idx, hourCap) => {   // (max-min)/open using bars with hour ≤ cap; full day if cap=null
+  // Range (max-min)/open over a session's bars up to `capElapsed` seconds since
+  // the session boundary (null = whole session). Elapsed-based so it works past
+  // midnight for anchored futures sessions.
+  const rangeThrough = (idx, dk, capElapsed) => {
     const o = bars[idx[0]].open;
     if (!(o > 0)) return null;
+    const b0 = boundary(dk);
     let hi = -Infinity, lo = Infinity, any = false;
     for (const i of idx) {
-      if (hourCap != null && new Date(bars[i].time * 1000).getUTCHours() > hourCap) continue;
+      if (capElapsed != null && (bars[i].time - b0) > capElapsed) continue;
       if (bars[i].high > hi) hi = bars[i].high; if (bars[i].low < lo) lo = bars[i].low; any = true;
     }
     return any ? (hi - lo) / o : null;
   };
 
-  // Current (partial) day.
-  const curIdx = byDay.get(keys[keys.length - 1]);
-  const curFirst = new Date(bars[curIdx[0]].time * 1000);
-  const curHour = new Date(bars[curIdx[curIdx.length - 1]].time * 1000).getUTCHours();
-  const rangeSoFar = rangeSoFarThrough(curIdx, null);
+  // Current (partial) session.
+  const curKey = keys[keys.length - 1];
+  const curIdx = byDay.get(curKey);
+  const curElapsed = bars[curIdx[curIdx.length - 1]].time - boundary(curKey);
+  const displayHour = new Date(bars[curIdx[curIdx.length - 1]].time * 1000).getUTCHours();
+  const rangeSoFar = rangeThrough(curIdx, curKey, null);
   if (rangeSoFar == null) return null;
 
-  // Prior-day climatology (all completed days = causal). PAIR full & by-hour on
-  // the SAME days so median(by-hour) ≤ median(full) always holds (pointwise
-  // domination ⇒ quantile domination) — an unpaired version can print the
-  // impossible "range-by-hour > full-day range".
-  const fulls = [], soFarAtHour = [], completion = [];
+  // Prior-session climatology (completed sessions = causal). PAIR full & by-
+  // elapsed on the SAME sessions so median(by-elapsed) ≤ median(full) always
+  // holds (pointwise domination ⇒ quantile domination) — an unpaired version
+  // can print the impossible "range-so-far > full-session range".
+  const fulls = [], soFarAt = [], completion = [];
   for (let d = 0; d < keys.length - 1; d++) {
     const idx = byDay.get(keys[d]);
-    if (idx.length < 24) continue;                 // skip thin/holiday partial days
-    const full = rangeSoFarThrough(idx, null);
-    const sf = rangeSoFarThrough(idx, curHour);
-    if (full > 0 && sf != null) { fulls.push(full); soFarAtHour.push(sf); completion.push(sf / full); }
+    if (idx.length < 24) continue;                 // skip thin/holiday partial sessions
+    const full = rangeThrough(idx, keys[d], null);
+    const sf = rangeThrough(idx, keys[d], curElapsed);
+    if (full > 0 && sf != null) { fulls.push(full); soFarAt.push(sf); completion.push(sf / full); }
   }
   if (fulls.length < 8) return null;
   const med = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
   const pctile = (a, v) => a.length ? a.filter(x => x < v).length / a.length : null;
 
-  const medFull = med(fulls), medSoFar = med(soFarAtHour), medComp = med(completion);
-  const consumedPct = pctile(soFarAtHour, rangeSoFar);
-  const remainingTypical = Math.max(0, medFull - rangeSoFar);   // a typical day's range beyond what's printed
+  const medFull = med(fulls), medSoFar = med(soFarAt), medComp = med(completion);
+  const consumedPct = pctile(soFarAt, rangeSoFar);
+  const remainingTypical = Math.max(0, medFull - rangeSoFar);
 
-  // Reliability: this UTC-calendar-day climatology does NOT fit a 24h index
-  // future's overnight/weekend session. Flag (don't hide) the cases where the
-  // reading would mislead so the UI can caveat instead of printing confident
-  // nonsense. `reliable=false` reasons: weekend/session-open day, a thin
-  // current partial (few bars), or the day already ~complete by UTC measure.
-  const isWeekendOpen = curFirst.getUTCDay() === 0 || curFirst.getUTCDay() === 6;
+  // Reliability guard — flag (don't hide) readings that would mislead: a thin
+  // current partial (too early to judge), or a session already ~complete. With
+  // proper anchoring the weekend-open session is legitimate, so it's only
+  // flagged when it's genuinely thin.
   const thin = curIdx.length < 8;
   const dayEssentiallyDone = medComp >= 0.9;
-  const reliable = !isWeekendOpen && !thin && !dayEssentiallyDone;
-  const reason = isWeekendOpen ? 'weekend / session-open — the UTC-day climatology does not fit a 24h market\'s overnight session here'
-    : thin ? 'thin session so far (few bars) — too little of the day to judge'
-    : dayEssentiallyDone ? 'the trading day is normally complete by this hour (overnight futures run past the UTC day)'
+  const reliable = !thin && !dayEssentiallyDone;
+  const reason = thin ? 'thin session so far (few bars) — too little of the session to judge'
+    : dayEssentiallyDone ? 'the session is normally near-complete by this point'
     : null;
 
   return {
-    hour: curHour, nDays: fulls.length, barsToday: curIdx.length,
+    hour: displayHour, elapsedHours: +(curElapsed / 3600).toFixed(1), anchorHour: opts.anchorHour ?? 0,
+    nDays: fulls.length, barsToday: curIdx.length,
     rangeSoFarPct: +(rangeSoFar * 100).toFixed(3),
-    typicalSoFarPct: +(medSoFar * 100).toFixed(3),       // typical range traced by this hour
-    typicalFullPct: +(medFull * 100).toFixed(3),         // typical full-day range
-    completionPct: Math.round(medComp * 100),            // typically this % of the day's range is done by now
+    typicalSoFarPct: +(medSoFar * 100).toFixed(3),       // typical range traced by this point in the session
+    typicalFullPct: +(medFull * 100).toFixed(3),         // typical full-session range
+    completionPct: Math.round(medComp * 100),            // typically this % of the session's range is done by now
     consumedPercentile: consumedPct == null ? null : Math.round(consumedPct * 100),
     remainingTypicalPct: +(remainingTypical * 100).toFixed(3),
     reliable, reason,

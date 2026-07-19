@@ -206,6 +206,7 @@
       <button id="tNews" class="on">News</button>
       <button id="tEventCone" class="on" title="Widen the cone into scheduled-release windows (multiplier learned causally from this pair's history; A/B-graded in the calibration card)">Event σ</button>
       <button id="tImpliedCone" title="Scale the day's cone by implied vol (EVZ/GVZ/VIX) vs its own trailing baseline. Measured-first, default OFF — the A/B card shows whether it beats the realized σ already in the cone. EUR/USD, GOLD, indices only." style="display:none">Implied σ</button>
+      <button id="tBudgetCone" title="Widen the cone on quiet-so-far sessions, slightly narrow on busy ones (a pre-registered vol-mean-reversion hypothesis from the gold calibration). Measured-first, default OFF — the A/B card judges it.">Budget σ</button>
       <button id="tLevels">Levels</button>
       <button id="tBands">Day forecast</button>
       <button id="tTrail" class="on">Hindcast trail</button>
@@ -271,17 +272,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=12';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=12';
-import { bisect, resampleTo } from './js/barUtils.js?v=12';
-import { collectLevels } from './js/levelSources.js?v=12';
+import { createLevelChart } from './js/levelChart.js?v=14';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=14';
+import { bisect, resampleTo } from './js/barUtils.js?v=14';
+import { collectLevels } from './js/levelSources.js?v=14';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration, dayRangeStatus,
-} from './js/forecastPathCore.js?v=12';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=12';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=12';
+} from './js/forecastPathCore.js?v=14';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=14';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=14';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -316,10 +317,10 @@ function intradayEngine(barMin, lookbackDays, horizons, defaultH) {
     horizons, defaultH,
     lookbackDays,
     warmup: INTRADAY_DEFAULTS.warmupBars,
-    build: bars => buildIntradayContext(bars, { events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts() }),
+    build: bars => buildIntradayContext(bars, { events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts(), ...budgetOpts() }),
     cone: intradayCone,
     paths: intradaySamplePaths,
-    tally: (bars, H) => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts() }),
+    tally: (bars, H) => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts(), ...budgetOpts() }),
     anchorT: c => c.anchorTime,
     stepT: s => s.time,
     fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
@@ -385,13 +386,14 @@ const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
 let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [], ivByDate = null;
-const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false };
+const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false, budgetCone: false };
 const eng = () => ENGINES[$('gran').value];
 const isIntraday = () => $('gran').value !== 'D1';
 // Major releases as epoch seconds — the event-aware cone's input.
 const rank3Events = () => events.filter(e => e.rank >= 3).map(e => e.ms / 1000);
 // Implied-vol conditioner opts (only when a series is loaded + toggle on).
 const ivOpts = () => (ivByDate && toggles.impliedCone) ? { ivByDate, ivConditioner: true } : {};
+const budgetOpts = () => toggles.budgetCone ? { budgetConditioner: true } : {};
 
 function clearExtra() {
   for (const s of extraSeries) { try { chart.removeSeries(s); } catch {} }
@@ -630,7 +632,10 @@ function renderDayBudget() {
   const el = $('dayBudget');
   if (!el) return;
   if (!isIntraday() || !bars.length) { el.innerHTML = '<span class="muted">Intraday (M5/M15) only — how much of the day\'s range is spent vs left.</span>'; return; }
-  const s = dayRangeStatus(bars);
+  // Index/gold futures trade an overnight session (~22:00 UTC break) — anchor
+  // their "day" there so the vol-left climatology fits; FX stays UTC-midnight.
+  const FUT_ANCHOR = { NQ:22, SPX500:22, US30:22, US2000:22, DE30:22, UK100:22, GOLD:22 };
+  const s = dayRangeStatus(bars, { anchorHour: FUT_ANCHOR[pairSel.value] ?? 0 });
   if (!s) { el.innerHTML = '<span class="muted">Not enough history yet.</span>'; return; }
   if (!s.reliable) {
     el.innerHTML = `<div class="kv"><span>range so far today</span><b>${s.rangeSoFarPct}%</b></div>` +
@@ -770,6 +775,26 @@ function renderCalib() {
       `<div class="muted" style="margin-top:4px">Day σ scaled by implied vol ÷ its trailing median (mult ${iv ? iv.lo + '–' + iv.hi : '—'}, causal). ${ivVerdict}</div></div>`;
   }
 
+  // Budget-σ A/B — the quiet-morning conditioner (pre-registered, not fitted).
+  if (isIntraday()) {
+    const mkT = flag => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone, budgetConditioner: flag });
+    const off = mkT(false), on = mkT(true);
+    const oc = off.overall, nc = on.overall;
+    const dOff = Math.abs((oc.c75 ?? 0) - 0.75), dOn = Math.abs((nc.c75 ?? 0) - 0.75);
+    const zOff = Math.abs((oc.medAbsZ ?? 0) - 0.674), zOn = Math.abs((nc.medAbsZ ?? 0) - 0.674);
+    const moved = Math.abs((nc.c75 ?? 0) - (oc.c75 ?? 0)) > 0.005 || Math.abs((nc.medAbsZ ?? 0) - (oc.medAbsZ ?? 0)) > 0.005;
+    let bv;
+    if (!moved) bv = 'No sessions hit the cold/hot buckets over this window — nothing to act on.';
+    else if (dOn <= dOff - 0.02 && zOn <= zOff + 0.02) bv = 'Widening quiet sessions improves containment — the vol-mean-reversion signal earns a proper cross-pair + OOS test.';
+    else if (dOn >= dOff + 0.03 || zOn >= zOff + 0.05) bv = 'Makes the cone WORSE here — leave it off.';
+    else bv = 'No measurable improvement — a null (the honest prior for a one-pair signal). Leave it off pending cross-pair proof.';
+    extra += `<div style="margin-top:12px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Budget-σ A/B (quiet-morning conditioner)</b>` +
+      `<table style="margin-top:4px"><tr><th></th><th>P75→75%</th><th>med|z|→0.674</th></tr>` +
+      `<tr><td>off</td><td class="${grade(oc.c75,.75)}">${pc(oc.c75)}</td><td>${oc.medAbsZ ?? '—'}</td></tr>` +
+      `<tr><td>on</td><td class="${grade(nc.c75,.75)}">${pc(nc.c75)}</td><td>${nc.medAbsZ ?? '—'}</td></tr></table>` +
+      `<div class="muted" style="margin-top:4px">Cold sessions ×${1.15}, hot ×${0.95} (fixed, pre-registered — not fitted). ${bv}</div></div>`;
+  }
+
   $('calib').innerHTML =
     `<table><tr><th></th><th colspan="2">full (n=${t.full.n})</th><th colspan="2">recent (n=${t.recent.n})</th></tr>` +
     `<tr><th></th><th>P50→50%</th><th>P75→75%</th><th>P50</th><th>P75</th></tr>${rows}</table>` +
@@ -904,6 +929,12 @@ $('tImpliedCone').onclick = () => {   // ivConditioner lives in the context — 
   if (!ivByDate) return;
   toggles.impliedCone = !toggles.impliedCone;
   $('tImpliedCone').classList.toggle('on', toggles.impliedCone);
+  if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
+  render(); renderCalib();
+};
+$('tBudgetCone').onclick = () => {   // budgetConditioner lives in the context — rebuild it
+  toggles.budgetCone = !toggles.budgetCone;
+  $('tBudgetCone').classList.toggle('on', toggles.budgetCone);
   if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
   render(); renderCalib();
 };
