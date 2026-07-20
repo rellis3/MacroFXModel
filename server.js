@@ -47,13 +47,13 @@ import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './j
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
+import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
-import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
+import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
@@ -75,7 +75,7 @@ import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flatt
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
-import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS } from './js/volLevelAlertCore.js';
+import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, budgetContext as volBudgetContext } from './js/volLevelAlertCore.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
@@ -12780,10 +12780,49 @@ async function _fetchVolLevelCandles(sym, gran = 'M5', count = 150) {
     if (!d.candles) return null;
     const bars = d.candles
       .filter(c => c.complete && c.mid)
-      .map(c => ({ open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+      .map(c => ({ open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
+                   t: Math.floor(new Date(c.time).getTime() / 1000) }));   // epoch sec, for session slicing
     _m5SrvCache.set(cacheKey, { data: bars, ts: Date.now() });
     return bars;
   } catch { return null; }
+}
+
+// Daily "expansion regime" for the volatility-budget alert block. The OOS-validated
+// transparent rule (volatilityExhaustion/daytype_classifier.py): today leans EXPANSION
+// if the prior day blew through its own 75th H-L line OR σ is accelerating
+// (σ_pred_today > 1.10 × mean of the prior 5). Uses the SAME σ math the plan uses
+// (_volSigmaSeries / _nextSigma) — imported, not re-derived — so it can't drift from
+// the forecast. Cached per (sym, session-date): one D1 fetch/instrument/day.
+const _volLevelRegimeCache = new Map();       // key `${sym}|${sessionDate}` -> {priorExceed, sigAccel}
+async function _volLevelDailyRegime(sym, ac, sessionDate) {
+  const key = `${sym}|${sessionDate}`;
+  if (_volLevelRegimeCache.has(key)) return _volLevelRegimeCache.get(key);
+  let out = { priorExceed: null, sigAccel: null };
+  try {
+    const bars = await _btFetchD1(sym.replace('/', '_'), 60);       // ~60 completed D1 bars
+    if (bars && bars.length >= 10) {
+      const sig = _volSigmaSeries(bars, ac);                        // σ_pred[i], causal
+      const n = bars.length;
+      const sPrev = sig[n - 1];                                     // σ_pred for last completed day
+      const prev = bars[n - 1];
+      const hl75corr = (_ASSET_PARAMS[ac] ?? _ASSET_PARAMS.fx).hl_75_corr;
+      const hl75sig = _BM_P75 * hl75corr;
+      if (sPrev > 0 && prev.open > 0) {
+        const realizedHlSig = (prev.high - prev.low) / prev.open / sPrev;
+        out.priorExceed = realizedHlSig > hl75sig;
+      }
+      // σ acceleration: today's forecast σ vs the mean of the prior 5 σ_pred.
+      const prior5 = [];
+      for (let i = n - 5; i < n; i++) if (i >= 0 && sig[i] > 0) prior5.push(sig[i]);
+      const sToday = _nextSigma(bars, ac);
+      if (prior5.length && sToday > 0) {
+        out.sigAccel = sToday / (prior5.reduce((a, b) => a + b, 0) / prior5.length);
+      }
+    }
+  } catch (e) { /* leave nulls — budget block simply omits the regime line */ }
+  _volLevelRegimeCache.set(key, out);
+  if (_volLevelRegimeCache.size > 200) _volLevelRegimeCache.clear();   // bound the cache
+  return out;
 }
 
 // One scan cycle: for each forecast instrument, if live price is within the
@@ -12821,8 +12860,29 @@ async function checkVolLevelAlertsNow() {
     if (!pre.some(ev => now - (_volLevelState.lastAlert[`${canonical}|${ev.key}`] ?? 0) >= cdMs)) continue;
 
     const bars   = await _fetchVolLevelCandles(sym);
+
+    // Daily volatility-budget context: range-used % (this session's H-L vs the
+    // forecast median day) + the OOS-validated expansion regime. All optional —
+    // if any input is unavailable the alert simply omits that part.
+    let budget = null;
+    try {
+      const sessOpenSec = _btLondonMidnightSec(new Date(now));
+      const sessBars = Array.isArray(bars) ? bars.filter(b => b.t >= sessOpenSec) : [];
+      let sessionHigh = null, sessionLow = null;
+      if (sessBars.length) {
+        sessionHigh = Math.max(...sessBars.map(b => b.high));
+        sessionLow  = Math.min(...sessBars.map(b => b.low));
+      }
+      const regime = await _volLevelDailyRegime(sym, inst.ac ?? 'fx', brief.session_date);
+      budget = volBudgetContext({
+        sessionHigh, sessionLow, sessionOpen: open,
+        hlMedPct: levels?.hl_med?.pct ?? null,
+        priorExceed: regime.priorExceed, sigAccel: regime.sigAccel,
+      });
+    } catch { budget = null; }
+
     const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
-      levels, thresholdPips: threshold, enabled: cfg.levels, bars });
+      levels, thresholdPips: threshold, enabled: cfg.levels, bars, budget });
 
     for (const ev of events) {
       const ck = `${canonical}|${ev.key}`;
