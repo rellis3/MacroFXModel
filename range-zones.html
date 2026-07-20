@@ -198,6 +198,11 @@ async function drawChart(p, d) {
     _series = _chart.addCandlestickSeries({ upColor:'#34d399',downColor:'#f87171',borderVisible:false,
       wickUpColor:'#34d399',wickDownColor:'#f87171' });
   }
+  // Match the axis + price-line labels to the instrument's digits (same `d` the cards
+  // use) so levels are distinguishable — else LightweightCharts defaults to 2dp and
+  // every FX level collapses to "1.14". Large-value instruments (gold/indices) keep
+  // their smaller digit count, so no needless decimals there. Re-applied per pair.
+  _series.applyOptions({ priceFormat: { type:'price', precision:d, minMove: 1/Math.pow(10, d) } });
   // Candles — best-effort; fall back to a flat ghost around price so lines have a scale.
   // /api/oanda_ohlc5m returns { values:[{datetime, open, high, low, close}] } newest-first,
   // datetime as a London-local "YYYY-MM-DD HH:MM:SS" string (not candles/bars/epoch — see gold-zones.html).
