@@ -4,6 +4,7 @@ import assert from 'node:assert';
 import {
   approachSpeed, momentumZ, divergenceLabel, scanNearLevels,
   formatAlert, evaluatePair, pairIcon, LEVEL_LABELS, ALERT_LEVEL_KEYS,
+  budgetContext, formatBudgetLines,
 } from './volLevelAlertCore.js';
 
 let passed = 0;
@@ -131,6 +132,52 @@ t('evaluatePair returns one event per near level with text', () => {
 
 t('ALERT_LEVEL_KEYS covers all label keys', () => {
   assert.deepStrictEqual(ALERT_LEVEL_KEYS.sort(), Object.keys(LEVEL_LABELS).sort());
+});
+
+// ── Daily volatility budget ────────────────────────────────────────────────────
+t('budgetContext computes range-used % vs the forecast median day and buckets it', () => {
+  // median day range = 1.1000 * 0.50/100 = 0.0055; session H-L = 0.0033 → 60%.
+  const c = budgetContext({ sessionHigh: 1.1033, sessionLow: 1.1000, sessionOpen: 1.1000, hlMedPct: 0.50 });
+  assert.strictEqual(c.rangeUsedPct, 60);
+  assert.strictEqual(c.state, 'active');
+  // an exhausted day: H-L already exceeds the median range
+  const e = budgetContext({ sessionHigh: 1.1060, sessionLow: 1.1000, sessionOpen: 1.1000, hlMedPct: 0.50 });
+  assert.ok(e.rangeUsedPct >= 90 && e.state === 'exhausted', `got ${e.rangeUsedPct}/${e.state}`);
+});
+
+t('budgetContext: missing inputs → nulls, no throw', () => {
+  const c = budgetContext({});
+  assert.strictEqual(c.rangeUsedPct, null);
+  assert.strictEqual(c.lean, null);
+});
+
+t('budgetContext expansion regime fires on prior-exceed OR σ-acceleration only', () => {
+  assert.strictEqual(budgetContext({ priorExceed: true,  sigAccel: 1.0 }).lean, 'expansion');
+  assert.strictEqual(budgetContext({ priorExceed: false, sigAccel: 1.5 }).lean, 'expansion');
+  assert.strictEqual(budgetContext({ priorExceed: false, sigAccel: 1.0 }).lean, 'contained');
+  // a flag must be present to make a call at all
+  assert.strictEqual(budgetContext({ sessionHigh: 1.1, sessionLow: 1.09, sessionOpen: 1.1, hlMedPct: 0.5 }).lean, null);
+});
+
+t('formatBudgetLines renders range-used + regime, empty when nothing known', () => {
+  assert.deepStrictEqual(formatBudgetLines(budgetContext({})), []);
+  const exp = formatBudgetLines(budgetContext({ sessionHigh: 1.1055, sessionLow: 1.1000, sessionOpen: 1.1000, hlMedPct: 0.50, priorExceed: true, sigAccel: 1.0 }));
+  const txt = exp.join('\n');
+  assert.ok(txt.includes('Range used'), 'shows range-used');
+  assert.ok(txt.includes('Expansion regime') && txt.includes('BREAK'), 'shows expansion break warning');
+  const con = formatBudgetLines(budgetContext({ priorExceed: false, sigAccel: 1.0 }));
+  assert.ok(con.join('\n').includes('Contained regime'), 'shows contained');
+});
+
+t('formatAlert embeds the budget block and keeps the no-direction disclaimer', () => {
+  const txt = formatAlert({
+    pair: 'EUR/USD', price: 1.10052, dp: 5,
+    near: { key: 'oh_med', label: LEVEL_LABELS.oh_med, levelPrice: 1.10100, distPips: 4.8, side: 'above' },
+    budget: budgetContext({ sessionHigh: 1.1050, sessionLow: 1.1000, sessionOpen: 1.1000, hlMedPct: 0.50, priorExceed: false, sigAccel: 1.3 }),
+  });
+  assert.ok(txt.includes('Daily volatility budget'));
+  assert.ok(txt.includes('Expansion regime'));
+  assert.ok(txt.includes('not direction'), 'disclaimer clarifies regime ≠ direction');
 });
 
 console.log(`\nvolLevelAlertCore: ${passed} tests passed`);

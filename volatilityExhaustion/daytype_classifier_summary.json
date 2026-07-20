@@ -1,0 +1,93 @@
+{
+  "per_instrument": {
+    "EURUSD": {
+      "base_rate_expand": 0.3462064251537936,
+      "oos_auc": 0.6862960961321617,
+      "oos_brier_skill": 0.10407631260074357,
+      "sigonly_brier_skill": 0.013023389501270688,
+      "n": 2926
+    },
+    "GBPUSD": {
+      "base_rate_expand": 0.3468483816013629,
+      "oos_auc": 0.6809084479876559,
+      "oos_brier_skill": 0.09410312298378598,
+      "sigonly_brier_skill": -0.011479428850468931,
+      "n": 2935
+    },
+    "AUDUSD": {
+      "base_rate_expand": 0.3479801559177888,
+      "oos_auc": 0.6734776494652064,
+      "oos_brier_skill": 0.08815766181626661,
+      "sigonly_brier_skill": 0.01568694192775688,
+      "n": 2822
+    },
+    "NZDUSD": {
+      "base_rate_expand": 0.35383029886636896,
+      "oos_auc": 0.6681130615029387,
+      "oos_brier_skill": 0.08437518184360948,
+      "sigonly_brier_skill": 0.001100481470170167,
+      "n": 2911
+    },
+    "USDCAD": {
+      "base_rate_expand": 0.35667471541911006,
+      "oos_auc": 0.6352743030005724,
+      "oos_brier_skill": 0.04846817378826507,
+      "sigonly_brier_skill": -0.006504963759336402,
+      "n": 2899
+    },
+    "USDCHF": {
+      "base_rate_expand": 0.34582240539527914,
+      "oos_auc": 0.6832761426062862,
+      "oos_brier_skill": 0.10159837482645051,
+      "sigonly_brier_skill": 0.024475787879959854,
+      "n": 2669
+    },
+    "NQ": {
+      "base_rate_expand": 0.24153049023515344,
+      "oos_auc": 0.7119200796158427,
+      "oos_brier_skill": 0.09661858623563346,
+      "sigonly_brier_skill": 0.012830620716253183,
+      "n": 2509
+    }
+  },
+  "pooled_fx": {
+    "logit_full": {
+      "oos_auc": 0.6796241595601797,
+      "oos_brier": 0.20236170011609247,
+      "oos_brier_skill": 0.09368552333554203
+    },
+    "gbm_full": {
+      "oos_auc": 0.6993981272742615,
+      "oos_brier": 0.19591091298465288,
+      "oos_brier_skill": 0.12257657218396767
+    },
+    "logit_sigonly": {
+      "oos_auc": 0.5555183159068922,
+      "oos_brier": 0.22181548292977799,
+      "oos_brier_skill": 0.006558142117581434
+    },
+    "coef": {
+      "sig": -0.3389600185569087,
+      "sig_pct": -0.054637154759919176,
+      "sig_accel": 0.16652444542995803,
+      "vov": 0.13822188500082336,
+      "gap": -1.3718752460880839,
+      "prior_exc1": 0.2952908294254433,
+      "prior_exc3": -0.07444887219199617,
+      "prior_er1": -0.10117786520711108,
+      "prior_er3": -0.05460645048247444
+    },
+    "base_rate": 0.3595920349684313,
+    "n_test": 6867
+  },
+  "verdict": {
+    "passed": true,
+    "conditions": {
+      "a": true,
+      "b": true,
+      "c": true,
+      "d": true
+    },
+    "n_pair_pos": 6
+  }
+}
