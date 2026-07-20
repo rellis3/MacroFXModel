@@ -168,6 +168,69 @@ unless that is explicitly the task.
 
 ---
 
+## Backtest build discipline — approach, data modeling, output analysis
+
+Distilled from reviewing an external macro-signal build (`Dax Base IFO
+System/`, reviewed 2026-07-20) — techniques worth keeping regardless of
+whether that particular signal survives OOS (it didn't: strong 2006–2019,
+flat-to-negative Sharpe 2020–2025 — the full-sample average hid the decay).
+Apply these to any new signal, Python throwaway or JS engine alike.
+
+**Approach**
+- **Escalate in stages, don't write the tearsheet first.** Prove the merge/join
+  is sane (row count, date range) before any PnL exists; get the zero-parameter
+  version of the rule's raw CAGR/Sharpe/DD readable before adding the full
+  metrics suite; add statistical inference last. A polished tearsheet on a
+  broken join is worse than no tearsheet.
+- **Start with the minimal-DOF version of the signal.** A bare sign/zero-crossing
+  rule with no lookback, no threshold, no smoothing constant is close to
+  impossible to overfit because there's nothing to fit. Get that number honestly
+  first; only add tunable parameters after, knowing each one you add is overfit
+  risk you're buying.
+- **Know whether you're exploring or confirming.** A regression/statistical check
+  run *before* the rule is designed should inform its functional form
+  (magnitude-weighted? regime-conditional?); one run *after* the rule is already
+  fixed only confirms an existing intuition. Both are fine — don't blur which
+  one you're doing, and don't let a confirming regression stand in for real OOS
+  validation (Lego Principle 5 still applies regardless).
+
+**Data modeling**
+- **Match resample/trading frequency to the signal's true update cadence.**
+  Don't hold a monthly (or weekly) number "live" against daily bars — that
+  implies information the series doesn't actually have day-to-day. Resample
+  the faster series down to the slower one's release frequency instead.
+- **Do the boring parsing correctly and visibly, up top.** Strip currency
+  commas/whitespace before casting, pin explicit date formats, handle BOM
+  encodings (`utf-8-sig`) — this is exactly the kind of silent corruption that
+  invalidates a backtest without ever raising an error.
+
+**Output analysis**
+- **Add residual diagnostics to any regression-based signal**: Durbin-Watson
+  (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan
+  (heteroskedasticity) before trusting its p-value/coefficient. A
+  statistically "significant" coefficient on a heteroskedastic fit has
+  optimistic standard errors — check before leaning on it.
+- **Report distributional shape, not just Sharpe.** Skew, excess kurtosis,
+  historical VaR/CVaR are cheap, pure functions of a return series and catch
+  fat left tails a single Sharpe number hides. Candidate addition to
+  `js/metricsCore.js` as a Tier-1 primitive (pure, unit-testable, useful on
+  every equity curve — not built yet, see `LEGO_MODULES.md §2` when someone
+  needs it).
+- **A monthly/yearly return heatmap is a cheap concentration check — use it.**
+  If a handful of months or one multi-year stretch is carrying the whole
+  result, a heatmap makes that visible in seconds. Generating the diagnostic
+  isn't the same as looking at it — actually read it before reporting a
+  headline number, especially the most recent 1–3 years in isolation. (This is
+  what would have caught the ifo/DAX signal's post-2019 decay that the
+  full-sample average hid.)
+- **Don't let Monte Carlo stand in for OOS.** Resampling from a strategy's own
+  realized return distribution shows the range of outcomes consistent with
+  that mean/std — it says nothing about whether the signal generalizes to data
+  it hasn't seen. It's a legitimate expectation-setting tool; label it as that,
+  not as robustness evidence.
+
+---
+
 ## House conventions
 
 - **Backtest endpoints** use the async-job pattern: `POST /run` returns a
@@ -176,6 +239,30 @@ unless that is explicitly the task.
   (`/api/honest-forecast/*`, `/api/vol-backtest-v2/*`).
 - **Dashboard pages** are self-contained HTML, dark theme, vanilla JS, served
   statically from repo root. Reuse the IS/OOS + cost-sensitivity card layout.
+- **Every standard backtest results card ships 3 CSV export buttons** —
+  one trade-log row per closed trade, in each of these exact schemas:
+  - **% Returns**: `Date,Return %,MAE %`
+  - **R-Multiples**: `date,R,MAE (R)`
+  - **Currency P&L**: `Trade Date,PnL ($),Risk ($)`
+
+  Rules for filling them in:
+  - **MAE must come from the real intra-trade path** (OHLC bars between entry
+    and exit — Low-vs-entry for longs, High-vs-entry for shorts), never
+    approximated from the close-to-close return alone. Same discipline as the
+    heatmap/MAE guidance above — a per-trade summary metric is only honest if
+    it's read off the actual path.
+  - **State the account size and the R-unit definition next to the buttons**,
+    don't let them float as hidden constants. R needs an explicit risk-per-trade
+    definition (fixed % of equity, vol-based stop, etc.) — if the strategy has
+    no native stop/risk concept, say so and pick one deliberately rather than
+    inventing a silent default.
+  - **Watch for the degenerate case**: if R-unit = fixed % of equity and the
+    $ P&L export uses full notional at that same %, the R-multiple column
+    becomes numerically identical to the % Return column (found while building
+    this for the ifo/DAX system) — it adds no new information, just relabels
+    the same number. Either use a per-trade-varying risk unit (e.g. that
+    period's realized vol) or note plainly that R and % Return are redundant
+    here.
 - **`index.html` is THE Dashboard** — the primary landing page. `hub.html` is a
   secondary link index. New user-facing features/links belong on **`index.html`**
   (and the specific page they extend, e.g. the vol-bot lives on `bot-config.html`),
