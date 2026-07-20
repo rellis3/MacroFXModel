@@ -77,6 +77,28 @@
   .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
   .pos { color: var(--green); } .neg { color: var(--red); }
   .st-empty { font-size: 10px; color: var(--text3); padding: 6px 2px; }
+  /* SL/TP scan modal */
+  .scan-overlay { display:none; position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.72);
+    align-items:center; justify-content:center; padding:24px; }
+  .scan-overlay.open { display:flex; }
+  .scan-modal { background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    max-width:min(900px,95vw); max-height:90vh; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .scan-hdr { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border);
+    font-size:13px; font-family:'DM Mono',monospace; }
+  .scan-sub { font-size:10.5px; color:var(--text3); }
+  .scan-note { font-size:10.5px; color:var(--text3); font-family:'DM Mono',monospace; padding:8px 14px; border-bottom:1px solid var(--border); }
+  .scan-best { font-size:11.5px; font-family:'DM Mono',monospace; padding:9px 14px; color:var(--text2); }
+  .scan-best b { color:var(--text); }
+  #scanBody { padding:6px 14px 16px; }
+  table.scan-heat { border-collapse:collapse; font-family:'DM Mono',monospace; font-size:10.5px; }
+  table.scan-heat th { color:var(--text3); font-weight:500; padding:4px 7px; text-align:center; white-space:nowrap; }
+  table.scan-heat th.rot { font-size:9.5px; }
+  table.scan-heat td.cell { cursor:pointer; color:#0b0d14; font-weight:600; text-align:center; padding:6px 8px;
+    border:2px solid var(--panel); min-width:52px; }
+  table.scan-heat td.cell.best { outline:2px solid #fff; outline-offset:-2px; }
+  table.scan-heat td.cell:hover { outline:2px solid var(--blue); outline-offset:-2px; }
+  table.scan-heat td.rowlab { color:var(--text2); text-align:right; padding-right:8px; white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -124,6 +146,7 @@
     <label>Cost %</label><input type="number" id="cost" value="0.010" step="0.001" min="0" title="Round-trip friction (spread+commission) as % of price, netted off every trade.">
     <button class="go" id="go">Generate</button>
     <button class="ghost" id="statsBtn" title="Show / hide the reversion tally">Stats</button>
+    <button class="ghost" id="scanBtn" title="Sweep a grid of fixed SL × TP-multiplier over the current touches and find the best — in-sample, look for a plateau not a spike.">🔍 Scan SL/TP</button>
     <a class="a2" href="forecast-replay.html"><button class="ghost" title="Open the plain Replay view (forecast lines vs realized H/L, no trades)">↩ Replay</button></a>
     <span class="status" id="status"></span>
   </div>
@@ -149,10 +172,26 @@
     <div id="hint">Pick a pair and date range, then Generate.<br>Arm the lines you want to fade; each touch draws the reversion trade (entry ▸ exit) and tallies win / loss / expired.</div>
   </div>
 
+  <!-- SL/TP scan modal -->
+  <div id="scanOverlay" class="scan-overlay">
+    <div class="scan-modal">
+      <div class="scan-hdr">
+        <b>SL/TP scan</b>
+        <span id="scanSub" class="scan-sub"></span>
+        <button class="ghost" id="scanClose" style="margin-left:auto">✕ Close</button>
+      </div>
+      <div class="scan-note">
+        Sweeps a grid of fixed <b>SL</b> (rows, in <span id="scanUnit">pips</span>) × <b>TP multiple</b> (cols) over the current touches, cell = avg net % per trade. <b>In-sample — trust a broad green plateau, not a lone spike.</b> Click a cell to apply it to the Fixed SL/TP inputs.
+      </div>
+      <div id="scanBest" class="scan-best"></div>
+      <div id="scanBody" style="overflow:auto"></div>
+    </div>
+  </div>
+
 <script type="module">
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
-import { LADDER_LINES, reversionTrades, tallyTrades, STYLES } from './js/reversionLadder.js?v=4';
+import { LADDER_LINES, reversionTrades, tallyTrades, STYLES, ladderLevels } from './js/reversionLadder.js?v=5';
 
 const OANDA_SYM = {
   eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
@@ -310,6 +349,9 @@ let dpr = window.devicePixelRatio || 1;
     state.showStats = !state.showStats;
     $('stats').classList.toggle('hidden', !state.showStats);
   });
+  $('scanBtn').addEventListener('click', runScan);
+  $('scanClose').addEventListener('click', () => $('scanOverlay').classList.remove('open'));
+  $('scanOverlay').addEventListener('click', e => { if (e.target === $('scanOverlay')) $('scanOverlay').classList.remove('open'); });
 })();
 
 function updateStatus() {
@@ -426,21 +468,22 @@ function buildDays(values, fcDays) {
 }
 
 // Run the reversion brick per day for the currently-armed lines + cost.
+// 'Let run' feeds the next few sessions' bars forward so an unresolved trade can
+// hit SL/TP past EOD instead of being marked to the session close. null in kill mode.
+function forwardBarsFor(i) {
+  if (state.eod !== 'run') return null;
+  let fwd = [];
+  for (let j = i + 1; j < Math.min(days.length, i + 1 + HOLD_SESSIONS); j++) fwd = fwd.concat(days[j].bars);
+  return fwd;
+}
 function computeTrades() {
   const costPct = Math.max(0, +$('cost').value || 0);
-  const run = state.eod === 'run';
   const sltp = sltpOpts();
   for (let i = 0; i < days.length; i++) {
     const d = days[i];
-    if (!(d.f && d.bars.length)) { d.trades = []; continue; }
-    // 'Let run' feeds the next few sessions' bars forward so an unresolved trade
-    // can hit SL/TP past EOD instead of being marked to the session close.
-    let forwardBars = null;
-    if (run) {
-      forwardBars = [];
-      for (let j = i + 1; j < Math.min(days.length, i + 1 + HOLD_SESSIONS); j++) forwardBars = forwardBars.concat(days[j].bars);
-    }
-    d.trades = reversionTrades(d.open, d.bars, bandsFor(d.f), { armed: state.armed, costPct, style: state.style, sltp, forwardBars });
+    d.trades = (d.f && d.bars.length)
+      ? reversionTrades(d.open, d.bars, bandsFor(d.f), { armed: state.armed, costPct, style: state.style, sltp, forwardBars: forwardBarsFor(i) })
+      : [];
   }
 }
 function recomputeAndDraw() {
@@ -579,6 +622,87 @@ function renderStats() {
     + `<td>${total.n ? twr + '%' : '—'}</td><td class="${total.netPct >= 0 ? 'pos' : 'neg'}">${total.netPct >= 0 ? '+' : ''}${total.netPct.toFixed(2)}</td></tr>`
     + `</tbody></table>`
     + `<div class="st-empty">N = touches (1 per line per session). ΣNet% sums per-trade % after cost — a rough cumulative for eyeballing, not compounded equity. In-sample.</div>`;
+}
+
+// ── SL/TP scan (grid sweep over the current touches) ─────────────────────────
+// Natural stop scale = the median band distance (|line − its target|) across the
+// armed lines of forecast days. The SL grid is multiples of this, so it auto-
+// scales per instrument and ties to the geometry you're actually fading.
+function bandScale() {
+  const dists = [];
+  for (const d of days) {
+    if (!d.f) continue;
+    const lad = ladderLevels(d.open, bandsFor(d.f));
+    if (!lad) continue;
+    for (const L of lad.lines) { if (state.armed.has(L.key)) dists.push(Math.abs(L.price - L.target)); }
+  }
+  if (!dists.length) return null;
+  dists.sort((a, b) => a - b);
+  return dists[Math.floor(dists.length / 2)];   // median (price units)
+}
+const SCAN_SL_MULTS = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0];
+const SCAN_TP_MULTS = [1, 1.5, 2, 2.5, 3, 4];
+function scanHeatColor(v) {
+  const t = Math.max(-1, Math.min(1, (v || 0) / 0.3));
+  if (t >= 0) { const g = Math.round(150 * t) + 55; return `rgb(40, ${g + 45}, 70)`; }
+  const r = Math.round(150 * -t) + 55; return `rgb(${r + 45}, 45, 55)`;
+}
+function runScan() {
+  if (!days.length) { setStatus('generate a range first'); return; }
+  const D = bandScale();
+  if (!(D > 0)) { setStatus('arm at least one line to scan'); return; }
+  const u = unitFor($('pair').value);
+  const costPct = Math.max(0, +$('cost').value || 0);
+  const fwd = days.map((_, i) => forwardBarsFor(i));   // precompute EOD windows once
+  const slGrid = SCAN_SL_MULTS.map(m => ({ dist: D * m, unit: +(D * m / u.size).toFixed(1) }));
+  const cells = [];
+  for (let si = 0; si < slGrid.length; si++) {
+    for (let ti = 0; ti < SCAN_TP_MULTS.length; ti++) {
+      const slDist = slGrid[si].dist, tpMult = SCAN_TP_MULTS[ti];
+      let n = 0, wins = 0, netSum = 0;
+      for (let i = 0; i < days.length; i++) {
+        const d = days[i];
+        if (!(d.f && d.bars.length)) continue;
+        const tr = reversionTrades(d.open, d.bars, bandsFor(d.f),
+          { armed: state.armed, costPct, style: state.style, sltp: { mode: 'fixed', slDist, tpMult }, forwardBars: fwd[i] });
+        for (const t of tr) { n++; netSum += t.netPct; if (t.outcome === 'win') wins++; }
+      }
+      cells.push({ si, ti, slUnit: slGrid[si].unit, tpMult, n, wins, netSum, avg: n ? netSum / n : 0, winRate: n ? wins / n : 0 });
+    }
+  }
+  const best = cells.reduce((a, b) => (b.avg > a.avg ? b : a), cells[0]);
+  renderScan(cells, slGrid, best, u);
+  $('scanOverlay').classList.add('open');
+}
+function renderScan(cells, slGrid, best, u) {
+  const at = (si, ti) => cells.find(c => c.si === si && c.ti === ti);
+  $('scanUnit').textContent = u.label;
+  const n0 = cells.length ? cells[0].n : 0;
+  $('scanSub').textContent = `${$('pair').value.toUpperCase()} · ${STYLES[state.style].label} · ${state.eod === 'run' ? 'Let run' : 'Kill@EOD'} · ${calcMode() === 'cog' ? 'COG' : 'Original'} · ${n0} touches`;
+  let html = `<table class="scan-heat"><tr><th class="rot">SL＼TP</th>` + SCAN_TP_MULTS.map(t => `<th>${t}×</th>`).join('') + '</tr>';
+  for (let si = 0; si < slGrid.length; si++) {
+    html += `<tr><td class="rowlab">${slGrid[si].unit} ${u.label}</td>`;
+    for (let ti = 0; ti < SCAN_TP_MULTS.length; ti++) {
+      const c = at(si, ti), isBest = c.si === best.si && c.ti === best.ti;
+      html += `<td class="cell ${isBest ? 'best' : ''}" data-sl="${c.slUnit}" data-tp="${c.tpMult}" style="background:${scanHeatColor(c.avg)}" `
+        + `title="SL ${c.slUnit}${u.label} · TP ${c.tpMult}× (≈${(c.slUnit * c.tpMult).toFixed(1)}${u.label}) · n=${c.n} · win ${Math.round(c.winRate * 100)}% · ΣNet ${c.netSum >= 0 ? '+' : ''}${c.netSum.toFixed(1)}%">`
+        + `${c.avg >= 0 ? '+' : ''}${c.avg.toFixed(3)}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  $('scanBody').innerHTML = html;
+  const tpPips = (best.slUnit * best.tpMult).toFixed(1);
+  $('scanBest').innerHTML = `Best (in-sample): <b>SL ${best.slUnit} ${u.label} · TP ${best.tpMult}×</b> (TP ≈ ${tpPips} ${u.label}) → avg <b class="${best.avg >= 0 ? 'pos' : 'neg'}">${best.avg >= 0 ? '+' : ''}${best.avg.toFixed(3)}%/trade</b>, win ${Math.round(best.winRate * 100)}%, ΣNet ${best.netSum >= 0 ? '+' : ''}${best.netSum.toFixed(1)}% over ${best.n} touches. <span style="color:var(--text3)">Only believe it if the cells around it are green too — a lone spike is noise.</span>`;
+  $('scanBody').querySelectorAll('td.cell').forEach(td => td.addEventListener('click', () => applyScanCell(+td.dataset.sl, +td.dataset.tp)));
+}
+function applyScanCell(slUnit, tpMult) {
+  state.sltpMode = 'fixed';
+  $('sltp').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.x === 'fixed'));
+  $('fixedInputs').style.display = 'inline-flex';
+  $('slval').value = slUnit; $('tpmult').value = tpMult;
+  $('scanOverlay').classList.remove('open');
+  recomputeAndDraw();
 }
 
 window.addEventListener('resize', () => { sizeOverlay(); scheduleDraw(); });
