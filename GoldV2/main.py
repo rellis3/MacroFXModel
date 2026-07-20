@@ -382,6 +382,11 @@ def _ml_allows(zone_id: str, base_url: str) -> tuple[bool, str]:
 
 def _in_trade_window(cfg: dict) -> bool:
     now = datetime.now(timezone.utc)
+    # Weekend gate: the market is closed Sat + Sun until ~21:00 UTC, but the
+    # paper path still gets a (stale) quote and would stamp a phantom fill at
+    # a price the market never traded. Reopen is outside the window anyway.
+    if now.weekday() >= 5:  # Sat=5, Sun=6
+        return False
     try:
         start_h, start_m = map(int, cfg['trade_window_start'].split(':'))
         end_h,   end_m   = map(int, cfg['trade_window_end'].split(':'))

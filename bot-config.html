@@ -7967,11 +7967,19 @@ async function openTradeChartModal(idx) {
   if (!sym)                          { status.textContent = `Can't map symbol "${t.symbol}" to an OANDA instrument.`; return; }
   if (!t.time_open || !t.time_close) { status.textContent = 'Missing open/close time for this trade.'; return; }
 
-  const dateStr      = new Date(t.time_open  * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
+  // Start the fetch on the last TRADING day at/before the open. A paper trade
+  // can be stamped inside the weekend gap (stale-quote fill while the market
+  // is closed): starting the window on that calendar date would begin after
+  // Friday's close and contain no candles until the Sunday reopen, leaving
+  // nothing near the entry to draw the marker on.
+  const openDateStr  = new Date(t.time_open  * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
   const closeDateStr = new Date(t.time_close * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
-  const daySpan = Math.round((new Date(closeDateStr + 'T00:00:00Z') - new Date(dateStr + 'T00:00:00Z')) / 86400000);
+  let fromDay = new Date(openDateStr + 'T00:00:00Z');
+  if (fromDay.getUTCDay() === 6)      fromDay = new Date(+fromDay - 86400000);     // Sat → Fri
+  else if (fromDay.getUTCDay() === 0) fromDay = new Date(+fromDay - 2 * 86400000); // Sun → Fri
+  const dateStr = fromDay.toISOString().slice(0, 10);
+  const daySpan = Math.round((new Date(closeDateStr + 'T00:00:00Z') - fromDay) / 86400000);
   const days    = Math.min(14, Math.max(1, daySpan + 1));
-  const offsetMin = _londonOffsetMinutes(t.time_open);
 
   try {
     const r = await fetch(`/api/oanda_ohlc1m?symbol=${encodeURIComponent(sym)}&date=${dateStr}&days=${days}`);
@@ -7980,9 +7988,10 @@ async function openTradeChartModal(idx) {
     if (!j.values?.length) throw new Error('No M1 data returned for this window');
 
     // Keep bars in "fake UTC" (London local treated as UTC) — same as gold-zones.html.
-    // Convert true-UTC trade timestamps to the same coordinate system for markers.
-    const entryTs = t.time_open  + offsetMin * 60;
-    const exitTs  = t.time_close + offsetMin * 60;
+    // Convert true-UTC trade timestamps to the same coordinate system for markers,
+    // each with its own offset (a multi-day trade can span a GMT/BST switch).
+    const entryTs = t.time_open  + _londonOffsetMinutes(t.time_open)  * 60;
+    const exitTs  = t.time_close + _londonOffsetMinutes(t.time_close) * 60;
 
     const bars = j.values.map(v => ({
       time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
@@ -7991,21 +8000,37 @@ async function openTradeChartModal(idx) {
 
     // Display at 5m — reuse the shared resample brick (js/barUtils.js) rather
     // than re-bucketing M1 inline (Lego principle: one copy of the hot path).
-    const { resampleTo } = await import('./js/barUtils.js');
-    const BUCKET_SECS = 5 * 60;
+    const { resampleTo, bisect } = await import('./js/barUtils.js');
     const bars5 = resampleTo(bars, 5);
+    if (!bars5.length) throw new Error('No candles in trade window');
 
-    // Snap entry/exit to the 5m bucket that actually contains them — markers
-    // must land on a time value that exists in the series data, otherwise
-    // Lightweight Charts silently misplaces (or drops) them.
-    const snapToBucket = ts => ts - (((ts % BUCKET_SECS) + BUCKET_SECS) % BUCKET_SECS);
-    const entryBucket = snapToBucket(entryTs);
-    const exitBucket  = snapToBucket(exitTs);
+    // Markers must sit on candles that exist. Snap each timestamp to the last
+    // bar at/before it — a weekend-stamped entry lands on Friday's last traded
+    // candle instead of (as the old clamp did) the Sunday-reopen bar at a
+    // completely different price.
+    const times5 = bars5.map(b => b.time);
+    const barIdxAtOrBefore = ts => Math.max(0, bisect(times5, ts + 1) - 1);
+    const entryIdx = barIdxAtOrBefore(entryTs);
+    const exitIdx  = Math.max(entryIdx, barIdxAtOrBefore(exitTs));
 
-    const padSecs = BUCKET_SECS * 6; // 30 min of context either side
-    const padded = bars5.filter(b => b.time >= entryBucket - padSecs && b.time <= exitBucket + padSecs);
-    const data = padded.length >= 5 ? padded : bars5;
-    if (!data.length) throw new Error('No candles in trade window');
+    // Pad by bar COUNT, not clock time — 30 min of traded context either side.
+    // A time-window pad starting at a weekend-stamped entry would exclude every
+    // candle before the gap.
+    const PAD_BARS = 6;
+    const data = bars5.slice(Math.max(0, entryIdx - PAD_BARS),
+                             Math.min(bars5.length, exitIdx + PAD_BARS + 1));
+
+    // Label fills that happened while the market was closed (>1h from any
+    // candle) — the marker can only show the nearest traded bar, so the price
+    // gap vs the Entry/Exit lines is the trade record, not the chart.
+    const gapSides = [];
+    if (Math.abs(bars5[entryIdx].time - entryTs) > 3600) gapSides.push('entry');
+    if (Math.abs(bars5[exitIdx].time  - exitTs)  > 3600) gapSides.push('exit');
+    if (gapSides.length) {
+      meta.innerHTML += `<div class="tc-meta-item"><span class="tc-meta-lbl" style="color:var(--amber)">⚠ Market closed</span>` +
+        `<span class="tc-meta-val" style="font-weight:400;font-size:11px;color:var(--amber)">` +
+        `${gapSides.join(' + ')} stamped while the market was closed — marker shown on nearest traded candle</span></div>`;
+    }
 
     const el = document.getElementById('tcChartEl');
     _tcChart = LightweightCharts.createChart(el, {
@@ -8034,14 +8059,12 @@ async function openTradeChartModal(idx) {
     const isLong = t.direction === 'BUY';
     const win    = net >= 0;
     const entryCol = isLong ? '#10b981' : '#f87171';
-    // Snap marker times into the data range so LW-Charts never rejects them.
-    const firstBarTs = data[0].time;
-    const lastBarTs  = data[data.length - 1].time;
-    const clamp = ts => Math.min(lastBarTs, Math.max(firstBarTs, ts));
+    // Marker times are real bar times inside `data` by construction (the slice
+    // spans entryIdx…exitIdx), so LW-Charts never rejects or misplaces them.
     try {
       _tcSeries.setMarkers([
-        { time: clamp(entryBucket), position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
-        { time: clamp(exitBucket),  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
+        { time: bars5[entryIdx].time, position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
+        { time: bars5[exitIdx].time,  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
       ]);
     } catch(me) { /* markers failed — price lines still show entry/exit */ }
 
