@@ -116,6 +116,11 @@
       <span id="slunit" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">pips</span>
       <label>TP ×</label><input type="number" id="tpmult" value="2" step="0.5" min="0" style="width:48px" title="Take-profit as a multiple of the SL distance (2 = 2R).">
     </span>
+    <label title="Kill @ EOD: a trade unresolved by the session close is marked to that close (expired). Let run: the trade keeps going into the following sessions until SL or TP hits (up to ~5 sessions), then marks to close. Same entries either way — only the exit horizon changes.">EOD</label>
+    <div class="seg" id="eod">
+      <button data-e="kill" class="on">Kill @ EOD</button>
+      <button data-e="run">Let run</button>
+    </div>
     <label>Cost %</label><input type="number" id="cost" value="0.010" step="0.001" min="0" title="Round-trip friction (spread+commission) as % of price, netted off every trade.">
     <button class="go" id="go">Generate</button>
     <button class="ghost" id="statsBtn" title="Show / hide the reversion tally">Stats</button>
@@ -147,7 +152,7 @@
 <script type="module">
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
-import { LADDER_LINES, reversionTrades, tallyTrades, STYLES } from './js/reversionLadder.js?v=3';
+import { LADDER_LINES, reversionTrades, tallyTrades, STYLES } from './js/reversionLadder.js?v=4';
 
 const OANDA_SYM = {
   eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
@@ -203,8 +208,10 @@ function bandsFor(f) {
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
-const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level' };
+const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill' };
+const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
+function eodModeSel() { return $('eod').querySelector('button.on')?.dataset.e || 'kill'; }
 function sltpModeSel() { return $('sltp').querySelector('button.on')?.dataset.x || 'level'; }
 // Build the sltp opts for the brick from the UI: 'fixed' converts the pip/point
 // SL value to a price distance via the current pair's unit; 'level' passes null.
@@ -287,6 +294,13 @@ let dpr = window.devicePixelRatio || 1;
   });
   $('slval').addEventListener('change', recomputeAndDraw);
   $('tpmult').addEventListener('change', recomputeAndDraw);
+  // EOD toggle: kill-at-close vs let the trade run into later sessions.
+  $('eod').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
+    $('eod').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    state.eod = eodModeSel();
+    recomputeAndDraw();
+  });
   // Pair change: keep the SL unit label (pips/pts) in step; recompute if a
   // chart is already loaded (fixed SL distance depends on the pair's unit).
   $('pair').addEventListener('change', () => { refreshSlUnit(); if (days.length) recomputeAndDraw(); });
@@ -414,8 +428,19 @@ function buildDays(values, fcDays) {
 // Run the reversion brick per day for the currently-armed lines + cost.
 function computeTrades() {
   const costPct = Math.max(0, +$('cost').value || 0);
-  for (const d of days) {
-    d.trades = (d.f && d.bars.length) ? reversionTrades(d.open, d.bars, bandsFor(d.f), { armed: state.armed, costPct, style: state.style, sltp: sltpOpts() }) : [];
+  const run = state.eod === 'run';
+  const sltp = sltpOpts();
+  for (let i = 0; i < days.length; i++) {
+    const d = days[i];
+    if (!(d.f && d.bars.length)) { d.trades = []; continue; }
+    // 'Let run' feeds the next few sessions' bars forward so an unresolved trade
+    // can hit SL/TP past EOD instead of being marked to the session close.
+    let forwardBars = null;
+    if (run) {
+      forwardBars = [];
+      for (let j = i + 1; j < Math.min(days.length, i + 1 + HOLD_SESSIONS); j++) forwardBars = forwardBars.concat(days[j].bars);
+    }
+    d.trades = reversionTrades(d.open, d.bars, bandsFor(d.f), { armed: state.armed, costPct, style: state.style, sltp, forwardBars });
   }
 }
 function recomputeAndDraw() {
@@ -546,7 +571,8 @@ function renderStats() {
   const sltpLbl = state.sltpMode === 'fixed'
     ? `SL ${+$('slval').value || 0}${u.label} · TP ${+$('tpmult').value || 0}×`
     : 'Next level';
-  el.innerHTML = `<h3>Reversion tally <span class="calcTag">${styleLbl} · ${sltpLbl} · ${calc}</span></h3>`
+  const eodLbl = state.eod === 'run' ? 'Let run' : 'Kill @ EOD';
+  el.innerHTML = `<h3>Reversion tally <span class="calcTag">${styleLbl} · ${sltpLbl} · ${eodLbl} · ${calc}</span></h3>`
     + `<table class="st"><thead><tr><th>Line</th><th>N</th><th>W</th><th>L</th><th>Exp</th><th>Win%</th><th>ΣNet%</th></tr></thead>`
     + `<tbody>${rows}`
     + `<tr class="tot"><td>TOTAL</td><td>${total.n}</td><td>${total.wins}</td><td>${total.losses}</td><td>${total.expired}</td>`
