@@ -18,7 +18,7 @@ const PCTS = { hl_median: 1.0, hl_75: 1.5, oc_median: 0.4, oc_75: 0.7 };
 
 // Bar helper: sequential 1-minute bars from a Monday 00:00 UTC.
 const t0 = Date.UTC(2024, 0, 8, 0, 0, 0) / 1000;
-const mkBars = rows => rows.map((r, i) => ({ time: t0 + i * 60, open: r[0], high: r[1], low: r[2], close: r[3] }));
+const mkBars = (rows, start = 0) => rows.map((r, i) => ({ time: t0 + (start + i) * 60, open: r[0], high: r[1], low: r[2], close: r[3] }));
 
 // ── ladderLevels: prices + adjacent-inner target + innermost→open ────────────
 console.log('[ladderLevels]');
@@ -152,6 +152,31 @@ const lvl = reversionTrades(OPEN, mkBars([
   [101.0, 101.0, 100.6, 100.7],
 ]), PCTS, { armed: armH, sltp: { mode: 'level' } })[0];
 ok('level mode == default (stop 101.3)', lvl && near(lvl.stop, 101.3) && lvl.outcome === 'win');
+
+// ── EOD: kill-at-EOD (default) vs let-run (forwardBars) ──────────────────────
+console.log('[EOD kill vs run]');
+// H_med fade: entry 101.0, target 100.7, stop 101.3. Session touches the line
+// but resolves NEITHER within the day → 'expired' when killed at EOD.
+const eodSession = [
+  [100.0, 100.2, 99.9, 100.1],
+  [100.1, 101.05, 100.0, 101.0],   // fill in-session
+  [101.0, 101.1, 100.9, 101.0],    // neither tp nor sl → unresolved
+];
+const killed = reversionTrades(OPEN, mkBars(eodSession), PCTS, { armed: armH })[0];
+ok('kill @ EOD: unresolved → expired', killed && killed.outcome === 'expired');
+// Let it run: a LATER session's bar dips to the target → win (after EOD).
+const fwdWin = [[101.0, 101.0, 100.6, 100.7]];   // low 100.6 <= target 100.7
+const ran = reversionTrades(OPEN, mkBars(eodSession), PCTS,
+  { armed: armH, forwardBars: mkBars(fwdWin, eodSession.length) })[0];
+ok('let run: resolves on a later session → win', ran && ran.outcome === 'win');
+ok('let run: same entry time as kill', ran && killed && ran.entryTime === killed.entryTime);
+// An entry that would only fire AFTER the session is dropped (both modes trade
+// the same set): session never reaches 101.0, only a forward bar does.
+const noTouchSession = [[100.0, 100.3, 99.8, 100.1], [100.1, 100.5, 100.0, 100.2]];
+const fwdTouch = [[100.2, 101.2, 100.1, 101.0]];   // touches 101.0 only after EOD
+const runDrop = reversionTrades(OPEN, mkBars(noTouchSession), PCTS,
+  { armed: armH, forwardBars: mkBars(fwdTouch, noTouchSession.length) });
+ok('let run: post-session-only entry dropped', runDrop.length === 0);
 
 // ── costs netting + tally ────────────────────────────────────────────────────
 console.log('[costs + tally]');

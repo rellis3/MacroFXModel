@@ -103,7 +103,7 @@ export function ladderLevels(open, pcts) {
 // The stop is SYMMETRIC either way (equal distance the other side of entry).
 // Returns an array of resolved trades.
 export function reversionTrades(open, bars, pcts, opts = {}) {
-  const { armed = null, costPct = 0, style = 'fade_all', sltp = null } = opts;
+  const { armed = null, costPct = 0, style = 'fade_all', sltp = null, forwardBars = null } = opts;
   const lad = ladderLevels(open, pcts);
   if (!lad || !bars || !bars.length) return [];
   const styleDef = STYLES[style] || STYLES.fade_all;
@@ -115,7 +115,15 @@ export function reversionTrades(open, bars, pcts, opts = {}) {
   //     trade's direction. Lets you A/B "tight defined-risk stop, 2R target" vs
   //     the band geometry. Entry line + fade/follow direction are unchanged.
   const fixed = sltp && sltp.mode === 'fixed' && sltp.slDist > 0;
-  const lastClose = bars[bars.length - 1].close;
+  // EOD handling. By default the walk sees only THIS session's bars, so anything
+  // unresolved marks to the session close ('expired') — kill-at-EOD. Pass
+  // `forwardBars` (the following sessions' bars, ascending) to LET THE TRADE RUN
+  // past EOD: the walk continues into them so SL/TP can resolve later. The ENTRY
+  // is still constrained to this session (fillTime ≤ the session's last bar), so
+  // kill and run trade the IDENTICAL set of entries — only the exit differs.
+  const walkArr = (forwardBars && forwardBars.length) ? bars.concat(forwardBars) : bars;
+  const sessionEnd = bars[bars.length - 1].time;
+  const lastClose = walkArr[walkArr.length - 1].close;
   const trades = [];
   for (const L of lad.lines) {
     if (armed && !armed.has(L.key)) continue;
@@ -140,8 +148,12 @@ export function reversionTrades(open, bars, pcts, opts = {}) {
       const dist = Math.abs(entry - bandTarget);
       stop = isBuy ? entry - dist : entry + dist;   // symmetric
     }
-    const r = walkBars(bars, entry, tp, stop, isBuy, entryType, open);
-    if (!r) continue;                          // line never touched this session
+    const r = walkBars(walkArr, entry, tp, stop, isBuy, entryType, open);
+    if (!r) continue;                          // line never touched at all
+    // Run-mode only: reject a fill that first occurred AFTER this session — such
+    // an entry wouldn't exist in kill mode, so dropping it keeps the two modes'
+    // trade sets identical (only the exit horizon differs).
+    if (r.fillTime != null && r.fillTime > sessionEnd) continue;
     // walkBars labels a POSITIVE mark-to-close as 'win' (and a non-positive one
     // as 'open'), which conflates "reached the target" with "expired in profit".
     // Separate them: a true target-hit books exactly the entry→TP distance;
