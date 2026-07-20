@@ -7261,6 +7261,68 @@ app.get('/api/vol-forecast/reference/:date', async (req, res) => {
   }
 });
 
+// ── COG day-of-week weighting probe ───────────────────────────────────────────
+// GET /api/cog-dow — over every stored COG reference date, compare COG's number to
+// OURS (the archived forecast for that session) and group the COG/ours ratio by
+// weekday. Demeaned PER INSTRUMENT so the constant σ-source gap (e.g. NQ's CC-HV)
+// doesn't masquerade as a weekday effect: `rel` = (COG/ours on that weekday) ÷ (that
+// instrument's overall COG/ours). rel≈1.00 on every weekday ⇒ COG applies no
+// day-of-week weight; a consistent Mon<1, Wed/Thu>1 tilt across metrics ⇒ he does.
+app.get('/api/cog-dow', async (_req, res) => {
+  try {
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean).sort() : [];
+    if (!dates.length) return res.json({ ok: true, dates: 0, note: 'No COG reference data stored yet.' });
+    const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const METRICS = [['vol', 'vol_annual'], ['hl_med', 'hl_median'], ['hl_75', 'hl_75'], ['oc_med', 'oc_median'], ['oc_75', 'oc_75']];
+    const rows = [];   // { metric, wd, inst, r }
+    let matchedDates = 0;
+    for (const d of dates) {
+      const [refRaw, ourRaw] = await Promise.all([
+        kv.get(`vol_reference_${d}`).catch(() => null),
+        kv.get(`vol_forecast_${d}`).catch(() => null),
+      ]);
+      if (!refRaw || !ourRaw) continue;
+      let cog, ours;
+      try { cog = _parseExportText(JSON.parse(refRaw).text); } catch { continue; }
+      try { ours = JSON.parse(ourRaw).instruments || {}; } catch { continue; }
+      const ourUC = {}; for (const k of Object.keys(ours)) ourUC[k.toUpperCase()] = ours[k];
+      const wd = new Date(d + 'T00:00:00Z').getUTCDay();
+      if (wd < 1 || wd > 5) continue;
+      matchedDates++;
+      for (const inst of Object.keys(cog)) {
+        const o = ourUC[inst], c = cog[inst];
+        if (!o) continue;
+        for (const [ck, ok] of METRICS) {
+          const cv = c[ck], ov = o[ok];
+          if (cv > 0 && ov > 0) rows.push({ metric: ck, wd, inst, r: cv / ov });
+        }
+      }
+    }
+    const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN;
+    const byMetric = {};
+    for (const [ck] of METRICS) {
+      const mr = rows.filter(r => r.metric === ck);
+      const instVals = {};
+      for (const r of mr) (instVals[r.inst] ||= []).push(r.r);
+      const instMean = {};
+      for (const k in instVals) instMean[k] = mean(instVals[k]);
+      const wdRel = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+      for (const r of mr) if (wdRel[r.wd] && instMean[r.inst] > 0) wdRel[r.wd].push(r.r / instMean[r.inst]);
+      const out = { overall_cog_over_ours: mr.length ? +mean(mr.map(r => r.r)).toFixed(3) : null };
+      for (const w of [1, 2, 3, 4, 5]) out[WD[w]] = { n: wdRel[w].length, rel: wdRel[w].length ? +mean(wdRel[w]).toFixed(3) : null };
+      byMetric[ck] = out;
+    }
+    res.json({
+      ok: true, refDates: dates.length, matchedDates, matchedRows: rows.length,
+      note: 'rel = (COG/ours ratio on that weekday) ÷ (that instrument\'s overall COG/ours). 1.00 = no weekday weight; >1 = COG runs bigger than us on that weekday.',
+      byMetric,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── COG-level POC — COG's ACTUAL forecast levels vs ACTUAL price, on the days we
 // have COG reference data for (EURUSD / NQ / GOLD). GET /api/cog-level-poc.
 // Reads the stored COG exports from KV, parses each day's levels, loads that pair's
