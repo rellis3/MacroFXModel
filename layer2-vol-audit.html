@@ -170,7 +170,9 @@ function drawTrades(){
   if (!octx||!chart||!series||!DATA) return;
   const ts=chart.timeScale();
   octx.setTransform(dpr,0,0,dpr,0,0);
-  octx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);
+  // CSS-pixel dims: device width/height under a dpr scale under-clears the
+  // right/bottom strips when dpr < 1 (zoom-out), smearing old trades/text.
+  octx.clearRect(0,0,overlayCanvas.width/dpr,overlayCanvas.height/dpr);
   const ck=selectedCell();
   for (const t of DATA.detail.trades){
     const cell=t.by_cell[ck]; if(!cell) continue;

@@ -433,7 +433,10 @@ function drawOverlay() {
   if (!octx || !chart || !series) return;
   const ts = chart.timeScale();
   octx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  // Clear in the CURRENT (dpr-scaled) space, so use CSS-pixel dims — passing the
+  // device width/height here under-clears the right/bottom strips when dpr < 1
+  // (browser zoom-out / sub-100% display scaling), leaving old text to pile up.
+  octx.clearRect(0, 0, overlayCanvas.width / dpr, overlayCanvas.height / dpr);
   octx.font = "13px 'DM Mono', monospace";
   octx.textBaseline = 'middle';
   const pf = priceFmt($('pair').value);
