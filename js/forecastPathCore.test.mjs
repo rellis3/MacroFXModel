@@ -16,7 +16,7 @@ import {
   calibrationTally, nextWeekday, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally,
   profileMult, INTRADAY_DEFAULTS, intradayRealizedZ, normCdf, eventMult,
-  intradayReachability, reachabilityCalibration,
+  intradayReachability, reachabilityCalibration, dayRangeStatus,
 } from './forecastPathCore.js';
 
 // ── Synthetic GBM daily bars (seeded) ────────────────────────────────────────
@@ -417,18 +417,79 @@ const m15 = syntheticM15(55);   // ~5280 bars
   } else ok(true, 'trendSplit null (too few ER windows) — acceptable');
 }
 
-// 20) Excursion vs endpoint (reflection effect): path busts more than close.
+// 20) Stop reality — fixed-line touch vs close-beyond (reflection effect).
 {
   const t = intradayTally(m15, { horizonBars: 16 });
   const e = t.excursion;
-  ok(e && e.n > 0, 'excursion computed');
-  // The intrabar path breaches the band at least as often as the close does.
-  ok(e.pathHeld75 <= e.closeHeld75 + 1e-9, `path breaches ≥ close, P75 (${(e.pathHeld75*100).toFixed(0)}% ≤ ${(e.closeHeld75*100).toFixed(0)}%)`);
-  ok(e.pathHeld50 <= e.closeHeld50 + 1e-9, 'path breaches ≥ close, P50');
-  ok(Math.abs((e.touch75 + e.pathHeld75) - 1) < 1e-9, 'touch75 = 1 − pathHeld75');
-  // On real-ish synthetic data the reflection gap is strictly positive.
-  ok(e.touch75 > e.closeHeld75 * 0 && e.touch75 > 0, 'some windows touch beyond P75 intrabar');
-  ok(e.pathHeld75 >= 0 && e.pathHeld75 <= 1, 'pathHeld in [0,1]');
+  ok(e && e.n > 0, 'stop-reality computed');
+  // Intrabar TOUCH of the fixed line ≥ close finishing beyond it (reflection).
+  ok(e.p75.touch >= e.p75.closeBeyond - 1e-9, `P75 touch ≥ closeBeyond (${(e.p75.touch*100).toFixed(0)}% ≥ ${(e.p75.closeBeyond*100).toFixed(0)}%)`);
+  ok(e.p50.touch >= e.p50.closeBeyond - 1e-9, 'P50 touch ≥ closeBeyond');
+  // One-sided touch ≤ two-sided touchEither ≤ 1; all in range.
+  for (const b of [e.p50, e.p75]) {
+    ok(b.touch >= 0 && b.touch <= 1, 'touch in [0,1]');
+    ok(b.touchEither >= b.touch - 1e-9 && b.touchEither <= 1, 'touchEither ≥ one-sided touch');
+    ok(b.closeBeyond >= 0 && b.closeBeyond <= 1, 'closeBeyond in [0,1]');
+  }
+  // P50 line is nearer than P75 → touched more often.
+  ok(e.p50.touch >= e.p75.touch - 1e-9, 'nearer P50 line touched ≥ P75');
+  // Sanity vs endpoint: two-sided close-beyond (2×one-sided) ≈ 1 − final c75.
+  const c75 = t.full.perStep[15].c75;
+  ok(Math.abs(e.p75.closeBeyond * 2 - (1 - c75)) < 0.12, `2×closeBeyond75 ≈ 1 − c75 (${(e.p75.closeBeyond*2).toFixed(2)} vs ${(1-c75).toFixed(2)})`);
+}
+
+// 21) Day range budget — climatology sane; consumed percentile reflects a spike.
+{
+  const s = dayRangeStatus(m15);
+  ok(s && s.nDays >= 8, 'day range status computed');
+  ok(s.rangeSoFarPct >= 0 && s.typicalFullPct > 0, 'ranges non-negative, full > 0');
+  ok(s.completionPct >= 0 && s.completionPct <= 100, 'completion % in [0,100]');
+  ok(s.consumedPercentile >= 0 && s.consumedPercentile <= 100, 'consumed percentile in [0,100]');
+  ok(s.typicalSoFarPct <= s.typicalFullPct + 1e-9, 'range-by-now ≤ full-day range (paired ⇒ never inverts)');
+  ok(s.remainingTypicalPct >= 0, 'remaining ≥ 0');
+  ok(typeof s.reliable === 'boolean', 'reliability flag present');
+  // A day with a giant early range should rank as busy (high percentile).
+  const spiked = m15.map((b, k) => {
+    const lastDay = Math.floor(m15[m15.length - 1].time / 86400);
+    return Math.floor(b.time / 86400) === lastDay ? { ...b, high: b.high * 1.02, low: b.low * 0.98 } : b;
+  });
+  const sb = dayRangeStatus(spiked);
+  ok(sb.consumedPercentile >= s.consumedPercentile, `busy day ranks higher (${sb.consumedPercentile} ≥ ${s.consumedPercentile})`);
+  ok(dayRangeStatus(m15.slice(0, 100)) === null, 'too little history → null');
+  // Session-anchored (futures): runs and stays consistent past the boundary.
+  const sa = dayRangeStatus(m15, { anchorHour: 22 });
+  ok(sa && sa.anchorHour === 22, 'anchored session status computed');
+  ok(sa.typicalSoFarPct <= sa.typicalFullPct + 1e-9, 'anchored: range-so-far ≤ full (paired)');
+  ok(sa.elapsedHours >= 0, 'anchored: elapsed hours reported');
+}
+
+// 22) Budget conditioner: OFF = identity; ON scales σ by the causal bucket.
+{
+  const c0 = intradayCone(buildIntradayContext(m15), 3000, 16);
+  const cOff = intradayCone(buildIntradayContext(m15, { budgetConditioner: false }), 3000, 16);
+  ok(c0.steps[0].p75Up === cOff.steps[0].p75Up, 'budget conditioner OFF ⇒ no change');
+  ok((cOff.budgetMult ?? 1) === 1, 'budgetMult 1 when off');
+  const ctxB = buildIntradayContext(m15, { budgetConditioner: true, budgetColdMult: 1.3, budgetHotMult: 0.8 });
+  // Find an anchor whose budget bucket is non-neutral (mult != 1) and check the
+  // cone width scales by exactly that mult vs the unconditioned cone.
+  let found = false;
+  for (let i = 1500; i < m15.length && !found; i += 7) {
+    const cb = intradayCone(ctxB, i, 8);
+    if (cb && Math.abs((cb.budgetMult ?? 1) - 1) > 1e-9) {
+      const base = intradayCone(buildIntradayContext(m15), i, 8);
+      const wOn = Math.log(cb.steps[7].p75Up / cb.steps[7].center);
+      const wOff = Math.log(base.steps[7].p75Up / base.steps[7].center);
+      ok(Math.abs(wOn / wOff - cb.budgetMult) < 1e-6, `cone width scales by budgetMult (${cb.budgetMult.toFixed(2)})`);
+      found = true;
+    }
+  }
+  ok(found, 'a non-neutral budget bucket exists in the sample');
+  // No lookahead: future bars don't change the anchor's budget mult.
+  const iM = 3000;
+  const a = intradayCone(buildIntradayContext(m15, { budgetConditioner: true }), iM, 8);
+  const mut = m15.map((b, k) => k >= iM ? { ...b, high: b.high * 1.05, low: b.low * 0.95 } : b);
+  const bmut = intradayCone(buildIntradayContext(mut, { budgetConditioner: true }), iM, 8);
+  ok(Math.abs((a.budgetMult ?? 1) - (bmut.budgetMult ?? 1)) < 1e-9, 'budget conditioner: no lookahead');
 }
 
 console.log(`forecastPathCore.test.mjs — all assertions passed (${passed} checks)`);

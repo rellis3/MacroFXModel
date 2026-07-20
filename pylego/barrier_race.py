@@ -57,6 +57,68 @@ class BarrierResult:
     avg_r: float
 
 
+def _first_touch(entry_price: float, direction: int, sl: float, tp_dist: float,
+                 cmax, cmin, last_close: float, tp_r: float):
+    """Resolve ONE forward path: which barrier is touched first. Returns
+    (outcome, exit_off, exit_price, r) where outcome ∈ {'tp','sl','timeout'},
+    exit_off is the 0-based bar offset from entry, and r EXCLUDES cost. Shared
+    by race_grid (which only tallies outcome + r) and race_trades (which keeps
+    exit_off/price) — one walker, so the aggregate stats and the per-trade audit
+    can never disagree (the whole reason barrier_race exists — see module head)."""
+    if direction > 0:
+        tp_price, sl_price = entry_price + tp_dist, entry_price - sl
+        tp_arr = np.flatnonzero(cmax >= tp_price)
+        sl_arr = np.flatnonzero(cmin <= sl_price)
+    else:
+        tp_price, sl_price = entry_price - tp_dist, entry_price + sl
+        tp_arr = np.flatnonzero(cmin <= tp_price)
+        sl_arr = np.flatnonzero(cmax >= sl_price)
+    tp_i = int(tp_arr[0]) if tp_arr.size else None
+    sl_i = int(sl_arr[0]) if sl_arr.size else None
+    if tp_i is not None and (sl_i is None or tp_i <= sl_i):
+        return 'tp', tp_i, tp_price, tp_r
+    if sl_i is not None:
+        return 'sl', sl_i, sl_price, -1.0
+    last_off = len(cmax) - 1
+    return 'timeout', last_off, last_close, (direction * (last_close - entry_price) / sl if sl > 0 else 0.0)
+
+
+def race_trades(bars: pd.DataFrame, entries: list[Entry], sl: float, tp_r: float,
+                max_bars_ahead: int, cost_price: float = 0.0,
+                min_bars_ahead: int = 10) -> list[dict]:
+    """Per-trade sibling of `race_grid` for a SINGLE (sl, tp_r) cell: one record
+    per entry with its resolved exit, so a viewer can draw each trade on the real
+    candles. Same first-touch walker (`_first_touch`) — no second copy.
+
+    Returns [{idx, direction, entry_price, exit_idx, exit_price, outcome, r,
+    bars_held}], skipping entries without `min_bars_ahead` runway left (aligned
+    with race_grid so the per-trade set matches the aggregate n)."""
+    high = bars['high'].to_numpy(); low = bars['low'].to_numpy()
+    close = bars['close'].to_numpy(); opens = bars['open'].to_numpy()
+    n_bars = len(bars)
+    tp_dist = sl * tp_r
+    out: list[dict] = []
+    for e in entries:
+        idx = e.idx
+        if idx >= n_bars:
+            continue
+        end_pos = min(idx + max_bars_ahead, n_bars)
+        if end_pos - idx < min_bars_ahead:
+            continue
+        cmax = np.maximum.accumulate(high[idx:end_pos])
+        cmin = np.minimum.accumulate(low[idx:end_pos])
+        last_close = float(close[end_pos - 1])
+        entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
+        outcome, off, exit_price, r = _first_touch(entry_price, e.direction, sl, tp_dist,
+                                                    cmax, cmin, last_close, tp_r)
+        out.append({
+            'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
+            'exit_idx': idx + off, 'exit_price': float(exit_price), 'outcome': outcome,
+            'r': float(r - (cost_price / sl if sl > 0 else 0.0)), 'bars_held': off,
+        })
+    return out
+
+
 def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
               tp_r_grid: list[float], max_bars_ahead: int,
               cost_price: float = 0.0, min_bars_ahead: int = 10) -> list[BarrierResult]:
@@ -112,25 +174,13 @@ def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
             outcomes_r = []
             tp_hits = sl_hits = timeouts = 0
             for entry_price, direction, cmax, cmin, last_close in paths:
-                if direction > 0:
-                    tp_price, sl_price = entry_price + tp_dist, entry_price - sl
-                    tp_idx_arr = np.flatnonzero(cmax >= tp_price)
-                    sl_idx_arr = np.flatnonzero(cmin <= sl_price)
-                else:
-                    tp_price, sl_price = entry_price - tp_dist, entry_price + sl
-                    tp_idx_arr = np.flatnonzero(cmin <= tp_price)
-                    sl_idx_arr = np.flatnonzero(cmax >= sl_price)
-                tp_i = tp_idx_arr[0] if tp_idx_arr.size else None
-                sl_i = sl_idx_arr[0] if sl_idx_arr.size else None
-
-                if tp_i is not None and (sl_i is None or tp_i <= sl_i):
-                    r = tp_r
+                outcome, _off, _px, r = _first_touch(entry_price, direction, sl, tp_dist,
+                                                     cmax, cmin, last_close, tp_r)
+                if outcome == 'tp':
                     tp_hits += 1
-                elif sl_i is not None:
-                    r = -1.0
+                elif outcome == 'sl':
                     sl_hits += 1
                 else:
-                    r = direction * (last_close - entry_price) / sl
                     timeouts += 1
                 outcomes_r.append(r - (cost_price / sl if sl > 0 else 0.0))
 

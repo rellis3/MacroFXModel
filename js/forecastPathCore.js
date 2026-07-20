@@ -294,6 +294,17 @@ export const INTRADAY_DEFAULTS = {
   ivClampLo: 0.5,
   ivClampHi: 2.0,
   minIvObs: 20,
+  // Range-budget width conditioner (measured-first, default OFF). The gold
+  // calibration showed the cone runs TIGHT on quiet mornings (cold budget →
+  // med|z| high) and about right on busy ones — a vol-mean-reversion signature.
+  // When on, the whole day's σ is scaled by a PRE-REGISTERED factor from the
+  // causal budget bucket (session range-so-far ÷ its same-hour median): cold
+  // widens, hot slightly narrows. FIXED constants (not fitted) so this is a
+  // clean pre-registered hypothesis the A/B judges — NOT an in-sample fit. One
+  // pair's signal; must replicate cross-pair + OOS before it's believed.
+  budgetConditioner: false,
+  budgetColdMult: 1.15,   // range-so-far < 0.8× same-hour median → widen
+  budgetHotMult: 0.95,    // range-so-far > 1.25× → slightly narrow
 };
 
 // Day key (UTC midnight index) shared by the context and the iv conditioner.
@@ -386,9 +397,54 @@ export function buildIntradayContext(bars, opts = {}) {
   }
 
   const ivMult = o.ivConditioner ? _buildIvMult(o.ivByDate, o) : null;
+  const budgetMult = o.budgetConditioner ? _buildBudgetMult(bars, o) : null;
 
   return { bars, closes, sigma, drift, sigmaLive, driftLive, buckets, gCum, barSec,
-           events, evIdx, evR2Cum, evHour, ivMult, opts: o };
+           events, evIdx, evR2Cum, evHour, ivMult, budgetMult, opts: o };
+}
+
+// Causal range-budget σ multiplier per bar: for each bar, the session's range-
+// so-far (UTC day) ÷ the causal same-hour median of prior days' range-by-this-
+// hour → cold/normal/hot → a FIXED pre-registered multiplier. Float64Array of
+// length n, default 1 until enough same-hour history. Same expanding same-hour
+// climatology the tally's budget split uses.
+function _buildBudgetMult(bars, o) {
+  const n = bars.length;
+  const mult = new Float64Array(n).fill(1);
+  const dayKeyOf = j => Math.floor(bars[j].time / 86400);
+  const rangeFrac = new Float64Array(n);
+  const dayHourVal = new Map();                 // dayKey → Array(24) last rangeFrac at each hour
+  { let dk = null, hi = -Infinity, lo = Infinity, open = 0;
+    for (let j = 0; j < n; j++) {
+      const k = dayKeyOf(j);
+      if (k !== dk) { dk = k; hi = -Infinity; lo = Infinity; open = bars[j].open; dayHourVal.set(k, new Array(24).fill(null)); }
+      if (bars[j].high > hi) hi = bars[j].high;
+      if (bars[j].low < lo) lo = bars[j].low;
+      rangeFrac[j] = open > 0 ? (hi - lo) / open : 0;
+      dayHourVal.get(k)[new Date(bars[j].time * 1000).getUTCHours()] = rangeFrac[j];
+    } }
+  const hourHistory = Array.from({ length: 24 }, () => []);
+  const dayKeysSorted = [...dayHourVal.keys()].sort((a, b) => a - b);
+  let flushed = 0, curDay = null;
+  for (let j = 0; j < n; j++) {
+    const day = dayKeyOf(j), hr = new Date(bars[j].time * 1000).getUTCHours();
+    if (day !== curDay) {                        // flush completed prior days into the history
+      curDay = day;
+      while (flushed < dayKeysSorted.length && dayKeysSorted[flushed] < day) {
+        const vals = dayHourVal.get(dayKeysSorted[flushed]);
+        for (let h = 0; h < 24; h++) if (vals[h] != null) hourHistory[h].push(vals[h]);
+        flushed++;
+      }
+    }
+    const hist = hourHistory[hr];
+    if (hist.length >= 5 && rangeFrac[j] > 0) {
+      const s = [...hist].sort((a, b) => a - b);
+      const medv = s.length % 2 ? s[s.length >> 1] : (s[(s.length >> 1) - 1] + s[s.length >> 1]) / 2;
+      const ratio = medv > 0 ? rangeFrac[j] / medv : 1;
+      mult[j] = ratio < 0.8 ? o.budgetColdMult : ratio > 1.25 ? o.budgetHotMult : 1;
+    }
+  }
+  return mult;
 }
 
 // Is `t` inside any event's [ev - pre, ev + post] window? (events sorted asc)
@@ -469,16 +525,18 @@ function _stepSigmas(ctx, i, H) {
   const evM = useEvents ? eventMult(ctx, i) : 1;
   // Implied-vol width multiplier for the anchor's UTC day (causal, whole-day).
   const ivM = ctx.ivMult ? ctx.ivMult.get(_dayKeyOfSec(bars[i - 1].time)) : 1;
+  // Range-budget multiplier at the anchor bar (causal, whole-day).
+  const bgM = ctx.budgetMult ? (ctx.budgetMult[Math.min(i - 1, n - 1)] || 1) : 1;
   const times = [], sigs = [];
   let eventSteps = 0;
   for (let h = 1; h <= H; h++) {
     const t = _futureTime(ctx, i, h);
     times.push(t);
-    let s = sigBase * ivM * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
+    let s = sigBase * ivM * bgM * profileMult(ctx, i, new Date(t * 1000).getUTCHours());
     if (useEvents && _nearEvent(events, t, opts.eventPre, opts.eventPost)) { s *= evM; eventSteps++; }
     sigs.push(s);
   }
-  return { sigBase, mu, times, sigs, eventMult: evM, ivMult: ivM, eventSteps };
+  return { sigBase, mu, times, sigs, eventMult: evM, ivMult: ivM, budgetMult: bgM, eventSteps };
 }
 
 // ── The intraday cone (2 ≤ i ≤ bars.length; i === n is the live edge) ────────
@@ -502,7 +560,7 @@ export function intradayCone(ctx, i, horizonBars) {
                  p75Up: center * Math.exp(Z75 * sd), p75Dn: center * Math.exp(-Z75 * sd) });
   }
   return { i, anchorTime: bars[i - 1].time, anchor, sigmaBar: ladder.sigBase, mu: ladder.mu,
-           eventMult: ladder.eventMult, ivMult: ladder.ivMult, eventSteps: ladder.eventSteps, steps };
+           eventMult: ladder.eventMult, ivMult: ladder.ivMult, budgetMult: ladder.budgetMult, eventSteps: ladder.eventSteps, steps };
 }
 
 // ── Intraday Monte-Carlo paths (seeded; wicks cosmetic, padded to the median
@@ -651,6 +709,101 @@ export function reachabilityCalibration(bars, opts = {}) {
            note: 'Predicted vs realized touch frequency, binned. Well-calibrated ⇒ predicted ≈ realized per bin (gap→0).' };
 }
 
+// ── Day range budget — how much of the day's volatility is spent vs left ─────
+// Pure climatology: no edge claim, just describing this pair's own intraday
+// range distribution. For the CURRENT (last, partial) UTC day it reports how
+// much high-low range has been traced so far, whether that's busy or quiet for
+// the hour (percentile vs prior same-hour days), a typical full-day range, and
+// how much range a typical day still has left from here. The "quiet mornings
+// tend to expand" effect the gold calibration surfaced is stated in the verdict
+// but NOT predicted — this stays descriptive.
+//   bars: intraday [{time(sec),open,high,low,close}] spanning ≥ ~12 days.
+//   opts.anchorHour: UTC hour the trading "day" starts (default 0 = UTC
+//     midnight, right for FX). Index/gold FUTURES trade an overnight session
+//     with a ~22:00 UTC break, so pass anchorHour:22 — the "day" then runs the
+//     real session (Sun-eve open through the daily break), completion is
+//     measured by ELAPSED time into the session (not UTC clock hour, which
+//     wraps past midnight), and the Sunday-open reading stops being nonsense.
+export function dayRangeStatus(bars, opts = {}) {
+  if (!bars || bars.length < 96 * 8) return null;
+  const anchorSec = ((opts.anchorHour ?? 0) % 24) * 3600;
+  const dayKey = t => Math.floor((t - anchorSec) / 86400);
+  const boundary = k => k * 86400 + anchorSec;         // session start (epoch sec)
+  const byDay = new Map();
+  for (let i = 0; i < bars.length; i++) {
+    const k = dayKey(bars[i].time);
+    (byDay.get(k) ?? byDay.set(k, []).get(k)).push(i);
+  }
+  const keys = [...byDay.keys()].sort((a, b) => a - b);
+  if (keys.length < 10) return null;
+
+  // Range (max-min)/open over a session's bars up to `capElapsed` seconds since
+  // the session boundary (null = whole session). Elapsed-based so it works past
+  // midnight for anchored futures sessions.
+  const rangeThrough = (idx, dk, capElapsed) => {
+    const o = bars[idx[0]].open;
+    if (!(o > 0)) return null;
+    const b0 = boundary(dk);
+    let hi = -Infinity, lo = Infinity, any = false;
+    for (const i of idx) {
+      if (capElapsed != null && (bars[i].time - b0) > capElapsed) continue;
+      if (bars[i].high > hi) hi = bars[i].high; if (bars[i].low < lo) lo = bars[i].low; any = true;
+    }
+    return any ? (hi - lo) / o : null;
+  };
+
+  // Current (partial) session.
+  const curKey = keys[keys.length - 1];
+  const curIdx = byDay.get(curKey);
+  const curElapsed = bars[curIdx[curIdx.length - 1]].time - boundary(curKey);
+  const displayHour = new Date(bars[curIdx[curIdx.length - 1]].time * 1000).getUTCHours();
+  const rangeSoFar = rangeThrough(curIdx, curKey, null);
+  if (rangeSoFar == null) return null;
+
+  // Prior-session climatology (completed sessions = causal). PAIR full & by-
+  // elapsed on the SAME sessions so median(by-elapsed) ≤ median(full) always
+  // holds (pointwise domination ⇒ quantile domination) — an unpaired version
+  // can print the impossible "range-so-far > full-session range".
+  const fulls = [], soFarAt = [], completion = [];
+  for (let d = 0; d < keys.length - 1; d++) {
+    const idx = byDay.get(keys[d]);
+    if (idx.length < 24) continue;                 // skip thin/holiday partial sessions
+    const full = rangeThrough(idx, keys[d], null);
+    const sf = rangeThrough(idx, keys[d], curElapsed);
+    if (full > 0 && sf != null) { fulls.push(full); soFarAt.push(sf); completion.push(sf / full); }
+  }
+  if (fulls.length < 8) return null;
+  const med = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
+  const pctile = (a, v) => a.length ? a.filter(x => x < v).length / a.length : null;
+
+  const medFull = med(fulls), medSoFar = med(soFarAt), medComp = med(completion);
+  const consumedPct = pctile(soFarAt, rangeSoFar);
+  const remainingTypical = Math.max(0, medFull - rangeSoFar);
+
+  // Reliability guard — flag (don't hide) readings that would mislead: a thin
+  // current partial (too early to judge), or a session already ~complete. With
+  // proper anchoring the weekend-open session is legitimate, so it's only
+  // flagged when it's genuinely thin.
+  const thin = curIdx.length < 8;
+  const dayEssentiallyDone = medComp >= 0.9;
+  const reliable = !thin && !dayEssentiallyDone;
+  const reason = thin ? 'thin session so far (few bars) — too little of the session to judge'
+    : dayEssentiallyDone ? 'the session is normally near-complete by this point'
+    : null;
+
+  return {
+    hour: displayHour, elapsedHours: +(curElapsed / 3600).toFixed(1), anchorHour: opts.anchorHour ?? 0,
+    nDays: fulls.length, barsToday: curIdx.length,
+    rangeSoFarPct: +(rangeSoFar * 100).toFixed(3),
+    typicalSoFarPct: +(medSoFar * 100).toFixed(3),       // typical range traced by this point in the session
+    typicalFullPct: +(medFull * 100).toFixed(3),         // typical full-session range
+    completionPct: Math.round(medComp * 100),            // typically this % of the session's range is done by now
+    consumedPercentile: consumedPct == null ? null : Math.round(consumedPct * 100),
+    remainingTypicalPct: +(remainingTypical * 100).toFixed(3),
+    reliable, reason,
+  };
+}
+
 // Standard normal CDF (Abramowitz-Stegun 7.1.26 via erf approximation).
 export function normCdf(z) {
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -720,19 +873,22 @@ export function intradayTally(bars, opts = {}) {
     const ek = bisect(ctx.events, tStart - o.eventPost);
     const isEvent = ek < ctx.events.length && ctx.events[ek] <= tEnd + o.eventPre;
     const w = { in50: new Array(H), in75: new Array(H), dirHit: null, isEvent, iStart: i - 1 };
-    // Endpoint (close) containment per step AND excursion (intrabar high/low)
-    // containment over the whole path. The excursion is the reflection-principle
-    // reality a stop actually faces: price TOUCHES beyond the band far more than
-    // it CLOSES beyond it. pathIn* = the path never traded outside the band.
-    let pathIn50 = true, pathIn75 = true;
+    // Close containment per step, AND the FIXED-line stop reality: a trader
+    // places a stop at a fixed distance (the FINAL-step band level), not on the
+    // widening cone. So track the window's running high/low vs the final P50/P75
+    // levels — how often the intrabar path TOUCHES that fixed line vs how often
+    // the close finishes beyond it (the honest reflection gap for stops).
+    let whi = -Infinity, wlo = Infinity;
     for (let h = 1; h <= H; h++) {
       const b = bars[i + h - 1], s = cone.steps[h - 1];
       w.in50[h - 1] = b.close >= s.p50Dn && b.close <= s.p50Up;
       w.in75[h - 1] = b.close >= s.p75Dn && b.close <= s.p75Up;
-      if (b.high > s.p50Up || b.low < s.p50Dn) pathIn50 = false;
-      if (b.high > s.p75Up || b.low < s.p75Dn) pathIn75 = false;
+      if (b.high > whi) whi = b.high;
+      if (b.low < wlo) wlo = b.low;
     }
-    w.pathIn50 = pathIn50; w.pathIn75 = pathIn75;
+    const fs = cone.steps[H - 1];
+    w.whi = whi; w.wlo = wlo; w.fClose = bars[i + H - 1].close;
+    w.fp50u = fs.p50Up; w.fp50d = fs.p50Dn; w.fp75u = fs.p75Up; w.fp75d = fs.p75Dn;
     const move = bars[i + H - 1].close - cone.anchor;
     if (cone.mu !== 0 && move !== 0) w.dirHit = Math.sign(move) === Math.sign(cone.mu);
 
@@ -851,23 +1007,28 @@ export function intradayTally(bars, opts = {}) {
     return { n: tot, p50: tot ? a / tot : null, p75: tot ? b / tot : null };
   };
 
-  // Excursion vs endpoint — the reflection-principle metric (the mentor's LIL
-  // nudge, done at finite horizon). "closeHeld" = the CLOSE finished inside the
-  // band; "pathHeld" = the intrabar path NEVER traded beyond it. pathHeld is
-  // always ≤ closeHeld — the gap is how much MORE a stop on the band gets
-  // touched than the endpoint stats imply. touchRate = share of windows whose
-  // path traded beyond the band at some point (= 1 − pathHeld); this is the
-  // number that matters for stop placement.
-  const fracOf = (ws, pred) => ws.length ? ws.filter(pred).length / ws.length : null;
-  const allTrue = arr => arr.every(Boolean);
-  const excursion = {
-    n: windows.length,
-    // Both "never breached over the whole window" — apples-to-apples, so the
-    // gap is the pure intrabar (reflection) effect, not a horizon mismatch.
-    closeHeld50: fracOf(windows, w => allTrue(w.in50)), closeHeld75: fracOf(windows, w => allTrue(w.in75)),
-    pathHeld50: fracOf(windows, w => w.pathIn50),       pathHeld75: fracOf(windows, w => w.pathIn75),
-    touch50: fracOf(windows, w => !w.pathIn50),         touch75: fracOf(windows, w => !w.pathIn75),
+  // Stop reality — the honest reflection metric at the FIXED line a stop sits
+  // on (the final-step band level), NOT the widening cone. For a P75-distance
+  // stop: `touch` = one-sided hit rate (avg of upper/lower touches — what a
+  // random-direction trade with that stop faces), `closeBeyond` = how often the
+  // CLOSE finished past that line. touch ≫ closeBeyond is the reflection effect
+  // that matters for placement: the intrabar high/low reaches the line far more
+  // than the close settles beyond it. (`touchEither` = share of windows that
+  // reached the level on either side — the two-sided range-touch rate.)
+  const stopBand = (uKey, dKey) => {
+    const n = windows.length;
+    if (!n) return { touch: null, touchEither: null, closeBeyond: null };
+    let tu = 0, td = 0, cu = 0, cd = 0, touchEither = 0;
+    for (const w of windows) {
+      const up = w.whi >= w[uKey], dn = w.wlo <= w[dKey];
+      if (up) tu++; if (dn) td++; if (up || dn) touchEither++;
+      if (w.fClose > w[uKey]) cu++; if (w.fClose < w[dKey]) cd++;
+    }
+    // One-sided (per-side average = what a single stop faces) for touch AND
+    // closeBeyond, so they compare apples-to-apples; touchEither is two-sided.
+    return { touch: (tu + td) / (2 * n), touchEither: touchEither / n, closeBeyond: (cu + cd) / (2 * n) };
   };
+  const excursion = { n: windows.length, p50: stopBand('fp50u', 'fp50d'), p75: stopBand('fp75u', 'fp75d') };
 
   const recentN = Math.max(1, Math.floor(windows.length * recentFrac));
   return { horizonBars: H, claimed: { p50: 0.5, p75: 0.75, direction: 0.5, medAbsZ: 0.674 },

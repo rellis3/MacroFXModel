@@ -46,6 +46,9 @@ const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
   'fwd_fade_log',            // forward-track confirmed-fade signal log — accumulates a live post-research record, cannot be rebuilt
   'fwd_fade_meta',           // forward-track tracking-start date + last-scan bookkeeping
+  'cone_fwd_log',            // cone forward-track: live cone claims + resolved outcomes — accumulates a post-research record, cannot be rebuilt
+  'cone_fwd_meta',           // cone forward-track tracking-start + last-scan bookkeeping
+  'surprise_alert_config',   // cone surprise-alert: enable + Telegram creds + thresholds/pairs — user-entered, must survive redeploys
   'journal_store', 'journal_replay_store',
   'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
   'cot_data',               // parsed CFTC COT — requires user-set URL to rebuild

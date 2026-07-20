@@ -73,6 +73,16 @@
       Feller bands).
     </p>
 
+    <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">Volatility left in the day</h3>
+    <p style="margin:0;font-size:13px;line-height:1.6">
+      Pure climatology — no prediction, just this pair's own range history. It shows how
+      much high-low <b>range you've used so far today</b>, whether that's <b>busy or
+      quiet</b> for this hour (a percentile vs prior same-hour days), the <b>typical
+      full-day range</b>, and how much range a typical day <b>still has left</b> from
+      here. Use it to gauge whether the day's move is mostly spent or there's room to run
+      — a quiet morning (low percentile) tends to have more still to come.
+    </p>
+
     <h3 style="font-size:13px;color:var(--accent);margin:16px 0 6px">The Day-forecast lines (the daily export, drawn)</h3>
     <p style="margin:0;font-size:13px;line-height:1.6">
       The <b>Day forecast</b> toggle draws the daily vol &amp; range forecast — the
@@ -123,11 +133,12 @@
       hundreds of past windows, how often the 50% and 75% claims actually held, split
       by the hour the forecast was made, and reports <b>path adherence</b> — of every
       predicted bar, how often price stayed inside the median / 75th band around the
-      path (a range fit, not a direction call). It also reports <b>close vs touch</b>:
-      how often price <i>closed</i> inside the band versus how often the intrabar path
-      ever <i>touched</i> beyond it — the path always breaches more, and that gap is the
-      reflection effect. It's why a stop sitting on the P75 line gets hit far more than
-      the endpoint stats suggest: place stops beyond the touch line, not the close line.
+      path (a range fit, not a direction call). It also reports <b>stop reality</b>:
+      for a stop placed at the fixed P50 / P75 distance, how often the intrabar high/low
+      <i>touches</i> that line versus how often the close actually <i>settles</i> beyond
+      it. The touch rate is always higher — that gap is the reflection effect, and it's
+      why a stop on the line gets hit more than the endpoint stats imply: size stops to
+      the touch rate, not the close rate.
       The <b>replay slider</b> rewinds to any past moment and shows the forecast exactly
       as it would have looked then, built only from data available at the time. (The
       wiggle you see in a single most-agreed path is Monte-Carlo sampling noise around
@@ -195,6 +206,7 @@
       <button id="tNews" class="on">News</button>
       <button id="tEventCone" class="on" title="Widen the cone into scheduled-release windows (multiplier learned causally from this pair's history; A/B-graded in the calibration card)">Event σ</button>
       <button id="tImpliedCone" title="Scale the day's cone by implied vol (EVZ/GVZ/VIX) vs its own trailing baseline. Measured-first, default OFF — the A/B card shows whether it beats the realized σ already in the cone. EUR/USD, GOLD, indices only." style="display:none">Implied σ</button>
+      <button id="tBudgetCone" title="Widen the cone on quiet-so-far sessions, slightly narrow on busy ones (a pre-registered vol-mean-reversion hypothesis from the gold calibration). Measured-first, default OFF — the A/B card judges it.">Budget σ</button>
       <button id="tLevels">Levels</button>
       <button id="tBands">Day forecast</button>
       <button id="tTrail" class="on">Hindcast trail</button>
@@ -207,6 +219,10 @@
       <div id="coneInfo"><span class="muted">load a pair</span></div>
     </div>
     <div class="card">
+      <h2>Volatility left in the day</h2>
+      <div id="dayBudget"><span class="muted">how much of the day's typical range is spent vs still to come (intraday only)</span></div>
+    </div>
+    <div class="card">
       <h2>Target reachability</h2>
       <div class="ctl" style="margin:0 0 6px">
         <input id="reachTarget" class="mono" placeholder="target price" style="flex:1 1 120px;background:#1e293b;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px">
@@ -217,6 +233,21 @@
     <div class="card">
       <h2>Calibration — full history</h2>
       <div id="calib"><span class="muted">computed on load (non-overlapping windows, no lookahead)</span></div>
+    </div>
+    <div class="card">
+      <h2>Forward track (live record)</h2>
+      <div id="forward"><span class="muted">loading…</span></div>
+    </div>
+    <div class="card">
+      <h2>Surprise alert — Telegram ping</h2>
+      <div class="muted" style="margin-bottom:8px">
+        Pings you when a pair is unusually <b>stretched</b> (high pct of its calibrated
+        4h cone — continuation is statistically stretched, fade context) or unusually
+        <b>quiet</b> (low pct — quiet stretches tend to expand). Each message ends with a
+        practical next-step line. It is a <b>context ping, never a buy/sell call</b> —
+        intraday direction here is a proven coin flip.
+      </div>
+      <div id="alertCfg"><span class="muted">loading…</span></div>
     </div>
     <div class="card muted">
       <b>How to read this honestly.</b> The cone is the model's real claim: a capped
@@ -256,17 +287,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=9';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=9';
-import { bisect, resampleTo } from './js/barUtils.js?v=9';
-import { collectLevels } from './js/levelSources.js?v=9';
+import { createLevelChart } from './js/levelChart.js?v=15';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=15';
+import { bisect, resampleTo } from './js/barUtils.js?v=15';
+import { collectLevels } from './js/levelSources.js?v=15';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
-  intradayRealizedZ, intradayReachability, reachabilityCalibration,
-} from './js/forecastPathCore.js?v=9';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=9';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=9';
+  intradayRealizedZ, intradayReachability, reachabilityCalibration, dayRangeStatus,
+} from './js/forecastPathCore.js?v=15';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=15';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=15';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -301,10 +332,10 @@ function intradayEngine(barMin, lookbackDays, horizons, defaultH) {
     horizons, defaultH,
     lookbackDays,
     warmup: INTRADAY_DEFAULTS.warmupBars,
-    build: bars => buildIntradayContext(bars, { events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts() }),
+    build: bars => buildIntradayContext(bars, { events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts(), ...budgetOpts() }),
     cone: intradayCone,
     paths: intradaySamplePaths,
-    tally: (bars, H) => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts() }),
+    tally: (bars, H) => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone, ...ivOpts(), ...budgetOpts() }),
     anchorT: c => c.anchorTime,
     stepT: s => s.time,
     fmtBar: b => new Date(b.time * 1000).toISOString().substring(0, 16).replace('T', ' ') + 'Z',
@@ -370,13 +401,14 @@ const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
 let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [], ivByDate = null;
-const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false };
+const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false, budgetCone: false };
 const eng = () => ENGINES[$('gran').value];
 const isIntraday = () => $('gran').value !== 'D1';
 // Major releases as epoch seconds — the event-aware cone's input.
 const rank3Events = () => events.filter(e => e.rank >= 3).map(e => e.ms / 1000);
 // Implied-vol conditioner opts (only when a series is loaded + toggle on).
 const ivOpts = () => (ivByDate && toggles.impliedCone) ? { ivByDate, ivConditioner: true } : {};
+const budgetOpts = () => toggles.budgetCone ? { budgetConditioner: true } : {};
 
 function clearExtra() {
   for (const s of extraSeries) { try { chart.removeSeries(s); } catch {} }
@@ -606,6 +638,38 @@ function render() {
     `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(dg)} – ${lastS.p75Up.toFixed(dg)}</b></div>` +
     surpriseHtml + evHtml +
     `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
+
+  renderDayBudget();
+}
+
+// Volatility left in the day — pure range climatology (intraday only).
+function renderDayBudget() {
+  const el = $('dayBudget');
+  if (!el) return;
+  if (!isIntraday() || !bars.length) { el.innerHTML = '<span class="muted">Intraday (M5/M15) only — how much of the day\'s range is spent vs left.</span>'; return; }
+  // Index/gold futures trade an overnight session (~22:00 UTC break) — anchor
+  // their "day" there so the vol-left climatology fits; FX stays UTC-midnight.
+  const FUT_ANCHOR = { NQ:22, SPX500:22, US30:22, US2000:22, DE30:22, UK100:22, GOLD:22 };
+  const s = dayRangeStatus(bars, { anchorHour: FUT_ANCHOR[pairSel.value] ?? 0 });
+  if (!s) { el.innerHTML = '<span class="muted">Not enough history yet.</span>'; return; }
+  if (!s.reliable) {
+    el.innerHTML = `<div class="kv"><span>range so far today</span><b>${s.rangeSoFarPct}%</b></div>` +
+      `<div class="muted" style="margin-top:4px">⚠ Day-budget not reliable right now: ${s.reason}. (This is a UTC-calendar-day measure — for 24h index futures the "day" should be session-anchored; a follow-up.)</div>`;
+    return;
+  }
+  const cp = s.consumedPercentile;
+  const cls = cp == null ? '' : cp >= 75 ? 'bad' : cp <= 25 ? 'good' : 'warn';
+  const verdict = cp == null ? ''
+    : cp >= 75 ? `Busy session — already used more range than a typical ${String(s.hour).padStart(2,'0')}:00 day. Much of the day's move may be behind us; expect less room left than usual.`
+    : cp <= 25 ? `Quiet session — well below the typical range for this hour. More room to move than usual (and this pair's calibration shows quiet mornings tend to expand).`
+    : `On pace — range used is about typical for this hour.`;
+  el.innerHTML =
+    `<div class="kv"><span>range so far today</span><b>${s.rangeSoFarPct}%</b></div>` +
+    `<div class="kv"><span>typical by ${String(s.hour).padStart(2,'0')}:00</span><b>${s.typicalSoFarPct}% (${s.completionPct}% of the day)</b></div>` +
+    `<div class="kv"><span>busy/quiet vs history</span><b class="${cls}">${cp == null ? '—' : cp + 'th pctile'}</b></div>` +
+    `<div class="kv"><span>typical full-day range</span><b>${s.typicalFullPct}%</b></div>` +
+    `<div class="kv"><span>typical range still to come</span><b>${s.remainingTypicalPct}%</b></div>` +
+    `<div class="muted" style="margin-top:4px">Climatology over ${s.nDays} prior days — descriptive, not a prediction. ${verdict}</div>`;
 }
 
 function renderCalib() {
@@ -726,6 +790,26 @@ function renderCalib() {
       `<div class="muted" style="margin-top:4px">Day σ scaled by implied vol ÷ its trailing median (mult ${iv ? iv.lo + '–' + iv.hi : '—'}, causal). ${ivVerdict}</div></div>`;
   }
 
+  // Budget-σ A/B — the quiet-morning conditioner (pre-registered, not fitted).
+  if (isIntraday()) {
+    const mkT = flag => intradayTally(bars, { horizonBars: H, events: rank3Events(), eventAware: toggles.eventCone, budgetConditioner: flag });
+    const off = mkT(false), on = mkT(true);
+    const oc = off.overall, nc = on.overall;
+    const dOff = Math.abs((oc.c75 ?? 0) - 0.75), dOn = Math.abs((nc.c75 ?? 0) - 0.75);
+    const zOff = Math.abs((oc.medAbsZ ?? 0) - 0.674), zOn = Math.abs((nc.medAbsZ ?? 0) - 0.674);
+    const moved = Math.abs((nc.c75 ?? 0) - (oc.c75 ?? 0)) > 0.005 || Math.abs((nc.medAbsZ ?? 0) - (oc.medAbsZ ?? 0)) > 0.005;
+    let bv;
+    if (!moved) bv = 'No sessions hit the cold/hot buckets over this window — nothing to act on.';
+    else if (dOn <= dOff - 0.02 && zOn <= zOff + 0.02) bv = 'Widening quiet sessions improves containment — the vol-mean-reversion signal earns a proper cross-pair + OOS test.';
+    else if (dOn >= dOff + 0.03 || zOn >= zOff + 0.05) bv = 'Makes the cone WORSE here — leave it off.';
+    else bv = 'No measurable improvement — a null (the honest prior for a one-pair signal). Leave it off pending cross-pair proof.';
+    extra += `<div style="margin-top:12px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Budget-σ A/B (quiet-morning conditioner)</b>` +
+      `<table style="margin-top:4px"><tr><th></th><th>P75→75%</th><th>med|z|→0.674</th></tr>` +
+      `<tr><td>off</td><td class="${grade(oc.c75,.75)}">${pc(oc.c75)}</td><td>${oc.medAbsZ ?? '—'}</td></tr>` +
+      `<tr><td>on</td><td class="${grade(nc.c75,.75)}">${pc(nc.c75)}</td><td>${nc.medAbsZ ?? '—'}</td></tr></table>` +
+      `<div class="muted" style="margin-top:4px">Cold sessions ×${1.15}, hot ×${0.95} (fixed, pre-registered — not fitted). ${bv}</div></div>`;
+  }
+
   $('calib').innerHTML =
     `<table><tr><th></th><th colspan="2">full (n=${t.full.n})</th><th colspan="2">recent (n=${t.recent.n})</th></tr>` +
     `<tr><th></th><th>P50→50%</th><th>P75→75%</th><th>P50</th><th>P75</th></tr>${rows}</table>` +
@@ -736,12 +820,12 @@ function renderCalib() {
       `<div class="muted">Path adherence: of every predicted bar, how often price stayed inside the median / 75th band around the most-agreed path (recent ${pc(t.adherenceRecent?.p75)} P75). A range fit, not a direction call.</div>` : '') +
     (t.excursion ? (() => {
       const ex = t.excursion;
-      const gap = (ex.closeHeld75 != null && ex.pathHeld75 != null) ? ex.closeHeld75 - ex.pathHeld75 : null;
-      return `<div style="margin-top:10px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Close vs touch (stop reality)</b>` +
-        `<table style="margin-top:4px"><tr><th>band</th><th>close stayed in</th><th>path never touched out</th><th>touched beyond</th></tr>` +
-        `<tr><td>P50</td><td>${pc(ex.closeHeld50)}</td><td>${pc(ex.pathHeld50)}</td><td class="warn">${pc(ex.touch50)}</td></tr>` +
-        `<tr><td>P75</td><td>${pc(ex.closeHeld75)}</td><td>${pc(ex.pathHeld75)}</td><td class="bad">${pc(ex.touch75)}</td></tr></table>` +
-        `<div class="muted" style="margin-top:4px">A stop on the P75 line gets <b>touched intraday in ${pc(ex.touch75)}</b> of windows — even though price <b>closes</b> back inside far more often. That gap${gap != null ? ` (${(gap*100).toFixed(0)} pts)` : ''} is the intrabar (reflection) effect: place stops beyond the touch line, not the close line.</div></div>`;
+      const gap = (ex.p75.touch != null && ex.p75.closeBeyond != null) ? ex.p75.touch - ex.p75.closeBeyond : null;
+      return `<div style="margin-top:10px"><b class="muted" style="text-transform:uppercase;letter-spacing:.04em">Stop reality — touch vs close (fixed line)</b>` +
+        `<table style="margin-top:4px"><tr><th>stop at</th><th>touched intraday</th><th>close beyond</th></tr>` +
+        `<tr><td>±P50 line</td><td class="warn">${pc(ex.p50.touch)}</td><td>${pc(ex.p50.closeBeyond)}</td></tr>` +
+        `<tr><td>±P75 line</td><td class="bad">${pc(ex.p75.touch)}</td><td>${pc(ex.p75.closeBeyond)}</td></tr></table>` +
+        `<div class="muted" style="margin-top:4px">A one-sided stop at the ${e.fmtStep(H)} <b>P75 distance</b> gets <b>touched in ${pc(ex.p75.touch)}</b> of windows, but price only <b>closes</b> past it ${pc(ex.p75.closeBeyond)} of the time${gap != null ? ` — a ${(gap*100).toFixed(0)}-pt reflection gap` : ''}. The intrabar high/low reaches the line far more than the close settles beyond it: size stops to the touch rate, not the close rate.</div></div>`;
     })() : '') +
     `<div class="muted">Non-overlapping windows, every input strictly pre-window. Green = within 7pts of the claim.</div>` +
     extra;
@@ -833,8 +917,29 @@ async function load() {
   }
 }
 
+// Forward track — the live post-research record (accumulates over weeks; the
+// only thing a backtest can't fake). Fetched once; shows aggregate + this pair.
+async function loadForward() {
+  const el = $('forward'); if (!el) return;
+  try {
+    const j = await fetch('/api/forecast-path/forward').then(r => r.json());
+    const s = j?.stats;
+    if (!s || !s.resolved) { el.innerHTML = `<span class="muted">No resolved forward claims yet${s?.trackingStart ? ` (tracking since ${s.trackingStart})` : ''} — the engine logs each pair's live cone hourly and grades it after 4h; check back as it accumulates.</span>`; return; }
+    const pc = v => v == null ? '—' : (v * 100).toFixed(0) + '%';
+    const g = (v, claim) => v == null ? '' : Math.abs(v - claim) <= 0.07 ? 'good' : Math.abs(v - claim) <= 0.15 ? 'warn' : 'bad';
+    const pp = s.perPair?.[pairSel.value];
+    el.innerHTML =
+      `<div class="kv"><span>resolved claims</span><b>${s.resolved} (of ${s.total}, ${s.pending} pending)</b></div>` +
+      `<div class="kv"><span>P75 close-containment</span><b class="${g(s.closeIn75,.75)}">${pc(s.closeIn75)} <span class="muted">(claim 75%)</span></b></div>` +
+      `<div class="kv"><span>P75 touched intraday</span><b>${pc(s.touch75)}</b></div>` +
+      `<div class="kv"><span>direction vs coin flip</span><b class="${s.dirHit==null?'':Math.abs(s.dirHit-0.5)<0.05?'':s.dirHit>0.55?'good':s.dirHit<0.45?'bad':'warn'}">${pc(s.dirHit)}</b></div>` +
+      (pp ? `<div class="kv" style="margin-top:6px"><span>${pairSel.value} (n=${pp.n})</span><b class="${g(pp.closeIn75,.75)}">P75 ${pc(pp.closeIn75)} · dir ${pc(pp.dirHit)}</b></div>` : '') +
+      `<div class="muted" style="margin-top:4px">Live since ${s.trackingStart ?? '—'}. Forward P75 near 75% = calibration is holding out-of-sample; decay = it was in-sample. Direction stays ~coin flip by design.</div>`;
+  } catch { el.innerHTML = '<span class="muted">Forward record unavailable.</span>'; }
+}
+
 $('load').onclick = load;
-pairSel.onchange = load;
+pairSel.onchange = () => { load(); loadForward(); };
 $('helpBtn').onclick = () => { $('helpOverlay').style.display = 'block'; };
 $('gran').onchange = () => { fillHorizons(); load(); };
 $('replay').oninput = ev => { i = +ev.target.value; render(); };
@@ -863,8 +968,70 @@ $('tImpliedCone').onclick = () => {   // ivConditioner lives in the context — 
   if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
   render(); renderCalib();
 };
+$('tBudgetCone').onclick = () => {   // budgetConditioner lives in the context — rebuild it
+  toggles.budgetCone = !toggles.budgetCone;
+  $('tBudgetCone').classList.toggle('on', toggles.budgetCone);
+  if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
+  render(); renderCalib();
+};
+
+// Surprise-alert config — enable, Telegram creds, pairs, thresholds. Creds are
+// masked on read; leave the token field blank to keep the stored one.
+async function loadAlertCfg() {
+  const el = $('alertCfg'); if (!el) return;
+  try {
+    const j = await fetch('/api/forecast-path/alert/config').then(r => r.json());
+    const c = j?.config || {};
+    const pairsStr = (c.pairs || []).join(', ');
+    el.innerHTML =
+      `<div class="kv"><span>enabled</span><b><label class="mono"><input type="checkbox" id="alEn" ${c.enabled ? 'checked' : ''}> auto-scan every 20 min</label></b></div>` +
+      `<div class="kv"><span>bot token</span><b><input id="alTok" placeholder="${c.hasToken ? '•••• stored — leave blank to keep' : 'paste bot token'}" style="width:220px"></b></div>` +
+      `<div class="kv"><span>chat id</span><b><input id="alChat" value="${c.hasChat ? (c.chatId || '') : ''}" placeholder="chat / channel id" style="width:220px"></b></div>` +
+      `<div class="kv"><span>pairs</span><b><input id="alPairs" value="${pairsStr}" placeholder="gold, eurusd, nq" style="width:220px"></b></div>` +
+      `<div class="kv"><span>stretched ≥ pct</span><b><input id="alHi" type="number" min="80" max="99" value="${c.pctHigh}" style="width:64px"></b></div>` +
+      `<div class="kv"><span>quiet ≤ pct</span><b><input id="alLo" type="number" min="1" max="20" value="${c.pctLow}" style="width:64px"></b></div>` +
+      `<div class="kv"><span>min |z|</span><b><input id="alZ" type="number" step="0.1" min="0.5" max="4" value="${c.zMin}" style="width:64px"></b></div>` +
+      `<div class="kv"><span>min gap (min)</span><b><input id="alGap" type="number" min="15" max="720" value="${c.minGapMin}" style="width:64px"></b></div>` +
+      `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">` +
+        `<button id="alSave">Save</button>` +
+        `<button id="alTest">Send test ping</button>` +
+        `<button id="alPreview">Preview alerts (no send)</button>` +
+      `</div>` +
+      `<div id="alMsg" class="muted" style="margin-top:6px"></div>`;
+    $('alSave').onclick = async () => {
+      const msg = $('alMsg'); msg.textContent = 'saving…';
+      const body = {
+        enabled: $('alEn').checked,
+        token: $('alTok').value.trim(),
+        chatId: $('alChat').value.trim(),
+        pairs: $('alPairs').value.split(',').map(s => s.trim()).filter(Boolean),
+        pctHigh: +$('alHi').value, pctLow: +$('alLo').value,
+        zMin: +$('alZ').value, minGapMin: +$('alGap').value,
+      };
+      try { const r = await fetch('/api/forecast-path/alert/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+        msg.textContent = r.ok ? 'saved ✓' : ('save failed: ' + (r.error || '?')); if (r.ok) loadAlertCfg();
+      } catch (e) { msg.textContent = 'save failed: ' + e.message; }
+    };
+    $('alTest').onclick = async () => {
+      const msg = $('alMsg'); msg.textContent = 'sending…';
+      try { const r = await fetch('/api/forecast-path/alert/test', { method: 'POST' }).then(r => r.json());
+        msg.textContent = r.ok ? 'test ping sent ✓ (check Telegram)' : ('failed: ' + (r.error || '?'));
+      } catch (e) { msg.textContent = 'failed: ' + e.message; }
+    };
+    $('alPreview').onclick = async () => {
+      const msg = $('alMsg'); msg.textContent = 'scanning…';
+      try { const r = await fetch('/api/forecast-path/alert/scan?dry=1', { method: 'POST' }).then(r => r.json());
+        if (!r.ok) { msg.textContent = 'failed: ' + (r.error || '?'); return; }
+        if (!r.alerts?.length) { msg.innerHTML = `checked ${r.checked} pair(s) — nothing surprising right now.`; return; }
+        msg.innerHTML = r.alerts.map(a => `<div style="margin-top:6px;padding:6px;border:1px solid #333;border-radius:6px;white-space:pre-wrap">${a.text}</div>`).join('');
+      } catch (e) { msg.textContent = 'failed: ' + e.message; }
+    };
+  } catch { el.innerHTML = '<span class="muted">Alert config unavailable.</span>'; }
+}
 
 load();
+loadForward();
+loadAlertCfg();
 </script>
 </body>
 </html>

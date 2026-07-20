@@ -1952,12 +1952,13 @@ async function overlayDrawerCone(name) {
   // point (the paths agree where the drift points).
   if (cone.consensus?.length)
     mk('#c084fc', 2, LSt.Solid).setData([t0, ...cone.consensus.map(p => ({ time: p.t, value: p.c }))]);
-  // Time-based range: the cone (4h) fills the right ~quarter, its anchor near
-  // 3/4 across — so it never runs off behind the price scale again.
-  // Anchor at 3/4: left = anchor − 3·span, right = last cone point (real data,
-  // so no clamp) → cone fills the right quarter exactly.
-  const lastT = cone.steps[cone.steps.length - 1].t, span = Math.max(1, lastT - cone.anchorTime);
-  try { drChart.timeScale().setVisibleRange({ from: cone.anchorTime - span * 3, to: lastT }); } catch { padDrawerRange(); }
+  // Pad by LOGICAL range (not time): the cone's future points sit on the M15
+  // grid, not the M5 candle grid, so setVisibleRange-by-time clamps back to the
+  // last candle and undoes the padding. Logical indices are grid-agnostic — the
+  // cone adds ~16 future indices past the N candles, so [N−70, N+22] puts the
+  // last candle ~3/4 across with the cone filling the right quarter.
+  const N = _drBarCount;
+  if (N) { try { drChart.timeScale().setVisibleLogicalRange({ from: N - 70, to: N + 22 }); } catch { padDrawerRange(); } }
   $('drChartNote').textContent += ' · 📐 4h claim: blue = predicted · purple = most-agreed path · green/amber = P50/P75 envelopes';
 }
 
@@ -1970,9 +1971,13 @@ async function loadDrawerPath(name) {
   if (!s) { sec.style.display = 'none'; return; }
   const hrs = a => a?.length ? a.map(h => String(h).padStart(2, '0')).join(' ') + 'h' : '—';
   const spCls = s.surprise == null ? '' : Math.abs(s.surprise.z) > 1.15 ? 'neg' : Math.abs(s.surprise.z) > 0.67 ? 'amber' : 'pos';
+  const db = s.dayBudget;
+  const dbCls = db?.consumedPercentile == null ? '' : db.consumedPercentile >= 75 ? 'neg' : db.consumedPercentile <= 25 ? 'pos' : 'amber';
   const rows = [
     ['4h P75 envelope', `±${s.p75HalfPct}%  (${s.p75Lo?.toFixed?.(5) ?? '—'} – ${s.p75Hi?.toFixed?.(5) ?? '—'})`],
     ['today vs day-open cone', s.surprise == null ? '—' : `<span class="${spCls}">${s.surprise.pct}th pctile (z ${s.surprise.z >= 0 ? '+' : ''}${s.surprise.z})</span>`],
+    ['vol used today', db == null ? '—' : db.reliable === false ? `${db.rangeSoFarPct}% range <span class="muted">(budget n/a: ${db.reason?.split(' — ')[0]})</span>` : `<span class="${dbCls}">${db.rangeSoFarPct}% range · ${db.consumedPercentile}th pctile for ${String(db.hour).padStart(2,'0')}:00</span>`],
+    ['typical range still to come', db == null || db.reliable === false ? '—' : `${db.remainingTypicalPct}% (typical full ${db.typicalFullPct}%)`],
     ['cone trustworthy at', hrs(s.trustHours)],
     ['shaky at', hrs(s.shakyHours)],
     ['release windows ahead', s.upcomingEvents?.length ? s.upcomingEvents.join(' · ') + (s.eventSteps ? ' (σ widened now)' : '') : 'none in next 12h'],

@@ -99,7 +99,9 @@ import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the 
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
-import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
+import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
+import { makeClaim as _cfMakeClaim, shouldRecord as _cfShouldRecord, resolveClaims as _cfResolve, pruneStale as _cfPrune, summarizeForward as _cfSummarize } from './js/coneForwardTrack.js';   // cone forward-track (live claims vs outcomes)
+import { detectSurprise as _saDetect, shouldFire as _saShouldFire, recordFired as _saRecordFired, SURPRISE_DEFAULTS as _SA_DEFAULTS } from './js/surpriseAlertCore.js';   // cone surprise-alert (context ping, not a signal)
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
@@ -1688,6 +1690,37 @@ async function _injectServerContext(pair, s) {
     } catch { /* left absent — prompt tolerates it */ }
   }
 
+  // Forecast Path — the calibrated 4h cone's claims (RANGE / TIMING / RISK,
+  // never direction — its own calibration proves direction is a coin flip).
+  // Best-effort: uses the 15-min summary cache, else computes (OANDA fetch).
+  if (!s.forecastPath) {
+    const fk = _forecastKeyForPair(pair);
+    const wname = fk ? fk.toLowerCase() : null;
+    if (wname && _wbtInstrMap[wname]) {
+      try {
+        const hit = _fpSummaryCache.get(wname);
+        // On a cache miss, cap the wait so a slow OANDA fetch can't hang the
+        // brief — the section is best-effort and warms the cache for next time.
+        const sum = (hit && Date.now() - hit.at < _FP_SUMMARY_TTL)
+          ? hit.data
+          : await Promise.race([
+              _fpSummarizePair(wname).then(d => { _fpSummaryCache.set(wname, { at: Date.now(), data: d }); return d; }),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('fp summary timeout')), 10_000)),
+            ]);
+        const db = sum.dayBudget;
+        s.forecastPath = {
+          p75RangePct: sum.p75HalfPct, p75Lo: sum.p75Lo, p75Hi: sum.p75Hi,
+          surprisePct: sum.surprise?.pct ?? null, surpriseZ: sum.surprise?.z ?? null,
+          trustHours: sum.trustHours ?? [], shakyHours: sum.shakyHours ?? [],
+          p75Containment: sum.calib?.c75Final != null ? Math.round(sum.calib.c75Final * 100) : null,
+          containN: sum.calib?.n ?? null,
+          upcomingEvents: sum.upcomingEvents ?? [],
+          dayBudget: (db && db.reliable) ? { rangeSoFarPct: db.rangeSoFarPct, consumedPct: db.consumedPercentile, remainingPct: db.remainingTypicalPct } : null,
+        };
+      } catch { /* left absent — prompt tolerates it */ }
+    }
+  }
+
   if (!s.riskFlags) {
     try {
       const rf = await computeRiskFlags();
@@ -1809,6 +1842,15 @@ RETAIL CROWD POSITIONING (Myfxbook community)
 Retail long: ${s.retailLongPct ?? 'N/A'}%  |  Short: ${s.retailShortPct ?? 'N/A'}%  |  Crowding: ${s.retailCrowding ?? 'N/A'}
 Avg price of retail longs: ${s.avgLongPrice ?? 'N/A'}  |  Avg price of retail shorts: ${s.avgShortPrice ?? 'N/A'}
 Contrarian signal vs macro bias: ${s.retailContrarian ? 'YES - retail crowd opposes macro direction (supportive for trade)' : s.retailSentiment === 'BALANCED' ? 'Crowd is balanced - neutral' : 'NO - retail crowd agrees with macro direction (crowding risk)'}
+
+CALIBRATED INTRADAY FORECAST (Forecast Path engine — RANGE / TIMING / RISK ONLY, NOT DIRECTION)
+${s.forecastPath ? `4h P75 range: ±${s.forecastPath.p75RangePct}%  (${s.forecastPath.p75Lo ?? '?'} – ${s.forecastPath.p75Hi ?? '?'})  — where price can plausibly reach over the next ~4h
+Today vs day-open cone: ${s.forecastPath.surprisePct != null ? `${s.forecastPath.surprisePct}th percentile (z ${s.forecastPath.surpriseZ})` : 'n/a'}  — how unusual today's move already is
+Cone reliability (this pair's own history): P75 band actually held ${s.forecastPath.p75Containment ?? '?'}% of the time (claim 75%, n=${s.forecastPath.containN ?? '?'}) — WEIGHT the range read by this
+Trustworthy hours (UTC): ${s.forecastPath.trustHours?.length ? s.forecastPath.trustHours.map(h => String(h).padStart(2, '0')).join(' ') : 'n/a'}${s.forecastPath.shakyHours?.length ? `  |  shaky: ${s.forecastPath.shakyHours.map(h => String(h).padStart(2, '0')).join(' ')}` : ''}
+${s.forecastPath.dayBudget ? `Volatility left in the day: ${s.forecastPath.dayBudget.rangeSoFarPct}% range used so far (${s.forecastPath.dayBudget.consumedPct}th pctile for this hour) — ~${s.forecastPath.dayBudget.remainingPct}% of a typical day's range still to come` : ''}${s.forecastPath.upcomingEvents?.length ? `
+Scheduled releases inside the cone window: ${s.forecastPath.upcomingEvents.join(', ')}` : ''}
+CRITICAL — how to use this: the engine's DIRECTION call is a proven coin flip (~50% on this pair's own out-of-sample history). Its value is RANGE, TIMING and RISK ONLY. Do NOT infer or state any directional bias from it. Use it to: size expectations (how far / where price can realistically reach), judge whether today is already stretched (high surprise percentile = little room left), place realistic stops/targets (a stop inside the P75 range gets hit by ordinary noise far more than its % implies), and prefer the trustworthy hours. NEVER present it as a buy/sell signal.` : '  Not available for this instrument'}
 
 GARCH VOLATILITY FORECAST
 ${s.garch ? `GARCH(1,1) daily range forecast: ${s.garch.forecast}  |  68% CI: ${s.garch.ci68}  |  95% CI: ${s.garch.ci95}
@@ -11519,7 +11561,10 @@ async function _wbtFetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
   let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
   if (from) url += `&from=${encodeURIComponent(from)}`;
   if (to)   url += `&to=${encodeURIComponent(to)}`;
-  if (!from && !to) url += `&count=${count ?? 200}`;
+  // count is valid with a `from` (OANDA returns `count` candles forward) or
+  // alone; it must NOT be combined with `to` (from+to defines the span).
+  if (count && !to) url += `&count=${count}`;
+  else if (!from && !to) url += `&count=200`;
   const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
   if (!r.ok) {
     let msg = `OANDA HTTP ${r.status}`;
@@ -11538,23 +11583,27 @@ async function _wbtFetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
 // The event-σ A/B needs ≥20 event windows → months of M15, not the ~50 days a
 // single request allows.
 async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
-  const toIso = to ? _wbtClampTo(to) : new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const toMs = to ? new Date(_wbtClampTo(to)).getTime() : Date.now();
   if (!from) return _wbtFetchIntradayOnce(oanda, gran, { count });   // count-only (no range)
-  const toMs = new Date(toIso).getTime();
+  // OANDA rejects a from+to request spanning >5000 candles ("Maximum value for
+  // 'count' exceeded") — it does NOT return the first 5000. So page with
+  // from+count (5000 forward from the cursor), advancing until we pass `to`.
   let cursorMs = new Date(from + 'T00:00:00Z').getTime();
   const out = [];
-  let seen = 0;
   for (let page = 0; page < 24 && cursorMs < toMs; page++) {   // hard cap 24 pages
     const chunk = await _wbtFetchIntradayOnce(oanda, gran, {
       from: new Date(cursorMs).toISOString().replace(/\.\d+Z$/, 'Z'),
-      to: toIso,
+      count: 5000,
     });
     if (!chunk.length) break;
-    for (const c of chunk) if (!out.length || c.time > out[out.length - 1].time) out.push(c);
-    if (out.length === seen) break;   // no progress → done
-    seen = out.length;
-    if (chunk.length < 4900) break;   // last (partial) page reached `to`
-    cursorMs = (chunk[chunk.length - 1].time + 1) * 1000;
+    let added = 0;
+    for (const c of chunk) {
+      if (c.time * 1000 > toMs) break;                                // past the window
+      if (!out.length || c.time > out[out.length - 1].time) { out.push(c); added++; }
+    }
+    const lastMs = chunk[chunk.length - 1].time * 1000;
+    if (lastMs >= toMs || chunk.length < 5000 || added === 0) break;  // reached `to` / caught up
+    cursorMs = lastMs + 1000;
   }
   return out;
 }
@@ -11587,6 +11636,10 @@ app.get('/api/weekly-vol-backtest/m5/:pair',  _wbtIntradayRoute('M5',  500));
 const _fpSummaryCache = new Map();
 const _FP_SUMMARY_TTL = 15 * 60_000;
 const _FP_H = 16;   // 16 × M15 = 4 hours
+// Session anchor for the "vol left in the day" climatology: index/gold futures
+// trade an overnight session with a ~22:00 UTC break, so anchor their "day"
+// there instead of UTC midnight. FX trades ~continuously → 0 is fine.
+const _FP_DAY_ANCHOR = { nq: 22, spx500: 22, us30: 22, us2000: 22, de30: 22, uk100: 22, gold: 22 };
 
 // Implied-vol series per instrument (FRED daily): EUR/USD→EVZ, GOLD→GVZ, the
 // US indices→VIX (an imperfect equity-vol proxy; honest limit). No clean
@@ -11659,6 +11712,7 @@ async function _fpSummarizePair(name) {
     driftBp: +(live.mu * 1e4).toFixed(2),
     eventSteps: live.eventSteps ?? 0,
     surprise, trustHours, shakyHours, upcomingEvents,
+    dayBudget: _fpDayRange(bars, { anchorHour: _FP_DAY_ANCHOR[name] ?? 0 }),   // vol-left-in-the-day (session-anchored for futures)
     calib: { n: t.full.n, c75Final: t.full.perStep[_FP_H - 1]?.c75 ?? null },
     // Full cone coordinates so a consumer can DRAW the claim (brief drawer
     // chart), plus the Monte-Carlo consensus (the "most-agreed path").
@@ -11740,6 +11794,193 @@ app.get('/api/forecast-path/iv', async (req, res) => {
     res.json({ ok: true, supported: true, pair: name.toUpperCase(), series: sid, byDate });
   } catch (e) { res.status(500).json({ ok: false, supported: true, error: e.message }); }
 });
+
+// ── Cone forward-track — a LIVE record of cone claims vs realized outcomes ────
+// Records each pair's live 4h cone claim (~hourly, deduped) and resolves the
+// outcome once the window matures. The only test a backtest can't fake: does
+// the forward P75 containment track the calibrated 75% claim, or decay? Server-
+// side kv (single _CF_EXACT gate). Pure math in js/coneForwardTrack.js.
+let _coneFwdRunning = false;
+async function _coneForwardRefresh({ pairs } = {}) {
+  if (_coneFwdRunning) return { skipped: 'already running' };
+  _coneFwdRunning = true;
+  const out = { added: 0, resolved: 0, log: [] };
+  try {
+    const nowSec = Math.floor(Date.now() / 1000);
+    let log = await _ftLoad('cone_fwd_log', []);
+    const meta = await _ftLoad('cone_fwd_meta', {});
+    if (!meta.trackingStart) meta.trackingStart = new Date().toISOString().slice(0, 10);
+    const names = (pairs && pairs.length ? pairs : Object.keys(_wbtInstrMap))
+      .map(p => p.toLowerCase().replace(/[^a-z0-9]/g, '')).filter(n => _wbtInstrMap[n]);
+
+    // 1) Record fresh claims (deduped ~hourly) from the live summary.
+    for (const name of names) {
+      try {
+        if (!_cfShouldRecord(log, name.toUpperCase(), nowSec)) continue;
+        const hit = _fpSummaryCache.get(name);
+        const sum = (hit && Date.now() - hit.at < _FP_SUMMARY_TTL)
+          ? hit.data
+          : await _fpSummarizePair(name).then(d => { _fpSummaryCache.set(name, { at: Date.now(), data: d }); return d; });
+        const claim = _cfMakeClaim(name.toUpperCase(), sum, nowSec);
+        if (claim) { log.push(claim); out.added++; }
+      } catch (e) { out.log.push(`${name}: record ${e.message}`); }
+    }
+
+    // 2) Resolve matured claims — fetch M15 only for pairs that need it.
+    const needResolve = [...new Set(log.filter(c => !c.resolved && c.horizonEndSec <= nowSec).map(c => c.pair.toLowerCase()))];
+    const barsByPair = {};
+    for (const name of needResolve) {
+      try {
+        const bars = await _fpReachBarsFor(name);
+        barsByPair[name.toUpperCase()] = bars;
+      } catch (e) { out.log.push(`${name}: bars ${e.message}`); }
+    }
+    const r = _cfResolve(log, barsByPair, nowSec);
+    out.resolved = r.resolved;
+    log = _cfPrune(r.log, nowSec);
+
+    meta.lastScanAt = new Date().toISOString();
+    await kv.put('cone_fwd_log', JSON.stringify(log));
+    await kv.put('cone_fwd_meta', JSON.stringify(meta));
+    out.total = log.length;
+    out.stats = _cfSummarize(log, { trackingStart: meta.trackingStart });
+    return out;
+  } finally { _coneFwdRunning = false; }
+}
+
+app.post('/api/forecast-path/forward/refresh', express.json({ limit: '8kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const pairs = req.body?.pair ? [req.body.pair] : null;
+    const out = await _coneForwardRefresh({ pairs });
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.get('/api/forecast-path/forward', async (_req, res) => {
+  try {
+    const log = await _ftLoad('cone_fwd_log', []);
+    const meta = await _ftLoad('cone_fwd_meta', {});
+    res.json({ ok: true, meta, stats: _cfSummarize(log, { trackingStart: meta.trackingStart || null }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// Auto-tick: record + resolve every 30 min so the forward record accumulates
+// without a manual poke (OANDA-gated; opt out with CONE_FWD_AUTO=0).
+if (process.env.OANDA_KEY && process.env.CONE_FWD_AUTO !== '0') {
+  setInterval(() => { _coneForwardRefresh().catch(() => {}); }, 30 * 60_000);
+}
+
+// ── Surprise alert — Telegram ping when a cone reading is unusually stretched
+// or quiet ───────────────────────────────────────────────────────────────────
+// A CONTEXT ping, never a trade signal. Reuses the /summary cone + calibrated
+// percentile; fires a deduped Telegram message (stretched → fade context;
+// quiet → expect expansion) with a practical "what next" line, and says out
+// loud it is not a buy/sell call (intraday direction is a proven coin flip).
+// Config + creds in _CF_EXACT KV (surprise_alert_config); dedupe state in the
+// ephemeral store (a stray dupe after a redeploy is cheaper than a KV write on
+// every scan). Pure logic in js/surpriseAlertCore.js.
+const _clampNum = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt; };
+const _saDefaultConfig = () => ({
+  enabled: false, token: '', chatId: '', pairs: ['gold'],
+  pctHigh: _SA_DEFAULTS.pctHigh, pctLow: _SA_DEFAULTS.pctLow,
+  zMin: _SA_DEFAULTS.zMin, minGapMin: _SA_DEFAULTS.minGapMin,
+});
+async function _saLoadConfig() {
+  const raw = await kv.get('surprise_alert_config').catch(() => null);
+  return raw ? { ..._saDefaultConfig(), ...JSON.parse(raw) } : _saDefaultConfig();
+}
+
+let _saRunning = false;
+async function _surpriseAlertScan({ force = false, dryRun = false } = {}) {
+  if (_saRunning) return { skipped: 'already running' };
+  _saRunning = true;
+  const out = { checked: 0, fired: 0, alerts: [], errors: {} };
+  try {
+    const cfg = await _saLoadConfig();
+    if (!force && !cfg.enabled) return { skipped: 'disabled' };
+    if (!dryRun && (!cfg.token || !cfg.chatId)) return { skipped: 'no Telegram creds' };
+    const names = (cfg.pairs && cfg.pairs.length ? cfg.pairs : ['gold'])
+      .map(p => String(p).toLowerCase().replace(/[^a-z0-9]/g, '')).filter(n => _wbtInstrMap[n]);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const minGapSec = (cfg.minGapMin ?? _SA_DEFAULTS.minGapMin) * 60;
+    const detOpts = { pctHigh: cfg.pctHigh, pctLow: cfg.pctLow, zMin: cfg.zMin };
+
+    let state = await _ftLoad('surprise_alert_state', {});
+    for (const name of names) {
+      out.checked++;
+      try {
+        const hit = _fpSummaryCache.get(name);
+        const sum = (hit && Date.now() - hit.at < _FP_SUMMARY_TTL)
+          ? hit.data
+          : await _fpSummarizePair(name).then(d => { _fpSummaryCache.set(name, { at: Date.now(), data: d }); return d; });
+        const det = _saDetect(sum, detOpts);
+        if (!det) continue;
+        const pairKey = det.pair;
+        if (!force && !_saShouldFire(state, pairKey, det.category, nowSec, minGapSec)) continue;
+        out.alerts.push({ pair: pairKey, category: det.category, pct: det.pct, z: det.z, severity: det.severity, text: det.text });
+        if (dryRun) continue;
+        const sent = await sendTelegram(cfg.token, cfg.chatId, det.text);
+        if (sent) { out.fired++; state = _saRecordFired(state, pairKey, det.category, nowSec); }
+      } catch (e) { out.errors[name] = e?.message || String(e); }
+    }
+    if (!dryRun) await kv.put('surprise_alert_state', JSON.stringify(state)).catch(() => {});
+    return out;
+  } finally { _saRunning = false; }
+}
+
+// GET config (creds masked). POST persists config (creds + thresholds + pairs).
+app.get('/api/forecast-path/alert/config', async (_req, res) => {
+  try {
+    const cfg = await _saLoadConfig();
+    res.json({ ok: true, config: { ...cfg, token: cfg.token ? '••••set••••' : '', hasToken: !!cfg.token, hasChat: !!cfg.chatId } });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+app.post('/api/forecast-path/alert/config', express.json({ limit: '8kb' }), async (req, res) => {
+  try {
+    const cur = await _saLoadConfig();
+    const b = req.body || {};
+    const next = {
+      enabled:   b.enabled != null ? !!b.enabled : cur.enabled,
+      // keep existing token/chat when the field is blank or the masked sentinel
+      token:     (b.token && !/^•+set•+$/.test(b.token)) ? String(b.token).trim() : cur.token,
+      chatId:    b.chatId != null && b.chatId !== '' ? String(b.chatId).trim() : cur.chatId,
+      pairs:     Array.isArray(b.pairs) && b.pairs.length ? b.pairs.map(String) : cur.pairs,
+      pctHigh:   b.pctHigh != null ? _clampNum(b.pctHigh, 80, 99, cur.pctHigh) : cur.pctHigh,
+      pctLow:    b.pctLow  != null ? _clampNum(b.pctLow, 1, 20, cur.pctLow)   : cur.pctLow,
+      zMin:      b.zMin    != null ? _clampNum(b.zMin, 0.5, 4, cur.zMin)       : cur.zMin,
+      minGapMin: b.minGapMin != null ? _clampNum(b.minGapMin, 15, 720, cur.minGapMin) : cur.minGapMin,
+    };
+    await kv.put('surprise_alert_config', JSON.stringify(next));
+    res.json({ ok: true, config: { ...next, token: next.token ? '••••set••••' : '', hasToken: !!next.token, hasChat: !!next.chatId } });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// Test ping — verifies creds by sending a sample stretched+quiet message.
+app.post('/api/forecast-path/alert/test', async (_req, res) => {
+  try {
+    const cfg = await _saLoadConfig();
+    if (!cfg.token || !cfg.chatId) return res.json({ ok: false, error: 'Telegram token/chat not configured' });
+    const msg = '✅ <b>Forecast-Path surprise alerts — connected</b>\n<i>You will get a context ping when a pair is unusually stretched or quiet vs its calibrated intraday cone. These are risk/timing context, never buy/sell calls.</i>';
+    const sent = await sendTelegram(cfg.token, cfg.chatId, msg);
+    res.json({ ok: sent, error: sent ? null : 'Telegram API returned error' });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// Manual scan poke — ?dry=1 previews the alert text without sending or deduping.
+app.post('/api/forecast-path/alert/scan', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const dryRun = req.query.dry === '1' || req.query.dry === 'true';
+    const out = await _surpriseAlertScan({ force: dryRun, dryRun });
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+// Auto-scan every 20 min (OANDA-gated; opt out with SURPRISE_ALERT_AUTO=0).
+if (process.env.OANDA_KEY && process.env.SURPRISE_ALERT_AUTO !== '0') {
+  setInterval(() => { _surpriseAlertScan().catch(() => {}); }, 20 * 60_000);
+}
 
 // Level hit analysis — async job queue (same pattern as vol-backtest/run)
 const laJobs = new Map();
